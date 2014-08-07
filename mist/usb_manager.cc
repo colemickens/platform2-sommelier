@@ -70,10 +70,10 @@ void UsbManager::SetDebugLevel(int level) {
   libusb_set_debug(context_, level);
 }
 
-UsbDevice* UsbManager::GetDevice(uint8 bus_number,
-                                 uint8 device_address,
-                                 uint16 vendor_id,
-                                 uint16 product_id) {
+UsbDevice* UsbManager::GetDevice(uint8_t bus_number,
+                                 uint8_t device_address,
+                                 uint16_t vendor_id,
+                                 uint16_t product_id) {
   ScopedVector<UsbDevice> devices;
   if (!GetDevices(&devices))
     return NULL;

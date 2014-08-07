@@ -35,23 +35,23 @@ UsbConfigDescriptor::~UsbConfigDescriptor() {
   }
 }
 
-uint8 UsbConfigDescriptor::GetLength() const {
+uint8_t UsbConfigDescriptor::GetLength() const {
   return config_descriptor_->bLength;
 }
 
-uint8 UsbConfigDescriptor::GetDescriptorType() const {
+uint8_t UsbConfigDescriptor::GetDescriptorType() const {
   return config_descriptor_->bDescriptorType;
 }
 
-uint16 UsbConfigDescriptor::GetTotalLength() const {
+uint16_t UsbConfigDescriptor::GetTotalLength() const {
   return config_descriptor_->wTotalLength;
 }
 
-uint8 UsbConfigDescriptor::GetNumInterfaces() const {
+uint8_t UsbConfigDescriptor::GetNumInterfaces() const {
   return config_descriptor_->bNumInterfaces;
 }
 
-uint8 UsbConfigDescriptor::GetConfigurationValue() const {
+uint8_t UsbConfigDescriptor::GetConfigurationValue() const {
   return config_descriptor_->bConfigurationValue;
 }
 
@@ -61,15 +61,15 @@ string UsbConfigDescriptor::GetConfigurationDescription() const {
       string();
 }
 
-uint8 UsbConfigDescriptor::GetAttributes() const {
+uint8_t UsbConfigDescriptor::GetAttributes() const {
   return config_descriptor_->bmAttributes;
 }
 
-uint8 UsbConfigDescriptor::GetMaxPower() const {
+uint8_t UsbConfigDescriptor::GetMaxPower() const {
   return config_descriptor_->MaxPower;
 }
 
-UsbInterface* UsbConfigDescriptor::GetInterface(uint8 index) const {
+UsbInterface* UsbConfigDescriptor::GetInterface(uint8_t index) const {
   if (index >= GetNumInterfaces()) {
     LOG(ERROR) << StringPrintf("Invalid interface index %d. "
                                "Must be less than %d.",

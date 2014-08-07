@@ -100,10 +100,10 @@ bool UsbDeviceEventNotifier::ScanExistingDevices() {
     if (!device)
       continue;
 
-    uint8 bus_number;
-    uint8 device_address;
-    uint16 vendor_id;
-    uint16 product_id;
+    uint8_t bus_number;
+    uint8_t device_address;
+    uint16_t vendor_id;
+    uint16_t product_id;
     if (!GetDeviceAttributes(device.get(),
                              &bus_number,
                              &device_address,
@@ -171,10 +171,10 @@ void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
 
   string action = ConvertNullToEmptyString(device->GetAction());
   if (action == "add") {
-    uint8 bus_number;
-    uint8 device_address;
-    uint16 vendor_id;
-    uint16 product_id;
+    uint8_t bus_number;
+    uint8_t device_address;
+    uint16_t vendor_id;
+    uint16_t product_id;
     if (!GetDeviceAttributes(device.get(),
                              &bus_number,
                              &device_address,
@@ -212,38 +212,38 @@ std::string UsbDeviceEventNotifier::ConvertNullToEmptyString(const char* str) {
 
 // static
 bool UsbDeviceEventNotifier::ConvertHexStringToUint16(const string& str,
-                                                      uint16* value) {
+                                                      uint16_t* value) {
   int temp_value = -1;
   if (str.size() != 4 ||
       !base::HexStringToInt(str, &temp_value) ||
       temp_value < 0 ||
-      temp_value > std::numeric_limits<uint16>::max()) {
+      temp_value > std::numeric_limits<uint16_t>::max()) {
     return false;
   }
 
-  *value = static_cast<uint16>(temp_value);
+  *value = static_cast<uint16_t>(temp_value);
   return true;
 }
 
 // static
 bool UsbDeviceEventNotifier::ConvertStringToUint8(const string& str,
-                                                  uint8* value) {
+                                                  uint8_t* value) {
   unsigned temp_value = 0;
   if (!base::StringToUint(str, &temp_value) ||
-      temp_value > std::numeric_limits<uint8>::max()) {
+      temp_value > std::numeric_limits<uint8_t>::max()) {
     return false;
   }
 
-  *value = static_cast<uint8>(temp_value);
+  *value = static_cast<uint8_t>(temp_value);
   return true;
 }
 
 // static
 bool UsbDeviceEventNotifier::GetDeviceAttributes(const UdevDevice* device,
-                                                 uint8* bus_number,
-                                                 uint8* device_address,
-                                                 uint16* vendor_id,
-                                                 uint16* product_id) {
+                                                 uint8_t* bus_number,
+                                                 uint8_t* device_address,
+                                                 uint16_t* vendor_id,
+                                                 uint16_t* product_id) {
   string bus_number_string = ConvertNullToEmptyString(
       device->GetSysAttributeValue(kAttributeBusNumber));
   if (!ConvertStringToUint8(bus_number_string, bus_number)) {

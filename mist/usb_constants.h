@@ -5,6 +5,8 @@
 #ifndef MIST_USB_CONSTANTS_H_
 #define MIST_USB_CONSTANTS_H_
 
+#include <stdint.h>
+
 #include <ostream>  // NOLINT(readability/streams)
 
 #include <base/basictypes.h>
@@ -70,7 +72,7 @@ enum UsbTransferStatus {
 const int kUsbConfigurationValueInvalid = -1;
 
 // Returns the USB endpoint direction of |endpoint_address|.
-UsbDirection GetUsbDirectionOfEndpointAddress(uint8 endpoint_address);
+UsbDirection GetUsbDirectionOfEndpointAddress(uint8_t endpoint_address);
 
 // Returns a string describing the USB endpoint direction |direction|.
 const char* UsbDirectionToString(UsbDirection direction);

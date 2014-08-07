@@ -25,9 +25,9 @@ class UsbBulkTransfer : public UsbTransfer {
   // of |timeout| seconds. Returns true on success. If |device| is not open,
   // sets |error_| to UsbError::kErrorDeviceNotOpen and returns false.
   bool Initialize(const UsbDevice& device,
-                  uint8 endpoint_address,
+                  uint8_t endpoint_address,
                   int length,
-                  uint32 timeout);
+                  uint32_t timeout);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UsbBulkTransfer);

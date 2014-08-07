@@ -15,9 +15,9 @@ UsbBulkTransfer::UsbBulkTransfer() {}
 UsbBulkTransfer::~UsbBulkTransfer() {}
 
 bool UsbBulkTransfer::Initialize(const UsbDevice& device,
-                                 uint8 endpoint_address,
+                                 uint8_t endpoint_address,
                                  int length,
-                                 uint32 timeout) {
+                                 uint32_t timeout) {
   if (!device.IsOpen()) {
     mutable_error()->set_type(UsbError::kErrorDeviceNotOpen);
     return false;

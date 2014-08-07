@@ -23,36 +23,36 @@ UsbEndpointDescriptor::UsbEndpointDescriptor(
 
 UsbEndpointDescriptor::~UsbEndpointDescriptor() {}
 
-uint8 UsbEndpointDescriptor::GetLength() const {
+uint8_t UsbEndpointDescriptor::GetLength() const {
   return endpoint_descriptor_->bLength;
 }
 
-uint8 UsbEndpointDescriptor::GetDescriptorType() const {
+uint8_t UsbEndpointDescriptor::GetDescriptorType() const {
   return endpoint_descriptor_->bDescriptorType;
 }
 
-uint8 UsbEndpointDescriptor::GetEndpointAddress() const {
+uint8_t UsbEndpointDescriptor::GetEndpointAddress() const {
   return endpoint_descriptor_->bEndpointAddress;
 }
 
-uint8 UsbEndpointDescriptor::GetEndpointNumber() const {
+uint8_t UsbEndpointDescriptor::GetEndpointNumber() const {
   return GetEndpointAddress() & LIBUSB_ENDPOINT_ADDRESS_MASK;
 }
 
-uint8 UsbEndpointDescriptor::GetAttributes() const {
+uint8_t UsbEndpointDescriptor::GetAttributes() const {
   return endpoint_descriptor_->bmAttributes;
 }
 
-uint16 UsbEndpointDescriptor::GetMaxPacketSize() const {
+uint16_t UsbEndpointDescriptor::GetMaxPacketSize() const {
   return endpoint_descriptor_->wMaxPacketSize;
 }
 
-uint8 UsbEndpointDescriptor::GetInterval() const {
+uint8_t UsbEndpointDescriptor::GetInterval() const {
   return endpoint_descriptor_->bInterval;
 }
 
 UsbDirection UsbEndpointDescriptor::GetDirection() const {
-  uint8 direction = GetEndpointAddress() & LIBUSB_ENDPOINT_DIR_MASK;
+  uint8_t direction = GetEndpointAddress() & LIBUSB_ENDPOINT_DIR_MASK;
   return (direction == LIBUSB_ENDPOINT_IN) ? kUsbDirectionIn : kUsbDirectionOut;
 }
 

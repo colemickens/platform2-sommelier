@@ -5,6 +5,8 @@
 #ifndef MIST_USB_DEVICE_DESCRIPTOR_H_
 #define MIST_USB_DEVICE_DESCRIPTOR_H_
 
+#include <stdint.h>
+
 #include <ostream>  // NOLINT(readability/streams)
 #include <string>
 
@@ -33,18 +35,18 @@ class UsbDeviceDescriptor {
   ~UsbDeviceDescriptor();
 
   // Getters for retrieving fields of the libusb_device_descriptor struct.
-  uint8 GetLength() const;
-  uint8 GetDescriptorType() const;
-  uint8 GetDeviceClass() const;
-  uint8 GetDeviceSubclass() const;
-  uint8 GetDeviceProtocol() const;
-  uint8 GetMaxPacketSize0() const;
-  uint16 GetVendorId() const;
-  uint16 GetProductId() const;
+  uint8_t GetLength() const;
+  uint8_t GetDescriptorType() const;
+  uint8_t GetDeviceClass() const;
+  uint8_t GetDeviceSubclass() const;
+  uint8_t GetDeviceProtocol() const;
+  uint8_t GetMaxPacketSize0() const;
+  uint16_t GetVendorId() const;
+  uint16_t GetProductId() const;
   std::string GetManufacturer() const;
   std::string GetProduct() const;
   std::string GetSerialNumber() const;
-  uint8 GetNumConfigurations() const;
+  uint8_t GetNumConfigurations() const;
 
   // Returns a string describing the properties of this object for logging
   // purpose.

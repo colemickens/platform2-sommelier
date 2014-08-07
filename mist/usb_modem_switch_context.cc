@@ -26,10 +26,10 @@ UsbModemSwitchContext::UsbModemSwitchContext()
       modem_info_(NULL) {}
 
 UsbModemSwitchContext::UsbModemSwitchContext(const std::string& sys_path,
-                                             uint8 bus_number,
-                                             uint8 device_address,
-                                             uint16 vendor_id,
-                                             uint16 product_id,
+                                             uint8_t bus_number,
+                                             uint8_t device_address,
+                                             uint16_t vendor_id,
+                                             uint16_t product_id,
                                              const UsbModemInfo* modem_info)
     : sys_path_(sys_path),
       bus_number_(bus_number),
@@ -51,10 +51,10 @@ bool UsbModemSwitchContext::InitializeFromSysPath(const Context* context,
     return false;
   }
 
-  uint8 bus_number;
-  uint8 device_address;
-  uint16 vendor_id;
-  uint16 product_id;
+  uint8_t bus_number;
+  uint8_t device_address;
+  uint16_t vendor_id;
+  uint16_t product_id;
   if (!context->usb_device_event_notifier()->GetDeviceAttributes(
           device.get(),
           &bus_number,

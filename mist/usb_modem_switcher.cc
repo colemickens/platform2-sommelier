@@ -42,10 +42,10 @@ void UsbModemSwitcher::OnSwitchOperationCompleted(
 }
 
 void UsbModemSwitcher::OnUsbDeviceAdded(const string& sys_path,
-                                        uint8 bus_number,
-                                        uint8 device_address,
-                                        uint16 vendor_id,
-                                        uint16 product_id) {
+                                        uint8_t bus_number,
+                                        uint8_t device_address,
+                                        uint16_t vendor_id,
+                                        uint16_t product_id) {
   const UsbModemInfo* modem_info =
       context_->config_loader()->GetUsbModemInfo(vendor_id, product_id);
   if (!modem_info)

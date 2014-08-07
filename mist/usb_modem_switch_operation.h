@@ -5,6 +5,8 @@
 #ifndef MIST_USB_MODEM_SWITCH_OPERATION_H_
 #define MIST_USB_MODEM_SWITCH_OPERATION_H_
 
+#include <stdint.h>
+
 #include <string>
 
 #include <base/basictypes.h>
@@ -118,7 +120,7 @@ class UsbModemSwitchOperation
 
   // Clears the halt condition on the endpoint at |endpoint_address|. Returns
   // true on success.
-  bool ClearHalt(uint8 endpoint_address);
+  bool ClearHalt(uint8_t endpoint_address);
 
   // Sends a special USB message to the mass storage endpoint of the device.
   void SendMessageToMassStorageEndpoint();
@@ -132,8 +134,8 @@ class UsbModemSwitchOperation
   // |length| bytes of data to be transferred. For a device-to-host transfer,
   // |data| is not used and thus ignored. |completion_handler| will be invoked
   // upon the completion of the transfer.
-  void InitiateUsbBulkTransfer(uint8 endpoint_address,
-                               const uint8* data,
+  void InitiateUsbBulkTransfer(uint8_t endpoint_address,
+                               const uint8_t* data,
                                int length,
                                UsbTransferCompletionHandler completion_handler);
 
@@ -158,10 +160,10 @@ class UsbModemSwitchOperation
 
   // Implements UsbDeviceEventObserver.
   virtual void OnUsbDeviceAdded(const std::string& sys_path,
-                                uint8 bus_number,
-                                uint8 device_address,
-                                uint16 vendor_id,
-                                uint16 product_id) OVERRIDE;
+                                uint8_t bus_number,
+                                uint8_t device_address,
+                                uint16_t vendor_id,
+                                uint16_t product_id) OVERRIDE;
   virtual void OnUsbDeviceRemoved(const std::string& sys_path) OVERRIDE;
 
   Context* const context_;
@@ -169,9 +171,9 @@ class UsbModemSwitchOperation
   scoped_ptr<UsbDevice> device_;
   CompletionCallback completion_callback_;
   bool interface_claimed_;
-  uint8 interface_number_;
-  uint8 in_endpoint_address_;
-  uint8 out_endpoint_address_;
+  uint8_t interface_number_;
+  uint8_t in_endpoint_address_;
+  uint8_t out_endpoint_address_;
   int message_index_;
   int num_usb_messages_;
   scoped_ptr<UsbBulkTransfer> bulk_transfer_;

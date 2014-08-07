@@ -5,6 +5,8 @@
 #ifndef MIST_USB_MODEM_SWITCHER_H_
 #define MIST_USB_MODEM_SWITCHER_H_
 
+#include <stdint.h>
+
 #include <string>
 
 #include <base/basictypes.h>
@@ -43,10 +45,10 @@ class UsbModemSwitcher : public UsbDeviceEventObserver {
 
   // Implements UsbDeviceEventObserver.
   virtual void OnUsbDeviceAdded(const std::string& sys_path,
-                                uint8 bus_number,
-                                uint8 device_address,
-                                uint16 vendor_id,
-                                uint16 product_id) OVERRIDE;
+                                uint8_t bus_number,
+                                uint8_t device_address,
+                                uint16_t vendor_id,
+                                uint16_t product_id) OVERRIDE;
   virtual void OnUsbDeviceRemoved(const std::string& sys_path) OVERRIDE;
 
   Context* const context_;

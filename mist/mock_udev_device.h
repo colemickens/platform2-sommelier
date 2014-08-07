@@ -22,8 +22,8 @@ class MockUdevDevice : public UdevDevice {
                      UdevDevice*(const char* subsystem,
                                  const char* device_type));
   MOCK_CONST_METHOD0(IsInitialized, bool());
-  MOCK_CONST_METHOD0(GetMicrosecondsSinceInitialized, uint64());
-  MOCK_CONST_METHOD0(GetSequenceNumber, uint64());
+  MOCK_CONST_METHOD0(GetMicrosecondsSinceInitialized, uint64_t());
+  MOCK_CONST_METHOD0(GetSequenceNumber, uint64_t());
   MOCK_CONST_METHOD0(GetDevicePath, const char*());
   MOCK_CONST_METHOD0(GetDeviceNode, const char*());
   MOCK_CONST_METHOD0(GetDeviceNumber, dev_t());

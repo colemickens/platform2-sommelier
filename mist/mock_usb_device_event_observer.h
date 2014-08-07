@@ -22,10 +22,10 @@ class MockUsbDeviceEventObserver : public UsbDeviceEventObserver {
 
   MOCK_METHOD5(OnUsbDeviceAdded,
                void(const std::string& sys_path,
-                    uint8 bus_number,
-                    uint8 device_address,
-                    uint16 vendor_id,
-                    uint16 product_id));
+                    uint8_t bus_number,
+                    uint8_t device_address,
+                    uint16_t vendor_id,
+                    uint16_t product_id));
   MOCK_METHOD1(OnUsbDeviceRemoved, void(const std::string& sys_path));
 
  private:

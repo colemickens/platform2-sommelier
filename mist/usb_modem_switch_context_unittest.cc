@@ -21,13 +21,13 @@ namespace mist {
 namespace {
 
 const char kFakeDeviceSysPath[] = "/sys/devices/fake/1";
-const uint16 kFakeDeviceBusNumber = 1;
+const uint16_t kFakeDeviceBusNumber = 1;
 const char kFakeDeviceBusNumberString[] = "1";
-const uint16 kFakeDeviceDeviceAddress = 2;
+const uint16_t kFakeDeviceDeviceAddress = 2;
 const char kFakeDeviceDeviceAddressString[] = "2";
-const uint16 kFakeDeviceVendorId = 0x0123;
+const uint16_t kFakeDeviceVendorId = 0x0123;
 const char kFakeDeviceVendorIdString[] = "0123";
-const uint16 kFakeDeviceProductId = 0x4567;
+const uint16_t kFakeDeviceProductId = 0x4567;
 const char kFakeDeviceProductIdString[] = "4567";
 
 }  // namespace

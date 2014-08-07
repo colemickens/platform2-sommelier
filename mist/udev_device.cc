@@ -46,11 +46,11 @@ bool UdevDevice::IsInitialized() const {
   return udev_device_get_is_initialized(device_);
 }
 
-uint64 UdevDevice::GetMicrosecondsSinceInitialized() const {
+uint64_t UdevDevice::GetMicrosecondsSinceInitialized() const {
   return udev_device_get_usec_since_initialized(device_);
 }
 
-uint64 UdevDevice::GetSequenceNumber() const {
+uint64_t UdevDevice::GetSequenceNumber() const {
   return udev_device_get_seqnum(device_);
 }
 

@@ -5,6 +5,8 @@
 #ifndef MIST_CONFIG_LOADER_H_
 #define MIST_CONFIG_LOADER_H_
 
+#include <stdint.h>
+
 #include <base/basictypes.h>
 #include <base/files/file_path.h>
 #include <base/memory/scoped_ptr.h>
@@ -35,8 +37,8 @@ class ConfigLoader {
   // Returns NULL if no matching USB modem is found. The returned UsbModemInfo
   // object becomes invalid, and thus should not be held, beyond the lifetime
   // of the loaded configuration held by |config_|.
-  virtual const UsbModemInfo* GetUsbModemInfo(uint16 vendor_id,
-                                              uint16 product_id) const;
+  virtual const UsbModemInfo* GetUsbModemInfo(uint16_t vendor_id,
+                                              uint16_t product_id) const;
 
  private:
   FRIEND_TEST(ConfigLoaderTest, GetUsbModemInfo);

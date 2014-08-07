@@ -75,11 +75,11 @@ bool UsbDevice::Reset() {
   return error_.SetFromLibUsbError(static_cast<libusb_error>(result));
 }
 
-uint8 UsbDevice::GetBusNumber() const {
+uint8_t UsbDevice::GetBusNumber() const {
   return libusb_get_bus_number(device_);
 }
 
-uint8 UsbDevice::GetDeviceAddress() const {
+uint8_t UsbDevice::GetDeviceAddress() const {
   return libusb_get_device_address(device_);
 }
 
@@ -167,7 +167,7 @@ bool UsbDevice::DetachKernelDriver(int interface_number) {
   return error_.SetFromLibUsbError(static_cast<libusb_error>(result));
 }
 
-bool UsbDevice::ClearHalt(uint8 endpoint) {
+bool UsbDevice::ClearHalt(uint8_t endpoint) {
   if (!VerifyOpen())
     return false;
 
@@ -185,7 +185,7 @@ UsbConfigDescriptor* UsbDevice::GetActiveConfigDescriptor() {
   return NULL;
 }
 
-UsbConfigDescriptor* UsbDevice::GetConfigDescriptor(uint8 index) {
+UsbConfigDescriptor* UsbDevice::GetConfigDescriptor(uint8_t index) {
   libusb_config_descriptor* config_descriptor = NULL;
 
   int result = libusb_get_config_descriptor(device_, index, &config_descriptor);
@@ -196,7 +196,7 @@ UsbConfigDescriptor* UsbDevice::GetConfigDescriptor(uint8 index) {
 }
 
 UsbConfigDescriptor* UsbDevice::GetConfigDescriptorByValue(
-    uint8 configuration_value) {
+    uint8_t configuration_value) {
   libusb_config_descriptor* config_descriptor = NULL;
 
   int result = libusb_get_config_descriptor_by_value(
@@ -218,14 +218,14 @@ UsbDeviceDescriptor* UsbDevice::GetDeviceDescriptor() {
   return NULL;
 }
 
-string UsbDevice::GetStringDescriptorAscii(uint8 index) {
+string UsbDevice::GetStringDescriptorAscii(uint8_t index) {
   if (!VerifyOpen())
     return string();
 
   // libusb_get_string_descriptor_ascii uses an internal buffer that can only
   // hold up to 128 ASCII characters.
   int length = 128;
-  scoped_ptr<uint8[]> data(new uint8[length]);
+  scoped_ptr<uint8_t[]> data(new uint8_t[length]);
   int result = libusb_get_string_descriptor_ascii(
       device_handle_, index, data.get(), length);
   if (result < 0) {

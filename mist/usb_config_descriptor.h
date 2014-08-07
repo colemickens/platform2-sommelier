@@ -5,6 +5,8 @@
 #ifndef MIST_USB_CONFIG_DESCRIPTOR_H_
 #define MIST_USB_CONFIG_DESCRIPTOR_H_
 
+#include <stdint.h>
+
 #include <ostream>  // NOLINT(readability/streams)
 #include <string>
 
@@ -39,20 +41,20 @@ class UsbConfigDescriptor {
   ~UsbConfigDescriptor();
 
   // Getters for retrieving fields of the libusb_config_descriptor struct.
-  uint8 GetLength() const;
-  uint8 GetDescriptorType() const;
-  uint16 GetTotalLength() const;
-  uint8 GetNumInterfaces() const;
-  uint8 GetConfigurationValue() const;
+  uint8_t GetLength() const;
+  uint8_t GetDescriptorType() const;
+  uint16_t GetTotalLength() const;
+  uint8_t GetNumInterfaces() const;
+  uint8_t GetConfigurationValue() const;
   std::string GetConfigurationDescription() const;
-  uint8 GetAttributes() const;
-  uint8 GetMaxPower() const;
+  uint8_t GetAttributes() const;
+  uint8_t GetMaxPower() const;
 
   // Returns a pointer to a UsbInterface object for the USB interface indexed at
   // |index|, or a NULL pointer if the index is invalid. The returned object
   // should be deleted by the caller and should not be held beyond the lifetime
   // of this object.
-  UsbInterface* GetInterface(uint8 index) const;
+  UsbInterface* GetInterface(uint8_t index) const;
 
   // Returns a string describing the properties of this object for logging
   // purpose.

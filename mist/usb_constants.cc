@@ -10,7 +10,7 @@ using std::ostream;
 
 namespace mist {
 
-UsbDirection GetUsbDirectionOfEndpointAddress(uint8 endpoint_address) {
+UsbDirection GetUsbDirectionOfEndpointAddress(uint8_t endpoint_address) {
   // The MSB of an endpoint address indicates the direction, and kUsbDirectionIn
   // is effectively a mask to extract the MSB.
   return (endpoint_address & kUsbDirectionIn) == kUsbDirectionIn ?

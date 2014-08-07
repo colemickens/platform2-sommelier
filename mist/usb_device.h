@@ -5,6 +5,8 @@
 #ifndef MIST_USB_DEVICE_H_
 #define MIST_USB_DEVICE_H_
 
+#include <stdint.h>
+
 #include <string>
 
 #include <base/basictypes.h>
@@ -59,8 +61,8 @@ class UsbDevice : public base::SupportsWeakPtr<UsbDevice> {
   // success.
   bool Reset();
 
-  uint8 GetBusNumber() const;
-  uint8 GetDeviceAddress() const;
+  uint8_t GetBusNumber() const;
+  uint8_t GetDeviceAddress() const;
   UsbSpeed GetDeviceSpeed() const;
 
   bool GetConfiguration(int* configuration);
@@ -74,7 +76,7 @@ class UsbDevice : public base::SupportsWeakPtr<UsbDevice> {
   bool AttachKernelDriver(int interface_number);
   bool DetachKernelDriver(int interface_number);
 
-  bool ClearHalt(uint8 endpoint_address);
+  bool ClearHalt(uint8_t endpoint_address);
 
   // Returns a pointer to a UsbConfigDescriptor object for the descriptor of the
   // currently active configuration, or a NULL pointer on error. The returned
@@ -86,7 +88,7 @@ class UsbDevice : public base::SupportsWeakPtr<UsbDevice> {
   // descriptor indexed at |index|, or a NULL pointer if the index is invalid.
   // The returned object should be deleted by the caller after use and should
   // not be held beyond the lifetime of this object.
-  UsbConfigDescriptor* GetConfigDescriptor(uint8 index);
+  UsbConfigDescriptor* GetConfigDescriptor(uint8_t index);
 
   // Returns a pointer to a UsbConfigDescriptor object for the
   // configuration descriptor with configuration value |configuration_value|,
@@ -94,7 +96,7 @@ class UsbDevice : public base::SupportsWeakPtr<UsbDevice> {
   // object should be deleted by the caller after use and should not be held
   // beyond the lifetime of this object.
   UsbConfigDescriptor* GetConfigDescriptorByValue(
-      uint8 configuration_value);
+      uint8_t configuration_value);
 
   // Returns a pointer to a UsbDeviceDescriptor object for the descriptor
   // of this device, or a NULL pointer on error. The returned object should be
@@ -104,7 +106,7 @@ class UsbDevice : public base::SupportsWeakPtr<UsbDevice> {
 
   // Returns a string value, in ASCII, of string descriptor indexed at |index|,
   // or an empty string if the index is invalid.
-  std::string GetStringDescriptorAscii(uint8 index);
+  std::string GetStringDescriptorAscii(uint8_t index);
 
   libusb_device_handle* device_handle() const { return device_handle_; }
   const UsbError& error() const { return error_; }

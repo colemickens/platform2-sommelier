@@ -63,7 +63,7 @@ bool UsbTransfer::Cancel() {
   return false;
 }
 
-uint8 UsbTransfer::GetEndpointAddress() const {
+uint8_t UsbTransfer::GetEndpointAddress() const {
   return transfer_ ? transfer_->endpoint : 0;
 }
 
@@ -193,7 +193,7 @@ bool UsbTransfer::AllocateBuffer(int length) {
     return false;
   }
 
-  buffer_.reset(new uint8[length]);
+  buffer_.reset(new uint8_t[length]);
   if (buffer_) {
     buffer_length_ = length;
     VLOG(2) << StringPrintf("Allocated data buffer %p for USB transfer %p.",

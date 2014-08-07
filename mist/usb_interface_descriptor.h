@@ -5,6 +5,8 @@
 #ifndef MIST_USB_INTERFACE_DESCRIPTOR_H_
 #define MIST_USB_INTERFACE_DESCRIPTOR_H_
 
+#include <stdint.h>
+
 #include <ostream>  // NOLINT(readability/streams)
 #include <string>
 
@@ -37,21 +39,21 @@ class UsbInterfaceDescriptor {
   ~UsbInterfaceDescriptor();
 
   // Getters for retrieving fields of the libusb_interface_descriptor struct.
-  uint8 GetLength() const;
-  uint8 GetDescriptorType() const;
-  uint8 GetInterfaceNumber() const;
-  uint8 GetAlternateSetting() const;
-  uint8 GetNumEndpoints() const;
-  uint8 GetInterfaceClass() const;
-  uint8 GetInterfaceSubclass() const;
-  uint8 GetInterfaceProtocol() const;
+  uint8_t GetLength() const;
+  uint8_t GetDescriptorType() const;
+  uint8_t GetInterfaceNumber() const;
+  uint8_t GetAlternateSetting() const;
+  uint8_t GetNumEndpoints() const;
+  uint8_t GetInterfaceClass() const;
+  uint8_t GetInterfaceSubclass() const;
+  uint8_t GetInterfaceProtocol() const;
   std::string GetInterfaceDescription() const;
 
   // Returns a pointer to a UsbEndpointDescriptor object for the endpoint
   // descriptor indexed at |index|, or a NULL pointer if |index| is invalid.
   // The returned should be deleted by the caller after use and should not be
   // held beyond the lifetime of this object.
-  UsbEndpointDescriptor* GetEndpointDescriptor(uint8 index) const;
+  UsbEndpointDescriptor* GetEndpointDescriptor(uint8_t index) const;
 
   // Returns a pointer to a UsbEndpointDescriptor object for the first endpoint
   // descriptor with its transfer type equal to |transfer_type| and its

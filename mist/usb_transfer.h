@@ -5,6 +5,8 @@
 #ifndef MIST_USB_TRANSFER_H_
 #define MIST_USB_TRANSFER_H_
 
+#include <stdint.h>
+
 #include <ostream>  // NOLINT(readability/streams)
 #include <string>
 
@@ -56,7 +58,7 @@ class UsbTransfer {
   bool Cancel();
 
   // Getters for retrieving fields of the libusb_transfer struct.
-  uint8 GetEndpointAddress() const;
+  uint8_t GetEndpointAddress() const;
   UsbTransferType GetType() const;
   UsbTransferStatus GetStatus() const;
   int GetLength() const;
@@ -71,7 +73,7 @@ class UsbTransfer {
   // purpose.
   std::string ToString() const;
 
-  uint8* buffer() { return buffer_.get(); }
+  uint8_t* buffer() { return buffer_.get(); }
   int buffer_length() const { return buffer_length_; }
   State state() const { return state_; }
   const UsbError& error() const { return error_; }
@@ -116,7 +118,7 @@ class UsbTransfer {
   FRIEND_TEST(UsbTransferTest, VerifyAllocated);
 
   libusb_transfer* transfer_;
-  scoped_ptr<uint8[]> buffer_;
+  scoped_ptr<uint8_t[]> buffer_;
   int buffer_length_;
   State state_;
   CompletionCallback completion_callback_;

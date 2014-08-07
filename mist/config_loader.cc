@@ -56,7 +56,7 @@ bool ConfigLoader::LoadConfig(const FilePath& file_path) {
 }
 
 const UsbModemInfo* ConfigLoader::GetUsbModemInfo(
-    uint16 vendor_id, uint16 product_id) const {
+    uint16_t vendor_id, uint16_t product_id) const {
   if (!config_)
     return NULL;
 

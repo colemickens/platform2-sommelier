@@ -5,6 +5,8 @@
 #ifndef MIST_USB_DEVICE_EVENT_NOTIFIER_H_
 #define MIST_USB_DEVICE_EVENT_NOTIFIER_H_
 
+#include <stdint.h>
+
 #include <string>
 
 #include <base/basictypes.h>
@@ -58,10 +60,10 @@ class UsbDeviceEventNotifier : public base::MessageLoopForIO::Watcher {
   // Gets the bus number, device address, vendor ID, and product ID of |device|.
   // Return true on success.
   static bool GetDeviceAttributes(const UdevDevice* device,
-                                  uint8* bus_number,
-                                  uint8* device_address,
-                                  uint16* vendor_id,
-                                  uint16* product_id);
+                                  uint8_t* bus_number,
+                                  uint8_t* device_address,
+                                  uint16_t* vendor_id,
+                                  uint16_t* product_id);
 
  private:
   FRIEND_TEST(UsbDeviceEventNotifierTest, ConvertHexStringToUint16);
@@ -81,11 +83,11 @@ class UsbDeviceEventNotifier : public base::MessageLoopForIO::Watcher {
 
   // Converts a 4-digit hexadecimal ID string without the 0x prefix (e.g. USB
   // vendor/product ID) into an unsigned 16-bit value. Return true on success.
-  static bool ConvertHexStringToUint16(const std::string& str, uint16* value);
+  static bool ConvertHexStringToUint16(const std::string& str, uint16_t* value);
 
   // Converts a decimal string, which denotes an integer between 0 and 255, into
   // an unsigned 8-bit integer. Return true on success.
-  static bool ConvertStringToUint8(const std::string& str, uint8* value);
+  static bool ConvertStringToUint8(const std::string& str, uint8_t* value);
 
   EventDispatcher* const dispatcher_;
   ObserverList<UsbDeviceEventObserver> observer_list_;

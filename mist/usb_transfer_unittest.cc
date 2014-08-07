@@ -170,7 +170,7 @@ TEST_F(UsbTransferTest, AllocateBuffer) {
   EXPECT_EQ(0, transfer_.buffer_length());
 
   // Re-allocate the buffer should be ok.
-  const uint8 kTestData[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+  const uint8_t kTestData[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
   EXPECT_TRUE(transfer_.AllocateBuffer(arraysize(kTestData)));
   EXPECT_TRUE(transfer_.buffer() != NULL);
   EXPECT_EQ(arraysize(kTestData), transfer_.buffer_length());

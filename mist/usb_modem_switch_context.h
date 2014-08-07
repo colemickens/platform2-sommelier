@@ -5,6 +5,8 @@
 #ifndef MIST_USB_MODEM_SWITCH_CONTEXT_H_
 #define MIST_USB_MODEM_SWITCH_CONTEXT_H_
 
+#include <stdint.h>
+
 #include <string>
 
 #include <base/basictypes.h>
@@ -33,10 +35,10 @@ class UsbModemSwitchContext {
   //                 mode. The ownership of |modem_info| is not transferred, and
   //                 thus it should outlive this object.
   UsbModemSwitchContext(const std::string& sys_path,
-                        uint8 bus_number,
-                        uint8 device_address,
-                        uint16 vendor_id,
-                        uint16 product_id,
+                        uint8_t bus_number,
+                        uint8_t device_address,
+                        uint16_t vendor_id,
+                        uint16_t product_id,
                         const UsbModemInfo* modem_info);
 
   ~UsbModemSwitchContext();
@@ -49,18 +51,18 @@ class UsbModemSwitchContext {
                              const std::string& sys_path);
 
   const std::string& sys_path() const { return sys_path_; }
-  uint8 bus_number() const { return bus_number_; }
-  uint8 device_address() const { return device_address_; }
-  uint16 vendor_id() const { return vendor_id_; }
-  uint16 product_id() const { return product_id_; }
+  uint8_t bus_number() const { return bus_number_; }
+  uint8_t device_address() const { return device_address_; }
+  uint16_t vendor_id() const { return vendor_id_; }
+  uint16_t product_id() const { return product_id_; }
   const UsbModemInfo* modem_info() const { return modem_info_; }
 
  private:
   std::string sys_path_;
-  uint8 bus_number_;
-  uint8 device_address_;
-  uint16 vendor_id_;
-  uint16 product_id_;
+  uint8_t bus_number_;
+  uint8_t device_address_;
+  uint16_t vendor_id_;
+  uint16_t product_id_;
   const UsbModemInfo* modem_info_;
 
   DISALLOW_COPY_AND_ASSIGN(UsbModemSwitchContext);

@@ -5,6 +5,8 @@
 #ifndef MIST_USB_ENDPOINT_DESCRIPTOR_H_
 #define MIST_USB_ENDPOINT_DESCRIPTOR_H_
 
+#include <stdint.h>
+
 #include <ostream>  // NOLINT(readability/streams)
 #include <string>
 
@@ -30,13 +32,13 @@ class UsbEndpointDescriptor {
   ~UsbEndpointDescriptor();
 
   // Getters for retrieving fields of the libusb_endpoint_descriptor struct.
-  uint8 GetLength() const;
-  uint8 GetDescriptorType() const;
-  uint8 GetEndpointAddress() const;
-  uint8 GetEndpointNumber() const;
-  uint8 GetAttributes() const;
-  uint16 GetMaxPacketSize() const;
-  uint8 GetInterval() const;
+  uint8_t GetLength() const;
+  uint8_t GetDescriptorType() const;
+  uint8_t GetEndpointAddress() const;
+  uint8_t GetEndpointNumber() const;
+  uint8_t GetAttributes() const;
+  uint16_t GetMaxPacketSize() const;
+  uint8_t GetInterval() const;
   UsbDirection GetDirection() const;
   UsbTransferType GetTransferType() const;
 

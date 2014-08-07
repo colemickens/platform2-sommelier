@@ -30,23 +30,23 @@ const char kUdevActionChange[] = "change";
 const char kUdevActionRemove[] = "remove";
 
 const char kFakeUsbDevice1SysPath[] = "/sys/devices/fake/1";
-const uint16 kFakeUsbDevice1BusNumber = 1;
+const uint16_t kFakeUsbDevice1BusNumber = 1;
 const char kFakeUsbDevice1BusNumberString[] = "1";
-const uint16 kFakeUsbDevice1DeviceAddress = 2;
+const uint16_t kFakeUsbDevice1DeviceAddress = 2;
 const char kFakeUsbDevice1DeviceAddressString[] = "2";
-const uint16 kFakeUsbDevice1VendorId = 0x0123;
+const uint16_t kFakeUsbDevice1VendorId = 0x0123;
 const char kFakeUsbDevice1VendorIdString[] = "0123";
-const uint16 kFakeUsbDevice1ProductId = 0x4567;
+const uint16_t kFakeUsbDevice1ProductId = 0x4567;
 const char kFakeUsbDevice1ProductIdString[] = "4567";
 
 const char kFakeUsbDevice2SysPath[] = "/sys/devices/fake/2";
-const uint16 kFakeUsbDevice2BusNumber = 3;
+const uint16_t kFakeUsbDevice2BusNumber = 3;
 const char kFakeUsbDevice2BusNumberString[] = "3";
-const uint16 kFakeUsbDevice2DeviceAddress = 4;
+const uint16_t kFakeUsbDevice2DeviceAddress = 4;
 const char kFakeUsbDevice2DeviceAddressString[] = "4";
-const uint16 kFakeUsbDevice2VendorId = 0x89ab;
+const uint16_t kFakeUsbDevice2VendorId = 0x89ab;
 const char kFakeUsbDevice2VendorIdString[] = "89ab";
-const uint16 kFakeUsbDevice2ProductId = 0xcdef;
+const uint16_t kFakeUsbDevice2ProductId = 0xcdef;
 const char kFakeUsbDevice2ProductIdString[] = "cdef";
 
 }  // namespace
@@ -70,7 +70,7 @@ TEST_F(UsbDeviceEventNotifierTest, ConvertNullToEmptyString) {
 }
 
 TEST_F(UsbDeviceEventNotifierTest, ConvertHexStringToUint16) {
-  uint16 value = 0x0000;
+  uint16_t value = 0x0000;
 
   EXPECT_FALSE(UsbDeviceEventNotifier::ConvertHexStringToUint16("", &value));
   EXPECT_FALSE(UsbDeviceEventNotifier::ConvertHexStringToUint16("0", &value));
@@ -92,7 +92,7 @@ TEST_F(UsbDeviceEventNotifierTest, ConvertHexStringToUint16) {
 }
 
 TEST_F(UsbDeviceEventNotifierTest, ConvertStringToUint8) {
-  uint8 value = 0;
+  uint8_t value = 0;
 
   EXPECT_FALSE(UsbDeviceEventNotifier::ConvertStringToUint8("", &value));
   EXPECT_FALSE(UsbDeviceEventNotifier::ConvertStringToUint8("z", &value));
@@ -110,10 +110,10 @@ TEST_F(UsbDeviceEventNotifierTest, ConvertStringToUint8) {
 }
 
 TEST_F(UsbDeviceEventNotifierTest, GetDeviceAttributes) {
-  uint8 bus_number;
-  uint8 device_address;
-  uint16 vendor_id;
-  uint16 product_id;
+  uint8_t bus_number;
+  uint8_t device_address;
+  uint16_t vendor_id;
+  uint16_t product_id;
 
   // Invalid bus number.
   MockUdevDevice device1;

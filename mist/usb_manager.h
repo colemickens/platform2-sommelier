@@ -5,6 +5,8 @@
 #ifndef MIST_USB_MANAGER_H_
 #define MIST_USB_MANAGER_H_
 
+#include <stdint.h>
+
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
 #include <base/memory/scoped_vector.h>
@@ -42,10 +44,10 @@ class UsbManager : public base::MessageLoopForIO::Watcher {
   // invalid, and thus should not be held, beyond the lifetime of this object.
   // The returned object is also not managed and should be deleted by the caller
   // after use.
-  UsbDevice* GetDevice(uint8 bus_number,
-                       uint8 device_address,
-                       uint16 vendor_id,
-                       uint16 product_id);
+  UsbDevice* GetDevice(uint8_t bus_number,
+                       uint8_t device_address,
+                       uint16_t vendor_id,
+                       uint16_t product_id);
 
   // Gets the list of USB devices currently attached to the system. Returns true
   // on success. |devices| is always cleared before being updated. The returned

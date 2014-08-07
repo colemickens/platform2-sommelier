@@ -45,8 +45,8 @@ const int kExpectedResponseLength = 13;
 
 // TODO(benchan): To be conservative, use large timeout values for now. Add UMA
 // metrics to determine appropriate timeout values.
-const int64 kReconnectTimeoutMilliseconds = 15000;
-const int64 kUsbMessageTransferTimeoutMilliseconds = 8000;
+const int64_t kReconnectTimeoutMilliseconds = 15000;
+const int64_t kUsbMessageTransferTimeoutMilliseconds = 8000;
 
 }  // namespace
 
@@ -155,7 +155,7 @@ void UsbModemSwitchOperation::DetachAllKernelDrivers() {
   if (!config_descriptor)
     return;
 
-  for (uint8 interface_number = 0;
+  for (uint8_t interface_number = 0;
        interface_number < config_descriptor->GetNumInterfaces();
        ++interface_number) {
     if (!device_->DetachKernelDriver(interface_number) &&
@@ -182,7 +182,7 @@ int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
 
   VLOG(2) << *device_descriptor;
 
-  for (uint8 config_index = 0;
+  for (uint8_t config_index = 0;
        config_index < device_descriptor->GetNumConfigurations();
        ++config_index) {
     scoped_ptr<UsbConfigDescriptor> config_descriptor(
@@ -192,7 +192,7 @@ int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
 
     VLOG(2) << *config_descriptor;
 
-    for (uint8 interface_number = 0;
+    for (uint8_t interface_number = 0;
          interface_number < config_descriptor->GetNumInterfaces();
          ++interface_number) {
       scoped_ptr<UsbInterface> interface(
@@ -402,7 +402,7 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
   ScheduleTask(&UsbModemSwitchOperation::SendMessageToMassStorageEndpoint);
 }
 
-bool UsbModemSwitchOperation::ClearHalt(uint8 endpoint_address) {
+bool UsbModemSwitchOperation::ClearHalt(uint8_t endpoint_address) {
   if (device_->ClearHalt(endpoint_address))
     return true;
 
@@ -417,7 +417,7 @@ void UsbModemSwitchOperation::SendMessageToMassStorageEndpoint() {
 
   const string& usb_message =
       switch_context_->modem_info()->usb_message(message_index_);
-  vector<uint8> bytes;
+  vector<uint8_t> bytes;
   if (!base::HexStringToBytes(usb_message, &bytes)) {
     LOG(ERROR) << StringPrintf("Invalid USB message (%d/%d): %s",
                                message_index_,
@@ -452,8 +452,8 @@ void UsbModemSwitchOperation::ReceiveMessageFromMassStorageEndpoint() {
 }
 
 void UsbModemSwitchOperation::InitiateUsbBulkTransfer(
-    uint8 endpoint_address,
-    const uint8* data,
+    uint8_t endpoint_address,
+    const uint8_t* data,
     int length,
     UsbTransferCompletionHandler completion_handler) {
   CHECK_GT(length, 0);
@@ -589,10 +589,10 @@ void UsbModemSwitchOperation::OnReconnectTimeout() {
 }
 
 void UsbModemSwitchOperation::OnUsbDeviceAdded(const string& sys_path,
-                                               uint8 bus_number,
-                                               uint8 device_address,
-                                               uint16 vendor_id,
-                                               uint16 product_id) {
+                                               uint8_t bus_number,
+                                               uint8_t device_address,
+                                               uint16_t vendor_id,
+                                               uint16_t product_id) {
   if (sys_path != switch_context_->sys_path())
     return;
 

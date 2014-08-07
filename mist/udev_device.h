@@ -5,6 +5,7 @@
 #ifndef MIST_UDEV_DEVICE_H_
 #define MIST_UDEV_DEVICE_H_
 
+#include <stdint.h>
 #include <sys/types.h>
 
 #include <base/basictypes.h>
@@ -43,10 +44,10 @@ class UdevDevice {
   virtual bool IsInitialized() const;
 
   // Wraps udev_device_get_usec_since_initialized().
-  virtual uint64 GetMicrosecondsSinceInitialized() const;
+  virtual uint64_t GetMicrosecondsSinceInitialized() const;
 
   // Wraps udev_device_get_seqnum().
-  virtual uint64 GetSequenceNumber() const;
+  virtual uint64_t GetSequenceNumber() const;
 
   // Wraps udev_device_get_devpath().
   virtual const char* GetDevicePath() const;

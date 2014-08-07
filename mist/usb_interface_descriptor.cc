@@ -29,35 +29,35 @@ UsbInterfaceDescriptor::UsbInterfaceDescriptor(
 
 UsbInterfaceDescriptor::~UsbInterfaceDescriptor() {}
 
-uint8 UsbInterfaceDescriptor::GetLength() const {
+uint8_t UsbInterfaceDescriptor::GetLength() const {
   return interface_descriptor_->bLength;
 }
 
-uint8 UsbInterfaceDescriptor::GetDescriptorType() const {
+uint8_t UsbInterfaceDescriptor::GetDescriptorType() const {
   return interface_descriptor_->bDescriptorType;
 }
 
-uint8 UsbInterfaceDescriptor::GetInterfaceNumber() const {
+uint8_t UsbInterfaceDescriptor::GetInterfaceNumber() const {
   return interface_descriptor_->bInterfaceNumber;
 }
 
-uint8 UsbInterfaceDescriptor::GetAlternateSetting() const {
+uint8_t UsbInterfaceDescriptor::GetAlternateSetting() const {
   return interface_descriptor_->bAlternateSetting;
 }
 
-uint8 UsbInterfaceDescriptor::GetNumEndpoints() const {
+uint8_t UsbInterfaceDescriptor::GetNumEndpoints() const {
   return interface_descriptor_->bNumEndpoints;
 }
 
-uint8 UsbInterfaceDescriptor::GetInterfaceClass() const {
+uint8_t UsbInterfaceDescriptor::GetInterfaceClass() const {
   return interface_descriptor_->bInterfaceClass;
 }
 
-uint8 UsbInterfaceDescriptor::GetInterfaceSubclass() const {
+uint8_t UsbInterfaceDescriptor::GetInterfaceSubclass() const {
   return interface_descriptor_->bInterfaceSubClass;
 }
 
-uint8 UsbInterfaceDescriptor::GetInterfaceProtocol() const {
+uint8_t UsbInterfaceDescriptor::GetInterfaceProtocol() const {
   return interface_descriptor_->bInterfaceProtocol;
 }
 
@@ -68,7 +68,7 @@ string UsbInterfaceDescriptor::GetInterfaceDescription() const {
 }
 
 UsbEndpointDescriptor* UsbInterfaceDescriptor::GetEndpointDescriptor(
-    uint8 index) const {
+    uint8_t index) const {
   if (index >= GetNumEndpoints()) {
     LOG(ERROR) << StringPrintf("Invalid endpoint index %d. "
                                "Must be less than %d.",
@@ -82,7 +82,7 @@ UsbEndpointDescriptor* UsbInterfaceDescriptor::GetEndpointDescriptor(
 UsbEndpointDescriptor*
 UsbInterfaceDescriptor::GetEndpointDescriptorByTransferTypeAndDirection(
     UsbTransferType transfer_type, UsbDirection direction) const {
-  for (uint8 i = 0; i < GetNumEndpoints(); ++i) {
+  for (uint8_t i = 0; i < GetNumEndpoints(); ++i) {
     scoped_ptr<UsbEndpointDescriptor> endpoint_descriptor(
         GetEndpointDescriptor(i));
     if ((endpoint_descriptor->GetTransferType() == transfer_type) &&

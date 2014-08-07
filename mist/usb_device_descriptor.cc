@@ -27,35 +27,35 @@ UsbDeviceDescriptor::UsbDeviceDescriptor(
 
 UsbDeviceDescriptor::~UsbDeviceDescriptor() {}
 
-uint8 UsbDeviceDescriptor::GetLength() const {
+uint8_t UsbDeviceDescriptor::GetLength() const {
   return device_descriptor_->bLength;
 }
 
-uint8 UsbDeviceDescriptor::GetDescriptorType() const {
+uint8_t UsbDeviceDescriptor::GetDescriptorType() const {
   return device_descriptor_->bDescriptorType;
 }
 
-uint8 UsbDeviceDescriptor::GetDeviceClass() const {
+uint8_t UsbDeviceDescriptor::GetDeviceClass() const {
   return device_descriptor_->bDeviceClass;
 }
 
-uint8 UsbDeviceDescriptor::GetDeviceSubclass() const {
+uint8_t UsbDeviceDescriptor::GetDeviceSubclass() const {
   return device_descriptor_->bDeviceSubClass;
 }
 
-uint8 UsbDeviceDescriptor::GetDeviceProtocol() const {
+uint8_t UsbDeviceDescriptor::GetDeviceProtocol() const {
   return device_descriptor_->bDeviceProtocol;
 }
 
-uint8 UsbDeviceDescriptor::GetMaxPacketSize0() const {
+uint8_t UsbDeviceDescriptor::GetMaxPacketSize0() const {
   return device_descriptor_->bMaxPacketSize0;
 }
 
-uint16 UsbDeviceDescriptor::GetVendorId() const {
+uint16_t UsbDeviceDescriptor::GetVendorId() const {
   return device_descriptor_->idVendor;
 }
 
-uint16 UsbDeviceDescriptor::GetProductId() const {
+uint16_t UsbDeviceDescriptor::GetProductId() const {
   return device_descriptor_->idProduct;
 }
 
@@ -77,7 +77,7 @@ string UsbDeviceDescriptor::GetSerialNumber() const {
       string();
 }
 
-uint8 UsbDeviceDescriptor::GetNumConfigurations() const {
+uint8_t UsbDeviceDescriptor::GetNumConfigurations() const {
   return device_descriptor_->bNumConfigurations;
 }
 

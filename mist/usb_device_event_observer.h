@@ -5,6 +5,8 @@
 #ifndef MIST_USB_DEVICE_EVENT_OBSERVER_H_
 #define MIST_USB_DEVICE_EVENT_OBSERVER_H_
 
+#include <stdint.h>
+
 #include <string>
 
 #include <base/basictypes.h>
@@ -17,10 +19,10 @@ class UsbDeviceEventObserver {
  public:
   // Invoked when a USB device is added to the system.
   virtual void OnUsbDeviceAdded(const std::string& sys_path,
-                                uint8 bus_number,
-                                uint8 device_address,
-                                uint16 vendor_id,
-                                uint16 product_id) = 0;
+                                uint8_t bus_number,
+                                uint8_t device_address,
+                                uint16_t vendor_id,
+                                uint16_t product_id) = 0;
   // Invoked when a USB device is removed from the system.
   virtual void OnUsbDeviceRemoved(const std::string& sys_path) = 0;
 
