@@ -98,7 +98,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   // Callback task run as a result of TryEapAuthentication().
   void TryEapAuthenticationTask();
 
-  void EnableWakeOnLan();
+  void SetupWakeOnLan();
 
   EthernetServiceRefPtr service_;
   bool link_up_;

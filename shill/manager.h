@@ -242,6 +242,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual bool IsTechnologyLinkMonitorEnabled(
       Technology::Identifier technology) const;
 
+  // Return whether the Wake on LAN feature is enabled.
+  virtual bool IsWakeOnLanEnabled() const { return is_wake_on_lan_enabled_; }
+
   // Called by Profile when a |storage| completes initialization.
   void OnProfileStorageInitialized(StoreInterface *storage);
 
@@ -628,6 +631,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Is a suspend delay currently registered with the power manager?
   bool suspend_delay_registered_;
+
+  // Whether Wake on LAN should be enabled for all Ethernet devices.
+  bool is_wake_on_lan_enabled_;
 
   // Maps tags to callbacks for monitoring default service changes.
   std::map<int, ServiceCallback> default_service_callbacks_;

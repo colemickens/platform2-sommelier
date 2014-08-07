@@ -657,3 +657,9 @@ Properties 	object ActiveProfile [readwrite]
 			least one device that is not initialized yet (i.e.
 			the Device object is not created yet). The strings
 			are the same as the ones from the service types.
+
+		bool WakeOnLanEnabled [readwrite]
+
+			Specifies whether the Wake on LAN feature should be
+			enabled on new Ethernet links.  Currently connected
+			links are un-affected.

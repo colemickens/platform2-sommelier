@@ -126,6 +126,7 @@ Manager::Manager(ControlInterface *control_interface,
                                          base::Unretained(this))),
       termination_actions_(dispatcher),
       suspend_delay_registered_(false),
+      is_wake_on_lan_enabled_(true),
       default_service_callback_tag_(0),
       crypto_util_proxy_(new CryptoUtilProxy(dispatcher, glib)),
       health_checker_remote_ips_(new IPAddressStore()) {
@@ -177,6 +178,7 @@ Manager::Manager(ControlInterface *control_interface,
                                          &Manager::EnumerateWatchedServices);
   HelpRegisterConstDerivedStrings(kUninitializedTechnologiesProperty,
                                   &Manager::UninitializedTechnologies);
+  store_.RegisterBool(kWakeOnLanEnabledProperty, &is_wake_on_lan_enabled_);
 
   // Set default technology order "by hand", to avoid invoking side
   // effects of SetTechnologyOrder.
