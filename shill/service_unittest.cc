@@ -393,11 +393,36 @@ TEST_F(ServiceTest, IsLoadableFrom) {
   EXPECT_TRUE(service_->IsLoadableFrom(storage));
 }
 
+class ServiceWithOnEapCredentialsChangedOverride : public ServiceUnderTest {
+ public:
+  ServiceWithOnEapCredentialsChangedOverride(
+      ControlInterface *control_interface,
+      EventDispatcher *dispatcher,
+      Metrics *metrics,
+      Manager *manager,
+      EapCredentials *eap)
+      : ServiceUnderTest(control_interface, dispatcher, metrics, manager) {
+    SetEapCredentials(eap);
+  }
+  void OnEapCredentialsChanged() override {
+    SetHasEverConnected(false);
+  }
+};
+
 TEST_F(ServiceTest, Load) {
+  MockEapCredentials *eap = new MockEapCredentials();  // Owned by |service|.
+  scoped_refptr<ServiceWithOnEapCredentialsChangedOverride> service(
+      new ServiceWithOnEapCredentialsChangedOverride(control_interface(),
+                                                     dispatcher(),
+                                                     metrics(),
+                                                     &mock_manager_,
+                                                     eap));
+
   NiceMock<MockStore> storage;
   EXPECT_CALL(storage, ContainsGroup(storage_id_)).WillOnce(Return(true));
   const string kCheckPortal("check-portal");
   const string kGUID("guid");
+  const bool kHasEverConnected = true;
   const int kPriority = 20;
   const string kProxyConfig("proxy-config");
   const string kUIData("ui-data");
@@ -416,13 +441,18 @@ TEST_F(ServiceTest, Load) {
   EXPECT_CALL(storage, GetBool(storage_id_, _, _)).Times(AnyNumber());
   EXPECT_CALL(storage,
               GetBool(storage_id_, Service::kStorageSaveCredentials, _));
-  EXPECT_CALL(*eap_, Load(&storage, storage_id_));
-  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_CALL(storage,
+              GetBool(storage_id_, Service::kStorageHasEverConnected, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kHasEverConnected),
+                            Return(true)));
+  EXPECT_CALL(*eap, Load(&storage, storage_id_));
+  EXPECT_TRUE(service->Load(&storage));
 
-  EXPECT_EQ(kCheckPortal, service_->check_portal_);
-  EXPECT_EQ(kGUID, service_->guid_);
-  EXPECT_EQ(kProxyConfig, service_->proxy_config_);
-  EXPECT_EQ(kUIData, service_->ui_data_);
+  EXPECT_EQ(kCheckPortal, service->check_portal_);
+  EXPECT_EQ(kGUID, service->guid_);
+  EXPECT_TRUE(service->has_ever_connected_);
+  EXPECT_EQ(kProxyConfig, service->proxy_config_);
+  EXPECT_EQ(kUIData, service->ui_data_);
 
   Mock::VerifyAndClearExpectations(&storage);
   Mock::VerifyAndClearExpectations(eap_);
@@ -435,13 +465,14 @@ TEST_F(ServiceTest, Load) {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(storage, GetInt(storage_id_, _, _))
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(*eap_, Load(&storage, storage_id_));
-  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_CALL(*eap, Load(&storage, storage_id_));
+  EXPECT_TRUE(service->Load(&storage));
 
   EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
-  EXPECT_EQ("", service_->guid_);
-  EXPECT_EQ("", service_->proxy_config_);
-  EXPECT_EQ("", service_->ui_data_);
+  EXPECT_EQ("", service->guid_);
+  EXPECT_EQ("", service->proxy_config_);
+  EXPECT_EQ("", service->ui_data_);
+  EXPECT_FALSE(service->has_ever_connected_);
 }
 
 TEST_F(ServiceTest, LoadFail) {
@@ -610,6 +641,33 @@ TEST_F(ServiceTest, RetainAutoConnect) {
   EXPECT_CALL(storage,
               SetBool(storage_id_, Service::kStorageAutoConnect, false));
   service_->SetAutoConnect(false);
+  EXPECT_TRUE(service_->Save(&storage));
+}
+
+TEST_F(ServiceTest, HasEverConnectedSavedToProfile) {
+  NiceMock<MockStore> storage;
+  EXPECT_CALL(storage, SetString(storage_id_, _, _))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(storage, DeleteKey(storage_id_, _))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(storage,
+              DeleteKey(storage_id_, Service::kStorageHasEverConnected))
+      .Times(0);
+  EXPECT_CALL(storage, SetBool(storage_id_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(*eap_, Save(&storage, storage_id_, true)).Times(2);
+
+  // HasEverConnected flag set true.
+  service_->SetHasEverConnected(true);
+  EXPECT_CALL(storage,
+              SetBool(storage_id_, Service::kStorageHasEverConnected, true));
+  EXPECT_TRUE(service_->Save(&storage));
+
+  // HasEverConnected flag set false.
+  EXPECT_CALL(storage,
+              SetBool(storage_id_, Service::kStorageHasEverConnected, false));
+  service_->SetHasEverConnected(false);
   EXPECT_TRUE(service_->Save(&storage));
 }
 

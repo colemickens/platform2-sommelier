@@ -464,7 +464,6 @@ bool Service::Load(StoreInterface *storage) {
   LoadString(storage, id, kStorageCheckPortal, kCheckPortalAuto,
              &check_portal_);
   LoadString(storage, id, kStorageGUID, "", &guid_);
-  storage->GetBool(id, kStorageHasEverConnected, &has_ever_connected_);
   if (!storage->GetInt(id, kStoragePriority, &priority_)) {
     priority_ = kPriorityNone;
   }
@@ -477,12 +476,21 @@ bool Service::Load(StoreInterface *storage) {
 
   static_ip_parameters_.Load(storage, id);
 
+  // The OnEapCredentialsChanged() call below will call
+  // SetHasEverConnected(false) for some Service subclasses.  To
+  // avoid the side-effects of this call, reset has_ever_connected_
+  // first, and load the new value from the profile later.
   if (mutable_eap()) {
+    has_ever_connected_ = false;
     mutable_eap()->Load(storage, id);
     OnEapCredentialsChanged();
   }
 
   ClearExplicitlyDisconnected();
+
+  // Read has_ever_connected_ value from stored profile
+  // now that the credentials have been loaded.
+  storage->GetBool(id, kStorageHasEverConnected, &has_ever_connected_);
 
   return true;
 }
