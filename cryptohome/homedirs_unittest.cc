@@ -198,8 +198,10 @@ class FreeDiskSpaceTest : public HomeDirsTest {
 
   // The first half of HomeDirs::FreeDiskSpace does a purge of the Cache and
   // GCached dirs.  Unless these are being explicitly tested, we want these to
-  // always succeed for every test. Set those expectations here.
-  void ExpectCacheDirCleanupCalls() {
+  // always succeed for every test. Set those expectations here for the given
+  // number of unmounted user directories (mounted dirs aren't processed by
+  // the code under test).
+  void ExpectCacheDirCleanupCalls(int user_count) {
     EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
       .WillRepeatedly(
           DoAll(SetArgPointee<2>(homedir_paths_),
@@ -209,9 +211,10 @@ class FreeDiskSpaceTest : public HomeDirsTest {
       .RetiresOnSaturation();
     EXPECT_CALL(platform_, DirectoryExists(_))
       .WillRepeatedly(Return(true));
-    // 4 users * (1 Cache dir + 1 GCache dir) = 8 dir iterations
+    // N users * (1 Cache dir + 1 GCache dir)
     EXPECT_CALL(platform_, GetFileEnumerator(_, false, _))
-      .Times(8).WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+      .Times(user_count * 2)
+      .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
   }
 };
 
@@ -454,7 +457,7 @@ TEST_F(FreeDiskSpaceTest, CleanUpOneUser) {
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
     .WillOnce(Return(true));
 
-  ExpectCacheDirCleanupCalls();
+  ExpectCacheDirCleanupCalls(4);
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
 }
 
@@ -481,41 +484,80 @@ TEST_F(FreeDiskSpaceTest, CleanUpMultipleUsers) {
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[1], true))
     .WillOnce(Return(true));
 
-  ExpectCacheDirCleanupCalls();
+  ExpectCacheDirCleanupCalls(4);
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
 }
 
-TEST_F(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast) {
+TEST_F(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_LoginScreen) {
   set_policy(true, "", false, "");
   homedirs_.set_enterprise_owned(true);
+  UserOldestActivityTimestampCache cache;
+  cache.Initialize();
+  homedirs_.set_timestamp_cache(&cache);
 
-  EXPECT_CALL(timestamp_cache_, initialized())
-    .WillRepeatedly(Return(true));
-
-  EXPECT_CALL(timestamp_cache_, empty())
-    .WillOnce(Return(false))  // loop
-    .WillOnce(Return(false))  // enterprise && empty check
-    .WillOnce(Return(false))  // loop
-    .WillOnce(Return(true));  // enterprise && empty check
-
-  EXPECT_CALL(timestamp_cache_, RemoveOldestUser())
-    .WillOnce(Return(FilePath(homedir_paths_[0])))
-    .WillOnce(Return(FilePath(homedir_paths_[1])));
-
-  // Confirm deletion isn't time bound; timestamps never checked.
-  EXPECT_CALL(timestamp_cache_, oldest_known_timestamp()).Times(0);
+  cache.AddExistingUser(FilePath(homedir_paths_[0]), homedir_times_[0]);
+  cache.AddExistingUser(FilePath(homedir_paths_[1]), homedir_times_[1]);
+  cache.AddExistingUser(FilePath(homedir_paths_[2]), homedir_times_[2]);
+  cache.AddExistingUser(FilePath(homedir_paths_[3]), homedir_times_[3]);
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
     .WillRepeatedly(Return(0));
 
-  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
-    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(_, _)).WillRepeatedly(Return(true));
 
   // Most-recent user isn't deleted.
-  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[1], true)).Times(0);
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[3], true)).Times(0);
 
-  ExpectCacheDirCleanupCalls();
+  EXPECT_CALL(platform_,
+              IsDirectoryMountedWith(_, _)).WillRepeatedly(Return(false));
+
+  ExpectCacheDirCleanupCalls(4);
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
+
+  // Last user is re-inserted into cache, to be a candidate for deletion
+  // next time.
+  EXPECT_FALSE(cache.empty());
+  EXPECT_EQ(homedir_times_[3], cache.oldest_known_timestamp());
+}
+
+
+TEST_F(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_UserLoggedIn) {
+  set_policy(true, "", false, "");
+  homedirs_.set_enterprise_owned(true);
+  UserOldestActivityTimestampCache cache;
+  cache.Initialize();
+  homedirs_.set_timestamp_cache(&cache);
+
+  cache.AddExistingUser(FilePath(homedir_paths_[0]), homedir_times_[0]);
+  cache.AddExistingUser(FilePath(homedir_paths_[1]), homedir_times_[1]);
+  // User 2 is logged in, and hence not added to cache during initialization.
+  cache.AddExistingUser(FilePath(homedir_paths_[3]), homedir_times_[3]);
+
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
+    .WillRepeatedly(Return(0));
+
+  // Oldest user (#0) in cache IS deleted, since most-recent user #2 isn't in
+  // the cache at all (they are logged in).
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[1], true))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[2], true)).Times(0);
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[3], true))
+    .WillOnce(Return(true));
+
+  EXPECT_CALL(platform_,
+      IsDirectoryMountedWith(_, _))
+          .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_,
+      IsDirectoryMountedWith(StartsWith(homedir_paths_[2]), _))
+          .WillRepeatedly(Return(true));
+
+  ExpectCacheDirCleanupCalls(3);
+  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+
+  // Cache is empty (oldest user only re-inserted if no one is logged in).
+  EXPECT_TRUE(cache.empty());
 }
 
 TEST_F(FreeDiskSpaceTest, CleanUpMultipleNonadjacentUsers) {
@@ -547,7 +589,7 @@ TEST_F(FreeDiskSpaceTest, CleanUpMultipleNonadjacentUsers) {
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[3], true))
     .Times(0);
 
-  ExpectCacheDirCleanupCalls();
+  ExpectCacheDirCleanupCalls(4);
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
 }
 
@@ -573,7 +615,7 @@ TEST_F(FreeDiskSpaceTest, NoOwnerNoEnterpriseNoCleanup) {
   // Now skip the deletion steps by not having a legit owner.
   set_policy(false, "", false, "");
 
-  ExpectCacheDirCleanupCalls();
+  ExpectCacheDirCleanupCalls(4);
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
 }
 
@@ -705,12 +747,12 @@ TEST_F(FreeDiskSpaceTest, DontCleanUpMountedUser) {
 
   EXPECT_CALL(platform_,
       IsDirectoryMountedWith(StartsWith(homedir_paths_[0]), _))
-    .Times(3)  // Cache, GCache, user removal
+    .Times(4)  // Cache, GCache, mounted dir count, user removal
     .WillRepeatedly(Return(true));
   for (size_t i = 1; i < arraysize(kHomedirs); ++i) {
     EXPECT_CALL(platform_,
         IsDirectoryMountedWith(StartsWith(homedir_paths_[i]), _))
-      .Times(2)  // Cache, GCache
+      .Times(3)  // Cache, GCache, mounted dir count
       .WillRepeatedly(Return(false));
   }
 

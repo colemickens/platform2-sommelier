@@ -103,17 +103,30 @@ bool HomeDirs::FreeDiskSpace() {
   // devices have no owner, so don't delete the last user.
   std::string owner;
   if (enterprise_owned_ || GetOwner(&owner)) {
+    int mounted_cryptohomes = CountMountedCryptohomes();
     while (!timestamp_cache_->empty()) {
+      base::Time deleted_timestamp = timestamp_cache_->oldest_known_timestamp();
       FilePath deleted_user_dir = timestamp_cache_->RemoveOldestUser();
 
       if (enterprise_owned_) {
-        if (timestamp_cache_->empty()) {
+        // If mounted_cryptohomes== 0, then there were no mounted cryptohomes
+        // and hence no logged in users.  Thus we want to skip the last user in
+        // our list, since they were the most-recent user on the device.
+        if (timestamp_cache_->empty() && mounted_cryptohomes == 0) {
+          // Put this user back in the cache, since they shouldn't be
+          // permanently skipped; they may not be most-recent the next
+          // time we run, and then they should be a candidate for deletion.
+          timestamp_cache_->AddExistingUser(deleted_user_dir,
+                                            deleted_timestamp);
+
           LOG(INFO) << "Skipped deletion of the most recent device user.";
           return true;
         }
       } else {
         std::string obfuscated_username = deleted_user_dir.BaseName().value();
         if (obfuscated_username == owner) {
+          // We should never delete the device owner, so we permanently skip
+          // them by not adding them back to the cache.
           LOG(INFO) << "Skipped deletion of the device owner.";
           continue;
         }
@@ -122,7 +135,7 @@ bool HomeDirs::FreeDiskSpace() {
       std::string mountdir = deleted_user_dir.Append(kMountDir).value();
       std::string vaultdir = deleted_user_dir.Append(kVaultDir).value();
       if (platform_->IsDirectoryMountedWith(mountdir, vaultdir)) {
-        LOG(INFO) << "Attempt to delete currently logged user. Skipped...";
+        LOG(INFO) << "Attempt to delete currently logged in user. Skipped...";
       } else {
         LOG(INFO) << "Freeing disk space by deleting user "
                   << deleted_user_dir.value();
@@ -654,14 +667,16 @@ void HomeDirs::RemoveNonOwnerCryptohomes() {
 void HomeDirs::DoForEveryUnmountedCryptohome(
     const CryptohomeCallback& cryptohome_cb) {
   std::vector<std::string> entries;
-  if (!platform_->EnumerateDirectoryEntries(shadow_root_, false, &entries))
+  if (!platform_->EnumerateDirectoryEntries(shadow_root_, false, &entries)) {
     return;
+  }
   for (std::vector<std::string>::iterator it = entries.begin();
        it != entries.end(); ++it) {
     FilePath path(*it);
     const std::string dir_name = path.BaseName().value();
-    if (!chromeos::cryptohome::home::IsSanitizedUserName(dir_name))
+    if (!chromeos::cryptohome::home::IsSanitizedUserName(dir_name)) {
       continue;
+    }
     std::string vault_path = path.Append(kVaultDir).value();
     std::string mount_path = path.Append(kMountDir).value();
     if (!platform_->DirectoryExists(vault_path)) {
@@ -672,6 +687,32 @@ void HomeDirs::DoForEveryUnmountedCryptohome(
     }
     cryptohome_cb.Run(FilePath(vault_path));
   }
+}
+
+int HomeDirs::CountMountedCryptohomes() const {
+  std::vector<std::string> entries;
+  int mounts = 0;
+  if (!platform_->EnumerateDirectoryEntries(shadow_root_, false, &entries)) {
+    return 0;
+  }
+  for (std::vector<std::string>::iterator it = entries.begin();
+       it != entries.end(); ++it) {
+    FilePath path(*it);
+    const std::string dir_name = path.BaseName().value();
+    if (!chromeos::cryptohome::home::IsSanitizedUserName(dir_name)) {
+      continue;
+    }
+    std::string vault_path = path.Append(kVaultDir).value();
+    std::string mount_path = path.Append(kMountDir).value();
+    if (!platform_->DirectoryExists(vault_path)) {
+      continue;
+    }
+    if (!platform_->IsDirectoryMountedWith(mount_path, vault_path)) {
+      continue;
+    }
+    mounts++;
+  }
+  return mounts;
 }
 
 void HomeDirs::DeleteDirectoryContents(const FilePath& dir) {

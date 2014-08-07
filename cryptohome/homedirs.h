@@ -199,6 +199,8 @@ class HomeDirs {
   typedef base::Callback<void(const base::FilePath&)> CryptohomeCallback;
   // Runs the supplied callback for every unmounted cryptohome.
   void DoForEveryUnmountedCryptohome(const CryptohomeCallback& cryptohome_cb);
+  // Returns the number of currently-mounted cryptohomes.
+  int CountMountedCryptohomes() const;
   // Callback used during RemoveNonOwnerCryptohomes()
   void RemoveNonOwnerCryptohomesCallback(const base::FilePath& vault);
   // Callback used during FreeDiskSpace().
