@@ -150,7 +150,8 @@ void ImageBurnService::SendFinishedSignal(const char* target_path, bool success,
                 0, target_path, success, error_message);
 }
 
-void ImageBurnService::SendProgressSignal(int64 amount_burnt, int64 total_size,
+void ImageBurnService::SendProgressSignal(int64_t amount_burnt,
+                                          int64_t total_size,
                                           const char* target_path) {
   if (!signals_ || !image_burner_) {
     LOG(WARNING) << "Progresssignal not send due to sender not being "

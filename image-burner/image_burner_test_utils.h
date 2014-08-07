@@ -5,6 +5,8 @@
 #ifndef IMAGE_BURNER_IMAGE_BURNER_TEST_UTILS_H_
 #define IMAGE_BURNER_IMAGE_BURNER_TEST_UTILS_H_
 
+#include <stdint.h>
+
 #include <string>
 
 #include <gmock/gmock.h>
@@ -25,14 +27,14 @@ class MockFileSystemReader : public FileSystemReader {
  public:
   MOCK_METHOD1(Open, bool(const char*));
   MOCK_METHOD0(Close, bool());
-  MOCK_METHOD0(GetSize, int64());
+  MOCK_METHOD0(GetSize, int64_t());
   MOCK_METHOD2(Read, int(char*, int));
 };
 
 class MockSignalSender : public SignalSender {
  public:
   MOCK_METHOD3(SendFinishedSignal, void(const char*, bool, const char*));
-  MOCK_METHOD3(SendProgressSignal, void(int64, int64, const char*));
+  MOCK_METHOD3(SendProgressSignal, void(int64_t, int64_t, const char*));
 };
 
 class MockRootPathGetter : public RootPathGetter {

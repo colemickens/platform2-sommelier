@@ -113,10 +113,10 @@ int BurnReader::Read(char* data_block, int data_size) {
   return read;
 }
 
-int64 BurnReader::GetSize() {
+int64_t BurnReader::GetSize() {
   int current = ftell(file_);
   fseek(file_, 0, SEEK_END);
-  int64 result = static_cast<int64>(ftell(file_));
+  int64_t result = static_cast<int64_t>(ftell(file_));
   fseek(file_, current, SEEK_SET);
   return result;
 }

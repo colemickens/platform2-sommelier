@@ -35,7 +35,7 @@ class BurnReader : public FileSystemReader {
   virtual bool Open(const char* path);
   virtual bool Close();
   virtual int Read(char* data_block, int data_size);
-  virtual int64 GetSize();
+  virtual int64_t GetSize();
 
  private:
   FILE* file_;

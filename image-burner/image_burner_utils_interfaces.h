@@ -5,9 +5,9 @@
 #ifndef IMAGE_BURNER_IMAGE_BURNER_UTILS_INTERFACES_H_
 #define IMAGE_BURNER_IMAGE_BURNER_UTILS_INTERFACES_H_
 
-#include <string>
+#include <stdint.h>
 
-#include <base/basictypes.h>
+#include <string>
 
 namespace imageburn {
 
@@ -25,7 +25,7 @@ class FileSystemReader {
   virtual bool Open(const char* path) = 0;
   virtual bool Close() = 0;
   virtual int Read(char* data_block, int data_size) = 0;
-  virtual int64 GetSize() = 0;
+  virtual int64_t GetSize() = 0;
 };
 
 class RootPathGetter {
@@ -39,7 +39,7 @@ class SignalSender {
   virtual ~SignalSender() {}
   virtual void SendFinishedSignal(const char* target_path, bool success,
                                   const char* error_message) = 0;
-  virtual void SendProgressSignal(int64 amount_burnt, int64 total_size,
+  virtual void SendProgressSignal(int64_t amount_burnt, int64_t total_size,
                                   const char* target_path) = 0;
 };
 

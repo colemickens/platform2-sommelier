@@ -5,9 +5,10 @@
 #ifndef IMAGE_BURNER_IMAGE_BURN_SERVICE_H_
 #define IMAGE_BURNER_IMAGE_BURN_SERVICE_H_
 
+#include <stdint.h>
+
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/dbus/abstract_dbus_service.h>
 #include <chromeos/dbus/dbus.h>
@@ -49,7 +50,7 @@ class ImageBurnService : public chromeos::dbus::AbstractDbusService,
   // SignalSender interface.
   virtual void SendFinishedSignal(const char* target_path, bool success,
                                   const char* error_message) OVERRIDE;
-  virtual void SendProgressSignal(int64 amount_burnt, int64 total_size,
+  virtual void SendProgressSignal(int64_t amount_burnt, int64_t total_size,
                                   const char* target_path) OVERRIDE;
 
   gboolean BurnImageAsync(gchar* from_path, gchar* to_path,
@@ -59,6 +60,7 @@ class ImageBurnService : public chromeos::dbus::AbstractDbusService,
   virtual GMainLoop *main_loop() {
     return main_loop_;
   }
+
  private:
   void Cleanup();
   void SetError(const std::string& message, GError** error);
@@ -66,7 +68,7 @@ class ImageBurnService : public chromeos::dbus::AbstractDbusService,
   ImageBurner* image_burner_;
   GMainLoop* main_loop_;
   guint signals_[kNumSignals];
-  int64 amount_burnt_for_next_signal_;
+  int64_t amount_burnt_for_next_signal_;
   bool burning_;
   BurnerImpl* burner_impl_;
 };

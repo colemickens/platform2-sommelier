@@ -6,8 +6,8 @@
 
 #include <ctype.h>
 #include <regex.h>
+#include <stdint.h>
 
-#include <base/basictypes.h>
 #include <base/logging.h>
 
 namespace imageburn {
@@ -119,13 +119,13 @@ bool BurnerImpl::DoBurn(const char* from_path, const char* to_path,
   if (success) {
     scoped_ptr<char[]> buffer(new char[data_block_size_]);
 
-    int64 total_burnt = 0;
-    int64 image_size = reader_->GetSize();
+    int64_t total_burnt = 0;
+    int64_t image_size = reader_->GetSize();
 
     int len = 0;
     while ((len = reader_->Read(buffer.get(), data_block_size_)) > 0) {
       if (writer_->Write(buffer.get(), len) == len) {
-        total_burnt += static_cast<int64>(len);
+        total_burnt += static_cast<int64_t>(len);
         signal_sender_->SendProgressSignal(total_burnt, image_size, to_path);
       } else {
         success = false;
