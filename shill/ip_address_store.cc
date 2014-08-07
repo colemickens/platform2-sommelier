@@ -30,6 +30,10 @@ void IPAddressStore::AddUnique(const IPAddress &ip) {
   ip_addresses_.insert(ip);
 }
 
+void IPAddressStore::Remove(const IPAddress &ip) {
+  ip_addresses_.erase(ip);
+}
+
 void IPAddressStore::Clear() {
   ip_addresses_.clear();
 }

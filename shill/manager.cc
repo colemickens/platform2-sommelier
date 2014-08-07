@@ -1360,6 +1360,7 @@ void Manager::SortServicesTask() {
     if (services_[0]->connection()) {
       services_[0]->connection()->SetIsDefault(true);
       if (default_service != services_[0]) {
+        TransferWakeOnPacketConnections(default_service, services_[0]);
         default_service = services_[0];
         LOG(INFO) << "Default service is now "
                   << default_service->unique_name();
@@ -1440,9 +1441,8 @@ void Manager::AutoConnect() {
       if (i + 1 < services_.size()) {
         const bool kCompareConnectivityState = true;
         Service::Compare(
-            this, service, services_[i+1],
-            kCompareConnectivityState, technology_order_,
-            &compare_reason);
+            this, service, services_[i+1], kCompareConnectivityState,
+            technology_order_, &compare_reason);
       } else {
         compare_reason = "last";
       }
@@ -1946,6 +1946,85 @@ ServiceRefPtr Manager::FindMatchingService(const KeyValueStore &args,
   return NULL;
 }
 
+void Manager::AddWakeOnPacketConnection(const string &ip_endpoint,
+                                        Error *error) {
+  // TODO(samueltan): factor this parsing out into an IPAddress
+  // constructor
+  IPAddress *ip_addr;
+  IPAddress ipv4_addr(IPAddress::kFamilyIPv4);
+  IPAddress ipv6_addr(IPAddress::kFamilyIPv6);
+  if (!ipv4_addr.SetAddressFromString(ip_endpoint)) {
+    if (!ipv6_addr.SetAddressFromString(ip_endpoint)) {
+      error->Populate(Error::kInvalidArguments,
+                      "Invalid ip_address " + ip_endpoint);
+      return;
+    } else {
+      ip_addr = &ipv6_addr;
+    }
+  } else {
+    ip_addr = &ipv4_addr;
+  }
+  ServiceRefPtr default_service = services_.front();
+  if (default_service) {
+    DeviceRefPtr device = GetDeviceConnectedToService(default_service);
+    if (!device) {
+      error->PopulateAndLog(error, Error::kOperationFailed,
+                            "No matching device found");
+    } else {
+      device->AddWakeOnPacketConnection(*ip_addr, error);
+    }
+  } else {
+    error->PopulateAndLog(error, Error::kOperationFailed, "No services found");
+  }
+}
+
+void Manager::RemoveWakeOnPacketConnection(const string &ip_endpoint,
+                                           Error *error) {
+  // TODO(samueltan): factor this parsing out into an IPAddress
+  // constructor
+  IPAddress *ip_addr;
+  IPAddress ipv4_addr(IPAddress::kFamilyIPv4);
+  IPAddress ipv6_addr(IPAddress::kFamilyIPv6);
+  if (!ipv4_addr.SetAddressFromString(ip_endpoint)) {
+    if (!ipv6_addr.SetAddressFromString(ip_endpoint)) {
+      error->Populate(Error::kInvalidArguments,
+                      "Invalid ip_address " + ip_endpoint);
+      return;
+    } else {
+      ip_addr = &ipv6_addr;
+    }
+  } else {
+    ip_addr = &ipv4_addr;
+  }
+  ServiceRefPtr default_service = services_.front();
+  if (default_service) {
+    DeviceRefPtr device = GetDeviceConnectedToService(default_service);
+    if (!device) {
+      error->PopulateAndLog(error, Error::kOperationFailed,
+                            "No matching device found");
+    } else {
+      device->RemoveWakeOnPacketConnection(*ip_addr, error);
+    }
+  } else {
+    error->PopulateAndLog(error, Error::kOperationFailed, "No services found");
+  }
+}
+
+void Manager::RemoveAllWakeOnPacketConnections(Error *error) {
+  ServiceRefPtr default_service = services_.front();
+  if (default_service) {
+      DeviceRefPtr device = GetDeviceConnectedToService(default_service);
+      if (!device) {
+        error->PopulateAndLog(error, Error::kOperationFailed,
+                              "No matching device found");
+      } else {
+        device->RemoveAllWakeOnPacketConnections(error);
+      }
+  } else {
+    error->PopulateAndLog(error, Error::kOperationFailed, "No services found");
+  }
+}
+
 const map<string, GeolocationInfos>
     &Manager::GetNetworksForGeolocation() const {
   return networks_for_geolocation_;
@@ -2071,6 +2150,37 @@ void Manager::InitializePowerManagement() {
           kTerminationActionsTimeoutMilliseconds),
       Bind(&Manager::OnSuspendImminent, AsWeakPtr()),
       Bind(&Manager::OnSuspendDone, AsWeakPtr()));
+}
+
+void Manager::TransferWakeOnPacketConnections(
+    const ServiceRefPtr &old_service, const ServiceRefPtr &new_service) {
+  string ip_string;
+  DeviceRefPtr old_device = GetDeviceConnectedToService(old_service);
+  DeviceRefPtr new_device = GetDeviceConnectedToService(new_service);
+  if (!old_device || !new_device) {
+    LOG(ERROR) << "Cannot find both old a new devices";
+    return;
+  }
+  if (old_device == new_device) {
+    return;  // No transfer required
+  }
+  new_device->AddWakeOnPacketConnections(
+      old_device->GetAllWakeOnPacketConnections());
+  Error e;
+  old_device->RemoveAllWakeOnPacketConnections(&e);
+  if (e.IsFailure()) {
+    LOG(ERROR) << "Failed to remove all connection from old device: "
+               << e.message();
+  }
+}
+
+DeviceRefPtr Manager::GetDeviceConnectedToService(ServiceRefPtr service) {
+  for (DeviceRefPtr device : devices_) {
+    if (device->IsConnectedToService(service)) {
+      return device;
+    }
+  }
+  return nullptr;
 }
 
 }  // namespace shill

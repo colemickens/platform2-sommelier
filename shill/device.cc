@@ -29,6 +29,7 @@
 #include "shill/geolocation_info.h"
 #include "shill/http_proxy.h"
 #include "shill/ip_address.h"
+#include "shill/ip_address_store.h"
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -512,6 +513,44 @@ void Device::StopAllActivities() {
   StopLinkMonitor();
   StopDNSTest();
   StopIPv6DNSServerTimer();
+}
+
+void Device::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
+                                       Error *error) {
+  error->PopulateAndLog(
+      error, Error::kNotSupported,
+      "AddWakeOnPacketConnection not implemented for " + link_name_ + ".");
+  return;
+}
+
+void Device::RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
+                                          Error *error) {
+  error->PopulateAndLog(
+      error, Error::kNotSupported,
+      "RemoveWakeOnPacketConnection not implemented for " + link_name_ + ".");
+  return;
+}
+
+void Device::RemoveAllWakeOnPacketConnections(Error *error) {
+  error->PopulateAndLog(
+      error, Error::kNotSupported,
+      "RemoveAllWakeOnPacketConnections not implemented for " + link_name_ +
+          ".");
+  return;
+}
+
+void Device::AddWakeOnPacketConnections(
+    const IPAddressStore &ip_addresses) {
+  Error e;
+  for (const IPAddress &addr : ip_addresses.GetIPAddresses()) {
+    e.Reset();
+    AddWakeOnPacketConnection(addr, &e);
+    LOG(INFO) << "Added IP Address " << addr.ToString();
+    if (e.IsFailure()) {
+      LOG(ERROR) << "Failed to transfer connection with IP address "
+                 << addr.ToString() << ": " << e.message();
+    }
+  }
 }
 
 bool Device::ShouldUseArpGateway() const {
@@ -1036,6 +1075,18 @@ void Device::SwitchDNSServers(const vector<string> &dns_servers) {
   selected_service_->NotifyIPConfigChanges();
   // Restart the portal detection with the new DNS setting.
   RestartPortalDetection();
+}
+
+void Device::AddWakeOnPacketConnectionInternal(const IPAddress &ip) {
+  wake_on_packet_connections_.AddUnique(ip);
+}
+
+void Device::RemoveWakeOnPacketConnectionInternal(const IPAddress &ip) {
+  wake_on_packet_connections_.Remove(ip);
+}
+
+void Device::RemoveAllWakeOnPacketConnectionsInternal() {
+  wake_on_packet_connections_.Clear();
 }
 
 void Device::set_traffic_monitor(TrafficMonitor *traffic_monitor) {

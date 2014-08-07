@@ -19,6 +19,7 @@
 #include "shill/dns_server_tester.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ip_address.h"
+#include "shill/ip_address_store.h"
 #include "shill/ipconfig.h"
 #include "shill/portal_detector.h"
 #include "shill/property_store.h"
@@ -266,6 +267,25 @@ class Device : public base::RefCounted<Device> {
   // Called by DeviceInfo when the kernel receives a update for IPv6 DNS server
   // addresses from this interface.
   virtual void OnIPv6DnsServerAddressesChanged();
+
+  // Requests that NICs be programmed to wake up from suspend on the arrival of
+  // packets on the TCP connection specified by the string argument.
+  virtual void AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
+                                         Error *error);
+  // Removes a NIC programming request established by AddWakeOnPacketConnection.
+  virtual void RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
+                                            Error *error);
+  // Removes all NIC programming requests.
+  virtual void RemoveAllWakeOnPacketConnections(Error *error);
+
+  // Get all registered wake-on-packet connections
+  const IPAddressStore &GetAllWakeOnPacketConnections() const {
+    return wake_on_packet_connections_;
+  }
+
+  // Adds wake-on-packet connections specified by the IP addresses in
+  // |ip_addresses|
+  void AddWakeOnPacketConnections(const IPAddressStore &ip_addresses);
 
  protected:
   friend class base::RefCounted<Device>;
@@ -582,6 +602,11 @@ class Device : public base::RefCounted<Device> {
   // Called when the lifetime for IPv6 DNS server expires.
   void IPv6DNSServerExpired();
 
+  // Modify the internal records of registered wake-on-packet connections
+  void AddWakeOnPacketConnectionInternal(const IPAddress &ip);
+  void RemoveWakeOnPacketConnectionInternal(const IPAddress &ip);
+  void RemoveAllWakeOnPacketConnectionsInternal();
+
   // |enabled_persistent_| is the value of the Powered property, as
   // read from the profile. If it is not found in the profile, it
   // defaults to true. |enabled_| reflects the real-time state of
@@ -657,6 +682,10 @@ class Device : public base::RefCounted<Device> {
   // Cache singleton pointers for performance and test purposes.
   DHCPProvider *dhcp_provider_;
   RTNLHandler *rtnl_handler_;
+
+  // Keep track of IP addresses that device will wake upon receiving packets
+  // from
+  IPAddressStore wake_on_packet_connections_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };

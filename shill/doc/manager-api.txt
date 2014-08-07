@@ -5,7 +5,8 @@ Service		org.chromium.flimflam
 Interface	org.chromium.flimflam.Manager
 Object path	/
 
-Methods		dict GetProperties()
+Methods
+		dict GetProperties()
 
 			Return the global system properties specified
 			in the Properties section.
@@ -663,3 +664,43 @@ Properties 	object ActiveProfile [readwrite]
 			Specifies whether the Wake on LAN feature should be
 			enabled on new Ethernet links.  Currently connected
 			links are un-affected.
+
+		void AddWakeOnPacketConnection(string endpoints)
+
+			Requests that NICs be programmed to wake up from
+			suspend on the arrival of packets on any TCP connection
+			with a source IP address matching the IP address
+			specified in the string argument. The format of the
+			argument is:
+
+			<source_ip>
+
+			where <source_ip> is the source IP address of the TCP
+			connection. IPV4 and IPV6 addresses are specified with
+			the standard conventions for IPV4 and IPV6 addresses.
+			The following are a few non-exhaustive examples:
+
+			IPV4: 1.2.3.4, 192.142.3.10
+			IPV6: a::bc:f:5:6d:7:8, abd::20
+
+			The request is valid until removed.  However, on shill
+			restart any wake-on-packet settings are cleared.
+
+			Possible errors: [service].Error.InvalidArguments (argument parsing error)
+					 [service].Error.NotFound (there is no such connection)
+					 [service].Error.NotSupported (no wake-on-packet support in NIC)
+					 [service].Error.OperationFailed (other failures)
+
+		void RemoveWakeOnPacketConnection(string endpoints)
+
+			Removes a NIC programming request established by
+			AddWakeOnPacketConnection.  The argument is in the same
+			format as given to AddWakeOnPacketConnection.
+
+			Possible errors: [service].Error.InvalidArgument (argument parsing error)
+					 [service].Error.NotFound (no such request is active)
+
+		void RemoveAllWakeOnPacketConnections()
+
+			Removes all NIC programming requests.  This is useful
+			to ensure the NICs are in a known state.
