@@ -29,10 +29,8 @@ using buffet::dbus_utils::GetDBusError;
 namespace buffet {
 
 Manager::Manager(
-    scoped_refptr<dbus::Bus> bus,
-    base::WeakPtr<dbus_utils::ExportedObjectManager> object_manager)
-    : bus_(bus),
-      exported_object_(bus->GetExportedObject(
+    const base::WeakPtr<dbus_utils::ExportedObjectManager>& object_manager)
+    : exported_object_(object_manager->GetBus()->GetExportedObject(
           dbus::ObjectPath(dbus_constants::kManagerServicePath))),
       object_manager_(object_manager) { }
 
@@ -116,7 +114,7 @@ void Manager::Init(const OnInitFinish& cb) {
           dbus_constants::kManagerInterface, dbus_constants::kManagerTestMethod,
           "Failed exporting TestMethod method",
           true));
-  properties_.reset(new Properties(bus_));
+  properties_.reset(new Properties(object_manager_->GetBus()));
   // TODO(wiley): Initialize all properties appropriately before claiming
   //              the properties interface.
   properties_->state_.SetValue("{}");

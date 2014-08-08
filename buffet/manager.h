@@ -35,8 +35,8 @@ class Manager {
  public:
   typedef base::Callback<void(bool success)> OnInitFinish;
 
-  Manager(scoped_refptr<dbus::Bus> bus,
-          base::WeakPtr<dbus_utils::ExportedObjectManager> object_manager);
+  Manager(
+      const base::WeakPtr<dbus_utils::ExportedObjectManager>& object_manager);
   ~Manager();
   void Init(const OnInitFinish& cb);
 
@@ -71,7 +71,6 @@ class Manager {
   scoped_ptr<::dbus::Response> HandleTestMethod(
       ::dbus::MethodCall* method_call);
 
-  scoped_refptr<dbus::Bus> bus_;
   dbus::ExportedObject* exported_object_;  // weak; owned by the Bus object.
   base::WeakPtr<dbus_utils::ExportedObjectManager> object_manager_;
   scoped_ptr<Properties> properties_;

@@ -78,7 +78,7 @@ void SetupLogging(const std::string& log_root) {
   logging::InitLogging(settings);
 }
 
-void TakeServiceOwnership(scoped_refptr<dbus::Bus> bus, bool success) {
+void TakeServiceOwnership(const scoped_refptr<dbus::Bus>& bus, bool success) {
   // Success should always be true since we've said that failures are
   // fatal.
   CHECK(success) << "Init of one or more objects has failed.";
@@ -88,11 +88,11 @@ void TakeServiceOwnership(scoped_refptr<dbus::Bus> bus, bool success) {
 }
 
 void EnterMainLoop(base::MessageLoopForIO* message_loop,
-                   scoped_refptr<dbus::Bus> bus) {
+                   const scoped_refptr<dbus::Bus>& bus) {
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   ExportedObjectManager object_manager(
       bus, dbus::ObjectPath(buffet::dbus_constants::kRootServicePath));
-  buffet::Manager manager(bus, object_manager.AsWeakPtr());
+  buffet::Manager manager(object_manager.AsWeakPtr());
   object_manager.Init(
       sequencer->GetHandler("ObjectManager.Init() failed.", true));
   manager.Init(sequencer->GetHandler("Manager.Init() failed.", true));

@@ -94,13 +94,15 @@ class ExportedObjectManager
   void ReleaseInterface(const dbus::ObjectPath& path,
                         const std::string& interface_name);
 
+  const scoped_refptr<dbus::Bus>& GetBus() const { return bus_; }
+
  private:
   void HandleGetManagedObjects(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender) const;
 
-  // Both |bus_| and |exported_object_| outlive *this.
-  dbus::Bus* const bus_;
+  scoped_refptr<dbus::Bus> bus_;
+  // |exported_object_| outlives *this.
   dbus::ExportedObject* const exported_object_;
   // Tracks all objects currently known to the ExportedObjectManager.
   std::map<dbus::ObjectPath, InterfaceProperties> registered_objects_;
