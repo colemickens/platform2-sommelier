@@ -59,19 +59,19 @@ class ExportedPropertySetTest : public ::testing::Test {
   struct Properties : public ExportedPropertySet {
    public:
     ExportedProperty<bool> bool_prop_;
-    ExportedProperty<uint8> uint8_prop_;
-    ExportedProperty<int16> int16_prop_;
-    ExportedProperty<uint16> uint16_prop_;
-    ExportedProperty<int32> int32_prop_;
-    ExportedProperty<uint32> uint32_prop_;
-    ExportedProperty<int64> int64_prop_;
-    ExportedProperty<uint64> uint64_prop_;
+    ExportedProperty<uint8_t> uint8_prop_;
+    ExportedProperty<int16_t> int16_prop_;
+    ExportedProperty<uint16_t> uint16_prop_;
+    ExportedProperty<int32_t> int32_prop_;
+    ExportedProperty<uint32_t> uint32_prop_;
+    ExportedProperty<int64_t> int64_prop_;
+    ExportedProperty<uint64_t> uint64_prop_;
     ExportedProperty<double> double_prop_;
     ExportedProperty<std::string> string_prop_;
     ExportedProperty<dbus::ObjectPath> path_prop_;
     ExportedProperty<std::vector<std::string>> stringlist_prop_;
     ExportedProperty<std::vector<dbus::ObjectPath>> pathlist_prop_;
-    ExportedProperty<std::vector<uint8>> uint8list_prop_;
+    ExportedProperty<std::vector<uint8_t>> uint8list_prop_;
 
     Properties(dbus::Bus* bus, const dbus::ObjectPath& path)
         : ExportedPropertySet(bus, path) {
@@ -244,8 +244,8 @@ TEST_F(ExportedPropertySetTest, GetAllCorrectness) {
   ASSERT_TRUE(dict_reader.PopDictEntry(&entry_reader));
   std::string property_name;
   ASSERT_TRUE(entry_reader.PopString(&property_name));
-  uint16 value16;
-  int32 value32;
+  uint16_t value16;
+  int32_t value32;
   if (property_name.compare(kUint16PropName) == 0) {
     ASSERT_TRUE(entry_reader.PopVariantOfUint16(&value16));
     ASSERT_FALSE(entry_reader.HasMoreData());
@@ -331,7 +331,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithUint8) {
   scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
       kTestInterface1, kUint8PropName);
   dbus::MessageReader reader(response.get());
-  uint8 value;
+  uint8_t value;
   ASSERT_TRUE(reader.PopVariantOfByte(&value));
   ASSERT_FALSE(reader.HasMoreData());
 }
@@ -340,7 +340,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithInt16) {
   scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
       kTestInterface1, kInt16PropName);
   dbus::MessageReader reader(response.get());
-  int16 value;
+  int16_t value;
   ASSERT_TRUE(reader.PopVariantOfInt16(&value));
   ASSERT_FALSE(reader.HasMoreData());
 }
@@ -349,7 +349,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithUint16) {
   scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
       kTestInterface2, kUint16PropName);
   dbus::MessageReader reader(response.get());
-  uint16 value;
+  uint16_t value;
   ASSERT_TRUE(reader.PopVariantOfUint16(&value));
   ASSERT_FALSE(reader.HasMoreData());
 }
@@ -358,7 +358,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithInt32) {
   scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
       kTestInterface2, kInt32PropName);
   dbus::MessageReader reader(response.get());
-  int32 value;
+  int32_t value;
   ASSERT_TRUE(reader.PopVariantOfInt32(&value));
   ASSERT_FALSE(reader.HasMoreData());
 }
@@ -367,7 +367,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithUint32) {
   scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
       kTestInterface3, kUint32PropName);
   dbus::MessageReader reader(response.get());
-  uint32 value;
+  uint32_t value;
   ASSERT_TRUE(reader.PopVariantOfUint32(&value));
   ASSERT_FALSE(reader.HasMoreData());
 }
@@ -376,7 +376,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithInt64) {
   scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
       kTestInterface3, kInt64PropName);
   dbus::MessageReader reader(response.get());
-  int64 value;
+  int64_t value;
   ASSERT_TRUE(reader.PopVariantOfInt64(&value));
   ASSERT_FALSE(reader.HasMoreData());
 }
@@ -385,7 +385,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithUint64) {
   scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
       kTestInterface3, kUint64PropName);
   dbus::MessageReader reader(response.get());
-  uint64 value;
+  uint64_t value;
   ASSERT_TRUE(reader.PopVariantOfUint64(&value));
   ASSERT_FALSE(reader.HasMoreData());
 }
@@ -446,7 +446,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithUint8List) {
       kTestInterface3, kPathListPropName);
   dbus::MessageReader reader(response.get());
   dbus::MessageReader variant_reader(nullptr);
-  const uint8* buffer;
+  const uint8_t* buffer;
   size_t buffer_len;
   ASSERT_TRUE(reader.PopVariant(&variant_reader));
   // |buffer| remains under the control of the MessageReader.
@@ -472,7 +472,7 @@ void VerifySignal(dbus::Signal* signal) {
   ASSERT_NE(signal, nullptr);
   std::string interface_name;
   std::string property_name;
-  uint8 value;
+  uint8_t value;
   dbus::MessageReader reader(signal);
   dbus::MessageReader array_reader(signal);
   dbus::MessageReader dict_reader(signal);

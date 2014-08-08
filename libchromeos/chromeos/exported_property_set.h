@@ -5,6 +5,8 @@
 #ifndef LIBCHROMEOS_CHROMEOS_EXPORTED_PROPERTY_SET_H_
 #define LIBCHROMEOS_CHROMEOS_EXPORTED_PROPERTY_SET_H_
 
+#include <stdint.h>
+
 #include <map>
 #include <string>
 #include <vector>
@@ -56,7 +58,7 @@ namespace dbus_utils {
 //     struct Properties : public chromeos::dbus_utils::ExportedPropertySet {
 //      public:
 //       chromeos::dbus_utils::ExportedProperty<std::string> name_;
-//       chromeos::dbus_utils::ExportedProperty<uint16> version_;
+//       chromeos::dbus_utils::ExportedProperty<uint16_t> version_;
 //       chromeos::dbus_utils::ExportedProperty<dbus::ObjectPath> parent_;
 //       chromeos::dbus_utils::ExportedProperty<std::vector<std::string>>
 //           children_;
@@ -180,19 +182,19 @@ class ExportedProperty : public ExportedPropertyBase {
 };
 
 extern template class ExportedProperty<bool>;
-extern template class ExportedProperty<uint8>;
-extern template class ExportedProperty<int16>;
-extern template class ExportedProperty<uint16>;
-extern template class ExportedProperty<int32>;
-extern template class ExportedProperty<uint32>;
-extern template class ExportedProperty<int64>;
-extern template class ExportedProperty<uint64>;
+extern template class ExportedProperty<uint8_t>;
+extern template class ExportedProperty<int16_t>;
+extern template class ExportedProperty<uint16_t>;
+extern template class ExportedProperty<int32_t>;
+extern template class ExportedProperty<uint32_t>;
+extern template class ExportedProperty<int64_t>;
+extern template class ExportedProperty<uint64_t>;
 extern template class ExportedProperty<double>;
 extern template class ExportedProperty<std::string>;
 extern template class ExportedProperty<dbus::ObjectPath>;
 extern template class ExportedProperty<std::vector<std::string>>;
 extern template class ExportedProperty<std::vector<dbus::ObjectPath>>;
-extern template class ExportedProperty<std::vector<uint8>>;
+extern template class ExportedProperty<std::vector<uint8_t>>;
 
 }  // namespace dbus_utils
 

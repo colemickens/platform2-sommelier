@@ -206,37 +206,41 @@ void AppendPropertyToWriter(dbus::MessageWriter* writer, const bool& value) {
 }
 
 template <>
-void AppendPropertyToWriter(dbus::MessageWriter* writer, const uint8& value) {
+void AppendPropertyToWriter(dbus::MessageWriter* writer, const uint8_t& value) {
   writer->AppendVariantOfByte(value);
 }
 
 template <>
-void AppendPropertyToWriter(dbus::MessageWriter* writer, const int16& value) {
+void AppendPropertyToWriter(dbus::MessageWriter* writer, const int16_t& value) {
   writer->AppendVariantOfInt16(value);
 }
 
 template <>
-void AppendPropertyToWriter(dbus::MessageWriter* writer, const uint16& value) {
+void AppendPropertyToWriter(
+    dbus::MessageWriter* writer, const uint16_t& value) {
   writer->AppendVariantOfUint16(value);
 }
 
 template <>
-void AppendPropertyToWriter(dbus::MessageWriter* writer, const int32& value) {
+void AppendPropertyToWriter(
+    dbus::MessageWriter* writer, const int32_t& value) {
   writer->AppendVariantOfInt32(value);
 }
 
 template <>
-void AppendPropertyToWriter(dbus::MessageWriter* writer, const uint32& value) {
+void AppendPropertyToWriter(
+    dbus::MessageWriter* writer, const uint32_t& value) {
   writer->AppendVariantOfUint32(value);
 }
 
 template <>
-void AppendPropertyToWriter(dbus::MessageWriter* writer, const int64& value) {
+void AppendPropertyToWriter(dbus::MessageWriter* writer, const int64_t& value) {
   writer->AppendVariantOfInt64(value);
 }
 
 template <>
-void AppendPropertyToWriter(dbus::MessageWriter* writer, const uint64& value) {
+void AppendPropertyToWriter(
+    dbus::MessageWriter* writer, const uint64_t& value) {
   writer->AppendVariantOfUint64(value);
 }
 
@@ -277,7 +281,7 @@ void AppendPropertyToWriter(
 
 template <>
 void AppendPropertyToWriter(
-    dbus::MessageWriter* writer, const std::vector<uint8>& value) {
+    dbus::MessageWriter* writer, const std::vector<uint8_t>& value) {
   dbus::MessageWriter variant_writer(nullptr);
   writer->OpenVariant("ay", &variant_writer);
   variant_writer.AppendArrayOfBytes(value.data(), value.size());
@@ -321,19 +325,19 @@ void ExportedProperty<T>::AppendValueToWriter(
 }
 
 template class ExportedProperty<bool>;
-template class ExportedProperty<uint8>;
-template class ExportedProperty<int16>;
-template class ExportedProperty<uint16>;
-template class ExportedProperty<int32>;
-template class ExportedProperty<uint32>;
-template class ExportedProperty<int64>;
-template class ExportedProperty<uint64>;
+template class ExportedProperty<uint8_t>;
+template class ExportedProperty<int16_t>;
+template class ExportedProperty<uint16_t>;
+template class ExportedProperty<int32_t>;
+template class ExportedProperty<uint32_t>;
+template class ExportedProperty<int64_t>;
+template class ExportedProperty<uint64_t>;
 template class ExportedProperty<double>;
 template class ExportedProperty<std::string>;
 template class ExportedProperty<dbus::ObjectPath>;
 template class ExportedProperty<std::vector<std::string>>;
 template class ExportedProperty<std::vector<dbus::ObjectPath>>;
-template class ExportedProperty<std::vector<uint8>>;
+template class ExportedProperty<std::vector<uint8_t>>;
 
 }  // namespace dbus_utils
 
