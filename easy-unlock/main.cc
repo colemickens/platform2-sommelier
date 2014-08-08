@@ -17,8 +17,8 @@
 #include <chromeos/syslog_logging.h>
 #include <dbus/bus.h>
 
-#include "easy-unlock/easy_unlock_service.h"
 #include "easy-unlock/daemon.h"
+#include "easy-unlock/easy_unlock_service.h"
 
 namespace {
 

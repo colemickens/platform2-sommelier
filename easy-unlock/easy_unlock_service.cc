@@ -15,23 +15,24 @@ class ServiceImpl : public easy_unlock::Service {
   ServiceImpl() : crypto_service_(new easy_unlock_crypto::ServiceImpl()) {}
   virtual ~ServiceImpl() {}
 
-  virtual void GenerateEcP256KeyPair(std::vector<uint8>* private_key,
-                                     std::vector<uint8>* public_key) OVERRIDE {
+  virtual void GenerateEcP256KeyPair(
+      std::vector<uint8_t>* private_key,
+      std::vector<uint8_t>* public_key) OVERRIDE {
     crypto_service_->GenerateEcP256KeyPair(private_key, public_key);
   }
 
-  virtual std::vector<uint8> PerformECDHKeyAgreement(
-      const std::vector<uint8>& private_key,
-      const std::vector<uint8>& public_key) OVERRIDE {
+  virtual std::vector<uint8_t> PerformECDHKeyAgreement(
+      const std::vector<uint8_t>& private_key,
+      const std::vector<uint8_t>& public_key) OVERRIDE {
     return crypto_service_->PerformECDHKeyAgreement(private_key, public_key);
   }
 
-  virtual std::vector<uint8> CreateSecureMessage(
-      const std::vector<uint8>& payload,
-      const std::vector<uint8>& key,
-      const std::vector<uint8>& associated_data,
-      const std::vector<uint8>& public_metadata,
-      const std::vector<uint8>& verification_key_id,
+  virtual std::vector<uint8_t> CreateSecureMessage(
+      const std::vector<uint8_t>& payload,
+      const std::vector<uint8_t>& key,
+      const std::vector<uint8_t>& associated_data,
+      const std::vector<uint8_t>& public_metadata,
+      const std::vector<uint8_t>& verification_key_id,
       easy_unlock_crypto::ServiceImpl::EncryptionType encryption_type,
       easy_unlock_crypto::ServiceImpl::SignatureType signature_type) OVERRIDE {
     return crypto_service_->CreateSecureMessage(payload,
@@ -43,10 +44,10 @@ class ServiceImpl : public easy_unlock::Service {
                                                 signature_type);
   }
 
-  virtual std::vector<uint8> UnwrapSecureMessage(
-      const std::vector<uint8>& secure_message,
-      const std::vector<uint8>& key,
-      const std::vector<uint8>& associated_data,
+  virtual std::vector<uint8_t> UnwrapSecureMessage(
+      const std::vector<uint8_t>& secure_message,
+      const std::vector<uint8_t>& key,
+      const std::vector<uint8_t>& associated_data,
       easy_unlock_crypto::ServiceImpl::EncryptionType encryption_type,
       easy_unlock_crypto::ServiceImpl::SignatureType signature_type) OVERRIDE {
     return crypto_service_->UnwrapSecureMessage(secure_message,

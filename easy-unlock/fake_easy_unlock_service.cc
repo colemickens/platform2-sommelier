@@ -4,6 +4,8 @@
 
 #include "easy-unlock/fake_easy_unlock_service.h"
 
+#include <string>
+
 #include <base/file_util.h>
 #include <base/strings/stringprintf.h>
 
@@ -29,12 +31,12 @@ const char kUnwrappedMessageTemplate[] =
       "signature:%s"
     "}";
 
-std::string Uint8VectorAsString(const std::vector<uint8>& data) {
+std::string Uint8VectorAsString(const std::vector<uint8_t>& data) {
   return std::string(reinterpret_cast<const char*>(data.data()), data.size());
 }
 
-std::vector<uint8> StringAsUint8Vector(const std::string& data) {
-  return std::vector<uint8>(data.c_str(), data.c_str() + data.length());
+std::vector<uint8_t> StringAsUint8Vector(const std::string& data) {
+  return std::vector<uint8_t>(data.c_str(), data.c_str() + data.length());
 }
 
 std::string EncryptionTypeAsString(
@@ -71,29 +73,29 @@ FakeService::FakeService() : private_key_count_(0),
 
 FakeService::~FakeService() {}
 
-void FakeService::GenerateEcP256KeyPair(std::vector<uint8>* private_key,
-                                        std::vector<uint8>* public_key) {
+void FakeService::GenerateEcP256KeyPair(std::vector<uint8_t>* private_key,
+                                        std::vector<uint8_t>* public_key) {
   *private_key = StringAsUint8Vector(
       base::StringPrintf("private_key_%d", ++private_key_count_));
   *public_key = StringAsUint8Vector(
       base::StringPrintf("public_key_%d", ++public_key_count_));
 }
 
-std::vector<uint8> FakeService::PerformECDHKeyAgreement(
-    const std::vector<uint8>& private_key,
-    const std::vector<uint8>& public_key) {
+std::vector<uint8_t> FakeService::PerformECDHKeyAgreement(
+    const std::vector<uint8_t>& private_key,
+    const std::vector<uint8_t>& public_key) {
   return StringAsUint8Vector(base::StringPrintf(
       "secret_key:{private_key:%s,public_key:%s}",
        Uint8VectorAsString(private_key).c_str(),
        Uint8VectorAsString(public_key).c_str()));
 }
 
-std::vector<uint8> FakeService::CreateSecureMessage(
-    const std::vector<uint8>& payload,
-    const std::vector<uint8>& key,
-    const std::vector<uint8>& associated_data,
-    const std::vector<uint8>& public_metadata,
-    const std::vector<uint8>& verification_key_id,
+std::vector<uint8_t> FakeService::CreateSecureMessage(
+    const std::vector<uint8_t>& payload,
+    const std::vector<uint8_t>& key,
+    const std::vector<uint8_t>& associated_data,
+    const std::vector<uint8_t>& public_metadata,
+    const std::vector<uint8_t>& verification_key_id,
     easy_unlock_crypto::ServiceImpl::EncryptionType encryption_type,
     easy_unlock_crypto::ServiceImpl::SignatureType signature_type) {
   return StringAsUint8Vector(base::StringPrintf(
@@ -107,10 +109,10 @@ std::vector<uint8> FakeService::CreateSecureMessage(
       SignatureTypeAsString(signature_type).c_str()));
 }
 
-std::vector<uint8> FakeService::UnwrapSecureMessage(
-    const std::vector<uint8>& secure_message,
-    const std::vector<uint8>& key,
-    const std::vector<uint8>& associated_data,
+std::vector<uint8_t> FakeService::UnwrapSecureMessage(
+    const std::vector<uint8_t>& secure_message,
+    const std::vector<uint8_t>& key,
+    const std::vector<uint8_t>& associated_data,
     easy_unlock_crypto::ServiceImpl::EncryptionType encryption_type,
     easy_unlock_crypto::ServiceImpl::SignatureType signature_type) {
   return StringAsUint8Vector(base::StringPrintf(

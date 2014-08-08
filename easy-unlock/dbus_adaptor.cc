@@ -4,9 +4,10 @@
 
 #include "easy-unlock/dbus_adaptor.h"
 
+#include <stdint.h>
+
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/files/file_path.h>
@@ -31,11 +32,12 @@ const char kDBusIntrospectMethod[] = "Introspect";
 // |reader|: MessageReader for the method call.
 // |bytes|: Byte vector extracted from message reader.
 // Returns whether the bytes were successfully extracted.
-bool ReadArrayOfBytes(dbus::MessageReader* reader, std::vector<uint8>* bytes) {
+bool ReadArrayOfBytes(dbus::MessageReader* reader,
+                      std::vector<uint8_t>* bytes) {
   DCHECK(bytes);
   DCHECK(reader);
 
-  const uint8* raw_bytes;
+  const uint8_t* raw_bytes;
   size_t raw_bytes_size;
   if (!reader->PopArrayOfBytes(&raw_bytes, &raw_bytes_size))
     return false;
@@ -145,8 +147,8 @@ scoped_ptr<dbus::Response> DBusAdaptor::Introspect(dbus::MethodCall* call) {
 
 scoped_ptr<dbus::Response> DBusAdaptor::GenerateEcP256KeyPair(
     dbus::MethodCall* method_call) {
-  std::vector<uint8> private_key;
-  std::vector<uint8> public_key;
+  std::vector<uint8_t> private_key;
+  std::vector<uint8_t> public_key;
   service_impl_->GenerateEcP256KeyPair(&private_key, &public_key);
 
   scoped_ptr<dbus::Response> response =
@@ -160,9 +162,9 @@ scoped_ptr<dbus::Response> DBusAdaptor::GenerateEcP256KeyPair(
 scoped_ptr<dbus::Response> DBusAdaptor::PerformECDHKeyAgreement(
     dbus::MethodCall* method_call) {
   dbus::MessageReader reader(method_call);
-  std::vector<uint8> private_key;
-  std::vector<uint8> public_key;
-  std::vector<uint8> secret_key;
+  std::vector<uint8_t> private_key;
+  std::vector<uint8_t> public_key;
+  std::vector<uint8_t> secret_key;
   if (ReadArrayOfBytes(&reader, &private_key) &&
       ReadArrayOfBytes(&reader, &public_key)) {
     secret_key =
@@ -182,15 +184,15 @@ scoped_ptr<dbus::Response> DBusAdaptor::CreateSecureMessage(
     dbus::MethodCall* method_call) {
   dbus::MessageReader reader(method_call);
 
-  std::vector<uint8> payload;
-  std::vector<uint8> key;
-  std::vector<uint8> associated_data;
-  std::vector<uint8> public_metadata;
-  std::vector<uint8> verification_key_id;
+  std::vector<uint8_t> payload;
+  std::vector<uint8_t> key;
+  std::vector<uint8_t> associated_data;
+  std::vector<uint8_t> public_metadata;
+  std::vector<uint8_t> verification_key_id;
   easy_unlock_crypto::ServiceImpl::EncryptionType encryption_type;
   easy_unlock_crypto::ServiceImpl::SignatureType signature_type;
 
-  std::vector<uint8> message;
+  std::vector<uint8_t> message;
 
   if (ReadArrayOfBytes(&reader, &payload) &&
       ReadArrayOfBytes(&reader, &key) &&
@@ -221,13 +223,13 @@ scoped_ptr<dbus::Response> DBusAdaptor::UnwrapSecureMessage(
     dbus::MethodCall* method_call) {
   dbus::MessageReader reader(method_call);
 
-  std::vector<uint8> message;
-  std::vector<uint8> key;
-  std::vector<uint8> associated_data;
+  std::vector<uint8_t> message;
+  std::vector<uint8_t> key;
+  std::vector<uint8_t> associated_data;
   easy_unlock_crypto::ServiceImpl::EncryptionType encryption_type;
   easy_unlock_crypto::ServiceImpl::SignatureType signature_type;
 
-  std::vector<uint8> unwrapped_message;
+  std::vector<uint8_t> unwrapped_message;
 
   if (ReadArrayOfBytes(&reader, &message) &&
       ReadArrayOfBytes(&reader, &key) &&

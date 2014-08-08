@@ -5,10 +5,10 @@
 #ifndef EASY_UNLOCK_EASY_UNLOCK_SERVICE_H_
 #define EASY_UNLOCK_EASY_UNLOCK_SERVICE_H_
 
-#include <string>
+#include <stdint.h>
+
 #include <vector>
 
-#include <base/basictypes.h>
 #include <easy-unlock-crypto/service_impl.h>
 
 namespace easy_unlock {
@@ -24,23 +24,23 @@ class Service {
 
   virtual ~Service() {}
 
-  virtual void GenerateEcP256KeyPair(std::vector<uint8>* private_key,
-                                     std::vector<uint8>* public_key) = 0;
-  virtual std::vector<uint8> PerformECDHKeyAgreement(
-      const std::vector<uint8>& private_key,
-      const std::vector<uint8>& public_key) = 0;
-  virtual std::vector<uint8> CreateSecureMessage(
-      const std::vector<uint8>& payload,
-      const std::vector<uint8>& key,
-      const std::vector<uint8>& associated_data,
-      const std::vector<uint8>& public_metadata,
-      const std::vector<uint8>& verification_key_id,
+  virtual void GenerateEcP256KeyPair(std::vector<uint8_t>* private_key,
+                                     std::vector<uint8_t>* public_key) = 0;
+  virtual std::vector<uint8_t> PerformECDHKeyAgreement(
+      const std::vector<uint8_t>& private_key,
+      const std::vector<uint8_t>& public_key) = 0;
+  virtual std::vector<uint8_t> CreateSecureMessage(
+      const std::vector<uint8_t>& payload,
+      const std::vector<uint8_t>& key,
+      const std::vector<uint8_t>& associated_data,
+      const std::vector<uint8_t>& public_metadata,
+      const std::vector<uint8_t>& verification_key_id,
       easy_unlock_crypto::ServiceImpl::EncryptionType encryption_type,
       easy_unlock_crypto::ServiceImpl::SignatureType signature_type) = 0;
-  virtual std::vector<uint8> UnwrapSecureMessage(
-      const std::vector<uint8>& secure_message,
-      const std::vector<uint8>& key,
-      const std::vector<uint8>& associated_data,
+  virtual std::vector<uint8_t> UnwrapSecureMessage(
+      const std::vector<uint8_t>& secure_message,
+      const std::vector<uint8_t>& key,
+      const std::vector<uint8_t>& associated_data,
       easy_unlock_crypto::ServiceImpl::EncryptionType encryption_type,
       easy_unlock_crypto::ServiceImpl::SignatureType signature_type) = 0;
 };
