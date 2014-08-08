@@ -192,8 +192,8 @@ def main(argv):
   actions = ['pre_test', 'post_test', 'run']
 
   parser = argparse.ArgumentParser()
-  parser.add_argument('--action', required=True,
-                      choices=actions, help='action to run')
+  parser.add_argument('--action', default='run',
+                      choices=actions, help='action to perform')
   parser.add_argument('--bin',
                       help='test binary to run')
   parser.add_argument('--board', required=True,
@@ -208,21 +208,23 @@ def main(argv):
                       help='args to pass to gtest/test binary')
   parser.add_argument('--host', action='store_true',
                       help='specify that we\'re testing for the host')
-  parser.add_argument('--package', required=True,
+  parser.add_argument('--package',
                       help='name of the package we\'re running tests for')
   parser.add_argument('--run_as_root', action='store_true',
                       help='should the test be run as root')
   parser.add_argument('--use_flags', default=set(),
                       action=_ParseStringSetAction,
                       help='USE flags to enable')
-  parser.add_argument('--user_gtest_filter',
-                      default='',
+  parser.add_argument('--user_gtest_filter', default='',
                       help=argparse.SUPPRESS)
 
   options = parser.parse_args(argv)
 
   if options.action == 'run' and (not options.bin or len(options.bin) == 0):
     raise AssertionError('You must specify a binary for the "run" action')
+
+  if options.user_gtest_filter and not options.package:
+    raise AssertionError('You must specify a package with user gtest filters')
 
   if not (options.host ^ (options.board != None)):
     raise AssertionError('You must provide only one of --board or --host')
