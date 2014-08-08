@@ -130,7 +130,7 @@ TEST(HttpServer, Basic) {
 
   // Run p2p-http-server from the build directory.
   HttpServer* server = HttpServer::Construct(
-      &metrics_lib, testdir, FilePath(BUILD_DIR), 0);
+      &metrics_lib, testdir, FilePath("."), 0);
   server->Start();
 
   // Wait until the HTTP server is running and accepting connections.
@@ -244,7 +244,7 @@ TEST(HttpServer, PortNumberTest) {
 
   // Run p2p-http-server from the build directory.
   HttpServer* server = HttpServer::Construct(
-      &metrics_lib, testdir, FilePath(BUILD_DIR), 0);
+      &metrics_lib, testdir, FilePath("."), 0);
   EXPECT_EQ(server->Port(), 0);
   server->Start();
 

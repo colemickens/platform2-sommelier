@@ -183,11 +183,6 @@
    # Test only.
   'conditions': [
     ['USE_test == 1', {
-      'target_defaults': {
-        'defines': [
-          'BUILD_DIR="<(build_root)/out/Default"',
-        ],
-      },
       'targets': [
         # common test-utils.
         {
