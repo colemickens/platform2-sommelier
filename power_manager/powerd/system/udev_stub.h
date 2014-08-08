@@ -9,6 +9,7 @@
 #include <set>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
@@ -25,13 +26,22 @@ class UdevStub : public UdevInterface {
   virtual ~UdevStub();
 
   // Returns true if |observer| is registered for |subsystem|.
-  bool HasObserver(const std::string& subsystem, UdevObserver* observer) const;
+  bool HasSubsystemObserver(const std::string& subsystem,
+                            UdevObserver* observer) const;
+
+  // Act as if a device was changed or removed. Notifies TaggedDeviceObservers
+  // and modifies the internal list of tagged devices.
+  void TaggedDeviceChanged(const std::string& syspath, const std::string& tags);
+  void TaggedDeviceRemoved(const std::string& syspath);
 
   // UdevInterface implementation:
-  void AddObserver(const std::string& subsystem,
-                   UdevObserver* observer) override;
-  void RemoveObserver(const std::string& subsystem,
-                      UdevObserver* observer) override;
+  void AddSubsystemObserver(const std::string& subsystem,
+                            UdevObserver* observer) override;
+  void RemoveSubsystemObserver(const std::string& subsystem,
+                               UdevObserver* observer) override;
+  void AddTaggedDeviceObserver(TaggedDeviceObserver* observer) override;
+  void RemoveTaggedDeviceObserver(TaggedDeviceObserver* observer) override;
+  std::vector<TaggedDevice> GetTaggedDevices() override;
   bool GetSysattr(const std::string& syspath,
                   const std::string& sysattr,
                   std::string* value) override;
@@ -44,8 +54,13 @@ class UdevStub : public UdevInterface {
 
  private:
   // Registered observers keyed by subsystem.
-  typedef std::map<std::string, std::set<UdevObserver*> > ObserverMap;
-  ObserverMap observers_;
+  typedef std::map<std::string, std::set<UdevObserver*> > SubsystemObserverMap;
+  SubsystemObserverMap subsystem_observers_;
+
+  ObserverList<TaggedDeviceObserver> tagged_device_observers_;
+
+  // Maps a syspath to the corresponding TaggedDevice.
+  std::map<std::string, TaggedDevice> tagged_devices_;
 
   // Maps a pair (device syspath, sysattr name) to the corresponding sysattr
   // value.

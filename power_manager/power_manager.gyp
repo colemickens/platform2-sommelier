@@ -69,6 +69,7 @@
         'powerd/system/peripheral_battery_watcher.cc',
         'powerd/system/power_supply.cc',
         'powerd/system/rolling_average.cc',
+        'powerd/system/tagged_device.cc',
         'powerd/system/udev.cc',
       ],
     },
@@ -259,6 +260,7 @@
             'powerd/system/peripheral_battery_watcher_unittest.cc',
             'powerd/system/power_supply_unittest.cc',
             'powerd/system/rolling_average_unittest.cc',
+            'powerd/system/tagged_device_unittest.cc',
           ],
         },
         {

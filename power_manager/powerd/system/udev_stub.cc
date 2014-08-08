@@ -4,6 +4,9 @@
 
 #include "power_manager/powerd/system/udev_stub.h"
 
+#include "power_manager/powerd/system/tagged_device.h"
+#include "power_manager/powerd/system/tagged_device_observer.h"
+
 namespace power_manager {
 namespace system {
 
@@ -11,20 +14,52 @@ UdevStub::UdevStub() {}
 
 UdevStub::~UdevStub() {}
 
-bool UdevStub::HasObserver(const std::string& subsystem,
-                           UdevObserver* observer) const {
-  ObserverMap::const_iterator it = observers_.find(subsystem);
-  return it != observers_.end() && it->second.count(observer);
+bool UdevStub::HasSubsystemObserver(const std::string& subsystem,
+                                    UdevObserver* observer) const {
+  SubsystemObserverMap::const_iterator it =
+      subsystem_observers_.find(subsystem);
+  return it != subsystem_observers_.end() && it->second.count(observer);
 }
 
-void UdevStub::AddObserver(const std::string& subsystem,
-                           UdevObserver* observer) {
-  observers_[subsystem].insert(observer);
+void UdevStub::TaggedDeviceChanged(const std::string& syspath,
+                                   const std::string& tags) {
+  tagged_devices_[syspath] = TaggedDevice(syspath, tags);
+  const TaggedDevice& device = tagged_devices_[syspath];
+  FOR_EACH_OBSERVER(TaggedDeviceObserver, tagged_device_observers_,
+                    OnTaggedDeviceChanged(device));
 }
 
-void UdevStub::RemoveObserver(const std::string& subsystem,
-                              UdevObserver* observer) {
-  observers_[subsystem].erase(observer);
+void UdevStub::TaggedDeviceRemoved(const std::string& syspath) {
+  TaggedDevice device = tagged_devices_[syspath];
+  tagged_devices_.erase(syspath);
+  FOR_EACH_OBSERVER(TaggedDeviceObserver, tagged_device_observers_,
+                    OnTaggedDeviceRemoved(device));
+}
+
+void UdevStub::AddSubsystemObserver(const std::string& subsystem,
+                                    UdevObserver* observer) {
+  subsystem_observers_[subsystem].insert(observer);
+}
+
+void UdevStub::RemoveSubsystemObserver(const std::string& subsystem,
+                                       UdevObserver* observer) {
+  subsystem_observers_[subsystem].erase(observer);
+}
+
+void UdevStub::AddTaggedDeviceObserver(TaggedDeviceObserver* observer) {
+  tagged_device_observers_.AddObserver(observer);
+}
+
+void UdevStub::RemoveTaggedDeviceObserver(TaggedDeviceObserver* observer) {
+  tagged_device_observers_.RemoveObserver(observer);
+}
+
+std::vector<TaggedDevice> UdevStub::GetTaggedDevices() {
+  std::vector<TaggedDevice> devices;
+  devices.reserve(tagged_devices_.size());
+  for (const std::pair<std::string, TaggedDevice>& pair : tagged_devices_)
+    devices.push_back(pair.second);
+  return devices;
 }
 
 bool UdevStub::GetSysattr(const std::string& syspath,

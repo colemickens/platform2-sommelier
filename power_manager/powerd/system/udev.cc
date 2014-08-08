@@ -10,10 +10,36 @@
 
 #include <base/logging.h>
 
+#include "power_manager/powerd/system/tagged_device.h"
+#include "power_manager/powerd/system/tagged_device_observer.h"
 #include "power_manager/powerd/system/udev_observer.h"
 
 namespace power_manager {
 namespace system {
+
+namespace {
+
+static const char kPowerdUdevTag[] = "powerd";
+static const char kPowerdTagsVar[] = "POWERD_TAGS";
+
+UdevObserver::Action StrToAction(const char* action_str) {
+  if (!action_str)
+    return UdevObserver::ACTION_UNKNOWN;
+  else if (strcmp(action_str, "add") == 0)
+    return UdevObserver::ACTION_ADD;
+  else if (strcmp(action_str, "remove") == 0)
+    return UdevObserver::ACTION_REMOVE;
+  else if (strcmp(action_str, "change") == 0)
+    return UdevObserver::ACTION_CHANGE;
+  else if (strcmp(action_str, "online") == 0)
+    return UdevObserver::ACTION_ONLINE;
+  else if (strcmp(action_str, "offline") == 0)
+    return UdevObserver::ACTION_OFFLINE;
+  else
+    return UdevObserver::ACTION_UNKNOWN;
+}
+
+};  // namespace
 
 Udev::Udev() : udev_(NULL), udev_monitor_(NULL) {}
 
@@ -37,6 +63,11 @@ bool Udev::Init() {
     return false;
   }
 
+  if (udev_monitor_filter_add_match_tag(udev_monitor_, kPowerdUdevTag))
+    LOG(ERROR) << "udev_monitor_filter_add_match_tag failed";
+  if (udev_monitor_filter_update(udev_monitor_))
+    LOG(ERROR) << "udev_monitor_filter_update failed";
+
   udev_monitor_enable_receiving(udev_monitor_);
 
   int fd = udev_monitor_get_fd(udev_monitor_);
@@ -47,14 +78,17 @@ bool Udev::Init() {
   }
 
   LOG(INFO) << "Watching FD " << fd << " for udev events";
+
+  EnumerateTaggedDevices();
+
   return true;
 }
 
-void Udev::AddObserver(const std::string& subsystem,
-                       UdevObserver* observer) {
+void Udev::AddSubsystemObserver(const std::string& subsystem,
+                                UdevObserver* observer) {
   CHECK(udev_) << "Object uninitialized";
   DCHECK(observer);
-  ObserverMap::iterator it = subsystem_observers_.find(subsystem);
+  SubsystemObserverMap::iterator it = subsystem_observers_.find(subsystem);
   if (it == subsystem_observers_.end()) {
     VLOG(1) << "Adding match for subsystem \"" << subsystem << "\"";
     if (udev_monitor_filter_add_match_subsystem_devtype(
@@ -68,13 +102,29 @@ void Udev::AddObserver(const std::string& subsystem,
   it->second->AddObserver(observer);
 }
 
-void Udev::RemoveObserver(const std::string& subsystem,
-                          UdevObserver* observer) {
+void Udev::RemoveSubsystemObserver(const std::string& subsystem,
+                                   UdevObserver* observer) {
   DCHECK(observer);
-  ObserverMap::iterator it = subsystem_observers_.find(subsystem);
+  SubsystemObserverMap::iterator it = subsystem_observers_.find(subsystem);
   if (it != subsystem_observers_.end())
     it->second->RemoveObserver(observer);
   // No way to remove individual matches from udev_monitor. :-/
+}
+
+void Udev::AddTaggedDeviceObserver(TaggedDeviceObserver* observer) {
+  tagged_device_observers_.AddObserver(observer);
+}
+
+void Udev::RemoveTaggedDeviceObserver(TaggedDeviceObserver* observer) {
+  tagged_device_observers_.RemoveObserver(observer);
+}
+
+std::vector<TaggedDevice> Udev::GetTaggedDevices() {
+  std::vector<TaggedDevice> devices;
+  devices.reserve(tagged_devices_.size());
+  for (const std::pair<std::string, TaggedDevice>& pair : tagged_devices_)
+    devices.push_back(pair.second);
+  return devices;
 }
 
 bool Udev::GetSysattr(const std::string& syspath,
@@ -155,35 +205,125 @@ void Udev::OnFileCanReadWithoutBlocking(int fd) {
   const char* subsystem = udev_device_get_subsystem(dev);
   const char* sysname = udev_device_get_sysname(dev);
   const char* action_str = udev_device_get_action(dev);
+  UdevObserver::Action action = StrToAction(action_str);
+
   VLOG(1) << "Received event: subsystem=" << subsystem
           << " sysname=" << sysname << " action=" << action_str;
 
-  UdevObserver::Action action = UdevObserver::ACTION_UNKNOWN;
-  if (action_str) {
-    if (strcmp(action_str, "add") == 0)
-      action = UdevObserver::ACTION_ADD;
-    else if (strcmp(action_str, "remove") == 0)
-      action = UdevObserver::ACTION_REMOVE;
-    else if (strcmp(action_str, "change") == 0)
-      action = UdevObserver::ACTION_CHANGE;
-    else if (strcmp(action_str, "online") == 0)
-      action = UdevObserver::ACTION_ONLINE;
-    else if (strcmp(action_str, "offline") == 0)
-      action = UdevObserver::ACTION_OFFLINE;
-  }
-
-  ObserverMap::iterator it = subsystem_observers_.find(subsystem);
-  if (it != subsystem_observers_.end()) {
-    ObserverList<UdevObserver>* observers = it->second.get();
-    FOR_EACH_OBSERVER(UdevObserver, *observers,
-        OnUdevEvent(subsystem, sysname ? sysname : "", action));
-  }
+  HandleSubsystemEvent(action, dev);
+  HandleTaggedDevice(action, dev);
 
   udev_device_unref(dev);
 }
 
 void Udev::OnFileCanWriteWithoutBlocking(int fd) {
   NOTREACHED() << "Unexpected non-blocking write notification for FD " << fd;
+}
+
+void Udev::HandleSubsystemEvent(UdevObserver::Action action,
+                                struct udev_device* dev) {
+  const char* subsystem = udev_device_get_subsystem(dev);
+  const char* sysname = udev_device_get_sysname(dev);
+
+  if (!subsystem)
+    return;
+
+  SubsystemObserverMap::iterator it = subsystem_observers_.find(subsystem);
+  if (it != subsystem_observers_.end()) {
+    ObserverList<UdevObserver>* observers = it->second.get();
+    FOR_EACH_OBSERVER(UdevObserver, *observers,
+        OnUdevEvent(subsystem, sysname ? sysname : "", action));
+  }
+}
+
+void Udev::HandleTaggedDevice(UdevObserver::Action action,
+                              struct udev_device* dev) {
+  if (!udev_device_has_tag(dev, kPowerdUdevTag))
+    return;
+
+  const char* syspath = udev_device_get_syspath(dev);
+  const char* tags = udev_device_get_property_value(dev, kPowerdTagsVar);
+
+  switch (action) {
+    case UdevObserver::ACTION_ADD:
+    case UdevObserver::ACTION_CHANGE:
+      TaggedDeviceChanged(syspath, tags ? tags : "");
+      break;
+
+    case UdevObserver::ACTION_REMOVE:
+      TaggedDeviceRemoved(syspath);
+      break;
+
+    default:
+      break;
+  }
+}
+
+void Udev::TaggedDeviceChanged(const std::string& syspath,
+                               const std::string& tags) {
+  // Replace existing device with same syspath.
+  tagged_devices_[syspath] = TaggedDevice(syspath, tags);
+  const TaggedDevice& device = tagged_devices_[syspath];
+
+  VLOG(1) << "Tagged device changed: syspath=" << syspath << ", tags: "
+          << (tags.empty() ? "(none)" : tags);
+
+  FOR_EACH_OBSERVER(TaggedDeviceObserver, tagged_device_observers_,
+                    OnTaggedDeviceChanged(device));
+}
+
+void Udev::TaggedDeviceRemoved(const std::string& syspath) {
+  TaggedDevice device = tagged_devices_[syspath];
+  tagged_devices_.erase(syspath);
+
+  VLOG(1) << "Tagged device removed: syspath=" << syspath;
+
+  FOR_EACH_OBSERVER(TaggedDeviceObserver, tagged_device_observers_,
+                    OnTaggedDeviceRemoved(device));
+}
+
+bool Udev::EnumerateTaggedDevices() {
+  DCHECK(udev_);
+
+  VLOG(1) << "Enumerating existing tagged devices";
+
+  struct udev_enumerate* enumerate = udev_enumerate_new(udev_);
+  if (!enumerate) {
+    LOG(ERROR) << "udev_enumerate_new failed";
+    return false;
+  }
+  if (udev_enumerate_add_match_tag(enumerate, kPowerdUdevTag) != 0) {
+    LOG(ERROR) << "udev_enumerate_add_match_tag failed";
+    udev_enumerate_unref(enumerate);
+    return false;
+  }
+  if (udev_enumerate_scan_devices(enumerate) != 0) {
+    LOG(ERROR) << "udev_enumerate_scan_devices failed";
+    udev_enumerate_unref(enumerate);
+    return false;
+  }
+
+  tagged_devices_.clear();
+
+  struct udev_list_entry* entry = NULL;
+  udev_list_entry_foreach(entry, udev_enumerate_get_list_entry(enumerate)) {
+    const char* syspath = udev_list_entry_get_name(entry);
+    struct udev_device* device = udev_device_new_from_syspath(udev_, syspath);
+    if (!device) {
+      LOG(ERROR) << "Enumerated device does not exist: " << syspath;
+      continue;
+    }
+    const char* tags_cstr =
+        udev_device_get_property_value(device, kPowerdTagsVar);
+    const std::string tags = tags_cstr ? tags_cstr : "";
+    VLOG(1) << "Pre-existing tagged device: syspath=" << syspath << ", tags: "
+            << (tags.empty() ? "(none)" : tags);
+    tagged_devices_[syspath] = TaggedDevice(syspath, tags);
+    udev_device_unref(device);
+  }
+
+  udev_enumerate_unref(enumerate);
+  return true;
 }
 
 }  // namespace system

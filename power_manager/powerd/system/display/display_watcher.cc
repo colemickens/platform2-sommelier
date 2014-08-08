@@ -55,16 +55,16 @@ DisplayWatcher::DisplayWatcher() : udev_(NULL) {}
 
 DisplayWatcher::~DisplayWatcher() {
   if (udev_) {
-    udev_->RemoveObserver(kI2CUdevSubsystem, this);
-    udev_->RemoveObserver(kDrmUdevSubsystem, this);
+    udev_->RemoveSubsystemObserver(kI2CUdevSubsystem, this);
+    udev_->RemoveSubsystemObserver(kDrmUdevSubsystem, this);
     udev_ = NULL;
   }
 }
 
 void DisplayWatcher::Init(UdevInterface* udev) {
   udev_ = udev;
-  udev_->AddObserver(kI2CUdevSubsystem, this);
-  udev_->AddObserver(kDrmUdevSubsystem, this);
+  udev_->AddSubsystemObserver(kI2CUdevSubsystem, this);
+  udev_->AddSubsystemObserver(kDrmUdevSubsystem, this);
   UpdateDisplays();
 }
 

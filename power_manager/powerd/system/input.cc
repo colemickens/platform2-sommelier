@@ -129,7 +129,7 @@ Input::Input()
 
 Input::~Input() {
   if (udev_)
-    udev_->RemoveObserver(kInputUdevSubsystem, this);
+    udev_->RemoveSubsystemObserver(kInputUdevSubsystem, this);
   if (console_fd_ >= 0)
     close(console_fd_);
 }
@@ -157,7 +157,7 @@ bool Input::Init(PrefsInterface* prefs, UdevInterface* udev) {
     power_button_to_skip_ = kPowerButtonToSkipForLegacy;
 
   udev_ = udev;
-  udev_->AddObserver(kInputUdevSubsystem, this);
+  udev_->AddSubsystemObserver(kInputUdevSubsystem, this);
 
   // Don't bother doing anything more if we're running under a test.
   if (!sysfs_input_path_for_testing_.empty())

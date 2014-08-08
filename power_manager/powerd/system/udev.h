@@ -7,19 +7,24 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/memory/linked_ptr.h>
 #include <base/message_loop/message_loop.h>
 #include <base/observer_list.h>
 
+#include "power_manager/powerd/system/udev_observer.h"
+
 struct udev;
+struct udev_device;
 struct udev_monitor;
 
 namespace power_manager {
 namespace system {
 
-class UdevObserver;
+class TaggedDevice;
+class TaggedDeviceObserver;
 
 // Watches the udev manager for device-related events (e.g. hotplug).
 class UdevInterface {
@@ -28,10 +33,17 @@ class UdevInterface {
   virtual ~UdevInterface() {}
 
   // Adds or removes an observer for watching |subsystem|.
-  virtual void AddObserver(const std::string& subsystem,
-                           UdevObserver* observer) = 0;
-  virtual void RemoveObserver(const std::string& subsystem,
-                              UdevObserver* observer) = 0;
+  virtual void AddSubsystemObserver(const std::string& subsystem,
+                                    UdevObserver* observer) = 0;
+  virtual void RemoveSubsystemObserver(const std::string& subsystem,
+                                       UdevObserver* observer) = 0;
+
+  // Adds/removes an observer that will receive events for tagged devices.
+  virtual void AddTaggedDeviceObserver(TaggedDeviceObserver* observer) = 0;
+  virtual void RemoveTaggedDeviceObserver(TaggedDeviceObserver* observer) = 0;
+
+  // Retrieves a list of all known tagged devices.
+  virtual std::vector<TaggedDevice> GetTaggedDevices() = 0;
 
   // Reads the sysfs attribute |sysattr| from the device specified by |syspath|.
   // Returns true on success. |syspath| is the syspath of a device as returned
@@ -65,10 +77,13 @@ class Udev : public UdevInterface, public base::MessageLoopForIO::Watcher {
   bool Init();
 
   // UdevInterface implementation:
-  void AddObserver(const std::string& subsystem,
-                   UdevObserver* observer) override;
-  void RemoveObserver(const std::string& subsystem,
-                      UdevObserver* observer) override;
+  void AddSubsystemObserver(const std::string& subsystem,
+                            UdevObserver* observer) override;
+  void RemoveSubsystemObserver(const std::string& subsystem,
+                               UdevObserver* observer) override;
+  void AddTaggedDeviceObserver(TaggedDeviceObserver* observer) override;
+  void RemoveTaggedDeviceObserver(TaggedDeviceObserver* observer) override;
+  std::vector<TaggedDevice> GetTaggedDevices() override;
   bool GetSysattr(const std::string& syspath,
                   const std::string& sysattr,
                   std::string* value) override;
@@ -84,13 +99,29 @@ class Udev : public UdevInterface, public base::MessageLoopForIO::Watcher {
   void OnFileCanWriteWithoutBlocking(int fd) override;
 
  private:
+  void HandleSubsystemEvent(UdevObserver::Action action,
+                            struct udev_device* dev);
+  void HandleTaggedDevice(UdevObserver::Action action,
+                          struct udev_device* dev);
+  void TaggedDeviceChanged(const std::string& syspath,
+                           const std::string& tags);
+  void TaggedDeviceRemoved(const std::string& syspath);
+
+  // Populates |tagged_devices_| with currently-existing devices.
+  bool EnumerateTaggedDevices();
+
   struct udev* udev_;
   struct udev_monitor* udev_monitor_;
 
   // Maps from a subsystem name to the corresponding observers.
   typedef std::map<std::string, linked_ptr<ObserverList<UdevObserver> > >
-      ObserverMap;
-  ObserverMap subsystem_observers_;
+      SubsystemObserverMap;
+  SubsystemObserverMap subsystem_observers_;
+
+  ObserverList<TaggedDeviceObserver> tagged_device_observers_;
+
+  // Maps a syspath to the corresponding TaggedDevice.
+  std::map<std::string, TaggedDevice> tagged_devices_;
 
   // Controller for watching |udev_monitor_|'s FD for readability.
   base::MessageLoopForIO::FileDescriptorWatcher watcher_;

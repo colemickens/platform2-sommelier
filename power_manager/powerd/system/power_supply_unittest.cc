@@ -1131,12 +1131,13 @@ TEST_F(PowerSupplyTest, NotifyObserver) {
 
 TEST_F(PowerSupplyTest, RegisterForUdevEvents) {
   Init();
-  EXPECT_TRUE(udev_.HasObserver(PowerSupply::kUdevSubsystem,
-                                power_supply_.get()));
+  EXPECT_TRUE(udev_.HasSubsystemObserver(PowerSupply::kUdevSubsystem,
+                                         power_supply_.get()));
 
   PowerSupply* dead_ptr = power_supply_.get();
   power_supply_.reset();
-  EXPECT_FALSE(udev_.HasObserver(PowerSupply::kUdevSubsystem, dead_ptr));
+  EXPECT_FALSE(udev_.HasSubsystemObserver(PowerSupply::kUdevSubsystem,
+                                          dead_ptr));
 }
 
 }  // namespace system

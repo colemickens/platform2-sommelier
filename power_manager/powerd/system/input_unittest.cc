@@ -85,11 +85,13 @@ TEST_F(InputTest, DetectUSBDevices) {
 TEST_F(InputTest, RegisterForUdevEvents) {
   scoped_ptr<Input> input(new Input);
   input->Init(&prefs_, &udev_);
-  EXPECT_TRUE(udev_.HasObserver(Input::kInputUdevSubsystem, input.get()));
+  EXPECT_TRUE(udev_.HasSubsystemObserver(Input::kInputUdevSubsystem,
+                                         input.get()));
 
   Input* dead_ptr = input.get();
   input.reset();
-  EXPECT_FALSE(udev_.HasObserver(Input::kInputUdevSubsystem, dead_ptr));
+  EXPECT_FALSE(udev_.HasSubsystemObserver(Input::kInputUdevSubsystem,
+                                          dead_ptr));
 }
 
 }  // namespace system

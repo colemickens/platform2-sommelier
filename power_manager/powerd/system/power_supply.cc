@@ -146,14 +146,14 @@ PowerSupply::PowerSupply()
 
 PowerSupply::~PowerSupply() {
   if (udev_)
-    udev_->RemoveObserver(kUdevSubsystem, this);
+    udev_->RemoveSubsystemObserver(kUdevSubsystem, this);
 }
 
 void PowerSupply::Init(const base::FilePath& power_supply_path,
                        PrefsInterface* prefs,
                        UdevInterface* udev) {
   udev_ = udev;
-  udev_->AddObserver(kUdevSubsystem, this);
+  udev_->AddSubsystemObserver(kUdevSubsystem, this);
 
   prefs_ = prefs;
   power_supply_path_ = power_supply_path;
