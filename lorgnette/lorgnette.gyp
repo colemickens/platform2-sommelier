@@ -14,7 +14,6 @@
       '-Wno-unused-parameter',  # base/lazy_instance.h, etc.
     ],
     'cflags_cc': [
-      '-std=gnu++11',
       '-Woverloaded-virtual',
     ],
   },

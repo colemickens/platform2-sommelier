@@ -15,9 +15,6 @@
         '-lbase-dbus_test_support-<(libbase_ver)',
       ],
     },
-    'cflags_cc': [
-      '-std=gnu++11',
-    ],
   },
   'targets': [
     {

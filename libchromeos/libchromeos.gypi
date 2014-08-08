@@ -46,7 +46,6 @@
       'cflags': [
         # TODO: crosbug.com/315233
         '-fvisibility=default',
-        '-std=gnu++11',
       ],
       'all_dependent_settings': {
         'variables': {
@@ -183,7 +182,6 @@
           },
           'includes': ['../common-mk/common_test.gypi'],
           'cflags': [
-            '-std=gnu++11',
             '-Wno-format-zero-length',
           ],
           'conditions': [

@@ -10,7 +10,6 @@
         'libcurl',
       ],
     },
-    'cflags_cc': ['-std=gnu++11'],
   },
   'targets': [
     {

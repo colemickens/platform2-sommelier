@@ -78,6 +78,7 @@
       '<@(external_cflags)',
     ],
     'cflags_cc': [
+      '-std=gnu++11',
       '<@(external_cxxflags)',
     ],
     'link_settings': {
