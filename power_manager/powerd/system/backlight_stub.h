@@ -17,34 +17,34 @@ namespace system {
 // Stub implementation of BacklightInterface for testing.
 class BacklightStub : public BacklightInterface {
  public:
-  BacklightStub(int64 max_level, int64 current_level);
+  BacklightStub(int64_t max_level, int64_t current_level);
   virtual ~BacklightStub();
 
-  void set_max_level(int64 level) { max_level_ = level; }
-  void set_current_level(int64 level) { current_level_ = level; }
+  void set_max_level(int64_t level) { max_level_ = level; }
+  void set_current_level(int64_t level) { current_level_ = level; }
   void set_should_fail(bool should_fail) { should_fail_ = should_fail; }
   void clear_resume_level() { resume_level_ = -1; }
 
-  int64 current_level() const { return current_level_; }
-  int64 resume_level() const { return resume_level_; }
+  int64_t current_level() const { return current_level_; }
+  int64_t resume_level() const { return resume_level_; }
   base::TimeDelta current_interval() const { return current_interval_; }
 
   // BacklightInterface implementation:
-  virtual int64 GetMaxBrightnessLevel() OVERRIDE;
-  virtual int64 GetCurrentBrightnessLevel() OVERRIDE;
-  virtual bool SetBrightnessLevel(int64 level, base::TimeDelta interval)
+  virtual int64_t GetMaxBrightnessLevel() OVERRIDE;
+  virtual int64_t GetCurrentBrightnessLevel() OVERRIDE;
+  virtual bool SetBrightnessLevel(int64_t level, base::TimeDelta interval)
       OVERRIDE;
-  virtual bool SetResumeBrightnessLevel(int64 level) OVERRIDE;
+  virtual bool SetResumeBrightnessLevel(int64_t level) OVERRIDE;
 
  private:
   // Maximum backlight level.
-  int64 max_level_;
+  int64_t max_level_;
 
   // Most-recently-set brightness level.
-  int64 current_level_;
+  int64_t current_level_;
 
   // Most-recently-set resume level.
-  int64 resume_level_;
+  int64_t resume_level_;
 
   // |interval| parameter passed to most recent SetBrightnessLevel() call.
   base::TimeDelta current_interval_;

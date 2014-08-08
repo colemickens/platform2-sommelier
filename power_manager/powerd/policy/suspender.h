@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_SUSPENDER_H_
 #define POWER_MANAGER_POWERD_POLICY_SUSPENDER_H_
 
+#include <stdint.h>
+
 #include <queue>
 #include <string>
 
@@ -103,7 +105,7 @@ class Suspender : public SuspendDelayObserver {
 
     // Reads the current wakeup count from sysfs and stores it in
     // |wakeup_count|. Returns true on success.
-    virtual bool ReadSuspendWakeupCount(uint64* wakeup_count) = 0;
+    virtual bool ReadSuspendWakeupCount(uint64_t* wakeup_count) = 0;
 
     // Sets state that persists across powerd restarts but not across system
     // reboots to track whether a suspend requests's commencement was announced
@@ -123,7 +125,7 @@ class Suspender : public SuspendDelayObserver {
     // |duration|. If |wakeup_count_valid| is true, passes |wakeup_count| to the
     // script so it can avoid suspending if additional wakeup events occur.
     // Called by Suspend().
-    virtual SuspendResult DoSuspend(uint64 wakeup_count,
+    virtual SuspendResult DoSuspend(uint64_t wakeup_count,
                                     bool wakeup_count_valid,
                                     base::TimeDelta duration) = 0;
 
@@ -177,7 +179,7 @@ class Suspender : public SuspendDelayObserver {
   // |wakeup_count|. Autotests can pass an external wakeup count to ensure
   // that machines in the test cluster don't sleep indefinitely (see
   // http://crbug.com/218175).
-  void RequestSuspendWithExternalWakeupCount(uint64 wakeup_count);
+  void RequestSuspendWithExternalWakeupCount(uint64_t wakeup_count);
 
   // Handles a RegisterSuspendDelay call.
   void RegisterSuspendDelay(
@@ -289,12 +291,12 @@ class Suspender : public SuspendDelayObserver {
   // An optional wakeup count supplied via
   // RequestSuspendWithExternalWakeupCount().
   bool suspend_request_supplied_wakeup_count_;
-  uint64 suspend_request_wakeup_count_;
+  uint64_t suspend_request_wakeup_count_;
 
   // Number of wakeup events received at the start of the current suspend
   // attempt. Passed to the kernel to cancel an attempt if user activity is
   // received while powerd's event loop isn't running.
-  uint64 wakeup_count_;
+  uint64_t wakeup_count_;
   bool wakeup_count_valid_;
 
   // Wall time at which the suspend request started.
@@ -305,7 +307,7 @@ class Suspender : public SuspendDelayObserver {
 
   // Maximum number of times to retry after a failed suspend attempt before
   // giving up and shutting down the system.
-  int64 max_retries_;
+  int64_t max_retries_;
 
   // Number of suspend attempts made in the current series. Up to |max_retries_|
   // additional attempts are made after a failure, but this counter is reset

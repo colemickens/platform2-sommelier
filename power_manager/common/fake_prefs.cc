@@ -39,7 +39,7 @@ bool FakePrefs::GetString(const std::string& name, std::string* value) {
   return true;
 }
 
-bool FakePrefs::GetInt64(const std::string& name, int64* value) {
+bool FakePrefs::GetInt64(const std::string& name, int64_t* value) {
   if (!int64_prefs_.count(name))
     return false;
   *value = int64_prefs_[name];
@@ -54,7 +54,7 @@ bool FakePrefs::GetDouble(const std::string& name, double* value) {
 }
 
 bool FakePrefs::GetBool(const std::string& name, bool* value) {
-  int64 int_value = 0;
+  int64_t int_value = 0;
   if (!GetInt64(name, &int_value))
     return false;
   *value = int_value != 0;
@@ -66,7 +66,7 @@ void FakePrefs::SetString(const std::string& name, const std::string& value) {
   string_prefs_[name] = value;
 }
 
-void FakePrefs::SetInt64(const std::string& name, int64 value) {
+void FakePrefs::SetInt64(const std::string& name, int64_t value) {
   Unset(name);
   int64_prefs_[name] = value;
 }

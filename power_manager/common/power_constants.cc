@@ -75,8 +75,8 @@ const char kKeyboardBacklightPath[] = "/sys/class/leds";
 const char kKeyboardBacklightPattern[] = "*:kbd_backlight";
 const char kPowerStatusPath[] = "/sys/class/power_supply";
 const double kEpsilon = 0.001;
-const int64 kFastBacklightTransitionMs = 200;
-const int64 kSlowBacklightTransitionMs = 2000;
+const int64_t kFastBacklightTransitionMs = 200;
+const int64_t kSlowBacklightTransitionMs = 2000;
 
 std::string PowerSourceToString(PowerSource source) {
   switch (source) {

@@ -16,7 +16,7 @@
 namespace {
 
 const int kNumPrefDirectories = 3;
-const int64 kIntTestValue = 0xdeadbeef;
+const int64_t kIntTestValue = 0xdeadbeef;
 const double kDoubleTestValue = 0.1337;
 const char kGarbageString[] = "This is garbage";
 
@@ -119,7 +119,7 @@ TEST_F(PrefsTest, TestOneDirectory) {
   }
 
   // Now read them back and make sure they have the right values.
-  int64 int_value = -1;
+  int64_t int_value = -1;
   double double_value = -1;
   EXPECT_TRUE(prefs_.GetInt64(kIntTestFileName, &int_value));
   EXPECT_TRUE(prefs_.GetDouble(kDoubleTestFileName, &double_value));
@@ -150,7 +150,7 @@ TEST_F(PrefsTest, TestThreeDirectories) {
   EXPECT_FALSE(base::PathExists(paths_[2].Append(kDoubleTestFileName)));
 
   // Now read them back and make sure they have the right values.
-  int64 int_value = -1;
+  int64_t int_value = -1;
   double double_value = -1;
   EXPECT_TRUE(prefs_.GetInt64(kIntTestFileName, &int_value));
   EXPECT_TRUE(prefs_.GetDouble(kDoubleTestFileName, &double_value));
@@ -204,7 +204,7 @@ TEST_F(PrefsTest, TestThreeDirectoriesStacked) {
     }
 
     // Read the pref files.
-    int64 int_value = -1;
+    int64_t int_value = -1;
     double double_value = -1;
     EXPECT_TRUE(prefs.GetInt64(kIntTestFileName, &int_value));
     EXPECT_TRUE(prefs.GetDouble(kDoubleTestFileName, &double_value));
@@ -264,7 +264,7 @@ TEST_F(PrefsTest, TestThreeDirectoriesGarbage) {
   }
 
   // Read the pref files and make sure the right value was read.
-  int64 int_value = -1;
+  int64_t int_value = -1;
   double double_value = -1;
   EXPECT_TRUE(prefs_.GetInt64(kIntTestFileName, &int_value));
   EXPECT_TRUE(prefs_.GetDouble(kDoubleTestFileName, &double_value));
@@ -303,7 +303,7 @@ TEST_F(PrefsTest, DeferredWrites) {
   // Write 1 to a pref.
   const char kName[] = "foo";
   prefs_.SetInt64(kName, 1);
-  int64 int64_value = -1;
+  int64_t int64_value = -1;
 
   // Check that the value was written to disk immediately.
   const base::FilePath kPath = paths_[0].Append(kName);

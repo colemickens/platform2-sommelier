@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_COMMON_FAKE_PREFS_H_
 #define POWER_MANAGER_COMMON_FAKE_PREFS_H_
 
+#include <stdint.h>
+
 #include <map>
 #include <string>
 
@@ -32,18 +34,18 @@ class FakePrefs : public PrefsInterface {
   virtual void AddObserver(PrefsObserver* observer) OVERRIDE;
   virtual void RemoveObserver(PrefsObserver* observer) OVERRIDE;
   virtual bool GetString(const std::string& name, std::string* value) OVERRIDE;
-  virtual bool GetInt64(const std::string& name, int64* value) OVERRIDE;
+  virtual bool GetInt64(const std::string& name, int64_t* value) OVERRIDE;
   virtual bool GetDouble(const std::string& name, double* value) OVERRIDE;
   virtual bool GetBool(const std::string& name, bool* value) OVERRIDE;
   virtual void SetString(const std::string& name,
                          const std::string& value) OVERRIDE;
-  virtual void SetInt64(const std::string& name, int64 value) OVERRIDE;
+  virtual void SetInt64(const std::string& name, int64_t value) OVERRIDE;
   virtual void SetDouble(const std::string& name, double value) OVERRIDE;
 
  private:
   ObserverList<PrefsObserver> observers_;
 
-  std::map<std::string, int64> int64_prefs_;
+  std::map<std::string, int64_t> int64_prefs_;
   std::map<std::string, double> double_prefs_;
   std::map<std::string, std::string> string_prefs_;
 

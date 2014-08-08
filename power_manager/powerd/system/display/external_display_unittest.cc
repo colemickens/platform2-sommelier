@@ -23,7 +23,7 @@ namespace system {
 namespace {
 
 // Returns a two-character hexadecimal representation of |byte|.
-std::string Hex(uint8 byte) { return base::HexEncode(&byte, 1); }
+std::string Hex(uint8_t byte) { return base::HexEncode(&byte, 1); }
 
 // Test implementation of ExternalDisplay::Delegate.
 class TestDelegate : public ExternalDisplay::Delegate {
@@ -31,7 +31,7 @@ class TestDelegate : public ExternalDisplay::Delegate {
   TestDelegate() : report_write_failure_(false), report_read_failure_(false) {}
   virtual ~TestDelegate() {}
 
-  void set_reply_message(const std::vector<uint8>& message) {
+  void set_reply_message(const std::vector<uint8_t>& message) {
     reply_message_ = message;
   }
   void set_report_write_failure(bool failure) {
@@ -60,7 +60,7 @@ class TestDelegate : public ExternalDisplay::Delegate {
     struct i2c_msg* const i2c_message = data->msgs;
     CHECK(i2c_message);
     CHECK(i2c_message->buf);
-    uint8* const message = i2c_message->buf;
+    uint8_t* const message = i2c_message->buf;
     const size_t message_length = i2c_message->len;
     CHECK(message);
     CHECK_GT(message_length, 0u);
@@ -106,7 +106,7 @@ class TestDelegate : public ExternalDisplay::Delegate {
 
   // Message that should be returned in response to read requests.
   // The message will be cleared after the next read request.
-  std::vector<uint8> reply_message_;
+  std::vector<uint8_t> reply_message_;
 
   // True if either writes or reads should report failure.
   bool report_write_failure_;
@@ -141,8 +141,8 @@ class ExternalDisplayTest : public testing::Test {
 
  protected:
   // Updates the checksum byte that's already present at the end of |message|.
-  void UpdateChecksum(uint8 starting_value, std::vector<uint8>* message) {
-    uint8 checksum = starting_value;
+  void UpdateChecksum(uint8_t starting_value, std::vector<uint8_t>* message) {
+    uint8_t checksum = starting_value;
     for (size_t i = 0; i < message->size() - 1; ++i)
       checksum ^= (*message)[i];
     (*message)[message->size() - 1] = checksum;
@@ -150,9 +150,9 @@ class ExternalDisplayTest : public testing::Test {
 
   // Generate a reply to a request to get the brightness, suitable for passing
   // to TestDelegate::set_reply_message().
-  std::vector<uint8> GetBrightnessReply(uint16 current_brightness,
-                                        uint16 max_brightness) {
-    std::vector<uint8> message;
+  std::vector<uint8_t> GetBrightnessReply(uint16_t current_brightness,
+                                          uint16_t max_brightness) {
+    std::vector<uint8_t> message;
     // Message header.
     message.push_back(ExternalDisplay::kDdcDisplayAddress);
     message.push_back(ExternalDisplay::kDdcMessageBodyLengthMask | 8);
@@ -174,9 +174,9 @@ class ExternalDisplayTest : public testing::Test {
 
   // Returns the string representation of the message that should be sent to set
   // the brightness to |brightness|.
-  std::string GetSetBrightnessMessage(uint16 brightness) {
-    const uint8 high_byte = brightness >> 8;
-    const uint8 low_byte = brightness & 0xff;
+  std::string GetSetBrightnessMessage(uint16_t brightness) {
+    const uint8_t high_byte = brightness >> 8;
+    const uint8_t low_byte = brightness & 0xff;
     return
         // Message header.
         Hex(ExternalDisplay::kDdcHostAddress) +
@@ -288,7 +288,7 @@ TEST_F(ExternalDisplayTest, BasicCommunication) {
 TEST_F(ExternalDisplayTest, InvalidBrightnessReplies) {
   struct TestCase {
     // Reply message that should be sent from the display.
-    std::vector<uint8> reply;
+    std::vector<uint8_t> reply;
     // Metric enum value that should be reported after the failed read.
     ExternalDisplay::ReceiveResult metric;
     // Description of what's being tested.
@@ -296,7 +296,7 @@ TEST_F(ExternalDisplayTest, InvalidBrightnessReplies) {
   };
 
   std::vector<TestCase> test_cases;
-  std::vector<uint8> reply = GetBrightnessReply(50, 100);
+  std::vector<uint8_t> reply = GetBrightnessReply(50, 100);
   reply[reply.size() - 1] += 1;
   test_cases.push_back(TestCase{
       reply, ExternalDisplay::RECEIVE_BAD_CHECKSUM, "incorrect checksum"});

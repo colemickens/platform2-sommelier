@@ -32,9 +32,9 @@ class InternalBacklightTest : public ::testing::Test {
   // Create files to make the given directory look like it is a sysfs backlight
   // dir.
   void PopulateBacklightDir(const base::FilePath& path,
-                            int64 brightness,
-                            int64 max_brightness,
-                            int64 actual_brightness) {
+                            int64_t brightness,
+                            int64_t max_brightness,
+                            int64_t actual_brightness) {
     CHECK(base::CreateDirectory(path));
 
     std::string str = base::StringPrintf("%" PRId64 "\n", brightness);
@@ -60,7 +60,7 @@ class InternalBacklightTest : public ::testing::Test {
 
   // Returns the value from the "brightness" file in |directory|.
   // -1 is returned on error.
-  int64 ReadBrightness(const base::FilePath& directory) {
+  int64_t ReadBrightness(const base::FilePath& directory) {
     std::string data;
     base::FilePath file =
         directory.Append(InternalBacklight::kBrightnessFilename);
@@ -68,7 +68,7 @@ class InternalBacklightTest : public ::testing::Test {
       LOG(ERROR) << "Unable to read data from " << file.value();
       return -1;
     }
-    int64 level = 0;
+    int64_t level = 0;
     base::TrimWhitespaceASCII(data, base::TRIM_TRAILING, &data);
     if (!base::StringToInt64(data, &level)) {
       LOG(ERROR) << "Unable to parse \"" << level << "\" from " << file.value();
@@ -85,9 +85,9 @@ class InternalBacklightTest : public ::testing::Test {
 // A basic test of functionality.
 TEST_F(InternalBacklightTest, BasicTest) {
   base::FilePath this_test_path = test_path_.Append("basic_test");
-  const int64 kBrightness = 128;
-  const int64 kMaxBrightness = 255;
-  const int64 kActualBrightness = 127;
+  const int64_t kBrightness = 128;
+  const int64_t kMaxBrightness = 255;
+  const int64_t kActualBrightness = 127;
 
   base::FilePath my_path = this_test_path.Append("pwm-backlight");
   PopulateBacklightDir(my_path, kBrightness, kMaxBrightness, kActualBrightness);
@@ -102,8 +102,8 @@ TEST_F(InternalBacklightTest, BasicTest) {
 TEST_F(InternalBacklightTest, NoActualBrightnessTest) {
   base::FilePath this_test_path =
       test_path_.Append("no_actual_brightness_test");
-  const int64 kBrightness = 128;
-  const int64 kMaxBrightness = 255;
+  const int64_t kBrightness = 128;
+  const int64_t kMaxBrightness = 255;
 
   base::FilePath my_path = this_test_path.Append("pwm-backlight");
   PopulateBacklightDir(my_path, kBrightness, kMaxBrightness, -1);
@@ -183,7 +183,7 @@ TEST_F(InternalBacklightTest, Transitions) {
   EXPECT_EQ(kMaxBrightness, backlight.GetCurrentBrightnessLevel());
 
   // Start a transition to the backlight's halfway point.
-  const int64 kHalfBrightness = kMaxBrightness / 2;
+  const int64_t kHalfBrightness = kMaxBrightness / 2;
   const base::TimeDelta kDuration = base::TimeDelta::FromMilliseconds(1000);
   backlight.SetBrightnessLevel(kHalfBrightness, kDuration);
 
@@ -200,7 +200,7 @@ TEST_F(InternalBacklightTest, Transitions) {
   const base::TimeTicks kMidpointTime = kStartTime + kDuration / 2;
   backlight.clock()->set_current_time_for_testing(kMidpointTime);
   EXPECT_TRUE(backlight.TriggerTransitionTimeoutForTesting());
-  const int64 kMidpointBrightness = (kMaxBrightness + kHalfBrightness) / 2;
+  const int64_t kMidpointBrightness = (kMaxBrightness + kHalfBrightness) / 2;
   EXPECT_EQ(kMidpointBrightness, ReadBrightness(backlight_dir));
   EXPECT_EQ(kMidpointBrightness, backlight.GetCurrentBrightnessLevel());
 

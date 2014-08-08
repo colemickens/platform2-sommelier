@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_POWERD_DAEMON_H_
 #define POWER_MANAGER_POWERD_DAEMON_H_
 
+#include <stdint.h>
+
 #include <string>
 
 #include <base/basictypes.h>
@@ -93,11 +95,11 @@ class Daemon : public policy::BacklightControllerObserver,
   // Overridden from policy::Suspender::Delegate:
   virtual int GetInitialSuspendId() OVERRIDE;
   virtual bool IsLidClosedForSuspend() OVERRIDE;
-  virtual bool ReadSuspendWakeupCount(uint64* wakeup_count) OVERRIDE;
+  virtual bool ReadSuspendWakeupCount(uint64_t* wakeup_count) OVERRIDE;
   virtual void SetSuspendAnnounced(bool announced) OVERRIDE;
   virtual bool GetSuspendAnnounced() OVERRIDE;
   virtual void PrepareToSuspend() OVERRIDE;
-  virtual SuspendResult DoSuspend(uint64 wakeup_count,
+  virtual SuspendResult DoSuspend(uint64_t wakeup_count,
                                   bool wakeup_count_valid,
                                   base::TimeDelta duration) OVERRIDE;
   virtual void UndoPrepareToSuspend(bool success,
@@ -207,7 +209,7 @@ class Daemon : public policy::BacklightControllerObserver,
   // Starts the suspend process. If |use_external_wakeup_count| is true,
   // passes |external_wakeup_count| to
   // policy::Suspender::RequestSuspendWithExternalWakeupCount();
-  void Suspend(bool use_external_wakeup_count, uint64 external_wakeup_count);
+  void Suspend(bool use_external_wakeup_count, uint64_t external_wakeup_count);
 
   // Updates state in |backlight_controller_| and |keyboard_controller_|
   // (if non-NULL).

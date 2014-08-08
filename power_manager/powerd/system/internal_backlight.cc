@@ -23,7 +23,7 @@ namespace system {
 namespace {
 
 // Reads the value from |path| to |level|. Returns false on failure.
-bool ReadBrightnessLevelFromFile(const base::FilePath& path, int64* level) {
+bool ReadBrightnessLevelFromFile(const base::FilePath& path, int64_t* level) {
   DCHECK(level);
 
   std::string level_str;
@@ -43,7 +43,7 @@ bool ReadBrightnessLevelFromFile(const base::FilePath& path, int64* level) {
 }
 
 // Writes |level| to |path|. Returns false on failure.
-bool WriteBrightnessLevelToFile(const base::FilePath& path, int64 level) {
+bool WriteBrightnessLevelToFile(const base::FilePath& path, int64_t level) {
   std::string buf = base::Int64ToString(level);
   if (base::WriteFile(path, buf.data(), buf.size()) == -1) {
     LOG(ERROR) << "Unable to write brightness \"" << buf << "\" to "
@@ -99,7 +99,7 @@ bool InternalBacklight::Init(const base::FilePath& base_path,
       continue;
     }
 
-    int64 max_level = 0;
+    int64_t max_level = 0;
     if (!ReadBrightnessLevelFromFile(max_brightness_path, &max_level))
       continue;
 
@@ -138,15 +138,15 @@ bool InternalBacklight::TriggerTransitionTimeoutForTesting() {
   return transition_timer_.IsRunning();
 }
 
-int64 InternalBacklight::GetMaxBrightnessLevel() {
+int64_t InternalBacklight::GetMaxBrightnessLevel() {
   return max_brightness_level_;
 }
 
-int64 InternalBacklight::GetCurrentBrightnessLevel() {
+int64_t InternalBacklight::GetCurrentBrightnessLevel() {
   return current_brightness_level_;
 }
 
-bool InternalBacklight::SetBrightnessLevel(int64 level,
+bool InternalBacklight::SetBrightnessLevel(int64_t level,
                                            base::TimeDelta interval) {
   if (brightness_path_.empty()) {
     LOG(ERROR) << "Cannot find backlight brightness file.";
@@ -179,7 +179,7 @@ bool InternalBacklight::SetBrightnessLevel(int64 level,
   return true;
 }
 
-bool InternalBacklight::SetResumeBrightnessLevel(int64 level) {
+bool InternalBacklight::SetResumeBrightnessLevel(int64_t level) {
   if (resume_brightness_path_.empty()) {
     LOG(ERROR) << "Cannot find backlight resume brightness file.";
     return false;
@@ -190,7 +190,7 @@ bool InternalBacklight::SetResumeBrightnessLevel(int64 level) {
 
 void InternalBacklight::HandleTransitionTimeout() {
   base::TimeTicks now = clock_->GetCurrentTime();
-  int64 new_level = 0;
+  int64_t new_level = 0;
 
   if (now >= transition_end_time_) {
     new_level = transition_end_level_;
@@ -199,7 +199,7 @@ void InternalBacklight::HandleTransitionTimeout() {
     double transition_fraction =
         (now - transition_start_time_).InMillisecondsF() /
         (transition_end_time_ - transition_start_time_).InMillisecondsF();
-    int64 intermediate_amount = lround(
+    int64_t intermediate_amount = lround(
         transition_fraction *
         (transition_end_level_ - transition_start_level_));
     new_level = transition_start_level_ + intermediate_amount;

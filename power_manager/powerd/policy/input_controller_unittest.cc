@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/policy/input_controller.h"
 
+#include <stdint.h>
+
 #include <string>
 #include <vector>
 
@@ -102,7 +104,7 @@ class InputControllerTest : public ::testing::Test {
 
   // Tests that one InputEvent D-Bus signal has been sent and returns the
   // signal's |timestamp| field.
-  int64 GetInputEventSignalTimestamp() {
+  int64_t GetInputEventSignalTimestamp() {
     InputEvent proto;
     EXPECT_EQ(1, dbus_sender_.num_sent_signals());
     EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kInputEventSignal, &proto));

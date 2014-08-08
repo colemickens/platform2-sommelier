@@ -83,8 +83,8 @@ double ClampPercentToVisibleRange(double percent) {
 //
 // The pref's value should consist of one or more lines, each containing either
 // a single double brightness percentage or a space-separated "<double-percent>
-// <int64-max-level>" pair. The percentage from the first line either using the
-// single-value format or matching |backlight_nits| will be returned.
+// <int64_t-max-level>" pair. The percentage from the first line either using
+// the single-value format or matching |backlight_nits| will be returned.
 //
 // For example,
 //
@@ -98,7 +98,7 @@ double ClampPercentToVisibleRange(double percent) {
 // Note that this method will crash if no matching lines are found.
 double GetInitialBrightnessPercent(PrefsInterface* prefs,
                                    const std::string& pref_name,
-                                   int64 backlight_nits) {
+                                   int64_t backlight_nits) {
   DCHECK(prefs);
   std::string pref_value;
   CHECK(prefs->GetString(pref_name, &pref_value))
@@ -120,7 +120,7 @@ double GetInitialBrightnessPercent(PrefsInterface* prefs,
     if (parts.size() == 1U)
       return percent;
 
-    int64 nits = -1;
+    int64_t nits = -1;
     CHECK(base::StringToInt64(parts[1], &nits))
         << "Unable to parse \"" << parts[1] << "\" from pref " << pref_name;
     if (nits == backlight_nits)
@@ -134,7 +134,7 @@ double GetInitialBrightnessPercent(PrefsInterface* prefs,
 
 }  // namespace
 
-const int64 InternalBacklightController::kMaxBrightnessSteps = 16;
+const int64_t InternalBacklightController::kMaxBrightnessSteps = 16;
 const double InternalBacklightController::kMinVisiblePercent =
     kMaxPercent / kMaxBrightnessSteps;
 const int InternalBacklightController::kAmbientLightSensorTimeoutSec = 10;
@@ -188,7 +188,7 @@ void InternalBacklightController::Init(
   if (!prefs_->GetInt64(kMinVisibleBacklightLevelPref, &min_visible_level_))
     min_visible_level_ = 1;
   min_visible_level_ = std::max(
-      static_cast<int64>(
+      static_cast<int64_t>(
           lround(kDefaultMinVisibleBrightnessFraction * max_level_)),
       min_visible_level_);
   CHECK_GT(min_visible_level_, 0);
@@ -197,7 +197,7 @@ void InternalBacklightController::Init(
   const double initial_percent = LevelToPercent(current_level_);
   ambient_light_brightness_percent_ = initial_percent;
 
-  int64 max_nits = 0;
+  int64_t max_nits = 0;
   prefs_->GetInt64(kInternalBacklightMaxNitsPref, &max_nits);
   plugged_explicit_brightness_percent_ = GetInitialBrightnessPercent(
       prefs_, kInternalBacklightNoAlsAcBrightnessPref, max_nits);
@@ -218,7 +218,7 @@ void InternalBacklightController::Init(
     use_ambient_light_ = false;
   }
 
-  int64 turn_off_screen_timeout_ms = 0;
+  int64_t turn_off_screen_timeout_ms = 0;
   prefs_->GetInt64(kTurnOffScreenTimeoutMsPref, &turn_off_screen_timeout_ms);
   turn_off_screen_timeout_ =
       base::TimeDelta::FromMilliseconds(turn_off_screen_timeout_ms);
@@ -249,7 +249,7 @@ void InternalBacklightController::Init(
             << " (" << LevelToPercent(current_level_) << "%)";
 }
 
-double InternalBacklightController::LevelToPercent(int64 raw_level) {
+double InternalBacklightController::LevelToPercent(int64_t raw_level) {
   // If the passed-in level is below the minimum visible level, just map it
   // linearly into [0, kMinVisiblePercent).
   if (raw_level < min_visible_level_)
@@ -267,7 +267,7 @@ double InternalBacklightController::LevelToPercent(int64 raw_level) {
       pow(linear_fraction, level_to_percent_exponent_);
 }
 
-int64 InternalBacklightController::PercentToLevel(double percent) {
+int64_t InternalBacklightController::PercentToLevel(double percent) {
   if (percent < kMinVisiblePercent)
     return lround(min_visible_level_ * percent / kMinVisiblePercent);
 
@@ -666,7 +666,7 @@ bool InternalBacklightController::ApplyBrightnessPercent(
     double percent,
     TransitionStyle transition,
     BrightnessChangeCause cause) {
-  int64 level = PercentToLevel(percent);
+  int64_t level = PercentToLevel(percent);
   if (level == current_level_)
     return false;
 
@@ -694,7 +694,7 @@ bool InternalBacklightController::ApplyBrightnessPercent(
 
 bool InternalBacklightController::ApplyResumeBrightnessPercent(
     double resume_percent) {
-  int64 level = PercentToLevel(resume_percent);
+  int64_t level = PercentToLevel(resume_percent);
   VLOG(1) << "Setting resume brightness to " << level << " ("
           << resume_percent << "%)";
   return backlight_->SetResumeBrightnessLevel(level);

@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_KEYBOARD_BACKLIGHT_CONTROLLER_H_
 #define POWER_MANAGER_POWERD_POLICY_KEYBOARD_BACKLIGHT_CONTROLLER_H_
 
+#include <stdint.h>
+
 #include <vector>
 
 #include <base/compiler_specific.h>
@@ -105,8 +107,8 @@ class KeyboardBacklightController
   // Handles |video_timer_| firing, indicating that video activity has stopped.
   void HandleVideoTimeout();
 
-  int64 PercentToLevel(double percent) const;
-  double LevelToPercent(int64 level) const;
+  int64_t PercentToLevel(double percent) const;
+  double LevelToPercent(int64_t level) const;
 
   // Returns the brightness from the current step in either |als_steps_| or
   // |user_steps_|, depending on which is in use.
@@ -158,11 +160,11 @@ class KeyboardBacklightController
 
   // Maximum brightness level exposed by the backlight driver.
   // 0 is always the minimum.
-  int64 max_level_;
+  int64_t max_level_;
 
   // Current level that |backlight_| is set to (or possibly in the process
   // of transitioning to).
-  int64 current_level_;
+  int64_t current_level_;
 
   // Current brightness step within |user_steps_| set by user, or -1 if
   // |percent_for_ambient_light_| should be used.

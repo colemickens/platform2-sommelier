@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/system/dark_resume.h"
 
+#include <stdint.h>
+
 #include <algorithm>
 
 #include <base/file_util.h>
@@ -108,7 +110,7 @@ bool DarkResume::InDarkResume() {
     return false;
   }
   base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING, &buf);
-  uint64 value = 0;
+  uint64_t value = 0;
   return base::StringToUint64(buf, &value) && value;
 }
 

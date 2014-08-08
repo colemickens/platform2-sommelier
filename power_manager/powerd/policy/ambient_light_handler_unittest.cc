@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/policy/ambient_light_handler.h"
 
+#include <stdint.h>
+
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
 #include <gtest/gtest.h>
@@ -59,7 +61,7 @@ class AmbientLightHandlerTest : public ::testing::Test {
 
   // Updates the lux level returned by |light_sensor_| and notifies
   // |handler_| about the change.
-  void UpdateSensor(int64 lux) {
+  void UpdateSensor(int64_t lux) {
     light_sensor_.set_lux(lux);
     handler_.OnAmbientLightUpdated(&light_sensor_);
   }

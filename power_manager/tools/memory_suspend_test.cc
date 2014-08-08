@@ -7,6 +7,8 @@
 // from base/format_macros.h when gflags/gflags.h is included first.
 #define __STDC_FORMAT_MACROS
 
+#include <stdint.h>
+
 #include <fcntl.h>
 #include <gflags/gflags.h>
 #include <sys/types.h>
@@ -15,7 +17,6 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include <base/basictypes.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
@@ -28,7 +29,7 @@ DEFINE_uint64(wakeup_count, 0, "Value read from /sys/power/wakeup_count");
 void PrintAddrMap(void *vaddr) {
   int fd;
   uintptr_t page = reinterpret_cast<uintptr_t>(vaddr) / getpagesize();
-  uint64 page_data;
+  uint64_t page_data;
 
   fd = open("/proc/self/pagemap", O_RDONLY);
   CHECK_GE(fd, 0);
@@ -45,21 +46,21 @@ int Suspend(void) {
       FLAGS_wakeup_count).c_str());
 }
 
-uint32* Allocate(size_t size) {
-  uint32 *ptr;
+uint32_t* Allocate(size_t size) {
+  uint32_t *ptr;
 
-  ptr = static_cast<uint32 *>(malloc(size));
+  ptr = static_cast<uint32_t *>(malloc(size));
   CHECK(ptr);
   return ptr;
 }
 
-void Fill(uint32 *ptr, size_t size) {
+void Fill(uint32_t *ptr, size_t size) {
   for (size_t i = 0; i < size / sizeof(*ptr); i++) {
     *(ptr + i) = PATTERN(i);
   }
 }
 
-bool Check(uint32 *ptr, size_t size) {
+bool Check(uint32_t *ptr, size_t size) {
   bool success = true;
 
   for (size_t i = 0; i < size / sizeof(*ptr); i++) {
@@ -74,7 +75,7 @@ bool Check(uint32 *ptr, size_t size) {
 }
 
 int main(int argc, char* argv[]) {
-  uint32 *ptr;
+  uint32_t *ptr;
 
   google::SetUsageMessage("\n"
       "  Fills memory with 0x55/0xAA patterns, performs a suspend, and checks\n"

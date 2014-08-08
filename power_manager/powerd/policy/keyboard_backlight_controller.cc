@@ -29,7 +29,7 @@ namespace {
 // until reverting to the not playing state. If another message is received in
 // this interval the timeout is reset. The browser should be sending these
 // messages ~5 seconds when video is playing.
-const int64 kVideoTimeoutIntervalMs = 7000;
+const int64_t kVideoTimeoutIntervalMs = 7000;
 
 // Returns the total duration for |style|.
 base::TimeDelta GetTransitionDuration(
@@ -298,17 +298,17 @@ void KeyboardBacklightController::HandleVideoTimeout() {
   UpdateState();
 }
 
-int64 KeyboardBacklightController::PercentToLevel(double percent) const {
+int64_t KeyboardBacklightController::PercentToLevel(double percent) const {
   if (max_level_ == 0)
     return -1;
   percent = std::max(std::min(percent, 100.0), 0.0);
   return lround(static_cast<double>(max_level_) * percent / 100.0);
 }
 
-double KeyboardBacklightController::LevelToPercent(int64 level) const {
+double KeyboardBacklightController::LevelToPercent(int64_t level) const {
   if (max_level_ == 0)
     return -1.0;
-  level = std::max(std::min(level, max_level_), static_cast<int64>(0));
+  level = std::max(std::min(level, max_level_), static_cast<int64_t>(0));
   return static_cast<double>(level) * 100.0 / max_level_;
 }
 
@@ -371,7 +371,7 @@ bool KeyboardBacklightController::ApplyBrightnessPercent(
     double percent,
     TransitionStyle transition,
     BrightnessChangeCause cause) {
-  int64 level = PercentToLevel(percent);
+  int64_t level = PercentToLevel(percent);
   if (level == current_level_)
     return false;
 

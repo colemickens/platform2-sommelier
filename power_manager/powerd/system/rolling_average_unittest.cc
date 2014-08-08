@@ -4,7 +4,8 @@
 
 #include "power_manager/powerd/system/rolling_average.h"
 
-#include <base/basictypes.h>
+#include <stdint.h>
+
 #include <gtest/gtest.h>
 
 namespace power_manager {
@@ -47,7 +48,7 @@ TEST(RollingAverageTest, GetDelta) {
   const double kValue3 = -5.0;
   const double kValue4 = 13.0;
 
-  const int64 kEmptyDelta = base::TimeDelta().ToInternalValue();
+  const int64_t kEmptyDelta = base::TimeDelta().ToInternalValue();
 
   RollingAverage average(3);
   EXPECT_EQ(kEmptyDelta, average.GetTimeDelta().ToInternalValue());

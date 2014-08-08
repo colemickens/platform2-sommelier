@@ -56,16 +56,16 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
  protected:
   // Returns the hardware-specific brightness level that should be used when the
   // display is dimmed.
-  int64 GetDimmedLevel() {
-    return static_cast<int64>(lround(
+  int64_t GetDimmedLevel() {
+    return static_cast<int64_t>(lround(
         KeyboardBacklightController::kDimPercent / 100 * max_backlight_level_));
   }
 
   BacklightControllerStub display_backlight_controller_;
 
   // Max and initial brightness levels for |backlight_|.
-  int64 max_backlight_level_;
-  int64 initial_backlight_level_;
+  int64_t max_backlight_level_;
+  int64_t initial_backlight_level_;
 
   // Initial lux level reported by |light_sensor_|.
   int initial_als_lux_;

@@ -7,7 +7,7 @@
 namespace power_manager {
 namespace system {
 
-BacklightStub::BacklightStub(int64 max_level, int64 current_level)
+BacklightStub::BacklightStub(int64_t max_level, int64_t current_level)
     : max_level_(max_level),
       current_level_(current_level),
       resume_level_(-1),
@@ -16,15 +16,16 @@ BacklightStub::BacklightStub(int64 max_level, int64 current_level)
 
 BacklightStub::~BacklightStub() {}
 
-int64 BacklightStub::GetMaxBrightnessLevel() {
+int64_t BacklightStub::GetMaxBrightnessLevel() {
   return max_level_;
 }
 
-int64 BacklightStub::GetCurrentBrightnessLevel() {
+int64_t BacklightStub::GetCurrentBrightnessLevel() {
   return current_level_;
 }
 
-bool BacklightStub::SetBrightnessLevel(int64 level, base::TimeDelta interval) {
+bool BacklightStub::SetBrightnessLevel(int64_t level,
+                                       base::TimeDelta interval) {
   if (should_fail_)
     return false;
   current_level_ = level;
@@ -32,7 +33,7 @@ bool BacklightStub::SetBrightnessLevel(int64 level, base::TimeDelta interval) {
   return true;
 }
 
-bool BacklightStub::SetResumeBrightnessLevel(int64 level) {
+bool BacklightStub::SetResumeBrightnessLevel(int64_t level) {
   if (should_fail_)
     return false;
   resume_level_ = level;

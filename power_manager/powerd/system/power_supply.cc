@@ -72,7 +72,7 @@ bool ReadAndTrimString(const base::FilePath& directory,
 // Reads a 64-bit integer value from a file and returns true on success.
 bool ReadInt64(const base::FilePath& directory,
                const std::string& filename,
-               int64* out) {
+               int64_t* out) {
   std::string buffer;
   if (!ReadAndTrimString(directory, filename, &buffer))
     return false;
@@ -83,7 +83,7 @@ bool ReadInt64(const base::FilePath& directory,
 // Returns 0.0 on failure.
 double ReadScaledDouble(const base::FilePath& directory,
                         const std::string& filename) {
-  int64 value = 0;
+  int64_t value = 0;
   return ReadInt64(directory, filename, &value) ?
       kDoubleScaleFactor * value : 0.0;
 }
@@ -176,7 +176,7 @@ void PowerSupply::Init(const base::FilePath& power_supply_path,
   prefs_->GetDouble(kPowerSupplyFullFactorPref, &full_factor_);
   full_factor_ = std::min(std::max(kEpsilon, full_factor_), 1.0);
 
-  int64 shutdown_time_sec = 0;
+  int64_t shutdown_time_sec = 0;
   if (prefs_->GetInt64(kLowBatteryShutdownTimePref, &shutdown_time_sec)) {
     low_battery_shutdown_time_ =
         base::TimeDelta::FromSeconds(shutdown_time_sec);
@@ -189,7 +189,7 @@ void PowerSupply::Init(const base::FilePath& power_supply_path,
     low_battery_shutdown_time_ = base::TimeDelta();
   }
 
-  int64 samples = 0;
+  int64_t samples = 0;
   CHECK(prefs_->GetInt64(kMaxCurrentSamplesPref, &samples));
   current_samples_on_line_power_.reset(new RollingAverage(samples));
   current_samples_on_battery_power_.reset(new RollingAverage(samples));
@@ -260,7 +260,7 @@ void PowerSupply::OnUdevEvent(const std::string& subsystem,
 }
 
 base::TimeDelta PowerSupply::GetMsPref(const std::string& pref_name,
-                                       int64 default_duration_ms) const {
+                                       int64_t default_duration_ms) const {
   prefs_->GetInt64(pref_name, &default_duration_ms);
   return base::TimeDelta::FromMilliseconds(default_duration_ms);
 }
@@ -286,7 +286,7 @@ bool PowerSupply::UpdatePowerStatus() {
 
   std::string battery_status_string;
   if (base::PathExists(battery_path_)) {
-    int64 present_value = 0;
+    int64_t present_value = 0;
     ReadInt64(battery_path_, "present", &present_value);
     status.battery_is_present = present_value != 0;
     if (status.battery_is_present)
@@ -296,7 +296,7 @@ bool PowerSupply::UpdatePowerStatus() {
   }
 
   if (base::PathExists(line_power_path_)) {
-    int64 online_value = 0;
+    int64_t online_value = 0;
     ReadInt64(line_power_path_, "online", &online_value);
     status.line_power_on = online_value != 0;
     ReadAndTrimString(line_power_path_, "type", &status.line_power_type);

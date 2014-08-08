@@ -65,7 +65,7 @@ const int kVoltageNowInt = ScaleDouble(kVoltageNow);
 const int kCycleCount = 10000;
 
 // Default value for kLowBatteryShutdownTimePref.
-const int64 kLowBatteryShutdownTimeSec = 180;
+const int64_t kLowBatteryShutdownTimeSec = 180;
 
 // Default value for kPowerSupplyFullFactorPref.
 const double kFullFactor = 0.98;
@@ -75,9 +75,9 @@ const double kMaxSamples = 5;
 
 // Battery time-to-full and time-to-empty estimates, in seconds, when using
 // the above constants.
-const int64 kTimeToFull =
+const int64_t kTimeToFull =
     lround(3600. * (kChargeFull * kFullFactor - kChargeNow) / kCurrentNow);
-const int64 kTimeToEmpty = lround(3600. * (kChargeNow) / kCurrentNow);
+const int64_t kTimeToEmpty = lround(3600. * (kChargeNow) / kCurrentNow);
 
 // Starting value used by |power_supply_| as "now".
 const base::TimeTicks kStartTime = base::TimeTicks::FromInternalValue(1000);

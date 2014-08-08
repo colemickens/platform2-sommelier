@@ -7,6 +7,8 @@
 // from base/format_macros.h when gflags/gflags.h is included first.
 #define __STDC_FORMAT_MACROS
 
+#include <stdint.h>
+
 #include <cmath>
 #include <cstdio>
 
@@ -33,11 +35,12 @@ DEFINE_double(set_resume_brightness_percent, -1.0,
 
 namespace {
 
-int64 PercentToLevel(const power_manager::system::BacklightInterface& backlight,
-                     double percent,
-                     int64 max_level) {
+int64_t PercentToLevel(
+    const power_manager::system::BacklightInterface& backlight,
+    double percent,
+    int64_t max_level) {
   percent = std::min(percent, 100.0);
-  return static_cast<int64>(roundl(percent * max_level / 100.0));
+  return static_cast<int64_t>(roundl(percent * max_level / 100.0));
 }
 
 }  // namespace
@@ -63,8 +66,8 @@ int main(int argc, char* argv[]) {
                       power_manager::kInternalBacklightPattern))
     return 1;
 
-  const int64 level = backlight.GetCurrentBrightnessLevel();
-  const int64 max_level = backlight.GetMaxBrightnessLevel();
+  const int64_t level = backlight.GetCurrentBrightnessLevel();
+  const int64_t max_level = backlight.GetMaxBrightnessLevel();
 
   if (FLAGS_get_brightness)
     printf("%" PRIi64 "\n", level);
@@ -78,7 +81,7 @@ int main(int argc, char* argv[]) {
                                        base::TimeDelta()));
   }
   if (FLAGS_set_brightness_percent >= 0.0) {
-    int64 new_level = PercentToLevel(
+    int64_t new_level = PercentToLevel(
         backlight, FLAGS_set_brightness_percent, max_level);
     CHECK(backlight.SetBrightnessLevel(new_level, base::TimeDelta()));
   }
@@ -87,7 +90,7 @@ int main(int argc, char* argv[]) {
   if (FLAGS_set_resume_brightness >= -1)
     CHECK(backlight.SetResumeBrightnessLevel(FLAGS_set_resume_brightness));
   if (FLAGS_set_resume_brightness_percent >= 0.0) {
-    int64 new_level = PercentToLevel(
+    int64_t new_level = PercentToLevel(
         backlight, FLAGS_set_resume_brightness_percent, max_level);
     CHECK(backlight.SetResumeBrightnessLevel(new_level));
   }

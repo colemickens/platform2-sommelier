@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <stdint.h>
+
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
 #include <base/format_macros.h>
@@ -264,11 +266,11 @@ class StateControllerTest : public testing::Test {
   base::TimeDelta default_battery_suspend_delay_;
   base::TimeDelta default_battery_screen_off_delay_;
   base::TimeDelta default_battery_screen_dim_delay_;
-  int64 default_disable_idle_suspend_;
-  int64 default_require_usb_input_device_to_suspend_;
-  int64 default_avoid_suspend_when_headphone_jack_plugged_;
-  int64 default_ignore_external_policy_;
-  int64 default_allow_docked_mode_;
+  int64_t default_disable_idle_suspend_;
+  int64_t default_require_usb_input_device_to_suspend_;
+  int64_t default_avoid_suspend_when_headphone_jack_plugged_;
+  int64_t default_ignore_external_policy_;
+  int64_t default_allow_docked_mode_;
 
   // Values passed by Init() to StateController::Init().
   PowerSource initial_power_source_;

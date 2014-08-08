@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_COMMON_PREFS_H_
 #define POWER_MANAGER_COMMON_PREFS_H_
 
+#include <stdint.h>
+
 #include <map>
 #include <string>
 #include <vector>
@@ -32,14 +34,14 @@ class PrefsInterface {
 
   // Reads settings and returns true on success.
   virtual bool GetString(const std::string& name, std::string* value) = 0;
-  virtual bool GetInt64(const std::string& name, int64* value) = 0;
+  virtual bool GetInt64(const std::string& name, int64_t* value) = 0;
   virtual bool GetDouble(const std::string& name, double* value) = 0;
   virtual bool GetBool(const std::string& name, bool* value) = 0;
 
   // Writes settings (possibly asynchronously, although any deferred
   // changes will be reflected in Get*() calls).
   virtual void SetString(const std::string& name, const std::string& value) = 0;
-  virtual void SetInt64(const std::string& name, int64 value) = 0;
+  virtual void SetInt64(const std::string& name, int64_t value) = 0;
   virtual void SetDouble(const std::string& name, double value) = 0;
 };
 
@@ -80,12 +82,12 @@ class Prefs : public PrefsInterface {
   virtual void AddObserver(PrefsObserver* observer) OVERRIDE;
   virtual void RemoveObserver(PrefsObserver* observer) OVERRIDE;
   virtual bool GetString(const std::string& name, std::string* value) OVERRIDE;
-  virtual bool GetInt64(const std::string& name, int64* value) OVERRIDE;
+  virtual bool GetInt64(const std::string& name, int64_t* value) OVERRIDE;
   virtual bool GetDouble(const std::string& name, double* value) OVERRIDE;
   virtual bool GetBool(const std::string& name, bool* value) OVERRIDE;
   virtual void SetString(const std::string& name,
                          const std::string& value) OVERRIDE;
-  virtual void SetInt64(const std::string& name, int64 value) OVERRIDE;
+  virtual void SetInt64(const std::string& name, int64_t value) OVERRIDE;
   virtual void SetDouble(const std::string& name, double value) OVERRIDE;
 
  private:

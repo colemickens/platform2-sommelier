@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_INTERNAL_BACKLIGHT_CONTROLLER_H_
 #define POWER_MANAGER_POWERD_POLICY_INTERNAL_BACKLIGHT_CONTROLLER_H_
 
+#include <stdint.h>
+
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
 #include <base/memory/scoped_ptr.h>
@@ -38,7 +40,7 @@ class InternalBacklightController : public BacklightController,
                                     public AmbientLightHandler::Delegate {
  public:
   // Maximum number of brightness adjustment steps.
-  static const int64 kMaxBrightnessSteps;
+  static const int64_t kMaxBrightnessSteps;
 
   // Percent corresponding to |min_visible_level_|, which takes the role of the
   // lowest brightness step before the screen is turned off.
@@ -62,8 +64,8 @@ class InternalBacklightController : public BacklightController,
             system::DisplayPowerSetterInterface* display_power_setter);
 
   // Converts between [0, 100] and [0, |max_level_|] brightness scales.
-  double LevelToPercent(int64 level);
-  int64 PercentToLevel(double percent);
+  double LevelToPercent(int64_t level);
+  int64_t PercentToLevel(double percent);
 
   // BacklightController implementation:
   virtual void AddObserver(BacklightControllerObserver* observer) OVERRIDE;
@@ -204,14 +206,14 @@ class InternalBacklightController : public BacklightController,
 
   // Maximum raw brightness level for |backlight_| (0 is assumed to be the
   // minimum, with the backlight turned off).
-  int64 max_level_;
+  int64_t max_level_;
 
   // Minimum raw brightness level that we'll stop at before turning the
   // backlight off entirely when adjusting the brightness down.  Note that we
   // can still quickly animate through lower (still technically visible) levels
   // while transitioning to the off state; this is the minimum level that we'll
   // use in the steady state while the backlight is on.
-  int64 min_visible_level_;
+  int64_t min_visible_level_;
 
   // Indicates whether transitions between 0 and |min_visible_level_| must be
   // instant, i.e. the brightness may not smoothly transition between those
@@ -238,7 +240,7 @@ class InternalBacklightController : public BacklightController,
 
   // |backlight_|'s current brightness level (or the level to which it's
   // transitioning).
-  int64 current_level_;
+  int64_t current_level_;
 
   // Most-recently-requested display power state.
   chromeos::DisplayPowerState display_power_state_;

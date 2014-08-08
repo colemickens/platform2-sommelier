@@ -34,24 +34,24 @@ namespace {
 // apparently be fragmented if they exceed 32 bytes. Might need to figure out
 // how to support this (can it all be read in one go?) if longer messages are
 // needed at some point.
-const uint8 kDdcMaxMessageLength = 32;
+const uint8_t kDdcMaxMessageLength = 32;
 
 // Returns a hexadecimal string representation of |byte|.
-std::string ByteToHex(uint8 byte) {
+std::string ByteToHex(uint8_t byte) {
   return "0x" + base::HexEncode(&byte, 1);
 }
 
 }  // namespace
 
-const uint8 ExternalDisplay::kDdcI2CAddress = 0x37;
-const uint8 ExternalDisplay::kDdcHostAddress = 0x51;
-const uint8 ExternalDisplay::kDdcDisplayAddress = 0x6e;
-const uint8 ExternalDisplay::kDdcVirtualHostAddress = 0x50;
-const uint8 ExternalDisplay::kDdcMessageBodyLengthMask = 0x80;
-const uint8 ExternalDisplay::kDdcGetCommand = 0x01;
-const uint8 ExternalDisplay::kDdcGetReplyCommand = 0x02;
-const uint8 ExternalDisplay::kDdcSetCommand = 0x03;
-const uint8 ExternalDisplay::kDdcBrightnessIndex = 0x10;
+const uint8_t ExternalDisplay::kDdcI2CAddress = 0x37;
+const uint8_t ExternalDisplay::kDdcHostAddress = 0x51;
+const uint8_t ExternalDisplay::kDdcDisplayAddress = 0x6e;
+const uint8_t ExternalDisplay::kDdcVirtualHostAddress = 0x50;
+const uint8_t ExternalDisplay::kDdcMessageBodyLengthMask = 0x80;
+const uint8_t ExternalDisplay::kDdcGetCommand = 0x01;
+const uint8_t ExternalDisplay::kDdcGetReplyCommand = 0x02;
+const uint8_t ExternalDisplay::kDdcSetCommand = 0x03;
+const uint8_t ExternalDisplay::kDdcBrightnessIndex = 0x10;
 const int ExternalDisplay::kDdcSetDelayMs = 50;
 const int ExternalDisplay::kDdcGetDelayMs = 40;
 const int ExternalDisplay::kCachedBrightnessValidMs = 3000;
@@ -148,8 +148,8 @@ void ExternalDisplay::AdjustBrightnessByPercent(double percent_offset) {
   }
 }
 
-uint16 ExternalDisplay::BrightnessPercentToLevel(double percent) const {
-  return static_cast<uint16>(lround(percent * max_brightness_level_ / 100.0));
+uint16_t ExternalDisplay::BrightnessPercentToLevel(double percent) const {
+  return static_cast<uint16_t>(lround(percent * max_brightness_level_ / 100.0));
 }
 
 bool ExternalDisplay::HaveCachedBrightness() {
@@ -171,7 +171,7 @@ void ExternalDisplay::StartTimer(base::TimeDelta delay) {
 
 bool ExternalDisplay::RequestBrightness() {
   VLOG(1) << "Requesting brightness from " << delegate_->GetName();
-  std::vector<uint8> message;
+  std::vector<uint8_t> message;
   message.push_back(kDdcGetCommand);
   message.push_back(kDdcBrightnessIndex);
   const SendResult result = SendMessage(message);
@@ -181,7 +181,7 @@ bool ExternalDisplay::RequestBrightness() {
 }
 
 bool ExternalDisplay::ReadBrightness() {
-  std::vector<uint8> message(8);
+  std::vector<uint8_t> message(8);
   const ReceiveResult result = ReceiveMessage(&message);
   if (result != RECEIVE_SUCCESS) {
     SendEnumMetric(kMetricExternalBrightnessReadResultName,
@@ -216,7 +216,8 @@ bool ExternalDisplay::ReadBrightness() {
   }
   // Don't bother checking the "VCP type code" in the fourth byte.
 
-  const uint16 max_level = (static_cast<uint16>(message[4]) << 8) + message[5];
+  const uint16_t max_level =
+      (static_cast<uint16_t>(message[4]) << 8) + message[5];
   if (max_level == 0) {
     LOG(WARNING) << "Received maximum brightness of 0 from "
                  << delegate_->GetName();
@@ -232,8 +233,8 @@ bool ExternalDisplay::ReadBrightness() {
   }
   max_brightness_level_ = max_level;
 
-  const uint64 current_level =
-      (static_cast<uint16>(message[6]) << 8) + message[7];
+  const uint64_t current_level =
+      (static_cast<uint16_t>(message[6]) << 8) + message[7];
   current_brightness_percent_ = util::ClampPercent(
       static_cast<double>(current_level) / max_brightness_level_ * 100.0);
 
@@ -249,7 +250,7 @@ bool ExternalDisplay::ReadBrightness() {
 bool ExternalDisplay::WriteBrightness() {
   const double new_percent = util::ClampPercent(
       current_brightness_percent_ + pending_brightness_adjustment_percent_);
-  const uint16 new_level = BrightnessPercentToLevel(new_percent);
+  const uint16_t new_level = BrightnessPercentToLevel(new_percent);
 
   // Don't send anything if the brightness isn't changing, but update the
   // timestamp to indicate that what we have is still current: if the user is
@@ -262,7 +263,7 @@ bool ExternalDisplay::WriteBrightness() {
 
   VLOG(1) << "Writing brightness " << new_level
           << " (" << new_percent << "%) to " << delegate_->GetName();
-  std::vector<uint8> message;
+  std::vector<uint8_t> message;
   message.push_back(kDdcSetCommand);
   message.push_back(kDdcBrightnessIndex);
   message.push_back(new_level >> 8);    // High byte.
@@ -327,10 +328,10 @@ void ExternalDisplay::UpdateState() {
 }
 
 ExternalDisplay::SendResult ExternalDisplay::SendMessage(
-    const std::vector<uint8>& body) {
+    const std::vector<uint8_t>& body) {
   // The body is preceded by an address byte and a length byte and followed by a
   // checksum byte.
-  std::vector<uint8> message(body.size() + 3);
+  std::vector<uint8_t> message(body.size() + 3);
   DCHECK_LE(message.size(), kDdcMaxMessageLength);
 
   message[0] = kDdcHostAddress;
@@ -360,12 +361,12 @@ ExternalDisplay::SendResult ExternalDisplay::SendMessage(
 }
 
 ExternalDisplay::ReceiveResult ExternalDisplay::ReceiveMessage(
-    std::vector<uint8>* body) {
+    std::vector<uint8_t>* body) {
   DCHECK(body);
 
   // The message is preceded by an address and a length and followed by a
   // checksum byte.
-  std::vector<uint8> message(body->size() + 3);
+  std::vector<uint8_t> message(body->size() + 3);
   DCHECK_LE(message.size(), kDdcMaxMessageLength);
 
   struct i2c_msg i2c_message;
@@ -387,8 +388,8 @@ ExternalDisplay::ReceiveResult ExternalDisplay::ReceiveMessage(
 
   // The final byte in a message from the display is the "virtual host address"
   // XOR-ed with all other bytes in the message (excluding the final byte).
-  const uint8 received_checksum = message[message.size() - 1];
-  uint8 computed_checksum = kDdcVirtualHostAddress;
+  const uint8_t received_checksum = message[message.size() - 1];
+  uint8_t computed_checksum = kDdcVirtualHostAddress;
   for (size_t i = 0; i < message.size() - 1; ++i)
     computed_checksum ^= message[i];
   if (received_checksum != computed_checksum) {

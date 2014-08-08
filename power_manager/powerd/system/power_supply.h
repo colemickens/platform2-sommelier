@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_POWER_SUPPLY_H_
 #define POWER_MANAGER_POWERD_SYSTEM_POWER_SUPPLY_H_
 
+#include <stdint.h>
+
 #include <string>
 
 #include <base/basictypes.h>
@@ -238,11 +240,11 @@ class PowerSupply : public PowerSupplyInterface, public UdevObserver {
                            UdevObserver::Action action) OVERRIDE;
 
  private:
-  // Returns the value of |pref_name|, an int64 pref containing a
+  // Returns the value of |pref_name|, an int64_t pref containing a
   // millisecond-based duration. |default_duration_ms| is returned if the pref
   // is unset.
   base::TimeDelta GetMsPref(const std::string& pref_name,
-                            int64 default_duration_ms) const;
+                            int64_t default_duration_ms) const;
 
   // Sets |battery_stabilized_timestamp_| so that the current and charge won't
   // be sampled again until at least |stabilized_delay| in the future.

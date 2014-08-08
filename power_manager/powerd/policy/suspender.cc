@@ -73,7 +73,7 @@ void Suspender::Init(Delegate* delegate,
   suspend_delay_controller_.reset(new SuspendDelayController(initial_id));
   suspend_delay_controller_->AddObserver(this);
 
-  int64 retry_delay_ms = 0;
+  int64_t retry_delay_ms = 0;
   CHECK(prefs->GetInt64(kRetrySuspendMsPref, &retry_delay_ms));
   retry_delay_ = base::TimeDelta::FromMilliseconds(retry_delay_ms);
 
@@ -94,7 +94,7 @@ void Suspender::RequestSuspend() {
   HandleEvent(EVENT_SUSPEND_REQUESTED);
 }
 
-void Suspender::RequestSuspendWithExternalWakeupCount(uint64 wakeup_count) {
+void Suspender::RequestSuspendWithExternalWakeupCount(uint64_t wakeup_count) {
   suspend_request_supplied_wakeup_count_ = true;
   suspend_request_wakeup_count_ = wakeup_count;
   HandleEvent(EVENT_SUSPEND_REQUESTED);

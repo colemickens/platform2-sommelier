@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_DISPLAY_EXTERNAL_DISPLAY_H_
 #define POWER_MANAGER_POWERD_SYSTEM_DISPLAY_EXTERNAL_DISPLAY_H_
 
+#include <stdint.h>
+
 #include <queue>
 #include <string>
 #include <vector>
@@ -51,29 +53,29 @@ namespace system {
 class ExternalDisplay {
  public:
   // I2C address to use for DDC/CI.
-  static const uint8 kDdcI2CAddress;
+  static const uint8_t kDdcI2CAddress;
 
   // Address corresponding to the host.
-  static const uint8 kDdcHostAddress;
+  static const uint8_t kDdcHostAddress;
 
   // Address corresponding to the display.
-  static const uint8 kDdcDisplayAddress;
+  static const uint8_t kDdcDisplayAddress;
 
   // "Virtual host address" used as a starting point when checksumming replies
   // from the display (see DDC/CI v1.1 4.0).
-  static const uint8 kDdcVirtualHostAddress;
+  static const uint8_t kDdcVirtualHostAddress;
 
   // Mask applied to the byte containing the message body length.
-  static const uint8 kDdcMessageBodyLengthMask;
+  static const uint8_t kDdcMessageBodyLengthMask;
 
   // Opcodes for "Get VCP Feature" requests, "Get VCP Feature" replies, and "Set
   // VCP Feature" requests, respectively (per DDC/CI v1.1 4.3 and 4.4).
-  static const uint8 kDdcGetCommand;
-  static const uint8 kDdcGetReplyCommand;
-  static const uint8 kDdcSetCommand;
+  static const uint8_t kDdcGetCommand;
+  static const uint8_t kDdcGetReplyCommand;
+  static const uint8_t kDdcSetCommand;
 
   // Index of the screen brightness (a.k.a. "luminance") feature.
-  static const uint8 kDdcBrightnessIndex;
+  static const uint8_t kDdcBrightnessIndex;
 
   // Minimum amount of time to wait after sending a "Set VCP Feature" message
   // before sending the next message (per DDC/CI v1.1 4.4).
@@ -212,7 +214,7 @@ class ExternalDisplay {
 
   // Returns the monitor-specific brightness level corresponding to |percent|, a
   // percentage in the range [0.0, 100.0].
-  uint16 BrightnessPercentToLevel(double percent) const;
+  uint16_t BrightnessPercentToLevel(double percent) const;
 
   // Returns true if |current_brightness_percent_| and |max_brightness_level_|
   // were updated recently enough to be trusted.
@@ -243,11 +245,11 @@ class ExternalDisplay {
   void UpdateState();
 
   // Sends a DDC message containing |body| to the display.
-  SendResult SendMessage(const std::vector<uint8>& body);
+  SendResult SendMessage(const std::vector<uint8_t>& body);
 
   // Receives a DDC message from the display, copying its contents to |body|.
   // |body|'s size determines the expected size of the message body.
-  ReceiveResult ReceiveMessage(std::vector<uint8>* body);
+  ReceiveResult ReceiveMessage(std::vector<uint8_t>* body);
 
   scoped_ptr<Delegate> delegate_;
   Clock clock_;
@@ -263,7 +265,7 @@ class ExternalDisplay {
 
   // Maximum brightness value supported by the display, in display-specific
   // units.
-  uint16 max_brightness_level_;
+  uint16_t max_brightness_level_;
 
   // Last time at which |current_brightness_percent_| and
   // |max_brightness_level_| were updated.

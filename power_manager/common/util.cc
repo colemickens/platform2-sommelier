@@ -4,6 +4,7 @@
 
 #include "power_manager/common/util.h"
 
+#include <stdint.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -11,7 +12,6 @@
 #include <cstdlib>
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/file_util.h>
 #include <base/files/file_path.h>
 #include <base/format_macros.h>
@@ -58,17 +58,17 @@ std::string TimeDeltaToString(base::TimeDelta delta) {
   if (delta < base::TimeDelta())
     output += "-";
 
-  int64 total_seconds = llabs(delta.InSeconds());
+  int64_t total_seconds = llabs(delta.InSeconds());
 
-  const int64 hours = total_seconds / 3600;
+  const int64_t hours = total_seconds / 3600;
   if (hours)
     output += base::StringPrintf("%" PRId64 "h", hours);
 
-  const int64 minutes = (total_seconds % 3600) / 60;
+  const int64_t minutes = (total_seconds % 3600) / 60;
   if (minutes)
     output += base::StringPrintf("%" PRId64 "m", minutes);
 
-  const int64 seconds = total_seconds % 60;
+  const int64_t seconds = total_seconds % 60;
   if (seconds || !total_seconds)
     output += base::StringPrintf("%" PRId64 "s", seconds);
 

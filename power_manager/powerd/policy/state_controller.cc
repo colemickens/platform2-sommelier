@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/policy/state_controller.h"
 
+#include <stdint.h>
+
 #include <algorithm>
 #include <cmath>
 
@@ -29,7 +31,7 @@ const int kInitialStateTimeoutMs = 10000;
 
 // Returns |time_ms|, a time in milliseconds, as a
 // util::TimeDeltaToString()-style string.
-std::string MsToString(int64 time_ms) {
+std::string MsToString(int64_t time_ms) {
   return util::TimeDeltaToString(base::TimeDelta::FromMilliseconds(time_ms));
 }
 
@@ -98,7 +100,7 @@ void HandleDelay(base::TimeDelta delay,
   }
 }
 
-// Looks up |name|, an int64 preference representing milliseconds, in
+// Looks up |name|, an int64_t preference representing milliseconds, in
 // |prefs|, and returns it as a base::TimeDelta.  Returns true on success.
 bool GetMillisecondPref(PrefsInterface* prefs,
                         const std::string& name,
@@ -106,7 +108,7 @@ bool GetMillisecondPref(PrefsInterface* prefs,
   DCHECK(prefs);
   DCHECK(out);
 
-  int64 int_value = 0;
+  int64_t int_value = 0;
   if (!prefs->GetInt64(name, &int_value))
     return false;
 

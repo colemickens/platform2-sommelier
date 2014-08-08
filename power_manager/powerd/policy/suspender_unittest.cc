@@ -55,7 +55,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   void set_suspend_result(SuspendResult result) {
     suspend_result_ = result;
   }
-  void set_wakeup_count(uint64 count) { wakeup_count_ = count; }
+  void set_wakeup_count(uint64_t count) { wakeup_count_ = count; }
   void set_suspend_callback(base::Closure callback) {
     suspend_callback_ = callback;
   }
@@ -67,7 +67,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   }
 
   bool suspend_announced() const { return suspend_announced_; }
-  uint64 suspend_wakeup_count() const { return suspend_wakeup_count_; }
+  uint64_t suspend_wakeup_count() const { return suspend_wakeup_count_; }
   bool suspend_wakeup_count_valid() const {
     return suspend_wakeup_count_valid_;
   }
@@ -80,7 +80,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
 
   virtual bool IsLidClosedForSuspend() OVERRIDE { return lid_closed_; }
 
-  virtual bool ReadSuspendWakeupCount(uint64* wakeup_count) OVERRIDE {
+  virtual bool ReadSuspendWakeupCount(uint64_t* wakeup_count) OVERRIDE {
     if (!report_success_for_read_wakeup_count_)
       return false;
     *wakeup_count = wakeup_count_;
@@ -97,7 +97,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
     AppendAction(kPrepare);
   }
 
-  virtual SuspendResult DoSuspend(uint64 wakeup_count,
+  virtual SuspendResult DoSuspend(uint64_t wakeup_count,
                                   bool wakeup_count_valid,
                                   base::TimeDelta duration) OVERRIDE {
     AppendAction(kSuspend);
@@ -145,7 +145,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   SuspendResult suspend_result_;
 
   // Count that should be returned by ReadSuspendWakeupCount().
-  uint64 wakeup_count_;
+  uint64_t wakeup_count_;
 
   // Updated by SetSuspendAnnounced() and returned by GetSuspendAnnounced().
   bool suspend_announced_;
@@ -161,7 +161,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   base::Closure shutdown_callback_;
 
   // Arguments passed to last invocation of DoSuspend().
-  uint64 suspend_wakeup_count_;
+  uint64_t suspend_wakeup_count_;
   bool suspend_wakeup_count_valid_;
   base::TimeDelta suspend_duration_;
 
@@ -214,8 +214,8 @@ class SuspenderTest : public testing::Test {
   Suspender suspender_;
   Suspender::TestApi test_api_;
 
-  int64 pref_retry_delay_ms_;
-  int64 pref_num_retries_;
+  int64_t pref_retry_delay_ms_;
+  int64_t pref_num_retries_;
 };
 
 // Tests the standard suspend/resume cycle.
@@ -224,7 +224,7 @@ TEST_F(SuspenderTest, SuspendResume) {
 
   // Suspender shouldn't run powerd_suspend until it receives notice that
   // SuspendDelayController is ready.
-  const uint64 kWakeupCount = 452;
+  const uint64_t kWakeupCount = 452;
   const base::Time kRequestTime = base::Time::FromInternalValue(123);
   test_api_.SetCurrentWallTime(kRequestTime);
   delegate_.set_wakeup_count(kWakeupCount);
@@ -299,7 +299,7 @@ TEST_F(SuspenderTest, IgnoreDuplicateSuspendRequests) {
 TEST_F(SuspenderTest, RetryOnFailure) {
   Init();
 
-  const uint64 kOrigWakeupCount = 46;
+  const uint64_t kOrigWakeupCount = 46;
   delegate_.set_wakeup_count(kOrigWakeupCount);
   delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_FAILED);
   suspender_.RequestSuspend();
@@ -308,7 +308,7 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_TRUE(delegate_.suspend_announced());
 
-  const uint64 kRetryWakeupCount = 67;
+  const uint64_t kRetryWakeupCount = 67;
   delegate_.set_wakeup_count(kRetryWakeupCount);
   dbus_sender_.ClearSentSignals();
   suspender_.OnReadyForSuspend(suspend_id);
@@ -328,7 +328,7 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   // re-suspend immediately if an attempt fails while the lid is closed
   // (http://crbug.com/384610). Also check that an external wakeup count passed
   // in the request gets ignored for the eventual retry.
-  const uint64 kExternalWakeupCount = 32542;
+  const uint64_t kExternalWakeupCount = 32542;
   suspender_.RequestSuspendWithExternalWakeupCount(kExternalWakeupCount);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   EXPECT_EQ(0, dbus_sender_.num_sent_signals());
@@ -500,7 +500,7 @@ TEST_F(SuspenderTest, ExternalWakeupCount) {
   Init();
 
   // Pass a wakeup count less than the one that the delegate returns.
-  const uint64 kWakeupCount = 452;
+  const uint64_t kWakeupCount = 452;
   delegate_.set_wakeup_count(kWakeupCount);
   suspender_.RequestSuspendWithExternalWakeupCount(kWakeupCount - 1);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
@@ -621,7 +621,7 @@ TEST_F(SuspenderTest, DarkResume) {
 
   // Instruct |dark_resume_| to request a ten-second suspend and report that the
   // system did a dark resume.
-  const int64 kSuspendSec = 10;
+  const int64_t kSuspendSec = 10;
   dark_resume_.set_action(system::DarkResumeInterface::SUSPEND);
   dark_resume_.set_in_dark_resume(true);
   dark_resume_.set_suspend_duration(base::TimeDelta::FromSeconds(kSuspendSec));
@@ -661,7 +661,7 @@ TEST_F(SuspenderTest, DarkResumeRetry) {
   EXPECT_EQ(kPrepare, delegate_.GetActions());
 
   // Suspend for ten seconds.
-  const int64 kSuspendSec = 10;
+  const int64_t kSuspendSec = 10;
   dark_resume_.set_action(system::DarkResumeInterface::SUSPEND);
   dark_resume_.set_in_dark_resume(true);
   dark_resume_.set_suspend_duration(base::TimeDelta::FromSeconds(kSuspendSec));

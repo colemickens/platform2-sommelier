@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/metrics_collector.h"
 
+#include <stdint.h>
+
 #include <algorithm>
 #include <cmath>
 
@@ -360,20 +362,20 @@ void MetricsCollector::GenerateBatteryDischargeRateWhileSuspendedMetric() {
 }
 
 void MetricsCollector::IncrementNumOfSessionsPerChargeMetric() {
-  int64 num = 0;
+  int64_t num = 0;
   prefs_->GetInt64(kNumSessionsOnCurrentChargePref, &num);
-  num = std::max(num, static_cast<int64>(0));
+  num = std::max(num, static_cast<int64_t>(0));
   prefs_->SetInt64(kNumSessionsOnCurrentChargePref, num + 1);
 }
 
 void MetricsCollector::GenerateNumOfSessionsPerChargeMetric() {
-  int64 sample = 0;
+  int64_t sample = 0;
   prefs_->GetInt64(kNumSessionsOnCurrentChargePref, &sample);
   if (sample <= 0)
     return;
 
   sample = std::min(
-      sample, static_cast<int64>(kMetricNumOfSessionsPerChargeMax));
+      sample, static_cast<int64_t>(kMetricNumOfSessionsPerChargeMax));
   prefs_->SetInt64(kNumSessionsOnCurrentChargePref, 0);
   SendMetric(kMetricNumOfSessionsPerChargeName,
              sample,

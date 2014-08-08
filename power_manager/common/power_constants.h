@@ -5,9 +5,9 @@
 #ifndef POWER_MANAGER_COMMON_POWER_CONSTANTS_H_
 #define POWER_MANAGER_COMMON_POWER_CONSTANTS_H_
 
-#include <string>
+#include <stdint.h>
 
-#include <base/basictypes.h>
+#include <string>
 
 namespace power_manager {
 
@@ -179,8 +179,8 @@ extern const double kEpsilon;
 // Total time that should be used to gradually animate the backlight level
 // to a new brightness, in milliseconds.  Note that some
 // BacklightController implementations may not use animated transitions.
-extern const int64 kFastBacklightTransitionMs;
-extern const int64 kSlowBacklightTransitionMs;
+extern const int64_t kFastBacklightTransitionMs;
+extern const int64_t kSlowBacklightTransitionMs;
 
 enum PowerSource {
   POWER_AC,

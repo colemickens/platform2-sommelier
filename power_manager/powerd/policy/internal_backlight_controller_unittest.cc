@@ -77,14 +77,14 @@ class InternalBacklightControllerTest : public ::testing::Test {
 
   // Map |percent| to a |controller_|-designated level in the range [0,
   // max_backlight_level_].
-  int64 PercentToLevel(double percent) {
+  int64_t PercentToLevel(double percent) {
     return controller_->PercentToLevel(percent);
   }
 
  protected:
   // Max and initial brightness levels for |backlight_|.
-  int64 max_backlight_level_;
-  int64 initial_backlight_level_;
+  int64_t max_backlight_level_;
+  int64_t initial_backlight_level_;
 
   // Time that should be used as "now" when |controller_| is initialized.
   // If unset, the real time will be used.
@@ -102,7 +102,7 @@ class InternalBacklightControllerTest : public ::testing::Test {
   bool report_initial_power_source_;
 
   // Default values for prefs.  Applied when Init() is called.
-  int64 default_min_visible_level_;
+  int64_t default_min_visible_level_;
   std::string default_als_steps_;
   std::string default_no_als_ac_brightness_;
   std::string default_no_als_battery_brightness_;
@@ -120,7 +120,7 @@ TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
   Init(POWER_BATTERY);
   EXPECT_EQ(default_min_visible_level_,
             PercentToLevel(InternalBacklightController::kMinVisiblePercent));
-  const int64 kAlsLevel = PercentToLevel(50.0);
+  const int64_t kAlsLevel = PercentToLevel(50.0);
   EXPECT_EQ(kAlsLevel, backlight_.current_level());
 
   // Check that the first step increases the brightness; within the loop
@@ -128,7 +128,7 @@ TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
   controller_->IncreaseUserBrightness();
   EXPECT_GT(backlight_.current_level(), kAlsLevel);
   for (int i = 0; i < InternalBacklightController::kMaxBrightnessSteps; ++i) {
-    int64 old_level = backlight_.current_level();
+    int64_t old_level = backlight_.current_level();
     controller_->IncreaseUserBrightness();
     EXPECT_GE(backlight_.current_level(), old_level);
   }
@@ -139,7 +139,7 @@ TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
   controller_->DecreaseUserBrightness(false /* allow_off */);
   EXPECT_LT(backlight_.current_level(), max_backlight_level_);
   for (int i = 0; i < InternalBacklightController::kMaxBrightnessSteps; ++i) {
-    int64 old_level = backlight_.current_level();
+    int64_t old_level = backlight_.current_level();
     controller_->DecreaseUserBrightness(false /* allow_off */);
     EXPECT_LE(backlight_.current_level(), old_level);
   }
@@ -197,7 +197,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
 
   // Send enough ambient light sensor samples to trigger a brightness change.
   observer.Clear();
-  int64 old_level = backlight_.current_level();
+  int64_t old_level = backlight_.current_level();
   light_sensor_.set_lux(300);
   for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
     light_sensor_.NotifyObservers();
@@ -272,7 +272,7 @@ TEST_F(InternalBacklightControllerTest, MinBrightnessLevelMatchesMax) {
 // Test the saved brightness level before and after suspend.
 TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
   Init(POWER_AC);
-  const int64 initial_level = backlight_.current_level();
+  const int64_t initial_level = backlight_.current_level();
 
   // Test suspend and resume.  When suspending, the previously-current
   // brightness level should be saved as the resume level.
@@ -337,7 +337,7 @@ TEST_F(InternalBacklightControllerTest, LinearMappingForSmallBacklightRange) {
   for (int i = 1; i <= max_backlight_level_; ++i) {
     double percent = kMinVisiblePercent +
         (100.0 - kMinVisiblePercent) * (i - 1) / (max_backlight_level_ - 1);
-    EXPECT_EQ(static_cast<int64>(i), PercentToLevel(percent));
+    EXPECT_EQ(static_cast<int64_t>(i), PercentToLevel(percent));
   }
 }
 
@@ -446,11 +446,11 @@ TEST_F(InternalBacklightControllerTest, TestPlugAndUnplug) {
 TEST_F(InternalBacklightControllerTest, TestDimming) {
   default_als_steps_ = "50.0 -1 200\n75.0 100 -1";
   Init(POWER_AC);
-  int64 bottom_als_level = PercentToLevel(50.0);
+  int64_t bottom_als_level = PercentToLevel(50.0);
   EXPECT_EQ(bottom_als_level, backlight_.current_level());
 
   controller_->SetDimmedForInactivity(true);
-  int64 dimmed_level = backlight_.current_level();
+  int64_t dimmed_level = backlight_.current_level();
   EXPECT_LT(dimmed_level, bottom_als_level);
   EXPECT_GT(dimmed_level, 0);
   EXPECT_EQ(kFastBacklightTransitionMs,
@@ -492,7 +492,7 @@ TEST_F(InternalBacklightControllerTest, TestDimming) {
   ASSERT_TRUE(controller_->SetUserBrightnessPercent(
       InternalBacklightController::kMinVisiblePercent,
       BacklightController::TRANSITION_INSTANT));
-  int64 new_undimmed_level = backlight_.current_level();
+  int64_t new_undimmed_level = backlight_.current_level();
   ASSERT_LT(new_undimmed_level, dimmed_level);
   controller_->SetDimmedForInactivity(true);
   EXPECT_EQ(new_undimmed_level, backlight_.current_level());
@@ -650,7 +650,7 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOn) {
 
 TEST_F(InternalBacklightControllerTest, DockedMode) {
   Init(POWER_AC);
-  const int64 initial_level = backlight_.current_level();
+  const int64_t initial_level = backlight_.current_level();
   ASSERT_GT(initial_level, 0);
 
   controller_->SetDocked(true);

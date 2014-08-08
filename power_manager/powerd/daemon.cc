@@ -561,7 +561,7 @@ bool Daemon::IsLidClosedForSuspend() {
   return input_->QueryLidState() == LID_CLOSED;
 }
 
-bool Daemon::ReadSuspendWakeupCount(uint64* wakeup_count) {
+bool Daemon::ReadSuspendWakeupCount(uint64_t* wakeup_count) {
   DCHECK(wakeup_count);
   base::FilePath path(kWakeupCountPath);
   std::string buf;
@@ -609,7 +609,7 @@ void Daemon::PrepareToSuspend() {
 }
 
 policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
-    uint64 wakeup_count,
+    uint64_t wakeup_count,
     bool wakeup_count_valid,
     base::TimeDelta duration) {
   // Touch a file that crash-reporter can inspect later to determine
@@ -923,7 +923,7 @@ void Daemon::HandleUpdateEngineAvailableOrRestarted(bool available) {
     return;
 
   dbus::MessageReader reader(response.get());
-  int64 last_checked_time = 0;
+  int64_t last_checked_time = 0;
   double progress = 0.0;
   std::string operation;
   if (!reader.PopInt64(&last_checked_time) ||
@@ -987,7 +987,7 @@ void Daemon::HandleSessionStateChangedSignal(dbus::Signal* signal) {
 
 void Daemon::HandleUpdateEngineStatusUpdateSignal(dbus::Signal* signal) {
   dbus::MessageReader reader(signal);
-  int64 last_checked_time = 0;
+  int64_t last_checked_time = 0;
   double progress = 0.0;
   std::string operation;
   if (!reader.PopInt64(&last_checked_time) ||
@@ -1026,7 +1026,7 @@ scoped_ptr<dbus::Response> Daemon::HandleRequestRestartMethod(
   ShutdownReason shutdown_reason = SHUTDOWN_REASON_USER_REQUEST;
 
   dbus::MessageReader reader(method_call);
-  int32 arg = 0;
+  int32_t arg = 0;
   if (reader.PopInt32(&arg)) {
     switch (static_cast<RequestRestartReason>(arg)) {
       case REQUEST_RESTART_FOR_USER:
@@ -1045,10 +1045,10 @@ scoped_ptr<dbus::Response> Daemon::HandleRequestRestartMethod(
 
 scoped_ptr<dbus::Response> Daemon::HandleRequestSuspendMethod(
     dbus::MethodCall* method_call) {
-  // Read an optional uint64 argument specifying the wakeup count that is
+  // Read an optional uint64_t argument specifying the wakeup count that is
   // expected.
   dbus::MessageReader reader(method_call);
-  uint64 external_wakeup_count = 0;
+  uint64_t external_wakeup_count = 0;
   const bool got_external_wakeup_count = reader.PopUint64(
       &external_wakeup_count);
   LOG(INFO) << "Got " << kRequestSuspendMethod << " message"
@@ -1229,12 +1229,12 @@ scoped_ptr<dbus::Response> Daemon::HandleSetPolicyMethod(
 
 scoped_ptr<dbus::Response> Daemon::HandlePowerButtonAcknowledgment(
     dbus::MethodCall* method_call) {
-  int64 timestamp_internal = 0;
+  int64_t timestamp_internal = 0;
   dbus::MessageReader reader(method_call);
   if (!reader.PopInt64(&timestamp_internal)) {
     LOG(ERROR) << "Unable to parse " << kHandlePowerButtonAcknowledgmentMethod
                << " request";
-    return CreateInvalidArgsError(method_call, "Expected int64 timestamp");
+    return CreateInvalidArgsError(method_call, "Expected int64_t timestamp");
   }
   input_controller_->HandlePowerButtonAcknowledgment(
       base::TimeTicks::FromInternalValue(timestamp_internal));
@@ -1302,7 +1302,7 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
 }
 
 void Daemon::Suspend(bool use_external_wakeup_count,
-                     uint64 external_wakeup_count) {
+                     uint64_t external_wakeup_count) {
   if (shutting_down_) {
     LOG(INFO) << "Ignoring request for suspend with outstanding shutdown";
     return;

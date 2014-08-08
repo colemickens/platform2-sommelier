@@ -129,7 +129,7 @@ bool Prefs::GetString(const std::string& name, std::string* buf) {
   return true;
 }
 
-bool Prefs::GetInt64(const std::string& name, int64* value) {
+bool Prefs::GetInt64(const std::string& name, int64_t* value) {
   DCHECK(value);
   std::vector<PrefReadResult> results;
   GetPrefStrings(name, true, &results);
@@ -139,7 +139,7 @@ bool Prefs::GetInt64(const std::string& name, int64* value) {
     if (base::StringToInt64(iter->value, value))
       return true;
     else
-      LOG(ERROR) << "Unable to parse int64 from " << iter->path;
+      LOG(ERROR) << "Unable to parse int64_t from " << iter->path;
   }
   return false;
 }
@@ -160,7 +160,7 @@ bool Prefs::GetDouble(const std::string& name, double* value) {
 }
 
 bool Prefs::GetBool(const std::string& name, bool* value) {
-  int64 int_value = 0;
+  int64_t int_value = 0;
   if (!GetInt64(name, &int_value))
     return false;
   *value = int_value != 0;
@@ -172,7 +172,7 @@ void Prefs::SetString(const std::string& name, const std::string& value) {
   ScheduleWrite();
 }
 
-void Prefs::SetInt64(const std::string& name, int64 value) {
+void Prefs::SetInt64(const std::string& name, int64_t value) {
   prefs_to_write_[name] = base::Int64ToString(value);
   ScheduleWrite();
 }

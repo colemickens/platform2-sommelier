@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_BACKLIGHT_INTERFACE_H_
 #define POWER_MANAGER_POWERD_SYSTEM_BACKLIGHT_INTERFACE_H_
 
+#include <stdint.h>
+
 #include <base/basictypes.h>
 #include <base/logging.h>
 #include <base/time/time.h>
@@ -20,18 +22,18 @@ class BacklightInterface {
 
   // Gets the maximum brightness level (in an an arbitrary device-specific
   // range; note that 0 is always the minimum allowable value, though).
-  virtual int64 GetMaxBrightnessLevel() = 0;
+  virtual int64_t GetMaxBrightnessLevel() = 0;
 
   // Gets the current brightness level (in an an arbitrary device-specific
   // range).
-  virtual int64 GetCurrentBrightnessLevel() = 0;
+  virtual int64_t GetCurrentBrightnessLevel() = 0;
 
   // Sets the backlight to |level| over |interval|. Returns false on failure.
-  virtual bool SetBrightnessLevel(int64 level,
+  virtual bool SetBrightnessLevel(int64_t level,
                                   base::TimeDelta interval) = 0;
 
   // Sets the resume backlight to |level|.  Returns false on failure.
-  virtual bool SetResumeBrightnessLevel(int64 level) = 0;
+  virtual bool SetResumeBrightnessLevel(int64_t level) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BacklightInterface);

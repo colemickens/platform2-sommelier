@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/metrics_collector.h"
 
+#include <stdint.h>
+
 #include <cmath>
 #include <set>
 #include <string>
@@ -179,9 +181,9 @@ TEST_F(MetricsCollectorTest, BacklightLevel) {
   collector_.GenerateBacklightLevelMetrics();
   Mock::VerifyAndClearExpectations(metrics_lib_);
 
-  const int64 kCurrentDisplayPercent = 57;
+  const int64_t kCurrentDisplayPercent = 57;
   display_backlight_controller_.set_percent(kCurrentDisplayPercent);
-  const int64 kCurrentKeyboardPercent = 43;
+  const int64_t kCurrentKeyboardPercent = 43;
   keyboard_backlight_controller_.set_percent(kCurrentKeyboardPercent);
 
   collector_.HandleScreenDimmedChange(false, base::TimeTicks::Now());

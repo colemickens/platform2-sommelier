@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_INTERNAL_BACKLIGHT_H_
 #define POWER_MANAGER_POWERD_SYSTEM_INTERNAL_BACKLIGHT_H_
 
+#include <stdint.h>
+
 #include <base/basictypes.h>
 #include <base/files/file_path.h>
 #include <base/memory/scoped_ptr.h>
@@ -57,11 +59,11 @@ class InternalBacklight : public BacklightInterface {
   bool TriggerTransitionTimeoutForTesting();
 
   // Overridden from BacklightInterface:
-  virtual int64 GetMaxBrightnessLevel() OVERRIDE;
-  virtual int64 GetCurrentBrightnessLevel() OVERRIDE;
-  virtual bool SetBrightnessLevel(int64 level, base::TimeDelta interval)
+  virtual int64_t GetMaxBrightnessLevel() OVERRIDE;
+  virtual int64_t GetCurrentBrightnessLevel() OVERRIDE;
+  virtual bool SetBrightnessLevel(int64_t level, base::TimeDelta interval)
       OVERRIDE;
-  virtual bool SetResumeBrightnessLevel(int64 level) OVERRIDE;
+  virtual bool SetResumeBrightnessLevel(int64_t level) OVERRIDE;
 
  private:
   // Sets the brightness level appropriately for the current point in the
@@ -81,8 +83,8 @@ class InternalBacklight : public BacklightInterface {
   base::FilePath resume_brightness_path_;
 
   // Cached maximum and last-set brightness levels.
-  int64 max_brightness_level_;
-  int64 current_brightness_level_;
+  int64_t max_brightness_level_;
+  int64_t current_brightness_level_;
 
   // Calls HandleTransitionTimeout().
   base::RepeatingTimer<InternalBacklight> transition_timer_;
@@ -95,8 +97,8 @@ class InternalBacklight : public BacklightInterface {
   base::TimeTicks transition_end_time_;
 
   // Start and end brightness level for the current transition.
-  int64 transition_start_level_;
-  int64 transition_end_level_;
+  int64_t transition_start_level_;
+  int64_t transition_end_level_;
 
   DISALLOW_COPY_AND_ASSIGN(InternalBacklight);
 };
