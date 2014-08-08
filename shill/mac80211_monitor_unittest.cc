@@ -14,13 +14,24 @@ using ::testing::ElementsAre;
 
 namespace shill {
 
+namespace {
+static const char kTestDeviceName[] = "test-dev";
+}
+
 typedef Mac80211Monitor::QueueState QState;
 
 class Mac80211MonitorTest : public testing::Test {
  public:
   Mac80211MonitorTest()
-      : mac80211_monitor_() {}
+      : mac80211_monitor_(kTestDeviceName, kQueueLengthLimit) {}
   virtual ~Mac80211MonitorTest() {}
+
+ protected:
+  static const size_t kQueueLengthLimit = 5;
+
+  uint32_t CheckAreQueuesStuck(const vector<QState> &queue_states) {
+    return mac80211_monitor_.CheckAreQueuesStuck(queue_states);
+  }
 
  private:
   Mac80211Monitor mac80211_monitor_;
@@ -143,6 +154,103 @@ TEST_F(Mac80211MonitorTest, ParseQueueStateBadInput) {
           "00: 0x00000000/-1\n"
           "01: 0xffffffff/10\n"),
       ElementsAre(QState(1, 0xffffffff, 10)));
+}
+
+TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckNotStuck) {
+  EXPECT_FALSE(CheckAreQueuesStuck({}));
+  EXPECT_FALSE(CheckAreQueuesStuck({QState(0, 0, 0)}));
+  // Not stuck when queue length is below limit.
+  EXPECT_FALSE(CheckAreQueuesStuck({
+        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit-1)}));
+}
+
+TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckSingleReason) {
+  EXPECT_EQ(Mac80211Monitor::kStopFlagDriver,
+            CheckAreQueuesStuck({
+                QState(0, Mac80211Monitor::kStopFlagDriver, kQueueLengthLimit)}));
+  EXPECT_EQ(Mac80211Monitor::kStopFlagPowerSave,
+            CheckAreQueuesStuck({
+                QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit)}));
+}
+
+TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckMultipleReasons) {
+  EXPECT_EQ(Mac80211Monitor::kStopFlagDriver |
+            Mac80211Monitor::kStopFlagPowerSave,
+            CheckAreQueuesStuck({
+                QState(0,
+                       Mac80211Monitor::kStopFlagDriver |
+                       Mac80211Monitor::kStopFlagPowerSave,
+                       kQueueLengthLimit)}));
+  EXPECT_EQ(Mac80211Monitor::kStopFlagPowerSave |
+            Mac80211Monitor::kStopFlagChannelSwitch,
+            CheckAreQueuesStuck({
+                QState(0,
+                       Mac80211Monitor::kStopFlagPowerSave |
+                       Mac80211Monitor::kStopFlagChannelSwitch,
+                       kQueueLengthLimit)}));
+  EXPECT_EQ(Mac80211Monitor::kStopFlagDriver |
+            Mac80211Monitor::kStopFlagChannelSwitch,
+            CheckAreQueuesStuck({
+                QState(0,
+                       Mac80211Monitor::kStopFlagDriver |
+                       Mac80211Monitor::kStopFlagChannelSwitch,
+                       kQueueLengthLimit)}));
+}
+
+TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckMultipleQueues) {
+  EXPECT_EQ(Mac80211Monitor::kStopFlagPowerSave,
+            CheckAreQueuesStuck({
+                QState(0, 0, 0),
+                QState(0,
+                       Mac80211Monitor::kStopFlagPowerSave,
+                       kQueueLengthLimit)}));
+  EXPECT_EQ(Mac80211Monitor::kStopFlagPowerSave,
+            CheckAreQueuesStuck({
+                QState(0,
+                       Mac80211Monitor::kStopFlagPowerSave,
+                       kQueueLengthLimit),
+                QState(0, 0, 0)}));
+  EXPECT_EQ(Mac80211Monitor::kStopFlagPowerSave,
+            CheckAreQueuesStuck({
+                QState(0,
+                       Mac80211Monitor::kStopFlagPowerSave,
+                       kQueueLengthLimit),
+                QState(0,
+                       Mac80211Monitor::kStopFlagPowerSave,
+                       kQueueLengthLimit)}));
+  EXPECT_EQ(Mac80211Monitor::kStopFlagDriver |
+            Mac80211Monitor::kStopFlagPowerSave,
+            CheckAreQueuesStuck({
+                QState(0,
+                       Mac80211Monitor::kStopFlagPowerSave,
+                       kQueueLengthLimit),
+                QState(0,
+                       Mac80211Monitor::kStopFlagDriver,
+                       kQueueLengthLimit)}));
+  EXPECT_EQ(Mac80211Monitor::kStopFlagDriver |
+            Mac80211Monitor::kStopFlagPowerSave,
+            CheckAreQueuesStuck({
+                QState(0, Mac80211Monitor::kStopFlagDriver, kQueueLengthLimit),
+                QState(0,
+                       Mac80211Monitor::kStopFlagPowerSave,
+                       kQueueLengthLimit)}));
+}
+
+TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckQueueLength) {
+  EXPECT_TRUE(CheckAreQueuesStuck({
+        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit)}));
+  EXPECT_TRUE(CheckAreQueuesStuck({
+        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit-2),
+        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit-1),
+        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit)}));
+  EXPECT_TRUE(CheckAreQueuesStuck({
+        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit),
+        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit-1),
+        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit-2)}));
+  EXPECT_TRUE(CheckAreQueuesStuck({
+        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit-1),
+        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit),
+        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit-2)}));
 }
 
 }  // namespace shill

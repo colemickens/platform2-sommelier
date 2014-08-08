@@ -27,15 +27,21 @@ class Mac80211Monitor {
     size_t queue_length;
   };
 
-  Mac80211Monitor();
+  Mac80211Monitor(const std::string &link_name, size_t queue_length_limit);
   virtual ~Mac80211Monitor();
 
  private:
   friend class Mac80211MonitorTest;
+  FRIEND_TEST(Mac80211MonitorTest, CheckAreQueuesStuckMultipleReasons);
+  FRIEND_TEST(Mac80211MonitorTest, CheckAreQueuesStuckMultipleQueues);
+  FRIEND_TEST(Mac80211MonitorTest, CheckAreQueuesStuckNotStuck);
+  FRIEND_TEST(Mac80211MonitorTest, CheckAreQueuesStuckQueueLength);
+  FRIEND_TEST(Mac80211MonitorTest, CheckAreQueuesStuckSingleReason);
   FRIEND_TEST(Mac80211MonitorTest, ParseQueueStateBadInput);
   FRIEND_TEST(Mac80211MonitorTest, ParseQueueStateSimple);
   FRIEND_TEST(Mac80211MonitorTest, ParseQueueStateStopped);
 
+  static const size_t kMaxQueueStateSizeBytes;
   // Values must be kept in sync with ieee80211_i.h.
   enum QueueStopReason {
     kStopReasonDriver,
@@ -58,8 +64,18 @@ class Mac80211Monitor {
     kStopFlagInvalid
   };
 
+  // Check |queue_states|, to determine if any queues are stuck.
+  // Returns a bitmask of QueueStopFlags. A flag will be set if
+  // any of the queues has that flag set, and is non-empty.
+  // A return value if 0 indicates no queues are stuck.
+  uint32_t CheckAreQueuesStuck(const std::vector<QueueState> &queue_states);
+
   static std::vector<QueueState> ParseQueueState(
       const std::string &state_string);
+  static QueueStopFlag GetFlagForReason(QueueStopReason reason);
+
+  const std::string link_name_;
+  size_t queue_length_limit_;
 
   DISALLOW_COPY_AND_ASSIGN(Mac80211Monitor);
 };
