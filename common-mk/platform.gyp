@@ -44,11 +44,6 @@
                 '<(DEPTH)/lorgnette/lorgnette.gyp:*',
               ],
             }],
-            ['USE_power_management == 1', {
-              'dependencies': [
-                '<(DEPTH)/power_manager/power_manager.gyp:*',
-              ],
-            }],
             ['USE_profile == 1', {
               'dependencies': [
                 '<(DEPTH)/chromiumos-wide-profiling/quipper.gyp:*',
