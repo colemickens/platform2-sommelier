@@ -5,15 +5,23 @@
 #ifndef SHILL_MAC80211_MONITOR_H_
 #define SHILL_MAC80211_MONITOR_H_
 
+#include <time.h>
+
 #include <string>
 #include <vector>
 
+#include <base/callback.h>
+#include <base/cancelable_callback.h>
+#include <base/files/file_path.h>
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 namespace shill {
 
+class EventDispatcher;
 class Metrics;
+class Time;
 
 class Mac80211Monitor {
  public:
@@ -29,9 +37,16 @@ class Mac80211Monitor {
     size_t queue_length;
   };
 
-  Mac80211Monitor(const std::string &link_name, size_t queue_length_limit,
+  Mac80211Monitor(EventDispatcher *dispatcher,
+                  const std::string &link_name,
+                  size_t queue_length_limit,
+                  const base::Closure &on_repair_callback,
                   Metrics *metrics);
   virtual ~Mac80211Monitor();
+
+  virtual void Start(const std::string &phy_name);
+  virtual void Stop();
+  virtual void UpdateConnectedState(bool new_state);
 
  private:
   friend class Mac80211MonitorTest;
@@ -47,6 +62,11 @@ class Mac80211Monitor {
   FRIEND_TEST(Mac80211MonitorTest, ParseQueueStateStopped);
 
   static const size_t kMaxQueueStateSizeBytes;
+  static const char kQueueStatusPathFormat[];
+  static const char kWakeQueuesPathFormat[];
+  static const time_t kQueueStatePollIntervalSeconds;
+  static const time_t kMinimumTimeBetweenWakesSeconds;
+
   // Values must be kept in sync with ieee80211_i.h.
   enum QueueStopReason {
     kStopReasonDriver,
@@ -69,6 +89,13 @@ class Mac80211Monitor {
     kStopFlagInvalid
   };
 
+  void StartTimer();
+  void StopTimer();
+
+  // Check if queues need to be woken. If so, and we haven't woken them
+  // too recently, then wake them now.
+  void WakeQueuesIfNeeded();
+
   // Check |queue_states|, to determine if any queues are stuck.
   // Returns a bitmask of QueueStopFlags. A flag will be set if
   // any of the queues has that flag set, and is non-empty.
@@ -79,9 +106,20 @@ class Mac80211Monitor {
       const std::string &state_string);
   static QueueStopFlag GetFlagForReason(QueueStopReason reason);
 
+  Time *time_;  // for mocking in tests
+  EventDispatcher *dispatcher_;
   const std::string link_name_;
   size_t queue_length_limit_;
+  base::Closure on_repair_callback_;
   Metrics *metrics_;
+  std::string phy_name_;
+  time_t last_woke_queues_monotonic_seconds_;
+  bool is_running_;
+  base::FilePath queue_state_file_path_;
+  base::FilePath wake_queues_file_path_;
+  base::CancelableClosure check_queues_callback_;
+  bool is_device_connected_;
+  base::WeakPtrFactory<Mac80211Monitor> weak_ptr_factory_;  // keep last
 
   DISALLOW_COPY_AND_ASSIGN(Mac80211Monitor);
 };

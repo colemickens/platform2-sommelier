@@ -6,19 +6,30 @@
 
 #include <vector>
 
+#include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_time.h"
 
+using std::string;
 using std::vector;
+using ::testing::_;
+using ::testing::AnyNumber;
+using ::testing::DoAll;
 using ::testing::ElementsAre;
+using ::testing::Return;
+using ::testing::SetArgumentPointee;
 using ::testing::StrictMock;
 
 namespace shill {
 
 namespace {
 static const char kTestDeviceName[] = "test-dev";
+static const char kJunkData[] = "junk data";
 }
 
 typedef Mac80211Monitor::QueueState QState;
@@ -27,20 +38,140 @@ class Mac80211MonitorTest : public testing::Test {
  public:
   Mac80211MonitorTest()
       : metrics_(nullptr),
-        mac80211_monitor_(kTestDeviceName, kQueueLengthLimit, &metrics_) {}
+        mac80211_monitor_(
+            &event_dispatcher_,
+            kTestDeviceName,
+            kQueueLengthLimit,
+            base::Bind(&Mac80211MonitorTest::OnRepairHandler,
+                       base::Unretained(this)),
+            &metrics_) {
+    ON_CALL(event_dispatcher_, PostDelayedTask(_, _))
+        .WillByDefault(Return(true));
+    mac80211_monitor_.time_ = &time_;
+  }
   virtual ~Mac80211MonitorTest() {}
 
  protected:
   static const size_t kQueueLengthLimit = 5;
+  base::FilePath fake_queue_state_file_path_;  // Call FakeUpSysfs() first.
+  base::FilePath fake_wake_queues_file_path_;  // Call FakeUpSysfs() first.
 
+  // Getters for fixture fields.
+  MockTime &time() { return time_; }
+  MockEventDispatcher &event_dispatcher() { return event_dispatcher_; }
   MockMetrics &metrics() { return metrics_; }
+
+  // Complex fixture methods.
+  void AllowWakeQueuesIfNeededCommonCalls() {
+    // Allow any number of these calls, as these aspects of
+    // WakeQueuesIfNeeded interaction are tested elsewhere.
+    EXPECT_CALL(event_dispatcher(), PostDelayedTask(_, _))
+        .Times(AnyNumber());
+    EXPECT_CALL(metrics(), SendEnumToUMA(_, _, _))
+        .Times(AnyNumber());
+    EXPECT_CALL(metrics(), SendToUMA(_, _, _, _, _))
+        .Times(AnyNumber());
+  }
+  void FakeUpNotStuckState() {
+    FakeUpQueueFiles("00: 0x00000000/10\n");
+  }
+  void FakeUpStuckByDriverState() {
+    FakeUpQueueFiles("00: 0x00000001/10\n");
+  }
+  void FakeUpStuckByPowerSaveState() {
+    FakeUpQueueFiles("00: 0x00000002/10\n");
+  }
+  void FakeUpSysfs() {
+    CHECK(fake_sysfs_tree_.CreateUniqueTempDir());
+    CHECK(base::CreateTemporaryFileInDir(
+        fake_sysfs_tree_.path(), &fake_queue_state_file_path_));
+    CHECK(base::CreateTemporaryFileInDir(
+        fake_sysfs_tree_.path(), &fake_wake_queues_file_path_));
+    PlumbFakeSysfs();
+  }
+  bool IsRunning() const {
+    return mac80211_monitor_.is_running_ &&
+        !mac80211_monitor_.check_queues_callback_.IsCancelled();
+  }
+  bool IsStopped() const {
+    return !mac80211_monitor_.is_running_ &&
+        mac80211_monitor_.check_queues_callback_.IsCancelled();
+  }
+  bool IsWakeQueuesFileModified() const {
+    CHECK(fake_sysfs_tree_.IsValid());  // Keep tests hermetic.
+    string wake_file_contents;
+    base::ReadFileToString(fake_wake_queues_file_path_, &wake_file_contents);
+    return wake_file_contents != kJunkData;
+  }
+  MOCK_METHOD0(OnRepairHandler, void());
+
+  // Getters for Mac80211Monitor state.
+  bool GetIsDeviceConnected() const {
+    return mac80211_monitor_.is_device_connected_;
+  }
+  time_t GetLastWokeQueuesMonotonicSeconds() const {
+    return mac80211_monitor_.last_woke_queues_monotonic_seconds_;
+  }
+  const string &GetLinkName() const {
+    return mac80211_monitor_.link_name_;
+  }
+  time_t GetMinimumTimeBetweenWakesSeconds() const {
+    return Mac80211Monitor::kMinimumTimeBetweenWakesSeconds;
+  }
+  const string &GetPhyName() const {
+    return mac80211_monitor_.phy_name_;
+  }
+  const base::FilePath &GetQueueStateFilePath() const {
+    return mac80211_monitor_.queue_state_file_path_;
+  }
+  const base::FilePath &GetWakeQueuesFilePath() const {
+    return mac80211_monitor_.wake_queues_file_path_;
+  }
+
+  // Pass-through methods to Mac80211Monitor methods.
+  void StartMonitor(const string &phy_name) {
+    EXPECT_CALL(
+        event_dispatcher_,
+        PostDelayedTask(
+            _, Mac80211Monitor::kQueueStatePollIntervalSeconds * 1000));
+    mac80211_monitor_.Start(phy_name);
+    if (fake_sysfs_tree_.IsValid()) {
+      PlumbFakeSysfs();  // Re-plumb, since un-plumbed by Start().
+    }
+  }
+  void StopMonitor() {
+    mac80211_monitor_.Stop();
+  }
   uint32_t CheckAreQueuesStuck(const vector<QState> &queue_states) {
     return mac80211_monitor_.CheckAreQueuesStuck(queue_states);
   }
+  void UpdateConnectedState(bool new_state) {
+    mac80211_monitor_.UpdateConnectedState(new_state);
+  }
+  void WakeQueuesIfNeeded() {
+    CHECK(fake_sysfs_tree_.IsValid());  // Keep tests hermetic.
+    mac80211_monitor_.WakeQueuesIfNeeded();
+  }
 
  private:
+  base::ScopedTempDir fake_sysfs_tree_;  // Call FakeUpSysfs() first.
+  StrictMock<MockEventDispatcher> event_dispatcher_;
   StrictMock<MockMetrics> metrics_;
+  StrictMock<MockTime> time_;
   Mac80211Monitor mac80211_monitor_;
+
+  void FakeUpQueueFiles(const string &queue_state_string) {
+    CHECK(fake_sysfs_tree_.IsValid());  // Keep tests hermetic.
+    base::WriteFile(fake_queue_state_file_path_,
+                    queue_state_string.c_str(),
+                    queue_state_string.length());
+    ASSERT_TRUE(base::WriteFile(fake_wake_queues_file_path_,
+                                kJunkData, strlen(kJunkData)));
+  }
+  void PlumbFakeSysfs() {
+    mac80211_monitor_.queue_state_file_path_ = fake_queue_state_file_path_;
+    mac80211_monitor_.wake_queues_file_path_ = fake_wake_queues_file_path_;
+  }
 };
 
 // Can't be in an anonymous namespace, due to ADL.
@@ -49,6 +180,121 @@ static bool operator==(const QState &a, const QState &b) {
   return a.queue_number == b.queue_number &&
       a.stop_flags == b.stop_flags &&
       a.queue_length == b.queue_length;
+}
+
+TEST_F(Mac80211MonitorTest, Ctor) {
+  EXPECT_TRUE(IsStopped());
+  EXPECT_EQ(kTestDeviceName, GetLinkName());
+}
+
+TEST_F(Mac80211MonitorTest, Start) {
+  StartMonitor("test-phy");
+  EXPECT_TRUE(IsRunning());
+  EXPECT_EQ("test-phy", GetPhyName());
+  EXPECT_EQ("/sys/kernel/debug/ieee80211/test-phy/queues",
+            GetQueueStateFilePath().value());
+  EXPECT_EQ("/sys/kernel/debug/ieee80211/test-phy/wake_queues",
+            GetWakeQueuesFilePath().value());
+  EXPECT_EQ(0, GetLastWokeQueuesMonotonicSeconds());
+}
+
+TEST_F(Mac80211MonitorTest, Stop) {
+  StartMonitor("dont-care-phy");
+  EXPECT_TRUE(IsRunning());
+  StopMonitor();
+  EXPECT_TRUE(IsStopped());
+}
+
+TEST_F(Mac80211MonitorTest, UpdateConnectedState) {
+  UpdateConnectedState(false);
+  EXPECT_FALSE(GetIsDeviceConnected());
+
+  UpdateConnectedState(true);
+  EXPECT_TRUE(GetIsDeviceConnected());
+
+  // Initial state was unknown. Ensure that we can move from true to false.
+  UpdateConnectedState(false);
+  EXPECT_FALSE(GetIsDeviceConnected());
+}
+
+TEST_F(Mac80211MonitorTest, WakeQueuesIfNeededRearmsTimerWhenDisconnected) {
+  FakeUpSysfs();
+  StartMonitor("dont-care-phy");
+  UpdateConnectedState(false);
+  EXPECT_CALL(event_dispatcher(), PostDelayedTask(_, _));
+  WakeQueuesIfNeeded();
+}
+
+TEST_F(Mac80211MonitorTest, WakeQueuesIfNeededRearmsTimerWhenConnected) {
+  FakeUpSysfs();
+  StartMonitor("dont-care-phy");
+  UpdateConnectedState(true);
+  EXPECT_CALL(event_dispatcher(), PostDelayedTask(_, _));
+  WakeQueuesIfNeeded();
+}
+
+TEST_F(Mac80211MonitorTest, WakeQueuesIfNeededWakeNeeded) {
+  FakeUpSysfs();
+  FakeUpStuckByPowerSaveState();
+  StartMonitor("dont-care-phy");
+  EXPECT_EQ(0, GetLastWokeQueuesMonotonicSeconds());
+
+  const time_t kNowMonotonicSeconds = GetMinimumTimeBetweenWakesSeconds();
+  EXPECT_CALL(time(), GetSecondsMonotonic(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(kNowMonotonicSeconds),
+                      Return(true)));
+  EXPECT_CALL(*this, OnRepairHandler());
+  AllowWakeQueuesIfNeededCommonCalls();
+  WakeQueuesIfNeeded();
+
+  EXPECT_EQ(kNowMonotonicSeconds, GetLastWokeQueuesMonotonicSeconds());
+  EXPECT_TRUE(IsWakeQueuesFileModified());
+}
+
+TEST_F(Mac80211MonitorTest, WakeQueuesIfNeededRateLimiting) {
+  FakeUpSysfs();
+  FakeUpStuckByPowerSaveState();
+  StartMonitor("dont-care-phy");
+  EXPECT_EQ(0, GetLastWokeQueuesMonotonicSeconds());
+
+  EXPECT_CALL(time(), GetSecondsMonotonic(_))
+      .WillOnce(DoAll(
+          SetArgumentPointee<0>(GetMinimumTimeBetweenWakesSeconds() - 1),
+          Return(true)));
+  EXPECT_CALL(*this, OnRepairHandler()).Times(0);
+  AllowWakeQueuesIfNeededCommonCalls();
+  WakeQueuesIfNeeded();
+
+  EXPECT_EQ(0, GetLastWokeQueuesMonotonicSeconds());
+  EXPECT_FALSE(IsWakeQueuesFileModified());
+}
+
+TEST_F(Mac80211MonitorTest, WakeQueuesIfNeededNotStuck) {
+  FakeUpSysfs();
+  FakeUpNotStuckState();
+  StartMonitor("dont-care-phy");
+  EXPECT_EQ(0, GetLastWokeQueuesMonotonicSeconds());
+
+  EXPECT_CALL(*this, OnRepairHandler()).Times(0);
+  AllowWakeQueuesIfNeededCommonCalls();
+  WakeQueuesIfNeeded();
+
+  EXPECT_EQ(0, GetLastWokeQueuesMonotonicSeconds());
+  EXPECT_FALSE(IsWakeQueuesFileModified());
+}
+
+TEST_F(Mac80211MonitorTest, WakeQueuesIfNeededStuckByDriver) {
+  FakeUpSysfs();
+  FakeUpStuckByDriverState();
+  StartMonitor("dont-care-phy");
+  EXPECT_EQ(0, GetLastWokeQueuesMonotonicSeconds());
+
+  EXPECT_CALL(*this, OnRepairHandler()).Times(0);
+  AllowWakeQueuesIfNeededCommonCalls();
+  WakeQueuesIfNeeded();
+
+  EXPECT_EQ(0, GetLastWokeQueuesMonotonicSeconds());
+  EXPECT_FALSE(IsWakeQueuesFileModified());
 }
 
 TEST_F(Mac80211MonitorTest, ParseQueueStateSimple) {
@@ -187,10 +433,14 @@ TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckSingleReason) {
       Metrics::kMetricWifiStoppedTxQueueLengthNumBuckets)).Times(2);
   EXPECT_EQ(Mac80211Monitor::kStopFlagDriver,
             CheckAreQueuesStuck({
-                QState(0, Mac80211Monitor::kStopFlagDriver, kQueueLengthLimit)}));
+                QState(0,
+                       Mac80211Monitor::kStopFlagDriver,
+                       kQueueLengthLimit)}));
   EXPECT_EQ(Mac80211Monitor::kStopFlagPowerSave,
             CheckAreQueuesStuck({
-                QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit)}));
+                QState(0,
+                       Mac80211Monitor::kStopFlagPowerSave,
+                       kQueueLengthLimit)}));
 }
 
 TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckMultipleReasons) {

@@ -603,6 +603,7 @@
             'mock_link_monitor.cc',
             'mock_log.cc',
             'mock_log_unittest.cc',
+	    'mock_mac80211_monitor.cc',
             'mock_manager.cc',
             'mock_metrics.cc',
             'mock_netlink_manager.cc',
