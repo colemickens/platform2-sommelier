@@ -21,7 +21,6 @@
             ['USE_cellular == 1', {
               'dependencies': [
                 '<(DEPTH)/cromo/cromo.gyp:*',
-                '<(DEPTH)/mist/mist.gyp:*',
               ],
             }],
             ['USE_cros_disks == 1', {
