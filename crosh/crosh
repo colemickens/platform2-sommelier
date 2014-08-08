@@ -149,6 +149,11 @@ HELP_ADVANCED='
   Turn on extra network state checking to make sure the default gateway
   is reachable.
 
+ set_wake_on_lan <true | false>
+  Enable or disable Wake on LAN for Ethernet devices.  This command takes
+  effect after re-connecting to Ethernet and is not persistent across system
+  restarts.
+
  set_cellular_ppp [-u <username>] [-p <password>]
   Set the PPP username and/or password for an existing cellular connection.
   If neither -u nor -p is provided, show the existing PPP username for
@@ -775,7 +780,33 @@ cmd_wpa_debug() (
 )
 
 cmd_set_arpgw() (
-  /usr/bin/set_arpgw "$@"
+  case "$1" in
+    "true"|"false")
+      /usr/bin/set_arpgw "$1"
+      ;;
+    "")
+      /usr/bin/set_arpgw
+      ;;
+    *)
+      echo "Unknown option: $1"
+      return 1
+      ;;
+  esac
+)
+
+cmd_set_wake_on_lan() (
+  case "$1" in
+    "true"|"false")
+      /usr/bin/set_wake_on_lan "$1"
+      ;;
+    "")
+      /usr/bin/set_wake_on_lan
+      ;;
+    *)
+      echo "Unknown option: $1"
+      return 1
+      ;;
+  esac
 )
 
 cmd_network_logging() (
