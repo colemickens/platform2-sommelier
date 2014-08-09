@@ -59,7 +59,8 @@ class UserSession {
   //   credentials - The user credentials to attempt decryption with
   virtual bool Verify(const Credentials& credentials) const;
 
-  // Get the obfuscated username of this session
+  // Get the obfuscated username of this session. Returns an empty string if
+  // no user is currently assigned to the session.
   //
   // Parameters
   //   username (OUT) - the username

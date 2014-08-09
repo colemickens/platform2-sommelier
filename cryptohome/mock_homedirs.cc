@@ -10,7 +10,7 @@ using testing::Return;
 namespace cryptohome {
 
 MockHomeDirs::MockHomeDirs() {
-  ON_CALL(*this, Init(_, _)).WillByDefault(Return(true));
+  ON_CALL(*this, Init(_, _, _)).WillByDefault(Return(true));
 }
 MockHomeDirs::~MockHomeDirs() {}
 

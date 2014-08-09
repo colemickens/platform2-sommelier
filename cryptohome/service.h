@@ -645,6 +645,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
                    scoped_refptr<cryptohome::Mount> > MountMap;
   MountMap mounts_;
   base::Lock mounts_lock_;  // Protects against parallel insertions only.
+  scoped_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
   scoped_ptr<cryptohome::MountFactory> default_mount_factory_;
   cryptohome::MountFactory* mount_factory_;
   scoped_ptr<cryptohome::DBusReplyFactory> default_reply_factory_;

@@ -30,6 +30,7 @@
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mount.h"
 #include "cryptohome/username_passkey.h"
+#include "cryptohome/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/vault_keyset.h"
 
 using base::StringPrintf;
@@ -182,8 +183,9 @@ void TestUser::GenerateCredentials() {
   NiceMock<MockPlatform> platform;
   NiceMock<MockCrypto> crypto;
   crypto.set_platform(&platform);
+  UserOldestActivityTimestampCache timestamp_cache;
 
-  scoped_refptr<Mount> mount = new cryptohome::Mount();
+  scoped_refptr<Mount> mount = new Mount();
   mount->set_shadow_root(shadow_root);
   mount->set_skel_source(skel_dir);
   mount->set_use_tpm(false);
@@ -202,7 +204,7 @@ void TestUser::GenerateCredentials() {
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(salt), Return(true)));
   EXPECT_CALL(platform, DirectoryExists(shadow_root))
     .WillRepeatedly(Return(true));
-  mount->Init(&platform, &crypto);
+  mount->Init(&platform, &crypto, &timestamp_cache);
 
   cryptohome::Crypto::PasswordToPasskey(password,
                                         salt,

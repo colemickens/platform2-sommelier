@@ -265,7 +265,8 @@ Service::Service()
       reported_pkcs11_init_fail_(false),
       enterprise_owned_(false),
       mounts_lock_(),
-      default_mount_factory_(new cryptohome::MountFactory),
+      user_timestamp_cache_(new UserOldestActivityTimestampCache()),
+      default_mount_factory_(new cryptohome::MountFactory()),
       mount_factory_(default_mount_factory_.get()),
       default_reply_factory_(new cryptohome::DBusReplyFactory),
       reply_factory_(default_reply_factory_.get()),
@@ -453,7 +454,7 @@ bool Service::Initialize() {
   if (!crypto_->Init(tpm_init_))
     return false;
 
-  if (!homedirs_->Init(platform_, crypto_))
+  if (!homedirs_->Init(platform_, crypto_, user_timestamp_cache_.get()))
     return false;
 
   // If the TPM is unowned or doesn't exist, it's safe for
@@ -2891,7 +2892,7 @@ scoped_refptr<cryptohome::Mount> Service::GetOrCreateMountForUser(
   mounts_lock_.Acquire();
   if (mounts_.count(username) == 0U) {
     m = mount_factory_->New();
-    m->Init(platform_, crypto_);
+    m->Init(platform_, crypto_, user_timestamp_cache_.get());
     m->set_enterprise_owned(enterprise_owned_);
     m->set_legacy_mount(legacy_mount_);
     mounts_[username] = m;

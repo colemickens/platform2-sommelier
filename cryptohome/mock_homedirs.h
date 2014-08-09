@@ -23,7 +23,8 @@ class MockHomeDirs : public HomeDirs {
   MockHomeDirs();
   virtual ~MockHomeDirs();
 
-  MOCK_METHOD2(Init, bool(Platform*, Crypto*));
+  MOCK_METHOD3(Init, bool(Platform*, Crypto*,
+                          UserOldestActivityTimestampCache*));
   MOCK_METHOD0(FreeDiskSpace, bool());
   MOCK_METHOD1(AreCredentialsValid, bool(const Credentials&));
   MOCK_METHOD2(GetValidKeyset, bool(const Credentials&, VaultKeyset*));

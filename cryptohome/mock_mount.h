@@ -18,7 +18,8 @@ class MockMount : public Mount {
  public:
   MockMount();
   ~MockMount();
-  MOCK_METHOD2(Init, bool(Platform*, Crypto*));
+  MOCK_METHOD3(Init, bool(Platform*, Crypto*,
+                          UserOldestActivityTimestampCache*));
   MOCK_METHOD1(AreSameUser, bool(const Credentials&));
   MOCK_METHOD1(AreValid, bool(const Credentials&));
   MOCK_METHOD3(MountCryptohome, bool(const Credentials&,

@@ -37,8 +37,7 @@ HomeDirs::HomeDirs()
     : default_platform_(new Platform()),
       platform_(default_platform_.get()),
       shadow_root_(kShadowRoot),
-      default_timestamp_cache_(new UserOldestActivityTimestampCache()),
-      timestamp_cache_(default_timestamp_cache_.get()),
+      timestamp_cache_(NULL),
       enterprise_owned_(false),
       default_policy_provider_(new policy::PolicyProvider()),
       policy_provider_(default_policy_provider_.get()),
@@ -50,9 +49,11 @@ HomeDirs::HomeDirs()
 
 HomeDirs::~HomeDirs() { }
 
-bool HomeDirs::Init(Platform* platform, Crypto* crypto) {
+bool HomeDirs::Init(Platform* platform, Crypto* crypto,
+                    UserOldestActivityTimestampCache *cache) {
   platform_ = platform;
   crypto_ = crypto;
+  timestamp_cache_ = cache;
 
   LoadDevicePolicy();
   if (!platform_->DirectoryExists(shadow_root_))
@@ -87,9 +88,12 @@ bool HomeDirs::FreeDiskSpace() {
   if (platform_->AmountOfFreeDiskSpace(shadow_root_) >= kEnoughFreeSpace)
     return true;
 
-  // Initialize user timestamp cache if it has not been yet.  Current
-  // user is not added now, but added on log out or during daily
-  // updates (UpdateCurrentUserActivityTimestamp()).
+  // Initialize user timestamp cache if it has not been yet. This reads the
+  // last-activity time from each homedir's SerializedVaultKeyset.  This value
+  // is only updated in the value keyset on unmount and every 24 hrs, so a
+  // currently logged in user probably doesn't have an up to date value. This
+  // is okay, since we don't delete currently logged in homedirs anyway.  (See
+  // Mount::UpdateCurrentUserActivityTimestamp()).
   if (!timestamp_cache_->initialized()) {
     timestamp_cache_->Initialize();
     DoForEveryUnmountedCryptohome(base::Bind(
@@ -855,7 +859,7 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
   newcreds.GetPasskey(&newkey);
   UsernamePasskey oldcreds(newcreds.username().c_str(), oldkey);
   scoped_refptr<Mount> mount = mount_factory_->New();
-  mount->Init(platform_, crypto_);
+  mount->Init(platform_, crypto_, timestamp_cache_);
   std::string obfuscated = newcreds.GetObfuscatedUsername(system_salt_);
   if (!mount->MountCryptohome(oldcreds, Mount::MountArgs(), NULL)) {
     LOG(ERROR) << "Migrate: Mount failed";

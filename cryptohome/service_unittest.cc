@@ -37,6 +37,7 @@
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/username_passkey.h"
+#include "cryptohome/user_oldest_activity_timestamp_cache.h"
 
 using base::PlatformThread;
 using chromeos::SecureBlob;
@@ -119,7 +120,7 @@ TEST_F(ServiceInterfaceTest, CheckKeySuccessTest) {
   service.set_platform(&platform);
   service.set_chaps_client(&chaps);
   service.set_initialize_tpm(false);
-  EXPECT_CALL(homedirs, Init(&platform, service.crypto()))
+  EXPECT_CALL(homedirs, Init(&platform, service.crypto(), _))
     .WillOnce(Return(true));
 
   service.Initialize();
@@ -150,7 +151,7 @@ class CheckKeyExInterfaceTest : public ::testing::Test {
     service_.set_platform(&platform_);
     service_.set_chaps_client(&chaps_);
     service_.set_initialize_tpm(false);
-    EXPECT_CALL(homedirs_, Init(&platform_, service_.crypto()))
+    EXPECT_CALL(homedirs_, Init(&platform_, service_.crypto(), _))
         .WillOnce(Return(true));
     service_.Initialize();
   }
@@ -419,7 +420,7 @@ TEST(Standalone, CheckAutoCleanupCallback) {
 
   // Service will schedule periodic clean-ups. Wait a bit and make
   // sure that we had at least 3 executed.
-  EXPECT_CALL(homedirs, Init(&platform, service.crypto()))
+  EXPECT_CALL(homedirs, Init(&platform, service.crypto(), _))
       .WillOnce(Return(true));
   EXPECT_CALL(homedirs, FreeDiskSpace())
       .Times(::testing::AtLeast(3));
@@ -453,7 +454,7 @@ TEST(Standalone, CheckAutoCleanupCallbackFirst) {
   service.set_platform(&platform);
 
   // Service will schedule first cleanup right after its init.
-  EXPECT_CALL(homedirs, Init(&platform, service.crypto()))
+  EXPECT_CALL(homedirs, Init(&platform, service.crypto(), _))
       .WillOnce(Return(true));
   EXPECT_CALL(homedirs, FreeDiskSpace())
       .Times(1);
@@ -573,7 +574,7 @@ TEST_F(CleanUpStaleTest, FilledMap_NoOpenFiles_ShadowOnly) {
 
   service_.set_mount_factory(&f);
 
-  EXPECT_CALL(homedirs_, Init(&platform_, service_.crypto()))
+  EXPECT_CALL(homedirs_, Init(&platform_, service_.crypto(), _))
     .WillOnce(Return(true));
 
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
@@ -582,7 +583,7 @@ TEST_F(CleanUpStaleTest, FilledMap_NoOpenFiles_ShadowOnly) {
 
   ASSERT_TRUE(service_.Initialize());
 
-  EXPECT_CALL(*m, Init(&platform_, service_.crypto()))
+  EXPECT_CALL(*m, Init(&platform_, service_.crypto(), _))
     .WillOnce(Return(true));
   EXPECT_CALL(*m, MountCryptohome(_, _, _))
     .WillOnce(Return(true));
@@ -756,7 +757,7 @@ class ExTest : public ::testing::Test {
 
     g_error_ = NULL;
     // Fast path through Initialize()
-    EXPECT_CALL(homedirs_, Init(&platform_, service_.crypto()))
+    EXPECT_CALL(homedirs_, Init(&platform_, service_.crypto(), _))
         .WillOnce(Return(true));
     // Skip the CleanUpStaleMounts bit.
     EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))

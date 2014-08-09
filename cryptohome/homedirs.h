@@ -45,7 +45,8 @@ class HomeDirs {
   virtual ~HomeDirs();
 
   // Initializes this HomeDirs object. Returns true for success.
-  virtual bool Init(Platform* platform, Crypto* crypto);
+  virtual bool Init(Platform* platform, Crypto* crypto,
+                    UserOldestActivityTimestampCache *cache);
 
   // Frees disk space for unused cryptohomes. If less than kMinFreeSpace is
   // available, frees space until kEnoughFreeSpace is available. Returns true if
@@ -167,12 +168,6 @@ class HomeDirs {
   Platform* platform() { return platform_; }
   void set_shadow_root(const std::string& value) { shadow_root_ = value; }
   const std::string& shadow_root() const { return shadow_root_; }
-  UserOldestActivityTimestampCache *timestamp_cache() {
-    return timestamp_cache_;
-  }
-  void set_timestamp_cache(UserOldestActivityTimestampCache *value) {
-    timestamp_cache_ = value;
-  }
   void set_enterprise_owned(bool value) { enterprise_owned_ = value; }
   bool enterprise_owned() const { return enterprise_owned_; }
   void set_policy_provider(policy::PolicyProvider* value) {
@@ -213,7 +208,8 @@ class HomeDirs {
   // Deletes all directories under the supplied directory whose basename is not
   // the same as the obfuscated owner name.
   void RemoveNonOwnerDirectories(const base::FilePath& prefix);
-  // Callback used during FreeDiskSpace()
+  // Callback used during FreeDiskSpace() if the timestamp cache is not yet
+  // initialized. Loads the last activity timestamp from the vault keyset.
   void AddUserTimestampToCacheCallback(const base::FilePath& vault);
   // Loads the serialized vault keyset for the supplied obfuscated username.
   // Returns true for success, false for failure.
@@ -231,7 +227,6 @@ class HomeDirs {
   scoped_ptr<Platform> default_platform_;
   Platform* platform_;
   std::string shadow_root_;
-  scoped_ptr<UserOldestActivityTimestampCache> default_timestamp_cache_;
   UserOldestActivityTimestampCache* timestamp_cache_;
   bool enterprise_owned_;
   scoped_ptr<policy::PolicyProvider> default_policy_provider_;

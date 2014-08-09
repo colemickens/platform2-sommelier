@@ -40,6 +40,7 @@
 #include "cryptohome/mock_tpm_init.h"
 #include "cryptohome/mock_user_session.h"
 #include "cryptohome/username_passkey.h"
+#include "cryptohome/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/vault_keyset.h"
 
 #include "vault_keyset.pb.h"  // NOLINT(build/include)
@@ -120,6 +121,7 @@ class MountTest : public ::testing::Test {
     crypto_.set_platform(&platform_);
     crypto_.set_use_tpm(false);
 
+    user_timestamp_cache_.reset(new UserOldestActivityTimestampCache());
     mount_ = new Mount();
     mount_->set_homedirs(&homedirs_);
     mount_->set_use_tpm(false);
@@ -154,7 +156,7 @@ class MountTest : public ::testing::Test {
     EXPECT_CALL(platform_, GetGroupId("chronos-access", _))
       .WillOnce(DoAll(SetArgumentPointee<1>(shared_gid_),
                       Return(true)));
-    return mount_->Init(&platform_, &crypto_);
+    return mount_->Init(&platform_, &crypto_, user_timestamp_cache_.get());
   }
 
   bool LoadSerializedKeyset(const chromeos::Blob& contents,
@@ -201,6 +203,7 @@ class MountTest : public ::testing::Test {
   NiceMock<MockCrypto> crypto_;
   MockChapsClientFactory chaps_client_factory_;
   scoped_refptr<Mount> mount_;
+  scoped_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MountTest);
@@ -233,7 +236,7 @@ TEST_F(MountTest, BadInitTest) {
                     Return(true)));
   EXPECT_CALL(platform_, GetGroupId("chronos-access", _))
     .WillOnce(DoAll(SetArgumentPointee<1>(1002), Return(true)));
-  EXPECT_FALSE(mount_->Init(&platform_, &crypto_));
+  EXPECT_FALSE(mount_->Init(&platform_, &crypto_, user_timestamp_cache_.get()));
   ASSERT_FALSE(mount_->AreValid(up));
 }
 
@@ -394,9 +397,10 @@ class ChapsDirectoryTest : public ::testing::Test {
         kDatabaseFile("/base_chaps_dir/database/file"),
         kLegacyDir("/legacy"),
         kRootUID(0), kRootGID(0), kChapsUID(1), kSharedGID(2),
-        mount_(new Mount()) {
+        mount_(new Mount()),
+        user_timestamp_cache_(new UserOldestActivityTimestampCache()) {
     crypto_.set_platform(&platform_);
-    mount_->Init(&platform_, &crypto_);
+    mount_->Init(&platform_, &crypto_, user_timestamp_cache_.get());
     mount_->chaps_user_ = kChapsUID;
     mount_->default_access_group_ = kSharedGID;
     // By default, set stats to the expected values.
@@ -450,6 +454,7 @@ class ChapsDirectoryTest : public ::testing::Test {
   scoped_refptr<Mount> mount_;
   NiceMock<MockPlatform> platform_;
   NiceMock<MockCrypto> crypto_;
+  scoped_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
 
  private:
   void InitStat(struct stat* s, mode_t mode, uid_t uid, gid_t gid) {
@@ -615,7 +620,8 @@ TEST_F(MountTest, CreateCryptohomeTest) {
   UsernamePasskey up(user->username, user->passkey);
 
   EXPECT_TRUE(DoMountInit());
-  EXPECT_TRUE(homedirs.Init(&platform_, mount_->crypto()));
+  EXPECT_TRUE(homedirs.Init(&platform_, mount_->crypto(),
+                            user_timestamp_cache_.get()));
 
   // TODO(wad) Make this into a UserDoesntExist() helper.
   EXPECT_CALL(platform_, FileExists(user->image_path))
@@ -695,7 +701,8 @@ TEST_F(MountTest, GoodReDecryptTest) {
     .WillRepeatedly(Return(true));
 
   EXPECT_TRUE(DoMountInit());
-  EXPECT_TRUE(homedirs.Init(&platform_, mount_->crypto()));
+  EXPECT_TRUE(homedirs.Init(&platform_, mount_->crypto(),
+                            user_timestamp_cache_.get()));
 
   // Load the pre-generated keyset
   std::string key_path = mount_->GetUserLegacyKeyFileForUser(

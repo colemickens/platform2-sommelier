@@ -66,6 +66,7 @@ extern const char kGuestMountPath[];
 
 class BootLockbox;
 class ChapsClientFactory;
+class UserOldestActivityTimestampCache;
 
 // The Mount class handles mounting/unmounting of the user's cryptohome
 // directory as well as offline verification of the user's credentials against
@@ -91,7 +92,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   virtual ~Mount();
 
   // Gets the uid/gid of the default user and loads the system salt
-  virtual bool Init(Platform* platform, Crypto* crypto);
+  virtual bool Init(Platform* platform, Crypto* crypto,
+                    UserOldestActivityTimestampCache *cache);
 
   // Attempts to mount the cryptohome for the given credentials
   //
@@ -132,8 +134,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Updates current user activity timestamp. This is called daily.
   // So we may not consider current user as old (and delete it soon after she
-  // logs off). Returns true if current user is in and updated.
-  // Nothing is done if no user is logged in and false is returned.
+  // logs off). Returns true if current user is logged in and timestamp was
+  // updated.
+  // If no user is logged or the mount is ephemeral, nothing is done and false
+  // is returned.
   //
   // Parameters
   //   time_shift_sec - normally must be 0. Shifts the updated time backwards
@@ -215,11 +219,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Manually set the logged in user
   void set_current_user(UserSession* value) {
     current_user_ = value;
-  }
-
-  // Set/get last access timestamp cache instance for test purposes.
-  UserOldestActivityTimestampCache* user_timestamp_cache() const {
-    return user_timestamp_;
   }
 
   // Set/get a flag, that this machine is enterprise owned.
@@ -748,8 +747,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   UserSession* current_user_;
 
   // Cache of last access timestamp for existing users.
-  scoped_ptr<UserOldestActivityTimestampCache> default_user_timestamp_;
-  UserOldestActivityTimestampCache* user_timestamp_;
+  UserOldestActivityTimestampCache* user_timestamp_cache_;
 
   // Used to retrieve the owner user.
   scoped_ptr<policy::PolicyProvider> policy_provider_;

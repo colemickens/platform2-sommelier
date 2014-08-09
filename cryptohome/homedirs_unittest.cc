@@ -114,10 +114,7 @@ class HomeDirsTest : public ::testing::Test {
                                   StringPrintf("%s/salt", kTestRoot));
     set_policy(true, kOwner, false, "");
 
-    // Mount() normally sets this.
-    homedirs_.set_timestamp_cache(&timestamp_cache_);
-
-    homedirs_.Init(&platform_, &crypto_);
+    homedirs_.Init(&platform_, &crypto_, &timestamp_cache_);
     FilePath fp = FilePath(kTestRoot);
     for (unsigned int i = 0; i < arraysize(kHomedirs); i++) {
       const struct homedir *hd = &kHomedirs[i];
@@ -493,7 +490,7 @@ TEST_F(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_LoginScreen) {
   homedirs_.set_enterprise_owned(true);
   UserOldestActivityTimestampCache cache;
   cache.Initialize();
-  homedirs_.set_timestamp_cache(&cache);
+  homedirs_.Init(&platform_, &crypto_, &cache);
 
   cache.AddExistingUser(FilePath(homedir_paths_[0]), homedir_times_[0]);
   cache.AddExistingUser(FilePath(homedir_paths_[1]), homedir_times_[1]);
@@ -526,7 +523,7 @@ TEST_F(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_UserLoggedIn) {
   homedirs_.set_enterprise_owned(true);
   UserOldestActivityTimestampCache cache;
   cache.Initialize();
-  homedirs_.set_timestamp_cache(&cache);
+  homedirs_.Init(&platform_, &crypto_, &cache);
 
   cache.AddExistingUser(FilePath(homedir_paths_[0]), homedir_times_[0]);
   cache.AddExistingUser(FilePath(homedir_paths_[1]), homedir_times_[1]);

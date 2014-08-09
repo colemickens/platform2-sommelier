@@ -10,6 +10,7 @@
 
 namespace cryptohome {
 class Mount;
+
 // Provide a means for mocks to be injected anywhere that new Mount objects
 // are created.
 class MountFactory {

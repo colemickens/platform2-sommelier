@@ -118,8 +118,7 @@ Mount::Mount()
       use_tpm_(true),
       default_current_user_(new UserSession()),
       current_user_(default_current_user_.get()),
-      default_user_timestamp_(new UserOldestActivityTimestampCache()),
-      user_timestamp_(default_user_timestamp_.get()),
+      user_timestamp_cache_(NULL),
       enterprise_owned_(false),
       pkcs11_state_(kUninitialized),
       is_pkcs11_passkey_migration_required_(false),
@@ -135,21 +134,22 @@ Mount::~Mount() {
     UnmountCryptohome();
 }
 
-bool Mount::Init(Platform* platform, Crypto* crypto) {
+bool Mount::Init(Platform* platform, Crypto* crypto,
+                 UserOldestActivityTimestampCache *cache) {
   platform_ = platform;
   crypto_ = crypto;
+  user_timestamp_cache_ = cache;
 
   bool result = true;
 
   homedirs_->set_platform(platform_);
   homedirs_->set_shadow_root(shadow_root_);
-  homedirs_->set_timestamp_cache(user_timestamp_);
   homedirs_->set_enterprise_owned(enterprise_owned_);
 
   // Make sure both we and |homedirs_| have a proper device policy object.
   EnsureDevicePolicyLoaded(false);
   homedirs_->set_policy_provider(policy_provider_.get());
-  if (!homedirs_->Init(platform, crypto))
+  if (!homedirs_->Init(platform, crypto, user_timestamp_cache_))
     result = false;
 
   // Get the user id and group id of the default user
@@ -874,8 +874,8 @@ bool Mount::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
     // Only update the key in use.
     StoreVaultKeysetForUser(obfuscated_username, current_user_->key_index(),
                             serialized);
-    if (user_timestamp_->initialized()) {
-      user_timestamp_->UpdateExistingUser(
+    if (user_timestamp_cache_->initialized()) {
+      user_timestamp_cache_->UpdateExistingUser(
           FilePath(GetUserDirectoryForUser(obfuscated_username)), timestamp);
     }
     return true;
