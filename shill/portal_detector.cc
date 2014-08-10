@@ -10,6 +10,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "shill/async_connection.h"
 #include "shill/connection.h"
@@ -37,16 +38,6 @@ const int PortalDetector::kMaxRequestAttempts = 3;
 const int PortalDetector::kMinTimeBetweenAttemptsSeconds = 3;
 const int PortalDetector::kRequestTimeoutSeconds = 10;
 const int PortalDetector::kMaxFailuresInContentPhase = 2;
-
-const char PortalDetector::kPhaseConnectionString[] = "Connection";
-const char PortalDetector::kPhaseDNSString[] = "DNS";
-const char PortalDetector::kPhaseHTTPString[] = "HTTP";
-const char PortalDetector::kPhaseContentString[] = "Content";
-const char PortalDetector::kPhaseUnknownString[] = "Unknown";
-
-const char PortalDetector::kStatusFailureString[] = "Failure";
-const char PortalDetector::kStatusSuccessString[] = "Success";
-const char PortalDetector::kStatusTimeoutString[] = "Timeout";
 
 PortalDetector::PortalDetector(
     ConnectionRefPtr connection,
@@ -116,16 +107,16 @@ bool PortalDetector::IsInProgress() {
 const string PortalDetector::PhaseToString(Phase phase) {
   switch (phase) {
     case kPhaseConnection:
-      return kPhaseConnectionString;
+      return kPortalDetectionPhaseConnection;
     case kPhaseDNS:
-      return kPhaseDNSString;
+      return kPortalDetectionPhaseDns;
     case kPhaseHTTP:
-      return kPhaseHTTPString;
+      return kPortalDetectionPhaseHttp;
     case kPhaseContent:
-      return kPhaseContentString;
+      return kPortalDetectionPhaseContent;
     case kPhaseUnknown:
     default:
-      return kPhaseUnknownString;
+      return kPortalDetectionPhaseUnknown;
   }
 }
 
@@ -133,12 +124,12 @@ const string PortalDetector::PhaseToString(Phase phase) {
 const string PortalDetector::StatusToString(Status status) {
   switch (status) {
     case kStatusSuccess:
-      return kStatusSuccessString;
+      return kPortalDetectionStatusSuccess;
     case kStatusTimeout:
-      return kStatusTimeoutString;
+      return kPortalDetectionStatusTimeout;
     case kStatusFailure:
     default:
-      return kStatusFailureString;
+      return kPortalDetectionStatusFailure;
   }
 }
 

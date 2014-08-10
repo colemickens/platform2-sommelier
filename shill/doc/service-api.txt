@@ -1056,6 +1056,16 @@ Properties	boolean AutoConnect [readwrite]
 			Type property of the underliying physical service used.
 			Otherwise the property is not present.
 
+		boolean PortalDetectionFailedPhase [readonly]
+
+			Indicates the phase that portal detection was in
+			when it last failed.
+
+		boolean PortalDetectionFailedStatus [readonly]
+
+			Indicates the portal detection failure reason when
+			it last failed.
+
 		string PreviousError [readonly]
 
 			The most recent service error status logged.  Even

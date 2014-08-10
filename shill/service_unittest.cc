@@ -789,6 +789,21 @@ TEST_F(ServiceTest, State) {
   service_->set_profile(NULL);  // Break reference cycle.
 }
 
+TEST_F(ServiceTest, PortalDetectionFailure) {
+  EXPECT_CALL(*GetAdaptor(),
+              EmitStringChanged(kPortalDetectionFailedPhaseProperty,
+                                kPortalDetectionPhaseDns)).Times(1);
+  EXPECT_CALL(*GetAdaptor(),
+              EmitStringChanged(kPortalDetectionFailedStatusProperty,
+                                kPortalDetectionStatusTimeout)).Times(1);
+  service_->SetPortalDetectionFailure(kPortalDetectionPhaseDns,
+                                      kPortalDetectionStatusTimeout);
+  EXPECT_EQ(kPortalDetectionPhaseDns,
+            service_->portal_detection_failure_phase_);
+  EXPECT_EQ(kPortalDetectionStatusTimeout,
+            service_->portal_detection_failure_status_);
+}
+
 TEST_F(ServiceTest, StateResetAfterFailure) {
   service_->SetFailure(Service::kFailureOutOfRange);
   EXPECT_EQ(Service::kStateFailure, service_->state());

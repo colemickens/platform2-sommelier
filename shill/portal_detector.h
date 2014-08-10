@@ -135,16 +135,6 @@ class PortalDetector {
   // connections.
   static const int kMaxFailuresInContentPhase;
 
-  static const char kPhaseConnectionString[];
-  static const char kPhaseDNSString[];
-  static const char kPhaseHTTPString[];
-  static const char kPhaseContentString[];
-  static const char kPhaseUnknownString[];
-
-  static const char kStatusFailureString[];
-  static const char kStatusSuccessString[];
-  static const char kStatusTimeoutString[];
-
   void CompleteAttempt(Result result);
   void RequestReadCallback(const ByteString &response_data);
   void RequestResultCallback(HTTPRequest::Result result,

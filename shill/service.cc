@@ -238,6 +238,11 @@ Service::Service(ControlInterface *control_interface,
                                   NULL,
                                   NULL);
 
+  store_.RegisterConstString(kPortalDetectionFailedPhaseProperty,
+                             &portal_detection_failure_phase_);
+  store_.RegisterConstString(kPortalDetectionFailedStatusProperty,
+                             &portal_detection_failure_status_);
+
   metrics_->RegisterService(*this);
 
   static_ip_parameters_.PlumbPropertyStore(&store_);
@@ -382,6 +387,14 @@ void Service::SetState(ConnectState state) {
   manager_->UpdateService(this);
   metrics_->NotifyServiceStateChanged(*this, state);
   adaptor_->EmitStringChanged(kStateProperty, GetStateString());
+}
+
+void Service::SetPortalDetectionFailure(const string &phase,
+                                        const string &status) {
+  portal_detection_failure_phase_ = phase;
+  portal_detection_failure_status_ = status;
+  adaptor_->EmitStringChanged(kPortalDetectionFailedPhaseProperty, phase);
+  adaptor_->EmitStringChanged(kPortalDetectionFailedStatusProperty, status);
 }
 
 void Service::ReEnableAutoConnectTask() {

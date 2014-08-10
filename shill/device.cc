@@ -1094,6 +1094,12 @@ void Device::PortalDetectorCallback(const PortalDetector::Result &result) {
         Metrics::kMetricPortalAttemptsToOnlineMax,
         Metrics::kMetricPortalAttemptsToOnlineNumBuckets);
   } else {
+    // Set failure phase and status.
+    if (selected_service_.get()) {
+      selected_service_->SetPortalDetectionFailure(
+          PortalDetector::PhaseToString(result.phase),
+          PortalDetector::StatusToString(result.status));
+    }
     SetServiceConnectedState(Service::kStatePortal);
 
     metrics()->SendToUMA(

@@ -181,6 +181,11 @@ class Service : public base::RefCounted<Service> {
   virtual void SetState(ConnectState state);
   std::string GetStateString() const;
 
+  // Set portal detection failure phase and status (reason). This function
+  // is called when portal detection failed for the Service.
+  virtual void SetPortalDetectionFailure(const std::string &phase,
+                                         const std::string &status);
+
   // State utility functions
   static bool IsConnectedState(ConnectState state);
   static bool IsConnectingState(ConnectState state);
@@ -632,6 +637,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(ServiceTest, IsDependentOn);
   FRIEND_TEST(ServiceTest, Load);
+  FRIEND_TEST(ServiceTest, PortalDetectionFailure);
   FRIEND_TEST(ServiceTest, RecheckPortal);
   FRIEND_TEST(ServiceTest, Save);
   FRIEND_TEST(ServiceTest, SaveString);
@@ -781,6 +787,8 @@ class Service : public base::RefCounted<Service> {
   uint8_t crypto_algorithm_;
   bool key_rotation_;
   bool endpoint_auth_;
+  std::string portal_detection_failure_phase_;
+  std::string portal_detection_failure_status_;
 
   uint8_t strength_;
   std::string proxy_config_;

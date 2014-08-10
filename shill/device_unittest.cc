@@ -1093,6 +1093,9 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionNonFinal) {
 TEST_F(DevicePortalDetectionTest, PortalDetectionFailure) {
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillOnce(Return(true));
+  EXPECT_CALL(*service_.get(),
+              SetPortalDetectionFailure(kPortalDetectionPhaseConnection,
+                                        kPortalDetectionStatusFailure));
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
   EXPECT_CALL(metrics_,
               SendEnumToUMA("Network.Shill.Unknown.PortalResult",
@@ -1119,6 +1122,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionFailure) {
 TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillOnce(Return(true));
+  EXPECT_CALL(*service_.get(), SetPortalDetectionFailure(_, _)).Times(0);
   EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline));
   EXPECT_CALL(metrics_,
               SendEnumToUMA("Network.Shill.Unknown.PortalResult",
@@ -1143,6 +1147,9 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
 TEST_F(DevicePortalDetectionTest, PortalDetectionSuccessAfterFailure) {
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_.get(),
+              SetPortalDetectionFailure(kPortalDetectionPhaseConnection,
+                                        kPortalDetectionStatusFailure));
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
   EXPECT_CALL(metrics_,
               SendEnumToUMA("Network.Shill.Unknown.PortalResult",
@@ -1165,7 +1172,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccessAfterFailure) {
       kPortalAttempts,
       true));
   Mock::VerifyAndClearExpectations(&metrics_);
-
+  EXPECT_CALL(*service_.get(), SetPortalDetectionFailure(_, _)).Times(0);
   EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline));
   EXPECT_CALL(metrics_,
               SendEnumToUMA("Network.Shill.Unknown.PortalResult",
@@ -1307,6 +1314,9 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   // DNS Failure, start DNS test for fallback DNS servers.
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillOnce(Return(true));
+  EXPECT_CALL(*service_.get(),
+              SetPortalDetectionFailure(kPortalDetectionPhaseDns,
+                                        kPortalDetectionStatusFailure));
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
   EXPECT_CALL(*connection_.get(), is_default())
       .WillOnce(Return(false));
@@ -1321,6 +1331,9 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   // DNS Timeout, start DNS test for fallback DNS servers.
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillOnce(Return(true));
+  EXPECT_CALL(*service_.get(),
+              SetPortalDetectionFailure(kPortalDetectionPhaseDns,
+                                        kPortalDetectionStatusTimeout));
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
   EXPECT_CALL(*connection_.get(), is_default())
       .WillOnce(Return(false));
@@ -1335,6 +1348,9 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   // Other Failure, DNS server tester not started.
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillOnce(Return(true));
+  EXPECT_CALL(*service_.get(),
+              SetPortalDetectionFailure(kPortalDetectionPhaseConnection,
+                                        kPortalDetectionStatusFailure));
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
   EXPECT_CALL(*connection_.get(), is_default())
       .WillOnce(Return(false));
