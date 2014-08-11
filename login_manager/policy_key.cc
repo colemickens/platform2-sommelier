@@ -23,7 +23,7 @@ namespace login_manager {
 // with its parameters. This is defined in PKCS #1 v2.1 (RFC 3447).
 // It is encoding: { OID sha1WithRSAEncryption      PARAMETERS NULL }
 // static
-const uint8 PolicyKey::kAlgorithm[15] = {
+const uint8_t PolicyKey::kAlgorithm[15] = {
   0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86,
   0xf7, 0x0d, 0x01, 0x01, 0x05, 0x05, 0x00
 };
