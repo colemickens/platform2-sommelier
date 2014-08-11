@@ -42,21 +42,19 @@ class Platform2(object):
       self.use_flags.add('test')
 
     if self.host:
-      self.arch = self.get_portageq_envvars('ARCH')
       self.sysroot = '/'
       self.pkgconfig = 'pkg-config'
     else:
-      board_vars = self.get_portageq_envvars(['ARCH', 'SYSROOT', 'PKG_CONFIG'],
+      board_vars = self.get_portageq_envvars(['SYSROOT', 'PKG_CONFIG'],
                                              board=board)
 
-      self.arch = board_vars['ARCH']
       self.sysroot = board_vars['SYSROOT']
       self.pkgconfig = board_vars['PKG_CONFIG']
 
     if libdir:
       self.libdir = libdir
     else:
-      self.libdir = '/usr/lib64' if self.arch == 'amd64' else '/usr/lib'
+      self.libdir = '/usr/lib'
 
     if cache_dir:
       self.cache_dir = cache_dir
