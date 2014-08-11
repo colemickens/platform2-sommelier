@@ -4,15 +4,9 @@
       'deps': [
         'dbus-1',
         'libchrome-<(libbase_ver)',
-        'libchrome-test-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
         'libcurl',
         'libmetrics-<(libbase_ver)',
-      ],
-    },
-    'link_settings': {
-      'libraries': [
-        '-lbase-dbus_test_support-<(libbase_ver)',
       ],
     },
   },
@@ -39,7 +33,6 @@
         'device_registration_info.cc',
         'error.cc',
         'error_codes.cc',
-        'exported_object_manager.cc',
         'http_request.cc',
         'http_connection_curl.cc',
         'http_transport_curl.cc',
@@ -98,7 +91,6 @@
             'data_encoding_unittest.cc',
             'device_registration_info_unittest.cc',
             'error_unittest.cc',
-            'exported_object_manager_unittest.cc',
             'http_connection_fake.cc',
             'http_transport_fake.cc',
             'http_utils_unittest.cc',

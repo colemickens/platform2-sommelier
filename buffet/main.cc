@@ -13,15 +13,15 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/async_event_sequencer.h>
+#include <chromeos/exported_object_manager.h>
 #include <dbus/bus.h>
 #include <sysexits.h>
 
 #include "buffet/dbus_constants.h"
-#include "buffet/exported_object_manager.h"
 #include "buffet/manager.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
-using buffet::dbus_utils::ExportedObjectManager;
+using chromeos::dbus_utils::ExportedObjectManager;
 
 namespace {
 

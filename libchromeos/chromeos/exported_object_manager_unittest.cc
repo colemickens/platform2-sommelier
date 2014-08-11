@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/exported_object_manager.h"
+#include "chromeos/exported_object_manager.h"
 
 #include <base/bind.h>
 #include <dbus/mock_bus.h>
@@ -17,7 +17,7 @@ using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::_;
 
-namespace buffet {
+namespace chromeos {
 
 namespace dbus_utils {
 
@@ -202,4 +202,4 @@ TEST_F(ExportedObjectManagerTest, GetManagedObjectsResponseCorrectness) {
 
 }  // namespace dbus_utils
 
-}  // namespace buffet
+}  // namespace chromeos

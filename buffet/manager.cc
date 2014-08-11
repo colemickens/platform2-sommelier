@@ -12,6 +12,7 @@
 #include <base/json/json_writer.h>
 #include <chromeos/async_event_sequencer.h>
 #include <chromeos/dbus_utils.h>
+#include <chromeos/exported_object_manager.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <dbus/values_util.h>
@@ -20,16 +21,16 @@
 #include "buffet/dbus_constants.h"
 #include "buffet/dbus_utils.h"
 #include "buffet/error.h"
-#include "buffet/exported_object_manager.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::GetBadArgsError;
+using chromeos::dbus_utils::ExportedObjectManager;
 using buffet::dbus_utils::GetDBusError;
 
 namespace buffet {
 
 Manager::Manager(
-    const base::WeakPtr<dbus_utils::ExportedObjectManager>& object_manager)
+    const base::WeakPtr<ExportedObjectManager>& object_manager)
     : exported_object_(object_manager->GetBus()->GetExportedObject(
           dbus::ObjectPath(dbus_constants::kManagerServicePath))),
       object_manager_(object_manager) { }
@@ -121,7 +122,7 @@ void Manager::Init(const OnInitFinish& cb) {
   properties_->Init(
       sequencer->GetHandler("Manager properties export failed.", true));
   auto claim_interface_task = sequencer->WrapCompletionTask(
-      base::Bind(&dbus_utils::ExportedObjectManager::ClaimInterface,
+      base::Bind(&ExportedObjectManager::ClaimInterface,
                  object_manager_->AsWeakPtr(),
                  dbus::ObjectPath(dbus_constants::kManagerServicePath),
                  dbus_constants::kManagerInterface,

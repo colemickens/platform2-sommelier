@@ -20,13 +20,15 @@
 #include "buffet/dbus_constants.h"
 #include "buffet/device_registration_info.h"
 
-namespace buffet {
-
-class CommandManager;
-
+namespace chromeos {
 namespace dbus_utils {
 class ExportedObjectManager;
 }  // namespace dbus_utils
+}  // namespace chromeos
+
+namespace buffet {
+
+class CommandManager;
 
 // The Manager is responsible for global state of Buffet.  It exposes
 // interfaces which affect the entire device such as device registration and
@@ -35,8 +37,8 @@ class Manager {
  public:
   typedef base::Callback<void(bool success)> OnInitFinish;
 
-  Manager(
-      const base::WeakPtr<dbus_utils::ExportedObjectManager>& object_manager);
+  Manager(const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
+              object_manager);
   ~Manager();
   void Init(const OnInitFinish& cb);
 
@@ -72,7 +74,7 @@ class Manager {
       ::dbus::MethodCall* method_call);
 
   dbus::ExportedObject* exported_object_;  // weak; owned by the Bus object.
-  base::WeakPtr<dbus_utils::ExportedObjectManager> object_manager_;
+  base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager> object_manager_;
   scoped_ptr<Properties> properties_;
 
   std::shared_ptr<CommandManager> command_manager_;

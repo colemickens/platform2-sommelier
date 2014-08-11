@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_EXPORTED_OBJECT_MANAGER_H_
-#define BUFFET_EXPORTED_OBJECT_MANAGER_H_
+#ifndef LIBCHROMEOS_CHROMEOS_EXPORTED_OBJECT_MANAGER_H_
+#define LIBCHROMEOS_CHROMEOS_EXPORTED_OBJECT_MANAGER_H_
 
 #include <map>
 #include <string>
@@ -14,7 +14,7 @@
 #include <dbus/message.h>
 #include <dbus/object_path.h>
 
-namespace buffet {
+namespace chromeos {
 
 namespace dbus_utils {
 
@@ -113,6 +113,6 @@ class ExportedObjectManager
 
 }  //  namespace dbus_utils
 
-}  //  namespace buffet
+}  //  namespace chromeos
 
-#endif  // BUFFET_EXPORTED_OBJECT_MANAGER_H_
+#endif  // LIBCHROMEOS_CHROMEOS_EXPORTED_OBJECT_MANAGER_H_

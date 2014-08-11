@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/exported_object_manager.h"
+#include "chromeos/exported_object_manager.h"
 
 #include <chromeos/async_event_sequencer.h>
 #include <dbus/object_manager.h>
@@ -10,7 +10,7 @@
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 
-namespace buffet {
+namespace chromeos {
 
 namespace dbus_utils {
 
@@ -131,4 +131,4 @@ void ExportedObjectManager::HandleGetManagedObjects(
 
 }  //  namespace dbus_utils
 
-}  //  namespace buffet
+}  //  namespace chromeos
