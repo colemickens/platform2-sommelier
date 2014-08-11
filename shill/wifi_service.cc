@@ -225,7 +225,8 @@ string WiFiService::GetStorageIdentifier() const {
   return storage_identifier_;
 }
 
-bool WiFiService::SetPassphrase(const string &passphrase, Error *error) {
+bool WiFiService::SetPassphraseInternal(
+    const string &passphrase, Error *error) {
   if (security_ == kSecurityWep) {
     ValidateWEPPassphrase(passphrase, error);
   } else if (security_ == kSecurityPsk ||
@@ -248,6 +249,13 @@ bool WiFiService::SetPassphrase(const string &passphrase, Error *error) {
   }
 
   passphrase_ = passphrase;
+  UpdateConnectable();
+  return true;
+}
+
+bool WiFiService::SetPassphrase(const string &passphrase, Error *error) {
+  if (!SetPassphraseInternal(passphrase, error))
+    return false;
   OnCredentialChange();
   return true;
 }
@@ -326,7 +334,7 @@ bool WiFiService::Load(StoreInterface *storage) {
   string passphrase;
   if (storage->GetCryptedString(id, kStoragePassphrase, &passphrase)) {
     Error error;
-    SetPassphrase(passphrase, &error);
+    SetPassphraseInternal(passphrase, &error);
     if (!error.IsSuccess() &&
         !(passphrase.empty() && error.type() == Error::kNotSupported)) {
       LOG(ERROR) << "Passphrase could not be set: " << error;

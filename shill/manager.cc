@@ -1433,7 +1433,7 @@ void Manager::AutoConnect() {
   }
 
   if (SLOG_IS_ON(Manager, 4)) {
-    SLOG(Manager, 4) << "Sorted service list: ";
+    SLOG(Manager, 4) << "Sorted service list for AutoConnect: ";
     for (size_t i = 0; i < services_.size(); ++i) {
       ServiceRefPtr service = services_[i];
       const char *compare_reason = NULL;
@@ -1447,8 +1447,10 @@ void Manager::AutoConnect() {
         compare_reason = "last";
       }
       SLOG(Manager, 4) << "Service " << service->unique_name()
+                       << " Profile: " << service->profile()->GetFriendlyName()
                        << " IsConnected: " << service->IsConnected()
                        << " IsConnecting: " << service->IsConnecting()
+                       << " HasEverConnected: " << service->has_ever_connected()
                        << " IsFailed: " << service->IsFailed()
                        << " connectable: " << service->connectable()
                        << " auto_connect: " << service->auto_connect()
@@ -1521,6 +1523,43 @@ void Manager::ConnectToBestServicesTask() {
       if (error.IsFailure()) {
         LOG(ERROR) << "Connection failed: " << error.message();
       }
+    }
+  }
+
+  if (SLOG_IS_ON(Manager, 4)) {
+    SLOG(Manager, 4) << "Sorted service list for ConnectToBestServicesTask: ";
+    for (size_t i = 0; i < services_copy.size(); ++i) {
+      ServiceRefPtr service = services_copy[i];
+      const char *compare_reason = NULL;
+      if (i + 1 < services_copy.size()) {
+        if (!service->connectable()) {
+          // Due to service sort order, it is guaranteed that no services beyond
+          // this one are connectable either.
+          break;
+        }
+        Service::Compare(
+            this, service, services_copy[i+1],
+            kCompareConnectivityState, technology_order_,
+            &compare_reason);
+      } else {
+        compare_reason = "last";
+      }
+      SLOG(Manager, 4) << "Service " << service->unique_name()
+                       << " Profile: " << service->profile()->GetFriendlyName()
+                       << " IsConnected: " << service->IsConnected()
+                       << " IsConnecting: " << service->IsConnecting()
+                       << " HasEverConnected: " << service->has_ever_connected()
+                       << " IsFailed: " << service->IsFailed()
+                       << " connectable: " << service->connectable()
+                       << " auto_connect: " << service->auto_connect()
+                       << " retain_auto_connect: "
+                       << service->retain_auto_connect()
+                       << " priority: " << service->priority()
+                       << " crypto_algorithm: " << service->crypto_algorithm()
+                       << " key_rotation: " << service->key_rotation()
+                       << " endpoint_auth: " << service->endpoint_auth()
+                       << " strength: " << service->strength()
+                       << " sorted: " << compare_reason;
     }
   }
 }

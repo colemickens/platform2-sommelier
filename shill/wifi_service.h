@@ -260,7 +260,9 @@ class WiFiService : public Service {
   // "psk" name or if they use the (legacy) specific "wpa" or "rsn" names.
   KeyValueStore GetStorageProperties() const;
 
-  // Validate then apply a passphrase for this service.
+  // Called during Load() to validate then apply a passphrase for this service.
+  bool SetPassphraseInternal(const std::string &passphrase, Error *error);
+  // Called from DBus to call SetPassphraseInternal and OnCredentialChange.
   bool SetPassphrase(const std::string &passphrase, Error *error);
 
   // Select a WiFi device (e.g, for connecting a hidden service with no
