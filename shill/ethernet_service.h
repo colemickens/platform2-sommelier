@@ -42,7 +42,7 @@ class EthernetService : public Service {
   virtual void Remove(Error *error);
 
  protected:
-  virtual std::string GetTethering(Error *error) const override;
+  std::string GetTethering(Error *error) const override;
 
  private:
   FRIEND_TEST(EthernetServiceTest, GetTethering);

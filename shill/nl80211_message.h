@@ -489,7 +489,7 @@ class Nl80211MessageDataCollector {
   friend struct
       base::DefaultLazyInstanceTraits<Nl80211MessageDataCollector>;
 
-  explicit Nl80211MessageDataCollector();
+  Nl80211MessageDataCollector();
 
  private:
   // In order to limit the output from this class, I keep track of types I

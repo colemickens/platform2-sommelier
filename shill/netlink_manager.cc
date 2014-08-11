@@ -68,8 +68,7 @@ class ControlResponseHandler : public NetlinkManager::NetlinkResponseHandler {
     : NetlinkManager::NetlinkResponseHandler(error_handler),
       handler_(handler) {}
 
-  virtual bool HandleMessage(
-      const NetlinkMessage &netlink_message) const override {
+  bool HandleMessage(const NetlinkMessage &netlink_message) const override {
     if (netlink_message.message_type() !=
         ControlNetlinkMessage::GetMessageType()) {
       LOG(ERROR) << "Message is type " << netlink_message.message_type()
@@ -99,8 +98,7 @@ class Nl80211ResponseHandler : public NetlinkManager::NetlinkResponseHandler {
     : NetlinkManager::NetlinkResponseHandler(error_handler),
       handler_(handler) {}
 
-  virtual bool HandleMessage(
-      const NetlinkMessage &netlink_message) const override {
+  bool HandleMessage(const NetlinkMessage &netlink_message) const override {
     if (netlink_message.message_type() != Nl80211Message::GetMessageType()) {
       LOG(ERROR) << "Message is type " << netlink_message.message_type()
                  << ", not " << Nl80211Message::GetMessageType()

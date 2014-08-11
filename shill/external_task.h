@@ -86,8 +86,8 @@ class ExternalTask : public RPCTaskDelegate {
   FRIEND_TEST(ExternalTaskTest, StopNotStarted);
 
   // Implements RPCTaskDelegate.
-  virtual void GetLogin(std::string *user, std::string *password) override;
-  virtual void Notify(
+  void GetLogin(std::string *user, std::string *password) override;
+  void Notify(
       const std::string &event,
       const std::map<std::string, std::string> &details) override;
   // Called when the external process exits.

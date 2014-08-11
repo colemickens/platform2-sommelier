@@ -19,7 +19,7 @@ namespace system {
 
 class AsyncFileReader {
  public:
-  explicit AsyncFileReader();
+  AsyncFileReader();
   ~AsyncFileReader();
 
   void set_initial_read_size_for_testing(size_t size) {

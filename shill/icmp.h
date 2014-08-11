@@ -16,10 +16,10 @@ class Sockets;
 // The Icmp class encapsulates the task of sending ICMP frames.
 class Icmp {
  public:
-  explicit Icmp();
+  Icmp();
   virtual ~Icmp();
 
-  // Create a socket for tranmission of ICMP frames.
+  // Create a socket for transmission of ICMP frames.
   virtual bool Start();
 
   // Destroy the transmit socket.

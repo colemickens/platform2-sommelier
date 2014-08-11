@@ -60,12 +60,12 @@ template<typename T>
 struct TypedData : public Data {
   explicit TypedData(const T& value) : value_(value) {}
 
-  virtual const std::type_info& GetType() const override { return typeid(T); }
-  virtual void CopyTo(Buffer* buffer) const override;
-  virtual bool IsConvertibleToInteger() const override {
+  const std::type_info& GetType() const override { return typeid(T); }
+  void CopyTo(Buffer* buffer) const override;
+  bool IsConvertibleToInteger() const override {
     return std::is_integral<T>::value || std::is_enum<T>::value;
   }
-  virtual intmax_t GetAsInteger() const override {
+  intmax_t GetAsInteger() const override {
     intmax_t int_val = 0;
     bool converted = TryConvert(value_, &int_val);
     CHECK(converted) << "Unable to convert value of type " << typeid(T).name()

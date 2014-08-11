@@ -51,53 +51,51 @@ class KeyFileStore : public StoreInterface {
   bool MarkAsCorrupted();
 
   // Inherited from StoreInterface.
-  virtual bool Flush() override;
-  virtual std::set<std::string> GetGroups() const override;
-  virtual std::set<std::string> GetGroupsWithKey(const std::string &key)
-      const override;
-  virtual std::set<std::string> GetGroupsWithProperties(
+  bool Flush() override;
+  std::set<std::string> GetGroups() const override;
+  std::set<std::string> GetGroupsWithKey(const std::string &key) const override;
+  std::set<std::string> GetGroupsWithProperties(
       const KeyValueStore &properties) const override;
-  virtual bool ContainsGroup(const std::string &group) const override;
-  virtual bool DeleteKey(const std::string &group, const std::string &key)
-      override;
-  virtual bool DeleteGroup(const std::string &group) override;
-  virtual bool SetHeader(const std::string &header) override;
-  virtual bool GetString(const std::string &group,
-                         const std::string &key,
-                         std::string *value) const override;
-  virtual bool SetString(const std::string &group,
-                         const std::string &key,
-                         const std::string &value) override;
-  virtual bool GetBool(const std::string &group,
-                       const std::string &key,
-                       bool *value) const override;
-  virtual bool SetBool(const std::string &group,
-                       const std::string &key,
-                       bool value) override;
-  virtual bool GetInt(const std::string &group,
-                      const std::string &key,
-                      int *value) const override;
-  virtual bool SetInt(const std::string &group,
-                      const std::string &key,
-                      int value) override;
-  virtual bool GetUint64(const std::string &group,
-                         const std::string &key,
-                         uint64_t *value) const override;
-  virtual bool SetUint64(const std::string &group,
-                         const std::string &key,
-                         uint64_t value) override;
-  virtual bool GetStringList(const std::string &group,
-                             const std::string &key,
-                             std::vector<std::string> *value) const override;
-  virtual bool SetStringList(const std::string &group,
-                             const std::string &key,
-                             const std::vector<std::string> &value) override;
-  virtual bool GetCryptedString(const std::string &group,
-                                const std::string &key,
-                                std::string *value) override;
-  virtual bool SetCryptedString(const std::string &group,
-                                const std::string &key,
-                                const std::string &value) override;
+  bool ContainsGroup(const std::string &group) const override;
+  bool DeleteKey(const std::string &group, const std::string &key) override;
+  bool DeleteGroup(const std::string &group) override;
+  bool SetHeader(const std::string &header) override;
+  bool GetString(const std::string &group,
+                 const std::string &key,
+                 std::string *value) const override;
+  bool SetString(const std::string &group,
+                 const std::string &key,
+                 const std::string &value) override;
+  bool GetBool(const std::string &group,
+               const std::string &key,
+               bool *value) const override;
+  bool SetBool(const std::string &group,
+               const std::string &key,
+               bool value) override;
+  bool GetInt(const std::string &group,
+              const std::string &key,
+              int *value) const override;
+  bool SetInt(const std::string &group,
+              const std::string &key,
+              int value) override;
+  bool GetUint64(const std::string &group,
+                 const std::string &key,
+                 uint64_t *value) const override;
+  bool SetUint64(const std::string &group,
+                 const std::string &key,
+                 uint64_t value) override;
+  bool GetStringList(const std::string &group,
+                     const std::string &key,
+                     std::vector<std::string> *value) const override;
+  bool SetStringList(const std::string &group,
+                     const std::string &key,
+                     const std::vector<std::string> &value) override;
+  bool GetCryptedString(const std::string &group,
+                        const std::string &key,
+                        std::string *value) override;
+  bool SetCryptedString(const std::string &group,
+                        const std::string &key,
+                        const std::string &value) override;
 
  private:
   FRIEND_TEST(KeyFileStoreTest, OpenClose);

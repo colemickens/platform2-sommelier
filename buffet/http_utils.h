@@ -13,8 +13,8 @@
 #include <vector>
 
 namespace base {
-  class Value;
-  class DictionaryValue;
+class Value;
+class DictionaryValue;
 }  // namespace base
 
 namespace buffet {

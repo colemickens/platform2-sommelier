@@ -5,9 +5,10 @@
 #ifndef P2P_SERVER_SERVICE_PUBLISHER_H__
 #define P2P_SERVER_SERVICE_PUBLISHER_H__
 
-#include <base/basictypes.h>
-#include <string>
 #include <map>
+#include <string>
+
+#include <base/basictypes.h>
 
 namespace p2p {
 

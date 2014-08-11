@@ -534,7 +534,7 @@ class Nl80211AttributeScanFrequencies : public NetlinkNestedAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  explicit Nl80211AttributeScanFrequencies();
+  Nl80211AttributeScanFrequencies();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeScanFrequencies);
@@ -544,7 +544,7 @@ class Nl80211AttributeScanSsids : public NetlinkNestedAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  explicit Nl80211AttributeScanSsids();
+  Nl80211AttributeScanSsids();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeScanSsids);

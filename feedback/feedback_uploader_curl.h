@@ -21,7 +21,7 @@ class FeedbackUploaderCurl : public feedback::FeedbackUploader {
  private:
   friend class FeedbackServiceTest;
 
-  virtual void DispatchReport(const std::string& data) override;
+  void DispatchReport(const std::string& data) override;
 
   DISALLOW_COPY_AND_ASSIGN(FeedbackUploaderCurl);
 };

@@ -36,7 +36,7 @@ class PropertyObserver : public PropertyObserverInterface {
   // Implements PropertyObserverInterface.  Compares the saved value with
   // what the Get() method of |accessor_| returns.  If the value has changed
   // |callback_| is invoked and |saved_value_| is updated.
-  virtual void Update() override {
+  void Update() override {
     Error error;
     T new_value_ = accessor_->Get(&error);
     if (!error.IsSuccess() || saved_value_ == new_value_) {

@@ -96,12 +96,12 @@ class ConstraintMinMaxBase : public Constraint {
       : limit_(limit) {}
 
   // Implementation of Constraint::HasOverriddenAttributes().
-  virtual bool HasOverriddenAttributes() const override {
+  bool HasOverriddenAttributes() const override {
     return !limit_.is_inherited;
   }
 
   // Implementation of Constraint::ToJson().
-  virtual std::unique_ptr<base::Value> ToJson(ErrorPtr* error) const override {
+  std::unique_ptr<base::Value> ToJson(ErrorPtr* error) const override {
     return TypedValueToJson(limit_.value, error);
   }
 
@@ -124,11 +124,10 @@ class ConstraintMin : public ConstraintMinMaxBase<T> {
       : ConstraintMinMaxBase<T>(limit) {}
 
   // Implementation of Constraint::GetType().
-  virtual ConstraintType GetType() const { return ConstraintType::Min; }
+  ConstraintType GetType() const { return ConstraintType::Min; }
 
   // Implementation of Constraint::Validate().
-  virtual bool Validate(const PropValue& value,
-                        ErrorPtr* error) const override {
+  bool Validate(const PropValue& value, ErrorPtr* error) const override {
     T v = value.GetValueAsAny().Get<T>();
     if (v < this->limit_.value)
       return this->ReportErrorLessThan(
@@ -138,12 +137,12 @@ class ConstraintMin : public ConstraintMinMaxBase<T> {
   }
 
   // Implementation of Constraint::CloneAsInherited().
-  virtual std::shared_ptr<Constraint> CloneAsInherited() const override {
+  std::shared_ptr<Constraint> CloneAsInherited() const override {
     return std::make_shared<ConstraintMin>(this->limit_.value);
   }
 
   // Implementation of Constraint::GetDictKey().
-  virtual const char* GetDictKey() const override {
+  const char* GetDictKey() const override {
     return commands::attributes::kNumeric_Min;
   }
 
@@ -161,11 +160,10 @@ class ConstraintMax : public ConstraintMinMaxBase<T> {
       : ConstraintMinMaxBase<T>(limit) {}
 
   // Implementation of Constraint::GetType().
-  virtual ConstraintType GetType() const { return ConstraintType::Max; }
+  ConstraintType GetType() const { return ConstraintType::Max; }
 
   // Implementation of Constraint::Validate().
-  virtual bool Validate(const PropValue& value,
-                        ErrorPtr* error) const override {
+  bool Validate(const PropValue& value, ErrorPtr* error) const override {
     T v = value.GetValueAsAny().Get<T>();
     if (v > this->limit_.value)
       return this->ReportErrorGreaterThan(
@@ -175,12 +173,12 @@ class ConstraintMax : public ConstraintMinMaxBase<T> {
   }
 
   // Implementation of Constraint::CloneAsInherited().
-  virtual std::shared_ptr<Constraint> CloneAsInherited() const override {
+  std::shared_ptr<Constraint> CloneAsInherited() const override {
     return std::make_shared<ConstraintMax>(this->limit_.value);
   }
 
   // Implementation of Constraint::GetDictKey().
-  virtual const char* GetDictKey() const override {
+  const char* GetDictKey() const override {
     return commands::attributes::kNumeric_Max;
   }
 
@@ -196,9 +194,9 @@ class ConstraintStringLength : public Constraint {
   explicit ConstraintStringLength(int limit);
 
   // Implementation of Constraint::HasOverriddenAttributes().
-  virtual bool HasOverriddenAttributes() const override;
+  bool HasOverriddenAttributes() const override;
   // Implementation of Constraint::ToJson().
-  virtual std::unique_ptr<base::Value> ToJson(ErrorPtr* error) const override;
+  std::unique_ptr<base::Value> ToJson(ErrorPtr* error) const override;
 
   // Stores the upper/lower value limit for string length constraint.
   // |limit_.is_inherited| indicates whether the constraint is inherited
@@ -215,15 +213,15 @@ class ConstraintStringLengthMin : public ConstraintStringLength {
   explicit ConstraintStringLengthMin(const InheritableAttribute<int>& limit);
   explicit ConstraintStringLengthMin(int limit);
   // Implementation of Constraint::GetType().
-  virtual ConstraintType GetType() const override {
+  ConstraintType GetType() const override {
     return ConstraintType::StringLengthMin;
   }
   // Implementation of Constraint::Validate().
-  virtual bool Validate(const PropValue& value, ErrorPtr* error) const override;
+  bool Validate(const PropValue& value, ErrorPtr* error) const override;
   // Implementation of Constraint::CloneAsInherited().
-  virtual std::shared_ptr<Constraint> CloneAsInherited() const override;
+  std::shared_ptr<Constraint> CloneAsInherited() const override;
   // Implementation of Constraint::GetDictKey().
-  virtual const char* GetDictKey() const override {
+  const char* GetDictKey() const override {
     return commands::attributes::kString_MinLength;
   }
  private:
@@ -236,15 +234,15 @@ class ConstraintStringLengthMax : public ConstraintStringLength {
   explicit ConstraintStringLengthMax(const InheritableAttribute<int>& limit);
   explicit ConstraintStringLengthMax(int limit);
   // Implementation of Constraint::GetType().
-  virtual ConstraintType GetType() const override {
+  ConstraintType GetType() const override {
     return ConstraintType::StringLengthMax;
   }
   // Implementation of Constraint::Validate().
-  virtual bool Validate(const PropValue& value, ErrorPtr* error) const override;
+  bool Validate(const PropValue& value, ErrorPtr* error) const override;
   // Implementation of Constraint::CloneAsInherited().
-  virtual std::shared_ptr<Constraint> CloneAsInherited() const override;
+  std::shared_ptr<Constraint> CloneAsInherited() const override;
   // Implementation of Constraint::GetDictKey().
-  virtual const char* GetDictKey() const override {
+  const char* GetDictKey() const override {
     return commands::attributes::kString_MaxLength;
   }
 
@@ -262,18 +260,17 @@ class ConstraintOneOf : public Constraint {
       : set_(set) {}
 
   // Implementation of Constraint::GetType().
-  virtual ConstraintType GetType() const override {
+  ConstraintType GetType() const override {
     return ConstraintType::OneOf;
   }
 
   // Implementation of Constraint::HasOverriddenAttributes().
-  virtual bool HasOverriddenAttributes() const override {
+  bool HasOverriddenAttributes() const override {
     return !set_.is_inherited;
   }
 
   // Implementation of Constraint::Validate().
-  virtual bool Validate(const PropValue& value,
-                        ErrorPtr* error) const override {
+  bool Validate(const PropValue& value, ErrorPtr* error) const override {
     using string_utils::ToString;
     T v = value.GetValueAsAny().Get<T>();
     for (const auto& item : set_.value) {
@@ -289,17 +286,17 @@ class ConstraintOneOf : public Constraint {
   }
 
   // Implementation of Constraint::CloneAsInherited().
-  virtual std::shared_ptr<Constraint> CloneAsInherited() const override {
+  std::shared_ptr<Constraint> CloneAsInherited() const override {
     return std::make_shared<ConstraintOneOf>(set_.value);
   }
 
   // Implementation of Constraint::ToJson().
-  virtual std::unique_ptr<base::Value> ToJson(ErrorPtr* error) const override {
+  std::unique_ptr<base::Value> ToJson(ErrorPtr* error) const override {
     return TypedValueToJson(set_.value, error);
   }
 
   // Implementation of Constraint::GetDictKey().
-  virtual const char* GetDictKey() const override {
+  const char* GetDictKey() const override {
     return commands::attributes::kOneOf_Enum;
   }
 

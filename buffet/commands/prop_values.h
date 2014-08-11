@@ -124,22 +124,22 @@ class TypedValueBase : public PropValue {
   using PropValue::PropValue;
 
   // Overrides from PropValue base class.
-  virtual ValueType GetType() const override { return GetValueType<T>(); }
-  virtual std::shared_ptr<PropValue> Clone() const override {
+  ValueType GetType() const override { return GetValueType<T>(); }
+  std::shared_ptr<PropValue> Clone() const override {
     return std::make_shared<Derived>(*static_cast<const Derived*>(this));
   }
 
-  virtual std::unique_ptr<base::Value> ToJson(ErrorPtr* error) const override {
+  std::unique_ptr<base::Value> ToJson(ErrorPtr* error) const override {
     return TypedValueToJson(value_, error);
   }
 
-  virtual bool FromJson(const base::Value* value,
+  bool FromJson(const base::Value* value,
                         ErrorPtr* error) override {
     return TypedValueFromJson(value, GetPropType()->GetObjectSchemaPtr(),
                               &value_, error);
   }
 
-  virtual bool IsEqual(const PropValue* value) const override {
+  bool IsEqual(const PropValue* value) const override {
     if (GetType() != value->GetType())
       return false;
     const _Base* value_base = static_cast<const _Base*>(value);
@@ -147,7 +147,7 @@ class TypedValueBase : public PropValue {
   }
 
   // Helper methods to get and set the C++ representation of the value.
-  virtual Any GetValueAsAny() const override { return value_; }
+  Any GetValueAsAny() const override { return value_; }
   const T& GetValue() const { return value_; }
   void SetValue(T value) { value_ = std::move(value); }
 
@@ -159,32 +159,32 @@ class TypedValueBase : public PropValue {
 class IntValue final : public TypedValueBase<IntValue, int> {
  public:
   using _Base::_Base;  // Expose the custom constructor of the base class.
-  virtual IntValue* GetInt() override { return this; }
-  virtual IntValue const* GetInt() const override { return this; }
+  IntValue* GetInt() override { return this; }
+  IntValue const* GetInt() const override { return this; }
 };
 
 // Value of type Number.
 class DoubleValue final : public TypedValueBase<DoubleValue, double> {
  public:
   using _Base::_Base;  // Expose the custom constructor of the base class.
-  virtual DoubleValue* GetDouble() override { return this; }
-  virtual DoubleValue const* GetDouble() const override { return this; }
+  DoubleValue* GetDouble() override { return this; }
+  DoubleValue const* GetDouble() const override { return this; }
 };
 
 // Value of type String.
 class StringValue final : public TypedValueBase<StringValue, std::string> {
  public:
   using _Base::_Base;  // Expose the custom constructor of the base class.
-  virtual StringValue* GetString() override { return this; }
-  virtual StringValue const* GetString() const override { return this; }
+  StringValue* GetString() override { return this; }
+  StringValue const* GetString() const override { return this; }
 };
 
 // Value of type Boolean.
 class BooleanValue final : public TypedValueBase<BooleanValue, bool> {
  public:
   using _Base::_Base;  // Expose the custom constructor of the base class.
-  virtual BooleanValue* GetBoolean() override { return this; }
-  virtual BooleanValue const* GetBoolean() const override { return this; }
+  BooleanValue* GetBoolean() override { return this; }
+  BooleanValue const* GetBoolean() const override { return this; }
 };
 
 // Value of type Object.
@@ -192,8 +192,8 @@ class ObjectValue final : public TypedValueBase<ObjectValue,
                                                 native_types::Object> {
  public:
   using _Base::_Base;  // Expose the custom constructor of the base class.
-  virtual ObjectValue* GetObject() override { return this; }
-  virtual ObjectValue const* GetObject() const override { return this; }
+  ObjectValue* GetObject() override { return this; }
+  ObjectValue const* GetObject() const override { return this; }
 };
 }  // namespace buffet
 

@@ -65,7 +65,7 @@ class Process {
   // Set the real/effective/saved group ID of the child process.
   virtual void SetGid(gid_t gid) = 0;
 
-  typedef base::Callback<bool(void)> PreExecCallback; // NOLINT not a cast
+  typedef base::Callback<bool(void)> PreExecCallback;
 
   // Set the pre-exec callback. This is called after all setup is complete but
   // before we exec() the process. The callback may return false to cause Start

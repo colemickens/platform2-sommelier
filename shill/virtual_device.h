@@ -31,15 +31,15 @@ class VirtualDevice : public Device {
                 const std::string &link_name,
                 int interface_index,
                 Technology::Identifier technology);
-  virtual ~VirtualDevice() override;
+  ~VirtualDevice() override;
 
-  virtual bool Load(StoreInterface *storage) override;
-  virtual bool Save(StoreInterface *storage) override;
+  bool Load(StoreInterface *storage) override;
+  bool Save(StoreInterface *storage) override;
 
-  virtual void Start(Error *error,
-                     const EnabledStateChangedCallback &callback) override;
-  virtual void Stop(Error *error,
-                    const EnabledStateChangedCallback &callback) override;
+  void Start(Error *error,
+             const EnabledStateChangedCallback &callback) override;
+  void Stop(Error *error,
+            const EnabledStateChangedCallback &callback) override;
 
   virtual void UpdateIPConfig(const IPConfig::Properties &properties);
 

@@ -174,21 +174,21 @@ class PropType {
 template<class Derived, class Value, typename T>
 class PropTypeBase : public PropType {
  public:
-  virtual ValueType GetType() const override { return GetValueType<T>(); }
-  virtual std::shared_ptr<PropType> Clone() const override {
+  ValueType GetType() const override { return GetValueType<T>(); }
+  std::shared_ptr<PropType> Clone() const override {
     return std::make_shared<Derived>(*static_cast<const Derived*>(this));
   }
-  virtual std::shared_ptr<PropValue> CreateValue() const override {
+  std::shared_ptr<PropValue> CreateValue() const override {
     return std::make_shared<Value>(this);
   }
-  virtual std::shared_ptr<PropValue> CreateValue(const Any& v) const override {
+  std::shared_ptr<PropValue> CreateValue(const Any& v) const override {
     auto value = std::make_shared<Value>(this);
     value->SetValue(v.Get<T>());
     return std::move(value);
   }
-  virtual bool ConstraintsFromJson(const base::DictionaryValue* value,
-                                   std::set<std::string>* processed_keys,
-                                   ErrorPtr* error) override;
+  bool ConstraintsFromJson(const base::DictionaryValue* value,
+                           std::set<std::string>* processed_keys,
+                           ErrorPtr* error) override;
 
   // Helper method to obtain a vector of OneOf constraint values.
   std::vector<T> GetOneOfValues() const {
@@ -203,9 +203,9 @@ template<class Derived, class Value, typename T>
 class NumericPropTypeBase : public PropTypeBase<Derived, Value, T> {
  public:
   using _Base = PropTypeBase<Derived, Value, T>;
-  virtual bool ConstraintsFromJson(const base::DictionaryValue* value,
-                                   std::set<std::string>* processed_keys,
-                                   ErrorPtr* error) override;
+  bool ConstraintsFromJson(const base::DictionaryValue* value,
+                           std::set<std::string>* processed_keys,
+                           ErrorPtr* error) override;
 
   // Helper method to set and obtain a min/max constraint values.
   // Used mostly for unit testing.
@@ -231,8 +231,8 @@ class NumericPropTypeBase : public PropTypeBase<Derived, Value, T> {
 class IntPropType : public NumericPropTypeBase<IntPropType, IntValue, int> {
  public:
   // Overrides from the PropType base class.
-  virtual IntPropType* GetInt() override { return this; }
-  virtual IntPropType const* GetInt() const override { return this; }
+  IntPropType* GetInt() override { return this; }
+  IntPropType const* GetInt() const override { return this; }
 };
 
 // Property definition of Number type.
@@ -240,8 +240,8 @@ class DoublePropType
     : public NumericPropTypeBase<DoublePropType, DoubleValue, double> {
  public:
   // Overrides from the PropType base class.
-  virtual DoublePropType* GetDouble() override { return this; }
-  virtual DoublePropType const* GetDouble() const override { return this; }
+  DoublePropType* GetDouble() override { return this; }
+  DoublePropType const* GetDouble() const override { return this; }
 };
 
 // Property definition of String type.
@@ -250,12 +250,12 @@ class StringPropType
  public:
   using _Base = PropTypeBase<StringPropType, StringValue, std::string>;
   // Overrides from the PropType base class.
-  virtual StringPropType* GetString() override { return this; }
-  virtual StringPropType const* GetString() const override { return this; }
+  StringPropType* GetString() override { return this; }
+  StringPropType const* GetString() const override { return this; }
 
-  virtual bool ConstraintsFromJson(const base::DictionaryValue* value,
-                                   std::set<std::string>* processed_keys,
-                                   ErrorPtr* error) override;
+  bool ConstraintsFromJson(const base::DictionaryValue* value,
+                           std::set<std::string>* processed_keys,
+                           ErrorPtr* error) override;
 
   // Helper methods to add and inspect simple constraints.
   // Used mostly for unit testing.
@@ -269,8 +269,8 @@ class BooleanPropType
     : public PropTypeBase<BooleanPropType, BooleanValue, bool> {
  public:
   // Overrides from the PropType base class.
-  virtual BooleanPropType* GetBoolean() override { return this; }
-  virtual BooleanPropType const* GetBoolean() const override { return this; }
+  BooleanPropType* GetBoolean() override { return this; }
+  BooleanPropType const* GetBoolean() const override { return this; }
 };
 
 // Parameter definition of Object type.
@@ -281,19 +281,19 @@ class ObjectPropType
   ObjectPropType();
 
   // Overrides from the ParamType base class.
-  virtual bool HasOverriddenAttributes() const override;
+  bool HasOverriddenAttributes() const override;
 
-  virtual ObjectPropType* GetObject() override { return this; }
-  virtual ObjectPropType const* GetObject() const override { return this; }
+  ObjectPropType* GetObject() override { return this; }
+  ObjectPropType const* GetObject() const override { return this; }
 
-  virtual std::unique_ptr<base::Value> ToJson(bool full_schema,
-                                              ErrorPtr* error) const override;
-  virtual bool ObjectSchemaFromJson(const base::DictionaryValue* value,
-                                    const PropType* base_schema,
-                                    std::set<std::string>* processed_keys,
-                                    ErrorPtr* error) override;
+  std::unique_ptr<base::Value> ToJson(bool full_schema,
+                                      ErrorPtr* error) const override;
+  bool ObjectSchemaFromJson(const base::DictionaryValue* value,
+                            const PropType* base_schema,
+                            std::set<std::string>* processed_keys,
+                            ErrorPtr* error) override;
 
-  virtual std::shared_ptr<const ObjectSchema> GetObjectSchema() const override {
+  std::shared_ptr<const ObjectSchema> GetObjectSchema() const override {
     return object_schema_.value;
   }
   void SetObjectSchema(const std::shared_ptr<const ObjectSchema>& schema) {

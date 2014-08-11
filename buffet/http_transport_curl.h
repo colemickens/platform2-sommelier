@@ -27,7 +27,7 @@ class Transport : public http::Transport {
   Transport();
   virtual ~Transport();
 
-  virtual std::unique_ptr<http::Connection> CreateConnection(
+  std::unique_ptr<http::Connection> CreateConnection(
       std::shared_ptr<http::Transport> transport,
       const std::string& url,
       const std::string& method,

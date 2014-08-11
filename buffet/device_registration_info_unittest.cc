@@ -157,7 +157,7 @@ class DeviceRegistrationInfo::TestHelper {
 
 class DeviceRegistrationInfoTest : public ::testing::Test {
  protected:
-  virtual void SetUp() override {
+  void SetUp() override {
     InitDefaultStorage(&data_);
     storage_ = std::make_shared<MemStorage>();
     storage_->Save(&data_);

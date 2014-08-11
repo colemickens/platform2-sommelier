@@ -4,8 +4,8 @@
 
 #include <glib-object.h>
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include <base/command_line.h>
 #include <base/logging.h>

@@ -157,7 +157,7 @@ template <typename T>
 class ExportedProperty : public ExportedPropertyBase {
  public:
   ExportedProperty();
-  virtual ~ExportedProperty() override;
+  ~ExportedProperty() override;
 
   // Retrieves the current value.
   const T& value() const;
@@ -169,10 +169,10 @@ class ExportedProperty : public ExportedPropertyBase {
   // Called by ExportedPropertySet.  This update callback triggers
   // ExportedPropertySet to send a signal from the properties interface of the
   // exported object.
-  virtual void SetUpdateCallback(const OnUpdateCallback& cb) override;
+  void SetUpdateCallback(const OnUpdateCallback& cb) override;
 
   // Implementation provided by specialization.
-  virtual void AppendValueToWriter(dbus::MessageWriter* writer) const override;
+  void AppendValueToWriter(dbus::MessageWriter* writer) const override;
 
  private:
   OnUpdateCallback on_update_;

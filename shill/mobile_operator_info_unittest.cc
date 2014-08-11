@@ -84,7 +84,7 @@ class MobileOperatorInfoInitTest : public Test {
       : operator_info_(new MobileOperatorInfo(&dispatcher_, "Operator")),
         operator_info_impl_(operator_info_->impl()) {}
 
-  virtual void TearDown() override {
+  void TearDown() override {
     for (const auto &tmp_db_path : tmp_db_paths_) {
       base::DeleteFile(tmp_db_path, false);
     }

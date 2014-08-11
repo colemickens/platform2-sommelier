@@ -187,40 +187,34 @@ class Cellular : public Device, public RPCTaskDelegate {
       const std::vector<std::string> &invalidated_properties);
 
   // Inherited from Device.
-  virtual void Start(Error *error, const EnabledStateChangedCallback &callback)
-      override;
-  virtual void Stop(Error *error, const EnabledStateChangedCallback &callback)
-      override;
-  virtual void LinkEvent(unsigned int flags, unsigned int change) override;
-  virtual void Scan(ScanType /*scan_type*/, Error *error,
-                    const std::string &/*reason*/) override;
-  virtual void RegisterOnNetwork(const std::string &network_id,
-                                 Error *error,
-                                 const ResultCallback &callback) override;
-  virtual void RequirePIN(const std::string &pin, bool require,
-                          Error *error, const ResultCallback &callback)
-      override;
-  virtual void EnterPIN(const std::string &pin,
-                        Error *error, const ResultCallback &callback) override;
-  virtual void UnblockPIN(const std::string &unblock_code,
-                          const std::string &pin,
-                          Error *error, const ResultCallback &callback)
-      override;
-  virtual void ChangePIN(const std::string &old_pin,
-                         const std::string &new_pin,
-                         Error *error, const ResultCallback &callback) override;
-  virtual void Reset(Error *error, const ResultCallback &callback) override;
-  virtual void SetCarrier(const std::string &carrier,
-                          Error *error, const ResultCallback &callback)
-      override;
-  virtual bool IsIPv6Allowed() const override;
-  virtual void DropConnection() override;
-  virtual void SetServiceState(Service::ConnectState state) override;
-  virtual void SetServiceFailure(Service::ConnectFailure failure_state)
-      override;
-  virtual void SetServiceFailureSilent(Service::ConnectFailure failure_state)
-      override;
-  virtual void OnAfterResume() override;
+  void Start(Error *error,
+             const EnabledStateChangedCallback &callback) override;
+  void Stop(Error *error, const EnabledStateChangedCallback &callback) override;
+  void LinkEvent(unsigned int flags, unsigned int change) override;
+  void Scan(ScanType /*scan_type*/, Error *error,
+            const std::string &/*reason*/) override;
+  void RegisterOnNetwork(const std::string &network_id,
+                         Error *error,
+                         const ResultCallback &callback) override;
+  void RequirePIN(const std::string &pin, bool require,
+                  Error *error, const ResultCallback &callback) override;
+  void EnterPIN(const std::string &pin,
+                Error *error, const ResultCallback &callback) override;
+  void UnblockPIN(const std::string &unblock_code,
+                  const std::string &pin,
+                  Error *error, const ResultCallback &callback) override;
+  void ChangePIN(const std::string &old_pin,
+                 const std::string &new_pin,
+                 Error *error, const ResultCallback &callback) override;
+  void Reset(Error *error, const ResultCallback &callback) override;
+  void SetCarrier(const std::string &carrier,
+                  Error *error, const ResultCallback &callback) override;
+  bool IsIPv6Allowed() const override;
+  void DropConnection() override;
+  void SetServiceState(Service::ConnectState state) override;
+  void SetServiceFailure(Service::ConnectFailure failure_state) override;
+  void SetServiceFailureSilent(Service::ConnectFailure failure_state) override;
+  void OnAfterResume() override;
 
   void StartModemCallback(const EnabledStateChangedCallback &callback,
                           const Error &error);
@@ -247,9 +241,9 @@ class Cellular : public Device, public RPCTaskDelegate {
   // Callback for |ppp_task_|.
   virtual void OnPPPDied(pid_t pid, int exit);
   // Implements RPCTaskDelegate, for |ppp_task_|.
-  virtual void GetLogin(std::string *user, std::string *password) override;
-  virtual void Notify(const std::string &reason,
-                      const std::map<std::string, std::string> &dict) override;
+  void GetLogin(std::string *user, std::string *password) override;
+  void Notify(const std::string &reason,
+              const std::map<std::string, std::string> &dict) override;
 
   // ///////////////////////////////////////////////////////////////////////////
   // DBus Properties exposed by the Device interface of shill.
@@ -425,7 +419,7 @@ class Cellular : public Device, public RPCTaskDelegate {
     }
 
     // Inherited from MobileOperatorInfo::Observer
-    virtual void OnOperatorChanged() override;
+    void OnOperatorChanged() override;
 
    private:
     Cellular *const cellular_;

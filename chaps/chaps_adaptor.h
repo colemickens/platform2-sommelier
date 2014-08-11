@@ -13,7 +13,7 @@
 #include "chaps/dbus_adaptors/chaps_interface.h"
 
 namespace base {
-  class Lock;
+class Lock;
 }
 
 namespace chaps {

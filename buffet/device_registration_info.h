@@ -19,7 +19,7 @@
 #include "buffet/storage_interface.h"
 
 namespace base {
-  class Value;
+class Value;
 }  // namespace base
 
 namespace buffet {

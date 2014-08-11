@@ -17,7 +17,7 @@
 
 #include "lorgnette/dbus_adaptors/org.chromium.lorgnette.Manager.h"
 namespace chromeos {
-  class Process;
+class Process;
 }  // namespace chromeos
 
 namespace lorgnette {
@@ -29,7 +29,7 @@ class Manager {
   typedef std::map< std::string,
                     std::map<std::string, std::string> > ScannerInfo;
 
-  Manager(base::Callback<void()> activity_callback);
+  explicit Manager(base::Callback<void()> activity_callback);
   virtual ~Manager();
 
   // Start DBus connection.

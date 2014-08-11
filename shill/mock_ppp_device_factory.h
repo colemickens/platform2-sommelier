@@ -16,7 +16,7 @@ namespace shill {
 
 class MockPPPDeviceFactory : public PPPDeviceFactory {
  public:
-  virtual ~MockPPPDeviceFactory() override;
+  ~MockPPPDeviceFactory() override;
 
   // This is a singleton. Use MockPPPDeviceFactory::GetInstance()->Foo().
   static MockPPPDeviceFactory *GetInstance();

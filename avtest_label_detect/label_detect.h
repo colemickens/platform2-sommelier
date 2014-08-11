@@ -1,18 +1,18 @@
 // Copyright 2014 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#ifndef _LABEL_DETECT_H_
-#define _LABEL_DETECT_H_
+#ifndef AVTEST_LABEL_DETECT_LABEL_DETECT_H_
+#define AVTEST_LABEL_DETECT_LABEL_DETECT_H_
+#include <linux/videodev2.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <linux/videodev2.h>
 #ifdef HAS_VAAPI
 #include <va/va.h>
 #endif
 
 /* main.c */
 extern int verbose;
-#define TRACE(...) do { if (verbose) printf(__VA_ARGS__); } while(0)
+#define TRACE(...) do { if (verbose) printf(__VA_ARGS__); } while (0)
 
 /* util.c */
 extern int do_ioctl(int fd, int request, void* arg);
@@ -37,4 +37,4 @@ extern bool detect_video_acc_vp8(void);
 extern bool detect_video_acc_enc_h264(void);
 extern bool detect_video_acc_enc_vp8(void);
 
-#endif
+#endif  // AVTEST_LABEL_DETECT_LABEL_DETECT_H_

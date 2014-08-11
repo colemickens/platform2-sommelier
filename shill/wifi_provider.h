@@ -61,15 +61,14 @@ class WiFiProvider : public ProviderInterface {
   // Called by Manager as a part of the Provider interface.  The attributes
   // used for matching services for the WiFi provider are the SSID, mode and
   // security parameters.
-  virtual void CreateServicesFromProfile(const ProfileRefPtr &profile) override;
-  virtual ServiceRefPtr FindSimilarService(
+  void CreateServicesFromProfile(const ProfileRefPtr &profile) override;
+  ServiceRefPtr FindSimilarService(
       const KeyValueStore &args, Error *error) const override;
-  virtual ServiceRefPtr GetService(const KeyValueStore &args,
-                                   Error *error) override;
-  virtual ServiceRefPtr CreateTemporaryService(
+  ServiceRefPtr GetService(const KeyValueStore &args, Error *error) override;
+  ServiceRefPtr CreateTemporaryService(
       const KeyValueStore &args, Error *error) override;
-  virtual void Start() override;
-  virtual void Stop() override;
+  void Start() override;
+  void Stop() override;
 
   // Find a Service this Endpoint should be associated with.
   virtual WiFiServiceRefPtr FindServiceForEndpoint(

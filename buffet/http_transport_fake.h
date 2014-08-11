@@ -65,7 +65,7 @@ class Transport : public http::Transport {
   void ResetRequestCount() { request_count_ = 0; }
 
   // Overload from http::Transport
-  virtual std::unique_ptr<http::Connection> CreateConnection(
+  std::unique_ptr<http::Connection> CreateConnection(
       std::shared_ptr<http::Transport> transport,
       const std::string& url,
       const std::string& method,

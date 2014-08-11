@@ -27,19 +27,18 @@ class Connection : public http::Connection {
 
   // Overrides from http::Connection.
   // See http_connection.h for description of these methods.
-  virtual bool SendHeaders(const HeaderList& headers, ErrorPtr* error) override;
-  virtual bool WriteRequestData(const void* data, size_t size,
-                                ErrorPtr* error) override;
-  virtual bool FinishRequest(ErrorPtr* error) override;
+  bool SendHeaders(const HeaderList& headers, ErrorPtr* error) override;
+  bool WriteRequestData(const void* data, size_t size,
+                        ErrorPtr* error) override;
+  bool FinishRequest(ErrorPtr* error) override;
 
-  virtual int GetResponseStatusCode() const override;
-  virtual std::string GetResponseStatusText() const override;
-  virtual std::string GetProtocolVersion() const override;
-  virtual std::string GetResponseHeader(
-     const std::string& header_name) const override;
-  virtual uint64_t GetResponseDataSize() const override;
-  virtual bool ReadResponseData(void* data, size_t buffer_size,
-                                size_t* size_read, ErrorPtr* error) override;
+  int GetResponseStatusCode() const override;
+  std::string GetResponseStatusText() const override;
+  std::string GetProtocolVersion() const override;
+  std::string GetResponseHeader(const std::string& header_name) const override;
+  uint64_t GetResponseDataSize() const override;
+  bool ReadResponseData(void* data, size_t buffer_size,
+                        size_t* size_read, ErrorPtr* error) override;
 
  private:
   // Request and response objects passed to the user-provided request handler

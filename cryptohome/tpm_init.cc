@@ -45,9 +45,7 @@ const TSS_UUID kCryptohomeWellKnownUuid = {0x0203040b, 0, 0, 0, 0,
 // the TPM.
 class TpmInitTask : public PlatformThread::Delegate {
  public:
-  explicit TpmInitTask()
-        : tpm_(NULL),
-        init_(NULL) {
+  TpmInitTask() : tpm_(NULL), init_(NULL) {
   }
 
   virtual ~TpmInitTask() {

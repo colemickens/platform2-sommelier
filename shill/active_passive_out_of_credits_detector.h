@@ -24,13 +24,12 @@ class ActivePassiveOutOfCreditsDetector : public OutOfCreditsDetector {
                                     CellularService *service);
   virtual ~ActivePassiveOutOfCreditsDetector();
 
-  virtual void ResetDetector() override;
-  virtual bool IsDetecting() const override;
-  virtual void NotifyServiceStateChanged(
+  void ResetDetector() override;
+  bool IsDetecting() const override;
+  void NotifyServiceStateChanged(
       Service::ConnectState old_state,
       Service::ConnectState new_state) override;
-  virtual void NotifySubscriptionStateChanged(
-      uint32_t subscription_state) override {}
+  void NotifySubscriptionStateChanged(uint32_t subscription_state) override {}
 
   const TrafficMonitor *traffic_monitor() const {
     return traffic_monitor_.get();

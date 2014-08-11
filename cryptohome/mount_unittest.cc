@@ -39,8 +39,8 @@
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mock_tpm_init.h"
 #include "cryptohome/mock_user_session.h"
-#include "cryptohome/username_passkey.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
+#include "cryptohome/username_passkey.h"
 #include "cryptohome/vault_keyset.h"
 
 #include "vault_keyset.pb.h"  // NOLINT(build/include)

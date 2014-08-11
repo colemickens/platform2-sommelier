@@ -16,7 +16,7 @@ namespace {
 
 class CommandInstanceTest : public ::testing::Test {
  protected:
-  virtual void SetUp() override {
+  void SetUp() override {
     auto json = CreateDictionaryValue(R"({
       'base': {
         'reboot': {

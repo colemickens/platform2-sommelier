@@ -33,15 +33,14 @@ class EthernetEapProvider : public ProviderInterface {
   virtual ~EthernetEapProvider();
 
   // Called by Manager as a part of the Provider interface.
-  virtual void CreateServicesFromProfile(const ProfileRefPtr &profile) override;
-  virtual ServiceRefPtr GetService(const KeyValueStore &args,
-                                   Error *error) override;
-  virtual ServiceRefPtr FindSimilarService(
+  void CreateServicesFromProfile(const ProfileRefPtr &profile) override;
+  ServiceRefPtr GetService(const KeyValueStore &args, Error *error) override;
+  ServiceRefPtr FindSimilarService(
       const KeyValueStore &args, Error *error) const override;
-  virtual ServiceRefPtr CreateTemporaryService(
+  ServiceRefPtr CreateTemporaryService(
       const KeyValueStore &args, Error *error) override;
-  virtual void Start() override;
-  virtual void Stop() override;
+  void Start() override;
+  void Stop() override;
 
   virtual const ServiceRefPtr &service() const { return service_; }
 

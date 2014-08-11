@@ -61,20 +61,20 @@ class CellularCapabilityClassic : public CellularCapability {
   virtual ~CellularCapabilityClassic();
 
   // Inherited from CellularCapability.
-  virtual void OnDBusPropertiesChanged(
+  void OnDBusPropertiesChanged(
       const std::string &interface,
       const DBusPropertiesMap &changed_properties,
       const std::vector<std::string> &invalidated_properties) override;
-  virtual void StopModem(Error *error, const ResultCallback &callback) override;
-  virtual bool AreProxiesInitialized() const override;
-  virtual void SetCarrier(const std::string &carrier,
-                          Error *error,
-                          const ResultCallback &callback) override;
-  virtual void Connect(const DBusPropertiesMap &properties,
-                       Error *error,
-                       const ResultCallback &callback) override;
-  virtual void Disconnect(Error *error,
-                          const ResultCallback &callback) override;
+  void StopModem(Error *error, const ResultCallback &callback) override;
+  bool AreProxiesInitialized() const override;
+  void SetCarrier(const std::string &carrier,
+                  Error *error,
+                  const ResultCallback &callback) override;
+  void Connect(const DBusPropertiesMap &properties,
+               Error *error,
+               const ResultCallback &callback) override;
+  void Disconnect(Error *error,
+                  const ResultCallback &callback) override;
 
  protected:
   typedef std::vector<base::Closure> CellularTaskList;

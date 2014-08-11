@@ -138,7 +138,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Callback for when a service is configured with an IP.
   virtual void OnConnected();
   // Callback for when a service fails to configure with an IP.
-  virtual void OnIPConfigFailure() override;
+  void OnIPConfigFailure() override;
 
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
@@ -179,7 +179,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Formats |ssid| for logging purposes, to ease scrubbing.
   static std::string LogSSID(const std::string &ssid);
 
-  // Called by Linkmonitor (overriden from Device superclass).
+  // Called by Linkmonitor (overridden from Device superclass).
   virtual void OnLinkMonitorFailure();
 
   bool IsCurrentService(const WiFiServiceRefPtr service) {
@@ -214,12 +214,12 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool TDLSTeardown(const std::string &peer);
 
   // Perform TDLS |operation| on |peer|.
-  virtual std::string PerformTDLSOperation(const std::string &operation,
-                                           const std::string &peer,
-                                           Error *error) override;
+  std::string PerformTDLSOperation(const std::string &operation,
+                                   const std::string &peer,
+                                   Error *error) override;
 
   // Overridden from Device superclass.
-  virtual bool IsTrafficMonitorEnabled() const override;
+  bool IsTrafficMonitorEnabled() const override;
 
  private:
   enum ScanMethod {

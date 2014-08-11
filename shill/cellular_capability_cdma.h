@@ -30,27 +30,27 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   virtual ~CellularCapabilityCDMA();
 
   // Inherited from CellularCapability.
-  virtual std::string GetTypeString() const override;
-  virtual void StartModem(Error *error,
-                          const ResultCallback &callback) override;
-  virtual bool AreProxiesInitialized() const override;
-  virtual void Activate(const std::string &carrier,
-                        Error *error,
-                        const ResultCallback &callback) override;
-  virtual bool IsActivating() const override;
-  virtual bool IsRegistered() const override;
-  virtual void SetUnregistered(bool searching) override;
-  virtual void OnServiceCreated() override;
-  virtual std::string GetNetworkTechnologyString() const override;
-  virtual std::string GetRoamingStateString() const override;
-  virtual bool AllowRoaming() override;
-  virtual void GetSignalQuality() override;
-  virtual void SetupConnectProperties(DBusPropertiesMap *properties) override;
-  virtual void DisconnectCleanup() override;
+  std::string GetTypeString() const override;
+  void StartModem(Error *error,
+                  const ResultCallback &callback) override;
+  bool AreProxiesInitialized() const override;
+  void Activate(const std::string &carrier,
+                Error *error,
+                const ResultCallback &callback) override;
+  bool IsActivating() const override;
+  bool IsRegistered() const override;
+  void SetUnregistered(bool searching) override;
+  void OnServiceCreated() override;
+  std::string GetNetworkTechnologyString() const override;
+  std::string GetRoamingStateString() const override;
+  bool AllowRoaming() override;
+  void GetSignalQuality() override;
+  void SetupConnectProperties(DBusPropertiesMap *properties) override;
+  void DisconnectCleanup() override;
 
   // Inherited from CellularCapabilityClassic.
-  virtual void GetRegistrationState() override;
-  virtual void GetProperties(const ResultCallback &callback) override;
+  void GetRegistrationState() override;
+  void GetProperties(const ResultCallback &callback) override;
 
   virtual void GetMEID(const ResultCallback &callback);
 
@@ -60,9 +60,9 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
 
  protected:
   // Inherited from CellularCapabilityClassic.
-  virtual void InitProxies() override;
-  virtual void ReleaseProxies() override;
-  virtual void UpdateStatus(const DBusPropertiesMap &properties) override;
+  void InitProxies() override;
+  void ReleaseProxies() override;
+  void UpdateStatus(const DBusPropertiesMap &properties) override;
 
  private:
   friend class CellularCapabilityCDMATest;
@@ -103,7 +103,7 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
 
   // Helper method to extract the online portal information from properties.
   void UpdateOnlinePortal(const DBusPropertiesMap &properties);
-  virtual void UpdateServiceOLP() override;
+  void UpdateServiceOLP() override;
 
   bool activation_starting_;
   ResultCallback pending_activation_callback_;

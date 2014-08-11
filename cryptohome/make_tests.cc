@@ -29,8 +29,8 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mount.h"
-#include "cryptohome/username_passkey.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
+#include "cryptohome/username_passkey.h"
 #include "cryptohome/vault_keyset.h"
 
 using base::StringPrintf;

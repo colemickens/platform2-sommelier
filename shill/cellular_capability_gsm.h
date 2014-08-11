@@ -35,51 +35,49 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   virtual ~CellularCapabilityGSM();
 
   // Inherited from CellularCapability.
-  virtual std::string GetTypeString() const override;
-  virtual void OnDBusPropertiesChanged(
+  std::string GetTypeString() const override;
+  void OnDBusPropertiesChanged(
       const std::string &interface,
       const DBusPropertiesMap &changed_properties,
       const std::vector<std::string> &invalidated_properties) override;
-  virtual void StartModem(Error *error,
-                          const ResultCallback &callback) override;
-  virtual bool AreProxiesInitialized() const override;
-  virtual void Scan(Error *error,
-                    const ResultStringmapsCallback &callback) override;
-  virtual void RegisterOnNetwork(const std::string &network_id,
-                                 Error *error,
-                                 const ResultCallback &callback) override;
-  virtual bool IsRegistered() const override;
-  virtual void SetUnregistered(bool searching) override;
-  virtual void OnServiceCreated() override;
-  virtual std::string GetNetworkTechnologyString() const override;
-  virtual std::string GetRoamingStateString() const override;
-  virtual bool AllowRoaming() override;
-  virtual void GetSignalQuality() override;
-  virtual void SetupConnectProperties(DBusPropertiesMap *properties) override;
-  virtual void Connect(const DBusPropertiesMap &properties,
-                       Error *error,
-                       const ResultCallback &callback) override;
-  virtual void RequirePIN(const std::string &pin,
-                          bool require,
-                          Error *error,
-                          const ResultCallback &callback) override;
-  virtual void EnterPIN(const std::string &pin,
-                        Error *error,
-                        const ResultCallback &callback) override;
-  virtual void UnblockPIN(const std::string &unblock_code,
-                          const std::string &pin,
-                          Error *error,
-                          const ResultCallback &callback) override;
-  virtual void ChangePIN(const std::string &old_pin,
-                         const std::string &new_pin,
+  void StartModem(Error *error, const ResultCallback &callback) override;
+  bool AreProxiesInitialized() const override;
+  void Scan(Error *error, const ResultStringmapsCallback &callback) override;
+  void RegisterOnNetwork(const std::string &network_id,
                          Error *error,
                          const ResultCallback &callback) override;
+  bool IsRegistered() const override;
+  void SetUnregistered(bool searching) override;
+  void OnServiceCreated() override;
+  std::string GetNetworkTechnologyString() const override;
+  std::string GetRoamingStateString() const override;
+  bool AllowRoaming() override;
+  void GetSignalQuality() override;
+  void SetupConnectProperties(DBusPropertiesMap *properties) override;
+  void Connect(const DBusPropertiesMap &properties,
+               Error *error,
+               const ResultCallback &callback) override;
+  void RequirePIN(const std::string &pin,
+                  bool require,
+                  Error *error,
+                  const ResultCallback &callback) override;
+  void EnterPIN(const std::string &pin,
+                Error *error,
+                const ResultCallback &callback) override;
+  void UnblockPIN(const std::string &unblock_code,
+                  const std::string &pin,
+                  Error *error,
+                  const ResultCallback &callback) override;
+  void ChangePIN(const std::string &old_pin,
+                 const std::string &new_pin,
+                 Error *error,
+                 const ResultCallback &callback) override;
 
   // Inherited from CellularCapabilityClassic.
-  virtual void GetRegistrationState() override;
+  void GetRegistrationState() override;
   // The following six methods are only ever called as callbacks (from the main
   // loop), which is why they don't take an Error * argument.
-  virtual void GetProperties(const ResultCallback &callback) override;
+  void GetProperties(const ResultCallback &callback) override;
 
   virtual void GetIMEI(const ResultCallback &callback);
   virtual void GetIMSI(const ResultCallback &callback);
@@ -89,8 +87,8 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
 
  protected:
   // Inherited from CellularCapabilityClassic.
-  virtual void InitProxies() override;
-  virtual void ReleaseProxies() override;
+  void InitProxies() override;
+  void ReleaseProxies() override;
 
   // Initializes properties, such as IMSI, which are required before the device
   // is enabled.

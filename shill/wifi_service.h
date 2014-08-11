@@ -102,18 +102,18 @@ class WiFiService : public Service {
       const StoreInterface &storage) const;
   virtual bool IsLoadableFrom(const StoreInterface &storage) const;
 
-  // Overrride Load and Save from parent Service class.  We will call
+  // Override Load and Save from parent Service class.  We will call
   // the parent method.
-  virtual bool Load(StoreInterface *storage);
-  virtual bool Save(StoreInterface *storage);
-  virtual bool Unload();
+  bool Load(StoreInterface *storage) override;
+  bool Save(StoreInterface *storage) override;
+  bool Unload() override;
 
   // Override SetState from parent Service class.  We will call the
   // parent method.
-  virtual void SetState(ConnectState state) override;
+  void SetState(ConnectState state) override;
 
   virtual bool HasEndpoints() const { return !endpoints_.empty(); }
-  virtual bool IsVisible() const override;
+  bool IsVisible() const override;
   bool IsSecurityMatch(const std::string &security) const;
 
   // Used by WiFi objects to indicate that the credentials for this network
@@ -169,8 +169,8 @@ class WiFiService : public Service {
   bool expecting_disconnect() const { return expecting_disconnect_; }
 
  protected:
-  virtual void SetEAPKeyManagement(const std::string &key_management);
-  virtual std::string GetTethering(Error *error) const override;
+  void SetEAPKeyManagement(const std::string &key_management) override;
+  std::string GetTethering(Error *error) const override;
 
  private:
   friend class WiFiServiceSecurityTest;

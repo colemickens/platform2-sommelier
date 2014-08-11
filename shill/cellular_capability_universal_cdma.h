@@ -29,49 +29,49 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   bool IsActivated() const;
 
   // Inherited from CellularCapability.
-  virtual void OnDBusPropertiesChanged(
+  void OnDBusPropertiesChanged(
       const std::string &interface,
       const DBusPropertiesMap &changed_properties,
       const std::vector<std::string> &invalidated_properties) override;
-  virtual bool IsServiceActivationRequired() const override;
-  virtual bool IsActivating() const override;
-  virtual void Activate(const std::string &carrier,
-                        Error *error,
-                        const ResultCallback &callback) override;
-  virtual void CompleteActivation(Error *error) override;
-  virtual bool IsRegistered() const override;
-  virtual void SetUnregistered(bool searching) override;
-  virtual void OnServiceCreated() override;
-  virtual std::string GetRoamingStateString() const override;
-  virtual void SetupConnectProperties(DBusPropertiesMap *properties) override;
+  bool IsServiceActivationRequired() const override;
+  bool IsActivating() const override;
+  void Activate(const std::string &carrier,
+                Error *error,
+                const ResultCallback &callback) override;
+  void CompleteActivation(Error *error) override;
+  bool IsRegistered() const override;
+  void SetUnregistered(bool searching) override;
+  void OnServiceCreated() override;
+  std::string GetRoamingStateString() const override;
+  void SetupConnectProperties(DBusPropertiesMap *properties) override;
 
   // TODO(armansito): Remove once 3GPP is implemented in its own class
-  virtual void Register(const ResultCallback &callback) override;
-  virtual void RegisterOnNetwork(const std::string &network_id, Error *error,
-                                 const ResultCallback &callback) override;
-  virtual void RequirePIN(const std::string &pin, bool require, Error *error,
-                          const ResultCallback &callback) override;
-  virtual void EnterPIN(const std::string &pin, Error *error,
-                        const ResultCallback &callback) override;
-  virtual void UnblockPIN(const std::string &unblock_code,
-                          const std::string &pin, Error *error,
-                          const ResultCallback &callback) override;
-  virtual void ChangePIN(const std::string &old_pin, const std::string &new_pin,
-                         Error *error, const ResultCallback &callback) override;
-  virtual void Scan(Error *error,
-                    const ResultStringmapsCallback &callback) override;
-  virtual void OnSimPathChanged(const std::string &sim_path) override;
+  void Register(const ResultCallback &callback) override;
+  void RegisterOnNetwork(const std::string &network_id, Error *error,
+                         const ResultCallback &callback) override;
+  void RequirePIN(const std::string &pin, bool require, Error *error,
+                  const ResultCallback &callback) override;
+  void EnterPIN(const std::string &pin, Error *error,
+                const ResultCallback &callback) override;
+  void UnblockPIN(const std::string &unblock_code,
+                  const std::string &pin, Error *error,
+                  const ResultCallback &callback) override;
+  void ChangePIN(const std::string &old_pin, const std::string &new_pin,
+                 Error *error, const ResultCallback &callback) override;
+  void Scan(Error *error,
+            const ResultStringmapsCallback &callback) override;
+  void OnSimPathChanged(const std::string &sim_path) override;
 
-  virtual void GetProperties() override;
+  void GetProperties() override;
 
  protected:
   // Inherited from CellularCapabilityUniversal.
-  virtual void InitProxies() override;
-  virtual void ReleaseProxies() override;
-  virtual void UpdateServiceOLP() override;
+  void InitProxies() override;
+  void ReleaseProxies() override;
+  void UpdateServiceOLP() override;
 
   // Post-payment activation handlers.
-  virtual void UpdatePendingActivationState() override;
+  void UpdatePendingActivationState() override;
 
  private:
   friend class CellularCapabilityUniversalCDMATest;

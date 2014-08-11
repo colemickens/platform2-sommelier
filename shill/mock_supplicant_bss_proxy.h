@@ -14,7 +14,7 @@ namespace shill {
 
 class MockSupplicantBSSProxy : public SupplicantBSSProxyInterface {
  public:
-  explicit MockSupplicantBSSProxy();
+  MockSupplicantBSSProxy();
   virtual ~MockSupplicantBSSProxy();
 
   MOCK_METHOD0(Die, void());  // So we can EXPECT the dtor.

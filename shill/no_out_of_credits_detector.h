@@ -22,16 +22,15 @@ class NoOutOfCreditsDetector : public OutOfCreditsDetector {
   virtual ~NoOutOfCreditsDetector() {}
 
   // Resets the detector state.
-  virtual void ResetDetector() override {}
+  void ResetDetector() override {}
   // Returns |true| if this object is busy detecting out-of-credits.
-  virtual bool IsDetecting() const override { return false; }
+  bool IsDetecting() const override { return false; }
   // Notifies this object of a service state change.
-  virtual void NotifyServiceStateChanged(
+  void NotifyServiceStateChanged(
       Service::ConnectState old_state,
       Service::ConnectState new_state) override {}
   // Notifies this object when the subscription state has changed.
-  virtual void NotifySubscriptionStateChanged(
-      uint32_t subscription_state) override {}
+  void NotifySubscriptionStateChanged(uint32_t subscription_state) override {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NoOutOfCreditsDetector);

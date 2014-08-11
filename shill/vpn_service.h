@@ -48,8 +48,8 @@ class VPNService : public Service {
 
  protected:
   // Inherited from Service.
-  virtual bool IsAutoConnectable(const char **reason) const;
-  virtual std::string GetTethering(Error *error) const override;
+  bool IsAutoConnectable(const char **reason) const override;
+  std::string GetTethering(Error *error) const override;
 
  private:
   friend class VPNServiceTest;

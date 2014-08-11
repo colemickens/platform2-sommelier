@@ -236,7 +236,7 @@ class NetlinkManager {
  protected:
   friend struct base::DefaultLazyInstanceTraits<NetlinkManager>;
 
-  explicit NetlinkManager();
+  NetlinkManager();
 
  private:
   friend class NetlinkManagerTest;

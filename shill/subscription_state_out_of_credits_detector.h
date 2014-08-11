@@ -18,13 +18,12 @@ class SubscriptionStateOutOfCreditsDetector : public OutOfCreditsDetector {
                                         CellularService *service);
   virtual ~SubscriptionStateOutOfCreditsDetector();
 
-  virtual void ResetDetector() override {}
-  virtual bool IsDetecting() const override { return false; }
-  virtual void NotifyServiceStateChanged(
+  void ResetDetector() override {}
+  bool IsDetecting() const override { return false; }
+  void NotifyServiceStateChanged(
       Service::ConnectState old_state,
       Service::ConnectState new_state) override {}
-  virtual void NotifySubscriptionStateChanged(
-      uint32_t subscription_state) override;
+  void NotifySubscriptionStateChanged(uint32_t subscription_state) override;
 
  private:
   friend class SubscriptionStateOutOfCreditsDetectorTest;

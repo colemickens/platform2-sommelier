@@ -25,7 +25,7 @@ std::unique_ptr<const buffet::CommandInstance> CreateDummyCommandInstance(
 // Aborts if duplicate commands are added or non-existent commands are removed.
 class FakeDispatchInterface : public buffet::CommandDispachInterface {
  public:
-  virtual void OnCommandAdded(
+  void OnCommandAdded(
       const std::string& command_id,
       const buffet::CommandInstance* command_instance) override {
     CHECK(ids_.insert(command_id).second)
@@ -34,7 +34,7 @@ class FakeDispatchInterface : public buffet::CommandDispachInterface {
         << "Command instance already exists";
   }
 
-  virtual void OnCommandRemoved(
+  void OnCommandRemoved(
       const std::string& command_id,
       const buffet::CommandInstance* command_instance) override {
     CHECK_EQ(1, ids_.erase(command_id))

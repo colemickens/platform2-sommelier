@@ -31,9 +31,9 @@ class ServiceUnderTest : public Service {
                    Manager *manager);
   virtual ~ServiceUnderTest();
 
-  virtual std::string GetRpcIdentifier() const override;
-  virtual std::string GetDeviceRpcId(Error *error) const override;
-  virtual std::string GetStorageIdentifier() const override;
+  std::string GetRpcIdentifier() const override;
+  std::string GetDeviceRpcId(Error *error) const override;
+  std::string GetStorageIdentifier() const override;
 
   // Getter and setter for a string array property for use in testing.
   void set_strings(const std::vector<std::string> &strings) {
