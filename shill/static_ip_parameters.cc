@@ -50,7 +50,7 @@ void StaticIPParameters::PlumbPropertyStore(PropertyStore *store) {
         store->RegisterDerivedInt32(
             name,
             Int32Accessor(
-                new CustomMappedAccessor<StaticIPParameters, int32, size_t>(
+                new CustomMappedAccessor<StaticIPParameters, int32_t, size_t>(
                     this,
                     &StaticIPParameters::ClearMappedProperty,
                     &StaticIPParameters::GetMappedInt32Property,
@@ -59,7 +59,7 @@ void StaticIPParameters::PlumbPropertyStore(PropertyStore *store) {
         store->RegisterDerivedInt32(
             saved_name,
             Int32Accessor(
-                new CustomMappedAccessor<StaticIPParameters, int32, size_t>(
+                new CustomMappedAccessor<StaticIPParameters, int32_t, size_t>(
                     this,
                     &StaticIPParameters::ClearMappedSavedProperty,
                     &StaticIPParameters::GetMappedSavedInt32Property,
@@ -102,7 +102,7 @@ void StaticIPParameters::Load(
     switch (property.type) {
       case Property::kTypeInt32:
         {
-          int32 value;
+          int32_t value;
           if (storage->GetInt(storage_id, name, &value)) {
             args_.SetInt(property.name, value);
           } else {
@@ -159,7 +159,7 @@ void StaticIPParameters::Save(
 }
 
 void StaticIPParameters::ApplyInt(
-    const string &property, int32 *value_out) {
+    const string &property, int32_t *value_out) {
   saved_args_.SetInt(property, *value_out);
   if (args_.ContainsInt(property)) {
     *value_out = args_.GetInt(property);
@@ -259,7 +259,7 @@ void StaticIPParameters::ClearMappedSavedProperty(
   error->Populate(Error::kInvalidArguments, "Property is read-only");
 }
 
-int32 StaticIPParameters::GetMappedInt32Property(
+int32_t StaticIPParameters::GetMappedInt32Property(
     const size_t &index, Error *error) {
   CHECK(index < arraysize(kProperties));
 
@@ -271,7 +271,7 @@ int32 StaticIPParameters::GetMappedInt32Property(
   return args_.GetInt(key);
 }
 
-int32 StaticIPParameters::GetMappedSavedInt32Property(
+int32_t StaticIPParameters::GetMappedSavedInt32Property(
     const size_t &index, Error *error) {
   CHECK(index < arraysize(kProperties));
 
@@ -308,7 +308,7 @@ string StaticIPParameters::GetMappedSavedStringProperty(
 }
 
 bool StaticIPParameters::SetMappedInt32Property(
-    const size_t &index, const int32 &value, Error *error) {
+    const size_t &index, const int32_t &value, Error *error) {
   CHECK(index < arraysize(kProperties));
   if (args_.ContainsInt(kProperties[index].name) &&
       args_.GetInt(kProperties[index].name) == value) {
@@ -319,7 +319,7 @@ bool StaticIPParameters::SetMappedInt32Property(
 }
 
 bool StaticIPParameters::SetMappedSavedInt32Property(
-    const size_t &index, const int32 &value, Error *error) {
+    const size_t &index, const int32_t &value, Error *error) {
   error->Populate(Error::kInvalidArguments, "Property is read-only");
   return false;
 }

@@ -47,7 +47,7 @@ void ManagerDBusAdaptor::EmitBoolChanged(const string &name, bool value) {
 }
 
 void ManagerDBusAdaptor::EmitUintChanged(const string &name,
-                                         uint32 value) {
+                                         uint32_t value) {
   SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::Uint32ToVariant(value));
 }

@@ -52,9 +52,9 @@ class DiagnosticsReporterTest : public testing::Test {
     return DiagnosticsReporter::GetInstance()->IsReportingEnabled();
   }
 
-  void SetLastLogStash(uint64 time) { reporter_.last_log_stash_ = time; }
-  uint64 GetLastLogStash() { return reporter_.last_log_stash_; }
-  uint64 GetLogStashThrottleSeconds() {
+  void SetLastLogStash(uint64_t time) { reporter_.last_log_stash_ = time; }
+  uint64_t GetLastLogStash() { return reporter_.last_log_stash_; }
+  uint64_t GetLogStashThrottleSeconds() {
     return DiagnosticsReporter::kLogStashThrottleSeconds;
   }
 
@@ -87,7 +87,7 @@ TEST_F(DiagnosticsReporterTest, OnConnectivityEventThrottle) {
 
 TEST_F(DiagnosticsReporterTest, OnConnectivityEvent) {
   using timeval_seconds_t = decltype(timeval::tv_sec);
-  const uint64 kInitStash = 0;
+  const uint64_t kInitStash = 0;
   SetLastLogStash(kInitStash);
   // Test that the initial call is not throttled.
   auto kNow0 = static_cast<timeval_seconds_t>(kInitStash + 1);

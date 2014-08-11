@@ -53,10 +53,10 @@ class MockStore : public StoreInterface {
                             int value));
   MOCK_CONST_METHOD3(GetUint64, bool(const std::string &group,
                                      const std::string &key,
-                                     uint64 *value));
+                                     uint64_t *value));
   MOCK_METHOD3(SetUint64, bool(const std::string &group,
                                const std::string &key,
-                               uint64 value));
+                               uint64_t value));
   MOCK_CONST_METHOD3(GetStringList, bool(const std::string &group,
                                          const std::string &key,
                                          std::vector<std::string> *value));

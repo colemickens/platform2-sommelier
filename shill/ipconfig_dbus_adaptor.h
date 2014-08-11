@@ -38,7 +38,7 @@ class IPConfigDBusAdaptor : public org::chromium::flimflam::IPConfig_adaptor,
   // Implementation of IPConfigAdaptorInterface.
   virtual const std::string &GetRpcIdentifier() { return path(); }
   virtual void EmitBoolChanged(const std::string &name, bool value);
-  virtual void EmitUintChanged(const std::string &name, uint32 value);
+  virtual void EmitUintChanged(const std::string &name, uint32_t value);
   virtual void EmitIntChanged(const std::string &name, int value);
   virtual void EmitStringChanged(const std::string &name,
                                  const std::string &value);

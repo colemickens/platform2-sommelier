@@ -99,7 +99,7 @@ bool WiMaxService::Start(WiMaxNetworkProxyInterface *proxy) {
   if (error.IsFailure()) {
     return false;
   }
-  uint32 identifier = proxy->Identifier(&error);
+  uint32_t identifier = proxy->Identifier(&error);
   if (error.IsFailure()) {
     return false;
   }
@@ -265,7 +265,7 @@ void WiMaxService::SetState(ConnectState state) {
 }
 
 // static
-WiMaxNetworkId WiMaxService::ConvertIdentifierToNetworkId(uint32 identifier) {
+WiMaxNetworkId WiMaxService::ConvertIdentifierToNetworkId(uint32_t identifier) {
   return base::StringPrintf("%08x", identifier);
 }
 

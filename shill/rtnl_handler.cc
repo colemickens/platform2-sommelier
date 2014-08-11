@@ -183,7 +183,7 @@ void RTNLHandler::DispatchEvent(int type, const RTNLMessage &msg) {
   }
 }
 
-void RTNLHandler::NextRequest(uint32 seq) {
+void RTNLHandler::NextRequest(uint32_t seq) {
   int flag = 0;
   RTNLMessage::Type type;
 

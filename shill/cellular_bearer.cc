@@ -28,7 +28,7 @@ const char kPropertyGateway[] = "gateway";
 const char kPropertyMethod[] = "method";
 const char kPropertyPrefix[] = "prefix";
 
-IPConfig::Method ConvertMMBearerIPConfigMethod(uint32 method) {
+IPConfig::Method ConvertMMBearerIPConfigMethod(uint32_t method) {
   switch (method) {
     case MM_BEARER_IP_METHOD_PPP:
       return IPConfig::kMethodPPP;
@@ -85,7 +85,7 @@ void CellularBearer::GetIPConfigMethodAndProperties(
   DCHECK(ipconfig_method);
   DCHECK(ipconfig_properties);
 
-  uint32 method;
+  uint32_t method;
   if (!DBusProperties::GetUint32(properties, kPropertyMethod, &method)) {
     SLOG(Cellular, 2) << "Bearer '" << dbus_path_
                       << "' does not specify an IP configuration method.";
@@ -112,7 +112,7 @@ void CellularBearer::GetIPConfigMethodAndProperties(
   (*ipconfig_properties)->address = address;
   (*ipconfig_properties)->gateway = gateway;
 
-  uint32 prefix;
+  uint32_t prefix;
   if (!DBusProperties::GetUint32(properties, kPropertyPrefix, &prefix)) {
     prefix = IPAddress::GetMaxPrefixLength(address_family);
   }

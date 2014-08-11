@@ -53,9 +53,9 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
 
   virtual void GetMEID(const ResultCallback &callback);
 
-  uint32 activation_state() const { return activation_state_; }
-  uint32 registration_state_evdo() const { return registration_state_evdo_; }
-  uint32 registration_state_1x() const { return registration_state_1x_; }
+  uint32_t activation_state() const { return activation_state_; }
+  uint32_t registration_state_evdo() const { return registration_state_evdo_; }
+  uint32_t registration_state_1x() const { return registration_state_1x_; }
 
  protected:
   // Inherited from CellularCapabilityClassic.
@@ -75,27 +75,27 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
 
   static const char kPhoneNumber[];
 
-  void HandleNewActivationState(uint32 error);
+  void HandleNewActivationState(uint32_t error);
 
-  static std::string GetActivationStateString(uint32 state);
-  static std::string GetActivationErrorString(uint32 error);
+  static std::string GetActivationStateString(uint32_t state);
+  static std::string GetActivationErrorString(uint32_t error);
 
   // Signal callbacks from the Modem.CDMA interface
   void OnActivationStateChangedSignal(
-      uint32 activation_state,
-      uint32 activation_error,
+      uint32_t activation_state,
+      uint32_t activation_error,
       const DBusPropertiesMap &status_changes);
   void OnRegistrationStateChangedSignal(
-      uint32 state_1x, uint32 state_evdo);
-  void OnSignalQualitySignal(uint32 strength);
+      uint32_t state_1x, uint32_t state_evdo);
+  void OnSignalQualitySignal(uint32_t strength);
 
   // Method reply callbacks from the Modem.CDMA interface
   void OnActivateReply(const ResultCallback &callback,
-                       uint32 status, const Error &error);
+                       uint32_t status, const Error &error);
 
-  void OnGetRegistrationStateReply(uint32 state_1x, uint32 state_evdo,
+  void OnGetRegistrationStateReply(uint32_t state_1x, uint32_t state_evdo,
                                    const Error &error);
-  void OnGetSignalQualityReply(uint32 strength, const Error &error);
+  void OnGetSignalQualityReply(uint32_t strength, const Error &error);
 
   scoped_ptr<ModemCDMAProxyInterface> proxy_;
   base::WeakPtrFactory<CellularCapabilityCDMA> weak_ptr_factory_;
@@ -107,9 +107,9 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   bool activation_starting_;
   ResultCallback pending_activation_callback_;
   std::string pending_activation_carrier_;
-  uint32 activation_state_;
-  uint32 registration_state_evdo_;
-  uint32 registration_state_1x_;
+  uint32_t activation_state_;
+  uint32_t registration_state_evdo_;
+  uint32_t registration_state_1x_;
   std::string usage_url_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityCDMA);

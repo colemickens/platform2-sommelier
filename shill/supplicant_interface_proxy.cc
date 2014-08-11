@@ -170,7 +170,7 @@ void SupplicantInterfaceProxy::SetFastReauth(bool enabled) {
   }
 }
 
-void SupplicantInterfaceProxy::SetRoamThreshold(uint16 threshold) {
+void SupplicantInterfaceProxy::SetRoamThreshold(uint16_t threshold) {
   SLOG(DBus, 2) << __func__;
   try {
     proxy_.RoamThreshold(threshold);
@@ -182,7 +182,7 @@ void SupplicantInterfaceProxy::SetRoamThreshold(uint16 threshold) {
   }
 }
 
-void SupplicantInterfaceProxy::SetScanInterval(int32 scan_interval) {
+void SupplicantInterfaceProxy::SetScanInterval(int32_t scan_interval) {
   SLOG(DBus, 2) << __func__;
   try {
     return proxy_.ScanInterval(scan_interval);

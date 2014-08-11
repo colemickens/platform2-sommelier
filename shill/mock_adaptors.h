@@ -27,8 +27,9 @@ class DeviceMockAdaptor : public DeviceAdaptorInterface {
   virtual const std::string &GetRpcConnectionIdentifier();
 
   MOCK_METHOD2(EmitBoolChanged, void(const std::string &name, bool value));
-  MOCK_METHOD2(EmitUintChanged, void(const std::string &name, uint32 value));
-  MOCK_METHOD2(EmitUint16Changed, void(const std::string &name, uint16 value));
+  MOCK_METHOD2(EmitUintChanged, void(const std::string &name, uint32_t value));
+  MOCK_METHOD2(EmitUint16Changed,
+               void(const std::string &name, uint16_t value));
   MOCK_METHOD2(EmitIntChanged, void(const std::string &name, int value));
   MOCK_METHOD2(EmitStringChanged, void(const std::string &name,
                                        const std::string &value));
@@ -59,7 +60,7 @@ class IPConfigMockAdaptor : public IPConfigAdaptorInterface {
   virtual const std::string &GetRpcIdentifier();
 
   MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
-  MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32));
+  MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32_t));
   MOCK_METHOD2(EmitIntChanged, void(const std::string&, int));
   MOCK_METHOD2(EmitStringChanged, void(const std::string&, const std::string&));
   MOCK_METHOD2(EmitStringsChanged,
@@ -80,7 +81,7 @@ class ManagerMockAdaptor : public ManagerAdaptorInterface {
 
   MOCK_METHOD0(UpdateRunning, void(void));
   MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
-  MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32));
+  MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32_t));
   MOCK_METHOD2(EmitIntChanged, void(const std::string&, int));
   MOCK_METHOD2(EmitStringChanged, void(const std::string&, const std::string&));
   MOCK_METHOD2(EmitStringsChanged,
@@ -106,7 +107,7 @@ class ProfileMockAdaptor : public ProfileAdaptorInterface {
   virtual const std::string &GetRpcIdentifier();
 
   MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
-  MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32));
+  MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32_t));
   MOCK_METHOD2(EmitIntChanged, void(const std::string&, int));
   MOCK_METHOD2(EmitStringChanged, void(const std::string&, const std::string&));
 
@@ -145,11 +146,12 @@ class ServiceMockAdaptor : public ServiceAdaptorInterface {
 
   MOCK_METHOD0(UpdateConnected, void());
   MOCK_METHOD2(EmitBoolChanged, void(const std::string &name, bool value));
-  MOCK_METHOD2(EmitUint8Changed, void(const std::string &name, uint8 value));
-  MOCK_METHOD2(EmitUint16Changed, void(const std::string &name, uint16 value));
+  MOCK_METHOD2(EmitUint8Changed, void(const std::string &name, uint8_t value));
+  MOCK_METHOD2(EmitUint16Changed,
+               void(const std::string &name, uint16_t value));
   MOCK_METHOD2(EmitUint16sChanged, void(const std::string &name,
                                         const Uint16s &value));
-  MOCK_METHOD2(EmitUintChanged, void(const std::string &name, uint32 value));
+  MOCK_METHOD2(EmitUintChanged, void(const std::string &name, uint32_t value));
   MOCK_METHOD2(EmitIntChanged, void(const std::string &name, int value));
   MOCK_METHOD2(EmitRpcIdentifierChanged,
                void(const std::string &name, const std::string &value));

@@ -583,8 +583,8 @@ void WiFiProvider::ParseStringListFreqCount(const string &freq_count_string,
                  << "'.  Expected 1.";
     return;
   }
-  uint16 freq = atoi(freq_count[0].c_str());
-  uint64 connections = atoll(freq_count[1].c_str());
+  uint16_t freq = atoi(freq_count[0].c_str());
+  uint64_t connections = atoll(freq_count[1].c_str());
   (*numbers)[freq] = connections;
 }
 
@@ -610,7 +610,7 @@ void WiFiProvider::FrequencyMapToStringList(time_t start_week,
   }
 }
 
-void WiFiProvider::IncrementConnectCount(uint16 frequency_mhz) {
+void WiFiProvider::IncrementConnectCount(uint16_t frequency_mhz) {
   CHECK(total_frequency_connections_ < std::numeric_limits<int64_t>::max());
 
   ++connect_count_by_frequency_[frequency_mhz];

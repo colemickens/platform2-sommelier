@@ -54,9 +54,9 @@ class ArpClientTest : public Test {
   static const int kInterfaceIndex;
   static const int kSocketFD;
   static const char kLocalIPAddress[];
-  static const uint8 kLocalMACAddress[];
+  static const uint8_t kLocalMACAddress[];
   static const char kRemoteIPAddress[];
-  static const uint8 kRemoteMACAddress[];
+  static const uint8_t kRemoteMACAddress[];
   static const int kArpOpOffset;
 
   bool CreateSocket() { return client_.CreateSocket(); }
@@ -78,9 +78,9 @@ class ArpClientTest : public Test {
 const int ArpClientTest::kInterfaceIndex = 123;
 const int ArpClientTest::kSocketFD = 456;
 const char ArpClientTest::kLocalIPAddress[] = "10.0.1.1";
-const uint8 ArpClientTest::kLocalMACAddress[] = { 0, 1, 2, 3, 4, 5 };
+const uint8_t ArpClientTest::kLocalMACAddress[] = { 0, 1, 2, 3, 4, 5 };
 const char ArpClientTest::kRemoteIPAddress[] = "10.0.1.2";
-const uint8 ArpClientTest::kRemoteMACAddress[] = { 6, 7, 8, 9, 10, 11 };
+const uint8_t ArpClientTest::kRemoteMACAddress[] = { 6, 7, 8, 9, 10, 11 };
 const int ArpClientTest::kArpOpOffset = 7;
 
 
@@ -231,7 +231,7 @@ TEST_F(ArpClientTest, Receive) {
     // Hack: Force this packet to be an ARP repsonse instead of an ARP request.
     recvfrom_reply_data_.GetData()[kArpOpOffset] = ARPOP_REPLY;
 
-    static const uint8 kSenderBytes[] = { 0xa, 0xb, 0xc, 0xd, 0xe, 0xf };
+    static const uint8_t kSenderBytes[] = { 0xa, 0xb, 0xc, 0xd, 0xe, 0xf };
     memcpy(&recvfrom_sender_.sll_addr, kSenderBytes, sizeof(kSenderBytes));
     recvfrom_sender_.sll_halen = sizeof(kSenderBytes);
     EXPECT_TRUE(client_.ReceiveReply(&reply, &sender));
@@ -282,10 +282,11 @@ TEST_F(ArpClientTest, Transmit) {
 
   // If the destination MAC address is unset, it should be sent to the
   // broadcast MAC address.
-  static const uint8 kZeroBytes[] = { 0, 0, 0, 0, 0, 0 };
+  static const uint8_t kZeroBytes[] = { 0, 0, 0, 0, 0, 0 };
   packet.set_remote_mac_address(ByteString(kZeroBytes, arraysize(kZeroBytes)));
   ASSERT_TRUE(packet.FormatRequest(&packet_bytes));
-  static const uint8 kBroadcastBytes[] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+  static const uint8_t kBroadcastBytes[] =
+      { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
   ByteString broadcast_mac(kBroadcastBytes, arraysize(kBroadcastBytes));
   EXPECT_CALL(*sockets_, SendTo(kSocketFD,
                                 IsByteData(packet_bytes),

@@ -89,9 +89,11 @@ class WiFiService : public Service {
   const std::string &key_management() const { return GetEAPKeyManagement(); }
   const std::vector<uint8_t> &ssid() const { return ssid_; }
   const std::string &bssid() const { return bssid_; }
-  const std::vector<uint16> &frequency_list() const { return frequency_list_; }
-  uint16 physical_mode() const { return physical_mode_; }
-  uint16 frequency() const { return frequency_; }
+  const std::vector<uint16_t> &frequency_list() const {
+    return frequency_list_;
+  }
+  uint16_t physical_mode() const { return physical_mode_; }
+  uint16_t frequency() const { return frequency_; }
 
   // WiFi services can load from profile entries other than their current
   // storage identifier.  Override the methods from the parent Service
@@ -129,7 +131,7 @@ class WiFiService : public Service {
 
   void InitializeCustomMetrics() const;
   virtual void SendPostReadyStateMetrics(
-      int64 time_resume_to_ready_milliseconds) const;
+      int64_t time_resume_to_ready_milliseconds) const;
 
   // Clear any cached credentials stored in wpa_supplicant related to |this|.
   // This will disconnect this service if it is currently connected.
@@ -161,7 +163,7 @@ class WiFiService : public Service {
 
   // Signal level in dBm.  If no current endpoint, returns
   // std::numeric_limits<int>::min().
-  int16 SignalLevel() const;
+  int16_t SignalLevel() const;
 
   void set_expecting_disconnect(bool val) { expecting_disconnect_ = val; }
   bool expecting_disconnect() const { return expecting_disconnect_; }
@@ -234,7 +236,7 @@ class WiFiService : public Service {
                                     Error *error);
   static void ParseWEPPassphrase(const std::string &passphrase,
                                  int *key_index,
-                                 std::vector<uint8> *password_bytes,
+                                 std::vector<uint8_t> *password_bytes,
                                  Error *error);
   static bool CheckWEPIsHex(const std::string &passphrase, Error *error);
   static bool CheckWEPKeyIndex(const std::string &passphrase, Error *error);
@@ -242,7 +244,7 @@ class WiFiService : public Service {
 
   // Maps a signal value, in dBm, to a "strength" value, from
   // |Service::kStrengthMin| to |Service:kStrengthMax|.
-  static uint8 SignalToStrength(int16 signal_dbm);
+  static uint8_t SignalToStrength(int16_t signal_dbm);
 
   // Create a default group name for this WiFi service.
   std::string GetDefaultStorageIdentifier() const;
@@ -276,11 +278,11 @@ class WiFiService : public Service {
   const std::string mode_;
   std::string auth_mode_;
   bool hidden_ssid_;
-  uint16 frequency_;
-  std::vector<uint16> frequency_list_;
-  uint16 physical_mode_;
+  uint16_t frequency_;
+  std::vector<uint16_t> frequency_list_;
+  uint16_t physical_mode_;
   // The raw dBm signal strength from the associated endpoint.
-  int16 raw_signal_strength_;
+  int16_t raw_signal_strength_;
   std::string hex_ssid_;
   std::string storage_identifier_;
   std::string bssid_;

@@ -182,15 +182,15 @@ template<> bool PropertyStoreTypedTest<bool>::SetProperty(
   return store.SetBoolProperty(name, new_value, error);
 }
 
-template<> bool PropertyStoreTypedTest<int16>::SetProperty(
+template<> bool PropertyStoreTypedTest<int16_t>::SetProperty(
     PropertyStore &store, const string &name, Error *error) {
-  int16 new_value = 1;
+  int16_t new_value = 1;
   return store.SetInt16Property(name, new_value, error);
 }
 
-template<> bool PropertyStoreTypedTest<int32>::SetProperty(
+template<> bool PropertyStoreTypedTest<int32_t>::SetProperty(
     PropertyStore &store, const string &name, Error *error) {
-  int32 new_value = 1;
+  int32_t new_value = 1;
   return store.SetInt32Property(name, new_value, error);
 }
 
@@ -221,15 +221,15 @@ template<> bool PropertyStoreTypedTest<Strings>::SetProperty(
   return store.SetStringsProperty(name, new_value, error);
 }
 
-template<> bool PropertyStoreTypedTest<uint8>::SetProperty(
+template<> bool PropertyStoreTypedTest<uint8_t>::SetProperty(
     PropertyStore &store, const string &name, Error *error) {
-  uint8 new_value = 1;
+  uint8_t new_value = 1;
   return store.SetUint8Property(name, new_value, error);
 }
 
-template<> bool PropertyStoreTypedTest<uint16>::SetProperty(
+template<> bool PropertyStoreTypedTest<uint16_t>::SetProperty(
     PropertyStore &store, const string &name, Error *error) {
-  uint16 new_value = 1;
+  uint16_t new_value = 1;
   return store.SetUint16Property(name, new_value, error);
 }
 
@@ -239,9 +239,9 @@ template<> bool PropertyStoreTypedTest<Uint16s>::SetProperty(
   return store.SetUint16sProperty(name, new_value, error);
 }
 
-template<> bool PropertyStoreTypedTest<uint32>::SetProperty(
+template<> bool PropertyStoreTypedTest<uint32_t>::SetProperty(
     PropertyStore &store, const string &name, Error *error) {
-  uint32 new_value = 1;
+  uint32_t new_value = 1;
   return store.SetUint32Property(name, new_value, error);
 }
 
@@ -325,11 +325,11 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
   }
   {
     const string keys[] = {"int16p1", "int16p2"};
-    int16 values[] = {127, 128};
+    int16_t values[] = {127, 128};
     store.RegisterWriteOnlyInt16(keys[0], &values[0]);
     store.RegisterInt16(keys[1], &values[1]);
 
-    ReadablePropertyConstIterator<int16> it = store.GetInt16PropertiesIter();
+    ReadablePropertyConstIterator<int16_t> it = store.GetInt16PropertiesIter();
     EXPECT_FALSE(it.AtEnd());
     EXPECT_EQ(keys[1], it.Key());
     EXPECT_EQ(values[1], it.value());
@@ -339,18 +339,18 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     Error errors[2];
     EXPECT_FALSE(store.GetInt16Property(keys[0], NULL, &errors[0]));
     EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
-    int16 test_value;
+    int16_t test_value;
     EXPECT_TRUE(store.GetInt16Property(keys[1], &test_value, &errors[1]));
     EXPECT_TRUE(errors[1].IsSuccess());
     EXPECT_EQ(values[1], test_value);
   }
   {
     const string keys[] = {"int32p1", "int32p2"};
-    int32 values[] = {127, 128};
+    int32_t values[] = {127, 128};
     store.RegisterWriteOnlyInt32(keys[0], &values[0]);
     store.RegisterInt32(keys[1], &values[1]);
 
-    ReadablePropertyConstIterator<int32> it = store.GetInt32PropertiesIter();
+    ReadablePropertyConstIterator<int32_t> it = store.GetInt32PropertiesIter();
     EXPECT_FALSE(it.AtEnd());
     EXPECT_EQ(keys[1], it.Key());
     EXPECT_EQ(values[1], it.value());
@@ -360,7 +360,7 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     Error errors[2];
     EXPECT_FALSE(store.GetInt32Property(keys[0], NULL, &errors[0]));
     EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
-    int32 test_value;
+    int32_t test_value;
     EXPECT_TRUE(store.GetInt32Property(keys[1], &test_value, &errors[1]));
     EXPECT_TRUE(errors[1].IsSuccess());
     EXPECT_EQ(values[1], test_value);
@@ -467,11 +467,11 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
   }
   {
     const string keys[] = {"uint8p1", "uint8p2"};
-    uint8 values[] = {127, 128};
+    uint8_t values[] = {127, 128};
     store.RegisterWriteOnlyUint8(keys[0], &values[0]);
     store.RegisterUint8(keys[1], &values[1]);
 
-    ReadablePropertyConstIterator<uint8> it = store.GetUint8PropertiesIter();
+    ReadablePropertyConstIterator<uint8_t> it = store.GetUint8PropertiesIter();
     EXPECT_FALSE(it.AtEnd());
     EXPECT_EQ(keys[1], it.Key());
     EXPECT_EQ(values[1], it.value());
@@ -481,18 +481,19 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     Error errors[2];
     EXPECT_FALSE(store.GetUint8Property(keys[0], NULL, &errors[0]));
     EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
-    uint8 test_value;
+    uint8_t test_value;
     EXPECT_TRUE(store.GetUint8Property(keys[1], &test_value, &errors[1]));
     EXPECT_TRUE(errors[1].IsSuccess());
     EXPECT_EQ(values[1], test_value);
   }
   {
     const string keys[] = {"uint16p", "uint16p1"};
-    uint16 values[] = {127, 128};
+    uint16_t values[] = {127, 128};
     store.RegisterWriteOnlyUint16(keys[0], &values[0]);
     store.RegisterUint16(keys[1], &values[1]);
 
-    ReadablePropertyConstIterator<uint16> it = store.GetUint16PropertiesIter();
+    ReadablePropertyConstIterator<uint16_t> it =
+        store.GetUint16PropertiesIter();
     EXPECT_FALSE(it.AtEnd());
     EXPECT_EQ(keys[1], it.Key());
     EXPECT_EQ(values[1], it.value());
@@ -502,7 +503,7 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     Error errors[2];
     EXPECT_FALSE(store.GetUint16Property(keys[0], NULL, &errors[0]));
     EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
-    uint16 test_value;
+    uint16_t test_value;
     EXPECT_TRUE(store.GetUint16Property(keys[1], &test_value, &errors[1]));
     EXPECT_TRUE(errors[1].IsSuccess());
     EXPECT_EQ(values[1], test_value);

@@ -211,7 +211,7 @@ class DeviceTest : public PropertyStoreTest {
     device_->StopLinkMonitor();
   }
 
-  uint64 GetLinkMonitorResponseTime(Error *error) {
+  uint64_t GetLinkMonitorResponseTime(Error *error) {
     return device_->GetLinkMonitorResponseTime(error);
   }
 
@@ -1482,23 +1482,23 @@ class DeviceByteCountTest : public DeviceTest {
             Invoke(this, &DeviceByteCountTest::GetStoredTransmitCount));
   }
 
-  bool ReturnByteCounts(int interface_index, uint64 *rx, uint64 *tx) {
+  bool ReturnByteCounts(int interface_index, uint64_t *rx, uint64_t *tx) {
     *rx = rx_byte_count_;
     *tx = tx_byte_count_;
     return true;
   }
 
   bool ExpectByteCounts(DeviceRefPtr device,
-                        int64 expected_rx, int64 expected_tx) {
-    int64 actual_rx = device->GetReceiveByteCount();
-    int64 actual_tx = device->GetTransmitByteCount();
+                        int64_t expected_rx, int64_t expected_tx) {
+    int64_t actual_rx = device->GetReceiveByteCount();
+    int64_t actual_tx = device->GetTransmitByteCount();
     EXPECT_EQ(expected_rx, actual_rx);
     EXPECT_EQ(expected_tx, actual_tx);
     return expected_rx == actual_rx && expected_tx == actual_tx;
   }
 
   void ExpectSavedCounts(DeviceRefPtr device,
-                         int64 expected_rx, int64 expected_tx) {
+                         int64_t expected_rx, int64_t expected_tx) {
     EXPECT_CALL(storage_,
         SetUint64(_, Device::kStorageReceiveByteCount, expected_rx))
         .WillOnce(Return(true));
@@ -1510,7 +1510,7 @@ class DeviceByteCountTest : public DeviceTest {
 
 
   bool GetStoredReceiveCount(const string &group, const string &key,
-                             uint64 *value) {
+                             uint64_t *value) {
     if (!rx_stored_byte_count_) {
       return false;
     }
@@ -1519,7 +1519,7 @@ class DeviceByteCountTest : public DeviceTest {
   }
 
   bool GetStoredTransmitCount(const string &group, const string &key,
-                              uint64 *value) {
+                              uint64_t *value) {
     if (!tx_stored_byte_count_) {
       return false;
     }
@@ -1530,10 +1530,10 @@ class DeviceByteCountTest : public DeviceTest {
  protected:
   NiceMock<MockManager> manager_;
   NiceMock<MockStore> storage_;
-  uint64 rx_byte_count_;
-  uint64 tx_byte_count_;
-  uint64 rx_stored_byte_count_;
-  uint64 tx_stored_byte_count_;
+  uint64_t rx_byte_count_;
+  uint64_t tx_byte_count_;
+  uint64_t rx_stored_byte_count_;
+  uint64_t tx_stored_byte_count_;
 };
 
 
@@ -1554,8 +1554,8 @@ TEST_F(DeviceByteCountTest, GetByteCounts) {
 
   // Device should report any increase in the byte counts reported in the
   // interface.
-  const int64 delta_rx_count = 789;
-  const int64 delta_tx_count = 12;
+  const int64_t delta_rx_count = 789;
+  const int64_t delta_tx_count = 12;
   rx_byte_count_ += delta_rx_count;
   tx_byte_count_ += delta_tx_count;
   EXPECT_TRUE(ExpectByteCounts(device, delta_rx_count, delta_tx_count));

@@ -31,7 +31,7 @@ const char kTest4[] = "Hello world";
 class ByteStringTest : public Test {
  public:
   bool IsCPUSameAsNetOrder() {
-    const uint32 kTestValue = 0x12345678;
+    const uint32_t kTestValue = 0x12345678;
     return htonl(kTestValue) == kTestValue;
   }
 
@@ -71,7 +71,7 @@ class ByteStringTest : public Test {
 };
 
 TEST_F(ByteStringTest, Empty) {
-  uint32 val;
+  uint32_t val;
 
   ByteString bs1(0);
   EXPECT_TRUE(bs1.IsEmpty());
@@ -83,7 +83,7 @@ TEST_F(ByteStringTest, Empty) {
 
 TEST_F(ByteStringTest, NonEmpty) {
   ByteString bs1(kTest1, sizeof(kTest1));
-  uint32 val;
+  uint32_t val;
 
   EXPECT_FALSE(bs1.IsEmpty());
   ASSERT_TRUE(bs1.GetData() != NULL);
@@ -149,7 +149,7 @@ TEST_F(ByteStringTest, SubString) {
 
 TEST_F(ByteStringTest, UInt32) {
   ByteString bs1 = ByteString::CreateFromNetUInt32(kTest2Uint32);
-  uint32 val;
+  uint32_t val;
 
   EXPECT_EQ(4, bs1.GetLength());
   ASSERT_TRUE(bs1.GetData() != NULL);
@@ -251,7 +251,7 @@ TEST_F(ByteStringTest, BitwiseInvertWithAndWithoutOffsets) {
 // test.
 
 TEST_F(ByteStringTest, EmptyOffset) {
-  uint32 val;
+  uint32_t val;
 
   ByteString bs1(kTest1, sizeof(kTest1));
   bs1.RemovePrefix(sizeof(kTest1));
@@ -275,7 +275,7 @@ TEST_F(ByteStringTest, NonEmptyOffset) {
     for (unsigned int i = kOffset1; i < sizeof(kTest1); i++) {
       EXPECT_EQ(bs1.GetData()[i - kOffset1], kTest1[i]);
     }
-    uint32 val;
+    uint32_t val;
     EXPECT_FALSE(bs1.ConvertToNetUInt32(&val));
     EXPECT_FALSE(bs1.IsZero());
   }

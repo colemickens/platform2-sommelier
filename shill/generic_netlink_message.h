@@ -56,7 +56,7 @@ namespace shill {
 
 class GenericNetlinkMessage : public NetlinkMessage {
  public:
-  GenericNetlinkMessage(uint16_t my_message_type, uint8 command,
+  GenericNetlinkMessage(uint16_t my_message_type, uint8_t command,
                         const char *command_string)
       : NetlinkMessage(my_message_type),
         attributes_(new AttributeList),
@@ -66,7 +66,7 @@ class GenericNetlinkMessage : public NetlinkMessage {
 
   virtual ByteString Encode(uint32_t sequence_number);
 
-  uint8 command() const { return command_; }
+  uint8_t command() const { return command_; }
   const char *command_string() const { return command_string_; }
   AttributeListConstRefPtr const_attributes() const { return attributes_; }
   AttributeListRefPtr attributes() { return attributes_; }
@@ -82,7 +82,7 @@ class GenericNetlinkMessage : public NetlinkMessage {
   virtual bool InitAndStripHeader(ByteString *input);
 
   AttributeListRefPtr attributes_;
-  const uint8 command_;
+  const uint8_t command_;
   const char *command_string_;
 
  private:
@@ -94,7 +94,7 @@ class GenericNetlinkMessage : public NetlinkMessage {
 class ControlNetlinkMessage : public GenericNetlinkMessage {
  public:
   static const uint16_t kMessageType;
-  ControlNetlinkMessage(uint8 command, const char *command_string)
+  ControlNetlinkMessage(uint8_t command, const char *command_string)
       : GenericNetlinkMessage(kMessageType, command, command_string) {}
 
   static uint16_t GetMessageType() { return kMessageType; }

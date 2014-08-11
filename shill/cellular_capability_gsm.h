@@ -132,7 +132,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
 
     bool enabled;
     std::string lock_type;
-    uint32 retries_left;
+    uint32_t retries_left;
   };
 
   static const char kNetworkPropertyAccessTechnology[];
@@ -150,9 +150,9 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   static const int kGetIMSIRetryLimit;
 
   // This much time will pass between retries of GetIMSI().
-  static const int64 kGetIMSIRetryDelayMilliseconds;
+  static const int64_t kGetIMSIRetryDelayMilliseconds;
 
-  void SetAccessTechnology(uint32 access_technology);
+  void SetAccessTechnology(uint32_t access_technology);
 
   Stringmap ParseScanResult(const GSMScanResult &result);
 
@@ -168,18 +168,18 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   bool IsUnderlyingDeviceRegistered() const;
 
   // Signal callbacks
-  void OnNetworkModeSignal(uint32 mode);
-  void OnRegistrationInfoSignal(uint32 status,
+  void OnNetworkModeSignal(uint32_t mode);
+  void OnRegistrationInfoSignal(uint32_t status,
                                 const std::string &operator_code,
                                 const std::string &operator_name);
-  void OnSignalQualitySignal(uint32 quality);
+  void OnSignalQualitySignal(uint32_t quality);
 
   // Method callbacks
-  void OnGetRegistrationInfoReply(uint32 status,
+  void OnGetRegistrationInfoReply(uint32_t status,
                                   const std::string &operator_code,
                                   const std::string &operator_name,
                                   const Error &error);
-  void OnGetSignalQualityReply(uint32 quality, const Error &error);
+  void OnGetSignalQualityReply(uint32_t quality, const Error &error);
   void OnRegisterReply(const ResultCallback &callback,
                        const Error &error);
   void OnGetIMEIReply(const ResultCallback &callback,
@@ -207,8 +207,8 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   // once the context has been separated out. (crbug.com/363874)
   scoped_ptr<MobileOperatorInfo> mobile_operator_info_;
 
-  uint32 registration_state_;
-  uint32 access_technology_;
+  uint32_t registration_state_;
+  uint32_t access_technology_;
   Cellular::Operator serving_operator_;
   std::string spn_;
   mobile_provider *home_provider_info_;
@@ -219,7 +219,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
 
   // Amount of time to wait between retries of GetIMSI.  Defaults to
   // kGetIMSIRetryDelayMilliseconds, but can be altered by a unit test.
-  int64 get_imsi_retry_delay_milliseconds_;
+  int64_t get_imsi_retry_delay_milliseconds_;
 
   // Properties.
   std::deque<Stringmap> apn_try_list_;

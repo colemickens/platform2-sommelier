@@ -175,7 +175,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   bool IsModemRegistered() const;
   static bool IsEnabledModemState(ModemState state);
 
-  void HandleNewSignalQuality(uint32 strength);
+  void HandleNewSignalQuality(uint32_t strength);
 
   // Processes a change in the modem registration state, possibly creating,
   // destroying or updating the CellularService.
@@ -283,7 +283,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   const std::string &sim_identifier() const { return sim_identifier_; }
 
   const Strings &supported_carriers() const { return supported_carriers_; }
-  uint16 prl_version() const { return prl_version_; }
+  uint16_t prl_version() const { return prl_version_; }
 
   // setters
   void set_home_provider(const Operator &home_provider);
@@ -311,7 +311,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   void set_sim_identifier(const std::string &sim_identifier);
 
   void set_supported_carriers(const Strings &supported_carriers);
-  void set_prl_version(uint16 prl_version);
+  void set_prl_version(uint16_t prl_version);
 
   // Takes ownership.
   void set_home_provider_info(MobileOperatorInfo *home_provider_info);
@@ -441,7 +441,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   // the |kScanningProperty| exposed by Cellular device is sticky false. Every
   // time it is set to true, it must be reset to false after a time equal to
   // this constant.
-  static const int64 kDefaultScanningTimeoutMilliseconds;
+  static const int64_t kDefaultScanningTimeoutMilliseconds;
 
   // Generic service name prefix, shown when the correct carrier name is
   // unknown.
@@ -551,13 +551,13 @@ class Cellular : public Device, public RPCTaskDelegate {
   std::string selected_network_;
   Stringmaps found_networks_;
   bool provider_requires_roaming_;
-  uint16 scan_interval_;
+  uint16_t scan_interval_;
   bool sim_present_;
   Stringmaps apn_list_;
   std::string sim_identifier_;
 
   // CDMA only properties.
-  uint16 prl_version_;
+  uint16_t prl_version_;
 
   // This property is specific to Gobi modems.
   Strings supported_carriers_;
@@ -589,7 +589,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   // the Device.Scanning property as |true| causes a bad user experience.
   // This callback sets it to |false| after a timeout period has passed.
   base::CancelableClosure scanning_timeout_callback_;
-  int64 scanning_timeout_milliseconds_;
+  int64_t scanning_timeout_milliseconds_;
 
   DISALLOW_COPY_AND_ASSIGN(Cellular);
 };

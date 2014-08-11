@@ -62,7 +62,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     bool offline_mode;
     std::string check_portal_list;
     std::string country;
-    int32 portal_check_interval_seconds;
+    int32_t portal_check_interval_seconds;
     std::string portal_url;
     std::string host_name;
     // Whether to ARP for the default gateway in the DHCP client after

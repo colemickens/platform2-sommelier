@@ -243,8 +243,8 @@ void CellularCapabilityUniversalCDMA::GetProperties() {
 }
 
 void CellularCapabilityUniversalCDMA::OnActivationStateChangedSignal(
-    uint32 activation_state,
-    uint32 activation_error,
+    uint32_t activation_state,
+    uint32_t activation_error,
     const DBusPropertiesMap &status_changes) {
   SLOG(Cellular, 2) << __func__;
 
@@ -290,7 +290,8 @@ void CellularCapabilityUniversalCDMA::OnActivateReply(
     callback.Run(error);
 }
 
-void CellularCapabilityUniversalCDMA::HandleNewActivationStatus(uint32 error) {
+void CellularCapabilityUniversalCDMA::HandleNewActivationStatus(
+    uint32_t error) {
   SLOG(Cellular, 2) << __func__ << "(" << error << ")";
   if (!cellular()->service().get()) {
     LOG(ERROR) << "In " << __func__ << "(): service is null.";
@@ -305,7 +306,7 @@ void CellularCapabilityUniversalCDMA::HandleNewActivationStatus(uint32 error) {
 
 // static
 string CellularCapabilityUniversalCDMA::GetActivationStateString(
-    uint32 state) {
+    uint32_t state) {
   switch (state) {
     case MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED:
       return kActivationStateActivated;
@@ -322,7 +323,7 @@ string CellularCapabilityUniversalCDMA::GetActivationStateString(
 
 // static
 string CellularCapabilityUniversalCDMA::GetActivationErrorString(
-    uint32 error) {
+    uint32_t error) {
   switch (error) {
     case MM_CDMA_ACTIVATION_ERROR_WRONG_RADIO_INTERFACE:
       return kErrorNeedEvdo;
@@ -418,7 +419,7 @@ void CellularCapabilityUniversalCDMA::OnSimPathChanged(
 }
 
 string CellularCapabilityUniversalCDMA::GetRoamingStateString() const {
-  uint32 state = cdma_evdo_registration_state_;
+  uint32_t state = cdma_evdo_registration_state_;
   if (state == MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {
     state = cdma_1x_registration_state_;
   }

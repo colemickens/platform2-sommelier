@@ -69,12 +69,12 @@ class StubStorage : public StoreInterface {
   }
   virtual bool GetUint64(const std::string &group,
                          const std::string &key,
-                         uint64 *value) const override {
+                         uint64_t *value) const override {
     return false;
   }
   virtual bool SetUint64(const std::string &group,
                          const std::string &key,
-                         uint64 value) override {
+                         uint64_t value) override {
     return false;
   }
   virtual bool GetStringList(const std::string &group,

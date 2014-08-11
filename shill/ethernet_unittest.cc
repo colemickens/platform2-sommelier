@@ -160,7 +160,7 @@ class EthernetTest : public testing::Test {
     EXPECT_EQ(kInterfacePath, GetSupplicantInterfacePath());
   }
   void TriggerOnEapDetected() { ethernet_->OnEapDetected(); }
-  void TriggerCertification(const string &subject, uint32 depth) {
+  void TriggerCertification(const string &subject, uint32_t depth) {
     ethernet_->CertificationTask(subject, depth);
   }
   void TriggerTryEapAuthentication() {
@@ -490,7 +490,7 @@ TEST_F(EthernetTest, StopSupplicant) {
 
 TEST_F(EthernetTest, Certification) {
   const string kSubjectName("subject-name");
-  const uint32 kDepth = 123;
+  const uint32_t kDepth = 123;
   // Should not crash due to no service_.
   TriggerCertification(kSubjectName, kDepth);
   EXPECT_CALL(*mock_service_, AddEAPCertification(kSubjectName, kDepth));

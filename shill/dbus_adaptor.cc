@@ -68,7 +68,8 @@ bool DBusAdaptor::SetProperty(PropertyStore *store,
   } else if (DBusAdaptor::IsUint16(value.signature())) {
     ret = store->SetUint16Property(name, value.reader().get_uint16(), &e);
   } else if (DBusAdaptor::IsUint16s(value.signature())) {
-    ret = store->SetUint16sProperty(name, value.operator vector<uint16>(), &e);
+    ret =
+        store->SetUint16sProperty(name, value.operator vector<uint16_t>(), &e);
   } else if (DBusAdaptor::IsUint32(value.signature())) {
     ret = store->SetUint32Property(name, value.reader().get_uint32(), &e);
   } else if (DBusAdaptor::IsUint64(value.signature())) {
@@ -101,13 +102,13 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
     }
   }
   {
-    ReadablePropertyConstIterator<int16> it = store.GetInt16PropertiesIter();
+    ReadablePropertyConstIterator<int16_t> it = store.GetInt16PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = Int16ToVariant(it.value());
     }
   }
   {
-    ReadablePropertyConstIterator<int32> it = store.GetInt32PropertiesIter();
+    ReadablePropertyConstIterator<int32_t> it = store.GetInt32PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = Int32ToVariant(it.value());
     }
@@ -158,13 +159,14 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
     }
   }
   {
-    ReadablePropertyConstIterator<uint8> it = store.GetUint8PropertiesIter();
+    ReadablePropertyConstIterator<uint8_t> it = store.GetUint8PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = ByteToVariant(it.value());
     }
   }
   {
-    ReadablePropertyConstIterator<uint16> it = store.GetUint16PropertiesIter();
+    ReadablePropertyConstIterator<uint16_t> it =
+        store.GetUint16PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = Uint16ToVariant(it.value());
     }
@@ -177,13 +179,15 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
     }
   }
   {
-    ReadablePropertyConstIterator<uint32> it = store.GetUint32PropertiesIter();
+    ReadablePropertyConstIterator<uint32_t> it =
+        store.GetUint32PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = Uint32ToVariant(it.value());
     }
   }
   {
-    ReadablePropertyConstIterator<uint64> it = store.GetUint64PropertiesIter();
+    ReadablePropertyConstIterator<uint64_t> it =
+        store.GetUint64PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = Uint64ToVariant(it.value());
     }
@@ -221,13 +225,13 @@ void DBusAdaptor::ArgsToKeyValueStore(
     string key = key_value_pair.first;
     DBus::type<string> string_type;
     DBus::type<bool> bool_type;
-    DBus::type<int32> int32_type;
+    DBus::type<int32_t> int32_type;
 
     if (key_value_pair.second.signature() == bool_type.sig()) {
       SLOG(DBus, 5) << "Got bool property " << key;
       out->SetBool(key, key_value_pair.second.reader().get_bool());
     } else if (key_value_pair.second.signature() == int32_type.sig()) {
-      SLOG(DBus, 5) << "Got int32 property " << key;
+      SLOG(DBus, 5) << "Got int32_t property " << key;
       out->SetInt(key, key_value_pair.second.reader().get_int32());
     } else if (key_value_pair.second.signature() == string_type.sig()) {
       SLOG(DBus, 5) << "Got string property " << key;
@@ -278,21 +282,21 @@ void DBusAdaptor::ArgsToKeyValueStore(
 }
 
 // static
-::DBus::Variant DBusAdaptor::ByteToVariant(uint8 value) {
+::DBus::Variant DBusAdaptor::ByteToVariant(uint8_t value) {
   ::DBus::Variant v;
   v.writer().append_byte(value);
   return v;
 }
 
 // static
-::DBus::Variant DBusAdaptor::Int16ToVariant(int16 value) {
+::DBus::Variant DBusAdaptor::Int16ToVariant(int16_t value) {
   ::DBus::Variant v;
   v.writer().append_int16(value);
   return v;
 }
 
 // static
-::DBus::Variant DBusAdaptor::Int32ToVariant(int32 value) {
+::DBus::Variant DBusAdaptor::Int32ToVariant(int32_t value) {
   ::DBus::Variant v;
   v.writer().append_int32(value);
   return v;
@@ -360,7 +364,7 @@ void DBusAdaptor::ArgsToKeyValueStore(
 }
 
 // static
-::DBus::Variant DBusAdaptor::Uint16ToVariant(uint16 value) {
+::DBus::Variant DBusAdaptor::Uint16ToVariant(uint16_t value) {
   ::DBus::Variant v;
   v.writer().append_uint16(value);
   return v;
@@ -375,14 +379,14 @@ void DBusAdaptor::ArgsToKeyValueStore(
 }
 
 // static
-::DBus::Variant DBusAdaptor::Uint32ToVariant(uint32 value) {
+::DBus::Variant DBusAdaptor::Uint32ToVariant(uint32_t value) {
   ::DBus::Variant v;
   v.writer().append_uint32(value);
   return v;
 }
 
 // static
-::DBus::Variant DBusAdaptor::Uint64ToVariant(uint64 value) {
+::DBus::Variant DBusAdaptor::Uint64ToVariant(uint64_t value) {
   ::DBus::Variant v;
   v.writer().append_uint64(value);
   return v;
@@ -395,7 +399,7 @@ bool DBusAdaptor::IsBool(::DBus::Signature signature) {
 
 // static
 bool DBusAdaptor::IsByte(::DBus::Signature signature) {
-  return signature == ::DBus::type<uint8>::sig();
+  return signature == ::DBus::type<uint8_t>::sig();
 }
 
 // static
@@ -405,12 +409,12 @@ bool DBusAdaptor::IsByteArrays(::DBus::Signature signature) {
 
 // static
 bool DBusAdaptor::IsInt16(::DBus::Signature signature) {
-  return signature == ::DBus::type<int16>::sig();
+  return signature == ::DBus::type<int16_t>::sig();
 }
 
 // static
 bool DBusAdaptor::IsInt32(::DBus::Signature signature) {
-  return signature == ::DBus::type<int32>::sig();
+  return signature == ::DBus::type<int32_t>::sig();
 }
 
 // static
@@ -445,7 +449,7 @@ bool DBusAdaptor::IsStrings(::DBus::Signature signature) {
 
 // static
 bool DBusAdaptor::IsUint16(::DBus::Signature signature) {
-  return signature == ::DBus::type<uint16>::sig();
+  return signature == ::DBus::type<uint16_t>::sig();
 }
 
 // static
@@ -455,12 +459,12 @@ bool DBusAdaptor::IsUint16s(::DBus::Signature signature) {
 
 // static
 bool DBusAdaptor::IsUint32(::DBus::Signature signature) {
-  return signature == ::DBus::type<uint32>::sig();
+  return signature == ::DBus::type<uint32_t>::sig();
 }
 
 // static
 bool DBusAdaptor::IsUint64(::DBus::Signature signature) {
-  return signature == ::DBus::type<uint64>::sig();
+  return signature == ::DBus::type<uint64_t>::sig();
 }
 
 // static

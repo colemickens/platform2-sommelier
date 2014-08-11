@@ -99,17 +99,17 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
 
   // CDMA activation handlers
   void ActivateAutomatic();
-  void OnActivationStateChangedSignal(uint32 activation_state,
-                                      uint32 activation_error,
+  void OnActivationStateChangedSignal(uint32_t activation_state,
+                                      uint32_t activation_error,
                                       const DBusPropertiesMap &status_changes);
   void OnActivateReply(const ResultCallback &callback,
                        const Error &error);
-  void HandleNewActivationStatus(uint32 error);
+  void HandleNewActivationStatus(uint32_t error);
 
   void UpdateServiceActivationStateProperty();
 
-  static std::string GetActivationStateString(uint32 state);
-  static std::string GetActivationErrorString(uint32 error);
+  static std::string GetActivationStateString(uint32_t state);
+  static std::string GetActivationErrorString(uint32_t error);
 
   scoped_ptr<mm1::ModemModemCdmaProxyInterface> modem_cdma_proxy_;
   // TODO(armansito): Should probably call this |weak_ptr_factory_| after

@@ -75,7 +75,7 @@ class TestEventDispatcherForDeviceInfo : public EventDispatcher {
     return NULL;
   }
   MOCK_METHOD2(PostDelayedTask, bool(const base::Closure &task,
-                                     int64 delay_ms));
+                                     int64_t delay_ms));
 };
 
 class DeviceInfoTest : public Test {
@@ -159,7 +159,7 @@ class DeviceInfoTest : public Test {
                                    unsigned char flags,
                                    unsigned char scope);
   RTNLMessage *BuildRdnssMessage(RTNLMessage::Mode mode,
-                                 uint32 lifetime,
+                                 uint32_t lifetime,
                                  const vector<IPAddress> &dns_servers);
   void SendMessageToDeviceInfo(const RTNLMessage &message);
 
@@ -202,7 +202,7 @@ RTNLMessage *DeviceInfoTest::BuildLinkMessageWithInterfaceName(
       0,
       kTestDeviceIndex,
       IPAddress::kFamilyIPv4);
-  message->SetAttribute(static_cast<uint16>(IFLA_IFNAME),
+  message->SetAttribute(static_cast<uint16_t>(IFLA_IFNAME),
                         ByteString(interface_name, true));
   ByteString test_address(kTestMACAddress, sizeof(kTestMACAddress));
   message->SetAttribute(IFLA_ADDRESS, test_address);
@@ -232,7 +232,7 @@ RTNLMessage *DeviceInfoTest::BuildAddressMessage(RTNLMessage::Mode mode,
 }
 
 RTNLMessage *DeviceInfoTest::BuildRdnssMessage(RTNLMessage::Mode mode,
-    uint32 lifetime, const vector<IPAddress> &dns_servers) {
+    uint32_t lifetime, const vector<IPAddress> &dns_servers) {
   RTNLMessage *message = new RTNLMessage(
       RTNLMessage::kTypeRdnss,
       mode,
@@ -374,7 +374,7 @@ TEST_F(DeviceInfoTest, GetUninitializedTechnologies) {
 }
 
 TEST_F(DeviceInfoTest, GetByteCounts) {
-  uint64 rx_bytes, tx_bytes;
+  uint64_t rx_bytes, tx_bytes;
   EXPECT_FALSE(device_info_.GetByteCounts(
       kTestDeviceIndex, &rx_bytes, &tx_bytes));
 
@@ -1178,7 +1178,7 @@ TEST_F(DeviceInfoTest, IPv6DnsServerAddressesChanged) {
       "null0", "addr0", kTestDeviceIndex));
   device_info_.time_ = &time_;
   vector<IPAddress> dns_server_addresses_out;
-  uint32 lifetime_out;
+  uint32_t lifetime_out;
 
   // Device info entry does not exist.
   EXPECT_FALSE(device_info_.GetIPv6DnsServerAddresses(
@@ -1200,7 +1200,7 @@ TEST_F(DeviceInfoTest, IPv6DnsServerAddressesChanged) {
   dns_server_addresses_in.push_back(ipv6_address2);
 
   // Infinite lifetime
-  const uint32 kInfiniteLifetime = 0xffffffff;
+  const uint32_t kInfiniteLifetime = 0xffffffff;
   auto message(make_scoped_ptr(BuildRdnssMessage(
       RTNLMessage::kModeAdd, kInfiniteLifetime, dns_server_addresses_in)));
   EXPECT_CALL(time_, GetSecondsBoottime(_)).
@@ -1217,8 +1217,8 @@ TEST_F(DeviceInfoTest, IPv6DnsServerAddressesChanged) {
   EXPECT_EQ(kTestIPAddress2, dns_server_addresses_out.at(1).ToString());
 
   // Lifetime of 120, retrieve DNS server addresses after 10 seconds.
-  const uint32 kLifetime120 = 120;
-  const uint32 kElapseTime10 = 10;
+  const uint32_t kLifetime120 = 120;
+  const uint32_t kElapseTime10 = 10;
   auto message1(make_scoped_ptr(BuildRdnssMessage(
       RTNLMessage::kModeAdd, kLifetime120, dns_server_addresses_in)));
   EXPECT_CALL(time_, GetSecondsBoottime(_)).

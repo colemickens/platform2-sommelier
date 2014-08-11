@@ -34,7 +34,7 @@ class ModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
                         int timeout);
   virtual void Scan(Error *error, const ScanResultsCallback &callback,
                     int timeout);
-  virtual uint32 AccessTechnology();
+  virtual uint32_t AccessTechnology();
 
   virtual void set_signal_quality_callback(
       const SignalQualitySignalCallback &callback);
@@ -62,7 +62,7 @@ class ModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
 
    private:
     // Signal callbacks inherited from ModemManager::Modem::Gsm::Network_proxy.
-    virtual void SignalQuality(const uint32 &quality);
+    virtual void SignalQuality(const uint32_t &quality);
     virtual void RegistrationInfo(const uint32_t &status,
                                   const std::string &operator_code,
                                   const std::string &operator_name);
@@ -73,7 +73,7 @@ class ModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
     virtual void GetRegistrationInfoCallback(const GSMRegistrationInfo &info,
                                              const DBus::Error &dberror,
                                              void *data);
-    virtual void GetSignalQualityCallback(const uint32 &quality,
+    virtual void GetSignalQualityCallback(const uint32_t &quality,
                                           const DBus::Error &dberror,
                                           void *data);
     virtual void ScanCallback(const GSMScanResults &results,

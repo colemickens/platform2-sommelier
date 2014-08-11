@@ -91,7 +91,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   void SetIsEapAuthenticated(bool is_eap_authenticated);
 
   // Callback tasks run as a result of event delegate methods.
-  void CertificationTask(const std::string &subject, uint32 depth);
+  void CertificationTask(const std::string &subject, uint32_t depth);
   void EAPEventTask(const std::string &status, const std::string &parameter);
   void SupplicantStateChangedTask(const std::string &state);
 

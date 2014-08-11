@@ -103,14 +103,14 @@ class WiFiServiceTest : public PropertyStoreTest {
     return service->connectable();
   }
   WiFiEndpoint *MakeEndpoint(const string &ssid, const string &bssid,
-                             uint16 frequency, int16 signal_dbm,
+                             uint16_t frequency, int16_t signal_dbm,
                              bool has_wpa_property, bool has_rsn_property) {
     return WiFiEndpoint::MakeEndpoint(
         NULL, wifi(), ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
         frequency, signal_dbm, has_wpa_property, has_rsn_property);
   }
   WiFiEndpoint *MakeOpenEndpoint(const string &ssid, const string &bssid,
-                                 uint16 frequency, int16 signal_dbm) {
+                                 uint16_t frequency, int16_t signal_dbm) {
     return WiFiEndpoint::MakeOpenEndpoint(
         NULL, wifi(), ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
         frequency, signal_dbm);
@@ -288,20 +288,20 @@ class WiFiServiceUpdateFromEndpointsTest : public WiFiServiceTest {
   }
 
  protected:
-  static const uint16 kOkEndpointFrequency = 2422;
-  static const uint16 kBadEndpointFrequency = 2417;
-  static const uint16 kGoodEndpointFrequency = 2412;
-  static const int16 kOkEndpointSignal = -50;
-  static const int16 kBadEndpointSignal = -75;
-  static const int16 kGoodEndpointSignal = -25;
+  static const uint16_t kOkEndpointFrequency = 2422;
+  static const uint16_t kBadEndpointFrequency = 2417;
+  static const uint16_t kGoodEndpointFrequency = 2412;
+  static const int16_t kOkEndpointSignal = -50;
+  static const int16_t kBadEndpointSignal = -75;
+  static const int16_t kGoodEndpointSignal = -25;
   static const char *kOkEndpointBssId;
   static const char *kGoodEndpointBssId;
   static const char *kBadEndpointBssId;
   // Can't be both static and const (because initialization requires a
   // function call). So choose to be just const.
-  const uint8 kOkEndpointStrength;
-  const uint8 kBadEndpointStrength;
-  const uint8 kGoodEndpointStrength;
+  const uint8_t kOkEndpointStrength;
+  const uint8_t kBadEndpointStrength;
+  const uint8_t kGoodEndpointStrength;
   WiFiEndpointRefPtr ok_endpoint;
   WiFiEndpointRefPtr bad_endpoint;
   WiFiEndpointRefPtr good_endpoint;
@@ -631,7 +631,7 @@ TEST_F(WiFiServiceTest, ConnectTaskWPA80211w) {
 }
 
 MATCHER_P(WEPSecurityArgsKeyIndex, index, "") {
-  uint32 index_u32 = index;
+  uint32_t index_u32 = index;
   return ContainsKey(arg, WPASupplicant::kPropertyAuthAlg) &&
       ContainsKey(arg,
                   WPASupplicant::kPropertyWEPKey + base::IntToString(index)) &&
@@ -1308,17 +1308,17 @@ TEST_F(WiFiServiceTest, SignalToStrength) {
   // Verify that our mapping is sane, in the sense that it preserves ordering.
   // We break the test into two domains, because we assume that positive
   // values aren't actually in dBm.
-  for (int16 i = std::numeric_limits<int16>::min(); i < 0; ++i) {
-    int16 current_mapped = WiFiService::SignalToStrength(i);
-    int16 next_mapped =  WiFiService::SignalToStrength(i+1);
+  for (int16_t i = std::numeric_limits<int16_t>::min(); i < 0; ++i) {
+    int16_t current_mapped = WiFiService::SignalToStrength(i);
+    int16_t next_mapped =  WiFiService::SignalToStrength(i+1);
     EXPECT_LE(current_mapped, next_mapped)
         << "(original values " << i << " " << i+1 << ")";
     EXPECT_GE(current_mapped, Service::kStrengthMin);
     EXPECT_LE(current_mapped, Service::kStrengthMax);
   }
-  for (int16 i = 1; i < std::numeric_limits<int16>::max(); ++i) {
-    int16 current_mapped = WiFiService::SignalToStrength(i);
-    int16 next_mapped =  WiFiService::SignalToStrength(i+1);
+  for (int16_t i = 1; i < std::numeric_limits<int16_t>::max(); ++i) {
+    int16_t current_mapped = WiFiService::SignalToStrength(i);
+    int16_t next_mapped =  WiFiService::SignalToStrength(i+1);
     EXPECT_LE(current_mapped, next_mapped)
         << "(original values " << i << " " << i+1 << ")";
     EXPECT_GE(current_mapped, Service::kStrengthMin);
@@ -1550,7 +1550,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, WarningOnDisconnect) {
 }
 
 MATCHER_P(IsSetwiseEqual, expected_set, "") {
-  set<uint16> arg_set(arg.begin(), arg.end());
+  set<uint16_t> arg_set(arg.begin(), arg.end());
   return arg_set == expected_set;
 }
 
@@ -1561,17 +1561,17 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, FrequencyList) {
   EXPECT_CALL(adaptor, EmitBoolChanged(_, _)).Times(AnyNumber());
 
   // No endpoints -> empty list.
-  EXPECT_EQ(vector<uint16>(), service->frequency_list());
+  EXPECT_EQ(vector<uint16_t>(), service->frequency_list());
 
   // Add endpoint -> endpoint's frequency in list.
   EXPECT_CALL(adaptor, EmitUint16sChanged(
-      kWifiFrequencyListProperty, vector<uint16>{kGoodEndpointFrequency}));
+      kWifiFrequencyListProperty, vector<uint16_t>{kGoodEndpointFrequency}));
   service->AddEndpoint(good_endpoint);
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Add another endpoint -> both frequencies in list.
   // Order doesn't matter.
-  set<uint16> expected_frequencies{kGoodEndpointFrequency,
+  set<uint16_t> expected_frequencies{kGoodEndpointFrequency,
         kOkEndpointFrequency};
   EXPECT_CALL(adaptor, EmitUint16sChanged(
       kWifiFrequencyListProperty, IsSetwiseEqual(expected_frequencies)));
@@ -1580,7 +1580,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, FrequencyList) {
 
   // Remove endpoint -> other endpoint's frequency remains.
   EXPECT_CALL(adaptor, EmitUint16sChanged(
-      kWifiFrequencyListProperty, vector<uint16>{kOkEndpointFrequency}));
+      kWifiFrequencyListProperty, vector<uint16_t>{kOkEndpointFrequency}));
   service->RemoveEndpoint(good_endpoint);
   Mock::VerifyAndClearExpectations(&adaptor);
 
@@ -1591,19 +1591,19 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, FrequencyList) {
       simple_ssid_string(), "aa:bb:cc:dd:ee:ff", ok_endpoint->frequency(), 0);
   service->AddEndpoint(same_freq_as_ok_endpoint);
   EXPECT_THAT(service->frequency_list(),
-              IsSetwiseEqual(set<uint16>{kOkEndpointFrequency}));
+              IsSetwiseEqual(set<uint16_t>{kOkEndpointFrequency}));
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Remove endpoint with same frequency -> frequency remains.
   // Notification may or may not occur -- don't care.
   service->RemoveEndpoint(ok_endpoint);
-  EXPECT_EQ(vector<uint16>{same_freq_as_ok_endpoint->frequency()},
+  EXPECT_EQ(vector<uint16_t>{same_freq_as_ok_endpoint->frequency()},
             service->frequency_list());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Remove last endpoint. Frequency list goes empty.
   EXPECT_CALL(adaptor, EmitUint16sChanged(
-      kWifiFrequencyListProperty, vector<uint16>{}));
+      kWifiFrequencyListProperty, vector<uint16_t>{}));
   service->RemoveEndpoint(same_freq_as_ok_endpoint);
   Mock::VerifyAndClearExpectations(&adaptor);
 }

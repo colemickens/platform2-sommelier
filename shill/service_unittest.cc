@@ -269,7 +269,7 @@ TEST_F(ServiceTest, GetProperties) {
   }
   {
     ::DBus::Error dbus_error;
-    int32 expected = 127;
+    int32_t expected = 127;
     service_->mutable_store()->SetInt32Property(kPriorityProperty,
                                                 expected,
                                                 &error);
@@ -1012,7 +1012,7 @@ TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   // Timeouts increase exponentially.
-  uint64 next_cooldown_time = service_->auto_connect_cooldown_milliseconds_;
+  uint64_t next_cooldown_time = service_->auto_connect_cooldown_milliseconds_;
   EXPECT_EQ(next_cooldown_time,
             Service::kAutoConnectCooldownBackoffFactor *
             Service::kMinAutoConnectCooldownTimeMilliseconds);
@@ -1028,7 +1028,7 @@ TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
   }
 
   // Once we hit our cap, future timeouts are the same.
-  for (int32 i = 0; i < 2; i++) {
+  for (int32_t i = 0; i < 2; i++) {
     EXPECT_CALL(dispatcher_, PostDelayedTask(_,
         Service::kMaxAutoConnectCooldownTimeMilliseconds));
     service_->AutoConnect();
@@ -1168,8 +1168,8 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
   const string kGUID0 = "guid_zero";
   const string kGUID1 = "guid_one";
   service_->SetGuid(kGUID0, NULL);
-  const uint32 kPriority0 = 100;
-  const uint32 kPriority1 = 200;
+  const uint32_t kPriority0 = 100;
+  const uint32_t kPriority1 = 200;
   service_->SetPriority(kPriority0, NULL);
   const vector<string> kStrings0{ "string0", "string1" };
   const vector<string> kStrings1{ "string2", "string3" };

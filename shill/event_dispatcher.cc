@@ -40,7 +40,7 @@ bool EventDispatcher::PostTask(const Closure &task) {
   return message_loop_proxy_->PostTask(FROM_HERE, task);
 }
 
-bool EventDispatcher::PostDelayedTask(const Closure &task, int64 delay_ms) {
+bool EventDispatcher::PostDelayedTask(const Closure &task, int64_t delay_ms) {
   return message_loop_proxy_->PostDelayedTask(
       FROM_HERE, task, base::TimeDelta::FromMilliseconds(delay_ms));
 }

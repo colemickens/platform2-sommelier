@@ -25,7 +25,7 @@ class WiMaxNetworkProxy : public WiMaxNetworkProxyInterface {
   virtual RpcIdentifier path() const;
   virtual void set_signal_strength_changed_callback(
       const SignalStrengthChangedCallback &callback);
-  virtual uint32 Identifier(Error *error);
+  virtual uint32_t Identifier(Error *error);
   virtual std::string Name(Error *error);
   virtual int Type(Error *error);
   virtual int CINR(Error *error);
@@ -44,7 +44,7 @@ class WiMaxNetworkProxy : public WiMaxNetworkProxyInterface {
 
    private:
     // Signal callbacks inherited from WiMaxManager::Network_proxy.
-    virtual void SignalStrengthChanged(const int32 &signal_strength);
+    virtual void SignalStrengthChanged(const int32_t &signal_strength);
 
     // Method callbacks inherited from WiMaxManager::Network_proxy.
     // [None]

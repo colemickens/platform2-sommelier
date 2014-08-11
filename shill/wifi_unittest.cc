@@ -380,15 +380,15 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     EXPECT_EQ(method, wifi_->scan_method_);
   }
 
-  void SetRoamThresholdMember(uint16 threshold) {
+  void SetRoamThresholdMember(uint16_t threshold) {
     wifi_->roam_threshold_db_ = threshold;
   }
 
-  bool SetRoamThreshold(uint16 threshold) {
+  bool SetRoamThreshold(uint16_t threshold) {
     return wifi_->SetRoamThreshold(threshold, nullptr);
   }
 
-  uint16 GetRoamThreshold() const {
+  uint16_t GetRoamThreshold() const {
     return wifi_->GetRoamThreshold(nullptr);
   }
 
@@ -466,7 +466,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return MakeMockServiceWithSSID(vector<uint8_t>(1, 'a'), security);
   }
   ::DBus::Path MakeNewEndpointAndService(int16_t signal_strength,
-                                         uint16 frequency,
+                                         uint16_t frequency,
                                          const char *mode,
                                          WiFiEndpointRefPtr *endpoint_ptr,
                                          MockWiFiServiceRefPtr *service_ptr) {
@@ -492,7 +492,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   ::DBus::Path AddEndpointToService(
       WiFiServiceRefPtr service,
       int16_t signal_strength,
-      uint16 frequency,
+      uint16_t frequency,
       const char *mode,
       WiFiEndpointRefPtr *endpoint_ptr) {
     string ssid(service->ssid().begin(), service->ssid().end());
@@ -646,7 +646,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
                  const string &ssid,
                  const string &bssid,
                  int16_t signal_strength,
-                 uint16 frequency,
+                 uint16_t frequency,
                  const char *mode);
   void ReportIPConfigComplete() {
     wifi_->OnIPConfigUpdated(dhcp_config_);
@@ -794,11 +794,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->OnLinkMonitorFailure();
   }
 
-  bool SetBgscanShortInterval(const uint16 &interval, Error *error) {
+  bool SetBgscanShortInterval(const uint16_t &interval, Error *error) {
     return wifi_->SetBgscanShortInterval(interval, error);
   }
 
-  bool SetBgscanSignalThreshold(const int32 &threshold, Error *error) {
+  bool SetBgscanSignalThreshold(const int32_t &threshold, Error *error) {
     return wifi_->SetBgscanSignalThreshold(threshold, error);
   }
 
@@ -884,7 +884,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   static const char kNetworkModeInfrastructure[];
   static const char kBSSName[];
   static const char kSSIDName[];
-  static const uint16 kRoamThreshold;
+  static const uint16_t kRoamThreshold;
 
   scoped_ptr<MockDBusServiceProxy> dbus_service_proxy_;
   scoped_ptr<MockSupplicantProcessProxy> supplicant_process_proxy_;
@@ -910,7 +910,7 @@ const char WiFiObjectTest::kNetworkModeAdHoc[] = "ad-hoc";
 const char WiFiObjectTest::kNetworkModeInfrastructure[] = "infrastructure";
 const char WiFiObjectTest::kBSSName[] = "bss0";
 const char WiFiObjectTest::kSSIDName[] = "ssid0";
-const uint16 WiFiObjectTest::kRoamThreshold = 32;  // Arbitrary value.
+const uint16_t WiFiObjectTest::kRoamThreshold = 32;  // Arbitrary value.
 
 void WiFiObjectTest::RemoveBSS(const ::DBus::Path &bss_path) {
   wifi_->BSSRemovedTask(bss_path);
@@ -920,7 +920,7 @@ void WiFiObjectTest::ReportBSS(const ::DBus::Path &bss_path,
                              const string &ssid,
                              const string &bssid,
                              int16_t signal_strength,
-                             uint16 frequency,
+                             uint16_t frequency,
                              const char *mode) {
   map<string, ::DBus::Variant> bss_properties;
 
@@ -1500,7 +1500,7 @@ TEST_F(WiFiMainTest, ScanResults) {
       "bss2", "ssid2", "00:00:00:00:00:02", 2, 0, kNetworkModeInfrastructure);
   ReportBSS(
       "bss3", "ssid3", "00:00:00:00:00:03", 3, 0, kNetworkModeInfrastructure);
-  const uint16 frequency = 2412;
+  const uint16_t frequency = 2412;
   ReportBSS("bss4", "ssid4", "00:00:00:00:00:04", 4, frequency,
             kNetworkModeAdHoc);
 
@@ -3042,7 +3042,7 @@ TEST_F(WiFiMainTest, EAPCertification) {
   ReportCertification(args);
   Mock::VerifyAndClearExpectations(&log);
 
-  const uint32 kDepth = 123;
+  const uint32_t kDepth = 123;
   args[WPASupplicant::kInterfacePropertyDepth].writer().append_uint32(kDepth);
 
   EXPECT_CALL(log,
@@ -3130,7 +3130,7 @@ struct BSS {
   string ssid;
   string bssid;
   int16_t signal_strength;
-  uint16 frequency;
+  uint16_t frequency;
   const char* mode;
 };
 
@@ -3249,7 +3249,7 @@ TEST_F(WiFiMainTest, CustomSetterNoopChange) {
   // SetBgscanShortInterval
   {
     Error error;
-    static const uint16 kKnownScanInterval = 4;
+    static const uint16_t kKnownScanInterval = 4;
     // Set to known value.
     EXPECT_TRUE(SetBgscanShortInterval(kKnownScanInterval, &error));
     EXPECT_TRUE(error.IsSuccess());
@@ -3261,7 +3261,7 @@ TEST_F(WiFiMainTest, CustomSetterNoopChange) {
   // SetBgscanSignalThreshold
   {
     Error error;
-    static const int32 kKnownSignalThreshold = 4;
+    static const int32_t kKnownSignalThreshold = 4;
     // Set to known value.
     EXPECT_TRUE(SetBgscanSignalThreshold(kKnownSignalThreshold, &error));
     EXPECT_TRUE(error.IsSuccess());

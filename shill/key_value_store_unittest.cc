@@ -91,7 +91,7 @@ TEST_F(KeyValueStoreTest, Strings) {
 
 TEST_F(KeyValueStoreTest, Uint) {
   const string kKey("foo");
-  const uint32 kValue = 456;
+  const uint32_t kValue = 456;
   EXPECT_FALSE(store_.ContainsUint(kKey));
   store_.SetUint(kKey, kValue);
   EXPECT_TRUE(store_.ContainsUint(kKey));
@@ -126,7 +126,7 @@ TEST_F(KeyValueStoreTest, Clear) {
   const vector<string> kStringsValue;
   store_.SetStrings(kStringsKey, kStringsValue);
   const string kUintKey("bun");
-  const uint32 kUintValue = 456;
+  const uint32_t kUintValue = 456;
   store_.SetUint(kUintKey, kUintValue);
 
   EXPECT_TRUE(store_.ContainsBool(kBoolKey));
@@ -277,7 +277,7 @@ TEST_F(KeyValueStoreTest, CopyFrom) {
   const vector<string> kStringsValue{ "string0", "string1" };
   donor.SetStrings(kStringsKey, kStringsValue);
   const string kUintKey("bun");
-  const uint32 kUintValue = 456;
+  const uint32_t kUintValue = 456;
   donor.SetUint(kUintKey, kUintValue);
 
   EXPECT_TRUE(store_.IsEmpty());

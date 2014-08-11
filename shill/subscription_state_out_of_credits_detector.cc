@@ -23,7 +23,7 @@ SubscriptionStateOutOfCreditsDetector::
 }
 
 void SubscriptionStateOutOfCreditsDetector::NotifySubscriptionStateChanged(
-    uint32 subscription_state) {
+    uint32_t subscription_state) {
   bool ooc = (static_cast<MMModem3gppSubscriptionState>(subscription_state) ==
               MM_MODEM_3GPP_SUBSCRIPTION_STATE_OUT_OF_DATA);
   if (ooc != out_of_credits()) {

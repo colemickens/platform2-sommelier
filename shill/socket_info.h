@@ -48,11 +48,11 @@ class SocketInfo {
   SocketInfo();
   SocketInfo(ConnectionState connection_state,
              const IPAddress &local_ip_address,
-             uint16 local_port,
+             uint16_t local_port,
              const IPAddress &remote_ip_address,
-             uint16 remote_port,
-             uint64 transmit_queue_value,
-             uint64 receive_queue_value,
+             uint16_t remote_port,
+             uint64_t transmit_queue_value,
+             uint64_t receive_queue_value,
              TimerState timer_state);
   SocketInfo(const SocketInfo &socket_info);
   ~SocketInfo();
@@ -74,24 +74,24 @@ class SocketInfo {
     local_ip_address_ = local_ip_address;
   }
 
-  uint16 local_port() const { return local_port_; }
-  void set_local_port(uint16 local_port) { local_port_ = local_port; }
+  uint16_t local_port() const { return local_port_; }
+  void set_local_port(uint16_t local_port) { local_port_ = local_port; }
 
   const IPAddress &remote_ip_address() const { return remote_ip_address_; }
   void set_remote_ip_address(const IPAddress &remote_ip_address) {
     remote_ip_address_ = remote_ip_address;
   }
 
-  uint16 remote_port() const { return remote_port_; }
-  void set_remote_port(uint16 remote_port) { remote_port_ = remote_port; }
+  uint16_t remote_port() const { return remote_port_; }
+  void set_remote_port(uint16_t remote_port) { remote_port_ = remote_port; }
 
-  uint64 transmit_queue_value() const { return transmit_queue_value_; }
-  void set_transmit_queue_value(uint64 transmit_queue_value) {
+  uint64_t transmit_queue_value() const { return transmit_queue_value_; }
+  void set_transmit_queue_value(uint64_t transmit_queue_value) {
     transmit_queue_value_ = transmit_queue_value;
   }
 
-  uint64 receive_queue_value() const { return receive_queue_value_; }
-  void set_receive_queue_value(uint64 receive_queue_value) {
+  uint64_t receive_queue_value() const { return receive_queue_value_; }
+  void set_receive_queue_value(uint64_t receive_queue_value) {
     receive_queue_value_ = receive_queue_value;
   }
 
@@ -101,11 +101,11 @@ class SocketInfo {
  private:
   ConnectionState connection_state_;
   IPAddress local_ip_address_;
-  uint16 local_port_;
+  uint16_t local_port_;
   IPAddress remote_ip_address_;
-  uint16 remote_port_;
-  uint64 transmit_queue_value_;
-  uint64 receive_queue_value_;
+  uint16_t remote_port_;
+  uint64_t transmit_queue_value_;
+  uint64_t receive_queue_value_;
   TimerState timer_state_;
 
   // No DISALLOW_COPY_AND_ASSIGN(SocketInfo) as SocketInfo needs to be kept in

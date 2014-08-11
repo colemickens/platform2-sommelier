@@ -254,7 +254,7 @@ class WiFiProviderTest : public testing::Test {
     return provider_.FindService(ssid, mode, security);
   }
   WiFiEndpointRefPtr MakeEndpoint(const string &ssid, const string &bssid,
-                                  uint16 frequency, int16 signal_dbm) {
+                                  uint16_t frequency, int16_t signal_dbm) {
     return WiFiEndpoint::MakeOpenEndpoint(
         NULL, NULL, ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
         frequency, signal_dbm);
@@ -300,8 +300,8 @@ class WiFiProviderTest : public testing::Test {
   void BuildFreqCountMap(WiFiProvider::ConnectFrequencyMap *frequencies) {
     // NOTE: These structures match the strings in |BuildFreqCountStrings|.
     static const struct FreqCount {
-      uint16 freq;
-      int64 count;
+      uint16_t freq;
+      int64_t count;
     } kConnectFreq[] = {
       {5180, 14},
       {5240, 16},

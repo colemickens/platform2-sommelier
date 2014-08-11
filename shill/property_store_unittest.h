@@ -28,9 +28,9 @@ namespace shill {
 
 class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
  public:
-  typedef ::testing::Types<bool, int16, int32, std::string, Stringmap,
-                           Stringmaps, Strings, uint8, uint16, Uint16s, uint32>
-      PropertyTypes;
+  typedef ::testing::Types<bool, int16_t, int32_t, std::string, Stringmap,
+                           Stringmaps, Strings, uint8_t, uint16_t, Uint16s,
+                           uint32_t> PropertyTypes;
 
   // In real code, it's frowned upon to have non-POD static members, as there
   // can be ordering issues if your constructors have side effects.
@@ -65,12 +65,12 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   }
 
   static bool GetProperty(const PropertyStore &store, const std::string &name,
-                          int16 *storage, Error *error) {
+                          int16_t *storage, Error *error) {
     return store.GetInt16Property(name, storage, error);
   }
 
   static bool GetProperty(const PropertyStore &store, const std::string &name,
-                          int32 *storage, Error *error) {
+                          int32_t *storage, Error *error) {
     return store.GetInt32Property(name, storage, error);
   }
 
@@ -95,12 +95,12 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   }
 
   static bool GetProperty(const PropertyStore &store, const std::string &name,
-                          uint8 *storage, Error *error) {
+                          uint8_t *storage, Error *error) {
     return store.GetUint8Property(name, storage, error);
   }
 
   static bool GetProperty(const PropertyStore &store, const std::string &name,
-                          uint16 *storage, Error *error) {
+                          uint16_t *storage, Error *error) {
     return store.GetUint16Property(name, storage, error);
   }
 
@@ -110,7 +110,7 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   }
 
   static bool GetProperty(const PropertyStore &store, const std::string &name,
-                          uint32 *storage, Error *error) {
+                          uint32_t *storage, Error *error) {
     return store.GetUint32Property(name, storage, error);
   }
 
@@ -122,12 +122,12 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   }
 
   static void RegisterProperty(
-      PropertyStore *store, const std::string &name, int16 *storage) {
+      PropertyStore *store, const std::string &name, int16_t *storage) {
     store->RegisterInt16(name, storage);
   }
 
   static void RegisterProperty(
-      PropertyStore *store, const std::string &name, int32 *storage) {
+      PropertyStore *store, const std::string &name, int32_t *storage) {
     store->RegisterInt32(name, storage);
   }
 
@@ -152,12 +152,12 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   }
 
   static void RegisterProperty(
-      PropertyStore *store, const std::string &name, uint8 *storage) {
+      PropertyStore *store, const std::string &name, uint8_t *storage) {
     store->RegisterUint8(name, storage);
   }
 
   static void RegisterProperty(
-      PropertyStore *store, const std::string &name, uint16 *storage) {
+      PropertyStore *store, const std::string &name, uint16_t *storage) {
     store->RegisterUint16(name, storage);
   }
 
@@ -167,7 +167,7 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   }
 
   static void RegisterProperty(
-      PropertyStore *store, const std::string &name, uint32 *storage) {
+      PropertyStore *store, const std::string &name, uint32_t *storage) {
     store->RegisterUint32(name, storage);
   }
 

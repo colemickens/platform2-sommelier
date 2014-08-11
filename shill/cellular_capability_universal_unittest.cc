@@ -224,7 +224,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     capability_->ReleaseProxies();
   }
 
-  void SetRegistrationDroppedUpdateTimeout(int64 timeout_milliseconds) {
+  void SetRegistrationDroppedUpdateTimeout(int64_t timeout_milliseconds) {
     capability_->registration_dropped_update_timeout_milliseconds_ =
         timeout_milliseconds;
   }
@@ -244,7 +244,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   static const char kImei[];
   static const char kInactiveBearerPathPrefix[];
   static const char kSimPath[];
-  static const uint32 kAccessTechnologies;
+  static const uint32_t kAccessTechnologies;
   static const char kTestMobileProviderDBPath[];
 
   class TestProxyFactory : public ProxyFactory {
@@ -379,7 +379,7 @@ const char CellularCapabilityUniversalTest::kImei[] = "999911110000";
 const char CellularCapabilityUniversalTest::kInactiveBearerPathPrefix[] =
     "/bearer/inactive";
 const char CellularCapabilityUniversalTest::kSimPath[] = "/foo/sim";
-const uint32 CellularCapabilityUniversalTest::kAccessTechnologies =
+const uint32_t CellularCapabilityUniversalTest::kAccessTechnologies =
     MM_MODEM_ACCESS_TECHNOLOGY_LTE |
     MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS;
 const char CellularCapabilityUniversalTest::kTestMobileProviderDBPath[] =
@@ -2072,7 +2072,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusToProperty) {
 
 TEST_F(CellularCapabilityUniversalMainTest, OnLockRetriesChanged) {
   CellularCapabilityUniversal::LockRetryData data;
-  const uint32 kDefaultRetries = 999;
+  const uint32_t kDefaultRetries = 999;
 
   capability_->OnLockRetriesChanged(data);
   EXPECT_EQ(kDefaultRetries, capability_->sim_lock_status_.retries_left);
@@ -2139,7 +2139,7 @@ TEST_F(CellularCapabilityUniversalMainTest, OnSimLockPropertiesChanged) {
   // Unlock retries changed and the SIM got locked.
   variant.clear();
   writer = variant.writer();
-  writer << static_cast<uint32>(MM_MODEM_LOCK_SIM_PIN);
+  writer << static_cast<uint32_t>(MM_MODEM_LOCK_SIM_PIN);
   changed[MM_MODEM_PROPERTY_UNLOCKREQUIRED] = variant;
   capability_->OnModemPropertiesChanged(changed, invalidated);
   EXPECT_EQ(MM_MODEM_LOCK_SIM_PIN, capability_->sim_lock_status_.lock_type);

@@ -106,11 +106,11 @@ class RTNLMessage {
   struct RdnssOption {
     RdnssOption()
         : lifetime(0) {}
-    RdnssOption(uint32 lifetime_in,
+    RdnssOption(uint32_t lifetime_in,
                 std::vector<IPAddress> addresses_in)
         : lifetime(lifetime_in),
           addresses(addresses_in) {}
-    uint32 lifetime;
+    uint32_t lifetime;
     std::vector<IPAddress> addresses;
   };
 
@@ -120,8 +120,8 @@ class RTNLMessage {
   RTNLMessage(Type type,
               Mode mode,
               unsigned int flags,
-              uint32 seq,
-              uint32 pid,
+              uint32_t seq,
+              uint32_t pid,
               int interface_index,
               IPAddress::Family family);
 
@@ -135,11 +135,11 @@ class RTNLMessage {
   // Getters and setters
   Type type() const { return type_; }
   Mode mode() const { return mode_; }
-  uint16 flags() const { return flags_; }
-  uint32 seq() const { return seq_; }
-  void set_seq(uint32 seq) { seq_ = seq; }
-  uint32 pid() const { return pid_; }
-  uint32 interface_index() const { return interface_index_; }
+  uint16_t flags() const { return flags_; }
+  uint32_t seq() const { return seq_; }
+  void set_seq(uint32_t seq) { seq_ = seq; }
+  uint32_t pid() const { return pid_; }
+  uint32_t interface_index() const { return interface_index_; }
   IPAddress::Family family() const { return family_; }
 
   const LinkStatus &link_status() const { return link_status_; }
@@ -159,16 +159,16 @@ class RTNLMessage {
     rdnss_option_ = rdnss_option;
   }
   // GLint hates "unsigned short", and I don't blame it, but that's the
-  // type that's used in the system headers.  Use uint16 instead and hope
+  // type that's used in the system headers.  Use uint16_t instead and hope
   // that the conversion never ends up truncating on some strange platform.
-  bool HasAttribute(uint16 attr) const {
+  bool HasAttribute(uint16_t attr) const {
     return ContainsKey(attributes_, attr);
   }
-  const ByteString GetAttribute(uint16 attr) const {
+  const ByteString GetAttribute(uint16_t attr) const {
     return HasAttribute(attr) ?
         attributes_.find(attr)->second : ByteString(0);
   }
-  void SetAttribute(uint16 attr, const ByteString &val) {
+  void SetAttribute(uint16_t attr, const ByteString &val) {
     attributes_[attr] = val;
   }
 
@@ -190,25 +190,25 @@ class RTNLMessage {
                        Mode mode,
                        rtattr **attr_data,
                        int *attr_length);
-  bool ParseRdnssOption(const uint8 *data,
+  bool ParseRdnssOption(const uint8_t *data,
                         int length,
-                        uint32 lifetime);
+                        uint32_t lifetime);
   bool EncodeLink(RTNLHeader *hdr) const;
   bool EncodeAddress(RTNLHeader *hdr) const;
   bool EncodeRoute(RTNLHeader *hdr) const;
 
   Type type_;
   Mode mode_;
-  uint16 flags_;
-  uint32 seq_;
-  uint32 pid_;
+  uint16_t flags_;
+  uint32_t seq_;
+  uint32_t pid_;
   unsigned int interface_index_;
   IPAddress::Family family_;
   LinkStatus link_status_;
   AddressStatus address_status_;
   RouteStatus route_status_;
   RdnssOption rdnss_option_;
-  std::unordered_map<uint16, ByteString> attributes_;
+  std::unordered_map<uint16_t, ByteString> attributes_;
 
   DISALLOW_COPY_AND_ASSIGN(RTNLMessage);
 };

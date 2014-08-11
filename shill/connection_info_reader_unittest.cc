@@ -179,7 +179,7 @@ TEST_F(ConnectionInfoReaderTest, ParseProtocol) {
 }
 
 TEST_F(ConnectionInfoReaderTest, ParseTimeToExpireSeconds) {
-  int64 time_to_expire = 0;
+  int64_t time_to_expire = 0;
 
   EXPECT_FALSE(reader_.ParseTimeToExpireSeconds("", &time_to_expire));
   EXPECT_FALSE(reader_.ParseTimeToExpireSeconds("a", &time_to_expire));
@@ -211,7 +211,7 @@ TEST_F(ConnectionInfoReaderTest, ParseIPAddress) {
 }
 
 TEST_F(ConnectionInfoReaderTest, ParsePort) {
-  uint16 port = 0;
+  uint16_t port = 0;
   bool is_source = false;
 
   EXPECT_FALSE(reader_.ParsePort("", &port, &is_source));

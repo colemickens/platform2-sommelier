@@ -204,7 +204,7 @@ class DHCPConfig : public IPConfig {
 
   // Initialize a callback that will invoke ProcessExpirationTimeout if we
   // do not renew a lease in a |lease_duration_seconds|.
-  void StartExpirationTimeout(uint32 lease_duration_seconds);
+  void StartExpirationTimeout(uint32_t lease_duration_seconds);
   // Cancel callback created by StartExpirationTimeout. One-liner included
   // for symmetry.
   void StopExpirationTimeout();

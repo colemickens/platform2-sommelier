@@ -29,7 +29,7 @@ class MockModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
                               const ResultCallback &callback, int timeout));
   MOCK_METHOD3(Scan, void(Error *error, const ScanResultsCallback &callback,
                           int timeout));
-  MOCK_METHOD0(AccessTechnology, uint32());
+  MOCK_METHOD0(AccessTechnology, uint32_t());
   MOCK_METHOD1(set_signal_quality_callback,
       void(const SignalQualitySignalCallback &callback));
   MOCK_METHOD1(set_network_mode_callback,

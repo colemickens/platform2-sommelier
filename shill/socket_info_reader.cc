@@ -74,7 +74,7 @@ bool SocketInfoReader::ParseSocketInfo(const string &input,
   }
 
   IPAddress ip_address(IPAddress::kFamilyUnknown);
-  uint16 port = 0;
+  uint16_t port = 0;
 
   if (!ParseIPAddressAndPort(tokens[1], &ip_address, &port)) {
     return false;
@@ -95,7 +95,7 @@ bool SocketInfoReader::ParseSocketInfo(const string &input,
   }
   socket_info->set_connection_state(connection_state);
 
-  uint64 transmit_queue_value = 0, receive_queue_value = 0;
+  uint64_t transmit_queue_value = 0, receive_queue_value = 0;
   if (!ParseTransimitAndReceiveQueueValues(
       tokens[4], &transmit_queue_value, &receive_queue_value)) {
     return false;
@@ -113,7 +113,7 @@ bool SocketInfoReader::ParseSocketInfo(const string &input,
 }
 
 bool SocketInfoReader::ParseIPAddressAndPort(
-    const string &input, IPAddress *ip_address, uint16 *port) {
+    const string &input, IPAddress *ip_address, uint16_t *port) {
   vector<string> tokens;
 
   base::SplitString(input, ':', &tokens);
@@ -151,11 +151,11 @@ bool SocketInfoReader::ParseIPAddress(const string &input,
   return true;
 }
 
-bool SocketInfoReader::ParsePort(const string &input, uint16 *port) {
+bool SocketInfoReader::ParsePort(const string &input, uint16_t *port) {
   int result = 0;
 
   if (input.size() != 4 || !base::HexStringToInt(input, &result) ||
-      result < 0 || result > std::numeric_limits<uint16>::max()) {
+      result < 0 || result > std::numeric_limits<uint16_t>::max()) {
     return false;
   }
 
@@ -165,9 +165,9 @@ bool SocketInfoReader::ParsePort(const string &input, uint16 *port) {
 
 bool SocketInfoReader::ParseTransimitAndReceiveQueueValues(
     const string &input,
-    uint64 *transmit_queue_value, uint64 *receive_queue_value) {
+    uint64_t *transmit_queue_value, uint64_t *receive_queue_value) {
   vector<string> tokens;
-  int64 signed_transmit_queue_value = 0, signed_receive_queue_value = 0;
+  int64_t signed_transmit_queue_value = 0, signed_receive_queue_value = 0;
 
   base::SplitString(input, ':', &tokens);
   if (tokens.size() != 2 ||
@@ -176,8 +176,8 @@ bool SocketInfoReader::ParseTransimitAndReceiveQueueValues(
     return false;
   }
 
-  *transmit_queue_value = static_cast<uint64>(signed_transmit_queue_value);
-  *receive_queue_value = static_cast<uint64>(signed_receive_queue_value);
+  *transmit_queue_value = static_cast<uint64_t>(signed_transmit_queue_value);
+  *receive_queue_value = static_cast<uint64_t>(signed_receive_queue_value);
   return true;
 }
 

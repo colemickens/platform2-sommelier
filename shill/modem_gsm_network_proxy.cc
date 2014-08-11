@@ -54,7 +54,7 @@ void ModemGSMNetworkProxy::Scan(Error *error,
                      error, &CellularError::FromDBusError, timeout);
 }
 
-uint32 ModemGSMNetworkProxy::AccessTechnology() {
+uint32_t ModemGSMNetworkProxy::AccessTechnology() {
   SLOG(DBus, 2) << __func__;
   try {
   return proxy_.AccessTechnology();
@@ -101,7 +101,7 @@ void ModemGSMNetworkProxy::Proxy::set_registration_info_callback(
   registration_info_callback_ = callback;
 }
 
-void ModemGSMNetworkProxy::Proxy::SignalQuality(const uint32 &quality) {
+void ModemGSMNetworkProxy::Proxy::SignalQuality(const uint32_t &quality) {
   SLOG(DBus, 2) << __func__ << "(" << quality << ")";
   if (!signal_quality_callback_.is_null())
     signal_quality_callback_.Run(quality);
@@ -143,7 +143,7 @@ void ModemGSMNetworkProxy::Proxy::GetRegistrationInfoCallback(
 }
 
 void ModemGSMNetworkProxy::Proxy::GetSignalQualityCallback(
-    const uint32 &quality, const DBus::Error &dberror, void *data) {
+    const uint32_t &quality, const DBus::Error &dberror, void *data) {
   SLOG(DBus, 2) << __func__ << "(" << quality << ")";
   scoped_ptr<SignalQualityCallback> callback(
       reinterpret_cast<SignalQualityCallback *>(data));

@@ -68,7 +68,7 @@ void TestCommonPropertyChanges(ServiceRefPtr service,
   service->SetProxyConfig("some garbage", &error);
   Mock::VerifyAndClearExpectations(adaptor);
 
-  uint8 strength = service->strength();
+  uint8_t strength = service->strength();
   EXPECT_CALL(*adaptor,
               EmitUint8Changed(kSignalStrengthProperty, _));
   service->SetStrength(strength+1);

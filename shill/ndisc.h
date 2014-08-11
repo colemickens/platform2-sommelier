@@ -16,10 +16,10 @@ struct NDUserOptionHeader {
   NDUserOptionHeader() {
     memset(this, 0, sizeof(*this));
   }
-  uint8 type;
-  uint8 length;
-  uint16 reserved;
-  uint32 lifetime;
+  uint8_t type;
+  uint8_t length;
+  uint16_t reserved;
+  uint32_t lifetime;
 } __attribute__((__packed__));
 
 // Neighbor Discovery user option type definition.

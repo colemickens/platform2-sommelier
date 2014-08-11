@@ -241,7 +241,7 @@ TEST_F(SocketInfoReaderTest, ParseSocketInfo) {
 
 TEST_F(SocketInfoReaderTest, ParseIPAddressAndPort) {
   IPAddress ip_address(IPAddress::kFamilyUnknown);
-  uint16 port = 0;
+  uint16_t port = 0;
 
   EXPECT_FALSE(reader_.ParseIPAddressAndPort("", &ip_address, &port));
   EXPECT_FALSE(reader_.ParseIPAddressAndPort("00000000", &ip_address, &port));
@@ -311,7 +311,7 @@ TEST_F(SocketInfoReaderTest, ParseIPAddress) {
 }
 
 TEST_F(SocketInfoReaderTest, ParsePort) {
-  uint16 port = 0;
+  uint16_t port = 0;
 
   EXPECT_FALSE(reader_.ParsePort("", &port));
   EXPECT_FALSE(reader_.ParsePort("0", &port));
@@ -333,7 +333,7 @@ TEST_F(SocketInfoReaderTest, ParsePort) {
 }
 
 TEST_F(SocketInfoReaderTest, ParseTransimitAndReceiveQueueValues) {
-  uint64 transmit_queue_value = 0, receive_queue_value = 0;
+  uint64_t transmit_queue_value = 0, receive_queue_value = 0;
 
   EXPECT_FALSE(reader_.ParseTransimitAndReceiveQueueValues(
       "", &transmit_queue_value, &receive_queue_value));

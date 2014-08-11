@@ -76,7 +76,7 @@ void WiMaxDeviceProxy::set_status_changed_callback(
   proxy_.set_status_changed_callback(callback);
 }
 
-uint8 WiMaxDeviceProxy::Index(Error *error) {
+uint8_t WiMaxDeviceProxy::Index(Error *error) {
   SLOG(DBus, 2) << __func__;
   try {
     return proxy_.Index();
@@ -151,7 +151,7 @@ void WiMaxDeviceProxy::Proxy::NetworksChanged(
   networks_changed_callback_.Run(rpc_networks);
 }
 
-void WiMaxDeviceProxy::Proxy::StatusChanged(const int32 &status) {
+void WiMaxDeviceProxy::Proxy::StatusChanged(const int32_t &status) {
   SLOG(DBus, 2) << __func__ << "(" << status << ")";
   if (status_changed_callback_.is_null()) {
     return;

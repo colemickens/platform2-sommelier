@@ -34,9 +34,9 @@ class PropertyStore {
   // leave |value| untouched.
   bool GetBoolProperty(const std::string &name, bool *value,
                        Error *error) const;
-  bool GetInt16Property(const std::string &name, int16 *value,
+  bool GetInt16Property(const std::string &name, int16_t *value,
                         Error *error) const;
-  bool GetInt32Property(const std::string &name, int32 *value,
+  bool GetInt32Property(const std::string &name, int32_t *value,
                         Error *error) const;
   bool GetKeyValueStoreProperty(const std::string &name, KeyValueStore *value,
                                 Error *error) const;
@@ -48,15 +48,15 @@ class PropertyStore {
                              Error *error) const;
   bool GetStringsProperty(const std::string &name, Strings *values,
                           Error *error) const;
-  bool GetUint8Property(const std::string &name, uint8 *value,
+  bool GetUint8Property(const std::string &name, uint8_t *value,
                         Error *error) const;
-  bool GetUint16Property(const std::string &name, uint16 *value,
+  bool GetUint16Property(const std::string &name, uint16_t *value,
                          Error *error) const;
   bool GetUint16sProperty(const std::string &name, Uint16s *value,
                           Error *error) const;
-  bool GetUint32Property(const std::string &name, uint32 *value,
+  bool GetUint32Property(const std::string &name, uint32_t *value,
                          Error *error) const;
-  bool GetUint64Property(const std::string &name, uint64 *value,
+  bool GetUint64Property(const std::string &name, uint64_t *value,
                          Error *error) const;
   bool GetRpcIdentifierProperty(const std::string &name, RpcIdentifier *value,
                                 Error *error) const;
@@ -75,11 +75,11 @@ class PropertyStore {
                                Error *error);
 
   virtual bool SetInt16Property(const std::string &name,
-                                int16 value,
+                                int16_t value,
                                 Error *error);
 
   virtual bool SetInt32Property(const std::string &name,
-                                int32 value,
+                                int32_t value,
                                 Error *error);
 
   virtual bool SetStringProperty(const std::string &name,
@@ -101,23 +101,23 @@ class PropertyStore {
                                   Error *error);
 
   virtual bool SetUint8Property(const std::string &name,
-                                uint8 value,
+                                uint8_t value,
                                 Error *error);
 
   virtual bool SetUint16Property(const std::string &name,
-                                 uint16 value,
+                                 uint16_t value,
                                  Error *error);
 
   virtual bool SetUint16sProperty(const std::string &name,
-                                  const std::vector<uint16> &value,
+                                  const std::vector<uint16_t> &value,
                                   Error *error);
 
   virtual bool SetUint32Property(const std::string &name,
-                                 uint32 value,
+                                 uint32_t value,
                                  Error *error);
 
   virtual bool SetUint64Property(const std::string &name,
-                                 uint64 value,
+                                 uint64_t value,
                                  Error *error);
 
   virtual bool SetRpcIdentifierProperty(const std::string &name,
@@ -141,8 +141,8 @@ class PropertyStore {
   // Accessors for iterators over property maps. Useful for dumping all
   // properties.
   ReadablePropertyConstIterator<bool> GetBoolPropertiesIter() const;
-  ReadablePropertyConstIterator<int16> GetInt16PropertiesIter() const;
-  ReadablePropertyConstIterator<int32> GetInt32PropertiesIter() const;
+  ReadablePropertyConstIterator<int16_t> GetInt16PropertiesIter() const;
+  ReadablePropertyConstIterator<int32_t> GetInt32PropertiesIter() const;
   ReadablePropertyConstIterator<KeyValueStore>
       GetKeyValueStorePropertiesIter() const;
   ReadablePropertyConstIterator<RpcIdentifier>
@@ -153,11 +153,11 @@ class PropertyStore {
   ReadablePropertyConstIterator<Stringmap> GetStringmapPropertiesIter() const;
   ReadablePropertyConstIterator<Stringmaps> GetStringmapsPropertiesIter() const;
   ReadablePropertyConstIterator<Strings> GetStringsPropertiesIter() const;
-  ReadablePropertyConstIterator<uint8> GetUint8PropertiesIter() const;
-  ReadablePropertyConstIterator<uint16> GetUint16PropertiesIter() const;
+  ReadablePropertyConstIterator<uint8_t> GetUint8PropertiesIter() const;
+  ReadablePropertyConstIterator<uint16_t> GetUint16PropertiesIter() const;
   ReadablePropertyConstIterator<Uint16s> GetUint16sPropertiesIter() const;
-  ReadablePropertyConstIterator<uint32> GetUint32PropertiesIter() const;
-  ReadablePropertyConstIterator<uint64> GetUint64PropertiesIter() const;
+  ReadablePropertyConstIterator<uint32_t> GetUint32PropertiesIter() const;
+  ReadablePropertyConstIterator<uint64_t> GetUint64PropertiesIter() const;
 
   // Methods for registering a property.
   //
@@ -175,13 +175,13 @@ class PropertyStore {
   void RegisterBool(const std::string &name, bool *prop);
   void RegisterConstBool(const std::string &name, const bool *prop);
   void RegisterWriteOnlyBool(const std::string &name, bool *prop);
-  void RegisterInt16(const std::string &name, int16 *prop);
-  void RegisterConstInt16(const std::string &name, const int16 *prop);
-  void RegisterWriteOnlyInt16(const std::string &name, int16 *prop);
-  void RegisterInt32(const std::string &name, int32 *prop);
-  void RegisterConstInt32(const std::string &name, const int32 *prop);
-  void RegisterWriteOnlyInt32(const std::string &name, int32 *prop);
-  void RegisterUint32(const std::string &name, uint32 *prop);
+  void RegisterInt16(const std::string &name, int16_t *prop);
+  void RegisterConstInt16(const std::string &name, const int16_t *prop);
+  void RegisterWriteOnlyInt16(const std::string &name, int16_t *prop);
+  void RegisterInt32(const std::string &name, int32_t *prop);
+  void RegisterConstInt32(const std::string &name, const int32_t *prop);
+  void RegisterWriteOnlyInt32(const std::string &name, int32_t *prop);
+  void RegisterUint32(const std::string &name, uint32_t *prop);
   void RegisterString(const std::string &name, std::string *prop);
   void RegisterConstString(const std::string &name, const std::string *prop);
   void RegisterWriteOnlyString(const std::string &name, std::string *prop);
@@ -194,14 +194,14 @@ class PropertyStore {
   void RegisterStrings(const std::string &name, Strings *prop);
   void RegisterConstStrings(const std::string &name, const Strings *prop);
   void RegisterWriteOnlyStrings(const std::string &name, Strings *prop);
-  void RegisterUint8(const std::string &name, uint8 *prop);
-  void RegisterConstUint8(const std::string &name, const uint8 *prop);
-  void RegisterWriteOnlyUint8(const std::string &name, uint8 *prop);
-  void RegisterUint16(const std::string &name, uint16 *prop);
+  void RegisterUint8(const std::string &name, uint8_t *prop);
+  void RegisterConstUint8(const std::string &name, const uint8_t *prop);
+  void RegisterWriteOnlyUint8(const std::string &name, uint8_t *prop);
+  void RegisterUint16(const std::string &name, uint16_t *prop);
   void RegisterUint16s(const std::string &name, Uint16s *prop);
-  void RegisterConstUint16(const std::string &name, const uint16 *prop);
+  void RegisterConstUint16(const std::string &name, const uint16_t *prop);
   void RegisterConstUint16s(const std::string &name, const Uint16s *prop);
-  void RegisterWriteOnlyUint16(const std::string &name, uint16 *prop);
+  void RegisterWriteOnlyUint16(const std::string &name, uint16_t *prop);
 
   void RegisterDerivedBool(const std::string &name,
                            const BoolAccessor &accessor);

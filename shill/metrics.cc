@@ -161,20 +161,20 @@ const int Metrics::kMetricTerminationActionTimeMillisecondsMin = 1;
 const char Metrics::kMetricServiceFixupEntriesSuffix[] = "ServiceFixupEntries";
 
 // static
-const uint16 Metrics::kWiFiBandwidth5MHz = 5;
-const uint16 Metrics::kWiFiBandwidth20MHz = 20;
-const uint16 Metrics::kWiFiFrequency2412 = 2412;
-const uint16 Metrics::kWiFiFrequency2472 = 2472;
-const uint16 Metrics::kWiFiFrequency2484 = 2484;
-const uint16 Metrics::kWiFiFrequency5170 = 5170;
-const uint16 Metrics::kWiFiFrequency5180 = 5180;
-const uint16 Metrics::kWiFiFrequency5230 = 5230;
-const uint16 Metrics::kWiFiFrequency5240 = 5240;
-const uint16 Metrics::kWiFiFrequency5320 = 5320;
-const uint16 Metrics::kWiFiFrequency5500 = 5500;
-const uint16 Metrics::kWiFiFrequency5700 = 5700;
-const uint16 Metrics::kWiFiFrequency5745 = 5745;
-const uint16 Metrics::kWiFiFrequency5825 = 5825;
+const uint16_t Metrics::kWiFiBandwidth5MHz = 5;
+const uint16_t Metrics::kWiFiBandwidth20MHz = 20;
+const uint16_t Metrics::kWiFiFrequency2412 = 2412;
+const uint16_t Metrics::kWiFiFrequency2472 = 2472;
+const uint16_t Metrics::kWiFiFrequency2484 = 2484;
+const uint16_t Metrics::kWiFiFrequency5170 = 5170;
+const uint16_t Metrics::kWiFiFrequency5180 = 5180;
+const uint16_t Metrics::kWiFiFrequency5230 = 5230;
+const uint16_t Metrics::kWiFiFrequency5240 = 5240;
+const uint16_t Metrics::kWiFiFrequency5320 = 5320;
+const uint16_t Metrics::kWiFiFrequency5500 = 5500;
+const uint16_t Metrics::kWiFiFrequency5700 = 5700;
+const uint16_t Metrics::kWiFiFrequency5745 = 5745;
+const uint16_t Metrics::kWiFiFrequency5825 = 5825;
 
 // static
 const char Metrics::kMetricPowerManagerKey[] = "metrics";
@@ -339,7 +339,7 @@ Metrics::Metrics(EventDispatcher *dispatcher)
 Metrics::~Metrics() {}
 
 // static
-Metrics::WiFiChannel Metrics::WiFiFrequencyToChannel(uint16 frequency) {
+Metrics::WiFiChannel Metrics::WiFiFrequencyToChannel(uint16_t frequency) {
   WiFiChannel channel = kWiFiChannelUndef;
   if (kWiFiFrequency2412 <= frequency && frequency <= kWiFiFrequency2472) {
     if (((frequency - kWiFiFrequency2412) % kWiFiBandwidth5MHz) == 0)
@@ -1020,7 +1020,7 @@ void Metrics::Notify3GPPRegistrationDelayedDropCanceled() {
 }
 
 void Metrics::NotifyCellularDeviceDrop(const string &network_technology,
-                                       uint16 signal_strength) {
+                                       uint16_t signal_strength) {
   SLOG(Metrics, 2) << __func__ << ": " << network_technology
                                << ", " << signal_strength;
   CellularDropTechnology drop_technology = kCellularDropTechnologyUnknown;

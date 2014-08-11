@@ -586,7 +586,7 @@ void DHCPConfig::ProcessAcquisitionTimeout() {
   }
 }
 
-void DHCPConfig::StartExpirationTimeout(uint32 lease_duration_seconds) {
+void DHCPConfig::StartExpirationTimeout(uint32_t lease_duration_seconds) {
   CHECK(lease_acquisition_timeout_callback_.IsCancelled());
   SLOG(DHCP, 2) << __func__ << ": " << device_name()
                 << ": " << "Lease timeout is " << lease_duration_seconds

@@ -82,8 +82,8 @@ class Service : public base::RefCounted<Service> {
   static const char kStorageUIData[];
   static const char kStorageConnectionId[];
 
-  static const uint8 kStrengthMax;
-  static const uint8 kStrengthMin;
+  static const uint8_t kStrengthMax;
+  static const uint8_t kStrengthMin;
 
   enum ConnectFailure {
     kFailureUnknown,
@@ -330,7 +330,7 @@ class Service : public base::RefCounted<Service> {
   // connected state.  This value is non-zero for the first service transition
   // to the connected state after a resume.
   virtual void SendPostReadyStateMetrics(
-      int64 /*time_resume_to_ready_milliseconds*/) const {}
+      int64_t /*time_resume_to_ready_milliseconds*/) const {}
 
   bool auto_connect() const { return auto_connect_; }
   void SetAutoConnect(bool connect);
@@ -364,18 +364,18 @@ class Service : public base::RefCounted<Service> {
   // and broadcasts the new value
   void SetHasEverConnected(bool has_ever_connected);
 
-  int32 priority() const { return priority_; }
-  bool SetPriority(const int32 &priority, Error *error);
+  int32_t priority() const { return priority_; }
+  bool SetPriority(const int32_t &priority, Error *error);
 
   size_t crypto_algorithm() const { return crypto_algorithm_; }
   bool key_rotation() const { return key_rotation_; }
   bool endpoint_auth() const { return endpoint_auth_; }
 
-  void SetStrength(uint8 strength);
+  void SetStrength(uint8_t strength);
 
-  // uint8 streams out as a char. Coerce to a larger type, so that
+  // uint8_t streams out as a char. Coerce to a larger type, so that
   // it prints as a number.
-  uint16 strength() const { return strength_; }
+  uint16_t strength() const { return strength_; }
 
   virtual Technology::Identifier technology() const { return technology_; }
   std::string GetTechnologyString() const;
@@ -522,15 +522,15 @@ class Service : public base::RefCounted<Service> {
       void(Service::*clear)(Error *error));
   void HelpRegisterDerivedInt32(
       const std::string &name,
-      int32(Service::*get)(Error *error),
-      bool(Service::*set)(const int32 &value, Error *error));
+      int32_t(Service::*get)(Error *error),
+      bool(Service::*set)(const int32_t &value, Error *error));
   void HelpRegisterDerivedString(
       const std::string &name,
       std::string(Service::*get)(Error *error),
       bool(Service::*set)(const std::string &value, Error *error));
   void HelpRegisterConstDerivedUint16(
       const std::string &name,
-      uint16(Service::*get)(Error *error) const);
+      uint16_t(Service::*get)(Error *error) const);
   void HelpRegisterConstDerivedRpcIdentifier(
       const std::string &name,
       std::string(Service::*get)(Error *) const);
@@ -680,9 +680,9 @@ class Service : public base::RefCounted<Service> {
   static const char kServiceSortSerialNumber[];
   static const char kServiceSortTechnology[];
 
-  static const uint64 kMaxAutoConnectCooldownTimeMilliseconds;
-  static const uint64 kMinAutoConnectCooldownTimeMilliseconds;
-  static const uint64 kAutoConnectCooldownBackoffFactor;
+  static const uint64_t kMaxAutoConnectCooldownTimeMilliseconds;
+  static const uint64_t kMinAutoConnectCooldownTimeMilliseconds;
+  static const uint64_t kAutoConnectCooldownBackoffFactor;
 
   static const int kDisconnectsMonitorSeconds;
   static const int kMisconnectsMonitorSeconds;
@@ -706,13 +706,13 @@ class Service : public base::RefCounted<Service> {
   // property value.
   virtual bool SetNameProperty(const std::string &name, Error *error);
 
-  int32 GetPriority(Error *error);
+  int32_t GetPriority(Error *error);
 
   std::string GetProfileRpcId(Error *error);
   bool SetProfileRpcId(const std::string &profile, Error *error);
 
   // Returns TCP port of service's HTTP proxy in host order.
-  uint16 GetHTTPProxyPort(Error *error) const;
+  uint16_t GetHTTPProxyPort(Error *error) const;
 
   std::string GetProxyConfig(Error *error);
   bool SetProxyConfig(const std::string &proxy_config, Error *error);
@@ -754,7 +754,7 @@ class Service : public base::RefCounted<Service> {
 
   // Linearize security parameters (crypto algorithm, key rotation, endpoint
   // authentication) for comparison.
-  uint16 SecurityLevel();
+  uint16_t SecurityLevel();
 
   // WeakPtrFactory comes first, so that other fields can use it.
   base::WeakPtrFactory<Service> weak_ptr_factory_;
@@ -774,15 +774,15 @@ class Service : public base::RefCounted<Service> {
   std::string error_;
   std::string error_details_;
   std::string previous_error_;
-  int32 previous_error_serial_number_;
+  int32_t previous_error_serial_number_;
   bool explicitly_disconnected_;
   bool is_in_user_connect_;
-  int32 priority_;
-  uint8 crypto_algorithm_;
+  int32_t priority_;
+  uint8_t crypto_algorithm_;
   bool key_rotation_;
   bool endpoint_auth_;
 
-  uint8 strength_;
+  uint8_t strength_;
   std::string proxy_config_;
   std::string ui_data_;
   std::string guid_;
@@ -799,7 +799,7 @@ class Service : public base::RefCounted<Service> {
   std::deque<Timestamp> misconnects_;  // Failures to connect.
 
   base::CancelableClosure reenable_auto_connect_task_;
-  uint64 auto_connect_cooldown_milliseconds_;
+  uint64_t auto_connect_cooldown_milliseconds_;
 
   ProfileRefPtr profile_;
   PropertyStore store_;

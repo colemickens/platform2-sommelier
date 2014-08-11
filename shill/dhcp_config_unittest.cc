@@ -435,7 +435,7 @@ TEST_F(DHCPConfigCallbackTest, ProcessEventSignalSuccess) {
       conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(
         ++address_octet);
       if (lease_time_given) {
-        const uint32 kLeaseTime = 1;
+        const uint32_t kLeaseTime = 1;
         conf[DHCPConfig::kConfigurationKeyLeaseTime].writer().append_uint32(
             kLeaseTime);
         config_->lease_expiration_callback_.Cancel();
@@ -482,7 +482,7 @@ TEST_F(DHCPConfigCallbackTest, StoppedDuringSuccessCallback) {
   DHCPConfig::Configuration conf;
   conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(
     0x01020304);
-  const uint32 kLeaseTime = 1;
+  const uint32_t kLeaseTime = 1;
   conf[DHCPConfig::kConfigurationKeyLeaseTime].writer().append_uint32(
       kLeaseTime);
   // Stop the DHCP config while it is calling the success callback.  This

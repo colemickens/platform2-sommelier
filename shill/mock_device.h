@@ -46,8 +46,8 @@ class MockDevice : public Device {
   MOCK_METHOD0(EnableReversePathFilter, void());
   MOCK_METHOD0(RestartPortalDetection, bool());
   MOCK_METHOD0(RequestPortalDetection, bool());
-  MOCK_METHOD0(GetReceiveByteCount, uint64());
-  MOCK_METHOD0(GetTransmitByteCount, uint64());
+  MOCK_METHOD0(GetReceiveByteCount, uint64_t());
+  MOCK_METHOD0(GetTransmitByteCount, uint64_t());
   MOCK_CONST_METHOD1(IsConnectedToService, bool(const ServiceRefPtr &service));
   MOCK_CONST_METHOD0(technology, Technology::Identifier());
   MOCK_METHOD0(OnBeforeSuspend, void());

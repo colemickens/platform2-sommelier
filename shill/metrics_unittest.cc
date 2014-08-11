@@ -627,7 +627,7 @@ TEST_F(MetricsTest, CellularDrop) {
       kNetworkTechnologyUmts,
       "Unknown" };
 
-  const uint16 signal_strength = 100;
+  const uint16_t signal_strength = 100;
   const int kInterfaceIndex = 1;
   metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
   for (size_t index = 0; index < arraysize(kUMATechnologyStrings); ++index) {

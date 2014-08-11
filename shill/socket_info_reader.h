@@ -50,12 +50,12 @@ class SocketInfoReader {
                         std::vector<SocketInfo> *info_list);
   bool ParseSocketInfo(const std::string &input, SocketInfo *socket_info);
   bool ParseIPAddressAndPort(
-      const std::string &input, IPAddress *ip_address, uint16 *port);
+      const std::string &input, IPAddress *ip_address, uint16_t *port);
   bool ParseIPAddress(const std::string &input, IPAddress *ip_address);
-  bool ParsePort(const std::string &input, uint16 *port);
+  bool ParsePort(const std::string &input, uint16_t *port);
   bool ParseTransimitAndReceiveQueueValues(
       const std::string &input,
-      uint64 *transmit_queue_value, uint64 *receive_queue_value);
+      uint64_t *transmit_queue_value, uint64_t *receive_queue_value);
   bool ParseConnectionState(const std::string &input,
                             SocketInfo::ConnectionState *connection_state);
   bool ParseTimerState(const std::string &input,

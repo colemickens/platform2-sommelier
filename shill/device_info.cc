@@ -784,7 +784,7 @@ bool DeviceInfo::GetPrimaryIPv6Address(int interface_index,
 
 bool DeviceInfo::GetIPv6DnsServerAddresses(int interface_index,
                                            std::vector<IPAddress> *address_list,
-                                           uint32 *life_time) {
+                                           uint32_t *life_time) {
   const Info *info = GetInfo(interface_index);
   if (!info || info->ipv6_dns_server_addresses.empty()) {
     return false;
@@ -798,7 +798,7 @@ bool DeviceInfo::GetIPv6DnsServerAddresses(int interface_index,
     if (!time_->GetSecondsBoottime(&cur_time)) {
       NOTREACHED();
     }
-    uint32 time_elapsed = static_cast<uint32>(
+    uint32_t time_elapsed = static_cast<uint32_t>(
         cur_time - info->ipv6_dns_server_received_time_seconds);
     if (time_elapsed >= info->ipv6_dns_server_lifetime_seconds) {
       *life_time = 0;
@@ -838,8 +838,8 @@ bool DeviceInfo::GetFlags(int interface_index, unsigned int *flags) const {
 }
 
 bool DeviceInfo::GetByteCounts(int interface_index,
-                               uint64 *rx_bytes,
-                               uint64 *tx_bytes) const {
+                               uint64_t *rx_bytes,
+                               uint64_t *tx_bytes) const {
   const Info *info = GetInfo(interface_index);
   if (!info) {
     return false;

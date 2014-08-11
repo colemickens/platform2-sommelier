@@ -2078,7 +2078,7 @@ TEST_F(CellularTest, EstablishLinkStatic) {
   IPAddress::Family kAddressFamily = IPAddress::kFamilyIPv4;
   const char kAddress[] = "10.0.0.1";
   const char kGateway[] = "10.0.0.254";
-  const int32 kSubnetPrefix = 16;
+  const int32_t kSubnetPrefix = 16;
   const char *const kDNS[] = {"10.0.0.2", "8.8.4.4", "8.8.8.8"};
 
   scoped_ptr<IPConfig::Properties> ipconfig_properties(

@@ -35,7 +35,7 @@ class WiMaxNetworkProxyInterface {
       const SignalStrengthChangedCallback &callback) = 0;
 
   // Properties.
-  virtual uint32 Identifier(Error *error) = 0;
+  virtual uint32_t Identifier(Error *error) = 0;
   virtual std::string Name(Error *error) = 0;
   virtual int Type(Error *error) = 0;
   virtual int CINR(Error *error) = 0;

@@ -268,7 +268,7 @@ TEST_F(ProfileTest, ServiceConfigure) {
                                               dispatcher(),
                                               metrics(),
                                               manager()));
-  int32 orig_priority = service2->priority();
+  int32_t orig_priority = service2->priority();
   ASSERT_TRUE(profile_->ConfigureService(service2));
   ASSERT_EQ(service1->priority(), service2->priority());
   ASSERT_NE(orig_priority, service2->priority());

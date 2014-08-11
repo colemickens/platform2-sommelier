@@ -25,7 +25,7 @@ class MockOutOfCreditsDetector : public OutOfCreditsDetector {
                void(Service::ConnectState old_state,
                     Service::ConnectState new_state));
   MOCK_METHOD1(NotifySubscriptionStateChanged,
-               void(uint32 subscription_state));
+               void(uint32_t subscription_state));
   MOCK_CONST_METHOD0(out_of_credits, bool());
 
  private:

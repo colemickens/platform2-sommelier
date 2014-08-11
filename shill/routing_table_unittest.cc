@@ -67,13 +67,13 @@ class RoutingTableTest : public Test {
   }
 
   void SendRouteEntry(RTNLMessage::Mode mode,
-                      uint32 interface_index,
+                      uint32_t interface_index,
                       const RoutingTableEntry &entry);
 
   void SendRouteEntryWithSeqAndProto(RTNLMessage::Mode mode,
-                                     uint32 interface_index,
+                                     uint32_t interface_index,
                                      const RoutingTableEntry &entry,
-                                     uint32 seq,
+                                     uint32_t seq,
                                      unsigned char proto);
 
   void SendRouteMessage(const RTNLMessage &msg);
@@ -84,8 +84,8 @@ class RoutingTableTest : public Test {
   }
 
  protected:
-  static const uint32 kTestDeviceIndex0;
-  static const uint32 kTestDeviceIndex1;
+  static const uint32_t kTestDeviceIndex0;
+  static const uint32_t kTestDeviceIndex1;
   static const char kTestDeviceName0[];
   static const char kTestDeviceNetAddress4[];
   static const char kTestForeignNetAddress4[];
@@ -99,7 +99,7 @@ class RoutingTableTest : public Test {
   static const char kTestRemoteNetmask4[];
   static const char kTestRemoteNetwork4[];
   static const int kTestRemotePrefix4;
-  static const uint32 kTestRequestSeq;
+  static const uint32_t kTestRequestSeq;
   static const int kTestRouteTag;
 
   class QueryCallbackTarget {
@@ -137,8 +137,8 @@ class RoutingTableTest : public Test {
   StrictMock<MockRTNLHandler> rtnl_handler_;
 };
 
-const uint32 RoutingTableTest::kTestDeviceIndex0 = 12345;
-const uint32 RoutingTableTest::kTestDeviceIndex1 = 67890;
+const uint32_t RoutingTableTest::kTestDeviceIndex0 = 12345;
+const uint32_t RoutingTableTest::kTestDeviceIndex1 = 67890;
 const char RoutingTableTest::kTestDeviceName0[] = "test-device0";
 const char RoutingTableTest::kTestDeviceNetAddress4[] = "192.168.2.0/24";
 const char RoutingTableTest::kTestForeignNetAddress4[] = "192.168.2.2";
@@ -152,7 +152,7 @@ const char RoutingTableTest::kTestRemoteAddress4[] = "192.168.2.254";
 const char RoutingTableTest::kTestRemoteNetmask4[] = "255.255.255.0";
 const char RoutingTableTest::kTestRemoteNetwork4[] = "192.168.100.0";
 const int RoutingTableTest::kTestRemotePrefix4 = 24;
-const uint32 RoutingTableTest::kTestRequestSeq = 456;
+const uint32_t RoutingTableTest::kTestRequestSeq = 456;
 const int RoutingTableTest::kTestRouteTag = 789;
 
 namespace {
@@ -160,8 +160,8 @@ namespace {
 MATCHER_P3(IsBlackholeRoutingPacket, index, family, metric, "") {
   const RTNLMessage::RouteStatus &status = arg->route_status();
 
-  uint32 oif;
-  uint32 priority;
+  uint32_t oif;
+  uint32_t priority;
 
   return
       arg->type() == RTNLMessage::kTypeRoute &&
@@ -183,8 +183,8 @@ MATCHER_P3(IsBlackholeRoutingPacket, index, family, metric, "") {
 MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
   const RTNLMessage::RouteStatus &status = arg->route_status();
 
-  uint32 oif;
-  uint32 priority;
+  uint32_t oif;
+  uint32_t priority;
 
   return
       arg->type() == RTNLMessage::kTypeRoute &&
@@ -214,16 +214,16 @@ MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
 }  // namespace
 
 void RoutingTableTest::SendRouteEntry(RTNLMessage::Mode mode,
-                                      uint32 interface_index,
+                                      uint32_t interface_index,
                                       const RoutingTableEntry &entry) {
   SendRouteEntryWithSeqAndProto(mode, interface_index, entry, 0, RTPROT_BOOT);
 }
 
 void RoutingTableTest::SendRouteEntryWithSeqAndProto(
     RTNLMessage::Mode mode,
-    uint32 interface_index,
+    uint32_t interface_index,
     const RoutingTableEntry &entry,
-    uint32 seq,
+    uint32_t seq,
     unsigned char proto) {
   RTNLMessage msg(
       RTNLMessage::kTypeRoute,
@@ -541,7 +541,7 @@ TEST_F(RoutingTableTest, ConfigureRoutes) {
 MATCHER_P2(IsRoutingQuery, destination, index, "") {
   const RTNLMessage::RouteStatus &status = arg->route_status();
 
-  uint32 oif;
+  uint32_t oif;
 
   return
       arg->type() == RTNLMessage::kTypeRoute &&
@@ -798,7 +798,7 @@ TEST_F(RoutingTableTest, CancelQueryCallback) {
 }
 
 TEST_F(RoutingTableTest, CreateBlackholeRoute) {
-  const uint32 kMetric = 2;
+  const uint32_t kMetric = 2;
   EXPECT_CALL(rtnl_handler_,
               SendMessage(IsBlackholeRoutingPacket(kTestDeviceIndex0,
                                                    IPAddress::kFamilyIPv6,

@@ -50,7 +50,7 @@ void DiagnosticsReporter::OnConnectivityEvent() {
   time_->GetTimeMonotonic(&now);
   if (last_log_stash_ &&
       last_log_stash_ + kLogStashThrottleSeconds >
-      static_cast<uint64>(now.tv_sec)) {
+      static_cast<uint64_t>(now.tv_sec)) {
     LOG(INFO) << "Diagnostics throttled.";
     return;
   }

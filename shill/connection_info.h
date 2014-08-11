@@ -15,16 +15,16 @@ class ConnectionInfo {
  public:
   ConnectionInfo();
   ConnectionInfo(int protocol,
-                 int64 time_to_expire_seconds,
+                 int64_t time_to_expire_seconds,
                  bool is_unreplied,
                  IPAddress original_source_ip_address,
-                 uint16 original_source_port,
+                 uint16_t original_source_port,
                  IPAddress original_destination_ip_address,
-                 uint16 original_destination_port,
+                 uint16_t original_destination_port,
                  IPAddress reply_source_ip_address,
-                 uint16 reply_source_port,
+                 uint16_t reply_source_port,
                  IPAddress reply_destination_ip_address,
-                 uint16 reply_destination_port);
+                 uint16_t reply_destination_port);
   ConnectionInfo(const ConnectionInfo &info);
   ~ConnectionInfo();
 
@@ -33,8 +33,8 @@ class ConnectionInfo {
   int protocol() const { return protocol_; }
   void set_protocol(int protocol) { protocol_ = protocol; }
 
-  int64 time_to_expire_seconds() const { return time_to_expire_seconds_; }
-  void set_time_to_expire_seconds(int64 time_to_expire_seconds) {
+  int64_t time_to_expire_seconds() const { return time_to_expire_seconds_; }
+  void set_time_to_expire_seconds(int64_t time_to_expire_seconds) {
     time_to_expire_seconds_ = time_to_expire_seconds;
   }
 
@@ -49,8 +49,8 @@ class ConnectionInfo {
     original_source_ip_address_ = original_source_ip_address;
   }
 
-  uint16 original_source_port() const { return original_source_port_; }
-  void set_original_source_port(uint16 original_source_port) {
+  uint16_t original_source_port() const { return original_source_port_; }
+  void set_original_source_port(uint16_t original_source_port) {
     original_source_port_ = original_source_port;
   }
 
@@ -62,10 +62,10 @@ class ConnectionInfo {
     original_destination_ip_address_ = original_destination_ip_address;
   }
 
-  uint16 original_destination_port() const {
+  uint16_t original_destination_port() const {
     return original_destination_port_;
   }
-  void set_original_destination_port(uint16 original_destination_port) {
+  void set_original_destination_port(uint16_t original_destination_port) {
     original_destination_port_ = original_destination_port;
   }
 
@@ -77,8 +77,8 @@ class ConnectionInfo {
     reply_source_ip_address_ = reply_source_ip_address;
   }
 
-  uint16 reply_source_port() const { return reply_source_port_; }
-  void set_reply_source_port(uint16 reply_source_port) {
+  uint16_t reply_source_port() const { return reply_source_port_; }
+  void set_reply_source_port(uint16_t reply_source_port) {
     reply_source_port_ = reply_source_port;
   }
 
@@ -90,25 +90,25 @@ class ConnectionInfo {
     reply_destination_ip_address_ = reply_destination_ip_address;
   }
 
-  uint16 reply_destination_port() const { return reply_destination_port_; }
-  void set_reply_destination_port(uint16 reply_destination_port) {
+  uint16_t reply_destination_port() const { return reply_destination_port_; }
+  void set_reply_destination_port(uint16_t reply_destination_port) {
     reply_destination_port_ = reply_destination_port;
   }
 
  private:
   int protocol_;
-  int64 time_to_expire_seconds_;
+  int64_t time_to_expire_seconds_;
   bool is_unreplied_;
 
   IPAddress original_source_ip_address_;
-  uint16 original_source_port_;
+  uint16_t original_source_port_;
   IPAddress original_destination_ip_address_;
-  uint16 original_destination_port_;
+  uint16_t original_destination_port_;
 
   IPAddress reply_source_ip_address_;
-  uint16 reply_source_port_;
+  uint16_t reply_source_port_;
   IPAddress reply_destination_ip_address_;
-  uint16 reply_destination_port_;
+  uint16_t reply_destination_port_;
 
   // No DISALLOW_COPY_AND_ASSIGN(ConnectionInfo) as ConnectionInfo needs to be
   // kept in STL containers.

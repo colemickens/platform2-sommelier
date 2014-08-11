@@ -139,11 +139,11 @@ class CellularCapabilityUniversal : public CellularCapability {
         : allowed_modes(MM_MODEM_MODE_NONE),
           preferred_mode(MM_MODEM_MODE_NONE) {}
 
-    ModemModes(uint32 allowed, MMModemMode preferred)
+    ModemModes(uint32_t allowed, MMModemMode preferred)
         : allowed_modes(allowed),
           preferred_mode(preferred) {}
 
-    uint32 allowed_modes;        // Bits based on MMModemMode.
+    uint32_t allowed_modes;        // Bits based on MMModemMode.
     MMModemMode preferred_mode;  // A single MMModemMode bit.
   };
 
@@ -162,9 +162,9 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Plugin strings via modemmanager.
   static const char kAltairLTEMMPlugin[];
 
-  static const int64 kActivationRegistrationTimeoutMilliseconds;
-  static const int64 kEnterPinTimeoutMilliseconds;
-  static const int64 kRegistrationDroppedUpdateTimeoutMilliseconds;
+  static const int64_t kActivationRegistrationTimeoutMilliseconds;
+  static const int64_t kEnterPinTimeoutMilliseconds;
+  static const int64_t kRegistrationDroppedUpdateTimeoutMilliseconds;
   static const int kSetPowerStateTimeoutMilliseconds;
 
 
@@ -251,7 +251,7 @@ class CellularCapabilityUniversal : public CellularCapability {
 
     bool enabled;
     MMModemLock lock_type;
-    uint32 retries_left;
+    uint32_t retries_left;
   };
 
   // SubscriptionState represents the provisioned state of SIM. It is used
@@ -303,25 +303,25 @@ class CellularCapabilityUniversal : public CellularCapability {
   bool RetriableConnectError(const Error &error) const;
 
   // Signal callbacks
-  void OnNetworkModeSignal(uint32 mode);
-  void OnModemStateChangedSignal(int32 old_state,
-                                 int32 new_state,
-                                 uint32 reason);
+  void OnNetworkModeSignal(uint32_t mode);
+  void OnModemStateChangedSignal(int32_t old_state,
+                                 int32_t new_state,
+                                 uint32_t reason);
 
   // Property Change notification handlers
   void OnModemPropertiesChanged(
       const DBusPropertiesMap &properties,
       const std::vector<std::string> &invalidated_properties);
 
-  void OnSignalQualityChanged(uint32 quality);
+  void OnSignalQualityChanged(uint32_t quality);
 
   void OnSupportedCapabilitesChanged(
-      const std::vector<uint32> &supported_capabilities);
-  void OnModemCurrentCapabilitiesChanged(uint32 current_capabilities);
+      const std::vector<uint32_t> &supported_capabilities);
+  void OnModemCurrentCapabilitiesChanged(uint32_t current_capabilities);
   void OnMdnChanged(const std::string &mdn);
   void OnModemRevisionChanged(const std::string &revision);
   void OnModemStateChanged(Cellular::ModemState state);
-  void OnAccessTechnologiesChanged(uint32 access_technologies);
+  void OnAccessTechnologiesChanged(uint32_t access_technologies);
   void OnSupportedModesChanged(const std::vector<ModemModes> &supported_modes);
   void OnCurrentModesChanged(const ModemModes &current_modes);
   void OnBearersChanged(const RpcIdentifiers &bearers);
@@ -344,7 +344,7 @@ class CellularCapabilityUniversal : public CellularCapability {
       std::string updated_operator_code,
       std::string updated_operator_name);
   void On3GPPSubscriptionStateChanged(MMModem3gppSubscriptionState state);
-  void OnFacilityLocksChanged(uint32 locks);
+  void OnFacilityLocksChanged(uint32_t locks);
 
   // SIM property change handlers
   // TODO(armansito): Put these methods in a 3GPP-only subclass.
@@ -409,9 +409,9 @@ class CellularCapabilityUniversal : public CellularCapability {
   MMModem3gppRegistrationState registration_state_;
 
   // Bits based on MMModemCapabilities
-  std::vector<uint32> supported_capabilities_;  // Technologies supported
-  uint32 current_capabilities_;  // Technologies supported without a reload
-  uint32 access_technologies_;   // Bits based on MMModemAccessTechnology
+  std::vector<uint32_t> supported_capabilities_;  // Technologies supported
+  uint32_t current_capabilities_;  // Technologies supported without a reload
+  uint32_t access_technologies_;   // Bits based on MMModemAccessTechnology
   std::vector<ModemModes> supported_modes_;
   ModemModes current_modes_;
 
@@ -434,13 +434,13 @@ class CellularCapabilityUniversal : public CellularCapability {
   base::Closure deferred_enable_modem_callback_;
 
   base::CancelableClosure activation_wait_for_registration_callback_;
-  int64 activation_registration_timeout_milliseconds_;
+  int64_t activation_registration_timeout_milliseconds_;
 
   // Sometimes flaky cellular network causes the 3GPP registration state to
   // rapidly change from registered --> searching and back. Delay such updates
   // a little to smooth over temporary registration loss.
   base::CancelableClosure registration_dropped_update_callback_;
-  int64 registration_dropped_update_timeout_milliseconds_;
+  int64_t registration_dropped_update_timeout_milliseconds_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityUniversal);
 };

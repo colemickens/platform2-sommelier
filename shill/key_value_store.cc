@@ -92,7 +92,7 @@ bool KeyValueStore::GetBool(const string &name) const {
   return it->second;
 }
 
-int32 KeyValueStore::GetInt(const string &name) const {
+int32_t KeyValueStore::GetInt(const string &name) const {
   const auto it(int_properties_.find(name));
   CHECK(it != int_properties_.end()) << "for int property " << name;
   return it->second;
@@ -118,7 +118,7 @@ const vector<string> &KeyValueStore::GetStrings(const string &name) const {
   return it->second;
 }
 
-uint32 KeyValueStore::GetUint(const string &name) const {
+uint32_t KeyValueStore::GetUint(const string &name) const {
   const auto it(uint_properties_.find(name));
   CHECK(it != uint_properties_.end()) << "for uint property " << name;
   return it->second;
@@ -128,7 +128,7 @@ void KeyValueStore::SetBool(const string &name, bool value) {
   bool_properties_[name] = value;
 }
 
-void KeyValueStore::SetInt(const string &name, int32 value) {
+void KeyValueStore::SetInt(const string &name, int32_t value) {
   int_properties_[name] = value;
 }
 
@@ -146,7 +146,7 @@ void KeyValueStore::SetStrings(const string &name,
   strings_properties_[name] = value;
 }
 
-void KeyValueStore::SetUint(const string &name, uint32 value) {
+void KeyValueStore::SetUint(const string &name, uint32_t value) {
   uint_properties_[name] = value;
 }
 

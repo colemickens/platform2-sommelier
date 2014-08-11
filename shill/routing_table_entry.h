@@ -30,7 +30,7 @@ struct RoutingTableEntry {
   RoutingTableEntry(const IPAddress &dst_in,
                     const IPAddress &src_in,
                     const IPAddress &gateway_in,
-                    uint32 metric_in,
+                    uint32_t metric_in,
                     unsigned char scope_in,
                     bool from_rtnl_in)
       : dst(dst_in),
@@ -44,7 +44,7 @@ struct RoutingTableEntry {
   RoutingTableEntry(const IPAddress &dst_in,
                     const IPAddress &src_in,
                     const IPAddress &gateway_in,
-                    uint32 metric_in,
+                    uint32_t metric_in,
                     unsigned char scope_in,
                     bool from_rtnl_in,
                     int tag_in)
@@ -92,7 +92,7 @@ struct RoutingTableEntry {
   IPAddress dst;
   IPAddress src;
   IPAddress gateway;
-  uint32 metric;
+  uint32_t metric;
   unsigned char scope;
   bool from_rtnl;
   int tag;

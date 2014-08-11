@@ -46,8 +46,8 @@ const char kGatewayAddress1[] = "192.168.2.254";
 const char kBroadcastAddress0[] = "192.168.1.255";
 const char kNameServer0[] = "8.8.8.8";
 const char kNameServer1[] = "8.8.9.9";
-const int32 kPrefix0 = 24;
-const int32 kPrefix1 = 31;
+const int32_t kPrefix0 = 24;
+const int32_t kPrefix1 = 31;
 const char kSearchDomain0[] = "chromium.org";
 const char kSearchDomain1[] = "google.com";
 }  // namespace
@@ -121,11 +121,11 @@ class ConnectionTest : public Test {
     return connection->has_broadcast_domain_;
   }
 
-  uint32 GetDefaultMetric() {
+  uint32_t GetDefaultMetric() {
       return Connection::kDefaultMetric;
   }
 
-  uint32 GetNonDefaultMetricBase() {
+  uint32_t GetNonDefaultMetricBase() {
       return Connection::kNonDefaultMetricBase;
   }
 

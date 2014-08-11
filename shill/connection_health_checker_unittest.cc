@@ -214,7 +214,7 @@ class ConnectionHealthCheckerTest : public Test {
   }
   SocketInfo CreateSocketInfoProxy(SocketInfo::ConnectionState state,
                                    SocketInfo::TimerState timer_state,
-                                   uint64 transmit_queue_value) {
+                                   uint64_t transmit_queue_value) {
     return SocketInfo(
         state,
         StringToIPv4Address(kProxyIPAddressLocal),

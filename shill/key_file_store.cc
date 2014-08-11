@@ -44,7 +44,7 @@ void KeyFileStore::ReleaseKeyFile() {
 }
 
 bool KeyFileStore::IsNonEmpty() const {
-  int64 file_size = 0;
+  int64_t file_size = 0;
   return base::GetFileSize(path_, &file_size) && file_size != 0;
 }
 
@@ -279,8 +279,8 @@ bool KeyFileStore::SetInt(const string &group, const string &key, int value) {
 }
 
 bool KeyFileStore::GetUint64(
-    const string &group, const string &key, uint64 *value) const {
-  // Read the value in as a string and then convert to uint64 because glib's
+    const string &group, const string &key, uint64_t *value) const {
+  // Read the value in as a string and then convert to uint64_t because glib's
   // g_key_file_set_uint64 appears not to work correctly on 32-bit platforms
   // in unit tests.
   string data_string;
@@ -288,10 +288,10 @@ bool KeyFileStore::GetUint64(
     return false;
   }
 
-  uint64 data;
+  uint64_t data;
   if (!base::StringToUint64(data_string, &data)) {
     SLOG(Storage, 10) << "Failed to convert (" << group << ":" << key << "): "
-                      << "string to uint64 conversion failed";
+                      << "string to uint64_t conversion failed";
     return false;
   }
 
@@ -303,7 +303,7 @@ bool KeyFileStore::GetUint64(
 }
 
 bool KeyFileStore::SetUint64(
-    const string &group, const string &key, uint64 value) {
+    const string &group, const string &key, uint64_t value) {
   // Convert the value to a string first, then save the value because glib's
   // g_key_file_get_uint64 appears not to work on 32-bit platforms in our
   // unit tests.

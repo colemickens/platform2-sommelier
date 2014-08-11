@@ -63,7 +63,7 @@ class WiFiEndpoint : public Endpoint {
       const std::map<std::string, ::DBus::Variant> &properties);
 
   // Called by WiFi when it polls for signal strength from the kernel.
-  void UpdateSignalStrength(int16 strength);
+  void UpdateSignalStrength(int16_t strength);
 
   // Maps mode strings from flimflam's nomenclature, as defined
   // in chromeos/dbus/service_constants.h, to uints used by supplicant
@@ -89,8 +89,8 @@ class WiFiEndpoint : public Endpoint {
   const std::string &country_code() const;
   const WiFiRefPtr &device() const;
   int16_t signal_strength() const;
-  uint16 frequency() const;
-  uint16 physical_mode() const;
+  uint16_t frequency() const;
+  uint16_t physical_mode() const;
   const std::string &network_mode() const;
   const std::string &security_mode() const;
   bool ieee80211w_required() const;
@@ -131,8 +131,8 @@ class WiFiEndpoint : public Endpoint {
                                     const std::string &ssid,
                                     const std::string &bssid,
                                     const std::string &network_mode,
-                                    uint16 frequency,
-                                    int16 signal_dbm,
+                                    uint16_t frequency,
+                                    int16_t signal_dbm,
                                     bool has_wpa_property,
                                     bool has_rsn_property);
   // As above, but with the last two parameters false.
@@ -141,8 +141,8 @@ class WiFiEndpoint : public Endpoint {
                                         const std::string &ssid,
                                         const std::string &bssid,
                                         const std::string &network_mode,
-                                        uint16 frequency,
-                                        int16 signal_dbm);
+                                        uint16_t frequency,
+                                        int16_t signal_dbm);
   // Maps mode strings from supplicant into flimflam's nomenclature, as defined
   // in chromeos/dbus/service_constants.h.
   static const char *ParseMode(const std::string &mode_string);
@@ -164,7 +164,7 @@ class WiFiEndpoint : public Endpoint {
   // elements and data rates live in |properties|.
   static Metrics::WiFiNetworkPhyMode DeterminePhyModeFromFrequency(
       const std::map<std::string, ::DBus::Variant> &properties,
-      uint16 frequency);
+      uint16_t frequency);
   // Parse information elements to determine the physical mode, vendor
   // information and IEEE 802.11w requirement information associated
   // with the AP.  Returns true if a physical mode was determined from
@@ -199,9 +199,9 @@ class WiFiEndpoint : public Endpoint {
   std::string bssid_string_;
   std::string bssid_hex_;
   std::string country_code_;
-  int16 signal_strength_;
-  uint16 frequency_;
-  uint16 physical_mode_;
+  int16_t signal_strength_;
+  uint16_t frequency_;
+  uint16_t physical_mode_;
   // network_mode_ and security_mode_ are represented as flimflam names
   // (not necessarily the same as wpa_supplicant names)
   std::string network_mode_;

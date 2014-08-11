@@ -145,7 +145,7 @@ class WPASupplicant {
   // extracted successfully, false otherwise.
   static bool ExtractRemoteCertification(
       const std::map<std::string, DBus::Variant> &properties,
-      std::string *subject, uint32 *depth);
+      std::string *subject, uint32_t *depth);
 };
 
 }  // namespace shill

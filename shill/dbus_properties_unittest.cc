@@ -43,9 +43,9 @@ TEST_F(DBusPropertiesTest, ConvertKeyValueStoreToMap) {
   static const char kBoolKey[] = "BoolKey";
   const bool kBoolValue = true;
   static const char kInt32Key[] = "Int32Key";
-  const int32 kInt32Value = 123;
+  const int32_t kInt32Value = 123;
   static const char kUint32Key[] = "Uint32Key";
-  const uint32 kUint32Value = 654;
+  const uint32_t kUint32Value = 654;
   KeyValueStore store;
   store.SetString(kStringKey, kStringValue);
   store.SetStringmap(kStringmapKey, kStringmapValue);
@@ -70,10 +70,10 @@ TEST_F(DBusPropertiesTest, ConvertKeyValueStoreToMap) {
   bool bool_value = !kBoolValue;
   EXPECT_TRUE(DBusProperties::GetBool(props, kBoolKey, &bool_value));
   EXPECT_EQ(kBoolValue, bool_value);
-  int32 int32_value = ~kInt32Value;
+  int32_t int32_value = ~kInt32Value;
   EXPECT_TRUE(DBusProperties::GetInt32(props, kInt32Key, &int32_value));
   EXPECT_EQ(kInt32Value, int32_value);
-  uint32 uint32_value = ~kUint32Value;
+  uint32_t uint32_value = ~kUint32Value;
   EXPECT_TRUE(DBusProperties::GetUint32(props, kUint32Key, &uint32_value));
   EXPECT_EQ(kUint32Value, uint32_value);
 }
@@ -108,31 +108,31 @@ struct IntTestTraits : public TestTraits<DerivedT, ValueT> {
   static ValueT GetNewValue() { return numeric_limits<ValueT>::max(); }
 };
 
-struct Int16TestTraits : public IntTestTraits<Int16TestTraits, int16> {
+struct Int16TestTraits : public IntTestTraits<Int16TestTraits, int16_t> {
   static constexpr GetterType kMethodUnderTest = &DBusProperties::GetInt16;
 };
 
-struct Int32TestTraits : public IntTestTraits<Int32TestTraits, int32> {
+struct Int32TestTraits : public IntTestTraits<Int32TestTraits, int32_t> {
   static constexpr GetterType kMethodUnderTest = &DBusProperties::GetInt32;
 };
 
-struct Int64TestTraits : public IntTestTraits<Int64TestTraits, int64> {
+struct Int64TestTraits : public IntTestTraits<Int64TestTraits, int64_t> {
   static constexpr GetterType kMethodUnderTest = &DBusProperties::GetInt64;
 };
 
-struct Uint8TestTraits : public IntTestTraits<Uint8TestTraits, uint8> {
+struct Uint8TestTraits : public IntTestTraits<Uint8TestTraits, uint8_t> {
   static constexpr GetterType kMethodUnderTest = &DBusProperties::GetUint8;
 };
 
-struct Uint16TestTraits : public IntTestTraits<Uint16TestTraits, uint16> {
+struct Uint16TestTraits : public IntTestTraits<Uint16TestTraits, uint16_t> {
   static constexpr GetterType kMethodUnderTest = &DBusProperties::GetUint16;
 };
 
-struct Uint32TestTraits : public IntTestTraits<Uint32TestTraits, uint32> {
+struct Uint32TestTraits : public IntTestTraits<Uint32TestTraits, uint32_t> {
   static constexpr GetterType kMethodUnderTest = &DBusProperties::GetUint32;
 };
 
-struct Uint64TestTraits : public IntTestTraits<Uint64TestTraits, uint64> {
+struct Uint64TestTraits : public IntTestTraits<Uint64TestTraits, uint64_t> {
   static constexpr GetterType kMethodUnderTest = &DBusProperties::GetUint64;
 };
 
@@ -196,13 +196,13 @@ struct DBusPropertiesMapTestTraits
   static DBusPropertiesMap GetNewValue() {
     DBusPropertiesMap value;
     value["BoolKey"].writer().append_bool(true);
-    value["Int16Key"].writer().append_int16(numeric_limits<int16>::max());
-    value["Int32Key"].writer().append_int32(numeric_limits<int32>::max());
-    value["Int64Key"].writer().append_int64(numeric_limits<int64>::max());
-    value["Uint8Key"].writer().append_byte(numeric_limits<uint8>::max());
-    value["Uint16Key"].writer().append_uint16(numeric_limits<uint16>::max());
-    value["Uint32Key"].writer().append_uint32(numeric_limits<uint32>::max());
-    value["Uint64Key"].writer().append_uint64(numeric_limits<uint64>::max());
+    value["Int16Key"].writer().append_int16(numeric_limits<int16_t>::max());
+    value["Int32Key"].writer().append_int32(numeric_limits<int32_t>::max());
+    value["Int64Key"].writer().append_int64(numeric_limits<int64_t>::max());
+    value["Uint8Key"].writer().append_byte(numeric_limits<uint8_t>::max());
+    value["Uint16Key"].writer().append_uint16(numeric_limits<uint16_t>::max());
+    value["Uint32Key"].writer().append_uint32(numeric_limits<uint32_t>::max());
+    value["Uint64Key"].writer().append_uint64(numeric_limits<uint64_t>::max());
     value["DoubleKey"].writer().append_double(3.14);
     value["StringKey"].writer().append_string("new");
     return value;
@@ -237,20 +237,20 @@ struct DBusPropertiesMapTestTraits
 
       if (expected_signature == DBus::type<bool>::sig()) {
         CheckDBusVariantEqual<bool>(key, expected_value, actual_value);
-      } else if (expected_signature == DBus::type<int16>::sig()) {
-        CheckDBusVariantEqual<int16>(key, expected_value, actual_value);
-      } else if (expected_signature == DBus::type<int32>::sig()) {
-        CheckDBusVariantEqual<int32>(key, expected_value, actual_value);
-      } else if (expected_signature == DBus::type<int64>::sig()) {
-        CheckDBusVariantEqual<int64>(key, expected_value, actual_value);
-      } else if (expected_signature == DBus::type<uint8>::sig()) {
-        CheckDBusVariantEqual<uint8>(key, expected_value, actual_value);
-      } else if (expected_signature == DBus::type<uint16>::sig()) {
-        CheckDBusVariantEqual<uint16>(key, expected_value, actual_value);
-      } else if (expected_signature == DBus::type<uint32>::sig()) {
-        CheckDBusVariantEqual<uint32>(key, expected_value, actual_value);
-      } else if (expected_signature == DBus::type<uint64>::sig()) {
-        CheckDBusVariantEqual<uint64>(key, expected_value, actual_value);
+      } else if (expected_signature == DBus::type<int16_t>::sig()) {
+        CheckDBusVariantEqual<int16_t>(key, expected_value, actual_value);
+      } else if (expected_signature == DBus::type<int32_t>::sig()) {
+        CheckDBusVariantEqual<int32_t>(key, expected_value, actual_value);
+      } else if (expected_signature == DBus::type<int64_t>::sig()) {
+        CheckDBusVariantEqual<int64_t>(key, expected_value, actual_value);
+      } else if (expected_signature == DBus::type<uint8_t>::sig()) {
+        CheckDBusVariantEqual<uint8_t>(key, expected_value, actual_value);
+      } else if (expected_signature == DBus::type<uint16_t>::sig()) {
+        CheckDBusVariantEqual<uint16_t>(key, expected_value, actual_value);
+      } else if (expected_signature == DBus::type<uint32_t>::sig()) {
+        CheckDBusVariantEqual<uint32_t>(key, expected_value, actual_value);
+      } else if (expected_signature == DBus::type<uint64_t>::sig()) {
+        CheckDBusVariantEqual<uint64_t>(key, expected_value, actual_value);
       } else if (expected_signature == DBus::type<double>::sig()) {
         CheckDBusVariantEqual<double>(key, expected_value, actual_value);
       } else if (expected_signature == DBus::type<string>::sig()) {

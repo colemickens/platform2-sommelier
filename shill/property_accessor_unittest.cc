@@ -25,14 +25,14 @@ using ::testing::Test;
 namespace shill {
 
 TEST(PropertyAccessorTest, SignedIntCorrectness) {
-  int32 int_store = 0;
+  int32_t int_store = 0;
   {
     Error error;
-    int32 orig_value = int_store;
-    Int32Accessor accessor(new PropertyAccessor<int32>(&int_store));
+    int32_t orig_value = int_store;
+    Int32Accessor accessor(new PropertyAccessor<int32_t>(&int_store));
     EXPECT_EQ(int_store, accessor->Get(&error));
 
-    int32 expected_int32 = 127;
+    int32_t expected_int32 = 127;
     EXPECT_TRUE(accessor->Set(expected_int32, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_int32, accessor->Get(&error));
@@ -45,40 +45,40 @@ TEST(PropertyAccessorTest, SignedIntCorrectness) {
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(orig_value, accessor->Get(&error));
 
-    int_store = std::numeric_limits<int32>::max();
-    EXPECT_EQ(std::numeric_limits<int32>::max(), accessor->Get(&error));
+    int_store = std::numeric_limits<int32_t>::max();
+    EXPECT_EQ(std::numeric_limits<int32_t>::max(), accessor->Get(&error));
   }
   {
     Error error;
-    Int32Accessor accessor(new ConstPropertyAccessor<int32>(&int_store));
+    Int32Accessor accessor(new ConstPropertyAccessor<int32_t>(&int_store));
     EXPECT_EQ(int_store, accessor->Get(&error));
 
-    int32 expected_int32 = 127;
+    int32_t expected_int32 = 127;
     accessor->Set(expected_int32, &error);
     ASSERT_FALSE(error.IsSuccess());
     EXPECT_EQ(Error::kInvalidArguments, error.type());
     EXPECT_EQ(int_store, accessor->Get(&error));
 
-    int_store = std::numeric_limits<int32>::max();
-    EXPECT_EQ(std::numeric_limits<int32>::max(), accessor->Get(&error));
+    int_store = std::numeric_limits<int32_t>::max();
+    EXPECT_EQ(std::numeric_limits<int32_t>::max(), accessor->Get(&error));
   }
   {
     Error error;
-    Int32Accessor accessor(new ConstPropertyAccessor<int32>(&int_store));
+    Int32Accessor accessor(new ConstPropertyAccessor<int32_t>(&int_store));
     accessor->Clear(&error);
     ASSERT_FALSE(error.IsSuccess());
   }
   {
     Error error;
-    Int32Accessor accessor(new WriteOnlyPropertyAccessor<int32>(&int_store));
+    Int32Accessor accessor(new WriteOnlyPropertyAccessor<int32_t>(&int_store));
     accessor->Get(&error);
     EXPECT_TRUE(error.IsFailure());
     EXPECT_EQ(Error::kPermissionDenied, error.type());
   }
   {
     Error error;
-    int32 expected_int32 = 127;
-    WriteOnlyPropertyAccessor<int32> accessor(&int_store);
+    int32_t expected_int32 = 127;
+    WriteOnlyPropertyAccessor<int32_t> accessor(&int_store);
     EXPECT_TRUE(accessor.Set(expected_int32, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_int32, *accessor.property_);
@@ -87,16 +87,16 @@ TEST(PropertyAccessorTest, SignedIntCorrectness) {
     EXPECT_FALSE(accessor.Set(expected_int32, &error));
     EXPECT_TRUE(error.IsSuccess());
     // As a write-only, the value can't be read.
-    EXPECT_EQ(int32(), accessor.Get(&error));
+    EXPECT_EQ(int32_t(), accessor.Get(&error));
     ASSERT_FALSE(error.IsSuccess());
 
-    int_store = std::numeric_limits<int32>::max();
-    EXPECT_EQ(std::numeric_limits<int32>::max(), *accessor.property_);
+    int_store = std::numeric_limits<int32_t>::max();
+    EXPECT_EQ(std::numeric_limits<int32_t>::max(), *accessor.property_);
   }
   {
     Error error;
-    int32 orig_value = int_store = 0;
-    WriteOnlyPropertyAccessor<int32> accessor(&int_store);
+    int32_t orig_value = int_store = 0;
+    WriteOnlyPropertyAccessor<int32_t> accessor(&int_store);
 
     EXPECT_TRUE(accessor.Set(127, &error));
     accessor.Clear(&error);
@@ -106,14 +106,14 @@ TEST(PropertyAccessorTest, SignedIntCorrectness) {
 }
 
 TEST(PropertyAccessorTest, UnsignedIntCorrectness) {
-  uint32 int_store = 0;
+  uint32_t int_store = 0;
   {
     Error error;
-    uint32 orig_value = int_store;
-    Uint32Accessor accessor(new PropertyAccessor<uint32>(&int_store));
+    uint32_t orig_value = int_store;
+    Uint32Accessor accessor(new PropertyAccessor<uint32_t>(&int_store));
     EXPECT_EQ(int_store, accessor->Get(&error));
 
-    uint32 expected_uint32 = 127;
+    uint32_t expected_uint32 = 127;
     EXPECT_TRUE(accessor->Set(expected_uint32, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_uint32, accessor->Get(&error));
@@ -126,40 +126,41 @@ TEST(PropertyAccessorTest, UnsignedIntCorrectness) {
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(orig_value, accessor->Get(&error));
 
-    int_store = std::numeric_limits<uint32>::max();
-    EXPECT_EQ(std::numeric_limits<uint32>::max(), accessor->Get(&error));
+    int_store = std::numeric_limits<uint32_t>::max();
+    EXPECT_EQ(std::numeric_limits<uint32_t>::max(), accessor->Get(&error));
   }
   {
     Error error;
-    Uint32Accessor accessor(new ConstPropertyAccessor<uint32>(&int_store));
+    Uint32Accessor accessor(new ConstPropertyAccessor<uint32_t>(&int_store));
     EXPECT_EQ(int_store, accessor->Get(&error));
 
-    uint32 expected_uint32 = 127;
+    uint32_t expected_uint32 = 127;
     EXPECT_FALSE(accessor->Set(expected_uint32, &error));
     ASSERT_FALSE(error.IsSuccess());
     EXPECT_EQ(Error::kInvalidArguments, error.type());
     EXPECT_EQ(int_store, accessor->Get(&error));
 
-    int_store = std::numeric_limits<uint32>::max();
-    EXPECT_EQ(std::numeric_limits<uint32>::max(), accessor->Get(&error));
+    int_store = std::numeric_limits<uint32_t>::max();
+    EXPECT_EQ(std::numeric_limits<uint32_t>::max(), accessor->Get(&error));
   }
   {
     Error error;
-    Uint32Accessor accessor(new ConstPropertyAccessor<uint32>(&int_store));
+    Uint32Accessor accessor(new ConstPropertyAccessor<uint32_t>(&int_store));
     accessor->Clear(&error);
     ASSERT_FALSE(error.IsSuccess());
   }
   {
     Error error;
-    Uint32Accessor accessor(new WriteOnlyPropertyAccessor<uint32>(&int_store));
+    Uint32Accessor accessor(
+        new WriteOnlyPropertyAccessor<uint32_t>(&int_store));
     accessor->Get(&error);
     EXPECT_TRUE(error.IsFailure());
     EXPECT_EQ(Error::kPermissionDenied, error.type());
   }
   {
     Error error;
-    uint32 expected_uint32 = 127;
-    WriteOnlyPropertyAccessor<uint32> accessor(&int_store);
+    uint32_t expected_uint32 = 127;
+    WriteOnlyPropertyAccessor<uint32_t> accessor(&int_store);
     EXPECT_TRUE(accessor.Set(expected_uint32, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_uint32, *accessor.property_);
@@ -168,16 +169,16 @@ TEST(PropertyAccessorTest, UnsignedIntCorrectness) {
     EXPECT_FALSE(accessor.Set(expected_uint32, &error));
     EXPECT_TRUE(error.IsSuccess());
     // As a write-only, the value can't be read.
-    EXPECT_EQ(uint32(), accessor.Get(&error));
+    EXPECT_EQ(uint32_t(), accessor.Get(&error));
     ASSERT_FALSE(error.IsSuccess());
 
-    int_store = std::numeric_limits<uint32>::max();
-    EXPECT_EQ(std::numeric_limits<uint32>::max(), *accessor.property_);
+    int_store = std::numeric_limits<uint32_t>::max();
+    EXPECT_EQ(std::numeric_limits<uint32_t>::max(), *accessor.property_);
   }
   {
     Error error;
-    uint32 orig_value = int_store = 0;
-    WriteOnlyPropertyAccessor<uint32> accessor(&int_store);
+    uint32_t orig_value = int_store = 0;
+    WriteOnlyPropertyAccessor<uint32_t> accessor(&int_store);
 
     EXPECT_TRUE(accessor.Set(127, &error));
     accessor.Clear(&error);

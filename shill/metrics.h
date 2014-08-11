@@ -551,7 +551,7 @@ class Metrics {
   virtual ~Metrics();
 
   // Converts the WiFi frequency into the associated UMA channel enumerator.
-  static WiFiChannel WiFiFrequencyToChannel(uint16 frequency);
+  static WiFiChannel WiFiFrequencyToChannel(uint16_t frequency);
 
   // Converts a flimflam security string into its UMA security enumerator.
   static WiFiSecurity WiFiSecurityStringToEnum(const std::string &security);
@@ -691,7 +691,7 @@ class Metrics {
   // Notifies this object that a cellular device has been dropped by the
   // network.
   void NotifyCellularDeviceDrop(const std::string &network_technology,
-                                uint16 signal_strength);
+                                uint16_t signal_strength);
 
   // Notifies this object about 3GPP registration drop events.
   virtual void Notify3GPPRegistrationDelayedDropPosted();
@@ -802,20 +802,20 @@ class Metrics {
   typedef std::map<const int, std::shared_ptr<DeviceMetrics> >
       DeviceMetricsLookupMap;
 
-  static const uint16 kWiFiBandwidth5MHz;
-  static const uint16 kWiFiBandwidth20MHz;
-  static const uint16 kWiFiFrequency2412;
-  static const uint16 kWiFiFrequency2472;
-  static const uint16 kWiFiFrequency2484;
-  static const uint16 kWiFiFrequency5170;
-  static const uint16 kWiFiFrequency5180;
-  static const uint16 kWiFiFrequency5230;
-  static const uint16 kWiFiFrequency5240;
-  static const uint16 kWiFiFrequency5320;
-  static const uint16 kWiFiFrequency5500;
-  static const uint16 kWiFiFrequency5700;
-  static const uint16 kWiFiFrequency5745;
-  static const uint16 kWiFiFrequency5825;
+  static const uint16_t kWiFiBandwidth5MHz;
+  static const uint16_t kWiFiBandwidth20MHz;
+  static const uint16_t kWiFiFrequency2412;
+  static const uint16_t kWiFiFrequency2472;
+  static const uint16_t kWiFiFrequency2484;
+  static const uint16_t kWiFiFrequency5170;
+  static const uint16_t kWiFiFrequency5180;
+  static const uint16_t kWiFiFrequency5230;
+  static const uint16_t kWiFiFrequency5240;
+  static const uint16_t kWiFiFrequency5320;
+  static const uint16_t kWiFiFrequency5500;
+  static const uint16_t kWiFiFrequency5700;
+  static const uint16_t kWiFiFrequency5745;
+  static const uint16_t kWiFiFrequency5825;
 
   void InitializeCommonServiceMetrics(const Service &service);
   void UpdateServiceStateTransitionMetrics(ServiceMetrics *service_metrics,

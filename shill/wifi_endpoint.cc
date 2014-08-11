@@ -128,7 +128,7 @@ void WiFiEndpoint::PropertiesChanged(
   }
 }
 
-void WiFiEndpoint::UpdateSignalStrength(int16 strength) {
+void WiFiEndpoint::UpdateSignalStrength(int16_t strength) {
   if (signal_strength_ == strength) {
     return;
   }
@@ -214,11 +214,11 @@ int16_t WiFiEndpoint::signal_strength() const {
   return signal_strength_;
 }
 
-uint16 WiFiEndpoint::frequency() const {
+uint16_t WiFiEndpoint::frequency() const {
   return frequency_;
 }
 
-uint16 WiFiEndpoint::physical_mode() const {
+uint16_t WiFiEndpoint::physical_mode() const {
   return physical_mode_;
 }
 
@@ -252,8 +252,8 @@ WiFiEndpoint *WiFiEndpoint::MakeOpenEndpoint(ProxyFactory *proxy_factory,
                                              const string &ssid,
                                              const string &bssid,
                                              const string &network_mode,
-                                             uint16 frequency,
-                                             int16 signal_dbm) {
+                                             uint16_t frequency,
+                                             int16_t signal_dbm) {
   return MakeEndpoint(proxy_factory, wifi, ssid, bssid, network_mode,
                       frequency, signal_dbm, false, false);
 }
@@ -265,8 +265,8 @@ WiFiEndpoint *WiFiEndpoint::MakeEndpoint(ProxyFactory *proxy_factory,
                                          const string &ssid,
                                          const string &bssid,
                                          const string &network_mode,
-                                         uint16 frequency,
-                                         int16 signal_dbm,
+                                         uint16_t frequency,
+                                         int16_t signal_dbm,
                                          bool has_wpa_property,
                                          bool has_rsn_property) {
   map <string, ::DBus::Variant> args;
@@ -385,7 +385,7 @@ void WiFiEndpoint::ParseKeyManagementMethods(
 
 // static
 Metrics::WiFiNetworkPhyMode WiFiEndpoint::DeterminePhyModeFromFrequency(
-    const map<string, ::DBus::Variant> &properties, uint16 frequency) {
+    const map<string, ::DBus::Variant> &properties, uint16_t frequency) {
   uint32_t max_rate = 0;
   map<string, ::DBus::Variant>::const_iterator it =
       properties.find(WPASupplicant::kBSSPropertyRates);
@@ -516,7 +516,7 @@ void WiFiEndpoint::ParseWPACapabilities(
     if (std::distance(ie, end) < IEEE_80211::kRSNIECipherCountLen) {
       return;
     }
-    uint16 cipher_count = *ie | (*(ie + 1) << 8);
+    uint16_t cipher_count = *ie | (*(ie + 1) << 8);
 
     // Skip over the cipher selectors.
     int skip_length = IEEE_80211::kRSNIECipherCountLen +
@@ -532,7 +532,7 @@ void WiFiEndpoint::ParseWPACapabilities(
   }
 
   // Retrieve a little-endian capabilities bitfield.
-  uint16 capabilities = *ie | (*(ie + 1) << 8);
+  uint16_t capabilities = *ie | (*(ie + 1) << 8);
 
   if (capabilities & IEEE_80211::kRSNCapabilityFrameProtectionRequired &&
       ieee80211w_required) {

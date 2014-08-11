@@ -85,14 +85,14 @@ class DBusAdaptorTest : public PropertyStoreTest {
 
  protected:
   bool ex_bool_;
-  uint8 ex_byte_;
+  uint8_t ex_byte_;
   ByteArrays ex_bytearrays_;
-  uint16 ex_uint16_;
-  vector<uint16> ex_uint16s_;
-  uint32 ex_uint32_;
-  uint64 ex_uint64_;
-  int16 ex_int16_;
-  int32 ex_int32_;
+  uint16_t ex_uint16_;
+  vector<uint16_t> ex_uint16s_;
+  uint32_t ex_uint32_;
+  uint64_t ex_uint64_;
+  int16_t ex_int16_;
+  int32_t ex_int32_;
   ::DBus::Path ex_path_;
   vector< ::DBus::Path> ex_paths_;
   string ex_string_;
@@ -159,7 +159,7 @@ TEST_F(DBusAdaptorTest, Conversions) {
       ex_stringmaps_,
       ContainerEq(stringmaps_v_.operator vector<map<string, string> >()));
   EXPECT_THAT(ex_uint16s_,
-              ContainerEq(uint16s_v_.operator vector<uint16>()));
+              ContainerEq(uint16s_v_.operator vector<uint16_t>()));
 }
 
 TEST_F(DBusAdaptorTest, Signatures) {
@@ -313,7 +313,7 @@ TEST_F(DBusAdaptorTest, ArgsToKeyValueStore) {
   const bool kBool = true;
   const char kBoolKey[] = "bool_arg";
   args[kBoolKey].writer().append_bool(kBool);
-  const int32 kInt32 = 123;
+  const int32_t kInt32 = 123;
   const char kInt32Key[] = "int32_arg";
   args[kInt32Key].writer().append_int32(kInt32);
   const char kString[] = "string";

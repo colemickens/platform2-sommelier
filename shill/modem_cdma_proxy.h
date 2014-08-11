@@ -61,21 +61,21 @@ class ModemCDMAProxy : public ModemCDMAProxyInterface {
    private:
     // Signal callbacks inherited from ModemManager::Modem::Cdma_proxy.
     virtual void ActivationStateChanged(
-        const uint32 &activation_state,
-        const uint32 &activation_error,
+        const uint32_t &activation_state,
+        const uint32_t &activation_error,
         const DBusPropertiesMap &status_changes);
-    virtual void SignalQuality(const uint32 &quality);
-    virtual void RegistrationStateChanged(const uint32 &cdma_1x_state,
-                                          const uint32 &evdo_state);
+    virtual void SignalQuality(const uint32_t &quality);
+    virtual void RegistrationStateChanged(const uint32_t &cdma_1x_state,
+                                          const uint32_t &evdo_state);
 
     // Method callbacks inherited from ModemManager::Modem::Cdma_proxy.
-    virtual void ActivateCallback(const uint32 &status,
+    virtual void ActivateCallback(const uint32_t &status,
                                   const DBus::Error &dberror, void *data);
-    virtual void GetRegistrationStateCallback(const uint32 &state_1x,
-                                              const uint32 &state_evdo,
+    virtual void GetRegistrationStateCallback(const uint32_t &state_1x,
+                                              const uint32_t &state_evdo,
                                               const DBus::Error &error,
                                               void *data);
-    virtual void GetSignalQualityCallback(const uint32 &quality,
+    virtual void GetSignalQualityCallback(const uint32_t &quality,
                                           const DBus::Error &dberror,
                                           void *data);
 

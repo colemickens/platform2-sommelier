@@ -66,22 +66,22 @@ bool DBusProperties::GetDouble(const DBusPropertiesMap &properties,
 // static
 bool DBusProperties::GetInt16(const DBusPropertiesMap &properties,
                               const string &key,
-                              int16 *value) {
-  return GetValue<int16>(properties, key, value);
+                              int16_t *value) {
+  return GetValue<int16_t>(properties, key, value);
 }
 
 // static
 bool DBusProperties::GetInt32(const DBusPropertiesMap &properties,
                               const string &key,
-                              int32 *value) {
-  return GetValue<int32>(properties, key, value);
+                              int32_t *value) {
+  return GetValue<int32_t>(properties, key, value);
 }
 
 // static
 bool DBusProperties::GetInt64(const DBusPropertiesMap &properties,
                               const string &key,
-                              int64 *value) {
-  return GetValue<int64>(properties, key, value);
+                              int64_t *value) {
+  return GetValue<int64_t>(properties, key, value);
 }
 
 // static
@@ -115,29 +115,29 @@ bool DBusProperties::GetStrings(const DBusPropertiesMap &properties,
 // static
 bool DBusProperties::GetUint8(const DBusPropertiesMap &properties,
                                const string &key,
-                               uint8 *value) {
-  return GetValue<uint8>(properties, key, value);
+                               uint8_t *value) {
+  return GetValue<uint8_t>(properties, key, value);
 }
 
 // static
 bool DBusProperties::GetUint16(const DBusPropertiesMap &properties,
                                const string &key,
-                               uint16 *value) {
-  return GetValue<uint16>(properties, key, value);
+                               uint16_t *value) {
+  return GetValue<uint16_t>(properties, key, value);
 }
 
 // static
 bool DBusProperties::GetUint32(const DBusPropertiesMap &properties,
                                const string &key,
-                               uint32 *value) {
-  return GetValue<uint32>(properties, key, value);
+                               uint32_t *value) {
+  return GetValue<uint32_t>(properties, key, value);
 }
 
 // static
 bool DBusProperties::GetUint64(const DBusPropertiesMap &properties,
                                const string &key,
-                               uint64 *value) {
-  return GetValue<uint64>(properties, key, value);
+                               uint64_t *value) {
+  return GetValue<uint64_t>(properties, key, value);
 }
 
 // static

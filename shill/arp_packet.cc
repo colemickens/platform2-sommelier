@@ -59,13 +59,13 @@ bool ArpPacket::ParseReply(const ByteString &packet) {
 
   memcpy(&header, packet.GetConstData(), sizeof(header));
 
-  const uint16 hardware_type = ntohs(header.ar_hrd);
+  const uint16_t hardware_type = ntohs(header.ar_hrd);
   if (hardware_type != ARPHRD_ETHER) {
     NOTIMPLEMENTED() << "Packet is of unknown ARPHRD type "
                      << hardware_type;
     return false;
   }
-  const uint16 protocol = ntohs(header.ar_pro);
+  const uint16_t protocol = ntohs(header.ar_pro);
   IPAddress::Family family = IPAddress::kFamilyUnknown;
   if (protocol == ETHERTYPE_IP) {
     family = IPAddress::kFamilyIPv4;
@@ -88,7 +88,7 @@ bool ArpPacket::ParseReply(const ByteString &packet) {
                << ip_address_length;
     return false;
   }
-  const uint16 operation = ntohs(header.ar_op);
+  const uint16_t operation = ntohs(header.ar_op);
   if (operation != ARPOP_REPLY) {
     NOTIMPLEMENTED() << "Packet is not an ARP reply but of type "
                      << operation;
@@ -124,7 +124,7 @@ bool ArpPacket::FormatRequest(ByteString *packet) const {
     LOG(ERROR) << "Local and remote IP address families do not match!";
     return false;
   }
-  uint16 protocol;
+  uint16_t protocol;
   IPAddress::Family family = local_ip_address_.family();
   if (family == IPAddress::kFamilyIPv4) {
     protocol = ETHERTYPE_IP;

@@ -46,13 +46,14 @@ void DeviceDBusAdaptor::EmitBoolChanged(const std::string& name, bool value) {
   PropertyChanged(name, DBusAdaptor::BoolToVariant(value));
 }
 
-void DeviceDBusAdaptor::EmitUintChanged(const std::string& name, uint32 value) {
+void DeviceDBusAdaptor::EmitUintChanged(const std::string &name,
+                                        uint32_t value) {
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName()
                 << " " << name;
   PropertyChanged(name, DBusAdaptor::Uint32ToVariant(value));
 }
 
-void DeviceDBusAdaptor::EmitUint16Changed(const string &name, uint16 value) {
+void DeviceDBusAdaptor::EmitUint16Changed(const string &name, uint16_t value) {
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName()
                 << " " << name;
   PropertyChanged(name, DBusAdaptor::Uint16ToVariant(value));

@@ -174,8 +174,8 @@ class Device : public base::RefCounted<Device> {
   virtual bool RestartPortalDetection();
 
   // Get receive and transmit byte counters.
-  virtual uint64 GetReceiveByteCount();
-  virtual uint64 GetTransmitByteCount();
+  virtual uint64_t GetReceiveByteCount();
+  virtual uint64_t GetTransmitByteCount();
 
   // Perform a TDLS |operation| on the underlying device, with respect
   // to a given |peer|.  The string returned is empty for any operation
@@ -489,7 +489,7 @@ class Device : public base::RefCounted<Device> {
 
   void HelpRegisterConstDerivedUint64(
       const std::string &name,
-      uint64(Device::*get)(Error *));
+      uint64_t(Device::*get)(Error *));
 
   // Property getters reserved for subclasses
   ControlInterface *control_interface() const { return control_interface_; }
@@ -550,13 +550,13 @@ class Device : public base::RefCounted<Device> {
   std::string GetRpcConnectionIdentifier();
 
   // Get the LinkMonitor's average response time.
-  uint64 GetLinkMonitorResponseTime(Error *error);
+  uint64_t GetLinkMonitorResponseTime(Error *error);
 
   // Get receive and transmit byte counters. These methods simply wrap
   // GetReceiveByteCount and GetTransmitByteCount in order to be used by
   // HelpRegisterConstDerivedUint64.
-  uint64 GetReceiveByteCountProperty(Error *error);
-  uint64 GetTransmitByteCountProperty(Error *error);
+  uint64_t GetReceiveByteCountProperty(Error *error);
+  uint64_t GetTransmitByteCountProperty(Error *error);
 
   // Emit a property change signal for the "IPConfigs" property of this device.
   void UpdateIPConfigsProperty();
@@ -634,8 +634,8 @@ class Device : public base::RefCounted<Device> {
 
   // Keep track of the offset between the interface-reported byte counters
   // and our persisted value.
-  uint64 receive_byte_offset_;
-  uint64 transmit_byte_offset_;
+  uint64_t receive_byte_offset_;
+  uint64_t transmit_byte_offset_;
 
   // Maintain a reference to the connected / connecting service
   ServiceRefPtr selected_service_;

@@ -15,21 +15,21 @@ using testing::Test;
 namespace shill {
 
 namespace {
-const uint8 kArpRequestV4[] =
+const uint8_t kArpRequestV4[] =
     { 0x00, 0x01, 0x08, 0x00, 0x06, 0x04, 0x00, 0x01 };
-const uint8 kArpRequestV6[] =
+const uint8_t kArpRequestV6[] =
     { 0x00, 0x01, 0x86, 0xdd, 0x06, 0x10, 0x00, 0x01 };
-const uint8 kArpReplyV4[] =
+const uint8_t kArpReplyV4[] =
     { 0x00, 0x01, 0x08, 0x00, 0x06, 0x04, 0x00, 0x02 };
-const uint8 kArpReplyV6[] =
+const uint8_t kArpReplyV6[] =
     { 0x00, 0x01, 0x86, 0xdd, 0x06, 0x10, 0x00, 0x02 };
 const char kIPv4Address0[] = "192.168.0.1";
 const char kIPv4Address1[] = "10.0.12.13";
 const char kIPv6Address0[] = "fe80::1aa9:5ff:7ebf:14c5";
 const char kIPv6Address1[] = "1980:0:0:1000:1b02:1aa9:5ff:7ebf";
-const uint8 kMACAddress0[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 };
-const uint8 kMACAddress1[] = { 0x88, 0x87, 0x86, 0x85, 0x84, 0x83 };
-const uint8 kInsertedByte[] = { 0x00 };
+const uint8_t kMACAddress0[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 };
+const uint8_t kMACAddress1[] = { 0x88, 0x87, 0x86, 0x85, 0x84, 0x83 };
+const uint8_t kInsertedByte[] = { 0x00 };
 const size_t kArpPaddingSizeV4 = 18;
 const size_t kArpPaddingSizeV6 = 0;
 }  // namespace

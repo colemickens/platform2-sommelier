@@ -43,21 +43,21 @@ class KeyValueStore {
   bool ContainsUint(const std::string &name) const;
 
   bool GetBool(const std::string &name) const;
-  int32 GetInt(const std::string &name) const;
+  int32_t GetInt(const std::string &name) const;
   const std::string &GetString(const std::string &name) const;
   const std::map<std::string, std::string> &GetStringmap(
       const std::string &name) const;
   const std::vector<std::string> &GetStrings(const std::string &name) const;
-  uint32 GetUint(const std::string &name) const;
+  uint32_t GetUint(const std::string &name) const;
 
   void SetBool(const std::string &name, bool value);
-  void SetInt(const std::string &name, int32 value);
+  void SetInt(const std::string &name, int32_t value);
   void SetString(const std::string &name, const std::string &value);
   void SetStringmap(const std::string &name,
                     const std::map<std::string, std::string> &value);
   void SetStrings(const std::string &name,
                   const std::vector<std::string> &value);
-  void SetUint(const std::string &name, uint32 value);
+  void SetUint(const std::string &name, uint32_t value);
 
   void RemoveString(const std::string &name);
   void RemoveStringmap(const std::string &name);
@@ -74,7 +74,7 @@ class KeyValueStore {
   const std::map<std::string, bool> &bool_properties() const {
     return bool_properties_;
   }
-  const std::map<std::string, int32> &int_properties() const {
+  const std::map<std::string, int32_t> &int_properties() const {
     return int_properties_;
   }
   const std::map<std::string, std::string> &string_properties() const {
@@ -89,18 +89,18 @@ class KeyValueStore {
                  std::vector<std::string>> &strings_properties() const {
     return strings_properties_;
   }
-  const std::map<std::string, uint32> &uint_properties() const {
+  const std::map<std::string, uint32_t> &uint_properties() const {
     return uint_properties_;
   }
 
  private:
   std::map<std::string, bool> bool_properties_;
-  std::map<std::string, int32> int_properties_;
+  std::map<std::string, int32_t> int_properties_;
   std::map<std::string, std::string> string_properties_;
   std::map<std::string,
            std::map<std::string, std::string>> stringmap_properties_;
   std::map<std::string, std::vector<std::string>> strings_properties_;
-  std::map<std::string, uint32> uint_properties_;
+  std::map<std::string, uint32_t> uint_properties_;
 };
 
 }  // namespace shill

@@ -59,7 +59,7 @@ const int ConnectionHealthChecker::kNumDNSQueries = 5;
 // static
 const int ConnectionHealthChecker::kTCPStateUpdateWaitMilliseconds = 5000;
 // static
-const uint16 ConnectionHealthChecker::kRemotePort = 80;
+const uint16_t ConnectionHealthChecker::kRemotePort = 80;
 
 ConnectionHealthChecker::ConnectionHealthChecker(
     ConnectionRefPtr connection,
@@ -377,7 +377,7 @@ bool ConnectionHealthChecker::GetSocketInfo(int sock_fd,
 
   CHECK_EQ(sizeof(struct sockaddr_in), addrlen);
   struct sockaddr_in *addr_in = reinterpret_cast<sockaddr_in *>(&addr);
-  uint16 local_port = ntohs(addr_in->sin_port);
+  uint16_t local_port = ntohs(addr_in->sin_port);
   char ipstr[INET_ADDRSTRLEN];
   const char *res = inet_ntop(AF_INET, &addr_in->sin_addr,
                               ipstr, sizeof(ipstr));

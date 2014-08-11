@@ -19,8 +19,8 @@ class Error;
 
 typedef DBus::Struct<std::string, std::string, std::string> ModemHardwareInfo;
 
-typedef base::Callback<void(uint32,
-                            uint32, uint32)> ModemStateChangedSignalCallback;
+typedef base::Callback<void(uint32_t, uint32_t, uint32_t)>
+    ModemStateChangedSignalCallback;
 typedef base::Callback<void(const ModemHardwareInfo &,
                             const Error &)> ModemInfoCallback;
 

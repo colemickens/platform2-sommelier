@@ -39,7 +39,7 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
   virtual const std::string &GetRpcIdentifier() { return path(); }
   void UpdateRunning();
   void EmitBoolChanged(const std::string &name, bool value);
-  void EmitUintChanged(const std::string &name, uint32 value);
+  void EmitUintChanged(const std::string &name, uint32_t value);
   void EmitIntChanged(const std::string &name, int value);
   void EmitStringChanged(const std::string &name, const std::string &value);
   void EmitStringsChanged(const std::string &name,

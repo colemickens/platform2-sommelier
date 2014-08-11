@@ -24,7 +24,7 @@ class Nl80211Message : public GenericNetlinkMessage {
  public:
   static const char kMessageTypeString[];
 
-  Nl80211Message(uint8 command, const char *command_string)
+  Nl80211Message(uint8_t command, const char *command_string)
       : GenericNetlinkMessage(nl80211_message_type_, command, command_string) {}
   virtual ~Nl80211Message() {}
 
@@ -36,7 +36,7 @@ class Nl80211Message : public GenericNetlinkMessage {
 
   virtual bool InitFromNlmsg(const nlmsghdr *msg);
 
-  uint8 command() const { return command_; }
+  uint8_t command() const { return command_; }
   const char *command_string() const { return command_string_; }
   uint16_t message_type() const { return message_type_; }
   uint32_t sequence_number() const { return sequence_number_; }

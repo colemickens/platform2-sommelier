@@ -26,9 +26,9 @@ using std::vector;
 namespace shill {
 
 // static
-const uint32 Connection::kDefaultMetric = 1;
+const uint32_t Connection::kDefaultMetric = 1;
 // static
-const uint32 Connection::kNonDefaultMetricBase = 10;
+const uint32_t Connection::kNonDefaultMetricBase = 10;
 
 Connection::Binder::Binder(const string &name,
                            const Closure &disconnect_callback)
@@ -413,7 +413,7 @@ bool Connection::FixGatewayReachability(IPAddress *local,
   return true;
 }
 
-uint32 Connection::GetMetric(bool is_default) {
+uint32_t Connection::GetMetric(bool is_default) {
   // If this is not the default route, assign a metric based on the interface
   // index.  This way all non-default routes (even to the same gateway IP) end
   // up with unique metrics so they do not collide.

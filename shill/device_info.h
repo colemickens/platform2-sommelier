@@ -96,7 +96,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
 
   virtual bool GetFlags(int interface_index, unsigned int *flags) const;
   virtual bool GetByteCounts(int interface_index,
-                             uint64 *rx_bytes, uint64 *tx_bytes) const;
+                             uint64_t *rx_bytes, uint64_t *tx_bytes) const;
   virtual bool GetAddresses(int interface_index,
                             std::vector<AddressData> *addresses) const;
 
@@ -122,7 +122,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // forever.
   virtual bool GetIPv6DnsServerAddresses(int interface_index,
                                          std::vector<IPAddress> *address_list,
-                                         uint32 *life_time_seconds);
+                                         uint32_t *life_time_seconds);
 
   // Returns true if any of the addresses on |interface_index| are on the
   // same network prefix as |address|.
@@ -162,11 +162,11 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
     ByteString mac_address;
     std::vector<AddressData> ip_addresses;
     std::vector<IPAddress> ipv6_dns_server_addresses;
-    uint32 ipv6_dns_server_lifetime_seconds;
+    uint32_t ipv6_dns_server_lifetime_seconds;
     time_t ipv6_dns_server_received_time_seconds;
     unsigned int flags;
-    uint64 rx_bytes;
-    uint64 tx_bytes;
+    uint64_t rx_bytes;
+    uint64_t tx_bytes;
 
     // This flag indicates that link information has not been retrieved yet;
     // only the ip_addresses field is valid.

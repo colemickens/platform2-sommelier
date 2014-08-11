@@ -44,7 +44,7 @@ const char CellularCapabilityGSM::kPropertyUnlockRequired[] = "UnlockRequired";
 const char CellularCapabilityGSM::kPropertyUnlockRetries[] = "UnlockRetries";
 
 const int CellularCapabilityGSM::kGetIMSIRetryLimit = 40;
-const int64 CellularCapabilityGSM::kGetIMSIRetryDelayMilliseconds = 500;
+const int64_t CellularCapabilityGSM::kGetIMSIRetryDelayMilliseconds = 500;
 
 
 CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
@@ -407,12 +407,12 @@ void CellularCapabilityGSM::GetProperties(const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
 
   // TODO(petkov): Switch to asynchronous calls (crbug.com/200687).
-  uint32 tech = network_proxy_->AccessTechnology();
+  uint32_t tech = network_proxy_->AccessTechnology();
   SetAccessTechnology(tech);
   SLOG(Cellular, 2) << "GSM AccessTechnology: " << tech;
 
   // TODO(petkov): Switch to asynchronous calls (crbug.com/200687).
-  uint32 locks = card_proxy_->EnabledFacilityLocks();
+  uint32_t locks = card_proxy_->EnabledFacilityLocks();
   sim_lock_status_.enabled = locks & MM_MODEM_GSM_FACILITY_SIM;
   SLOG(Cellular, 2) << "GSM EnabledFacilityLocks: " << locks;
 
@@ -594,7 +594,7 @@ Stringmap CellularCapabilityGSM::ParseScanResult(const GSMScanResult &result) {
   return parsed;
 }
 
-void CellularCapabilityGSM::SetAccessTechnology(uint32 access_technology) {
+void CellularCapabilityGSM::SetAccessTechnology(uint32_t access_technology) {
   access_technology_ = access_technology;
   if (cellular()->service().get()) {
     cellular()->service()->SetNetworkTechnology(GetNetworkTechnologyString());
@@ -644,7 +644,7 @@ void CellularCapabilityGSM::OnDBusPropertiesChanged(
                                                      properties,
                                                      invalidated_properties);
   if (interface == MM_MODEM_GSM_NETWORK_INTERFACE) {
-    uint32 access_technology = MM_MODEM_GSM_ACCESS_TECH_UNKNOWN;
+    uint32_t access_technology = MM_MODEM_GSM_ACCESS_TECH_UNKNOWN;
     if (DBusProperties::GetUint32(properties,
                                   kPropertyAccessTechnology,
                                   &access_technology)) {
@@ -653,7 +653,7 @@ void CellularCapabilityGSM::OnDBusPropertiesChanged(
   } else {
     bool emit = false;
     if (interface == MM_MODEM_GSM_CARD_INTERFACE) {
-      uint32 locks = 0;
+      uint32_t locks = 0;
       if (DBusProperties::GetUint32(
               properties, kPropertyEnabledFacilityLocks, &locks)) {
         sim_lock_status_.enabled = locks & MM_MODEM_GSM_FACILITY_SIM;
@@ -679,13 +679,13 @@ void CellularCapabilityGSM::OnDBusPropertiesChanged(
   }
 }
 
-void CellularCapabilityGSM::OnNetworkModeSignal(uint32 /*mode*/) {
+void CellularCapabilityGSM::OnNetworkModeSignal(uint32_t /*mode*/) {
   // TODO(petkov): Implement this.
   NOTIMPLEMENTED();
 }
 
 void CellularCapabilityGSM::OnRegistrationInfoSignal(
-    uint32 status, const string &operator_code, const string &operator_name) {
+    uint32_t status, const string &operator_code, const string &operator_name) {
   SLOG(Cellular, 2) << __func__ << ": regstate=" << status
                     << ", opercode=" << operator_code
                     << ", opername=" << operator_name;
@@ -697,18 +697,18 @@ void CellularCapabilityGSM::OnRegistrationInfoSignal(
   cellular()->HandleNewRegistrationState();
 }
 
-void CellularCapabilityGSM::OnSignalQualitySignal(uint32 quality) {
+void CellularCapabilityGSM::OnSignalQualitySignal(uint32_t quality) {
   cellular()->HandleNewSignalQuality(quality);
 }
 
 void CellularCapabilityGSM::OnGetRegistrationInfoReply(
-    uint32 status, const string &operator_code, const string &operator_name,
+    uint32_t status, const string &operator_code, const string &operator_name,
     const Error &error) {
   if (error.IsSuccess())
     OnRegistrationInfoSignal(status, operator_code, operator_name);
 }
 
-void CellularCapabilityGSM::OnGetSignalQualityReply(uint32 quality,
+void CellularCapabilityGSM::OnGetSignalQualityReply(uint32_t quality,
                                                     const Error &error) {
   if (error.IsSuccess())
     OnSignalQualitySignal(quality);

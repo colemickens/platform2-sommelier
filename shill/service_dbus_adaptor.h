@@ -37,11 +37,11 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
   virtual const std::string &GetRpcIdentifier() { return path(); }
   virtual void UpdateConnected();
   virtual void EmitBoolChanged(const std::string &name, bool value);
-  virtual void EmitUint8Changed(const std::string &name, uint8 value);
-  virtual void EmitUint16Changed(const std::string &name, uint16 value);
+  virtual void EmitUint8Changed(const std::string &name, uint8_t value);
+  virtual void EmitUint16Changed(const std::string &name, uint16_t value);
   virtual void EmitUint16sChanged(const std::string &name,
                                   const Uint16s &value);
-  virtual void EmitUintChanged(const std::string &name, uint32 value);
+  virtual void EmitUintChanged(const std::string &name, uint32_t value);
   virtual void EmitIntChanged(const std::string &name, int value);
   virtual void EmitRpcIdentifierChanged(
       const std::string &name, const std::string &value);

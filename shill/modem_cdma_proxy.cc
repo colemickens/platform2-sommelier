@@ -92,8 +92,8 @@ void ModemCDMAProxy::Proxy::set_registration_state_callback(
 }
 
 void ModemCDMAProxy::Proxy::ActivationStateChanged(
-    const uint32 &activation_state,
-    const uint32 &activation_error,
+    const uint32_t &activation_state,
+    const uint32_t &activation_error,
     const DBusPropertiesMap &status_changes) {
   SLOG(DBus, 2) << __func__ << "(" << activation_state << ", "
                 << activation_error << ")";
@@ -102,14 +102,14 @@ void ModemCDMAProxy::Proxy::ActivationStateChanged(
                                   status_changes);
 }
 
-void ModemCDMAProxy::Proxy::SignalQuality(const uint32 &quality) {
+void ModemCDMAProxy::Proxy::SignalQuality(const uint32_t &quality) {
   SLOG(DBus, 2) << __func__ << "(" << quality << ")";
   signal_quality_callback_.Run(quality);
 }
 
 void ModemCDMAProxy::Proxy::RegistrationStateChanged(
-    const uint32 &cdma_1x_state,
-    const uint32 &evdo_state) {
+    const uint32_t &cdma_1x_state,
+    const uint32_t &evdo_state) {
   SLOG(DBus, 2) << __func__ << "(" << cdma_1x_state << ", "
                 << evdo_state << ")";
   registration_state_callback_.Run(cdma_1x_state, evdo_state);
@@ -127,7 +127,7 @@ void ModemCDMAProxy::Proxy::ActivateCallback(const uint32_t &status,
 }
 
 void ModemCDMAProxy::Proxy::GetRegistrationStateCallback(
-    const uint32 &state_1x, const uint32 &state_evdo,
+    const uint32_t &state_1x, const uint32_t &state_evdo,
     const DBus::Error &dberror, void *data) {
   SLOG(DBus, 2) << __func__ << "(" << state_1x << ", " << state_evdo << ")";
   scoped_ptr<RegistrationStateCallback> callback(
@@ -138,7 +138,7 @@ void ModemCDMAProxy::Proxy::GetRegistrationStateCallback(
 }
 
 
-void ModemCDMAProxy::Proxy::GetSignalQualityCallback(const uint32 &quality,
+void ModemCDMAProxy::Proxy::GetSignalQualityCallback(const uint32_t &quality,
                                                      const DBus::Error &dberror,
                                                      void *data) {
   SLOG(DBus, 2) << __func__ << "(" << quality << ")";

@@ -23,16 +23,16 @@ ConnectionInfo::ConnectionInfo()
 }
 
 ConnectionInfo::ConnectionInfo(int protocol,
-                               int64 time_to_expire_seconds,
+                               int64_t time_to_expire_seconds,
                                bool is_unreplied,
                                IPAddress original_source_ip_address,
-                               uint16 original_source_port,
+                               uint16_t original_source_port,
                                IPAddress original_destination_ip_address,
-                               uint16 original_destination_port,
+                               uint16_t original_destination_port,
                                IPAddress reply_source_ip_address,
-                               uint16 reply_source_port,
+                               uint16_t reply_source_port,
                                IPAddress reply_destination_ip_address,
-                               uint16 reply_destination_port)
+                               uint16_t reply_destination_port)
     : protocol_(protocol),
       time_to_expire_seconds_(time_to_expire_seconds),
       is_unreplied_(is_unreplied),

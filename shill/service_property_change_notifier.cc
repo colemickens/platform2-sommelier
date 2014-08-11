@@ -34,7 +34,7 @@ void ServicePropertyChangeNotifier::AddBoolPropertyObserver(
 void ServicePropertyChangeNotifier::AddUint8PropertyObserver(
     const string &name, Uint8Accessor accessor) {
   property_observers_.emplace_back(
-      new PropertyObserver<uint8>(
+      new PropertyObserver<uint8_t>(
           accessor,
           Bind(&ServicePropertyChangeNotifier::Uint8PropertyUpdater,
                base::Unretained(this),
@@ -44,7 +44,7 @@ void ServicePropertyChangeNotifier::AddUint8PropertyObserver(
 void ServicePropertyChangeNotifier::AddUint16PropertyObserver(
     const string &name, Uint16Accessor accessor) {
   property_observers_.emplace_back(
-      new PropertyObserver<uint16>(
+      new PropertyObserver<uint16_t>(
           accessor,
           Bind(&ServicePropertyChangeNotifier::Uint16PropertyUpdater,
                base::Unretained(this),
@@ -64,7 +64,7 @@ void ServicePropertyChangeNotifier::AddUint16sPropertyObserver(
 void ServicePropertyChangeNotifier::AddUintPropertyObserver(
     const string &name, Uint32Accessor accessor) {
   property_observers_.emplace_back(
-      new PropertyObserver<uint32>(
+      new PropertyObserver<uint32_t>(
           accessor,
           Bind(&ServicePropertyChangeNotifier::Uint32PropertyUpdater,
                base::Unretained(this),
@@ -74,7 +74,7 @@ void ServicePropertyChangeNotifier::AddUintPropertyObserver(
 void ServicePropertyChangeNotifier::AddIntPropertyObserver(
     const string &name, Int32Accessor accessor) {
   property_observers_.emplace_back(
-      new PropertyObserver<int32>(
+      new PropertyObserver<int32_t>(
           accessor,
           Bind(&ServicePropertyChangeNotifier::Int32PropertyUpdater,
                base::Unretained(this),
@@ -123,22 +123,22 @@ void ServicePropertyChangeNotifier::BoolPropertyUpdater(const string &name,
 }
 
 void ServicePropertyChangeNotifier::Uint8PropertyUpdater(const string &name,
-                                                         const uint8 &value) {
+                                                         const uint8_t &value) {
   rpc_adaptor_->EmitUint8Changed(name, value);
 }
 
-void ServicePropertyChangeNotifier::Uint16PropertyUpdater(const string &name,
-                                                          const uint16 &value) {
+void ServicePropertyChangeNotifier::Uint16PropertyUpdater(
+    const string &name, const uint16_t &value) {
   rpc_adaptor_->EmitUint16Changed(name, value);
 }
 
-void ServicePropertyChangeNotifier::Uint32PropertyUpdater(const string &name,
-                                                          const uint32 &value) {
+void ServicePropertyChangeNotifier::Uint32PropertyUpdater(
+    const string &name, const uint32_t &value) {
   rpc_adaptor_->EmitUintChanged(name, value);
 }
 
 void ServicePropertyChangeNotifier::Int32PropertyUpdater(const string &name,
-                                                         const int32 &value) {
+                                                         const int32_t &value) {
   rpc_adaptor_->EmitIntChanged(name, value);
 }
 

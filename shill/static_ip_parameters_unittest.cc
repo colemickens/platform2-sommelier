@@ -28,12 +28,12 @@ namespace shill {
 namespace {
 static const char kAddress[] = "10.0.0.1";
 static const char kGateway[] = "10.0.0.254";
-static const int32 kMtu = 512;
+static const int32_t kMtu = 512;
 static const char kNameServer0[] = "10.0.1.253";
 static const char kNameServer1[] = "10.0.1.252";
 static const char kNameServers[] = "10.0.1.253,10.0.1.252";
 static const char kPeerAddress[] = "10.0.0.2";
-static const int32 kPrefixLen = 24;
+static const int32_t kPrefixLen = 24;
 }  // namespace
 
 class StaticIpParametersTest : public Test {
@@ -83,7 +83,7 @@ class StaticIpParametersTest : public Test {
                                          &string_value,
                                          &unused_error));
     EXPECT_EQ(VersionedAddress(kGateway, version), string_value);
-    int32 int_value;
+    int32_t int_value;
     EXPECT_TRUE(store->GetInt32Property(property_prefix + ".Mtu", &int_value,
                                         &unused_error));
     EXPECT_EQ(kMtu + version, int_value);
@@ -172,7 +172,7 @@ TEST_F(StaticIpParametersTest, ControlInterface) {
   IPConfig::Properties props;
   const string kTestAddress("test_address");
   props.address = kTestAddress;
-  const int32 kTestMtu = 256;
+  const int32_t kTestMtu = 256;
   props.mtu = kTestMtu;
   static_params_.ApplyTo(&props);
   EXPECT_EQ(kTestAddress, props.address);
@@ -198,7 +198,7 @@ TEST_F(StaticIpParametersTest, ControlInterface) {
   EXPECT_TRUE(store.GetStringProperty("StaticIP.PeerAddress", &string_value,
                                       &unused_error));
   EXPECT_EQ(kPeerAddress, string_value);
-  int32 int_value;
+  int32_t int_value;
   EXPECT_TRUE(store.GetInt32Property("StaticIP.Prefixlen", &int_value,
                                      &unused_error));
   EXPECT_EQ(kPrefixLen, int_value);

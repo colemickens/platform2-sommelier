@@ -30,8 +30,8 @@ class DeviceAdaptorInterface {
   virtual const std::string &GetRpcConnectionIdentifier() = 0;
 
   virtual void EmitBoolChanged(const std::string &name, bool value) = 0;
-  virtual void EmitUintChanged(const std::string &name, uint32 value) = 0;
-  virtual void EmitUint16Changed(const std::string &name, uint16 value) = 0;
+  virtual void EmitUintChanged(const std::string &name, uint32_t value) = 0;
+  virtual void EmitUint16Changed(const std::string &name, uint16_t value) = 0;
   virtual void EmitIntChanged(const std::string &name, int value) = 0;
   virtual void EmitStringChanged(const std::string &name,
                                  const std::string &value) = 0;
@@ -57,7 +57,7 @@ class IPConfigAdaptorInterface {
   virtual const std::string &GetRpcIdentifier() = 0;
 
   virtual void EmitBoolChanged(const std::string &name, bool value) = 0;
-  virtual void EmitUintChanged(const std::string &name, uint32 value) = 0;
+  virtual void EmitUintChanged(const std::string &name, uint32_t value) = 0;
   virtual void EmitIntChanged(const std::string &name, int value) = 0;
   virtual void EmitStringChanged(const std::string &name,
                                  const std::string &value) = 0;
@@ -77,7 +77,7 @@ class ManagerAdaptorInterface {
   virtual void UpdateRunning() = 0;
 
   virtual void EmitBoolChanged(const std::string &name, bool value) = 0;
-  virtual void EmitUintChanged(const std::string &name, uint32 value) = 0;
+  virtual void EmitUintChanged(const std::string &name, uint32_t value) = 0;
   virtual void EmitIntChanged(const std::string &name, int value) = 0;
   virtual void EmitStringChanged(const std::string &name,
                                  const std::string &value) = 0;
@@ -103,7 +103,7 @@ class ProfileAdaptorInterface {
   virtual const std::string &GetRpcIdentifier() = 0;
 
   virtual void EmitBoolChanged(const std::string &name, bool value) = 0;
-  virtual void EmitUintChanged(const std::string &name, uint32 value) = 0;
+  virtual void EmitUintChanged(const std::string &name, uint32_t value) = 0;
   virtual void EmitIntChanged(const std::string &name, int value) = 0;
   virtual void EmitStringChanged(const std::string &name,
                                  const std::string &value) = 0;
@@ -137,11 +137,11 @@ class ServiceAdaptorInterface {
   virtual void UpdateConnected() = 0;
 
   virtual void EmitBoolChanged(const std::string &name, bool value) = 0;
-  virtual void EmitUint8Changed(const std::string &name, uint8 value) = 0;
-  virtual void EmitUint16Changed(const std::string &name, uint16 value) = 0;
+  virtual void EmitUint8Changed(const std::string &name, uint8_t value) = 0;
+  virtual void EmitUint16Changed(const std::string &name, uint16_t value) = 0;
   virtual void EmitUint16sChanged(const std::string &name,
                                   const Uint16s &value) = 0;
-  virtual void EmitUintChanged(const std::string &name, uint32 value) = 0;
+  virtual void EmitUintChanged(const std::string &name, uint32_t value) = 0;
   virtual void EmitIntChanged(const std::string &name, int value) = 0;
   virtual void EmitRpcIdentifierChanged(const std::string &name,
                                         const std::string &value) = 0;

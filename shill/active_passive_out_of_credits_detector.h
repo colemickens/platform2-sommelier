@@ -30,7 +30,7 @@ class ActivePassiveOutOfCreditsDetector : public OutOfCreditsDetector {
       Service::ConnectState old_state,
       Service::ConnectState new_state) override;
   virtual void NotifySubscriptionStateChanged(
-      uint32 subscription_state) override {}
+      uint32_t subscription_state) override {}
 
   const TrafficMonitor *traffic_monitor() const {
     return traffic_monitor_.get();
@@ -47,9 +47,9 @@ class ActivePassiveOutOfCreditsDetector : public OutOfCreditsDetector {
   FRIEND_TEST(ActivePassiveOutOfCreditsDetectorTest, OnNoNetworkRouting);
   FRIEND_TEST(ActivePassiveOutOfCreditsDetectorTest, StopTrafficMonitor);
 
-  static const int64 kOutOfCreditsConnectionDropSeconds;
+  static const int64_t kOutOfCreditsConnectionDropSeconds;
   static const int kOutOfCreditsMaxConnectAttempts;
-  static const int64 kOutOfCreditsResumeIgnoreSeconds;
+  static const int64_t kOutOfCreditsResumeIgnoreSeconds;
 
   // Initiates traffic monitoring.
   bool StartTrafficMonitor();

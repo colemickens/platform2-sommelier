@@ -57,7 +57,7 @@ class OutOfCreditsDetector {
   virtual void NotifyServiceStateChanged(Service::ConnectState old_state,
                                          Service::ConnectState new_state) = 0;
   // Notifies this object when the subscription state has changed.
-  virtual void NotifySubscriptionStateChanged(uint32 subscription_state) = 0;
+  virtual void NotifySubscriptionStateChanged(uint32_t subscription_state) = 0;
 
   virtual bool out_of_credits() const { return out_of_credits_; }
 

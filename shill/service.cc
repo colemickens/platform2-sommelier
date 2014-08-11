@@ -90,12 +90,13 @@ const char Service::kStorageType[] = "Type";
 const char Service::kStorageUIData[] = "UIData";
 const char Service::kStorageConnectionId[] = "ConnectionId";
 
-const uint8 Service::kStrengthMax = 100;
-const uint8 Service::kStrengthMin = 0;
+const uint8_t Service::kStrengthMax = 100;
+const uint8_t Service::kStrengthMin = 0;
 
-const uint64 Service::kMaxAutoConnectCooldownTimeMilliseconds = 30 * 60 * 1000;
-const uint64 Service::kMinAutoConnectCooldownTimeMilliseconds = 1000;
-const uint64 Service::kAutoConnectCooldownBackoffFactor = 2;
+const uint64_t Service::kMaxAutoConnectCooldownTimeMilliseconds =
+    30 * 60 * 1000;
+const uint64_t Service::kMinAutoConnectCooldownTimeMilliseconds = 1000;
+const uint64_t Service::kAutoConnectCooldownBackoffFactor = 2;
 
 const int Service::kDisconnectsMonitorSeconds = 5 * 60;
 const int Service::kMisconnectsMonitorSeconds = 5 * 60;
@@ -590,7 +591,7 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
       error->CopyFrom(set_error);
     }
   }
-  SLOG(Service, 5) << "Configuring int32 properties:";
+  SLOG(Service, 5) << "Configuring int32_t properties:";
   for (const auto &int_it : args.int_properties()) {
     if (ContainsKey(parameters_ignored_for_configure_, int_it.first)) {
       continue;
@@ -652,11 +653,11 @@ bool Service::DoPropertiesMatch(const KeyValueStore &args) const {
       return false;
     }
   }
-  SLOG(Service, 5) << "Checking int32 properties:";
+  SLOG(Service, 5) << "Checking int32_t properties:";
   for (const auto &int_it : args.int_properties()) {
     SLOG(Service, 5) << "   " << int_it.first;
     Error get_error;
-    int32 value;
+    int32_t value;
     if (!store_.GetInt32Property(int_it.first, &value, &get_error) ||
         value != int_it.second) {
       return false;
@@ -973,7 +974,7 @@ bool Service::DecideBetween(int a, int b, bool *decision) {
   return true;
 }
 
-uint16 Service::SecurityLevel() {
+uint16_t Service::SecurityLevel() {
   return (crypto_algorithm_ << 2) | (key_rotation_ << 1) | endpoint_auth_;
 }
 
@@ -1242,11 +1243,11 @@ void Service::HelpRegisterDerivedBool(
 
 void Service::HelpRegisterDerivedInt32(
     const string &name,
-    int32(Service::*get)(Error *error),
-    bool(Service::*set)(const int32&, Error *)) {
+    int32_t(Service::*get)(Error *error),
+    bool(Service::*set)(const int32_t&, Error *)) {
   store_.RegisterDerivedInt32(
       name,
-      Int32Accessor(new CustomAccessor<Service, int32>(this, get, set)));
+      Int32Accessor(new CustomAccessor<Service, int32_t>(this, get, set)));
 }
 
 void Service::HelpRegisterDerivedString(
@@ -1269,10 +1270,10 @@ void Service::HelpRegisterConstDerivedRpcIdentifier(
 
 void Service::HelpRegisterConstDerivedUint16(
     const string &name,
-    uint16(Service::*get)(Error *) const) {
+    uint16_t(Service::*get)(Error *) const) {
   store_.RegisterDerivedUint16(
       name,
-      Uint16Accessor(new CustomReadOnlyAccessor<Service, uint16>(this, get)));
+      Uint16Accessor(new CustomReadOnlyAccessor<Service, uint16_t>(this, get)));
 }
 
 void Service::HelpRegisterConstDerivedStrings(
@@ -1448,11 +1449,11 @@ void Service::SetHasEverConnected(bool has_ever_connected) {
   SaveToProfile();
 }
 
-int32 Service::GetPriority(Error *error) {
+int32_t Service::GetPriority(Error *error) {
   return priority_;
 }
 
-bool Service::SetPriority(const int32 &priority, Error *error) {
+bool Service::SetPriority(const int32_t &priority, Error *error) {
   if (priority_ == priority) {
     return false;
   }
@@ -1483,9 +1484,9 @@ bool Service::SetProfileRpcId(const string &profile, Error *error) {
   return (profile_ != old_profile);
 }
 
-uint16 Service::GetHTTPProxyPort(Error */*error*/) const {
+uint16_t Service::GetHTTPProxyPort(Error */*error*/) const {
   if (http_proxy_.get()) {
-    return static_cast<uint16>(http_proxy_->proxy_port());
+    return static_cast<uint16_t>(http_proxy_->proxy_port());
   }
   return 0;
 }
@@ -1551,7 +1552,7 @@ void Service::SetFriendlyName(const string &friendly_name) {
   adaptor()->EmitStringChanged(kNameProperty, friendly_name_);
 }
 
-void Service::SetStrength(uint8 strength) {
+void Service::SetStrength(uint8_t strength) {
   if (strength == strength_) {
     return;
   }

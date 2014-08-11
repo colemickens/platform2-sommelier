@@ -13,9 +13,9 @@ namespace shill {
 namespace eap_protocol {
 
 struct ALIGNAS(1) Ieee8021xHdr {
-  uint8 version;
-  uint8 type;
-  uint16 length;
+  uint8_t version;
+  uint8_t type;
+  uint16_t length;
 };
 
 enum IeeeEapolVersion {
@@ -32,9 +32,9 @@ enum IeeeEapolType {
 };
 
 struct ALIGNAS(1) EapHeader {
-  uint8 code;
-  uint8 identifier;
-  uint16 length;  // including code and identifier; network byte order
+  uint8_t code;
+  uint8_t identifier;
+  uint16_t length;  // including code and identifier; network byte order
 };
 
 enum EapCode {

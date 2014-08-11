@@ -124,7 +124,7 @@ void EapCredentials::PopulateSupplicantProperties(
         WPASupplicant::kNetworkPropertyEngineId,
         WPASupplicant::kEnginePKCS11));
     // We can't use the propertyvals vector for this since this argument
-    // is a uint32, not a string.
+    // is a uint32_t, not a string.
     (*params)[WPASupplicant::kNetworkPropertyEngine].writer().
         append_uint32(WPASupplicant::kDefaultEngine);
   }

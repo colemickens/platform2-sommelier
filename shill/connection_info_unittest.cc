@@ -16,10 +16,10 @@ const unsigned char kIPAddress1[] = { 192, 168, 1, 1 };
 const unsigned char kIPAddress2[] = { 192, 168, 1, 2 };
 const unsigned char kIPAddress3[] = { 192, 168, 1, 3 };
 const unsigned char kIPAddress4[] = { 192, 168, 1, 4 };
-const uint16 kPort1 = 1000;
-const uint16 kPort2 = 2000;
-const uint16 kPort3 = 3000;
-const uint16 kPort4 = 4000;
+const uint16_t kPort1 = 1000;
+const uint16_t kPort2 = 2000;
+const uint16_t kPort3 = 3000;
+const uint16_t kPort4 = 4000;
 
 }  // namespace
 

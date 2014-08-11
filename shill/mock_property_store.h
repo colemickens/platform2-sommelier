@@ -21,8 +21,8 @@ class MockPropertyStore : public PropertyStore {
 
   MOCK_CONST_METHOD1(Contains, bool(const std::string&));
   MOCK_METHOD3(SetBoolProperty, bool(const std::string&, bool, Error*));
-  MOCK_METHOD3(SetInt16Property, bool(const std::string&, int16, Error*));
-  MOCK_METHOD3(SetInt32Property, bool(const std::string&, int32, Error*));
+  MOCK_METHOD3(SetInt16Property, bool(const std::string&, int16_t, Error*));
+  MOCK_METHOD3(SetInt32Property, bool(const std::string&, int32_t, Error*));
   MOCK_METHOD3(SetStringProperty, bool(const std::string&,
                                        const std::string&,
                                        Error*));
@@ -32,12 +32,12 @@ class MockPropertyStore : public PropertyStore {
   MOCK_METHOD3(SetStringsProperty, bool(const std::string&,
                                         const Strings&,
                                         Error*));
-  MOCK_METHOD3(SetUint8Property, bool(const std::string&, uint8, Error*));
-  MOCK_METHOD3(SetUint16Property, bool(const std::string&, uint16, Error*));
+  MOCK_METHOD3(SetUint8Property, bool(const std::string&, uint8_t, Error*));
+  MOCK_METHOD3(SetUint16Property, bool(const std::string&, uint16_t, Error*));
   MOCK_METHOD3(SetUint16sProperty, bool(const std::string&,
                                         const Uint16s &, Error*));
-  MOCK_METHOD3(SetUint32Property, bool(const std::string&, uint32, Error*));
-  MOCK_METHOD3(SetUint64Property, bool(const std::string&, uint64, Error*));
+  MOCK_METHOD3(SetUint32Property, bool(const std::string&, uint32_t, Error*));
+  MOCK_METHOD3(SetUint64Property, bool(const std::string&, uint64_t, Error*));
   MOCK_METHOD2(ClearProperty, bool(const std::string&, Error*));
 
  private:

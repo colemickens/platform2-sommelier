@@ -17,8 +17,8 @@
 
 namespace shill {
 
-// ARP opcode is the last uint16 in the ARP header.
-const size_t ArpClient::kArpOpOffset = sizeof(arphdr) - sizeof(uint16);
+// ARP opcode is the last uint16_t in the ARP header.
+const size_t ArpClient::kArpOpOffset = sizeof(arphdr) - sizeof(uint16_t);
 
 // The largest packet we expect is one with IPv6 addresses in it.
 const size_t ArpClient::kMaxArpPacketLength =

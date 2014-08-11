@@ -47,11 +47,11 @@ const char CellularCapabilityUniversal::kConnectNumber[] = "number";
 const char CellularCapabilityUniversal::kConnectAllowRoaming[] =
     "allow-roaming";
 const char CellularCapabilityUniversal::kConnectRMProtocol[] = "rm-protocol";
-const int64
+const int64_t
 CellularCapabilityUniversal::kActivationRegistrationTimeoutMilliseconds =
     20000;
-const int64 CellularCapabilityUniversal::kEnterPinTimeoutMilliseconds = 20000;
-const int64
+const int64_t CellularCapabilityUniversal::kEnterPinTimeoutMilliseconds = 20000;
+const int64_t
 CellularCapabilityUniversal::kRegistrationDroppedUpdateTimeoutMilliseconds =
     15000;
 const char CellularCapabilityUniversal::kRootPath[] = "/";
@@ -77,7 +77,7 @@ const char kPhoneNumber[] = "*99#";
 const char kVzwIdentifier[] = "c83d6597-dc91-4d48-a3a7-d86b80123751";
 const size_t kVzwMdnLength = 10;
 
-string AccessTechnologyToString(uint32 access_technologies) {
+string AccessTechnologyToString(uint32_t access_technologies) {
   if (access_technologies & MM_MODEM_ACCESS_TECHNOLOGY_LTE)
     return kNetworkTechnologyLte;
   if (access_technologies & (MM_MODEM_ACCESS_TECHNOLOGY_EVDO0 |
@@ -104,7 +104,7 @@ string AccessTechnologyToString(uint32 access_technologies) {
   return "";
 }
 
-string AccessTechnologyToTechnologyFamily(uint32 access_technologies) {
+string AccessTechnologyToTechnologyFamily(uint32_t access_technologies) {
   if (access_technologies & (MM_MODEM_ACCESS_TECHNOLOGY_LTE |
                              MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS |
                              MM_MODEM_ACCESS_TECHNOLOGY_HSPA |
@@ -1092,7 +1092,7 @@ Stringmap CellularCapabilityUniversal::ParseScanResult(
   */
   Stringmap parsed;
 
-  uint32 status;
+  uint32_t status;
   if (DBusProperties::GetUint32(result, kStatusProperty, &status)) {
     // numerical values are taken from 3GPP TS 27.007 Section 7.3.
     static const char * const kStatusString[] = {
@@ -1104,7 +1104,7 @@ Stringmap CellularCapabilityUniversal::ParseScanResult(
     parsed[kStatusProperty] = kStatusString[status];
   }
 
-  uint32 tech;  // MMModemAccessTechnology
+  uint32_t tech;  // MMModemAccessTechnology
   if (DBusProperties::GetUint32(result, kOperatorAccessTechnologyProperty,
                                 &tech)) {
     parsed[kTechnologyProperty] = AccessTechnologyToString(tech);
@@ -1201,7 +1201,7 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
   // is Unknown), we simply update the state, and rely on the Manager to
   // enable the device when it is registered with the Manager. On subsequent
   // changes to State, we need to explicitly enable the device ourselves.
-  int32 istate;
+  int32_t istate;
   if (DBusProperties::GetInt32(properties, MM_MODEM_PROPERTY_STATE, &istate)) {
     Cellular::ModemState state = static_cast<Cellular::ModemState>(istate);
     OnModemStateChanged(state);
@@ -1214,11 +1214,11 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
   DBusPropertiesMap::const_iterator it =
       properties.find(MM_MODEM_PROPERTY_SUPPORTEDCAPABILITIES);
   if (it != properties.end()) {
-    const vector<uint32> &supported_capabilities = it->second;
+    const vector<uint32_t> &supported_capabilities = it->second;
     OnSupportedCapabilitesChanged(supported_capabilities);
   }
 
-  uint32 uint_value;
+  uint32_t uint_value;
   if (DBusProperties::GetUint32(properties,
                                 MM_MODEM_PROPERTY_CURRENTCAPABILITIES,
                                 &uint_value))
@@ -1249,7 +1249,7 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
   // not needed: MM_MODEM_PROPERTY_EQUIPMENTIDENTIFIER
 
   // Unlock required and SimLock
-  uint32 unlock_required;  // This is really of type MMModemLock
+  uint32_t unlock_required;  // This is really of type MMModemLock
   bool lock_status_changed = false;
   if (DBusProperties::GetUint32(properties,
                                 MM_MODEM_PROPERTY_UNLOCKREQUIRED,
@@ -1290,7 +1290,8 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
 
   it = properties.find(MM_MODEM_PROPERTY_SUPPORTEDMODES);
   if (it != properties.end()) {
-    const vector<DBus::Struct<uint32, uint32>> &mm_supported_modes = it->second;
+    const vector<DBus::Struct<uint32_t, uint32_t>> &mm_supported_modes =
+        it->second;
     vector<ModemModes> supported_modes;
     for (const auto &modes : mm_supported_modes) {
       supported_modes.push_back(
@@ -1301,7 +1302,7 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
 
   it = properties.find(MM_MODEM_PROPERTY_CURRENTMODES);
   if (it != properties.end()) {
-    const DBus::Struct<uint32, uint32> &current_modes = it->second;
+    const DBus::Struct<uint32_t, uint32_t> &current_modes = it->second;
     OnCurrentModesChanged(ModemModes(
         current_modes._1, static_cast<MMModemMode>(current_modes._2)));
   }
@@ -1341,7 +1342,7 @@ bool CellularCapabilityUniversal::RetriableConnectError(
   return false;
 }
 
-void CellularCapabilityUniversal::OnNetworkModeSignal(uint32 /*mode*/) {
+void CellularCapabilityUniversal::OnNetworkModeSignal(uint32_t /*mode*/) {
   // TODO(petkov): Implement this.
   NOTIMPLEMENTED();
 }
@@ -1392,12 +1393,12 @@ void CellularCapabilityUniversal::OnSimPathChanged(
 }
 
 void CellularCapabilityUniversal::OnSupportedCapabilitesChanged(
-    const vector<uint32> &supported_capabilities) {
+    const vector<uint32_t> &supported_capabilities) {
   supported_capabilities_ = supported_capabilities;
 }
 
 void CellularCapabilityUniversal::OnModemCurrentCapabilitiesChanged(
-    uint32 current_capabilities) {
+    uint32_t current_capabilities) {
   current_capabilities_ = current_capabilities;
 
   // Only allow network scan when the modem's current capabilities support
@@ -1443,7 +1444,7 @@ void CellularCapabilityUniversal::OnModemStateChanged(
 }
 
 void CellularCapabilityUniversal::OnAccessTechnologiesChanged(
-    uint32 access_technologies) {
+    uint32_t access_technologies) {
   if (access_technologies_ != access_technologies) {
     const string old_type_string(GetTypeString());
     access_technologies_ = access_technologies;
@@ -1532,7 +1533,7 @@ void CellularCapabilityUniversal::OnModem3GPPPropertiesChanged(
     const DBusPropertiesMap &properties,
     const vector<string> &/* invalidated_properties */) {
   SLOG(Cellular, 3) << __func__;
-  uint32 uint_value;
+  uint32_t uint_value;
   string imei;
   if (DBusProperties::GetString(properties,
                                 MM_MODEM_MODEM3GPP_PROPERTY_IMEI,
@@ -1566,7 +1567,7 @@ void CellularCapabilityUniversal::OnModem3GPPPropertiesChanged(
     On3GPPSubscriptionStateChanged(
         static_cast<MMModem3gppSubscriptionState>(uint_value));
 
-  uint32 subscription_state;
+  uint32_t subscription_state;
   CellularServiceRefPtr service = cellular()->service();
   if (service.get() &&
       DBusProperties::GetUint32(properties,
@@ -1578,7 +1579,7 @@ void CellularCapabilityUniversal::OnModem3GPPPropertiesChanged(
         subscription_state);
   }
 
-  uint32 locks = 0;
+  uint32_t locks = 0;
   if (DBusProperties::GetUint32(
           properties, MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS,
           &locks))
@@ -1691,7 +1692,7 @@ void CellularCapabilityUniversal::On3GPPSubscriptionStateChanged(
 }
 
 void CellularCapabilityUniversal::OnModemStateChangedSignal(
-    int32 old_state, int32 new_state, uint32 reason) {
+    int32_t old_state, int32_t new_state, uint32_t reason) {
   Cellular::ModemState old_modem_state =
       static_cast<Cellular::ModemState>(old_state);
   Cellular::ModemState new_modem_state =
@@ -1702,11 +1703,11 @@ void CellularCapabilityUniversal::OnModemStateChangedSignal(
                     << reason << ")";
 }
 
-void CellularCapabilityUniversal::OnSignalQualityChanged(uint32 quality) {
+void CellularCapabilityUniversal::OnSignalQualityChanged(uint32_t quality) {
   cellular()->HandleNewSignalQuality(quality);
 }
 
-void CellularCapabilityUniversal::OnFacilityLocksChanged(uint32 locks) {
+void CellularCapabilityUniversal::OnFacilityLocksChanged(uint32_t locks) {
   bool sim_enabled = !!(locks & MM_MODEM_3GPP_FACILITY_SIM);
   if (sim_lock_status_.enabled != sim_enabled) {
     sim_lock_status_.enabled = sim_enabled;

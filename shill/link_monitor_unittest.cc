@@ -42,9 +42,9 @@ namespace shill {
 
 namespace {
 const char kLocalIPAddress[] = "10.0.1.1";
-const uint8 kLocalMACAddress[] = { 0, 1, 2, 3, 4, 5 };
+const uint8_t kLocalMACAddress[] = { 0, 1, 2, 3, 4, 5 };
 const char kRemoteIPAddress[] = "10.0.1.2";
-const uint8 kRemoteMACAddress[] = { 6, 7, 8, 9, 10, 11 };
+const uint8_t kRemoteMACAddress[] = { 6, 7, 8, 9, 10, 11 };
 }  // namespace
 
 
@@ -803,10 +803,10 @@ TEST_F(LinkMonitorTest, ImpulseResponse) {
 }
 
 TEST_F(LinkMonitorTest, HardwareAddressToString) {
-  const uint8 address0[] = { 0, 1, 2, 3, 4, 5 };
+  const uint8_t address0[] = { 0, 1, 2, 3, 4, 5 };
   EXPECT_EQ("00:01:02:03:04:05",
             HardwareAddressToString(ByteString(address0, arraysize(address0))));
-  const uint8 address1[] = { 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd };
+  const uint8_t address1[] = { 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd };
   EXPECT_EQ("88:99:aa:bb:cc:dd",
             HardwareAddressToString(ByteString(address1, arraysize(address1))));
 }

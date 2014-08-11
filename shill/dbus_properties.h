@@ -18,7 +18,7 @@
 namespace shill {
 
 typedef std::map<std::string, DBus::Variant> DBusPropertiesMap;
-typedef std::map<uint32, DBus::Variant> DBusEnumValueMap;
+typedef std::map<uint32_t, DBus::Variant> DBusEnumValueMap;
 
 class DBusProperties {
  public:
@@ -36,15 +36,15 @@ class DBusProperties {
 
   static bool GetInt16(const DBusPropertiesMap &properties,
                        const std::string &key,
-                       int16 *value);
+                       int16_t *value);
 
   static bool GetInt32(const DBusPropertiesMap &properties,
                        const std::string &key,
-                       int32 *value);
+                       int32_t *value);
 
   static bool GetInt64(const DBusPropertiesMap &properties,
                        const std::string &key,
-                       int64 *value);
+                       int64_t *value);
 
   static bool GetObjectPath(const DBusPropertiesMap &properties,
                             const std::string &key,
@@ -64,19 +64,19 @@ class DBusProperties {
 
   static bool GetUint8(const DBusPropertiesMap &properties,
                        const std::string &key,
-                       uint8 *value);
+                       uint8_t *value);
 
   static bool GetUint16(const DBusPropertiesMap &properties,
                         const std::string &key,
-                        uint16 *value);
+                        uint16_t *value);
 
   static bool GetUint32(const DBusPropertiesMap &properties,
                         const std::string &key,
-                        uint32 *value);
+                        uint32_t *value);
 
   static bool GetUint64(const DBusPropertiesMap &properties,
                         const std::string &key,
-                        uint64 *value);
+                        uint64_t *value);
 
   static bool GetRpcIdentifiers(const DBusPropertiesMap &properties,
                                 const std::string &key,

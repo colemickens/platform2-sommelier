@@ -29,7 +29,7 @@ bool ModemClassic::GetLinkName(const DBusPropertiesMap& modem_properties,
 void ModemClassic::CreateDeviceClassic(
     const DBusPropertiesMap &modem_properties) {
   Init();
-  uint32 mm_type = kuint32max;
+  uint32_t mm_type = kuint32max;
   DBusProperties::GetUint32(modem_properties, kPropertyType, &mm_type);
   switch (mm_type) {
     case MM_MODEM_TYPE_CDMA:
@@ -42,7 +42,7 @@ void ModemClassic::CreateDeviceClassic(
       LOG(ERROR) << "Unsupported cellular modem type: " << mm_type;
       return;
   }
-  uint32 ip_method = kuint32max;
+  uint32_t ip_method = kuint32max;
   if (!DBusProperties::GetUint32(modem_properties,
                                  kPropertyIPMethod,
                                  &ip_method) ||

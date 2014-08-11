@@ -33,7 +33,7 @@ bool Modem1::GetLinkName(const DBusPropertiesMap &modem_props,
     return false;
   }
 
-  vector<DBus::Struct<string, uint32>> ports = props_it->second;
+  vector<DBus::Struct<string, uint32_t>> ports = props_it->second;
   for (const auto &port_pair : ports) {
     if (port_pair._2 == MM_MODEM_PORT_TYPE_NET) {
       net_port = port_pair._1;
@@ -52,7 +52,7 @@ bool Modem1::GetLinkName(const DBusPropertiesMap &modem_props,
 
 void Modem1::CreateDeviceMM1(const DBusInterfaceToProperties &properties) {
   Init();
-  uint32 capabilities = kuint32max;
+  uint32_t capabilities = kuint32max;
   DBusInterfaceToProperties::const_iterator it =
       properties.find(MM_DBUS_INTERFACE_MODEM);
   if (it == properties.end()) {

@@ -43,7 +43,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
     IPAddress::Family address_family;
     std::string address;
-    int32 subnet_prefix;
+    int32_t subnet_prefix;
     std::string broadcast_address;
     std::vector<std::string> dns_servers;
     std::string domain_name;
@@ -56,14 +56,14 @@ class IPConfig : public base::RefCounted<IPConfig> {
     // server.
     std::string trusted_ip;
     bool blackhole_ipv6;
-    int32 mtu;
+    int32_t mtu;
     std::vector<Route> routes;
     // Vendor encapsulated option string gained from DHCP.
     std::string vendor_encapsulated_options;
     // Web Proxy Auto Discovery (WPAD) URL gained from DHCP.
     std::string web_proxy_auto_discovery;
     // Length of time the lease was granted.
-    uint32 lease_duration_seconds;
+    uint32_t lease_duration_seconds;
   };
 
   enum Method {

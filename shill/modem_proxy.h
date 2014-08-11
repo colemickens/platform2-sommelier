@@ -50,7 +50,7 @@ class ModemProxy : public ModemProxyInterface {
    private:
     // Signal callbacks inherited from ModemManager::Modem_proxy.
     virtual void StateChanged(
-        const uint32 &old, const uint32 &_new, const uint32 &reason);
+        const uint32_t &old, const uint32_t &_new, const uint32_t &reason);
 
     // Method callbacks inherited from ModemManager::Modem_proxy.
     virtual void EnableCallback(const DBus::Error &dberror, void *data);

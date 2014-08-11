@@ -14,11 +14,11 @@
 namespace shill {
 
 // static
-const int64
+const int64_t
     ActivePassiveOutOfCreditsDetector::kOutOfCreditsConnectionDropSeconds = 15;
 const int
     ActivePassiveOutOfCreditsDetector::kOutOfCreditsMaxConnectAttempts = 3;
-const int64
+const int64_t
     ActivePassiveOutOfCreditsDetector::kOutOfCreditsResumeIgnoreSeconds = 5;
 
 ActivePassiveOutOfCreditsDetector::ActivePassiveOutOfCreditsDetector(

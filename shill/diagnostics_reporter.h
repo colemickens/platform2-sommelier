@@ -44,7 +44,7 @@ class DiagnosticsReporter {
   chromeos::Minijail *minijail_;
   ProcessKiller *process_killer_;
   Time *time_;
-  uint64 last_log_stash_;  // Monotonic time seconds.
+  uint64_t last_log_stash_;  // Monotonic time seconds.
   base::FilePath stashed_net_log_;
 
   DISALLOW_COPY_AND_ASSIGN(DiagnosticsReporter);

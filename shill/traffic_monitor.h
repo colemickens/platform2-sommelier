@@ -81,18 +81,18 @@ class TrafficMonitor {
   FRIEND_TEST(TrafficMonitorTest, SampleTrafficUnstuckTxQueueZeroQueueLength);
   FRIEND_TEST(TrafficMonitorTest, StartAndStop);
 
-  typedef std::map<std::string, uint64> IPPortToTxQueueLengthMap;
+  typedef std::map<std::string, uint64_t> IPPortToTxQueueLengthMap;
 
   // The minimum number of samples that indicate an abnormal scenario
   // required to trigger the callback.
   static const int kMinimumFailedSamplesToTrigger;
   // The frequency at which to sample the TCP connections.
-  static const int64 kSamplingIntervalMilliseconds;
+  static const int64_t kSamplingIntervalMilliseconds;
   // DNS port.
-  static const uint16 kDnsPort;
+  static const uint16_t kDnsPort;
   // If a DNS "connection" time-to-expire falls below this threshold, then
   // it's considered a timed out DNS request.
-  static const int64 kDnsTimedOutThresholdSeconds;
+  static const int64_t kDnsTimedOutThresholdSeconds;
 
   // Resets congested tx-queues tracking statistics.
   void ResetCongestedTxQueuesStats();

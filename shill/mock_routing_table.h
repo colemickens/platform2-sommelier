@@ -26,13 +26,13 @@ class MockRoutingTable : public RoutingTable {
                                      RoutingTableEntry *entry));
   MOCK_METHOD3(SetDefaultRoute, bool(int interface_index,
                                      const IPAddress &gateway_address,
-                                     uint32 metric));
+                                     uint32_t metric));
   MOCK_METHOD3(ConfigureRoutes, bool(int interface_index,
                                      const IPConfigRefPtr &ipconfig,
-                                     uint32 metric));
+                                     uint32_t metric));
   MOCK_METHOD3(CreateBlackholeRoute, bool(int interface_index,
                                           IPAddress::Family family,
-                                          uint32 metric));
+                                          uint32_t metric));
   MOCK_METHOD3(CreateLinkRoute, bool(int interface_index,
                                      const IPAddress &local_address,
                                      const IPAddress &remote_address));
@@ -40,7 +40,7 @@ class MockRoutingTable : public RoutingTable {
   MOCK_METHOD1(FlushRoutesWithTag, void(int tag));
   MOCK_METHOD0(FlushCache, bool());
   MOCK_METHOD1(ResetTable, void(int interface_index));
-  MOCK_METHOD2(SetDefaultMetric, void(int interface_index, uint32 metric));
+  MOCK_METHOD2(SetDefaultMetric, void(int interface_index, uint32_t metric));
   MOCK_METHOD4(RequestRouteToHost, bool(const IPAddress &addresss,
                                         int interface_index,
                                         int tag,

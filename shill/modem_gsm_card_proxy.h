@@ -46,7 +46,7 @@ class ModemGSMCardProxy : public ModemGSMCardProxyInterface {
                          const std::string &new_pin,
                          Error *error, const ResultCallback &callback,
                          int timeout);
-  virtual uint32 EnabledFacilityLocks();
+  virtual uint32_t EnabledFacilityLocks();
 
  private:
   class Proxy

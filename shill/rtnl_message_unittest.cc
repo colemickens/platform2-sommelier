@@ -36,7 +36,7 @@ const int kNewLinkMessageWlan0InterfaceIndex = 2;
 const unsigned int kNewLinkMessageWlan0InterfaceFlags =
     IFF_BROADCAST | IFF_MULTICAST | IFF_UP | IFF_LOWER_UP | IFF_RUNNING;
 const unsigned int kNewLinkMessageWlan0InterfaceFlagsChange = 0;
-const uint32 kNewLinkMessageWlan0MTU = 1500;
+const uint32_t kNewLinkMessageWlan0MTU = 1500;
 const char kNewLinkMessageWlan0MACAddress[] = "\xc0\xf8\xda\x05\x03\x0b";
 const char kNewLinkMessageWlan0InterfaceName[] = "wlan0";
 const char kNewLinkMessageWlan0Qdisc[] = "mq";
@@ -177,7 +177,7 @@ const int kDelLinkMessageEth0InterfaceIndex = 8;
 const unsigned int kDelLinkMessageEth0InterfaceFlags =
     IFF_BROADCAST | IFF_MULTICAST;
 const unsigned int kDelLinkMessageEth0InterfaceFlagsChange = 0xffffffff;
-const uint32 kDelLinkMessageEth0MTU = 1500;
+const uint32_t kDelLinkMessageEth0MTU = 1500;
 const char kDelLinkMessageEth0MACAddress[] = "\x68\x7f\x74\xba\xef\xc7";
 const char kDelLinkMessageEth0InterfacName[] = "eth0";
 const char kDelLinkMessageEth0Qdisc[] = "noop";
@@ -378,7 +378,7 @@ class RTNLMessageTest : public Test {
                      unsigned int change,
                      ByteString address,
                      ByteString name,
-                     uint32 mtu,
+                     uint32_t mtu,
                      ByteString qdisc,
                      int oper_state) {
     RTNLMessage msg;
@@ -401,7 +401,7 @@ class RTNLMessageTest : public Test {
     EXPECT_TRUE(msg.GetAttribute(IFLA_IFNAME).Equals(name));
 
     EXPECT_TRUE(msg.HasAttribute(IFLA_MTU));
-    uint32 mtu_val;
+    uint32_t mtu_val;
     EXPECT_TRUE(msg.GetAttribute(IFLA_MTU).ConvertToCPUUInt32(&mtu_val));
     EXPECT_EQ(mtu, mtu_val);
 
@@ -484,7 +484,7 @@ class RTNLMessageTest : public Test {
 
     if (interface_index >= 0) {
       EXPECT_TRUE(msg.HasAttribute(RTA_OIF));
-      uint32 int_val;
+      uint32_t int_val;
       EXPECT_TRUE(msg.GetAttribute(RTA_OIF).ConvertToCPUUInt32(&int_val));
       EXPECT_EQ(interface_index, int_val);
     } else {
@@ -492,7 +492,7 @@ class RTNLMessageTest : public Test {
     }
     if (metric >= 0) {
       EXPECT_TRUE(msg.HasAttribute(RTA_PRIORITY));
-      uint32 metric_val;
+      uint32_t metric_val;
       EXPECT_TRUE(
           msg.GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&metric_val));
       EXPECT_EQ(metric, metric_val);
@@ -504,7 +504,7 @@ class RTNLMessageTest : public Test {
   void TestParseRdnss(const ByteString &packet,
                       RTNLMessage::Mode mode,
                       int interface_index,
-                      uint32 lifetime,
+                      uint32_t lifetime,
                       const std::string &dns_server_addresses) {
     RTNLMessage msg;
 
@@ -632,7 +632,7 @@ TEST_F(RTNLMessageTest, AddRouteIPv4) {
 
 TEST_F(RTNLMessageTest, NewRdnssOption) {
   int interface_index = 1;
-  uint32 lifetime = 0xffffffff;
+  uint32_t lifetime = 0xffffffff;
   std::string dns_server_addresses =
       "2001:db8:100:f101::1, 2001:db8:100:f101::2";
 

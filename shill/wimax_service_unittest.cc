@@ -119,7 +119,7 @@ TEST_F(WiMaxServiceTest, OnSignalStrengthChanged) {
 
 TEST_F(WiMaxServiceTest, StartStop) {
   static const char kName[] = "My WiMAX Network";
-  const uint32 kIdentifier = 0x1234abcd;
+  const uint32_t kIdentifier = 0x1234abcd;
   const int kStrength = 66;
   EXPECT_FALSE(service_->connectable());
   EXPECT_FALSE(service_->IsStarted());

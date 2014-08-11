@@ -45,7 +45,7 @@ void IPConfigDBusAdaptor::EmitBoolChanged(const string &name, bool value) {
 }
 
 void IPConfigDBusAdaptor::EmitUintChanged(const string &name,
-                                          uint32 value) {
+                                          uint32_t value) {
   SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::Uint32ToVariant(value));
 }

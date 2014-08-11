@@ -33,8 +33,8 @@ typedef base::Callback<void(const DBus::Path &,
 typedef base::Callback<void(
     const std::vector<DBus::Path> &, const Error &)> DBusPathsCallback;
 typedef base::Callback<void(const std::string &, const Error &)> StringCallback;
-typedef base::Callback<void(
-    uint32, uint32, const DBusPropertiesMap &)> ActivationStateSignalCallback;
+typedef base::Callback<void(uint32_t, uint32_t, const DBusPropertiesMap &)>
+    ActivationStateSignalCallback;
 typedef base::Callback<void(const Stringmaps &,
                             const Error &)> ResultStringmapsCallback;
 

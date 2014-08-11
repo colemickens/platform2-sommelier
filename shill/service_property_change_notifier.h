@@ -52,10 +52,10 @@ class ServicePropertyChangeNotifier {
  private:
   // Redirects templated calls to a value reference to a by-copy version.
   void BoolPropertyUpdater(const std::string &name, const bool &value);
-  void Uint8PropertyUpdater(const std::string &name, const uint8 &value);
-  void Uint16PropertyUpdater(const std::string &name, const uint16 &value);
-  void Uint32PropertyUpdater(const std::string &name, const uint32 &value);
-  void Int32PropertyUpdater(const std::string &name, const int32 &value);
+  void Uint8PropertyUpdater(const std::string &name, const uint8_t &value);
+  void Uint16PropertyUpdater(const std::string &name, const uint16_t &value);
+  void Uint32PropertyUpdater(const std::string &name, const uint32_t &value);
+  void Int32PropertyUpdater(const std::string &name, const int32_t &value);
 
   ServiceAdaptorInterface *rpc_adaptor_;
   std::vector<scoped_ptr<PropertyObserverInterface>> property_observers_;

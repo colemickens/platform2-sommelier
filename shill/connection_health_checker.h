@@ -119,7 +119,7 @@ class ConnectionHealthChecker {
   void set_num_successful_sends(int16_t val) {
     num_successful_sends_ = val;
   }
-  void set_old_transmit_queue_value(uint64 val) {
+  void set_old_transmit_queue_value(uint64_t val) {
     old_transmit_queue_value_ = val;
   }
   Result health_check_result() const { return health_check_result_; }
@@ -154,7 +154,7 @@ class ConnectionHealthChecker {
   static const int kMinSuccessfulSendAttempts;
   // Number of DNS queries to be spawned when a new remote URL is added.
   static const int kNumDNSQueries;
-  static const uint16 kRemotePort;
+  static const uint16_t kRemotePort;
   // Time to wait before testing successful data transfer / disconnect after
   // request is made on the device.
   static const int kTCPStateUpdateWaitMilliseconds;
@@ -205,7 +205,7 @@ class ConnectionHealthChecker {
 
   // Store the old value of the transmit queue to verify that data sent on the
   // connection is actually transmitted.
-  uint64 old_transmit_queue_value_;
+  uint64_t old_transmit_queue_value_;
   // Callback to post a delayed check on whether data sent on the TCP connection
   // was successfully transmitted.
   base::CancelableClosure verify_sent_data_callback_;

@@ -139,9 +139,9 @@ class WiFiEndpointTest : public PropertyStoreTest {
 
   // Creates the RSN properties string (which still requires an information
   // element prefix).
-  vector<uint8_t> MakeRSNProperties(uint16 pairwise_count,
-                                    uint16 authkey_count,
-                                    uint16 capabilities) {
+  vector<uint8_t> MakeRSNProperties(uint16_t pairwise_count,
+                                    uint16_t authkey_count,
+                                    uint16_t capabilities) {
     vector<uint8_t> rsn(IEEE_80211::kRSNIECipherCountOffset +
                         IEEE_80211::kRSNIECipherCountLen * 2 +
                         IEEE_80211::kRSNIESelectorLen *

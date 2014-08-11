@@ -70,12 +70,12 @@ namespace shill {
 // statics
 const char *WiFi::kDefaultBgscanMethod =
     WPASupplicant::kNetworkBgscanMethodSimple;
-const uint16 WiFi::kDefaultBgscanShortIntervalSeconds = 30;
-const int32 WiFi::kDefaultBgscanSignalThresholdDbm = -50;
-const uint16 WiFi::kDefaultScanIntervalSeconds = 60;
-const uint16 WiFi::kDefaultRoamThresholdDb = 18;  // Supplicant's default.
+const uint16_t WiFi::kDefaultBgscanShortIntervalSeconds = 30;
+const int32_t WiFi::kDefaultBgscanSignalThresholdDbm = -50;
+const uint16_t WiFi::kDefaultScanIntervalSeconds = 60;
+const uint16_t WiFi::kDefaultRoamThresholdDb = 18;  // Supplicant's default.
 // Scan interval while connected.
-const uint16 WiFi::kBackgroundScanIntervalSeconds = 3601;
+const uint16_t WiFi::kBackgroundScanIntervalSeconds = 3601;
 // Age (in seconds) beyond which a BSS cache entry will not be preserved,
 // across a suspend/resume.
 const time_t WiFi::kMaxBSSResumeAgeSeconds = 10;
@@ -711,7 +711,7 @@ bool WiFi::SetBgscanMethod(
   return true;
 }
 
-bool WiFi::SetBgscanShortInterval(const uint16 &seconds, Error */*error*/) {
+bool WiFi::SetBgscanShortInterval(const uint16_t &seconds, Error */*error*/) {
   if (bgscan_short_interval_seconds_ == seconds) {
     return false;
   }
@@ -722,7 +722,7 @@ bool WiFi::SetBgscanShortInterval(const uint16 &seconds, Error */*error*/) {
   return true;
 }
 
-bool WiFi::SetBgscanSignalThreshold(const int32 &dbm, Error */*error*/) {
+bool WiFi::SetBgscanSignalThreshold(const int32_t &dbm, Error */*error*/) {
   if (bgscan_signal_threshold_dbm_ == dbm) {
     return false;
   }
@@ -733,13 +733,13 @@ bool WiFi::SetBgscanSignalThreshold(const int32 &dbm, Error */*error*/) {
   return true;
 }
 
-bool WiFi::SetRoamThreshold(const uint16 &threshold, Error */*error*/) {
+bool WiFi::SetRoamThreshold(const uint16_t &threshold, Error */*error*/) {
   roam_threshold_db_ = threshold;
   supplicant_interface_proxy_->SetRoamThreshold(threshold);
   return true;
 }
 
-bool WiFi::SetScanInterval(const uint16 &seconds, Error */*error*/) {
+bool WiFi::SetScanInterval(const uint16_t &seconds, Error */*error*/) {
   if (scan_interval_seconds_ == seconds) {
     return false;
   }
@@ -1194,7 +1194,7 @@ void WiFi::CertificationTask(
   }
 
   string subject;
-  uint32 depth;
+  uint32_t depth;
   if (WPASupplicant::ExtractRemoteCertification(properties, &subject, &depth)) {
     current_service_->AddEAPCertification(subject, depth);
   }
@@ -1622,21 +1622,21 @@ vector<GeolocationInfo> WiFi::GetGeolocationObjects() const {
 void WiFi::HelpRegisterDerivedInt32(
     PropertyStore *store,
     const string &name,
-    int32(WiFi::*get)(Error *error),
-    bool(WiFi::*set)(const int32 &value, Error *error)) {
+    int32_t(WiFi::*get)(Error *error),
+    bool(WiFi::*set)(const int32_t &value, Error *error)) {
   store->RegisterDerivedInt32(
       name,
-      Int32Accessor(new CustomAccessor<WiFi, int32>(this, get, set)));
+      Int32Accessor(new CustomAccessor<WiFi, int32_t>(this, get, set)));
 }
 
 void WiFi::HelpRegisterDerivedUint16(
     PropertyStore *store,
     const string &name,
-    uint16(WiFi::*get)(Error *error),
-    bool(WiFi::*set)(const uint16 &value, Error *error)) {
+    uint16_t(WiFi::*get)(Error *error),
+    bool(WiFi::*set)(const uint16_t &value, Error *error)) {
   store->RegisterDerivedUint16(
       name,
-      Uint16Accessor(new CustomAccessor<WiFi, uint16>(this, get, set)));
+      Uint16Accessor(new CustomAccessor<WiFi, uint16_t>(this, get, set)));
 }
 
 void WiFi::HelpRegisterConstDerivedBool(
@@ -2440,7 +2440,7 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message &nl80211_message) {
   };
 
   for (const auto &kv : u32_property_map) {
-    uint32 value;
+    uint32_t value;
     if (station_info->GetU32AttributeValue(kv.first, &value)) {
       link_statistics_.SetUint(kv.second, value);
     }
@@ -2452,7 +2452,7 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message &nl80211_message) {
   };
 
   for (const auto &kv : s8_property_map) {
-    uint8 value;
+    uint8_t value;
     if (station_info->GetU8AttributeValue(kv.first, &value)) {
       // Despite these values being reported as a U8 by the kernel, these
       // should be interpreted as signed char.
@@ -2463,10 +2463,10 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message &nl80211_message) {
   AttributeListConstRefPtr transmit_info;
   if (station_info->ConstGetNestedAttributeList(
       NL80211_STA_INFO_TX_BITRATE, &transmit_info)) {
-    uint32 rate = 0;  // In 100Kbps.
-    uint16 u16_rate = 0;  // In 100Kbps.
-    uint8 mcs = 0;
-    uint8 nss = 0;
+    uint32_t rate = 0;  // In 100Kbps.
+    uint16_t u16_rate = 0;  // In 100Kbps.
+    uint8_t mcs = 0;
+    uint8_t nss = 0;
     bool band_flag = false;
     bool is_short_gi = false;
     string mcs_info;
@@ -2475,7 +2475,7 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message &nl80211_message) {
 
     if (transmit_info->GetU16AttributeValue(
         NL80211_RATE_INFO_BITRATE, &u16_rate)) {
-      rate = static_cast<uint32>(u16_rate);
+      rate = static_cast<uint32_t>(u16_rate);
     } else {
       transmit_info->GetU32AttributeValue(NL80211_RATE_INFO_BITRATE32, &rate);
     }

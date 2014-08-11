@@ -76,21 +76,21 @@ class StaticIPParameters {
   // These functions try to retrieve the argument |property| out of the
   // KeyValueStore in |args_|.  If that value exists, overwrite |value_out|
   // with its contents, and save the previous value into |saved_args_|.
-  void ApplyInt(const std::string &property, int32 *value_out);
+  void ApplyInt(const std::string &property, int32_t *value_out);
   void ApplyString(const std::string &property, std::string *value_out);
   void ApplyStrings(const std::string &property,
                     std::vector<std::string> *value_out);
 
   void ClearMappedProperty(const size_t &index, Error *error);
   void ClearMappedSavedProperty(const size_t &index, Error *error);
-  int32 GetMappedInt32Property(const size_t &index, Error *error);
-  int32 GetMappedSavedInt32Property(const size_t &index, Error *error);
+  int32_t GetMappedInt32Property(const size_t &index, Error *error);
+  int32_t GetMappedSavedInt32Property(const size_t &index, Error *error);
   std::string GetMappedStringProperty(const size_t &index, Error *error);
   std::string GetMappedSavedStringProperty(const size_t &index, Error *error);
   bool SetMappedInt32Property(
-      const size_t &index, const int32 &value, Error *error);
+      const size_t &index, const int32_t &value, Error *error);
   bool SetMappedSavedInt32Property(
-      const size_t &index, const int32 &value, Error *error);
+      const size_t &index, const int32_t &value, Error *error);
   bool SetMappedStringProperty(
       const size_t &index, const std::string &value, Error *error);
   bool SetMappedSavedStringProperty(

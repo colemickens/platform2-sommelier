@@ -106,11 +106,11 @@ class CellularCapabilityCDMATest : public testing::Test {
     return capability_->activation_starting_;
   }
 
-  void SetRegistrationStateEVDO(uint32 state) {
+  void SetRegistrationStateEVDO(uint32_t state) {
     capability_->registration_state_evdo_ = state;
   }
 
-  void SetRegistrationState1x(uint32 state) {
+  void SetRegistrationState1x(uint32_t state) {
     capability_->registration_state_1x_ = state;
   }
 

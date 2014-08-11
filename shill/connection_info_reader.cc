@@ -77,7 +77,7 @@ bool ConnectionInfoReader::ParseConnectionInfo(const string &input,
   }
   info->set_protocol(protocol);
 
-  int64 time_to_expire_seconds = 0;
+  int64_t time_to_expire_seconds = 0;
   if (!ParseTimeToExpireSeconds(tokens[++index], &time_to_expire_seconds)) {
     return false;
   }
@@ -87,7 +87,7 @@ bool ConnectionInfoReader::ParseConnectionInfo(const string &input,
     ++index;
 
   IPAddress ip_address(IPAddress::kFamilyUnknown);
-  uint16 port = 0;
+  uint16_t port = 0;
   bool is_source = false;
 
   if (!ParseIPAddress(tokens[++index], &ip_address, &is_source) || !is_source) {
@@ -145,7 +145,7 @@ bool ConnectionInfoReader::ParseProtocol(const string &input, int *protocol) {
 }
 
 bool ConnectionInfoReader::ParseTimeToExpireSeconds(
-    const string &input, int64 *time_to_expire_seconds) {
+    const string &input, int64_t *time_to_expire_seconds) {
   if (!base::StringToInt64(input, time_to_expire_seconds) ||
       *time_to_expire_seconds < 0) {
     return false;
@@ -183,7 +183,7 @@ bool ConnectionInfoReader::ParseIPAddress(
 }
 
 bool ConnectionInfoReader::ParsePort(
-    const string &input, uint16 *port, bool *is_source) {
+    const string &input, uint16_t *port, bool *is_source) {
   int result = 0;
   string port_string;
 
@@ -198,7 +198,7 @@ bool ConnectionInfoReader::ParsePort(
   }
 
   if (!base::StringToInt(port_string, &result) ||
-      result < 0 || result > std::numeric_limits<uint16>::max()) {
+      result < 0 || result > std::numeric_limits<uint16_t>::max()) {
     return false;
   }
 

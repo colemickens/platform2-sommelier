@@ -52,10 +52,10 @@ class ByteString {
   // this ByteString.
   ByteString GetSubstring(size_t offset, size_t length) const;
 
-  // Inserts a uint32 into a ByteString in cpu-order
-  static ByteString CreateFromCPUUInt32(uint32 val);
-  // Inserts a uint32 into a ByteString in network-order
-  static ByteString CreateFromNetUInt32(uint32 val);
+  // Inserts a uint32_t into a ByteString in cpu-order
+  static ByteString CreateFromCPUUInt32(uint32_t val);
+  // Inserts a uint32_t into a ByteString in network-order
+  static ByteString CreateFromNetUInt32(uint32_t val);
 
   // Creates a ByteString from a string of hexadecimal digits where
   // a pair of hexadecimal digits corresponds to a byte.
@@ -64,12 +64,12 @@ class ByteString {
   // of bytes.
   static ByteString CreateFromHexString(const std::string &hex_string);
 
-  // Converts to a uint32 from a host-order value stored in the ByteString
+  // Converts to a uint32_t from a host-order value stored in the ByteString
   // Returns true on success
-  bool ConvertToCPUUInt32(uint32 *val) const;
-  // Converts to a uint32 from a network-order value stored in the ByteString
+  bool ConvertToCPUUInt32(uint32_t *val) const;
+  // Converts to a uint32_t from a network-order value stored in the ByteString
   // Returns true on success
-  bool ConvertToNetUInt32(uint32 *val) const;
+  bool ConvertToNetUInt32(uint32_t *val) const;
 
   // Converts the string of bytes stored in the ByteString from network order
   // to host order in 32-bit chunks. Returns true on success or false if the

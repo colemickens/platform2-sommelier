@@ -20,7 +20,7 @@ class MockNetlinkSocket : public NetlinkSocket {
   MockNetlinkSocket() {}
   MOCK_METHOD0(Init, bool());
 
-  uint32 GetLastSequenceNumber() const { return sequence_number_; }
+  uint32_t GetLastSequenceNumber() const { return sequence_number_; }
   MOCK_CONST_METHOD0(file_descriptor, int());
   MOCK_METHOD1(SendMessage, bool(const ByteString &out_string));
   MOCK_METHOD1(SubscribeToEvents, bool(uint32_t group_id));

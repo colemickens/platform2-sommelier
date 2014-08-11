@@ -447,7 +447,7 @@ TEST_F(KeyFileStoreTest, GetUint64) {
   static const char kGroup[] = "numbers";
   static const char kKeyGood[] = "good";
   static const char kKeyBad[] = "bad";
-  const uint64 kValueGood = 0xFEDCBA9876543210LL;
+  const uint64_t kValueGood = 0xFEDCBA9876543210LL;
   static const char kValueBad[] = "nan";
   // Use base::Uint64ToString() instead of using something like "%llu"
   // (not correct for native 64 bit architectures) or PRIu64 (does not
@@ -461,12 +461,12 @@ TEST_F(KeyFileStoreTest, GetUint64) {
                                   kKeyBad, kValueBad));
   ASSERT_TRUE(store_.Open());
   {
-    uint64 value = 0;
+    uint64_t value = 0;
     EXPECT_TRUE(store_.GetUint64(kGroup, kKeyGood, &value));
     EXPECT_EQ(kValueGood, value);
   }
   {
-    uint64 value;
+    uint64_t value;
     EXPECT_FALSE(store_.GetUint64(kGroup, kKeyBad, &value));
     EXPECT_FALSE(store_.GetUint64(kGroup, "invalid", &value));
     EXPECT_FALSE(store_.GetUint64("invalid", kKeyGood, &value));
@@ -478,7 +478,7 @@ TEST_F(KeyFileStoreTest, GetUint64) {
 TEST_F(KeyFileStoreTest, SetUint64) {
   static const char kGroup[] = "int-group";
   static const char kKey[] = "test-int";
-  const uint64 kValue = 0xFEDCBA9876543210LL;
+  const uint64_t kValue = 0xFEDCBA9876543210LL;
   ASSERT_TRUE(store_.Open());
   ASSERT_TRUE(store_.SetUint64(kGroup, kKey, kValue));
   ASSERT_TRUE(store_.Close());

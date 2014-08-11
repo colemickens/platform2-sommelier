@@ -407,7 +407,7 @@ void WiFiService::InitializeCustomMetrics() const {
 }
 
 void WiFiService::SendPostReadyStateMetrics(
-    int64 time_resume_to_ready_milliseconds) const {
+    int64_t time_resume_to_ready_milliseconds) const {
   metrics()->SendEnumToUMA(
       metrics()->GetFullMetricName(Metrics::kMetricNetworkChannelSuffix,
                                    technology()),
@@ -592,7 +592,7 @@ DBusPropertiesMap WiFiService::GetSupplicantConfigurationParameters() const {
         append_string(WPASupplicant::kSecurityAuthAlg);
     Error unused_error;
     int key_index;
-    std::vector<uint8> password_bytes;
+    std::vector<uint8_t> password_bytes;
     ParseWEPPassphrase(passphrase_, &key_index, &password_bytes, &unused_error);
     writer = params[WPASupplicant::kPropertyWEPKey +
                     base::IntToString(key_index)].writer();
@@ -674,7 +674,7 @@ void WiFiService::UpdateFromEndpoints() {
   if (current_endpoint_) {
     representative_endpoint = current_endpoint_;
   } else  {
-    int16 best_signal = std::numeric_limits<int16>::min();
+    int16_t best_signal = std::numeric_limits<int16_t>::min();
     for (const auto &endpoint : endpoints_) {
       if (endpoint->signal_strength() >= best_signal) {
         best_signal = endpoint->signal_strength();
@@ -701,7 +701,7 @@ void WiFiService::UpdateFromEndpoints() {
     }
   }
 
-  set<uint16> frequency_set;
+  set<uint16_t> frequency_set;
   for (const auto &endpoint : endpoints_) {
     frequency_set.insert(endpoint->frequency());
   }
@@ -710,12 +710,12 @@ void WiFiService::UpdateFromEndpoints() {
   if (Is8021x())
     cipher_8021x_ = ComputeCipher8021x(endpoints_);
 
-  uint16 frequency = 0;
-  int16 signal = std::numeric_limits<int16>::min();
+  uint16_t frequency = 0;
+  int16_t signal = std::numeric_limits<int16_t>::min();
   string bssid;
   string country_code;
   Stringmap vendor_information;
-  uint16 physical_mode = Metrics::kWiFiNetworkPhyModeUndef;
+  uint16_t physical_mode = Metrics::kWiFiNetworkPhyModeUndef;
   // Represent "unknown raw signal strength" as 0.
   raw_signal_strength_ = 0;
   if (representative_endpoint) {
@@ -819,7 +819,7 @@ void WiFiService::ValidateWEPPassphrase(const std::string &passphrase,
 void WiFiService::ValidateWPAPassphrase(const std::string &passphrase,
                                         Error *error) {
   unsigned int length = passphrase.length();
-  vector<uint8> passphrase_bytes;
+  vector<uint8_t> passphrase_bytes;
 
   if (base::HexStringToBytes(passphrase, &passphrase_bytes)) {
     if (length != IEEE_80211::kWPAHexLen &&
@@ -838,7 +838,7 @@ void WiFiService::ValidateWPAPassphrase(const std::string &passphrase,
 // static
 void WiFiService::ParseWEPPassphrase(const string &passphrase,
                                      int *key_index,
-                                     std::vector<uint8> *password_bytes,
+                                     std::vector<uint8_t> *password_bytes,
                                      Error *error) {
   unsigned int length = passphrase.length();
   int key_index_local;
@@ -911,7 +911,7 @@ void WiFiService::ParseWEPPassphrase(const string &passphrase,
 
 // static
 bool WiFiService::CheckWEPIsHex(const string &passphrase, Error *error) {
-  vector<uint8> passphrase_bytes;
+  vector<uint8_t> passphrase_bytes;
   if (base::HexStringToBytes(passphrase, &passphrase_bytes)) {
     return true;
   } else {
@@ -954,9 +954,9 @@ string WiFiService::GetSecurityClass(const string &security) {
 }
 
 
-int16 WiFiService::SignalLevel() const {
+int16_t WiFiService::SignalLevel() const {
   return current_endpoint_ ? current_endpoint_->signal_strength() :
-      std::numeric_limits<int16>::min();
+      std::numeric_limits<int16_t>::min();
 }
 
 // static
@@ -1027,8 +1027,8 @@ bool WiFiService::IsValidSecurityMethod(const string &method) {
 }
 
 // static
-uint8 WiFiService::SignalToStrength(int16 signal_dbm) {
-  int16 strength;
+uint8_t WiFiService::SignalToStrength(int16_t signal_dbm) {
+  int16_t strength;
   if (signal_dbm > 0) {
     if (!logged_signal_warning) {
       LOG(WARNING) << "Signal strength is suspiciously high. "

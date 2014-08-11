@@ -21,10 +21,10 @@ using std::vector;
 namespace shill {
 
 // static
-const uint16 TrafficMonitor::kDnsPort = 53;
-const int64 TrafficMonitor::kDnsTimedOutThresholdSeconds = 15;
+const uint16_t TrafficMonitor::kDnsPort = 53;
+const int64_t TrafficMonitor::kDnsTimedOutThresholdSeconds = 15;
 const int TrafficMonitor::kMinimumFailedSamplesToTrigger = 2;
-const int64 TrafficMonitor::kSamplingIntervalMilliseconds = 5000;
+const int64_t TrafficMonitor::kSamplingIntervalMilliseconds = 5000;
 
 TrafficMonitor::TrafficMonitor(const DeviceRefPtr &device,
                                EventDispatcher *dispatcher)
@@ -164,7 +164,7 @@ bool TrafficMonitor::IsDnsFailing() {
     // |kDnsTimedOutThresholdSeconds|.  To ensure that we only count an
     // entry once, we look for entries in this time window between
     // |kDnsTimedOutThresholdSeconds| and |kDnsTimedOutLowerThresholdSeconds|.
-    const int64 kDnsTimedOutLowerThresholdSeconds =
+    const int64_t kDnsTimedOutLowerThresholdSeconds =
         kDnsTimedOutThresholdSeconds - kSamplingIntervalMilliseconds / 1000;
     string device_ip_address = device_->ipconfig()->properties().address;
     for (const auto &info : connection_infos) {

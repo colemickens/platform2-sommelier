@@ -23,14 +23,14 @@ typedef DBus::Struct<unsigned int, std::string, std::string>
 typedef std::map<std::string, std::string> GSMScanResult;
 typedef std::vector<GSMScanResult> GSMScanResults;
 
-typedef base::Callback<void(uint32)> SignalQualitySignalCallback;
+typedef base::Callback<void(uint32_t)> SignalQualitySignalCallback;
 typedef base::Callback<void(
     uint32_t,
     const std::string &,
     const std::string &)> RegistrationInfoSignalCallback;
 typedef base::Callback<void(uint32_t)> NetworkModeSignalCallback;
 
-typedef base::Callback<void(uint32, const Error &)> SignalQualityCallback;
+typedef base::Callback<void(uint32_t, const Error &)> SignalQualityCallback;
 typedef base::Callback<void(uint32_t,
                             const std::string &,
                             const std::string &,
@@ -59,7 +59,7 @@ class ModemGSMNetworkProxyInterface {
                     int timeout) = 0;
 
   // Properties.
-  virtual uint32 AccessTechnology() = 0;
+  virtual uint32_t AccessTechnology() = 0;
   // Signal callbacks
   virtual void set_signal_quality_callback(
       const SignalQualitySignalCallback &callback) = 0;

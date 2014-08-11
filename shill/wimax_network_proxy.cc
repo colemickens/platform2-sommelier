@@ -28,7 +28,7 @@ void WiMaxNetworkProxy::set_signal_strength_changed_callback(
   proxy_.set_signal_strength_changed_callback(callback);
 }
 
-uint32 WiMaxNetworkProxy::Identifier(Error *error) {
+uint32_t WiMaxNetworkProxy::Identifier(Error *error) {
   SLOG(DBus, 2) << __func__;
   try {
     return proxy_.Identifier();
@@ -114,7 +114,7 @@ void WiMaxNetworkProxy::Proxy::set_signal_strength_changed_callback(
 }
 
 void WiMaxNetworkProxy::Proxy::SignalStrengthChanged(
-    const int32 &signal_strength) {
+    const int32_t &signal_strength) {
   SLOG(DBus, 2) << __func__ << "(" << signal_strength << ")";
   if (!signal_strength_changed_callback_.is_null()) {
     signal_strength_changed_callback_.Run(signal_strength);

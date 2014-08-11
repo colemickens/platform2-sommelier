@@ -335,7 +335,7 @@ bool Device::Load(StoreInterface *storage) {
   }
   enabled_persistent_ = true;
   storage->GetBool(id, kStoragePowered, &enabled_persistent_);
-  uint64 rx_byte_count = 0, tx_byte_count = 0;
+  uint64_t rx_byte_count = 0, tx_byte_count = 0;
 
   manager_->device_info()->GetByteCounts(
       interface_index_, &rx_byte_count, &tx_byte_count);
@@ -344,7 +344,7 @@ bool Device::Load(StoreInterface *storage) {
   // whatever additional bytes we receive since time-of-load.  We
   // accomplish this by the subtractions below, which can validly
   // roll over "negative" in the subtractions below and in Get*ByteCount.
-  uint64 profile_byte_count;
+  uint64_t profile_byte_count;
   if (storage->GetUint64(id, kStorageReceiveByteCount, &profile_byte_count)) {
     receive_byte_offset_ = rx_byte_count - profile_byte_count;
   }
@@ -500,11 +500,11 @@ void Device::HelpRegisterConstDerivedRpcIdentifiers(
 
 void Device::HelpRegisterConstDerivedUint64(
     const string &name,
-    uint64(Device::*get)(Error *)) {
+    uint64_t(Device::*get)(Error *)) {
   store_.RegisterDerivedUint64(
       name,
       Uint64Accessor(
-          new CustomAccessor<Device, uint64>(this, get, NULL)));
+          new CustomAccessor<Device, uint64_t>(this, get, NULL)));
 }
 
 void Device::ConfigureStaticIPTask() {
@@ -1133,7 +1133,7 @@ string Device::GetRpcConnectionIdentifier() {
   return adaptor_->GetRpcConnectionIdentifier();
 }
 
-uint64 Device::GetLinkMonitorResponseTime(Error *error) {
+uint64_t Device::GetLinkMonitorResponseTime(Error *error) {
   if (!link_monitor_.get()) {
     // It is not strictly an error that the link monitor does not
     // exist, but returning an error here allows the GetProperties
@@ -1144,25 +1144,25 @@ uint64 Device::GetLinkMonitorResponseTime(Error *error) {
   return link_monitor_->GetResponseTimeMilliseconds();
 }
 
-uint64 Device::GetReceiveByteCount() {
-  uint64 rx_byte_count = 0, tx_byte_count = 0;
+uint64_t Device::GetReceiveByteCount() {
+  uint64_t rx_byte_count = 0, tx_byte_count = 0;
   manager_->device_info()->GetByteCounts(
       interface_index_, &rx_byte_count, &tx_byte_count);
   return rx_byte_count - receive_byte_offset_;
 }
 
-uint64 Device::GetTransmitByteCount() {
-  uint64 rx_byte_count = 0, tx_byte_count = 0;
+uint64_t Device::GetTransmitByteCount() {
+  uint64_t rx_byte_count = 0, tx_byte_count = 0;
   manager_->device_info()->GetByteCounts(
       interface_index_, &rx_byte_count, &tx_byte_count);
   return tx_byte_count - transmit_byte_offset_;
 }
 
-uint64 Device::GetReceiveByteCountProperty(Error */*error*/) {
+uint64_t Device::GetReceiveByteCountProperty(Error */*error*/) {
   return GetReceiveByteCount();
 }
 
-uint64 Device::GetTransmitByteCountProperty(Error */*error*/) {
+uint64_t Device::GetTransmitByteCountProperty(Error */*error*/) {
   return GetTransmitByteCount();
 }
 

@@ -42,11 +42,11 @@ class ConnectionInfoReader {
   bool ParseConnectionInfo(const std::string &input, ConnectionInfo *info);
   bool ParseProtocol(const std::string &input, int *protocol);
   bool ParseTimeToExpireSeconds(const std::string &input,
-                                int64 *time_to_expire_seconds);
+                                int64_t *time_to_expire_seconds);
   bool ParseIsUnreplied(const std::string &input, bool *is_unreplied);
   bool ParseIPAddress(const std::string &input,
                       IPAddress *ip_address, bool *is_source);
-  bool ParsePort(const std::string &input, uint16 *port, bool *is_source);
+  bool ParsePort(const std::string &input, uint16_t *port, bool *is_source);
 
   DISALLOW_COPY_AND_ASSIGN(ConnectionInfoReader);
 };

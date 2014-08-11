@@ -40,8 +40,8 @@ RTNLMessage::RTNLMessage()
 RTNLMessage::RTNLMessage(Type type,
                          Mode mode,
                          unsigned int flags,
-                         uint32 seq,
-                         uint32 pid,
+                         uint32_t seq,
+                         uint32_t pid,
                          int interface_index,
                          IPAddress::Family family)
     : type_(type),
@@ -227,9 +227,9 @@ bool RTNLMessage::DecodeNdUserOption(const RTNLHeader *hdr,
   // Parse the option header.
   const NDUserOptionHeader *nd_user_option_header =
       reinterpret_cast<const NDUserOptionHeader *>(
-          reinterpret_cast<const uint8 *>(&hdr->nd_user_opt) +
+          reinterpret_cast<const uint8_t *>(&hdr->nd_user_opt) +
           sizeof(struct nduseroptmsg));
-  uint32 lifetime = ntohl(nd_user_option_header->lifetime);
+  uint32_t lifetime = ntohl(nd_user_option_header->lifetime);
 
   // Verify option length.
   // The length field in the header is in units of 8 octets.
@@ -239,8 +239,8 @@ bool RTNLMessage::DecodeNdUserOption(const RTNLHeader *hdr,
   }
 
   // Determine option data pointer and data length.
-  const uint8 *option_data =
-      reinterpret_cast<const uint8 *>(nd_user_option_header + 1);
+  const uint8_t *option_data =
+      reinterpret_cast<const uint8_t *>(nd_user_option_header + 1);
   int data_len = opt_len - sizeof(NDUserOptionHeader);
 
   if (nd_user_option_header->type == ND_OPT_DNSSL) {
@@ -256,9 +256,9 @@ bool RTNLMessage::DecodeNdUserOption(const RTNLHeader *hdr,
   return false;
 }
 
-bool RTNLMessage::ParseRdnssOption(const uint8 *data,
+bool RTNLMessage::ParseRdnssOption(const uint8_t *data,
                                    int length,
-                                   uint32 lifetime) {
+                                   uint32_t lifetime) {
   const int addr_length = IPAddress::GetAddressLength(IPAddress::kFamilyIPv6);
 
   // Verify data size are multiple of individual address size.

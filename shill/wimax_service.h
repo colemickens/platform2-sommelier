@@ -57,7 +57,7 @@ class WiMaxService : public Service {
   bool is_default() const { return is_default_; }
   void set_is_default(bool is_default) { is_default_ = is_default; }
 
-  static WiMaxNetworkId ConvertIdentifierToNetworkId(uint32 identifier);
+  static WiMaxNetworkId ConvertIdentifierToNetworkId(uint32_t identifier);
 
   // Initializes the storage identifier. Note that the friendly service name and
   // the |network_id_| must already be initialized.

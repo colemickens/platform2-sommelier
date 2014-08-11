@@ -99,7 +99,7 @@ void ModemTest::TearDown() {
 
 TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   static const char kSentinel[] = "sentinel";
-  static const uint32 kSentinelValue = 17;
+  static const uint32_t kSentinelValue = 17;
 
   DBusInterfaceToProperties properties;
   properties[MM_MODEM_INTERFACE][kSentinel].writer().append_uint32(

@@ -49,7 +49,7 @@ string GetTestPath(int index) {
   return wimax_manager::kDeviceObjectPathPrefix + GetTestLinkName(index);
 }
 
-string GetTestNetworkPath(uint32 identifier) {
+string GetTestNetworkPath(uint32_t identifier) {
   return base::StringPrintf("%s%08x",
                             wimax_manager::kNetworkObjectPathPrefix,
                             identifier);
@@ -237,7 +237,7 @@ TEST_F(WiMaxProviderTest, GetLinkName) {
 
 TEST_F(WiMaxProviderTest, RetrieveNetworkInfo) {
   static const char kName[] = "Default Network";
-  const uint32 kIdentifier = 0xabcdef;
+  const uint32_t kIdentifier = 0xabcdef;
   static const char kNetworkId[] = "00abcdef";
   string network_path = GetTestNetworkPath(kIdentifier);
   EXPECT_CALL(proxy_factory_, CreateWiMaxNetworkProxy(network_path))
@@ -271,7 +271,7 @@ TEST_F(WiMaxProviderTest, FindService) {
 }
 
 TEST_F(WiMaxProviderTest, StartLiveServices) {
-  const uint32 kIdentifier = 0x1234567;
+  const uint32_t kIdentifier = 0x1234567;
   static const char kNetworkId[] = "01234567";
   static const char kName[] = "Some WiMAX Provider";
   vector<scoped_refptr<MockWiMaxService> > services(4);
@@ -354,7 +354,7 @@ TEST_F(WiMaxProviderTest, StopDeadServices) {
 
 TEST_F(WiMaxProviderTest, OnNetworksChanged) {
   static const char kName[] = "Default Network";
-  const uint32 kIdentifier = 0xabcdef;
+  const uint32_t kIdentifier = 0xabcdef;
   static const char kNetworkId[] = "00abcdef";
 
   // Started service to be stopped.

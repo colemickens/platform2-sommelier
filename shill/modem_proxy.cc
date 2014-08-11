@@ -68,7 +68,7 @@ void ModemProxy::Proxy::set_state_changed_callback(
 }
 
 void ModemProxy::Proxy::StateChanged(
-    const uint32 &old, const uint32 &_new, const uint32 &reason) {
+    const uint32_t &old, const uint32_t &_new, const uint32_t &reason) {
   SLOG(DBus, 2) << __func__ << "(" << old << ", " << _new << ", "
                  << reason << ")";
   state_changed_callback_.Run(old, _new, reason);

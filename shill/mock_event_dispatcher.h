@@ -21,7 +21,7 @@ class MockEventDispatcher : public EventDispatcher {
   MOCK_METHOD0(DispatchPendingEvents, void());
   MOCK_METHOD1(PostTask, bool(const base::Closure &task));
   MOCK_METHOD2(PostDelayedTask, bool(const base::Closure &task,
-                                     int64 delay_ms));
+                                     int64_t delay_ms));
   MOCK_METHOD3(CreateInputHandler, IOHandler *(
       int fd,
       const IOHandler::InputCallback &input_callback,

@@ -65,9 +65,9 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
 
   static ::DBus::Variant BoolToVariant(bool value);
   static ::DBus::Variant ByteArraysToVariant(const ByteArrays &value);
-  static ::DBus::Variant ByteToVariant(uint8 value);
-  static ::DBus::Variant Int16ToVariant(int16 value);
-  static ::DBus::Variant Int32ToVariant(int32 value);
+  static ::DBus::Variant ByteToVariant(uint8_t value);
+  static ::DBus::Variant Int16ToVariant(int16_t value);
+  static ::DBus::Variant Int32ToVariant(int32_t value);
   static ::DBus::Variant KeyValueStoreToVariant(const KeyValueStore &value);
   static ::DBus::Variant PathToVariant(const ::DBus::Path &value);
   static ::DBus::Variant PathsToVariant(
@@ -76,10 +76,10 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static ::DBus::Variant StringmapToVariant(const Stringmap &value);
   static ::DBus::Variant StringmapsToVariant(const Stringmaps &value);
   static ::DBus::Variant StringsToVariant(const Strings &value);
-  static ::DBus::Variant Uint16ToVariant(uint16 value);
+  static ::DBus::Variant Uint16ToVariant(uint16_t value);
   static ::DBus::Variant Uint16sToVariant(const Uint16s &value);
-  static ::DBus::Variant Uint32ToVariant(uint32 value);
-  static ::DBus::Variant Uint64ToVariant(uint64 value);
+  static ::DBus::Variant Uint32ToVariant(uint32_t value);
+  static ::DBus::Variant Uint64ToVariant(uint64_t value);
 
   static bool IsBool(::DBus::Signature signature);
   static bool IsByte(::DBus::Signature signature);

@@ -90,7 +90,7 @@ void ModemGSMCardProxy::ChangePIN(const string &old_pin,
             old_pin, new_pin);
 }
 
-uint32 ModemGSMCardProxy::EnabledFacilityLocks() {
+uint32_t ModemGSMCardProxy::EnabledFacilityLocks() {
   SLOG(DBus, 2) << __func__;
   try {
     return proxy_.EnabledFacilityLocks();

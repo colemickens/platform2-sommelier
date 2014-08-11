@@ -134,8 +134,8 @@ class Connection : public base::RefCounted<Connection> {
   FRIEND_TEST(ConnectionTest, UpdateDNSServers);
   FRIEND_TEST(VPNServiceTest, OnConnectionDisconnected);
 
-  static const uint32 kDefaultMetric;
-  static const uint32 kNonDefaultMetricBase;
+  static const uint32_t kDefaultMetric;
+  static const uint32_t kNonDefaultMetricBase;
 
   // Work around misconfigured servers which provide a gateway address that
   // is unreachable with the provided netmask.
@@ -143,7 +143,7 @@ class Connection : public base::RefCounted<Connection> {
                                      IPAddress *peer,
                                      IPAddress *gateway,
                                      const IPAddress &trusted_ip);
-  uint32 GetMetric(bool is_default);
+  uint32_t GetMetric(bool is_default);
   bool PinHostRoute(const IPAddress &trusted_ip, const IPAddress &gateway);
 
   void OnRouteQueryResponse(int interface_index,

@@ -8,11 +8,11 @@ namespace shill {
 
 SocketInfo::SocketInfo(ConnectionState connection_state,
                        const IPAddress &local_ip_address,
-                       uint16 local_port,
+                       uint16_t local_port,
                        const IPAddress &remote_ip_address,
-                       uint16 remote_port,
-                       uint64 transmit_queue_value,
-                       uint64 receive_queue_value,
+                       uint16_t remote_port,
+                       uint64_t transmit_queue_value,
+                       uint64_t receive_queue_value,
                        TimerState timer_state)
     : connection_state_(connection_state),
       local_ip_address_(local_ip_address),

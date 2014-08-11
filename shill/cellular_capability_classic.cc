@@ -31,7 +31,7 @@ const char CellularCapabilityClassic::kConnectPropertyPhoneNumber[] = "number";
 const char CellularCapabilityClassic::kModemPropertyEnabled[] = "Enabled";
 const int CellularCapabilityClassic::kTimeoutSetCarrierMilliseconds = 120000;
 
-static Cellular::ModemState ConvertClassicToModemState(uint32 classic_state) {
+static Cellular::ModemState ConvertClassicToModemState(uint32_t classic_state) {
   ModemClassicState cstate = static_cast<ModemClassicState>(classic_state);
   switch (cstate) {
     case kModemClassicStateUnknown:
@@ -334,7 +334,7 @@ void CellularCapabilityClassic::OnGetModemInfoReply(
 }
 
 void CellularCapabilityClassic::OnModemStateChangedSignal(
-    uint32 old_state, uint32 new_state, uint32 reason) {
+    uint32_t old_state, uint32_t new_state, uint32_t reason) {
   SLOG(Cellular, 2) << __func__ << "(" << old_state << ", " << new_state << ", "
                     << reason << ")";
   cellular()->OnModemStateChanged(ConvertClassicToModemState(new_state));

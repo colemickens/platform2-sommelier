@@ -227,7 +227,7 @@ void PortalDetector::RequestResultCallback(
 }
 
 void PortalDetector::StartAttempt(int init_delay_seconds) {
-  int64 next_attempt_delay = 0;
+  int64_t next_attempt_delay = 0;
   if (attempt_count_ > 0) {
     // Ensure that attempts are spaced at least by a minimal interval.
     struct timeval now, elapsed_time;

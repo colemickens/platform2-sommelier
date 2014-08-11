@@ -55,7 +55,7 @@ namespace shill {
 
 // static
 const char Cellular::kAllowRoaming[] = "AllowRoaming";
-const int64 Cellular::kDefaultScanningTimeoutMilliseconds = 60000;
+const int64_t Cellular::kDefaultScanningTimeoutMilliseconds = 60000;
 const char Cellular::kGenericServiceNamePrefix[] = "MobileNetwork";
 unsigned int Cellular::friendly_service_name_id_ = 1;
 
@@ -619,7 +619,7 @@ void Cellular::HandleNewRegistrationState() {
   manager()->UpdateService(service_);
 }
 
-void Cellular::HandleNewSignalQuality(uint32 strength) {
+void Cellular::HandleNewSignalQuality(uint32_t strength) {
   SLOG(Cellular, 2) << "Signal strength: " << strength;
   if (service_) {
     service_->SetStrength(strength);
@@ -1471,7 +1471,7 @@ void Cellular::set_supported_carriers(const Strings &supported_carriers) {
                                 supported_carriers_);
 }
 
-void Cellular::set_prl_version(uint16 prl_version) {
+void Cellular::set_prl_version(uint16_t prl_version) {
   if (prl_version_ == prl_version)
     return;
 

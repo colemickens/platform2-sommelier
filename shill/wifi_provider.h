@@ -38,15 +38,15 @@ class WiFiProvider : public ProviderInterface {
  public:
   static const char kStorageFrequencies[];
   static const int kMaxStorageFrequencies;
-  typedef std::map<uint16, int64> ConnectFrequencyMap;
+  typedef std::map<uint16_t, int64_t> ConnectFrequencyMap;
   // The key to |ConnectFrequencyMapDated| is the number of days since the
   // Epoch.
   typedef std::map<time_t, ConnectFrequencyMap> ConnectFrequencyMapDated;
   struct FrequencyCount {
     FrequencyCount() : frequency(0), connection_count(0) {}
-    FrequencyCount(uint16 freq, size_t conn)
+    FrequencyCount(uint16_t freq, size_t conn)
         : frequency(freq), connection_count(conn) {}
-    uint16 frequency;
+    uint16_t frequency;
     size_t connection_count;  // Number of successful connections at this
                               // frequency.
   };
@@ -107,7 +107,7 @@ class WiFiProvider : public ProviderInterface {
   // Save configuration for wifi_provider to |storage|.
   virtual bool Save(StoreInterface *storage) const;
 
-  virtual void IncrementConnectCount(uint16 frequency_mhz);
+  virtual void IncrementConnectCount(uint16_t frequency_mhz);
 
   // Returns a list of all of the frequencies on which this device has
   // connected.  This data is accumulated across multiple shill runs.

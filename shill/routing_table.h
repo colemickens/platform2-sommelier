@@ -39,14 +39,14 @@ class RoutingTable {
     typedef base::Callback<void(int, const RoutingTableEntry &)> Callback;
 
     Query() : sequence(0), tag(0) {}
-    Query(uint32 sequence_in,
+    Query(uint32_t sequence_in,
           int tag_in,
           Callback callback_in)
         : sequence(sequence_in),
           tag(tag_in),
           callback(callback_in) {}
 
-    uint32 sequence;
+    uint32_t sequence;
     int tag;
     Callback callback;
   };
@@ -72,19 +72,19 @@ class RoutingTable {
   // |metric|.
   virtual bool SetDefaultRoute(int interface_index,
                                const IPAddress &gateway_address,
-                               uint32 metric);
+                               uint32_t metric);
 
   // Configure routing table entries from the "routes" portion of |ipconfig|.
   // Returns true if all routes were installed successfully, false otherwise.
   virtual bool ConfigureRoutes(int interface_index,
                                const IPConfigRefPtr &ipconfig,
-                               uint32 metric);
+                               uint32_t metric);
 
   // Create a blackhole route for a given IP family.  Returns true
   // on successfully sending the route request, false otherwise.
   virtual bool CreateBlackholeRoute(int interface_index,
                                     IPAddress::Family family,
-                                    uint32 metric);
+                                    uint32_t metric);
 
   // Create a route to a link-attached remote host.  |remote_address|
   // must be directly reachable from |local_address|.  Returns true
@@ -108,7 +108,7 @@ class RoutingTable {
   virtual void ResetTable(int interface_index);
 
   // Set the metric (priority) on existing default routes for an interface.
-  virtual void SetDefaultMetric(int interface_index, uint32 metric);
+  virtual void SetDefaultMetric(int interface_index, uint32_t metric);
 
   // Get the default route to |destination| through |interface_index| and create
   // a host route to that destination.  When creating the route, tag our local
@@ -133,7 +133,7 @@ class RoutingTable {
                                        int *interface_index,
                                        RoutingTableEntry *entry);
   void RouteMsgHandler(const RTNLMessage &msg);
-  bool ApplyRoute(uint32 interface_index,
+  bool ApplyRoute(uint32_t interface_index,
                   const RoutingTableEntry &entry,
                   RTNLMessage::Mode mode,
                   unsigned int flags);
@@ -143,9 +143,9 @@ class RoutingTable {
                                IPAddress::Family family,
                                RoutingTableEntry **entry);
 
-  void ReplaceMetric(uint32 interface_index,
+  void ReplaceMetric(uint32_t interface_index,
                      RoutingTableEntry *entry,
-                     uint32 metric);
+                     uint32_t metric);
 
   static const char kRouteFlushPath4[];
   static const char kRouteFlushPath6[];

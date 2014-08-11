@@ -107,7 +107,7 @@ void CellularCapabilityCDMA::UpdateStatus(const DBusPropertiesMap &properties) {
   // match flimflam. In the future, get these from an alternative source (e.g.,
   // database, carrier-specific properties, etc.).
   UpdateOnlinePortal(properties);
-  uint16 prl_version;
+  uint16_t prl_version;
   if (DBusProperties::GetUint16(properties, "prl_version", &prl_version))
     cellular()->set_prl_version(prl_version);
 }
@@ -165,7 +165,7 @@ void CellularCapabilityCDMA::Activate(const string &carrier,
   }
 }
 
-void CellularCapabilityCDMA::HandleNewActivationState(uint32 error) {
+void CellularCapabilityCDMA::HandleNewActivationState(uint32_t error) {
   SLOG(Cellular, 2) << __func__ << "(" << error << ")";
   if (!cellular()->service().get()) {
     LOG(ERROR) << "In " << __func__ << "(): service is null.";
@@ -202,7 +202,7 @@ void CellularCapabilityCDMA::DisconnectCleanup() {
 }
 
 // static
-string CellularCapabilityCDMA::GetActivationStateString(uint32 state) {
+string CellularCapabilityCDMA::GetActivationStateString(uint32_t state) {
   switch (state) {
     case MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED:
       return kActivationStateActivated;
@@ -218,7 +218,7 @@ string CellularCapabilityCDMA::GetActivationStateString(uint32 state) {
 }
 
 // static
-string CellularCapabilityCDMA::GetActivationErrorString(uint32 error) {
+string CellularCapabilityCDMA::GetActivationErrorString(uint32_t error) {
   switch (error) {
     case MM_MODEM_CDMA_ACTIVATION_ERROR_WRONG_RADIO_INTERFACE:
       return kErrorNeedEvdo;
@@ -278,7 +278,7 @@ string CellularCapabilityCDMA::GetNetworkTechnologyString() const {
 }
 
 string CellularCapabilityCDMA::GetRoamingStateString() const {
-  uint32 state = registration_state_evdo_;
+  uint32_t state = registration_state_evdo_;
   if (state == MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {
     state = registration_state_1x_;
   }
@@ -313,7 +313,7 @@ void CellularCapabilityCDMA::GetRegistrationState() {
 }
 
 void CellularCapabilityCDMA::OnActivateReply(
-    const ResultCallback &callback, uint32 status, const Error &error) {
+    const ResultCallback &callback, uint32_t status, const Error &error) {
   activation_starting_ = false;
   if (error.IsSuccess()) {
     if (status == MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR) {
@@ -330,21 +330,21 @@ void CellularCapabilityCDMA::OnActivateReply(
 }
 
 void CellularCapabilityCDMA::OnGetRegistrationStateReply(
-    uint32 state_1x, uint32 state_evdo, const Error &error) {
+    uint32_t state_1x, uint32_t state_evdo, const Error &error) {
   SLOG(Cellular, 2) << __func__;
   if (error.IsSuccess())
     OnRegistrationStateChangedSignal(state_1x, state_evdo);
 }
 
-void CellularCapabilityCDMA::OnGetSignalQualityReply(uint32 quality,
+void CellularCapabilityCDMA::OnGetSignalQualityReply(uint32_t quality,
                                                      const Error &error) {
   if (error.IsSuccess())
     OnSignalQualitySignal(quality);
 }
 
 void CellularCapabilityCDMA::OnActivationStateChangedSignal(
-    uint32 activation_state,
-    uint32 activation_error,
+    uint32_t activation_state,
+    uint32_t activation_error,
     const DBusPropertiesMap &status_changes) {
   SLOG(Cellular, 2) << __func__;
   string prop_value;
@@ -360,14 +360,14 @@ void CellularCapabilityCDMA::OnActivationStateChangedSignal(
 }
 
 void CellularCapabilityCDMA::OnRegistrationStateChangedSignal(
-    uint32 state_1x, uint32 state_evdo) {
+    uint32_t state_1x, uint32_t state_evdo) {
   SLOG(Cellular, 2) << __func__;
   registration_state_1x_ = state_1x;
   registration_state_evdo_ = state_evdo;
   cellular()->HandleNewRegistrationState();
 }
 
-void CellularCapabilityCDMA::OnSignalQualitySignal(uint32 strength) {
+void CellularCapabilityCDMA::OnSignalQualitySignal(uint32_t strength) {
   cellular()->HandleNewSignalQuality(strength);
 }
 

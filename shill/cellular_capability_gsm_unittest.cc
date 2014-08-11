@@ -227,11 +227,11 @@ class CellularCapabilityGSMTest : public testing::Test {
     capability_->network_proxy_.reset(network_proxy_.release());
   }
 
-  void SetAccessTechnology(uint32 technology) {
+  void SetAccessTechnology(uint32_t technology) {
     capability_->access_technology_ = technology;
   }
 
-  void SetRegistrationState(uint32 state) {
+  void SetRegistrationState(uint32_t state) {
     capability_->registration_state_ = state;
   }
 

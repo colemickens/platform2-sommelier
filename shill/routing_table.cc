@@ -134,7 +134,7 @@ bool RoutingTable::GetDefaultRouteInternal(int interface_index,
 
 bool RoutingTable::SetDefaultRoute(int interface_index,
                                    const IPAddress &gateway_address,
-                                   uint32 metric) {
+                                   uint32_t metric) {
   SLOG(Route, 2) << __func__ << " index " << interface_index
                  << " metric " << metric;
 
@@ -171,7 +171,7 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
 
 bool RoutingTable::ConfigureRoutes(int interface_index,
                                    const IPConfigRefPtr &ipconfig,
-                                   uint32 metric) {
+                                   uint32_t metric) {
   bool ret = true;
 
   IPAddress::Family address_family = ipconfig->properties().address_family;
@@ -245,7 +245,7 @@ void RoutingTable::ResetTable(int interface_index) {
   tables_.erase(interface_index);
 }
 
-void RoutingTable::SetDefaultMetric(int interface_index, uint32 metric) {
+void RoutingTable::SetDefaultMetric(int interface_index, uint32_t metric) {
   SLOG(Route, 2) << __func__ << " index " << interface_index
                  << " metric " << metric;
 
@@ -280,13 +280,13 @@ bool RoutingTable::ParseRoutingTableMessage(const RTNLMessage &message,
     return false;
   }
 
-  uint32 interface_index_u32 = 0;
+  uint32_t interface_index_u32 = 0;
   if (!message.GetAttribute(RTA_OIF).ConvertToCPUUInt32(&interface_index_u32)) {
     return false;
   }
   *interface_index = interface_index_u32;
 
-  uint32 metric = 0;
+  uint32_t metric = 0;
   if (message.HasAttribute(RTA_PRIORITY)) {
     message.GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&metric);
   }
@@ -398,7 +398,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage &message) {
   }
 }
 
-bool RoutingTable::ApplyRoute(uint32 interface_index,
+bool RoutingTable::ApplyRoute(uint32_t interface_index,
                               const RoutingTableEntry &entry,
                               RTNLMessage::Mode mode,
                               unsigned int flags) {
@@ -447,9 +447,9 @@ bool RoutingTable::ApplyRoute(uint32 interface_index,
 // NLM_F_REPLACE flag by itself.  We have to explicitly remove the old route.
 // We do so after creating the route at a new metric so there is no traffic
 // disruption to existing network streams.
-void RoutingTable::ReplaceMetric(uint32 interface_index,
+void RoutingTable::ReplaceMetric(uint32_t interface_index,
                                  RoutingTableEntry *entry,
-                                 uint32 metric) {
+                                 uint32_t metric) {
   SLOG(Route, 2) << __func__ << " index " << interface_index
                  << " metric " << metric;
   RoutingTableEntry new_entry = *entry;
@@ -519,7 +519,7 @@ bool RoutingTable::RequestRouteToHost(const IPAddress &address,
 
 bool RoutingTable::CreateBlackholeRoute(int interface_index,
                                         IPAddress::Family family,
-                                        uint32 metric) {
+                                        uint32_t metric) {
   SLOG(Route, 2) << base::StringPrintf(
       "%s: index %d family %s metric %d",
       __func__, interface_index,

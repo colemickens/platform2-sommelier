@@ -56,7 +56,7 @@ class EapListenerTest : public testing::Test {
  protected:
   static const int kInterfaceIndex;
   static const int kSocketFD;
-  static const uint8 kEapPacketPayload[];
+  static const uint8_t kEapPacketPayload[];
 
   bool CreateSocket() { return listener_.CreateSocket(); }
   int GetInterfaceIndex() { return listener_.interface_index_; }
@@ -80,7 +80,7 @@ class EapListenerTest : public testing::Test {
 // static
 const int EapListenerTest::kInterfaceIndex = 123;
 const int EapListenerTest::kSocketFD = 456;
-const uint8 EapListenerTest::kEapPacketPayload[] = {
+const uint8_t EapListenerTest::kEapPacketPayload[] = {
   eap_protocol::kIeee8021xEapolVersion2,
   eap_protocol::kIIeee8021xTypeEapPacket,
   0x00, 0x00,  // Payload length (should be 5, but unparsed by EapListener).
@@ -223,7 +223,7 @@ TEST_F(EapListenerTest, ReceiveInvalid) {
   StartListener();
   // We're partially initializing this field, just making sure at least one
   // part of it is incorrect.
-  uint8 bad_payload[sizeof(kEapPacketPayload)] = {
+  uint8_t bad_payload[sizeof(kEapPacketPayload)] = {
     eap_protocol::kIeee8021xEapolVersion1 - 1
   };
   recvfrom_reply_data_ = ByteString(bad_payload, sizeof(bad_payload));

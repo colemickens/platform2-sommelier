@@ -50,7 +50,7 @@ class SupplicantInterfaceProxy
       const std::map<std::string, ::DBus::Variant> &args);
   virtual void SelectNetwork(const ::DBus::Path &network);
   virtual void SetFastReauth(bool enabled);
-  virtual void SetRoamThreshold(uint16 threshold);
+  virtual void SetRoamThreshold(uint16_t threshold);
   virtual void SetScanInterval(int seconds);
   virtual void SetDisableHighBitrates(bool disable_high_bitrates);
   virtual void TDLSDiscover(const std::string &peer);

@@ -36,17 +36,17 @@ namespace shill {
 class TrafficMonitorTest : public Test {
  public:
   static const char kLocalIpAddr[];
-  static const uint16 kLocalPort1;
-  static const uint16 kLocalPort2;
-  static const uint16 kLocalPort3;
-  static const uint16 kLocalPort4;
-  static const uint16 kLocalPort5;
+  static const uint16_t kLocalPort1;
+  static const uint16_t kLocalPort2;
+  static const uint16_t kLocalPort3;
+  static const uint16_t kLocalPort4;
+  static const uint16_t kLocalPort5;
   static const char kRemoteIpAddr[];
-  static const uint16 kRemotePort;
-  static const uint64 kTxQueueLength1;
-  static const uint64 kTxQueueLength2;
-  static const uint64 kTxQueueLength3;
-  static const uint64 kTxQueueLength4;
+  static const uint16_t kRemotePort;
+  static const uint64_t kTxQueueLength1;
+  static const uint64_t kTxQueueLength2;
+  static const uint64_t kTxQueueLength3;
+  static const uint64_t kTxQueueLength4;
 
   TrafficMonitorTest()
       : device_(new MockDevice(&control_,
@@ -115,7 +115,7 @@ class TrafficMonitorTest : public Test {
     return true;
   }
 
-  string FormatIPPort(const IPAddress &ip, const uint16 port) {
+  string FormatIPPort(const IPAddress &ip, const uint16_t port) {
     return StringPrintf("%s:%d", ip.ToString().c_str(), port);
   }
 
@@ -135,17 +135,17 @@ class TrafficMonitorTest : public Test {
 
 // static
 const char TrafficMonitorTest::kLocalIpAddr[] = "127.0.0.1";
-const uint16 TrafficMonitorTest::kLocalPort1 = 1234;
-const uint16 TrafficMonitorTest::kLocalPort2 = 2345;
-const uint16 TrafficMonitorTest::kLocalPort3 = 3456;
-const uint16 TrafficMonitorTest::kLocalPort4 = 4567;
-const uint16 TrafficMonitorTest::kLocalPort5 = 4567;
+const uint16_t TrafficMonitorTest::kLocalPort1 = 1234;
+const uint16_t TrafficMonitorTest::kLocalPort2 = 2345;
+const uint16_t TrafficMonitorTest::kLocalPort3 = 3456;
+const uint16_t TrafficMonitorTest::kLocalPort4 = 4567;
+const uint16_t TrafficMonitorTest::kLocalPort5 = 4567;
 const char TrafficMonitorTest::kRemoteIpAddr[] = "192.168.1.1";
-const uint16 TrafficMonitorTest::kRemotePort = 5678;
-const uint64 TrafficMonitorTest::kTxQueueLength1 = 111;
-const uint64 TrafficMonitorTest::kTxQueueLength2 = 222;
-const uint64 TrafficMonitorTest::kTxQueueLength3 = 333;
-const uint64 TrafficMonitorTest::kTxQueueLength4 = 444;
+const uint16_t TrafficMonitorTest::kRemotePort = 5678;
+const uint64_t TrafficMonitorTest::kTxQueueLength1 = 111;
+const uint64_t TrafficMonitorTest::kTxQueueLength2 = 222;
+const uint64_t TrafficMonitorTest::kTxQueueLength3 = 333;
+const uint64_t TrafficMonitorTest::kTxQueueLength4 = 444;
 
 TEST_F(TrafficMonitorTest, StartAndStop) {
   // Stop without start
@@ -667,7 +667,7 @@ TEST_F(TrafficMonitorTest, SampleTrafficDnsTimedOutOutsideTimeWindow) {
 }
 
 TEST_F(TrafficMonitorTest, SampleTrafficNonDnsTimedOut) {
-  const uint16 kNonDnsPort = 54;
+  const uint16_t kNonDnsPort = 54;
   vector<ConnectionInfo> connection_infos;
   connection_infos.push_back(
     ConnectionInfo(IPPROTO_UDP,

@@ -532,7 +532,7 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
     LOG(ERROR) << __func__ << "() called with null header.";
     return;
   }
-  const uint32 sequence_number = msg->nlmsg_seq;
+  const uint32_t sequence_number = msg->nlmsg_seq;
 
   scoped_ptr<NetlinkMessage> message(message_factory_.CreateMessage(msg));
   if (message == NULL) {

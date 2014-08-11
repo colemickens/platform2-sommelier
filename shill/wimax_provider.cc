@@ -357,7 +357,7 @@ void WiMaxProvider::RetrieveNetworkInfo(const RpcIdentifier &path) {
   if (error.IsFailure()) {
     return;
   }
-  uint32 identifier = proxy->Identifier(&error);
+  uint32_t identifier = proxy->Identifier(&error);
   if (error.IsFailure()) {
     return;
   }

@@ -45,7 +45,7 @@ class ModemGSMCardProxyInterface {
                          int timeout) = 0;
 
   // Properties.
-  virtual uint32 EnabledFacilityLocks() = 0;
+  virtual uint32_t EnabledFacilityLocks() = 0;
 };
 
 }  // namespace shill

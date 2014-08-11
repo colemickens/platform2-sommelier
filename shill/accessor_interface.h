@@ -56,13 +56,13 @@ typedef std::vector<std::string> RpcIdentifiers;
 typedef std::vector<std::string> Strings;
 typedef std::map<std::string, std::string> Stringmap;
 typedef std::vector<Stringmap> Stringmaps;
-typedef std::vector<uint16> Uint16s;
+typedef std::vector<uint16_t> Uint16s;
 
 // Using a smart pointer here allows pointers to classes derived from
 // AccessorInterface<> to be stored in maps and other STL container types.
 typedef std::shared_ptr<AccessorInterface<bool>> BoolAccessor;
-typedef std::shared_ptr<AccessorInterface<int16>> Int16Accessor;
-typedef std::shared_ptr<AccessorInterface<int32>> Int32Accessor;
+typedef std::shared_ptr<AccessorInterface<int16_t>> Int16Accessor;
+typedef std::shared_ptr<AccessorInterface<int32_t>> Int32Accessor;
 // See comment above RpcIdentifiers typedef, for the reason why the
 // RpcIdentifiersAccessor exists (even though it has the same
 // underlying type as StringsAccessor).
@@ -76,11 +76,11 @@ typedef std::shared_ptr<AccessorInterface<Stringmaps>> StringmapsAccessor;
 typedef std::shared_ptr<AccessorInterface<Strings>> StringsAccessor;
 typedef std::shared_ptr<
     AccessorInterface<KeyValueStore>> KeyValueStoreAccessor;
-typedef std::shared_ptr<AccessorInterface<uint8>> Uint8Accessor;
-typedef std::shared_ptr<AccessorInterface<uint16>> Uint16Accessor;
+typedef std::shared_ptr<AccessorInterface<uint8_t>> Uint8Accessor;
+typedef std::shared_ptr<AccessorInterface<uint16_t>> Uint16Accessor;
 typedef std::shared_ptr<AccessorInterface<Uint16s>> Uint16sAccessor;
-typedef std::shared_ptr<AccessorInterface<uint32>> Uint32Accessor;
-typedef std::shared_ptr<AccessorInterface<uint64>> Uint64Accessor;
+typedef std::shared_ptr<AccessorInterface<uint32_t>> Uint32Accessor;
+typedef std::shared_ptr<AccessorInterface<uint64_t>> Uint64Accessor;
 
 }  // namespace shill
 

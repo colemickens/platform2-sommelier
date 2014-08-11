@@ -144,9 +144,9 @@ class CellularCapabilityClassic : public CellularCapability {
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
 
   // Method reply and signal callbacks from Modem interface
-  void OnModemStateChangedSignal(uint32 old_state,
-                                 uint32 new_state,
-                                 uint32 reason);
+  void OnModemStateChangedSignal(uint32_t old_state,
+                                 uint32_t new_state,
+                                 uint32_t reason);
   void OnGetModemInfoReply(const ResultCallback &callback,
                            const ModemHardwareInfo &info,
                            const Error &error);

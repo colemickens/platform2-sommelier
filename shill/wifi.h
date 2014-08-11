@@ -279,11 +279,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   typedef std::map<const WiFiService *, std::string> ReverseServiceMap;
 
   static const char *kDefaultBgscanMethod;
-  static const uint16 kDefaultBgscanShortIntervalSeconds;
-  static const int32 kDefaultBgscanSignalThresholdDbm;
-  static const uint16 kDefaultRoamThresholdDb;
-  static const uint16 kDefaultScanIntervalSeconds;
-  static const uint16 kBackgroundScanIntervalSeconds;
+  static const uint16_t kDefaultBgscanShortIntervalSeconds;
+  static const int32_t kDefaultBgscanSignalThresholdDbm;
+  static const uint16_t kDefaultRoamThresholdDb;
+  static const uint16_t kDefaultScanIntervalSeconds;
+  static const uint16_t kBackgroundScanIntervalSeconds;
   static const time_t kMaxBSSResumeAgeSeconds;
   static const char kInterfaceStateUnknown[];
   // Delay between scans when supplicant finds "No suitable network".
@@ -306,18 +306,18 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void AppendBgscan(WiFiService *service,
                     std::map<std::string, DBus::Variant> *service_params) const;
   std::string GetBgscanMethod(const int &argument, Error *error);
-  uint16 GetBgscanShortInterval(Error */* error */) {
+  uint16_t GetBgscanShortInterval(Error */* error */) {
     return bgscan_short_interval_seconds_;
   }
-  int32 GetBgscanSignalThreshold(Error */* error */) {
+  int32_t GetBgscanSignalThreshold(Error */* error */) {
     return bgscan_signal_threshold_dbm_;
   }
   // These methods can't be 'const' because they are passed to
   // HelpRegisterDerivedUint16 which don't take const methods.
-  uint16 GetRoamThreshold(Error */* error */) /*const*/ {
+  uint16_t GetRoamThreshold(Error */* error */) /*const*/ {
     return roam_threshold_db_;
   }
-  uint16 GetScanInterval(Error */* error */) /*const*/ {
+  uint16_t GetScanInterval(Error */* error */) /*const*/ {
     return scan_interval_seconds_;
   }
 
@@ -327,10 +327,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool GetScanPending(Error */* error */);
   bool SetBgscanMethod(
       const int &argument, const std::string &method, Error *error);
-  bool SetBgscanShortInterval(const uint16 &seconds, Error *error);
-  bool SetBgscanSignalThreshold(const int32 &dbm, Error *error);
-  bool SetRoamThreshold(const uint16 &threshold, Error */*error*/);
-  bool SetScanInterval(const uint16 &seconds, Error *error);
+  bool SetBgscanShortInterval(const uint16_t &seconds, Error *error);
+  bool SetBgscanSignalThreshold(const int32_t &dbm, Error *error);
+  bool SetRoamThreshold(const uint16_t &threshold, Error */*error*/);
+  bool SetScanInterval(const uint16_t &seconds, Error *error);
   void ClearBgscanMethod(const int &argument, Error *error);
 
   void CurrentBSSChanged(const ::DBus::Path &new_bss);
@@ -378,13 +378,13 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void HelpRegisterDerivedInt32(
       PropertyStore *store,
       const std::string &name,
-      int32(WiFi::*get)(Error *error),
-      bool(WiFi::*set)(const int32 &value, Error *error));
+      int32_t(WiFi::*get)(Error *error),
+      bool(WiFi::*set)(const int32_t &value, Error *error));
   void HelpRegisterDerivedUint16(
       PropertyStore *store,
       const std::string &name,
-      uint16(WiFi::*get)(Error *error),
-      bool(WiFi::*set)(const uint16 &value, Error *error));
+      uint16_t(WiFi::*get)(Error *error),
+      bool(WiFi::*set)(const uint16_t &value, Error *error));
   void HelpRegisterConstDerivedBool(
       PropertyStore *store,
       const std::string &name,
@@ -549,10 +549,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Properties
   std::string bgscan_method_;
-  uint16 bgscan_short_interval_seconds_;
-  int32 bgscan_signal_threshold_dbm_;
-  uint16 roam_threshold_db_;
-  uint16 scan_interval_seconds_;
+  uint16_t bgscan_short_interval_seconds_;
+  int32_t bgscan_signal_threshold_dbm_;
+  uint16_t roam_threshold_db_;
+  uint16_t scan_interval_seconds_;
 
   bool progressive_scan_enabled_;
   std::string scan_configuration_;
@@ -574,7 +574,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   chromeos_metrics::Timer scan_timer_;
 
   // Used to compute the number of bytes received since the link went up.
-  uint64 receive_byte_count_at_connect_;
+  uint64_t receive_byte_count_at_connect_;
 
   // Used to report the current state of our wireless link.
   KeyValueStore link_statistics_;

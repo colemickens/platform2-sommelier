@@ -169,7 +169,7 @@ void Ethernet::BSSRemoved(const ::DBus::Path &path) {
 
 void Ethernet::Certification(const map<string, ::DBus::Variant> &properties) {
   string subject;
-  uint32 depth;
+  uint32_t depth;
   if (WPASupplicant::ExtractRemoteCertification(properties, &subject, &depth)) {
     dispatcher()->PostTask(Bind(&Ethernet::CertificationTask,
                                 weak_ptr_factory_.GetWeakPtr(),
@@ -322,7 +322,7 @@ void Ethernet::SetIsEapAuthenticated(bool is_eap_authenticated) {
                              is_eap_authenticated_);
 }
 
-void Ethernet::CertificationTask(const string &subject, uint32 depth) {
+void Ethernet::CertificationTask(const string &subject, uint32_t depth) {
   if (!service_) {
     LOG(ERROR) << "Ethernet " << link_name() << " " << __func__
                << " with no service.";

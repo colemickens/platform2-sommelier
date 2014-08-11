@@ -52,25 +52,25 @@ ByteString ByteString::GetSubstring(size_t offset, size_t length) const {
 }
 
 // static
-ByteString ByteString::CreateFromCPUUInt32(uint32 val) {
+ByteString ByteString::CreateFromCPUUInt32(uint32_t val) {
   return ByteString(reinterpret_cast<unsigned char *>(&val), sizeof(val));
 }
 
 // static
-ByteString ByteString::CreateFromNetUInt32(uint32 val) {
+ByteString ByteString::CreateFromNetUInt32(uint32_t val) {
   return CreateFromCPUUInt32(ntohl(val));
 }
 
 // static
 ByteString ByteString::CreateFromHexString(const string &hex_string) {
-  vector<uint8> bytes;
+  vector<uint8_t> bytes;
   if (!base::HexStringToBytes(hex_string, &bytes)) {
     return ByteString();
   }
   return ByteString(&bytes.front(), bytes.size());
 }
 
-bool ByteString::ConvertToCPUUInt32(uint32 *val) const {
+bool ByteString::ConvertToCPUUInt32(uint32_t *val) const {
   if (val == NULL || GetLength() != sizeof(*val)) {
     return false;
   }
@@ -79,7 +79,7 @@ bool ByteString::ConvertToCPUUInt32(uint32 *val) const {
   return true;
 }
 
-bool ByteString::ConvertToNetUInt32(uint32 *val) const {
+bool ByteString::ConvertToNetUInt32(uint32_t *val) const {
   if (!ConvertToCPUUInt32(val)) {
     return false;
   }

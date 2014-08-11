@@ -94,13 +94,13 @@ class StoreInterface {
   // pass NULL as |value| to simply test for the presence of this value.
   virtual bool GetUint64(const std::string &group,
                          const std::string &key,
-                         uint64 *value) const = 0;
+                         uint64_t *value) const = 0;
 
   // Associates |group|:|key| with a 64-bit unsigned integer |value|. Returns
   // true on success, false otherwise.
   virtual bool SetUint64(const std::string &group,
                          const std::string &key,
-                         uint64 value) = 0;
+                         uint64_t value) = 0;
 
   // Gets a string list |value| associated with |group|:|key|. Returns true on
   // success and false on failure (including when |group|:|key| is not present
