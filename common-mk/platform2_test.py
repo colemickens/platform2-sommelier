@@ -148,7 +148,8 @@ class Platform2Test(object):
   _BIND_MOUNT_PATHS = ('dev', 'dev/pts', 'proc', 'mnt/host/source', 'sys')
 
   def __init__(self, test_bin, board, host, use_flags, package, framework,
-               run_as_root, gtest_filter, user_gtest_filter, cache_dir):
+               run_as_root, gtest_filter, user_gtest_filter, cache_dir,
+               sysroot):
     self.bin = test_bin
     self.board = board
     self.host = host
@@ -170,7 +171,10 @@ class Platform2Test(object):
         self.framework = 'qemu'
 
     p2 = Platform2(self.use_flags, self.board, self.host, cache_dir=cache_dir)
-    self.sysroot = p2.sysroot
+    if sysroot:
+      self.sysroot = sysroot
+    else:
+      self.sysroot = p2.sysroot
     self.lib_dir = os.path.join(p2.get_products_path(), 'lib')
     if self.framework == 'qemu':
       self.qemu = Qemu(gentoo_arch=gentoo_arch, sysroot=self.sysroot)
@@ -343,8 +347,10 @@ def main(argv):
                       choices=actions, help='action to perform')
   parser.add_argument('--bin',
                       help='test binary to run')
-  parser.add_argument('--board', required=True,
+  parser.add_argument('--board', default=None,
                       help='board to build for')
+  parser.add_argument('--sysroot', default=None,
+                      help='sysroot to run tests inside')
   parser.add_argument('--cache_dir',
                       default='var/cache/portage/chromeos-base/platform2',
                       help='directory to use as cache for incremental build')
@@ -353,7 +359,7 @@ def main(argv):
                       help='framework to be used to run tests')
   parser.add_argument('--gtest_filter', default='',
                       help='args to pass to gtest/test binary')
-  parser.add_argument('--host', action='store_true',
+  parser.add_argument('--host', action='store_true', default=False,
                       help='specify that we\'re testing for the host')
   parser.add_argument('--package',
                       help='name of the package we\'re running tests for')
@@ -373,8 +379,10 @@ def main(argv):
   if options.user_gtest_filter and not options.package:
     raise AssertionError('You must specify a package with user gtest filters')
 
-  if not (options.host ^ (options.board != None)):
+  if options.host and options.board:
     raise AssertionError('You must provide only one of --board or --host')
+  elif not options.host and not options.board and not options.sysroot:
+    raise AssertionError('You must provide --board or --host or --sysroot')
 
   # Once we've finished sanity checking args, make sure we're root.
   _ReExecuteIfNeeded([sys.argv[0]] + argv)
@@ -382,7 +390,8 @@ def main(argv):
   p2test = Platform2Test(options.bin, options.board, options.host,
                          options.use_flags, options.package, options.framework,
                          options.run_as_root, options.gtest_filter,
-                         options.user_gtest_filter, options.cache_dir)
+                         options.user_gtest_filter, options.cache_dir,
+                         options.sysroot)
   getattr(p2test, options.action)()
 
 
