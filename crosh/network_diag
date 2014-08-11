@@ -179,6 +179,15 @@ join () {
   echo $(IFS="${delim}"; echo "$*")
 }
 
+# Compose a string from hex characters.
+hex_to_string () {
+  local hex
+  for hex in "$@"; do
+    printf "\x${hex}"
+  done
+  printf "\n"
+}
+
 seconds_compare () {
   local test_time="$1"
   local reference_time="$2"
@@ -225,6 +234,19 @@ read_dhcp_lease () {
         ;;
       1)
         echo "  Netmask: $(join . ${data_int[*]})"
+        ;;
+      6)
+        local -a dns_servers
+        local server_index=0
+        while [ -n "${data_hex[$server_index]}" ] ; do
+          dns_server="$(join . "${data_int[@]:$server_index:4}")"
+          dns_servers=("${dns_servers[@]}" "${dns_server}")
+          server_index="$((server_index + 4))"
+        done
+        echo "  Domain name servers: $(join , "${dns_servers[@]}")"
+        ;;
+      15)
+        echo "  Domain name: $(hex_to_string "${data_hex[@]}")"
         ;;
       51)
         local lease_time="$(printf "%d"  0x$(join '' "${data_hex[@]}"))"
