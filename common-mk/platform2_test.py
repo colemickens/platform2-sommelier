@@ -10,6 +10,7 @@ qemu, bind mounts, etc...
 """
 
 import argparse
+import array
 import errno
 import os
 import subprocess
@@ -31,38 +32,163 @@ ENV_PASSTHRU = (
 class Qemu(object):
   """Framework for running tests via qemu"""
 
-  # Map from the Gentoo $ARCH to the right qemu arch.
-  ARCH_MAP = {
-      'amd64': 'x86_64',
-      'arm': 'arm',
-      'x86': 'i386',
-  }
-
   # The binfmt register format looks like:
   # :name:type:offset:magic:mask:interpreter:flags
   _REGISTER_FORMAT = r':%(name)s:M::%(magic)s:%(mask)s:%(interp)s:%(flags)s'
 
-  # Tuples of (magic, mask) for an arch.
+  # Require enough data to read the Ehdr of the ELF.
+  _MIN_ELF_LEN = 64
+
+  # Tuples of (magic, mask) for an arch.  Most only need to identify by the Ehdr
+  # fields: e_ident (16 bytes), e_type (2 bytes), e_machine (2 bytes).
   _MAGIC_MASK = {
-      'arm': (r'\x7fELF\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-              r'\x02\x00\x28\x00',
-              r'\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff'
-              r'\xff\xff\xfe\xff\xff\xff',),
+      'aarch64':
+          (r'\x7f\x45\x4c\x46\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x02\x00\xb7\x00',
+           r'\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff'
+           r'\xfe\xff\xff\xff'),
+      'alpha':
+          (r'\x7f\x45\x4c\x46\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x02\x00\x26\x90',
+           r'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
+           r'\xfe\xff\xff\xff'),
+      'arm':
+          (r'\x7f\x45\x4c\x46\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x02\x00\x28\x00',
+           r'\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff'
+           r'\xfe\xff\xff\xff'),
+      'armeb':
+          (r'\x7f\x45\x4c\x46\x01\x02\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x00\x02\x00\x28',
+           r'\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff'
+           r'\xff\xfe\xff\xff'),
+      'm68k':
+          (r'\x7f\x45\x4c\x46\x01\x02\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x00\x02\x00\x04',
+           r'\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff'
+           r'\xff\xfe\xff\xff'),
+      # For mips targets, we need to scan e_flags.  But first we have to skip:
+      # e_version (4 bytes), e_entry/e_phoff/e_shoff (4 or 8 bytes).
+      'mips':
+          (r'\x7f\x45\x4c\x46\x01\x02\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x00\x02\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x00\x00\x00\x00\x00\x00\x10\x00',
+           r'\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff'
+           r'\xff\xfe\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x00\x00\x00\x00\x00\x00\xf0\x20'),
+      'mipsel':
+          (r'\x7f\x45\x4c\x46\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x02\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x00\x00\x00\x00\x00\x10\x00\x00',
+           r'\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff'
+           r'\xfe\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x00\x00\x00\x00\x20\xf0\x00\x00'),
+      'mipsn32':
+          (r'\x7f\x45\x4c\x46\x01\x02\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x00\x02\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x00\x00\x00\x00\x00\x00\x00\x20',
+           r'\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff'
+           r'\xff\xfe\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x00\x00\x00\x00\x00\x00\xf0\x20'),
+      'mipsn32el':
+          (r'\x7f\x45\x4c\x46\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x02\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x00\x00\x00\x00\x20\x00\x00\x00',
+           r'\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff'
+           r'\xfe\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x00\x00\x00\x00\x20\xf0\x00\x00'),
+      'ppc':
+          (r'\x7f\x45\x4c\x46\x01\x02\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x00\x02\x00\x14',
+           r'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
+           r'\xff\xfe\xff\xff'),
+      'sparc':
+          (r'\x7f\x45\x4c\x46\x01\x02\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x00\x02\x00\x12',
+           r'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
+           r'\xff\xfe\xff\xff'),
+      'sparc64':
+          (r'\x7f\x45\x4c\x46\x02\x02\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x00\x02\x00\x2b',
+           r'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
+           r'\xff\xfe\xff\xff'),
+      's390x':
+          (r'\x7f\x45\x4c\x46\x02\x02\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x00\x02\x00\x16',
+           r'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
+           r'\xff\xfe\xff\xff'),
+      'sh4':
+          (r'\x7f\x45\x4c\x46\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x02\x00\x2a\x00',
+           r'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
+           r'\xfe\xff\xff\xff'),
+      'sh4eb':
+          (r'\x7f\x45\x4c\x46\x01\x02\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+           r'\x00\x02\x00\x2a',
+           r'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
+           r'\xff\xfe\xff\xff'),
   }
 
   _BINFMT_PATH = '/proc/sys/fs/binfmt_misc'
   _BINFMT_REGISTER_PATH = os.path.join(_BINFMT_PATH, 'register')
 
-  def __init__(self, qemu_arch=None, gentoo_arch=None, sysroot=None):
-    if qemu_arch is None:
-      qemu_arch = self.ARCH_MAP[gentoo_arch]
-    self.arch = qemu_arch
+  def __init__(self, sysroot, arch=None):
+    if arch is None:
+      arch = self.DetectArch(None, sysroot)
+    self.arch = arch
 
     self.sysroot = sysroot
 
     self.name = 'qemu-%s' % self.arch
     self.build_path = os.path.join('/build', 'bin', self.name)
     self.binfmt_path = os.path.join(self._BINFMT_PATH, self.name)
+
+  @classmethod
+  def DetectArch(cls, prog, sysroot):
+    """Figure out which qemu wrapper is best for this target"""
+    def MaskMatches(bheader, bmagic, bmask):
+      """Apply |bmask| to |bheader| and see if it matches |bmagic|
+
+      The |bheader| array may be longer than the |bmask|; in which case we
+      will only compare the number of bytes that |bmask| takes up.
+      """
+      return all((header_byte & mask_byte) == magic_byte
+                 for header_byte, magic_byte, mask_byte in
+                 zip(bheader[0:len(bmask)], bmagic, bmask))
+
+    if prog is None:
+      # Common when doing a global setup.
+      prog = '/'
+
+    for path in (prog, '/sbin/ldconfig', '/bin/sh', '/bin/dash', '/bin/bash'):
+      path = os.path.join(sysroot, path.lstrip('/'))
+      if os.path.islink(path) or not os.path.isfile(path):
+        continue
+
+      # Read the header of the ELF first.
+      matched_arch = None
+      with open(path, 'rb') as f:
+        header = f.read(cls._MIN_ELF_LEN)
+        if len(header) == cls._MIN_ELF_LEN:
+          bheader = array.array('B', header)
+
+          # Walk all the magics and see if any of them match this ELF.
+          for arch, magic_mask in cls._MAGIC_MASK.items():
+            magic = magic_mask[0].decode('string_escape')
+            bmagic = array.array('B', magic)
+            mask = magic_mask[1].decode('string_escape')
+            bmask = array.array('B', mask)
+
+            if MaskMatches(bheader, bmagic, bmask):
+              # Make sure we do not have ambiguous magics as this will
+              # also confuse the kernel when it tries to find a match.
+              if not matched_arch is None:
+                raise ValueError('internal error: multiple masks matched '
+                                 '(%s & %s)' % (matched_arch, arch))
+              matched_arch = arch
+
+      if not matched_arch is None:
+        return matched_arch
 
   @staticmethod
   def inode(path):
@@ -139,7 +265,14 @@ class Qemu(object):
           'interp': '%s-binfmt-wrapper' % self.build_path,
           'flags': 'POC',
       }
-      osutils.WriteFile(self._BINFMT_REGISTER_PATH, register)
+      try:
+        # We need to decode the escape sequences as the kernel has a limit on
+        # the register string (255 bytes!).
+        osutils.WriteFile(self._BINFMT_REGISTER_PATH,
+                          register.decode('string_escape'))
+      except IOError:
+        print('error: attempted to register: %s' % register)
+        raise
 
 
 class Platform2Test(object):
@@ -159,25 +292,23 @@ class Platform2Test(object):
     (self.gtest_filter, self.user_gtest_filter) = \
         self.generateGtestFilter(gtest_filter, user_gtest_filter)
 
-    self.framework = framework
-    for k in Qemu.ARCH_MAP.iterkeys():
-      if self.use(k):
-        gentoo_arch = k
-        break
-    if self.framework == 'auto':
-      if gentoo_arch in ('x86', 'amd64'):
-        self.framework = 'ldso'
-      else:
-        self.framework = 'qemu'
-
     p2 = Platform2(self.use_flags, self.board, self.host, cache_dir=cache_dir)
     if sysroot:
       self.sysroot = sysroot
     else:
       self.sysroot = p2.sysroot
     self.lib_dir = os.path.join(p2.get_products_path(), 'lib')
+
+    self.framework = framework
+    if self.framework == 'auto':
+      qemu_arch = Qemu.DetectArch(self.bin, self.sysroot)
+      if qemu_arch is None:
+        self.framework = 'ldso'
+      else:
+        self.framework = 'qemu'
+
     if self.framework == 'qemu':
-      self.qemu = Qemu(gentoo_arch=gentoo_arch, sysroot=self.sysroot)
+      self.qemu = Qemu(self.sysroot, arch=qemu_arch)
 
   @classmethod
   def generateGtestSubfilter(cls, gtest_filter):
