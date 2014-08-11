@@ -314,7 +314,14 @@ def _ReExecuteIfNeeded(argv):
   tests don't leak out to the normal chroot.  Also unshare the UTS namespace
   so changes to `hostname` do not impact the host.
   """
-  if os.geteuid() != 0:
+  # Disable the Gentoo sandbox if it's active to avoid warnings/errors.
+  if os.environ.get('SANDBOX_ON') == '1':
+    os.environ['SANDBOX_ON'] = '0'
+    os.execvp(argv[0], argv)
+  elif os.geteuid() != 0:
+    # Clear the LD_PRELOAD var since it won't be usable w/sudo (and the Gentoo
+    # sandbox normally sets it for us).
+    os.environ.pop('LD_PRELOAD', None)
     cmd = _SudoCommand() + ['--'] + argv
     os.execvp(cmd[0], cmd)
   else:
