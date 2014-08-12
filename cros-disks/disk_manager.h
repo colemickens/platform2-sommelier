@@ -48,28 +48,28 @@ class DiskManager : public MountManager,
  public:
   DiskManager(const std::string& mount_root, Platform* platform,
               Metrics* metrics, DeviceEjector* device_ejector);
-  virtual ~DiskManager();
+  ~DiskManager() override;
 
   // Initializes the disk manager and registers default filesystems.
   // Returns true on success.
-  virtual bool Initialize();
+  bool Initialize() override;
 
   // Stops a session. Returns true on success.
-  virtual bool StopSession();
+  bool StopSession() override;
 
   // Returns true if mounting |source_path| is supported.
-  virtual bool CanMount(const std::string& source_path) const;
+  bool CanMount(const std::string& source_path) const override;
 
   // Returns the type of mount sources supported by the manager.
-  virtual MountSourceType GetMountSourceType() const {
+  MountSourceType GetMountSourceType() const override {
     return MOUNT_SOURCE_REMOVABLE_DEVICE;
   }
 
   // Unmounts all mounted paths.
-  virtual bool UnmountAll();
+  bool UnmountAll() override;
 
   // Lists the current block devices attached to the system.
-  virtual std::vector<Disk> EnumerateDisks() const;
+  std::vector<Disk> EnumerateDisks() const;
 
   // Implements the DeviceEventSourceInterface interface to read the changes
   // from udev and converts the changes into device events. Returns false on
@@ -91,21 +91,21 @@ class DiskManager : public MountManager,
 
  protected:
   // Mounts |source_path| to |mount_path| as |filesystem_type| with |options|.
-  virtual MountErrorType DoMount(const std::string& source_path,
-                                 const std::string& filesystem_type,
-                                 const std::vector<std::string>& options,
-                                 const std::string& mount_path);
+  MountErrorType DoMount(const std::string& source_path,
+                         const std::string& filesystem_type,
+                         const std::vector<std::string>& options,
+                         const std::string& mount_path) override;
 
   // Unmounts |path| with |options|.
-  virtual MountErrorType DoUnmount(const std::string& path,
-                                   const std::vector<std::string>& options);
+  MountErrorType DoUnmount(const std::string& path,
+                           const std::vector<std::string>& options) override;
 
   // Returns a suggested mount path for a source path.
-  virtual std::string SuggestMountPath(const std::string& source_path) const;
+  std::string SuggestMountPath(const std::string& source_path) const override;
 
   // Returns true to reserve a mount path on errors due to unknown or
   // unsupported filesystems.
-  virtual bool ShouldReserveMountPathOnError(MountErrorType error_type) const;
+  bool ShouldReserveMountPathOnError(MountErrorType error_type) const override;
 
  private:
   // Creates an appropriate mounter object for a given filesystem.

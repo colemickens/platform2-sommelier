@@ -54,7 +54,7 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
                   Platform* platform,
                   DiskManager* disk_manager,
                   FormatManager* format_manager);
-  virtual ~CrosDisksServer();
+  ~CrosDisksServer() override;
 
   // Registers a mount manager.
   void RegisterMountManager(MountManager* mount_manager);
@@ -62,80 +62,80 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   // A method for formatting a device specified by |path|.
   // On completion, a FormatCompleted signal is emitted to indicate whether
   // the operation succeeded or failed using a FormatErrorType enum value.
-  virtual void Format(const std::string& path,
-                      const std::string& filesystem_type,
-                      const std::vector<std::string>& options,
-                      DBus::Error& error);  // NOLINT
+  void Format(const std::string& path,
+              const std::string& filesystem_type,
+              const std::vector<std::string>& options,
+              DBus::Error& error) override;  // NOLINT
 
   // A method for checking if the daemon is running. Always returns true.
-  virtual bool IsAlive(DBus::Error& error);  // NOLINT
+  bool IsAlive(DBus::Error& error) override;  // NOLINT
 
   // Mounts a path when invoked.
-  virtual void Mount(const std::string& path,
-      const std::string& filesystem_type,
-      const std::vector<std::string>& options,
-      DBus::Error& error);  // NOLINT
+  void Mount(const std::string& path,
+             const std::string& filesystem_type,
+             const std::vector<std::string>& options,
+             DBus::Error& error) override;  // NOLINT
 
   // Unmounts a path when invoked.
-  virtual void Unmount(const std::string& path,
-      const std::vector<std::string>& options,
-      DBus::Error& error);  // NOLINT
+  void Unmount(const std::string& path,
+               const std::vector<std::string>& options,
+               DBus::Error& error) override;  // NOLINT
 
   // Unmounts all paths mounted by Mount() when invoked.
-  virtual void UnmountAll(DBus::Error& error);  // NOLINT
+  void UnmountAll(DBus::Error& error) override;  // NOLINT
 
   // Returns a list of device sysfs paths for all disk devices attached to
   // the system.
-  virtual std::vector<std::string> EnumerateDevices(
-      DBus::Error& error);  // NOLINT
+  std::vector<std::string> EnumerateDevices(
+      DBus::Error& error) override;  // NOLINT
 
   // Returns a list of device sysfs paths for all auto-mountable disk devices
   // attached to the system. Currently, all external disk devices, which are
   // neither on the boot device nor virtual, are considered auto-mountable.
-  virtual std::vector<std::string> EnumerateAutoMountableDevices(
-      DBus::Error& error);  // NOLINT
+  std::vector<std::string> EnumerateAutoMountableDevices(
+      DBus::Error& error) override;  // NOLINT
 
   // Returns a list of mount entries (<error type, source path, source type,
   // mount path>) that are currently managed by cros-disks.
-  virtual DBusMountEntries EnumerateMountEntries(DBus::Error& error);  // NOLINT
+  DBusMountEntries EnumerateMountEntries(DBus::Error& error) override;  // NOLINT
 
   // Returns properties of a disk device attached to the system.
-  virtual DBusDisk GetDeviceProperties(const std::string& device_path,
-      DBus::Error& error);  // NOLINT
+  DBusDisk GetDeviceProperties(const std::string& device_path,
+                               DBus::Error& error) override;  // NOLINT
 
   // Implements the FormatManagerObserverInterface interface to handle
   // the event when a formatting operation has completed.
-  virtual void OnFormatCompleted(const std::string& device_path,
-                                 FormatErrorType error_type);
+  void OnFormatCompleted(const std::string& device_path,
+                         FormatErrorType error_type) override;
 
   // Implements the SessionManagerObserverInterface interface to handle
   // the event when the screen is locked.
-  virtual void OnScreenIsLocked();
+  void OnScreenIsLocked() override;
 
   // Implements the SessionManagerObserverInterface interface to handle
   // the event when the screen is unlocked.
-  virtual void OnScreenIsUnlocked();
+  void OnScreenIsUnlocked() override;
 
   // Implements the SessionManagerObserverInterface interface to handle
   // the event when the session has been started.
-  virtual void OnSessionStarted();
+  void OnSessionStarted() override;
 
   // Implements the SessionManagerObserverInterface interface to handle
   // the event when the session has been stopped.
-  virtual void OnSessionStopped();
+  void OnSessionStopped() override;
 
  private:
   // Implements the DeviceEventDispatcherInterface to dispatch a device event
   // by emitting the corresponding D-Bus signal.
-  void DispatchDeviceEvent(const DeviceEvent& event);
+  void DispatchDeviceEvent(const DeviceEvent& event) override;
 
   // Initializes DBus properties.
   void InitializeProperties();
 
   // Overrides PropertiesAdaptor::on_set_property to handle
   // org.freedesktop.DBus.Properties.Set calls.
-  virtual void on_set_property(DBus::InterfaceAdaptor& interface,  // NOLINT
-      const std::string& property, const DBus::Variant& value);
+  void on_set_property(DBus::InterfaceAdaptor& interface,  // NOLINT
+      const std::string& property, const DBus::Variant& value) override;
 
   // Returns a list of device sysfs paths for all disk devices attached to
   // the system. If auto_mountable_only is true, only auto-mountable disk

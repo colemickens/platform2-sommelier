@@ -33,7 +33,7 @@ class MounterUnderTest : public Mounter {
 
 class MounterTest : public ::testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     source_path_ = "/dev/sdb1";
     target_path_ = "/media/disk";
     filesystem_type_ = "vfat";

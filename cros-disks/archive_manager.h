@@ -21,20 +21,20 @@ class ArchiveManager : public MountManager {
  public:
   ArchiveManager(const std::string& mount_root, Platform* platform,
                  Metrics* metrics);
-  virtual ~ArchiveManager();
+  ~ArchiveManager() override;
 
   // Initializes the manager and registers default file extensions.
   // Returns true on success.
-  virtual bool Initialize();
+  bool Initialize() override;
 
   // Stops a session. Returns true on success.
-  virtual bool StopSession();
+  bool StopSession() override;
 
   // Returns true if mounting |source_path| is supported.
-  virtual bool CanMount(const std::string& source_path) const;
+  bool CanMount(const std::string& source_path) const override;
 
   // Returns the type of mount sources supported by the manager.
-  virtual MountSourceType GetMountSourceType() const {
+  MountSourceType GetMountSourceType() const override {
     return MOUNT_SOURCE_ARCHIVE;
   }
 
@@ -54,18 +54,18 @@ class ArchiveManager : public MountManager {
   // |source_path|, so that |source_path| can have any file extension.
   // If |source_format| is an empty string, the archive file format is
   // determined based on the file extension of |source_path|.
-  virtual MountErrorType DoMount(const std::string& source_path,
-                                 const std::string& source_format,
-                                 const std::vector<std::string>& options,
-                                 const std::string& mount_path);
+  MountErrorType DoMount(const std::string& source_path,
+                         const std::string& source_format,
+                         const std::vector<std::string>& options,
+                         const std::string& mount_path) override;
 
   // Unmounts |path| with |options|. Returns true if |path| is unmounted
   // successfully.
-  virtual MountErrorType DoUnmount(const std::string& path,
-                                   const std::vector<std::string>& options);
+  MountErrorType DoUnmount(const std::string& path,
+                           const std::vector<std::string>& options) override;
 
   // Returns a suggested mount path for a source path.
-  virtual std::string SuggestMountPath(const std::string& source_path) const;
+  std::string SuggestMountPath(const std::string& source_path) const override;
 
  private:
   // Type definition of a cache mapping a mount path to its source virtual path

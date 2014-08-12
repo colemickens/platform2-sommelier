@@ -26,7 +26,7 @@ class FUSEMounter : public Mounter {
 
  protected:
   // Mounts a device file using the FUSE mount program at |mount_program_path_|.
-  virtual MountErrorType MountImpl();
+  MountErrorType MountImpl() override;
 
   // An object that provides platform service.
   const Platform* platform_;

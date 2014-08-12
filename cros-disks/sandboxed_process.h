@@ -18,7 +18,7 @@ namespace cros_disks {
 class SandboxedProcess : public Process {
  public:
   SandboxedProcess();
-  virtual ~SandboxedProcess();
+  ~SandboxedProcess() override;
 
   // Loads the seccomp filters from |policy_file|. The calling process will be
   // aborted if |policy_file| does not exist, cannot be read or is malformed.
@@ -35,7 +35,7 @@ class SandboxedProcess : public Process {
 
   // Implements Process::Start() to start the process in a sandbox.
   // Returns true on success.
-  virtual bool Start();
+  bool Start() override;
 
   // Waits for the process to finish and returns its exit status.
   int Wait();

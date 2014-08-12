@@ -21,11 +21,11 @@ class GlibProcess : public Process {
   typedef base::Callback<void(GlibProcess* process)> Callback;
 
   GlibProcess();
-  virtual ~GlibProcess();
+  ~GlibProcess() override;
 
   // Implements Process::Start() to start a process without waiting
   // for it to terminate. Return true on success.
-  virtual bool Start();
+  bool Start() override;
 
   int status() const { return status_; }
 

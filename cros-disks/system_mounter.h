@@ -24,7 +24,7 @@ class SystemMounter : public Mounter {
 
  protected:
   // Mounts a device file using the system mount() call.
-  virtual MountErrorType MountImpl();
+  MountErrorType MountImpl() override;
 };
 
 }  // namespace cros_disks

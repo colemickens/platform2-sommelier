@@ -16,7 +16,7 @@ namespace cros_disks {
 
 class MountInfoTest : public ::testing::Test {
  public:
-  virtual void SetUp() {
+  void SetUp() override {
     string content =
       "14 12 0:3 / /proc rw,noexec - proc none rw\n"
       "15 12 0:12 / /sys rw,noexec - sysfs none rw\n"
@@ -33,7 +33,7 @@ class MountInfoTest : public ::testing::Test {
     mount_file_ = mount_file.value();
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     ASSERT_TRUE(base::DeleteFile(FilePath(mount_file_), false));
   }
 

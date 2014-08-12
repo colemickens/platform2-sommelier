@@ -14,7 +14,7 @@ namespace cros_disks {
 
 class USBDeviceInfoTest : public ::testing::Test {
  public:
-  virtual void SetUp() {
+  void SetUp() override {
     info_file_ = CreateTestDataFile(
         "# This is a comment line\n"
         " \n"
@@ -51,7 +51,7 @@ class USBDeviceInfoTest : public ::testing::Test {
     ASSERT_FALSE(ids_file_.empty());
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     ASSERT_TRUE(base::DeleteFile(FilePath(info_file_), false));
     ASSERT_TRUE(base::DeleteFile(FilePath(ids_file_), false));
   }

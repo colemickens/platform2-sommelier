@@ -28,7 +28,7 @@ class ExternalMounter : public Mounter {
 
  protected:
   // Mounts a device file using an external mount program.
-  virtual MountErrorType MountImpl();
+  MountErrorType MountImpl() override;
 };
 
 }  // namespace cros_disks
