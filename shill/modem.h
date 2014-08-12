@@ -86,7 +86,7 @@ class Modem {
 
   // Constants associated with fake network devices for PPP dongles.
   // See |fake_dev_serial_|, below, for more info.
-  static const char kFakeDevNameFormat[];
+  static constexpr char kFakeDevNameFormat[] = "no_netdev_%zu";
   static const char kFakeDevAddress[];
   static const int kFakeDevInterfaceIndex;
 

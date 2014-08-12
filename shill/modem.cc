@@ -26,7 +26,7 @@ const char Modem::kPropertyIPMethod[] = "IpMethod";
 const char Modem::kPropertyType[] = "Type";
 
 // statics
-const char Modem::kFakeDevNameFormat[] = "no_netdev_%zu";
+constexpr char Modem::kFakeDevNameFormat[];
 const char Modem::kFakeDevAddress[] = "000000000000";
 const int Modem::kFakeDevInterfaceIndex = -1;
 size_t Modem::fake_dev_serial_ = 0;
