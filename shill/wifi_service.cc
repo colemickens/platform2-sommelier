@@ -647,7 +647,7 @@ void WiFiService::Disconnect(Error *error, const char *reason) {
     error->Populate(Error::kOperationFailed);
     return;
   }
-  wifi_->DisconnectFrom(this);
+  wifi_->DisconnectFromIfActive(this);
 }
 
 string WiFiService::GetDeviceRpcId(Error *error) const {

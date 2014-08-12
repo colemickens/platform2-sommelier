@@ -46,6 +46,7 @@ class MockWiFiService : public WiFiService {
                void(const WiFiEndpointConstRefPtr &endpoint));
   MOCK_METHOD3(DisconnectWithFailure,
                void(ConnectFailure failure, Error *error, const char *reason));
+  MOCK_METHOD1(IsActive, bool(Error *error));
   MOCK_CONST_METHOD0(IsConnected, bool());
   MOCK_CONST_METHOD0(IsConnecting, bool());
   MOCK_CONST_METHOD0(GetEndpointCount, int());

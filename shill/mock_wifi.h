@@ -40,6 +40,7 @@ class MockWiFi : public WiFi {
                           const EnabledStateChangedCallback &callback));
   MOCK_METHOD3(Scan, void(ScanType scan_type, Error *error,
                           const std::string &reason));
+  MOCK_METHOD1(DisconnectFromIfActive, void(WiFiService *service));
   MOCK_METHOD1(DisconnectFrom, void(WiFiService *service));
   MOCK_METHOD1(ClearCachedCredentials, void(const WiFiService *service));
   MOCK_METHOD1(ConnectTo, void(WiFiService *service));

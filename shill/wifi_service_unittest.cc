@@ -1090,7 +1090,7 @@ TEST_F(WiFiServiceTest, ConfigureRedundantProperties) {
 
 TEST_F(WiFiServiceTest, DisconnectWithWiFi) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityWep);
-  EXPECT_CALL(*wifi(), DisconnectFrom(service.get())).Times(1);
+  EXPECT_CALL(*wifi(), DisconnectFromIfActive(service.get())).Times(1);
   Error error;
   service->Disconnect(&error, "in test");
 }
@@ -1119,14 +1119,14 @@ TEST_F(WiFiServiceTest, DisconnectWithoutWiFiWhileAssociating) {
 TEST_F(WiFiServiceTest, UnloadAndClearCacheWEP) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityWep);
   EXPECT_CALL(*wifi(), ClearCachedCredentials(service.get())).Times(1);
-  EXPECT_CALL(*wifi(), DisconnectFrom(service.get())).Times(1);
+  EXPECT_CALL(*wifi(), DisconnectFromIfActive(service.get())).Times(1);
   service->Unload();
 }
 
 TEST_F(WiFiServiceTest, UnloadAndClearCache8021x) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurity8021x);
   EXPECT_CALL(*wifi(), ClearCachedCredentials(service.get())).Times(1);
-  EXPECT_CALL(*wifi(), DisconnectFrom(service.get())).Times(1);
+  EXPECT_CALL(*wifi(), DisconnectFromIfActive(service.get())).Times(1);
   service->Unload();
 }
 

@@ -529,6 +529,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void InitiateDisconnect(WiFiServiceRefPtr service) {
     wifi_->DisconnectFrom(service);
   }
+  void InitiateDisconnectIfActive(WiFiServiceRefPtr service) {
+    wifi_->DisconnectFromIfActive(service);
+  }
   MockWiFiServiceRefPtr SetupConnectingService(
       const DBus::Path &network_path,
       WiFiEndpointRefPtr *endpoint_ptr,
@@ -586,6 +589,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     EXPECT_EQ(service, GetCurrentService());
     return service;
   }
+
   void FireScanTimer() {
     wifi_->ScanTimerHandler();
   }
@@ -1768,6 +1772,72 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithPending) {
   EXPECT_CALL(*service0, SetState(Service::kStateIdle)).Times(AtLeast(1));
   EXPECT_CALL(*service0, SetFailure(_)).Times(0);
   ReportCurrentBSSChanged(WPASupplicant::kCurrentBSSNull);
+}
+
+TEST_F(WiFiMainTest, DisconnectWithWiFiServiceConnected) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service0(SetupConnectedService(DBus::Path(),
+                                                       NULL, NULL));
+  NiceScopedMockLog log;
+  ScopeLogger::GetInstance()->EnableScopesByName("wifi");
+  ScopeLogger::GetInstance()->set_verbose_level(2);
+  EXPECT_CALL(log, Log(_, _,
+                       HasSubstr("DisconnectFromIfActive service"))).Times(1);
+  EXPECT_CALL(log, Log(_, _, HasSubstr("DisconnectFrom service"))).Times(1);
+  EXPECT_CALL(*service0, IsActive(_)).Times(0);
+  InitiateDisconnectIfActive(service0);
+
+  Mock::VerifyAndClearExpectations(&log);
+  Mock::VerifyAndClearExpectations(service0);
+  ScopeLogger::GetInstance()->set_verbose_level(0);
+  ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
+}
+
+TEST_F(WiFiMainTest, DisconnectWithWiFiServiceIdle) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service0(SetupConnectedService(DBus::Path(),
+                                                       NULL, NULL));
+  InitiateDisconnectIfActive(service0);
+  MockWiFiServiceRefPtr service1(SetupConnectedService(DBus::Path(),
+                                                       NULL, NULL));
+  NiceScopedMockLog log;
+  ScopeLogger::GetInstance()->EnableScopesByName("wifi");
+  ScopeLogger::GetInstance()->set_verbose_level(2);
+  EXPECT_CALL(log, Log(_, _,
+                       HasSubstr("DisconnectFromIfActive service"))).Times(1);
+  EXPECT_CALL(*service0, IsActive(_)).WillOnce(Return(false));
+  EXPECT_CALL(log, Log(_, _, HasSubstr("is not active, no need"))).Times(1);
+  EXPECT_CALL(log, Log(logging::LOG_WARNING, _,
+                       HasSubstr("In DisconnectFrom():"))).Times(0);
+  InitiateDisconnectIfActive(service0);
+
+  Mock::VerifyAndClearExpectations(&log);
+  Mock::VerifyAndClearExpectations(service0);
+  ScopeLogger::GetInstance()->set_verbose_level(0);
+  ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
+}
+
+TEST_F(WiFiMainTest, DisconnectWithWiFiServiceConnectedInError) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service0(SetupConnectedService(DBus::Path(),
+                                                       NULL, NULL));
+  SetCurrentService(NULL);
+  ResetPendingService();
+  NiceScopedMockLog log;
+  ScopeLogger::GetInstance()->EnableScopesByName("wifi");
+  ScopeLogger::GetInstance()->set_verbose_level(2);
+  EXPECT_CALL(log, Log(_, _,
+                       HasSubstr("DisconnectFromIfActive service"))).Times(1);
+  EXPECT_CALL(*service0, IsActive(_)).WillOnce(Return(true));
+  EXPECT_CALL(log, Log(_, _, HasSubstr("DisconnectFrom service"))).Times(1);
+  EXPECT_CALL(log, Log(logging::LOG_WARNING, _,
+                       HasSubstr("In DisconnectFrom():"))).Times(1);
+  InitiateDisconnectIfActive(service0);
+
+  Mock::VerifyAndClearExpectations(&log);
+  Mock::VerifyAndClearExpectations(service0);
+  ScopeLogger::GetInstance()->set_verbose_level(0);
+  ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
 }
 
 TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {

@@ -158,6 +158,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Called by WiFiService.
   virtual void ConnectTo(WiFiService *service);
 
+  // After checking |service| state is active, initiate
+  // process of disconnecting.  Log and return if not active.
+  virtual void DisconnectFromIfActive(WiFiService *service);
+
   // If |service| is connected, initiate the process of disconnecting it.
   // Otherwise, if it a pending or current service, discontinue the process
   // of connecting and return |service| to the idle state.

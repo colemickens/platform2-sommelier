@@ -537,6 +537,21 @@ void WiFi::ConnectTo(WiFiService *service) {
   SelectService(service);
 }
 
+void WiFi::DisconnectFromIfActive(WiFiService *service) {
+  SLOG(WiFi, 2) << __func__ << " service " << service->unique_name();
+
+  if (service != current_service_ &&  service != pending_service_) {
+    if (!service->IsActive(NULL)) {
+      SLOG(WiFi, 2) << "In " << __func__ << "():  service "
+                    << service->unique_name()
+                    << " is not active, no need to initiate disconnect";
+      return;
+    }
+  }
+
+  DisconnectFrom(service);
+}
+
 void WiFi::DisconnectFrom(WiFiService *service) {
   SLOG(WiFi, 2) << __func__ << " service " << service->unique_name();
 
@@ -1609,7 +1624,9 @@ bool WiFi::ShouldUseArpGateway() const {
 }
 
 void WiFi::DisassociateFromService(const WiFiServiceRefPtr &service) {
-  DisconnectFrom(service);
+  SLOG(WiFi, 2) << "In " << __func__ << " for service: "
+                << service->unique_name();
+  DisconnectFromIfActive(service);
   if (service == selected_service()) {
     DropConnection();
   }
