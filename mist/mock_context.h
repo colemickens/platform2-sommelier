@@ -19,11 +19,11 @@ class MockUdev;
 class MockContext : public Context {
  public:
   MockContext();
-  virtual ~MockContext() OVERRIDE;
+  ~MockContext() override;
 
   // Initializes all helper objects with mocks in the context for unit testing.
   // Always returns true.
-  virtual bool Initialize() OVERRIDE;
+  bool Initialize() override;
 
   // Returns the MockConfigLoader object held by this context object.
   MockConfigLoader* GetMockConfigLoader() const;

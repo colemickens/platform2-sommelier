@@ -15,7 +15,7 @@ namespace mist {
 class MockUdev : public Udev {
  public:
   MockUdev();
-  virtual ~MockUdev() OVERRIDE;
+  ~MockUdev() override;
 
   MOCK_METHOD0(Initialize, bool());
   MOCK_METHOD1(CreateDeviceFromSysPath, UdevDevice*(const char* sys_path));

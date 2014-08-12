@@ -15,7 +15,7 @@ namespace mist {
 class MockUdevDevice : public UdevDevice {
  public:
   MockUdevDevice();
-  virtual ~MockUdevDevice() OVERRIDE;
+  ~MockUdevDevice() override;
 
   MOCK_CONST_METHOD0(GetParent, UdevDevice*());
   MOCK_CONST_METHOD2(GetParentWithSubsystemDeviceType,

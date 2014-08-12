@@ -44,12 +44,12 @@ class UsbModemSwitcher : public UsbDeviceEventObserver {
                                   bool success);
 
   // Implements UsbDeviceEventObserver.
-  virtual void OnUsbDeviceAdded(const std::string& sys_path,
-                                uint8_t bus_number,
-                                uint8_t device_address,
-                                uint16_t vendor_id,
-                                uint16_t product_id) OVERRIDE;
-  virtual void OnUsbDeviceRemoved(const std::string& sys_path) OVERRIDE;
+  void OnUsbDeviceAdded(const std::string& sys_path,
+                        uint8_t bus_number,
+                        uint8_t device_address,
+                        uint16_t vendor_id,
+                        uint16_t product_id) override;
+  void OnUsbDeviceRemoved(const std::string& sys_path) override;
 
   Context* const context_;
 

@@ -71,8 +71,8 @@ class UsbManager : public base::MessageLoopForIO::Watcher {
   void HandleEventsNonBlocking();
 
   // Implements base::MessageLoopForIO::Watcher.
-  virtual void OnFileCanReadWithoutBlocking(int file_descriptor) OVERRIDE;
-  virtual void OnFileCanWriteWithoutBlocking(int file_descriptor) OVERRIDE;
+  void OnFileCanReadWithoutBlocking(int file_descriptor) override;
+  void OnFileCanWriteWithoutBlocking(int file_descriptor) override;
 
   EventDispatcher* const dispatcher_;
   libusb_context* context_;

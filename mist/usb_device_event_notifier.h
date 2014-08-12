@@ -54,8 +54,8 @@ class UsbDeviceEventNotifier : public base::MessageLoopForIO::Watcher {
   void RemoveObserver(UsbDeviceEventObserver* observer);
 
   // Implements base::MessageLoopForIO::Watcher.
-  virtual void OnFileCanReadWithoutBlocking(int file_descriptor) OVERRIDE;
-  virtual void OnFileCanWriteWithoutBlocking(int file_descriptor) OVERRIDE;
+  void OnFileCanReadWithoutBlocking(int file_descriptor) override;
+  void OnFileCanWriteWithoutBlocking(int file_descriptor) override;
 
   // Gets the bus number, device address, vendor ID, and product ID of |device|.
   // Return true on success.

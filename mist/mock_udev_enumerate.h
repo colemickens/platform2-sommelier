@@ -15,7 +15,7 @@ namespace mist {
 class MockUdevEnumerate : public UdevEnumerate {
  public:
   MockUdevEnumerate();
-  virtual ~MockUdevEnumerate() OVERRIDE;
+  ~MockUdevEnumerate() override;
 
   MOCK_METHOD1(AddMatchSubsystem, bool(const char* subsystem));
   MOCK_METHOD1(AddNoMatchSubsystem, bool(const char* subsystem));
