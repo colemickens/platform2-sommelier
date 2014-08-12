@@ -29,11 +29,11 @@ class GdmDriver : public Driver,
                   public base::SupportsWeakPtr<GdmDriver> {
  public:
   explicit GdmDriver(Manager *manager);
-  virtual ~GdmDriver();
+  ~GdmDriver() override;
 
-  virtual bool Initialize();
-  virtual bool Finalize();
-  virtual bool GetDevices(std::vector<Device *> *devices);
+  bool Initialize() override;
+  bool Finalize() override;
+  bool GetDevices(std::vector<Device *> *devices) override;
 
   bool OpenDevice(GdmDevice *device);
   bool CloseDevice(GdmDevice *device);

@@ -27,25 +27,25 @@ class GdmDevice : public Device {
  public:
   GdmDevice(Manager *manager, uint8_t index, const std::string &name,
             const base::WeakPtr<GdmDriver> &driver);
-  virtual ~GdmDevice();
+  ~GdmDevice() override;
 
-  virtual bool Enable();
-  virtual bool Disable();
-  virtual bool ScanNetworks();
-  virtual bool UpdateStatus();
-  virtual bool Connect(const Network &network,
-                       const base::DictionaryValue &parameters);
-  virtual bool Disconnect();
+  bool Enable() override;
+  bool Disable() override;
+  bool ScanNetworks() override;
+  bool Connect(const Network &network,
+               const base::DictionaryValue &parameters) override;
+  bool Disconnect() override;
 
   void OnNetworkScan();
+  bool UpdateStatus();
   void OnStatusUpdate();
   void OnDBusAdaptorStatusUpdate();
   void CancelConnectOnTimeout();
   void RestoreStatusUpdateInterval();
 
  protected:
-  virtual void UpdateNetworkScanInterval(uint32_t network_scan_interval);
-  virtual void UpdateStatusUpdateInterval(uint32_t status_update_interval);
+  void UpdateNetworkScanInterval(uint32_t network_scan_interval) override;
+  void UpdateStatusUpdateInterval(uint32_t status_update_interval) override;
 
  private:
   friend class GdmDriver;

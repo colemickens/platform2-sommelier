@@ -22,10 +22,10 @@ class PowerManagerDBusProxy : public org::chromium::PowerManager_proxy,
                               public DBusProxy {
  public:
   PowerManagerDBusProxy(DBus::Connection *connection, PowerManager *manager);
-  virtual ~PowerManagerDBusProxy();
+  ~PowerManagerDBusProxy() override;
 
-  virtual void SuspendImminent(const std::vector<uint8_t> &serialized_proto);
-  virtual void SuspendDone(const std::vector<uint8_t> &serialized_proto);
+  void SuspendImminent(const std::vector<uint8_t> &serialized_proto) override;
+  void SuspendDone(const std::vector<uint8_t> &serialized_proto) override;
 
  private:
   PowerManager *power_manager_;

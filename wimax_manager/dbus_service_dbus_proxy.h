@@ -18,11 +18,11 @@ class DBusServiceDBusProxy : public org::freedesktop::DBus_proxy,
                              public DBusProxy {
  public:
   DBusServiceDBusProxy(DBus::Connection *connection, DBusService *dbus_service);
-  virtual ~DBusServiceDBusProxy();
+  ~DBusServiceDBusProxy() override;
 
-  virtual void NameOwnerChanged(const std::string &name,
-                                const std::string &old_owner,
-                                const std::string &new_owner);
+  void NameOwnerChanged(const std::string &name,
+                        const std::string &old_owner,
+                        const std::string &new_owner) override;
 
  private:
   DBusService *dbus_service_;

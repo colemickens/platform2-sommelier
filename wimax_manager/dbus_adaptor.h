@@ -17,7 +17,7 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
                     public DBus::IntrospectableAdaptor {
  public:
   DBusAdaptor(DBus::Connection *connection, const std::string &object_path);
-  virtual ~DBusAdaptor();
+  ~DBusAdaptor() override;
 
   static void SetError(DBus::Error *error, const std::string &message);
 
