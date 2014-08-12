@@ -1714,7 +1714,6 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
 TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
   const char kIccid[] = "1234567";
 
-  mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
   capability_->InitProxies();
   capability_->registration_state_ =
       MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING;
