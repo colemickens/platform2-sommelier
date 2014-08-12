@@ -33,6 +33,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
+#include "shill/ndisc.h"
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
 #include "shill/rtnl_handler.h"
@@ -372,6 +373,13 @@ void Device::OnAfterResume() {
     SLOG(Device, 3) << "Renewing IP address on resume.";
     ipconfig_->RenewIP();
   }
+  if (ip6config_) {
+    // Invalidate the old IPv6 configuration, will receive notifications
+    // from kernel for new IPv6 configuration if there is one.
+    StopIPv6DNSServerTimer();
+    ip6config_ = NULL;
+    UpdateIPConfigsProperty();
+  }
   if (link_monitor_) {
     SLOG(Device, 3) << "Informing Link Monitor of resume.";
     link_monitor_->OnAfterResume();
@@ -389,6 +397,11 @@ void Device::DestroyIPConfig() {
   if (ipconfig_.get()) {
     ipconfig_->ReleaseIP(IPConfig::kReleaseReasonDisconnect);
     ipconfig_ = NULL;
+    UpdateIPConfigsProperty();
+  }
+  if (ip6config_.get()) {
+    StopIPv6DNSServerTimer();
+    ip6config_ = NULL;
     UpdateIPConfigsProperty();
   }
   DestroyConnection();
@@ -424,12 +437,81 @@ void Device::OnIPv6AddressChanged() {
 
   properties.address_family = IPAddress::kFamilyIPv6;
   properties.method = kTypeIPv6;
+  // It is possible for device to receive DNS server notification before IP
+  // address notification, so preserve the saved DNS server if it exist.
+  properties.dns_servers = ip6config_->properties().dns_servers;
   ip6config_->set_properties(properties);
   UpdateIPConfigsProperty();
 }
 
 void Device::OnIPv6DnsServerAddressesChanged() {
-  // TODO(zqiu): To be implemented.
+  vector<IPAddress> server_addresses;
+  uint32 lifetime;
+
+  // Stop any existing timer.
+  StopIPv6DNSServerTimer();
+
+  if (!manager_->device_info()->GetIPv6DnsServerAddresses(
+          interface_index_, &server_addresses, &lifetime)  || lifetime == 0) {
+    IPv6DNSServerExpired();
+    return;
+  }
+
+  vector<string> addresses_str;
+  for (const auto &ip : server_addresses) {
+    string address_str;
+    if (!ip.IntoString(&address_str)) {
+      LOG(ERROR) << "Unable to convert IPv6 address into a string!";
+      IPv6DNSServerExpired();
+      return;
+    }
+    addresses_str.push_back(address_str);
+  }
+
+  // Setup timer to monitor DNS server lifetime if not infinite lifetime.
+  if (lifetime != ND_OPT_LIFETIME_INFINITY) {
+    StartIPv6DNSServerTimer(lifetime);
+  }
+
+  if (!ip6config_) {
+    ip6config_ = new IPConfig(control_interface_, link_name_);
+  }
+
+  // Done if no change in server addresses.
+  if (ip6config_->properties().dns_servers == addresses_str) {
+    return;
+  }
+
+  ip6config_->UpdateDNSServers(addresses_str);
+  UpdateIPConfigsProperty();
+}
+
+void Device::StartIPv6DNSServerTimer(uint32 lifetime_seconds) {
+  int64 delay = static_cast<int64>(lifetime_seconds) * 1000;
+  ipv6_dns_server_expired_callback_.Reset(
+      base::Bind(&Device::IPv6DNSServerExpired, base::Unretained(this)));
+  dispatcher_->PostDelayedTask(ipv6_dns_server_expired_callback_.callback(),
+                               delay);
+}
+
+void Device::StopIPv6DNSServerTimer() {
+  ipv6_dns_server_expired_callback_.Cancel();
+}
+
+void Device::IPv6DNSServerExpired() {
+  if (!ip6config_) {
+    return;
+  }
+  ip6config_->UpdateDNSServers(vector<string>());
+  UpdateIPConfigsProperty();
+}
+
+void Device::StopAllActivities() {
+  StopTrafficMonitor();
+  StopPortalDetection();
+  StopLinkMonitor();
+  StopDNSTest();
+  StopIPv6DNSServerTimer();
 }
 
 bool Device::ShouldUseArpGateway() const {
@@ -657,10 +739,7 @@ void Device::CreateConnection() {
 
 void Device::DestroyConnection() {
   SLOG(Device, 2) << __func__ << " on " << link_name_;
-  StopTrafficMonitor();
-  StopPortalDetection();
-  StopLinkMonitor();
-  StopDNSTest();
+  StopAllActivities();
   if (selected_service_.get()) {
     SLOG(Device, 3) << "Clearing connection of service "
                     << selected_service_->unique_name();
@@ -687,10 +766,7 @@ void Device::SelectService(const ServiceRefPtr &service) {
     // Just in case the Device subclass has not already done so, make
     // sure the previously selected service has its connection removed.
     selected_service_->SetConnection(NULL);
-    StopTrafficMonitor();
-    StopLinkMonitor();
-    StopPortalDetection();
-    StopDNSTest();
+    StopAllActivities();
   }
   selected_service_ = service;
 }

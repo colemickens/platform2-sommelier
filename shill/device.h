@@ -287,6 +287,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, IsConnectedViaTether);
   FRIEND_TEST(DeviceTest, Load);
   FRIEND_TEST(DeviceTest, OnIPv6AddressChanged);
+  FRIEND_TEST(DeviceTest, OnIPv6DnsServerAddressesChanged);
   FRIEND_TEST(DeviceTest, Save);
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(DeviceTest, SetEnabledNonPersistent);
@@ -460,6 +461,14 @@ class Device : public base::RefCounted<Device> {
   // Stop DNS test if one is running.
   virtual void StopDNSTest();
 
+  // Timer function for monitoring IPv6 DNS server's lifetime.
+  void StartIPv6DNSServerTimer(uint32 lifetime_seconds);
+  void StopIPv6DNSServerTimer();
+
+  // Stop all monitoring/testing activities on this device. Called when tearing
+  // down or changing network connection on the device.
+  void StopAllActivities();
+
   // Called by the Traffic Monitor when it detects a network problem. Device
   // subclasses that want to roam to a different network when encountering
   // network problems can override this method in order to do so. The parent
@@ -570,6 +579,9 @@ class Device : public base::RefCounted<Device> {
   // Update DNS setting with the given DNS servers for the current connection.
   void SwitchDNSServers(const std::vector<std::string> &dns_servers);
 
+  // Called when the lifetime for IPv6 DNS server expires.
+  void IPv6DNSServerExpired();
+
   // |enabled_persistent_| is the value of the Powered property, as
   // read from the profile. If it is not found in the profile, it
   // defaults to true. |enabled_| reflects the real-time state of
@@ -622,6 +634,8 @@ class Device : public base::RefCounted<Device> {
   scoped_ptr<DNSServerTester> dns_server_tester_;
   base::Callback<void(const PortalDetector::Result &)>
       portal_detector_callback_;
+  // Callback to invoke when IPv6 DNS servers lifetime expired.
+  base::CancelableClosure ipv6_dns_server_expired_callback_;
   scoped_ptr<TrafficMonitor> traffic_monitor_;
   // DNS servers obtained from ipconfig (either from DHCP or static config)
   // that are not working.

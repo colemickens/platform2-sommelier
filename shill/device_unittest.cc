@@ -33,6 +33,7 @@
 #include "shill/mock_dhcp_config.h"
 #include "shill/mock_dhcp_provider.h"
 #include "shill/mock_dns_server_tester.h"
+#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_ip_address_store.h"
 #include "shill/mock_ipconfig.h"
@@ -295,14 +296,18 @@ TEST_F(DeviceTest, ClearReadOnlyDerivedProperty) {
 TEST_F(DeviceTest, DestroyIPConfig) {
   ASSERT_FALSE(device_->ipconfig_.get());
   device_->ipconfig_ = new IPConfig(control_interface(), kDeviceName);
+  device_->ip6config_ = new IPConfig(control_interface(), kDeviceName);
   device_->DestroyIPConfig();
   ASSERT_FALSE(device_->ipconfig_.get());
+  ASSERT_FALSE(device_->ip6config_.get());
 }
 
 TEST_F(DeviceTest, DestroyIPConfigNULL) {
   ASSERT_FALSE(device_->ipconfig_.get());
+  ASSERT_FALSE(device_->ip6config_.get());
   device_->DestroyIPConfig();
   ASSERT_FALSE(device_->ipconfig_.get());
+  ASSERT_FALSE(device_->ip6config_.get());
 }
 
 TEST_F(DeviceTest, AcquireIPConfig) {
@@ -928,6 +933,136 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
                                             vector<string>()));
   device_->OnIPv6AddressChanged();
   EXPECT_THAT(device_->ip6config_, IsNullRefPtr());
+  Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
+  Mock::VerifyAndClearExpectations(&device_info_);
+}
+
+TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
+  StrictMock<MockManager> manager(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  glib());
+  manager.set_mock_device_info(&device_info_);
+  SetManager(&manager);
+
+  // IPv6 DNS server addresses are not provided will not emit a change.
+  EXPECT_CALL(device_info_,
+              GetIPv6DnsServerAddresses(kDeviceInterfaceIndex, _, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitRpcIdentifierArrayChanged(kIPConfigsProperty, _)).Times(0);
+  device_->OnIPv6DnsServerAddressesChanged();
+  EXPECT_THAT(device_->ip6config_, IsNullRefPtr());
+  Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
+  Mock::VerifyAndClearExpectations(&device_info_);
+
+  const char kAddress1[] = "fe80::1aa9:5ff:abcd:1234";
+  const char kAddress2[] = "fe80::1aa9:5ff:abcd:1235";
+  const uint32 kInfiniteLifetime = 0xffffffff;
+  IPAddress ipv6_address1(IPAddress::kFamilyIPv6);
+  IPAddress ipv6_address2(IPAddress::kFamilyIPv6);
+  ASSERT_TRUE(ipv6_address1.SetAddressFromString(kAddress1));
+  ASSERT_TRUE(ipv6_address2.SetAddressFromString(kAddress2));
+  vector<IPAddress> dns_server_addresses;
+  dns_server_addresses.push_back(ipv6_address1);
+  dns_server_addresses.push_back(ipv6_address2);
+  vector<string> dns_server_addresses_str;
+  dns_server_addresses_str.push_back(kAddress1);
+  dns_server_addresses_str.push_back(kAddress2);
+
+  // Add IPv6 DNS server addresses while ip6config_ is NULL.
+  EXPECT_CALL(device_info_,
+              GetIPv6DnsServerAddresses(kDeviceInterfaceIndex, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(dns_server_addresses),
+                      SetArgPointee<2>(kInfiniteLifetime),
+                      Return(true)));
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitRpcIdentifierArrayChanged(
+                  kIPConfigsProperty,
+                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+  device_->OnIPv6DnsServerAddressesChanged();
+  EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
+  EXPECT_EQ(dns_server_addresses_str,
+            device_->ip6config_->properties().dns_servers);
+  Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
+  Mock::VerifyAndClearExpectations(&device_info_);
+
+  // Add an IPv6 address while IPv6 DNS server addresses already existed.
+  IPAddress address3(IPAddress::kFamilyIPv6);
+  const char kAddress3[] = "fe80::1aa9:5ff:abcd:1236";
+  ASSERT_TRUE(address3.SetAddressFromString(kAddress3));
+  EXPECT_CALL(device_info_, GetPrimaryIPv6Address(kDeviceInterfaceIndex, _))
+      .WillOnce(DoAll(SetArgPointee<1>(address3), Return(true)));
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitRpcIdentifierArrayChanged(
+                  kIPConfigsProperty,
+                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+  device_->OnIPv6AddressChanged();
+  EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
+  EXPECT_EQ(kAddress3, device_->ip6config_->properties().address);
+  EXPECT_EQ(dns_server_addresses_str,
+            device_->ip6config_->properties().dns_servers);
+  Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
+  Mock::VerifyAndClearExpectations(&device_info_);
+
+  // If the IPv6 DNS server addresses does not change, no signal is emitted.
+  EXPECT_CALL(device_info_,
+              GetIPv6DnsServerAddresses(kDeviceInterfaceIndex, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(dns_server_addresses),
+                      SetArgPointee<2>(kInfiniteLifetime),
+                      Return(true)));
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitRpcIdentifierArrayChanged(kIPConfigsProperty, _)).Times(0);
+  device_->OnIPv6DnsServerAddressesChanged();
+  EXPECT_EQ(dns_server_addresses_str,
+            device_->ip6config_->properties().dns_servers);
+  Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
+  Mock::VerifyAndClearExpectations(&device_info_);
+
+  // Setting lifetime to 0 should expire and clear out the DNS server.
+  const uint32 kExpiredLifetime = 0;
+  vector<string> empty_dns_server;
+  EXPECT_CALL(device_info_,
+              GetIPv6DnsServerAddresses(kDeviceInterfaceIndex, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(dns_server_addresses),
+                      SetArgPointee<2>(kExpiredLifetime),
+                      Return(true)));
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitRpcIdentifierArrayChanged(
+                  kIPConfigsProperty,
+                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+  device_->OnIPv6DnsServerAddressesChanged();
+  EXPECT_EQ(empty_dns_server, device_->ip6config_->properties().dns_servers);
+  Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
+  Mock::VerifyAndClearExpectations(&device_info_);
+
+  // Set DNS server with lifetime of 1 hour.
+  const uint32 kLifetimeOneHr = 3600;
+  EXPECT_CALL(device_info_,
+              GetIPv6DnsServerAddresses(kDeviceInterfaceIndex, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(dns_server_addresses),
+                      SetArgPointee<2>(kLifetimeOneHr),
+                      Return(true)));
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitRpcIdentifierArrayChanged(
+                  kIPConfigsProperty,
+                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+  device_->OnIPv6DnsServerAddressesChanged();
+  EXPECT_EQ(dns_server_addresses_str,
+            device_->ip6config_->properties().dns_servers);
+  Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
+  Mock::VerifyAndClearExpectations(&device_info_);
+
+  // Return the DNS server addresses to NULL.
+  EXPECT_CALL(device_info_,
+              GetIPv6DnsServerAddresses(kDeviceInterfaceIndex, _, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitRpcIdentifierArrayChanged(
+                  kIPConfigsProperty,
+                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+  device_->OnIPv6DnsServerAddressesChanged();
+  EXPECT_EQ(empty_dns_server, device_->ip6config_->properties().dns_servers);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
 }

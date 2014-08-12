@@ -56,6 +56,10 @@ class MockDeviceInfo : public DeviceInfo {
                           const IPAddress &address));
   MOCK_METHOD2(GetPrimaryIPv6Address,
                bool(int interface_index, IPAddress *address));
+  MOCK_METHOD3(GetIPv6DnsServerAddresses,
+               bool(int interface_index,
+                    std::vector<IPAddress> *address_list,
+                    uint32 *life_time));
   MOCK_CONST_METHOD1(CreateTunnelInterface,  bool(std::string *interface_name));
   MOCK_CONST_METHOD1(DeleteInterface, bool(int interface_index));
   MOCK_METHOD1(RegisterDevice, void(const DeviceRefPtr &));
