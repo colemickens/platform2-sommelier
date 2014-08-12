@@ -1102,8 +1102,9 @@ void Service::set_profile(const ProfileRefPtr &p) { profile_ = p; }
 
 void Service::SetProfile(const ProfileRefPtr &p) {
   SLOG(Service, 2) << "SetProfile from "
-                   << (profile_ ? profile_->GetFriendlyName() : "")
-                   << " to " << (p ? p->GetFriendlyName() : "");
+                   << (profile_ ? profile_->GetFriendlyName() : "(none)")
+                   << " to " << (p ? p->GetFriendlyName() : "(none)")
+                   << ".";
   if (profile_ == p) {
     return;
   }
