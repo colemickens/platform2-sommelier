@@ -48,10 +48,10 @@ class ImageBurnService : public chromeos::dbus::AbstractDbusService,
   virtual bool Shutdown();
 
   // SignalSender interface.
-  virtual void SendFinishedSignal(const char* target_path, bool success,
-                                  const char* error_message) OVERRIDE;
-  virtual void SendProgressSignal(int64_t amount_burnt, int64_t total_size,
-                                  const char* target_path) OVERRIDE;
+  void SendFinishedSignal(const char* target_path, bool success,
+                          const char* error_message) override;
+  void SendProgressSignal(int64_t amount_burnt, int64_t total_size,
+                          const char* target_path) override;
 
   gboolean BurnImageAsync(gchar* from_path, gchar* to_path,
       DBusGMethodInvocation* context);

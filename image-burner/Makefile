@@ -13,6 +13,7 @@ PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 CPPFLAGS += -I.. $(PC_CFLAGS)
 LDLIBS += -lrootdev $(PC_LIBS)
+CXXFLAGS += -std=gnu++11 -Wno-deprecated-register -Wno-pointer-bool-conversion
 
 COMMON_OBJS = image_burner_utils.o image_burner_impl.o
 IMAGEBURN_OBJS = $(COMMON_OBJS) image_burn_service.o image_burner.o
