@@ -25,11 +25,11 @@ class FakeGeneratorJob : public GeneratorJobInterface {
             const std::string& name,
             const std::string& key_contents);
     virtual ~Factory();
-    virtual scoped_ptr<GeneratorJobInterface> Create(
+    scoped_ptr<GeneratorJobInterface> Create(
         const std::string& filename,
         const base::FilePath& user_path,
         uid_t desired_uid,
-        SystemUtils* utils) OVERRIDE;
+        SystemUtils* utils) override;
    private:
     pid_t pid_;
     const std::string name_;
@@ -43,13 +43,13 @@ class FakeGeneratorJob : public GeneratorJobInterface {
                    const std::string& filename);
   virtual ~FakeGeneratorJob();
 
-  virtual bool RunInBackground() OVERRIDE;
+  bool RunInBackground() override;
   MOCK_METHOD2(KillEverything, void(int, const std::string&));
   MOCK_METHOD2(Kill, void(int, const std::string&));
   MOCK_METHOD1(WaitAndAbort, void(base::TimeDelta));
 
-  const std::string GetName() const OVERRIDE { return name_; }
-  pid_t CurrentPid() const OVERRIDE { return pid_; }
+  const std::string GetName() const override { return name_; }
+  pid_t CurrentPid() const override { return pid_; }
 
  private:
   pid_t pid_;

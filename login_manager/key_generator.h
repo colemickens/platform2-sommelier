@@ -44,10 +44,10 @@ class KeyGenerator : public JobManagerInterface {
   virtual bool Start(const std::string& username);
 
   // Implementation of JobManagerInterface.
-  virtual bool IsManagedJob(pid_t pid) OVERRIDE;
-  virtual void HandleExit(const siginfo_t& status) OVERRIDE;
-  virtual void RequestJobExit() OVERRIDE;
-  virtual void EnsureJobExit(base::TimeDelta timeout) OVERRIDE;
+  bool IsManagedJob(pid_t pid) override;
+  void HandleExit(const siginfo_t& status) override;
+  void RequestJobExit() override;
+  void EnsureJobExit(base::TimeDelta timeout) override;
 
   void InjectJobFactory(scoped_ptr<GeneratorJobFactoryInterface> factory);
 

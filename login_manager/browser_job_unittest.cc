@@ -37,7 +37,7 @@ class BrowserJobTest : public ::testing::Test {
 
   virtual ~BrowserJobTest() {}
 
-  virtual void SetUp() OVERRIDE;
+  void SetUp() override;
 
  protected:
   static const char* kArgv[];

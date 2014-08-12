@@ -32,7 +32,7 @@ class FakeSystemUtils : public SystemUtilsImpl {
   FakeSystemUtils() : time_(0) {}
   virtual ~FakeSystemUtils() {}
 
-  virtual time_t time(time_t* t) OVERRIDE {
+  time_t time(time_t* t) override {
     if (t)
       *t = time_;
     return time_;

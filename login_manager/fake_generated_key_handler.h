@@ -22,8 +22,8 @@ class FakeGeneratedKeyHandler : public KeyGenerator::Delegate {
   const std::string& key_contents() { return key_contents_; }
 
   // Overridden from KeyGenerator::Delegate
-  virtual void OnKeyGenerated(const std::string& username,
-                              const base::FilePath& temp_key_file) OVERRIDE;
+  void OnKeyGenerated(const std::string& username,
+                      const base::FilePath& temp_key_file) override;
  private:
   std::string key_username_;
   std::string key_contents_;

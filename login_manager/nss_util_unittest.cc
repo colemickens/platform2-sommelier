@@ -23,7 +23,7 @@ class NssUtilTest : public ::testing::Test {
   NssUtilTest() : util_(NssUtil::Create()) {}
   virtual ~NssUtilTest() {}
 
-  virtual void SetUp() OVERRIDE {
+  void SetUp() override {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     ASSERT_TRUE(
         base::CreateDirectory(tmpdir_.path().Append(util_->GetNssdbSubpath())));

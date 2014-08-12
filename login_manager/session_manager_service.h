@@ -137,30 +137,30 @@ class SessionManagerService
   ExitCode exit_code() { return exit_code_; }
 
   // Implementing ProcessManagerServiceInterface
-  virtual void ScheduleShutdown() OVERRIDE;
-  virtual void RunBrowser() OVERRIDE;
-  virtual void AbortBrowser(int signal, const std::string& message) OVERRIDE;
-  virtual void RestartBrowserWithArgs(
-      const std::vector<std::string>& args, bool args_are_extra) OVERRIDE;
-  virtual void SetBrowserSessionForUser(const std::string& username,
-                                        const std::string& userhash) OVERRIDE;
-  virtual void SetFlagsForUser(const std::string& username,
-                               const std::vector<std::string>& flags) OVERRIDE;
-  virtual bool IsBrowser(pid_t pid) OVERRIDE;
+  void ScheduleShutdown() override;
+  void RunBrowser() override;
+  void AbortBrowser(int signal, const std::string& message) override;
+  void RestartBrowserWithArgs(const std::vector<std::string>& args,
+                              bool args_are_extra) override;
+  void SetBrowserSessionForUser(const std::string& username,
+                                const std::string& userhash) override;
+  void SetFlagsForUser(const std::string& username,
+                       const std::vector<std::string>& flags) override;
+  bool IsBrowser(pid_t pid) override;
 
   // Implementation of JobManagerInterface.
   // Actually just an alias for IsBrowser
-  virtual bool IsManagedJob(pid_t pid) OVERRIDE;
+  bool IsManagedJob(pid_t pid) override;
   // Re-runs the browser, unless one of the following is true:
   //  The screen is supposed to be locked,
   //  UI shutdown is in progress,
   //  The child indicates that it should not run anymore, or
   //  ShouldRunBrowser() indicates the browser should not run anymore.
-  virtual void HandleExit(const siginfo_t& info) OVERRIDE;
+  void HandleExit(const siginfo_t& info) override;
   // Request that browser_ exit.
-  virtual void RequestJobExit() OVERRIDE;
+  void RequestJobExit() override;
   // Ensure that browser_ is gone.
-  virtual void EnsureJobExit(base::TimeDelta timeout) OVERRIDE;
+  void EnsureJobExit(base::TimeDelta timeout) override;
 
   // Set all changed signal handlers back to the default behavior.
   static void RevertHandlers();

@@ -94,7 +94,7 @@ class SessionManagerImplTest : public ::testing::Test {
 
   virtual ~SessionManagerImplTest() {}
 
-  virtual void SetUp() OVERRIDE {
+  void SetUp() override {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     SetSystemSalt(&fake_salt_);
 
@@ -109,7 +109,7 @@ class SessionManagerImplTest : public ::testing::Test {
         device_local_account_policy.Pass());
   }
 
-  virtual void TearDown() OVERRIDE {
+  void TearDown() override {
     SetSystemSalt(NULL);
     EXPECT_EQ(actual_locks_, expected_locks_);
     EXPECT_EQ(actual_restarts_, expected_restarts_);

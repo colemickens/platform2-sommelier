@@ -36,7 +36,7 @@ class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
   DeviceLocalAccountPolicyServiceTest()
       : fake_account_("account@example.com"), salt_("salt") {}
 
-  virtual void SetUp() OVERRIDE {
+  void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     chromeos::cryptohome::home::SetSystemSalt(&salt_);
 

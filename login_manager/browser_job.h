@@ -31,13 +31,12 @@ class BrowserJobInterface : public ChildJobInterface {
   virtual ~BrowserJobInterface() {}
 
   // Overridden from ChildJobInterface
-  virtual bool RunInBackground() OVERRIDE = 0;
-  virtual void KillEverything(int signal,
-                              const std::string& message) OVERRIDE = 0;
-  virtual void Kill(int signal, const std::string& message) OVERRIDE = 0;
-  virtual void WaitAndAbort(base::TimeDelta timeout) OVERRIDE = 0;
-  virtual const std::string GetName() const OVERRIDE = 0;
-  virtual pid_t CurrentPid() const OVERRIDE = 0;
+  bool RunInBackground() override = 0;
+  void KillEverything(int signal, const std::string& message) override = 0;
+  void Kill(int signal, const std::string& message) override = 0;
+  void WaitAndAbort(base::TimeDelta timeout) override = 0;
+  const std::string GetName() const override = 0;
+  pid_t CurrentPid() const override = 0;
 
   // Return true if the browser should be run, false if not.
   virtual bool ShouldRunBrowser() = 0;
@@ -84,21 +83,20 @@ class BrowserJob : public BrowserJobInterface {
   virtual ~BrowserJob();
 
   // Overridden from BrowserJobInterface
-  virtual bool RunInBackground() OVERRIDE;
-  virtual void KillEverything(int signal, const std::string& message) OVERRIDE;
-  virtual void Kill(int signal, const std::string& message) OVERRIDE;
-  virtual void WaitAndAbort(base::TimeDelta timeout) OVERRIDE;
-  virtual pid_t CurrentPid() const OVERRIDE { return subprocess_.pid(); }
-  virtual bool ShouldRunBrowser() OVERRIDE;
-  virtual bool ShouldStop() const OVERRIDE;
-  virtual void StartSession(const std::string& email,
-                            const std::string& userhash) OVERRIDE;
-  virtual void StopSession() OVERRIDE;
-  virtual const std::string GetName() const OVERRIDE;
-  virtual void SetArguments(const std::vector<std::string>& arguments) OVERRIDE;
-  virtual void SetExtraArguments(
-      const std::vector<std::string>& arguments) OVERRIDE;
-  virtual void ClearPid() OVERRIDE;
+  bool RunInBackground() override;
+  void KillEverything(int signal, const std::string& message) override;
+  void Kill(int signal, const std::string& message) override;
+  void WaitAndAbort(base::TimeDelta timeout) override;
+  pid_t CurrentPid() const override { return subprocess_.pid(); }
+  bool ShouldRunBrowser() override;
+  bool ShouldStop() const override;
+  void StartSession(const std::string& email,
+                    const std::string& userhash) override;
+  void StopSession() override;
+  const std::string GetName() const override;
+  void SetArguments(const std::vector<std::string>& arguments) override;
+  void SetExtraArguments(const std::vector<std::string>& arguments) override;
+  void ClearPid() override;
 
   // Stores the current time as the time when the job was started.
   void RecordTime();

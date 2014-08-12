@@ -35,17 +35,17 @@ class MockSystemUtils : public SystemUtils {
 
   // All filesystem-touching methods write to a ScopedTempDir that's owned by
   // this class.
-  bool Exists(const base::FilePath& file) OVERRIDE;
+  bool Exists(const base::FilePath& file) override;
   bool AtomicFileWrite(const base::FilePath& file,
-                       const std::string& data) OVERRIDE;
+                       const std::string& data) override;
   bool ReadFileToString(const base::FilePath& file, std::string* out);
   bool EnsureAndReturnSafeFileSize(const base::FilePath& file,
-                                   int32_t* file_size_32) OVERRIDE;
-  bool RemoveFile(const base::FilePath& file) OVERRIDE;
+                                   int32_t* file_size_32) override;
+  bool RemoveFile(const base::FilePath& file) override;
 
   bool GetUniqueFilenameInWriteOnlyTempDir(
-      base::FilePath* temp_file_path) OVERRIDE;
-  bool CreateReadOnlyFileInTempDir(base::FilePath* temp_file_path) OVERRIDE;
+      base::FilePath* temp_file_path) override;
+  bool CreateReadOnlyFileInTempDir(base::FilePath* temp_file_path) override;
   // Get filename to be returned by the above. Returns full path to the file.
   // An empty path is returned on failure.
   base::FilePath GetUniqueFilename();

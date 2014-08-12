@@ -34,8 +34,8 @@ class MockNssUtil : public NssUtil {
 
   static crypto::RSAPrivateKey* CreateShortKey();
 
-  virtual crypto::ScopedPK11Slot OpenUserDB(
-      const base::FilePath& user_homedir) OVERRIDE;
+  crypto::ScopedPK11Slot OpenUserDB(
+      const base::FilePath& user_homedir) override;
   MOCK_METHOD2(GetPrivateKeyForUser,
                crypto::RSAPrivateKey*(const std::vector<uint8_t>&,
                                       PK11SlotInfo*));
@@ -57,7 +57,7 @@ class MockNssUtil : public NssUtil {
                     int data_len,
                     std::vector<uint8_t>* OUT_signature,
                     crypto::RSAPrivateKey* key));
-  virtual base::FilePath GetOwnerKeyFilePath() OVERRIDE;
+  base::FilePath GetOwnerKeyFilePath() override;
 
   PK11SlotInfo* GetSlot();
 

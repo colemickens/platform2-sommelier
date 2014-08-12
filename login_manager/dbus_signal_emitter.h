@@ -46,11 +46,11 @@ class DBusSignalEmitter : public DBusSignalEmitterInterface {
   DBusSignalEmitter(dbus::ExportedObject* object, const std::string& interface);
   virtual ~DBusSignalEmitter();
 
-  virtual void EmitSignal(const std::string& signal_name) OVERRIDE;
-  virtual void EmitSignalWithSuccessFailure(const std::string& signal_name,
-                                            const bool success) OVERRIDE;
-  virtual void EmitSignalWithString(const std::string& signal_name,
-                                    const std::string& payload) OVERRIDE;
+  void EmitSignal(const std::string& signal_name) override;
+  void EmitSignalWithSuccessFailure(const std::string& signal_name,
+                                    const bool success) override;
+  void EmitSignalWithString(const std::string& signal_name,
+                            const std::string& payload) override;
 
  private:
   dbus::ExportedObject* object_;  // Weak, owned by caller.

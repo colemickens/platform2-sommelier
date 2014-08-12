@@ -27,8 +27,8 @@ class RegenMitigator : public OwnerKeyLossMitigator {
   // Deal with loss of the owner's private key.
   // Returning true means that we can recover without user interaction.
   // Returning false means that we can't.
-  bool Mitigate(const std::string& ownername) OVERRIDE;
-  bool Mitigating() OVERRIDE;
+  bool Mitigate(const std::string& ownername) override;
+  bool Mitigating() override;
 
  private:
   KeyGenerator* generator_;

@@ -95,13 +95,13 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   // SessionManagerInterface implementation.
   // Should set up policy stuff; if false DIE.
-  virtual bool Initialize() OVERRIDE;
-  virtual void Finalize() OVERRIDE;
+  bool Initialize() override;
+  void Finalize() override;
 
-  virtual void AnnounceSessionStoppingIfNeeded() OVERRIDE;
-  virtual void AnnounceSessionStopped() OVERRIDE;
-  virtual bool ScreenIsLocked() OVERRIDE { return screen_locked_; }
-  virtual std::vector<std::string> GetStartUpFlags() OVERRIDE {
+  void AnnounceSessionStoppingIfNeeded() override;
+  void AnnounceSessionStopped() override;
+  bool ScreenIsLocked() override { return screen_locked_; }
+  std::vector<std::string> GetStartUpFlags() override {
     return device_policy_->GetStartUpFlags();
   }
 
@@ -109,7 +109,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   // rebooting to allow early-boot code to wipe parts of stateful we
   // need wiped. Have a look at /src/platform/init/chromeos_startup
   // for the gory details.
-  virtual void InitiateDeviceWipe() OVERRIDE;
+  void InitiateDeviceWipe() override;
 
   //////////////////////////////////////////////////////////////////////////////
   // Methods exposed via RPC are defined below.
@@ -161,12 +161,12 @@ class SessionManagerImpl : public SessionManagerInterface,
   void InitMachineInfo(const std::string& data, Error* error);
 
   // PolicyService::Delegate implementation:
-  virtual void OnPolicyPersisted(bool success) OVERRIDE;
-  virtual void OnKeyPersisted(bool success) OVERRIDE;
+  void OnPolicyPersisted(bool success) override;
+  void OnKeyPersisted(bool success) override;
 
   // KeyGenerator::Delegate implementation:
-  virtual void OnKeyGenerated(const std::string& username,
-                              const base::FilePath& temp_key_file) OVERRIDE;
+  void OnKeyGenerated(const std::string& username,
+                              const base::FilePath& temp_key_file) override;
 
  private:
   // Holds the state related to one of the signed in users.

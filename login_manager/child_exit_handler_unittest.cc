@@ -32,13 +32,13 @@ class FakeJobManager : public JobManagerInterface {
   const siginfo_t& last_status() { return last_status_; }
 
   // Implementation of JobManagerInterface.
-  virtual bool IsManagedJob(pid_t pid) OVERRIDE { return true; }
-  virtual void HandleExit(const siginfo_t& s) OVERRIDE {
+  bool IsManagedJob(pid_t pid) override { return true; }
+  void HandleExit(const siginfo_t& s) override {
     last_status_ = s;
     run_loop_->Quit();
   }
-  virtual void RequestJobExit() OVERRIDE {}
-  virtual void EnsureJobExit(base::TimeDelta timeout) OVERRIDE {}
+  void RequestJobExit() override {}
+  void EnsureJobExit(base::TimeDelta timeout) override {}
 
  private:
   base::RunLoop* run_loop_;

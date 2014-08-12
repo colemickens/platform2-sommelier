@@ -93,10 +93,10 @@ class DevicePolicyService : public PolicyService {
   virtual const enterprise_management::ChromeDeviceSettingsProto& GetSettings();
 
   // PolicyService:
-  virtual bool Store(const uint8_t* policy_blob,
-                     uint32_t len,
-                     Completion* completion,
-                     int flags) OVERRIDE;
+  bool Store(const uint8_t* policy_blob,
+             uint32_t len,
+             Completion* completion,
+             int flags) override;
 
   static const char kPolicyPath[];
   static const char kSerialRecoveryFlagFile[];

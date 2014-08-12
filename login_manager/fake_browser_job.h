@@ -30,7 +30,7 @@ class FakeBrowserJob : public BrowserJobInterface {
   void set_should_run(bool should) { should_run_ = should; }
 
   // Overridden from BrowserJobInterface
-  virtual bool ShouldRunBrowser() OVERRIDE;
+  bool ShouldRunBrowser() override;
   MOCK_CONST_METHOD0(ShouldStop, bool());
   MOCK_METHOD2(KillEverything, void(int, const std::string&));
   MOCK_METHOD2(Kill, void(int, const std::string&));
@@ -42,10 +42,10 @@ class FakeBrowserJob : public BrowserJobInterface {
   MOCK_METHOD1(SetOneTimeArguments, void(const std::vector<std::string>&));
   MOCK_METHOD0(ClearOneTimeArguments, void());
 
-  virtual bool RunInBackground() OVERRIDE;
-  virtual const std::string GetName() const OVERRIDE;
-  virtual pid_t CurrentPid() const OVERRIDE;
-  virtual void ClearPid() OVERRIDE;
+  bool RunInBackground() override;
+  const std::string GetName() const override;
+  pid_t CurrentPid() const override;
+  void ClearPid() override;
 
  private:
   scoped_ptr<FakeChildProcess> fake_process_;

@@ -23,13 +23,13 @@ class GeneratorJobInterface : public ChildJobInterface {
   virtual ~GeneratorJobInterface() {}
 
   // Overridden from ChildJobInterface
-  virtual bool RunInBackground() OVERRIDE = 0;
+  virtual bool RunInBackground() = 0;
   virtual void KillEverything(int signal,
-                              const std::string& message) OVERRIDE = 0;
-  virtual void Kill(int signal, const std::string& message) OVERRIDE = 0;
-  virtual void WaitAndAbort(base::TimeDelta timeout) OVERRIDE = 0;
-  virtual const std::string GetName() const OVERRIDE = 0;
-  virtual pid_t CurrentPid() const OVERRIDE = 0;
+                              const std::string& message) = 0;
+  virtual void Kill(int signal, const std::string& message) = 0;
+  virtual void WaitAndAbort(base::TimeDelta timeout) = 0;
+  virtual const std::string GetName() const = 0;
+  virtual pid_t CurrentPid() const = 0;
 };
 
 class GeneratorJobFactoryInterface {
@@ -48,11 +48,11 @@ class GeneratorJob : public GeneratorJobInterface {
    public:
     Factory();
     virtual ~Factory();
-    virtual scoped_ptr<GeneratorJobInterface> Create(
+    scoped_ptr<GeneratorJobInterface> Create(
         const std::string& filename,
         const base::FilePath& user_path,
         uid_t desired_uid,
-        SystemUtils* utils) OVERRIDE;
+        SystemUtils* utils) override;
    private:
     DISALLOW_COPY_AND_ASSIGN(Factory);
   };
@@ -60,12 +60,12 @@ class GeneratorJob : public GeneratorJobInterface {
   virtual ~GeneratorJob();
 
   // Overridden from GeneratorJobInterface
-  virtual bool RunInBackground() OVERRIDE;
-  virtual void KillEverything(int signal, const std::string& message) OVERRIDE;
-  virtual void Kill(int signal, const std::string& message) OVERRIDE;
-  virtual void WaitAndAbort(base::TimeDelta timeout) OVERRIDE;
-  virtual const std::string GetName() const OVERRIDE;
-  virtual pid_t CurrentPid() const OVERRIDE { return subprocess_.pid(); }
+  bool RunInBackground() override;
+  void KillEverything(int signal, const std::string& message) override;
+  void Kill(int signal, const std::string& message) override;
+  void WaitAndAbort(base::TimeDelta timeout) override;
+  const std::string GetName() const override;
+  pid_t CurrentPid() const override { return subprocess_.pid(); }
 
  private:
   GeneratorJob(const std::string& filename,

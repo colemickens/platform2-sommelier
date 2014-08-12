@@ -31,22 +31,22 @@ class SystemUtilsImpl : public SystemUtils {
   SystemUtilsImpl();
   virtual ~SystemUtilsImpl();
 
-  virtual int kill(pid_t pid, uid_t owner, int signal) OVERRIDE;
-  virtual time_t time(time_t* t) OVERRIDE;
-  virtual pid_t fork() OVERRIDE;
-  virtual int IsDevMode() OVERRIDE;
-  virtual bool ChildIsGone(pid_t child_spec, base::TimeDelta timeout) OVERRIDE;
+  int kill(pid_t pid, uid_t owner, int signal) override;
+  time_t time(time_t* t) override;
+  pid_t fork() override;
+  int IsDevMode() override;
+  bool ChildIsGone(pid_t child_spec, base::TimeDelta timeout) override;
 
-  virtual bool EnsureAndReturnSafeFileSize(const base::FilePath& file,
-                                           int32_t* file_size_32) OVERRIDE;
-  virtual bool Exists(const base::FilePath& file) OVERRIDE;
-  virtual bool CreateReadOnlyFileInTempDir(base::FilePath* temp_file) OVERRIDE;
-  virtual bool GetUniqueFilenameInWriteOnlyTempDir(
-      base::FilePath* temp_file_path) OVERRIDE;
-  virtual bool RemoveFile(const base::FilePath& filename) OVERRIDE;
-  virtual bool AtomicFileWrite(const base::FilePath& filename,
-                               const std::string& data) OVERRIDE;
-  virtual void AppendToClobberLog(const char* msg) const OVERRIDE;
+  bool EnsureAndReturnSafeFileSize(const base::FilePath& file,
+                                   int32_t* file_size_32) override;
+  bool Exists(const base::FilePath& file) override;
+  bool CreateReadOnlyFileInTempDir(base::FilePath* temp_file) override;
+  bool GetUniqueFilenameInWriteOnlyTempDir(
+      base::FilePath* temp_file_path) override;
+  bool RemoveFile(const base::FilePath& filename) override;
+  bool AtomicFileWrite(const base::FilePath& filename,
+                       const std::string& data) override;
+  void AppendToClobberLog(const char* msg) const override;
 
  private:
   // If this file exists on the next boot, the stateful partition will be wiped.

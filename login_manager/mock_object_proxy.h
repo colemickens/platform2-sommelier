@@ -34,9 +34,9 @@ class MockObjectProxy : public dbus::ObjectProxy {
   // Use |MockCallMethodAndBlock| for setting/testing expectations.
   MOCK_METHOD2(MockCallMethodAndBlock,
                dbus::Response*(dbus::MethodCall* method_call, int timeout_ms));
-  virtual scoped_ptr<dbus::Response> CallMethodAndBlock(
+  scoped_ptr<dbus::Response> CallMethodAndBlock(
       dbus::MethodCall* method_call,
-      int timeout_ms) OVERRIDE {
+      int timeout_ms) override {
     return scoped_ptr<dbus::Response>(MockCallMethodAndBlock(method_call,
                                                              timeout_ms));
   }

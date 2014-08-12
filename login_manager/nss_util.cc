@@ -56,35 +56,33 @@ class NssUtilImpl : public NssUtil {
   NssUtilImpl();
   virtual ~NssUtilImpl();
 
-  virtual ScopedPK11Slot OpenUserDB(
-      const base::FilePath& user_homedir) OVERRIDE;
+  ScopedPK11Slot OpenUserDB(const base::FilePath& user_homedir) override;
 
-  virtual RSAPrivateKey* GetPrivateKeyForUser(
+  RSAPrivateKey* GetPrivateKeyForUser(
       const std::vector<uint8_t>& public_key_der,
-      PK11SlotInfo* user_slot) OVERRIDE;
+      PK11SlotInfo* user_slot) override;
 
-  virtual RSAPrivateKey* GenerateKeyPairForUser(
-      PK11SlotInfo* user_slot) OVERRIDE;
+  RSAPrivateKey* GenerateKeyPairForUser(PK11SlotInfo* user_slot) override;
 
-  virtual base::FilePath GetOwnerKeyFilePath() OVERRIDE;
+  base::FilePath GetOwnerKeyFilePath() override;
 
-  virtual base::FilePath GetNssdbSubpath() OVERRIDE;
+  base::FilePath GetNssdbSubpath() override;
 
-  virtual bool CheckPublicKeyBlob(const std::vector<uint8_t>& blob) OVERRIDE;
+  bool CheckPublicKeyBlob(const std::vector<uint8_t>& blob) override;
 
-  virtual bool Verify(const uint8_t* algorithm,
-                      int algorithm_len,
-                      const uint8_t* signature,
-                      int signature_len,
-                      const uint8_t* data,
-                      int data_len,
-                      const uint8_t* public_key,
-                      int public_key_len) OVERRIDE;
+  bool Verify(const uint8_t* algorithm,
+              int algorithm_len,
+              const uint8_t* signature,
+              int signature_len,
+              const uint8_t* data,
+              int data_len,
+              const uint8_t* public_key,
+              int public_key_len) override;
 
-  virtual bool Sign(const uint8_t* data,
-                    int data_len,
-                    std::vector<uint8_t>* OUT_signature,
-                    RSAPrivateKey* key) OVERRIDE;
+  bool Sign(const uint8_t* data,
+            int data_len,
+            std::vector<uint8_t>* OUT_signature,
+            RSAPrivateKey* key) override;
 
  private:
   static const uint16_t kKeySizeInBits;
