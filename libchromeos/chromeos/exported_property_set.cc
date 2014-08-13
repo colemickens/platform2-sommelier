@@ -191,153 +191,96 @@ void ExportedPropertySet::HandlePropertyUpdated(
   // don't do anything interesting here.
   writer.OpenArray("s", &array_writer);
   writer.CloseContainer(&array_writer);
-  // This sends the signal asyncronously.  However, the raw message inside
+  // This sends the signal asynchronously.  However, the raw message inside
   // the signal object is ref-counted, so we're fine to allocate the Signal
   // object on our local stack.
   exported_object_->SendSignal(&signal);
 }
 
-template <typename T>
-void AppendPropertyToWriter(dbus::MessageWriter* writer, const T& value);
-
-template <>
-void AppendPropertyToWriter(dbus::MessageWriter* writer, const bool& value) {
+void AppendPropertyToWriter(dbus::MessageWriter* writer, bool value) {
   writer->AppendVariantOfBool(value);
 }
 
-template <>
-void AppendPropertyToWriter(dbus::MessageWriter* writer, const uint8_t& value) {
+void AppendPropertyToWriter(dbus::MessageWriter* writer, uint8_t value) {
   writer->AppendVariantOfByte(value);
 }
 
-template <>
-void AppendPropertyToWriter(dbus::MessageWriter* writer, const int16_t& value) {
+void AppendPropertyToWriter(dbus::MessageWriter* writer, int16_t value) {
   writer->AppendVariantOfInt16(value);
 }
 
-template <>
-void AppendPropertyToWriter(
-    dbus::MessageWriter* writer, const uint16_t& value) {
+void AppendPropertyToWriter(dbus::MessageWriter* writer, uint16_t value) {
   writer->AppendVariantOfUint16(value);
 }
 
-template <>
-void AppendPropertyToWriter(
-    dbus::MessageWriter* writer, const int32_t& value) {
+void AppendPropertyToWriter(dbus::MessageWriter* writer, int32_t value) {
   writer->AppendVariantOfInt32(value);
 }
 
-template <>
-void AppendPropertyToWriter(
-    dbus::MessageWriter* writer, const uint32_t& value) {
+void AppendPropertyToWriter(dbus::MessageWriter* writer, uint32_t value) {
   writer->AppendVariantOfUint32(value);
 }
 
-template <>
-void AppendPropertyToWriter(dbus::MessageWriter* writer, const int64_t& value) {
+void AppendPropertyToWriter(dbus::MessageWriter* writer, int64_t value) {
   writer->AppendVariantOfInt64(value);
 }
 
-template <>
-void AppendPropertyToWriter(
-    dbus::MessageWriter* writer, const uint64_t& value) {
+void AppendPropertyToWriter(dbus::MessageWriter* writer, uint64_t value) {
   writer->AppendVariantOfUint64(value);
 }
 
-template <>
-void AppendPropertyToWriter(dbus::MessageWriter* writer, const double& value) {
+void AppendPropertyToWriter(dbus::MessageWriter* writer, double value) {
   writer->AppendVariantOfDouble(value);
 }
 
-template <>
-void AppendPropertyToWriter(
-    dbus::MessageWriter* writer, const std::string& value) {
+void AppendPropertyToWriter(dbus::MessageWriter* writer,
+                            const std::string& value) {
   writer->AppendVariantOfString(value);
 }
 
-template <>
-void AppendPropertyToWriter(
-    dbus::MessageWriter* writer, const dbus::ObjectPath& value) {
+void AppendPropertyToWriter(dbus::MessageWriter* writer,
+                            const dbus::ObjectPath& value) {
   writer->AppendVariantOfObjectPath(value);
 }
 
-template <>
-void AppendPropertyToWriter(
-    dbus::MessageWriter* writer, const std::vector<std::string>& value) {
+void AppendPropertyToWriter(dbus::MessageWriter* writer,
+                            const std::vector<std::string>& value) {
   dbus::MessageWriter variant_writer(nullptr);
   writer->OpenVariant("as", &variant_writer);
   variant_writer.AppendArrayOfStrings(value);
   writer->CloseContainer(&variant_writer);
 }
 
-template <>
-void AppendPropertyToWriter(
-    dbus::MessageWriter* writer, const std::vector<dbus::ObjectPath>& value) {
+void AppendPropertyToWriter(dbus::MessageWriter* writer,
+                            const std::vector<dbus::ObjectPath>& value) {
   dbus::MessageWriter variant_writer(nullptr);
   writer->OpenVariant("ao", &variant_writer);
   variant_writer.AppendArrayOfObjectPaths(value);
   writer->CloseContainer(&variant_writer);
 }
 
-template <>
-void AppendPropertyToWriter(
-    dbus::MessageWriter* writer, const std::vector<uint8_t>& value) {
+void AppendPropertyToWriter(dbus::MessageWriter* writer,
+                            const std::vector<uint8_t>& value) {
   dbus::MessageWriter variant_writer(nullptr);
   writer->OpenVariant("ay", &variant_writer);
   variant_writer.AppendArrayOfBytes(value.data(), value.size());
   writer->CloseContainer(&variant_writer);
 }
 
-template <typename T>
-ExportedProperty<T>::ExportedProperty() {}
-
-template <typename T>
-ExportedProperty<T>::~ExportedProperty() {}
-
-template <typename T>
-const T& ExportedProperty<T>::value() const { return value_; }
-
-template <typename T>
-void ExportedProperty<T>::SetValue(const T& new_value) {
-  if (value_ == new_value) {
-    return;
-  }
-  value_ = new_value;
+void ExportedPropertyBase::NotifyPropertyChanged() {
   // These is a brief period after the construction of an ExportedProperty
   // when this callback is not initialized because the property has not
   // been registered with the parent ExportedPropertySet.  During this period
   // users should be initializing values via SetValue, and no notifications
   // should be triggered by the ExportedPropertySet.
-  if (!on_update_.is_null()) {
-    on_update_.Run(this);
+  if (!on_update_callback_.is_null()) {
+    on_update_callback_.Run(this);
   }
 }
 
-template <typename T>
-void ExportedProperty<T>::SetUpdateCallback(const OnUpdateCallback& cb) {
-  on_update_ = cb;
+void ExportedPropertyBase::SetUpdateCallback(const OnUpdateCallback& cb) {
+  on_update_callback_ = cb;
 }
-
-template <typename T>
-void ExportedProperty<T>::AppendValueToWriter(
-    dbus::MessageWriter* writer) const {
-  AppendPropertyToWriter(writer, value_);
-}
-
-template class ExportedProperty<bool>;
-template class ExportedProperty<uint8_t>;
-template class ExportedProperty<int16_t>;
-template class ExportedProperty<uint16_t>;
-template class ExportedProperty<int32_t>;
-template class ExportedProperty<uint32_t>;
-template class ExportedProperty<int64_t>;
-template class ExportedProperty<uint64_t>;
-template class ExportedProperty<double>;
-template class ExportedProperty<std::string>;
-template class ExportedProperty<dbus::ObjectPath>;
-template class ExportedProperty<std::vector<std::string>>;
-template class ExportedProperty<std::vector<dbus::ObjectPath>>;
-template class ExportedProperty<std::vector<uint8_t>>;
 
 }  // namespace dbus_utils
 

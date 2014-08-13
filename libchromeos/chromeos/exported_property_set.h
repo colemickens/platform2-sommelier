@@ -78,21 +78,28 @@ namespace dbus_utils {
 
 class ExportedPropertyBase {
  public:
-  ExportedPropertyBase() {}
-  virtual ~ExportedPropertyBase() {}
+  ExportedPropertyBase() = default;
+  virtual ~ExportedPropertyBase() = default;
 
-  typedef base::Callback<void(const ExportedPropertyBase*)> OnUpdateCallback;
+  using OnUpdateCallback = base::Callback<void(const ExportedPropertyBase*)>;
 
   // Called by ExportedPropertySet to register a callback.  This callback
   // triggers ExportedPropertySet to send a signal from the properties
   // interface of the exported object.
-  virtual void SetUpdateCallback(const OnUpdateCallback& cb) = 0;
+  virtual void SetUpdateCallback(const OnUpdateCallback& cb);
 
   // Appends a variant of the contained value to the writer.  This is
   // needed to write out properties to Get and GetAll methods implemented
   // by the ExportedPropertySet since it doesn't actually know the type
   // of each property.
   virtual void AppendValueToWriter(dbus::MessageWriter* writer) const = 0;
+
+ protected:
+  // Notify the listeners of OnUpdateCallback that the property has changed.
+  void NotifyPropertyChanged();
+
+ private:
+  OnUpdateCallback on_update_callback_;
 };
 
 class ExportedPropertySet {
@@ -153,48 +160,54 @@ class ExportedPropertySet {
   DISALLOW_COPY_AND_ASSIGN(ExportedPropertySet);
 };
 
+void AppendPropertyToWriter(dbus::MessageWriter* writer, bool value);
+void AppendPropertyToWriter(dbus::MessageWriter* writer, uint8_t value);
+void AppendPropertyToWriter(dbus::MessageWriter* writer, int16_t value);
+void AppendPropertyToWriter(dbus::MessageWriter* writer, uint16_t value);
+void AppendPropertyToWriter(dbus::MessageWriter* writer, int32_t value);
+void AppendPropertyToWriter(dbus::MessageWriter* writer, uint32_t value);
+void AppendPropertyToWriter(dbus::MessageWriter* writer, int64_t value);
+void AppendPropertyToWriter(dbus::MessageWriter* writer, uint64_t value);
+void AppendPropertyToWriter(dbus::MessageWriter* writer, double value);
+void AppendPropertyToWriter(dbus::MessageWriter* writer,
+                            const std::string& value);
+void AppendPropertyToWriter(dbus::MessageWriter* writer,
+                            const dbus::ObjectPath& value);
+void AppendPropertyToWriter(dbus::MessageWriter* writer,
+                            const std::vector<std::string>& value);
+void AppendPropertyToWriter(dbus::MessageWriter* writer,
+                            const std::vector<dbus::ObjectPath>& value);
+void AppendPropertyToWriter(dbus::MessageWriter* writer,
+                            const std::vector<uint8_t>& value);
+
 template <typename T>
 class ExportedProperty : public ExportedPropertyBase {
  public:
-  ExportedProperty();
-  ~ExportedProperty() override;
+  ExportedProperty() = default;
+  ~ExportedProperty() override = default;
 
   // Retrieves the current value.
-  const T& value() const;
+  const T& value() const { return value_; }
 
   // Set the value exposed to remote applications.  This triggers notifications
   // of changes over the Properties interface.
-  void SetValue(const T& new_value);
-
-  // Called by ExportedPropertySet.  This update callback triggers
-  // ExportedPropertySet to send a signal from the properties interface of the
-  // exported object.
-  void SetUpdateCallback(const OnUpdateCallback& cb) override;
+  void SetValue(const T& new_value)  {
+    if (value_ != new_value) {
+      value_ = new_value;
+      this->NotifyPropertyChanged();
+    }
+  }
 
   // Implementation provided by specialization.
-  void AppendValueToWriter(dbus::MessageWriter* writer) const override;
+  void AppendValueToWriter(dbus::MessageWriter* writer) const override {
+    AppendPropertyToWriter(writer, value_);
+  }
 
  private:
-  OnUpdateCallback on_update_;
   T value_{};
 
   DISALLOW_COPY_AND_ASSIGN(ExportedProperty);
 };
-
-extern template class ExportedProperty<bool>;
-extern template class ExportedProperty<uint8_t>;
-extern template class ExportedProperty<int16_t>;
-extern template class ExportedProperty<uint16_t>;
-extern template class ExportedProperty<int32_t>;
-extern template class ExportedProperty<uint32_t>;
-extern template class ExportedProperty<int64_t>;
-extern template class ExportedProperty<uint64_t>;
-extern template class ExportedProperty<double>;
-extern template class ExportedProperty<std::string>;
-extern template class ExportedProperty<dbus::ObjectPath>;
-extern template class ExportedProperty<std::vector<std::string>>;
-extern template class ExportedProperty<std::vector<dbus::ObjectPath>>;
-extern template class ExportedProperty<std::vector<uint8_t>>;
 
 }  // namespace dbus_utils
 
