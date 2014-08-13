@@ -39,7 +39,7 @@ TEST(Buffer, Store_Pointers) {
   buffer.Assign(nullptr);
   EXPECT_FALSE(buffer.IsEmpty());
   EXPECT_EQ(Buffer::kContained, buffer.storage_);
-  EXPECT_EQ(typeid(nullptr_t), buffer.GetDataPtr()->GetType());
+  EXPECT_EQ(typeid(std::nullptr_t), buffer.GetDataPtr()->GetType());
 
   // char *
   buffer.Assign("abcd");

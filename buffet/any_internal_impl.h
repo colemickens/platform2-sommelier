@@ -40,7 +40,7 @@ TryConvert(const From& in, To* out) {
   return false;
 }
 
-struct Buffer;  // Forward declaration of data buffer container.
+class Buffer;  // Forward declaration of data buffer container.
 
 // Abstract base class for contained variant data.
 struct Data {
