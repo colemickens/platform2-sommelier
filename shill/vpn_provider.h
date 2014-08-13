@@ -29,7 +29,7 @@ class VPNProvider : public ProviderInterface {
               EventDispatcher *dispatcher,
               Metrics *metrics,
               Manager *manager);
-  virtual ~VPNProvider();
+  ~VPNProvider() override;
 
   // Called by Manager as a part of the Provider interface.  The attributes
   // used for matching services for the VPN provider are the ProviderType,

@@ -17,7 +17,7 @@ namespace shill {
 class MockOpenVPNManagementServer : public OpenVPNManagementServer {
  public:
   MockOpenVPNManagementServer();
-  virtual ~MockOpenVPNManagementServer();
+  ~MockOpenVPNManagementServer() override;
 
   MOCK_METHOD3(Start, bool(EventDispatcher *dispatcher,
                            Sockets *sockets,

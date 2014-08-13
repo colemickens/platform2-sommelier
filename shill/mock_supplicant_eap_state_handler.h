@@ -16,7 +16,7 @@ namespace shill {
 class MockSupplicantEAPStateHandler : public SupplicantEAPStateHandler {
  public:
   MockSupplicantEAPStateHandler();
-  virtual ~MockSupplicantEAPStateHandler();
+  ~MockSupplicantEAPStateHandler() override;
 
   MOCK_METHOD3(ParseStatus, bool(const std::string &status,
                                  const std::string &parameter,

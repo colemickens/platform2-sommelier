@@ -16,7 +16,7 @@ namespace shill {
 class MockMetrics : public Metrics {
  public:
   explicit MockMetrics(EventDispatcher *dispatcher);
-  virtual ~MockMetrics();
+  ~MockMetrics() override;
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());

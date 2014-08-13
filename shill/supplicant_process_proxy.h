@@ -20,7 +20,7 @@ class SupplicantProcessProxy : public SupplicantProcessProxyInterface {
   SupplicantProcessProxy(DBus::Connection *bus,
                          const char *dbus_path,
                          const char *dbus_addr);
-  virtual ~SupplicantProcessProxy();
+  ~SupplicantProcessProxy() override;
 
   virtual ::DBus::Path CreateInterface(
       const std::map<std::string, ::DBus::Variant> &args);
@@ -34,7 +34,7 @@ class SupplicantProcessProxy : public SupplicantProcessProxyInterface {
     public ::DBus::ObjectProxy {
    public:
     Proxy(DBus::Connection *bus, const char *dbus_path, const char *dbus_addr);
-    virtual ~Proxy();
+    ~Proxy() override;
 
    private:
     // signal handlers called by dbus-c++, via

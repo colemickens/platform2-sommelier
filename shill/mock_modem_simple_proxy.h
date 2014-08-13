@@ -15,7 +15,7 @@ namespace shill {
 class MockModemSimpleProxy : public ModemSimpleProxyInterface {
  public:
   MockModemSimpleProxy();
-  virtual ~MockModemSimpleProxy();
+  ~MockModemSimpleProxy() override;
 
   MOCK_METHOD3(GetModemStatus, void(Error *error,
                                     const DBusPropertyMapCallback &callback,

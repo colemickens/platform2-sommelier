@@ -24,7 +24,7 @@ class MockService : public Service {
               EventDispatcher *dispatcher,
               Metrics *metrics,
               Manager *manager);
-  virtual ~MockService();
+  ~MockService() override;
 
   MOCK_METHOD0(AutoConnect, void());
   MOCK_METHOD2(Connect, void(Error *error, const char *reason));

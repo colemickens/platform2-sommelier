@@ -20,7 +20,7 @@ namespace shill {
 class MockStore : public StoreInterface {
  public:
   MockStore();
-  virtual ~MockStore();
+  ~MockStore() override;
 
   MOCK_METHOD0(Flush, bool());
   MOCK_CONST_METHOD0(GetGroups, std::set<std::string>());

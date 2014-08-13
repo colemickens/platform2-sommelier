@@ -34,6 +34,8 @@ DHCPCDListener::Proxy::Proxy(DBus::Connection *connection,
   connect_signal(DHCPCDListener::Proxy, StatusChanged, StatusChangedSignal);
 }
 
+DHCPCDListener::Proxy::~Proxy() {}
+
 void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage &signal) {
   SLOG(DBus, 2) << __func__;
   DBus::MessageIter ri = signal.reader();

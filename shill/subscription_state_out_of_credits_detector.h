@@ -16,7 +16,7 @@ class SubscriptionStateOutOfCreditsDetector : public OutOfCreditsDetector {
                                         Manager *manager,
                                         Metrics *metrics,
                                         CellularService *service);
-  virtual ~SubscriptionStateOutOfCreditsDetector();
+  ~SubscriptionStateOutOfCreditsDetector() override;
 
   void ResetDetector() override {}
   bool IsDetecting() const override { return false; }

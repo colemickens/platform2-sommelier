@@ -19,7 +19,7 @@ namespace shill {
 class MockDHCPProvider : public DHCPProvider {
  public:
   MockDHCPProvider();
-  virtual ~MockDHCPProvider();
+  ~MockDHCPProvider() override;
 
   MOCK_METHOD4(Init,
                void(ControlInterface *, EventDispatcher *, GLib *, Metrics *));

@@ -19,7 +19,7 @@ class NetlinkMessage;
 class MockNetlinkManager : public NetlinkManager {
  public:
   MockNetlinkManager();
-  virtual ~MockNetlinkManager();
+  ~MockNetlinkManager() override;
 
   MOCK_METHOD2(
       GetFamily,

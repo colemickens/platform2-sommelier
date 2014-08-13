@@ -22,7 +22,7 @@ class MockPPPDevice : public PPPDevice {
                 Manager *manager,
                 const std::string &link_name,
                 int interface_index);
-  virtual ~MockPPPDevice();
+  ~MockPPPDevice() override;
 
   MOCK_METHOD2(Stop,
                void(Error *error, const EnabledStateChangedCallback &callback));

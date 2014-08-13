@@ -47,7 +47,7 @@ class PowerManager : public PowerManagerProxyDelegate {
   // ProxyFactory::GetInstance().  Use a fake for testing.
   // Note: |Start| should be called to initialize this object before using it.
   PowerManager(EventDispatcher *dispatcher, ProxyFactory *proxy_factory);
-  virtual ~PowerManager();
+  ~PowerManager() override;
 
   bool suspending() const { return suspending_; }
 

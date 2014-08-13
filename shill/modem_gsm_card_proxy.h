@@ -22,7 +22,7 @@ class ModemGSMCardProxy : public ModemGSMCardProxyInterface {
   ModemGSMCardProxy(DBus::Connection *connection,
                     const std::string &path,
                     const std::string &service);
-  virtual ~ModemGSMCardProxy();
+  ~ModemGSMCardProxy() override;
 
   // Inherited from ModemGSMCardProxyInterface.
   virtual void GetIMEI(Error *error, const GSMIdentifierCallback &callback,
@@ -56,7 +56,7 @@ class ModemGSMCardProxy : public ModemGSMCardProxyInterface {
     Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
-    virtual ~Proxy();
+    ~Proxy() override;
 
    private:
     // Signal callbacks inherited from ModemManager::Modem::Gsm::Card_proxy.

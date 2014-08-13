@@ -32,7 +32,7 @@ class MockScanSession : public ScanSession {
                   int max_frequencies,
                   OnScanFailed on_scan_failed,
                   Metrics *metrics);
-  virtual ~MockScanSession();
+  ~MockScanSession() override;
 
   MOCK_CONST_METHOD0(HasMoreFrequencies, bool());
   MOCK_METHOD1(AddSsid, void(const ByteString &ssid));

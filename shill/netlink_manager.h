@@ -165,6 +165,8 @@ class NetlinkManager {
   // NetlinkManager is a singleton and this is the way to access it.
   static NetlinkManager *GetInstance();
 
+  virtual ~NetlinkManager();
+
   // Performs non-trivial object initialization of the NetlinkManager singleton.
   bool Init();
 

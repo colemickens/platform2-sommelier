@@ -15,7 +15,7 @@ namespace shill {
 class MockDBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
  public:
   MockDBusObjectManagerProxy();
-  virtual ~MockDBusObjectManagerProxy();
+  ~MockDBusObjectManagerProxy() override;
 
   MOCK_METHOD3(GetManagedObjects, void(Error *error,
                                        const ManagedObjectsCallback &callback,

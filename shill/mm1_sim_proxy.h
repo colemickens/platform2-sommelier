@@ -22,7 +22,7 @@ class SimProxy : public SimProxyInterface {
   SimProxy(DBus::Connection *connection,
            const std::string &path,
            const std::string &service);
-  virtual ~SimProxy();
+  ~SimProxy() override;
 
   // Inherited methods from SimProxyInterface.
   virtual void SendPin(const std::string &pin,
@@ -52,7 +52,7 @@ class SimProxy : public SimProxyInterface {
     Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
-    virtual ~Proxy();
+    ~Proxy() override;
 
    private:
     // Method callbacks inherited from

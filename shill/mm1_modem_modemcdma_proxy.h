@@ -22,7 +22,7 @@ class ModemModemCdmaProxy : public ModemModemCdmaProxyInterface {
   ModemModemCdmaProxy(DBus::Connection *connection,
                       const std::string &path,
                       const std::string &service);
-  virtual ~ModemModemCdmaProxy();
+  ~ModemModemCdmaProxy() override;
 
   // Inherited methods from ModemModemCdmaProxyInterface.
   virtual void Activate(const std::string &carrier,
@@ -45,7 +45,7 @@ class ModemModemCdmaProxy : public ModemModemCdmaProxyInterface {
     Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
-    virtual ~Proxy();
+    ~Proxy() override;
 
     virtual void set_activation_state_callback(
         const ActivationStateSignalCallback &callback);

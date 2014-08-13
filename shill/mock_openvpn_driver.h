@@ -16,7 +16,7 @@ namespace shill {
 class MockOpenVPNDriver : public OpenVPNDriver {
  public:
   MockOpenVPNDriver();
-  virtual ~MockOpenVPNDriver();
+  ~MockOpenVPNDriver() override;
 
   MOCK_METHOD1(OnReconnecting, void(ReconnectReason reason));
   MOCK_METHOD0(IdleService, void());

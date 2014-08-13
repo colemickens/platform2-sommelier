@@ -16,7 +16,7 @@ namespace shill {
 class MockEthernetEapProvider : public EthernetEapProvider {
  public:
   MockEthernetEapProvider();
-  virtual ~MockEthernetEapProvider();
+  ~MockEthernetEapProvider() override;
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());

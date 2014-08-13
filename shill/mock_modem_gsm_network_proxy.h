@@ -17,7 +17,7 @@ namespace shill {
 class MockModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
  public:
   MockModemGSMNetworkProxy();
-  virtual ~MockModemGSMNetworkProxy();
+  ~MockModemGSMNetworkProxy() override;
 
   MOCK_METHOD3(GetRegistrationInfo,
                void(Error *error, const RegistrationInfoCallback &callback,

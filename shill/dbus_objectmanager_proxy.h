@@ -21,7 +21,7 @@ class DBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
   DBusObjectManagerProxy(DBus::Connection *connection,
                          const std::string &path,
                          const std::string &service);
-  virtual ~DBusObjectManagerProxy();
+  ~DBusObjectManagerProxy() override;
 
   // Inherited methods from DBusObjectManagerProxyInterface.
   virtual void GetManagedObjects(Error *error,
@@ -40,7 +40,7 @@ class DBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
     Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
-    virtual ~Proxy();
+    ~Proxy() override;
 
     virtual void set_interfaces_added_callback(
         const InterfacesAddedSignalCallback &callback);

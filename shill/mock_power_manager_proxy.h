@@ -17,7 +17,7 @@ namespace shill {
 class MockPowerManagerProxy : public PowerManagerProxyInterface {
  public:
   MockPowerManagerProxy();
-  virtual ~MockPowerManagerProxy();
+  ~MockPowerManagerProxy() override;
 
   MOCK_METHOD3(RegisterSuspendDelay,
                bool(base::TimeDelta timeout,

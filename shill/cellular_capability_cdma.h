@@ -27,7 +27,7 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   CellularCapabilityCDMA(Cellular *cellular,
                          ProxyFactory *proxy_factory,
                          ModemInfo *modem_info);
-  virtual ~CellularCapabilityCDMA();
+  ~CellularCapabilityCDMA() override;
 
   // Inherited from CellularCapability.
   std::string GetTypeString() const override;

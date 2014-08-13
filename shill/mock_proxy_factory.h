@@ -16,7 +16,7 @@ namespace shill {
 class MockProxyFactory : public ProxyFactory {
  public:
   MockProxyFactory();
-  virtual ~MockProxyFactory();
+  ~MockProxyFactory() override;
 
   MOCK_METHOD0(Init, void());
 

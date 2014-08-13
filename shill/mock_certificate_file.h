@@ -17,7 +17,7 @@ namespace shill {
 class MockCertificateFile : public CertificateFile {
  public:
   MockCertificateFile();
-  virtual ~MockCertificateFile();
+  ~MockCertificateFile() override;
 
   MOCK_METHOD1(CreatePEMFromString,
                base::FilePath(const std::string &pem_contents));

@@ -22,7 +22,7 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
   ModemSimpleProxy(DBus::Connection *connection,
                    const std::string &path,
                    const std::string &service);
-  virtual ~ModemSimpleProxy();
+  ~ModemSimpleProxy() override;
 
   // Inherited from ModemSimpleProxyInterface.
   virtual void GetModemStatus(Error *error,
@@ -40,7 +40,7 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
     Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
-    virtual ~Proxy();
+    ~Proxy() override;
 
    private:
     // Signal callbacks inherited from ModemManager::Modem::Simple_proxy.

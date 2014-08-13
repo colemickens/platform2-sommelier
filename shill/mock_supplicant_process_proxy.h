@@ -19,7 +19,7 @@ namespace shill {
 class MockSupplicantProcessProxy : public SupplicantProcessProxyInterface {
  public:
   MockSupplicantProcessProxy();
-  virtual ~MockSupplicantProcessProxy();
+  ~MockSupplicantProcessProxy() override;
 
   MOCK_METHOD1(CreateInterface,
                ::DBus::Path(

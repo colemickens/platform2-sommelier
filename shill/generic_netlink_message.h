@@ -62,7 +62,7 @@ class GenericNetlinkMessage : public NetlinkMessage {
         attributes_(new AttributeList),
         command_(command),
         command_string_(command_string) {}
-  virtual ~GenericNetlinkMessage() {}
+  ~GenericNetlinkMessage() override {}
 
   virtual ByteString Encode(uint32_t sequence_number);
 

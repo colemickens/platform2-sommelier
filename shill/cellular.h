@@ -115,7 +115,7 @@ class Cellular : public Device, public RPCTaskDelegate {
            const std::string &service,
            const std::string &path,
            ProxyFactory *proxy_factory);
-  virtual ~Cellular();
+  ~Cellular() override;
 
   // Load configuration for the device from |storage|.
   virtual bool Load(StoreInterface *storage);
@@ -412,7 +412,7 @@ class Cellular : public Device, public RPCTaskDelegate {
     // |cellular| must have lifespan longer than this object. In practice this
     // is enforced because |cellular| owns this object.
     explicit MobileOperatorInfoObserver(Cellular *cellular);
-    virtual ~MobileOperatorInfoObserver();
+    ~MobileOperatorInfoObserver() override;
 
     void set_capability(CellularCapability *capability) {
       capability_ = capability;

@@ -111,7 +111,7 @@ class ModemManagerClassic : public ModemManager {
                       const std::string &path,
                       ModemInfo *modem_info);
 
-  virtual ~ModemManagerClassic();
+  ~ModemManagerClassic() override;
 
   // Called by our dbus proxy
   void OnDeviceAdded(const std::string &path);
@@ -139,7 +139,7 @@ class ModemManager1 : public ModemManager {
                 const std::string &path,
                 ModemInfo *modem_info);
 
-  virtual ~ModemManager1();
+  ~ModemManager1() override;
 
  protected:
   void AddModem1(const std::string &path,

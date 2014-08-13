@@ -20,7 +20,7 @@ namespace shill {
 class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
  public:
   MockSupplicantInterfaceProxy();
-  virtual ~MockSupplicantInterfaceProxy();
+  ~MockSupplicantInterfaceProxy() override;
 
   MOCK_METHOD1(AddNetwork, ::DBus::Path(
       const std::map<std::string, ::DBus::Variant> &args));

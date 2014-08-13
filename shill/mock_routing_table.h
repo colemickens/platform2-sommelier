@@ -15,7 +15,7 @@ namespace shill {
 class MockRoutingTable : public RoutingTable {
  public:
   MockRoutingTable();
-  virtual ~MockRoutingTable();
+  ~MockRoutingTable() override;
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());

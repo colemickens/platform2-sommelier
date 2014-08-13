@@ -15,7 +15,7 @@ namespace shill {
 class MockIPAddressStore : public IPAddressStore {
  public:
   MockIPAddressStore();
-  virtual ~MockIPAddressStore();
+  ~MockIPAddressStore() override;
 
   MOCK_METHOD1(AddUnique, void(const IPAddress &ip));
   MOCK_METHOD0(Clear, void());

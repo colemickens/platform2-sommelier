@@ -34,7 +34,7 @@ class WiMaxProvider : public ProviderInterface {
                 EventDispatcher *dispatcher,
                 Metrics *metrics,
                 Manager *manager);
-  virtual ~WiMaxProvider();
+  ~WiMaxProvider() override;
 
   // Called by Manager as a part of the Provider interface.  The attributes
   // used for matching services for the WiMax provider are the NetworkId,

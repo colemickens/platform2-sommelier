@@ -18,7 +18,7 @@ namespace shill {
 class WiMaxManagerProxy : public WiMaxManagerProxyInterface {
  public:
   explicit WiMaxManagerProxy(DBus::Connection *connection);
-  virtual ~WiMaxManagerProxy();
+  ~WiMaxManagerProxy() override;
 
   // Inherited from WiMaxManagerProxyInterface.
   virtual void set_devices_changed_callback(
@@ -30,7 +30,7 @@ class WiMaxManagerProxy : public WiMaxManagerProxyInterface {
                 public DBus::ObjectProxy {
    public:
     explicit Proxy(DBus::Connection *connection);
-    virtual ~Proxy();
+    ~Proxy() override;
 
     void set_devices_changed_callback(const DevicesChangedCallback &callback);
 

@@ -32,7 +32,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   CellularCapabilityGSM(Cellular *cellular,
                         ProxyFactory *proxy_factory,
                         ModemInfo *modem_info);
-  virtual ~CellularCapabilityGSM();
+  ~CellularCapabilityGSM() override;
 
   // Inherited from CellularCapability.
   std::string GetTypeString() const override;

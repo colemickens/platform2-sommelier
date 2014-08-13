@@ -125,7 +125,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
        const std::string &link,
        const std::string &address,
        int interface_index);
-  virtual ~WiFi();
+  ~WiFi() override;
 
   virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
   virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);

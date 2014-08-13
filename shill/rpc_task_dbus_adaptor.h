@@ -29,7 +29,7 @@ class RPCTaskDBusAdaptor : public org::chromium::flimflam::Task_adaptor,
   static const char kPath[];
 
   RPCTaskDBusAdaptor(DBus::Connection *conn, RPCTask *task);
-  virtual ~RPCTaskDBusAdaptor();
+  ~RPCTaskDBusAdaptor() override;
 
   // Implementation of RPCTaskAdaptorInterface.
   virtual const std::string &GetRpcIdentifier();

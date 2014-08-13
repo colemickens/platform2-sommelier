@@ -20,7 +20,7 @@ class DBusPropertiesProxy : public DBusPropertiesProxyInterface {
   DBusPropertiesProxy(DBus::Connection *connection,
                       const std::string &path,
                       const std::string &service);
-  virtual ~DBusPropertiesProxy();
+  ~DBusPropertiesProxy() override;
 
   // Inherited from DBusPropertiesProxyInterface.
   virtual DBusPropertiesMap GetAll(const std::string &interface_name);
@@ -39,7 +39,7 @@ class DBusPropertiesProxy : public DBusPropertiesProxyInterface {
     Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
-    virtual ~Proxy();
+    ~Proxy() override;
 
     virtual void set_properties_changed_callback(
         const PropertiesChangedCallback &callback);

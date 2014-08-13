@@ -17,7 +17,7 @@ namespace shill {
 class MockDBusPropertiesProxy : public DBusPropertiesProxyInterface {
  public:
   MockDBusPropertiesProxy();
-  virtual ~MockDBusPropertiesProxy();
+  ~MockDBusPropertiesProxy() override;
 
   MOCK_METHOD1(GetAll, DBusPropertiesMap(const std::string &interface_name));
   MOCK_METHOD2(Get, DBus::Variant(const std::string &interface_name,

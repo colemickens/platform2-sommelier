@@ -22,7 +22,7 @@ class MockVirtualDevice : public VirtualDevice {
                     const std::string &link_name,
                     int interface_index,
                     Technology::Identifier technology);
-  virtual ~MockVirtualDevice();
+  ~MockVirtualDevice() override;
 
   MOCK_METHOD2(Stop,
                void(Error *error, const EnabledStateChangedCallback &callback));

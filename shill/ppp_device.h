@@ -39,7 +39,7 @@ class PPPDevice : public VirtualDevice {
             Manager *manager,
             const std::string &link_name,
             int interface_index);
-  virtual ~PPPDevice();
+  ~PPPDevice() override;
 
   // Set IPConfig for this device, based on the dictionary of
   // configuration strings received from our PPP plugin.

@@ -17,7 +17,7 @@ class MockCellularService : public CellularService {
  public:
   MockCellularService(ModemInfo *modem_info,
                       const CellularRefPtr &device);
-  virtual ~MockCellularService();
+  ~MockCellularService() override;
 
   MOCK_METHOD0(AutoConnect, void());
   MOCK_METHOD1(SetLastGoodApn, void(const Stringmap &apn_info));

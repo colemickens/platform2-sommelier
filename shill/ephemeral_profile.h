@@ -28,7 +28,7 @@ class EphemeralProfile : public Profile {
   EphemeralProfile(ControlInterface *control_interface,
                    Metrics *metrics,
                    Manager *manager);
-  virtual ~EphemeralProfile();
+  ~EphemeralProfile() override;
 
   std::string GetFriendlyName() override;
   bool AdoptService(const ServiceRefPtr &service) override;

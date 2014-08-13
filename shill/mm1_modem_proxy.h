@@ -23,7 +23,7 @@ class ModemProxy : public ModemProxyInterface {
   ModemProxy(DBus::Connection *connection,
              const std::string &path,
              const std::string &service);
-  virtual ~ModemProxy();
+  ~ModemProxy() override;
 
   // Inherited methods from ModemProxyInterface.
   virtual void Enable(bool enable,
@@ -77,7 +77,7 @@ class ModemProxy : public ModemProxyInterface {
     Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
-    virtual ~Proxy();
+    ~Proxy() override;
 
     void set_state_changed_callback(
         const ModemStateChangedSignalCallback &callback);

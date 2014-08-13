@@ -18,7 +18,7 @@ namespace mm1 {
 class MockModemSimpleProxy : public ModemSimpleProxyInterface {
  public:
   MockModemSimpleProxy();
-  virtual ~MockModemSimpleProxy();
+  ~MockModemSimpleProxy() override;
 
   MOCK_METHOD4(Connect, void(const DBusPropertiesMap &properties,
                              Error *error,

@@ -15,7 +15,7 @@ namespace shill {
 class MockModemProxy : public ModemProxyInterface {
  public:
   MockModemProxy();
-  virtual ~MockModemProxy();
+  ~MockModemProxy() override;
 
   MOCK_METHOD4(Enable, void(bool enable, Error *error,
                             const ResultCallback &callback, int timeout));

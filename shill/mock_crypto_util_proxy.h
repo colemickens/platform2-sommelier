@@ -23,7 +23,7 @@ class MockCryptoUtilProxy
       public base::SupportsWeakPtr<MockCryptoUtilProxy> {
  public:
   MockCryptoUtilProxy(EventDispatcher *dispatcher, GLib *glib);
-  virtual ~MockCryptoUtilProxy();
+  ~MockCryptoUtilProxy() override;
 
   MOCK_METHOD9(VerifyDestination,
                bool(const std::string &certificate,

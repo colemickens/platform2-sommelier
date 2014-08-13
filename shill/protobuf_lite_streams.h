@@ -27,7 +27,7 @@ class ProtobufLiteCopyingFileInputStream :
  public:
   // Takes ownership of |fd| and closes it when the object is deleted.
   explicit ProtobufLiteCopyingFileInputStream(int fd);
-  virtual ~ProtobufLiteCopyingFileInputStream();
+  ~ProtobufLiteCopyingFileInputStream() override;
   virtual int Read(void *buffer, int size);
   virtual int Skip(int count);
  private:

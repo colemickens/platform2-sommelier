@@ -17,7 +17,7 @@ namespace shill {
 class MockModemCDMAProxy : public ModemCDMAProxyInterface {
  public:
   MockModemCDMAProxy();
-  virtual ~MockModemCDMAProxy();
+  ~MockModemCDMAProxy() override;
 
   MOCK_METHOD4(Activate, void(const std::string &carrier, Error *error,
                               const ActivationResultCallback &callback,

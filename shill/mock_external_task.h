@@ -21,7 +21,7 @@ class MockExternalTask : public ExternalTask {
                    GLib *glib,
                    const base::WeakPtr<RPCTaskDelegate> &task_delegate,
                    const base::Callback<void(pid_t, int)> &death_callback);
-  virtual ~MockExternalTask();
+  ~MockExternalTask() override;
 
   MOCK_METHOD5(Start,
                bool(const base::FilePath &file,

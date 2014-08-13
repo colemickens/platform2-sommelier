@@ -50,7 +50,7 @@ class WiFiEndpoint : public Endpoint {
                const WiFiRefPtr &device,
                const std::string &rpc_id,
                const std::map<std::string, ::DBus::Variant> &properties);
-  virtual ~WiFiEndpoint();
+  ~WiFiEndpoint() override;
 
   // Set up RPC channel. Broken out from the ctor, so that WiFi can
   // look over the Endpoint details before commiting to setting up

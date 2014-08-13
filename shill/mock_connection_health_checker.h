@@ -20,7 +20,7 @@ class MockConnectionHealthChecker : public ConnectionHealthChecker {
       EventDispatcher *dispatcher,
       IPAddressStore *remote_ips,
       const base::Callback<void(Result)> &result_callback);
-  virtual ~MockConnectionHealthChecker();
+  ~MockConnectionHealthChecker() override;
 
   MOCK_METHOD1(AddRemoteURL, void(const std::string &url_string));
   MOCK_METHOD1(AddRemoteIP, void(IPAddress ip));

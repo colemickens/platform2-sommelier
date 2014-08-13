@@ -18,7 +18,7 @@ namespace shill {
 class MockEapCredentials : public EapCredentials {
  public:
   MockEapCredentials();
-  virtual ~MockEapCredentials();
+  ~MockEapCredentials() override;
 
   MOCK_CONST_METHOD0(IsConnectable, bool());
   MOCK_CONST_METHOD0(IsConnectableUsingPassphrase, bool());

@@ -16,7 +16,7 @@ namespace shill {
 class MockDBusServiceProxy : public DBusServiceProxyInterface {
  public:
   MockDBusServiceProxy();
-  virtual ~MockDBusServiceProxy();
+  ~MockDBusServiceProxy() override;
 
   MOCK_METHOD4(GetNameOwner, void(const std::string &name,
                                   Error *error,

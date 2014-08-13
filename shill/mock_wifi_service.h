@@ -25,7 +25,7 @@ class MockWiFiService : public WiFiService {
                   const std::string &mode,
                   const std::string &security,
                   bool hidden_ssid);
-  virtual ~MockWiFiService();
+  ~MockWiFiService() override;
 
   MOCK_METHOD2(Configure, void(const KeyValueStore &args, Error *error));
   MOCK_METHOD1(SetFailure, void(ConnectFailure failure));

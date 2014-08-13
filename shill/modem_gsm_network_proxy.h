@@ -20,7 +20,7 @@ class ModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
   ModemGSMNetworkProxy(DBus::Connection *connection,
                        const std::string &path,
                        const std::string &service);
-  virtual ~ModemGSMNetworkProxy();
+  ~ModemGSMNetworkProxy() override;
 
   // Inherited from ModemGSMNetworkProxyInterface.
   virtual void GetRegistrationInfo(Error *error,
@@ -51,7 +51,7 @@ class ModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
     Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
-    virtual ~Proxy();
+    ~Proxy() override;
 
     virtual void set_signal_quality_callback(
         const SignalQualitySignalCallback &callback);

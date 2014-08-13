@@ -15,7 +15,7 @@ namespace shill {
 class MockWiFiProvider : public WiFiProvider {
  public:
   MockWiFiProvider();
-  virtual ~MockWiFiProvider();
+  ~MockWiFiProvider() override;
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());

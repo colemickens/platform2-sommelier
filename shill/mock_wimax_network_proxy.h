@@ -16,7 +16,7 @@ namespace shill {
 class MockWiMaxNetworkProxy : public WiMaxNetworkProxyInterface {
  public:
   MockWiMaxNetworkProxy();
-  virtual ~MockWiMaxNetworkProxy();
+  ~MockWiMaxNetworkProxy() override;
 
   MOCK_CONST_METHOD0(path, RpcIdentifier());
   MOCK_METHOD1(set_signal_strength_changed_callback,

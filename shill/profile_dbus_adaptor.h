@@ -33,7 +33,7 @@ class ProfileDBusAdaptor : public org::chromium::flimflam::Profile_adaptor,
   static const char kPath[];
 
   ProfileDBusAdaptor(DBus::Connection *conn, Profile *profile);
-  virtual ~ProfileDBusAdaptor();
+  ~ProfileDBusAdaptor() override;
 
   // Implementation of ProfileAdaptorInterface.
   virtual const std::string &GetRpcIdentifier() { return path(); }

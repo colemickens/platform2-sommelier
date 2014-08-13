@@ -22,7 +22,7 @@ class EthernetEapService : public Service {
                      EventDispatcher *dispatcher,
                      Metrics *metrics,
                      Manager *manager);
-  virtual ~EthernetEapService();
+  ~EthernetEapService() override;
 
   // Inherited from Service.
   virtual std::string GetDeviceRpcId(Error *error) const;

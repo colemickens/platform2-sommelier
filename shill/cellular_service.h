@@ -37,7 +37,7 @@ class CellularService : public Service {
 
   CellularService(ModemInfo *modem_info,
                   const CellularRefPtr &device);
-  virtual ~CellularService();
+  ~CellularService() override;
 
   // Inherited from Service.
   virtual void AutoConnect();

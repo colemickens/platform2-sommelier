@@ -24,7 +24,7 @@ namespace shill {
 class KeyFileStore : public StoreInterface {
  public:
   explicit KeyFileStore(GLib *glib);
-  virtual ~KeyFileStore();
+  ~KeyFileStore() override;
 
   void set_path(const base::FilePath &path) { path_ = path; }
   const base::FilePath &path() const { return path_; }

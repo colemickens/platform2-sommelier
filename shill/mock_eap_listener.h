@@ -14,7 +14,7 @@ namespace shill {
 class MockEapListener : public EapListener {
  public:
   MockEapListener();
-  virtual ~MockEapListener();
+  ~MockEapListener() override;
 
   MOCK_METHOD0(Start, bool());
   MOCK_METHOD0(Stop, void());

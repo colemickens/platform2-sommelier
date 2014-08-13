@@ -19,7 +19,7 @@ class ProxyFactory;
 class MockPowerManager : public PowerManager {
  public:
   MockPowerManager(EventDispatcher *dispatcher, ProxyFactory *proxy_factory);
-  virtual ~MockPowerManager();
+  ~MockPowerManager() override;
 
   MOCK_METHOD5(AddSuspendDelay,
                bool(const std::string &key,

@@ -17,7 +17,7 @@ namespace shill {
 class MockGLib : public GLib {
  public:
   MockGLib();
-  virtual ~MockGLib();
+  ~MockGLib() override;
 
   MOCK_METHOD2(Base64Decode, guchar *(const gchar *text, gsize *out_len));
   MOCK_METHOD2(Base64Encode, gchar *(const guchar *data, gsize len));

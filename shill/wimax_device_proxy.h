@@ -20,7 +20,7 @@ class WiMaxDeviceProxy : public WiMaxDeviceProxyInterface {
   // Constructs a WiMaxManager.Device DBus object proxy at |path|.
   WiMaxDeviceProxy(DBus::Connection *connection,
                    const DBus::Path &path);
-  virtual ~WiMaxDeviceProxy();
+  ~WiMaxDeviceProxy() override;
 
   // Inherited from WiMaxDeviceProxyInterface.
   virtual void Enable(Error *error,
@@ -53,7 +53,7 @@ class WiMaxDeviceProxy : public WiMaxDeviceProxyInterface {
                 public DBus::ObjectProxy {
    public:
     Proxy(DBus::Connection *connection, const DBus::Path &path);
-    virtual ~Proxy();
+    ~Proxy() override;
 
     void set_networks_changed_callback(const NetworksChangedCallback &callback);
     void set_status_changed_callback(const StatusChangedCallback &callback);

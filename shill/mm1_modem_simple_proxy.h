@@ -22,7 +22,7 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
   ModemSimpleProxy(DBus::Connection *connection,
                    const std::string &path,
                    const std::string &service);
-  virtual ~ModemSimpleProxy();
+  ~ModemSimpleProxy() override;
 
   // Inherited methods from SimpleProxyInterface.
   virtual void Connect(
@@ -45,7 +45,7 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
     Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
-    virtual ~Proxy();
+    ~Proxy() override;
 
    private:
     // Method callbacks inherited from

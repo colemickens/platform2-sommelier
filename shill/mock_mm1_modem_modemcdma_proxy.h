@@ -18,7 +18,7 @@ namespace mm1 {
 class MockModemModemCdmaProxy : public ModemModemCdmaProxyInterface {
  public:
   MockModemModemCdmaProxy();
-  virtual ~MockModemModemCdmaProxy();
+  ~MockModemModemCdmaProxy() override;
 
   MOCK_METHOD4(Activate, void(
       const std::string &carrier,

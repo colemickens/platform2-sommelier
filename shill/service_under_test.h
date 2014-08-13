@@ -29,7 +29,7 @@ class ServiceUnderTest : public Service {
                    EventDispatcher *dispatcher,
                    Metrics *metrics,
                    Manager *manager);
-  virtual ~ServiceUnderTest();
+  ~ServiceUnderTest() override;
 
   std::string GetRpcIdentifier() const override;
   std::string GetDeviceRpcId(Error *error) const override;

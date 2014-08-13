@@ -29,6 +29,7 @@ class DHCPCDListener {
                 public DBus::ObjectProxy {
    public:
     Proxy(DBus::Connection *connection, DHCPProvider *provider);
+    ~Proxy() override;
 
    private:
     void EventSignal(const DBus::SignalMessage &signal);
@@ -62,7 +63,7 @@ class DHCPCDProxy : public DHCPProxyInterface {
                 public DBus::ObjectProxy {
    public:
     Proxy(DBus::Connection *connection, const std::string &service);
-    virtual ~Proxy();
+    ~Proxy() override;
 
    private:
     // Signal callbacks inherited from dhcpcd_proxy. Note that these callbacks

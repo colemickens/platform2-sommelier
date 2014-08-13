@@ -54,7 +54,7 @@ class DHCPConfig : public IPConfig {
              bool arp_gateway,
              GLib *glib,
              Metrics *metrics);
-  virtual ~DHCPConfig();
+  ~DHCPConfig() override;
 
   // Inherited from IPConfig.
   virtual bool RequestIP();

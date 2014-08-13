@@ -17,7 +17,7 @@ namespace shill {
 class MockDNSClient : public DNSClient {
  public:
   MockDNSClient();
-  virtual ~MockDNSClient();
+  ~MockDNSClient() override;
 
   MOCK_METHOD2(Start, bool(const std::string &hostname, Error *error));
   MOCK_METHOD0(Stop, void());

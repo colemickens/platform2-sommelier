@@ -14,7 +14,7 @@ namespace shill {
 class MockLinkMonitor : public LinkMonitor {
  public:
   MockLinkMonitor();
-  virtual ~MockLinkMonitor();
+  ~MockLinkMonitor() override;
 
   MOCK_METHOD0(Start, bool());
   MOCK_METHOD0(Stop, void());

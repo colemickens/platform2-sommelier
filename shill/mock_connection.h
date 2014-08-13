@@ -18,7 +18,7 @@ namespace shill {
 class MockConnection : public Connection {
  public:
   explicit MockConnection(const DeviceInfo *device_info);
-  virtual ~MockConnection();
+  ~MockConnection() override;
 
   MOCK_METHOD1(UpdateFromIPConfig, void(const IPConfigRefPtr &config));
   MOCK_CONST_METHOD0(GetLowerConnection, ConnectionRefPtr());

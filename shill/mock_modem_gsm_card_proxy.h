@@ -17,7 +17,7 @@ namespace shill {
 class MockModemGSMCardProxy : public ModemGSMCardProxyInterface {
  public:
   MockModemGSMCardProxy();
-  virtual ~MockModemGSMCardProxy();
+  ~MockModemGSMCardProxy() override;
 
   MOCK_METHOD3(GetIMEI, void(Error *error,
                              const GSMIdentifierCallback &callback,

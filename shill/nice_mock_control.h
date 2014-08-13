@@ -15,7 +15,7 @@ namespace shill {
 class NiceMockControl : public ControlInterface {
  public:
   NiceMockControl();
-  virtual ~NiceMockControl();
+  ~NiceMockControl() override;
 
   // Each of these can be called once.  Ownership of the appropriate
   // interface pointer is given up upon call.

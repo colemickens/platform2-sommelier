@@ -19,7 +19,7 @@ class MockModem : public Modem {
             const std::string &service,
             const std::string &path,
             ModemInfo *modem_info);
-  virtual ~MockModem();
+  ~MockModem() override;
 
   // This class only mocks the pure virtual methods; if you need a
   // more thorough mock, know that modem_unittest.cc depends on the

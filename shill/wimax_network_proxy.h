@@ -19,7 +19,7 @@ class WiMaxNetworkProxy : public WiMaxNetworkProxyInterface {
   // Constructs a WiMaxManager.Network DBus object proxy at |path|.
   WiMaxNetworkProxy(DBus::Connection *connection,
                    const DBus::Path &path);
-  virtual ~WiMaxNetworkProxy();
+  ~WiMaxNetworkProxy() override;
 
   // Inherited from WiMaxNetwokProxyInterface.
   virtual RpcIdentifier path() const;
@@ -37,7 +37,7 @@ class WiMaxNetworkProxy : public WiMaxNetworkProxyInterface {
                 public DBus::ObjectProxy {
    public:
     Proxy(DBus::Connection *connection, const DBus::Path &path);
-    virtual ~Proxy();
+    ~Proxy() override;
 
     void set_signal_strength_changed_callback(
         const SignalStrengthChangedCallback &callback);

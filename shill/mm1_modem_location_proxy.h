@@ -23,7 +23,7 @@ class ModemLocationProxy : public ModemLocationProxyInterface {
                      const std::string &path,
                      const std::string &service);
 
-  virtual ~ModemLocationProxy();
+  ~ModemLocationProxy() override;
 
   // Inherited methods from ModemLocationProxyInterface.
   virtual void Setup(uint32_t sources,
@@ -43,7 +43,7 @@ class ModemLocationProxy : public ModemLocationProxyInterface {
     Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
-    virtual ~Proxy();
+    ~Proxy() override;
 
    private:
     // Method callbacks inherited from

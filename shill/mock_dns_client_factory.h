@@ -19,7 +19,7 @@ namespace shill {
 
 class MockDNSClientFactory : public DNSClientFactory {
  public:
-  virtual ~MockDNSClientFactory();
+  ~MockDNSClientFactory() override;
 
   // This is a singleton. Use MockDNSClientFactory::GetInstance()->Foo().
   static MockDNSClientFactory *GetInstance();

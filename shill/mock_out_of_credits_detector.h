@@ -17,7 +17,7 @@ class MockOutOfCreditsDetector : public OutOfCreditsDetector {
                            Manager *manager,
                            Metrics *metrics,
                            CellularService *service);
-  virtual ~MockOutOfCreditsDetector();
+  ~MockOutOfCreditsDetector() override;
 
   MOCK_METHOD0(ResetDetector, void());
   MOCK_CONST_METHOD0(IsDetecting, bool());

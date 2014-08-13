@@ -33,7 +33,7 @@ class ExternalTask : public RPCTaskDelegate {
                GLib *glib,
                const base::WeakPtr<RPCTaskDelegate> &task_delegate,
                const base::Callback<void(pid_t, int)> &death_callback);
-  virtual ~ExternalTask();  // But consider DestroyLater...
+  ~ExternalTask() override;  // But consider DestroyLater...
 
   // Schedule later deletion of the ExternalTask. Useful when in the
   // middle of an ExternalTask callback. Note that the caller _must_

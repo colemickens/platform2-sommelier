@@ -17,7 +17,7 @@ namespace shill {
 class MockPropertyStore : public PropertyStore {
  public:
   MockPropertyStore();
-  virtual ~MockPropertyStore();
+  ~MockPropertyStore() override;
 
   MOCK_CONST_METHOD1(Contains, bool(const std::string&));
   MOCK_METHOD3(SetBoolProperty, bool(const std::string&, bool, Error*));

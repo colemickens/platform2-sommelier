@@ -31,7 +31,7 @@ class WiMax : public Device {
         int interface_index,
         const RpcIdentifier &path);
 
-  virtual ~WiMax();
+  ~WiMax() override;
 
   // Inherited from Device.
   virtual void Start(Error *error, const EnabledStateChangedCallback &callback);

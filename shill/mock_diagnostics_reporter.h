@@ -14,7 +14,7 @@ namespace shill {
 class MockDiagnosticsReporter : public DiagnosticsReporter {
  public:
   MockDiagnosticsReporter();
-  virtual ~MockDiagnosticsReporter();
+  ~MockDiagnosticsReporter() override;
 
   MOCK_METHOD0(OnConnectivityEvent, void());
 

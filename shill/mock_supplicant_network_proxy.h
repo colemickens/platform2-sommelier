@@ -15,7 +15,7 @@ namespace shill {
 class MockSupplicantNetworkProxy : public SupplicantNetworkProxyInterface {
  public:
   MockSupplicantNetworkProxy();
-  virtual ~MockSupplicantNetworkProxy();
+  ~MockSupplicantNetworkProxy() override;
 
   MOCK_METHOD1(SetEnabled, void(bool enabled));
 

@@ -15,7 +15,7 @@ namespace shill {
 class MockAsyncConnection : public AsyncConnection {
  public:
   MockAsyncConnection();
-  virtual ~MockAsyncConnection();
+  ~MockAsyncConnection() override;
 
   MOCK_METHOD2(Start, bool(const IPAddress &address, int port));
   MOCK_METHOD0(Stop, void());

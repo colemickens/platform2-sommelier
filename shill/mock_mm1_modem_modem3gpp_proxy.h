@@ -18,7 +18,7 @@ namespace mm1 {
 class MockModemModem3gppProxy : public ModemModem3gppProxyInterface {
  public:
   MockModemModem3gppProxy();
-  virtual ~MockModemModem3gppProxy();
+  ~MockModemModem3gppProxy() override;
 
   MOCK_METHOD4(Register, void(const std::string &operator_id,
                               Error *error,

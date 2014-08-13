@@ -27,7 +27,7 @@ namespace shill {
 
 class PowerManagerProxy : public PowerManagerProxyInterface {
  public:
-  virtual ~PowerManagerProxy();
+  ~PowerManagerProxy() override;
 
   // Inherited from PowerManagerProxyInterface.
   bool RegisterSuspendDelay(base::TimeDelta timeout,
@@ -46,7 +46,7 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
    public:
     Proxy(PowerManagerProxyDelegate *delegate,
           DBus::Connection *connection);
-    virtual ~Proxy();
+    ~Proxy() override;
 
    private:
     // Signal callbacks inherited from org::chromium::PowerManager_proxy.

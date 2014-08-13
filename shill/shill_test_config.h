@@ -16,7 +16,7 @@ namespace shill {
 class TestConfig : public Config {
  public:
   TestConfig();
-  virtual ~TestConfig();
+  ~TestConfig() override;
 
   virtual std::string GetRunDirectory();
   virtual std::string GetStorageDirectory();

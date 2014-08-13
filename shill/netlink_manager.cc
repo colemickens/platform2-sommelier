@@ -131,6 +131,8 @@ NetlinkManager::NetlinkManager()
       sock_(NULL),
       time_(Time::GetInstance()) {}
 
+NetlinkManager::~NetlinkManager() {}
+
 NetlinkManager *NetlinkManager::GetInstance() {
   return g_netlink_manager.Pointer();
 }

@@ -20,7 +20,7 @@ class VirtioEthernet : public Ethernet {
                  const std::string& link_name,
                  const std::string &address,
                  int interface_index);
-  virtual ~VirtioEthernet();
+  ~VirtioEthernet() override;
 
   virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
 

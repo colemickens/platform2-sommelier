@@ -52,7 +52,7 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   static const ::DBus::Variant kUint64V;
 
   PropertyStoreTest();
-  virtual ~PropertyStoreTest();
+  ~PropertyStoreTest() override;
 
   virtual void SetUp();
   MOCK_METHOD1(TestCallback, void(const std::string &property_name));

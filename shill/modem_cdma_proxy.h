@@ -21,7 +21,7 @@ class ModemCDMAProxy : public ModemCDMAProxyInterface {
   ModemCDMAProxy(DBus::Connection *connection,
                  const std::string &path,
                  const std::string &service);
-  virtual ~ModemCDMAProxy();
+  ~ModemCDMAProxy() override;
 
   // Inherited from ModemCDMAProxyInterface.
   virtual void Activate(const std::string &carrier, Error *error,
@@ -49,7 +49,7 @@ class ModemCDMAProxy : public ModemCDMAProxyInterface {
     Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
-    virtual ~Proxy();
+    ~Proxy() override;
 
     void set_activation_state_callback(
         const ActivationStateSignalCallback &callback);

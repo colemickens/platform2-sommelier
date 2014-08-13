@@ -18,7 +18,7 @@ namespace shill {
 class MockResolver : public Resolver {
  public:
   MockResolver();
-  virtual ~MockResolver();
+  ~MockResolver() override;
 
   MOCK_METHOD2(SetDNSFromLists,
                bool(const std::vector<std::string> &dns_servers,

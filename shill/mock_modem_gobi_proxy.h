@@ -17,7 +17,7 @@ namespace shill {
 class MockModemGobiProxy : public ModemGobiProxyInterface {
  public:
   MockModemGobiProxy();
-  virtual ~MockModemGobiProxy();
+  ~MockModemGobiProxy() override;
 
   MOCK_METHOD4(SetCarrier, void(const std::string &carrier,
                                 Error *error, const ResultCallback &callback,

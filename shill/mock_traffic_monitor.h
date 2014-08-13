@@ -14,7 +14,7 @@ namespace shill {
 class MockTrafficMonitor : public TrafficMonitor {
  public:
   MockTrafficMonitor();
-  virtual ~MockTrafficMonitor();
+  ~MockTrafficMonitor() override;
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());

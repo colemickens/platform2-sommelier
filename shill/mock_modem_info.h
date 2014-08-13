@@ -31,7 +31,7 @@ class MockModemInfo : public ModemInfo {
                 Manager *manager,
                 GLib *glib);
 
-  virtual ~MockModemInfo();
+  ~MockModemInfo() override;
 
   // Replaces data members in ModemInfo by mock objects.
   // The following are relaced by mocks if they are NULL: control_interface,

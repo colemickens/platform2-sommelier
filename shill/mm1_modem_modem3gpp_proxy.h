@@ -23,7 +23,7 @@ class ModemModem3gppProxy : public ModemModem3gppProxyInterface {
   ModemModem3gppProxy(DBus::Connection *connection,
                       const std::string &path,
                       const std::string &service);
-  virtual ~ModemModem3gppProxy();
+  ~ModemModem3gppProxy() override;
   // Inherited methods from ModemModem3gppProxyInterface.
   virtual void Register(const std::string &operator_id,
                         Error *error,
@@ -40,7 +40,7 @@ class ModemModem3gppProxy : public ModemModem3gppProxyInterface {
     Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
-    virtual ~Proxy();
+    ~Proxy() override;
 
    private:
     // Method callbacks inherited from

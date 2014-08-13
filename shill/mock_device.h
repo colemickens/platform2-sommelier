@@ -25,7 +25,7 @@ class MockDevice : public Device {
              const std::string &link_name,
              const std::string &address,
              int interface_index);
-  virtual ~MockDevice();
+  ~MockDevice() override;
 
   MOCK_METHOD2(Start, void(Error *error,
                            const EnabledStateChangedCallback &callback));

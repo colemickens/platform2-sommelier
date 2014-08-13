@@ -19,7 +19,7 @@ class NoOutOfCreditsDetector : public OutOfCreditsDetector {
                          Metrics *metrics,
                          CellularService *service)
       : OutOfCreditsDetector(dispatcher, manager, metrics, service) {}
-  virtual ~NoOutOfCreditsDetector() {}
+  ~NoOutOfCreditsDetector() override {}
 
   // Resets the detector state.
   void ResetDetector() override {}

@@ -25,7 +25,7 @@ class ModemManagerProxy : public ModemManagerProxyInterface {
                     ModemManagerClassic *manager,
                     const std::string &path,
                     const std::string &service);
-  virtual ~ModemManagerProxy();
+  ~ModemManagerProxy() override;
 
   // Inherited from ModemManagerProxyInterface.
   virtual std::vector<DBus::Path> EnumerateDevices();
@@ -38,7 +38,7 @@ class ModemManagerProxy : public ModemManagerProxyInterface {
           ModemManagerClassic *manager,
           const std::string &path,
           const std::string &service);
-    virtual ~Proxy();
+    ~Proxy() override;
 
    private:
     // Signal callbacks inherited from ModemManager_proxy.

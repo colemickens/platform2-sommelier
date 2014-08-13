@@ -57,7 +57,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   CellularCapabilityUniversal(Cellular *cellular,
                               ProxyFactory *proxy_factory,
                               ModemInfo *modem_info);
-  virtual ~CellularCapabilityUniversal();
+  ~CellularCapabilityUniversal() override;
 
   // Inherited from CellularCapability.
   std::string GetTypeString() const override;

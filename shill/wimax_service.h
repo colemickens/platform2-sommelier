@@ -28,7 +28,7 @@ class WiMaxService : public Service {
                EventDispatcher *dispatcher,
                Metrics *metrics,
                Manager *manager);
-  virtual ~WiMaxService();
+  ~WiMaxService() override;
 
   // Returns the parameters to be passed to WiMaxManager.Device.Connect() when
   // connecting to the network associated with this service.

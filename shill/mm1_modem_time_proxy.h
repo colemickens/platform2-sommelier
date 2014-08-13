@@ -22,7 +22,7 @@ class ModemTimeProxy : public ModemTimeProxyInterface {
   ModemTimeProxy(DBus::Connection *connection,
                  const std::string &path,
                  const std::string &service);
-  virtual ~ModemTimeProxy();
+  ~ModemTimeProxy() override;
 
   // Inherited methods from ModemTimeProxyInterface.
   virtual void GetNetworkTime(Error *error,
@@ -39,7 +39,7 @@ class ModemTimeProxy : public ModemTimeProxyInterface {
     Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
-    virtual ~Proxy();
+    ~Proxy() override;
 
     void set_network_time_changed_callback(
         const NetworkTimeChangedSignalCallback &callback);

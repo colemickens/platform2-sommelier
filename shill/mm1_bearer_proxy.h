@@ -23,7 +23,7 @@ class BearerProxy : public BearerProxyInterface {
               const std::string &path,
               const std::string &service);
 
-  virtual ~BearerProxy();
+  ~BearerProxy() override;
 
   // Inherited methods from BearerProxyInterface
   virtual void Connect(Error *error,
@@ -40,7 +40,7 @@ class BearerProxy : public BearerProxyInterface {
     Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
-    virtual ~Proxy();
+    ~Proxy() override;
 
    private:
     // Method callbacks inherited from

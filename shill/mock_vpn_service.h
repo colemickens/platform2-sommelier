@@ -18,7 +18,7 @@ class MockVPNService : public VPNService {
                  Metrics *metrics,
                  Manager *manager,
                  VPNDriver *driver);
-  virtual ~MockVPNService();
+  ~MockVPNService() override;
 
   MOCK_METHOD1(SetState, void(ConnectState state));
   MOCK_METHOD1(SetFailure, void(ConnectFailure failure));

@@ -16,7 +16,7 @@ namespace shill {
 class MockHTTPRequest : public HTTPRequest {
  public:
   explicit MockHTTPRequest(ConnectionRefPtr connection);
-  virtual ~MockHTTPRequest();
+  ~MockHTTPRequest() override;
 
   MOCK_METHOD3(Start, HTTPRequest::Result(
       const HTTPURL &url,

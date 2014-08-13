@@ -27,7 +27,7 @@ class MockWiMax : public WiMax {
             const std::string &address,
             int interface_index,
             const RpcIdentifier &path);
-  virtual ~MockWiMax();
+  ~MockWiMax() override;
 
   MOCK_METHOD2(Start, void(Error *error,
                            const EnabledStateChangedCallback &callback));

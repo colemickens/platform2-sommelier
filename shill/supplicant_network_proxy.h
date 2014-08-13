@@ -24,7 +24,7 @@ class SupplicantNetworkProxy
   SupplicantNetworkProxy(DBus::Connection *bus,
                          const ::DBus::Path &object_path,
                          const char *dbus_addr);
-  virtual ~SupplicantNetworkProxy();
+  ~SupplicantNetworkProxy() override;
 
   virtual void SetEnabled(bool enabled);
 
@@ -35,7 +35,7 @@ class SupplicantNetworkProxy
     Proxy(DBus::Connection *bus,
           const ::DBus::Path &object_path,
           const char *dbus_addr);
-    virtual ~Proxy();
+    ~Proxy() override;
 
    private:
     // signal handlers called by dbus-c++, via

@@ -20,7 +20,7 @@ class MockMac80211Monitor : public Mac80211Monitor {
                       size_t queue_length_limit,
                       const base::Closure &on_repair_callback,
                       Metrics *metrics);
-  virtual ~MockMac80211Monitor();
+  ~MockMac80211Monitor() override;
 
   MOCK_METHOD1(Start, void(const std::string &phy_name));
   MOCK_METHOD0(Stop, void());

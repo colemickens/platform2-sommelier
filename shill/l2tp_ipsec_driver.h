@@ -39,7 +39,7 @@ class L2TPIPSecDriver : public VPNDriver,
                   Manager *manager,
                   DeviceInfo *device_info,
                   GLib *glib);
-  virtual ~L2TPIPSecDriver();
+  ~L2TPIPSecDriver() override;
 
  protected:
   // Inherited from VPNDriver.

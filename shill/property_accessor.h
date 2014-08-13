@@ -49,7 +49,7 @@ class PropertyAccessor : public AccessorInterface<T> {
       : property_(property), default_value_(*property) {
     DCHECK(property);
   }
-  virtual ~PropertyAccessor() {}
+  ~PropertyAccessor() override {}
 
   void Clear(Error *error) { Set(default_value_, error); }
   T Get(Error */*error*/) { return *property_; }
@@ -73,7 +73,7 @@ class ConstPropertyAccessor : public AccessorInterface<T> {
   explicit ConstPropertyAccessor(const T *property) : property_(property) {
     DCHECK(property);
   }
-  virtual ~ConstPropertyAccessor() {}
+  ~ConstPropertyAccessor() override {}
 
   void Clear(Error *error) {
     // TODO(quiche): check if this is the right error.
@@ -100,7 +100,7 @@ class WriteOnlyPropertyAccessor : public AccessorInterface<T> {
       : property_(property), default_value_(*property) {
     DCHECK(property);
   }
-  virtual ~WriteOnlyPropertyAccessor() {}
+  ~WriteOnlyPropertyAccessor() override {}
 
   void Clear(Error *error) { Set(default_value_, error); }
   T Get(Error *error) {
@@ -161,7 +161,7 @@ class CustomAccessor : public AccessorInterface<T> {
                  T(C::*getter)(Error *error),
                  bool(C::*setter)(const T &value, Error *error))
       : CustomAccessor(target, getter, setter, NULL) {}
-  virtual ~CustomAccessor() {}
+  ~CustomAccessor() override {}
 
   void Clear(Error *error) {
     if (clearer_) {
@@ -222,7 +222,7 @@ class CustomWriteOnlyAccessor : public AccessorInterface<T> {
       default_value_ = *default_value;
     }
   }
-  virtual ~CustomWriteOnlyAccessor() {}
+  ~CustomWriteOnlyAccessor() override {}
 
   void Clear(Error *error) {
     if (clearer_) {
@@ -262,7 +262,7 @@ class CustomReadOnlyAccessor : public AccessorInterface<T> {
     DCHECK(target);
     DCHECK(getter);
   }
-  virtual ~CustomReadOnlyAccessor() {}
+  ~CustomReadOnlyAccessor() override {}
 
   void Clear(Error *error) {
     error->Populate(Error::kInvalidArguments, "Property is read-only");
@@ -309,7 +309,7 @@ class CustomMappedAccessor : public AccessorInterface<T> {
     DCHECK(target);
     DCHECK(getter);
   }
-  virtual ~CustomMappedAccessor() {}
+  ~CustomMappedAccessor() override {}
 
   void Clear(Error *error) {
     (target_->*clearer_)(argument_, error);

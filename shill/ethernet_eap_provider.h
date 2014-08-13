@@ -30,7 +30,7 @@ class EthernetEapProvider : public ProviderInterface {
                       EventDispatcher *dispatcher,
                       Metrics *metrics,
                       Manager *manager);
-  virtual ~EthernetEapProvider();
+  ~EthernetEapProvider() override;
 
   // Called by Manager as a part of the Provider interface.
   void CreateServicesFromProfile(const ProfileRefPtr &profile) override;

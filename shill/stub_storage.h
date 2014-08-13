@@ -16,7 +16,7 @@ namespace shill {
 // A stub implementation of StoreInterface.
 class StubStorage : public StoreInterface {
  public:
-  virtual ~StubStorage() {}
+  ~StubStorage() override {}
 
   bool Flush() override { return false; }
   std::set<std::string> GetGroups() const override { return {}; }

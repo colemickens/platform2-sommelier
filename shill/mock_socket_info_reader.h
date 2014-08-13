@@ -19,7 +19,7 @@ class SocketInfo;
 class MockSocketInfoReader : public SocketInfoReader {
  public:
   MockSocketInfoReader();
-  virtual ~MockSocketInfoReader();
+  ~MockSocketInfoReader() override;
 
   MOCK_METHOD1(LoadTcpSocketInfo, bool(std::vector<SocketInfo> *info_list));
 

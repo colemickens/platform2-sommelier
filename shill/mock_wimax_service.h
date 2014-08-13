@@ -17,7 +17,7 @@ class MockWiMaxService : public WiMaxService {
                    EventDispatcher *dispatcher,
                    Metrics *metrics,
                    Manager *manager);
-  virtual ~MockWiMaxService();
+  ~MockWiMaxService() override;
 
   MOCK_CONST_METHOD0(GetNetworkObjectPath, RpcIdentifier());
   MOCK_METHOD1(Start, bool(WiMaxNetworkProxyInterface *proxy));

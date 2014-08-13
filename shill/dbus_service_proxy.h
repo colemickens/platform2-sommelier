@@ -15,7 +15,7 @@ namespace shill {
 class DBusServiceProxy : public DBusServiceProxyInterface {
  public:
   explicit DBusServiceProxy(DBus::Connection *connection);
-  virtual ~DBusServiceProxy();
+  ~DBusServiceProxy() override;
 
   // Inherited from DBusServiceProxyInterface.
   virtual void GetNameOwner(const std::string &name,
@@ -30,7 +30,7 @@ class DBusServiceProxy : public DBusServiceProxyInterface {
                 public DBus::ObjectProxy {
    public:
     explicit Proxy(DBus::Connection *connection);
-    virtual ~Proxy();
+    ~Proxy() override;
 
     void set_name_owner_changed_callback(
         const NameOwnerChangedCallback &callback);

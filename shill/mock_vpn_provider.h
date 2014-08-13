@@ -17,7 +17,7 @@ namespace shill {
 class MockVPNProvider : public VPNProvider {
  public:
   MockVPNProvider();
-  virtual ~MockVPNProvider();
+  ~MockVPNProvider() override;
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());

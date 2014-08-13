@@ -22,7 +22,7 @@ class ActivePassiveOutOfCreditsDetector : public OutOfCreditsDetector {
                                     Manager *manager,
                                     Metrics *metrics,
                                     CellularService *service);
-  virtual ~ActivePassiveOutOfCreditsDetector();
+  ~ActivePassiveOutOfCreditsDetector() override;
 
   void ResetDetector() override;
   bool IsDetecting() const override;

@@ -15,7 +15,7 @@ namespace shill {
 class MockEventDispatcher : public EventDispatcher {
  public:
   MockEventDispatcher();
-  virtual ~MockEventDispatcher();
+  ~MockEventDispatcher() override;
 
   MOCK_METHOD0(DispatchForever, void());
   MOCK_METHOD0(DispatchPendingEvents, void());

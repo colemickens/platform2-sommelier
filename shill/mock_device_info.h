@@ -28,7 +28,7 @@ class MockDeviceInfo : public DeviceInfo {
                  EventDispatcher *dispatcher,
                  Metrics *metrics,
                  Manager *manager);
-  virtual ~MockDeviceInfo();
+  ~MockDeviceInfo() override;
 
   MOCK_METHOD1(IsDeviceBlackListed, bool(const std::string &device_name));
   MOCK_CONST_METHOD1(GetDevice, DeviceRefPtr(int interface_index));

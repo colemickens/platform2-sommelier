@@ -31,7 +31,7 @@ class PropertyObserver : public PropertyObserverInterface {
     Error unused_error;
     saved_value_ = accessor_->Get(&unused_error);
   }
-  virtual ~PropertyObserver() {}
+  ~PropertyObserver() override {}
 
   // Implements PropertyObserverInterface.  Compares the saved value with
   // what the Get() method of |accessor_| returns.  If the value has changed

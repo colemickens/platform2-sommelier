@@ -16,7 +16,7 @@ namespace mm1 {
 class MockModemLocationProxy : public ModemLocationProxyInterface {
  public:
   MockModemLocationProxy();
-  virtual ~MockModemLocationProxy();
+  ~MockModemLocationProxy() override;
 
   // Inherited methods from ModemLocationProxyInterface.
   MOCK_METHOD5(Setup, void(uint32_t sources,

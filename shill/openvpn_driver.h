@@ -53,7 +53,7 @@ class OpenVPNDriver : public VPNDriver,
                 Manager *manager,
                 DeviceInfo *device_info,
                 GLib *glib);
-  virtual ~OpenVPNDriver();
+  ~OpenVPNDriver() override;
 
   virtual void OnReconnecting(ReconnectReason reason);
 

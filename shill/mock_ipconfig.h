@@ -19,7 +19,7 @@ class MockIPConfig : public IPConfig {
  public:
   MockIPConfig(ControlInterface *control_interface,
                const std::string &device_name);
-  virtual ~MockIPConfig();
+  ~MockIPConfig() override;
 
   MOCK_CONST_METHOD0(properties, const Properties &(void));
   MOCK_METHOD0(RequestIP, bool(void));

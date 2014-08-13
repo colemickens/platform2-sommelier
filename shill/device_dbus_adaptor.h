@@ -30,7 +30,7 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
   static const char kPath[];
 
   DeviceDBusAdaptor(DBus::Connection* conn, Device *device);
-  virtual ~DeviceDBusAdaptor();
+  ~DeviceDBusAdaptor() override;
 
   // Implementation of DeviceAdaptorInterface.
   virtual const std::string &GetRpcIdentifier();

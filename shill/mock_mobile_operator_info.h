@@ -20,7 +20,7 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
  public:
   MockMobileOperatorInfo(EventDispatcher *dispatcher,
                          const std::string &info_owner);
-  virtual ~MockMobileOperatorInfo();
+  ~MockMobileOperatorInfo() override;
 
   MOCK_CONST_METHOD0(IsMobileNetworkOperatorKnown, bool());
 

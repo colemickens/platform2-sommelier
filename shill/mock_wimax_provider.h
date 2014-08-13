@@ -16,7 +16,7 @@ namespace shill {
 class MockWiMaxProvider : public WiMaxProvider {
  public:
   MockWiMaxProvider();
-  virtual ~MockWiMaxProvider();
+  ~MockWiMaxProvider() override;
 
   MOCK_METHOD1(OnDeviceInfoAvailable, void(const std::string &link_name));
   MOCK_METHOD0(OnNetworksChanged, void());

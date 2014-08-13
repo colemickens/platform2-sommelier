@@ -139,7 +139,7 @@ class ModemClassic : public Modem {
                const std::string &service,
                const std::string &path,
                ModemInfo *modem_info);
-  virtual ~ModemClassic();
+  ~ModemClassic() override;
 
   // Gathers information and passes it to CreateDeviceFromModemProperties.
   void CreateDeviceClassic(const DBusPropertiesMap &modem_properties);
@@ -159,7 +159,7 @@ class Modem1 : public Modem {
          const std::string &service,
          const std::string &path,
          ModemInfo *modem_info);
-  virtual ~Modem1();
+  ~Modem1() override;
 
   // Gathers information and passes it to CreateDeviceFromModemProperties.
   void CreateDeviceMM1(const DBusInterfaceToProperties &properties);

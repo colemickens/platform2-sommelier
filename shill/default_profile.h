@@ -34,7 +34,7 @@ class DefaultProfile : public Profile {
                  const base::FilePath &storage_path,
                  const std::string &profile_id,
                  const Manager::Properties &manager_props);
-  virtual ~DefaultProfile();
+  ~DefaultProfile() override;
 
   // Loads global configuration into manager properties.  This should
   // only be called by the Manager.

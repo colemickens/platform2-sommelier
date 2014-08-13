@@ -33,7 +33,7 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
   static const char kPath[];
 
   ManagerDBusAdaptor(DBus::Connection *conn, Manager *manager);
-  virtual ~ManagerDBusAdaptor();
+  ~ManagerDBusAdaptor() override;
 
   // Implementation of ManagerAdaptorInterface.
   virtual const std::string &GetRpcIdentifier() { return path(); }

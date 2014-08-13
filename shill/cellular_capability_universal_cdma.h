@@ -23,7 +23,7 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   CellularCapabilityUniversalCDMA(Cellular *cellular,
                                   ProxyFactory *proxy_factory,
                                   ModemInfo *modem_info);
-  virtual ~CellularCapabilityUniversalCDMA();
+  ~CellularCapabilityUniversalCDMA() override;
 
   // Returns true if the service is activated.
   bool IsActivated() const;

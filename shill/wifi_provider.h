@@ -56,7 +56,7 @@ class WiFiProvider : public ProviderInterface {
                EventDispatcher *dispatcher,
                Metrics *metrics,
                Manager *manager);
-  virtual ~WiFiProvider();
+  ~WiFiProvider() override;
 
   // Called by Manager as a part of the Provider interface.  The attributes
   // used for matching services for the WiFi provider are the SSID, mode and

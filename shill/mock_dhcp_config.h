@@ -18,7 +18,7 @@ class MockDHCPConfig : public DHCPConfig {
  public:
   MockDHCPConfig(ControlInterface *control_interface,
                  const std::string &device_name);
-  virtual ~MockDHCPConfig();
+  ~MockDHCPConfig() override;
 
   MOCK_METHOD0(RequestIP, bool());
   MOCK_METHOD1(ReleaseIP, bool(ReleaseReason));

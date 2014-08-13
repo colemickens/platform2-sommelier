@@ -30,7 +30,7 @@ class SupplicantInterfaceProxy
                            DBus::Connection *bus,
                            const ::DBus::Path &object_path,
                            const char *dbus_addr);
-  virtual ~SupplicantInterfaceProxy();
+  ~SupplicantInterfaceProxy() override;
 
   virtual ::DBus::Path AddNetwork(
       const std::map<std::string, ::DBus::Variant> &args);
@@ -66,7 +66,7 @@ class SupplicantInterfaceProxy
           DBus::Connection *bus,
           const ::DBus::Path &object_path,
           const char *dbus_addr);
-    virtual ~Proxy();
+    ~Proxy() override;
 
    private:
     // signal handlers called by dbus-c++, via

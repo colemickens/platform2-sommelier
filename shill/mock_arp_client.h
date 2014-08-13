@@ -17,7 +17,7 @@ namespace shill {
 class MockArpClient : public ArpClient {
  public:
   MockArpClient();
-  virtual ~MockArpClient();
+  ~MockArpClient() override;
 
   MOCK_METHOD0(Start, bool());
   MOCK_METHOD0(Stop, void());

@@ -18,7 +18,7 @@ namespace mm1 {
 class MockBearerProxy : public BearerProxyInterface {
  public:
   MockBearerProxy();
-  virtual ~MockBearerProxy();
+  ~MockBearerProxy() override;
 
   MOCK_METHOD3(Connect, void(Error *error,
                              const ResultCallback &callback,

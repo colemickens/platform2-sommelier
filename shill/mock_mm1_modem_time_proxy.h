@@ -16,7 +16,7 @@ namespace mm1 {
 class MockModemTimeProxy : public ModemTimeProxyInterface {
  public:
   MockModemTimeProxy();
-  virtual ~MockModemTimeProxy();
+  ~MockModemTimeProxy() override;
 
   // Inherited methods from ModemTimeProxyInterface.
   MOCK_METHOD3(GetNetworkTime, void(Error *error,

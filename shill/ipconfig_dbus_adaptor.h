@@ -33,7 +33,7 @@ class IPConfigDBusAdaptor : public org::chromium::flimflam::IPConfig_adaptor,
   static const char kPath[];
 
   IPConfigDBusAdaptor(DBus::Connection *conn, IPConfig *ipconfig);
-  virtual ~IPConfigDBusAdaptor();
+  ~IPConfigDBusAdaptor() override;
 
   // Implementation of IPConfigAdaptorInterface.
   virtual const std::string &GetRpcIdentifier() { return path(); }

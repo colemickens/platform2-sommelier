@@ -17,7 +17,7 @@ namespace shill {
 class MockPortalDetector : public PortalDetector {
  public:
   explicit MockPortalDetector(ConnectionRefPtr connection);
-  virtual ~MockPortalDetector();
+  ~MockPortalDetector() override;
 
   MOCK_METHOD1(Start, bool(const std::string &));
   MOCK_METHOD2(StartAfterDelay, bool(const std::string &, int delay_seconds));

@@ -25,7 +25,7 @@ class MockCellular : public Cellular {
                const std::string &service,
                const std::string &path,
                ProxyFactory *proxy_factory);
-  virtual ~MockCellular();
+  ~MockCellular() override;
 
   MOCK_METHOD1(Connect, void(Error *error));
   MOCK_METHOD2(Disconnect, void(Error *error, const char *reason));

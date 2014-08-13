@@ -31,7 +31,7 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
   static const char kPath[];
 
   ServiceDBusAdaptor(DBus::Connection *conn, Service *service);
-  virtual ~ServiceDBusAdaptor();
+  ~ServiceDBusAdaptor() override;
 
   // Implementation of ServiceAdaptorInterface.
   virtual const std::string &GetRpcIdentifier() { return path(); }

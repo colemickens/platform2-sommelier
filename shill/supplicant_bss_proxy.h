@@ -24,7 +24,7 @@ class SupplicantBSSProxy : public SupplicantBSSProxyInterface {
                      DBus::Connection *bus,
                      const ::DBus::Path &object_path,
                      const char *dbus_addr);
-  virtual ~SupplicantBSSProxy();
+  ~SupplicantBSSProxy() override;
 
  private:
   class Proxy : public fi::w1::wpa_supplicant1::BSS_proxy,
@@ -34,7 +34,7 @@ class SupplicantBSSProxy : public SupplicantBSSProxyInterface {
           DBus::Connection *bus,
           const ::DBus::Path &object_path,
           const char *dbus_addr);
-    virtual ~Proxy();
+    ~Proxy() override;
 
    private:
     // signal handlers called by dbus-c++, via

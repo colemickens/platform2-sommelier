@@ -21,7 +21,7 @@ class MockProfile : public Profile {
               Metrics *metrics,
               Manager *manager,
               const std::string &identifier);
-  virtual ~MockProfile();
+  ~MockProfile() override;
 
   MOCK_METHOD1(AdoptService, bool(const ServiceRefPtr &service));
   MOCK_METHOD1(AbandonService, bool(const ServiceRefPtr &service));

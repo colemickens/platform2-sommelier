@@ -15,7 +15,7 @@ namespace shill {
 class MockAres : public Ares {
  public:
   MockAres();
-  virtual ~MockAres();
+  ~MockAres() override;
 
   MOCK_METHOD1(Destroy, void(ares_channel channel));
   MOCK_METHOD5(GetHostByName, void(ares_channel channel,

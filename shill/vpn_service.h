@@ -25,7 +25,7 @@ class VPNService : public Service {
              Metrics *metrics,
              Manager *manager,
              VPNDriver *driver);  // Takes ownership of |driver|.
-  virtual ~VPNService();
+  ~VPNService() override;
 
   // Inherited from Service.
   virtual void Connect(Error *error, const char *reason);

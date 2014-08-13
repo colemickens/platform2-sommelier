@@ -17,7 +17,7 @@ namespace shill {
 class MockModemManagerProxy : public ModemManagerProxyInterface {
  public:
   MockModemManagerProxy();
-  virtual ~MockModemManagerProxy();
+  ~MockModemManagerProxy() override;
 
   MOCK_METHOD0(EnumerateDevices, std::vector<DBus::Path>());
 

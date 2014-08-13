@@ -16,7 +16,7 @@ namespace shill {
 class MockVPNDriver : public VPNDriver {
  public:
   MockVPNDriver();
-  virtual ~MockVPNDriver();
+  ~MockVPNDriver() override;
 
   MOCK_METHOD2(ClaimInterface, bool(const std::string &link_name,
                                     int interface_index));

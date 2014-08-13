@@ -16,7 +16,7 @@ namespace shill {
 class DBusControl : public ControlInterface {
  public:
   DBusControl();
-  virtual ~DBusControl();
+  ~DBusControl() override;
 
   virtual DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device);
   virtual IPConfigAdaptorInterface *CreateIPConfigAdaptor(IPConfig *ipconfig);

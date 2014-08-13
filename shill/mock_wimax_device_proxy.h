@@ -17,7 +17,7 @@ namespace shill {
 class MockWiMaxDeviceProxy : public WiMaxDeviceProxyInterface {
  public:
   MockWiMaxDeviceProxy();
-  virtual ~MockWiMaxDeviceProxy();
+  ~MockWiMaxDeviceProxy() override;
 
   MOCK_METHOD3(Enable, void(Error *error,
                             const ResultCallback &callback,

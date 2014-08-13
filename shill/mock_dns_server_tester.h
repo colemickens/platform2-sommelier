@@ -15,7 +15,7 @@ namespace shill {
 class MockDNSServerTester : public DNSServerTester {
  public:
   explicit MockDNSServerTester(ConnectionRefPtr connection);
-  virtual ~MockDNSServerTester();
+  ~MockDNSServerTester() override;
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());

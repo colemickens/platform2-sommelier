@@ -15,7 +15,7 @@ namespace shill {
 class MockTime : public Time {
  public:
   MockTime();
-  virtual ~MockTime();
+  ~MockTime() override;
 
   MOCK_METHOD1(GetSecondsMonotonic, bool(time_t *seconds));
   MOCK_METHOD1(GetSecondsBoottime, bool(time_t *seconds));

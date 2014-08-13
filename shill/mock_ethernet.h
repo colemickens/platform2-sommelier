@@ -27,7 +27,7 @@ class MockEthernet : public Ethernet {
                const std::string &link_name,
                const std::string &address,
                int interface_index);
-  virtual ~MockEthernet();
+  ~MockEthernet() override;
 
   MOCK_METHOD2(Start, void(Error *error,
                            const EnabledStateChangedCallback &callback));

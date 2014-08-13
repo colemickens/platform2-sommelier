@@ -17,7 +17,7 @@ namespace shill {
 class MockPendingActivationStore : public PendingActivationStore {
  public:
   MockPendingActivationStore();
-  virtual ~MockPendingActivationStore();
+  ~MockPendingActivationStore() override;
 
   MOCK_METHOD2(InitStorage,
                bool(GLib *glib, const base::FilePath &storage_path));

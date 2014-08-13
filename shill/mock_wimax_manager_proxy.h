@@ -17,7 +17,7 @@ namespace shill {
 class MockWiMaxManagerProxy : public WiMaxManagerProxyInterface {
  public:
   MockWiMaxManagerProxy();
-  virtual ~MockWiMaxManagerProxy();
+  ~MockWiMaxManagerProxy() override;
 
   MOCK_METHOD1(set_devices_changed_callback,
                void(const DevicesChangedCallback &callback));

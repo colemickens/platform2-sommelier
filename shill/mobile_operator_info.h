@@ -54,6 +54,8 @@ class MobileOperatorInfo {
  public:
   class Observer {
    public:
+    virtual ~Observer() {}
+
     // This event fires when
     //   - A mobile [virtual] network operator
     //     - is first determined.

@@ -22,7 +22,7 @@ class ModemGobiProxy : public ModemGobiProxyInterface {
   ModemGobiProxy(DBus::Connection *connection,
                  const std::string &path,
                  const std::string &service);
-  virtual ~ModemGobiProxy();
+  ~ModemGobiProxy() override;
 
   // Inherited from ModemGobiProxyInterface.
   virtual void SetCarrier(const std::string &carrier,
@@ -37,7 +37,7 @@ class ModemGobiProxy : public ModemGobiProxyInterface {
     Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
-    virtual ~Proxy();
+    ~Proxy() override;
 
    private:
     // Signal callbacks inherited from ModemManager::Modem::Gobi_proxy.

@@ -19,7 +19,7 @@ class ConnectionInfo;
 class MockConnectionInfoReader : public ConnectionInfoReader {
  public:
   MockConnectionInfoReader();
-  virtual ~MockConnectionInfoReader();
+  ~MockConnectionInfoReader() override;
 
   MOCK_METHOD1(LoadConnectionInfo,
                bool(std::vector<ConnectionInfo> *info_list));

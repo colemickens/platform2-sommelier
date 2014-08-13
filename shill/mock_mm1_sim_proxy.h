@@ -18,7 +18,7 @@ namespace mm1 {
 class MockSimProxy : public SimProxyInterface {
  public:
   MockSimProxy();
-  virtual ~MockSimProxy();
+  ~MockSimProxy() override;
 
   MOCK_METHOD4(SendPin, void(const std::string &pin,
                              Error *error,

@@ -20,7 +20,7 @@ class MockManager : public Manager {
               EventDispatcher *dispatcher,
               Metrics *metrics,
               GLib *glib);
-  virtual ~MockManager();
+  ~MockManager() override;
 
   MOCK_METHOD0(device_info, DeviceInfo *());
   MOCK_METHOD0(modem_info, ModemInfo *());

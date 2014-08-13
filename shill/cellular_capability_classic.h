@@ -58,7 +58,7 @@ class CellularCapabilityClassic : public CellularCapability {
   CellularCapabilityClassic(Cellular *cellular,
                             ProxyFactory *proxy_factory,
                             ModemInfo *modem_info);
-  virtual ~CellularCapabilityClassic();
+  ~CellularCapabilityClassic() override;
 
   // Inherited from CellularCapability.
   void OnDBusPropertiesChanged(

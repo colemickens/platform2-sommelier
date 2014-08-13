@@ -39,7 +39,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
            const std::string& link_name,
            const std::string &address,
            int interface_index);
-  virtual ~Ethernet();
+  ~Ethernet() override;
 
   virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
   virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);

@@ -17,7 +17,7 @@ namespace shill {
 class MockDHCPProxy : public DHCPProxyInterface {
  public:
   MockDHCPProxy();
-  virtual ~MockDHCPProxy();
+  ~MockDHCPProxy() override;
 
   MOCK_METHOD1(Rebind, void(const std::string &interface));
   MOCK_METHOD1(Release, void(const std::string &interface));

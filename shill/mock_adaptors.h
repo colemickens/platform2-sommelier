@@ -22,7 +22,7 @@ class DeviceMockAdaptor : public DeviceAdaptorInterface {
   static const char kRpcConnId[];
 
   DeviceMockAdaptor();
-  virtual ~DeviceMockAdaptor();
+  ~DeviceMockAdaptor() override;
   virtual const std::string &GetRpcIdentifier();
   virtual const std::string &GetRpcConnectionIdentifier();
 
@@ -56,7 +56,7 @@ class IPConfigMockAdaptor : public IPConfigAdaptorInterface {
   static const char kRpcId[];
 
   IPConfigMockAdaptor();
-  virtual ~IPConfigMockAdaptor();
+  ~IPConfigMockAdaptor() override;
   virtual const std::string &GetRpcIdentifier();
 
   MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
@@ -76,7 +76,7 @@ class ManagerMockAdaptor : public ManagerAdaptorInterface {
   static const char kRpcId[];
 
   ManagerMockAdaptor();
-  virtual ~ManagerMockAdaptor();
+  ~ManagerMockAdaptor() override;
   virtual const std::string &GetRpcIdentifier();
 
   MOCK_METHOD0(UpdateRunning, void(void));
@@ -103,7 +103,7 @@ class ProfileMockAdaptor : public ProfileAdaptorInterface {
   static const char kRpcId[];
 
   ProfileMockAdaptor();
-  virtual ~ProfileMockAdaptor();
+  ~ProfileMockAdaptor() override;
   virtual const std::string &GetRpcIdentifier();
 
   MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
@@ -123,7 +123,7 @@ class RPCTaskMockAdaptor : public RPCTaskAdaptorInterface {
   static const char kRpcConnId[];
 
   RPCTaskMockAdaptor();
-  virtual ~RPCTaskMockAdaptor();
+  ~RPCTaskMockAdaptor() override;
 
   virtual const std::string &GetRpcIdentifier();
   virtual const std::string &GetRpcInterfaceIdentifier();
@@ -141,7 +141,7 @@ class ServiceMockAdaptor : public ServiceAdaptorInterface {
   static const char kRpcId[];
 
   ServiceMockAdaptor();
-  virtual ~ServiceMockAdaptor();
+  ~ServiceMockAdaptor() override;
   virtual const std::string &GetRpcIdentifier();
 
   MOCK_METHOD0(UpdateConnected, void());

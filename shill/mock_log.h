@@ -96,7 +96,7 @@ class ScopedMockLog {
 class NiceScopedMockLog : public ScopedMockLog {
  public:
   NiceScopedMockLog();
-  virtual ~NiceScopedMockLog();
+  ~NiceScopedMockLog() override;
 };
 
 }  // namespace shill

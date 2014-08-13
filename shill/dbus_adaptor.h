@@ -35,7 +35,7 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static const char kNullPath[];
 
   DBusAdaptor(DBus::Connection* conn, const std::string &object_path);
-  virtual ~DBusAdaptor();
+  ~DBusAdaptor() override;
 
   // Set the property with |name| through |store|. Returns true if and
   // only if the property was changed. Updates |error| if a) an error
