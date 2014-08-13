@@ -494,6 +494,8 @@ void DBusAdaptor::ReplyNowWithError(const DBus::Tag *tag,
                                     const DBus::Error &error) {
   Continuation *cont = find_continuation(tag);
   CHECK(cont) << "Failed to find continuation.";
+  SLOG(DBus, 1) << "Returning error: (" << error.name() << ": "
+                << error.message() << ")";
   return_error(cont, error);
 }
 
