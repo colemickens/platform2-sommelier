@@ -13,6 +13,10 @@ $PrivDropToGroup syslog
 # Include PID in log messages
 $SystemLogUsePIDFromSystem on
 
+# Don't include hostname in log messages.
+$template LogWithoutHostname,"%TIMESTAMP:::date-rfc3339% %syslogtag%%msg:::sp-if-no-1st-sp%%msg::drop-last-lf%\n"
+$ActionFileDefaultTemplate LogWithoutHostname
+
 $SystemLogRateLimitInterval 0
 $RepeatedMsgReduction on
 
