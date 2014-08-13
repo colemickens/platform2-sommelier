@@ -31,7 +31,7 @@ namespace vpn_manager {
 
 class L2tpManagerTest : public ::testing::Test {
  public:
-  void SetUp() {
+  void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());
     test_path_ = temp_dir_.path().Append("l2tp_manager_testdir");
     ServiceManager::temp_path_ = new FilePath(test_path_);

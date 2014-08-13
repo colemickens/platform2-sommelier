@@ -32,20 +32,21 @@ namespace vpn_manager {
 class L2tpManager : public ServiceManager {
  public:
   L2tpManager();
+  ~L2tpManager() override;
 
   // Initialize the object using |remote_host|.  Returns false if
   // an illegal set of parameters has been given.  Has no side effects
   // other than setting up the object.
   bool Initialize(const sockaddr& remote_address);
 
-  virtual bool Start();
-  virtual void Stop();
-  virtual int Poll();
-  virtual void ProcessOutput();
-  virtual void ProcessPppOutput();
-  virtual bool IsChild(pid_t pid);
-  virtual void OnSyslogOutput(const std::string& prefix,
-                              const std::string& line);
+  bool Start() override;
+  void Stop() override;
+  int Poll() override;
+  void ProcessOutput() override;
+  void ProcessPppOutput();
+  bool IsChild(pid_t pid) override;
+  void OnSyslogOutput(const std::string& prefix,
+                      const std::string& line) override;
 
   // Returns the stderr output file descriptor of our child process.
   int output_fd() const { return output_fd_; }

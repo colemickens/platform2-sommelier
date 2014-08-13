@@ -58,6 +58,8 @@ L2tpManager::L2tpManager()
       l2tpd_(new ProcessImpl) {
 }
 
+L2tpManager::~L2tpManager() {}
+
 bool L2tpManager::Initialize(const struct sockaddr& remote_address) {
   if (!ConvertSockAddrToIPString(remote_address, &remote_address_text_)) {
     LOG(ERROR) << "Unable to convert sockaddr to name for remote host";

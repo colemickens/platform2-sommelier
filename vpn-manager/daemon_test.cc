@@ -30,7 +30,7 @@ namespace vpn_manager {
 
 class DaemonTest : public ::testing::Test {
  public:
-  void SetUp() {
+  void SetUp() override {
     FilePath cwd;
     CHECK(temp_dir_.CreateUniqueTempDir());
     FilePath test_path = temp_dir_.path().Append("daemon_testdir");

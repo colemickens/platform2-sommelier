@@ -35,7 +35,7 @@ class MockService : public ServiceManager {
 
 class ServiceManagerTest : public ::testing::Test {
  public:
-  void SetUp() {
+  void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());
     test_path_ = temp_dir_.path().Append("service_manager_testdir");
     base::DeleteFile(test_path_, true);
@@ -46,10 +46,12 @@ class ServiceManagerTest : public ::testing::Test {
     ServiceManager::SetLayerOrder(&outer_service_, &inner_service_);
     chromeos::ClearLog();
   }
-  void TearDown() {
+
+  void TearDown() override {
     ServiceManager::temp_base_path_ = NULL;
     ServiceManager::temp_path_ = NULL;
   }
+
  protected:
   FilePath temp_path_;
   FilePath test_path_;

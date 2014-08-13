@@ -14,7 +14,7 @@ namespace vpn_manager {
 class DaemonMock : public Daemon {
  public:
   DaemonMock() : Daemon("") {}
-  virtual ~DaemonMock() {}
+  ~DaemonMock() override {}
 
   MOCK_METHOD0(ClearProcess, void());
   MOCK_METHOD0(CreateProcess, chromeos::Process*());

@@ -37,9 +37,9 @@ const int kMockStarterPid = 10001;
 class IpsecManagerTest : public ::testing::Test {
  public:
   IpsecManagerTest() : starter_daemon_(NULL), charon_daemon_(NULL) {}
-  virtual ~IpsecManagerTest() {}
+  ~IpsecManagerTest() override {}
 
-  void SetUp() {
+  void SetUp() override {
     FilePath cwd;
     CHECK(temp_dir_.CreateUniqueTempDir());
     test_path_ = temp_dir_.path().Append("ipsec_manager_testdir");
@@ -312,7 +312,7 @@ TEST_F(IpsecManagerTest, StopWhileNotRunning) {
 
 class IpsecManagerTestIkeV1Psk : public IpsecManagerTest {
  public:
-  void SetUp() {
+  void SetUp() override {
     IpsecManagerTest::SetUp();
     DoInitialize(1, true, false);
   }
@@ -397,7 +397,7 @@ TEST_F(IpsecManagerTestIkeV1Psk, WriteConfigFiles) {
 
 class IpsecManagerTestIkeV1Certs : public IpsecManagerTest {
  public:
-  void SetUp() {
+  void SetUp() override {
     IpsecManagerTest::SetUp();
     DoInitialize(1, false, false);
   }

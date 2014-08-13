@@ -87,6 +87,8 @@ IpsecManager::IpsecManager()
       charon_daemon_(new Daemon(kCharonPidFile)) {
 }
 
+IpsecManager::~IpsecManager() {}
+
 bool IpsecManager::Initialize(int ike_version,
                               const struct sockaddr& remote_address,
                               const std::string& psk_file,

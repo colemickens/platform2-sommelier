@@ -25,6 +25,7 @@ class Daemon;
 class IpsecManager : public ServiceManager {
  public:
   IpsecManager();
+  ~IpsecManager() override;
 
   // Initialize the object to control IKE version |ike_version| daemon,
   // connecting to the given |remote_address|, with given paths to
@@ -41,13 +42,13 @@ class IpsecManager : public ServiceManager {
                   const std::string& client_cert_tpm_id,
                   const std::string& tpm_user_pin);
 
-  virtual bool Start();
-  virtual void Stop();
-  virtual int Poll();
-  virtual void ProcessOutput();
-  virtual bool IsChild(pid_t pid);
-  virtual void OnSyslogOutput(const std::string& prefix,
-                              const std::string& line);
+  bool Start() override;
+  void Stop() override;
+  int Poll() override;
+  void ProcessOutput() override;
+  bool IsChild(pid_t pid) override;
+  void OnSyslogOutput(const std::string& prefix,
+                      const std::string& line) override;
 
   // Returns the stderr output file descriptor of our child process.
   int output_fd() const { return output_fd_; }
