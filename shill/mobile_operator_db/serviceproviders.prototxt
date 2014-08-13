@@ -2309,6 +2309,24 @@ mno {
 
 mno {
   data {
+    uuid : "bdf11fc4-eca0-4fe7-86c3-269284d91d8e"
+    country : "ca"
+    provider_type : CDMA
+    localized_name {
+      name : "Telus Mobility"
+    }
+    sid : "16422"
+    sid : "17500"
+    sid : "16438"
+    sid : "16458"
+    sid : "16436"
+    sid : "16434"
+    sid : "16384"
+  }
+}
+
+mno {
+  data {
     uuid : "d256ee56-5319-4c6d-8e98-3cd7ebdd4bce"
     country : "ca"
     provider_type : GSM
@@ -4202,6 +4220,24 @@ mno {
 
 mno {
   data {
+    uuid : "10022903-5812-4f5b-a3ba-bb4238719fc1"
+    country : "es"
+    provider_type : GSM
+    localized_name {
+      name : "Amena"
+    }
+    mccmnc : "21403"
+    mobile_apn {
+      apn : "orangeworld"
+      plan : POSTPAID
+      username : "orange"
+      password : "orange"
+    }
+  }
+}
+
+mno {
+  data {
     uuid : "c35b5c24-56a9-4a21-aac8-917299f3ce20"
     country : "es"
     provider_type : GSM
@@ -4273,6 +4309,22 @@ mno {
 
 mno {
   data {
+    uuid : "7a621d65-a7ab-42b5-9fa3-736c6b1ff6d3"
+    country : "es"
+    provider_type : GSM
+    localized_name {
+      name : "LlamaYa móvil"
+    }
+    mccmnc : "21403"
+    mobile_apn {
+      apn : "moreinternet"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
     uuid : "29312b25-e5c7-47cc-b83c-32f9a10437d3"
     country : "es"
     provider_type : GSM
@@ -4300,6 +4352,31 @@ mno {
       }
       username : "movistar"
       password : "movistar"
+    }
+  }
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : ".*Tuenti.*"
+    }
+    mvno_filter {
+      type : MCCMNC
+      regex : "21405"
+    }
+    data {
+      uuid : "8043b7a1-70a4-4fdd-b55a-36748cd50c18"
+      country : "es"
+      provider_type : GSM
+      localized_name {
+        name : "Tuenti Móvil"
+      }
+      mccmnc : "21405"
+      mobile_apn {
+        apn : "tuenti.com"
+        plan : POSTPAID
+        username : "tuenti"
+        password : "tuenti"
+      }
     }
   }
 }
@@ -4360,6 +4437,7 @@ mno {
       dns : "85.62.229.134"
     }
   }
+  earmarked : true
 }
 
 mno {
@@ -4394,7 +4472,7 @@ mno {
     country : "es"
     provider_type : GSM
     localized_name {
-      name : "Simyo/Blau"
+      name : "Simyo"
     }
     mccmnc : "21419"
     mobile_apn {
@@ -4483,7 +4561,7 @@ mno {
     country : "es"
     provider_type : GSM
     localized_name {
-      name : "moviData"
+      name : "Happy Móvil/moviData"
     }
     mccmnc : "21403"
     mobile_apn {
@@ -4635,6 +4713,24 @@ mno {
     mobile_apn {
       apn : "internet"
       plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    uuid : "71eb461e-d17b-4a02-8787-efee42da86cb"
+    country : "fi"
+    provider_type : GSM
+    localized_name {
+      name : "Kuiri"
+    }
+    mccmnc : "24431"
+    mobile_apn {
+      apn : "kuirinet"
+      localized_name {
+        name : "Kuiri Internet"
+      }
     }
   }
 }
@@ -7623,6 +7719,39 @@ mno {
 
 mno {
   data {
+    uuid : "670247cf-7801-41b4-bcfb-d6250fbb4ca3"
+    country : "it"
+    provider_type : GSM
+    localized_name {
+      name : "Nòverca"
+    }
+    mccmnc : "22207"
+    mobile_apn {
+      apn : "web.noverca.it"
+      plan : PREPAID
+      localized_name {
+        name : "Noverca WEB"
+      }
+    }
+    mobile_apn {
+      apn : "mms.noverca.it"
+      localized_name {
+        name : "Noverca MMS"
+      }
+    }
+    mobile_apn {
+      apn : "wap.noverca.it"
+      plan : POSTPAID
+      localized_name {
+        name : "Noverca WAP"
+      }
+      gateway : "10.248.1.12:80"
+    }
+  }
+}
+
+mno {
+  data {
     uuid : "1bacb5f6-cad0-4617-8685-7d63a79fa437"
     country : "it"
     provider_type : GSM
@@ -10402,6 +10531,14 @@ mno {
       username : "vodafone"
       password : "vodafone"
     }
+    mobile_apn {
+      apn : "m2m.global.vodafone.nl"
+      localized_name {
+        name : "M2M"
+      }
+      username : "web"
+      password : "web"
+    }
   }
 }
 
@@ -10981,6 +11118,27 @@ mno {
     mobile_apn {
       apn : "internet"
       plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
+    uuid : "1214b69e-d008-4f33-8769-0ae26ac28c87"
+    country : "pg"
+    provider_type : GSM
+    localized_name {
+      name : "Digicel"
+    }
+    mccmnc : "53703"
+    mobile_apn {
+      apn : "internet.digicelpng.com"
+      plan : PREPAID
+      localized_name {
+        name : "Prepaid"
+      }
+      dns : "10.149.64.77"
+      dns : "8.8.8.8"
     }
   }
 }
@@ -14421,6 +14579,10 @@ mno {
       mccmnc : "310410"
       mobile_apn {
         apn : "att.mvno"
+        plan : PREPAID
+      }
+      mobile_apn {
+        apn : "tfdata"
         plan : PREPAID
       }
     }
