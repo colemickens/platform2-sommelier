@@ -55,6 +55,17 @@ IPAddress::IPAddress(Family family)
     : family_(family),
       prefix_(0) {}
 
+IPAddress::IPAddress(std::string ip_string)
+    : prefix_(0) {
+  family_ = IPAddress::kFamilyIPv4;
+  if (!SetAddressFromString(ip_string)) {
+    family_ = IPAddress::kFamilyIPv6;
+    if (!SetAddressFromString(ip_string)) {
+      family_ = IPAddress::kFamilyUnknown;
+    }
+  }
+}
+
 IPAddress::~IPAddress() {}
 
 // static

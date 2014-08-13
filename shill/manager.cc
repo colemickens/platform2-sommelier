@@ -1948,21 +1948,11 @@ ServiceRefPtr Manager::FindMatchingService(const KeyValueStore &args,
 
 void Manager::AddWakeOnPacketConnection(const string &ip_endpoint,
                                         Error *error) {
-  // TODO(samueltan): factor this parsing out into an IPAddress
-  // constructor
-  IPAddress *ip_addr;
-  IPAddress ipv4_addr(IPAddress::kFamilyIPv4);
-  IPAddress ipv6_addr(IPAddress::kFamilyIPv6);
-  if (!ipv4_addr.SetAddressFromString(ip_endpoint)) {
-    if (!ipv6_addr.SetAddressFromString(ip_endpoint)) {
-      error->Populate(Error::kInvalidArguments,
-                      "Invalid ip_address " + ip_endpoint);
-      return;
-    } else {
-      ip_addr = &ipv6_addr;
-    }
-  } else {
-    ip_addr = &ipv4_addr;
+  IPAddress ip_addr(ip_endpoint);
+  if (!ip_addr.IsValid()) {
+    error->Populate(Error::kInvalidArguments,
+                    "Invalid ip_address " + ip_endpoint);
+    return;
   }
   ServiceRefPtr default_service = services_.front();
   if (default_service) {
@@ -1971,7 +1961,7 @@ void Manager::AddWakeOnPacketConnection(const string &ip_endpoint,
       error->PopulateAndLog(error, Error::kOperationFailed,
                             "No matching device found");
     } else {
-      device->AddWakeOnPacketConnection(*ip_addr, error);
+      device->AddWakeOnPacketConnection(ip_addr, error);
     }
   } else {
     error->PopulateAndLog(error, Error::kOperationFailed, "No services found");
@@ -1980,21 +1970,11 @@ void Manager::AddWakeOnPacketConnection(const string &ip_endpoint,
 
 void Manager::RemoveWakeOnPacketConnection(const string &ip_endpoint,
                                            Error *error) {
-  // TODO(samueltan): factor this parsing out into an IPAddress
-  // constructor
-  IPAddress *ip_addr;
-  IPAddress ipv4_addr(IPAddress::kFamilyIPv4);
-  IPAddress ipv6_addr(IPAddress::kFamilyIPv6);
-  if (!ipv4_addr.SetAddressFromString(ip_endpoint)) {
-    if (!ipv6_addr.SetAddressFromString(ip_endpoint)) {
-      error->Populate(Error::kInvalidArguments,
-                      "Invalid ip_address " + ip_endpoint);
-      return;
-    } else {
-      ip_addr = &ipv6_addr;
-    }
-  } else {
-    ip_addr = &ipv4_addr;
+  IPAddress ip_addr(ip_endpoint);
+  if (!ip_addr.IsValid()) {
+    error->Populate(Error::kInvalidArguments,
+                    "Invalid ip_address " + ip_endpoint);
+    return;
   }
   ServiceRefPtr default_service = services_.front();
   if (default_service) {
@@ -2003,7 +1983,7 @@ void Manager::RemoveWakeOnPacketConnection(const string &ip_endpoint,
       error->PopulateAndLog(error, Error::kOperationFailed,
                             "No matching device found");
     } else {
-      device->RemoveWakeOnPacketConnection(*ip_addr, error);
+      device->RemoveWakeOnPacketConnection(ip_addr, error);
     }
   } else {
     error->PopulateAndLog(error, Error::kOperationFailed, "No services found");

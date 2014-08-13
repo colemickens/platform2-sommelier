@@ -22,6 +22,9 @@ class IPAddress {
   static const char kFamilyNameIPv6[];
 
   explicit IPAddress(Family family);
+  // Constructs an IPAdress object given a standard string representation of an
+  // IP address (e.g. "192.144.30.54").
+  explicit IPAddress(std::string ip_string);
   IPAddress(Family family, const ByteString &address);
   IPAddress(Family family, const ByteString &address, unsigned int prefix);
   ~IPAddress();
