@@ -248,7 +248,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, ConnectToWithError);  // ScanState
   FRIEND_TEST(WiFiMainTest, ConnectWhileNotScanning);  // ScanState
   FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);
-  FRIEND_TEST(WiFiMainTest, DisconnectCurrentServiceWithErrors);
   FRIEND_TEST(WiFiMainTest, FlushBSSOnResume);  // kMaxBSSResumeAgeSeconds
   FRIEND_TEST(WiFiMainTest, FullScanConnecting);  // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, FullScanConnectingToConnected);

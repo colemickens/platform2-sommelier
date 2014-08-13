@@ -614,6 +614,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   const base::CancelableClosure &GetReconnectTimeoutCallback() {
     return wifi_->reconnect_timeout_callback_;
   }
+  const ServiceRefPtr &GetSelectedService() {
+    return wifi_->selected_service();
+  }
   const string &GetSupplicantBSS() {
     return wifi_->supplicant_bss_;
   }
@@ -1744,7 +1747,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithErrors) {
   // We may sometimes fail to disconnect via supplicant, and we patch up some
   // state when this happens.
   EXPECT_EQ(NULL, GetCurrentService().get());
-  EXPECT_EQ(NULL, wifi()->selected_service().get());
+  EXPECT_EQ(NULL, GetSelectedService().get());
 }
 
 TEST_F(WiFiMainTest, DisconnectCurrentServiceWithPending) {
@@ -2597,28 +2600,38 @@ TEST_F(WiFiMainTest, NoScanOnDisconnectWithoutHidden) {
 }
 
 TEST_F(WiFiMainTest, LinkMonitorFailure) {
-  StartWiFi();
   ScopedMockLog log;
-  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  MockLinkMonitor *link_monitor = new StrictMock<MockLinkMonitor>();
+  auto link_monitor = new StrictMock<MockLinkMonitor>();
+  StartWiFi();
   SetLinkMonitor(link_monitor);
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(*link_monitor, IsGatewayFound())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
+
+  // We never had an ARP reply during this connection, so we assume
+  // the problem is gateway, rather than link.
   EXPECT_CALL(log, Log(logging::LOG_INFO, _,
                        EndsWith("gateway was never found."))).Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(0);
   OnLinkMonitorFailure();
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+
+  // No supplicant, so we can't Reattach.
+  OnSupplicantVanish();
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       EndsWith("Cannot reassociate."))).Times(1);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(0);
+  OnLinkMonitorFailure();
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+
+  // Normal case: call Reattach.
+  OnSupplicantAppear();
   EXPECT_CALL(log, Log(logging::LOG_INFO, _,
                        EndsWith("Called Reattach()."))).Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(1);
   OnLinkMonitorFailure();
-  OnSupplicantVanish();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(0);
-  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
-                       EndsWith("Cannot reassociate."))).Times(1);
-  OnLinkMonitorFailure();
 }
 
 TEST_F(WiFiMainTest, SuspectCredentialsOpen) {
