@@ -460,18 +460,14 @@ bool Service::IsLoadableFrom(const StoreInterface &storage) const {
 
 bool Service::Load(StoreInterface *storage) {
   const string id = GetStorageIdentifier();
-  SLOG(Service, 3) << "Loading service profile with ID " << id;
   if (!storage->ContainsGroup(id)) {
     LOG(WARNING) << "Service is not available in the persistent store: " << id;
     return false;
   }
 
   auto_connect_ = IsAutoConnectByDefault();
-  SLOG(Service, 3) << "  Autoconnect(default): " << auto_connect_;
   retain_auto_connect_ =
       storage->GetBool(id, kStorageAutoConnect, &auto_connect_);
-  SLOG(Service, 3) << "  Autoconnect(from profile): " << auto_connect_;
-  SLOG(Service, 3) << "  RetainAutoconnect: " << retain_auto_connect_;
   // The legacy "Favorite" flag will override retain_auto_connect_ if present.
   storage->GetBool(id, kStorageFavorite, &retain_auto_connect_);
 
@@ -539,17 +535,13 @@ void Service::Remove(Error */*error*/) {
 
 bool Service::Save(StoreInterface *storage) {
   const string id = GetStorageIdentifier();
-  SLOG(Service, 3) << "Saving service profile with ID " << id;
 
   storage->SetString(id, kStorageType, GetTechnologyString());
-  SLOG(Service, 3) << "  StorageType: " << GetTechnologyString();
 
   if (retain_auto_connect_) {
     storage->SetBool(id, kStorageAutoConnect, auto_connect_);
-    SLOG(Service, 3) << "  AutoConnect: " << auto_connect_;
   } else {
     storage->DeleteKey(id, kStorageAutoConnect);
-    SLOG(Service, 3) << "  Autoconnect cleared.";
   }
 
   // Remove this legacy flag.
@@ -564,7 +556,6 @@ bool Service::Save(StoreInterface *storage) {
   SaveString(storage, id, kStorageGUID, guid_, false, true);
   storage->SetBool(id, kStorageHasEverConnected, has_ever_connected_);
   storage->SetString(id, kStorageName, friendly_name_);
-  SLOG(Service, 3) << "  Service Friendly Name: " << friendly_name_;
   if (priority_ != kPriorityNone) {
     storage->SetInt(id, kStoragePriority, priority_);
   } else {
