@@ -96,6 +96,10 @@ class Platform2(object):
     if board is None and not self.host:
       board = self.board
 
+    # Portage will set this to an incomplete list which breaks portageq
+    # walking all of the repos.  Clear it and let the value be repopulated.
+    os.environ.pop('PORTDIR_OVERLAY', None)
+
     portageq_bin = 'portageq' if not board else 'portageq-%s' % board
     cmd = [portageq_bin, 'envvar', '-v']
     cmd += varnames
