@@ -5,6 +5,7 @@
 #include "shill/wifi.h"
 
 #include <linux/if.h>  // Needs definitions from netinet/ether.h
+#include <linux/netlink.h>  // TODO(samueltan): refactor to netlink manager.
 #include <netinet/ether.h>
 #include <stdio.h>
 #include <string.h>
@@ -53,6 +54,7 @@
 #include "shill/supplicant_network_proxy_interface.h"
 #include "shill/supplicant_process_proxy_interface.h"
 #include "shill/technology.h"
+#include "shill/wake_on_wifi.h"
 #include "shill/wifi_endpoint.h"
 #include "shill/wifi_provider.h"
 #include "shill/wifi_service.h"
@@ -75,6 +77,8 @@ const uint16_t WiFi::kDefaultBgscanShortIntervalSeconds = 30;
 const int32_t WiFi::kDefaultBgscanSignalThresholdDbm = -50;
 const uint16_t WiFi::kDefaultScanIntervalSeconds = 60;
 const uint16_t WiFi::kDefaultRoamThresholdDb = 18;  // Supplicant's default.
+const uint32_t WiFi::kDefaultWiphyIndex = 999;
+
 // Scan interval while connected.
 const uint16_t WiFi::kBackgroundScanIntervalSeconds = 3601;
 // Age (in seconds) beyond which a BSS cache entry will not be preserved,
@@ -133,6 +137,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
       roam_threshold_db_(kDefaultRoamThresholdDb),
       scan_interval_seconds_(kDefaultScanIntervalSeconds),
+      wiphy_index_(kDefaultWiphyIndex),
       progressive_scan_enabled_(false),
       scan_configuration_("Full scan"),
       netlink_manager_(NetlinkManager::GetInstance()),
@@ -1754,6 +1759,55 @@ void WiFi::OnIPConfigFailure() {
   Device::OnIPConfigFailure();
 }
 
+void WiFi::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
+                                     Error *error) {
+  SetWakeOnPacketConnMessage add_wowlan_msg;
+  if (!WakeOnWifi::ConfigureAddWakeOnPacketMsg(&add_wowlan_msg, ip_endpoint,
+                                               wiphy_index_, error)) {
+    LOG(ERROR) << "Failed to configure nl80211 message.";
+    return;
+  }
+  // TODO(samueltan): move the setting of ACK flag to netlink_manager.
+  add_wowlan_msg.AddFlag(NLM_F_ACK);
+  netlink_manager_->SendNl80211Message(
+      &add_wowlan_msg, Bind(&WiFi::SetWakeOnPacketConnectionHandler,
+                            weak_ptr_factory_.GetWeakPtr()),
+      Bind(&WiFi::OnSetWakeOnPacketConnectionFailure,
+           weak_ptr_factory_.GetWeakPtr()));
+}
+
+// TODO(samueltan): Implement this after implementing ACK handler
+// (crbug.com/401576).
+void WiFi::RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
+                                        Error *error) {}
+
+void WiFi::RemoveAllWakeOnPacketConnections(Error *error) {
+  // Send an empty NL80211_CMD_SET_WOWLAN message.
+  SetWakeOnPacketConnMessage disable_wowlan_msg;
+  if (!WakeOnWifi::ConfigureRemoveAllWakeOnPacketMsg(&disable_wowlan_msg,
+                                                     wiphy_index_, error)) {
+    LOG(ERROR) << "Failed to configure nl80211 message.";
+    return;
+  }
+  netlink_manager_->SendNl80211Message(
+      &disable_wowlan_msg, Bind(&WiFi::SetWakeOnPacketConnectionHandler,
+                                weak_ptr_factory_.GetWeakPtr()),
+      Bind(&WiFi::OnSetWakeOnPacketConnectionFailure,
+           weak_ptr_factory_.GetWeakPtr()));
+}
+
+void WiFi::SetWakeOnPacketConnectionHandler(
+    const Nl80211Message &nl80211_message) {
+  // NOP because kernel does not send a response to NL80211_CMD_SET_WOWLAN
+  // requests.
+}
+
+void WiFi::OnSetWakeOnPacketConnectionFailure(
+    NetlinkManager::AuxilliaryMessageType type,
+    const NetlinkMessage *raw_message) {
+  NetlinkManager::OnNetlinkMessageError(type, raw_message);
+}
+
 void WiFi::RestartFastScanAttempts() {
   fast_scans_remaining_ = kNumFastScanAttempts;
   StartScanTimer();
@@ -2105,6 +2159,12 @@ void WiFi::OnNewWiphy(const Nl80211Message &nl80211_message) {
     return;
   }
   mac80211_monitor_->Start(phy_name_);
+
+  if (!nl80211_message.const_attributes()->GetU32AttributeValue(
+      NL80211_ATTR_WIPHY, &wiphy_index_)) {
+    LOG(ERROR) << "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_WIPHY";
+    return;
+  }
 
   // The attributes, for this message, are complicated.
   // NL80211_ATTR_BANDS contains an array of bands...

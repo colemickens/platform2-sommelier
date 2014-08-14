@@ -94,6 +94,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/key_value_store.h"
 #include "shill/metrics.h"
+#include "shill/netlink_manager.h"
 #include "shill/power_manager.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
@@ -139,6 +140,17 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   virtual void OnConnected();
   // Callback for when a service fails to configure with an IP.
   void OnIPConfigFailure() override;
+
+  // Implementation of Wake-on-WLAN interface that programs the NIC.
+  void AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
+                                 Error *error) override;
+  void RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
+                                    Error *error) override;
+  void RemoveAllWakeOnPacketConnections(Error *error) override;
+  void SetWakeOnPacketConnectionHandler(const Nl80211Message &nl80211_message);
+  void OnSetWakeOnPacketConnectionFailure(
+      NetlinkManager::AuxilliaryMessageType type,
+      const NetlinkMessage *raw_message);
 
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
@@ -283,11 +295,12 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   typedef std::map<const WiFiService *, std::string> ReverseServiceMap;
 
   static const char *kDefaultBgscanMethod;
+  static const uint16_t kBackgroundScanIntervalSeconds;
   static const uint16_t kDefaultBgscanShortIntervalSeconds;
   static const int32_t kDefaultBgscanSignalThresholdDbm;
   static const uint16_t kDefaultRoamThresholdDb;
   static const uint16_t kDefaultScanIntervalSeconds;
-  static const uint16_t kBackgroundScanIntervalSeconds;
+  static const uint32_t kDefaultWiphyIndex;
   static const time_t kMaxBSSResumeAgeSeconds;
   static const char kInterfaceStateUnknown[];
   // Delay between scans when supplicant finds "No suitable network".
@@ -560,6 +573,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   int32_t bgscan_signal_threshold_dbm_;
   uint16_t roam_threshold_db_;
   uint16_t scan_interval_seconds_;
+  uint32_t wiphy_index_;
 
   bool progressive_scan_enabled_;
   std::string scan_configuration_;

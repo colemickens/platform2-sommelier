@@ -558,6 +558,8 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
         message_handlers_.erase(sequence_number);
       }
     } else {
+      // TODO(samueltan): Invoke ACK handler once implemented
+      // (crbug.com/401576).
       SLOG(WiFi, 3) << "ACK message -- not removing callback";
     }
     return;
