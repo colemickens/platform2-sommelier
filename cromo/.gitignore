@@ -1,10 +1,3 @@
-*.o
-*.a
-*.so
-*.lo
-*.la
-*.swp
-*.swo
 *_server_glue.h
 
 /cromo
