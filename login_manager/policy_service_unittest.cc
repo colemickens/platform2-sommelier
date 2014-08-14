@@ -18,8 +18,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "bindings/device_management_backend.pb.h"
 #include "login_manager/dbus_error_types.h"
-#include "login_manager/device_management_backend.pb.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"

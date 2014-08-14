@@ -24,11 +24,11 @@
 #include <dbus/message.h>
 #include <vboot/crossystem.h>
 
-#include "login_manager/chrome_device_policy.pb.h"
+#include "bindings/chrome_device_policy.pb.h"
+#include "bindings/device_management_backend.pb.h"
 #include "login_manager/dbus_error_types.h"
 #include "login_manager/dbus_signal_emitter.h"
 #include "login_manager/device_local_account_policy_service.h"
-#include "login_manager/device_management_backend.pb.h"
 #include "login_manager/device_policy_service.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/login_metrics.h"

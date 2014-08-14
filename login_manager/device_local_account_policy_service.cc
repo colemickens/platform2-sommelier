@@ -16,7 +16,7 @@
 #include <base/strings/string_util.h>
 #include <chromeos/cryptohome.h>
 
-#include "login_manager/chrome_device_policy.pb.h"
+#include "bindings/chrome_device_policy.pb.h"
 #include "login_manager/dbus_error_types.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_service.h"

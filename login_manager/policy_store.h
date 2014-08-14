@@ -10,7 +10,7 @@
 #include <base/basictypes.h>
 #include <base/files/file_path.h>
 
-#include "login_manager/device_management_backend.pb.h"
+#include "bindings/device_management_backend.pb.h"
 
 namespace login_manager {
 class PolicyKey;

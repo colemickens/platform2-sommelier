@@ -17,8 +17,8 @@
 #include <base/stl_util.h>
 #include <base/synchronization/waitable_event.h>
 
+#include "bindings/device_management_backend.pb.h"
 #include "login_manager/dbus_error_types.h"
-#include "login_manager/device_management_backend.pb.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_store.h"

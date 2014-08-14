@@ -28,9 +28,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "bindings/device_management_backend.pb.h"
 #include "login_manager/dbus_error_types.h"
 #include "login_manager/device_local_account_policy_service.h"
-#include "login_manager/device_management_backend.pb.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_dbus_signal_emitter.h"

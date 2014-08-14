@@ -14,7 +14,7 @@
 
 #include <crypto/scoped_nss_types.h>
 
-#include "login_manager/chrome_device_policy.pb.h"
+#include "bindings/chrome_device_policy.pb.h"
 
 namespace login_manager {
 // Forward declaration.
