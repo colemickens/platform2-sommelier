@@ -588,7 +588,6 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
     return;
 
   const string &sim_identifier = cellular()->sim_identifier();
-  bool activation_required = IsServiceActivationRequired();
   string activation_state;
   PendingActivationStore::State state =
       modem_info()->pending_activation_store()->GetActivationState(
@@ -599,7 +598,7 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
       !sim_identifier.empty() &&
       state == PendingActivationStore::kStatePending) {
     activation_state = kActivationStateActivating;
-  } else if (activation_required) {
+  } else if (IsServiceActivationRequired()) {
     activation_state = kActivationStateNotActivated;
   } else {
     activation_state = kActivationStateActivated;
@@ -613,12 +612,6 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
       cellular()->service()->SetAutoConnect(true);
   }
   cellular()->service()->SetActivationState(activation_state);
-  // TODO(benchan): For now, assume the cellular service is activated over
-  // a non-cellular network if service activation is required (i.e. a
-  // corresponding entry is found in the cellular operator info file).
-  // We will need to generalize this logic when migrating CDMA support from
-  // cromo to ModemManager.
-  cellular()->service()->SetActivateOverNonCellularNetwork(activation_required);
 }
 
 void CellularCapabilityUniversal::OnServiceCreated() {

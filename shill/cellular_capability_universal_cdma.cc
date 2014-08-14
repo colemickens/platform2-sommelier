@@ -192,12 +192,10 @@ void CellularCapabilityUniversalCDMA::OnServiceCreated() {
 }
 
 void CellularCapabilityUniversalCDMA::UpdateServiceActivationStateProperty() {
-  bool activation_required = IsServiceActivationRequired();
-  cellular()->service()->SetActivateOverNonCellularNetwork(activation_required);
   string activation_state;
   if (IsActivating())
       activation_state = kActivationStateActivating;
-  else if (activation_required)
+  else if (IsServiceActivationRequired())
       activation_state = kActivationStateNotActivated;
   else
       activation_state = kActivationStateActivated;

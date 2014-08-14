@@ -54,11 +54,6 @@ class CellularService : public Service {
 
   const CellularRefPtr &cellular() const { return cellular_; }
 
-  void SetActivateOverNonCellularNetwork(bool state);
-  bool activate_over_non_cellular_network() const {
-    return activate_over_non_cellular_network_;
-  }
-
   void SetActivationType(ActivationType type);
   std::string GetActivationTypeString() const;
 
@@ -203,7 +198,6 @@ class CellularService : public Service {
   base::WeakPtrFactory<CellularService> weak_ptr_factory_;
 
   // Properties
-  bool activate_over_non_cellular_network_;
   ActivationType activation_type_;
   std::string activation_state_;
   Cellular::Operator serving_operator_;

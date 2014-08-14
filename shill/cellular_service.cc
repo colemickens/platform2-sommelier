@@ -57,14 +57,11 @@ CellularService::CellularService(ModemInfo *modem_info,
               modem_info->metrics(), modem_info->manager(),
               Technology::kCellular),
       weak_ptr_factory_(this),
-      activate_over_non_cellular_network_(false),
       activation_type_(kActivationTypeUnknown),
       cellular_(device),
       is_auto_connecting_(false) {
   SetConnectable(true);
   PropertyStore *store = this->mutable_store();
-  store->RegisterConstBool(kActivateOverNonCellularNetworkProperty,
-                           &activate_over_non_cellular_network_);
   HelpRegisterDerivedString(kActivationTypeProperty,
                             &CellularService::CalculateActivationType,
                             NULL);
@@ -367,15 +364,6 @@ string CellularService::GetStorageIdentifier() const {
 string CellularService::GetDeviceRpcId(Error */*error*/) const {
   return cellular_->GetRpcIdentifier();
 }
-
-void CellularService::SetActivateOverNonCellularNetwork(bool state) {
-  if (state == activate_over_non_cellular_network_) {
-    return;
-  }
-  activate_over_non_cellular_network_ = state;
-  adaptor()->EmitBoolChanged(kActivateOverNonCellularNetworkProperty, state);
-}
-
 
 void CellularService::SetActivationType(ActivationType type) {
   if (type == activation_type_) {

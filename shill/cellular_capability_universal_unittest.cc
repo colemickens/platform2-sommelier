@@ -1665,7 +1665,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID,
                                  kIccid))
-      .Times(2)
+      .Times(1)
       .WillRepeatedly(Return(PendingActivationStore::kStatePending));
   EXPECT_CALL(*service_, SetActivationState(kActivationStateActivating))
       .Times(1);
