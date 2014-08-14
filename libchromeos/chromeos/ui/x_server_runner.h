@@ -29,6 +29,10 @@ namespace ui {
 // - WaitForServer() blocks until SIGCHLD has been received.
 class XServerRunner {
  public:
+  // Default constructor values for Chrome OS.
+  static const char kDefaultUser[];
+  static const int kDefaultVt;
+
   // Various hard-coded paths exposed here for tests.
   static const char kSocketDir[];
   static const char kIceDir[];

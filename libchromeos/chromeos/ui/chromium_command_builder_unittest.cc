@@ -100,7 +100,7 @@ TEST_F(ChromiumCommandBuilderTest, MissingUseFlagsFile) {
 
 TEST_F(ChromiumCommandBuilderTest, UseFlags) {
   use_flags_data_ = "# Here's a comment.\nfoo\nbar\nboard_use_blah\n";
-  EXPECT_TRUE(Init());
+  ASSERT_TRUE(Init());
 
   EXPECT_TRUE(builder_.UseFlagIsSet("foo"));
   EXPECT_TRUE(builder_.UseFlagIsSet("bar"));
@@ -116,14 +116,14 @@ TEST_F(ChromiumCommandBuilderTest, UseFlags) {
 
 TEST_F(ChromiumCommandBuilderTest, MissingLsbReleaseFile) {
   write_lsb_release_file_ = false;
-  EXPECT_TRUE(Init());
-  EXPECT_FALSE(builder_.SetUpChromium());
+  ASSERT_TRUE(Init());
+  EXPECT_FALSE(builder_.SetUpChromium(base::FilePath()));
 }
 
 TEST_F(ChromiumCommandBuilderTest, LsbRelease) {
   lsb_release_data_ = "abc\ndef";
-  EXPECT_TRUE(Init());
-  EXPECT_TRUE(builder_.SetUpChromium());
+  ASSERT_TRUE(Init());
+  ASSERT_TRUE(builder_.SetUpChromium(base::FilePath()));
 
   EXPECT_EQ(lsb_release_data_, ReadEnvVar("LSB_RELEASE"));
   EXPECT_FALSE(ReadEnvVar("LSB_RELEASE_TIME").empty());
@@ -131,8 +131,8 @@ TEST_F(ChromiumCommandBuilderTest, LsbRelease) {
 
 TEST_F(ChromiumCommandBuilderTest, TimeZone) {
   // Test that the builder creates a symlink for the time zone.
-  EXPECT_TRUE(Init());
-  EXPECT_TRUE(builder_.SetUpChromium());
+  ASSERT_TRUE(Init());
+  ASSERT_TRUE(builder_.SetUpChromium(base::FilePath()));
   const base::FilePath kSymlink(util::GetReparentedPath(
       ChromiumCommandBuilder::kTimeZonePath, base_path_));
   base::FilePath target;
@@ -150,14 +150,14 @@ TEST_F(ChromiumCommandBuilderTest, TimeZone) {
   ChromiumCommandBuilder second_builder;
   second_builder.set_base_path_for_testing(base_path_);
   ASSERT_TRUE(second_builder.Init());
-  EXPECT_TRUE(second_builder.SetUpChromium());
+  ASSERT_TRUE(second_builder.SetUpChromium(base::FilePath()));
   ASSERT_TRUE(base::ReadSymbolicLink(kSymlink, &target));
   EXPECT_EQ(kNewTarget.value(), target.value());
 }
 
 TEST_F(ChromiumCommandBuilderTest, BasicEnvironment) {
-  EXPECT_TRUE(Init());
-  EXPECT_TRUE(builder_.SetUpChromium());
+  ASSERT_TRUE(Init());
+  ASSERT_TRUE(builder_.SetUpChromium(base::FilePath()));
 
   EXPECT_EQ("chronos", ReadEnvVar("USER"));
   EXPECT_EQ("chronos", ReadEnvVar("LOGNAME"));
@@ -170,8 +170,8 @@ TEST_F(ChromiumCommandBuilderTest, BasicEnvironment) {
 }
 
 TEST_F(ChromiumCommandBuilderTest, VmoduleFlag) {
-  EXPECT_TRUE(Init());
-  EXPECT_TRUE(builder_.SetUpChromium());
+  ASSERT_TRUE(Init());
+  ASSERT_TRUE(builder_.SetUpChromium(base::FilePath()));
 
   const char kVmodulePrefix[] = "--vmodule=";
   ASSERT_EQ("", GetFirstArgWithPrefix(kVmodulePrefix));
@@ -188,7 +188,7 @@ TEST_F(ChromiumCommandBuilderTest, VmoduleFlag) {
 }
 
 TEST_F(ChromiumCommandBuilderTest, UserConfig) {
-  EXPECT_TRUE(Init());
+  ASSERT_TRUE(Init());
   builder_.AddArg("--baz=4");
   builder_.AddArg("--blah-a");
   builder_.AddArg("--blah-b");
@@ -217,7 +217,7 @@ TEST_F(ChromiumCommandBuilderTest, UserConfig) {
 }
 
 TEST_F(ChromiumCommandBuilderTest, UserConfigVmodule) {
-  EXPECT_TRUE(Init());
+  ASSERT_TRUE(Init());
   builder_.AddArg("--foo");
   builder_.AddVmodulePattern("a=2");
   builder_.AddArg("--bar");
@@ -278,8 +278,8 @@ TEST_F(ChromiumCommandBuilderTest, PepperPlugins) {
   PCHECK(base::WriteFile(pepper_dir_.Append("broken.info"), kMissingFileName,
                          strlen(kMissingFileName)) == strlen(kMissingFileName));
 
-  EXPECT_TRUE(Init());
-  EXPECT_TRUE(builder_.SetUpChromium());
+  ASSERT_TRUE(Init());
+  ASSERT_TRUE(builder_.SetUpChromium(base::FilePath()));
 
   EXPECT_EQ("--ppapi-flash-path=/opt/google/chrome/pepper/flash.so",
             GetFirstArgWithPrefix("--ppapi-flash-path"));
@@ -301,14 +301,44 @@ TEST_F(ChromiumCommandBuilderTest, DeepMemoryProfiler) {
       ChromiumCommandBuilder::kDeepMemoryProfilerPrefixPath, "/foo\n");
   WriteFileUnderBasePath(
       ChromiumCommandBuilder::kDeepMemoryProfilerTimeIntervalPath, "5\n");
-  EXPECT_TRUE(Init());
-  EXPECT_TRUE(builder_.SetUpChromium());
+  ASSERT_TRUE(Init());
+  ASSERT_TRUE(builder_.SetUpChromium(base::FilePath()));
 
   EXPECT_EQ("/foo", ReadEnvVar("HEAPPROFILE"));
   EXPECT_EQ("5", ReadEnvVar("HEAP_PROFILE_TIME_INTERVAL"));
   EXPECT_EQ("1", ReadEnvVar("HEAP_PROFILE_MMAP"));
   EXPECT_EQ("1", ReadEnvVar("DEEP_HEAP_PROFILE"));
   EXPECT_EQ("--no-sandbox", GetFirstArgWithPrefix("--no-sandbox"));
+}
+
+TEST_F(ChromiumCommandBuilderTest, SetUpX11) {
+  const base::FilePath kXauthPath(base_path_.Append("test_xauth"));
+  const char kXauthData[] = "foo";
+  PCHECK(base::WriteFile(kXauthPath, kXauthData, strlen(kXauthData)) ==
+         strlen(kXauthData));
+
+  ASSERT_TRUE(Init());
+  ASSERT_TRUE(builder_.SetUpChromium(kXauthPath));
+
+  // XAUTHORITY should point at a copy of the original authority file.
+  std::string user_xauth_data;
+  base::FilePath user_xauth_path(ReadEnvVar("XAUTHORITY"));
+  ASSERT_FALSE(user_xauth_path.empty());
+  EXPECT_NE(kXauthPath.value(), user_xauth_path.value());
+  ASSERT_TRUE(ReadFileToString(user_xauth_path, &user_xauth_data));
+  EXPECT_EQ(kXauthData, user_xauth_data);
+
+  // Check that the file is only accessible by its owner.
+  int mode = 0;
+  ASSERT_TRUE(base::GetPosixFilePermissions(user_xauth_path, &mode));
+  EXPECT_EQ(base::FILE_PERMISSION_READ_BY_USER |
+            base::FILE_PERMISSION_WRITE_BY_USER, mode);
+}
+
+TEST_F(ChromiumCommandBuilderTest, MissingXauthFile) {
+  // SetUpChromium() should barf when instructed to use a nonexistent file.
+  ASSERT_TRUE(Init());
+  EXPECT_FALSE(builder_.SetUpChromium(base_path_.Append("bogus_xauth")));
 }
 
 }  // namespace ui

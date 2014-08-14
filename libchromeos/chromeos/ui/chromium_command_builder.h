@@ -71,8 +71,14 @@ class ChromiumCommandBuilder {
   // Determines the environment variables and arguments that should be set for
   // all Chromium-derived binaries and updates |environment_variables_| and
   // |arguments_| accordingly. Also creates necessary directories, sets resource
-  // limits, etc. Returns true on success.
-  bool SetUpChromium();
+  // limits, etc.
+  //
+  // If |xauth_path| is non-empty, Chromium will be configured to connect to an
+  // X server at :0. The authority file will be copied to a |uid_|-owned file
+  // within the data dir.
+  //
+  // Returns true on success.
+  bool SetUpChromium(const base::FilePath& xauth_path);
 
   // Configures the environment so a core dump will be written when the binary
   // crashes.
@@ -124,14 +130,18 @@ class ChromiumCommandBuilder {
   // |base_path_for_testing_| if it's non-empty.
   base::FilePath GetPath(const std::string& path) const;
 
+  // Performs X11-specific setup and returns true on success. Called by
+  // InitChromium().
+  bool SetUpX11(const base::FilePath& xauth_path);
+
   // Checks if an ASAN or deep-memory-profiler build was requested, doing
   // appropriate initialization and returning true if so. Called by
-  // InitSharedConfig().
+  // InitChromium().
   bool SetUpASAN();
   bool SetUpDeepMemoryProfiler();
 
   // Reads .info files in |pepper_plugins_path_| and adds the appropriate
-  // arguments to |arguments_|. Called by InitSharedConfig().
+  // arguments to |arguments_|. Called by InitChromium().
   void SetUpPepperPlugins();
 
   // Add UI- and compositing-related flags to |arguments_|.

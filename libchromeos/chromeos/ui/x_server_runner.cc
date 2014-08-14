@@ -221,6 +221,8 @@ bool ExecAndWaitForServer(const std::string& user,
 
 }  // namespace
 
+const char XServerRunner::kDefaultUser[] = "xorg";
+const int XServerRunner::kDefaultVt = 1;
 const char XServerRunner::kSocketDir[] = "/tmp/.X11-unix";
 const char XServerRunner::kIceDir[] = "/tmp/.ICE-unix";
 const char XServerRunner::kLogFile[] = "/var/log/xorg/Xorg.0.log";

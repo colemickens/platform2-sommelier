@@ -23,10 +23,8 @@ using chromeos::ui::util::SetPermissions;
 
 namespace {
 
-// User, VT, and authority file used for running the X server.
-const char kXorgUser[] = "xorg";
-const int kXorgVt = 1;
-const char kXauthFile[] = "/var/run/x11.auth";
+// Authority file used for running the X server.
+const char kXauthPath[] = "/var/run/x11.auth";
 
 // Path to the app_shell binary.
 const char kAppShellPath[] = "/opt/google/chrome/app_shell";
@@ -71,18 +69,6 @@ void AddAppShellFlags(ChromiumCommandBuilder* builder) {
   }
 }
 
-// Does X-related setup.
-void ConfigureX11(ChromiumCommandBuilder* builder) {
-  const base::FilePath user_xauth_file(
-      base::FilePath(builder->ReadEnvVar("DATA_DIR")).Append(".Xauthority"));
-  PCHECK(base::CopyFile(base::FilePath(kXauthFile), user_xauth_file))
-      << "Unable to copy " << kXauthFile << " to " << user_xauth_file.value();
-  CHECK(SetPermissions(
-      user_xauth_file, builder->uid(), builder->gid(), 0600));
-  builder->AddEnvVar("XAUTHORITY", user_xauth_file.value());
-  builder->AddEnvVar("DISPLAY", ":0.0");
-}
-
 // Replaces the currently-running process with app_shell.
 void ExecAppShell(const ChromiumCommandBuilder& builder) {
   if (setpriority(PRIO_PROCESS, 0, -20) != 0)
@@ -122,22 +108,21 @@ int main(int argc, char** argv) {
 
   // Start the X server in the background before doing more-expensive setup.
   scoped_ptr<XServerRunner> x_runner;
+  const base::FilePath xauth_path(kXauthPath);
   const bool using_x11 = builder.UseFlagIsSet("X");
   if (using_x11) {
     x_runner.reset(new XServerRunner);
     CHECK(x_runner->StartServer(
-        kXorgUser, kXorgVt, builder.is_developer_end_user(),
-        base::FilePath(kXauthFile)));
+        XServerRunner::kDefaultUser, XServerRunner::kDefaultVt,
+        builder.is_developer_end_user(), xauth_path));
   }
 
-  builder.SetUpChromium();
+  builder.SetUpChromium(using_x11 ? xauth_path : base::FilePath());
   builder.EnableCoreDumps();
   AddAppShellFlags(&builder);
 
-  if (using_x11) {
-    ConfigureX11(&builder);
+  if (using_x11)
     CHECK(x_runner->WaitForServer());
-  }
 
   // Do not add setup code below this point. Potentially-expensive work should
   // be done between StartServer() and WaitForServer().

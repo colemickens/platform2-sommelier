@@ -124,7 +124,7 @@ bool ChromiumCommandBuilder::Init() {
   return true;
 }
 
-bool ChromiumCommandBuilder::SetUpChromium() {
+bool ChromiumCommandBuilder::SetUpChromium(const base::FilePath& xauth_path) {
   AddEnvVar("USER", kUser);
   AddEnvVar("LOGNAME", kUser);
   AddEnvVar("SHELL", "/bin/sh");
@@ -178,6 +178,9 @@ bool ChromiumCommandBuilder::SetUpChromium() {
   limit.rlim_cur = limit.rlim_max = 2048;
   if (setrlimit(RLIMIT_NOFILE, &limit) < 0)
     PLOG(ERROR) << "Setting max FDs with setrlimit() failed";
+
+  if (!xauth_path.empty() && !SetUpX11(xauth_path))
+    return false;
 
   // Disable sandboxing as it causes crashes in ASAN: crbug.com/127536
   bool disable_sandbox = false;
@@ -295,6 +298,22 @@ void ChromiumCommandBuilder::AddVmodulePattern(const std::string& pattern) {
 
 base::FilePath ChromiumCommandBuilder::GetPath(const std::string& path) const {
   return util::GetReparentedPath(path, base_path_for_testing_);
+}
+
+bool ChromiumCommandBuilder::SetUpX11(const base::FilePath& xauth_file) {
+  const base::FilePath user_xauth_file(
+      base::FilePath(ReadEnvVar("DATA_DIR")).Append(".Xauthority"));
+  if (!base::CopyFile(xauth_file, user_xauth_file)) {
+    PLOG(ERROR) << "Unable to copy " << xauth_file.value() << " to "
+                << user_xauth_file.value();
+    return false;
+  }
+  if (!util::SetPermissions(user_xauth_file, uid_, gid_, 0600))
+    return false;
+
+  AddEnvVar("XAUTHORITY", user_xauth_file.value());
+  AddEnvVar("DISPLAY", ":0.0");
+  return true;
 }
 
 bool ChromiumCommandBuilder::SetUpASAN() {

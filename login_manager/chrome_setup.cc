@@ -25,10 +25,8 @@ namespace login_manager {
 
 namespace {
 
-// User, VT, and authority file used for running the X server.
-const char kXorgUser[] = "xorg";
-const int kXorgVt = 1;
-const char kXauthFile[] = "/var/run/chromelogin.auth";
+// Authority file used for running the X server.
+const char kXauthPath[] = "/var/run/chromelogin.auth";
 
 // Path to file containing developer-supplied modifications to Chrome's
 // environment and command line. Passed to
@@ -191,23 +189,13 @@ void AddSystemFlags(ChromiumCommandBuilder* builder) {
 }
 
 // Adds UI-related flags to the command line.
-void AddUiFlags(ChromiumCommandBuilder* builder, bool using_x11) {
+void AddUiFlags(ChromiumCommandBuilder* builder) {
   const base::FilePath data_dir = GetDataDir(builder);
 
   // Force OOBE on test images that have requested it.
   if (base::PathExists(base::FilePath("/root/.test_repeat_oobe"))) {
     base::DeleteFile(data_dir.Append(".oobe_completed"), false);
     base::DeleteFile(data_dir.Append("Local State"), false);
-  }
-
-  if (using_x11) {
-    const base::FilePath user_xauth_file(data_dir.Append(".Xauthority"));
-    PCHECK(base::CopyFile(base::FilePath(kXauthFile), user_xauth_file))
-        << "Unable to copy " << kXauthFile << " to " << user_xauth_file.value();
-    CHECK(SetPermissions(
-        user_xauth_file, builder->uid(), builder->gid(), 0600));
-    builder->AddEnvVar("XAUTHORITY", user_xauth_file.value());
-    builder->AddEnvVar("DISPLAY", ":0.0");
   }
 
   builder->AddArg("--login-manager");
@@ -298,15 +286,16 @@ void PerformChromeSetup(std::map<std::string, std::string>* env_vars_out,
 
   // Start X in the background before doing more-expensive setup.
   scoped_ptr<XServerRunner> x_runner;
+  const base::FilePath xauth_path(kXauthPath);
   const bool using_x11 = builder.UseFlagIsSet("X");
   if (using_x11) {
     x_runner.reset(new XServerRunner);
     CHECK(x_runner->StartServer(
-        kXorgUser, kXorgVt, builder.is_developer_end_user(),
-        base::FilePath(kXauthFile)));
+        XServerRunner::kDefaultUser, XServerRunner::kDefaultVt,
+        builder.is_developer_end_user(), xauth_path));
   }
 
-  builder.SetUpChromium();
+  builder.SetUpChromium(using_x11 ? xauth_path : base::FilePath());
 
   // Please add new code to the most-appropriate helper function instead of
   // putting it here. Things that to all Chromium-derived binaries (e.g.
@@ -315,7 +304,7 @@ void PerformChromeSetup(std::map<std::string, std::string>* env_vars_out,
   CreateDirectories(&builder);
   InitCrashHandling(&builder);
   AddSystemFlags(&builder);
-  AddUiFlags(&builder, using_x11);
+  AddUiFlags(&builder);
   AddEnterpriseFlags(&builder);
   AddVmodulePatterns(&builder);
 
