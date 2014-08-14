@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
+#include <chromeos/dbus_utils.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 
@@ -160,26 +161,6 @@ class ExportedPropertySet {
   DISALLOW_COPY_AND_ASSIGN(ExportedPropertySet);
 };
 
-void AppendPropertyToWriter(dbus::MessageWriter* writer, bool value);
-void AppendPropertyToWriter(dbus::MessageWriter* writer, uint8_t value);
-void AppendPropertyToWriter(dbus::MessageWriter* writer, int16_t value);
-void AppendPropertyToWriter(dbus::MessageWriter* writer, uint16_t value);
-void AppendPropertyToWriter(dbus::MessageWriter* writer, int32_t value);
-void AppendPropertyToWriter(dbus::MessageWriter* writer, uint32_t value);
-void AppendPropertyToWriter(dbus::MessageWriter* writer, int64_t value);
-void AppendPropertyToWriter(dbus::MessageWriter* writer, uint64_t value);
-void AppendPropertyToWriter(dbus::MessageWriter* writer, double value);
-void AppendPropertyToWriter(dbus::MessageWriter* writer,
-                            const std::string& value);
-void AppendPropertyToWriter(dbus::MessageWriter* writer,
-                            const dbus::ObjectPath& value);
-void AppendPropertyToWriter(dbus::MessageWriter* writer,
-                            const std::vector<std::string>& value);
-void AppendPropertyToWriter(dbus::MessageWriter* writer,
-                            const std::vector<dbus::ObjectPath>& value);
-void AppendPropertyToWriter(dbus::MessageWriter* writer,
-                            const std::vector<uint8_t>& value);
-
 template <typename T>
 class ExportedProperty : public ExportedPropertyBase {
  public:
@@ -200,7 +181,7 @@ class ExportedProperty : public ExportedPropertyBase {
 
   // Implementation provided by specialization.
   void AppendValueToWriter(dbus::MessageWriter* writer) const override {
-    AppendPropertyToWriter(writer, value_);
+    chromeos::dbus_utils::AppendValueToWriterAsVariant(writer, value_);
   }
 
  private:
