@@ -31,12 +31,12 @@ class InputStub : public InputInterface {
   void NotifyObserversAboutPowerButtonEvent(ButtonState state);
 
   // InputInterface implementation:
-  virtual void AddObserver(InputObserver* observer) OVERRIDE;
-  virtual void RemoveObserver(InputObserver* observer) OVERRIDE;
-  virtual LidState QueryLidState() OVERRIDE;
-  virtual bool IsUSBInputDeviceConnected() const OVERRIDE;
-  virtual int GetActiveVT() OVERRIDE;
-  virtual void SetInputDevicesCanWake(bool enable) OVERRIDE;
+  void AddObserver(InputObserver* observer) override;
+  void RemoveObserver(InputObserver* observer) override;
+  LidState QueryLidState() override;
+  bool IsUSBInputDeviceConnected() const override;
+  int GetActiveVT() override;
+  void SetInputDevicesCanWake(bool enable) override;
 
  private:
   // Current input state.

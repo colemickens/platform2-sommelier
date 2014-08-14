@@ -21,16 +21,16 @@ class AcpiWakeupFile : public AcpiWakeupFileInterface {
   AcpiWakeupFile() {}
   virtual ~AcpiWakeupFile() {}
 
-  virtual bool Exists() OVERRIDE {
+  bool Exists() override {
     return base::PathExists(kAcpiWakeupPath);
   }
 
-  virtual bool Read(std::string* contents) OVERRIDE {
+  bool Read(std::string* contents) override {
     CHECK(contents);
     return base::ReadFileToString(kAcpiWakeupPath, contents);
   }
 
-  virtual bool Write(const std::string& contents) OVERRIDE {
+  bool Write(const std::string& contents) override {
     int bytes_written = base::WriteFile(kAcpiWakeupPath, contents.data(),
                                         contents.size());
     return bytes_written == static_cast<int>(contents.size());

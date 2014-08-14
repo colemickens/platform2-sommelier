@@ -49,26 +49,25 @@ class TestInputControllerDelegate : public InputController::Delegate,
   virtual ~TestInputControllerDelegate() {}
 
   // InputController::Delegate implementation:
-  virtual void HandleLidClosed() OVERRIDE {
+  void HandleLidClosed() override {
     AppendAction(kLidClosed);
   }
-  virtual void HandleLidOpened() OVERRIDE {
+  void HandleLidOpened() override {
     AppendAction(kLidOpened);
   }
-  virtual void HandlePowerButtonEvent(ButtonState state) {
+  void HandlePowerButtonEvent(ButtonState state) override {
     AppendAction(state == BUTTON_DOWN ? kPowerButtonDown : kPowerButtonUp);
   }
-  virtual void DeferInactivityTimeoutForVT2() OVERRIDE {
+  void DeferInactivityTimeoutForVT2() override {
     AppendAction(kDeferInactivity);
   }
-  virtual void ShutDownForPowerButtonWithNoDisplay() OVERRIDE {
+  void ShutDownForPowerButtonWithNoDisplay() override {
     AppendAction(kShutDown);
   }
-  virtual void HandleMissingPowerButtonAcknowledgment() OVERRIDE {
+  void HandleMissingPowerButtonAcknowledgment() override {
     AppendAction(kMissingPowerButtonAcknowledgment);
   }
-  virtual void ReportPowerButtonAcknowledgmentDelay(base::TimeDelta delay)
-      OVERRIDE {
+  void ReportPowerButtonAcknowledgmentDelay(base::TimeDelta delay) override {
     AppendAction(GetAcknowledgmentDelayAction(delay));
   }
 

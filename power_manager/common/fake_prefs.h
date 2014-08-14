@@ -31,16 +31,15 @@ class FakePrefs : public PrefsInterface {
   void NotifyObservers(const std::string& name);
 
   // PrefsInterface implementation:
-  virtual void AddObserver(PrefsObserver* observer) OVERRIDE;
-  virtual void RemoveObserver(PrefsObserver* observer) OVERRIDE;
-  virtual bool GetString(const std::string& name, std::string* value) OVERRIDE;
-  virtual bool GetInt64(const std::string& name, int64_t* value) OVERRIDE;
-  virtual bool GetDouble(const std::string& name, double* value) OVERRIDE;
-  virtual bool GetBool(const std::string& name, bool* value) OVERRIDE;
-  virtual void SetString(const std::string& name,
-                         const std::string& value) OVERRIDE;
-  virtual void SetInt64(const std::string& name, int64_t value) OVERRIDE;
-  virtual void SetDouble(const std::string& name, double value) OVERRIDE;
+  void AddObserver(PrefsObserver* observer) override;
+  void RemoveObserver(PrefsObserver* observer) override;
+  bool GetString(const std::string& name, std::string* value) override;
+  bool GetInt64(const std::string& name, int64_t* value) override;
+  bool GetDouble(const std::string& name, double* value) override;
+  bool GetBool(const std::string& name, bool* value) override;
+  void SetString(const std::string& name, const std::string& value) override;
+  void SetInt64(const std::string& name, int64_t value) override;
+  void SetDouble(const std::string& name, double value) override;
 
  private:
   ObserverList<PrefsObserver> observers_;

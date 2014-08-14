@@ -235,43 +235,43 @@ class Daemon::StateControllerDelegate
   }
 
   // Overridden from policy::StateController::Delegate:
-  virtual bool IsUsbInputDeviceConnected() OVERRIDE {
+  bool IsUsbInputDeviceConnected() override {
     return daemon_->input_->IsUSBInputDeviceConnected();
   }
 
-  virtual bool IsOobeCompleted() OVERRIDE {
+  bool IsOobeCompleted() override {
     return base::PathExists(base::FilePath(kOobeCompletedPath));
   }
 
-  virtual bool IsHdmiAudioActive() OVERRIDE {
+  bool IsHdmiAudioActive() override {
     return daemon_->audio_client_->hdmi_active();
   }
 
-  virtual bool IsHeadphoneJackPlugged() OVERRIDE {
+  bool IsHeadphoneJackPlugged() override {
     return daemon_->audio_client_->headphone_jack_plugged();
   }
 
-  virtual LidState QueryLidState() OVERRIDE {
+  LidState QueryLidState() override {
     return daemon_->input_->QueryLidState();
   }
 
-  virtual void DimScreen() OVERRIDE {
+  void DimScreen() override {
     daemon_->SetBacklightsDimmedForInactivity(true);
   }
 
-  virtual void UndimScreen() OVERRIDE {
+  void UndimScreen() override {
     daemon_->SetBacklightsDimmedForInactivity(false);
   }
 
-  virtual void TurnScreenOff() OVERRIDE {
+  void TurnScreenOff() override {
     daemon_->SetBacklightsOffForInactivity(true);
   }
 
-  virtual void TurnScreenOn() OVERRIDE {
+  void TurnScreenOn() override {
     daemon_->SetBacklightsOffForInactivity(false);
   }
 
-  virtual void LockScreen() OVERRIDE {
+  void LockScreen() override {
     dbus::MethodCall method_call(
         login_manager::kSessionManagerInterface,
         login_manager::kSessionManagerLockScreen);
@@ -280,11 +280,11 @@ class Daemon::StateControllerDelegate
             &method_call, kSessionManagerDBusTimeoutMs));
   }
 
-  virtual void Suspend() OVERRIDE {
+  void Suspend() override {
     daemon_->Suspend(false, 0);
   }
 
-  virtual void StopSession() OVERRIDE {
+  void StopSession() override {
     // This session manager method takes a string argument, although it
     // doesn't currently do anything with it.
     dbus::MethodCall method_call(
@@ -297,28 +297,28 @@ class Daemon::StateControllerDelegate
             &method_call, kSessionManagerDBusTimeoutMs));
   }
 
-  virtual void ShutDown() OVERRIDE {
+  void ShutDown() override {
     daemon_->ShutDown(SHUTDOWN_MODE_POWER_OFF,
                       SHUTDOWN_REASON_STATE_TRANSITION);
   }
 
-  virtual void UpdatePanelForDockedMode(bool docked) OVERRIDE {
+  void UpdatePanelForDockedMode(bool docked) override {
     daemon_->SetBacklightsDocked(docked);
   }
 
-  virtual void EmitIdleActionImminent(
-      base::TimeDelta time_until_idle_action) OVERRIDE {
+  void EmitIdleActionImminent(
+      base::TimeDelta time_until_idle_action) override {
     IdleActionImminent proto;
     proto.set_time_until_idle_action(time_until_idle_action.ToInternalValue());
     daemon_->dbus_sender_->EmitSignalWithProtocolBuffer(
         kIdleActionImminentSignal, proto);
   }
 
-  virtual void EmitIdleActionDeferred() OVERRIDE {
+  void EmitIdleActionDeferred() override {
     daemon_->dbus_sender_->EmitBareSignal(kIdleActionDeferredSignal);
   }
 
-  virtual void ReportUserActivityMetrics() OVERRIDE {
+  void ReportUserActivityMetrics() override {
     daemon_->metrics_collector_->GenerateUserActivityMetrics();
   }
 

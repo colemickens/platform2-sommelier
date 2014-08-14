@@ -25,36 +25,31 @@ class BacklightControllerStub : public policy::BacklightController {
   void set_num_user_adjustments(int num) { num_user_adjustments_ = num; }
 
   // policy::BacklightController implementation:
-  virtual void AddObserver(
-      policy::BacklightControllerObserver* observer) OVERRIDE;
-  virtual void RemoveObserver(
-      policy::BacklightControllerObserver* observer) OVERRIDE;
-  virtual void HandlePowerSourceChange(PowerSource source) OVERRIDE {}
-  virtual void HandleDisplayModeChange(DisplayMode mode) OVERRIDE {}
-  virtual void HandleSessionStateChange(SessionState state) OVERRIDE {}
-  virtual void HandlePowerButtonPress() OVERRIDE {}
-  virtual void HandleUserActivity(UserActivityType type) OVERRIDE {}
-  virtual void HandlePolicyChange(const PowerManagementPolicy& policy)
-      OVERRIDE {}
-  virtual void HandleChromeStart() OVERRIDE {}
-  virtual void SetDimmedForInactivity(bool dimmed) OVERRIDE {}
-  virtual void SetOffForInactivity(bool off) OVERRIDE {}
-  virtual void SetSuspended(bool suspended) OVERRIDE {}
-  virtual void SetShuttingDown(bool shutting_down) OVERRIDE {}
-  virtual void SetDocked(bool docked) OVERRIDE {}
-  virtual bool GetBrightnessPercent(double* percent) OVERRIDE;
-  virtual bool SetUserBrightnessPercent(double percent, TransitionStyle style)
-      OVERRIDE {
+  void AddObserver(policy::BacklightControllerObserver* observer) override;
+  void RemoveObserver(policy::BacklightControllerObserver* observer) override;
+  void HandlePowerSourceChange(PowerSource source) override {}
+  void HandleDisplayModeChange(DisplayMode mode) override {}
+  void HandleSessionStateChange(SessionState state) override {}
+  void HandlePowerButtonPress() override {}
+  void HandleUserActivity(UserActivityType type) override {}
+  void HandlePolicyChange(const PowerManagementPolicy& policy) override {}
+  void HandleChromeStart() override {}
+  void SetDimmedForInactivity(bool dimmed) override {}
+  void SetOffForInactivity(bool off) override {}
+  void SetSuspended(bool suspended) override {}
+  void SetShuttingDown(bool shutting_down) override {}
+  void SetDocked(bool docked) override {}
+  bool GetBrightnessPercent(double* percent) override;
+  bool SetUserBrightnessPercent(double percent,
+                                TransitionStyle style) override {
     return true;
   }
-  virtual bool IncreaseUserBrightness() OVERRIDE { return true; }
-  virtual bool DecreaseUserBrightness(bool allow_off) OVERRIDE { return true; }
-  virtual int GetNumAmbientLightSensorAdjustments() const OVERRIDE {
+  bool IncreaseUserBrightness() override { return true; }
+  bool DecreaseUserBrightness(bool allow_off) override { return true; }
+  int GetNumAmbientLightSensorAdjustments() const override {
     return num_als_adjustments_;
   }
-  virtual int GetNumUserAdjustments() const OVERRIDE {
-    return num_user_adjustments_;
-  }
+  int GetNumUserAdjustments() const override { return num_user_adjustments_; }
 
   // Notify |observers_| that the brightness has changed to |percent| due
   // to |cause|. Also updates |percent_|.

@@ -30,11 +30,10 @@ class BacklightStub : public BacklightInterface {
   base::TimeDelta current_interval() const { return current_interval_; }
 
   // BacklightInterface implementation:
-  virtual int64_t GetMaxBrightnessLevel() OVERRIDE;
-  virtual int64_t GetCurrentBrightnessLevel() OVERRIDE;
-  virtual bool SetBrightnessLevel(int64_t level, base::TimeDelta interval)
-      OVERRIDE;
-  virtual bool SetResumeBrightnessLevel(int64_t level) OVERRIDE;
+  int64_t GetMaxBrightnessLevel() override;
+  int64_t GetCurrentBrightnessLevel() override;
+  bool SetBrightnessLevel(int64_t level, base::TimeDelta interval) override;
+  bool SetResumeBrightnessLevel(int64_t level) override;
 
  private:
   // Maximum backlight level.

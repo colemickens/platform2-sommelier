@@ -18,25 +18,25 @@ class FakeService : public Service {
   virtual ~FakeService();
 
   // easy_unlock::Service overrides:
-  virtual void GenerateEcP256KeyPair(std::vector<uint8_t>* private_key,
-                                     std::vector<uint8_t>* public_key) OVERRIDE;
-  virtual std::vector<uint8_t> PerformECDHKeyAgreement(
+  void GenerateEcP256KeyPair(std::vector<uint8_t>* private_key,
+                             std::vector<uint8_t>* public_key) override;
+  std::vector<uint8_t> PerformECDHKeyAgreement(
       const std::vector<uint8_t>& private_key,
-      const std::vector<uint8_t>& public_key) OVERRIDE;
-  virtual std::vector<uint8_t> CreateSecureMessage(
+      const std::vector<uint8_t>& public_key) override;
+  std::vector<uint8_t> CreateSecureMessage(
       const std::vector<uint8_t>& payload,
       const std::vector<uint8_t>& key,
       const std::vector<uint8_t>& associated_data,
       const std::vector<uint8_t>& public_metadata,
       const std::vector<uint8_t>& verification_key_id,
       easy_unlock_crypto::ServiceImpl::EncryptionType encryption_type,
-      easy_unlock_crypto::ServiceImpl::SignatureType signature_type) OVERRIDE;
-  virtual std::vector<uint8_t> UnwrapSecureMessage(
+      easy_unlock_crypto::ServiceImpl::SignatureType signature_type) override;
+  std::vector<uint8_t> UnwrapSecureMessage(
       const std::vector<uint8_t>& secure_message,
       const std::vector<uint8_t>& key,
       const std::vector<uint8_t>& associated_data,
       easy_unlock_crypto::ServiceImpl::EncryptionType encryption_type,
-      easy_unlock_crypto::ServiceImpl::SignatureType signature_type) OVERRIDE;
+      easy_unlock_crypto::ServiceImpl::SignatureType signature_type) override;
 
  private:
   int private_key_count_;

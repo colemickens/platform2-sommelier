@@ -41,8 +41,7 @@ class TestObserver : public AmbientLightObserver {
   }
 
   // AmbientLightObserver implementation:
-  virtual void OnAmbientLightUpdated(
-      AmbientLightSensorInterface* sensor) OVERRIDE {
+  void OnAmbientLightUpdated(AmbientLightSensorInterface* sensor) override {
     loop_runner_.StopLoop();
   }
 
@@ -59,7 +58,7 @@ class AmbientLightSensorTest : public ::testing::Test {
   AmbientLightSensorTest() {}
   virtual ~AmbientLightSensorTest() {}
 
-  virtual void SetUp() OVERRIDE {
+  void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());
     base::FilePath device_dir = temp_dir_.path().Append("device0");
     CHECK(base::CreateDirectory(device_dir));
@@ -71,7 +70,7 @@ class AmbientLightSensorTest : public ::testing::Test {
     sensor_->Init();
   }
 
-  virtual void TearDown() OVERRIDE {
+  void TearDown() override {
     sensor_->RemoveObserver(&observer_);
   }
 

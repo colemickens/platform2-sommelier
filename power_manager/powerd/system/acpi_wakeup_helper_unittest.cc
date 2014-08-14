@@ -37,18 +37,18 @@ class FakeAcpiWakeupFile : public AcpiWakeupFileInterface {
   FakeAcpiWakeupFile()
       : contents_(NULL), expected_write_(NULL), contents_after_write_(NULL) {}
 
-  virtual bool Exists() OVERRIDE {
+  bool Exists() override {
     return contents_ != NULL;
   }
 
-  virtual bool Read(std::string* contents) OVERRIDE {
+  bool Read(std::string* contents) override {
     if (!contents_)
       return false;
     *contents = contents_;
     return true;
   }
 
-  virtual bool Write(const std::string& contents) OVERRIDE {
+  bool Write(const std::string& contents) override {
     if (!expected_write_ || contents != std::string(expected_write_)) {
       ADD_FAILURE() << "Unexpected write";
       return false;

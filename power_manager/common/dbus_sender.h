@@ -50,10 +50,10 @@ class DBusSender : public DBusSenderInterface {
   void Init(dbus::ExportedObject* object, const std::string& interface);
 
   // DBusSenderInterface override:
-  virtual void EmitBareSignal(const std::string& signal_name) OVERRIDE;
-  virtual void EmitSignalWithProtocolBuffer(
+  void EmitBareSignal(const std::string& signal_name) override;
+  void EmitSignalWithProtocolBuffer(
       const std::string& signal_name,
-      const google::protobuf::MessageLite& protobuf) OVERRIDE;
+      const google::protobuf::MessageLite& protobuf) override;
 
  private:
   dbus::ExportedObject* object_;

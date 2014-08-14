@@ -54,14 +54,12 @@ class MetricsSender : public MetricsSenderInterface {
   virtual ~MetricsSender();
 
   // MetricsSenderInterface implementation:
-  virtual bool SendMetric(const std::string& name,
-                          int sample,
-                          int min,
-                          int max,
-                          int num_buckets) OVERRIDE;
-  virtual bool SendEnumMetric(const std::string& name,
-                              int sample,
-                              int max) OVERRIDE;
+  bool SendMetric(const std::string& name,
+                  int sample,
+                  int min,
+                  int max,
+                  int num_buckets) override;
+  bool SendEnumMetric(const std::string& name, int sample, int max) override;
 
  private:
   scoped_ptr<MetricsLibraryInterface> metrics_lib_;

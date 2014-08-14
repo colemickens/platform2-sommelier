@@ -70,7 +70,7 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
   PeripheralBatteryWatcherTest() {}
   virtual ~PeripheralBatteryWatcherTest() {}
 
-  virtual void SetUp() OVERRIDE {
+  void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());
     base::FilePath device_dir = temp_dir_.path().Append("hid-1-battery");
     CHECK(base::CreateDirectory(device_dir));

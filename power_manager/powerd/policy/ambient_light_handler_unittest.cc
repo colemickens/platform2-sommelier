@@ -29,9 +29,9 @@ class TestDelegate : public AmbientLightHandler::Delegate {
   double percent() const { return percent_; }
   AmbientLightHandler::BrightnessChangeCause cause() const { return cause_; }
 
-  virtual void SetBrightnessPercentForAmbientLight(
+  void SetBrightnessPercentForAmbientLight(
       double brightness_percent,
-      AmbientLightHandler::BrightnessChangeCause cause) OVERRIDE {
+      AmbientLightHandler::BrightnessChangeCause cause) override {
     percent_ = brightness_percent;
     cause_ = cause;
   }

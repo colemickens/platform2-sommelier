@@ -209,7 +209,7 @@ class Suspender : public SuspendDelayObserver {
                                   const std::string& new_owner);
 
   // SuspendDelayObserver override:
-  virtual void OnReadyForSuspend(int suspend_id) OVERRIDE;
+  void OnReadyForSuspend(int suspend_id) override;
 
  private:
   // States that Suspender can be in while the event loop is running.

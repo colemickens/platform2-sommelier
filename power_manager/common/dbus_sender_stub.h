@@ -44,10 +44,10 @@ class DBusSenderStub : public DBusSenderInterface {
   void ClearSentSignals();
 
   // DBusSenderInterface override:
-  virtual void EmitBareSignal(const std::string& signal_name) OVERRIDE;
-  virtual void EmitSignalWithProtocolBuffer(
+  void EmitBareSignal(const std::string& signal_name) override;
+  void EmitSignalWithProtocolBuffer(
       const std::string& signal_name,
-      const google::protobuf::MessageLite& protobuf) OVERRIDE;
+      const google::protobuf::MessageLite& protobuf) override;
 
  private:
   ScopedVector<SignalInfo> sent_signals_;

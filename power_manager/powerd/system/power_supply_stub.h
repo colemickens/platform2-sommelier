@@ -20,11 +20,11 @@ class PowerSupplyStub : public PowerSupplyInterface {
   void set_status(const PowerStatus& status) { status_ = status; }
 
   // PowerSupplyInterface implementation:
-  virtual void AddObserver(PowerSupplyObserver* observer) OVERRIDE;
-  virtual void RemoveObserver(PowerSupplyObserver* observer) OVERRIDE;
-  virtual PowerStatus GetPowerStatus() const OVERRIDE;
-  virtual bool RefreshImmediately() OVERRIDE;
-  virtual void SetSuspended(bool suspended) OVERRIDE;
+  void AddObserver(PowerSupplyObserver* observer) override;
+  void RemoveObserver(PowerSupplyObserver* observer) override;
+  PowerStatus GetPowerStatus() const override;
+  bool RefreshImmediately() override;
+  void SetSuspended(bool suspended) override;
 
  private:
   // Result to return from RefreshImmediately().

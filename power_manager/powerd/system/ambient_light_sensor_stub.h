@@ -24,9 +24,9 @@ class AmbientLightSensorStub : public AmbientLightSensorInterface {
   void NotifyObservers();
 
   // AmbientLightSensorInterface implementation:
-  virtual void AddObserver(AmbientLightObserver* observer) OVERRIDE;
-  virtual void RemoveObserver(AmbientLightObserver* observer) OVERRIDE;
-  virtual int GetAmbientLightLux() OVERRIDE;
+  void AddObserver(AmbientLightObserver* observer) override;
+  void RemoveObserver(AmbientLightObserver* observer) override;
+  int GetAmbientLightLux() override;
 
  private:
   ObserverList<AmbientLightObserver> observers_;

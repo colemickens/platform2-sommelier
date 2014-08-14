@@ -146,8 +146,8 @@ class ExternalDisplay {
     bool Init(const base::FilePath& i2c_path);
 
     // Delegate implementation:
-    virtual std::string GetName() const OVERRIDE;
-    virtual bool PerformI2COperation(struct i2c_rdwr_ioctl_data* data) OVERRIDE;
+    std::string GetName() const override;
+    bool PerformI2COperation(struct i2c_rdwr_ioctl_data* data) override;
 
    private:
     // These values are reported as a histogram and cannot be renumbered.

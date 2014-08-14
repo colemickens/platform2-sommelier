@@ -27,10 +27,10 @@ class UdevStub : public UdevInterface {
   bool HasObserver(const std::string& subsystem, UdevObserver* observer) const;
 
   // UdevInterface implementation:
-  virtual void AddObserver(const std::string& subsystem,
-                           UdevObserver* observer) OVERRIDE;
-  virtual void RemoveObserver(const std::string& subsystem,
-                              UdevObserver* observer) OVERRIDE;
+  void AddObserver(const std::string& subsystem,
+                   UdevObserver* observer) override;
+  void RemoveObserver(const std::string& subsystem,
+                      UdevObserver* observer) override;
 
  private:
   // Registered observers keyed by subsystem.

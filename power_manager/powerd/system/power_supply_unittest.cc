@@ -94,7 +94,7 @@ class TestObserver : public PowerSupplyObserver {
   }
 
   // PowerSupplyObserver overrides:
-  virtual void OnPowerStatusUpdate() OVERRIDE {
+  void OnPowerStatusUpdate() override {
     runner_.StopLoop();
   }
 

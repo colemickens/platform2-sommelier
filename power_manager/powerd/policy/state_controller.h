@@ -151,7 +151,7 @@ class StateController : public PrefsObserver {
   void HandleAudioStateChange(bool active);
 
   // PrefsInterface::Observer implementation:
-  virtual void OnPrefChanged(const std::string& pref_name) OVERRIDE;
+  void OnPrefChanged(const std::string& pref_name) override;
 
  private:
   // Holds a collection of delays.

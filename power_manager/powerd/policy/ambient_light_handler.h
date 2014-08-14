@@ -88,8 +88,8 @@ class AmbientLightHandler : public system::AmbientLightObserver {
   void HandlePowerSourceChange(PowerSource source);
 
   // system::AmbientLightObserver implementation:
-  virtual void OnAmbientLightUpdated(
-      system::AmbientLightSensorInterface* sensor) OVERRIDE;
+  void OnAmbientLightUpdated(
+      system::AmbientLightSensorInterface* sensor) override;
 
  private:
   // Contains information from prefs about a brightness step.

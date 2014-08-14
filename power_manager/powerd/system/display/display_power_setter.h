@@ -50,9 +50,9 @@ class DisplayPowerSetter : public DisplayPowerSetterInterface {
   void Init(dbus::ObjectProxy* chrome_proxy);
 
   // DisplayPowerSetterInterface implementation:
-  virtual void SetDisplayPower(chromeos::DisplayPowerState state,
-                               base::TimeDelta delay) OVERRIDE;
-  virtual void SetDisplaySoftwareDimming(bool dimmed) OVERRIDE;
+  void SetDisplayPower(chromeos::DisplayPowerState state,
+                       base::TimeDelta delay) override;
+  void SetDisplaySoftwareDimming(bool dimmed) override;
 
  private:
   // Makes an asynchronous D-Bus method call to Chrome to apply |state|.

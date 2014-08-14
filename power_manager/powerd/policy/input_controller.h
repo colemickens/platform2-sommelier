@@ -94,8 +94,8 @@ class InputController : public system::InputObserver {
   void HandlePowerButtonAcknowledgment(const base::TimeTicks& timestamp);
 
   // system::InputObserver implementation:
-  virtual void OnLidEvent(LidState state) OVERRIDE;
-  virtual void OnPowerButtonEvent(ButtonState state) OVERRIDE;
+  void OnLidEvent(LidState state) override;
+  void OnPowerButtonEvent(ButtonState state) override;
 
  private:
   // Asks |delegate_| to defer the inactivity timeout if the second virtual

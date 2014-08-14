@@ -52,7 +52,7 @@ class TestPrefsObserver : public PrefsObserver {
   }
 
   // PrefsObserver implementation:
-  void OnPrefChanged(const std::string& pref_name) OVERRIDE {
+  void OnPrefChanged(const std::string& pref_name) override {
     loop_runner_.StopLoop();
     pref_name_ = pref_name;
   }

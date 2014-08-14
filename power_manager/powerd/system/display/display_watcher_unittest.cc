@@ -28,8 +28,7 @@ class TestObserver : public DisplayWatcherObserver {
   int num_display_changes() const { return num_display_changes_; }
 
   // DisplayWatcherObserver implementation:
-  virtual void OnDisplaysChanged(const std::vector<DisplayInfo>& displays)
-      OVERRIDE {
+  void OnDisplaysChanged(const std::vector<DisplayInfo>& displays) override {
     num_display_changes_++;
   }
 

@@ -25,10 +25,9 @@ class DarkResumeStub : public DarkResumeInterface {
   }
 
   // DarkResumeInterface implementation:
-  virtual void PrepareForSuspendAttempt(
-      Action* action,
-      base::TimeDelta* suspend_duration) OVERRIDE;
-  virtual bool InDarkResume() OVERRIDE;
+  void PrepareForSuspendAttempt(Action* action,
+                                base::TimeDelta* suspend_duration) override;
+  bool InDarkResume() override;
 
  private:
   // Values to return.

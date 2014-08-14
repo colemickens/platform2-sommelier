@@ -76,30 +76,30 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   int num_suspend_attempts() const { return num_suspend_attempts_; }
 
   // Delegate implementation:
-  virtual int GetInitialSuspendId() OVERRIDE { return 1; }
+  int GetInitialSuspendId() override { return 1; }
 
-  virtual bool IsLidClosedForSuspend() OVERRIDE { return lid_closed_; }
+  bool IsLidClosedForSuspend() override { return lid_closed_; }
 
-  virtual bool ReadSuspendWakeupCount(uint64_t* wakeup_count) OVERRIDE {
+  bool ReadSuspendWakeupCount(uint64_t* wakeup_count) override {
     if (!report_success_for_read_wakeup_count_)
       return false;
     *wakeup_count = wakeup_count_;
     return true;
   }
 
-  virtual void SetSuspendAnnounced(bool announced) OVERRIDE {
+  void SetSuspendAnnounced(bool announced) override {
     suspend_announced_ = announced;
   }
 
-  virtual bool GetSuspendAnnounced() OVERRIDE { return suspend_announced_; }
+  bool GetSuspendAnnounced() override { return suspend_announced_; }
 
-  virtual void PrepareToSuspend() OVERRIDE {
+  void PrepareToSuspend() override {
     AppendAction(kPrepare);
   }
 
-  virtual SuspendResult DoSuspend(uint64_t wakeup_count,
+  SuspendResult DoSuspend(uint64_t wakeup_count,
                                   bool wakeup_count_valid,
-                                  base::TimeDelta duration) OVERRIDE {
+                                  base::TimeDelta duration) override {
     AppendAction(kSuspend);
     suspend_wakeup_count_ = wakeup_count;
     suspend_wakeup_count_valid_ = wakeup_count_valid;
@@ -108,20 +108,19 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
     return suspend_result_;
   }
 
-  virtual void UndoPrepareToSuspend(bool success,
-                                    int num_suspend_attempts) OVERRIDE {
+  void UndoPrepareToSuspend(bool success, int num_suspend_attempts) override {
     AppendAction(kUnprepare);
     suspend_was_successful_ = success;
     num_suspend_attempts_ = num_suspend_attempts;
     RunAndResetCallback(&completion_callback_);
   }
 
-  virtual void ShutDownForFailedSuspend() OVERRIDE {
+  void ShutDownForFailedSuspend() override {
     AppendAction(kShutDown);
     RunAndResetCallback(&shutdown_callback_);
   }
 
-  virtual void ShutDownForDarkResume() OVERRIDE {
+  void ShutDownForDarkResume() override {
     AppendAction(kShutDown);
     RunAndResetCallback(&shutdown_callback_);
   }

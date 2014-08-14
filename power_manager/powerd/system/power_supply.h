@@ -228,16 +228,16 @@ class PowerSupply : public PowerSupplyInterface, public UdevObserver {
             UdevInterface* udev);
 
   // PowerSupplyInterface implementation:
-  virtual void AddObserver(PowerSupplyObserver* observer) OVERRIDE;
-  virtual void RemoveObserver(PowerSupplyObserver* observer) OVERRIDE;
-  virtual PowerStatus GetPowerStatus() const OVERRIDE;
-  virtual bool RefreshImmediately() OVERRIDE;
-  virtual void SetSuspended(bool suspended) OVERRIDE;
+  void AddObserver(PowerSupplyObserver* observer) override;
+  void RemoveObserver(PowerSupplyObserver* observer) override;
+  PowerStatus GetPowerStatus() const override;
+  bool RefreshImmediately() override;
+  void SetSuspended(bool suspended) override;
 
   // UdevObserver implementation:
-  virtual void OnUdevEvent(const std::string& subsystem,
-                           const std::string& sysname,
-                           UdevObserver::Action action) OVERRIDE;
+  void OnUdevEvent(const std::string& subsystem,
+                   const std::string& sysname,
+                   UdevObserver::Action action) override;
 
  private:
   // Returns the value of |pref_name|, an int64_t pref containing a

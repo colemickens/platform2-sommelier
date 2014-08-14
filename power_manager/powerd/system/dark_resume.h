@@ -73,10 +73,9 @@ class DarkResume : public DarkResumeInterface {
   void Init(PowerSupplyInterface* power_supply, PrefsInterface* prefs);
 
   // DarkResumeInterface implementation:
-  virtual void PrepareForSuspendAttempt(
-      Action* action,
-      base::TimeDelta* suspend_duration) OVERRIDE;
-  virtual bool InDarkResume() OVERRIDE;
+  void PrepareForSuspendAttempt(Action* action,
+                                base::TimeDelta* suspend_duration) override;
+  bool InDarkResume() override;
 
  private:
   // Fills |suspend_durations_|, returning false if the pref was unset or empty.

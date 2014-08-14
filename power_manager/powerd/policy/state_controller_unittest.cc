@@ -76,36 +76,33 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
   void set_lid_state(LidState state) { lid_state_ = state; }
 
   // StateController::Delegate overrides:
-  virtual bool IsUsbInputDeviceConnected() OVERRIDE {
+  bool IsUsbInputDeviceConnected() override {
     return usb_input_device_connected_;
   }
-  virtual LidState QueryLidState() OVERRIDE {
-    return lid_state_;
-  }
-  virtual bool IsOobeCompleted() OVERRIDE { return oobe_completed_; }
-  virtual bool IsHdmiAudioActive() OVERRIDE { return hdmi_audio_active_; }
-  virtual bool IsHeadphoneJackPlugged() OVERRIDE {
+  LidState QueryLidState() override { return lid_state_; }
+  bool IsOobeCompleted() override { return oobe_completed_; }
+  bool IsHdmiAudioActive() override { return hdmi_audio_active_; }
+  bool IsHeadphoneJackPlugged() override {
     return headphone_jack_plugged_;
   }
-  virtual void DimScreen() OVERRIDE { AppendAction(kScreenDim); }
-  virtual void UndimScreen() OVERRIDE { AppendAction(kScreenUndim); }
-  virtual void TurnScreenOff() OVERRIDE { AppendAction(kScreenOff); }
-  virtual void TurnScreenOn() OVERRIDE { AppendAction(kScreenOn); }
-  virtual void LockScreen() OVERRIDE { AppendAction(kScreenLock); }
-  virtual void Suspend() OVERRIDE { AppendAction(kSuspend); }
-  virtual void StopSession() OVERRIDE { AppendAction(kStopSession); }
-  virtual void ShutDown() OVERRIDE { AppendAction(kShutDown); }
-  virtual void UpdatePanelForDockedMode(bool docked) OVERRIDE {
+  void DimScreen() override { AppendAction(kScreenDim); }
+  void UndimScreen() override { AppendAction(kScreenUndim); }
+  void TurnScreenOff() override { AppendAction(kScreenOff); }
+  void TurnScreenOn() override { AppendAction(kScreenOn); }
+  void LockScreen() override { AppendAction(kScreenLock); }
+  void Suspend() override { AppendAction(kSuspend); }
+  void StopSession() override { AppendAction(kStopSession); }
+  void ShutDown() override { AppendAction(kShutDown); }
+  void UpdatePanelForDockedMode(bool docked) override {
     AppendAction(docked ? kDocked : kUndocked);
   }
-  virtual void EmitIdleActionImminent(
-      base::TimeDelta time_until_idle_action) OVERRIDE {
+  void EmitIdleActionImminent(base::TimeDelta time_until_idle_action) override {
     AppendAction(GetIdleImminentAction(time_until_idle_action));
   }
-  virtual void EmitIdleActionDeferred() OVERRIDE {
+  void EmitIdleActionDeferred() override {
     AppendAction(kIdleDeferred);
   }
-  virtual void ReportUserActivityMetrics() OVERRIDE {
+  void ReportUserActivityMetrics() override {
     if (record_metrics_actions_)
       AppendAction(kReportUserActivityMetrics);
   }

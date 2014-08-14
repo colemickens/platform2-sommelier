@@ -44,14 +44,14 @@ class Udev : public UdevInterface, public base::MessageLoopForIO::Watcher {
   bool Init();
 
   // UdevInterface implementation:
-  virtual void AddObserver(const std::string& subsystem,
-                           UdevObserver* observer) OVERRIDE;
-  virtual void RemoveObserver(const std::string& subsystem,
-                              UdevObserver* observer) OVERRIDE;
+  void AddObserver(const std::string& subsystem,
+                   UdevObserver* observer) override;
+  void RemoveObserver(const std::string& subsystem,
+                      UdevObserver* observer) override;
 
   // base::MessageLoopForIO::Watcher implementation:
-  virtual void OnFileCanReadWithoutBlocking(int fd) OVERRIDE;
-  virtual void OnFileCanWriteWithoutBlocking(int fd) OVERRIDE;
+  void OnFileCanReadWithoutBlocking(int fd) override;
+  void OnFileCanWriteWithoutBlocking(int fd) override;
 
  private:
   struct udev* udev_;

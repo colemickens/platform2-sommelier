@@ -23,9 +23,9 @@ class DisplayWatcherStub : public DisplayWatcherInterface {
   }
 
   // DisplayWatcherInterface implementation:
-  virtual const std::vector<DisplayInfo>& GetDisplays() const OVERRIDE;
-  virtual void AddObserver(DisplayWatcherObserver* observer) OVERRIDE;
-  virtual void RemoveObserver(DisplayWatcherObserver* observer) OVERRIDE;
+  const std::vector<DisplayInfo>& GetDisplays() const override;
+  void AddObserver(DisplayWatcherObserver* observer) override;
+  void RemoveObserver(DisplayWatcherObserver* observer) override;
 
  private:
   // Currently-connected displays.

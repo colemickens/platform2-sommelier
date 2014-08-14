@@ -40,15 +40,14 @@ class AsynchronousSignalHandler : public base::MessageLoopForIO::Watcher {
   // flags you might be accustomed to using. This might matter if you hoped to
   // use SA_NOCLDSTOP to avoid getting a SIGCHLD when a child process receives a
   // SIGSTOP.
-  void RegisterHandler(int signal,
-                       const SignalHandler& callback);
+  void RegisterHandler(int signal, const SignalHandler& callback);
 
   // Unregister a previously registered handler for the given |signal|.
   void UnregisterHandler(int signal);
 
   // Implementation of base::MessageLoopForIO::Watcher
-  virtual void OnFileCanReadWithoutBlocking(int fd) OVERRIDE;
-  virtual void OnFileCanWriteWithoutBlocking(int fd) OVERRIDE;
+  void OnFileCanReadWithoutBlocking(int fd) override;
+  void OnFileCanWriteWithoutBlocking(int fd) override;
 
  private:
   // Controller used to manage watching of signalling pipe.

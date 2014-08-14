@@ -51,9 +51,9 @@ class TestDelegate : public ExternalDisplay::Delegate {
   }
 
   // ExternalDisplay::Delegate implementation:
-  virtual std::string GetName() const OVERRIDE { return "i2c-test"; }
+  std::string GetName() const override { return "i2c-test"; }
 
-  virtual bool PerformI2COperation(struct i2c_rdwr_ioctl_data* data) OVERRIDE {
+  bool PerformI2COperation(struct i2c_rdwr_ioctl_data* data) override {
     // Check that the passed-in data is remotely sane.
     CHECK(data);
     CHECK_EQ(data->nmsgs, 1u);

@@ -64,9 +64,9 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
   bool TriggerPollTimerForTesting();
 
   // AmbientLightSensorInterface implementation:
-  virtual void AddObserver(AmbientLightObserver* observer) OVERRIDE;
-  virtual void RemoveObserver(AmbientLightObserver* observer) OVERRIDE;
-  virtual int GetAmbientLightLux() OVERRIDE;
+  void AddObserver(AmbientLightObserver* observer) override;
+  void RemoveObserver(AmbientLightObserver* observer) override;
+  int GetAmbientLightLux() override;
 
  private:
   // Starts |poll_timer_|.

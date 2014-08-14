@@ -41,31 +41,30 @@ class ExternalBacklightController : public BacklightController,
             system::DisplayPowerSetterInterface* display_power_setter);
 
   // BacklightController implementation:
-  virtual void AddObserver(BacklightControllerObserver* observer) OVERRIDE;
-  virtual void RemoveObserver(BacklightControllerObserver* observer) OVERRIDE;
-  virtual void HandlePowerSourceChange(PowerSource source) OVERRIDE;
-  virtual void HandleDisplayModeChange(DisplayMode mode) OVERRIDE;
-  virtual void HandleSessionStateChange(SessionState state) OVERRIDE;
-  virtual void HandlePowerButtonPress() OVERRIDE;
-  virtual void HandleUserActivity(UserActivityType type) OVERRIDE;
-  virtual void HandlePolicyChange(const PowerManagementPolicy& policy) OVERRIDE;
-  virtual void HandleChromeStart() OVERRIDE;
-  virtual void SetDimmedForInactivity(bool dimmed) OVERRIDE;
-  virtual void SetOffForInactivity(bool off) OVERRIDE;
-  virtual void SetSuspended(bool suspended) OVERRIDE;
-  virtual void SetShuttingDown(bool shutting_down) OVERRIDE;
-  virtual void SetDocked(bool docked) OVERRIDE;
-  virtual bool GetBrightnessPercent(double* percent) OVERRIDE;
-  virtual bool SetUserBrightnessPercent(double percent, TransitionStyle style)
-      OVERRIDE;
-  virtual bool IncreaseUserBrightness() OVERRIDE;
-  virtual bool DecreaseUserBrightness(bool allow_off) OVERRIDE;
-  virtual int GetNumAmbientLightSensorAdjustments() const OVERRIDE;
-  virtual int GetNumUserAdjustments() const OVERRIDE;
+  void AddObserver(BacklightControllerObserver* observer) override;
+  void RemoveObserver(BacklightControllerObserver* observer) override;
+  void HandlePowerSourceChange(PowerSource source) override;
+  void HandleDisplayModeChange(DisplayMode mode) override;
+  void HandleSessionStateChange(SessionState state) override;
+  void HandlePowerButtonPress() override;
+  void HandleUserActivity(UserActivityType type) override;
+  void HandlePolicyChange(const PowerManagementPolicy& policy) override;
+  void HandleChromeStart() override;
+  void SetDimmedForInactivity(bool dimmed) override;
+  void SetOffForInactivity(bool off) override;
+  void SetSuspended(bool suspended) override;
+  void SetShuttingDown(bool shutting_down) override;
+  void SetDocked(bool docked) override;
+  bool GetBrightnessPercent(double* percent) override;
+  bool SetUserBrightnessPercent(double percent, TransitionStyle style) override;
+  bool IncreaseUserBrightness() override;
+  bool DecreaseUserBrightness(bool allow_off) override;
+  int GetNumAmbientLightSensorAdjustments() const override;
+  int GetNumUserAdjustments() const override;
 
   // system::DisplayWatcherObserver implementation:
-  virtual void OnDisplaysChanged(
-      const std::vector<system::DisplayInfo>& displays) OVERRIDE;
+  void OnDisplaysChanged(
+      const std::vector<system::DisplayInfo>& displays) override;
 
  private:
   // Turns displays on or off via |monitor_reconfigure_| as needed for

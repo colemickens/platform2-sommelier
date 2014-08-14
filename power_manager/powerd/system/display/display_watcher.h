@@ -64,14 +64,14 @@ class DisplayWatcher : public DisplayWatcherInterface, public UdevObserver {
   void Init(UdevInterface* udev);
 
   // DisplayWatcherInterface implementation:
-  virtual const std::vector<DisplayInfo>& GetDisplays() const OVERRIDE;
-  virtual void AddObserver(DisplayWatcherObserver* observer) OVERRIDE;
-  virtual void RemoveObserver(DisplayWatcherObserver* observer) OVERRIDE;
+  const std::vector<DisplayInfo>& GetDisplays() const override;
+  void AddObserver(DisplayWatcherObserver* observer) override;
+  void RemoveObserver(DisplayWatcherObserver* observer) override;
 
   // UdevObserver implementation:
-  virtual void OnUdevEvent(const std::string& subsystem,
-                           const std::string& sysname,
-                           UdevObserver::Action action) OVERRIDE;
+  void OnUdevEvent(const std::string& subsystem,
+                   const std::string& sysname,
+                   UdevObserver::Action action) override;
 
  private:
   // Returns the path to the I2C device used for communicating with the display

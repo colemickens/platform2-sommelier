@@ -27,9 +27,9 @@ class DisplayPowerSetterStub : public DisplayPowerSetterInterface {
   bool dimmed() const { return dimmed_; }
 
   // DisplayPowerSetterInterface implementation:
-  virtual void SetDisplayPower(chromeos::DisplayPowerState state,
-                               base::TimeDelta delay) OVERRIDE;
-  virtual void SetDisplaySoftwareDimming(bool dimmed) OVERRIDE;
+  void SetDisplayPower(chromeos::DisplayPowerState state,
+                       base::TimeDelta delay) override;
+  void SetDisplaySoftwareDimming(bool dimmed) override;
 
  private:
   // Arguments passed to most-recent SetDisplayPower() call.

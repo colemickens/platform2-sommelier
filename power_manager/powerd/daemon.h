@@ -77,41 +77,39 @@ class Daemon : public policy::BacklightControllerObserver,
   void Init();
 
   // Overridden from policy::BacklightControllerObserver:
-  virtual void OnBrightnessChanged(
+  void OnBrightnessChanged(
       double brightness_percent,
       policy::BacklightController::BrightnessChangeCause cause,
-      policy::BacklightController* source) OVERRIDE;
+      policy::BacklightController* source) override;
 
   // Overridden from policy::InputController::Delegate:
-  virtual void HandleLidClosed() OVERRIDE;
-  virtual void HandleLidOpened() OVERRIDE;
-  virtual void HandlePowerButtonEvent(ButtonState state) OVERRIDE;
-  virtual void DeferInactivityTimeoutForVT2() OVERRIDE;
-  virtual void ShutDownForPowerButtonWithNoDisplay() OVERRIDE;
-  virtual void HandleMissingPowerButtonAcknowledgment() OVERRIDE;
-  virtual void ReportPowerButtonAcknowledgmentDelay(base::TimeDelta delay)
-      OVERRIDE;
+  void HandleLidClosed() override;
+  void HandleLidOpened() override;
+  void HandlePowerButtonEvent(ButtonState state) override;
+  void DeferInactivityTimeoutForVT2() override;
+  void ShutDownForPowerButtonWithNoDisplay() override;
+  void HandleMissingPowerButtonAcknowledgment() override;
+  void ReportPowerButtonAcknowledgmentDelay(base::TimeDelta delay) override;
 
   // Overridden from policy::Suspender::Delegate:
-  virtual int GetInitialSuspendId() OVERRIDE;
-  virtual bool IsLidClosedForSuspend() OVERRIDE;
-  virtual bool ReadSuspendWakeupCount(uint64_t* wakeup_count) OVERRIDE;
-  virtual void SetSuspendAnnounced(bool announced) OVERRIDE;
-  virtual bool GetSuspendAnnounced() OVERRIDE;
-  virtual void PrepareToSuspend() OVERRIDE;
-  virtual SuspendResult DoSuspend(uint64_t wakeup_count,
-                                  bool wakeup_count_valid,
-                                  base::TimeDelta duration) OVERRIDE;
-  virtual void UndoPrepareToSuspend(bool success,
-                                    int num_suspend_attempts) OVERRIDE;
-  virtual void ShutDownForFailedSuspend() OVERRIDE;
-  virtual void ShutDownForDarkResume() OVERRIDE;
+  int GetInitialSuspendId() override;
+  bool IsLidClosedForSuspend() override;
+  bool ReadSuspendWakeupCount(uint64_t* wakeup_count) override;
+  void SetSuspendAnnounced(bool announced) override;
+  bool GetSuspendAnnounced() override;
+  void PrepareToSuspend() override;
+  SuspendResult DoSuspend(uint64_t wakeup_count,
+                          bool wakeup_count_valid,
+                          base::TimeDelta duration) override;
+  void UndoPrepareToSuspend(bool success, int num_suspend_attempts) override;
+  void ShutDownForFailedSuspend() override;
+  void ShutDownForDarkResume() override;
 
   // Overridden from system::AudioObserver:
-  virtual void OnAudioStateChange(bool active) OVERRIDE;
+  void OnAudioStateChange(bool active) override;
 
   // Overridden from system::PowerSupplyObserver:
-  virtual void OnPowerStatusUpdate() OVERRIDE;
+  void OnPowerStatusUpdate() override;
 
  private:
   class StateControllerDelegate;

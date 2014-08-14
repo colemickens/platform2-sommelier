@@ -48,21 +48,21 @@ class Input : public InputInterface,
   bool Init(PrefsInterface* prefs, UdevInterface* udev);
 
   // InputInterface implementation:
-  virtual void AddObserver(InputObserver* observer) OVERRIDE;
-  virtual void RemoveObserver(InputObserver* observer) OVERRIDE;
-  virtual LidState QueryLidState() OVERRIDE;
-  virtual bool IsUSBInputDeviceConnected() const OVERRIDE;
-  virtual int GetActiveVT() OVERRIDE;
-  virtual void SetInputDevicesCanWake(bool enable) OVERRIDE;
+  void AddObserver(InputObserver* observer) override;
+  void RemoveObserver(InputObserver* observer) override;
+  LidState QueryLidState() override;
+  bool IsUSBInputDeviceConnected() const override;
+  int GetActiveVT() override;
+  void SetInputDevicesCanWake(bool enable) override;
 
   // base::MessageLoopForIO::Watcher implementation:
-  virtual void OnFileCanReadWithoutBlocking(int fd) OVERRIDE;
-  virtual void OnFileCanWriteWithoutBlocking(int fd) OVERRIDE;
+  void OnFileCanReadWithoutBlocking(int fd) override;
+  void OnFileCanWriteWithoutBlocking(int fd) override;
 
   // UdevObserver implementation:
-  virtual void OnUdevEvent(const std::string& subsystem,
-                           const std::string& sysname,
-                           UdevObserver::Action action) OVERRIDE;
+  void OnUdevEvent(const std::string& subsystem,
+                   const std::string& sysname,
+                   UdevObserver::Action action) override;
 
  private:
   class EventFileDescriptor;

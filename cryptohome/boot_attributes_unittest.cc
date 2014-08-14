@@ -33,7 +33,7 @@ class BootAttributesTest : public testing::Test {
   BootAttributesTest() : fake_signature_("fake signature") {
   }
 
-  virtual void SetUp() OVERRIDE {
+  void SetUp() override {
     ON_CALL(mock_boot_lockbox_, Sign(_, _))
         .WillByDefault(DoAll(SetArgPointee<1>(fake_signature_), Return(true)));
 
