@@ -17,8 +17,8 @@ class UsbDevice;
 // A USB bulk transfer, which extends UsbTransfer.
 class UsbBulkTransfer : public UsbTransfer {
  public:
-  UsbBulkTransfer();
-  ~UsbBulkTransfer();
+  UsbBulkTransfer() = default;
+  ~UsbBulkTransfer() = default;
 
   // Initializes this USB bulk transfer for the specified |endpoint_address| on
   // |device| with a transfer buffer size of |length| bytes and a timeout value

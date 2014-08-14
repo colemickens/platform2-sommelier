@@ -14,8 +14,8 @@ namespace mist {
 
 class MockUdevListEntry : public UdevListEntry {
  public:
-  MockUdevListEntry();
-  ~MockUdevListEntry() override;
+  MockUdevListEntry() = default;
+  ~MockUdevListEntry() override = default;
 
   MOCK_CONST_METHOD0(GetNext, UdevListEntry*());
   MOCK_CONST_METHOD1(GetByName, UdevListEntry*(const char* name));

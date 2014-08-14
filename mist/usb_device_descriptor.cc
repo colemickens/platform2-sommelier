@@ -25,8 +25,6 @@ UsbDeviceDescriptor::UsbDeviceDescriptor(
   CHECK(device_descriptor_);
 }
 
-UsbDeviceDescriptor::~UsbDeviceDescriptor() {}
-
 uint8_t UsbDeviceDescriptor::GetLength() const {
   return device_descriptor_->bLength;
 }

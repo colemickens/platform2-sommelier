@@ -23,8 +23,6 @@ UsbInterface::UsbInterface(const base::WeakPtr<UsbDevice>& device,
   CHECK(interface_);
 }
 
-UsbInterface::~UsbInterface() {}
-
 int UsbInterface::GetNumAlternateSettings() const {
   return interface_->num_altsetting;
 }

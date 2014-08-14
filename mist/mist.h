@@ -17,8 +17,8 @@ namespace mist {
 
 class Mist {
  public:
-  Mist();
-  ~Mist();
+  Mist() = default;
+  ~Mist() = default;
 
   // Runs mist with the given command line. Returns the exit code. The ownership
   // of |command_line| is not transferred.

@@ -32,7 +32,7 @@ class UsbDeviceDescriptor {
   UsbDeviceDescriptor(const base::WeakPtr<UsbDevice>& device,
                       const libusb_device_descriptor* device_descriptor);
 
-  ~UsbDeviceDescriptor();
+  ~UsbDeviceDescriptor() = default;
 
   // Getters for retrieving fields of the libusb_device_descriptor struct.
   uint8_t GetLength() const;

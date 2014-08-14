@@ -29,7 +29,7 @@ class UsbEndpointDescriptor {
   explicit UsbEndpointDescriptor(
       const libusb_endpoint_descriptor* endpoint_descriptor);
 
-  ~UsbEndpointDescriptor();
+  ~UsbEndpointDescriptor() = default;
 
   // Getters for retrieving fields of the libusb_endpoint_descriptor struct.
   uint8_t GetLength() const;

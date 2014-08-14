@@ -54,7 +54,7 @@ class UsbError {
   // to the libusb error |error|.
   explicit UsbError(libusb_error error);
 
-  ~UsbError();
+  ~UsbError() = default;
 
   // Returns true if the error type of this object is set to UsbError::kSuccess,
   // or false otherwise.

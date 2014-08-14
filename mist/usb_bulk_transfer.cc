@@ -10,10 +10,6 @@
 
 namespace mist {
 
-UsbBulkTransfer::UsbBulkTransfer() {}
-
-UsbBulkTransfer::~UsbBulkTransfer() {}
-
 bool UsbBulkTransfer::Initialize(const UsbDevice& device,
                                  uint8_t endpoint_address,
                                  int length,

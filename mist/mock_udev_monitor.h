@@ -14,8 +14,8 @@ namespace mist {
 
 class MockUdevMonitor : public UdevMonitor {
  public:
-  MockUdevMonitor();
-  ~MockUdevMonitor() override;
+  MockUdevMonitor() = default;
+  ~MockUdevMonitor() override = default;
 
   MOCK_METHOD0(EnableReceiving, bool());
   MOCK_METHOD1(SetReceiveBufferSize, bool(int size));

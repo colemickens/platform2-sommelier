@@ -20,7 +20,7 @@ class UdevListEntry {
   // not transferred, and thus it should outlive this object.
   explicit UdevListEntry(udev_list_entry* list_entry);
 
-  virtual ~UdevListEntry();
+  virtual ~UdevListEntry() = default;
 
   // Wraps udev_list_entry_get_next(). The returned UdevListEntry object is not
   // managed and should be deleted by the caller after use.

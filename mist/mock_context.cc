@@ -11,10 +11,6 @@
 
 namespace mist {
 
-MockContext::MockContext() {}
-
-MockContext::~MockContext() {}
-
 bool MockContext::Initialize() {
   config_loader_.reset(new MockConfigLoader());
   CHECK(config_loader_);

@@ -17,8 +17,8 @@ namespace mist {
 
 class MockUsbDeviceEventObserver : public UsbDeviceEventObserver {
  public:
-  MockUsbDeviceEventObserver();
-  ~MockUsbDeviceEventObserver() override;
+  MockUsbDeviceEventObserver() = default;
+  ~MockUsbDeviceEventObserver() override = default;
 
   MOCK_METHOD5(OnUsbDeviceAdded,
                void(const std::string& sys_path,

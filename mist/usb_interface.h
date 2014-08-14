@@ -28,7 +28,7 @@ class UsbInterface {
   UsbInterface(const base::WeakPtr<UsbDevice>& device,
                const libusb_interface* interface);
 
-  ~UsbInterface();
+  ~UsbInterface() = default;
 
   // Getters for retrieving fields of the libusb_interface struct.
   int GetNumAlternateSettings() const;

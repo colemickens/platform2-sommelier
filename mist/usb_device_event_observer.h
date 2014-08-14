@@ -27,8 +27,8 @@ class UsbDeviceEventObserver {
   virtual void OnUsbDeviceRemoved(const std::string& sys_path) = 0;
 
  protected:
-  UsbDeviceEventObserver() {}
-  virtual ~UsbDeviceEventObserver() {}
+  UsbDeviceEventObserver() = default;
+  virtual ~UsbDeviceEventObserver() = default;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UsbDeviceEventObserver);

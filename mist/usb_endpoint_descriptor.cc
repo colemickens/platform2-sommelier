@@ -21,8 +21,6 @@ UsbEndpointDescriptor::UsbEndpointDescriptor(
   CHECK(endpoint_descriptor_);
 }
 
-UsbEndpointDescriptor::~UsbEndpointDescriptor() {}
-
 uint8_t UsbEndpointDescriptor::GetLength() const {
   return endpoint_descriptor_->bLength;
 }

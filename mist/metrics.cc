@@ -22,8 +22,6 @@ Metrics::Metrics() {
   metrics_library_.Init();
 }
 
-Metrics::~Metrics() {}
-
 void Metrics::RecordSwitchResult(bool success) {
   if (!metrics_library_.SendEnumToUMA(
           "Mist.SwitchResult",

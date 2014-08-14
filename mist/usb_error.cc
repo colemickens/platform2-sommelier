@@ -52,8 +52,6 @@ UsbError::UsbError(Type type) : type_(type) {}
 UsbError::UsbError(libusb_error error)
     : type_(ConvertFromLibUsbErrorToUsbErrorType(error)) {}
 
-UsbError::~UsbError() {}
-
 bool UsbError::IsSuccess() const {
   return type_ == kSuccess;
 }

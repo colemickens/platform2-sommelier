@@ -41,7 +41,7 @@ class UsbModemSwitchContext {
                         uint16_t product_id,
                         const UsbModemInfo* modem_info);
 
-  ~UsbModemSwitchContext();
+  ~UsbModemSwitchContext() = default;
 
   // Initializes this switch context object with the information obtained from
   // the device on the sysfs path |sys_path|. This method uses the helper

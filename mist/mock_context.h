@@ -18,8 +18,8 @@ class MockUdev;
 // mocks and is used in place of the Context class in unit tests.
 class MockContext : public Context {
  public:
-  MockContext();
-  ~MockContext() override;
+  MockContext() = default;
+  ~MockContext() override = default;
 
   // Initializes all helper objects with mocks in the context for unit testing.
   // Always returns true.

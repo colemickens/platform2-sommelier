@@ -14,8 +14,8 @@ namespace mist {
 
 class MockConfigLoader : public ConfigLoader {
  public:
-  MockConfigLoader();
-  ~MockConfigLoader() override;
+  MockConfigLoader() = default;
+  ~MockConfigLoader() override = default;
 
   MOCK_METHOD0(LoadDefaultConfig, bool());
   MOCK_METHOD1(LoadConfig, bool(const base::FilePath& config_file));

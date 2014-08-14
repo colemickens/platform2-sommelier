@@ -38,8 +38,6 @@ UsbModemSwitchContext::UsbModemSwitchContext(const std::string& sys_path,
       product_id_(product_id),
       modem_info_(modem_info) {}
 
-UsbModemSwitchContext::~UsbModemSwitchContext() {}
-
 bool UsbModemSwitchContext::InitializeFromSysPath(const Context* context,
                                                   const string& sys_path) {
   CHECK(context);

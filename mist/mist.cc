@@ -62,10 +62,6 @@ const char kUsageMessage[] =
 
 }  // namespace
 
-Mist::Mist() {}
-
-Mist::~Mist() {}
-
 int Mist::Run(base::CommandLine* command_line) {
   // Switch: --help
   if (command_line->HasSwitch(kSwitchHelp)) {

@@ -14,7 +14,7 @@ namespace mist {
 class Metrics {
  public:
   Metrics();
-  ~Metrics();
+  ~Metrics() = default;
 
   void RecordSwitchResult(bool success);
 
