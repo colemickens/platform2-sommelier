@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <iostream>  // NOLINT(readability/streams)
+#include <memory>
 #include <string>
 #include <sysexits.h>
 
@@ -11,6 +12,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/values.h>
+#include <chromeos/dbus_utils.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
@@ -27,7 +29,7 @@ static const int default_timeout_ms = 1000;
 
 void usage() {
   std::cerr << "Possible commands:" << std::endl;
-  std::cerr << "  " << kManagerTestMethod << std::endl;
+  std::cerr << "  " << kManagerTestMethod << " <message>" << std::endl;
   std::cerr << "  " << kManagerCheckDeviceRegistered << std::endl;
   std::cerr << "  " << kManagerGetDeviceInfo << std::endl;
   std::cerr << "  " << kManagerStartRegisterDevice
@@ -54,14 +56,26 @@ class BuffetHelperProxy {
   }
 
   int CallTestMethod(const CommandLine::StringVector& args) {
+    std::string message;
+    if (!args.empty())
+      message = args.front();
+
     dbus::MethodCall method_call(kManagerInterface, kManagerTestMethod);
+    dbus::MessageWriter writer(&method_call);
+    writer.AppendString(message);
     scoped_ptr<dbus::Response> response(
         manager_proxy_->CallMethodAndBlock(&method_call, default_timeout_ms));
     if (!response) {
       std::cout << "Failed to receive a response." << std::endl;
       return EX_UNAVAILABLE;
     }
-    std::cout << "Received a response." << std::endl;
+    dbus::MessageReader reader(response.get());
+    std::string response_message;
+    if (!reader.PopString(&response_message)) {
+      std::cout << "No valid response." << std::endl;
+      return EX_SOFTWARE;
+    }
+    std::cout << "Received a response: " << response_message << std::endl;
     return EX_OK;
   }
 
@@ -132,31 +146,21 @@ class BuffetHelperProxy {
       usage();
       return EX_USAGE;
     }
-    std::map<std::string, std::shared_ptr<base::Value>> params;
+    chromeos::dbus_utils::Dictionary params;
 
     if (!args.empty()) {
       auto key_values = buffet::data_encoding::WebParamsDecode(args.front());
       for (const auto& pair : key_values) {
         params.insert(std::make_pair(
-          pair.first, std::shared_ptr<base::Value>(
-              base::Value::CreateStringValue(pair.second))));
+            pair.first, std::unique_ptr<base::Value>(
+                base::Value::CreateStringValue(pair.second))));
       }
     }
 
     dbus::MethodCall method_call(
         kManagerInterface, kManagerStartRegisterDevice);
     dbus::MessageWriter writer(&method_call);
-    dbus::MessageWriter dict_writer(nullptr);
-    writer.OpenArray("{sv}", &dict_writer);
-    for (const auto& pair : params) {
-      dbus::MessageWriter dict_entry_writer(nullptr);
-      dict_writer.OpenDictEntry(&dict_entry_writer);
-      dict_entry_writer.AppendString(pair.first);
-      dbus::AppendBasicTypeValueDataAsVariant(&dict_entry_writer,
-                                              *pair.second.get());
-      dict_writer.CloseContainer(&dict_entry_writer);
-    }
-    writer.CloseContainer(&dict_writer);
+    chromeos::dbus_utils::AppendValueToWriter(&writer, params);
 
     static const int timeout_ms = 3000;
     scoped_ptr<dbus::Response> response(

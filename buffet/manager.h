@@ -59,7 +59,8 @@ class Manager final {
   void HandleUpdateState(chromeos::ErrorPtr* error,
                          const std::string& json_state_fragment);
   // Handles calls to org.chromium.Buffet.Manager.Test()
-  void HandleTestMethod(chromeos::ErrorPtr* error);
+  std::string HandleTestMethod(chromeos::ErrorPtr* error,
+                               const std::string& message);
 
   chromeos::dbus_utils::DBusObject dbus_object_;
 

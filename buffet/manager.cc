@@ -119,8 +119,10 @@ void Manager::HandleUpdateState(
   state_.SetValue(json_state_fragment);
 }
 
-void Manager::HandleTestMethod(chromeos::ErrorPtr* error) {
-  LOG(INFO) << "Received call to test method";
+std::string Manager::HandleTestMethod(chromeos::ErrorPtr* error,
+                                      const std::string& message) {
+  LOG(INFO) << "Received call to test method: " << message;
+  return message;
 }
 
 }  // namespace buffet
