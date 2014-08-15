@@ -1,1 +1,0 @@
-ACTION!="remove", SUBSYSTEM=="input", ATTRS{power/wakeup}=="*", RUN+="/bin/chown power:power /sys/class/input/%k/device/device/power/wakeup"
