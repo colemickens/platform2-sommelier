@@ -31,7 +31,6 @@ static const uint8_t kIPV6PatternPrefix[] = {
 static const uint8_t kIPV4MaskBytes[] = {0x00, 0x00, 0x00, 0x3c};
 static const uint8_t kIPV6MaskBytes[] = {0x00, 0x00, 0xc0, 0xff, 0x3f};
 
-static const char kEmptyIPAddress[] = "";
 static const char kIPV4Address0[] = "192.168.10.20";
 static const uint8_t kIPV4Address0Bytes[] = {0xc0, 0xa8, 0x0a, 0x14};
 static const char kIPV4Address1[] = "1.2.3.4";
