@@ -12,6 +12,8 @@
 
 #include <base/memory/scoped_ptr.h>
 #include <base/values.h>
+#include <chromeos/error.h>
+#include <dbus/exported_object.h>
 #include <dbus/message.h>
 
 namespace chromeos {
@@ -20,6 +22,12 @@ namespace dbus_utils {
 
 scoped_ptr<dbus::Response> GetBadArgsError(dbus::MethodCall* method_call,
                                            const std::string& message);
+
+std::unique_ptr<dbus::Response> GetDBusError(dbus::MethodCall* method_call,
+                                             const chromeos::Error* error);
+
+dbus::ExportedObject::MethodCallCallback GetExportableDBusMethod(
+    base::Callback<scoped_ptr<dbus::Response>(dbus::MethodCall*)> handler);
 
 using Dictionary = std::map<std::string, std::unique_ptr<base::Value>>;
 

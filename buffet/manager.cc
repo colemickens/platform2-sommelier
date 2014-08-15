@@ -20,12 +20,11 @@
 
 #include "buffet/commands/command_manager.h"
 #include "buffet/dbus_constants.h"
-#include "buffet/dbus_utils.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::GetBadArgsError;
 using chromeos::dbus_utils::ExportedObjectManager;
-using buffet::dbus_utils::GetDBusError;
+using chromeos::dbus_utils::GetDBusError;
 
 namespace buffet {
 
@@ -55,7 +54,7 @@ void Manager::Init(const OnInitFinish& cb) {
   exported_object_->ExportMethod(
       dbus_constants::kManagerInterface,
       dbus_constants::kManagerCheckDeviceRegistered,
-      dbus_utils::GetExportableDBusMethod(
+      chromeos::dbus_utils::GetExportableDBusMethod(
           base::Bind(&Manager::HandleCheckDeviceRegistered,
           base::Unretained(this))),
       sequencer->GetExportHandler(
@@ -66,7 +65,7 @@ void Manager::Init(const OnInitFinish& cb) {
   exported_object_->ExportMethod(
       dbus_constants::kManagerInterface,
       dbus_constants::kManagerGetDeviceInfo,
-      dbus_utils::GetExportableDBusMethod(
+      chromeos::dbus_utils::GetExportableDBusMethod(
           base::Bind(&Manager::HandleGetDeviceInfo,
           base::Unretained(this))),
       sequencer->GetExportHandler(
@@ -77,7 +76,7 @@ void Manager::Init(const OnInitFinish& cb) {
   exported_object_->ExportMethod(
       dbus_constants::kManagerInterface,
       dbus_constants::kManagerStartRegisterDevice,
-      dbus_utils::GetExportableDBusMethod(
+      chromeos::dbus_utils::GetExportableDBusMethod(
           base::Bind(&Manager::HandleStartRegisterDevice,
           base::Unretained(this))),
       sequencer->GetExportHandler(
@@ -88,7 +87,7 @@ void Manager::Init(const OnInitFinish& cb) {
   exported_object_->ExportMethod(
       dbus_constants::kManagerInterface,
       dbus_constants::kManagerFinishRegisterDevice,
-      dbus_utils::GetExportableDBusMethod(
+      chromeos::dbus_utils::GetExportableDBusMethod(
           base::Bind(&Manager::HandleFinishRegisterDevice,
           base::Unretained(this))),
       sequencer->GetExportHandler(
@@ -99,7 +98,7 @@ void Manager::Init(const OnInitFinish& cb) {
   exported_object_->ExportMethod(
       dbus_constants::kManagerInterface,
       dbus_constants::kManagerUpdateStateMethod,
-      dbus_utils::GetExportableDBusMethod(
+      chromeos::dbus_utils::GetExportableDBusMethod(
           base::Bind(&Manager::HandleUpdateState,
           base::Unretained(this))),
       sequencer->GetExportHandler(
@@ -109,7 +108,7 @@ void Manager::Init(const OnInitFinish& cb) {
           true));
   exported_object_->ExportMethod(
       dbus_constants::kManagerInterface, dbus_constants::kManagerTestMethod,
-      dbus_utils::GetExportableDBusMethod(
+      chromeos::dbus_utils::GetExportableDBusMethod(
           base::Bind(&Manager::HandleTestMethod, base::Unretained(this))),
       sequencer->GetExportHandler(
           dbus_constants::kManagerInterface, dbus_constants::kManagerTestMethod,
@@ -153,14 +152,16 @@ scoped_ptr<dbus::Response> Manager::HandleCheckDeviceRegistered(
   // treat it as a real error and report it to the caller.
   if (!registered &&
       !error->HasError(kErrorDomainGCD, "device_not_registered")) {
-    return GetDBusError(method_call, error.get());
+    return scoped_ptr<dbus::Response>(
+        GetDBusError(method_call, error.get()).release());
   }
 
   std::string device_id;
   if (registered) {
     device_id = device_info_->GetDeviceId(&error);
     if (device_id.empty())
-      return GetDBusError(method_call, error.get());
+      return scoped_ptr<dbus::Response>(
+          GetDBusError(method_call, error.get()).release());
   }
   // Send back our response.
   scoped_ptr<dbus::Response> response(
@@ -185,7 +186,8 @@ scoped_ptr<dbus::Response> Manager::HandleGetDeviceInfo(
   chromeos::ErrorPtr error;
   auto device_info = device_info_->GetDeviceInfo(&error);
   if (!device_info)
-    return GetDBusError(method_call, error.get());
+    return scoped_ptr<dbus::Response>(
+        GetDBusError(method_call, error.get()).release());
 
   base::JSONWriter::Write(device_info.get(), &device_info_str);
 
@@ -230,7 +232,8 @@ scoped_ptr<dbus::Response> Manager::HandleStartRegisterDevice(
   chromeos::ErrorPtr error;
   std::string id = device_info_->StartRegistration(params, &error);
   if (id.empty())
-    return GetDBusError(method_call, error.get());
+    return scoped_ptr<dbus::Response>(
+        GetDBusError(method_call, error.get()).release());
 
   // Send back our response.
   scoped_ptr<dbus::Response> response(
@@ -260,11 +263,13 @@ scoped_ptr<dbus::Response> Manager::HandleFinishRegisterDevice(
   LOG(INFO) << "Received call to Manager.FinishRegisterDevice()";
   chromeos::ErrorPtr error;
   if (!device_info_->FinishRegistration(user_auth_code, &error))
-    return GetDBusError(method_call, error.get());
+    return scoped_ptr<dbus::Response>(
+        GetDBusError(method_call, error.get()).release());
 
   std::string device_id = device_info_->GetDeviceId(&error);
   if (device_id.empty())
-    return GetDBusError(method_call, error.get());
+    return scoped_ptr<dbus::Response>(
+        GetDBusError(method_call, error.get()).release());
 
   // Send back our response.
   scoped_ptr<dbus::Response> response(

@@ -29,7 +29,6 @@
         'commands/schema_utils.cc',
         'data_encoding.cc',
         'dbus_constants.cc',
-        'dbus_utils.cc',
         'device_registration_info.cc',
         'http_request.cc',
         'http_connection_curl.cc',
