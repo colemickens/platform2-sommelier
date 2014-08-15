@@ -40,10 +40,6 @@ namespace {
 const char kSysClassInputPath[] = "/sys/class/input";
 const char kDevInputPath[] = "/dev/input";
 const char kEventBaseName[] = "event";
-const char kInputBaseName[] = "input";
-
-const char kWakeupDisabled[] = "disabled";
-const char kWakeupEnabled[] = "enabled";
 
 const char kInputMatchPattern[] = "input*";
 const char kUsbMatchString[] = "usb";
@@ -120,7 +116,6 @@ Input::Input()
     : lid_fd_(-1),
       num_power_key_events_(0),
       num_lid_events_(0),
-      wakeups_enabled_(true),
       use_lid_(true),
       power_button_to_skip_(kPowerButtonToSkip),
       console_fd_(-1),
@@ -137,20 +132,6 @@ Input::~Input() {
 bool Input::Init(PrefsInterface* prefs, UdevInterface* udev) {
   prefs->GetBool(kUseLidPref, &use_lid_);
 
-  std::string wakeup_inputs_str;
-  std::vector<std::string> wakeup_input_names;
-  if (prefs->GetString(kWakeupInputPref, &wakeup_inputs_str))
-    base::SplitString(wakeup_inputs_str, '\n', &wakeup_input_names);
-  for (vector<string>::const_iterator names_iter = wakeup_input_names.begin();
-      names_iter != wakeup_input_names.end(); ++names_iter) {
-    // Iterate through the vector of input names, and if not the empty string,
-    // put the input name into the wakeup_inputs_map_, mapping to -1.
-    // This indicates looking for input devices with this name, but there
-    // is no input number associated with the device just yet.
-    if ((*names_iter).length() > 0)
-      wakeup_inputs_map_[*names_iter] = -1;
-  }
-
   bool legacy_power_button = false;
   if (prefs->GetBool(kLegacyPowerButtonPref, &legacy_power_button) &&
       legacy_power_button)
@@ -166,7 +147,6 @@ bool Input::Init(PrefsInterface* prefs, UdevInterface* udev) {
   if ((console_fd_ = open(kConsolePath, O_WRONLY)) == -1)
     PLOG(ERROR) << "Unable to open " << kConsolePath;
 
-  RegisterInputWakeSources();
   return RegisterInputDevices();
 }
 
@@ -249,12 +229,6 @@ int Input::GetActiveVT() {
   return state.v_active;
 }
 
-void Input::SetInputDevicesCanWake(bool enable) {
-  wakeups_enabled_ = enable;
-  UpdateSysfsWakeup();
-  UpdateAcpiWakeup();
-}
-
 void Input::OnFileCanReadWithoutBlocking(int fd) {
   struct input_event events[64];
   ssize_t read_size = HANDLE_EINTR(read(fd, events, sizeof(events)));
@@ -299,11 +273,6 @@ void Input::OnUdevEvent(const std::string& subsystem,
       AddEvent(sysname);
     else if (action == UDEV_ACTION_REMOVE)
       RemoveEvent(sysname);
-  } else if (StartsWithASCII(sysname, kInputBaseName, true)) {
-    if (action == UDEV_ACTION_ADD)
-      AddWakeInput(sysname);
-    else if (action == UDEV_ACTION_REMOVE)
-      RemoveWakeInput(sysname);
   }
 }
 
@@ -329,63 +298,6 @@ bool Input::RegisterInputDevices() {
   LOG(INFO) << "Number of power button events registered: "
             << num_power_key_events_;
   LOG(INFO) << "Number of lid events registered: " << num_lid_events_;
-  return true;
-}
-
-bool Input::RegisterInputWakeSources() {
-  DIR* dir = opendir(kSysClassInputPath);
-  if (!dir) {
-    PLOG(ERROR) << "opendir() failed for " << kSysClassInputPath;
-    return false;
-  }
-
-  struct dirent entry;
-  struct dirent* result;
-  while (readdir_r(dir, &entry, &result) == 0 && result) {
-    if (StartsWithASCII(result->d_name, kInputBaseName, true))
-      AddWakeInput(result->d_name);
-  }
-  if (closedir(dir) < 0)
-    PLOG(ERROR) << "closedir() failed for " << kSysClassInputPath;
-  return true;
-}
-
-bool Input::SetSysfsWakeup(int input_num, bool enabled) {
-  std::string name = base::StringPrintf("%s%d", kInputBaseName, input_num);
-  base::FilePath path = base::FilePath(kSysClassInputPath).
-      Append(name).Append("device/power/wakeup");
-  const char* state = enabled ? kWakeupEnabled : kWakeupDisabled;
-  if (!util::WriteFileFully(path, state, strlen(state))) {
-    PLOG(ERROR) << "Failed to write to " << path.value();
-    return false;
-  }
-  LOG(INFO) << "Set " << path.value() << " to " << state;
-  return true;
-}
-
-bool Input::UpdateSysfsWakeup() {
-  bool result = true;
-  for (WakeupMap::iterator iter = wakeup_inputs_map_.begin();
-       iter != wakeup_inputs_map_.end(); iter++) {
-    int input_num = iter->second;
-    if (input_num != -1 && !SetSysfsWakeup(input_num, wakeups_enabled_)) {
-      result = false;
-      LOG(WARNING) << "Failed to set power/wakeup for input" << input_num;
-    }
-  }
-  return result;
-}
-
-bool Input::UpdateAcpiWakeup() {
-  // On x86 systems, setting power/wakeup in sysfs is not enough.
-  // We disable touchscreen wakeup permanently, and we disable touchpad wakeup
-  // whenever the lid is closed.
-
-  AcpiWakeupHelper acpi_wakeup;
-  if (!acpi_wakeup.IsSupported())
-    return true;
-  acpi_wakeup.SetWakeupEnabled("TSCR", false);
-  acpi_wakeup.SetWakeupEnabled("TPAD", wakeups_enabled_);
   return true;
 }
 
@@ -449,59 +361,6 @@ bool Input::RemoveEvent(const std::string& name) {
 
   registered_inputs_.erase(iter);
   return true;
-}
-
-bool Input::AddWakeInput(const std::string& name) {
-  int input_num = -1;
-  if (wakeup_inputs_map_.empty() ||
-      !GetSuffixNumber(name, kInputBaseName, &input_num))
-    return false;
-
-  base::FilePath device_name_path =
-      base::FilePath(kSysClassInputPath).Append(name).Append("name");
-  if (access(device_name_path.value().c_str(), R_OK)) {
-    LOG(WARNING) << "Missing read access to " << device_name_path.value();
-    return false;
-  }
-
-  std::string input_name;
-  if (!base::ReadFileToString(device_name_path, &input_name)) {
-    LOG(WARNING) << "Failed to read input name from "
-                 << device_name_path.value();
-    return false;
-  }
-  base::TrimWhitespaceASCII(input_name, base::TRIM_TRAILING, &input_name);
-  WakeupMap::iterator iter = wakeup_inputs_map_.find(input_name);
-  if (iter == wakeup_inputs_map_.end()) {
-    // Not on the list of wakeup input devices
-    return false;
-  }
-
-  if (!SetSysfsWakeup(input_num, wakeups_enabled_)) {
-    LOG(ERROR) << "Error adding wakeup source; cannot write to power/wakeup";
-    return false;
-  }
-  wakeup_inputs_map_[input_name] = input_num;
-  LOG(INFO) << "Added wakeup source " << name << " (" << input_name << ")";
-  return true;
-}
-
-bool Input::RemoveWakeInput(const std::string& name) {
-  int input_num = -1;
-  if (wakeup_inputs_map_.empty() ||
-      !GetSuffixNumber(name, kInputBaseName, &input_num))
-    return false;
-
-  WakeupMap::iterator iter;
-  for (iter = wakeup_inputs_map_.begin();
-       iter != wakeup_inputs_map_.end(); iter++) {
-    if ((*iter).second == input_num) {
-      wakeup_inputs_map_[(*iter).first] = -1;
-      LOG(INFO) << "Removed wakeup source " << name
-                << " (" << (*iter).first << ")";
-    }
-  }
-  return false;
 }
 
 bool Input::RegisterInputEvent(int fd, int event_num) {

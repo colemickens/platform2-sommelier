@@ -135,7 +135,6 @@ TEST_F(InputControllerTest, LidEvents) {
   // An initial event about the lid state should be sent at initialization.
   prefs_.SetInt64(kUseLidPref, 1);
   Init();
-  EXPECT_TRUE(input_.wake_inputs_enabled());
   EXPECT_EQ(kLidOpened, delegate_.GetActions());
   EXPECT_EQ(InputEvent_Type_LID_OPEN, GetInputEventSignalType());
   EXPECT_EQ(Now().ToInternalValue(), GetInputEventSignalTimestamp());
@@ -144,7 +143,6 @@ TEST_F(InputControllerTest, LidEvents) {
   AdvanceTime(base::TimeDelta::FromSeconds(1));
   input_.set_lid_state(LID_CLOSED);
   input_.NotifyObserversAboutLidState();
-  EXPECT_FALSE(input_.wake_inputs_enabled());
   EXPECT_EQ(kLidClosed, delegate_.GetActions());
   EXPECT_EQ(InputEvent_Type_LID_CLOSED, GetInputEventSignalType());
   EXPECT_EQ(Now().ToInternalValue(), GetInputEventSignalTimestamp());
@@ -153,7 +151,6 @@ TEST_F(InputControllerTest, LidEvents) {
   AdvanceTime(base::TimeDelta::FromSeconds(5));
   input_.set_lid_state(LID_OPEN);
   input_.NotifyObserversAboutLidState();
-  EXPECT_TRUE(input_.wake_inputs_enabled());
   EXPECT_EQ(kLidOpened, delegate_.GetActions());
   EXPECT_EQ(InputEvent_Type_LID_OPEN, GetInputEventSignalType());
   EXPECT_EQ(Now().ToInternalValue(), GetInputEventSignalTimestamp());

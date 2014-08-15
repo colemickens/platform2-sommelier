@@ -40,9 +40,11 @@ class BacklightController;
 class KeyboardBacklightController;
 class StateController;
 class Suspender;
+class WakeupController;
 }  // namespace policy
 
 namespace system {
+class AcpiWakeupHelper;
 class AmbientLightSensor;
 class AudioClient;
 class DarkResume;
@@ -246,6 +248,8 @@ class Daemon : public policy::BacklightControllerObserver,
   scoped_ptr<system::Input> input_;
   scoped_ptr<policy::StateController> state_controller_;
   scoped_ptr<policy::InputController> input_controller_;
+  scoped_ptr<system::AcpiWakeupHelper> acpi_wakeup_helper_;
+  scoped_ptr<policy::WakeupController> wakeup_controller_;
   scoped_ptr<system::AudioClient> audio_client_;
   scoped_ptr<system::PeripheralBatteryWatcher> peripheral_battery_watcher_;
   scoped_ptr<system::PowerSupply> power_supply_;

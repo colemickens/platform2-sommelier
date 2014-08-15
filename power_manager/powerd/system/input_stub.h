@@ -18,8 +18,6 @@ class InputStub : public InputInterface {
   InputStub();
   virtual ~InputStub();
 
-  bool wake_inputs_enabled() const { return wake_inputs_enabled_; }
-
   void set_lid_state(LidState state) { lid_state_ = state; }
   void set_usb_input_device_connected(bool connected) {
     usb_input_device_connected_ = connected;
@@ -36,14 +34,12 @@ class InputStub : public InputInterface {
   LidState QueryLidState() override;
   bool IsUSBInputDeviceConnected() const override;
   int GetActiveVT() override;
-  void SetInputDevicesCanWake(bool enable) override;
 
  private:
   // Current input state.
   LidState lid_state_;
   bool usb_input_device_connected_;
   int active_vt_;
-  bool wake_inputs_enabled_;
 
   ObserverList<InputObserver> observers_;
 

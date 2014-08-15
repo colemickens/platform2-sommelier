@@ -34,9 +34,6 @@ class InputInterface {
   // Returns the (1-indexed) number of the currently-active virtual terminal.
   virtual int GetActiveVT() = 0;
 
-  // Enables or disables system wakeup triggered by input devices.
-  virtual void SetInputDevicesCanWake(bool enable) = 0;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(InputInterface);
 };

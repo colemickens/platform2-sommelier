@@ -10,6 +10,8 @@
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 
+#include "power_manager/powerd/system/acpi_wakeup_helper_interface.h"
+
 namespace power_manager {
 namespace system {
 
@@ -34,24 +36,20 @@ class AcpiWakeupFileInterface {
   DISALLOW_COPY_AND_ASSIGN(AcpiWakeupFileInterface);
 };
 
-class AcpiWakeupHelper {
+class AcpiWakeupHelper : public AcpiWakeupHelperInterface {
  public:
   AcpiWakeupHelper();
+  virtual ~AcpiWakeupHelper();
 
   // Forces use of a fake implementation instead of /proc/acpi/wakeup. Only for
   // testing.
   void set_file_for_testing(scoped_ptr<AcpiWakeupFileInterface> file);
 
-  // Checks whether /proc/acpi/wakeup is available on this system.
-  bool IsSupported();
-
-  // Determines whether ACPI wakeup is enabled for a given device. Returns true
-  // on success.
-  bool GetWakeupEnabled(const std::string& device_name, bool* enabled_out);
-
-  // Enables or disables ACPI wakeup for a given device. Returns true on
-  // success.
-  bool SetWakeupEnabled(const std::string& device_name, bool enabled);
+  // Implementation of AcpiWakeupHelperInterface.
+  bool IsSupported() override;
+  bool GetWakeupEnabled(const std::string& device_name,
+                        bool* enabled_out) override;
+  bool SetWakeupEnabled(const std::string& device_name, bool enabled) override;
 
  private:
   // Toggles ACPI wakeup for a given device. Used internally by

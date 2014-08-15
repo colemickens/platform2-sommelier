@@ -12,8 +12,7 @@ namespace system {
 InputStub::InputStub()
     : lid_state_(LID_OPEN),
       usb_input_device_connected_(true),
-      active_vt_(1),
-      wake_inputs_enabled_(true) {
+      active_vt_(1) {
 }
 
 InputStub::~InputStub() {}
@@ -46,10 +45,6 @@ bool InputStub::IsUSBInputDeviceConnected() const {
 
 int InputStub::GetActiveVT() {
   return active_vt_;
-}
-
-void InputStub::SetInputDevicesCanWake(bool enable) {
-  wake_inputs_enabled_ = enable;
 }
 
 }  // namespace system

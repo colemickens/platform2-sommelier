@@ -53,7 +53,6 @@ class Input : public InputInterface,
   LidState QueryLidState() override;
   bool IsUSBInputDeviceConnected() const override;
   int GetActiveVT() override;
-  void SetInputDevicesCanWake(bool enable) override;
 
   // base::MessageLoopForIO::Watcher implementation:
   void OnFileCanReadWithoutBlocking(int fd) override;
@@ -71,25 +70,9 @@ class Input : public InputInterface,
   // RegisterInputEvent on it if the event contains power buttons or lid.
   bool RegisterInputDevices();
 
-  // For every "input" in /sys/class/input/, keep track of power/wakeup if
-  // it matches wake inputs names.
-  bool RegisterInputWakeSources();
-
-  // Set power/wakeup for input device number |input_num|
-  bool SetSysfsWakeup(int input_num, bool enabled);
-
-  // Update ACPI wakeup or sysfs power/wakeup to reflect the state of
-  // wakeups_enabled_.
-  bool UpdateSysfsWakeup();
-  bool UpdateAcpiWakeup();
-
   // Adds or removes events to handle lid and power button.
   bool AddEvent(const std::string& name);
   bool RemoveEvent(const std::string& name);
-
-  // Adds or removes inputs used for enabling and disabling wakeup events.
-  bool AddWakeInput(const std::string& name);
-  bool RemoveWakeInput(const std::string& name);
 
   // Starts watching |fd| for events if it corresponds to a power button or lid
   // switch. Takes ownership of |fd| and returns true if the descriptor is now
@@ -103,8 +86,6 @@ class Input : public InputInterface,
 
   int num_power_key_events_;
   int num_lid_events_;
-
-  bool wakeups_enabled_;
 
   // Should the lid be watched for events if present?
   bool use_lid_;
@@ -120,10 +101,6 @@ class Input : public InputInterface,
   // Keyed by input event number.
   typedef std::map<int, linked_ptr<EventFileDescriptor> > InputMap;
   InputMap registered_inputs_;
-
-  // Maps from an input name to an input number.
-  typedef std::map<std::string, int> WakeupMap;
-  WakeupMap wakeup_inputs_map_;
 
   ObserverList<InputObserver> observers_;
 

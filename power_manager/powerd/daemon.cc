@@ -28,6 +28,8 @@
 #include "power_manager/powerd/policy/internal_backlight_controller.h"
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 #include "power_manager/powerd/policy/state_controller.h"
+#include "power_manager/powerd/policy/wakeup_controller.h"
+#include "power_manager/powerd/system/acpi_wakeup_helper.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/audio_client.h"
 #include "power_manager/powerd/system/dark_resume.h"
@@ -397,6 +399,8 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       input_(new system::Input),
       state_controller_(new policy::StateController),
       input_controller_(new policy::InputController),
+      acpi_wakeup_helper_(new system::AcpiWakeupHelper),
+      wakeup_controller_(new policy::WakeupController),
       audio_client_(new system::AudioClient),
       peripheral_battery_watcher_(new system::PeripheralBatteryWatcher),
       power_supply_(new system::PowerSupply),
@@ -504,6 +508,9 @@ void Daemon::Init() {
   CHECK(input_->Init(prefs_.get(), udev_.get()));
   input_controller_->Init(input_.get(), this, display_watcher_.get(),
                           dbus_sender_.get(), prefs_.get());
+
+  wakeup_controller_->Init(input_.get(), udev_.get(),
+                           acpi_wakeup_helper_.get());
 
   const PowerSource power_source =
       power_status.line_power_on ? POWER_AC : POWER_BATTERY;

@@ -77,6 +77,7 @@
       'target_name': 'libsystem_stub',
       'type': 'static_library',
       'sources': [
+        'powerd/system/acpi_wakeup_helper_stub.cc',
         'powerd/system/ambient_light_sensor_stub.cc',
         'powerd/system/backlight_stub.cc',
         'powerd/system/dark_resume_stub.cc',
@@ -104,6 +105,7 @@
         'powerd/policy/state_controller.cc',
         'powerd/policy/suspend_delay_controller.cc',
         'powerd/policy/suspender.cc',
+        'powerd/policy/wakeup_controller.cc',
       ],
     },
     {
@@ -285,6 +287,7 @@
             'powerd/policy/state_controller_unittest.cc',
             'powerd/policy/suspend_delay_controller_unittest.cc',
             'powerd/policy/suspender_unittest.cc',
+            'powerd/policy/wakeup_controller_unittest.cc',
           ],
         },
         {
