@@ -39,7 +39,7 @@ std::unique_ptr<http::Connection> Transport::CreateConnection(
     const HeaderList& headers,
     const std::string& user_agent,
     const std::string& referer,
-    ErrorPtr* error) {
+    chromeos::ErrorPtr* error) {
   HeaderList headers_copy = headers;
   if (!user_agent.empty()) {
     headers_copy.push_back(std::make_pair(http::request_header::kUserAgent,

@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_ERROR_H_
-#define BUFFET_ERROR_H_
+#ifndef LIBCHROMEOS_CHROMEOS_ERROR_H_
+#define LIBCHROMEOS_CHROMEOS_ERROR_H_
 
 #include <memory>
 #include <string>
 
 #include <base/basictypes.h>
 
-namespace buffet {
+namespace chromeos {
 
 class Error;  // Forward declaration.
 
@@ -75,6 +75,6 @@ class Error {
   DISALLOW_COPY_AND_ASSIGN(Error);
 };
 
-}  // namespace buffet
+}  // namespace chromeos
 
-#endif  // BUFFET_ERROR_H_
+#endif  // LIBCHROMEOS_CHROMEOS_ERROR_H_

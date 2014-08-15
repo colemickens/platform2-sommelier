@@ -9,8 +9,8 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <chromeos/error.h>
 
-#include "buffet/error.h"
 #include "buffet/http_transport.h"
 
 namespace buffet {
@@ -36,14 +36,15 @@ class Connection {
 
   // Called by http::Request to initiate the connection with the server.
   // This normally opens the socket and sends the request headers.
-  virtual bool SendHeaders(const HeaderList& headers, ErrorPtr* error) = 0;
+  virtual bool SendHeaders(const HeaderList& headers,
+                           chromeos::ErrorPtr* error) = 0;
   // If needed, this function can be called to send the request body data.
   // This function can be called repeatedly until all data is sent.
   virtual bool WriteRequestData(const void* data, size_t size,
-                                ErrorPtr* error) = 0;
+                                chromeos::ErrorPtr* error) = 0;
   // This function is called when all the data is sent off and it's time
   // to receive the response data.
-  virtual bool FinishRequest(ErrorPtr* error) = 0;
+  virtual bool FinishRequest(chromeos::ErrorPtr* error) = 0;
 
   // Returns the HTTP status code (e.g. 200 for success).
   virtual int GetResponseStatusCode() const = 0;
@@ -65,8 +66,10 @@ class Connection {
   // |buffer_size| is the size of the buffer (amount of data to read).
   // |read_size| is the amount of data actually read, which could be less than
   // the size requested or 0 if there is no more data available.
-  virtual bool ReadResponseData(void* data, size_t buffer_size,
-                                size_t* size_read, ErrorPtr* error) = 0;
+  virtual bool ReadResponseData(void* data,
+                                size_t buffer_size,
+                                size_t* size_read,
+                                chromeos::ErrorPtr* error) = 0;
 
  protected:
   // |transport_| is mainly used to keep the object alive as long as the

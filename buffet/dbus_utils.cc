@@ -32,7 +32,7 @@ void HandleSynchronousDBusMethodCall(
 }  // namespace
 
 scoped_ptr<dbus::Response> GetDBusError(dbus::MethodCall* method_call,
-                                        const Error* error) {
+                                        const chromeos::Error* error) {
   std::string message;
   while (error) {
     // Format error string as "domain/code:message".

@@ -95,7 +95,7 @@ TEST(CommandSchema, IntPropType_FromJson) {
 TEST(CommandSchema, IntPropType_Validate) {
   buffet::IntPropType prop;
   prop.AddMinMaxConstraint(2, 4);
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   EXPECT_FALSE(prop.ValidateValue(CreateValue("-1").get(), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
@@ -172,7 +172,7 @@ TEST(CommandSchema, BoolPropType_Validate) {
   buffet::BooleanPropType prop;
   prop.FromJson(CreateDictionaryValue("{'enum':[true]}").get(), &prop,
                 nullptr);
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   EXPECT_FALSE(prop.ValidateValue(CreateValue("false").get(), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
@@ -262,7 +262,7 @@ TEST(CommandSchema, DoublePropType_FromJson) {
 TEST(CommandSchema, DoublePropType_Validate) {
   buffet::DoublePropType prop;
   prop.AddMinMaxConstraint(-1.2, 1.3);
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   EXPECT_FALSE(prop.ValidateValue(CreateValue("-2").get(), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
@@ -359,7 +359,7 @@ TEST(CommandSchema, StringPropType_FromJson) {
 TEST(CommandSchema, StringPropType_Validate) {
   buffet::StringPropType prop;
   prop.AddLengthConstraint(1, 3);
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   EXPECT_FALSE(prop.ValidateValue(CreateValue("''").get(), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
@@ -450,7 +450,7 @@ TEST(CommandSchema, ObjectPropType_Validate) {
       "{'properties':{'expires':'integer',"
       "'password':{'maxLength':100,'minLength':6}}}").get(), nullptr,
       nullptr);
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   EXPECT_TRUE(prop.ValidateValue(CreateValue(
       "{'expires':10,'password':'abcdef'}").get(), &error));
   error.reset();
@@ -486,7 +486,7 @@ TEST(CommandSchema, ObjectPropType_Validate_Enum) {
       "{'properties':{'width':'integer','height':'integer'},"
       "'enum':[{'width':10,'height':20},{'width':100,'height':200}]}").get(),
       nullptr, nullptr));
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   EXPECT_TRUE(prop.ValidateValue(CreateValue(
       "{'height':20,'width':10}").get(), &error));
   error.reset();
@@ -790,7 +790,7 @@ TEST(CommandSchema, ObjectSchema_FromJson_Inheritance) {
 
 TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
   buffet::ObjectSchema schema;
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   const char* schema_str = "{"
   "'param1':{}"
   "}";

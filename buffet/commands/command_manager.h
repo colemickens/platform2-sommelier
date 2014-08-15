@@ -32,25 +32,26 @@ class CommandManager {
   // On success, returns true. Otherwise, |error| contains additional
   // error information.
   bool LoadBaseCommands(const base::DictionaryValue& json,
-                        ErrorPtr* error);
+                        chromeos::ErrorPtr* error);
 
   // Same as the overload above, but takes a path to a json file to read
   // the base command definitions from.
   bool LoadBaseCommands(const base::FilePath& json_file_path,
-                        ErrorPtr* error);
+                        chromeos::ErrorPtr* error);
 
   // Loads device command schema for particular category.
   // See CommandDictionary::LoadCommands for detailed description of the
   // parameters.
   bool LoadCommands(const base::DictionaryValue& json,
-                    const std::string& category, ErrorPtr* error);
+                    const std::string& category,
+                    chromeos::ErrorPtr* error);
 
   // Same as the overload above, but takes a path to a json file to read
   // the base command definitions from. Also, the command category is
   // derived from file name (without extension). So, if the path points to
   // "power_manager.json", the command category used will be "power_manager".
   bool LoadCommands(const base::FilePath& json_file_path,
-                    ErrorPtr* error);
+                    chromeos::ErrorPtr* error);
 
   // Startup method to be called by buffet daemon at startup.
   // Initializes the object and loads the standard GCD command
@@ -63,7 +64,7 @@ class CommandManager {
   // an object/dictionary. In case of error, returns empty unique ptr and fills
   // in error details in |error|.
   std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
-      const base::FilePath& json_file_path, ErrorPtr* error);
+      const base::FilePath& json_file_path, chromeos::ErrorPtr* error);
 
   CommandDictionary base_dictionary_;  // Base/std command definitions/schemas.
   CommandDictionary dictionary_;  // Command definitions/schemas.

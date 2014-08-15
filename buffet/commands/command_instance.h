@@ -10,10 +10,10 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <chromeos/error.h>
 
 #include "buffet/commands/prop_values.h"
 #include "buffet/commands/schema_utils.h"
-#include "buffet/error.h"
 
 namespace base {
 class Value;
@@ -49,7 +49,7 @@ class CommandInstance final {
   static std::unique_ptr<const CommandInstance> FromJson(
       const base::Value* value,
       const CommandDictionary& dictionary,
-      ErrorPtr* error);
+      chromeos::ErrorPtr* error);
 
  private:
   // Full command name as "<package_name>.<command_name>".

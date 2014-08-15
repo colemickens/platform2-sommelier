@@ -11,8 +11,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
-
-#include "buffet/error.h"
+#include <chromeos/error.h>
 
 namespace base {
 class Value;
@@ -53,14 +52,15 @@ class CommandDictionary {
   // when provided.
   bool LoadCommands(const base::DictionaryValue& json,
                     const std::string& category,
-                    const CommandDictionary* base_commands, ErrorPtr* error);
+                    const CommandDictionary* base_commands,
+                    chromeos::ErrorPtr* error);
   // Converts all the command definitions to a JSON object for CDD/Device
   // draft. |full_schema| specifies whether full command definitions must
   // be generated (true) for CDD or only overrides from the base schema (false).
   // Returns empty unique_ptr in case of an error and fills in the additional
   // error details in |error|.
   std::unique_ptr<base::DictionaryValue> GetCommandsAsJson(
-      bool full_schema, ErrorPtr* error) const;
+      bool full_schema, chromeos::ErrorPtr* error) const;
   // Returns the number of command definitions in the dictionary.
   size_t GetSize() const { return definitions_.size(); }
   // Checks if the dictionary has no command definitions.

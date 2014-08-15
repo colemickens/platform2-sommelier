@@ -34,7 +34,7 @@ class Transport : public http::Transport {
       const HeaderList& headers,
       const std::string& user_agent,
       const std::string& referer,
-      ErrorPtr* error) override;
+      chromeos::ErrorPtr* error) override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Transport);

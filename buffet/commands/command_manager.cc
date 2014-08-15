@@ -8,9 +8,10 @@
 #include <base/files/file_enumerator.h>
 #include <base/json/json_reader.h>
 #include <base/values.h>
+#include <chromeos/error.h>
+#include <chromeos/error_codes.h>
 
 #include "buffet/commands/schema_constants.h"
-#include "buffet/error_codes.h"
 
 namespace buffet {
 
@@ -19,12 +20,12 @@ const CommandDictionary& CommandManager::GetCommandDictionary() const {
 }
 
 bool CommandManager::LoadBaseCommands(const base::DictionaryValue& json,
-                                      ErrorPtr* error) {
+                                      chromeos::ErrorPtr* error) {
   return base_dictionary_.LoadCommands(json, "", nullptr, error);
 }
 
 bool CommandManager::LoadBaseCommands(const base::FilePath& json_file_path,
-                                      ErrorPtr* error) {
+                                      chromeos::ErrorPtr* error) {
   std::unique_ptr<const base::DictionaryValue> json = LoadJsonDict(
       json_file_path, error);
   if (!json)
@@ -34,12 +35,12 @@ bool CommandManager::LoadBaseCommands(const base::FilePath& json_file_path,
 
 bool CommandManager::LoadCommands(const base::DictionaryValue& json,
                                   const std::string& category,
-                                  ErrorPtr* error) {
+                                  chromeos::ErrorPtr* error) {
   return dictionary_.LoadCommands(json, category, &base_dictionary_, error);
 }
 
 bool CommandManager::LoadCommands(const base::FilePath& json_file_path,
-                                  ErrorPtr* error) {
+                                  chromeos::ErrorPtr* error) {
   std::unique_ptr<const base::DictionaryValue> json = LoadJsonDict(
       json_file_path, error);
   if (!json)
@@ -71,31 +72,33 @@ void CommandManager::Startup() {
 }
 
 std::unique_ptr<const base::DictionaryValue> CommandManager::LoadJsonDict(
-    const base::FilePath& json_file_path, ErrorPtr* error) {
+    const base::FilePath& json_file_path, chromeos::ErrorPtr* error) {
   std::string json_string;
   if (!base::ReadFileToString(json_file_path, &json_string)) {
-    Error::AddToPrintf(error, errors::file_system::kDomain,
-                       errors::file_system::kFileReadError,
-                       "Failed to read file '%s'",
-                       json_file_path.value().c_str());
+    chromeos::Error::AddToPrintf(error, chromeos::errors::file_system::kDomain,
+                                 chromeos::errors::file_system::kFileReadError,
+                                 "Failed to read file '%s'",
+                                 json_file_path.value().c_str());
     return std::unique_ptr<const base::DictionaryValue>();
   }
   std::string error_message;
   base::Value* value = base::JSONReader::ReadAndReturnError(
       json_string, base::JSON_PARSE_RFC, nullptr, &error_message);
   if (!value) {
-    Error::AddToPrintf(error, errors::json::kDomain, errors::json::kParseError,
-                       "Error parsing content of JSON file '%s': %s",
-                       json_file_path.value().c_str(), error_message.c_str());
+    chromeos::Error::AddToPrintf(error, chromeos::errors::json::kDomain,
+                                 chromeos::errors::json::kParseError,
+                                 "Error parsing content of JSON file '%s': %s",
+                                 json_file_path.value().c_str(),
+                                 error_message.c_str());
     return std::unique_ptr<const base::DictionaryValue>();
   }
   const base::DictionaryValue* dict_value = nullptr;
   if (!value->GetAsDictionary(&dict_value)) {
     delete value;
-    Error::AddToPrintf(error, errors::json::kDomain,
-                       errors::json::kObjectExpected,
-                       "Content of file '%s' is not a JSON object",
-                       json_file_path.value().c_str());
+    chromeos::Error::AddToPrintf(error, chromeos::errors::json::kDomain,
+                                 chromeos::errors::json::kObjectExpected,
+                                 "Content of file '%s' is not a JSON object",
+                                 json_file_path.value().c_str());
     return std::unique_ptr<const base::DictionaryValue>();
   }
   return std::unique_ptr<const base::DictionaryValue>(dict_value);

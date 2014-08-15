@@ -13,8 +13,8 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <chromeos/error.h>
 
-#include "buffet/error.h"
 #include "buffet/http_connection.h"
 #include "buffet/http_transport.h"
 
@@ -235,7 +235,7 @@ class Request {
   void RemoveHeader(const char* header);
 
   // Adds a request body. This is not to be used with GET method
-  bool AddRequestBody(const void* data, size_t size, ErrorPtr* error);
+  bool AddRequestBody(const void* data, size_t size, chromeos::ErrorPtr* error);
 
   // Makes a request for a subrange of data. Specifies a partial range with
   // either from beginning of the data to the specified offset (if |bytes| is
@@ -264,11 +264,11 @@ class Request {
   // In case the server couldn't be reached for whatever reason, returns
   // empty unique_ptr (null). In such a case, the additional error information
   // can be returned through the optional supplied |error| parameter.
-  std::unique_ptr<Response> GetResponse(ErrorPtr* error);
+  std::unique_ptr<Response> GetResponse(chromeos::ErrorPtr* error);
 
  private:
   // Helper function to create an http::Connection and send off request headers.
-  bool SendRequestIfNeeded(ErrorPtr* error);
+  bool SendRequestIfNeeded(chromeos::ErrorPtr* error);
 
   // Implementation that provides particular HTTP transport.
   std::shared_ptr<Transport> transport_;

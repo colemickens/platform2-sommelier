@@ -9,7 +9,7 @@
 #include <memory>
 #include <string>
 
-#include "buffet/error.h"
+#include <chromeos/error.h>
 
 namespace base {
 class Value;
@@ -58,37 +58,40 @@ class ObjectSchema final {
   // Saves the object schema to JSON. When |full_schema| is set to true,
   // then all properties and constraints are saved, otherwise, only
   // the overridden (not inherited) ones are saved.
-  std::unique_ptr<base::DictionaryValue> ToJson(bool full_schema,
-                                                ErrorPtr* error) const;
+  std::unique_ptr<base::DictionaryValue> ToJson(
+      bool full_schema, chromeos::ErrorPtr* error) const;
   // Loads the object schema from JSON. If |object_schema| is not nullptr, it is
   // used as a base schema to inherit omitted properties and constraints from.
   bool FromJson(const base::DictionaryValue* value,
-                const ObjectSchema* object_schema, ErrorPtr* error);
+                const ObjectSchema* object_schema, chromeos::ErrorPtr* error);
 
  private:
   // Internal helper method to load individual parameter type definitions.
   bool PropFromJson(const std::string& prop_name,
                     const base::Value& value,
                     const PropType* base_schema,
-                    Properties* properties, ErrorPtr* error) const;
+                    Properties* properties, chromeos::ErrorPtr* error) const;
   // Helper function in case the parameter is defined as JSON string like this:
   //   "prop":"..."
   bool PropFromJsonString(const std::string& prop_name,
                           const base::Value& value,
                           const PropType* base_schema,
-                          Properties* properties, ErrorPtr* error) const;
+                          Properties* properties,
+                          chromeos::ErrorPtr* error) const;
   // Helper function in case the parameter is defined as JSON array like this:
   //   "prop":[...]
   bool PropFromJsonArray(const std::string& prop_name,
                          const base::Value& value,
                          const PropType* base_schema,
-                         Properties* properties, ErrorPtr* error) const;
+                         Properties* properties,
+                         chromeos::ErrorPtr* error) const;
   // Helper function in case the parameter is defined as JSON object like this:
   //   "prop":{...}
   bool PropFromJsonObject(const std::string& prop_name,
                           const base::Value& value,
                           const PropType* base_schema,
-                          Properties* properties, ErrorPtr* error) const;
+                          Properties* properties,
+                          chromeos::ErrorPtr* error) const;
 
   // Internal parameter type definition map.
   Properties properties_;

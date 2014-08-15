@@ -9,9 +9,9 @@
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
 #include <base/values.h>
+#include <chromeos/error_codes.h>
 
 #include "buffet/data_encoding.h"
-#include "buffet/error_codes.h"
 #include "buffet/mime_utils.h"
 
 namespace buffet {
@@ -20,7 +20,7 @@ namespace http {
 std::unique_ptr<Response> Get(const std::string& url,
                               const HeaderList& headers,
                               std::shared_ptr<Transport> transport,
-                              ErrorPtr* error) {
+                              chromeos::ErrorPtr* error) {
   return SendRequest(request_type::kGet, url, nullptr, 0, nullptr,
                      headers, transport, error);
 }
@@ -28,14 +28,14 @@ std::unique_ptr<Response> Get(const std::string& url,
 std::string GetAsString(const std::string& url,
                         const HeaderList& headers,
                         std::shared_ptr<Transport> transport,
-                        ErrorPtr* error) {
+                        chromeos::ErrorPtr* error) {
   auto resp = Get(url, headers, transport, error);
   return resp ? resp->GetDataAsString() : std::string();
 }
 
 std::unique_ptr<Response> Head(const std::string& url,
                                std::shared_ptr<Transport> transport,
-                               ErrorPtr* error) {
+                               chromeos::ErrorPtr* error) {
   Request request(url, request_type::kHead, transport);
   return request.GetResponse(error);
 }
@@ -45,7 +45,7 @@ std::unique_ptr<Response> PostText(const std::string& url,
                                    const char* mime_type,
                                    const HeaderList& headers,
                                    std::shared_ptr<Transport> transport,
-                                   ErrorPtr* error) {
+                                   chromeos::ErrorPtr* error) {
   if (mime_type == nullptr) {
     mime_type = mime::application::kWwwFormUrlEncoded;
   }
@@ -61,7 +61,7 @@ std::unique_ptr<Response> SendRequest(const char * method,
                                       const char* mime_type,
                                       const HeaderList& headers,
                                       std::shared_ptr<Transport> transport,
-                                      ErrorPtr* error) {
+                                      chromeos::ErrorPtr* error) {
   Request request(url, method, transport);
   request.AddHeaders(headers);
   if (data_size > 0) {
@@ -79,7 +79,7 @@ std::unique_ptr<Response> PostBinary(const std::string & url, const void* data,
                                      size_t data_size, const char* mime_type,
                                      const HeaderList& headers,
                                      std::shared_ptr<Transport> transport,
-                                     ErrorPtr* error) {
+                                     chromeos::ErrorPtr* error) {
   return SendRequest(request_type::kPost, url,
                      data, data_size, mime_type, headers, transport, error);
 }
@@ -88,7 +88,7 @@ std::unique_ptr<Response> PostFormData(const std::string& url,
                                        const FormFieldList& data,
                                        const HeaderList& headers,
                                        std::shared_ptr<Transport> transport,
-                                       ErrorPtr* error) {
+                                       chromeos::ErrorPtr* error) {
   std::string encoded_data = data_encoding::WebParamsEncode(data);
   return PostBinary(url, encoded_data.c_str(), encoded_data.size(),
                     mime::application::kWwwFormUrlEncoded,
@@ -100,7 +100,7 @@ std::unique_ptr<Response> PostJson(const std::string& url,
                                    const base::Value* json,
                                    const HeaderList& headers,
                                    std::shared_ptr<Transport> transport,
-                                   ErrorPtr* error) {
+                                   chromeos::ErrorPtr* error) {
   std::string data;
   if (json)
     base::JSONWriter::Write(json, &data);
@@ -115,7 +115,7 @@ std::unique_ptr<Response> PatchJson(const std::string& url,
                                     const base::Value* json,
                                     const HeaderList& headers,
                                     std::shared_ptr<Transport> transport,
-                                    ErrorPtr* error) {
+                                    chromeos::ErrorPtr* error) {
   std::string data;
   if (json)
     base::JSONWriter::Write(json, &data);
@@ -127,7 +127,7 @@ std::unique_ptr<Response> PatchJson(const std::string& url,
 }
 
 std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
-    const Response* response, int* status_code, ErrorPtr* error) {
+    const Response* response, int* status_code, chromeos::ErrorPtr* error) {
   if (!response)
     return std::unique_ptr<base::DictionaryValue>();
 
@@ -139,8 +139,9 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
   auto content_type = mime::RemoveParameters(response->GetContentType());
   if (content_type != mime::application::kJson &&
       content_type != mime::text::kPlain) {
-    Error::AddTo(error, errors::json::kDomain, "non_json_content_type",
-                 "Unexpected response content type: " + content_type);
+    chromeos::Error::AddTo(error, chromeos::errors::json::kDomain,
+                           "non_json_content_type",
+                           "Unexpected response content type: " + content_type);
     return std::unique_ptr<base::DictionaryValue>();
   }
 
@@ -149,15 +150,16 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
   base::Value* value = base::JSONReader::ReadAndReturnError(
       json, base::JSON_PARSE_RFC, nullptr, &error_message);
   if (!value) {
-    Error::AddTo(error, errors::json::kDomain, errors::json::kParseError,
-                 error_message);
+    chromeos::Error::AddTo(error, chromeos::errors::json::kDomain,
+                           chromeos::errors::json::kParseError, error_message);
     return std::unique_ptr<base::DictionaryValue>();
   }
   base::DictionaryValue* dict_value = nullptr;
   if (!value->GetAsDictionary(&dict_value)) {
     delete value;
-    Error::AddTo(error, errors::json::kDomain, errors::json::kObjectExpected,
-                 "Response is not a valid JSON object");
+    chromeos::Error::AddTo(error, chromeos::errors::json::kDomain,
+                           chromeos::errors::json::kObjectExpected,
+                           "Response is not a valid JSON object");
     return std::unique_ptr<base::DictionaryValue>();
   }
   return std::unique_ptr<base::DictionaryValue>(dict_value);

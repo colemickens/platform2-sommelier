@@ -11,8 +11,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
-
-#include "buffet/error.h"
+#include <chromeos/error.h>
 
 namespace buffet {
 namespace http {
@@ -42,7 +41,7 @@ class Transport {
       const HeaderList& headers,
       const std::string& user_agent,
       const std::string& referer,
-      ErrorPtr* error) = 0;
+      chromeos::ErrorPtr* error) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Transport);

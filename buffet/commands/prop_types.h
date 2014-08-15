@@ -13,9 +13,10 @@
 #include <utility>
 #include <vector>
 
+#include <chromeos/error.h>
+
 #include "buffet/commands/prop_constraints.h"
 #include "buffet/commands/prop_values.h"
-#include "buffet/error.h"
 
 namespace buffet {
 
@@ -90,7 +91,7 @@ class PropType {
   // If it fails, returns "nullptr" and fills in the |error| with additional
   // error information.
   virtual std::unique_ptr<base::Value> ToJson(bool full_schema,
-                                              ErrorPtr* error) const;
+                                              chromeos::ErrorPtr* error) const;
   // Parses an JSON parameter type definition. Optional |base_schema| may
   // specify the base schema type definition this type should be based upon.
   // If not specified (nullptr), the parameter type is assumed to be a full
@@ -98,18 +99,18 @@ class PropType {
   // Returns true on success, otherwise fills in the |error| with additional
   // error information.
   virtual bool FromJson(const base::DictionaryValue* value,
-                        const PropType* base_schema, ErrorPtr* error);
+                        const PropType* base_schema, chromeos::ErrorPtr* error);
   // Helper function to load object schema from JSON.
   virtual bool ObjectSchemaFromJson(const base::DictionaryValue* value,
                                     const PropType* base_schema,
                                     std::set<std::string>* processed_keys,
-                                    ErrorPtr* error) {
+                                    chromeos::ErrorPtr* error) {
     return true;
   }
   // Helper function to load type-specific constraints from JSON.
   virtual bool ConstraintsFromJson(const base::DictionaryValue* value,
                                    std::set<std::string>* processed_keys,
-                                   ErrorPtr* error) {
+                                   chromeos::ErrorPtr* error) {
     return true;
   }
 
@@ -118,7 +119,7 @@ class PropType {
   // Returns false if the |value| does not meet the requirements of the type
   // definition and returns additional information about the failure via
   // the |error| parameter.
-  bool ValidateValue(const base::Value* value, ErrorPtr* error) const;
+  bool ValidateValue(const base::Value* value, chromeos::ErrorPtr* error) const;
 
   // Additional helper static methods to help with converting a type enum
   // value into a string and back.
@@ -153,7 +154,8 @@ class PropType {
   }
 
   // Validates the given value against all the constraints.
-  bool ValidateConstraints(const PropValue& value, ErrorPtr* error) const;
+  bool ValidateConstraints(const PropValue& value,
+                           chromeos::ErrorPtr* error) const;
 
  protected:
   // Specifies if this parameter definition is derived from a base
@@ -188,7 +190,7 @@ class PropTypeBase : public PropType {
   }
   bool ConstraintsFromJson(const base::DictionaryValue* value,
                            std::set<std::string>* processed_keys,
-                           ErrorPtr* error) override;
+                           chromeos::ErrorPtr* error) override;
 
   // Helper method to obtain a vector of OneOf constraint values.
   std::vector<T> GetOneOfValues() const {
@@ -205,7 +207,7 @@ class NumericPropTypeBase : public PropTypeBase<Derived, Value, T> {
   using _Base = PropTypeBase<Derived, Value, T>;
   bool ConstraintsFromJson(const base::DictionaryValue* value,
                            std::set<std::string>* processed_keys,
-                           ErrorPtr* error) override;
+                           chromeos::ErrorPtr* error) override;
 
   // Helper method to set and obtain a min/max constraint values.
   // Used mostly for unit testing.
@@ -255,7 +257,7 @@ class StringPropType
 
   bool ConstraintsFromJson(const base::DictionaryValue* value,
                            std::set<std::string>* processed_keys,
-                           ErrorPtr* error) override;
+                           chromeos::ErrorPtr* error) override;
 
   // Helper methods to add and inspect simple constraints.
   // Used mostly for unit testing.
@@ -287,11 +289,11 @@ class ObjectPropType
   ObjectPropType const* GetObject() const override { return this; }
 
   std::unique_ptr<base::Value> ToJson(bool full_schema,
-                                      ErrorPtr* error) const override;
+                                      chromeos::ErrorPtr* error) const override;
   bool ObjectSchemaFromJson(const base::DictionaryValue* value,
                             const PropType* base_schema,
                             std::set<std::string>* processed_keys,
-                            ErrorPtr* error) override;
+                            chromeos::ErrorPtr* error) override;
 
   std::shared_ptr<const ObjectSchema> GetObjectSchema() const override {
     return object_schema_.value;

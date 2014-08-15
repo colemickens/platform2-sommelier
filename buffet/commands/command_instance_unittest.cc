@@ -104,7 +104,7 @@ TEST_F(CommandInstanceTest, FromJson_ParamsOmitted) {
 
 TEST_F(CommandInstanceTest, FromJson_NotObject) {
   auto json = CreateValue("'string'");
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   auto instance = buffet::CommandInstance::FromJson(json.get(), dict_, &error);
   EXPECT_EQ(nullptr, instance.get());
   EXPECT_EQ("json_object_expected", error->GetCode());
@@ -113,7 +113,7 @@ TEST_F(CommandInstanceTest, FromJson_NotObject) {
 
 TEST_F(CommandInstanceTest, FromJson_NameMissing) {
   auto json = CreateDictionaryValue("{'param': 'value'}");
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   auto instance = buffet::CommandInstance::FromJson(json.get(), dict_, &error);
   EXPECT_EQ(nullptr, instance.get());
   EXPECT_EQ("parameter_missing", error->GetCode());
@@ -122,7 +122,7 @@ TEST_F(CommandInstanceTest, FromJson_NameMissing) {
 
 TEST_F(CommandInstanceTest, FromJson_UnknownCommand) {
   auto json = CreateDictionaryValue("{'name': 'robot.scream'}");
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   auto instance = buffet::CommandInstance::FromJson(json.get(), dict_, &error);
   EXPECT_EQ(nullptr, instance.get());
   EXPECT_EQ("invalid_command_name", error->GetCode());
@@ -134,7 +134,7 @@ TEST_F(CommandInstanceTest, FromJson_ParamsNotObject) {
     'name': 'robot.speak',
     'parameters': 'hello'
   })");
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   auto instance = buffet::CommandInstance::FromJson(json.get(), dict_, &error);
   EXPECT_EQ(nullptr, instance.get());
   auto inner = error->GetInnerError();
@@ -152,7 +152,7 @@ TEST_F(CommandInstanceTest, FromJson_ParamError) {
       'volume': 20
     }
   })");
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   auto instance = buffet::CommandInstance::FromJson(json.get(), dict_, &error);
   EXPECT_EQ(nullptr, instance.get());
   auto first = error->GetFirstError();

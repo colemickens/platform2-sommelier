@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_ERROR_CODES_H_
-#define BUFFET_ERROR_CODES_H_
+#ifndef LIBCHROMEOS_CHROMEOS_ERROR_CODES_H_
+#define LIBCHROMEOS_CHROMEOS_ERROR_CODES_H_
 
-namespace buffet {
+namespace chromeos {
 namespace errors {
 
 namespace json {
@@ -20,6 +20,6 @@ extern const char kFileReadError[];
 }  // namespace file_system
 
 }  // namespace errors
-}  // namespace buffet
+}  // namespace chromeos
 
-#endif  // BUFFET_ERROR_CODES_H_
+#endif  // LIBCHROMEOS_CHROMEOS_ERROR_CODES_H_

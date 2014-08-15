@@ -56,13 +56,14 @@ Connection::~Connection() {
   VLOG(1) << "curl::Connection destroyed";
 }
 
-bool Connection::SendHeaders(const HeaderList& headers, ErrorPtr* error) {
+bool Connection::SendHeaders(const HeaderList& headers,
+                             chromeos::ErrorPtr* error) {
   headers_.insert(headers.begin(), headers.end());
   return true;
 }
 
 bool Connection::WriteRequestData(const void* data, size_t size,
-                                  ErrorPtr* error) {
+                                  chromeos::ErrorPtr* error) {
   if (size > 0) {
     auto data_ptr = reinterpret_cast<const unsigned char*>(data);
     request_data_.insert(request_data_.end(), data_ptr, data_ptr + size);
@@ -70,7 +71,7 @@ bool Connection::WriteRequestData(const void* data, size_t size,
   return true;
 }
 
-bool Connection::FinishRequest(ErrorPtr* error) {
+bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
   if (VLOG_IS_ON(3)) {
     curl_easy_setopt(curl_handle_, CURLOPT_DEBUGFUNCTION, curl_trace);
     curl_easy_setopt(curl_handle_, CURLOPT_VERBOSE, 1L);
@@ -121,8 +122,9 @@ bool Connection::FinishRequest(ErrorPtr* error) {
   if (header_list)
     curl_slist_free_all(header_list);
   if (ret != CURLE_OK) {
-    Error::AddTo(error, http::curl::kErrorDomain, string_utils::ToString(ret),
-                 curl_easy_strerror(ret));
+    chromeos::Error::AddTo(error, http::curl::kErrorDomain,
+                           string_utils::ToString(ret),
+                           curl_easy_strerror(ret));
   } else {
     LOG(INFO) << "Response: " << GetResponseStatusCode() << " ("
       << GetResponseStatusText() << ")";
@@ -157,8 +159,10 @@ uint64_t Connection::GetResponseDataSize() const {
   return response_data_.size();
 }
 
-bool Connection::ReadResponseData(void* data, size_t buffer_size,
-                                  size_t* size_read, ErrorPtr* error) {
+bool Connection::ReadResponseData(void* data,
+                                  size_t buffer_size,
+                                  size_t* size_read,
+                                  chromeos::ErrorPtr* error) {
   size_t size_to_read = response_data_.size() - response_data_ptr_;
   if (size_to_read > buffer_size)
     size_to_read = buffer_size;

@@ -13,8 +13,7 @@
 #include <vector>
 
 #include <base/values.h>
-
-#include <buffet/error.h>
+#include <chromeos/error.h>
 
 namespace buffet {
 
@@ -48,16 +47,19 @@ class InheritableAttribute {
 // A bunch of helper function to create base::Value for specific C++ classes,
 // including vectors of types. These are used in template classes below
 // to simplify specialization logic.
-std::unique_ptr<base::Value> TypedValueToJson(bool value, ErrorPtr* error);
-std::unique_ptr<base::Value> TypedValueToJson(int value, ErrorPtr* error);
-std::unique_ptr<base::Value> TypedValueToJson(double value, ErrorPtr* error);
+std::unique_ptr<base::Value> TypedValueToJson(bool value,
+                                              chromeos::ErrorPtr* error);
+std::unique_ptr<base::Value> TypedValueToJson(int value,
+                                              chromeos::ErrorPtr* error);
+std::unique_ptr<base::Value> TypedValueToJson(double value,
+                                              chromeos::ErrorPtr* error);
 std::unique_ptr<base::Value> TypedValueToJson(const std::string& value,
-                                              ErrorPtr* error);
+                                              chromeos::ErrorPtr* error);
 std::unique_ptr<base::Value> TypedValueToJson(const native_types::Object& value,
-                                              ErrorPtr* error);
+                                              chromeos::ErrorPtr* error);
 template<typename T>
 std::unique_ptr<base::Value> TypedValueToJson(const std::vector<T>& values,
-                                              ErrorPtr* error) {
+                                              chromeos::ErrorPtr* error) {
   std::unique_ptr<base::ListValue> list(new base::ListValue);
   for (const auto& v : values) {
     auto json = TypedValueToJson(v, error);
@@ -73,19 +75,20 @@ std::unique_ptr<base::Value> TypedValueToJson(const std::vector<T>& values,
 // Also used in template classes below to simplify specialization logic.
 bool TypedValueFromJson(const base::Value* value_in,
                         const ObjectSchema* object_schema,
-                        bool* value_out, ErrorPtr* error);
+                        bool* value_out, chromeos::ErrorPtr* error);
 bool TypedValueFromJson(const base::Value* value_in,
                         const ObjectSchema* object_schema,
-                        int* value_out, ErrorPtr* error);
+                        int* value_out, chromeos::ErrorPtr* error);
 bool TypedValueFromJson(const base::Value* value_in,
                         const ObjectSchema* object_schema,
-                        double* value_out, ErrorPtr* error);
+                        double* value_out, chromeos::ErrorPtr* error);
 bool TypedValueFromJson(const base::Value* value_in,
                         const ObjectSchema* object_schema,
-                        std::string* value_out, ErrorPtr* error);
+                        std::string* value_out, chromeos::ErrorPtr* error);
 bool TypedValueFromJson(const base::Value* value_in,
                         const ObjectSchema* object_schema,
-                        native_types::Object* value_out, ErrorPtr* error);
+                        native_types::Object* value_out,
+                        chromeos::ErrorPtr* error);
 
 bool operator==(const native_types::Object& obj1,
                 const native_types::Object& obj2);

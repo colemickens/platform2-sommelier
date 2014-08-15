@@ -11,11 +11,11 @@
 
 #include <base/basictypes.h>
 #include <base/values.h>
+#include <chromeos/error.h>
 
 #include "buffet/commands/prop_values.h"
 #include "buffet/commands/schema_constants.h"
 #include "buffet/commands/schema_utils.h"
-#include "buffet/error.h"
 #include "buffet/string_utils.h"
 
 namespace buffet {
@@ -46,7 +46,8 @@ class Constraint {
   // Validates a parameter against the constraint. Returns true if parameter
   // value satisfies the constraint, otherwise fills the optional |error| with
   // the details for the failure.
-  virtual bool Validate(const PropValue& value, ErrorPtr* error) const = 0;
+  virtual bool Validate(const PropValue& value,
+                        chromeos::ErrorPtr* error) const = 0;
   // Makes a copy of the constraint object, marking all the attributes
   // as inherited from the original definition.
   virtual std::shared_ptr<Constraint> CloneAsInherited() const = 0;
@@ -54,13 +55,14 @@ class Constraint {
   // the object schema. If |overridden_only| is set to true, then the
   // inherited constraints will not be added to the schema object.
   virtual bool AddToJsonDict(base::DictionaryValue* dict, bool overridden_only,
-                             ErrorPtr* error) const;
+                             chromeos::ErrorPtr* error) const;
   // Saves the value of constraint to JSON value. E.g., if the numeric
   // constraint was defined as {"minimum":20} this will create a JSON value
   // of 20. The current design implies that each constraint has one value
   // only. If this assumption changes, this interface needs to be updated
   // accordingly.
-  virtual std::unique_ptr<base::Value> ToJson(ErrorPtr* error) const = 0;
+  virtual std::unique_ptr<base::Value> ToJson(
+      chromeos::ErrorPtr* error) const = 0;
   // Overloaded by the concrete class implementation, it should return the
   // JSON object property name to store the constraint's value as.
   // E.g., if the numeric constraint was defined as {"minimum":20} this
@@ -73,12 +75,15 @@ class Constraint {
   // Since these functions could be used by constraint objects for various
   // data types, the values used in validation are expected to be
   // send as strings already.
-  static bool ReportErrorLessThan(ErrorPtr* error, const std::string& val,
+  static bool ReportErrorLessThan(chromeos::ErrorPtr* error,
+                                  const std::string& val,
                                   const std::string& limit);
-  static bool ReportErrorGreaterThan(ErrorPtr* error, const std::string& val,
+  static bool ReportErrorGreaterThan(chromeos::ErrorPtr* error,
+                                     const std::string& val,
                                      const std::string& limit);
 
-  static bool ReportErrorNotOneOf(ErrorPtr* error, const std::string& val,
+  static bool ReportErrorNotOneOf(chromeos::ErrorPtr* error,
+                                  const std::string& val,
                                   const std::vector<std::string>& values);
 
  private:
@@ -101,7 +106,8 @@ class ConstraintMinMaxBase : public Constraint {
   }
 
   // Implementation of Constraint::ToJson().
-  std::unique_ptr<base::Value> ToJson(ErrorPtr* error) const override {
+  std::unique_ptr<base::Value> ToJson(
+      chromeos::ErrorPtr* error) const override {
     return TypedValueToJson(limit_.value, error);
   }
 
@@ -127,7 +133,8 @@ class ConstraintMin : public ConstraintMinMaxBase<T> {
   ConstraintType GetType() const { return ConstraintType::Min; }
 
   // Implementation of Constraint::Validate().
-  bool Validate(const PropValue& value, ErrorPtr* error) const override {
+  bool Validate(const PropValue& value,
+                chromeos::ErrorPtr* error) const override {
     T v = value.GetValueAsAny().Get<T>();
     if (v < this->limit_.value)
       return this->ReportErrorLessThan(
@@ -163,7 +170,8 @@ class ConstraintMax : public ConstraintMinMaxBase<T> {
   ConstraintType GetType() const { return ConstraintType::Max; }
 
   // Implementation of Constraint::Validate().
-  bool Validate(const PropValue& value, ErrorPtr* error) const override {
+  bool Validate(const PropValue& value,
+                chromeos::ErrorPtr* error) const override {
     T v = value.GetValueAsAny().Get<T>();
     if (v > this->limit_.value)
       return this->ReportErrorGreaterThan(
@@ -196,7 +204,7 @@ class ConstraintStringLength : public Constraint {
   // Implementation of Constraint::HasOverriddenAttributes().
   bool HasOverriddenAttributes() const override;
   // Implementation of Constraint::ToJson().
-  std::unique_ptr<base::Value> ToJson(ErrorPtr* error) const override;
+  std::unique_ptr<base::Value> ToJson(chromeos::ErrorPtr* error) const override;
 
   // Stores the upper/lower value limit for string length constraint.
   // |limit_.is_inherited| indicates whether the constraint is inherited
@@ -217,7 +225,8 @@ class ConstraintStringLengthMin : public ConstraintStringLength {
     return ConstraintType::StringLengthMin;
   }
   // Implementation of Constraint::Validate().
-  bool Validate(const PropValue& value, ErrorPtr* error) const override;
+  bool Validate(const PropValue& value,
+                chromeos::ErrorPtr* error) const override;
   // Implementation of Constraint::CloneAsInherited().
   std::shared_ptr<Constraint> CloneAsInherited() const override;
   // Implementation of Constraint::GetDictKey().
@@ -238,7 +247,8 @@ class ConstraintStringLengthMax : public ConstraintStringLength {
     return ConstraintType::StringLengthMax;
   }
   // Implementation of Constraint::Validate().
-  bool Validate(const PropValue& value, ErrorPtr* error) const override;
+  bool Validate(const PropValue& value,
+                chromeos::ErrorPtr* error) const override;
   // Implementation of Constraint::CloneAsInherited().
   std::shared_ptr<Constraint> CloneAsInherited() const override;
   // Implementation of Constraint::GetDictKey().
@@ -270,7 +280,8 @@ class ConstraintOneOf : public Constraint {
   }
 
   // Implementation of Constraint::Validate().
-  bool Validate(const PropValue& value, ErrorPtr* error) const override {
+  bool Validate(const PropValue& value,
+                chromeos::ErrorPtr* error) const override {
     using string_utils::ToString;
     T v = value.GetValueAsAny().Get<T>();
     for (const auto& item : set_.value) {
@@ -291,7 +302,8 @@ class ConstraintOneOf : public Constraint {
   }
 
   // Implementation of Constraint::ToJson().
-  std::unique_ptr<base::Value> ToJson(ErrorPtr* error) const override {
+  std::unique_ptr<base::Value> ToJson(
+      chromeos::ErrorPtr* error) const override {
     return TypedValueToJson(set_.value, error);
   }
 

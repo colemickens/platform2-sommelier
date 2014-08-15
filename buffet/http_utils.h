@@ -5,12 +5,13 @@
 #ifndef BUFFET_HTTP_UTILS_H_
 #define BUFFET_HTTP_UTILS_H_
 
-#include "buffet/error.h"
-#include "buffet/http_request.h"
-
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <chromeos/error.h>
+
+#include "buffet/http_request.h"
 
 namespace base {
 class Value;
@@ -38,15 +39,15 @@ std::unique_ptr<Response> SendRequest(
     const char* method, const std::string& url,
     const void* data, size_t data_size, const char* mime_type,
     const HeaderList& headers, std::shared_ptr<Transport> transport,
-    ErrorPtr* error);
+    chromeos::ErrorPtr* error);
 
 // Performs a simple GET request and returns the data as a string.
 std::string GetAsString(const std::string& url, const HeaderList& headers,
                         std::shared_ptr<Transport> transport,
-                        ErrorPtr* error);
+                        chromeos::ErrorPtr* error);
 inline std::string GetAsString(const std::string& url,
                                std::shared_ptr<Transport> transport,
-                               ErrorPtr* error) {
+                               chromeos::ErrorPtr* error) {
   return GetAsString(url, HeaderList(), transport, error);
 }
 
@@ -56,10 +57,10 @@ inline std::string GetAsString(const std::string& url,
 std::unique_ptr<Response> Get(const std::string& url,
                               const HeaderList& headers,
                               std::shared_ptr<Transport> transport,
-                              ErrorPtr* error);
+                              chromeos::ErrorPtr* error);
 inline std::unique_ptr<Response> Get(
     const std::string& url, std::shared_ptr<Transport> transport,
-    ErrorPtr* error) {
+    chromeos::ErrorPtr* error) {
   return Get(url, HeaderList(), transport, error);
 }
 
@@ -68,7 +69,7 @@ inline std::unique_ptr<Response> Get(
 // the returned Response object.
 std::unique_ptr<Response> Head(const std::string& url,
                                std::shared_ptr<Transport> transport,
-                               ErrorPtr* error);
+                               chromeos::ErrorPtr* error);
 
 // Performs a POST request with binary data. Success status, returned data
 // and additional information (such as returned HTTP headers) can be obtained
@@ -80,19 +81,19 @@ std::unique_ptr<Response> PostBinary(const std::string& url,
                                      const char* mime_type,
                                      const HeaderList& headers,
                                      std::shared_ptr<Transport> transport,
-                                     ErrorPtr* error);
+                                     chromeos::ErrorPtr* error);
 
 inline std::unique_ptr<Response> PostBinary(
     const std::string& url, const void* data, size_t data_size,
     const char* mime_type, std::shared_ptr<Transport> transport,
-    ErrorPtr* error) {
+    chromeos::ErrorPtr* error) {
   return PostBinary(url, data, data_size, mime_type, HeaderList(), transport,
                     error);
 }
 
 inline std::unique_ptr<Response> PostBinary(
     const std::string& url, const void* data, size_t data_size,
-    std::shared_ptr<Transport> transport, ErrorPtr* error) {
+    std::shared_ptr<Transport> transport, chromeos::ErrorPtr* error) {
   return PostBinary(url, data, data_size, nullptr, transport, error);
 }
 
@@ -106,17 +107,17 @@ std::unique_ptr<Response> PostText(const std::string& url,
                                    const char* mime_type,
                                    const HeaderList& headers,
                                    std::shared_ptr<Transport> transport,
-                                   ErrorPtr* error);
+                                   chromeos::ErrorPtr* error);
 
 inline std::unique_ptr<Response> PostText(
     const std::string& url, const char* data, const char* mime_type,
-    std::shared_ptr<Transport> transport, ErrorPtr* error) {
+    std::shared_ptr<Transport> transport, chromeos::ErrorPtr* error) {
   return PostText(url, data, mime_type, HeaderList(), transport, error);
 }
 
 inline std::unique_ptr<Response> PostText(
     const std::string& url, const char* data,
-    std::shared_ptr<Transport> transport, ErrorPtr* error) {
+    std::shared_ptr<Transport> transport, chromeos::ErrorPtr* error) {
   return PostText(url, data, nullptr, transport, error);
 }
 
@@ -127,11 +128,11 @@ inline std::unique_ptr<Response> PostText(
 std::unique_ptr<Response> PostFormData(
     const std::string& url, const FormFieldList& data,
     const HeaderList& headers, std::shared_ptr<Transport> transport,
-    ErrorPtr* error);
+    chromeos::ErrorPtr* error);
 
 inline std::unique_ptr<Response> PostFormData(
     const std::string& url, const FormFieldList& data,
-    std::shared_ptr<Transport> transport, ErrorPtr* error) {
+    std::shared_ptr<Transport> transport, chromeos::ErrorPtr* error) {
   return PostFormData(url, data, HeaderList(), transport, error);
 }
 
@@ -143,11 +144,11 @@ std::unique_ptr<Response> PostJson(const std::string& url,
                                    const base::Value* json,
                                    const HeaderList& headers,
                                    std::shared_ptr<Transport> transport,
-                                   ErrorPtr* error);
+                                   chromeos::ErrorPtr* error);
 
 inline std::unique_ptr<Response> PostJson(
     const std::string& url, const base::Value* json,
-    std::shared_ptr<Transport> transport, ErrorPtr* error) {
+    std::shared_ptr<Transport> transport, chromeos::ErrorPtr* error) {
   return PostJson(url, json, HeaderList(), transport, error);
 }
 
@@ -159,11 +160,11 @@ std::unique_ptr<Response> PatchJson(const std::string& url,
                                     const base::Value* json,
                                     const HeaderList& headers,
                                     std::shared_ptr<Transport> transport,
-                                    ErrorPtr* error);
+                                    chromeos::ErrorPtr* error);
 
 inline std::unique_ptr<Response> PatchJson(
     const std::string& url, const base::Value* json,
-    std::shared_ptr<Transport> transport, ErrorPtr* error) {
+    std::shared_ptr<Transport> transport, chromeos::ErrorPtr* error) {
   return PatchJson(url, json, HeaderList(), transport, error);
 }
 
@@ -171,7 +172,7 @@ inline std::unique_ptr<Response> PatchJson(
 // Returns null if failed. Optional |error| can be passed in to
 // get the extended error information as to why the parse failed.
 std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
-    const Response* response, int* status_code, ErrorPtr* error);
+    const Response* response, int* status_code, chromeos::ErrorPtr* error);
 
 }  // namespace http
 }  // namespace buffet

@@ -39,7 +39,7 @@ bool PropType::HasOverriddenAttributes() const {
 }
 
 std::unique_ptr<base::Value> PropType::ToJson(bool full_schema,
-                                              ErrorPtr* error) const {
+                                              chromeos::ErrorPtr* error) const {
   if (!full_schema && !HasOverriddenAttributes()) {
     if (based_on_schema_)
       return std::unique_ptr<base::Value>(new base::DictionaryValue);
@@ -82,13 +82,14 @@ std::unique_ptr<base::Value> PropType::ToJson(bool full_schema,
 }
 
 bool PropType::FromJson(const base::DictionaryValue* value,
-                        const PropType* base_schema, ErrorPtr* error) {
+                        const PropType* base_schema,
+                        chromeos::ErrorPtr* error) {
   if (base_schema && base_schema->GetType() != GetType()) {
-    Error::AddToPrintf(error, errors::commands::kDomain,
-                       errors::commands::kPropTypeChanged,
-                       "Redefining a property of type %s as %s",
-                       base_schema->GetTypeAsString().c_str(),
-                       GetTypeAsString().c_str());
+    chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+                                 errors::commands::kPropTypeChanged,
+                                 "Redefining a property of type %s as %s",
+                                 base_schema->GetTypeAsString().c_str(),
+                                 GetTypeAsString().c_str());
     return false;
   }
   based_on_schema_ = (base_schema != nullptr);
@@ -111,9 +112,9 @@ bool PropType::FromJson(const base::DictionaryValue* value,
   while (!iter.IsAtEnd()) {
     std::string key = iter.key();
     if (processed_keys.find(key) == processed_keys.end()) {
-      Error::AddToPrintf(error, errors::commands::kDomain,
-                         errors::commands::kUnknownProperty,
-                         "Unexpected property '%s'", key.c_str());
+      chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+                                   errors::commands::kUnknownProperty,
+                                   "Unexpected property '%s'", key.c_str());
       return false;
     }
     iter.Advance();
@@ -141,14 +142,15 @@ Constraint* PropType::GetConstraint(ConstraintType constraint_type) {
   return p != constraints_.end() ? p->second.get() : nullptr;
 }
 
-bool PropType::ValidateValue(const base::Value* value, ErrorPtr* error) const {
+bool PropType::ValidateValue(const base::Value* value,
+                             chromeos::ErrorPtr* error) const {
   std::shared_ptr<PropValue> val = CreateValue();
   CHECK(val) << "Failed to create value object";
   return val->FromJson(value, error) && ValidateConstraints(*val, error);
 }
 
 bool PropType::ValidateConstraints(const PropValue& value,
-                                   ErrorPtr* error) const {
+                                   chromeos::ErrorPtr* error) const {
   for (const auto& pair : constraints_) {
     if (!pair.second->Validate(value, error))
       return false;
@@ -211,12 +213,13 @@ std::unique_ptr<PropType> PropType::Create(ValueType type) {
 template<typename T>
 static std::shared_ptr<Constraint> LoadOneOfConstraint(
     const base::DictionaryValue* value, const ObjectSchema* object_schema,
-    ErrorPtr* error) {
+    chromeos::ErrorPtr* error) {
   const base::ListValue* list = nullptr;
   if (!value->GetListWithoutPathExpansion(commands::attributes::kOneOf_Enum,
                                           &list)) {
-    Error::AddTo(error, errors::commands::kDomain,
-                 errors::commands::kTypeMismatch, "Expecting an array");
+    chromeos::Error::AddTo(error, errors::commands::kDomain,
+                           errors::commands::kTypeMismatch,
+                           "Expecting an array");
     return std::shared_ptr<Constraint>();
   }
   std::vector<T> set;
@@ -234,7 +237,7 @@ static std::shared_ptr<Constraint> LoadOneOfConstraint(
 template<class ConstraintClass, typename T>
 static std::shared_ptr<Constraint> LoadMinMaxConstraint(
     const char* dict_key, const base::DictionaryValue* value,
-    const ObjectSchema* object_schema, ErrorPtr* error) {
+    const ObjectSchema* object_schema, chromeos::ErrorPtr* error) {
   InheritableAttribute<T> limit;
 
   const base::Value* src_val = nullptr;
@@ -251,7 +254,7 @@ static std::shared_ptr<Constraint> LoadMinMaxConstraint(
 template<class Derived, class Value, typename T>
 bool PropTypeBase<Derived, Value, T>::ConstraintsFromJson(
     const base::DictionaryValue* value, std::set<std::string>* processed_keys,
-    ErrorPtr* error) {
+    chromeos::ErrorPtr* error) {
   if (!PropType::ConstraintsFromJson(value, processed_keys, error))
     return false;
 
@@ -274,7 +277,7 @@ bool PropTypeBase<Derived, Value, T>::ConstraintsFromJson(
 template<class Derived, class Value, typename T>
 bool NumericPropTypeBase<Derived, Value, T>::ConstraintsFromJson(
     const base::DictionaryValue* value, std::set<std::string>* processed_keys,
-    ErrorPtr* error) {
+    chromeos::ErrorPtr* error) {
   if (!_Base::ConstraintsFromJson(value, processed_keys, error))
     return false;
 
@@ -311,7 +314,7 @@ bool NumericPropTypeBase<Derived, Value, T>::ConstraintsFromJson(
 
 bool StringPropType::ConstraintsFromJson(
     const base::DictionaryValue* value, std::set<std::string>* processed_keys,
-    ErrorPtr* error) {
+    chromeos::ErrorPtr* error) {
   if (!_Base::ConstraintsFromJson(value, processed_keys, error))
     return false;
 
@@ -372,8 +375,8 @@ bool ObjectPropType::HasOverriddenAttributes() const {
          !object_schema_.is_inherited;
 }
 
-std::unique_ptr<base::Value> ObjectPropType::ToJson(bool full_schema,
-                                                    ErrorPtr* error) const {
+std::unique_ptr<base::Value> ObjectPropType::ToJson(
+    bool full_schema, chromeos::ErrorPtr* error) const {
   std::unique_ptr<base::Value> value = PropType::ToJson(full_schema, error);
   if (value) {
     base::DictionaryValue* dict = nullptr;
@@ -393,7 +396,7 @@ std::unique_ptr<base::Value> ObjectPropType::ToJson(bool full_schema,
 
 bool ObjectPropType::ObjectSchemaFromJson(
     const base::DictionaryValue* value, const PropType* base_schema,
-    std::set<std::string>* processed_keys, ErrorPtr* error) {
+    std::set<std::string>* processed_keys, chromeos::ErrorPtr* error) {
   if (!_Base::ObjectSchemaFromJson(value, base_schema, processed_keys, error))
     return false;
 
@@ -408,9 +411,9 @@ bool ObjectPropType::ObjectSchemaFromJson(
     processed_keys->insert(kObject_Properties);
     auto object_schema = std::make_shared<ObjectSchema>();
     if (!object_schema->FromJson(props, base_object_schema.get(), error)) {
-      Error::AddTo(error, errors::commands::kDomain,
-                   errors::commands::kInvalidObjectSchema,
-                   "Error parsing object property schema");
+      chromeos::Error::AddTo(error, errors::commands::kDomain,
+                             errors::commands::kInvalidObjectSchema,
+                             "Error parsing object property schema");
       return false;
     }
     object_schema_.value = object_schema;
@@ -419,10 +422,11 @@ bool ObjectPropType::ObjectSchemaFromJson(
     object_schema_.value = base_object_schema;
     object_schema_.is_inherited = true;
   } else {
-    Error::AddToPrintf(error, errors::commands::kDomain,
-                       errors::commands::kInvalidObjectSchema,
-                       "Object type definition must include the object schema "
-                       "('%s' field not found)", kObject_Properties);
+    chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+                                 errors::commands::kInvalidObjectSchema,
+                                 "Object type definition must include the "
+                                 "object schema ('%s' field not found)",
+                                 kObject_Properties);
     return false;
   }
 

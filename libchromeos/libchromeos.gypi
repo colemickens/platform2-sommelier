@@ -60,6 +60,8 @@
         'chromeos/dbus/abstract_dbus_service.cc',
         'chromeos/dbus/dbus.cc',
         'chromeos/dbus_utils.cc',
+        'chromeos/error.cc',
+        'chromeos/error_codes.cc',
         'chromeos/exported_object_manager.cc',
         'chromeos/exported_property_set.cc',
         'chromeos/process.cc',
@@ -200,6 +202,7 @@
           'sources': [
             'chromeos/async_event_sequencer_unittest.cc',
             'chromeos/asynchronous_signal_handler_unittest.cc',
+            'chromeos/error_unittest.cc',
             'chromeos/exported_object_manager_unittest.cc',
             'chromeos/exported_property_set_unittest.cc',
             'chromeos/glib/object_unittest.cc',

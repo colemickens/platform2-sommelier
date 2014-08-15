@@ -73,7 +73,7 @@ TEST(CommandSchemaUtils, TypedValueFromJson_Bool) {
                                          &value, nullptr));
   EXPECT_FALSE(value);
 
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   EXPECT_FALSE(buffet::TypedValueFromJson(CreateValue("0").get(), nullptr,
                                           &value, &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
@@ -95,7 +95,7 @@ TEST(CommandSchemaUtils, TypedValueFromJson_Int) {
                                          &value, nullptr));
   EXPECT_EQ(-1234, value);
 
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   EXPECT_FALSE(buffet::TypedValueFromJson(CreateValue("'abc'").get(), nullptr,
                                           &value, &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
@@ -123,7 +123,7 @@ TEST(CommandSchemaUtils, TypedValueFromJson_Double) {
                                          nullptr, &value, nullptr));
   EXPECT_EQ(-123.0, value);
 
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   EXPECT_FALSE(buffet::TypedValueFromJson(CreateValue("'abc'").get(), nullptr,
                                           &value, &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
@@ -145,7 +145,7 @@ TEST(CommandSchemaUtils, TypedValueFromJson_String) {
                                          &value, nullptr));
   EXPECT_EQ("abc", value);
 
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   EXPECT_FALSE(buffet::TypedValueFromJson(CreateValue("12").get(), nullptr,
                                           &value, &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
@@ -172,7 +172,7 @@ TEST(CommandSchemaUtils, TypedValueFromJson_Object) {
                                name_prop->CreateValue(std::string("Bob"))));
   EXPECT_EQ(value2, value);
 
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   EXPECT_FALSE(buffet::TypedValueFromJson(CreateValue("'abc'").get(), nullptr,
                                           &value, &error));
   EXPECT_EQ("type_mismatch", error->GetCode());

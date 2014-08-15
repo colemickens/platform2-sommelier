@@ -53,7 +53,7 @@ TEST(CommandDictionary, LoadCommands) {
 
 TEST(CommandDictionary, LoadCommands_Failures) {
   buffet::CommandDictionary dict;
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
 
   // Command definition missing 'parameters' property.
   auto json = CreateDictionaryValue("{'robot':{'jump':{}}}");
@@ -97,7 +97,7 @@ TEST(CommandDictionary, LoadCommands_Failures) {
 TEST(CommandDictionary, LoadCommands_RedefineInDifferentCategory) {
   // Redefine commands in different category.
   buffet::CommandDictionary dict;
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   auto json = CreateDictionaryValue("{'robot':{'jump':{'parameters':{}}}}");
   dict.LoadCommands(*json, "category1", nullptr, &error);
   EXPECT_FALSE(dict.LoadCommands(*json, "category2", nullptr, &error));
@@ -111,7 +111,7 @@ TEST(CommandDictionary, LoadCommands_CustomCommandNaming) {
   // Custom command must start with '_'.
   buffet::CommandDictionary base_dict;
   buffet::CommandDictionary dict;
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   auto json = CreateDictionaryValue(R"({
     'base': {
       'reboot': {
@@ -137,7 +137,7 @@ TEST(CommandDictionary, LoadCommands_RedefineStdCommand) {
   // Redefine commands parameter type.
   buffet::CommandDictionary base_dict;
   buffet::CommandDictionary dict;
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   auto json = CreateDictionaryValue(R"({
     'base': {
       'reboot': {

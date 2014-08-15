@@ -12,6 +12,7 @@
 #include <base/json/json_writer.h>
 #include <chromeos/async_event_sequencer.h>
 #include <chromeos/dbus_utils.h>
+#include <chromeos/error.h>
 #include <chromeos/exported_object_manager.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
@@ -20,7 +21,6 @@
 #include "buffet/commands/command_manager.h"
 #include "buffet/dbus_constants.h"
 #include "buffet/dbus_utils.h"
-#include "buffet/error.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::GetBadArgsError;
@@ -147,7 +147,7 @@ scoped_ptr<dbus::Response> Manager::HandleCheckDeviceRegistered(
 
   LOG(INFO) << "Received call to Manager.CheckDeviceRegistered()";
 
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   bool registered = device_info_->CheckRegistration(&error);
   // If it fails due to any reason other than 'device not registered',
   // treat it as a real error and report it to the caller.
@@ -182,7 +182,7 @@ scoped_ptr<dbus::Response> Manager::HandleGetDeviceInfo(
   LOG(INFO) << "Received call to Manager.GetDeviceInfo()";
 
   std::string device_info_str;
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   auto device_info = device_info_->GetDeviceInfo(&error);
   if (!device_info)
     return GetDBusError(method_call, error.get());
@@ -227,7 +227,7 @@ scoped_ptr<dbus::Response> Manager::HandleStartRegisterDevice(
 
   LOG(INFO) << "Received call to Manager.StartRegisterDevice()";
 
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   std::string id = device_info_->StartRegistration(params, &error);
   if (id.empty())
     return GetDBusError(method_call, error.get());
@@ -258,7 +258,7 @@ scoped_ptr<dbus::Response> Manager::HandleFinishRegisterDevice(
   }
 
   LOG(INFO) << "Received call to Manager.FinishRegisterDevice()";
-  buffet::ErrorPtr error;
+  chromeos::ErrorPtr error;
   if (!device_info_->FinishRegistration(user_auth_code, &error))
     return GetDBusError(method_call, error.get());
 

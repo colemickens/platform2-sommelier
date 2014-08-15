@@ -6,17 +6,16 @@
 #define BUFFET_DBUS_UTILS_H_
 
 #include <base/memory/scoped_ptr.h>
+#include <chromeos/error.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
-
-#include "buffet/error.h"
 
 namespace buffet {
 
 namespace dbus_utils {
 
 scoped_ptr<dbus::Response> GetDBusError(dbus::MethodCall* method_call,
-                                        const Error* error);
+                                        const chromeos::Error* error);
 
 dbus::ExportedObject::MethodCallCallback GetExportableDBusMethod(
     base::Callback<scoped_ptr<dbus::Response>(dbus::MethodCall*)> handler);

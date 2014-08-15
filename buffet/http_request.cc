@@ -127,7 +127,7 @@ void Request::AddRange(uint64_t from_byte, uint64_t to_byte) {
   ranges_.emplace_back(from_byte, to_byte);
 }
 
-std::unique_ptr<Response> Request::GetResponse(ErrorPtr* error) {
+std::unique_ptr<Response> Request::GetResponse(chromeos::ErrorPtr* error) {
   if (!SendRequestIfNeeded(error) || !connection_->FinishRequest(error))
     return std::unique_ptr<Response>();
   std::unique_ptr<Response> response(new Response(std::move(connection_)));
@@ -159,7 +159,9 @@ void Request::AddHeaders(const HeaderList& headers) {
   headers_.insert(headers.begin(), headers.end());
 }
 
-bool Request::AddRequestBody(const void* data, size_t size, ErrorPtr* error) {
+bool Request::AddRequestBody(const void* data,
+                             size_t size,
+                             chromeos::ErrorPtr* error) {
   if (!SendRequestIfNeeded(error))
     return false;
   return connection_->WriteRequestData(data, size, error);
@@ -181,7 +183,7 @@ std::string Request::GetUserAgent() const {
   return user_agent_;
 }
 
-bool Request::SendRequestIfNeeded(ErrorPtr* error) {
+bool Request::SendRequestIfNeeded(chromeos::ErrorPtr* error) {
   if (transport_) {
     if (!connection_) {
       http::HeaderList headers = MapToVector(headers_);
@@ -221,8 +223,9 @@ bool Request::SendRequestIfNeeded(ErrorPtr* error) {
     if (connection_)
       return true;
   } else {
-    Error::AddTo(error, http::curl::kErrorDomain,
-                 "request_already_received", "HTTP response already received");
+    chromeos::Error::AddTo(error, http::curl::kErrorDomain,
+                           "request_already_received",
+                           "HTTP response already received");
   }
   return false;
 }

@@ -27,7 +27,7 @@ const PropType* ObjectSchema::GetProp(const std::string& name) const {
 }
 
 std::unique_ptr<base::DictionaryValue> ObjectSchema::ToJson(
-    bool full_schema, ErrorPtr* error) const {
+    bool full_schema, chromeos::ErrorPtr* error) const {
   std::unique_ptr<base::DictionaryValue> value(new base::DictionaryValue);
   for (const auto& pair : properties_) {
     auto PropDef = pair.second->ToJson(full_schema, error);
@@ -40,7 +40,7 @@ std::unique_ptr<base::DictionaryValue> ObjectSchema::ToJson(
 
 bool ObjectSchema::FromJson(const base::DictionaryValue* value,
                             const ObjectSchema* object_schema,
-                            ErrorPtr* error) {
+                            chromeos::ErrorPtr* error) {
   Properties properties;
   base::DictionaryValue::Iterator iter(*value);
   while (!iter.IsAtEnd()) {
@@ -58,26 +58,26 @@ bool ObjectSchema::FromJson(const base::DictionaryValue* value,
 
 static std::unique_ptr<PropType> CreatePropType(const std::string& type_name,
                                                 const std::string& prop_name,
-                                                ErrorPtr* error) {
+                                                chromeos::ErrorPtr* error) {
   std::unique_ptr<PropType> prop;
   ValueType type;
   if (PropType::GetTypeFromTypeString(type_name, &type))
     prop = PropType::Create(type);
   if (!prop) {
-    Error::AddToPrintf(error, errors::commands::kDomain,
-                       errors::commands::kUnknownType,
-                       "Unknown type %s for parameter %s",
-                       type_name.c_str(), prop_name.c_str());
+    chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+                                 errors::commands::kUnknownType,
+                                 "Unknown type %s for parameter %s",
+                                 type_name.c_str(), prop_name.c_str());
   }
   return prop;
 }
 
 static bool ErrorInvalidTypeInfo(const std::string& prop_name,
-                                 ErrorPtr* error) {
-  Error::AddToPrintf(error, errors::commands::kDomain,
-                     errors::commands::kNoTypeInfo,
-                     "Unable to determine parameter type for %s",
-                     prop_name.c_str());
+                                 chromeos::ErrorPtr* error) {
+  chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+                               errors::commands::kNoTypeInfo,
+                               "Unable to determine parameter type for %s",
+                               prop_name.c_str());
   return false;
 }
 
@@ -85,7 +85,7 @@ bool ObjectSchema::PropFromJson(const std::string& prop_name,
                                 const base::Value& value,
                                 const PropType* base_schema,
                                 Properties* properties,
-                                ErrorPtr* error) const {
+                                chromeos::ErrorPtr* error) const {
   if (value.IsType(base::Value::TYPE_STRING)) {
     // A string value is a short-hand object specification and provides
     // the parameter type.
@@ -100,9 +100,10 @@ bool ObjectSchema::PropFromJson(const std::string& prop_name,
     return PropFromJsonObject(prop_name, value, base_schema, properties,
                               error);
   }
-  Error::AddToPrintf(error, errors::commands::kDomain,
-                     errors::commands::kInvalidPropDef,
-                     "Invalid parameter definition for %s", prop_name.c_str());
+  chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+                               errors::commands::kInvalidPropDef,
+                               "Invalid parameter definition for %s",
+                               prop_name.c_str());
   return false;
 }
 
@@ -110,7 +111,7 @@ bool ObjectSchema::PropFromJsonString(const std::string& prop_name,
                                       const base::Value& value,
                                       const PropType* base_schema,
                                       Properties* properties,
-                                      ErrorPtr* error) const {
+                                      chromeos::ErrorPtr* error) const {
   std::string type_name;
   CHECK(value.GetAsString(&type_name)) << "Unable to get string value";
   std::unique_ptr<PropType> prop = CreatePropType(type_name, prop_name, error);
@@ -118,10 +119,10 @@ bool ObjectSchema::PropFromJsonString(const std::string& prop_name,
     return false;
   base::DictionaryValue empty;
   if (!prop->FromJson(&empty, base_schema, error)) {
-    Error::AddToPrintf(error, errors::commands::kDomain,
-                       errors::commands::kInvalidPropDef,
-                       "Error in definition of property '%s'",
-                       prop_name.c_str());
+    chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+                                 errors::commands::kInvalidPropDef,
+                                 "Error in definition of property '%s'",
+                                 prop_name.c_str());
     return false;
   }
   properties->insert(std::make_pair(prop_name, std::move(prop)));
@@ -165,7 +166,7 @@ bool ObjectSchema::PropFromJsonArray(const std::string& prop_name,
                                      const base::Value& value,
                                      const PropType* base_schema,
                                      Properties* properties,
-                                     ErrorPtr* error) const {
+                                     chromeos::ErrorPtr* error) const {
   const base::ListValue* list = nullptr;
   CHECK(value.GetAsList(&list)) << "Unable to get array value";
   std::string type_name = DetectArrayType(list, base_schema);
@@ -178,10 +179,10 @@ bool ObjectSchema::PropFromJsonArray(const std::string& prop_name,
   array_object.SetWithoutPathExpansion(commands::attributes::kOneOf_Enum,
                                        list->DeepCopy());
   if (!prop->FromJson(&array_object, base_schema, error)) {
-    Error::AddToPrintf(error, errors::commands::kDomain,
-                       errors::commands::kInvalidPropDef,
-                       "Error in definition of property '%s'",
-                       prop_name.c_str());
+    chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+                                 errors::commands::kInvalidPropDef,
+                                 "Error in definition of property '%s'",
+                                 prop_name.c_str());
     return false;
   }
   properties->insert(std::make_pair(prop_name, std::move(prop)));
@@ -242,7 +243,7 @@ bool ObjectSchema::PropFromJsonObject(const std::string& prop_name,
                                       const base::Value& value,
                                       const PropType* base_schema,
                                       Properties* properties,
-                                      ErrorPtr* error) const {
+                                      chromeos::ErrorPtr* error) const {
   const base::DictionaryValue* dict = nullptr;
   CHECK(value.GetAsDictionary(&dict)) << "Unable to get dictionary value";
   std::string type_name;
@@ -261,10 +262,10 @@ bool ObjectSchema::PropFromJsonObject(const std::string& prop_name,
   if (!prop)
     return false;
   if (!prop->FromJson(dict, base_schema, error)) {
-    Error::AddToPrintf(error, errors::commands::kDomain,
-                       errors::commands::kInvalidPropDef,
-                       "Error in definition of property '%s'",
-                       prop_name.c_str());
+    chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+                                 errors::commands::kInvalidPropDef,
+                                 "Error in definition of property '%s'",
+                                 prop_name.c_str());
     return false;
   }
   properties->insert(std::make_pair(prop_name, std::move(prop)));

@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/error.h"
+#include "chromeos/error.h"
 
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
-using buffet::Error;
-using buffet::ErrorPtr;
+using chromeos::Error;
+using chromeos::ErrorPtr;
 
 ErrorPtr Error::Create(const std::string& domain,
                        const std::string& code,

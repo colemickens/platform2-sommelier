@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/error_codes.h"
+#include "chromeos/error_codes.h"
 
-namespace buffet {
+namespace chromeos {
 namespace errors {
 
 namespace json {
@@ -19,4 +19,4 @@ const char kFileReadError[] = "file_read_error";
 }  // namespace file_system
 
 }  // namespace errors
-}  // namespace buffet
+}  // namespace chromeos

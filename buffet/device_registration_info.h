@@ -12,9 +12,9 @@
 
 #include <base/basictypes.h>
 #include <base/time/time.h>
+#include <chromeos/error.h>
 
 #include "buffet/data_encoding.h"
-#include "buffet/error.h"
 #include "buffet/http_transport.h"
 #include "buffet/storage_interface.h"
 
@@ -78,18 +78,18 @@ class DeviceRegistrationInfo {
     const data_encoding::WebParamList& params = {}) const;
 
   // Returns the registered device ID (GUID) or empty string if failed
-  std::string GetDeviceId(ErrorPtr* error);
+  std::string GetDeviceId(chromeos::ErrorPtr* error);
 
   // Loads the device registration information from cache.
   bool Load();
 
   // Checks for the valid device registration as well as refreshes
   // the device access token, if available.
-  bool CheckRegistration(ErrorPtr* error);
+  bool CheckRegistration(chromeos::ErrorPtr* error);
 
   // Gets the full device description JSON object, or nullptr if
   // the device is not registered or communication failure.
-  std::unique_ptr<base::Value> GetDeviceInfo(ErrorPtr* error);
+  std::unique_ptr<base::Value> GetDeviceInfo(chromeos::ErrorPtr* error);
 
   // Starts device registration procedure. |params| are a list of
   // key-value pairs of device information, such as client_id, client_secret,
@@ -97,21 +97,21 @@ class DeviceRegistrationInfo {
   // is used when possible. Returns a device claim ID on success.
   std::string StartRegistration(
     const std::map<std::string, std::shared_ptr<base::Value>>& params,
-    ErrorPtr* error);
+    chromeos::ErrorPtr* error);
 
   // Finalizes the device registration. If |user_auth_code| is provided, then
   // the device record is populated with user email on user's behalf. Otherwise
   // the user is responsible to issue a PATCH request to provide a valid
   // email address before calling FinishRegistration.
   bool FinishRegistration(const std::string& user_auth_code,
-                          ErrorPtr* error);
+                          chromeos::ErrorPtr* error);
 
  private:
   // Saves the device registration to cache.
   bool Save() const;
 
   // Makes sure the access token is available and up-to-date.
-  bool ValidateAndRefreshAccessToken(ErrorPtr* error);
+  bool ValidateAndRefreshAccessToken(chromeos::ErrorPtr* error);
 
   // Persistent data. Some of default values for testing purposes are used.
   // TODO(avakulenko): remove these default values in the future.

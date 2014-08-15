@@ -24,18 +24,19 @@ Connection::~Connection() {
   VLOG(1) << "fake::Connection destroyed";
 }
 
-bool Connection::SendHeaders(const HeaderList& headers, ErrorPtr* error) {
+bool Connection::SendHeaders(const HeaderList& headers,
+                             chromeos::ErrorPtr* error) {
   request_.AddHeaders(headers);
   return true;
 }
 
 bool Connection::WriteRequestData(const void* data, size_t size,
-                                  ErrorPtr* error) {
+                                  chromeos::ErrorPtr* error) {
   request_.AddData(data, size);
   return true;
 }
 
-bool Connection::FinishRequest(ErrorPtr* error) {
+bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
   request_.AddHeaders({{request_header::kContentLength,
                       string_utils::ToString(request_.GetData().size())}});
   fake::Transport* transport = static_cast<fake::Transport*>(transport_.get());
@@ -76,8 +77,10 @@ uint64_t Connection::GetResponseDataSize() const {
       response_.GetData().size() : 0;
 }
 
-bool Connection::ReadResponseData(void* data, size_t buffer_size,
-                                  size_t* size_read, ErrorPtr* error) {
+bool Connection::ReadResponseData(void* data,
+                                  size_t buffer_size,
+                                  size_t* size_read,
+                                  chromeos::ErrorPtr* error) {
   size_t size_to_read = GetResponseDataSize() - response_data_ptr_;
   if (size_to_read > buffer_size)
     size_to_read = buffer_size;

@@ -9,9 +9,10 @@
 #include <memory>
 #include <string>
 
+#include <chromeos/error.h>
+
 #include "buffet/any.h"
 #include "buffet/commands/schema_utils.h"
-#include "buffet/error.h"
 
 namespace base {
 class Value;
@@ -93,12 +94,13 @@ class PropValue {
   // Saves the value as a JSON object.
   // If it fails, returns nullptr value and fills in the details for the
   // failure in the |error| parameter.
-  virtual std::unique_ptr<base::Value> ToJson(ErrorPtr* error) const = 0;
+  virtual std::unique_ptr<base::Value> ToJson(
+      chromeos::ErrorPtr* error) const = 0;
   // Parses a value from JSON.
   // If it fails, it returns false and provides additional information
   // via the |error| parameter.
   virtual bool FromJson(const base::Value* value,
-                        ErrorPtr* error) = 0;
+                        chromeos::ErrorPtr* error) = 0;
 
   // Returns the contained C++ value as Any.
   virtual Any GetValueAsAny() const = 0;
@@ -129,12 +131,12 @@ class TypedValueBase : public PropValue {
     return std::make_shared<Derived>(*static_cast<const Derived*>(this));
   }
 
-  std::unique_ptr<base::Value> ToJson(ErrorPtr* error) const override {
+  std::unique_ptr<base::Value> ToJson(
+      chromeos::ErrorPtr* error) const override {
     return TypedValueToJson(value_, error);
   }
 
-  bool FromJson(const base::Value* value,
-                        ErrorPtr* error) override {
+  bool FromJson(const base::Value* value, chromeos::ErrorPtr* error) override {
     return TypedValueFromJson(value, GetPropType()->GetObjectSchemaPtr(),
                               &value_, error);
   }

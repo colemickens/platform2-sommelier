@@ -27,10 +27,11 @@ class Connection : public http::Connection {
 
   // Overrides from http::Connection.
   // See http_connection.h for description of these methods.
-  bool SendHeaders(const HeaderList& headers, ErrorPtr* error) override;
+  bool SendHeaders(const HeaderList& headers,
+                   chromeos::ErrorPtr* error) override;
   bool WriteRequestData(const void* data, size_t size,
-                        ErrorPtr* error) override;
-  bool FinishRequest(ErrorPtr* error) override;
+                        chromeos::ErrorPtr* error) override;
+  bool FinishRequest(chromeos::ErrorPtr* error) override;
 
   int GetResponseStatusCode() const override;
   std::string GetResponseStatusText() const override;
@@ -38,7 +39,7 @@ class Connection : public http::Connection {
   std::string GetResponseHeader(const std::string& header_name) const override;
   uint64_t GetResponseDataSize() const override;
   bool ReadResponseData(void* data, size_t buffer_size,
-                        size_t* size_read, ErrorPtr* error) override;
+                        size_t* size_read, chromeos::ErrorPtr* error) override;
 
  private:
   // Request and response objects passed to the user-provided request handler
