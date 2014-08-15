@@ -316,19 +316,19 @@ void ManagerDBusAdaptor::DisableTechnology(const string &technology_name,
   return service->GetRpcIdentifier();
 }
 
-void ManagerDBusAdaptor::AddWakeOnPacketConnection(const string &ip_endpoints,
+void ManagerDBusAdaptor::AddWakeOnPacketConnection(const string &ip_endpoint,
                                                    ::DBus::Error &error) {
   SLOG(DBus, 2) << __func__;
   Error e;
-  manager_->AddWakeOnPacketConnection(ip_endpoints, &e);
+  manager_->AddWakeOnPacketConnection(ip_endpoint, &e);
   e.ToDBusError(&error);
 }
 
 void ManagerDBusAdaptor::RemoveWakeOnPacketConnection(
-    const string &ip_endpoints, ::DBus::Error &error) {
+    const string &ip_endpoint, ::DBus::Error &error) {
   SLOG(DBus, 2) << __func__;
   Error e;
-  manager_->RemoveWakeOnPacketConnection(ip_endpoints, &e);
+  manager_->RemoveWakeOnPacketConnection(ip_endpoint, &e);
   e.ToDBusError(&error);
 }
 

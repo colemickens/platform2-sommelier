@@ -89,9 +89,9 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
       const std::map<std::string, ::DBus::Variant> &args,
       ::DBus::Error &error);
 
-  void AddWakeOnPacketConnection(const std::string &ip_endpoints,
+  void AddWakeOnPacketConnection(const std::string &ip_endpoint,
                                  ::DBus::Error &error);
-  void RemoveWakeOnPacketConnection(const std::string &ip_endpoints,
+  void RemoveWakeOnPacketConnection(const std::string &ip_endpoint,
                                     ::DBus::Error &error);
   void RemoveAllWakeOnPacketConnections(::DBus::Error &error);
 

@@ -4,10 +4,10 @@
 <node>
 	<interface name="org.chromium.flimflam.Manager">
 		<method name="AddWakeOnPacketConnection">
-			<arg name="ip_endpoints" type="s" direction="in"/>
+			<arg name="ip_endpoint" type="s" direction="in"/>
 		</method>
 		<method name="RemoveWakeOnPacketConnection">
-			<arg name="ip_endpoints" type="s" direction="in"/>
+			<arg name="ip_endpoint" type="s" direction="in"/>
 		</method>
 		<method name="RemoveAllWakeOnPacketConnections">
 		</method>

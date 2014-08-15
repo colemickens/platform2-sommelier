@@ -665,7 +665,7 @@ Properties 	object ActiveProfile [readwrite]
 			enabled on new Ethernet links.  Currently connected
 			links are un-affected.
 
-		void AddWakeOnPacketConnection(string endpoints)
+		void AddWakeOnPacketConnection(string endpoint)
 
 			Requests that NICs be programmed to wake up from
 			suspend on the arrival of packets on any TCP connection
@@ -691,7 +691,7 @@ Properties 	object ActiveProfile [readwrite]
 					 [service].Error.NotSupported (no wake-on-packet support in NIC)
 					 [service].Error.OperationFailed (other failures)
 
-		void RemoveWakeOnPacketConnection(string endpoints)
+		void RemoveWakeOnPacketConnection(string endpoint)
 
 			Removes a NIC programming request established by
 			AddWakeOnPacketConnection.  The argument is in the same
