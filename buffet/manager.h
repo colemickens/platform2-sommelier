@@ -5,19 +5,17 @@
 #ifndef BUFFET_MANAGER_H_
 #define BUFFET_MANAGER_H_
 
+#include <map>
 #include <memory>
 #include <string>
 
 #include <base/basictypes.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <base/values.h>
+#include <chromeos/dbus/dbus_object.h>
+#include <chromeos/error.h>
 #include <chromeos/exported_property_set.h>
-#include <dbus/bus.h>
-#include <dbus/message.h>
-#include <dbus/object_path.h>
 
-#include "buffet/dbus_constants.h"
 #include "buffet/device_registration_info.h"
 
 namespace chromeos {
@@ -33,49 +31,37 @@ class CommandManager;
 // The Manager is responsible for global state of Buffet.  It exposes
 // interfaces which affect the entire device such as device registration and
 // device state.
-class Manager {
+class Manager final {
  public:
-  typedef base::Callback<void(bool success)> OnInitFinish;
-
-  Manager(const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
-              object_manager);
-  ~Manager();
-  void Init(const OnInitFinish& cb);
+  explicit Manager(
+      const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
+          object_manager);
+  void Init(
+      const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
  private:
-  struct Properties: public chromeos::dbus_utils::ExportedPropertySet {
-   public:
-    chromeos::dbus_utils::ExportedProperty<std::string> state_;
-    explicit Properties(dbus::Bus* bus)
-        : chromeos::dbus_utils::ExportedPropertySet(
-              bus, dbus::ObjectPath(dbus_constants::kManagerServicePath)) {
-      RegisterProperty(dbus_constants::kManagerInterface, "State", &state_);
-    }
-    virtual ~Properties() {}
-  };
+  // DBus properties:
+  chromeos::dbus_utils::ExportedProperty<std::string> state_;
 
+  // DBus methods:
   // Handles calls to org.chromium.Buffet.Manager.CheckDeviceRegistered().
-  scoped_ptr<dbus::Response> HandleCheckDeviceRegistered(
-      dbus::MethodCall* method_call);
+  std::string HandleCheckDeviceRegistered(chromeos::ErrorPtr* error);
   // Handles calls to org.chromium.Buffet.Manager.GetDeviceInfo().
-  scoped_ptr<dbus::Response> HandleGetDeviceInfo(
-      dbus::MethodCall* method_call);
+  std::string HandleGetDeviceInfo(chromeos::ErrorPtr* error);
   // Handles calls to org.chromium.Buffet.Manager.StartRegisterDevice().
-  scoped_ptr<dbus::Response> HandleStartRegisterDevice(
-      dbus::MethodCall* method_call);
+  std::string HandleStartRegisterDevice(chromeos::ErrorPtr* error,
+                                        const std::map<std::string,
+                                        std::unique_ptr<base::Value>>& params);
   // Handles calls to org.chromium.Buffet.Manager.FinishRegisterDevice().
-  scoped_ptr<dbus::Response> HandleFinishRegisterDevice(
-      dbus::MethodCall* method_call);
+  std::string HandleFinishRegisterDevice(chromeos::ErrorPtr* error,
+                                         const std::string& user_auth_code);
   // Handles calls to org.chromium.Buffet.Manager.UpdateState().
-  scoped_ptr<dbus::Response> HandleUpdateState(
-      dbus::MethodCall* method_call);
+  void HandleUpdateState(chromeos::ErrorPtr* error,
+                         const std::string& json_state_fragment);
   // Handles calls to org.chromium.Buffet.Manager.Test()
-  scoped_ptr<::dbus::Response> HandleTestMethod(
-      ::dbus::MethodCall* method_call);
+  void HandleTestMethod(chromeos::ErrorPtr* error);
 
-  dbus::ExportedObject* exported_object_;  // weak; owned by the Bus object.
-  base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager> object_manager_;
-  scoped_ptr<Properties> properties_;
+  chromeos::dbus_utils::DBusObject dbus_object_;
 
   std::shared_ptr<CommandManager> command_manager_;
   std::unique_ptr<DeviceRegistrationInfo> device_info_;

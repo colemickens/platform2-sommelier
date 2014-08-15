@@ -53,7 +53,7 @@ const base::FilePath::CharType kDeviceInfoFilePath[] =
     FILE_PATH_LITERAL("/var/lib/buffet/device_reg_info");
 
 bool GetParamValue(
-    const std::map<std::string, std::shared_ptr<base::Value>>& params,
+    const std::map<std::string, std::unique_ptr<base::Value>>& params,
     const std::string& param_name,
     std::string* param_value) {
   auto p = params.find(param_name);
@@ -335,7 +335,7 @@ bool CheckParam(const std::string& param_name,
 }
 
 std::string DeviceRegistrationInfo::StartRegistration(
-    const std::map<std::string, std::shared_ptr<base::Value>>& params,
+    const std::map<std::string, std::unique_ptr<base::Value>>& params,
     chromeos::ErrorPtr* error) {
   GetParamValue(params, storage_keys::kClientId, &client_id_);
   GetParamValue(params, storage_keys::kClientSecret, &client_secret_);

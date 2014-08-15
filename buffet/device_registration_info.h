@@ -96,7 +96,7 @@ class DeviceRegistrationInfo {
   // and so on. If a particular key-value pair is omitted, a default value
   // is used when possible. Returns a device claim ID on success.
   std::string StartRegistration(
-    const std::map<std::string, std::shared_ptr<base::Value>>& params,
+    const std::map<std::string, std::unique_ptr<base::Value>>& params,
     chromeos::ErrorPtr* error);
 
   // Finalizes the device registration. If |user_auth_code| is provided, then

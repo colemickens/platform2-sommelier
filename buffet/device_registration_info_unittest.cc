@@ -325,7 +325,7 @@ TEST_F(DeviceRegistrationInfoTest, StartRegistration) {
   transport_->AddHandler(dev_reg_->GetServiceURL("registrationTickets"),
                          request_type::kPost,
                          base::Bind(create_ticket));
-  std::map<std::string, std::shared_ptr<base::Value>> params;
+  std::map<std::string, std::unique_ptr<base::Value>> params;
   std::string json_resp = dev_reg_->StartRegistration(params, nullptr);
   auto json = std::unique_ptr<base::Value>(base::JSONReader::Read(json_resp));
   EXPECT_NE(nullptr, json.get());
