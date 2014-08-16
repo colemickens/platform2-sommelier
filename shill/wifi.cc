@@ -5,7 +5,6 @@
 #include "shill/wifi.h"
 
 #include <linux/if.h>  // Needs definitions from netinet/ether.h
-#include <linux/netlink.h>  // TODO(samueltan): refactor to netlink manager.
 #include <netinet/ether.h>
 #include <stdio.h>
 #include <string.h>
@@ -1774,46 +1773,76 @@ void WiFi::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
     LOG(ERROR) << "Failed to configure nl80211 message.";
     return;
   }
-  // TODO(samueltan): move the setting of ACK flag to netlink_manager.
-  add_wowlan_msg.AddFlag(NLM_F_ACK);
+  add_wowlan_msg.AddAckFlag();
   netlink_manager_->SendNl80211Message(
-      &add_wowlan_msg, Bind(&WiFi::SetWakeOnPacketConnectionHandler,
+      &add_wowlan_msg, Bind(&WiFi::OnSetWakeOnPacketConnectionResponse,
                             weak_ptr_factory_.GetWeakPtr()),
-      Bind(&WiFi::OnSetWakeOnPacketConnectionFailure,
-           weak_ptr_factory_.GetWeakPtr()));
+      Bind(&WiFi::OnAddWakeOnPacketConnectionAck,
+           weak_ptr_factory_.GetWeakPtr(), ip_endpoint),
+      Bind(&NetlinkManager::OnNetlinkMessageError));
 }
 
-// TODO(samueltan): Implement this after implementing ACK handler
-// (crbug.com/401576).
 void WiFi::RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
-                                        Error *error) {}
+                                        Error *error) {
+  if (!wake_on_packet_connections_.Contains(ip_endpoint)) {
+    Error::PopulateAndLog(error, Error::kNotFound,
+                    "No such wake-on-packet connection registered");
+    return;
+  }
+  wake_on_packet_connections_.Remove(ip_endpoint);
+  RemoveAllWakeOnPacketConnections(error);
+  for (const IPAddress &addr : wake_on_packet_connections_.GetIPAddresses()) {
+    AddWakeOnPacketConnection(addr, error);
+    if (error->IsFailure()) {
+      Error::PopulateAndLog(error, Error::kOperationFailed,
+                            "Call to AddWakeOnPacketConnection failed; "
+                            "removing all wake-on-packet rules");
+      RemoveAllWakeOnPacketConnections(error);
+      return;
+    }
+  }
+  // TODO(samueltan): Add a PostDelayedTask with callback that checks NIC state
+  // against wake_on_packet_connections_ once such a function has been
+  // implemented.
+}
 
 void WiFi::RemoveAllWakeOnPacketConnections(Error *error) {
   // Send an empty NL80211_CMD_SET_WOWLAN message.
   SetWakeOnPacketConnMessage disable_wowlan_msg;
   if (!WakeOnWifi::ConfigureRemoveAllWakeOnPacketMsg(&disable_wowlan_msg,
                                                      wiphy_index_, error)) {
-    LOG(ERROR) << "Failed to configure nl80211 message.";
+    Error::PopulateAndLog(error, Error::kOperationFailed,
+                          "Failed to configure nl80211 message");
     return;
   }
+  disable_wowlan_msg.AddAckFlag();
   netlink_manager_->SendNl80211Message(
-      &disable_wowlan_msg, Bind(&WiFi::SetWakeOnPacketConnectionHandler,
+      &disable_wowlan_msg, Bind(&WiFi::OnSetWakeOnPacketConnectionResponse,
                                 weak_ptr_factory_.GetWeakPtr()),
-      Bind(&WiFi::OnSetWakeOnPacketConnectionFailure,
-           weak_ptr_factory_.GetWeakPtr()));
+      Bind(&WiFi::OnRemoveAllWakeOnPacketConnectionAck,
+           weak_ptr_factory_.GetWeakPtr()),
+      Bind(&NetlinkManager::OnNetlinkMessageError));
 }
 
-void WiFi::SetWakeOnPacketConnectionHandler(
+void WiFi::OnSetWakeOnPacketConnectionResponse(
     const Nl80211Message &nl80211_message) {
   // NOP because kernel does not send a response to NL80211_CMD_SET_WOWLAN
   // requests.
 }
 
-void WiFi::OnSetWakeOnPacketConnectionFailure(
-    NetlinkManager::AuxilliaryMessageType type,
-    const NetlinkMessage *raw_message) {
-  NetlinkManager::OnNetlinkMessageError(type, raw_message);
+void WiFi::OnAddWakeOnPacketConnectionAck(IPAddress ip_endpoint,
+                                          bool *remove_callbacks) {
+  wake_on_packet_connections_.AddUnique(ip_endpoint);
+  // No other responses expected for original message, so remove callbacks.
+  *remove_callbacks = true;
 }
+
+void WiFi::OnRemoveAllWakeOnPacketConnectionAck(bool *remove_callbacks) {
+  wake_on_packet_connections_.Clear();
+  // No other responses expected for original message, so remove callbacks.
+  *remove_callbacks = true;
+}
+
 
 void WiFi::RestartFastScanAttempts() {
   fast_scans_remaining_ = kNumFastScanAttempts;
@@ -2149,6 +2178,7 @@ void WiFi::GetPhyInfo() {
   netlink_manager_->SendNl80211Message(
       &get_wiphy,
       Bind(&WiFi::OnNewWiphy, weak_ptr_factory_.GetWeakPtr()),
+      Bind(&NetlinkManager::OnAckDoNothing),
       Bind(&NetlinkManager::OnNetlinkMessageError));
 }
 
@@ -2478,6 +2508,7 @@ void WiFi::RequestStationInfo() {
   netlink_manager_->SendNl80211Message(
       &get_station,
       Bind(&WiFi::OnReceivedStationInfo, weak_ptr_factory_.GetWeakPtr()),
+      Bind(&NetlinkManager::OnAckDoNothing),
       Bind(&NetlinkManager::OnNetlinkMessageError));
 
   request_station_info_callback_.Reset(

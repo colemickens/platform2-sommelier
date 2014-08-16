@@ -49,8 +49,10 @@ const long NetlinkManager::kResponseTimeoutSeconds = 5;  // NOLINT
 const long NetlinkManager::kResponseTimeoutMicroSeconds = 0;  // NOLINT
 
 NetlinkManager::NetlinkResponseHandler::NetlinkResponseHandler(
+    const NetlinkManager::NetlinkAckHandler &ack_handler,
     const NetlinkManager::NetlinkAuxilliaryMessageHandler &error_handler)
-    : error_handler_(error_handler) {}
+    : ack_handler_(ack_handler),
+      error_handler_(error_handler) {}
 
 NetlinkManager::NetlinkResponseHandler::~NetlinkResponseHandler() {}
 
@@ -60,12 +62,30 @@ void NetlinkManager::NetlinkResponseHandler::HandleError(
     error_handler_.Run(type, netlink_message);
 }
 
+bool NetlinkManager::NetlinkResponseHandler::HandleAck() const {
+  if (!ack_handler_.is_null()) {
+    // Default behavior is not to remove callbacks. In the case where the
+    // callback is not successfully invoked, this is safe as it does not
+    // prevent any further responses from behind handled.
+    bool remove_callbacks = false;
+    ack_handler_.Run(&remove_callbacks);
+    // If there are no other handlers other than the Ack handler, then force
+    // the callback to be removed after handling the Ack.
+    return remove_callbacks || error_handler_.is_null();
+  } else {
+    // If there is no Ack handler, do not delete registered callbacks
+    // for this function because we are not explicitly told to do so.
+    return false;
+  }
+}
+
 class ControlResponseHandler : public NetlinkManager::NetlinkResponseHandler {
  public:
   ControlResponseHandler(
-      const NetlinkManager::ControlNetlinkMessageHandler &handler,
-      const NetlinkManager::NetlinkAuxilliaryMessageHandler &error_handler)
-    : NetlinkManager::NetlinkResponseHandler(error_handler),
+      const NetlinkManager::NetlinkAckHandler &ack_handler,
+      const NetlinkManager::NetlinkAuxilliaryMessageHandler &error_handler,
+      const NetlinkManager::ControlNetlinkMessageHandler &handler)
+    : NetlinkManager::NetlinkResponseHandler(ack_handler, error_handler),
       handler_(handler) {}
 
   bool HandleMessage(const NetlinkMessage &netlink_message) const override {
@@ -84,6 +104,17 @@ class ControlResponseHandler : public NetlinkManager::NetlinkResponseHandler {
     return true;
   }
 
+  bool HandleAck() const override {
+    if (handler_.is_null()) {
+      return NetlinkManager::NetlinkResponseHandler::HandleAck();
+    } else {
+      bool remove_callbacks = false;
+      NetlinkManager::NetlinkResponseHandler::ack_handler_.Run(
+          &remove_callbacks);
+      return remove_callbacks;
+    }
+  }
+
  private:
   NetlinkManager::ControlNetlinkMessageHandler handler_;
 
@@ -93,9 +124,10 @@ class ControlResponseHandler : public NetlinkManager::NetlinkResponseHandler {
 class Nl80211ResponseHandler : public NetlinkManager::NetlinkResponseHandler {
  public:
   Nl80211ResponseHandler(
-      const NetlinkManager::Nl80211MessageHandler &handler,
-      const NetlinkManager::NetlinkAuxilliaryMessageHandler &error_handler)
-    : NetlinkManager::NetlinkResponseHandler(error_handler),
+      const NetlinkManager::NetlinkAckHandler &ack_handler,
+      const NetlinkManager::NetlinkAuxilliaryMessageHandler &error_handler,
+      const NetlinkManager::Nl80211MessageHandler &handler)
+    : NetlinkManager::NetlinkResponseHandler(ack_handler, error_handler),
       handler_(handler) {}
 
   bool HandleMessage(const NetlinkMessage &netlink_message) const override {
@@ -111,6 +143,17 @@ class Nl80211ResponseHandler : public NetlinkManager::NetlinkResponseHandler {
       handler_.Run(*message);
     }
     return true;
+  }
+
+  bool HandleAck() const override {
+    if (handler_.is_null()) {
+      return NetlinkManager::NetlinkResponseHandler::HandleAck();
+    } else {
+      bool remove_callbacks = false;
+      NetlinkManager::NetlinkResponseHandler::ack_handler_.Run(
+          &remove_callbacks);
+      return remove_callbacks;
+    }
   }
 
  private:
@@ -289,6 +332,7 @@ uint16_t NetlinkManager::GetFamily(const string &name,
   SendControlMessage(&msg,
                      Bind(&NetlinkManager::OnNewFamilyMessage,
                           weak_ptr_factory_.GetWeakPtr()),
+                     Bind(&NetlinkManager::OnAckDoNothing),
                      Bind(&NetlinkManager::OnNetlinkMessageError));
 
   // Wait for a response.  The code absolutely needs family_ids for its
@@ -399,19 +443,23 @@ void NetlinkManager::ClearBroadcastHandlers() {
 bool NetlinkManager::SendControlMessage(
     ControlNetlinkMessage *message,
     const ControlNetlinkMessageHandler &message_handler,
+    const NetlinkAckHandler &ack_handler,
     const NetlinkAuxilliaryMessageHandler &error_handler) {
   return SendMessageInternal(message,
-                             new ControlResponseHandler(message_handler,
-                                                        error_handler));
+                             new ControlResponseHandler(ack_handler,
+                                                        error_handler,
+                                                        message_handler));
 }
 
 bool NetlinkManager::SendNl80211Message(
     Nl80211Message *message,
     const Nl80211MessageHandler &message_handler,
+    const NetlinkAckHandler &ack_handler,
     const NetlinkAuxilliaryMessageHandler &error_handler) {
   return SendMessageInternal(message,
-                             new Nl80211ResponseHandler(message_handler,
-                                                        error_handler));
+                             new Nl80211ResponseHandler(ack_handler,
+                                                        error_handler,
+                                                        message_handler));
 }
 
 bool NetlinkManager::SendMessageInternal(
@@ -547,7 +595,7 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
                              msg->nlmsg_len);
 
   if (message->message_type() == ErrorAckMessage::GetMessageType()) {
-    SLOG(WiFi, 3) << "Error response to message " << sequence_number;
+    SLOG(WiFi, 3) << "Error/ACK response to message " << sequence_number;
     const ErrorAckMessage *error_ack_message =
         dynamic_cast<const ErrorAckMessage *>(message.get());
     if (error_ack_message->error()) {
@@ -558,9 +606,15 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
         message_handlers_.erase(sequence_number);
       }
     } else {
-      // TODO(samueltan): Invoke ACK handler once implemented
-      // (crbug.com/401576).
-      SLOG(WiFi, 3) << "ACK message -- not removing callback";
+      if (ContainsKey(message_handlers_, sequence_number)) {
+        SLOG(WiFi, 6) << "Found message-specific ACK handler";
+        if (message_handlers_[sequence_number]->HandleAck()) {
+          SLOG(WiFi, 6) << "ACK handler invoked -- removing callback";
+          message_handlers_.erase(sequence_number);
+        } else {
+          SLOG(WiFi, 6) << "ACK handler invoked -- not removing callback";
+        }
+      }
     }
     return;
   }

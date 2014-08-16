@@ -29,13 +29,15 @@ class MockNetlinkManager : public NetlinkManager {
                bool(const NetlinkMessageHandler &message_handler));
   MOCK_METHOD1(AddBroadcastHandler,
                bool(const NetlinkMessageHandler &messge_handler));
-  MOCK_METHOD3(SendControlMessage,
+  MOCK_METHOD4(SendControlMessage,
                bool(ControlNetlinkMessage *message,
                     const ControlNetlinkMessageHandler &message_handler,
+                    const NetlinkAckHandler &ack_handler,
                     const NetlinkAuxilliaryMessageHandler &error_handler));
-  MOCK_METHOD3(SendNl80211Message,
+  MOCK_METHOD4(SendNl80211Message,
                bool(Nl80211Message *message,
                     const Nl80211MessageHandler &message_handler,
+                    const NetlinkAckHandler &ack_handler,
                     const NetlinkAuxilliaryMessageHandler &error_handler));
   MOCK_METHOD2(SubscribeToEvents,
                bool(const std::string &family, const std::string &group));

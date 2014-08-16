@@ -40,6 +40,7 @@ using testing::EndsWith;
 using testing::Invoke;
 using testing::Mock;
 using testing::Return;
+using ::testing::SetArgPointee;
 using testing::Test;
 
 namespace shill {
@@ -83,6 +84,11 @@ const unsigned char kNL80211_CMD_DISCONNECT[] = {
   0x04, 0x00, 0x00, 0x00, 0x06, 0x00, 0x36, 0x00,
   0x02, 0x00, 0x00, 0x00, 0x04, 0x00, 0x47, 0x00,
 };
+
+const unsigned char kNLMSG_ACK[] = {
+  0x14, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0x00,
+  0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00 };
 
 const char kGetFamilyCommandString[] = "CTRL_CMD_GETFAMILY";
 
@@ -217,6 +223,20 @@ class NetlinkManagerTest : public Test {
    private:
     NetlinkManager::Nl80211MessageHandler on_netlink_message_;
     DISALLOW_COPY_AND_ASSIGN(MockHandler80211);
+  };
+
+  class MockHandlerNetlinkAck {
+   public:
+    MockHandlerNetlinkAck()
+        : on_netlink_message_(base::Bind(&MockHandlerNetlinkAck::OnAckHandler,
+                                         base::Unretained(this))) {}
+    MOCK_METHOD1(OnAckHandler, void(bool *remove_callbacks));
+    const NetlinkManager::NetlinkAckHandler &on_netlink_message() const {
+      return on_netlink_message_;
+    }
+   private:
+    NetlinkManager::NetlinkAckHandler on_netlink_message_;
+    DISALLOW_COPY_AND_ASSIGN(MockHandlerNetlinkAck);
   };
 
   void Reset() {
@@ -473,10 +493,11 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
 
   // Send the message and give our handler.  Verify that we get called back.
   NetlinkManager::NetlinkAuxilliaryMessageHandler null_error_handler;
+  NetlinkManager::NetlinkAckHandler null_ack_handler;
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillRepeatedly(Return(true));
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &sent_message_1, handler_sent_1.on_netlink_message(),
-      null_error_handler));
+      null_ack_handler, null_error_handler));
   // Make it appear that this message is in response to our sent message.
   received_message->nlmsg_seq = netlink_socket_->GetLastSequenceNumber();
   EXPECT_CALL(handler_sent_1, OnNetlinkMessage(_)).Times(1);
@@ -491,7 +512,7 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
   // handler is called on message receipt.
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &sent_message_1, handler_sent_1.on_netlink_message(),
-      null_error_handler));
+      null_ack_handler, null_error_handler));
   received_message->nlmsg_seq = netlink_socket_->GetLastSequenceNumber();
   EXPECT_TRUE(netlink_manager_->RemoveMessageHandler(sent_message_1));
   EXPECT_CALL(handler_broadcast, OnNetlinkMessage(_)).Times(1);
@@ -501,7 +522,7 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
   // called for _this_ message.
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &sent_message_2, handler_sent_2.on_netlink_message(),
-      null_error_handler));
+      null_ack_handler, null_error_handler));
   EXPECT_CALL(handler_broadcast, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->OnNlMessageReceived(received_message);
 
@@ -510,6 +531,69 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
   received_message->nlmsg_seq = netlink_socket_->GetLastSequenceNumber();
   EXPECT_CALL(handler_sent_2, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->OnNlMessageReceived(received_message);
+}
+
+TEST_F(NetlinkManagerTest, AckHandler) {
+  Reset();
+
+  Nl80211Message sent_message(CTRL_CMD_GETFAMILY, kGetFamilyCommandString);
+  MockHandler80211 handler_sent_1;
+  MockHandlerNetlinkAck handler_sent_2;
+
+  // Send the message and give a Nl80211 response handlerand an Ack
+  // handler that does not remove other callbacks after execution.
+  // Receive an Ack message and verify that the Ack handler is invoked.
+  NetlinkManager::NetlinkAuxilliaryMessageHandler null_error_handler;
+  EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillRepeatedly(Return(true));
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(
+      &sent_message, handler_sent_1.on_netlink_message(),
+      handler_sent_2.on_netlink_message(), null_error_handler));
+  // Set up message as an ack in response to sent_message.
+  scoped_ptr<unsigned char[]> message_memory_1(
+      new unsigned char[sizeof(kNLMSG_ACK)]);
+  memcpy(message_memory_1.get(), kNLMSG_ACK,
+         sizeof(kNLMSG_ACK));
+  nlmsghdr *received_ack_message =
+        reinterpret_cast<nlmsghdr *>(message_memory_1.get());
+  // Make it appear that this message is in response to our sent message.
+  received_ack_message->nlmsg_seq = netlink_socket_->GetLastSequenceNumber();
+  EXPECT_CALL(handler_sent_2, OnAckHandler(_))
+      .Times(1)
+          .WillOnce(SetArgPointee<0>(false));  // Do not remove callbacks
+  netlink_manager_->OnNlMessageReceived(received_ack_message);
+
+  // Receive an Nl80211 response message after handling the Ack and verify
+  // that the Nl80211 response handler is invoked to ensure that it was not
+  // deleted after the Ack handler was executed.
+  scoped_ptr<unsigned char[]> message_memory_2(
+      new unsigned char[sizeof(kNL80211_CMD_DISCONNECT)]);
+  memcpy(message_memory_2.get(), kNL80211_CMD_DISCONNECT,
+         sizeof(kNL80211_CMD_DISCONNECT));
+  nlmsghdr *received_response_message =
+        reinterpret_cast<nlmsghdr *>(message_memory_2.get());
+  // Make it appear that this message is in response to our sent message.
+  received_response_message->nlmsg_seq = received_ack_message->nlmsg_seq;
+  EXPECT_CALL(handler_sent_1, OnNetlinkMessage(_)).Times(1);
+  netlink_manager_->OnNlMessageReceived(received_response_message);
+
+  // Send the message and give a Nl80211 response handler and Ack handler again,
+  // but with remove other callbacks after executing the Ack handler.
+  // Receive an Ack message and verify the Ack handler is invoked.
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(
+      &sent_message, handler_sent_1.on_netlink_message(),
+      handler_sent_2.on_netlink_message(), null_error_handler));
+  received_ack_message->nlmsg_seq = netlink_socket_->GetLastSequenceNumber();
+  EXPECT_CALL(handler_sent_2, OnAckHandler(_))
+      .Times(1)
+          .WillOnce(SetArgPointee<0>(true));  // Remove callbacks
+  netlink_manager_->OnNlMessageReceived(received_ack_message);
+
+  // Receive an Nl80211 response message after handling the Ack and verify
+  // that the Nl80211 response handler is not invoked this time, since it should
+  // have been deleted after calling the Ack handler.
+  received_response_message->nlmsg_seq = received_ack_message->nlmsg_seq;
+  EXPECT_CALL(handler_sent_1, OnNetlinkMessage(_)).Times(0);
+  netlink_manager_->OnNlMessageReceived(received_response_message);
 }
 
 TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
@@ -524,10 +608,12 @@ TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
   TriggerScanMessage trigger_scan_message;
   MockHandler80211 response_handler;
   MockHandlerNetlinkAuxilliary auxilliary_handler;
+  MockHandlerNetlinkAck ack_handler;
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
   NetlinkManager::NetlinkAuxilliaryMessageHandler null_error_handler;
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &trigger_scan_message, response_handler.on_netlink_message(),
+      ack_handler.on_netlink_message(),
       auxilliary_handler.on_netlink_message()));
 
   // Build a multi-part response (well, it's just one message but it'll be
@@ -562,6 +648,7 @@ TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
   // been seen.
   EXPECT_CALL(response_handler, OnNetlinkMessage(_)).Times(0);
   EXPECT_CALL(auxilliary_handler, OnErrorHandler(_, _)).Times(0);
+  EXPECT_CALL(ack_handler, OnAckHandler(_)).Times(0);
   EXPECT_CALL(broadcast_handler, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->OnNlMessageReceived(received_message);
 }
@@ -606,19 +693,23 @@ TEST_F(NetlinkManagerTest, TimeoutResponseHandlers) {
   GetWiphyMessage get_wiphi_message;
   MockHandler80211 response_handler;
   MockHandlerNetlinkAuxilliary auxilliary_handler;
+  MockHandlerNetlinkAck ack_handler;
 
   GetRegMessage get_reg_message;  // Just a message to trigger timeout.
   NetlinkManager::Nl80211MessageHandler null_message_handler;
   NetlinkManager::NetlinkAuxilliaryMessageHandler null_error_handler;
+  NetlinkManager::NetlinkAckHandler null_ack_handler;
 
   // Send two messages within the message handler timeout; verify that we
   // get called back (i.e., that the first handler isn't discarded).
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &get_wiphi_message, response_handler.on_netlink_message(),
+      ack_handler.on_netlink_message(),
       auxilliary_handler.on_netlink_message()));
   received_message->nlmsg_seq = netlink_socket_->GetLastSequenceNumber();
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
-      &get_reg_message, null_message_handler, null_error_handler));
+      &get_reg_message, null_message_handler, null_ack_handler,
+      null_error_handler));
   EXPECT_CALL(response_handler, OnNetlinkMessage(_));
   netlink_manager_->OnNlMessageReceived(received_message);
 
@@ -628,12 +719,14 @@ TEST_F(NetlinkManagerTest, TimeoutResponseHandlers) {
   // broadcast handler gets called, instead of the message's handler.
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &get_wiphi_message, response_handler.on_netlink_message(),
+      ack_handler.on_netlink_message(),
       auxilliary_handler.on_netlink_message()));
   received_message->nlmsg_seq = netlink_socket_->GetLastSequenceNumber();
   EXPECT_CALL(auxilliary_handler,
               OnErrorHandler(NetlinkManager::kTimeoutWaitingForResponse, NULL));
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(&get_reg_message,
                                                    null_message_handler,
+                                                   null_ack_handler,
                                                    null_error_handler));
   EXPECT_CALL(response_handler, OnNetlinkMessage(_)).Times(0);
   EXPECT_CALL(broadcast_handler, OnNetlinkMessage(_));

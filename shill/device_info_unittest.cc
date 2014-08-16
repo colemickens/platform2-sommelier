@@ -523,7 +523,7 @@ TEST_F(DeviceInfoTest, CreateDeviceWiFi) {
 
   EXPECT_CALL(
       netlink_manager_,
-      SendNl80211Message(IsGetInterfaceMessage(kTestDeviceIndex), _, _));
+      SendNl80211Message(IsGetInterfaceMessage(kTestDeviceIndex), _, _, _));
   EXPECT_FALSE(CreateDevice(
       kTestDeviceName, "address", kTestDeviceIndex, Technology::kWifi));
 }

@@ -755,7 +755,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         Nl80211Message::kMessageTypeString,
         NetlinkManager::kEventTypeMlme));
     EXPECT_CALL(netlink_manager_, SendNl80211Message(
-        IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _));
+        IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
 
     dbus_manager_->Start();
     wifi_->supplicant_present_ = supplicant_present;
@@ -2045,7 +2045,7 @@ TEST_F(WiFiMainTest, ReconnectTimer) {
 TEST_F(WiFiMainTest, AddWakeOnPacketConnectionGoodIPAddress) {
   StartWiFi();
   EXPECT_CALL(netlink_manager_, SendNl80211Message(
-      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_SET_WOWLAN), _, _))
+      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_SET_WOWLAN), _, _, _))
           .Times(10);
 
   ::shill::Error e;
@@ -2139,7 +2139,7 @@ TEST_F(WiFiMainTest, ScanHidden) {
   EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList()).WillOnce(Return(ssids));
   StartWiFi();
   EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(HasHiddenSSID(kNl80211FamilyId), _, _));
+              SendNl80211Message(HasHiddenSSID(kNl80211FamilyId), _, _, _));
   dispatcher_.DispatchPendingEvents();
 }
 
@@ -2163,7 +2163,7 @@ TEST_F(WiFiMainTest, ScanNoHidden) {
       .WillOnce(Return(ByteArrays()));
   StartWiFi();
   EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(HasNoHiddenSSID(kNl80211FamilyId), _, _));
+              SendNl80211Message(HasNoHiddenSSID(kNl80211FamilyId), _, _, _));
   dispatcher_.DispatchPendingEvents();
 }
 
@@ -2271,7 +2271,7 @@ TEST_F(WiFiMainTest, ProgressiveScanError) {
   StartWiFi();  // Posts |ProgressiveScanTask|.
 
   EXPECT_CALL(netlink_manager_, SendNl80211Message(
-      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_TRIGGER_SCAN), _, _));
+      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_TRIGGER_SCAN), _, _, _));
   dispatcher_.DispatchPendingEvents();  // Executes |ProgressiveScanTask|.
 
   // Calls |WiFi::OnFailedProgressiveScan| which calls |ScanTask|
@@ -3061,7 +3061,7 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   string connected_bss = GetSupplicantBSS();
   Mock::VerifyAndClearExpectations(&mock_dispatcher_);
 
-  EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _)).Times(0);
+  EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _, _)).Times(0);
   EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _)).Times(0);
   NiceScopedMockLog log;
 
@@ -3088,7 +3088,7 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   // We successfully trigger a request to get the station and start a timer
   // for the next call.
   EXPECT_CALL(netlink_manager_, SendNl80211Message(
-      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_STATION), _, _));
+      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_STATION), _, _, _));
   EXPECT_CALL(mock_dispatcher_, PostDelayedTask(
       _, WiFi::kRequestStationInfoPeriodSeconds * 1000));
   SetSupplicantBSS(connected_bss);
