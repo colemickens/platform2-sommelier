@@ -13,8 +13,7 @@ namespace shill {
 
 namespace {
 
-static base::LazyInstance<FileIO> g_file_io =
-    LAZY_INSTANCE_INITIALIZER;
+base::LazyInstance<FileIO> g_file_io = LAZY_INSTANCE_INITIALIZER;
 
 }  // namespace
 

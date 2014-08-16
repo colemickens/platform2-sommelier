@@ -37,21 +37,23 @@ using testing::_;
 namespace shill {
 
 namespace {
-  static const char kTestBSSID[] = "00:11:22:33:44:55";
-  static const char kTestCertificate[] = "testcertgoeshere";
-  static const char kTestData[] = "thisisthetestdata";
-  static const char kTestDestinationUDN[] = "TEST1234-5678-ABCD";
-  static const char kTestNonce[] = "abort abort abort";
-  static const char kTestPublicKey[] = "YWJvcnQgYWJvcnQgYWJvcnQK";
-  static const char kTestSerializedCommandMessage[] =
-      "Since we're not testing protocol buffer seriallization, and no data "
-      "actually makes it to a shim, we're safe to write whatever we want here.";
-  static const char kTestSerializedCommandResponse[] =
-      "Similarly, we never ask a protocol buffer to deserialize this string.";
-  static const char kTestSignedData[] = "bytes bytes bytes";
-  static const int kTestStdinFd = 9111;
-  static const int kTestStdoutFd = 9119;
-  static const pid_t kTestShimPid = 989898;
+
+const char kTestBSSID[] = "00:11:22:33:44:55";
+const char kTestCertificate[] = "testcertgoeshere";
+const char kTestData[] = "thisisthetestdata";
+const char kTestDestinationUDN[] = "TEST1234-5678-ABCD";
+const char kTestNonce[] = "abort abort abort";
+const char kTestPublicKey[] = "YWJvcnQgYWJvcnQgYWJvcnQK";
+const char kTestSerializedCommandMessage[] =
+    "Since we're not testing protocol buffer seriallization, and no data "
+    "actually makes it to a shim, we're safe to write whatever we want here.";
+const char kTestSerializedCommandResponse[] =
+    "Similarly, we never ask a protocol buffer to deserialize this string.";
+const char kTestSignedData[] = "bytes bytes bytes";
+const int kTestStdinFd = 9111;
+const int kTestStdoutFd = 9119;
+const pid_t kTestShimPid = 989898;
+
 }  // namespace
 
 MATCHER_P(IsCryptoUtilCommandLine, command, "") {

@@ -26,14 +26,16 @@ using testing::Test;
 namespace shill {
 
 namespace {
-static const char kAddress[] = "10.0.0.1";
-static const char kGateway[] = "10.0.0.254";
-static const int32_t kMtu = 512;
-static const char kNameServer0[] = "10.0.1.253";
-static const char kNameServer1[] = "10.0.1.252";
-static const char kNameServers[] = "10.0.1.253,10.0.1.252";
-static const char kPeerAddress[] = "10.0.0.2";
-static const int32_t kPrefixLen = 24;
+
+const char kAddress[] = "10.0.0.1";
+const char kGateway[] = "10.0.0.254";
+const int32_t kMtu = 512;
+const char kNameServer0[] = "10.0.1.253";
+const char kNameServer1[] = "10.0.1.252";
+const char kNameServers[] = "10.0.1.253,10.0.1.252";
+const char kPeerAddress[] = "10.0.0.2";
+const int32_t kPrefixLen = 24;
+
 }  // namespace
 
 class StaticIpParametersTest : public Test {

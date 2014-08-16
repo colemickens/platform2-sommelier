@@ -28,9 +28,11 @@ using ::testing::StrictMock;
 namespace shill {
 
 namespace {
-static const char kTestDeviceName[] = "test-dev";
-static const char kJunkData[] = "junk data";
-}
+
+const char kTestDeviceName[] = "test-dev";
+const char kJunkData[] = "junk data";
+
+}  // namespace
 
 typedef Mac80211Monitor::QueueState QState;
 
