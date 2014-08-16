@@ -193,6 +193,7 @@ void ScanSession::DoScan(const vector<uint16_t> &scan_frequencies) {
       &trigger_scan,
       Bind(&ScanSession::OnTriggerScanResponse,
            weak_ptr_factory_.GetWeakPtr()),
+      Bind(&NetlinkManager::OnAckDoNothing),
       Bind(&ScanSession::OnTriggerScanErrorResponse,
            weak_ptr_factory_.GetWeakPtr()));
 }

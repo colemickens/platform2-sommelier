@@ -5,6 +5,8 @@
 #ifndef SHILL_NETLINK_MESSAGE_H_
 #define SHILL_NETLINK_MESSAGE_H_
 
+#include <linux/netlink.h>
+
 #include <map>
 #include <string>
 
@@ -82,6 +84,7 @@ class NetlinkMessage {
 
   uint16_t message_type() const { return message_type_; }
   void AddFlag(uint16_t new_flag) { flags_ |= new_flag; }
+  void AddAckFlag() { flags_ |= NLM_F_ACK; }
   uint16_t flags() const { return flags_; }
   uint32_t sequence_number() const { return sequence_number_; }
   // Logs the message.  Allows a different log level (presumably more
