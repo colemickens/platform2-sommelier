@@ -412,14 +412,6 @@ void CellularCapabilityUniversal::Connect(const DBusPropertiesMap &properties,
 void CellularCapabilityUniversal::Disconnect(Error *error,
                                              const ResultCallback &callback) {
   SLOG(Cellular, 3) << __func__;
-  // If a deferred registration loss request exists, process it.
-  if (!registration_dropped_update_callback_.IsCancelled()) {
-    registration_dropped_update_callback_.callback().Run();
-    DCHECK(cellular()->state() != Cellular::kStateConnected &&
-           cellular()->state() != Cellular::kStateLinked);
-    SLOG(Cellular, 1) << "Processed deferred registration loss before "
-                      << "disconnect request.";
-  }
   if (modem_simple_proxy_.get()) {
     SLOG(Cellular, 2) << "Disconnect all bearers.";
     // If "/" is passed as the bearer path, ModemManager will disconnect all

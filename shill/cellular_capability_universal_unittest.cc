@@ -779,17 +779,6 @@ TEST_F(CellularCapabilityUniversalMainTest, DisconnectNoProxy) {
   capability_->Disconnect(&error, disconnect_callback);
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, DisconnectWithDeferredCallback) {
-  Error error;
-  ResultCallback disconnect_callback;
-  EXPECT_CALL(*modem_simple_proxy_,
-              Disconnect(_, _, _, CellularCapability::kTimeoutDisconnect));
-  SetSimpleProxy();
-  SetMockRegistrationDroppedUpdateCallback();
-  EXPECT_CALL(*this, DummyCallback());
-  capability_->Disconnect(&error, disconnect_callback);
-}
-
 TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   // Set up mock SIM properties
   const char kImsi[] = "310100000001";
