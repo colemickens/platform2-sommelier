@@ -30,8 +30,7 @@ const unsigned kFallbackPasswordBufferSize = 16384;
 namespace cros_disks {
 
 Platform::Platform()
-    : experimental_features_enabled_(false),
-      mount_group_id_(0),
+    : mount_group_id_(0),
       mount_user_id_(0),
       mount_user_("root") {
 }

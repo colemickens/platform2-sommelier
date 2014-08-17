@@ -166,19 +166,7 @@ TEST_F(DiskManagerTest, GetFilesystem) {
   Filesystem normal_fs("normal-fs");
   EXPECT_EQ(null_pointer, manager_.GetFilesystem(normal_fs.type()));
   manager_.RegisterFilesystem(normal_fs);
-  platform_.set_experimental_features_enabled(false);
   EXPECT_NE(null_pointer, manager_.GetFilesystem(normal_fs.type()));
-  platform_.set_experimental_features_enabled(true);
-  EXPECT_NE(null_pointer, manager_.GetFilesystem(normal_fs.type()));
-
-  Filesystem experimental_fs("experimental-fs");
-  experimental_fs.set_is_experimental(true);
-  EXPECT_EQ(null_pointer, manager_.GetFilesystem(experimental_fs.type()));
-  manager_.RegisterFilesystem(experimental_fs);
-  platform_.set_experimental_features_enabled(false);
-  EXPECT_EQ(null_pointer, manager_.GetFilesystem(experimental_fs.type()));
-  platform_.set_experimental_features_enabled(true);
-  EXPECT_NE(null_pointer, manager_.GetFilesystem(experimental_fs.type()));
 }
 
 TEST_F(DiskManagerTest, RegisterFilesystem) {

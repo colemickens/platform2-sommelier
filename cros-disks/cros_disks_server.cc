@@ -31,7 +31,6 @@ CrosDisksServer::CrosDisksServer(DBus::Connection& connection,  // NOLINT
   CHECK(disk_manager_) << "Invalid disk manager object";
   CHECK(format_manager_) << "Invalid format manager object";
 
-  InitializeProperties();
   format_manager_->set_observer(this);
 }
 
@@ -218,24 +217,6 @@ void CrosDisksServer::DispatchDeviceEvent(const DeviceEvent& event) {
       break;
     default:
       break;
-  }
-}
-
-void CrosDisksServer::InitializeProperties() {
-  try {
-    DBus::Variant value;
-    value.writer().append_bool(platform_->experimental_features_enabled());
-    CrosDisks_adaptor::set_property(kExperimentalFeaturesEnabled, value);
-  } catch (const DBus::Error& e) {
-    LOG(FATAL) << "Failed to initialize properties: " << e.what();
-  }
-}
-
-void CrosDisksServer::on_set_property(
-    DBus::InterfaceAdaptor& interface,  // NOLINT
-    const string& property, const DBus::Variant& value) {
-  if (property == kExperimentalFeaturesEnabled) {
-    platform_->set_experimental_features_enabled(value.reader().get_bool());
   }
 }
 

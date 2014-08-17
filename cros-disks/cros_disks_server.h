@@ -44,7 +44,6 @@ struct DeviceEvent;
 //
 class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
                         public DBus::IntrospectableAdaptor,
-                        public DBus::PropertiesAdaptor,
                         public DBus::ObjectAdaptor,
                         public DeviceEventDispatcherInterface,
                         public FormatManagerObserverInterface,
@@ -128,14 +127,6 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   // Implements the DeviceEventDispatcherInterface to dispatch a device event
   // by emitting the corresponding D-Bus signal.
   void DispatchDeviceEvent(const DeviceEvent& event) override;
-
-  // Initializes DBus properties.
-  void InitializeProperties();
-
-  // Overrides PropertiesAdaptor::on_set_property to handle
-  // org.freedesktop.DBus.Properties.Set calls.
-  void on_set_property(DBus::InterfaceAdaptor& interface,  // NOLINT
-      const std::string& property, const DBus::Variant& value) override;
 
   // Returns a list of device sysfs paths for all disk devices attached to
   // the system. If auto_mountable_only is true, only auto-mountable disk

@@ -327,10 +327,6 @@ const Filesystem* DiskManager::GetFilesystem(
   if (filesystem_iterator == filesystems_.end())
     return NULL;
 
-  if (!platform()->experimental_features_enabled() &&
-      filesystem_iterator->second.is_experimental())
-    return NULL;
-
   return &filesystem_iterator->second;
 }
 

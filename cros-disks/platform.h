@@ -94,13 +94,6 @@ class Platform {
   // Unmounts |path|. Returns true on success.
   virtual bool Unmount(const std::string& path) const;
 
-  bool experimental_features_enabled() const {
-    return experimental_features_enabled_;
-  }
-  void set_experimental_features_enabled(bool experimental_features_enabled) {
-    experimental_features_enabled_ = experimental_features_enabled;
-  }
-
   gid_t mount_group_id() const { return mount_group_id_; }
 
   uid_t mount_user_id() const { return mount_user_id_; }
@@ -108,9 +101,6 @@ class Platform {
   const std::string& mount_user() const { return mount_user_; }
 
  private:
-  // This variable is set to true if the experimental features are enabled.
-  bool experimental_features_enabled_;
-
   // Group ID to perform mount operations.
   gid_t mount_group_id_;
 
