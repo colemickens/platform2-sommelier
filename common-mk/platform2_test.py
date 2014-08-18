@@ -416,6 +416,8 @@ class Platform2Test(object):
       print 'cmd: %s' % (' '.join(map(repr, cmd)))
       os.chroot(self.sysroot)
       os.chdir(cwd)
+      # Some progs want this like bash else they get super confused.
+      os.environ['PWD'] = cwd
       if not self.run_as_root:
         os.setgid(int(os.environ.get('SUDO_GID', '65534')))
         os.setuid(int(os.environ.get('SUDO_UID', '65534')))
