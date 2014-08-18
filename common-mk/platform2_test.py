@@ -279,8 +279,13 @@ class Platform2Test(object):
 
   def __init__(self, test_bin, board, host, use_flags, package, framework,
                run_as_root, gtest_filter, user_gtest_filter, cache_dir,
-               sysroot):
+               sysroot, test_bin_args):
+    if not test_bin_args:
+      test_bin_args = [test_bin]
+    if not test_bin:
+      test_bin = test_bin_args[0]
     self.bin = test_bin
+    self.args = test_bin_args
     self.board = board
     self.host = host
     self.package = package
@@ -395,10 +400,11 @@ class Platform2Test(object):
     filters = (':'.join(positive_filters), ':'.join(negative_filters))
     gtest_filter = '%s-%s' % filters
 
-    self.bin = self.removeSysrootPrefix(self.bin)
-    cmd = [self.bin]
+    cmd = self.removeSysrootPrefix(self.bin)
+    argv = self.args[:]
+    argv[0] = self.removeSysrootPrefix(argv[0])
     if gtest_filter != '-':
-      cmd.append('--gtest_filter=' + gtest_filter)
+      argv.append('--gtest_filter=' + gtest_filter)
 
     # Some programs expect to find data files via $CWD, so doing a chroot
     # and dropping them into / would make them fail.
@@ -413,7 +419,7 @@ class Platform2Test(object):
     if child == 0:
       print 'chroot: %s' % self.sysroot
       print 'cwd: %s' % cwd
-      print 'cmd: %s' % (' '.join(map(repr, cmd)))
+      print 'cmd: {%s} %s' % (cmd, ' '.join(map(repr, argv)))
       os.chroot(self.sysroot)
       os.chdir(cwd)
       # Some progs want this like bash else they get super confused.
@@ -421,13 +427,13 @@ class Platform2Test(object):
       if not self.run_as_root:
         os.setgid(int(os.environ.get('SUDO_GID', '65534')))
         os.setuid(int(os.environ.get('SUDO_UID', '65534')))
-      sys.exit(os.execv(cmd[0], cmd))
+      sys.exit(os.execv(cmd, argv))
 
     _, status = os.waitpid(child, 0)
     if status:
       exit_status, sig = status >> 8, status & 0xff
       raise AssertionError('Error running test binary %s: exit:%i signal:%s(%i)'
-                           % (self.bin, exit_status,
+                           % (cmd, exit_status,
                               signals.StrSignal(sig & 0x7f), sig))
 
 
@@ -503,10 +509,12 @@ def main(argv):
                       help='USE flags to enable')
   parser.add_argument('--user_gtest_filter', default='',
                       help=argparse.SUPPRESS)
+  parser.add_argument('cmdline', nargs='*')
 
   options = parser.parse_args(argv)
 
-  if options.action == 'run' and (not options.bin or len(options.bin) == 0):
+  if options.action == 'run' and ((not options.bin or len(options.bin) == 0)
+                                  and not options.cmdline):
     raise AssertionError('You must specify a binary for the "run" action')
 
   if options.user_gtest_filter and not options.package:
@@ -524,7 +532,7 @@ def main(argv):
                          options.use_flags, options.package, options.framework,
                          options.run_as_root, options.gtest_filter,
                          options.user_gtest_filter, options.cache_dir,
-                         options.sysroot)
+                         options.sysroot, options.cmdline)
   getattr(p2test, options.action)()
 
 
