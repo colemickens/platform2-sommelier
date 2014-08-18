@@ -13,7 +13,6 @@ import argparse
 import array
 import errno
 import os
-import subprocess
 import sys
 
 from platform2 import Platform2
@@ -378,9 +377,8 @@ class Platform2Test(object):
     if not self.use('cros_host'):
       for mount in self._BIND_MOUNT_PATHS:
         path = os.path.join(self.sysroot, mount)
-        if not os.path.isdir(path):
-          subprocess.check_call(['mkdir', '-p', path])
-        subprocess.check_call(['mount', '-n', '--bind', '/' + mount, path])
+        osutils.SafeMakedirs(path)
+        osutils.Mount('/' + mount, path, 'none', osutils.MS_BIND)
 
     positive_filters = self.gtest_filter[0]
     negative_filters = self.gtest_filter[1]
