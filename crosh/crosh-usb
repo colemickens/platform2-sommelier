@@ -34,9 +34,9 @@ do_install() {
     local dst="$1"
     shift
 
-    $CHROMEOS_INSTALL --dst="$dst" "$@"
+    $CHROMEOS_INSTALL --use_payload_kern_b --dst="$dst" "$@"
   else
-    $CHROMEOS_INSTALL "$@"
+    $CHROMEOS_INSTALL --use_payload_kern_b "$@"
   fi
 }
 
