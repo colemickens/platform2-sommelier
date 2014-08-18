@@ -11,10 +11,46 @@ namespace trunks {
 
 // Use the TPM_RC type but with different layer bits (12 - 15). Choose the layer
 // value arbitrarily. Currently TSS2 uses 9 for TCTI and 8 for SAPI.
+// TCTI and SAPI error codes taken from
+// http://www.trustedcomputinggroup.org/resources/
+// tss_system_level_api_and_tpm_command_transmission_interface_specification
 const TPM_RC kTrunksErrorBase = (7 << 12);
+const TPM_RC kTctiErrorBase = (8 << 12);
+const TPM_RC kSapiErrorBase = (9 << 12);
+
 const TPM_RC TRUNKS_RC_AUTHORIZATION_FAILED = kTrunksErrorBase + 1;
 const TPM_RC TRUNKS_RC_ENCRYPTION_FAILED = kTrunksErrorBase + 2;
+const TPM_RC TRUNKS_RC_READ_ERROR = kTrunksErrorBase + 3;
+const TPM_RC TRUNKS_RC_WRITE_ERROR = kTrunksErrorBase + 4;
 
+const TPM_RC TCTI_RC_TRY_AGAIN = kTctiErrorBase + 1;
+const TPM_RC TCTI_RC_GENERAL_FAILURE = kTctiErrorBase + 2;
+const TPM_RC TCTI_RC_BAD_CONTEXT = kTctiErrorBase + 3;
+const TPM_RC TCTI_RC_WRONG_ABI_VERSION = kTctiErrorBase + 4;
+const TPM_RC TCTI_RC_NOT_IMPLEMENTED = kTctiErrorBase + 5;
+const TPM_RC TCTI_RC_BAD_PARAMETER = kTctiErrorBase + 6;
+const TPM_RC TCTI_RC_INSUFFICIENT_BUFFER = kTctiErrorBase + 7;
+const TPM_RC TCTI_RC_NO_CONNECTION = kTctiErrorBase + 8;
+const TPM_RC TCTI_RC_DRIVER_NOT_FOUND = kTctiErrorBase + 9;
+const TPM_RC TCTI_RC_DRIVERINFO_NOT_FOUND = kTctiErrorBase + 10;
+const TPM_RC TCTI_RC_NO_RESPONSE = kTctiErrorBase + 11;
+const TPM_RC TCTI_RC_BAD_VALUE = kTctiErrorBase + 12;
+
+const TPM_RC SAPI_RC_INVALID_SESSIONS = kSapiErrorBase + 1;
+const TPM_RC SAPI_RC_ABI_MISMATCH = kSapiErrorBase + 2;
+const TPM_RC SAPI_RC_INSUFFICIENT_BUFFER = kSapiErrorBase + 3;
+const TPM_RC SAPI_RC_BAD_PARAMETER = kSapiErrorBase + 4;
+const TPM_RC SAPI_RC_BAD_SEQUENCE = kSapiErrorBase + 5;
+const TPM_RC SAPI_RC_NO_DECRYPT_PARAM = kSapiErrorBase + 6;
+const TPM_RC SAPI_RC_NO_ENCRYPT_PARAM = kSapiErrorBase + 7;
+const TPM_RC SAPI_RC_NO_RESPONSE_RECEIVED = kSapiErrorBase + 8;
+const TPM_RC SAPI_RC_BAD_SIZE = kSapiErrorBase + 9;
+const TPM_RC SAPI_RC_CORRUPTED_DATA = kSapiErrorBase + 10;
+const TPM_RC SAPI_RC_INSUFFICIENT_CONTEXT = kSapiErrorBase + 11;
+const TPM_RC SAPI_RC_INSUFFICIENT_RESPONSE = kSapiErrorBase + 12;
+const TPM_RC SAPI_RC_INCOMPATIBLE_TCTI = kSapiErrorBase + 13;
+const TPM_RC SAPI_RC_MALFORMED_RESPONSE = kSapiErrorBase + 14;
+const TPM_RC SAPI_RC_BAD_TCTI_STRUCTURE = kSapiErrorBase + 15;
 }  // namespace trunks
 
 #endif  // TRUNKS_ERROR_CODES_H_
