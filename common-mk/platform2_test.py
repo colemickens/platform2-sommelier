@@ -199,7 +199,7 @@ class Qemu(object):
         return -1
       raise
 
-  def install(self, sysroot=None):
+  def Install(self, sysroot=None):
     """Install qemu into |sysroot| safely"""
     if sysroot is None:
       sysroot = self.sysroot
@@ -232,7 +232,7 @@ class Qemu(object):
           if e.errno != errno.ENOENT:
             raise
 
-  def register_binfmt(self):
+  def RegisterBinfmt(self):
     """Make sure qemu has been registered as a format handler
 
     Prep the binfmt handler. First mount if needed, then unregister any bad
@@ -243,9 +243,7 @@ class Qemu(object):
     re-registered, however it should be rare.
     """
     if not os.path.exists(self._BINFMT_REGISTER_PATH):
-      cmd = ['mount', '-n', '-t', 'binfmt_misc', 'binfmt_misc',
-             self._BINFMT_PATH]
-      cros_build_lib.SudoRunCommand(cmd, error_code_ok=True)
+      osutils.Mount('binfmt_misc', self._BINFMT_PATH, 'binfmt_misc', 0)
 
     if os.path.exists(self.binfmt_path):
       interp = 'interpreter %s\n' % self.build_path
@@ -362,8 +360,8 @@ class Platform2Test(object):
     """
 
     if self.framework == 'qemu':
-      self.qemu.install()
-      self.qemu.register_binfmt()
+      self.qemu.Install()
+      self.qemu.RegisterBinfmt()
 
   def post_test(self):
     """Runs post-test teardown, removes mounts/files copied during pre-test."""
@@ -373,6 +371,10 @@ class Platform2Test(object):
 
   def run(self):
     """Runs the test in a proper environment (e.g. qemu)."""
+
+    # We know these pre-tests are fast (especially if they've already been run
+    # once), so run them automatically for the user if they test by hand.
+    self.pre_test()
 
     if not self.use('cros_host'):
       for mount in self._BIND_MOUNT_PATHS:
