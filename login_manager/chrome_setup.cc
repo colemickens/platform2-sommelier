@@ -249,10 +249,6 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   builder->AddVmodulePattern("screen_locker=1");
   builder->AddVmodulePattern("webui_screen_locker=1");
 
-  // TODO(ygorshenin): Remove this once we will have logs from places where
-  // shill was tested (crosbug.com/36622).
-  builder->AddVmodulePattern("network_portal_detector_impl=1");
-
   // TODO(nkostylev): Remove this one once Rollback UI on login screen
   // is launched. http://crbug.com/382459
   builder->AddVmodulePattern("reset_screen_handler=1");
