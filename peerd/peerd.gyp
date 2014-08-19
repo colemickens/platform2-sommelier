@@ -17,6 +17,7 @@
       'type': 'static_library',
       'sources': [
         'manager.cc',
+        'manager_dbus_proxy.cc',
         'dbus_constants.cc',
       ],
     },
@@ -43,7 +44,7 @@
       },
       'includes': ['../common-mk/common_test.gypi'],
       'sources': [
-        'manager_unittest.cc',
+        'manager_dbus_proxy_unittest.cc',
         'peerd_testrunner.cc',
       ],
     },

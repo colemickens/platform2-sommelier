@@ -5,13 +5,16 @@
 #ifndef PEERD_MANAGER_H_
 #define PEERD_MANAGER_H_
 
-#include <base/basictypes.h>
-#include <dbus/bus.h>
-#include <dbus/exported_object.h>
-#include <dbus/message.h>
-#include <gtest/gtest_prod.h>
+#include <string>
 
+#include <base/basictypes.h>
+
+#include "peerd/manager_dbus_proxy.h"
 #include "peerd/typedefs.h"
+
+namespace dbus {
+class Bus;
+}  // namespace dbus
 
 namespace peerd {
 
@@ -19,20 +22,16 @@ namespace peerd {
 class Manager {
  public:
   explicit Manager(const scoped_refptr<dbus::Bus>& bus);
-  ~Manager();
-
+  virtual ~Manager() = default;
   void Init(const OnInitFinish& success_cb);
 
+  // DBus handlers
+  std::string Ping();
+
  private:
-  // Response to Ping method invocations via DBus.
-  void HandlePing(dbus::MethodCall* method_call,
-                  dbus::ExportedObject::ResponseSender response_sender);
+  ManagerDBusProxy proxy_;
 
-  scoped_refptr<dbus::Bus> bus_;
-  dbus::ExportedObject* exported_object_;  // weak; owned by the Bus object.
-
-  FRIEND_TEST(ManagerTest, PingReturnsHelloWorld);
-  FRIEND_TEST(ManagerTest, RejectPingWithArgs);
+  friend class ManagerDBusProxyTest;
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };
 

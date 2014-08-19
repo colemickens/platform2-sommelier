@@ -4,63 +4,26 @@
 
 #include "peerd/manager.h"
 
-#include <base/bind.h>
-#include <chromeos/async_event_sequencer.h>
-#include <chromeos/dbus_utils.h>
-#include <dbus/exported_object.h>
-#include <dbus/message.h>
-#include <dbus/object_path.h>
+#include <string>
 
 #include "peerd/dbus_constants.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::GetBadArgsError;
-using dbus::ExportedObject;
-using peerd::dbus_constants::kManagerServicePath;
+using peerd::dbus_constants::kPingResponse;
+using std::string;
 
 namespace peerd {
 
-Manager::Manager(const scoped_refptr<dbus::Bus>& bus)
-  : bus_(bus),
-    exported_object_(bus->GetExportedObject(
-        dbus::ObjectPath(kManagerServicePath))) {
-}
-
-Manager::~Manager() {
-  exported_object_->Unregister();
-  exported_object_ = nullptr;
+Manager::Manager(const scoped_refptr<dbus::Bus>& bus) : proxy_(bus, this) {
 }
 
 void Manager::Init(const OnInitFinish& success_cb) {
-  scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
-  const ExportedObject::OnExportedCallback on_export_cb =
-      sequencer->GetExportHandler(dbus_constants::kManagerInterface,
-                                  dbus_constants::kManagerPing,
-                                  "Failed exporting Manager.Ping method",
-                                  true);
-  exported_object_->ExportMethod(
-      dbus_constants::kManagerInterface,
-      dbus_constants::kManagerPing,
-      base::Bind(&Manager::HandlePing, base::Unretained(this)),
-      on_export_cb);
-  sequencer->OnAllTasksCompletedCall({success_cb});
+  // Since we have no async init of our own, we can just give our
+  // callback to the proxy.
+  proxy_.Init(success_cb);
 }
 
-void Manager::HandlePing(dbus::MethodCall* method_call,
-                         dbus::ExportedObject::ResponseSender response_sender) {
-  VLOG(1) << "Manager.HandlePing called.";
-  // Read the parameters to the method.
-  dbus::MessageReader reader(method_call);
-  if (reader.HasMoreData()) {
-    response_sender.Run(
-        GetBadArgsError(method_call, "Too many parameters to Ping"));
-    return;
-  }
-  scoped_ptr<dbus::Response> response(
-      dbus::Response::FromMethodCall(method_call));
-  dbus::MessageWriter writer(response.get());
-  writer.AppendString("Hello world!");
-  response_sender.Run(response.Pass());
+string Manager::Ping() {
+  return kPingResponse;
 }
 
 }  // namespace peerd

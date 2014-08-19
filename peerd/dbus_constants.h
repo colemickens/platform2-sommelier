@@ -19,6 +19,10 @@ extern const char kManagerServicePath[];
 // Methods exposed as part of kManagerInterface.
 extern const char kManagerPing[];
 
+extern const char kErrorTooManyParameters[];
+
+extern const char kPingResponse[];
+
 }  // namespace dbus_constants
 
 }  // namespace peerd

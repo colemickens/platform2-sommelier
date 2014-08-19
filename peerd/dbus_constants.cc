@@ -15,6 +15,9 @@ const char kManagerServicePath[] = "/org/chromium/peerd/Manager";
 
 const char kManagerPing[] = "Ping";
 
+const char kErrorTooManyParameters[] = "Too many parameters.";
+
+const char kPingResponse[] = "Hello world!";
 }  // namespace dbus_constants
 
 }  // namespace peerd
