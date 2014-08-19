@@ -36,7 +36,7 @@ DEFINE_string arch "" \
 unset, auto-detect."
 DEFINE_string payload_image "" "Path to a Chromium OS image to install onto \
 the device's hard drive"
-DEFINE_boolean use_payload_kern_b ${FLAGS_FALSE} \
+DEFINE_boolean use_payload_kern_b ${FLAGS_TRUE} \
   "Copy KERN-B instead of KERN-A from payload_image."
 DEFINE_string gpt_layout "" "Path to a script for pre-defined GPT partition \
 layout"
