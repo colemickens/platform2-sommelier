@@ -37,11 +37,6 @@ class IPAddressStoreTest : public Test {
     ip_address_store_.AddUnique(StringToIPv4Address(kIPAddress_7_7_7_7));
   }
 
-  bool Contains(const IPAddress& ip) {
-    return ip_address_store_.ip_addresses_.find(ip) !=
-        ip_address_store_.ip_addresses_.end();
-  }
-
   IPAddressStore ip_address_store_;
 };
 
@@ -52,19 +47,22 @@ TEST_F(IPAddressStoreTest, AddUnique) {
 
   EXPECT_EQ(0, ip_address_store_.Count());
   ip_address_store_.AddUnique(ip_0_0_0_0);
-  EXPECT_TRUE(Contains(ip_0_0_0_0));
+  EXPECT_TRUE(ip_address_store_.Contains(ip_0_0_0_0));
+  EXPECT_FALSE(ip_address_store_.Contains(ip_8_8_8_8));
+  EXPECT_FALSE(ip_address_store_.Contains(ip_7_7_7_7));
   EXPECT_EQ(1, ip_address_store_.Count());
   ip_address_store_.AddUnique(ip_8_8_8_8);
-  EXPECT_TRUE(Contains(ip_8_8_8_8));
+  EXPECT_TRUE(ip_address_store_.Contains(ip_8_8_8_8));
+  EXPECT_FALSE(ip_address_store_.Contains(ip_7_7_7_7));
   EXPECT_EQ(2, ip_address_store_.Count());
   ip_address_store_.AddUnique(ip_8_8_8_8);
-  EXPECT_TRUE(Contains(ip_0_0_0_0));
-  EXPECT_TRUE(Contains(ip_8_8_8_8));
+  EXPECT_TRUE(ip_address_store_.Contains(ip_0_0_0_0));
+  EXPECT_TRUE(ip_address_store_.Contains(ip_8_8_8_8));
   EXPECT_EQ(2, ip_address_store_.Count());
   ip_address_store_.AddUnique(ip_0_0_0_0);
   EXPECT_EQ(2, ip_address_store_.Count());
   ip_address_store_.AddUnique(ip_7_7_7_7);
-  EXPECT_TRUE(Contains(ip_7_7_7_7));
+  EXPECT_TRUE(ip_address_store_.Contains(ip_7_7_7_7));
   EXPECT_EQ(3, ip_address_store_.Count());
 }
 

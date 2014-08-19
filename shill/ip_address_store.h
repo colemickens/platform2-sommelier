@@ -35,6 +35,7 @@ class IPAddressStore {
   virtual void AddUnique(const IPAddress &ip);
   virtual void Remove(const IPAddress &ip);
   virtual void Clear();
+  virtual bool Contains(const IPAddress &ip) const;
   virtual size_t Count() const;
   virtual bool Empty() const;
   const IPAddresses &GetIPAddresses() const { return ip_addresses_; }

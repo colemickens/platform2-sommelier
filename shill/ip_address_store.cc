@@ -38,6 +38,10 @@ void IPAddressStore::Clear() {
   ip_addresses_.clear();
 }
 
+bool IPAddressStore::Contains(const IPAddress &ip) const {
+  return ip_addresses_.find(ip) != ip_addresses_.end();
+}
+
 size_t IPAddressStore::Count() const {
   return ip_addresses_.size();
 }
