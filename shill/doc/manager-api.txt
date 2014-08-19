@@ -667,11 +667,10 @@ Properties 	object ActiveProfile [readwrite]
 
 		void AddWakeOnPacketConnection(string endpoint)
 
-			Requests that NICs be programmed to wake up from
-			suspend on the arrival of packets on any TCP connection
-			with a source IP address matching the IP address
-			specified in the string argument. The format of the
-			argument is:
+			Program a rule into the NIC to wake up from suspend on
+			the arrival of packets on the TCP connection specified
+			by source IP address in the string argument.  The format
+			of the argument is:
 
 			<source_ip>
 
@@ -684,7 +683,7 @@ Properties 	object ActiveProfile [readwrite]
 			IPV6: a::bc:f:5:6d:7:8, abd::20
 
 			The request is valid until removed.  However, on shill
-			restart any wake-on-packet settings are cleared.
+			restart, any wake-on-packet rules are cleared.
 
 			Possible errors: [service].Error.InvalidArguments (argument parsing error)
 					 [service].Error.NotFound (there is no such connection)
@@ -693,14 +692,17 @@ Properties 	object ActiveProfile [readwrite]
 
 		void RemoveWakeOnPacketConnection(string endpoint)
 
-			Removes a NIC programming request established by
-			AddWakeOnPacketConnection.  The argument is in the same
-			format as given to AddWakeOnPacketConnection.
+			Removes a wake-on-packet rule programmed into the NIC by
+			AddWakeOnPacketConnection. The argument format is the same
+			as that of AddWakeOnPacketConnection.
 
 			Possible errors: [service].Error.InvalidArgument (argument parsing error)
 					 [service].Error.NotFound (no such request is active)
+					 [service].Error.OperationFailed (other failures)
 
 		void RemoveAllWakeOnPacketConnections()
 
-			Removes all NIC programming requests.  This is useful
-			to ensure the NICs are in a known state.
+			Removes all wake-on-packet rules programmed into the NIC.
+			This is useful to ensure the NIC is in a known state.
+
+			Possible errors: [service].Error.OperationFailed (failed execution)
