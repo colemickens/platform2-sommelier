@@ -26,6 +26,30 @@ class ManagerDBusProxy {
   void Init(const OnInitFinish& success_cb);
 
  private:
+  void HandleStartMonitoring(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+
+  void HandleStopMonitoring(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+
+  void HandleExposeIpService(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+
+  void HandleRemoveExposedService(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+
+  void HandleSetFriendlyName(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+
+  void HandleSetNote(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+
   void HandlePing(dbus::MethodCall* method_call,
                   dbus::ExportedObject::ResponseSender response_sender);
 
@@ -34,6 +58,23 @@ class ManagerDBusProxy {
   dbus::ExportedObject* exported_object_ = nullptr;
   Manager* manager_ = nullptr;  // Outlives this.
 
+  FRIEND_TEST(ManagerDBusProxyTest, HandleStartMonitoring_NoArgs);
+  FRIEND_TEST(ManagerDBusProxyTest, StartMonitoring_ReturnsString);
+  FRIEND_TEST(ManagerDBusProxyTest, HandleStopMonitoring_NoArgs);
+  FRIEND_TEST(ManagerDBusProxyTest, HandleStopMonitoring_ExtraArgs);
+  FRIEND_TEST(ManagerDBusProxyTest, HandleExposeIpService_NoArgs);
+  FRIEND_TEST(ManagerDBusProxyTest, HandleExposeIpService_OnlyServiceId);
+  FRIEND_TEST(ManagerDBusProxyTest, HandleExposeIpService_MalformedIps);
+  FRIEND_TEST(ManagerDBusProxyTest, HandleExposeIpService_MissingServiceDict);
+  FRIEND_TEST(ManagerDBusProxyTest, HandleExposeIpService_MissingOptionsDict);
+  FRIEND_TEST(ManagerDBusProxyTest, HandleExposeIpService_ReturnsServiceToken);
+  FRIEND_TEST(ManagerDBusProxyTest, HandleExposeIpService_ExtraArgs);
+  FRIEND_TEST(ManagerDBusProxyTest, HandleRemoveExposedService_NoArgs);
+  FRIEND_TEST(ManagerDBusProxyTest, HandleRemoveExposedService_ExtraArgs);
+  FRIEND_TEST(ManagerDBusProxyTest, HandleSetFriendlyName_NoArgs);
+  FRIEND_TEST(ManagerDBusProxyTest, HandleSetFriendlyName_ExtraArgs);
+  FRIEND_TEST(ManagerDBusProxyTest, HandleSetNote_NoArgs);
+  FRIEND_TEST(ManagerDBusProxyTest, HandleSetNote_ExtraArgs);
   FRIEND_TEST(ManagerDBusProxyTest, HandlePing_ReturnsHelloWorld);
   FRIEND_TEST(ManagerDBusProxyTest, HandlePing_WithArgs);
   DISALLOW_COPY_AND_ASSIGN(ManagerDBusProxy);

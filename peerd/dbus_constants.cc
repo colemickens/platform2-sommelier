@@ -13,11 +13,18 @@ const char kServiceName[] = "org.chromium.peerd";
 const char kManagerInterface[] = "org.chromium.peerd.Manager";
 const char kManagerServicePath[] = "/org/chromium/peerd/Manager";
 
+const char kManagerExposeIpService[] = "ExposeIpService";
 const char kManagerPing[] = "Ping";
+const char kManagerRemoveExposedService[] = "RemoveExposedService";
+const char kManagerSetFriendlyName[] = "SetFriendlyName";
+const char kManagerSetNote[] = "SetNote";
+const char kManagerStartMonitoring[] = "StartMonitoring";
+const char kManagerStopMonitoring[] = "StopMonitoring";
 
 const char kErrorTooManyParameters[] = "Too many parameters.";
 
 const char kPingResponse[] = "Hello world!";
+
 }  // namespace dbus_constants
 
 }  // namespace peerd

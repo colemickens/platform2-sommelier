@@ -16,9 +16,15 @@
 #include "peerd/mock_manager.h"
 
 using peerd::dbus_constants::kErrorTooManyParameters;
+using peerd::dbus_constants::kManagerExposeIpService;
 using peerd::dbus_constants::kManagerInterface;
 using peerd::dbus_constants::kManagerPing;
+using peerd::dbus_constants::kManagerRemoveExposedService;
 using peerd::dbus_constants::kManagerServicePath;
+using peerd::dbus_constants::kManagerSetFriendlyName;
+using peerd::dbus_constants::kManagerSetNote;
+using peerd::dbus_constants::kManagerStartMonitoring;
+using peerd::dbus_constants::kManagerStopMonitoring;
 using peerd::dbus_constants::kPingResponse;
 using std::string;
 using std::unique_ptr;
@@ -83,7 +89,13 @@ class ManagerDBusProxyTest: public ::testing::Test {
     EXPECT_CALL(*mock_bus_,
                 GetExportedObject(dbus::ObjectPath(kManagerServicePath)))
         .Times(1).WillOnce(Return(exported_object_.get()));
-    for (const char* method : {kManagerPing}) {
+    for (const char* method : {kManagerExposeIpService,
+                               kManagerPing,
+                               kManagerRemoveExposedService,
+                               kManagerSetFriendlyName,
+                               kManagerSetNote,
+                               kManagerStartMonitoring,
+                               kManagerStopMonitoring}) {
       EXPECT_CALL(*exported_object_,
                   ExportMethod(kManagerInterface, method, _, _)).Times(1);
     }
@@ -110,6 +122,74 @@ class ManagerDBusProxyTest: public ::testing::Test {
   unique_ptr<MockManager> manager_;
   ManagerDBusProxy* proxy_;
 };
+
+TEST_F(ManagerDBusProxyTest, HandleStartMonitoring_NoArgs) {
+  auto method_call = MakeMethodCall(kManagerStartMonitoring);
+}
+
+TEST_F(ManagerDBusProxyTest, StartMonitoring_ReturnsString) {
+  auto method_call = MakeMethodCall(kManagerStartMonitoring);
+}
+
+TEST_F(ManagerDBusProxyTest, HandleStopMonitoring_NoArgs) {
+  auto method_call = MakeMethodCall(kManagerStopMonitoring);
+}
+
+TEST_F(ManagerDBusProxyTest, HandleStopMonitoring_ExtraArgs) {
+  auto method_call = MakeMethodCall(kManagerStopMonitoring);
+}
+
+TEST_F(ManagerDBusProxyTest, HandleExposeIpService_NoArgs) {
+  auto method_call = MakeMethodCall(kManagerExposeIpService);
+}
+
+TEST_F(ManagerDBusProxyTest, HandleExposeIpService_OnlyServiceId) {
+  auto method_call = MakeMethodCall(kManagerExposeIpService);
+}
+
+TEST_F(ManagerDBusProxyTest, HandleExposeIpService_MalformedIps) {
+  auto method_call = MakeMethodCall(kManagerExposeIpService);
+}
+
+TEST_F(ManagerDBusProxyTest, HandleExposeIpService_MissingServiceDict) {
+  auto method_call = MakeMethodCall(kManagerExposeIpService);
+}
+
+TEST_F(ManagerDBusProxyTest, HandleExposeIpService_MissingOptionsDict) {
+  auto method_call = MakeMethodCall(kManagerExposeIpService);
+}
+
+TEST_F(ManagerDBusProxyTest, HandleExposeIpService_ReturnsServiceToken) {
+  auto method_call = MakeMethodCall(kManagerExposeIpService);
+}
+
+TEST_F(ManagerDBusProxyTest, HandleExposeIpService_ExtraArgs) {
+  auto method_call = MakeMethodCall(kManagerExposeIpService);
+}
+
+TEST_F(ManagerDBusProxyTest, HandleRemoveExposedService_NoArgs) {
+  auto method_call = MakeMethodCall(kManagerRemoveExposedService);
+}
+
+TEST_F(ManagerDBusProxyTest, HandleRemoveExposedService_ExtraArgs) {
+  auto method_call = MakeMethodCall(kManagerRemoveExposedService);
+}
+
+TEST_F(ManagerDBusProxyTest, HandleSetFriendlyName_NoArgs) {
+  auto method_call = MakeMethodCall(kManagerSetFriendlyName);
+}
+
+TEST_F(ManagerDBusProxyTest, HandleSetFriendlyName_ExtraArgs) {
+  auto method_call = MakeMethodCall(kManagerSetFriendlyName);
+}
+
+TEST_F(ManagerDBusProxyTest, HandleSetNote_NoArgs) {
+  auto method_call = MakeMethodCall(kManagerSetNote);
+}
+
+TEST_F(ManagerDBusProxyTest, HandleSetNote_ExtraArgs) {
+  auto method_call = MakeMethodCall(kManagerSetNote);
+}
 
 TEST_F(ManagerDBusProxyTest, HandlePing_ReturnsHelloWorld) {
   auto method_call = MakeMethodCall(kManagerPing);

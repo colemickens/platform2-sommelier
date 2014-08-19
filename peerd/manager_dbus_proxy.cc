@@ -19,9 +19,16 @@ using dbus::MessageReader;
 using dbus::MethodCall;
 using dbus::ObjectPath;
 using peerd::dbus_constants::kErrorTooManyParameters;
+using peerd::dbus_constants::kManagerExposeIpService;
 using peerd::dbus_constants::kManagerInterface;
 using peerd::dbus_constants::kManagerPing;
+using peerd::dbus_constants::kManagerRemoveExposedService;
 using peerd::dbus_constants::kManagerServicePath;
+using peerd::dbus_constants::kManagerSetFriendlyName;
+using peerd::dbus_constants::kManagerSetNote;
+using peerd::dbus_constants::kManagerStartMonitoring;
+using peerd::dbus_constants::kManagerStopMonitoring;
+using peerd::dbus_constants::kPingResponse;
 
 namespace peerd {
 
@@ -47,7 +54,90 @@ void ManagerDBusProxy::Init(const OnInitFinish& success_cb) {
       kManagerInterface, kManagerPing,
       base::Bind(&ManagerDBusProxy::HandlePing, base::Unretained(this)),
       on_export_cb);
+  on_export_cb = sequencer->GetExportHandler(
+      kManagerInterface, kManagerStartMonitoring,
+      "Failed exporting Manager.StartMonitoring method",
+      true);
+  exported_object_->ExportMethod(
+      kManagerInterface, kManagerStartMonitoring,
+      base::Bind(&ManagerDBusProxy::HandleStartMonitoring,
+                 base::Unretained(this)),
+      on_export_cb);
+  on_export_cb = sequencer->GetExportHandler(
+      kManagerInterface, kManagerStopMonitoring,
+      "Failed exporting Manager.StopMonitoring method",
+      true);
+  exported_object_->ExportMethod(
+      kManagerInterface, kManagerStopMonitoring,
+      base::Bind(&ManagerDBusProxy::HandleStopMonitoring,
+                 base::Unretained(this)),
+      on_export_cb);
+  on_export_cb = sequencer->GetExportHandler(
+      kManagerInterface, kManagerExposeIpService,
+      "Failed exporting Manager.ExposeIpService method",
+      true);
+  exported_object_->ExportMethod(
+      kManagerInterface, kManagerExposeIpService,
+      base::Bind(&ManagerDBusProxy::HandleExposeIpService,
+                 base::Unretained(this)),
+      on_export_cb);
+  on_export_cb = sequencer->GetExportHandler(
+      kManagerInterface, kManagerRemoveExposedService,
+      "Failed exporting Manager.RemoveExposedService method",
+      true);
+  exported_object_->ExportMethod(
+      kManagerInterface, kManagerRemoveExposedService,
+      base::Bind(&ManagerDBusProxy::HandleRemoveExposedService,
+                 base::Unretained(this)),
+      on_export_cb);
+  on_export_cb = sequencer->GetExportHandler(
+      kManagerInterface, kManagerSetFriendlyName,
+      "Failed exporting Manager.SetFriendlyName method",
+      true);
+  exported_object_->ExportMethod(
+      kManagerInterface, kManagerSetFriendlyName,
+      base::Bind(&ManagerDBusProxy::HandleSetFriendlyName,
+                 base::Unretained(this)),
+      on_export_cb);
+  on_export_cb = sequencer->GetExportHandler(
+      kManagerInterface, kManagerSetNote,
+      "Failed exporting Manager.SetNote method",
+      true);
+  exported_object_->ExportMethod(
+      kManagerInterface, kManagerSetNote,
+      base::Bind(&ManagerDBusProxy::HandleSetNote, base::Unretained(this)),
+      on_export_cb);
   sequencer->OnAllTasksCompletedCall({success_cb});
+}
+
+void ManagerDBusProxy::HandleStartMonitoring(
+    MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+}
+
+void ManagerDBusProxy::HandleStopMonitoring(
+    MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+}
+
+void ManagerDBusProxy::HandleExposeIpService(
+    MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+}
+
+void ManagerDBusProxy::HandleRemoveExposedService(
+    MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+}
+
+void ManagerDBusProxy::HandleSetFriendlyName(
+    MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+}
+
+void ManagerDBusProxy::HandleSetNote(
+    MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
 }
 
 void ManagerDBusProxy::HandlePing(
