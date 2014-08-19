@@ -11,24 +11,10 @@
 #include <chromeos/dbus_utils.h>
 #include <chromeos/exported_object_manager.h>
 #include <chromeos/exported_property_set.h>
+#include <dbus/property.h>
 
 namespace chromeos {
 namespace dbus_utils {
-
-class DBusInterface::PropertySet : public ExportedPropertySet {
- public:
-  PropertySet(dbus::Bus* bus,
-              const dbus::ObjectPath& object_path,
-              const std::string& interface_name,
-              const ExportedPropertyMap& prop_map)
-      : ExportedPropertySet(bus, object_path) {
-    for (const auto& pair : prop_map)
-      RegisterProperty(interface_name, pair.first, pair.second);
-  }
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(PropertySet);
-};
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -39,8 +25,9 @@ DBusInterface::DBusInterface(DBusObject* dbus_object,
 
 void DBusInterface::AddProperty(const std::string& property_name,
                                 ExportedPropertyBase* prop_base) {
-  auto res = prop_map_.insert(std::make_pair(property_name, prop_base));
-  CHECK(res.second) << "Property '" << property_name << "' already exists";
+  dbus_object_->property_set_.RegisterProperty(interface_name_,
+                                               property_name,
+                                               prop_base);
 }
 
 void DBusInterface::ExportAsync(
@@ -61,20 +48,16 @@ void DBusInterface::ExportAsync(
         interface_name_, method_name, method_handler, export_handler);
   }
 
-  properties_.reset(new DBusInterface::PropertySet(
-      bus, object_path, interface_name_, prop_map_));
-  std::string export_error =
-      "Failed exporting properties for " + interface_name_ + " interface";
-  properties_->Init(sequencer->GetHandler(export_error, true));
-
   std::vector<AsyncEventSequencer::CompletionAction> actions;
   if (object_manager) {
+    auto property_writer_callback =
+        dbus_object_->property_set_.GetPropertyWriter(interface_name_);
     actions.push_back(sequencer->WrapCompletionTask(
         base::Bind(&ExportedObjectManager::ClaimInterface,
                    object_manager->AsWeakPtr(),
                    object_path,
                    interface_name_,
-                   properties_->GetPropertyWriter(interface_name_))));
+                   property_writer_callback)));
   }
   actions.push_back(completion_callback);
   sequencer->OnAllTasksCompletedCall(actions);
@@ -108,7 +91,8 @@ void DBusInterface::AddHandlerImpl(
 DBusObject::DBusObject(ExportedObjectManager* object_manager,
                        const scoped_refptr<dbus::Bus>& bus,
                        const dbus::ObjectPath& object_path)
-    : bus_(bus),
+    : property_set_(bus),
+      bus_(bus),
       object_path_(object_path) {
   if (object_manager)
     object_manager_ = object_manager->AsWeakPtr();
@@ -138,7 +122,7 @@ DBusInterface* DBusObject::AddOrGetInterface(
 }
 
 DBusInterfaceMethodHandler* DBusObject::FindMethodHandler(
-      const std::string& interface_name, const std::string& method_name) {
+      const std::string& interface_name, const std::string& method_name) const {
   auto itf_iter = interfaces_.find(interface_name);
   if (itf_iter == interfaces_.end())
     return nullptr;
@@ -154,6 +138,20 @@ void DBusObject::RegisterAsync(
   CHECK(exported_object_ == nullptr) << "Object already registered.";
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   exported_object_ = bus_->GetExportedObject(object_path_);
+  property_set_.OnObjectExported(exported_object_);
+
+  // Add the org.freedesktop.DBus.Properties interface to the object.
+  DBusInterface* prop_interface = AddOrGetInterface(dbus::kPropertiesInterface);
+  prop_interface->AddMethodHandler(dbus::kPropertiesGetAll,
+                                   base::Unretained(&property_set_),
+                                   &ExportedPropertySet::HandleGetAll);
+  prop_interface->AddMethodHandler(dbus::kPropertiesGet,
+                                   base::Unretained(&property_set_),
+                                   &ExportedPropertySet::HandleGet);
+  prop_interface->AddRawMethodHandler(
+      dbus::kPropertiesSet,
+      base::Bind(&ExportedPropertySet::HandleSet,
+                 base::Unretained(&property_set_)));
 
   // Export interface methods
   for (const auto& pair : interfaces_) {

@@ -55,6 +55,7 @@ class MyDbusObject {
 #include <base/memory/weak_ptr.h>
 #include <chromeos/async_event_sequencer.h>
 #include <chromeos/dbus/dbus_object_internal_impl.h>
+#include <chromeos/exported_property_set.h>
 #include <chromeos/error.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
@@ -277,8 +278,6 @@ class DBusInterface final {
                    ExportedPropertyBase* prop_base);
 
  private:
-  class PropertySet;
-
   // A generic DBus method handler for the interface. It extracts the method
   // name from |method_call|, looks up a registered handler from |handlers_|
   // map and dispatched the call to that handler.
@@ -304,14 +303,6 @@ class DBusInterface final {
 
   // Method registration map.
   std::map<std::string, std::unique_ptr<DBusInterfaceMethodHandler>> handlers_;
-
-  using ExportedPropertyMap =
-      std::map<std::string, ExportedPropertyBase*>;
-  // Property registration map.
-  ExportedPropertyMap prop_map_;
-
-  // DBus exported property set when the interface is claimed successfully.
-  std::unique_ptr<PropertySet> properties_;
 
   friend class DBusObject;
   DBusObject* dbus_object_;
@@ -347,9 +338,21 @@ class DBusObject {
   // Returns nullptr if the interface is not registered or there is
   // no method with the specified name found on that interface.
   DBusInterfaceMethodHandler* FindMethodHandler(
-      const std::string& interface_name, const std::string& method_name);
+      const std::string& interface_name, const std::string& method_name) const;
+
+  // Returns the ExportedObjectManager proxy, if any. If DBusObject has been
+  // constructed without an object manager, this method returns an empty
+  // smart pointer (containing nullptr).
+  const base::WeakPtr<ExportedObjectManager>& GetObjectManager() const {
+    return object_manager_;
+  }
 
  private:
+  // A map of all the interfaces added to this object.
+  std::map<std::string, std::unique_ptr<DBusInterface>> interfaces_;
+  // Exported property set for properties registered with the interfaces
+  // implemented by this DBus object.
+  ExportedPropertySet property_set_;
   // Delegate object implementing org.freedesktop.DBus.ObjectManager interface.
   base::WeakPtr<ExportedObjectManager> object_manager_;
   // DBus bus object.
@@ -358,8 +361,6 @@ class DBusObject {
   dbus::ObjectPath object_path_;
   // DBus object instance once this object is successfully exported.
   dbus::ExportedObject* exported_object_ = nullptr;  // weak; owned by |bus_|.
-  // A map of all the interfaces added to this object.
-  std::map<std::string, std::unique_ptr<DBusInterface>> interfaces_;
 
   friend class DBusInterface;
   DISALLOW_COPY_AND_ASSIGN(DBusObject);

@@ -17,6 +17,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "chromeos/dbus/dbus_object.h"
+
 using ::testing::AnyNumber;
 using ::testing::Return;
 using ::testing::Invoke;
@@ -52,11 +54,13 @@ const dbus::ObjectPath kMethodsExportedOnPath(std::string("/export"));
 const dbus::ObjectPath kTestObjectPathInit(std::string("/path_init"));
 const dbus::ObjectPath kTestObjectPathUpdate(std::string("/path_update"));
 
+void NoAction(bool all_succeeded) {}
+
 }  // namespace
 
 class ExportedPropertySetTest : public ::testing::Test {
  public:
-  struct Properties : public ExportedPropertySet {
+  struct Properties {
    public:
     ExportedProperty<bool> bool_prop_;
     ExportedProperty<uint8_t> uint8_prop_;
@@ -73,47 +77,53 @@ class ExportedPropertySetTest : public ::testing::Test {
     ExportedProperty<std::vector<dbus::ObjectPath>> pathlist_prop_;
     ExportedProperty<std::vector<uint8_t>> uint8list_prop_;
 
-    Properties(dbus::Bus* bus, const dbus::ObjectPath& path)
-        : ExportedPropertySet(bus, path) {
+    Properties(scoped_refptr<dbus::Bus> bus, const dbus::ObjectPath& path)
+        : dbus_object_(nullptr, bus, path) {
       // The empty string is not a valid value for an ObjectPath.
       path_prop_.SetValue(kTestObjectPathInit);
-      RegisterProperty(kTestInterface1, kBoolPropName, &bool_prop_);
-      RegisterProperty(kTestInterface1, kUint8PropName, &uint8_prop_);
-      RegisterProperty(kTestInterface1, kInt16PropName, &int16_prop_);
+      DBusInterface* itf1 = dbus_object_.AddOrGetInterface(kTestInterface1);
+      itf1->AddProperty(kBoolPropName, &bool_prop_);
+      itf1->AddProperty(kUint8PropName, &uint8_prop_);
+      itf1->AddProperty(kInt16PropName, &int16_prop_);
       // I chose this weird grouping because N=2 is about all the permutations
       // of GetAll that I want to anticipate.
-      RegisterProperty(kTestInterface2, kUint16PropName, &uint16_prop_);
-      RegisterProperty(kTestInterface2, kInt32PropName, &int32_prop_);
-      RegisterProperty(kTestInterface3, kUint32PropName, &uint32_prop_);
-      RegisterProperty(kTestInterface3, kInt64PropName, &int64_prop_);
-      RegisterProperty(kTestInterface3, kUint64PropName, &uint64_prop_);
-      RegisterProperty(kTestInterface3, kDoublePropName, &double_prop_);
-      RegisterProperty(kTestInterface3, kStringPropName, &string_prop_);
-      RegisterProperty(kTestInterface3, kPathPropName, &path_prop_);
-      RegisterProperty(kTestInterface3, kStringListPropName, &stringlist_prop_);
-      RegisterProperty(kTestInterface3, kPathListPropName, &pathlist_prop_);
-      RegisterProperty(kTestInterface3, kUint8ListPropName, &uint8list_prop_);
+      DBusInterface* itf2 = dbus_object_.AddOrGetInterface(kTestInterface2);
+      itf2->AddProperty(kUint16PropName, &uint16_prop_);
+      itf2->AddProperty(kInt32PropName, &int32_prop_);
+      DBusInterface* itf3 = dbus_object_.AddOrGetInterface(kTestInterface3);
+      itf3->AddProperty(kUint32PropName, &uint32_prop_);
+      itf3->AddProperty(kInt64PropName, &int64_prop_);
+      itf3->AddProperty(kUint64PropName, &uint64_prop_);
+      itf3->AddProperty(kDoublePropName, &double_prop_);
+      itf3->AddProperty(kStringPropName, &string_prop_);
+      itf3->AddProperty(kPathPropName, &path_prop_);
+      itf3->AddProperty(kStringListPropName, &stringlist_prop_);
+      itf3->AddProperty(kPathListPropName, &pathlist_prop_);
+      itf3->AddProperty(kUint8ListPropName, &uint8list_prop_);
+      dbus_object_.RegisterAsync(base::Bind(NoAction));
     }
     virtual ~Properties() {}
 
-    void CallHandleGetAll(
-        dbus::MethodCall* method_call,
-        dbus::ExportedObject::ResponseSender response_sender) {
-      HandleGetAll(method_call, response_sender);
+    scoped_ptr<dbus::Response> CallMethod(
+        dbus::MethodCall* method_call) {
+      DBusInterfaceMethodHandler* handler = dbus_object_.FindMethodHandler(
+          method_call->GetInterface(), method_call->GetMember());
+      std::unique_ptr<dbus::Response> response;
+      if (!handler) {
+        response = CreateDBusErrorResponse(
+            method_call,
+            "org.freedesktop.DBus.Error.UnknownMethod",
+            "Unknown method");
+      } else {
+        response = handler->HandleMethod(method_call);
+      }
+      return scoped_ptr<dbus::Response>(response.release());
     }
 
-    void CallHandleGet(dbus::MethodCall* method_call,
-                       dbus::ExportedObject::ResponseSender response_sender) {
-      HandleGet(method_call, response_sender);
-    }
-
-    void CallHandleSet(dbus::MethodCall* method_call,
-                       dbus::ExportedObject::ResponseSender response_sender) {
-      HandleSet(method_call, response_sender);
-    }
+    DBusObject dbus_object_;
   };
 
-  virtual void SetUp() {
+  void SetUp() override {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
     bus_ = new dbus::MockBus(options);
@@ -125,29 +135,20 @@ class ExportedPropertySetTest : public ::testing::Test {
         bus_.get(), kMethodsExportedOnPath);
     EXPECT_CALL(*bus_, GetExportedObject(kMethodsExportedOnPath))
         .Times(1).WillOnce(Return(mock_exported_object_.get()));
-    p_.reset(new Properties(bus_.get(), kMethodsExportedOnPath));
+
+    EXPECT_CALL(*mock_exported_object_,
+                ExportMethod(dbus::kPropertiesInterface, _, _, _)).Times(3);
+    p_.reset(new Properties(bus_, kMethodsExportedOnPath));
   }
 
-  void StoreResponse(scoped_ptr<dbus::Response> method_response) {
-    last_response_.reset(method_response.release());
+  void TearDown() override {
+    EXPECT_CALL(*mock_exported_object_, Unregister()).Times(1);
   }
 
-  void AssertGetAllReturnsError(dbus::MethodCall* method_call) {
-    auto response_sender = base::Bind(&ExportedPropertySetTest::StoreResponse,
-                                      base::Unretained(this));
+  void AssertMethodReturnsError(dbus::MethodCall* method_call) {
     method_call->SetSerial(123);
-    p_->CallHandleGetAll(method_call, response_sender);
-    ASSERT_NE(dynamic_cast<dbus::ErrorResponse*>(last_response_.get()),
-              nullptr);
-  }
-
-  void AssertGetReturnsError(dbus::MethodCall* method_call) {
-    auto response_sender = base::Bind(&ExportedPropertySetTest::StoreResponse,
-                                      base::Unretained(this));
-    method_call->SetSerial(123);
-    p_->CallHandleGet(method_call, response_sender);
-    ASSERT_NE(dynamic_cast<dbus::ErrorResponse*>(last_response_.get()),
-              nullptr);
+    auto response = p_->CallMethod(method_call);
+    ASSERT_NE(dynamic_cast<dbus::ErrorResponse*>(response.get()), nullptr);
   }
 
   scoped_ptr<dbus::Response> GetPropertyOnInterface(
@@ -158,10 +159,7 @@ class ExportedPropertySetTest : public ::testing::Test {
     dbus::MessageWriter writer(&method_call);
     writer.AppendString(interface_name);
     writer.AppendString(property_name);
-    auto response_sender = base::Bind(&ExportedPropertySetTest::StoreResponse,
-                                      base::Unretained(this));
-    p_->CallHandleGet(&method_call, response_sender);
-    return last_response_.Pass();
+    return p_->CallMethod(&method_call);
   }
 
   scoped_ptr<dbus::Response> last_response_;
@@ -197,7 +195,7 @@ TEST_F(ExportedPropertySetTest, UpdateToSameValue) {
 TEST_F(ExportedPropertySetTest, GetAllNoArgs) {
   dbus::MethodCall method_call(dbus::kPropertiesInterface,
                                dbus::kPropertiesGetAll);
-  AssertGetAllReturnsError(&method_call);
+  AssertMethodReturnsError(&method_call);
 }
 
 TEST_F(ExportedPropertySetTest, GetAllInvalidInterface) {
@@ -206,10 +204,8 @@ TEST_F(ExportedPropertySetTest, GetAllInvalidInterface) {
   method_call.SetSerial(123);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString("org.chromium.BadInterface");
-  auto response_sender = base::Bind(&ExportedPropertySetTest::StoreResponse,
-                                    base::Unretained(this));
-  p_->CallHandleGetAll(&method_call, response_sender);
-  dbus::MessageReader response_reader(last_response_.get());
+  auto response = p_->CallMethod(&method_call);
+  dbus::MessageReader response_reader(response.get());
   dbus::MessageReader dict_reader(nullptr);
   ASSERT_TRUE(response_reader.PopArray(&dict_reader));
   // The response should just be a an empty array, since there are no properties
@@ -225,7 +221,7 @@ TEST_F(ExportedPropertySetTest, GetAllExtraArgs) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(kTestInterface1);
   writer.AppendString(kTestInterface1);
-  AssertGetAllReturnsError(&method_call);
+  AssertMethodReturnsError(&method_call);
 }
 
 TEST_F(ExportedPropertySetTest, GetAllCorrectness) {
@@ -234,10 +230,8 @@ TEST_F(ExportedPropertySetTest, GetAllCorrectness) {
   method_call.SetSerial(123);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(kTestInterface2);
-  auto response_sender = base::Bind(&ExportedPropertySetTest::StoreResponse,
-                                    base::Unretained(this));
-  p_->CallHandleGetAll(&method_call, response_sender);
-  dbus::MessageReader response_reader(last_response_.get());
+  auto response = p_->CallMethod(&method_call);
+  dbus::MessageReader response_reader(response.get());
   dbus::MessageReader dict_reader(nullptr);
   dbus::MessageReader entry_reader(nullptr);
   ASSERT_TRUE(response_reader.PopArray(&dict_reader));
@@ -270,7 +264,7 @@ TEST_F(ExportedPropertySetTest, GetAllCorrectness) {
 TEST_F(ExportedPropertySetTest, GetNoArgs) {
   dbus::MethodCall method_call(dbus::kPropertiesInterface,
                                dbus::kPropertiesGet);
-  AssertGetReturnsError(&method_call);
+  AssertMethodReturnsError(&method_call);
 }
 
 TEST_F(ExportedPropertySetTest, GetInvalidInterface) {
@@ -279,7 +273,7 @@ TEST_F(ExportedPropertySetTest, GetInvalidInterface) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendString("org.chromium.BadInterface");
   writer.AppendString(kInt16PropName);
-  AssertGetReturnsError(&method_call);
+  AssertMethodReturnsError(&method_call);
 }
 
 TEST_F(ExportedPropertySetTest, GetBadPropertyName) {
@@ -288,7 +282,7 @@ TEST_F(ExportedPropertySetTest, GetBadPropertyName) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(kTestInterface1);
   writer.AppendString("IAmNotAProperty");
-  AssertGetReturnsError(&method_call);
+  AssertMethodReturnsError(&method_call);
 }
 
 TEST_F(ExportedPropertySetTest, GetPropIfMismatch) {
@@ -297,7 +291,7 @@ TEST_F(ExportedPropertySetTest, GetPropIfMismatch) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(kTestInterface1);
   writer.AppendString(kStringPropName);
-  AssertGetReturnsError(&method_call);
+  AssertMethodReturnsError(&method_call);
 }
 
 TEST_F(ExportedPropertySetTest, GetNoPropertyName) {
@@ -305,7 +299,7 @@ TEST_F(ExportedPropertySetTest, GetNoPropertyName) {
                                dbus::kPropertiesGet);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(kTestInterface1);
-  AssertGetReturnsError(&method_call);
+  AssertMethodReturnsError(&method_call);
 }
 
 TEST_F(ExportedPropertySetTest, GetExtraArgs) {
@@ -315,7 +309,7 @@ TEST_F(ExportedPropertySetTest, GetExtraArgs) {
   writer.AppendString(kTestInterface1);
   writer.AppendString(kBoolPropName);
   writer.AppendString("Extra param");
-  AssertGetReturnsError(&method_call);
+  AssertMethodReturnsError(&method_call);
 }
 
 TEST_F(ExportedPropertySetTest, GetWorksWithBool) {
@@ -459,11 +453,9 @@ TEST_F(ExportedPropertySetTest, SetFailsGracefully) {
   dbus::MethodCall method_call(dbus::kPropertiesInterface,
                                dbus::kPropertiesSet);
   method_call.SetSerial(123);
-  auto response_sender = base::Bind(&ExportedPropertySetTest::StoreResponse,
-                                    base::Unretained(this));
-  p_->CallHandleSet(&method_call, response_sender);
+  auto response = p_->CallMethod(&method_call);
   ASSERT_TRUE(
-      dynamic_cast<dbus::ErrorResponse*>(last_response_.get()) != nullptr);
+      dynamic_cast<dbus::ErrorResponse*>(response.get()) != nullptr);
 }
 
 namespace {

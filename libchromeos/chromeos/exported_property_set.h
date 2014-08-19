@@ -42,40 +42,10 @@ namespace dbus_utils {
 //
 //  This class is very similar to the PropertySet class in Chrome, except that
 //  it allows objects to expose properties rather than to consume them.
-//
-//  Example usage:
-//
-//   class ExampleObjectExportingProperties {
-//    public:
-//     ExampleObjectExportingProperties(ExportedObject* exported_object)
-//         : p_(exported_object) {
-//       // Initialize properties appropriately.  Do this before
-//       // claiming the Properties interface so that daemons watching
-//       // this object don't see partial or inaccurate state.
-//       p_.ClaimPropertiesInterface();
-//     }
-//
-//    private:
-//     struct Properties : public chromeos::dbus_utils::ExportedPropertySet {
-//      public:
-//       chromeos::dbus_utils::ExportedProperty<std::string> name_;
-//       chromeos::dbus_utils::ExportedProperty<uint16_t> version_;
-//       chromeos::dbus_utils::ExportedProperty<dbus::ObjectPath> parent_;
-//       chromeos::dbus_utils::ExportedProperty<std::vector<std::string>>
-//           children_;
-//
-//       Properties(dbus_utils::ExportedObject* exported_object)
-//           : chromeos::dbus::ExportedPropertySet(exported_object) {
-//         RegisterProperty(kExampleInterfaceName, "Name", &name_);
-//         RegisterProperty(kExampleInterfaceName, "Version", &version_);
-//         RegisterProperty(kExampleInterfaceName, "Parent", &parent_);
-//         RegisterProperty(kExampleInterfaceName, "Children", &children_);
-//       }
-//       virtual ~Properties() {}
-//     };
-//
-//     Properties p_;
-//   };
+//  It is used as part of DBusObject to implement DBus object properties on
+//  registered interfaces. See description of DBusObject class for more details.
+
+class DBusObject;
 
 class ExportedPropertyBase {
  public:
@@ -105,28 +75,38 @@ class ExportedPropertyBase {
 
 class ExportedPropertySet {
  public:
-  typedef base::Callback<void(bool success)> OnInitFinish;
-  typedef base::Callback<void(dbus::MessageWriter* writer)> PropertyWriter;
+  using PropertyWriter = base::Callback<void(dbus::MessageWriter* writer)>;
 
-  ExportedPropertySet(dbus::Bus* bus, const dbus::ObjectPath& path);
+  explicit ExportedPropertySet(dbus::Bus* bus);
   virtual ~ExportedPropertySet() = default;
 
-  // Claims the method associated with the org.freedesktop.DBus.Properties
-  // interface.  This needs to be done after all properties are initialized to
-  // appropriate values.  This method will call |cb| when all methods
-  // are exported to the DBus object.  |cb| will be called on the origin
-  // thread.
-  void Init(const OnInitFinish& cb);
+  // Called to notify ExportedPropertySet that the DBus object has been
+  // exported successfully and property notification signals can be sent out.
+  void OnObjectExported(dbus::ExportedObject* exported_object) {
+    exported_object_ = exported_object;
+  }
 
   // Return a callback that knows how to write this property set's properties
   // to a message.  This writer retains a weak pointer to this, and must
   // only be invoked on the same thread as the rest of ExportedPropertySet.
-  PropertyWriter GetPropertyWriter(const std::string& interface);
+  PropertyWriter GetPropertyWriter(const std::string& interface_name);
 
- protected:
   void RegisterProperty(const std::string& interface_name,
                         const std::string& property_name,
                         ExportedPropertyBase* exported_property);
+
+  // DBus methods for org.freedesktop.DBus.Properties interface.
+  std::unique_ptr<dbus::Response> HandleGetAll(
+      dbus::MethodCall* method_call, const std::string& interface_name);
+  std::unique_ptr<dbus::Response> HandleGet(
+      dbus::MethodCall* method_call,
+      const std::string& interface_name,
+      const std::string& property_name);
+  // While Properties.Set has a handler to complete the interface,  we don't
+  // support writable properties.  This is almost a feature, since bindings for
+  // many languages don't support errors coming back from invalid writes.
+  // Instead, use setters in exposed interfaces.
+  std::unique_ptr<dbus::Response> HandleSet(dbus::MethodCall* method_call);
 
  private:
   // Used to write the dictionary of string->variant to a message.
@@ -134,22 +114,12 @@ class ExportedPropertySet {
   // given interface.
   void WritePropertiesDictToMessage(const std::string& interface_name,
                                     dbus::MessageWriter* writer);
-  void HandleGetAll(dbus::MethodCall* method_call,
-                    dbus::ExportedObject::ResponseSender response_sender);
-  void HandleGet(dbus::MethodCall* method_call,
-                 dbus::ExportedObject::ResponseSender response_sender);
-  // While Properties.Set has a handler to complete the interface,  we don't
-  // support writable properties.  This is almost a feature, since bindings for
-  // many languages don't support errors coming back from invalid writes.
-  // Instead, use setters in exposed interfaces.
-  void HandleSet(dbus::MethodCall* method_call,
-                 dbus::ExportedObject::ResponseSender response_sender);
-  void HandlePropertyUpdated(const std::string& interface,
-                             const std::string& name,
-                             const ExportedPropertyBase* property);
+  void HandlePropertyUpdated(const std::string& interface_name,
+                             const std::string& property_name,
+                             const ExportedPropertyBase* exported_property);
 
-  dbus::Bus* bus_;
-  dbus::ExportedObject* exported_object_;  // weak; owned by the Bus object.
+  dbus::Bus* bus_;  // weak; owned by outer DBusObject containing this object.
+  dbus::ExportedObject* exported_object_ = nullptr;  // weak; owned by |bus_|.
   // This is a map from interface name -> property name -> pointer to property.
   std::map<std::string,
            std::map<std::string, ExportedPropertyBase*>> properties_;
@@ -157,6 +127,7 @@ class ExportedPropertySet {
   // D-Bus callbacks may last longer the property set exporting those methods.
   base::WeakPtrFactory<ExportedPropertySet> weak_ptr_factory_;
 
+  friend class DBusObject;
   friend class ExportedPropertySetTest;
   DISALLOW_COPY_AND_ASSIGN(ExportedPropertySet);
 };
