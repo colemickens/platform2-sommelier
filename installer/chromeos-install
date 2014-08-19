@@ -36,8 +36,6 @@ DEFINE_string arch "" \
 unset, auto-detect."
 DEFINE_string payload_image "" "Path to a Chromium OS image to install onto \
 the device's hard drive"
-DEFINE_boolean use_payload_kern_b ${FLAGS_TRUE} \
-  "Copy KERN-B instead of KERN-A from payload_image."
 DEFINE_string gpt_layout "" "Path to a script for pre-defined GPT partition \
 layout"
 DEFINE_string pmbr_code "" "Path to PMBR code to be installed"
@@ -634,13 +632,9 @@ copy_partition() {
       ${src_offset} ${src} ${dst}
     ;;
   ${KERNEL_A_PART}|${KERNEL_B_PART})
-    if [ ${FLAGS_use_payload_kern_b} -eq ${FLAGS_FALSE} ]; then
-      part_size=$(partsize ${src} ${KERNEL_A_PART})
-      src_offset=$(partoffset ${src} ${KERNEL_A_PART})
-    else
-      part_size=$(partsize ${src} ${KERNEL_B_PART})
-      src_offset=$(partoffset ${src} ${KERNEL_B_PART})
-    fi
+    # Use kernel B from the source into both kernel A and B in the destination.
+    part_size=$(partsize ${src} ${KERNEL_B_PART})
+    src_offset=$(partoffset ${src} ${KERNEL_B_PART})
     write_partition ${part_num} ${part_size} ${dst_offset} \
       ${src_offset} ${src} ${dst}
     ;;
