@@ -121,6 +121,9 @@ class PropType {
   // the |error| parameter.
   bool ValidateValue(const base::Value* value, chromeos::ErrorPtr* error) const;
 
+  // Similar to the above method, but uses Any as the value container.
+  bool ValidateValue(const Any& value, chromeos::ErrorPtr* error) const;
+
   // Additional helper static methods to help with converting a type enum
   // value into a string and back.
   using TypeMap = std::vector<std::pair<ValueType, std::string>>;

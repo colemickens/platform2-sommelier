@@ -22,6 +22,29 @@ const char kManagerFinishRegisterDevice[]   = "FinishRegisterDevice";
 const char kManagerUpdateStateMethod[]      = "UpdateState";
 const char kManagerTestMethod[]             = "TestMethod";
 
+const char kCommandInterface[] = "org.chromium.Buffet.Command";
+const char kCommandServicePathPrefix[] = "/org/chromium/Buffet/commands/";
+
+const char kCommandSetProgress[] = "SetProgress";
+const char kCommandAbort[] = "Abort";
+const char kCommandCancel[] = "Cancel";
+const char kCommandDone[] = "Done";
+
+const char kCommandName[] = "Name";
+const char kCommandCategory[] = "Category";
+const char kCommandId[] = "Id";
+const char kCommandStatus[] = "Status";
+const char kCommandProgress[] = "Progress";
+
+const char kCommandStatusQueued[] = "queued";
+const char kCommandStatusInProgress[] = "inProgress";
+const char kCommandStatusPaused[] = "paused";
+const char kCommandStatusError[] = "error";
+const char kCommandStatusDone[] = "done";
+const char kCommandStatusCanceled[] = "canceled";
+const char kCommandStatusAborted[] = "aborted";
+const char kCommandStatusExpired[] = "expired";
+
 }  // namespace dbus_constants
 
 }  // namespace buffet

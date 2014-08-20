@@ -149,6 +149,13 @@ bool PropType::ValidateValue(const base::Value* value,
   return val->FromJson(value, error) && ValidateConstraints(*val, error);
 }
 
+bool PropType::ValidateValue(const Any& value,
+                             chromeos::ErrorPtr* error) const {
+  std::shared_ptr<PropValue> val = CreateValue(value);
+  CHECK(val) << "Failed to create value object";
+  return ValidateConstraints(*val, error);
+}
+
 bool PropType::ValidateConstraints(const PropValue& value,
                                    chromeos::ErrorPtr* error) const {
   for (const auto& pair : constraints_) {

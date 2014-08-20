@@ -27,6 +27,33 @@ extern const char kManagerFinishRegisterDevice[];
 extern const char kManagerUpdateStateMethod[];
 extern const char kManagerTestMethod[];
 
+// Interface implemented by the command instance objects.
+extern const char kCommandInterface[];
+extern const char kCommandServicePathPrefix[];
+
+// Methods exposed as part of kCommandInterface.
+extern const char kCommandSetProgress[];
+extern const char kCommandAbort[];
+extern const char kCommandCancel[];
+extern const char kCommandDone[];
+
+// Properties exposed as part of kCommandInterface.
+extern const char kCommandName[];
+extern const char kCommandCategory[];
+extern const char kCommandId[];
+extern const char kCommandStatus[];
+extern const char kCommandProgress[];
+
+// Values for command execution status.
+extern const char kCommandStatusQueued[];
+extern const char kCommandStatusInProgress[];
+extern const char kCommandStatusPaused[];
+extern const char kCommandStatusError[];
+extern const char kCommandStatusDone[];
+extern const char kCommandStatusCanceled[];
+extern const char kCommandStatusAborted[];
+extern const char kCommandStatusExpired[];
+
 }  // namespace dbus_constants
 
 }  // namespace buffet

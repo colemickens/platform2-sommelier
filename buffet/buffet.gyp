@@ -21,6 +21,7 @@
         'commands/command_instance.cc',
         'commands/command_manager.cc',
         'commands/command_queue.cc',
+        'commands/dbus_command_proxy.cc',
         'commands/object_schema.cc',
         'commands/prop_constraints.cc',
         'commands/prop_types.cc',
@@ -68,6 +69,11 @@
           'dependencies': [
             'buffet_common',
           ],
+          'variables': {
+            'deps': [
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'any_unittest.cc',
@@ -78,6 +84,7 @@
             'commands/command_instance_unittest.cc',
             'commands/command_manager_unittest.cc',
             'commands/command_queue_unittest.cc',
+            'commands/dbus_command_proxy_unittest.cc',
             'commands/object_schema_unittest.cc',
             'commands/schema_utils_unittest.cc',
             'commands/unittest_utils.cc',
