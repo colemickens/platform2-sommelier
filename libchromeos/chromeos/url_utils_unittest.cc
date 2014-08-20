@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/url_utils.h"
+#include <chromeos/url_utils.h>
 
 #include <gtest/gtest.h>
 
-using namespace buffet;  // NOLINT(build/namespaces)
+namespace chromeos {
 
 TEST(UrlUtils, Combine) {
   EXPECT_EQ("http://sample.org/path",
@@ -150,3 +150,5 @@ TEST(UrlUtils, HasQueryString) {
   EXPECT_FALSE(url::HasQueryString(""));
   EXPECT_TRUE(url::HasQueryString("?ss"));
 }
+
+}  // namespace chromeos

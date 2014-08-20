@@ -11,11 +11,11 @@
 #include <base/logging.h>
 #include <chromeos/bind_lambda.h>
 #include <chromeos/string_utils.h>
+#include <chromeos/url_utils.h>
 
 #include "buffet/http_connection_fake.h"
 #include "buffet/http_request.h"
 #include "buffet/mime_utils.h"
-#include "buffet/url_utils.h"
 
 namespace buffet {
 
@@ -145,8 +145,8 @@ std::string ServerRequestResponseBase::GetHeader(
 
 ServerRequest::ServerRequest(const std::string& url,
                              const std::string& method) : method_(method) {
-  auto params = url::GetQueryStringParameters(url);
-  url_ = url::RemoveQueryString(url, true);
+  auto params = chromeos::url::GetQueryStringParameters(url);
+  url_ = chromeos::url::RemoveQueryString(url, true);
   form_fields_.insert(params.begin(), params.end());
 }
 

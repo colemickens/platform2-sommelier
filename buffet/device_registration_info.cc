@@ -12,6 +12,7 @@
 #include <base/values.h>
 #include <chromeos/data_encoding.h>
 #include <chromeos/string_utils.h>
+#include <chromeos/url_utils.h>
 
 #include "buffet/commands/command_definition.h"
 #include "buffet/commands/command_manager.h"
@@ -20,7 +21,6 @@
 #include "buffet/http_utils.h"
 #include "buffet/mime_utils.h"
 #include "buffet/storage_impls.h"
-#include "buffet/url_utils.h"
 
 const char buffet::kErrorDomainOAuth2[] = "oauth2";
 const char buffet::kErrorDomainGCD[] = "gcd";
@@ -132,8 +132,8 @@ void ParseGCDError(const base::DictionaryValue* json,
 std::string BuildURL(const std::string& url,
                      const std::vector<std::string>& subpaths,
                      const chromeos::data_encoding::WebParamList& params) {
-  std::string result = buffet::url::CombineMultiple(url, subpaths);
-  return buffet::url::AppendQueryParams(result, params);
+  std::string result = chromeos::url::CombineMultiple(url, subpaths);
+  return chromeos::url::AppendQueryParams(result, params);
 }
 
 }  // anonymous namespace

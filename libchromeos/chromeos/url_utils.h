@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_URL_UTILS_H_
-#define BUFFET_URL_UTILS_H_
+#ifndef LIBCHROMEOS_CHROMEOS_URL_UTILS_H_
+#define LIBCHROMEOS_CHROMEOS_URL_UTILS_H_
 
 #include <string>
 #include <vector>
@@ -11,7 +11,7 @@
 #include <base/basictypes.h>
 #include <chromeos/data_encoding.h>
 
-namespace buffet {
+namespace chromeos {
 
 namespace url {
 
@@ -41,15 +41,13 @@ std::string TrimOffQueryString(std::string* url);
 std::string GetQueryString(const std::string& url, bool remove_fragment);
 
 // Parses the query string into a set of key-value pairs.
-chromeos::data_encoding::WebParamList GetQueryStringParameters(
-    const std::string& url);
+data_encoding::WebParamList GetQueryStringParameters(const std::string& url);
 
 // Returns a value of the specified query parameter, or empty string if missing.
 std::string GetQueryStringValue(const std::string& url,
                                 const std::string& name);
-std::string GetQueryStringValue(
-    const chromeos::data_encoding::WebParamList& params,
-    const std::string& name);
+std::string GetQueryStringValue(const data_encoding::WebParamList& params,
+                                const std::string& name);
 
 // Removes the query string and/or a fragment part from URL.
 // If |remove_fragment| is specified, the fragment is also removed.
@@ -67,12 +65,12 @@ std::string AppendQueryParam(const std::string& url,
 // Appends a list of query parameters to the URL.
 std::string AppendQueryParams(
     const std::string& url,
-    const chromeos::data_encoding::WebParamList& params) WARN_UNUSED_RESULT;
+    const data_encoding::WebParamList& params) WARN_UNUSED_RESULT;
 
 // Checks if the URL has query parameters.
 bool HasQueryString(const std::string& url);
 
 }  // namespace url
-}  // namespace buffet
+}  // namespace chromeos
 
-#endif  // BUFFET_URL_UTILS_H_
+#endif  // LIBCHROMEOS_CHROMEOS_URL_UTILS_H_

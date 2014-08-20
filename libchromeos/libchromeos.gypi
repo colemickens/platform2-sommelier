@@ -71,6 +71,7 @@
         'chromeos/secure_blob.cc',
         'chromeos/string_utils.cc',
         'chromeos/syslog_logging.cc',
+        'chromeos/url_utils.cc',
         'chromeos/utility.cc',
       ],
     },
@@ -216,6 +217,7 @@
             'chromeos/string_utils_unittest.cc',
             'chromeos/ui/chromium_command_builder_unittest.cc',
             'chromeos/ui/x_server_runner_unittest.cc',
+            'chromeos/url_utils_unittest.cc',
             'chromeos/utility_test.cc',
             'testrunner.cc',
           ]

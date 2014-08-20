@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/url_utils.h"
+#include <chromeos/url_utils.h>
 
 #include <algorithm>
 
@@ -50,7 +50,7 @@ bool GetQueryStringPos(const std::string& url, bool exclude_fragment,
 }
 }  // anonymous namespace
 
-namespace buffet {
+namespace chromeos {
 
 std::string url::TrimOffQueryString(std::string* url) {
   size_t query_pos;
@@ -95,13 +95,13 @@ std::string url::GetQueryString(
   return query_string;
 }
 
-chromeos::data_encoding::WebParamList url::GetQueryStringParameters(
+data_encoding::WebParamList url::GetQueryStringParameters(
     const std::string& url) {
   // Extract the query string and remove the leading '?'.
   std::string query_string = GetQueryString(url, true);
   if (!query_string.empty() && query_string.front() == '?')
     query_string.erase(query_string.begin());
-  return chromeos::data_encoding::WebParamsDecode(query_string);
+  return data_encoding::WebParamsDecode(query_string);
 }
 
 std::string url::GetQueryStringValue(
@@ -109,9 +109,8 @@ std::string url::GetQueryStringValue(
   return GetQueryStringValue(GetQueryStringParameters(url), name);
 }
 
-std::string url::GetQueryStringValue(
-    const chromeos::data_encoding::WebParamList& params,
-    const std::string& name) {
+std::string url::GetQueryStringValue(const data_encoding::WebParamList& params,
+                                     const std::string& name) {
   for (const auto& pair : params) {
     if (name.compare(pair.first) == 0)
       return pair.second;
@@ -137,9 +136,8 @@ std::string url::AppendQueryParam(
   return AppendQueryParams(url, {{name, value}});
 }
 
-std::string url::AppendQueryParams(
-    const std::string& url,
-    const chromeos::data_encoding::WebParamList& params) {
+std::string url::AppendQueryParams(const std::string& url,
+                                   const data_encoding::WebParamList& params) {
   if (params.empty())
     return url;
   size_t query_pos, query_len;
@@ -151,7 +149,7 @@ std::string url::AppendQueryParams(
   } else if (query_len > 1) {
     result += '&';
   }
-  result += chromeos::data_encoding::WebParamsEncode(params);
+  result += data_encoding::WebParamsEncode(params);
   if (fragment_pos < url.size()) {
     result += url.substr(fragment_pos);
   }
@@ -164,4 +162,4 @@ bool url::HasQueryString(const std::string& url) {
   return (query_len > 0);
 }
 
-}  // namespace buffet
+}  // namespace chromeos

@@ -8,12 +8,12 @@
 #include <base/values.h>
 #include <chromeos/bind_lambda.h>
 #include <chromeos/string_utils.h>
+#include <chromeos/url_utils.h>
 #include <gtest/gtest.h>
 
 #include "buffet/http_transport_fake.h"
 #include "buffet/http_utils.h"
 #include "buffet/mime_utils.h"
-#include "buffet/url_utils.h"
 
 using namespace buffet;        // NOLINT(build/namespaces)
 using namespace buffet::http;  // NOLINT(build/namespaces)
@@ -172,7 +172,7 @@ TEST(HttpUtils, Get) {
             http::GetAsString(kMethodEchoUrl, transport, nullptr));
 
   for (std::string data : {"blah", "some data", ""}) {
-    std::string url = url::AppendQueryParam(kFakeUrl, "test", data);
+    std::string url = chromeos::url::AppendQueryParam(kFakeUrl, "test", data);
     EXPECT_EQ(data, http::GetAsString(url, transport, nullptr));
   }
 }
