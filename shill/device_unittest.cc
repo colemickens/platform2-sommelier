@@ -1203,6 +1203,39 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
   const string kInterfaceName("int0");
   EXPECT_CALL(*connection_.get(), interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
+  EXPECT_CALL(*connection_.get(), IsIPv6())
+      .WillRepeatedly(Return(false));
+  const vector<string> kDNSServers;
+  EXPECT_CALL(*connection_.get(), dns_servers())
+      .WillRepeatedly(ReturnRef(kDNSServers));
+  EXPECT_TRUE(StartPortalDetection());
+
+  // Drop all references to device_info before it falls out of scope.
+  SetConnection(NULL);
+  StopPortalDetection();
+}
+
+TEST_F(DevicePortalDetectionTest, PortalDetectionStartIPv6) {
+  EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*service_.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_.get(), HasProxyConfig())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*service_.get(), IsPortalDetectionAuto())
+      .WillOnce(Return(true));
+  EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
+      .WillOnce(Return(true));
+  const string portal_url(PortalDetector::kDefaultURL);
+  EXPECT_CALL(manager_, GetPortalCheckURL())
+      .WillRepeatedly(ReturnRef(portal_url));
+  EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline))
+      .Times(0);
+  const string kInterfaceName("int0");
+  EXPECT_CALL(*connection_.get(), interface_name())
+      .WillRepeatedly(ReturnRef(kInterfaceName));
+  EXPECT_CALL(*connection_.get(), IsIPv6())
+      .WillRepeatedly(Return(true));
   const vector<string> kDNSServers;
   EXPECT_CALL(*connection_.get(), dns_servers())
       .WillRepeatedly(ReturnRef(kDNSServers));
@@ -1363,6 +1396,8 @@ TEST_F(DevicePortalDetectionTest, RequestPortalDetection) {
   EXPECT_CALL(manager_, GetPortalCheckURL())
       .WillOnce(ReturnRef(kPortalCheckURL));
   const string kInterfaceName("int0");
+  EXPECT_CALL(*connection_.get(), IsIPv6())
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(*connection_.get(), interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
   const vector<string> kDNSServers;
@@ -1546,6 +1581,8 @@ TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
   EXPECT_CALL(manager_, GetPortalCheckURL())
       .WillOnce(ReturnRef(kPortalCheckURL));
   const string kInterfaceName("int0");
+  EXPECT_CALL(*connection_.get(), IsIPv6())
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(*connection_.get(), interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
   const vector<string> kDNSServers;
@@ -1591,6 +1628,8 @@ TEST_F(DevicePortalDetectionTest, ConfigDNSResultCallback) {
   EXPECT_CALL(manager_, GetPortalCheckURL())
       .WillOnce(ReturnRef(kPortalCheckURL));
   const string kInterfaceName("int0");
+  EXPECT_CALL(*connection_.get(), IsIPv6())
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(*connection_.get(), interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
   const vector<string> kDNSServers;

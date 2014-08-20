@@ -53,7 +53,8 @@ HTTPRequest::HTTPRequest(ConnectionRefPtr connection,
       write_server_callback_(Bind(&HTTPRequest::WriteToServer,
                                   weak_ptr_factory_.GetWeakPtr())),
       dns_client_(
-          new DNSClient(IPAddress::kFamilyIPv4,
+          new DNSClient(connection->IsIPv6() ? IPAddress::kFamilyIPv6
+                                             : IPAddress::kFamilyIPv4,
                         connection->interface_name(),
                         connection->dns_servers(),
                         kDNSTimeoutSeconds * 1000,
@@ -90,6 +91,9 @@ HTTPRequest::Result HTTPRequest::Start(
   connection_->RequestRouting();
 
   IPAddress addr(IPAddress::kFamilyIPv4);
+  if (connection_->IsIPv6()) {
+    addr.set_family(IPAddress::kFamilyIPv6);
+  }
   if (addr.SetAddressFromString(server_hostname_)) {
     if (!ConnectServer(addr, server_port_)) {
       LOG(ERROR) << "Connect to "

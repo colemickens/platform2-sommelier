@@ -113,6 +113,8 @@ class HTTPRequestTest : public Test {
   };
 
   virtual void SetUp() {
+    EXPECT_CALL(*connection_.get(), IsIPv6())
+        .WillRepeatedly(Return(false));
     EXPECT_CALL(*connection_.get(), interface_name())
         .WillRepeatedly(ReturnRef(interface_name_));
     EXPECT_CALL(*connection_.get(), dns_servers())

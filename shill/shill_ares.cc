@@ -59,4 +59,8 @@ struct timeval *Ares::Timeout(ares_channel channel,
   return ares_timeout(channel, maxtv, tv);
 }
 
+int Ares::SetServersCsv(ares_channel channel, const char *servers) {
+  return ares_set_servers_csv(channel, servers);
+}
+
 }  // namespace shill

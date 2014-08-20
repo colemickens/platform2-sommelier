@@ -62,6 +62,9 @@ class AsyncConnection {
 
   void OnConnectCompletion(int fd);
 
+  // Initiate a socket connection to given IP address and port (in host order).
+  int ConnectTo(const IPAddress &address, int port);
+
   std::string interface_name_;
   EventDispatcher *dispatcher_;
   Sockets *sockets_;

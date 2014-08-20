@@ -71,6 +71,8 @@ class PortalDetectorTest : public Test {
   }
 
   virtual void SetUp() {
+    EXPECT_CALL(*connection_.get(), IsIPv6())
+        .WillRepeatedly(Return(false));
     EXPECT_CALL(*connection_.get(), interface_name())
         .WillRepeatedly(ReturnRef(interface_name_));
     portal_detector_->time_ = &time_;

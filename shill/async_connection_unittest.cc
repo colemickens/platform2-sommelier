@@ -30,7 +30,8 @@ namespace shill {
 
 namespace {
 const char kInterfaceName[] = "int0";
-const char kConnectAddress[] = "10.11.12.13";
+const char kIPv4Address[] = "10.11.12.13";
+const char kIPv6Address[] = "2001:db8::1";
 const int kConnectPort = 10203;
 const int kErrorNumber = 30405;
 const int kSocketFD = 60708;
@@ -42,10 +43,12 @@ class AsyncConnectionTest : public Test {
       : async_connection_(
             new AsyncConnection(kInterfaceName, &dispatcher_, &sockets_,
                                 callback_target_.callback())),
-        address_(IPAddress::kFamilyIPv4) { }
+        ipv4_address_(IPAddress::kFamilyIPv4),
+        ipv6_address_(IPAddress::kFamilyIPv6) { }
 
   virtual void SetUp() {
-    EXPECT_TRUE(address_.SetAddressFromString(kConnectAddress));
+    EXPECT_TRUE(ipv4_address_.SetAddressFromString(kIPv4Address));
+    EXPECT_TRUE(ipv6_address_.SetAddressFromString(kIPv6Address));
   }
   virtual void TearDown() {
     if (async_connection_.get() && async_connection_->fd_ >= 0) {
@@ -96,7 +99,7 @@ class AsyncConnectionTest : public Test {
     EXPECT_CALL(dispatcher(),
                 CreateReadyHandler(kSocketFD, IOHandler::kModeOutput, _))
         .WillOnce(ReturnNew<IOHandler>());
-    EXPECT_TRUE(async_connection().Start(address_, kConnectPort));
+    EXPECT_TRUE(async_connection().Start(ipv4_address_, kConnectPort));
   }
 
   void OnConnectCompletion(int fd) {
@@ -105,7 +108,8 @@ class AsyncConnectionTest : public Test {
   AsyncConnection &async_connection() { return *async_connection_.get(); }
   StrictMock<MockSockets> &sockets() { return sockets_; }
   MockEventDispatcher &dispatcher() { return dispatcher_; }
-  const IPAddress &address() { return address_; }
+  const IPAddress &ipv4_address() { return ipv4_address_; }
+  const IPAddress &ipv6_address() { return ipv6_address_; }
   int fd() { return async_connection_->fd_; }
   void set_fd(int fd) { async_connection_->fd_ = fd; }
   StrictMock<ConnectCallbackTarget> &callback_target() {
@@ -117,7 +121,8 @@ class AsyncConnectionTest : public Test {
   StrictMock<MockSockets> sockets_;
   StrictMock<ConnectCallbackTarget> callback_target_;
   scoped_ptr<AsyncConnection> async_connection_;
-  IPAddress address_;
+  IPAddress ipv4_address_;
+  IPAddress ipv6_address_;
 };
 
 TEST_F(AsyncConnectionTest, InitState) {
@@ -130,7 +135,7 @@ TEST_F(AsyncConnectionTest, StartSocketFailure) {
       .WillOnce(Return(-1));
   EXPECT_CALL(sockets(), Error())
       .WillOnce(Return(kErrorNumber));
-  EXPECT_FALSE(async_connection().Start(address(), kConnectPort));
+  EXPECT_FALSE(async_connection().Start(ipv4_address(), kConnectPort));
   ExpectReset();
   EXPECT_STREQ(strerror(kErrorNumber), async_connection().error().c_str());
 }
@@ -144,7 +149,7 @@ TEST_F(AsyncConnectionTest, StartNonBlockingFailure) {
       .WillOnce(Return(kErrorNumber));
   EXPECT_CALL(sockets(), Close(kSocketFD))
       .WillOnce(Return(0));
-  EXPECT_FALSE(async_connection().Start(address(), kConnectPort));
+  EXPECT_FALSE(async_connection().Start(ipv4_address(), kConnectPort));
   ExpectReset();
   EXPECT_STREQ(strerror(kErrorNumber), async_connection().error().c_str());
 }
@@ -160,7 +165,7 @@ TEST_F(AsyncConnectionTest, StartBindToDeviceFailure) {
       .WillOnce(Return(kErrorNumber));
   EXPECT_CALL(sockets(), Close(kSocketFD))
       .WillOnce(Return(0));
-  EXPECT_FALSE(async_connection().Start(address(), kConnectPort));
+  EXPECT_FALSE(async_connection().Start(ipv4_address(), kConnectPort));
   ExpectReset();
   EXPECT_STREQ(strerror(kErrorNumber), async_connection().error().c_str());
 }
@@ -179,7 +184,7 @@ TEST_F(AsyncConnectionTest, SynchronousFailure) {
       .WillRepeatedly(Return(0));
   EXPECT_CALL(sockets(), Close(kSocketFD))
       .WillOnce(Return(0));
-  EXPECT_FALSE(async_connection().Start(address(), kConnectPort));
+  EXPECT_FALSE(async_connection().Start(ipv4_address(), kConnectPort));
   ExpectReset();
 }
 
@@ -193,6 +198,16 @@ MATCHER_P2(IsSocketAddress, address, port, "") {
   return address.Equals(arg_addr) && arg_saddr->sin_port == htons(port);
 }
 
+MATCHER_P2(IsSocketIpv6Address, ipv6_address, port, "") {
+  const struct sockaddr_in6 *arg_saddr =
+      reinterpret_cast<const struct sockaddr_in6 *>(arg);
+  IPAddress arg_addr(IPAddress::kFamilyIPv6,
+                     ByteString(reinterpret_cast<const unsigned char *>(
+                         &arg_saddr->sin6_addr.s6_addr),
+                                sizeof(arg_saddr->sin6_addr.s6_addr)));
+  return ipv6_address.Equals(arg_addr) && arg_saddr->sin6_port == htons(port);
+}
+
 TEST_F(AsyncConnectionTest, SynchronousStart) {
   EXPECT_CALL(sockets(), Socket(_, _, _))
       .WillOnce(Return(kSocketFD));
@@ -201,7 +216,7 @@ TEST_F(AsyncConnectionTest, SynchronousStart) {
   EXPECT_CALL(sockets(), BindToDevice(kSocketFD, StrEq(kInterfaceName)))
       .WillOnce(Return(0));
   EXPECT_CALL(sockets(), Connect(kSocketFD,
-                                  IsSocketAddress(address(), kConnectPort),
+                                  IsSocketAddress(ipv4_address(), kConnectPort),
                                   sizeof(struct sockaddr_in)))
       .WillOnce(Return(-1));
   EXPECT_CALL(dispatcher(),
@@ -209,7 +224,28 @@ TEST_F(AsyncConnectionTest, SynchronousStart) {
         .WillOnce(ReturnNew<IOHandler>());
   EXPECT_CALL(sockets(), Error())
       .WillOnce(Return(EINPROGRESS));
-  EXPECT_TRUE(async_connection().Start(address(), kConnectPort));
+  EXPECT_TRUE(async_connection().Start(ipv4_address(), kConnectPort));
+  EXPECT_EQ(kSocketFD, fd());
+}
+
+TEST_F(AsyncConnectionTest, SynchronousStartIpv6) {
+  EXPECT_CALL(sockets(), Socket(_, _, _))
+      .WillOnce(Return(kSocketFD));
+  EXPECT_CALL(sockets(), SetNonBlocking(kSocketFD))
+      .WillOnce(Return(0));
+  EXPECT_CALL(sockets(), BindToDevice(kSocketFD, StrEq(kInterfaceName)))
+      .WillOnce(Return(0));
+  EXPECT_CALL(sockets(), Connect(kSocketFD,
+                                  IsSocketIpv6Address(ipv6_address(),
+                                                      kConnectPort),
+                                  sizeof(struct sockaddr_in6)))
+      .WillOnce(Return(-1));
+  EXPECT_CALL(dispatcher(),
+              CreateReadyHandler(kSocketFD, IOHandler::kModeOutput, _))
+        .WillOnce(ReturnNew<IOHandler>());
+  EXPECT_CALL(sockets(), Error())
+      .WillOnce(Return(EINPROGRESS));
+  EXPECT_TRUE(async_connection().Start(ipv6_address(), kConnectPort));
   EXPECT_EQ(kSocketFD, fd());
 }
 
@@ -244,11 +280,28 @@ TEST_F(AsyncConnectionTest, SynchronousSuccess) {
   EXPECT_CALL(sockets(), BindToDevice(kSocketFD, StrEq(kInterfaceName)))
       .WillOnce(Return(0));
   EXPECT_CALL(sockets(), Connect(kSocketFD,
-                                  IsSocketAddress(address(), kConnectPort),
+                                  IsSocketAddress(ipv4_address(), kConnectPort),
                                   sizeof(struct sockaddr_in)))
       .WillOnce(Return(0));
   EXPECT_CALL(callback_target(), CallTarget(true, kSocketFD));
-  EXPECT_TRUE(async_connection().Start(address(), kConnectPort));
+  EXPECT_TRUE(async_connection().Start(ipv4_address(), kConnectPort));
+  ExpectReset();
+}
+
+TEST_F(AsyncConnectionTest, SynchronousSuccessIpv6) {
+  EXPECT_CALL(sockets(), Socket(_, _, _))
+      .WillOnce(Return(kSocketFD));
+  EXPECT_CALL(sockets(), SetNonBlocking(kSocketFD))
+      .WillOnce(Return(0));
+  EXPECT_CALL(sockets(), BindToDevice(kSocketFD, StrEq(kInterfaceName)))
+      .WillOnce(Return(0));
+  EXPECT_CALL(sockets(), Connect(kSocketFD,
+                                  IsSocketIpv6Address(ipv6_address(),
+                                                      kConnectPort),
+                                  sizeof(struct sockaddr_in6)))
+      .WillOnce(Return(0));
+  EXPECT_CALL(callback_target(), CallTarget(true, kSocketFD));
+  EXPECT_TRUE(async_connection().Start(ipv6_address(), kConnectPort));
   ExpectReset();
 }
 

@@ -37,6 +37,8 @@ class MockAres : public Ares {
   MOCK_METHOD3(Timeout, struct timeval *(ares_channel channel,
                                          struct timeval *maxtv,
                                          struct timeval *tv));
+  MOCK_METHOD2(SetServersCsv, int(ares_channel channel,
+                                  const char *servers));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockAres);

@@ -44,6 +44,8 @@ const char DNSClient::kErrorNetRefused[] = "The network connection was refused";
 const char DNSClient::kErrorTimedOut[] = "The network connection was timed out";
 const char DNSClient::kErrorUnknown[] = "DNS Resolver unknown internal error";
 
+const int DNSClient::kDefaultDNSPort = 53;
+
 // Private to the implementation of resolver so callers don't include ares.h
 struct DNSClientState {
   DNSClientState() : channel(NULL), start_time{} {}
@@ -85,32 +87,51 @@ bool DNSClient::Start(const string &hostname, Error *error) {
   if (!resolver_state_.get()) {
     struct ares_options options;
     memset(&options, 0, sizeof(options));
+    options.timeout = timeout_ms_;
 
-    vector<struct in_addr> server_addresses;
-    for (const auto &server : dns_servers_) {
-      struct in_addr addr;
-      if (inet_aton(server.c_str(), &addr) != 0) {
-        server_addresses.push_back(addr);
-      }
-    }
-
-    if (server_addresses.empty()) {
+    if (dns_servers_.empty()) {
       Error::PopulateAndLog(error, Error::kInvalidArguments,
                             "No valid DNS server addresses");
       return false;
     }
 
-    options.servers = server_addresses.data();
-    options.nservers = server_addresses.size();
-    options.timeout = timeout_ms_;
-
     resolver_state_.reset(new DNSClientState);
     int status = ares_->InitOptions(&resolver_state_->channel,
                                    &options,
-                                   ARES_OPT_SERVERS | ARES_OPT_TIMEOUTMS);
+                                   ARES_OPT_TIMEOUTMS);
     if (status != ARES_SUCCESS) {
       Error::PopulateAndLog(error, Error::kOperationFailed,
                             "ARES initialization returns error code: " +
+                            base::IntToString(status));
+      resolver_state_.reset();
+      return false;
+    }
+
+    // Format DNS server addresses string as "host:port[,host:port...]" to be
+    // used in call to ares_set_servers_csv for setting DNS server addresses.
+    // There is a bug in ares library when parsing IPv6 addresses, where it
+    // always assumes the port number are specified when address contains ":".
+    // So when IPv6 address are given without port number as "xx:xx:xx::yy",the
+    // parser would parse the address as "xx:xx:xx:" and port number as "yy".
+    // To work around this bug, port number are added to each address.
+    //
+    // Alternatively, we can use ares_set_servers instead, where we would
+    // explicitly construct a link list of ares_addr_node.
+    string server_addresses;
+    bool first = true;
+    for (const auto &ip : dns_servers_) {
+      if (!first) {
+        server_addresses += ",";
+      } else {
+        first = false;
+      }
+      server_addresses += (ip + ":" + base::IntToString(kDefaultDNSPort));
+    }
+    status = ares_->SetServersCsv(resolver_state_->channel,
+                                  server_addresses.c_str());
+    if (status != ARES_SUCCESS) {
+      Error::PopulateAndLog(error, Error::kOperationFailed,
+                            "ARES set DNS servers error code: " +
                             base::IntToString(status));
       resolver_state_.reset();
       return false;

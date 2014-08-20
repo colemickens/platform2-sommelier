@@ -542,4 +542,8 @@ ConnectionRefPtr Connection::GetCarrierConnection() {
   return carrier;
 }
 
+bool Connection::IsIPv6() {
+  return local_.family() == IPAddress::kFamilyIPv6;
+}
+
 }  // namespace shill

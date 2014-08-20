@@ -144,6 +144,8 @@ class DNSClientTest : public Test {
     EXPECT_CALL(ares_, InitOptions(_, _, _))
         .WillOnce(DoAll(SetArgumentPointee<0>(kAresChannel),
                         Return(ARES_SUCCESS)));
+    EXPECT_CALL(ares_, SetServersCsv(_, _))
+        .WillOnce(Return(ARES_SUCCESS));
     EXPECT_CALL(ares_, SetLocalDev(kAresChannel, StrEq(kNetworkInterface)))
         .Times(1);
     EXPECT_CALL(ares_, GetHostByName(kAresChannel, StrEq(name), _, _, _));
@@ -249,14 +251,18 @@ TEST_F(DNSClientTest, NoServers) {
   EXPECT_EQ(Error::kInvalidArguments, error.type());
 }
 
-// Receive error because the DNS server IP address is invalid.
-TEST_F(DNSClientTest, TimeoutInvalidServer) {
+// Setup error because SetServersCsv failed due to invalid DNS servers.
+TEST_F(DNSClientTest, SetServersCsvInvalidServer) {
   vector<string> dns_servers;
   dns_servers.push_back(kBadServer);
   CreateClient(dns_servers, kAresTimeoutMS);
+  EXPECT_CALL(ares_, InitOptions(_, _, _))
+      .WillOnce(Return(ARES_SUCCESS));
+  EXPECT_CALL(ares_, SetServersCsv(_, _))
+      .WillOnce(Return(ARES_EBADSTR));
   Error error;
-  ASSERT_FALSE(dns_client_->Start(kGoodName, &error));
-  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  EXPECT_FALSE(dns_client_->Start(kGoodName, &error));
+  EXPECT_EQ(Error::kOperationFailed, error.type());
 }
 
 // Setup error because InitOptions failed.

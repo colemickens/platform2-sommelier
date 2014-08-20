@@ -40,7 +40,11 @@ AsyncConnection::~AsyncConnection() {
 bool AsyncConnection::Start(const IPAddress &address, int port) {
   DCHECK_LT(fd_, 0);
 
-  fd_ = sockets_->Socket(PF_INET, SOCK_STREAM, 0);
+  int family = PF_INET;
+  if (address.family() == IPAddress::kFamilyIPv6) {
+    family = PF_INET6;
+  }
+  fd_ = sockets_->Socket(family, SOCK_STREAM, 0);
   if (fd_ < 0 ||
       sockets_->SetNonBlocking(fd_) < 0) {
     error_ = sockets_->ErrorString();
@@ -57,19 +61,7 @@ bool AsyncConnection::Start(const IPAddress &address, int port) {
     return false;
   }
 
-  struct sockaddr_in iaddr;
-  CHECK_EQ(sizeof(iaddr.sin_addr.s_addr), address.GetLength());
-
-  memset(&iaddr, 0, sizeof(iaddr));
-  iaddr.sin_family = AF_INET;
-  memcpy(&iaddr.sin_addr.s_addr, address.address().GetConstData(),
-         sizeof(iaddr.sin_addr.s_addr));
-  iaddr.sin_port = htons(port);
-
-  socklen_t addrlen = sizeof(iaddr);
-  int ret = sockets_->Connect(fd_,
-                              reinterpret_cast<struct sockaddr *>(&iaddr),
-                              addrlen);
+  int ret = ConnectTo(address, port);
   if (ret == 0) {
     callback_.Run(true, fd_);  // Passes ownership
     fd_ = -1;
@@ -117,6 +109,40 @@ void AsyncConnection::OnConnectCompletion(int fd) {
 
   // Run the callback last, since it may end up freeing this instance.
   callback_.Run(success, returned_fd);  // Passes ownership
+}
+
+int AsyncConnection::ConnectTo(const IPAddress &address, int port) {
+  struct sockaddr *sock_addr = NULL;
+  socklen_t addr_len = 0;
+  struct sockaddr_in iaddr;
+  struct sockaddr_in6 iaddr6;
+  if (address.family() == IPAddress::kFamilyIPv4) {
+    CHECK_EQ(sizeof(iaddr.sin_addr.s_addr), address.GetLength());
+
+    memset(&iaddr, 0, sizeof(iaddr));
+    iaddr.sin_family = AF_INET;
+    memcpy(&iaddr.sin_addr.s_addr, address.address().GetConstData(),
+           sizeof(iaddr.sin_addr.s_addr));
+    iaddr.sin_port = htons(port);
+
+    sock_addr = reinterpret_cast<struct sockaddr *>(&iaddr);
+    addr_len = sizeof(iaddr);
+  } else if (address.family() == IPAddress::kFamilyIPv6) {
+    CHECK_EQ(sizeof(iaddr6.sin6_addr.s6_addr), address.GetLength());
+
+    memset(&iaddr6, 0, sizeof(iaddr6));
+    iaddr6.sin6_family = AF_INET6;
+    memcpy(&iaddr6.sin6_addr.s6_addr, address.address().GetConstData(),
+           sizeof(iaddr6.sin6_addr.s6_addr));
+    iaddr6.sin6_port = htons(port);
+
+    sock_addr = reinterpret_cast<struct sockaddr *>(&iaddr6);
+    addr_len = sizeof(iaddr6);
+  } else {
+    NOTREACHED();
+  }
+
+  return sockets_->Connect(fd_, sock_addr, addr_len);
 }
 
 }  // namespace shill

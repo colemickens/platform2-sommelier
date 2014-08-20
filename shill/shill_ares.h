@@ -51,6 +51,9 @@ class Ares {
                                   struct timeval *maxtv,
                                   struct timeval *tv);
 
+  // ares_set_servers_csv
+  virtual int SetServersCsv(ares_channel channel, const char *servers);
+
  protected:
   Ares();
 

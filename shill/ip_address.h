@@ -74,6 +74,7 @@ class IPAddress {
 
   // Getters and Setters
   Family family() const { return family_; }
+  void set_family(Family family) { family_ = family; }
   const ByteString &address() const { return address_; }
   unsigned int prefix() const { return prefix_; }
   void set_prefix(unsigned int prefix) { prefix_ = prefix; }

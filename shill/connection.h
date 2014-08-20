@@ -113,6 +113,9 @@ class Connection : public base::RefCounted<Connection> {
   // error, a NULL is returned.
   virtual ConnectionRefPtr GetCarrierConnection();
 
+  // Return true if this is an IPv6 connection.
+  virtual bool IsIPv6();
+
  protected:
   friend class base::RefCounted<Connection>;
 

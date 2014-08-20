@@ -38,6 +38,7 @@ class MockConnection : public Connection {
   MOCK_CONST_METHOD0(tethering, std::string &());
   MOCK_METHOD1(UpdateDNSServers,
                void(const std::vector<std::string> &dns_servers));
+  MOCK_METHOD0(IsIPv6, bool());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockConnection);
