@@ -5,10 +5,10 @@
 #include "buffet/http_connection_fake.h"
 
 #include <base/logging.h>
+#include <chromeos/string_utils.h>
 
 #include "buffet/http_request.h"
 #include "buffet/mime_utils.h"
-#include "buffet/string_utils.h"
 
 namespace buffet {
 namespace http {
@@ -37,8 +37,9 @@ bool Connection::WriteRequestData(const void* data, size_t size,
 }
 
 bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
+  using chromeos::string_utils::ToString;
   request_.AddHeaders({{request_header::kContentLength,
-                      string_utils::ToString(request_.GetData().size())}});
+                      ToString(request_.GetData().size())}});
   fake::Transport* transport = static_cast<fake::Transport*>(transport_.get());
   CHECK(transport) << "Expecting a fake transport";
   auto handler = transport->GetHandler(request_.GetURL(), request_.GetMethod());

@@ -5,7 +5,6 @@
 #include "buffet/commands/prop_constraints.h"
 #include "buffet/commands/prop_values.h"
 #include "buffet/commands/schema_constants.h"
-#include "buffet/string_utils.h"
 
 namespace buffet {
 
@@ -41,7 +40,8 @@ bool Constraint::ReportErrorNotOneOf(chromeos::ErrorPtr* error,
                                errors::commands::kOutOfRange,
                                "Value %s is invalid. Expected one of [%s]",
                                val.c_str(),
-                               string_utils::Join(',', values).c_str());
+                               chromeos::string_utils::Join(',',
+                                                            values).c_str());
   return false;
 }
 

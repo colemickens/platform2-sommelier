@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/string_utils.h"
+#include <chromeos/string_utils.h>
 
 #include <gtest/gtest.h>
 
-using namespace buffet;  // NOLINT(build/namespaces)
+namespace chromeos {
 
 TEST(StringUtils, Split) {
   std::vector<std::string> parts;
@@ -107,3 +107,5 @@ TEST(StringUtils, Join_Pair) {
   EXPECT_EQ("ab,cd", string_utils::Join(',', "ab", "cd"));
   EXPECT_EQ("key = value", string_utils::Join(" = ", "key", "value"));
 }
+
+}  // namespace chromeos

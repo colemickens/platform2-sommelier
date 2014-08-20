@@ -10,6 +10,7 @@
 
 #include <base/json/json_writer.h>
 #include <base/values.h>
+#include <chromeos/string_utils.h>
 
 #include "buffet/commands/command_definition.h"
 #include "buffet/commands/command_manager.h"
@@ -19,7 +20,6 @@
 #include "buffet/http_utils.h"
 #include "buffet/mime_utils.h"
 #include "buffet/storage_impls.h"
-#include "buffet/string_utils.h"
 #include "buffet/url_utils.h"
 
 const char buffet::kErrorDomainOAuth2[] = "oauth2";
@@ -67,7 +67,7 @@ std::pair<std::string, std::string> BuildAuthHeader(
     const std::string& access_token_type,
     const std::string& access_token) {
   std::string authorization =
-      buffet::string_utils::Join(' ', access_token_type, access_token);
+      chromeos::string_utils::Join(' ', access_token_type, access_token);
   return {buffet::http::request_header::kAuthorization, authorization};
 }
 

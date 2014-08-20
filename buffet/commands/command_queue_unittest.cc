@@ -6,11 +6,11 @@
 #include <string>
 #include <vector>
 
+#include <chromeos/string_utils.h>
 #include <gtest/gtest.h>
 
 #include "buffet/commands/command_dispatch_interface.h"
 #include "buffet/commands/command_queue.h"
-#include "buffet/string_utils.h"
 
 namespace {
 
@@ -46,7 +46,7 @@ class FakeDispatchInterface : public buffet::CommandDispachInterface {
   // Get the comma-separated list of command IDs currently accumulated in the
   // command queue.
   std::string GetIDs() const {
-    using buffet::string_utils::Join;
+    using chromeos::string_utils::Join;
     return Join(',', std::vector<std::string>(ids_.begin(), ids_.end()));
   }
 
@@ -99,7 +99,7 @@ TEST(CommandQueue, Dispatch) {
   std::string id1 = queue.Add(CreateDummyCommandInstance());
   std::string id2 = queue.Add(CreateDummyCommandInstance());
   std::set<std::string> ids{id1, id2};  // Make sure they are sorted properly.
-  std::string expected_set = buffet::string_utils::Join(
+  std::string expected_set = chromeos::string_utils::Join(
       ',', std::vector<std::string>(ids.begin(), ids.end()));
   EXPECT_EQ(expected_set, dispatch.GetIDs());
   queue.Remove(id1);

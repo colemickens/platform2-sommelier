@@ -7,12 +7,12 @@
 
 #include <base/values.h>
 #include <chromeos/bind_lambda.h>
+#include <chromeos/string_utils.h>
 #include <gtest/gtest.h>
 
 #include "buffet/http_transport_fake.h"
 #include "buffet/http_utils.h"
 #include "buffet/mime_utils.h"
-#include "buffet/string_utils.h"
 #include "buffet/url_utils.h"
 
 using namespace buffet;        // NOLINT(build/namespaces)
@@ -311,7 +311,7 @@ TEST(HttpUtils, ParseJsonResponse) {
 
   // Test valid JSON responses (with success or error codes).
   for (auto item : {"200;data", "400;wrong", "500;Internal Server error"}) {
-    auto pair = string_utils::SplitAtFirst(item, ';');
+    auto pair = chromeos::string_utils::SplitAtFirst(item, ';');
     auto response = http::PostFormData(kFakeUrl, {
                       {"code", pair.first},
                       {"value", pair.second},
@@ -321,7 +321,7 @@ TEST(HttpUtils, ParseJsonResponse) {
     EXPECT_NE(nullptr, json.get());
     std::string value;
     EXPECT_TRUE(json->GetString("data", &value));
-    EXPECT_EQ(pair.first, string_utils::ToString(code));
+    EXPECT_EQ(pair.first, chromeos::string_utils::ToString(code));
     EXPECT_EQ(pair.second, value);
   }
 

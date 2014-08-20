@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/string_utils.h"
+#include <chromeos/string_utils.h>
 
 #include <algorithm>
 #include <string.h>
@@ -11,7 +11,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
-namespace buffet {
+namespace chromeos {
 namespace string_utils {
 
 std::vector<std::string> Split(const std::string& str,
@@ -96,4 +96,4 @@ std::string ToString(bool value) {
 }
 
 }  // namespace string_utils
-}  // namespace buffet
+}  // namespace chromeos

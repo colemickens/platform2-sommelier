@@ -5,10 +5,10 @@
 #include "buffet/http_connection_curl.h"
 
 #include <base/logging.h>
+#include <chromeos/string_utils.h>
 
 #include "buffet/http_request.h"
 #include "buffet/http_transport_curl.h"
-#include "buffet/string_utils.h"
 
 namespace buffet {
 namespace http {
@@ -97,7 +97,9 @@ bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
   curl_slist* header_list = nullptr;
   if (!headers_.empty()) {
     for (auto pair : headers_) {
-      std::string header = string_utils::Join(": ", pair.first, pair.second);
+      std::string header = chromeos::string_utils::Join(": ",
+                                                        pair.first,
+                                                        pair.second);
       VLOG(2) << "Request header: " << header;
       header_list = curl_slist_append(header_list, header.c_str());
     }
@@ -123,7 +125,7 @@ bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
     curl_slist_free_all(header_list);
   if (ret != CURLE_OK) {
     chromeos::Error::AddTo(error, http::curl::kErrorDomain,
-                           string_utils::ToString(ret),
+                           chromeos::string_utils::ToString(ret),
                            curl_easy_strerror(ret));
   } else {
     LOG(INFO) << "Response: " << GetResponseStatusCode() << " ("
@@ -200,6 +202,7 @@ size_t Connection::read_callback(char* ptr, size_t size,
 
 size_t Connection::header_callback(char* ptr, size_t size,
                                    size_t num, void* data) {
+  using chromeos::string_utils::SplitAtFirst;
   Connection* me = reinterpret_cast<Connection*>(data);
   size_t hdr_len = size * num;
   std::string header(ptr, hdr_len);
@@ -213,12 +216,12 @@ size_t Connection::header_callback(char* ptr, size_t size,
   if (!me->status_text_set_) {
     // First header - response code as "HTTP/1.1 200 OK".
     // Need to extract the OK part
-    auto pair = string_utils::SplitAtFirst(header, ' ');
+    auto pair = SplitAtFirst(header, ' ');
     me->protocol_version_ = pair.first;
-    me->status_text_ = string_utils::SplitAtFirst(pair.second, ' ').second;
+    me->status_text_ = SplitAtFirst(pair.second, ' ').second;
     me->status_text_set_ = true;
   } else {
-    auto pair = string_utils::SplitAtFirst(header, ':');
+    auto pair = SplitAtFirst(header, ':');
     if (!pair.second.empty())
       me->headers_.insert(pair);
   }

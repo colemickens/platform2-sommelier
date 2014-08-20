@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_STRING_UTILS_H_
-#define BUFFET_STRING_UTILS_H_
+#ifndef LIBCHROMEOS_CHROMEOS_STRING_UTILS_H_
+#define LIBCHROMEOS_CHROMEOS_STRING_UTILS_H_
 
 #include <string>
 #include <utility>
 #include <vector>
 
-namespace buffet {
+namespace chromeos {
 namespace string_utils {
 
 // Treats the string as a delimited list of substrings and returns the array
@@ -51,6 +51,6 @@ std::string ToString(double value);
 std::string ToString(bool value);
 
 }  // namespace string_utils
-}  // namespace buffet
+}  // namespace chromeos
 
-#endif  // BUFFET_STRING_UTILS_H_
+#endif  // LIBCHROMEOS_CHROMEOS_STRING_UTILS_H_

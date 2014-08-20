@@ -5,12 +5,12 @@
 #include "buffet/http_request.h"
 
 #include <base/logging.h>
+#include <chromeos/string_utils.h>
 
 #include "buffet/http_connection_curl.h"
 #include "buffet/http_transport_curl.h"
 #include "buffet/map_utils.h"
 #include "buffet/mime_utils.h"
-#include "buffet/string_utils.h"
 
 namespace buffet {
 namespace http {
@@ -195,11 +195,11 @@ bool Request::SendRequestIfNeeded(chromeos::ErrorPtr* error) {
               p.second != range_value_omitted) {
             std::string range;
             if (p.first != range_value_omitted) {
-              range = string_utils::ToString(p.first);
+              range = chromeos::string_utils::ToString(p.first);
             }
             range += '-';
             if (p.second != range_value_omitted) {
-              range += string_utils::ToString(p.second);
+              range += chromeos::string_utils::ToString(p.second);
             }
             ranges.push_back(range);
           }
@@ -207,7 +207,8 @@ bool Request::SendRequestIfNeeded(chromeos::ErrorPtr* error) {
       }
       if (!ranges.empty())
         headers.emplace_back(request_header::kRange,
-                             "bytes=" + string_utils::Join(',', ranges));
+                             "bytes=" +
+                                 chromeos::string_utils::Join(',', ranges));
 
       headers.emplace_back(request_header::kAccept, GetAccept());
       if (method_ != request_type::kGet && method_ != request_type::kHead) {

@@ -12,11 +12,11 @@
 #include <base/basictypes.h>
 #include <base/values.h>
 #include <chromeos/error.h>
+#include <chromeos/string_utils.h>
 
 #include "buffet/commands/prop_values.h"
 #include "buffet/commands/schema_constants.h"
 #include "buffet/commands/schema_utils.h"
-#include "buffet/string_utils.h"
 
 namespace buffet {
 
@@ -138,8 +138,8 @@ class ConstraintMin : public ConstraintMinMaxBase<T> {
     T v = value.GetValueAsAny().Get<T>();
     if (v < this->limit_.value)
       return this->ReportErrorLessThan(
-          error, string_utils::ToString(v),
-          string_utils::ToString(this->limit_.value));
+          error, chromeos::string_utils::ToString(v),
+          chromeos::string_utils::ToString(this->limit_.value));
     return true;
   }
 
@@ -175,8 +175,8 @@ class ConstraintMax : public ConstraintMinMaxBase<T> {
     T v = value.GetValueAsAny().Get<T>();
     if (v > this->limit_.value)
       return this->ReportErrorGreaterThan(
-          error, string_utils::ToString(v),
-          string_utils::ToString(this->limit_.value));
+          error, chromeos::string_utils::ToString(v),
+          chromeos::string_utils::ToString(this->limit_.value));
     return true;
   }
 
@@ -282,7 +282,7 @@ class ConstraintOneOf : public Constraint {
   // Implementation of Constraint::Validate().
   bool Validate(const PropValue& value,
                 chromeos::ErrorPtr* error) const override {
-    using string_utils::ToString;
+    using chromeos::string_utils::ToString;
     T v = value.GetValueAsAny().Get<T>();
     for (const auto& item : set_.value) {
       if (CompareValue(v, item))

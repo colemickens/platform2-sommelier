@@ -11,11 +11,11 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/values.h>
+#include <chromeos/string_utils.h>
 
 #include "buffet/commands/object_schema.h"
 #include "buffet/commands/prop_values.h"
 #include "buffet/commands/schema_constants.h"
-#include "buffet/string_utils.h"
 
 namespace buffet {
 

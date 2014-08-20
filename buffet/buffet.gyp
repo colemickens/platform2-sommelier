@@ -37,7 +37,6 @@
         'manager.cc',
         'mime_utils.cc',
         'storage_impls.cc',
-        'string_utils.cc',
         'url_utils.cc'
       ],
     },
@@ -91,7 +90,6 @@
             'http_transport_fake.cc',
             'http_utils_unittest.cc',
             'mime_utils_unittest.cc',
-            'string_utils_unittest.cc',
             'url_utils_unittest.cc'
           ],
         },

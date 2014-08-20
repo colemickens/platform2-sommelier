@@ -5,10 +5,10 @@
 #include "buffet/commands/command_dictionary.h"
 
 #include <base/values.h>
+#include <chromeos/string_utils.h>
 
 #include "buffet/commands/command_definition.h"
 #include "buffet/commands/schema_constants.h"
-#include "buffet/string_utils.h"
 
 namespace buffet {
 
@@ -63,8 +63,8 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
         return false;
       }
       // Construct the compound command name as "pkg_name.cmd_name".
-      std::string full_command_name = string_utils::Join('.', package_name,
-                                                         command_name);
+      std::string full_command_name = chromeos::string_utils::Join(
+          '.', package_name, command_name);
       // Get the "parameters" definition of the command and read it into
       // an object schema.
       const base::DictionaryValue* command_schema_def = nullptr;
@@ -158,7 +158,7 @@ std::unique_ptr<base::DictionaryValue> CommandDictionary::GetCommandsAsJson(
       dict.reset();
       return dict;
     }
-    auto cmd_name_parts = string_utils::SplitAtFirst(pair.first, '.');
+    auto cmd_name_parts = chromeos::string_utils::SplitAtFirst(pair.first, '.');
     std::string package_name = cmd_name_parts.first;
     std::string command_name = cmd_name_parts.second;
     base::DictionaryValue* package = nullptr;

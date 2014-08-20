@@ -5,9 +5,8 @@
 #include "buffet/data_encoding.h"
 
 #include <base/strings/stringprintf.h>
-#include <string.h>
-
-#include "buffet/string_utils.h"
+#include <chromeos/string_utils.h>
+#include <cstring>
 
 namespace {
 
@@ -80,17 +79,17 @@ std::string WebParamsEncode(const WebParamList& params,
   for (const auto& p : params) {
     std::string key = UrlEncode(p.first.c_str(), encodeSpaceAsPlus);
     std::string value = UrlEncode(p.second.c_str(), encodeSpaceAsPlus);
-    pairs.push_back(string_utils::Join('=', key, value));
+    pairs.push_back(chromeos::string_utils::Join('=', key, value));
   }
 
-  return string_utils::Join('&', pairs);
+  return chromeos::string_utils::Join('&', pairs);
 }
 
 WebParamList WebParamsDecode(const std::string& data) {
   WebParamList result;
-  std::vector<std::string> params = string_utils::Split(data, '&');
+  std::vector<std::string> params = chromeos::string_utils::Split(data, '&');
   for (const auto& p : params) {
-    auto pair = string_utils::SplitAtFirst(p, '=');
+    auto pair = chromeos::string_utils::SplitAtFirst(p, '=');
     result.emplace_back(UrlDecode(pair.first.c_str()),
                         UrlDecode(pair.second.c_str()));
   }

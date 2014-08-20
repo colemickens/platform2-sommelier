@@ -10,11 +10,11 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <chromeos/bind_lambda.h>
+#include <chromeos/string_utils.h>
 
 #include "buffet/http_connection_fake.h"
 #include "buffet/http_request.h"
 #include "buffet/mime_utils.h"
-#include "buffet/string_utils.h"
 #include "buffet/url_utils.h"
 
 namespace buffet {
@@ -171,7 +171,8 @@ void ServerResponse::Reply(int status_code, const void* data, size_t data_size,
   status_code_ = status_code;
   AddData(data, data_size);
   AddHeaders({
-    {response_header::kContentLength, string_utils::ToString(data_size)},
+    {response_header::kContentLength,
+        chromeos::string_utils::ToString(data_size)},
     {response_header::kContentType, mime_type}
   });
 }
