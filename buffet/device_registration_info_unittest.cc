@@ -5,6 +5,7 @@
 #include <base/json/json_reader.h>
 #include <base/values.h>
 #include <chromeos/bind_lambda.h>
+#include <chromeos/mime_utils.h>
 #include <gtest/gtest.h>
 
 #include "buffet/commands/command_manager.h"
@@ -13,7 +14,6 @@
 #include "buffet/device_registration_storage_keys.h"
 #include "buffet/http_request.h"
 #include "buffet/http_transport_fake.h"
-#include "buffet/mime_utils.h"
 #include "buffet/storage_impls.h"
 
 using namespace buffet;          // NOLINT(build/namespaces)

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_MIME_UTILS_H_
-#define BUFFET_MIME_UTILS_H_
+#ifndef LIBCHROMEOS_CHROMEOS_MIME_UTILS_H_
+#define LIBCHROMEOS_CHROMEOS_MIME_UTILS_H_
 
 #include <string>
 #include <utility>
@@ -11,47 +11,46 @@
 
 #include <base/basictypes.h>
 
-namespace buffet {
-
+namespace chromeos {
 namespace mime {
 
 namespace types {
-  // Main MIME type categories
-  extern const char kApplication[];        // application
-  extern const char kAudio[];              // audio
-  extern const char kImage[];              // image
-  extern const char kMessage[];            // message
-  extern const char kMultipart[];          // multipart
-  extern const char kText[];               // test
-  extern const char kVideo[];              // video
+// Main MIME type categories
+extern const char kApplication[];        // application
+extern const char kAudio[];              // audio
+extern const char kImage[];              // image
+extern const char kMessage[];            // message
+extern const char kMultipart[];          // multipart
+extern const char kText[];               // test
+extern const char kVideo[];              // video
 }
 
 namespace parameters {
-  // Common MIME parameters
-  extern const char kCharset[];            // charset=...
+// Common MIME parameters
+extern const char kCharset[];            // charset=...
 }
 
 namespace image {
-  // Common image MIME types
-  extern const char kJpeg[];               // image/jpeg
-  extern const char kPng[];                // image/png
-  extern const char kBmp[];                // image/bmp
-  extern const char kTiff[];               // image/tiff
-  extern const char kGif[];                // image/gif
+// Common image MIME types
+extern const char kJpeg[];               // image/jpeg
+extern const char kPng[];                // image/png
+extern const char kBmp[];                // image/bmp
+extern const char kTiff[];               // image/tiff
+extern const char kGif[];                // image/gif
 }
 
 namespace text {
-  // Common text MIME types
-  extern const char kPlain[];              // text/plain
-  extern const char kHtml[];               // text/html
-  extern const char kXml[];                // text/xml
+// Common text MIME types
+extern const char kPlain[];              // text/plain
+extern const char kHtml[];               // text/html
+extern const char kXml[];                // text/xml
 }
 
 namespace application {
-  // Common application MIME types
-  extern const char kOctet_stream[];       // application/octet-stream
-  extern const char kJson[];               // application/json
-  extern const char kWwwFormUrlEncoded[];  // application/x-www-form-urlencoded
+// Common application MIME types
+extern const char kOctet_stream[];       // application/octet-stream
+extern const char kJson[];               // application/json
+extern const char kWwwFormUrlEncoded[];  // application/x-www-form-urlencoded
 }
 
 typedef std::vector<std::pair<std::string, std::string>> Parameters;
@@ -100,6 +99,6 @@ std::string GetParameterValue(const std::string& mime_string,
                               const std::string& paramName);
 
 }  // namespace mime
-}  // namespace buffet
+}  // namespace chromeos
 
-#endif  // BUFFET_MIME_UTILS_H_
+#endif  // LIBCHROMEOS_CHROMEOS_MIME_UTILS_H_

@@ -10,12 +10,12 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <chromeos/bind_lambda.h>
+#include <chromeos/mime_utils.h>
 #include <chromeos/string_utils.h>
 #include <chromeos/url_utils.h>
 
 #include "buffet/http_connection_fake.h"
 #include "buffet/http_request.h"
-#include "buffet/mime_utils.h"
 
 namespace buffet {
 
@@ -113,8 +113,9 @@ std::string ServerRequestResponseBase::GetDataAsString() const {
 
 std::unique_ptr<base::DictionaryValue>
     ServerRequestResponseBase::GetDataAsJson() const {
-  if (mime::RemoveParameters(GetHeader(request_header::kContentType)) ==
-      mime::application::kJson) {
+  if (chromeos::mime::RemoveParameters(
+          GetHeader(request_header::kContentType)) ==
+      chromeos::mime::application::kJson) {
     auto value = base::JSONReader::Read(GetDataAsString());
     if (value) {
       base::DictionaryValue* dict = nullptr;
@@ -152,9 +153,9 @@ ServerRequest::ServerRequest(const std::string& url,
 
 std::string ServerRequest::GetFormField(const std::string& field_name) const {
   if (!form_fields_parsed_) {
-    std::string mime_type = mime::RemoveParameters(
+    std::string mime_type = chromeos::mime::RemoveParameters(
         GetHeader(request_header::kContentType));
-    if (mime_type == mime::application::kWwwFormUrlEncoded &&
+    if (mime_type == chromeos::mime::application::kWwwFormUrlEncoded &&
         !GetData().empty()) {
       auto fields = chromeos::data_encoding::WebParamsDecode(GetDataAsString());
       form_fields_.insert(fields.begin(), fields.end());
@@ -187,9 +188,10 @@ void ServerResponse::ReplyJson(int status_code, const base::Value* json) {
   base::JSONWriter::WriteWithOptions(json,
                                      base::JSONWriter::OPTIONS_PRETTY_PRINT,
                                      &text);
-  std::string mime_type = mime::AppendParameter(mime::application::kJson,
-                                                mime::parameters::kCharset,
-                                                "utf-8");
+  std::string mime_type = chromeos::mime::AppendParameter(
+      chromeos::mime::application::kJson,
+      chromeos::mime::parameters::kCharset,
+      "utf-8");
   ReplyText(status_code, text, mime_type.c_str());
 }
 

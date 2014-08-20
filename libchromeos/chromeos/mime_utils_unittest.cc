@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/mime_utils.h"
+#include <chromeos/mime_utils.h>
 
 #include <gtest/gtest.h>
 
-using namespace buffet;  // NOLINT(build/namespaces)
+namespace chromeos {
 
 TEST(MimeUtils, Combine) {
   std::string mime_string = mime::Combine(mime::types::kText, "xml");
@@ -63,3 +63,5 @@ TEST(MimeUtils, AppendRemoveParams) {
   mime_string = mime::RemoveParameters(mime_string);
   EXPECT_EQ(mime::text::kXml, mime_string);
 }
+
+}  // namespace chromeos

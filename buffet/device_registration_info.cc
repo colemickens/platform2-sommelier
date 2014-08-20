@@ -11,6 +11,7 @@
 #include <base/json/json_writer.h>
 #include <base/values.h>
 #include <chromeos/data_encoding.h>
+#include <chromeos/mime_utils.h>
 #include <chromeos/string_utils.h>
 #include <chromeos/url_utils.h>
 
@@ -19,7 +20,6 @@
 #include "buffet/device_registration_storage_keys.h"
 #include "buffet/http_transport_curl.h"
 #include "buffet/http_utils.h"
-#include "buffet/mime_utils.h"
 #include "buffet/storage_impls.h"
 
 const char buffet::kErrorDomainOAuth2[] = "oauth2";

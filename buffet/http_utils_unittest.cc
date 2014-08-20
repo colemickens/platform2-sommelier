@@ -7,13 +7,13 @@
 
 #include <base/values.h>
 #include <chromeos/bind_lambda.h>
+#include <chromeos/mime_utils.h>
 #include <chromeos/string_utils.h>
 #include <chromeos/url_utils.h>
 #include <gtest/gtest.h>
 
 #include "buffet/http_transport_fake.h"
 #include "buffet/http_utils.h"
-#include "buffet/mime_utils.h"
 
 using namespace buffet;        // NOLINT(build/namespaces)
 using namespace buffet::http;  // NOLINT(build/namespaces)
@@ -33,7 +33,8 @@ static void EchoDataHandler(const fake::ServerRequest& request,
 // Returns the request method as a plain text response.
 static void EchoMethodHandler(const fake::ServerRequest& request,
                               fake::ServerResponse* response) {
-  response->ReplyText(status_code::Ok, request.GetMethod(), mime::text::kPlain);
+  response->ReplyText(status_code::Ok, request.GetMethod(),
+                      chromeos::mime::text::kPlain);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -46,10 +47,11 @@ TEST(HttpUtils, SendRequest_BinaryData) {
   std::vector<unsigned char> custom_data{0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F};
   auto response = http::SendRequest(request_type::kPost, kEchoUrl,
                                     custom_data.data(), custom_data.size(),
-                                    mime::application::kOctet_stream,
+                                    chromeos::mime::application::kOctet_stream,
                                     HeaderList(), transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
-  EXPECT_EQ(mime::application::kOctet_stream, response->GetContentType());
+  EXPECT_EQ(chromeos::mime::application::kOctet_stream,
+            response->GetContentType());
   EXPECT_EQ(custom_data.size(), response->GetData().size());
   EXPECT_EQ(custom_data, response->GetData());
 }
@@ -64,10 +66,10 @@ TEST(HttpUtils, SendRequest_Post) {
   // Check the correct HTTP method used.
   auto response = http::SendRequest(request_type::kPost, kMethodEchoUrl,
                                     custom_data.data(), custom_data.size(),
-                                    mime::application::kOctet_stream,
+                                    chromeos::mime::application::kOctet_stream,
                                     HeaderList(), transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
-  EXPECT_EQ(mime::text::kPlain, response->GetContentType());
+  EXPECT_EQ(chromeos::mime::text::kPlain, response->GetContentType());
   EXPECT_EQ(request_type::kPost, response->GetDataAsString());
 }
 
@@ -79,7 +81,7 @@ TEST(HttpUtils, SendRequest_Get) {
                                     nullptr, 0, nullptr,
                                     HeaderList(), transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
-  EXPECT_EQ(mime::text::kPlain, response->GetContentType());
+  EXPECT_EQ(chromeos::mime::text::kPlain, response->GetContentType());
   EXPECT_EQ(request_type::kGet, response->GetDataAsString());
 }
 
@@ -91,7 +93,7 @@ TEST(HttpUtils, SendRequest_Put) {
                                     nullptr, 0, nullptr,
                                     HeaderList(), transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
-  EXPECT_EQ(mime::text::kPlain, response->GetContentType());
+  EXPECT_EQ(chromeos::mime::text::kPlain, response->GetContentType());
   EXPECT_EQ(request_type::kPut, response->GetDataAsString());
 }
 
@@ -123,13 +125,13 @@ TEST(HttpUtils, SendRequest_Headers) {
                         base::Bind(JsonEchoHandler));
   auto response = http::SendRequest(
       request_type::kPost, json_echo_url, "abcd", 4,
-      mime::application::kOctet_stream, {
+      chromeos::mime::application::kOctet_stream, {
         {request_header::kCookie, "flavor=vanilla"},
         {request_header::kIfMatch, "*"},
       }, transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
-  EXPECT_EQ(mime::application::kJson,
-            mime::RemoveParameters(response->GetContentType()));
+  EXPECT_EQ(chromeos::mime::application::kJson,
+            chromeos::mime::RemoveParameters(response->GetContentType()));
   auto json = ParseJsonResponse(response.get(), nullptr, nullptr);
   std::string value;
   EXPECT_TRUE(json->GetString("method", &value));
@@ -139,7 +141,7 @@ TEST(HttpUtils, SendRequest_Headers) {
   EXPECT_TRUE(json->GetString("header.Cookie", &value));
   EXPECT_EQ("flavor=vanilla", value);
   EXPECT_TRUE(json->GetString("header.Content-Type", &value));
-  EXPECT_EQ(mime::application::kOctet_stream, value);
+  EXPECT_EQ(chromeos::mime::application::kOctet_stream, value);
   EXPECT_TRUE(json->GetString("header.Content-Length", &value));
   EXPECT_EQ("4", value);
   EXPECT_TRUE(json->GetString("header.If-Match", &value));
@@ -156,7 +158,7 @@ TEST(HttpUtils, Get) {
     EXPECT_EQ("0", request.GetHeader(request_header::kContentLength));
     EXPECT_EQ("", request.GetHeader(request_header::kContentType));
     response->ReplyText(status_code::Ok, request.GetFormField("test"),
-                        mime::text::kPlain);
+                        chromeos::mime::text::kPlain);
   };
 
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
@@ -166,7 +168,7 @@ TEST(HttpUtils, Get) {
   // Make sure Get/GetAsString actually do the GET request
   auto response = http::Get(kMethodEchoUrl, transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
-  EXPECT_EQ(mime::text::kPlain, response->GetContentType());
+  EXPECT_EQ(chromeos::mime::text::kPlain, response->GetContentType());
   EXPECT_EQ(request_type::kGet, response->GetDataAsString());
   EXPECT_EQ(request_type::kGet,
             http::GetAsString(kMethodEchoUrl, transport, nullptr));
@@ -184,7 +186,7 @@ TEST(HttpUtils, Head) {
     EXPECT_EQ("0", request.GetHeader(request_header::kContentLength));
     EXPECT_EQ("", request.GetHeader(request_header::kContentType));
     response->ReplyText(status_code::Ok, "blah",
-                        mime::text::kPlain);
+                        chromeos::mime::text::kPlain);
   };
 
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
@@ -192,7 +194,7 @@ TEST(HttpUtils, Head) {
 
   auto response = http::Head(kFakeUrl, transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
-  EXPECT_EQ(mime::text::kPlain, response->GetContentType());
+  EXPECT_EQ(chromeos::mime::text::kPlain, response->GetContentType());
   EXPECT_EQ("", response->GetDataAsString());  // Must not have actual body.
   EXPECT_EQ("4", response->GetHeader(request_header::kContentLength));
 }
@@ -202,7 +204,7 @@ TEST(HttpUtils, PostBinary) {
                     fake::ServerResponse* response) {
     EXPECT_EQ(request_type::kPost, request.GetMethod());
     EXPECT_EQ("256", request.GetHeader(request_header::kContentLength));
-    EXPECT_EQ(mime::application::kOctet_stream,
+    EXPECT_EQ(chromeos::mime::application::kOctet_stream,
               request.GetHeader(request_header::kContentType));
     const auto& data = request.GetData();
     EXPECT_EQ(256, data.size());
@@ -210,7 +212,7 @@ TEST(HttpUtils, PostBinary) {
     // Sum up all the bytes.
     int sum = std::accumulate(data.begin(), data.end(), 0);
     EXPECT_EQ(32640, sum);  // sum(i, i => [0, 255]) = 32640.
-    response->ReplyText(status_code::Ok, "", mime::text::kPlain);
+    response->ReplyText(status_code::Ok, "", chromeos::mime::text::kPlain);
   };
 
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
@@ -232,19 +234,20 @@ TEST(HttpUtils, PostText) {
     EXPECT_EQ(request_type::kPost, request.GetMethod());
     EXPECT_EQ(fake_data.size(),
               std::stoul(request.GetHeader(request_header::kContentLength)));
-    EXPECT_EQ(mime::text::kPlain,
+    EXPECT_EQ(chromeos::mime::text::kPlain,
               request.GetHeader(request_header::kContentType));
     response->ReplyText(status_code::Ok, request.GetDataAsString(),
-                       mime::text::kPlain);
+                       chromeos::mime::text::kPlain);
   };
 
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
   transport->AddHandler(kFakeUrl, request_type::kPost, base::Bind(PostHandler));
 
   auto response = http::PostText(kFakeUrl, fake_data.c_str(),
-                                 mime::text::kPlain, transport, nullptr);
+                                 chromeos::mime::text::kPlain,
+                                 transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
-  EXPECT_EQ(mime::text::kPlain, response->GetContentType());
+  EXPECT_EQ(chromeos::mime::text::kPlain, response->GetContentType());
   EXPECT_EQ(fake_data, response->GetDataAsString());
 }
 
@@ -258,16 +261,17 @@ TEST(HttpUtils, PostFormData) {
                       {"field", "field value"},
                   }, transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
-  EXPECT_EQ(mime::application::kWwwFormUrlEncoded, response->GetContentType());
+  EXPECT_EQ(chromeos::mime::application::kWwwFormUrlEncoded,
+            response->GetContentType());
   EXPECT_EQ("key=value&field=field+value", response->GetDataAsString());
 }
 
 TEST(HttpUtils, PostPatchJson) {
   auto JsonHandler = [](const fake::ServerRequest& request,
                         fake::ServerResponse* response) {
-    auto mime_type = mime::RemoveParameters(
+    auto mime_type = chromeos::mime::RemoveParameters(
         request.GetHeader(request_header::kContentType));
-    EXPECT_EQ(mime::application::kJson, mime_type);
+    EXPECT_EQ(chromeos::mime::application::kJson, mime_type);
     response->ReplyJson(status_code::Ok, {
       {"method", request.GetMethod()},
       {"data", request.GetDataAsString()},
@@ -328,7 +332,7 @@ TEST(HttpUtils, ParseJsonResponse) {
   // Test invalid (non-JSON) response.
   auto response = http::Get("http://bad.url", transport, nullptr);
   EXPECT_EQ(status_code::NotFound, response->GetStatusCode());
-  EXPECT_EQ(mime::text::kHtml, response->GetContentType());
+  EXPECT_EQ(chromeos::mime::text::kHtml, response->GetContentType());
   int code = 0;
   auto json = http::ParseJsonResponse(response.get(), &code, nullptr);
   EXPECT_EQ(nullptr, json.get());

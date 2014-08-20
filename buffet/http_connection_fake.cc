@@ -5,10 +5,10 @@
 #include "buffet/http_connection_fake.h"
 
 #include <base/logging.h>
+#include <chromeos/mime_utils.h>
 #include <chromeos/string_utils.h>
 
 #include "buffet/http_request.h"
-#include "buffet/mime_utils.h"
 
 namespace buffet {
 namespace http {
@@ -48,7 +48,7 @@ bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
                << " request at " << request_.GetURL();
     response_.ReplyText(status_code::NotFound,
                         "<html><body>Not found</body></html>",
-                        mime::text::kHtml);
+                        chromeos::mime::text::kHtml);
   } else {
     handler.Run(request_, &response_);
   }

@@ -5,12 +5,12 @@
 #include "buffet/http_request.h"
 
 #include <base/logging.h>
+#include <chromeos/mime_utils.h>
 #include <chromeos/string_utils.h>
 
 #include "buffet/http_connection_curl.h"
 #include "buffet/http_transport_curl.h"
 #include "buffet/map_utils.h"
-#include "buffet/mime_utils.h"
 
 namespace buffet {
 namespace http {

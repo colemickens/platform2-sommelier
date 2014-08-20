@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/mime_utils.h"
+#include <chromeos/mime_utils.h>
 
 #include <algorithm>
 #include <base/strings/string_util.h>
 #include <chromeos/string_utils.h>
 
-namespace buffet {
+namespace chromeos {
 
 // ***************************************************************************
 // ******************************* MIME types ********************************
@@ -154,4 +154,4 @@ std::string mime::GetParameterValue(const std::string& mime_string,
   return std::string();
 }
 
-}  // namespace buffet
+}  // namespace chromeos
