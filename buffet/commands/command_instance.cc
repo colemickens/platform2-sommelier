@@ -72,11 +72,11 @@ bool GetCommandParameters(const base::DictionaryValue* json,
 
 }  // anonymous namespace
 
-std::unique_ptr<const CommandInstance> CommandInstance::FromJson(
+std::unique_ptr<CommandInstance> CommandInstance::FromJson(
     const base::Value* value,
     const CommandDictionary& dictionary,
     chromeos::ErrorPtr* error) {
-  std::unique_ptr<const CommandInstance> instance;
+  std::unique_ptr<CommandInstance> instance;
   // Get the command JSON object from the value.
   const base::DictionaryValue* json = nullptr;
   if (!value->GetAsDictionary(&json)) {
@@ -114,7 +114,8 @@ std::unique_ptr<const CommandInstance> CommandInstance::FromJson(
     return instance;
   }
 
-  instance.reset(new CommandInstance(command_name, command_def->GetCategory(),
+  instance.reset(new CommandInstance(command_name,
+                                     command_def->GetCategory(),
                                      parameters));
   return instance;
 }

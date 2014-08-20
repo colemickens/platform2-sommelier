@@ -32,6 +32,8 @@ class CommandInstance final {
                   const std::string& category,
                   const native_types::Object& parameters);
 
+  // Returns the full command ID.
+  const std::string& GetID() const { return id_; }
   // Returns the full name of the command.
   const std::string& GetName() const { return name_; }
   // Returns the command category.
@@ -46,12 +48,18 @@ class CommandInstance final {
   // object, checking the JSON |value| against the command definition schema
   // found in command |dictionary|. On error, returns null unique_ptr and
   // fills in error details in |error|.
-  static std::unique_ptr<const CommandInstance> FromJson(
+  static std::unique_ptr<CommandInstance> FromJson(
       const base::Value* value,
       const CommandDictionary& dictionary,
       chromeos::ErrorPtr* error);
 
+  // Sets the command ID (normally done by CommandQueue when the command
+  // instance is added to it).
+  void SetID(const std::string& id) { id_ = id; }
+
  private:
+  // Unique command ID within a command queue.
+  std::string id_;
   // Full command name as "<package_name>.<command_name>".
   std::string name_;
   // Command category. See comments for CommandDefinitions::LoadCommands for the

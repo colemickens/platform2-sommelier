@@ -7,31 +7,32 @@
 
 namespace buffet {
 
-std::string CommandQueue::Add(std::unique_ptr<const CommandInstance> instance) {
+std::string CommandQueue::Add(std::unique_ptr<CommandInstance> instance) {
   std::string id = std::to_string(++next_id_);
+  instance->SetID(id);
   auto pair = map_.insert(std::make_pair(id, std::move(instance)));
   LOG_IF(FATAL, !pair.second) << "Command with ID '" << id
                               << "' is already in the queue";
   if (dispatch_interface_)
-    dispatch_interface_->OnCommandAdded(id, pair.first->second.get());
+    dispatch_interface_->OnCommandAdded(pair.first->second.get());
 
   return id;
 }
 
-std::unique_ptr<const CommandInstance> CommandQueue::Remove(
+std::unique_ptr<CommandInstance> CommandQueue::Remove(
     const std::string& id) {
-  std::unique_ptr<const CommandInstance> instance;
+  std::unique_ptr<CommandInstance> instance;
   auto p = map_.find(id);
   if (p != map_.end()) {
     instance = std::move(p->second);
     map_.erase(p);
     if (dispatch_interface_)
-      dispatch_interface_->OnCommandRemoved(id, instance.get());
+      dispatch_interface_->OnCommandRemoved(instance.get());
   }
   return instance;
 }
 
-const CommandInstance* CommandQueue::Find(const std::string& id) const {
+CommandInstance* CommandQueue::Find(const std::string& id) const {
   auto p = map_.find(id);
   return (p != map_.end()) ? p->second.get() : nullptr;
 }

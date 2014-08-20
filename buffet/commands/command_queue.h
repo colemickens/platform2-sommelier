@@ -39,21 +39,21 @@ class CommandQueue final {
   // has no relation to any GCD command identifiers or anything else. Just a
   // unique key in this queue class.
   // The ID string of the added command is returned by this method.
-  std::string Add(std::unique_ptr<const CommandInstance> instance);
+  std::string Add(std::unique_ptr<CommandInstance> instance);
 
   // Removes a command identified by |id| from the queue. Returns a unique
   // pointer to the command instance if removed successfully, or an empty
   // unique_ptr if the command with the given ID doesn't exist in the queue.
-  std::unique_ptr<const CommandInstance> Remove(const std::string& id);
+  std::unique_ptr<CommandInstance> Remove(const std::string& id);
 
   // Finds a command instance in the queue by the instance |id|. Returns
   // nullptr if the command with the given |id| is not found. The returned
   // pointer should not be persisted for a long period of time.
-  const CommandInstance* Find(const std::string& id) const;
+  CommandInstance* Find(const std::string& id) const;
 
  private:
   // ID-to-CommandInstance map.
-  std::map<std::string, std::unique_ptr<const CommandInstance>> map_;
+  std::map<std::string, std::unique_ptr<CommandInstance>> map_;
   // Counter for generating unique command IDs.
   int next_id_ = 0;
   // Callback interface for command dispatch, if provided.

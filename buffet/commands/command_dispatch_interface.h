@@ -18,12 +18,10 @@ class CommandDispachInterface {
  public:
   virtual ~CommandDispachInterface() = default;
   // Callback invoked by CommandQueue when a new command is added to the queue.
-  virtual void OnCommandAdded(const std::string& command_id,
-                              const CommandInstance* command_instance) = 0;
+  virtual void OnCommandAdded(CommandInstance* command_instance) = 0;
   // Callback invoked by CommandQueue when a new command is removed from
   // the queue.
-  virtual void OnCommandRemoved(const std::string& command_id,
-                                const CommandInstance* command_instance) = 0;
+  virtual void OnCommandRemoved(CommandInstance* command_instance) = 0;
 };
 
 }  // namespace buffet

@@ -14,9 +14,9 @@
 
 namespace {
 
-std::unique_ptr<const buffet::CommandInstance> CreateDummyCommandInstance(
+std::unique_ptr<buffet::CommandInstance> CreateDummyCommandInstance(
     const std::string& name = "base.reboot") {
-  return std::unique_ptr<const buffet::CommandInstance>(
+  return std::unique_ptr<buffet::CommandInstance>(
       new buffet::CommandInstance(name, "powerd", {}));
 }
 
@@ -25,20 +25,16 @@ std::unique_ptr<const buffet::CommandInstance> CreateDummyCommandInstance(
 // Aborts if duplicate commands are added or non-existent commands are removed.
 class FakeDispatchInterface : public buffet::CommandDispachInterface {
  public:
-  void OnCommandAdded(
-      const std::string& command_id,
-      const buffet::CommandInstance* command_instance) override {
-    CHECK(ids_.insert(command_id).second)
-        << "Command ID already exists: " << command_id;
+  void OnCommandAdded(buffet::CommandInstance* command_instance) override {
+    CHECK(ids_.insert(command_instance->GetID()).second)
+        << "Command ID already exists: " << command_instance->GetID();
     CHECK(commands_.insert(command_instance).second)
         << "Command instance already exists";
   }
 
-  void OnCommandRemoved(
-      const std::string& command_id,
-      const buffet::CommandInstance* command_instance) override {
-    CHECK_EQ(1, ids_.erase(command_id))
-        << "Command ID not found: " << command_id;
+  void OnCommandRemoved(buffet::CommandInstance* command_instance) override {
+    CHECK_EQ(1, ids_.erase(command_instance->GetID()))
+        << "Command ID not found: " << command_instance->GetID();
     CHECK_EQ(1, commands_.erase(command_instance))
         << "Command instance not found";
   }
@@ -52,7 +48,7 @@ class FakeDispatchInterface : public buffet::CommandDispachInterface {
 
  private:
   std::set<std::string> ids_;
-  std::set<const buffet::CommandInstance*> commands_;
+  std::set<buffet::CommandInstance*> commands_;
 };
 
 }  // anonymous namespace
@@ -116,7 +112,9 @@ TEST(CommandQueue, Find) {
   auto cmd1 = queue.Find(id1);
   EXPECT_NE(nullptr, cmd1);
   EXPECT_EQ("base.reboot", cmd1->GetName());
+  EXPECT_EQ(id1, cmd1->GetID());
   auto cmd2 = queue.Find(id2);
   EXPECT_NE(nullptr, cmd2);
   EXPECT_EQ("base.shutdown", cmd2->GetName());
+  EXPECT_EQ(id2, cmd2->GetID());
 }

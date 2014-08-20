@@ -69,6 +69,7 @@ TEST(CommandInstance, Test) {
   params.insert(std::make_pair("volume", int_prop.CreateValue(100)));
   buffet::CommandInstance instance("robot._beep", "robotd", params);
 
+  EXPECT_EQ("", instance.GetID());
   EXPECT_EQ("robot._beep", instance.GetName());
   EXPECT_EQ("robotd", instance.GetCategory());
   EXPECT_EQ(params, instance.GetParameters());
@@ -76,6 +77,12 @@ TEST(CommandInstance, Test) {
                    instance.FindParameter("freq")->GetDouble()->GetValue());
   EXPECT_EQ(100, instance.FindParameter("volume")->GetInt()->GetValue());
   EXPECT_EQ(nullptr, instance.FindParameter("blah").get());
+}
+
+TEST(CommandInstance, SetID) {
+  buffet::CommandInstance instance("robot._beep", "robotd", {});
+  instance.SetID("command_id");
+  EXPECT_EQ("command_id", instance.GetID());
 }
 
 TEST_F(CommandInstanceTest, FromJson) {
