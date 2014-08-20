@@ -253,7 +253,7 @@ void PowerSupply::SetSuspended(bool suspended) {
 
 void PowerSupply::OnUdevEvent(const std::string& subsystem,
                               const std::string& sysname,
-                              UdevObserver::Action action) {
+                              UdevAction action) {
   VLOG(1) << "Heard about udev event";
   if (!is_suspended_)
     RefreshImmediately();

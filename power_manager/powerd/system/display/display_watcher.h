@@ -15,7 +15,7 @@
 
 #include "power_manager/powerd/system/display/display_info.h"
 #include "power_manager/powerd/system/display/display_watcher_observer.h"
-#include "power_manager/powerd/system/udev_observer.h"
+#include "power_manager/powerd/system/udev_subsystem_observer.h"
 
 namespace power_manager {
 namespace system {
@@ -37,7 +37,8 @@ class DisplayWatcherInterface {
 
 // Real implementation of DisplayWatcherInterface that reports devices from
 // /sys.
-class DisplayWatcher : public DisplayWatcherInterface, public UdevObserver {
+class DisplayWatcher : public DisplayWatcherInterface,
+                       public UdevSubsystemObserver {
  public:
   // Udev subsystems used for display-related changes.
   static const char kI2CUdevSubsystem[];
@@ -68,10 +69,10 @@ class DisplayWatcher : public DisplayWatcherInterface, public UdevObserver {
   void AddObserver(DisplayWatcherObserver* observer) override;
   void RemoveObserver(DisplayWatcherObserver* observer) override;
 
-  // UdevObserver implementation:
+  // UdevSubsystemObserver implementation:
   void OnUdevEvent(const std::string& subsystem,
                    const std::string& sysname,
-                   UdevObserver::Action action) override;
+                   UdevAction action) override;
 
  private:
   // Returns the path to the I2C device used for communicating with the display

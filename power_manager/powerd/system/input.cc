@@ -292,17 +292,17 @@ void Input::OnFileCanWriteWithoutBlocking(int fd) {
 
 void Input::OnUdevEvent(const std::string& subsystem,
                         const std::string& sysname,
-                        UdevObserver::Action action) {
+                        UdevAction action) {
   DCHECK_EQ(subsystem, kInputUdevSubsystem);
   if (StartsWithASCII(sysname, kEventBaseName, true)) {
-    if (action == UdevObserver::ACTION_ADD)
+    if (action == UDEV_ACTION_ADD)
       AddEvent(sysname);
-    else if (action == UdevObserver::ACTION_REMOVE)
+    else if (action == UDEV_ACTION_REMOVE)
       RemoveEvent(sysname);
   } else if (StartsWithASCII(sysname, kInputBaseName, true)) {
-    if (action == UdevObserver::ACTION_ADD)
+    if (action == UDEV_ACTION_ADD)
       AddWakeInput(sysname);
-    else if (action == UdevObserver::ACTION_REMOVE)
+    else if (action == UDEV_ACTION_REMOVE)
       RemoveWakeInput(sysname);
   }
 }

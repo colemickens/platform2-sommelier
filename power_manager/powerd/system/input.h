@@ -19,7 +19,7 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/input_interface.h"
-#include "power_manager/powerd/system/udev_observer.h"
+#include "power_manager/powerd/system/udev_subsystem_observer.h"
 
 namespace power_manager {
 
@@ -32,7 +32,7 @@ class UdevInterface;
 
 class Input : public InputInterface,
               public base::MessageLoopForIO::Watcher,
-              public UdevObserver {
+              public UdevSubsystemObserver {
  public:
   // udev subsystem to watch for input device-related events.
   static const char kInputUdevSubsystem[];
@@ -59,10 +59,10 @@ class Input : public InputInterface,
   void OnFileCanReadWithoutBlocking(int fd) override;
   void OnFileCanWriteWithoutBlocking(int fd) override;
 
-  // UdevObserver implementation:
+  // UdevSubsystemObserver implementation:
   void OnUdevEvent(const std::string& subsystem,
                    const std::string& sysname,
-                   UdevObserver::Action action) override;
+                   UdevAction action) override;
 
  private:
   class EventFileDescriptor;

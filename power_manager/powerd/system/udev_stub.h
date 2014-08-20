@@ -27,20 +27,20 @@ class UdevStub : public UdevInterface {
 
   // Returns true if |observer| is registered for |subsystem|.
   bool HasSubsystemObserver(const std::string& subsystem,
-                            UdevObserver* observer) const;
+                            UdevSubsystemObserver* observer) const;
 
-  // Act as if a device was changed or removed. Notifies TaggedDeviceObservers
-  // and modifies the internal list of tagged devices.
+  // Act as if a device was changed or removed. Notifies
+  // UdevTaggedDeviceObservers and modifies the internal list of tagged devices.
   void TaggedDeviceChanged(const std::string& syspath, const std::string& tags);
   void TaggedDeviceRemoved(const std::string& syspath);
 
   // UdevInterface implementation:
   void AddSubsystemObserver(const std::string& subsystem,
-                            UdevObserver* observer) override;
+                            UdevSubsystemObserver* observer) override;
   void RemoveSubsystemObserver(const std::string& subsystem,
-                               UdevObserver* observer) override;
-  void AddTaggedDeviceObserver(TaggedDeviceObserver* observer) override;
-  void RemoveTaggedDeviceObserver(TaggedDeviceObserver* observer) override;
+                               UdevSubsystemObserver* observer) override;
+  void AddTaggedDeviceObserver(UdevTaggedDeviceObserver* observer) override;
+  void RemoveTaggedDeviceObserver(UdevTaggedDeviceObserver* observer) override;
   std::vector<TaggedDevice> GetTaggedDevices() override;
   bool GetSysattr(const std::string& syspath,
                   const std::string& sysattr,
@@ -54,10 +54,11 @@ class UdevStub : public UdevInterface {
 
  private:
   // Registered observers keyed by subsystem.
-  typedef std::map<std::string, std::set<UdevObserver*> > SubsystemObserverMap;
+  typedef std::map<std::string, std::set<UdevSubsystemObserver*> >
+      SubsystemObserverMap;
   SubsystemObserverMap subsystem_observers_;
 
-  ObserverList<TaggedDeviceObserver> tagged_device_observers_;
+  ObserverList<UdevTaggedDeviceObserver> tagged_device_observers_;
 
   // Maps a syspath to the corresponding TaggedDevice.
   std::map<std::string, TaggedDevice> tagged_devices_;

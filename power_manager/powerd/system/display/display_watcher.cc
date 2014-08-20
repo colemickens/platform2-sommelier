@@ -82,7 +82,7 @@ void DisplayWatcher::RemoveObserver(DisplayWatcherObserver* observer) {
 
 void DisplayWatcher::OnUdevEvent(const std::string& subsystem,
                                  const std::string& sysname,
-                                 UdevObserver::Action action) {
+                                 UdevAction action) {
   VLOG(1) << "Got udev event for " << sysname << " on subsystem " << subsystem;
   UpdateDisplays();
 }

@@ -19,7 +19,7 @@
 
 #include "power_manager/powerd/system/power_supply_observer.h"
 #include "power_manager/powerd/system/rolling_average.h"
-#include "power_manager/powerd/system/udev_observer.h"
+#include "power_manager/powerd/system/udev_subsystem_observer.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
 namespace power_manager {
@@ -165,7 +165,7 @@ class PowerSupplyInterface {
 };
 
 // Real implementation of PowerSupplyInterface that reads from sysfs.
-class PowerSupply : public PowerSupplyInterface, public UdevObserver {
+class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
  public:
   // Helper class for testing PowerSupply.
   class TestApi {
@@ -234,10 +234,10 @@ class PowerSupply : public PowerSupplyInterface, public UdevObserver {
   bool RefreshImmediately() override;
   void SetSuspended(bool suspended) override;
 
-  // UdevObserver implementation:
+  // UdevSubsystemObserver implementation:
   void OnUdevEvent(const std::string& subsystem,
                    const std::string& sysname,
-                   UdevObserver::Action action) override;
+                   UdevAction action) override;
 
  private:
   // Returns the value of |pref_name|, an int64_t pref containing a

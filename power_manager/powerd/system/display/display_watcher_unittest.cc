@@ -11,8 +11,8 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/powerd/system/display/display_watcher.h"
-#include "power_manager/powerd/system/udev_observer.h"
 #include "power_manager/powerd/system/udev_stub.h"
+#include "power_manager/powerd/system/udev_subsystem_observer.h"
 
 namespace power_manager {
 namespace system {
@@ -73,7 +73,7 @@ class DisplayWatcherTest : public testing::Test {
   // Notifies |watcher_| about a Udev event to trigger a rescan of displays.
   void NotifyAboutUdevEvent() {
     watcher_.OnUdevEvent("system", DisplayWatcher::kDrmUdevSubsystem,
-                         UdevObserver::ACTION_CHANGE);
+                         UDEV_ACTION_CHANGE);
   }
 
   // Directory with symlinks to DRM devices.

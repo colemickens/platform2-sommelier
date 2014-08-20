@@ -429,7 +429,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
   // Connect AC, report a udev event, and check that the status is updated.
   WriteValue("ac/online", kOnline);
   power_supply_->OnUdevEvent(
-      PowerSupply::kUdevSubsystem, "AC", UdevObserver::ACTION_CHANGE);
+      PowerSupply::kUdevSubsystem, "AC", UDEV_ACTION_CHANGE);
   status = power_supply_->GetPowerStatus();
   EXPECT_TRUE(status.line_power_on);
   EXPECT_TRUE(status.is_calculating_battery_time);
@@ -447,7 +447,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
   // Now test the delay when going back to battery power.
   WriteValue("ac/online", kOffline);
   power_supply_->OnUdevEvent(
-      PowerSupply::kUdevSubsystem, "AC", UdevObserver::ACTION_CHANGE);
+      PowerSupply::kUdevSubsystem, "AC", UDEV_ACTION_CHANGE);
   status = power_supply_->GetPowerStatus();
   EXPECT_FALSE(status.line_power_on);
   EXPECT_TRUE(status.is_calculating_battery_time);

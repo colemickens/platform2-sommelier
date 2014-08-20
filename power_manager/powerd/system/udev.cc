@@ -11,8 +11,8 @@
 #include <base/logging.h>
 
 #include "power_manager/powerd/system/tagged_device.h"
-#include "power_manager/powerd/system/tagged_device_observer.h"
-#include "power_manager/powerd/system/udev_observer.h"
+#include "power_manager/powerd/system/udev_subsystem_observer.h"
+#include "power_manager/powerd/system/udev_tagged_device_observer.h"
 
 namespace power_manager {
 namespace system {
@@ -22,21 +22,21 @@ namespace {
 static const char kPowerdUdevTag[] = "powerd";
 static const char kPowerdTagsVar[] = "POWERD_TAGS";
 
-UdevObserver::Action StrToAction(const char* action_str) {
+UdevAction StrToAction(const char* action_str) {
   if (!action_str)
-    return UdevObserver::ACTION_UNKNOWN;
+    return UDEV_ACTION_UNKNOWN;
   else if (strcmp(action_str, "add") == 0)
-    return UdevObserver::ACTION_ADD;
+    return UDEV_ACTION_ADD;
   else if (strcmp(action_str, "remove") == 0)
-    return UdevObserver::ACTION_REMOVE;
+    return UDEV_ACTION_REMOVE;
   else if (strcmp(action_str, "change") == 0)
-    return UdevObserver::ACTION_CHANGE;
+    return UDEV_ACTION_CHANGE;
   else if (strcmp(action_str, "online") == 0)
-    return UdevObserver::ACTION_ONLINE;
+    return UDEV_ACTION_ONLINE;
   else if (strcmp(action_str, "offline") == 0)
-    return UdevObserver::ACTION_OFFLINE;
+    return UDEV_ACTION_OFFLINE;
   else
-    return UdevObserver::ACTION_UNKNOWN;
+    return UDEV_ACTION_UNKNOWN;
 }
 
 };  // namespace
@@ -85,7 +85,7 @@ bool Udev::Init() {
 }
 
 void Udev::AddSubsystemObserver(const std::string& subsystem,
-                                UdevObserver* observer) {
+                                UdevSubsystemObserver* observer) {
   CHECK(udev_) << "Object uninitialized";
   DCHECK(observer);
   SubsystemObserverMap::iterator it = subsystem_observers_.find(subsystem);
@@ -97,13 +97,14 @@ void Udev::AddSubsystemObserver(const std::string& subsystem,
     if (udev_monitor_filter_update(udev_monitor_))
       LOG(ERROR) << "udev_monitor_filter_update failed";
     it = subsystem_observers_.insert(std::make_pair(
-        subsystem, make_linked_ptr(new ObserverList<UdevObserver>))).first;
+        subsystem, make_linked_ptr(new ObserverList<UdevSubsystemObserver>)))
+        .first;
   }
   it->second->AddObserver(observer);
 }
 
 void Udev::RemoveSubsystemObserver(const std::string& subsystem,
-                                   UdevObserver* observer) {
+                                   UdevSubsystemObserver* observer) {
   DCHECK(observer);
   SubsystemObserverMap::iterator it = subsystem_observers_.find(subsystem);
   if (it != subsystem_observers_.end())
@@ -111,11 +112,11 @@ void Udev::RemoveSubsystemObserver(const std::string& subsystem,
   // No way to remove individual matches from udev_monitor. :-/
 }
 
-void Udev::AddTaggedDeviceObserver(TaggedDeviceObserver* observer) {
+void Udev::AddTaggedDeviceObserver(UdevTaggedDeviceObserver* observer) {
   tagged_device_observers_.AddObserver(observer);
 }
 
-void Udev::RemoveTaggedDeviceObserver(TaggedDeviceObserver* observer) {
+void Udev::RemoveTaggedDeviceObserver(UdevTaggedDeviceObserver* observer) {
   tagged_device_observers_.RemoveObserver(observer);
 }
 
@@ -205,7 +206,7 @@ void Udev::OnFileCanReadWithoutBlocking(int fd) {
   const char* subsystem = udev_device_get_subsystem(dev);
   const char* sysname = udev_device_get_sysname(dev);
   const char* action_str = udev_device_get_action(dev);
-  UdevObserver::Action action = StrToAction(action_str);
+  UdevAction action = StrToAction(action_str);
 
   VLOG(1) << "Received event: subsystem=" << subsystem
           << " sysname=" << sysname << " action=" << action_str;
@@ -220,7 +221,7 @@ void Udev::OnFileCanWriteWithoutBlocking(int fd) {
   NOTREACHED() << "Unexpected non-blocking write notification for FD " << fd;
 }
 
-void Udev::HandleSubsystemEvent(UdevObserver::Action action,
+void Udev::HandleSubsystemEvent(UdevAction action,
                                 struct udev_device* dev) {
   const char* subsystem = udev_device_get_subsystem(dev);
   const char* sysname = udev_device_get_sysname(dev);
@@ -230,13 +231,13 @@ void Udev::HandleSubsystemEvent(UdevObserver::Action action,
 
   SubsystemObserverMap::iterator it = subsystem_observers_.find(subsystem);
   if (it != subsystem_observers_.end()) {
-    ObserverList<UdevObserver>* observers = it->second.get();
-    FOR_EACH_OBSERVER(UdevObserver, *observers,
+    ObserverList<UdevSubsystemObserver>* observers = it->second.get();
+    FOR_EACH_OBSERVER(UdevSubsystemObserver, *observers,
         OnUdevEvent(subsystem, sysname ? sysname : "", action));
   }
 }
 
-void Udev::HandleTaggedDevice(UdevObserver::Action action,
+void Udev::HandleTaggedDevice(UdevAction action,
                               struct udev_device* dev) {
   if (!udev_device_has_tag(dev, kPowerdUdevTag))
     return;
@@ -245,12 +246,12 @@ void Udev::HandleTaggedDevice(UdevObserver::Action action,
   const char* tags = udev_device_get_property_value(dev, kPowerdTagsVar);
 
   switch (action) {
-    case UdevObserver::ACTION_ADD:
-    case UdevObserver::ACTION_CHANGE:
+    case UDEV_ACTION_ADD:
+    case UDEV_ACTION_CHANGE:
       TaggedDeviceChanged(syspath, tags ? tags : "");
       break;
 
-    case UdevObserver::ACTION_REMOVE:
+    case UDEV_ACTION_REMOVE:
       TaggedDeviceRemoved(syspath);
       break;
 
@@ -268,7 +269,7 @@ void Udev::TaggedDeviceChanged(const std::string& syspath,
   VLOG(1) << "Tagged device changed: syspath=" << syspath << ", tags: "
           << (tags.empty() ? "(none)" : tags);
 
-  FOR_EACH_OBSERVER(TaggedDeviceObserver, tagged_device_observers_,
+  FOR_EACH_OBSERVER(UdevTaggedDeviceObserver, tagged_device_observers_,
                     OnTaggedDeviceChanged(device));
 }
 
@@ -278,7 +279,7 @@ void Udev::TaggedDeviceRemoved(const std::string& syspath) {
 
   VLOG(1) << "Tagged device removed: syspath=" << syspath;
 
-  FOR_EACH_OBSERVER(TaggedDeviceObserver, tagged_device_observers_,
+  FOR_EACH_OBSERVER(UdevTaggedDeviceObserver, tagged_device_observers_,
                     OnTaggedDeviceRemoved(device));
 }
 

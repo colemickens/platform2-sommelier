@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_SYSTEM_TAGGED_DEVICE_OBSERVER_H_
-#define POWER_MANAGER_POWERD_SYSTEM_TAGGED_DEVICE_OBSERVER_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_UDEV_TAGGED_DEVICE_OBSERVER_H_
+#define POWER_MANAGER_POWERD_SYSTEM_UDEV_TAGGED_DEVICE_OBSERVER_H_
 
 #include <string>
 
@@ -12,9 +12,9 @@ namespace system {
 
 class TaggedDevice;
 
-class TaggedDeviceObserver {
+class UdevTaggedDeviceObserver {
  public:
-  virtual ~TaggedDeviceObserver() {}
+  virtual ~UdevTaggedDeviceObserver() {}
 
   // Called whenever a device with powerd tags set is added or changed.
   // Implementations should be idempotent, i.e. multiple invocations should have
@@ -28,4 +28,4 @@ class TaggedDeviceObserver {
 }  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_SYSTEM_TAGGED_DEVICE_OBSERVER_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_UDEV_TAGGED_DEVICE_OBSERVER_H_
