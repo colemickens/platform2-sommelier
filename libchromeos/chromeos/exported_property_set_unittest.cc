@@ -104,22 +104,6 @@ class ExportedPropertySetTest : public ::testing::Test {
     }
     virtual ~Properties() {}
 
-    scoped_ptr<dbus::Response> CallMethod(
-        dbus::MethodCall* method_call) {
-      DBusInterfaceMethodHandler* handler = dbus_object_.FindMethodHandler(
-          method_call->GetInterface(), method_call->GetMember());
-      std::unique_ptr<dbus::Response> response;
-      if (!handler) {
-        response = CreateDBusErrorResponse(
-            method_call,
-            "org.freedesktop.DBus.Error.UnknownMethod",
-            "Unknown method");
-      } else {
-        response = handler->HandleMethod(method_call);
-      }
-      return scoped_ptr<dbus::Response>(response.release());
-    }
-
     DBusObject dbus_object_;
   };
 
@@ -147,11 +131,11 @@ class ExportedPropertySetTest : public ::testing::Test {
 
   void AssertMethodReturnsError(dbus::MethodCall* method_call) {
     method_call->SetSerial(123);
-    auto response = p_->CallMethod(method_call);
+    auto response = CallMethod(p_->dbus_object_, method_call);
     ASSERT_NE(dynamic_cast<dbus::ErrorResponse*>(response.get()), nullptr);
   }
 
-  scoped_ptr<dbus::Response> GetPropertyOnInterface(
+  std::unique_ptr<dbus::Response> GetPropertyOnInterface(
       const std::string& interface_name, const std::string& property_name) {
     dbus::MethodCall method_call(dbus::kPropertiesInterface,
                                  dbus::kPropertiesGet);
@@ -159,7 +143,7 @@ class ExportedPropertySetTest : public ::testing::Test {
     dbus::MessageWriter writer(&method_call);
     writer.AppendString(interface_name);
     writer.AppendString(property_name);
-    return p_->CallMethod(&method_call);
+    return CallMethod(p_->dbus_object_, &method_call);
   }
 
   scoped_ptr<dbus::Response> last_response_;
@@ -204,7 +188,7 @@ TEST_F(ExportedPropertySetTest, GetAllInvalidInterface) {
   method_call.SetSerial(123);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString("org.chromium.BadInterface");
-  auto response = p_->CallMethod(&method_call);
+  auto response = CallMethod(p_->dbus_object_, &method_call);
   dbus::MessageReader response_reader(response.get());
   dbus::MessageReader dict_reader(nullptr);
   ASSERT_TRUE(response_reader.PopArray(&dict_reader));
@@ -230,7 +214,7 @@ TEST_F(ExportedPropertySetTest, GetAllCorrectness) {
   method_call.SetSerial(123);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(kTestInterface2);
-  auto response = p_->CallMethod(&method_call);
+  auto response = CallMethod(p_->dbus_object_, &method_call);
   dbus::MessageReader response_reader(response.get());
   dbus::MessageReader dict_reader(nullptr);
   dbus::MessageReader entry_reader(nullptr);
@@ -313,8 +297,7 @@ TEST_F(ExportedPropertySetTest, GetExtraArgs) {
 }
 
 TEST_F(ExportedPropertySetTest, GetWorksWithBool) {
-  scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
-      kTestInterface1, kBoolPropName);
+  auto response = GetPropertyOnInterface(kTestInterface1, kBoolPropName);
   dbus::MessageReader reader(response.get());
   bool value;
   ASSERT_TRUE(reader.PopVariantOfBool(&value));
@@ -322,8 +305,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithBool) {
 }
 
 TEST_F(ExportedPropertySetTest, GetWorksWithUint8) {
-  scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
-      kTestInterface1, kUint8PropName);
+  auto response = GetPropertyOnInterface(kTestInterface1, kUint8PropName);
   dbus::MessageReader reader(response.get());
   uint8_t value;
   ASSERT_TRUE(reader.PopVariantOfByte(&value));
@@ -331,8 +313,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithUint8) {
 }
 
 TEST_F(ExportedPropertySetTest, GetWorksWithInt16) {
-  scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
-      kTestInterface1, kInt16PropName);
+  auto response = GetPropertyOnInterface(kTestInterface1, kInt16PropName);
   dbus::MessageReader reader(response.get());
   int16_t value;
   ASSERT_TRUE(reader.PopVariantOfInt16(&value));
@@ -340,8 +321,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithInt16) {
 }
 
 TEST_F(ExportedPropertySetTest, GetWorksWithUint16) {
-  scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
-      kTestInterface2, kUint16PropName);
+  auto response = GetPropertyOnInterface(kTestInterface2, kUint16PropName);
   dbus::MessageReader reader(response.get());
   uint16_t value;
   ASSERT_TRUE(reader.PopVariantOfUint16(&value));
@@ -349,8 +329,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithUint16) {
 }
 
 TEST_F(ExportedPropertySetTest, GetWorksWithInt32) {
-  scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
-      kTestInterface2, kInt32PropName);
+  auto response = GetPropertyOnInterface(kTestInterface2, kInt32PropName);
   dbus::MessageReader reader(response.get());
   int32_t value;
   ASSERT_TRUE(reader.PopVariantOfInt32(&value));
@@ -358,8 +337,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithInt32) {
 }
 
 TEST_F(ExportedPropertySetTest, GetWorksWithUint32) {
-  scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
-      kTestInterface3, kUint32PropName);
+  auto response = GetPropertyOnInterface(kTestInterface3, kUint32PropName);
   dbus::MessageReader reader(response.get());
   uint32_t value;
   ASSERT_TRUE(reader.PopVariantOfUint32(&value));
@@ -367,8 +345,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithUint32) {
 }
 
 TEST_F(ExportedPropertySetTest, GetWorksWithInt64) {
-  scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
-      kTestInterface3, kInt64PropName);
+  auto response = GetPropertyOnInterface(kTestInterface3, kInt64PropName);
   dbus::MessageReader reader(response.get());
   int64_t value;
   ASSERT_TRUE(reader.PopVariantOfInt64(&value));
@@ -376,8 +353,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithInt64) {
 }
 
 TEST_F(ExportedPropertySetTest, GetWorksWithUint64) {
-  scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
-      kTestInterface3, kUint64PropName);
+  auto response = GetPropertyOnInterface(kTestInterface3, kUint64PropName);
   dbus::MessageReader reader(response.get());
   uint64_t value;
   ASSERT_TRUE(reader.PopVariantOfUint64(&value));
@@ -385,8 +361,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithUint64) {
 }
 
 TEST_F(ExportedPropertySetTest, GetWorksWithDouble) {
-  scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
-      kTestInterface3, kDoublePropName);
+  auto response = GetPropertyOnInterface(kTestInterface3, kDoublePropName);
   dbus::MessageReader reader(response.get());
   double value;
   ASSERT_TRUE(reader.PopVariantOfDouble(&value));
@@ -394,8 +369,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithDouble) {
 }
 
 TEST_F(ExportedPropertySetTest, GetWorksWithString) {
-  scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
-      kTestInterface3, kStringPropName);
+  auto response = GetPropertyOnInterface(kTestInterface3, kStringPropName);
   dbus::MessageReader reader(response.get());
   std::string value;
   ASSERT_TRUE(reader.PopVariantOfString(&value));
@@ -403,8 +377,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithString) {
 }
 
 TEST_F(ExportedPropertySetTest, GetWorksWithPath) {
-  scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
-      kTestInterface3, kPathPropName);
+  auto response = GetPropertyOnInterface(kTestInterface3, kPathPropName);
   dbus::MessageReader reader(response.get());
   dbus::ObjectPath value;
   ASSERT_TRUE(reader.PopVariantOfObjectPath(&value));
@@ -412,8 +385,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithPath) {
 }
 
 TEST_F(ExportedPropertySetTest, GetWorksWithStringList) {
-  scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
-      kTestInterface3, kStringListPropName);
+  auto response = GetPropertyOnInterface(kTestInterface3, kStringListPropName);
   dbus::MessageReader reader(response.get());
   dbus::MessageReader variant_reader(nullptr);
   std::vector<std::string> value;
@@ -424,8 +396,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithStringList) {
 }
 
 TEST_F(ExportedPropertySetTest, GetWorksWithPathList) {
-  scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
-      kTestInterface3, kPathListPropName);
+  auto response = GetPropertyOnInterface(kTestInterface3, kPathListPropName);
   dbus::MessageReader reader(response.get());
   dbus::MessageReader variant_reader(nullptr);
   std::vector<dbus::ObjectPath> value;
@@ -436,8 +407,7 @@ TEST_F(ExportedPropertySetTest, GetWorksWithPathList) {
 }
 
 TEST_F(ExportedPropertySetTest, GetWorksWithUint8List) {
-  scoped_ptr<dbus::Response> response = GetPropertyOnInterface(
-      kTestInterface3, kPathListPropName);
+  auto response = GetPropertyOnInterface(kTestInterface3, kPathListPropName);
   dbus::MessageReader reader(response.get());
   dbus::MessageReader variant_reader(nullptr);
   const uint8_t* buffer;
@@ -453,7 +423,7 @@ TEST_F(ExportedPropertySetTest, SetFailsGracefully) {
   dbus::MethodCall method_call(dbus::kPropertiesInterface,
                                dbus::kPropertiesSet);
   method_call.SetSerial(123);
-  auto response = p_->CallMethod(&method_call);
+  auto response = CallMethod(p_->dbus_object_, &method_call);
   ASSERT_TRUE(
       dynamic_cast<dbus::ErrorResponse*>(response.get()) != nullptr);
 }

@@ -119,6 +119,9 @@ void ExportedPropertySet::HandlePropertyUpdated(
     const std::string& property_name,
     const ExportedPropertyBase* exported_property) {
   bus_->AssertOnOriginThread();
+  // Send signal only if the object has been exported successfully.
+  if (!exported_object_)
+    return;
   dbus::Signal signal(dbus::kPropertiesInterface, dbus::kPropertiesChanged);
   dbus::MessageWriter writer(&signal);
   dbus::MessageWriter array_writer(nullptr);

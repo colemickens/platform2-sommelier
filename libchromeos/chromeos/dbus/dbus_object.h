@@ -366,6 +366,26 @@ class DBusObject {
   DISALLOW_COPY_AND_ASSIGN(DBusObject);
 };
 
+// Dispatches a DBus method call to the corresponding handler.
+// Used mostly for testing purposes. This method is inlined so that it is
+// not included in the shipping code of libchromeos, and included at the
+// call sites.
+inline std::unique_ptr<dbus::Response> CallMethod(
+    const DBusObject& object, dbus::MethodCall* method_call) {
+  DBusInterfaceMethodHandler* handler = object.FindMethodHandler(
+      method_call->GetInterface(), method_call->GetMember());
+  std::unique_ptr<dbus::Response> response;
+  if (!handler) {
+    response = CreateDBusErrorResponse(
+        method_call,
+        "org.freedesktop.DBus.Error.UnknownMethod",
+        "Unknown method");
+  } else {
+    response = handler->HandleMethod(method_call);
+  }
+  return response;
+}
+
 }  // namespace dbus_utils
 }  // namespace chromeos
 

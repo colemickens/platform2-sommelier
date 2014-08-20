@@ -93,16 +93,6 @@ class DBusObjectTest : public ::testing::Test {
     dbus_object_->RegisterAsync(base::Bind(NoAction));
   }
 
-  std::unique_ptr<dbus::Response> CallMethod(dbus::MethodCall* method_call) {
-    DBusInterfaceMethodHandler* handler = dbus_object_->FindMethodHandler(
-        method_call->GetInterface(), method_call->GetMember());
-    if (!handler)
-      return CreateDBusErrorResponse(method_call,
-                                     "org.freedesktop.DBus.Error.UnknownMethod",
-                                     "Unknown method");
-    return handler->HandleMethod(method_call);
-  }
-
   void ExpectError(dbus::Response* response, const std::string& expected_code) {
     EXPECT_EQ(dbus::Message::MESSAGE_ERROR, response->GetMessageType());
     EXPECT_EQ(expected_code, response->GetErrorName());
@@ -120,7 +110,7 @@ TEST_F(DBusObjectTest, Add) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendInt32(2);
   writer.AppendInt32(3);
-  auto response = CallMethod(&method_call);
+  auto response = CallMethod(*dbus_object_, &method_call);
   dbus::MessageReader reader(response.get());
   int result;
   ASSERT_TRUE(reader.PopInt32(&result));
@@ -133,7 +123,7 @@ TEST_F(DBusObjectTest, Negate) {
   method_call.SetSerial(123);
   dbus::MessageWriter writer(&method_call);
   writer.AppendInt32(98765);
-  auto response = CallMethod(&method_call);
+  auto response = CallMethod(*dbus_object_, &method_call);
   dbus::MessageReader reader(response.get());
   int result;
   ASSERT_TRUE(reader.PopInt32(&result));
@@ -146,7 +136,7 @@ TEST_F(DBusObjectTest, PositiveSuccess) {
   method_call.SetSerial(123);
   dbus::MessageWriter writer(&method_call);
   writer.AppendDouble(17.5);
-  auto response = CallMethod(&method_call);
+  auto response = CallMethod(*dbus_object_, &method_call);
   dbus::MessageReader reader(response.get());
   double result;
   ASSERT_TRUE(reader.PopDouble(&result));
@@ -159,7 +149,7 @@ TEST_F(DBusObjectTest, PositiveFailure) {
   method_call.SetSerial(123);
   dbus::MessageWriter writer(&method_call);
   writer.AppendDouble(-23.2);
-  auto response = CallMethod(&method_call);
+  auto response = CallMethod(*dbus_object_, &method_call);
   ExpectError(response.get(), "org.freedesktop.DBus.Error.Failed");
 }
 
@@ -168,7 +158,7 @@ TEST_F(DBusObjectTest, StrLen0) {
   method_call.SetSerial(123);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString("");
-  auto response = CallMethod(&method_call);
+  auto response = CallMethod(*dbus_object_, &method_call);
   dbus::MessageReader reader(response.get());
   int result;
   ASSERT_TRUE(reader.PopInt32(&result));
@@ -181,7 +171,7 @@ TEST_F(DBusObjectTest, StrLen4) {
   method_call.SetSerial(123);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString("test");
-  auto response = CallMethod(&method_call);
+  auto response = CallMethod(*dbus_object_, &method_call);
   dbus::MessageReader reader(response.get());
   int result;
   ASSERT_TRUE(reader.PopInt32(&result));
@@ -192,7 +182,7 @@ TEST_F(DBusObjectTest, StrLen4) {
 TEST_F(DBusObjectTest, NoOp) {
   dbus::MethodCall method_call(kTestInterface3, kTestMethod_NoOp);
   method_call.SetSerial(123);
-  auto response = CallMethod(&method_call);
+  auto response = CallMethod(*dbus_object_, &method_call);
   dbus::MessageReader reader(response.get());
   ASSERT_FALSE(reader.HasMoreData());
 }
@@ -202,7 +192,7 @@ TEST_F(DBusObjectTest, TooFewParams) {
   method_call.SetSerial(123);
   dbus::MessageWriter writer(&method_call);
   writer.AppendInt32(2);
-  auto response = CallMethod(&method_call);
+  auto response = CallMethod(*dbus_object_, &method_call);
   ExpectError(response.get(), "org.freedesktop.DBus.Error.InvalidArgs");
 }
 
@@ -213,7 +203,7 @@ TEST_F(DBusObjectTest, TooManyParams) {
   writer.AppendInt32(1);
   writer.AppendInt32(2);
   writer.AppendInt32(3);
-  auto response = CallMethod(&method_call);
+  auto response = CallMethod(*dbus_object_, &method_call);
   ExpectError(response.get(), "org.freedesktop.DBus.Error.InvalidArgs");
 }
 
@@ -223,7 +213,7 @@ TEST_F(DBusObjectTest, ParamTypeMismatch) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendInt32(1);
   writer.AppendBool(false);
-  auto response = CallMethod(&method_call);
+  auto response = CallMethod(*dbus_object_, &method_call);
   ExpectError(response.get(), "org.freedesktop.DBus.Error.InvalidArgs");
 }
 
@@ -233,7 +223,7 @@ TEST_F(DBusObjectTest, ParamAsVariant) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendVariantOfInt32(10);
   writer.AppendVariantOfInt32(3);
-  auto response = CallMethod(&method_call);
+  auto response = CallMethod(*dbus_object_, &method_call);
   dbus::MessageReader reader(response.get());
   int result;
   ASSERT_TRUE(reader.PopInt32(&result));
@@ -247,7 +237,7 @@ TEST_F(DBusObjectTest, UnknownMethod) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendInt32(1);
   writer.AppendBool(false);
-  auto response = CallMethod(&method_call);
+  auto response = CallMethod(*dbus_object_, &method_call);
   ExpectError(response.get(), "org.freedesktop.DBus.Error.UnknownMethod");
 }
 
