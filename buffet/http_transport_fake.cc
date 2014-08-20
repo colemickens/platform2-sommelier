@@ -156,7 +156,7 @@ std::string ServerRequest::GetFormField(const std::string& field_name) const {
         GetHeader(request_header::kContentType));
     if (mime_type == mime::application::kWwwFormUrlEncoded &&
         !GetData().empty()) {
-      auto fields = data_encoding::WebParamsDecode(GetDataAsString());
+      auto fields = chromeos::data_encoding::WebParamsDecode(GetDataAsString());
       form_fields_.insert(fields.begin(), fields.end());
     }
     form_fields_parsed_ = true;

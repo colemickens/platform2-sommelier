@@ -12,6 +12,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/values.h>
+#include <chromeos/data_encoding.h>
 #include <chromeos/dbus_utils.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -19,7 +20,6 @@
 #include <dbus/object_manager.h>
 #include <dbus/values_util.h>
 
-#include "buffet/data_encoding.h"
 #include "buffet/dbus_constants.h"
 
 using namespace buffet::dbus_constants;  // NOLINT(build/namespaces)
@@ -149,7 +149,7 @@ class BuffetHelperProxy {
     chromeos::dbus_utils::Dictionary params;
 
     if (!args.empty()) {
-      auto key_values = buffet::data_encoding::WebParamsDecode(args.front());
+      auto key_values = chromeos::data_encoding::WebParamsDecode(args.front());
       for (const auto& pair : key_values) {
         params.insert(std::make_pair(
             pair.first, std::unique_ptr<base::Value>(

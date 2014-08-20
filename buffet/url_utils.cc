@@ -95,13 +95,13 @@ std::string url::GetQueryString(
   return query_string;
 }
 
-data_encoding::WebParamList url::GetQueryStringParameters(
+chromeos::data_encoding::WebParamList url::GetQueryStringParameters(
     const std::string& url) {
   // Extract the query string and remove the leading '?'.
   std::string query_string = GetQueryString(url, true);
   if (!query_string.empty() && query_string.front() == '?')
     query_string.erase(query_string.begin());
-  return data_encoding::WebParamsDecode(query_string);
+  return chromeos::data_encoding::WebParamsDecode(query_string);
 }
 
 std::string url::GetQueryStringValue(
@@ -110,7 +110,7 @@ std::string url::GetQueryStringValue(
 }
 
 std::string url::GetQueryStringValue(
-    const data_encoding::WebParamList& params,
+    const chromeos::data_encoding::WebParamList& params,
     const std::string& name) {
   for (const auto& pair : params) {
     if (name.compare(pair.first) == 0)
@@ -139,7 +139,7 @@ std::string url::AppendQueryParam(
 
 std::string url::AppendQueryParams(
     const std::string& url,
-    const data_encoding::WebParamList& params) {
+    const chromeos::data_encoding::WebParamList& params) {
   if (params.empty())
     return url;
   size_t query_pos, query_len;
@@ -151,7 +151,7 @@ std::string url::AppendQueryParams(
   } else if (query_len > 1) {
     result += '&';
   }
-  result += data_encoding::WebParamsEncode(params);
+  result += chromeos::data_encoding::WebParamsEncode(params);
   if (fragment_pos < url.size()) {
     result += url.substr(fragment_pos);
   }

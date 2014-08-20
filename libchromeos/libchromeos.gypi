@@ -57,6 +57,7 @@
       'sources': [
         'chromeos/async_event_sequencer.cc',
         'chromeos/asynchronous_signal_handler.cc',
+        'chromeos/data_encoding.cc',
         'chromeos/dbus/abstract_dbus_service.cc',
         'chromeos/dbus/dbus.cc',
         'chromeos/dbus/dbus_object.cc',
@@ -204,6 +205,7 @@
           'sources': [
             'chromeos/async_event_sequencer_unittest.cc',
             'chromeos/asynchronous_signal_handler_unittest.cc',
+            'chromeos/data_encoding_unittest.cc',
             'chromeos/dbus/dbus_object_unittest.cc',
             'chromeos/error_unittest.cc',
             'chromeos/exported_object_manager_unittest.cc',

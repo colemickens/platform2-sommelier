@@ -12,9 +12,9 @@
 
 #include <base/basictypes.h>
 #include <base/time/time.h>
+#include <chromeos/data_encoding.h>
 #include <chromeos/error.h>
 
-#include "buffet/data_encoding.h"
 #include "buffet/http_transport.h"
 #include "buffet/storage_interface.h"
 
@@ -54,7 +54,7 @@ class DeviceRegistrationInfo {
   // appended to the base URL which is normally
   //    https://www.googleapis.com/clouddevices/v1/".
   // If |params| are specified, each key-value pair is formatted using
-  // data_encoding::WebParamsEncode() and appended to URL as a query
+  // chromeos::data_encoding::WebParamsEncode() and appended to URL as a query
   // string.
   // So, calling:
   //    GetServiceURL("ticket", {{"key","apiKey"}})
@@ -62,20 +62,20 @@ class DeviceRegistrationInfo {
   //    https://www.googleapis.com/clouddevices/v1/ticket?key=apiKey
   std::string GetServiceURL(
       const std::string& subpath = {},
-      const data_encoding::WebParamList& params = {}) const;
+      const chromeos::data_encoding::WebParamList& params = {}) const;
 
   // Returns a service URL to access the registered device on GCD server.
   // The base URL used to construct the full URL looks like this:
   //    https://www.googleapis.com/clouddevices/v1/devices/<device_id>/
   std::string GetDeviceURL(
     const std::string& subpath = {},
-    const data_encoding::WebParamList& params = {}) const;
+    const chromeos::data_encoding::WebParamList& params = {}) const;
 
   // Similar to GetServiceURL, GetOAuthURL() returns a URL of OAuth 2.0 server.
   // The base URL used is https://accounts.google.com/o/oauth2/.
   std::string GetOAuthURL(
     const std::string& subpath = {},
-    const data_encoding::WebParamList& params = {}) const;
+    const chromeos::data_encoding::WebParamList& params = {}) const;
 
   // Returns the registered device ID (GUID) or empty string if failed
   std::string GetDeviceId(chromeos::ErrorPtr* error);

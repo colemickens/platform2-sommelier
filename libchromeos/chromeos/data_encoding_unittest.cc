@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/data_encoding.h"
+#include <chromeos/data_encoding.h>
 
 #include <gtest/gtest.h>
 
-using namespace buffet::data_encoding;  // NOLINT(build/namespaces)
+namespace chromeos {
+namespace data_encoding {
 
 TEST(data_encoding, UrlEncoding) {
   std::string test = "\"http://sample/path/0014.html \"";
@@ -37,3 +38,6 @@ TEST(data_encoding, WebParamsEncoding) {
   EXPECT_EQ("#", params[2].first);
   EXPECT_EQ("%", params[2].second);
 }
+
+}  // namespace data_encoding
+}  // namespace chromeos

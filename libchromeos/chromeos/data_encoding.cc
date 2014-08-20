@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/data_encoding.h"
+#include <chromeos/data_encoding.h>
 
 #include <base/strings/stringprintf.h>
 #include <chromeos/string_utils.h>
@@ -25,7 +25,7 @@ inline int HexToDec(int hex) {
 }  // namespace
 
 /////////////////////////////////////////////////////////////////////////
-namespace buffet {
+namespace chromeos {
 namespace data_encoding {
 
 std::string UrlEncode(const char* data, bool encodeSpaceAsPlus) {
@@ -97,4 +97,4 @@ WebParamList WebParamsDecode(const std::string& data) {
 }
 
 }  // namespace data_encoding
-}  // namespace buffet
+}  // namespace chromeos

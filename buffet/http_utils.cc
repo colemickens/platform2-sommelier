@@ -9,9 +9,9 @@
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
 #include <base/values.h>
+#include <chromeos/data_encoding.h>
 #include <chromeos/error_codes.h>
 
-#include "buffet/data_encoding.h"
 #include "buffet/mime_utils.h"
 
 namespace buffet {
@@ -89,7 +89,7 @@ std::unique_ptr<Response> PostFormData(const std::string& url,
                                        const HeaderList& headers,
                                        std::shared_ptr<Transport> transport,
                                        chromeos::ErrorPtr* error) {
-  std::string encoded_data = data_encoding::WebParamsEncode(data);
+  std::string encoded_data = chromeos::data_encoding::WebParamsEncode(data);
   return PostBinary(url, encoded_data.c_str(), encoded_data.size(),
                     mime::application::kWwwFormUrlEncoded,
                     headers, transport, error);

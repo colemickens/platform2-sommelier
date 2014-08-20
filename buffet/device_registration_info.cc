@@ -10,11 +10,11 @@
 
 #include <base/json/json_writer.h>
 #include <base/values.h>
+#include <chromeos/data_encoding.h>
 #include <chromeos/string_utils.h>
 
 #include "buffet/commands/command_definition.h"
 #include "buffet/commands/command_manager.h"
-#include "buffet/data_encoding.h"
 #include "buffet/device_registration_storage_keys.h"
 #include "buffet/http_transport_curl.h"
 #include "buffet/http_utils.h"
@@ -131,7 +131,7 @@ void ParseGCDError(const base::DictionaryValue* json,
 
 std::string BuildURL(const std::string& url,
                      const std::vector<std::string>& subpaths,
-                     const buffet::data_encoding::WebParamList& params) {
+                     const chromeos::data_encoding::WebParamList& params) {
   std::string result = buffet::url::CombineMultiple(url, subpaths);
   return buffet::url::AppendQueryParams(result, params);
 }
@@ -165,20 +165,20 @@ std::pair<std::string, std::string>
 
 std::string DeviceRegistrationInfo::GetServiceURL(
     const std::string& subpath,
-    const data_encoding::WebParamList& params) const {
+    const chromeos::data_encoding::WebParamList& params) const {
   return BuildURL(service_url_, {subpath}, params);
 }
 
 std::string DeviceRegistrationInfo::GetDeviceURL(
     const std::string& subpath,
-    const data_encoding::WebParamList& params) const {
+    const chromeos::data_encoding::WebParamList& params) const {
   CHECK(!device_id_.empty()) << "Must have a valid device ID";
   return BuildURL(service_url_, {"devices", device_id_, subpath}, params);
 }
 
 std::string DeviceRegistrationInfo::GetOAuthURL(
     const std::string& subpath,
-    const data_encoding::WebParamList& params) const {
+    const chromeos::data_encoding::WebParamList& params) const {
   return BuildURL(oauth_url_, {subpath}, params);
 }
 
