@@ -123,7 +123,7 @@ template <typename T>
 class PropertyStoreTypedTest : public PropertyStoreTest {
  protected:
   bool SetProperty(
-      PropertyStore &store, const string &name, Error *error);
+      PropertyStore *store, const string &name, Error *error);
 };
 
 TYPED_TEST_CASE(PropertyStoreTypedTest, PropertyStoreTest::PropertyTypes);
@@ -172,77 +172,77 @@ TYPED_TEST(PropertyStoreTypedTest, SetProperty) {
   // generate a change callback. The second SetProperty, however,
   // should not. Hence, we should get exactly one callback.
   EXPECT_CALL(*this, TestCallback(_)).Times(1);
-  EXPECT_TRUE(this->SetProperty(store, "some property", &error));
-  EXPECT_FALSE(this->SetProperty(store, "some property", &error));
+  EXPECT_TRUE(this->SetProperty(&store, "some property", &error));
+  EXPECT_FALSE(this->SetProperty(&store, "some property", &error));
 }
 
 template<> bool PropertyStoreTypedTest<bool>::SetProperty(
-    PropertyStore &store, const string &name, Error *error) {
+    PropertyStore *store, const string &name, Error *error) {
   bool new_value = true;
-  return store.SetBoolProperty(name, new_value, error);
+  return store->SetBoolProperty(name, new_value, error);
 }
 
 template<> bool PropertyStoreTypedTest<int16_t>::SetProperty(
-    PropertyStore &store, const string &name, Error *error) {
+    PropertyStore *store, const string &name, Error *error) {
   int16_t new_value = 1;
-  return store.SetInt16Property(name, new_value, error);
+  return store->SetInt16Property(name, new_value, error);
 }
 
 template<> bool PropertyStoreTypedTest<int32_t>::SetProperty(
-    PropertyStore &store, const string &name, Error *error) {
+    PropertyStore *store, const string &name, Error *error) {
   int32_t new_value = 1;
-  return store.SetInt32Property(name, new_value, error);
+  return store->SetInt32Property(name, new_value, error);
 }
 
 template<> bool PropertyStoreTypedTest<string>::SetProperty(
-    PropertyStore &store, const string &name, Error *error) {
+    PropertyStore *store, const string &name, Error *error) {
   string new_value = "new value";
-  return store.SetStringProperty(name, new_value, error);
+  return store->SetStringProperty(name, new_value, error);
 }
 
 template<> bool PropertyStoreTypedTest<Stringmap>::SetProperty(
-    PropertyStore &store, const string &name, Error *error) {
+    PropertyStore *store, const string &name, Error *error) {
   Stringmap new_value;
   new_value["new key"] = "new value";
-  return store.SetStringmapProperty(name, new_value, error);
+  return store->SetStringmapProperty(name, new_value, error);
 }
 
 template<> bool PropertyStoreTypedTest<Stringmaps>::SetProperty(
-    PropertyStore &store, const string &name, Error *error) {
+    PropertyStore *store, const string &name, Error *error) {
   Stringmaps new_value(1);
   new_value[0]["new key"] = "new value";
-  return store.SetStringmapsProperty(name, new_value, error);
+  return store->SetStringmapsProperty(name, new_value, error);
 }
 
 template<> bool PropertyStoreTypedTest<Strings>::SetProperty(
-    PropertyStore &store, const string &name, Error *error) {
+    PropertyStore *store, const string &name, Error *error) {
   Strings new_value(1);
   new_value[0] = "new value";
-  return store.SetStringsProperty(name, new_value, error);
+  return store->SetStringsProperty(name, new_value, error);
 }
 
 template<> bool PropertyStoreTypedTest<uint8_t>::SetProperty(
-    PropertyStore &store, const string &name, Error *error) {
+    PropertyStore *store, const string &name, Error *error) {
   uint8_t new_value = 1;
-  return store.SetUint8Property(name, new_value, error);
+  return store->SetUint8Property(name, new_value, error);
 }
 
 template<> bool PropertyStoreTypedTest<uint16_t>::SetProperty(
-    PropertyStore &store, const string &name, Error *error) {
+    PropertyStore *store, const string &name, Error *error) {
   uint16_t new_value = 1;
-  return store.SetUint16Property(name, new_value, error);
+  return store->SetUint16Property(name, new_value, error);
 }
 
 template<> bool PropertyStoreTypedTest<Uint16s>::SetProperty(
-    PropertyStore &store, const string &name, Error *error) {
+    PropertyStore *store, const string &name, Error *error) {
   Uint16s new_value{1};
-  return store.SetUint16sProperty(name, new_value, error);
+  return store->SetUint16sProperty(name, new_value, error);
 }
 
 template<> bool PropertyStoreTypedTest<uint32_t>::SetProperty(
-    PropertyStore &store, const string &name, Error *error) {
+    PropertyStore *store, const string &name, Error *error) {
   uint32_t new_value = 1;
-  return store.SetUint32Property(name, new_value, error);
+  return store->SetUint32Property(name, new_value, error);
 }
 
 TEST_F(PropertyStoreTest, ClearBoolProperty) {
