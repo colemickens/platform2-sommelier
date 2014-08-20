@@ -95,6 +95,8 @@ const float WiFi::kDefaultFractionPerScan = 0.34;
 const char WiFi::kProgressiveScanFieldTrialFlagFile[] =
     "/home/chronos/.progressive_scan_variation";
 const size_t WiFi::kStuckQueueLengthThreshold = 40;  // ~1 full-channel scan
+const int WiFi::kVerifyWakeOnPacketSettingsDelaySeconds = 1;
+const int WiFi::kMaxSetWakeOnPacketRetries = 2;
 
 WiFi::WiFi(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
@@ -146,7 +148,8 @@ WiFi::WiFi(ControlInterface *control_interface,
       fraction_per_scan_(kDefaultFractionPerScan),
       scan_state_(kScanIdle),
       scan_method_(kScanMethodNone),
-      receive_byte_count_at_connect_(0) {
+      receive_byte_count_at_connect_(0),
+      num_set_wake_on_packet_retries_(0) {
   PropertyStore *store = this->mutable_store();
   store->RegisterDerivedString(
       kBgscanMethodProperty,
@@ -1767,47 +1770,24 @@ void WiFi::OnIPConfigFailure() {
 
 void WiFi::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                      Error *error) {
-  SetWakeOnPacketConnMessage add_wowlan_msg;
-  if (!WakeOnWifi::ConfigureAddWakeOnPacketMsg(&add_wowlan_msg, ip_endpoint,
-                                               wiphy_index_, error)) {
-    LOG(ERROR) << "Failed to configure nl80211 message.";
-    return;
-  }
-  add_wowlan_msg.AddAckFlag();
-  netlink_manager_->SendNl80211Message(
-      &add_wowlan_msg, Bind(&WiFi::OnSetWakeOnPacketConnectionResponse,
-                            weak_ptr_factory_.GetWeakPtr()),
-      Bind(&WiFi::OnAddWakeOnPacketConnectionAck,
-           weak_ptr_factory_.GetWeakPtr(), ip_endpoint),
-      Bind(&NetlinkManager::OnNetlinkMessageError));
+  wake_on_packet_connections_.AddUnique(ip_endpoint);
+  SendSetWakeOnPacketMessage(error);
 }
 
 void WiFi::RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                         Error *error) {
   if (!wake_on_packet_connections_.Contains(ip_endpoint)) {
     Error::PopulateAndLog(error, Error::kNotFound,
-                    "No such wake-on-packet connection registered");
+                          "No such wake-on-packet connection registered");
     return;
   }
   wake_on_packet_connections_.Remove(ip_endpoint);
-  RemoveAllWakeOnPacketConnections(error);
-  for (const IPAddress &addr : wake_on_packet_connections_.GetIPAddresses()) {
-    AddWakeOnPacketConnection(addr, error);
-    if (error->IsFailure()) {
-      Error::PopulateAndLog(error, Error::kOperationFailed,
-                            "Call to AddWakeOnPacketConnection failed; "
-                            "removing all wake-on-packet rules");
-      RemoveAllWakeOnPacketConnections(error);
-      return;
-    }
-  }
-  // TODO(samueltan): Add a PostDelayedTask with callback that checks NIC state
-  // against wake_on_packet_connections_ once such a function has been
-  // implemented.
+  SendSetWakeOnPacketMessage(error);
 }
 
 void WiFi::RemoveAllWakeOnPacketConnections(Error *error) {
-  // Send an empty NL80211_CMD_SET_WOWLAN message.
+  // Send an empty NL80211_CMD_SET_WOWLAN message to disable wowlan.
+  wake_on_packet_connections_.Clear();
   SetWakeOnPacketConnMessage disable_wowlan_msg;
   if (!WakeOnWifi::ConfigureRemoveAllWakeOnPacketMsg(&disable_wowlan_msg,
                                                      wiphy_index_, error)) {
@@ -1815,13 +1795,17 @@ void WiFi::RemoveAllWakeOnPacketConnections(Error *error) {
                           "Failed to configure nl80211 message");
     return;
   }
-  disable_wowlan_msg.AddAckFlag();
   netlink_manager_->SendNl80211Message(
       &disable_wowlan_msg, Bind(&WiFi::OnSetWakeOnPacketConnectionResponse,
                                 weak_ptr_factory_.GetWeakPtr()),
-      Bind(&WiFi::OnRemoveAllWakeOnPacketConnectionAck,
-           weak_ptr_factory_.GetWeakPtr()),
+      Bind(&NetlinkManager::OnAckDoNothing),
       Bind(&NetlinkManager::OnNetlinkMessageError));
+
+  verify_wake_on_packet_settings_callback_.Reset(Bind(
+      &WiFi::RequestWakeOnPacketSettings, weak_ptr_factory_.GetWeakPtr()));
+  dispatcher()->PostDelayedTask(
+      verify_wake_on_packet_settings_callback_.callback(),
+      kVerifyWakeOnPacketSettingsDelaySeconds * 1000);
 }
 
 void WiFi::OnSetWakeOnPacketConnectionResponse(
@@ -1830,19 +1814,70 @@ void WiFi::OnSetWakeOnPacketConnectionResponse(
   // requests.
 }
 
-void WiFi::OnAddWakeOnPacketConnectionAck(IPAddress ip_endpoint,
-                                          bool *remove_callbacks) {
-  wake_on_packet_connections_.AddUnique(ip_endpoint);
-  // No other responses expected for original message, so remove callbacks.
-  *remove_callbacks = true;
+void WiFi::RequestWakeOnPacketSettings() {
+  Error e;
+  GetWakeOnPacketConnMessage get_wowlan_msg;
+  if (!WakeOnWifi::ConfigureGetWakeOnPacketMsg(&get_wowlan_msg, wiphy_index_,
+                                               &e)) {
+    LOG(ERROR) << e.message();
+    return;
+  }
+  netlink_manager_->SendNl80211Message(
+      &get_wowlan_msg, Bind(&WiFi::VerifyWakeOnPacketConnections,
+                            weak_ptr_factory_.GetWeakPtr()),
+      Bind(&NetlinkManager::OnAckDoNothing),
+      Bind(&NetlinkManager::OnNetlinkMessageError));
 }
 
-void WiFi::OnRemoveAllWakeOnPacketConnectionAck(bool *remove_callbacks) {
-  wake_on_packet_connections_.Clear();
-  // No other responses expected for original message, so remove callbacks.
-  *remove_callbacks = true;
+void WiFi::VerifyWakeOnPacketConnections(
+    const Nl80211Message &nl80211_message) {
+  if (WakeOnWifi::WakeOnPacketSettingsMatch(nl80211_message,
+                                            wake_on_packet_connections_)) {
+    SLOG(WiFi, 2) << __func__ << ": "
+                  << "Wake-on-packet settings successfully verified";
+  } else {
+    LOG(ERROR) << __func__ << " failed: discrepancy between wake-on-packet "
+                              "settings on NIC and those in local data "
+                              "structure detected";
+    RetrySetWakeOnPacketConnections();
+  }
 }
 
+void WiFi::SendSetWakeOnPacketMessage(Error *error) {
+  if (wake_on_packet_connections_.Empty()) {
+    RemoveAllWakeOnPacketConnections(error);
+    return;
+  }
+  SetWakeOnPacketConnMessage set_wowlan_msg;
+  if (!WakeOnWifi::ConfigureAddWakeOnPacketMsg(
+          &set_wowlan_msg, wake_on_packet_connections_, wiphy_index_, error)) {
+    LOG(ERROR) << "Failed to configure nl80211 message.";
+    return;
+  }
+  netlink_manager_->SendNl80211Message(
+      &set_wowlan_msg, Bind(&WiFi::OnSetWakeOnPacketConnectionResponse,
+                            weak_ptr_factory_.GetWeakPtr()),
+      Bind(&NetlinkManager::OnAckDoNothing),
+      Bind(&NetlinkManager::OnNetlinkMessageError));
+
+  verify_wake_on_packet_settings_callback_.Reset(
+      Bind(&WiFi::RequestWakeOnPacketSettings, weak_ptr_factory_.GetWeakPtr()));
+  dispatcher()->PostDelayedTask(
+      verify_wake_on_packet_settings_callback_.callback(),
+      kVerifyWakeOnPacketSettingsDelaySeconds * 1000);
+}
+
+void WiFi::RetrySetWakeOnPacketConnections() {
+  if (num_set_wake_on_packet_retries_ < kMaxSetWakeOnPacketRetries) {
+    Error e;
+    SLOG(WiFi, 2) << __func__;
+    SendSetWakeOnPacketMessage(&e);
+    ++num_set_wake_on_packet_retries_;
+  } else {
+    SLOG(WiFi, 2) << __func__ << ": max retry attempts reached";
+    num_set_wake_on_packet_retries_ = 0;
+  }
+}
 
 void WiFi::RestartFastScanAttempts() {
   fast_scans_remaining_ = kNumFastScanAttempts;

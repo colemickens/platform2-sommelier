@@ -488,6 +488,10 @@ const uint8_t SetWakeOnPacketConnMessage::kCommand = NL80211_CMD_SET_WOWLAN;
 const char SetWakeOnPacketConnMessage::kCommandString[] =
     "NL80211_CMD_SET_WOWLAN";
 
+const uint8_t GetWakeOnPacketConnMessage::kCommand = NL80211_CMD_GET_WOWLAN;
+const char GetWakeOnPacketConnMessage::kCommandString[] =
+    "NL80211_CMD_GET_WOWLAN";
+
 const uint8_t GetWiphyMessage::kCommand = NL80211_CMD_GET_WIPHY;
 const char GetWiphyMessage::kCommandString[] = "NL80211_CMD_GET_WIPHY";
 

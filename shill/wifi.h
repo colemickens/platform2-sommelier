@@ -141,17 +141,29 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Callback for when a service fails to configure with an IP.
   void OnIPConfigFailure() override;
 
-  // Implementation of Wake-on-WLAN interface that programs the NIC.
+  // Program the NIC to wake on packets received from |ip_endpoint|.
   void AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                  Error *error) override;
+  // Remove rule to wake on packets received from |ip_endpoint| from the NIC.
   void RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                     Error *error) override;
+  // Remove all rules to wake on incoming packets from the NIC.
   void RemoveAllWakeOnPacketConnections(Error *error) override;
+  // Message handler for NL80211_CMD_SET_WOWLAN responses.
   void OnSetWakeOnPacketConnectionResponse(
       const Nl80211Message &nl80211_message);
-  void OnAddWakeOnPacketConnectionAck(IPAddress ip_endpoint,
-                                      bool *remove_callbacks);
-  void OnRemoveAllWakeOnPacketConnectionAck(bool *remove_callbacks);
+  // Request wake-on-packet settings for this wifi device.
+  void RequestWakeOnPacketSettings();
+  // Verify that the wake-on-packet connections programmed into the NIC match
+  // those recorded locally for this device.
+  void VerifyWakeOnPacketConnections(const Nl80211Message &nl80211_message);
+  // Sends an NL80211 message to program the NIC to wake on packets from
+  // the IP addresses stored locally in wake_on_packet_connections_.
+  void SendSetWakeOnPacketMessage(Error *error);
+  // Calls |SendSetWakeOnPacketMessage| and tracks this call as a retry. If
+  // |kMaxSetWakeOnPacketRetries| retries have already been performed, resets
+  // counter and returns.
+  void RetrySetWakeOnPacketConnections();
 
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
@@ -317,6 +329,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // TODO(wdg): Remove after progressive scan field trial is over.
   static const char kProgressiveScanFieldTrialFlagFile[];
   static const size_t kStuckQueueLengthThreshold;
+  static const int kVerifyWakeOnPacketSettingsDelaySeconds;
+  static const int kMaxSetWakeOnPacketRetries;
 
   // TODO(wdg): Remove after progressive scan field trial is over.
   void ParseFieldTrialFile(const base::FilePath &field_trial_file_path);
@@ -552,6 +566,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Executes periodically while a service is connected, to update the
   // signal strength from the currently connected AP.
   base::CancelableClosure request_station_info_callback_;
+  // Executes after the NIC's wake-on-packet settings are configured via
+  // NL80211 messages to verify that the new configuration has taken effect.
+  // Calls RequestWakeOnPacketSettings.
+  base::CancelableClosure verify_wake_on_packet_settings_callback_;
   // Number of remaining fast scans to be done during startup and disconnect.
   int fast_scans_remaining_;
   // Indicates that the current BSS has reached the completed state according
@@ -600,6 +618,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Used to report the current state of our wireless link.
   KeyValueStore link_statistics_;
+
+  // Number of retries to program the NIC's wake-on-packet settings.
+  int num_set_wake_on_packet_retries_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };

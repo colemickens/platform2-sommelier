@@ -237,6 +237,17 @@ class SetWakeOnPacketConnMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(SetWakeOnPacketConnMessage);
 };
 
+class GetWakeOnPacketConnMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  GetWakeOnPacketConnMessage() : Nl80211Message(kCommand, kCommandString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(GetWakeOnPacketConnMessage);
+};
+
 class GetWiphyMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;

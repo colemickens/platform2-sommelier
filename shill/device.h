@@ -279,7 +279,7 @@ class Device : public base::RefCounted<Device> {
   virtual void RemoveAllWakeOnPacketConnections(Error *error);
 
   // Get all registered wake-on-packet connections
-  const IPAddressStore &GetAllWakeOnPacketConnections() const {
+  const IPAddressStore &GetWakeOnPacketConnections() const {
     return wake_on_packet_connections_;
   }
 

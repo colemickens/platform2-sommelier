@@ -2127,7 +2127,7 @@ void Manager::TransferWakeOnPacketConnections(
     return;  // No transfer required
   }
   new_device->AddWakeOnPacketConnections(
-      old_device->GetAllWakeOnPacketConnections());
+      old_device->GetWakeOnPacketConnections());
   Error e;
   old_device->RemoveAllWakeOnPacketConnections(&e);
   if (e.IsFailure()) {
