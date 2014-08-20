@@ -38,8 +38,18 @@ bool Minijail::DropRoot(struct minijail *jail, const char *user,
          !minijail_change_group(jail, group);
 }
 
+void Minijail::UseSeccompFilter(struct minijail *jail, const char *path) {
+  minijail_no_new_privs(jail);
+  minijail_use_seccomp_filter(jail);
+  minijail_parse_seccomp_filters(jail, path);
+}
+
 void Minijail::UseCapabilities(struct minijail *jail, uint64_t capmask) {
   minijail_use_caps(jail, capmask);
+}
+
+void Minijail::Enter(struct minijail *jail) {
+  minijail_enter(jail);
 }
 
 bool Minijail::Run(struct minijail *jail,

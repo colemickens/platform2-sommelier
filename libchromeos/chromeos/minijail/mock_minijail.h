@@ -24,7 +24,9 @@ class MockMinijail : public chromeos::Minijail {
 
   MOCK_METHOD3(DropRoot, bool(struct minijail *jail, const char *user,
                               const char *group));
+  MOCK_METHOD2(UseSeccompFilter, void(struct minijail *jail, const char *path));
   MOCK_METHOD2(UseCapabilities, void(struct minijail *jail, uint64_t capmask));
+  MOCK_METHOD1(Enter, void(struct minijail *jail));
   MOCK_METHOD3(Run, bool(struct minijail *jail,
                          std::vector<char *> args, pid_t *pid));
   MOCK_METHOD3(RunSync, bool(struct minijail *jail,

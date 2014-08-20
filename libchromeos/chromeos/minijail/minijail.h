@@ -32,8 +32,16 @@ class Minijail {
   // minijail_change_user/minijail_change_group
   virtual bool DropRoot(struct minijail *jail, const char *user,
                         const char *group);
+
+  // minijail_use_seccomp_filter/minijail_no_new_privs/
+  // minijail_parse_seccomp_filters
+  virtual void UseSeccompFilter(struct minijail *jail, const char *path);
+
   // minijail_use_caps
   virtual void UseCapabilities(struct minijail *jail, uint64_t capmask);
+
+  // minijail_enter
+  virtual void Enter(struct minijail *jail);
 
   // minijail_run_pid
   virtual bool Run(struct minijail *jail, std::vector<char *> args, pid_t *pid);
