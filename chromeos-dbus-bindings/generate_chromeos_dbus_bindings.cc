@@ -5,7 +5,10 @@
 #include <string>
 
 #include <base/command_line.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
+
+#include "chromeos-dbus-bindings/xml_interface_parser.h"
 
 namespace switches {
 
@@ -34,6 +37,12 @@ int main(int argc, char** argv) {
   }
 
   std::string input = cl->GetSwitchValueASCII(switches::kInput);
+
+  chromeos_dbus_bindings::XmlInterfaceParser parser;
+  if (!parser.ParseXmlInterfaceFile(base::FilePath(input))) {
+    LOG(ERROR) << "Failed to parse interface file.";
+    return 1;
+  }
 
   return 0;
 }
