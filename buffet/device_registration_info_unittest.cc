@@ -4,9 +4,9 @@
 
 #include <base/json/json_reader.h>
 #include <base/values.h>
+#include <chromeos/bind_lambda.h>
 #include <gtest/gtest.h>
 
-#include "buffet/bind_lambda.h"
 #include "buffet/commands/command_manager.h"
 #include "buffet/commands/unittest_utils.h"
 #include "buffet/device_registration_info.h"

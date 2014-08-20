@@ -9,8 +9,8 @@
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
+#include <chromeos/bind_lambda.h>
 
-#include "buffet/bind_lambda.h"
 #include "buffet/http_connection_fake.h"
 #include "buffet/http_request.h"
 #include "buffet/mime_utils.h"

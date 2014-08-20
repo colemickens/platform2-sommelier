@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_BIND_LAMBDA_H_
-#define BUFFET_BIND_LAMBDA_H_
+#ifndef LIBCHROMEOS_CHROMEOS_BIND_LAMBDA_H_
+#define LIBCHROMEOS_CHROMEOS_BIND_LAMBDA_H_
 
 #include <base/bind.h>
 
@@ -58,8 +58,7 @@ class RunnableAdapter : public LambdaAdapter<Lambda,
   }
 };
 
-
 }  // namespace internal
 }  // namespace base
 
-#endif  // BUFFET_BIND_LAMBDA_H_
+#endif  // LIBCHROMEOS_CHROMEOS_BIND_LAMBDA_H_

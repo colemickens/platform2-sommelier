@@ -6,9 +6,9 @@
 #include <vector>
 
 #include <base/values.h>
+#include <chromeos/bind_lambda.h>
 #include <gtest/gtest.h>
 
-#include "buffet/bind_lambda.h"
 #include "buffet/http_transport_fake.h"
 #include "buffet/http_utils.h"
 #include "buffet/mime_utils.h"
