@@ -73,7 +73,7 @@ if [ -z "$FLAGS_arch" ]; then
   i?86|x86_64)
     ARCH="INTEL"
     ;;
-  arm*)
+  arm*|aarch64)
     ARCH="ARM"
     ;;
   *)
