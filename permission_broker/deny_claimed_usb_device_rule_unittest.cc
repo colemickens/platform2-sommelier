@@ -18,8 +18,8 @@ namespace permission_broker {
 
 class DenyClaimedUsbDeviceRuleTest : public testing::Test {
  public:
-  DenyClaimedUsbDeviceRuleTest() {}
-  virtual ~DenyClaimedUsbDeviceRuleTest() {}
+  DenyClaimedUsbDeviceRuleTest() = default;
+  ~DenyClaimedUsbDeviceRuleTest() override = default;
 
  protected:
   void FindClaimedDevices(set<string> *paths) {

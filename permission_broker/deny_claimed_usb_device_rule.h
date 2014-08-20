@@ -24,10 +24,9 @@ namespace permission_broker {
 class DenyClaimedUsbDeviceRule : public Rule {
  public:
   DenyClaimedUsbDeviceRule();
-  virtual ~DenyClaimedUsbDeviceRule();
+  ~DenyClaimedUsbDeviceRule() override;
 
-  virtual Result Process(const std::string &path,
-                         const int interface_id);
+  Result Process(const std::string &path, const int interface_id) override;
 
  private:
   struct udev *const udev_;

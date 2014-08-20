@@ -15,9 +15,9 @@ namespace permission_broker {
 class AllowUsbDeviceRule : public UsbSubsystemUdevRule {
  public:
   AllowUsbDeviceRule();
-  virtual ~AllowUsbDeviceRule();
+  ~AllowUsbDeviceRule() override = default;
 
-  virtual Result ProcessUsbDevice(struct udev_device *device);
+  Result ProcessUsbDevice(struct udev_device *device) override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AllowUsbDeviceRule);

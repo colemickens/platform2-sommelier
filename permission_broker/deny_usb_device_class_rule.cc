@@ -14,8 +14,6 @@ DenyUsbDeviceClassRule::DenyUsbDeviceClassRule(const uint8_t device_class)
     : UsbSubsystemUdevRule("DenyUsbDeviceClassRule"),
       device_class_(base::StringPrintf("%.2x", device_class)) {}
 
-DenyUsbDeviceClassRule::~DenyUsbDeviceClassRule() {}
-
 Rule::Result DenyUsbDeviceClassRule::ProcessUsbDevice(
     struct udev_device *device) {
   const char *device_class =

@@ -11,8 +11,6 @@ namespace permission_broker {
 AllowHidrawDeviceRule::AllowHidrawDeviceRule()
     : HidrawSubsystemUdevRule("AllowHidrawDeviceRule") {}
 
-AllowHidrawDeviceRule::~AllowHidrawDeviceRule() {}
-
 Rule::Result AllowHidrawDeviceRule::ProcessHidrawDevice(
     struct udev_device *device) {
   return ALLOW;

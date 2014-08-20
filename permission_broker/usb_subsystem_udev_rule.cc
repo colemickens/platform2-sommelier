@@ -15,8 +15,6 @@ namespace permission_broker {
 UsbSubsystemUdevRule::UsbSubsystemUdevRule(const string &name)
     : UdevRule(name) {}
 
-UsbSubsystemUdevRule::~UsbSubsystemUdevRule() {}
-
 Rule::Result UsbSubsystemUdevRule::ProcessDevice(struct udev_device *device) {
   const char *const subsystem = udev_device_get_subsystem(device);
   if (!subsystem || strcmp(subsystem, "usb"))

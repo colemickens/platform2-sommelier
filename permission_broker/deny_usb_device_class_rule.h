@@ -14,9 +14,9 @@ namespace permission_broker {
 class DenyUsbDeviceClassRule : public UsbSubsystemUdevRule {
  public:
   explicit DenyUsbDeviceClassRule(const uint8_t device_class);
-  virtual ~DenyUsbDeviceClassRule();
+  ~DenyUsbDeviceClassRule() override = default;
 
-  virtual Result ProcessUsbDevice(struct udev_device *device);
+  Result ProcessUsbDevice(struct udev_device *device) override;
 
  private:
   const std::string device_class_;

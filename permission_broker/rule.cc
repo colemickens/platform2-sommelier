@@ -21,9 +21,7 @@ const char *Rule::ResultToString(const Result &result) {
 
 Rule::Rule(const std::string &name) : name_(name) {}
 
-Rule::~Rule() {}
-
-const std::string &Rule::name() {
+const std::string &Rule::name() const {
   return name_;
 }
 

@@ -15,9 +15,9 @@ namespace permission_broker {
 class AllowHidrawDeviceRule : public HidrawSubsystemUdevRule {
  public:
   AllowHidrawDeviceRule();
-  virtual ~AllowHidrawDeviceRule();
+  ~AllowHidrawDeviceRule() override = default;
 
-  virtual Result ProcessHidrawDevice(struct udev_device *device);
+  Result ProcessHidrawDevice(struct udev_device *device) override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AllowHidrawDeviceRule);

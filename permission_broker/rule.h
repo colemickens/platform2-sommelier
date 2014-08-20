@@ -24,8 +24,8 @@ class Rule {
 
   static const char *ResultToString(const Result &result);
 
-  virtual ~Rule();
-  const std::string &name();
+  virtual ~Rule() = default;
+  const std::string &name() const;
 
   virtual Result Process(const std::string &path,
                          const int interface_id) = 0;

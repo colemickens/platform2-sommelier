@@ -16,9 +16,9 @@ namespace permission_broker {
 class DenyUnsafeHidrawDeviceRule : public HidrawSubsystemUdevRule {
  public:
   DenyUnsafeHidrawDeviceRule();
-  virtual ~DenyUnsafeHidrawDeviceRule();
+  ~DenyUnsafeHidrawDeviceRule() override = default;
 
-  virtual Result ProcessHidrawDevice(struct udev_device *device);
+  Result ProcessHidrawDevice(struct udev_device *device) override;
 
   static bool IsUnsafeUsage(const HidUsage& usage);
 

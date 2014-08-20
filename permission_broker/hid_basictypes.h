@@ -125,7 +125,7 @@ struct HidUsage {
 
   HidUsage(Page page, uint16_t usage)
       : page(page), usage(usage) {}
-  ~HidUsage() {}
+  ~HidUsage() = default;
 
   Page page;
   uint16_t usage;

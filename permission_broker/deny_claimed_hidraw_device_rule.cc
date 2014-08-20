@@ -14,8 +14,6 @@ namespace permission_broker {
 DenyClaimedHidrawDeviceRule::DenyClaimedHidrawDeviceRule()
     : HidrawSubsystemUdevRule("DenyClaimedHidrawDeviceRule") {}
 
-DenyClaimedHidrawDeviceRule::~DenyClaimedHidrawDeviceRule() {}
-
 Rule::Result DenyClaimedHidrawDeviceRule::ProcessHidrawDevice(
     struct udev_device *device) {
   // For now, treat non-USB HID devices as claimed.

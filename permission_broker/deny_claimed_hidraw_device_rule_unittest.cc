@@ -14,11 +14,9 @@ namespace permission_broker {
 
 class DenyClaimedHidrawDeviceRuleTest : public testing::Test {
  public:
-  DenyClaimedHidrawDeviceRuleTest()
-    : udev_(udev_new()) {
-  }
+  DenyClaimedHidrawDeviceRuleTest() : udev_(udev_new()) {}
 
-  virtual ~DenyClaimedHidrawDeviceRuleTest() {}
+  ~DenyClaimedHidrawDeviceRuleTest() override = default;
 
  protected:
   ScopedUdevPtr udev_;

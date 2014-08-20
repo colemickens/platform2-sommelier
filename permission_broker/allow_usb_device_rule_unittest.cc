@@ -10,8 +10,8 @@ namespace permission_broker {
 
 class AllowUsbDeviceRuleTest : public testing::Test {
  public:
-  AllowUsbDeviceRuleTest() {}
-  virtual ~AllowUsbDeviceRuleTest() {}
+  AllowUsbDeviceRuleTest() = default;
+  ~AllowUsbDeviceRuleTest() override = default;
 
  protected:
   AllowUsbDeviceRule rule_;

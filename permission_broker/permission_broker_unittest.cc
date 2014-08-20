@@ -20,7 +20,7 @@ namespace permission_broker {
 class MockRule : public Rule {
  public:
   MockRule() : Rule("MockRule") {}
-  virtual ~MockRule() {}
+  ~MockRule() override = default;
 
   MOCK_METHOD2(Process, Result(const string &path, int interface_id));
 
@@ -31,7 +31,7 @@ class MockRule : public Rule {
 class MockPermissionBroker : public PermissionBroker {
  public:
   MockPermissionBroker() : PermissionBroker(0) {}
-  virtual ~MockPermissionBroker() {}
+  ~MockPermissionBroker() override = default;
 
   MOCK_METHOD1(MockGrantAccess, bool(const string &path));
   MOCK_METHOD0(WaitForEmptyUdevQueue, void(void));
@@ -46,8 +46,8 @@ class MockPermissionBroker : public PermissionBroker {
 
 class PermissionBrokerTest : public testing::Test {
  public:
-  PermissionBrokerTest() {}
-  virtual ~PermissionBrokerTest() {}
+  PermissionBrokerTest() = default;
+  ~PermissionBrokerTest() override = default;
 
   bool ProcessPath(const string &path, int interface_id) {
     return broker_.ProcessPath(path, interface_id);

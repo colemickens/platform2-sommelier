@@ -7,7 +7,7 @@ include common.mk
 BASE_VER ?= 242728
 PKG_CONFIG ?= pkg-config
 
-CXXFLAGS += -I$(SRC)/..
+CXXFLAGS += -I$(SRC)/.. -std=gnu++11
 
 DBUS_DEPS = dbus-1 dbus-glib-1
 DBUS_FLAGS := $(shell $(PKG_CONFIG) --cflags $(DBUS_DEPS))

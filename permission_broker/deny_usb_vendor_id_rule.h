@@ -17,9 +17,9 @@ namespace permission_broker {
 class DenyUsbVendorIdRule : public UsbSubsystemUdevRule {
  public:
   explicit DenyUsbVendorIdRule(const uint16_t vendor_id);
-  virtual ~DenyUsbVendorIdRule();
+  ~DenyUsbVendorIdRule() override = default;
 
-  virtual Result ProcessUsbDevice(struct udev_device *device);
+  Result ProcessUsbDevice(struct udev_device *device) override;
 
  private:
   const std::string vendor_id_;

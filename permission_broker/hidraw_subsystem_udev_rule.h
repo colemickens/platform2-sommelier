@@ -19,12 +19,12 @@ namespace permission_broker {
 class HidrawSubsystemUdevRule : public UdevRule {
  public:
   explicit HidrawSubsystemUdevRule(const std::string &name);
-  virtual ~HidrawSubsystemUdevRule();
+  ~HidrawSubsystemUdevRule() override = default;
 
   // Called with every device belonging to the hidraw subsystem.
   virtual Result ProcessHidrawDevice(struct udev_device *device) = 0;
 
-  virtual Result ProcessDevice(struct udev_device *device);
+  Result ProcessDevice(struct udev_device *device) override;
 
   // This parses toplevel items from a report descriptor and extracts the usage
   // parameters of any toplevel collections.

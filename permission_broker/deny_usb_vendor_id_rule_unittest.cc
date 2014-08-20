@@ -13,7 +13,7 @@ namespace permission_broker {
 class DenyUsbVendorIdRuleTest : public testing::Test {
  public:
   DenyUsbVendorIdRuleTest() : rule_(kLinuxFoundationUsbVendorId) {}
-  virtual ~DenyUsbVendorIdRuleTest() {}
+  ~DenyUsbVendorIdRuleTest() override = default;
 
  protected:
   DenyUsbVendorIdRule rule_;

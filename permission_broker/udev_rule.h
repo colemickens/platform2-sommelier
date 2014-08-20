@@ -18,11 +18,11 @@ namespace permission_broker {
 class UdevRule : public Rule {
  public:
   explicit UdevRule(const std::string& name);
-  virtual ~UdevRule();
+  ~UdevRule() override;
 
   virtual Result ProcessDevice(struct udev_device *device) = 0;
 
-  virtual Result Process(const std::string& path, int interface_id);
+  Result Process(const std::string& path, int interface_id) override;
 
  private:
   struct udev *const udev_;

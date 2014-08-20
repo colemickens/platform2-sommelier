@@ -187,8 +187,6 @@ bool ParseToplevelDescriptorItems(const HidReportDescriptor& descriptor,
 HidrawSubsystemUdevRule::HidrawSubsystemUdevRule(const string &name)
     : UdevRule(name) {}
 
-HidrawSubsystemUdevRule::~HidrawSubsystemUdevRule() {}
-
 Rule::Result HidrawSubsystemUdevRule::ProcessDevice(
     struct udev_device *device) {
   const char *const subsystem = udev_device_get_subsystem(device);

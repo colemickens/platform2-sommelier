@@ -15,9 +15,9 @@ namespace permission_broker {
 class DenyClaimedHidrawDeviceRule : public HidrawSubsystemUdevRule {
  public:
   DenyClaimedHidrawDeviceRule();
-  virtual ~DenyClaimedHidrawDeviceRule();
+  ~DenyClaimedHidrawDeviceRule() override = default;
 
-  virtual Result ProcessHidrawDevice(struct udev_device *device);
+  Result ProcessHidrawDevice(struct udev_device *device) override;
 
   // Indicates if a hidraw device should be inaccessible given the subsystem
   // identifier of one of its siblings.

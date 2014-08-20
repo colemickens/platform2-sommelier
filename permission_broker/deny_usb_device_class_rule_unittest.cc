@@ -12,7 +12,7 @@ namespace permission_broker {
 class DenyUsbDeviceClassRuleTest : public testing::Test {
  public:
   DenyUsbDeviceClassRuleTest() : rule_(USB_CLASS_HUB) {}
-  virtual ~DenyUsbDeviceClassRuleTest() {}
+  ~DenyUsbDeviceClassRuleTest() override = default;
 
  protected:
   DenyUsbDeviceClassRule rule_;

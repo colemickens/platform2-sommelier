@@ -12,9 +12,9 @@ namespace permission_broker {
 class DenyUninitializedDeviceRule : public UdevRule {
  public:
   DenyUninitializedDeviceRule();
-  virtual ~DenyUninitializedDeviceRule();
+  ~DenyUninitializedDeviceRule() override = default;
 
-  virtual Result ProcessDevice(struct udev_device *device);
+  Result ProcessDevice(struct udev_device *device) override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DenyUninitializedDeviceRule);

@@ -51,8 +51,6 @@ bool IsSystemControlUsage(const HidUsage& usage) {
 DenyUnsafeHidrawDeviceRule::DenyUnsafeHidrawDeviceRule()
     : HidrawSubsystemUdevRule("DenyUnsafeHidrawDeviceRule") {}
 
-DenyUnsafeHidrawDeviceRule::~DenyUnsafeHidrawDeviceRule() {}
-
 Rule::Result DenyUnsafeHidrawDeviceRule::ProcessHidrawDevice(
     struct udev_device *device) {
   std::vector<HidUsage> usages;

@@ -11,8 +11,6 @@ namespace permission_broker {
 AllowUsbDeviceRule::AllowUsbDeviceRule()
     : UsbSubsystemUdevRule("AllowUsbDeviceRule") {}
 
-AllowUsbDeviceRule::~AllowUsbDeviceRule() {}
-
 Rule::Result AllowUsbDeviceRule::ProcessUsbDevice(struct udev_device *device) {
   return ALLOW;
 }
