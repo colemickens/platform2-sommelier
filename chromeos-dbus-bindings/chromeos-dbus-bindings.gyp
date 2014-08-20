@@ -23,6 +23,7 @@
       'target_name': 'libchromeos-dbus-bindings',
       'type': 'static_library',
       'sources': [
+        'method_name_generator.cc',
         'xml_interface_parser.cc',
       ],
       'variables': {
@@ -65,6 +66,7 @@
           'includes': ['../../platform2/common-mk/common_test.gypi'],
           'sources': [
             'testrunner.cc',
+            'method_name_generator_unittest.cc',
             'xml_interface_parser_unittest.cc',
           ],
         },
