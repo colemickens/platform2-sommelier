@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_MAP_UTILS_H_
-#define BUFFET_MAP_UTILS_H_
+#ifndef LIBCHROMEOS_CHROMEOS_MAP_UTILS_H_
+#define LIBCHROMEOS_CHROMEOS_MAP_UTILS_H_
 
 #include <map>
 #include <utility>
 #include <vector>
 
-namespace buffet {
+namespace chromeos {
 
 // Given an STL map returns a vector containing all keys from the map
 template<typename T>
@@ -42,6 +42,6 @@ std::vector<std::pair<typename T::key_type,
   return vector;
 }
 
-}  // namespace buffet
+}  // namespace chromeos
 
-#endif  // BUFFET_MAP_UTILS_H_
+#endif  // LIBCHROMEOS_CHROMEOS_MAP_UTILS_H_
