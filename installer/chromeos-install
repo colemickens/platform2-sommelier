@@ -391,33 +391,6 @@ cleanup() {
   fi
 }
 
-# Copy kernel verification block to target HD
-# TODO(installer): Remove once crbug.com/320117 is fixed.
-copy_kernel_vblock() {
-  local ret=0
-
-  if [ -s $VERIFY_BLOB ]; then
-    if [ ${FLAGS_mtd_layout} -eq ${FLAGS_FALSE} ]; then
-      fast_dd 512 0 ${START_KERN_A} 0 if="${VERIFY_BLOB}" \
-        of="${DST}" conv=notrunc
-      fast_dd 512 0 ${START_KERN_B} 0 if="${VERIFY_BLOB}" \
-        of="${DST}" conv=notrunc
-    else
-      # We have to erase before we write else you get a boatload of I/O errors
-      flash_erase "/dev/mtd${KERNEL_PART}" 0 0
-      flash_erase "/dev/mtd${KERNEL_B_PART}" 0 0
-
-      fast_dd 512 0 ${START_KERN_A} 0 if="${VERIFY_BLOB}" \
-        of="/dev/mtdblock${KERNEL_PART}" conv=notrunc
-      fast_dd 512 0 ${START_KERN_B} 0 if="${VERIFY_BLOB}" \
-        of="/dev/mtdblock${KERNEL_B_PART}" conv=notrunc
-    fi
-
-    ret=1
-  fi
-  echo ${ret}
-}
-
 check_removable() {
   if [ ${FLAGS_skip_dst_removable} -eq ${FLAGS_TRUE} ]; then
     return
@@ -773,19 +746,6 @@ done
 ################################################################################
 # Post partition copying work and special casing
 ################################################################################
-
-# The recovery image is signed with different keys from the hard-disk image. We
-# need to copy the hard disk verification block from the stateful partition so
-# that reboot from HD can be verified.
-VERIFY_BLOB="${ROOT}/mnt/stateful_partition/vmlinuz_hd.vblock"
-if [ ${FLAGS_skip_vblock} -eq ${FLAGS_FALSE} ]; then
-  if [ $(copy_kernel_vblock) -eq 1 ]; then
-    echo "Copied kernel verification blob from ${VERIFY_BLOB}"
-  else
-    echo "Error: kernel verification blob not found in stateful partition"
-    exit 1
-  fi
-fi
 
 POSTINST_BIOS_ARGS=""
 if [ -n "${FLAGS_target_bios}" ]; then
