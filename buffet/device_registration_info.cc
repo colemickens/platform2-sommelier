@@ -11,6 +11,8 @@
 #include <base/json/json_writer.h>
 #include <base/values.h>
 #include <chromeos/data_encoding.h>
+#include <chromeos/http_transport_curl.h>
+#include <chromeos/http_utils.h>
 #include <chromeos/mime_utils.h>
 #include <chromeos/string_utils.h>
 #include <chromeos/url_utils.h>
@@ -18,8 +20,6 @@
 #include "buffet/commands/command_definition.h"
 #include "buffet/commands/command_manager.h"
 #include "buffet/device_registration_storage_keys.h"
-#include "buffet/http_transport_curl.h"
-#include "buffet/http_utils.h"
 #include "buffet/storage_impls.h"
 
 const char buffet::kErrorDomainOAuth2[] = "oauth2";
@@ -69,14 +69,14 @@ std::pair<std::string, std::string> BuildAuthHeader(
     const std::string& access_token) {
   std::string authorization =
       chromeos::string_utils::Join(' ', access_token_type, access_token);
-  return {buffet::http::request_header::kAuthorization, authorization};
+  return {chromeos::http::request_header::kAuthorization, authorization};
 }
 
 std::unique_ptr<base::DictionaryValue> ParseOAuthResponse(
-    const buffet::http::Response* response, chromeos::ErrorPtr* error) {
+    const chromeos::http::Response* response, chromeos::ErrorPtr* error) {
   int code = 0;
-  auto resp = buffet::http::ParseJsonResponse(response, &code, error);
-  if (resp && code >= buffet::http::status_code::BadRequest) {
+  auto resp = chromeos::http::ParseJsonResponse(response, &code, error);
+  if (resp && code >= chromeos::http::status_code::BadRequest) {
     if (error) {
       std::string error_code, error_message;
       if (resp->GetString("error", &error_code) &&
@@ -143,7 +143,7 @@ namespace buffet {
 
 DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<CommandManager>& command_manager)
-    : transport_(new http::curl::Transport()),
+    : transport_(new chromeos::http::curl::Transport()),
       // TODO(avakulenko): Figure out security implications of storing
       // this data unencrypted.
       storage_(new FileStorage(base::FilePath(kDeviceInfoFilePath))),
@@ -152,7 +152,7 @@ DeviceRegistrationInfo::DeviceRegistrationInfo(
 
 DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<CommandManager>& command_manager,
-    const std::shared_ptr<http::Transport>& transport,
+    const std::shared_ptr<chromeos::http::Transport>& transport,
     const std::shared_ptr<StorageInterface>& storage)
     : transport_(transport),
       storage_(storage),
@@ -269,7 +269,7 @@ bool DeviceRegistrationInfo::ValidateAndRefreshAccessToken(
     return true;
   }
 
-  auto response = http::PostFormData(GetOAuthURL("token"), {
+  auto response = chromeos::http::PostFormData(GetOAuthURL("token"), {
     {"refresh_token", refresh_token_},
     {"client_id", client_id_},
     {"client_secret", client_secret_},
@@ -307,13 +307,13 @@ std::unique_ptr<base::Value> DeviceRegistrationInfo::GetDeviceInfo(
   if (!CheckRegistration(error))
     return std::unique_ptr<base::Value>();
 
-  auto response = http::Get(GetDeviceURL(),
-                            {GetAuthorizationHeader()}, transport_, error);
+  auto response = chromeos::http::Get(
+      GetDeviceURL(), {GetAuthorizationHeader()}, transport_, error);
   int status_code = 0;
   std::unique_ptr<base::DictionaryValue> json =
-      http::ParseJsonResponse(response.get(), &status_code, error);
+      chromeos::http::ParseJsonResponse(response.get(), &status_code, error);
   if (json) {
-    if (status_code >= http::status_code::BadRequest) {
+    if (status_code >= chromeos::http::status_code::BadRequest) {
       LOG(WARNING) << "Failed to retrieve the device info. Response code = "
                    << status_code;
       ParseGCDError(json.get(), error);
@@ -377,8 +377,9 @@ std::string DeviceRegistrationInfo::StartRegistration(
   req_json.Set("deviceDraft.commandDefs", commands.release());
 
   std::string url = GetServiceURL("registrationTickets", {{"key", api_key_}});
-  auto resp_json = http::ParseJsonResponse(
-      http::PostJson(url, &req_json, transport_, error).get(), nullptr, error);
+  auto resp_json = chromeos::http::ParseJsonResponse(
+      chromeos::http::PostJson(url, &req_json, transport_, error).get(),
+      nullptr, error);
   if (!resp_json)
     return std::string();
 
@@ -415,9 +416,9 @@ bool DeviceRegistrationInfo::FinishRegistration(
   }
 
   std::string url = GetServiceURL("registrationTickets/" + ticket_id_);
-  std::unique_ptr<http::Response> response;
+  std::unique_ptr<chromeos::http::Response> response;
   if (!user_auth_code.empty()) {
-    response = http::PostFormData(GetOAuthURL("token"), {
+    response = chromeos::http::PostFormData(GetOAuthURL("token"), {
       {"code", user_auth_code},
       {"client_id", client_id_},
       {"client_secret", client_secret_},
@@ -442,11 +443,12 @@ bool DeviceRegistrationInfo::FinishRegistration(
 
     base::DictionaryValue user_info;
     user_info.SetString("userEmail", "me");
-    response = http::PatchJson(
+    response = chromeos::http::PatchJson(
         url, &user_info, {BuildAuthHeader(token_type, user_access_token)},
         transport_, error);
 
-    auto json = http::ParseJsonResponse(response.get(), nullptr, error);
+    auto json = chromeos::http::ParseJsonResponse(response.get(), nullptr,
+                                                  error);
     if (!json)
       return false;
   }
@@ -454,10 +456,11 @@ bool DeviceRegistrationInfo::FinishRegistration(
   std::string auth_code;
   url += "/finalize?key=" + api_key_;
   LOG(INFO) << "Sending request to: " << url;
-  response = http::PostBinary(url, nullptr, 0, transport_, error);
+  response = chromeos::http::PostBinary(url, nullptr, 0, transport_, error);
   if (!response)
     return false;
-  auto json_resp = http::ParseJsonResponse(response.get(), nullptr, error);
+  auto json_resp = chromeos::http::ParseJsonResponse(response.get(), nullptr,
+                                                     error);
   if (!json_resp)
     return false;
   if (!response->IsSuccessful()) {
@@ -473,7 +476,7 @@ bool DeviceRegistrationInfo::FinishRegistration(
   }
 
   // Now get access_token and refresh_token
-  response = http::PostFormData(GetOAuthURL("token"), {
+  response = chromeos::http::PostFormData(GetOAuthURL("token"), {
     {"code", auth_code},
     {"client_id", client_id_},
     {"client_secret", client_secret_},

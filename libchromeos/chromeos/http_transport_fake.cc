@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/http_transport_fake.h"
+#include <chromeos/http_transport_fake.h>
 
 #include <utility>
 
@@ -10,14 +10,13 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <chromeos/bind_lambda.h>
+#include <chromeos/http_connection_fake.h>
+#include <chromeos/http_request.h>
 #include <chromeos/mime_utils.h>
 #include <chromeos/string_utils.h>
 #include <chromeos/url_utils.h>
 
-#include "buffet/http_connection_fake.h"
-#include "buffet/http_request.h"
-
-namespace buffet {
+namespace chromeos {
 
 using http::fake::Transport;
 using http::fake::ServerRequestResponseBase;
@@ -261,4 +260,4 @@ std::string ServerResponse::GetStatusText() const {
   return std::string();
 }
 
-}  // namespace buffet
+}  // namespace chromeos

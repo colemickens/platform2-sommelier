@@ -7,16 +7,15 @@
 
 #include <base/values.h>
 #include <chromeos/bind_lambda.h>
+#include <chromeos/http_transport_fake.h>
+#include <chromeos/http_utils.h>
 #include <chromeos/mime_utils.h>
 #include <chromeos/string_utils.h>
 #include <chromeos/url_utils.h>
 #include <gtest/gtest.h>
 
-#include "buffet/http_transport_fake.h"
-#include "buffet/http_utils.h"
-
-using namespace buffet;        // NOLINT(build/namespaces)
-using namespace buffet::http;  // NOLINT(build/namespaces)
+namespace chromeos {
+namespace http {
 
 static const char kFakeUrl[] = "http://localhost";
 static const char kEchoUrl[] = "http://localhost/echo";
@@ -339,3 +338,5 @@ TEST(HttpUtils, ParseJsonResponse) {
   EXPECT_EQ(status_code::NotFound, code);
 }
 
+}  // namespace http
+}  // namespace chromeos

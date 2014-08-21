@@ -5,6 +5,8 @@
 #include <base/json/json_reader.h>
 #include <base/values.h>
 #include <chromeos/bind_lambda.h>
+#include <chromeos/http_request.h>
+#include <chromeos/http_transport_fake.h>
 #include <chromeos/mime_utils.h>
 #include <gtest/gtest.h>
 
@@ -12,12 +14,13 @@
 #include "buffet/commands/unittest_utils.h"
 #include "buffet/device_registration_info.h"
 #include "buffet/device_registration_storage_keys.h"
-#include "buffet/http_request.h"
-#include "buffet/http_transport_fake.h"
 #include "buffet/storage_impls.h"
 
-using namespace buffet;          // NOLINT(build/namespaces)
-using namespace buffet::http;    // NOLINT(build/namespaces)
+using chromeos::http::request_header::kAuthorization;
+using chromeos::http::fake::ServerRequest;
+using chromeos::http::fake::ServerResponse;
+
+namespace buffet {
 
 namespace {
 
@@ -69,8 +72,7 @@ void SetDefaultDeviceRegistration(base::DictionaryValue* data) {
   data->SetString(storage_keys::kRobotAccount, test_data::kRobotAccountEmail);
 }
 
-void OAuth2Handler(const fake::ServerRequest& request,
-                  fake::ServerResponse* response) {
+void OAuth2Handler(const ServerRequest& request, ServerResponse* response) {
   base::DictionaryValue json;
   if (request.GetFormField("grant_type") == "refresh_token") {
     // Refresh device access token.
@@ -109,15 +111,15 @@ void OAuth2Handler(const fake::ServerRequest& request,
     FAIL() << "Unexpected grant type";
   }
   json.SetInteger("expires_in", 3600);
-  response->ReplyJson(status_code::Ok, &json);
+  response->ReplyJson(chromeos::http::status_code::Ok, &json);
 }
 
-void DeviceInfoHandler(const fake::ServerRequest& request,
-                       fake::ServerResponse* response) {
+void DeviceInfoHandler(const ServerRequest& request, ServerResponse* response) {
   std::string auth = "Bearer ";
   auth += test_data::kAccessToken;
-  EXPECT_EQ(auth, request.GetHeader(http::request_header::kAuthorization));
-  response->ReplyJson(status_code::Ok, {
+  EXPECT_EQ(auth,
+            request.GetHeader(chromeos::http::request_header::kAuthorization));
+  response->ReplyJson(chromeos::http::status_code::Ok, {
     {"channel.supportedType", "xmpp"},
     {"deviceKind", "vendor"},
     {"id", test_data::kDeviceId},
@@ -125,12 +127,12 @@ void DeviceInfoHandler(const fake::ServerRequest& request,
   });
 }
 
-void FinalizeTicketHandler(const fake::ServerRequest& request,
-                           fake::ServerResponse* response) {
+void FinalizeTicketHandler(const ServerRequest& request,
+                           ServerResponse* response) {
   EXPECT_EQ(test_data::kApiKey, request.GetFormField("key"));
   EXPECT_TRUE(request.GetData().empty());
 
-  response->ReplyJson(status_code::Ok, {
+  response->ReplyJson(chromeos::http::status_code::Ok, {
     {"id", test_data::kClaimTicketId},
     {"kind", "clouddevices#registrationTicket"},
     {"oauthClientId", test_data::kClientId},
@@ -161,7 +163,7 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     InitDefaultStorage(&data_);
     storage_ = std::make_shared<MemStorage>();
     storage_->Save(&data_);
-    transport_ = std::make_shared<fake::Transport>();
+    transport_ = std::make_shared<chromeos::http::fake::Transport>();
     command_manager_ = std::make_shared<CommandManager>();
     dev_reg_ = std::unique_ptr<DeviceRegistrationInfo>(
         new DeviceRegistrationInfo(command_manager_, transport_, storage_));
@@ -169,7 +171,7 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
 
   base::DictionaryValue data_;
   std::shared_ptr<MemStorage> storage_;
-  std::shared_ptr<fake::Transport> transport_;
+  std::shared_ptr<chromeos::http::fake::Transport> transport_;
   std::unique_ptr<DeviceRegistrationInfo> dev_reg_;
   std::shared_ptr<CommandManager> command_manager_;
 };
@@ -219,7 +221,8 @@ TEST_F(DeviceRegistrationInfoTest, CheckRegistration) {
   storage_->Save(&data_);
   EXPECT_TRUE(dev_reg_->Load());
 
-  transport_->AddHandler(dev_reg_->GetOAuthURL("token"), request_type::kPost,
+  transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
+                         chromeos::http::request_type::kPost,
                          base::Bind(OAuth2Handler));
   transport_->ResetRequestCount();
   EXPECT_TRUE(dev_reg_->CheckRegistration(nullptr));
@@ -231,9 +234,11 @@ TEST_F(DeviceRegistrationInfoTest, GetDeviceInfo) {
   storage_->Save(&data_);
   EXPECT_TRUE(dev_reg_->Load());
 
-  transport_->AddHandler(dev_reg_->GetOAuthURL("token"), request_type::kPost,
+  transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
+                         chromeos::http::request_type::kPost,
                          base::Bind(OAuth2Handler));
-  transport_->AddHandler(dev_reg_->GetDeviceURL(), request_type::kGet,
+  transport_->AddHandler(dev_reg_->GetDeviceURL(),
+                         chromeos::http::request_type::kGet,
                          base::Bind(DeviceInfoHandler));
   transport_->ResetRequestCount();
   auto device_info = dev_reg_->GetDeviceInfo(nullptr);
@@ -251,9 +256,11 @@ TEST_F(DeviceRegistrationInfoTest, GetDeviceId) {
   storage_->Save(&data_);
   EXPECT_TRUE(dev_reg_->Load());
 
-  transport_->AddHandler(dev_reg_->GetOAuthURL("token"), request_type::kPost,
+  transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
+                         chromeos::http::request_type::kPost,
                          base::Bind(OAuth2Handler));
-  transport_->AddHandler(dev_reg_->GetDeviceURL(), request_type::kGet,
+  transport_->AddHandler(dev_reg_->GetDeviceURL(),
+                         chromeos::http::request_type::kGet,
                          base::Bind(DeviceInfoHandler));
   std::string id = dev_reg_->GetDeviceId(nullptr);
   EXPECT_EQ(test_data::kDeviceId, id);
@@ -262,8 +269,8 @@ TEST_F(DeviceRegistrationInfoTest, GetDeviceId) {
 TEST_F(DeviceRegistrationInfoTest, StartRegistration) {
   EXPECT_TRUE(dev_reg_->Load());
 
-  auto create_ticket = [](const fake::ServerRequest& request,
-                          fake::ServerResponse* response) {
+  auto create_ticket = [](const ServerRequest& request,
+                          ServerResponse* response) {
     EXPECT_EQ(test_data::kApiKey, request.GetFormField("key"));
     auto json = request.GetDataAsJson();
     EXPECT_NE(nullptr, json.get());
@@ -294,7 +301,7 @@ TEST_F(DeviceRegistrationInfoTest, StartRegistration) {
     device_draft->SetString("kind", "clouddevices#device");
     json_resp.Set("deviceDraft", device_draft);
 
-    response->ReplyJson(status_code::Ok, &json_resp);
+    response->ReplyJson(chromeos::http::status_code::Ok, &json_resp);
   };
 
   auto json_base = buffet::unittests::CreateDictionaryValue(R"({
@@ -323,7 +330,7 @@ TEST_F(DeviceRegistrationInfoTest, StartRegistration) {
   EXPECT_TRUE(command_manager_->LoadCommands(*json_cmds, "", nullptr));
 
   transport_->AddHandler(dev_reg_->GetServiceURL("registrationTickets"),
-                         request_type::kPost,
+                         chromeos::http::request_type::kPost,
                          base::Bind(create_ticket));
   std::map<std::string, std::string> params;
   std::string json_resp = dev_reg_->StartRegistration(params, nullptr);
@@ -345,10 +352,12 @@ TEST_F(DeviceRegistrationInfoTest, FinishRegistration_NoAuth) {
   std::string ticket_url =
       dev_reg_->GetServiceURL("registrationTickets/" +
                              std::string(test_data::kClaimTicketId));
-  transport_->AddHandler(ticket_url + "/finalize", request_type::kPost,
+  transport_->AddHandler(ticket_url + "/finalize",
+                         chromeos::http::request_type::kPost,
                          base::Bind(FinalizeTicketHandler));
 
-  transport_->AddHandler(dev_reg_->GetOAuthURL("token"), request_type::kPost,
+  transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
+                         chromeos::http::request_type::kPost,
                          base::Bind(OAuth2Handler));
 
   storage_->reset_save_count();
@@ -389,26 +398,28 @@ TEST_F(DeviceRegistrationInfoTest, FinishRegistration_Auth) {
   std::string ticket_url =
       dev_reg_->GetServiceURL("registrationTickets/" +
                              std::string(test_data::kClaimTicketId));
-  transport_->AddHandler(ticket_url + "/finalize", request_type::kPost,
+  transport_->AddHandler(ticket_url + "/finalize",
+                         chromeos::http::request_type::kPost,
                          base::Bind(FinalizeTicketHandler));
 
-  transport_->AddHandler(dev_reg_->GetOAuthURL("token"), request_type::kPost,
+  transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
+                         chromeos::http::request_type::kPost,
                          base::Bind(OAuth2Handler));
 
   // Handle patching in the user email onto the device record.
-  auto email_patch_handler = [](const fake::ServerRequest& request,
-                                fake::ServerResponse* response) {
+  auto email_patch_handler = [](const ServerRequest& request,
+                                ServerResponse* response) {
     std::string auth_header = "Bearer ";
     auth_header += test_data::kUserAccessToken;
     EXPECT_EQ(auth_header,
-              request.GetHeader(http::request_header::kAuthorization));
+        request.GetHeader(chromeos::http::request_header::kAuthorization));
     auto json = request.GetDataAsJson();
     EXPECT_NE(nullptr, json.get());
     std::string value;
     EXPECT_TRUE(json->GetString("userEmail", &value));
     EXPECT_EQ("me", value);
 
-    response->ReplyJson(status_code::Ok, {
+    response->ReplyJson(chromeos::http::status_code::Ok, {
       {"id", test_data::kClaimTicketId},
       {"kind", "clouddevices#registrationTicket"},
       {"oauthClientId", test_data::kClientId},
@@ -418,7 +429,7 @@ TEST_F(DeviceRegistrationInfoTest, FinishRegistration_Auth) {
       {"deviceDraft.channel.supportedType", "xmpp"},
     });
   };
-  transport_->AddHandler(ticket_url, request_type::kPatch,
+  transport_->AddHandler(ticket_url, chromeos::http::request_type::kPatch,
                          base::Bind(email_patch_handler));
 
   storage_->reset_save_count();
@@ -429,3 +440,5 @@ TEST_F(DeviceRegistrationInfoTest, FinishRegistration_Auth) {
             storage_->save_count());  // The device info must have been saved.
   EXPECT_EQ(4, transport_->GetRequestCount());
 }
+
+}  // namespace buffet

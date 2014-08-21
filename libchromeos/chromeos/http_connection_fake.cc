@@ -2,15 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/http_connection_fake.h"
+#include <chromeos/http_connection_fake.h>
 
 #include <base/logging.h>
+#include <chromeos/http_request.h>
 #include <chromeos/mime_utils.h>
 #include <chromeos/string_utils.h>
 
-#include "buffet/http_request.h"
-
-namespace buffet {
+namespace chromeos {
 namespace http {
 namespace fake {
 
@@ -95,4 +94,4 @@ bool Connection::ReadResponseData(void* data,
 
 }  // namespace fake
 }  // namespace http
-}  // namespace buffet
+}  // namespace chromeos

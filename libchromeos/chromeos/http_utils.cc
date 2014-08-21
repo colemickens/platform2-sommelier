@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/http_utils.h"
+#include <chromeos/http_utils.h>
 
 #include <algorithm>
 
@@ -16,7 +16,7 @@
 using chromeos::mime::AppendParameter;
 using chromeos::mime::RemoveParameters;
 
-namespace buffet {
+namespace chromeos {
 namespace http {
 
 std::unique_ptr<Response> Get(const std::string& url,
@@ -168,4 +168,4 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
 }
 
 }  // namespace http
-}  // namespace buffet
+}  // namespace chromeos

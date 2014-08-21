@@ -2,23 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_HTTP_UTILS_H_
-#define BUFFET_HTTP_UTILS_H_
+#ifndef LIBCHROMEOS_CHROMEOS_HTTP_UTILS_H_
+#define LIBCHROMEOS_CHROMEOS_HTTP_UTILS_H_
 
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <chromeos/error.h>
-
-#include "buffet/http_request.h"
+#include <chromeos/http_request.h>
 
 namespace base {
 class Value;
 class DictionaryValue;
 }  // namespace base
 
-namespace buffet {
+namespace chromeos {
 namespace http {
 
 typedef std::vector<std::pair<std::string, std::string>> FormFieldList;
@@ -175,6 +174,6 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
     const Response* response, int* status_code, chromeos::ErrorPtr* error);
 
 }  // namespace http
-}  // namespace buffet
+}  // namespace chromeos
 
-#endif  // BUFFET_HTTP_UTILS_H_
+#endif  // LIBCHROMEOS_CHROMEOS_HTTP_UTILS_H_

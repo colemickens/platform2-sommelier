@@ -9,7 +9,7 @@ set -e
 OUT=$1
 shift
 for v; do
-  sublibs=( 'bootstat' 'core' 'cryptohome' 'minijail' 'ui' )
+  sublibs=( 'bootstat' 'core' 'cryptohome' 'http' 'minijail' 'ui' )
   sublibs=("${sublibs[@]/#/-lchromeos-}")
   sublibs="${sublibs[@]/%/-${v}}"
   echo "GROUP ( AS_NEEDED ( ${sublibs} ) )" > "${OUT}"/lib/libchromeos-${v}.so
@@ -21,4 +21,10 @@ for v; do
     -e "s/@BSLOT@/${v}/g" \
     -e "s/@PRIVATE_PC@/${deps}/g" \
     "libchromeos.pc.in" > "${pc}"
+
+  deps_test=$(<"${OUT}"/gen/libchromeos-test-${v}-deps.txt)
+  sed \
+    -e "s/@BSLOT@/${v}/g" \
+    -e "s/@PRIVATE_PC@/${deps}/g" \
+    "libchromeos-test.pc.in" > "${OUT}/lib/libchromeos-test-${v}.pc"
 done

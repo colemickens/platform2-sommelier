@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_HTTP_TRANSPORT_CURL_H_
-#define BUFFET_HTTP_TRANSPORT_CURL_H_
+#ifndef LIBCHROMEOS_CHROMEOS_HTTP_TRANSPORT_CURL_H_
+#define LIBCHROMEOS_CHROMEOS_HTTP_TRANSPORT_CURL_H_
 
 #include <string>
 
-#include "buffet/http_transport.h"
+#include <chromeos/http_transport.h>
 
-namespace buffet {
+namespace chromeos {
 namespace http {
 namespace curl {
 
@@ -42,6 +42,6 @@ class Transport : public http::Transport {
 
 }  // namespace curl
 }  // namespace http
-}  // namespace buffet
+}  // namespace chromeos
 
-#endif  // BUFFET_HTTP_TRANSPORT_CURL_H_
+#endif  // LIBCHROMEOS_CHROMEOS_HTTP_TRANSPORT_CURL_H_

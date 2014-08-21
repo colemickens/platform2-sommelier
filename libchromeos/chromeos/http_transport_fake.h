@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_HTTP_TRANSPORT_FAKE_H_
-#define BUFFET_HTTP_TRANSPORT_FAKE_H_
+#ifndef LIBCHROMEOS_CHROMEOS_HTTP_TRANSPORT_FAKE_H_
+#define LIBCHROMEOS_CHROMEOS_HTTP_TRANSPORT_FAKE_H_
 
 #include <map>
 #include <string>
@@ -12,11 +12,10 @@
 
 #include <base/callback.h>
 #include <base/values.h>
+#include <chromeos/http_transport.h>
+#include <chromeos/http_utils.h>
 
-#include "buffet/http_transport.h"
-#include "buffet/http_utils.h"
-
-namespace buffet {
+namespace chromeos {
 namespace http {
 namespace fake {
 
@@ -218,6 +217,6 @@ class ServerResponse : public ServerRequestResponseBase {
 
 }  // namespace fake
 }  // namespace http
-}  // namespace buffet
+}  // namespace chromeos
 
-#endif  // BUFFET_HTTP_TRANSPORT_FAKE_H_
+#endif  // LIBCHROMEOS_CHROMEOS_HTTP_TRANSPORT_FAKE_H_

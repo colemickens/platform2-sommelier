@@ -2,18 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_HTTP_CONNECTION_H_
-#define BUFFET_HTTP_CONNECTION_H_
+#ifndef LIBCHROMEOS_CHROMEOS_HTTP_CONNECTION_H_
+#define LIBCHROMEOS_CHROMEOS_HTTP_CONNECTION_H_
 
 #include <string>
 #include <vector>
 
 #include <base/basictypes.h>
 #include <chromeos/error.h>
+#include <chromeos/http_transport.h>
 
-#include "buffet/http_transport.h"
-
-namespace buffet {
+namespace chromeos {
 namespace http {
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -82,6 +81,6 @@ class Connection {
 };
 
 }  // namespace http
-}  // namespace buffet
+}  // namespace chromeos
 
-#endif  // BUFFET_HTTP_CONNECTION_H_
+#endif  // LIBCHROMEOS_CHROMEOS_HTTP_CONNECTION_H_

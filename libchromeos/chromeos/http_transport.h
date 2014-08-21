@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_HTTP_TRANSPORT_H_
-#define BUFFET_HTTP_TRANSPORT_H_
+#ifndef LIBCHROMEOS_CHROMEOS_HTTP_TRANSPORT_H_
+#define LIBCHROMEOS_CHROMEOS_HTTP_TRANSPORT_H_
 
 #include <memory>
 #include <string>
@@ -13,7 +13,7 @@
 #include <base/basictypes.h>
 #include <chromeos/error.h>
 
-namespace buffet {
+namespace chromeos {
 namespace http {
 
 typedef std::vector<std::pair<std::string, std::string>> HeaderList;
@@ -48,6 +48,6 @@ class Transport {
 };
 
 }  // namespace http
-}  // namespace buffet
+}  // namespace chromeos
 
-#endif  // BUFFET_HTTP_TRANSPORT_H_
+#endif  // LIBCHROMEOS_CHROMEOS_HTTP_TRANSPORT_H_

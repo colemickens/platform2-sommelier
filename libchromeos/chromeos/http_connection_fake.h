@@ -2,19 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_HTTP_CONNECTION_FAKE_H_
-#define BUFFET_HTTP_CONNECTION_FAKE_H_
+#ifndef LIBCHROMEOS_CHROMEOS_HTTP_CONNECTION_FAKE_H_
+#define LIBCHROMEOS_CHROMEOS_HTTP_CONNECTION_FAKE_H_
 
 #include <map>
 #include <string>
 #include <vector>
 
 #include <base/basictypes.h>
+#include <chromeos/http_connection.h>
+#include <chromeos/http_transport_fake.h>
 
-#include "buffet/http_connection.h"
-#include "buffet/http_transport_fake.h"
-
-namespace buffet {
+namespace chromeos {
 namespace http {
 namespace fake {
 
@@ -57,6 +56,6 @@ class Connection : public http::Connection {
 
 }  // namespace fake
 }  // namespace http
-}  // namespace buffet
+}  // namespace chromeos
 
-#endif  // BUFFET_HTTP_CONNECTION_FAKE_H_
+#endif  // LIBCHROMEOS_CHROMEOS_HTTP_CONNECTION_FAKE_H_

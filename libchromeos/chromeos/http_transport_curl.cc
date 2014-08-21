@@ -2,14 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/http_transport_curl.h"
+#include <chromeos/http_transport_curl.h>
 
 #include <base/logging.h>
+#include <chromeos/http_connection_curl.h>
+#include <chromeos/http_request.h>
 
-#include "buffet/http_connection_curl.h"
-#include "buffet/http_request.h"
-
-namespace buffet {
+namespace chromeos {
 namespace http {
 namespace curl {
 
@@ -78,4 +77,4 @@ std::unique_ptr<http::Connection> Transport::CreateConnection(
 
 }  // namespace curl
 }  // namespace http
-}  // namespace buffet
+}  // namespace chromeos

@@ -2,19 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_HTTP_CONNECTION_CURL_H_
-#define BUFFET_HTTP_CONNECTION_CURL_H_
+#ifndef LIBCHROMEOS_CHROMEOS_HTTP_CONNECTION_CURL_H_
+#define LIBCHROMEOS_CHROMEOS_HTTP_CONNECTION_CURL_H_
 
 #include <map>
 #include <string>
 #include <vector>
 
 #include <base/basictypes.h>
+#include <chromeos/http_connection.h>
 #include <curl/curl.h>
 
-#include "buffet/http_connection.h"
-
-namespace buffet {
+namespace chromeos {
 namespace http {
 namespace curl {
 
@@ -81,6 +80,6 @@ class Connection : public http::Connection {
 
 }  // namespace curl
 }  // namespace http
-}  // namespace buffet
+}  // namespace chromeos
 
-#endif  // BUFFET_HTTP_CONNECTION_CURL_H_
+#endif  // LIBCHROMEOS_CHROMEOS_HTTP_CONNECTION_CURL_H_

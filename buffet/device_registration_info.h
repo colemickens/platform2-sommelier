@@ -14,8 +14,8 @@
 #include <base/time/time.h>
 #include <chromeos/data_encoding.h>
 #include <chromeos/error.h>
+#include <chromeos/http_transport.h>
 
-#include "buffet/http_transport.h"
 #include "buffet/storage_interface.h"
 
 namespace base {
@@ -41,9 +41,10 @@ class DeviceRegistrationInfo {
       const std::shared_ptr<CommandManager>& command_manager);
   // This constructor allows to pass in a custom HTTP transport
   // (mainly for testing).
-  DeviceRegistrationInfo(const std::shared_ptr<CommandManager>& command_manager,
-                         const std::shared_ptr<http::Transport>& transport,
-                         const std::shared_ptr<StorageInterface>& storage);
+  DeviceRegistrationInfo(
+      const std::shared_ptr<CommandManager>& command_manager,
+      const std::shared_ptr<chromeos::http::Transport>& transport,
+      const std::shared_ptr<StorageInterface>& storage);
 
   // Returns the authorization HTTP header that can be used to talk
   // to GCD server for authenticated device communication.
@@ -138,7 +139,7 @@ class DeviceRegistrationInfo {
   std::string display_name_ = "Coffee Pot";
 
   // HTTP transport used for communications.
-  std::shared_ptr<http::Transport> transport_;
+  std::shared_ptr<chromeos::http::Transport> transport_;
   // Serialization interface to save and load device registration info.
   std::shared_ptr<StorageInterface> storage_;
   // Global command manager.

@@ -1,0 +1,7 @@
+bslot=@BSLOT@
+
+Name: libchromeos-test
+Description: chromeos test library
+Version: ${bslot}
+Requires.private: @PRIVATE_PC@
+Libs: -lchromeos-test-${bslot}

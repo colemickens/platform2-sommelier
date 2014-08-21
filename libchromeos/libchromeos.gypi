@@ -20,6 +20,7 @@
         'libchromeos-bootstat-<(libbase_ver)',
         'libchromeos-core-<(libbase_ver)',
         'libchromeos-cryptohome-<(libbase_ver)',
+        'libchromeos-http-<(libbase_ver)',
         'libchromeos-minijail-<(libbase_ver)',
         'libchromeos-ui-<(libbase_ver)',
         'libpolicy-<(libbase_ver)',
@@ -75,6 +76,46 @@
         'chromeos/syslog_logging.cc',
         'chromeos/url_utils.cc',
       ],
+    },
+    {
+      'target_name': 'libchromeos-http-<(libbase_ver)',
+      'type': 'shared_library',
+      'variables': {
+        'exported_deps': [
+          'libcurl',
+        ],
+        'deps': ['<@(exported_deps)'],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
+      },
+      'cflags': [
+        # TODO: crosbug.com/315233
+        '-fvisibility=default',
+      ],
+      'sources': [
+        'chromeos/http_connection_curl.cc',
+        'chromeos/http_request.cc',
+        'chromeos/http_transport_curl.cc',
+        'chromeos/http_utils.cc',
+      ],
+    },
+    {
+      'target_name': 'libchromeos-test-<(libbase_ver)',
+      'type': 'static_library',
+      'standalone_static_library': 1,
+      'dependencies': [
+        'libchromeos-http-<(libbase_ver)',
+      ],
+      'sources': [
+        'chromeos/http_connection_fake.cc',
+        'chromeos/http_transport_fake.cc',
+      ],
+      'includes': ['../common-mk/deps.gypi'],
     },
     {
       'target_name': 'libchromeos-cryptohome-<(libbase_ver)',
@@ -181,6 +222,7 @@
           'type': 'executable',
           'dependencies': [
             'libchromeos-<(libbase_ver)',
+            'libchromeos-test-<(libbase_ver)',
             'libchromeos-ui-<(libbase_ver)',
           ],
           'variables': {
@@ -216,6 +258,7 @@
             'chromeos/exported_object_manager_unittest.cc',
             'chromeos/exported_property_set_unittest.cc',
             'chromeos/glib/object_unittest.cc',
+            'chromeos/http_utils_unittest.cc',
             'chromeos/mime_utils_unittest.cc',
             'chromeos/process_test.cc',
             'chromeos/secure_blob_unittest.cc',
