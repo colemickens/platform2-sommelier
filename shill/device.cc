@@ -1238,13 +1238,15 @@ void Device::PortalDetectorCallback(const PortalDetector::Result &result) {
   if (!result.final) {
     SLOG(Device, 2) << "Device " << FriendlyName()
                     << ": Received non-final status: "
-                    << PortalDetector::StatusToString(result.status);
+                    << ConnectivityTrial::StatusToString(
+                        result.trial_result.status);
     return;
   }
 
   SLOG(Device, 2) << "Device " << FriendlyName()
                   << ": Received final status: "
-                  << PortalDetector::StatusToString(result.status);
+                  << ConnectivityTrial::StatusToString(
+                      result.trial_result.status);
 
   portal_attempts_to_online_ += result.num_attempts;
 
@@ -1255,7 +1257,7 @@ void Device::PortalDetectorCallback(const PortalDetector::Result &result) {
       portal_status,
       Metrics::kPortalResultMax);
 
-  if (result.status == PortalDetector::kStatusSuccess) {
+  if (result.trial_result.status == ConnectivityTrial::kStatusSuccess) {
     SetServiceConnectedState(Service::kStateOnline);
 
     metrics()->SendToUMA(
@@ -1269,8 +1271,8 @@ void Device::PortalDetectorCallback(const PortalDetector::Result &result) {
     // Set failure phase and status.
     if (selected_service_.get()) {
       selected_service_->SetPortalDetectionFailure(
-          PortalDetector::PhaseToString(result.phase),
-          PortalDetector::StatusToString(result.status));
+          ConnectivityTrial::PhaseToString(result.trial_result.phase),
+          ConnectivityTrial::StatusToString(result.trial_result.status));
     }
     SetServiceConnectedState(Service::kStatePortal);
 

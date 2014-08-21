@@ -15,16 +15,13 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/http_request.h"
-#include "shill/http_url.h"
+#include "shill/connectivity_trial.h"
 #include "shill/refptr_types.h"
 #include "shill/shill_time.h"
-#include "shill/sockets.h"
 
 namespace shill {
 
 class ByteString;
-class EventDispatcher;
 class PortalDetector;
 class Time;
 
@@ -39,39 +36,31 @@ class Time;
 // necessary (e.g, click through of a WiFi Hotspot's splash
 // page).
 //
-// This is achieved by trying to access a URL and expecting a
-// specific response.  Any result that deviates from this result
-// (DNS or HTTP errors, as well as deviations from the expected
-// content) are considered failures.
+// This is achieved by using one or more ConnectivityTrial attempts
+// to access a URL and expecting a specific response.  Any result
+// that deviates from this result (DNS or HTTP errors, as well as
+// deviations from the expected content) are considered failures.
 class PortalDetector {
  public:
-  enum Phase {
-    kPhaseConnection,
-    kPhaseDNS,
-    kPhaseHTTP,
-    kPhaseContent,
-    kPhaseUnknown
-  };
-
-  enum Status {
-    kStatusFailure,
-    kStatusSuccess,
-    kStatusTimeout
-  };
-
   struct Result {
     Result()
-        : phase(kPhaseUnknown), status(kStatusFailure),
-          num_attempts(0), final(false) {}
-    Result(Phase phase_in, Status status_in)
-        : phase(phase_in), status(status_in),
-          num_attempts(0), final(false) {}
-    Result(Phase phase_in, Status status_in, int num_attempts_in, bool final_in)
-        : phase(phase_in), status(status_in),
-          num_attempts(num_attempts_in), final(final_in) {}
-    Phase phase;
-    Status status;
-    // Total number of portal detections attempted.
+        : trial_result(ConnectivityTrial::Result()),
+          num_attempts(0),
+          final(false) {}
+    explicit Result(ConnectivityTrial::Result result_in)
+        : trial_result(result_in),
+          num_attempts(0),
+          final(false) {}
+    Result(ConnectivityTrial::Result result_in,
+           int num_attempts_in,
+           int final_in)
+        : trial_result(result_in),
+          num_attempts(num_attempts_in),
+          final(final_in) {}
+
+    ConnectivityTrial::Result trial_result;
+
+    // Total number of connectivity trials attempted.
     // This includes failure, timeout and successful attempts.
     // This only valid when |final| is true.
     int num_attempts;
@@ -80,14 +69,13 @@ class PortalDetector {
 
   static const int kDefaultCheckIntervalSeconds;
   static const char kDefaultCheckPortalList[];
-  static const char kDefaultURL[];
-  static const char kResponseExpected[];
   // Maximum number of times the PortalDetector will attempt a connection.
   static const int kMaxRequestAttempts;
 
   PortalDetector(ConnectionRefPtr connection,
                  EventDispatcher *dispatcher,
-                 const base::Callback<void(const Result&)> &callback);
+                 const base::Callback<void(const PortalDetector::Result&)>
+                     &callback);
   virtual ~PortalDetector();
 
   // Start a portal detection test.  Returns true if |url_string| correctly
@@ -108,24 +96,28 @@ class PortalDetector {
   // the callback.
   virtual void Stop();
 
-  // Returns whether portal request is "in progress": whether the portal
-  // detector is in the progress of making attempts.  Returns true if
+  // Returns whether portal request is "in progress": whether the underlying
+  // ConnectivityTrial is in the progress of making attempts.  Returns true if
   // attempts are in progress, false otherwise.  Notably, this function
   // returns false during the period of time between calling "Start" or
-  // "StartAfterDelay" and the actual start of the first attempt.
+  // "StartAfterDelay" and the actual start of the first attempt. In the case
+  // where multiple attempts may be tried, IsInProgress will return true after
+  // the first attempt has actively started testing the connection.
   virtual bool IsInProgress();
-
-  static const std::string PhaseToString(Phase phase);
-  static const std::string StatusToString(Status status);
-  static Result GetPortalResultForRequestResult(HTTPRequest::Result result);
 
  private:
   friend class PortalDetectorTest;
   FRIEND_TEST(PortalDetectorTest, StartAttemptFailed);
-  FRIEND_TEST(PortalDetectorTest, StartAttemptRepeated);
-  FRIEND_TEST(PortalDetectorTest, StartAttemptAfterDelay);
+  FRIEND_TEST(PortalDetectorTest, AdjustStartDelayImmediate);
+  FRIEND_TEST(PortalDetectorTest, AdjustStartDelayAfterDelay);
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
   FRIEND_TEST(PortalDetectorTest, ReadBadHeadersRetry);
+  FRIEND_TEST(PortalDetectorTest, ReadBadHeader);
+  FRIEND_TEST(PortalDetectorTest, RequestTimeout);
+  FRIEND_TEST(PortalDetectorTest, ReadPartialHeaderTimeout);
+  FRIEND_TEST(PortalDetectorTest, ReadCompleteHeader);
+  FRIEND_TEST(PortalDetectorTest, ReadMatchingHeader);
+  FRIEND_TEST(PortalDetectorTest, InvalidURL);
 
   // Minimum time between attempts to connect to server.
   static const int kMinTimeBetweenAttemptsSeconds;
@@ -135,31 +127,32 @@ class PortalDetector {
   // connections.
   static const int kMaxFailuresInContentPhase;
 
-  void CompleteAttempt(Result result);
-  void RequestReadCallback(const ByteString &response_data);
-  void RequestResultCallback(HTTPRequest::Result result,
-                             const ByteString &response_data);
-  void StartAttempt(int init_delay_seconds);
-  void StartAttemptTask();
-  void StopAttempt();
-  void TimeoutAttemptTask();
+  // Internal method to update the start time of the next event.  This is used
+  // to keep attempts spaced by at least kMinTimeBetweenAttemptsSeconds in the
+  // event of a retry.
+  void UpdateAttemptTime(int delay_seconds);
+
+  // Internal method used to adjust the start delay in the event of a retry.
+  // Calculates the elapsed time between the most recent attempt and the point
+  // the retry is scheduled.  Adds an additional delay to meet the
+  // kMinTimeBetweenAttemptsSeconds requirement.
+  int AdjustStartDelay(int init_delay_seconds);
+
+  // Callback used by ConnectivityTrial to return |result| after attempting to
+  // determine connectivity status.
+  void CompleteAttempt(ConnectivityTrial::Result result);
 
   int attempt_count_;
   struct timeval attempt_start_time_;
   ConnectionRefPtr connection_;
   EventDispatcher *dispatcher_;
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_;
-  base::CancelableClosure attempt_timeout_;
-  base::CancelableClosure start_attempt_;
   base::Callback<void(const Result &)> portal_result_callback_;
-  scoped_ptr<HTTPRequest> request_;
-  base::Callback<void(const ByteString &)> request_read_callback_;
-  base::Callback<void(HTTPRequest::Result, const ByteString &)>
-      request_result_callback_;
-  Sockets sockets_;
+  base::Callback<void(ConnectivityTrial::Result)> connectivity_trial_callback_;
   Time *time_;
-  HTTPURL url_;
   int failures_in_content_phase_;
+  scoped_ptr<ConnectivityTrial> connectivity_trial_;
+
 
   DISALLOW_COPY_AND_ASSIGN(PortalDetector);
 };

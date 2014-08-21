@@ -16,6 +16,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
+#include "shill/connectivity_trial.h"
 #include "shill/dns_server_tester.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ip_address.h"

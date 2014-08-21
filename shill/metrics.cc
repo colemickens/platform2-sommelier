@@ -483,56 +483,57 @@ Metrics::EapInnerProtocol Metrics::EapInnerProtocolStringToEnum(
 
 // static
 Metrics::PortalResult Metrics::PortalDetectionResultToEnum(
-      const PortalDetector::Result &result) {
-  DCHECK(result.final);
+      const PortalDetector::Result &portal_result) {
+  DCHECK(portal_result.final);
   PortalResult retval = kPortalResultUnknown;
+  ConnectivityTrial::Result result = portal_result.trial_result;
   // The only time we should end a successful portal detection is when we're
   // in the Content phase.  If we end with kStatusSuccess in any other phase,
   // then this indicates that something bad has happened.
   switch (result.phase) {
-    case PortalDetector::kPhaseDNS:
-      if (result.status == PortalDetector::kStatusFailure)
+    case ConnectivityTrial::kPhaseDNS:
+      if (result.status == ConnectivityTrial::kStatusFailure)
         retval = kPortalResultDNSFailure;
-      else if (result.status == PortalDetector::kStatusTimeout)
+      else if (result.status == ConnectivityTrial::kStatusTimeout)
         retval = kPortalResultDNSTimeout;
       else
         LOG(DFATAL) << __func__ << ": Final result status " << result.status
                     << " is not allowed in the DNS phase";
       break;
 
-    case PortalDetector::kPhaseConnection:
-      if (result.status == PortalDetector::kStatusFailure)
+    case ConnectivityTrial::kPhaseConnection:
+      if (result.status == ConnectivityTrial::kStatusFailure)
         retval = kPortalResultConnectionFailure;
-      else if (result.status == PortalDetector::kStatusTimeout)
+      else if (result.status == ConnectivityTrial::kStatusTimeout)
         retval = kPortalResultConnectionTimeout;
       else
         LOG(DFATAL) << __func__ << ": Final result status " << result.status
                     << " is not allowed in the Connection phase";
       break;
 
-    case PortalDetector::kPhaseHTTP:
-      if (result.status == PortalDetector::kStatusFailure)
+    case ConnectivityTrial::kPhaseHTTP:
+      if (result.status == ConnectivityTrial::kStatusFailure)
         retval = kPortalResultHTTPFailure;
-      else if (result.status == PortalDetector::kStatusTimeout)
+      else if (result.status == ConnectivityTrial::kStatusTimeout)
         retval = kPortalResultHTTPTimeout;
       else
         LOG(DFATAL) << __func__ << ": Final result status " << result.status
                     << " is not allowed in the HTTP phase";
       break;
 
-    case PortalDetector::kPhaseContent:
-      if (result.status == PortalDetector::kStatusSuccess)
+    case ConnectivityTrial::kPhaseContent:
+      if (result.status == ConnectivityTrial::kStatusSuccess)
         retval = kPortalResultSuccess;
-      else if (result.status == PortalDetector::kStatusFailure)
+      else if (result.status == ConnectivityTrial::kStatusFailure)
         retval = kPortalResultContentFailure;
-      else if (result.status == PortalDetector::kStatusTimeout)
+      else if (result.status == ConnectivityTrial::kStatusTimeout)
         retval = kPortalResultContentTimeout;
       else
         LOG(DFATAL) << __func__ << ": Final result status " << result.status
                     << " is not allowed in the Content phase";
       break;
 
-    case PortalDetector::kPhaseUnknown:
+    case ConnectivityTrial::kPhaseUnknown:
       retval = kPortalResultUnknown;
       break;
 

@@ -13,6 +13,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
+#include "shill/connectivity_trial.h"
 #include "shill/control_interface.h"
 #include "shill/link_monitor.h"
 #include "shill/manager.h"
@@ -117,7 +118,7 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
   }
   if (!storage()->GetString(kStorageId, kStoragePortalURL,
                             &manager_props->portal_url)) {
-    manager_props->portal_url = PortalDetector::kDefaultURL;
+    manager_props->portal_url = ConnectivityTrial::kDefaultURL;
   }
   std::string check_interval;
   if (!storage()->GetString(kStorageId, kStoragePortalCheckInterval,

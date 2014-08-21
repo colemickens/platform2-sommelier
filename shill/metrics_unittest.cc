@@ -359,53 +359,55 @@ TEST_F(MetricsTest, Disconnect) {
 }
 
 TEST_F(MetricsTest, PortalDetectionResultToEnum) {
-  PortalDetector::Result result(PortalDetector::kPhaseDNS,
-                                PortalDetector::kStatusFailure, 0, true);
+  ConnectivityTrial::Result trial_result(ConnectivityTrial::kPhaseDNS,
+                                ConnectivityTrial::kStatusFailure);
+  PortalDetector::Result result(trial_result, 0, true);
+
   EXPECT_EQ(Metrics::kPortalResultDNSFailure,
             Metrics::PortalDetectionResultToEnum(result));
 
-  result.phase = PortalDetector::kPhaseDNS;
-  result.status = PortalDetector::kStatusTimeout;
+  result.trial_result.phase = ConnectivityTrial::kPhaseDNS;
+  result.trial_result.status = ConnectivityTrial::kStatusTimeout;
   EXPECT_EQ(Metrics::kPortalResultDNSTimeout,
             Metrics::PortalDetectionResultToEnum(result));
 
-  result.phase = PortalDetector::kPhaseConnection;
-  result.status = PortalDetector::kStatusFailure;
+  result.trial_result.phase = ConnectivityTrial::kPhaseConnection;
+  result.trial_result.status = ConnectivityTrial::kStatusFailure;
   EXPECT_EQ(Metrics::kPortalResultConnectionFailure,
             Metrics::PortalDetectionResultToEnum(result));
 
-  result.phase = PortalDetector::kPhaseConnection;
-  result.status = PortalDetector::kStatusTimeout;
+  result.trial_result.phase = ConnectivityTrial::kPhaseConnection;
+  result.trial_result.status = ConnectivityTrial::kStatusTimeout;
   EXPECT_EQ(Metrics::kPortalResultConnectionTimeout,
             Metrics::PortalDetectionResultToEnum(result));
 
-  result.phase = PortalDetector::kPhaseHTTP;
-  result.status = PortalDetector::kStatusFailure;
+  result.trial_result.phase = ConnectivityTrial::kPhaseHTTP;
+  result.trial_result.status = ConnectivityTrial::kStatusFailure;
   EXPECT_EQ(Metrics::kPortalResultHTTPFailure,
             Metrics::PortalDetectionResultToEnum(result));
 
-  result.phase = PortalDetector::kPhaseHTTP;
-  result.status = PortalDetector::kStatusTimeout;
+  result.trial_result.phase = ConnectivityTrial::kPhaseHTTP;
+  result.trial_result.status = ConnectivityTrial::kStatusTimeout;
   EXPECT_EQ(Metrics::kPortalResultHTTPTimeout,
             Metrics::PortalDetectionResultToEnum(result));
 
-  result.phase = PortalDetector::kPhaseContent;
-  result.status = PortalDetector::kStatusSuccess;
+  result.trial_result.phase = ConnectivityTrial::kPhaseContent;
+  result.trial_result.status = ConnectivityTrial::kStatusSuccess;
   EXPECT_EQ(Metrics::kPortalResultSuccess,
             Metrics::PortalDetectionResultToEnum(result));
 
-  result.phase = PortalDetector::kPhaseContent;
-  result.status = PortalDetector::kStatusFailure;
+  result.trial_result.phase = ConnectivityTrial::kPhaseContent;
+  result.trial_result.status = ConnectivityTrial::kStatusFailure;
   EXPECT_EQ(Metrics::kPortalResultContentFailure,
             Metrics::PortalDetectionResultToEnum(result));
 
-  result.phase = PortalDetector::kPhaseContent;
-  result.status = PortalDetector::kStatusTimeout;
+  result.trial_result.phase = ConnectivityTrial::kPhaseContent;
+  result.trial_result.status = ConnectivityTrial::kStatusTimeout;
   EXPECT_EQ(Metrics::kPortalResultContentTimeout,
             Metrics::PortalDetectionResultToEnum(result));
 
-  result.phase = PortalDetector::kPhaseUnknown;
-  result.status = PortalDetector::kStatusFailure;
+  result.trial_result.phase = ConnectivityTrial::kPhaseUnknown;
+  result.trial_result.status = ConnectivityTrial::kStatusFailure;
   EXPECT_EQ(Metrics::kPortalResultUnknown,
             Metrics::PortalDetectionResultToEnum(result));
 }
@@ -794,22 +796,28 @@ TEST_F(MetricsTest, NotifyDhcpClientStatus) {
 typedef MetricsTest MetricsDeathTest;
 
 TEST_F(MetricsDeathTest, PortalDetectionResultToEnumDNSSuccess) {
-  PortalDetector::Result result(PortalDetector::kPhaseDNS,
-                                PortalDetector::kStatusSuccess, 0, true);
+  PortalDetector::Result result(
+      ConnectivityTrial::Result(ConnectivityTrial::kPhaseDNS,
+                                ConnectivityTrial::kStatusSuccess),
+      0, true);
   EXPECT_DEATH(Metrics::PortalDetectionResultToEnum(result),
                "Final result status 1 is not allowed in the DNS phase");
 }
 
 TEST_F(MetricsDeathTest, PortalDetectionResultToEnumConnectionSuccess) {
-  PortalDetector::Result result(PortalDetector::kPhaseConnection,
-                                PortalDetector::kStatusSuccess, 0, true);
+  PortalDetector::Result result(
+      ConnectivityTrial::Result(ConnectivityTrial::kPhaseConnection,
+                                ConnectivityTrial::kStatusSuccess),
+      0, true);
   EXPECT_DEATH(Metrics::PortalDetectionResultToEnum(result),
                "Final result status 1 is not allowed in the Connection phase");
 }
 
 TEST_F(MetricsDeathTest, PortalDetectionResultToEnumHTTPSuccess) {
-  PortalDetector::Result result(PortalDetector::kPhaseHTTP,
-                                PortalDetector::kStatusSuccess, 0, true);
+  PortalDetector::Result result(
+      ConnectivityTrial::Result(ConnectivityTrial::kPhaseHTTP,
+                                ConnectivityTrial::kStatusSuccess),
+      0, true);
   EXPECT_DEATH(Metrics::PortalDetectionResultToEnum(result),
                "Final result status 1 is not allowed in the HTTP phase");
 }
