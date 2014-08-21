@@ -570,6 +570,15 @@ class Nl80211AttributeWiphyBands : public NetlinkNestedAttribute {
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWiphyBands);
 };
 
+class Nl80211AttributeWowlanTriggers : public NetlinkNestedAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeWowlanTriggers();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWowlanTriggers);
+};
 
 // Raw.
 

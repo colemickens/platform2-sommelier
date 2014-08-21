@@ -207,6 +207,28 @@ Nl80211AttributeWiphyBands::Nl80211AttributeWiphyBands()
   nested_template_.push_back(bands);
 }
 
+const int Nl80211AttributeWowlanTriggers::kName = NL80211_ATTR_WOWLAN_TRIGGERS;
+const char Nl80211AttributeWowlanTriggers::kNameString[] =
+    "NL80211_ATTR_WOWLAN_TRIGGERS";
+
+Nl80211AttributeWowlanTriggers::Nl80211AttributeWowlanTriggers()
+    : NetlinkNestedAttribute(kName, kNameString) {
+  NestedData patterns(NLA_NESTED, "NL80211_WOWLAN_TRIG_PKT_PATTERN", true);
+  NestedData individual_pattern(NLA_NESTED,
+                                "NL80211_PACKET_PATTERN_ATTR", true);
+  individual_pattern.deeper_nesting.push_back(
+      NestedData(NLA_U32, "__NL80211_PKTPAT_INVALID", false));
+  individual_pattern.deeper_nesting.push_back(
+      NestedData(NLA_UNSPEC, "NL80211_PKTPAT_MASK", false));
+  individual_pattern.deeper_nesting.push_back(
+      NestedData(NLA_UNSPEC, "NL80211_PKTPAT_PATTERN", false));
+  individual_pattern.deeper_nesting.push_back(
+      NestedData(NLA_U32, "NL80211_PKTPAT_OFFSET", false));
+
+  patterns.deeper_nesting.push_back(individual_pattern);
+  nested_template_.push_back(patterns);
+}
+
 const int Nl80211AttributeCipherSuites::kName = NL80211_ATTR_CIPHER_SUITES;
 const char Nl80211AttributeCipherSuites::kNameString[] =
     "NL80211_ATTR_CIPHER_SUITES";
