@@ -11,15 +11,18 @@ qemu, bind mounts, etc...
 
 import argparse
 import array
+import contextlib
 import errno
 import os
 import sys
+import tempfile
 
 from platform2 import Platform2
 
 from chromite.lib import cros_build_lib
 from chromite.lib import namespaces
 from chromite.lib import osutils
+from chromite.lib import retry_util
 from chromite.lib import signals
 
 
@@ -357,12 +360,97 @@ class Platform2Test(object):
 
     return path
 
+  @staticmethod
+  def GetNonRootAccount():
+    """Return details about the non-root account we want to use.
+
+    Returns:
+      A tuple of (username, uid, gid, home).
+    """
+    return (
+        os.environ.get('SUDO_USER', 'nobody'),
+        int(os.environ.get('SUDO_UID', '65534')),
+        int(os.environ.get('SUDO_GID', '65534')),
+        # Should we find a better home?
+        '/tmp/portage',
+    )
+
+  @staticmethod
+  @contextlib.contextmanager
+  def LockDb(db):
+    """Lock an account database.
+
+    We use the same algorithm as shadow/user.eclass.  This way we don't race
+    and corrupt things in parallel.
+    """
+    lock = '%s.lock' % db
+    _, tmplock = tempfile.mkstemp(prefix='%s.platform.' % lock)
+
+    # First try forever to grab the lock.
+    retry = lambda e: e.errno == errno.EEXIST
+    # Retry quickly at first, but slow down over time.
+    try:
+      retry_util.GenericRetry(retry, 60, os.link, tmplock, lock, sleep=0.1)
+    except Exception:
+      print('error: could not grab lock %s' % lock)
+      raise
+
+    # Yield while holding the lock, but try to clean it no matter what.
+    try:
+      os.unlink(tmplock)
+      yield lock
+    finally:
+      os.unlink(lock)
+
+  def SetupUser(self):
+    """Propogate the user name<->id mapping from outside the chroot.
+
+    Some unittests use getpwnam($USER), as does bash.  If the account
+    is not registered in the sysroot, they get back errors.
+    """
+    MAGIC_GECOS = 'Added by your friendly platform test helper; do not modify'
+
+    user, uid, gid, home = self.GetNonRootAccount()
+    if user == 'nobody':
+      return
+
+    passwd_db = os.path.join(self.sysroot, 'etc', 'passwd')
+    with self.LockDb(passwd_db):
+      data = osutils.ReadFile(passwd_db)
+      accts = data.splitlines()
+      for acct in accts:
+        passwd = acct.split(':')
+        if passwd[0] == user:
+          # Did we make this account?
+          if passwd[4] != MAGIC_GECOS:
+            raise RuntimeError('your passwd db (%s) has unmanaged acct %s' %
+                               (passwd_db, user))
+
+          # Maybe we should see if it needs to be updated?  Like if they
+          # changed UIDs?  But we don't really check that elsewhere ...
+          return
+
+      acct = '%(name)s:x:%(uid)s:%(gid)s:%(gecos)s:%(homedir)s:%(shell)s' % {
+          'name': user,
+          'uid': uid,
+          'gid': gid,
+          'gecos': MAGIC_GECOS,
+          'homedir': home,
+          'shell': '/bin/bash',
+      }
+      with open(passwd_db, 'a') as f:
+        if data[-1] != '\n':
+          f.write('\n')
+        f.write('%s\n' % acct)
+
   def pre_test(self):
     """Runs pre-test environment setup.
 
     Sets up any required mounts and copying any required files to run tests
     (not those specific to tests) into the sysroot.
     """
+    if not self.run_as_root:
+      self.SetupUser()
 
     if self.framework == 'qemu':
       self.qemu.Install()
@@ -425,8 +513,10 @@ class Platform2Test(object):
       # Some progs want this like bash else they get super confused.
       os.environ['PWD'] = cwd
       if not self.run_as_root:
-        os.setgid(int(os.environ.get('SUDO_GID', '65534')))
-        os.setuid(int(os.environ.get('SUDO_UID', '65534')))
+        _, uid, gid, home = self.GetNonRootAccount()
+        os.setgid(gid)
+        os.setuid(uid)
+        os.environ['HOME'] = home
       sys.exit(os.execv(cmd, argv))
 
     _, status = os.waitpid(child, 0)
