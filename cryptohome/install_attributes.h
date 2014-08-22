@@ -13,7 +13,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/observer_list.h>
 #include <base/values.h>
-#include <chromeos/utility.h>
+#include <chromeos/secure_blob.h>
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/lockbox.h"

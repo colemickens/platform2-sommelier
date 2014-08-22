@@ -70,7 +70,7 @@ std::string SanitizeUserName(const std::string& username) {
   SHA1_Update(&ctx, lowercase.data(), lowercase.size());
   SHA1_Final(binmd, &ctx);
   std::string final = base::HexEncode(binmd, sizeof(binmd));
-  // Stay compatible with CryptoLib::AsciiEncodeToBuffer()
+  // Stay compatible with CryptoLib::HexEncodeToBuffer()
   std::transform(final.begin(), final.end(), final.begin(), ::tolower);
   return final;
 }

@@ -13,7 +13,6 @@
 #include <base/logging.h>
 #include <chromeos/process_mock.h>
 #include <chromeos/secure_blob.h>
-#include <chromeos/utility.h>
 #include <gtest/gtest.h>
 
 #include "cryptohome/mock_lockbox.h"

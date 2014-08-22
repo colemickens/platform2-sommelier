@@ -15,7 +15,6 @@
 #include <base/threading/platform_thread.h>
 #include <base/threading/thread.h>
 #include <base/time/time.h>
-#include <chromeos/utility.h>
 #include <gtest/gtest.h>
 
 #include "cryptohome/mock_homedirs.h"

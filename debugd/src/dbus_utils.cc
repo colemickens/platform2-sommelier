@@ -2,25 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chromeos/utility.h"
-
-#include <fcntl.h>
-#include <unistd.h>
-
-#include <cstring>
-#include <map>
-#include <string>
-#include <vector>
+#include "debugd/src/dbus_utils.h"
 
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/values.h>
 #include <dbus/dbus.h>
+#include <dbus-c++/dbus.h>
 
 using base::DictionaryValue;
 using base::ListValue;
 using base::Value;
 
 namespace {
+
+bool DBusMessageIterToValue(DBus::MessageIter* iter, Value** result);
 
 bool DBusMessageIterToPrimitiveValue(DBus::MessageIter* iter, Value** result) {
   DBus::MessageIter subiter;
@@ -69,7 +65,7 @@ bool DBusMessageIterToPrimitiveValue(DBus::MessageIter* iter, Value** result) {
       return true;
     case DBUS_TYPE_VARIANT:
       subiter = iter->recurse();
-      return chromeos::DBusMessageIterToValue(&subiter, result);
+      return DBusMessageIterToValue(&subiter, result);
     default:
       LOG(ERROR) << "Unhandled primitive type: " << iter->type();
       return false;
@@ -81,7 +77,7 @@ bool DBusMessageIterToArrayValue(DBus::MessageIter* iter, Value** result) {
   ListValue* lv = new ListValue();
   while (!iter->at_end()) {
     Value* subvalue = NULL;
-    bool r = chromeos::DBusMessageIterToValue(iter, &subvalue);
+    bool r = DBusMessageIterToValue(iter, &subvalue);
     if (!r) {
       delete lv;
       return false;
@@ -101,13 +97,13 @@ bool DBusMessageIterToDictValue(DBus::MessageIter* iter, Value** result) {
     DBus::MessageIter subiter = iter->recurse();
     Value* key = NULL;
     Value* value = NULL;
-    bool r = chromeos::DBusMessageIterToValue(&subiter, &key);
+    bool r = DBusMessageIterToValue(&subiter, &key);
     if (!r || key->GetType() != Value::TYPE_STRING) {
       delete dv;
       return false;
     }
     subiter++;
-    r = chromeos::DBusMessageIterToValue(&subiter, &value);
+    r = DBusMessageIterToValue(&subiter, &value);
     if (!r) {
       delete key;
       delete dv;
@@ -121,79 +117,6 @@ bool DBusMessageIterToDictValue(DBus::MessageIter* iter, Value** result) {
   }
   *result = dv;
   return true;
-}
-
-};  // namespace
-
-namespace chromeos {
-
-using std::string;
-
-char DecodeChar(char in) {
-  in = tolower(in);
-  if ((in <= '9') && (in >= '0')) {
-    return in - '0';
-  } else {
-    CHECK_GE(in, 'a');
-    CHECK_LE(in, 'f');
-    return in - 'a' + 10;
-  }
-}
-
-string AsciiEncode(const Blob &blob) {
-  static const char table[] = "0123456789abcdef";
-  string out;
-  for (Blob::const_iterator it = blob.begin(); blob.end() != it; ++it) {
-    out += table[((*it) >> 4) & 0xf];
-    out += table[*it & 0xf];
-  }
-  CHECK_EQ(blob.size() * 2, out.size());
-  return out;
-}
-
-Blob AsciiDecode(const string &str) {
-  Blob out;
-  if (str.size() % 2)
-    return out;
-  for (string::const_iterator it = str.begin(); it != str.end(); ++it) {
-    char append = DecodeChar(*it);
-    append <<= 4;
-
-    ++it;
-
-    append |= DecodeChar(*it);
-    out.push_back(append);
-  }
-  CHECK_EQ(out.size() * 2, str.size());
-  return out;
-}
-
-void* SecureMemset(void *v, int c, size_t n) {
-  volatile unsigned char *p = static_cast<unsigned char *>(v);
-  while (n--)
-    *p++ = c;
-  return v;
-}
-
-int SafeMemcmp(const void* s1, const void* s2, size_t n) {
-  const unsigned char* us1 = static_cast<const unsigned char*>(s1);
-  const unsigned char* us2 = static_cast<const unsigned char*>(s2);
-  int result = 0;
-
-  if (0 == n)
-    return 1;
-
-  /* Code snippet without data-dependent branch due to
-   * Nate Lawson (nate@root.org) of Root Labs. */
-  while (n--)
-    result |= *us1++ ^ *us2++;
-
-  return result != 0;
-}
-
-bool DBusMessageToValue(const DBus::Message& message, Value** v) {
-  DBus::MessageIter r = message.reader();
-  return DBusMessageIterToArrayValue(&r, v);
 }
 
 bool DBusMessageIterToValue(DBus::MessageIter* iter, Value** result) {
@@ -216,7 +139,14 @@ bool DBusMessageIterToValue(DBus::MessageIter* iter, Value** result) {
   return false;
 }
 
-bool DBusPropertyMapToValue(
+}  // namespace
+
+bool debugd::DBusMessageToValue(const DBus::Message& message, Value** v) {
+  DBus::MessageIter r = message.reader();
+  return DBusMessageIterToArrayValue(&r, v);
+}
+
+bool debugd::DBusPropertyMapToValue(
     const std::map<std::string, DBus::Variant>& properties, Value** v) {
   DictionaryValue* dv = new DictionaryValue();
   std::map<std::string, DBus::Variant>::const_iterator it;
@@ -234,25 +164,3 @@ bool DBusPropertyMapToValue(
   *v = dv;
   return true;
 }
-
-bool SecureRandom(uint8_t *buf, size_t len) {
-  int fd = open("/dev/urandom", O_RDONLY);
-  if (fd < 0)
-    return false;
-  if (read(fd, buf, len) != static_cast<ssize_t>(len)) {
-    close(fd);
-    return false;
-  }
-  close(fd);
-  return true;
-}
-
-bool SecureRandomString(size_t len, std::string* result) {
-  std::vector<uint8_t> rbuf(len);
-  if (!SecureRandom(rbuf.data(), rbuf.size()))
-    return false;
-  *result = base::HexEncode(rbuf.data(), rbuf.size());
-  return true;
-}
-
-}  // namespace chromeos

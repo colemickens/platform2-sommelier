@@ -16,7 +16,6 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <chromeos/secure_blob.h>
-#include <chromeos/utility.h>
 
 #include "chaps/chaps_utility.h"
 #include "chaps/isolate.h"

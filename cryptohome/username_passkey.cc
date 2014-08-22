@@ -9,9 +9,9 @@
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <chromeos/secure_blob.h>
-#include <chromeos/utility.h>
 
 #include "cryptohome/crypto.h"
+#include "cryptohome/cryptolib.h"
 
 namespace cryptohome {
 using chromeos::SecureBlob;
@@ -62,7 +62,7 @@ string UsernamePasskey::GetObfuscatedUsername(
   chromeos::Blob md_blob(md_value,
                md_value + (SHA_DIGEST_LENGTH * sizeof(unsigned char)));
 
-  return chromeos::AsciiEncode(md_blob);
+  return CryptoLib::BlobToHex(md_blob);
 }
 
 void UsernamePasskey::GetPasskey(SecureBlob* passkey) const {

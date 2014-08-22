@@ -14,7 +14,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/synchronization/lock.h>
-#include <chromeos/utility.h>
+#include <chromeos/secure_blob.h>
 #include <openssl/rand.h>
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>

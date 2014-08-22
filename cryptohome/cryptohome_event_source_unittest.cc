@@ -7,7 +7,6 @@
 #include "cryptohome/vault_keyset.h"
 
 #include <base/logging.h>
-#include <chromeos/utility.h>
 #include <gtest/gtest.h>
 
 #include "cryptohome/cryptohome_event_source.h"

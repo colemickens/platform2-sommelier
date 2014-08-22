@@ -6,7 +6,6 @@
 
 #include <base/logging.h>
 #include <chromeos/secure_blob.h>
-#include <chromeos/utility.h>
 
 #include "chaps/chaps_proxy.h"
 #include "chaps/chaps_utility.h"

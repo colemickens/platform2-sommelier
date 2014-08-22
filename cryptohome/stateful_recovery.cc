@@ -13,7 +13,6 @@
 #include <base/json/json_writer.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
-#include <chromeos/utility.h>
 
 #include "cryptohome/platform.h"
 #include "cryptohome/service.h"

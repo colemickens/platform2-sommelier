@@ -12,8 +12,6 @@
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 
-#include "chromeos/utility.h"
-
 namespace {
 const int kInvalidDescriptor = -1;
 }  // namespace

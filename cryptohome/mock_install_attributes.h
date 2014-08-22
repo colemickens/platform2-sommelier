@@ -11,7 +11,7 @@
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
-#include <chromeos/utility.h>
+#include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
 
 #include "cryptohome/lockbox.h"

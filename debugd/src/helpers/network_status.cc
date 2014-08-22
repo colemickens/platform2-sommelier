@@ -8,7 +8,7 @@
 #include <base/json/json_writer.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
-#include <chromeos/utility.h>
+#include <debugd/src/dbus_utils.h>
 
 #include "shill/dbus_proxies/org.chromium.flimflam.Device.h"
 #include "shill/dbus_proxies/org.chromium.flimflam.IPConfig.h"
@@ -70,7 +70,7 @@ Value* GetService(DBus::Connection& conn, DBus::Path& path) { // NOLINT
   ServiceProxy service = ServiceProxy(conn, path.c_str(), kFlimflamService);
   std::map<std::string, DBus::Variant> props = service.GetProperties();
   Value* v = NULL;
-  chromeos::DBusPropertyMapToValue(props, &v);
+  debugd::DBusPropertyMapToValue(props, &v);
   return v;
 }
 
@@ -93,7 +93,7 @@ Value* GetIPConfig(DBus::Connection& conn, DBus::Path& path) { // NOLINT
   IPConfigProxy ipconfig = IPConfigProxy(conn, path.c_str(), kFlimflamService);
   std::map<std::string, DBus::Variant> props = ipconfig.GetProperties();
   Value* v = NULL;
-  chromeos::DBusPropertyMapToValue(props, &v);
+  debugd::DBusPropertyMapToValue(props, &v);
   return v;
 }
 
@@ -116,7 +116,7 @@ Value* GetDevice(DBus::Connection& conn, DBus::Path& path) { // NOLINT
     props.erase("IPConfigs");
   }
   Value* v = NULL;
-  CHECK(chromeos::DBusPropertyMapToValue(props, &v));
+  CHECK(debugd::DBusPropertyMapToValue(props, &v));
   DictionaryValue* dv = reinterpret_cast<DictionaryValue*>(v);
   if (ipconfigs)
     dv->Set("ipconfigs", ipconfigs);

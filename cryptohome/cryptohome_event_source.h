@@ -6,7 +6,7 @@
 // This class is used to marshal asynchronous mount results from the worker
 // thread (see service.h/.cc) over to the main event loop.  That way, all of the
 // dbus messages are received and sent from the one thread, ensuring that
-// signals returned by asyncrhonous commands are serialized with the original
+// signals returned by asynchronous commands are serialized with the original
 // call.
 //
 // CryptohomeEventSource uses a pipe(2) to implement a file descriptor-based
@@ -23,7 +23,6 @@
 #define CRYPTOHOME_CRYPTOHOME_EVENT_SOURCE_H_
 
 #include <base/synchronization/lock.h>
-#include <chromeos/utility.h>
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
 #include <vector>

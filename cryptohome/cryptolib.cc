@@ -18,7 +18,7 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
-#include <chromeos/utility.h>
+#include <chromeos/secure_blob.h>
 extern "C" {
 #include <scrypt/crypto_scrypt.h>
 #include <scrypt/scryptenc.h>
@@ -312,7 +312,7 @@ bool CryptoLib::AesDecryptSpecifyBlockMode(const chromeos::Blob& encrypted,
     const unsigned char* md_ptr =
         static_cast<const unsigned char*>(local_plain_text.const_data());
     md_ptr += final_size;
-    if (chromeos::SafeMemcmp(md_ptr, md_value, SHA_DIGEST_LENGTH)) {
+    if (chromeos::SecureMemcmp(md_ptr, md_value, SHA_DIGEST_LENGTH)) {
       LOG(ERROR) << "Digest verification failed.";
       EVP_CIPHER_CTX_cleanup(&decryption_context);
       return false;
@@ -500,13 +500,28 @@ bool CryptoLib::AesEncryptSpecifyBlockMode(const chromeos::Blob& plain_text,
   return true;
 }
 
-void CryptoLib::AsciiEncodeToBuffer(const chromeos::Blob& blob, char* buffer,
-                                    unsigned int buffer_length) {
-  std::string ascii = chromeos::AsciiEncode(blob);
-  size_t length = ascii.copy(buffer, buffer_length);
-  if (length < buffer_length) {
-    buffer[length] = '\0';
+std::string CryptoLib::BlobToHex(const chromeos::Blob& blob) {
+  std::string buffer(blob.size() * 2, '\x00');
+  BlobToHexToBuffer(blob, &buffer[0], buffer.size());
+  return buffer;
+}
+
+void CryptoLib::BlobToHexToBuffer(const chromeos::Blob& blob,
+                                  void* buffer,
+                                  size_t buffer_length) {
+  static const char table[] = "0123456789abcdef";
+  char* char_buffer = reinterpret_cast<char*>(buffer);
+  char* char_buffer_end = char_buffer + buffer_length;
+  for (uint8_t byte : blob) {
+    if (char_buffer == char_buffer_end)
+      break;
+    *char_buffer++ = table[(byte >> 4) & 0x0f];
+    if (char_buffer == char_buffer_end)
+      break;
+    *char_buffer++ = table[byte & 0x0f];
   }
+  if (char_buffer != char_buffer_end)
+    *char_buffer = '\x00';
 }
 
 string CryptoLib::Base64Encode(const string& input, bool include_newlines) {
@@ -518,7 +533,7 @@ string CryptoLib::Base64Encode(const string& input, bool include_newlines) {
   BIO_write(bio, input.data(), input.size());
   static_cast<void>(BIO_flush(bio));
   char *data;
-  long length = BIO_get_mem_data(bio, &data);  // NOLINT(runtime/int)
+  size_t length = BIO_get_mem_data(bio, &data);
   string output(data, length);
   chromeos::SecureMemset(data, 0, length);
   BIO_free_all(bio);

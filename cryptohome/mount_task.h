@@ -32,7 +32,6 @@
 #include <base/threading/thread.h>
 #include <chromeos/process.h>
 #include <chromeos/secure_blob.h>
-#include <chromeos/utility.h>
 
 #include "cryptohome/cryptohome_event_source.h"
 #include "cryptohome/mount.h"

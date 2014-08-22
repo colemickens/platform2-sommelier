@@ -96,14 +96,19 @@ class CryptoLib {
                                          PaddingScheme padding, BlockMode mode,
                                          chromeos::SecureBlob* ciphertext);
 
-  // Encodes a binary blob to hex-ascii
+  // Encodes a binary blob to hex-ascii. Similar to base::HexEncode but
+  // produces lowercase letters for hex digits.
   //
+  // Parameters
+  //   blob - The binary blob to convert
+  static std::string BlobToHex(const chromeos::Blob& blob);
   // Parameters
   //   blob - The binary blob to convert
   //   buffer (IN/OUT) - Where to store the converted blob
   //   buffer_length - The size of the buffer
-  static void AsciiEncodeToBuffer(const chromeos::Blob& blob, char* buffer,
-                                  unsigned int buffer_length);
+  static void BlobToHexToBuffer(const chromeos::Blob& blob,
+                                void* buffer,
+                                size_t buffer_length);
 
   // Encodes a binary blob to base64.
   //

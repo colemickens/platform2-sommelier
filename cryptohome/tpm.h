@@ -13,7 +13,6 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/synchronization/lock.h>
 #include <chromeos/secure_blob.h>
-#include <chromeos/utility.h>
 #include <metrics/metrics_library.h>
 #include <openssl/rsa.h>
 #include <trousers/tss.h>

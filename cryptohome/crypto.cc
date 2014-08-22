@@ -16,8 +16,8 @@
 
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <chromeos/secure_blob.h>
-#include <chromeos/utility.h>
 extern "C" {
 #include <scrypt/crypto_scrypt.h>
 #include <scrypt/scryptenc.h>
@@ -192,7 +192,7 @@ bool Crypto::AddKeyset(const VaultKeyset& vault_keyset,
   // Add the File Encryption key (FEK) from the vault keyset.  This is the key
   // that is used to encrypt the file contents when it is persisted to the lower
   // filesystem by eCryptfs.
-  *key_signature = chromeos::AsciiEncode(vault_keyset.fek_sig());
+  *key_signature = CryptoLib::BlobToHex(vault_keyset.fek_sig());
   if (!PushVaultKey(vault_keyset.fek(), *key_signature,
                     vault_keyset.fek_salt())) {
     LOG(ERROR) << "Couldn't add ecryptfs key to keyring";
@@ -202,7 +202,7 @@ bool Crypto::AddKeyset(const VaultKeyset& vault_keyset,
   // Add the File Name Encryption Key (FNEK) from the vault keyset.  This is the
   // key that is used to encrypt the file name when it is persisted to the lower
   // filesystem by eCryptfs.
-  *filename_key_signature = chromeos::AsciiEncode(vault_keyset.fnek_sig());
+  *filename_key_signature = CryptoLib::BlobToHex(vault_keyset.fnek_sig());
   if (!PushVaultKey(vault_keyset.fnek(), *filename_key_signature,
                     vault_keyset.fnek_salt())) {
     LOG(ERROR) << "Couldn't add ecryptfs filename encryption key to keyring";
@@ -247,7 +247,7 @@ void Crypto::PasswordToPasskey(const char* password,
                                SecureBlob* passkey) {
   CHECK(password);
 
-  std::string ascii_salt = chromeos::AsciiEncode(salt);
+  std::string ascii_salt = CryptoLib::BlobToHex(salt);
   // Convert a raw password to a password hash
   SHA256_CTX sha_context;
   SecureBlob md_value(SHA256_DIGEST_LENGTH);
@@ -261,9 +261,9 @@ void Crypto::PasswordToPasskey(const char* password,
 
   md_value.resize(SHA256_DIGEST_LENGTH / 2);
   SecureBlob local_passkey(SHA256_DIGEST_LENGTH);
-  CryptoLib::AsciiEncodeToBuffer(md_value,
-                                 static_cast<char*>(local_passkey.data()),
-                                 local_passkey.size());
+  CryptoLib::BlobToHexToBuffer(md_value,
+                               local_passkey.data(),
+                               local_passkey.size());
   passkey->swap(local_passkey);
 }
 
@@ -282,9 +282,9 @@ bool Crypto::IsTPMPubkeyHash(const string& hash,
     return false;
   }
   if ((hash.size() != pub_key_hash.size()) ||
-      (chromeos::SafeMemcmp(hash.data(),
-              pub_key_hash.data(),
-              pub_key_hash.size()))) {
+      (chromeos::SecureMemcmp(hash.data(),
+                              pub_key_hash.data(),
+                              pub_key_hash.size()))) {
     if (error)
       *error = CE_TPM_FATAL;
     return false;
@@ -532,8 +532,7 @@ bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
          SHA_DIGEST_LENGTH);
   decrypted.resize(decrypted.size() - SHA_DIGEST_LENGTH);
   chromeos::Blob hash = CryptoLib::Sha1(decrypted);
-  if (chromeos::SafeMemcmp(hash.data(), &included_hash[0],
-                           hash.size())) {
+  if (chromeos::SecureMemcmp(hash.data(), &included_hash[0], hash.size())) {
     LOG(ERROR) << "Scrypt hash verification failed";
     if (error) {
       *error = CE_SCRYPT_CRYPTO;
@@ -847,8 +846,8 @@ bool Crypto::DecryptData(const string& encrypted_data,
     LOG(ERROR) << "Corrupted data in encrypted pb.";
     return false;
   }
-  if (0 != chromeos::SafeMemcmp(mac.data(), encrypted_pb.mac().data(),
-                                mac.length())) {
+  if (0 != chromeos::SecureMemcmp(mac.data(), encrypted_pb.mac().data(),
+                                  mac.length())) {
     LOG(ERROR) << "Corrupted data in encrypted pb.";
     return false;
   }

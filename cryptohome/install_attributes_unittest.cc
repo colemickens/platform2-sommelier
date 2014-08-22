@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <base/file_util.h>
 #include <base/logging.h>
-#include <chromeos/utility.h>
+#include <chromeos/secure_blob.h>
 #include <gtest/gtest.h>
 
 #include "cryptohome/lockbox.h"

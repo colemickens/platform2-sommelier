@@ -18,7 +18,6 @@
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/secure_blob.h>
-#include <chromeos/utility.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 

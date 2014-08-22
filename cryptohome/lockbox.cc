@@ -20,7 +20,6 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <chromeos/secure_blob.h>
-#include <chromeos/utility.h>
 
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/platform.h"
@@ -248,8 +247,8 @@ bool Lockbox::Verify(const chromeos::Blob& blob, ErrorId* error) {
 
   DCHECK(hash.size() == kReservedDigestBytes);
   // Validate the data hash versus the stored hash.
-  if (chromeos::SafeMemcmp(contents_->hash, hash.data(),
-                           sizeof(contents_->hash))) {
+  if (chromeos::SecureMemcmp(contents_->hash, hash.data(),
+                             sizeof(contents_->hash))) {
     LOG(ERROR) << "Verify() hash mismatch!";
     *error = kErrorIdHashMismatch;
     return false;
@@ -410,7 +409,7 @@ void Lockbox::FinalizeMountEncrypted(const chromeos::Blob &entropy) const {
 
   // Take hash of entropy and convert to hex string for cmdline.
   SecureBlob hash = CryptoLib::Sha256(entropy);
-  hex = chromeos::AsciiEncode(hash);
+  hex = CryptoLib::BlobToHex(hash);
 
   process_->Reset(0);
   process_->AddArg(kMountEncrypted);

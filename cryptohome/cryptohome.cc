@@ -31,7 +31,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/syslog_logging.h>
-#include <chromeos/utility.h>
 #include <google/protobuf/message_lite.h>
 
 #include "cryptohome/attestation.h"
@@ -1375,25 +1374,25 @@ int main(int argc, char **argv) {
     serialized.salt().copy(static_cast<char*>(blob.data()),
                            serialized.salt().length(), 0);
     printf("  Salt:\n");
-    printf("    %s\n", chromeos::AsciiEncode(blob).c_str());
+    printf("    %s\n", cryptohome::CryptoLib::BlobToHex(blob).c_str());
     blob.resize(serialized.wrapped_keyset().length());
     serialized.wrapped_keyset().copy(static_cast<char*>(blob.data()),
                                      serialized.wrapped_keyset().length(), 0);
     printf("  Wrapped (Encrypted) Keyset:\n");
-    printf("    %s\n", chromeos::AsciiEncode(blob).c_str());
+    printf("    %s\n", cryptohome::CryptoLib::BlobToHex(blob).c_str());
     if (serialized.has_tpm_key()) {
       blob.resize(serialized.tpm_key().length());
       serialized.tpm_key().copy(static_cast<char*>(blob.data()),
                                 serialized.tpm_key().length(), 0);
       printf("  TPM-Bound (Encrypted) Vault Encryption Key:\n");
-      printf("    %s\n", chromeos::AsciiEncode(blob).c_str());
+      printf("    %s\n", cryptohome::CryptoLib::BlobToHex(blob).c_str());
     }
     if (serialized.has_tpm_public_key_hash()) {
       blob.resize(serialized.tpm_public_key_hash().length());
       serialized.tpm_public_key_hash().copy(static_cast<char*>(blob.data()),
                                             serialized.tpm_key().length(), 0);
       printf("  TPM Public Key Hash:\n");
-      printf("    %s\n", chromeos::AsciiEncode(blob).c_str());
+      printf("    %s\n", cryptohome::CryptoLib::BlobToHex(blob).c_str());
     }
     if (serialized.has_password_rounds()) {
       printf("  Password rounds:\n");

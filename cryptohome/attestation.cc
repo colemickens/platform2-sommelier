@@ -1467,8 +1467,8 @@ bool Attestation::VerifyActivateIdentity(const SecureBlob& delegate_blob,
     return false;
   }
   if (credential.size() != credential_out.size() ||
-      chromeos::SafeMemcmp(credential.data(), credential_out.data(),
-                           credential.size()) != 0) {
+      chromeos::SecureMemcmp(credential.data(), credential_out.data(),
+                             credential.size()) != 0) {
     LOG(ERROR) << "Invalid identity credential.";
     return false;
   }

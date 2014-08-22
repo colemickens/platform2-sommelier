@@ -13,6 +13,7 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/constants/cryptohome.h>
 #include <chromeos/cryptohome.h>
+#include <chromeos/secure_blob.h>
 
 #include "cryptohome/credentials.h"
 #include "cryptohome/cryptolib.h"
@@ -351,8 +352,8 @@ bool HomeDirs::CheckAuthorizationSignature(const KeyData& existing_key_data,
 
   // Check the HMAC
   if (signature.length() != hmac_str.length() ||
-      chromeos::SafeMemcmp(signature.data(), hmac_str.data(),
-                           std::min(signature.size(), hmac_str.size()))) {
+      chromeos::SecureMemcmp(signature.data(), hmac_str.data(),
+                             std::min(signature.size(), hmac_str.size()))) {
     LOG(ERROR) << "Supplied authorization signature was invalid.";
     return false;
   }

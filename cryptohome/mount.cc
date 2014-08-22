@@ -23,7 +23,7 @@
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
 #include <chromeos/cryptohome.h>
-#include <chromeos/utility.h>
+#include <chromeos/secure_blob.h>
 
 #include "cryptohome/boot_lockbox.h"
 #include "cryptohome/chaps_client_factory.h"

@@ -9,7 +9,7 @@
 #include <base/strings/string_util.h>
 #include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/utility.h>
+#include <debugd/src/dbus_utils.h>
 
 #include "dbus_proxies/org.freedesktop.DBus.Properties.h"
 #include "dbus_proxies/org.freedesktop.ModemManager.h"
@@ -88,7 +88,7 @@ Value* FetchOneInterface(DBusPropertiesProxy& properties, // NOLINT
   std::map<std::string, DBus::Variant> propsmap =
       properties.GetAll(interface);
   Value* propsdict = NULL;
-  if (!chromeos::DBusPropertyMapToValue(propsmap, &propsdict))
+  if (!debugd::DBusPropertyMapToValue(propsmap, &propsdict))
     return NULL;
   std::string keypath = interface;
   ReplaceSubstringsAfterOffset(&keypath, 0, ".", "/");
@@ -108,7 +108,7 @@ Value* Modem::GetStatus(DBus::Connection& conn) { // NOLINT
     statusmap = simple.GetStatus();
     // cpplint thinks this is a function call
   } catch(DBus::Error e) {}
-  if (chromeos::DBusPropertyMapToValue(statusmap, &status))
+  if (debugd::DBusPropertyMapToValue(statusmap, &status))
     result->Set("status", status);
   ModemProxy modem = ModemProxy(conn, path_.c_str(), service_);
   DictionaryValue* infodict = new DictionaryValue();

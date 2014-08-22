@@ -12,8 +12,8 @@
 #include <base/basictypes.h>
 #include <base/callback_forward.h>
 #include <base/files/file_enumerator.h>
+#include <base/memory/scoped_ptr.h>
 #include <chromeos/secure_blob.h>
-#include <chromeos/utility.h>
 #include <map>
 #include <set>
 #include <string>

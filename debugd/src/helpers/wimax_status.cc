@@ -10,7 +10,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/utility.h>
+#include <debugd/src/dbus_utils.h>
 
 #include "dbus_proxies/org.freedesktop.DBus.Properties.h"
 
@@ -68,7 +68,7 @@ class WiMaxStatus {
     }
 
     Value* properties_value = NULL;
-    if (!chromeos::DBusPropertyMapToValue(properties_map, &properties_value))
+    if (!debugd::DBusPropertyMapToValue(properties_map, &properties_value))
       return NULL;
 
     DictionaryValue* properties_dict = NULL;

@@ -8,7 +8,6 @@
 
 #include <base/logging.h>
 #include <chromeos/secure_blob.h>
-#include <chromeos/utility.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -38,8 +37,8 @@ class VaultKeysetTest : public ::testing::Test {
     }
     for (unsigned int start = 0; start <= (haystack.size() - needle.size());
          start++) {
-      if (chromeos::SafeMemcmp(&haystack[start], &needle[0],
-                               needle.size()) == 0) {
+      if (chromeos::SecureMemcmp(&haystack[start], &needle[0],
+                                 needle.size()) == 0) {
         return true;
       }
     }

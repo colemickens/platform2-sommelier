@@ -7,7 +7,6 @@
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
 
 #include <base/logging.h>
-#include <chromeos/utility.h>
 #include <gtest/gtest.h>
 
 using base::FilePath;

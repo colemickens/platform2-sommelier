@@ -8,8 +8,8 @@
 
 #include <string.h>  // For memset(), memcpy()
 
+#include <base/strings/string_number_conversions.h>
 #include <chromeos/secure_blob.h>
-#include <chromeos/utility.h>
 #include <gtest/gtest.h>
 #include <string>
 
@@ -43,7 +43,8 @@ TEST(UsernamePasskeyTest, UsernameTest) {
 TEST(UsernamePasskeyTest, GetObfuscatedUsernameTest) {
   UsernamePasskey up(kFakeUser, SecureBlob(kFakePasskey, strlen(kFakePasskey)));
 
-  chromeos::Blob fake_salt(chromeos::AsciiDecode(kFakeSystemSalt));
+  chromeos::Blob fake_salt;
+  EXPECT_TRUE(base::HexStringToBytes(kFakeSystemSalt, &fake_salt));
 
   EXPECT_EQ("bb0ae3fcd181eefb861b4f0ee147a316e51d9f04",
             up.GetObfuscatedUsername(fake_salt));
@@ -54,7 +55,8 @@ TEST(UsernamePasskeyTest, GetPasskeyTest) {
   SecureBlob passkey;
   up.GetPasskey(&passkey);
   EXPECT_EQ(strlen(kFakePasskey), passkey.size());
-  EXPECT_EQ(0, chromeos::SafeMemcmp(kFakePasskey, &passkey[0], passkey.size()));
+  EXPECT_EQ(0, chromeos::SecureMemcmp(kFakePasskey,
+                                      &passkey[0], passkey.size()));
 }
 
 }  // namespace cryptohome

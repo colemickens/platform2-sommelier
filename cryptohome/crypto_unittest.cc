@@ -13,8 +13,8 @@
 #include <openssl/sha.h>
 
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/secure_blob.h>
-#include <chromeos/utility.h>
 #include <gtest/gtest.h>
 #include <vector>
 
@@ -137,8 +137,8 @@ class CryptoTest : public ::testing::Test {
     }
     for (unsigned int start = 0; start <= (haystack.size() - needle.size());
          start++) {
-      if (chromeos::SafeMemcmp(&haystack[start], &needle[0],
-                               needle.size()) == 0) {
+      if (chromeos::SecureMemcmp(&haystack[start], &needle[0],
+                                 needle.size()) == 0) {
         return true;
       }
     }
@@ -285,11 +285,8 @@ TEST_F(CryptoTest, SaltCreateTest) {
   //            existing salt is read.
 }
 
-TEST_F(CryptoTest, AsciiEncodeTest) {
-  // Check that AsciiEncodeToBuffer works
-  MockPlatform platform;
-  Crypto crypto(&platform);
-
+TEST_F(CryptoTest, BlobToHexTest) {
+  // Check that BlobToHexToBuffer works
   SecureBlob blob_in(256);
   SecureBlob blob_out(512);
 
@@ -299,13 +296,12 @@ TEST_F(CryptoTest, AsciiEncodeTest) {
     blob_out[i * 2 + 1] = 0;
   }
 
-  CryptoLib::AsciiEncodeToBuffer(blob_in, static_cast<char*>(blob_out.data()),
-                                 blob_out.size());
-
-  std::string known_good = chromeos::AsciiEncode(blob_in);
-  std::string test_good(static_cast<char*>(blob_out.data()), blob_out.size());
-
-  ASSERT_EQ(0, known_good.compare(test_good));
+  CryptoLib::BlobToHexToBuffer(blob_in, blob_out.data(), blob_out.size());
+  for (int i = 0; i < 256; i++) {
+    std::string digits = base::StringPrintf("%02x", i);
+    ASSERT_EQ(digits[0], blob_out[i * 2]);
+    ASSERT_EQ(digits[1], blob_out[i * 2 + 1]);
+  }
 }
 
 TEST_F(CryptoTest, TpmStepTest) {

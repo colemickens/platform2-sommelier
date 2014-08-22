@@ -9,8 +9,6 @@
 #include <base/logging.h>
 #include <gtest/gtest.h>
 
-#include "chromeos/utility.h"
-
 namespace chromeos {
 using std::string;
 
@@ -26,8 +24,8 @@ class SecureBlobTest : public ::testing::Test {
     }
     for (unsigned int start = 0; start <= (haystack.size() - needle.size());
          start++) {
-      if (chromeos::SafeMemcmp(&haystack[start], &needle[0],
-                               needle.size()) == 0) {
+      if (chromeos::SecureMemcmp(&haystack[start], &needle[0],
+                                 needle.size()) == 0) {
         return true;
       }
     }

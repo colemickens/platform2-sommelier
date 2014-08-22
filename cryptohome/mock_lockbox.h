@@ -8,7 +8,7 @@
 #include "cryptohome/lockbox.h"
 
 #include <base/logging.h>
-#include <chromeos/utility.h>
+#include <chromeos/secure_blob.h>
 
 #include <gmock/gmock.h>
 

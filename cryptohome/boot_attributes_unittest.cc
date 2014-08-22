@@ -9,7 +9,6 @@
 
 #include <base/compiler_specific.h>
 #include <chromeos/secure_blob.h>
-#include <chromeos/utility.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

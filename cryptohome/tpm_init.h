@@ -8,7 +8,7 @@
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
-#include <chromeos/utility.h>
+#include <chromeos/secure_blob.h>
 #include <trousers/scoped_tss_type.h>
 
 #include "cryptohome/tpm.h"

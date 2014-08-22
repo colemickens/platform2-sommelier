@@ -12,6 +12,7 @@
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <base/memory/scoped_ptr.h>
 #include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

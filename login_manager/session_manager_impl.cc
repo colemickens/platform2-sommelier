@@ -19,7 +19,6 @@
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <chromeos/cryptohome.h>
-#include <chromeos/utility.h>
 #include <crypto/scoped_nss_types.h>
 #include <dbus/message.h>
 #include <vboot/crossystem.h>

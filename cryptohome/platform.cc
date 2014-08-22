@@ -40,7 +40,6 @@
 #include <base/time/time.h>
 #include <chromeos/process.h>
 #include <chromeos/secure_blob.h>
-#include <chromeos/utility.h>
 
 // Uses libvboot_host for accessing crossystem variables.
 extern "C" {

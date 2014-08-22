@@ -18,7 +18,6 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/secure_blob.h>
-#include <chromeos/utility.h>
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
 #include <gmock/gmock.h>

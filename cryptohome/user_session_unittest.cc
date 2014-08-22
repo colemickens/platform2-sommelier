@@ -7,7 +7,6 @@
 #include "cryptohome/user_session.h"
 
 #include <chromeos/secure_blob.h>
-#include <chromeos/utility.h>
 #include <gtest/gtest.h>
 #include <string>
 

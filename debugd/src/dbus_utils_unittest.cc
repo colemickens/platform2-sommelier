@@ -2,15 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chromeos/utility.h"
+#include "debugd/src/dbus_utils.h"
 
 #include <limits>
+#include <vector>
 
 #include <base/strings/string_number_conversions.h>
 #include <dbus/dbus.h>
+#include <dbus-c++/dbus.h>
 #include <gtest/gtest.h>
 
-#include "chromeos/test_helpers.h"
 
 using base::DictionaryValue;
 using base::ListValue;
@@ -20,7 +21,7 @@ static void MessageToValues(const DBus::Message& m, std::vector<Value*>* result,
                             bool* success) {
   Value* v = NULL;
   *success = false;
-  ASSERT_TRUE(chromeos::DBusMessageToValue(m, &v));
+  ASSERT_TRUE(debugd::DBusMessageToValue(m, &v));
   ASSERT_TRUE(v != NULL);
   ASSERT_EQ(Value::TYPE_LIST, v->GetType());
   ListValue* lv = NULL;

@@ -21,7 +21,6 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/secure_blob.h>
-#include <chromeos/utility.h>
 #include <gtest/gtest.h>
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
@@ -913,7 +912,7 @@ TEST_F(MountTest, MountCryptohomeChapsKey) {
 
   // Compare the pre mount chaps key to the post mount key.
   ASSERT_EQ(local_chaps.size(), vault_keyset.chaps_key().size());
-  ASSERT_EQ(0, chromeos::SafeMemcmp(local_chaps.const_data(),
+  ASSERT_EQ(0, chromeos::SecureMemcmp(local_chaps.const_data(),
     vault_keyset.chaps_key().const_data(), local_chaps.size()));
 }
 
@@ -1040,7 +1039,7 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
   SecureBlob rhs;
   GetKeysetBlob(new_serialized, &rhs);
   ASSERT_EQ(lhs.size(), rhs.size());
-  ASSERT_EQ(0, chromeos::SafeMemcmp(lhs.data(), rhs.data(), lhs.size()));
+  ASSERT_EQ(0, chromeos::SecureMemcmp(lhs.data(), rhs.data(), lhs.size()));
 }
 
 TEST_F(MountTest, MountCryptohomeNoCreate) {

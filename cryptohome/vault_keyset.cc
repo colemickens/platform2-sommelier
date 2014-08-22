@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include <base/logging.h>
-#include <chromeos/utility.h>
+#include <chromeos/secure_blob.h>
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_common.h"

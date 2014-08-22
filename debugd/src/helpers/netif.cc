@@ -62,7 +62,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
-#include <chromeos/utility.h>
+#include <debugd/src/dbus_utils.h>
 
 #include "shill/dbus_proxies/org.chromium.flimflam.Manager.h"
 #include "shill/dbus_proxies/org.chromium.flimflam.Service.h"

@@ -451,9 +451,9 @@ void TpmInit::CreateOwnerPassword(SecureBlob* password) {
   CryptoLib::GetSecureRandom(static_cast<unsigned char*>(random.data()),
                              random.size());
   SecureBlob tpm_password(kOwnerPasswordLength);
-  CryptoLib::AsciiEncodeToBuffer(random,
-                                 static_cast<char*>(tpm_password.data()),
-                                 tpm_password.size());
+  CryptoLib::BlobToHexToBuffer(random,
+                               tpm_password.data(),
+                               tpm_password.size());
   password->swap(tpm_password);
 }
 

@@ -12,7 +12,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/strings/string_util.h>
 #include <chromeos/process.h>
-#include <chromeos/utility.h>
+#include <chromeos/secure_blob.h>
 
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm.h"

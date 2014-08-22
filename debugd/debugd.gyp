@@ -88,6 +88,13 @@
       ],
     },
     {
+      'target_name': 'debugd_dbus_utils',
+      'type': 'static_library',
+      'sources': [
+        'src/dbus_utils.cc',
+      ]
+    },
+    {
       'target_name': 'debugd',
       'type': 'executable',
       'dependencies': ['libdebugd'],
@@ -116,7 +123,10 @@
     {
       'target_name': 'netif',
       'type': 'executable',
-      'dependencies': ['debugd-proxies'],
+      'dependencies': [
+        'debugd_dbus_utils',
+        'debugd-proxies',
+      ],
       'sources': [
         'src/helpers/netif.cc',
       ]
@@ -124,7 +134,10 @@
     {
       'target_name': 'network_status',
       'type': 'executable',
-      'dependencies': ['debugd-proxies'],
+      'dependencies': [
+        'debugd_dbus_utils',
+        'debugd-proxies',
+      ],
       'sources': [
         'src/helpers/network_status.cc',
       ]
@@ -137,6 +150,7 @@
           'target_name': 'modem_status',
           'type': 'executable',
           'dependencies': [
+            'debugd_dbus_utils',
             'debugd-proxies',
           ],
           'sources': [
@@ -150,11 +164,15 @@
         {
           'target_name': 'debugd_testrunner',
           'type': 'executable',
-          'dependencies': ['libdebugd'],
+          'dependencies': [
+            'libdebugd',
+            'debugd_dbus_utils',
+          ],
           'includes': ['../common-mk/common_test.gypi'],
           'libraries': ['-lm',],
           'sources': [
             'src/anonymizer_tool_test.cc',
+            'src/dbus_utils_unittest.cc',
             'src/log_tool_test.cc',
             'src/modem_status_tool_test.cc',
             'src/process_with_id_test.cc',
@@ -171,6 +189,7 @@
           'target_name': 'wimax_status',
           'type': 'executable',
           'dependencies': [
+            'debugd_dbus_utils',
             'debugd-proxies',
           ],
           'sources': [
