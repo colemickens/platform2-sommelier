@@ -1360,8 +1360,6 @@ void Manager::SortServicesTask() {
     if (services_[0]->connection()) {
       services_[0]->connection()->SetIsDefault(true);
       if (default_service != services_[0]) {
-        // TODO(samueltan): never seems to get called when switching
-        // between ethernet and wifi; find out why.
         TransferWakeOnPacketConnections(default_service, services_[0]);
         default_service = services_[0];
         LOG(INFO) << "Default service is now "
@@ -1952,21 +1950,21 @@ void Manager::AddWakeOnPacketConnection(const string &ip_endpoint,
                                         Error *error) {
   IPAddress ip_addr(ip_endpoint);
   if (!ip_addr.IsValid()) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
-                          "Invalid ip_address " + ip_endpoint);
+    error->Populate(Error::kInvalidArguments,
+                    "Invalid ip_address " + ip_endpoint);
     return;
   }
   ServiceRefPtr default_service = services_.front();
   if (default_service) {
     DeviceRefPtr device = GetDeviceConnectedToService(default_service);
     if (!device) {
-      Error::PopulateAndLog(error, Error::kOperationFailed,
+      error->PopulateAndLog(error, Error::kOperationFailed,
                             "No matching device found");
     } else {
       device->AddWakeOnPacketConnection(ip_addr, error);
     }
   } else {
-    Error::PopulateAndLog(error, Error::kOperationFailed, "No services found");
+    error->PopulateAndLog(error, Error::kOperationFailed, "No services found");
   }
 }
 
@@ -1974,36 +1972,36 @@ void Manager::RemoveWakeOnPacketConnection(const string &ip_endpoint,
                                            Error *error) {
   IPAddress ip_addr(ip_endpoint);
   if (!ip_addr.IsValid()) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
-                          "Invalid ip_address " + ip_endpoint);
+    error->Populate(Error::kInvalidArguments,
+                    "Invalid ip_address " + ip_endpoint);
     return;
   }
   ServiceRefPtr default_service = services_.front();
   if (default_service) {
     DeviceRefPtr device = GetDeviceConnectedToService(default_service);
     if (!device) {
-      Error::PopulateAndLog(error, Error::kOperationFailed,
+      error->PopulateAndLog(error, Error::kOperationFailed,
                             "No matching device found");
     } else {
       device->RemoveWakeOnPacketConnection(ip_addr, error);
     }
   } else {
-    Error::PopulateAndLog(error, Error::kOperationFailed, "No services found");
+    error->PopulateAndLog(error, Error::kOperationFailed, "No services found");
   }
 }
 
 void Manager::RemoveAllWakeOnPacketConnections(Error *error) {
   ServiceRefPtr default_service = services_.front();
   if (default_service) {
-    DeviceRefPtr device = GetDeviceConnectedToService(default_service);
-    if (!device) {
-      Error::PopulateAndLog(error, Error::kOperationFailed,
-                            "No matching device found");
-    } else {
-      device->RemoveAllWakeOnPacketConnections(error);
-    }
+      DeviceRefPtr device = GetDeviceConnectedToService(default_service);
+      if (!device) {
+        error->PopulateAndLog(error, Error::kOperationFailed,
+                              "No matching device found");
+      } else {
+        device->RemoveAllWakeOnPacketConnections(error);
+      }
   } else {
-    Error::PopulateAndLog(error, Error::kOperationFailed, "No services found");
+    error->PopulateAndLog(error, Error::kOperationFailed, "No services found");
   }
 }
 

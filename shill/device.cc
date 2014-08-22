@@ -517,7 +517,7 @@ void Device::StopAllActivities() {
 
 void Device::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                        Error *error) {
-  Error::PopulateAndLog(
+  error->PopulateAndLog(
       error, Error::kNotSupported,
       "AddWakeOnPacketConnection not implemented for " + link_name_ + ".");
   return;
@@ -525,14 +525,14 @@ void Device::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
 
 void Device::RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                           Error *error) {
-  Error::PopulateAndLog(
+  error->PopulateAndLog(
       error, Error::kNotSupported,
       "RemoveWakeOnPacketConnection not implemented for " + link_name_ + ".");
   return;
 }
 
 void Device::RemoveAllWakeOnPacketConnections(Error *error) {
-  Error::PopulateAndLog(
+  error->PopulateAndLog(
       error, Error::kNotSupported,
       "RemoveAllWakeOnPacketConnections not implemented for " + link_name_ +
           ".");
@@ -1075,6 +1075,18 @@ void Device::SwitchDNSServers(const vector<string> &dns_servers) {
   selected_service_->NotifyIPConfigChanges();
   // Restart the portal detection with the new DNS setting.
   RestartPortalDetection();
+}
+
+void Device::AddWakeOnPacketConnectionInternal(const IPAddress &ip) {
+  wake_on_packet_connections_.AddUnique(ip);
+}
+
+void Device::RemoveWakeOnPacketConnectionInternal(const IPAddress &ip) {
+  wake_on_packet_connections_.Remove(ip);
+}
+
+void Device::RemoveAllWakeOnPacketConnectionsInternal() {
+  wake_on_packet_connections_.Clear();
 }
 
 void Device::set_traffic_monitor(TrafficMonitor *traffic_monitor) {

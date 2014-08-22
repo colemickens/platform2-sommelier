@@ -529,10 +529,6 @@ class Device : public base::RefCounted<Device> {
   // Use for unit test.
   void set_traffic_monitor(TrafficMonitor *traffic_monitor);
 
-  // Keeps track of IP addresses that this device has wake-on-packet rules
-  // programmed for.
-  IPAddressStore wake_on_packet_connections_;
-
  private:
   friend class CellularCapabilityTest;
   friend class CellularTest;
@@ -605,6 +601,11 @@ class Device : public base::RefCounted<Device> {
 
   // Called when the lifetime for IPv6 DNS server expires.
   void IPv6DNSServerExpired();
+
+  // Modify the internal records of registered wake-on-packet connections
+  void AddWakeOnPacketConnectionInternal(const IPAddress &ip);
+  void RemoveWakeOnPacketConnectionInternal(const IPAddress &ip);
+  void RemoveAllWakeOnPacketConnectionsInternal();
 
   // |enabled_persistent_| is the value of the Powered property, as
   // read from the profile. If it is not found in the profile, it
@@ -681,6 +682,10 @@ class Device : public base::RefCounted<Device> {
   // Cache singleton pointers for performance and test purposes.
   DHCPProvider *dhcp_provider_;
   RTNLHandler *rtnl_handler_;
+
+  // Keep track of IP addresses that device will wake upon receiving packets
+  // from
+  IPAddressStore wake_on_packet_connections_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };

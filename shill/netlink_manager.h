@@ -113,17 +113,6 @@ class NetlinkManager {
   typedef base::Callback<void(AuxilliaryMessageType type,
                               const NetlinkMessage *)>
       NetlinkAuxilliaryMessageHandler;
-  // NetlinkAckHandler handles netlink Ack messages, which are a special type
-  // of netlink error message carrying an error code of 0. Since Ack messages
-  // contain no useful data (other than the error code of 0 to differentiate
-  // it from an actual error message), the handler is not passed a message.
-  // as an argument. The boolean value filled in by the handler (via the
-  // pointer) indicates whether or not the callbacks registered for the message
-  // (identified by sequence number) that this handler was invoked for should be
-  // removed after this callback is executed. This allows a sender of an NL80211
-  // message to handle both an Ack and another response message, rather than
-  // handle only the first response received.
-  typedef base::Callback<void(bool *)> NetlinkAckHandler;
 
   // ResponseHandlers provide a polymorphic context for the base::Callback
   // message handlers so that handlers for different types of messages can be
@@ -132,7 +121,6 @@ class NetlinkManager {
     public base::RefCounted<NetlinkResponseHandler> {
    public:
     explicit NetlinkResponseHandler(
-        const NetlinkAckHandler &ack_handler,
         const NetlinkAuxilliaryMessageHandler &error_handler);
     virtual ~NetlinkResponseHandler();
     // Calls wrapper-type-specific callback for |netlink_message|.  Returns
@@ -142,13 +130,11 @@ class NetlinkManager {
     virtual bool HandleMessage(const NetlinkMessage &netlink_message) const = 0;
     void HandleError(AuxilliaryMessageType type,
                      const NetlinkMessage *netlink_message) const;
-    virtual bool HandleAck() const;
     void set_delete_after(const timeval &time) { delete_after_ = time; }
     const struct timeval &delete_after() const { return delete_after_; }
 
    protected:
     NetlinkResponseHandler();
-    NetlinkAckHandler ack_handler_;
 
    private:
     NetlinkAuxilliaryMessageHandler error_handler_;
@@ -227,23 +213,15 @@ class NetlinkManager {
   virtual bool SendControlMessage(
       ControlNetlinkMessage *message,
       const ControlNetlinkMessageHandler &message_handler,
-      const NetlinkAckHandler &ack_handler,
       const NetlinkAuxilliaryMessageHandler &error_handler);
   virtual bool SendNl80211Message(
       Nl80211Message *message,
       const Nl80211MessageHandler &message_handler,
-      const NetlinkAckHandler &ack_handler,
       const NetlinkAuxilliaryMessageHandler &error_handler);
 
   // Generic erroneous message handler everyone can use.
   static void OnNetlinkMessageError(AuxilliaryMessageType type,
                                     const NetlinkMessage *raw_message);
-
-  // Generic Ack handler that does nothing. Other callbacks registered for the
-  // message are not deleted after this function is executed.
-  static void OnAckDoNothing(bool *remove_callbacks) {
-    *remove_callbacks = false;
-  }
 
   // Uninstall the handler for a specific netlink message.
   bool RemoveMessageHandler(const NetlinkMessage &message);
@@ -271,7 +249,6 @@ class NetlinkManager {
   FRIEND_TEST(NetlinkManagerTest, GetFamilyOneInterstitialMessage);
   FRIEND_TEST(NetlinkManagerTest, GetFamilyTimeout);
   FRIEND_TEST(NetlinkManagerTest, MessageHandler);
-  FRIEND_TEST(NetlinkManagerTest, AckHandler);
   FRIEND_TEST(NetlinkManagerTest, MultipartMessageHandler);
   FRIEND_TEST(NetlinkManagerTest, OnInvalidRawNlMessageReceived);
   FRIEND_TEST(NetlinkManagerTest, TimeoutResponseHandlers);

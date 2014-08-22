@@ -147,11 +147,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                     Error *error) override;
   void RemoveAllWakeOnPacketConnections(Error *error) override;
-  void OnSetWakeOnPacketConnectionResponse(
-      const Nl80211Message &nl80211_message);
-  void OnAddWakeOnPacketConnectionAck(IPAddress ip_endpoint,
-                                      bool *remove_callbacks);
-  void OnRemoveAllWakeOnPacketConnectionAck(bool *remove_callbacks);
+  void SetWakeOnPacketConnectionHandler(const Nl80211Message &nl80211_message);
+  void OnSetWakeOnPacketConnectionFailure(
+      NetlinkManager::AuxilliaryMessageType type,
+      const NetlinkMessage *raw_message);
 
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from

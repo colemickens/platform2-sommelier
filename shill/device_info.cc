@@ -1067,7 +1067,6 @@ void DeviceInfo::GetWiFiInterfaceInfo(int interface_index) {
   netlink_manager_->SendNl80211Message(
       &msg,
       Bind(&DeviceInfo::OnWiFiInterfaceInfoReceived, AsWeakPtr()),
-      Bind(&NetlinkManager::OnAckDoNothing),
       Bind(&NetlinkManager::OnNetlinkMessageError));
 }
 
