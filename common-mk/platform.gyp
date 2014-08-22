@@ -13,11 +13,6 @@
                 '<(DEPTH)/attestation/attestation.gyp:*',
               ],
             }],
-            ['USE_cellular == 1', {
-              'dependencies': [
-                '<(DEPTH)/cromo/cromo.gyp:*',
-              ],
-            }],
             ['USE_cros_disks == 1', {
               'dependencies': [
                 '<(DEPTH)/cros-disks/cros-disks.gyp:*',
