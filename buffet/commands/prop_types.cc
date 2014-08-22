@@ -11,6 +11,7 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/values.h>
+#include <chromeos/any.h>
 #include <chromeos/string_utils.h>
 
 #include "buffet/commands/object_schema.h"
@@ -149,7 +150,7 @@ bool PropType::ValidateValue(const base::Value* value,
   return val->FromJson(value, error) && ValidateConstraints(*val, error);
 }
 
-bool PropType::ValidateValue(const Any& value,
+bool PropType::ValidateValue(const chromeos::Any& value,
                              chromeos::ErrorPtr* error) const {
   std::shared_ptr<PropValue> val = CreateValue(value);
   CHECK(val) << "Failed to create value object";

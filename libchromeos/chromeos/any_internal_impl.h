@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Internal implementation of buffet::Any class.
+// Internal implementation of chromeos::Any class.
 
-#ifndef BUFFET_ANY_INTERNAL_IMPL_H_
-#define BUFFET_ANY_INTERNAL_IMPL_H_
+#ifndef LIBCHROMEOS_CHROMEOS_ANY_INTERNAL_IMPL_H_
+#define LIBCHROMEOS_CHROMEOS_ANY_INTERNAL_IMPL_H_
 
 #include <type_traits>
 #include <typeinfo>
@@ -13,7 +13,7 @@
 
 #include <base/logging.h>
 
-namespace buffet {
+namespace chromeos {
 
 namespace internal_details {
 
@@ -49,6 +49,8 @@ struct Data {
   virtual const std::type_info& GetType() const = 0;
   // Copies the contained data to the output |buffer|.
   virtual void CopyTo(Buffer* buffer) const = 0;
+  // Moves the contained data to the output |buffer|.
+  virtual void MoveTo(Buffer* buffer) = 0;
   // Checks if the contained data is an integer type (not necessarily an 'int').
   virtual bool IsConvertibleToInteger() const = 0;
   // Gets the contained integral value as an integer.
@@ -59,9 +61,12 @@ struct Data {
 template<typename T>
 struct TypedData : public Data {
   explicit TypedData(const T& value) : value_(value) {}
+  // NOLINTNEXTLINE(build/c++11)
+  explicit TypedData(T&& value) : value_(std::move(value)) {}
 
   const std::type_info& GetType() const override { return typeid(T); }
   void CopyTo(Buffer* buffer) const override;
+  void MoveTo(Buffer* buffer) override;
   bool IsConvertibleToInteger() const override {
     return std::is_integral<T>::value || std::is_enum<T>::value;
   }
@@ -72,9 +77,11 @@ struct TypedData : public Data {
                      << " to integer";
     return int_val;
   }
-  // Special method to copy data of the same type
+  // Special methods to copy/move data of the same type
   // without reallocating the buffer.
   void FastAssign(const T& source) { value_ = source; }
+  // NOLINTNEXTLINE(build/c++11)
+  void FastAssign(T&& source) { value_ = std::move(source); }
 
   T value_;
 };
@@ -97,8 +104,17 @@ class Buffer {
   Buffer(const Buffer& rhs) : Buffer() {
     rhs.CopyTo(this);
   }
+  // NOLINTNEXTLINE(build/c++11)
+  Buffer(Buffer&& rhs) : Buffer() {
+    rhs.MoveTo(this);
+  }
   Buffer& operator=(const Buffer& rhs) {
     rhs.CopyTo(this);
+    return *this;
+  }
+  // NOLINTNEXTLINE(build/c++11)
+  Buffer& operator=(Buffer&& rhs) {
+    rhs.MoveTo(this);
     return *this;
   }
 
@@ -130,16 +146,17 @@ class Buffer {
 
   // Stores a value of type T.
   template<typename T>
-  void Assign(T value) {
+  void Assign(T&& value) {  // NOLINT(build/c++11)
     using Type = typename std::decay<T>::type;
     using DataType = TypedData<Type>;
     Data* ptr = GetDataPtr();
     if (ptr && ptr->GetType() == typeid(Type)) {
       // We assign the data to the variant container, which already
-      // has the data of the same type. Do fast copy with no memory
+      // has the data of the same type. Do fast copy/move with no memory
       // reallocation.
       DataType* typed_ptr = static_cast<DataType*>(ptr);
-      typed_ptr->FastAssign(value);
+      // NOLINTNEXTLINE(build/c++11)
+      typed_ptr->FastAssign(std::forward<T>(value));
     } else {
       Clear();
       // TODO(avakulenko): [see crbug.com/379833]
@@ -149,14 +166,16 @@ class Buffer {
       if (!std::is_trivial<Type>::value ||
           sizeof(DataType) > sizeof(contained_buffer_)) {
         // If it is too big or not trivially copyable, allocate it separately.
-        external_ptr_ = new DataType(value);
+        // NOLINTNEXTLINE(build/c++11)
+        external_ptr_ = new DataType(std::forward<T>(value));
         storage_ = kExternal;
       } else {
         // Otherwise just use the pre-allocated buffer.
         DataType* address = reinterpret_cast<DataType*>(contained_buffer_);
-        // Make sure we still call the copy constructor.
+        // Make sure we still call the copy/move constructor.
         // Call the constructor manually by using placement 'new'.
-        new (address) DataType(value);
+        // NOLINTNEXTLINE(build/c++11)
+        new (address) DataType(std::forward<T>(value));
         storage_ = kContained;
       }
     }
@@ -190,6 +209,22 @@ class Buffer {
     }
   }
 
+  // Moves the data from the current buffer into the |destination|.
+  void MoveTo(Buffer* destination) {
+    if (IsEmpty()) {
+      destination->Clear();
+    } else {
+      if (storage_ == kExternal) {
+        destination->Clear();
+        destination->storage_ = kExternal;
+        destination->external_ptr_ = external_ptr_;
+        external_ptr_ = nullptr;
+      } else {
+        GetDataPtr()->MoveTo(destination);
+      }
+    }
+  }
+
   union {
     // |external_ptr_| is a pointer to a larger object allocated in
     // a separate memory block.
@@ -206,10 +241,12 @@ class Buffer {
 
 template<typename T>
 void TypedData<T>::CopyTo(Buffer* buffer) const { buffer->Assign(value_); }
+template<typename T>
+void TypedData<T>::MoveTo(Buffer* buffer) { buffer->Assign(std::move(value_)); }
 
 }  // namespace internal_details
 
-}  // namespace buffet
+}  // namespace chromeos
 
-#endif  // BUFFET_ANY_INTERNAL_IMPL_H_
+#endif  // LIBCHROMEOS_CHROMEOS_ANY_INTERNAL_IMPL_H_
 

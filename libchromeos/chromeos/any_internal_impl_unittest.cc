@@ -4,11 +4,10 @@
 
 #include <string>
 
+#include <chromeos/any.h>
 #include <gtest/gtest.h>
 
-#include "buffet/any.h"
-
-using buffet::internal_details::Buffer;
+using chromeos::internal_details::Buffer;
 
 TEST(Buffer, Empty) {
   Buffer buffer;
@@ -110,5 +109,33 @@ TEST(Buffer, Copy) {
   EXPECT_EQ(typeid(std::string), buffer1.GetDataPtr()->GetType());
   EXPECT_EQ(typeid(std::string), buffer2.GetDataPtr()->GetType());
   EXPECT_EQ("abc", buffer1.GetData<std::string>());
+  EXPECT_EQ("abc", buffer2.GetData<std::string>());
+}
+
+TEST(Buffer, Move) {
+  // Move operations essentially leave the source object in a state that is
+  // guaranteed to be safe for reuse or destruction. There is no other explicit
+  // guarantees on the exact state of the source after move (e.g. that the
+  // source Any will be Empty after the move is complete).
+  Buffer buffer1;
+  Buffer buffer2;
+
+  buffer1.Assign(30);
+  buffer1.MoveTo(&buffer2);
+  // Contained types aren't flushed, so the source Any doesn't become empty.
+  // The contained value is just moved, but for scalars this just copies
+  // the data and any retains the actual type.
+  EXPECT_FALSE(buffer1.IsEmpty());
+  EXPECT_FALSE(buffer2.IsEmpty());
+  EXPECT_EQ(typeid(int), buffer2.GetDataPtr()->GetType());
+  EXPECT_EQ(30, buffer2.GetData<int>());
+
+  buffer1.Assign(std::string("abc"));
+  buffer1.MoveTo(&buffer2);
+  // External types are moved by just moving the pointer value from src to dest.
+  // This will make the source object effectively "Empty".
+  EXPECT_TRUE(buffer1.IsEmpty());
+  EXPECT_FALSE(buffer2.IsEmpty());
+  EXPECT_EQ(typeid(std::string), buffer2.GetDataPtr()->GetType());
   EXPECT_EQ("abc", buffer2.GetData<std::string>());
 }

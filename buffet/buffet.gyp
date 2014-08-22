@@ -15,7 +15,6 @@
       'target_name': 'buffet_common',
       'type': 'static_library',
       'sources': [
-        'any.cc',
         'commands/command_definition.cc',
         'commands/command_dictionary.cc',
         'commands/command_instance.cc',
@@ -76,8 +75,6 @@
           },
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'any_unittest.cc',
-            'any_internal_impl_unittest.cc',
             'buffet_testrunner.cc',
             'commands/command_definition_unittest.cc',
             'commands/command_dictionary_unittest.cc',

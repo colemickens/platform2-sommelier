@@ -55,6 +55,7 @@
         },
       },
       'sources': [
+        'chromeos/any.cc',
         'chromeos/async_event_sequencer.cc',
         'chromeos/asynchronous_signal_handler.cc',
         'chromeos/data_encoding.cc',
@@ -204,6 +205,8 @@
             }],
           ],
           'sources': [
+            'chromeos/any_unittest.cc',
+            'chromeos/any_internal_impl_unittest.cc',
             'chromeos/async_event_sequencer_unittest.cc',
             'chromeos/asynchronous_signal_handler_unittest.cc',
             'chromeos/data_encoding_unittest.cc',

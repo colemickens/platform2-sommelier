@@ -7,11 +7,10 @@
 #include <string>
 #include <vector>
 
+#include <chromeos/any.h>
 #include <gtest/gtest.h>
 
-#include "buffet/any.h"
-
-using buffet::Any;
+using chromeos::Any;
 
 TEST(Any, Empty) {
   Any val;
@@ -20,6 +19,10 @@ TEST(Any, Empty) {
   Any val2 = val;
   EXPECT_TRUE(val.IsEmpty());
   EXPECT_TRUE(val2.IsEmpty());
+
+  Any val3 = std::move(val);
+  EXPECT_TRUE(val.IsEmpty());
+  EXPECT_TRUE(val3.IsEmpty());
 }
 
 TEST(Any, SimpleTypes) {
@@ -78,6 +81,17 @@ TEST(Any, Assignments) {
   EXPECT_EQ(100, v[0]);
   EXPECT_EQ(20, v[1]);
   EXPECT_EQ(3, v[2]);
+
+  val2 = std::move(val);
+  EXPECT_TRUE(val.IsEmpty());
+  EXPECT_TRUE(val2.IsTypeCompatible<std::vector<int>>());
+  EXPECT_EQ(3, val2.Get<std::vector<int>>().size());
+
+  val = val2;
+  EXPECT_TRUE(val.IsTypeCompatible<std::vector<int>>());
+  EXPECT_TRUE(val2.IsTypeCompatible<std::vector<int>>());
+  EXPECT_EQ(3, val.Get<std::vector<int>>().size());
+  EXPECT_EQ(3, val2.Get<std::vector<int>>().size());
 }
 
 TEST(Any, Enums) {

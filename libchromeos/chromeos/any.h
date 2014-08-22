@@ -3,14 +3,14 @@
 // found in the LICENSE file.
 
 // This is an implementation of a "true" variant class in C++.
-// The buffet::Any class can hold any C++ type, but both the setter and
+// The chromeos::Any class can hold any C++ type, but both the setter and
 // getter sites need to know the actual type of data.
 // Note that C-style arrays when stored in Any are reduced to simple
 // data pointers. Any will not copy a contents of the array.
 //    const int data[] = [1,2,3];
 //    Any v(data);  // stores const int*, effectively "Any v(&data[0]);"
 
-// buffet::Any is a value type. Which means, the data is copied into it
+// chromeos::Any is a value type. Which means, the data is copied into it
 // and Any owns it. The owned object (stored by value) will be destroyed
 // when Any is cleared or reassigned. The contained value type must be
 // copy-constructible. You can also store pointers and references to objects.
@@ -20,22 +20,23 @@
 // will be std::reference_wrapper<T>. See 'References' unit tests in
 // any_unittest.cc for examples.
 
-#ifndef BUFFET_ANY_H_
-#define BUFFET_ANY_H_
+#ifndef LIBCHROMEOS_CHROMEOS_ANY_H_
+#define LIBCHROMEOS_CHROMEOS_ANY_H_
 
-#include "buffet/any_internal_impl.h"
+#include <chromeos/any_internal_impl.h>
 
 #include <algorithm>
 
-namespace buffet {
+namespace chromeos {
 
 class Any final {
  public:
   Any() = default;
-  // Standard copy constructor. This is a value-class container
+  // Standard copy/move constructors. This is a value-class container
   // that must be copy-constructible and movable. The copy constructors
   // should not be marked as explicit.
   Any(const Any& rhs);
+  Any(Any&& rhs);  // NOLINT(build/c++11)
   // Typed constructor that stores a value of type T in the Any.
   template<class T>
   Any(T value) {        // NOLINT(runtime/explicit)
@@ -48,6 +49,7 @@ class Any final {
 
   // Assignment operators.
   Any& operator=(const Any& rhs);
+  Any& operator=(Any&& rhs);  // NOLINT(build/c++11)
   template<class T>
   Any& operator=(T value) {
     data_buffer_.Assign(std::move(value));
@@ -159,16 +161,16 @@ class Any final {
   internal_details::Buffer data_buffer_;
 };
 
-}  // namespace buffet
+}  // namespace chromeos
 
 namespace std {
 
-// Specialize std::swap() algorithm for buffet::Any class.
-inline void swap(buffet::Any& lhs, buffet::Any& rhs) {
+// Specialize std::swap() algorithm for chromeos::Any class.
+inline void swap(chromeos::Any& lhs, chromeos::Any& rhs) {
   lhs.Swap(rhs);
 }
 
 }  // namespace std
 
-#endif  // BUFFET_ANY_H_
+#endif  // LIBCHROMEOS_CHROMEOS_ANY_H_
 

@@ -9,9 +9,9 @@
 #include <memory>
 #include <string>
 
+#include <chromeos/any.h>
 #include <chromeos/error.h>
 
-#include "buffet/any.h"
 #include "buffet/commands/schema_utils.h"
 
 namespace base {
@@ -103,7 +103,7 @@ class PropValue {
                         chromeos::ErrorPtr* error) = 0;
 
   // Returns the contained C++ value as Any.
-  virtual Any GetValueAsAny() const = 0;
+  virtual chromeos::Any GetValueAsAny() const = 0;
 
   // Return the type definition of this value.
   const PropType* GetPropType() const { return type_; }
@@ -149,7 +149,7 @@ class TypedValueBase : public PropValue {
   }
 
   // Helper methods to get and set the C++ representation of the value.
-  Any GetValueAsAny() const override { return value_; }
+  chromeos::Any GetValueAsAny() const override { return value_; }
   const T& GetValue() const { return value_; }
   void SetValue(T value) { value_ = std::move(value); }
 

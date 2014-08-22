@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include <chromeos/any.h>
 #include <chromeos/error.h>
 
 #include "buffet/commands/prop_constraints.h"
@@ -81,7 +82,8 @@ class PropType {
   // Creates an instance of associated value object, using the parameter
   // type as a factory class.
   virtual std::shared_ptr<PropValue> CreateValue() const = 0;
-  virtual std::shared_ptr<PropValue> CreateValue(const Any& val) const = 0;
+  virtual std::shared_ptr<PropValue> CreateValue(
+      const chromeos::Any& val) const = 0;
 
   // Saves the parameter type definition as a JSON object.
   // If |full_schema| is set to true, the full type definition is saved,
@@ -122,7 +124,8 @@ class PropType {
   bool ValidateValue(const base::Value* value, chromeos::ErrorPtr* error) const;
 
   // Similar to the above method, but uses Any as the value container.
-  bool ValidateValue(const Any& value, chromeos::ErrorPtr* error) const;
+  bool ValidateValue(const chromeos::Any& value,
+                     chromeos::ErrorPtr* error) const;
 
   // Additional helper static methods to help with converting a type enum
   // value into a string and back.
@@ -186,7 +189,8 @@ class PropTypeBase : public PropType {
   std::shared_ptr<PropValue> CreateValue() const override {
     return std::make_shared<Value>(this);
   }
-  std::shared_ptr<PropValue> CreateValue(const Any& v) const override {
+  std::shared_ptr<PropValue> CreateValue(
+      const chromeos::Any& v) const override {
     auto value = std::make_shared<Value>(this);
     value->SetValue(v.Get<T>());
     return std::move(value);
