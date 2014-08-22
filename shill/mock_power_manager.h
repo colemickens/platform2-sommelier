@@ -21,16 +21,14 @@ class MockPowerManager : public PowerManager {
   MockPowerManager(EventDispatcher *dispatcher, ProxyFactory *proxy_factory);
   ~MockPowerManager() override;
 
-  MOCK_METHOD5(AddSuspendDelay,
-               bool(const std::string &key,
-                    const std::string &description,
-                    base::TimeDelta timeout,
-                    const SuspendImminentCallback &immiment_callback,
-                    const SuspendDoneCallback &done_callback));
-  MOCK_METHOD1(RemoveSuspendDelay, bool(const std::string &key));
-  MOCK_METHOD2(ReportSuspendReadiness,
-               bool(const std::string &key, int suspend_id));
-  MOCK_METHOD1(Start, void(DBusManager *dbus_manager));
+  MOCK_METHOD0(ReportSuspendReadiness, bool());
+  MOCK_METHOD4(
+      Start,
+      void(DBusManager *dbus_manager,
+           base::TimeDelta suspend_delay,
+           const PowerManager::SuspendImminentCallback &imminent_callback,
+           const PowerManager::SuspendDoneCallback &done_callback));
+  MOCK_METHOD0(Stop, void());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockPowerManager);

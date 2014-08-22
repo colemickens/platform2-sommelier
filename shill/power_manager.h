@@ -25,23 +25,18 @@ class DBusNameWatcher;
 class EventDispatcher;
 class ProxyFactory;
 
-// TODO(benchan): The current implementation supports multiple suspend delays,
-// which seems unnecessary as shill only registers one. We should simplify the
-// implementation (crbug.com/373348).
 class PowerManager : public PowerManagerProxyDelegate {
  public:
   // This callback is called prior to a suspend attempt.  When it is OK for the
   // system to suspend, this callback should call ReportSuspendReadiness(),
   // passing it the key passed to AddSuspendDelay() and the suspend ID passed to
   // this callback.
-  typedef base::Callback<void(int)> SuspendImminentCallback;
+  typedef base::Closure SuspendImminentCallback;
 
   // This callback is called after the completion of a suspend attempt.  The
   // receiver should undo any pre-suspend work that was done by the
   // SuspendImminentCallback.
-  typedef base::Callback<void(int)> SuspendDoneCallback;
-
-  static const int kSuspendTimeoutMilliseconds;
+  typedef base::Closure SuspendDoneCallback;
 
   // |proxy_factory| creates the PowerManagerProxy.  Usually this is
   // ProxyFactory::GetInstance().  Use a fake for testing.
@@ -51,28 +46,25 @@ class PowerManager : public PowerManagerProxyDelegate {
 
   bool suspending() const { return suspending_; }
 
+  // Starts the PowerManager: Registers a suspend delay with the power manager
+  // for |suspend_delay|. See PowerManagerProxyInterface::RegisterSuspendDelay()
+  // for information about |suspend_delay|.
+  // - |imminent_callback| will be invoked when a suspend attempt is commenced
+  // - |done_callback| will be invoked when the attempt is completed. Returns
+  //   false on failure.
+  // - This object guarantees that a call to |imminent_callback| is followed by
+  //   a call to |done_callback| (before any more calls to |imminent_callback|).
   // Requires a |DBusManager| that has been |Start|'ed.
-  virtual void Start(DBusManager *dbus_manager);
+  virtual void Start(DBusManager *dbus_manager,
+                     base::TimeDelta suspend_delay,
+                     const SuspendImminentCallback &suspend_imminent_callback,
+                     const SuspendDoneCallback &suspend_done_callback);
+  virtual void Stop();
 
-  // Registers a suspend delay with the power manager under the unique name
-  // |key|.  See PowerManagerProxyInterface::RegisterSuspendDelay() for
-  // information about |description| and |timeout|.  |imminent_callback| will be
-  // invoked when a suspend attempt is commenced and |done_callback| will be
-  // invoked when the attempt is completed.  Returns false on failure.
-  virtual bool AddSuspendDelay(const std::string &key,
-                               const std::string &description,
-                               base::TimeDelta timeout,
-                               const SuspendImminentCallback &immiment_callback,
-                               const SuspendDoneCallback &done_callback);
-
-  // Removes a suspend delay previously created via AddSuspendDelay().  Returns
-  // false on failure.
-  virtual bool RemoveSuspendDelay(const std::string &key);
-
-  // Reports readiness for suspend attempt |suspend_id| on behalf of the suspend
-  // delay described by |key|, the value originally passed to AddSuspendDelay().
-  // Returns false on failure.
-  virtual bool ReportSuspendReadiness(const std::string &key, int suspend_id);
+  // Report suspend readiness. If called when there is no suspend attempt
+  // active, this function will fail. Returns true if sucessfully reported to
+  // powerd.
+  virtual bool ReportSuspendReadiness();
 
   // Methods inherited from PowerManagerProxyDelegate.
   virtual void OnSuspendImminent(int suspend_id);
@@ -83,22 +75,15 @@ class PowerManager : public PowerManagerProxyDelegate {
   friend class PowerManagerTest;
   friend class ServiceTest;
 
-  // Information about a suspend delay added via AddSuspendDelay().
-  struct SuspendDelay {
-    std::string key;
-    std::string description;
-    base::TimeDelta timeout;
-    SuspendImminentCallback imminent_callback;
-    SuspendDoneCallback done_callback;
-    int delay_id;
-  };
+  // Human-readable string describing the suspend delay that is registered
+  // with the power manager.
+  static const char kSuspendDelayDescription[];
+  static const int kSuspendTimeoutMilliseconds;
 
-  // Keyed by the |key| argument to AddSuspendDelay().
-  typedef std::map<const std::string, SuspendDelay> SuspendDelayMap;
 
   // Run by |suspend_timeout_| to manually invoke OnSuspendDone() if the signal
   // never arrives.
-  void OnSuspendTimeout(int suspend_id);
+  void OnSuspendTimeout();
 
   // These functions track the power_manager daemon appearing/vanishing from the
   // DBus connection.
@@ -112,11 +97,27 @@ class PowerManager : public PowerManagerProxyDelegate {
   // delegate methods of this object when changes in the power state occur.
   const scoped_ptr<PowerManagerProxyInterface> power_manager_proxy_;
   scoped_ptr<DBusNameWatcher> power_manager_name_watcher_;
-  SuspendDelayMap suspend_delays_;
+  // The delay (in milliseconds) to request powerd to wait after a suspend
+  // notification is received. powerd will actually suspend the system at least
+  // |suspend_delay_| after the notification, if we do not
+  // |ReportSuspendReadiness| earlier.
+  base::TimeDelta suspend_delay_;
+  // powerd tracks each suspend delay requested (by different clients) using
+  // randomly generated unique |suspend_delay_id_|s.
+  bool suspend_delay_registered_;
+  int suspend_delay_id_;
+  // Callbacks from shill called by this object when:
+  // ... powerd notified us that a suspend is imminent.
+  SuspendImminentCallback suspend_imminent_callback_;
+  // ... powerd notified us that the suspend attempt has finished.
+  SuspendDoneCallback suspend_done_callback_;
+  // ... powerd notified us of a suspend, but the suspend done event didn't
+  // happen in a reasonable time.
   base::CancelableClosure suspend_timeout_;
 
   // Set to true by OnSuspendImminent() and to false by OnSuspendDone().
   bool suspending_;
+  int current_suspend_id_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerManager);
 };

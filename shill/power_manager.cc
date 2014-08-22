@@ -25,155 +25,111 @@ using std::string;
 
 namespace shill {
 
+// static
+const char PowerManager::kSuspendDelayDescription[] = "shill";
 const int PowerManager::kSuspendTimeoutMilliseconds = 15 * 1000;
 
 PowerManager::PowerManager(EventDispatcher *dispatcher,
                            ProxyFactory *proxy_factory)
     : dispatcher_(dispatcher),
       power_manager_proxy_(proxy_factory->CreatePowerManagerProxy(this)),
-      suspending_(false) {}
+      suspend_delay_registered_(false),
+      suspend_delay_id_(0),
+      suspending_(false),
+      current_suspend_id_(0) {}
 
-PowerManager::~PowerManager() {
-  for (const auto &delay_entry : suspend_delays_) {
-    power_manager_proxy_->UnregisterSuspendDelay(
-        delay_entry.second.delay_id);
-  }
-}
+PowerManager::~PowerManager() {}
 
-void PowerManager::Start(DBusManager *dbus_manager) {
+void PowerManager::Start(
+    DBusManager *dbus_manager,
+    TimeDelta suspend_delay,
+    const SuspendImminentCallback &suspend_imminent_callback,
+    const SuspendDoneCallback &suspend_done_callback) {
   power_manager_name_watcher_.reset(
       dbus_manager->CreateNameWatcher(
           power_manager::kPowerManagerServiceName,
           Bind(&PowerManager::OnPowerManagerAppeared, Unretained(this)),
           Bind(&PowerManager::OnPowerManagerVanished, Unretained(this))));
+
+  suspend_delay_ = suspend_delay;
+  suspend_imminent_callback_ = suspend_imminent_callback;
+  suspend_done_callback_ = suspend_done_callback;
 }
 
-bool PowerManager::AddSuspendDelay(
-    const string &key,
-    const string &description,
-    TimeDelta timeout,
-    const SuspendImminentCallback &imminent_callback,
-    const SuspendDoneCallback &done_callback) {
-  CHECK(!imminent_callback.is_null());
-  CHECK(!done_callback.is_null());
-
-  if (ContainsKey(suspend_delays_, key)) {
-    LOG(ERROR) << "Ignoring request to insert duplicate key " << key;
-    return false;
-  }
-
-  int delay_id = 0;
-  if (!power_manager_proxy_->RegisterSuspendDelay(
-          timeout, description, &delay_id)) {
-    return false;
-  }
-
-  SuspendDelay delay;
-  delay.key = key;
-  delay.description = description;
-  delay.timeout = timeout;
-  delay.imminent_callback = imminent_callback;
-  delay.done_callback = done_callback;
-  delay.delay_id = delay_id;
-  suspend_delays_[key] = delay;
-  return true;
-}
-
-bool PowerManager::RemoveSuspendDelay(const string &key) {
-  SuspendDelayMap::const_iterator it = suspend_delays_.find(key);
-  if (it == suspend_delays_.end()) {
-    LOG(ERROR) << "Ignoring unknown key " << key;
-    return false;
-  }
-
-  // We may attempt to unregister with a stale |delay_id| if powerd has
+void PowerManager::Stop() {
+  LOG(INFO) << __func__;
+  power_manager_name_watcher_.reset();
+  // We may attempt to unregister with a stale |suspend_delay_id_| if powerd
   // reappeared behind our back. It is safe to do so.
-  if (!power_manager_proxy_->UnregisterSuspendDelay(it->second.delay_id)) {
-    return false;
-  }
+  if (suspend_delay_registered_)
+    power_manager_proxy_->UnregisterSuspendDelay(suspend_delay_id_);
 
-  suspend_delays_.erase(it);
-  return true;
+  suspend_delay_registered_ = false;
 }
 
-bool PowerManager::ReportSuspendReadiness(const string &key,
-                                          int suspend_id) {
-  SuspendDelayMap::const_iterator it = suspend_delays_.find(key);
-  if (it == suspend_delays_.end()) {
-    LOG(ERROR) << "Ignoring unknown key " << key;
+bool PowerManager::ReportSuspendReadiness() {
+  if (!suspending_) {
+    LOG(INFO) << __func__ << ": Suspend attempt ("
+              << current_suspend_id_ << ") not active. Ignoring signal.";
     return false;
   }
-
-  return power_manager_proxy_->ReportSuspendReadiness(
-      it->second.delay_id, suspend_id);
+  return power_manager_proxy_->ReportSuspendReadiness(suspend_delay_id_,
+                                                      current_suspend_id_);
 }
 
 void PowerManager::OnSuspendImminent(int suspend_id) {
   LOG(INFO) << __func__ << "(" << suspend_id << ")";
-  // Change the power state to suspending as soon as this signal is received so
-  // that the manager can suppress auto-connect, for example. Schedules a
-  // suspend timeout in case the suspend attempt failed or got interrupted, and
-  // there's no proper notification from the power manager.
-  suspending_ = true;
-  suspend_timeout_.Reset(
-      base::Bind(&PowerManager::OnSuspendTimeout, base::Unretained(this),
-                 suspend_id));
+  current_suspend_id_ = suspend_id;
+
+  // Schedule a suspend timeout in case the suspend attempt failed or got
+  // interrupted, and there's no proper notification from the power manager.
+  suspend_timeout_.Reset(base::Bind(&PowerManager::OnSuspendTimeout,
+                         Unretained(this)));
   dispatcher_->PostDelayedTask(suspend_timeout_.callback(),
                                kSuspendTimeoutMilliseconds);
 
-  // Forward the message to all in |suspend_delays_|, whether or not they are
-  // registered.
-  for (const auto &delay : suspend_delays_) {
-    SuspendImminentCallback callback = delay.second.imminent_callback;
-    CHECK(!callback.is_null());
-    callback.Run(suspend_id);
+
+  // If we're already suspending, don't call the |suspend_imminent_callback_|
+  // again.
+  if (!suspending_) {
+    // Change the power state to suspending as soon as this signal is received
+    // so that the manager can suppress auto-connect, for example.
+    suspending_ = true;
+    suspend_imminent_callback_.Run();
   }
 }
 
 void PowerManager::OnSuspendDone(int suspend_id) {
   LOG(INFO) << __func__ << "(" << suspend_id << ")";
+  if (!suspending_) {
+    LOG(WARNING) << "Recieved unexpected SuspendDone ("
+                 << suspend_id << "). Ignoring.";
+    return;
+  }
+
   suspend_timeout_.Cancel();
   suspending_ = false;
-  // Forward the message to all in |suspend_delays_|, whether or not they are
-  // registered.
-  for (const auto &delay : suspend_delays_) {
-    SuspendDoneCallback callback = delay.second.done_callback;
-    CHECK(!callback.is_null());
-    callback.Run(suspend_id);
-  }
+  suspend_done_callback_.Run();
 }
 
-void PowerManager::OnSuspendTimeout(int suspend_id) {
+void PowerManager::OnSuspendTimeout() {
   LOG(ERROR) << "Suspend timed out -- assuming power-on state.";
-  OnSuspendDone(suspend_id);
+  OnSuspendDone(current_suspend_id_);
 }
 
 void PowerManager::OnPowerManagerAppeared(const string &/*name*/,
                                           const string &/*owner*/) {
-  for (auto &delay_entry : suspend_delays_) {
-    SuspendDelay &delay = delay_entry.second;
-    // Attempt to unregister a stale suspend delay. This guards against a race
-    // where |AddSuspendDelay| managed to register a suspend delay with the
-    // newly appeared powerd instance before this function had a chance to
-    // run.
-    power_manager_proxy_->UnregisterSuspendDelay(delay.delay_id);
-
-    int delay_id = delay.delay_id;
-    if (!power_manager_proxy_->RegisterSuspendDelay(
-            delay.timeout, delay.description, &delay_id)) {
-      // In case of failure, we leave |delay| unchanged.
-      // We will retry re-registering this delay whenever
-      // |OnPowerManagerAppeared| is called next. In the meantime, this |delay|
-      // will be handled as if we had not received a notification for powerd's
-      // restart.
-      continue;
-    }
-    delay.delay_id = delay_id;
-  }
+  LOG(INFO) << __func__;
+  CHECK(!suspend_delay_registered_);
+  if (power_manager_proxy_->RegisterSuspendDelay(suspend_delay_,
+                                                 kSuspendDelayDescription,
+                                                 &suspend_delay_id_))
+    suspend_delay_registered_ = true;
 }
 
 void PowerManager::OnPowerManagerVanished(const string &/*name*/) {
-  LOG(INFO) << "powerd vanished.";
+  LOG(INFO) << __func__;
+  suspend_delay_registered_ = false;
 }
 
 }  // namespace shill

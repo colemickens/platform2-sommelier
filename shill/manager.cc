@@ -64,14 +64,6 @@ using std::vector;
 
 namespace shill {
 
-namespace {
-
-// Human-readable string describing the suspend delay that is registered
-// with the power manager.
-const char kSuspendDelayDescription[] = "shill";
-
-}  // namespace
-
 // statics
 const char Manager::kErrorNoDevice[] = "no wifi devices available";
 const char Manager::kErrorTypeRequired[] = "must specify service type";
@@ -80,7 +72,6 @@ const char Manager::kErrorUnsupportedServiceType[] =
 // This timeout should be less than the upstart job timeout, otherwise
 // stats for termination actions might be lost.
 const int Manager::kTerminationActionsTimeoutMilliseconds = 9500;
-const char Manager::kPowerManagerKey[] = "manager";
 
 // Connection status check interval (3 minutes).
 const int Manager::kConnectionStatusCheckIntervalMilliseconds = 180000;
@@ -207,7 +198,11 @@ void Manager::Start() {
 
   power_manager_.reset(
       new PowerManager(dispatcher_, ProxyFactory::GetInstance()));
-  InitializePowerManagement();
+  power_manager_->Start(dbus_manager(),
+                        base::TimeDelta::FromMilliseconds(
+                            kTerminationActionsTimeoutMilliseconds),
+                        Bind(&Manager::OnSuspendImminent, AsWeakPtr()),
+                        Bind(&Manager::OnSuspendDone, AsWeakPtr()));
 
   CHECK(base::CreateDirectory(run_path_)) << run_path_.value();
   resolver_->set_path(run_path_.Append("resolv.conf"));
@@ -260,6 +255,7 @@ void Manager::Stop() {
   device_info_.Stop();
   connection_status_check_task_.Cancel();
   sort_services_task_.Cancel();
+  power_manager_->Stop();
   power_manager_.reset();
   dbus_manager_.reset();
 }
@@ -1234,19 +1230,19 @@ void Manager::EmitDefaultService() {
   }
 }
 
-void Manager::OnSuspendImminent(int suspend_id) {
+void Manager::OnSuspendImminent() {
   for (const auto &device : devices_) {
     device->OnBeforeSuspend();
   }
   if (!RunTerminationActionsAndNotifyMetrics(
-           Bind(&Manager::OnSuspendActionsComplete, AsWeakPtr(), suspend_id),
+           Bind(&Manager::OnSuspendActionsComplete, AsWeakPtr()),
            Metrics::kTerminationActionReasonSuspend)) {
     LOG(INFO) << "No asynchronous suspend actions were run.";
-    power_manager_->ReportSuspendReadiness(kPowerManagerKey, suspend_id);
+    power_manager_->ReportSuspendReadiness();
   }
 }
 
-void Manager::OnSuspendDone(int suspend_id) {
+void Manager::OnSuspendDone() {
   metrics_->NotifySuspendDone();
   for (const auto &service : services_) {
     service->OnAfterResume();
@@ -1257,11 +1253,11 @@ void Manager::OnSuspendDone(int suspend_id) {
   }
 }
 
-void Manager::OnSuspendActionsComplete(int suspend_id, const Error &error) {
-  LOG(INFO) << "Finished suspend actions.  Result: " << error;
+void Manager::OnSuspendActionsComplete(const Error &error) {
+  LOG(INFO) << "Finished suspend actions. Result: " << error;
   metrics_->NotifyTerminationActionsCompleted(
       Metrics::kTerminationActionReasonSuspend, error.IsSuccess());
-  power_manager_->ReportSuspendReadiness(kPowerManagerKey, suspend_id);
+  power_manager_->ReportSuspendReadiness();
 }
 
 void Manager::FilterByTechnology(Technology::Identifier tech,
@@ -2116,22 +2112,6 @@ void Manager::UpdateProviderMapping() {
 #if !defined(DISABLE_WIMAX)
   providers_[Technology::kWiMax] = wimax_provider_.get();
 #endif  // DISABLE_WIMAX
-}
-
-void Manager::InitializePowerManagement() {
-  power_manager_->Start(dbus_manager());
-  // TODO(benchan): We can probably combine PowerManager::Start() and
-  // PowerManager::AddSuspendDelay() after simplifying PowerManager to support
-  // only one suspend delay. As PowerManager observes the presence of powerd,
-  // it's also more robust to retry the suspend delay registration via
-  // PowerManager::OnPowerManagerAppeared (crbug.com/373348).
-  suspend_delay_registered_ = power_manager_->AddSuspendDelay(
-      kPowerManagerKey,
-      kSuspendDelayDescription,
-      base::TimeDelta::FromMilliseconds(
-          kTerminationActionsTimeoutMilliseconds),
-      Bind(&Manager::OnSuspendImminent, AsWeakPtr()),
-      Bind(&Manager::OnSuspendDone, AsWeakPtr()));
 }
 
 void Manager::TransferWakeOnPacketConnections(

@@ -80,50 +80,40 @@ class FakeProxyFactory : public ProxyFactory {
 
 class PowerManagerTest : public Test {
  public:
-  static const char kKey1[];
-  static const char kKey2[];
-  static const char kDescription1[];
-  static const char kDescription2[];
+  static const char kDescription[];
   static const char kPowerManagerDefaultOwner[];
   static const int kSuspendId1 = 123;
   static const int kSuspendId2 = 456;
-  static const int kDelayId1 = 4;
-  static const int kDelayId2 = 16;
+  static const int kDelayId = 4;
+  static const int kDelayId2 = 5;
 
   PowerManagerTest()
       : kTimeout(base::TimeDelta::FromSeconds(3)),
         power_manager_(&dispatcher_, &factory_),
         power_manager_proxy_(factory_.power_manager_proxy()),
         delegate_(factory_.delegate()) {
-    suspend_imminent_callback1_ =
-        Bind(&PowerManagerTest::SuspendImminentAction1, Unretained(this));
-    suspend_imminent_callback2_ =
-        Bind(&PowerManagerTest::SuspendImminentAction2, Unretained(this));
-    suspend_done_callback1_ =
-        Bind(&PowerManagerTest::SuspendDoneAction1, Unretained(this));
-    suspend_done_callback2_ =
-        Bind(&PowerManagerTest::SuspendDoneAction2, Unretained(this));
+    suspend_imminent_callback_ =
+        Bind(&PowerManagerTest::SuspendImminentAction, Unretained(this));
+    suspend_done_callback_ =
+        Bind(&PowerManagerTest::SuspendDoneAction, Unretained(this));
   }
 
-  MOCK_METHOD1(SuspendImminentAction1, void(int));
-  MOCK_METHOD1(SuspendImminentAction2, void(int));
-  MOCK_METHOD1(SuspendDoneAction1, void(int));
-  MOCK_METHOD1(SuspendDoneAction2, void(int));
+  MOCK_METHOD0(SuspendImminentAction, void());
+  MOCK_METHOD0(SuspendDoneAction, void());
 
  protected:
   virtual void SetUp() {
     dbus_manager_.proxy_factory_ = &factory_;
     dbus_manager_.Start();
 
-    // Initialize the object under test as if the power_manager daemon is up and
-    // kicking.
     EXPECT_CALL(*factory_.dbus_service_proxy(),
                 GetNameOwner(power_manager::kPowerManagerServiceName,
                              _, _, _));
-    power_manager_.Start(&dbus_manager_);
+    power_manager_.Start(&dbus_manager_,
+                         kTimeout,
+                         suspend_imminent_callback_,
+                         suspend_done_callback_);
     Mock::VerifyAndClearExpectations(factory_.dbus_service_proxy());
-    OnPowerManagerAppeared(power_manager::kPowerManagerServicePath,
-                           kPowerManagerDefaultOwner);
   }
 
   virtual void TearDown() {
@@ -155,6 +145,13 @@ class PowerManagerTest : public Test {
         .WillOnce(Return(return_value));
   }
 
+  void RegisterSuspendDelay() {
+    AddProxyRegisterSuspendDelayExpectation(
+        kTimeout, kDescription, kDelayId, true);
+    OnPowerManagerAppeared();
+    Mock::VerifyAndClearExpectations(power_manager_proxy_);
+  }
+
   void OnSuspendImminent(int suspend_id) {
     EXPECT_CALL(dispatcher_,
                 PostDelayedTask(_, PowerManager::kSuspendTimeoutMilliseconds));
@@ -167,16 +164,19 @@ class PowerManagerTest : public Test {
     EXPECT_FALSE(power_manager_.suspending());
   }
 
-  void OnSuspendTimeout(int suspend_id) {
-    power_manager_.OnSuspendTimeout(suspend_id);
+  void OnSuspendTimeout() {
+    power_manager_.OnSuspendTimeout();
   }
 
-  void OnPowerManagerAppeared(const string &name, const string&owner) {
-    power_manager_.OnPowerManagerAppeared(name, owner);
+  void OnPowerManagerAppeared() {
+    power_manager_.OnPowerManagerAppeared(
+        power_manager::kPowerManagerServicePath,
+        kPowerManagerDefaultOwner);
   }
 
-  void OnPowerManagerVanished(const string &name) {
-    power_manager_.OnPowerManagerVanished(name);
+  void OnPowerManagerVanished() {
+    power_manager_.OnPowerManagerVanished(
+        power_manager::kPowerManagerServicePath);
   }
 
   // This is non-static since it's a non-POD type.
@@ -188,16 +188,11 @@ class PowerManagerTest : public Test {
   PowerManager power_manager_;
   MockPowerManagerProxy *const power_manager_proxy_;
   PowerManagerProxyDelegate *const delegate_;
-  PowerManager::SuspendImminentCallback suspend_imminent_callback1_;
-  PowerManager::SuspendImminentCallback suspend_imminent_callback2_;
-  PowerManager::SuspendDoneCallback suspend_done_callback1_;
-  PowerManager::SuspendDoneCallback suspend_done_callback2_;
+  PowerManager::SuspendImminentCallback suspend_imminent_callback_;
+  PowerManager::SuspendDoneCallback suspend_done_callback_;
 };
 
-const char PowerManagerTest::kKey1[] = "Zaphod";
-const char PowerManagerTest::kKey2[] = "Beeblebrox";
-const char PowerManagerTest::kDescription1[] = "Foo";
-const char PowerManagerTest::kDescription2[] = "Bar";
+const char PowerManagerTest::kDescription[] = "shill";
 const char PowerManagerTest::kPowerManagerDefaultOwner[] =
     "PowerManagerDefaultOwner";
 
@@ -210,169 +205,120 @@ TEST_F(PowerManagerTest, SuspendingState) {
   EXPECT_FALSE(power_manager_.suspending());
 }
 
-TEST_F(PowerManagerTest, MultipleSuspendDelays) {
-  AddProxyRegisterSuspendDelayExpectation(
-      kTimeout, kDescription1, kDelayId1, true);
-  EXPECT_TRUE(power_manager_.AddSuspendDelay(
-                  kKey1, kDescription1, kTimeout,
-                  suspend_imminent_callback1_, suspend_done_callback1_));
-  Mock::VerifyAndClearExpectations(power_manager_proxy_);
-
-  AddProxyRegisterSuspendDelayExpectation(
-      kTimeout, kDescription2, kDelayId2, true);
-  EXPECT_TRUE(power_manager_.AddSuspendDelay(
-                  kKey2, kDescription2, kTimeout,
-                  suspend_imminent_callback2_, suspend_done_callback2_));
-  Mock::VerifyAndClearExpectations(power_manager_proxy_);
-
-  EXPECT_CALL(*this, SuspendImminentAction1(kSuspendId1));
-  EXPECT_CALL(*this, SuspendImminentAction2(kSuspendId1));
-  OnSuspendImminent(kSuspendId1);
-  Mock::VerifyAndClearExpectations(this);
-
-  AddProxyReportSuspendReadinessExpectation(kDelayId1, kSuspendId1, true);
-  EXPECT_TRUE(power_manager_.ReportSuspendReadiness(kKey1, kSuspendId1));
-  Mock::VerifyAndClearExpectations(power_manager_proxy_);
-
-  AddProxyReportSuspendReadinessExpectation(kDelayId2, kSuspendId2, true);
-  EXPECT_TRUE(power_manager_.ReportSuspendReadiness(kKey2, kSuspendId2));
-  Mock::VerifyAndClearExpectations(power_manager_proxy_);
-
-  EXPECT_CALL(*this, SuspendDoneAction1(kSuspendId1));
-  EXPECT_CALL(*this, SuspendDoneAction2(kSuspendId1));
-  OnSuspendDone(kSuspendId1);
-  Mock::VerifyAndClearExpectations(this);
-
-  AddProxyUnregisterSuspendDelayExpectation(kDelayId1, true);
-  EXPECT_TRUE(power_manager_.RemoveSuspendDelay(kKey1));
-  Mock::VerifyAndClearExpectations(power_manager_proxy_);
-
-  AddProxyUnregisterSuspendDelayExpectation(kDelayId2, true);
-  EXPECT_TRUE(power_manager_.RemoveSuspendDelay(kKey2));
-  Mock::VerifyAndClearExpectations(power_manager_proxy_);
-
-  // Start a second suspend attempt with no registered delays.
-  OnSuspendImminent(kSuspendId2);
-  OnSuspendDone(kSuspendId1);
-  Mock::VerifyAndClearExpectations(this);
-}
-
 TEST_F(PowerManagerTest, RegisterSuspendDelayFailure) {
   AddProxyRegisterSuspendDelayExpectation(
-      kTimeout, kDescription1, kDelayId1, false);
-  EXPECT_FALSE(power_manager_.AddSuspendDelay(
-                   kKey1, kDescription1, kTimeout,
-                   suspend_imminent_callback1_, suspend_done_callback1_));
+      kTimeout, kDescription, kDelayId, false);
+  OnPowerManagerAppeared();
   Mock::VerifyAndClearExpectations(power_manager_proxy_);
 
-  // No callbacks should be invoked.
+  // Outstanding shill callbacks should still be invoked.
+  // - suspend_done_callback: If powerd died in the middle of a suspend
+  //   we want to wake shill up with suspend_done_action, so this callback
+  //   should be invoked anyway.
+  //   See PowerManagerTest::PowerManagerDiedInSuspend and
+  //   PowerManagerTest::PowerManagerReappearedInSuspend.
+  EXPECT_CALL(*this, SuspendDoneAction());
+  // - suspend_imminent_callback: The only case this can happen is if this
+  //   callback was put on the queue, and then powerd reappeared, but we failed
+  //   to registered a suspend delay with it.
+  //   It is safe to go through the suspend_imminent -> timeout -> suspend_done
+  //   path in this black swan case.
+  EXPECT_CALL(*this, SuspendImminentAction());
   OnSuspendImminent(kSuspendId1);
   OnSuspendDone(kSuspendId1);
   Mock::VerifyAndClearExpectations(this);
 }
 
 TEST_F(PowerManagerTest, ReportSuspendReadinessFailure) {
-  AddProxyRegisterSuspendDelayExpectation(
-      kTimeout, kDescription1, kDelayId1, true);
-  EXPECT_TRUE(power_manager_.AddSuspendDelay(
-                  kKey1, kDescription1, kTimeout,
-                  suspend_imminent_callback1_, suspend_done_callback1_));
-  Mock::VerifyAndClearExpectations(power_manager_proxy_);
-
-  AddProxyReportSuspendReadinessExpectation(kDelayId1, kSuspendId1, false);
-  EXPECT_FALSE(power_manager_.ReportSuspendReadiness(kKey1, kSuspendId1));
-  Mock::VerifyAndClearExpectations(power_manager_proxy_);
-}
-
-TEST_F(PowerManagerTest, UnregisterSuspendDelayFailure) {
-  AddProxyRegisterSuspendDelayExpectation(
-      kTimeout, kDescription1, kDelayId1, true);
-  EXPECT_TRUE(power_manager_.AddSuspendDelay(
-                  kKey1, kDescription1, kTimeout,
-                  suspend_imminent_callback1_, suspend_done_callback1_));
-  Mock::VerifyAndClearExpectations(power_manager_proxy_);
-
-  // Make the proxy report failure for unregistering.
-  AddProxyUnregisterSuspendDelayExpectation(kDelayId1, false);
-  EXPECT_FALSE(power_manager_.RemoveSuspendDelay(kKey1));
-  Mock::VerifyAndClearExpectations(power_manager_proxy_);
-
-  // As a result, the callback should still be invoked.
-  EXPECT_CALL(*this, SuspendImminentAction1(kSuspendId1));
+  RegisterSuspendDelay();
+  EXPECT_CALL(*this, SuspendImminentAction());
   OnSuspendImminent(kSuspendId1);
-  Mock::VerifyAndClearExpectations(this);
-
-  // Let the unregister request complete successfully now.
-  AddProxyUnregisterSuspendDelayExpectation(kDelayId1, true);
-  EXPECT_TRUE(power_manager_.RemoveSuspendDelay(kKey1));
-  Mock::VerifyAndClearExpectations(power_manager_proxy_);
+  AddProxyReportSuspendReadinessExpectation(kDelayId, kSuspendId1, false);
+  EXPECT_FALSE(power_manager_.ReportSuspendReadiness());
 }
 
-TEST_F(PowerManagerTest, DuplicateKey) {
-  AddProxyRegisterSuspendDelayExpectation(
-      kTimeout, kDescription1, kDelayId1, true);
-  EXPECT_TRUE(power_manager_.AddSuspendDelay(
-                  kKey1, kDescription1, kTimeout,
-                  suspend_imminent_callback1_, suspend_done_callback1_));
+TEST_F(PowerManagerTest, ReportSuspendStateFailsOutsideSuspend) {
+  RegisterSuspendDelay();
+  EXPECT_CALL(*power_manager_proxy_,
+              ReportSuspendReadiness(_, _)).Times(0);
+  EXPECT_FALSE(power_manager_.ReportSuspendReadiness());
+}
+
+TEST_F(PowerManagerTest, StopFailure) {
+  RegisterSuspendDelay();
+
+  AddProxyUnregisterSuspendDelayExpectation(kDelayId, false);
+  power_manager_.Stop();
   Mock::VerifyAndClearExpectations(power_manager_proxy_);
 
-  // The new request should be ignored.
-  EXPECT_FALSE(power_manager_.AddSuspendDelay(
-                   kKey1, kDescription2, kTimeout,
-                   suspend_imminent_callback2_, suspend_done_callback2_));
-
-  // The first delay's callback should be invoked.
-  EXPECT_CALL(*this, SuspendImminentAction1(kSuspendId1));
+  // As a result, callbacks should still be invoked.
+  EXPECT_CALL(*this, SuspendImminentAction());
+  EXPECT_CALL(*this, SuspendDoneAction());
   OnSuspendImminent(kSuspendId1);
-  Mock::VerifyAndClearExpectations(this);
-}
-
-TEST_F(PowerManagerTest, UnknownKey) {
-  EXPECT_FALSE(power_manager_.RemoveSuspendDelay(kKey1));
-  Mock::VerifyAndClearExpectations(power_manager_proxy_);
+  OnSuspendDone(kSuspendId1);
 }
 
 TEST_F(PowerManagerTest, OnSuspendTimeout) {
-  AddProxyRegisterSuspendDelayExpectation(
-      kTimeout, kDescription1, kDelayId1, true);
-  EXPECT_TRUE(power_manager_.AddSuspendDelay(
-                  kKey1, kDescription1, kTimeout,
-                  suspend_imminent_callback1_, suspend_done_callback1_));
-  Mock::VerifyAndClearExpectations(power_manager_proxy_);
+  RegisterSuspendDelay();
 
-  EXPECT_CALL(*this, SuspendImminentAction1(kSuspendId1));
+  EXPECT_CALL(*this, SuspendImminentAction());
   OnSuspendImminent(kSuspendId1);
   Mock::VerifyAndClearExpectations(this);
 
   // After the timeout, the "done" callback should be run.
-  EXPECT_CALL(*this, SuspendDoneAction1(kSuspendId1));
-  OnSuspendTimeout(kSuspendId1);
+  EXPECT_CALL(*this, SuspendDoneAction());
+  OnSuspendTimeout();
   EXPECT_FALSE(power_manager_.suspending());
-  Mock::VerifyAndClearExpectations(this);
 }
 
-TEST_F(PowerManagerTest, OnPowerManagerAppeared) {
-  AddProxyRegisterSuspendDelayExpectation(
-      kTimeout, kDescription1, kDelayId1, true);
-  EXPECT_TRUE(power_manager_.AddSuspendDelay(
-                  kKey1, kDescription1, kTimeout,
-                  suspend_imminent_callback1_, suspend_done_callback1_));
-  Mock::VerifyAndClearExpectations(power_manager_proxy_);
+TEST_F(PowerManagerTest, OnPowerManagerReappeared) {
+  RegisterSuspendDelay();
 
   // Check that we re-register suspend delay on powerd restart.
-  AddProxyUnregisterSuspendDelayExpectation(kDelayId1, true);
   AddProxyRegisterSuspendDelayExpectation(
-      kTimeout, kDescription1, kDelayId2, true);
-  OnPowerManagerVanished(power_manager::kPowerManagerServicePath);
-  OnPowerManagerAppeared(power_manager::kPowerManagerServicePath,
-                         kPowerManagerDefaultOwner);
+      kTimeout, kDescription, kDelayId2, true);
+  OnPowerManagerVanished();
+  OnPowerManagerAppeared();
   Mock::VerifyAndClearExpectations(power_manager_proxy_);
 
   // Check that a |ReportSuspendReadiness| message is sent with the new delay
   // id.
+  EXPECT_CALL(*this, SuspendImminentAction());
+  OnSuspendImminent(kSuspendId1);
   AddProxyReportSuspendReadinessExpectation(kDelayId2, kSuspendId1, true);
-  EXPECT_TRUE(power_manager_.ReportSuspendReadiness(kKey1, kSuspendId1));
+  EXPECT_TRUE(power_manager_.ReportSuspendReadiness());
   Mock::VerifyAndClearExpectations(power_manager_proxy_);
+}
+
+TEST_F(PowerManagerTest, PowerManagerDiedInSuspend) {
+  RegisterSuspendDelay();
+  EXPECT_CALL(*this, SuspendImminentAction());
+  OnSuspendImminent(kSuspendId1);
+  Mock::VerifyAndClearExpectations(this);
+
+  OnPowerManagerVanished();
+
+  // After the timeout, the "done" callback should be run.
+  EXPECT_CALL(*this, SuspendDoneAction());
+  OnSuspendTimeout();
+  EXPECT_FALSE(power_manager_.suspending());
+}
+
+TEST_F(PowerManagerTest, PowerManagerReappearedInSuspend) {
+  RegisterSuspendDelay();
+  EXPECT_CALL(*this, SuspendImminentAction());
+  OnSuspendImminent(kSuspendId1);
+  Mock::VerifyAndClearExpectations(this);
+
+  AddProxyRegisterSuspendDelayExpectation(
+      kTimeout, kDescription, kDelayId2, true);
+  OnPowerManagerVanished();
+  OnPowerManagerAppeared();
+
+  // After the timeout, the "done" callback should be run.
+  EXPECT_CALL(*this, SuspendDoneAction());
+  OnSuspendTimeout();
+  EXPECT_FALSE(power_manager_.suspending());
 }
 
 }  // namespace shill

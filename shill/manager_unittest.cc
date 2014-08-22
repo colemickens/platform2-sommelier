@@ -376,16 +376,16 @@ class ManagerTest : public PropertyStoreTest {
     return &manager()->termination_actions_;
   }
 
-  void OnSuspendImminent(int suspend_id) {
-    manager()->OnSuspendImminent(suspend_id);
+  void OnSuspendImminent() {
+    manager()->OnSuspendImminent();
   }
 
-  void OnSuspendDone(int suspend_id) {
-    manager()->OnSuspendDone(suspend_id);
+  void OnSuspendDone() {
+    manager()->OnSuspendDone();
   }
 
-  void OnSuspendActionsComplete(int suspend_id, const Error &error) {
-    manager()->OnSuspendActionsComplete(suspend_id, error);
+  void OnSuspendActionsComplete(const Error &error) {
+    manager()->OnSuspendActionsComplete(error);
   }
 
   vector<string> EnumerateAvailableServices() {
@@ -408,10 +408,6 @@ class ManagerTest : public PropertyStoreTest {
 
   void SetEapProviderService(const ServiceRefPtr &service) {
     ethernet_eap_provider_->set_service(service);
-  }
-
-  void InitializePowerManagement() {
-    manager()->InitializePowerManagement();
   }
 
   NiceMock<MockProxyFactory> proxy_factory_;
@@ -570,6 +566,7 @@ TEST_F(ManagerTest, ServiceRegistration) {
   EXPECT_TRUE(manager.FindService(service1_name).get() != NULL);
   EXPECT_TRUE(manager.FindService(service2_name).get() != NULL);
 
+  manager.set_power_manager(power_manager_.release());
   manager.Stop();
 }
 
@@ -601,6 +598,8 @@ TEST_F(ManagerTest, RegisterKnownService) {
                                               &manager));
   manager.RegisterService(service2);
   EXPECT_EQ(service2->profile().get(), profile.get());
+
+  manager.set_power_manager(power_manager_.release());
   manager.Stop();
 }
 
@@ -634,6 +633,8 @@ TEST_F(ManagerTest, RegisterUnknownService) {
       .WillRepeatedly(Return(mock_service2->unique_name()));
   manager.RegisterService(mock_service2);
   EXPECT_NE(mock_service2->profile().get(), profile.get());
+
+  manager.set_power_manager(power_manager_.release());
   manager.Stop();
 }
 
@@ -745,6 +746,7 @@ TEST_F(ManagerTest, MoveService) {
   // is kept alive and populated with data.
   profile = NULL;
   ASSERT_TRUE(manager.ActiveProfile()->ContainsService(s2));
+  manager.set_power_manager(power_manager_.release());
   manager.Stop();
 }
 
@@ -3065,25 +3067,17 @@ TEST_F(ManagerTest, Suspend) {
   manager()->RegisterDevice(mock_devices_[0]);
   dispatcher()->DispatchPendingEvents();
 
-  const int kSuspendId = 1;
   EXPECT_CALL(*mock_devices_[0], OnBeforeSuspend());
-  OnSuspendImminent(kSuspendId);
+  OnSuspendImminent();
   EXPECT_CALL(*service, AutoConnect()).Times(0);
   dispatcher()->DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(mock_devices_[0]);
 
   EXPECT_CALL(*mock_devices_[0], OnAfterResume());
-  OnSuspendDone(kSuspendId);
+  OnSuspendDone();
   EXPECT_CALL(*service, AutoConnect());
   dispatcher()->DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(mock_devices_[0]);
-}
-
-TEST_F(ManagerTest, InitializePowerManagement) {
-  // For cleanup, see Stop test.
-  EXPECT_CALL(*power_manager_, AddSuspendDelay(_, _, _, _, _));
-  SetPowerManager();
-  InitializePowerManagement();
 }
 
 TEST_F(ManagerTest, AddTerminationAction) {
@@ -3133,19 +3127,17 @@ TEST_F(ManagerTest, RunTerminationActions) {
 }
 
 TEST_F(ManagerTest, OnSuspendImminent) {
-  const int kSuspendId = 123;
   EXPECT_TRUE(GetTerminationActions()->IsEmpty());
-  EXPECT_CALL(*power_manager_, ReportSuspendReadiness(_, kSuspendId));
+  EXPECT_CALL(*power_manager_, ReportSuspendReadiness());
   SetPowerManager();
-  OnSuspendImminent(kSuspendId);
+  OnSuspendImminent();
 }
 
 TEST_F(ManagerTest, OnSuspendActionsComplete) {
-  const int kSuspendId = 54321;
   Error error;
-  EXPECT_CALL(*power_manager_, ReportSuspendReadiness(_, kSuspendId));
+  EXPECT_CALL(*power_manager_, ReportSuspendReadiness());
   SetPowerManager();
-  OnSuspendActionsComplete(kSuspendId, error);
+  OnSuspendActionsComplete(error);
 }
 
 TEST_F(ManagerTest, RecheckPortal) {

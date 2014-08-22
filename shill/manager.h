@@ -427,6 +427,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(CellularTest, LinkEventWontDestroyService);
   FRIEND_TEST(ManagerTest, AvailableTechnologies);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
+  FRIEND_TEST(ManagerTest, ConnectionStatusCheck);
   FRIEND_TEST(ManagerTest, ConnectToBestServices);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
@@ -437,25 +438,26 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, InitializeProfilesInformsProviders);
   FRIEND_TEST(ManagerTest, InitializeProfilesHandlesDefaults);
   FRIEND_TEST(ManagerTest, IsDefaultProfile);
+  FRIEND_TEST(ManagerTest, IsWifiIdle);
   FRIEND_TEST(ManagerTest, LinkMonitorEnabled);
+  FRIEND_TEST(ManagerTest, MoveService);
   FRIEND_TEST(ManagerTest, NotifyDefaultServiceChanged);
   FRIEND_TEST(ManagerTest, PopProfileWithUnload);
+  FRIEND_TEST(ManagerTest, RegisterKnownService);
+  FRIEND_TEST(ManagerTest, RegisterUnknownService);
   FRIEND_TEST(ManagerTest, RunTerminationActions);
+  FRIEND_TEST(ManagerTest, ServiceRegistration);
   FRIEND_TEST(ManagerTest, SortServices);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, StartupPortalList);
-  FRIEND_TEST(ManagerTest, IsWifiIdle);
-  FRIEND_TEST(ManagerTest, ConnectionStatusCheck);
 
   static const char kErrorNoDevice[];
   static const char kErrorTypeRequired[];
   static const char kErrorUnsupportedServiceType[];
 
   // Time to wait for termination actions to complete.
-  static const int kTerminationActionsTimeoutMilliseconds;
-
-  static const char kPowerManagerKey[];
   static const int kConnectionStatusCheckIntervalMilliseconds;
+  static const int kTerminationActionsTimeoutMilliseconds;
 
   void AutoConnect();
   std::vector<std::string> AvailableTechnologies(Error *error);
@@ -548,13 +550,13 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Called when the system is about to be suspended.  Each call will be
   // followed by a call to OnSuspendDone().
-  void OnSuspendImminent(int suspend_id);
+  void OnSuspendImminent();
 
   // Called when the system has completed a suspend attempt (possibly without
   // actually suspending, in the event of the user canceling the attempt).
-  void OnSuspendDone(int suspend_id);
+  void OnSuspendDone();
 
-  void OnSuspendActionsComplete(int suspend_id, const Error &error);
+  void OnSuspendActionsComplete(const Error &error);
   void VerifyToEncryptLink(std::string public_key, std::string data,
                            ResultStringCallback cb, const Error &error,
                            bool success);
@@ -562,8 +564,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Return true if wifi device is enabled with no existing connection (pending
   // or connected).
   bool IsWifiIdle();
-
-  void InitializePowerManagement();
 
   // For unit testing.
   void set_metrics(Metrics *metrics) { metrics_ = metrics; }
