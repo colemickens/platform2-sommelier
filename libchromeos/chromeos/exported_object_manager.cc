@@ -4,9 +4,11 @@
 
 #include "chromeos/exported_object_manager.h"
 
-#include <chromeos/async_event_sequencer.h>
-#include <dbus/object_manager.h>
+#include <vector>
 
+#include <chromeos/async_event_sequencer.h>
+#include <chromeos/dbus_utils.h>
+#include <dbus/object_manager.h>
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 
@@ -16,46 +18,39 @@ namespace dbus_utils {
 
 ExportedObjectManager::ExportedObjectManager(scoped_refptr<dbus::Bus> bus,
                                              const dbus::ObjectPath& path)
-    : bus_(bus), exported_object_(bus->GetExportedObject(path)) {}
+    : bus_(bus), dbus_object_(nullptr, bus, path) {}
 
-void ExportedObjectManager::Init(const OnInitFinish& cb) {
+void ExportedObjectManager::RegisterAsync(
+      const AsyncEventSequencer::CompletionAction& completion_callback) {
   bus_->AssertOnOriginThread();
-  scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
-  exported_object_->ExportMethod(
-      dbus::kObjectManagerInterface,
-      dbus::kObjectManagerGetManagedObjects,
-      base::Bind(&ExportedObjectManager::HandleGetManagedObjects,
-                 AsWeakPtr()),
-      sequencer->GetExportHandler(
-          dbus::kObjectManagerInterface,
-          dbus::kObjectManagerGetManagedObjects,
-          "Failed exporting GetManagedObjects method of ObjectManager",
-          false));
-  sequencer->OnAllTasksCompletedCall({cb});
+  DBusInterface* itf =
+      dbus_object_.AddOrGetInterface(dbus::kObjectManagerInterface);
+  itf->AddMethodHandler(dbus::kObjectManagerGetManagedObjects,
+                        base::Unretained(this),
+                        &ExportedObjectManager::HandleGetManagedObjects);
+  dbus_object_.RegisterAsync(completion_callback);
 }
 
 void ExportedObjectManager::ClaimInterface(
     const dbus::ObjectPath& path,
     const std::string& interface_name,
-    const PropertyWriter& property_writer) {
+    const ExportedPropertySet::PropertyWriter& property_writer) {
   bus_->AssertOnOriginThread();
   // We're sending signals that look like:
   //   org.freedesktop.DBus.ObjectManager.InterfacesAdded (
   //       OBJPATH object_path,
   //       DICT<STRING,DICT<STRING,VARIANT>> interfaces_and_properties);
+  dbus_utils::Dictionary property_dict;
+  property_writer.Run(&property_dict);
+  std::map<std::string, dbus_utils::Dictionary> interfaces_and_properties{
+      {interface_name, property_dict}
+  };
   dbus::Signal signal(dbus::kObjectManagerInterface,
                       dbus::kObjectManagerInterfacesAdded);
   dbus::MessageWriter signal_writer(&signal);
-  dbus::MessageWriter all_interfaces(&signal);
-  dbus::MessageWriter each_interface(&signal);
   signal_writer.AppendObjectPath(path);
-  signal_writer.OpenArray("{sa{sv}}", &all_interfaces);
-  all_interfaces.OpenDictEntry(&each_interface);
-  each_interface.AppendString(interface_name);
-  property_writer.Run(&each_interface);
-  all_interfaces.CloseContainer(&each_interface);
-  signal_writer.CloseContainer(&all_interfaces);
-  exported_object_->SendSignal(&signal);
+  dbus_utils::AppendValueToWriter(&signal_writer, interfaces_and_properties);
+  dbus_object_.SendSignal(&signal);
   registered_objects_[path][interface_name] = property_writer;
 }
 
@@ -82,16 +77,13 @@ void ExportedObjectManager::ReleaseInterface(
                       dbus::kObjectManagerInterfacesRemoved);
   dbus::MessageWriter signal_writer(&signal);
   signal_writer.AppendObjectPath(path);
-  dbus::MessageWriter interface_writer(nullptr);
-  signal_writer.OpenArray("s", &interface_writer);
-  interface_writer.AppendString(interface_name);
-  signal_writer.CloseContainer(&interface_writer);
-  exported_object_->SendSignal(&signal);
+  dbus_utils::AppendValueToWriter(&signal_writer,
+                                  std::vector<std::string>{interface_name});
+  dbus_object_.SendSignal(&signal);
 }
 
-void ExportedObjectManager::HandleGetManagedObjects(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) const {
+ExportedObjectManager::ObjectMap
+    ExportedObjectManager::HandleGetManagedObjects(ErrorPtr* error) {
   // Implements the GetManagedObjects method:
   //
   // org.freedesktop.DBus.ObjectManager.GetManagedObjects (
@@ -99,34 +91,15 @@ void ExportedObjectManager::HandleGetManagedObjects(
   //              DICT<STRING,
   //                   DICT<STRING,VARIANT>>> )
   bus_->AssertOnOriginThread();
-  scoped_ptr<dbus::Response> response(
-      dbus::Response::FromMethodCall(method_call));
-  dbus::MessageWriter response_writer(response.get());
-  dbus::MessageWriter all_object_paths(nullptr);
-  dbus::MessageWriter each_object_path(nullptr);
-  dbus::MessageWriter all_interfaces(nullptr);
-  dbus::MessageWriter each_interface(nullptr);
-
-  response_writer.OpenArray("{oa{sa{sv}}}", &all_object_paths);
+  ExportedObjectManager::ObjectMap objects;
   for (const auto path_pair : registered_objects_) {
-    const dbus::ObjectPath& path = path_pair.first;
+    std::map<std::string, Dictionary>& interfaces = objects[path_pair.first];
     const InterfaceProperties& interface2properties = path_pair.second;
-    all_object_paths.OpenDictEntry(&each_object_path);
-    each_object_path.AppendObjectPath(path);
-    each_object_path.OpenArray("{sa{sv}}", &all_interfaces);
     for (const auto interface : interface2properties) {
-      const std::string& interface_name = interface.first;
-      const PropertyWriter& property_writer = interface.second;
-      all_interfaces.OpenDictEntry(&each_interface);
-      each_interface.AppendString(interface_name);
-      property_writer.Run(&each_interface);
-      all_interfaces.CloseContainer(&each_interface);
+      interface.second.Run(&interfaces[interface.first]);
     }
-    each_object_path.CloseContainer(&all_interfaces);
-    all_object_paths.CloseContainer(&each_object_path);
   }
-  response_writer.CloseContainer(&all_object_paths);
-  response_sender.Run(response.Pass());
+  return objects;
 }
 
 }  //  namespace dbus_utils

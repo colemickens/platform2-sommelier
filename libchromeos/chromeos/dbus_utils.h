@@ -58,9 +58,17 @@
 
 namespace chromeos {
 
+// Forward-declare only. Can't include any.h right now because it needs
+// AppendValueToWriter() declared below.
 class Any;
 
 namespace dbus_utils {
+
+extern const char kDBusErrorDomain[];
+
+using MethodCallHandler =
+    base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)>;
+using Dictionary = std::map<std::string, chromeos::Any>;
 
 scoped_ptr<dbus::Response> GetBadArgsError(dbus::MethodCall* method_call,
                                            const std::string& message);
@@ -75,9 +83,7 @@ std::unique_ptr<dbus::Response> GetDBusError(dbus::MethodCall* method_call,
                                              const chromeos::Error* error);
 
 dbus::ExportedObject::MethodCallCallback GetExportableDBusMethod(
-    base::Callback<scoped_ptr<dbus::Response>(dbus::MethodCall*)> handler);
-
-using Dictionary = std::map<std::string, chromeos::Any>;
+    const MethodCallHandler& handler);
 
 //----------------------------------------------------------------------------
 // Get D-Bus data signature from C++ data types.

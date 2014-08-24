@@ -5,6 +5,7 @@
 #include "chromeos/exported_object_manager.h"
 
 #include <base/bind.h>
+#include <chromeos/dbus_utils.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <dbus/object_manager.h>
@@ -29,15 +30,8 @@ const std::string kClaimedInterface("claimed.interface");
 const std::string kTestPropertyName("PropertyName");
 const std::string kTestPropertyValue("PropertyValue");
 
-void WriteTestPropertyDict(dbus::MessageWriter* writer) {
-  dbus::MessageWriter all_properties(nullptr);
-  dbus::MessageWriter each_property(nullptr);
-  writer->OpenArray("{sv}", &all_properties);
-  all_properties.OpenDictEntry(&each_property);
-  each_property.AppendString(kTestPropertyName);
-  each_property.AppendVariantOfString(kTestPropertyValue);
-  all_properties.CloseContainer(&each_property);
-  writer->CloseContainer(&all_properties);
+void WriteTestPropertyDict(Dictionary* dict) {
+  dict->insert(std::make_pair(kTestPropertyName, Any(kTestPropertyValue)));
 }
 
 void ReadTestPropertyDict(dbus::MessageReader* reader) {
@@ -100,11 +94,13 @@ void VerifyInterfaceDropSignal(dbus::Signal* signal) {
   EXPECT_EQ(path, kClaimedTestPath);
 }
 
+void NoAction(bool all_succeeded) {}
+
 }  // namespace
 
 class ExportedObjectManagerTest: public ::testing::Test {
  public:
-  virtual void SetUp() {
+  void SetUp() override {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
     bus_ = new dbus::MockBus(options);
@@ -116,27 +112,30 @@ class ExportedObjectManagerTest: public ::testing::Test {
         bus_.get(), kTestPath);
     EXPECT_CALL(*bus_, GetExportedObject(kTestPath))
         .Times(1).WillOnce(Return(mock_exported_object_.get()));
+    EXPECT_CALL(*mock_exported_object_,
+                ExportMethod(_, _, _, _)).Times(AnyNumber());
     om_.reset(new ExportedObjectManager(bus_.get(), kTestPath));
     property_writer_ = base::Bind(&WriteTestPropertyDict);
-    response_storer_ = base::Bind(&ExportedObjectManagerTest::StoreResponse,
-                                  base::Unretained(this));
+    om_->RegisterAsync(base::Bind(NoAction));
   }
 
-  void StoreResponse(scoped_ptr<dbus::Response> method_response) {
-    last_response_.reset(method_response.release());
+  void TearDown() override {
+    EXPECT_CALL(*mock_exported_object_, Unregister()).Times(1);
+    om_.reset();
+    bus_ = nullptr;
   }
 
-  void CallHandleGetManagedObjects(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender sender) {
-    om_->HandleGetManagedObjects(method_call, response_storer_);
+  std::unique_ptr<dbus::Response> CallHandleGetManagedObjects() {
+    dbus::MethodCall method_call(dbus::kObjectManagerInterface,
+                                 dbus::kObjectManagerGetManagedObjects);
+    method_call.SetSerial(1234);
+    return chromeos::dbus_utils::CallMethod(om_->dbus_object_, &method_call);
   }
 
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
   scoped_ptr<ExportedObjectManager> om_;
-  ExportedObjectManager::PropertyWriter property_writer_;
-  dbus::ExportedObject::ResponseSender response_storer_;
+  ExportedPropertySet::PropertyWriter property_writer_;
   scoped_ptr<dbus::Response> last_response_;
 };
 
@@ -156,11 +155,8 @@ TEST_F(ExportedObjectManagerTest, ReleaseInterfaceSendsSignals) {
 }
 
 TEST_F(ExportedObjectManagerTest, GetManagedObjectsResponseEmptyCorrectness) {
-  dbus::MethodCall method_call(dbus::kObjectManagerInterface,
-                               dbus::kObjectManagerGetManagedObjects);
-  method_call.SetSerial(123);
-  CallHandleGetManagedObjects(&method_call, response_storer_);
-  dbus::MessageReader reader(last_response_.get());
+  auto response = CallHandleGetManagedObjects();
+  dbus::MessageReader reader(response.get());
   dbus::MessageReader all_paths(nullptr);
   ASSERT_TRUE(reader.PopArray(&all_paths));
   EXPECT_FALSE(reader.HasMoreData());
@@ -171,13 +167,10 @@ TEST_F(ExportedObjectManagerTest, GetManagedObjectsResponseCorrectness) {
   //     out DICT<OBJPATH,
   //              DICT<STRING,
   //                   DICT<STRING,VARIANT>>> )
-  dbus::MethodCall method_call(dbus::kObjectManagerInterface,
-                               dbus::kObjectManagerGetManagedObjects);
-  method_call.SetSerial(123);
   EXPECT_CALL(*mock_exported_object_, SendSignal(_)).Times(1);
   om_->ClaimInterface(kClaimedTestPath, kClaimedInterface, property_writer_);
-  CallHandleGetManagedObjects(&method_call, response_storer_);
-  dbus::MessageReader reader(last_response_.get());
+  auto response = CallHandleGetManagedObjects();
+  dbus::MessageReader reader(response.get());
   dbus::MessageReader all_paths(nullptr);
   dbus::MessageReader each_path(nullptr);
   dbus::MessageReader all_interfaces(nullptr);

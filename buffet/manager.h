@@ -36,7 +36,7 @@ class Manager final {
   explicit Manager(
       const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
           object_manager);
-  void Init(
+  void RegisterAsync(
       const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
  private:

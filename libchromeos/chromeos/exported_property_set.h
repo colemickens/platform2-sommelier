@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
+#include <chromeos/any.h>
 #include <chromeos/dbus_utils.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
@@ -59,11 +60,8 @@ class ExportedPropertyBase {
   // interface of the exported object.
   virtual void SetUpdateCallback(const OnUpdateCallback& cb);
 
-  // Appends a variant of the contained value to the writer.  This is
-  // needed to write out properties to Get and GetAll methods implemented
-  // by the ExportedPropertySet since it doesn't actually know the type
-  // of each property.
-  virtual void AppendValueToWriter(dbus::MessageWriter* writer) const = 0;
+  // Returns the contained value as Any.
+  virtual chromeos::Any GetValue() const = 0;
 
  protected:
   // Notify the listeners of OnUpdateCallback that the property has changed.
@@ -75,7 +73,7 @@ class ExportedPropertyBase {
 
 class ExportedPropertySet {
  public:
-  using PropertyWriter = base::Callback<void(dbus::MessageWriter* writer)>;
+  using PropertyWriter = base::Callback<void(dbus_utils::Dictionary* dict)>;
 
   explicit ExportedPropertySet(dbus::Bus* bus);
   virtual ~ExportedPropertySet() = default;
@@ -96,24 +94,33 @@ class ExportedPropertySet {
                         ExportedPropertyBase* exported_property);
 
   // DBus methods for org.freedesktop.DBus.Properties interface.
-  std::unique_ptr<dbus::Response> HandleGetAll(
-      dbus::MethodCall* method_call, const std::string& interface_name);
-  std::unique_ptr<dbus::Response> HandleGet(
-      dbus::MethodCall* method_call,
+  dbus_utils::Dictionary HandleGetAll(
+      chromeos::ErrorPtr* error,
+      const std::string& interface_name);
+  chromeos::Any HandleGet(
+      chromeos::ErrorPtr* error,
       const std::string& interface_name,
       const std::string& property_name);
   // While Properties.Set has a handler to complete the interface,  we don't
   // support writable properties.  This is almost a feature, since bindings for
   // many languages don't support errors coming back from invalid writes.
   // Instead, use setters in exposed interfaces.
-  std::unique_ptr<dbus::Response> HandleSet(dbus::MethodCall* method_call);
+  void HandleSet(
+      chromeos::ErrorPtr* error,
+      const std::string& interface_name,
+      const std::string& property_name,
+      const chromeos::Any& value);
+  // Returns a string-to-variant map of all the properties for the given
+  // interface and their values.
+  dbus_utils::Dictionary GetInterfaceProperties(
+      const std::string& interface_name) const;
 
  private:
   // Used to write the dictionary of string->variant to a message.
   // This dictionary represents the property name/value pairs for the
   // given interface.
-  void WritePropertiesDictToMessage(const std::string& interface_name,
-                                    dbus::MessageWriter* writer);
+  void WritePropertiesToDict(const std::string& interface_name,
+                             dbus_utils::Dictionary* dict);
   void HandlePropertyUpdated(const std::string& interface_name,
                              const std::string& property_name,
                              const ExportedPropertyBase* exported_property);
@@ -151,9 +158,7 @@ class ExportedProperty : public ExportedPropertyBase {
   }
 
   // Implementation provided by specialization.
-  void AppendValueToWriter(dbus::MessageWriter* writer) const override {
-    chromeos::dbus_utils::AppendValueToWriterAsVariant(writer, value_);
-  }
+  chromeos::Any GetValue() const override { return value_; }
 
  private:
   T value_{};

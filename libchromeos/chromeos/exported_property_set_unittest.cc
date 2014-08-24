@@ -423,9 +423,14 @@ TEST_F(ExportedPropertySetTest, SetFailsGracefully) {
   dbus::MethodCall method_call(dbus::kPropertiesInterface,
                                dbus::kPropertiesSet);
   method_call.SetSerial(123);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(kTestInterface1);
+  writer.AppendString(kStringPropName);
+  dbus_utils::AppendValueToWriter(&writer, chromeos::Any(4));
   auto response = CallMethod(p_->dbus_object_, &method_call);
   ASSERT_TRUE(
       dynamic_cast<dbus::ErrorResponse*>(response.get()) != nullptr);
+  ASSERT_EQ(DBUS_ERROR_NOT_SUPPORTED, response->GetErrorName());
 }
 
 namespace {

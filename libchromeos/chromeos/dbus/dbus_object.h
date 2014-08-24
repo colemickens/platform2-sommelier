@@ -51,7 +51,6 @@ class MyDbusObject {
 
 #include <base/basictypes.h>
 #include <base/bind.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/async_event_sequencer.h>
 #include <chromeos/dbus/dbus_object_internal_impl.h>
@@ -281,7 +280,8 @@ class DBusInterface final {
   // A generic DBus method handler for the interface. It extracts the method
   // name from |method_call|, looks up a registered handler from |handlers_|
   // map and dispatched the call to that handler.
-  scoped_ptr<dbus::Response> HandleMethodCall(dbus::MethodCall* method_call);
+  std::unique_ptr<dbus::Response> HandleMethodCall(
+      dbus::MethodCall* method_call);
   // Helper to add a handler for method |method_name| to the |handlers_| map.
   void AddHandlerImpl(const std::string& method_name,
                       std::unique_ptr<DBusInterfaceMethodHandler> handler);
@@ -346,6 +346,9 @@ class DBusObject {
   const base::WeakPtr<ExportedObjectManager>& GetObjectManager() const {
     return object_manager_;
   }
+
+  // Sends a signal from the exported D-Bus object.
+  void SendSignal(dbus::Signal* signal);
 
  private:
   // A map of all the interfaces added to this object.

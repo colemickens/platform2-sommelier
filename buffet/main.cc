@@ -93,9 +93,9 @@ void EnterMainLoop(base::MessageLoopForIO* message_loop,
   ExportedObjectManager object_manager(
       bus, dbus::ObjectPath(buffet::dbus_constants::kRootServicePath));
   buffet::Manager manager(object_manager.AsWeakPtr());
-  object_manager.Init(
+  object_manager.RegisterAsync(
       sequencer->GetHandler("ObjectManager.Init() failed.", true));
-  manager.Init(sequencer->GetHandler("Manager.Init() failed.", true));
+  manager.RegisterAsync(sequencer->GetHandler("Manager.Init() failed.", true));
   sequencer->OnAllTasksCompletedCall(
       {base::Bind(&TakeServiceOwnership, bus)});
   // Release our handle on the sequencer so that it gets deleted after

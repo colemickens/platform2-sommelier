@@ -6,6 +6,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/memory/scoped_ptr.h>
 #include <base/values.h>
 #include <chromeos/any.h>
 #include <dbus/values_util.h>
@@ -13,16 +14,18 @@
 namespace chromeos {
 namespace dbus_utils {
 
+const char kDBusErrorDomain[] = "dbus";
+
 namespace {
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
 // and sent.
 void HandleSynchronousDBusMethodCall(
-    base::Callback<scoped_ptr<dbus::Response>(dbus::MethodCall*)> handler,
+    const MethodCallHandler& handler,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
-  auto response = handler.Run(method_call);
+  scoped_ptr<dbus::Response> response(handler.Run(method_call).release());
   if (!response)
     response = dbus::Response::FromMethodCall(method_call);
 
@@ -30,7 +33,6 @@ void HandleSynchronousDBusMethodCall(
 }
 
 }  // namespace
-
 
 scoped_ptr<dbus::Response> GetBadArgsError(dbus::MethodCall* method_call,
                                            const std::string& message) {
@@ -50,20 +52,32 @@ std::unique_ptr<dbus::Response> CreateDBusErrorResponse(
 
 std::unique_ptr<dbus::Response> GetDBusError(dbus::MethodCall* method_call,
                                              const chromeos::Error* error) {
-  std::string message;
+  std::string error_code = DBUS_ERROR_FAILED;  // Default error code.
+  std::string error_message;
+
+  // Special case for "dbus" error domain.
+  // Pop the error code and message from the error chain and use them as the
+  // actual D-Bus error message.
+  if (error->GetDomain() == kDBusErrorDomain) {
+    error_code = error->GetCode();
+    error_message = error->GetMessage();
+    error = error->GetInnerError();
+  }
+
+  // Append any inner errors to the error message.
   while (error) {
     // Format error string as "domain/code:message".
-    if (!message.empty())
-      message += ';';
-    message += error->GetDomain() + '/' + error->GetCode() + ':' +
+    if (!error_message.empty())
+      error_message += ';';
+    error_message += error->GetDomain() + '/' + error->GetCode() + ':' +
                error->GetMessage();
     error = error->GetInnerError();
   }
-  return CreateDBusErrorResponse(method_call, DBUS_ERROR_FAILED, message);
+  return CreateDBusErrorResponse(method_call, error_code, error_message);
 }
 
 dbus::ExportedObject::MethodCallCallback GetExportableDBusMethod(
-    base::Callback<scoped_ptr<dbus::Response>(dbus::MethodCall*)> handler) {
+    const MethodCallHandler& handler) {
   return base::Bind(&HandleSynchronousDBusMethodCall, handler);
 }
 

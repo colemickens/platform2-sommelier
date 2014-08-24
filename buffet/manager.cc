@@ -31,7 +31,7 @@ Manager::Manager(const base::WeakPtr<ExportedObjectManager>& object_manager)
                    object_manager->GetBus(),
                    dbus::ObjectPath(dbus_constants::kManagerServicePath)) {}
 
-void Manager::Init(const AsyncEventSequencer::CompletionAction& cb) {
+void Manager::RegisterAsync(const AsyncEventSequencer::CompletionAction& cb) {
   chromeos::dbus_utils::DBusInterface* itf =
       dbus_object_.AddOrGetInterface(dbus_constants::kManagerInterface);
   itf->AddMethodHandler(dbus_constants::kManagerCheckDeviceRegistered,

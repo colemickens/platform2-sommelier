@@ -9,6 +9,10 @@
 #include <string>
 
 #include <base/memory/weak_ptr.h>
+#include <chromeos/any.h>
+#include <chromeos/dbus/dbus_object.h>
+#include <chromeos/dbus_utils.h>
+#include <chromeos/exported_property_set.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
@@ -36,7 +40,7 @@ namespace dbus_utils {
 //     void Init(const OnInitFinish& cb) { object_manager_.Init(cb); }
 //     void ClaimInterface(const dbus::ObjectPath& path,
 //                         const std::string& interface_name,
-//                         const PropertyWriter& writer) {
+//                         const ExportedPropertySet::PropertyWriter& writer) {
 //       object_manager_->ClaimInterface(...);
 //     }
 //     void ReleaseInterface(const dbus::ObjectPath& path,
@@ -71,10 +75,10 @@ namespace dbus_utils {
 class ExportedObjectManager
     : public base::SupportsWeakPtr<ExportedObjectManager> {
  public:
-  // Writes a dictionary of property name to property value variants to writer.
-  typedef base::Callback<void(dbus::MessageWriter* writer)> PropertyWriter;
-  typedef base::Callback<void(bool success)> OnInitFinish;
-  typedef std::map<std::string, PropertyWriter> InterfaceProperties;
+  using ObjectMap =
+      std::map<dbus::ObjectPath, std::map<std::string, Dictionary>>;
+  using InterfaceProperties =
+      std::map<std::string, ExportedPropertySet::PropertyWriter>;
 
   ExportedObjectManager(scoped_refptr<dbus::Bus> bus,
                         const dbus::ObjectPath& path);
@@ -82,13 +86,15 @@ class ExportedObjectManager
   // Registers methods implementing the ObjectManager interface on the object
   // exported on the path given in the constructor. Must be called on the
   // origin thread.
-  void Init(const OnInitFinish& cb);
+  void RegisterAsync(
+      const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction&
+          completion_callback);
 
   // Trigger a signal that |path| has added an interface |interface_name|
   // with properties as given by |writer|.
   void ClaimInterface(const dbus::ObjectPath& path,
                       const std::string& interface_name,
-                      const PropertyWriter& writer);
+                      const ExportedPropertySet::PropertyWriter& writer);
 
   // Trigger a signal that |path| has removed an interface |interface_name|.
   void ReleaseInterface(const dbus::ObjectPath& path,
@@ -97,13 +103,10 @@ class ExportedObjectManager
   const scoped_refptr<dbus::Bus>& GetBus() const { return bus_; }
 
  private:
-  void HandleGetManagedObjects(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender) const;
+  ObjectMap HandleGetManagedObjects(chromeos::ErrorPtr* error);
 
   scoped_refptr<dbus::Bus> bus_;
-  // |exported_object_| outlives *this.
-  dbus::ExportedObject* const exported_object_;
+  chromeos::dbus_utils::DBusObject dbus_object_;
   // Tracks all objects currently known to the ExportedObjectManager.
   std::map<dbus::ObjectPath, InterfaceProperties> registered_objects_;
 

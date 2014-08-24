@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <chromeos/async_event_sequencer.h>
 #include <chromeos/dbus_utils.h>
 #include <chromeos/exported_object_manager.h>
@@ -63,20 +64,17 @@ void DBusInterface::ExportAsync(
   sequencer->OnAllTasksCompletedCall(actions);
 }
 
-scoped_ptr<dbus::Response> DBusInterface::HandleMethodCall(
+std::unique_ptr<dbus::Response> DBusInterface::HandleMethodCall(
     dbus::MethodCall* method_call) {
   std::string method_name = method_call->GetMember();
   auto pair = handlers_.find(method_name);
   if (pair == handlers_.end()) {
-    return dbus::ErrorResponse::FromMethodCall(
-        method_call,
-        DBUS_ERROR_UNKNOWN_METHOD,
-        "Unknown method: " + method_name).PassAs<dbus::Response>();
+    return CreateDBusErrorResponse(method_call,
+                                   DBUS_ERROR_UNKNOWN_METHOD,
+                                   "Unknown method: " + method_name);
   }
   LOG(INFO) << "Dispatching DBus message call: " << method_name;
-  scoped_ptr<dbus::Response> response(
-      pair->second->HandleMethod(method_call).release());
-  return response.Pass();
+  return pair->second->HandleMethod(method_call);
 }
 
 void DBusInterface::AddHandlerImpl(
@@ -148,10 +146,9 @@ void DBusObject::RegisterAsync(
   prop_interface->AddMethodHandler(dbus::kPropertiesGet,
                                    base::Unretained(&property_set_),
                                    &ExportedPropertySet::HandleGet);
-  prop_interface->AddRawMethodHandler(
-      dbus::kPropertiesSet,
-      base::Bind(&ExportedPropertySet::HandleSet,
-                 base::Unretained(&property_set_)));
+  prop_interface->AddMethodHandler(dbus::kPropertiesSet,
+                                   base::Unretained(&property_set_),
+                                   &ExportedPropertySet::HandleSet);
 
   // Export interface methods
   for (const auto& pair : interfaces_) {
@@ -165,6 +162,13 @@ void DBusObject::RegisterAsync(
   }
 
   sequencer->OnAllTasksCompletedCall({completion_callback});
+}
+
+void DBusObject::SendSignal(dbus::Signal* signal) {
+  if (exported_object_) {
+    LOG(ERROR) << "Trying to send a signal from an object that is not exported";
+    exported_object_->SendSignal(signal);
+  }
 }
 
 }  // namespace dbus_utils
