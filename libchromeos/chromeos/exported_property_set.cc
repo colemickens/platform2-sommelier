@@ -89,14 +89,14 @@ std::unique_ptr<dbus::Response> ExportedPropertySet::HandleGet(
   auto property_map_itr = properties_.find(interface_name);
   if (property_map_itr == properties_.end()) {
     return CreateDBusErrorResponse(method_call,
-                                   "org.freedesktop.DBus.Error.InvalidArgs",
+                                   DBUS_ERROR_INVALID_ARGS,
                                    "No such interface on object.");
   }
   LOG(INFO) << "Looking for " << property_name << " on " << interface_name;
   auto property_itr = property_map_itr->second.find(property_name);
   if (property_itr == property_map_itr->second.end()) {
     return CreateDBusErrorResponse(method_call,
-                                   "org.freedesktop.DBus.Error.InvalidArgs",
+                                   DBUS_ERROR_INVALID_ARGS,
                                    "No such property on interface.");
   }
   std::unique_ptr<dbus::Response> response(
@@ -110,7 +110,7 @@ std::unique_ptr<dbus::Response> ExportedPropertySet::HandleSet(
     dbus::MethodCall* method_call) {
   bus_->AssertOnOriginThread();
   return CreateDBusErrorResponse(method_call,
-                                 "org.freedesktop.DBus.Error.NotSupported",
+                                 DBUS_ERROR_NOT_SUPPORTED,
                                  "Method Set is not supported.");
 }
 

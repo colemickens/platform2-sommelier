@@ -30,15 +30,6 @@
 namespace chromeos {
 namespace dbus_utils {
 
-// A helper function to create a format a DBus error message.
-inline std::unique_ptr<dbus::Response> CreateDBusErrorResponse(
-    dbus::MethodCall* method_call,
-    const std::string& code,
-    const std::string& message) {
-  auto resp = dbus::ErrorResponse::FromMethodCall(method_call, code, message);
-  return std::unique_ptr<dbus::Response>(resp.release());
-}
-
 // A generic DBusInvoker stub class which allows us to specialize on a variable
 // list of expected function parameters later on. This struct in itself is not
 // used. But its concrete template specializations are.
@@ -68,7 +59,7 @@ struct DBusInvoker<ReturnType, ParamType, RestOfParams...> {
                                                 const Args&... args) {
     if (!reader->HasMoreData())
       return CreateDBusErrorResponse(method_call,
-                                     "org.freedesktop.DBus.Error.InvalidArgs",
+                                     DBUS_ERROR_INVALID_ARGS,
                                      "Too few parameters in a method call");
     // ParamType could be a reference type (e.g. 'const std::string&').
     // Here we need a value type so we can create an object of this type and
@@ -81,7 +72,7 @@ struct DBusInvoker<ReturnType, ParamType, RestOfParams...> {
     ParamValueType current_param;
     if (!chromeos::dbus_utils::PopValueFromReader(reader, &current_param))
       return CreateDBusErrorResponse(method_call,
-                                     "org.freedesktop.DBus.Error.InvalidArgs",
+                                     DBUS_ERROR_INVALID_ARGS,
                                      "Method parameter type mismatch");
     // Call DBusInvoker::Invoke() to process the rest of parameters.
     // Note that this is not a recursive call because it is calling a different
@@ -113,7 +104,7 @@ struct DBusInvoker<ReturnType> {
                                                 const Args&... args) {
     if (reader->HasMoreData())
       return CreateDBusErrorResponse(method_call,
-                                     "org.freedesktop.DBus.Error.InvalidArgs",
+                                     DBUS_ERROR_INVALID_ARGS,
                                      "Too many parameters in a method call");
     chromeos::ErrorPtr error;
     // If |handler| fails it should provide the error information in |error|.
@@ -145,7 +136,7 @@ struct DBusInvoker<std::unique_ptr<dbus::Response>> {
                                                 const Args&... args) {
     if (reader->HasMoreData())
       return CreateDBusErrorResponse(method_call,
-                                     "org.freedesktop.DBus.Error.InvalidArgs",
+                                     DBUS_ERROR_INVALID_ARGS,
                                      "Too many parameters in a method call");
     return handler.Run(method_call, args...);
   }
@@ -164,7 +155,7 @@ struct DBusInvoker<void> {
                                                 const Args&... args) {
     if (reader->HasMoreData())
       return CreateDBusErrorResponse(method_call,
-                                     "org.freedesktop.DBus.Error.InvalidArgs",
+                                     DBUS_ERROR_INVALID_ARGS,
                                      "Too many parameters in a method call");
     chromeos::ErrorPtr error;
     handler.Run(&error, args...);

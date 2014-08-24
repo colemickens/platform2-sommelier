@@ -150,7 +150,7 @@ TEST_F(DBusObjectTest, PositiveFailure) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendDouble(-23.2);
   auto response = CallMethod(*dbus_object_, &method_call);
-  ExpectError(response.get(), "org.freedesktop.DBus.Error.Failed");
+  ExpectError(response.get(), DBUS_ERROR_FAILED);
 }
 
 TEST_F(DBusObjectTest, StrLen0) {
@@ -193,7 +193,7 @@ TEST_F(DBusObjectTest, TooFewParams) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendInt32(2);
   auto response = CallMethod(*dbus_object_, &method_call);
-  ExpectError(response.get(), "org.freedesktop.DBus.Error.InvalidArgs");
+  ExpectError(response.get(), DBUS_ERROR_INVALID_ARGS);
 }
 
 TEST_F(DBusObjectTest, TooManyParams) {
@@ -204,7 +204,7 @@ TEST_F(DBusObjectTest, TooManyParams) {
   writer.AppendInt32(2);
   writer.AppendInt32(3);
   auto response = CallMethod(*dbus_object_, &method_call);
-  ExpectError(response.get(), "org.freedesktop.DBus.Error.InvalidArgs");
+  ExpectError(response.get(), DBUS_ERROR_INVALID_ARGS);
 }
 
 TEST_F(DBusObjectTest, ParamTypeMismatch) {
@@ -214,7 +214,7 @@ TEST_F(DBusObjectTest, ParamTypeMismatch) {
   writer.AppendInt32(1);
   writer.AppendBool(false);
   auto response = CallMethod(*dbus_object_, &method_call);
-  ExpectError(response.get(), "org.freedesktop.DBus.Error.InvalidArgs");
+  ExpectError(response.get(), DBUS_ERROR_INVALID_ARGS);
 }
 
 TEST_F(DBusObjectTest, ParamAsVariant) {
@@ -238,7 +238,7 @@ TEST_F(DBusObjectTest, UnknownMethod) {
   writer.AppendInt32(1);
   writer.AppendBool(false);
   auto response = CallMethod(*dbus_object_, &method_call);
-  ExpectError(response.get(), "org.freedesktop.DBus.Error.UnknownMethod");
+  ExpectError(response.get(), DBUS_ERROR_UNKNOWN_METHOD);
 }
 
 }  // namespace dbus_utils

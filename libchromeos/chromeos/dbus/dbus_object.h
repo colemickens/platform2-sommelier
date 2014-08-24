@@ -378,7 +378,7 @@ inline std::unique_ptr<dbus::Response> CallMethod(
   if (!handler) {
     response = CreateDBusErrorResponse(
         method_call,
-        "org.freedesktop.DBus.Error.UnknownMethod",
+        DBUS_ERROR_UNKNOWN_METHOD,
         "Unknown method");
   } else {
     response = handler->HandleMethod(method_call);

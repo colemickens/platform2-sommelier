@@ -36,8 +36,16 @@ scoped_ptr<dbus::Response> GetBadArgsError(dbus::MethodCall* method_call,
                                            const std::string& message) {
   LOG(ERROR) << "Error while handling DBus call: " << message;
   scoped_ptr<dbus::ErrorResponse> resp(dbus::ErrorResponse::FromMethodCall(
-      method_call, "org.freedesktop.DBus.Error.InvalidArgs", message));
+      method_call, DBUS_ERROR_INVALID_ARGS, message));
   return scoped_ptr<dbus::Response>(resp.release());
+}
+
+std::unique_ptr<dbus::Response> CreateDBusErrorResponse(
+    dbus::MethodCall* method_call,
+    const std::string& code,
+    const std::string& message) {
+  auto resp = dbus::ErrorResponse::FromMethodCall(method_call, code, message);
+  return std::unique_ptr<dbus::Response>(resp.release());
 }
 
 std::unique_ptr<dbus::Response> GetDBusError(dbus::MethodCall* method_call,
@@ -51,9 +59,7 @@ std::unique_ptr<dbus::Response> GetDBusError(dbus::MethodCall* method_call,
                error->GetMessage();
     error = error->GetInnerError();
   }
-  scoped_ptr<dbus::ErrorResponse> resp(dbus::ErrorResponse::FromMethodCall(
-    method_call, "org.freedesktop.DBus.Error.Failed", message));
-  return std::unique_ptr<dbus::Response>(resp.release());
+  return CreateDBusErrorResponse(method_call, DBUS_ERROR_FAILED, message);
 }
 
 dbus::ExportedObject::MethodCallCallback GetExportableDBusMethod(

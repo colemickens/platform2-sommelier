@@ -23,6 +23,12 @@ namespace dbus_utils {
 scoped_ptr<dbus::Response> GetBadArgsError(dbus::MethodCall* method_call,
                                            const std::string& message);
 
+// A helper function to create a DBus error response object as unique_ptr<>.
+std::unique_ptr<dbus::Response> CreateDBusErrorResponse(
+    dbus::MethodCall* method_call,
+    const std::string& code,
+    const std::string& message);
+
 std::unique_ptr<dbus::Response> GetDBusError(dbus::MethodCall* method_call,
                                              const chromeos::Error* error);
 

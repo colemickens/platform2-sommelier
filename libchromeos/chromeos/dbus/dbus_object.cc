@@ -70,7 +70,7 @@ scoped_ptr<dbus::Response> DBusInterface::HandleMethodCall(
   if (pair == handlers_.end()) {
     return dbus::ErrorResponse::FromMethodCall(
         method_call,
-        "org.freedesktop.DBus.Error.UnknownMethod",
+        DBUS_ERROR_UNKNOWN_METHOD,
         "Unknown method: " + method_name).PassAs<dbus::Response>();
   }
   LOG(INFO) << "Dispatching DBus message call: " << method_name;
