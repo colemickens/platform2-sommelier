@@ -16,7 +16,7 @@ class DBusProxy : public DBus::ObjectProxy {
  public:
   DBusProxy(DBus::Connection *connection,
             const std::string &service_name, const std::string &object_path);
-  ~DBusProxy() override;
+  ~DBusProxy() override = default;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DBusProxy);

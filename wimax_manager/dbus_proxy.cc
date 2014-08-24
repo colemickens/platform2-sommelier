@@ -13,7 +13,4 @@ DBusProxy::DBusProxy(DBus::Connection *connection,
     : DBus::ObjectProxy(*connection, object_path, service_name.c_str()) {
 }
 
-DBusProxy::~DBusProxy() {
-}
-
 }  // namespace wimax_manager

@@ -15,8 +15,6 @@ EventDispatcher::EventDispatcher()
   CHECK(dont_use_directly_.get());
 }
 
-EventDispatcher::~EventDispatcher() {}
-
 void EventDispatcher::DispatchForever() {
   base::MessageLoop::current()->Run();
 }

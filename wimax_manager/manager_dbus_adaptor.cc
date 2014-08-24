@@ -24,9 +24,6 @@ ManagerDBusAdaptor::ManagerDBusAdaptor(DBus::Connection *connection,
   Devices = vector<DBus::Path>();
 }
 
-ManagerDBusAdaptor::~ManagerDBusAdaptor() {
-}
-
 void ManagerDBusAdaptor::UpdateDevices() {
   vector<DBus::Path> device_paths;
   const vector<Device *> &devices = manager_->devices();

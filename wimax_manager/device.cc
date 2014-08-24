@@ -55,9 +55,6 @@ Device::Device(Manager *manager, uint8_t index, const string &name)
       status_(kDeviceStatusUninitialized) {
 }
 
-Device::~Device() {
-}
-
 void Device::UpdateNetworks() {
   dbus_adaptor()->UpdateNetworks();
 }

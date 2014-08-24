@@ -23,7 +23,7 @@ namespace wimax_manager {
 class EventDispatcher {
  public:
   EventDispatcher();
-  ~EventDispatcher();
+  ~EventDispatcher() = default;
 
   void DispatchForever();
   bool PostTask(const base::Closure &task);

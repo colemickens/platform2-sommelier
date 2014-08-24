@@ -17,8 +17,8 @@ namespace wimax_manager {
 template <typename Self, typename Proxy>
 class DBusProxiable {
  public:
-  DBusProxiable() {}
-  ~DBusProxiable() {}
+  DBusProxiable() = default;
+  ~DBusProxiable() = default;
 
   void CreateDBusProxy() {
     if (dbus_proxy_.get())

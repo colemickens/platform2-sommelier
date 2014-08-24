@@ -15,9 +15,6 @@ DBusAdaptor::DBusAdaptor(DBus::Connection *connection,
     : DBus::ObjectAdaptor(*connection, object_path) {
 }
 
-DBusAdaptor::~DBusAdaptor() {
-}
-
 // static
 void DBusAdaptor::SetError(DBus::Error *error, const string &message) {
   error->set(kWiMaxManagerServiceError, message.c_str());

@@ -18,7 +18,7 @@ class DBusServiceDBusProxy : public org::freedesktop::DBus_proxy,
                              public DBusProxy {
  public:
   DBusServiceDBusProxy(DBus::Connection *connection, DBusService *dbus_service);
-  ~DBusServiceDBusProxy() override;
+  ~DBusServiceDBusProxy() override = default;
 
   void NameOwnerChanged(const std::string &name,
                         const std::string &old_owner,

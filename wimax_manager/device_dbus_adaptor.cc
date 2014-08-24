@@ -78,9 +78,6 @@ DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection *connection,
   StatusUpdateInterval = device->status_update_interval();
 }
 
-DeviceDBusAdaptor::~DeviceDBusAdaptor() {
-}
-
 // static
 string DeviceDBusAdaptor::GetDeviceObjectPath(const Device &device) {
   return base::StringPrintf("%s%s", kDeviceObjectPathPrefix,

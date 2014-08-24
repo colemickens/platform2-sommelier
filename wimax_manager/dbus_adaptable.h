@@ -17,8 +17,8 @@ namespace wimax_manager {
 template <typename Adaptee, typename Adaptor>
 class DBusAdaptable {
  public:
-  DBusAdaptable() {}
-  ~DBusAdaptable() {}
+  DBusAdaptable() = default;
+  ~DBusAdaptable() = default;
 
   void CreateDBusAdaptor() {
     if (dbus_adaptor_.get())

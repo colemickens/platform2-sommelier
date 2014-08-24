@@ -20,9 +20,6 @@ DBusServiceDBusProxy::DBusServiceDBusProxy(DBus::Connection *connection,
   CHECK(dbus_service_);
 }
 
-DBusServiceDBusProxy::~DBusServiceDBusProxy() {
-}
-
 void DBusServiceDBusProxy::NameOwnerChanged(const string &name,
                                             const string &old_owner,
                                             const string &new_owner) {

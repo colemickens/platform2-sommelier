@@ -16,7 +16,7 @@ class ManagerDBusAdaptor : public org::chromium::WiMaxManager_adaptor,
                            public DBusAdaptor {
  public:
   ManagerDBusAdaptor(DBus::Connection *connection, Manager *manager);
-  ~ManagerDBusAdaptor() override;
+  ~ManagerDBusAdaptor() override = default;
 
   void UpdateDevices();
 

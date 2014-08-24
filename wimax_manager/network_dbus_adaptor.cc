@@ -25,9 +25,6 @@ NetworkDBusAdaptor::NetworkDBusAdaptor(DBus::Connection *connection,
   UpdateProperties();
 }
 
-NetworkDBusAdaptor::~NetworkDBusAdaptor() {
-}
-
 // static
 string NetworkDBusAdaptor::GetNetworkObjectPath(const Network &network) {
   return base::StringPrintf("%s%08x", kNetworkObjectPathPrefix,

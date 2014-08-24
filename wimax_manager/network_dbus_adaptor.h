@@ -18,7 +18,7 @@ class NetworkDBusAdaptor : public org::chromium::WiMaxManager::Network_adaptor,
                            public DBusAdaptor {
  public:
   NetworkDBusAdaptor(DBus::Connection *connection, Network *network);
-  ~NetworkDBusAdaptor() override;
+  ~NetworkDBusAdaptor() override = default;
 
   static std::string GetNetworkObjectPath(const Network &network);
 

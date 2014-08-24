@@ -17,7 +17,7 @@ class Manager;
 class Driver {
  public:
   explicit Driver(Manager *manager);
-  virtual ~Driver();
+  virtual ~Driver() = default;
 
   virtual bool Initialize() = 0;
   virtual bool Finalize() = 0;

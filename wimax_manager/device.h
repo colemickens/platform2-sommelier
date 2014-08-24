@@ -28,7 +28,7 @@ class Manager;
 class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
  public:
   Device(Manager *manager, uint8_t index, const std::string &name);
-  virtual ~Device();
+  virtual ~Device() = default;
 
   virtual bool Enable() = 0;
   virtual bool Disable() = 0;

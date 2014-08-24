@@ -18,7 +18,7 @@ class ByteIdentifier {
  public:
   explicit ByteIdentifier(size_t length);
   ByteIdentifier(const uint8_t *data, size_t length);
-  ~ByteIdentifier();
+  ~ByteIdentifier() = default;
 
   const std::vector<uint8_t> &data() const { return data_; }
 

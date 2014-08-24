@@ -20,7 +20,7 @@ class DeviceDBusAdaptor : public org::chromium::WiMaxManager::Device_adaptor,
                           public DBusAdaptor {
  public:
   DeviceDBusAdaptor(DBus::Connection *connection, Device *device);
-  virtual ~DeviceDBusAdaptor();
+  virtual ~DeviceDBusAdaptor() = default;
 
   static std::string GetDeviceObjectPath(const Device &device);
 

@@ -22,9 +22,6 @@ ByteIdentifier::ByteIdentifier(const uint8_t *data, size_t length)
     : data_(data, data + length) {
 }
 
-ByteIdentifier::~ByteIdentifier() {
-}
-
 string ByteIdentifier::GetHexString() const {
   string hex_string;
   hex_string.reserve(data_.size() * 3);

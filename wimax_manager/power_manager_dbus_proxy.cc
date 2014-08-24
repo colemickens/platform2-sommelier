@@ -25,9 +25,6 @@ PowerManagerDBusProxy::PowerManagerDBusProxy(DBus::Connection *connection,
   CHECK(power_manager_);
 }
 
-PowerManagerDBusProxy::~PowerManagerDBusProxy() {
-}
-
 void PowerManagerDBusProxy::SuspendImminent(
     const vector<uint8_t> &serialized_proto) {
   power_manager_->OnSuspendImminent(serialized_proto);
