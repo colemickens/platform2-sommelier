@@ -24,7 +24,7 @@ class Mounter {
           const std::string& filesystem_type,
           const MountOptions& mount_options);
 
-  virtual ~Mounter();
+  virtual ~Mounter() = default;
 
   // This method implements the common steps to mount a filesystem.
   // It internally calls MountImpl() on a derived class.

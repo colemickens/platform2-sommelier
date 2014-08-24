@@ -10,12 +10,6 @@
 
 namespace cros_disks {
 
-DeviceEventQueue::DeviceEventQueue() {
-}
-
-DeviceEventQueue::~DeviceEventQueue() {
-}
-
 void DeviceEventQueue::Remove() {
   if (!events_.empty())
     events_.pop_back();

@@ -16,9 +16,9 @@ struct DeviceEvent;
 // An event queue for keeping track of deferred device events.
 class DeviceEventQueue {
  public:
-  DeviceEventQueue();
+  DeviceEventQueue() = default;
 
-  ~DeviceEventQueue();
+  ~DeviceEventQueue() = default;
 
   // Removes a device event from the event queue in a FIFO manner.
   // It is a no-op if the queue is empty.

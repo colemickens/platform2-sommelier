@@ -30,7 +30,7 @@ class DeviceEventModerator : public SessionManagerObserverInterface {
   DeviceEventModerator(DeviceEventDispatcherInterface* event_dispatcher,
                        DeviceEventSourceInterface* event_source);
 
-  virtual ~DeviceEventModerator();
+  virtual ~DeviceEventModerator() = default;
 
   // Dispatches all queued device events through the event dispatcher.
   void DispatchQueuedDeviceEvents();

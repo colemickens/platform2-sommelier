@@ -11,12 +11,6 @@ using std::string;
 
 namespace cros_disks {
 
-FileReader::FileReader() {
-}
-
-FileReader::~FileReader() {
-}
-
 void FileReader::Close() {
   file_.reset();
 }

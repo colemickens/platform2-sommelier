@@ -20,7 +20,7 @@ namespace cros_disks {
 class Platform {
  public:
   Platform();
-  virtual ~Platform();
+  virtual ~Platform() = default;
 
   // Gets the canonicalized absolute path of |path| using realpath() and returns
   // that via |real_path|. Return true on success.

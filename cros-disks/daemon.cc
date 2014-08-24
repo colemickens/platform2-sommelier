@@ -23,9 +23,6 @@ Daemon::Daemon(DBus::Connection* dbus_connection)
       session_manager_proxy_(dbus_connection) {
 }
 
-Daemon::~Daemon() {
-}
-
 void Daemon::Initialize() {
   // Register mount managers with the commonly used ones come first.
   server_.RegisterMountManager(&disk_manager_);

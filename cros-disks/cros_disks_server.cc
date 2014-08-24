@@ -34,9 +34,6 @@ CrosDisksServer::CrosDisksServer(DBus::Connection& connection,  // NOLINT
   format_manager_->set_observer(this);
 }
 
-CrosDisksServer::~CrosDisksServer() {
-}
-
 void CrosDisksServer::RegisterMountManager(MountManager* mount_manager) {
   CHECK(mount_manager) << "Invalid mount manager object";
   mount_managers_.push_back(mount_manager);

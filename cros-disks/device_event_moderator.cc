@@ -23,9 +23,6 @@ DeviceEventModerator::DeviceEventModerator(
   CHECK(event_source_) << "Invalid event source object";
 }
 
-DeviceEventModerator::~DeviceEventModerator() {
-}
-
 void DeviceEventModerator::DispatchQueuedDeviceEvents() {
   const DeviceEvent* event;
   while ((event = event_queue_.Head()) != NULL) {

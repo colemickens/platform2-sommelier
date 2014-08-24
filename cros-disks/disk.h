@@ -27,7 +27,7 @@ typedef std::vector<DBusDisk> DBusDisks;
 class Disk {
  public:
   Disk();
-  virtual ~Disk();
+  ~Disk() = default;
 
   // Returns a presentation name of the disk, which can be used to name
   // the mount directory of the disk. The naming scheme is as follows:

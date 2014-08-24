@@ -53,7 +53,7 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
                   Platform* platform,
                   DiskManager* disk_manager,
                   FormatManager* format_manager);
-  ~CrosDisksServer() override;
+  ~CrosDisksServer() override = default;
 
   // Registers a mount manager.
   void RegisterMountManager(MountManager* mount_manager);

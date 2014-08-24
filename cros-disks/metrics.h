@@ -19,7 +19,7 @@ namespace cros_disks {
 class Metrics {
  public:
   Metrics();
-  ~Metrics();
+  ~Metrics() = default;
 
   // Records the type of archive that cros-disks is trying to mount.
   void RecordArchiveType(const std::string& archive_type);

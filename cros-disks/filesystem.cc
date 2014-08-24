@@ -17,7 +17,4 @@ Filesystem::Filesystem(const string& type)
   CHECK(!type.empty()) << "Invalid filesystem type";
 }
 
-Filesystem::~Filesystem() {
-}
-
 }  // namespace cros_disks

@@ -25,9 +25,6 @@ Metrics::Metrics() {
   InitializeFilesystemTypeMap();
 }
 
-Metrics::~Metrics() {
-}
-
 void Metrics::InitializeArchiveTypeMap() {
   archive_type_map_["zip"] = kArchiveZip;
   archive_type_map_["tar"] = kArchiveTar;

@@ -14,7 +14,7 @@ class Filesystem {
  public:
   explicit Filesystem(const std::string& type);
 
-  ~Filesystem();
+  ~Filesystem() = default;
 
   bool accepts_user_and_group_id() const {
     return accepts_user_and_group_id_;

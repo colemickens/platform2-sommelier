@@ -22,7 +22,7 @@ namespace cros_disks {
 class Daemon {
  public:
   explicit Daemon(DBus::Connection* dbus_connection);
-  ~Daemon();
+  ~Daemon() = default;
 
   // Initializes various components in the daemon.
   void Initialize();

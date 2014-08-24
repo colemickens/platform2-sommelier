@@ -37,9 +37,6 @@ Disk::Disk()
       bytes_remaining_(0) {
 }
 
-Disk::~Disk() {
-}
-
 string Disk::GetPresentationName() const {
   if (!label_.empty()) {
     string name = label_;

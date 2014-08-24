@@ -35,9 +35,6 @@ Platform::Platform()
       mount_user_("root") {
 }
 
-Platform::~Platform() {
-}
-
 bool Platform::GetRealPath(const string& path, string* real_path) const {
   CHECK(real_path) << "Invalid real_path argument";
 

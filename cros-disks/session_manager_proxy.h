@@ -21,7 +21,7 @@ class SessionManagerProxy : public DBus::InterfaceProxy,
  public:
   explicit SessionManagerProxy(DBus::Connection* connection);
 
-  ~SessionManagerProxy();
+  ~SessionManagerProxy() = default;
 
   void AddObserver(SessionManagerObserverInterface* observer);
 

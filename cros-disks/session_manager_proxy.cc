@@ -25,9 +25,6 @@ SessionManagerProxy::SessionManagerProxy(DBus::Connection* connection)
                  OnSessionStateChanged);
 }
 
-SessionManagerProxy::~SessionManagerProxy() {
-}
-
 void SessionManagerProxy::AddObserver(
     SessionManagerObserverInterface* observer) {
   CHECK(observer) << "Invalid observer object";

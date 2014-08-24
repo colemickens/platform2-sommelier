@@ -18,8 +18,8 @@ namespace cros_disks {
 // the use of stream.
 class FileReader {
  public:
-  FileReader();
-  ~FileReader();
+  FileReader() = default;
+  ~FileReader() = default;
 
   // Closes the file.
   void Close();

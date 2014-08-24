@@ -24,9 +24,6 @@ Mounter::Mounter(const string& source_path,
   // a bind mount.
 }
 
-Mounter::~Mounter() {
-}
-
 MountErrorType Mounter::Mount() {
   MountErrorType error = MountImpl();
   if (error != MOUNT_ERROR_NONE) {
