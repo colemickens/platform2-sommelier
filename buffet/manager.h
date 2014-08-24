@@ -51,7 +51,7 @@ class Manager final {
   // Handles calls to org.chromium.Buffet.Manager.StartRegisterDevice().
   std::string HandleStartRegisterDevice(chromeos::ErrorPtr* error,
                                         const std::map<std::string,
-                                        std::unique_ptr<base::Value>>& params);
+                                                       std::string>& params);
   // Handles calls to org.chromium.Buffet.Manager.FinishRegisterDevice().
   std::string HandleFinishRegisterDevice(chromeos::ErrorPtr* error,
                                          const std::string& user_auth_code);

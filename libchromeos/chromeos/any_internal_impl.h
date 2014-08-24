@@ -12,6 +12,7 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <chromeos/dbus_utils.h>
 
 namespace chromeos {
 
@@ -55,6 +56,8 @@ struct Data {
   virtual bool IsConvertibleToInteger() const = 0;
   // Gets the contained integral value as an integer.
   virtual intmax_t GetAsInteger() const = 0;
+  // Writes the contained value to the D-Bus message buffer.
+  virtual bool AppendToDBusMessage(dbus::MessageWriter* writer) const = 0;
 };
 
 // Concrete implementation of variant data of type T.
@@ -76,6 +79,9 @@ struct TypedData : public Data {
     CHECK(converted) << "Unable to convert value of type " << typeid(T).name()
                      << " to integer";
     return int_val;
+  }
+  bool AppendToDBusMessage(dbus::MessageWriter* writer) const override {
+    return chromeos::dbus_utils::AppendValueToWriterAsVariant(writer, value_);
   }
   // Special methods to copy/move data of the same type
   // without reallocating the buffer.

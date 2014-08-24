@@ -12,6 +12,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/values.h>
+#include <chromeos/any.h>
 #include <chromeos/data_encoding.h>
 #include <chromeos/dbus_utils.h>
 #include <dbus/bus.h>
@@ -151,16 +152,15 @@ class BuffetHelperProxy {
     if (!args.empty()) {
       auto key_values = chromeos::data_encoding::WebParamsDecode(args.front());
       for (const auto& pair : key_values) {
-        params.insert(std::make_pair(
-            pair.first, std::unique_ptr<base::Value>(
-                base::Value::CreateStringValue(pair.second))));
+        params.insert(std::make_pair(pair.first, chromeos::Any(pair.second)));
       }
     }
 
     dbus::MethodCall method_call(
         kManagerInterface, kManagerStartRegisterDevice);
     dbus::MessageWriter writer(&method_call);
-    chromeos::dbus_utils::AppendValueToWriter(&writer, params);
+    CHECK(chromeos::dbus_utils::AppendValueToWriter(&writer, params))
+        << "Failed to send the parameters over D-Bus";
 
     static const int timeout_ms = 3000;
     scoped_ptr<dbus::Response> response(

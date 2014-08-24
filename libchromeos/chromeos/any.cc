@@ -58,4 +58,10 @@ intmax_t Any::GetAsInteger() const {
   return data_buffer_.GetDataPtr()->GetAsInteger();
 }
 
+bool Any::AppendToDBusMessageWriter(dbus::MessageWriter* writer) const {
+  if (IsEmpty())
+    return false;
+  return data_buffer_.GetDataPtr()->AppendToDBusMessage(writer);
+}
+
 }  // namespace chromeos

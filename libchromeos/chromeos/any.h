@@ -27,6 +27,10 @@
 
 #include <algorithm>
 
+namespace dbus {
+class MessageWriter;
+}  // namespace dbus
+
 namespace chromeos {
 
 class Any final {
@@ -155,6 +159,12 @@ class Any final {
   // any can possibly have unspecified integer, such as 'short', 'unsigned long'
   // and so on.
   intmax_t GetAsInteger() const;
+  // Writes the contained data to D-Bus message writer, if the appropriate
+  // serialization method for contained data of the given type is provided
+  // (an appropriate specialization of AppendValueToWriter<T>() is available).
+  // Returns false if the Any is empty or if there is no serialization method
+  // defined for the contained data.
+  bool AppendToDBusMessageWriter(dbus::MessageWriter* writer) const;
 
  private:
   // The data buffer for contained object.

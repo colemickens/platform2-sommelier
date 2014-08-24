@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chromeos/dbus_utils.h"
+#include <chromeos/dbus_utils.h>
 
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/values.h>
+#include <chromeos/any.h>
 #include <dbus/values_util.h>
 
 namespace chromeos {
-
 namespace dbus_utils {
 
 namespace {
@@ -67,280 +67,303 @@ dbus::ExportedObject::MethodCallCallback GetExportableDBusMethod(
   return base::Bind(&HandleSynchronousDBusMethodCall, handler);
 }
 
-void AppendValueToWriter(dbus::MessageWriter* writer, bool value) {
+bool AppendValueToWriter(dbus::MessageWriter* writer, bool value) {
   writer->AppendBool(value);
+  return true;
 }
 
-void AppendValueToWriter(dbus::MessageWriter* writer, uint8_t value) {
+bool AppendValueToWriter(dbus::MessageWriter* writer, uint8_t value) {
   writer->AppendByte(value);
+  return true;
 }
 
-void AppendValueToWriter(dbus::MessageWriter* writer, int16_t value) {
+bool AppendValueToWriter(dbus::MessageWriter* writer, int16_t value) {
   writer->AppendInt16(value);
+  return true;
 }
 
-void AppendValueToWriter(dbus::MessageWriter* writer, uint16_t value) {
+bool AppendValueToWriter(dbus::MessageWriter* writer, uint16_t value) {
   writer->AppendUint16(value);
+  return true;
 }
 
-void AppendValueToWriter(dbus::MessageWriter* writer, int32_t value) {
+bool AppendValueToWriter(dbus::MessageWriter* writer, int32_t value) {
   writer->AppendInt32(value);
+  return true;
 }
 
-void AppendValueToWriter(dbus::MessageWriter* writer, uint32_t value) {
+bool AppendValueToWriter(dbus::MessageWriter* writer, uint32_t value) {
   writer->AppendUint32(value);
+  return true;
 }
 
-void AppendValueToWriter(dbus::MessageWriter* writer, int64_t value) {
+bool AppendValueToWriter(dbus::MessageWriter* writer, int64_t value) {
   writer->AppendInt64(value);
+  return true;
 }
 
-void AppendValueToWriter(dbus::MessageWriter* writer, uint64_t value) {
+bool AppendValueToWriter(dbus::MessageWriter* writer, uint64_t value) {
   writer->AppendUint64(value);
+  return true;
 }
 
-void AppendValueToWriter(dbus::MessageWriter* writer, double value) {
+bool AppendValueToWriter(dbus::MessageWriter* writer, double value) {
   writer->AppendDouble(value);
+  return true;
 }
 
-void AppendValueToWriter(dbus::MessageWriter* writer,
+bool AppendValueToWriter(dbus::MessageWriter* writer,
                          const std::string& value) {
   writer->AppendString(value);
+  return true;
 }
 
-void AppendValueToWriter(dbus::MessageWriter* writer,
+bool AppendValueToWriter(dbus::MessageWriter* writer, const char* value) {
+  return AppendValueToWriter(writer, std::string(value));
+}
+
+bool AppendValueToWriter(dbus::MessageWriter* writer,
                          const dbus::ObjectPath& value) {
   writer->AppendObjectPath(value);
+  return true;
 }
 
-void AppendValueToWriter(dbus::MessageWriter* writer,
-                         const std::vector<std::string>& value) {
-  writer->AppendArrayOfStrings(value);
+bool AppendValueToWriter(dbus::MessageWriter* writer,
+                         const dbus::FileDescriptor& value) {
+  writer->AppendFileDescriptor(value);
+  return true;
 }
 
-void AppendValueToWriter(dbus::MessageWriter* writer,
-                         const std::vector<dbus::ObjectPath>& value) {
-  writer->AppendArrayOfObjectPaths(value);
-}
-
-void AppendValueToWriter(dbus::MessageWriter* writer,
-                         const std::vector<uint8_t>& value) {
-  writer->AppendArrayOfBytes(value.data(), value.size());
-}
-
-void AppendValueToWriter(dbus::MessageWriter* writer, const Dictionary& value) {
-  dbus::MessageWriter dict_writer(nullptr);
-  writer->OpenArray("{sv}", &dict_writer);
-  for (const auto& pair : value) {
-    dbus::MessageWriter entry_writer(nullptr);
-    dict_writer.OpenDictEntry(&entry_writer);
-    entry_writer.AppendString(pair.first);
-    dbus::AppendBasicTypeValueDataAsVariant(&entry_writer, *pair.second);
-    dict_writer.CloseContainer(&entry_writer);
-  }
-  writer->CloseContainer(&dict_writer);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-void AppendValueToWriterAsVariant(dbus::MessageWriter* writer, bool value) {
-  writer->AppendVariantOfBool(value);
-}
-
-void AppendValueToWriterAsVariant(dbus::MessageWriter* writer, uint8_t value) {
-  writer->AppendVariantOfByte(value);
-}
-
-void AppendValueToWriterAsVariant(dbus::MessageWriter* writer, int16_t value) {
-  writer->AppendVariantOfInt16(value);
-}
-
-void AppendValueToWriterAsVariant(dbus::MessageWriter* writer, uint16_t value) {
-  writer->AppendVariantOfUint16(value);
-}
-
-void AppendValueToWriterAsVariant(dbus::MessageWriter* writer, int32_t value) {
-  writer->AppendVariantOfInt32(value);
-}
-
-void AppendValueToWriterAsVariant(dbus::MessageWriter* writer, uint32_t value) {
-  writer->AppendVariantOfUint32(value);
-}
-
-void AppendValueToWriterAsVariant(dbus::MessageWriter* writer, int64_t value) {
-  writer->AppendVariantOfInt64(value);
-}
-
-void AppendValueToWriterAsVariant(dbus::MessageWriter* writer, uint64_t value) {
-  writer->AppendVariantOfUint64(value);
-}
-
-void AppendValueToWriterAsVariant(dbus::MessageWriter* writer, double value) {
-  writer->AppendVariantOfDouble(value);
-}
-
-void AppendValueToWriterAsVariant(dbus::MessageWriter* writer,
-                                  const std::string& value) {
-  writer->AppendVariantOfString(value);
-}
-
-void AppendValueToWriterAsVariant(dbus::MessageWriter* writer,
-                                  const dbus::ObjectPath& value) {
-  writer->AppendVariantOfObjectPath(value);
-}
-
-void AppendValueToWriterAsVariant(dbus::MessageWriter* writer,
-                                  const std::vector<std::string>& value) {
-  dbus::MessageWriter variant_writer(nullptr);
-  writer->OpenVariant("as", &variant_writer);
-  variant_writer.AppendArrayOfStrings(value);
-  writer->CloseContainer(&variant_writer);
-}
-
-void AppendValueToWriterAsVariant(dbus::MessageWriter* writer,
-                                  const std::vector<dbus::ObjectPath>& value) {
-  dbus::MessageWriter variant_writer(nullptr);
-  writer->OpenVariant("ao", &variant_writer);
-  variant_writer.AppendArrayOfObjectPaths(value);
-  writer->CloseContainer(&variant_writer);
-}
-
-void AppendValueToWriterAsVariant(dbus::MessageWriter* writer,
-                                  const std::vector<uint8_t>& value) {
-  dbus::MessageWriter variant_writer(nullptr);
-  writer->OpenVariant("ay", &variant_writer);
-  variant_writer.AppendArrayOfBytes(value.data(), value.size());
-  writer->CloseContainer(&variant_writer);
-}
-
-void AppendValueToWriterAsVariant(dbus::MessageWriter* writer,
-                                  const Dictionary& value) {
-  dbus::MessageWriter variant_writer(nullptr);
-  writer->OpenVariant("a{sv}", &variant_writer);
-  AppendValueToWriter(&variant_writer, value);
-  writer->CloseContainer(&variant_writer);
+bool AppendValueToWriter(dbus::MessageWriter* writer,
+                         const chromeos::Any& value) {
+  return value.AppendToDBusMessageWriter(writer);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 bool PopValueFromReader(dbus::MessageReader* reader, bool* value) {
-  return (reader->GetDataType() == dbus::Message::VARIANT) ?
-    reader->PopVariantOfBool(value) : reader->PopBool(value);
+  dbus::MessageReader variant_reader(nullptr);
+  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
+         reader->PopBool(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, uint8_t* value) {
-  return (reader->GetDataType() == dbus::Message::VARIANT) ?
-    reader->PopVariantOfByte(value) : reader->PopByte(value);
+  dbus::MessageReader variant_reader(nullptr);
+  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
+         reader->PopByte(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, int16_t* value) {
-  return (reader->GetDataType() == dbus::Message::VARIANT) ?
-    reader->PopVariantOfInt16(value) : reader->PopInt16(value);
+  dbus::MessageReader variant_reader(nullptr);
+  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
+         reader->PopInt16(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, uint16_t* value) {
-  return (reader->GetDataType() == dbus::Message::VARIANT) ?
-    reader->PopVariantOfUint16(value) : reader->PopUint16(value);
+  dbus::MessageReader variant_reader(nullptr);
+  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
+         reader->PopUint16(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, int32_t* value) {
-  return (reader->GetDataType() == dbus::Message::VARIANT) ?
-    reader->PopVariantOfInt32(value) : reader->PopInt32(value);
+  dbus::MessageReader variant_reader(nullptr);
+  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
+         reader->PopInt32(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, uint32_t* value) {
-  return (reader->GetDataType() == dbus::Message::VARIANT) ?
-    reader->PopVariantOfUint32(value) : reader->PopUint32(value);
+  dbus::MessageReader variant_reader(nullptr);
+  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
+         reader->PopUint32(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, int64_t* value) {
-  return (reader->GetDataType() == dbus::Message::VARIANT) ?
-    reader->PopVariantOfInt64(value) : reader->PopInt64(value);
+  dbus::MessageReader variant_reader(nullptr);
+  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
+         reader->PopInt64(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, uint64_t* value) {
-  return (reader->GetDataType() == dbus::Message::VARIANT) ?
-    reader->PopVariantOfUint64(value) : reader->PopUint64(value);
+  dbus::MessageReader variant_reader(nullptr);
+  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
+         reader->PopUint64(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, double* value) {
-  return (reader->GetDataType() == dbus::Message::VARIANT) ?
-    reader->PopVariantOfDouble(value) : reader->PopDouble(value);
+  dbus::MessageReader variant_reader(nullptr);
+  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
+         reader->PopDouble(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, std::string* value) {
-  return (reader->GetDataType() == dbus::Message::VARIANT) ?
-    reader->PopVariantOfString(value) : reader->PopString(value);
+  dbus::MessageReader variant_reader(nullptr);
+  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
+         reader->PopString(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, dbus::ObjectPath* value) {
-  return (reader->GetDataType() == dbus::Message::VARIANT) ?
-    reader->PopVariantOfObjectPath(value) : reader->PopObjectPath(value);
+  dbus::MessageReader variant_reader(nullptr);
+  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
+         reader->PopObjectPath(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader,
-                        std::vector<std::string>* value) {
+                        dbus::FileDescriptor* value) {
   dbus::MessageReader variant_reader(nullptr);
-  if (reader->GetDataType() == dbus::Message::VARIANT) {
-    if (!reader->PopVariant(&variant_reader))
-      return false;
-    reader = &variant_reader;
-  }
-  return reader->PopArrayOfStrings(value);
+  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
+         reader->PopFileDescriptor(value);
 }
 
-bool PopValueFromReader(dbus::MessageReader* reader,
-                        std::vector<dbus::ObjectPath>* value) {
-  dbus::MessageReader variant_reader(nullptr);
-  if (reader->GetDataType() == dbus::Message::VARIANT) {
-    if (!reader->PopVariant(&variant_reader))
-      return false;
-    reader = &variant_reader;
-  }
-  return reader->PopArrayOfObjectPaths(value);
-}
+namespace {
 
-bool PopValueFromReader(dbus::MessageReader* reader,
-                        std::vector<uint8_t>* value) {
-  dbus::MessageReader variant_reader(nullptr);
-  if (reader->GetDataType() == dbus::Message::VARIANT) {
-    if (!reader->PopVariant(&variant_reader))
-      return false;
-    reader = &variant_reader;
-  }
-  const uint8_t* data_ptr = nullptr;
-  size_t data_len = 0;
-  if (!reader->PopArrayOfBytes(&data_ptr, &data_len))
+// Helper methods for PopValueFromReader(dbus::MessageReader*, Any*)
+// implementation. Pops a value of particular type from |reader| and assigns
+// it to |value| of type Any.
+template<typename T>
+bool PopTypedValueFromReader(dbus::MessageReader* reader,
+                             chromeos::Any* value) {
+  T data{};
+  if (!PopValueFromReader(reader, &data))
     return false;
-  value->assign(data_ptr, data_ptr + data_len);
+  *value = std::move(data);
   return true;
 }
 
-bool PopValueFromReader(dbus::MessageReader* reader, Dictionary* value) {
-  dbus::MessageReader variant_reader(nullptr);
-  if (reader->GetDataType() == dbus::Message::VARIANT) {
-    if (!reader->PopVariant(&variant_reader))
-      return false;
-    reader = &variant_reader;
-  }
-  dbus::MessageReader array_reader(nullptr);
-  if (!reader->PopArray(&array_reader))
+// std::vector<T> overload.
+template<typename T>
+bool PopTypedArrayFromReader(dbus::MessageReader* reader,
+                             chromeos::Any* value) {
+  return PopTypedValueFromReader<std::vector<T>>(reader, value);
+}
+
+// std::map<KEY, VALUE> overload.
+template<typename KEY, typename VALUE>
+bool PopTypedMapFromReader(dbus::MessageReader* reader,
+                           chromeos::Any* value) {
+  return PopTypedValueFromReader<std::map<KEY, VALUE>>(reader, value);
+}
+
+// Helper methods for reading common ARRAY signatures into a Variant.
+// Note that only common types are supported. If an additional specific
+// type signature is required, feel free to add support for it.
+bool PopArrayValueFromReader(dbus::MessageReader* reader,
+                             chromeos::Any* value) {
+  std::string signature = reader->GetDataSignature();
+  if (signature == "ab")
+    return PopTypedArrayFromReader<bool>(reader, value);
+  else if (signature == "ay")
+    return PopTypedArrayFromReader<uint8_t>(reader, value);
+  else if (signature == "an")
+    return PopTypedArrayFromReader<int16_t>(reader, value);
+  else if (signature == "aq")
+    return PopTypedArrayFromReader<uint16_t>(reader, value);
+  else if (signature == "ai")
+    return PopTypedArrayFromReader<int32_t>(reader, value);
+  else if (signature == "au")
+    return PopTypedArrayFromReader<uint32_t>(reader, value);
+  else if (signature == "ax")
+    return PopTypedArrayFromReader<int64_t>(reader, value);
+  else if (signature == "at")
+    return PopTypedArrayFromReader<uint64_t>(reader, value);
+  else if (signature == "ad")
+    return PopTypedArrayFromReader<double>(reader, value);
+  else if (signature == "as")
+    return PopTypedArrayFromReader<std::string>(reader, value);
+  else if (signature == "ao")
+    return PopTypedArrayFromReader<dbus::ObjectPath>(reader, value);
+  else if (signature == "av")
+    return PopTypedArrayFromReader<chromeos::Any>(reader, value);
+  else if (signature == "a{ss}")
+    return PopTypedMapFromReader<std::string, std::string>(reader, value);
+  else if (signature == "a{sv}")
+    return PopTypedMapFromReader<std::string, chromeos::Any>(reader, value);
+  else if (signature == "a{sa{ss}}")
+    return PopTypedMapFromReader<
+        std::string, std::map<std::string, std::string>>(reader, value);
+  else if (signature == "a{sa{sv}}")
+    return PopTypedMapFromReader<
+        std::string, std::map<std::string, chromeos::Any>>(reader, value);
+
+  // When a use case for particular array signature is found, feel free
+  // to add handing for it here.
+  LOG(ERROR) << "Variant de-serialization of array containing data of "
+              << "type '" << signature << "' is not yet supported";
+  return false;
+}
+
+// Helper methods for reading common STRUCT signatures into a Variant.
+// Note that only common types are supported. If an additional specific
+// type signature is required, feel free to add support for it.
+bool PopStructValueFromReader(dbus::MessageReader* reader,
+                              chromeos::Any* value) {
+  std::string signature = reader->GetDataSignature();
+  if (signature == "(ii)")
+    return PopTypedValueFromReader<std::pair<int, int>>(reader, value);
+  else if (signature == "(ss)")
+    return PopTypedValueFromReader<std::pair<std::string, std::string>>(reader,
+                                                                        value);
+
+  // When a use case for particular struct signature is found, feel free
+  // to add handing for it here.
+  LOG(ERROR) << "Variant de-serialization of structs of type '"
+              << signature << "' is not yet supported";
+  return false;
+}
+
+}  // anonymous namespace
+
+bool PopValueFromReader(dbus::MessageReader* reader, chromeos::Any* value) {
+  if (reader->GetDataType() != dbus::Message::VARIANT)
     return false;
-  while (array_reader.HasMoreData()) {
-    dbus::MessageReader dict_entry_reader(nullptr);
-    if (!array_reader.PopDictEntry(&dict_entry_reader))
+  dbus::MessageReader variant_reader(nullptr);
+  if (!reader->PopVariant(&variant_reader))
+    return false;
+
+  switch (variant_reader.GetDataType()) {
+    case dbus::Message::BYTE:
+      return PopTypedValueFromReader<uint8_t>(&variant_reader, value);
+    case dbus::Message::BOOL:
+      return PopTypedValueFromReader<bool>(&variant_reader, value);
+    case dbus::Message::INT16:
+      return PopTypedValueFromReader<int16_t>(&variant_reader, value);
+    case dbus::Message::UINT16:
+      return PopTypedValueFromReader<uint16_t>(&variant_reader, value);
+    case dbus::Message::INT32:
+      return PopTypedValueFromReader<int32_t>(&variant_reader, value);
+    case dbus::Message::UINT32:
+      return PopTypedValueFromReader<uint32_t>(&variant_reader, value);
+    case dbus::Message::INT64:
+      return PopTypedValueFromReader<int64_t>(&variant_reader, value);
+    case dbus::Message::UINT64:
+      return PopTypedValueFromReader<uint64_t>(&variant_reader, value);
+    case dbus::Message::DOUBLE:
+      return PopTypedValueFromReader<double>(&variant_reader, value);
+    case dbus::Message::STRING:
+      return PopTypedValueFromReader<std::string>(&variant_reader, value);
+    case dbus::Message::OBJECT_PATH:
+      return PopTypedValueFromReader<dbus::ObjectPath>(&variant_reader, value);
+    case dbus::Message::ARRAY:
+      return PopArrayValueFromReader(&variant_reader, value);
+    case dbus::Message::STRUCT:
+      return PopStructValueFromReader(&variant_reader, value);
+    case dbus::Message::DICT_ENTRY:
+      LOG(ERROR) << "Variant of DICT_ENTRY is invalid";
       return false;
-    std::string key;
-    if (!dict_entry_reader.PopString(&key))
+    case dbus::Message::VARIANT:
+      LOG(ERROR) << "Variant containing a variant is invalid";
       return false;
-    base::Value* data = dbus::PopDataAsValue(&dict_entry_reader);
-    if (!data)
+    case dbus::Message::UNIX_FD:
+      CHECK(dbus::IsDBusTypeUnixFdSupported()) << "UNIX_FD data not supported";
+      // dbus::FileDescriptor is not a copyable type. Cannot be returned via
+      // chromeos::Any. Fail here.
+      LOG(ERROR) << "Cannot return FileDescriptor via Any";
       return false;
-    value->insert(std::make_pair(key, std::unique_ptr<base::Value>(data)));
+    default:
+      LOG(FATAL) << "Unknown D-Bus data type: " << variant_reader.GetDataType();
+      return false;
   }
   return true;
 }
 
 }  // namespace dbus_utils
-
 }  // namespace chromeos

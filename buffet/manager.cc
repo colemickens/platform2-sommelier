@@ -97,8 +97,7 @@ std::string Manager::HandleGetDeviceInfo(chromeos::ErrorPtr* error) {
 
 std::string Manager::HandleStartRegisterDevice(
     chromeos::ErrorPtr* error,
-    const std::map<std::string,
-    std::unique_ptr<base::Value>>& params) {
+    const std::map<std::string, std::string>& params) {
   LOG(INFO) << "Received call to Manager.StartRegisterDevice()";
 
   return device_info_->StartRegistration(params, error);
