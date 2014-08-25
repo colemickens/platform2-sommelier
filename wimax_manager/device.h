@@ -11,8 +11,6 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/memory/scoped_ptr.h>
-#include <base/memory/scoped_vector.h>
 #include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
 

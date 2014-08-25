@@ -5,10 +5,11 @@
 #ifndef WIMAX_MANAGER_EVENT_DISPATCHER_H_
 #define WIMAX_MANAGER_EVENT_DISPATCHER_H_
 
+#include <memory>
+
 #include <base/basictypes.h>
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
 
@@ -32,7 +33,7 @@ class EventDispatcher {
   void Stop();
 
  private:
-  scoped_ptr<base::MessageLoop> dont_use_directly_;
+  std::unique_ptr<base::MessageLoop> dont_use_directly_;
   scoped_refptr<base::MessageLoopProxy> message_loop_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(EventDispatcher);

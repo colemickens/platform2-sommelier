@@ -5,9 +5,10 @@
 #ifndef WIMAX_MANAGER_DBUS_PROXIABLE_H_
 #define WIMAX_MANAGER_DBUS_PROXIABLE_H_
 
+#include <memory>
+
 #include <base/basictypes.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <dbus-c++/dbus.h>
 
 #include "wimax_manager/dbus_control.h"
@@ -36,7 +37,7 @@ class DBusProxiable {
   Proxy *dbus_proxy() const { return dbus_proxy_.get(); }
 
  private:
-  scoped_ptr<Proxy> dbus_proxy_;
+  std::unique_ptr<Proxy> dbus_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusProxiable);
 };

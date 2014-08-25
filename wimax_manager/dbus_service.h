@@ -5,10 +5,10 @@
 #ifndef WIMAX_MANAGER_DBUS_SERVICE_H_
 #define WIMAX_MANAGER_DBUS_SERVICE_H_
 
+#include <memory>
 #include <string>
 
 #include <base/basictypes.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "wimax_manager/dbus_proxiable.h"
 
@@ -34,7 +34,7 @@ class DBusService : public DBusProxiable<DBusService, DBusServiceDBusProxy> {
   void SetPowerManager(PowerManager *power_manager);
 
   Manager *manager_;
-  scoped_ptr<PowerManager> power_manager_;
+  std::unique_ptr<PowerManager> power_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusService);
 };

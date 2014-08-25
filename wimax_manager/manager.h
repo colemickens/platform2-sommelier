@@ -5,11 +5,11 @@
 #ifndef WIMAX_MANAGER_MANAGER_H_
 #define WIMAX_MANAGER_MANAGER_H_
 
+#include <memory>
 #include <vector>
 
 #include <base/basictypes.h>
 #include <base/files/file_path.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
 #include <base/timer/timer.h>
 #include <gtest/gtest_prod.h>
@@ -59,8 +59,8 @@ class Manager : public DBusAdaptable<Manager, ManagerDBusAdaptor> {
 
  private:
   EventDispatcher *dispatcher_;
-  scoped_ptr<Config> config_;
-  scoped_ptr<Driver> driver_;
+  std::unique_ptr<Config> config_;
+  std::unique_ptr<Driver> driver_;
   ScopedVector<Device> devices_;
 
   int num_device_scans_;

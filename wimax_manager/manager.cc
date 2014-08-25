@@ -161,11 +161,11 @@ bool Manager::LoadConfig(const base::FilePath &file_path) {
   base::ScopedFD scoped_fd(fd);
   google::protobuf::io::FileInputStream file_stream(fd);
 
-  scoped_ptr<Config> config(new(std::nothrow) Config());
+  std::unique_ptr<Config> config(new(std::nothrow) Config());
   if (!google::protobuf::TextFormat::Parse(&file_stream, config.get()))
     return false;
 
-  config_ = config.Pass();
+  config_ = std::move(config);
   return true;
 }
 

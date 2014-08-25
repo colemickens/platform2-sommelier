@@ -5,9 +5,10 @@
 #ifndef WIMAX_MANAGER_DBUS_ADAPTABLE_H_
 #define WIMAX_MANAGER_DBUS_ADAPTABLE_H_
 
+#include <memory>
+
 #include <base/basictypes.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <dbus-c++/dbus.h>
 
 #include "wimax_manager/dbus_control.h"
@@ -36,7 +37,7 @@ class DBusAdaptable {
   }
 
  private:
-  scoped_ptr<Adaptor> dbus_adaptor_;
+  std::unique_ptr<Adaptor> dbus_adaptor_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusAdaptable);
 };

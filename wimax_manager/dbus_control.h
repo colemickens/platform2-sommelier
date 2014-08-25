@@ -5,9 +5,10 @@
 #ifndef WIMAX_MANAGER_DBUS_CONTROL_H_
 #define WIMAX_MANAGER_DBUS_CONTROL_H_
 
+#include <memory>
+
 #include <base/basictypes.h>
 #include <base/lazy_instance.h>
-#include <base/memory/scoped_ptr.h>
 
 namespace DBus {
 
@@ -38,8 +39,8 @@ class DBusControl {
   void Initialize();
   void Finalize();
 
-  scoped_ptr<DBus::Glib::BusDispatcher> bus_dispatcher_;
-  scoped_ptr<DBus::Connection> connection_;
+  std::unique_ptr<DBus::Glib::BusDispatcher> bus_dispatcher_;
+  std::unique_ptr<DBus::Connection> connection_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusControl);
 };
