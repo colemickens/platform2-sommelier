@@ -10,7 +10,7 @@ that ease regular development:
 - target helper for running unittests under valgrind and qemu (when needed)
 - separation of build artifacts and source code
 
-In addition, common.mkl systems are fully parallelizable for all targets
+In addition, common.mk systems are fully parallelizable for all targets
 avoiding truncated file issues while still utilizing bigsmp systems as
 completely as possible.
 
@@ -39,7 +39,7 @@ explores all the different ways common.mk can be used.
 = Open issues
 
 - Defaulting to -fvisibility=internal
-- Test and examplem
+- Test and example
 
 = Recipes
 
