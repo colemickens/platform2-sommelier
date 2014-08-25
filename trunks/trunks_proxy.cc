@@ -3,8 +3,11 @@
 // found in the LICENSE file.
 
 #include <base/bind.h>
+#include <base/stl_util.h>
 
 #include "trunks/dbus_interface.h"
+#include "trunks/error_codes.h"
+#include "trunks/tpm_communication.pb.h"
 #include "trunks/trunks_proxy.h"
 
 namespace trunks {
@@ -31,7 +34,10 @@ void TrunksProxy::SendCommand(const std::string& command,
                               const SendCommandCallback& callback) {
   dbus::MethodCall method_call(trunks::kTrunksInterface, trunks::kSendCommand);
   dbus::MessageWriter writer(&method_call);
-  writer.AppendString(command);
+  CHECK(!command.empty());
+  TpmCommand tpm_command_proto;
+  tpm_command_proto.set_command(command);
+  writer.AppendProtoAsArrayOfBytes(tpm_command_proto);
   object_->CallMethod(&method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
                       base::Bind(&trunks::TrunksProxy::OnResponse, callback));
 }
@@ -44,9 +50,19 @@ void TrunksProxy::OnResponse(const SendCommandCallback& callback,
     return;
   }
   dbus::MessageReader reader(response);
-  std::string value;
-  reader.PopString(&value);
-  callback.Run(value);
+  TpmResponse tpm_response_proto;
+  if (!reader.PopArrayOfBytesAsProto(&tpm_response_proto)) {
+    LOG(ERROR) << "TrunksProxy was not able to parse the response.";
+    callback.Run(std::string());
+    return;
+  }
+  if (tpm_response_proto.has_result_code()) {
+    TPM_RC rc = tpm_response_proto.result_code();
+    if (rc != TPM_RC_SUCCESS) {
+      LOG(ERROR) << "Trunks Daemon returned an error code: " << rc;
+    }
+  }
+  callback.Run(tpm_response_proto.response());
 }
 
 }  // namespace trunks

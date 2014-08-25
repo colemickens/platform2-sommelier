@@ -4,11 +4,13 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/stl_util.h>
 #include <chromeos/libminijail.h>
 #include <chromeos/minijail/minijail.h>
 
 #include "trunks/dbus_interface.h"
 #include "trunks/error_codes.h"
+#include "trunks/tpm_communication.pb.h"
 #include "trunks/tpm_handle.h"
 #include "trunks/trunks_service.h"
 
@@ -18,6 +20,7 @@ namespace {
 
 const uid_t kTrunksUID = 248;
 const uid_t kRootUID = 0;
+const int kTpmBufferLength = 4096;
 const char kTrunksUser[] = "trunks";
 const char kTrunksGroup[] = "trunks";
 const char kTrunksSeccompPath[] = "/usr/share/policy/trunksd-seccomp.policy";
@@ -43,29 +46,42 @@ void TrunksService::HandleSendCommand(dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
   scoped_ptr<dbus::Response> response =
       dbus::Response::FromMethodCall(method_call);
+  // Get the Command by reading the array passed with the method call.
   dbus::MessageReader reader(method_call);
-  std::string value;
-  reader.PopString(&value);
-
-  // Perform TPM operation here with |value| = command
-  // currently TPM_RC is also stored at |value|
+  TpmCommand tpm_command_proto;
+  TpmResponse tpm_response_proto;
+  if (!reader.PopArrayOfBytesAsProto(&tpm_command_proto) ||
+      !tpm_command_proto.has_command() ||
+      tpm_command_proto.command().empty()) {
+    LOG(ERROR) << "Trunks Daemon could not read command to send to tpm.";
+    tpm_response_proto.set_result_code(TCTI_RC_GENERAL_FAILURE);
+    tpm_response_proto.set_response(std::string());
+    dbus::MessageWriter writer(response.get());
+    writer.AppendProtoAsArrayOfBytes(tpm_response_proto);
+    response_sender.Run(response.Pass());
+    return;
+  }
+  // Get the TPM to process the command.
+  std::string tpm_response;
+  TPM_RC rc = tpm_->SendCommand(tpm_command_proto.command(), &tpm_response);
+  tpm_response_proto.set_result_code(rc);
+  tpm_response_proto.set_response(tpm_response);
+  // Send the response back via dbus.
   dbus::MessageWriter writer(response.get());
-  writer.AppendString(value);
+  writer.AppendProtoAsArrayOfBytes(tpm_response_proto);
   response_sender.Run(response.Pass());
+  return;
 }
 
 void TrunksService::InitMinijailSandbox() {
   chromeos::Minijail* minijail = chromeos::Minijail::GetInstance();
   struct minijail* jail = minijail->New();
   minijail->DropRoot(jail, kTrunksUser, kTrunksGroup);
-  minijail_use_seccomp_filter(jail);
-  minijail_log_seccomp_filter_failures(jail);
-  minijail_no_new_privs(jail);
-  minijail_parse_seccomp_filters(jail, kTrunksSeccompPath);
-  minijail_enter(jail);
+  minijail->UseSeccompFilter(jail, kTrunksSeccompPath);
+  minijail->Enter(jail);
+  minijail->Destroy(jail);
   CHECK_EQ(getuid(), kTrunksUID)
       << "Trunks Daemon was not able to drop to trunks user.";
-  minijail->Destroy(jail);
 }
 
 

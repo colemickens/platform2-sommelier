@@ -24,12 +24,11 @@ class TpmHandle {
   virtual TPM_RC Init() = 0;
   // This method allows us to write a command to the TPM.
   // The first parameter |command| is the command to be written
-  // to the TPM. This is reinterpreted as a uint8_t* and written
-  // to the TPM file descriptor. The response is then read and
-  // written to the output string at |response|. Returns TPM_RC_SUCCESS on
-  // success and an error code defined in error_codes.h on failure.
-  virtual TPM_RC SendCommand(const std::string command,
-                           std::string* response) = 0;
+  // to the TPM. This is written to the TPM file descriptor.
+  // The response is then read and written to the output string
+  // at |response|.
+  virtual TPM_RC SendCommand(const std::string& command,
+                             std::string* response) = 0;
 };
 
 }  // namespace trunks

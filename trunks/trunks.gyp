@@ -9,7 +9,8 @@
       'deps': [  # This is a list of pkg-config dependencies
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
-        'openssl'
+        'openssl',
+        'protobuf'
       ],
     },
   },
@@ -40,6 +41,9 @@
         'tpm_handle_impl.cc',
         'trunksd.cc'
       ],
+      'dependencies': [
+        'tpm_response_proto'
+      ],
     },
     {
       'target_name': 'trunks_client',
@@ -47,7 +51,22 @@
       'sources': [
         'trunks_client.cc',
         'trunks_proxy.cc'
-      ]
+      ],
+      'dependencies': [
+        'tpm_response_proto'
+      ],
     },
+    {
+      'target_name': 'tpm_response_proto',
+      'type': 'static_library',
+      'variables': {
+        'proto_in_dir': '.',
+        'proto_out_dir': 'include/trunks',
+      },
+      'sources': [
+        '<(proto_in_dir)/tpm_communication.proto',
+      ],
+      'includes': ['../common-mk/protoc.gypi'],
+    }
   ],
 }

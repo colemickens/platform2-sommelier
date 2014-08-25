@@ -9,12 +9,15 @@
 
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/sys_byteorder.h>
 
 namespace {
 
 const char kTpmDevice[] = "/dev/tpm0";
-const size_t kTpmBufferSize = 4096;
+const uint32_t kTpmBufferSize = 4096;
 const int kInvalidFileDescriptor = -1;
+const uint32_t kTpmHeaderLength = 10;
+const uint32_t kTpmHeaderLengthIndex = 2;
 
 }  // namespace
 
@@ -41,42 +44,56 @@ TPM_RC TpmHandleImpl::Init() {
   return TPM_RC_SUCCESS;
 }
 
-
-TPM_RC TpmHandleImpl::SendCommand(const std::string command,
-                                std::string* response) {
-  // TODO(usanghi): Finish implementation and test with a real TPM.
+TPM_RC TpmHandleImpl::SendCommand(const std::string& command,
+                                  std::string* response) {
   CHECK_NE(fd_, kInvalidFileDescriptor);
-  size_t length = command.length();
+  TPM_RC command_verify = VerifyCommand(command);
+  if (command_verify != TPM_RC_SUCCESS) {
+    return command_verify;
+  }
+
+  int result = HANDLE_EINTR(write(fd_, command.data(), command.length()));
+  if (result < 0 || static_cast<uint32_t>(result) < kTpmHeaderLength) {
+    PLOG(ERROR) << "TPM: Error writing to TPM Handle";
+    return TRUNKS_RC_WRITE_ERROR;
+  }
+  char response_buf[kTpmBufferSize];
+  result = HANDLE_EINTR(read(fd_, response_buf, kTpmBufferSize));
+  if (result < 0 || static_cast<uint32_t>(result) < kTpmHeaderLength) {
+    PLOG(ERROR) << "TPM: Error reading from TPM Handle";
+    return TRUNKS_RC_READ_ERROR;
+  }
+
+  response->assign(response_buf, static_cast<size_t>(result));
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmHandleImpl::VerifyCommand(const std::string& command) {
+  uint32_t length = command.length();
   if (length > kTpmBufferSize) {
     LOG(ERROR) << "TPM: command length: " << length
                << " exceeds TPM buffer length: " << kTpmBufferSize;
     return TCTI_RC_INSUFFICIENT_BUFFER;
   }
-
-  int result = HANDLE_EINTR(write(fd_, command.data(), length));
-  if (result == -1) {
-    PLOG(ERROR) << "TPM: Error writing to TPM Handle";
-    return TRUNKS_RC_WRITE_ERROR;
-  } else if (static_cast<size_t>(result) != length) {
-    LOG(WARNING) << "TPM: Command length: " << length
-                 << " was different from length written: " << result;
-    return TRUNKS_RC_WRITE_ERROR;
+  if (length < kTpmHeaderLength) {
+    LOG(ERROR) << "TPM: command length " << length
+               << " is smaller than TPM header length.";
+    return TCTI_RC_BAD_PARAMETER;
   }
-
-  // TODO(usanghi): reinterpret cast will null terminate, perform
-  // explicit and correct memory operations to copy strings.
-  uint8_t *response_buf[kTpmBufferSize];
-  result = HANDLE_EINTR(read(fd_, response_buf, length));
-  if (result == -1) {
-    PLOG(ERROR) << "TPM: Error reading from TPM Handle";
-    return TRUNKS_RC_READ_ERROR;
-  } else if (static_cast<size_t>(result) != length) {
-    LOG(WARNING) << "TPM: result length: " << length
-                 << " was different from length read: " << result;
-    return TRUNKS_RC_READ_ERROR;
+  size_t command_length = GetMessageLength(command.data());
+  if (command_length != length) {
+    LOG(ERROR) << "TPM: length to transmit is: " << length
+               << " but tpm_header says length is: " << command_length;
+    return TCTI_RC_BAD_PARAMETER;
   }
-  *response = reinterpret_cast<char*>(response_buf);
+  VLOG(1) << "TPM: Command successfully verified.";
   return TPM_RC_SUCCESS;
+}
+
+uint32_t TpmHandleImpl::GetMessageLength(const char* tpm_header) {
+  uint32_t value = 0;
+  memcpy(&value, &tpm_header[kTpmHeaderLengthIndex], sizeof(uint32_t));
+  return base::NetToHost32(value);
 }
 
 }  // namespace trunks

@@ -18,9 +18,12 @@ class TpmHandleImpl: public TpmHandle  {
   TpmHandleImpl();
   virtual ~TpmHandleImpl();
   virtual TPM_RC Init();
-  virtual TPM_RC SendCommand(const std::string command, std::string* response);
+  virtual TPM_RC SendCommand(const std::string& command,
+                             std::string* response);
 
  private:
+  virtual TPM_RC VerifyCommand(const std::string& command);
+  virtual uint32_t GetMessageLength(const char* tpm_header);
   int fd_;
 };
 
