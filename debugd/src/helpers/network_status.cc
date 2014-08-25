@@ -8,6 +8,7 @@
 #include <base/json/json_writer.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
+#include <chromeos/dbus/service_constants.h>
 #include <debugd/src/dbus_utils.h>
 
 #include "shill/dbus_proxies/org.chromium.flimflam.Device.h"
@@ -17,9 +18,6 @@
 
 using base::DictionaryValue;
 using base::Value;
-
-const char* kFlimflamPath = "/";
-const char* kFlimflamService = "org.chromium.flimflam";
 
 class DeviceProxy : public org::chromium::flimflam::Device_proxy,
                     public DBus::ObjectProxy {
@@ -67,7 +65,8 @@ class ServiceProxy : public org::chromium::flimflam::Service_proxy,
 };
 
 Value* GetService(DBus::Connection& conn, DBus::Path& path) { // NOLINT
-  ServiceProxy service = ServiceProxy(conn, path.c_str(), kFlimflamService);
+  ServiceProxy service =
+      ServiceProxy(conn, path.c_str(), shill::kFlimflamServiceName);
   std::map<std::string, DBus::Variant> props = service.GetProperties();
   Value* v = NULL;
   debugd::DBusPropertyMapToValue(props, &v);
@@ -90,7 +89,8 @@ Value* GetServices(DBus::Connection& conn, ManagerProxy& flimflam) { // NOLINT
 }
 
 Value* GetIPConfig(DBus::Connection& conn, DBus::Path& path) { // NOLINT
-  IPConfigProxy ipconfig = IPConfigProxy(conn, path.c_str(), kFlimflamService);
+  IPConfigProxy ipconfig =
+      IPConfigProxy(conn, path.c_str(), shill::kFlimflamServiceName);
   std::map<std::string, DBus::Variant> props = ipconfig.GetProperties();
   Value* v = NULL;
   debugd::DBusPropertyMapToValue(props, &v);
@@ -98,7 +98,8 @@ Value* GetIPConfig(DBus::Connection& conn, DBus::Path& path) { // NOLINT
 }
 
 Value* GetDevice(DBus::Connection& conn, DBus::Path& path) { // NOLINT
-  DeviceProxy device = DeviceProxy(conn, path.c_str(), kFlimflamService);
+  DeviceProxy device =
+      DeviceProxy(conn, path.c_str(), shill::kFlimflamServiceName);
   std::map<std::string, DBus::Variant> props = device.GetProperties();
   DictionaryValue* ipconfigs = NULL;
   if (props.count("IPConfigs") == 1) {
@@ -142,7 +143,9 @@ int main() {
   DBus::BusDispatcher dispatcher;
   DBus::default_dispatcher = &dispatcher;
   DBus::Connection conn = DBus::Connection::SystemBus();
-  ManagerProxy manager(conn, kFlimflamPath, kFlimflamService);
+  ManagerProxy manager(conn,
+                       shill::kFlimflamServicePath,
+                       shill::kFlimflamServiceName);
   DictionaryValue result;
 
   Value* devices = GetDevices(conn, manager);

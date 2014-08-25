@@ -62,6 +62,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
+#include <chromeos/dbus/service_constants.h>
 #include <debugd/src/dbus_utils.h>
 
 #include "shill/dbus_proxies/org.chromium.flimflam.Manager.h"
@@ -253,12 +254,12 @@ std::string DevicePathToName(const std::string& path) {
 }
 
 void AddSignalStrengths(std::map<std::string, NetInterface*> *interfaces) {
-  const char *kFlimflamPath = "/";
-  const char *kFlimflamService = "org.chromium.flimflam";
   DBus::BusDispatcher dispatcher;
   DBus::default_dispatcher = &dispatcher;
   DBus::Connection conn = DBus::Connection::SystemBus();
-  ManagerProxy manager(conn, kFlimflamPath, kFlimflamService);
+  ManagerProxy manager(conn,
+                       shill::kFlimflamServicePath,
+                       shill::kFlimflamServiceName);
 
   std::map<std::string, DBus::Variant> props = manager.GetProperties();
   if (props.count("Services") != 1)
@@ -269,7 +270,8 @@ void AddSignalStrengths(std::map<std::string, NetInterface*> *interfaces) {
   std::vector<DBus::Path> paths = devices;
   for (std::vector<DBus::Path>::iterator it = paths.begin();
        it != paths.end(); ++it) {
-    ServiceProxy service = ServiceProxy(conn, it->c_str(), kFlimflamService);
+    ServiceProxy service =
+        ServiceProxy(conn, it->c_str(), shill::kFlimflamServiceName);
     std::map<std::string, DBus::Variant> props = service.GetProperties();
     if (   props.count("Strength") != 1
         || props.count("Name") != 1

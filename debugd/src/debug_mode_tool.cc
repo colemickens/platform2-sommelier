@@ -18,9 +18,6 @@
 
 namespace debugd {
 
-const char* const kFlimflamPath = "/";
-const char* const kFlimflamService = "org.chromium.flimflam";
-
 const char* const kSupplicantPath = "/fi/w1/wpa_supplicant1";
 const char* const kSupplicantService = "fi.w1.wpa_supplicant1";
 const char* const kSupplicantIface = "fi.w1.wpa_supplicant1";
@@ -39,10 +36,7 @@ class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
 
 #if USE_CELLULAR
 
-const char* const kDBusPath = "/org/freedesktop/DBus";
-const char* const kDBusInterface = "org.freedesktop.DBus";
 const char* const kDBusListNames = "ListNames";
-
 const char* const kModemManager = "ModemManager";
 
 class ModemManagerProxy : public org::freedesktop::ModemManager_proxy,
@@ -88,7 +82,9 @@ DebugModeTool::~DebugModeTool() { }
 
 void DebugModeTool::SetDebugMode(const std::string& subsystem,
                                  DBus::Error*) {
-  ManagerProxy flimflam(connection_, kFlimflamPath, kFlimflamService);
+  ManagerProxy flimflam(connection_,
+                        shill::kFlimflamServicePath,
+                        shill::kFlimflamServiceName);
   PropertiesProxy supplicant(connection_, kSupplicantPath, kSupplicantService);
   std::string flimflam_value;
   DBus::Variant supplicant_value;
@@ -118,10 +114,10 @@ void DebugModeTool::GetAllModemManagers(std::vector<std::string>* managers) {
 
   DBus::CallMessage msg;
   DBus::MessageIter iter;
-  msg.destination(kDBusInterface);
-  msg.interface(kDBusInterface);
+  msg.destination(dbus::kDBusInterface);
+  msg.interface(dbus::kDBusInterface);
   msg.member(kDBusListNames);
-  msg.path(kDBusPath);
+  msg.path(dbus::kDBusServicePath);
   DBus::Message ret = connection_->send_blocking(msg, -1);
   iter = ret.reader();
   iter = iter.recurse();
