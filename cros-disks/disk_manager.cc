@@ -8,9 +8,10 @@
 #include <string.h>
 #include <sys/mount.h>
 
+#include <memory>
+
 #include <base/bind.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -29,6 +30,7 @@
 using std::map;
 using std::set;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 
 namespace cros_disks {
@@ -472,8 +474,8 @@ MountErrorType DiskManager::DoMount(const string& source_path,
     return MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
   }
 
-  scoped_ptr<Mounter> mounter(CreateMounter(disk, *filesystem, mount_path,
-                                            options));
+  unique_ptr<Mounter> mounter(
+      CreateMounter(disk, *filesystem, mount_path, options));
   CHECK(mounter.get() != NULL) << "Failed to create a mounter";
 
   MountErrorType error_type = mounter->Mount();

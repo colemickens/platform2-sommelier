@@ -25,10 +25,10 @@ void Process::AddArgument(const string& argument) {
 }
 
 char** Process::GetArguments() {
-  if (!arguments_array_.get())
+  if (arguments_array_.empty())
     BuildArgumentsArray();
 
-  return arguments_array_.get();
+  return arguments_array_.data();
 }
 
 bool Process::BuildArgumentsArray() {
@@ -42,13 +42,10 @@ bool Process::BuildArgumentsArray() {
     arguments_buffer_size += arguments_[i].size() + 1;
   }
 
-  arguments_buffer_.reset(new(std::nothrow) char[arguments_buffer_size]);
-  CHECK(arguments_buffer_.get()) << "Failed to allocate arguments buffer";
+  arguments_buffer_.resize(arguments_buffer_size);
+  arguments_array_.resize(num_arguments + 1);
 
-  arguments_array_.reset(new(std::nothrow) char*[num_arguments + 1]);
-  CHECK(arguments_array_.get()) << "Failed to allocate arguments array";
-
-  char* buffer_pointer = arguments_buffer_.get();
+  char* buffer_pointer = arguments_buffer_.data();
   for (size_t i = 0; i < num_arguments; ++i) {
     arguments_array_[i] = buffer_pointer;
     size_t argument_size = arguments_[i].size();

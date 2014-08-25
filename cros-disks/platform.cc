@@ -10,15 +10,19 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <memory>
+#include <vector>
+
 #include <base/file_util.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
 using base::FilePath;
 using std::string;
+using std::unique_ptr;
+using std::vector;
 
 namespace {
 
@@ -38,7 +42,7 @@ Platform::Platform()
 bool Platform::GetRealPath(const string& path, string* real_path) const {
   CHECK(real_path) << "Invalid real_path argument";
 
-  scoped_ptr<char, base::FreeDeleter> result(realpath(path.c_str(), NULL));
+  unique_ptr<char, base::FreeDeleter> result(realpath(path.c_str(), NULL));
   if (!result) {
     PLOG(ERROR) << "Failed to get real path of '" << path << "'";
     return false;
@@ -104,9 +108,9 @@ bool Platform::GetGroupId(const string& group_name, gid_t* group_id) const {
     buffer_size = kFallbackGroupBufferSize;
 
   struct group group_buffer, *group_buffer_ptr = NULL;
-  scoped_ptr<char[]> buffer(new char[buffer_size]);
-  getgrnam_r(group_name.c_str(), &group_buffer, buffer.get(), buffer_size,
-      &group_buffer_ptr);
+  vector<char> buffer(buffer_size);
+  getgrnam_r(group_name.c_str(), &group_buffer, buffer.data(), buffer_size,
+             &group_buffer_ptr);
   if (group_buffer_ptr == NULL) {
     PLOG(WARNING) << "Failed to determine group ID of group '"
       << group_name << "'";
@@ -125,8 +129,8 @@ bool Platform::GetUserAndGroupId(const string& user_name,
     buffer_size = kFallbackPasswordBufferSize;
 
   struct passwd password_buffer, *password_buffer_ptr = NULL;
-  scoped_ptr<char[]> buffer(new char[buffer_size]);
-  getpwnam_r(user_name.c_str(), &password_buffer, buffer.get(), buffer_size,
+  vector<char> buffer(buffer_size);
+  getpwnam_r(user_name.c_str(), &password_buffer, buffer.data(), buffer_size,
       &password_buffer_ptr);
   if (password_buffer_ptr == NULL) {
     PLOG(WARNING) << "Failed to determine user and group ID of user '"

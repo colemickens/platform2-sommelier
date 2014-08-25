@@ -6,9 +6,10 @@
 
 #include <sys/mount.h>
 
+#include <memory>
+
 #include <base/file_util.h>
 #include <base/files/file_path.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -25,6 +26,7 @@
 
 using std::map;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 using testing::Return;
 using testing::_;
@@ -68,8 +70,8 @@ TEST_F(DiskManagerTest, CreateExFATMounter) {
   string target_path = "/media/disk";
   vector<string> options = {"rw", "nodev", "noexec", "nosuid"};
 
-  scoped_ptr<Mounter> mounter(manager_.CreateMounter(disk, filesystem,
-                                                     target_path, options));
+  unique_ptr<Mounter> mounter(
+      manager_.CreateMounter(disk, filesystem, target_path, options));
   EXPECT_TRUE(mounter.get() != NULL);
   EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
   EXPECT_EQ(disk.device_file(), mounter->source_path());
@@ -88,8 +90,8 @@ TEST_F(DiskManagerTest, CreateExternalMounter) {
   string target_path = "/media/disk";
   vector<string> options = {"rw", "nodev", "noexec", "nosuid"};
 
-  scoped_ptr<Mounter> mounter(manager_.CreateMounter(disk, filesystem,
-                                                     target_path, options));
+  unique_ptr<Mounter> mounter(
+      manager_.CreateMounter(disk, filesystem, target_path, options));
   EXPECT_TRUE(mounter.get() != NULL);
   EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
   EXPECT_EQ(disk.device_file(), mounter->source_path());
@@ -107,8 +109,8 @@ TEST_F(DiskManagerTest, CreateNTFSMounter) {
   string target_path = "/media/disk";
   vector<string> options = {"rw", "nodev", "noexec", "nosuid"};
 
-  scoped_ptr<Mounter> mounter(manager_.CreateMounter(disk, filesystem,
-                                                     target_path, options));
+  unique_ptr<Mounter> mounter(
+      manager_.CreateMounter(disk, filesystem, target_path, options));
   EXPECT_TRUE(mounter.get() != NULL);
   EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
   EXPECT_EQ(disk.device_file(), mounter->source_path());
@@ -127,8 +129,8 @@ TEST_F(DiskManagerTest, CreateSystemMounter) {
   string target_path = "/media/disk";
   vector<string> options = {"rw", "nodev", "noexec", "nosuid"};
 
-  scoped_ptr<Mounter> mounter(manager_.CreateMounter(disk, filesystem,
-                                                     target_path, options));
+  unique_ptr<Mounter> mounter(
+      manager_.CreateMounter(disk, filesystem, target_path, options));
   EXPECT_TRUE(mounter.get() != NULL);
   EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
   EXPECT_EQ(disk.device_file(), mounter->source_path());

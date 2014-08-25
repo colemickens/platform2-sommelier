@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>
 
 namespace cros_disks {
@@ -56,8 +55,8 @@ class Process {
 
   // Process arguments.
   std::vector<std::string> arguments_;
-  scoped_ptr<char*[]> arguments_array_;
-  scoped_ptr<char[]> arguments_buffer_;
+  std::vector<char*> arguments_array_;
+  std::vector<char> arguments_buffer_;
 
   // Process ID (default to kInvalidProcessId when the process has not started).
   pid_t pid_;
