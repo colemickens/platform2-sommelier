@@ -18,10 +18,6 @@ namespace chromeos {
 
 namespace dbus_utils {
 
-namespace {
-const char kExportFailedMessage[] = "Failed to register DBus method.";
-}  // namespace
-
 ExportedPropertySet::ExportedPropertySet(dbus::Bus* bus)
     : bus_(bus),
       weak_ptr_factory_(this) { }
