@@ -7,12 +7,12 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <ostream>  // NOLINT(readability/streams)
 #include <string>
 
 #include <base/basictypes.h>
 #include <base/callback.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>
 
 #include "mist/usb_constants.h"
@@ -118,7 +118,7 @@ class UsbTransfer {
   FRIEND_TEST(UsbTransferTest, VerifyAllocated);
 
   libusb_transfer* transfer_;
-  scoped_ptr<uint8_t[]> buffer_;
+  std::unique_ptr<uint8_t[]> buffer_;
   int buffer_length_;
   State state_;
   CompletionCallback completion_callback_;

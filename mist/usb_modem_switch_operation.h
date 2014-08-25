@@ -7,13 +7,13 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 
 #include <base/basictypes.h>
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
 #include <base/compiler_specific.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 
@@ -167,8 +167,8 @@ class UsbModemSwitchOperation
   void OnUsbDeviceRemoved(const std::string& sys_path) override;
 
   Context* const context_;
-  scoped_ptr<UsbModemSwitchContext> switch_context_;
-  scoped_ptr<UsbDevice> device_;
+  std::unique_ptr<UsbModemSwitchContext> switch_context_;
+  std::unique_ptr<UsbDevice> device_;
   CompletionCallback completion_callback_;
   bool interface_claimed_;
   uint8_t interface_number_;
@@ -176,7 +176,7 @@ class UsbModemSwitchOperation
   uint8_t out_endpoint_address_;
   int message_index_;
   int num_usb_messages_;
-  scoped_ptr<UsbBulkTransfer> bulk_transfer_;
+  std::unique_ptr<UsbBulkTransfer> bulk_transfer_;
   base::CancelableClosure pending_task_;
   base::CancelableClosure reconnect_timeout_callback_;
 

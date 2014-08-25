@@ -16,6 +16,7 @@
 #include "mist/proto_bindings/usb_modem_info.pb.h"
 
 using base::FilePath;
+using std::unique_ptr;
 
 namespace mist {
 
@@ -44,14 +45,14 @@ bool ConfigLoader::LoadConfig(const FilePath& file_path) {
   base::ScopedFD scoped_fd(fd);
   google::protobuf::io::FileInputStream file_stream(fd);
 
-  scoped_ptr<Config> config(new Config());
+  unique_ptr<Config> config(new Config());
   if (!google::protobuf::TextFormat::Parse(&file_stream, config.get())) {
     LOG(ERROR) << "Could not parse config file '" << file_path.MaybeAsASCII()
                << "'";
     return false;
   }
 
-  config_ = config.Pass();
+  config_ = std::move(config);
   return true;
 }
 

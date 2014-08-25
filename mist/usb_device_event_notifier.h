@@ -7,11 +7,11 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/message_loop/message_loop.h>
 #include <base/observer_list.h>
 #include <gtest/gtest_prod.h>
@@ -92,7 +92,7 @@ class UsbDeviceEventNotifier : public base::MessageLoopForIO::Watcher {
   EventDispatcher* const dispatcher_;
   ObserverList<UsbDeviceEventObserver> observer_list_;
   Udev* const udev_;
-  scoped_ptr<UdevMonitor> udev_monitor_;
+  std::unique_ptr<UdevMonitor> udev_monitor_;
   int udev_monitor_file_descriptor_;
 
   DISALLOW_COPY_AND_ASSIGN(UsbDeviceEventNotifier);

@@ -11,6 +11,7 @@
 using base::MessageLoop;
 using base::MessageLoopForIO;
 using base::StringPrintf;
+using std::unique_ptr;
 
 namespace mist {
 
@@ -48,7 +49,7 @@ bool EventDispatcher::StartWatchingFileDescriptor(
   CHECK_GE(file_descriptor, 0);
   CHECK(watcher);
 
-  scoped_ptr<MessageLoopForIO::FileDescriptorWatcher>
+  unique_ptr<MessageLoopForIO::FileDescriptorWatcher>
       scoped_file_descriptor_watcher;
   MessageLoopForIO::FileDescriptorWatcher* file_descriptor_watcher;
 

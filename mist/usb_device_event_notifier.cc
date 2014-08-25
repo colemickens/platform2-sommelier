@@ -20,6 +20,7 @@
 using base::MessageLoopForIO;
 using base::StringPrintf;
 using std::string;
+using std::unique_ptr;
 
 namespace mist {
 
@@ -81,7 +82,7 @@ bool UsbDeviceEventNotifier::Initialize() {
 }
 
 bool UsbDeviceEventNotifier::ScanExistingDevices() {
-  scoped_ptr<UdevEnumerate> enumerate(udev_->CreateEnumerate());
+  unique_ptr<UdevEnumerate> enumerate(udev_->CreateEnumerate());
   if (!enumerate ||
       !enumerate->AddMatchSubsystem("usb") ||
       !enumerate->AddMatchProperty("DEVTYPE", "usb_device") ||
@@ -90,12 +91,12 @@ bool UsbDeviceEventNotifier::ScanExistingDevices() {
     return false;
   }
 
-  for (scoped_ptr<UdevListEntry> list_entry(enumerate->GetListEntry());
+  for (unique_ptr<UdevListEntry> list_entry(enumerate->GetListEntry());
        list_entry;
        list_entry.reset(list_entry->GetNext())) {
     string sys_path = ConvertNullToEmptyString(list_entry->GetName());
 
-    scoped_ptr<UdevDevice> device(
+    unique_ptr<UdevDevice> device(
         udev_->CreateDeviceFromSysPath(sys_path.c_str()));
     if (!device)
       continue;
@@ -138,7 +139,7 @@ void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
   VLOG(3) << StringPrintf("File descriptor %d available for read.",
                           file_descriptor);
 
-  scoped_ptr<UdevDevice> device(udev_monitor_->ReceiveDevice());
+  unique_ptr<UdevDevice> device(udev_monitor_->ReceiveDevice());
   if (!device) {
     LOG(WARNING) << "Ignore device event with no associated udev device.";
     return;

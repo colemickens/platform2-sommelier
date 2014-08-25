@@ -5,8 +5,9 @@
 #ifndef MIST_CONTEXT_H_
 #define MIST_CONTEXT_H_
 
+#include <memory>
+
 #include <base/basictypes.h>
-#include <base/memory/scoped_ptr.h>
 
 namespace mist {
 
@@ -41,12 +42,12 @@ class Context {
  private:
   friend class MockContext;
 
-  scoped_ptr<Metrics> metrics_;
-  scoped_ptr<ConfigLoader> config_loader_;
-  scoped_ptr<EventDispatcher> event_dispatcher_;
-  scoped_ptr<Udev> udev_;
-  scoped_ptr<UsbDeviceEventNotifier> usb_device_event_notifier_;
-  scoped_ptr<UsbManager> usb_manager_;
+  std::unique_ptr<Metrics> metrics_;
+  std::unique_ptr<ConfigLoader> config_loader_;
+  std::unique_ptr<EventDispatcher> event_dispatcher_;
+  std::unique_ptr<Udev> udev_;
+  std::unique_ptr<UsbDeviceEventNotifier> usb_device_event_notifier_;
+  std::unique_ptr<UsbManager> usb_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(Context);
 };

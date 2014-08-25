@@ -5,9 +5,9 @@
 #ifndef MIST_USB_MODEM_ONE_SHOT_SWITCHER_H_
 #define MIST_USB_MODEM_ONE_SHOT_SWITCHER_H_
 
-#include <base/basictypes.h>
+#include <memory>
 
-#include <base/memory/scoped_ptr.h>
+#include <base/basictypes.h>
 
 namespace mist {
 
@@ -43,7 +43,7 @@ class UsbModemOneShotSwitcher {
                                   bool success);
 
   Context* const context_;
-  scoped_ptr<UsbModemSwitchOperation> operation_;
+  std::unique_ptr<UsbModemSwitchOperation> operation_;
   bool is_success_;
 
   DISALLOW_COPY_AND_ASSIGN(UsbModemOneShotSwitcher);

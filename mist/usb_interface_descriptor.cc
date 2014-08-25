@@ -6,8 +6,9 @@
 
 #include <libusb.h>
 
+#include <memory>
+
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/strings/stringprintf.h>
 
 #include "mist/usb_device.h"
@@ -16,6 +17,7 @@
 using base::StringPrintf;
 using std::ostream;
 using std::string;
+using std::unique_ptr;
 
 namespace mist {
 
@@ -83,7 +85,7 @@ UsbEndpointDescriptor*
 UsbInterfaceDescriptor::GetEndpointDescriptorByTransferTypeAndDirection(
     UsbTransferType transfer_type, UsbDirection direction) const {
   for (uint8_t i = 0; i < GetNumEndpoints(); ++i) {
-    scoped_ptr<UsbEndpointDescriptor> endpoint_descriptor(
+    unique_ptr<UsbEndpointDescriptor> endpoint_descriptor(
         GetEndpointDescriptor(i));
     if ((endpoint_descriptor->GetTransferType() == transfer_type) &&
         (endpoint_descriptor->GetDirection() == direction)) {

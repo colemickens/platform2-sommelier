@@ -7,11 +7,11 @@
 #include <stdlib.h>
 
 #include <iostream>  // NOLINT(readability/streams)
+#include <memory>
 #include <string>
 
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/syslog_logging.h>
 
@@ -24,6 +24,7 @@
 using std::cerr;
 using std::cout;
 using std::string;
+using std::unique_ptr;
 
 namespace mist {
 
@@ -117,7 +118,7 @@ int Mist::Run(base::CommandLine* command_line) {
       return EXIT_FAILURE;
     }
 
-    scoped_ptr<UsbModemSwitchContext> switch_context(
+    unique_ptr<UsbModemSwitchContext> switch_context(
         new UsbModemSwitchContext());
 
     const string& sys_path = arguments[1];

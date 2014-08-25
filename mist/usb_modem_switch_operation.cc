@@ -31,6 +31,7 @@ using base::CancelableClosure;
 using base::StringPrintf;
 using base::Unretained;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 
 namespace mist {
@@ -150,7 +151,7 @@ void UsbModemSwitchOperation::Complete(bool success) {
 }
 
 void UsbModemSwitchOperation::DetachAllKernelDrivers() {
-  scoped_ptr<UsbConfigDescriptor> config_descriptor(
+  unique_ptr<UsbConfigDescriptor> config_descriptor(
       device_->GetActiveConfigDescriptor());
   if (!config_descriptor)
     return;
@@ -173,7 +174,7 @@ void UsbModemSwitchOperation::DetachAllKernelDrivers() {
 int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
   CHECK(device_);
 
-  scoped_ptr<UsbDeviceDescriptor> device_descriptor(
+  unique_ptr<UsbDeviceDescriptor> device_descriptor(
       device_->GetDeviceDescriptor());
   if (!device_descriptor) {
     LOG(ERROR) << "Could not get device descriptor: " << device_->error();
@@ -185,7 +186,7 @@ int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
   for (uint8_t config_index = 0;
        config_index < device_descriptor->GetNumConfigurations();
        ++config_index) {
-    scoped_ptr<UsbConfigDescriptor> config_descriptor(
+    unique_ptr<UsbConfigDescriptor> config_descriptor(
         device_->GetConfigDescriptor(config_index));
     if (!config_descriptor)
       continue;
@@ -195,12 +196,12 @@ int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
     for (uint8_t interface_number = 0;
          interface_number < config_descriptor->GetNumInterfaces();
          ++interface_number) {
-      scoped_ptr<UsbInterface> interface(
+      unique_ptr<UsbInterface> interface(
           config_descriptor->GetInterface(interface_number));
       if (!interface)
         continue;
 
-      scoped_ptr<UsbInterfaceDescriptor> interface_descriptor(
+      unique_ptr<UsbInterfaceDescriptor> interface_descriptor(
           interface->GetAlternateSetting(
               kDefaultUsbInterfaceAlternateSettingIndex));
       if (!interface_descriptor)
@@ -224,7 +225,7 @@ int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
 }
 
 bool UsbModemSwitchOperation::SetConfiguration(int configuration) {
-  scoped_ptr<UsbConfigDescriptor> config_descriptor(
+  unique_ptr<UsbConfigDescriptor> config_descriptor(
       device_->GetActiveConfigDescriptor());
   if (!config_descriptor) {
     LOG(ERROR) << "Could not get active configuration descriptor: "
@@ -303,7 +304,7 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
     return;
   }
 
-  scoped_ptr<UsbConfigDescriptor> config_descriptor(
+  unique_ptr<UsbConfigDescriptor> config_descriptor(
       device_->GetActiveConfigDescriptor());
   if (!config_descriptor) {
     LOG(ERROR) << "Could not get active configuration descriptor: "
@@ -322,7 +323,7 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
     return;
   }
 
-  scoped_ptr<UsbInterface> interface(
+  unique_ptr<UsbInterface> interface(
       config_descriptor->GetInterface(kDefaultUsbInterfaceIndex));
   if (!interface) {
     LOG(ERROR) << "Could not get interface 0.";
@@ -330,7 +331,7 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
     return;
   }
 
-  scoped_ptr<UsbInterfaceDescriptor> interface_descriptor(
+  unique_ptr<UsbInterfaceDescriptor> interface_descriptor(
       interface->GetAlternateSetting(
           kDefaultUsbInterfaceAlternateSettingIndex));
   if (!interface_descriptor) {
@@ -346,7 +347,7 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
     return;
   }
 
-  scoped_ptr<UsbEndpointDescriptor> out_endpoint_descriptor(
+  unique_ptr<UsbEndpointDescriptor> out_endpoint_descriptor(
       interface_descriptor->GetEndpointDescriptorByTransferTypeAndDirection(
           kUsbTransferTypeBulk, kUsbDirectionOut));
   if (!out_endpoint_descriptor) {
@@ -360,7 +361,7 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
   out_endpoint_address_ = out_endpoint_descriptor->GetEndpointAddress();
 
   if (switch_context_->modem_info()->expect_response()) {
-    scoped_ptr<UsbEndpointDescriptor> in_endpoint_descriptor(
+    unique_ptr<UsbEndpointDescriptor> in_endpoint_descriptor(
         interface_descriptor->GetEndpointDescriptorByTransferTypeAndDirection(
             kUsbTransferTypeBulk, kUsbDirectionIn));
     if (!in_endpoint_descriptor) {
@@ -458,7 +459,7 @@ void UsbModemSwitchOperation::InitiateUsbBulkTransfer(
     UsbTransferCompletionHandler completion_handler) {
   CHECK_GT(length, 0);
 
-  scoped_ptr<UsbBulkTransfer> bulk_transfer(new UsbBulkTransfer());
+  unique_ptr<UsbBulkTransfer> bulk_transfer(new UsbBulkTransfer());
   if (!bulk_transfer->Initialize(*device_,
                                  endpoint_address,
                                  length,
@@ -486,7 +487,7 @@ void UsbModemSwitchOperation::InitiateUsbBulkTransfer(
     return;
   }
 
-  bulk_transfer_ = bulk_transfer.Pass();
+  bulk_transfer_ = std::move(bulk_transfer);
 }
 
 void UsbModemSwitchOperation::OnSendMessageCompleted(UsbTransfer* transfer) {
@@ -496,7 +497,7 @@ void UsbModemSwitchOperation::OnSendMessageCompleted(UsbTransfer* transfer) {
   CHECK_EQ(out_endpoint_address_, transfer->GetEndpointAddress());
 
   // Keep the bulk transfer valid until this method goes out of scope.
-  scoped_ptr<UsbBulkTransfer> scoped_bulk_transfer = bulk_transfer_.Pass();
+  unique_ptr<UsbBulkTransfer> scoped_bulk_transfer = std::move(bulk_transfer_);
 
   if (transfer->GetStatus() == kUsbTransferStatusStall) {
     if (!ClearHalt(transfer->GetEndpointAddress())) {
@@ -537,7 +538,7 @@ void UsbModemSwitchOperation::OnReceiveMessageCompleted(UsbTransfer* transfer) {
   CHECK_EQ(in_endpoint_address_, transfer->GetEndpointAddress());
 
   // Keep the bulk transfer valid until this method goes out of scope.
-  scoped_ptr<UsbBulkTransfer> scoped_bulk_transfer = bulk_transfer_.Pass();
+  unique_ptr<UsbBulkTransfer> scoped_bulk_transfer = std::move(bulk_transfer_);
 
   if (transfer->GetStatus() == kUsbTransferStatusStall) {
     if (!ClearHalt(transfer->GetEndpointAddress())) {

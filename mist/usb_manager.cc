@@ -7,6 +7,8 @@
 #include <libusb.h>
 #include <poll.h>
 
+#include <memory>
+
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
@@ -16,6 +18,7 @@
 
 using base::MessageLoopForIO;
 using base::StringPrintf;
+using std::unique_ptr;
 
 namespace mist {
 
@@ -86,7 +89,7 @@ UsbDevice* UsbManager::GetDevice(uint8_t bus_number,
         device->GetDeviceAddress() != device_address)
       continue;
 
-    scoped_ptr<UsbDeviceDescriptor> device_descriptor(
+    unique_ptr<UsbDeviceDescriptor> device_descriptor(
         (*it)->GetDeviceDescriptor());
     VLOG(2) << *device_descriptor;
     if (device_descriptor->GetVendorId() == vendor_id &&
@@ -150,7 +153,7 @@ bool UsbManager::StartWatchingPollFileDescriptors() {
   libusb_set_pollfd_notifiers(
       context_, &OnPollFileDescriptorAdded, &OnPollFileDescriptorRemoved, this);
 
-  scoped_ptr<const libusb_pollfd*, base::FreeDeleter> pollfd_list(
+  unique_ptr<const libusb_pollfd*, base::FreeDeleter> pollfd_list(
       libusb_get_pollfds(context_));
   if (!pollfd_list) {
     LOG(ERROR) << "Could not get file descriptors for monitoring USB events.";

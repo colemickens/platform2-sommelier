@@ -7,10 +7,10 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 
 #include <base/basictypes.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 
 #include "mist/usb_constants.h"
@@ -118,7 +118,7 @@ class UsbDevice : public base::SupportsWeakPtr<UsbDevice> {
 
   libusb_device* device_;
   libusb_device_handle* device_handle_;
-  scoped_ptr<libusb_device_descriptor> device_descriptor_;
+  std::unique_ptr<libusb_device_descriptor> device_descriptor_;
   UsbError error_;
 
   DISALLOW_COPY_AND_ASSIGN(UsbDevice);

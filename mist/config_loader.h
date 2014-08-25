@@ -7,9 +7,10 @@
 
 #include <stdint.h>
 
+#include <memory>
+
 #include <base/basictypes.h>
 #include <base/files/file_path.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>
 
 namespace mist {
@@ -47,7 +48,7 @@ class ConfigLoader {
   FRIEND_TEST(ConfigLoaderTest, LoadNonExistentConfigFile);
   FRIEND_TEST(ConfigLoaderTest, LoadValidConfigFile);
 
-  scoped_ptr<Config> config_;
+  std::unique_ptr<Config> config_;
 
   DISALLOW_COPY_AND_ASSIGN(ConfigLoader);
 };

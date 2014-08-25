@@ -4,6 +4,8 @@
 
 #include "mist/usb_modem_switch_context.h"
 
+#include <memory>
+
 #include <base/strings/stringprintf.h>
 
 #include "mist/config_loader.h"
@@ -15,6 +17,7 @@
 
 using base::StringPrintf;
 using std::string;
+using std::unique_ptr;
 
 namespace mist {
 
@@ -42,7 +45,7 @@ bool UsbModemSwitchContext::InitializeFromSysPath(const Context* context,
                                                   const string& sys_path) {
   CHECK(context);
 
-  scoped_ptr<UdevDevice> device(
+  unique_ptr<UdevDevice> device(
       context->udev()->CreateDeviceFromSysPath(sys_path.c_str()));
   if (!device) {
     VLOG(1) << "Could not find device '" << sys_path << "'.";

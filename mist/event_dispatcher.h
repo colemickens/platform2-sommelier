@@ -6,11 +6,11 @@
 #define MIST_EVENT_DISPATCHER_H_
 
 #include <map>
+#include <memory>
 
 #include <base/basictypes.h>
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
 
@@ -63,7 +63,7 @@ class EventDispatcher {
   typedef std::map<int, base::MessageLoopForIO::FileDescriptorWatcher*>
       FileDescriptorWatcherMap;
 
-  scoped_ptr<base::MessageLoop> dont_use_directly_;
+  std::unique_ptr<base::MessageLoop> dont_use_directly_;
   scoped_refptr<base::MessageLoopProxy> message_loop_proxy_;
   FileDescriptorWatcherMap file_descriptor_watchers_;
 
