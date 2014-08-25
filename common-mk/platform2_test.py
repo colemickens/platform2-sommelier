@@ -28,6 +28,9 @@ from chromite.lib import signals
 
 # Env vars to let through to the test env when we do sudo.
 ENV_PASSTHRU = (
+    # Used by various sanitizers.
+    'ASAN_OPTIONS',
+    'LSAN_OPTIONS',
 )
 
 
