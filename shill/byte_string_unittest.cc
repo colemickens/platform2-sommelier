@@ -26,6 +26,7 @@ const char kTest2HexString[] = "0102030A";
 const unsigned int kTest2Uint32 = 0x0102030a;
 const unsigned char kTest3[] = { 0, 0, 0, 0 };
 const char kTest4[] = "Hello world";
+const unsigned char kTest5[] = { 1, 2, 3 };
 }  // namespace
 
 class ByteStringTest : public Test {
@@ -448,6 +449,30 @@ TEST_F(ByteStringTest, ConvertFromCPUToNetUInt32Array) {
   } else {
     EXPECT_EQ(kTest1HexSubstringReordered, bs2.HexEncode());
   }
+}
+
+TEST_F(ByteStringTest, LessThan) {
+  ByteString bs1(kTest1, sizeof(kTest1));
+  ByteString bs2(kTest2, sizeof(kTest2));
+  ByteString bs3(kTest3, sizeof(kTest3));
+  ByteString bs5(kTest5, sizeof(kTest5));
+
+  // bs2 is shorter, but the first four bytes of bs1 are less than those in bs2.
+  EXPECT_TRUE(ByteString::IsLessThan(bs1, bs2));
+
+  // bs2 and bs3 are the same length, but bs3 has less byte values.
+  EXPECT_TRUE(ByteString::IsLessThan(bs3, bs2));
+
+  // bs3 is shorter than bs1 and the first four bytes of bs3 are less than
+  // the first four bytes of bs1.
+  EXPECT_TRUE(ByteString::IsLessThan(bs3, bs1));
+
+  // The first three bytes of bs5 are equal to the first three bytes of bs2,
+  // but bs5 is shorter than bs2.
+  EXPECT_TRUE(ByteString::IsLessThan(bs5, bs2));
+
+  // A Bytestring is not less than another identical one.
+  EXPECT_FALSE(ByteString::IsLessThan(bs5, bs5));
 }
 
 }  // namespace shill

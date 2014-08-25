@@ -202,7 +202,7 @@ bool ByteString::IsLessThan(const ByteString &lhs, const ByteString &rhs) {
   size_t byte_count = min(lhs.GetLength(), rhs.GetLength());
   int result = memcmp(lhs.GetConstData(), rhs.GetConstData(), byte_count);
   if (result == 0) {
-    return byte_count == lhs.GetLength();
+    return lhs.GetLength() < rhs.GetLength();
   }
   return result < 0;
 }
