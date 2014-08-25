@@ -50,7 +50,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/memory/scoped_ptr.h>
 #include <base/logging.h>
 #include <chromeos/error.h>
 #include <dbus/exported_object.h>
@@ -69,9 +68,6 @@ extern const char kDBusErrorDomain[];
 using MethodCallHandler =
     base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)>;
 using Dictionary = std::map<std::string, chromeos::Any>;
-
-scoped_ptr<dbus::Response> GetBadArgsError(dbus::MethodCall* method_call,
-                                           const std::string& message);
 
 // A helper function to create a DBus error response object as unique_ptr<>.
 std::unique_ptr<dbus::Response> CreateDBusErrorResponse(

@@ -36,7 +36,7 @@ void EnterMainLoop(base::MessageLoopForIO* message_loop,
                    scoped_refptr<dbus::Bus> bus) {
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   Manager manager(bus);
-  manager.Init(sequencer->GetHandler("Manager.Init() failed.", true));
+  manager.RegisterAsync(sequencer->GetHandler("Manager.Init() failed.", true));
   sequencer->OnAllTasksCompletedCall({base::Bind(&TakeServiceOwnership, bus)});
   // Release our handle on the sequencer so that it gets deleted after
   // both callbacks return.

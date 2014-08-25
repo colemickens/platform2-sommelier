@@ -5,13 +5,19 @@
 #ifndef PEERD_MANAGER_DBUS_PROXY_H_
 #define PEERD_MANAGER_DBUS_PROXY_H_
 
+#include <map>
+#include <string>
+#include <vector>
+
 #include <base/basictypes.h>
+#include <chromeos/dbus/dbus_object.h>
+#include <chromeos/error.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 #include <gtest/gtest_prod.h>
 
-#include "peerd/typedefs.h"
+struct sockaddr_storage;
 
 namespace peerd {
 
@@ -21,41 +27,41 @@ class ManagerDBusProxy {
  public:
   ManagerDBusProxy(const scoped_refptr<dbus::Bus>& bus,
                    Manager* manager);
-  ~ManagerDBusProxy();
 
-  void Init(const OnInitFinish& success_cb);
+  void RegisterAsync(
+      const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction&
+          completion_callback);
 
  private:
-  void HandleStartMonitoring(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender);
+  std::string HandleStartMonitoring(
+      chromeos::ErrorPtr* error,
+      const chromeos::dbus_utils::Dictionary& technologies);
 
   void HandleStopMonitoring(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender);
+      chromeos::ErrorPtr* error,
+      const std::string& monitoring_token);
 
-  void HandleExposeIpService(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender);
+  std::string HandleExposeIpService(
+      chromeos::ErrorPtr* error,
+      const std::string& service_id,
+      const std::vector<sockaddr_storage>& ip_addresses,
+      const std::map<std::string, std::string>& service_info,
+      const chromeos::dbus_utils::Dictionary& options);
 
   void HandleRemoveExposedService(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender);
+      chromeos::ErrorPtr* error,
+      const std::string& service_token);
 
   void HandleSetFriendlyName(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender);
+      chromeos::ErrorPtr* error,
+      const std::string& name);
 
-  void HandleSetNote(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender);
+  void HandleSetNote(chromeos::ErrorPtr* error, const std::string& note);
 
-  void HandlePing(dbus::MethodCall* method_call,
-                  dbus::ExportedObject::ResponseSender response_sender);
+  std::string HandlePing(chromeos::ErrorPtr* error);
 
   scoped_refptr<dbus::Bus> bus_;
-  // |exported_object_| is owned by the bus object.
-  dbus::ExportedObject* exported_object_ = nullptr;
+  chromeos::dbus_utils::DBusObject dbus_object_;
   Manager* manager_ = nullptr;  // Outlives this.
 
   FRIEND_TEST(ManagerDBusProxyTest, HandleStartMonitoring_NoArgs);

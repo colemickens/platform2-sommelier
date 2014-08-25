@@ -12,9 +12,10 @@
       'target_name': 'peerd_common',
       'type': 'static_library',
       'sources': [
+        'dbus_constants.cc',
+        'dbus_data_serialization.cc',
         'manager.cc',
         'manager_dbus_proxy.cc',
-        'dbus_constants.cc',
       ],
     },
     {
@@ -44,6 +45,7 @@
           },
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
+            'dbus_data_serialization_unittest.cc',
             'manager_dbus_proxy_unittest.cc',
             'peerd_testrunner.cc',
           ],

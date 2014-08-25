@@ -7,15 +7,16 @@
 #include <string>
 
 #include <base/bind.h>
+#include <chromeos/dbus_utils.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
+#include <dbus/property.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "peerd/dbus_constants.h"
 #include "peerd/mock_manager.h"
 
-using peerd::dbus_constants::kErrorTooManyParameters;
 using peerd::dbus_constants::kManagerExposeIpService;
 using peerd::dbus_constants::kManagerInterface;
 using peerd::dbus_constants::kManagerPing;
@@ -34,8 +35,6 @@ using testing::_;
 
 namespace {
 
-const char kSingleStringArgument[] = "Expected single string argument.";
-
 unique_ptr<dbus::MethodCall> MakeMethodCall(const char* method_name) {
   auto ret = unique_ptr<dbus::MethodCall>(
       new dbus::MethodCall(kManagerInterface, method_name));
@@ -43,26 +42,20 @@ unique_ptr<dbus::MethodCall> MakeMethodCall(const char* method_name) {
   return ret;
 }
 
-void ExpectErrorWithString(const std::string& error_message,
-                           scoped_ptr<dbus::Response> response) {
-    dbus::ErrorResponse* error_response =
-        dynamic_cast<dbus::ErrorResponse*>(response.get());
-    ASSERT_TRUE(error_response != NULL) << "Expected error response, "
-                                        << "but didn't get one.";
-    dbus::MessageReader reader(error_response);
-    ASSERT_TRUE(reader.HasMoreData());
-    std::string actual_error_message;
-    ASSERT_TRUE(reader.PopString(&actual_error_message));
-    ASSERT_FALSE(reader.HasMoreData());
-    EXPECT_EQ(error_message, actual_error_message);
-}
-
-void ExpectHelloWorld(scoped_ptr<dbus::Response> response) {
-  dbus::MessageReader reader(response.get());
+void ExpectErrorWithString(const std::string& error_code,
+                           const std::string& error_message,
+                           const unique_ptr<dbus::Response>& response) {
+  dbus::ErrorResponse* error_response =
+      dynamic_cast<dbus::ErrorResponse*>(response.get());
+  ASSERT_TRUE(error_response != NULL) << "Expected error response, "
+                                      << "but didn't get one.";
+  EXPECT_EQ(error_code, response->GetErrorName());
+  dbus::MessageReader reader(error_response);
   ASSERT_TRUE(reader.HasMoreData());
-  string message;
-  ASSERT_TRUE(reader.PopString(&message));
-  EXPECT_EQ(message, kPingResponse);
+  std::string actual_error_message;
+  ASSERT_TRUE(reader.PopString(&actual_error_message));
+  ASSERT_FALSE(reader.HasMoreData());
+  EXPECT_EQ(error_message, actual_error_message);
 }
 
 }  // namespace
@@ -89,6 +82,9 @@ class ManagerDBusProxyTest: public ::testing::Test {
     EXPECT_CALL(*mock_bus_,
                 GetExportedObject(dbus::ObjectPath(kManagerServicePath)))
         .Times(1).WillOnce(Return(exported_object_.get()));
+    EXPECT_CALL(*exported_object_,
+                ExportMethod(dbus::kPropertiesInterface, _, _, _))
+        .Times(AnyNumber());
     for (const char* method : {kManagerExposeIpService,
                                kManagerPing,
                                kManagerRemoveExposedService,
@@ -101,8 +97,8 @@ class ManagerDBusProxyTest: public ::testing::Test {
     }
     manager_.reset(new MockManager(bus_));
     proxy_ = &manager_->proxy_;
-    proxy_->Init(base::Bind(&ManagerDBusProxyTest::InitFinished,
-                            base::Unretained(this)));
+    proxy_->RegisterAsync(base::Bind(&ManagerDBusProxyTest::InitFinished,
+                                     base::Unretained(this)));
   }
 
   virtual void TearDown() {
@@ -192,17 +188,18 @@ TEST_F(ManagerDBusProxyTest, HandleSetNote_ExtraArgs) {
 }
 
 TEST_F(ManagerDBusProxyTest, HandlePing_ReturnsHelloWorld) {
-  auto method_call = MakeMethodCall(kManagerPing);
-  proxy_->HandlePing(method_call.get(), base::Bind(&ExpectHelloWorld));
+  EXPECT_EQ(kPingResponse, proxy_->HandlePing(nullptr));
 }
 
 TEST_F(ManagerDBusProxyTest, HandlePing_WithArgs) {
   auto method_call = MakeMethodCall(kManagerPing);
   dbus::MessageWriter writer(method_call.get());
   writer.AppendString("Ping takes no args");
-  proxy_->HandlePing(
-      method_call.get(),
-      base::Bind(&ExpectErrorWithString, kErrorTooManyParameters));
+  auto response = chromeos::dbus_utils::CallMethod(proxy_->dbus_object_,
+                                                   method_call.get());
+  ExpectErrorWithString(DBUS_ERROR_INVALID_ARGS,
+                        "Too many parameters in a method call",
+                        response);
 }
 
 }  // namespace peerd

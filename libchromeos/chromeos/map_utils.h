@@ -6,22 +6,22 @@
 #define LIBCHROMEOS_CHROMEOS_MAP_UTILS_H_
 
 #include <map>
+#include <set>
 #include <utility>
 #include <vector>
 
 namespace chromeos {
 
-// Given an STL map returns a vector containing all keys from the map
+// Given an STL map, returns a set containing all keys from the map.
 template<typename T>
-std::vector<typename T::key_type> GetMapKeys(const T& map) {
-  std::vector<typename T::key_type> keys;
-  keys.reserve(map.size());
+std::set<typename T::key_type> GetMapKeys(const T& map) {
+  std::set<typename T::key_type> keys;
   for (const auto& pair : map)
-    keys.push_back(pair.first);
+    keys.insert(keys.end(), pair.first);  // Map keys are already sorted.
   return keys;
 }
 
-// Given an STL map returns a vector containing all values from the map
+// Given an STL map, returns a vector containing all values from the map.
 template<typename T>
 std::vector<typename T::mapped_type> GetMapValues(const T& map) {
   std::vector<typename T::mapped_type> values;
@@ -31,7 +31,7 @@ std::vector<typename T::mapped_type> GetMapValues(const T& map) {
   return values;
 }
 
-// Given an STL map returns a vector of key-value pairs from the map
+// Given an STL map, returns a vector of key-value pairs from the map.
 template<typename T>
 std::vector<std::pair<typename T::key_type,
                       typename T::mapped_type>> MapToVector(const T& map) {

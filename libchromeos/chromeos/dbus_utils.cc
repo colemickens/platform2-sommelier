@@ -34,14 +34,6 @@ void HandleSynchronousDBusMethodCall(
 
 }  // namespace
 
-scoped_ptr<dbus::Response> GetBadArgsError(dbus::MethodCall* method_call,
-                                           const std::string& message) {
-  LOG(ERROR) << "Error while handling DBus call: " << message;
-  scoped_ptr<dbus::ErrorResponse> resp(dbus::ErrorResponse::FromMethodCall(
-      method_call, DBUS_ERROR_INVALID_ARGS, message));
-  return scoped_ptr<dbus::Response>(resp.release());
-}
-
 std::unique_ptr<dbus::Response> CreateDBusErrorResponse(
     dbus::MethodCall* method_call,
     const std::string& code,

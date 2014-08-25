@@ -25,8 +25,6 @@ extern const char kManagerSetNote[];
 extern const char kManagerStartMonitoring[];
 extern const char kManagerStopMonitoring[];
 
-extern const char kErrorTooManyParameters[];
-
 extern const char kPingResponse[];
 
 }  // namespace dbus_constants
