@@ -443,6 +443,7 @@ void Device::OnIPv6AddressChanged() {
   properties.dns_servers = ip6config_->properties().dns_servers;
   ip6config_->set_properties(properties);
   UpdateIPConfigsProperty();
+  OnIPv6ConfigUpdated();
 }
 
 void Device::OnIPv6DnsServerAddressesChanged() {
@@ -480,11 +481,14 @@ void Device::OnIPv6DnsServerAddressesChanged() {
 
   // Done if no change in server addresses.
   if (ip6config_->properties().dns_servers == addresses_str) {
+    SLOG(Device, 2) << __func__ << " IPv6 DNS server list for "
+                    << link_name_ << " is unchanged.";
     return;
   }
 
   ip6config_->UpdateDNSServers(addresses_str);
   UpdateIPConfigsProperty();
+  OnIPv6ConfigUpdated();
 }
 
 void Device::StartIPv6DNSServerTimer(uint32 lifetime_seconds) {
@@ -651,9 +655,50 @@ void Device::ConfigureStaticIPTask() {
   }
 }
 
+bool Device::IPConfigCompleted(const IPConfigRefPtr &ipconfig) {
+  return ipconfig && !ipconfig->properties().address.empty() &&
+      !ipconfig->properties().dns_servers.empty();
+}
+
+void Device::OnIPv6ConfigUpdated() {
+  // Setup connection using IPv6 configuration only if the IPv6 configuration
+  // is ready for connection (contained both IP address and DNS servers), and
+  // there is no existing IPv4 connection. We always prefer IPv4
+  // configuration over IPv6.
+  if (IPConfigCompleted(ip6config_) &&
+      (!connection_ || connection_->IsIPv6())) {
+    SetupConnection(ip6config_);
+  }
+}
+
+void Device::SetupConnection(const IPConfigRefPtr &ipconfig) {
+  CreateConnection();
+  connection_->UpdateFromIPConfig(ipconfig);
+
+  // SetConnection must occur after the UpdateFromIPConfig so the
+  // service can use the values derived from the connection.
+  if (selected_service_) {
+    selected_service_->SetConnection(connection_);
+
+    // The service state change needs to happen last, so that at the
+    // time we report the state change to the manager, the service
+    // has its connection.
+    SetServiceState(Service::kStateConnected);
+    OnConnected();
+    portal_attempts_to_online_ = 0;
+
+    // Subtle: Start portal detection after transitioning the service
+    // to the Connected state because this call may immediately transition
+    // to the Online state.
+    StartPortalDetection();
+  }
+
+  StartLinkMonitor();
+  StartTrafficMonitor();
+}
+
 void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig) {
   SLOG(Device, 2) << __func__;
-  CreateConnection();
   if (selected_service_) {
     ipconfig->ApplyStaticIPParameters(
         selected_service_->mutable_static_ip_parameters());
@@ -668,26 +713,7 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig) {
       ipconfig->ReleaseIP(IPConfig::kReleaseReasonStaticIP);
     }
   }
-  connection_->UpdateFromIPConfig(ipconfig);
-  // SetConnection must occur after the UpdateFromIPConfig so the
-  // service can use the values derived from the connection.
-  if (selected_service_) {
-    selected_service_->SetConnection(connection_);
-  }
-  // The service state change needs to happen last, so that at the
-  // time we report the state change to the manager, the service
-  // has its connection.
-  SetServiceState(Service::kStateConnected);
-  OnConnected();
-  portal_attempts_to_online_ = 0;
-  // Subtle: Start portal detection after transitioning the service
-  // to the Connected state because this call may immediately transition
-  // to the Online state.
-  if (selected_service_) {
-    StartPortalDetection();
-  }
-  StartLinkMonitor();
-  StartTrafficMonitor();
+  SetupConnection(ipconfig);
   UpdateIPConfigsProperty();
 }
 
@@ -725,8 +751,17 @@ void Device::OnIPConfigFailed(const IPConfigRefPtr &ipconfig) {
   }
 
   ipconfig->ResetProperties();
-  OnIPConfigFailure();
   UpdateIPConfigsProperty();
+
+  // Fallback to IPv6 if we have an IPv6 configuration that's ready for
+  // connection, and we're not currently using an IPv6 connection.
+  if (IPConfigCompleted(ip6config_) &&
+      (!connection_ || !connection_->IsIPv6())) {
+    SetupConnection(ip6config_);
+    return;
+  }
+
+  OnIPConfigFailure();
   DestroyConnection();
 }
 
@@ -1224,6 +1259,11 @@ void Device::PortalDetectorCallback(const PortalDetector::Result &result) {
         Metrics::kMetricPortalAttemptsMin,
         Metrics::kMetricPortalAttemptsMax,
         Metrics::kMetricPortalAttemptsNumBuckets);
+
+    // TODO(zqiu): Only support fallback DNS server for IPv4 for now.
+    if (connection_->IsIPv6()) {
+      return;
+    }
 
     // Perform fallback DNS test if the portal failure is DNS related.
     // The test will send a  DNS request to Google's DNS server to determine

@@ -50,6 +50,9 @@ const int32_t kPrefix0 = 24;
 const int32_t kPrefix1 = 31;
 const char kSearchDomain0[] = "chromium.org";
 const char kSearchDomain1[] = "google.com";
+const char kIPv6Address[] = "2001:db8::1";
+const char kIPv6NameServer0[] = "2001:db9::1";
+const char kIPv6NameServer1[] = "2001:db9::2";
 }  // namespace
 
 class ConnectionTest : public Test {
@@ -66,10 +69,12 @@ class ConnectionTest : public Test {
             Technology::kUnknown,
             device_info_.get())),
         ipconfig_(new IPConfig(&control_, kTestDeviceName0)),
+        ip6config_(new IPConfig(&control_, kTestDeviceName0)),
         local_address_(IPAddress::kFamilyIPv4),
         broadcast_address_(IPAddress::kFamilyIPv4),
         gateway_address_(IPAddress::kFamilyIPv4),
-        default_address_(IPAddress::kFamilyIPv4) {}
+        default_address_(IPAddress::kFamilyIPv4),
+        local_ipv6_address_(IPAddress::kFamilyIPv6) {}
 
   virtual void SetUp() {
     ReplaceSingletons(connection_);
@@ -83,9 +88,15 @@ class ConnectionTest : public Test {
     properties_.domain_search.push_back(kSearchDomain1);
     properties_.address_family = IPAddress::kFamilyIPv4;
     UpdateProperties();
+    ipv6_properties_.address = kIPv6Address;
+    ipv6_properties_.dns_servers.push_back(kIPv6NameServer0);
+    ipv6_properties_.dns_servers.push_back(kIPv6NameServer1);
+    ipv6_properties_.address_family = IPAddress::kFamilyIPv6;
+    UpdateIPv6Properties();
     EXPECT_TRUE(local_address_.SetAddressFromString(kIPAddress0));
     EXPECT_TRUE(broadcast_address_.SetAddressFromString(kBroadcastAddress0));
     EXPECT_TRUE(gateway_address_.SetAddressFromString(kGatewayAddress0));
+    EXPECT_TRUE(local_ipv6_address_.SetAddressFromString(kIPv6Address));
   }
 
   virtual void TearDown() {
@@ -101,6 +112,10 @@ class ConnectionTest : public Test {
 
   void UpdateProperties() {
     ipconfig_->UpdateProperties(properties_);
+  }
+
+  void UpdateIPv6Properties() {
+    ip6config_->UpdateProperties(ipv6_properties_);
   }
 
   bool PinHostRoute(ConnectionRefPtr connection,
@@ -165,11 +180,14 @@ class ConnectionTest : public Test {
   ConnectionRefPtr connection_;
   MockControl control_;
   IPConfigRefPtr ipconfig_;
+  IPConfigRefPtr ip6config_;
   IPConfig::Properties properties_;
+  IPConfig::Properties ipv6_properties_;
   IPAddress local_address_;
   IPAddress broadcast_address_;
   IPAddress gateway_address_;
   IPAddress default_address_;
+  IPAddress local_ipv6_address_;
   StrictMock<MockResolver> resolver_;
   StrictMock<MockRoutingTable> routing_table_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
@@ -180,6 +198,11 @@ namespace {
 MATCHER_P2(IsIPAddress, address, prefix, "") {
   IPAddress match_address(address);
   match_address.set_prefix(prefix);
+  return match_address.Equals(arg);
+}
+
+MATCHER_P(IsIPv6Address, address, "") {
+  IPAddress match_address(address);
   return match_address.Equals(arg);
 }
 
@@ -221,6 +244,7 @@ TEST_F(ConnectionTest, AddConfig) {
   EXPECT_TRUE(test_local_address.Equals(GetLocalAddress(connection_)));
   EXPECT_TRUE(gateway_address_.Equals(GetGatewayAddress(connection_)));
   EXPECT_TRUE(GetHasBroadcastDomain(connection_));
+  EXPECT_FALSE(connection_->IsIPv6());
 
   EXPECT_CALL(routing_table_,
               CreateLinkRoute(kTestDeviceInterfaceIndex0,
@@ -265,6 +289,26 @@ TEST_F(ConnectionTest, AddConfig) {
       .WillOnce(Return(true));
   connection_->SetIsDefault(false);
   EXPECT_FALSE(connection_->is_default());
+}
+
+TEST_F(ConnectionTest, AddConfigIPv6) {
+  EXPECT_CALL(*device_info_,
+              HasOtherAddress(kTestDeviceInterfaceIndex0,
+                              IsIPv6Address(local_ipv6_address_)))
+      .WillOnce(Return(false));
+  EXPECT_CALL(rtnl_handler_,
+              AddInterfaceAddress(kTestDeviceInterfaceIndex0,
+                                  IsIPv6Address(local_ipv6_address_),
+                                  _,
+                                  _));
+  EXPECT_CALL(routing_table_,
+              ConfigureRoutes(kTestDeviceInterfaceIndex0,
+                              ip6config_,
+                              GetDefaultMetric()));
+  connection_->UpdateFromIPConfig(ip6config_);
+  IPAddress test_local_address(local_ipv6_address_);
+  EXPECT_TRUE(test_local_address.Equals(GetLocalAddress(connection_)));
+  EXPECT_TRUE(connection_->IsIPv6());
 }
 
 TEST_F(ConnectionTest, AddConfigWithPeer) {

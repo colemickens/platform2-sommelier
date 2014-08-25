@@ -240,6 +240,19 @@ class DeviceTest : public PropertyStoreTest {
     device_->manager_ = manager;
   }
 
+  void SetupIPv6Config() {
+    const char kAddress[] = "2001:db8::1";
+    const char kDnsServer1[] = "2001:db8::2";
+    const char kDnsServer2[] = "2001:db8::3";
+    IPConfig::Properties properties;
+    properties.address = kAddress;
+    properties.dns_servers.push_back(kDnsServer1);
+    properties.dns_servers.push_back(kDnsServer2);
+
+    device_->ip6config_ = new MockIPConfig(control_interface(), kDeviceName);
+    device_->ip6config_->set_properties(properties);
+  }
+
   MockControl control_interface_;
   scoped_refptr<TestDevice> device_;
   MockDeviceInfo device_info_;
@@ -419,6 +432,38 @@ TEST_F(DeviceTest, IPConfigUpdatedFailure) {
                                               StrEq("OnIPConfigFailure")));
   EXPECT_CALL(*service, SetConnection(IsNullRefPtr()));
   EXPECT_CALL(*ipconfig, ResetProperties());
+  OnIPConfigFailed(ipconfig.get());
+}
+
+TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Config) {
+  // Setup IPv6 configuration.
+  SetupIPv6Config();
+  EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
+
+  // IPv4 configuration failed, fallback to use IPv6 configuration.
+  scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
+                                                          kDeviceName);
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  manager()));
+  SelectService(service);
+  scoped_refptr<MockConnection> connection(
+      new StrictMock<MockConnection>(&device_info_));
+  SetConnection(connection.get());
+
+  EXPECT_CALL(*ipconfig, ResetProperties());
+  EXPECT_CALL(*connection, IsIPv6())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*connection, UpdateFromIPConfig(device_->ip6config_));
+  EXPECT_CALL(*service, SetState(Service::kStateConnected));
+  EXPECT_CALL(*service, IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service, IsPortalDetectionDisabled())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service, SetState(Service::kStateOnline));
+  EXPECT_CALL(*service, SetConnection(NotNullRefPtr()));
   OnIPConfigFailed(ipconfig.get());
 }
 
@@ -945,6 +990,14 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   manager.set_mock_device_info(&device_info_);
   SetManager(&manager);
 
+  // With existing IPv4 connection, so no attempt to setup IPv6 connection.
+  // IPv6 connection is being tested in OnIPv6ConfigurationCompleted test.
+  scoped_refptr<MockConnection> connection(
+      new StrictMock<MockConnection>(&device_info_));
+  SetConnection(connection.get());
+  EXPECT_CALL(*connection, IsIPv6())
+      .WillRepeatedly(Return(false));
+
   // IPv6 DNS server addresses are not provided will not emit a change.
   EXPECT_CALL(device_info_,
               GetIPv6DnsServerAddresses(kDeviceInterfaceIndex, _, _))
@@ -1065,6 +1118,76 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   EXPECT_EQ(empty_dns_server, device_->ip6config_->properties().dns_servers);
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
+}
+
+TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
+  StrictMock<MockManager> manager(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  glib());
+  manager.set_mock_device_info(&device_info_);
+  SetManager(&manager);
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  &manager));
+  SelectService(service);
+  scoped_refptr<MockConnection> connection(
+      new StrictMock<MockConnection>(&device_info_));
+  SetConnection(connection.get());
+
+  // Setup initial IPv6 configuration.
+  SetupIPv6Config();
+  EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
+
+  // IPv6 configuration update with non-IPv6 connection, no connection update.
+  EXPECT_THAT(device_->connection(), NotNullRefPtr());
+  IPAddress address1(IPAddress::kFamilyIPv6);
+  const char kAddress1[] = "fe80::1aa9:5ff:abcd:1231";
+  ASSERT_TRUE(address1.SetAddressFromString(kAddress1));
+  EXPECT_CALL(device_info_, GetPrimaryIPv6Address(kDeviceInterfaceIndex, _))
+      .WillOnce(DoAll(SetArgPointee<1>(address1), Return(true)));
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitRpcIdentifierArrayChanged(
+                  kIPConfigsProperty,
+                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+  EXPECT_CALL(*connection, IsIPv6())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*service, SetConnection(_)).Times(0);
+  device_->OnIPv6AddressChanged();
+  Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
+  Mock::VerifyAndClearExpectations(&device_info_);
+  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(connection);
+
+  // IPv6 configuration update with IPv6 connection, connection update.
+  IPAddress address2(IPAddress::kFamilyIPv6);
+  const char kAddress2[] = "fe80::1aa9:5ff:abcd:1232";
+  ASSERT_TRUE(address2.SetAddressFromString(kAddress2));
+  EXPECT_CALL(device_info_, GetPrimaryIPv6Address(kDeviceInterfaceIndex, _))
+      .WillOnce(DoAll(SetArgPointee<1>(address2), Return(true)));
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitRpcIdentifierArrayChanged(
+                  kIPConfigsProperty,
+                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+  EXPECT_CALL(*connection, IsIPv6())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*connection, UpdateFromIPConfig(device_->ip6config_));
+  EXPECT_CALL(*service, SetState(Service::kStateConnected));
+  EXPECT_CALL(*service, IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service, IsPortalDetectionDisabled())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service, SetState(Service::kStateOnline));
+  EXPECT_CALL(*service, SetConnection(NotNullRefPtr()));
+  EXPECT_CALL(manager, IsTechnologyLinkMonitorEnabled(_))
+      .WillRepeatedly(Return(false));
+  device_->OnIPv6AddressChanged();
+  Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
+  Mock::VerifyAndClearExpectations(&device_info_);
+  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(connection);
 }
 
 class DevicePortalDetectionTest : public DeviceTest {
@@ -1280,6 +1403,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionFailure) {
                         Metrics::kMetricPortalAttemptsNumBuckets));
   EXPECT_CALL(*connection_.get(), is_default())
       .WillOnce(Return(false));
+  EXPECT_CALL(*connection_.get(), IsIPv6())
+      .WillOnce(Return(false));
   PortalDetectorCallback(PortalDetector::Result(
       PortalDetector::kPhaseConnection,
       PortalDetector::kStatusFailure,
@@ -1333,6 +1458,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccessAfterFailure) {
                         Metrics::kMetricPortalAttemptsMax,
                         Metrics::kMetricPortalAttemptsNumBuckets));
   EXPECT_CALL(*connection_.get(), is_default())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*connection_.get(), IsIPv6())
       .WillOnce(Return(false));
   PortalDetectorCallback(PortalDetector::Result(
       PortalDetector::kPhaseConnection,
@@ -1490,6 +1617,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
   EXPECT_CALL(*connection_.get(), is_default())
       .WillOnce(Return(false));
+  EXPECT_CALL(*connection_.get(), IsIPv6())
+      .WillOnce(Return(false));
   EXPECT_CALL(*device_, StartDNSTest(fallback_dns_servers, false, _)).Times(1);
   PortalDetectorCallback(PortalDetector::Result(
       PortalDetector::kPhaseDNS,
@@ -1507,6 +1636,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
   EXPECT_CALL(*connection_.get(), is_default())
       .WillOnce(Return(false));
+  EXPECT_CALL(*connection_.get(), IsIPv6())
+      .WillOnce(Return(false));
   EXPECT_CALL(*device_, StartDNSTest(fallback_dns_servers, false, _)).Times(1);
   PortalDetectorCallback(PortalDetector::Result(
       PortalDetector::kPhaseDNS,
@@ -1523,6 +1654,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
                                         kPortalDetectionStatusFailure));
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
   EXPECT_CALL(*connection_.get(), is_default())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*connection_.get(), IsIPv6())
       .WillOnce(Return(false));
   EXPECT_CALL(*device_, StartDNSTest(_, _, _)).Times(0);
   PortalDetectorCallback(PortalDetector::Result(

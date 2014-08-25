@@ -304,9 +304,11 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, DestroyIPConfigNULL);
   FRIEND_TEST(DeviceTest, EnableIPv6);
   FRIEND_TEST(DeviceTest, GetProperties);
+  FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithIPv6Config);
   FRIEND_TEST(DeviceTest, IsConnectedViaTether);
   FRIEND_TEST(DeviceTest, Load);
   FRIEND_TEST(DeviceTest, OnIPv6AddressChanged);
+  FRIEND_TEST(DeviceTest, OnIPv6ConfigurationCompleted);
   FRIEND_TEST(DeviceTest, OnIPv6DnsServerAddressesChanged);
   FRIEND_TEST(DeviceTest, Save);
   FRIEND_TEST(DeviceTest, SelectedService);
@@ -605,6 +607,17 @@ class Device : public base::RefCounted<Device> {
 
   // Called when the lifetime for IPv6 DNS server expires.
   void IPv6DNSServerExpired();
+
+  // Return true if given IP configuration contain both IP address and DNS
+  // servers. Hence, ready to be used for network connection.
+  bool IPConfigCompleted(const IPConfigRefPtr &ipconfig);
+
+  // Setup network connection with given IP configuration, and start portal
+  // detection on that connection.
+  void SetupConnection(const IPConfigRefPtr &ipconfig);
+
+  // Called when IPv6 configuration changes.
+  void OnIPv6ConfigUpdated();
 
   // |enabled_persistent_| is the value of the Powered property, as
   // read from the profile. If it is not found in the profile, it
