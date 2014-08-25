@@ -82,9 +82,9 @@ class XServerRunnerTest : public testing::Test {
 
     runner_.set_callback_for_testing(
         base::Bind(&ExecServer, pipe_path, signal_delay, exit_delay));
-    struct passwd* passwd = getpwuid(getuid());
-    ASSERT_TRUE(passwd) << "getpwuid() didn't find UID " << getuid();
-    ASSERT_TRUE(runner_.StartServer(passwd->pw_name, 1, false, xauth_path_));
+    passwd* user_info = getpwuid(getuid());
+    ASSERT_TRUE(user_info) << "getpwuid() didn't find UID " << getuid();
+    ASSERT_TRUE(runner_.StartServer(user_info->pw_name, 1, false, xauth_path_));
 
     // Open the pipe and read ExecServer()'s PID.
     int pipe_fd = open(pipe_path.value().c_str(), O_RDONLY);
