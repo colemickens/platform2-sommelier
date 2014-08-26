@@ -408,23 +408,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return wifi_->GetRoamThreshold(nullptr);
   }
 
-  void AddWakeConnection(const std::string &ip_endpoint, Error *error) {
-    IPAddress *addr;
-    IPAddress ipv4_addr(IPAddress::kFamilyIPv4);
-    IPAddress ipv6_addr(IPAddress::kFamilyIPv6);
-    IPAddress ip_unknown(IPAddress::kFamilyUnknown);
-    if (!ipv4_addr.SetAddressFromString(ip_endpoint)) {
-      if (!ipv6_addr.SetAddressFromString(ip_endpoint)) {
-        addr = &ip_unknown;
-      } else {
-        addr = &ipv6_addr;
-      }
-    } else {
-      addr = &ipv4_addr;
-    }
-    wifi_->AddWakeOnPacketConnection(*addr, error);
-  }
-
  protected:
   typedef scoped_refptr<MockWiFiService> MockWiFiServiceRefPtr;
 
@@ -1000,18 +983,6 @@ class WiFiMainTest : public WiFiObjectTest {
   WiFiMainTest() : WiFiObjectTest(&dispatcher_) {}
 
  protected:
-  static const char kEmptyIPAddress[];
-  static const char kGoodIPV4Address0[];
-  static const char kGoodIPV4Address1[];
-  static const char kGoodIPV6Address0[];
-  static const char kGoodIPV6Address1[];
-  static const char kGoodIPV6Address2[];
-  static const char kGoodIPV6Address3[];
-  static const char kGoodIPV6Address4[];
-  static const char kGoodIPV6Address5[];
-  static const char kGoodIPV6Address6[];
-  static const char kGoodIPV6Address7[];
-
   // A progressive scan requests one or more scans, each of which asks about a
   // different batch of frequencies/channels.
   enum WhichBatchOfProgressiveScan {
@@ -1101,19 +1072,6 @@ class WiFiMainTest : public WiFiObjectTest {
 
   EventDispatcher dispatcher_;
 };
-
-const char WiFiMainTest::kEmptyIPAddress[] = "";
-const char WiFiMainTest::kGoodIPV4Address0[] = "192.168.10.20";
-const char WiFiMainTest::kGoodIPV4Address1[] = "1.2.3.4";
-const char WiFiMainTest::kGoodIPV6Address0[] =
-    "FEDC:BA98:7654:3210:FEDC:BA98:7654:3210";
-const char WiFiMainTest::kGoodIPV6Address1[] = "1080:0:0:0:8:800:200C:417A";
-const char WiFiMainTest::kGoodIPV6Address2[] = "1080::8:800:200C:417A";
-const char WiFiMainTest::kGoodIPV6Address3[] = "FF01::101";
-const char WiFiMainTest::kGoodIPV6Address4[] = "::1";
-const char WiFiMainTest::kGoodIPV6Address5[] = "::";
-const char WiFiMainTest::kGoodIPV6Address6[] = "0:0:0:0:0:FFFF:129.144.52.38";
-const char WiFiMainTest::kGoodIPV6Address7[] = "::DEDE:190.144.52.38";
 
 TEST_F(WiFiMainTest, ProxiesSetUpDuringStart) {
   EXPECT_TRUE(GetSupplicantProcessProxy() == NULL);
@@ -2040,53 +1998,6 @@ TEST_F(WiFiMainTest, ReconnectTimer) {
   GetReconnectTimeoutCallback().callback().Run();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   EXPECT_TRUE(GetReconnectTimeoutCallback().IsCancelled());
-}
-
-TEST_F(WiFiMainTest, AddWakeOnPacketConnectionGoodIPAddress) {
-  StartWiFi();
-  EXPECT_CALL(netlink_manager_, SendNl80211Message(
-      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_SET_WOWLAN), _, _, _))
-          .Times(10);
-
-  ::shill::Error e;
-  AddWakeConnection(WiFiMainTest::kGoodIPV4Address0, &e);
-  EXPECT_TRUE(e.IsSuccess());
-
-  e.Reset();
-  AddWakeConnection(WiFiMainTest::kGoodIPV4Address1, &e);
-  EXPECT_TRUE(e.IsSuccess());
-
-  e.Reset();
-  AddWakeConnection(WiFiMainTest::kGoodIPV6Address0, &e);
-  EXPECT_TRUE(e.IsSuccess());
-
-  e.Reset();
-  AddWakeConnection(WiFiMainTest::kGoodIPV6Address1, &e);
-  EXPECT_TRUE(e.IsSuccess());
-
-  e.Reset();
-  AddWakeConnection(WiFiMainTest::kGoodIPV6Address2, &e);
-  EXPECT_TRUE(e.IsSuccess());
-
-  e.Reset();
-  AddWakeConnection(WiFiMainTest::kGoodIPV6Address3, &e);
-  EXPECT_TRUE(e.IsSuccess());
-
-  e.Reset();
-  AddWakeConnection(WiFiMainTest::kGoodIPV6Address4, &e);
-  EXPECT_TRUE(e.IsSuccess());
-
-  e.Reset();
-  AddWakeConnection(WiFiMainTest::kGoodIPV6Address5, &e);
-  EXPECT_TRUE(e.IsSuccess());
-
-  e.Reset();
-  AddWakeConnection(WiFiMainTest::kGoodIPV6Address6, &e);
-  EXPECT_TRUE(e.IsSuccess());
-
-  e.Reset();
-  AddWakeConnection(WiFiMainTest::kGoodIPV6Address7, &e);
-  EXPECT_TRUE(e.IsSuccess());
 }
 
 MATCHER_P(HasHiddenSSID_FullScan, ssid, "") {

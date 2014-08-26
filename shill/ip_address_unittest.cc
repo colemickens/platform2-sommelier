@@ -54,6 +54,9 @@ class IPAddressTest : public Test {
     IPAddress good_addr_from_bytes(family, good_bytes);
     EXPECT_TRUE(good_addr.Equals(good_addr_from_bytes));
 
+    IPAddress good_addr_from_string(good_string);
+    EXPECT_EQ(family, good_addr_from_string.family());
+
     IPAddress bad_addr(family);
     EXPECT_FALSE(bad_addr.SetAddressFromString(bad_string));
     EXPECT_FALSE(good_addr.Equals(bad_addr));
@@ -63,6 +66,9 @@ class IPAddressTest : public Test {
     IPAddress bad_addr_from_bytes(family, bad_bytes);
     EXPECT_EQ(family, bad_addr_from_bytes.family());
     EXPECT_FALSE(bad_addr_from_bytes.IsValid());
+
+    IPAddress bad_addr_from_string(bad_string);
+    EXPECT_EQ(IPAddress::kFamilyUnknown, bad_addr_from_string.family());
 
     EXPECT_FALSE(bad_addr.Equals(bad_addr_from_bytes));
     EXPECT_FALSE(bad_addr.IntoString(&address_string));
