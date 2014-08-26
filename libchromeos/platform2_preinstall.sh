@@ -9,10 +9,22 @@ set -e
 OUT=$1
 shift
 for v; do
-  sublibs=( 'bootstat' 'core' 'cryptohome' 'http' 'minijail' 'ui' )
-  sublibs=("${sublibs[@]/#/-lchromeos-}")
-  sublibs="${sublibs[@]/%/-${v}}"
-  echo "GROUP ( AS_NEEDED ( ${sublibs} ) )" > "${OUT}"/lib/libchromeos-${v}.so
+  # Extract all the libchromeos sublibs from 'dependencies' section of
+  # 'libchromeos-<(libbase_ver)' target in libchromeos.gypi and convert them
+  # into an array of "-lchromeos-<sublib>-<v>" flags.
+  sublibs=($(sed -n "
+     /'target_name': 'libchromeos-<(libbase_ver)'/,/target_name/ {
+       /dependencies/,/],/ {
+         /libchromeos/ {
+           s:[',]::g
+           s:<(libbase_ver):${v}:g
+           s:libchromeos:-lchromeos:
+           p
+         }
+       }
+     }" libchromeos.gypi))
+
+  echo "GROUP ( AS_NEEDED ( ${sublibs[@]} ) )" > "${OUT}"/lib/libchromeos-${v}.so
 
   deps=$(<"${OUT}"/gen/libchromeos-${v}-deps.txt)
   pc="${OUT}"/lib/libchromeos-${v}.pc
