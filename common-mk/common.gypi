@@ -39,6 +39,7 @@
 
     'external_cflags%': '',
     'external_cxxflags%': '',
+    'external_cppflags%': '',
     'external_ldflags%': '',
 
     'deps%': '',
@@ -75,10 +76,12 @@
       '-Wa,--noexecstack',
     ],
     'cflags_c': [
+      '<@(external_cppflags)',
       '<@(external_cflags)',
     ],
     'cflags_cc': [
       '-std=gnu++11',
+      '<@(external_cppflags)',
       '<@(external_cxxflags)',
     ],
     'link_settings': {

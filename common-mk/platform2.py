@@ -206,6 +206,7 @@ class Platform2(object):
         '-Denable_exceptions=%s' % os.environ.get('CXXEXCEPTIONS', '0'),
         '-Dexternal_cflags=%s' % os.environ.get('CFLAGS', ''),
         '-Dexternal_cxxflags=%s' % os.environ.get('CXXFLAGS', ''),
+        '-Dexternal_cppflags=%s' % os.environ.get('CPPFLAGS', ''),
         '-Dexternal_ldflags=%s' % os.environ.get('LDFLAGS', ''),
     ]
     gyp_args += ['-DUSE_%s=1' % (use_flag,) for use_flag in self.use_flags]
