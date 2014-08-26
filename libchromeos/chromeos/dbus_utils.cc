@@ -9,12 +9,11 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/values.h>
 #include <chromeos/any.h>
+#include <chromeos/error_codes.h>
 #include <dbus/values_util.h>
 
 namespace chromeos {
 namespace dbus_utils {
-
-const char kDBusErrorDomain[] = "dbus";
 
 namespace {
 
@@ -50,7 +49,7 @@ std::unique_ptr<dbus::Response> GetDBusError(dbus::MethodCall* method_call,
   // Special case for "dbus" error domain.
   // Pop the error code and message from the error chain and use them as the
   // actual D-Bus error message.
-  if (error->GetDomain() == kDBusErrorDomain) {
+  if (error->GetDomain() == errors::dbus::kDomain) {
     error_code = error->GetCode();
     error_message = error->GetMessage();
     error = error->GetInnerError();

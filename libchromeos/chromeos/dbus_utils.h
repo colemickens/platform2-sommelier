@@ -63,8 +63,6 @@ class Any;
 
 namespace dbus_utils {
 
-extern const char kDBusErrorDomain[];
-
 using MethodCallHandler =
     base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)>;
 using Dictionary = std::map<std::string, chromeos::Any>;

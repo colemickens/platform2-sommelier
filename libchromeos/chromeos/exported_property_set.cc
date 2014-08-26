@@ -12,6 +12,7 @@
 #include "chromeos/async_event_sequencer.h"
 #include "chromeos/dbus/dbus_object.h"
 #include "chromeos/dbus_utils.h"
+#include "chromeos/error_codes.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 
@@ -79,7 +80,7 @@ chromeos::Any ExportedPropertySet::HandleGet(
   auto property_map_itr = properties_.find(interface_name);
   if (property_map_itr == properties_.end()) {
     chromeos::Error::AddTo(error,
-                           dbus_utils::kDBusErrorDomain,
+                           errors::dbus::kDomain,
                            DBUS_ERROR_INVALID_ARGS,
                            "No such interface on object.");
     return chromeos::Any();
@@ -88,7 +89,7 @@ chromeos::Any ExportedPropertySet::HandleGet(
   auto property_itr = property_map_itr->second.find(property_name);
   if (property_itr == property_map_itr->second.end()) {
     chromeos::Error::AddTo(error,
-                           dbus_utils::kDBusErrorDomain,
+                           errors::dbus::kDomain,
                            DBUS_ERROR_INVALID_ARGS,
                            "No such property on interface.");
     return chromeos::Any();
@@ -103,7 +104,7 @@ void ExportedPropertySet::HandleSet(
     const chromeos::Any& value) {
   bus_->AssertOnOriginThread();
   chromeos::Error::AddTo(error,
-                         dbus_utils::kDBusErrorDomain,
+                         errors::dbus::kDomain,
                          DBUS_ERROR_NOT_SUPPORTED,
                          "Method Set is not supported.");
 }

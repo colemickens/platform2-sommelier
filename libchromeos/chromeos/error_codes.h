@@ -8,6 +8,10 @@
 namespace chromeos {
 namespace errors {
 
+namespace dbus {
+extern const char kDomain[];
+}  // namespace dbus
+
 namespace json {
 extern const char kDomain[];
 extern const char kParseError[];

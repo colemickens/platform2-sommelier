@@ -7,6 +7,10 @@
 namespace chromeos {
 namespace errors {
 
+namespace dbus {
+const char kDomain[] = "dbus";
+}  // namespace dbus
+
 namespace json {
 const char kDomain[] = "json_parser";
 const char kParseError[] = "json_parse_error";

@@ -2,19 +2,27 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// This file provides internal implementation details of dispatching DBus
-// method calls to a generic callback by reading the expected parameter values
-// from DBus message buffer until all the values are read and then
-// native C++ callback is called with those parameters passed in. If the
-// callback returns a value, that value is sent back to the caller of DBus
-// method via the response message.
+// This file provides internal implementation details of dispatching D-Bus
+// method calls to a D-Bus object methods by reading the expected parameter
+// values from D-Bus message buffer then invoking a native C++ callback with
+// those parameters passed in. If the callback returns a value, that value is
+// sent back to the caller of D-Bus method via the response message.
 
-// This functionality is achieved by parsing method arguments one by one,
-// left to right from the C++ callback's type signature, and moving the parsed
-// arguments to the back to the next call to DBusInvoke::Invoke's arguments as
-// const refs.  Each iteration has one fewer template specialization arguments,
-// until there is only the return type remaining and we fall through to either
-// the void or the non-void final specialization.
+// This is achieved by redirecting the parsing of parameter values from D-Bus
+// message buffer to DBusParamReader helper class.
+// DBusParamReader de-serializes the parameter values from the D-Bus message
+// and calls the provided native C++ callback with those arguments.
+// However it expects the callback with a simple signature like this:
+//    void callback(Args...);
+// The method handlers for DBusObject, on the other hand, have one of the two
+// possible signatures:
+//    ReturnType handler(ErrorPtr*, Args...);
+//    unique_ptr<dbus::Response> handler(dbus::MethodCall*, Args...);
+//
+// To make this all work, we craft a simple callback suitable for
+// DBusParamReader using a lambda in DBusInvoker::Invoke() and redirect the call
+// to the appropriate method handler using additional data captured by the
+// lambda object.
 
 #ifndef LIBCHROMEOS_CHROMEOS_DBUS_DBUS_OBJECT_INTERNAL_IMPL_H_
 #define LIBCHROMEOS_CHROMEOS_DBUS_DBUS_OBJECT_INTERNAL_IMPL_H_
@@ -23,6 +31,7 @@
 #include <string>
 #include <type_traits>
 
+#include <chromeos/dbus/dbus_param_reader.h>
 #include <chromeos/dbus_utils.h>
 #include <chromeos/error.h>
 #include <dbus/message.h>
@@ -30,166 +39,160 @@
 namespace chromeos {
 namespace dbus_utils {
 
-// A generic DBusInvoker stub class which allows us to specialize on a variable
-// list of expected function parameters later on. This struct in itself is not
-// used. But its concrete template specializations are.
-template<typename ReturnType, typename...>
-struct DBusInvoker;
+// Possible method handler signature types:
+template<typename ReturnType, typename... Args>
+using TypedReturnDBusMethodHandler =
+  base::Callback<ReturnType(chromeos::ErrorPtr*, Args...)>;
 
-// A generic specialization of DBusInvoker to handle variable function
-// parameters. This specialization pops one parameter off the DBus message
-// buffer and calls other specializations of DBusInvoker with fewer parameters
-// to pop the remaining parameters.
-//  ReturnType    - the return type of the callback we expect to call.
-//  ParamType     - the type of the current method parameter we are processing.
-//  RestOfParams  - the types of remaining parameters to be processed.
-template<typename ReturnType, typename ParamType, typename... RestOfParams>
-struct DBusInvoker<ReturnType, ParamType, RestOfParams...> {
-  // DBusInvoker::Invoke() is a member function that actually extracts the
-  // current parameter from the message buffer.
-  //  handler     - the C++ callback to be called when all the parameters are
-  //                processed.
-  //  method_call - DBus method call object we are processing.
-  //  reader      - DBus message reader to pop the current parameter value from.
-  //  args...     - the callback parameters processed so far.
-  template<typename CallbackType, typename... Args>
+template<typename... Args>
+using RawReturnDBusMethodHandler =
+  base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*, Args...)>;
+
+
+// A generic TypedReturnDBusInvoker class to invoke the handler and provide the
+// parameters whose values are read from the D-Bus message handler.
+// Template arguments are:
+//  ReturnType    - the return type of the handler we expect to call.
+//  CallbackType  - signature (type) of the handler which must be:
+//                  base::Callback<ReturnType(ErrorPtr*, Args...)>;
+//  Args          - types of arguments to read from the D-Bus message and
+//                  pass to the handler.
+template<typename ReturnType, typename CallbackType, typename... Args>
+struct TypedReturnDBusInvoker {
+  // TypedReturnDBusInvoker::Invoke() is a member function that actually
+  // extracts the parameters from the message buffer and calls the handler.
+  //  handler     - the C++ callback to be called after all the parameters are
+  //                read from the message.
+  //  method_call - D-Bus method call object we are processing.
+  //  reader      - D-Bus message reader to parse the parameter values from.
   static std::unique_ptr<dbus::Response> Invoke(const CallbackType& handler,
                                                 dbus::MethodCall* method_call,
-                                                dbus::MessageReader* reader,
-                                                const Args&... args) {
-    if (!reader->HasMoreData())
-      return CreateDBusErrorResponse(method_call,
-                                     DBUS_ERROR_INVALID_ARGS,
-                                     "Too few parameters in a method call");
-    // ParamType could be a reference type (e.g. 'const std::string&').
-    // Here we need a value type so we can create an object of this type and
-    // pop the value off the message buffer into. Using std::decay<> to get
-    // the value type. If ParamType is already a value type, ParamValueType will
-    // be the same as ParamType.
-    using ParamValueType = typename std::decay<ParamType>::type;
-    // The variable to hold the value of the current parameter we reading from
-    // the message buffer.
-    ParamValueType current_param;
-    if (!chromeos::dbus_utils::PopValueFromReader(reader, &current_param))
-      return CreateDBusErrorResponse(method_call,
-                                     DBUS_ERROR_INVALID_ARGS,
-                                     "Method parameter type mismatch");
-    // Call DBusInvoker::Invoke() to process the rest of parameters.
-    // Note that this is not a recursive call because it is calling a different
-    // method of a different class. We exclude the current parameter type
-    // (ParamType) from DBusInvoker<> template parameter list and forward all
-    // the parameters to the arguments of Invoke() and append the current
-    // parameter to the end of the parameter list. We pass it as a const
-    // reference to allow to use move-only types such as std::unique_ptr<> and
-    // to eliminate unnecessarily copying data.
-    return DBusInvoker<ReturnType, RestOfParams...>::Invoke(
-        handler, method_call, reader, args...,
-        static_cast<const ParamValueType&>(current_param));
-  }
-};  // struct DBusInvoker<ReturnType, ParamType, RestOfParams...>
+                                                dbus::MessageReader* reader) {
+    // This is a generic method and the handler is expected to return a
+    // (non-void) return value. It can also return an error via the first
+    // argument of type ErrorPtr*.
+    // Create a simple callback wrapper around the method handler to hide these
+    // extra arguments from DBusParamReader<Args...>::Invoke() by capturing
+    // them in the lambda objects and then using them to call the real handler.
+    ErrorPtr handler_error;
+    ReturnType handler_retval;
+    auto param_reader_callback =
+        [&handler_error, &handler_retval, &handler](const Args&... args) {
+      handler_retval = handler.Run(&handler_error, args...);
+    };
 
-// This is a final specialization of DBusInvoker<> that actually calls the
-// C++ callback methods with all the accumulated arguments. This specialization
-// expects that the callback returns a non-void value that needs to be
-// sent back to the caller via DBus.
-template<typename ReturnType>
-struct DBusInvoker<ReturnType> {
-  // This specialization of DBusInvoker::Invoke() actually calls |handler|
-  // which is expected to be of base::Callback<ReturnType(ErrorPtr*, Args...)>
-  // type.
-  template<typename CallbackType, typename... Args>
-  static std::unique_ptr<dbus::Response> Invoke(const CallbackType& handler,
-                                                dbus::MethodCall* method_call,
-                                                dbus::MessageReader* reader,
-                                                const Args&... args) {
-    if (reader->HasMoreData())
-      return CreateDBusErrorResponse(method_call,
-                                     DBUS_ERROR_INVALID_ARGS,
-                                     "Too many parameters in a method call");
-    chromeos::ErrorPtr error;
-    // If |handler| fails it should provide the error information in |error|.
-    ReturnType ret = handler.Run(&error, args...);
-    if (error)
-      return dbus_utils::GetDBusError(method_call, error.get());
-    // Send back the |ret| value through DBus.
+    // DBusParamReader<Args...>::Invoke() may return its own error when parsing
+    // arguments, so give it another instance of ErrorPtr.
+    ErrorPtr param_reader_error;
+    if (!DBusParamReader<Args...>::Invoke(param_reader_callback,
+                                          &param_reader_error,
+                                          reader)) {
+      // Parsing the handler arguments failed. Return D-Bus error.
+      return GetDBusError(method_call, param_reader_error.get());
+    }
+
+    // If |handler| failed, return the error information stored in
+    // |handler_error| object.
+    if (handler_error)
+      return dbus_utils::GetDBusError(method_call, handler_error.get());
+
+    // Send back the |handler_retval| value through D-Bus.
     auto response = dbus::Response::FromMethodCall(method_call);
     dbus::MessageWriter writer(response.get());
-    chromeos::dbus_utils::AppendValueToWriter(&writer, ret);
+    chromeos::dbus_utils::AppendValueToWriter(&writer, handler_retval);
     return std::unique_ptr<dbus::Response>(response.release());
   }
-};  // struct DBusInvoker<ReturnType>
+};  // struct TypedReturnDBusInvoker<ReturnType, ...>
 
-// This is a final specialization of DBusInvoker<> that actually calls the
-// C++ callback methods with all the accumulated arguments. This specialization
-// expects that the callback returns a custom std::unique_ptr<dbus::Response>
-// response object in cases of both success and failure.
-template<>
-struct DBusInvoker<std::unique_ptr<dbus::Response>> {
-  // This specialization of DBusInvoker::Invoke() actually calls |handler|
-  // which is expected to be of
-  // base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*, Args...)>
-  // type.
-  template<typename CallbackType, typename... Args>
+// This is a specialization of TypedReturnDBusInvoker<> for a method handler
+// which is not expected to return any value (ReturnType = void).
+// So the |handler| signature must be:
+//   base::Callback<void(ErrorPtr*, Args...)>;
+template<typename CallbackType, typename... Args>
+struct TypedReturnDBusInvoker<void, CallbackType, Args...> {
+  // Implementation of Invoke() is identical to the one above except there is no
+  // return value from the method handler to send back to the D-Bus method
+  // caller.
   static std::unique_ptr<dbus::Response> Invoke(const CallbackType& handler,
                                                 dbus::MethodCall* method_call,
-                                                dbus::MessageReader* reader,
-                                                const Args&... args) {
-    if (reader->HasMoreData())
-      return CreateDBusErrorResponse(method_call,
-                                     DBUS_ERROR_INVALID_ARGS,
-                                     "Too many parameters in a method call");
-    return handler.Run(method_call, args...);
-  }
-};  // struct DBusInvoker<std::unique_ptr<dbus::Response>>
+                                                dbus::MessageReader* reader) {
+    ErrorPtr handler_error;
+    auto param_reader_callback =
+        [&handler_error, &handler](const Args&... args) {
+      handler.Run(&handler_error, args...);
+    };
 
-// This specialization of DBusInvoker<> is for the case where the C++ handler
-// does not return any value (that is, it returns 'void'). The implementation
-// of this class and its Invoke() method is pretty much identical to the above
-// but without sending the return value back to the caller.
-template<>
-struct DBusInvoker<void> {
-  template<typename CallbackType, typename... Args>
-  static std::unique_ptr<dbus::Response> Invoke(const CallbackType& handler,
-                                                dbus::MethodCall* method_call,
-                                                dbus::MessageReader* reader,
-                                                const Args&... args) {
-    if (reader->HasMoreData())
-      return CreateDBusErrorResponse(method_call,
-                                     DBUS_ERROR_INVALID_ARGS,
-                                     "Too many parameters in a method call");
-    chromeos::ErrorPtr error;
-    handler.Run(&error, args...);
-    if (error)
-      return dbus_utils::GetDBusError(method_call, error.get());
+    ErrorPtr param_reader_error;
+    if (!DBusParamReader<Args...>::Invoke(param_reader_callback,
+                                          &param_reader_error,
+                                          reader)) {
+      // Error parsing method arguments.
+      return GetDBusError(method_call, param_reader_error.get());
+    }
+
+    // Method handler returned an error.
+    if (handler_error)
+      return dbus_utils::GetDBusError(method_call, handler_error.get());
+
     return std::unique_ptr<dbus::Response>(
         dbus::Response::FromMethodCall(method_call).release());
   }
-};  // struct DBusInvoker<void>
+};  // struct TypedReturnDBusInvoker<void, ...>
+
+// RawReturnDBusInvoker is similar to TypedReturnDBusInvoker<> above but there
+// is no special error handling or typed return values from the handler.
+// Instead, the handler returns the raw response message which could be
+// a method call reply or an error response.
+// The |handler| signature must be:
+//   base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*, Args...)>
+template<typename CallbackType, typename... Args>
+struct RawReturnDBusInvoker {
+  static std::unique_ptr<dbus::Response> Invoke(const CallbackType& handler,
+                                                dbus::MethodCall* method_call,
+                                                dbus::MessageReader* reader) {
+    std::unique_ptr<dbus::Response> handler_response;
+    auto param_reader_callback =
+        [&handler_response, method_call, &handler](const Args&... args) {
+      handler_response = handler.Run(method_call, args...);
+    };
+
+    ErrorPtr param_reader_error;
+    if (!DBusParamReader<Args...>::Invoke(param_reader_callback,
+                                          &param_reader_error,
+                                          reader)) {
+      return GetDBusError(method_call, param_reader_error.get());
+    }
+    return handler_response;
+  }
+};  // struct RawReturnDBusInvoker
 
 // This is a helper function that calls a C++ |handler| callback by reading
-// the function arguments from the message buffer provided in DBus
-// |method_call|. Returns a DBus Response class with the response message
+// the function arguments from the message buffer provided in D-Bus
+// |method_call|. Returns a D-Bus Response class with the response message
 // containing either a valid reply message or an error message if the call
 // failed.
 template<typename ReturnType, typename... Args>
 std::unique_ptr<dbus::Response> CallDBusMethodHandler(
-    const base::Callback<ReturnType(chromeos::ErrorPtr*, Args...)>& handler,
+    const TypedReturnDBusMethodHandler<ReturnType, Args...>& handler,
     dbus::MethodCall* method_call) {
   dbus::MessageReader reader(method_call);
-  return DBusInvoker<ReturnType, Args...>::Invoke(handler, method_call,
-                                                  &reader);
+  using Handler = TypedReturnDBusMethodHandler<ReturnType, Args...>;
+  return TypedReturnDBusInvoker<ReturnType, Handler, Args...>::Invoke(handler,
+                                                                method_call,
+                                                                &reader);
 }
 
 // CallDBusMethodHandler overload for dispatching a callback handler that
 // returns a custom response object as std::unique_ptr<dbus::Response>.
 template<typename... Args>
 std::unique_ptr<dbus::Response> CallDBusMethodHandler(
-    const base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*,
-                                                         Args...)>& handler,
+    const RawReturnDBusMethodHandler<Args...>& handler,
     dbus::MethodCall* method_call) {
   dbus::MessageReader reader(method_call);
-  return DBusInvoker<std::unique_ptr<dbus::Response>, Args...>::Invoke(
-      handler, method_call, &reader);
+  using Handler = RawReturnDBusMethodHandler<Args...>;
+  return RawReturnDBusInvoker<Handler, Args...>::Invoke(handler,
+                                                        method_call,
+                                                        &reader);
 }
 
 }  // namespace dbus_utils

@@ -253,6 +253,7 @@
             'chromeos/asynchronous_signal_handler_unittest.cc',
             'chromeos/data_encoding_unittest.cc',
             'chromeos/dbus/dbus_object_unittest.cc',
+            'chromeos/dbus/dbus_param_reader_unittest.cc',
             'chromeos/dbus_utils_unittest.cc',
             'chromeos/error_unittest.cc',
             'chromeos/exported_object_manager_unittest.cc',
