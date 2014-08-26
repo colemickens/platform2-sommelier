@@ -30,7 +30,7 @@ namespace vpn_manager {
 class ServiceManager {
  public:
   explicit ServiceManager(const std::string& service_name);
-  virtual ~ServiceManager();
+  virtual ~ServiceManager() = default;
 
   // Initialize directories used by services.  |scoped_temp_dir| will
   // be set to manage an appropriate temp directory.  This function

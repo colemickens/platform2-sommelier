@@ -25,7 +25,7 @@ class Daemon;
 class IpsecManager : public ServiceManager {
  public:
   IpsecManager();
-  ~IpsecManager() override;
+  ~IpsecManager() override = default;
 
   // Initialize the object to control IKE version |ike_version| daemon,
   // connecting to the given |remote_address|, with given paths to

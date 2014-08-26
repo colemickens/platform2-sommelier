@@ -32,7 +32,7 @@ namespace vpn_manager {
 class L2tpManager : public ServiceManager {
  public:
   L2tpManager();
-  ~L2tpManager() override;
+  ~L2tpManager() override = default;
 
   // Initialize the object using |remote_host|.  Returns false if
   // an illegal set of parameters has been given.  Has no side effects

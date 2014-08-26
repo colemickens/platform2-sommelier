@@ -36,9 +36,6 @@ ServiceManager::ServiceManager(const std::string& service_name)
       error_(kServiceErrorNoError) {
 }
 
-ServiceManager::~ServiceManager() {
-}
-
 void ServiceManager::OnStarted() {
   CHECK(!is_running_ && !was_stopped_);
   CHECK(outer_service_ == NULL || outer_service_->is_running_);
