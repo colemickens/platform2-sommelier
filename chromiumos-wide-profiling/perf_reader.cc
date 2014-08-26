@@ -51,12 +51,21 @@ const uint64_t kPerfMagic = 0x32454c4946524550LL;
 
 // A mask that is applied to metadata_mask_ in order to get a mask for
 // only the metadata supported by quipper.
-// Currently, we support build ids, hostname, osrelease, version, arch, nrcpus,
-// cpudesc, cpuid, totalmem, cmdline, eventdesc, cputopology, numatopology, and
-// branchstack.
-// The mask is computed as (1 << HEADER_BUILD_ID) |
-// (1 << HEADER_HOSTNAME) | ... | (1 << HEADER_BRANCH_STACK)
-const uint32_t kSupportedMetadataMask = 0xfffc;
+const uint32_t kSupportedMetadataMask =
+    1 << HEADER_BUILD_ID |
+    1 << HEADER_HOSTNAME |
+    1 << HEADER_OSRELEASE |
+    1 << HEADER_VERSION |
+    1 << HEADER_ARCH |
+    1 << HEADER_NRCPUS |
+    1 << HEADER_CPUDESC |
+    1 << HEADER_CPUID |
+    1 << HEADER_TOTAL_MEM |
+    1 << HEADER_CMDLINE |
+    1 << HEADER_EVENT_DESC |
+    1 << HEADER_CPU_TOPOLOGY |
+    1 << HEADER_NUMA_TOPOLOGY |
+    1 << HEADER_BRANCH_STACK;
 
 // By default, the build ID event has PID = -1.
 const uint32_t kDefaultBuildIDEventPid = static_cast<uint32_t>(-1);
