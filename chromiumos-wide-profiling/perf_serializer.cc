@@ -256,16 +256,16 @@ bool PerfSerializer::DeserializePerfEventType(
   return true;
 }
 
-bool PerfSerializer::SerializeEvent(
-    const ParsedEvent& event,
-    PerfDataProto_PerfEvent* event_proto) const {
-  return SerializeEventPointer(&event, event_proto);
-}
-
 bool PerfSerializer::SerializeEventPointer(
     const ParsedEvent* event_ptr,
     PerfDataProto_PerfEvent* event_proto) const {
   const ParsedEvent& event = *event_ptr;
+  return SerializeEvent(event, event_proto);
+}
+
+bool PerfSerializer::SerializeEvent(
+    const ParsedEvent& event,
+    PerfDataProto_PerfEvent* event_proto) const {
   const perf_event_header& header = (*event.raw_event)->header;
   const event_t& raw_event = **event.raw_event;
   if (!SerializeEventHeader(header, event_proto->mutable_header()))
@@ -870,7 +870,7 @@ bool PerfSerializer::DeserializeMetadata(const PerfDataProto& from) {
 }
 
 bool PerfSerializer::SerializeBuildIDEvent(
-    build_id_event* const& from,
+    const build_id_event* from,
     PerfDataProto_PerfBuildID* to) const {
   to->set_misc(from->header.misc);
   to->set_pid(from->pid);
