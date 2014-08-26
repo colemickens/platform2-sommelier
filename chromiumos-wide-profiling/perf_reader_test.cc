@@ -182,15 +182,13 @@ void CheckFilenameAndBuildIDMethods(const string& input_perf_data,
 
 }  // namespace
 
-TEST(PerfReaderTest, Test1Cycle) {
+TEST(PerfReaderTest, NormalModePerfData) {
   ScopedTempDir output_dir;
   ASSERT_FALSE(output_dir.path().empty());
   string output_path = output_dir.path();
 
-  for (unsigned int i = 0;
-       i < arraysize(perf_test_files::kPerfDataFiles);
-       ++i) {
-    const char* test_file = perf_test_files::kPerfDataFiles[i];
+  int seed = 0;
+  for (const char* test_file : perf_test_files::kPerfDataFiles) {
     string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
     string output_perf_data = output_path + test_file + ".pr.out";
@@ -202,14 +200,18 @@ TEST(PerfReaderTest, Test1Cycle) {
     EXPECT_TRUE(CheckPerfDataAgainstBaseline(output_perf_data));
     EXPECT_TRUE(ComparePerfBuildIDLists(input_perf_data, output_perf_data));
     CheckFilenameAndBuildIDMethods(input_perf_data, output_path + test_file,
-                                   i, &pr);
+                                   seed, &pr);
+    ++seed;
   }
+}
 
-  std::map<string, std::vector<string> > metadata;
-  for (unsigned int i = 0;
-       i < arraysize(perf_test_files::kPerfPipedDataFiles);
-       ++i) {
-    const char* test_file = perf_test_files::kPerfPipedDataFiles[i];
+TEST(PerfReaderTest, PipedModePerfData) {
+  ScopedTempDir output_dir;
+  ASSERT_FALSE(output_dir.path().empty());
+  string output_path = output_dir.path();
+
+  int seed = 0;
+  for (const char* test_file : perf_test_files::kPerfPipedDataFiles) {
     string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
     string output_perf_data = output_path + test_file + ".pr.out";
@@ -220,15 +222,13 @@ TEST(PerfReaderTest, Test1Cycle) {
     EXPECT_TRUE(CheckPerfDataAgainstBaseline(input_perf_data));
     EXPECT_TRUE(CheckPerfDataAgainstBaseline(output_perf_data));
     CheckFilenameAndBuildIDMethods(input_perf_data, output_path + test_file,
-                                   i, &pr);
+                                   seed, &pr);
+    ++seed;
   }
 }
 
 TEST(PerfReaderTest, CorruptedFiles) {
-  for (unsigned int i = 0;
-       i < arraysize(perf_test_files::kCorruptedPerfPipedDataFiles);
-       ++i) {
-    const char* test_file = perf_test_files::kCorruptedPerfPipedDataFiles[i];
+  for (const char* test_file : perf_test_files::kCorruptedPerfPipedDataFiles) {
     string input_perf_data = GetTestInputFilePath(test_file);
     LOG(INFO) << "Testing " << input_perf_data;
     ASSERT_TRUE(FileExists(input_perf_data)) << "Test file does not exist!";
