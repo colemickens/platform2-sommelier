@@ -8,6 +8,8 @@
 #include <regex.h>
 #include <stdint.h>
 
+#include <memory>
+
 #include <base/logging.h>
 
 namespace imageburn {
@@ -117,7 +119,7 @@ bool BurnerImpl::DoBurn(const char* from_path, const char* to_path,
   }
 
   if (success) {
-    scoped_ptr<char[]> buffer(new char[data_block_size_]);
+    std::unique_ptr<char[]> buffer(new char[data_block_size_]);
 
     int64_t total_burnt = 0;
     int64_t image_size = reader_->GetSize();

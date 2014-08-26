@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
+
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
@@ -25,7 +27,7 @@ int main(int argc, char* argv[]) {
   imageburn::BurnWriter writer;
   imageburn::BurnReader reader;
   imageburn::BurnRootPathGetter path_getter;
-  scoped_ptr<imageburn::BurnerImpl> burner(
+  std::unique_ptr<imageburn::BurnerImpl> burner(
       new imageburn::BurnerImpl(&writer, &reader, NULL, &path_getter));
 
   imageburn::ImageBurnService service(burner.get());

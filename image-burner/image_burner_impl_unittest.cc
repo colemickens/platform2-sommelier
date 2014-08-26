@@ -3,6 +3,9 @@
 // found in the LICENSE file.
 
 #include "image-burner/image_burner_impl.h"
+
+#include <memory>
+
 #include "image-burner/image_burner_test_utils.h"
 
 namespace imageburn {
@@ -31,9 +34,9 @@ class ImageBurnerImplTest : public ::testing::Test {
  public:
   virtual void SetUp() {
     burner_.reset(new BurnerImpl(&writer_,
-                             &reader_,
-                             &signal_sender_,
-                             &root_path_getter_));
+                                 &reader_,
+                                 &signal_sender_,
+                                 &root_path_getter_));
     EXPECT_CALL(signal_sender_, SendProgressSignal(_, _, _))
         .Times(0);
     EXPECT_CALL(writer_, Open(_))
@@ -103,7 +106,7 @@ class ImageBurnerImplTest : public ::testing::Test {
   }
 
  protected:
-  scoped_ptr<BurnerImpl> burner_;
+  std::unique_ptr<BurnerImpl> burner_;
   MockFileSystemWriter writer_;
   MockFileSystemReader reader_;
   MockSignalSender signal_sender_;

@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <base/memory/scoped_ptr.h>
-
 #include "image-burner/image_burner_utils_interfaces.h"
 
 namespace imageburn {

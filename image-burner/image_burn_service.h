@@ -9,7 +9,6 @@
 
 #include <string>
 
-#include <base/memory/scoped_ptr.h>
 #include <chromeos/dbus/abstract_dbus_service.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
