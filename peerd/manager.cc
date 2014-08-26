@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
+#include <chromeos/exported_object_manager.h>
 #include <dbus/object_path.h>
 
 #include "peerd/dbus_constants.h"
@@ -14,6 +15,7 @@
 using dbus::ObjectPath;
 using chromeos::ErrorPtr;
 using chromeos::dbus_utils::AsyncEventSequencer;
+using chromeos::dbus_utils::ExportedObjectManager;
 using peerd::dbus_constants::kManagerExposeIpService;
 using peerd::dbus_constants::kManagerInterface;
 using peerd::dbus_constants::kManagerPing;
@@ -31,8 +33,9 @@ using std::vector;
 
 namespace peerd {
 
-Manager::Manager(const scoped_refptr<dbus::Bus>& bus)
-  : dbus_object_(nullptr, bus, ObjectPath(kManagerServicePath)) {
+Manager::Manager(ExportedObjectManager* object_manager)
+  : dbus_object_(object_manager, object_manager->GetBus(),
+                 ObjectPath(kManagerServicePath)) {
 }
 
 void Manager::RegisterAsync(

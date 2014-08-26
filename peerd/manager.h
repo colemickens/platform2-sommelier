@@ -20,12 +20,18 @@ namespace dbus {
 class Bus;
 }  // namespace dbus
 
+namespace chromeos {
+namespace dbus_utils {
+class ExportedObjectManager;
+}  // dbus_utils
+}  // chromeos
+
 namespace peerd {
 
 // Manages global state of peerd.
 class Manager {
  public:
-  explicit Manager(const scoped_refptr<dbus::Bus>& bus);
+  explicit Manager(chromeos::dbus_utils::ExportedObjectManager* object_manager);
   virtual ~Manager() = default;
   void RegisterAsync(
       const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction&
