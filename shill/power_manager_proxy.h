@@ -35,6 +35,11 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
                             int *delay_id_out) override;
   bool UnregisterSuspendDelay(int delay_id) override;
   bool ReportSuspendReadiness(int delay_id, int suspend_id) override;
+  bool RegisterDarkSuspendDelay(base::TimeDelta timeout,
+                                const std::string &description,
+                                int *delay_id_out) override;
+  bool UnregisterDarkSuspendDelay(int delay_id) override;
+  bool ReportDarkSuspendReadiness(int delay_id, int suspend_id) override;
 
  private:
   // Only this factory method can create a PowerManagerProxy.
@@ -52,6 +57,8 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
     // Signal callbacks inherited from org::chromium::PowerManager_proxy.
     virtual void SuspendImminent(const std::vector<uint8_t> &serialized_proto);
     virtual void SuspendDone(const std::vector<uint8_t> &serialized_proto);
+    virtual void DarkSuspendImminent(
+        const std::vector<uint8_t> &serialized_proto);
 
     PowerManagerProxyDelegate *const delegate_;
 
@@ -62,6 +69,15 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
   // |delegate|.
   PowerManagerProxy(PowerManagerProxyDelegate *delegate,
                     DBus::Connection *connection);
+
+  bool RegisterSuspendDelayInternal(bool is_dark,
+                                    base::TimeDelta timeout,
+                                    const std::string &description,
+                                    int *delay_id_out);
+  bool UnregisterSuspendDelayInternal(bool is_dark, int delay_id);
+  bool ReportSuspendReadinessInternal(bool is_dark,
+                                      int delay_id,
+                                      int suspend_id);
 
   Proxy proxy_;
 

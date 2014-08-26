@@ -48,10 +48,51 @@ PowerManagerProxy::PowerManagerProxy(PowerManagerProxyDelegate *delegate,
 
 PowerManagerProxy::~PowerManagerProxy() {}
 
-bool PowerManagerProxy::RegisterSuspendDelay(base::TimeDelta timeout,
-                                             const string &description,
-                                             int *delay_id_out) {
-  LOG(INFO) << __func__ << "(" << timeout.InMilliseconds() << ")";
+bool PowerManagerProxy::RegisterSuspendDelay(
+    base::TimeDelta timeout,
+    const string &description,
+    int *delay_id_out) {
+  return RegisterSuspendDelayInternal(false,
+                                      timeout,
+                                      description,
+                                      delay_id_out);
+}
+
+bool PowerManagerProxy::UnregisterSuspendDelay(int delay_id) {
+  return UnregisterSuspendDelayInternal(false, delay_id);
+}
+
+bool PowerManagerProxy::ReportSuspendReadiness(int delay_id, int suspend_id) {
+  return ReportSuspendReadinessInternal(false, delay_id, suspend_id);
+}
+
+bool PowerManagerProxy::RegisterDarkSuspendDelay(
+    base::TimeDelta timeout,
+    const string &description,
+    int *delay_id_out) {
+  return RegisterSuspendDelayInternal(true,
+                                      timeout,
+                                      description,
+                                      delay_id_out);
+}
+
+bool PowerManagerProxy::UnregisterDarkSuspendDelay(int delay_id) {
+  return UnregisterSuspendDelayInternal(true, delay_id);
+}
+
+bool PowerManagerProxy::ReportDarkSuspendReadiness(int delay_id,
+                                                   int suspend_id ) {
+  return ReportSuspendReadinessInternal(true, delay_id, suspend_id);
+}
+
+bool PowerManagerProxy::RegisterSuspendDelayInternal(
+    bool is_dark,
+    base::TimeDelta timeout,
+    const string &description,
+    int *delay_id_out) {
+  const string is_dark_arg = (is_dark ? "dark=true" : "dark=false");
+  LOG(INFO) << __func__ << "(" << timeout.InMilliseconds()
+            << ", " << is_dark_arg <<")";
 
   power_manager::RegisterSuspendDelayRequest request_proto;
   request_proto.set_timeout(timeout.ToInternalValue());
@@ -61,7 +102,10 @@ bool PowerManagerProxy::RegisterSuspendDelay(base::TimeDelta timeout,
 
   vector<uint8_t> serialized_reply;
   try {
-    serialized_reply = proxy_.RegisterSuspendDelay(serialized_request);
+    if (is_dark)
+      serialized_reply = proxy_.RegisterDarkSuspendDelay(serialized_request);
+    else
+      serialized_reply = proxy_.RegisterSuspendDelay(serialized_request);
   } catch (const DBus::Error &e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
     return false;
@@ -69,15 +113,19 @@ bool PowerManagerProxy::RegisterSuspendDelay(base::TimeDelta timeout,
 
   power_manager::RegisterSuspendDelayReply reply_proto;
   if (!DeserializeProtocolBuffer(serialized_reply, &reply_proto)) {
-    LOG(ERROR) << "Failed to register suspend delay.  Couldn't parse response.";
+    LOG(ERROR) << "Failed to register "
+               << (is_dark ? "dark " : "")
+               << "suspend delay.  Couldn't parse response.";
     return false;
   }
   *delay_id_out = reply_proto.delay_id();
   return true;
 }
 
-bool PowerManagerProxy::UnregisterSuspendDelay(int delay_id) {
-  LOG(INFO) << __func__ << "(" << delay_id << ")";
+bool PowerManagerProxy::UnregisterSuspendDelayInternal(bool is_dark,
+                                                       int delay_id) {
+  const string is_dark_arg = (is_dark ? "dark=true" : "dark=false");
+  LOG(INFO) << __func__ << "(" << delay_id << ", " << is_dark_arg << ")";
 
   power_manager::UnregisterSuspendDelayRequest request_proto;
   request_proto.set_delay_id(delay_id);
@@ -85,16 +133,25 @@ bool PowerManagerProxy::UnregisterSuspendDelay(int delay_id) {
   CHECK(SerializeProtocolBuffer(request_proto, &serialized_request));
 
   try {
-    proxy_.UnregisterSuspendDelay(serialized_request);
-    return true;
+    if (is_dark)
+      proxy_.UnregisterDarkSuspendDelay(serialized_request);
+    else
+      proxy_.UnregisterSuspendDelay(serialized_request);
   } catch (const DBus::Error &e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
     return false;
   }
+  return true;
 }
 
-bool PowerManagerProxy::ReportSuspendReadiness(int delay_id, int suspend_id) {
-  LOG(INFO) << __func__  << "(" << delay_id << ", " << suspend_id << ")";
+bool PowerManagerProxy::ReportSuspendReadinessInternal(bool is_dark,
+                                                       int delay_id,
+                                                       int suspend_id) {
+  const string is_dark_arg = (is_dark ? "dark=true" : "dark=false");
+  LOG(INFO) << __func__
+            << "(" << delay_id
+            << ", " << suspend_id
+            << ", " << is_dark_arg << ")";
 
   power_manager::SuspendReadinessInfo proto;
   proto.set_delay_id(delay_id);
@@ -103,12 +160,15 @@ bool PowerManagerProxy::ReportSuspendReadiness(int delay_id, int suspend_id) {
   CHECK(SerializeProtocolBuffer(proto, &serialized_proto));
 
   try {
-    proxy_.HandleSuspendReadiness(serialized_proto);
-    return true;
+    if (is_dark)
+      proxy_.HandleDarkSuspendReadiness(serialized_proto);
+    else
+      proxy_.HandleSuspendReadiness(serialized_proto);
   } catch (const DBus::Error &e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
     return false;
   }
+  return true;
 }
 
 PowerManagerProxy::Proxy::Proxy(PowerManagerProxyDelegate *delegate,
@@ -123,7 +183,6 @@ PowerManagerProxy::Proxy::~Proxy() {}
 void PowerManagerProxy::Proxy::SuspendImminent(
     const vector<uint8_t> &serialized_proto) {
   LOG(INFO) << __func__;
-
   power_manager::SuspendImminent proto;
   if (!DeserializeProtocolBuffer(serialized_proto, &proto)) {
     LOG(ERROR) << "Failed to parse SuspendImminent signal.";
@@ -141,6 +200,17 @@ void PowerManagerProxy::Proxy::SuspendDone(
     return;
   }
   delegate_->OnSuspendDone(proto.suspend_id());
+}
+
+void PowerManagerProxy::Proxy::DarkSuspendImminent(
+    const vector<uint8_t> &serialized_proto) {
+  LOG(INFO) << __func__;
+  power_manager::SuspendImminent proto;
+  if (!DeserializeProtocolBuffer(serialized_proto, &proto)) {
+    LOG(ERROR) << "Failed to parse DarkSuspendImminent signal.";
+    return;
+  }
+  delegate_->OnDarkSuspendImminent(proto.suspend_id());
 }
 
 }  // namespace shill

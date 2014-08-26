@@ -556,6 +556,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // actually suspending, in the event of the user canceling the attempt).
   void OnSuspendDone();
 
+  // Called when the system is entering a dark resume phase (and hence a dark
+  // suspend is imminent).
+  void OnDarkSuspendImminent();
+
   void OnSuspendActionsComplete(const Error &error);
   void VerifyToEncryptLink(std::string public_key, std::string data,
                            ResultStringCallback cb, const Error &error,

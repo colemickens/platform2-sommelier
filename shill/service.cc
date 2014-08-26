@@ -1131,6 +1131,10 @@ void Service::OnAfterResume() {
   ClearExplicitlyDisconnected();
 }
 
+void Service::OnDarkResume() {
+  // Nothing to do in the general case.
+}
+
 string Service::GetIPConfigRpcIdentifier(Error *error) const {
   if (!connection_) {
     error->Populate(Error::kNotFound);

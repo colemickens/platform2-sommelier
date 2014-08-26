@@ -202,7 +202,8 @@ void Manager::Start() {
                         base::TimeDelta::FromMilliseconds(
                             kTerminationActionsTimeoutMilliseconds),
                         Bind(&Manager::OnSuspendImminent, AsWeakPtr()),
-                        Bind(&Manager::OnSuspendDone, AsWeakPtr()));
+                        Bind(&Manager::OnSuspendDone, AsWeakPtr()),
+                        Bind(&Manager::OnDarkSuspendImminent, AsWeakPtr()));
 
   CHECK(base::CreateDirectory(run_path_)) << run_path_.value();
   resolver_->set_path(run_path_.Append("resolv.conf"));
@@ -1251,6 +1252,18 @@ void Manager::OnSuspendDone() {
   for (const auto &device : devices_) {
     device->OnAfterResume();
   }
+}
+
+void Manager::OnDarkSuspendImminent() {
+  for (const auto &device : devices_) {
+    device->OnDarkResume();
+  }
+  for (const auto &service : services_) {
+    service->OnDarkResume();
+  }
+  // TODO(pprabhu): This should probably become asynchronous when devices
+  // implement dark suspend functionality.
+  power_manager_->ReportDarkSuspendReadiness();
 }
 
 void Manager::OnSuspendActionsComplete(const Error &error) {

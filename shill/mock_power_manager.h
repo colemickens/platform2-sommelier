@@ -22,12 +22,13 @@ class MockPowerManager : public PowerManager {
   ~MockPowerManager() override;
 
   MOCK_METHOD0(ReportSuspendReadiness, bool());
-  MOCK_METHOD4(
+  MOCK_METHOD5(
       Start,
       void(DBusManager *dbus_manager,
            base::TimeDelta suspend_delay,
            const PowerManager::SuspendImminentCallback &imminent_callback,
-           const PowerManager::SuspendDoneCallback &done_callback));
+           const PowerManager::SuspendDoneCallback &done_callback,
+           const PowerManager::DarkSuspendImminentCallback &dark_imminent));
   MOCK_METHOD0(Stop, void());
 
  private:

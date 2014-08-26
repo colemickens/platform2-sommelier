@@ -256,6 +256,11 @@ class Device : public base::RefCounted<Device> {
   // the base class implementation.
   virtual void OnAfterResume();
 
+  // This method is invoked when the system resumes from suspend temporarily in
+  // the "dark resume" state. The system will reenter suspend in
+  // Manager::kTerminationActionsTimeoutMilliseconds.
+  virtual void OnDarkResume();
+
   // Destroy the lease, if any, with this |name|.
   // Called by the service during Unload() as part of the cleanup sequence.
   virtual void DestroyIPConfigLease(const std::string &name);

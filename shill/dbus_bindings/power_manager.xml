@@ -20,5 +20,18 @@
     <signal name="SuspendDone">
       <arg name="serialized_proto" type="ay"/>
     </signal>
+    <method name="RegisterDarkSuspendDelay">
+      <arg name="serialized_request_proto" direction="in" type="ay"/>
+      <arg name="serialized_reply_proto" direction="out" type="ay"/>
+    </method>
+    <method name="UnregisterDarkSuspendDelay">
+      <arg name="serialized_proto" direction="in" type="ay"/>
+    </method>
+    <method name="HandleDarkSuspendReadiness">
+      <arg name="serialized_proto" direction="in" type="ay"/>
+    </method>
+    <signal name="DarkSuspendImminent">
+      <arg name="serialized_proto" type="ay"/>
+    </signal>
   </interface>
 </node>

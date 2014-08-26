@@ -28,6 +28,7 @@ namespace shill {
 // static
 const int PowerManager::kInvalidSuspendId = -1;
 const char PowerManager::kSuspendDelayDescription[] = "shill";
+const char PowerManager::kDarkSuspendDelayDescription[] = "shill";
 const int PowerManager::kSuspendTimeoutMilliseconds = 15 * 1000;
 
 PowerManager::PowerManager(EventDispatcher *dispatcher,
@@ -36,8 +37,11 @@ PowerManager::PowerManager(EventDispatcher *dispatcher,
       power_manager_proxy_(proxy_factory->CreatePowerManagerProxy(this)),
       suspend_delay_registered_(false),
       suspend_delay_id_(0),
+      dark_suspend_delay_registered_(false),
+      dark_suspend_delay_id_(0),
       suspending_(false),
-      current_suspend_id_(0) {}
+      current_suspend_id_(0),
+      current_dark_suspend_id_(0) {}
 
 PowerManager::~PowerManager() {}
 
@@ -45,7 +49,8 @@ void PowerManager::Start(
     DBusManager *dbus_manager,
     TimeDelta suspend_delay,
     const SuspendImminentCallback &suspend_imminent_callback,
-    const SuspendDoneCallback &suspend_done_callback) {
+    const SuspendDoneCallback &suspend_done_callback,
+    const DarkSuspendImminentCallback &dark_suspend_imminent_callback) {
   power_manager_name_watcher_.reset(
       dbus_manager->CreateNameWatcher(
           power_manager::kPowerManagerServiceName,
@@ -55,6 +60,7 @@ void PowerManager::Start(
   suspend_delay_ = suspend_delay;
   suspend_imminent_callback_ = suspend_imminent_callback;
   suspend_done_callback_ = suspend_done_callback;
+  dark_suspend_imminent_callback_ = dark_suspend_imminent_callback;
 }
 
 void PowerManager::Stop() {
@@ -64,8 +70,11 @@ void PowerManager::Stop() {
   // reappeared behind our back. It is safe to do so.
   if (suspend_delay_registered_)
     power_manager_proxy_->UnregisterSuspendDelay(suspend_delay_id_);
+  if (dark_suspend_delay_registered_)
+    power_manager_proxy_->UnregisterDarkSuspendDelay(dark_suspend_delay_id_);
 
   suspend_delay_registered_ = false;
+  dark_suspend_delay_registered_ = false;
 }
 
 bool PowerManager::ReportSuspendReadiness() {
@@ -76,6 +85,12 @@ bool PowerManager::ReportSuspendReadiness() {
   }
   return power_manager_proxy_->ReportSuspendReadiness(suspend_delay_id_,
                                                       current_suspend_id_);
+}
+
+bool PowerManager::ReportDarkSuspendReadiness() {
+  return power_manager_proxy_->ReportDarkSuspendReadiness(
+      dark_suspend_delay_id_,
+      current_dark_suspend_id_);
 }
 
 void PowerManager::OnSuspendImminent(int suspend_id) {
@@ -107,6 +122,20 @@ void PowerManager::OnSuspendDone(int suspend_id) {
   suspend_done_callback_.Run();
 }
 
+void PowerManager::OnDarkSuspendImminent(int suspend_id) {
+  LOG(INFO) << __func__ << "(" << suspend_id << ")";
+  if (!dark_suspend_delay_registered_) {
+    LOG(WARNING) << "Ignoring DarkSuspendImminent signal from powerd. shill "
+                 << "does not have a dark suspend delay registered. This "
+                 << "means that shill is not guaranteed any time before a "
+                 << "resuspend.";
+    return;
+  }
+
+  current_dark_suspend_id_ = suspend_id;
+  dark_suspend_imminent_callback_.Run();
+}
+
 void PowerManager::OnPowerManagerAppeared(const string &/*name*/,
                                           const string &/*owner*/) {
   LOG(INFO) << __func__;
@@ -115,6 +144,12 @@ void PowerManager::OnPowerManagerAppeared(const string &/*name*/,
                                                  kSuspendDelayDescription,
                                                  &suspend_delay_id_))
     suspend_delay_registered_ = true;
+
+  if (power_manager_proxy_->RegisterDarkSuspendDelay(
+      suspend_delay_,
+      kDarkSuspendDelayDescription,
+      &dark_suspend_delay_id_))
+    dark_suspend_delay_registered_ = true;
 }
 
 void PowerManager::OnPowerManagerVanished(const string &/*name*/) {
@@ -123,6 +158,7 @@ void PowerManager::OnPowerManagerVanished(const string &/*name*/) {
   if (suspending_)
     OnSuspendDone(kInvalidSuspendId);
   suspend_delay_registered_ = false;
+  dark_suspend_delay_registered_ = false;
 }
 
 }  // namespace shill

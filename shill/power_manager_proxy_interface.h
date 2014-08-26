@@ -39,6 +39,21 @@ class PowerManagerProxyInterface {
   // contain the ID returned via RegisterSuspendDelay() and |suspend_id| should
   // contain the ID from OnSuspendImminent().  Returns true on success.
   virtual bool ReportSuspendReadiness(int delay_id, int suspend_id) = 0;
+
+  // Sends a request to the power manager to wait for this client for up to
+  // |timeout| before suspending the system from a dark resume. Arguments
+  // are as explained for |RegisterSuspendDelay|. Returns true on success.
+  virtual bool RegisterDarkSuspendDelay(base::TimeDelta timeout,
+                                        const std::string &description,
+                                        int *delay_id_out) = 0;
+
+  // Unregisters a previously-registered dark suspend delay. Returns true on
+  // success.
+  virtual bool UnregisterDarkSuspendDelay(int delay_id) = 0;
+
+  // Calls the power manager's HandleDarkSuspendReadiness method. Arguments are
+  // as explained for ReportSuspendReadiness. Returns true on success.
+  virtual bool ReportDarkSuspendReadiness(int delay_id, int suspend_id) = 0;
 };
 
 // PowerManager signal delegate to be associated with the proxy.
@@ -46,7 +61,7 @@ class PowerManagerProxyDelegate {
  public:
   virtual ~PowerManagerProxyDelegate() {}
 
-  // Broadcast by the power manager when it's about to suspend. RPC clients
+  // Broadcast by the power manager when it's about to suspend. Delegates
   // that have registered through RegisterSuspendDelay() should tell the power
   // manager that they're ready to suspend by calling ReportSuspendReadiness()
   // with the delay ID returned by RegisterSuspendDelay() and |suspend_id|.
@@ -54,6 +69,13 @@ class PowerManagerProxyDelegate {
 
   // Broadcast by the power manager when a suspend attempt has completed.
   virtual void OnSuspendDone(int suspend_id) = 0;
+
+  // Broadcast by the power manager when the system enters dark resume.
+  // Delegates that have registered through RegisterDarkSuspendDelay() should
+  // tell the power manager when they are ready to suspend from the dark resume
+  // by calling ReportDarkSuspendResume() with the delay ID returned by
+  // RegisterDarkSuspendDelay() and |suspend_id|.
+  virtual void OnDarkSuspendImminent(int suspend_id) = 0;
 };
 
 }  // namespace shill

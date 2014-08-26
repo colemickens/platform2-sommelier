@@ -387,6 +387,10 @@ void Device::OnAfterResume() {
   }
 }
 
+void Device::OnDarkResume() {
+  // Nothing to be done in the general case.
+}
+
 void Device::DropConnection() {
   SLOG(Device, 2) << __func__;
   DestroyIPConfig();

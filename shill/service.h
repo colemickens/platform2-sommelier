@@ -447,6 +447,9 @@ class Service : public base::RefCounted<Service> {
   // Called by the manager once after a resume.
   virtual void OnAfterResume();
 
+  // Called by the manager once when entering dark resume.
+  virtual void OnDarkResume();
+
   // Called by the manager to clear remembered state of being explicitly
   // disconnected.
   virtual void ClearExplicitlyDisconnected();

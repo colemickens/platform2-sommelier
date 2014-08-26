@@ -28,15 +28,23 @@ class ProxyFactory;
 class PowerManager : public PowerManagerProxyDelegate {
  public:
   // This callback is called prior to a suspend attempt.  When it is OK for the
-  // system to suspend, this callback should call ReportSuspendReadiness(),
-  // passing it the key passed to AddSuspendDelay() and the suspend ID passed to
-  // this callback.
+  // system to suspend, this callback should call ReportSuspendReadiness().
   typedef base::Closure SuspendImminentCallback;
 
   // This callback is called after the completion of a suspend attempt.  The
   // receiver should undo any pre-suspend work that was done by the
   // SuspendImminentCallback.
+  // The receiver should be aware that it is possible to get a
+  // SuspendDoneCallback while processing a DarkSuspendImminentCallback. So,
+  // SuspendDoneCallback should be ready to run concurrently with (and in a
+  // sense override) the actions taken by DarkSuspendImminentCallback.
   typedef base::Closure SuspendDoneCallback;
+
+  // This callback is called at the beginning of a dark resume.
+  // The receiver should arrange for ReportDarkSuspendImminentReadiness() to be
+  // called when shill is ready to resuspend. In most cases,
+  // ReportDarkSuspendImminentReadiness will be called asynchronously.
+  typedef base::Closure DarkSuspendImminentCallback;
 
   // |proxy_factory| creates the PowerManagerProxy.  Usually this is
   // ProxyFactory::GetInstance().  Use a fake for testing.
@@ -55,10 +63,12 @@ class PowerManager : public PowerManagerProxyDelegate {
   // - This object guarantees that a call to |imminent_callback| is followed by
   //   a call to |done_callback| (before any more calls to |imminent_callback|).
   // Requires a |DBusManager| that has been |Start|'ed.
-  virtual void Start(DBusManager *dbus_manager,
-                     base::TimeDelta suspend_delay,
-                     const SuspendImminentCallback &suspend_imminent_callback,
-                     const SuspendDoneCallback &suspend_done_callback);
+  virtual void Start(
+      DBusManager *dbus_manager,
+      base::TimeDelta suspend_delay,
+      const SuspendImminentCallback &suspend_imminent_callback,
+      const SuspendDoneCallback &suspend_done_callback,
+      const DarkSuspendImminentCallback &dark_suspend_imminent_callback);
   virtual void Stop();
 
   // Report suspend readiness. If called when there is no suspend attempt
@@ -66,9 +76,13 @@ class PowerManager : public PowerManagerProxyDelegate {
   // powerd.
   virtual bool ReportSuspendReadiness();
 
+  // Report dark suspend readiness. See ReportSuspendReadiness for more details.
+  virtual bool ReportDarkSuspendReadiness();
+
   // Methods inherited from PowerManagerProxyDelegate.
   virtual void OnSuspendImminent(int suspend_id);
   virtual void OnSuspendDone(int suspend_id);
+  virtual void OnDarkSuspendImminent(int suspend_id);
 
  private:
   friend class ManagerTest;
@@ -79,6 +93,7 @@ class PowerManager : public PowerManagerProxyDelegate {
   // with the power manager.
   static const int kInvalidSuspendId;
   static const char kSuspendDelayDescription[];
+  static const char kDarkSuspendDelayDescription[];
   static const int kSuspendTimeoutMilliseconds;
 
   // These functions track the power_manager daemon appearing/vanishing from the
@@ -98,19 +113,25 @@ class PowerManager : public PowerManagerProxyDelegate {
   // |suspend_delay_| after the notification, if we do not
   // |ReportSuspendReadiness| earlier.
   base::TimeDelta suspend_delay_;
-  // powerd tracks each suspend delay requested (by different clients) using
-  // randomly generated unique |suspend_delay_id_|s.
+  // powerd tracks each (dark) suspend delay requested (by different clients)
+  // using randomly generated unique |(dark)suspend_delay_id_|s.
   bool suspend_delay_registered_;
   int suspend_delay_id_;
+  bool dark_suspend_delay_registered_;
+  int dark_suspend_delay_id_;
   // Callbacks from shill called by this object when:
   // ... powerd notified us that a suspend is imminent.
   SuspendImminentCallback suspend_imminent_callback_;
   // ... powerd notified us that the suspend attempt has finished.
   SuspendDoneCallback suspend_done_callback_;
+  // ... powerd notified us that a dark suspend is imminent. This means that we
+  // just entered dark resume.
+  DarkSuspendImminentCallback dark_suspend_imminent_callback_;
 
   // Set to true by OnSuspendImminent() and to false by OnSuspendDone().
   bool suspending_;
   int current_suspend_id_;
+  int current_dark_suspend_id_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerManager);
 };
