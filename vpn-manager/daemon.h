@@ -5,9 +5,10 @@
 #ifndef VPN_MANAGER_DAEMON_H_
 #define VPN_MANAGER_DAEMON_H_
 
+#include <memory>
 #include <string>
 
-#include <base/memory/scoped_ptr.h>
+#include <base/macros.h>
 
 namespace chromeos {
 
@@ -63,7 +64,7 @@ class Daemon {
   static const int kTerminationTimeoutSeconds;
 
   // Process instance associated with this process.
-  scoped_ptr<chromeos::Process> process_;
+  std::unique_ptr<chromeos::Process> process_;
 
   // File name where the process id for this daemon is held.
   std::string pid_file_;

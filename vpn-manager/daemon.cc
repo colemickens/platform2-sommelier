@@ -40,7 +40,7 @@ bool Daemon::FindProcess() {
   if (!base::PathExists(base::FilePath(pid_file_)))
     return false;
 
-  scoped_ptr<chromeos::Process> process(new ProcessImpl);
+  std::unique_ptr<chromeos::Process> process(new ProcessImpl);
   process->ResetPidByFile(pid_file_);
   if (!Process::ProcessExists(process->pid())) {
     process->Release();

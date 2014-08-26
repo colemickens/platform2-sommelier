@@ -72,8 +72,8 @@ class DaemonTest : public ::testing::Test {
   }
 
   FilePath pid_file_path_;
-  scoped_ptr<Daemon> daemon_;
-  scoped_ptr<Process> real_process_;
+  std::unique_ptr<Daemon> daemon_;
+  std::unique_ptr<Process> real_process_;
   base::ScopedTempDir temp_dir_;
 };
 
@@ -118,7 +118,7 @@ TEST_F(DaemonTest, IsRunningAndGetPid) {
   EXPECT_EQ(pid, daemon_->GetPid());
 
   // Kill the process outside of the view of the process owned by the daemon.
-  scoped_ptr<Process> killed_process(new ProcessImpl);
+  std::unique_ptr<Process> killed_process(new ProcessImpl);
   killed_process->Reset(pid);
   killed_process->Kill(SIGTERM, 5);
   EXPECT_FALSE(daemon_->IsRunning());

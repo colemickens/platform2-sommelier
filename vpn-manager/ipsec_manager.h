@@ -5,11 +5,12 @@
 #ifndef VPN_MANAGER_IPSEC_MANAGER_H_
 #define VPN_MANAGER_IPSEC_MANAGER_H_
 
-#include <string>
 #include <sys/socket.h>
 
+#include <memory>
+#include <string>
+
 #include <base/files/file_path.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -143,9 +144,9 @@ class IpsecManager : public ServiceManager {
   // Time when ipsec was started.
   base::TimeTicks start_ticks_;
   // IPsec starter daemon.
-  scoped_ptr<Daemon> starter_daemon_;
+  std::unique_ptr<Daemon> starter_daemon_;
   // IPsec charon daemon.
-  scoped_ptr<Daemon> charon_daemon_;
+  std::unique_ptr<Daemon> charon_daemon_;
 };
 
 }  // namespace vpn_manager

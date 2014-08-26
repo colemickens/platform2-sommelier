@@ -284,7 +284,7 @@ TEST_F(IpsecManagerTest, FormatStrongswanConfigFile) {
 
 TEST_F(IpsecManagerTest, StartStarter) {
   InSequence unused;
-  scoped_ptr<ProcessMock> process(SetStartStarterExpectations());
+  std::unique_ptr<ProcessMock> process(SetStartStarterExpectations());
   EXPECT_TRUE(ipsec_.StartStarter());
   EXPECT_EQ(kMockFd, ipsec_.output_fd());
   EXPECT_EQ("ipsec[10001]: ", ipsec_.ipsec_prefix_);
@@ -381,7 +381,7 @@ TEST_F(IpsecManagerTestIkeV1Psk, FormatStarterConfigFile) {
 
 TEST_F(IpsecManagerTestIkeV1Psk, Start) {
   InSequence unused;
-  scoped_ptr<ProcessMock> process(SetStartStarterExpectations());
+  std::unique_ptr<ProcessMock> process(SetStartStarterExpectations());
   EXPECT_TRUE(ipsec_.Start());
   EXPECT_FALSE(ipsec_.start_ticks_.is_null());
 }
