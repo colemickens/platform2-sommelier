@@ -13,11 +13,6 @@
                 '<(DEPTH)/attestation/attestation.gyp:*',
               ],
             }],
-            ['USE_buffet == 1', {
-              'dependencies': [
-                '<(DEPTH)/buffet/buffet.gyp:*',
-              ],
-            }],
             ['USE_cellular == 1', {
               'dependencies': [
                 '<(DEPTH)/cromo/cromo.gyp:*',
