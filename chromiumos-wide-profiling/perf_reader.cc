@@ -996,23 +996,33 @@ bool PerfReader::WritePerfSampleInfo(const perf_sample& sample,
 bool PerfReader::ReadHeader(const ConstBufferWithSize& data) {
   CheckNoEventHeaderPadding();
   size_t offset = 0;
+  if (!ReadDataFromBuffer(data, sizeof(piped_header_), "header magic",
+                          &offset, &piped_header_)) {
+    return false;
+  }
+  if (piped_header_.magic != kPerfMagic &&
+      piped_header_.magic != bswap_64(kPerfMagic)) {
+    LOG(ERROR) << "Read wrong magic. Expected: 0x" << std::hex << kPerfMagic
+               << " or 0x" << std::hex << bswap_64(kPerfMagic)
+               << " Got: 0x" << std::hex << piped_header_.magic;
+    return false;
+  }
+  is_cross_endian_ = (piped_header_.magic != kPerfMagic);
+  if (is_cross_endian_)
+    ByteSwap(&piped_header_.size);
+
+  // Header can be a piped header.
+  if (piped_header_.size == sizeof(piped_header_))
+    return true;
+
+  // Re-read full header
+  offset = 0;
   if (!ReadDataFromBuffer(data, sizeof(header_), "header data",
                           &offset, &header_)) {
     return false;
   }
-  if (header_.magic != kPerfMagic && header_.magic != bswap_64(kPerfMagic)) {
-    LOG(ERROR) << "Read wrong magic. Expected: 0x" << std::hex << kPerfMagic
-               << " or 0x" << std::hex << bswap_64(kPerfMagic)
-               << " Got: 0x" << std::hex << header_.magic;
-    return false;
-  }
-  is_cross_endian_ = (header_.magic != kPerfMagic);
   if (is_cross_endian_)
     ByteSwap(&header_.size);
-
-  // Header can be a piped header.
-  if (header_.size != sizeof(header_))
-    return true;
 
   DLOG(INFO) << "event_types.size: " << header_.event_types.size;
   DLOG(INFO) << "event_types.offset: " << header_.event_types.offset;
