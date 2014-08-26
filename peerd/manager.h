@@ -12,8 +12,7 @@
 
 #include <base/basictypes.h>
 #include <chromeos/async_event_sequencer.h>
-
-#include "peerd/manager_dbus_proxy.h"
+#include <chromeos/dbus/dbus_object.h>
 
 struct sockaddr_storage;
 
@@ -60,7 +59,7 @@ class Manager {
   std::string Ping(chromeos::ErrorPtr* error);
 
  private:
-  ManagerDBusProxy proxy_;
+  chromeos::dbus_utils::DBusObject dbus_object_;
 
   friend class ManagerDBusProxyTest;
   DISALLOW_COPY_AND_ASSIGN(Manager);

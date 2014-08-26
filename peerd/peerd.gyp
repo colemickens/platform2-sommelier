@@ -15,7 +15,6 @@
         'dbus_constants.cc',
         'dbus_data_serialization.cc',
         'manager.cc',
-        'manager_dbus_proxy.cc',
       ],
     },
     {
@@ -46,7 +45,6 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'dbus_data_serialization_unittest.cc',
-            'manager_dbus_proxy_unittest.cc',
             'peerd_testrunner.cc',
           ],
         },

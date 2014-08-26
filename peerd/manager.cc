@@ -4,10 +4,25 @@
 
 #include "peerd/manager.h"
 
+#include <netinet/in.h>
+#include <sys/socket.h>
+
+#include <dbus/object_path.h>
+
 #include "peerd/dbus_constants.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
+using dbus::ObjectPath;
 using chromeos::ErrorPtr;
+using chromeos::dbus_utils::AsyncEventSequencer;
+using peerd::dbus_constants::kManagerExposeIpService;
+using peerd::dbus_constants::kManagerInterface;
+using peerd::dbus_constants::kManagerPing;
+using peerd::dbus_constants::kManagerRemoveExposedService;
+using peerd::dbus_constants::kManagerServicePath;
+using peerd::dbus_constants::kManagerSetFriendlyName;
+using peerd::dbus_constants::kManagerSetNote;
+using peerd::dbus_constants::kManagerStartMonitoring;
+using peerd::dbus_constants::kManagerStopMonitoring;
 using peerd::dbus_constants::kPingResponse;
 using std::map;
 using std::set;
@@ -16,14 +31,38 @@ using std::vector;
 
 namespace peerd {
 
-Manager::Manager(const scoped_refptr<dbus::Bus>& bus) : proxy_(bus, this) {
+Manager::Manager(const scoped_refptr<dbus::Bus>& bus)
+  : dbus_object_(nullptr, bus, ObjectPath(kManagerServicePath)) {
 }
 
 void Manager::RegisterAsync(
     const AsyncEventSequencer::CompletionAction& completion_callback) {
-  // Since we have no async init of our own, we can just give our
-  // callback to the proxy.
-  proxy_.RegisterAsync(completion_callback);
+  chromeos::dbus_utils::DBusInterface* itf =
+      dbus_object_.AddOrGetInterface(kManagerInterface);
+
+  itf->AddMethodHandler(kManagerStartMonitoring,
+                        base::Unretained(this),
+                        &Manager::StartMonitoring);
+  itf->AddMethodHandler(kManagerStopMonitoring,
+                        base::Unretained(this),
+                        &Manager::StopMonitoring);
+  itf->AddMethodHandler(kManagerExposeIpService,
+                        base::Unretained(this),
+                        &Manager::ExposeIpService);
+  itf->AddMethodHandler(kManagerRemoveExposedService,
+                        base::Unretained(this),
+                        &Manager::RemoveExposedService);
+  itf->AddMethodHandler(kManagerSetFriendlyName,
+                        base::Unretained(this),
+                        &Manager::SetFriendlyName);
+  itf->AddMethodHandler(kManagerSetNote,
+                        base::Unretained(this),
+                        &Manager::SetNote);
+  itf->AddMethodHandler(kManagerPing,
+                        base::Unretained(this),
+                        &Manager::Ping);
+
+  dbus_object_.RegisterAsync(completion_callback);
 }
 
 string Manager::StartMonitoring(ErrorPtr* error,
