@@ -230,15 +230,14 @@ if [ "$FAST_WIPE" != "fast" ] && [ "$ROTATIONAL" = "1" ]; then
   fi
   # Since the above rm/shred combo can be very fast, force a minimum of a 5
   # minute delay for this mode.
-  DELAY=300
+  delay=300
   ( stty -F /dev/tty1 raw -echo -cread
-    ( c=0
-      while [ "$c" -lt "$DELAY" ]; do
-        echo -n .
-        sleep 1
-        c=$(( c + 1 ))
-      done
-    ) | pv -etp -s "$DELAY" 2>/dev/tty1 >/dev/null
+    while [ "${delay}" -ge 0 ]; do
+      printf "%2d:%02d\r" $(( delay / 60 )) $(( delay % 60 ))
+      sleep 1
+      : $(( delay -= 1 ))
+    done
+    echo
   ) >/dev/tty1
   wait
   FAST_WIPE="fast"
