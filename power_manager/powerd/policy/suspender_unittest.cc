@@ -504,6 +504,7 @@ TEST_F(SuspenderTest, CancelAfterSuspend) {
   delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_FAILED);
   suspender_.RequestSuspend();
   EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(test_api_.suspend_id(), GetSuspendImminentId(0));
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 
@@ -518,6 +519,7 @@ TEST_F(SuspenderTest, CancelAfterSuspend) {
   EXPECT_EQ(2, delegate_.num_suspend_attempts());
   EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
+  EXPECT_EQ(test_api_.suspend_id(), GetSuspendDoneId(1));
 }
 
 // Tests that Chrome-reported user activity received while suspending with
