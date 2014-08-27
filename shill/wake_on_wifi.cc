@@ -110,7 +110,7 @@ bool ConfigureWiphyIndex(Nl80211Message *msg, int32_t index) {
   return true;
 }
 
-bool ConfigureRemoveAllWakeOnPacketMsg(SetWakeOnPacketConnMessage *msg,
+bool ConfigureDisableWakeOnPacketMsg(SetWakeOnPacketConnMessage *msg,
                                        uint32_t wiphy_index, Error *error) {
   if (!WakeOnWifi::ConfigureWiphyIndex(msg, wiphy_index)) {
     Error::PopulateAndLog(error, Error::kOperationFailed,

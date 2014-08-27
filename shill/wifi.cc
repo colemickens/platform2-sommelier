@@ -1789,7 +1789,7 @@ void WiFi::RemoveAllWakeOnPacketConnections(Error *error) {
   // Send an empty NL80211_CMD_SET_WOWLAN message to disable wowlan.
   wake_on_packet_connections_.Clear();
   SetWakeOnPacketConnMessage disable_wowlan_msg;
-  if (!WakeOnWifi::ConfigureRemoveAllWakeOnPacketMsg(&disable_wowlan_msg,
+  if (!WakeOnWifi::ConfigureDisableWakeOnPacketMsg(&disable_wowlan_msg,
                                                      wiphy_index_, error)) {
     Error::PopulateAndLog(error, Error::kOperationFailed,
                           "Failed to configure nl80211 message");

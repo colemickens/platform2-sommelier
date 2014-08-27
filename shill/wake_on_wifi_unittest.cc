@@ -298,14 +298,14 @@ TEST(WakeOnWifiTest, ConfigureWiphyIndex) {
   EXPECT_EQ(value, 137);
 }
 
-TEST(WakeOnWifiTest, ConfigureRemoveAllWakeOnPacketMsg) {
+TEST(WakeOnWifiTest, ConfigureDisableWakeOnPacketMsg) {
   SetWakeOnPacketConnMessage msg;
   Error e;
   uint32_t value;
   EXPECT_FALSE(
       msg.attributes()->GetU32AttributeValue(NL80211_ATTR_WIPHY, &value));
 
-  WakeOnWifi::ConfigureRemoveAllWakeOnPacketMsg(&msg, 57, &e);
+  WakeOnWifi::ConfigureDisableWakeOnPacketMsg(&msg, 57, &e);
   EXPECT_EQ(e.type(), Error::Type::kSuccess);
   EXPECT_TRUE(
       msg.attributes()->GetU32AttributeValue(NL80211_ATTR_WIPHY, &value));

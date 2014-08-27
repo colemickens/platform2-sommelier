@@ -46,10 +46,10 @@ void CreateIPV6PatternAndMask(const IPAddress &ip_addr, ByteString *pattern,
 // index of the wiphy device to program.
 bool ConfigureWiphyIndex(Nl80211Message *msg, int32_t index);
 // Creates and sets attributes in an SetWakeOnPacketConnMessage |msg| so that
-// the message will deprogram all wake-on-packet rules from the NIC with wiphy
+// the message will disable wake-on-packet functionality of the NIC with wiphy
 // index |wiphy_index|.
 // NOTE: Assumes that |msg| has not been altered since construction.
-bool ConfigureRemoveAllWakeOnPacketMsg(SetWakeOnPacketConnMessage *msg,
+bool ConfigureDisableWakeOnPacketMsg(SetWakeOnPacketConnMessage *msg,
                                        uint32_t wiphy_index, Error *error);
 // Creates and sets attributes in a SetWakeOnPacketConnMessage |msg|
 // so that the message will program the NIC with wiphy index |wiphy_index| to

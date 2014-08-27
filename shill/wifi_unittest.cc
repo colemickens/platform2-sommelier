@@ -28,6 +28,7 @@
 #include "shill/geolocation_info.h"
 #include "shill/ieee80211.h"
 #include "shill/ip_address.h"
+#include "shill/ip_address_store.h"
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -889,6 +890,41 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
   MockMac80211Monitor *mac80211_monitor() {
     return mac80211_monitor_;
+  }
+
+  IPAddressStore *GetWakeOnPacketConnections() {
+    return &wifi_->wake_on_packet_connections_;
+  }
+
+  int *GetNumSetWakeOnPacketRetries() {
+    return &wifi_->num_set_wake_on_packet_retries_;
+  }
+
+  void AddWakeOnPacketConnection(const IPAddress &ip_endpoint, Error *error) {
+    wifi_->AddWakeOnPacketConnection(ip_endpoint, error);
+  }
+
+  void RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
+                                    Error *error) {
+    wifi_->RemoveWakeOnPacketConnection(ip_endpoint, error);
+  }
+
+  void RemoveAllWakeOnPacketConnections(Error *error) {
+    wifi_->RemoveAllWakeOnPacketConnections(error);
+  }
+
+  void RequestWakeOnPacketSettings() { wifi_->RequestWakeOnPacketSettings(); }
+
+  void VerifyWakeOnPacketConnections(const Nl80211Message &nl80211_message) {
+    wifi_->VerifyWakeOnPacketConnections(nl80211_message);
+  }
+
+  void SendSetWakeOnPacketMessage(Error *error) {
+    wifi_->SendSetWakeOnPacketMessage(error);
+  }
+
+  void RetrySetWakeOnPacketConnections() {
+    wifi_->RetrySetWakeOnPacketConnections();
   }
 
   EventDispatcher *event_dispatcher_;
@@ -3888,6 +3924,173 @@ TEST_F(WiFiMainTest, StateChangedUpdatesMac80211Monitor) {
 
   EXPECT_CALL(*mac80211_monitor(), UpdateConnectedState(false));
   ReportStateChanged(WPASupplicant::kInterfaceStateAssociating);
+}
+
+TEST_F(WiFiMainTest, AddRemoveWakeOnPacketConnection) {
+  const string ip_string1("192.168.0.19");
+  const string ip_string2("192.168.0.55");
+  const string ip_string3("192.168.0.74");
+  IPAddress ip_addr1(ip_string1);
+  IPAddress ip_addr2(ip_string2);
+  IPAddress ip_addr3(ip_string3);
+  Error e;
+
+  GetWakeOnPacketConnections()->Clear();
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
+  EXPECT_CALL(
+      netlink_manager_,
+      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
+                                          SetWakeOnPacketConnMessage::kCommand),
+                         _, _, _)).Times(1);
+  AddWakeOnPacketConnection(ip_addr1, &e);
+  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 1);
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr1));
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr2));
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr3));
+
+  EXPECT_CALL(
+      netlink_manager_,
+      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
+                                          SetWakeOnPacketConnMessage::kCommand),
+                         _, _, _)).Times(1);
+  AddWakeOnPacketConnection(ip_addr2, &e);
+  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 2);
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr1));
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr2));
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr3));
+
+  EXPECT_CALL(
+      netlink_manager_,
+      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
+                                          SetWakeOnPacketConnMessage::kCommand),
+                         _, _, _)).Times(1);
+  AddWakeOnPacketConnection(ip_addr3, &e);
+  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 3);
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr1));
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr2));
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr3));
+
+  EXPECT_CALL(
+      netlink_manager_,
+      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
+                                          SetWakeOnPacketConnMessage::kCommand),
+                         _, _, _)).Times(1);
+  RemoveWakeOnPacketConnection(ip_addr2, &e);
+  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 2);
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr1));
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr2));
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr3));
+
+  RemoveWakeOnPacketConnection(ip_addr2, &e);
+  EXPECT_EQ(e.type(), Error::kNotFound);
+  EXPECT_STREQ(e.message().c_str(),
+               "No such wake-on-packet connection registered");
+  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 2);
+
+  EXPECT_CALL(
+      netlink_manager_,
+      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
+                                          SetWakeOnPacketConnMessage::kCommand),
+                         _, _, _)).Times(1);
+  RemoveWakeOnPacketConnection(ip_addr1, &e);
+  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 1);
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr1));
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr2));
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr3));
+
+  EXPECT_CALL(
+      netlink_manager_,
+      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
+                                          SetWakeOnPacketConnMessage::kCommand),
+                         _, _, _)).Times(1);
+  AddWakeOnPacketConnection(ip_addr2, &e);
+  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 2);
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr1));
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr2));
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr3));
+
+  EXPECT_CALL(
+      netlink_manager_,
+      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
+                                          SetWakeOnPacketConnMessage::kCommand),
+                         _, _, _)).Times(1);
+  RemoveAllWakeOnPacketConnections(&e);
+  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 0);
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr1));
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr2));
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr3));
+}
+
+TEST_F(WiFiMainTest, RequestWakeOnPacketSettings) {
+  EXPECT_CALL(
+      netlink_manager_,
+      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
+                                          GetWakeOnPacketConnMessage::kCommand),
+                         _, _, _)).Times(1);
+  RequestWakeOnPacketSettings();
+}
+
+TEST_F(WiFiMainTest, VerifyWakeOnPacketConnections) {
+  ScopedMockLog log;
+  // Create an Nl80211 response to a NL80211_CMD_GET_WOWLAN request
+  // indicating that there are no wake-on-packet rules programmed into the NIC.
+  const uint8_t kResponseNoIPAddresses[] = {
+      0x14, 0x00, 0x00, 0x00, 0x14, 0x00, 0x01, 0x00, 0x01, 0x00,
+      0x00, 0x00, 0x57, 0x40, 0x00, 0x00, 0x49, 0x01, 0x00, 0x00};
+  scoped_ptr<uint8_t[]> message_memory(
+      new uint8_t[sizeof(kResponseNoIPAddresses)]);
+  memcpy(message_memory.get(), kResponseNoIPAddresses,
+         sizeof(kResponseNoIPAddresses));
+  nlmsghdr *hdr = reinterpret_cast<nlmsghdr *>(message_memory.get());
+  GetWakeOnPacketConnMessage msg;
+  msg.InitFromNlmsg(hdr);
+  // Successful verification.
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(_, _, EndsWith("successfully verified")));
+  VerifyWakeOnPacketConnections(msg);
+  // Unsuccessful verification.
+  GetWakeOnPacketConnections()->AddUnique(IPAddress("1.1.1.1"));
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("structure detected")));
+  VerifyWakeOnPacketConnections(msg);
+}
+
+TEST_F(WiFiMainTest, RetrySetWakeOnPacketConnections) {
+  ScopedMockLog log;
+  *GetNumSetWakeOnPacketRetries() = WiFi::kMaxSetWakeOnPacketRetries - 1;
+  EXPECT_CALL(
+      netlink_manager_,
+      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
+                                          SetWakeOnPacketConnMessage::kCommand),
+                         _, _, _)).Times(1);
+  RetrySetWakeOnPacketConnections();
+  EXPECT_EQ(*GetNumSetWakeOnPacketRetries(),
+            WiFi::kMaxSetWakeOnPacketRetries);
+
+  EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _, _)).Times(0);
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(_, _, EndsWith("max retry attempts reached")));
+  RetrySetWakeOnPacketConnections();
+  EXPECT_EQ(*GetNumSetWakeOnPacketRetries(), 0);
+}
+
+TEST_F(WiFiMainTest, SendSetWakeOnPacketMessage) {
+  Error e;
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
+  EXPECT_CALL(netlink_manager_,
+              SendNl80211Message(IsDisableWakeOnPacketMsg(), _, _, _)).Times(1);
+  SendSetWakeOnPacketMessage(&e);
+
+  GetWakeOnPacketConnections()->AddUnique(IPAddress("1.1.1.1"));
+  EXPECT_CALL(netlink_manager_,
+              SendNl80211Message(IsDisableWakeOnPacketMsg(), _, _, _)).Times(0);
+  EXPECT_CALL(
+      netlink_manager_,
+      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
+                                          SetWakeOnPacketConnMessage::kCommand),
+                         _, _, _)).Times(1);
+  SendSetWakeOnPacketMessage(&e);
 }
 
 }  // namespace shill

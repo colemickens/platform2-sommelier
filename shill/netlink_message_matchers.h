@@ -33,6 +33,33 @@ MATCHER_P2(IsNl80211Command, nl80211_message_type, command, "") {
   return true;
 }
 
+// Given a netlink message, verifies that it is configured to disable
+// wake-on-packet functionality of the NIC.
+MATCHER(IsDisableWakeOnPacketMsg, "") {
+  if (!arg) {
+    LOG(INFO) << "Null message";
+    return false;
+  }
+  const Nl80211Message *msg = dynamic_cast<const Nl80211Message *>(arg);
+  if (msg->command() != NL80211_CMD_SET_WOWLAN) {
+    LOG(INFO) << "Not a NL80211_CMD_SET_WOWLAN message";
+    return false;
+  }
+  uint32_t wiphy;
+  if (!msg->const_attributes()->GetU32AttributeValue(NL80211_ATTR_WIPHY,
+                                                     &wiphy)) {
+    LOG(INFO) << "Wiphy index not set";
+    return false;
+  }
+  AttributeListConstRefPtr triggers;
+  if (msg->const_attributes()->ConstGetNestedAttributeList(
+          NL80211_ATTR_WOWLAN_TRIGGERS, &triggers)) {
+    LOG(INFO) << "Message contains NL80211_ATTR_WOWLAN_TRIGGERS";
+    return false;
+  }
+  return true;
+}
+
 // Verifies that a NetlinkMessage is an NL80211_CMD_TRIGGER_SCAN message that
 // contains exactly one SSID along with the requisite empty one.
 MATCHER_P(HasHiddenSSID, nl80211_message_type, "") {

@@ -300,6 +300,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, ScanStateUma);  // ScanState, ScanMethod
   FRIEND_TEST(WiFiMainTest, Stop);  // weak_ptr_factory_
   FRIEND_TEST(WiFiMainTest, TimeoutPendingServiceWithEndpoints);
+  FRIEND_TEST(WiFiMainTest, RetrySetWakeOnPacketConnections);
   FRIEND_TEST(WiFiPropertyTest, BgscanMethodProperty);  // bgscan_method_
   FRIEND_TEST(WiFiTimerTest, FastRescan);  // kFastScanIntervalSeconds
   FRIEND_TEST(WiFiTimerTest, RequestStationInfo);  // kRequestStationInfoPeriod
