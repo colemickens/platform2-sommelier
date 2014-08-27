@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Tested on daisy
+# Tested on alex board
 gettid: 1
 getuid32: 1
 geteuid32: 1
@@ -14,24 +14,15 @@ getresgid32: 1
 clock_getres: 1
 clock_gettime: 1
 gettimeofday: 1
-
-socket: arg0 == 0x1 || arg0 == 0x10
-socketpair: 1
-connect: 1
-getsockname: 1
-pipe: 1
-send: 1
-sendmsg: 1
-recvmsg: 1
-
-epoll_create: 1
-epoll_wait: 1
-epoll_ctl: 1
-poll: 1
+time: 1
 
 read: 1
 write: 1
 close: 1
+
+brk: 1
+mmap2: 1
+munmap: 1
 
 fstat64: 1
 stat64: 1
@@ -45,6 +36,7 @@ exit: 1
 exit_group: 1
 rt_sigreturn: 1
 
-brk: 1
-mmap2: 1
-munmap: 1
+epoll_create: 1
+epoll_wait: 1
+epoll_ctl: 1
+poll: 1

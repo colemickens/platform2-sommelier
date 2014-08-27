@@ -1,3 +1,7 @@
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 # Tested on lumpy
 gettid: 1
 getuid: 1
@@ -27,7 +31,6 @@ epoll_wait: 1
 epoll_ctl: 1
 poll: 1
 
-open: 1
 read: 1
 write: 1
 close: 1
