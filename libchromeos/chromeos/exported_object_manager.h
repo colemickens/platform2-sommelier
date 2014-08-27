@@ -11,7 +11,6 @@
 #include <base/memory/weak_ptr.h>
 #include <chromeos/any.h>
 #include <chromeos/dbus/dbus_object.h>
-#include <chromeos/dbus_utils.h>
 #include <chromeos/exported_property_set.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>

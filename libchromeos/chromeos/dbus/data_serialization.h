@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBCHROMEOS_CHROMEOS_DBUS_UTILS_H_
-#define LIBCHROMEOS_CHROMEOS_DBUS_UTILS_H_
+#ifndef LIBCHROMEOS_CHROMEOS_DBUS_DATA_SERIALIZATION_H_
+#define LIBCHROMEOS_CHROMEOS_DBUS_DATA_SERIALIZATION_H_
 
 // The main functionality provided by this header file is methods to serialize
 // native C++ data over D-Bus. This includes three major parts:
@@ -51,8 +51,6 @@
 #include <vector>
 
 #include <base/logging.h>
-#include <chromeos/error.h>
-#include <dbus/exported_object.h>
 #include <dbus/message.h>
 
 namespace chromeos {
@@ -63,21 +61,7 @@ class Any;
 
 namespace dbus_utils {
 
-using MethodCallHandler =
-    base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)>;
 using Dictionary = std::map<std::string, chromeos::Any>;
-
-// A helper function to create a DBus error response object as unique_ptr<>.
-std::unique_ptr<dbus::Response> CreateDBusErrorResponse(
-    dbus::MethodCall* method_call,
-    const std::string& code,
-    const std::string& message);
-
-std::unique_ptr<dbus::Response> GetDBusError(dbus::MethodCall* method_call,
-                                             const chromeos::Error* error);
-
-dbus::ExportedObject::MethodCallCallback GetExportableDBusMethod(
-    const MethodCallHandler& handler);
 
 //----------------------------------------------------------------------------
 // Get D-Bus data signature from C++ data types.
@@ -109,7 +93,7 @@ inline std::string GetArrayDBusSignature(const std::string& element_signature) {
 }
 
 // Helper method to get a signature string for DICT_ENTRY.
-// Returns "{kv}", where "k" and "v" are the type signatures for types
+// Returns "{KV}", where "K" and "V" are the type signatures for types
 // KEY/VALUE. For example, GetDBusDictEntryType<std::string, int>() would return
 // "{si}".
 template<typename KEY, typename VALUE>
@@ -446,4 +430,4 @@ inline bool PopVariantValueFromReader(dbus::MessageReader* reader, Any* value) {
 }  // namespace dbus_utils
 }  // namespace chromeos
 
-#endif  // LIBCHROMEOS_CHROMEOS_DBUS_UTILS_H_
+#endif  // LIBCHROMEOS_CHROMEOS_DBUS_DATA_SERIALIZATION_H_

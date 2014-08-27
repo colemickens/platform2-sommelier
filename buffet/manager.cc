@@ -11,7 +11,6 @@
 #include <base/bind_helpers.h>
 #include <base/json/json_writer.h>
 #include <chromeos/async_event_sequencer.h>
-#include <chromeos/dbus_utils.h>
 #include <chromeos/error.h>
 #include <chromeos/exported_object_manager.h>
 #include <dbus/bus.h>

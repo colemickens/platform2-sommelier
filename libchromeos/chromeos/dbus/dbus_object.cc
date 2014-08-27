@@ -9,7 +9,6 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <chromeos/async_event_sequencer.h>
-#include <chromeos/dbus_utils.h>
 #include <chromeos/exported_object_manager.h>
 #include <chromeos/exported_property_set.h>
 #include <dbus/property.h>

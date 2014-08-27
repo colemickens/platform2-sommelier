@@ -11,7 +11,6 @@
 #include "chromeos/any.h"
 #include "chromeos/async_event_sequencer.h"
 #include "chromeos/dbus/dbus_object.h"
-#include "chromeos/dbus_utils.h"
 #include "chromeos/error_codes.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;

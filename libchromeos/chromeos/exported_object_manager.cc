@@ -7,7 +7,7 @@
 #include <vector>
 
 #include <chromeos/async_event_sequencer.h>
-#include <chromeos/dbus_utils.h>
+#include <chromeos/dbus/data_serialization.h>
 #include <dbus/object_manager.h>
 
 using chromeos::dbus_utils::AsyncEventSequencer;

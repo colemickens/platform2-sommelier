@@ -5,7 +5,7 @@
 #include "chromeos/exported_object_manager.h"
 
 #include <base/bind.h>
-#include <chromeos/dbus_utils.h>
+#include <chromeos/dbus/utils.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <dbus/object_manager.h>

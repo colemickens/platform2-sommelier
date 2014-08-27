@@ -14,7 +14,7 @@
 #include <base/values.h>
 #include <chromeos/any.h>
 #include <chromeos/data_encoding.h>
-#include <chromeos/dbus_utils.h>
+#include <chromeos/dbus/data_serialization.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>

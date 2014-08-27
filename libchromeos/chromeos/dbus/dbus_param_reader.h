@@ -18,7 +18,8 @@
 
 #include <type_traits>
 
-#include <chromeos/dbus_utils.h>
+#include <chromeos/dbus/data_serialization.h>
+#include <chromeos/dbus/utils.h>
 #include <chromeos/error.h>
 #include <chromeos/error_codes.h>
 #include <dbus/message.h>

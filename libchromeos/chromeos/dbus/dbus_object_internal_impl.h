@@ -31,8 +31,9 @@
 #include <string>
 #include <type_traits>
 
+#include <chromeos/dbus/data_serialization.h>
 #include <chromeos/dbus/dbus_param_reader.h>
-#include <chromeos/dbus_utils.h>
+#include <chromeos/dbus/utils.h>
 #include <chromeos/error.h>
 #include <dbus/message.h>
 
@@ -94,12 +95,12 @@ struct TypedReturnDBusInvoker {
     // If |handler| failed, return the error information stored in
     // |handler_error| object.
     if (handler_error)
-      return dbus_utils::GetDBusError(method_call, handler_error.get());
+      return GetDBusError(method_call, handler_error.get());
 
     // Send back the |handler_retval| value through D-Bus.
     auto response = dbus::Response::FromMethodCall(method_call);
     dbus::MessageWriter writer(response.get());
-    chromeos::dbus_utils::AppendValueToWriter(&writer, handler_retval);
+    AppendValueToWriter(&writer, handler_retval);
     return std::unique_ptr<dbus::Response>(response.release());
   }
 };  // struct TypedReturnDBusInvoker<ReturnType, ...>
@@ -132,7 +133,7 @@ struct TypedReturnDBusInvoker<void, CallbackType, Args...> {
 
     // Method handler returned an error.
     if (handler_error)
-      return dbus_utils::GetDBusError(method_call, handler_error.get());
+      return GetDBusError(method_call, handler_error.get());
 
     return std::unique_ptr<dbus::Response>(
         dbus::Response::FromMethodCall(method_call).release());

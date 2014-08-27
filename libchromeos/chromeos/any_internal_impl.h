@@ -12,7 +12,7 @@
 #include <utility>
 
 #include <base/logging.h>
-#include <chromeos/dbus_utils.h>
+#include <chromeos/dbus/data_serialization.h>
 
 namespace chromeos {
 

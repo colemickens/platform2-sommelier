@@ -5,7 +5,6 @@
 #include "buffet/commands/dbus_command_proxy.h"
 
 #include <chromeos/async_event_sequencer.h>
-#include <chromeos/dbus_utils.h>
 #include <chromeos/exported_object_manager.h>
 
 #include "buffet/commands/command_instance.h"

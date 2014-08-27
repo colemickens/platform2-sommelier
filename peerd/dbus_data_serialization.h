@@ -8,7 +8,7 @@
 #ifndef PEERD_DBUS_DATA_SERIALIZATION_H_
 #define PEERD_DBUS_DATA_SERIALIZATION_H_
 
-#include <chromeos/dbus_utils.h>
+#include <chromeos/dbus/data_serialization.h>
 
 #include <string>
 
@@ -21,7 +21,7 @@ class MessageWriter;
 
 // These methods must be in chromeos::dbus_utils namespace since we are
 // specializing DBusSignature template structure already defined in
-// chromeos/dbus_utils.h.
+// chromeos/dbus/data_serialization.h.
 namespace chromeos {
 namespace dbus_utils {
 

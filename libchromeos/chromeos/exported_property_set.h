@@ -13,7 +13,8 @@
 
 #include <base/memory/weak_ptr.h>
 #include <chromeos/any.h>
-#include <chromeos/dbus_utils.h>
+#include <chromeos/dbus/data_serialization.h>
+#include <chromeos/error.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 
@@ -73,7 +74,7 @@ class ExportedPropertyBase {
 
 class ExportedPropertySet {
  public:
-  using PropertyWriter = base::Callback<void(dbus_utils::Dictionary* dict)>;
+  using PropertyWriter = base::Callback<void(Dictionary* dict)>;
 
   explicit ExportedPropertySet(dbus::Bus* bus);
   virtual ~ExportedPropertySet() = default;
@@ -94,7 +95,7 @@ class ExportedPropertySet {
                         ExportedPropertyBase* exported_property);
 
   // DBus methods for org.freedesktop.DBus.Properties interface.
-  dbus_utils::Dictionary HandleGetAll(
+  Dictionary HandleGetAll(
       chromeos::ErrorPtr* error,
       const std::string& interface_name);
   chromeos::Any HandleGet(
@@ -112,7 +113,7 @@ class ExportedPropertySet {
       const chromeos::Any& value);
   // Returns a string-to-variant map of all the properties for the given
   // interface and their values.
-  dbus_utils::Dictionary GetInterfaceProperties(
+  Dictionary GetInterfaceProperties(
       const std::string& interface_name) const;
 
  private:
@@ -120,7 +121,7 @@ class ExportedPropertySet {
   // This dictionary represents the property name/value pairs for the
   // given interface.
   void WritePropertiesToDict(const std::string& interface_name,
-                             dbus_utils::Dictionary* dict);
+                             Dictionary* dict);
   void HandlePropertyUpdated(const std::string& interface_name,
                              const std::string& property_name,
                              const ExportedPropertyBase* exported_property);
