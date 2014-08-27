@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include <chromeos/string_utils.h>
+#include <chromeos/strings/string_utils.h>
 #include <gtest/gtest.h>
 
 #include "buffet/commands/command_dispatch_interface.h"

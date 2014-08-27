@@ -12,7 +12,7 @@
 #include <base/logging.h>
 #include <base/values.h>
 #include <chromeos/any.h>
-#include <chromeos/string_utils.h>
+#include <chromeos/strings/string_utils.h>
 
 #include "buffet/commands/object_schema.h"
 #include "buffet/commands/prop_values.h"

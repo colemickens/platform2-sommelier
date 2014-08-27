@@ -8,8 +8,8 @@
 #include <base/files/file_enumerator.h>
 #include <base/json/json_reader.h>
 #include <base/values.h>
-#include <chromeos/error.h>
-#include <chromeos/error_codes.h>
+#include <chromeos/errors/error.h>
+#include <chromeos/errors/error_codes.h>
 
 #include "buffet/commands/schema_constants.h"
 

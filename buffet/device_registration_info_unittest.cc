@@ -5,8 +5,8 @@
 #include <base/json/json_reader.h>
 #include <base/values.h>
 #include <chromeos/bind_lambda.h>
-#include <chromeos/http_request.h>
-#include <chromeos/http_transport_fake.h>
+#include <chromeos/http/http_request.h>
+#include <chromeos/http/http_transport_fake.h>
 #include <chromeos/mime_utils.h>
 #include <gtest/gtest.h>
 

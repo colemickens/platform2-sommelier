@@ -10,7 +10,7 @@
 #include <string>
 
 #include <chromeos/any.h>
-#include <chromeos/error.h>
+#include <chromeos/errors/error.h>
 
 #include "buffet/commands/schema_utils.h"
 

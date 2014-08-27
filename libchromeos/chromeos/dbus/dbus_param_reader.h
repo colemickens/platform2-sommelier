@@ -20,8 +20,8 @@
 
 #include <chromeos/dbus/data_serialization.h>
 #include <chromeos/dbus/utils.h>
-#include <chromeos/error.h>
-#include <chromeos/error_codes.h>
+#include <chromeos/errors/error.h>
+#include <chromeos/errors/error_codes.h>
 #include <dbus/message.h>
 
 namespace chromeos {

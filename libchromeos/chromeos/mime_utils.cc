@@ -6,7 +6,7 @@
 
 #include <algorithm>
 #include <base/strings/string_util.h>
-#include <chromeos/string_utils.h>
+#include <chromeos/strings/string_utils.h>
 
 namespace chromeos {
 

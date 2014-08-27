@@ -13,8 +13,8 @@
 #include <base/basictypes.h>
 #include <base/time/time.h>
 #include <chromeos/data_encoding.h>
-#include <chromeos/error.h>
-#include <chromeos/http_transport.h>
+#include <chromeos/errors/error.h>
+#include <chromeos/http/http_transport.h>
 
 #include "buffet/storage_interface.h"
 

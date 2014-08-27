@@ -8,9 +8,9 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
-#include <chromeos/async_event_sequencer.h>
-#include <chromeos/exported_object_manager.h>
-#include <chromeos/exported_property_set.h>
+#include <chromeos/dbus/async_event_sequencer.h>
+#include <chromeos/dbus/exported_object_manager.h>
+#include <chromeos/dbus/exported_property_set.h>
 #include <dbus/property.h>
 
 namespace chromeos {

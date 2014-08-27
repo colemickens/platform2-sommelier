@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <chromeos/async_event_sequencer.h>
+#include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/dbus_object.h>
 #include <gmock/gmock.h>
 

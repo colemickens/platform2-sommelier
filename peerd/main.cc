@@ -5,8 +5,8 @@
 #include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/message_loop/message_loop.h>
-#include <chromeos/async_event_sequencer.h>
-#include <chromeos/exported_object_manager.h>
+#include <chromeos/dbus/async_event_sequencer.h>
+#include <chromeos/dbus/exported_object_manager.h>
 #include <chromeos/syslog_logging.h>
 #include <dbus/bus.h>
 #include <sysexits.h>

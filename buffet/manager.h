@@ -13,8 +13,8 @@
 #include <base/memory/weak_ptr.h>
 #include <base/values.h>
 #include <chromeos/dbus/dbus_object.h>
-#include <chromeos/error.h>
-#include <chromeos/exported_property_set.h>
+#include <chromeos/dbus/exported_property_set.h>
+#include <chromeos/errors/error.h>
 
 #include "buffet/device_registration_info.h"
 

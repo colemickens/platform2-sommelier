@@ -4,8 +4,8 @@
 
 #include "buffet/commands/dbus_command_proxy.h"
 
-#include <chromeos/async_event_sequencer.h>
-#include <chromeos/exported_object_manager.h>
+#include <chromeos/dbus/async_event_sequencer.h>
+#include <chromeos/dbus/exported_object_manager.h>
 
 #include "buffet/commands/command_instance.h"
 #include "buffet/commands/prop_constraints.h"

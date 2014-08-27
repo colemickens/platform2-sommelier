@@ -14,7 +14,7 @@
 #include <vector>
 
 #include <chromeos/any.h>
-#include <chromeos/error.h>
+#include <chromeos/errors/error.h>
 
 #include "buffet/commands/prop_constraints.h"
 #include "buffet/commands/prop_values.h"

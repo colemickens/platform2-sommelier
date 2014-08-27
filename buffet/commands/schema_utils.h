@@ -13,7 +13,7 @@
 #include <vector>
 
 #include <base/values.h>
-#include <chromeos/error.h>
+#include <chromeos/errors/error.h>
 
 namespace buffet {
 

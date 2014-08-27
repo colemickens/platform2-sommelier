@@ -5,7 +5,7 @@
 #include <chromeos/data_encoding.h>
 
 #include <base/strings/stringprintf.h>
-#include <chromeos/string_utils.h>
+#include <chromeos/strings/string_utils.h>
 #include <cstring>
 
 namespace {

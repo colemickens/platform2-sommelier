@@ -7,7 +7,7 @@
 #include <base/bind.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/any.h>
-#include <chromeos/error_codes.h>
+#include <chromeos/errors/error_codes.h>
 
 namespace chromeos {
 namespace dbus_utils {

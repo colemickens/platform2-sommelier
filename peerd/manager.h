@@ -11,7 +11,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <chromeos/async_event_sequencer.h>
+#include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/dbus_object.h>
 
 struct sockaddr_storage;

@@ -5,7 +5,7 @@
 #include "buffet/commands/command_dictionary.h"
 
 #include <base/values.h>
-#include <chromeos/string_utils.h>
+#include <chromeos/strings/string_utils.h>
 
 #include "buffet/commands/command_definition.h"
 #include "buffet/commands/schema_constants.h"

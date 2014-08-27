@@ -7,7 +7,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
-#include <chromeos/exported_object_manager.h>
+#include <chromeos/dbus/exported_object_manager.h>
 #include <dbus/object_path.h>
 
 #include "peerd/dbus_constants.h"

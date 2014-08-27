@@ -11,7 +11,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <chromeos/error.h>
+#include <chromeos/errors/error.h>
 
 namespace base {
 class Value;

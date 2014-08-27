@@ -12,8 +12,8 @@
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/async_event_sequencer.h>
-#include <chromeos/exported_object_manager.h>
+#include <chromeos/dbus/async_event_sequencer.h>
+#include <chromeos/dbus/exported_object_manager.h>
 #include <dbus/bus.h>
 #include <sysexits.h>
 

@@ -34,7 +34,7 @@
 #include <chromeos/dbus/data_serialization.h>
 #include <chromeos/dbus/dbus_param_reader.h>
 #include <chromeos/dbus/utils.h>
-#include <chromeos/error.h>
+#include <chromeos/errors/error.h>
 #include <dbus/message.h>
 
 namespace chromeos {

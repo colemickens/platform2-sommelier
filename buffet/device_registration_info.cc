@@ -11,10 +11,10 @@
 #include <base/json/json_writer.h>
 #include <base/values.h>
 #include <chromeos/data_encoding.h>
-#include <chromeos/http_transport_curl.h>
-#include <chromeos/http_utils.h>
+#include <chromeos/http/http_transport_curl.h>
+#include <chromeos/http/http_utils.h>
 #include <chromeos/mime_utils.h>
-#include <chromeos/string_utils.h>
+#include <chromeos/strings/string_utils.h>
 #include <chromeos/url_utils.h>
 
 #include "buffet/commands/command_definition.h"

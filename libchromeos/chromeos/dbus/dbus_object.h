@@ -52,10 +52,10 @@ class MyDbusObject {
 #include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/memory/weak_ptr.h>
-#include <chromeos/async_event_sequencer.h>
+#include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/dbus_object_internal_impl.h>
-#include <chromeos/exported_property_set.h>
-#include <chromeos/error.h>
+#include <chromeos/dbus/exported_property_set.h>
+#include <chromeos/errors/error.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>

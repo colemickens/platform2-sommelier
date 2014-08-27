@@ -9,7 +9,7 @@
 #include <memory>
 #include <string>
 
-#include <chromeos/error.h>
+#include <chromeos/errors/error.h>
 
 namespace base {
 class Value;

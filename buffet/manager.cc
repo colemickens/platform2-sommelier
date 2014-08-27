@@ -10,9 +10,9 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/json/json_writer.h>
-#include <chromeos/async_event_sequencer.h>
-#include <chromeos/error.h>
-#include <chromeos/exported_object_manager.h>
+#include <chromeos/dbus/async_event_sequencer.h>
+#include <chromeos/dbus/exported_object_manager.h>
+#include <chromeos/errors/error.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <dbus/values_util.h>

@@ -5,8 +5,8 @@
 #include "buffet/commands/command_instance.h"
 
 #include <base/values.h>
-#include <chromeos/error.h>
-#include <chromeos/error_codes.h>
+#include <chromeos/errors/error.h>
+#include <chromeos/errors/error_codes.h>
 
 #include "buffet/commands/command_definition.h"
 #include "buffet/commands/command_dictionary.h"

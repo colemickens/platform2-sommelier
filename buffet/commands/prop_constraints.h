@@ -11,8 +11,8 @@
 
 #include <base/basictypes.h>
 #include <base/values.h>
-#include <chromeos/error.h>
-#include <chromeos/string_utils.h>
+#include <chromeos/errors/error.h>
+#include <chromeos/strings/string_utils.h>
 
 #include "buffet/commands/prop_values.h"
 #include "buffet/commands/schema_constants.h"
