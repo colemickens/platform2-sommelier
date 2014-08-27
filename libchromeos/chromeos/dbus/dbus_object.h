@@ -3,9 +3,9 @@
 // found in the LICENSE file.
 
 // DBusObject is a special helper class that simplifies the implementation of
-// DBus objects in C++. It provides an easy way to define interfaces with
+// D-Bus objects in C++. It provides an easy way to define interfaces with
 // methods and properties and offloads a lot of work to register the object and
-// all of its interfaces, to marshal method calls (by converting DBus method
+// all of its interfaces, to marshal method calls (by converting D-Bus method
 // parameters to native C++ types and invoking native method handlers), etc.
 
 // The basic usage pattern of this class is as follows:
@@ -26,7 +26,7 @@ class MyDbusObject {
     prop1_.SetValue("prop1_value");
     prop2_.SetValue(50);
     // Register the object by exporting its methods and properties and
-    // exposing them to DBus clients.
+    // exposing them to D-Bus clients.
     dbus_object_.RegisterAsync(callback);
   }
 
@@ -54,6 +54,7 @@ class MyDbusObject {
 #include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/dbus_object_internal_impl.h>
+#include <chromeos/dbus/dbus_signal.h>
 #include <chromeos/dbus/exported_property_set.h>
 #include <chromeos/errors/error.h>
 #include <dbus/bus.h>
@@ -68,7 +69,7 @@ class ExportedObjectManager;
 class ExportedPropertyBase;
 
 // This is an abstract base class to allow dispatching a native C++ callback
-// method when a corresponding DBus method is called.
+// method when a corresponding D-Bus method is called.
 class DBusInterfaceMethodHandler {
  public:
   virtual ~DBusInterfaceMethodHandler() = default;
@@ -92,7 +93,7 @@ class TypedDBusInterfaceMethodHandler : public DBusInterfaceMethodHandler {
   }
 
   // This method forwards the call to |handler_| and extracts the required
-  // arguments from the DBus message buffer specified in |method_call|.
+  // arguments from the D-Bus message buffer specified in |method_call|.
   // The return value of |handler_| (if any) is sent back via the returned
   // dbus::Response object, which could also include error details if the
   // handler call has failed.
@@ -106,7 +107,7 @@ class TypedDBusInterfaceMethodHandler : public DBusInterfaceMethodHandler {
   }
 
  private:
-  // C++ callback to be called when a DBus method is dispatched.
+  // C++ callback to be called when a D-Bus method is dispatched.
   base::Callback<R(chromeos::ErrorPtr*, Args...)> handler_;
 
   DISALLOW_COPY_AND_ASSIGN(TypedDBusInterfaceMethodHandler);
@@ -116,9 +117,9 @@ class TypedDBusInterfaceMethodHandler : public DBusInterfaceMethodHandler {
 // dbus::Response object instead of arbitrary value. This specialization is
 // used when C++ callback expects parsed input parameters but its return
 // value is custom and it's up to the callback's implementer to return a valid
-// DBus response object. Also note that the callback does not take ErrorPtr*
+// D-Bus response object. Also note that the callback does not take ErrorPtr*
 // as a first parameter, since the error information should be returned through
-// the DBus error response object.
+// the D-Bus error response object.
 template<typename... Args>
 class TypedDBusInterfaceMethodHandler<std::unique_ptr<dbus::Response>, Args...>
     : public DBusInterfaceMethodHandler {
@@ -132,7 +133,7 @@ class TypedDBusInterfaceMethodHandler<std::unique_ptr<dbus::Response>, Args...>
   }
 
   // This method forwards the call to |handler_| and extracts the required
-  // arguments from the DBus message buffer specified in |method_call|.
+  // arguments from the D-Bus message buffer specified in |method_call|.
   // The dbus::Response return value of |handler_| is passed on to the caller.
   std::unique_ptr<dbus::Response> HandleMethod(
       dbus::MethodCall* method_call) override {
@@ -144,7 +145,7 @@ class TypedDBusInterfaceMethodHandler<std::unique_ptr<dbus::Response>, Args...>
   }
 
  private:
-  // C++ callback to be called when a DBus method is dispatched.
+  // C++ callback to be called when a D-Bus method is dispatched.
   base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall* method_call,
                                                  Args...)> handler_;
 
@@ -157,7 +158,7 @@ class TypedDBusInterfaceMethodHandler<std::unique_ptr<dbus::Response>, Args...>
 // following signature:
 //    std::unique_ptr<dbus::Response>(dbus::MethodCall* method_call)
 // It will be up to the callback to parse the input parameters from the
-// message buffer and construct the DBus Response object.
+// message buffer and construct the D-Bus Response object.
 class RawDBusInterfaceMethodHandler : public DBusInterfaceMethodHandler {
  public:
   // A constructor that takes a |handler| to be called when HandleMethod()
@@ -174,7 +175,7 @@ class RawDBusInterfaceMethodHandler : public DBusInterfaceMethodHandler {
   }
 
  private:
-  // C++ callback to be called when a DBus method is dispatched.
+  // C++ callback to be called when a D-Bus method is dispatched.
   base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall* method_call)>
       handler_;
 
@@ -183,9 +184,9 @@ class RawDBusInterfaceMethodHandler : public DBusInterfaceMethodHandler {
 
 class DBusObject;  // forward-declaration.
 
-// This is an implementation proxy class for a DBus interface of an object.
-// The important functionality for the users is the ability to add DBus method
-// handlers and define DBus object properties. This is achieved by using one
+// This is an implementation proxy class for a D-Bus interface of an object.
+// The important functionality for the users is the ability to add D-Bus method
+// handlers and define D-Bus object properties. This is achieved by using one
 // of the overload of AddMethodHandler() and AddProperty() respectively.
 // There are six overloads for DBusInterface::AddMethodHandler():
 //  1. That takes a handler as base::Callback<R(ErrorPtr*, Args...)>
@@ -211,7 +212,7 @@ class DBusInterface final {
     AddHandlerImpl(method_name, std::move(typed_method_handler));
   }
 
-  // Register a DBus method handler for |method_name| as static function.
+  // Register a D-Bus method handler for |method_name| as static function.
   template<typename R, typename... Args>
   void AddMethodHandler(
       const std::string& method_name,
@@ -221,7 +222,7 @@ class DBusInterface final {
     AddHandlerImpl(method_name, std::move(typed_method_handler));
   }
 
-  // Register a DBus method handler for |method_name| as class member function.
+  // Register a D-Bus method handler for |method_name| as class member function.
   template<typename R, typename Instance, typename Class, typename... Args>
   void AddMethodHandler(
       const std::string& method_name,
@@ -233,7 +234,7 @@ class DBusInterface final {
     AddHandlerImpl(method_name, std::move(typed_method_handler));
   }
 
-  // Register a DBus method handler for |method_name| as base::Callback.
+  // Register a D-Bus method handler for |method_name| as base::Callback.
   template<typename... Args>
   void AddMethodHandler(
       const std::string& method_name,
@@ -245,7 +246,7 @@ class DBusInterface final {
     AddHandlerImpl(method_name, std::move(typed_method_handler));
   }
 
-  // Register a DBus method handler for |method_name| as static function.
+  // Register a D-Bus method handler for |method_name| as static function.
   template<typename... Args>
   void AddMethodHandler(
       const std::string& method_name,
@@ -256,7 +257,7 @@ class DBusInterface final {
     AddHandlerImpl(method_name, std::move(typed_method_handler));
   }
 
-  // Register a DBus method handler for |method_name| as class member function.
+  // Register a D-Bus method handler for |method_name| as class member function.
   template<typename Instance, typename Class, typename... Args>
   void AddMethodHandler(
       const std::string& method_name,
@@ -270,7 +271,7 @@ class DBusInterface final {
     AddHandlerImpl(method_name, std::move(typed_method_handler));
   }
 
-  // Register a raw DBus method handler for |method_name| as base::Callback.
+  // Register a raw D-Bus method handler for |method_name| as base::Callback.
   void AddRawMethodHandler(
       const std::string& method_name,
       const base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)>&
@@ -280,12 +281,61 @@ class DBusInterface final {
     AddHandlerImpl(method_name, std::move(raw_method_handler));
   }
 
-  // Register a DBus property.
+  // Register a D-Bus property.
   void AddProperty(const std::string& property_name,
                    ExportedPropertyBase* prop_base);
 
+  // Registers a D-Bus signal that has a specified number and types (|Args|) of
+  // arguments. Returns a weak pointer to the DBusSignal object which can be
+  // used to send the signal on this interface when needed:
+  /*
+    DBusInterface* itf = dbus_object->AddOrGetInterface("Interface");
+    auto signal = itf->RegisterSignal<int, bool>("MySignal");
+    ...
+    // Send the Interface.MySig(12, true) signal.
+    if (signal.lock()->Send(12, true)) { ... }
+  */
+  // Or if the signal signature is long or complex, you can alias the
+  // DBusSignal<Args...> signal type and use RegisterSignalOfType method
+  // instead:
+  /*
+    DBusInterface* itf = dbus_object->AddOrGetInterface("Interface");
+    using MySignal = DBusSignal<int, bool>;
+    auto signal = itf->RegisterSignalOfType<MySignal>("MySignal");
+    ...
+    // Send the Interface.MySig(12, true) signal.
+    if (signal.lock()->Send(12, true)) { ... }
+  */
+  // If the signal with the given name was already registered, the existing
+  // copy of the signal proxy object is returned as long as the method signature
+  // of the original signal matches the current call. If it doesn't, the method
+  // aborts.
+
+  // RegisterSignalOfType can be used to create a signal if the type of the
+  // complete DBusSignal<Args...> class which is pre-defined/aliased earlier.
+  template<typename DBusSignalType>
+  std::weak_ptr<DBusSignalType> RegisterSignalOfType(
+      const std::string& signal_name) {
+    auto signal = std::make_shared<DBusSignalType>(dbus_object_,
+                                                   interface_name_,
+                                                   signal_name);
+    CHECK(signals_.insert(std::make_pair(signal_name, signal)).second)
+        << "The signal '" << signal_name << "' is already registered";
+    return signal;
+  }
+
+  // For simple signal arguments, you can specify their types directly in
+  // RegisterSignal<t1, t2, ...>():
+  //  auto signal = itf->RegisterSignal<int>("SignalName");
+  // This will create a callback signal object that expects one int argument.
+  template<typename... Args>
+  std::weak_ptr<DBusSignal<Args...>> RegisterSignal(
+      const std::string& signal_name) {
+    return RegisterSignalOfType<DBusSignal<Args...>>(signal_name);
+  }
+
  private:
-  // A generic DBus method handler for the interface. It extracts the method
+  // A generic D-Bus method handler for the interface. It extracts the method
   // name from |method_call|, looks up a registered handler from |handlers_|
   // map and dispatched the call to that handler.
   std::unique_ptr<dbus::Response> HandleMethodCall(
@@ -294,11 +344,11 @@ class DBusInterface final {
   void AddHandlerImpl(const std::string& method_name,
                       std::unique_ptr<DBusInterfaceMethodHandler> handler);
   // Exports all the methods and properties of this interface and claims the
-  // DBus interface.
-  // object_manager - ExportedObjectManager instance that notifies DBus
+  // D-Bus interface.
+  // object_manager - ExportedObjectManager instance that notifies D-Bus
   //                  listeners of a new interface being claimed.
-  // exported_object - instance of DBus object the interface is being added to.
-  // object_path - DBus object path for the object instance.
+  // exported_object - instance of D-Bus object the interface is being added to.
+  // object_path - D-Bus object path for the object instance.
   // interface_name - name of interface being registered.
   // completion_callback - a callback to be called when the asynchronous
   //                       registration operation is completed.
@@ -311,6 +361,8 @@ class DBusInterface final {
 
   // Method registration map.
   std::map<std::string, std::unique_ptr<DBusInterfaceMethodHandler>> handlers_;
+  // Signal registration map.
+  std::map<std::string, std::shared_ptr<DBusSignalBase>> signals_;
 
   friend class DBusObject;
   DBusObject* dbus_object_;
@@ -319,14 +371,14 @@ class DBusInterface final {
   DISALLOW_COPY_AND_ASSIGN(DBusInterface);
 };
 
-// A DBus object implementation class. Manages the interfaces implemented
+// A D-Bus object implementation class. Manages the interfaces implemented
 // by this object.
 class DBusObject {
  public:
-  // object_manager - ExportedObjectManager instance that notifies DBus
+  // object_manager - ExportedObjectManager instance that notifies D-Bus
   //                  listeners of a new interface being claimed and property
   //                  changes on those interfaces.
-  // object_path - DBus object path for the object instance.
+  // object_path - D-Bus object path for the object instance.
   DBusObject(ExportedObjectManager* object_manager,
              const scoped_refptr<dbus::Bus>& bus,
              const dbus::ObjectPath& object_path);
@@ -336,7 +388,7 @@ class DBusObject {
   // interface proxy does not exist yet, it will be automatically created.
   DBusInterface* AddOrGetInterface(const std::string& interface_name);
 
-  // Registers the object instance with DBus. This is an asynchronous call
+  // Registers the object instance with D-Bus. This is an asynchronous call
   // that will call |completion_callback| when the object and all of its
   // interfaces are registered.
   virtual void RegisterAsync(
@@ -356,28 +408,28 @@ class DBusObject {
   }
 
   // Sends a signal from the exported D-Bus object.
-  void SendSignal(dbus::Signal* signal);
+  bool SendSignal(dbus::Signal* signal);
 
  private:
   // A map of all the interfaces added to this object.
   std::map<std::string, std::unique_ptr<DBusInterface>> interfaces_;
   // Exported property set for properties registered with the interfaces
-  // implemented by this DBus object.
+  // implemented by this D-Bus object.
   ExportedPropertySet property_set_;
   // Delegate object implementing org.freedesktop.DBus.ObjectManager interface.
   base::WeakPtr<ExportedObjectManager> object_manager_;
-  // DBus bus object.
+  // D-Bus bus object.
   scoped_refptr<dbus::Bus> bus_;
-  // DBus object path for this object.
+  // D-Bus object path for this object.
   dbus::ObjectPath object_path_;
-  // DBus object instance once this object is successfully exported.
+  // D-Bus object instance once this object is successfully exported.
   dbus::ExportedObject* exported_object_ = nullptr;  // weak; owned by |bus_|.
 
   friend class DBusInterface;
   DISALLOW_COPY_AND_ASSIGN(DBusObject);
 };
 
-// Dispatches a DBus method call to the corresponding handler.
+// Dispatches a D-Bus method call to the corresponding handler.
 // Used mostly for testing purposes. This method is inlined so that it is
 // not included in the shipping code of libchromeos, and included at the
 // call sites.

@@ -64,6 +64,7 @@
         'chromeos/dbus/data_serialization.cc',
         'chromeos/dbus/dbus.cc',
         'chromeos/dbus/dbus_object.cc',
+        'chromeos/dbus/dbus_signal.cc',
         'chromeos/dbus/exported_object_manager.cc',
         'chromeos/dbus/exported_property_set.cc',
         'chromeos/dbus/utils.cc',

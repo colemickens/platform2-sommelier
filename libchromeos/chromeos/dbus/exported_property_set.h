@@ -14,6 +14,7 @@
 #include <base/memory/weak_ptr.h>
 #include <chromeos/any.h>
 #include <chromeos/dbus/data_serialization.h>
+#include <chromeos/dbus/dbus_signal.h>
 #include <chromeos/errors/error.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
@@ -44,10 +45,11 @@ namespace dbus_utils {
 //
 //  This class is very similar to the PropertySet class in Chrome, except that
 //  it allows objects to expose properties rather than to consume them.
-//  It is used as part of DBusObject to implement DBus object properties on
+//  It is used as part of DBusObject to implement D-Bus object properties on
 //  registered interfaces. See description of DBusObject class for more details.
 
 class DBusObject;
+class DBusInterface;
 
 class ExportedPropertyBase {
  public:
@@ -79,11 +81,10 @@ class ExportedPropertySet {
   explicit ExportedPropertySet(dbus::Bus* bus);
   virtual ~ExportedPropertySet() = default;
 
-  // Called to notify ExportedPropertySet that the DBus object has been
-  // exported successfully and property notification signals can be sent out.
-  void OnObjectExported(dbus::ExportedObject* exported_object) {
-    exported_object_ = exported_object;
-  }
+  // Called to notify ExportedPropertySet that the Properties interface of the
+  // D-Bus object has been exported successfully and property notification
+  // signals can be sent out.
+  void OnPropertiesInterfaceExported(DBusInterface* prop_interface);
 
   // Return a callback that knows how to write this property set's properties
   // to a message.  This writer retains a weak pointer to this, and must
@@ -94,7 +95,7 @@ class ExportedPropertySet {
                         const std::string& property_name,
                         ExportedPropertyBase* exported_property);
 
-  // DBus methods for org.freedesktop.DBus.Properties interface.
+  // D-Bus methods for org.freedesktop.DBus.Properties interface.
   Dictionary HandleGetAll(
       chromeos::ErrorPtr* error,
       const std::string& interface_name);
@@ -127,13 +128,17 @@ class ExportedPropertySet {
                              const ExportedPropertyBase* exported_property);
 
   dbus::Bus* bus_;  // weak; owned by outer DBusObject containing this object.
-  dbus::ExportedObject* exported_object_ = nullptr;  // weak; owned by |bus_|.
   // This is a map from interface name -> property name -> pointer to property.
   std::map<std::string,
            std::map<std::string, ExportedPropertyBase*>> properties_;
 
   // D-Bus callbacks may last longer the property set exporting those methods.
   base::WeakPtrFactory<ExportedPropertySet> weak_ptr_factory_;
+
+  using SignalPropertiesChanged =
+      DBusSignal<std::string, Dictionary, std::vector<std::string>>;
+
+  std::weak_ptr<SignalPropertiesChanged> signal_properties_changed_;
 
   friend class DBusObject;
   friend class ExportedPropertySetTest;

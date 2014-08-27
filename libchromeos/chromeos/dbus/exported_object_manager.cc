@@ -28,6 +28,11 @@ void ExportedObjectManager::RegisterAsync(
   itf->AddMethodHandler(dbus::kObjectManagerGetManagedObjects,
                         base::Unretained(this),
                         &ExportedObjectManager::HandleGetManagedObjects);
+
+  signal_itf_added_ = itf->RegisterSignalOfType<SignalInterfacesAdded>(
+      dbus::kObjectManagerInterfacesAdded);
+  signal_itf_removed_ = itf->RegisterSignalOfType<SignalInterfacesRemoved>(
+      dbus::kObjectManagerInterfacesRemoved);
   dbus_object_.RegisterAsync(completion_callback);
 }
 
@@ -45,12 +50,7 @@ void ExportedObjectManager::ClaimInterface(
   std::map<std::string, dbus_utils::Dictionary> interfaces_and_properties{
       {interface_name, property_dict}
   };
-  dbus::Signal signal(dbus::kObjectManagerInterface,
-                      dbus::kObjectManagerInterfacesAdded);
-  dbus::MessageWriter signal_writer(&signal);
-  signal_writer.AppendObjectPath(path);
-  dbus_utils::AppendValueToWriter(&signal_writer, interfaces_and_properties);
-  dbus_object_.SendSignal(&signal);
+  signal_itf_added_.lock()->Send(path, interfaces_and_properties);
   registered_objects_[path][interface_name] = property_writer;
 }
 
@@ -73,13 +73,8 @@ void ExportedObjectManager::ReleaseInterface(
   // We're sending signals that look like:
   //   org.freedesktop.DBus.ObjectManager.InterfacesRemoved (
   //       OBJPATH object_path, ARRAY<STRING> interfaces);
-  dbus::Signal signal(dbus::kObjectManagerInterface,
-                      dbus::kObjectManagerInterfacesRemoved);
-  dbus::MessageWriter signal_writer(&signal);
-  signal_writer.AppendObjectPath(path);
-  dbus_utils::AppendValueToWriter(&signal_writer,
-                                  std::vector<std::string>{interface_name});
-  dbus_object_.SendSignal(&signal);
+  signal_itf_removed_.lock()->Send(path,
+                                   std::vector<std::string>{interface_name});
 }
 
 ExportedObjectManager::ObjectMap

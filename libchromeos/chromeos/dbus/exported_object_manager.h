@@ -7,7 +7,9 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
+#include <base/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/any.h>
 #include <chromeos/dbus/dbus_object.h>
@@ -36,7 +38,9 @@ namespace dbus_utils {
 //     ExampleObjectManager(dbus::Bus* bus)
 //         : object_manager_(bus, "/my/objects/path") { }
 //
-//     void Init(const OnInitFinish& cb) { object_manager_.Init(cb); }
+//     void RegisterAsync(const CompletionAction& cb) {
+//          object_manager_.RegisterAsync(cb);
+//     }
 //     void ClaimInterface(const dbus::ObjectPath& path,
 //                         const std::string& interface_name,
 //                         const ExportedPropertySet::PropertyWriter& writer) {
@@ -108,6 +112,14 @@ class ExportedObjectManager
   chromeos::dbus_utils::DBusObject dbus_object_;
   // Tracks all objects currently known to the ExportedObjectManager.
   std::map<dbus::ObjectPath, InterfaceProperties> registered_objects_;
+
+  using SignalInterfacesAdded =
+      DBusSignal<dbus::ObjectPath, std::map<std::string, Dictionary>>;
+  using SignalInterfacesRemoved =
+      DBusSignal<dbus::ObjectPath, std::vector<std::string>>;
+
+  std::weak_ptr<SignalInterfacesAdded> signal_itf_added_;
+  std::weak_ptr<SignalInterfacesRemoved> signal_itf_removed_;
 
   friend class ExportedObjectManagerTest;
   DISALLOW_COPY_AND_ASSIGN(ExportedObjectManager);

@@ -135,7 +135,6 @@ void DBusObject::RegisterAsync(
   CHECK(exported_object_ == nullptr) << "Object already registered.";
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   exported_object_ = bus_->GetExportedObject(object_path_);
-  property_set_.OnObjectExported(exported_object_);
 
   // Add the org.freedesktop.DBus.Properties interface to the object.
   DBusInterface* prop_interface = AddOrGetInterface(dbus::kPropertiesInterface);
@@ -148,6 +147,7 @@ void DBusObject::RegisterAsync(
   prop_interface->AddMethodHandler(dbus::kPropertiesSet,
                                    base::Unretained(&property_set_),
                                    &ExportedPropertySet::HandleSet);
+  property_set_.OnPropertiesInterfaceExported(prop_interface);
 
   // Export interface methods
   for (const auto& pair : interfaces_) {
@@ -163,11 +163,13 @@ void DBusObject::RegisterAsync(
   sequencer->OnAllTasksCompletedCall({completion_callback});
 }
 
-void DBusObject::SendSignal(dbus::Signal* signal) {
+bool DBusObject::SendSignal(dbus::Signal* signal) {
   if (exported_object_) {
-    LOG(ERROR) << "Trying to send a signal from an object that is not exported";
     exported_object_->SendSignal(signal);
+    return true;
   }
+  LOG(ERROR) << "Trying to send a signal from an object that is not exported";
+  return false;
 }
 
 }  // namespace dbus_utils

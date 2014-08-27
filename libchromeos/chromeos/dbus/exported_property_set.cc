@@ -23,6 +23,13 @@ ExportedPropertySet::ExportedPropertySet(dbus::Bus* bus)
     : bus_(bus),
       weak_ptr_factory_(this) { }
 
+void ExportedPropertySet::OnPropertiesInterfaceExported(
+    DBusInterface* prop_interface) {
+  signal_properties_changed_ =
+      prop_interface->RegisterSignalOfType<SignalPropertiesChanged>(
+          dbus::kPropertiesChanged);
+}
+
 ExportedPropertySet::PropertyWriter ExportedPropertySet::GetPropertyWriter(
     const std::string& interface_name) {
   return base::Bind(&ExportedPropertySet::WritePropertiesToDict,
@@ -114,24 +121,19 @@ void ExportedPropertySet::HandlePropertyUpdated(
     const ExportedPropertyBase* exported_property) {
   bus_->AssertOnOriginThread();
   // Send signal only if the object has been exported successfully.
-  if (!exported_object_)
+  // This could happen when a property value is changed (which triggers
+  // the notification) before D-Bus interface is completely exported/claimed.
+  auto signal = signal_properties_changed_.lock();
+  if (!signal)
     return;
-  dbus::Signal signal(dbus::kPropertiesInterface, dbus::kPropertiesChanged);
-  dbus::MessageWriter writer(&signal);
-  writer.AppendString(interface_name);
   dbus_utils::Dictionary changed_properties{
       {property_name, exported_property->GetValue()}
   };
-  dbus_utils::AppendValueToWriter(&writer, changed_properties);
   // The interface specification tells us to include this list of properties
   // which have changed, but for whom no value is conveyed.  Currently, we
   // don't do anything interesting here.
   std::vector<std::string> invalidated_properties;  // empty.
-  dbus_utils::AppendValueToWriter(&writer, invalidated_properties);
-  // This sends the signal asynchronously.  However, the raw message inside
-  // the signal object is ref-counted, so we're fine to allocate the Signal
-  // object on our local stack.
-  exported_object_->SendSignal(&signal);
+  signal->Send(interface_name, changed_properties, invalidated_properties);
 }
 
 void ExportedPropertyBase::NotifyPropertyChanged() {
