@@ -21,6 +21,15 @@ const char kManagerSetNote[] = "SetNote";
 const char kManagerStartMonitoring[] = "StartMonitoring";
 const char kManagerStopMonitoring[] = "StopMonitoring";
 
+const char kPeerInterface[] = "org.chromium.peerd.Peer";
+const char kSelfPath[] = "/org/chromium/peerd/Self";
+const char kPeerPrefix[] = "/org/chromium/peerd/peers/";
+
+const char kPeerFriendlyName[] = "FriendlyName";
+const char kPeerLastSeen[] = "LastSeen";
+const char kPeerNote[]  = "Note";
+const char kPeerUUID[] = "UUID";
+
 const char kPingResponse[] = "Hello world!";
 
 }  // namespace dbus_constants

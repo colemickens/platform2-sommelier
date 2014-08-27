@@ -15,6 +15,8 @@
         'dbus_constants.cc',
         'dbus_data_serialization.cc',
         'manager.cc',
+        'peer.cc',
+        'typedefs.cc',
       ],
     },
     {
@@ -45,6 +47,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'dbus_data_serialization_unittest.cc',
+            'peer_unittest.cc',
             'peerd_testrunner.cc',
           ],
         },

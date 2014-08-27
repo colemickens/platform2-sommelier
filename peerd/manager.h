@@ -11,8 +11,10 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/dbus_object.h>
+#include <chromeos/errors/error.h>
+
+#include "peerd/typedefs.h"
 
 struct sockaddr_storage;
 
@@ -33,9 +35,7 @@ class Manager {
  public:
   explicit Manager(chromeos::dbus_utils::ExportedObjectManager* object_manager);
   virtual ~Manager() = default;
-  void RegisterAsync(
-      const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction&
-          completion_callback);
+  void RegisterAsync(const CompletionAction& completion_callback);
 
   // DBus handlers
   std::string StartMonitoring(

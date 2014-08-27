@@ -5,9 +5,14 @@
 #ifndef PEERD_TYPEDEFS_H_
 #define PEERD_TYPEDEFS_H_
 
+#include <chromeos/dbus/async_event_sequencer.h>
+
 namespace peerd {
 
-using OnInitFinish = base::Callback<void(bool success)>;
+using CompletionAction =
+    chromeos::dbus_utils::AsyncEventSequencer::CompletionAction;
+
+extern const char kPeerdErrorDomain[];
 
 }  // namespace peerd
 

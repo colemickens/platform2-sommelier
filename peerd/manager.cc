@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
+#include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/exported_object_manager.h>
 #include <dbus/object_path.h>
 
@@ -38,8 +39,7 @@ Manager::Manager(ExportedObjectManager* object_manager)
                  ObjectPath(kManagerServicePath)) {
 }
 
-void Manager::RegisterAsync(
-    const AsyncEventSequencer::CompletionAction& completion_callback) {
+void Manager::RegisterAsync(const CompletionAction& completion_callback) {
   chromeos::dbus_utils::DBusInterface* itf =
       dbus_object_.AddOrGetInterface(kManagerInterface);
 

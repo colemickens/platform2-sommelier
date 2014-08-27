@@ -25,6 +25,17 @@ extern const char kManagerSetNote[];
 extern const char kManagerStartMonitoring[];
 extern const char kManagerStopMonitoring[];
 
+// Interface implemented by the objects at kSelfPath and under kPeerPrefix.
+extern const char kPeerInterface[];
+extern const char kSelfPath[];
+extern const char kPeerPrefix[];
+
+// Properties exposed as part of kPeerInterface.
+extern const char kPeerFriendlyName[];
+extern const char kPeerLastSeen[];
+extern const char kPeerNote[];
+extern const char kPeerUUID[];
+
 extern const char kPingResponse[];
 
 }  // namespace dbus_constants
