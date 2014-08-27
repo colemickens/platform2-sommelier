@@ -334,6 +334,14 @@ const char Metrics::kMetricDeviceConnectionStatus[] =
 const char Metrics::kMetricDhcpClientStatus[] =
     "Network.Shill.DHCPClientStatus";
 
+// static
+const char Metrics::kMetricNetworkConnectionIPTypeSuffix[] =
+    "NetworkConnectionIPType";
+
+// static
+const char Metrics::kMetricIPv6ConnectivityStatusSuffix[] =
+    "IPv6ConnectivityStatus";
+
 Metrics::Metrics(EventDispatcher *dispatcher)
     : dispatcher_(dispatcher),
       library_(&metrics_library_),
@@ -1195,6 +1203,22 @@ void Metrics::NotifyDeviceConnectionStatus(ConnectionStatus status) {
 
 void Metrics::NotifyDhcpClientStatus(DhcpClientStatus status) {
   SendEnumToUMA(kMetricDhcpClientStatus, status, kDhcpClientStatusMax);
+}
+
+void Metrics::NotifyNetworkConnectionIPType(
+    Technology::Identifier technology_id, NetworkConnectionIPType type) {
+  string histogram = GetFullMetricName(kMetricNetworkConnectionIPTypeSuffix,
+                                       technology_id);
+  SendEnumToUMA(histogram, type, kNetworkConnectionIPTypeMax);
+}
+
+void Metrics::NotifyIPv6ConnectivityStatus(Technology::Identifier technology_id,
+                                           bool status) {
+  string histogram = GetFullMetricName(kMetricIPv6ConnectivityStatusSuffix,
+                                       technology_id);
+  IPv6ConnectivityStatus ipv6_status = status ? kIPv6ConnectivityStatusYes
+                                              : kIPv6ConnectivityStatusNo;
+  SendEnumToUMA(histogram, ipv6_status, kIPv6ConnectivityStatusMax);
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {

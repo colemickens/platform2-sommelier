@@ -333,6 +333,18 @@ class Metrics {
     kDhcpClientStatusMax
   };
 
+  enum NetworkConnectionIPType {
+    kNetworkConnectionIPTypeIPv4 = 0,
+    kNetworkConnectionIPTypeIPv6 = 1,
+    kNetworkConnectionIPTypeMax
+  };
+
+  enum IPv6ConnectivityStatus {
+    kIPv6ConnectivityStatusNo = 0,
+    kIPv6ConnectivityStatusYes = 1,
+    kIPv6ConnectivityStatusMax
+  };
+
   static const char kMetricDisconnectSuffix[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -556,6 +568,12 @@ class Metrics {
   // DHCP client status.
   static const char kMetricDhcpClientStatus[];
 
+  // Network connection IP type.
+  static const char kMetricNetworkConnectionIPTypeSuffix[];
+
+  // IPv6 connectivity status.
+  static const char kMetricIPv6ConnectivityStatusSuffix[];
+
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
 
@@ -758,6 +776,14 @@ class Metrics {
 
   // Notifies this object about the DHCP client status.
   virtual void NotifyDhcpClientStatus(Metrics::DhcpClientStatus status);
+
+  // Notifies this object about the IP type of the current network connection.
+  virtual void NotifyNetworkConnectionIPType(
+      Technology::Identifier technology_id, NetworkConnectionIPType type);
+
+  // Notifies this object about the IPv6 connectivity status.
+  virtual void NotifyIPv6ConnectivityStatus(
+      Technology::Identifier technology_id, bool status);
 
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string &name, int sample, int max);

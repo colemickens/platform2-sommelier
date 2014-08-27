@@ -455,7 +455,7 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Config) {
 
   EXPECT_CALL(*ipconfig, ResetProperties());
   EXPECT_CALL(*connection, IsIPv6())
-      .WillOnce(Return(false));
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(*connection, UpdateFromIPConfig(device_->ip6config_));
   EXPECT_CALL(*service, SetState(Service::kStateConnected));
   EXPECT_CALL(*service, IsConnected())
@@ -498,6 +498,12 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
                                                           kDeviceName);
   device_->set_ipconfig(ipconfig);
   EXPECT_CALL(*service, SetState(Service::kStateConnected));
+  EXPECT_CALL(metrics_,
+              NotifyNetworkConnectionIPType(
+                  device_->technology(),
+                  Metrics::kNetworkConnectionIPTypeIPv4));
+  EXPECT_CALL(metrics_,
+              NotifyIPv6ConnectivityStatus(device_->technology(), false));
   EXPECT_CALL(*service, IsConnected())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service, IsPortalDetectionDisabled())
@@ -1174,6 +1180,12 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   EXPECT_CALL(*connection, IsIPv6())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*connection, UpdateFromIPConfig(device_->ip6config_));
+  EXPECT_CALL(metrics_,
+              NotifyNetworkConnectionIPType(
+                  device_->technology(),
+                  Metrics::kNetworkConnectionIPTypeIPv6));
+  EXPECT_CALL(metrics_,
+              NotifyIPv6ConnectivityStatus(device_->technology(), true));
   EXPECT_CALL(*service, SetState(Service::kStateConnected));
   EXPECT_CALL(*service, IsConnected())
       .WillRepeatedly(Return(true));

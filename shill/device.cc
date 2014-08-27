@@ -675,6 +675,16 @@ void Device::SetupConnection(const IPConfigRefPtr &ipconfig) {
   CreateConnection();
   connection_->UpdateFromIPConfig(ipconfig);
 
+  // Report connection type.
+  Metrics::NetworkConnectionIPType ip_type =
+      connection_->IsIPv6() ? Metrics::kNetworkConnectionIPTypeIPv6
+                            : Metrics::kNetworkConnectionIPTypeIPv4;
+  metrics_->NotifyNetworkConnectionIPType(technology_, ip_type);
+
+  // Report if device have IPv6 connectivity
+  bool ipv6_connectivity = IPConfigCompleted(ip6config_);
+  metrics_->NotifyIPv6ConnectivityStatus(technology_, ipv6_connectivity);
+
   // SetConnection must occur after the UpdateFromIPConfig so the
   // service can use the values derived from the connection.
   if (selected_service_) {

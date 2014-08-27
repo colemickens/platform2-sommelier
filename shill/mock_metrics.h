@@ -60,6 +60,11 @@ class MockMetrics : public Metrics {
   MOCK_METHOD1(NotifyDeviceConnectionStatus,
                void(Metrics::ConnectionStatus status));
   MOCK_METHOD1(NotifyDhcpClientStatus, void(Metrics::DhcpClientStatus status));
+  MOCK_METHOD2(NotifyNetworkConnectionIPType,
+               void(Technology::Identifier technology_id,
+                    Metrics::NetworkConnectionIPType type));
+  MOCK_METHOD2(NotifyIPv6ConnectivityStatus,
+               void(Technology::Identifier technology_id, bool status));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);
