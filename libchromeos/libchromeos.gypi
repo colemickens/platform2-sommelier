@@ -256,6 +256,7 @@
             'chromeos/dbus/data_serialization_unittest.cc',
             'chromeos/dbus/dbus_object_unittest.cc',
             'chromeos/dbus/dbus_param_reader_unittest.cc',
+            'chromeos/dbus/dbus_param_writer_unittest.cc',
             'chromeos/error_unittest.cc',
             'chromeos/exported_object_manager_unittest.cc',
             'chromeos/exported_property_set_unittest.cc',
