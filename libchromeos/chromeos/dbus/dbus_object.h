@@ -322,7 +322,7 @@ class DBusObject {
   DBusObject(ExportedObjectManager* object_manager,
              const scoped_refptr<dbus::Bus>& bus,
              const dbus::ObjectPath& object_path);
-  ~DBusObject();
+  virtual ~DBusObject();
 
   // Returns an proxy handler for the interface |interface_name|. If the
   // interface proxy does not exist yet, it will be automatically created.
@@ -331,7 +331,7 @@ class DBusObject {
   // Registers the object instance with DBus. This is an asynchronous call
   // that will call |completion_callback| when the object and all of its
   // interfaces are registered.
-  void RegisterAsync(
+  virtual void RegisterAsync(
       const AsyncEventSequencer::CompletionAction& completion_callback);
 
   // Finds a handler for the given method of a specific interface.
