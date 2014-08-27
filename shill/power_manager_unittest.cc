@@ -26,6 +26,7 @@ using std::map;
 using std::string;
 using testing::_;
 using testing::DoAll;
+using testing::InvokeWithoutArgs;
 using testing::Mock;
 using testing::Return;
 using testing::SetArgumentPointee;
@@ -153,8 +154,6 @@ class PowerManagerTest : public Test {
   }
 
   void OnSuspendImminent(int suspend_id) {
-    EXPECT_CALL(dispatcher_,
-                PostDelayedTask(_, PowerManager::kSuspendTimeoutMilliseconds));
     factory_.delegate()->OnSuspendImminent(suspend_id);
     EXPECT_TRUE(power_manager_.suspending());
   }
@@ -162,10 +161,6 @@ class PowerManagerTest : public Test {
   void OnSuspendDone(int suspend_id) {
     factory_.delegate()->OnSuspendDone(suspend_id);
     EXPECT_FALSE(power_manager_.suspending());
-  }
-
-  void OnSuspendTimeout() {
-    power_manager_.OnSuspendTimeout();
   }
 
   void OnPowerManagerAppeared() {
@@ -237,11 +232,25 @@ TEST_F(PowerManagerTest, ReportSuspendReadinessFailure) {
   EXPECT_FALSE(power_manager_.ReportSuspendReadiness());
 }
 
-TEST_F(PowerManagerTest, ReportSuspendStateFailsOutsideSuspend) {
+TEST_F(PowerManagerTest, ReportSuspendReadinessFailsOutsideSuspend) {
   RegisterSuspendDelay();
   EXPECT_CALL(*power_manager_proxy_,
               ReportSuspendReadiness(_, _)).Times(0);
   EXPECT_FALSE(power_manager_.ReportSuspendReadiness());
+}
+
+TEST_F(PowerManagerTest, ReportSuspendReadinessSynchronous) {
+  // Verifies that a synchronous ReportSuspendReadiness call by shill on a
+  // SuspendImminent callback is routed back to powerd.
+  RegisterSuspendDelay();
+  EXPECT_CALL(*power_manager_proxy_,
+              ReportSuspendReadiness(_, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*this, SuspendImminentAction())
+      .WillOnce(IgnoreResult(
+          InvokeWithoutArgs(&power_manager_,
+                            &PowerManager::ReportSuspendReadiness)));
+  OnSuspendImminent(kSuspendId1);
 }
 
 TEST_F(PowerManagerTest, StopFailure) {
@@ -256,19 +265,6 @@ TEST_F(PowerManagerTest, StopFailure) {
   EXPECT_CALL(*this, SuspendDoneAction());
   OnSuspendImminent(kSuspendId1);
   OnSuspendDone(kSuspendId1);
-}
-
-TEST_F(PowerManagerTest, OnSuspendTimeout) {
-  RegisterSuspendDelay();
-
-  EXPECT_CALL(*this, SuspendImminentAction());
-  OnSuspendImminent(kSuspendId1);
-  Mock::VerifyAndClearExpectations(this);
-
-  // After the timeout, the "done" callback should be run.
-  EXPECT_CALL(*this, SuspendDoneAction());
-  OnSuspendTimeout();
-  EXPECT_FALSE(power_manager_.suspending());
 }
 
 TEST_F(PowerManagerTest, OnPowerManagerReappeared) {
@@ -296,11 +292,8 @@ TEST_F(PowerManagerTest, PowerManagerDiedInSuspend) {
   OnSuspendImminent(kSuspendId1);
   Mock::VerifyAndClearExpectations(this);
 
-  OnPowerManagerVanished();
-
-  // After the timeout, the "done" callback should be run.
   EXPECT_CALL(*this, SuspendDoneAction());
-  OnSuspendTimeout();
+  OnPowerManagerVanished();
   EXPECT_FALSE(power_manager_.suspending());
 }
 
@@ -312,13 +305,15 @@ TEST_F(PowerManagerTest, PowerManagerReappearedInSuspend) {
 
   AddProxyRegisterSuspendDelayExpectation(
       kTimeout, kDescription, kDelayId2, true);
+  EXPECT_CALL(*this, SuspendDoneAction());
   OnPowerManagerVanished();
   OnPowerManagerAppeared();
-
-  // After the timeout, the "done" callback should be run.
-  EXPECT_CALL(*this, SuspendDoneAction());
-  OnSuspendTimeout();
   EXPECT_FALSE(power_manager_.suspending());
+  Mock::VerifyAndClearExpectations(this);
+
+  // Let's check a normal suspend request after the fact.
+  EXPECT_CALL(*this, SuspendImminentAction());
+  OnSuspendImminent(kSuspendId2);
 }
 
 }  // namespace shill

@@ -77,13 +77,9 @@ class PowerManager : public PowerManagerProxyDelegate {
 
   // Human-readable string describing the suspend delay that is registered
   // with the power manager.
+  static const int kInvalidSuspendId;
   static const char kSuspendDelayDescription[];
   static const int kSuspendTimeoutMilliseconds;
-
-
-  // Run by |suspend_timeout_| to manually invoke OnSuspendDone() if the signal
-  // never arrives.
-  void OnSuspendTimeout();
 
   // These functions track the power_manager daemon appearing/vanishing from the
   // DBus connection.
@@ -111,9 +107,6 @@ class PowerManager : public PowerManagerProxyDelegate {
   SuspendImminentCallback suspend_imminent_callback_;
   // ... powerd notified us that the suspend attempt has finished.
   SuspendDoneCallback suspend_done_callback_;
-  // ... powerd notified us of a suspend, but the suspend done event didn't
-  // happen in a reasonable time.
-  base::CancelableClosure suspend_timeout_;
 
   // Set to true by OnSuspendImminent() and to false by OnSuspendDone().
   bool suspending_;

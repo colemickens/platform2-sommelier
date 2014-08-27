@@ -26,6 +26,7 @@ using std::string;
 namespace shill {
 
 // static
+const int PowerManager::kInvalidSuspendId = -1;
 const char PowerManager::kSuspendDelayDescription[] = "shill";
 const int PowerManager::kSuspendTimeoutMilliseconds = 15 * 1000;
 
@@ -81,25 +82,20 @@ void PowerManager::OnSuspendImminent(int suspend_id) {
   LOG(INFO) << __func__ << "(" << suspend_id << ")";
   current_suspend_id_ = suspend_id;
 
-  // Schedule a suspend timeout in case the suspend attempt failed or got
-  // interrupted, and there's no proper notification from the power manager.
-  suspend_timeout_.Reset(base::Bind(&PowerManager::OnSuspendTimeout,
-                         Unretained(this)));
-  dispatcher_->PostDelayedTask(suspend_timeout_.callback(),
-                               kSuspendTimeoutMilliseconds);
-
-
   // If we're already suspending, don't call the |suspend_imminent_callback_|
   // again.
   if (!suspending_) {
     // Change the power state to suspending as soon as this signal is received
     // so that the manager can suppress auto-connect, for example.
+    // Also, we must set this before running the callback below, because the
+    // callback may synchronously report suspend readiness.
     suspending_ = true;
     suspend_imminent_callback_.Run();
   }
 }
 
 void PowerManager::OnSuspendDone(int suspend_id) {
+  // NB: |suspend_id| could be -1. See OnPowerManagerVanished.
   LOG(INFO) << __func__ << "(" << suspend_id << ")";
   if (!suspending_) {
     LOG(WARNING) << "Recieved unexpected SuspendDone ("
@@ -107,14 +103,8 @@ void PowerManager::OnSuspendDone(int suspend_id) {
     return;
   }
 
-  suspend_timeout_.Cancel();
   suspending_ = false;
   suspend_done_callback_.Run();
-}
-
-void PowerManager::OnSuspendTimeout() {
-  LOG(ERROR) << "Suspend timed out -- assuming power-on state.";
-  OnSuspendDone(current_suspend_id_);
 }
 
 void PowerManager::OnPowerManagerAppeared(const string &/*name*/,
@@ -129,6 +119,9 @@ void PowerManager::OnPowerManagerAppeared(const string &/*name*/,
 
 void PowerManager::OnPowerManagerVanished(const string &/*name*/) {
   LOG(INFO) << __func__;
+  // If powerd vanished during a suspend, we need to wake ourselves up.
+  if (suspending_)
+    OnSuspendDone(kInvalidSuspendId);
   suspend_delay_registered_ = false;
 }
 
