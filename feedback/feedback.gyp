@@ -27,7 +27,7 @@
       'type': 'executable',
       'dependencies': ['libfeedback_daemon', ],
       'sources': [
-        'feedbackd.cc',
+        'feedback_daemon.cc',
       ],
     },
   ],
