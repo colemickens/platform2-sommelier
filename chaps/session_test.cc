@@ -837,6 +837,7 @@ TEST_F(TestSession, ImportRSAWithTPM) {
   EXPECT_FALSE(object->IsAttributePresent(CKA_EXPONENT_1));
   EXPECT_FALSE(object->IsAttributePresent(CKA_EXPONENT_2));
   EXPECT_FALSE(object->IsAttributePresent(CKA_COEFFICIENT));
+  RSA_free(rsa);
 }
 
 TEST_F(TestSession, ImportRSAWithNoTPM) {
@@ -892,6 +893,7 @@ TEST_F(TestSession, ImportRSAWithNoTPM) {
   EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_1));
   EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_2));
   EXPECT_TRUE(object->IsAttributePresent(CKA_COEFFICIENT));
+  RSA_free(rsa);
 }
 
 }  // namespace chaps
