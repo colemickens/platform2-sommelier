@@ -421,6 +421,9 @@ bool DevicePolicyImpl::GetHttpDownloadsEnabled(
   const enterprise_management::AutoUpdateSettingsProto& proto =
       device_policy_.auto_update_settings();
 
+  if (!proto.has_http_downloads_enabled())
+    return false;
+
   *http_downloads_enabled = proto.http_downloads_enabled();
   return true;
 }
