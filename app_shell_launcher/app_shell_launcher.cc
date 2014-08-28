@@ -29,43 +29,74 @@ const char kXauthPath[] = "/var/run/x11.auth";
 // Path to the app_shell binary.
 const char kAppShellPath[] = "/opt/google/chrome/app_shell";
 
+// Directory where data files are written at build time.
+const char kReadonlyDataPath[] = "/usr/share/app_shell";
+
 // Subdirectory under $DATA_DIR where user data should be stored.
 const char kUserSubdir[] = "user";
 
-// Files in $DATA_DIR containing the ID of the app that should be loaded and the
-// name of a preferred network to connect to.
+// Files in $DATA_DIR or kReadonlyDataPath containing the ID of the app that
+// should be loaded and the name of a preferred network to connect to.
 const char kAppIdFile[] = "app_id";
 const char kPreferredNetworkFile[] = "preferred_network";
 
-// Subdirectory under $DATA_DIR from which an app is loaded if kAppIdFile
-// doesn't exist.
+// Subdirectory under $DATA_DIR or kReadonlyDataPath from which an app is loaded
+// if kAppIdFile doesn't exist.
 const char kAppSubdir[] = "app";
+
+// Returns the first of the following paths that exists:
+// - a file named |filename| within |stateful_dir|
+// - a file named |filename| within |readonly_dir|
+// - failing that, an empty path
+base::FilePath GetDataPath(const base::FilePath& stateful_dir,
+                           const base::FilePath& readonly_dir,
+                           const std::string& filename) {
+  base::FilePath stateful_path = stateful_dir.Append(filename);
+  if (base::PathExists(stateful_path))
+    return stateful_path;
+
+  base::FilePath readonly_path = readonly_dir.Append(filename);
+  if (base::PathExists(readonly_path))
+    return readonly_path;
+
+  return base::FilePath();
+}
+
+// Calls GetDataPath() and reads the file to |data_out|.
+// Returns true on success.
+bool ReadData(const base::FilePath& stateful_dir,
+              const base::FilePath& readonly_dir,
+              const std::string& filename,
+              std::string* data_out) {
+  base::FilePath path = GetDataPath(stateful_dir, readonly_dir, filename);
+  return !path.empty() ? base::ReadFileToString(path, data_out) : false;
+}
 
 // Adds app_shell-specific flags.
 void AddAppShellFlags(ChromiumCommandBuilder* builder) {
-  const base::FilePath data_dir(builder->ReadEnvVar("DATA_DIR"));
+  const base::FilePath stateful_dir(builder->ReadEnvVar("DATA_DIR"));
+  const base::FilePath readonly_dir(kReadonlyDataPath);
 
   // Set --data-path to tell app_shell where to store user data.
-  const base::FilePath user_path = data_dir.Append(kUserSubdir);
+  const base::FilePath user_path = stateful_dir.Append(kUserSubdir);
   CHECK(EnsureDirectoryExists(user_path, builder->uid(), builder->gid(), 0700));
   builder->AddArg("--data-path=" + user_path.value());
 
   std::string app_id;
-  if (base::ReadFileToString(data_dir.Append(kAppIdFile), &app_id)) {
+  if (ReadData(stateful_dir, readonly_dir, kAppIdFile, &app_id)) {
     base::TrimWhitespaceASCII(app_id, base::TRIM_ALL, &app_id);
     builder->AddArg("--app-shell-app-id=" + app_id);
   } else {
-    const base::FilePath app_path = data_dir.Append(kAppSubdir);
-    if (base::PathExists(app_path))
+    const base::FilePath app_path =
+        GetDataPath(stateful_dir, readonly_dir, kAppSubdir);
+    if (!app_path.empty())
       builder->AddArg("--app-shell-app-path=" + app_path.value());
   }
 
-  std::string preferred_network;
-  if (base::ReadFileToString(data_dir.Append(kPreferredNetworkFile),
-                             &preferred_network)) {
-    base::TrimWhitespaceASCII(
-        preferred_network, base::TRIM_ALL, &preferred_network);
-    builder->AddArg("--app-shell-preferred-network=" + preferred_network);
+  std::string network;
+  if (ReadData(stateful_dir, readonly_dir, kPreferredNetworkFile, &network)) {
+    base::TrimWhitespaceASCII(network, base::TRIM_ALL, &network);
+    builder->AddArg("--app-shell-preferred-network=" + network);
   }
 }
 
