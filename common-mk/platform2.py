@@ -89,10 +89,20 @@ class Platform2(object):
     """Return the path to the folder where build product are located."""
     return os.path.join(self.get_buildroot(), 'out/Default')
 
-  def get_portageq_envvars(self, varnames, board = None):
+  def get_portageq_envvars(self, varnames, board=None):
     """Returns the values of a given set of variables using portageq."""
     if isinstance(varnames, basestring):
       varnames = [varnames]
+
+    # See if the env already has these settings.  If so, grab them directly.
+    # This avoids the need to specify --board at all most of the time.
+    try:
+      board_vars = {}
+      for varname in varnames:
+        board_vars[varname] = os.environ[varname]
+      return board_vars
+    except KeyError:
+      pass
 
     if board is None and not self.host:
       board = self.board
@@ -136,7 +146,11 @@ class Platform2(object):
 
     We do this to set the various CC/CXX/AR names for the target board.
     """
-    board_env = self.get_portageq_envvars(['CHOST', 'AR', 'CC', 'CXX'])
+    varnames = ['CHOST', 'AR', 'CC', 'CXX']
+    if not self.host and not self.board:
+      for v in varnames:
+        os.environ.setdefault(v, '')
+    board_env = self.get_portageq_envvars(varnames)
 
     tool_names = {
         'AR': 'ar',
@@ -288,7 +302,7 @@ def main(argv):
 
   options = parser.parse_args(argv)
 
-  if not (options.host ^ (options.board != None)):
+  if options.host and options.board:
     raise AssertionError('You must provide only one of --board or --host')
 
   if options.verbose is None:
