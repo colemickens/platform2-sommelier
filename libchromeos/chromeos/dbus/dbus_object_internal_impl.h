@@ -167,35 +167,6 @@ struct RawReturnDBusInvoker {
   }
 };  // struct RawReturnDBusInvoker
 
-// This is a helper function that calls a C++ |handler| callback by reading
-// the function arguments from the message buffer provided in D-Bus
-// |method_call|. Returns a D-Bus Response class with the response message
-// containing either a valid reply message or an error message if the call
-// failed.
-template<typename ReturnType, typename... Args>
-std::unique_ptr<dbus::Response> CallDBusMethodHandler(
-    const TypedReturnDBusMethodHandler<ReturnType, Args...>& handler,
-    dbus::MethodCall* method_call) {
-  dbus::MessageReader reader(method_call);
-  using Handler = TypedReturnDBusMethodHandler<ReturnType, Args...>;
-  return TypedReturnDBusInvoker<ReturnType, Handler, Args...>::Invoke(handler,
-                                                                method_call,
-                                                                &reader);
-}
-
-// CallDBusMethodHandler overload for dispatching a callback handler that
-// returns a custom response object as std::unique_ptr<dbus::Response>.
-template<typename... Args>
-std::unique_ptr<dbus::Response> CallDBusMethodHandler(
-    const RawReturnDBusMethodHandler<Args...>& handler,
-    dbus::MethodCall* method_call) {
-  dbus::MessageReader reader(method_call);
-  using Handler = RawReturnDBusMethodHandler<Args...>;
-  return RawReturnDBusInvoker<Handler, Args...>::Invoke(handler,
-                                                        method_call,
-                                                        &reader);
-}
-
 }  // namespace dbus_utils
 }  // namespace chromeos
 

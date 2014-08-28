@@ -98,7 +98,11 @@ class TypedDBusInterfaceMethodHandler : public DBusInterfaceMethodHandler {
   // handler call has failed.
   std::unique_ptr<dbus::Response> HandleMethod(
       dbus::MethodCall* method_call) override {
-    return CallDBusMethodHandler(handler_, method_call);
+    dbus::MessageReader reader(method_call);
+    using Handler = TypedReturnDBusMethodHandler<R, Args...>;
+    return TypedReturnDBusInvoker<R, Handler, Args...>::Invoke(handler_,
+                                                               method_call,
+                                                               &reader);
   }
 
  private:
@@ -132,7 +136,11 @@ class TypedDBusInterfaceMethodHandler<std::unique_ptr<dbus::Response>, Args...>
   // The dbus::Response return value of |handler_| is passed on to the caller.
   std::unique_ptr<dbus::Response> HandleMethod(
       dbus::MethodCall* method_call) override {
-    return CallDBusMethodHandler(handler_, method_call);
+    dbus::MessageReader reader(method_call);
+    using Handler = RawReturnDBusMethodHandler<Args...>;
+    return RawReturnDBusInvoker<Handler, Args...>::Invoke(handler_,
+                                                          method_call,
+                                                          &reader);
   }
 
  private:
