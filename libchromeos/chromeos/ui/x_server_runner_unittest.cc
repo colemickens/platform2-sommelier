@@ -46,7 +46,7 @@ void ExecServer(const base::FilePath& pipe_path,
   // http://crbug.com/380713
   sigset_t old_signals;
   PCHECK(sigemptyset(&old_signals) == 0);
-  PCHECK(sigprocmask(SIG_SETMASK, NULL, &old_signals) == 0);
+  PCHECK(sigprocmask(SIG_SETMASK, nullptr, &old_signals) == 0);
   CHECK(sigisemptyset(&old_signals)) << "Child inherited blocked signals";
 
   if (exit_delay > base::TimeDelta()) {

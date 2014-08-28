@@ -34,7 +34,7 @@ AsynchronousSignalHandler::~AsynchronousSignalHandler() {
       PLOG(WARNING) << "Failed to close file descriptor";
 
     descriptor_ = kInvalidDescriptor;
-    CHECK_EQ(0, sigprocmask(SIG_SETMASK, &saved_signal_mask_, NULL));
+    CHECK_EQ(0, sigprocmask(SIG_SETMASK, &saved_signal_mask_, nullptr));
   }
 }
 
@@ -95,8 +95,8 @@ void AsynchronousSignalHandler::ResetSignal(int signal) {
 
 void AsynchronousSignalHandler::UpdateSignals() {
   if (descriptor_ != kInvalidDescriptor) {
-    CHECK_EQ(0, sigprocmask(SIG_SETMASK, &saved_signal_mask_, NULL));
-    CHECK_EQ(0, sigprocmask(SIG_BLOCK, &signal_mask_, NULL));
+    CHECK_EQ(0, sigprocmask(SIG_SETMASK, &saved_signal_mask_, nullptr));
+    CHECK_EQ(0, sigprocmask(SIG_BLOCK, &signal_mask_, nullptr));
     CHECK_EQ(descriptor_,
              signalfd(descriptor_, &signal_mask_, SFD_CLOEXEC | SFD_NONBLOCK));
   }

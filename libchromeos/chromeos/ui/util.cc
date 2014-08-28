@@ -65,7 +65,7 @@ bool GetUserInfo(const std::string& user, uid_t* uid, gid_t* gid) {
   if (buf_len < 0)
     buf_len = 16384;  // 16K should be enough?...
   passwd pwd_buf;
-  passwd* pwd = NULL;
+  passwd* pwd = nullptr;
   std::vector<char> buf(buf_len);
   if (getpwnam_r(user.c_str(), &pwd_buf, buf.data(), buf_len, &pwd) || !pwd) {
     PLOG(ERROR) << "Unable to find user " << user;

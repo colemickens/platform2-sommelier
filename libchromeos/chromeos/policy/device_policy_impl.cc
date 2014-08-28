@@ -52,7 +52,7 @@ bool VerifySignature(const std::string& signed_data,
     return false;
   }
 
-  EVP_PKEY* public_key_ssl = d2i_PUBKEY_bio(bio, NULL);
+  EVP_PKEY* public_key_ssl = d2i_PUBKEY_bio(bio, nullptr);
   if (!public_key_ssl) {
     BIO_free_all(bio);
     EVP_MD_CTX_cleanup(&ctx);
@@ -61,7 +61,7 @@ bool VerifySignature(const std::string& signed_data,
 
   const unsigned char* sig =
       reinterpret_cast<const unsigned char*>(signature.data());
-  int rv = EVP_VerifyInit_ex(&ctx, digest, NULL);
+  int rv = EVP_VerifyInit_ex(&ctx, digest, nullptr);
   if (rv == 1) {
     EVP_VerifyUpdate(&ctx, signed_data.data(), signed_data.length());
     rv = EVP_VerifyFinal(&ctx,

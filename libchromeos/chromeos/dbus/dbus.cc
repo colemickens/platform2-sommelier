@@ -42,9 +42,9 @@ BusConnection GetSystemBusConnection() {
     LOG(ERROR) << "dbus_g_bus_get(DBUS_BUS_SYSTEM) failed: "
                << ((error.get() && error->message) ?
                    error->message : "Unknown Error");
-    return BusConnection(NULL);
+    return BusConnection(nullptr);
   }
-  // Set to not exit when when system bus is disconnected.
+  // Set to not exit when system bus is disconnected.
   // This fixes the problem where when the dbus daemon is stopped, exit is
   // called which kills Chrome.
   ::dbus_connection_set_exit_on_disconnect(
@@ -73,12 +73,12 @@ BusConnection GetPrivateBusConnection(const char* address) {
   ::DBusError error;
   ::dbus_error_init(&error);
 
-  ::DBusGConnection* result = NULL;
+  ::DBusGConnection* result = nullptr;
   ::DBusConnection* raw_connection
         = ::dbus_connection_open_private(address, &error);
   if (!raw_connection) {
     LOG(WARNING) << "dbus_connection_open_private failed: " << address;
-    return BusConnection(NULL);
+    return BusConnection(nullptr);
   }
 
   if (!::dbus_bus_register(raw_connection, &error)) {
@@ -86,14 +86,14 @@ BusConnection GetPrivateBusConnection(const char* address) {
                << (error.message ? error.message : "Unknown Error.");
     ::dbus_error_free(&error);
     // TODO(yusukes): We don't call dbus_connection_close() nor g_object_unref()
-    // here for now since these calls might interfare with IBusBus connections
+    // here for now since these calls might interfere with IBusBus connections
     // in libcros and Chrome. See the comment in ~InputMethodStatusConnection()
     // function in platform/cros/chromeos_input_method.cc for details.
-    return BusConnection(NULL);
+    return BusConnection(nullptr);
   }
 
   ::dbus_connection_setup_with_g_main(
-      raw_connection, NULL /* default context */);
+      raw_connection, nullptr /* default context */);
 
   // A reference count of |raw_connection| is transferred to |result|. You don't
   // have to (and should not) unref the |raw_connection|.
@@ -129,7 +129,7 @@ Proxy::value_type Proxy::GetGProxy(const BusConnection& connection,
                                    const char* path,
                                    const char* interface,
                                    bool connect_to_name_owner) {
-  value_type result = NULL;
+  value_type result = nullptr;
   if (connect_to_name_owner) {
     glib::ScopedError error;
     result = ::dbus_g_proxy_new_for_name_owner(connection.object_,
@@ -192,7 +192,7 @@ bool RegisterExclusiveService(const BusConnection& connection,
                                          0,
                                          &result,
                                          &Resetter(&err).lvalue())) {
-    LOG(ERROR) << "Unabled to request service name: "
+    LOG(ERROR) << "Unable to request service name: "
                << (err->message ? err->message : "Unknown Error.");
     return false;
   }
@@ -266,7 +266,7 @@ void SignalWatcher::StartMonitoring(const std::string& interface,
   if (!dbus_connection_add_filter(dbus_conn,
                                   &SignalWatcher::FilterDBusMessage,
                                   this,        // user_data
-                                  NULL)) {     // free_data_function
+                                  nullptr)) {  // free_data_function
     LOG(DFATAL) << "Unable to add D-Bus filter";
   }
 }

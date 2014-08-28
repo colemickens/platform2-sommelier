@@ -96,7 +96,7 @@ class Proxy {
   typedef ::DBusGProxy* value_type;
 
   Proxy()
-      : object_(NULL) {
+      : object_(nullptr) {
   }
 
   // Set |connect_to_name_owner| true if you'd like to use
@@ -312,7 +312,7 @@ MonitorConnection<void(A1)>* Monitor(const Proxy& proxy, const char* name,
                             glib::type_to_gtypeid<A1>(), G_TYPE_INVALID);
   ::dbus_g_proxy_connect_signal(proxy.gproxy(), name,
                                 G_CALLBACK(&ConnectionType::Run),
-                                result, NULL);
+                                result, nullptr);
   return result;
 }
 
@@ -330,7 +330,7 @@ MonitorConnection<void(A1, A2)>* Monitor(const Proxy& proxy, const char* name,
                             G_TYPE_INVALID);
   ::dbus_g_proxy_connect_signal(proxy.gproxy(), name,
                                 G_CALLBACK(&ConnectionType::Run),
-                                result, NULL);
+                                result, nullptr);
   return result;
 }
 
@@ -350,7 +350,7 @@ MonitorConnection<void(A1, A2, A3)>* Monitor(const Proxy& proxy,
                             G_TYPE_INVALID);
   ::dbus_g_proxy_connect_signal(proxy.gproxy(), name,
                                 G_CALLBACK(&ConnectionType::Run),
-                                result, NULL);
+                                result, nullptr);
   return result;
 }
 
@@ -371,7 +371,7 @@ MonitorConnection<void(A1, A2, A3, A4)>* Monitor(const Proxy& proxy,
                             G_TYPE_INVALID);
   ::dbus_g_proxy_connect_signal(proxy.gproxy(), name,
                                 G_CALLBACK(&ConnectionType::Run),
-                                result, NULL);
+                                result, nullptr);
   return result;
 }
 

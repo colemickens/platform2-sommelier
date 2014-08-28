@@ -135,7 +135,7 @@ bool ProcessImpl::Start() {
   for (size_t i = 0; i < arguments_.size(); ++i)
     argv[i] = const_cast<char*>(arguments_[i].c_str());
 
-  argv[arguments_.size()] = NULL;
+  argv[arguments_.size()] = nullptr;
 
   if (!PopulatePipeMap()) {
     LOG(ERROR) << "Failing to start because pipe creation failed";

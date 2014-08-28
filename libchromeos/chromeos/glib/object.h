@@ -31,7 +31,7 @@ class ResetHelper {
   typedef typename T::element_type element_type;
 
   explicit ResetHelper(T* x)
-      : ptr_(NULL),
+      : ptr_(nullptr),
         scoped_(x) {
   }
   ~ResetHelper() {
@@ -281,7 +281,7 @@ inline const Value* RawCast<const Value*>(const ::GValue& x) {
 //  value is copied to \param result and \true is returned. Otherwise, \param
 //  result is unchanged and \false is returned.
 //
-// \precondition \param result is not \NULL.
+// \precondition \param result is not \nullptr.
 
 template <typename T>
 bool Retrieve(const ::GValue& x, T* result) {
@@ -356,13 +356,13 @@ class ScopedPtrArray {
   }
 
   iterator begin() {
-    return iterator(object_ ? object_->pdata : NULL);
+    return iterator(object_ ? object_->pdata : nullptr);
   }
   iterator end() {
     return begin() + size();
   }
   const_iterator begin() const {
-    return const_iterator(object_ ? object_->pdata : NULL);
+    return const_iterator(object_ ? object_->pdata : nullptr);
   }
   const_iterator end() const {
     return begin() + size();
@@ -389,11 +389,11 @@ class ScopedPtrArray {
     if (object_) {
       std::for_each(begin(), end(), FreeHelper());
       ::g_ptr_array_free(object_, true);
-      object_ = NULL;
+      object_ = nullptr;
     }
   }
 
-  void reset(::GPtrArray* p = NULL) {
+  void reset(::GPtrArray* p = nullptr) {
     if (p != object_) {
       clear();
       object_ = p;
@@ -453,7 +453,7 @@ class ScopedHashTable {
   typedef ::GHashTable element_type;
 
   ScopedHashTable()
-      : object_(NULL) {
+      : object_(nullptr) {
   }
 
   explicit ScopedHashTable(::GHashTable* p)
@@ -479,7 +479,7 @@ class ScopedHashTable {
   void clear() {
     if (object_) {
       ::g_hash_table_unref(object_);
-      object_ = NULL;
+      object_ = nullptr;
     }
   }
 
@@ -487,7 +487,7 @@ class ScopedHashTable {
     return object_;
   }
 
-  void reset(::GHashTable* p = NULL) {
+  void reset(::GHashTable* p = nullptr) {
     if (p != object_) {
       clear();
       object_ = p;

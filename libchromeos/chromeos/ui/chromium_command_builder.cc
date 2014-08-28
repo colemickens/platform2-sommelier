@@ -506,7 +506,7 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (getuid() == 0 && !base::DirectoryExists(debugfs_gpu_path)) {
     if (base::CreateDirectory(debugfs_gpu_path)) {
       util::Run("mount", "-o", "bind", "/sys/kernel/debug/dri/0",
-                kDebugfsGpuPath, NULL);
+                kDebugfsGpuPath, nullptr);
     } else {
       PLOG(ERROR) << "Unable to create " << kDebugfsGpuPath;
     }

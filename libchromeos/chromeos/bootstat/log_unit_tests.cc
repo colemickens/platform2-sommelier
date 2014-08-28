@@ -228,7 +228,7 @@ void BootstatTest::SetUp() {
 
 
 void BootstatTest::TearDown() {
-  bootstat_set_output_directory_for_test(NULL);
+  bootstat_set_output_directory_for_test(nullptr);
   EXPECT_EQ(0, rmdir(stats_output_dir_.c_str()))
       << "BootstatTest::Teardown rmdir(): " << stats_output_dir_
       << ": " << strerror(errno) << ".";
@@ -265,8 +265,8 @@ void BootstatTest::SetMockStats(const char* uptime_data,
 
 // Clean up the effects from SetMockStats().
 void BootstatTest::ClearMockStats() {
-  bootstat_set_uptime_file_name_for_test(NULL);
-  bootstat_set_disk_file_name_for_test(NULL);
+  bootstat_set_uptime_file_name_for_test(nullptr);
+  bootstat_set_disk_file_name_for_test(nullptr);
   RemoveFile(mock_uptime_file_name_);
   RemoveFile(mock_disk_file_name_);
 }
@@ -295,7 +295,7 @@ static const char* bootstat_data[] = {
 /* uptime */  "691623.71 11021372.99\n",
 /*  disk  */  " 1420714    14918 55689988 11006390  4287385 78594261"
                   " 663441564 1651579200      152 17974280 1665255160\n",
-/* EOT */     NULL
+/* EOT */     nullptr
 };
 
 
@@ -304,7 +304,7 @@ static const char* bootstat_data[] = {
 TEST_F(BootstatTest, ContentGeneration) {
   EventTracker ev = MakeEvent(string("test_event"));
   int i = 0;
-  while (bootstat_data[i] != NULL) {
+  while (bootstat_data[i] != nullptr) {
     SetMockStats(bootstat_data[i], bootstat_data[i+1]);
     TestLogEvent(&ev);
     i += 2;

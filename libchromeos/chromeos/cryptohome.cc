@@ -26,7 +26,7 @@ static char g_user_home_prefix[PATH_MAX] = "/home/user/";
 static char g_root_home_prefix[PATH_MAX] = "/home/root/";
 static char g_system_salt_path[PATH_MAX] = "/home/.shadow/salt";
 
-static std::string* salt = NULL;
+static std::string* salt = nullptr;
 
 static bool EnsureSystemSaltIsLoaded() {
   if (salt && !salt->empty())

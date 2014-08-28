@@ -114,7 +114,7 @@ void ExecServer(int vt,
   CHECK_LE(args.size(), kMaxArgs);
   for (size_t i = 0; i < args.size(); ++i)
     argv[i] = const_cast<char*>(args[i].c_str());
-  argv[args.size()] = NULL;
+  argv[args.size()] = nullptr;
 
   // This call doesn't return on success.
   PCHECK(execv(argv[0], argv) == 0) << "execv() failed";
@@ -187,7 +187,7 @@ bool ExecAndWaitForServer(const std::string& user,
   PCHECK(sigaddset(&mask, SIGCHLD) == 0);
   const int fd = signalfd(-1, &mask, 0);
   PCHECK(fd != -1) << "signalfd() failed";
-  PCHECK(sigprocmask(SIG_BLOCK, &mask, NULL) == 0);
+  PCHECK(sigprocmask(SIG_BLOCK, &mask, nullptr) == 0);
 
   bool success = false;
   switch (pid_t pid = fork()) {
@@ -197,7 +197,7 @@ bool ExecAndWaitForServer(const std::string& user,
     case 0:
       // Forked process: exec the X server.
       base::CloseSuperfluousFds(base::InjectiveMultimap());
-      PCHECK(sigprocmask(SIG_UNBLOCK, &mask, NULL) == 0);
+      PCHECK(sigprocmask(SIG_UNBLOCK, &mask, nullptr) == 0);
 
       // Set SIGUSR1's disposition to SIG_IGN before exec-ing so that X will
       // emit SIGUSR1 once it's ready to accept connections.
@@ -301,7 +301,7 @@ bool XServerRunner::WaitForServer() {
   if (getuid() == 0) {
     // TODO(derat): Move session_manager's UpstartSignalEmitter into libchromeos
     // and use it here.
-    util::Run("initctl", "emit", "x-started", NULL);
+    util::Run("initctl", "emit", "x-started", nullptr);
     bootstat_log("x-started");
   }
 

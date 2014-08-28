@@ -15,7 +15,7 @@ namespace dbus_utils {
 namespace {
 
 // Passes |method_call| to |handler| and passes the response to
-// |response_sender|. If |handler| returns NULL, an empty response is created
+// |response_sender|. If |handler| returns nullptr, an empty response is created
 // and sent.
 void HandleSynchronousDBusMethodCall(
     const MethodCallHandler& handler,
