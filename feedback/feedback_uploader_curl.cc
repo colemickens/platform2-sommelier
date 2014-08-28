@@ -26,7 +26,7 @@ void FeedbackUploaderCurl::DispatchReport(const std::string& data) {
   curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data.size());
   curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
 
-  curl_slist* hdrs = curl_slist_append(NULL, kProtobufContentType);
+  curl_slist* hdrs = curl_slist_append(nullptr, kProtobufContentType);
   CHECK(hdrs) << "curl hdr list allocation failed";
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hdrs);
 

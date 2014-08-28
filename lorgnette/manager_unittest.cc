@@ -128,7 +128,7 @@ const int ManagerTest::kResolution = 300;
 const char ManagerTest::kMode[] = "Color";
 
 TEST_F(ManagerTest, Construct) {
-  EXPECT_EQ(NULL, GetDBusAdaptor());
+  EXPECT_EQ(nullptr, GetDBusAdaptor());
 }
 
 TEST_F(ManagerTest, RunListScannersProcess) {
@@ -181,7 +181,7 @@ TEST_F(ManagerTest, RunScanImageProcessInvalidArgument) {
   EXPECT_CALL(convert_process, Start()).Times(0);
   EXPECT_CALL(scan_process, Start()).Times(0);
   DBus::Error error;
-  RunScanImageProcess("", 0, NULL, NULL, props, &scan_process,
+  RunScanImageProcess("", 0, nullptr, nullptr, props, &scan_process,
                       &convert_process, &error);
 
   // Expect that the pipe fds have not been released.

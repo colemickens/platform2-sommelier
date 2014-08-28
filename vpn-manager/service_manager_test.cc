@@ -48,8 +48,8 @@ class ServiceManagerTest : public ::testing::Test {
   }
 
   void TearDown() override {
-    ServiceManager::temp_base_path_ = NULL;
-    ServiceManager::temp_path_ = NULL;
+    ServiceManager::temp_base_path_ = nullptr;
+    ServiceManager::temp_path_ = nullptr;
   }
 
  protected:

@@ -78,7 +78,7 @@ class ManagerTest : public testing::Test {
 
 TEST_F(ManagerTest, GetNetworkOperator) {
   // No config is loaded.
-  EXPECT_TRUE(manager_.GetNetworkOperator(0) == NULL);
+  EXPECT_TRUE(manager_.GetNetworkOperator(0) == nullptr);
 
   base::FilePath config_file;
   ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -87,10 +87,10 @@ TEST_F(ManagerTest, GetNetworkOperator) {
 
   EXPECT_TRUE(manager_.LoadConfig(config_file));
 
-  EXPECT_TRUE(manager_.GetNetworkOperator(0) == NULL);
+  EXPECT_TRUE(manager_.GetNetworkOperator(0) == nullptr);
 
   const NetworkOperator *network_operator1 = manager_.GetNetworkOperator(1);
-  EXPECT_TRUE(network_operator1 != NULL);
+  EXPECT_TRUE(network_operator1 != nullptr);
   EXPECT_EQ(1, network_operator1->identifier());
   EXPECT_EQ("", network_operator1->name());
   EXPECT_EQ(EAP_TYPE_NONE, network_operator1->eap_parameters().type());
@@ -101,7 +101,7 @@ TEST_F(ManagerTest, GetNetworkOperator) {
   EXPECT_FALSE(network_operator1->eap_parameters().bypass_ca_certificate());
 
   const NetworkOperator *network_operator2 = manager_.GetNetworkOperator(2);
-  EXPECT_TRUE(network_operator2 != NULL);
+  EXPECT_TRUE(network_operator2 != nullptr);
   EXPECT_EQ(2, network_operator2->identifier());
   EXPECT_EQ("", network_operator2->name());
   EXPECT_EQ(EAP_TYPE_TLS, network_operator2->eap_parameters().type());
@@ -112,7 +112,7 @@ TEST_F(ManagerTest, GetNetworkOperator) {
   EXPECT_FALSE(network_operator2->eap_parameters().bypass_ca_certificate());
 
   const NetworkOperator *network_operator3 = manager_.GetNetworkOperator(3);
-  EXPECT_TRUE(network_operator3 != NULL);
+  EXPECT_TRUE(network_operator3 != nullptr);
   EXPECT_EQ(3, network_operator3->identifier());
   EXPECT_EQ("My Net", network_operator3->name());
   EXPECT_EQ(EAP_TYPE_TTLS_MSCHAPV2, network_operator3->eap_parameters().type());
@@ -130,7 +130,7 @@ TEST_F(ManagerTest, LoadEmptyConfigFile) {
 
   EXPECT_TRUE(manager_.LoadConfig(config_file));
   Config *config = manager_.config_.get();
-  EXPECT_TRUE(config != NULL);
+  EXPECT_TRUE(config != nullptr);
   EXPECT_EQ(0, config->network_operator_size());
 }
 
@@ -141,12 +141,12 @@ TEST_F(ManagerTest, LoadInvalidConfigFile) {
                                     &config_file));
 
   EXPECT_FALSE(manager_.LoadConfig(config_file));
-  EXPECT_TRUE(manager_.config_.get() == NULL);
+  EXPECT_TRUE(manager_.config_.get() == nullptr);
 }
 
 TEST_F(ManagerTest, LoadNonExistentConfigFile) {
   EXPECT_FALSE(manager_.LoadConfig(FilePath("/non-existent-file")));
-  EXPECT_TRUE(manager_.config_.get() == NULL);
+  EXPECT_TRUE(manager_.config_.get() == nullptr);
 }
 
 TEST_F(ManagerTest, LoadValidConfigFile) {
@@ -157,7 +157,7 @@ TEST_F(ManagerTest, LoadValidConfigFile) {
 
   EXPECT_TRUE(manager_.LoadConfig(config_file));
   Config *config = manager_.config_.get();
-  EXPECT_TRUE(config != NULL);
+  EXPECT_TRUE(config != nullptr);
   EXPECT_EQ(3, config->network_operator_size());
 
   const NetworkOperator &network_operator1 = config->network_operator(0);

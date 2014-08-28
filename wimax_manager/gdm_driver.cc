@@ -128,7 +128,7 @@ template <size_t N>
 bool ConvertWideCharacterArrayToUTF8String(const wchar_t (&wide_char_array)[N],
                                            std::string *utf8_string) {
   // Check if the wide character array is NULL-terminated.
-  if (wmemchr(wide_char_array, L'\0', N) == NULL)
+  if (wmemchr(wide_char_array, L'\0', N) == nullptr)
     return false;
 
   size_t wide_string_length = wcslen(wide_char_array);
@@ -141,7 +141,7 @@ bool ConvertWideCharacterArrayToUTF8String(const wchar_t (&wide_char_array)[N],
 
 GdmDriver::GdmDriver(Manager *manager)
     : Driver(manager),
-      api_handle_(NULL) {
+      api_handle_(nullptr) {
 }
 
 GdmDriver::~GdmDriver() {
@@ -176,7 +176,7 @@ bool GdmDriver::Initialize() {
   ret = GAPI_WiMaxAPIOpen(&api_handle_, GCT_WIMAX_API_OPEN_MODE_NORMAL);
   if (ret != GCT_API_RET_SUCCESS) {
     GAPI_DeInitialize();
-    api_handle_ = NULL;
+    api_handle_ = nullptr;
     return false;
   }
 
@@ -190,9 +190,9 @@ bool GdmDriver::Finalize() {
   LOG(INFO) << "Finalizing GDM driver";
 
   bool success = true;
-  GAPI_SetDebugLevel(api_handle_, GAPI_LOG_FLUSH_LEVEL, NULL);
+  GAPI_SetDebugLevel(api_handle_, GAPI_LOG_FLUSH_LEVEL, nullptr);
   GCT_API_RET ret = GAPI_WiMaxAPIClose(api_handle_);
-  api_handle_ = NULL;
+  api_handle_ = nullptr;
 
   if (ret != GCT_API_RET_SUCCESS)
     success = false;

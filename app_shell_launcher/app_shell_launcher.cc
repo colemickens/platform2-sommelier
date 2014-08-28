@@ -122,7 +122,7 @@ void ExecAppShell(const ChromiumCommandBuilder& builder) {
   // One extra pointer for the initial command and one for the terminating NULL.
   char* argv[kMaxArgs + 2];
   for (size_t i = 0; i < arraysize(argv); ++i)
-    argv[i] = NULL;
+    argv[i] = nullptr;
 
   argv[0] = const_cast<char*>(kAppShellPath);
   for (size_t i = 0; i < builder.arguments().size(); ++i)

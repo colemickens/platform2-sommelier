@@ -36,7 +36,7 @@ const int kMockStarterPid = 10001;
 
 class IpsecManagerTest : public ::testing::Test {
  public:
-  IpsecManagerTest() : starter_daemon_(NULL), charon_daemon_(NULL) {}
+  IpsecManagerTest() : starter_daemon_(nullptr), charon_daemon_(nullptr) {}
   ~IpsecManagerTest() override = default;
 
   void SetUp() override {

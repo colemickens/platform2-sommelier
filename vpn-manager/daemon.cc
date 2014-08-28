@@ -27,7 +27,7 @@ Daemon::~Daemon() {
 }
 
 void Daemon::ClearProcess() {
-  SetProcess(NULL);
+  SetProcess(nullptr);
 }
 
 chromeos::Process* Daemon::CreateProcess() {

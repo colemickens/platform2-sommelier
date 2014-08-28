@@ -76,7 +76,7 @@ const char kSmartcardModuleName[] = "crypto_module";
 
 IpsecManager::IpsecManager()
     : ServiceManager(kIpsecServiceName),
-      force_local_address_(NULL),
+      force_local_address_(nullptr),
       output_fd_(-1),
       ike_version_(0),
       ipsec_group_(0),
@@ -197,10 +197,10 @@ bool IpsecManager::ReadCertificateSubject(const FilePath& filepath,
     LOG(ERROR) << "Unable to read certificate";
     return false;
   }
-  X509* cert = d2i_X509_fp(fp, NULL);
-  if (cert == NULL) {
+  X509* cert = d2i_X509_fp(fp, nullptr);
+  if (cert == nullptr) {
     fseek(fp, 0, SEEK_SET);
-    cert = PEM_read_X509(fp, NULL, NULL, NULL);
+    cert = PEM_read_X509(fp, nullptr, nullptr, nullptr);
   }
   fclose(fp);
   if (!cert) {
@@ -241,7 +241,7 @@ bool IpsecManager::FormatIpsecSecret(std::string* formatted) {
     base::TrimWhitespaceASCII(secret, base::TRIM_TRAILING, &secret);
   }
   std::string local_address_text;
-  if (force_local_address_ != NULL) {
+  if (force_local_address_ != nullptr) {
     local_address_text = force_local_address_;
   } else {
     struct sockaddr local_address;
@@ -526,7 +526,7 @@ bool IpsecManager::CreateIpsecRunDirectory() {
 bool IpsecManager::Start() {
   if (!ipsec_group_) {
     struct group group_buffer;
-    struct group* group_result = NULL;
+    struct group* group_result = nullptr;
     char buffer[256];
     if (getgrnam_r(kIpsecGroupName, &group_buffer, buffer,
                    sizeof(buffer), &group_result) != 0 || !group_result) {

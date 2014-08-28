@@ -20,7 +20,7 @@ using base::FilePath;
 
 namespace vpn_manager {
 
-const FilePath* ServiceManager::temp_path_ = NULL;
+const FilePath* ServiceManager::temp_path_ = nullptr;
 const char ServiceManager::kDefaultTempBasePath[] = "/var/run/l2tpipsec_vpn";
 const char ServiceManager::kPersistentSubdir[] = "current";
 const char* ServiceManager::temp_base_path_ =
@@ -30,17 +30,17 @@ ServiceManager::ServiceManager(const std::string& service_name)
     : is_running_(false),
       was_stopped_(false),
       debug_(false),
-      inner_service_(NULL),
-      outer_service_(NULL),
+      inner_service_(nullptr),
+      outer_service_(nullptr),
       service_name_(service_name),
       error_(kServiceErrorNoError) {
 }
 
 void ServiceManager::OnStarted() {
   CHECK(!is_running_ && !was_stopped_);
-  CHECK(outer_service_ == NULL || outer_service_->is_running_);
+  CHECK(outer_service_ == nullptr || outer_service_->is_running_);
   is_running_ = true;
-  if (inner_service_ == NULL)
+  if (inner_service_ == nullptr)
     return;
 
   DLOG(INFO) << "Starting inner " << inner_service_->service_name();
@@ -53,10 +53,10 @@ void ServiceManager::OnStarted() {
 }
 
 void ServiceManager::OnStopped(bool was_error) {
-  CHECK(inner_service_ == NULL || !inner_service_->is_running_);
+  CHECK(inner_service_ == nullptr || !inner_service_->is_running_);
   is_running_ = false;
   was_stopped_ = true;
-  if (outer_service_ != NULL) {
+  if (outer_service_ != nullptr) {
     outer_service_->Stop();
   }
 }
@@ -74,7 +74,7 @@ void ServiceManager::RegisterError(ServiceError error) {
 }
 
 ServiceError ServiceManager::GetError() const {
-  if (inner_service_ != NULL) {
+  if (inner_service_ != nullptr) {
     ServiceError inner_service_error = inner_service_->GetError();
     if (inner_service_error != kServiceErrorNoError)
       return inner_service_error;
@@ -119,7 +119,7 @@ void ServiceManager::WriteFdToSyslog(int fd,
 bool ServiceManager::ResolveNameToSockAddr(const std::string& name,
                                            struct sockaddr* address) {
   struct addrinfo* address_info;
-  int s = getaddrinfo(name.c_str(), NULL, NULL, &address_info);
+  int s = getaddrinfo(name.c_str(), nullptr, nullptr, &address_info);
   if (s != 0) {
     LOG(ERROR) << "getaddrinfo failed: " << gai_strerror(s);
     return false;
@@ -135,7 +135,7 @@ bool ServiceManager::ConvertIPStringToSockAddr(
   struct addrinfo hint_info = {};
   struct addrinfo* address_info;
   hint_info.ai_flags = AI_NUMERICHOST;
-  int s = getaddrinfo(address_text.c_str(), NULL, &hint_info, &address_info);
+  int s = getaddrinfo(address_text.c_str(), nullptr, &hint_info, &address_info);
   if (s != 0) {
     LOG(ERROR) << "getaddrinfo failed: " << gai_strerror(s);
     return false;

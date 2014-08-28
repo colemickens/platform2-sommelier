@@ -132,7 +132,7 @@ class EasyUnlockTest : public ::testing::Test {
 
     dbus::MessageReader reader(response.get());
 
-    const uint8_t* bytes = NULL;
+    const uint8_t* bytes = nullptr;
     size_t length = 0;
 
     ASSERT_TRUE(reader.PopArrayOfBytes(&bytes, &length));
@@ -150,7 +150,7 @@ class EasyUnlockTest : public ::testing::Test {
 
     dbus::MessageReader reader(response.get());
 
-    const uint8_t* bytes = NULL;
+    const uint8_t* bytes = nullptr;
     size_t length = 0;
 
     ASSERT_TRUE(reader.PopArrayOfBytes(&bytes, &length));

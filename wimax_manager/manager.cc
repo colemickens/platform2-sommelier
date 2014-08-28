@@ -172,7 +172,7 @@ bool Manager::LoadConfig(const base::FilePath &file_path) {
 const NetworkOperator *Manager::GetNetworkOperator(
     Network::Identifier network_id) const {
   if (!config_.get())
-    return NULL;
+    return nullptr;
 
   for (int i = 0; i < config_->network_operator_size(); ++i) {
     const NetworkOperator &network_operator = config_->network_operator(i);
@@ -180,7 +180,7 @@ const NetworkOperator *Manager::GetNetworkOperator(
       return &network_operator;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 }  // namespace wimax_manager

@@ -78,7 +78,7 @@ class DaemonTest : public ::testing::Test {
 };
 
 TEST_F(DaemonTest, Construction) {
-  EXPECT_EQ(NULL, GetProcess());
+  EXPECT_EQ(nullptr, GetProcess());
   EXPECT_EQ(pid_file_path_.value(), GetPidFile());
   EXPECT_FALSE(daemon_->IsRunning());
 }
@@ -95,7 +95,7 @@ TEST_F(DaemonTest, FindProcess) {
 
   WritePidFile(IntToString(pid));
   EXPECT_FALSE(daemon_->FindProcess());
-  EXPECT_EQ(NULL, GetProcess());
+  EXPECT_EQ(nullptr, GetProcess());
 
   MakeRealProcess();
   pid = real_process_->pid();
@@ -124,13 +124,13 @@ TEST_F(DaemonTest, IsRunningAndGetPid) {
   EXPECT_FALSE(daemon_->IsRunning());
   EXPECT_EQ(pid, daemon_->GetPid());
 
-  SetProcess(NULL);
+  SetProcess(nullptr);
   EXPECT_EQ(0, daemon_->GetPid());
 }
 
 TEST_F(DaemonTest, SetProcessFromNull) {
-  EXPECT_EQ(NULL, GetProcess());
-  SetProcess(NULL);  // Should be a no-op.
+  EXPECT_EQ(nullptr, GetProcess());
+  SetProcess(nullptr);  // Should be a no-op.
   ProcessMock* process0 = new ProcessMock;
   SetProcess(process0);  // Passes ownership.
   EXPECT_EQ(process0, GetProcess());
@@ -143,8 +143,8 @@ TEST_F(DaemonTest, SetProcessToNullFromNotRunning) {
   EXPECT_CALL(*process, Release()).Times(0);
   EXPECT_CALL(*process, pid()).WillOnce(Return(0));
   SetProcess(process);  // Passes ownership.
-  SetProcess(NULL);
-  EXPECT_EQ(NULL, GetProcess());
+  SetProcess(nullptr);
+  EXPECT_EQ(nullptr, GetProcess());
 }
 
 TEST_F(DaemonTest, SetProcessToNullFromRunning) {
@@ -154,8 +154,8 @@ TEST_F(DaemonTest, SetProcessToNullFromRunning) {
   EXPECT_CALL(*process, pid()).WillRepeatedly(Return(real_process_->pid()));
   EXPECT_CALL(*process, Kill(SIGKILL, _)).Times(1);
   SetProcess(process);  // Passes ownership.
-  SetProcess(NULL);
-  EXPECT_EQ(NULL, GetProcess());
+  SetProcess(nullptr);
+  EXPECT_EQ(nullptr, GetProcess());
 }
 
 TEST_F(DaemonTest, SetProcessToDifferentPid) {
@@ -233,7 +233,7 @@ TEST_F(DaemonTest, Destructor) {
   SetProcess(process);  // Passes ownership.
 
   EXPECT_TRUE(daemon_->IsRunning());
-  SetProcess(NULL);
+  SetProcess(nullptr);
   daemon_.reset();
 }
 

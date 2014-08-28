@@ -46,7 +46,7 @@ void Daemon::Start() {
   dispatcher_.reset(new DBus::Glib::BusDispatcher());
   CHECK(dispatcher_.get()) << "Failed to create a dbus-dispatcher";
   DBus::default_dispatcher = dispatcher_.get();
-  dispatcher_->attach(NULL);
+  dispatcher_->attach(nullptr);
   connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
   CHECK(connection_.get()) << "Failed to create a dbus-connection";
   CHECK(connection_->acquire_name(kManagerServiceName))

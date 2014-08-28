@@ -52,7 +52,7 @@ void DBusService::OnNameOwnerChanged(const std::string &name,
     LOG(INFO) << "Owner of '" << name << "' changed from '"
               << old_owner << "' to '" << new_owner << "'.";
     if (new_owner.empty())
-      SetPowerManager(NULL);
+      SetPowerManager(nullptr);
     else
       SetPowerManager(new(std::nothrow) PowerManager(manager_));
   }

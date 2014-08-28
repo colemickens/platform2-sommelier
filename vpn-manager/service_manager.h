@@ -181,10 +181,10 @@ class ServiceManager {
   // Indicates if extra debugging information should be emitted.
   bool debug_;
 
-  // Pointer to the next layer or NULL if innermost.
+  // Pointer to the next layer or nullptr if innermost.
   ServiceManager* inner_service_;
 
-  // Pointer to the outer layer or NULL if outermost.
+  // Pointer to the outer layer or nullptr if outermost.
   ServiceManager* outer_service_;
 
   // Name of this service.

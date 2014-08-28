@@ -162,7 +162,7 @@ NetworkRefPtr DeviceDBusAdaptor::FindNetworkByDBusObjectPath(
     if (network.second->dbus_object_path() == network_object_path)
       return network.second;
   }
-  return NULL;
+  return nullptr;
 }
 
 void DeviceDBusAdaptor::on_set_property(

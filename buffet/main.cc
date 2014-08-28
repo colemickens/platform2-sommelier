@@ -61,7 +61,7 @@ std::string SetupLogFile(const std::string& log_root) {
   const auto log_path =
       base::StringPrintf("%s/buffet.%s",
                          logs_dir.c_str(),
-                         GetTimeAsString(::time(NULL)).c_str());
+                         GetTimeAsString(::time(nullptr)).c_str());
   mkdir(logs_dir.c_str(), 0755);
   SetupLogSymlink(log_symlink, log_path);
   return log_symlink;

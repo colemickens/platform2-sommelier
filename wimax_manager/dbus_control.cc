@@ -39,7 +39,7 @@ void DBusControl::Initialize() {
   bus_dispatcher_.reset(new(std::nothrow) DBus::Glib::BusDispatcher());
   CHECK(bus_dispatcher_.get());
   DBus::default_dispatcher = bus_dispatcher_.get();
-  bus_dispatcher_->attach(NULL);
+  bus_dispatcher_->attach(nullptr);
 
   connection_.reset(
       new(std::nothrow) DBus::Connection(DBus::Connection::SystemBus()));
@@ -50,7 +50,7 @@ void DBusControl::Initialize() {
 
 void DBusControl::Finalize() {
   connection_.reset();
-  DBus::default_dispatcher = NULL;
+  DBus::default_dispatcher = nullptr;
   bus_dispatcher_.reset();
 }
 
