@@ -157,7 +157,8 @@ class Qemu(object):
       The |bheader| array may be longer than the |bmask|; in which case we
       will only compare the number of bytes that |bmask| takes up.
       """
-      return all((header_byte & mask_byte) == magic_byte
+      # This algo is what the kernel uses.
+      return all(((header_byte ^ magic_byte) & mask_byte) == 0x00
                  for header_byte, magic_byte, mask_byte in
                  zip(bheader[0:len(bmask)], bmagic, bmask))
 
@@ -238,6 +239,51 @@ class Qemu(object):
           if e.errno != errno.ENOENT:
             raise
 
+  @classmethod
+  def GetRegisterBinfmtStr(cls, arch, name, interp):
+    """Get the string used to pass to the kernel for registering the format
+
+    Args:
+      arch: The architecture to get the register string
+      name: The name to use for registering
+      interp: The name for the interpreter
+
+    Returns:
+      A string ready to pass to the register file
+    """
+    magic, mask = cls._MAGIC_MASK[arch]
+
+    # We need to decode the escape sequences as the kernel has a limit on
+    # the register string (256 bytes!).  However, we can't decode two chars:
+    # NUL bytes (since the kernel uses strchr and friends) and colon bytes
+    # (since we use that as the field separator).
+    # TODO: Once this lands, and we drop support for older kernels, we can
+    # probably drop this workaround too.  https://lkml.org/lkml/2014/9/1/181
+    magic = magic.decode('string_escape')
+    mask = mask.decode('string_escape')
+
+    # Further way of data packing: if the mask and magic use 0x00 for the same
+    # byte, then turn the magic into something else.  This way the magic can
+    # be written in raw form, but the mask will still cancel it out.
+    magic = ''.join([
+        '!' if (magic_byte == '\x00' and mask_byte == '\x00') else magic_byte
+        for magic_byte, mask_byte in zip(magic, mask)
+    ])
+
+    # New repack the bytes.
+    def _SemiEncode(s):
+      return s.replace('\x00', r'\x00').replace(':', '\x3a')
+    magic = _SemiEncode(magic)
+    mask = _SemiEncode(mask)
+
+    return cls._REGISTER_FORMAT % {
+        'name': name,
+        'magic': magic,
+        'mask': mask,
+        'interp': '%s-binfmt-wrapper' % interp,
+        'flags': 'POC',
+    }
+
   def RegisterBinfmt(self):
     """Make sure qemu has been registered as a format handler
 
@@ -260,21 +306,13 @@ class Qemu(object):
         osutils.WriteFile(self.binfmt_path, '-1')
 
     if not os.path.exists(self.binfmt_path):
-      magic, mask = self._MAGIC_MASK[self.arch]
-      register = self._REGISTER_FORMAT % {
-          'name': self.name,
-          'magic': magic,
-          'mask': mask,
-          'interp': '%s-binfmt-wrapper' % self.build_path,
-          'flags': 'POC',
-      }
+      register = self.GetRegisterBinfmtStr(self.arch, self.name,
+                                           self.build_path)
       try:
-        # We need to decode the escape sequences as the kernel has a limit on
-        # the register string (255 bytes!).
-        osutils.WriteFile(self._BINFMT_REGISTER_PATH,
-                          register.decode('string_escape'))
+        osutils.WriteFile(self._BINFMT_REGISTER_PATH, register)
       except IOError:
-        print('error: attempted to register: %s' % register)
+        print('error: attempted to register: (len:%i) %s' %
+              (len(register), register))
         raise
 
 

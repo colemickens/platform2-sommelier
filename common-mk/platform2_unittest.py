@@ -36,6 +36,17 @@ class QemuTests(unittest.TestCase):
       else:
         self.assertEqual(arch, exp_arch)
 
+  def testRegisterStr(self):
+    """Verify the binfmt register string doesn't exceed kernel limits"""
+    # pylint: disable=W0212
+    for arch in platform2_test.Qemu._MAGIC_MASK.keys():
+      name = 'qemu-%s' % arch
+      interp = '/build/bin/%s' % name
+      register = platform2_test.Qemu.GetRegisterBinfmtStr(arch, name, interp)
+      self.assertGreaterEqual(256, len(register),
+                              msg='arch "%s" has too long of a register string:'
+                                  ' %i: %r' % (arch, len(register), register))
+
 
 if __name__ == '__main__':
   unittest.main()
