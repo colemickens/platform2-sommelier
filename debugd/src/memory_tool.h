@@ -16,8 +16,8 @@ namespace debugd {
 
 class MemtesterTool : public SubprocessTool {
  public:
-  MemtesterTool();
-  ~MemtesterTool() override;
+  MemtesterTool() = default;
+  ~MemtesterTool() override = default;
 
   std::string Start(const DBus::FileDescriptor& outfd,
                     const uint32_t& memory,

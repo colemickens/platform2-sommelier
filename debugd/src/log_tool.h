@@ -15,8 +15,8 @@ namespace debugd {
 
 class LogTool {
  public:
-  LogTool();
-  ~LogTool();
+  LogTool() = default;
+  ~LogTool() = default;
 
   typedef std::map<std::string, std::string> LogMap;
 

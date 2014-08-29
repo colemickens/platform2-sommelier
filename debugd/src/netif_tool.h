@@ -14,8 +14,8 @@ namespace debugd {
 
 class NetifTool {
  public:
-  NetifTool();
-  ~NetifTool();
+  NetifTool() = default;
+  ~NetifTool() = default;
 
   std::string GetInterfaces(DBus::Error* error);
 

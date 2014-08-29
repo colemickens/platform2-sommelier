@@ -11,10 +11,12 @@
 
 namespace debugd {
 
-ProcessWithOutput::ProcessWithOutput() : outfile_(NULL) { }
+ProcessWithOutput::ProcessWithOutput() : outfile_(NULL) {}
+
 ProcessWithOutput::~ProcessWithOutput() {
   if (outfile_)
     fclose(outfile_);
+
   if (!outfile_path_.empty())
     base::DeleteFile(outfile_path_, false);  // not recursive
 }
@@ -22,9 +24,11 @@ ProcessWithOutput::~ProcessWithOutput() {
 bool ProcessWithOutput::Init() {
   if (!SandboxedProcess::Init())
     return false;
+
   outfile_ = base::CreateAndOpenTemporaryFile(&outfile_path_);
   if (!outfile_)
     return false;
+
   // We can't just RedirectOutput to the file we just created, since
   // RedirectOutput uses O_CREAT | O_EXCL to open the target file (i.e., it'll
   // fail if the file already exists). We can't CreateTemporaryFile() and then
@@ -40,6 +44,7 @@ bool ProcessWithOutput::GetOutputLines(std::vector<std::string>* output) {
   std::string contents;
   if (!base::ReadFileToString(outfile_path_, &contents))
     return false;
+
   base::SplitString(contents, '\n', output);
   return true;
 }

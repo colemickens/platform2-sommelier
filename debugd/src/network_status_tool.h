@@ -14,8 +14,8 @@ namespace debugd {
 
 class NetworkStatusTool {
  public:
-  NetworkStatusTool();
-  ~NetworkStatusTool();
+  NetworkStatusTool() = default;
+  ~NetworkStatusTool() = default;
 
   std::string GetNetworkStatus(DBus::Error* error);
 

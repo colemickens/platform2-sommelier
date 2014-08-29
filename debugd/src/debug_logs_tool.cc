@@ -13,9 +13,6 @@ namespace debugd {
 const char* const kTar = "/bin/tar";
 const char* const kSystemLogs = "/var/log";
 
-DebugLogsTool::DebugLogsTool() { }
-DebugLogsTool::~DebugLogsTool() { }
-
 void DebugLogsTool::GetDebugLogs(bool is_compressed,
                                  const DBus::FileDescriptor& fd,
                                  DBus::Error* error) {

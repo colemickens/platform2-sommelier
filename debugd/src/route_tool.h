@@ -16,8 +16,8 @@ namespace debugd {
 
 class RouteTool {
  public:
-  RouteTool();
-  ~RouteTool();
+  RouteTool() = default;
+  ~RouteTool() = default;
 
   std::vector<std::string> GetRoutes(
       const std::map<std::string, DBus::Variant>& options, DBus::Error* error);

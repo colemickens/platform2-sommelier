@@ -14,8 +14,8 @@ namespace debugd {
 
 class DebugLogsTool {
  public:
-  DebugLogsTool();
-  ~DebugLogsTool();
+  DebugLogsTool() = default;
+  ~DebugLogsTool() = default;
 
   void GetDebugLogs(bool is_compressed,
                     const DBus::FileDescriptor& fd,

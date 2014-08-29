@@ -16,8 +16,8 @@ namespace debugd {
 
 class ExampleTool {
  public:
-  ExampleTool();
-  ~ExampleTool();
+  ExampleTool() = default;
+  ~ExampleTool() = default;
 
   std::string GetExample(DBus::Error* error);
 

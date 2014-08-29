@@ -10,9 +10,6 @@ namespace debugd {
 
 const char kTracepath[] = "/usr/sbin/tracepath";
 
-TracePathTool::TracePathTool() { }
-TracePathTool::~TracePathTool() { }
-
 std::string TracePathTool::Start(
     const DBus::FileDescriptor& outfd,
     const std::string& destination,

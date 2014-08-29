@@ -31,7 +31,7 @@ class DBusPropertiesProxy : public org::freedesktop::DBus::Properties_proxy,
   DBusPropertiesProxy(DBus::Connection& connection, const char* path,  // NOLINT
                       const char* service)
       : DBus::ObjectProxy(connection, path, service) {}
-  ~DBusPropertiesProxy() override {}
+  ~DBusPropertiesProxy() override = default;
 };
 
 class ModemManagerProxy : public org::freedesktop::ModemManager_proxy,
@@ -40,7 +40,7 @@ class ModemManagerProxy : public org::freedesktop::ModemManager_proxy,
   ModemManagerProxy(DBus::Connection& connection, const char* path,  // NOLINT
                     const char* service)
       : DBus::ObjectProxy(connection, path, service) {}
-  ~ModemManagerProxy() override {}
+  ~ModemManagerProxy() override = default;
   void DeviceAdded(const DBus::Path&) override {}
   void DeviceRemoved(const DBus::Path&) override {}
 };
@@ -52,7 +52,7 @@ class ModemSimpleProxy
   ModemSimpleProxy(DBus::Connection& connection, const char* path,  // NOLINT
                    const char* service)
       : DBus::ObjectProxy(connection, path, service) {}
-  ~ModemSimpleProxy() override {}
+  ~ModemSimpleProxy() override = default;
 };
 
 class ModemProxy : public org::freedesktop::ModemManager::Modem_proxy,
@@ -61,7 +61,7 @@ class ModemProxy : public org::freedesktop::ModemManager::Modem_proxy,
   ModemProxy(DBus::Connection& connection, const char* path,  // NOLINT
              const char* service)
       : DBus::ObjectProxy(connection, path, service) {}
-  ~ModemProxy() override {}
+  ~ModemProxy() override = default;
   void StateChanged(const uint32_t& old_state,
                     const uint32_t& new_state,
                     const uint32_t& reason) override {}
@@ -155,7 +155,7 @@ int main() {
     for (size_t i = 0; i < cromo_modems.size(); ++i)
       modems.push_back(Modem(cromo::kCromoServiceName, cromo_modems[i]));
     // cpplint thinks this is a function call
-  } catch(DBus::Error e) { }
+  } catch(DBus::Error e) {}
 
   ListValue result;
   for (size_t i = 0; i < modems.size(); ++i)

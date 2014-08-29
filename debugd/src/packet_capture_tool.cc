@@ -12,10 +12,6 @@ using base::StringPrintf;
 
 namespace debugd {
 
-PacketCaptureTool::PacketCaptureTool() : SubprocessTool() { }
-
-PacketCaptureTool::~PacketCaptureTool() { }
-
 std::string PacketCaptureTool::Start(
     const DBus::FileDescriptor& status_fd,
     const DBus::FileDescriptor& output_fd,

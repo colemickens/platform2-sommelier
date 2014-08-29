@@ -4,19 +4,9 @@
 
 #include "debugd/src/netif_tool.h"
 
-#include <string>
-
-#include <dbus-c++/dbus.h>
-
 #include "debugd/src/process_with_output.h"
 
-using base::StringPrintf;
-
 namespace debugd {
-
-NetifTool::NetifTool() { }
-
-NetifTool::~NetifTool() { }
 
 std::string NetifTool::GetInterfaces(DBus::Error* error) {
   std::string path;

@@ -8,10 +8,6 @@
 
 namespace debugd {
 
-CrashSenderTool::CrashSenderTool() { }
-
-CrashSenderTool::~CrashSenderTool() { }
-
 void CrashSenderTool::UploadCrashes(DBus::Error* error) {
   ProcessWithId* p = CreateProcess(false);
   // TODO(jorgelo): This mount namespace shuffling should be handled by

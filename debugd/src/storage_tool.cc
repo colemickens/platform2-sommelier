@@ -15,9 +15,6 @@ const char* kSmartctl = "/usr/sbin/smartctl";
 const char* kBadblocks = "/sbin/badblocks";
 const char* kDevice = "/dev/sda";
 
-StorageTool::StorageTool() { }
-StorageTool::~StorageTool() { }
-
 std::string StorageTool::Smartctl(const std::string& option,
                                   DBus::Error* error) {
   std::string path;

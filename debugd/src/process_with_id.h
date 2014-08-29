@@ -17,7 +17,8 @@ namespace debugd {
 // null-terminated ASCII string.
 class ProcessWithId : public SandboxedProcess {
  public:
-  ProcessWithId();
+  ProcessWithId() = default;
+  ~ProcessWithId() override = default;
 
   bool Init() override;
 

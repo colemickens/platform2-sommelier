@@ -19,8 +19,8 @@ class ProcessWithId;
 
 class PacketCaptureTool : public SubprocessTool {
  public:
-  PacketCaptureTool();
-  ~PacketCaptureTool() override;
+  PacketCaptureTool() = default;
+  ~PacketCaptureTool() override = default;
 
   std::string Start(
       const DBus::FileDescriptor& status_fd,

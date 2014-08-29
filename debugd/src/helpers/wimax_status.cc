@@ -29,7 +29,7 @@ class DBusPropertiesProxy : public org::freedesktop::DBus::Properties_proxy,
                       const string& service)
       : DBus::ObjectProxy(*connection, path, service.c_str()) {}
 
-  ~DBusPropertiesProxy() override {}
+  ~DBusPropertiesProxy() override = default;
 };
 
 class WiMaxStatus {
@@ -37,7 +37,7 @@ class WiMaxStatus {
   explicit WiMaxStatus(DBus::Connection* connection)
       : connection_(connection) {}
 
-  ~WiMaxStatus() {}
+  ~WiMaxStatus() = default;
 
   string GetJsonOutput() {
     string json;

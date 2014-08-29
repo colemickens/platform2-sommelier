@@ -14,8 +14,8 @@ namespace debugd {
 
 class WiMaxStatusTool {
  public:
-  WiMaxStatusTool();
-  ~WiMaxStatusTool();
+  WiMaxStatusTool() = default;
+  ~WiMaxStatusTool() = default;
 
   std::string GetWiMaxStatus(DBus::Error* error);
 

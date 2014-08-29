@@ -43,7 +43,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
                     public DBus::IntrospectableAdaptor {
  public:
   DebugDaemon(DBus::Connection* connection, DBus::BusDispatcher* dispatcher);
-  ~DebugDaemon() override;
+  ~DebugDaemon() override = default;
 
   bool Init();
   void Run();

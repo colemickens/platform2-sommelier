@@ -31,9 +31,6 @@ void AddCategoryArgs(ProcessWithOutput* p, const std::string& categories) {
 
 extern const char *kDebugfsGroup;
 
-SystraceTool::SystraceTool() { }
-SystraceTool::~SystraceTool() { }
-
 std::string SystraceTool::Start(const std::string& categories,
                                 DBus::Error* error) {
   std::string path;

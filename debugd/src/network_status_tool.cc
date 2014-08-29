@@ -4,16 +4,9 @@
 
 #include "debugd/src/network_status_tool.h"
 
-#include <base/logging.h>
-
 #include "debugd/src/process_with_output.h"
 
-using base::StringPrintf;
-
 namespace debugd {
-
-NetworkStatusTool::NetworkStatusTool() { }
-NetworkStatusTool::~NetworkStatusTool() { }
 
 std::string NetworkStatusTool::GetNetworkStatus(DBus::Error* error) {
   std::string path;

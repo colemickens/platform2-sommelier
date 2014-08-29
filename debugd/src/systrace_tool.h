@@ -17,8 +17,8 @@ namespace debugd {
 
 class SystraceTool {
  public:
-  SystraceTool();
-  ~SystraceTool();
+  SystraceTool() = default;
+  ~SystraceTool() = default;
 
   std::string Start(const std::string& categories, DBus::Error* error);
   void Stop(const DBus::FileDescriptor& outfd, DBus::Error* error);

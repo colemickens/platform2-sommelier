@@ -14,8 +14,8 @@ namespace debugd {
 
 class ModemStatusTool {
  public:
-  ModemStatusTool();
-  ~ModemStatusTool();
+  ModemStatusTool() = default;
+  ~ModemStatusTool() = default;
   std::string GetModemStatus(DBus::Error* error);
   std::string RunModemCommand(const std::string& command);
 

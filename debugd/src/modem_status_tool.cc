@@ -4,17 +4,11 @@
 
 #include "debugd/src/modem_status_tool.h"
 
-#include <base/logging.h>
-
 #include "debugd/src/process_with_output.h"
 
-using base::StringPrintf;
 using std::string;
 
 namespace debugd {
-
-ModemStatusTool::ModemStatusTool() { }
-ModemStatusTool::~ModemStatusTool() { }
 
 std::string ModemStatusTool::GetModemStatus(DBus::Error* error) {
   if (!USE_CELLULAR)

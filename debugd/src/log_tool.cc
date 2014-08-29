@@ -204,9 +204,6 @@ static const Log user_logs[] = {
   { NULL, NULL}
 };
 
-LogTool::LogTool() { }
-LogTool::~LogTool() { }
-
 bool GetNamedLogFrom(const string& name, const struct Log* logs,
                      string* result) {
   for (size_t i = 0; logs[i].name; i++) {

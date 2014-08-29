@@ -12,8 +12,8 @@ namespace debugd {
 
 class SysrqTool {
  public:
-  SysrqTool();
-  ~SysrqTool();
+  SysrqTool() = default;
+  ~SysrqTool() = default;
 
   void LogKernelTaskStates(DBus::Error* error);
 

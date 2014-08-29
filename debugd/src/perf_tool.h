@@ -20,7 +20,7 @@ namespace debugd {
 class PerfTool {
  public:
   PerfTool();
-  ~PerfTool();
+  ~PerfTool() = default;
 
   // Randomly runs the perf tool in various modes and collects various events
   // for |duration_secs| seconds and returns a protobuf containing the collected

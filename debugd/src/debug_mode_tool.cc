@@ -29,7 +29,7 @@ class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
                const char* path,
                const char* service)
       : DBus::ObjectProxy(*connection, path, service) {}
-  ~ManagerProxy() override {}
+  ~ManagerProxy() override = default;
   void PropertyChanged(const std::string&, const DBus::Variant&) override {}
   void StateChanged(const std::string&) override {}
 };
@@ -46,7 +46,7 @@ class ModemManagerProxy : public org::freedesktop::ModemManager_proxy,
                     const char* path,
                     const char* service)
       : DBus::ObjectProxy(*connection, path, service) {}
-  ~ModemManagerProxy() override {}
+  ~ModemManagerProxy() override = default;
   void DeviceAdded(const DBus::Path&) override {}
   void DeviceRemoved(const DBus::Path&) override {}
 };
@@ -58,7 +58,7 @@ class ModemManager1Proxy : public org::freedesktop::ModemManager1_proxy,
                      const char* path,
                      const char* service)
       : DBus::ObjectProxy(*connection, path, service) {}
-  ~ModemManager1Proxy() override {}
+  ~ModemManager1Proxy() override = default;
 };
 
 #endif  // USE_CELLULAR
@@ -70,13 +70,11 @@ class PropertiesProxy : public org::freedesktop::DBus::Properties_proxy,
                   const char* path,
                   const char* service)
       : DBus::ObjectProxy(*connection, path, service) {}
-  ~PropertiesProxy() override {}
+  ~PropertiesProxy() override = default;
 };
 
 DebugModeTool::DebugModeTool(DBus::Connection* connection)
-    : connection_(connection) { }
-
-DebugModeTool::~DebugModeTool() { }
+    : connection_(connection) {}
 
 void DebugModeTool::SetDebugMode(const std::string& subsystem,
                                  DBus::Error*) {

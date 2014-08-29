@@ -43,8 +43,6 @@ bool DebugDaemon::Init() {
   return true;
 }
 
-DebugDaemon::~DebugDaemon() { }
-
 void DebugDaemon::Run() {
   dispatcher_->enter();
   while (1) {

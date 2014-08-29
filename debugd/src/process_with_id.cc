@@ -11,8 +11,6 @@
 
 namespace debugd {
 
-ProcessWithId::ProcessWithId() {}
-
 bool ProcessWithId::Init() {
   return SandboxedProcess::Init() && GenerateId();
 }

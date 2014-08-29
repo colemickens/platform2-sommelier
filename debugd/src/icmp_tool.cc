@@ -16,9 +16,6 @@ using std::string;
 
 namespace debugd {
 
-ICMPTool::ICMPTool() { }
-ICMPTool::~ICMPTool() { }
-
 string ICMPTool::TestICMP(const string& host, DBus::Error* error) {
   map<string, string> options;
   return TestICMPWithOptions(host, options, error);

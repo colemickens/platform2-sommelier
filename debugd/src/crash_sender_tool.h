@@ -14,8 +14,8 @@ namespace debugd {
 
 class CrashSenderTool : public SubprocessTool {
  public:
-  CrashSenderTool();
-  ~CrashSenderTool() override;
+  CrashSenderTool() = default;
+  ~CrashSenderTool() override = default;
 
   void UploadCrashes(DBus::Error* error);
 

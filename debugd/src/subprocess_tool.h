@@ -17,8 +17,8 @@ class ProcessWithId;
 
 class SubprocessTool {
  public:
-  SubprocessTool();
-  virtual ~SubprocessTool();
+  SubprocessTool() = default;
+  virtual ~SubprocessTool() = default;
 
   virtual ProcessWithId* CreateProcess(bool sandbox);
   virtual void Stop(const std::string& handle, DBus::Error* error);

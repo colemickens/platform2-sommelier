@@ -18,9 +18,6 @@ const char kErrorNoSuchProcess[] = "org.chromium.debugd.error.NoSuchProcess";
 
 }  // namespace
 
-SubprocessTool::SubprocessTool() { }
-SubprocessTool::~SubprocessTool() { }
-
 ProcessWithId* SubprocessTool::CreateProcess(bool sandbox) {
   ProcessWithId* p = new ProcessWithId();
   if (!sandbox)

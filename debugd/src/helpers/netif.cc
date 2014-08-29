@@ -145,7 +145,7 @@ class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
                const char* path,
                const char* service)
       : DBus::ObjectProxy(connection, path, service) {}
-  ~ManagerProxy() override {}
+  ~ManagerProxy() override = default;
   void PropertyChanged(const std::string&, const DBus::Variant&) override {}
   void StateChanged(const std::string&) override {}
 };
@@ -157,14 +157,14 @@ class ServiceProxy : public org::chromium::flimflam::Service_proxy,
                const char* path,
                const char* service)
       : DBus::ObjectProxy(connection, path, service) {}
-  ~ServiceProxy() override {}
+  ~ServiceProxy() override = default;
   void PropertyChanged(const std::string&, const DBus::Variant&) override {}
 };
 
 class NetInterface {
  public:
   NetInterface(int fd, const char *name);
-  ~NetInterface();
+  ~NetInterface() = default;
 
   bool Init();
   void AddAddress(struct ifaddrs *ifa);
@@ -184,10 +184,12 @@ class NetInterface {
 };
 
 NetInterface::NetInterface(int fd, const char *name)
-    : fd_(fd), name_(name), ipv4_(NULL),
-      ipv6_(NULL), flags_(NULL), signal_strengths_(NULL) { }
-
-NetInterface::~NetInterface() { }
+    : fd_(fd),
+      name_(name),
+      ipv4_(NULL),
+      ipv6_(NULL),
+      flags_(NULL),
+      signal_strengths_(NULL) {}
 
 bool NetInterface::Init() {
   mac_ = getmac(fd_, name_);

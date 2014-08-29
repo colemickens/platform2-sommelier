@@ -15,8 +15,8 @@ namespace debugd {
 
 class ICMPTool {
  public:
-  ICMPTool();
-  ~ICMPTool();
+  ICMPTool() = default;
+  ~ICMPTool() = default;
 
   std::string TestICMP(const std::string& host, DBus::Error* error);
   std::string TestICMPWithOptions(

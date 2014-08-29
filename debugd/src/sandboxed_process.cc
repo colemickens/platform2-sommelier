@@ -12,8 +12,7 @@ const char *SandboxedProcess::kDefaultUser = "debugd";
 const char *SandboxedProcess::kDefaultGroup = "debugd";
 
 SandboxedProcess::SandboxedProcess()
-    : sandboxing_(true), user_(kDefaultUser), group_(kDefaultGroup) { }
-SandboxedProcess::~SandboxedProcess() { }
+    : sandboxing_(true), user_(kDefaultUser), group_(kDefaultGroup) {}
 
 // static
 bool SandboxedProcess::GetHelperPath(const std::string& relative_path,

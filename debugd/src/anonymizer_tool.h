@@ -16,7 +16,7 @@ namespace debugd {
 class AnonymizerTool {
  public:
   AnonymizerTool();
-  ~AnonymizerTool();
+  ~AnonymizerTool() = default;
 
   // Returns an anonymized version of |input|. PII-sensitive data (such as MAC
   // addresses) in |input| is replaced with unique identifiers.

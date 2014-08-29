@@ -16,7 +16,7 @@ namespace debugd {
 class DebugModeTool {
  public:
   explicit DebugModeTool(DBus::Connection* connection);
-  virtual ~DebugModeTool();
+  virtual ~DebugModeTool() = default;
 
   virtual void SetDebugMode(const std::string& subsystem, DBus::Error* error);
 

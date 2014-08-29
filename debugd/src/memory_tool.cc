@@ -16,10 +16,6 @@ const char kMemtesterpath[] = "/usr/sbin/memtester";
 
 }  // namespace
 
-MemtesterTool::MemtesterTool() { }
-
-MemtesterTool::~MemtesterTool() { }
-
 std::string MemtesterTool::Start(const DBus::FileDescriptor& outfd,
                                  const uint32_t& memory,
                                  DBus::Error* error) {

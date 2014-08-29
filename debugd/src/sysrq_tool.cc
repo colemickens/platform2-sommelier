@@ -11,10 +11,6 @@ namespace debugd {
 
 const char kErrorSysrq[] = "org.chromium.debugd.error.sysrq";
 
-SysrqTool::SysrqTool() { }
-
-SysrqTool::~SysrqTool() { }
-
 void SysrqTool::LogKernelTaskStates(DBus::Error* error) {
   int sysrq_trigger = open("/proc/sysrq-trigger", O_WRONLY | O_CLOEXEC);
   if (sysrq_trigger < 0) {

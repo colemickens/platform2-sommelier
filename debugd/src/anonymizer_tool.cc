@@ -51,8 +51,6 @@ const char *kCustomPatterns[] = {
 AnonymizerTool::AnonymizerTool()
     : custom_patterns_(arraysize(kCustomPatterns)) {}
 
-AnonymizerTool::~AnonymizerTool() {}
-
 string AnonymizerTool::Anonymize(const string& input) {
   string anonymized = AnonymizeMACAddresses(input);
   anonymized = AnonymizeCustomPatterns(anonymized);

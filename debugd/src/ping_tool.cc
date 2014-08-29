@@ -14,9 +14,6 @@ namespace debugd {
 const char* kSetuidHack = "/usr/libexec/debugd/helpers/minijail-setuid-hack.sh";
 const char* kPing = "/bin/ping";
 
-PingTool::PingTool() : SubprocessTool() { }
-PingTool::~PingTool() { }
-
 std::string PingTool::Start(const DBus::FileDescriptor& outfd,
                             const std::string& destination,
                             const std::map<std::string, DBus::Variant>& options,

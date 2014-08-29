@@ -12,10 +12,6 @@
 
 namespace debugd {
 
-ExampleTool::ExampleTool() { }
-
-ExampleTool::~ExampleTool() { }
-
 // Tool methods have a similar signature as the generated DBus adaptors, except
 // for the DBus::Error argument, which is passed in as a pointer instead of a
 // reference. Tool methods are generally written in can't-fail style, since

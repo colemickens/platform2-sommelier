@@ -26,7 +26,7 @@ class DeviceProxy : public org::chromium::flimflam::Device_proxy,
               const char* path,
               const char* service)
       : DBus::ObjectProxy(connection, path, service) {}
-  ~DeviceProxy() override {}
+  ~DeviceProxy() override = default;
   void PropertyChanged(const std::string&, const DBus::Variant&) override {}
 };
 
@@ -37,7 +37,7 @@ class IPConfigProxy : public org::chromium::flimflam::IPConfig_proxy,
                 const char* path,
                 const char* service)
       : DBus::ObjectProxy(connection, path, service) {}
-  ~IPConfigProxy() override {}
+  ~IPConfigProxy() override = default;
   void PropertyChanged(const std::string&, const DBus::Variant&) override {}
 };
 
@@ -48,7 +48,7 @@ class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
                const char* path,
                const char* service)
       : DBus::ObjectProxy(connection, path, service) {}
-  ~ManagerProxy() override {}
+  ~ManagerProxy() override = default;
   void PropertyChanged(const std::string&, const DBus::Variant&) override {}
   void StateChanged(const std::string&) override {}
 };
@@ -60,7 +60,7 @@ class ServiceProxy : public org::chromium::flimflam::Service_proxy,
                const char* path,
                const char* service)
       : DBus::ObjectProxy(connection, path, service) {}
-  ~ServiceProxy() override {}
+  ~ServiceProxy() override = default;
   void PropertyChanged(const std::string&, const DBus::Variant&) override {}
 };
 

@@ -81,8 +81,6 @@ PerfTool::PerfTool() {
   random_selector_.SetOddsFromFile(odds_file_path);
 }
 
-PerfTool::~PerfTool() { }
-
 std::vector<uint8_t> PerfTool::GetRichPerfData(const uint32_t& duration_secs,
                                                DBus::Error* error) {
   std::string perf_command_line;
