@@ -13,6 +13,7 @@ PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 CPPFLAGS += $(PC_CFLAGS) -I$(SRC)/..
+CXXFLAGS += --std=gnu++11
 
 # Filter out the two legacy style binaries.
 BOOT_MODE_OBJECTS=$(filter-out %_testrunner.o %_unittest.o,$(CXX_OBJECTS))

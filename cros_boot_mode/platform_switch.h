@@ -20,17 +20,13 @@ class PlatformSwitch : public PlatformReader {
  public:
   enum { kDisabled, kEnabled };
 
-  PlatformSwitch();
-  virtual ~PlatformSwitch();
+  PlatformSwitch() = default;
+  ~PlatformSwitch() override = default;
 
-  virtual const char *c_str() const;
-  virtual const char *default_platform_file_path() const {
-    return "/sys/devices/platform/chromeos_acpi/CHSW";
-  }
-  virtual size_t max_size() const {
-    return sizeof("65535");  // largest allowed switch value
-  }
-  virtual int Process(const char *file_contents, size_t length);
+  const char *c_str() const override;
+  const char *default_platform_file_path() const override;
+  size_t max_size() const override;
+  int Process(const char *file_contents, size_t length) override;
 
   // To be overriden by the implementation
   virtual unsigned int bitmask() const = 0;

@@ -22,23 +22,17 @@ class ActiveMainFirmware : public PlatformReader {
     kReadWriteB,
   };
 
-  ActiveMainFirmware();
-  virtual ~ActiveMainFirmware();
+  ActiveMainFirmware() = default;
+  ~ActiveMainFirmware() override = default;
 
   static const char *kActiveMainFirmwareText[];
   static const size_t kActiveMainFirmwareCount;
 
-  virtual const char *c_str() const;
-  virtual int Process(const char *contents, size_t length);
-  virtual const char *default_platform_file_path() const {
-    return "/sys/devices/platform/chromeos_acpi/BINF.1";
-  }
-  virtual const char *name() const {
-    return "active_main_firmware";
-  }
-  virtual size_t max_size() const {
-    return sizeof("-1");
-  }
+  const char *name() const override;
+  const char *c_str() const override;
+  const char *default_platform_file_path() const override;
+  size_t max_size() const override;
+  int Process(const char *contents, size_t length) override;
 };
 
 }  // namespace cros_boot_mode

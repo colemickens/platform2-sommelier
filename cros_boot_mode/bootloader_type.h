@@ -40,26 +40,19 @@ class BootloaderType : public PlatformReader {
   // Functional names found in /proc/cmdline.
   static const char *kSupportedBootloaders[];
 
-  BootloaderType();
-  virtual ~BootloaderType();
+  BootloaderType() = default;
+  ~BootloaderType() override = default;
+
+  const char *name() const override;
+  const char *c_str() const override;
+  const char *default_platform_file_path() const override;
+  size_t max_size() const override;
 
   // Process walks over the /proc/cmdline and converts it to the enum
   // above.  The conversion is done by finding the first match in
   // kSupportedBootloaders and then emits the enum that corresponds to
   // the matching array index (or kUnsupported).
-  virtual int Process(const char *contents, size_t length);
-  virtual const char *name() const {
-    return "bootloader_type";
-  }
-  virtual const char *c_str() const {
-    return (value() >= 0 ? kBootloaderTypeText[value()] : "unsupported");
-  }
-  virtual const char *default_platform_file_path() const {
-    return "/proc/cmdline";
-  }
-  virtual size_t max_size() const {
-    return kMaxKernelCmdlineSize;
-  }
+  int Process(const char *contents, size_t length);
 };
 
 }  // namespace cros_boot_mode

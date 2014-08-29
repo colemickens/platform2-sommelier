@@ -31,7 +31,6 @@ BootMode::BootMode()
       developer_switch_(&default_developer_switch_),
       active_main_firmware_(&default_active_main_firmware_),
       bootloader_type_(&default_bootloader_type_) {}
-BootMode::~BootMode() {}
 
 void BootMode::Initialize(bool unsupported_is_developer, bool use_bootloader) {
   if (use_bootloader) {

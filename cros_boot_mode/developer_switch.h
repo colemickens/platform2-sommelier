@@ -22,14 +22,11 @@ namespace cros_boot_mode {
 
 class DeveloperSwitch : public PlatformSwitch {
  public:
-  DeveloperSwitch();
-  virtual ~DeveloperSwitch();
-  virtual const char *name() const {
-    return "developer";
-  }
-  virtual unsigned int bitmask() const {
-    return 0x00000020;  // specified in the firmware spec.
-  }
+  DeveloperSwitch() = default;
+  ~DeveloperSwitch() override = default;
+
+  const char *name() const override;
+  unsigned int bitmask() const override;
 };
 
 }  // namespace cros_boot_mode

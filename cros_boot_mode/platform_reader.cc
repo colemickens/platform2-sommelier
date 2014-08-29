@@ -15,8 +15,6 @@ namespace cros_boot_mode {
 PlatformReader::PlatformReader()
     : value_(kUnsupported), platform_file_path_(NULL) {}
 
-PlatformReader::~PlatformReader() {}
-
 const char *PlatformReader::platform_file_path() const {
   if (platform_file_path_)
     return platform_file_path_;

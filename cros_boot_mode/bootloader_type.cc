@@ -34,8 +34,21 @@ const char *BootloaderType::kSupportedBootloaders[] = {
 
 const int BootloaderType::kMaxKernelCmdlineSize = 4096;  // one page.
 
-BootloaderType::BootloaderType() {}
-BootloaderType::~BootloaderType() {}
+const char *BootloaderType::name() const {
+  return "bootloader_type";
+}
+
+const char *BootloaderType::c_str() const {
+  return (value() >= 0 ? kBootloaderTypeText[value()] : "unsupported");
+}
+
+const char *BootloaderType::default_platform_file_path() const {
+  return "/proc/cmdline";
+}
+
+size_t BootloaderType::max_size() const {
+  return kMaxKernelCmdlineSize;
+}
 
 // This function looks for given argument space or nul delimited in
 // a /proc/cmdline style char array. See bootloader_type.h for details.

@@ -18,20 +18,28 @@ const char *ActiveMainFirmware::kActiveMainFirmwareText[] = {
   "b",
 };
 
+const size_t ActiveMainFirmware::kActiveMainFirmwareCount =
+  sizeof(kActiveMainFirmwareText) / sizeof(*kActiveMainFirmwareText);
+
+const char *ActiveMainFirmware::name() const {
+  return "active_main_firmware";
+}
+
 const char *ActiveMainFirmware::c_str() const {
   return (value() >= 0 ? kActiveMainFirmwareText[value()] : "unsupported");
 }
 
-const size_t ActiveMainFirmware::kActiveMainFirmwareCount =
-  sizeof(kActiveMainFirmwareText) / sizeof(*kActiveMainFirmwareText);
+const char *ActiveMainFirmware::default_platform_file_path() const {
+  return "/sys/devices/platform/chromeos_acpi/BINF.1";
+}
 
-ActiveMainFirmware::ActiveMainFirmware() {}
-ActiveMainFirmware::~ActiveMainFirmware() {}
+size_t ActiveMainFirmware::max_size() const {
+  return sizeof("-1");
+}
 
 int ActiveMainFirmware::Process(const char *contents, size_t length) {
   int volume = helpers::to_int(contents, length);
-  if (volume >= 0 &&
-      volume < static_cast<int>(kActiveMainFirmwareCount))
+  if (volume >= 0 && volume < static_cast<int>(kActiveMainFirmwareCount))
     return volume;
   return kUnsupported;
 }

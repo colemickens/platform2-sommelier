@@ -23,7 +23,7 @@ class PlatformReader {
   enum { kUnsupported = -1 };  // All subclasses should extend this enum.
 
   PlatformReader();
-  virtual ~PlatformReader();
+  virtual ~PlatformReader() = default;
   // Provides a default file reader which then calls an override-able
   // function for processing.  Initialize must leave the class in a usable
   // state even on failure.

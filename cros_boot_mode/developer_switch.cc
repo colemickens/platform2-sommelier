@@ -6,11 +6,14 @@
 
 #include "cros_boot_mode/developer_switch.h"
 
-#include <sys/types.h>
-
 namespace cros_boot_mode {
 
-DeveloperSwitch::DeveloperSwitch() {}
-DeveloperSwitch::~DeveloperSwitch() {}
+const char *DeveloperSwitch::name() const {
+  return "developer";
+}
+
+unsigned int DeveloperSwitch::bitmask() const {
+  return 0x00000020;  // specified in the firmware spec.
+}
 
 }  // namespace cros_boot_mode

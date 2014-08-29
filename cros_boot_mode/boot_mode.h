@@ -28,7 +28,7 @@ class BootMode {
   };
 
   BootMode();
-  virtual ~BootMode();
+  virtual ~BootMode() = default;
 
   // Initializes the class by reading from the platform-specific
   // implementation.  Even if something fails, the class will be in

@@ -14,11 +14,16 @@ namespace cros_boot_mode {
 
 const char *PlatformSwitch::kPositionText[] = { "disabled", "enabled" };
 
-PlatformSwitch::PlatformSwitch() {}
-PlatformSwitch::~PlatformSwitch() {}
-
 const char *PlatformSwitch::c_str() const {
   return (value() >= 0 ? kPositionText[value()] : "unsupported");
+}
+
+const char *PlatformSwitch::default_platform_file_path() const {
+  return "/sys/devices/platform/chromeos_acpi/CHSW";
+}
+
+size_t PlatformSwitch::max_size() const {
+  return sizeof("65535");  // largest allowed switch value
 }
 
 int PlatformSwitch::Process(const char *file_contents, size_t length) {
