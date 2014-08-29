@@ -10,7 +10,7 @@
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
         'openssl',
-        'protobuf'
+        'protobuf-lite',
       ],
     },
   },
@@ -42,7 +42,7 @@
         'trunksd.cc'
       ],
       'dependencies': [
-        'tpm_response_proto'
+        'tpm_communication_proto',
       ],
     },
     {
@@ -50,14 +50,27 @@
       'type': 'executable',
       'sources': [
         'trunks_client.cc',
-        'trunks_proxy.cc'
       ],
       'dependencies': [
-        'tpm_response_proto'
+        'trunks',
       ],
     },
     {
-      'target_name': 'tpm_response_proto',
+      'target_name': 'trunks',
+      'type': 'shared_library',
+      'libraries': [
+        '-lchrome_crypto',
+      ],
+      'sources': [
+        'tpm_generated.cc',
+        'trunks_proxy.cc',
+      ],
+      'dependencies': [
+        'tpm_communication_proto',
+      ],
+    },
+    {
+      'target_name': 'tpm_communication_proto',
       'type': 'static_library',
       'variables': {
         'proto_in_dir': '.',

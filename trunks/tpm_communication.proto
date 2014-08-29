@@ -1,3 +1,4 @@
+option optimize_for = LITE_RUNTIME;
 package trunks;
 
 // This protobuf represents a message to be passed to a tpm.

@@ -11,6 +11,7 @@
 
 #include <base/basictypes.h>
 #include <base/callback_forward.h>
+#include <chromeos/chromeos_export.h>
 
 namespace trunks {
 
@@ -3691,7 +3692,7 @@ TPM_RC Parse_TPMU_SYM_DETAILS(
     TPMU_SYM_DETAILS* value,
     std::string* value_bytes);
 
-class Tpm {
+class CHROMEOS_EXPORT Tpm {
  public:
   // Does not take ownership of |transceiver|.
   explicit Tpm(CommandTransceiver* transceiver) : transceiver_(transceiver) {}

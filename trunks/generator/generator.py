@@ -83,6 +83,7 @@ _HEADER_FILE_INCLUDES = """
 
 #include <base/basictypes.h>
 #include <base/callback_forward.h>
+#include <chromeos/chromeos_export.h>
 """
 _IMPLEMENTATION_FILE_INCLUDES = """
 #include <string>
@@ -115,7 +116,7 @@ class AuthorizationDelegate;
 class CommandTransceiver;
 """
 _CLASS_BEGIN = """
-class Tpm {
+class CHROMEOS_EXPORT Tpm {
  public:
   // Does not take ownership of |transceiver|.
   explicit Tpm(CommandTransceiver* transceiver) : transceiver_(transceiver) {}

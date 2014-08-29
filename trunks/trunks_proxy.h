@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/callback.h>
+#include <chromeos/chromeos_export.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
@@ -22,7 +23,7 @@ typedef base::Callback<void(const std::string& response)> SendCommandCallback;
 // interface. Services that want to talk to the TPM through trunksd can
 // get an instance of this singleton proxy. Then they can use the SendCommand
 // method to send TPM commands to trunksd to forward to the TPM handle.
-class TrunksProxy: public CommandTransceiver {
+class CHROMEOS_EXPORT TrunksProxy: public CommandTransceiver {
  public:
   TrunksProxy();
   virtual ~TrunksProxy();

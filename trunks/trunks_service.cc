@@ -20,7 +20,6 @@ namespace {
 
 const uid_t kTrunksUID = 248;
 const uid_t kRootUID = 0;
-const int kTpmBufferLength = 4096;
 const char kTrunksUser[] = "trunks";
 const char kTrunksGroup[] = "trunks";
 const char kTrunksSeccompPath[] = "/usr/share/policy/trunksd-seccomp.policy";
