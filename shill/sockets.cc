@@ -153,7 +153,7 @@ ScopedSocketCloser::ScopedSocketCloser(Sockets *sockets, int fd)
 
 ScopedSocketCloser::~ScopedSocketCloser() {
   sockets_->Close(fd_);
-  fd_ = -1;
+  fd_ = Sockets::kInvalidFileDescriptor;
 }
 
 }  // namespace shill

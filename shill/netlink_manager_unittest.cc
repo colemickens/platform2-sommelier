@@ -116,7 +116,7 @@ class NetlinkManagerTest : public Test {
         kNl80211FamilyId, Bind(&Nl80211Message::CreateMessage));
     Nl80211Message::SetMessageType(kNl80211FamilyId);
     netlink_socket_->sockets_.reset(sockets_);  // Passes ownership.
-    netlink_manager_->sock_ = netlink_socket_;  // Passes ownership.
+    netlink_manager_->sock_.reset(netlink_socket_);  // Passes ownership.
     EXPECT_TRUE(netlink_manager_->Init());
   }
 

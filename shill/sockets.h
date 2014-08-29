@@ -21,6 +21,8 @@ class Sockets {
   Sockets();
   virtual ~Sockets();
 
+  static const int kInvalidFileDescriptor = -1;
+
   // accept
   virtual int Accept(int sockfd,
                      struct sockaddr *addr,

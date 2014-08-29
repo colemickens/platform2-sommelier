@@ -69,6 +69,7 @@
 #include "shill/generic_netlink_message.h"
 #include "shill/io_handler.h"
 #include "shill/netlink_message.h"
+#include "shill/netlink_socket.h"
 #include "shill/shill_time.h"
 
 struct nlmsghdr;
@@ -79,7 +80,6 @@ class ControlNetlinkMessage;
 class Error;
 class EventDispatcher;
 struct InputData;
-class NetlinkSocket;
 class Nl80211Message;
 
 // NetlinkManager is a singleton that coordinates sending netlink messages to,
@@ -340,7 +340,7 @@ class NetlinkManager {
   base::Callback<void(InputData *)> dispatcher_callback_;
   scoped_ptr<IOHandler> dispatcher_handler_;
 
-  NetlinkSocket *sock_;
+  scoped_ptr<NetlinkSocket> sock_;
   std::map<const std::string, MessageType> message_types_;
   NetlinkMessageFactory message_factory_;
   Time *time_;

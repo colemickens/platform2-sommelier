@@ -21,7 +21,6 @@
 #include "shill/io_handler.h"
 #include "shill/logging.h"
 #include "shill/netlink_message.h"
-#include "shill/netlink_socket.h"
 #include "shill/nl80211_message.h"
 #include "shill/scope_logger.h"
 #include "shill/shill_time.h"
@@ -171,7 +170,6 @@ NetlinkManager::NetlinkManager()
       weak_ptr_factory_(this),
       dispatcher_callback_(Bind(&NetlinkManager::OnRawNlMessageReceived,
                                 weak_ptr_factory_.GetWeakPtr())),
-      sock_(NULL),
       time_(Time::GetInstance()) {}
 
 NetlinkManager::~NetlinkManager() {}
@@ -186,8 +184,7 @@ void NetlinkManager::Reset(bool full) {
   message_types_.clear();
   if (full) {
     dispatcher_ = NULL;
-    delete sock_;
-    sock_ = NULL;
+    sock_.reset();
   }
 }
 
@@ -285,7 +282,7 @@ bool NetlinkManager::Init() {
       ControlNetlinkMessage::kMessageType,
       Bind(&ControlNetlinkMessage::CreateMessage));
   if (!sock_) {
-    sock_ = new NetlinkSocket;
+    sock_.reset(new NetlinkSocket);
     if (!sock_) {
       LOG(ERROR) << "No memory";
       return false;
@@ -310,7 +307,7 @@ void NetlinkManager::Start(EventDispatcher *dispatcher) {
 }
 
 int NetlinkManager::file_descriptor() const {
-  return (sock_ ? sock_->file_descriptor() : -1);
+  return (sock_ ? sock_->file_descriptor() : Sockets::kInvalidFileDescriptor);
 }
 
 uint16_t NetlinkManager::GetFamily(const string &name,
