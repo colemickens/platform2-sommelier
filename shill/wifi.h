@@ -99,6 +99,7 @@
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 #include "shill/supplicant_event_delegate_interface.h"
+#include "shill/wake_on_wifi.h"
 
 namespace shill {
 
@@ -132,6 +133,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
   virtual void Scan(ScanType scan_type, Error *error,
                     const std::string &reason);
+  // Callback for system suspend. The base class implementation is invoked
+  // unconditionally.
+  virtual void OnBeforeSuspend();
   // Callback for system resume. If this WiFi device is idle, a scan
   // is initiated. Additionally, the base class implementation is
   // invoked unconditionally.
@@ -141,29 +145,20 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Callback for when a service fails to configure with an IP.
   void OnIPConfigFailure() override;
 
-  // Program the NIC to wake on packets received from |ip_endpoint|.
+  // Enable the NIC to wake on packets received from |ip_endpoint|.
+  // Note: The actual programming of the NIC only happens before the system
+  // suspends, in |OnBeforeSuspend|.
   void AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                  Error *error) override;
   // Remove rule to wake on packets received from |ip_endpoint| from the NIC.
+  // Note: The actual programming of the NIC only happens before the system
+  // suspends, in |OnBeforeSuspend|.
   void RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                     Error *error) override;
   // Remove all rules to wake on incoming packets from the NIC.
+  // Note: The actual programming of the NIC only happens before the system
+  // suspends, in |OnBeforeSuspend|.
   void RemoveAllWakeOnPacketConnections(Error *error) override;
-  // Message handler for NL80211_CMD_SET_WOWLAN responses.
-  void OnSetWakeOnPacketConnectionResponse(
-      const Nl80211Message &nl80211_message);
-  // Request wake-on-packet settings for this wifi device.
-  void RequestWakeOnPacketSettings();
-  // Verify that the wake-on-packet connections programmed into the NIC match
-  // those recorded locally for this device.
-  void VerifyWakeOnPacketConnections(const Nl80211Message &nl80211_message);
-  // Sends an NL80211 message to program the NIC to wake on packets from
-  // the IP addresses stored locally in wake_on_packet_connections_.
-  void SendSetWakeOnPacketMessage(Error *error);
-  // Calls |SendSetWakeOnPacketMessage| and tracks this call as a retry. If
-  // |kMaxSetWakeOnPacketRetries| retries have already been performed, resets
-  // counter and returns.
-  void RetrySetWakeOnPacketConnections();
 
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
@@ -330,7 +325,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // TODO(wdg): Remove after progressive scan field trial is over.
   static const char kProgressiveScanFieldTrialFlagFile[];
   static const size_t kStuckQueueLengthThreshold;
-  static const int kVerifyWakeOnPacketSettingsDelaySeconds;
+  static const int kVerifyWakeOnWiFiSettingsDelaySeconds;
   static const int kMaxSetWakeOnPacketRetries;
 
   // TODO(wdg): Remove after progressive scan field trial is over.
@@ -521,6 +516,27 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool ResolvePeerMacAddress(const std::string &input, std::string *output,
                              Error *error);
 
+  // Message handler for NL80211_CMD_SET_WOWLAN responses.
+  void OnSetWakeOnPacketConnectionResponse(
+      const Nl80211Message &nl80211_message);
+  // Request wake on WiFi settings for this WiFi device.
+  void RequestWakeOnPacketSettings();
+  // Verify that the wake on WiFi settings programmed into the NIC match
+  // those recorded locally for this device in |wake_on_packet_connections_|
+  // and |wake_on_wifi_triggers_|.
+  void VerifyWakeOnWiFiSettings(const Nl80211Message &nl80211_message);
+  // Sends an NL80211 message to program the NIC with wake on WiFi settings
+  // configured in |wake_on_packet_connections_| and |wake_on_wifi_triggers_|.
+  // If |wake_on_wifi_triggers_| is empty, calls |DisableWakeOnWiFi|.
+  void ApplyWakeOnWiFiSettings();
+  // Helper function called by |ApplyWakeOnWiFiSettings| that sends an NL80211
+  // message to program the NIC to disable wake on WiFi.
+  void DisableWakeOnWiFi();
+  // Calls |ApplyWakeOnWiFiSettings| and counts this call as
+  // a retry. If |kMaxSetWakeOnPacketRetries| retries have already been
+  // performed, resets counter and returns.
+  void RetrySetWakeOnPacketConnections();
+
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider *provider_;
 
@@ -622,6 +638,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Number of retries to program the NIC's wake-on-packet settings.
   int num_set_wake_on_packet_retries_;
+
+  // Keeps track of triggers that would wake this device.
+  std::set<WakeOnWiFi::WakeOnWiFiTrigger> wake_on_wifi_triggers_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };

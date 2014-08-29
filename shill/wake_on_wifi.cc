@@ -22,10 +22,10 @@ using std::vector;
 
 namespace shill {
 
-namespace WakeOnWifi {
+namespace WakeOnWiFi {
 
 bool ByteStringPairIsLessThan(const std::pair<ByteString, ByteString> &lhs,
-                    const std::pair<ByteString, ByteString> &rhs) {
+                              const std::pair<ByteString, ByteString> &rhs) {
   // Treat the first value of the pair as the key.
   return ByteString::IsLessThan(lhs.first, rhs.first);
 }
@@ -76,7 +76,7 @@ void CreateIPV4PatternAndMask(const IPAddress &ip_addr, ByteString *pattern,
   pattern->Clear();
   pattern->Append(ByteString(
       reinterpret_cast<const unsigned char *>(&pattern_bytes), pattern_len));
-  WakeOnWifi::SetMask(mask, pattern_len, src_ip_offset);
+  SetMask(mask, pattern_len, src_ip_offset);
 }
 
 void CreateIPV6PatternAndMask(const IPAddress &ip_addr, ByteString *pattern,
@@ -96,7 +96,7 @@ void CreateIPV6PatternAndMask(const IPAddress &ip_addr, ByteString *pattern,
   pattern->Clear();
   pattern->Append(ByteString(
       reinterpret_cast<const unsigned char *>(&pattern_bytes), pattern_len));
-  WakeOnWifi::SetMask(mask, pattern_len, src_ip_offset);
+  SetMask(mask, pattern_len, src_ip_offset);
 }
 
 bool ConfigureWiphyIndex(Nl80211Message *msg, int32_t index) {
@@ -110,9 +110,9 @@ bool ConfigureWiphyIndex(Nl80211Message *msg, int32_t index) {
   return true;
 }
 
-bool ConfigureDisableWakeOnPacketMsg(SetWakeOnPacketConnMessage *msg,
+bool ConfigureDisableWakeOnWiFiMessage(SetWakeOnPacketConnMessage *msg,
                                        uint32_t wiphy_index, Error *error) {
-  if (!WakeOnWifi::ConfigureWiphyIndex(msg, wiphy_index)) {
+  if (!ConfigureWiphyIndex(msg, wiphy_index)) {
     Error::PopulateAndLog(error, Error::kOperationFailed,
                           "Failed to configure Wiphy index.");
     return false;
@@ -120,16 +120,29 @@ bool ConfigureDisableWakeOnPacketMsg(SetWakeOnPacketConnMessage *msg,
   return true;
 }
 
-bool ConfigureAddWakeOnPacketMsg(SetWakeOnPacketConnMessage *msg,
-                                 const IPAddressStore &addrs,
-                                 uint32_t wiphy_index, Error *error) {
-  if (!WakeOnWifi::ConfigureWiphyIndex(msg, wiphy_index)) {
+bool ConfigureSetWakeOnWiFiSettingsMessage(
+    SetWakeOnPacketConnMessage *msg,
+    const set<WakeOnWiFiTrigger> &trigs,
+    const IPAddressStore &addrs,
+    uint32_t wiphy_index,
+    Error *error) {
+  if (trigs.empty()) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "No triggers to configure.");
+    return false;
+  }
+  if (trigs.find(kIPAddress) != trigs.end() && addrs.Empty()) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "No IP addresses to configure.");
+    return false;
+  }
+  if (!ConfigureWiphyIndex(msg, wiphy_index)) {
     Error::PopulateAndLog(error, Error::kOperationFailed,
                           "Failed to configure Wiphy index.");
     return false;
   }
   if (!msg->attributes()->CreateNestedAttribute(NL80211_ATTR_WOWLAN_TRIGGERS,
-                                                  "WoWLAN Triggers")) {
+                                                "WoWLAN Triggers")) {
     Error::PopulateAndLog(error, Error::kOperationFailed,
                           "Could not create nested attribute "
                           "NL80211_ATTR_WOWLAN_TRIGGERS for "
@@ -147,46 +160,71 @@ bool ConfigureAddWakeOnPacketMsg(SetWakeOnPacketConnMessage *msg,
 
   AttributeListRefPtr triggers;
   if (!msg->attributes()->GetNestedAttributeList(NL80211_ATTR_WOWLAN_TRIGGERS,
-                                                   &triggers)) {
+                                                 &triggers)) {
     Error::PopulateAndLog(error, Error::kOperationFailed,
                           "Could not get nested attribute list "
                           "NL80211_ATTR_WOWLAN_TRIGGERS for "
                           "SetWakeOnPacketConnMessage.");
     return false;
   }
-  if (!triggers->CreateNestedAttribute(NL80211_WOWLAN_TRIG_PKT_PATTERN,
-                                       "Pattern trigger")) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
-                          "Could not create nested attribute "
-                          "NL80211_WOWLAN_TRIG_PKT_PATTERN for "
-                          "SetWakeOnPacketConnMessage.");
-    return false;
-  }
-  if (!triggers->SetNestedAttributeHasAValue(NL80211_WOWLAN_TRIG_PKT_PATTERN)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
-                          "Could not set nested attribute "
-                          "NL80211_WOWLAN_TRIG_PKT_PATTERN for "
-                          "SetWakeOnPacketConnMessage.");
-    return false;
-  }
-
-  AttributeListRefPtr patterns;
-  if (!triggers->GetNestedAttributeList(NL80211_WOWLAN_TRIG_PKT_PATTERN,
-                                        &patterns)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
-                          "Could not get nested attribute list "
-                          "NL80211_WOWLAN_TRIG_PKT_PATTERN for "
-                          "SetWakeOnPacketConnMessage.");
-    return false;
-  }
-
-  uint8_t patnum = 1;
-  for (const IPAddress &addr : addrs.GetIPAddresses()) {
-    if (!CreateSinglePattern(addr, patterns, patnum++, error)) {
-      return false;
+  // Add triggers.
+  for (WakeOnWiFiTrigger t : trigs) {
+    switch (t) {
+      case kDisconnect: {
+        if (!triggers->CreateFlagAttribute(NL80211_WOWLAN_TRIG_DISCONNECT,
+                                           "Wake on Disconnect")) {
+          LOG(ERROR) << __func__ << "Could not create flag attribute "
+                                    "NL80211_WOWLAN_TRIG_DISCONNECT";
+          return false;
+        }
+        if (!triggers->SetFlagAttributeValue(NL80211_WOWLAN_TRIG_DISCONNECT,
+                                             true)) {
+          LOG(ERROR) << __func__ << "Could not set flag attribute "
+                                    "NL80211_WOWLAN_TRIG_DISCONNECT";
+          return false;
+        }
+        break;
+      }
+      case kIPAddress: {
+        if (!triggers->CreateNestedAttribute(NL80211_WOWLAN_TRIG_PKT_PATTERN,
+                                             "Pattern trigger")) {
+          Error::PopulateAndLog(error, Error::kOperationFailed,
+                                "Could not create nested attribute "
+                                "NL80211_WOWLAN_TRIG_PKT_PATTERN for "
+                                "SetWakeOnPacketConnMessage.");
+          return false;
+        }
+        if (!triggers->SetNestedAttributeHasAValue(
+                NL80211_WOWLAN_TRIG_PKT_PATTERN)) {
+          Error::PopulateAndLog(error, Error::kOperationFailed,
+                                "Could not set nested attribute "
+                                "NL80211_WOWLAN_TRIG_PKT_PATTERN for "
+                                "SetWakeOnPacketConnMessage.");
+          return false;
+        }
+        AttributeListRefPtr patterns;
+        if (!triggers->GetNestedAttributeList(NL80211_WOWLAN_TRIG_PKT_PATTERN,
+                                              &patterns)) {
+          Error::PopulateAndLog(error, Error::kOperationFailed,
+                                "Could not get nested attribute list "
+                                "NL80211_WOWLAN_TRIG_PKT_PATTERN for "
+                                "SetWakeOnPacketConnMessage.");
+          return false;
+        }
+        uint8_t patnum = 1;
+        for (const IPAddress &addr : addrs.GetIPAddresses()) {
+          if (!CreateSinglePattern(addr, patterns, patnum++, error)) {
+            return false;
+          }
+        }
+        break;
+      }
+      default: {
+        LOG(ERROR) << __func__ << ": Unrecognized trigger";
+        return false;
+      }
     }
   }
-
   return true;
 }
 
@@ -194,7 +232,7 @@ bool CreateSinglePattern(const IPAddress &ip_addr, AttributeListRefPtr patterns,
                          uint8_t patnum, Error *error) {
   ByteString pattern;
   ByteString mask;
-  WakeOnWifi::CreateIPAddressPatternAndMask(ip_addr, &pattern, &mask);
+  CreateIPAddressPatternAndMask(ip_addr, &pattern, &mask);
   if (!patterns->CreateNestedAttribute(patnum, "Pattern info")) {
     Error::PopulateAndLog(error, Error::kOperationFailed,
                           "Could not create nested attribute "
@@ -259,9 +297,9 @@ bool CreateSinglePattern(const IPAddress &ip_addr, AttributeListRefPtr patterns,
   return true;
 }
 
-bool ConfigureGetWakeOnPacketMsg(GetWakeOnPacketConnMessage *msg,
-                                 uint32_t wiphy_index, Error *error) {
-  if (!WakeOnWifi::ConfigureWiphyIndex(msg, wiphy_index)) {
+bool ConfigureGetWakeOnWiFiSettingsMessage(GetWakeOnPacketConnMessage *msg,
+                                       uint32_t wiphy_index, Error *error) {
+  if (!ConfigureWiphyIndex(msg, wiphy_index)) {
     Error::PopulateAndLog(error, Error::kOperationFailed,
                           "Failed to configure Wiphy index.");
     return false;
@@ -269,80 +307,116 @@ bool ConfigureGetWakeOnPacketMsg(GetWakeOnPacketConnMessage *msg,
   return true;
 }
 
-bool WakeOnPacketSettingsMatch(const Nl80211Message &msg,
-                               const IPAddressStore &addrs) {
+bool WakeOnWiFiSettingsMatch(const Nl80211Message &msg,
+                             const set<WakeOnWiFiTrigger> &trigs,
+                             const IPAddressStore &addrs) {
   if (msg.command() != NL80211_CMD_GET_WOWLAN &&
       msg.command() != NL80211_CMD_SET_WOWLAN) {
     LOG(ERROR) << "Invalid message command";
     return false;
   }
-  set<pair<ByteString, ByteString>,
-      bool (*)(const pair<ByteString, ByteString> &,
-               const pair<ByteString, ByteString> &)>
-      expected_patt_mask_pairs(ByteStringPairIsLessThan);
-  ByteString temp_pattern;
-  ByteString temp_mask;
-  for (const IPAddress &addr : addrs.GetIPAddresses()) {
-    temp_pattern.Clear();
-    temp_mask.Clear();
-    WakeOnWifi::CreateIPAddressPatternAndMask(addr, &temp_pattern, &temp_mask);
-    expected_patt_mask_pairs.emplace(temp_pattern, temp_mask);
-  }
   AttributeListConstRefPtr triggers;
-  if (!msg.const_attributes()->ConstGetNestedAttributeList(
-          NL80211_ATTR_WOWLAN_TRIGGERS, &triggers)) {
-    // No triggers in the returned message, which is valid iff the NIC has no
-    // wake-on-packet settings currently programmed into it.
-    return (expected_patt_mask_pairs.size() == 0);
+  if (!msg.const_attributes()
+           ->ConstGetNestedAttributeList(NL80211_ATTR_WOWLAN_TRIGGERS,
+                                         &triggers)) {
+    // No triggers in the returned message, which is valid iff we expect there
+    // to be no triggers programmed into the NIC.
+    return trigs.empty();
   }
-  AttributeListConstRefPtr patterns;
-  if (!triggers->ConstGetNestedAttributeList(NL80211_WOWLAN_TRIG_PKT_PATTERN,
-                                             &patterns)) {
-    LOG(ERROR) << "Could not get nested attribute list "
-                  "NL80211_WOWLAN_TRIG_PKT_PATTERN.";
+  // If the disconnect trigger is found and set, but we did not expect this
+  // trigger, we have a mismatch.
+  bool wake_on_disconnect = false;
+  triggers->GetFlagAttributeValue(NL80211_WOWLAN_TRIG_DISCONNECT,
+                                  &wake_on_disconnect);
+  if (trigs.find(kDisconnect) == trigs.end() && wake_on_disconnect) {
     return false;
   }
-  bool mismatch_found = false;
-  size_t num_mismatch = expected_patt_mask_pairs.size();
-  int pattern_index;
-  AttributeIdIterator pattern_iter(*patterns);
-  AttributeListConstRefPtr pattern_info;
-  ByteString returned_mask;
-  ByteString returned_pattern;
-  while (!pattern_iter.AtEnd()) {
-    returned_mask.Clear();
-    returned_pattern.Clear();
-    pattern_index = pattern_iter.GetId();
-    if (!patterns->ConstGetNestedAttributeList(pattern_index, &pattern_info)) {
-      LOG(ERROR) << "Could not get nested attribute list index "
-                 << pattern_index << " in patterns.";
-      return false;
+  // Check each trigger.
+  for (WakeOnWiFiTrigger t : trigs) {
+    switch (t) {
+      case kDisconnect: {
+        if (!wake_on_disconnect) {
+          return false;
+        }
+        break;
+      }
+      case kIPAddress: {
+        // Create pattern and masks that we expect to find in |msg|.
+        set<pair<ByteString, ByteString>,
+            bool (*)(const pair<ByteString, ByteString> &,
+                     const pair<ByteString, ByteString> &)>
+            expected_patt_mask_pairs(ByteStringPairIsLessThan);
+        ByteString temp_pattern;
+        ByteString temp_mask;
+        for (const IPAddress &addr : addrs.GetIPAddresses()) {
+          temp_pattern.Clear();
+          temp_mask.Clear();
+          CreateIPAddressPatternAndMask(addr, &temp_pattern,
+                                                    &temp_mask);
+          expected_patt_mask_pairs.emplace(temp_pattern, temp_mask);
+        }
+        // Check these expected pattern and masks against those actually
+        // contained in |msg|.
+        AttributeListConstRefPtr patterns;
+        if (!triggers->ConstGetNestedAttributeList(
+                NL80211_WOWLAN_TRIG_PKT_PATTERN, &patterns)) {
+          LOG(ERROR) << "Could not get nested attribute list "
+                        "NL80211_WOWLAN_TRIG_PKT_PATTERN.";
+          return false;
+        }
+        bool mismatch_found = false;
+        size_t num_mismatch = expected_patt_mask_pairs.size();
+        int pattern_index;
+        AttributeIdIterator pattern_iter(*patterns);
+        AttributeListConstRefPtr pattern_info;
+        ByteString returned_mask;
+        ByteString returned_pattern;
+        while (!pattern_iter.AtEnd()) {
+          returned_mask.Clear();
+          returned_pattern.Clear();
+          pattern_index = pattern_iter.GetId();
+          if (!patterns->ConstGetNestedAttributeList(pattern_index,
+                                                     &pattern_info)) {
+            LOG(ERROR) << "Could not get nested attribute list index "
+                       << pattern_index << " in patterns.";
+            return false;
+          }
+          if (!pattern_info->GetRawAttributeValue(NL80211_PKTPAT_MASK,
+                                                  &returned_mask)) {
+            LOG(ERROR) << "Could not get attribute NL80211_PKTPAT_MASK in "
+                          "pattern_info.";
+            return false;
+          }
+          if (!pattern_info->GetRawAttributeValue(NL80211_PKTPAT_PATTERN,
+                                                  &returned_pattern)) {
+            LOG(ERROR) << "Could not get attribute NL80211_PKTPAT_PATTERN in "
+                          "pattern_info.";
+            return false;
+          }
+          if (expected_patt_mask_pairs.find(pair<ByteString, ByteString>(
+                  returned_pattern, returned_mask)) ==
+              expected_patt_mask_pairs.end()) {
+            mismatch_found = true;
+            break;
+          } else {
+            --num_mismatch;
+          }
+          pattern_iter.Advance();
+        }
+        if (mismatch_found || num_mismatch) {
+          return false;
+        }
+        break;
+      }
+      default: {
+        LOG(ERROR) << __func__ << ": Unrecognized trigger";
+        return false;
+      }
     }
-    if (!pattern_info->GetRawAttributeValue(NL80211_PKTPAT_MASK,
-                                            &returned_mask)) {
-      LOG(ERROR) << "Could not get attribute NL80211_PKTPAT_MASK in "
-                    "pattern_info.";
-      return false;
-    }
-    if (!pattern_info->GetRawAttributeValue(NL80211_PKTPAT_PATTERN,
-                                            &returned_pattern)) {
-      LOG(ERROR) << "Could not get attribute NL80211_PKTPAT_PATTERN in "
-                    "pattern_info.";
-      return false;
-    }
-    if (expected_patt_mask_pairs.find(
-            pair<ByteString, ByteString>(returned_pattern, returned_mask)) ==
-        expected_patt_mask_pairs.end()) {
-      mismatch_found = true;
-      break;
-    } else {
-      --num_mismatch;
-    }
-    pattern_iter.Advance();
   }
-  return (!mismatch_found && !num_mismatch);
+  return true;
 }
 
-}  // namespace WakeOnWifi
+}  // namespace WakeOnWiFi
 
 }  // namespace shill

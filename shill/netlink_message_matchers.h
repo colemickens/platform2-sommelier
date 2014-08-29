@@ -34,8 +34,8 @@ MATCHER_P2(IsNl80211Command, nl80211_message_type, command, "") {
 }
 
 // Given a netlink message, verifies that it is configured to disable
-// wake-on-packet functionality of the NIC.
-MATCHER(IsDisableWakeOnPacketMsg, "") {
+// wake on WiFi functionality of the NIC.
+MATCHER(IsDisableWakeOnWiFiMsg, "") {
   if (!arg) {
     LOG(INFO) << "Null message";
     return false;

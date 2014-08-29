@@ -16,6 +16,7 @@
 #include "shill/testing.h"
 #include "shill/wake_on_wifi.h"
 
+using std::set;
 using std::string;
 
 namespace shill {
@@ -90,6 +91,14 @@ const uint8_t kResponseIPV40[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0xC0, 0xA8, 0x0A, 0x14, 0x00, 0x00};
+const uint8_t kResponseIPV40WakeOnDisconnect[] = {
+    0x50, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x57, 0x40, 0x00, 0x00, 0x49, 0x01, 0x00, 0x00, 0x3C, 0x00, 0x75, 0x00,
+    0x04, 0x00, 0x02, 0x00, 0x34, 0x00, 0x04, 0x00, 0x30, 0x00, 0x01, 0x00,
+    0x08, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x3C, 0x22, 0x00, 0x02, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0xC0, 0xA8, 0x0A, 0x14, 0x00, 0x00};
 const uint8_t kResponseIPV401[] = {
     0x7C, 0x00, 0x00, 0x00, 0x14, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00,
     0x57, 0x40, 0x00, 0x00, 0x49, 0x01, 0x00, 0x00, 0x68, 0x00, 0x75, 0x00,
@@ -151,34 +160,12 @@ ByteString CreatePattern(const unsigned char *prefix, size_t prefix_len,
   return result;
 }
 
-bool IPAddressesMatch(const IPAddressStore &addrs0,
-                      const std::vector<IPAddress> &addrs1) {
-  if (addrs0.Count() != addrs1.size()) {
-    return false;
-  }
-  bool mismatch_found = false;
-  int num_mismatch = addrs0.Count();
-  for (const IPAddress &addr : addrs1) {
-    if (addrs0.Contains(addr)) {
-      --num_mismatch;
-    } else {
-      mismatch_found = true;
-      break;
-    }
-  }
-  if (mismatch_found || num_mismatch != 0) {
-    return false;
-  } else {
-    return true;
-  }
-}
-
-TEST(WakeOnWifiTest, CreateIPAddressPatternAndMask) {
+TEST(WakeOnWiFiTest, CreateIPAddressPatternAndMask) {
   ByteString pattern;
   ByteString mask;
   ByteString expected_pattern;
 
-  WakeOnWifi::CreateIPAddressPatternAndMask(IPAddress(kIPV4Address0), &pattern,
+  WakeOnWiFi::CreateIPAddressPatternAndMask(IPAddress(kIPV4Address0), &pattern,
                                             &mask);
   expected_pattern =
       CreatePattern(kIPV4PatternPrefix, sizeof(kIPV4PatternPrefix),
@@ -189,7 +176,7 @@ TEST(WakeOnWifiTest, CreateIPAddressPatternAndMask) {
   pattern.Clear();
   expected_pattern.Clear();
   mask.Clear();
-  WakeOnWifi::CreateIPAddressPatternAndMask(IPAddress(kIPV4Address1), &pattern,
+  WakeOnWiFi::CreateIPAddressPatternAndMask(IPAddress(kIPV4Address1), &pattern,
                                             &mask);
   expected_pattern =
       CreatePattern(kIPV4PatternPrefix, sizeof(kIPV4PatternPrefix),
@@ -200,7 +187,7 @@ TEST(WakeOnWifiTest, CreateIPAddressPatternAndMask) {
   pattern.Clear();
   expected_pattern.Clear();
   mask.Clear();
-  WakeOnWifi::CreateIPAddressPatternAndMask(IPAddress(kIPV6Address0), &pattern,
+  WakeOnWiFi::CreateIPAddressPatternAndMask(IPAddress(kIPV6Address0), &pattern,
                                             &mask);
   expected_pattern =
       CreatePattern(kIPV6PatternPrefix, sizeof(kIPV6PatternPrefix),
@@ -211,7 +198,7 @@ TEST(WakeOnWifiTest, CreateIPAddressPatternAndMask) {
   pattern.Clear();
   expected_pattern.Clear();
   mask.Clear();
-  WakeOnWifi::CreateIPAddressPatternAndMask(IPAddress(kIPV6Address1), &pattern,
+  WakeOnWiFi::CreateIPAddressPatternAndMask(IPAddress(kIPV6Address1), &pattern,
                                             &mask);
   expected_pattern =
       CreatePattern(kIPV6PatternPrefix, sizeof(kIPV6PatternPrefix),
@@ -222,7 +209,7 @@ TEST(WakeOnWifiTest, CreateIPAddressPatternAndMask) {
   pattern.Clear();
   expected_pattern.Clear();
   mask.Clear();
-  WakeOnWifi::CreateIPAddressPatternAndMask(IPAddress(kIPV6Address2), &pattern,
+  WakeOnWiFi::CreateIPAddressPatternAndMask(IPAddress(kIPV6Address2), &pattern,
                                             &mask);
   expected_pattern =
       CreatePattern(kIPV6PatternPrefix, sizeof(kIPV6PatternPrefix),
@@ -233,7 +220,7 @@ TEST(WakeOnWifiTest, CreateIPAddressPatternAndMask) {
   pattern.Clear();
   expected_pattern.Clear();
   mask.Clear();
-  WakeOnWifi::CreateIPAddressPatternAndMask(IPAddress(kIPV6Address3), &pattern,
+  WakeOnWiFi::CreateIPAddressPatternAndMask(IPAddress(kIPV6Address3), &pattern,
                                             &mask);
   expected_pattern =
       CreatePattern(kIPV6PatternPrefix, sizeof(kIPV6PatternPrefix),
@@ -244,7 +231,7 @@ TEST(WakeOnWifiTest, CreateIPAddressPatternAndMask) {
   pattern.Clear();
   expected_pattern.Clear();
   mask.Clear();
-  WakeOnWifi::CreateIPAddressPatternAndMask(IPAddress(kIPV6Address4), &pattern,
+  WakeOnWiFi::CreateIPAddressPatternAndMask(IPAddress(kIPV6Address4), &pattern,
                                             &mask);
   expected_pattern =
       CreatePattern(kIPV6PatternPrefix, sizeof(kIPV6PatternPrefix),
@@ -255,7 +242,7 @@ TEST(WakeOnWifiTest, CreateIPAddressPatternAndMask) {
   pattern.Clear();
   expected_pattern.Clear();
   mask.Clear();
-  WakeOnWifi::CreateIPAddressPatternAndMask(IPAddress(kIPV6Address5), &pattern,
+  WakeOnWiFi::CreateIPAddressPatternAndMask(IPAddress(kIPV6Address5), &pattern,
                                             &mask);
   expected_pattern =
       CreatePattern(kIPV6PatternPrefix, sizeof(kIPV6PatternPrefix),
@@ -266,7 +253,7 @@ TEST(WakeOnWifiTest, CreateIPAddressPatternAndMask) {
   pattern.Clear();
   expected_pattern.Clear();
   mask.Clear();
-  WakeOnWifi::CreateIPAddressPatternAndMask(IPAddress(kIPV6Address6), &pattern,
+  WakeOnWiFi::CreateIPAddressPatternAndMask(IPAddress(kIPV6Address6), &pattern,
                                             &mask);
   expected_pattern =
       CreatePattern(kIPV6PatternPrefix, sizeof(kIPV6PatternPrefix),
@@ -277,7 +264,7 @@ TEST(WakeOnWifiTest, CreateIPAddressPatternAndMask) {
   pattern.Clear();
   expected_pattern.Clear();
   mask.Clear();
-  WakeOnWifi::CreateIPAddressPatternAndMask(IPAddress(kIPV6Address7), &pattern,
+  WakeOnWiFi::CreateIPAddressPatternAndMask(IPAddress(kIPV6Address7), &pattern,
                                             &mask);
   expected_pattern =
       CreatePattern(kIPV6PatternPrefix, sizeof(kIPV6PatternPrefix),
@@ -286,34 +273,35 @@ TEST(WakeOnWifiTest, CreateIPAddressPatternAndMask) {
   EXPECT_TRUE(mask.Equals(ByteString(kIPV6MaskBytes, sizeof(kIPV6MaskBytes))));
 }
 
-TEST(WakeOnWifiTest, ConfigureWiphyIndex) {
+TEST(WakeOnWiFiTest, ConfigureWiphyIndex) {
   SetWakeOnPacketConnMessage msg;
   uint32_t value;
   EXPECT_FALSE(
       msg.attributes()->GetU32AttributeValue(NL80211_ATTR_WIPHY, &value));
 
-  WakeOnWifi::ConfigureWiphyIndex(&msg, 137);
+  WakeOnWiFi::ConfigureWiphyIndex(&msg, 137);
   EXPECT_TRUE(
       msg.attributes()->GetU32AttributeValue(NL80211_ATTR_WIPHY, &value));
   EXPECT_EQ(value, 137);
 }
 
-TEST(WakeOnWifiTest, ConfigureDisableWakeOnPacketMsg) {
+TEST(WakeOnWiFiTest, ConfigureDisableWakeOnWiFiMessage) {
   SetWakeOnPacketConnMessage msg;
   Error e;
   uint32_t value;
   EXPECT_FALSE(
       msg.attributes()->GetU32AttributeValue(NL80211_ATTR_WIPHY, &value));
 
-  WakeOnWifi::ConfigureDisableWakeOnPacketMsg(&msg, 57, &e);
+  WakeOnWiFi::ConfigureDisableWakeOnWiFiMessage(&msg, 57, &e);
   EXPECT_EQ(e.type(), Error::Type::kSuccess);
   EXPECT_TRUE(
       msg.attributes()->GetU32AttributeValue(NL80211_ATTR_WIPHY, &value));
   EXPECT_EQ(value, 57);
 }
 
-TEST(WakeOnWifiTest, WakeOnPacketSettingsMatch) {
+TEST(WakeOnWiFiTest, WakeOnWiFiSettingsMatch) {
   IPAddressStore all_addresses;
+  set<WakeOnWiFi::WakeOnWiFiTrigger> trigs;
   scoped_ptr<uint8_t[]> message_memory_0(
       new uint8_t[sizeof(kResponseNoIPAddresses)]);
   memcpy(message_memory_0.get(), kResponseNoIPAddresses,
@@ -321,8 +309,9 @@ TEST(WakeOnWifiTest, WakeOnPacketSettingsMatch) {
   nlmsghdr *hdr0 = reinterpret_cast<nlmsghdr *>(message_memory_0.get());
   GetWakeOnPacketConnMessage msg0;
   msg0.InitFromNlmsg(hdr0);
-  EXPECT_TRUE(WakeOnWifi::WakeOnPacketSettingsMatch(msg0, all_addresses));
+  EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses));
 
+  trigs.insert(WakeOnWiFi::kIPAddress);
   all_addresses.AddUnique(
       IPAddress(string(kIPV4Address0, sizeof(kIPV4Address0))));
   scoped_ptr<uint8_t[]> message_memory_1(new uint8_t[sizeof(kResponseIPV40)]);
@@ -330,63 +319,83 @@ TEST(WakeOnWifiTest, WakeOnPacketSettingsMatch) {
   nlmsghdr *hdr1 = reinterpret_cast<nlmsghdr *>(message_memory_1.get());
   GetWakeOnPacketConnMessage msg1;
   msg1.InitFromNlmsg(hdr1);
-  EXPECT_TRUE(WakeOnWifi::WakeOnPacketSettingsMatch(msg1, all_addresses));
-  EXPECT_FALSE(WakeOnWifi::WakeOnPacketSettingsMatch(msg0, all_addresses));
+  EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses));
+  EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses));
 
-  all_addresses.AddUnique(
-      IPAddress(string(kIPV4Address1, sizeof(kIPV4Address1))));
-  scoped_ptr<uint8_t[]> message_memory_2(new uint8_t[sizeof(kResponseIPV401)]);
-  memcpy(message_memory_2.get(), kResponseIPV401, sizeof(kResponseIPV401));
+  // Test matching of wake-on-disconnect flag.
+  trigs.insert(WakeOnWiFi::kDisconnect);
+  scoped_ptr<uint8_t[]> message_memory_2(
+      new uint8_t[sizeof(kResponseIPV40WakeOnDisconnect)]);
+  memcpy(message_memory_2.get(), kResponseIPV40WakeOnDisconnect,
+         sizeof(kResponseIPV40WakeOnDisconnect));
   nlmsghdr *hdr2 = reinterpret_cast<nlmsghdr *>(message_memory_2.get());
   GetWakeOnPacketConnMessage msg2;
   msg2.InitFromNlmsg(hdr2);
-  EXPECT_TRUE(WakeOnWifi::WakeOnPacketSettingsMatch(msg2, all_addresses));
-  EXPECT_FALSE(WakeOnWifi::WakeOnPacketSettingsMatch(msg1, all_addresses));
-  EXPECT_FALSE(WakeOnWifi::WakeOnPacketSettingsMatch(msg0, all_addresses));
+  EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses));
+  EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses));
+  EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses));
 
+  trigs.erase(WakeOnWiFi::kDisconnect);
   all_addresses.AddUnique(
-      IPAddress(string(kIPV6Address0, sizeof(kIPV6Address0))));
-  scoped_ptr<uint8_t[]> message_memory_3(
-      new uint8_t[sizeof(kResponseIPV401IPV60)]);
-  memcpy(message_memory_3.get(), kResponseIPV401IPV60,
-         sizeof(kResponseIPV401IPV60));
+      IPAddress(string(kIPV4Address1, sizeof(kIPV4Address1))));
+  scoped_ptr<uint8_t[]> message_memory_3(new uint8_t[sizeof(kResponseIPV401)]);
+  memcpy(message_memory_3.get(), kResponseIPV401, sizeof(kResponseIPV401));
   nlmsghdr *hdr3 = reinterpret_cast<nlmsghdr *>(message_memory_3.get());
   GetWakeOnPacketConnMessage msg3;
   msg3.InitFromNlmsg(hdr3);
-  EXPECT_TRUE(WakeOnWifi::WakeOnPacketSettingsMatch(msg3, all_addresses));
-  EXPECT_FALSE(WakeOnWifi::WakeOnPacketSettingsMatch(msg2, all_addresses));
-  EXPECT_FALSE(WakeOnWifi::WakeOnPacketSettingsMatch(msg1, all_addresses));
-  EXPECT_FALSE(WakeOnWifi::WakeOnPacketSettingsMatch(msg0, all_addresses));
+  EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses));
+  EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses));
+  EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses));
+  EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses));
 
   all_addresses.AddUnique(
-      IPAddress(string(kIPV6Address1, sizeof(kIPV6Address1))));
+      IPAddress(string(kIPV6Address0, sizeof(kIPV6Address0))));
   scoped_ptr<uint8_t[]> message_memory_4(
-      new uint8_t[sizeof(kResponseIPV401IPV601)]);
-  memcpy(message_memory_4.get(), kResponseIPV401IPV601,
-         sizeof(kResponseIPV401IPV601));
+      new uint8_t[sizeof(kResponseIPV401IPV60)]);
+  memcpy(message_memory_4.get(), kResponseIPV401IPV60,
+         sizeof(kResponseIPV401IPV60));
   nlmsghdr *hdr4 = reinterpret_cast<nlmsghdr *>(message_memory_4.get());
   GetWakeOnPacketConnMessage msg4;
   msg4.InitFromNlmsg(hdr4);
-  EXPECT_TRUE(WakeOnWifi::WakeOnPacketSettingsMatch(msg4, all_addresses));
-  EXPECT_FALSE(WakeOnWifi::WakeOnPacketSettingsMatch(msg3, all_addresses));
-  EXPECT_FALSE(WakeOnWifi::WakeOnPacketSettingsMatch(msg2, all_addresses));
-  EXPECT_FALSE(WakeOnWifi::WakeOnPacketSettingsMatch(msg1, all_addresses));
-  EXPECT_FALSE(WakeOnWifi::WakeOnPacketSettingsMatch(msg0, all_addresses));
+  EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses));
+  EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses));
+  EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses));
+  EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses));
+  EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses));
+
+  all_addresses.AddUnique(
+      IPAddress(string(kIPV6Address1, sizeof(kIPV6Address1))));
+  scoped_ptr<uint8_t[]> message_memory_5(
+      new uint8_t[sizeof(kResponseIPV401IPV601)]);
+  memcpy(message_memory_5.get(), kResponseIPV401IPV601,
+         sizeof(kResponseIPV401IPV601));
+  nlmsghdr *hdr5 = reinterpret_cast<nlmsghdr *>(message_memory_5.get());
+  GetWakeOnPacketConnMessage msg5;
+  msg5.InitFromNlmsg(hdr5);
+  EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg5, trigs, all_addresses));
+  EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses));
+  EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses));
+  EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses));
+  EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses));
+  EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses));
 }
 
-TEST(WakeOnWifiTest, ConfigureAddWakeOnPacketMsg) {
+TEST(WakeOnWiFiTest, ConfigureSetWakeOnWiFiSettingsMessage) {
   IPAddressStore all_addresses;
+  set<WakeOnWiFi::WakeOnWiFiTrigger> trigs;
   int index = 1;  // wiphy device number
   SetWakeOnPacketConnMessage msg0;
   Error e;
+  trigs.insert(WakeOnWiFi::kIPAddress);
   all_addresses.AddUnique(
       IPAddress(string(kIPV4Address0, sizeof(kIPV4Address0))));
   ByteString expected_mask = ByteString(kIPV4MaskBytes, sizeof(kIPV4MaskBytes));
   ByteString expected_pattern =
       CreatePattern(kIPV4PatternPrefix, sizeof(kIPV4PatternPrefix),
                     kIPV4Address0Bytes, sizeof(kIPV4Address0Bytes));
-  WakeOnWifi::ConfigureAddWakeOnPacketMsg(&msg0, all_addresses, index, &e);
-  EXPECT_TRUE(WakeOnWifi::WakeOnPacketSettingsMatch(msg0, all_addresses));
+  WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(&msg0, trigs, all_addresses,
+                                                 index, &e);
+  EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses));
 
   SetWakeOnPacketConnMessage msg1;
   all_addresses.AddUnique(
@@ -394,8 +403,9 @@ TEST(WakeOnWifiTest, ConfigureAddWakeOnPacketMsg) {
   expected_pattern =
       CreatePattern(kIPV4PatternPrefix, sizeof(kIPV4PatternPrefix),
                     kIPV4Address1Bytes, sizeof(kIPV4Address1Bytes));
-  WakeOnWifi::ConfigureAddWakeOnPacketMsg(&msg1, all_addresses, index, &e);
-  EXPECT_TRUE(WakeOnWifi::WakeOnPacketSettingsMatch(msg1, all_addresses));
+  WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(&msg1, trigs, all_addresses,
+                                                 index, &e);
+  EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses));
 
   SetWakeOnPacketConnMessage msg2;
   all_addresses.AddUnique(
@@ -404,8 +414,9 @@ TEST(WakeOnWifiTest, ConfigureAddWakeOnPacketMsg) {
   expected_pattern =
       CreatePattern(kIPV6PatternPrefix, sizeof(kIPV6PatternPrefix),
                     kIPV6Address0Bytes, sizeof(kIPV6Address0Bytes));
-  WakeOnWifi::ConfigureAddWakeOnPacketMsg(&msg2, all_addresses, index, &e);
-  EXPECT_TRUE(WakeOnWifi::WakeOnPacketSettingsMatch(msg2, all_addresses));
+  WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(&msg2, trigs, all_addresses,
+                                                 index, &e);
+  EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses));
 
   SetWakeOnPacketConnMessage msg3;
   all_addresses.AddUnique(
@@ -413,8 +424,9 @@ TEST(WakeOnWifiTest, ConfigureAddWakeOnPacketMsg) {
   expected_pattern =
       CreatePattern(kIPV6PatternPrefix, sizeof(kIPV6PatternPrefix),
                     kIPV6Address1Bytes, sizeof(kIPV6Address1Bytes));
-  WakeOnWifi::ConfigureAddWakeOnPacketMsg(&msg3, all_addresses, index, &e);
-  EXPECT_TRUE(WakeOnWifi::WakeOnPacketSettingsMatch(msg3, all_addresses));
+  WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(&msg3, trigs, all_addresses,
+                                                 index, &e);
+  EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses));
 
   SetWakeOnPacketConnMessage msg4;
   all_addresses.AddUnique(
@@ -422,8 +434,9 @@ TEST(WakeOnWifiTest, ConfigureAddWakeOnPacketMsg) {
   expected_pattern =
       CreatePattern(kIPV6PatternPrefix, sizeof(kIPV6PatternPrefix),
                     kIPV6Address2Bytes, sizeof(kIPV6Address2Bytes));
-  WakeOnWifi::ConfigureAddWakeOnPacketMsg(&msg4, all_addresses, index, &e);
-  EXPECT_TRUE(WakeOnWifi::WakeOnPacketSettingsMatch(msg4, all_addresses));
+  WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(&msg4, trigs, all_addresses,
+                                                 index, &e);
+  EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses));
 
   SetWakeOnPacketConnMessage msg5;
   all_addresses.AddUnique(
@@ -431,8 +444,9 @@ TEST(WakeOnWifiTest, ConfigureAddWakeOnPacketMsg) {
   expected_pattern =
       CreatePattern(kIPV6PatternPrefix, sizeof(kIPV6PatternPrefix),
                     kIPV6Address3Bytes, sizeof(kIPV6Address3Bytes));
-  WakeOnWifi::ConfigureAddWakeOnPacketMsg(&msg5, all_addresses, index, &e);
-  EXPECT_TRUE(WakeOnWifi::WakeOnPacketSettingsMatch(msg5, all_addresses));
+  WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(&msg5, trigs, all_addresses,
+                                                 index, &e);
+  EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg5, trigs, all_addresses));
 
   SetWakeOnPacketConnMessage msg6;
   all_addresses.AddUnique(
@@ -440,8 +454,9 @@ TEST(WakeOnWifiTest, ConfigureAddWakeOnPacketMsg) {
   expected_pattern =
       CreatePattern(kIPV6PatternPrefix, sizeof(kIPV6PatternPrefix),
                     kIPV6Address4Bytes, sizeof(kIPV6Address4Bytes));
-  WakeOnWifi::ConfigureAddWakeOnPacketMsg(&msg6, all_addresses, index, &e);
-  EXPECT_TRUE(WakeOnWifi::WakeOnPacketSettingsMatch(msg6, all_addresses));
+  WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(&msg6, trigs, all_addresses,
+                                                 index, &e);
+  EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg6, trigs, all_addresses));
 
   SetWakeOnPacketConnMessage msg7;
   all_addresses.AddUnique(
@@ -449,8 +464,9 @@ TEST(WakeOnWifiTest, ConfigureAddWakeOnPacketMsg) {
   expected_pattern =
       CreatePattern(kIPV6PatternPrefix, sizeof(kIPV6PatternPrefix),
                     kIPV6Address5Bytes, sizeof(kIPV6Address5Bytes));
-  WakeOnWifi::ConfigureAddWakeOnPacketMsg(&msg7, all_addresses, index, &e);
-  EXPECT_TRUE(WakeOnWifi::WakeOnPacketSettingsMatch(msg7, all_addresses));
+  WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(&msg7, trigs, all_addresses,
+                                                 index, &e);
+  EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg7, trigs, all_addresses));
 
   SetWakeOnPacketConnMessage msg8;
   all_addresses.AddUnique(
@@ -458,8 +474,9 @@ TEST(WakeOnWifiTest, ConfigureAddWakeOnPacketMsg) {
   expected_pattern =
       CreatePattern(kIPV6PatternPrefix, sizeof(kIPV6PatternPrefix),
                     kIPV6Address6Bytes, sizeof(kIPV6Address6Bytes));
-  WakeOnWifi::ConfigureAddWakeOnPacketMsg(&msg8, all_addresses, index, &e);
-  EXPECT_TRUE(WakeOnWifi::WakeOnPacketSettingsMatch(msg8, all_addresses));
+  WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(&msg8, trigs, all_addresses,
+                                                 index, &e);
+  EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg8, trigs, all_addresses));
 
   SetWakeOnPacketConnMessage msg9;
   all_addresses.AddUnique(
@@ -467,8 +484,9 @@ TEST(WakeOnWifiTest, ConfigureAddWakeOnPacketMsg) {
   expected_pattern =
       CreatePattern(kIPV6PatternPrefix, sizeof(kIPV6PatternPrefix),
                     kIPV6Address7Bytes, sizeof(kIPV6Address7Bytes));
-  WakeOnWifi::ConfigureAddWakeOnPacketMsg(&msg9, all_addresses, index, &e);
-  EXPECT_TRUE(WakeOnWifi::WakeOnPacketSettingsMatch(msg9, all_addresses));
+  WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(&msg9, trigs, all_addresses,
+                                                 index, &e);
+  EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg9, trigs, all_addresses));
 }
 
 }  // namespace shill

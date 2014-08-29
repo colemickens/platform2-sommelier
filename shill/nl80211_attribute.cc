@@ -213,7 +213,7 @@ const char Nl80211AttributeWowlanTriggers::kNameString[] =
 
 Nl80211AttributeWowlanTriggers::Nl80211AttributeWowlanTriggers()
     : NetlinkNestedAttribute(kName, kNameString) {
-  NestedData patterns(NLA_NESTED, "NL80211_WOWLAN_TRIG_PKT_PATTERN", true);
+  NestedData patterns(NLA_NESTED, "NL80211_WOWLAN_TRIG_PKT_PATTERN", false);
   NestedData individual_pattern(NLA_NESTED,
                                 "NL80211_PACKET_PATTERN_ATTR", true);
   individual_pattern.deeper_nesting.push_back(
@@ -226,6 +226,14 @@ Nl80211AttributeWowlanTriggers::Nl80211AttributeWowlanTriggers()
       NestedData(NLA_U32, "NL80211_PKTPAT_OFFSET", false));
 
   patterns.deeper_nesting.push_back(individual_pattern);
+  nested_template_.push_back(
+      NestedData(NLA_U32, "__NL80211_WOWLAN_TRIG_INVALID", false));
+  nested_template_.push_back(
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_ANY", false));
+  nested_template_.push_back(
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_DISCONNECT", false));
+  nested_template_.push_back(
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_MAGIC_PKT", false));
   nested_template_.push_back(patterns);
 }
 

@@ -898,7 +898,7 @@ bool NetlinkNestedAttribute::ParseNestedStructure(
   // of zero is illegal, we still need to fill that spot in the policy
   // array so the loop will start at zero.
   scoped_ptr<nla_policy[]> policy(new nla_policy[templates.size()]);
-  for (size_t id = 0; id < templates.size() ; ++id) {
+  for (size_t id = 0; id < templates.size(); ++id) {
     memset(&policy[id], 0, sizeof(nla_policy));
     policy[id].type = templates[id].type;
   }

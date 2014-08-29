@@ -95,7 +95,7 @@ const float WiFi::kDefaultFractionPerScan = 0.34;
 const char WiFi::kProgressiveScanFieldTrialFlagFile[] =
     "/home/chronos/.progressive_scan_variation";
 const size_t WiFi::kStuckQueueLengthThreshold = 40;  // ~1 full-channel scan
-const int WiFi::kVerifyWakeOnPacketSettingsDelaySeconds = 1;
+const int WiFi::kVerifyWakeOnWiFiSettingsDelaySeconds = 1;
 const int WiFi::kMaxSetWakeOnPacketRetries = 2;
 
 WiFi::WiFi(ControlInterface *control_interface,
@@ -1702,9 +1702,26 @@ void WiFi::HelpRegisterConstDerivedBool(
       BoolAccessor(new CustomAccessor<WiFi, bool>(this, get, NULL)));
 }
 
+void WiFi::OnBeforeSuspend() {
+  LOG(INFO) << __func__;
+  Device::OnBeforeSuspend();
+
+  // Program NIC to wake on disconnects and packets from certain IP addresses
+  // iff we have buffered wake on packet programming requests.
+  if (!wake_on_packet_connections_.Empty()) {
+    wake_on_wifi_triggers_.insert(WakeOnWiFi::kIPAddress);
+    wake_on_wifi_triggers_.insert(WakeOnWiFi::kDisconnect);
+  }
+  ApplyWakeOnWiFiSettings();
+}
+
 void WiFi::OnAfterResume() {
   LOG(INFO) << __func__;
   Device::OnAfterResume();  // May refresh ipconfig_
+
+  // Unconditionally disable wake on WiFi on resume.
+  wake_on_wifi_triggers_.clear();
+  ApplyWakeOnWiFiSettings();
 
   // We want to flush the BSS cache, but we don't want to conflict
   // with an active connection attempt. So record the need to flush,
@@ -1778,7 +1795,6 @@ void WiFi::OnIPConfigFailure() {
 void WiFi::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                      Error *error) {
   wake_on_packet_connections_.AddUnique(ip_endpoint);
-  SendSetWakeOnPacketMessage(error);
 }
 
 void WiFi::RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
@@ -1789,30 +1805,11 @@ void WiFi::RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
     return;
   }
   wake_on_packet_connections_.Remove(ip_endpoint);
-  SendSetWakeOnPacketMessage(error);
 }
 
 void WiFi::RemoveAllWakeOnPacketConnections(Error *error) {
   // Send an empty NL80211_CMD_SET_WOWLAN message to disable wowlan.
   wake_on_packet_connections_.Clear();
-  SetWakeOnPacketConnMessage disable_wowlan_msg;
-  if (!WakeOnWifi::ConfigureDisableWakeOnPacketMsg(&disable_wowlan_msg,
-                                                     wiphy_index_, error)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
-                          "Failed to configure nl80211 message");
-    return;
-  }
-  netlink_manager_->SendNl80211Message(
-      &disable_wowlan_msg, Bind(&WiFi::OnSetWakeOnPacketConnectionResponse,
-                                weak_ptr_factory_.GetWeakPtr()),
-      Bind(&NetlinkManager::OnAckDoNothing),
-      Bind(&NetlinkManager::OnNetlinkMessageError));
-
-  verify_wake_on_packet_settings_callback_.Reset(Bind(
-      &WiFi::RequestWakeOnPacketSettings, weak_ptr_factory_.GetWeakPtr()));
-  dispatcher()->PostDelayedTask(
-      verify_wake_on_packet_settings_callback_.callback(),
-      kVerifyWakeOnPacketSettingsDelaySeconds * 1000);
 }
 
 void WiFi::OnSetWakeOnPacketConnectionResponse(
@@ -1824,22 +1821,23 @@ void WiFi::OnSetWakeOnPacketConnectionResponse(
 void WiFi::RequestWakeOnPacketSettings() {
   Error e;
   GetWakeOnPacketConnMessage get_wowlan_msg;
-  if (!WakeOnWifi::ConfigureGetWakeOnPacketMsg(&get_wowlan_msg, wiphy_index_,
-                                               &e)) {
+  if (!WakeOnWiFi::ConfigureGetWakeOnWiFiSettingsMessage(&get_wowlan_msg,
+                                                         wiphy_index_, &e)) {
     LOG(ERROR) << e.message();
     return;
   }
   netlink_manager_->SendNl80211Message(
-      &get_wowlan_msg, Bind(&WiFi::VerifyWakeOnPacketConnections,
+      &get_wowlan_msg, Bind(&WiFi::VerifyWakeOnWiFiSettings,
                             weak_ptr_factory_.GetWeakPtr()),
       Bind(&NetlinkManager::OnAckDoNothing),
       Bind(&NetlinkManager::OnNetlinkMessageError));
 }
 
-void WiFi::VerifyWakeOnPacketConnections(
+void WiFi::VerifyWakeOnWiFiSettings(
     const Nl80211Message &nl80211_message) {
-  if (WakeOnWifi::WakeOnPacketSettingsMatch(nl80211_message,
-                                            wake_on_packet_connections_)) {
+  if (WakeOnWiFi::WakeOnWiFiSettingsMatch(nl80211_message,
+                                          wake_on_wifi_triggers_,
+                                          wake_on_packet_connections_)) {
     SLOG(WiFi, 2) << __func__ << ": "
                   << "Wake-on-packet settings successfully verified";
   } else {
@@ -1850,15 +1848,17 @@ void WiFi::VerifyWakeOnPacketConnections(
   }
 }
 
-void WiFi::SendSetWakeOnPacketMessage(Error *error) {
-  if (wake_on_packet_connections_.Empty()) {
-    RemoveAllWakeOnPacketConnections(error);
+void WiFi::ApplyWakeOnWiFiSettings() {
+  Error error;
+  if (wake_on_wifi_triggers_.empty()) {
+    DisableWakeOnWiFi();
     return;
   }
   SetWakeOnPacketConnMessage set_wowlan_msg;
-  if (!WakeOnWifi::ConfigureAddWakeOnPacketMsg(
-          &set_wowlan_msg, wake_on_packet_connections_, wiphy_index_, error)) {
-    LOG(ERROR) << "Failed to configure nl80211 message.";
+  if (!WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
+          &set_wowlan_msg, wake_on_wifi_triggers_,
+          wake_on_packet_connections_, wiphy_index_, &error)) {
+    LOG(ERROR) << error.message();
     return;
   }
   netlink_manager_->SendNl80211Message(
@@ -1871,14 +1871,35 @@ void WiFi::SendSetWakeOnPacketMessage(Error *error) {
       Bind(&WiFi::RequestWakeOnPacketSettings, weak_ptr_factory_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(
       verify_wake_on_packet_settings_callback_.callback(),
-      kVerifyWakeOnPacketSettingsDelaySeconds * 1000);
+      kVerifyWakeOnWiFiSettingsDelaySeconds * 1000);
+}
+
+void WiFi::DisableWakeOnWiFi() {
+  Error error;
+  SetWakeOnPacketConnMessage disable_wowlan_msg;
+  if (!WakeOnWiFi::ConfigureDisableWakeOnWiFiMessage(&disable_wowlan_msg,
+                                                     wiphy_index_, &error)) {
+    LOG(ERROR) << error.message();
+    return;
+  }
+  netlink_manager_->SendNl80211Message(
+      &disable_wowlan_msg, Bind(&WiFi::OnSetWakeOnPacketConnectionResponse,
+                                weak_ptr_factory_.GetWeakPtr()),
+      Bind(&NetlinkManager::OnAckDoNothing),
+      Bind(&NetlinkManager::OnNetlinkMessageError));
+
+  verify_wake_on_packet_settings_callback_.Reset(
+      Bind(&WiFi::RequestWakeOnPacketSettings, weak_ptr_factory_.GetWeakPtr()));
+  dispatcher()->PostDelayedTask(
+      verify_wake_on_packet_settings_callback_.callback(),
+      kVerifyWakeOnWiFiSettingsDelaySeconds * 1000);
 }
 
 void WiFi::RetrySetWakeOnPacketConnections() {
   if (num_set_wake_on_packet_retries_ < kMaxSetWakeOnPacketRetries) {
     Error e;
     SLOG(WiFi, 2) << __func__;
-    SendSetWakeOnPacketMessage(&e);
+    ApplyWakeOnWiFiSettings();
     ++num_set_wake_on_packet_retries_;
   } else {
     SLOG(WiFi, 2) << __func__ << ": max retry attempts reached";
@@ -2225,7 +2246,9 @@ void WiFi::GetPhyInfo() {
 }
 
 void WiFi::OnNewWiphy(const Nl80211Message &nl80211_message) {
-  // Verify NL80211_CMD_NEW_WIPHY
+  // TODO(samueltan): parse NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED to determine
+  // out wake on WiFi capabilities of this device.
+  // Verify NL80211_CMD_NEW_WIPHY.
   if (nl80211_message.command() != NewWiphyMessage::kCommand) {
     LOG(ERROR) << "Received unexpected command:"
                << nl80211_message.command();

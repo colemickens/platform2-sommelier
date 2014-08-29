@@ -616,6 +616,8 @@ NetlinkMessage *Nl80211Message::CreateMessage(const nlmsghdr *const_msg) {
       return new FrameTxStatusMessage();
     case GetInterfaceMessage::kCommand:
       return new GetInterfaceMessage();
+    case GetWakeOnPacketConnMessage::kCommand:
+      return new GetWakeOnPacketConnMessage();
     case GetRegMessage::kCommand:
       return new GetRegMessage();
     case GetStationMessage::kCommand:
