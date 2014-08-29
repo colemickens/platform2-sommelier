@@ -13,6 +13,7 @@
 #include <string>
 
 namespace feedback {
+
 class FeedbackUploader;
 
 class Daemon final {
@@ -33,6 +34,7 @@ class Daemon final {
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
+
 }  // namespace feedback
 
 #endif  // FEEDBACK_FEEDBACK_DAEMON_H_

@@ -15,6 +15,7 @@
 #include <base/message_loop/message_loop.h>
 #include "bindings/extension.pb.h"
 #include "chromeos/dbus/service_constants.h"
+#include "components/feedback/feedback_common.h"
 #include "components/feedback/feedback_report.h"
 #include "components/feedback/feedback_uploader.h"
 #include "feedback/feedback_service.h"
@@ -23,18 +24,20 @@
 #include "gtest/gtest.h"
 
 namespace feedback {
+
 namespace {
-const int kMaxPoolThreads = 1;
-const char kPoolName[] = "FeedbackWorkerPool";
-const base::FilePath::CharType kFeedbackReportPath[] =
+
+static const int kMaxPoolThreads = 1;
+static const char kPoolName[] = "FeedbackWorkerPool";
+static const base::FilePath::CharType kFeedbackReportPath[] =
     FILE_PATH_LITERAL("Feedback Reports");
-const int kTestProductId = 84;
-const char kTestFeedbackUrl[] =
+static const int kTestProductId = 84;
+static const char kTestFeedbackUrl[] =
     "http://sandbox.google.com/tools/feedback/chrome/__submit";
-const char kTestEmail[] = "nobody@example.com";
-const char kTestReportUrl[] = "http://www.example.com";
-const char kTestReportDescription[] = "Test upload, unittests ";
-const char kTestReportCategory[] = "Testing";
+static const char kTestEmail[] = "nobody@example.com";
+static const char kTestReportUrl[] = "http://www.example.com";
+static const char kTestReportDescription[] = "Test upload, unittests ";
+static const char kTestReportCategory[] = "Testing";
 
 // Generates a random report description.
 std::string GetTestReportDescription() {
@@ -42,6 +45,7 @@ std::string GetTestReportDescription() {
   s.append(base::GenerateGUID());
   return s;
 }
+
 }  // namespace
 
 class MockFeedbackUploader : public feedback::FeedbackUploader {
@@ -84,7 +88,7 @@ class FeedbackServiceTest : public testing::Test {
   FeedbackServiceTest() : message_loop_(base::MessageLoop::TYPE_IO) {}
 
   static void CallbackFeedbackResult(bool expected_result, bool result,
-                              const std::string& err) {
+                                     const std::string& err) {
     EXPECT_EQ(result, expected_result);
   }
 
@@ -163,6 +167,27 @@ TEST_F(FeedbackServiceTest, UploadFailure) {
   EXPECT_EQ(uploader.GetFirstReport()->data(), data);
 }
 
+TEST_F(FeedbackServiceTest, FullUploadTest) {
+  FeedbackUploaderCurl uploader(temp_dir_.path(), pool_.get(),
+                                kTestFeedbackUrl);
+  userfeedback::ExtensionSubmit report;
+
+  scoped_refptr<FeedbackCommon> feedback = new FeedbackCommon();
+  feedback->set_description(GetTestReportDescription());
+  feedback->set_product_id(kTestProductId);
+  feedback->set_category_tag(kTestReportCategory);
+  feedback->set_user_email(kTestEmail);
+  feedback->set_page_url(kTestReportUrl);
+  feedback->PrepareReport(&report);
+
+  scoped_refptr<FeedbackService> svc = new FeedbackService(&uploader);
+
+  svc->SendFeedback(report,
+      base::Bind(&FeedbackServiceTest::CallbackFeedbackResult, true));
+
+  // Verify that this isn't on the queue.
+  EXPECT_TRUE(uploader.QueueEmpty());
+}
 }  // namespace feedback
 
 int main(int argc, char** argv) {

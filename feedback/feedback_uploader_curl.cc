@@ -7,10 +7,14 @@
 #include <curl/curl.h>
 
 namespace {
-const char kProtobufContentType[] = "Content-Type: application/x-protobuf";
-}
+
+static const char kProtobufContentType[] =
+    "Content-Type: application/x-protobuf";
+
+}  // namespace
 
 namespace feedback {
+
 FeedbackUploaderCurl::FeedbackUploaderCurl(
     const base::FilePath& path,
     base::SequencedWorkerPool* pool,
@@ -20,7 +24,7 @@ FeedbackUploaderCurl::~FeedbackUploaderCurl() {}
 
 void FeedbackUploaderCurl::DispatchReport(const std::string& data) {
   CURL* curl = curl_easy_init();
-  CHECK(curl);
+  CHECK(curl) << "Could not initialize cURL";
   curl_easy_setopt(curl, CURLOPT_URL, url_.c_str());
   curl_easy_setopt(curl, CURLOPT_POST, 1);
   curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data.size());
@@ -42,4 +46,5 @@ void FeedbackUploaderCurl::DispatchReport(const std::string& data) {
   curl_slist_free_all(hdrs);
   curl_easy_cleanup(curl);
 }
+
 }  // namespace feedback

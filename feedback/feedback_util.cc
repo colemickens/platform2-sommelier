@@ -7,10 +7,13 @@
 #include "libchromeos/chromeos/process.h"
 
 namespace {
-const char kZipProcess[] = "/usr/bin/bzip2";
+
+static const char kZipProcess[] = "/usr/bin/bzip2";
+
 }  // namespace
 
 namespace feedback_util {
+
 // Compresses |data| into an archive, and reads it back into |compressed_logs|.
 // |filename| is the name of the file to appear in the archive (if supported
 // by type).
@@ -26,21 +29,21 @@ bool ZipString(const base::FilePath& filename,
   // another temporary file to receive the zip file in.
   if (!base::CreateNewTempDirectory(base::FilePath::StringType(), &temp_path))
     return false;
-  if (file_util::WriteFile(temp_path.Append(filename),
-                           data.c_str(), data.size()) == -1)
+  if (base::WriteFile(temp_path.Append(filename),
+                      data.c_str(), data.size()) == -1)
     return false;
 
   chromeos::ProcessImpl zipprocess;
   zipprocess.AddArg(kZipProcess);
   zipprocess.AddArg(filename.value());
   zipprocess.RedirectOutput(temp_path.value());
-  bool succeed = base::CreateTemporaryFile(&zip_file) &&
-      !zipprocess.Run() &&
-      base::ReadFileToString(zip_file, compressed_logs);
+  bool succeeded = base::CreateTemporaryFile(&zip_file) &&
+      !zipprocess.Run() && base::ReadFileToString(zip_file, compressed_logs);
 
   base::DeleteFile(temp_path, true);
   base::DeleteFile(zip_file, false);
 
-  return succeed;
+  return succeeded;
 }
+
 }  // namespace feedback_util

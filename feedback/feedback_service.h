@@ -14,6 +14,7 @@ class ExtensionSubmit;
 }
 
 namespace feedback {
+
 class FeedbackUploader;
 
 class FeedbackService : public base::RefCounted<FeedbackService> {
@@ -35,23 +36,24 @@ class FeedbackService : public base::RefCounted<FeedbackService> {
   DISALLOW_COPY_AND_ASSIGN(FeedbackService);
 };
 
-class DbusFeedbackServiceImpl : public FeedbackService {
+class DBusFeedbackServiceImpl : public FeedbackService {
  public:
-  explicit DbusFeedbackServiceImpl(feedback::FeedbackUploader* uploader);
-  virtual ~DbusFeedbackServiceImpl();
+  explicit DBusFeedbackServiceImpl(feedback::FeedbackUploader* uploader);
+  virtual ~DBusFeedbackServiceImpl();
 
-  bool Start(dbus::Bus *bus);
+  bool Start(dbus::Bus* bus);
 
  private:
-  void DbusSendFeedback(dbus::MethodCall* method_call,
+  void DBusSendFeedback(dbus::MethodCall* method_call,
                         dbus::ExportedObject::ResponseSender sender);
 
-  void DbusFeedbackSent(dbus::MethodCall* method_call,
+  void DBusFeedbackSent(dbus::MethodCall* method_call,
                         dbus::ExportedObject::ResponseSender sender,
                         bool status, const std::string& message);
 
-  DISALLOW_COPY_AND_ASSIGN(DbusFeedbackServiceImpl);
+  DISALLOW_COPY_AND_ASSIGN(DBusFeedbackServiceImpl);
 };
+
 }  // namespace feedback
 
 #endif  // FEEDBACK_FEEDBACK_SERVICE_H_

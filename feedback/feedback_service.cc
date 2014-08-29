@@ -5,18 +5,18 @@
 #include "feedback/feedback_service.h"
 
 #include "base/logging.h"
-#include "bindings/extension.pb.h"
 #include "chromeos/dbus/service_constants.h"
 #include "components/feedback/feedback_uploader.h"
+#include "components/feedback/proto/extension.pb.h"
 #include "dbus/bus.h"
 #include "dbus/exported_object.h"
 #include "dbus/message.h"
 #include "dbus/object_proxy.h"
 
 namespace feedback {
+
 FeedbackService::FeedbackService(feedback::FeedbackUploader* uploader)
-    : uploader_(uploader) {
-}
+    : uploader_(uploader) {}
 
 FeedbackService::~FeedbackService() {}
 
@@ -36,20 +36,19 @@ void FeedbackService::QueueExistingReport(const std::string& data) {
   uploader_->QueueReport(data);
 }
 
-
-DbusFeedbackServiceImpl::DbusFeedbackServiceImpl(
+DBusFeedbackServiceImpl::DBusFeedbackServiceImpl(
     feedback::FeedbackUploader* uploader) : FeedbackService(uploader) {}
 
-DbusFeedbackServiceImpl::~DbusFeedbackServiceImpl() {}
+DBusFeedbackServiceImpl::~DBusFeedbackServiceImpl() {}
 
-bool DbusFeedbackServiceImpl::Start(dbus::Bus* bus) {
+bool DBusFeedbackServiceImpl::Start(dbus::Bus* bus) {
   if (!bus || !bus->Connect()) {
     LOG(ERROR) << "Failed to connect to DBus";
     return false;
   }
 
   dbus::ObjectPath path(feedback::kFeedbackServicePath);
-  dbus::ExportedObject *object = bus->GetExportedObject(path);
+  dbus::ExportedObject* object = bus->GetExportedObject(path);
   if (!object) {
     LOG(ERROR) << "Failed to get exported object at " << path.value();
     return false;
@@ -58,7 +57,7 @@ bool DbusFeedbackServiceImpl::Start(dbus::Bus* bus) {
   if (!object->ExportMethodAndBlock(
           feedback::kFeedbackServiceName,
           feedback::kSendFeedback,
-          base::Bind(&DbusFeedbackServiceImpl::DbusSendFeedback,
+          base::Bind(&DBusFeedbackServiceImpl::DBusSendFeedback,
                      this))) {
     bus->UnregisterExportedObject(path);
     LOG(ERROR) << "Failed to export method " << feedback::kSendFeedback;
@@ -67,30 +66,30 @@ bool DbusFeedbackServiceImpl::Start(dbus::Bus* bus) {
   if (!bus->RequestOwnershipAndBlock(feedback::kFeedbackServiceName,
                                       dbus::Bus::REQUIRE_PRIMARY)) {
     bus->UnregisterExportedObject(path);
-    LOG(ERROR) << "Failed to get ownership of " <<
-        feedback::kFeedbackServiceName;
+    LOG(ERROR) << "Failed to get ownership of "
+               << feedback::kFeedbackServiceName;
     return false;
   }
   return true;
 }
 
-void DbusFeedbackServiceImpl::DbusSendFeedback(
+void DBusFeedbackServiceImpl::DBusSendFeedback(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender sender) {
   dbus::MessageReader reader(method_call);
   userfeedback::ExtensionSubmit in;
   if (!reader.PopArrayOfBytesAsProto(&in)) {
     LOG(ERROR) << "Got feedback request with bad param";
-    DbusFeedbackSent(method_call, sender, false,
+    DBusFeedbackSent(method_call, sender, false,
         "Can't deserialize proto of type userfeedback::ExtensionSubmit");
   } else {
     LOG(INFO) << "Sending feedback";
-    SendFeedback(in, base::Bind(&DbusFeedbackServiceImpl::DbusFeedbackSent,
+    SendFeedback(in, base::Bind(&DBusFeedbackServiceImpl::DBusFeedbackSent,
                                 this, method_call, sender));
   }
 }
 
-void DbusFeedbackServiceImpl::DbusFeedbackSent(
+void DBusFeedbackServiceImpl::DBusFeedbackSent(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender sender,
     bool status, const std::string& reason) {
@@ -101,4 +100,5 @@ void DbusFeedbackServiceImpl::DbusFeedbackSent(
   writer.AppendString(reason);
   sender.Run(response.Pass());
 }
+
 }  // namespace feedback
