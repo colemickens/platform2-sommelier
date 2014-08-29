@@ -7,6 +7,7 @@
 
 #include <vector>
 
+#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <base/stl_util.h>
 #include <gtest/gtest.h>
@@ -132,7 +133,7 @@ class RoutingTableTest : public Test {
     const RoutingTable::Query::Callback unreached_callback_;
   };
 
-  RoutingTable *routing_table_;
+  scoped_ptr<RoutingTable> routing_table_;
   TestEventDispatcher dispatcher_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
 };
