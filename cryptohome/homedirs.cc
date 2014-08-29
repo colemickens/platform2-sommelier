@@ -10,6 +10,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/constants/cryptohome.h>
 #include <chromeos/cryptohome.h>
@@ -279,6 +280,49 @@ bool HomeDirs::GetVaultKeysets(const std::string& obfuscated,
 
   return keysets->size() != 0;
 }
+
+bool HomeDirs::GetVaultKeysetLabels(const Credentials& credentials,
+                                    std::vector<std::string>* labels) const {
+  CHECK(labels);
+  std::string obfuscated = credentials.GetObfuscatedUsername(system_salt_);
+  std::string user_dir = FilePath(shadow_root_).Append(obfuscated).value();
+
+  scoped_ptr<FileEnumerator> file_enumerator(
+      platform_->GetFileEnumerator(user_dir, false /* Not recursive. */,
+                                   base::FileEnumerator::FILES));
+  std::string next_path;
+  scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
+  while (!(next_path = file_enumerator->Next()).empty()) {
+    std::string file_name = FilePath(next_path).BaseName().value();
+    // Scan for "master." files.
+    if (file_name.find(kKeyFile, 0, strlen(kKeyFile) == std::string::npos)) {
+      continue;
+    }
+    int index = 0;
+    std::string index_str = file_name.substr(strlen(kKeyFile));
+    // StringToInt will only return true for a perfect conversion.
+    if (!base::StringToInt(index_str, &index)) {
+      continue;
+    }
+    if (index < 0 || index >= kKeyFileMax) {
+      LOG(ERROR) << "Invalid key file range: " << index;
+      continue;
+    }
+    // Now parse the keyset to get its label or skip it.
+    if (!LoadVaultKeysetForUser(obfuscated, index, vk.get())) {
+      continue;
+    }
+    // Test against the label if the key has a label or create a label
+    // automatically from the index number.
+    std::string label = (vk->serialized().has_key_data() ?
+                         vk->serialized().key_data().label() :
+                         base::StringPrintf("%s%d", kKeyLegacyPrefix, index));
+    labels->push_back(label);
+  }
+
+  return (labels->size() > 0);
+}
+
 
 bool HomeDirs::CheckAuthorizationSignature(const KeyData& existing_key_data,
                                            const Key& new_key,

@@ -77,6 +77,7 @@ namespace switches {
     "check_key_ex",
     "remove_key_ex",
     "get_key_data_ex",
+    "list_keys_ex",
     "migrate_key",
     "add_key",
     "add_key_ex",
@@ -131,6 +132,7 @@ namespace switches {
     ACTION_CHECK_KEY_EX,
     ACTION_REMOVE_KEY_EX,
     ACTION_GET_KEY_DATA_EX,
+    ACTION_LIST_KEYS_EX,
     ACTION_MIGRATE_KEY,
     ACTION_ADD_KEY,
     ACTION_ADD_KEY_EX,
@@ -950,6 +952,65 @@ int main(int argc, char **argv) {
     if (reply.has_error()) {
       printf("Key retrieval failed.\n");
       return reply.error();
+    }
+  } else if (!strcmp(switches::kActions[switches::ACTION_LIST_KEYS_EX],
+                action.c_str())) {
+    cryptohome::AccountIdentifier id;
+    if (!BuildAccountId(cl, &id))
+      return -1;
+    cryptohome::AuthorizationRequest auth;
+
+    cryptohome::ListKeysRequest list_keys_req;
+
+    chromeos::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
+    chromeos::glib::ScopedArray auth_ary(GArrayFromProtoBuf(auth));
+    chromeos::glib::ScopedArray req_ary(GArrayFromProtoBuf(list_keys_req));
+    if (!account_ary.get() || !auth_ary.get() || !req_ary.get())
+      return -1;
+
+    cryptohome::BaseReply reply;
+    chromeos::glib::ScopedError error;
+    if (cl->HasSwitch(switches::kAsyncSwitch)) {
+      ClientLoop loop;
+      loop.Initialize(&proxy);
+      DBusGProxyCall* call =
+           org_chromium_CryptohomeInterface_list_keys_ex_async(
+               proxy.gproxy(),
+               account_ary.get(),
+               auth_ary.get(),
+               req_ary.get(),
+               &ClientLoop::ParseReplyThunk,
+               static_cast<gpointer>(&loop));
+      if (!call) {
+        return -1;
+      }
+      loop.Run();
+      reply = loop.reply();
+    } else {
+      GArray* out_reply = NULL;
+      if (!org_chromium_CryptohomeInterface_list_keys_ex(proxy.gproxy(),
+            account_ary.get(),
+            auth_ary.get(),
+            req_ary.get(),
+            &out_reply,
+            &chromeos::Resetter(&error).lvalue())) {
+        printf("ListKeysEx call failed: %s", error->message);
+        return -1;
+      }
+      ParseBaseReply(out_reply, &reply);
+    }
+    if (reply.has_error()) {
+      printf("Failed to list keys.\n");
+      return reply.error();
+    }
+    if (!reply.HasExtension(cryptohome::ListKeysReply::reply)) {
+      printf("ListKeysReply missing.\n");
+      return -1;
+    }
+    cryptohome::ListKeysReply list_keys_reply =
+        reply.GetExtension(cryptohome::ListKeysReply::reply);
+    for (int i = 0; i < list_keys_reply.labels_size(); ++i) {
+      printf("Label: %s\n", list_keys_reply.labels(i).c_str());
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_CHECK_KEY_EX],
                 action.c_str())) {

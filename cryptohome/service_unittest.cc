@@ -801,6 +801,7 @@ class ExTest : public ::testing::Test {
     check_req_.reset(new CheckKeyRequest);
     mount_req_.reset(new MountRequest);
     remove_req_.reset(new RemoveKeyRequest);
+    list_keys_req_.reset(new ListKeysRequest);
   }
 
   template<class ProtoBuf>
@@ -842,6 +843,7 @@ class ExTest : public ::testing::Test {
   scoped_ptr<CheckKeyRequest> check_req_;
   scoped_ptr<MountRequest> mount_req_;
   scoped_ptr<RemoveKeyRequest> remove_req_;
+  scoped_ptr<ListKeysRequest> list_keys_req_;
 
   GError* g_error_;
   std::string* reply_;
@@ -1293,6 +1295,16 @@ TEST_F(ExTest, GetKeyDataInvalidArgsNoEmail) {
   PrepareArguments();
   GetKeyDataRequest req;
   service_.DoGetKeyDataEx(id_.get(), auth_.get(), &req, NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STREQ("No email supplied", g_error_->message);
+}
+
+TEST_F(ExTest, ListKeysInvalidArgsNoEmail) {
+  SetupErrorReply();
+  PrepareArguments();
+  // Run will never be called because we aren't running the event loop.
+  // For the same reason, DoListKeysEx is called directly.
+  service_.DoListKeysEx(id_.get(), auth_.get(), list_keys_req_.get(), NULL);
   ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
   EXPECT_STREQ("No email supplied", g_error_->message);
 }

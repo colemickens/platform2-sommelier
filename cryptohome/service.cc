@@ -982,6 +982,69 @@ gboolean Service::RemoveKeyEx(GArray* account_id,
   return TRUE;
 }
 
+void Service::DoListKeysEx(AccountIdentifier* identifier,
+                            AuthorizationRequest* authorization,
+                            ListKeysRequest* list_keys_request,
+                            DBusGMethodInvocation* context) {
+  if (!identifier || !authorization || !list_keys_request) {
+    SendInvalidArgsReply(context, "Failed to parse parameters.");
+    return;
+  }
+
+  if (identifier->email().empty()) {
+    SendInvalidArgsReply(context, "No email supplied");
+    return;
+  }
+  BaseReply reply;
+  UsernamePasskey credentials(
+      identifier->email().c_str(),
+      SecureBlob());
+  if (!homedirs_->Exists(credentials)) {
+    reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
+    SendReply(context, reply);
+    return;
+  }
+  std::vector<std::string> labels;
+  if (!homedirs_->GetVaultKeysetLabels(credentials, &labels)) {
+    reply.set_error(CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+  }
+  ListKeysReply* list_keys_reply = reply.MutableExtension(ListKeysReply::reply);
+
+  std::vector<std::string>::const_iterator iter = labels.begin();
+  for ( ; iter != labels.end(); ++iter)
+    list_keys_reply->add_labels(*iter);
+
+  SendReply(context, reply);
+}
+
+gboolean Service::ListKeysEx(GArray* account_id,
+                             GArray* authorization_request,
+                             GArray* list_keys_request,
+                             DBusGMethodInvocation *context) {
+  scoped_ptr<AccountIdentifier> identifier(new AccountIdentifier);
+  scoped_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
+  scoped_ptr<ListKeysRequest> request(new ListKeysRequest);
+
+  // On parsing failure, pass along a NULL.
+  if (!identifier->ParseFromArray(account_id->data, account_id->len))
+    identifier.reset(NULL);
+  if (!authorization->ParseFromArray(authorization_request->data,
+                                     authorization_request->len))
+    authorization.reset(NULL);
+  if (!request->ParseFromArray(list_keys_request->data,
+                               list_keys_request->len))
+    request.reset(NULL);
+
+  // If PBs don't parse, the validation in the handler will catch it.
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoListKeysEx, base::Unretained(this),
+                 base::Owned(identifier.release()),
+                 base::Owned(authorization.release()),
+                 base::Owned(request.release()),
+                 base::Unretained(context)));
+  return TRUE;
+}
+
 void Service::DoGetKeyDataEx(AccountIdentifier* identifier,
                              AuthorizationRequest* authorization,
                              GetKeyDataRequest* get_key_data_request,

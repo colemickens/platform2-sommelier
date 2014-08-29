@@ -29,6 +29,15 @@
       <arg type="s" name="key" direction="in" />
       <arg type="i" name="async_id" direction="out" />
     </method>
+    <method name="ListKeysEx">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="account_id" direction="in" />
+      <!-- No authorization is required. -->
+      <arg type="ay" name="authorization_request" direction="in" />
+      <arg type="ay" name="list_keys_request" direction="in" />
+      <!-- Returns a list of key labels as a ListKeysReply protobuf. -->
+      <arg type="ay" name="list_keys_reply" direction="out" />
+    </method>
     <method name="CheckKeyEx">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="account_id" direction="in" />

@@ -70,6 +70,12 @@ class HomeDirs {
   virtual bool GetVaultKeysets(const std::string& obfuscated,
                                std::vector<int>* keysets) const;
 
+  // Outputs a list of present keysets by label for a given credential.
+  // There is no guarantee the keysets are valid nor is the ordering guaranteed.
+  // Returns true on success, false if no keysets are found.
+  virtual bool GetVaultKeysetLabels(const Credentials& credentials,
+                                    std::vector<std::string>* labels) const;
+
   // Returns a VaultKeyset that matches the label in Credentials.
   // If Credentials has no label or if no matching keyset is
   // found, NULL will be returned.

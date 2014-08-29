@@ -58,6 +58,11 @@ gboolean cryptohome_get_key_data_ex(Cryptohome* self,
                                     GArray* authorization,
                                     GArray* request,
                                     DBusGMethodInvocation* resp);
+gboolean cryptohome_list_keys_ex(Cryptohome* self,
+                                 GArray* identifier,
+                                 GArray* authorization,
+                                 GArray* request,
+                                 DBusGMethodInvocation* resp);
 gboolean cryptohome_migrate_key(Cryptohome* self,
                                 gchar* userid,
                                 gchar* from_key,

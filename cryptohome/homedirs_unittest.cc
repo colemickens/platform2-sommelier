@@ -49,6 +49,7 @@ namespace cryptohome {
 
 extern const char kKeyFile[];
 extern const int kKeyFileMax;
+extern const char kKeyLegacyPrefix[];
 
 ACTION_P2(SetOwner, owner_known, owner) {
   if (owner_known)
@@ -1328,6 +1329,28 @@ TEST_F(KeysetManagementTest, RemoveKeysetNotFound) {
   serialized_.mutable_key_data()->set_label("the only key in town");
   EXPECT_EQ(CRYPTOHOME_ERROR_KEY_NOT_FOUND,
             homedirs_.RemoveKeyset(*up_, remove_key.data()));
+}
+
+TEST_F(KeysetManagementTest, GetVaultKeysetLabelsOneLabeled) {
+  KeysetSetUp();
+
+  serialized_.mutable_key_data()->set_label("a labeled key");
+  std::vector<std::string> labels;
+  EXPECT_TRUE(homedirs_.GetVaultKeysetLabels(*up_, &labels));
+  ASSERT_NE(0, labels.size());
+  EXPECT_EQ(serialized_.key_data().label(),
+            labels[0]);
+}
+
+TEST_F(KeysetManagementTest, GetVaultKeysetLabelsOneLegacyLabeled) {
+  KeysetSetUp();
+
+  serialized_.clear_key_data();
+  std::vector<std::string> labels;
+  EXPECT_TRUE(homedirs_.GetVaultKeysetLabels(*up_, &labels));
+  ASSERT_NE(0, labels.size());
+  EXPECT_EQ(StringPrintf("%s%d", kKeyLegacyPrefix, 0),
+            labels[0]);
 }
 
 TEST_F(KeysetManagementTest, AddKeysetInvalidCreds) {
