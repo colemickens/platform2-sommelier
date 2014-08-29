@@ -93,6 +93,8 @@ class EthernetTest : public testing::Test {
     ethernet_->set_dhcp_provider(NULL);
     ethernet_->eap_listener_.reset();
     ethernet_->sockets_.reset();
+    Mock::VerifyAndClearExpectations(&manager_);
+    ethernet_->Stop(NULL, EnabledStateChangedCallback());
   }
 
  protected:
@@ -244,7 +246,7 @@ TEST_F(EthernetTest, LinkEvent) {
 
   // Link-up event while down.
   int kFakeFd = 789;
-  EXPECT_CALL(manager_, RegisterService(GetService()));
+  EXPECT_CALL(manager_, RegisterService(IsRefPtrTo(GetService().get())));
   EXPECT_CALL(*eap_listener_, Start());
   EXPECT_CALL(*mock_sockets_, Socket(_, _, _)).WillOnce(Return(kFakeFd));
   EXPECT_CALL(*mock_sockets_, Ioctl(kFakeFd, SIOCETHTOOL, _));
@@ -255,7 +257,7 @@ TEST_F(EthernetTest, LinkEvent) {
   Mock::VerifyAndClearExpectations(&manager_);
 
   // Link-up event while already up.
-  EXPECT_CALL(manager_, RegisterService(GetService())).Times(0);
+  EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   EXPECT_CALL(*eap_listener_, Start()).Times(0);
   ethernet_->LinkEvent(IFF_LOWER_UP, 0);
   EXPECT_TRUE(GetLinkUp());
@@ -270,7 +272,7 @@ TEST_F(EthernetTest, LinkEvent) {
       .WillRepeatedly(Return(&ethernet_eap_provider_));
   EXPECT_CALL(ethernet_eap_provider_,
               ClearCredentialChangeCallback(ethernet_.get()));
-  EXPECT_CALL(manager_, DeregisterService(GetService()));
+  EXPECT_CALL(manager_, DeregisterService(IsRefPtrTo(GetService().get())));
   EXPECT_CALL(*eap_listener_, Stop());
   ethernet_->LinkEvent(0, IFF_LOWER_UP);
   EXPECT_FALSE(GetLinkUp());
