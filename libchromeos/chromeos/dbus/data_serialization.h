@@ -54,6 +54,12 @@
 #include <base/logging.h>
 #include <dbus/message.h>
 
+namespace google {
+namespace protobuf {
+class MessageLite;
+}  // namespace protobuf
+}  // namespace google
+
 namespace chromeos {
 
 // Forward-declare only. Can't include any.h right now because it needs
@@ -183,6 +189,13 @@ struct DBusSignature<std::map<KEY, VALUE>> {
   }
 };
 
+// google::protobuf::MessageLite = D-Bus ARRAY of BYTE
+template<> struct DBusSignature<google::protobuf::MessageLite> {
+  inline static std::string get() {
+    return DBusSignature<std::vector<uint8_t>>::get();
+  }
+};
+
 // The main worker function that returns a signature string for given type T.
 // For example, GetDBusSignature<std::map<int, bool>>() would return "a{ib}".
 template<typename T>
@@ -286,6 +299,13 @@ inline bool AppendValueToWriter(dbus::MessageWriter* writer,
   }
   writer->CloseContainer(&dict_writer);
   return success;
+}
+
+// google::protobuf::MessageLite = D-Bus ARRAY of BYTE
+inline bool AppendValueToWriter(dbus::MessageWriter* writer,
+                                const google::protobuf::MessageLite& value) {
+  writer->AppendProtoAsArrayOfBytes(value);
+  return true;
 }
 
 //----------------------------------------------------------------------------
@@ -431,6 +451,12 @@ inline bool PopValueFromReader(dbus::MessageReader* reader,
     value->insert(std::make_pair(std::move(key), std::move(data)));
   }
   return true;
+}
+
+// google::protobuf::MessageLite = D-Bus ARRAY of BYTE
+inline bool PopValueFromReader(dbus::MessageReader* reader,
+                               google::protobuf::MessageLite* value) {
+  return reader->PopArrayOfBytesAsProto(value);
 }
 
 //----------------------------------------------------------------------------
