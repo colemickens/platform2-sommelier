@@ -243,6 +243,7 @@
             'chromeos/data_encoding_unittest.cc',
             'chromeos/dbus/async_event_sequencer_unittest.cc',
             'chromeos/dbus/data_serialization_unittest.cc',
+            'chromeos/dbus/dbus_method_invoker_unittest.cc',
             'chromeos/dbus/dbus_object_unittest.cc',
             'chromeos/dbus/dbus_param_reader_unittest.cc',
             'chromeos/dbus/dbus_param_writer_unittest.cc',
