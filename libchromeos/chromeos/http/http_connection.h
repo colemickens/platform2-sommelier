@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <chromeos/chromeos_export.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/http/http_transport.h>
 
@@ -27,7 +28,7 @@ namespace http {
 // You normally shouldn't worry about using this class directly.
 // http::Request and http::Response classes use it for communication.
 ///////////////////////////////////////////////////////////////////////////////
-class Connection {
+class CHROMEOS_EXPORT Connection {
  public:
   explicit Connection(std::shared_ptr<Transport> transport)
       : transport_(transport) {}

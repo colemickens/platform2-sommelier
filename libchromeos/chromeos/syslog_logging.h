@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <chromeos/chromeos_export.h>
+
 namespace chromeos {
 
 enum InitFlags {
@@ -17,29 +19,29 @@ enum InitFlags {
 
 // Initialize logging subsystem.  |init_flags| is a bitfield, with bits defined
 // in InitFlags above.
-void InitLog(int init_flags);
+CHROMEOS_EXPORT void InitLog(int init_flags);
 // Gets the current logging flags.
-int GetLogFlags();
+CHROMEOS_EXPORT int GetLogFlags();
 // Sets the current logging flags.
-void SetLogFlags(int log_flags);
+CHROMEOS_EXPORT void SetLogFlags(int log_flags);
 // Convenience function for configuring syslog via openlog.  Users
 // could call openlog directly except for naming collisions between
 // base/logging.h and syslog.h.  Similarly users cannot pass the
 // normal parameters so we pick a representative set.  |log_pid|
 // causes pid to be logged with |ident|.
-void OpenLog(const char* ident, bool log_pid);
+CHROMEOS_EXPORT void OpenLog(const char* ident, bool log_pid);
 // Start accumulating the logs to a string.  This is inefficient, so
 // do not set to true if large numbers of log messages are coming.
 // Accumulated logs are only ever cleared when the clear function ings
 // called.
-void LogToString(bool enabled);
+CHROMEOS_EXPORT void LogToString(bool enabled);
 // Get the accumulated logs as a string.
-std::string GetLog();
+CHROMEOS_EXPORT std::string GetLog();
 // Clear the accumulated logs.
-void ClearLog();
+CHROMEOS_EXPORT void ClearLog();
 // Returns true if the accumulated log contains the given string.  Useful
 // for testing.
-bool FindLog(const char* string);
+CHROMEOS_EXPORT bool FindLog(const char* string);
 
 }  // namespace chromeos
 

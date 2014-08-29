@@ -7,13 +7,14 @@
 
 #include <string>
 
+#include <chromeos/chromeos_export.h>
 #include <chromeos/http/http_transport.h>
 
 namespace chromeos {
 namespace http {
 namespace curl {
 
-extern const char kErrorDomain[];
+CHROMEOS_EXPORT extern const char kErrorDomain[];
 
 ///////////////////////////////////////////////////////////////////////////////
 // An implementation of http::Transport that uses libcurl for
@@ -22,7 +23,7 @@ extern const char kErrorDomain[];
 // functionality to the clients.
 // See http_transport.h for more details.
 ///////////////////////////////////////////////////////////////////////////////
-class Transport : public http::Transport {
+class CHROMEOS_EXPORT Transport : public http::Transport {
  public:
   Transport();
   virtual ~Transport();

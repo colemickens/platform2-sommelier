@@ -12,6 +12,7 @@
 #include <base/bind.h>
 #include <base/basictypes.h>
 #include <base/memory/ref_counted.h>
+#include <chromeos/chromeos_export.h>
 
 namespace chromeos {
 
@@ -34,7 +35,8 @@ namespace dbus_utils {
 //       "another delegate is flaky", false));
 //   sequencer->OnAllTasksCompletedCall({cb});
 // }
-class AsyncEventSequencer : public base::RefCounted<AsyncEventSequencer> {
+class CHROMEOS_EXPORT AsyncEventSequencer
+    : public base::RefCounted<AsyncEventSequencer> {
  public:
   typedef base::Callback<void(bool success)> Handler;
   typedef base::Callback<void (const std::string& interface_name,
@@ -72,20 +74,22 @@ class AsyncEventSequencer : public base::RefCounted<AsyncEventSequencer> {
   // GetHandler.  Note that the returned callbacks have
   // references to *this, which gives us the neat property that we'll
   // destroy *this only when all our callbacks have been destroyed.
-  void HandleFinish(int registration_number, const std::string& error_message,
-                    bool failure_is_fatal, bool success);
+  CHROMEOS_PRIVATE void HandleFinish(int registration_number,
+                                     const std::string& error_message,
+                                     bool failure_is_fatal, bool success);
   // Similar to HandleFinish.
-  void HandleDBusMethodExported(
+  CHROMEOS_PRIVATE void HandleDBusMethodExported(
       const Handler& finish_handler,
       const std::string& expected_interface_name,
       const std::string& expected_method_name,
       const std::string& actual_interface_name,
       const std::string& actual_method_name,
       bool success);
-  void RetireRegistration(int registration_number);
-  void CheckForFailure(bool failure_is_fatal, bool success,
-                       const std::string& error_message);
-  void PossiblyRunCompletionActions();
+  CHROMEOS_PRIVATE void RetireRegistration(int registration_number);
+  CHROMEOS_PRIVATE void CheckForFailure(bool failure_is_fatal,
+                                        bool success,
+                                        const std::string& error_message);
+  CHROMEOS_PRIVATE void PossiblyRunCompletionActions();
 
   bool started_{false};
   int registration_counter_{0};

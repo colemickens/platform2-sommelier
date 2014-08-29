@@ -5,6 +5,7 @@
 #ifndef LIBCHROMEOS_CHROMEOS_DBUS_ABSTRACT_DBUS_SERVICE_H_
 #define LIBCHROMEOS_CHROMEOS_DBUS_ABSTRACT_DBUS_SERVICE_H_
 
+#include <chromeos/chromeos_export.h>
 #include <chromeos/dbus/dbus.h>
 
 namespace chromeos {
@@ -13,7 +14,7 @@ namespace chromeos {
 // ::g_type_init();
 
 namespace dbus {
-class AbstractDbusService {
+class CHROMEOS_EXPORT AbstractDbusService {
  public:
   virtual ~AbstractDbusService() {}
 

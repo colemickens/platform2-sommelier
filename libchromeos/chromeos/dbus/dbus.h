@@ -12,7 +12,8 @@
 #include <string>
 
 #include "base/logging.h"
-#include "chromeos/glib/object.h"
+#include <chromeos/chromeos_export.h>
+#include <chromeos/glib/object.h>
 
 struct DBusMessage;
 struct DBusConnection;
@@ -32,7 +33,7 @@ namespace dbus {
 // \models Copyable, Assignable
 // \related GetSystemBusConnection()
 
-class BusConnection {
+class CHROMEOS_EXPORT BusConnection {
  public:
   typedef ::DBusGConnection* value_type;
 
@@ -73,7 +74,7 @@ class BusConnection {
   friend BusConnection GetPrivateBusConnection(const char* address);
 
   // Constructor takes ownership
-  explicit BusConnection(::DBusGConnection* x)
+  CHROMEOS_PRIVATE explicit BusConnection(::DBusGConnection* x)
       : object_(x) {
   }
 
@@ -91,13 +92,11 @@ inline void swap(BusConnection& x, BusConnection& y) {
 // to an entity on the bus, a path to an object owned by the entity, and an
 // interface protocol name used to communicate with the object.
 
-class Proxy {
+class CHROMEOS_EXPORT Proxy {
  public:
   typedef ::DBusGProxy* value_type;
 
-  Proxy()
-      : object_(nullptr) {
-  }
+  Proxy();
 
   // Set |connect_to_name_owner| true if you'd like to use
   // dbus_g_proxy_new_for_name_owner() rather than dbus_g_proxy_new_for_name().
@@ -105,36 +104,22 @@ class Proxy {
         const char* name,
         const char* path,
         const char* interface,
-        bool connect_to_name_owner)
-      : object_(GetGProxy(
-          connection, name, path, interface, connect_to_name_owner)) {
-  }
+        bool connect_to_name_owner);
 
   // Equivalent to Proxy(connection, name, path, interface, false).
   Proxy(const BusConnection& connection,
         const char* name,
         const char* path,
-        const char* interface)
-      : object_(GetGProxy(connection, name, path, interface, false)) {
-  }
+        const char* interface);
 
   // Creates a peer proxy using dbus_g_proxy_new_for_peer.
   Proxy(const BusConnection& connection,
         const char* path,
-        const char* interface)
-      : object_(GetGPeerProxy(connection, path, interface)) {
-  }
+        const char* interface);
 
-  Proxy(const Proxy& x)
-      : object_(x.object_) {
-    if (object_)
-      ::g_object_ref(object_);
-  }
+  Proxy(const Proxy& x);
 
-  ~Proxy() {
-    if (object_)
-      ::g_object_unref(object_);
-  }
+  ~Proxy();
 
   Proxy& operator=(Proxy x) {
     swap(*this, x);
@@ -159,17 +144,19 @@ class Proxy {
   }
 
  private:
-  static value_type GetGProxy(const BusConnection& connection,
-                              const char* name,
-                              const char* path,
-                              const char* interface,
-                              bool connect_to_name_owner);
+  CHROMEOS_PRIVATE static value_type GetGProxy(
+    const BusConnection& connection,
+    const char* name,
+    const char* path,
+    const char* interface,
+    bool connect_to_name_owner);
 
-  static value_type GetGPeerProxy(const BusConnection& connection,
-                                  const char* path,
-                                  const char* interface);
+  CHROMEOS_PRIVATE static value_type GetGPeerProxy(
+      const BusConnection& connection,
+      const char* path,
+      const char* interface);
 
-  operator int() const;  // for safe bool cast
+  CHROMEOS_PRIVATE operator int() const;  // for safe bool cast
   friend void swap(Proxy& x, Proxy& y);
 
   value_type object_;
@@ -190,11 +177,11 @@ inline void swap(Proxy& x, Proxy& y) {
 //  Type information for the \param object must be installed with
 //  dbus_g_object_type_install_info prior to use.
 
-bool RegisterExclusiveService(const BusConnection& connection,
-                              const char* interface_name,
-                              const char* service_name,
-                              const char* service_path,
-                              GObject* object);
+CHROMEOS_EXPORT bool RegisterExclusiveService(const BusConnection& connection,
+                                              const char* interface_name,
+                                              const char* service_name,
+                                              const char* service_path,
+                                              GObject* object);
 
 template <typename F>  // F is a function signature
 class MonitorConnection;
@@ -394,9 +381,9 @@ void Disconnect(MonitorConnection<F>* connection) {
 // something like Call(proxy, method, arg1, arg2, ..., ResultType*) in the
 // future. However, I don't yet have enough cases to generalize from.
 
-bool CallPtrArray(const Proxy& proxy,
-                  const char* method,
-                  glib::ScopedPtrArray<const char*>* result);
+CHROMEOS_EXPORT bool CallPtrArray(const Proxy& proxy,
+                                  const char* method,
+                                  glib::ScopedPtrArray<const char*>* result);
 
 // \brief RetrieveProperty() retrieves a property of an object associated with a
 //  proxy.
@@ -421,10 +408,10 @@ bool CallPtrArray(const Proxy& proxy,
 // \end_example
 
 template <typename T>
-bool RetrieveProperty(const Proxy& proxy,
-                      const char* interface,
-                      const char* property,
-                      T* result) {
+inline bool RetrieveProperty(const Proxy& proxy,
+                             const char* interface,
+                             const char* property,
+                             T* result) {
   glib::ScopedError error;
   glib::Value value;
 
@@ -444,32 +431,32 @@ bool RetrieveProperty(const Proxy& proxy,
 // \brief RetrieveProperties returns a HashTable of all properties for the
 // specified interface.
 
-bool RetrieveProperties(const Proxy& proxy,
-                        const char* interface,
-                        glib::ScopedHashTable* result);
+CHROMEOS_EXPORT bool RetrieveProperties(const Proxy& proxy,
+                                        const char* interface,
+                                        glib::ScopedHashTable* result);
 
 // \brief Returns a connection to the system bus.
 
-BusConnection GetSystemBusConnection();
+CHROMEOS_EXPORT BusConnection GetSystemBusConnection();
 
 // \brief Returns a private connection to a bus at |address|.
 
-BusConnection GetPrivateBusConnection(const char* address);
+CHROMEOS_EXPORT BusConnection GetPrivateBusConnection(const char* address);
 
 // \brief Calls a method |method_name| with no arguments per the given |path|
 // and |interface_name|.  Ignores return value.
 
-void CallMethodWithNoArguments(const char* service_name,
-                               const char* path,
-                               const char* interface_name,
-                               const char* method_name);
+CHROMEOS_EXPORT void CallMethodWithNoArguments(const char* service_name,
+                                               const char* path,
+                                               const char* interface_name,
+                                               const char* method_name);
 
 // \brief Low-level signal monitor base class.
 //
 // Used when there is no definite named signal sender (that Proxy
 // could be used for).
 
-class SignalWatcher {
+class CHROMEOS_EXPORT SignalWatcher {
  public:
   SignalWatcher() {}
   ~SignalWatcher();
@@ -480,12 +467,13 @@ class SignalWatcher {
   virtual void OnSignal(DBusMessage* message) = 0;
 
   // Returns a string matching the D-Bus messages that we want to listen for.
-  std::string GetDBusMatchString() const;
+  CHROMEOS_PRIVATE std::string GetDBusMatchString() const;
 
   // A D-Bus message filter to receive signals.
-  static DBusHandlerResult FilterDBusMessage(DBusConnection* dbus_conn,
-                                             DBusMessage* message,
-                                             void* data);
+  CHROMEOS_PRIVATE static DBusHandlerResult FilterDBusMessage(
+      DBusConnection* dbus_conn,
+      DBusMessage* message,
+      void* data);
   std::string interface_;
   std::string signal_;
 };

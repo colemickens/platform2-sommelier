@@ -14,7 +14,7 @@ namespace chromeos {
 
 // Given an STL map, returns a set containing all keys from the map.
 template<typename T>
-std::set<typename T::key_type> GetMapKeys(const T& map) {
+inline std::set<typename T::key_type> GetMapKeys(const T& map) {
   std::set<typename T::key_type> keys;
   for (const auto& pair : map)
     keys.insert(keys.end(), pair.first);  // Map keys are already sorted.
@@ -23,7 +23,7 @@ std::set<typename T::key_type> GetMapKeys(const T& map) {
 
 // Given an STL map, returns a vector containing all values from the map.
 template<typename T>
-std::vector<typename T::mapped_type> GetMapValues(const T& map) {
+inline std::vector<typename T::mapped_type> GetMapValues(const T& map) {
   std::vector<typename T::mapped_type> values;
   values.reserve(map.size());
   for (const auto& pair : map)
@@ -33,8 +33,8 @@ std::vector<typename T::mapped_type> GetMapValues(const T& map) {
 
 // Given an STL map, returns a vector of key-value pairs from the map.
 template<typename T>
-std::vector<std::pair<typename T::key_type,
-                      typename T::mapped_type>> MapToVector(const T& map) {
+inline std::vector<std::pair<typename T::key_type, typename T::mapped_type>>
+    MapToVector(const T& map) {
   std::vector<std::pair<typename T::key_type, typename T::mapped_type>> vector;
   vector.reserve(map.size());
   for (const auto& pair : map)

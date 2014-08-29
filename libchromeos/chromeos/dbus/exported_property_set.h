@@ -13,6 +13,7 @@
 
 #include <base/memory/weak_ptr.h>
 #include <chromeos/any.h>
+#include <chromeos/chromeos_export.h>
 #include <chromeos/dbus/data_serialization.h>
 #include <chromeos/dbus/dbus_signal.h>
 #include <chromeos/errors/error.h>
@@ -51,7 +52,7 @@ namespace dbus_utils {
 class DBusObject;
 class DBusInterface;
 
-class ExportedPropertyBase {
+class CHROMEOS_EXPORT ExportedPropertyBase {
  public:
   ExportedPropertyBase() = default;
   virtual ~ExportedPropertyBase() = default;
@@ -74,7 +75,7 @@ class ExportedPropertyBase {
   OnUpdateCallback on_update_callback_;
 };
 
-class ExportedPropertySet {
+class CHROMEOS_EXPORT ExportedPropertySet {
  public:
   using PropertyWriter = base::Callback<void(Dictionary* dict)>;
 
@@ -121,11 +122,13 @@ class ExportedPropertySet {
   // Used to write the dictionary of string->variant to a message.
   // This dictionary represents the property name/value pairs for the
   // given interface.
-  void WritePropertiesToDict(const std::string& interface_name,
-                             Dictionary* dict);
-  void HandlePropertyUpdated(const std::string& interface_name,
-                             const std::string& property_name,
-                             const ExportedPropertyBase* exported_property);
+  CHROMEOS_PRIVATE void WritePropertiesToDict(
+      const std::string& interface_name,
+      Dictionary* dict);
+  CHROMEOS_PRIVATE void HandlePropertyUpdated(
+      const std::string& interface_name,
+      const std::string& property_name,
+      const ExportedPropertyBase* exported_property);
 
   dbus::Bus* bus_;  // weak; owned by outer DBusObject containing this object.
   // This is a map from interface name -> property name -> pointer to property.

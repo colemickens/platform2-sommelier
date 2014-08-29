@@ -10,6 +10,7 @@
 
 #include <base/basictypes.h>
 #include <base/bind.h>
+#include <chromeos/chromeos_export.h>
 #include <chromeos/dbus/dbus_param_writer.h>
 #include <dbus/message.h>
 
@@ -21,7 +22,7 @@ class DBusObject;
 // Base class for D-Bus signal proxy classes.
 // Used mostly to store the polymorphic DBusSignal<...> in a single map
 // container inside DBusInterface object.
-class DBusSignalBase {
+class CHROMEOS_EXPORT DBusSignalBase {
  public:
   DBusSignalBase(DBusObject* dbus_object,
                  const std::string& interface_name,

@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <chromeos/chromeos_export.h>
 #include <chromeos/errors/error.h>
 
 namespace chromeos {
@@ -26,7 +27,7 @@ class Connection;
 // This class (and its underlying implementation) is used by http::Request and
 // http::Response classes to provide HTTP functionality to the clients.
 ///////////////////////////////////////////////////////////////////////////////
-class Transport {
+class CHROMEOS_EXPORT Transport {
  public:
   Transport() = default;
   virtual ~Transport() = default;

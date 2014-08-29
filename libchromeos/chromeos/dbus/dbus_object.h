@@ -52,6 +52,7 @@ class MyDbusObject {
 #include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos/chromeos_export.h>
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/dbus_object_internal_impl.h>
 #include <chromeos/dbus/dbus_signal.h>
@@ -198,13 +199,13 @@ class DBusObject;  // forward-declaration.
 // There is also an AddRawMethodHandler() call that lets provide a custom
 // handler that can parse its own input parameter and construct a custom
 // response.
-class DBusInterface final {
+class CHROMEOS_EXPORT DBusInterface final {
  public:
   DBusInterface(DBusObject* dbus_object, const std::string& interface_name);
 
   // Register a DBus method handler for |method_name| as base::Callback.
   template<typename R, typename... Args>
-  void AddMethodHandler(
+  inline void AddMethodHandler(
       const std::string& method_name,
       const base::Callback<R(chromeos::ErrorPtr*, Args...)>& handler) {
     std::unique_ptr<DBusInterfaceMethodHandler> typed_method_handler(
@@ -214,7 +215,7 @@ class DBusInterface final {
 
   // Register a D-Bus method handler for |method_name| as static function.
   template<typename R, typename... Args>
-  void AddMethodHandler(
+  inline void AddMethodHandler(
       const std::string& method_name,
       R(*handler)(chromeos::ErrorPtr*, Args...)) {
     std::unique_ptr<DBusInterfaceMethodHandler> typed_method_handler(
@@ -224,7 +225,7 @@ class DBusInterface final {
 
   // Register a D-Bus method handler for |method_name| as class member function.
   template<typename R, typename Instance, typename Class, typename... Args>
-  void AddMethodHandler(
+  inline void AddMethodHandler(
       const std::string& method_name,
       Instance instance,
       R(Class::*handler)(chromeos::ErrorPtr*, Args...)) {
@@ -236,7 +237,7 @@ class DBusInterface final {
 
   // Register a D-Bus method handler for |method_name| as base::Callback.
   template<typename... Args>
-  void AddMethodHandler(
+  inline void AddMethodHandler(
       const std::string& method_name,
       const base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*,
                                                            Args...)>& handler) {
@@ -248,7 +249,7 @@ class DBusInterface final {
 
   // Register a D-Bus method handler for |method_name| as static function.
   template<typename... Args>
-  void AddMethodHandler(
+  inline void AddMethodHandler(
       const std::string& method_name,
       std::unique_ptr<dbus::Response>(*handler)(dbus::MethodCall*, Args...)) {
     std::unique_ptr<DBusInterfaceMethodHandler> typed_method_handler(
@@ -259,7 +260,7 @@ class DBusInterface final {
 
   // Register a D-Bus method handler for |method_name| as class member function.
   template<typename Instance, typename Class, typename... Args>
-  void AddMethodHandler(
+  inline void AddMethodHandler(
       const std::string& method_name,
       Instance instance,
       std::unique_ptr<dbus::Response>(Class::*handler)(dbus::MethodCall*,
@@ -272,7 +273,7 @@ class DBusInterface final {
   }
 
   // Register a raw D-Bus method handler for |method_name| as base::Callback.
-  void AddRawMethodHandler(
+  inline void AddRawMethodHandler(
       const std::string& method_name,
       const base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)>&
           handler) {
@@ -314,7 +315,7 @@ class DBusInterface final {
   // RegisterSignalOfType can be used to create a signal if the type of the
   // complete DBusSignal<Args...> class which is pre-defined/aliased earlier.
   template<typename DBusSignalType>
-  std::weak_ptr<DBusSignalType> RegisterSignalOfType(
+  inline std::weak_ptr<DBusSignalType> RegisterSignalOfType(
       const std::string& signal_name) {
     auto signal = std::make_shared<DBusSignalType>(dbus_object_,
                                                    interface_name_,
@@ -329,7 +330,7 @@ class DBusInterface final {
   //  auto signal = itf->RegisterSignal<int>("SignalName");
   // This will create a callback signal object that expects one int argument.
   template<typename... Args>
-  std::weak_ptr<DBusSignal<Args...>> RegisterSignal(
+  inline std::weak_ptr<DBusSignal<Args...>> RegisterSignal(
       const std::string& signal_name) {
     return RegisterSignalOfType<DBusSignal<Args...>>(signal_name);
   }
@@ -338,9 +339,11 @@ class DBusInterface final {
   // A generic D-Bus method handler for the interface. It extracts the method
   // name from |method_call|, looks up a registered handler from |handlers_|
   // map and dispatched the call to that handler.
-  std::unique_ptr<dbus::Response> HandleMethodCall(
+  CHROMEOS_PRIVATE std::unique_ptr<dbus::Response> HandleMethodCall(
       dbus::MethodCall* method_call);
   // Helper to add a handler for method |method_name| to the |handlers_| map.
+  // Not marked CHROMEOS_PRIVATE because it needs to be called by the inline
+  // template functions AddMethodHandler(...)
   void AddHandlerImpl(const std::string& method_name,
                       std::unique_ptr<DBusInterfaceMethodHandler> handler);
   // Exports all the methods and properties of this interface and claims the
@@ -352,7 +355,7 @@ class DBusInterface final {
   // interface_name - name of interface being registered.
   // completion_callback - a callback to be called when the asynchronous
   //                       registration operation is completed.
-  void ExportAsync(
+  CHROMEOS_PRIVATE void ExportAsync(
       ExportedObjectManager* object_manager,
       dbus::Bus* bus,
       dbus::ExportedObject* exported_object,
@@ -373,7 +376,7 @@ class DBusInterface final {
 
 // A D-Bus object implementation class. Manages the interfaces implemented
 // by this object.
-class DBusObject {
+class CHROMEOS_EXPORT DBusObject {
  public:
   // object_manager - ExportedObjectManager instance that notifies D-Bus
   //                  listeners of a new interface being claimed and property

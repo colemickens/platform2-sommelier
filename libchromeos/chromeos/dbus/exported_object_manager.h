@@ -12,6 +12,7 @@
 #include <base/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/any.h>
+#include <chromeos/chromeos_export.h>
 #include <chromeos/dbus/dbus_object.h>
 #include <chromeos/dbus/exported_property_set.h>
 #include <dbus/bus.h>
@@ -75,7 +76,7 @@ namespace dbus_utils {
 //     Properties my_properties_;
 //     ExampleObjectManager* object_manager_;
 //   };
-class ExportedObjectManager
+class CHROMEOS_EXPORT ExportedObjectManager
     : public base::SupportsWeakPtr<ExportedObjectManager> {
  public:
   using ObjectMap =
@@ -106,7 +107,7 @@ class ExportedObjectManager
   const scoped_refptr<dbus::Bus>& GetBus() const { return bus_; }
 
  private:
-  ObjectMap HandleGetManagedObjects(chromeos::ErrorPtr* error);
+  CHROMEOS_PRIVATE ObjectMap HandleGetManagedObjects(chromeos::ErrorPtr* error);
 
   scoped_refptr<dbus::Bus> bus_;
   chromeos::dbus_utils::DBusObject dbus_object_;

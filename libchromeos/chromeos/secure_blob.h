@@ -8,13 +8,15 @@
 #include <string>
 #include <vector>
 
+#include <chromeos/chromeos_export.h>
+
 namespace chromeos {
 
 using Blob = std::vector<uint8_t>;
 
 // SecureBlob erases the contents on destruction.  It does not guarantee erasure
 // on resize, assign, etc.
-class SecureBlob : public chromeos::Blob {
+class CHROMEOS_EXPORT SecureBlob : public chromeos::Blob {
  public:
   SecureBlob();
   SecureBlob(const_iterator begin, const_iterator end);
@@ -44,12 +46,12 @@ class SecureBlob : public chromeos::Blob {
 // While memset() can be optimized out in certain situations (since most
 // compilers implement this function as intrinsic and know of its side effects),
 // this function will not be optimized out.
-void* SecureMemset(void* v, int c, size_t n);
+CHROMEOS_EXPORT void* SecureMemset(void* v, int c, size_t n);
 
 // Compare [n] bytes starting at [s1] with [s2] and return 0 if they match,
 // 1 if they don't. Time taken to perform the comparison is only dependent on
 // [n] and not on the relationship of the match between [s1] and [s2].
-int SecureMemcmp(const void* s1, const void* s2, size_t n);
+CHROMEOS_EXPORT int SecureMemcmp(const void* s1, const void* s2, size_t n);
 
 }  // namespace chromeos
 

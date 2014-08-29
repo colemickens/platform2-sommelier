@@ -123,6 +123,47 @@ bool RetrieveProperties(const Proxy& proxy,
   return true;
 }
 
+Proxy::Proxy()
+    : object_(nullptr) {
+}
+
+// Set |connect_to_name_owner| true if you'd like to use
+// dbus_g_proxy_new_for_name_owner() rather than dbus_g_proxy_new_for_name().
+Proxy::Proxy(const BusConnection& connection,
+             const char* name,
+             const char* path,
+             const char* interface,
+             bool connect_to_name_owner)
+    : object_(GetGProxy(
+        connection, name, path, interface, connect_to_name_owner)) {
+}
+
+// Equivalent to Proxy(connection, name, path, interface, false).
+Proxy::Proxy(const BusConnection& connection,
+             const char* name,
+             const char* path,
+             const char* interface)
+    : object_(GetGProxy(connection, name, path, interface, false)) {
+}
+
+// Creates a peer proxy using dbus_g_proxy_new_for_peer.
+Proxy::Proxy(const BusConnection& connection,
+             const char* path,
+             const char* interface)
+    : object_(GetGPeerProxy(connection, path, interface)) {
+}
+
+Proxy::Proxy(const Proxy& x)
+    : object_(x.object_) {
+  if (object_)
+    ::g_object_ref(object_);
+}
+
+Proxy::~Proxy() {
+  if (object_)
+    ::g_object_unref(object_);
+}
+
 /* static */
 Proxy::value_type Proxy::GetGProxy(const BusConnection& connection,
                                    const char* name,

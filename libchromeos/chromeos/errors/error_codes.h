@@ -5,22 +5,24 @@
 #ifndef LIBCHROMEOS_CHROMEOS_ERRORS_ERROR_CODES_H_
 #define LIBCHROMEOS_CHROMEOS_ERRORS_ERROR_CODES_H_
 
+#include <chromeos/chromeos_export.h>
+
 namespace chromeos {
 namespace errors {
 
 namespace dbus {
-extern const char kDomain[];
+CHROMEOS_EXPORT extern const char kDomain[];
 }  // namespace dbus
 
 namespace json {
-extern const char kDomain[];
-extern const char kParseError[];
-extern const char kObjectExpected[];
+CHROMEOS_EXPORT extern const char kDomain[];
+CHROMEOS_EXPORT extern const char kParseError[];
+CHROMEOS_EXPORT extern const char kObjectExpected[];
 }  // namespace json
 
 namespace file_system {
-extern const char kDomain[];
-extern const char kFileReadError[];
+CHROMEOS_EXPORT extern const char kDomain[];
+CHROMEOS_EXPORT extern const char kFileReadError[];
 }  // namespace file_system
 
 }  // namespace errors

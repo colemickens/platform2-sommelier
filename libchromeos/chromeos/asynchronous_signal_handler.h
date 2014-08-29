@@ -15,12 +15,14 @@
 #include <base/compiler_specific.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop/message_loop.h>
+#include <chromeos/chromeos_export.h>
 
 namespace chromeos {
 // Sets up signal handlers for registered signals, and converts signal receipt
 // into a write on a pipe. Watches that pipe for data and, when some appears,
 // execute the associated callback.
-class AsynchronousSignalHandler : public base::MessageLoopForIO::Watcher {
+class CHROMEOS_EXPORT AsynchronousSignalHandler
+    : public base::MessageLoopForIO::Watcher {
  public:
   AsynchronousSignalHandler();
   virtual ~AsynchronousSignalHandler();
@@ -69,10 +71,10 @@ class AsynchronousSignalHandler : public base::MessageLoopForIO::Watcher {
 
   // Resets the given signal to its default behavior. Doesn't touch
   // |registered_callbacks_|.
-  void ResetSignal(int signal);
+  CHROMEOS_PRIVATE void ResetSignal(int signal);
 
   // Updates the set of signals that this handler listens to.
-  void UpdateSignals();
+  CHROMEOS_PRIVATE void UpdateSignals();
 
   DISALLOW_COPY_AND_ASSIGN(AsynchronousSignalHandler);
 };

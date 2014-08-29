@@ -9,6 +9,8 @@
 #include <utility>
 #include <vector>
 
+#include <chromeos/chromeos_export.h>
+
 namespace chromeos {
 namespace string_utils {
 
@@ -16,25 +18,30 @@ namespace string_utils {
 // of original elements of the list.
 // By default, empty elements from the original string are omitted and
 // each element has all whitespaces trimmed off.
-std::vector<std::string> Split(const std::string& str,
-                               char delimiter,
-                               bool trim_whitespaces = true,
-                               bool purge_empty_strings = true);
+CHROMEOS_EXPORT std::vector<std::string> Split(
+    const std::string& str,
+    char delimiter,
+    bool trim_whitespaces = true,
+    bool purge_empty_strings = true);
 
 // Splits the string into two pieces at the first position of the specified
 // delimiter. By default, each part has all whitespaces trimmed off.
-std::pair<std::string, std::string> SplitAtFirst(const std::string& str,
-                                                 char delimiter,
-                                                 bool trim_whitespaces = true);
+CHROMEOS_EXPORT std::pair<std::string, std::string> SplitAtFirst(
+    const std::string& str,
+    char delimiter,
+    bool trim_whitespaces = true);
 
 // Joins an array of strings into a single string separated by |delimiter|.
-std::string Join(char delimiter, const std::vector<std::string>& strings);
-std::string Join(const std::string& delimiter,
-                 const std::vector<std::string>& strings);
-std::string Join(char delimiter,
-                 const std::string& str1, const std::string& str2);
-std::string Join(const std::string& delimiter,
-                 const std::string& str1, const std::string& str2);
+CHROMEOS_EXPORT std::string Join(char delimiter,
+                                 const std::vector<std::string>& strings);
+CHROMEOS_EXPORT std::string Join(const std::string& delimiter,
+                                 const std::vector<std::string>& strings);
+CHROMEOS_EXPORT std::string Join(char delimiter,
+                                 const std::string& str1,
+                                 const std::string& str2);
+CHROMEOS_EXPORT std::string Join(const std::string& delimiter,
+                                 const std::string& str1,
+                                 const std::string& str2);
 
 // string_utils::ToString() is a helper function to convert any scalar type
 // to a string. In most cases, it redirects the call to std::to_string with
@@ -46,9 +53,9 @@ inline std::string ToString(T value) { return std::to_string(value); }
 inline std::string ToString(std::string value) { return value; }
 // We overload this for double because std::to_string(double) uses %f to
 // format the value and I would like to use a shorter %g format instead.
-std::string ToString(double value);
+CHROMEOS_EXPORT std::string ToString(double value);
 // And the bool to be converted as true/false instead of 1/0.
-std::string ToString(bool value);
+CHROMEOS_EXPORT std::string ToString(bool value);
 
 }  // namespace string_utils
 }  // namespace chromeos

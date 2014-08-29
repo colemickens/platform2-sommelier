@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include <chromeos/chromeos_export.h>
 #include <chromeos/errors/error.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
@@ -18,11 +19,11 @@ namespace dbus_utils {
 using MethodCallHandler =
     base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)>;
 
-dbus::ExportedObject::MethodCallCallback GetExportableDBusMethod(
-    const MethodCallHandler& handler);
+CHROMEOS_EXPORT dbus::ExportedObject::MethodCallCallback
+    GetExportableDBusMethod(const MethodCallHandler& handler);
 
 // A helper function to create a D-Bus error response object as unique_ptr<>.
-std::unique_ptr<dbus::Response> CreateDBusErrorResponse(
+CHROMEOS_EXPORT std::unique_ptr<dbus::Response> CreateDBusErrorResponse(
     dbus::MethodCall* method_call,
     const std::string& code,
     const std::string& message);
@@ -32,8 +33,9 @@ std::unique_ptr<dbus::Response> CreateDBusErrorResponse(
 // and message are directly translated to D-Bus error code and message.
 // Any inner errors are formatted as "domain/code:message" string and appended
 // to the D-Bus error message, delimited by semi-colons.
-std::unique_ptr<dbus::Response> GetDBusError(dbus::MethodCall* method_call,
-                                             const chromeos::Error* error);
+CHROMEOS_EXPORT std::unique_ptr<dbus::Response> GetDBusError(
+    dbus::MethodCall* method_call,
+    const chromeos::Error* error);
 
 }  // namespace dbus_utils
 }  // namespace chromeos

@@ -9,11 +9,13 @@
 #include <string>
 #include <vector>
 
+#include <chromeos/chromeos_export.h>
+
 namespace chromeos {
 
 // Information for a single running process. Stores its command line, set of
 // open files, process id and working directory.
-class ProcessInformation {
+class CHROMEOS_EXPORT ProcessInformation {
  public:
   ProcessInformation();
   virtual ~ProcessInformation();

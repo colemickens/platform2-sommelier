@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <chromeos/chromeos_export.h>
 
 namespace chromeos {
 
@@ -16,7 +17,7 @@ class Error;  // Forward declaration.
 
 typedef std::unique_ptr<Error> ErrorPtr;
 
-class Error {
+class CHROMEOS_EXPORT Error {
  public:
   virtual ~Error() = default;
 

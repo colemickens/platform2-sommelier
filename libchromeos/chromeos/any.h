@@ -27,15 +27,17 @@
 
 #include <algorithm>
 
+#include <chromeos/chromeos_export.h>
+
 namespace dbus {
 class MessageWriter;
 }  // namespace dbus
 
 namespace chromeos {
 
-class Any final {
+class CHROMEOS_EXPORT Any final {
  public:
-  Any() = default;
+  Any();  // Do not inline to hide internal_details::Buffer from export table.
   // Standard copy/move constructors. This is a value-class container
   // that must be copy-constructible and movable. The copy constructors
   // should not be marked as explicit.
@@ -43,7 +45,7 @@ class Any final {
   Any(Any&& rhs);  // NOLINT(build/c++11)
   // Typed constructor that stores a value of type T in the Any.
   template<class T>
-  Any(T value) {        // NOLINT(runtime/explicit)
+  inline Any(T value) {  // NOLINT(runtime/explicit)
     data_buffer_.Assign(std::move(value));
   }
 
@@ -55,7 +57,7 @@ class Any final {
   Any& operator=(const Any& rhs);
   Any& operator=(Any&& rhs);  // NOLINT(build/c++11)
   template<class T>
-  Any& operator=(T value) {
+  inline Any& operator=(T value) {
     data_buffer_.Assign(std::move(value));
     return *this;
   }

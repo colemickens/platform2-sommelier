@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <chromeos/chromeos_export.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/http/http_connection.h>
 #include <chromeos/http/http_transport.h>
@@ -22,93 +23,93 @@ namespace http {
 
 // HTTP request verbs
 namespace request_type {
-extern const char kOptions[];
-extern const char kGet[];
-extern const char kHead[];
-extern const char kPost[];
-extern const char kPut[];
-extern const char kPatch[];  // Not a standard HTTP/1.1 request method
-extern const char kDelete[];
-extern const char kTrace[];
-extern const char kConnect[];
-extern const char kCopy[];   // Not a standard HTTP/1.1 request method
-extern const char kMove[];   // Not a standard HTTP/1.1 request method
+CHROMEOS_EXPORT extern const char kOptions[];
+CHROMEOS_EXPORT extern const char kGet[];
+CHROMEOS_EXPORT extern const char kHead[];
+CHROMEOS_EXPORT extern const char kPost[];
+CHROMEOS_EXPORT extern const char kPut[];
+CHROMEOS_EXPORT extern const char kPatch[];  // Non-standard HTTP/1.1 verb
+CHROMEOS_EXPORT extern const char kDelete[];
+CHROMEOS_EXPORT extern const char kTrace[];
+CHROMEOS_EXPORT extern const char kConnect[];
+CHROMEOS_EXPORT extern const char kCopy[];   // Non-standard HTTP/1.1 verb
+CHROMEOS_EXPORT extern const char kMove[];   // Non-standard HTTP/1.1 verb
 }  // namespace request_type
 
 // HTTP request header names
 namespace request_header {
-extern const char kAccept[];
-extern const char kAcceptCharset[];
-extern const char kAcceptEncoding[];
-extern const char kAcceptLanguage[];
-extern const char kAllow[];
-extern const char kAuthorization[];
-extern const char kCacheControl[];
-extern const char kConnection[];
-extern const char kContentEncoding[];
-extern const char kContentLanguage[];
-extern const char kContentLength[];
-extern const char kContentLocation[];
-extern const char kContentMd5[];
-extern const char kContentRange[];
-extern const char kContentType[];
-extern const char kCookie[];
-extern const char kDate[];
-extern const char kExpect[];
-extern const char kExpires[];
-extern const char kFrom[];
-extern const char kHost[];
-extern const char kIfMatch[];
-extern const char kIfModifiedSince[];
-extern const char kIfNoneMatch[];
-extern const char kIfRange[];
-extern const char kIfUnmodifiedSince[];
-extern const char kLastModified[];
-extern const char kMaxForwards[];
-extern const char kPragma[];
-extern const char kProxyAuthorization[];
-extern const char kRange[];
-extern const char kReferer[];
-extern const char kTE[];
-extern const char kTrailer[];
-extern const char kTransferEncoding[];
-extern const char kUpgrade[];
-extern const char kUserAgent[];
-extern const char kVia[];
-extern const char kWarning[];
+CHROMEOS_EXPORT extern const char kAccept[];
+CHROMEOS_EXPORT extern const char kAcceptCharset[];
+CHROMEOS_EXPORT extern const char kAcceptEncoding[];
+CHROMEOS_EXPORT extern const char kAcceptLanguage[];
+CHROMEOS_EXPORT extern const char kAllow[];
+CHROMEOS_EXPORT extern const char kAuthorization[];
+CHROMEOS_EXPORT extern const char kCacheControl[];
+CHROMEOS_EXPORT extern const char kConnection[];
+CHROMEOS_EXPORT extern const char kContentEncoding[];
+CHROMEOS_EXPORT extern const char kContentLanguage[];
+CHROMEOS_EXPORT extern const char kContentLength[];
+CHROMEOS_EXPORT extern const char kContentLocation[];
+CHROMEOS_EXPORT extern const char kContentMd5[];
+CHROMEOS_EXPORT extern const char kContentRange[];
+CHROMEOS_EXPORT extern const char kContentType[];
+CHROMEOS_EXPORT extern const char kCookie[];
+CHROMEOS_EXPORT extern const char kDate[];
+CHROMEOS_EXPORT extern const char kExpect[];
+CHROMEOS_EXPORT extern const char kExpires[];
+CHROMEOS_EXPORT extern const char kFrom[];
+CHROMEOS_EXPORT extern const char kHost[];
+CHROMEOS_EXPORT extern const char kIfMatch[];
+CHROMEOS_EXPORT extern const char kIfModifiedSince[];
+CHROMEOS_EXPORT extern const char kIfNoneMatch[];
+CHROMEOS_EXPORT extern const char kIfRange[];
+CHROMEOS_EXPORT extern const char kIfUnmodifiedSince[];
+CHROMEOS_EXPORT extern const char kLastModified[];
+CHROMEOS_EXPORT extern const char kMaxForwards[];
+CHROMEOS_EXPORT extern const char kPragma[];
+CHROMEOS_EXPORT extern const char kProxyAuthorization[];
+CHROMEOS_EXPORT extern const char kRange[];
+CHROMEOS_EXPORT extern const char kReferer[];
+CHROMEOS_EXPORT extern const char kTE[];
+CHROMEOS_EXPORT extern const char kTrailer[];
+CHROMEOS_EXPORT extern const char kTransferEncoding[];
+CHROMEOS_EXPORT extern const char kUpgrade[];
+CHROMEOS_EXPORT extern const char kUserAgent[];
+CHROMEOS_EXPORT extern const char kVia[];
+CHROMEOS_EXPORT extern const char kWarning[];
 }  // namespace request_header
 
 // HTTP response header names
 namespace response_header {
-extern const char kAcceptRanges[];
-extern const char kAge[];
-extern const char kAllow[];
-extern const char kCacheControl[];
-extern const char kConnection[];
-extern const char kContentEncoding[];
-extern const char kContentLanguage[];
-extern const char kContentLength[];
-extern const char kContentLocation[];
-extern const char kContentMd5[];
-extern const char kContentRange[];
-extern const char kContentType[];
-extern const char kDate[];
-extern const char kETag[];
-extern const char kExpires[];
-extern const char kLastModified[];
-extern const char kLocation[];
-extern const char kPragma[];
-extern const char kProxyAuthenticate[];
-extern const char kRetryAfter[];
-extern const char kServer[];
-extern const char kSetCookie[];
-extern const char kTrailer[];
-extern const char kTransferEncoding[];
-extern const char kUpgrade[];
-extern const char kVary[];
-extern const char kVia[];
-extern const char kWarning[];
-extern const char kWwwAuthenticate[];
+CHROMEOS_EXPORT extern const char kAcceptRanges[];
+CHROMEOS_EXPORT extern const char kAge[];
+CHROMEOS_EXPORT extern const char kAllow[];
+CHROMEOS_EXPORT extern const char kCacheControl[];
+CHROMEOS_EXPORT extern const char kConnection[];
+CHROMEOS_EXPORT extern const char kContentEncoding[];
+CHROMEOS_EXPORT extern const char kContentLanguage[];
+CHROMEOS_EXPORT extern const char kContentLength[];
+CHROMEOS_EXPORT extern const char kContentLocation[];
+CHROMEOS_EXPORT extern const char kContentMd5[];
+CHROMEOS_EXPORT extern const char kContentRange[];
+CHROMEOS_EXPORT extern const char kContentType[];
+CHROMEOS_EXPORT extern const char kDate[];
+CHROMEOS_EXPORT extern const char kETag[];
+CHROMEOS_EXPORT extern const char kExpires[];
+CHROMEOS_EXPORT extern const char kLastModified[];
+CHROMEOS_EXPORT extern const char kLocation[];
+CHROMEOS_EXPORT extern const char kPragma[];
+CHROMEOS_EXPORT extern const char kProxyAuthenticate[];
+CHROMEOS_EXPORT extern const char kRetryAfter[];
+CHROMEOS_EXPORT extern const char kServer[];
+CHROMEOS_EXPORT extern const char kSetCookie[];
+CHROMEOS_EXPORT extern const char kTrailer[];
+CHROMEOS_EXPORT extern const char kTransferEncoding[];
+CHROMEOS_EXPORT extern const char kUpgrade[];
+CHROMEOS_EXPORT extern const char kVary[];
+CHROMEOS_EXPORT extern const char kVia[];
+CHROMEOS_EXPORT extern const char kWarning[];
+CHROMEOS_EXPORT extern const char kWwwAuthenticate[];
 }  // namespace response_header
 
 // HTTP request status (error) codes
@@ -209,7 +210,7 @@ class Response;  // Just a forward declaration.
 // and obtain the server response. The returned Response object can be
 // used to inspect the response code, HTTP headers and/or response body.
 ///////////////////////////////////////////////////////////////////////////////
-class Request {
+class CHROMEOS_EXPORT Request {
  public:
   // The main constructor. |url| specifies the remote host address/path
   // to send the request to. |method| is the HTTP request verb and
@@ -267,7 +268,7 @@ class Request {
 
  private:
   // Helper function to create an http::Connection and send off request headers.
-  bool SendRequestIfNeeded(chromeos::ErrorPtr* error);
+  CHROMEOS_PRIVATE bool SendRequestIfNeeded(chromeos::ErrorPtr* error);
 
   // Implementation that provides particular HTTP transport.
   std::shared_ptr<Transport> transport_;
@@ -313,7 +314,7 @@ class Request {
 // to get to response status, error codes, response HTTP headers and response
 // data (body) if available.
 ///////////////////////////////////////////////////////////////////////////////
-class Response {
+class CHROMEOS_EXPORT Response {
  public:
   explicit Response(std::unique_ptr<Connection> connection);
   ~Response();

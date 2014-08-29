@@ -44,10 +44,6 @@
         ],
         'deps': ['<@(exported_deps)'],
       },
-      'cflags': [
-        # TODO: crosbug.com/315233
-        '-fvisibility=default',
-      ],
       'all_dependent_settings': {
         'variables': {
           'deps': [
@@ -95,10 +91,6 @@
           ],
         },
       },
-      'cflags': [
-        # TODO: crosbug.com/315233
-        '-fvisibility=default',
-      ],
       'sources': [
         'chromeos/http/http_connection_curl.cc',
         'chromeos/http/http_request.cc',
@@ -128,10 +120,6 @@
         ],
         'deps': ['<@(exported_deps)'],
       },
-      'cflags': [
-        # TODO: crosbug.com/315233
-        '-fvisibility=default',
-      ],
       'all_dependent_settings': {
         'variables': {
           'deps': [

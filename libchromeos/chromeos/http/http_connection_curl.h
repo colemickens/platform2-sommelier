@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <chromeos/chromeos_export.h>
 #include <chromeos/http/http_connection.h>
 #include <curl/curl.h>
 
@@ -18,7 +19,7 @@ namespace http {
 namespace curl {
 
 // This is a libcurl-based implementation of http::Connection.
-class Connection : public http::Connection {
+class CHROMEOS_EXPORT Connection : public http::Connection {
  public:
   Connection(CURL* curl_handle, const std::string& method,
              std::shared_ptr<http::Transport> transport);
@@ -42,11 +43,14 @@ class Connection : public http::Connection {
 
  protected:
   // Write data callback. Used by CURL when receiving response data.
-  static size_t write_callback(char* ptr, size_t size, size_t num, void* data);
+  CHROMEOS_PRIVATE static size_t write_callback(char* ptr, size_t size,
+                                                size_t num, void* data);
   // Read data callback. Used by CURL when sending request body data.
-  static size_t read_callback(char* ptr, size_t size, size_t num, void* data);
+  CHROMEOS_PRIVATE static size_t read_callback(char* ptr, size_t size,
+                                               size_t num, void* data);
   // Write header data callback. Used by CURL when receiving response headers.
-  static size_t header_callback(char* ptr, size_t size, size_t num, void* data);
+  CHROMEOS_PRIVATE static size_t header_callback(char* ptr, size_t size,
+                                                 size_t num, void* data);
 
   // HTTP request verb, such as "GET", "POST", "PUT", ...
   std::string method_;

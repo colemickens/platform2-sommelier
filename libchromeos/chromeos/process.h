@@ -15,6 +15,7 @@
 #include <base/callback.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/chromeos_export.h>
 #include <gtest/gtest_prod.h>
 
 namespace chromeos {
@@ -23,7 +24,7 @@ namespace chromeos {
 // any managed process is killed with SIGKILL.  Use Release() to
 // release the process from management.  A given system process may
 // only be managed by one Process at a time.
-class Process {
+class CHROMEOS_EXPORT Process {
  public:
   Process();
   virtual ~Process();
@@ -119,7 +120,7 @@ class Process {
   enum { kErrorExitStatus = 127 };
 };
 
-class ProcessImpl : public Process {
+class CHROMEOS_EXPORT ProcessImpl : public Process {
  public:
   ProcessImpl();
   virtual ~ProcessImpl();
@@ -144,7 +145,7 @@ class ProcessImpl : public Process {
  protected:
   struct PipeInfo {
     PipeInfo() : parent_fd_(-1), child_fd_(-1), is_input_(false) {}
-    // Parent (our) side of the pipe to the the child process.
+    // Parent (our) side of the pipe to the child process.
     int parent_fd_;
     // Child's side of the pipe to the parent.
     int child_fd_;

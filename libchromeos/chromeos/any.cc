@@ -8,6 +8,9 @@
 
 namespace chromeos {
 
+Any::Any() {
+}
+
 Any::Any(const Any& rhs) : data_buffer_(rhs.data_buffer_) {
 }
 
