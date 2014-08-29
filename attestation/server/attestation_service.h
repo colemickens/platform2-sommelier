@@ -9,42 +9,33 @@
 
 #include <base/callback.h>
 #include <base/memory/scoped_ptr.h>
-#include <dbus/bus.h>
-#include <dbus/exported_object.h>
-#include <dbus/message.h>
+#include <chromeos/dbus/dbus_object.h>
+#include <chromeos/errors/error.h>
 
 #include "attestation/common/dbus_interface.h"
 
 namespace attestation {
 
 class AttestationService;
-
-typedef scoped_ptr<dbus::Response> ResponsePtr;
-// Pointer to a member function for handling D-Bus method calls. If an empty
-// scoped_ptr is returned, an empty (but successful) response will be sent.
-typedef base::Callback<ResponsePtr (dbus::MethodCall*)> DBusMethodCallHandler;
+class StatsResponse;
+using CompletionAction =
+    chromeos::dbus_utils::AsyncEventSequencer::CompletionAction;
 
 // Main class within the attestation daemon that ties other classes together.
 class AttestationService {
  public:
-  AttestationService();
-  virtual ~AttestationService();
+  explicit AttestationService(const scoped_refptr<dbus::Bus>& bus);
+  virtual ~AttestationService() = default;
 
   // Connects to D-Bus system bus and exports methods.
-  void Init();
+  void RegisterAsync(const CompletionAction& callback);
 
  private:
-  // Exports |method_name| and uses |handler| to handle calls.
-  void ExportDBusMethod(const std::string& method_name,
-                        const DBusMethodCallHandler& handler);
-
   // Callbacks for handling D-Bus signals and method calls.
-  ResponsePtr HandleStatsMethod(dbus::MethodCall* method_call);
+  StatsResponse HandleStatsMethod(chromeos::ErrorPtr* error);
 
   base::Time start_time_;
-  scoped_refptr<dbus::Bus> bus_;
-  // This is owned by bus_.
-  dbus::ExportedObject* attestation_dbus_object_;
+  chromeos::dbus_utils::DBusObject dbus_object_;
 
   DISALLOW_COPY_AND_ASSIGN(AttestationService);
 };

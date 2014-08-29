@@ -2,7 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
+
 #include <base/memory/ref_counted.h>
+#include <chromeos/dbus/dbus_method_invoker.h>
+#include <chromeos/errors/error.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
@@ -17,17 +21,21 @@ int main(int argc, char* argv[]) {
   dbus::ObjectProxy* object = bus->GetObjectProxy(
       attestation::kAttestationServiceName,
       dbus::ObjectPath(attestation::kAttestationServicePath));
-  dbus::MethodCall method_call(
+
+  auto response = chromeos::dbus_utils::CallMethodAndBlock(
+      object,
       attestation::kAttestationInterface,
       attestation::kStatsMethod);
-  scoped_ptr<dbus::Response> response(
-      object->CallMethodAndBlock(&method_call,
-                                 dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
-  attestation::StatsResponse stats;
-  dbus::MessageReader reader(response.get());
-  reader.PopArrayOfBytesAsProto(&stats);
 
-  printf("Attestation has been up for %u seconds.\n", stats.uptime());
+  attestation::StatsResponse stats;
+  chromeos::ErrorPtr error;
+  if (chromeos::dbus_utils::ExtractMethodCallResults(response.get(),
+                                                     &error,
+                                                     &stats)) {
+    printf("Attestation has been up for %u seconds.\n", stats.uptime());
+  } else {
+    printf("Error occurred: %s.\n", error->GetMessage().c_str());
+  }
 
   bus->ShutdownAndBlock();
 
