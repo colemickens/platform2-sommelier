@@ -189,6 +189,7 @@ scoped_ptr<dbus::Response> DBusAdaptor::CreateSecureMessage(
   std::vector<uint8_t> associated_data;
   std::vector<uint8_t> public_metadata;
   std::vector<uint8_t> verification_key_id;
+  std::vector<uint8_t> decryption_key_id;
   easy_unlock_crypto::ServiceImpl::EncryptionType encryption_type;
   easy_unlock_crypto::ServiceImpl::SignatureType signature_type;
 
@@ -199,6 +200,10 @@ scoped_ptr<dbus::Response> DBusAdaptor::CreateSecureMessage(
       ReadArrayOfBytes(&reader, &associated_data) &&
       ReadArrayOfBytes(&reader, &public_metadata) &&
       ReadArrayOfBytes(&reader, &verification_key_id) &&
+      // TODO(tbarzic): Require to be present decryption_key_id when Chrome
+      // gets updated to a newer version, which supports passing
+      // decryption_key_id.
+      (ReadArrayOfBytes(&reader, &decryption_key_id) || true) &&
       ReadAndConvertEncryptionType(&reader, &encryption_type) &&
       ReadAndConvertSignatureType(&reader, &signature_type)) {
     message = service_impl_->CreateSecureMessage(payload,
@@ -206,6 +211,7 @@ scoped_ptr<dbus::Response> DBusAdaptor::CreateSecureMessage(
                                                  associated_data,
                                                  public_metadata,
                                                  verification_key_id,
+                                                 decryption_key_id,
                                                  encryption_type,
                                                  signature_type);
   } else {

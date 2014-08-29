@@ -287,6 +287,58 @@ TEST_F(EasyUnlockTest, CreateSecureMessage) {
   const std::string associated_data = "ad";
   const std::string public_metadata = "pm";
   const std::string verification_key_id = "key";
+  const std::string decryption_key_id = "key1";
+
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(payload.data()),
+                            payload.length());
+  writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(key.data()),
+                            key.length());
+  writer.AppendArrayOfBytes(
+      reinterpret_cast<const uint8_t*>(associated_data.data()),
+      associated_data.length());
+  writer.AppendArrayOfBytes(
+      reinterpret_cast<const uint8_t*>(public_metadata.data()),
+      public_metadata.length());
+  writer.AppendArrayOfBytes(
+      reinterpret_cast<const uint8_t*>(verification_key_id.data()),
+      verification_key_id.length());
+  writer.AppendArrayOfBytes(
+      reinterpret_cast<const uint8_t*>(decryption_key_id.data()),
+      decryption_key_id.length());
+  writer.AppendString(easy_unlock::kEncryptionTypeAES256CBC);
+  writer.AppendString(easy_unlock::kSignatureTypeHMACSHA256);
+
+  const std::string expected_response =
+    "securemessage:{"
+      "payload:cleartext message,"
+      "key:secret key,"
+      "associated_data:ad,"
+      "public_metadata:pm,"
+      "verification_key_id:key,"
+      "decryption_key_id:key1,"
+      "encryption:AES,"
+      "signature:HMAC"
+    "}";
+
+  method_call_handlers_->CallCreateSecureMessage(
+      &method_call,
+      base::Bind(&EasyUnlockTest::VerifyDataResponse,
+                 base::Unretained(this),
+                 expected_response));
+}
+
+TEST_F(EasyUnlockTest, CreateSecureMessage_NoDecryptionKeyId) {
+  dbus::MethodCall method_call(easy_unlock::kEasyUnlockServiceInterface,
+                               easy_unlock::kCreateSecureMessageMethod);
+  // Set serial to an arbitrary value.
+  method_call.SetSerial(231);
+
+  const std::string payload = "cleartext message";
+  const std::string key = "secret key";
+  const std::string associated_data = "ad";
+  const std::string public_metadata = "pm";
+  const std::string verification_key_id = "key";
 
   dbus::MessageWriter writer(&method_call);
   writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(payload.data()),
@@ -312,6 +364,7 @@ TEST_F(EasyUnlockTest, CreateSecureMessage) {
       "associated_data:ad,"
       "public_metadata:pm,"
       "verification_key_id:key,"
+      "decryption_key_id:,"
       "encryption:AES,"
       "signature:HMAC"
     "}";

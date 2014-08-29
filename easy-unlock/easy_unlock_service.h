@@ -35,6 +35,7 @@ class Service {
       const std::vector<uint8_t>& associated_data,
       const std::vector<uint8_t>& public_metadata,
       const std::vector<uint8_t>& verification_key_id,
+      const std::vector<uint8_t>& decryption_key_id,
       easy_unlock_crypto::ServiceImpl::EncryptionType encryption_type,
       easy_unlock_crypto::ServiceImpl::SignatureType signature_type) = 0;
   virtual std::vector<uint8_t> UnwrapSecureMessage(

@@ -33,6 +33,7 @@ class ServiceImpl : public easy_unlock::Service {
       const std::vector<uint8_t>& associated_data,
       const std::vector<uint8_t>& public_metadata,
       const std::vector<uint8_t>& verification_key_id,
+      const std::vector<uint8_t>& decryption_key_id,
       easy_unlock_crypto::ServiceImpl::EncryptionType encryption_type,
       easy_unlock_crypto::ServiceImpl::SignatureType signature_type) override {
     return crypto_service_->CreateSecureMessage(payload,
@@ -40,6 +41,7 @@ class ServiceImpl : public easy_unlock::Service {
                                                 associated_data,
                                                 public_metadata,
                                                 verification_key_id,
+                                                decryption_key_id,
                                                 encryption_type,
                                                 signature_type);
   }

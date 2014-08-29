@@ -17,6 +17,7 @@
       <arg name="associated_data" type="ay" direction="in"></arg>
       <arg name="public_metadata" type="ay" direction="in"></arg>
       <arg name="verification_key_id" type="ay" direction="in"></arg>
+      <arg name="decryption_key_id" type="ay" direction="in"></arg>
       <arg name="encryption_type" type="s" direction="in"></arg>
       <arg name="signature_type" type="s" direction="in"></arg>
       <arg name="secure_message_proto" type="ay" direction="out"></arg>

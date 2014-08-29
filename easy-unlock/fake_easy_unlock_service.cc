@@ -18,6 +18,7 @@ const char kSecureMessageTemplate[] =
       "associated_data:%s,"
       "public_metadata:%s,"
       "verification_key_id:%s,"
+      "decryption_key_id:%s,"
       "encryption:%s,"
       "signature:%s"
     "}";
@@ -96,6 +97,7 @@ std::vector<uint8_t> FakeService::CreateSecureMessage(
     const std::vector<uint8_t>& associated_data,
     const std::vector<uint8_t>& public_metadata,
     const std::vector<uint8_t>& verification_key_id,
+    const std::vector<uint8_t>& decryption_key_id,
     easy_unlock_crypto::ServiceImpl::EncryptionType encryption_type,
     easy_unlock_crypto::ServiceImpl::SignatureType signature_type) {
   return StringAsUint8Vector(base::StringPrintf(
@@ -105,6 +107,7 @@ std::vector<uint8_t> FakeService::CreateSecureMessage(
       Uint8VectorAsString(associated_data).c_str(),
       Uint8VectorAsString(public_metadata).c_str(),
       Uint8VectorAsString(verification_key_id).c_str(),
+      Uint8VectorAsString(decryption_key_id).c_str(),
       EncryptionTypeAsString(encryption_type).c_str(),
       SignatureTypeAsString(signature_type).c_str()));
 }
