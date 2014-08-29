@@ -26,8 +26,8 @@ class DeviceProxy : public org::chromium::flimflam::Device_proxy,
               const char* path,
               const char* service)
       : DBus::ObjectProxy(connection, path, service) {}
-  virtual ~DeviceProxy() {}
-  virtual void PropertyChanged(const std::string&, const DBus::Variant&) {}
+  ~DeviceProxy() override {}
+  void PropertyChanged(const std::string&, const DBus::Variant&) override {}
 };
 
 class IPConfigProxy : public org::chromium::flimflam::IPConfig_proxy,
@@ -37,8 +37,8 @@ class IPConfigProxy : public org::chromium::flimflam::IPConfig_proxy,
                 const char* path,
                 const char* service)
       : DBus::ObjectProxy(connection, path, service) {}
-  virtual ~IPConfigProxy() {}
-  virtual void PropertyChanged(const std::string&, const DBus::Variant&) {}
+  ~IPConfigProxy() override {}
+  void PropertyChanged(const std::string&, const DBus::Variant&) override {}
 };
 
 class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
@@ -48,9 +48,9 @@ class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
                const char* path,
                const char* service)
       : DBus::ObjectProxy(connection, path, service) {}
-  virtual ~ManagerProxy() {}
-  virtual void PropertyChanged(const std::string&, const DBus::Variant&) {}
-  virtual void StateChanged(const std::string&) {}
+  ~ManagerProxy() override {}
+  void PropertyChanged(const std::string&, const DBus::Variant&) override {}
+  void StateChanged(const std::string&) override {}
 };
 
 class ServiceProxy : public org::chromium::flimflam::Service_proxy,
@@ -60,8 +60,8 @@ class ServiceProxy : public org::chromium::flimflam::Service_proxy,
                const char* path,
                const char* service)
       : DBus::ObjectProxy(connection, path, service) {}
-  virtual ~ServiceProxy() {}
-  virtual void PropertyChanged(const std::string&, const DBus::Variant&) {}
+  ~ServiceProxy() override {}
+  void PropertyChanged(const std::string&, const DBus::Variant&) override {}
 };
 
 Value* GetService(DBus::Connection& conn, DBus::Path& path) { // NOLINT

@@ -145,9 +145,9 @@ class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
                const char* path,
                const char* service)
       : DBus::ObjectProxy(connection, path, service) {}
-  virtual ~ManagerProxy() {}
-  virtual void PropertyChanged(const std::string&, const DBus::Variant&) {}
-  virtual void StateChanged(const std::string&) {}
+  ~ManagerProxy() override {}
+  void PropertyChanged(const std::string&, const DBus::Variant&) override {}
+  void StateChanged(const std::string&) override {}
 };
 
 class ServiceProxy : public org::chromium::flimflam::Service_proxy,
@@ -157,14 +157,14 @@ class ServiceProxy : public org::chromium::flimflam::Service_proxy,
                const char* path,
                const char* service)
       : DBus::ObjectProxy(connection, path, service) {}
-  virtual ~ServiceProxy() {}
-  virtual void PropertyChanged(const std::string&, const DBus::Variant&) {}
+  ~ServiceProxy() override {}
+  void PropertyChanged(const std::string&, const DBus::Variant&) override {}
 };
 
 class NetInterface {
  public:
   NetInterface(int fd, const char *name);
-  virtual ~NetInterface();
+  ~NetInterface();
 
   bool Init();
   void AddAddress(struct ifaddrs *ifa);

@@ -14,7 +14,7 @@ namespace debugd {
 class SandboxedProcess : public chromeos::ProcessImpl {
  public:
   SandboxedProcess();
-  virtual ~SandboxedProcess();
+  ~SandboxedProcess() override;
 
   // Get the full path of a helper executable located at the |relative_path|
   // relative to the debugd helpers directory. Return false if the full path

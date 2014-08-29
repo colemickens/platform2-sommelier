@@ -17,7 +17,7 @@ namespace debugd {
 class StorageTool : public SubprocessTool {
  public:
   StorageTool();
-  virtual ~StorageTool();
+  ~StorageTool() override;
 
   std::string Smartctl(const std::string& option, DBus::Error* error);
   std::string Start(const DBus::FileDescriptor& outfd, DBus::Error* error);

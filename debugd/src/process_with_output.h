@@ -20,8 +20,8 @@ namespace debugd {
 class ProcessWithOutput : public SandboxedProcess {
  public:
   ProcessWithOutput();
-  ~ProcessWithOutput();
-  virtual bool Init();
+  ~ProcessWithOutput() override;
+  bool Init() override;
   bool GetOutput(std::string* output);
   bool GetOutputLines(std::vector<std::string>* output);
 

@@ -25,6 +25,7 @@ class DebugModeTool {
   void SetAllModemManagersLogging(const std::string& level);
 
   DBus::Connection* connection_;
+
   DISALLOW_COPY_AND_ASSIGN(DebugModeTool);
 };
 

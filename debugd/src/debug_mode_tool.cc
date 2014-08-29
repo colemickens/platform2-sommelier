@@ -29,9 +29,9 @@ class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
                const char* path,
                const char* service)
       : DBus::ObjectProxy(*connection, path, service) {}
-  virtual ~ManagerProxy() {}
-  virtual void PropertyChanged(const std::string&, const DBus::Variant&) {}
-  virtual void StateChanged(const std::string&) {}
+  ~ManagerProxy() override {}
+  void PropertyChanged(const std::string&, const DBus::Variant&) override {}
+  void StateChanged(const std::string&) override {}
 };
 
 #if USE_CELLULAR
@@ -46,9 +46,9 @@ class ModemManagerProxy : public org::freedesktop::ModemManager_proxy,
                     const char* path,
                     const char* service)
       : DBus::ObjectProxy(*connection, path, service) {}
-  virtual ~ModemManagerProxy() {}
-  virtual void DeviceAdded(const DBus::Path&) {}
-  virtual void DeviceRemoved(const DBus::Path&) {}
+  ~ModemManagerProxy() override {}
+  void DeviceAdded(const DBus::Path&) override {}
+  void DeviceRemoved(const DBus::Path&) override {}
 };
 
 class ModemManager1Proxy : public org::freedesktop::ModemManager1_proxy,
@@ -58,9 +58,7 @@ class ModemManager1Proxy : public org::freedesktop::ModemManager1_proxy,
                      const char* path,
                      const char* service)
       : DBus::ObjectProxy(*connection, path, service) {}
-  virtual ~ModemManager1Proxy() {}
-  virtual void DeviceAdded(const DBus::Path&) {}
-  virtual void DeviceRemoved(const DBus::Path&) {}
+  ~ModemManager1Proxy() override {}
 };
 
 #endif  // USE_CELLULAR
@@ -72,7 +70,7 @@ class PropertiesProxy : public org::freedesktop::DBus::Properties_proxy,
                   const char* path,
                   const char* service)
       : DBus::ObjectProxy(*connection, path, service) {}
-  virtual ~PropertiesProxy() {}
+  ~PropertiesProxy() override {}
 };
 
 DebugModeTool::DebugModeTool(DBus::Connection* connection)

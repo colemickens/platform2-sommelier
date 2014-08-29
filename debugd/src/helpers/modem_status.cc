@@ -25,78 +25,73 @@ using base::Value;
 // TODO(ellyjones): fix that
 const uint32_t kModemTypeGsm = 1;
 
-class DBusPropertiesProxy
-    : public org::freedesktop::DBus::Properties_proxy,
-      public DBus::ObjectProxy {
+class DBusPropertiesProxy : public org::freedesktop::DBus::Properties_proxy,
+                            public DBus::ObjectProxy {
  public:
-  DBusPropertiesProxy(DBus::Connection& connection, const char* path, // NOLINT
-                      const char* service) :
-      DBus::ObjectProxy(connection, path, service) { }
-  virtual ~DBusPropertiesProxy() { }
-  virtual void PropertiesChanged(const std::string&,
-                                 const std::map<std::string, DBus::Variant>&,
-                                 const std::vector<std::string>&) { }
+  DBusPropertiesProxy(DBus::Connection& connection, const char* path,  // NOLINT
+                      const char* service)
+      : DBus::ObjectProxy(connection, path, service) {}
+  ~DBusPropertiesProxy() override {}
 };
 
-class ModemManagerProxy
-    : public org::freedesktop::ModemManager_proxy,
-      public DBus::ObjectProxy {
+class ModemManagerProxy : public org::freedesktop::ModemManager_proxy,
+                          public DBus::ObjectProxy {
  public:
-  ModemManagerProxy(DBus::Connection& connection, const char* path, // NOLINT
-                    const char* service) :
-      DBus::ObjectProxy(connection, path, service) { }
-  virtual ~ModemManagerProxy() { }
-  virtual void DeviceAdded(const DBus::Path&) { }
-  virtual void DeviceRemoved(const DBus::Path&) { }
+  ModemManagerProxy(DBus::Connection& connection, const char* path,  // NOLINT
+                    const char* service)
+      : DBus::ObjectProxy(connection, path, service) {}
+  ~ModemManagerProxy() override {}
+  void DeviceAdded(const DBus::Path&) override {}
+  void DeviceRemoved(const DBus::Path&) override {}
 };
 
 class ModemSimpleProxy
     : public org::freedesktop::ModemManager::Modem::Simple_proxy,
       public DBus::ObjectProxy {
  public:
-  ModemSimpleProxy(DBus::Connection& connection, const char* path, // NOLINT
-                   const char* service) :
-      DBus::ObjectProxy(connection, path, service) { }
-  virtual ~ModemSimpleProxy() { }
+  ModemSimpleProxy(DBus::Connection& connection, const char* path,  // NOLINT
+                   const char* service)
+      : DBus::ObjectProxy(connection, path, service) {}
+  ~ModemSimpleProxy() override {}
 };
 
-class ModemProxy
-    : public org::freedesktop::ModemManager::Modem_proxy,
-      public DBus::ObjectProxy {
+class ModemProxy : public org::freedesktop::ModemManager::Modem_proxy,
+                   public DBus::ObjectProxy {
  public:
-  ModemProxy(DBus::Connection& connection, const char* path, // NOLINT
-             const char* service) :
-      DBus::ObjectProxy(connection, path, service) { }
-  virtual ~ModemProxy() { }
-  virtual void StateChanged(const uint32_t&, const uint32_t&,
-      const uint32_t&) { }
+  ModemProxy(DBus::Connection& connection, const char* path,  // NOLINT
+             const char* service)
+      : DBus::ObjectProxy(connection, path, service) {}
+  ~ModemProxy() override {}
+  void StateChanged(const uint32_t& old_state,
+                    const uint32_t& new_state,
+                    const uint32_t& reason) override {}
 };
 
 struct Modem {
+  Modem(const char* service, DBus::Path path)
+      : service_(service), path_(path) {}
+
+  Value* GetStatus(DBus::Connection& conn);  // NOLINT
+
   const char* service_;
   DBus::Path path_;
-
-  Modem(const char* service, DBus::Path path)
-      : service_(service), path_(path) { }
-
-  Value* GetStatus(DBus::Connection& conn); // NOLINT
 };
 
-Value* FetchOneInterface(DBusPropertiesProxy& properties, // NOLINT
+Value* FetchOneInterface(DBusPropertiesProxy& properties,  // NOLINT
                          const char* interface,
                          DictionaryValue* result) {
-  std::map<std::string, DBus::Variant> propsmap =
-      properties.GetAll(interface);
+  std::map<std::string, DBus::Variant> propsmap = properties.GetAll(interface);
   Value* propsdict = NULL;
   if (!debugd::DBusPropertyMapToValue(propsmap, &propsdict))
     return NULL;
+
   std::string keypath = interface;
   ReplaceSubstringsAfterOffset(&keypath, 0, ".", "/");
   result->Set(keypath, propsdict);
   return propsdict;
 }
 
-Value* Modem::GetStatus(DBus::Connection& conn) { // NOLINT
+Value* Modem::GetStatus(DBus::Connection& conn) {  // NOLINT
   DictionaryValue* result = new DictionaryValue();
   result->SetString("service", service_);
   result->SetString("path", path_);
@@ -108,8 +103,10 @@ Value* Modem::GetStatus(DBus::Connection& conn) { // NOLINT
     statusmap = simple.GetStatus();
     // cpplint thinks this is a function call
   } catch(DBus::Error e) {}
+
   if (debugd::DBusPropertyMapToValue(statusmap, &status))
     result->Set("status", status);
+
   ModemProxy modem = ModemProxy(conn, path_.c_str(), service_);
   DictionaryValue* infodict = new DictionaryValue();
   try {
@@ -163,6 +160,7 @@ int main() {
   ListValue result;
   for (size_t i = 0; i < modems.size(); ++i)
     result.Append(modems[i].GetStatus(conn));
+
   std::string json;
   base::JSONWriter::WriteWithOptions(&result,
                                      base::JSONWriter::OPTIONS_PRETTY_PRINT,

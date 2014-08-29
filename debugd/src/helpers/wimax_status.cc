@@ -29,12 +29,7 @@ class DBusPropertiesProxy : public org::freedesktop::DBus::Properties_proxy,
                       const string& service)
       : DBus::ObjectProxy(*connection, path, service.c_str()) {}
 
-  virtual ~DBusPropertiesProxy() {}
-
-  virtual void PropertiesChanged(
-      const string& interface,
-      const map<string, DBus::Variant>& changed_properties,
-      const vector<string>& invalidated_properties) {}
+  ~DBusPropertiesProxy() override {}
 };
 
 class WiMaxStatus {

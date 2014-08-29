@@ -43,10 +43,10 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
                     public DBus::IntrospectableAdaptor {
  public:
   DebugDaemon(DBus::Connection* connection, DBus::BusDispatcher* dispatcher);
-  virtual ~DebugDaemon();
+  ~DebugDaemon() override;
 
-  virtual bool Init();
-  virtual void Run();
+  bool Init();
+  void Run();
 
   // Setters for tools - used for dependency injection in tests
   void set_debug_logs_tool(DebugLogsTool* tool) {
@@ -79,78 +79,77 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
 
   // Public methods below this point are part of the DBus interface presented by
   // this object, and are documented in </share/org.chromium.debugd.xml>.
-  virtual std::string PingStart(
-      const DBus::FileDescriptor& outfd,
-      const std::string& dest,
-      const std::map<std::string, DBus::Variant>& options,
-      DBus::Error& error);  // NOLINT
-  virtual void PingStop(const std::string& handle,
-                        DBus::Error& error);  // NOLINT
-  virtual std::string TracePathStart(
+  std::string PingStart(const DBus::FileDescriptor& outfd,
+                        const std::string& dest,
+                        const std::map<std::string, DBus::Variant>& options,
+                        DBus::Error& error) override;  // NOLINT
+  void PingStop(const std::string& handle,
+                DBus::Error& error) override;  // NOLINT
+  std::string TracePathStart(
       const DBus::FileDescriptor& outfd,
       const std::string& destination,
       const std::map<std::string, DBus::Variant>& options,
-      DBus::Error& error);  // NOLINT
-  virtual void TracePathStop(const std::string& handle,
-                             DBus::Error& error);  // NOLINT
-  virtual void SystraceStart(const std::string& categories,
-                             DBus::Error& error);  // NOLINT
-  virtual void SystraceStop(const DBus::FileDescriptor& outfd,
-                            DBus::Error& error);  // NOLINT
-  virtual std::string SystraceStatus(DBus::Error& error);  // NOLINT
-  virtual std::vector<std::string> GetRoutes(
+      DBus::Error& error) override;  // NOLINT
+  void TracePathStop(const std::string& handle,
+                     DBus::Error& error) override;  // NOLINT
+  void SystraceStart(const std::string& categories,
+                     DBus::Error& error) override;  // NOLINT
+  void SystraceStop(const DBus::FileDescriptor& outfd,
+                    DBus::Error& error) override;  // NOLINT
+  std::string SystraceStatus(DBus::Error& error) override;  // NOLINT
+  std::vector<std::string> GetRoutes(
       const std::map<std::string, DBus::Variant>& options,
-      DBus::Error& error);  // NOLINT
-  virtual std::string GetModemStatus(DBus::Error& error);  // NOLINT
-  virtual std::string RunModemCommand(const std::string& command,
-                                      DBus::Error& error);  // NOLINT
-  virtual std::string GetNetworkStatus(DBus::Error& error);  // NOLINT
-  virtual std::string GetWiMaxStatus(DBus::Error& error);  // NOLINT
-  virtual std::vector<uint8_t> GetRichPerfData(const uint32_t& duration,
-                                             DBus::Error& error);  // NOLINT
-  virtual void GetDebugLogs(const DBus::FileDescriptor& fd,
-                            DBus::Error& error);  // NOLINT
-  virtual void DumpDebugLogs(const bool& is_compressed,
-                             const DBus::FileDescriptor& fd,
-                             DBus::Error& error);  // NOLINT
-  virtual void SetDebugMode(const std::string& subsystem,
-                            DBus::Error& error);  // NOLINT
-  virtual std::string GetLog(const std::string& name,
-                             DBus::Error& error);  // NOLINT
-  virtual std::map<std::string, std::string> GetAllLogs(
-      DBus::Error& error);  // NOLINT
-  virtual std::map<std::string, std::string> GetFeedbackLogs(
-      DBus::Error& error);  // NOLINT
-  virtual std::map<std::string, std::string> GetUserLogFiles(
-      DBus::Error& error);  // NOLINT
-  virtual std::string GetExample(DBus::Error& error);  // NOLINT
-  virtual std::string GetInterfaces(DBus::Error& error);  // NOLINT
-  virtual std::string TestICMP(const std::string& host,
-                               DBus::Error& error);  // NOLINT
-  virtual std::string TestICMPWithOptions(
+      DBus::Error& error) override;  // NOLINT
+  std::string GetModemStatus(DBus::Error& error) override;  // NOLINT
+  std::string RunModemCommand(const std::string& command,
+                              DBus::Error& error) override;  // NOLINT
+  std::string GetNetworkStatus(DBus::Error& error) override;  // NOLINT
+  std::string GetWiMaxStatus(DBus::Error& error) override;  // NOLINT
+  std::vector<uint8_t> GetRichPerfData(const uint32_t& duration,
+                                       DBus::Error& error) override;  // NOLINT
+  void GetDebugLogs(const DBus::FileDescriptor& fd,
+                    DBus::Error& error) override;  // NOLINT
+  void DumpDebugLogs(const bool& is_compressed,
+                     const DBus::FileDescriptor& fd,
+                     DBus::Error& error) override;  // NOLINT
+  void SetDebugMode(const std::string& subsystem,
+                    DBus::Error& error) override;  // NOLINT
+  std::string GetLog(const std::string& name,
+                     DBus::Error& error) override;  // NOLINT
+  std::map<std::string, std::string> GetAllLogs(
+      DBus::Error& error) override;  // NOLINT
+  std::map<std::string, std::string> GetFeedbackLogs(
+      DBus::Error& error) override;  // NOLINT
+  std::map<std::string, std::string> GetUserLogFiles(
+      DBus::Error& error) override;  // NOLINT
+  std::string GetExample(DBus::Error& error) override;  // NOLINT
+  std::string GetInterfaces(DBus::Error& error) override;  // NOLINT
+  std::string TestICMP(const std::string& host,
+                       DBus::Error& error) override;  // NOLINT
+  std::string TestICMPWithOptions(
       const std::string& host,
       const std::map<std::string, std::string>& options,
-      DBus::Error& error);  // NOLINT
-  virtual std::string Smartctl(const std::string& option,
-                               DBus::Error& error);  // NOLINT
-  virtual std::string MemtesterStart(const DBus::FileDescriptor& outfd,
-                                     const uint32_t& memory,
-                                     DBus::Error& error);  // NOLINT
-  virtual void MemtesterStop(const std::string& handle,
-                             DBus::Error& error);  // NOLINT
-  virtual std::string BadblocksStart(const DBus::FileDescriptor& outfd,
-                                     DBus::Error& error);  // NOLINT
-  virtual void BadblocksStop(const std::string& handle,
-                             DBus::Error& error);  // NOLINT
-  virtual std::string PacketCaptureStart(
+      DBus::Error& error) override;  // NOLINT
+  std::string Smartctl(const std::string& option,
+                       DBus::Error& error) override;  // NOLINT
+  std::string MemtesterStart(const DBus::FileDescriptor& outfd,
+                             const uint32_t& memory,
+                             DBus::Error& error) override;  // NOLINT
+  void MemtesterStop(const std::string& handle,
+                     DBus::Error& error) override;  // NOLINT
+  std::string BadblocksStart(const DBus::FileDescriptor& outfd,
+                             DBus::Error& error) override;  // NOLINT
+  void BadblocksStop(const std::string& handle,
+                     DBus::Error& error) override;  // NOLINT
+  std::string PacketCaptureStart(
       const DBus::FileDescriptor& statfd,
       const DBus::FileDescriptor& outfd,
       const std::map<std::string, DBus::Variant>& options,
-      DBus::Error& error);  // NOLINT
-  virtual void PacketCaptureStop(const std::string& handle,
-                                 DBus::Error& error);  // NOLINT
-  virtual void LogKernelTaskStates(DBus::Error& error);  // NOLINT
-  virtual void UploadCrashes(DBus::Error& error);  // NOLINT
+      DBus::Error& error) override;  // NOLINT
+  void PacketCaptureStop(const std::string& handle,
+                         DBus::Error& error) override;  // NOLINT
+  void LogKernelTaskStates(DBus::Error& error) override;  // NOLINT
+  void UploadCrashes(DBus::Error& error) override;  // NOLINT
 
  private:
   DBus::Connection* dbus_;

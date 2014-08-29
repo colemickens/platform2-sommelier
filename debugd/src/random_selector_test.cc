@@ -55,7 +55,7 @@ class RandomSelectorWithCustomRNG : public RandomSelector {
  private:
   // This function returns floats between |min| and |max| in an increasing
   // fashion at regular intervals.
-  virtual float GetFloatBetween(float min, float max) {
+  float GetFloatBetween(float min, float max) override {
     current_index_ = (current_index_ + 1) % kLargeNumber;
     return (max - min) * current_index_ / kLargeNumber + min;
   }

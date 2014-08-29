@@ -18,7 +18,7 @@ namespace debugd {
 class PingTool : public SubprocessTool {
  public:
   PingTool();
-  virtual ~PingTool();
+  ~PingTool() override;
 
   std::string Start(const DBus::FileDescriptor& outfd,
                     const std::string& destination,

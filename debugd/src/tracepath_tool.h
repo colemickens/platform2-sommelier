@@ -18,7 +18,7 @@ namespace debugd {
 class TracePathTool : public SubprocessTool {
  public:
   TracePathTool();
-  virtual ~TracePathTool();
+  ~TracePathTool() override;
 
   std::string Start(const DBus::FileDescriptor& outfd,
                     const std::string& destination,

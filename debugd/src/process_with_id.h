@@ -18,11 +18,14 @@ namespace debugd {
 class ProcessWithId : public SandboxedProcess {
  public:
   ProcessWithId();
-  virtual bool Init();
+
+  bool Init() override;
+
   const std::string& id() const { return id_; }
 
  private:
   bool GenerateId();
+
   std::string id_;
 };
 
