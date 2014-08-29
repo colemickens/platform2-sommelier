@@ -111,7 +111,7 @@ class MockEventDispatchTester {
 
   void StopListenIO() {
     got_data_ = false;
-    input_handler_.reset(NULL);
+    input_handler_.reset(nullptr);
   }
 
   void HandleReady(int fd) {
@@ -159,7 +159,7 @@ class MockEventDispatchTester {
 
   void StopListenReady() {
     got_ready_ = false;
-    input_handler_.reset(NULL);
+    input_handler_.reset(nullptr);
   }
 
   MOCK_METHOD1(CallbackComplete, void(int callback_count));
@@ -181,22 +181,22 @@ class MockEventDispatchTester {
 class ShillDaemonTest : public Test {
  public:
   ShillDaemonTest()
-      : daemon_(&config_, new MockControl()),
+      : daemon_(&config_, new MockControl()),  // Passes ownership.
         metrics_(new MockMetrics(&daemon_.dispatcher_)),
-        manager_(new MockManager(daemon_.control_,
+        manager_(new MockManager(daemon_.control_.get(),
                                  &daemon_.dispatcher_,
                                  metrics_,
                                  &daemon_.glib_)),
         dispatcher_(&daemon_.dispatcher_),
-        device_info_(daemon_.control_, dispatcher_, metrics_,
+        device_info_(daemon_.control_.get(), dispatcher_, metrics_,
                      daemon_.manager_.get()),
         dispatcher_test_(dispatcher_) {
   }
   virtual ~ShillDaemonTest() {}
   virtual void SetUp() {
     // Tests initialization done by the daemon's constructor
-    ASSERT_NE(reinterpret_cast<Config*>(NULL), daemon_.config_);
-    ASSERT_NE(reinterpret_cast<ControlInterface*>(NULL), daemon_.control_);
+    ASSERT_NE(nullptr, daemon_.config_);
+    ASSERT_NE(nullptr, daemon_.control_.get());
     daemon_.proxy_factory_ = &proxy_factory_;
     daemon_.rtnl_handler_ = &rtnl_handler_;
     daemon_.routing_table_ = &routing_table_;

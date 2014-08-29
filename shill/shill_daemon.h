@@ -10,6 +10,7 @@
 #include <base/memory/scoped_ptr.h>
 
 #include "shill/callback80211_metrics.h"
+#include "shill/control_interface.h"
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/manager.h"
@@ -18,7 +19,6 @@
 namespace shill {
 
 class Config;
-class ControlInterface;
 class DHCPProvider;
 class Error;
 class GLib;
@@ -55,7 +55,7 @@ class Daemon {
   void Stop();
 
   Config *config_;
-  ControlInterface *control_;
+  scoped_ptr<ControlInterface> control_;
   EventDispatcher dispatcher_;
   GLib glib_;
   Sockets sockets_;

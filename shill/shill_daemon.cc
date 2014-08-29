@@ -35,7 +35,7 @@ Daemon::Daemon(Config *config, ControlInterface *control)
       routing_table_(RoutingTable::GetInstance()),
       dhcp_provider_(DHCPProvider::GetInstance()),
       netlink_manager_(NetlinkManager::GetInstance()),
-      manager_(new Manager(control_,
+      manager_(new Manager(control_.get(),
                            &dispatcher_,
                            metrics_.get(),
                            &glib_,
@@ -112,7 +112,7 @@ void Daemon::Start() {
   metrics_->Start();
   rtnl_handler_->Start(&dispatcher_, &sockets_);
   routing_table_->Start();
-  dhcp_provider_->Init(control_, &dispatcher_, &glib_, metrics_.get());
+  dhcp_provider_->Init(control_.get(), &dispatcher_, &glib_, metrics_.get());
 
   if (netlink_manager_) {
     netlink_manager_->Init();

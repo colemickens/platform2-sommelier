@@ -167,6 +167,8 @@ int main(int argc, char** argv) {
   dbus_control->Init();
 
   shill::Config config;
+
+  // Passes ownership of dbus_control.
   shill::Daemon daemon(&config, dbus_control);
 
   if (cl->HasSwitch(switches::kDeviceBlackList)) {
