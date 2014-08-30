@@ -66,7 +66,7 @@ class ConfigLoaderTest : public testing::Test {
 
 TEST_F(ConfigLoaderTest, GetUsbModemInfo) {
   // No config is loaded.
-  EXPECT_TRUE(config_loader_.GetUsbModemInfo(0x1111, 0x2222) == NULL);
+  EXPECT_EQ(nullptr, config_loader_.GetUsbModemInfo(0x1111, 0x2222));
 
   base::FilePath config_file;
   ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -75,11 +75,11 @@ TEST_F(ConfigLoaderTest, GetUsbModemInfo) {
 
   EXPECT_TRUE(config_loader_.LoadConfig(config_file));
 
-  EXPECT_TRUE(config_loader_.GetUsbModemInfo(0x1111, 0x2222) == NULL);
+  EXPECT_EQ(nullptr, config_loader_.GetUsbModemInfo(0x1111, 0x2222));
 
   const UsbModemInfo* usb_modem_info1 =
       config_loader_.GetUsbModemInfo(0x2345, 0x7890);
-  EXPECT_TRUE(usb_modem_info1 != NULL);
+  EXPECT_NE(nullptr, usb_modem_info1);
   EXPECT_EQ(0x2345, usb_modem_info1->initial_usb_id().vendor_id());
   EXPECT_EQ(0x7890, usb_modem_info1->initial_usb_id().product_id());
   EXPECT_EQ(0, usb_modem_info1->final_usb_id_size());
@@ -89,7 +89,7 @@ TEST_F(ConfigLoaderTest, GetUsbModemInfo) {
 
   const UsbModemInfo* usb_modem_info2 =
       config_loader_.GetUsbModemInfo(0x1234, 0xabcd);
-  EXPECT_TRUE(usb_modem_info2 != NULL);
+  EXPECT_NE(nullptr, usb_modem_info2);
   EXPECT_EQ(0x1234, usb_modem_info2->initial_usb_id().vendor_id());
   EXPECT_EQ(0xabcd, usb_modem_info2->initial_usb_id().product_id());
   EXPECT_EQ(2, usb_modem_info2->final_usb_id_size());
@@ -112,7 +112,7 @@ TEST_F(ConfigLoaderTest, LoadEmptyConfigFile) {
 
   EXPECT_TRUE(config_loader_.LoadConfig(config_file));
   Config* config = config_loader_.config_.get();
-  EXPECT_TRUE(config != NULL);
+  EXPECT_NE(nullptr, config);
   EXPECT_EQ(0, config->usb_modem_info_size());
 }
 
@@ -123,12 +123,12 @@ TEST_F(ConfigLoaderTest, LoadInvalidConfigFile) {
                                     &config_file));
 
   EXPECT_FALSE(config_loader_.LoadConfig(config_file));
-  EXPECT_TRUE(config_loader_.config_.get() == NULL);
+  EXPECT_EQ(nullptr, config_loader_.config_.get());
 }
 
 TEST_F(ConfigLoaderTest, LoadNonExistentConfigFile) {
   EXPECT_FALSE(config_loader_.LoadConfig(FilePath("/non-existent-file")));
-  EXPECT_TRUE(config_loader_.config_.get() == NULL);
+  EXPECT_EQ(nullptr, config_loader_.config_.get());
 }
 
 TEST_F(ConfigLoaderTest, LoadValidConfigFile) {
@@ -139,7 +139,7 @@ TEST_F(ConfigLoaderTest, LoadValidConfigFile) {
 
   EXPECT_TRUE(config_loader_.LoadConfig(config_file));
   Config* config = config_loader_.config_.get();
-  EXPECT_TRUE(config != NULL);
+  EXPECT_NE(nullptr, config);
   EXPECT_EQ(2, config->usb_modem_info_size());
 
   const UsbModemInfo& usb_modem_info1 = config->usb_modem_info(0);

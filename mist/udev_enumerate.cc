@@ -15,7 +15,7 @@ using base::StringPrintf;
 
 namespace mist {
 
-UdevEnumerate::UdevEnumerate() : enumerate_(NULL) {}
+UdevEnumerate::UdevEnumerate() : enumerate_(nullptr) {}
 
 UdevEnumerate::UdevEnumerate(udev_enumerate* enumerate)
     : enumerate_(enumerate) {
@@ -27,7 +27,7 @@ UdevEnumerate::UdevEnumerate(udev_enumerate* enumerate)
 UdevEnumerate::~UdevEnumerate() {
   if (enumerate_) {
     udev_enumerate_unref(enumerate_);
-    enumerate_ = NULL;
+    enumerate_ = nullptr;
   }
 }
 
@@ -175,7 +175,7 @@ bool UdevEnumerate::ScanSubsystems() {
 
 UdevListEntry* UdevEnumerate::GetListEntry() const {
   udev_list_entry* list_entry = udev_enumerate_get_list_entry(enumerate_);
-  return list_entry ? new UdevListEntry(list_entry) : NULL;
+  return list_entry ? new UdevListEntry(list_entry) : nullptr;
 }
 
 }  // namespace mist

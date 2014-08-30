@@ -25,7 +25,7 @@ const char* UsbDirectionToString(UsbDirection direction) {
       return "Out";
   }
   NOTREACHED();
-  return NULL;
+  return nullptr;
 }
 
 const char* UsbSpeedToString(UsbSpeed speed) {
@@ -42,7 +42,7 @@ const char* UsbSpeedToString(UsbSpeed speed) {
       return "Super";
   }
   NOTREACHED();
-  return NULL;
+  return nullptr;
 }
 
 const char* UsbTransferTypeToString(UsbTransferType transfer_type) {
@@ -59,7 +59,7 @@ const char* UsbTransferTypeToString(UsbTransferType transfer_type) {
       return "Unknown";
   }
   NOTREACHED();
-  return NULL;
+  return nullptr;
 }
 
 const char* UsbTransferStatusToString(UsbTransferStatus transfer_status) {
@@ -82,7 +82,7 @@ const char* UsbTransferStatusToString(UsbTransferStatus transfer_status) {
       return "Unknown";
   }
   NOTREACHED();
-  return NULL;
+  return nullptr;
 }
 
 }  // namespace mist

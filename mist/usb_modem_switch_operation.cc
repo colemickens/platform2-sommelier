@@ -447,7 +447,7 @@ void UsbModemSwitchOperation::ReceiveMessageFromMassStorageEndpoint() {
                           num_usb_messages_);
 
   InitiateUsbBulkTransfer(in_endpoint_address_,
-                          NULL,
+                          nullptr,
                           kExpectedResponseLength,
                           &UsbModemSwitchOperation::OnReceiveMessageCompleted);
 }

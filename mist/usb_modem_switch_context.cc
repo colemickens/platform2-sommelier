@@ -26,7 +26,7 @@ UsbModemSwitchContext::UsbModemSwitchContext()
       device_address_(0),
       vendor_id_(0),
       product_id_(0),
-      modem_info_(NULL) {}
+      modem_info_(nullptr) {}
 
 UsbModemSwitchContext::UsbModemSwitchContext(const std::string& sys_path,
                                              uint8_t bus_number,

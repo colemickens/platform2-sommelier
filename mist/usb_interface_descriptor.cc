@@ -75,7 +75,7 @@ UsbEndpointDescriptor* UsbInterfaceDescriptor::GetEndpointDescriptor(
     LOG(ERROR) << StringPrintf("Invalid endpoint index %d. "
                                "Must be less than %d.",
                                index, GetNumEndpoints());
-    return NULL;
+    return nullptr;
   }
 
   return new UsbEndpointDescriptor(&interface_descriptor_->endpoint[index]);
@@ -92,7 +92,7 @@ UsbInterfaceDescriptor::GetEndpointDescriptorByTransferTypeAndDirection(
       return endpoint_descriptor.release();
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 string UsbInterfaceDescriptor::ToString() const {

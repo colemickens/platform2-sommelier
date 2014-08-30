@@ -41,12 +41,12 @@ MessageLoopForIO::Mode ConvertEventFlagsToWatchMode(short events) {  // NOLINT
 
 UsbManager::UsbManager(EventDispatcher* dispatcher)
     : dispatcher_(dispatcher),
-      context_(NULL) {}
+      context_(nullptr) {}
 
 UsbManager::~UsbManager() {
   if (context_) {
     libusb_exit(context_);
-    context_ = NULL;
+    context_ = nullptr;
   }
 }
 
@@ -79,7 +79,7 @@ UsbDevice* UsbManager::GetDevice(uint8_t bus_number,
                                  uint16_t product_id) {
   ScopedVector<UsbDevice> devices;
   if (!GetDevices(&devices))
-    return NULL;
+    return nullptr;
 
   for (ScopedVector<UsbDevice>::iterator it = devices.begin();
        it != devices.end();
@@ -100,7 +100,7 @@ UsbDevice* UsbManager::GetDevice(uint8_t bus_number,
   }
 
   error_.set_type(UsbError::kErrorNotFound);
-  return NULL;
+  return nullptr;
 }
 
 bool UsbManager::GetDevices(ScopedVector<UsbDevice>* devices) {
@@ -109,7 +109,7 @@ bool UsbManager::GetDevices(ScopedVector<UsbDevice>* devices) {
 
   devices->clear();
 
-  libusb_device** device_list = NULL;
+  libusb_device** device_list = nullptr;
   ssize_t result = libusb_get_device_list(context_, &device_list);
   if (result < 0)
     return error_.SetFromLibUsbError(static_cast<libusb_error>(result));
@@ -177,7 +177,8 @@ void UsbManager::HandleEventsNonBlocking() {
   CHECK(context_);
 
   timeval zero_tv = {0};
-  int result = libusb_handle_events_timeout_completed(context_, &zero_tv, NULL);
+  int result =
+      libusb_handle_events_timeout_completed(context_, &zero_tv, nullptr);
   UsbError error(static_cast<libusb_error>(result));
   LOG_IF(ERROR, !error.IsSuccess()) << "Could not handle USB events: " << error;
 }

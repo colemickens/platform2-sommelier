@@ -59,7 +59,7 @@ bool ConfigLoader::LoadConfig(const FilePath& file_path) {
 const UsbModemInfo* ConfigLoader::GetUsbModemInfo(
     uint16_t vendor_id, uint16_t product_id) const {
   if (!config_)
-    return NULL;
+    return nullptr;
 
   for (int i = 0; i < config_->usb_modem_info_size(); ++i) {
     const UsbModemInfo& usb_modem_info = config_->usb_modem_info(i);
@@ -68,7 +68,7 @@ const UsbModemInfo* ConfigLoader::GetUsbModemInfo(
       return &usb_modem_info;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 }  // namespace mist

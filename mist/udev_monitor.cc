@@ -15,7 +15,7 @@ using base::StringPrintf;
 
 namespace mist {
 
-UdevMonitor::UdevMonitor() : monitor_(NULL) {}
+UdevMonitor::UdevMonitor() : monitor_(nullptr) {}
 
 UdevMonitor::UdevMonitor(udev_monitor* monitor)
     : monitor_(monitor) {
@@ -27,7 +27,7 @@ UdevMonitor::UdevMonitor(udev_monitor* monitor)
 UdevMonitor::~UdevMonitor() {
   if (monitor_) {
     udev_monitor_unref(monitor_);
-    monitor_ = NULL;
+    monitor_ = nullptr;
   }
 }
 
@@ -78,9 +78,9 @@ UdevDevice* UdevMonitor::ReceiveDevice() {
     return device;
   }
 
-  VLOG(2) << StringPrintf("udev_monitor_receive_device(%p) returned NULL.",
+  VLOG(2) << StringPrintf("udev_monitor_receive_device(%p) returned nullptr.",
                           monitor_);
-  return NULL;
+  return nullptr;
 }
 
 bool UdevMonitor::FilterAddMatchSubsystemDeviceType(const char* subsystem,

@@ -31,7 +31,7 @@ UsbConfigDescriptor::UsbConfigDescriptor(
 UsbConfigDescriptor::~UsbConfigDescriptor() {
   if (own_config_descriptor_) {
     libusb_free_config_descriptor(config_descriptor_);
-    config_descriptor_ = NULL;
+    config_descriptor_ = nullptr;
   }
 }
 
@@ -74,7 +74,7 @@ UsbInterface* UsbConfigDescriptor::GetInterface(uint8_t index) const {
     LOG(ERROR) << StringPrintf("Invalid interface index %d. "
                                "Must be less than %d.",
                                index, GetNumInterfaces());
-    return NULL;
+    return nullptr;
   }
 
   return new UsbInterface(device_, &config_descriptor_->interface[index]);

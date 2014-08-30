@@ -62,7 +62,7 @@ class UsbDeviceEventNotifierTest : public testing::Test {
 };
 
 TEST_F(UsbDeviceEventNotifierTest, ConvertNullToEmptyString) {
-  EXPECT_EQ("", UsbDeviceEventNotifier::ConvertNullToEmptyString(NULL));
+  EXPECT_EQ("", UsbDeviceEventNotifier::ConvertNullToEmptyString(nullptr));
   EXPECT_EQ("", UsbDeviceEventNotifier::ConvertNullToEmptyString(""));
   EXPECT_EQ("a", UsbDeviceEventNotifier::ConvertNullToEmptyString("a"));
   EXPECT_EQ("test string",
@@ -341,7 +341,7 @@ TEST_F(UsbDeviceEventNotifierTest, ScanExistingDevices) {
   EXPECT_CALL(*list_entry1, GetNext()).WillOnce(Return(list_entry2));
   EXPECT_CALL(*list_entry2, GetName()).WillOnce(Return(kFakeUsbDevice2SysPath));
   EXPECT_CALL(*list_entry2, GetNext())
-      .WillOnce(Return(static_cast<UdevListEntry*>(NULL)));
+      .WillOnce(Return(static_cast<UdevListEntry*>(nullptr)));
   EXPECT_CALL(udev_, CreateDeviceFromSysPath(_))
       .WillOnce(Return(device1))
       .WillOnce(Return(device2));

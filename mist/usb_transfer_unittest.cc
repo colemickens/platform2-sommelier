@@ -18,7 +18,7 @@ class UsbTransferTest : public testing::Test {
     // Take out the injected libusb_transfer to bypass the invocation of
     // libusb_free_transfer() in UsbTransfer.
     if (transfer_.transfer_ == &test_transfer_)
-      transfer_.transfer_ = NULL;
+      transfer_.transfer_ = nullptr;
 
     transfer_.state_ = original_transfer_state_;
   }
@@ -47,7 +47,7 @@ class UsbTransferTest : public testing::Test {
 };
 
 TEST_F(UsbTransferTest, DefaultConstructor) {
-  EXPECT_TRUE(transfer_.buffer() == NULL);
+  EXPECT_EQ(nullptr, transfer_.buffer());
   EXPECT_EQ(0, transfer_.buffer_length());
   EXPECT_EQ(UsbTransfer::kIdle, transfer_.state());
   EXPECT_TRUE(transfer_.error().IsSuccess());
@@ -166,13 +166,13 @@ TEST_F(UsbTransferTest, FreeBeforeAllocate) {
 TEST_F(UsbTransferTest, AllocateBuffer) {
   // Allocate a zero-size buffer should be ok.
   EXPECT_TRUE(transfer_.AllocateBuffer(0));
-  EXPECT_TRUE(transfer_.buffer() != NULL);
+  EXPECT_NE(nullptr, transfer_.buffer());
   EXPECT_EQ(0, transfer_.buffer_length());
 
   // Re-allocate the buffer should be ok.
   const uint8_t kTestData[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
   EXPECT_TRUE(transfer_.AllocateBuffer(arraysize(kTestData)));
-  EXPECT_TRUE(transfer_.buffer() != NULL);
+  EXPECT_NE(nullptr, transfer_.buffer());
   EXPECT_EQ(arraysize(kTestData), transfer_.buffer_length());
   // Write to the allocated buffer and then read from it to ensure the buffer
   // is properly allocated.

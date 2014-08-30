@@ -16,7 +16,7 @@ using std::string;
 namespace mist {
 
 UsbTransfer::UsbTransfer()
-    : transfer_(NULL),
+    : transfer_(nullptr),
       buffer_length_(0),
       state_(kIdle) {}
 
@@ -183,7 +183,7 @@ void UsbTransfer::Free() {
   if (transfer_) {
     libusb_free_transfer(transfer_);
     VLOG(2) << StringPrintf("Freed USB transfer %p.", transfer_);
-    transfer_ = NULL;
+    transfer_ = nullptr;
   }
 }
 

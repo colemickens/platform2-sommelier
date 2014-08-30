@@ -10,7 +10,7 @@
 
 namespace mist {
 
-UdevDevice::UdevDevice() : device_(NULL) {}
+UdevDevice::UdevDevice() : device_(nullptr) {}
 
 UdevDevice::UdevDevice(udev_device* device) : device_(device) {
   CHECK(device_);
@@ -21,7 +21,7 @@ UdevDevice::UdevDevice(udev_device* device) : device_(device) {
 UdevDevice::~UdevDevice() {
   if (device_) {
     udev_device_unref(device_);
-    device_ = NULL;
+    device_ = nullptr;
   }
 }
 
@@ -29,7 +29,7 @@ UdevDevice* UdevDevice::GetParent() const {
   // udev_device_get_parent does not increase the reference count of the
   // returned udev_device struct.
   udev_device* parent_device = udev_device_get_parent(device_);
-  return parent_device ? new UdevDevice(parent_device) : NULL;
+  return parent_device ? new UdevDevice(parent_device) : nullptr;
 }
 
 UdevDevice* UdevDevice::GetParentWithSubsystemDeviceType(
@@ -39,7 +39,7 @@ UdevDevice* UdevDevice::GetParentWithSubsystemDeviceType(
   // reference count of the returned udev_device struct.
   udev_device* parent_device = udev_device_get_parent_with_subsystem_devtype(
       device_, subsystem, device_type);
-  return parent_device ? new UdevDevice(parent_device) : NULL;
+  return parent_device ? new UdevDevice(parent_device) : nullptr;
 }
 
 bool UdevDevice::IsInitialized() const {
@@ -96,12 +96,12 @@ const char* UdevDevice::GetAction() const {
 
 UdevListEntry* UdevDevice::GetDeviceLinksListEntry() const {
   udev_list_entry* list_entry = udev_device_get_devlinks_list_entry(device_);
-  return list_entry ? new UdevListEntry(list_entry) : NULL;
+  return list_entry ? new UdevListEntry(list_entry) : nullptr;
 }
 
 UdevListEntry* UdevDevice::GetPropertiesListEntry() const {
   udev_list_entry* list_entry = udev_device_get_properties_list_entry(device_);
-  return list_entry ? new UdevListEntry(list_entry) : NULL;
+  return list_entry ? new UdevListEntry(list_entry) : nullptr;
 }
 
 const char* UdevDevice::GetPropertyValue(const char* key) const {
@@ -110,12 +110,12 @@ const char* UdevDevice::GetPropertyValue(const char* key) const {
 
 UdevListEntry* UdevDevice::GetTagsListEntry() const {
   udev_list_entry* list_entry = udev_device_get_tags_list_entry(device_);
-  return list_entry ? new UdevListEntry(list_entry) : NULL;
+  return list_entry ? new UdevListEntry(list_entry) : nullptr;
 }
 
 UdevListEntry* UdevDevice::GetSysAttributeListEntry() const {
   udev_list_entry* list_entry = udev_device_get_sysattr_list_entry(device_);
-  return list_entry ? new UdevListEntry(list_entry) : NULL;
+  return list_entry ? new UdevListEntry(list_entry) : nullptr;
 }
 
 const char* UdevDevice::GetSysAttributeValue(const char* attribute) const {

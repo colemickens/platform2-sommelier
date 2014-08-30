@@ -10,7 +10,7 @@
 
 namespace mist {
 
-UdevListEntry::UdevListEntry() : list_entry_(NULL) {}
+UdevListEntry::UdevListEntry() : list_entry_(nullptr) {}
 
 UdevListEntry::UdevListEntry(udev_list_entry* list_entry)
     : list_entry_(list_entry) {
@@ -19,12 +19,12 @@ UdevListEntry::UdevListEntry(udev_list_entry* list_entry)
 
 UdevListEntry* UdevListEntry::GetNext() const {
   udev_list_entry* list_entry = udev_list_entry_get_next(list_entry_);
-  return list_entry ? new UdevListEntry(list_entry) : NULL;
+  return list_entry ? new UdevListEntry(list_entry) : nullptr;
 }
 
 UdevListEntry* UdevListEntry::GetByName(const char* name) const {
   udev_list_entry* list_entry = udev_list_entry_get_by_name(list_entry_, name);
-  return list_entry ? new UdevListEntry(list_entry) : NULL;
+  return list_entry ? new UdevListEntry(list_entry) : nullptr;
 }
 
 const char* UdevListEntry::GetName() const {

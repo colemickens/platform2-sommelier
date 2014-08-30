@@ -18,12 +18,12 @@ using base::StringPrintf;
 
 namespace mist {
 
-Udev::Udev() : udev_(NULL) {}
+Udev::Udev() : udev_(nullptr) {}
 
 Udev::~Udev() {
   if (udev_) {
     udev_unref(udev_);
-    udev_ = NULL;
+    udev_ = nullptr;
   }
 }
 
@@ -34,7 +34,7 @@ bool Udev::Initialize() {
   if (udev_)
     return true;
 
-  VLOG(2) << "udev_new() returned NULL.";
+  VLOG(2) << "udev_new() returned nullptr.";
   return false;
 }
 
@@ -59,10 +59,10 @@ UdevDevice* Udev::CreateDeviceFromSysPath(const char* sys_path) {
     return CreateDevice(device);
 
   VLOG(2) << StringPrintf("udev_device_new_from_syspath"
-                          "(%p, \"%s\") returned NULL.",
+                          "(%p, \"%s\") returned nullptr.",
                           udev_,
                           sys_path);
-  return NULL;
+  return nullptr;
 }
 
 UdevDevice* Udev::CreateDeviceFromDeviceNumber(char type, dev_t device_number) {
@@ -71,11 +71,11 @@ UdevDevice* Udev::CreateDeviceFromDeviceNumber(char type, dev_t device_number) {
     return CreateDevice(device);
 
   VLOG(2) << StringPrintf("udev_device_new_from_devnum"
-                          "(%p, %d, %" PRIu64 ") returned NULL.",
+                          "(%p, %d, %" PRIu64 ") returned nullptr.",
                           udev_,
                           type,
                           device_number);
-  return NULL;
+  return nullptr;
 }
 
 UdevDevice* Udev::CreateDeviceFromSubsystemSysName(const char* subsystem,
@@ -86,11 +86,11 @@ UdevDevice* Udev::CreateDeviceFromSubsystemSysName(const char* subsystem,
     return CreateDevice(device);
 
   VLOG(2) << StringPrintf("udev_device_new_from_subsystem_sysname"
-                          "(%p, \"%s\", \"%s\") returned NULL.",
+                          "(%p, \"%s\", \"%s\") returned nullptr.",
                           udev_,
                           subsystem,
                           sys_name);
-  return NULL;
+  return nullptr;
 }
 
 UdevEnumerate* Udev::CreateEnumerate() {
@@ -107,9 +107,9 @@ UdevEnumerate* Udev::CreateEnumerate() {
     return enumerate_to_return;
   }
 
-  VLOG(2) << StringPrintf("udev_enumerate_new(%p) returned NULL.",
+  VLOG(2) << StringPrintf("udev_enumerate_new(%p) returned nullptr.",
                           udev_);
-  return NULL;
+  return nullptr;
 }
 
 UdevMonitor* Udev::CreateMonitorFromNetlink(const char* name) {
@@ -127,10 +127,10 @@ UdevMonitor* Udev::CreateMonitorFromNetlink(const char* name) {
   }
 
   VLOG(2) << StringPrintf("udev_monitor_new_from_netlink"
-                          "(%p, \"%s\") returned NULL.",
+                          "(%p, \"%s\") returned nullptr.",
                           udev_,
                           name);
-  return NULL;
+  return nullptr;
 }
 
 }  // namespace mist

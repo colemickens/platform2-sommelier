@@ -33,7 +33,7 @@ UsbInterfaceDescriptor* UsbInterface::GetAlternateSetting(
     LOG(ERROR) << StringPrintf("Invalid alternate setting index %d. "
                                "Must be non-negative and less than %d.",
                                index, GetNumAlternateSettings());
-    return NULL;
+    return nullptr;
   }
 
   return new UsbInterfaceDescriptor(device_, &interface_->altsetting[index]);
