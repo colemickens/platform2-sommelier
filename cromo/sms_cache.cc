@@ -4,8 +4,9 @@
 
 #include <mm/mm-modem.h>  // for MM_ERROR_MODEM_GSM_INVALIDINDEX
 
+#include <memory>
+
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "cromo/sms_cache.h"
 
@@ -67,7 +68,7 @@ void SmsCache::RemoveFromCache(int index) {
   if (sms->part_count() > 1)
     multiparts_.erase(sms->part_reference());
 
-  scoped_ptr<std::vector<int> > parts(sms->MessageIndexList());
+  std::unique_ptr<std::vector<int>> parts(sms->MessageIndexList());
   for (std::vector<int>::const_iterator it = parts->begin();
        it != parts->end();
        ++it) {
@@ -159,7 +160,7 @@ void SmsCache::Delete(int index, DBus::Error& error,  // NOLINT - refs.
       return;
     }
   } else {
-    scoped_ptr<std::vector<int> > slots(sms->MessageIndexList());
+    std::unique_ptr<std::vector<int>> slots(sms->MessageIndexList());
     // There's some difficulty in handling errors vs. cache
     // consistency here. If we call RemoveFromCache() unconditionally,
     // and then have an error deleting a message, then the cache will
@@ -185,7 +186,7 @@ std::vector<utilities::DBusPropertyMap>* SmsCache::List(
   ClearCache();
 
   // Refill the cache
-  scoped_ptr<std::vector<int> > indexlist(impl->ListSms(error));
+  std::unique_ptr<std::vector<int>> indexlist(impl->ListSms(error));
   if (!error.is_set()) {
     for (std::vector<int>::const_iterator it = indexlist->begin();
          it != indexlist->end();

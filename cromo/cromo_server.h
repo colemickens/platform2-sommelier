@@ -6,11 +6,11 @@
 #define CROMO_CROMO_SERVER_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <dbus-c++/dbus.h>
 #include <dbus-c++/glib-integration.h>
 #include <metrics/metrics_library.h>
@@ -63,12 +63,12 @@ class CromoServer : public org::freedesktop::ModemManager_adaptor,
   ModemHandlers modem_handlers_;
 
   CarrierMap carriers_;
-  scoped_ptr<Carrier> carrier_no_op_;
+  std::unique_ptr<Carrier> carrier_no_op_;
 
   HookTable start_exit_hooks_;
   HookTable exit_ok_hooks_;
 
-  scoped_ptr<MetricsLibraryInterface> metrics_lib_;
+  std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
 
   DISALLOW_COPY_AND_ASSIGN(CromoServer);
 };

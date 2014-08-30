@@ -5,10 +5,10 @@
 
 #include "cromo/sms_cache.h"
 
+#include <memory>
 #include <utility>
 
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest.h>
 
 namespace cromo {
@@ -85,14 +85,15 @@ TEST(SmsCache, empty) {
   FakeModem fake;
   DBus::Error noerror;
 
-  scoped_ptr<std::vector<utilities::DBusPropertyMap> > messages(
+  std::unique_ptr<std::vector<utilities::DBusPropertyMap>> messages(
       cache.List(noerror, &fake));
   ASSERT_FALSE(noerror.is_set());
   ASSERT_TRUE(messages.get());
   ASSERT_EQ(0, messages->size());
 
   DBus::Error error;
-  scoped_ptr<utilities::DBusPropertyMap> message(cache.Get(1, error, &fake));
+  std::unique_ptr<utilities::DBusPropertyMap> message(
+      cache.Get(1, error, &fake));
   ASSERT_FALSE(message.get());
   ASSERT_TRUE(error.is_set());
 }
@@ -105,7 +106,7 @@ TEST(SmsCache, hello_get_list) {
   fake.Add(index, kPduHello, sizeof(kPduHello));
 
   DBus::Error noerror;
-  scoped_ptr<utilities::DBusPropertyMap> message(
+  std::unique_ptr<utilities::DBusPropertyMap> message(
       cache.Get(index, noerror, &fake));
   ASSERT_TRUE(message.get());
   ASSERT_FALSE(noerror.is_set());
@@ -117,7 +118,7 @@ TEST(SmsCache, hello_get_list) {
                (*message)["timestamp"].reader().get_string());
   EXPECT_STREQ("hellohello", (*message)["text"].reader().get_string());
 
-  scoped_ptr<std::vector<utilities::DBusPropertyMap> > messages(
+  std::unique_ptr<std::vector<utilities::DBusPropertyMap> > messages(
       cache.List(noerror, &fake));
   ASSERT_FALSE(noerror.is_set());
   ASSERT_TRUE(messages.get());
@@ -155,7 +156,7 @@ TEST(SmsCache, hello_list_get) {
   fake.Add(index, kPduHello, sizeof(kPduHello));
 
   DBus::Error noerror;
-  scoped_ptr<std::vector<utilities::DBusPropertyMap> > messages(
+  std::unique_ptr<std::vector<utilities::DBusPropertyMap> > messages(
       cache.List(noerror, &fake));
   ASSERT_FALSE(noerror.is_set());
   ASSERT_TRUE(messages.get());
@@ -168,7 +169,7 @@ TEST(SmsCache, hello_list_get) {
                (*messages)[0]["timestamp"].reader().get_string());
   EXPECT_STREQ("hellohello", (*messages)[0]["text"].reader().get_string());
 
-  scoped_ptr<utilities::DBusPropertyMap> message(
+  std::unique_ptr<utilities::DBusPropertyMap> message(
       cache.Get(index, noerror, &fake));
   ASSERT_TRUE(message.get());
   ASSERT_FALSE(noerror.is_set());
@@ -237,7 +238,7 @@ TEST(SmsCache, twopart) {
   fake.Add(2, kPduPart2of2, sizeof(kPduPart2of2));
 
   DBus::Error noerror;
-  scoped_ptr<std::vector<utilities::DBusPropertyMap> > messages(
+  std::unique_ptr<std::vector<utilities::DBusPropertyMap>> messages(
       cache.List(noerror, &fake));
   ASSERT_FALSE(noerror.is_set());
   ASSERT_TRUE(messages.get());
@@ -263,7 +264,8 @@ TEST(SmsCache, twopart) {
   EXPECT_FALSE(fake.Contains(2));
 
   DBus::Error error;
-  scoped_ptr<utilities::DBusPropertyMap> message(cache.Get(1, error, &fake));
+  std::unique_ptr<utilities::DBusPropertyMap> message(
+      cache.Get(1, error, &fake));
   ASSERT_FALSE(message.get());
   ASSERT_TRUE(error.is_set());
 
@@ -283,7 +285,7 @@ TEST(SmsCache, twopart_reverse) {
   fake.Add(2, kPduPart1of2, sizeof(kPduPart1of2));
 
   DBus::Error noerror;
-  scoped_ptr<std::vector<utilities::DBusPropertyMap> > messages(
+  std::unique_ptr<std::vector<utilities::DBusPropertyMap>> messages(
       cache.List(noerror, &fake));
   ASSERT_FALSE(noerror.is_set());
   ASSERT_TRUE(messages.get());
@@ -309,7 +311,8 @@ TEST(SmsCache, twopart_reverse) {
   EXPECT_FALSE(fake.Contains(2));
 
   DBus::Error error;
-  scoped_ptr<utilities::DBusPropertyMap> message(cache.Get(1, error, &fake));
+  std::unique_ptr<utilities::DBusPropertyMap> message(
+      cache.Get(1, error, &fake));
   ASSERT_FALSE(message.get());
   ASSERT_TRUE(error.is_set());
 
@@ -329,7 +332,7 @@ TEST(SmsCache, twopart_duplicate) {
   fake.Add(3, kPduPart2of2, sizeof(kPduPart2of2));
 
   DBus::Error noerror;
-  scoped_ptr<std::vector<utilities::DBusPropertyMap> > messages(
+  std::unique_ptr<std::vector<utilities::DBusPropertyMap>> messages(
       cache.List(noerror, &fake));
   ASSERT_FALSE(noerror.is_set());
   ASSERT_TRUE(messages.get());
@@ -355,7 +358,8 @@ TEST(SmsCache, twopart_duplicate) {
   EXPECT_FALSE(fake.Contains(2));
 
   DBus::Error error;
-  scoped_ptr<utilities::DBusPropertyMap> message(cache.Get(1, error, &fake));
+  std::unique_ptr<utilities::DBusPropertyMap> message(
+      cache.Get(1, error, &fake));
   ASSERT_FALSE(message.get());
   ASSERT_TRUE(error.is_set());
 
