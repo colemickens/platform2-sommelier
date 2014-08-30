@@ -4,8 +4,9 @@
 
 #include "gobi-cromo-plugin/gobi_sdk_wrapper.h"
 
+#include <memory>
+
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest.h>
 
 namespace gobi {
@@ -22,7 +23,7 @@ class GobiSdkTest : public ::testing::Test {
     LOG(FATAL) << "Unexpected sdk error";
   }
  public:
-  scoped_ptr<gobi::Sdk> sdk_;
+  std::unique_ptr<gobi::Sdk> sdk_;
 };
 
 TEST_F(GobiSdkTest, InitGetServiceFromName) {

@@ -7,9 +7,9 @@
 #include <ctype.h>  // for isspace(), to implement TrimWhitespaceASCII()
 #include <stdio.h>  // for sscanf()
 
+#include <memory>
 #include <sstream>
 
-#include <base/memory/scoped_ptr.h>
 #include <cromo/carrier.h>
 #include <cromo/sms_message.h>
 #include <mm/mm-modem.h>
@@ -796,13 +796,13 @@ void GobiGsmModem::Delete(const uint32_t& index, DBus::Error &error) {
 
 utilities::DBusPropertyMap GobiGsmModem::Get(const uint32_t& index,
                                              DBus::Error &error) {
-  scoped_ptr<utilities::DBusPropertyMap> message(
+  std::unique_ptr<utilities::DBusPropertyMap> message(
       sms_cache_.Get(index, error, this));
   return *(message.get());
 }
 
 std::vector<utilities::DBusPropertyMap> GobiGsmModem::List(DBus::Error &error) {
-  scoped_ptr<std::vector<utilities::DBusPropertyMap> > list(
+  std::unique_ptr<std::vector<utilities::DBusPropertyMap>> list(
       sms_cache_.List(error, this));
   return *(list.get());
 }

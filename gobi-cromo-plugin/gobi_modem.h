@@ -10,6 +10,7 @@
 #include <stdint.h>
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 
@@ -432,7 +433,7 @@ class GobiModem : public Modem,
   static GobiModemHandler* handler_;
   // Wraps the Gobi SDK for dependency injection
   gobi::Sdk* sdk_;
-  scoped_ptr<GobiModemHelper> modem_helper_;
+  std::unique_ptr<GobiModemHelper> modem_helper_;
   gobi::DeviceElement device_;
   int last_seen_;  // Updated every scan where the modem is present
   // Mirrors the DBus "State" property. This variable exists because
@@ -458,7 +459,7 @@ class GobiModem : public Modem,
   std::set<guint> idle_callback_ids_;
 
   bool session_starter_in_flight_;
-  scoped_ptr<PendingEnable> pending_enable_;
+  std::unique_ptr<PendingEnable> pending_enable_;
 
   ScopedGSource retry_disable_callback_source_;
   void RescheduleDisable();
@@ -500,7 +501,7 @@ class GobiModem : public Modem,
   friend bool StartExitTrampoline(void* arg);
   friend bool ExitOkTrampoline(void* arg);
 
-  scoped_ptr<MetricsLibraryInterface> metrics_lib_;
+  std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
 
   MetricsStopwatch disconnect_time_;
   MetricsStopwatch registration_time_;

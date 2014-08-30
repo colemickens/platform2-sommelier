@@ -4,8 +4,9 @@
 
 #include "gobi-cromo-plugin/gobi_modem_factory.h"
 
+#include <memory>
+
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "gobi-cromo-plugin/gobi_2k_modem.h"
 #include "gobi-cromo-plugin/gobi_3k_modem.h"
@@ -41,7 +42,7 @@ GobiModem* GobiModemFactory::CreateModem(DBus::Connection& connection,
     return NULL;
   }
   GobiType devtype = GetDeviceType();
-  scoped_ptr<GobiModemHelper> helper;
+  std::unique_ptr<GobiModemHelper> helper;
   switch (devtype) {
     case GOBITYPE_2K:
       helper.reset(new Gobi2KModemHelper(sdk));

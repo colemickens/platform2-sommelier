@@ -158,7 +158,7 @@ class SessionStarter {
 
   static gboolean CompletionCallback(void *data) {
     // Runs on main thread;
-    scoped_ptr<SessionStarter> s(static_cast<SessionStarter *>(data));
+    std::unique_ptr<SessionStarter> s(static_cast<SessionStarter *>(data));
 
     int join_rc = pthread_join(s->thread_, NULL);
     if (join_rc != 0) {
@@ -707,7 +707,7 @@ void GobiModem::FinishDeferredCall(DBus::Tag *tag, const DBus::Error &error) {
 }
 
 void GobiModem::FinishEnable(const DBus::Error &error) {
-  scoped_ptr<PendingEnable> scoped_enable(pending_enable_.release());
+  std::unique_ptr<PendingEnable> scoped_enable = std::move(pending_enable_);
   retry_disable_callback_source_.Remove();
   FinishDeferredCall(&scoped_enable->tag_, error);
 }

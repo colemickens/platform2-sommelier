@@ -2,12 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/memory/scoped_ptr.h>
+#include "gobi-cromo-plugin/metrics_stopwatch.h"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
-
-#include "gobi-cromo-plugin/metrics_stopwatch.h"
 
 using ::testing::AllOf;
 using ::testing::Gt;

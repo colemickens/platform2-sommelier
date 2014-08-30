@@ -7,10 +7,10 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <metrics/metrics_library.h>
 
 class MetricsStopwatch {
@@ -37,7 +37,7 @@ class MetricsStopwatch {
  protected:
   void ReportAndReset();
 
-  scoped_ptr<MetricsLibraryInterface> metrics_;
+  std::unique_ptr<MetricsLibraryInterface> metrics_;
   std::string name_;
   int min_;
   int max_;

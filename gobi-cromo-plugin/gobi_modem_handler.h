@@ -6,11 +6,11 @@
 #define GOBI_CROMO_PLUGIN_GOBI_MODEM_HANDLER_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <cromo/modem_handler.h>
 #include <dbus-c++/types.h>
 
@@ -69,7 +69,7 @@ class GobiModemHandler : public ModemHandler {
   ControlPathToModem key_to_modem_;
   int scan_generation_;
 
-  scoped_ptr<gobi::Sdk> sdk_;
+  std::unique_ptr<gobi::Sdk> sdk_;
 
   DISALLOW_COPY_AND_ASSIGN(GobiModemHandler);
 };

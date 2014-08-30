@@ -4,10 +4,10 @@
 
 #include "gobi-cromo-plugin/gobi_modem.h"
 
+#include <memory>
 #include <vector>
 
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -64,10 +64,10 @@ class GobiModemTest : public ::testing::Test {
   void TearDown() {
   }
 
-  scoped_ptr<GobiModem> modem_;
+  std::unique_ptr<GobiModem> modem_;
   DBus::Connection connection_;
   DBus::Path path_;
-  scoped_ptr<DBus::Error> error_;
+  std::unique_ptr<DBus::Error> error_;
 
  private:
   MockGobiModemHandler *handler_;
