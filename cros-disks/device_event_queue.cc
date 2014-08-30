@@ -60,7 +60,7 @@ void DeviceEventQueue::Add(const DeviceEvent& event) {
 }
 
 const DeviceEvent* DeviceEventQueue::Head() const {
-  return events_.empty() ? NULL : &events_.back();
+  return events_.empty() ? nullptr : &events_.back();
 }
 
 }  // namespace cros_disks

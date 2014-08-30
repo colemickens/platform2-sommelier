@@ -101,9 +101,9 @@ DiskManager::DiskManager(const string& mount_root, Platform* platform,
   udev_monitor_ = udev_monitor_new_from_netlink(udev_, "udev");
   CHECK(udev_monitor_) << "Failed to create a udev monitor";
   udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_,
-                                                  kBlockSubsystem, NULL);
+                                                  kBlockSubsystem, nullptr);
   udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_,
-                                                  kMmcSubsystem, NULL);
+                                                  kMmcSubsystem, nullptr);
   udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_,
                                                   kScsiSubsystem, kScsiDevice);
   udev_monitor_enable_receiving(udev_monitor_);
@@ -161,7 +161,7 @@ void DiskManager::EnumerateBlockDevices(
   udev_list_entry_foreach(device_list_entry, device_list) {
     const char *path = udev_list_entry_get_name(device_list_entry);
     udev_device *dev = udev_device_new_from_syspath(udev_, path);
-    if (dev == NULL) continue;
+    if (dev == nullptr) continue;
 
     LOG(INFO) << "Device";
     LOG(INFO) << "   Node: " << udev_device_get_devnode(dev);
@@ -327,7 +327,7 @@ const Filesystem* DiskManager::GetFilesystem(
   map<string, Filesystem>::const_iterator filesystem_iterator =
       filesystems_.find(filesystem_type);
   if (filesystem_iterator == filesystems_.end())
-    return NULL;
+    return nullptr;
 
   return &filesystem_iterator->second;
 }
@@ -425,7 +425,7 @@ Mounter* DiskManager::CreateMounter(const Disk& disk,
                                          mount_options, platform());
 
   LOG(FATAL) << "Invalid mounter type '" << mounter_type << "'";
-  return NULL;
+  return nullptr;
 }
 
 bool DiskManager::CanMount(const string& source_path) const {
@@ -468,7 +468,7 @@ MountErrorType DiskManager::DoMount(const string& source_path,
   }
 
   const Filesystem* filesystem = GetFilesystem(device_filesystem_type);
-  if (filesystem == NULL) {
+  if (filesystem == nullptr) {
     LOG(ERROR) << "File system type '" << device_filesystem_type
                << "' on device '" << source_path << "' is not supported";
     return MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
@@ -476,7 +476,7 @@ MountErrorType DiskManager::DoMount(const string& source_path,
 
   unique_ptr<Mounter> mounter(
       CreateMounter(disk, *filesystem, mount_path, options));
-  CHECK(mounter.get() != NULL) << "Failed to create a mounter";
+  CHECK(mounter) << "Failed to create a mounter";
 
   MountErrorType error_type = mounter->Mount();
   if (error_type == MOUNT_ERROR_NONE) {

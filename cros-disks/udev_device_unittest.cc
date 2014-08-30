@@ -81,23 +81,23 @@ class UdevDeviceTest : public ::testing::Test {
   static void TearDownTestCase() {
     if (boot_device_) {
       udev_device_unref(boot_device_);
-      boot_device_ = NULL;
+      boot_device_ = nullptr;
     }
     if (loop_device_) {
       udev_device_unref(loop_device_);
-      loop_device_ = NULL;
+      loop_device_ = nullptr;
     }
     if (ram_device_) {
       udev_device_unref(ram_device_);
-      ram_device_ = NULL;
+      ram_device_ = nullptr;
     }
     if (mounted_device_) {
       udev_device_unref(mounted_device_);
-      mounted_device_ = NULL;
+      mounted_device_ = nullptr;
     }
     if (udev_) {
       udev_unref(udev_);
-      udev_ = NULL;
+      udev_ = nullptr;
     }
   }
 
@@ -115,11 +115,11 @@ class UdevDeviceTest : public ::testing::Test {
   static struct udev_device* mounted_device_;
 };
 
-struct udev* UdevDeviceTest::udev_ = NULL;
-struct udev_device* UdevDeviceTest::boot_device_ = NULL;
-struct udev_device* UdevDeviceTest::loop_device_ = NULL;
-struct udev_device* UdevDeviceTest::ram_device_ = NULL;
-struct udev_device* UdevDeviceTest::mounted_device_ = NULL;
+struct udev* UdevDeviceTest::udev_ = nullptr;
+struct udev_device* UdevDeviceTest::boot_device_ = nullptr;
+struct udev_device* UdevDeviceTest::loop_device_ = nullptr;
+struct udev_device* UdevDeviceTest::ram_device_ = nullptr;
+struct udev_device* UdevDeviceTest::mounted_device_ = nullptr;
 
 TEST_F(UdevDeviceTest, EnsureUTF8String) {
   // Valid UTF8
@@ -130,7 +130,7 @@ TEST_F(UdevDeviceTest, EnsureUTF8String) {
 }
 
 TEST_F(UdevDeviceTest, IsValueBooleanTrue) {
-  EXPECT_FALSE(UdevDevice::IsValueBooleanTrue(NULL));
+  EXPECT_FALSE(UdevDevice::IsValueBooleanTrue(nullptr));
   EXPECT_FALSE(UdevDevice::IsValueBooleanTrue(""));
   EXPECT_FALSE(UdevDevice::IsValueBooleanTrue("0"));
   EXPECT_FALSE(UdevDevice::IsValueBooleanTrue("test"));

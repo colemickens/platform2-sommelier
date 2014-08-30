@@ -23,7 +23,7 @@ class GlibProcessTest : public ::testing::Test {
  protected:
   GlibProcessTest()
       : callback_invoked_(false),
-        main_loop_(NULL),
+        main_loop_(nullptr),
         timeout_id_(0) {
   }
 
@@ -48,7 +48,7 @@ class GlibProcessTest : public ::testing::Test {
     timeout_id_ = 0;
 
     g_main_loop_unref(main_loop_);
-    main_loop_ = NULL;
+    main_loop_ = nullptr;
 
     return callback_invoked_;
   }

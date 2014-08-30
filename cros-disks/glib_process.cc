@@ -36,17 +36,17 @@ bool GlibProcess::Start() {
       G_SPAWN_STDOUT_TO_DEV_NULL |
       G_SPAWN_STDERR_TO_DEV_NULL);
   pid_t child_pid = kInvalidProcessId;
-  GError* error = NULL;
-  gboolean success = g_spawn_async(NULL,  // Inherit parent's working directory
-                                   arguments,
-                                   NULL,  // Inherit parent's environment
-                                   flags,
-                                   NULL,  // No setup function
-                                   NULL,  // No user data
-                                   &child_pid,
-                                   &error);
+  GError* error = nullptr;
+  gboolean ok = g_spawn_async(nullptr,  // Inherit parent's working directory
+                              arguments,
+                              nullptr,  // Inherit parent's environment
+                              flags,
+                              nullptr,  // No setup function
+                              nullptr,  // No user data
+                              &child_pid,
+                              &error);
 
-  if (success) {
+  if (ok) {
     set_pid(child_pid);
     child_watch_id_ =
         g_child_watch_add(child_pid, &GlibProcess::OnChildWatchNotify, this);
@@ -55,7 +55,7 @@ bool GlibProcess::Start() {
     LOG(ERROR) << "Failed to spawn a process: " << error->message;
     g_error_free(error);
   }
-  return success;
+  return ok;
 }
 
 void GlibProcess::OnTerminated(int status) {

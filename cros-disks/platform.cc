@@ -42,7 +42,7 @@ Platform::Platform()
 bool Platform::GetRealPath(const string& path, string* real_path) const {
   CHECK(real_path) << "Invalid real_path argument";
 
-  unique_ptr<char, base::FreeDeleter> result(realpath(path.c_str(), NULL));
+  unique_ptr<char, base::FreeDeleter> result(realpath(path.c_str(), nullptr));
   if (!result) {
     PLOG(ERROR) << "Failed to get real path of '" << path << "'";
     return false;
@@ -107,11 +107,11 @@ bool Platform::GetGroupId(const string& group_name, gid_t* group_id) const {
   if (buffer_size <= 0)
     buffer_size = kFallbackGroupBufferSize;
 
-  struct group group_buffer, *group_buffer_ptr = NULL;
+  struct group group_buffer, *group_buffer_ptr = nullptr;
   vector<char> buffer(buffer_size);
   getgrnam_r(group_name.c_str(), &group_buffer, buffer.data(), buffer_size,
              &group_buffer_ptr);
-  if (group_buffer_ptr == NULL) {
+  if (group_buffer_ptr == nullptr) {
     PLOG(WARNING) << "Failed to determine group ID of group '"
       << group_name << "'";
     return false;
@@ -128,11 +128,11 @@ bool Platform::GetUserAndGroupId(const string& user_name,
   if (buffer_size <= 0)
     buffer_size = kFallbackPasswordBufferSize;
 
-  struct passwd password_buffer, *password_buffer_ptr = NULL;
+  struct passwd password_buffer, *password_buffer_ptr = nullptr;
   vector<char> buffer(buffer_size);
   getpwnam_r(user_name.c_str(), &password_buffer, buffer.data(), buffer_size,
       &password_buffer_ptr);
-  if (password_buffer_ptr == NULL) {
+  if (password_buffer_ptr == nullptr) {
     PLOG(WARNING) << "Failed to determine user and group ID of user '"
       << user_name << "'";
     return false;

@@ -72,7 +72,7 @@ TEST_F(DiskManagerTest, CreateExFATMounter) {
 
   unique_ptr<Mounter> mounter(
       manager_.CreateMounter(disk, filesystem, target_path, options));
-  EXPECT_TRUE(mounter.get() != NULL);
+  EXPECT_NE(nullptr, mounter.get());
   EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
   EXPECT_EQ(disk.device_file(), mounter->source_path());
   EXPECT_EQ(target_path, mounter->target_path());
@@ -92,7 +92,7 @@ TEST_F(DiskManagerTest, CreateExternalMounter) {
 
   unique_ptr<Mounter> mounter(
       manager_.CreateMounter(disk, filesystem, target_path, options));
-  EXPECT_TRUE(mounter.get() != NULL);
+  EXPECT_NE(nullptr, mounter.get());
   EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
   EXPECT_EQ(disk.device_file(), mounter->source_path());
   EXPECT_EQ(target_path, mounter->target_path());
@@ -111,7 +111,7 @@ TEST_F(DiskManagerTest, CreateNTFSMounter) {
 
   unique_ptr<Mounter> mounter(
       manager_.CreateMounter(disk, filesystem, target_path, options));
-  EXPECT_TRUE(mounter.get() != NULL);
+  EXPECT_NE(nullptr, mounter.get());
   EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
   EXPECT_EQ(disk.device_file(), mounter->source_path());
   EXPECT_EQ(target_path, mounter->target_path());
@@ -131,7 +131,7 @@ TEST_F(DiskManagerTest, CreateSystemMounter) {
 
   unique_ptr<Mounter> mounter(
       manager_.CreateMounter(disk, filesystem, target_path, options));
-  EXPECT_TRUE(mounter.get() != NULL);
+  EXPECT_NE(nullptr, mounter.get());
   EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
   EXPECT_EQ(disk.device_file(), mounter->source_path());
   EXPECT_EQ(target_path, mounter->target_path());
@@ -161,14 +161,12 @@ TEST_F(DiskManagerTest, GetDiskByNonexistentDevicePath) {
 }
 
 TEST_F(DiskManagerTest, GetFilesystem) {
-  const Filesystem* null_pointer = NULL;
-
-  EXPECT_EQ(null_pointer, manager_.GetFilesystem("nonexistent-fs"));
+  EXPECT_EQ(nullptr, manager_.GetFilesystem("nonexistent-fs"));
 
   Filesystem normal_fs("normal-fs");
-  EXPECT_EQ(null_pointer, manager_.GetFilesystem(normal_fs.type()));
+  EXPECT_EQ(nullptr, manager_.GetFilesystem(normal_fs.type()));
   manager_.RegisterFilesystem(normal_fs);
-  EXPECT_NE(null_pointer, manager_.GetFilesystem(normal_fs.type()));
+  EXPECT_NE(nullptr, manager_.GetFilesystem(normal_fs.type()));
 }
 
 TEST_F(DiskManagerTest, RegisterFilesystem) {

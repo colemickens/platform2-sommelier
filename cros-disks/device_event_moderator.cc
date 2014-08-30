@@ -25,7 +25,7 @@ DeviceEventModerator::DeviceEventModerator(
 
 void DeviceEventModerator::DispatchQueuedDeviceEvents() {
   const DeviceEvent* event;
-  while ((event = event_queue_.Head()) != NULL) {
+  while ((event = event_queue_.Head()) != nullptr) {
     LOG(INFO) << "Dispatch queued event: type=" << event->event_type
               << " device='" << event->device_path << "'";
     event_dispatcher_->DispatchDeviceEvent(*event);

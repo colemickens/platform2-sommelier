@@ -17,14 +17,14 @@ void FileReader::Close() {
 
 bool FileReader::Open(const FilePath& file_path) {
   file_.reset(base::OpenFile(file_path, "rb"));
-  return file_.get() != NULL;
+  return file_.get() != nullptr;
 }
 
 bool FileReader::ReadLine(string* line) {
   CHECK(line) << "Invalid argument";
 
   FILE* fp = file_.get();
-  if (fp == NULL)
+  if (fp == nullptr)
     return false;
 
   line->clear();

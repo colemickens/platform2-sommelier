@@ -70,7 +70,7 @@ namespace cros_disks {
 
 UdevDevice::UdevDevice(struct udev_device *dev)
     : dev_(dev),
-      blkid_cache_(NULL) {
+      blkid_cache_(nullptr) {
   CHECK(dev_) << "Invalid udev device";
   udev_device_ref(dev_);
 }
@@ -105,7 +105,7 @@ bool UdevDevice::IsAttributeTrue(const char *key) const {
 
 bool UdevDevice::HasAttribute(const char *key) const {
   const char *value = udev_device_get_sysattr_value(dev_, key);
-  return value != NULL;
+  return value != nullptr;
 }
 
 string UdevDevice::GetProperty(const char *key) const {
@@ -120,7 +120,7 @@ bool UdevDevice::IsPropertyTrue(const char *key) const {
 
 bool UdevDevice::HasProperty(const char *key) const {
   const char *value = udev_device_get_property_value(dev_, key);
-  return value != NULL;
+  return value != nullptr;
 }
 
 string UdevDevice::GetPropertyFromBlkId(const char *key) {

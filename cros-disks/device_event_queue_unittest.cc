@@ -199,34 +199,34 @@ TEST_F(DeviceEventQueueTest, AddDiskRemovedAndDiskAdded) {
 }
 
 TEST_F(DeviceEventQueueTest, Head) {
-  EXPECT_EQ(static_cast<DeviceEvent*>(NULL), queue_.Head());
+  EXPECT_EQ(nullptr, queue_.Head());
 
   DeviceEvent event1(DeviceEvent::kDiskAdded, "d1");
   DeviceEvent event2(DeviceEvent::kDiskAdded, "d2");
   DeviceEvent event3(DeviceEvent::kDiskAdded, "d3");
 
   queue_.Add(event1);
-  EXPECT_NE(static_cast<DeviceEvent*>(NULL), queue_.Head());
+  EXPECT_NE(nullptr, queue_.Head());
   EXPECT_TRUE(CompareDeviceEvent(event1, *queue_.Head()));
 
   queue_.Add(event2);
-  EXPECT_NE(static_cast<DeviceEvent*>(NULL), queue_.Head());
+  EXPECT_NE(nullptr, queue_.Head());
   EXPECT_TRUE(CompareDeviceEvent(event1, *queue_.Head()));
 
   queue_.Remove();
-  EXPECT_NE(static_cast<DeviceEvent*>(NULL), queue_.Head());
+  EXPECT_NE(nullptr, queue_.Head());
   EXPECT_TRUE(CompareDeviceEvent(event2, *queue_.Head()));
 
   queue_.Add(event3);
-  EXPECT_NE(static_cast<DeviceEvent*>(NULL), queue_.Head());
+  EXPECT_NE(nullptr, queue_.Head());
   EXPECT_TRUE(CompareDeviceEvent(event2, *queue_.Head()));
 
   queue_.Remove();
-  EXPECT_NE(static_cast<DeviceEvent*>(NULL), queue_.Head());
+  EXPECT_NE(nullptr, queue_.Head());
   EXPECT_TRUE(CompareDeviceEvent(event3, *queue_.Head()));
 
   queue_.Remove();
-  EXPECT_EQ(static_cast<DeviceEvent*>(NULL), queue_.Head());
+  EXPECT_EQ(nullptr, queue_.Head());
 }
 
 }  // namespace cros_disks

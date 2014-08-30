@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
   LOG(INFO) << "Creating the D-Bus dispatcher";
   DBus::Glib::BusDispatcher dispatcher;
   DBus::default_dispatcher = &dispatcher;
-  dispatcher.attach(NULL);
+  dispatcher.attach(nullptr);
 
   LOG(INFO) << "Creating the cros-disks server";
   DBus::Connection server_conn = DBus::Connection::SystemBus();
@@ -143,13 +143,13 @@ int main(int argc, char** argv) {
       g_io_channel_unix_new(daemon.GetDeviceEventDescriptor());
   g_io_channel_set_close_on_unref(device_event_channel, TRUE);
   CHECK_EQ(G_IO_STATUS_NORMAL,
-           g_io_channel_set_encoding(device_event_channel, NULL, NULL));
+           g_io_channel_set_encoding(device_event_channel, nullptr, nullptr));
   g_io_add_watch_full(device_event_channel,
                       G_PRIORITY_HIGH_IDLE,
                       GIOCondition(G_IO_IN | G_IO_PRI),  // Ignore errors.
                       DeviceEventCallback,
                       &daemon,
-                      NULL);
+                      nullptr);
   g_main_loop_run(loop);
 
   LOG(INFO) << "Cleaning up and exiting";

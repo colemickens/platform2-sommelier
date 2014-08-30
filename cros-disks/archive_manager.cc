@@ -337,7 +337,7 @@ bool ArchiveManager::MountAVFSPath(const string& base_path,
 
   uid_t user_id;
   gid_t group_id;
-  if (!platform()->GetUserAndGroupId(kAVFSMountUser, &user_id, NULL) ||
+  if (!platform()->GetUserAndGroupId(kAVFSMountUser, &user_id, nullptr) ||
       !platform()->GetGroupId(kAVFSMountGroup, &group_id)) {
     return false;
   }

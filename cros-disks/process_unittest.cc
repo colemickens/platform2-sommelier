@@ -32,15 +32,15 @@ TEST_F(ProcessTest, GetArguments) {
   }
 
   char** arguments = process_.GetArguments();
-  EXPECT_TRUE(arguments != NULL);
+  EXPECT_NE(nullptr, arguments);
   for (size_t i = 0; i < kNumTestArguments; ++i) {
     EXPECT_STREQ(kTestArguments[i], arguments[i]);
   }
-  EXPECT_STREQ(NULL, arguments[kNumTestArguments]);
+  EXPECT_EQ(nullptr, arguments[kNumTestArguments]);
 }
 
 TEST_F(ProcessTest, GetArgumentsWithNoArgumentsAdded) {
-  EXPECT_TRUE(process_.GetArguments() == NULL);
+  EXPECT_EQ(nullptr, process_.GetArguments());
 }
 
 }  // namespace cros_disks

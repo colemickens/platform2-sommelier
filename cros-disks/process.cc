@@ -53,7 +53,7 @@ bool Process::BuildArgumentsArray() {
     buffer_pointer[argument_size] = '\0';
     buffer_pointer += argument_size + 1;
   }
-  arguments_array_[num_arguments] = NULL;
+  arguments_array_[num_arguments] = nullptr;
   return true;
 }
 

@@ -162,7 +162,7 @@ TEST_F(MountManagerTest, MountFailedWithEmptySourcePath) {
 }
 
 // Verifies that MountManager::Mount() returns an error when it is invoked
-// with a NULL mount path.
+// with a nullptr mount path.
 TEST_F(MountManagerTest, MountFailedWithNullMountPath) {
   source_path_ = kTestSourcePath;
 
@@ -175,7 +175,7 @@ TEST_F(MountManagerTest, MountFailedWithNullMountPath) {
   EXPECT_CALL(manager_, SuggestMountPath(_)).Times(0);
 
   EXPECT_EQ(MOUNT_ERROR_INVALID_ARGUMENT,
-            manager_.Mount(source_path_, filesystem_type_, options_, NULL));
+            manager_.Mount(source_path_, filesystem_type_, options_, nullptr));
 }
 
 // Verifies that MountManager::Mount() returns an error when it is invoked
