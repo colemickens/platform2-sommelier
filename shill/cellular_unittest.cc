@@ -1557,6 +1557,10 @@ TEST_F(CellularTest, Notify) {
   EXPECT_CALL(*ppp_device2, SetServiceFailure(Service::kFailureUnknown));
   device_->Notify(kPPPReasonDisconnect, kEmptyArgs);
   EXPECT_FALSE(device_->ppp_task_);
+
+  // |Cellular::ppp_task_| is destroyed on the task loop. Must dispatch once to
+  // cleanup.
+  dispatcher_.DispatchPendingEvents();
 }
 
 TEST_F(CellularTest, PPPConnectionFailedBeforeAuth) {
@@ -1573,6 +1577,10 @@ TEST_F(CellularTest, PPPConnectionFailedBeforeAuth) {
   device_->Notify(kPPPReasonDisconnect, kEmptyArgs);
   EXPECT_FALSE(device_->ppp_task_);
   VerifyDisconnect();
+
+  // |Cellular::ppp_task_| is destroyed on the task loop. Must dispatch once to
+  // cleanup.
+  dispatcher_.DispatchPendingEvents();
 }
 
 TEST_F(CellularTest, PPPConnectionFailedDuringAuth) {
@@ -1590,6 +1598,10 @@ TEST_F(CellularTest, PPPConnectionFailedDuringAuth) {
   device_->Notify(kPPPReasonDisconnect, kEmptyArgs);
   EXPECT_FALSE(device_->ppp_task_);
   VerifyDisconnect();
+
+  // |Cellular::ppp_task_| is destroyed on the task loop. Must dispatch once to
+  // cleanup.
+  dispatcher_.DispatchPendingEvents();
 }
 
 TEST_F(CellularTest, PPPConnectionFailedAfterAuth) {
@@ -1609,6 +1621,10 @@ TEST_F(CellularTest, PPPConnectionFailedAfterAuth) {
   device_->Notify(kPPPReasonDisconnect, kEmptyArgs);
   EXPECT_FALSE(device_->ppp_task_);
   VerifyDisconnect();
+
+  // |Cellular::ppp_task_| is destroyed on the task loop. Must dispatch once to
+  // cleanup.
+  dispatcher_.DispatchPendingEvents();
 }
 
 TEST_F(CellularTest, OnPPPDied) {
