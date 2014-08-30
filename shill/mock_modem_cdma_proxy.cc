@@ -4,9 +4,20 @@
 
 #include "shill/mock_modem_cdma_proxy.h"
 
+#include "shill/testing.h"
+
+using testing::_;
+
 namespace shill {
 
-MockModemCDMAProxy::MockModemCDMAProxy() {}
+MockModemCDMAProxy::MockModemCDMAProxy() {
+  ON_CALL(*this, Activate(_, _, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
+  ON_CALL(*this, GetRegistrationState(_, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
+  ON_CALL(*this, GetSignalQuality(_, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
+}
 
 MockModemCDMAProxy::~MockModemCDMAProxy() {}
 

@@ -4,9 +4,20 @@
 
 #include "shill/mock_modem_proxy.h"
 
+#include "shill/testing.h"
+
+using testing::_;
+
 namespace shill {
 
-MockModemProxy::MockModemProxy() {}
+MockModemProxy::MockModemProxy() {
+  ON_CALL(*this, Enable(_, _, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
+  ON_CALL(*this, Disconnect(_, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
+  ON_CALL(*this, GetModemInfo(_, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
+}
 
 MockModemProxy::~MockModemProxy() {}
 
