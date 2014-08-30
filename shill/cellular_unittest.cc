@@ -323,12 +323,6 @@ class CellularTest : public testing::Test {
     if (!callback.is_null())
       callback.Run(Error());
   }
-  void InvokeScanFailed(Error *error, Unused, Unused) {
-    error->Populate(Error::kOperationFailed);
-  }
-  void InvokeScanInitiated(Error *error, Unused, Unused) {
-    error->Populate(Error::kOperationInitiated);
-  }
   void InvokeSetPowerState(const uint32_t &power_state,
                            Error *error,
                            const ResultCallback &callback,
@@ -458,24 +452,28 @@ class CellularTest : public testing::Test {
     virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
         const std::string &path,
         const std::string &service) {
+      CHECK(test_->dbus_properties_proxy_);
       return test_->dbus_properties_proxy_.release();
     }
 
     virtual ModemProxyInterface *CreateModemProxy(
         const string &/*path*/,
         const string &/*service*/) {
+      CHECK(test_->proxy_);
       return test_->proxy_.release();
     }
 
     virtual ModemSimpleProxyInterface *CreateModemSimpleProxy(
         const string &/*path*/,
         const string &/*service*/) {
+      CHECK(test_->simple_proxy_);
       return test_->simple_proxy_.release();
     }
 
     virtual ModemCDMAProxyInterface *CreateModemCDMAProxy(
         const string &/*path*/,
         const string &/*service*/) {
+      CHECK(test_->cdma_proxy_);
       return test_->cdma_proxy_.release();
     }
 
@@ -486,6 +484,8 @@ class CellularTest : public testing::Test {
       // CellularCapabilityGSM::InitProperties (and thus
       // CellularCapabilityGSM::GetIMSI) from being called during the
       // construction. Remove this workaround after refactoring the tests.
+      CHECK(!test_->create_gsm_card_proxy_from_factory_ ||
+            test_->gsm_card_proxy_);
       return test_->create_gsm_card_proxy_from_factory_ ?
           test_->gsm_card_proxy_.release() : NULL;
     }
@@ -493,24 +493,28 @@ class CellularTest : public testing::Test {
     virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(
         const string &/*path*/,
         const string &/*service*/) {
+      CHECK(test_->gsm_network_proxy_);
       return test_->gsm_network_proxy_.release();
     }
 
     virtual mm1::ModemModem3gppProxyInterface *CreateMM1ModemModem3gppProxy(
       const std::string &path,
       const std::string &service) {
+      CHECK(test_->mm1_modem_3gpp_proxy_);
       return test_->mm1_modem_3gpp_proxy_.release();
     }
 
     virtual mm1::ModemProxyInterface *CreateMM1ModemProxy(
       const std::string &path,
       const std::string &service) {
+      CHECK(test_->mm1_proxy_);
       return test_->mm1_proxy_.release();
     }
 
     virtual mm1::ModemSimpleProxyInterface *CreateMM1ModemSimpleProxy(
         const string &/*path*/,
         const string &/*service*/) {
+      CHECK(test_->mm1_simple_proxy_);
       return test_->mm1_simple_proxy_.release();
     }
 
@@ -1938,8 +1942,6 @@ TEST_F(CellularTest, ScanImmediateFailure) {
   Error error;
 
   device_->set_found_networks(kTestNetworksCellular);
-  EXPECT_CALL(*gsm_network_proxy_, Scan(&error, _, _))
-      .WillOnce(Invoke(this, &CellularTest::InvokeScanFailed));
   EXPECT_FALSE(device_->scanning_);
   // |InitProxies| must be called before calling any functions on the
   // Capability*, to set up the modem proxies.
@@ -1958,7 +1960,7 @@ TEST_F(CellularTest, ScanAsynchronousFailure) {
 
   device_->set_found_networks(kTestNetworksCellular);
   EXPECT_CALL(*gsm_network_proxy_, Scan(&error, _, _))
-      .WillOnce(DoAll(Invoke(this, &CellularTest::InvokeScanInitiated),
+      .WillOnce(DoAll(SetErrorTypeInArgument<0>(Error::kOperationInitiated),
                       SaveArg<1>(&results_callback)));
   EXPECT_FALSE(device_->scanning_);
   // |InitProxies| must be called before calling any functions on the
@@ -1983,7 +1985,7 @@ TEST_F(CellularTest, ScanSuccess) {
 
   device_->clear_found_networks();
   EXPECT_CALL(*gsm_network_proxy_, Scan(&error, _, _))
-      .WillOnce(DoAll(Invoke(this, &CellularTest::InvokeScanInitiated),
+      .WillOnce(DoAll(SetErrorTypeInArgument<0>(Error::kOperationInitiated),
                       SaveArg<1>(&results_callback)));
   EXPECT_FALSE(device_->scanning_);
   // |InitProxies| must be called before calling any functions on the
