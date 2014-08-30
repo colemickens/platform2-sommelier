@@ -1853,7 +1853,8 @@ TEST_F(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
   // proxy OnAfterResume, below.
   Error error;
   ASSERT_TRUE(error.IsSuccess());
-  EXPECT_CALL(*mm1_proxy, SetPowerState(MM_MODEM_POWER_STATE_LOW, _, _, _));
+  EXPECT_CALL(*mm1_proxy, SetPowerState(MM_MODEM_POWER_STATE_LOW, _, _, _))
+      .WillOnce(SetErrorTypeInArgument<1>(Error::kOperationInitiated));
   modem_proxy_enable_callback.Run(error);
 
   // No response to power-down yet. It probably completed while the host
