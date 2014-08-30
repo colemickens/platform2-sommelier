@@ -1323,9 +1323,11 @@ TEST_F(CellularTest, ModemStateChangeStaleConnected) {
   // When a modem is asked to connect and before the connect completes, the
   // modem is disabled, it may send a stale Connected state transition after
   // it has been disabled.
+  AllowCreateGSMCardProxyFromFactory();
   device_->state_ = Cellular::kStateDisabled;
   device_->modem_state_ = Cellular::kModemStateEnabling;
   device_->OnModemStateChanged(Cellular::kModemStateConnected);
+  dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::kStateDisabled, device_->state());
 }
 
