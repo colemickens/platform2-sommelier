@@ -38,11 +38,6 @@
                 '<(DEPTH)/chromiumos-wide-profiling/quipper.gyp:*',
               ],
             }],
-            ['USE_shill == 1', {
-              'dependencies': [
-                '<(DEPTH)/shill/shill.gyp:*',
-              ],
-            }],
             ['USE_vpn == 1', {
               'dependencies': [
                 '<(DEPTH)/vpn-manager/vpn-manager.gyp:*',
