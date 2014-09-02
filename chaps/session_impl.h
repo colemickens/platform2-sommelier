@@ -123,6 +123,8 @@ class SessionImpl : public Session {
     std::string parameter_;  // The mechanism parameter (if any).
 
     OperationContext();
+    ~OperationContext();
+
     void Clear();
   };
 

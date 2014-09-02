@@ -771,8 +771,10 @@ CK_RV SessionImpl::CipherFinal(OperationContext* context) {
         ConvertStringToByteBuffer(context->data_.c_str()),
         &out_length)) {
       LOG(ERROR) << "EVP_CipherFinal failed: " << GetOpenSSLError();
+      EVP_CIPHER_CTX_cleanup(&context->cipher_context_);
       return CKR_FUNCTION_FAILED;
     }
+    EVP_CIPHER_CTX_cleanup(&context->cipher_context_);
     context->data_.resize(out_length);
   }
   return CKR_OK;
@@ -1305,11 +1307,27 @@ CK_RV SessionImpl::WrapPrivateKey(Object* object) {
   return CKR_OK;
 }
 
-SessionImpl::OperationContext::OperationContext() {
+SessionImpl::OperationContext::OperationContext() : is_valid_(false),
+                                                    is_cipher_(false),
+                                                    is_digest_(false),
+                                                    is_hmac_(false),
+                                                    is_finished_(false),
+                                                    key_(NULL) {}
+
+SessionImpl::OperationContext::~OperationContext() {
   Clear();
 }
 
 void SessionImpl::OperationContext::Clear() {
+  if (is_valid_ && !is_finished_) {
+    if (is_cipher_) {
+      EVP_CIPHER_CTX_cleanup(&cipher_context_);
+    } else if (is_digest_) {
+      EVP_MD_CTX_cleanup(&digest_context_);
+    } else if (is_hmac_) {
+      HMAC_CTX_cleanup(&hmac_context_);
+    }
+  }
   is_valid_ = false;
   is_cipher_ = false;
   is_digest_ = false;
