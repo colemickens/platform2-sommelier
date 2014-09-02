@@ -43,13 +43,15 @@ const char kValidNoteCharacters[] = "abcdefghijklmnopqrstuvwxyz"
 
 namespace peerd {
 
-namespace peer_codes {
+namespace errors {
+namespace peer {
 
 const char kInvalidUUID[] = "peer.uuid";
 const char kInvalidName[] = "peer.name";
 const char kInvalidNote[] = "peer.note";
 
-}  // namespace peer_codes
+}  // namespace peer
+}  // namespace errors
 
 unique_ptr<Peer> Peer::MakePeer(
     chromeos::ErrorPtr* error,
@@ -80,7 +82,7 @@ unique_ptr<Peer> Peer::MakePeerImpl(
   if (!base::IsValidGUID(uuid)) {
     Error::AddTo(error,
                  kPeerdErrorDomain,
-                 peer_codes::kInvalidUUID,
+                 errors::peer::kInvalidUUID,
                  "Invalid UUID for peer.");
     return nullptr;
   }
@@ -96,7 +98,7 @@ unique_ptr<Peer> Peer::MakePeerImpl(
 }
 
 Peer::Peer(std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object,
-           const std::string& uuid) : dbus_object_(dbus_object.release()) {
+           const std::string& uuid) : dbus_object_(std::move(dbus_object)) {
   uuid_.SetValue(uuid);
 }
 
@@ -112,13 +114,13 @@ void Peer::RegisterAsync(const CompletionAction& completion_callback) {
 void Peer::SetFriendlyName(chromeos::ErrorPtr* error,
                            const string& friendly_name) {
   if (friendly_name.length() > kMaxFriendlyNameLength) {
-    Error::AddToPrintf(error, kPeerdErrorDomain, peer_codes::kInvalidName,
+    Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidName,
                        "Bad length for %s: %" PRIuS,
                        kPeerFriendlyName, friendly_name.length());
     return;
   }
   if (!base::ContainsOnlyChars(friendly_name, kValidFriendlyNameCharacters)) {
-    Error::AddToPrintf(error, kPeerdErrorDomain, peer_codes::kInvalidName,
+    Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidName,
                        "Invalid characters in %s.", kPeerFriendlyName);
     return;
   }
@@ -127,13 +129,13 @@ void Peer::SetFriendlyName(chromeos::ErrorPtr* error,
 
 void Peer::SetNote(chromeos::ErrorPtr* error, const string& note) {
   if (note.length() > kMaxNoteLength) {
-    Error::AddToPrintf(error, kPeerdErrorDomain, peer_codes::kInvalidNote,
+    Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidNote,
                        "Bad length for %s: %" PRIuS,
                        kPeerNote, note.length());
     return;
   }
   if (!base::ContainsOnlyChars(note, kValidNoteCharacters)) {
-    Error::AddToPrintf(error, kPeerdErrorDomain, peer_codes::kInvalidNote,
+    Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidNote,
                        "Invalid characters in %s.", kPeerNote);
     return;
   }

@@ -19,9 +19,9 @@ using dbus::Bus;
 using dbus::MockBus;
 using dbus::ObjectPath;
 using peerd::Peer;
-using peerd::peer_codes::kInvalidName;
-using peerd::peer_codes::kInvalidNote;
-using peerd::peer_codes::kInvalidUUID;
+using peerd::errors::peer::kInvalidName;
+using peerd::errors::peer::kInvalidNote;
+using peerd::errors::peer::kInvalidUUID;
 using peerd::test_util::MakeMockCompletionAction;
 using peerd::test_util::MakeMockDBusObject;
 using std::string;
@@ -68,8 +68,7 @@ class PeerTest : public ::testing::Test {
                                    0,
                                    MakeMockCompletionAction());
     ASSERT_NE(nullptr, error.get());
-    EXPECT_TRUE(error->HasError(peerd::kPeerdErrorDomain,
-                                peerd::peer_codes::kInvalidUUID));
+    EXPECT_TRUE(error->HasError(peerd::kPeerdErrorDomain, kInvalidUUID));
     EXPECT_EQ(nullptr, peer.get());
   }
 };

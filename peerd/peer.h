@@ -18,13 +18,15 @@
 
 namespace peerd {
 
-namespace peer_codes {
+namespace errors {
+namespace peer {
 
 extern const char kInvalidUUID[];
 extern const char kInvalidName[];
 extern const char kInvalidNote[];
 
-}  // namespace peer_codes
+}  // namespace peer
+}  // namespace errors
 
 // Exposes a Peer interface over DBus.  We use this class to represent
 // ourself over DBus to interested viewers.  We also use it to represent
