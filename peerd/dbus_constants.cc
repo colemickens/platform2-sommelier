@@ -30,6 +30,13 @@ const char kPeerLastSeen[] = "LastSeen";
 const char kPeerNote[]  = "Note";
 const char kPeerUUID[] = "UUID";
 
+const char kServiceInterface[] = "org.chromium.peerd.Service";
+const char kServicePathFragment[] = "services/";
+
+const char kServiceId[] = "ServiceId";
+const char kServiceInfo[] = "ServiceInfo";
+const char kServiceIpInfos[] = "IpInfos";
+
 const char kPingResponse[] = "Hello world!";
 
 }  // namespace dbus_constants

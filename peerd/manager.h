@@ -14,9 +14,8 @@
 #include <chromeos/dbus/dbus_object.h>
 #include <chromeos/errors/error.h>
 
+#include "peerd/ip_addr.h"
 #include "peerd/typedefs.h"
-
-struct sockaddr_storage;
 
 namespace dbus {
 class Bus;
@@ -49,7 +48,7 @@ class Manager {
   std::string ExposeIpService(
       chromeos::ErrorPtr* error,
       const std::string& service_id,
-      const std::vector<sockaddr_storage>& addresses,
+      const std::vector<ip_addr>& addresses,
       const std::map<std::string, std::string>& service_info);
 
   void RemoveExposedService(

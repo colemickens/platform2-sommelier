@@ -11,39 +11,28 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-using dbus::Bus;
-using dbus::MockBus;
+#include "peerd/test_util.h"
+
 using chromeos::dbus_utils::DBusObject;
 using chromeos::dbus_utils::MockDBusObject;
+using dbus::Bus;
+using dbus::MockBus;
 using dbus::ObjectPath;
 using peerd::Peer;
 using peerd::peer_codes::kInvalidName;
 using peerd::peer_codes::kInvalidNote;
 using peerd::peer_codes::kInvalidUUID;
+using peerd::test_util::MakeMockCompletionAction;
+using peerd::test_util::MakeMockDBusObject;
 using std::string;
 using std::unique_ptr;
-using testing::AnyNumber;
 using testing::_;
 
 namespace {
 
-const char kTestPath[] = "/some/dbus/path";
 const char kUUID[] = "123e4567-e89b-12d3-a456-426655440000";
 const char kValidName[] = "NAME";
 const char kValidNote[] = "notes are long and very descriptive for people.";
-
-unique_ptr<MockDBusObject> GetDBusObject() {
-  ObjectPath path(kTestPath);
-  Bus::Options options;
-  scoped_refptr<MockBus> mock_bus(new MockBus(options));
-  EXPECT_CALL(*mock_bus, AssertOnOriginThread()).Times(AnyNumber());
-  EXPECT_CALL(*mock_bus, AssertOnDBusThread()).Times(AnyNumber());
-  unique_ptr<MockDBusObject> out(
-      new MockDBusObject(nullptr, mock_bus, path));
-  return out;
-}
-
-void HandleDone(bool success) { }
 
 }  // namespace
 
@@ -52,7 +41,7 @@ namespace peerd {
 class PeerTest : public ::testing::Test {
  public:
   unique_ptr<Peer> MakePeer() {
-    auto dbus_object = GetDBusObject();
+    auto dbus_object = MakeMockDBusObject();
     chromeos::ErrorPtr error;
     EXPECT_CALL(*dbus_object, RegisterAsync(_)).Times(1);
     auto peer = Peer::MakePeerImpl(&error,
@@ -61,14 +50,14 @@ class PeerTest : public ::testing::Test {
                                    kValidName,
                                    kValidNote,
                                    0,
-                                   base::Bind(&HandleDone));
+                                   MakeMockCompletionAction());
     EXPECT_NE(nullptr, peer.get());
     EXPECT_EQ(nullptr, error.get());
     return peer;
   }
 
   void TestBadUUID(const string& uuid) {
-    auto dbus_object = GetDBusObject();
+    auto dbus_object = MakeMockDBusObject();
     EXPECT_CALL(*dbus_object, RegisterAsync(_)).Times(0);
     chromeos::ErrorPtr error;
     auto peer = Peer::MakePeerImpl(&error,
@@ -77,7 +66,7 @@ class PeerTest : public ::testing::Test {
                                    kValidName,
                                    kValidNote,
                                    0,
-                                   base::Bind(&HandleDone));
+                                   MakeMockCompletionAction());
     ASSERT_NE(nullptr, error.get());
     EXPECT_TRUE(error->HasError(peerd::kPeerdErrorDomain,
                                 peerd::peer_codes::kInvalidUUID));
@@ -106,7 +95,7 @@ TEST_F(PeerTest, ShouldRejectBadCharacterInUUID) {
 }
 
 TEST_F(PeerTest, ShouldRejectBadNameInFactory) {
-  auto dbus_object = GetDBusObject();
+  auto dbus_object = MakeMockDBusObject();
   EXPECT_CALL(*dbus_object, RegisterAsync(_)).Times(0);
   chromeos::ErrorPtr error;
   auto peer = Peer::MakePeerImpl(&error,
@@ -115,14 +104,14 @@ TEST_F(PeerTest, ShouldRejectBadNameInFactory) {
                                  "* is not allowed",
                                  kValidNote,
                                  0,
-                                 base::Bind(&HandleDone));
+                                 MakeMockCompletionAction());
   ASSERT_NE(nullptr, error.get());
   EXPECT_TRUE(error->HasError(kPeerdErrorDomain, kInvalidName));
   EXPECT_EQ(nullptr, peer.get());
 }
 
 TEST_F(PeerTest, ShouldRejectBadNoteInFactory) {
-  auto dbus_object = GetDBusObject();
+  auto dbus_object = MakeMockDBusObject();
   EXPECT_CALL(*dbus_object, RegisterAsync(_)).Times(0);
   chromeos::ErrorPtr error;
   auto peer = Peer::MakePeerImpl(&error,
@@ -131,7 +120,7 @@ TEST_F(PeerTest, ShouldRejectBadNoteInFactory) {
                                  kValidName,
                                  "notes also may not contain *",
                                  0,
-                                 base::Bind(&HandleDone));
+                                 MakeMockCompletionAction());
   ASSERT_NE(nullptr, error.get());
   EXPECT_TRUE(error->HasError(kPeerdErrorDomain, kInvalidNote));
   EXPECT_EQ(nullptr, peer.get());

@@ -4,14 +4,12 @@
 
 #include "peerd/manager.h"
 
-#include <netinet/in.h>
-#include <sys/socket.h>
-
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/exported_object_manager.h>
 #include <dbus/object_path.h>
 
 #include "peerd/dbus_constants.h"
+#include "peerd/ip_addr.h"
 
 using dbus::ObjectPath;
 using chromeos::ErrorPtr;
@@ -79,7 +77,7 @@ void Manager::StopMonitoring(ErrorPtr* error,
 
 string Manager::ExposeIpService(chromeos::ErrorPtr* error,
                                 const string& service_id,
-                                const vector<sockaddr_storage>& addresses,
+                                const vector<ip_addr>& addresses,
                                 const map<string, string>& service_info) {
   return "a_service_token";
 }

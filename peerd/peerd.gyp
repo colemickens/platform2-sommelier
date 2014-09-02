@@ -14,6 +14,7 @@
       'sources': [
         'dbus_constants.cc',
         'dbus_data_serialization.cc',
+        'ip_addr.cc',
         'manager.cc',
         'peer.cc',
         'typedefs.cc',
@@ -49,6 +50,7 @@
             'dbus_data_serialization_unittest.cc',
             'peer_unittest.cc',
             'peerd_testrunner.cc',
+            'test_util.cc',
           ],
         },
       ],

@@ -36,6 +36,15 @@ extern const char kPeerLastSeen[];
 extern const char kPeerNote[];
 extern const char kPeerUUID[];
 
+// Interface implemented by the service objects.
+extern const char kServiceInterface[];
+extern const char kServicePathFragment[];
+
+// Properties exposed as part of kServiceInterface.
+extern const char kServiceId[];
+extern const char kServiceInfo[];
+extern const char kServiceIpInfos[];
+
 extern const char kPingResponse[];
 
 }  // namespace dbus_constants
