@@ -101,6 +101,7 @@ COLOR ?= 1
 VERBOSE ?= 0
 MODE ?= opt
 CXXEXCEPTIONS ?= 0
+RUN_TESTS ?= 1
 ARCH ?= $(shell uname -m)
 
 # Put objects in a separate tree based on makefile locations
@@ -520,8 +521,11 @@ CC_STATIC_LIBARY(%):
 	$(error Typo alert! LIBARY != LIBRARY)
 
 
-TEST(%): % qemu_chroot_install
+TEST(%): %
 	$(call TEST_implementation)
+ifneq ($(RUN_TESTS),0)
+TEST(%): qemu_chroot_install
+endif
 .PHONY: TEST
 
 # multiple targets with a wildcard need to share an directory.
@@ -732,7 +736,9 @@ ifeq ($(MODE),profiling)
 		fi
 	@$(ECHO) "COVERAGE [$(COLOR_YELLOW)FINISHED$(COLOR_RESET)]"
 endif
-.PHONY: tests
+# Standard name everyone else uses.
+check: tests
+.PHONY: check tests
 
 qemu_chroot_install:
 ifeq ($(USE_QEMU),1)
@@ -805,12 +811,17 @@ ifeq ($(VALGRIND),1)
   VALGRIND_CMD = /usr/bin/valgrind --tool=memcheck $(VALGRIND_ARGS) --
 endif
 
+ifneq ($(RUN_TESTS),0)
 define TEST_implementation
   $(QUIET)$(call TEST_setup)
   $(QUIET)$(call TEST_run)
   $(QUIET)$(call TEST_teardown)
   $(QUIET)exit $$(cat $(OUT)$(TARGET_OR_MEMBER).status.test)
 endef
+else
+define TEST_implementation
+endef
+endif
 
 define TEST_setup
   @$(ECHO) -n "TEST		$(TARGET_OR_MEMBER) "
