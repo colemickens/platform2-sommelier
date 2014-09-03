@@ -5,7 +5,7 @@
 #ifndef DEBUGD_SRC_CRASH_SENDER_TOOL_H_
 #define DEBUGD_SRC_CRASH_SENDER_TOOL_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <dbus-c++/dbus.h>
 
 #include "debugd/src/subprocess_tool.h"

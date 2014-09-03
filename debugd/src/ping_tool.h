@@ -8,7 +8,7 @@
 #include <map>
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <dbus-c++/dbus.h>
 
 #include "debugd/src/subprocess_tool.h"
@@ -24,6 +24,9 @@ class PingTool : public SubprocessTool {
                     const std::string& destination,
                     const std::map<std::string, DBus::Variant>& options,
                     DBus::Error* error);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(PingTool);
 };
 
 }  // namespace debugd

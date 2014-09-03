@@ -8,7 +8,7 @@
 #include <map>
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <dbus-c++/dbus.h>
 
 #include "debugd/src/subprocess_tool.h"
@@ -23,6 +23,9 @@ class SystraceTool {
   std::string Start(const std::string& categories, DBus::Error* error);
   void Stop(const DBus::FileDescriptor& outfd, DBus::Error* error);
   std::string Status(DBus::Error* error);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(SystraceTool);
 };
 
 }  // namespace debugd

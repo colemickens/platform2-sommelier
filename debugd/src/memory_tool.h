@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <dbus-c++/dbus.h>
 
 #include "debugd/src/subprocess_tool.h"
@@ -22,6 +22,9 @@ class MemtesterTool : public SubprocessTool {
   std::string Start(const DBus::FileDescriptor& outfd,
                     const uint32_t& memory,
                     DBus::Error* error);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MemtesterTool);
 };
 
 }  // namespace debugd
