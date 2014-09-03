@@ -53,8 +53,6 @@ const dbus::ObjectPath kMethodsExportedOnPath(std::string("/export"));
 const dbus::ObjectPath kTestObjectPathInit(std::string("/path_init"));
 const dbus::ObjectPath kTestObjectPathUpdate(std::string("/path_update"));
 
-void NoAction(bool all_succeeded) {}
-
 }  // namespace
 
 class ExportedPropertySetTest : public ::testing::Test {
@@ -99,7 +97,8 @@ class ExportedPropertySetTest : public ::testing::Test {
       itf3->AddProperty(kStringListPropName, &stringlist_prop_);
       itf3->AddProperty(kPathListPropName, &pathlist_prop_);
       itf3->AddProperty(kUint8ListPropName, &uint8list_prop_);
-      dbus_object_.RegisterAsync(base::Bind(NoAction));
+      dbus_object_.RegisterAsync(
+          AsyncEventSequencer::GetDefaultCompletionAction());
     }
     virtual ~Properties() {}
 

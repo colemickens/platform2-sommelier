@@ -34,8 +34,6 @@ const char kTestMethod_StrLen[] = "StrLen";
 const char kTestInterface3[] = "org.chromium.Test.NoOpInterface";
 const char kTestMethod_NoOp[] = "NoOp";
 
-void NoAction(bool all_succeeded) {}
-
 struct Calc {
   int Add(ErrorPtr* error, int x, int y) { return x + y; }
   int Negate(ErrorPtr* error, int x) { return -x; }
@@ -90,7 +88,8 @@ class DBusObjectTest : public ::testing::Test {
     base::Callback<void(ErrorPtr*)> noop_callback = base::Bind(NoOp);
     itf3->AddMethodHandler(kTestMethod_NoOp, noop_callback);
 
-    dbus_object_->RegisterAsync(base::Bind(NoAction));
+    dbus_object_->RegisterAsync(
+        AsyncEventSequencer::GetDefaultCompletionAction());
   }
 
   void ExpectError(dbus::Response* response, const std::string& expected_code) {

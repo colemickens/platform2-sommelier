@@ -43,11 +43,17 @@ void AsyncEventSequencer::OnAllTasksCompletedCall(
 namespace {
 void IgnoreSuccess(const AsyncEventSequencer::CompletionTask& task,
                    bool /*success*/) { task.Run(); }
+void DoNothing(bool success) {}
 }  // namespace
 
 AsyncEventSequencer::CompletionAction AsyncEventSequencer::WrapCompletionTask(
     const CompletionTask& task) {
   return base::Bind(&IgnoreSuccess, task);
+}
+
+AsyncEventSequencer::CompletionAction
+    AsyncEventSequencer::GetDefaultCompletionAction() {
+  return base::Bind(&DoNothing);
 }
 
 void AsyncEventSequencer::HandleFinish(int registration_number,

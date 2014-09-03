@@ -67,7 +67,9 @@ class CHROMEOS_EXPORT AsyncEventSequencer
 
   // Wrap a CompletionTask with a function that discards the result.
   // This CompletionTask retains no references to the AsyncEventSequencer.
-  CompletionAction WrapCompletionTask(const CompletionTask& task);
+  static CompletionAction WrapCompletionTask(const CompletionTask& task);
+  // Create a default CompletionAction that doesn't do anything when called.
+  static CompletionAction GetDefaultCompletionAction();
 
  private:
   // We'll partially bind this function before giving it back via

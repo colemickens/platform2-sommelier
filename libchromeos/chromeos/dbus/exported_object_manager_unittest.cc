@@ -94,8 +94,6 @@ void VerifyInterfaceDropSignal(dbus::Signal* signal) {
   EXPECT_EQ(path, kClaimedTestPath);
 }
 
-void NoAction(bool all_succeeded) {}
-
 }  // namespace
 
 class ExportedObjectManagerTest: public ::testing::Test {
@@ -116,7 +114,7 @@ class ExportedObjectManagerTest: public ::testing::Test {
                 ExportMethod(_, _, _, _)).Times(AnyNumber());
     om_.reset(new ExportedObjectManager(bus_.get(), kTestPath));
     property_writer_ = base::Bind(&WriteTestPropertyDict);
-    om_->RegisterAsync(base::Bind(NoAction));
+    om_->RegisterAsync(AsyncEventSequencer::GetDefaultCompletionAction());
   }
 
   void TearDown() override {
