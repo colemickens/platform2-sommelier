@@ -4,7 +4,6 @@
 
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/compiler_specific.h>
 #include <base/file_util.h>
 #include <base/files/file_path.h>

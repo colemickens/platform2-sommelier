@@ -10,8 +10,8 @@
 
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/callback.h>
+#include <base/macros.h>
 #include <base/timer/timer.h>
 
 namespace power_manager {

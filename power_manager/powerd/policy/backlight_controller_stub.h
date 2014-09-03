@@ -5,7 +5,7 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_BACKLIGHT_CONTROLLER_STUB_H_
 #define POWER_MANAGER_POWERD_POLICY_BACKLIGHT_CONTROLLER_STUB_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/observer_list.h>
 
 #include "power_manager/powerd/policy/backlight_controller.h"

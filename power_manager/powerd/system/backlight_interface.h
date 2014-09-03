@@ -7,8 +7,8 @@
 
 #include <stdint.h>
 
-#include <base/basictypes.h>
 #include <base/logging.h>
+#include <base/macros.h>
 #include <base/time/time.h>
 
 namespace power_manager {

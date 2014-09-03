@@ -8,8 +8,8 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/files/file_path.h>
+#include <base/macros.h>
 #include <base/memory/scoped_vector.h>
 #include <base/observer_list.h>
 #include <base/timer/timer.h>

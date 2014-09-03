@@ -4,7 +4,6 @@
 
 #include "power_manager/powerd/policy/suspender.h"
 
-#include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/compiler_specific.h>

@@ -5,7 +5,7 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_BACKLIGHT_CONTROLLER_H_
 #define POWER_MANAGER_POWERD_POLICY_BACKLIGHT_CONTROLLER_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 

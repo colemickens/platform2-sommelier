@@ -4,7 +4,6 @@
 
 #include <stdint.h>
 
-#include <base/basictypes.h>
 #include <base/compiler_specific.h>
 #include <base/format_macros.h>
 #include <base/logging.h>

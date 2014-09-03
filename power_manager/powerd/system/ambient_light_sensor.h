@@ -8,9 +8,9 @@
 #include <list>
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/compiler_specific.h>
 #include <base/files/file_path.h>
+#include <base/macros.h>
 #include <base/observer_list.h>
 #include <base/timer/timer.h>
 

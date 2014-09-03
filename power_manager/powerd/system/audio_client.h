@@ -5,7 +5,7 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_AUDIO_CLIENT_H_
 #define POWER_MANAGER_POWERD_SYSTEM_AUDIO_CLIENT_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/observer_list.h>
 #include <dbus/object_proxy.h>
 
