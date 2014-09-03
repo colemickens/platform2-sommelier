@@ -7,7 +7,8 @@
 
 #include <string>
 
-#include "base/basictypes.h"
+#include <base/macros.h>
+
 #include "permission_broker/rule.h"
 
 struct udev;

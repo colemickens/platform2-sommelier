@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "base/basictypes.h"
+#include <base/macros.h>
 
 namespace permission_broker {
 
@@ -35,6 +35,7 @@ class Rule {
 
  private:
   const std::string name_;
+
   DISALLOW_COPY_AND_ASSIGN(Rule);
 };
 
