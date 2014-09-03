@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/macros.h>
+
 #include "wimax_manager/dbus_proxies/org.freedesktop.DBus.h"
 #include "wimax_manager/dbus_proxy.h"
 

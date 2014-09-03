@@ -7,8 +7,8 @@
 
 #include <memory>
 
-#include <base/basictypes.h>
 #include <base/lazy_instance.h>
+#include <base/macros.h>
 
 namespace DBus {
 

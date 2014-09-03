@@ -10,7 +10,8 @@
 #include <string>
 #include <vector>
 
-#include "base/basictypes.h"
+#include <base/macros.h>
+
 #include "wimax_manager/dbus_proxies/org.chromium.PowerManager.h"
 #include "wimax_manager/dbus_proxy.h"
 

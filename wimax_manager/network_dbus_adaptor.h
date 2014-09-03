@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/macros.h>
+
 #include "wimax_manager/dbus_adaptor.h"
 #include "wimax_manager/dbus_adaptors/org.chromium.WiMaxManager.Network.h"
 

@@ -11,7 +11,7 @@ extern "C" {
 
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/timer/timer.h>
 #include <gtest/gtest_prod.h>

@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "wimax_manager/dbus_proxiable.h"
 

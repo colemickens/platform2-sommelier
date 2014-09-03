@@ -7,8 +7,8 @@
 
 #include <memory>
 
-#include <base/basictypes.h>
 #include <base/logging.h>
+#include <base/macros.h>
 #include <dbus-c++/dbus.h>
 
 #include "wimax_manager/dbus_control.h"

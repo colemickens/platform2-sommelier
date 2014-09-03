@@ -8,8 +8,8 @@
 #include <memory>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/files/file_path.h>
+#include <base/macros.h>
 #include <base/memory/scoped_vector.h>
 #include <base/timer/timer.h>
 #include <gtest/gtest_prod.h>

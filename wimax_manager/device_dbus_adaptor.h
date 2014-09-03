@@ -8,6 +8,8 @@
 #include <map>
 #include <string>
 
+#include <base/macros.h>
+
 #include "wimax_manager/dbus_adaptor.h"
 #include "wimax_manager/dbus_adaptors/org.chromium.WiMaxManager.Device.h"
 #include "wimax_manager/network.h"

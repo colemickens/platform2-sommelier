@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
 
