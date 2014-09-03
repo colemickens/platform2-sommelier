@@ -51,16 +51,33 @@ void DBusCommandProxy::RegisterAsync(
   itf->AddProperty(dbus_constants::kCommandId, &id_);
   itf->AddProperty(dbus_constants::kCommandStatus, &status_);
   itf->AddProperty(dbus_constants::kCommandProgress, &progress_);
+  itf->AddProperty(dbus_constants::kCommandParameters, &parameters_);
 
   // Set the initial property values before registering the DBus object.
   name_.SetValue(command_instance_->GetName());
   category_.SetValue(command_instance_->GetCategory());
   id_.SetValue(command_instance_->GetID());
-  status_.SetValue(dbus_constants::kCommandStatusQueued);
-  progress_.SetValue(0);
+  status_.SetValue(command_instance_->GetStatus());
+  progress_.SetValue(command_instance_->GetProgress());
+  // Convert a string-to-PropValue map into a string-to-Any map which can be
+  // sent over D-Bus.
+  chromeos::dbus_utils::Dictionary params;
+  for (const auto& param_pair : command_instance_->GetParameters()) {
+    params.insert(std::make_pair(param_pair.first,
+                                 param_pair.second->GetValueAsAny()));
+  }
+  parameters_.SetValue(params);
 
   // Register the command DBus object and expose its methods and properties.
   dbus_object_.RegisterAsync(completion_callback);
+}
+
+void DBusCommandProxy::OnStatusChanged(const std::string& status) {
+  status_.SetValue(status);
+}
+
+void DBusCommandProxy::OnProgressChanged(int progress) {
+  progress_.SetValue(progress);
 }
 
 void DBusCommandProxy::HandleSetProgress(chromeos::ErrorPtr* error,
@@ -73,28 +90,26 @@ void DBusCommandProxy::HandleSetProgress(chromeos::ErrorPtr* error,
   IntPropType progress_type;
   progress_type.AddMinMaxConstraint(0, 100);
   if (progress_type.ValidateValue(progress, error)) {
-    status_.SetValue(dbus_constants::kCommandStatusInProgress);
-    progress_.SetValue(progress);
+    command_instance_->SetProgress(progress);
   }
 }
 
 void DBusCommandProxy::HandleAbort(chromeos::ErrorPtr* error) {
   LOG(INFO) << "Received call to Command<"
             << command_instance_->GetName() << ">::Abort()";
-  status_.SetValue(dbus_constants::kCommandStatusAborted);
+  command_instance_->Abort();
 }
 
 void DBusCommandProxy::HandleCancel(chromeos::ErrorPtr* error) {
   LOG(INFO) << "Received call to Command<"
             << command_instance_->GetName() << ">::Cancel()";
-  status_.SetValue(dbus_constants::kCommandStatusCanceled);
+  command_instance_->Cancel();
 }
 
 void DBusCommandProxy::HandleDone(chromeos::ErrorPtr* error) {
   LOG(INFO) << "Received call to Command<"
             << command_instance_->GetName() << ">::Done()";
-  status_.SetValue(dbus_constants::kCommandStatusDone);
-  progress_.SetValue(100);
+  command_instance_->Done();
 }
 
 

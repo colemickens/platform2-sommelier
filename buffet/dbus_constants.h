@@ -43,16 +43,7 @@ extern const char kCommandCategory[];
 extern const char kCommandId[];
 extern const char kCommandStatus[];
 extern const char kCommandProgress[];
-
-// Values for command execution status.
-extern const char kCommandStatusQueued[];
-extern const char kCommandStatusInProgress[];
-extern const char kCommandStatusPaused[];
-extern const char kCommandStatusError[];
-extern const char kCommandStatusDone[];
-extern const char kCommandStatusCanceled[];
-extern const char kCommandStatusAborted[];
-extern const char kCommandStatusExpired[];
+extern const char kCommandParameters[];
 
 }  // namespace dbus_constants
 

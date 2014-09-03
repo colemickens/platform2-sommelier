@@ -10,10 +10,21 @@
 
 #include "buffet/commands/command_definition.h"
 #include "buffet/commands/command_dictionary.h"
+#include "buffet/commands/command_proxy_interface.h"
+#include "buffet/commands/command_queue.h"
 #include "buffet/commands/schema_constants.h"
 #include "buffet/commands/schema_utils.h"
 
 namespace buffet {
+
+const char CommandInstance::kStatusQueued[] = "queued";
+const char CommandInstance::kStatusInProgress[] = "inProgress";
+const char CommandInstance::kStatusPaused[] = "paused";
+const char CommandInstance::kStatusError[] = "error";
+const char CommandInstance::kStatusDone[] = "done";
+const char CommandInstance::kStatusCanceled[] = "canceled";
+const char CommandInstance::kStatusAborted[] = "aborted";
+const char CommandInstance::kStatusExpired[] = "expired";
 
 CommandInstance::CommandInstance(const std::string& name,
                                  const std::string& category,
@@ -118,6 +129,54 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
                                      command_def->GetCategory(),
                                      parameters));
   return instance;
+}
+
+bool CommandInstance::SetProgress(int progress) {
+  if (progress < 0 || progress > 100)
+    return false;
+  if (progress != progress_) {
+    progress_ = progress;
+    SetStatus(kStatusInProgress);
+    if (proxy_)
+      proxy_->OnProgressChanged(progress_);
+  }
+  return true;
+}
+
+void CommandInstance::Abort() {
+  SetStatus(kStatusAborted);
+  RemoveFromQueue();
+  // The command will be destroyed after that, so do not access any members.
+}
+
+void CommandInstance::Cancel() {
+  SetStatus(kStatusCanceled);
+  RemoveFromQueue();
+  // The command will be destroyed after that, so do not access any members.
+}
+
+void CommandInstance::Done() {
+  SetProgress(100);
+  SetStatus(kStatusDone);
+  RemoveFromQueue();
+  // The command will be destroyed after that, so do not access any members.
+}
+
+void CommandInstance::SetStatus(const std::string& status) {
+  if (status != status_) {
+    status_ = status;
+    if (proxy_)
+      proxy_->OnStatusChanged(status_);
+  }
+}
+
+void CommandInstance::RemoveFromQueue() {
+  if (queue_) {
+    // Store this instance in unique_ptr until the end of this method,
+    // otherwise it will be destroyed as soon as CommandQueue::Remove() returns.
+    std::unique_ptr<CommandInstance> this_instance = queue_->Remove(GetID());
+    // The command instance will survive till the end of this scope.
+  }
 }
 
 

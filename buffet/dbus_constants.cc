@@ -35,15 +35,7 @@ const char kCommandCategory[] = "Category";
 const char kCommandId[] = "Id";
 const char kCommandStatus[] = "Status";
 const char kCommandProgress[] = "Progress";
-
-const char kCommandStatusQueued[] = "queued";
-const char kCommandStatusInProgress[] = "inProgress";
-const char kCommandStatusPaused[] = "paused";
-const char kCommandStatusError[] = "error";
-const char kCommandStatusDone[] = "done";
-const char kCommandStatusCanceled[] = "canceled";
-const char kCommandStatusAborted[] = "aborted";
-const char kCommandStatusExpired[] = "expired";
+const char kCommandParameters[] = "Parameters";
 
 }  // namespace dbus_constants
 

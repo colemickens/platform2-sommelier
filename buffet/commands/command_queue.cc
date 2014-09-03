@@ -10,6 +10,7 @@ namespace buffet {
 std::string CommandQueue::Add(std::unique_ptr<CommandInstance> instance) {
   std::string id = std::to_string(++next_id_);
   instance->SetID(id);
+  instance->SetCommandQueue(this);
   auto pair = map_.insert(std::make_pair(id, std::move(instance)));
   LOG_IF(FATAL, !pair.second) << "Command with ID '" << id
                               << "' is already in the queue";
@@ -25,6 +26,7 @@ std::unique_ptr<CommandInstance> CommandQueue::Remove(
   auto p = map_.find(id);
   if (p != map_.end()) {
     instance = std::move(p->second);
+    instance->SetCommandQueue(nullptr);
     map_.erase(p);
     if (dispatch_interface_)
       dispatch_interface_->OnCommandRemoved(instance.get());

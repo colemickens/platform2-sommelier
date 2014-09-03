@@ -22,8 +22,10 @@ using ::testing::Return;
 using ::testing::Invoke;
 using ::testing::_;
 
-using chromeos::dbus_utils::ExportedObjectManager;
 using buffet::unittests::CreateDictionaryValue;
+using chromeos::dbus_utils::AsyncEventSequencer;
+using chromeos::dbus_utils::Dictionary;
+using chromeos::dbus_utils::ExportedObjectManager;
 
 namespace buffet {
 
@@ -31,8 +33,6 @@ namespace {
 
 const char kTestCommandCategoty[] = "test_command_category";
 const char kTestCommandId[] = "cmd_1";
-
-void NoAction(bool all_succeeded) {}
 
 }  // namespace
 
@@ -92,11 +92,14 @@ class DBusCommandProxyTest : public ::testing::Test {
 
     command_proxy_.reset(new DBusCommandProxy(nullptr, bus_,
                                               command_instance_.get()));
-    command_proxy_->RegisterAsync(base::Bind(NoAction));
+    command_instance_->SetProxy(command_proxy_.get());
+    command_proxy_->RegisterAsync(
+        AsyncEventSequencer::GetDefaultCompletionAction());
   }
 
   void TearDown() override {
     EXPECT_CALL(*mock_exported_object_command_, Unregister()).Times(1);
+    command_instance_->SetProxy(nullptr);
     command_proxy_.reset();
     command_instance_.reset();
     dict_.Clear();
@@ -113,6 +116,10 @@ class DBusCommandProxyTest : public ::testing::Test {
 
   int32_t GetProgress() const {
     return command_proxy_->progress_.value();
+  }
+
+  Dictionary GetParameters() const {
+    return command_proxy_->parameters_.value();
   }
 
   std::unique_ptr<dbus::Response> CallMethod(
@@ -168,17 +175,24 @@ class DBusCommandProxyTest : public ::testing::Test {
 };
 
 TEST_F(DBusCommandProxyTest, Init) {
-  EXPECT_EQ(dbus_constants::kCommandStatusQueued, GetStatus());
+  Dictionary params = {
+    {"height", int32_t{53}},
+    {"_jumpType", std::string{"_withKick"}},
+  };
+  EXPECT_EQ(CommandInstance::kStatusQueued, GetStatus());
   EXPECT_EQ(0, GetProgress());
+  EXPECT_EQ(params, GetParameters());
   EXPECT_EQ("robot.jump",
             GetPropertyValue<std::string>(dbus_constants::kCommandName));
   EXPECT_EQ(kTestCommandCategoty,
             GetPropertyValue<std::string>(dbus_constants::kCommandCategory));
   EXPECT_EQ(kTestCommandId,
             GetPropertyValue<std::string>(dbus_constants::kCommandId));
-  EXPECT_EQ(dbus_constants::kCommandStatusQueued,
+  EXPECT_EQ(CommandInstance::kStatusQueued,
             GetPropertyValue<std::string>(dbus_constants::kCommandStatus));
   EXPECT_EQ(0, GetPropertyValue<int32_t>(dbus_constants::kCommandProgress));
+  EXPECT_EQ(params,
+            GetPropertyValue<Dictionary>(dbus_constants::kCommandParameters));
 }
 
 TEST_F(DBusCommandProxyTest, SetProgress) {
@@ -188,9 +202,9 @@ TEST_F(DBusCommandProxyTest, SetProgress) {
     writer->AppendInt32(10);
   });
   VerifyResponse(response, {});
-  EXPECT_EQ(dbus_constants::kCommandStatusInProgress, GetStatus());
+  EXPECT_EQ(CommandInstance::kStatusInProgress, GetStatus());
   EXPECT_EQ(10, GetProgress());
-  EXPECT_EQ(dbus_constants::kCommandStatusInProgress,
+  EXPECT_EQ(CommandInstance::kStatusInProgress,
             GetPropertyValue<std::string>(dbus_constants::kCommandStatus));
   EXPECT_EQ(10, GetPropertyValue<int32_t>(dbus_constants::kCommandProgress));
 }
@@ -201,7 +215,7 @@ TEST_F(DBusCommandProxyTest, SetProgress_OutOfRange) {
     writer->AppendInt32(110);
   });
   EXPECT_TRUE(IsResponseError(response));
-  EXPECT_EQ(dbus_constants::kCommandStatusQueued, GetStatus());
+  EXPECT_EQ(CommandInstance::kStatusQueued, GetStatus());
   EXPECT_EQ(0, GetProgress());
 }
 
@@ -209,21 +223,25 @@ TEST_F(DBusCommandProxyTest, Abort) {
   EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
   auto response = CallMethod(dbus_constants::kCommandAbort, {});
   VerifyResponse(response, {});
-  EXPECT_EQ(dbus_constants::kCommandStatusAborted, GetStatus());
+  EXPECT_EQ(CommandInstance::kStatusAborted, GetStatus());
 }
 
 TEST_F(DBusCommandProxyTest, Cancel) {
   EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
   auto response = CallMethod(dbus_constants::kCommandCancel, {});
   VerifyResponse(response, {});
-  EXPECT_EQ(dbus_constants::kCommandStatusCanceled, GetStatus());
+  EXPECT_EQ(CommandInstance::kStatusCanceled, GetStatus());
 }
 
 TEST_F(DBusCommandProxyTest, Done) {
-  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(2);
+  // 3 property updates:
+  // status: queued -> inProgress
+  // progress: 0 -> 100
+  // status: inProgress -> done
+  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(3);
   auto response = CallMethod(dbus_constants::kCommandDone, {});
   VerifyResponse(response, {});
-  EXPECT_EQ(dbus_constants::kCommandStatusDone, GetStatus());
+  EXPECT_EQ(CommandInstance::kStatusDone, GetStatus());
   EXPECT_EQ(100, GetProgress());
 }
 

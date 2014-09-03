@@ -9,7 +9,10 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <chromeos/dbus/data_serialization.h>
 #include <chromeos/dbus/dbus_object.h>
+
+#include "buffet/commands/command_proxy_interface.h"
 
 namespace chromeos {
 namespace dbus_utils {
@@ -21,16 +24,20 @@ namespace buffet {
 
 class CommandInstance;
 
-class DBusCommandProxy {
+class DBusCommandProxy : public CommandProxyInterface {
  public:
   DBusCommandProxy(chromeos::dbus_utils::ExportedObjectManager* object_manager,
                    const scoped_refptr<dbus::Bus>& bus,
                    CommandInstance* command_instance);
-  virtual ~DBusCommandProxy() = default;
+  ~DBusCommandProxy() override = default;
 
   void RegisterAsync(
       const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction&
           completion_callback);
+
+  // CommandProxyInterface implementation/overloads.
+  void OnStatusChanged(const std::string& status) override;
+  void OnProgressChanged(int progress) override;
 
  private:
   // DBus properties for org.chromium.Buffet.Command interface.
@@ -39,6 +46,8 @@ class DBusCommandProxy {
   chromeos::dbus_utils::ExportedProperty<std::string> id_;
   chromeos::dbus_utils::ExportedProperty<std::string> status_;
   chromeos::dbus_utils::ExportedProperty<int32_t> progress_;
+  chromeos::dbus_utils::ExportedProperty<chromeos::dbus_utils::Dictionary>
+      parameters_;
 
   // Handles calls to org.chromium.Buffet.Command.SetProgress(progress).
   void HandleSetProgress(chromeos::ErrorPtr* error, int32_t progress);
@@ -55,6 +64,7 @@ class DBusCommandProxy {
   chromeos::dbus_utils::DBusObject dbus_object_;
 
   friend class DBusCommandProxyTest;
+  friend class DBusCommandDispacherTest;
   DISALLOW_COPY_AND_ASSIGN(DBusCommandProxy);
 };
 
