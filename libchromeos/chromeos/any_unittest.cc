@@ -257,3 +257,50 @@ TEST(Any, TryGet) {
   EXPECT_EQ(12, val.TryGet<int>(17));
   EXPECT_EQ(17, empty.TryGet<int>(17));
 }
+
+TEST(Any, Compare_Int) {
+  Any int1{12};
+  Any int2{12};
+  Any int3{20};
+  EXPECT_EQ(int1, int2);
+  EXPECT_NE(int2, int3);
+}
+
+TEST(Any, Compare_String) {
+  Any str1{std::string{"foo"}};
+  Any str2{std::string{"foo"}};
+  Any str3{std::string{"bar"}};
+  EXPECT_EQ(str1, str2);
+  EXPECT_NE(str2, str3);
+}
+
+TEST(Any, Compare_Array) {
+  Any vec1{std::vector<int>{1, 2}};
+  Any vec2{std::vector<int>{1, 2}};
+  Any vec3{std::vector<int>{1, 2, 3}};
+  EXPECT_EQ(vec1, vec2);
+  EXPECT_NE(vec2, vec3);
+}
+
+TEST(Any, Compare_Empty) {
+  Any empty1;
+  Any empty2;
+  Any int1{1};
+  EXPECT_EQ(empty1, empty2);
+  EXPECT_NE(int1, empty1);
+  EXPECT_NE(empty2, int1);
+}
+
+TEST(Any, Compare_NonComparable) {
+  struct Person {
+    std::string name;
+    int age;
+  };
+  Any person1(Person{"Jack", 40});
+  Any person2 = person1;
+  Any person3(Person{"Jill", 20});
+  EXPECT_NE(person1, person2);
+  EXPECT_NE(person1, person3);
+  EXPECT_NE(person2, person3);
+}
+

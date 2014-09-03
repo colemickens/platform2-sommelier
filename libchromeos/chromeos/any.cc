@@ -32,6 +32,17 @@ Any& Any::operator=(Any&& rhs) {
   return *this;
 }
 
+bool Any::operator==(const Any& rhs) const {
+  // Make sure both objects contain data of the same type.
+  if (GetType() != rhs.GetType())
+    return false;
+
+  if (IsEmpty())
+    return true;
+
+  return data_buffer_.GetDataPtr()->CompareEqual(rhs.data_buffer_.GetDataPtr());
+}
+
 const std::type_info& Any::GetType() const {
   if (!IsEmpty())
     return data_buffer_.GetDataPtr()->GetType();

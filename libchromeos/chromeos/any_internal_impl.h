@@ -41,6 +41,96 @@ TryConvert(const From& in, To* out) {
   return false;
 }
 
+//////////////////////////////////////////////////////////////////////////////
+// Provide a way to compare values of unspecified types without compiler errors
+// when no operator==() is provided for a given type. This is important to
+// allow Any class to have operator==(), yet still allowing arbitrary types
+// (not necessarily comparable) to be placed inside Any without resulting in
+// compile-time error.
+//
+// We achieve this in two ways. First, we provide a IsEqualityComparable<T>
+// class that can be used in compile-time conditions to determine if there is
+// operator==() defined that takes values of type T (or which can be implicitly
+// converted to type T). Secondly, this allows us to specialize a helper
+// compare function EqCompare<T>(v1, v2) to use operator==() for types that
+// are comparable, and just return false for those that are not.
+//
+// IsEqualityComparableHelper<T> is a helper class for implementing an
+// an STL-compatible IsEqualityComparable<T> containing a Boolean member |value|
+// which evaluates to true for comparable types and false otherwise.
+template<typename T>
+struct IsEqualityComparableHelper {
+  struct IntWrapper {
+    // A special structure that provides a constructor that takes an int.
+    // This way, an int argument passed to a function will be favored over
+    // IntWrapper when both overloads are provided.
+    // Also this constructor must NOT be explicit.
+    // NOLINTNEXTLINE(runtime/explicit)
+    IntWrapper(int dummy) {}  // do nothing
+  };
+
+  // Here is an obscure trick to determine if a type U has operator==().
+  // We are providing two function prototypes for TriggerFunction. One that
+  // takes an argument of type IntWrapper (which is implicitly convertible from
+  // an int), and returns an std::false_type. This is a fall-back mechanism.
+  template<typename U>
+  static std::false_type TriggerFunction(IntWrapper dummy);
+
+  // The second overload of TriggerFunction takes an int (explicitly) and
+  // returns std::true_type. If both overloads are available, this one will be
+  // chosen when referencing it as TriggerFunction(0), since it is a better
+  // (more specific) match.
+  //
+  // However this overload is available only for types that support operator==.
+  // This is achieved by employing SFINAE mechanism inside a template function
+  // overload that refers to operator==() for two values of types U&. This is
+  // used inside decltype(), so no actual code is executed. If the types
+  // are not comparable, reference to "==" would fail and the compiler will
+  // simply ignore this overload due to SFIANE.
+  //
+  // The final little trick used here is the reliance on operator comma inside
+  // the decltype() expression. The result of the expression is always
+  // std::true_type(). The expression on the left of comma is just evaluated and
+  // discarded. If it evaluates successfully (i.e. the type has operator==), the
+  // return value of the function is set to be std::true_value. If it fails,
+  // the whole function prototype is discarded and is not available in the
+  // IsEqualityComparableHelper<T> class.
+  //
+  // Here we use std::declval<U&>() to make sure we have operator==() that takes
+  // lvalue references to type U which is not necessarily default-constructible.
+  template<typename U>
+  static decltype((std::declval<U&>() == std::declval<U&>()), std::true_type())
+      TriggerFunction(int dummy);
+
+  // Finally, use the return type of the overload of TriggerFunction that
+  // matches the argument (int) to be aliased to type |type|. If T is
+  // comparable, there will be two overloads and the more specific (int) will
+  // be chosen which returns std::true_value. If the type is non-comparable,
+  // there will be only one version of TriggerFunction available which
+  // returns std::false_value.
+  using type = decltype(TriggerFunction<T>(0));
+};
+
+// IsEqualityComparable<T> is simply a class that derives from either
+// std::true_value, if type T is comparable, or from std::false_value, if the
+// type is non-comparable. We just use |type| alias from
+// IsEqualityComparableHelper<T> as the base class.
+template<typename T>
+struct IsEqualityComparable : IsEqualityComparableHelper<T>::type {
+};
+
+// EqCompare() overload for non-comparable types. Always returns false.
+template<typename T>
+inline typename std::enable_if<!IsEqualityComparable<T>::value, bool>::type
+    EqCompare(const T& v1, const T& v2) { return false; }
+
+// EqCompare overload for comparable types. Calls operator==(v1, v2) to compare.
+template<typename T>
+inline typename std::enable_if<IsEqualityComparable<T>::value, bool>::type
+    EqCompare(const T& v1, const T& v2) { return (v1 == v2); }
+
+//////////////////////////////////////////////////////////////////////////////
+
 class Buffer;  // Forward declaration of data buffer container.
 
 // Abstract base class for contained variant data.
@@ -58,6 +148,8 @@ struct Data {
   virtual intmax_t GetAsInteger() const = 0;
   // Writes the contained value to the D-Bus message buffer.
   virtual bool AppendToDBusMessage(dbus::MessageWriter* writer) const = 0;
+  // Compares if the two data containers have objects of the same value.
+  virtual bool CompareEqual(const Data* other_data) const = 0;
 };
 
 // Concrete implementation of variant data of type T.
@@ -83,6 +175,12 @@ struct TypedData : public Data {
   bool AppendToDBusMessage(dbus::MessageWriter* writer) const override {
     return chromeos::dbus_utils::AppendValueToWriterAsVariant(writer, value_);
   }
+
+  bool CompareEqual(const Data* other_data) const override {
+    return EqCompare<T>(value_,
+                        static_cast<const TypedData<T>*>(other_data)->value_);
+  }
+
   // Special methods to copy/move data of the same type
   // without reallocating the buffer.
   void FastAssign(const T& source) { value_ = source; }

@@ -62,6 +62,13 @@ class CHROMEOS_EXPORT Any final {
     return *this;
   }
 
+  // Compares the contents of two Any objects for equality. Note that the
+  // contained type must be equality-comparable (must have operator== defined).
+  // If operator==() is not available for contained type, comparison operation
+  // always returns false (as if the data were different).
+  bool operator==(const Any& rhs) const;
+  inline bool operator!=(const Any& rhs) const { return !operator==(rhs); }
+
   // Checks if the given type DestType can be obtained from the Any.
   // For example, to check if Any has a 'double' value in it:
   //  any.IsTypeCompatible<double>()
@@ -138,7 +145,6 @@ class CHROMEOS_EXPORT Any final {
   const T& TryGet() const {
     return TryGet<T>(typename std::decay<T>::type());
   }
-
 
   // Returns the type information about the contained data. For most cases,
   // instead of using this function, you should be calling IsTypeCompatible<>().
