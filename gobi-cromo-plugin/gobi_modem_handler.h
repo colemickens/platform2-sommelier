@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <cromo/modem_handler.h>
 #include <dbus-c++/types.h>

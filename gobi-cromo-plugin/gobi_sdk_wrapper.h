@@ -30,7 +30,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>  // for DISALLOW_COPY_AND_ASSIGN
+#include <base/macros.h>  // for DISALLOW_COPY_AND_ASSIGN
 #include <base/memory/scoped_ptr.h>
 #include <dbus/dbus.h>  // for DBus::Path &
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST

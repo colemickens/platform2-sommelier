@@ -13,9 +13,9 @@
 #include <set>
 #include <string>
 
-#include <base/basictypes.h>
 // TODO(ers) remove following #include once logging spew is resolved
 #include <base/logging.h>
+#include <base/macros.h>
 #include <gtest/gtest_prod.h>  // For FRIEND_TEST
 #include <cromo/cromo_server.h>
 #include <cromo/dbus_adaptors/org.freedesktop.DBus.Properties.h>
