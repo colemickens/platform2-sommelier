@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "base/basictypes.h"
+#include <base/macros.h>
 
 #include "chromiumos-wide-profiling/perf_reader.h"
 #include "chromiumos-wide-profiling/quipper_proto.h"

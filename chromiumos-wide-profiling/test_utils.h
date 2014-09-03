@@ -5,11 +5,11 @@
 #ifndef CHROMIUMOS_WIDE_PROFILING_TEST_UTILS_H_
 #define CHROMIUMOS_WIDE_PROFILING_TEST_UTILS_H_
 
+#include <stdint.h>
+
 #include <map>
 #include <string>
 #include <vector>
-
-#include "base/basictypes.h"
 
 #include "chromiumos-wide-profiling/perf_parser.h"
 #include "chromiumos-wide-profiling/quipper_string.h"

@@ -13,8 +13,7 @@
 #include <utility>
 #include <vector>
 
-#include "base/basictypes.h"
-#include "base/logging.h"
+#include <base/macros.h>
 
 #include "chromiumos-wide-profiling/perf_reader.h"
 

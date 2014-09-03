@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "base/basictypes.h"
+#include <base/macros.h>
 
 #include "chromiumos-wide-profiling/quipper_string.h"
 

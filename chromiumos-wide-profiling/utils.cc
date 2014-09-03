@@ -13,8 +13,8 @@
 #include <sstream>
 #include <zlib.h>
 
-#include "base/basictypes.h"
-#include "base/logging.h"
+#include <base/logging.h>
+#include <base/macros.h>
 
 #include "chromiumos-wide-profiling/utils.h"
 
