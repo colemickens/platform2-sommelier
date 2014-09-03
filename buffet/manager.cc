@@ -56,7 +56,8 @@ void Manager::RegisterAsync(const AsyncEventSequencer::CompletionAction& cb) {
   //              the properties interface.
   state_.SetValue("{}");
   dbus_object_.RegisterAsync(cb);
-  command_manager_ = std::make_shared<CommandManager>();
+  command_manager_ =
+      std::make_shared<CommandManager>(dbus_object_.GetObjectManager());
   command_manager_->Startup();
   device_info_ = std::unique_ptr<DeviceRegistrationInfo>(
       new DeviceRegistrationInfo(command_manager_));

@@ -5,21 +5,37 @@
 #ifndef BUFFET_COMMANDS_COMMAND_MANAGER_H_
 #define BUFFET_COMMANDS_COMMAND_MANAGER_H_
 
+#include <memory>
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/files/file_path.h>
+#include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 
 #include "buffet/commands/command_dictionary.h"
+#include "buffet/commands/command_queue.h"
+#include "buffet/commands/dbus_command_dispatcher.h"
+
+namespace chromeos {
+namespace dbus_utils {
+class ExportedObjectManager;
+}  // namespace dbus_utils
+}  // namespace chromeos
+
 
 namespace buffet {
+
+class CommandInstance;
 
 // CommandManager class that will have a list of all the device command
 // schemas as well as the live command queue of pending command instances
 // dispatched to the device.
-class CommandManager {
+class CommandManager final {
  public:
-  CommandManager() = default;
+  CommandManager();
+  explicit CommandManager(
+      const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
+          object_manager);
 
   // Get the command definitions for the device.
   const CommandDictionary& GetCommandDictionary() const;
@@ -59,6 +75,9 @@ class CommandManager {
   // the current device.
   void Startup();
 
+  // Adds a new command to the command queue. Returns command ID.
+  std::string AddCommand(std::unique_ptr<CommandInstance> command_instance);
+
  private:
   // Helper function to load a JSON file that is expected to be
   // an object/dictionary. In case of error, returns empty unique ptr and fills
@@ -68,6 +87,8 @@ class CommandManager {
 
   CommandDictionary base_dictionary_;  // Base/std command definitions/schemas.
   CommandDictionary dictionary_;  // Command definitions/schemas.
+  CommandQueue command_queue_;
+  DBusCommandDispacher command_dispatcher_;
 
   DISALLOW_COPY_AND_ASSIGN(CommandManager);
 };

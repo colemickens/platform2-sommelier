@@ -8,12 +8,25 @@
 #include <base/files/file_enumerator.h>
 #include <base/json/json_reader.h>
 #include <base/values.h>
+#include <chromeos/dbus/exported_object_manager.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/errors/error_codes.h>
 
 #include "buffet/commands/schema_constants.h"
 
+using chromeos::dbus_utils::ExportedObjectManager;
+
 namespace buffet {
+
+CommandManager::CommandManager() {
+  command_queue_.SetCommandDispachInterface(&command_dispatcher_);
+}
+
+CommandManager::CommandManager(
+    const base::WeakPtr<ExportedObjectManager>& object_manager)
+    : command_dispatcher_(object_manager->GetBus(), object_manager.get()) {
+  command_queue_.SetCommandDispachInterface(&command_dispatcher_);
+}
 
 const CommandDictionary& CommandManager::GetCommandDictionary() const {
   return dictionary_;
@@ -102,6 +115,11 @@ std::unique_ptr<const base::DictionaryValue> CommandManager::LoadJsonDict(
     return std::unique_ptr<const base::DictionaryValue>();
   }
   return std::unique_ptr<const base::DictionaryValue>(dict_value);
+}
+
+std::string CommandManager::AddCommand(
+    std::unique_ptr<CommandInstance> command_instance) {
+  return command_queue_.Add(std::move(command_instance));
 }
 
 }  // namespace buffet
