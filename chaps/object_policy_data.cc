@@ -4,7 +4,7 @@
 
 #include "chaps/object_policy_data.h"
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 namespace chaps {
 

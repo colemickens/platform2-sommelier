@@ -4,8 +4,7 @@
 
 #include "chaps/object_policy_secret_key.h"
 
-#include <base/basictypes.h>
-#include <base/logging.h>
+#include <base/macros.h>
 
 #include "chaps/chaps_utility.h"
 

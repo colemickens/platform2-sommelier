@@ -11,7 +11,7 @@
 #include <set>
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/synchronization/lock.h>
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>

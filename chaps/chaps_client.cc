@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>

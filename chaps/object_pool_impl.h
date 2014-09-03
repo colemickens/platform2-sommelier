@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>

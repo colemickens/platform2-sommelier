@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/logging.h>
 #include <base/synchronization/waitable_event.h>
 

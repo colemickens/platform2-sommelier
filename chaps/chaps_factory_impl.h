@@ -7,7 +7,7 @@
 
 #include "chaps/chaps_factory.h"
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 namespace chaps {
 

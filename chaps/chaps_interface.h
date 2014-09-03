@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <chromeos/secure_blob.h>
 
 #include "chaps/chaps.h"

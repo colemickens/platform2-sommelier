@@ -10,7 +10,7 @@
 #include <set>
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 
 #include "pkcs11/cryptoki.h"
