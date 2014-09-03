@@ -40,8 +40,8 @@ struct ParsedEvent {
   // TODO(sque): Turn this struct into a class to privatize member variables.
   ParsedEvent() : command_(NULL) {}
 
-  // Stores address of the event pointer in |events_|.
-  malloced_unique_ptr<event_t>* raw_event;
+  // Stores address of an event_t owned by the |PerfReader::events_| vector.
+  event_t* raw_event;
 
   // For mmap events, use this to count the number of samples that are in this
   // region.

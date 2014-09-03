@@ -215,10 +215,6 @@ class PerfSerializer : public PerfParser {
       const PerfDataProto_PerfNodeTopologyMetadata& proto_metadata,
       PerfNodeTopologyMetadata* metadata) const;
 
-  // Populates |parsed_events_| with pointers event_t and perf_sample structs in
-  // each corresponding |events_| struct.
-  void SetRawEvents(size_t num_events);
-
 
   const VectorSerializer<PerfDataProto_PerfFileAttr, PerfFileAttr>
       SerializePerfFileAttrs = {this, &PerfSerializer::SerializePerfFileAttr};

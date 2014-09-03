@@ -68,7 +68,7 @@ bool PerfParser::ParseRawEvents() {
   parsed_events_.resize(events_.size());
   for (size_t i = 0; i < events_.size(); ++i) {
     ParsedEvent& parsed_event = parsed_events_[i];
-    parsed_event.raw_event = &events_[i];
+    parsed_event.raw_event = events_[i].get();
   }
   SortParsedEvents();
   ProcessEvents();
@@ -83,7 +83,7 @@ bool PerfParser::ParseRawEvents() {
   size_t read_index;
   for (read_index = 0; read_index < parsed_events_.size(); ++read_index) {
     const ParsedEvent& event = parsed_events_[read_index];
-    if (event.raw_event->get()->header.type == PERF_RECORD_MMAP &&
+    if (event.raw_event->header.type == PERF_RECORD_MMAP &&
         event.num_samples_in_mmap_region == 0) {
       continue;
     }
@@ -111,7 +111,7 @@ void PerfParser::SortParsedEvents() {
     event_and_time->event = &parsed_events_[i];
 
     struct perf_sample sample_info;
-    CHECK(ReadPerfSampleInfo(**parsed_events_[i].raw_event, &sample_info));
+    CHECK(ReadPerfSampleInfo(*parsed_events_[i].raw_event, &sample_info));
     event_and_time->time = sample_info.time;
 
     events_and_times[i] = event_and_time;
@@ -143,7 +143,7 @@ bool PerfParser::ProcessEvents() {
 
   for (unsigned int i = 0; i < parsed_events_sorted_by_time_.size(); ++i) {
     ParsedEvent& parsed_event = *parsed_events_sorted_by_time_[i];
-    event_t& event = **parsed_event.raw_event;
+    event_t& event = *parsed_event.raw_event;
     switch (event.header.type) {
       case PERF_RECORD_SAMPLE:
         VLOG(1) << "IP: " << std::hex << event.ip.ip;
@@ -228,7 +228,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
 
   // Find the associated command.
   perf_sample sample_info;
-  if (!ReadPerfSampleInfo(**parsed_event->raw_event, &sample_info))
+  if (!ReadPerfSampleInfo(*parsed_event->raw_event, &sample_info))
     return false;
   PidTid pidtid = std::make_pair(sample_info.pid, sample_info.tid);
   std::map<PidTid, const string*>::const_iterator comm_iter =
@@ -239,7 +239,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
     parsed_event->set_command(*comm_iter->second);
   }
 
-  struct ip_event& event = parsed_event->raw_event->get()->ip;
+  struct ip_event& event = parsed_event->raw_event->ip;
   uint64_t unmapped_event_ip = event.ip;
 
   // Map the event IP itself.
@@ -265,7 +265,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   // Write the remapped data back to the raw event regardless of whether it was
   // entirely successfully remapped.  A single failed remap should not
   // invalidate all the other remapped entries.
-  if (!WritePerfSampleInfo(sample_info, parsed_event->raw_event->get())) {
+  if (!WritePerfSampleInfo(sample_info, parsed_event->raw_event)) {
     LOG(ERROR) << "Failed to write back remapped sample info.";
     return false;
   }
@@ -449,19 +449,19 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(
       // Make sure the ID points to a valid event.
       CHECK_LE(id, parsed_events_sorted_by_time_.size());
       ParsedEvent* parsed_event = parsed_events_sorted_by_time_[id];
-      CHECK_EQ(parsed_event->raw_event->get()->header.type, PERF_RECORD_MMAP);
+      CHECK_EQ(parsed_event->raw_event->header.type, PERF_RECORD_MMAP);
 
       // Find the mmap DSO filename in the set of known DSO names.
       // TODO(sque): take build IDs into account.
       DSOInfo dso_info;
-      dso_info.name = parsed_event->raw_event->get()->mmap.filename;
+      dso_info.name = parsed_event->raw_event->mmap.filename;
       std::set<DSOInfo>::const_iterator dso_iter = dso_set_.find(dso_info);
       CHECK(dso_iter != dso_set_.end());
       dso_and_offset->dso_info_ = &(*dso_iter);
       if (id) {
         // For non-kernel events, we need to preserve the pgoff.
         // TODO(cwp-team): Add unit test for this case.
-        dso_and_offset->offset_ += parsed_event->raw_event->get()->mmap.pgoff;
+        dso_and_offset->offset_ += parsed_event->raw_event->mmap.pgoff;
       }
 
       ++parsed_event->num_samples_in_mmap_region;

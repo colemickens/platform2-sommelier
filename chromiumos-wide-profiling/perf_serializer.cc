@@ -96,8 +96,16 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
   CHECK_GT(attrs_.size(), 0U);
   sample_type_ = attrs_[0].attr.sample_type;
 
-  SetRawEvents(perf_data_proto.events().size());
-  if (!DeserializeEvents(perf_data_proto.events(), &parsed_events_))
+  // DeserializeEvent lets the parsed_event.raw_event own the event_t
+  // temporarily.
+  const bool deserialize_events_successful =
+      DeserializeEvents(perf_data_proto.events(), &parsed_events_);
+  // Have events_ take ownership of the raw_event pointers. We do this even if
+  // DeserializeEvents was unsuccessful to avoid leaking the successfully
+  // deserialized events.
+  for (const ParsedEvent& event : parsed_events_)
+    events_.emplace_back(event.raw_event);
+  if (!deserialize_events_successful)
     return false;
 
   if (perf_data_proto.metadata_mask_size())
@@ -266,11 +274,10 @@ bool PerfSerializer::SerializeEventPointer(
 bool PerfSerializer::SerializeEvent(
     const ParsedEvent& event,
     PerfDataProto_PerfEvent* event_proto) const {
-  const perf_event_header& header = (*event.raw_event)->header;
-  const event_t& raw_event = **event.raw_event;
-  if (!SerializeEventHeader(header, event_proto->mutable_header()))
+  const event_t& raw_event = *event.raw_event;
+  if (!SerializeEventHeader(raw_event.header, event_proto->mutable_header()))
     return false;
-  switch (header.type) {
+  switch (raw_event.header.type) {
     case PERF_RECORD_SAMPLE:
       if (!SerializeRecordSample(raw_event,
                                  event_proto->mutable_sample_event())) {
@@ -306,7 +313,7 @@ bool PerfSerializer::SerializeEvent(
         return false;
       break;
     default:
-      LOG(ERROR) << "Unknown raw_event type: " << header.type;
+      LOG(ERROR) << "Unknown raw_event type: " << raw_event.header.type;
       break;
   }
   return true;
@@ -376,7 +383,7 @@ bool PerfSerializer::DeserializeEvent(
       break;
   }
   if (!event_deserialized) {
-    *event->raw_event = NULL;
+    event->raw_event = NULL;
     return false;
   }
   // Reallocate the event down to its final size.
@@ -386,9 +393,8 @@ bool PerfSerializer::DeserializeEvent(
   temp_event.reset(ReallocMemoryForEvent(temp_event.release(),
                                          final_event_size));
 
-  // Recall raw_event is a pointer into the events_ array.
-  // Move the event into the events_ array.
-  *event->raw_event = std::move(temp_event);
+  // raw_event temporarily owns the event.
+  event->raw_event = temp_event.release();
   return true;
 }
 
@@ -1016,13 +1022,6 @@ bool PerfSerializer::DeserializeNodeTopologyMetadata(
   metadata->cpu_list.str = proto_metadata.cpu_list();
   metadata->cpu_list.len = GetUint64AlignedStringLength(metadata->cpu_list.str);
   return true;
-}
-
-void PerfSerializer::SetRawEvents(size_t num_events) {
-  events_.resize(num_events);
-  parsed_events_.resize(num_events);
-  for (size_t i = 0; i < num_events; ++i)
-    parsed_events_[i].raw_event = &events_[i];
 }
 
 }  // namespace quipper
