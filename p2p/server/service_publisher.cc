@@ -14,6 +14,7 @@
 #include <map>
 
 #include <base/logging.h>
+#include <base/macros.h>
 #include <base/strings/stringprintf.h>
 
 using std::map;

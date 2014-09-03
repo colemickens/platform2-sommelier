@@ -7,7 +7,7 @@
 
 #include "p2p/common/clock_interface.h"
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/synchronization/waitable_event.h>
 
 namespace p2p {

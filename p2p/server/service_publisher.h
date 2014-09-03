@@ -8,8 +8,6 @@
 #include <map>
 #include <string>
 
-#include <base/basictypes.h>
-
 namespace p2p {
 
 namespace server {

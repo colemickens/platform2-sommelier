@@ -9,7 +9,7 @@
 #include "p2p/server/http_server.h"
 #include "p2p/server/service_publisher.h"
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 namespace p2p {
 

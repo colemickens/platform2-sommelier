@@ -7,7 +7,7 @@
 
 #include "p2p/http_server/server_interface.h"
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <gmock/gmock.h>
 
 namespace p2p {

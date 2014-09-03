@@ -17,6 +17,7 @@
 #include <stdexcept>
 
 #include <base/logging.h>
+#include <base/macros.h>
 
 using std::map;
 using std::set;

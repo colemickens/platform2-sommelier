@@ -12,7 +12,6 @@
 #include <map>
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/callback.h>
 
 namespace p2p {
