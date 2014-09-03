@@ -5,8 +5,8 @@
 #ifndef LOGIN_MANAGER_LOGIN_METRICS_H_
 #define LOGIN_MANAGER_LOGIN_METRICS_H_
 
-#include <base/basictypes.h>
 #include <base/files/file_path.h>
+#include <base/macros.h>
 #include <metrics/metrics_library.h>
 
 namespace login_manager {

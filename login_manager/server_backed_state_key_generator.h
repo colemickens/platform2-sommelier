@@ -11,9 +11,9 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/macros.h>
 
 #include "login_manager/job_manager.h"
 

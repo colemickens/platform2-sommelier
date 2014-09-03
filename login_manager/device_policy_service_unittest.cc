@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/file_util.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>

@@ -5,8 +5,8 @@
 #ifndef LOGIN_MANAGER_LIVENESS_CHECKER_IMPL_H_
 #define LOGIN_MANAGER_LIVENESS_CHECKER_IMPL_H_
 
-#include <base/basictypes.h>
 #include <base/cancelable_callback.h>
+#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>

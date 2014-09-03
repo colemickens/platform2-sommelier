@@ -5,10 +5,7 @@
 #ifndef LOGIN_MANAGER_LIVENESS_CHECKER_H_
 #define LOGIN_MANAGER_LIVENESS_CHECKER_H_
 
-#include <base/basictypes.h>
-#include <base/cancelable_callback.h>
-#include <base/memory/ref_counted.h>
-#include <base/message_loop/message_loop_proxy.h>
+#include <base/macros.h>
 
 namespace login_manager {
 

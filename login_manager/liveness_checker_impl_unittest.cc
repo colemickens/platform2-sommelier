@@ -4,7 +4,6 @@
 
 #include "login_manager/liveness_checker_impl.h"
 
-#include <base/basictypes.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop/message_loop.h>

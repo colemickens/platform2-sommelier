@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/time/time.h>
 
 namespace login_manager {

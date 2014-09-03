@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
-
 namespace login_manager {
 
 class SessionManagerInterface {

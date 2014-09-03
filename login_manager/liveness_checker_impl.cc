@@ -6,7 +6,6 @@
 
 #include <signal.h>
 
-#include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/cancelable_callback.h>

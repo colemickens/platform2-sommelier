@@ -11,7 +11,6 @@
 #include <set>
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/file_util.h>

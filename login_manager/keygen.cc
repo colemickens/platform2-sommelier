@@ -6,7 +6,6 @@
 #include <vector>
 
 #include <base/at_exit.h>
-#include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/file_util.h>
