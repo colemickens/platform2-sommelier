@@ -90,12 +90,6 @@ void Udev::AddSubsystemObserver(const std::string& subsystem,
   DCHECK(observer);
   SubsystemObserverMap::iterator it = subsystem_observers_.find(subsystem);
   if (it == subsystem_observers_.end()) {
-    VLOG(1) << "Adding match for subsystem \"" << subsystem << "\"";
-    if (udev_monitor_filter_add_match_subsystem_devtype(
-            udev_monitor_, subsystem.c_str(), NULL) != 0)
-      LOG(ERROR) << "Unable to add match for subsystem \"" << subsystem << "\"";
-    if (udev_monitor_filter_update(udev_monitor_))
-      LOG(ERROR) << "udev_monitor_filter_update failed";
     it = subsystem_observers_.insert(std::make_pair(
         subsystem, make_linked_ptr(new ObserverList<UdevSubsystemObserver>)))
         .first;
@@ -109,7 +103,6 @@ void Udev::RemoveSubsystemObserver(const std::string& subsystem,
   SubsystemObserverMap::iterator it = subsystem_observers_.find(subsystem);
   if (it != subsystem_observers_.end())
     it->second->RemoveObserver(observer);
-  // No way to remove individual matches from udev_monitor. :-/
 }
 
 void Udev::AddTaggedDeviceObserver(UdevTaggedDeviceObserver* observer) {
