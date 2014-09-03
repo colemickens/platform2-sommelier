@@ -7,7 +7,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <base/basictypes.h>
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>

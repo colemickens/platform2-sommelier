@@ -4,7 +4,6 @@
 
 #include "cros-disks/metrics.h"
 
-#include <base/basictypes.h>
 #include <gtest/gtest.h>
 
 using std::string;

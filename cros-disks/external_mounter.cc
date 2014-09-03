@@ -6,7 +6,6 @@
 
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <chromeos/process.h>

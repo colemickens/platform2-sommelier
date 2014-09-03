@@ -12,7 +12,6 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace cros_disks {

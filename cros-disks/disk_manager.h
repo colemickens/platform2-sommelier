@@ -13,7 +13,7 @@
 #include <vector>
 
 #include <base/callback.h>
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <gtest/gtest_prod.h>
 
 #include "cros-disks/device_ejector.h"

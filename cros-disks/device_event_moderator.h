@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "cros-disks/device_event_queue.h"
 #include "cros-disks/session_manager_observer_interface.h"

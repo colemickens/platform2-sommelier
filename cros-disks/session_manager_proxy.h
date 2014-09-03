@@ -7,7 +7,7 @@
 
 #include <dbus-c++/dbus.h>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/observer_list.h>
 
 namespace cros_disks {

@@ -5,7 +5,7 @@
 #ifndef CROS_DISKS_DAEMON_H_
 #define CROS_DISKS_DAEMON_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "cros-disks/archive_manager.h"
 #include "cros-disks/cros_disks_server.h"

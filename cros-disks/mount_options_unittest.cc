@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <gtest/gtest.h>
 
 #include "cros-disks/mount_options.h"

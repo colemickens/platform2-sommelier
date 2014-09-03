@@ -8,7 +8,7 @@
 #include <map>
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 #include <metrics/metrics_library.h>

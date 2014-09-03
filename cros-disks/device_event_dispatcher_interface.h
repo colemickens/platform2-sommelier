@@ -5,8 +5,6 @@
 #ifndef CROS_DISKS_DEVICE_EVENT_DISPATCHER_INTERFACE_H_
 #define CROS_DISKS_DEVICE_EVENT_DISPATCHER_INTERFACE_H_
 
-#include <base/basictypes.h>
-
 namespace cros_disks {
 
 struct DeviceEvent;
