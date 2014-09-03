@@ -25,9 +25,9 @@
 #ifndef SHILL_NETLINK_SOCKET_H_
 #define SHILL_NETLINK_SOCKET_H_
 
-#include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 

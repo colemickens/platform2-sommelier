@@ -5,7 +5,7 @@
 #ifndef SHILL_HTTP_URL_H_
 #define SHILL_HTTP_URL_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include <string>
 

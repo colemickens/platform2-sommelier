@@ -5,7 +5,6 @@
 #ifndef SHILL_EAP_PROTOCOL_H_
 #define SHILL_EAP_PROTOCOL_H_
 
-#include <base/basictypes.h>
 #include <base/compiler_specific.h>
 
 namespace shill {

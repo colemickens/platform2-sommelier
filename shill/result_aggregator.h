@@ -5,7 +5,7 @@
 #ifndef SHILL_RESULT_AGGREGATOR_H_
 #define SHILL_RESULT_AGGREGATOR_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 
 #include "shill/callbacks.h"

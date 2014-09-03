@@ -5,9 +5,10 @@
 #ifndef SHILL_PROPERTY_OBSERVER_H_
 #define SHILL_PROPERTY_OBSERVER_H_
 
-#include <base/basictypes.h>
-#include <base/callback.h>
 #include <memory>
+
+#include <base/callback.h>
+#include <base/macros.h>
 
 #include "shill/accessor_interface.h"
 #include "shill/error.h"

@@ -5,7 +5,7 @@
 #ifndef SHILL_MOCK_SUPPLICANT_BSS_PROXY_H_
 #define SHILL_MOCK_SUPPLICANT_BSS_PROXY_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "shill/supplicant_bss_proxy_interface.h"

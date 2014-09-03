@@ -7,7 +7,7 @@
 
 #include "shill/logging.h"
 
-#include <base/basictypes.h>  // for ignore_result
+#include <base/macros.h>  // for ignore_result
 #include <dbus-c++/error.h>
 
 #include "shill/error.h"

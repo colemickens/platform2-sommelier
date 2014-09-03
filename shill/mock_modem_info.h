@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "shill/mock_control.h"

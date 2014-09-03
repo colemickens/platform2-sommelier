@@ -7,7 +7,7 @@
 
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "shill/wimax_manager_proxy_interface.h"

@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "dbus_proxies/org.freedesktop.ModemManager.h"
 #include "shill/modem_manager_proxy_interface.h"

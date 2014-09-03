@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
-
 #include "shill/callbacks.h"
 
 namespace shill {

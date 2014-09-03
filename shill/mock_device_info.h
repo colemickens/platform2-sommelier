@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "shill/device_info.h"

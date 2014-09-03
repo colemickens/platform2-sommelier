@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <dbus-c++/dbus.h>
 
 namespace shill {

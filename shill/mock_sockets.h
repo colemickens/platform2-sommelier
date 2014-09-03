@@ -9,7 +9,7 @@
 
 #include "shill/sockets.h"
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <gmock/gmock.h>
 
 namespace shill {

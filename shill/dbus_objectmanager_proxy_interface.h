@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/callback.h>
 
 #include "shill/dbus_properties.h"  // For DBusPropertiesMap

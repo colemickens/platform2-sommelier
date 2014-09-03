@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "shill/dbus_proxies/modem-gobi.h"
 #include "shill/modem_gobi_proxy_interface.h"

@@ -5,7 +5,7 @@
 #ifndef SHILL_ARP_CLIENT_H_
 #define SHILL_ARP_CLIENT_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 
 namespace shill {

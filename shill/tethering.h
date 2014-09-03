@@ -5,10 +5,10 @@
 #ifndef SHILL_TETHERING_H_
 #define SHILL_TETHERING_H_
 
+#include <stdint.h>
+
 #include <set>
 #include <vector>
-
-#include <base/basictypes.h>
 
 namespace shill {
 

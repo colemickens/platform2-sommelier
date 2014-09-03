@@ -12,8 +12,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/basictypes.h>
-
 #include "shill/refptr_types.h"
 
 namespace shill {

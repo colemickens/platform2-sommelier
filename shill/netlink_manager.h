@@ -60,9 +60,9 @@
 #include <set>
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/lazy_instance.h>
+#include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 

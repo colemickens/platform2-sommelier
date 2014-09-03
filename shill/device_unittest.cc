@@ -12,9 +12,9 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus-c++/dbus.h>

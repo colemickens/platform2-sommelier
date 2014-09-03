@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/provider_interface.h"

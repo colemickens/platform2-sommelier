@@ -7,7 +7,7 @@
 
 #include "shill/netlink_socket.h"
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include <gmock/gmock.h>
 

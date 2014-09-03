@@ -5,7 +5,7 @@
 #ifndef SHILL_PROPERTY_OBSERVER_INTERFACE_H_
 #define SHILL_PROPERTY_OBSERVER_INTERFACE_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 namespace shill {
 

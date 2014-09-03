@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/stl_util.h>
 
 #include "shill/error.h"

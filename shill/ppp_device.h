@@ -5,7 +5,7 @@
 #ifndef SHILL_PPP_DEVICE_H_
 #define SHILL_PPP_DEVICE_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include <map>
 #include <string>

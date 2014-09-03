@@ -6,7 +6,6 @@
 
 #include <string>
 
-#include <base/basictypes.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus-c++/dbus.h>
 

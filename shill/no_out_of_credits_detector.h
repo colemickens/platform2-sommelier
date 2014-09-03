@@ -5,7 +5,7 @@
 #ifndef SHILL_NO_OUT_OF_CREDITS_DETECTOR_H_
 #define SHILL_NO_OUT_OF_CREDITS_DETECTOR_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "shill/out_of_credits_detector.h"
 

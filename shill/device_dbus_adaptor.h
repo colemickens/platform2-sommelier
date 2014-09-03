@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/dbus_adaptor.h"

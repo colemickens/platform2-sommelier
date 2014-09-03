@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "shill/mm1_modem_modemcdma_proxy_interface.h"

@@ -5,7 +5,7 @@
 #ifndef SHILL_CONNECTION_INFO_H_
 #define SHILL_CONNECTION_INFO_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "shill/ip_address.h"
 

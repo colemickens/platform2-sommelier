@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <base/basictypes.h>
-
 #include "shill/callbacks.h"
 #include "shill/dbus_properties.h"
 

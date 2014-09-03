@@ -9,8 +9,8 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/lazy_instance.h>
+#include <base/macros.h>
 #include <gtest/gtest_prod.h>
 
 #include "shill/callbacks.h"

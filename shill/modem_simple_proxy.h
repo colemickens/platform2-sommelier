@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "dbus_proxies/org.freedesktop.ModemManager.Modem.Simple.h"
 #include "shill/modem_simple_proxy_interface.h"

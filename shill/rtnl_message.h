@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/stl_util.h>
 
 #include "shill/byte_string.h"

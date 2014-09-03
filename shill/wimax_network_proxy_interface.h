@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/callback_forward.h>
 
 #include "shill/accessor_interface.h"

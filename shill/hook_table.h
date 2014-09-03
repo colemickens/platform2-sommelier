@@ -33,8 +33,8 @@
 #include <map>
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/cancelable_callback.h>
+#include <base/macros.h>
 #include <gtest/gtest_prod.h>
 
 #include "shill/callbacks.h"

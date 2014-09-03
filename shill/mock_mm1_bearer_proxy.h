@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include <base/basictypes.h>
 #include <gmock/gmock.h>
 
 #include "shill/mm1_bearer_proxy_interface.h"

@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "shill/dbus_properties_proxy_interface.h"
 #include "shill/dbus_proxies/dbus-properties.h"

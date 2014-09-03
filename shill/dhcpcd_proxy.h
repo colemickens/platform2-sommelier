@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "shill/dbus_proxies/dhcpcd.h"
 #include "shill/dhcp_config.h"

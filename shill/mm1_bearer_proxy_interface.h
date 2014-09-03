@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <base/basictypes.h>
-
 #include "shill/callbacks.h"
 
 namespace shill {

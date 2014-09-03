@@ -5,7 +5,7 @@
 #ifndef SHILL_PROPERTY_ACCESSOR_H_
 #define SHILL_PROPERTY_ACCESSOR_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST.
 
 #include "shill/accessor_interface.h"

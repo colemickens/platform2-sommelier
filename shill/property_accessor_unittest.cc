@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/stl_util.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>

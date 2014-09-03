@@ -12,7 +12,7 @@
 #include <memory>
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 struct nfgenmsg;
 struct nfq_data;

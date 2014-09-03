@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "shill/wimax_manager_proxy_interface.h"
 #include "wimax_manager/dbus_proxies/org.chromium.WiMaxManager.h"

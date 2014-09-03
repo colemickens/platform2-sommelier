@@ -5,7 +5,7 @@
 #ifndef SHILL_MOCK_ROUTING_TABLE_H_
 #define SHILL_MOCK_ROUTING_TABLE_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "shill/routing_table.h"

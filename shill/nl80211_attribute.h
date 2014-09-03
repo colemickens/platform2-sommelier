@@ -9,7 +9,7 @@
 
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "shill/netlink_attribute.h"
 

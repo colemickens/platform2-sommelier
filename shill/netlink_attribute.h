@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "shill/attribute_list.h"
 #include "shill/byte_string.h"

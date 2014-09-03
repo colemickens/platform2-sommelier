@@ -5,7 +5,7 @@
 #ifndef SHILL_CONTROL_NETLINK_ATTRIBUTE_H_
 #define SHILL_CONTROL_NETLINK_ATTRIBUTE_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "shill/netlink_attribute.h"
 

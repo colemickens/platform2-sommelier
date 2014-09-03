@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <dbus-c++/types.h>
 
 #include "shill/callbacks.h"

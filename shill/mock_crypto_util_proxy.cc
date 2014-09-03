@@ -7,8 +7,6 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
-
 #include "shill/callbacks.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"

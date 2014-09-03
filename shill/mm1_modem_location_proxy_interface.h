@@ -5,8 +5,6 @@
 #ifndef SHILL_MM1_MODEM_LOCATION_PROXY_INTERFACE_H_
 #define SHILL_MM1_MODEM_LOCATION_PROXY_INTERFACE_H_
 
-#include <base/basictypes.h>
-
 #include "shill/callbacks.h"
 
 namespace shill {

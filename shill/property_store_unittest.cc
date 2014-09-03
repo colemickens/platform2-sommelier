@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus-c++/dbus.h>
 #include <gtest/gtest.h>

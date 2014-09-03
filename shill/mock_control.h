@@ -5,7 +5,7 @@
 #ifndef SHILL_MOCK_CONTROL_H_
 #define SHILL_MOCK_CONTROL_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "shill/control_interface.h"
 

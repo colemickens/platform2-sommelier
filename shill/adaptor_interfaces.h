@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
-
 #include "shill/accessor_interface.h"
 
 namespace shill {
