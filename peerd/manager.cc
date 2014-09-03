@@ -4,17 +4,22 @@
 
 #include "peerd/manager.h"
 
+#include <base/format_macros.h>
+#include <base/guid.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/exported_object_manager.h>
 #include <dbus/object_path.h>
 
 #include "peerd/dbus_constants.h"
 #include "peerd/ip_addr.h"
+#include "peerd/peer.h"
 
-using dbus::ObjectPath;
+using chromeos::Error;
 using chromeos::ErrorPtr;
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
+using dbus::ObjectPath;
 using peerd::dbus_constants::kManagerExposeIpService;
 using peerd::dbus_constants::kManagerInterface;
 using peerd::dbus_constants::kManagerPing;
@@ -25,6 +30,7 @@ using peerd::dbus_constants::kManagerSetNote;
 using peerd::dbus_constants::kManagerStartMonitoring;
 using peerd::dbus_constants::kManagerStopMonitoring;
 using peerd::dbus_constants::kPingResponse;
+using peerd::dbus_constants::kSelfPath;
 using std::map;
 using std::set;
 using std::string;
@@ -32,12 +38,22 @@ using std::vector;
 
 namespace peerd {
 
+namespace errors {
+namespace manager {
+
+const char kInvalidServiceToken[] = "manager.service_token";
+const char kInvalidMonitoringToken[] = "manager.monitoring_token";
+
+}  // namespace manager
+}  // namespace errors
+
 Manager::Manager(ExportedObjectManager* object_manager)
   : dbus_object_(object_manager, object_manager->GetBus(),
                  ObjectPath(kManagerServicePath)) {
 }
 
 void Manager::RegisterAsync(const CompletionAction& completion_callback) {
+  scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   chromeos::dbus_utils::DBusInterface* itf =
       dbus_object_.AddOrGetInterface(kManagerInterface);
 
@@ -62,8 +78,20 @@ void Manager::RegisterAsync(const CompletionAction& completion_callback) {
   itf->AddMethodHandler(kManagerPing,
                         base::Unretained(this),
                         &Manager::Ping);
-
-  dbus_object_.RegisterAsync(completion_callback);
+  chromeos::ErrorPtr error;
+  self_ = Peer::MakePeer(
+      &error,
+      dbus_object_.GetObjectManager().get(),
+      ObjectPath(kSelfPath),
+      base::GenerateGUID(),  // Every boot is a new GUID for now.
+      "CrOS Core Device",  // TODO(wiley): persist name to disk.
+      "",  // TODO(wiley): persist note to disk.
+      0,  // Last seen time for self is defined to be 0.
+      sequencer->GetHandler("Failed exporting Self.", true));
+  CHECK(self_) << "Failed to construct Peer for Self.";
+  dbus_object_.RegisterAsync(
+      sequencer->GetHandler("Failed exporting Manager.", true));
+  sequencer->OnAllTasksCompletedCall({completion_callback});
 }
 
 string Manager::StartMonitoring(ErrorPtr* error,
@@ -79,18 +107,42 @@ string Manager::ExposeIpService(chromeos::ErrorPtr* error,
                                 const string& service_id,
                                 const vector<ip_addr>& addresses,
                                 const map<string, string>& service_info) {
-  return "a_service_token";
+  string token;
+  if (!self_->AddService(error, service_id, addresses, service_info)) {
+    return token;
+  }
+  token = "service_token_" + std::to_string(++services_added_);
+  service_token_to_id_.emplace(token, service_id);
+  // TODO(wiley) Maybe trigger an advertisement run since we have updated
+  //             information.
+  return token;
 }
 
 void Manager::RemoveExposedService(ErrorPtr* error,
                                    const string& service_token) {
+  auto it = service_token_to_id_.find(service_token);
+  if (it == service_token_to_id_.end()) {
+    Error::AddTo(error,
+                 kPeerdErrorDomain,
+                 errors::manager::kInvalidServiceToken,
+                 "Invalid service token given to RemoveExposedService.");
+    return;
+  }
+  self_->RemoveService(error, it->second);
+  // Maybe RemoveService returned with an error, but either way, we should
+  // forget this service token.
+  service_token_to_id_.erase(it);
+  // TODO(wiley) Maybe trigger an advertisement run since we have updated
+  //             information.
 }
 
 void Manager::SetFriendlyName(ErrorPtr* error,
                               const string& friendly_name) {
+  self_->SetFriendlyName(error, friendly_name);
 }
 
 void Manager::SetNote(ErrorPtr* error, const string& note) {
+  self_->SetNote(error, note);
 }
 
 string Manager::Ping(ErrorPtr* error) {

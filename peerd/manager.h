@@ -15,6 +15,7 @@
 #include <chromeos/errors/error.h>
 
 #include "peerd/ip_addr.h"
+#include "peerd/peer.h"
 #include "peerd/typedefs.h"
 
 namespace dbus {
@@ -28,6 +29,15 @@ class ExportedObjectManager;
 }  // chromeos
 
 namespace peerd {
+
+namespace errors {
+namespace manager {
+
+extern const char kInvalidServiceToken[];
+extern const char kInvalidMonitoringToken[];
+
+}  // namespace manager
+}  // namespace errors
 
 // Manages global state of peerd.
 class Manager {
@@ -65,6 +75,9 @@ class Manager {
 
  private:
   chromeos::dbus_utils::DBusObject dbus_object_;
+  std::unique_ptr<Peer> self_;
+  std::map<std::string, std::string> service_token_to_id_;
+  size_t services_added_{0};
 
   friend class ManagerDBusProxyTest;
   DISALLOW_COPY_AND_ASSIGN(Manager);

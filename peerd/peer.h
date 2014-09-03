@@ -5,7 +5,9 @@
 #ifndef PEERD_PEER_H_
 #define PEERD_PEER_H_
 
+#include <map>
 #include <string>
+#include <vector>
 
 #include <stdint.h>
 
@@ -14,6 +16,7 @@
 #include <chromeos/errors/error.h>
 #include <gtest/gtest_prod.h>
 
+#include "peerd/ip_addr.h"
 #include "peerd/typedefs.h"
 
 namespace peerd {
@@ -48,10 +51,24 @@ class Peer {
 
   virtual ~Peer() = default;
 
-  void SetFriendlyName(chromeos::ErrorPtr* error,
+  // Returns false on failure.
+  bool SetFriendlyName(chromeos::ErrorPtr* error,
                        const std::string& friendly_name);
-  void SetNote(chromeos::ErrorPtr* error, const std::string& note);
+  // Returns false on failure.
+  bool SetNote(chromeos::ErrorPtr* error, const std::string& note);
   void SetLastSeen(uint64_t last_seen);
+  // Add a service to be exported by this peer.  Can fail if this peer
+  // is already advertising a service with |service_id| or if |service_id|
+  // and/or |service_info| are malformed.  Returns false on error, and can
+  // optionally provide detailed error information in |error|.
+  bool AddService(chromeos::ErrorPtr* error,
+                  const std::string& service_id,
+                  const std::vector<ip_addr>& addresses,
+                  const std::map<std::string, std::string>& service_info);
+  // Remove a service advertised by this peer.  Can fail if no service with id
+  // |service_id| is in this peer.
+  bool RemoveService(chromeos::ErrorPtr* error,
+                     const std::string& service_id);
 
  private:
   // Used for testing, where we want to use a MockDBusObject we

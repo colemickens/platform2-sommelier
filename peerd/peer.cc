@@ -23,7 +23,9 @@ using peerd::dbus_constants::kPeerInterface;
 using peerd::dbus_constants::kPeerLastSeen;
 using peerd::dbus_constants::kPeerNote;
 using peerd::dbus_constants::kPeerUUID;
+using std::map;
 using std::string;
+using std::vector;
 using std::unique_ptr;
 
 namespace {
@@ -87,12 +89,9 @@ unique_ptr<Peer> Peer::MakePeerImpl(
     return nullptr;
   }
   unique_ptr<Peer> result(new Peer(std::move(dbus_object), uuid));
-  result->SetFriendlyName(error, friendly_name);
-  result->SetNote(error, note);
+  if (!result->SetFriendlyName(error, friendly_name)) { return nullptr; }
+  if (!result->SetNote(error, note)) { return nullptr; }
   result->SetLastSeen(last_seen);
-  if (error && error->get()) {
-    return nullptr;
-  }
   result->RegisterAsync(completion_callback);
   return result;
 }
@@ -111,39 +110,53 @@ void Peer::RegisterAsync(const CompletionAction& completion_callback) {
   dbus_object_->RegisterAsync(completion_callback);
 }
 
-void Peer::SetFriendlyName(chromeos::ErrorPtr* error,
+bool Peer::SetFriendlyName(chromeos::ErrorPtr* error,
                            const string& friendly_name) {
   if (friendly_name.length() > kMaxFriendlyNameLength) {
     Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidName,
                        "Bad length for %s: %" PRIuS,
                        kPeerFriendlyName, friendly_name.length());
-    return;
+    return false;
   }
   if (!base::ContainsOnlyChars(friendly_name, kValidFriendlyNameCharacters)) {
     Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidName,
                        "Invalid characters in %s.", kPeerFriendlyName);
-    return;
+    return false;
   }
   name_.SetValue(friendly_name);
+  return true;
 }
 
-void Peer::SetNote(chromeos::ErrorPtr* error, const string& note) {
+bool Peer::SetNote(chromeos::ErrorPtr* error, const string& note) {
   if (note.length() > kMaxNoteLength) {
     Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidNote,
                        "Bad length for %s: %" PRIuS,
                        kPeerNote, note.length());
-    return;
+    return false;
   }
   if (!base::ContainsOnlyChars(note, kValidNoteCharacters)) {
     Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidNote,
                        "Invalid characters in %s.", kPeerNote);
-    return;
+    return false;
   }
   note_.SetValue(note);
+  return true;
 }
 
 void Peer::SetLastSeen(uint64_t last_seen) {
   last_seen_.SetValue(last_seen);
+}
+
+bool Peer::AddService(chromeos::ErrorPtr* error,
+                      const string& service_id,
+                      const vector<ip_addr>& addresses,
+                      const map<string, string>& service_info) {
+  return true;
+}
+
+bool Peer::RemoveService(chromeos::ErrorPtr* error,
+                         const string& service_id) {
+  return true;
 }
 
 }  // namespace peerd
