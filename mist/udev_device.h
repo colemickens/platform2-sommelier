@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "mist/udev_list_entry.h"
 

@@ -9,8 +9,6 @@
 
 #include <ostream>  // NOLINT(readability/streams)
 
-#include <base/basictypes.h>
-
 namespace mist {
 
 // USB class codes.

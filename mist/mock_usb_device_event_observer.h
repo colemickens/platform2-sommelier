@@ -7,8 +7,8 @@
 
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/compiler_specific.h>
+#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "mist/usb_device_event_observer.h"

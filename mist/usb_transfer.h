@@ -11,8 +11,8 @@
 #include <ostream>  // NOLINT(readability/streams)
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/callback.h>
+#include <base/macros.h>
 #include <gtest/gtest_prod.h>
 
 #include "mist/usb_constants.h"

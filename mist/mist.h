@@ -5,7 +5,7 @@
 #ifndef MIST_MIST_H_
 #define MIST_MIST_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 namespace base {
 

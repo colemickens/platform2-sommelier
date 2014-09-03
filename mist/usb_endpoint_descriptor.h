@@ -10,7 +10,7 @@
 #include <ostream>  // NOLINT(readability/streams)
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "mist/usb_constants.h"
 

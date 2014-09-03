@@ -5,7 +5,7 @@
 #ifndef MIST_UDEV_LIST_ENTRY_H_
 #define MIST_UDEV_LIST_ENTRY_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 struct udev_list_entry;
 

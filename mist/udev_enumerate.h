@@ -5,7 +5,7 @@
 #ifndef MIST_UDEV_ENUMERATE_H_
 #define MIST_UDEV_ENUMERATE_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "mist/udev_list_entry.h"
 

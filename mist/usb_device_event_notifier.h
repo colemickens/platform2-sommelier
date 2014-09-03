@@ -10,8 +10,8 @@
 #include <memory>
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/compiler_specific.h>
+#include <base/macros.h>
 #include <base/message_loop/message_loop.h>
 #include <base/observer_list.h>
 #include <gtest/gtest_prod.h>

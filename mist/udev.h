@@ -7,7 +7,7 @@
 
 #include <sys/types.h>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 struct udev;
 struct udev_device;

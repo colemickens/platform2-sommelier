@@ -5,7 +5,7 @@
 #ifndef MIST_UDEV_MONITOR_H_
 #define MIST_UDEV_MONITOR_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 struct udev_monitor;
 

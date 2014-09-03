@@ -5,7 +5,7 @@
 #ifndef MIST_USB_INTERFACE_H_
 #define MIST_USB_INTERFACE_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 
 struct libusb_interface;
