@@ -2,11 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <strings.h>
 #include <syslog.h>
 
 #include <string>
-
-#include <base/basictypes.h>
 
 // Moved syslog related functionality to this file to avoid
 // conflicts with defintions in base/logging.h

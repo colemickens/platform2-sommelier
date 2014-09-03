@@ -8,7 +8,7 @@
 #include <map>
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <dbus-c++/dbus.h>
 
 #include "dbus_adaptors/org.freedesktop.ModemManager.Modem.h"

@@ -7,7 +7,7 @@
 
 #include <map>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <dbus-c++/dbus.h>
 
 #include "cromo/modem.h"

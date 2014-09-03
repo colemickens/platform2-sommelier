@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <dbus-c++/dbus.h>
 #include <dbus-c++/glib-integration.h>
