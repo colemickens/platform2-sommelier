@@ -23,6 +23,8 @@
       ],
       'includes': ['../common-mk/common_test.gypi'],
       'sources': [
+        'password_auth_delegate.cc',
+        'password_auth_delegate_unittest.cc',
         'trunks_testrunner.cc',
         'tpm_generated.cc',
         'tpm_generated_test.cc',
@@ -63,6 +65,8 @@
       ],
       'sources': [
         'tpm_generated.cc',
+        'null_auth_delegate.cc',
+        'password_auth_delegate.cc',
         'trunks_proxy.cc',
       ],
       'dependencies': [

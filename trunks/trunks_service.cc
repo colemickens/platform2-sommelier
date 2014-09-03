@@ -18,7 +18,7 @@ namespace trunks {
 
 namespace {
 
-const uid_t kTrunksUID = 248;
+const uid_t kTrunksUID = 251;
 const uid_t kRootUID = 0;
 const char kTrunksUser[] = "trunks";
 const char kTrunksGroup[] = "trunks";
