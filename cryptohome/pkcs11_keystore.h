@@ -11,8 +11,8 @@
 
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/callback_forward.h>
+#include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <chaps/pkcs11/cryptoki.h>
 #include <chromeos/secure_blob.h>

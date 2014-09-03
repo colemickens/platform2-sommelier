@@ -16,7 +16,7 @@
 
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <chromeos/secure_blob.h>
 
 #include "cryptohome/credentials.h"

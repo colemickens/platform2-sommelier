@@ -9,7 +9,7 @@
 
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <chromeos/secure_blob.h>
 
 namespace cryptohome {

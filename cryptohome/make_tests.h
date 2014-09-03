@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptolib.h"

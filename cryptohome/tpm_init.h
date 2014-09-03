@@ -6,7 +6,7 @@
 #ifndef CRYPTOHOME_TPM_INIT_H_
 #define CRYPTOHOME_TPM_INIT_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/secure_blob.h>
 #include <trousers/scoped_tss_type.h>

@@ -7,8 +7,8 @@
 
 #include <map>
 
-#include <base/basictypes.h>
 #include <base/files/file_path.h>
+#include <base/macros.h>
 #include <base/time/time.h>
 
 namespace cryptohome {

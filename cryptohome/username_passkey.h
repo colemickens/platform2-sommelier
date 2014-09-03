@@ -10,9 +10,10 @@
 
 #include "cryptohome/credentials.h"
 
-#include <base/basictypes.h>
-#include <chromeos/secure_blob.h>
 #include <string>
+
+#include <base/macros.h>
+#include <chromeos/secure_blob.h>
 
 namespace cryptohome {
 

@@ -5,7 +5,7 @@
 #ifndef CRYPTOHOME_VAULT_KEYSET_FACTORY_H_
 #define CRYPTOHOME_VAULT_KEYSET_FACTORY_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 namespace cryptohome {
 class Crypto;

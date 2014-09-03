@@ -9,20 +9,21 @@
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 
-#include <base/basictypes.h>
-#include <base/callback_forward.h>
-#include <base/files/file_enumerator.h>
-#include <base/memory/scoped_ptr.h>
-#include <chromeos/secure_blob.h>
 #include <map>
 #include <set>
 #include <string>
 #include <vector>
 
+#include <base/callback_forward.h>
+#include <base/files/file_enumerator.h>
+#include <base/macros.h>
+#include <base/memory/scoped_ptr.h>
+#include <chromeos/secure_blob.h>
+
 namespace base {
 class Thread;
 class Time;
-}
+}  // namespace base
 
 namespace cryptohome {
 

@@ -5,7 +5,7 @@
 #ifndef CRYPTOHOME_BOOT_LOCKBOX_H_
 #define CRYPTOHOME_BOOT_LOCKBOX_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <chromeos/secure_blob.h>
 
 #include "boot_lockbox_key.pb.h"  // NOLINT(build/include)

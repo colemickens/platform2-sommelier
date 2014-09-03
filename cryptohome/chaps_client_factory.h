@@ -5,7 +5,7 @@
 #ifndef CRYPTOHOME_CHAPS_CLIENT_FACTORY_H_
 #define CRYPTOHOME_CHAPS_CLIENT_FACTORY_H_
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 namespace chaps {
 class TokenManagerClient;

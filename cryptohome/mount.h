@@ -15,15 +15,15 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/callback.h>
 #include <base/files/file_path.h>
-#include <base/memory/scoped_ptr.h>
+#include <base/macros.h>
 #include <base/memory/ref_counted.h>
+#include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <base/values.h>
-#include <chromeos/secure_blob.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/secure_blob.h>
 #include <gtest/gtest.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>

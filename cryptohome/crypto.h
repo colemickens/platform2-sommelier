@@ -14,8 +14,8 @@
 
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/files/file_path.h>
+#include <base/macros.h>
 #include <chromeos/secure_blob.h>
 
 #include "cryptohome/tpm.h"

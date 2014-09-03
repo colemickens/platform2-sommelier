@@ -9,7 +9,7 @@
 
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/observer_list.h>
 #include <base/values.h>
