@@ -13,11 +13,11 @@
 #include <base/guid.h>
 #include <base/strings/stringprintf.h>
 #include <base/message_loop/message_loop.h>
-#include "bindings/extension.pb.h"
 #include "chromeos/dbus/service_constants.h"
 #include "components/feedback/feedback_common.h"
 #include "components/feedback/feedback_report.h"
 #include "components/feedback/feedback_uploader.h"
+#include "components/feedback/proto/extension.pb.h"
 #include "feedback/feedback_service.h"
 #include "feedback/feedback_uploader_curl.h"
 #include "gmock/gmock.h"
@@ -32,19 +32,6 @@ static const char kPoolName[] = "FeedbackWorkerPool";
 static const base::FilePath::CharType kFeedbackReportPath[] =
     FILE_PATH_LITERAL("Feedback Reports");
 static const int kTestProductId = 84;
-static const char kTestFeedbackUrl[] =
-    "http://sandbox.google.com/tools/feedback/chrome/__submit";
-static const char kTestEmail[] = "nobody@example.com";
-static const char kTestReportUrl[] = "http://www.example.com";
-static const char kTestReportDescription[] = "Test upload, unittests ";
-static const char kTestReportCategory[] = "Testing";
-
-// Generates a random report description.
-std::string GetTestReportDescription() {
-  std::string s = kTestReportDescription;
-  s.append(base::GenerateGUID());
-  return s;
-}
 
 }  // namespace
 
@@ -167,27 +154,6 @@ TEST_F(FeedbackServiceTest, UploadFailure) {
   EXPECT_EQ(uploader.GetFirstReport()->data(), data);
 }
 
-TEST_F(FeedbackServiceTest, FullUploadTest) {
-  FeedbackUploaderCurl uploader(temp_dir_.path(), pool_.get(),
-                                kTestFeedbackUrl);
-  userfeedback::ExtensionSubmit report;
-
-  scoped_refptr<FeedbackCommon> feedback = new FeedbackCommon();
-  feedback->set_description(GetTestReportDescription());
-  feedback->set_product_id(kTestProductId);
-  feedback->set_category_tag(kTestReportCategory);
-  feedback->set_user_email(kTestEmail);
-  feedback->set_page_url(kTestReportUrl);
-  feedback->PrepareReport(&report);
-
-  scoped_refptr<FeedbackService> svc = new FeedbackService(&uploader);
-
-  svc->SendFeedback(report,
-      base::Bind(&FeedbackServiceTest::CallbackFeedbackResult, true));
-
-  // Verify that this isn't on the queue.
-  EXPECT_TRUE(uploader.QueueEmpty());
-}
 }  // namespace feedback
 
 int main(int argc, char** argv) {
