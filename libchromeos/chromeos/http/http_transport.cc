@@ -4,10 +4,16 @@
 
 #include <chromeos/http/http_transport.h>
 
+#include <chromeos/http/http_transport_curl.h>
+
 namespace chromeos {
 namespace http {
 
 const char kErrorDomain[] = "http_transport";
+
+std::shared_ptr<Transport> Transport::CreateDefault() {
+  return std::make_shared<http::curl::Transport>();
+}
 
 }  // namespace http
 }  // namespace chromeos

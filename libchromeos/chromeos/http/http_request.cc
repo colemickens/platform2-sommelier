@@ -5,8 +5,6 @@
 #include <chromeos/http/http_request.h>
 
 #include <base/logging.h>
-#include <chromeos/http/http_connection_curl.h>
-#include <chromeos/http/http_transport_curl.h>
 #include <chromeos/map_utils.h>
 #include <chromeos/mime_utils.h>
 #include <chromeos/strings/string_utils.h>
@@ -107,7 +105,7 @@ Request::Request(const std::string& url, const char* method,
     transport_(transport), request_url_(url), method_(method) {
   VLOG(1) << "http::Request created";
   if (!transport_)
-    transport_.reset(new http::curl::Transport());
+    transport_ = http::Transport::CreateDefault();
 }
 
 Request::~Request() {

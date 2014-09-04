@@ -46,6 +46,9 @@ class CHROMEOS_EXPORT Transport {
       const std::string& referer,
       chromeos::ErrorPtr* error) = 0;
 
+  // Creates a default http::Transport (currently, using http::curl::Transport).
+  static std::shared_ptr<Transport> CreateDefault();
+
  private:
   DISALLOW_COPY_AND_ASSIGN(Transport);
 };
