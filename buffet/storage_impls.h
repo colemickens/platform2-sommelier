@@ -5,8 +5,8 @@
 #ifndef BUFFET_STORAGE_IMPLS_H_
 #define BUFFET_STORAGE_IMPLS_H_
 
-#include <base/basictypes.h>
 #include <base/file_util.h>
+#include <base/macros.h>
 #include <base/values.h>
 
 #include "buffet/storage_interface.h"

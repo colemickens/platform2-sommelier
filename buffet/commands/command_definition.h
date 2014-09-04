@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #include "buffet/commands/object_schema.h"
 

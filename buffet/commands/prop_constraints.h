@@ -9,7 +9,7 @@
 #include <type_traits>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/values.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/strings/string_utils.h>

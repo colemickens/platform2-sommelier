@@ -9,7 +9,7 @@
 #include <memory>
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <chromeos/errors/error.h>
 
 #include "buffet/commands/prop_values.h"

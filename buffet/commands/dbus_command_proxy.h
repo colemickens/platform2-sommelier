@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <chromeos/dbus/data_serialization.h>
 #include <chromeos/dbus/dbus_object.h>
 

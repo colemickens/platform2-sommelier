@@ -10,7 +10,7 @@
 #include <string>
 #include <utility>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/time/time.h>
 #include <chromeos/data_encoding.h>
 #include <chromeos/errors/error.h>
