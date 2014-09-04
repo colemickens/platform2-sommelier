@@ -61,12 +61,13 @@ build_id_event* CallocMemoryForBuildID(size_t size) {
   return event;
 }
 
-uint64_t Md5Prefix(const string& input) {
+static uint64_t Md5Prefix(
+    const unsigned char* data,
+    unsigned long length) { // NOLINT
   uint64_t digest_prefix = 0;
   unsigned char digest[MD5_DIGEST_LENGTH + 1];
 
-  MD5(reinterpret_cast<const unsigned char*>(input.c_str()), input.size(),
-      digest);
+  MD5(data, length, digest);
   // We need 64-bits / # of bits in a byte.
   stringstream ss;
   for (size_t i = 0; i < sizeof(uint64_t); i++)
@@ -76,6 +77,16 @@ uint64_t Md5Prefix(const string& input) {
        << static_cast<unsigned int>(digest[i]);
   ss >> digest_prefix;
   return digest_prefix;
+}
+
+uint64_t Md5Prefix(const string& input) {
+  auto data = reinterpret_cast<const unsigned char*>(input.data());
+  return Md5Prefix(data, input.size());
+}
+
+uint64_t Md5Prefix(const std::vector<char>& input) {
+  auto data = reinterpret_cast<const unsigned char*>(input.data());
+  return Md5Prefix(data, input.size());
 }
 
 bool GZFileToBuffer(const string& filename, std::vector<char>* contents) {

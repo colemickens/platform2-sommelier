@@ -45,6 +45,7 @@ bool BufferToGZFile(const string& filename, const std::vector<char>& contents);
 bool GZFileToBuffer(const string& filename, std::vector<char>* contents);
 
 uint64_t Md5Prefix(const string& input);
+uint64_t Md5Prefix(const std::vector<char>& input);
 
 // Returns a string that represents |array| in hexadecimal.
 string HexToString(const u8* array, size_t length);
