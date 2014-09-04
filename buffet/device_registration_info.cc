@@ -11,7 +11,6 @@
 #include <base/json/json_writer.h>
 #include <base/values.h>
 #include <chromeos/data_encoding.h>
-#include <chromeos/http/http_transport_curl.h>
 #include <chromeos/http/http_utils.h>
 #include <chromeos/mime_utils.h>
 #include <chromeos/strings/string_utils.h>
@@ -143,7 +142,7 @@ namespace buffet {
 
 DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<CommandManager>& command_manager)
-    : transport_(new chromeos::http::curl::Transport()),
+    : transport_(chromeos::http::Transport::CreateDefault()),
       // TODO(avakulenko): Figure out security implications of storing
       // this data unencrypted.
       storage_(new FileStorage(base::FilePath(kDeviceInfoFilePath))),
