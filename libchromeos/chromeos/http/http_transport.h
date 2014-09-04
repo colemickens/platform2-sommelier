@@ -19,6 +19,8 @@ namespace http {
 
 using HeaderList = std::vector<std::pair<std::string, std::string>>;
 
+CHROMEOS_EXPORT extern const char kErrorDomain[];
+
 class Request;
 class Connection;
 

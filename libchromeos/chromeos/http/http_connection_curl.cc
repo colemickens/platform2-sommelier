@@ -123,7 +123,7 @@ bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
   if (header_list)
     curl_slist_free_all(header_list);
   if (ret != CURLE_OK) {
-    chromeos::Error::AddTo(error, http::curl::kErrorDomain,
+    chromeos::Error::AddTo(error, "curl_error",
                            chromeos::string_utils::ToString(ret),
                            curl_easy_strerror(ret));
   } else {

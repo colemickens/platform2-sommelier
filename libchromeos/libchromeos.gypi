@@ -94,6 +94,7 @@
       'sources': [
         'chromeos/http/http_connection_curl.cc',
         'chromeos/http/http_request.cc',
+        'chromeos/http/http_transport.cc',
         'chromeos/http/http_transport_curl.cc',
         'chromeos/http/http_utils.cc',
       ],

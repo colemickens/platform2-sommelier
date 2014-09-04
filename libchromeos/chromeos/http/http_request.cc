@@ -223,7 +223,7 @@ bool Request::SendRequestIfNeeded(chromeos::ErrorPtr* error) {
     if (connection_)
       return true;
   } else {
-    chromeos::Error::AddTo(error, http::curl::kErrorDomain,
+    chromeos::Error::AddTo(error, http::kErrorDomain,
                            "request_already_received",
                            "HTTP response already received");
   }

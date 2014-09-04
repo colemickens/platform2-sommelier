@@ -14,8 +14,6 @@ namespace chromeos {
 namespace http {
 namespace curl {
 
-CHROMEOS_EXPORT extern const char kErrorDomain[];
-
 ///////////////////////////////////////////////////////////////////////////////
 // An implementation of http::Transport that uses libcurl for
 // HTTP communications. This class (as http::Transport base)

@@ -12,8 +12,6 @@ namespace chromeos {
 namespace http {
 namespace curl {
 
-const char kErrorDomain[] = "http_transport";
-
 Transport::Transport() {
   VLOG(1) << "curl::Transport created";
 }
@@ -33,7 +31,7 @@ std::unique_ptr<http::Connection> Transport::CreateConnection(
   CURL* curl_handle = curl_easy_init();
   if (!curl_handle) {
     LOG(ERROR) << "Failed to initialize CURL";
-    chromeos::Error::AddTo(error, http::curl::kErrorDomain, "curl_init_failed",
+    chromeos::Error::AddTo(error, http::kErrorDomain, "curl_init_failed",
                            "Failed to initialize CURL");
     return std::unique_ptr<http::Connection>();
   }
