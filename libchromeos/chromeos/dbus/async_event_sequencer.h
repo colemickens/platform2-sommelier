@@ -38,12 +38,12 @@ namespace dbus_utils {
 class CHROMEOS_EXPORT AsyncEventSequencer
     : public base::RefCounted<AsyncEventSequencer> {
  public:
-  typedef base::Callback<void(bool success)> Handler;
-  typedef base::Callback<void (const std::string& interface_name,
-                               const std::string& method_name,
-                               bool success)> ExportHandler;
-  typedef base::Callback<void(bool all_succeeded)> CompletionAction;
-  typedef base::Callback<void(void)> CompletionTask;
+  using Handler = base::Callback<void(bool success)>;
+  using ExportHandler = base::Callback<void (const std::string& interface_name,
+                                             const std::string& method_name,
+                                             bool success)>;
+  using CompletionAction = base::Callback<void(bool all_succeeded)>;
+  using CompletionTask = base::Callback<void(void)>;
 
   AsyncEventSequencer();
 

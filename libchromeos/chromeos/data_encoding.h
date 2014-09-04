@@ -14,7 +14,7 @@
 namespace chromeos {
 namespace data_encoding {
 
-typedef std::vector<std::pair<std::string, std::string>> WebParamList;
+using WebParamList = std::vector<std::pair<std::string, std::string>>;
 
 // Encode/escape string to be used in the query portion of a URL.
 // If |encodeSpaceAsPlus| is set to true, spaces are encoded as '+' instead

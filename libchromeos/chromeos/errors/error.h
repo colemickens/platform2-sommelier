@@ -15,7 +15,7 @@ namespace chromeos {
 
 class Error;  // Forward declaration.
 
-typedef std::unique_ptr<Error> ErrorPtr;
+using ErrorPtr = std::unique_ptr<Error>;
 
 class CHROMEOS_EXPORT Error {
  public:

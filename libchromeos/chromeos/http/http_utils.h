@@ -21,7 +21,7 @@ class DictionaryValue;
 namespace chromeos {
 namespace http {
 
-typedef std::vector<std::pair<std::string, std::string>> FormFieldList;
+using FormFieldList = std::vector<std::pair<std::string, std::string>>;
 
 ////////////////////////////////////////////////////////////////////////////////
 // The following are simple utility helper functions for common HTTP operations

@@ -33,8 +33,8 @@ class Transport : public http::Transport {
   virtual ~Transport();
 
   // Server handler callback signature.
-  typedef base::Callback<void(const ServerRequest&, ServerResponse*)>
-      HandlerCallback;
+  using HandlerCallback =
+      base::Callback<void(const ServerRequest&, ServerResponse*)>;
 
   // This method allows the test code to provide a callback to handle requests
   // for specific URL/HTTP-verb combination. When a specific |method| request

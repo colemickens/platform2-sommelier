@@ -17,7 +17,7 @@
 namespace chromeos {
 namespace http {
 
-typedef std::vector<std::pair<std::string, std::string>> HeaderList;
+using HeaderList = std::vector<std::pair<std::string, std::string>>;
 
 class Request;
 class Connection;

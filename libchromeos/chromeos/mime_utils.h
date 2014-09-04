@@ -57,7 +57,7 @@ CHROMEOS_EXPORT extern const char kJson[];
 CHROMEOS_EXPORT extern const char kWwwFormUrlEncoded[];
 }
 
-typedef std::vector<std::pair<std::string, std::string>> Parameters;
+using Parameters = std::vector<std::pair<std::string, std::string>>;
 
 // Combine a MIME type, subtype and parameters into a MIME string.
 // e.g. Combine("text", "plain", {{"charset", "utf-8"}}) will give:
