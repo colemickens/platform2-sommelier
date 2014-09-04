@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 
 #pragma GCC visibility push(default)
@@ -25,11 +25,11 @@ class PolicyProvider {
   PolicyProvider();
   virtual ~PolicyProvider();
 
-  // Contructor for tests only!
+  // Constructor for tests only!
   explicit PolicyProvider(DevicePolicy* device_policy);
 
-  // This function will ensure the freshnes of the contents that the getters
-  // are delivering. Normally contents are cached to prevent unneccessary load.
+  // This function will ensure the freshness of the contents that the getters
+  // are delivering. Normally contents are cached to prevent unnecessary load.
   virtual bool Reload();
 
   virtual bool device_policy_is_loaded() const;

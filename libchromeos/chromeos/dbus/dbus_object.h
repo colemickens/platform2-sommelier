@@ -49,8 +49,8 @@ class MyDbusObject {
 #include <map>
 #include <string>
 
-#include <base/basictypes.h>
 #include <base/bind.h>
+#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/chromeos_export.h>
 #include <chromeos/dbus/async_event_sequencer.h>

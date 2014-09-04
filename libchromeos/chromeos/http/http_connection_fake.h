@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <chromeos/http/http_connection.h>
 #include <chromeos/http/http_transport_fake.h>
 

@@ -50,8 +50,8 @@
 #include <utility>
 #include <vector>
 
-#include <chromeos/chromeos_export.h>
 #include <base/logging.h>
+#include <chromeos/chromeos_export.h>
 #include <dbus/message.h>
 
 namespace google {

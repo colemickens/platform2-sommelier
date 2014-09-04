@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <chromeos/chromeos_export.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/http/http_transport.h>

@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <chromeos/chromeos_export.h>
 
 namespace chromeos {

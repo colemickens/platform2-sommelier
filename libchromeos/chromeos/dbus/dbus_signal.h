@@ -8,8 +8,8 @@
 #include <string>
 #include <typeinfo>
 
-#include <base/basictypes.h>
 #include <base/bind.h>
+#include <base/macros.h>
 #include <chromeos/chromeos_export.h>
 #include <chromeos/dbus/dbus_param_writer.h>
 #include <dbus/message.h>

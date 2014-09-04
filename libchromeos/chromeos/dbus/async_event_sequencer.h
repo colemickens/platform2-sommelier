@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <chromeos/chromeos_export.h>
 

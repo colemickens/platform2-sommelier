@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 
 #pragma GCC visibility push(default)
 
@@ -21,7 +21,7 @@ namespace policy {
 // It is also responsible for loading the policy blob from disk and verifying
 // the signature against the owner's key.
 //
-// This class defines the interface for queryng device policy on ChromeOS.
+// This class defines the interface for querying device policy on ChromeOS.
 // The implementation is hidden in DevicePolicyImpl to prevent protobuf
 // definition from leaking into the libraries using this interface.
 class DevicePolicy {

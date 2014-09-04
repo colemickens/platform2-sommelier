@@ -4,9 +4,9 @@
 
 #include "chromeos/policy/device_policy_impl.h"
 
-#include <base/basictypes.h>
 #include <base/file_util.h>
 #include <base/logging.h>
+#include <base/macros.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
