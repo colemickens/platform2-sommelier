@@ -147,15 +147,15 @@
       'target_name': 'crypto_util',
       'type': 'executable',
       'dependencies': ['shim-protos'],
-      'sources': [
-        'shims/crypto_util.cc',
-      ],
       'variables': {
         'deps': [
           'openssl',
           'protobuf-lite',
         ]
-      }
+      },
+      'sources': [
+        'shims/crypto_util.cc',
+      ],
     },
     {
       'target_name': 'libshill',
@@ -474,14 +474,14 @@
         {
           'target_name': 'set-apn-helper',
           'type': 'executable',
-          'sources': [
-            'shims/set_apn_helper.c',
-          ],
           'variables': {
             'deps': [
               'dbus-glib-1'
             ]
-          }
+          },
+          'sources': [
+            'shims/set_apn_helper.c',
+          ],
         },
       ],
     }],
@@ -491,13 +491,18 @@
           'target_name': 'shill-pppd-plugin',
           'type': 'shared_library',
           'dependencies': ['shill-proxies'],
+          'variables': {
+            'deps': [
+              'dbus-c++-1',
+            ],
+          },
           'sources': [
             'shims/c_ppp.cc',
             'shims/environment.cc',
             'shims/ppp.cc',
             'shims/pppd_plugin.c',
             'shims/task_proxy.cc',
-          ]
+          ],
         },
       ],
     }],
@@ -685,6 +690,11 @@
           ],
           'conditions': [
             ['USE_cellular == 1', {
+              'variables': {
+                'deps': [
+                  'ModemManager',
+                ],
+              },
               'sources': [
                 'active_passive_out_of_credits_detector_unittest.cc',
                 'cellular_bearer_unittest.cc',
@@ -724,11 +734,6 @@
                 'modem_unittest.cc',
                 'subscription_state_out_of_credits_detector_unittest.cc',
               ],
-              'variables': {
-                'deps': [
-                  'ModemManager',
-                ],
-              },
             }],
             ['USE_vpn == 1', {
               'sources': [
