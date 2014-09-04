@@ -494,6 +494,13 @@ void WiFi::ConnectTo(WiFiService *service) {
   }
 
   if (pending_service_ && pending_service_ != service) {
+    LOG(INFO) << "Connecting to service. "
+              << LogSSID(service->unique_name()) << ", "
+              << "bssid: " << service->bssid() << ", "
+              << "mode: " << service->mode() << ", "
+              << "key management: " << service->key_management() << ", "
+              << "physical mode: " << service->physical_mode() << ", "
+              << "frequency: " << service->frequency();
     // This is a signal to SetPendingService(NULL) to not modify the scan
     // state since the overall story arc isn't reflected by the disconnect.
     // It is, instead, described by the transition to either kScanFoundNothing
@@ -1161,7 +1168,7 @@ void WiFi::BSSAddedTask(
   // lose.
   WiFiEndpointRefPtr endpoint(
       new WiFiEndpoint(proxy_factory_, this, path, properties));
-  SLOG(WiFi, 1) << "Found endpoint. "
+  SLOG(WiFi, 5) << "Found endpoint. "
                 << "RPC path: " << path << ", "
                 << LogSSID(endpoint->ssid_string()) << ", "
                 << "bssid: " << endpoint->bssid_string() << ", "
