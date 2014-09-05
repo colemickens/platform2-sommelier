@@ -51,22 +51,22 @@ bool ErrorMissingProperty(chromeos::ErrorPtr* error, const char* param_name) {
 // Specializations of TypedValueToJson<T>() for supported C++ types.
 std::unique_ptr<base::Value> TypedValueToJson(bool value,
                                               chromeos::ErrorPtr* error) {
-  return std::unique_ptr<base::Value>(base::Value::CreateBooleanValue(value));
+  return std::unique_ptr<base::Value>(new base::FundamentalValue(value));
 }
 
 std::unique_ptr<base::Value> TypedValueToJson(int value,
                                               chromeos::ErrorPtr* error) {
-  return std::unique_ptr<base::Value>(base::Value::CreateIntegerValue(value));
+  return std::unique_ptr<base::Value>(new base::FundamentalValue(value));
 }
 
 std::unique_ptr<base::Value> TypedValueToJson(double value,
                                               chromeos::ErrorPtr* error) {
-  return std::unique_ptr<base::Value>(base::Value::CreateDoubleValue(value));
+  return std::unique_ptr<base::Value>(new base::FundamentalValue(value));
 }
 
 std::unique_ptr<base::Value> TypedValueToJson(const std::string& value,
                                               chromeos::ErrorPtr* error) {
-  return std::unique_ptr<base::Value>(base::Value::CreateStringValue(value));
+  return std::unique_ptr<base::Value>(new base::StringValue(value));
 }
 
 std::unique_ptr<base::Value> TypedValueToJson(const native_types::Object& value,
