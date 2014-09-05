@@ -5,8 +5,8 @@
 #ifndef EASY_UNLOCK_DAEMON_H_
 #define EASY_UNLOCK_DAEMON_H_
 
-#include <base/basictypes.h>
 #include <base/callback.h>
+#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 
