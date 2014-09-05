@@ -12,7 +12,6 @@
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <crypto/nss_util.h>
-#include <crypto/nss_util_internal.h>
 #include <crypto/rsa_private_key.h>
 #include <crypto/scoped_nss_types.h>
 
@@ -22,20 +21,17 @@ using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
 using ::testing::_;
 
-using crypto::GetPrivateNSSKeySlot;
 using crypto::ScopedPK11Slot;
 
 MockNssUtil::MockNssUtil()
-    : return_bad_db_(false),
-      slot_(GetPrivateNSSKeySlot()) {
+    : return_bad_db_(false) {
   ON_CALL(*this, GetNssdbSubpath()).WillByDefault(Return(base::FilePath()));
 }
 MockNssUtil::~MockNssUtil() {}
 
-// static
 crypto::RSAPrivateKey* MockNssUtil::CreateShortKey() {
   crypto::RSAPrivateKey* ret =
-      crypto::RSAPrivateKey::CreateSensitive(GetPrivateNSSKeySlot(), 256);
+      crypto::RSAPrivateKey::CreateSensitive(test_nssdb_.slot(), 256);
   LOG_IF(ERROR, ret == NULL) << "returning NULL!!!";
   return ret;
 }
@@ -54,7 +50,7 @@ base::FilePath MockNssUtil::GetOwnerKeyFilePath() {
 }
 
 PK11SlotInfo* MockNssUtil::GetSlot() {
-  return slot_.get();
+  return test_nssdb_.slot();
 }
 
 bool MockNssUtil::EnsureTempDir() {
@@ -73,7 +69,7 @@ CheckPublicKeyUtil::~CheckPublicKeyUtil() {}
 
 KeyCheckUtil::KeyCheckUtil() {
   ON_CALL(*this, GetPrivateKeyForUser(_, _))
-      .WillByDefault(InvokeWithoutArgs(CreateShortKey));
+      .WillByDefault(InvokeWithoutArgs(this, &KeyCheckUtil::CreateShortKey));
   EXPECT_CALL(*this, GetPrivateKeyForUser(_, _)).Times(1);
 }
 

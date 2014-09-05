@@ -17,6 +17,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <crypto/nss_util.h>
 #include <crypto/scoped_nss_types.h>
+#include <crypto/scoped_test_nss_db.h>
 #include <gmock/gmock.h>
 
 namespace crypto {
@@ -32,7 +33,7 @@ class MockNssUtil : public NssUtil {
   MockNssUtil();
   virtual ~MockNssUtil();
 
-  static crypto::RSAPrivateKey* CreateShortKey();
+  crypto::RSAPrivateKey* CreateShortKey();
 
   crypto::ScopedPK11Slot OpenUserDB(
       const base::FilePath& user_homedir) override;
@@ -69,7 +70,6 @@ class MockNssUtil : public NssUtil {
 
  protected:
   bool return_bad_db_;
-  crypto::ScopedPK11Slot slot_;
   crypto::ScopedTestNSSDB test_nssdb_;
   base::ScopedTempDir temp_dir_;
 

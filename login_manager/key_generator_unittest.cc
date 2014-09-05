@@ -92,7 +92,7 @@ TEST_F(KeyGeneratorTest, GenerateKey) {
   MockNssUtil nss;
   EXPECT_CALL(nss, GetNssdbSubpath()).Times(1);
   ON_CALL(nss, GenerateKeyPairForUser(_))
-      .WillByDefault(InvokeWithoutArgs(MockNssUtil::CreateShortKey));
+      .WillByDefault(InvokeWithoutArgs(&nss, &MockNssUtil::CreateShortKey));
   EXPECT_CALL(nss, GenerateKeyPairForUser(_)).Times(1);
 
   const base::FilePath key_file_path(tmpdir_.path().AppendASCII("foo.pub"));

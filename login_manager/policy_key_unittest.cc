@@ -169,10 +169,9 @@ TEST_F(PolicyKeyTest, SignVerify) {
   StartUnowned();
   PolicyKey key(tmpfile_, nss.get());
   crypto::ScopedTestNSSDB test_db;
-  crypto::ScopedPK11Slot test_slot(crypto::GetPrivateNSSKeySlot());
 
   scoped_ptr<crypto::RSAPrivateKey> pair(
-      crypto::RSAPrivateKey::CreateSensitive(test_slot.get(), 512));
+      crypto::RSAPrivateKey::CreateSensitive(test_db.slot(), 512));
   ASSERT_NE(pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
 
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
@@ -198,10 +197,9 @@ TEST_F(PolicyKeyTest, RotateKey) {
   StartUnowned();
   PolicyKey key(tmpfile_, nss.get());
   crypto::ScopedTestNSSDB test_db;
-  crypto::ScopedPK11Slot test_slot(crypto::GetPrivateNSSKeySlot());
 
   scoped_ptr<crypto::RSAPrivateKey> pair(
-      crypto::RSAPrivateKey::CreateSensitive(test_slot.get(), 512));
+      crypto::RSAPrivateKey::CreateSensitive(test_db.slot(), 512));
   ASSERT_NE(pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
 
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
@@ -220,7 +218,8 @@ TEST_F(PolicyKeyTest, RotateKey) {
   ASSERT_TRUE(key2.HaveCheckedDisk());
   ASSERT_TRUE(key2.IsPopulated());
 
-  scoped_ptr<crypto::RSAPrivateKey> new_pair(MockNssUtil::CreateShortKey());
+  scoped_ptr<crypto::RSAPrivateKey> new_pair(
+      crypto::RSAPrivateKey::CreateSensitive(test_db.slot(), 512));
   ASSERT_NE(new_pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
   std::vector<uint8_t> new_export;
   ASSERT_TRUE(new_pair->ExportPublicKey(&new_export));
