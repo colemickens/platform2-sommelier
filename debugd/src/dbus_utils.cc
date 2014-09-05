@@ -11,7 +11,9 @@
 #include <dbus-c++/dbus.h>
 
 using base::DictionaryValue;
+using base::FundamentalValue;
 using base::ListValue;
+using base::StringValue;
 using base::Value;
 
 namespace {
@@ -22,46 +24,43 @@ bool DBusMessageIterToPrimitiveValue(DBus::MessageIter* iter, Value** result) {
   DBus::MessageIter subiter;
   switch (iter->type()) {
     case DBUS_TYPE_BYTE:
-      *result = Value::CreateIntegerValue(iter->get_byte());
+      *result = new FundamentalValue(iter->get_byte());
       return true;
     case DBUS_TYPE_BOOLEAN:
-      *result = Value::CreateBooleanValue(iter->get_bool());
+      *result = new FundamentalValue(iter->get_bool());
       return true;
     case DBUS_TYPE_INT16:
-      *result = Value::CreateIntegerValue(iter->get_int16());
+      *result = new FundamentalValue(iter->get_int16());
       return true;
     case DBUS_TYPE_UINT16:
-      *result = Value::CreateIntegerValue(iter->get_uint16());
+      *result = new FundamentalValue(iter->get_uint16());
       return true;
     case DBUS_TYPE_INT32:
-      *result = Value::CreateIntegerValue(iter->get_int32());
+      *result = new FundamentalValue(iter->get_int32());
       return true;
     case DBUS_TYPE_UINT32:
-      *result = Value::CreateStringValue(
-          base::UintToString(iter->get_uint32()));
+      *result = new StringValue(base::UintToString(iter->get_uint32()));
       return true;
     case DBUS_TYPE_INT64:
-      *result = Value::CreateStringValue(
-          base::Int64ToString(iter->get_int64()));
+      *result = new StringValue(base::Int64ToString(iter->get_int64()));
       return true;
     case DBUS_TYPE_UINT64:
-      *result = Value::CreateStringValue(
-          base::Uint64ToString(iter->get_uint64()));
+      *result = new StringValue(base::Uint64ToString(iter->get_uint64()));
       return true;
     case DBUS_TYPE_DOUBLE:
-      *result = Value::CreateDoubleValue(iter->get_double());
+      *result = new FundamentalValue(iter->get_double());
       return true;
     case DBUS_TYPE_STRING:
-      *result = Value::CreateStringValue(iter->get_string());
+      *result = new StringValue(iter->get_string());
       return true;
     case DBUS_TYPE_OBJECT_PATH:
-      *result = Value::CreateStringValue(iter->get_path());
+      *result = new StringValue(iter->get_path());
       return true;
     case DBUS_TYPE_SIGNATURE:
-      *result = Value::CreateStringValue(iter->get_signature());
+      *result = new StringValue(iter->get_signature());
       return true;
     case DBUS_TYPE_UNIX_FD:
-      *result = Value::CreateIntegerValue(iter->get_int32());
+      *result = new FundamentalValue(iter->get_int32());
       return true;
     case DBUS_TYPE_VARIANT:
       subiter = iter->recurse();
