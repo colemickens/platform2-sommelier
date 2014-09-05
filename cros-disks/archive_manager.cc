@@ -202,7 +202,7 @@ string ArchiveManager::GetFileExtension(const string& path) const {
   if (!extension.empty()) {
     // Strip the leading dot and convert the extension to lower case.
     extension.erase(0, 1);
-    StringToLowerASCII(&extension);
+    base::StringToLowerASCII(&extension);
   }
   return extension;
 }

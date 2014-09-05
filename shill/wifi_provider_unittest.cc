@@ -170,8 +170,8 @@ class WiFiProviderTest : public testing::Test {
                              const char *security,
                              bool is_hidden,
                              bool provide_hidden) {
-    string id = StringToLowerASCII(base::StringPrintf("entry_%d",
-                                                      storage_entry_index_));
+    string id = base::StringToLowerASCII(
+        base::StringPrintf("entry_%d", storage_entry_index_));
     EXPECT_CALL(storage_, GetString(id, _, _)).WillRepeatedly(Return(false));
     if (ssid) {
       const string ssid_string(ssid);

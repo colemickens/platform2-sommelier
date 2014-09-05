@@ -5,7 +5,7 @@
 # TODO(asharif): Convert this to common.mk.
 CXX ?= g++
 
-BASE_VER ?= 242728
+BASE_VER ?= 293518
 PKG_CONFIG ?= pkg-config
 PC_DEPS = openssl protobuf
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))

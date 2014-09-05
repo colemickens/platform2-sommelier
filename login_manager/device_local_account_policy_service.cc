@@ -122,7 +122,7 @@ bool DeviceLocalAccountPolicyService::MigrateUppercaseDirs(void) {
 
   while (!(subdir = enumerator.Next()).empty()) {
     std::string upper = subdir.BaseName().value();
-    std::string lower = StringToLowerASCII(upper);
+    std::string lower = base::StringToLowerASCII(upper);
     if (IsValidAccountKey(lower) && lower != upper) {
       base::FilePath subdir_to(subdir.DirName().Append(lower));
       LOG(INFO) << "Migrating " << upper << " to " << lower;

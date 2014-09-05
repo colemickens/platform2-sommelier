@@ -22,7 +22,7 @@ from chromite.lib.cros_build_lib import ShellUnquote
 # Define default the version of libchrome{,os} to build against.
 # Used only if the BASE_VER environment variable is not set.
 # This can also be overridden in a specific target GYP file if required.
-_BASE_VER = '271506'
+_BASE_VER = '293518'
 
 
 class Platform2(object):

@@ -4,7 +4,7 @@
 
 include common.mk
 
-BASE_VER ?= 242728
+BASE_VER ?= 293518
 PKG_CONFIG ?= pkg-config
 
 CXXFLAGS += -I$(SRC)/.. -std=gnu++11

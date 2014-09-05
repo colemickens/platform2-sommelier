@@ -201,7 +201,7 @@ class WiFiServiceSecurityTest : public WiFiServiceTest {
   bool TestStorageSecurityIs(WiFiServiceRefPtr wifi_service,
                              const string &security) {
     string id = wifi_service->GetStorageIdentifier();
-    size_t mac_pos = id.find(StringToLowerASCII(GetAnyDeviceAddress()));
+    size_t mac_pos = id.find(base::StringToLowerASCII(GetAnyDeviceAddress()));
     EXPECT_NE(mac_pos, string::npos);
     size_t mode_pos = id.find(string(kModeManaged), mac_pos);
     EXPECT_NE(mode_pos, string::npos);
@@ -383,7 +383,7 @@ TEST_F(WiFiServiceTest, StorageId) {
                 isxdigit(id[i]) ||
                 (isalpha(id[i]) && islower(id[i])));
   }
-  size_t mac_pos = id.find(StringToLowerASCII(GetAnyDeviceAddress()));
+  size_t mac_pos = id.find(base::StringToLowerASCII(GetAnyDeviceAddress()));
   EXPECT_NE(mac_pos, string::npos);
   EXPECT_NE(id.find(string(kModeManaged), mac_pos), string::npos);
 }
@@ -1138,7 +1138,7 @@ TEST_F(WiFiServiceTest, ParseStorageIdentifierNone) {
   string security;
   EXPECT_TRUE(service->ParseStorageIdentifier(storage_id, &address, &mode,
                                               &security));
-  EXPECT_EQ(StringToLowerASCII(GetAnyDeviceAddress()), address);
+  EXPECT_EQ(base::StringToLowerASCII(GetAnyDeviceAddress()), address);
   EXPECT_EQ(kModeManaged, mode);
   EXPECT_EQ(kSecurityNone, security);
 }
@@ -1153,7 +1153,7 @@ TEST_F(WiFiServiceTest, ParseStorageIdentifier8021x) {
   string security;
   EXPECT_TRUE(service->ParseStorageIdentifier(storage_id, &address, &mode,
                                               &security));
-  EXPECT_EQ(StringToLowerASCII(GetAnyDeviceAddress()), address);
+  EXPECT_EQ(base::StringToLowerASCII(GetAnyDeviceAddress()), address);
   EXPECT_EQ(kModeManaged, mode);
   EXPECT_EQ(kSecurity8021x, security);
 }

@@ -1,6 +1,6 @@
 {
   'includes': [
-    'libchromeos-271506.gypi',
+    'libchromeos-293518.gypi',
     'libpolicy.gypi',
   ]
 }

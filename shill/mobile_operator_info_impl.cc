@@ -943,7 +943,7 @@ bool MobileOperatorInfoImpl::ShouldNotifyPropertyUpdate() const {
 }
 
 string MobileOperatorInfoImpl::NormalizeOperatorName(const string &name) const {
-  string result = StringToLowerASCII(name);
+  string result = base::StringToLowerASCII(name);
   base::RemoveChars(result, base::kWhitespaceASCII, &result);
   return result;
 }

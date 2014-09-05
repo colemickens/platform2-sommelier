@@ -1075,12 +1075,12 @@ KeyValueStore WiFiService::GetStorageProperties() const {
 
 string WiFiService::GetDefaultStorageIdentifier() const {
   string security = GetSecurityClass(security_);
-  return StringToLowerASCII(base::StringPrintf("%s_%s_%s_%s_%s",
-                                               kTypeWifi,
-                                               kAnyDeviceAddress,
-                                               hex_ssid_.c_str(),
-                                               mode_.c_str(),
-                                               security.c_str()));
+  return base::StringToLowerASCII(base::StringPrintf("%s_%s_%s_%s_%s",
+                                                     kTypeWifi,
+                                                     kAnyDeviceAddress,
+                                                     hex_ssid_.c_str(),
+                                                     mode_.c_str(),
+                                                     security.c_str()));
 }
 
 string WiFiService::GetSecurity(Error */*error*/) {

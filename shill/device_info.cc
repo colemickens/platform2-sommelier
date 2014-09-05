@@ -559,7 +559,8 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
     string address;
     if (msg.HasAttribute(IFLA_ADDRESS)) {
       infos_[dev_index].mac_address = msg.GetAttribute(IFLA_ADDRESS);
-      address = StringToLowerASCII(infos_[dev_index].mac_address.HexEncode());
+      address =
+          base::StringToLowerASCII(infos_[dev_index].mac_address.HexEncode());
       SLOG(Device, 2) << "link index " << dev_index << " address "
                       << infos_[dev_index].mac_address.HexEncode();
     } else if (technology != Technology::kTunnel &&
@@ -1016,7 +1017,7 @@ void DeviceInfo::DelayedDeviceCreationTask() {
                    << Technology::NameFromIdentifier(technology);
     }
     string address =
-        StringToLowerASCII(infos_[dev_index].mac_address.HexEncode());
+        base::StringToLowerASCII(infos_[dev_index].mac_address.HexEncode());
     DCHECK(!address.empty());
 
     DeviceRefPtr device = CreateDevice(link_name, address, dev_index,
@@ -1112,7 +1113,7 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message &msg) {
               << info->name
               << " at interface index "
               << interface_index;
-  string address = StringToLowerASCII(info->mac_address.HexEncode());
+  string address = base::StringToLowerASCII(info->mac_address.HexEncode());
   DeviceRefPtr device =
       new WiFi(control_interface_, dispatcher_, metrics_, manager_,
                info->name, address, interface_index);

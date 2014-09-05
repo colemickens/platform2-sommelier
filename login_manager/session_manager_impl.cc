@@ -256,7 +256,7 @@ bool SessionManagerImpl::StartSession(const std::string& email,
                                       const std::string& unique_id,
                                       Error* error) {
   // Validate the |email|.
-  const std::string email_string(StringToLowerASCII(email));
+  const std::string email_string(base::StringToLowerASCII(email));
   const bool is_incognito =
       ((email_string == kGuestUserName) || (email_string == kDemoUser));
   if (!is_incognito && !ValidateEmail(email_string)) {

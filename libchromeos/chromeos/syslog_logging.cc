@@ -48,7 +48,6 @@ static bool HandleMessage(int severity,
       break;
 
     case logging::LOG_ERROR:
-    case logging::LOG_ERROR_REPORT:
       severity = kSyslogError;
       break;
 

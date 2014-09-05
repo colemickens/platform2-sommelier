@@ -34,7 +34,6 @@ static bool SyslogFunc(int severity,
     LOG_INFO,     // logging::LOG_INFO
     LOG_WARNING,  // logging::LOG_WARNING
     LOG_ERR,      // logging::LOG_ERROR
-    LOG_CRIT,     // logging::LOG_ERROR_REPORT
     LOG_ALERT,    // logging::LOG_FATAL
   };
 

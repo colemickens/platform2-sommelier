@@ -48,7 +48,7 @@ std::string ModelNameToFileName(const std::string& model_name) {
   std::string result = model_name;
   std::replace(result.begin(), result.end(), ' ', '-');
   ReplaceSubstringsAfterOffset(&result, 0, kRegisteredTrademarkSymbol, "");
-  return StringToLowerASCII(result);
+  return base::StringToLowerASCII(result);
 }
 
 // Goes through the list of kCPUOddsFiles, and if the any of those strings is a

@@ -139,7 +139,7 @@ bool USBDeviceInfo::ExtractIdAndName(
       IsHexDigit(line[0]) && IsHexDigit(line[1]) &&
       IsHexDigit(line[2]) && IsHexDigit(line[3]) &&
       (line[4] == ' ') && (line[5] == ' ')) {
-    *id = StringToLowerASCII(line.substr(0, 4));
+    *id = base::StringToLowerASCII(line.substr(0, 4));
     *name = line.substr(6);
     return true;
   }
