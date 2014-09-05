@@ -5,6 +5,8 @@
 #ifndef PEERD_TEST_UTIL_H_
 #define PEERD_TEST_UTIL_H_
 
+#include <string>
+
 #include <chromeos/dbus/mock_dbus_object.h>
 
 #include "peerd/typedefs.h"
@@ -15,6 +17,12 @@ namespace test_util {
 std::unique_ptr<chromeos::dbus_utils::MockDBusObject> MakeMockDBusObject();
 
 CompletionAction MakeMockCompletionAction();
+
+void HandleMethodExport(
+    const std::string& interface_name,
+    const std::string& method_name,
+    dbus::ExportedObject::MethodCallCallback method_call_callback,
+    dbus::ExportedObject::OnExportedCallback on_exported_callback);
 
 }  // namespace test_util
 }  // namespace peerd

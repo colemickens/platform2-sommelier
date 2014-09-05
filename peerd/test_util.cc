@@ -6,15 +6,16 @@
 
 #include <base/bind.h>
 #include <chromeos/dbus/mock_dbus_object.h>
+#include <dbus/exported_object.h>
 #include <dbus/mock_bus.h>
 
 using chromeos::dbus_utils::MockDBusObject;
 using dbus::Bus;
+using dbus::ExportedObject;
 using dbus::MockBus;
 using dbus::ObjectPath;
 using std::unique_ptr;
 using testing::AnyNumber;
-using testing::_;
 
 namespace {
 
@@ -41,6 +42,14 @@ unique_ptr<MockDBusObject> MakeMockDBusObject() {
 
 CompletionAction MakeMockCompletionAction() {
   return base::Bind(&HandleComplete);
+}
+
+void HandleMethodExport(
+    const std::string& interface_name,
+    const std::string& method_name,
+    ExportedObject::MethodCallCallback method_call_callback,
+    ExportedObject::OnExportedCallback on_exported_callback) {
+  on_exported_callback.Run(interface_name, method_name, true);
 }
 
 }  // namespace test_util

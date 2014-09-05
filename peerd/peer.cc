@@ -4,14 +4,18 @@
 
 #include "peerd/peer.h"
 
+#include <functional>
+
 #include <base/format_macros.h>
 #include <base/guid.h>
+#include <base/memory/weak_ptr.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/exported_object_manager.h>
 
 #include "peerd/dbus_constants.h"
 #include "peerd/typedefs.h"
 
+using base::WeakPtr;
 using chromeos::Error;
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::DBusInterface;
@@ -23,6 +27,7 @@ using peerd::dbus_constants::kPeerInterface;
 using peerd::dbus_constants::kPeerLastSeen;
 using peerd::dbus_constants::kPeerNote;
 using peerd::dbus_constants::kPeerUUID;
+using peerd::dbus_constants::kServicePathFragment;
 using std::map;
 using std::string;
 using std::vector;
@@ -65,22 +70,9 @@ unique_ptr<Peer> Peer::MakePeer(
     uint64_t last_seen,
     const CompletionAction& completion_callback) {
   CHECK(object_manager) << "object_manager is nullptr!";
+  ObjectPath service_path_prefix(path.value() + kServicePathFragment);
   unique_ptr<DBusObject> dbus_object(
       new DBusObject(object_manager, object_manager->GetBus(), path));
-  return MakePeerImpl(error, std::move(dbus_object),
-                      uuid, friendly_name, note, last_seen,
-                      completion_callback);
-}
-
-unique_ptr<Peer> Peer::MakePeerImpl(
-    chromeos::ErrorPtr* error,
-    unique_ptr<DBusObject> dbus_object,
-    const string& possibly_lower_uuid,
-    const string& friendly_name,
-    const string& note,
-    uint64_t last_seen,
-    const CompletionAction& completion_callback) {
-  const string uuid(StringToUpperASCII(possibly_lower_uuid));
   if (!base::IsValidGUID(uuid)) {
     Error::AddTo(error,
                  kPeerdErrorDomain,
@@ -88,7 +80,9 @@ unique_ptr<Peer> Peer::MakePeerImpl(
                  "Invalid UUID for peer.");
     return nullptr;
   }
-  unique_ptr<Peer> result(new Peer(std::move(dbus_object), uuid));
+  unique_ptr<Peer> result(new Peer(std::move(dbus_object),
+                                   service_path_prefix,
+                                   uuid));
   if (!result->SetFriendlyName(error, friendly_name)) { return nullptr; }
   if (!result->SetNote(error, note)) { return nullptr; }
   result->SetLastSeen(last_seen);
@@ -97,7 +91,10 @@ unique_ptr<Peer> Peer::MakePeerImpl(
 }
 
 Peer::Peer(std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object,
-           const std::string& uuid) : dbus_object_(std::move(dbus_object)) {
+           const ObjectPath& service_path_prefix,
+           const std::string& uuid)
+    : dbus_object_(std::move(dbus_object)),
+      service_path_prefix_(service_path_prefix) {
   uuid_.SetValue(uuid);
 }
 
@@ -151,12 +148,59 @@ bool Peer::AddService(chromeos::ErrorPtr* error,
                       const string& service_id,
                       const vector<ip_addr>& addresses,
                       const map<string, string>& service_info) {
-  return true;
+  ObjectPath service_path(service_path_prefix_.value() +
+                          std::to_string(++services_added_));
+  // TODO(wiley): There is a potential race here.  If we remove the service
+  //              too quickly, we race with DBus export completing.  We'll
+  //              have to be careful in Service not to assume export has
+  //              finished.
+  scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
+  unique_ptr<Service> new_service(
+      Service::MakeService(error, dbus_object_->GetObjectManager().get(),
+                           service_path, service_id, addresses,
+                           service_info,
+                           sequencer->GetHandler("Failed exporting service.",
+                                                 true)));
+  if (!new_service) { return false; }
+  services_.emplace(service_id, std::move(new_service));
+  sequencer->OnAllTasksCompletedCall({});
+  bool all_publishers_succeeded = true;
+  // Notify all the publishers we know about that we have a new service.
+  auto first_null = std::remove_if(
+      publishers_.begin(), publishers_.end(),
+      std::logical_not<base::WeakPtr<ServicePublisherInterface>>());
+  publishers_.erase(first_null, publishers_.end());
+  for (const auto& publisher : publishers_) {
+      all_publishers_succeeded &= publisher->OnServiceUpdated(
+          error, *services_[service_id]);
+  }
+  return all_publishers_succeeded;
 }
 
 bool Peer::RemoveService(chromeos::ErrorPtr* error,
                          const string& service_id) {
-  return true;
+  // Notify all the publishers we know about that we have removed a service.
+  bool all_publishers_succeeded = true;
+  auto first_null = std::remove_if(
+      publishers_.begin(), publishers_.end(),
+      std::logical_not<base::WeakPtr<ServicePublisherInterface>>());
+  publishers_.erase(first_null, publishers_.end());
+  for (const auto& publisher : publishers_) {
+      all_publishers_succeeded &= publisher->OnServiceRemoved(
+          error, service_id);
+  }
+  CHECK(services_.erase(service_id))
+      << "Tried to erase service that did not exist on this peer!";
+  return all_publishers_succeeded;
+}
+
+void Peer::RegisterServicePublisher(
+    WeakPtr<ServicePublisherInterface> publisher) {
+  if (!publisher) { return; }
+  for (const auto& kv : services_) {
+    publisher->OnServiceUpdated(nullptr, *kv.second);
+  }
+  publishers_.push_back(publisher);
 }
 
 }  // namespace peerd

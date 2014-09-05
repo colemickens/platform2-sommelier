@@ -8,11 +8,13 @@
 #ifndef PEERD_DBUS_DATA_SERIALIZATION_H_
 #define PEERD_DBUS_DATA_SERIALIZATION_H_
 
-#include <chromeos/dbus/data_serialization.h>
-
 #include <string>
 
-struct sockaddr_storage;
+#include <chromeos/dbus/data_serialization.h>
+
+namespace peerd {
+struct ip_addr;
+}
 
 namespace dbus {
 class MessageReader;
@@ -26,10 +28,10 @@ namespace chromeos {
 namespace dbus_utils {
 
 // Specializations/overloads to send "sockaddr_storage" structure over D-Bus.
-template<> struct DBusSignature<sockaddr_storage> { static std::string get(); };
+template<> struct DBusSignature<peerd::ip_addr> { static std::string get(); };
 bool AppendValueToWriter(dbus::MessageWriter* writer,
-                         const sockaddr_storage& value);
-bool PopValueFromReader(dbus::MessageReader* reader, sockaddr_storage* value);
+                         const peerd::ip_addr& value);
+bool PopValueFromReader(dbus::MessageReader* reader, peerd::ip_addr* value);
 
 }  // namespace dbus_utils
 }  // namespace chromeos

@@ -4,22 +4,22 @@
 
 #include "peerd/dbus_data_serialization.h"
 
-#include <netinet/in.h>
-#include <sys/socket.h>
 #include <utility>
 #include <vector>
+
+#include "peerd/ip_addr.h"
 
 namespace chromeos {
 namespace dbus_utils {
 
-// Extend D-Bus serialization mechanism to handle "sockaddr_storage" structure.
-std::string DBusSignature<sockaddr_storage>::get() {
+// Extend D-Bus serialization mechanism to handle "peerd::ip_addr" structure.
+std::string DBusSignature<peerd::ip_addr>::get() {
   // Returns "(ayq)".
   return GetDBusSignature<std::pair<std::vector<uint8_t>, uint16_t>>();
 }
 
 bool AppendValueToWriter(dbus::MessageWriter* writer,
-                         const sockaddr_storage& value) {
+                         const peerd::ip_addr& value) {
   std::vector<uint8_t> address_bytes;
   uint16_t port = 0;
   if (value.ss_family == AF_INET) {
@@ -42,7 +42,7 @@ bool AppendValueToWriter(dbus::MessageWriter* writer,
                              std::make_pair(std::move(address_bytes), port));
 }
 
-bool PopValueFromReader(dbus::MessageReader* reader, sockaddr_storage* value) {
+bool PopValueFromReader(dbus::MessageReader* reader, peerd::ip_addr* value) {
   std::pair<std::vector<uint8_t>, uint16_t> addr;
   if (!PopValueFromReader(reader, &addr))
     return false;

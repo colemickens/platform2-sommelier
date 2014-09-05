@@ -5,10 +5,10 @@
 #include "peerd/dbus_data_serialization.h"
 
 #include <algorithm>
-#include <netinet/in.h>
-#include <sys/socket.h>
 
 #include <gtest/gtest.h>
+
+#include "peerd/ip_addr.h"
 
 using dbus::Response;
 
@@ -16,11 +16,11 @@ namespace peerd {
 
 TEST(DBusDataSerialization, Signature_sockaddr) {
   EXPECT_EQ("(ayq)",
-            chromeos::dbus_utils::GetDBusSignature<sockaddr_storage>());
+            chromeos::dbus_utils::GetDBusSignature<ip_addr>());
 }
 
 TEST(DBusDataSerialization, Write_sockaddr_in) {
-  sockaddr_storage addr;
+  ip_addr addr;
   addr.ss_family = AF_INET;
   sockaddr_in* addr_in = reinterpret_cast<sockaddr_in*>(&addr);
   addr_in->sin_port = 1234;
@@ -66,7 +66,7 @@ TEST(DBusDataSerialization, Read_sockaddr_in) {
   EXPECT_EQ("(ayq)", message->GetSignature());
 
   dbus::MessageReader reader(message.get());
-  sockaddr_storage addr;
+  ip_addr addr;
   ASSERT_TRUE(chromeos::dbus_utils::PopValueFromReader(&reader, &addr));
 
   EXPECT_EQ(AF_INET, addr.ss_family);
@@ -82,7 +82,7 @@ TEST(DBusDataSerialization, Write_sockaddr_in6) {
   };
   static_assert(arraysize(addr_buffer) == sizeof(sockaddr_in6::sin6_addr),
                 "Unexpected size of address buffer");
-  sockaddr_storage addr;
+  ip_addr addr;
   addr.ss_family = AF_INET6;
   sockaddr_in6* addr_in6 = reinterpret_cast<sockaddr_in6*>(&addr);
   addr_in6->sin6_port = 1234;
@@ -128,7 +128,7 @@ TEST(DBusDataSerialization, Read_sockaddr_in6) {
   EXPECT_EQ("(ayq)", message->GetSignature());
 
   dbus::MessageReader reader(message.get());
-  sockaddr_storage addr;
+  ip_addr addr;
   ASSERT_TRUE(chromeos::dbus_utils::PopValueFromReader(&reader, &addr));
 
   EXPECT_EQ(AF_INET6, addr.ss_family);

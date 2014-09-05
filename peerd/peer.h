@@ -17,6 +17,7 @@
 #include <gtest/gtest_prod.h>
 
 #include "peerd/ip_addr.h"
+#include "peerd/service_publisher_interface.h"
 #include "peerd/typedefs.h"
 
 namespace peerd {
@@ -70,30 +71,34 @@ class Peer {
   bool RemoveService(chromeos::ErrorPtr* error,
                      const std::string& service_id);
 
+  // Peer objects will notify ServicePublishers when services are added,
+  // updated, and removed.  This is only used for the self instance of peer
+  // which represents ourselves to remote devices.  If a publisher is added
+  // while this peer has existing services, this will trigger immediate
+  // advertisement of services on that publisher.
+  //
+  // The Peer will remove publishers implicitly when each publisher is
+  // destroyed.
+  void RegisterServicePublisher(
+      base::WeakPtr<ServicePublisherInterface> publisher);
+
  private:
-  // Used for testing, where we want to use a MockDBusObject we
-  // set up ourselves.
-  static std::unique_ptr<Peer> MakePeerImpl(
-      chromeos::ErrorPtr* error,
-      std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object,
-      const std::string& uuid,
-      const std::string& friendly_name,
-      const std::string& note,
-      uint64_t last_seen,
-      const CompletionAction& completion_callback);
   Peer(std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object,
+       const dbus::ObjectPath& service_path_prefix,
        const std::string& uuid);
 
   void RegisterAsync(const CompletionAction& completion_callback);
 
+  size_t services_added_{0};
   chromeos::dbus_utils::ExportedProperty<std::string> uuid_;
   chromeos::dbus_utils::ExportedProperty<std::string> name_;
   chromeos::dbus_utils::ExportedProperty<std::string> note_;
   chromeos::dbus_utils::ExportedProperty<uint64_t> last_seen_;
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  dbus::ObjectPath service_path_prefix_;
+  std::map<std::string, std::unique_ptr<Service>> services_;
+  std::vector<base::WeakPtr<ServicePublisherInterface>> publishers_;
 
-  FRIEND_TEST(PeerTest, ShouldRejectBadNameInFactory);
-  FRIEND_TEST(PeerTest, ShouldRejectBadNoteInFactory);
   friend class PeerTest;
   DISALLOW_COPY_AND_ASSIGN(Peer);
 };
