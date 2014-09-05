@@ -8,7 +8,7 @@
 #include <set>
 #include <vector>
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <base/macros.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

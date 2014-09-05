@@ -4,7 +4,7 @@
 
 #include "shill/socket_info_reader.h"
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>

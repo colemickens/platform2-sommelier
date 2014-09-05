@@ -4,7 +4,7 @@
 
 #include "shill/diagnostics_reporter.h"
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <chromeos/minijail/mock_minijail.h>
 #include <gmock/gmock.h>

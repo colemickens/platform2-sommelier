@@ -13,8 +13,8 @@
 
 #include <string>
 
-#include <base/file_util.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <chromeos/secure_blob.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>

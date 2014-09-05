@@ -10,7 +10,7 @@
 #include <memory>
 #include <string>
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 

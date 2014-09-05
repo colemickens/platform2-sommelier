@@ -12,8 +12,8 @@
 #include <vector>
 
 #include <base/at_exit.h>
+#include <base/files/file_util.h>
 #include <base/threading/platform_thread.h>
-#include <base/file_util.h>
 #include <base/time/time.h>
 #include <chaps/token_manager_client_mock.h>
 #include <chromeos/cryptohome.h>

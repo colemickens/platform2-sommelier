@@ -11,7 +11,7 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/files/file_path.h>
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>

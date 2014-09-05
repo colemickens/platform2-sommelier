@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>

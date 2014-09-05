@@ -4,7 +4,7 @@
 
 #include "debugd/src/debug_mode_tool.h"
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "dbus_proxies/org.freedesktop.DBus.Properties.h"

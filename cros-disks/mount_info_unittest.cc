@@ -4,7 +4,7 @@
 
 #include "cros-disks/mount_info.h"
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 

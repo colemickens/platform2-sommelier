@@ -5,7 +5,7 @@
 #ifndef BUFFET_STORAGE_IMPLS_H_
 #define BUFFET_STORAGE_IMPLS_H_
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <base/macros.h>
 #include <base/values.h>
 

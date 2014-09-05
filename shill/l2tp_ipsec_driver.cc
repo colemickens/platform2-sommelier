@@ -24,7 +24,7 @@
 #include "shill/l2tp_ipsec_driver.h"
 
 #include <base/bind.h>
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <vpn-manager/service_error.h>

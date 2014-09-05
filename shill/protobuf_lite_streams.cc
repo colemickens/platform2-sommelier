@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <base/posix/eintr_wrapper.h>
 
 using google::protobuf::io::CopyingInputStream;

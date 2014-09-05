@@ -6,7 +6,7 @@
 
 #include "login_manager/login_metrics.h"
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <metrics/bootstat.h>
 #include <metrics/metrics_library.h>
 

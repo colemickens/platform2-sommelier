@@ -8,7 +8,7 @@
 
 #include <string>
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 
 #include "cros-disks/platform.h"

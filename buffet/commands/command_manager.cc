@@ -4,8 +4,8 @@
 
 #include "buffet/commands/command_manager.h"
 
-#include <base/file_util.h>
 #include <base/files/file_enumerator.h>
+#include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 #include <base/values.h>
 #include <chromeos/dbus/exported_object_manager.h>

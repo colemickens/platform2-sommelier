@@ -5,12 +5,12 @@
 // Function write_png_file taken slightly modified from
 // http://zarb.org/~gc/html/libpng.html
 
-#include <gflags/gflags.h>
-#include <stdio.h>
 #include <png.h>
+#include <stdio.h>
 
-#include "base/memory/scoped_ptr.h"
-#include "base/file_util.h"
+#include <base/files/file_util.h>
+#include <base/memory/scoped_ptr.h>
+#include <gflags/gflags.h>
 
 #include "png_helper.h"
 

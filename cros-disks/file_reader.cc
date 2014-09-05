@@ -4,7 +4,7 @@
 
 #include "cros-disks/file_reader.h"
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 
 using base::FilePath;
 using std::string;

@@ -6,8 +6,8 @@
 
 #include <unistd.h>
 
-#include <base/file_util.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <gtest/gtest.h>
 
 #include "chromeos/process_mock.h"

@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <algorithm>
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <chromeos/secure_blob.h>
 #include <gtest/gtest.h>

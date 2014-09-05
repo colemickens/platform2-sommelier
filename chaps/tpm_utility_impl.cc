@@ -9,8 +9,8 @@
 #include <sstream>
 #include <string>
 
-#include <base/file_util.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/synchronization/lock.h>
 #include <chromeos/secure_blob.h>

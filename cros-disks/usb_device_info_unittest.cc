@@ -4,7 +4,7 @@
 
 #include "cros-disks/usb_device_info.h"
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <gtest/gtest.h>
 
 using base::FilePath;

@@ -4,7 +4,7 @@
 
 #include "login_manager/login_metrics.h"
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest.h>

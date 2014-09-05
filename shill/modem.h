@@ -9,7 +9,7 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 

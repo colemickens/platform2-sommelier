@@ -6,7 +6,7 @@
 
 #include <vector>
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

@@ -7,8 +7,8 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "base/memory/scoped_ptr.h"
-#include "base/file_util.h"
+#include <base/files/file_util.h>
+#include <base/memory/scoped_ptr.h>
 
 #include "glinterface.h"
 #include "md5.h"

@@ -6,7 +6,7 @@
 
 #include <vector>
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <chromeos/minijail/minijail.h>
 
 #include "shill/process_killer.h"

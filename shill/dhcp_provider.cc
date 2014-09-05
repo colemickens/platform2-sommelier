@@ -4,7 +4,7 @@
 
 #include "shill/dhcp_provider.h"
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "shill/control_interface.h"

@@ -9,7 +9,7 @@
 #include <glib.h>
 
 #include <base/base64.h>
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>

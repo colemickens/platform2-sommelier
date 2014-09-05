@@ -4,7 +4,7 @@
 
 #include "power_manager/powerd/system/acpi_wakeup_helper.h"
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/strings/string_piece.h>

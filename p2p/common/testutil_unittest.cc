@@ -9,7 +9,7 @@
 #include <gtest/gtest.h>
 #include <gtest/gtest-spi.h>
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 
 using std::string;
 using std::vector;

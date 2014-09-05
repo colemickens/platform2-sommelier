@@ -4,7 +4,7 @@
 
 #include "login_manager/policy_store.h"
 
-#include <base/file_util.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 
 #include "login_manager/login_metrics.h"

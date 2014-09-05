@@ -10,8 +10,8 @@
 #include <stdint.h>
 
 #include <algorithm>
-#include <base/file_util.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_util.h>

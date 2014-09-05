@@ -21,8 +21,8 @@
 #include <string>
 
 #include <base/bind.h>
-#include <base/file_util.h>
 #include <base/files/file_enumerator.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
