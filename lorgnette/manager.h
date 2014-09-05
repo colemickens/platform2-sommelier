@@ -9,9 +9,9 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
 #include <base/callback.h>
 #include <base/files/scoped_file.h>
+#include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <dbus-c++/dbus.h>
 
