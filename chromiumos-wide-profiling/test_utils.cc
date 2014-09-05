@@ -141,6 +141,14 @@ const char* kSupportedMetadata[] = {
   NULL,
 };
 
+string GetTestInputFilePath(const string& filename) {
+  return "testdata/" + filename;
+}
+
+string GetPerfPath() {
+  return "/usr/bin/perf";
+}
+
 int64_t GetFileSize(const string& filename) {
   FILE* fp = fopen(filename.c_str(), "rb");
   if (!fp)

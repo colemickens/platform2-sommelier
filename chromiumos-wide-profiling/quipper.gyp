@@ -44,7 +44,6 @@
       'type': 'static_library',
       'sources': [
         'test_utils.cc',
-        'test_utils_defs.cc',
       ],
       'dependencies': [
         'common',

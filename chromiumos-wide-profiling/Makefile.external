@@ -29,7 +29,7 @@ COMMON_SOURCES = utils.cc perf_reader.cc perf_parser.cc perf_serializer.cc \
 		 conversion_utils.cc scoped_temp_path.cc \
 		 $(GENERATED_SOURCES)
 COMMON_OBJECTS = $(COMMON_SOURCES:.cc=.o)
-TEST_COMMON_SOURCES = test_utils.cc test_utils_defs.cc
+TEST_COMMON_SOURCES = test_utils.cc
 TEST_COMMON_OBJECTS = $(TEST_COMMON_SOURCES:.cc=.o)
 
 TESTS = $(TEST_SOURCES:.cc=)
