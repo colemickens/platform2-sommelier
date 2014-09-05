@@ -12,10 +12,11 @@
 #include <base/logging.h>
 #include <base/run_loop.h>
 #include <base/strings/string_util.h>
+#include <chromeos/syslog_logging.h>
+#include <dbus/bus.h>
+
 #include "components/feedback/feedback_report.h"
-#include "dbus/bus.h"
-#include "feedback/feedback_uploader_curl.h"
-#include "libchromeos/chromeos/syslog_logging.h"
+#include "feedback/feedback_uploader_http.h"
 
 namespace {
 
@@ -40,9 +41,9 @@ namespace feedback {
 
 Daemon::Daemon(const std::string& url)
     : loop_(base::MessageLoop::TYPE_IO),
-    pool_(new base::SequencedWorkerPool(kMaxPoolThreads, kPoolName)),
-    uploader_(new FeedbackUploaderCurl(base::FilePath(kFeedbackReportPath),
-                                       pool_, url)) {}
+      pool_(new base::SequencedWorkerPool(kMaxPoolThreads, kPoolName)),
+      uploader_(new FeedbackUploaderHttp(base::FilePath(kFeedbackReportPath),
+                                         pool_, url)) {}
 
 Daemon::~Daemon() {
   pool_->Shutdown();

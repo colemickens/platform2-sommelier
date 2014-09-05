@@ -7,7 +7,6 @@
       'deps': [
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
-        'libcurl',
       ],
     },
   },
@@ -20,7 +19,7 @@
         'components/feedback/feedback_report.cc',
         'components/feedback/feedback_uploader.cc',
         'feedback_service.cc',
-        'feedback_uploader_curl.cc',
+        'feedback_uploader_http.cc',
         'feedback_util.cc',
       ],
       'variables': {

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef FEEDBACK_FEEDBACK_UPLOADER_CURL_H_
-#define FEEDBACK_FEEDBACK_UPLOADER_CURL_H_
+#ifndef FEEDBACK_FEEDBACK_UPLOADER_HTTP_H_
+#define FEEDBACK_FEEDBACK_UPLOADER_HTTP_H_
 
 #include "components/feedback/feedback_uploader.h"
 
@@ -11,21 +11,21 @@
 
 namespace feedback {
 
-class FeedbackUploaderCurl : public feedback::FeedbackUploader {
+class FeedbackUploaderHttp : public feedback::FeedbackUploader {
  public:
-  FeedbackUploaderCurl(const base::FilePath& path,
+  FeedbackUploaderHttp(const base::FilePath& path,
                        base::SequencedWorkerPool* pool,
                        const std::string& url);
-  ~FeedbackUploaderCurl();
+  ~FeedbackUploaderHttp() override = default;
 
  private:
   friend class FeedbackServiceTest;
 
   void DispatchReport(const std::string& data) override;
 
-  DISALLOW_COPY_AND_ASSIGN(FeedbackUploaderCurl);
+  DISALLOW_COPY_AND_ASSIGN(FeedbackUploaderHttp);
 };
 
 }  // namespace feedback
 
-#endif  // FEEDBACK_FEEDBACK_UPLOADER_CURL_H_
+#endif  // FEEDBACK_FEEDBACK_UPLOADER_HTTP_H_

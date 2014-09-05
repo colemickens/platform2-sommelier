@@ -13,15 +13,15 @@
 #include <base/guid.h>
 #include <base/strings/stringprintf.h>
 #include <base/message_loop/message_loop.h>
-#include "chromeos/dbus/service_constants.h"
+#include <chromeos/dbus/service_constants.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
 #include "components/feedback/feedback_common.h"
 #include "components/feedback/feedback_report.h"
 #include "components/feedback/feedback_uploader.h"
 #include "components/feedback/proto/extension.pb.h"
 #include "feedback/feedback_service.h"
-#include "feedback/feedback_uploader_curl.h"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 
 namespace feedback {
 
