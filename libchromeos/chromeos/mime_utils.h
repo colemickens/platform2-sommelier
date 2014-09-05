@@ -24,12 +24,12 @@ CHROMEOS_EXPORT extern const char kMessage[];            // message
 CHROMEOS_EXPORT extern const char kMultipart[];          // multipart
 CHROMEOS_EXPORT extern const char kText[];               // test
 CHROMEOS_EXPORT extern const char kVideo[];              // video
-}
+}  // namespace types
 
 namespace parameters {
 // Common MIME parameters
 CHROMEOS_EXPORT extern const char kCharset[];            // charset=...
-}
+}  // namespace parameters
 
 namespace image {
 // Common image MIME types
@@ -38,14 +38,14 @@ CHROMEOS_EXPORT extern const char kPng[];                // image/png
 CHROMEOS_EXPORT extern const char kBmp[];                // image/bmp
 CHROMEOS_EXPORT extern const char kTiff[];               // image/tiff
 CHROMEOS_EXPORT extern const char kGif[];                // image/gif
-}
+}  // namespace image
 
 namespace text {
 // Common text MIME types
 CHROMEOS_EXPORT extern const char kPlain[];              // text/plain
 CHROMEOS_EXPORT extern const char kHtml[];               // text/html
 CHROMEOS_EXPORT extern const char kXml[];                // text/xml
-}
+}  // namespace text
 
 namespace application {
 // Common application MIME types
@@ -55,7 +55,9 @@ CHROMEOS_EXPORT extern const char kOctet_stream[];
 CHROMEOS_EXPORT extern const char kJson[];
 // application/x-www-form-urlencoded
 CHROMEOS_EXPORT extern const char kWwwFormUrlEncoded[];
-}
+// application/x-protobuf
+CHROMEOS_EXPORT extern const char kProtobuf[];
+}  // namespace application
 
 using Parameters = std::vector<std::pair<std::string, std::string>>;
 

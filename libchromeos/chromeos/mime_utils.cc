@@ -37,6 +37,7 @@ const char mime::application::kOctet_stream[]      = "application/octet-stream";
 const char mime::application::kJson[]              = "application/json";
 const char mime::application::kWwwFormUrlEncoded[] =
     "application/x-www-form-urlencoded";
+const char mime::application::kProtobuf[]          = "application/x-protobuf";
 
 // ***************************************************************************
 // **************************** Utility Functions ****************************
