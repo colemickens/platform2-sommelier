@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include <base/basictypes.h>
+#include <base/macros.h>
 #include <chromeos/dbus/dbus_object.h>
 #include <chromeos/errors/error.h>
 
