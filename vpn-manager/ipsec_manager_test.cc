@@ -50,7 +50,7 @@ class IpsecManagerTest : public ::testing::Test {
     remote_address_text_ = "1.2.3.4";
     ASSERT_TRUE(ServiceManager::ConvertIPStringToSockAddr(remote_address_text_,
                                                           &remote_address_));
-    ServiceManager::temp_path_ = new FilePath(test_path_);
+    ServiceManager::temp_path_ = &test_path_;
     ServiceManager::temp_base_path_ = test_path_.value().c_str();
     psk_file_ = test_path_.Append("psk").value();
     xauth_credentials_file_ = test_path_.Append("xauth_credentials").value();
@@ -73,13 +73,14 @@ class IpsecManagerTest : public ::testing::Test {
     chromeos::ClearLog();
     starter_daemon_ = new DaemonMock;
     charon_daemon_ = new DaemonMock;
-    ipsec_.starter_daemon_.reset(starter_daemon_);  // Passes ownership.
-    ipsec_.charon_daemon_.reset(charon_daemon_);  // Passes ownership.
-    ipsec_.persistent_path_ = persistent_path_;
-    ipsec_.ipsec_group_ = getgid();
-    ipsec_.ipsec_run_path_ = ipsec_run_path_;
-    ipsec_.ipsec_up_file_ = ipsec_up_file_;
-    ipsec_.force_local_address_ = "5.6.7.8";
+    ipsec_.reset(new IpsecManager);
+    ipsec_->starter_daemon_.reset(starter_daemon_);  // Passes ownership.
+    ipsec_->charon_daemon_.reset(charon_daemon_);  // Passes ownership.
+    ipsec_->persistent_path_ = persistent_path_;
+    ipsec_->ipsec_group_ = getgid();
+    ipsec_->ipsec_run_path_ = ipsec_run_path_;
+    ipsec_->ipsec_up_file_ = ipsec_up_file_;
+    ipsec_->force_local_address_ = "5.6.7.8";
   }
 
   // Creates a ProcessMock that will be handed to to the IpsecManager when
@@ -99,7 +100,7 @@ class IpsecManagerTest : public ::testing::Test {
 
   void DoInitialize(int ike_version, bool use_psk, bool use_xauth);
 
-  IpsecManager ipsec_;
+  std::unique_ptr<IpsecManager> ipsec_;
   FilePath persistent_path_;
   FilePath test_path_;
   std::string remote_address_text_;
@@ -131,10 +132,10 @@ void IpsecManagerTest::DoInitialize(
     xauth_file = xauth_credentials_file_;
   }
   if (use_psk) {
-    ASSERT_TRUE(ipsec_.Initialize(ike_version, remote_address_, psk_file_,
+    ASSERT_TRUE(ipsec_->Initialize(ike_version, remote_address_, psk_file_,
                                   xauth_file, "", "", "", "", ""));
   } else {
-    ASSERT_TRUE(ipsec_.Initialize(ike_version, remote_address_, "", xauth_file,
+    ASSERT_TRUE(ipsec_->Initialize(ike_version, remote_address_, "", xauth_file,
                                   server_ca_file_, server_id_,
                                   client_cert_tpm_slot_, client_cert_tpm_id_,
                                   tpm_user_pin_));
@@ -161,13 +162,13 @@ ProcessMock* IpsecManagerTest::SetStartStarterExpectations() {
 }
 
 TEST_F(IpsecManagerTest, InitializeNoAuth) {
-  EXPECT_FALSE(ipsec_.Initialize(
+  EXPECT_FALSE(ipsec_->Initialize(
                    1, remote_address_, "", "", "", "", "", "", ""));
   EXPECT_TRUE(FindLog("Must specify either PSK or certificates"));
 }
 
 TEST_F(IpsecManagerTest, InitializeNotBoth) {
-  EXPECT_TRUE(ipsec_.Initialize(1, remote_address_,
+  EXPECT_TRUE(ipsec_->Initialize(1, remote_address_,
                                 psk_file_,
                                 "",
                                 server_ca_file_,
@@ -179,13 +180,13 @@ TEST_F(IpsecManagerTest, InitializeNotBoth) {
 }
 
 TEST_F(IpsecManagerTest, InitializeUnsupportedVersion) {
-  EXPECT_FALSE(ipsec_.Initialize(3, remote_address_, psk_file_, "", "", "", "",
+  EXPECT_FALSE(ipsec_->Initialize(3, remote_address_, psk_file_, "", "", "", "",
                                  "", ""));
   EXPECT_TRUE(FindLog("Unsupported IKE version"));
 }
 
 TEST_F(IpsecManagerTest, InitializeIkev2WithCertificates) {
-  EXPECT_FALSE(ipsec_.Initialize(2, remote_address_, "", "",
+  EXPECT_FALSE(ipsec_->Initialize(2, remote_address_, "", "",
                                  server_ca_file_,
                                  server_id_,
                                  client_cert_tpm_slot_,
@@ -195,46 +196,46 @@ TEST_F(IpsecManagerTest, InitializeIkev2WithCertificates) {
 }
 
 TEST_F(IpsecManagerTest, CreateIpsecRunDirectory) {
-  EXPECT_TRUE(ipsec_.CreateIpsecRunDirectory());
+  EXPECT_TRUE(ipsec_->CreateIpsecRunDirectory());
   struct stat stat_buffer;
   ASSERT_EQ(0, stat(ipsec_run_path_.c_str(), &stat_buffer));
   EXPECT_EQ(0, stat_buffer.st_mode & (S_IWOTH | S_IXOTH | S_IROTH));
 }
 
 TEST_F(IpsecManagerTest, PollWaitIfNotUpYet) {
-  ipsec_.start_ticks_ = base::TimeTicks::Now();
-  EXPECT_EQ(1000, ipsec_.Poll());
+  ipsec_->start_ticks_ = base::TimeTicks::Now();
+  EXPECT_EQ(1000, ipsec_->Poll());
 }
 
 TEST_F(IpsecManagerTest, PollTimeoutWaiting) {
-  ipsec_.start_ticks_ = base::TimeTicks::Now() -
+  ipsec_->start_ticks_ = base::TimeTicks::Now() -
       base::TimeDelta::FromSeconds(FLAGS_ipsec_timeout + 1);
-  EXPECT_EQ(1000, ipsec_.Poll());
+  EXPECT_EQ(1000, ipsec_->Poll());
   EXPECT_TRUE(FindLog("IPsec connection timed out"));
-  EXPECT_TRUE(ipsec_.was_stopped());
+  EXPECT_TRUE(ipsec_->was_stopped());
 }
 
 TEST_F(IpsecManagerTest, PollTransitionToUp) {
-  ipsec_.start_ticks_ = base::TimeTicks::Now();
-  EXPECT_TRUE(ipsec_.CreateIpsecRunDirectory());
+  ipsec_->start_ticks_ = base::TimeTicks::Now();
+  EXPECT_TRUE(ipsec_->CreateIpsecRunDirectory());
   EXPECT_TRUE(base::PathExists(FilePath(ipsec_run_path_)));
   WriteFile(ipsec_up_file_, "");
-  EXPECT_FALSE(ipsec_.is_running());
-  EXPECT_EQ(-1, ipsec_.Poll());
+  EXPECT_FALSE(ipsec_->is_running());
+  EXPECT_EQ(-1, ipsec_->Poll());
   EXPECT_TRUE(FindLog("IPsec connection now up"));
-  EXPECT_TRUE(ipsec_.is_running());
+  EXPECT_TRUE(ipsec_->is_running());
 }
 
 TEST_F(IpsecManagerTest, PollNothingIfRunning) {
-  ipsec_.is_running_ = true;
-  EXPECT_EQ(-1, ipsec_.Poll());
+  ipsec_->is_running_ = true;
+  EXPECT_EQ(-1, ipsec_->Poll());
 }
 
 TEST_F(IpsecManagerTest, FormatSecretsNoSlot) {
   client_cert_tpm_slot_ = "";
   DoInitialize(1, false, false);
   std::string formatted;
-  EXPECT_TRUE(ipsec_.FormatSecrets(&formatted));
+  EXPECT_TRUE(ipsec_->FormatSecrets(&formatted));
   EXPECT_EQ("5.6.7.8 1.2.3.4 : PIN %smartcard0@crypto_module:0a \"123456\"\n",
             formatted);
 }
@@ -243,7 +244,7 @@ TEST_F(IpsecManagerTest, FormatSecretsNonZeroSlot) {
   client_cert_tpm_slot_ = "1";
   DoInitialize(1, false, false);
   std::string formatted;
-  EXPECT_TRUE(ipsec_.FormatSecrets(&formatted));
+  EXPECT_TRUE(ipsec_->FormatSecrets(&formatted));
   EXPECT_EQ("5.6.7.8 1.2.3.4 : PIN %smartcard1@crypto_module:0a \"123456\"\n",
             formatted);
 }
@@ -252,12 +253,12 @@ TEST_F(IpsecManagerTest, FormatSecretsXauthCredentials) {
   client_cert_tpm_slot_ = "1";
   DoInitialize(1, false, true);
   std::string formatted;
-  EXPECT_TRUE(ipsec_.FormatSecrets(&formatted));
+  EXPECT_TRUE(ipsec_->FormatSecrets(&formatted));
   EXPECT_EQ(
       base::StringPrintf(
           "5.6.7.8 1.2.3.4 : PIN %%smartcard1@crypto_module:0a \"123456\"\n"
           "%s : XAUTH \"%s\"\n", kXauthUser, kXauthPassword), formatted);
-  EXPECT_EQ(kXauthUser, ipsec_.xauth_identity_);
+  EXPECT_EQ(kXauthUser, ipsec_->xauth_identity_);
 }
 
 TEST_F(IpsecManagerTest, FormatStrongswanConfigFile) {
@@ -279,15 +280,15 @@ TEST_F(IpsecManagerTest, FormatStrongswanConfigFile) {
       "  install_routes = no\n"
       "  routing_table = 0\n"
       "}\n");
-  EXPECT_EQ(strongswan_config, ipsec_.FormatStrongswanConfigFile());
+  EXPECT_EQ(strongswan_config, ipsec_->FormatStrongswanConfigFile());
 }
 
 TEST_F(IpsecManagerTest, StartStarter) {
   InSequence unused;
   std::unique_ptr<ProcessMock> process(SetStartStarterExpectations());
-  EXPECT_TRUE(ipsec_.StartStarter());
-  EXPECT_EQ(kMockFd, ipsec_.output_fd());
-  EXPECT_EQ("ipsec[10001]: ", ipsec_.ipsec_prefix_);
+  EXPECT_TRUE(ipsec_->StartStarter());
+  EXPECT_EQ(kMockFd, ipsec_->output_fd());
+  EXPECT_EQ("ipsec[10001]: ", ipsec_->ipsec_prefix_);
 }
 
 TEST_F(IpsecManagerTest, StopWhileRunning) {
@@ -297,7 +298,7 @@ TEST_F(IpsecManagerTest, StopWhileRunning) {
   EXPECT_CALL(*charon_daemon_, FindProcess()).Times(1);
   EXPECT_CALL(*starter_daemon_, Terminate()).WillOnce(Return(true));
   EXPECT_CALL(*charon_daemon_, Terminate()).WillOnce(Return(false));
-  ipsec_.Stop();
+  ipsec_->Stop();
 }
 
 TEST_F(IpsecManagerTest, StopWhileNotRunning) {
@@ -307,7 +308,7 @@ TEST_F(IpsecManagerTest, StopWhileNotRunning) {
   EXPECT_CALL(*charon_daemon_, FindProcess()).Times(1);
   EXPECT_CALL(*starter_daemon_, Terminate()).WillOnce(Return(false));
   EXPECT_CALL(*charon_daemon_, Terminate()).WillOnce(Return(false));
-  ipsec_.Stop();
+  ipsec_->Stop();
 }
 
 class IpsecManagerTestIkeV1Psk : public IpsecManagerTest {
@@ -329,7 +330,7 @@ TEST_F(IpsecManagerTestIkeV1Psk, FormatSecrets) {
   const char psk[] = "pAssword\n";
   base::WriteFile(input, psk, strlen(psk));
   std::string formatted;
-  EXPECT_TRUE(ipsec_.FormatSecrets(&formatted));
+  EXPECT_TRUE(ipsec_->FormatSecrets(&formatted));
   EXPECT_EQ("5.6.7.8 1.2.3.4 : PSK \"pAssword\"\n", formatted);
 }
 
@@ -370,24 +371,25 @@ std::string IpsecManagerTestIkeV1Psk::GetExpectedStarter(
 }
 
 TEST_F(IpsecManagerTestIkeV1Psk, FormatStarterConfigFile) {
-  EXPECT_EQ(GetExpectedStarter(false, false), ipsec_.FormatStarterConfigFile());
-  ipsec_.set_debug(true);
-  EXPECT_EQ(GetExpectedStarter(true, false), ipsec_.FormatStarterConfigFile());
-  ipsec_.xauth_identity_ = kXauthUser;
-  EXPECT_EQ(GetExpectedStarter(true, true), ipsec_.FormatStarterConfigFile());
-  ipsec_.set_debug(false);
-  EXPECT_EQ(GetExpectedStarter(false, true), ipsec_.FormatStarterConfigFile());
+  EXPECT_EQ(GetExpectedStarter(false, false),
+            ipsec_->FormatStarterConfigFile());
+  ipsec_->set_debug(true);
+  EXPECT_EQ(GetExpectedStarter(true, false), ipsec_->FormatStarterConfigFile());
+  ipsec_->xauth_identity_ = kXauthUser;
+  EXPECT_EQ(GetExpectedStarter(true, true), ipsec_->FormatStarterConfigFile());
+  ipsec_->set_debug(false);
+  EXPECT_EQ(GetExpectedStarter(false, true), ipsec_->FormatStarterConfigFile());
 }
 
 TEST_F(IpsecManagerTestIkeV1Psk, Start) {
   InSequence unused;
   std::unique_ptr<ProcessMock> process(SetStartStarterExpectations());
-  EXPECT_TRUE(ipsec_.Start());
-  EXPECT_FALSE(ipsec_.start_ticks_.is_null());
+  EXPECT_TRUE(ipsec_->Start());
+  EXPECT_FALSE(ipsec_->start_ticks_.is_null());
 }
 
 TEST_F(IpsecManagerTestIkeV1Psk, WriteConfigFiles) {
-  EXPECT_TRUE(ipsec_.WriteConfigFiles());
+  EXPECT_TRUE(ipsec_->WriteConfigFiles());
   std::string conf_contents;
   ASSERT_TRUE(base::ReadFileToString(persistent_path_.Append("ipsec.conf"),
                                      &conf_contents));
@@ -412,7 +414,7 @@ TEST_F(IpsecManagerTestIkeV1Certs, Initialize) {
 
 TEST_F(IpsecManagerTestIkeV1Certs, FormatSecrets) {
   std::string formatted;
-  EXPECT_TRUE(ipsec_.FormatSecrets(&formatted));
+  EXPECT_TRUE(ipsec_->FormatSecrets(&formatted));
   EXPECT_EQ("5.6.7.8 1.2.3.4 : PIN %smartcard0@crypto_module:0a \"123456\"\n",
             formatted);
 }
@@ -444,18 +446,18 @@ std::string IpsecManagerTestIkeV1Certs::GetExpectedStarter(bool debug) {
 }
 
 TEST_F(IpsecManagerTestIkeV1Certs, FormatStarterConfigFile) {
-  EXPECT_EQ(GetExpectedStarter(false), ipsec_.FormatStarterConfigFile());
-  ipsec_.set_debug(true);
-  EXPECT_EQ(GetExpectedStarter(true), ipsec_.FormatStarterConfigFile());
-  ipsec_.set_debug(true);
+  EXPECT_EQ(GetExpectedStarter(false), ipsec_->FormatStarterConfigFile());
+  ipsec_->set_debug(true);
+  EXPECT_EQ(GetExpectedStarter(true), ipsec_->FormatStarterConfigFile());
+  ipsec_->set_debug(true);
 
   // The xauth parameters aren't pertinent to certificate-based authentication.
-  ipsec_.xauth_identity_ = kXauthUser;
-  EXPECT_EQ(GetExpectedStarter(true), ipsec_.FormatStarterConfigFile());
+  ipsec_->xauth_identity_ = kXauthUser;
+  EXPECT_EQ(GetExpectedStarter(true), ipsec_->FormatStarterConfigFile());
 }
 
 TEST_F(IpsecManagerTestIkeV1Certs, WriteConfigFiles) {
-  EXPECT_TRUE(ipsec_.WriteConfigFiles());
+  EXPECT_TRUE(ipsec_->WriteConfigFiles());
   std::string conf_contents;
   ASSERT_TRUE(base::ReadFileToString(persistent_path_.Append("ipsec.conf"),
                                      &conf_contents));

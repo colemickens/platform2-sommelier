@@ -34,7 +34,7 @@ class L2tpManagerTest : public ::testing::Test {
   void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());
     test_path_ = temp_dir_.path().Append("l2tp_manager_testdir");
-    ServiceManager::temp_path_ = new FilePath(test_path_);
+    ServiceManager::temp_path_ = &test_path_;
     base::DeleteFile(test_path_, true);
     base::CreateDirectory(test_path_);
     remote_address_text_ = "1.2.3.4";
@@ -44,12 +44,13 @@ class L2tpManagerTest : public ::testing::Test {
     pppd_config_path_ = test_path_.Append("pppd.config");
     ppp_interface_path_ = test_path_.Append("ppp0");
     l2tpd_ = new ProcessMock;
-    l2tp_.l2tpd_.reset(l2tpd_);
-    l2tp_.l2tpd_control_path_ = control_path_;
-    l2tp_.ppp_interface_path_ = ppp_interface_path_;
+    l2tp_.reset(new L2tpManager);
+    l2tp_->l2tpd_.reset(l2tpd_);
+    l2tp_->l2tpd_control_path_ = control_path_;
+    l2tp_->ppp_interface_path_ = ppp_interface_path_;
     FLAGS_pppd_plugin = "";
     FLAGS_user = "me";
-    EXPECT_TRUE(l2tp_.Initialize(remote_address_));
+    EXPECT_TRUE(l2tp_->Initialize(remote_address_));
   }
 
  protected:
@@ -62,7 +63,7 @@ class L2tpManagerTest : public ::testing::Test {
   FilePath control_path_;
   FilePath pppd_config_path_;
   FilePath ppp_interface_path_;
-  L2tpManager l2tp_;
+  std::unique_ptr<L2tpManager> l2tp_;
   ProcessMock* l2tpd_;
   base::ScopedTempDir temp_dir_;
 };
@@ -86,10 +87,10 @@ std::string L2tpManagerTest::GetExpectedConfig(std::string remote_address_text,
 
 TEST_F(L2tpManagerTest, FormatL2tpdConfiguration) {
   EXPECT_EQ(GetExpectedConfig(remote_address_text_, false),
-            l2tp_.FormatL2tpdConfiguration(pppd_config_path_.value()));
-  l2tp_.set_debug(true);
+            l2tp_->FormatL2tpdConfiguration(pppd_config_path_.value()));
+  l2tp_->set_debug(true);
   EXPECT_EQ(GetExpectedConfig(remote_address_text_, true),
-            l2tp_.FormatL2tpdConfiguration(pppd_config_path_.value()));
+            l2tp_->FormatL2tpdConfiguration(pppd_config_path_.value()));
 }
 
 TEST_F(L2tpManagerTest, FormatPppdConfiguration) {
@@ -110,40 +111,40 @@ TEST_F(L2tpManagerTest, FormatPppdConfiguration) {
   FLAGS_usepeerdns = false;
   std::string expected(kBaseExpected);
   expected.append("nodefaultroute\n");
-  EXPECT_EQ(expected, l2tp_.FormatPppdConfiguration());
+  EXPECT_EQ(expected, l2tp_->FormatPppdConfiguration());
   expected = kBaseExpected;
   FLAGS_defaultroute = true;
   expected.append("defaultroute\n");
-  l2tp_.ppp_output_fd_ = 4;
-  l2tp_.ppp_output_path_ = FilePath("/tmp/pppd.log");
+  l2tp_->ppp_output_fd_ = 4;
+  l2tp_->ppp_output_path_ = FilePath("/tmp/pppd.log");
   expected.append("logfile /tmp/pppd.log\n");
-  EXPECT_EQ(expected, l2tp_.FormatPppdConfiguration());
+  EXPECT_EQ(expected, l2tp_->FormatPppdConfiguration());
   FLAGS_usepeerdns = true;
   expected.append("usepeerdns\n");
-  EXPECT_EQ(expected, l2tp_.FormatPppdConfiguration());
+  EXPECT_EQ(expected, l2tp_->FormatPppdConfiguration());
   FLAGS_systemconfig = false;
   expected.append("nosystemconfig\n");
-  EXPECT_EQ(expected, l2tp_.FormatPppdConfiguration());
+  EXPECT_EQ(expected, l2tp_->FormatPppdConfiguration());
   FLAGS_pppd_plugin = "myplugin";
   expected.append("plugin myplugin\n");
-  EXPECT_EQ(expected, l2tp_.FormatPppdConfiguration());
-  l2tp_.set_debug(true);
+  EXPECT_EQ(expected, l2tp_->FormatPppdConfiguration());
+  l2tp_->set_debug(true);
   expected.append("debug\n");
-  EXPECT_EQ(expected, l2tp_.FormatPppdConfiguration());
+  EXPECT_EQ(expected, l2tp_->FormatPppdConfiguration());
 }
 
 TEST_F(L2tpManagerTest, Initiate) {
   FLAGS_user = "me";
   FLAGS_password = "password";
-  EXPECT_TRUE(l2tp_.Initiate());
+  EXPECT_TRUE(l2tp_->Initiate());
   ExpectFileEquals("c managed me password\n", control_path_.value().c_str());
   FLAGS_pppd_plugin = "set";
-  EXPECT_TRUE(l2tp_.Initiate());
+  EXPECT_TRUE(l2tp_->Initiate());
   ExpectFileEquals("c managed\n", control_path_.value().c_str());
 }
 
 TEST_F(L2tpManagerTest, Terminate) {
-  EXPECT_TRUE(l2tp_.Terminate());
+  EXPECT_TRUE(l2tp_->Terminate());
   ExpectFileEquals("d managed\n", control_path_.value().c_str());
 }
 
@@ -162,59 +163,59 @@ TEST_F(L2tpManagerTest, Start) {
   EXPECT_CALL(*l2tpd_, Start());
   EXPECT_CALL(*l2tpd_, GetPipe(STDERR_FILENO)).WillOnce(Return(kMockFd));
 
-  EXPECT_TRUE(l2tp_.Start());
-  EXPECT_EQ(kMockFd, l2tp_.output_fd());
-  EXPECT_FALSE(l2tp_.start_ticks_.is_null());
-  EXPECT_FALSE(l2tp_.was_initiated_);
+  EXPECT_TRUE(l2tp_->Start());
+  EXPECT_EQ(kMockFd, l2tp_->output_fd());
+  EXPECT_FALSE(l2tp_->start_ticks_.is_null());
+  EXPECT_FALSE(l2tp_->was_initiated_);
 }
 
 TEST_F(L2tpManagerTest, PollWaitIfNotUpYet) {
-  l2tp_.start_ticks_ = base::TimeTicks::Now();
-  EXPECT_EQ(1000, l2tp_.Poll());
+  l2tp_->start_ticks_ = base::TimeTicks::Now();
+  EXPECT_EQ(1000, l2tp_->Poll());
 }
 
 TEST_F(L2tpManagerTest, PollTimeoutWaitingForControl) {
-  l2tp_.start_ticks_ = base::TimeTicks::Now() -
+  l2tp_->start_ticks_ = base::TimeTicks::Now() -
       base::TimeDelta::FromSeconds(FLAGS_ppp_setup_timeout + 1);
-  EXPECT_EQ(1000, l2tp_.Poll());
+  EXPECT_EQ(1000, l2tp_->Poll());
   EXPECT_TRUE(FindLog("PPP setup timed out"));
-  EXPECT_TRUE(l2tp_.was_stopped());
+  EXPECT_TRUE(l2tp_->was_stopped());
   EXPECT_FALSE(base::PathExists(control_path_));
 }
 
 TEST_F(L2tpManagerTest, PollTimeoutWaitingForUp) {
-  l2tp_.start_ticks_ = base::TimeTicks::Now() -
+  l2tp_->start_ticks_ = base::TimeTicks::Now() -
       base::TimeDelta::FromSeconds(FLAGS_ppp_setup_timeout + 1);
-  l2tp_.was_initiated_ = true;
-  EXPECT_EQ(1000, l2tp_.Poll());
+  l2tp_->was_initiated_ = true;
+  EXPECT_EQ(1000, l2tp_->Poll());
   EXPECT_TRUE(FindLog("PPP setup timed out"));
-  EXPECT_TRUE(l2tp_.was_stopped());
+  EXPECT_TRUE(l2tp_->was_stopped());
   ExpectFileEquals("d managed\n", control_path_.value().c_str());
 }
 
 TEST_F(L2tpManagerTest, PollInitiateConnection) {
-  l2tp_.start_ticks_ = base::TimeTicks::Now();
+  l2tp_->start_ticks_ = base::TimeTicks::Now();
   base::WriteFile(control_path_, "", 0);
-  EXPECT_FALSE(l2tp_.was_initiated_);
+  EXPECT_FALSE(l2tp_->was_initiated_);
   FLAGS_pppd_plugin = "set";
-  EXPECT_EQ(1000, l2tp_.Poll());
-  EXPECT_TRUE(l2tp_.was_initiated_);
+  EXPECT_EQ(1000, l2tp_->Poll());
+  EXPECT_TRUE(l2tp_->was_initiated_);
   ExpectFileEquals("c managed\n", control_path_.value().c_str());
 }
 
 TEST_F(L2tpManagerTest, PollTransitionToUp) {
-  l2tp_.start_ticks_ = base::TimeTicks::Now();
-  l2tp_.was_initiated_ = true;
-  EXPECT_FALSE(l2tp_.is_running());
+  l2tp_->start_ticks_ = base::TimeTicks::Now();
+  l2tp_->was_initiated_ = true;
+  EXPECT_FALSE(l2tp_->is_running());
   base::WriteFile(ppp_interface_path_, "", 0);
-  EXPECT_EQ(-1, l2tp_.Poll());
+  EXPECT_EQ(-1, l2tp_->Poll());
   EXPECT_TRUE(FindLog("L2TP connection now up"));
-  EXPECT_TRUE(l2tp_.is_running());
+  EXPECT_TRUE(l2tp_->is_running());
 }
 
 TEST_F(L2tpManagerTest, PollNothingIfRunning) {
-  l2tp_.is_running_ = true;
-  EXPECT_EQ(-1, l2tp_.Poll());
+  l2tp_->is_running_ = true;
+  EXPECT_EQ(-1, l2tp_->Poll());
 }
 
 }  // namespace vpn_manager
