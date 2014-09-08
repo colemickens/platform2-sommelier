@@ -24,7 +24,7 @@ namespace cros_disks {
 // A utility class that helps query information about a udev device.
 class UdevDevice {
  public:
-  explicit UdevDevice(struct udev_device *dev);
+  explicit UdevDevice(udev_device *dev);
   ~UdevDevice();
 
   // Gets the string value of a device attribute.
@@ -120,7 +120,7 @@ class UdevDevice {
   // Checks if a string contains a "1" (as Boolean true).
   static bool IsValueBooleanTrue(const char *value);
 
-  mutable struct udev_device *dev_;
+  mutable udev_device *dev_;
 
   blkid_cache blkid_cache_;
 

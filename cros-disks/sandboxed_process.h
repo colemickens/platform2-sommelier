@@ -45,7 +45,7 @@ class SandboxedProcess : public Process {
   int Run();
 
  private:
-  struct minijail* jail_;
+  minijail* jail_;
 
   DISALLOW_COPY_AND_ASSIGN(SandboxedProcess);
 };

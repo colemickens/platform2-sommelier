@@ -68,7 +68,7 @@ const char* kPartitionTypesToHide[] = {
 
 namespace cros_disks {
 
-UdevDevice::UdevDevice(struct udev_device *dev)
+UdevDevice::UdevDevice(udev_device *dev)
     : dev_(dev),
       blkid_cache_(nullptr) {
   CHECK(dev_) << "Invalid udev device";
@@ -223,7 +223,7 @@ bool UdevDevice::GetVendorAndProductId(
   // Search up the parent device tree to obtain the vendor and product ID
   // of the first device with a device type "usb_device". Then look up the
   // media type based on the vendor and product ID from a USB device info file.
-  for (struct udev_device *dev = dev_; dev; dev = udev_device_get_parent(dev)) {
+  for (udev_device *dev = dev_; dev; dev = udev_device_get_parent(dev)) {
     const char *device_type =
         udev_device_get_property_value(dev, kPropertyDeviceType);
     if (device_type && strcmp(device_type, kPropertyDeviceTypeUSBDevice) == 0) {
@@ -265,7 +265,7 @@ bool UdevDevice::IsMobileBroadbandDevice() const {
   // Check if a parent device, which belongs to the "usb" subsystem and has a
   // device type "usb_device", has a property "MIST_SUPPORTED_DEVICE=1". If so,
   // it is a mobile broadband device supported by mist.
-  struct udev_device* parent = udev_device_get_parent_with_subsystem_devtype(
+  udev_device *parent = udev_device_get_parent_with_subsystem_devtype(
       dev_, kSubsystemUsb, kPropertyDeviceTypeUSBDevice);
   if (!parent)
     return false;
@@ -337,7 +337,7 @@ bool UdevDevice::IsOnBootDevice() const {
   // Compare the device file path of the current device and all its parents
   // with the boot device path. Any match indicates that the current device
   // is on the boot device.
-  for (struct udev_device *dev = dev_; dev; dev = udev_device_get_parent(dev)) {
+  for (udev_device *dev = dev_; dev; dev = udev_device_get_parent(dev)) {
     const char *dev_file = udev_device_get_devnode(dev);
     if (dev_file) {
       if (strncmp(boot_device_path, dev_file, PATH_MAX) == 0) {
@@ -349,7 +349,7 @@ bool UdevDevice::IsOnBootDevice() const {
 }
 
 bool UdevDevice::IsOnMMCDevice() const {
-  for (struct udev_device *dev = dev_; dev; dev = udev_device_get_parent(dev)) {
+  for (udev_device *dev = dev_; dev; dev = udev_device_get_parent(dev)) {
     const char *driver = udev_device_get_driver(dev);
     if (driver && strcmp(driver, kDriverMMCBlock) == 0) {
       return true;
@@ -359,7 +359,7 @@ bool UdevDevice::IsOnMMCDevice() const {
 }
 
 bool UdevDevice::IsOnRemovableDevice() const {
-  for (struct udev_device *dev = dev_; dev; dev = udev_device_get_parent(dev)) {
+  for (udev_device *dev = dev_; dev; dev = udev_device_get_parent(dev)) {
     const char *value = udev_device_get_sysattr_value(dev, kAttributeRemovable);
     if (IsValueBooleanTrue(value))
       return true;

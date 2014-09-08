@@ -32,15 +32,15 @@ class UdevDeviceTest : public ::testing::Test {
 
     string boot_device_path = GetBootDevicePath();
 
-    struct udev_enumerate *enumerate = udev_enumerate_new(udev_);
+    udev_enumerate *enumerate = udev_enumerate_new(udev_);
     udev_enumerate_add_match_subsystem(enumerate, "block");
     udev_enumerate_scan_devices(enumerate);
 
-    struct udev_list_entry *device_list, *device_list_entry;
+    udev_list_entry *device_list, *device_list_entry;
     device_list = udev_enumerate_get_list_entry(enumerate);
     udev_list_entry_foreach(device_list_entry, device_list) {
       const char *path = udev_list_entry_get_name(device_list_entry);
-      struct udev_device* device = udev_device_new_from_syspath(udev_, path);
+      udev_device* device = udev_device_new_from_syspath(udev_, path);
       if (!device) continue;
 
       const char *device_file = udev_device_get_devnode(device);
@@ -108,18 +108,18 @@ class UdevDeviceTest : public ::testing::Test {
     return string();
   }
 
-  static struct udev* udev_;
-  static struct udev_device* boot_device_;
-  static struct udev_device* loop_device_;
-  static struct udev_device* ram_device_;
-  static struct udev_device* mounted_device_;
+  static udev* udev_;
+  static udev_device* boot_device_;
+  static udev_device* loop_device_;
+  static udev_device* ram_device_;
+  static udev_device* mounted_device_;
 };
 
-struct udev* UdevDeviceTest::udev_ = nullptr;
-struct udev_device* UdevDeviceTest::boot_device_ = nullptr;
-struct udev_device* UdevDeviceTest::loop_device_ = nullptr;
-struct udev_device* UdevDeviceTest::ram_device_ = nullptr;
-struct udev_device* UdevDeviceTest::mounted_device_ = nullptr;
+udev* UdevDeviceTest::udev_ = nullptr;
+udev_device* UdevDeviceTest::boot_device_ = nullptr;
+udev_device* UdevDeviceTest::loop_device_ = nullptr;
+udev_device* UdevDeviceTest::ram_device_ = nullptr;
+udev_device* UdevDeviceTest::mounted_device_ = nullptr;
 
 TEST_F(UdevDeviceTest, EnsureUTF8String) {
   // Valid UTF8

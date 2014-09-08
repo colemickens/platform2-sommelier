@@ -152,11 +152,11 @@ vector<Disk> DiskManager::EnumerateDisks() const {
 
 void DiskManager::EnumerateBlockDevices(
     const base::Callback<bool(udev_device* dev)>& callback) const {
-  struct udev_enumerate *enumerate = udev_enumerate_new(udev_);
+  udev_enumerate *enumerate = udev_enumerate_new(udev_);
   udev_enumerate_add_match_subsystem(enumerate, kBlockSubsystem);
   udev_enumerate_scan_devices(enumerate);
 
-  struct udev_list_entry *device_list, *device_list_entry;
+  udev_list_entry *device_list, *device_list_entry;
   device_list = udev_enumerate_get_list_entry(enumerate);
   udev_list_entry_foreach(device_list_entry, device_list) {
     const char *path = udev_list_entry_get_name(device_list_entry);
@@ -171,7 +171,7 @@ void DiskManager::EnumerateBlockDevices(
     LOG(INFO) << "   Sysname: " << udev_device_get_sysname(dev);
     LOG(INFO) << "   Syspath: " << udev_device_get_syspath(dev);
     LOG(INFO) << "   Properties: ";
-    struct udev_list_entry *property_list, *property_list_entry;
+    udev_list_entry *property_list, *property_list_entry;
     property_list = udev_device_get_properties_list_entry(dev);
     udev_list_entry_foreach(property_list_entry, property_list) {
       const char *key = udev_list_entry_get_name(property_list_entry);
@@ -188,7 +188,7 @@ void DiskManager::EnumerateBlockDevices(
 }
 
 void DiskManager::ProcessBlockDeviceEvents(
-    struct udev_device* dev, const char* action, DeviceEventList* events) {
+    udev_device* dev, const char* action, DeviceEventList* events) {
   UdevDevice device(dev);
   if (device.IsIgnored())
     return;
@@ -226,7 +226,7 @@ void DiskManager::ProcessBlockDeviceEvents(
 
         // Add the disk as a child of its parent if the parent is already
         // added to |disks_detected_|.
-        struct udev_device* parent = udev_device_get_parent(dev);
+        udev_device* parent = udev_device_get_parent(dev);
         if (parent) {
           string parent_device_path = UdevDevice(parent).NativePath();
           if (ContainsKey(disks_detected_, parent_device_path)) {
@@ -250,7 +250,7 @@ void DiskManager::ProcessBlockDeviceEvents(
 }
 
 void DiskManager::ProcessMmcOrScsiDeviceEvents(
-    struct udev_device* dev, const char* action, DeviceEventList* events) {
+    udev_device* dev, const char* action, DeviceEventList* events) {
   UdevDevice device(dev);
   if (device.IsMobileBroadbandDevice())
     return;
@@ -274,7 +274,7 @@ void DiskManager::ProcessMmcOrScsiDeviceEvents(
 bool DiskManager::GetDeviceEvents(DeviceEventList* events) {
   CHECK(events) << "Invalid device event list";
 
-  struct udev_device *dev = udev_monitor_receive_device(udev_monitor_);
+  udev_device *dev = udev_monitor_receive_device(udev_monitor_);
   if (!dev) {
     LOG(WARNING) << "Ignore device event with no associated udev device.";
     return false;

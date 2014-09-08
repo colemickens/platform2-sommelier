@@ -107,7 +107,7 @@ bool Platform::GetGroupId(const string& group_name, gid_t* group_id) const {
   if (buffer_size <= 0)
     buffer_size = kFallbackGroupBufferSize;
 
-  struct group group_buffer, *group_buffer_ptr = nullptr;
+  group group_buffer, *group_buffer_ptr = nullptr;
   vector<char> buffer(buffer_size);
   getgrnam_r(group_name.c_str(), &group_buffer, buffer.data(), buffer_size,
              &group_buffer_ptr);
@@ -128,7 +128,7 @@ bool Platform::GetUserAndGroupId(const string& user_name,
   if (buffer_size <= 0)
     buffer_size = kFallbackPasswordBufferSize;
 
-  struct passwd password_buffer, *password_buffer_ptr = nullptr;
+  passwd password_buffer, *password_buffer_ptr = nullptr;
   vector<char> buffer(buffer_size);
   getpwnam_r(user_name.c_str(), &password_buffer, buffer.data(), buffer_size,
       &password_buffer_ptr);

@@ -131,12 +131,13 @@ class DiskManager : public MountManager,
       const base::Callback<bool(udev_device* dev)>& callback) const;
 
   // Determines one or more device/disk events from a udev block device change.
-  void ProcessBlockDeviceEvents(struct udev_device* device, const char *action,
+  void ProcessBlockDeviceEvents(udev_device* device,
+                                const char *action,
                                 DeviceEventList* events);
 
   // Determines one or more device/disk events from a udev MMC or SCSI device
   // change.
-  void ProcessMmcOrScsiDeviceEvents(struct udev_device* device,
+  void ProcessMmcOrScsiDeviceEvents(udev_device* device,
                                     const char* action,
                                     DeviceEventList* events);
 
@@ -155,10 +156,10 @@ class DiskManager : public MountManager,
   DeviceEjector* device_ejector_;
 
   // The root udev object.
-  mutable struct udev* udev_;
+  mutable udev* udev_;
 
   // Provides access to udev changes as they occur.
-  struct udev_monitor* udev_monitor_;
+  udev_monitor* udev_monitor_;
 
   // A file descriptor that indicates changes to the system.
   int udev_monitor_fd_;
