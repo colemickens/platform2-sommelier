@@ -28,6 +28,7 @@ bool IsUsableInMode(const system::TaggedDevice& device, WakeupMode mode) {
 
 }  // namespace
 
+const char WakeupController::kTagInhibit[] = "inhibit";
 const char WakeupController::kTagUsableWhenDocked[] = "usable_when_docked";
 const char WakeupController::kTagUsableWhenLaptop[] = "usable_when_laptop";
 const char WakeupController::kTagUsableWhenTablet[] = "usable_when_tablet";
@@ -38,6 +39,8 @@ const char WakeupController::kTagWakeupOnlyWhenUsable[] =
 const char WakeupController::kPowerWakeup[] = "power/wakeup";
 const char WakeupController::kEnabled[] = "enabled";
 const char WakeupController::kDisabled[] = "disabled";
+
+const char WakeupController::kInhibited[] = "inhibited";
 
 const char WakeupController::kTPAD[] = "TPAD";
 const char WakeupController::kTSCR[] = "TSCR";
@@ -117,15 +120,20 @@ void WakeupController::SetWakeupFromS3(const system::TaggedDevice& device,
 
 void WakeupController::ConfigureTaggedDevice(
     const system::TaggedDevice& device) {
+  bool usable = IsUsableInMode(device, mode_);
+
   // Do we manage wakeup for this device?
-  if (!device.HasTag(kTagWakeup))
-    return;
+  if (device.HasTag(kTagWakeup)) {
+    bool wakeup = device.HasTag(kTagWakeupOnlyWhenUsable) ? usable : true;
+    SetWakeupFromS3(device, wakeup);
+  }
 
-  bool wakeup = true;
-  if (device.HasTag(kTagWakeupOnlyWhenUsable))
-    wakeup = IsUsableInMode(device, mode_);
-
-  SetWakeupFromS3(device, wakeup);
+  // Should this device be inhibited when it is not usable?
+  if (device.HasTag(kTagInhibit)) {
+    bool inhibit = !usable;
+    VLOG(1) << (inhibit ? "Inhbiting " : "Un-inhibiting ") << device.syspath();
+    udev_->SetSysattr(device.syspath(), kInhibited, inhibit ? "1" : "0");
+  }
 }
 
 void WakeupController::UpdateAcpiWakeup() {

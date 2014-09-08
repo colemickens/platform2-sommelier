@@ -1,1 +1,2 @@
 ACTION!="remove", ATTR{power/wakeup}=="*", RUN+="/bin/chown power:power $sys/$devpath/power/wakeup"
+ACTION!="remove", ATTR{inhibited}=="*",    RUN+="/bin/chown power:power $sys/$devpath/inhibited"

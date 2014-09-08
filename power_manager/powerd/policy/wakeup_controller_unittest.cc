@@ -105,5 +105,27 @@ TEST_F(WakeupControllerTest, DisableWakeupWhenClosed) {
   EXPECT_FALSE(GetAcpiWakeup(WakeupController::kTPAD));
 }
 
+TEST_F(WakeupControllerTest, ConfigureInhibit) {
+  AddDeviceWithTags(
+      kSyspath0,
+      base::StringPrintf("%s %s",
+                         WakeupController::kTagInhibit,
+                         WakeupController::kTagUsableWhenLaptop));
+  InitWakeupController();
+
+  // In laptop mode, inhibit should be off.
+  EXPECT_EQ("0", GetSysattr(kSyspath0, WakeupController::kInhibited));
+
+  // When the lid is closed, inhibit should be on.
+  input_watcher_.set_lid_state(LID_CLOSED);
+  input_watcher_.NotifyObserversAboutLidState();
+  EXPECT_EQ("1", GetSysattr(kSyspath0, WakeupController::kInhibited));
+
+  // When the lid is opened, inhibit should be off again.
+  input_watcher_.set_lid_state(LID_OPEN);
+  input_watcher_.NotifyObserversAboutLidState();
+  EXPECT_EQ("0", GetSysattr(kSyspath0, WakeupController::kInhibited));
+}
+
 }  // namespace policy
 }  // namespace power_manager

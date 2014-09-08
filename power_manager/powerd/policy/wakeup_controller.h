@@ -36,6 +36,7 @@ class WakeupController : public system::InputObserver,
                          public system::UdevTaggedDeviceObserver {
  public:
   // Powerd tags.
+  static const char kTagInhibit[];
   static const char kTagUsableWhenDocked[];
   static const char kTagUsableWhenLaptop[];
   static const char kTagUsableWhenTablet[];
@@ -46,6 +47,8 @@ class WakeupController : public system::InputObserver,
   static const char kPowerWakeup[];
   static const char kEnabled[];
   static const char kDisabled[];
+
+  static const char kInhibited[];
 
   // ACPI device names.
   static const char kTPAD[];
