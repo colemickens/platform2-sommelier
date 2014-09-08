@@ -316,6 +316,9 @@ CXXFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CXXDRIVER))
 CFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CDRIVER))
 CPPFLAGS += -D_FORTIFY_SOURCE=2
 
+# Enable large file support.
+CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE
+
 # Disable exceptions based on the CXXEXCEPTIONS setting.
 ifeq ($(CXXEXCEPTIONS),0)
   CXXFLAGS := $(CXXFLAGS) -fno-exceptions -fno-unwind-tables \
