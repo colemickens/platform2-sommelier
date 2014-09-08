@@ -137,6 +137,21 @@ class StaticIpParametersTest : public Test {
   void SetStaticProperties(PropertyStore *store) {
     SetStaticPropertiesWithVersion(store, 0);
   }
+  void SetStaticDictPropertiesWithVersion(PropertyStore *store, int version) {
+    KeyValueStore args;
+    args.SetString(kAddressProperty, VersionedAddress(kAddress, version));
+    args.SetString(kGatewayProperty, VersionedAddress(kGateway, version));
+    args.SetInt(kMtuProperty, kMtu + version);
+    vector<string> name_servers;
+    name_servers.push_back(VersionedAddress(kNameServer0, version));
+    name_servers.push_back(VersionedAddress(kNameServer1, version));
+    args.SetStrings(kNameServersProperty, name_servers);
+    args.SetString(kPeerAddressProperty,
+                   VersionedAddress(kPeerAddress, version));
+    args.SetInt(kPrefixlenProperty, kPrefixLen + version);
+    Error error;
+    store->SetKeyValueStoreProperty(kStaticIPConfigProperty, args, &error);
+  }
 
  protected:
   StaticIPParameters static_params_;
@@ -276,6 +291,51 @@ TEST_F(StaticIpParametersTest, SavedParameters) {
   // A RestoreTo() call moves the version 1 "SavedIP" parameters into
   // |ipconfig_props_|.
   SetStaticPropertiesWithVersion(&static_params_props, 2);
+  static_params_.RestoreTo(&ipconfig_props_);
+  ExpectPopulatedIPConfigWithVersion(1);
+
+  // All "SavedIP" parameters should be cleared.
+  EXPECT_TRUE(static_params_.saved_args_.IsEmpty());
+
+  // Static IP parameters should be unchanged.
+  ExpectPropertiesWithVersion(&static_params_props, "StaticIP", 2);
+}
+
+TEST_F(StaticIpParametersTest, SavedParametersDict) {
+  // Calling RestoreTo() when no parameters are set should not crash or
+  // add any entries.
+  static_params_.RestoreTo(&ipconfig_props_);
+  ExpectEmptyIPConfig();
+
+  PopulateIPConfig();
+  PropertyStore static_params_props;
+  static_params_.PlumbPropertyStore(&static_params_props);
+  SetStaticDictPropertiesWithVersion(&static_params_props, 1);
+  static_params_.ApplyTo(&ipconfig_props_);
+
+  // The version 0 properties in |ipconfig_props_| are now in SavedIP.*
+  // properties, while the version 1 StaticIP parameters are now in
+  // |ipconfig_props_|.
+  ExpectPropertiesWithVersion(&static_params_props, "SavedIP", 0);
+  ExpectPopulatedIPConfigWithVersion(1);
+
+  // Clear all "StaticIP" parameters.
+  static_params_.args_.Clear();
+
+  // Another ApplyTo() call rotates the version 1 properties in
+  // |ipconfig_props_| over to SavedIP.*.  Since there are no StaticIP
+  // parameters, |ipconfig_props_| should remain populated with version 1
+  // parameters.
+  static_params_.ApplyTo(&ipconfig_props_);
+  ExpectPropertiesWithVersion(&static_params_props, "SavedIP", 1);
+  ExpectPopulatedIPConfigWithVersion(1);
+
+  // Reset |ipconfig_props_| to version 0.
+  PopulateIPConfig();
+
+  // A RestoreTo() call moves the version 1 "SavedIP" parameters into
+  // |ipconfig_props_|.
+  SetStaticDictPropertiesWithVersion(&static_params_props, 2);
   static_params_.RestoreTo(&ipconfig_props_);
   ExpectPopulatedIPConfigWithVersion(1);
 

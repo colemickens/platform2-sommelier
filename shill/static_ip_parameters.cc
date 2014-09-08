@@ -41,6 +41,8 @@ StaticIPParameters::StaticIPParameters() {}
 StaticIPParameters::~StaticIPParameters() {}
 
 void StaticIPParameters::PlumbPropertyStore(PropertyStore *store) {
+  // These individual fields will be deprecated once Chrome starts using
+  // the KeyValueStore dict directly.
   for (size_t i = 0; i < arraysize(kProperties); ++i) {
     const Property &property = kProperties[i];
     const string name(string(kConfigKeyPrefix) + property.name);
@@ -67,7 +69,6 @@ void StaticIPParameters::PlumbPropertyStore(PropertyStore *store) {
                     i)));
          break;
       case Property::kTypeString:
-      case Property::kTypeStrings:
         store->RegisterDerivedString(
             name,
             StringAccessor(
@@ -87,11 +88,47 @@ void StaticIPParameters::PlumbPropertyStore(PropertyStore *store) {
                     &StaticIPParameters::SetMappedSavedStringProperty,
                     i)));
         break;
+      case Property::kTypeStrings:
+        // Since Chrome is still using string for the nameservers, the
+        // registered function will convert the string from/to string vector
+        // stored in the KeyValueStore.
+        store->RegisterDerivedString(
+            name,
+            StringAccessor(
+                new CustomMappedAccessor<StaticIPParameters, string, size_t>(
+                    this,
+                    &StaticIPParameters::ClearMappedProperty,
+                    &StaticIPParameters::GetMappedStringsProperty,
+                    &StaticIPParameters::SetMappedStringsProperty,
+                    i)));
+        store->RegisterDerivedString(
+            saved_name,
+            StringAccessor(
+                new CustomMappedAccessor<StaticIPParameters, string, size_t>(
+                    this,
+                    &StaticIPParameters::ClearMappedSavedProperty,
+                    &StaticIPParameters::GetMappedSavedStringsProperty,
+                    &StaticIPParameters::SetMappedSavedStringsProperty,
+                    i)));
+        break;
       default:
         NOTIMPLEMENTED();
         break;
     }
   }
+
+  // Register KeyValueStore for both static ip and saved ip parameters.
+  store->RegisterDerivedKeyValueStore(
+      kSavedIPConfigProperty,
+      KeyValueStoreAccessor(
+          new CustomAccessor<StaticIPParameters, KeyValueStore>(
+              this, &StaticIPParameters::GetSavedIPConfig, NULL)));
+  store->RegisterDerivedKeyValueStore(
+      kStaticIPConfigProperty,
+      KeyValueStoreAccessor(
+          new CustomAccessor<StaticIPParameters, KeyValueStore>(
+              this, &StaticIPParameters::GetStaticIPConfig,
+              &StaticIPParameters::SetStaticIPConfig)));
 }
 
 void StaticIPParameters::Load(
@@ -111,13 +148,26 @@ void StaticIPParameters::Load(
         }
         break;
       case Property::kTypeString:
-      case Property::kTypeStrings:
         {
           string value;
           if (storage->GetString(storage_id, name, &value)) {
             args_.SetString(property.name, value);
           } else {
             args_.RemoveString(property.name);
+          }
+        }
+        break;
+      case Property::kTypeStrings:
+        {
+          // Name servers field is stored in storage as comma separated string.
+          // Keep it as is to be backward compatible.
+          string value;
+          if (storage->GetString(storage_id, name, &value)) {
+            vector<string> string_list;
+            base::SplitString(value, ',', &string_list);
+            args_.SetStrings(property.name, string_list);
+          } else {
+            args_.RemoveStrings(property.name);
           }
         }
         break;
@@ -142,10 +192,19 @@ void StaticIPParameters::Save(
         }
         break;
       case Property::kTypeString:
-      case Property::kTypeStrings:
         if (args_.ContainsString(property.name)) {
           property_exists = true;
           storage->SetString(storage_id, name, args_.GetString(property.name));
+        }
+        break;
+      case Property::kTypeStrings:
+        if (args_.ContainsStrings(property.name)) {
+          property_exists = true;
+          // Name servers field is stored in storage as comma separated string.
+          // Keep it as is to be backward compatible.
+          storage->SetString(
+              storage_id, name,
+              JoinString(args_.GetStrings(property.name), ','));
         }
         break;
       default:
@@ -176,14 +235,9 @@ void StaticIPParameters::ApplyString(
 
 void StaticIPParameters::ApplyStrings(
     const string &property, vector<string> *value_out) {
-  saved_args_.SetString(property, JoinString(*value_out, ','));
-  if (args_.ContainsString(property)) {
-    vector<string> values;
-    string value(args_.GetString(property));
-    if (!value.empty()) {
-      base::SplitString(value, ',', &values);
-    }
-    *value_out = values;
+  saved_args_.SetStrings(property, *value_out);
+  if (args_.ContainsStrings(property)) {
+    *value_out = args_.GetStrings(property);
   }
 }
 
@@ -209,9 +263,8 @@ void StaticIPParameters::RestoreTo(IPConfig::Properties *props) {
   props->gateway = saved_args_.LookupString(kGatewayProperty, "");
   props->mtu = saved_args_.LookupInt(kMtuProperty, 0);
   props->dns_servers.clear();
-  string saved_dns_servers = saved_args_.LookupString(kNameServersProperty, "");
-  if (!saved_dns_servers.empty()) {
-    base::SplitString(saved_dns_servers, ',', &props->dns_servers);
+  if (saved_args_.ContainsStrings(kNameServersProperty)) {
+    props->dns_servers = saved_args_.GetStrings(kNameServersProperty);
   }
   props->peer_address = saved_args_.LookupString(kPeerAddressProperty, "");
   props->subnet_prefix = saved_args_.LookupInt(kPrefixlenProperty, 0);
@@ -307,6 +360,30 @@ string StaticIPParameters::GetMappedSavedStringProperty(
   return saved_args_.GetString(key);
 }
 
+string StaticIPParameters::GetMappedStringsProperty(
+    const size_t &index, Error *error) {
+  CHECK(index < arraysize(kProperties));
+
+  const string &key = kProperties[index].name;
+  if (!args_.ContainsStrings(key)) {
+    error->Populate(Error::kNotFound, "Property is not set");
+    return string();
+  }
+  return JoinString(args_.GetStrings(key), ',');
+}
+
+string StaticIPParameters::GetMappedSavedStringsProperty(
+    const size_t &index, Error *error) {
+  CHECK(index < arraysize(kProperties));
+
+  const string &key = kProperties[index].name;
+  if (!saved_args_.ContainsStrings(key)) {
+    error->Populate(Error::kNotFound, "Property is not set");
+    return string();
+  }
+  return JoinString(saved_args_.GetStrings(key), ',');
+}
+
 bool StaticIPParameters::SetMappedInt32Property(
     const size_t &index, const int32_t &value, Error *error) {
   CHECK(index < arraysize(kProperties));
@@ -339,6 +416,44 @@ bool StaticIPParameters::SetMappedSavedStringProperty(
     const size_t &index, const string &value, Error *error) {
   error->Populate(Error::kInvalidArguments, "Property is read-only");
   return false;
+}
+
+bool StaticIPParameters::SetMappedStringsProperty(
+    const size_t &index, const string &value, Error *error) {
+  CHECK(index < arraysize(kProperties));
+
+  vector<string> string_list;
+  base::SplitString(value, ',', &string_list);
+  if (args_.ContainsStrings(kProperties[index].name) &&
+      args_.GetStrings(kProperties[index].name) == string_list) {
+    return false;
+  }
+
+  args_.SetStrings(kProperties[index].name, string_list);
+  return true;
+}
+
+bool StaticIPParameters::SetMappedSavedStringsProperty(
+    const size_t &index, const string &value, Error *error) {
+  error->Populate(Error::kInvalidArguments, "Property is read-only");
+  return false;
+}
+
+KeyValueStore StaticIPParameters::GetSavedIPConfig(Error */*error*/) {
+  return saved_args_;
+}
+
+KeyValueStore StaticIPParameters::GetStaticIPConfig(Error */*error*/) {
+  return args_;
+}
+
+bool StaticIPParameters::SetStaticIPConfig(const KeyValueStore &value,
+                                           Error */*error*/) {
+  if (args_.Equals(value)) {
+    return false;
+  }
+  args_ = value;
+  return true;
 }
 
 }  // namespace shill

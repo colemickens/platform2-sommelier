@@ -1323,6 +1323,9 @@ Properties	boolean AutoConnect [readwrite]
 		string StaticIP.PeerAddress [readwrite]
 		int32 StaticIP.Prefixlen [readwrite]
 
+			[Deprecated] The properties above are deprecated in
+			favor of StaticIPConfig property.
+
 			The properties above can be set on a service to
 			selectively override individual parameters received
 			over DHCP or whatever default IP aquisition technique
@@ -1351,6 +1354,9 @@ Properties	boolean AutoConnect [readwrite]
 		string SavedIP.PeerAddress [readonly]
 		int32 SavedIP.Prefixlen [readonly]
 
+			[Deprecated] The properties above are deprecated in
+			favor of SavedIPConfig property.
+
 			The properties above are set on a service to present
 			the configuration that was recieved from the DHCP
 			server prior to applying any "StaticIP.*" parameters
@@ -1362,6 +1368,55 @@ Properties	boolean AutoConnect [readwrite]
 			a service, but the service has not been re-connected,
 			the IPConfig object will still contain the true
 			value that the interface is set to.
+
+		dict StaticIPConfig [readwrite]
+
+			A dictionary of static IP configuration parameters
+			used to selectively override individual parameters
+			received over DHCP or whatever default IP aquisition
+			technique is used by the service.
+
+			Additionally, in services that use DHCP, if the
+			"Address" and "Prefixlen" fields are both set in the
+			dictionary, the service will be configured as soon as
+			a link is established, in order to allow full static
+			IP configuration.  A DHCP client will be launched in
+			parallel, which, if successful, will provide values for
+			any parameters that were not set statically.
+
+			The IPConfig associated with the service (object
+			path supplied in the "IPConfig" property above)
+			will display the result of the merged network
+			parameters.
+
+			Here are the expected keys within the dict:
+				string Address
+				string Gateway
+				int32 Mtu
+				array{string} NameServers
+				string PeerAddress
+				int32 Prefixlen
+
+		dict SavedIPConfig [readonly]
+
+			This property present a dictionary of the IP config
+			that was received from the DHCP server prior to
+			applying any static IP parameters during the most
+			recent connection attempt. All parameters are saved
+			regardless of whether they were overridden.
+
+			Note that if a static IP parameter is set on
+			a service, but the service has not been re-connected,
+			the IPConfig object will still contain the true
+			value that the interface is set to.
+
+			Here are the expected keys within the dict:
+				string Address
+				string Gateway
+				int32 Mtu
+				array{string} NameServers
+				string PeerAddress
+				int32 Prefixlen
 
 		uint8 Strength [readonly]
 

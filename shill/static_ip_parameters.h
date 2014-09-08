@@ -54,6 +54,7 @@ class StaticIPParameters {
   friend class StaticIPParametersTest;
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
   FRIEND_TEST(StaticIpParametersTest, SavedParameters);
+  FRIEND_TEST(StaticIpParametersTest, SavedParametersDict);
 
   struct Property {
     enum Type {
@@ -87,6 +88,8 @@ class StaticIPParameters {
   int32_t GetMappedSavedInt32Property(const size_t &index, Error *error);
   std::string GetMappedStringProperty(const size_t &index, Error *error);
   std::string GetMappedSavedStringProperty(const size_t &index, Error *error);
+  std::string GetMappedStringsProperty(const size_t &index, Error *error);
+  std::string GetMappedSavedStringsProperty(const size_t &index, Error *error);
   bool SetMappedInt32Property(
       const size_t &index, const int32_t &value, Error *error);
   bool SetMappedSavedInt32Property(
@@ -95,6 +98,14 @@ class StaticIPParameters {
       const size_t &index, const std::string &value, Error *error);
   bool SetMappedSavedStringProperty(
       const size_t &index, const std::string &value, Error *error);
+  bool SetMappedStringsProperty(
+      const size_t &index, const std::string &value, Error *error);
+  bool SetMappedSavedStringsProperty(
+      const size_t &index, const std::string &value, Error *error);
+
+  KeyValueStore GetSavedIPConfig(Error *error);
+  KeyValueStore GetStaticIPConfig(Error *error);
+  bool SetStaticIPConfig(const KeyValueStore &value, Error *error);
 
   KeyValueStore args_;
   KeyValueStore saved_args_;

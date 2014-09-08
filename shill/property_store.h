@@ -82,6 +82,10 @@ class PropertyStore {
                                 int32_t value,
                                 Error *error);
 
+  virtual bool SetKeyValueStoreProperty(const std::string &name,
+                                        const KeyValueStore &value,
+                                        Error *error);
+
   virtual bool SetStringProperty(const std::string &name,
                                  const std::string &value,
                                  Error *error);

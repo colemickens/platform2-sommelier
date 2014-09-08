@@ -152,6 +152,13 @@ bool PropertyStore::SetInt32Property(const string &name,
   return SetProperty(name, value, error, &int32_properties_, "an int32_t.");
 }
 
+bool PropertyStore::SetKeyValueStoreProperty(const string &name,
+                                             const KeyValueStore &value,
+                                             Error *error) {
+  return SetProperty(name, value, error, &key_value_store_properties_,
+                     "a key value store");
+}
+
 bool PropertyStore::SetStringProperty(const string &name,
                                       const string &value,
                                       Error *error) {
