@@ -641,6 +641,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Keeps track of triggers that would wake this device.
   std::set<WakeOnWiFi::WakeOnWiFiTrigger> wake_on_wifi_triggers_;
+  // Keeps track of what triggers this WiFi device supports.
+  std::set<WakeOnWiFi::WakeOnWiFiTrigger> wake_on_wifi_triggers_supported_;
+  // Max number of patterns this WiFi device can match.
+  size_t wake_on_wifi_max_patterns_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };

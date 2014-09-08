@@ -580,6 +580,16 @@ class Nl80211AttributeWowlanTriggers : public NetlinkNestedAttribute {
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWowlanTriggers);
 };
 
+class Nl80211AttributeWowlanTriggersSupported : public NetlinkNestedAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeWowlanTriggersSupported();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWowlanTriggersSupported);
+};
+
 // Raw.
 
 class Nl80211AttributeCipherSuites : public NetlinkRawAttribute {

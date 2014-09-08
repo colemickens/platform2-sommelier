@@ -215,6 +215,9 @@ NetlinkAttribute *NetlinkAttribute::NewNl80211AttributeFromId(int id) {
     case NL80211_ATTR_WOWLAN_TRIGGERS:
       attr.reset(new Nl80211AttributeWowlanTriggers());
       break;
+    case NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED:
+      attr.reset(new Nl80211AttributeWowlanTriggersSupported());
+      break;
     default:
       attr.reset(new NetlinkAttributeGeneric(id));
       break;

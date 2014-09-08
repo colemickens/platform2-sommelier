@@ -906,6 +906,14 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return &wifi_->wake_on_wifi_triggers_;
   }
 
+  set<WakeOnWiFi::WakeOnWiFiTrigger> *GetWakeOnWiFiTriggersSupported() {
+    return &wifi_->wake_on_wifi_triggers_supported_;
+  }
+
+  size_t *GetWakeOnWiFiMaxPatterns() {
+    return &wifi_->wake_on_wifi_max_patterns_;
+  }
+
   void AddWakeOnPacketConnection(const IPAddress &ip_endpoint, Error *error) {
     wifi_->AddWakeOnPacketConnection(ip_endpoint, error);
   }
@@ -3952,6 +3960,31 @@ TEST_F(WiFiMainTest, AddRemoveWakeOnPacketConnection) {
   IPAddress ip_addr3(ip_string3);
   Error e;
 
+  // Add and remove operations will fail if WiFi device does not support
+  // pattern matching.
+  AddWakeOnPacketConnection(ip_addr1, &e);
+  EXPECT_EQ(e.type(), Error::kNotSupported);
+  EXPECT_STREQ(e.message().c_str(),
+               "Wake on IP address patterns not supported by this WiFi device");
+  RemoveAllWakeOnPacketConnections(&e);
+  EXPECT_EQ(e.type(), Error::kNotSupported);
+  EXPECT_STREQ(e.message().c_str(),
+               "Wake on IP address patterns not supported by this WiFi device");
+  RemoveWakeOnPacketConnection(ip_addr2, &e);
+  EXPECT_EQ(e.type(), Error::kNotSupported);
+  EXPECT_STREQ(e.message().c_str(),
+               "Wake on IP address patterns not supported by this WiFi device");
+
+  // Add operation will fail if pattern matching is supported but the max number
+  // of IP address patterns have already been registered.
+  GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kIPAddress);
+  *GetWakeOnWiFiMaxPatterns() = 0;
+  AddWakeOnPacketConnection(ip_addr1, &e);
+  EXPECT_EQ(e.type(), Error::kOperationFailed);
+  EXPECT_STREQ(e.message().c_str(),
+               "Max number of IP address patterns already registered");
+
+  *GetWakeOnWiFiMaxPatterns() = 50;
   GetWakeOnPacketConnections()->Clear();
   EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
   AddWakeOnPacketConnection(ip_addr1, &e);
@@ -3978,10 +4011,11 @@ TEST_F(WiFiMainTest, AddRemoveWakeOnPacketConnection) {
   EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr2));
   EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr3));
 
+  // Remove fails if no such address is registered.
   RemoveWakeOnPacketConnection(ip_addr2, &e);
   EXPECT_EQ(e.type(), Error::kNotFound);
   EXPECT_STREQ(e.message().c_str(),
-               "No such wake-on-packet connection registered");
+               "No such IP address match registered to wake device");
   EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 2);
 
   RemoveWakeOnPacketConnection(ip_addr1, &e);

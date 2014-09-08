@@ -5,7 +5,9 @@
 #include "shill/wifi.h"
 
 #include <linux/if.h>  // Needs definitions from netinet/ether.h
+#include <linux/nl80211.h>
 #include <netinet/ether.h>
+#include <netlink/attr.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -149,7 +151,8 @@ WiFi::WiFi(ControlInterface *control_interface,
       scan_state_(kScanIdle),
       scan_method_(kScanMethodNone),
       receive_byte_count_at_connect_(0),
-      num_set_wake_on_packet_retries_(0) {
+      num_set_wake_on_packet_retries_(0),
+      wake_on_wifi_max_patterns_(0) {
   PropertyStore *store = this->mutable_store();
   store->RegisterDerivedString(
       kBgscanMethodProperty,
@@ -1794,22 +1797,44 @@ void WiFi::OnIPConfigFailure() {
 
 void WiFi::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                      Error *error) {
-  wake_on_packet_connections_.AddUnique(ip_endpoint);
+  if (wake_on_wifi_triggers_supported_.find(WakeOnWiFi::kIPAddress) ==
+      wake_on_wifi_triggers_supported_.end()) {
+    Error::PopulateAndLog(
+        error, Error::kNotSupported,
+        "Wake on IP address patterns not supported by this WiFi device");
+  } else if (wake_on_wifi_triggers_.size() >= wake_on_wifi_max_patterns_) {
+    Error::PopulateAndLog(
+        error, Error::kOperationFailed,
+        "Max number of IP address patterns already registered");
+  } else {
+    wake_on_packet_connections_.AddUnique(ip_endpoint);
+  }
 }
 
 void WiFi::RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                         Error *error) {
-  if (!wake_on_packet_connections_.Contains(ip_endpoint)) {
+  if (wake_on_wifi_triggers_supported_.find(WakeOnWiFi::kIPAddress) ==
+      wake_on_wifi_triggers_supported_.end()) {
+    Error::PopulateAndLog(
+        error, Error::kNotSupported,
+        "Wake on IP address patterns not supported by this WiFi device");
+  } else if (!wake_on_packet_connections_.Contains(ip_endpoint)) {
     Error::PopulateAndLog(error, Error::kNotFound,
-                          "No such wake-on-packet connection registered");
-    return;
+                          "No such IP address match registered to wake device");
+  } else {
+    wake_on_packet_connections_.Remove(ip_endpoint);
   }
-  wake_on_packet_connections_.Remove(ip_endpoint);
 }
 
 void WiFi::RemoveAllWakeOnPacketConnections(Error *error) {
-  // Send an empty NL80211_CMD_SET_WOWLAN message to disable wowlan.
-  wake_on_packet_connections_.Clear();
+  if (wake_on_wifi_triggers_supported_.find(WakeOnWiFi::kIPAddress) ==
+      wake_on_wifi_triggers_supported_.end()) {
+    Error::PopulateAndLog(
+        error, Error::kNotSupported,
+        "Wake on IP address patterns not supported by this WiFi device");
+  } else {
+    wake_on_packet_connections_.Clear();
+  }
 }
 
 void WiFi::OnSetWakeOnPacketConnectionResponse(
@@ -2246,13 +2271,57 @@ void WiFi::GetPhyInfo() {
 }
 
 void WiFi::OnNewWiphy(const Nl80211Message &nl80211_message) {
-  // TODO(samueltan): parse NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED to determine
-  // out wake on WiFi capabilities of this device.
   // Verify NL80211_CMD_NEW_WIPHY.
   if (nl80211_message.command() != NewWiphyMessage::kCommand) {
     LOG(ERROR) << "Received unexpected command:"
                << nl80211_message.command();
     return;
+  }
+
+  // Parse wake on WiFi capabilities we care about.
+  AttributeListConstRefPtr triggers_supported;
+  if (nl80211_message.const_attributes()
+          ->ConstGetNestedAttributeList(NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED,
+                                        &triggers_supported)) {
+    bool disconnect_supported = false;
+    if (triggers_supported->GetFlagAttributeValue(
+            NL80211_WOWLAN_TRIG_DISCONNECT, &disconnect_supported)) {
+      if (disconnect_supported) {
+        wake_on_wifi_triggers_supported_.insert(WakeOnWiFi::kDisconnect);
+        SLOG(WiFi, 7) << "Waking on disconnect supported by this WiFi device";
+      }
+    }
+    ByteString data;
+    if (triggers_supported->GetRawAttributeValue(
+            NL80211_WOWLAN_TRIG_PKT_PATTERN, &data)) {
+      struct nl80211_pattern_support *patt_support =
+          reinterpret_cast<struct nl80211_pattern_support *>(data.GetData());
+      // Determine the IPV4 and IPV6 pattern lengths we will use by
+      // constructing dummy patterns and getting their lengths.
+      ByteString dummy_pattern;
+      ByteString dummy_mask;
+      WakeOnWiFi::CreateIPV4PatternAndMask(IPAddress("192.168.0.20"),
+                                           &dummy_pattern, &dummy_mask);
+      size_t ipv4_pattern_len = dummy_pattern.GetLength();
+      WakeOnWiFi::CreateIPV6PatternAndMask(
+          IPAddress("FEDC:BA98:7654:3210:FEDC:BA98:7654:3210"), &dummy_pattern,
+          &dummy_mask);
+      size_t ipv6_pattern_len = dummy_pattern.GetLength();
+      // Check if the pattern matching capabilities of this WiFi device will
+      // allow IPV4 and IPV6 patterns to be used.
+      if (patt_support->min_pattern_len <=
+              std::min(ipv4_pattern_len, ipv6_pattern_len) &&
+          patt_support->max_pattern_len >=
+              std::max(ipv4_pattern_len, ipv6_pattern_len)) {
+        wake_on_wifi_triggers_supported_.insert(WakeOnWiFi::kIPAddress);
+        wake_on_wifi_max_patterns_ = patt_support->max_patterns;
+        SLOG(WiFi, 7) << "Waking on up to " << wake_on_wifi_max_patterns_
+                      << " registered patterns of "
+                      << patt_support->min_pattern_len << "-"
+                      << patt_support->max_pattern_len
+                      << " bytes supported by this WiFi device";
+      }
+    }
   }
 
   if (!nl80211_message.const_attributes()->GetStringAttributeValue(

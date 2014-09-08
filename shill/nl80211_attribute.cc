@@ -237,6 +237,26 @@ Nl80211AttributeWowlanTriggers::Nl80211AttributeWowlanTriggers()
   nested_template_.push_back(patterns);
 }
 
+const int Nl80211AttributeWowlanTriggersSupported::kName =
+    NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED;
+const char Nl80211AttributeWowlanTriggersSupported::kNameString[] =
+    "NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED";
+
+Nl80211AttributeWowlanTriggersSupported::
+    Nl80211AttributeWowlanTriggersSupported()
+    : NetlinkNestedAttribute(kName, kNameString) {
+  nested_template_.push_back(
+      NestedData(NLA_U32, "__NL80211_WOWLAN_TRIG_INVALID", false));
+  nested_template_.push_back(
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_ANY", false));
+  nested_template_.push_back(
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_DISCONNECT", false));
+  nested_template_.push_back(
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_MAGIC_PKT", false));
+  nested_template_.push_back(
+      NestedData(NLA_UNSPEC, "NL80211_WOWLAN_TRIG_PKT_PATTERN", false));
+}
+
 const int Nl80211AttributeCipherSuites::kName = NL80211_ATTR_CIPHER_SUITES;
 const char Nl80211AttributeCipherSuites::kNameString[] =
     "NL80211_ATTR_CIPHER_SUITES";
