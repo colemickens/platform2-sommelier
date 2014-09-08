@@ -8,6 +8,7 @@
     },
     'cflags': [
       '-Wextra',
+      '-Wno-unused-parameter',  # for scoped_ptr.h, included indirectly
     ],
     'cflags_cc': [
       '-fno-strict-aliasing',
