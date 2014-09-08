@@ -54,6 +54,8 @@
       'sources': [
         'chromeos/any.cc',
         'chromeos/asynchronous_signal_handler.cc',
+        'chromeos/daemons/dbus_daemon.cc',
+        'chromeos/daemons/daemon.cc',
         'chromeos/data_encoding.cc',
         'chromeos/dbus/abstract_dbus_service.cc',
         'chromeos/dbus/async_event_sequencer.cc',
