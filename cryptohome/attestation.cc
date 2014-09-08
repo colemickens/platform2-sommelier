@@ -510,10 +510,9 @@ bool Attestation::Verify() {
     LOG(INFO) << "Attestation: Endorsement data is not available.";
     return false;
   }
-  SecureBlob ek_public_key = ConvertStringToBlob(
-      credentials.endorsement_public_key());
+  SecureBlob ek_public_key(credentials.endorsement_public_key());
   if (!VerifyEndorsementCredential(
-          ConvertStringToBlob(credentials.endorsement_credential()),
+          SecureBlob(credentials.endorsement_credential()),
           ek_public_key)) {
     LOG(ERROR) << "Attestation: Bad endorsement credential.";
     return false;
@@ -522,7 +521,7 @@ bool Attestation::Verify() {
     LOG(ERROR) << "Attestation: Bad identity binding.";
     return false;
   }
-  SecureBlob aik_public_key = ConvertStringToBlob(
+  SecureBlob aik_public_key = SecureBlob(
       database_pb_.identity_binding().identity_public_key_der());
   if (!VerifyQuote(aik_public_key, database_pb_.pcr0_quote())) {
     LOG(ERROR) << "Attestation: Bad PCR0 quote.";
@@ -533,8 +532,7 @@ bool Attestation::Verify() {
     LOG(ERROR) << "Attestation: GetRandomData failed.";
     return false;
   }
-  SecureBlob identity_key_blob = ConvertStringToBlob(
-      database_pb_.identity_key().identity_key_blob());
+  SecureBlob identity_key_blob(database_pb_.identity_key().identity_key_blob());
   SecureBlob public_key;
   SecureBlob public_key_der;
   SecureBlob key_blob;
@@ -550,11 +548,9 @@ bool Attestation::Verify() {
     LOG(ERROR) << "Attestation: Bad certified key.";
     return false;
   }
-  SecureBlob delegate_blob =
-      ConvertStringToBlob(database_pb_.delegate().blob());
-  SecureBlob delegate_secret =
-      ConvertStringToBlob(database_pb_.delegate().secret());
-  SecureBlob aik_public_key_tpm = ConvertStringToBlob(
+  SecureBlob delegate_blob(database_pb_.delegate().blob());
+  SecureBlob delegate_secret(database_pb_.delegate().secret());
+  SecureBlob aik_public_key_tpm(
       database_pb_.identity_binding().identity_public_key());
   if (!VerifyActivateIdentity(delegate_blob, delegate_secret,
                               identity_key_blob, aik_public_key_tpm,
@@ -575,8 +571,8 @@ bool Attestation::VerifyEK() {
   if (database_pb_.has_credentials()) {
     const TPMCredentials& credentials = database_pb_.credentials();
     if (credentials.has_endorsement_credential()) {
-      ek_public_key = ConvertStringToBlob(credentials.endorsement_public_key());
-      ek_cert = ConvertStringToBlob(credentials.endorsement_credential());
+      ek_public_key = SecureBlob(credentials.endorsement_public_key());
+      ek_cert = SecureBlob(credentials.endorsement_credential());
     }
   }
   if (ek_cert.size() == 0 && !tpm_->GetEndorsementCredential(&ek_cert)) {
@@ -617,7 +613,7 @@ bool Attestation::CreateEnrollRequest(PCAType pca_type,
     LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
     return false;
   }
-  *pca_request = ConvertStringToBlob(tmp);
+  *pca_request = SecureBlob(tmp);
   return true;
 }
 
@@ -637,17 +633,15 @@ bool Attestation::Enroll(PCAType pca_type,
     return false;
   }
   base::AutoLock lock(lock_);
-  SecureBlob delegate_blob = ConvertStringToBlob(
-      database_pb_.delegate().blob());
-  SecureBlob delegate_secret = ConvertStringToBlob(
-      database_pb_.delegate().secret());
+  SecureBlob delegate_blob(database_pb_.delegate().blob());
+  SecureBlob delegate_secret(database_pb_.delegate().secret());
   bool use_alternate_pca = (pca_type == kAlternatePCA);
-  SecureBlob aik_blob = ConvertStringToBlob(use_alternate_pca ?
+  SecureBlob aik_blob(use_alternate_pca ?
       database_pb_.alternate_identity_key().identity_key_blob() :
       database_pb_.identity_key().identity_key_blob());
-  SecureBlob encrypted_asym = ConvertStringToBlob(
+  SecureBlob encrypted_asym(
       response_pb.encrypted_identity_credential().asym_ca_contents());
-  SecureBlob encrypted_sym = ConvertStringToBlob(
+  SecureBlob encrypted_sym(
       response_pb.encrypted_identity_credential().sym_ca_attestation());
   SecureBlob aik_credential;
   if (!tpm_->ActivateIdentity(delegate_blob, delegate_secret,
@@ -659,7 +653,8 @@ bool Attestation::Enroll(PCAType pca_type,
   IdentityKey* key_pb = use_alternate_pca ?
       database_pb_.mutable_alternate_identity_key() :
       database_pb_.mutable_identity_key();
-  key_pb->set_identity_credential(ConvertBlobToString(aik_credential));
+  key_pb->set_identity_credential(
+      aik_credential.to_string());
   if (!PersistDatabaseChanges()) {
     LOG(ERROR) << __func__ << ": Failed to persist database changes.";
     return false;
@@ -701,7 +696,8 @@ bool Attestation::CreateCertRequest(PCAType pca_type,
     LOG(ERROR) << __func__ << ": GetRandomData failed.";
     return false;
   }
-  SecureBlob identity_key_blob = ConvertStringToBlob(use_alternate_pca ?
+  SecureBlob identity_key_blob(
+      use_alternate_pca ?
       database_pb_.alternate_identity_key().identity_key_blob() :
       database_pb_.identity_key().identity_key_blob());
   SecureBlob public_key;
@@ -715,25 +711,25 @@ bool Attestation::CreateCertRequest(PCAType pca_type,
     LOG(ERROR) << __func__ << ": Failed to create certified key.";
     return false;
   }
-  request_pb.set_certified_public_key(ConvertBlobToString(public_key));
-  request_pb.set_certified_key_info(ConvertBlobToString(key_info));
-  request_pb.set_certified_key_proof(ConvertBlobToString(proof));
+  request_pb.set_certified_public_key(public_key.to_string());
+  request_pb.set_certified_key_info(key_info.to_string());
+  request_pb.set_certified_key_proof(proof.to_string());
   string tmp;
   if (!request_pb.SerializeToString(&tmp)) {
     LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
     return false;
   }
-  *pca_request = ConvertStringToBlob(tmp);
+  *pca_request = SecureBlob(tmp);
   ClearString(&tmp);
   // Save certified key blob so we can finish the operation later.
   CertifiedKey certified_key_pb;
-  certified_key_pb.set_key_blob(ConvertBlobToString(key_blob));
-  certified_key_pb.set_public_key(ConvertBlobToString(public_key_der));
+  certified_key_pb.set_key_blob(key_blob.to_string());
+  certified_key_pb.set_public_key(public_key_der.to_string());
   if (!certified_key_pb.SerializeToString(&tmp)) {
     LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
     return false;
   }
-  pending_cert_requests_[message_id] = ConvertStringToBlob(tmp);
+  pending_cert_requests_[message_id] = SecureBlob(tmp);
   ClearString(&tmp);
   return true;
 }
@@ -812,7 +808,7 @@ bool Attestation::GetPublicKey(bool is_user_specific,
     LOG(ERROR) << __func__ << ": Could not find certified key: " << key_name;
     return false;
   }
-  SecureBlob public_key_der = ConvertStringToBlob(key.public_key());
+  SecureBlob public_key_der(key.public_key());
 
   // Convert from PKCS #1 RSAPublicKey to X.509 SubjectPublicKeyInfo.
   const unsigned char* asn1_ptr = &public_key_der.front();
@@ -881,13 +877,13 @@ bool Attestation::SignEnterpriseChallenge(
     LOG(ERROR) << __func__ << ": Failed to generate nonce.";
     return false;
   }
-  response_pb.set_nonce(ConvertBlobToString(nonce));
+  response_pb.set_nonce(nonce.to_string());
   KeyInfo key_info;
   // EUK -> Enterprise User Key
   // EMK -> Enterprise Machine Key
   key_info.set_key_type(is_user_specific ? EUK : EMK);
   key_info.set_domain(domain);
-  key_info.set_device_id(ConvertBlobToString(device_id));
+  key_info.set_device_id(device_id.to_string());
   // Only include the certificate if this is a user key.
   if (is_user_specific) {
     SecureBlob certificate_chain;
@@ -897,7 +893,7 @@ bool Attestation::SignEnterpriseChallenge(
       LOG(ERROR) << __func__ << ": Failed to construct certificate chain.";
       return false;
     }
-    key_info.set_certificate(ConvertBlobToString(certificate_chain));
+    key_info.set_certificate(certificate_chain.to_string());
   }
   if (is_user_specific && include_signed_public_key) {
     SecureBlob spkac;
@@ -905,7 +901,7 @@ bool Attestation::SignEnterpriseChallenge(
       LOG(ERROR) << __func__ << ": Failed to create signed public key.";
       return false;
     }
-    key_info.set_signed_public_key_and_challenge(ConvertBlobToString(spkac));
+    key_info.set_signed_public_key_and_challenge(spkac.to_string());
   }
   if (!EncryptEnterpriseKeyInfo(key_info,
                                 response_pb.mutable_encrypted_key_info())) {
@@ -919,7 +915,7 @@ bool Attestation::SignEnterpriseChallenge(
     LOG(ERROR) << __func__ << ": Failed to serialize response protobuf.";
     return false;
   }
-  SecureBlob input_data = ConvertStringToBlob(serialized);
+  SecureBlob input_data(serialized);
   ClearString(&serialized);
   if (!SignChallengeData(key, input_data, response)) {
     LOG(ERROR) << __func__ << ": Failed to sign data.";
@@ -947,7 +943,7 @@ bool Attestation::SignSimpleChallenge(bool is_user_specific,
     LOG(ERROR) << __func__ << ": Failed to generate nonce.";
     return false;
   }
-  SecureBlob input_data = SecureCat(challenge, nonce);
+  SecureBlob input_data = SecureBlob::Combine(challenge, nonce);
   if (!SignChallengeData(key, input_data, response)) {
     LOG(ERROR) << __func__ << ": Failed to sign data.";
     return false;
@@ -970,9 +966,10 @@ bool Attestation::RegisterKey(bool is_user_specific,
     LOG(ERROR) << __func__ << ": Key not found.";
     return false;
   }
-  if (!user_key_store_->Register(username,
-                                 ConvertStringToBlob(key.key_blob()),
-                                 ConvertStringToBlob(key.public_key()))) {
+  if (!user_key_store_->Register(
+      username,
+      SecureBlob(key.key_blob()),
+      SecureBlob(key.public_key()))) {
     LOG(ERROR) << __func__ << ": Failed to register key.";
     return false;
   }
@@ -992,7 +989,7 @@ bool Attestation::GetKeyPayload(bool is_user_specific,
     LOG(ERROR) << __func__ << ": Key not found.";
     return false;
   }
-  SecureBlob tmp = ConvertStringToBlob(key.payload());
+  SecureBlob tmp(key.payload());
   payload->swap(tmp);
   return true;
 }
@@ -1007,7 +1004,7 @@ bool Attestation::SetKeyPayload(bool is_user_specific,
     LOG(ERROR) << __func__ << ": Key not found.";
     return false;
   }
-  key.set_payload(ConvertBlobToString(payload));
+  key.set_payload(payload.to_string());
   return SaveKey(is_user_specific, username, key_name, key);
 }
 
@@ -1048,7 +1045,7 @@ bool Attestation::GetEKInfo(std::string* ek_info) {
   SecureBlob hash = CryptoLib::Sha256(ek_cert);
   *ek_info = base::StringPrintf(
       "EK Certificate:\n%s\nHash:\n%s\n",
-      CreatePEMCertificate(ConvertBlobToString(ek_cert)).c_str(),
+      CreatePEMCertificate(ek_cert.to_string()).c_str(),
       base::HexEncode(hash.data(), hash.size()).c_str());
   return true;
 }
@@ -1069,24 +1066,6 @@ bool Attestation::GetIdentityResetRequest(const string& reset_token,
   ClearString(&serial);
   reset_request->swap(tmp);
   return true;
-}
-
-SecureBlob Attestation::ConvertStringToBlob(const string& s) {
-  return SecureBlob(s.data(), s.length());
-}
-
-string Attestation::ConvertBlobToString(const chromeos::Blob& blob) {
-  return string(reinterpret_cast<const char*>(vector_as_array(&blob)),
-                blob.size());
-}
-
-SecureBlob Attestation::SecureCat(const SecureBlob& blob1,
-                                  const SecureBlob& blob2) {
-  SecureBlob result(blob1.size() + blob2.size());
-  unsigned char* buffer = vector_as_array(&result);
-  memcpy(buffer, blob1.const_data(), blob1.size());
-  memcpy(buffer + blob1.size(), blob2.const_data(), blob2.size());
-  return SecureBlob(result.begin(), result.end());
 }
 
 bool Attestation::EncryptDatabase(const AttestationDatabase& db,
@@ -1125,7 +1104,7 @@ bool Attestation::DecryptDatabase(const string& serial_encrypted_db,
     LOG(ERROR) << "Attestation: Failed to decrypt database with Tpm.";
     return false;
   }
-  string serial_string = ConvertBlobToString(serial_blob);
+  string serial_string = serial_blob.to_string();
   if (!db->ParseFromString(serial_string)) {
     // Previously the DB was encrypted with CryptoLib::AesEncrypt which appends
     // a SHA-1.  This can be safely ignored.
@@ -1223,17 +1202,19 @@ bool Attestation::VerifyIdentityBinding(const IdentityBinding& binding) {
   // Reconstruct and hash a serialized TPM_IDENTITY_CONTENTS structure.
   const unsigned char header[] = {1, 1, 0, 0, 0, 0, 0, 0x79};
   string label_ca = binding.identity_label() + binding.pca_public_key();
-  SecureBlob label_ca_digest = CryptoLib::Sha1(ConvertStringToBlob(label_ca));
+  SecureBlob label_ca_digest = CryptoLib::Sha1(
+      SecureBlob(label_ca));
   ClearString(&label_ca);
   // The signed data is header + digest + pubkey.
-  SecureBlob contents = SecureCat(SecureCat(
+  SecureBlob contents = SecureBlob::Combine(SecureBlob::Combine(
       SecureBlob(header, arraysize(header)),
       label_ca_digest),
-      ConvertStringToBlob(binding.identity_public_key()));
+      SecureBlob(binding.identity_public_key()));
   // Now verify the signature.
-  if (!VerifySignature(ConvertStringToBlob(binding.identity_public_key_der()),
-                       contents,
-                       ConvertStringToBlob(binding.identity_binding()))) {
+  if (!VerifySignature(SecureBlob(
+      binding.identity_public_key_der()),
+      contents,
+      SecureBlob(binding.identity_binding()))) {
     LOG(ERROR) << "Failed to verify identity binding signature.";
     return false;
   }
@@ -1243,8 +1224,8 @@ bool Attestation::VerifyIdentityBinding(const IdentityBinding& binding) {
 bool Attestation::VerifyQuote(const SecureBlob& aik_public_key,
                               const Quote& quote) {
   if (!VerifySignature(aik_public_key,
-                       ConvertStringToBlob(quote.quoted_data()),
-                       ConvertStringToBlob(quote.quote()))) {
+                       SecureBlob(quote.quoted_data()),
+                       SecureBlob(quote.quote()))) {
     LOG(ERROR) << "Failed to verify quote signature.";
     return false;
   }
@@ -1257,11 +1238,11 @@ bool Attestation::VerifyQuote(const SecureBlob& aik_public_key,
     static_cast<uint8_t>(0), static_cast<uint8_t>(0),
     static_cast<uint8_t>(0),
     static_cast<uint8_t>(quote.quoted_pcr_value().size())};
-  SecureBlob pcr_composite = SecureCat(
+  SecureBlob pcr_composite = SecureBlob::Combine(
       SecureBlob(header, arraysize(header)),
-      ConvertStringToBlob(quote.quoted_pcr_value()));
+      SecureBlob(quote.quoted_pcr_value()));
   SecureBlob pcr_digest = CryptoLib::Sha1(pcr_composite);
-  SecureBlob quoted_data = ConvertStringToBlob(quote.quoted_data());
+  SecureBlob quoted_data(quote.quoted_data());
   if (search(quoted_data.begin(), quoted_data.end(),
              pcr_digest.begin(), pcr_digest.end()) == quoted_data.end()) {
     LOG(ERROR) << "PCR0 value mismatch.";
@@ -1302,7 +1283,7 @@ bool Attestation::VerifyCertifiedKey(
     const SecureBlob& certified_public_key,
     const SecureBlob& certified_key_info,
     const SecureBlob& proof) {
-  string key_info = ConvertBlobToString(certified_key_info);
+  string key_info = certified_key_info.to_string();
   if (!VerifySignature(aik_public_key, certified_key_info, proof)) {
     LOG(ERROR) << "Failed to verify certified key proof signature.";
     return false;
@@ -1429,7 +1410,7 @@ bool Attestation::VerifyActivateIdentity(const SecureBlob& delegate_blob,
 
   // Construct a TPM_ASYM_CA_CONTENTS structure.
   SecureBlob public_key_digest = CryptoLib::Sha1(identity_public_key);
-  SecureBlob asym_content = SecureCat(SecureCat(
+  SecureBlob asym_content = SecureBlob::Combine(SecureBlob::Combine(
       SecureBlob(kAsymContentHeader, arraysize(kAsymContentHeader)),
       aes_key),
       public_key_digest);
@@ -1453,7 +1434,7 @@ bool Attestation::VerifyActivateIdentity(const SecureBlob& delegate_blob,
   uint32_t length = htonl(encrypted_credential.size());
   SecureBlob length_blob(sizeof(uint32_t));
   memcpy(length_blob.data(), &length, sizeof(uint32_t));
-  SecureBlob sym_content = SecureCat(SecureCat(
+  SecureBlob sym_content = SecureBlob::Combine(SecureBlob::Combine(
       length_blob,
       SecureBlob(kSymContentHeader, arraysize(kSymContentHeader))),
       encrypted_credential);
@@ -1497,10 +1478,10 @@ bool Attestation::EncryptEndorsementCredential(
         }
         const unsigned char* asn1_ptr = &pca_key.front();
         rsa.reset(d2i_RSA_PUBKEY(NULL, &asn1_ptr, pca_key.size()));
-        chromeos::Blob key_id_blob;
+        chromeos::SecureBlob key_id_blob;
         // Ignore result, an empty ID is ok.
         install_attributes_->Get(kAlternatePCAKeyIDAttributeName, &key_id_blob);
-        key_id = ConvertBlobToString(key_id_blob);
+        key_id = key_id_blob.to_string();
       }
       break;
     default:
@@ -1565,7 +1546,7 @@ bool Attestation::SaveKey(bool is_user_specific,
       LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
       return false;
     }
-    SecureBlob blob = ConvertStringToBlob(tmp);
+    SecureBlob blob(tmp);
     ClearString(&tmp);
     if (!user_key_store_->Write(username, key_name, blob)) {
       LOG(ERROR) << __func__ << ": Failed to store certified key for user.";
@@ -1592,7 +1573,7 @@ bool Attestation::CreatePEMCertificateChain(const string& leaf_certificate,
     pem += "\n";
     pem += CreatePEMCertificate(intermediate_ca_cert);
   }
-  *certificate_chain = ConvertStringToBlob(pem);
+  *certificate_chain = SecureBlob(pem);
   ClearString(&pem);
   return true;
 }
@@ -1611,24 +1592,25 @@ bool Attestation::SignChallengeData(const CertifiedKey& key,
                                     const SecureBlob& data_to_sign,
                                     SecureBlob* response) {
   SecureBlob der_header(kSha256DigestInfo, arraysize(kSha256DigestInfo));
-  SecureBlob der_encoded_input = SecureCat(der_header,
-                                           CryptoLib::Sha256(data_to_sign));
+  SecureBlob der_encoded_input = SecureBlob::Combine(
+      der_header,
+      CryptoLib::Sha256(data_to_sign));
   SecureBlob signature;
-  if (!tpm_->Sign(ConvertStringToBlob(key.key_blob()),
+  if (!tpm_->Sign(SecureBlob(key.key_blob()),
                   der_encoded_input,
                   &signature)) {
     LOG(ERROR) << "Failed to generate signature.";
     return false;
   }
   SignedData signed_data;
-  signed_data.set_data(ConvertBlobToString(data_to_sign));
-  signed_data.set_signature(ConvertBlobToString(signature));
+  signed_data.set_data(data_to_sign.to_string());
+  signed_data.set_signature(signature.to_string());
   string serialized;
   if (!signed_data.SerializeToString(&serialized)) {
     LOG(ERROR) << "Failed to serialize signed data.";
     return false;
   }
-  SecureBlob tmp = ConvertStringToBlob(serialized);
+  SecureBlob tmp(serialized);
   ClearString(&serialized);
   response->swap(tmp);
   return true;
@@ -1643,9 +1625,8 @@ bool Attestation::ValidateEnterpriseChallenge(
     LOG(ERROR) << "Failed to decode public key.";
     return false;
   }
-  SecureBlob digest = CryptoLib::Sha256(
-      ConvertStringToBlob(signed_challenge.data()));
-  SecureBlob signature = ConvertStringToBlob(signed_challenge.signature());
+  SecureBlob digest = CryptoLib::Sha256(SecureBlob(signed_challenge.data()));
+  SecureBlob signature(signed_challenge.signature());
   RSA* enterprise_key = enterprise_test_key_ ? enterprise_test_key_ : rsa.get();
   if (!RSA_verify(NID_sha256, &digest.front(), digest.size(),
                   const_cast<unsigned char*>(&signature.front()),
@@ -1681,7 +1662,7 @@ bool Attestation::EncryptEnterpriseKeyInfo(const KeyInfo& key_info,
   RSA* enterprise_key = enterprise_test_key_ ? enterprise_test_key_ : rsa.get();
   string enterprise_key_id(kEnterpriseEncryptionPublicKeyID,
                            arraysize(kEnterpriseEncryptionPublicKeyID) - 1);
-  bool result = EncryptData(ConvertStringToBlob(serialized),
+  bool result = EncryptData(SecureBlob(serialized),
                             enterprise_key,
                             enterprise_key_id,
                             encrypted_data);
@@ -1788,10 +1769,11 @@ bool Attestation::CreateSignedPublicKey(
   SecureBlob data_to_sign(buffer, length);
   OPENSSL_free(buffer);
   SecureBlob der_header(kSha256DigestInfo, arraysize(kSha256DigestInfo));
-  SecureBlob der_encoded_input = SecureCat(der_header,
-                                           CryptoLib::Sha256(data_to_sign));
+  SecureBlob der_encoded_input = SecureBlob::Combine(
+      der_header,
+      CryptoLib::Sha256(data_to_sign));
   SecureBlob signature;
-  if (!tpm_->Sign(ConvertStringToBlob(key.key_blob()),
+  if (!tpm_->Sign(SecureBlob(key.key_blob()),
                   der_encoded_input,
                   &signature))
     return false;
@@ -1844,10 +1826,8 @@ bool Attestation::AesDecrypt(const chromeos::SecureBlob& ciphertext,
 
 int Attestation::ChooseTemporalIndex(const std::string& user,
                                      const std::string& origin) {
-  string user_hash = ConvertBlobToString(CryptoLib::Sha256(
-      ConvertStringToBlob(user)));
-  string origin_hash = ConvertBlobToString(CryptoLib::Sha256(
-      ConvertStringToBlob(origin)));
+  string user_hash = CryptoLib::Sha256(SecureBlob(user)).to_string();
+  string origin_hash = CryptoLib::Sha256(SecureBlob(origin)).to_string();
   int histogram[kNumTemporalValues] = {0};
   for (int i = 0; i < database_pb_.temporal_index_record_size(); ++i) {
     const AttestationDatabase::TemporalIndexRecord& record =
@@ -1898,7 +1878,7 @@ void Attestation::FinalizeEndorsementData() {
     LOG(INFO) << "Attestation: Migrating endorsement data.";
     if (!EncryptEndorsementCredential(
         kDefaultPCA,
-        ConvertStringToBlob(credentials->endorsement_credential()),
+        SecureBlob(credentials->endorsement_credential()),
         credentials->mutable_default_encrypted_endorsement_credential())) {
       LOG(ERROR) << "Attestation: Failed to encrypt EK cert.";
       return;
@@ -1909,7 +1889,7 @@ void Attestation::FinalizeEndorsementData() {
     LOG(INFO) << "Attestation: Migrating endorsement data (alternate).";
     if (!EncryptEndorsementCredential(
         kAlternatePCA,
-        ConvertStringToBlob(credentials->endorsement_credential()),
+        SecureBlob(credentials->endorsement_credential()),
         credentials->mutable_alternate_encrypted_endorsement_credential())) {
       LOG(ERROR) << "Attestation: Failed to encrypt EK cert (alternate).";
       return;

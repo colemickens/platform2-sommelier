@@ -15,6 +15,8 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm.h"
 
+using chromeos::SecureBlob;
+
 namespace {
 
 // The DER encoding of SHA-256 DigestInfo as defined in PKCS #1.
@@ -31,25 +33,6 @@ const unsigned char kPCRValue[20] = {0};
 const char kPCRExtension[] = "CROS_PCR15_845A4A757B94";
 
 const char kKeyFilePath[] = "/var/lib/boot-lockbox/key";
-
-// A helper to safely concatenate SecureBlobs.
-chromeos::SecureBlob SecureCat(const chromeos::SecureBlob& blob1,
-                               const chromeos::SecureBlob& blob2) {
-  chromeos::SecureBlob result(blob1.size() + blob2.size());
-  unsigned char* buffer = vector_as_array(&result);
-  memcpy(buffer, blob1.const_data(), blob1.size());
-  memcpy(buffer + blob1.size(), blob2.const_data(), blob2.size());
-  return chromeos::SecureBlob(result.begin(), result.end());
-}
-
-chromeos::SecureBlob ConvertStringToBlob(const std::string& s) {
-  return chromeos::SecureBlob(s.data(), s.length());
-}
-
-std::string ConvertBlobToString(const chromeos::Blob& blob) {
-  return std::string(reinterpret_cast<const char*>(vector_as_array(&blob)),
-                     blob.size());
-}
 
 // So we can use scoped_ptr with openssl types.
 struct RSADeleter {
@@ -78,8 +61,9 @@ bool BootLockbox::Sign(const chromeos::SecureBlob& data,
   }
   chromeos::SecureBlob der_header(kSha256DigestInfo,
                                   arraysize(kSha256DigestInfo));
-  chromeos::SecureBlob der_encoded_input = SecureCat(der_header,
-                                           CryptoLib::Sha256(data));
+  chromeos::SecureBlob der_encoded_input = SecureBlob::Combine(
+      der_header,
+      CryptoLib::Sha256(data));
   return tpm_->Sign(key_blob, der_encoded_input, signature);
 }
 
@@ -123,7 +107,7 @@ bool BootLockbox::GetKeyBlob(chromeos::SecureBlob* key_blob) {
   }
   CHECK(key_.has_key_blob());
   if (key_blob) {
-    chromeos::SecureBlob tmp = ConvertStringToBlob(key_.key_blob());
+    chromeos::SecureBlob tmp = SecureBlob(key_.key_blob());
     key_blob->swap(tmp);
   }
   return true;
@@ -135,7 +119,7 @@ bool BootLockbox::GetPublicKey(chromeos::SecureBlob* public_key) {
   }
   CHECK(key_.has_public_key_der());
   if (public_key) {
-    chromeos::SecureBlob tmp = ConvertStringToBlob(key_.public_key_der());
+    chromeos::SecureBlob tmp = SecureBlob(key_.public_key_der());
     public_key->swap(tmp);
   }
   return true;
@@ -185,8 +169,8 @@ bool BootLockbox::CreateKey(BootLockboxKey* key) {
     LOG(ERROR) << "Failed to create boot-lockbox key.";
     return false;
   }
-  key->set_key_blob(ConvertBlobToString(key_blob));
-  key->set_public_key_der(ConvertBlobToString(public_key));
+  key->set_key_blob(key_blob.to_string());
+  key->set_public_key_der(public_key.to_string());
   return SaveKey(*key);
 }
 

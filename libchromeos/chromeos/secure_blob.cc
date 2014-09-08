@@ -4,6 +4,8 @@
 
 #include <cstring>  // memcpy
 
+#include <base/stl_util.h>
+
 #include "chromeos/secure_blob.h"
 
 namespace chromeos {
@@ -58,11 +60,25 @@ void SecureBlob::clear_contents() {
 }
 
 void* SecureBlob::data() {
-  return &(this->front());
+  return chromeos::Blob::data();
 }
 
 const void* SecureBlob::const_data() const {
-  return &(this->front());
+  return chromeos::Blob::data();
+}
+
+std::string SecureBlob::to_string() const {
+  auto data_ptr = reinterpret_cast<const char*>(const_data());
+  return std::string(data_ptr, data_ptr + size());
+}
+
+SecureBlob SecureBlob::Combine(const SecureBlob& blob1,
+                               const SecureBlob& blob2) {
+  SecureBlob result;
+  result.reserve(blob1.size() + blob2.size());
+  result.insert(result.end(), blob1.begin(), blob1.end());
+  result.insert(result.end(), blob2.begin(), blob2.end());
+  return result;
 }
 
 void* SecureMemset(void* v, int c, size_t n) {

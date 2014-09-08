@@ -567,19 +567,7 @@ string CryptoLib::ComputeEncryptedDataHMAC(const EncryptedData& encrypted_data,
   memcpy(buffer + blob1.size(), blob2.const_data(), blob2.size());
 
   SecureBlob hmac = HmacSha512(hmac_key, result);
-  return ConvertBlobToString(hmac);
-}
-
-string CryptoLib::ConvertBlobToString(const chromeos::Blob& blob) {
-  return string(reinterpret_cast<const char*>(vector_as_array(&blob)),
-                blob.size());
-}
-
-chromeos::SecureBlob CryptoLib::ConvertStringToBlob(const string& str) {
-  if (str.length() == 0) {
-    return chromeos::SecureBlob();
-  }
-  return chromeos::SecureBlob(str.data(), str.length());
+  return hmac.to_string();
 }
 
 }  // namespace cryptohome

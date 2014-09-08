@@ -97,15 +97,6 @@ class AttestationTest : public testing::Test {
     return rsa_;
   }
 
-  SecureBlob ConvertStringToBlob(const string& s) {
-    return SecureBlob(s.data(), s.length());
-  }
-
-  string ConvertBlobToString(const chromeos::Blob& blob) {
-    return string(reinterpret_cast<const char*>(vector_as_array(&blob)),
-                  blob.size());
-  }
-
   SecureBlob GetEnrollBlob() {
     AttestationEnrollmentResponse pb;
     pb.set_status(OK);
@@ -137,7 +128,7 @@ class AttestationTest : public testing::Test {
     pb.set_certified_key_credential("stored_cert");
     if (include_ca_cert)
       pb.set_intermediate_ca_cert("stored_ca_cert");
-    pb.set_public_key(ConvertBlobToString(GetPKCS1PublicKey()));
+    pb.set_public_key(GetPKCS1PublicKey().to_string());
     pb.set_payload(payload);
     string tmp;
     pb.SerializeToString(&tmp);
@@ -208,8 +199,8 @@ class AttestationTest : public testing::Test {
     ChallengeResponse response_pb;
     if (!response_pb.ParseFromString(signed_data.data()))
       return false;
-    string expected_challenge = ConvertBlobToString(
-        GetEnterpriseChallenge("EnterpriseKeyChallenge", false));
+    string expected_challenge =
+        GetEnterpriseChallenge("EnterpriseKeyChallenge", false).to_string();
     if (response_pb.challenge().data() != expected_challenge)
       return false;
     string key_info;
@@ -238,7 +229,7 @@ class AttestationTest : public testing::Test {
     if (sign) {
       unsigned char buffer[256];
       unsigned int length = 0;
-      SecureBlob digest = CryptoLib::Sha256(ConvertStringToBlob(serialized));
+      SecureBlob digest = CryptoLib::Sha256(SecureBlob(serialized));
       RSA_sign(NID_sha256,
                &digest.front(), digest.size(),
                buffer, &length,
@@ -248,7 +239,7 @@ class AttestationTest : public testing::Test {
       signed_challenge.set_signature(buffer, length);
       signed_challenge.SerializeToString(&serialized);
     }
-    return ConvertStringToBlob(serialized);
+    return SecureBlob(serialized);
   }
 
   bool DecryptData(const EncryptedData& input, string* output) {
@@ -266,15 +257,15 @@ class AttestationTest : public testing::Test {
     SecureBlob aes_key(buffer, length);
     // Decrypt the blob.
     SecureBlob decrypted;
-    SecureBlob encrypted = ConvertStringToBlob(input.encrypted_data());
-    SecureBlob aes_iv = ConvertStringToBlob(input.iv());
+    SecureBlob encrypted = SecureBlob(input.encrypted_data());
+    SecureBlob aes_iv = SecureBlob(input.iv());
     if (!CryptoLib::AesDecryptSpecifyBlockMode(encrypted, 0, encrypted.size(),
                                                aes_key, aes_iv,
                                                CryptoLib::kPaddingStandard,
                                                CryptoLib::kCbc,
                                                &decrypted))
       return false;
-    *output = ConvertBlobToString(decrypted);
+    *output = decrypted.to_string();
     return true;
   }
 

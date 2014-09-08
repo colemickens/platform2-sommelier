@@ -120,14 +120,6 @@ bool SanityCheckAuthData(const string& auth_data_hash,
   return (auth_data_hash[1] == saved_auth_data_hash[1]);
 }
 
-SecureBlob SecureCat(const SecureBlob& blob1, const SecureBlob& blob2) {
-  SecureBlob result(blob1.size() + blob2.size());
-  unsigned char* buffer = vector_as_array(&result);
-  memcpy(buffer, blob1.const_data(), blob1.size());
-  memcpy(buffer + blob1.size(), blob2.const_data(), blob2.size());
-  return result;
-}
-
 // Performs expensive tasks required to initialize a token.
 class TokenInitThread : public base::PlatformThread::Delegate {
  public:
@@ -614,9 +606,9 @@ bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
 bool SlotManagerImpl::LoadSoftwareToken(const SecureBlob& auth_data,
                                         ObjectPool* object_pool) {
   SecureBlob auth_key_encrypt = Sha256(
-      SecureCat(auth_data, SecureBlob(kKeyPurposeEncrypt)));
+      SecureBlob::Combine(auth_data, SecureBlob(kKeyPurposeEncrypt)));
   SecureBlob auth_key_mac = Sha256(
-      SecureCat(auth_data, SecureBlob(kKeyPurposeMac)));
+      SecureBlob::Combine(auth_data, SecureBlob(kKeyPurposeMac)));
   string encrypted_master_key;
   string saved_mac;
   if (!object_pool->GetInternalBlob(kEncryptedMasterKey,
@@ -662,7 +654,7 @@ bool SlotManagerImpl::InitializeSoftwareToken(const SecureBlob& auth_data,
     return false;
   }
   SecureBlob auth_key_encrypt = Sha256(
-      SecureCat(auth_data, SecureBlob(kKeyPurposeEncrypt)));
+      SecureBlob::Combine(auth_data, SecureBlob(kKeyPurposeEncrypt)));
   string encrypted_master_key;
   if (!RunCipher(true,  // Encrypt.
                  auth_key_encrypt,
@@ -673,7 +665,7 @@ bool SlotManagerImpl::InitializeSoftwareToken(const SecureBlob& auth_data,
     return false;
   }
   SecureBlob auth_key_mac = Sha256(
-      SecureCat(auth_data, SecureBlob(kKeyPurposeMac)));
+      SecureBlob::Combine(auth_data, SecureBlob(kKeyPurposeMac)));
   if (!object_pool->SetInternalBlob(kEncryptedMasterKey,
                                     encrypted_master_key) ||
       !object_pool->SetInternalBlob(kAuthDataHash,
@@ -798,14 +790,14 @@ void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
     }
     // Check if old_auth_data is valid.
     SecureBlob old_auth_key_mac = Sha256(
-        SecureCat(old_auth_data, SecureBlob(kKeyPurposeMac)));
+        SecureBlob::Combine(old_auth_data, SecureBlob(kKeyPurposeMac)));
     if (HmacSha512(kAuthKeyMacInput, old_auth_key_mac) != saved_mac) {
       LOG(ERROR) << "Old authorization data is not correct.";
       return;
     }
     // Decrypt the master key with the old_auth_data.
     SecureBlob old_auth_key_encrypt = Sha256(
-        SecureCat(old_auth_data, SecureBlob(kKeyPurposeEncrypt)));
+        SecureBlob::Combine(old_auth_data, SecureBlob(kKeyPurposeEncrypt)));
     string master_key;
     if (!RunCipher(false,  // Decrypt.
                    old_auth_key_encrypt,
@@ -817,7 +809,7 @@ void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
     }
     // Encrypt the master key with the new_auth_data.
     SecureBlob new_auth_key_encrypt = Sha256(
-        SecureCat(new_auth_data, SecureBlob(kKeyPurposeEncrypt)));
+        SecureBlob::Combine(new_auth_data, SecureBlob(kKeyPurposeEncrypt)));
     if (!RunCipher(true,  // Encrypt.
                    new_auth_key_encrypt,
                    std::string(),  // Use a random IV.
@@ -829,7 +821,7 @@ void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
     ClearString(&master_key);
     // Write out the new blobs.
     SecureBlob new_auth_key_mac = Sha256(
-        SecureCat(new_auth_data, SecureBlob(kKeyPurposeMac)));
+        SecureBlob::Combine(new_auth_data, SecureBlob(kKeyPurposeMac)));
     if (!object_pool->SetInternalBlob(kEncryptedMasterKey,
                                       encrypted_master_key) ||
         !object_pool->SetInternalBlob(kAuthDataHash,

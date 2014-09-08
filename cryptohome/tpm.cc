@@ -35,16 +35,6 @@ using trousers::ScopedTssPolicy;
 namespace {
 typedef scoped_ptr<BYTE, base::FreeDeleter> ScopedByteArray;
 
-// A helper to safely concatenate SecureBlobs.
-// TODO(dkrahn): Move this somewhere common - crbug.com/351945
-chromeos::SecureBlob SecureCat(const chromeos::SecureBlob& blob1,
-                               const chromeos::SecureBlob& blob2) {
-  chromeos::SecureBlob result(blob1.size() + blob2.size());
-  unsigned char* buffer = vector_as_array(&result);
-  memcpy(buffer, blob1.const_data(), blob1.size());
-  memcpy(buffer + blob1.size(), blob2.const_data(), blob2.size());
-  return chromeos::SecureBlob(result.begin(), result.end());
-}
 }  // namespace
 
 namespace cryptohome {
@@ -2499,7 +2489,8 @@ bool Tpm::VerifyPCRBoundKey(int pcr_index,
   Trspi_LoadBlob_UINT32(&trspi_offset,
                         pcr_value_length,
                         vector_as_array(&pcr_value_length_blob));
-  SecureBlob pcr_hash = CryptoLib::Sha1(SecureCat(SecureCat(
+  SecureBlob pcr_hash = CryptoLib::Sha1(SecureBlob::Combine(
+      SecureBlob::Combine(
       pcr_selection_blob,
       pcr_value_length_blob),
       pcr_value));

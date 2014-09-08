@@ -132,9 +132,6 @@ class CryptoLib {
   static std::string ComputeEncryptedDataHMAC(
       const EncryptedData& encrypted_data,
       const chromeos::SecureBlob& hmac_key);
-
-  static std::string ConvertBlobToString(const chromeos::Blob& blob);
-  static chromeos::SecureBlob ConvertStringToBlob(const std::string& str);
 };
 
 }  // namespace cryptohome

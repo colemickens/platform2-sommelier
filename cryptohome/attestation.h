@@ -407,16 +407,6 @@ class Attestation : public base::PlatformThread::Delegate,
   bool is_tpm_ready_;
   bool is_prepare_in_progress_;
 
-  // Moves data from a std::string container to a SecureBlob container.
-  chromeos::SecureBlob ConvertStringToBlob(const std::string& s);
-
-  // Moves data from a chromeos::Blob container to a std::string container.
-  std::string ConvertBlobToString(const chromeos::Blob& blob);
-
-  // Concatenates two SecureBlobs.
-  chromeos::SecureBlob SecureCat(const chromeos::SecureBlob& blob1,
-                                 const chromeos::SecureBlob& blob2);
-
   // Serializes and encrypts an attestation database.
   bool EncryptDatabase(const AttestationDatabase& db,
                        std::string* serial_encrypted_db);

@@ -310,8 +310,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
   bool chaps_key_present = serialized.has_wrapped_chaps_key();
   SecureBlob local_wrapped_chaps_key;
   if (chaps_key_present) {
-    local_wrapped_chaps_key = CryptoLib::ConvertStringToBlob(
-        serialized.wrapped_chaps_key());
+    local_wrapped_chaps_key = SecureBlob(serialized.wrapped_chaps_key());
   }
   if (!serialized.has_tpm_key()) {
     LOG(ERROR) << "Decrypting with TPM, but no tpm key present";
@@ -430,7 +429,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
           // This does not force a failure to use the keyset.
           continue;
         }
-        secret->set_symmetric_key(CryptoLib::ConvertBlobToString(clear_key));
+        secret->set_symmetric_key(clear_key.to_string());
         secret->set_wrapped(false);
       }
     }
@@ -450,7 +449,7 @@ bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
                            const SecureBlob& key,
                            CryptoError* error,
                            VaultKeyset* keyset) const {
-  SecureBlob blob = CryptoLib::ConvertStringToBlob(serialized.wrapped_keyset());
+  SecureBlob blob = SecureBlob(serialized.wrapped_keyset());
   int scrypt_rc;
   size_t out_len = 0;
   SecureBlob decrypted(blob.size());
@@ -486,8 +485,7 @@ bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
   SecureBlob wrapped_chaps_key;
   bool chaps_key_present = serialized.has_wrapped_chaps_key();
   if (chaps_key_present) {
-    wrapped_chaps_key = CryptoLib::ConvertStringToBlob(
-        serialized.wrapped_chaps_key());
+    wrapped_chaps_key = SecureBlob(serialized.wrapped_chaps_key());
     chaps_key.resize(wrapped_chaps_key.size());
   }
   // Perform a Scrypt operation on wrapped chaps key.
@@ -660,8 +658,7 @@ bool Crypto::EncryptTPM(const VaultKeyset& vault_keyset,
           // This forces a failure.
           return false;
         }
-        secret->set_symmetric_key(
-          CryptoLib::ConvertBlobToString(encrypted_auth_key));
+        secret->set_symmetric_key(encrypted_auth_key.to_string());
         secret->set_wrapped(true);
       }
     }

@@ -33,6 +33,10 @@ class CHROMEOS_EXPORT SecureBlob : public chromeos::Blob {
 
   void* data();
   const void* const_data() const;
+
+  std::string to_string() const;
+  static SecureBlob Combine(const SecureBlob& blob1,
+                            const SecureBlob& blob2);
 };
 
 // Secure memset(). This function is guaranteed to fill int the whole buffer

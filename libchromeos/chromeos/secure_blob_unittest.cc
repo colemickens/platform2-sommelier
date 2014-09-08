@@ -6,6 +6,10 @@
 
 #include "chromeos/secure_blob.h"
 
+#include <algorithm>
+#include <iterator>
+#include <numeric>
+
 #include <base/logging.h>
 #include <gtest/gtest.h>
 
@@ -19,17 +23,19 @@ class SecureBlobTest : public ::testing::Test {
 
   static bool FindBlobInBlob(const chromeos::Blob& haystack,
                              const chromeos::Blob& needle) {
-    if (needle.size() > haystack.size()) {
-      return false;
+    auto pos = std::search(haystack.begin(), haystack.end(), needle.begin(),
+                           needle.end());
+    return (pos != haystack.end());
+  }
+
+  static int FindBlobIndexInBlob(const chromeos::Blob& haystack,
+                                 const chromeos::Blob& needle) {
+    auto pos = std::search(haystack.begin(), haystack.end(), needle.begin(),
+                           needle.end());
+    if (pos == haystack.end()) {
+      return -1;
     }
-    for (unsigned int start = 0; start <= (haystack.size() - needle.size());
-         start++) {
-      if (chromeos::SecureMemcmp(&haystack[start], &needle[0],
-                                 needle.size()) == 0) {
-        return true;
-      }
-    }
-    return false;
+    return std::distance(haystack.begin(), pos);
   }
 
  private:
@@ -88,6 +94,29 @@ TEST_F(SecureBlobTest, ResizeTest) {
   EXPECT_EQ(original_data, blob.data());
   EXPECT_EQ(length - 1, blob.size());
   EXPECT_EQ(0, static_cast<unsigned char*>(blob.data())[length - 1]);
+}
+
+TEST_F(SecureBlobTest, CombineTest) {
+  SecureBlob blob1(32);
+  SecureBlob blob2(32);
+  std::iota(blob1.begin(), blob1.end(), 0);
+  std::iota(blob2.begin(), blob2.end(), 32);
+  SecureBlob combined_blob = SecureBlob::Combine(blob1, blob2);
+  EXPECT_EQ(combined_blob.size(), (blob1.size() + blob2.size()));
+  EXPECT_TRUE(SecureBlobTest::FindBlobInBlob(combined_blob, blob1));
+  EXPECT_TRUE(SecureBlobTest::FindBlobInBlob(combined_blob, blob2));
+  int blob1_index = SecureBlobTest::FindBlobIndexInBlob(combined_blob, blob1);
+  int blob2_index = SecureBlobTest::FindBlobIndexInBlob(combined_blob, blob2);
+  EXPECT_EQ(blob1_index, 0);
+  EXPECT_EQ(blob2_index, 32);
+}
+
+TEST_F(SecureBlobTest, BlobToStringTest) {
+  std::string test_string("Test String");
+  SecureBlob blob = SecureBlob(test_string);
+  EXPECT_EQ(blob.size(), test_string.length());
+  std::string result_string = blob.to_string();
+  EXPECT_EQ(test_string.compare(result_string), 0);
 }
 
 }  // namespace chromeos
