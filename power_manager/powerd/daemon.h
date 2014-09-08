@@ -14,6 +14,7 @@
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
+#include <base/timer/timer.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
@@ -261,6 +262,11 @@ class Daemon : public policy::BacklightControllerObserver,
   // True once the shutdown process has started. Remains true until the
   // system has powered off.
   bool shutting_down_;
+
+  // Recurring timer that's started if a shutdown request is deferred due to a
+  // running flashrom process. ShutDown() is called repeatedly so the system
+  // will eventually be shut down after flashrom exits.
+  base::Timer retry_shutdown_for_flashrom_timer_;
 
   // Path to a file that's touched when a suspend attempt's commencement is
   // announced to other processes and unlinked when the attempt's completion is

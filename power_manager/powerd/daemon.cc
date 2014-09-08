@@ -14,7 +14,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/metrics_library.h>
 
@@ -69,6 +68,15 @@ const char kSetuidHelperPath[] = "/usr/bin/powerd_setuid_helper";
 
 // File that's created once the out-of-box experience has been completed.
 const char kOobeCompletedPath[] = "/home/chronos/.oobe_completed";
+
+// File where flashrom's PID is stored while flashrom is performing a
+// potentially-destructive action that powerd shouldn't interrupt by suspending
+// or shutting down the system.
+const char kFlashromLockPath[] = "/var/lock/flashrom_powerd.lock";
+
+// Interval between attempts to retry shutting the system down while
+// kFlashromLockPath exists, in seconds.
+const int kRetryShutdownForFlashromSec = 5;
 
 // Maximum amount of time to wait for responses to D-Bus method calls to other
 // processes.
@@ -275,6 +283,22 @@ int RunSetuidHelper(const std::string& action,
   }
 }
 
+// Returns true if flashrom's PID file exists and contains a valid PID.
+bool FlashromIsRunning() {
+  std::string pid;
+  if (!base::ReadFileToString(base::FilePath(kFlashromLockPath), &pid))
+    return false;
+
+  base::TrimWhitespaceASCII(pid, base::TRIM_TRAILING, &pid);
+  if (!base::DirectoryExists(base::FilePath("/proc").Append(pid))) {
+    LOG(WARNING) << kFlashromLockPath << " contains stale/invalid PID "
+                 << "\"" << pid << "\"";
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace
 
 // Performs actions requested by |state_controller_|.  The reason that
@@ -408,6 +432,8 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       suspender_(new policy::Suspender),
       metrics_collector_(new MetricsCollector),
       shutting_down_(false),
+      retry_shutdown_for_flashrom_timer_(false /* retain_user_task */,
+                                         true /* is_repeating */),
       suspend_announced_path_(run_dir.Append(kSuspendAnnouncedFile)),
       session_state_(SESSION_STOPPED),
       state_controller_initialized_(false),
@@ -681,6 +707,11 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     uint64_t wakeup_count,
     bool wakeup_count_valid,
     base::TimeDelta duration) {
+  if (FlashromIsRunning()) {
+    LOG(INFO) << "Aborting suspend attempt for flashrom";
+    return SUSPEND_FAILED;
+  }
+
   // Touch a file that crash-reporter can inspect later to determine
   // whether the system was suspended while an unclean shutdown occurred.
   // If the file already exists, assume that crash-reporter hasn't seen it
@@ -1365,7 +1396,18 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
     return;
   }
 
+  if (FlashromIsRunning()) {
+    LOG(INFO) << "Postponing shutdown for flashrom";
+    if (!retry_shutdown_for_flashrom_timer_.IsRunning()) {
+      retry_shutdown_for_flashrom_timer_.Start(
+          FROM_HERE, base::TimeDelta::FromSeconds(kRetryShutdownForFlashromSec),
+          base::Bind(&Daemon::ShutDown, base::Unretained(this), mode, reason));
+    }
+    return;
+  }
+
   shutting_down_ = true;
+  retry_shutdown_for_flashrom_timer_.Stop();
   suspender_->HandleShutdown();
   metrics_collector_->HandleShutdown(reason);
 
