@@ -15,6 +15,7 @@
 #include "chromiumos-wide-profiling/quipper_string.h"
 #include "chromiumos-wide-profiling/quipper_test.h"
 #include "chromiumos-wide-profiling/scoped_temp_path.h"
+#include "chromiumos-wide-profiling/test_perf_data.h"
 #include "chromiumos-wide-profiling/test_utils.h"
 #include "chromiumos-wide-profiling/utils.h"
 
@@ -278,102 +279,34 @@ TEST(PerfReaderTest, UnperfizeBuildID) {
 TEST(PerfReaderTest, ReadsTraceMetadata) {
   std::stringstream input;
 
-  // header
-
   const size_t attr_count = 1;
-  const size_t attr_size = attr_count * sizeof(perf_file_attr);
-  const perf_file_header header = {
-    .magic = kPerfMagic,
-    .size = 104,
-    .attr_size = 112,
-    .attrs = {.offset = 104, .size = attr_size},
-    .data = {.offset = 104 + attr_size, .size = (1+14)*sizeof(u64)},
-    .event_types = {0},
-    .adds_features = {1 << HEADER_TRACING_DATA, 0, 0, 0},
-  };
-  input.write(reinterpret_cast<const char*>(&header), sizeof(header));
-  ASSERT_EQ(input.tellp(), header.size);
-  ASSERT_EQ(input.tellp(), header.attrs.offset);
+
+  // header
+  testing::ExamplePerfDataFileHeader file_header(
+      attr_count, 1 << HEADER_TRACING_DATA);
+  file_header.WriteTo(&input);
+  const perf_file_header &header = file_header.header();
 
   // attrs
-
-  // Due to the unnamed union fields (eg, sample_period), this structure can't
-  // be initialized with designated initializers.
-  perf_event_attr attr = {};
-  // See kernel src: tools/perf/util/evsel.c perf_evsel__newtp()
-  attr.type = PERF_TYPE_TRACEPOINT,
-  attr.size = sizeof(perf_event_attr),
-  attr.config = 73,  // tracepoint event id
-  attr.sample_period = 1,
-  attr.sample_type = (PERF_SAMPLE_IP |
-                      PERF_SAMPLE_TID |
-                      PERF_SAMPLE_TIME |
-                      PERF_SAMPLE_CPU |
-                      PERF_SAMPLE_PERIOD |
-                      PERF_SAMPLE_RAW);
-
-  const perf_file_attr attrs[attr_count] = {
-    {
-      .attr = attr,
-      .ids = {.offset = 104, .size = 0},
-    },
-  };
-  input.write(reinterpret_cast<const char*>(&attrs), sizeof(attrs));
-  ASSERT_EQ(input.tellp(), header.data.offset);
+  testing::ExamplePerfFileAttr_Tracepoint(73).WriteTo(&input);
 
   // data
-
-  const sample_event event = {
-    .header = {
-      .type = PERF_RECORD_SAMPLE,
-      .misc = 0x0002,
-      .size = 0x0078,
-    }
-  };
-  const u64 sample_event_array[] = {
-    0x00007f999c38d15a,  // IP
-    0x0000068d0000068d,  // TID (u32 pid, tid)
-    0x0001e0211cbab7b9,  // TIME
-    0x0000000000000000,  // CPU
-    0x0000000000000001,  // PERIOD
-    0x0000004900000044,  // RAW (u32 size = 0x44 = 68 = 4 + 8*sizeof(u64))
-    0x000000090000068d,  //  .
-    0x0000000000000000,  //  .
-    0x0000100000000000,  //  .
-    0x0000000300000000,  //  .
-    0x0000002200000000,  //  .
-    0xffffffff00000000,  //  .
-    0x0000000000000000,  //  .
-    0x0000000000000000,  //  .
-  };
-  input.write(reinterpret_cast<const char*>(&event), sizeof(event));
-  input.write(reinterpret_cast<const char*>(sample_event_array),
-              sizeof(sample_event_array));
-
-  const size_t data_end = input.tellp();
-  ASSERT_EQ(data_end, header.data.offset + header.data.size);
-
-  // metadata index
-
-  const char x[] = "\x17\x08\x44tracing0.5BLAHBLAHBLAH....";
-  const std::vector<char> trace_metadata(x, x+sizeof(x)-1);
-
-  const unsigned int metadata_count = 1;
-  const perf_file_section metadata_index[metadata_count] = {
-    {
-      .offset = data_end + metadata_count*sizeof(perf_file_section),
-      .size = trace_metadata.size(),
-    },
-  };
-  input.write(reinterpret_cast<const char*>(metadata_index),
-              sizeof(metadata_index));
-  ASSERT_EQ(input.tellp(),
-           data_end + metadata_count*2*sizeof(u64));
+  ASSERT_EQ(input.tellp(), header.data.offset);
+  testing::ExamplePerfSampleEvent_Tracepoint().WriteTo(&input);
+  ASSERT_EQ(input.tellp(), file_header.data_end());
 
   // metadata
 
-  ASSERT_EQ(input.tellp(), metadata_index[0].offset);
-  input.write(trace_metadata.data(), trace_metadata.size());
+  const unsigned int metadata_count = 1;
+
+  // HEADER_TRACING_DATA
+  testing::ExampleTracingMetadata tracing_metadata(
+      file_header.data_end() + metadata_count*sizeof(perf_file_section));
+
+  // write metadata index entries
+  tracing_metadata.index_entry().WriteTo(&input);
+  // write metadata
+  tracing_metadata.data().WriteTo(&input);
 
   //
   // Parse input.
@@ -381,13 +314,13 @@ TEST(PerfReaderTest, ReadsTraceMetadata) {
 
   PerfReader pr;
   EXPECT_TRUE(pr.ReadFromString(input.str()));
-  EXPECT_EQ(trace_metadata, pr.tracing_data());
+  EXPECT_EQ(tracing_metadata.data().value(), pr.tracing_data());
 
   // Write it out and read it in again, it should still be good:
   std::vector<char> output_perf_data;
   EXPECT_TRUE(pr.WriteToVector(&output_perf_data));
   EXPECT_TRUE(pr.ReadFromVector(output_perf_data));
-  EXPECT_EQ(trace_metadata, pr.tracing_data());
+  EXPECT_EQ(tracing_metadata.data().value(), pr.tracing_data());
 }
 
 TEST(PerfReaderTest, ReadsTracingMetadataEvent) {

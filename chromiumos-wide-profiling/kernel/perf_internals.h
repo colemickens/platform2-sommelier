@@ -29,6 +29,9 @@ typedef signed char	   s8;
 
 #define MAX_EVENT_NAME 64
 
+// The first 64 bits of the perf header, used as a perf data file ID tag.
+const uint64_t kPerfMagic = 0x32454c4946524550LL;  // "PERFILE2" little-endian
+
 // These data structures have been copied from the kernel. See files under
 // tools/perf/util.
 

@@ -20,9 +20,6 @@
 
 namespace quipper {
 
-// The first 64 bits of the perf header, used as a perf data file ID tag.
-const uint64_t kPerfMagic = 0x32454c4946524550LL;  // "PERFILE2" little-endian
-
 struct PerfFileAttr {
   struct perf_event_attr attr;
   std::vector<u64> ids;

@@ -44,6 +44,7 @@
       'type': 'static_library',
       'sources': [
         'test_utils.cc',
+        'test_perf_data.cc',
       ],
       'dependencies': [
         'common',
