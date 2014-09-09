@@ -28,7 +28,7 @@
 //
 //  chromeos::ErrorPtr error;
 //  std::string return_value;
-//  if (ExtractMethodCallResults(resp, &error, &return_value)) {
+//  if (ExtractMethodCallResults(resp.get(), &error, &return_value)) {
 //    // Use the |return_value|.
 //  } else {
 //    // An error occurred. Use |error| to get details.

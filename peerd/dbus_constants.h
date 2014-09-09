@@ -47,6 +47,17 @@ extern const char kServiceIpInfos[];
 
 extern const char kPingResponse[];
 
+namespace avahi {
+
+extern const char kServiceName[];
+
+extern const char kServerInterface[];
+extern const char kServerPath[];
+extern const char kServerMethodGetState[];
+extern const char kServerSignalStateChanged[];
+
+}  // namespace avahi
+
 }  // namespace dbus_constants
 
 }  // namespace peerd

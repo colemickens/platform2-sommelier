@@ -39,6 +39,17 @@ const char kServiceIpInfos[] = "IpInfos";
 
 const char kPingResponse[] = "Hello world!";
 
+namespace avahi {
+
+const char kServiceName[] = "org.freedesktop.Avahi";
+
+const char kServerInterface[] = "org.freedesktop.Avahi.Server";
+const char kServerPath[] = "/";
+const char kServerMethodGetState[] = "GetState";
+const char kServerSignalStateChanged[] = "StateChanged";
+
+}  // namespace avahi
+
 }  // namespace dbus_constants
 
 }  // namespace peerd

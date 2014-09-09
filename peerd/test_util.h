@@ -8,6 +8,8 @@
 #include <string>
 
 #include <chromeos/dbus/mock_dbus_object.h>
+#include <dbus/exported_object.h>
+#include <dbus/object_proxy.h>
 
 #include "peerd/typedefs.h"
 
@@ -23,6 +25,12 @@ void HandleMethodExport(
     const std::string& method_name,
     dbus::ExportedObject::MethodCallCallback method_call_callback,
     dbus::ExportedObject::OnExportedCallback on_exported_callback);
+
+void HandleConnectToSignal(
+    const std::string& interface_name,
+    const std::string& signal_name,
+    dbus::ObjectProxy::SignalCallback signal_callback,
+    dbus::ObjectProxy::OnConnectedCallback on_connected_callback);
 
 }  // namespace test_util
 }  // namespace peerd

@@ -6,7 +6,6 @@
 
 #include <base/bind.h>
 #include <chromeos/dbus/mock_dbus_object.h>
-#include <dbus/exported_object.h>
 #include <dbus/mock_bus.h>
 
 using chromeos::dbus_utils::MockDBusObject;
@@ -50,6 +49,14 @@ void HandleMethodExport(
     ExportedObject::MethodCallCallback method_call_callback,
     ExportedObject::OnExportedCallback on_exported_callback) {
   on_exported_callback.Run(interface_name, method_name, true);
+}
+
+void HandleConnectToSignal(
+    const std::string& interface_name,
+    const std::string& signal_name,
+    dbus::ObjectProxy::SignalCallback signal_callback,
+    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
+  on_connected_callback.Run(interface_name, signal_name, true);
 }
 
 }  // namespace test_util
