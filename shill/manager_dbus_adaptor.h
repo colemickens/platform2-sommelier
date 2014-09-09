@@ -51,62 +51,68 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
   void EmitStateChanged(const std::string &new_state);
 
   // Implementation of Manager_adaptor
-  std::map<std::string, ::DBus::Variant> GetProperties(::DBus::Error &error);
+  std::map<std::string, DBus::Variant> GetProperties(
+      DBus::Error &error);  // NOLINT
   void SetProperty(const std::string &name,
-                   const ::DBus::Variant &value,
-                   ::DBus::Error &error);
-  std::string GetState(::DBus::Error &error);
-  ::DBus::Path CreateProfile(const std::string &name, ::DBus::Error &error);
-  void RemoveProfile(const std::string &name, ::DBus::Error &error);
-  ::DBus::Path PushProfile(const std::string &, ::DBus::Error &error);
-  ::DBus::Path InsertUserProfile(const std::string &,
-                                 const std::string &,
-                                 ::DBus::Error &error);
-  void PopProfile(const std::string &, ::DBus::Error &error);
-  void PopAnyProfile(::DBus::Error &error);
-  void PopAllUserProfiles(::DBus::Error &error);
-  void RecheckPortal(::DBus::Error &error);
-  void RequestScan(const std::string &, ::DBus::Error &error);
+                   const DBus::Variant &value,
+                   DBus::Error &error);  // NOLINT
+  std::string GetState(DBus::Error &error);  // NOLINT
+  DBus::Path CreateProfile(const std::string &name,
+                           DBus::Error &error);  // NOLINT
+  void RemoveProfile(const std::string &name, DBus::Error &error);  // NOLINT
+  DBus::Path PushProfile(const std::string &name,
+                         DBus::Error &error);  // NOLINT
+  DBus::Path InsertUserProfile(const std::string &name,
+                               const std::string &user_hash,
+                               DBus::Error &error);  // NOLINT
+  void PopProfile(const std::string &name, DBus::Error &error);  // NOLINT
+  void PopAnyProfile(DBus::Error &error);  // NOLINT
+  void PopAllUserProfiles(DBus::Error &error);  // NOLINT
+  void RecheckPortal(DBus::Error &error);  // NOLINT
+  void RequestScan(const std::string &technology,
+                   DBus::Error &error);  // NOLINT
 
-  void EnableTechnology(const std::string &, ::DBus::Error &error);
-  void DisableTechnology(const std::string &, ::DBus::Error &error);
+  void EnableTechnology(const std::string &technology_name,
+                        DBus::Error &error);  // NOLINT
+  void DisableTechnology(const std::string &technology_name,
+                         DBus::Error &error);  // NOLINT
 
-  ::DBus::Path GetService(const std::map<std::string, ::DBus::Variant> &args,
-                          ::DBus::Error &error);
-  ::DBus::Path GetVPNService(const std::map<std::string, ::DBus::Variant> &args,
-                             ::DBus::Error &error);
-  ::DBus::Path GetWifiService(
-      const std::map<std::string, ::DBus::Variant> &args,
-      ::DBus::Error &error);
-  ::DBus::Path ConfigureService(
-      const std::map<std::string, ::DBus::Variant> &args,
-      ::DBus::Error &error);
-  ::DBus::Path ConfigureServiceForProfile(
-      const ::DBus::Path &profile_rpcid,
-      const std::map<std::string, ::DBus::Variant> &args,
-      ::DBus::Error &error);
-  ::DBus::Path FindMatchingService(
-      const std::map<std::string, ::DBus::Variant> &args,
-      ::DBus::Error &error);
+  DBus::Path GetService(const std::map<std::string, DBus::Variant> &args,
+                        DBus::Error &error);  // NOLINT
+  DBus::Path GetVPNService(const std::map<std::string, DBus::Variant> &args,
+                           DBus::Error &error);  // NOLINT
+  DBus::Path GetWifiService(
+      const std::map<std::string, DBus::Variant> &args,
+      DBus::Error &error);  // NOLINT
+  DBus::Path ConfigureService(
+      const std::map<std::string, DBus::Variant> &args,
+      DBus::Error &error);  // NOLINT
+  DBus::Path ConfigureServiceForProfile(
+      const DBus::Path &profile_rpcid,
+      const std::map<std::string, DBus::Variant> &args,
+      DBus::Error &error);  // NOLINT
+  DBus::Path FindMatchingService(
+      const std::map<std::string, DBus::Variant> &args,
+      DBus::Error &error);  // NOLINT
 
   void AddWakeOnPacketConnection(const std::string &ip_endpoint,
-                                 ::DBus::Error &error);
+                                 DBus::Error &error);  // NOLINT
   void RemoveWakeOnPacketConnection(const std::string &ip_endpoint,
-                                    ::DBus::Error &error);
-  void RemoveAllWakeOnPacketConnections(::DBus::Error &error);
+                                    DBus::Error &error);  // NOLINT
+  void RemoveAllWakeOnPacketConnections(DBus::Error &error);  // NOLINT
 
-  int32_t GetDebugLevel(::DBus::Error &error);
-  void SetDebugLevel(const int32_t &level, ::DBus::Error &error);
+  int32_t GetDebugLevel(DBus::Error &error);  // NOLINT
+  void SetDebugLevel(const int32_t &level, DBus::Error &error);  // NOLINT
 
-  std::string GetServiceOrder(::DBus::Error &error);
-  void SetServiceOrder(const std::string &, ::DBus::Error &error);
+  std::string GetServiceOrder(DBus::Error &error);  // NOLINT
+  void SetServiceOrder(const std::string &order, DBus::Error &error);  // NOLINT
 
-  std::string GetDebugTags(::DBus::Error &error);
-  void SetDebugTags(const std::string &tags, ::DBus::Error &error);
-  std::string ListDebugTags(::DBus::Error &error);
+  std::string GetDebugTags(DBus::Error &error);  // NOLINT
+  void SetDebugTags(const std::string &tags, DBus::Error &error);  // NOLINT
+  std::string ListDebugTags(DBus::Error &error);  // NOLINT
 
-  std::map<std::string, ::DBus::Variant> GetNetworksForGeolocation(
-      ::DBus::Error &error);
+  std::map<std::string, DBus::Variant> GetNetworksForGeolocation(
+      DBus::Error &error);  // NOLINT
 
   bool VerifyDestination(const std::string &certificate,
                          const std::string &public_key,
@@ -115,7 +121,7 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
                          const std::string &destination_udn,
                          const std::string &hotspot_ssid,
                          const std::string &hotspot_bssid,
-                         ::DBus::Error &error);
+                         DBus::Error &error);  // NOLINT
 
   std::string VerifyAndEncryptCredentials(const std::string &certificate,
                                           const std::string &public_key,
@@ -124,8 +130,8 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
                                           const std::string &destination_udn,
                                           const std::string &hotspot_ssid,
                                           const std::string &hotspot_bssid,
-                                          const ::DBus::Path &path,
-                                          ::DBus::Error &error);
+                                          const DBus::Path &path,
+                                          DBus::Error &error);  // NOLINT
 
   std::string VerifyAndEncryptData(const std::string &certificate,
                                    const std::string &public_key,
@@ -135,12 +141,13 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
                                    const std::string &hotspot_ssid,
                                    const std::string &hotspot_bssid,
                                    const std::string &data,
-                                   ::DBus::Error &error);
+                                   DBus::Error &error);  // NOLINT
 
-  void ConnectToBestServices(::DBus::Error &error);
+  void ConnectToBestServices(DBus::Error &error);  // NOLINT
 
  private:
   Manager *manager_;
+
   DISALLOW_COPY_AND_ASSIGN(ManagerDBusAdaptor);
 };
 

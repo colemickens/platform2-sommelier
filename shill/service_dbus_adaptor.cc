@@ -20,9 +20,8 @@ namespace shill {
 // static
 const char ServiceDBusAdaptor::kPath[] = "/service/";
 
-ServiceDBusAdaptor::ServiceDBusAdaptor(DBus::Connection* conn, Service *service)
-    : DBusAdaptor(conn, kPath + service->unique_name()),
-      service_(service) {}
+ServiceDBusAdaptor::ServiceDBusAdaptor(DBus::Connection *conn, Service *service)
+    : DBusAdaptor(conn, kPath + service->unique_name()), service_(service) {}
 
 ServiceDBusAdaptor::~ServiceDBusAdaptor() {
   service_ = NULL;
@@ -88,25 +87,24 @@ void ServiceDBusAdaptor::EmitStringmapChanged(const string &name,
   PropertyChanged(name, DBusAdaptor::StringmapToVariant(value));
 }
 
-map<string, ::DBus::Variant> ServiceDBusAdaptor::GetProperties(
-    ::DBus::Error &error) {
+map<string, DBus::Variant> ServiceDBusAdaptor::GetProperties(
+    DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Service " << service_->unique_name();
-  map<string, ::DBus::Variant> properties;
+  map<string, DBus::Variant> properties;
   DBusAdaptor::GetProperties(service_->store(), &properties, &error);
   return properties;
 }
 
 void ServiceDBusAdaptor::SetProperty(const string &name,
-                                     const ::DBus::Variant &value,
-                                     ::DBus::Error &error) {
+                                     const DBus::Variant &value,
+                                     DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Service " << service_->unique_name()
                 << " " << name;
   DBusAdaptor::SetProperty(service_->mutable_store(), name, value, &error);
 }
 
-void ServiceDBusAdaptor::SetProperties(
-    const map<string, ::DBus::Variant> &args,
-    ::DBus::Error &error) {
+void ServiceDBusAdaptor::SetProperties(const map<string, DBus::Variant> &args,
+                                       DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Service " << service_->unique_name();
   KeyValueStore args_store;
   Error key_value_store_error;
@@ -120,7 +118,7 @@ void ServiceDBusAdaptor::SetProperties(
 }
 
 void ServiceDBusAdaptor::ClearProperty(const string &name,
-                                       ::DBus::Error &error) {
+                                       DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Service " << service_->unique_name()
                 << " " << name;
   DBusAdaptor::ClearProperty(service_->mutable_store(), name, &error);
@@ -129,34 +127,34 @@ void ServiceDBusAdaptor::ClearProperty(const string &name,
   }
 }
 
-vector<bool> ServiceDBusAdaptor::ClearProperties(const vector<string> &names,
-                                                 ::DBus::Error &/*error*/) {
+vector<bool> ServiceDBusAdaptor::ClearProperties(
+    const vector<string> &names, DBus::Error &/*error*/) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Service " << service_->unique_name();
   vector<bool> results;
   vector<string>::const_iterator it;
   for (it = names.begin(); it != names.end(); ++it) {
-    ::DBus::Error error;
+    DBus::Error error;
     ClearProperty(*it, error);
     results.push_back(!error.is_set());
   }
   return results;
 }
 
-void ServiceDBusAdaptor::Connect(::DBus::Error &error) {
+void ServiceDBusAdaptor::Connect(DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Service " << service_->unique_name();
   Error e;
   service_->UserInitiatedConnect(&e);
   e.ToDBusError(&error);
 }
 
-void ServiceDBusAdaptor::Disconnect(::DBus::Error &error) {
+void ServiceDBusAdaptor::Disconnect(DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Service " << service_->unique_name();
   Error e;
   service_->UserInitiatedDisconnect(&e);
   e.ToDBusError(&error);
 }
 
-void ServiceDBusAdaptor::Remove(::DBus::Error &error) {
+void ServiceDBusAdaptor::Remove(DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Service " << service_->unique_name();
   Error e;
   service_->Remove(&e);
@@ -164,7 +162,7 @@ void ServiceDBusAdaptor::Remove(::DBus::Error &error) {
 }
 
 void ServiceDBusAdaptor::ActivateCellularModem(const string &carrier,
-                                               ::DBus::Error &error) {
+                                               DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Service " << service_->unique_name();
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
@@ -172,21 +170,22 @@ void ServiceDBusAdaptor::ActivateCellularModem(const string &carrier,
   ReturnResultOrDefer(tag, e, &error);
 }
 
-void ServiceDBusAdaptor::CompleteCellularActivation(::DBus::Error &error) {
+void ServiceDBusAdaptor::CompleteCellularActivation(
+    DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Service " << service_->unique_name();
   Error e;
   service_->CompleteCellularActivation(&e);
   e.ToDBusError(&error);
 }
 
-map<::DBus::Path, string> ServiceDBusAdaptor::GetLoadableProfileEntries(
-    ::DBus::Error &error) {
+map<DBus::Path, string> ServiceDBusAdaptor::GetLoadableProfileEntries(
+    DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Service " << service_->unique_name();
   map<string, string> profile_entry_strings =
       service_->GetLoadableProfileEntries();
-  map<::DBus::Path, string> profile_entries;
+  map<DBus::Path, string> profile_entries;
   for (const auto &entry : profile_entry_strings) {
-    profile_entries[::DBus::Path(entry.first)] = entry.second;
+    profile_entries[DBus::Path(entry.first)] = entry.second;
   }
   return profile_entries;
 }

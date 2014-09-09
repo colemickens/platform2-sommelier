@@ -7,13 +7,10 @@
 #include <map>
 #include <string>
 
-#include <base/bind.h>
-
 #include "shill/device.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 
-using base::Bind;
 using std::map;
 using std::string;
 using std::vector;
@@ -23,7 +20,7 @@ namespace shill {
 // static
 const char DeviceDBusAdaptor::kPath[] = "/device/";
 
-DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection* conn, Device *device)
+DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection *conn, Device *device)
     : DBusAdaptor(conn, kPath + device->UniqueName()),
       device_(device),
       connection_name_(conn->unique_name()) {
@@ -32,21 +29,22 @@ DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection* conn, Device *device)
 DeviceDBusAdaptor::~DeviceDBusAdaptor() {
   device_ = NULL;
 }
-const std::string &DeviceDBusAdaptor::GetRpcIdentifier() {
+
+const string &DeviceDBusAdaptor::GetRpcIdentifier() {
   return path();
 }
 
-const std::string &DeviceDBusAdaptor::GetRpcConnectionIdentifier() {
+const string &DeviceDBusAdaptor::GetRpcConnectionIdentifier() {
   return connection_name_;
 }
 
-void DeviceDBusAdaptor::EmitBoolChanged(const std::string& name, bool value) {
+void DeviceDBusAdaptor::EmitBoolChanged(const string &name, bool value) {
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName()
                 << " " << name;
   PropertyChanged(name, DBusAdaptor::BoolToVariant(value));
 }
 
-void DeviceDBusAdaptor::EmitUintChanged(const std::string &name,
+void DeviceDBusAdaptor::EmitUintChanged(const string &name,
                                         uint32_t value) {
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName()
                 << " " << name;
@@ -59,41 +57,41 @@ void DeviceDBusAdaptor::EmitUint16Changed(const string &name, uint16_t value) {
   PropertyChanged(name, DBusAdaptor::Uint16ToVariant(value));
 }
 
-void DeviceDBusAdaptor::EmitIntChanged(const std::string& name, int value) {
+void DeviceDBusAdaptor::EmitIntChanged(const string &name, int value) {
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName()
                 << " " << name;
   PropertyChanged(name, DBusAdaptor::Int32ToVariant(value));
 }
 
-void DeviceDBusAdaptor::EmitStringChanged(const std::string& name,
-                                          const std::string& value) {
+void DeviceDBusAdaptor::EmitStringChanged(const string &name,
+                                          const string &value) {
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName()
                 << " " << name;
   PropertyChanged(name, DBusAdaptor::StringToVariant(value));
 }
 
-void DeviceDBusAdaptor::EmitStringmapChanged(const std::string &name,
+void DeviceDBusAdaptor::EmitStringmapChanged(const string &name,
                                              const Stringmap &value) {
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName()
                 << " " << name;
   PropertyChanged(name, DBusAdaptor::StringmapToVariant(value));
 }
 
-void DeviceDBusAdaptor::EmitStringmapsChanged(const std::string &name,
+void DeviceDBusAdaptor::EmitStringmapsChanged(const string &name,
                                               const Stringmaps &value) {
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName()
                 << " " << name;
   PropertyChanged(name, DBusAdaptor::StringmapsToVariant(value));
 }
 
-void DeviceDBusAdaptor::EmitStringsChanged(const std::string &name,
+void DeviceDBusAdaptor::EmitStringsChanged(const string &name,
                                               const Strings &value) {
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName()
                 << " " << name;
   PropertyChanged(name, DBusAdaptor::StringsToVariant(value));
 }
 
-void DeviceDBusAdaptor::EmitKeyValueStoreChanged(const std::string &name,
+void DeviceDBusAdaptor::EmitKeyValueStoreChanged(const string &name,
                                                  const KeyValueStore &value) {
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName()
                 << " " << name;
@@ -104,7 +102,7 @@ void DeviceDBusAdaptor::EmitRpcIdentifierArrayChanged(
     const string &name,
     const vector<string> &value) {
   SLOG(DBus, 2) << __func__ << ": " << name;
-  vector< ::DBus::Path> paths;
+  vector<DBus::Path> paths;
   for (const auto &element : value) {
     paths.push_back(element);
   }
@@ -112,30 +110,30 @@ void DeviceDBusAdaptor::EmitRpcIdentifierArrayChanged(
   PropertyChanged(name, DBusAdaptor::PathsToVariant(paths));
 }
 
-map<string, ::DBus::Variant> DeviceDBusAdaptor::GetProperties(
-    ::DBus::Error &error) {
+map<string, DBus::Variant> DeviceDBusAdaptor::GetProperties(
+    DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << " " << device_->UniqueName();
-  map<string, ::DBus::Variant> properties;
+  map<string, DBus::Variant> properties;
   DBusAdaptor::GetProperties(device_->store(), &properties, &error);
   return properties;
 }
 
 void DeviceDBusAdaptor::SetProperty(const string &name,
-                                    const ::DBus::Variant &value,
-                                    ::DBus::Error &error) {
+                                    const DBus::Variant &value,
+                                    DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName()
                 << " " << name;
   DBusAdaptor::SetProperty(device_->mutable_store(), name, value, &error);
 }
 
-void DeviceDBusAdaptor::ClearProperty(const std::string &name,
-                                      ::DBus::Error &error) {
+void DeviceDBusAdaptor::ClearProperty(const string &name,
+                                      DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName()
                 << " " << name;
   DBusAdaptor::ClearProperty(device_->mutable_store(), name, &error);
 }
 
-void DeviceDBusAdaptor::Enable(::DBus::Error &error) {
+void DeviceDBusAdaptor::Enable(DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName();
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
@@ -143,7 +141,7 @@ void DeviceDBusAdaptor::Enable(::DBus::Error &error) {
   ReturnResultOrDefer(tag, e, &error);
 }
 
-void DeviceDBusAdaptor::Disable(::DBus::Error &error) {
+void DeviceDBusAdaptor::Disable(DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName();
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
@@ -151,7 +149,7 @@ void DeviceDBusAdaptor::Disable(::DBus::Error &error) {
   ReturnResultOrDefer(tag, e, &error);
 }
 
-void DeviceDBusAdaptor::ProposeScan(::DBus::Error &error) {
+void DeviceDBusAdaptor::ProposeScan(DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName();
   Error e;
   // User scan requests, which are the likely source of DBus requests, probably
@@ -161,8 +159,8 @@ void DeviceDBusAdaptor::ProposeScan(::DBus::Error &error) {
   e.ToDBusError(&error);
 }
 
-::DBus::Path DeviceDBusAdaptor::AddIPConfig(const string& ,
-                                            ::DBus::Error &error) {
+DBus::Path DeviceDBusAdaptor::AddIPConfig(const string &/*method*/,
+                                          DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__;
   Error e(Error::kNotSupported, "This function is deprecated in shill");
   e.ToDBusError(&error);
@@ -170,7 +168,7 @@ void DeviceDBusAdaptor::ProposeScan(::DBus::Error &error) {
 }
 
 void DeviceDBusAdaptor::Register(const string &network_id,
-                                 ::DBus::Error &error) {
+                                 DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName()
                 << " (" << network_id << ")";
   Error e(Error::kOperationInitiated);
@@ -180,7 +178,7 @@ void DeviceDBusAdaptor::Register(const string &network_id,
 }
 
 void DeviceDBusAdaptor::RequirePin(
-    const string &pin, const bool &require, DBus::Error &error) {
+    const string &pin, const bool &require, DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName();
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
@@ -188,7 +186,8 @@ void DeviceDBusAdaptor::RequirePin(
   ReturnResultOrDefer(tag, e, &error);
 }
 
-void DeviceDBusAdaptor::EnterPin(const string &pin, DBus::Error &error) {
+void DeviceDBusAdaptor::EnterPin(const string &pin,
+                                 DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName();
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
@@ -196,8 +195,9 @@ void DeviceDBusAdaptor::EnterPin(const string &pin, DBus::Error &error) {
   ReturnResultOrDefer(tag, e, &error);
 }
 
-void DeviceDBusAdaptor::UnblockPin(
-    const string &unblock_code, const string &pin, DBus::Error &error) {
+void DeviceDBusAdaptor::UnblockPin(const string &unblock_code,
+                                   const string &pin,
+                                   DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName();
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
@@ -205,8 +205,9 @@ void DeviceDBusAdaptor::UnblockPin(
   ReturnResultOrDefer(tag, e, &error);
 }
 
-void DeviceDBusAdaptor::ChangePin(
-    const string &old_pin, const string &new_pin, DBus::Error &error) {
+void DeviceDBusAdaptor::ChangePin(const string &old_pin,
+                                  const string &new_pin,
+                                  DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName();
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
@@ -214,7 +215,7 @@ void DeviceDBusAdaptor::ChangePin(
   ReturnResultOrDefer(tag, e, &error);
 }
 
-void DeviceDBusAdaptor::Reset(::DBus::Error &error) {
+void DeviceDBusAdaptor::Reset(DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName();
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
@@ -224,7 +225,7 @@ void DeviceDBusAdaptor::Reset(::DBus::Error &error) {
 
 string DeviceDBusAdaptor::PerformTDLSOperation(const string &operation,
                                                const string &peer,
-                                               DBus::Error &error) {
+                                               DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName();
   Error e;
   string return_value = device_->PerformTDLSOperation(operation, peer, &e);
@@ -232,11 +233,12 @@ string DeviceDBusAdaptor::PerformTDLSOperation(const string &operation,
   return return_value;
 }
 
-void DeviceDBusAdaptor::ResetByteCounters(DBus::Error &error) {
+void DeviceDBusAdaptor::ResetByteCounters(DBus::Error &error) {  // NOLINT
   device_->ResetByteCounters();
 }
 
-void DeviceDBusAdaptor::SetCarrier(const string &carrier, DBus::Error &error) {
+void DeviceDBusAdaptor::SetCarrier(const string &carrier,
+                                   DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": Device " << device_->UniqueName()
                 << "(" << carrier << ")";
   Error e(Error::kOperationInitiated);

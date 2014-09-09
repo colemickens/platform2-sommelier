@@ -44,23 +44,24 @@ class ProfileDBusAdaptor : public org::chromium::flimflam::Profile_adaptor,
                                  const std::string &value);
 
   // Implementation of Profile_adaptor
-  virtual std::map<std::string, ::DBus::Variant> GetProperties(
-      ::DBus::Error &error);
+  virtual std::map<std::string, DBus::Variant> GetProperties(
+      DBus::Error &error);  // NOLINT
   virtual void SetProperty(const std::string &name,
-                           const ::DBus::Variant &value,
-                           ::DBus::Error &error);
+                           const DBus::Variant &value,
+                           DBus::Error &error);  // NOLINT
 
   // Gets an "Entry", which is apparently a different set of properties than
   // those returned by GetProperties.
-  virtual std::map< std::string, ::DBus::Variant> GetEntry(
+  virtual std::map< std::string, DBus::Variant> GetEntry(
       const std::string& ,
-      ::DBus::Error &error);
+      DBus::Error &error);  // NOLINT
 
   // Deletes an Entry.
-  virtual void DeleteEntry(const std::string& , ::DBus::Error &error);
+  virtual void DeleteEntry(const std::string& , DBus::Error &error);  // NOLINT
 
  private:
   Profile *profile_;
+
   DISALLOW_COPY_AND_ASSIGN(ProfileDBusAdaptor);
 };
 

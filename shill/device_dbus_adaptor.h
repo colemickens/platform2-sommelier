@@ -29,18 +29,18 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
  public:
   static const char kPath[];
 
-  DeviceDBusAdaptor(DBus::Connection* conn, Device *device);
+  DeviceDBusAdaptor(DBus::Connection *conn, Device *device);
   ~DeviceDBusAdaptor() override;
 
   // Implementation of DeviceAdaptorInterface.
   virtual const std::string &GetRpcIdentifier();
   virtual const std::string &GetRpcConnectionIdentifier();
-  virtual void EmitBoolChanged(const std::string& name, bool value);
-  virtual void EmitUintChanged(const std::string& name, uint32_t value);
-  virtual void EmitUint16Changed(const std::string& name, uint16_t value);
-  virtual void EmitIntChanged(const std::string& name, int value);
-  virtual void EmitStringChanged(const std::string& name,
-                                 const std::string& value);
+  virtual void EmitBoolChanged(const std::string &name, bool value);
+  virtual void EmitUintChanged(const std::string &name, uint32_t value);
+  virtual void EmitUint16Changed(const std::string &name, uint16_t value);
+  virtual void EmitIntChanged(const std::string &name, int value);
+  virtual void EmitStringChanged(const std::string &name,
+                                 const std::string &value);
   virtual void EmitStringmapChanged(const std::string &name,
                                     const Stringmap &value);
   virtual void EmitStringmapsChanged(const std::string &name,
@@ -53,33 +53,37 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
       const std::string &name, const std::vector<std::string> &value);
 
   // Implementation of Device_adaptor.
-  virtual std::map<std::string, ::DBus::Variant> GetProperties(
-      ::DBus::Error &error);
-  virtual void SetProperty(const std::string& name,
-                           const ::DBus::Variant& value,
-                           ::DBus::Error &error);
-  virtual void ClearProperty(const std::string& , ::DBus::Error &error);
-  virtual void Enable(::DBus::Error &error);
-  virtual void Disable(::DBus::Error &error);
-  virtual void ProposeScan(::DBus::Error &error);
-  virtual ::DBus::Path AddIPConfig(const std::string& , ::DBus::Error &error);
-  virtual void Register(const std::string &network_id, ::DBus::Error &error);
+  virtual std::map<std::string, DBus::Variant> GetProperties(
+      DBus::Error &error);  // NOLINT
+  virtual void SetProperty(const std::string &name,
+                           const DBus::Variant &value,
+                           DBus::Error &error);  // NOLINT
+  virtual void ClearProperty(const std::string &name,
+                             DBus::Error &error);  // NOLINT
+  virtual void Enable(DBus::Error &error);  // NOLINT
+  virtual void Disable(DBus::Error &error);  // NOLINT
+  virtual void ProposeScan(DBus::Error &error);  // NOLINT
+  virtual DBus::Path AddIPConfig(const std::string &method,
+                                 DBus::Error &error);  // NOLINT
+  virtual void Register(const std::string &network_id,
+                        DBus::Error &error);  // NOLINT
   virtual void RequirePin(const std::string &pin,
                           const bool &require,
-                          ::DBus::Error &error);
-  virtual void EnterPin(const std::string &pin, ::DBus::Error &error);
+                          DBus::Error &error);  // NOLINT
+  virtual void EnterPin(const std::string &pin, DBus::Error &error);  // NOLINT
   virtual void UnblockPin(const std::string &unblock_code,
                           const std::string &pin,
-                          ::DBus::Error &error);
+                          DBus::Error &error);  // NOLINT
   virtual void ChangePin(const std::string &old_pin,
                          const std::string &new_pin,
-                         ::DBus::Error &error);
+                         DBus::Error &error);  // NOLINT
   virtual std::string PerformTDLSOperation(const std::string &operation,
                                            const std::string &peer,
-                                           ::DBus::Error &error);
-  virtual void Reset(::DBus::Error &error);
-  virtual void ResetByteCounters(::DBus::Error &error);
-  virtual void SetCarrier(const std::string &carrier, ::DBus::Error &error);
+                                           DBus::Error &error);  // NOLINT
+  virtual void Reset(DBus::Error &error);  // NOLINT
+  virtual void ResetByteCounters(DBus::Error &error);  // NOLINT
+  virtual void SetCarrier(const std::string &carrier,
+                          DBus::Error &error);  // NOLINT
 
  private:
   Device *device_;

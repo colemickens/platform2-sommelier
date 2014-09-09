@@ -56,17 +56,17 @@ void ProfileDBusAdaptor::EmitStringChanged(const string &name,
   PropertyChanged(name, DBusAdaptor::StringToVariant(value));
 }
 
-map<string, ::DBus::Variant> ProfileDBusAdaptor::GetProperties(
-    ::DBus::Error &error) {
+map<string, DBus::Variant> ProfileDBusAdaptor::GetProperties(
+    DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__;
-  map<string, ::DBus::Variant> properties;
+  map<string, DBus::Variant> properties;
   DBusAdaptor::GetProperties(profile_->store(), &properties, &error);
   return properties;
 }
 
 void ProfileDBusAdaptor::SetProperty(const string &name,
-                                     const ::DBus::Variant &value,
-                                     ::DBus::Error &error) {
+                                     const DBus::Variant &value,
+                                     DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": " << name;
   if (DBusAdaptor::SetProperty(profile_->mutable_store(),
                                name,
@@ -76,13 +76,13 @@ void ProfileDBusAdaptor::SetProperty(const string &name,
   }
 }
 
-map<string, ::DBus::Variant> ProfileDBusAdaptor::GetEntry(
+map<string, DBus::Variant> ProfileDBusAdaptor::GetEntry(
     const std::string &name,
-    ::DBus::Error &error) {
+    DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": " << name;
   Error e;
   ServiceRefPtr service = profile_->GetServiceFromEntry(name, &e);
-  map<string, ::DBus::Variant> properties;
+  map<string, DBus::Variant> properties;
   if (e.IsSuccess()) {
     DBusAdaptor::GetProperties(service->store(), &properties, &error);
     return properties;
@@ -96,7 +96,7 @@ map<string, ::DBus::Variant> ProfileDBusAdaptor::GetEntry(
 }
 
 void ProfileDBusAdaptor::DeleteEntry(const std::string &name,
-                                     ::DBus::Error &error) {
+                                     DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": " << name;
   Error e;
   profile_->DeleteEntry(name, &e);

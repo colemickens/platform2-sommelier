@@ -38,10 +38,10 @@ class RPCTaskDBusAdaptor : public org::chromium::flimflam::Task_adaptor,
 
   // Implementation of Task_adaptor
   virtual void getsec(
-      std::string &user, std::string &password, DBus::Error &error);
+      std::string &user, std::string &password, DBus::Error &error);  // NOLINT
   virtual void notify(const std::string &reason,
                       const std::map<std::string, std::string> &dict,
-                      DBus::Error &error);
+                      DBus::Error &error);  // NOLINT
 
  private:
   RPCTask *task_;

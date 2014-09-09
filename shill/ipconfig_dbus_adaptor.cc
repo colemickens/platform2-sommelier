@@ -25,7 +25,7 @@ namespace shill {
 // static
 const char IPConfigDBusAdaptor::kPath[] = "/ipconfig/";
 
-IPConfigDBusAdaptor::IPConfigDBusAdaptor(DBus::Connection* conn,
+IPConfigDBusAdaptor::IPConfigDBusAdaptor(DBus::Connection *conn,
                                          IPConfig *config)
     : DBusAdaptor(conn, StringPrintf("%s%s_%u_%s",
                                      kPath,
@@ -67,17 +67,17 @@ void IPConfigDBusAdaptor::EmitStringsChanged(const string &name,
   PropertyChanged(name, DBusAdaptor::StringsToVariant(value));
 }
 
-map<string, ::DBus::Variant> IPConfigDBusAdaptor::GetProperties(
-    ::DBus::Error &error) {
+map<string, DBus::Variant> IPConfigDBusAdaptor::GetProperties(
+    DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__;
-  map<string, ::DBus::Variant> properties;
+  map<string, DBus::Variant> properties;
   DBusAdaptor::GetProperties(ipconfig_->store(), &properties, &error);
   return properties;
 }
 
 void IPConfigDBusAdaptor::SetProperty(const string &name,
-                                      const ::DBus::Variant &value,
-                                      ::DBus::Error &error) {
+                                      const DBus::Variant &value,
+                                      DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": " << name;
   if (DBusAdaptor::SetProperty(ipconfig_->mutable_store(),
                                name,
@@ -87,17 +87,17 @@ void IPConfigDBusAdaptor::SetProperty(const string &name,
   }
 }
 
-void IPConfigDBusAdaptor::ClearProperty(const std::string &name,
-                                        ::DBus::Error &error) {
+void IPConfigDBusAdaptor::ClearProperty(const string &name,
+                                        DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": " << name;
   DBusAdaptor::ClearProperty(ipconfig_->mutable_store(), name, &error);
 }
 
-void IPConfigDBusAdaptor::Remove(::DBus::Error &/*error*/) {
+void IPConfigDBusAdaptor::Remove(DBus::Error &/*error*/) {  // NOLINT
   SLOG(DBus, 2) << __func__;
 }
 
-void IPConfigDBusAdaptor::Refresh(::DBus::Error &error) {
+void IPConfigDBusAdaptor::Refresh(DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__;
   Error e;
   ipconfig_->Refresh(&e);

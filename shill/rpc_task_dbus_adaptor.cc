@@ -42,14 +42,14 @@ const string &RPCTaskDBusAdaptor::GetRpcConnectionIdentifier() {
 }
 
 void RPCTaskDBusAdaptor::getsec(
-    string &user, string &password, DBus::Error &error) {
+    string &user, string &password, DBus::Error &error) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": " << user;
   task_->GetLogin(&user, &password);
 }
 
 void RPCTaskDBusAdaptor::notify(const string &reason,
                                 const map<string, string> &dict,
-                                DBus::Error &/*error*/) {
+                                DBus::Error &/*error*/) {  // NOLINT
   SLOG(DBus, 2) << __func__ << ": " << reason;
   task_->Notify(reason, dict);
 }

@@ -46,14 +46,15 @@ class IPConfigDBusAdaptor : public org::chromium::flimflam::IPConfig_adaptor,
                                   const std::vector<std::string> &value);
 
   // Implementation of IPConfig_adaptor
-  virtual std::map<std::string, ::DBus::Variant> GetProperties(
-      ::DBus::Error &error);
+  virtual std::map<std::string, DBus::Variant> GetProperties(
+      DBus::Error &error);  // NOLINT
   virtual void SetProperty(const std::string &name,
-                           const ::DBus::Variant &value,
-                           ::DBus::Error &error);
-  virtual void ClearProperty(const std::string &name, ::DBus::Error &error);
-  virtual void Remove(::DBus::Error &error);
-  virtual void Refresh(::DBus::Error &error);
+                           const DBus::Variant &value,
+                           DBus::Error &error);  // NOLINT
+  virtual void ClearProperty(const std::string &name,
+                             DBus::Error &error);  // NOLINT
+  virtual void Remove(DBus::Error &error);  // NOLINT
+  virtual void Refresh(DBus::Error &error);  // NOLINT
 
  private:
   IPConfig *ipconfig_;

@@ -51,24 +51,24 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
                                     const Stringmap &value);
 
   // Implementation of Service_adaptor
-  std::map<std::string, ::DBus::Variant> GetProperties(::DBus::Error &error);
-  void SetProperty(const std::string& name,
-                   const ::DBus::Variant& value,
-                   ::DBus::Error &error);
-  void SetProperties(const std::map<std::string, ::DBus::Variant> &args,
-                     ::DBus::Error &error);
-  void ClearProperty(const std::string&, ::DBus::Error &error);
-  std::vector<bool> ClearProperties(const std::vector<std::string>&,
-                                    ::DBus::Error &error);
-  void Connect(::DBus::Error &error);
-  void Disconnect(::DBus::Error &error);
-  void Remove(::DBus::Error &error);
-  void MoveBefore(const ::DBus::Path& , ::DBus::Error &error);
-  void MoveAfter(const ::DBus::Path& , ::DBus::Error &error);
-  void ActivateCellularModem(const std::string &carrier, ::DBus::Error &error);
-  void CompleteCellularActivation(::DBus::Error &error);
-  std::map<::DBus::Path, std::string> GetLoadableProfileEntries(
-      ::DBus::Error &error);
+  std::map<std::string, DBus::Variant> GetProperties(
+      DBus::Error &error);  // NOLINT
+  void SetProperty(const std::string &name,
+                   const DBus::Variant &value,
+                   DBus::Error &error);  // NOLINT
+  void SetProperties(const std::map<std::string, DBus::Variant> &args,
+                     DBus::Error &error);  // NOLINT
+  void ClearProperty(const std::string &name, DBus::Error &error);  // NOLINT
+  std::vector<bool> ClearProperties(const std::vector<std::string> &names,
+                                    DBus::Error &error);  // NOLINT
+  void Connect(DBus::Error &error);  // NOLINT
+  void Disconnect(DBus::Error &error);  // NOLINT
+  void Remove(DBus::Error &error);  // NOLINT
+  void ActivateCellularModem(const std::string &carrier,
+                             DBus::Error &error);  // NOLINT
+  void CompleteCellularActivation(DBus::Error &error);  // NOLINT
+  std::map<DBus::Path, std::string> GetLoadableProfileEntries(
+      DBus::Error &error);  // NOLINT
 
  private:
   Service *service_;
