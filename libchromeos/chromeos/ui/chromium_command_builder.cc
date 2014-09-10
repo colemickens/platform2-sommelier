@@ -478,7 +478,8 @@ void ChromiumCommandBuilder::AddUiFlags() {
       IsBoard("nyan_big") || IsBoard("nyan_blaze"))
     AddArg("--enable-webrtc-hw-vp8-encoding");
 
-  if (IsBoard("peach_pi"))
+  if (IsBoard("peach_pi") || IsBoard("nyan") || IsBoard("nyan_big") ||
+      IsBoard("nyan_blaze"))
     AddArg("--ignore-resolution-limits-for-accelerated-video-decode");
 
   if (IsBoard("rush_ryu")) {
