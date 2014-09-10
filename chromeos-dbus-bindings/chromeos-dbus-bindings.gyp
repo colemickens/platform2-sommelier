@@ -24,7 +24,9 @@
       'target_name': 'libchromeos-dbus-bindings',
       'type': 'static_library',
       'sources': [
+        'adaptor_generator.cc',
         'dbus_signature.cc',
+        'indented_text.cc',
         'method_name_generator.cc',
         'xml_interface_parser.cc',
       ],
@@ -71,7 +73,9 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'testrunner.cc',
+            'adaptor_generator_unittest.cc',
             'dbus_signature_unittest.cc',
+            'indented_text_unittest.cc',
             'method_name_generator_unittest.cc',
             'xml_interface_parser_unittest.cc',
           ],

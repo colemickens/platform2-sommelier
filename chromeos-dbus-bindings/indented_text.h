@@ -1,0 +1,54 @@
+// Copyright 2014 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef CHROMEOS_DBUS_BINDINGS_INDENTED_TEXT_H_
+#define CHROMEOS_DBUS_BINDINGS_INDENTED_TEXT_H_
+
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <base/macros.h>
+
+namespace chromeos_dbus_bindings {
+
+class IndentedText {
+ public:
+  IndentedText();
+  virtual ~IndentedText() = default;
+
+  // Insert a block of indented text.
+  void AddBlock(const IndentedText& block);
+  void AddBlockWithOffset(const IndentedText& block, size_t shift);
+
+  // Add a line at the current indentation.
+  void AddLine(const std::string& line);
+  void AddLineWithOffset(const std::string& line, size_t shift);
+
+  // Return a string representing the indented text.
+  std::string GetContents() const;
+
+  // Add or remove an offset to the current stack of indentation offsets.
+  void PushOffset(size_t shift);
+  void PopOffset();
+
+  // Reset to initial state.
+  void Reset();
+
+
+ private:
+  using IndentedLine = std::pair<std::string, size_t>;
+
+  friend class IndentedTextTest;
+
+  size_t offset_;
+  std::vector<size_t> offset_history_;
+  std::vector<IndentedLine> contents_;
+
+  DISALLOW_COPY_AND_ASSIGN(IndentedText);
+};
+
+}  // namespace chromeos_dbus_bindings
+
+#endif  // CHROMEOS_DBUS_BINDINGS_INDENTED_TEXT_H_

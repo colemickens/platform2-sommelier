@@ -1,0 +1,64 @@
+// Copyright 2014 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "chromeos-dbus-bindings/indented_text.h"
+
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <base/logging.h>
+
+using std::string;
+using std::vector;
+
+namespace chromeos_dbus_bindings {
+
+IndentedText::IndentedText() : offset_(0) {}
+
+void IndentedText::AddBlock(const IndentedText& block) {
+  AddBlockWithOffset(block, 0);
+}
+
+void IndentedText::AddBlockWithOffset(const IndentedText& block, size_t shift) {
+  for (const auto& member : block.contents_) {
+    AddLineWithOffset(member.first, member.second + shift);
+  }
+}
+
+void IndentedText::AddLine(const std::string& line) {
+  AddLineWithOffset(line, 0);
+}
+
+void IndentedText::AddLineWithOffset(const std::string& line, size_t shift) {
+  contents_.emplace_back(line, shift + offset_);
+}
+
+string IndentedText::GetContents() const {
+  string output;
+  for (const auto& member : contents_) {
+    string indent(member.second, ' ');
+    output.append(indent + member.first + "\n");
+  }
+  return output;
+}
+
+void IndentedText::PushOffset(size_t shift) {
+  offset_ += shift;
+  offset_history_.push_back(shift);
+}
+
+void IndentedText::PopOffset() {
+  CHECK(!offset_history_.empty());
+  offset_ -= offset_history_.back();
+  offset_history_.pop_back();
+}
+
+void IndentedText::Reset() {
+  offset_ = 0;
+  offset_history_.clear();
+  contents_.clear();
+}
+
+}  // namespace chromeos_dbus_bindings

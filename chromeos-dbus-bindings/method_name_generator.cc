@@ -9,6 +9,7 @@
 #include <base/file_util.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
 
 #include "chromeos-dbus-bindings/interface.h"
 
@@ -17,19 +18,20 @@ using std::string;
 namespace chromeos_dbus_bindings {
 
 // static
-const char MethodNameGenerator::kLineTerminator[] = "\";\n";
-const char MethodNameGenerator::kNamePrefix[] = "const char k";
-const char MethodNameGenerator::kNameSeparator[] = "Method[] = \"";
+string MethodNameGenerator::GenerateMethodNameConstant(
+    const string& method_name) {
+  return "k" + method_name + "Method";
+}
 
 bool MethodNameGenerator::GenerateMethodNames(
     const Interface& interface,
     const base::FilePath& output_file) {
   string contents;
   for (const auto& method : interface.methods) {
-    const string& method_name = method.name;
     contents.append(
-        kNamePrefix + method_name + kNameSeparator + method_name +
-        kLineTerminator);
+        base::StringPrintf("const char %s[] = \"%s\";\n",
+                           GenerateMethodNameConstant(method.name).c_str(),
+                           method.name.c_str()));
   }
 
   int expected_write_return = contents.size();

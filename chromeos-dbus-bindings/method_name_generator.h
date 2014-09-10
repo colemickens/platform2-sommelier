@@ -5,6 +5,8 @@
 #ifndef CHROMEOS_DBUS_BINDINGS_METHOD_NAME_GENERATOR_H_
 #define CHROMEOS_DBUS_BINDINGS_METHOD_NAME_GENERATOR_H_
 
+#include <string>
+
 #include <base/macros.h>
 
 namespace base {
@@ -24,14 +26,10 @@ class MethodNameGenerator {
 
   virtual bool GenerateMethodNames(const Interface &interface,
                                    const base::FilePath& output_file);
+  static std::string GenerateMethodNameConstant(const std::string& method_name);
 
  private:
   friend class MethodNameGeneratorTest;
-
-  // Strings used.
-  static const char kLineTerminator[];
-  static const char kNamePrefix[];
-  static const char kNameSeparator[];
 
   DISALLOW_COPY_AND_ASSIGN(MethodNameGenerator);
 };

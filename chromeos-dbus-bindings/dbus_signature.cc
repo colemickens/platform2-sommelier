@@ -18,14 +18,14 @@ namespace chromeos_dbus_bindings {
 const char DbusSignature::kArrayTypename[] = "std::vector";
 const char DbusSignature::kBooleanTypename[] = "bool";
 const char DbusSignature::kByteTypename[] = "uint8_t";
-const char DbusSignature::kDefaultObjectPathTypename[] = "std::string";
+const char DbusSignature::kDefaultObjectPathTypename[] = "dbus::ObjectPath";
 const char DbusSignature::kDictTypename[] = "std::map";
 const char DbusSignature::kDoubleTypename[] = "double";
 const char DbusSignature::kSigned16Typename[] = "int16_t";
 const char DbusSignature::kSigned32Typename[] = "int32_t";
 const char DbusSignature::kSigned64Typename[] = "int64_t";
 const char DbusSignature::kStringTypename[] = "std::string";
-const char DbusSignature::kUnixFdTypename[] = "int";
+const char DbusSignature::kUnixFdTypename[] = "dbus::FileDescriptor";
 const char DbusSignature::kUnsigned16Typename[] = "uint16_t";
 const char DbusSignature::kUnsigned32Typename[] = "uint32_t";
 const char DbusSignature::kUnsigned64Typename[] = "uint64_t";
