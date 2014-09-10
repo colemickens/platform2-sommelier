@@ -5,7 +5,6 @@
 #ifndef MIST_MOCK_UDEV_ENUMERATE_H_
 #define MIST_MOCK_UDEV_ENUMERATE_H_
 
-#include <base/compiler_specific.h>
 #include <gmock/gmock.h>
 
 #include "mist/udev_enumerate.h"

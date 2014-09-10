@@ -9,7 +9,6 @@
 
 #include <string>
 
-#include <base/compiler_specific.h>
 #include <base/macros.h>
 
 #include "mist/usb_device_event_observer.h"

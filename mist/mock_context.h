@@ -5,8 +5,6 @@
 #ifndef MIST_MOCK_CONTEXT_H_
 #define MIST_MOCK_CONTEXT_H_
 
-#include <base/compiler_specific.h>
-
 #include "mist/context.h"
 
 namespace mist {

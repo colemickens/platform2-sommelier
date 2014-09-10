@@ -7,7 +7,6 @@
 
 #include <stdint.h>
 
-#include <base/compiler_specific.h>
 #include <base/macros.h>
 #include <base/memory/scoped_vector.h>
 #include <base/message_loop/message_loop.h>

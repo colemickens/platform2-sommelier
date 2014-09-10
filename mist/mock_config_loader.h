@@ -5,7 +5,6 @@
 #ifndef MIST_MOCK_CONFIG_LOADER_H_
 #define MIST_MOCK_CONFIG_LOADER_H_
 
-#include <base/compiler_specific.h>
 #include <gmock/gmock.h>
 
 #include "mist/config_loader.h"

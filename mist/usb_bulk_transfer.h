@@ -5,7 +5,6 @@
 #ifndef MIST_USB_BULK_TRANSFER_H_
 #define MIST_USB_BULK_TRANSFER_H_
 
-#include <base/compiler_specific.h>
 #include <base/macros.h>
 
 #include "mist/usb_transfer.h"
