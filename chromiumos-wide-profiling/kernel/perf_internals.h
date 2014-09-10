@@ -35,7 +35,7 @@ typedef signed char	   s8;
 enum {
 	HEADER_RESERVED		= 0,	/* always cleared */
 	HEADER_FIRST_FEATURE	= 1,
-	HEADER_TRACE_INFO	= 1,
+	HEADER_TRACING_DATA	= 1,
 	HEADER_BUILD_ID,
 
 	HEADER_HOSTNAME,
@@ -215,6 +215,11 @@ struct build_id_event {
 #undef __ALIGN_MASK
 #undef BUILD_ID_SIZE
 
+struct tracing_data_event {
+	struct perf_event_header header;
+	u32 size;
+};
+
 // The addition of throttle_event is a custom addition for quipper.
 // It is used for both THROTTLE and UNTHROTTLE events.
 typedef union event_union {
@@ -227,6 +232,7 @@ typedef union event_union {
 	struct throttle_event		throttle;
 	struct read_event		read;
 	struct sample_event		sample;
+	struct tracing_data_event	tracing_data;
 	struct build_id_event		build_id;
 } event_t;
 

@@ -46,12 +46,10 @@ typedef u32 event_desc_num_unique_ids;
 // The type of the number of nodes field in NUMA topology.
 typedef u32 numa_topology_num_nodes_type;
 
-// The first 64 bits of the perf header, used as a perf data file ID tag.
-const uint64_t kPerfMagic = 0x32454c4946524550LL;
-
 // A mask that is applied to metadata_mask_ in order to get a mask for
 // only the metadata supported by quipper.
 const uint32_t kSupportedMetadataMask =
+    1 << HEADER_TRACING_DATA |
     1 << HEADER_BUILD_ID |
     1 << HEADER_HOSTNAME |
     1 << HEADER_OSRELEASE |
@@ -714,6 +712,7 @@ size_t PerfReader::GetSize() {
   total_size += (GetNumMetadata() + 1) * 2 * sizeof(u64);
 
   // Add the sizes of the various metadata.
+  total_size += tracing_data_.size();
   total_size += GetBuildIDMetadataSize();
   total_size += GetStringMetadataSize();
   total_size += GetUint32MetadataSize();
@@ -1194,6 +1193,11 @@ bool PerfReader::ReadMetadata(const ConstBufferWithSize& data) {
     }
 
     switch (type) {
+    case HEADER_TRACING_DATA:
+      if (!ReadTracingMetadata(data, metadata_offset, metadata_size)) {
+        return false;
+      }
+      break;
     case HEADER_BUILD_ID:
       if (!ReadBuildIDMetadata(data, type, metadata_offset, metadata_size))
         return false;
@@ -1429,6 +1433,35 @@ bool PerfReader::ReadNUMATopologyMetadata(
   return true;
 }
 
+bool PerfReader::ReadTracingMetadata(
+    const ConstBufferWithSize& data, size_t offset, size_t size) {
+  size_t tracing_data_offset = offset;
+  tracing_data_.resize(size);
+  return ReadDataFromBuffer(data, tracing_data_.size(), "tracing_data",
+                            &tracing_data_offset, tracing_data_.data());
+}
+
+bool PerfReader::ReadTracingMetadataEvent(
+    const ConstBufferWithSize& data, size_t offset) {
+  // TRACING_DATA's header.size is a lie. It is the size of only the event
+  // struct. The size of the data is in the event struct, and followed
+  // immediately by the tracing header data.
+
+  // Make a copy of the event (but not the tracing data)
+  tracing_data_event tracing_event =
+      *reinterpret_cast<const tracing_data_event*>(data.ptr + offset);
+
+  if (is_cross_endian_) {
+    ByteSwap(&tracing_event.header.type);
+    ByteSwap(&tracing_event.header.misc);
+    ByteSwap(&tracing_event.header.size);
+    ByteSwap(&tracing_event.size);
+  }
+
+  return ReadTracingMetadata(data, offset + tracing_event.header.size,
+                             tracing_event.size);
+}
+
 bool PerfReader::ReadPipedData(const ConstBufferWithSize& data) {
   size_t offset = piped_header_.size;
   bool result = true;
@@ -1468,6 +1501,7 @@ bool PerfReader::ReadPipedData(const ConstBufferWithSize& data) {
     size_t new_offset = offset + sizeof(header);
     size_t size_without_header = header.size - sizeof(header);
 
+
     if (header.type < PERF_RECORD_MAX) {
       const event_t* event =
           reinterpret_cast<const event_t*>(data.ptr + offset);
@@ -1484,6 +1518,11 @@ bool PerfReader::ReadPipedData(const ConstBufferWithSize& data) {
       result = ReadEventType(data, &new_offset);
       break;
     case PERF_RECORD_HEADER_EVENT_DESC:
+      break;
+    case PERF_RECORD_HEADER_TRACING_DATA:
+      metadata_mask_ |= (1 << HEADER_TRACING_DATA);
+      result = ReadTracingMetadataEvent(data, offset);
+      offset += tracing_data_.size();  // header.size is added below.
       break;
     case PERF_RECORD_HEADER_BUILD_ID:
       metadata_mask_ |= (1 << HEADER_BUILD_ID);
@@ -1635,6 +1674,12 @@ bool PerfReader::WriteMetadata(const BufferWithSize& data) const {
     u64 start_offset = metadata_offset;
     // Write actual metadata to address metadata_offset
     switch (type) {
+    case HEADER_TRACING_DATA:
+      if (!WriteDataToBuffer(tracing_data_.data(), tracing_data_.size(),
+                             "tracing data", &metadata_offset, data)) {
+        return false;
+      }
+      break;
     case HEADER_BUILD_ID:
       if (!WriteBuildIDMetadata(type, &metadata_offset, data))
         return false;

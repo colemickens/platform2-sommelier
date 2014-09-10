@@ -20,6 +20,9 @@
 
 namespace quipper {
 
+// The first 64 bits of the perf header, used as a perf data file ID tag.
+const uint64_t kPerfMagic = 0x32454c4946524550LL;  // "PERFILE2" little-endian
+
 struct PerfFileAttr {
   struct perf_event_attr attr;
   std::vector<u64> ids;
@@ -168,6 +171,10 @@ class PerfReader {
     return build_id_events_;
   }
 
+  const std::vector<char>& tracing_data() const {
+    return tracing_data_;
+  }
+
  protected:
   bool ReadHeader(const ConstBufferWithSize& data);
 
@@ -185,6 +192,8 @@ class PerfReader {
 
   // Reads metadata in normal mode.
   bool ReadMetadata(const ConstBufferWithSize& data);
+  bool ReadTracingMetadata(const ConstBufferWithSize& data,
+                           size_t offset, size_t size);
   bool ReadBuildIDMetadata(const ConstBufferWithSize& data, u32 type,
                            size_t offset, size_t size);
   bool ReadStringMetadata(const ConstBufferWithSize& data, u32 type,
@@ -200,6 +209,7 @@ class PerfReader {
 
   // Read perf data from piped perf output data.
   bool ReadPipedData(const ConstBufferWithSize& data);
+  bool ReadTracingMetadataEvent(const ConstBufferWithSize& data, size_t offset);
 
   // Like WriteToPointer, but does not check if the buffer is large enough.
   bool WriteToPointerWithoutCheckingSize(char* buffer, size_t size);
@@ -260,6 +270,7 @@ class PerfReader {
   std::vector<PerfUint64Metadata> uint64_metadata_;
   PerfCPUTopologyMetadata cpu_topology_;
   std::vector<PerfNodeTopologyMetadata> numa_topology_;
+  std::vector<char> tracing_data_;
   uint64_t sample_type_;
   uint64_t read_format_;
   uint64_t metadata_mask_;
