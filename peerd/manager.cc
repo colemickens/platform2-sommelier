@@ -48,8 +48,9 @@ const char kInvalidMonitoringToken[] = "manager.monitoring_token";
 }  // namespace errors
 
 Manager::Manager(ExportedObjectManager* object_manager)
-  : dbus_object_(object_manager, object_manager->GetBus(),
-                 ObjectPath(kManagerServicePath)) {
+  : dbus_object_{object_manager, object_manager->GetBus(),
+                 ObjectPath(kManagerServicePath)},
+    avahi_client_{object_manager->GetBus()} {
 }
 
 void Manager::RegisterAsync(const CompletionAction& completion_callback) {
@@ -91,6 +92,11 @@ void Manager::RegisterAsync(const CompletionAction& completion_callback) {
   CHECK(self_) << "Failed to construct Peer for Self.";
   dbus_object_.RegisterAsync(
       sequencer->GetHandler("Failed exporting Manager.", true));
+  avahi_client_.RegisterOnAvahiRestartCallback(
+      base::Bind(&Manager::ShouldRefreshAvahiPublisher,
+                 base::Unretained(this)));
+  avahi_client_.RegisterAsync(
+      sequencer->GetHandler("Failed AvahiClient.RegisterAsync().", true));
   sequencer->OnAllTasksCompletedCall({completion_callback});
 }
 
@@ -146,6 +152,13 @@ void Manager::SetNote(ErrorPtr* error, const string& note) {
 
 string Manager::Ping(ErrorPtr* error) {
   return kPingResponse;
+}
+
+void Manager::ShouldRefreshAvahiPublisher() {
+  LOG(INFO) << "Publishing services to mDNS";
+  // The old publisher has been invalidated, and the records pulled.  We should
+  // re-register the records we care about.
+  self_->RegisterServicePublisher(avahi_client_.GetPublisher());
 }
 
 }  // namespace peerd

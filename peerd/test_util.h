@@ -10,11 +10,18 @@
 #include <chromeos/dbus/mock_dbus_object.h>
 #include <dbus/exported_object.h>
 #include <dbus/object_proxy.h>
+#include <dbus/message.h>
+#include <gmock/gmock.h>
 
 #include "peerd/typedefs.h"
 
 namespace peerd  {
 namespace test_util {
+
+MATCHER_P2(IsDBusMethodCallTo, interface, method, "") {
+  return arg->GetInterface() == interface &&
+         arg->GetMember() == method;
+}
 
 std::unique_ptr<chromeos::dbus_utils::MockDBusObject> MakeMockDBusObject();
 
@@ -31,6 +38,9 @@ void HandleConnectToSignal(
     const std::string& signal_name,
     dbus::ObjectProxy::SignalCallback signal_callback,
     dbus::ObjectProxy::OnConnectedCallback on_connected_callback);
+
+dbus::Response* ReturnsEmptyResponse(dbus::MethodCall* method_call,
+                                     int timeout_ms);
 
 }  // namespace test_util
 }  // namespace peerd

@@ -20,14 +20,14 @@ using std::string;
 
 namespace peerd {
 
-AvahiClient::AvahiClient(const scoped_refptr<dbus::Bus>& bus)
-    : weak_ptr_factory_(this) {
+AvahiClient::AvahiClient(const scoped_refptr<dbus::Bus>& bus) : bus_{bus} {
   server_ = bus->GetObjectProxy(
       dbus_constants::avahi::kServiceName,
       ObjectPath(dbus_constants::avahi::kServerPath));
 }
 
 AvahiClient::~AvahiClient() {
+  publisher_.reset();
   // The Bus would do this for us on destruction, but this prevents
   // callbacks from the proxy after AvahiClient dies.
   server_->Detach();
@@ -91,6 +91,7 @@ void AvahiClient::HandleServerStateChange(int32_t state) {
     case AVAHI_SERVER_RUNNING:
       // All host RRs have been established.
       avahi_is_up_ = true;
+      publisher_.reset(new AvahiServicePublisher(bus_, server_));
       for (const auto& cb : avahi_ready_callbacks_) {
         cb.Run();
       }
@@ -105,11 +106,18 @@ void AvahiClient::HandleServerStateChange(int32_t state) {
     case AVAHI_SERVER_FAILURE:
       // Some fatal failure happened, the server is unable to proceed.
       avahi_is_up_ = false;
+      publisher_.reset();
       break;
     default:
       LOG(ERROR) << "Unknown Avahi server state change to " << state;
       break;
   }
+}
+
+base::WeakPtr<ServicePublisherInterface> AvahiClient::GetPublisher() {
+  base::WeakPtr<ServicePublisherInterface> result;
+  if (publisher_) { result = publisher_->GetWeakPtr(); }
+  return result;
 }
 
 }  // namespace peerd

@@ -45,8 +45,15 @@ const char kServiceName[] = "org.freedesktop.Avahi";
 
 const char kServerInterface[] = "org.freedesktop.Avahi.Server";
 const char kServerPath[] = "/";
+const char kServerMethodEntryGroupNew[] = "EntryGroupNew";
 const char kServerMethodGetState[] = "GetState";
 const char kServerSignalStateChanged[] = "StateChanged";
+
+const char kGroupInterface[] = "org.freedesktop.Avahi.EntryGroup";
+const char kGroupMethodAddRecord[] = "AddRecord";
+const char kGroupMethodAddService[] = "AddService";
+const char kGroupMethodCommit[] = "Commit";
+const char kGroupMethodFree[] = "Free";
 
 }  // namespace avahi
 

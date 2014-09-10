@@ -6,7 +6,6 @@
 #define PEERD_SERVICE_PUBLISHER_INTERFACE_H_
 
 #include <string>
-#include <vector>
 
 #include <chromeos/errors/error.h>
 

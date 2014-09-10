@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <avahi-common/defs.h>
+#include <base/memory/ref_counted.h>
 #include <chromeos/dbus/data_serialization.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
@@ -23,6 +24,7 @@ using peerd::dbus_constants::avahi::kServerMethodGetState;
 using peerd::dbus_constants::avahi::kServerPath;
 using peerd::dbus_constants::avahi::kServerSignalStateChanged;
 using peerd::dbus_constants::avahi::kServiceName;
+using peerd::test_util::IsDBusMethodCallTo;
 using testing::AnyNumber;
 using testing::Invoke;
 using testing::Property;
@@ -30,11 +32,6 @@ using testing::Return;
 using testing::_;
 
 namespace {
-
-MATCHER_P2(IsMethodCallTo, interface, method, "") {
-  return arg->GetInterface() == interface &&
-         arg->GetMember() == method;
-}
 
 Response* GetStateDelegate(dbus::MethodCall* method_call, int32_t state) {
   method_call->SetSerial(87);
@@ -91,8 +88,8 @@ class AvahiClientTest : public ::testing::Test {
     if (is_running) { handler = &ReturnsRunning; }
     EXPECT_CALL(
         *avahi_proxy_,
-        MockCallMethodAndBlock(IsMethodCallTo(kServerInterface,
-                                              kServerMethodGetState), _))
+        MockCallMethodAndBlock(IsDBusMethodCallTo(kServerInterface,
+                                                  kServerMethodGetState), _))
         .WillOnce(Invoke(handler));
   }
 

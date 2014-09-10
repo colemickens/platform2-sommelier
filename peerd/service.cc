@@ -61,6 +61,18 @@ unique_ptr<Service> Service::MakeService(
                          completion_callback);
 }
 
+const std::string& Service::GetServiceId() const {
+  return service_id_.value();
+}
+
+const Service::IpAddresses& Service::GetIpAddresses() const {
+  return ip_addresses_.value();
+}
+
+const Service::ServiceInfo& Service::GetServiceInfo() const {
+  return service_info_.value();
+}
+
 unique_ptr<Service> Service::MakeServiceImpl(
     chromeos::ErrorPtr* error,
     unique_ptr<DBusObject> dbus_object,

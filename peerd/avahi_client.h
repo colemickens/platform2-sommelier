@@ -13,9 +13,13 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 
+#include "peerd/avahi_service_publisher.h"
 #include "peerd/typedefs.h"
 
 namespace peerd {
+
+class AvahiServicePublisher;
+class ServicePublisherInterface;
 
 // DBus client managing our interface to the Avahi daemon.
 class AvahiClient {
@@ -31,6 +35,13 @@ class AvahiClient {
   // If Avahi is up right now, we'll call this callback immediately.
   // Registered callbacks are persistent for the life of AvahiClient.
   void RegisterOnAvahiRestartCallback(const OnAvahiRestartCallback& cb);
+  // Get an instance of ServicePublisherInterface that knows how to advertise
+  // services on Avahi.  From time to time, this pointer will transparently
+  // become invalid as the remote daemon signals that bad things have happened.
+  // When we come back from these states, we'll call all
+  // OnAvahiRestartCallbacks that we have.  At that point, grab a new publisher
+  // and repeat.
+  base::WeakPtr<ServicePublisherInterface> GetPublisher();
 
  private:
   // Watch for changes in Avahi server state.
@@ -40,11 +51,13 @@ class AvahiClient {
   // Logic to react to Avahi server state changes.
   void HandleServerStateChange(int32_t state);
 
+  scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* server_{nullptr};
   std::vector<OnAvahiRestartCallback> avahi_ready_callbacks_;
   bool avahi_is_up_{false};
+  std::unique_ptr<AvahiServicePublisher> publisher_{nullptr};
   // Must be last member to invalidate pointers before actual desctruction.
-  base::WeakPtrFactory<AvahiClient> weak_ptr_factory_;
+  base::WeakPtrFactory<AvahiClient> weak_ptr_factory_{this};
 
   friend class AvahiClientTest;
   DISALLOW_COPY_AND_ASSIGN(AvahiClient);

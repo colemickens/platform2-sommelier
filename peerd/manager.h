@@ -14,6 +14,7 @@
 #include <chromeos/dbus/dbus_object.h>
 #include <chromeos/errors/error.h>
 
+#include "peerd/avahi_client.h"
 #include "peerd/ip_addr.h"
 #include "peerd/peer.h"
 #include "peerd/typedefs.h"
@@ -73,10 +74,14 @@ class Manager {
   std::string Ping(chromeos::ErrorPtr* error);
 
  private:
+  // Called from AvahiClient.
+  void ShouldRefreshAvahiPublisher();
+
   chromeos::dbus_utils::DBusObject dbus_object_;
   std::unique_ptr<Peer> self_;
   std::map<std::string, std::string> service_token_to_id_;
   size_t services_added_{0};
+  AvahiClient avahi_client_;
 
   friend class ManagerDBusProxyTest;
   DISALLOW_COPY_AND_ASSIGN(Manager);

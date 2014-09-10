@@ -57,6 +57,11 @@ class Service {
 
   virtual ~Service() = default;
 
+  // Getters called by publishers.
+  const std::string& GetServiceId() const;
+  const IpAddresses& GetIpAddresses() const;
+  const ServiceInfo& GetServiceInfo() const;
+
  private:
   // Used for testing, where we want to use a MockDBusObject.
   static std::unique_ptr<Service> MakeServiceImpl(
@@ -83,6 +88,7 @@ class Service {
   chromeos::dbus_utils::ExportedProperty<ServiceInfo> service_info_;
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
 
+  friend class AvahiServicePublisherTest;
   friend class ServiceTest;
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
