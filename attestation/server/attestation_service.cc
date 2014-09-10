@@ -10,8 +10,6 @@
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 
-#include "attestation/common/dbus_interface.pb.h"
-
 namespace attestation {
 
 AttestationService::AttestationService(const scoped_refptr<dbus::Bus>& bus)

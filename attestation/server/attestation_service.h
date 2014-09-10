@@ -5,6 +5,10 @@
 #ifndef ATTESTATION_SERVER_ATTESTATION_SERVICE_H_
 #define ATTESTATION_SERVER_ATTESTATION_SERVICE_H_
 
+// Custom data serialization header must be included before any D-Bus
+// headers from libchromeos.
+#include "attestation/common/dbus_data_serialization.h"
+
 #include <string>
 
 #include <base/callback.h>

@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// Custom data serialization header must be included before any D-Bus
+// headers from libchromeos.
+#include "attestation/common/dbus_data_serialization.h"
+
 #include <memory>
 
 #include <base/memory/ref_counted.h>
@@ -12,7 +16,6 @@
 #include <dbus/object_proxy.h>
 
 #include "attestation/common/dbus_interface.h"
-#include "attestation/common/dbus_interface.pb.h"
 
 int main(int argc, char* argv[]) {
   dbus::Bus::Options options;

@@ -4,40 +4,36 @@
 
 #include <string>
 
-#include <base/at_exit.h>
-#include <base/bind.h>
 #include <base/command_line.h>
-#include <base/message_loop/message_loop.h>
-#include <base/strings/string_util.h>
-#include <base/strings/stringprintf.h>
+#include <chromeos/daemons/dbus_daemon.h>
+#include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/syslog_logging.h>
-#include <dbus/bus.h>
 
 #include "attestation/server/attestation_service.h"
 
-void TakeServiceOwnership(const scoped_refptr<dbus::Bus>& bus, bool success) {
-  CHECK(success) << "Init of one or more objects has failed.";
-  CHECK(bus->RequestOwnershipAndBlock(attestation::kAttestationServiceName,
-                                      dbus::Bus::REQUIRE_PRIMARY))
-      << "Unable to take ownership of " << attestation::kAttestationServiceName;
-}
+using chromeos::dbus_utils::AsyncEventSequencer;
+
+class AttestationDaemon : public chromeos::DBusServiceDaemon {
+ public:
+  AttestationDaemon()
+      : chromeos::DBusServiceDaemon(attestation::kAttestationServiceName) {}
+
+ protected:
+  void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
+    service_.reset(new attestation::AttestationService(bus_));
+    service_->RegisterAsync(
+        sequencer->GetHandler("Service.RegisterAsync() failed.", true));
+  }
+
+ private:
+  std::unique_ptr<attestation::AttestationService> service_;
+
+  DISALLOW_COPY_AND_ASSIGN(AttestationDaemon);
+};
 
 int main(int argc, char* argv[]) {
   CommandLine::Init(argc, argv);
-
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
-
-  base::AtExitManager at_exit_manager;  // This is for the message loop.
-  base::MessageLoopForIO message_loop;
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
-  CHECK(bus->Connect());
-
-  attestation::AttestationService service(bus);
-  service.RegisterAsync(base::Bind(&TakeServiceOwnership, bus));
-
-  message_loop.Run();
-  bus->ShutdownAndBlock();
-  return 0;
+  AttestationDaemon daemon;
+  return daemon.Run();
 }
