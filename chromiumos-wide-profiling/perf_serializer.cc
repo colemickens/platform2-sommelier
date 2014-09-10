@@ -317,42 +317,57 @@ bool PerfSerializer::DeserializeEvent(
     ParsedEvent* event) const {
   // Here, event->raw_event points to a location in |events_|
   // However, the location doesn't contain a pointer to an event yet.
-  // Since we don't know how much memory to allocate, use a local event_t for
-  // now.
-  event_t temp_event;
-  memset(&temp_event, 0, sizeof(temp_event));
-  if (!DeserializeEventHeader(event_proto.header(), &temp_event.header))
+  // Since we don't know how much memory to allocate, use an oversized event_t
+  // for now.
+  // TODO(dhsharp): Come up with a better size prediction. We don't want to
+  // overrun the allocated space. sizeof(event_t) is almost meaningless wrt the
+  // space necessary for the event--it is the size of the largest member of the
+  // union. For better or worse, this is dominated by the PATH_MAX-sized array
+  // in struct mmap_event. However, events now often have a "sample id" placed
+  // immediately after it. Previously to this, an on-stack event_t was used,
+  // which is dangerous because the stack could have been overrun. Since no
+  // issues were reported, we can presume that amount of space was sufficient.
+  // The deserialized header.size should not be completely trusted, because the
+  // event content may have been changed (eg, md5 string replacement).
+  perf_event_header header = {};
+  if (!DeserializeEventHeader(event_proto.header(), &header))
     return false;
+  const size_t alloc_event_size = header.size + 4096;
+  malloced_unique_ptr<event_t> temp_event(
+      CallocMemoryForEvent(alloc_event_size));
+  temp_event->header = header;
   bool event_deserialized = true;
   switch (event_proto.header().type()) {
     case PERF_RECORD_SAMPLE:
-      if (!DeserializeRecordSample(event_proto.sample_event(), &temp_event))
+      if (!DeserializeRecordSample(event_proto.sample_event(),
+                                   temp_event.get()))
         event_deserialized = false;
       break;
     case PERF_RECORD_MMAP:
-      if (!DeserializeMMapSample(event_proto.mmap_event(), &temp_event))
+      if (!DeserializeMMapSample(event_proto.mmap_event(), temp_event.get()))
         event_deserialized = false;
       break;
     case PERF_RECORD_COMM:
-      if (!DeserializeCommSample(event_proto.comm_event(), &temp_event))
+      if (!DeserializeCommSample(event_proto.comm_event(), temp_event.get()))
         event_deserialized = false;
       break;
     case PERF_RECORD_EXIT:
     case PERF_RECORD_FORK:
-      if (!DeserializeForkSample(event_proto.fork_event(), &temp_event))
+      if (!DeserializeForkSample(event_proto.fork_event(), temp_event.get()))
         event_deserialized = false;
       break;
     case PERF_RECORD_LOST:
-      if (!DeserializeLostSample(event_proto.lost_event(), &temp_event))
+      if (!DeserializeLostSample(event_proto.lost_event(), temp_event.get()))
         event_deserialized = false;
       break;
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:
-      if (!DeserializeThrottleSample(event_proto.throttle_event(), &temp_event))
+      if (!DeserializeThrottleSample(event_proto.throttle_event(),
+                                     temp_event.get()))
         event_deserialized = false;
       break;
     case PERF_RECORD_READ:
-      if (!DeserializeReadSample(event_proto.read_event(), &temp_event))
+      if (!DeserializeReadSample(event_proto.read_event(), temp_event.get()))
         event_deserialized = false;
       break;
     case PERF_RECORD_MAX:
@@ -364,9 +379,16 @@ bool PerfSerializer::DeserializeEvent(
     *event->raw_event = NULL;
     return false;
   }
-  // Copy the event from the stack to the heap.
-  *event->raw_event = CallocMemoryForEvent(temp_event.header.size);
-  memcpy(*event->raw_event, &temp_event, temp_event.header.size);
+  // Reallocate the event down to its final size.
+  const size_t final_event_size = temp_event->header.size;
+  CHECK_LE(final_event_size, alloc_event_size)
+      << "Likely overran the event buffer.";
+  temp_event.reset(ReallocMemoryForEvent(temp_event.release(),
+                                         final_event_size));
+
+  // Recall raw_event is a pointer into the events_ array.
+  // Move the event into the events_ array.
+  *event->raw_event = std::move(temp_event);
   return true;
 }
 

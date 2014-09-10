@@ -49,6 +49,12 @@ event_t* CallocMemoryForEvent(size_t size) {
   return event;
 }
 
+event_t* ReallocMemoryForEvent(event_t* event, size_t new_size) {
+  event_t* new_event = reinterpret_cast<event_t*>(realloc(event, new_size));
+  CHECK(new_event);  // NB: event is "leaked" if this CHECK fails.
+  return new_event;
+}
+
 build_id_event* CallocMemoryForBuildID(size_t size) {
   build_id_event* event = reinterpret_cast<build_id_event*>(calloc(1, size));
   CHECK(event);

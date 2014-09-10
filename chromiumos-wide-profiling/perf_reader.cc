@@ -595,10 +595,6 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
 
 PerfReader::~PerfReader() {
   // Free allocated memory.
-  for (size_t i = 0; i < events_.size(); ++i)
-    if (events_[i])
-      free(events_[i]);
-
   for (size_t i = 0; i < build_id_events_.size(); ++i)
     if (build_id_events_[i])
       free(build_id_events_[i]);
@@ -1611,8 +1607,8 @@ bool PerfReader::WriteAttrs(const BufferWithSize& data) const {
 bool PerfReader::WriteData(const BufferWithSize& data) const {
   size_t offset = out_header_.data.offset;
   for (size_t i = 0; i < events_.size(); ++i) {
-    if (!WriteDataToBuffer(events_[i], events_[i]->header.size, "event data",
-                           &offset, data)) {
+    if (!WriteDataToBuffer(events_[i].get(), events_[i]->header.size,
+                           "event data", &offset, data)) {
       return false;
     }
   }
@@ -1935,8 +1931,8 @@ bool PerfReader::ReadPerfEventBlock(const event_t& event) {
   }
 
   // Copy only the part of the event that is needed.
-  event_t* event_copy = CallocMemoryForEvent(size);
-  memcpy(event_copy, &event, size);
+  malloced_unique_ptr<event_t> event_copy(CallocMemoryForEvent(size));
+  memcpy(event_copy.get(), &event, size);
   if (is_cross_endian_) {
     ByteSwap(&event_copy->header.type);
     ByteSwap(&event_copy->header.misc);
@@ -1992,7 +1988,7 @@ bool PerfReader::ReadPerfEventBlock(const event_t& event) {
     }
   }
 
-  events_.push_back(event_copy);
+  events_.push_back(std::move(event_copy));
 
   return true;
 }
@@ -2108,15 +2104,16 @@ bool PerfReader::LocalizeMMapFilenames(
     const std::map<string, string>& filename_map) {
   // Search for mmap events for which the filename needs to be updated.
   for (size_t i = 0; i < events_.size(); ++i) {
-    event_t* event = events_[i];
+    event_t* event = events_[i].get();
     if (event->header.type != PERF_RECORD_MMAP)
       continue;
 
     string key = string(event->mmap.filename);
-    if (filename_map.find(key) == filename_map.end())
+    const auto it = filename_map.find(key);
+    if (it == filename_map.end())  // not found
       continue;
 
-    string new_filename = filename_map.at(key);
+    const string& new_filename = it->second;
     size_t old_len = GetUint64AlignedStringLength(key);
     size_t new_len = GetUint64AlignedStringLength(new_filename);
     size_t old_offset = GetPerfSampleDataOffset(*event);
@@ -2129,19 +2126,19 @@ bool PerfReader::LocalizeMMapFilenames(
     if (size_increase > 0) {
       // Allocate memory for a new event.
       event_t* old_event = event;
-      event = CallocMemoryForEvent(new_size);
+      malloced_unique_ptr<event_t> new_event(CallocMemoryForEvent(new_size));
 
       // Copy over everything except filename and sample info.
-      memcpy(event, old_event,
-             sizeof(event->mmap) - sizeof(event->mmap.filename));
+      memcpy(new_event.get(), old_event,
+             sizeof(new_event->mmap) - sizeof(new_event->mmap.filename));
 
       // Copy over the sample info to the correct location.
       char* old_addr = reinterpret_cast<char*>(old_event);
-      char* new_addr = reinterpret_cast<char*>(event);
+      char* new_addr = reinterpret_cast<char*>(new_event.get());
       memcpy(new_addr + new_offset, old_addr + old_offset, sample_size);
 
-      free(old_event);
-      events_[i] = event;
+      events_[i] = std::move(new_event);
+      event = events_[i].get();
     } else if (size_increase < 0) {
       // Move the perf sample data to its new location.
       // Since source and dest could overlap, use memmove instead of memcpy.

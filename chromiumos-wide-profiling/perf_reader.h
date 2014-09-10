@@ -16,6 +16,7 @@
 
 #include "chromiumos-wide-profiling/kernel/perf_internals.h"
 #include "chromiumos-wide-profiling/quipper_string.h"
+#include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
 
@@ -155,7 +156,7 @@ class PerfReader {
     return attrs_;
   }
 
-  const std::vector<event_t*>& events() const {
+  const std::vector<malloced_unique_ptr<event_t>>& events() const {
     return events_;
   }
 
@@ -252,7 +253,7 @@ class PerfReader {
 
   std::vector<PerfFileAttr> attrs_;
   std::vector<perf_trace_event_type> event_types_;
-  std::vector<event_t*> events_;
+  std::vector<malloced_unique_ptr<event_t>> events_;
   std::vector<build_id_event*> build_id_events_;
   std::vector<PerfStringMetadata> string_metadata_;
   std::vector<PerfUint32Metadata> uint32_metadata_;

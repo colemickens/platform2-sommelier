@@ -16,6 +16,7 @@
 #include <base/macros.h>
 
 #include "chromiumos-wide-profiling/perf_reader.h"
+#include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
 
@@ -40,9 +41,7 @@ struct ParsedEvent {
   ParsedEvent() : command_(NULL) {}
 
   // Stores address of the event pointer in |events_|.
-  // We store an event_t** instead of an event_t* to avoid having multiple
-  // copies of pointers returned by calloc.
-  event_t** raw_event;
+  malloced_unique_ptr<event_t>* raw_event;
 
   // For mmap events, use this to count the number of samples that are in this
   // region.

@@ -6,7 +6,9 @@
 #define CHROMIUMOS_WIDE_PROFILING_UTILS_H_
 
 #include <stdint.h>
+#include <stdlib.h>  // for free()
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -15,10 +17,20 @@
 
 namespace quipper {
 
+struct FreeDeleter {
+  inline void operator()(void* pointer) {
+    free(pointer);
+  }
+};
+
+template <typename T>
+using malloced_unique_ptr = std::unique_ptr<T, FreeDeleter>;
+
 // Given a valid open file handle |fp|, returns the size of the file.
 int64_t GetFileSizeFromHandle(FILE* fp);
 
 event_t* CallocMemoryForEvent(size_t size);
+event_t* ReallocMemoryForEvent(event_t* event, size_t new_size);
 
 build_id_event* CallocMemoryForBuildID(size_t size);
 
