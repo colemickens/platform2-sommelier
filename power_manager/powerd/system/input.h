@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/linked_ptr.h>
@@ -20,6 +21,8 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/input_interface.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
+
+struct input_event;  // from <linux/input.h>
 
 namespace power_manager {
 
@@ -79,16 +82,41 @@ class Input : public InputInterface,
   // watched; the caller is responsible for closing |fd| otherwise.
   bool RegisterInputEvent(int fd, int event_num);
 
+  // Does a non-blocking read on |fd| and copies input events to |events_out|
+  // (after clearing it). Returns true if the read was successful and events
+  // were present.
+  bool ReadEvents(int fd, std::vector<input_event>* events_out);
+
+  // Calls NotifyObserversAboutEvent() for each event in |queued_events_| and
+  // clears the vector.
+  void SendQueuedEvents();
+
+  // Notifies observers about |event| if came from a lid switch or power button.
+  void NotifyObserversAboutEvent(const input_event& event);
+
   // File descriptor corresponding to the lid switch. The EventFileDescriptor
   // in |registered_inputs_| handles closing this FD; it's stored separately so
   // it can be queried directly for the lid state.
   int lid_fd_;
 
+  // TODO(derat): Calling these "events" is confusing; rename to something like
+  // "devices".
   int num_power_key_events_;
   int num_lid_events_;
 
   // Should the lid be watched for events if present?
   bool use_lid_;
+
+  // Most-recently-seen lid state.
+  LidState lid_state_;
+
+  // Events read from |lid_fd_| by QueryLidState() that haven't yet been sent to
+  // observers.
+  std::vector<input_event> queued_events_;
+
+  // Posted by QueryLidState() to run SendQueuedEvents() to notify observers
+  // about |queued_events_|.
+  base::CancelableClosure send_queued_events_task_;
 
   // Name of the power button interface to skip monitoring.
   const char* power_button_to_skip_;

@@ -75,6 +75,32 @@ bool GetSuffixNumber(const std::string& name,
                            suffix);
 }
 
+// If |event| came from a lid switch, copies its state to |state_out| and
+// returns true. Otherwise, leaves |state_out| untouched and returns false.
+bool GetLidStateFromInputEvent(const input_event& event, LidState* state_out) {
+  if (event.type != EV_SW || event.code != SW_LID)
+    return false;
+
+  *state_out = event.value == 1 ? LID_CLOSED : LID_OPEN;
+  return true;
+}
+
+// If |event| came from a power button, copies its state to |state_out| and
+// returns true. Otherwise, leaves |state_out| untouched and returns false.
+bool GetPowerButtonStateFromInputEvent(const input_event& event,
+                                       ButtonState* state_out) {
+  if (event.type != EV_KEY || event.code != KEY_POWER)
+    return false;
+
+  switch (event.value) {
+    case 0: *state_out = BUTTON_UP;      break;
+    case 1: *state_out = BUTTON_DOWN;    break;
+    case 2: *state_out = BUTTON_REPEAT;  break;
+    default: LOG(ERROR) << "Unhandled button state " << event.value;
+  }
+  return true;
+}
+
 }  // namespace
 
 const char Input::kInputUdevSubsystem[] = "input";
@@ -117,6 +143,7 @@ Input::Input()
       num_power_key_events_(0),
       num_lid_events_(0),
       use_lid_(true),
+      lid_state_(LID_OPEN),
       power_button_to_skip_(kPowerButtonToSkip),
       console_fd_(-1),
       udev_(NULL) {
@@ -131,6 +158,8 @@ Input::~Input() {
 
 bool Input::Init(PrefsInterface* prefs, UdevInterface* udev) {
   prefs->GetBool(kUseLidPref, &use_lid_);
+  if (!use_lid_)
+    lid_state_ = LID_NOT_PRESENT;
 
   bool legacy_power_button = false;
   if (prefs->GetBool(kLegacyPowerButtonPref, &legacy_power_button) &&
@@ -171,18 +200,33 @@ LidState Input::QueryLidState() {
   if (lid_fd_ < 0)
     return LID_NOT_PRESENT;
 
-  unsigned long switch_events[NUM_BITS(SW_LID + 1)];  // NOLINT(runtime/int)
-  memset(switch_events, 0, sizeof(switch_events));
-  if (ioctl(lid_fd_, EVIOCGBIT(EV_SW, SW_LID + 1), switch_events) < 0) {
-    PLOG(ERROR) << "Lid state ioctl() failed";
-    return LID_NOT_PRESENT;
+  while (true) {
+    // Stop when we fail to read any more events.
+    std::vector<input_event> events;
+    if (!ReadEvents(lid_fd_, &events))
+      break;
+
+    // Get the state from the last lid event (|events| may also contain non-lid
+    // events).
+    for (std::vector<input_event>::const_reverse_iterator it =
+             events.rbegin(); it != events.rend(); ++it) {
+      if (GetLidStateFromInputEvent(*it, &lid_state_))
+        break;
+    }
+
+    queued_events_.insert(queued_events_.end(), events.begin(), events.end());
+    VLOG(1) << "Queued " << events.size()
+            << " event(s) while querying lid state";
   }
-  if (IS_BIT_SET(SW_LID, switch_events)) {
-    ioctl(lid_fd_, EVIOCGSW(sizeof(switch_events)), switch_events);
-    return IS_BIT_SET(SW_LID, switch_events) ? LID_CLOSED : LID_OPEN;
-  } else {
-    return LID_NOT_PRESENT;
+
+  if (!queued_events_.empty()) {
+    send_queued_events_task_.Reset(
+        base::Bind(&Input::SendQueuedEvents, base::Unretained(this)));
+    base::MessageLoop::current()->PostTask(
+        FROM_HERE, send_queued_events_task_.callback());
   }
+
+  return lid_state_;
 }
 
 bool Input::IsUSBInputDeviceConnected() const {
@@ -230,33 +274,16 @@ int Input::GetActiveVT() {
 }
 
 void Input::OnFileCanReadWithoutBlocking(int fd) {
-  struct input_event events[64];
-  ssize_t read_size = HANDLE_EINTR(read(fd, events, sizeof(events)));
-  if (read_size < 0)
+  SendQueuedEvents();
+
+  std::vector<input_event> events;
+  if (!ReadEvents(fd, &events))
     return;
 
-  const ssize_t num_events = read_size / sizeof(struct input_event);
-  if (!read_size || read_size % sizeof(struct input_event)) {
-    LOG(ERROR) << "Read " << read_size << " byte(s) while expecting "
-               << sizeof(struct input_event) << "-byte events";
-    return;
-  }
-
-  for (ssize_t i = 0; i < num_events; i++) {
-    const input_event& event = events[i];
-    if (event.type == EV_SW && event.code == SW_LID) {
-      LidState state = event.value == 1 ? LID_CLOSED : LID_OPEN;
-      FOR_EACH_OBSERVER(InputObserver, observers_, OnLidEvent(state));
-    } else if (event.type == EV_KEY && event.code == KEY_POWER) {
-      ButtonState state = BUTTON_DOWN;
-      switch (event.value) {
-        case 0: state = BUTTON_UP;      break;
-        case 1: state = BUTTON_DOWN;    break;
-        case 2: state = BUTTON_REPEAT;  break;
-        default: LOG(ERROR) << "Unhandled button state " << event.value;
-      }
-      FOR_EACH_OBSERVER(InputObserver, observers_, OnPowerButtonEvent(state));
-    }
+  VLOG(1) << "Read " << events.size() << " event(s) from FD " << fd;
+  for (size_t i = 0; i < events.size(); ++i) {
+    GetLidStateFromInputEvent(events[i], &lid_state_);
+    NotifyObserversAboutEvent(events[i]);
   }
 }
 
@@ -332,7 +359,7 @@ bool Input::AddEvent(const std::string& name) {
     LOG(WARNING) << "Missing read access to " << event_path.value();
     return false;
   }
-  if ((event_fd = open(event_path.value().c_str(), O_RDONLY)) < 0) {
+  if ((event_fd = open(event_path.value().c_str(), O_RDONLY|O_NONBLOCK)) < 0) {
     PLOG(ERROR) << "open() failed for " << event_path.value();
     return false;
   }
@@ -423,6 +450,13 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
       if (lid_fd_ >= 0)
         LOG(WARNING) << "Multiple lid events found on system";
       lid_fd_ = fd;
+
+      if (ioctl(lid_fd_, EVIOCGSW(sizeof(switch_events)), switch_events) < 0) {
+        PLOG(ERROR) << "Reading initial lid state failed";
+      } else {
+        lid_state_ = IS_BIT_SET(SW_LID, switch_events) ? LID_CLOSED : LID_OPEN;
+        VLOG(1) << "Initial lid state is " << LidStateToString(lid_state_);
+      }
     }
   }
 
@@ -432,6 +466,56 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
   registered_inputs_.insert(std::make_pair(event_num,
       make_linked_ptr(new EventFileDescriptor(fd, this))));
   return true;
+}
+
+bool Input::ReadEvents(int fd, std::vector<input_event>* events_out) {
+  DCHECK(events_out);
+  events_out->clear();
+
+  struct input_event events[64];
+  ssize_t read_size = HANDLE_EINTR(read(fd, events, sizeof(events)));
+  if (read_size <= 0) {
+    if (read_size < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
+      PLOG(ERROR) << "Reading events from FD " << fd << " failed";
+    else if (read_size == 0)
+      LOG(ERROR) << "Didn't get any data when reading events from FD " << fd;
+    return false;
+  }
+
+  const size_t num_events = read_size / sizeof(struct input_event);
+  if (read_size % sizeof(struct input_event)) {
+    LOG(ERROR) << "Read " << read_size << " byte(s) while expecting "
+               << sizeof(struct input_event) << "-byte events";
+    return false;
+  }
+
+  events_out->reserve(num_events);
+  for (size_t i = 0; i < num_events; ++i)
+    events_out->push_back(events[i]);
+  return true;
+}
+
+void Input::SendQueuedEvents() {
+  for (size_t i = 0; i < queued_events_.size(); ++i)
+    NotifyObserversAboutEvent(queued_events_[i]);
+  queued_events_.clear();
+}
+
+void Input::NotifyObserversAboutEvent(const input_event& event) {
+  LidState lid_state = LID_OPEN;
+  if (GetLidStateFromInputEvent(event, &lid_state)) {
+    VLOG(1) << "Notifying observers about lid " << LidStateToString(lid_state)
+            << " event";
+    FOR_EACH_OBSERVER(InputObserver, observers_, OnLidEvent(lid_state));
+  }
+
+  ButtonState button_state = BUTTON_DOWN;
+  if (GetPowerButtonStateFromInputEvent(event, &button_state)) {
+    VLOG(1) << "Notifying observers about power button "
+            << ButtonStateToString(button_state) << " event";
+    FOR_EACH_OBSERVER(InputObserver, observers_,
+                      OnPowerButtonEvent(button_state));
+  }
 }
 
 }  // namespace system
