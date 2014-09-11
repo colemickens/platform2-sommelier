@@ -37,6 +37,9 @@ void usage() {
                     << " param1 = val1&param2 = val2..." << std::endl;
   std::cerr << "  " << kManagerFinishRegisterDevice
                     << " device_id" << std::endl;
+  std::cerr << "  " << kManagerAddCommand
+                    << " '{\"name\":\"command_name\",\"parameters\":{}}'"
+                    << std::endl;
   std::cerr << "  " << kManagerUpdateStateMethod << std::endl;
   std::cerr << "  " << dbus::kObjectManagerGetManagedObjects << std::endl;
 }
@@ -235,6 +238,26 @@ class BuffetHelperProxy {
     return EX_OK;
   }
 
+  int CallManagerAddCommand(const CommandLine::StringVector& args) {
+    if (args.size() != 1) {
+      std::cerr << "Invalid number of arguments for "
+                << "Manager." << kManagerAddCommand << std::endl;
+      usage();
+      return EX_USAGE;
+    }
+    dbus::MethodCall method_call(
+        kManagerInterface, kManagerAddCommand);
+    dbus::MessageWriter writer(&method_call);
+    writer.AppendString(args.front());
+    scoped_ptr<dbus::Response> response(
+        manager_proxy_->CallMethodAndBlock(&method_call, default_timeout_ms));
+    if (!response) {
+      std::cout << "Failed to receive a response." << std::endl;
+      return EX_UNAVAILABLE;
+    }
+    return EX_OK;
+  }
+
   int CallRootGetManagedObjects(const CommandLine::StringVector& args) {
     if (!args.empty()) {
       std::cerr << "Invalid number of arguments for "
@@ -299,6 +322,9 @@ int main(int argc, char** argv) {
   } else if (command.compare(kManagerUpdateStateMethod) == 0 ||
              command.compare("us") == 0) {
     err = helper.CallManagerUpdateState(args);
+  } else if (command.compare(kManagerAddCommand) == 0 ||
+             command.compare("ac") == 0) {
+    err = helper.CallManagerAddCommand(args);
   } else if (command.compare(dbus::kObjectManagerGetManagedObjects) == 0) {
     err = helper.CallRootGetManagedObjects(args);
   } else {

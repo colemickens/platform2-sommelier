@@ -9,6 +9,7 @@
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
+#include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/exported_object_manager.h>
@@ -17,6 +18,7 @@
 #include <dbus/object_path.h>
 #include <dbus/values_util.h>
 
+#include "buffet/commands/command_instance.h"
 #include "buffet/commands/command_manager.h"
 #include "buffet/dbus_constants.h"
 
@@ -48,6 +50,9 @@ void Manager::RegisterAsync(const AsyncEventSequencer::CompletionAction& cb) {
   itf->AddMethodHandler(dbus_constants::kManagerUpdateStateMethod,
                         base::Unretained(this),
                         &Manager::HandleUpdateState);
+  itf->AddMethodHandler(dbus_constants::kManagerAddCommand,
+                        base::Unretained(this),
+                        &Manager::HandleAddCommand);
   itf->AddMethodHandler(dbus_constants::kManagerTestMethod,
                         base::Unretained(this),
                         &Manager::HandleTestMethod);
@@ -116,6 +121,22 @@ void Manager::HandleUpdateState(
     chromeos::ErrorPtr* error, const std::string& json_state_fragment) {
   // TODO(wiley): Merge json state blobs intelligently.
   state_.SetValue(json_state_fragment);
+}
+
+void Manager::HandleAddCommand(
+    chromeos::ErrorPtr* error, const std::string& json_command) {
+  std::string error_message;
+  std::unique_ptr<base::Value> value(base::JSONReader::ReadAndReturnError(
+      json_command, base::JSON_PARSE_RFC, nullptr, &error_message));
+  if (!value) {
+    chromeos::Error::AddTo(error, chromeos::errors::json::kDomain,
+                           chromeos::errors::json::kParseError, error_message);
+    return;
+  }
+  auto command_instance = buffet::CommandInstance::FromJson(
+      value.get(), command_manager_->GetCommandDictionary(), error);
+  if (command_instance)
+    command_manager_->AddCommand(std::move(command_instance));
 }
 
 std::string Manager::HandleTestMethod(chromeos::ErrorPtr* error,

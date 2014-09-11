@@ -20,6 +20,7 @@ const char kManagerGetDeviceInfo[]          = "GetDeviceInfo";
 const char kManagerStartRegisterDevice[]    = "StartRegisterDevice";
 const char kManagerFinishRegisterDevice[]   = "FinishRegisterDevice";
 const char kManagerUpdateStateMethod[]      = "UpdateState";
+const char kManagerAddCommand[]             = "AddCommand";
 const char kManagerTestMethod[]             = "TestMethod";
 
 const char kCommandInterface[] = "org.chromium.Buffet.Command";

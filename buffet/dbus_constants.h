@@ -25,6 +25,7 @@ extern const char kManagerGetDeviceInfo[];
 extern const char kManagerStartRegisterDevice[];
 extern const char kManagerFinishRegisterDevice[];
 extern const char kManagerUpdateStateMethod[];
+extern const char kManagerAddCommand[];
 extern const char kManagerTestMethod[];
 
 // Interface implemented by the command instance objects.
