@@ -28,18 +28,20 @@ const uint32_t kModemTypeGsm = 1;
 class DBusPropertiesProxy : public org::freedesktop::DBus::Properties_proxy,
                             public DBus::ObjectProxy {
  public:
-  DBusPropertiesProxy(DBus::Connection& connection, const char* path,  // NOLINT
+  DBusPropertiesProxy(DBus::Connection* connection,
+                      const char* path,
                       const char* service)
-      : DBus::ObjectProxy(connection, path, service) {}
+      : DBus::ObjectProxy(*connection, path, service) {}
   ~DBusPropertiesProxy() override = default;
 };
 
 class ModemManagerProxy : public org::freedesktop::ModemManager_proxy,
                           public DBus::ObjectProxy {
  public:
-  ModemManagerProxy(DBus::Connection& connection, const char* path,  // NOLINT
+  ModemManagerProxy(DBus::Connection* connection,
+                    const char* path,
                     const char* service)
-      : DBus::ObjectProxy(connection, path, service) {}
+      : DBus::ObjectProxy(*connection, path, service) {}
   ~ModemManagerProxy() override = default;
   void DeviceAdded(const DBus::Path&) override {}
   void DeviceRemoved(const DBus::Path&) override {}
@@ -49,18 +51,20 @@ class ModemSimpleProxy
     : public org::freedesktop::ModemManager::Modem::Simple_proxy,
       public DBus::ObjectProxy {
  public:
-  ModemSimpleProxy(DBus::Connection& connection, const char* path,  // NOLINT
+  ModemSimpleProxy(DBus::Connection* connection,
+                   const char* path,
                    const char* service)
-      : DBus::ObjectProxy(connection, path, service) {}
+      : DBus::ObjectProxy(*connection, path, service) {}
   ~ModemSimpleProxy() override = default;
 };
 
 class ModemProxy : public org::freedesktop::ModemManager::Modem_proxy,
                    public DBus::ObjectProxy {
  public:
-  ModemProxy(DBus::Connection& connection, const char* path,  // NOLINT
+  ModemProxy(DBus::Connection* connection,
+             const char* path,
              const char* service)
-      : DBus::ObjectProxy(connection, path, service) {}
+      : DBus::ObjectProxy(*connection, path, service) {}
   ~ModemProxy() override = default;
   void StateChanged(const uint32_t& old_state,
                     const uint32_t& new_state,
@@ -68,19 +72,19 @@ class ModemProxy : public org::freedesktop::ModemManager::Modem_proxy,
 };
 
 struct Modem {
-  Modem(const char* service, DBus::Path path)
+  Modem(const char* service, const DBus::Path& path)
       : service_(service), path_(path) {}
 
-  Value* GetStatus(DBus::Connection& conn);  // NOLINT
+  Value* GetStatus(DBus::Connection* conn);
 
   const char* service_;
   DBus::Path path_;
 };
 
-Value* FetchOneInterface(DBusPropertiesProxy& properties,  // NOLINT
+Value* FetchOneInterface(DBusPropertiesProxy* properties,
                          const char* interface,
                          DictionaryValue* result) {
-  std::map<std::string, DBus::Variant> propsmap = properties.GetAll(interface);
+  std::map<std::string, DBus::Variant> propsmap = properties->GetAll(interface);
   Value* propsdict = NULL;
   if (!debugd::DBusPropertyMapToValue(propsmap, &propsdict))
     return NULL;
@@ -91,12 +95,12 @@ Value* FetchOneInterface(DBusPropertiesProxy& properties,  // NOLINT
   return propsdict;
 }
 
-Value* Modem::GetStatus(DBus::Connection& conn) {  // NOLINT
+Value* Modem::GetStatus(DBus::Connection* conn) {
   DictionaryValue* result = new DictionaryValue();
   result->SetString("service", service_);
   result->SetString("path", path_);
 
-  ModemSimpleProxy simple = ModemSimpleProxy(conn, path_.c_str(), service_);
+  ModemSimpleProxy simple(conn, path_.c_str(), service_);
   Value* status = NULL;
   std::map<std::string, DBus::Variant> statusmap;
   try {
@@ -107,7 +111,7 @@ Value* Modem::GetStatus(DBus::Connection& conn) {  // NOLINT
   if (debugd::DBusPropertyMapToValue(statusmap, &status))
     result->Set("status", status);
 
-  ModemProxy modem = ModemProxy(conn, path_.c_str(), service_);
+  ModemProxy modem(conn, path_.c_str(), service_);
   DictionaryValue* infodict = new DictionaryValue();
   try {
     DBus::Struct<std::string,
@@ -121,17 +125,16 @@ Value* Modem::GetStatus(DBus::Connection& conn) {  // NOLINT
   result->Set("info", infodict);
 
   DictionaryValue* props = new DictionaryValue();
-  DBusPropertiesProxy properties = DBusPropertiesProxy(conn, path_.c_str(),
-                                                       service_);
-  FetchOneInterface(properties, cromo::kModemInterface, props);
-  FetchOneInterface(properties, cromo::kModemSimpleInterface, props);
+  DBusPropertiesProxy properties(conn, path_.c_str(), service_);
+  FetchOneInterface(&properties, cromo::kModemInterface, props);
+  FetchOneInterface(&properties, cromo::kModemSimpleInterface, props);
   uint32_t type = modem.Type();
   if (type == kModemTypeGsm) {
-    FetchOneInterface(properties, cromo::kModemGsmInterface, props);
-    FetchOneInterface(properties, cromo::kModemGsmCardInterface, props);
-    FetchOneInterface(properties, cromo::kModemGsmNetworkInterface, props);
+    FetchOneInterface(&properties, cromo::kModemGsmInterface, props);
+    FetchOneInterface(&properties, cromo::kModemGsmCardInterface, props);
+    FetchOneInterface(&properties, cromo::kModemGsmNetworkInterface, props);
   } else {
-    FetchOneInterface(properties, cromo::kModemCdmaInterface, props);
+    FetchOneInterface(&properties, cromo::kModemCdmaInterface, props);
   }
   result->Set("properties", props);
 
@@ -142,7 +145,7 @@ int main() {
   DBus::BusDispatcher dispatcher;
   DBus::default_dispatcher = &dispatcher;
   DBus::Connection conn = DBus::Connection::SystemBus();
-  ModemManagerProxy cromo(conn,
+  ModemManagerProxy cromo(&conn,
                           cromo::kCromoServicePath,
                           cromo::kCromoServiceName);
   std::vector<Modem> modems;
@@ -159,7 +162,7 @@ int main() {
 
   ListValue result;
   for (size_t i = 0; i < modems.size(); ++i)
-    result.Append(modems[i].GetStatus(conn));
+    result.Append(modems[i].GetStatus(&conn));
 
   std::string json;
   base::JSONWriter::WriteWithOptions(&result,

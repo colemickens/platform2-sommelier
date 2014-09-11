@@ -22,10 +22,10 @@ using base::Value;
 class DeviceProxy : public org::chromium::flimflam::Device_proxy,
                     public DBus::ObjectProxy {
  public:
-  DeviceProxy(DBus::Connection& connection,  // NOLINT
+  DeviceProxy(DBus::Connection* connection,
               const char* path,
               const char* service)
-      : DBus::ObjectProxy(connection, path, service) {}
+      : DBus::ObjectProxy(*connection, path, service) {}
   ~DeviceProxy() override = default;
   void PropertyChanged(const std::string&, const DBus::Variant&) override {}
 };
@@ -33,10 +33,10 @@ class DeviceProxy : public org::chromium::flimflam::Device_proxy,
 class IPConfigProxy : public org::chromium::flimflam::IPConfig_proxy,
                       public DBus::ObjectProxy {
  public:
-  IPConfigProxy(DBus::Connection& connection,  // NOLINT
+  IPConfigProxy(DBus::Connection* connection,
                 const char* path,
                 const char* service)
-      : DBus::ObjectProxy(connection, path, service) {}
+      : DBus::ObjectProxy(*connection, path, service) {}
   ~IPConfigProxy() override = default;
   void PropertyChanged(const std::string&, const DBus::Variant&) override {}
 };
@@ -44,10 +44,10 @@ class IPConfigProxy : public org::chromium::flimflam::IPConfig_proxy,
 class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
                      public DBus::ObjectProxy {
  public:
-  ManagerProxy(DBus::Connection& connection,  // NOLINT
+  ManagerProxy(DBus::Connection* connection,
                const char* path,
                const char* service)
-      : DBus::ObjectProxy(connection, path, service) {}
+      : DBus::ObjectProxy(*connection, path, service) {}
   ~ManagerProxy() override = default;
   void PropertyChanged(const std::string&, const DBus::Variant&) override {}
   void StateChanged(const std::string&) override {}
@@ -56,50 +56,47 @@ class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
 class ServiceProxy : public org::chromium::flimflam::Service_proxy,
                      public DBus::ObjectProxy {
  public:
-  ServiceProxy(DBus::Connection& connection,  // NOLINT
+  ServiceProxy(DBus::Connection* connection,
                const char* path,
                const char* service)
-      : DBus::ObjectProxy(connection, path, service) {}
+      : DBus::ObjectProxy(*connection, path, service) {}
   ~ServiceProxy() override = default;
   void PropertyChanged(const std::string&, const DBus::Variant&) override {}
 };
 
-Value* GetService(DBus::Connection& conn, DBus::Path& path) { // NOLINT
-  ServiceProxy service =
-      ServiceProxy(conn, path.c_str(), shill::kFlimflamServiceName);
+Value* GetService(DBus::Connection* connection, const DBus::Path& path) {
+  ServiceProxy service(connection, path.c_str(), shill::kFlimflamServiceName);
   std::map<std::string, DBus::Variant> props = service.GetProperties();
   Value* v = NULL;
   debugd::DBusPropertyMapToValue(props, &v);
   return v;
 }
 
-Value* GetServices(DBus::Connection& conn, ManagerProxy& flimflam) { // NOLINT
-  std::map<std::string, DBus::Variant> props = flimflam.GetProperties();
+Value* GetServices(DBus::Connection* connection, ManagerProxy* flimflam) {
+  std::map<std::string, DBus::Variant> props = flimflam->GetProperties();
   DictionaryValue* dv = new DictionaryValue();
-  DBus::Variant& devices = props["Services"];
-  std::vector<DBus::Path> paths = devices;
+  const DBus::Variant& services = props["Services"];
+  std::vector<DBus::Path> paths = services;
   for (std::vector<DBus::Path>::iterator it = paths.begin();
        it != paths.end();
        ++it) {
-    Value* v = GetService(conn, *it);
+    Value* v = GetService(connection, *it);
     if (v)
       dv->Set(*it, v);
   }
   return dv;
 }
 
-Value* GetIPConfig(DBus::Connection& conn, DBus::Path& path) { // NOLINT
-  IPConfigProxy ipconfig =
-      IPConfigProxy(conn, path.c_str(), shill::kFlimflamServiceName);
+Value* GetIPConfig(DBus::Connection* connection, const DBus::Path& path) {
+  IPConfigProxy ipconfig(connection, path.c_str(), shill::kFlimflamServiceName);
   std::map<std::string, DBus::Variant> props = ipconfig.GetProperties();
   Value* v = NULL;
   debugd::DBusPropertyMapToValue(props, &v);
   return v;
 }
 
-Value* GetDevice(DBus::Connection& conn, DBus::Path& path) { // NOLINT
-  DeviceProxy device =
-      DeviceProxy(conn, path.c_str(), shill::kFlimflamServiceName);
+Value* GetDevice(DBus::Connection* connection, const DBus::Path& path) {
+  DeviceProxy device(connection, path.c_str(), shill::kFlimflamServiceName);
   std::map<std::string, DBus::Variant> props = device.GetProperties();
   DictionaryValue* ipconfigs = NULL;
   if (props.count("IPConfigs") == 1) {
@@ -110,7 +107,7 @@ Value* GetDevice(DBus::Connection& conn, DBus::Path& path) { // NOLINT
     for (std::vector<DBus::Path>::iterator it = paths.begin();
          it != paths.end();
          ++it) {
-      Value* v = GetIPConfig(conn, *it);
+      Value* v = GetIPConfig(connection, *it);
       if (v)
         ipconfigs->Set(*it, v);
     }
@@ -124,15 +121,15 @@ Value* GetDevice(DBus::Connection& conn, DBus::Path& path) { // NOLINT
   return v;
 }
 
-Value* GetDevices(DBus::Connection& conn, ManagerProxy& flimflam) { // NOLINT
-  std::map<std::string, DBus::Variant> props = flimflam.GetProperties();
+Value* GetDevices(DBus::Connection* connection, ManagerProxy* flimflam) {
+  std::map<std::string, DBus::Variant> props = flimflam->GetProperties();
   DictionaryValue* dv = new DictionaryValue();
-  DBus::Variant& devices = props["Devices"];
+  const DBus::Variant& devices = props["Devices"];
   std::vector<DBus::Path> paths = devices;
   for (std::vector<DBus::Path>::iterator it = paths.begin();
        it != paths.end();
        ++it) {
-    Value* v = GetDevice(conn, *it);
+    Value* v = GetDevice(connection, *it);
     if (v)
       dv->Set(*it, v);
   }
@@ -142,16 +139,16 @@ Value* GetDevices(DBus::Connection& conn, ManagerProxy& flimflam) { // NOLINT
 int main() {
   DBus::BusDispatcher dispatcher;
   DBus::default_dispatcher = &dispatcher;
-  DBus::Connection conn = DBus::Connection::SystemBus();
-  ManagerProxy manager(conn,
+  DBus::Connection connection = DBus::Connection::SystemBus();
+  ManagerProxy manager(&connection,
                        shill::kFlimflamServicePath,
                        shill::kFlimflamServiceName);
   DictionaryValue result;
 
-  Value* devices = GetDevices(conn, manager);
+  Value* devices = GetDevices(&connection, &manager);
   result.Set("devices", devices);
 
-  Value* services = GetServices(conn, manager);
+  Value* services = GetServices(&connection, &manager);
   result.Set("services", services);
 
   std::string json;

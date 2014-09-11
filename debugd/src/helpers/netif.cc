@@ -142,10 +142,10 @@ ListValue *flags2list(unsigned int flags) {
 class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
                      public DBus::ObjectProxy {
  public:
-  ManagerProxy(DBus::Connection& connection,  // NOLINT
+  ManagerProxy(DBus::Connection* connection,
                const char* path,
                const char* service)
-      : DBus::ObjectProxy(connection, path, service) {}
+      : DBus::ObjectProxy(*connection, path, service) {}
   ~ManagerProxy() override = default;
   void PropertyChanged(const std::string&, const DBus::Variant&) override {}
   void StateChanged(const std::string&) override {}
@@ -154,10 +154,10 @@ class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
 class ServiceProxy : public org::chromium::flimflam::Service_proxy,
                      public DBus::ObjectProxy {
  public:
-  ServiceProxy(DBus::Connection& connection,  // NOLINT
+  ServiceProxy(DBus::Connection* connection,
                const char* path,
                const char* service)
-      : DBus::ObjectProxy(connection, path, service) {}
+      : DBus::ObjectProxy(*connection, path, service) {}
   ~ServiceProxy() override = default;
   void PropertyChanged(const std::string&, const DBus::Variant&) override {}
 };
@@ -258,8 +258,8 @@ std::string DevicePathToName(const std::string& path) {
 void AddSignalStrengths(std::map<std::string, NetInterface*> *interfaces) {
   DBus::BusDispatcher dispatcher;
   DBus::default_dispatcher = &dispatcher;
-  DBus::Connection conn = DBus::Connection::SystemBus();
-  ManagerProxy manager(conn,
+  DBus::Connection connection = DBus::Connection::SystemBus();
+  ManagerProxy manager(&connection,
                        shill::kFlimflamServicePath,
                        shill::kFlimflamServiceName);
 
@@ -272,8 +272,7 @@ void AddSignalStrengths(std::map<std::string, NetInterface*> *interfaces) {
   std::vector<DBus::Path> paths = devices;
   for (std::vector<DBus::Path>::iterator it = paths.begin();
        it != paths.end(); ++it) {
-    ServiceProxy service =
-        ServiceProxy(conn, it->c_str(), shill::kFlimflamServiceName);
+    ServiceProxy service(&connection, it->c_str(), shill::kFlimflamServiceName);
     std::map<std::string, DBus::Variant> props = service.GetProperties();
     if (   props.count("Strength") != 1
         || props.count("Name") != 1
