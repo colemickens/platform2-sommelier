@@ -440,6 +440,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, ConnectToBestServices);
   FRIEND_TEST(ManagerTest, CreateConnectivityReport);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
+  FRIEND_TEST(ManagerTest, DevicePresenceStatusCheck);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, DisableTechnology);
   FRIEND_TEST(ManagerTest, EnableTechnology);
@@ -467,8 +468,13 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   static const char kErrorTypeRequired[];
   static const char kErrorUnsupportedServiceType[];
 
+  // Technologies to probe for.
+  static const char *kProbeTechnologies[];
+
+  // Timeout interval for probing various device status, and report them to
+  // UMA stats.
+  static const int kDeviceStatusCheckIntervalMilliseconds;
   // Time to wait for termination actions to complete.
-  static const int kConnectionStatusCheckIntervalMilliseconds;
   static const int kTerminationActionsTimeoutMilliseconds;
 
   void AutoConnect();
@@ -535,7 +541,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   void SortServices();
   void SortServicesTask();
-  void ConnectionStatusCheckTask();
+  void DeviceStatusCheckTask();
+  void ConnectionStatusCheck();
+  void DevicePresenceStatusCheck();
+
   bool MatchProfileWithService(const ServiceRefPtr &service);
 
   // Sets the profile of |service| to |profile|, without notifying its
@@ -658,8 +667,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   base::CancelableClosure sort_services_task_;
 
-  // Task for periodically checking connection status.
-  base::CancelableClosure connection_status_check_task_;
+  // Task for periodically checking various device status.
+  base::CancelableClosure device_status_check_task_;
 
   // TODO(petkov): Currently this handles both terminate and suspend
   // actions. Rename all relevant identifiers to capture this.

@@ -73,8 +73,16 @@ const char Manager::kErrorUnsupportedServiceType[] =
 // stats for termination actions might be lost.
 const int Manager::kTerminationActionsTimeoutMilliseconds = 9500;
 
-// Connection status check interval (3 minutes).
-const int Manager::kConnectionStatusCheckIntervalMilliseconds = 180000;
+// Device status check interval (every 3 minutes).
+const int Manager::kDeviceStatusCheckIntervalMilliseconds = 180000;
+
+// static
+const char *Manager::kProbeTechnologies[] = {
+    kTypeEthernet,
+    kTypeWifi,
+    kTypeWimax,
+    kTypeCellular
+};
 
 Manager::Manager(ControlInterface *control_interface,
                  EventDispatcher *dispatcher,
@@ -113,8 +121,8 @@ Manager::Manager(ControlInterface *control_interface,
       metrics_(metrics),
       glib_(glib),
       use_startup_portal_list_(false),
-      connection_status_check_task_(Bind(&Manager::ConnectionStatusCheckTask,
-                                         base::Unretained(this))),
+      device_status_check_task_(Bind(&Manager::DeviceStatusCheckTask,
+                                     base::Unretained(this))),
       termination_actions_(dispatcher),
       suspend_delay_registered_(false),
       is_wake_on_lan_enabled_(true),
@@ -222,8 +230,8 @@ void Manager::Start() {
   }
 
   // Start task for checking connection status.
-  dispatcher_->PostDelayedTask(connection_status_check_task_.callback(),
-                               kConnectionStatusCheckIntervalMilliseconds);
+  dispatcher_->PostDelayedTask(device_status_check_task_.callback(),
+                               kDeviceStatusCheckIntervalMilliseconds);
 }
 
 void Manager::Stop() {
@@ -256,7 +264,7 @@ void Manager::Stop() {
   modem_info_.Stop();
 #endif  // DISABLE_CELLULAR
   device_info_.Stop();
-  connection_status_check_task_.Cancel();
+  device_status_check_task_.Cancel();
   sort_services_task_.Cancel();
   power_manager_->Stop();
   power_manager_.reset();
@@ -1408,7 +1416,17 @@ void Manager::SortServicesTask() {
   AutoConnect();
 }
 
-void Manager::ConnectionStatusCheckTask() {
+void Manager::DeviceStatusCheckTask() {
+  SLOG(Manager, 4) << "In " << __func__;
+
+  ConnectionStatusCheck();
+  DevicePresenceStatusCheck();
+
+  dispatcher_->PostDelayedTask(device_status_check_task_.callback(),
+                               kDeviceStatusCheckIntervalMilliseconds);
+}
+
+void Manager::ConnectionStatusCheck() {
   SLOG(Manager, 4) << "In " << __func__;
   // Report current connection status.
   Metrics::ConnectionStatus status = Metrics::kConnectionStatusOffline;
@@ -1420,10 +1438,19 @@ void Manager::ConnectionStatusCheckTask() {
     }
   }
   metrics_->NotifyDeviceConnectionStatus(status);
+}
 
-  // Schedule delayed task for checking connection status.
-  dispatcher_->PostDelayedTask(connection_status_check_task_.callback(),
-                               kConnectionStatusCheckIntervalMilliseconds);
+void Manager::DevicePresenceStatusCheck() {
+  Error error;
+  vector<string> available_technologies = AvailableTechnologies(&error);
+
+  for (const auto &technology : kProbeTechnologies) {
+    bool presence = std::find(available_technologies.begin(),
+                              available_technologies.end(),
+                              technology) != available_technologies.end();
+    metrics_->NotifyDevicePresenceStatus(
+        Technology::IdentifierFromName(technology), presence);
+  }
 }
 
 bool Manager::MatchProfileWithService(const ServiceRefPtr &service) {

@@ -346,6 +346,12 @@ class Metrics {
     kIPv6ConnectivityStatusMax
   };
 
+  enum DevicePresenceStatus {
+    kDevicePresenceStatusNo = 0,
+    kDevicePresenceStatusYes = 1,
+    kDevicePresenceStatusMax
+  };
+
   static const char kMetricDisconnectSuffix[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -575,6 +581,9 @@ class Metrics {
   // IPv6 connectivity status.
   static const char kMetricIPv6ConnectivityStatusSuffix[];
 
+  // Device presence.
+  static const char kMetricDevicePresenceStatusSuffix[];
+
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
 
@@ -785,6 +794,10 @@ class Metrics {
   // Notifies this object about the IPv6 connectivity status.
   virtual void NotifyIPv6ConnectivityStatus(
       Technology::Identifier technology_id, bool status);
+
+  // Notifies this object about the presence of given technology type device.
+  virtual void NotifyDevicePresenceStatus(Technology::Identifier technology_id,
+                                          bool status);
 
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string &name, int sample, int max);

@@ -342,6 +342,10 @@ const char Metrics::kMetricNetworkConnectionIPTypeSuffix[] =
 const char Metrics::kMetricIPv6ConnectivityStatusSuffix[] =
     "IPv6ConnectivityStatus";
 
+// static
+const char Metrics::kMetricDevicePresenceStatusSuffix[] =
+    "DevicePresenceStatus";
+
 Metrics::Metrics(EventDispatcher *dispatcher)
     : dispatcher_(dispatcher),
       library_(&metrics_library_),
@@ -1220,6 +1224,15 @@ void Metrics::NotifyIPv6ConnectivityStatus(Technology::Identifier technology_id,
   IPv6ConnectivityStatus ipv6_status = status ? kIPv6ConnectivityStatusYes
                                               : kIPv6ConnectivityStatusNo;
   SendEnumToUMA(histogram, ipv6_status, kIPv6ConnectivityStatusMax);
+}
+
+void Metrics::NotifyDevicePresenceStatus(Technology::Identifier technology_id,
+                                         bool status) {
+  string histogram = GetFullMetricName(kMetricDevicePresenceStatusSuffix,
+                                       technology_id);
+  DevicePresenceStatus presence = status ? kDevicePresenceStatusYes
+                                         : kDevicePresenceStatusNo;
+  SendEnumToUMA(histogram, presence, kDevicePresenceStatusMax);
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {

@@ -2470,7 +2470,7 @@ TEST_F(ManagerTest, ConnectionStatusCheck) {
       .WillOnce(Return(false));
   EXPECT_CALL(mock_metrics,
       NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOffline));
-  manager()->ConnectionStatusCheckTask();
+  manager()->ConnectionStatusCheck();
 
   // Device connected, but not online.
   EXPECT_CALL(*mock_service.get(), IsConnected())
@@ -2481,7 +2481,7 @@ TEST_F(ManagerTest, ConnectionStatusCheck) {
       NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOnline)).Times(0);
   EXPECT_CALL(mock_metrics,
       NotifyDeviceConnectionStatus(Metrics::kConnectionStatusConnected));
-  manager()->ConnectionStatusCheckTask();
+  manager()->ConnectionStatusCheck();
 
   // Device connected and online.
   EXPECT_CALL(*mock_service.get(), IsConnected())
@@ -2492,7 +2492,37 @@ TEST_F(ManagerTest, ConnectionStatusCheck) {
       NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOnline));
   EXPECT_CALL(mock_metrics,
       NotifyDeviceConnectionStatus(Metrics::kConnectionStatusConnected));
-  manager()->ConnectionStatusCheckTask();
+  manager()->ConnectionStatusCheck();
+}
+
+TEST_F(ManagerTest, DevicePresenceStatusCheck) {
+  // Setup mock metrics and service.
+  MockMetrics mock_metrics(dispatcher());
+  SetMetrics(&mock_metrics);
+
+  manager()->RegisterDevice(mock_devices_[0]);
+  manager()->RegisterDevice(mock_devices_[1]);
+  manager()->RegisterDevice(mock_devices_[2]);
+  manager()->RegisterDevice(mock_devices_[3]);
+
+  ON_CALL(*mock_devices_[0].get(), technology())
+      .WillByDefault(Return(Technology::kEthernet));
+  ON_CALL(*mock_devices_[1].get(), technology())
+      .WillByDefault(Return(Technology::kWifi));
+  ON_CALL(*mock_devices_[2].get(), technology())
+      .WillByDefault(Return(Technology::kCellular));
+  ON_CALL(*mock_devices_[3].get(), technology())
+      .WillByDefault(Return(Technology::kWifi));
+
+  EXPECT_CALL(mock_metrics,
+      NotifyDevicePresenceStatus(Technology::kEthernet, true));
+  EXPECT_CALL(mock_metrics,
+      NotifyDevicePresenceStatus(Technology::kWifi, true));
+  EXPECT_CALL(mock_metrics,
+      NotifyDevicePresenceStatus(Technology::kWiMax, false));
+  EXPECT_CALL(mock_metrics,
+      NotifyDevicePresenceStatus(Technology::kCellular, true));
+  manager()->DevicePresenceStatusCheck();
 }
 
 TEST_F(ManagerTest, SortServicesWithConnection) {

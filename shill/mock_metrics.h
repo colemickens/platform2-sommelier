@@ -65,6 +65,8 @@ class MockMetrics : public Metrics {
                     Metrics::NetworkConnectionIPType type));
   MOCK_METHOD2(NotifyIPv6ConnectivityStatus,
                void(Technology::Identifier technology_id, bool status));
+  MOCK_METHOD2(NotifyDevicePresenceStatus,
+               void(Technology::Identifier technology_id, bool status));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);
