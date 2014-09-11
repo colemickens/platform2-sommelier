@@ -4164,7 +4164,7 @@ TEST_F(WiFiMainTest, WakeOnWiFiSettingsAppliedBeforeSuspend) {
   EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
 
   // When wake_on_packet_connections_ is not empty, program NIC to wake on
-  // disconnects and IP address patterns.
+  // IP address patterns.
   IPAddress ip_addr("1.1.1.1");
   GetWakeOnPacketConnections()->AddUnique(ip_addr);
   EXPECT_CALL(
@@ -4176,8 +4176,6 @@ TEST_F(WiFiMainTest, WakeOnWiFiSettingsAppliedBeforeSuspend) {
               SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(0);
   OnBeforeSuspend();
   EXPECT_FALSE(GetWakeOnWiFiTriggers()->empty());
-  EXPECT_TRUE(GetWakeOnWiFiTriggers()->find(WakeOnWiFi::kDisconnect) !=
-              GetWakeOnWiFiTriggers()->end());
   EXPECT_TRUE(GetWakeOnWiFiTriggers()->find(WakeOnWiFi::kIPAddress) !=
               GetWakeOnWiFiTriggers()->end());
 }

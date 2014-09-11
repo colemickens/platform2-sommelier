@@ -1713,7 +1713,11 @@ void WiFi::OnBeforeSuspend() {
   // iff we have buffered wake on packet programming requests.
   if (!wake_on_packet_connections_.Empty()) {
     wake_on_wifi_triggers_.insert(WakeOnWiFi::kIPAddress);
-    wake_on_wifi_triggers_.insert(WakeOnWiFi::kDisconnect);
+    // TODO(samueltan): Currently we do not wake on disconnect as this will
+    // trigger a full system resume. Program the NIC wake on disconnect only
+    // when the kernel/powerd can identify a wake on disconnect signal and
+    // put the system into dark resume.
+    // wake_on_wifi_triggers_.insert(WakeOnWiFi::kDisconnect);
   }
   ApplyWakeOnWiFiSettings();
 }
