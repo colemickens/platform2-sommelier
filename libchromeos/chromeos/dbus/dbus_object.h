@@ -320,8 +320,7 @@ class CHROMEOS_EXPORT DBusInterface final {
     auto signal = std::make_shared<DBusSignalType>(dbus_object_,
                                                    interface_name_,
                                                    signal_name);
-    CHECK(signals_.insert(std::make_pair(signal_name, signal)).second)
-        << "The signal '" << signal_name << "' is already registered";
+    AddSignalImpl(signal_name, signal);
     return signal;
   }
 
@@ -346,6 +345,11 @@ class CHROMEOS_EXPORT DBusInterface final {
   // template functions AddMethodHandler(...)
   void AddHandlerImpl(const std::string& method_name,
                       std::unique_ptr<DBusInterfaceMethodHandler> handler);
+  // Helper to add a signal object to the |signals_| map.
+  // Not marked CHROMEOS_PRIVATE because it needs to be called by the inline
+  // template function RegisterSignalOfType(...)
+  void AddSignalImpl(const std::string& signal_name,
+                     const std::shared_ptr<DBusSignalBase>& signal);
   // Exports all the methods and properties of this interface and claims the
   // D-Bus interface.
   // object_manager - ExportedObjectManager instance that notifies D-Bus

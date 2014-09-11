@@ -36,9 +36,12 @@ void DBusInterface::ExportAsync(
     dbus::ExportedObject* exported_object,
     const dbus::ObjectPath& object_path,
     const AsyncEventSequencer::CompletionAction& completion_callback) {
+  VLOG(1) << "Registering D-Bus interface '" << interface_name_ << "' for '"
+          << object_path.value() << "'";
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   for (const auto& pair : handlers_) {
     std::string method_name = pair.first;
+    VLOG(1) << "Exporting method: " << interface_name_ << "." << method_name;
     std::string export_error = "Failed exporting " + method_name + " method";
     auto export_handler = sequencer->GetExportHandler(
         interface_name_, method_name, export_error, true);
@@ -66,22 +69,46 @@ void DBusInterface::ExportAsync(
 std::unique_ptr<dbus::Response> DBusInterface::HandleMethodCall(
     dbus::MethodCall* method_call) {
   std::string method_name = method_call->GetMember();
+  // Make a local copy of |interface_name_| because calling HandleMethod()
+  // can potentially kill this interface object...
+  std::string interface_name = interface_name_;
+  VLOG(1) << "Received method call request: "
+          << interface_name << "." << method_name
+          << "(" << method_call->GetSignature() << ")";
   auto pair = handlers_.find(method_name);
   if (pair == handlers_.end()) {
     return CreateDBusErrorResponse(method_call,
                                    DBUS_ERROR_UNKNOWN_METHOD,
                                    "Unknown method: " + method_name);
   }
-  LOG(INFO) << "Dispatching DBus message call: " << method_name;
-  return pair->second->HandleMethod(method_call);
+  LOG(INFO) << "Dispatching DBus method call: " << method_name;
+  auto response = pair->second->HandleMethod(method_call);
+  if (response) {
+    VLOG(1) << "Received response message from "
+            << interface_name << "." << method_name
+            << " with signature '" << response->GetSignature() << "'";
+  }
+  return response;
 }
 
 void DBusInterface::AddHandlerImpl(
     const std::string& method_name,
     std::unique_ptr<DBusInterfaceMethodHandler> handler) {
+  VLOG(1) << "Declaring method handler: "
+          << interface_name_ << "." << method_name;
   auto res = handlers_.insert(std::make_pair(method_name, std::move(handler)));
   CHECK(res.second) << "Method '" << method_name << "' already exists";
 }
+
+void DBusInterface::AddSignalImpl(
+    const std::string& signal_name,
+    const std::shared_ptr<DBusSignalBase>& signal) {
+  VLOG(1) << "Declaring a signal sink: "
+          << interface_name_ << "." << signal_name;
+  CHECK(signals_.insert(std::make_pair(signal_name, signal)).second)
+      << "The signal '" << signal_name << "' is already registered";
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -109,6 +136,8 @@ DBusInterface* DBusObject::AddOrGetInterface(
     const std::string& interface_name) {
   auto iter = interfaces_.find(interface_name);
   if (iter == interfaces_.end()) {
+    VLOG(1) << "Adding an interface '" << interface_name << "' to object '"
+            << object_path_.value() << "'.";
     // Interface doesn't exist yet. Create one...
     std::unique_ptr<DBusInterface> new_itf(
         new DBusInterface(this, interface_name));
@@ -132,6 +161,7 @@ DBusInterfaceMethodHandler* DBusObject::FindMethodHandler(
 
 void DBusObject::RegisterAsync(
     const AsyncEventSequencer::CompletionAction& completion_callback) {
+  VLOG(1) << "Registering D-Bus object '"<< object_path_.value() << "'.";
   CHECK(exported_object_ == nullptr) << "Object already registered.";
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   exported_object_ = bus_->GetExportedObject(object_path_);

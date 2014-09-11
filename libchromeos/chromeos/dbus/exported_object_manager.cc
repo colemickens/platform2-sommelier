@@ -22,6 +22,7 @@ ExportedObjectManager::ExportedObjectManager(scoped_refptr<dbus::Bus> bus,
 
 void ExportedObjectManager::RegisterAsync(
       const AsyncEventSequencer::CompletionAction& completion_callback) {
+  VLOG(1) << "Registering object manager";
   bus_->AssertOnOriginThread();
   DBusInterface* itf =
       dbus_object_.AddOrGetInterface(dbus::kObjectManagerInterface);
