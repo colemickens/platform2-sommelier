@@ -141,7 +141,8 @@
 			<arg name="data" type="s" direction="in"/>
 			<arg type="s" direction="out"/>
 		</method>
-		<method name="ConnectToBestServices" />
+		<method name="ConnectToBestServices"/>
+		<method name="CreateConnectivityReport"/>
 	</interface>
 	<node name="device"/>
 	<node name="profile"/>

@@ -174,6 +174,10 @@ class Device : public base::RefCounted<Device> {
   // Returns true if portal detection was started.
   virtual bool RestartPortalDetection();
 
+  // Called by the manager to start a single connectivity test.  This is used to
+  // log connection state triggered by a user feedback log request.
+  virtual bool StartConnectivityTest();
+
   // Get receive and transmit byte counters.
   virtual uint64_t GetReceiveByteCount();
   virtual uint64_t GetTransmitByteCount();

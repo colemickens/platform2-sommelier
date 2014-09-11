@@ -1545,6 +1545,11 @@ TEST_F(DevicePortalDetectionTest, RequestPortalDetection) {
   EXPECT_TRUE(RequestPortalDetection());
 }
 
+TEST_F(DevicePortalDetectionTest, RequestStartConnectivityTest) {
+  // TODO(silberst) Implement actual test once code is implemented.
+  EXPECT_FALSE(device_->StartConnectivityTest());
+}
+
 TEST_F(DevicePortalDetectionTest, NotConnected) {
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillOnce(Return(false));

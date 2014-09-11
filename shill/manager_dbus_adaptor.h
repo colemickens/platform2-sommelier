@@ -145,6 +145,8 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
 
   void ConnectToBestServices(DBus::Error &error);  // NOLINT
 
+  void CreateConnectivityReport(DBus::Error &error);  // NOLINT
+
  private:
   Manager *manager_;
 

@@ -163,6 +163,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   void ConnectToBestServices(Error *error);
 
+  // Method to create connectivity report for connected services.
+  void CreateConnectivityReport(Error *error);
+
   // Request portal detection checks on each registered device until a portal
   // detection attempt starts on one of them.
   void RecheckPortal(Error *error);
@@ -435,6 +438,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, ConnectionStatusCheck);
   FRIEND_TEST(ManagerTest, ConnectToBestServices);
+  FRIEND_TEST(ManagerTest, CreateConnectivityReport);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, DisableTechnology);

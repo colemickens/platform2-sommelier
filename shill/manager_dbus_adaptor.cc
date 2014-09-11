@@ -475,4 +475,11 @@ void ManagerDBusAdaptor::ConnectToBestServices(DBus::Error &error) {  // NOLINT
   e.ToDBusError(&error);
 }
 
+void ManagerDBusAdaptor::CreateConnectivityReport(DBus::Error &error) {  // NOLINT
+  SLOG(DBus, 2) << __func__;
+  Error e;
+  manager_->CreateConnectivityReport(&e);
+  e.ToDBusError(&error);
+}
+
 }  // namespace shill

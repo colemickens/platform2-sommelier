@@ -1003,6 +1003,14 @@ void Device::StopPortalDetection() {
   portal_detector_.reset();
 }
 
+bool Device::StartConnectivityTest() {
+  SLOG(Device, 3) << "Device " << FriendlyName()
+                  << " starting connectivity test.";
+
+  // TODO(silberst) Implement actual connectivity test.
+  return false;
+}
+
 void Device::set_link_monitor(LinkMonitor *link_monitor) {
   link_monitor_.reset(link_monitor);
 }

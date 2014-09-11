@@ -3803,6 +3803,12 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   EXPECT_TRUE(ServiceOrderIs(wifi_service2, wimax_service));
 }
 
+TEST_F(ManagerTest, CreateConnectivityReport) {
+  // TODO(silberst) Test needs full implementation.
+  manager()->CreateConnectivityReport(NULL);
+  dispatcher()->DispatchPendingEvents();
+}
+
 TEST_F(ManagerTest, VerifyWhenNotConnected) {
   const string kFakeCertificate("fake cert");
   const string kFakePublicKey("fake public key");

@@ -1585,6 +1585,33 @@ void Manager::ConnectToBestServicesTask() {
   }
 }
 
+void Manager::CreateConnectivityReport(Error */*error*/) {
+  // For each of the connected services, perform a single portal detection
+  // test to assess connectivity.  The results should be written to the log.
+  for (const auto &service : services_) {
+    if (!service->IsConnected()) {
+      // Service sort order guarantees that no service beyond this one will be
+      // connected either.
+      break;
+    }
+
+    // Get the underlying device for this service and perform connectivity test.
+    for (const auto &device : devices_) {
+      if (device->IsConnectedToService(service)) {
+        if (device->StartConnectivityTest()) {
+          SLOG(Manager, 3) << "Started connectivity test for service "
+                           << service->unique_name();
+        } else {
+          SLOG(Manager, 3) << "Failed to start connectivity test for service "
+                           << service->unique_name()
+                           << " device not reporting IsConnected.";
+        }
+        break;
+      }
+    }
+  }
+}
+
 bool Manager::IsConnected() const {
   // |services_| is sorted such that connected services are first.
   return !services_.empty() && services_.front()->IsConnected();

@@ -458,6 +458,11 @@ Methods
 			violated for a single instance for each technology
 			type.
 
+		void CreateConnectivityReport()
+
+			For each connected service, perform a single
+			connectivity trial and report the results to the log.
+			This connectivity test does not affect Service state.
 
 Signals		PropertyChanged(string name, variant value)
 
