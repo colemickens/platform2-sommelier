@@ -294,9 +294,15 @@ void StaticIPParameters::ClearMappedProperty(
       }
       break;
     case Property::kTypeString:
-    case Property::kTypeStrings:
       if (args_.ContainsString(property.name)) {
         args_.RemoveString(property.name);
+      } else {
+        error->Populate(Error::kNotFound, "Property is not set");
+      }
+      break;
+    case Property::kTypeStrings:
+      if (args_.ContainsStrings(property.name)) {
+        args_.RemoveStrings(property.name);
       } else {
         error->Populate(Error::kNotFound, "Property is not set");
       }
