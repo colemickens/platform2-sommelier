@@ -10,7 +10,7 @@
 #include <chromeos/daemons/dbus_daemon.h>
 #include <chromeos/syslog_logging.h>
 
-#include "buffet/dbus_constants.h"
+#include "buffet/libbuffet/dbus_constants.h"
 #include "buffet/manager.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;

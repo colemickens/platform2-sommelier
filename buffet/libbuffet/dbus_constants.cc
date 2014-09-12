@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/dbus_constants.h"
+#include "libbuffet/dbus_constants.h"
 
 namespace buffet {
 

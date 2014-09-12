@@ -7,8 +7,19 @@
         'libchromeos-<(libbase_ver)',
       ],
     },
+    'include_dirs': ['.'],
   },
   'targets': [
+    {
+      'target_name': 'libbuffet-<(libbase_ver)',
+      'type': 'shared_library',
+      'sources': [
+        'libbuffet/command.cc',
+        'libbuffet/command_listener.cc',
+        'libbuffet/dbus_constants.cc',
+      ],
+      'includes': ['../common-mk/deps.gypi'],
+    },
     {
       'target_name': 'buffet_common',
       'type': 'static_library',
@@ -26,7 +37,6 @@
         'commands/prop_values.cc',
         'commands/schema_constants.cc',
         'commands/schema_utils.cc',
-        'dbus_constants.cc',
         'device_registration_info.cc',
         'manager.cc',
         'storage_impls.cc',
@@ -35,22 +45,32 @@
     {
       'target_name': 'buffet',
       'type': 'executable',
+      'dependencies': [
+        'buffet_common',
+        'libbuffet-<(libbase_ver)',
+      ],
       'sources': [
         'main.cc',
       ],
+    },
+    {
+      'target_name': 'buffet_test_daemon',
+      'type': 'executable',
       'dependencies': [
-        'buffet_common',
+        'libbuffet-<(libbase_ver)',
+      ],
+      'sources': [
+        'test_daemon/main.cc',
       ],
     },
     {
       'target_name': 'buffet_client',
       'type': 'executable',
+      'dependencies': [
+        'libbuffet-<(libbase_ver)',
+      ],
       'sources': [
         'buffet_client.cc',
-        'dbus_constants.cc',
-      ],
-      'dependencies': [
-        'buffet_common',
       ],
     },
   ],
@@ -62,6 +82,7 @@
           'type': 'executable',
           'dependencies': [
             'buffet_common',
+            'libbuffet-<(libbase_ver)',
           ],
           'variables': {
             'deps': [

@@ -1,0 +1,7 @@
+bslot=@BSLOT@
+
+Name: libbuffet
+Description: Buffet interface library
+Version: ${bslot}
+Requires.private: @PRIVATE_PC@
+Libs: -lbuffet-${bslot}

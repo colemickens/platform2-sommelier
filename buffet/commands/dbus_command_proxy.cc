@@ -10,7 +10,7 @@
 #include "buffet/commands/command_instance.h"
 #include "buffet/commands/prop_constraints.h"
 #include "buffet/commands/prop_types.h"
-#include "buffet/dbus_constants.h"
+#include "buffet/libbuffet/dbus_constants.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;

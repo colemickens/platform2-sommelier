@@ -15,7 +15,7 @@
 #include "buffet/commands/command_instance.h"
 #include "buffet/commands/dbus_command_proxy.h"
 #include "buffet/commands/unittest_utils.h"
-#include "buffet/dbus_constants.h"
+#include "buffet/libbuffet/dbus_constants.h"
 
 using ::testing::AnyNumber;
 using ::testing::Return;
