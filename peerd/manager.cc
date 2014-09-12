@@ -20,7 +20,7 @@ using chromeos::ErrorPtr;
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
 using dbus::ObjectPath;
-using peerd::dbus_constants::kManagerExposeIpService;
+using peerd::dbus_constants::kManagerExposeService;
 using peerd::dbus_constants::kManagerInterface;
 using peerd::dbus_constants::kManagerPing;
 using peerd::dbus_constants::kManagerRemoveExposedService;
@@ -63,9 +63,9 @@ void Manager::RegisterAsync(const CompletionAction& completion_callback) {
   itf->AddMethodHandler(kManagerStopMonitoring,
                         base::Unretained(this),
                         &Manager::StopMonitoring);
-  itf->AddMethodHandler(kManagerExposeIpService,
+  itf->AddMethodHandler(kManagerExposeService,
                         base::Unretained(this),
-                        &Manager::ExposeIpService);
+                        &Manager::ExposeService);
   itf->AddMethodHandler(kManagerRemoveExposedService,
                         base::Unretained(this),
                         &Manager::RemoveExposedService);
@@ -103,12 +103,11 @@ void Manager::StopMonitoring(ErrorPtr* error,
                              const string& monitoring_token) {
 }
 
-string Manager::ExposeIpService(chromeos::ErrorPtr* error,
-                                const string& service_id,
-                                const vector<ip_addr>& addresses,
-                                const map<string, string>& service_info) {
+string Manager::ExposeService(chromeos::ErrorPtr* error,
+                              const string& service_id,
+                              const map<string, string>& service_info) {
   string token;
-  if (!self_->AddService(error, service_id, addresses, service_info)) {
+  if (!self_->AddService(error, service_id, {}, service_info)) {
     return token;
   }
   token = "service_token_" + std::to_string(++services_added_);

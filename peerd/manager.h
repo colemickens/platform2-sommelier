@@ -55,10 +55,9 @@ class Manager {
       chromeos::ErrorPtr* error,
       const std::string& monitoring_token);
 
-  std::string ExposeIpService(
+  std::string ExposeService(
       chromeos::ErrorPtr* error,
       const std::string& service_id,
-      const std::vector<ip_addr>& addresses,
       const std::map<std::string, std::string>& service_info);
 
   void RemoveExposedService(

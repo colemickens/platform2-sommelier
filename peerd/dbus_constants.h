@@ -17,7 +17,7 @@ extern const char kManagerInterface[];
 extern const char kManagerServicePath[];
 
 // Methods exposed as part of kManagerInterface.
-extern const char kManagerExposeIpService[];
+extern const char kManagerExposeService[];
 extern const char kManagerPing[];
 extern const char kManagerRemoveExposedService[];
 extern const char kManagerSetFriendlyName[];
