@@ -346,6 +346,10 @@ const char Metrics::kMetricIPv6ConnectivityStatusSuffix[] =
 const char Metrics::kMetricDevicePresenceStatusSuffix[] =
     "DevicePresenceStatus";
 
+// static
+const char Metrics::kMetricDeviceRemovedEvent[] =
+    "Network.Shill.DeviceRemovedEvent";
+
 Metrics::Metrics(EventDispatcher *dispatcher)
     : dispatcher_(dispatcher),
       library_(&metrics_library_),
@@ -904,6 +908,12 @@ bool Metrics::IsDeviceRegistered(int interface_index,
 
 void Metrics::DeregisterDevice(int interface_index) {
   SLOG(Metrics, 2) << __func__ << ": interface index: " << interface_index;
+
+  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  if (device_metrics != NULL) {
+    NotifyDeviceRemovedEvent(device_metrics->technology);
+  }
+
   devices_metrics_.erase(interface_index);
 }
 
@@ -1233,6 +1243,28 @@ void Metrics::NotifyDevicePresenceStatus(Technology::Identifier technology_id,
   DevicePresenceStatus presence = status ? kDevicePresenceStatusYes
                                          : kDevicePresenceStatusNo;
   SendEnumToUMA(histogram, presence, kDevicePresenceStatusMax);
+}
+
+void Metrics::NotifyDeviceRemovedEvent(Technology::Identifier technology_id) {
+  DeviceTechnologyType type;
+  switch (technology_id) {
+    case Technology::kEthernet:
+      type = kDeviceTechnologyTypeEthernet;
+      break;
+    case Technology::kWifi:
+      type = kDeviceTechnologyTypeWifi;
+      break;
+    case Technology::kWiMax:
+      type = kDeviceTechnologyTypeWimax;
+      break;
+    case Technology::kCellular:
+      type = kDeviceTechnologyTypeCellular;
+      break;
+    default:
+      type = kDeviceTechnologyTypeUnknown;
+      break;
+  }
+  SendEnumToUMA(kMetricDeviceRemovedEvent, type, kDeviceTechnologyTypeMax);
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {

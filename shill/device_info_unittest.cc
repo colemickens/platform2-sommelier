@@ -326,6 +326,31 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   EXPECT_EQ(-1, device_info_.GetIndex(kTestDeviceName));
 }
 
+TEST_F(DeviceInfoTest, DeviceRemovedEvent) {
+  // Remove a Wifi device.
+  scoped_refptr<MockDevice> device0(new MockDevice(
+      &control_interface_, &dispatcher_, &metrics_, &manager_,
+      "null0", "addr0", kTestDeviceIndex));
+  device_info_.infos_[kTestDeviceIndex].device = device0;
+  scoped_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeDelete));
+  EXPECT_CALL(*device0, technology()).WillRepeatedly(Return(Technology::kWifi));
+  EXPECT_CALL(manager_, DeregisterDevice(_)).Times(1);
+  EXPECT_CALL(metrics_, DeregisterDevice(kTestDeviceIndex)).Times(1);
+  SendMessageToDeviceInfo(*message);
+  Mock::VerifyAndClearExpectations(device0);
+
+  // Deregister a Cellular device.
+  scoped_refptr<MockDevice> device1(new MockDevice(
+      &control_interface_, &dispatcher_, &metrics_, &manager_,
+      "null0", "addr0", kTestDeviceIndex));
+  device_info_.infos_[kTestDeviceIndex].device = device1;
+  EXPECT_CALL(*device1, technology()).
+      WillRepeatedly(Return(Technology::kCellular));
+  EXPECT_CALL(manager_, DeregisterDevice(_)).Times(1);
+  EXPECT_CALL(metrics_, DeregisterDevice(kTestDeviceIndex)).Times(1);
+  device_info_.DeregisterDevice(device1);
+}
+
 TEST_F(DeviceInfoTest, GetUninitializedTechnologies) {
   vector<string> technologies = device_info_.GetUninitializedTechnologies();
   set<string> expected_technologies;

@@ -892,8 +892,11 @@ void DeviceInfo::RemoveInfo(int interface_index) {
   map<int, Info>::iterator iter = infos_.find(interface_index);
   if (iter != infos_.end()) {
     SLOG(Device, 2) << "Removing info for device index: " << interface_index;
+    // Deregister the device if not deregistered yet. Cellular and WiMax devices
+    // are deregistered through a call to DeviceInfo::DeregisterDevice.
     if (iter->second.device.get()) {
       manager_->DeregisterDevice(iter->second.device);
+      metrics_->DeregisterDevice(interface_index);
     }
     indices_.erase(iter->second.name);
     infos_.erase(iter);

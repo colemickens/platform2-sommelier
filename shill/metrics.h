@@ -352,6 +352,15 @@ class Metrics {
     kDevicePresenceStatusMax
   };
 
+  enum DeviceTechnologyType {
+    kDeviceTechnologyTypeUnknown = 0,
+    kDeviceTechnologyTypeEthernet = 1,
+    kDeviceTechnologyTypeWifi = 2,
+    kDeviceTechnologyTypeWimax = 3,
+    kDeviceTechnologyTypeCellular = 4,
+    kDeviceTechnologyTypeMax
+  };
+
   static const char kMetricDisconnectSuffix[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -584,6 +593,9 @@ class Metrics {
   // Device presence.
   static const char kMetricDevicePresenceStatusSuffix[];
 
+  // Device removal event.
+  static const char kMetricDeviceRemovedEvent[];
+
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
 
@@ -687,7 +699,7 @@ class Metrics {
 
   // Deregisters the device from this class.  All state transition timers
   // will be removed.
-  void DeregisterDevice(int interface_index);
+  virtual void DeregisterDevice(int interface_index);
 
   // Notifies this object that a device has been initialized.
   void NotifyDeviceInitialized(int interface_index);
@@ -873,6 +885,10 @@ class Metrics {
 
   DeviceMetrics *GetDeviceMetrics(int interface_index) const;
   void AutoConnectMetricsReset(DeviceMetrics *device_metrics);
+
+  // Notifies this object about the removal/resetting of a device with given
+  // technology type.
+  void NotifyDeviceRemovedEvent(Technology::Identifier technology_id);
 
   // For unit test purposes.
   void set_library(MetricsLibraryInterface *library);

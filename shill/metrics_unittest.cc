@@ -791,6 +791,17 @@ TEST_F(MetricsTest, NotifyDhcpClientStatus) {
   metrics_.NotifyDhcpClientStatus(Metrics::kDhcpClientStatusReboot);
 }
 
+TEST_F(MetricsTest, DeregisterDevice) {
+  const int kInterfaceIndex = 1;
+  metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
+
+  EXPECT_CALL(library_,
+      SendEnumToUMA("Network.Shill.DeviceRemovedEvent",
+                    Metrics::kDeviceTechnologyTypeCellular,
+                    Metrics::kDeviceTechnologyTypeMax));
+  metrics_.DeregisterDevice(kInterfaceIndex);
+}
+
 #ifndef NDEBUG
 
 typedef MetricsTest MetricsDeathTest;
