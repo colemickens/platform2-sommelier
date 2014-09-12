@@ -217,7 +217,6 @@ class PerfParser : public PerfReader {
   bool MapIPAndPidAndGetNameAndOffset(
       uint64_t ip,
       uint32_t pid,
-      uint16_t misc,
       uint64_t* new_ip,
       ParsedEvent::DSOAndOffset* dso_and_offset);
 
