@@ -74,6 +74,17 @@
         'quipper.cc',
       ]
     },
+    {
+      'target_name': 'perf_converter',
+      'type': 'executable',
+      'dependencies': [
+        'common',
+        'conversion_utils',
+      ],
+      'sources': [
+        'perf_converter.cc',
+      ]
+    },
   ],
   'conditions': [
     ['USE_test == 1', {
