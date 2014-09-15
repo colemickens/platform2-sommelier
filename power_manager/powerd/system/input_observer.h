@@ -11,7 +11,7 @@ namespace power_manager {
 namespace system {
 
 // Interface for classes interested in observing input events announced by the
-// Input class.
+// InputWatcher class.
 class InputObserver {
  public:
   virtual ~InputObserver() {}

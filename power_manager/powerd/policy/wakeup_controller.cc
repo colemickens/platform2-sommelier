@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "power_manager/powerd/system/acpi_wakeup_helper.h"
-#include "power_manager/powerd/system/input.h"
+#include "power_manager/powerd/system/input_watcher_interface.h"
 #include "power_manager/powerd/system/tagged_device.h"
 #include "power_manager/powerd/system/udev.h"
 
@@ -43,30 +43,30 @@ const char WakeupController::kTPAD[] = "TPAD";
 const char WakeupController::kTSCR[] = "TSCR";
 
 WakeupController::WakeupController()
-    : input_(NULL),
+    : input_watcher_(NULL),
       udev_(NULL),
       acpi_wakeup_helper_(NULL),
       mode_(WAKEUP_MODE_LAPTOP) {}
 
 WakeupController::~WakeupController() {
-  if (input_)
-    input_->RemoveObserver(this);
+  if (input_watcher_)
+    input_watcher_->RemoveObserver(this);
   if (udev_)
     udev_->RemoveTaggedDeviceObserver(this);
 }
 
 void WakeupController::Init(
-    system::InputInterface* input,
+    system::InputWatcherInterface* input_watcher,
     system::UdevInterface* udev,
     system::AcpiWakeupHelperInterface* acpi_wakeup_helper) {
-  input_ = input;
+  input_watcher_ = input_watcher;
   udev_ = udev;
   acpi_wakeup_helper_ = acpi_wakeup_helper;
 
-  input_->AddObserver(this);
+  input_watcher_->AddObserver(this);
   udev_->AddTaggedDeviceObserver(this);
 
-  OnLidEvent(input_->QueryLidState());
+  OnLidEvent(input_watcher_->QueryLidState());
 }
 
 void WakeupController::OnLidEvent(LidState state) {

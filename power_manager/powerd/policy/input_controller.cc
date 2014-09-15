@@ -13,7 +13,7 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
-#include "power_manager/powerd/system/input_interface.h"
+#include "power_manager/powerd/system/input_watcher_interface.h"
 #include "power_manager/proto_bindings/input_event.pb.h"
 
 namespace power_manager {
@@ -28,7 +28,7 @@ const int kCheckActiveVTFrequencySec = 60;
 }  // namespace
 
 InputController::InputController()
-    : input_(NULL),
+    : input_watcher_(NULL),
       delegate_(NULL),
       display_watcher_(NULL),
       dbus_sender_(NULL),
@@ -38,17 +38,17 @@ InputController::InputController()
 }
 
 InputController::~InputController() {
-  if (input_)
-    input_->RemoveObserver(this);
+  if (input_watcher_)
+    input_watcher_->RemoveObserver(this);
 }
 
-void InputController::Init(system::InputInterface* input,
+void InputController::Init(system::InputWatcherInterface* input_watcher,
                            Delegate* delegate,
                            system::DisplayWatcherInterface* display_watcher,
                            DBusSenderInterface* dbus_sender,
                            PrefsInterface* prefs) {
-  input_ = input;
-  input_->AddObserver(this);
+  input_watcher_ = input_watcher;
+  input_watcher_->AddObserver(this);
   delegate_ = delegate;
   display_watcher_ = display_watcher;
   dbus_sender_ = dbus_sender;
@@ -57,7 +57,7 @@ void InputController::Init(system::InputInterface* input,
 
   bool use_lid = false;
   if (prefs->GetBool(kUseLidPref, &use_lid) && use_lid)
-    OnLidEvent(input_->QueryLidState());
+    OnLidEvent(input_watcher_->QueryLidState());
 
   check_active_vt_timer_.Start(FROM_HERE,
       base::TimeDelta::FromSeconds(kCheckActiveVTFrequencySec),
@@ -150,7 +150,7 @@ void InputController::OnPowerButtonEvent(ButtonState state) {
 }
 
 void InputController::CheckActiveVT() {
-  if (input_->GetActiveVT() == 2)
+  if (input_watcher_->GetActiveVT() == 2)
     delegate_->DeferInactivityTimeoutForVT2();
 }
 

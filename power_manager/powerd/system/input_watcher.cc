@@ -1,10 +1,9 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright 2014 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/system/input.h"
+#include "power_manager/powerd/system/input_watcher.h"
 
-#include <dirent.h>
 #include <fcntl.h>
 #include <linux/input.h>
 #include <linux/vt.h>
@@ -28,6 +27,13 @@
 #include "power_manager/powerd/system/input_observer.h"
 #include "power_manager/powerd/system/udev.h"
 
+#define BITS_PER_LONG (sizeof(long) * 8)  // NOLINT(runtime/int)
+#define NUM_BITS(x) ((((x) - 1) / BITS_PER_LONG) + 1)
+#define OFF(x)  ((x) % BITS_PER_LONG)
+#define BIT(x)  (1UL << OFF(x))
+#define LONG(x) ((x) / BITS_PER_LONG)
+#define IS_BIT_SET(bit, array)  ((array[LONG(bit)] >> OFF(bit)) & 1)
+
 using std::map;
 using std::string;
 using std::vector;
@@ -39,7 +45,7 @@ namespace {
 
 const char kSysClassInputPath[] = "/sys/class/input";
 const char kDevInputPath[] = "/dev/input";
-const char kEventBaseName[] = "event";
+const char kInputBaseName[] = "event";
 
 const char kInputMatchPattern[] = "input*";
 const char kUsbMatchString[] = "usb";
@@ -62,22 +68,20 @@ const char kPowerButtonToSkip[] = "LNXPWRBN";
 // events.
 const char kPowerButtonToSkipForLegacy[] = "isa";
 
-// Given a string |name| consisting of |base_name| followed by a base-10
-// integer, extracts the integer to |suffix|. Returns false if |name| didn't
+// Given a string |name| consisting of kInputBaseName followed by a base-10
+// integer, extracts the integer to |num_out|. Returns false if |name| didn't
 // match the expected format.
-bool GetSuffixNumber(const std::string& name,
-                     const std::string& base_name,
-                     int* suffix) {
-  size_t base_len = base_name.size();
-  if (name.substr(0, base_len) != base_name)
+bool GetInputNumber(const std::string& name, int* num_out) {
+  if (!StartsWithASCII(name, kInputBaseName, true))
     return false;
+  size_t base_len = strlen(kInputBaseName);
   return base::StringToInt(name.substr(base_len, name.size() - base_len),
-                           suffix);
+                           num_out);
 }
 
 // If |event| came from a lid switch, copies its state to |state_out| and
 // returns true. Otherwise, leaves |state_out| untouched and returns false.
-bool GetLidStateFromInputEvent(const input_event& event, LidState* state_out) {
+bool GetLidStateFromEvent(const input_event& event, LidState* state_out) {
   if (event.type != EV_SW || event.code != SW_LID)
     return false;
 
@@ -87,8 +91,8 @@ bool GetLidStateFromInputEvent(const input_event& event, LidState* state_out) {
 
 // If |event| came from a power button, copies its state to |state_out| and
 // returns true. Otherwise, leaves |state_out| untouched and returns false.
-bool GetPowerButtonStateFromInputEvent(const input_event& event,
-                                       ButtonState* state_out) {
+bool GetPowerButtonStateFromEvent(const input_event& event,
+                                  ButtonState* state_out) {
   if (event.type != EV_KEY || event.code != KEY_POWER)
     return false;
 
@@ -103,14 +107,14 @@ bool GetPowerButtonStateFromInputEvent(const input_event& event,
 
 }  // namespace
 
-const char Input::kInputUdevSubsystem[] = "input";
+const char InputWatcher::kInputUdevSubsystem[] = "input";
 
 // Takes ownership of a file descriptor and watches it for readability.
-class Input::EventFileDescriptor {
+class InputWatcher::InputFileDescriptor {
  public:
   // Takes ownership of |fd| and closes it on destruction. |watcher| is notified
   // when |fd| becomes readable.
-  EventFileDescriptor(int fd, base::MessageLoopForIO::Watcher* watcher)
+  InputFileDescriptor(int fd, base::MessageLoopForIO::Watcher* watcher)
       : fd_(fd),
         fd_watcher_(new base::MessageLoopForIO::FileDescriptorWatcher) {
     if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
@@ -120,9 +124,10 @@ class Input::EventFileDescriptor {
     }
   }
 
-  ~EventFileDescriptor() {
+  ~InputFileDescriptor() {
     fd_watcher_.reset();
-    if (!close(fd_))
+    // ENODEV is expected if the device was just unplugged.
+    if (close(fd_) != 0 && errno != ENODEV)
       PLOG(ERROR) << "Unable to close FD " << fd_;
   }
 
@@ -135,13 +140,11 @@ class Input::EventFileDescriptor {
   // Controller used to watch |fd_|.
   scoped_ptr<base::MessageLoopForIO::FileDescriptorWatcher> fd_watcher_;
 
-  DISALLOW_COPY_AND_ASSIGN(EventFileDescriptor);
+  DISALLOW_COPY_AND_ASSIGN(InputFileDescriptor);
 };
 
-Input::Input()
+InputWatcher::InputWatcher()
     : lid_fd_(-1),
-      num_power_key_events_(0),
-      num_lid_events_(0),
       use_lid_(true),
       lid_state_(LID_OPEN),
       power_button_to_skip_(kPowerButtonToSkip),
@@ -149,14 +152,14 @@ Input::Input()
       udev_(NULL) {
 }
 
-Input::~Input() {
+InputWatcher::~InputWatcher() {
   if (udev_)
     udev_->RemoveSubsystemObserver(kInputUdevSubsystem, this);
   if (console_fd_ >= 0)
     close(console_fd_);
 }
 
-bool Input::Init(PrefsInterface* prefs, UdevInterface* udev) {
+bool InputWatcher::Init(PrefsInterface* prefs, UdevInterface* udev) {
   prefs->GetBool(kUseLidPref, &use_lid_);
   if (!use_lid_)
     lid_state_ = LID_NOT_PRESENT;
@@ -176,27 +179,35 @@ bool Input::Init(PrefsInterface* prefs, UdevInterface* udev) {
   if ((console_fd_ = open(kConsolePath, O_WRONLY)) == -1)
     PLOG(ERROR) << "Unable to open " << kConsolePath;
 
-  return RegisterInputDevices();
+  base::FilePath input_dir(kDevInputPath);
+  if (!base::DirectoryExists(input_dir) ||
+      access(kDevInputPath, R_OK|X_OK) != 0) {
+    LOG(ERROR) << input_dir.value() << " isn't a readable directory";
+    return false;
+  }
+  base::FileEnumerator enumerator(
+      input_dir, false, base::FileEnumerator::FILES);
+  for (base::FilePath path = enumerator.Next(); !path.empty();
+       path = enumerator.Next()) {
+    const std::string name = path.BaseName().value();
+    int num = -1;
+    if (GetInputNumber(name, &num))
+      HandleAddedInput(name, num);
+  }
+  return true;
 }
 
-void Input::AddObserver(InputObserver* observer) {
+void InputWatcher::AddObserver(InputObserver* observer) {
   DCHECK(observer);
   observers_.AddObserver(observer);
 }
 
-void Input::RemoveObserver(InputObserver* observer) {
+void InputWatcher::RemoveObserver(InputObserver* observer) {
   DCHECK(observer);
   observers_.RemoveObserver(observer);
 }
 
-#define BITS_PER_LONG (sizeof(long) * 8)  // NOLINT(runtime/int)
-#define NUM_BITS(x) ((((x) - 1) / BITS_PER_LONG) + 1)
-#define OFF(x)  ((x) % BITS_PER_LONG)
-#define BIT(x)  (1UL << OFF(x))
-#define LONG(x) ((x) / BITS_PER_LONG)
-#define IS_BIT_SET(bit, array)  ((array[LONG(bit)] >> OFF(bit)) & 1)
-
-LidState Input::QueryLidState() {
+LidState InputWatcher::QueryLidState() {
   if (lid_fd_ < 0)
     return LID_NOT_PRESENT;
 
@@ -210,7 +221,7 @@ LidState Input::QueryLidState() {
     // events).
     for (std::vector<input_event>::const_reverse_iterator it =
              events.rbegin(); it != events.rend(); ++it) {
-      if (GetLidStateFromInputEvent(*it, &lid_state_))
+      if (GetLidStateFromEvent(*it, &lid_state_))
         break;
     }
 
@@ -221,7 +232,7 @@ LidState Input::QueryLidState() {
 
   if (!queued_events_.empty()) {
     send_queued_events_task_.Reset(
-        base::Bind(&Input::SendQueuedEvents, base::Unretained(this)));
+        base::Bind(&InputWatcher::SendQueuedEvents, base::Unretained(this)));
     base::MessageLoop::current()->PostTask(
         FROM_HERE, send_queued_events_task_.callback());
   }
@@ -229,7 +240,7 @@ LidState Input::QueryLidState() {
   return lid_state_;
 }
 
-bool Input::IsUSBInputDeviceConnected() const {
+bool InputWatcher::IsUSBInputDeviceConnected() const {
   base::FileEnumerator enumerator(
       sysfs_input_path_for_testing_.empty() ?
           base::FilePath(kSysClassInputPath) :
@@ -264,7 +275,7 @@ bool Input::IsUSBInputDeviceConnected() const {
   return false;
 }
 
-int Input::GetActiveVT() {
+int InputWatcher::GetActiveVT() {
   struct vt_stat state;
   if (ioctl(console_fd_, VT_GETSTATE, &state) == -1) {
     PLOG(ERROR) << "VT_GETSTATE ioctl on " << kConsolePath << "failed";
@@ -273,7 +284,7 @@ int Input::GetActiveVT() {
   return state.v_active;
 }
 
-void Input::OnFileCanReadWithoutBlocking(int fd) {
+void InputWatcher::OnFileCanReadWithoutBlocking(int fd) {
   SendQueuedEvents();
 
   std::vector<input_event> events;
@@ -282,142 +293,76 @@ void Input::OnFileCanReadWithoutBlocking(int fd) {
 
   VLOG(1) << "Read " << events.size() << " event(s) from FD " << fd;
   for (size_t i = 0; i < events.size(); ++i) {
-    GetLidStateFromInputEvent(events[i], &lid_state_);
+    GetLidStateFromEvent(events[i], &lid_state_);
     NotifyObserversAboutEvent(events[i]);
   }
 }
 
-void Input::OnFileCanWriteWithoutBlocking(int fd) {
+void InputWatcher::OnFileCanWriteWithoutBlocking(int fd) {
   NOTREACHED() << "Unexpected non-blocking write notification for FD " << fd;
 }
 
-void Input::OnUdevEvent(const std::string& subsystem,
-                        const std::string& sysname,
+void InputWatcher::OnUdevEvent(const std::string& subsystem,
+                               const std::string& sysname,
                         UdevAction action) {
   DCHECK_EQ(subsystem, kInputUdevSubsystem);
-  if (StartsWithASCII(sysname, kEventBaseName, true)) {
+  int input_num = -1;
+  if (GetInputNumber(sysname, &input_num)) {
     if (action == UDEV_ACTION_ADD)
-      AddEvent(sysname);
+      HandleAddedInput(sysname, input_num);
     else if (action == UDEV_ACTION_REMOVE)
-      RemoveEvent(sysname);
+      HandleRemovedInput(input_num);
   }
 }
 
-bool Input::RegisterInputDevices() {
-  DIR* dir = opendir(kDevInputPath);
-  int num_registered = 0;
-  if (!dir) {
-    PLOG(ERROR) << "opendir() failed for " << kDevInputPath;
-    return false;
+void InputWatcher::HandleAddedInput(const std::string& input_name,
+                                    int input_num) {
+  if (registered_inputs_.count(input_num) > 0) {
+    LOG(WARNING) << "Input " << input_num << " already registered";
+    return;
   }
 
-  struct dirent entry;
-  struct dirent* result;
-  while (readdir_r(dir, &entry, & result) == 0 && result) {
-    if (result->d_name[0]) {
-      if (AddEvent(result->d_name))
-        num_registered++;
-    }
-  }
-  if (closedir(dir) < 0)
-    PLOG(ERROR) << "closedir() failed for " << kDevInputPath;
-
-  LOG(INFO) << "Number of power button events registered: "
-            << num_power_key_events_;
-  LOG(INFO) << "Number of lid events registered: " << num_lid_events_;
-  return true;
-}
-
-bool Input::AddEvent(const std::string& name) {
-  // Avoid logging warnings for files that should be ignored.
-  const char* kEventsToSkip[] = {
-    ".",
-    "..",
-    "by-id",
-    "by-path",
-  };
-  for (size_t i = 0; i < arraysize(kEventsToSkip); ++i) {
-    if (name == kEventsToSkip[i])
-      return false;
+  base::FilePath path = base::FilePath(kDevInputPath).Append(input_name);
+  if (access(path.value().c_str(), R_OK) != 0) {
+    LOG(WARNING) << "Missing read access to " << path.value();
+    return;
   }
 
-  int event_num = -1;
-  if (!GetSuffixNumber(name, kEventBaseName, &event_num)) {
-    LOG(WARNING) << name << " is not a valid event name; not adding as event";
-    return false;
+  int fd = -1;
+  if ((fd = open(path.value().c_str(), O_RDONLY|O_NONBLOCK)) < 0) {
+    PLOG(ERROR) << "open() failed for " << path.value();
+    return;
   }
 
-  InputMap::iterator iter = registered_inputs_.find(event_num);
-  if (iter != registered_inputs_.end()) {
-    LOG(WARNING) << "Input event " << event_num << " already registered";
-    return false;
-  }
+  // Wrap the FD in an InputFileDescriptor so it'll be automatically closed if
+  // we return early.
+  linked_ptr<InputFileDescriptor> linked_fd(new InputFileDescriptor(fd, this));
 
-  base::FilePath event_path = base::FilePath(kDevInputPath).Append(name);
-  int event_fd;
-  if (access(event_path.value().c_str(), R_OK) != 0) {
-    LOG(WARNING) << "Missing read access to " << event_path.value();
-    return false;
+  char device_name[256] = "Unknown";
+  if (ioctl(fd, EVIOCGNAME(sizeof(device_name)), device_name) < 0) {
+    PLOG(ERROR) << "Could not get name of device (FD " << fd << ", input "
+                << input_num << ")";
+    return;
   }
-  if ((event_fd = open(event_path.value().c_str(), O_RDONLY|O_NONBLOCK)) < 0) {
-    PLOG(ERROR) << "open() failed for " << event_path.value();
-    return false;
-  }
-
-  if (!RegisterInputEvent(event_fd, event_num)) {
-    if (close(event_fd) < 0)  // event not registered, closing.
-      PLOG(ERROR) << "close() failed for " << event_path.value();
-    return false;
-  }
-  return true;
-}
-
-bool Input::RemoveEvent(const std::string& name) {
-  int event_num = -1;
-  if (!GetSuffixNumber(name, kEventBaseName, &event_num)) {
-    LOG(WARNING) << name << " is not a valid event name; not removing event";
-    return false;
-  }
-
-  InputMap::iterator iter = registered_inputs_.find(event_num);
-  if (iter == registered_inputs_.end()) {
-    LOG(WARNING) << "Input event " << name << " not registered; "
-                 << "nothing to remove";
-    return false;
-  }
-
-  registered_inputs_.erase(iter);
-  return true;
-}
-
-bool Input::RegisterInputEvent(int fd, int event_num) {
-  char name[256] = "Unknown";
-  if (ioctl(fd, EVIOCGNAME(sizeof(name)), name) < 0) {
-    PLOG(ERROR) << "Could not get name of device (FD " << fd << ", event "
-                << event_num << ")";
-    return false;
-  } else {
-    VLOG(1) << "Device name: " << name;
-  }
+  VLOG(1) << "Device name: " << device_name;
 
   char phys[256] = "Unknown";
   if (ioctl(fd, EVIOCGPHYS(sizeof(phys)), phys) < 0 && errno != ENOENT) {
-    PLOG(ERROR) << "Could not get topo phys path of device " << name;
-    return false;
-  } else {
-    VLOG(1) << "Device topo phys: " << phys;
+    PLOG(ERROR) << "Could not get topo phys path of device " << device_name;
+    return;
   }
+  VLOG(1) << "Device topo phys: " << phys;
 
   if (StartsWithASCII(phys, power_button_to_skip_, true /* case_sensitive */)) {
     VLOG(1) << "Skipping interface: " << phys;
-    return false;
+    return;
   }
 
   unsigned long events[NUM_BITS(EV_MAX)];  // NOLINT(runtime/int)
   memset(events, 0, sizeof(events));
   if (ioctl(fd, EVIOCGBIT(0, EV_MAX), events) < 0) {
-    PLOG(ERROR) << "EV_MAX ioctl failed for device " << name;
-    return false;
+    PLOG(ERROR) << "EV_MAX ioctl failed for device " << device_name;
+    return;
   }
 
   bool should_watch = false;
@@ -427,11 +372,11 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
     unsigned long keys[NUM_BITS(KEY_MAX)];  // NOLINT(runtime/int)
     memset(keys, 0, sizeof(keys));
     if (ioctl(fd, EVIOCGBIT(EV_KEY, KEY_MAX), keys) < 0) {
-      PLOG(ERROR) << "KEY_MAX ioctl failed for device " << name;
+      PLOG(ERROR) << "KEY_MAX ioctl failed for device " << device_name;
     } else if (IS_BIT_SET(KEY_POWER, keys)) {
-      LOG(INFO) << "Watching " << phys << " (" << name << ") for power button";
+      LOG(INFO) << "Watching " << phys << " (" << device_name
+                << ") for power button on FD " << fd;
       should_watch = true;
-      num_power_key_events_++;
     }
   }
 
@@ -441,11 +386,11 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
     unsigned long switch_events[NUM_BITS(SW_LID + 1)];  // NOLINT(runtime/int)
     memset(switch_events, 0, sizeof(switch_events));
     if (ioctl(fd, EVIOCGBIT(EV_SW, SW_LID + 1), switch_events) < 0) {
-      PLOG(ERROR) << "SW_LID ioctl failed for device " << name;
+      PLOG(ERROR) << "SW_LID ioctl failed for device " << device_name;
     } else if (use_lid_ && IS_BIT_SET(SW_LID, switch_events)) {
-      LOG(INFO) << "Watching " << phys << " (" << name << ") for lid switch";
+      LOG(INFO) << "Watching " << phys << " (" << device_name
+                << ") for lid switch on FD " << fd;
       should_watch = true;
-      num_lid_events_++;
 
       if (lid_fd_ >= 0)
         LOG(WARNING) << "Multiple lid events found on system";
@@ -460,25 +405,34 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
     }
   }
 
-  if (!should_watch)
-    return false;
-
-  registered_inputs_.insert(std::make_pair(event_num,
-      make_linked_ptr(new EventFileDescriptor(fd, this))));
-  return true;
+  if (should_watch)
+    registered_inputs_.insert(std::make_pair(input_num, linked_fd));
 }
 
-bool Input::ReadEvents(int fd, std::vector<input_event>* events_out) {
+
+void InputWatcher::HandleRemovedInput(int input_num) {
+  InputMap::iterator iter = registered_inputs_.find(input_num);
+  if (iter != registered_inputs_.end()) {
+    LOG(INFO) << "Stopping watching FD " << iter->second->fd();
+    if (iter->second->fd() == lid_fd_)
+      lid_fd_ = -1;
+    registered_inputs_.erase(iter);
+  }
+}
+
+bool InputWatcher::ReadEvents(int fd, std::vector<input_event>* events_out) {
   DCHECK(events_out);
   events_out->clear();
 
   struct input_event events[64];
   ssize_t read_size = HANDLE_EINTR(read(fd, events, sizeof(events)));
-  if (read_size <= 0) {
-    if (read_size < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
+  if (read_size < 0) {
+    // ENODEV is expected if the device was just unplugged.
+    if (errno != EAGAIN && errno != EWOULDBLOCK && errno != ENODEV)
       PLOG(ERROR) << "Reading events from FD " << fd << " failed";
-    else if (read_size == 0)
-      LOG(ERROR) << "Didn't get any data when reading events from FD " << fd;
+    return false;
+  } else if (read_size == 0) {
+    LOG(ERROR) << "Didn't get any data when reading events from FD " << fd;
     return false;
   }
 
@@ -495,22 +449,22 @@ bool Input::ReadEvents(int fd, std::vector<input_event>* events_out) {
   return true;
 }
 
-void Input::SendQueuedEvents() {
+void InputWatcher::SendQueuedEvents() {
   for (size_t i = 0; i < queued_events_.size(); ++i)
     NotifyObserversAboutEvent(queued_events_[i]);
   queued_events_.clear();
 }
 
-void Input::NotifyObserversAboutEvent(const input_event& event) {
+void InputWatcher::NotifyObserversAboutEvent(const input_event& event) {
   LidState lid_state = LID_OPEN;
-  if (GetLidStateFromInputEvent(event, &lid_state)) {
+  if (GetLidStateFromEvent(event, &lid_state)) {
     VLOG(1) << "Notifying observers about lid " << LidStateToString(lid_state)
             << " event";
     FOR_EACH_OBSERVER(InputObserver, observers_, OnLidEvent(lid_state));
   }
 
   ButtonState button_state = BUTTON_DOWN;
-  if (GetPowerButtonStateFromInputEvent(event, &button_state)) {
+  if (GetPowerButtonStateFromEvent(event, &button_state)) {
     VLOG(1) << "Notifying observers about power button "
             << ButtonStateToString(button_state) << " event";
     FOR_EACH_OBSERVER(InputObserver, observers_,

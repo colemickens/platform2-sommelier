@@ -15,7 +15,7 @@
 namespace power_manager {
 namespace system {
 class AcpiWakeupHelperInterface;
-class InputInterface;
+class InputWatcherInterface;
 class TaggedDevice;
 class UdevInterface;
 }  // namespace system
@@ -54,7 +54,7 @@ class WakeupController : public system::InputObserver,
   WakeupController();
   virtual ~WakeupController();
 
-  void Init(system::InputInterface* input,
+  void Init(system::InputWatcherInterface* input_watcher,
             system::UdevInterface* udev,
             system::AcpiWakeupHelperInterface* acpi_wakeup_helper);
 
@@ -79,7 +79,7 @@ class WakeupController : public system::InputObserver,
   // Re-configures all known devices to reflect a policy change.
   void PolicyChanged();
 
-  system::InputInterface* input_;  // weak
+  system::InputWatcherInterface* input_watcher_;  // weak
   system::UdevInterface* udev_;  // weak
   system::AcpiWakeupHelperInterface* acpi_wakeup_helper_;  // weak
 

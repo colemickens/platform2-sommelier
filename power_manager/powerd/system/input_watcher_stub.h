@@ -1,22 +1,22 @@
-// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+// Copyright 2014 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_SYSTEM_INPUT_STUB_H_
-#define POWER_MANAGER_POWERD_SYSTEM_INPUT_STUB_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_INPUT_WATCHER_STUB_H_
+#define POWER_MANAGER_POWERD_SYSTEM_INPUT_WATCHER_STUB_H_
 
 #include <base/observer_list.h>
 
-#include "power_manager/powerd/system/input_interface.h"
+#include "power_manager/powerd/system/input_watcher_interface.h"
 
 namespace power_manager {
 namespace system {
 
-// Stub implementation of InputInterface for use by tests.
-class InputStub : public InputInterface {
+// Stub implementation of InputWatcherInterface for use by tests.
+class InputWatcherStub : public InputWatcherInterface {
  public:
-  InputStub();
-  virtual ~InputStub();
+  InputWatcherStub();
+  virtual ~InputWatcherStub();
 
   void set_lid_state(LidState state) { lid_state_ = state; }
   void set_usb_input_device_connected(bool connected) {
@@ -28,7 +28,7 @@ class InputStub : public InputInterface {
   void NotifyObserversAboutLidState();
   void NotifyObserversAboutPowerButtonEvent(ButtonState state);
 
-  // InputInterface implementation:
+  // InputWatcherInterface implementation:
   void AddObserver(InputObserver* observer) override;
   void RemoveObserver(InputObserver* observer) override;
   LidState QueryLidState() override;
@@ -43,10 +43,10 @@ class InputStub : public InputInterface {
 
   ObserverList<InputObserver> observers_;
 
-  DISALLOW_COPY_AND_ASSIGN(InputStub);
+  DISALLOW_COPY_AND_ASSIGN(InputWatcherStub);
 };
 
 }  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_SYSTEM_INPUT_STUB_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_INPUT_WATCHER_STUB_H_

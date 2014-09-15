@@ -51,7 +51,7 @@ class AudioClient;
 class DarkResume;
 class DisplayPowerSetter;
 class DisplayWatcher;
-class Input;
+class InputWatcher;
 class InternalBacklight;
 class PeripheralBatteryWatcher;
 class PowerSupply;
@@ -246,7 +246,7 @@ class Daemon : public policy::BacklightControllerObserver,
       keyboard_backlight_controller_;
 
   scoped_ptr<system::Udev> udev_;
-  scoped_ptr<system::Input> input_;
+  scoped_ptr<system::InputWatcher> input_watcher_;
   scoped_ptr<policy::StateController> state_controller_;
   scoped_ptr<policy::InputController> input_controller_;
   scoped_ptr<system::AcpiWakeupHelper> acpi_wakeup_helper_;

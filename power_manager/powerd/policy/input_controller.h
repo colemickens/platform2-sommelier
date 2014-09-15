@@ -23,7 +23,7 @@ class PrefsInterface;
 
 namespace system {
 class DisplayWatcherInterface;
-class InputInterface;
+class InputWatcherInterface;
 }  // namespace system
 
 namespace policy {
@@ -75,7 +75,7 @@ class InputController : public system::InputObserver {
   Clock* clock_for_testing() { return clock_.get(); }
 
   // Ownership of passed-in pointers remains with the caller.
-  void Init(system::InputInterface* input,
+  void Init(system::InputWatcherInterface* input_watcher,
             Delegate* delegate,
             system::DisplayWatcherInterface* display_watcher,
             DBusSenderInterface* dbus_sender,
@@ -108,7 +108,7 @@ class InputController : public system::InputObserver {
   // quickly enough.
   void HandlePowerButtonAcknowledgmentTimeout();
 
-  system::InputInterface* input_;  // weak
+  system::InputWatcherInterface* input_watcher_;  // weak
   Delegate* delegate_;  // weak
   system::DisplayWatcherInterface* display_watcher_;  // weak
   DBusSenderInterface* dbus_sender_;  // weak

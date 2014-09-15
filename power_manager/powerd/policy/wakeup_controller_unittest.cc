@@ -8,7 +8,7 @@
 
 #include "gtest/gtest.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper_stub.h"
-#include "power_manager/powerd/system/input_stub.h"
+#include "power_manager/powerd/system/input_watcher_stub.h"
 #include "power_manager/powerd/system/udev_stub.h"
 
 namespace power_manager {
@@ -22,7 +22,7 @@ const char kSyspath0[] = "/sys/devices/test/0";
 class WakeupControllerTest : public ::testing::Test {
  public:
   WakeupControllerTest() {
-    input_.set_lid_state(LID_OPEN);
+    input_watcher_.set_lid_state(LID_OPEN);
   }
 
  protected:
@@ -51,10 +51,10 @@ class WakeupControllerTest : public ::testing::Test {
   }
 
   void InitWakeupController() {
-    wakeup_controller_.Init(&input_, &udev_, &acpi_wakeup_helper_);
+    wakeup_controller_.Init(&input_watcher_, &udev_, &acpi_wakeup_helper_);
   }
 
-  system::InputStub input_;
+  system::InputWatcherStub input_watcher_;
   system::UdevStub udev_;
   system::AcpiWakeupHelperStub acpi_wakeup_helper_;
 
@@ -98,8 +98,8 @@ TEST_F(WakeupControllerTest, DisableWakeupWhenClosed) {
   EXPECT_TRUE(GetAcpiWakeup("TPAD"));
 
   // When the lid is closed, wakeup should be disabled.
-  input_.set_lid_state(LID_CLOSED);
-  input_.NotifyObserversAboutLidState();
+  input_watcher_.set_lid_state(LID_CLOSED);
+  input_watcher_.NotifyObserversAboutLidState();
   EXPECT_EQ(WakeupController::kDisabled,
             GetSysattr(kSyspath0, WakeupController::kPowerWakeup));
   EXPECT_FALSE(GetAcpiWakeup(WakeupController::kTPAD));

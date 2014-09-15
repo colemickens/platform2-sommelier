@@ -29,7 +29,7 @@ class PrefsInterface;
 
 namespace system {
 class DarkResumeInterface;
-class Input;
+class InputWatcher;
 }  // namespace system
 
 namespace policy {

@@ -1,9 +1,9 @@
-// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+// Copyright 2014 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_SYSTEM_INPUT_INTERFACE_H_
-#define POWER_MANAGER_POWERD_SYSTEM_INPUT_INTERFACE_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_INPUT_WATCHER_INTERFACE_H_
+#define POWER_MANAGER_POWERD_SYSTEM_INPUT_WATCHER_INTERFACE_H_
 
 #include <base/macros.h>
 
@@ -15,10 +15,10 @@ namespace system {
 class InputObserver;
 
 // An interface for querying vaguely-input-related state.
-class InputInterface {
+class InputWatcherInterface {
  public:
-  InputInterface() {}
-  virtual ~InputInterface() {}
+  InputWatcherInterface() {}
+  virtual ~InputWatcherInterface() {}
 
   // Adds or removes an observer.
   virtual void AddObserver(InputObserver* observer) = 0;
@@ -35,10 +35,10 @@ class InputInterface {
   virtual int GetActiveVT() = 0;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(InputInterface);
+  DISALLOW_COPY_AND_ASSIGN(InputWatcherInterface);
 };
 
 }  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_SYSTEM_INPUT_INTERFACE_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_INPUT_WATCHER_INTERFACE_H_

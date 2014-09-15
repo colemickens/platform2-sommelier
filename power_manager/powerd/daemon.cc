@@ -34,7 +34,7 @@
 #include "power_manager/powerd/system/dark_resume.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
-#include "power_manager/powerd/system/input.h"
+#include "power_manager/powerd/system/input_watcher.h"
 #include "power_manager/powerd/system/internal_backlight.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
@@ -314,7 +314,7 @@ class Daemon::StateControllerDelegate
 
   // Overridden from policy::StateController::Delegate:
   bool IsUsbInputDeviceConnected() override {
-    return daemon_->input_->IsUSBInputDeviceConnected();
+    return daemon_->input_watcher_->IsUSBInputDeviceConnected();
   }
 
   bool IsOobeCompleted() override {
@@ -330,7 +330,7 @@ class Daemon::StateControllerDelegate
   }
 
   LidState QueryLidState() override {
-    return daemon_->input_->QueryLidState();
+    return daemon_->input_watcher_->QueryLidState();
   }
 
   void DimScreen() override {
@@ -420,7 +420,7 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       display_watcher_(new system::DisplayWatcher),
       display_power_setter_(new system::DisplayPowerSetter),
       udev_(new system::Udev),
-      input_(new system::Input),
+      input_watcher_(new system::InputWatcher),
       state_controller_(new policy::StateController),
       input_controller_(new policy::InputController),
       acpi_wakeup_helper_(new system::AcpiWakeupHelper),
@@ -531,17 +531,16 @@ void Daemon::Init() {
   dark_resume_->Init(power_supply_.get(), prefs_.get());
   suspender_->Init(this, dbus_sender_.get(), dark_resume_.get(), prefs_.get());
 
-  CHECK(input_->Init(prefs_.get(), udev_.get()));
-  input_controller_->Init(input_.get(), this, display_watcher_.get(),
+  CHECK(input_watcher_->Init(prefs_.get(), udev_.get()));
+  input_controller_->Init(input_watcher_.get(), this, display_watcher_.get(),
                           dbus_sender_.get(), prefs_.get());
-
-  wakeup_controller_->Init(input_.get(), udev_.get(),
+  wakeup_controller_->Init(input_watcher_.get(), udev_.get(),
                            acpi_wakeup_helper_.get());
 
   const PowerSource power_source =
       power_status.line_power_on ? POWER_AC : POWER_BATTERY;
   state_controller_->Init(state_controller_delegate_.get(), prefs_.get(),
-                          power_source, input_->QueryLidState());
+                          power_source, input_watcher_->QueryLidState());
   state_controller_initialized_ = true;
 
   audio_client_->Init(cras_dbus_proxy_);
@@ -653,7 +652,7 @@ int Daemon::GetInitialDarkSuspendId() {
 }
 
 bool Daemon::IsLidClosedForSuspend() {
-  return input_->QueryLidState() == LID_CLOSED;
+  return input_watcher_->QueryLidState() == LID_CLOSED;
 }
 
 bool Daemon::ReadSuspendWakeupCount(uint64_t* wakeup_count) {
