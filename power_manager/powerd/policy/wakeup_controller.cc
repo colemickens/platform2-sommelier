@@ -91,7 +91,8 @@ void WakeupController::OnPowerButtonEvent(ButtonState state) {}
 
 void WakeupController::OnTaggedDeviceChanged(
     const system::TaggedDevice& device) {
-  ConfigureTaggedDevice(device);
+  ConfigureInhibit(device);
+  ConfigureWakeup(device);
 }
 
 void WakeupController::OnTaggedDeviceRemoved(
@@ -118,22 +119,26 @@ void WakeupController::SetWakeupFromS3(const system::TaggedDevice& device,
                     enabled ? kEnabled : kDisabled);
 }
 
-void WakeupController::ConfigureTaggedDevice(
+void WakeupController::ConfigureInhibit(
     const system::TaggedDevice& device) {
-  bool usable = IsUsableInMode(device, mode_);
-
-  // Do we manage wakeup for this device?
-  if (device.HasTag(kTagWakeup)) {
-    bool wakeup = device.HasTag(kTagWakeupOnlyWhenUsable) ? usable : true;
-    SetWakeupFromS3(device, wakeup);
-  }
-
   // Should this device be inhibited when it is not usable?
-  if (device.HasTag(kTagInhibit)) {
-    bool inhibit = !usable;
-    VLOG(1) << (inhibit ? "Inhbiting " : "Un-inhibiting ") << device.syspath();
-    udev_->SetSysattr(device.syspath(), kInhibited, inhibit ? "1" : "0");
-  }
+  if (!device.HasTag(kTagInhibit))
+    return;
+  bool inhibit = !IsUsableInMode(device, mode_);
+  VLOG(1) << (inhibit ? "Inhbiting " : "Un-inhibiting ") << device.syspath();
+  udev_->SetSysattr(device.syspath(), kInhibited, inhibit ? "1" : "0");
+}
+
+void WakeupController::ConfigureWakeup(
+    const system::TaggedDevice& device) {
+  // Do we manage wakeup for this device?
+  if (!device.HasTag(kTagWakeup))
+    return;
+
+  bool wakeup = true;
+  if (device.HasTag(kTagWakeupOnlyWhenUsable))
+    wakeup = IsUsableInMode(device, mode_);
+  SetWakeupFromS3(device, wakeup);
 }
 
 void WakeupController::UpdateAcpiWakeup() {
@@ -151,8 +156,12 @@ void WakeupController::PolicyChanged() {
   VLOG(1) << "Policy changed, updating wakeup for existing devices";
 
   std::vector<system::TaggedDevice> devices = udev_->GetTaggedDevices();
+  // Configure inhibit first, as it is somewhat time-critical (we want to block
+  // off events as fast as possible), and wakeup takes a few ms to set.
   for (const system::TaggedDevice& device : devices)
-    ConfigureTaggedDevice(device);
+    ConfigureInhibit(device);
+  for (const system::TaggedDevice& device : devices)
+    ConfigureWakeup(device);
 
   UpdateAcpiWakeup();
 }

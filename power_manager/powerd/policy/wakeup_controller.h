@@ -73,8 +73,11 @@ class WakeupController : public system::InputObserver,
   // Enables or disables wakeup from S3 for this device (through power/wakeup).
   void SetWakeupFromS3(const system::TaggedDevice& device, bool enabled);
 
+  // Configures inhibit for |device| according to our policy.
+  void ConfigureInhibit(const system::TaggedDevice& device);
+
   // Configures wakeup for |device| according to our policy.
-  void ConfigureTaggedDevice(const system::TaggedDevice& device);
+  void ConfigureWakeup(const system::TaggedDevice& device);
 
   // Re-configures ACPI wakeup.
   void UpdateAcpiWakeup();
