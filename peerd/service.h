@@ -36,8 +36,12 @@ class Service {
   using ServiceInfo = std::map<std::string, std::string>;
   using IpAddresses = std::vector<ip_addr>;
 
+  // For mDNS we'll encode each key/value pair as an entry in the TXT
+  // record.  The max length there is 254 bytes + 1 byte to encode the
+  // length of the key/value.
   static const size_t kMaxServiceInfoPairLength = 254;
-  static const size_t kMaxServiceIdLength = 31;
+  // mDNS forbids service types longer than 15 characters.
+  static const size_t kMaxServiceIdLength = 15;
 
   // Construct a Service object and register it with DBus on the
   // provided |path|.  On error, nullptr is returned, and |error| is

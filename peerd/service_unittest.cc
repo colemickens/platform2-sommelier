@@ -30,6 +30,7 @@ IpAddresses MakeValidIpAddresses() {
   return {};
 }
 
+const char kValidServiceId[] = "valid-id";
 }  // namespace
 
 
@@ -84,7 +85,28 @@ TEST_F(ServiceTest, ShouldRejectLongServiceId) {
 }
 
 TEST_F(ServiceTest, ShouldRejectInvalidCharInServiceId) {
-  AssertMakeServiceFails("*_not_allowed",
+  AssertMakeServiceFails("not*allowed",
+                         MakeValidIpAddresses(),
+                         ServiceInfo(),
+                         kInvalidServiceId);
+}
+
+TEST_F(ServiceTest, ShouldRejectHyphenPrefix) {
+  AssertMakeServiceFails("-not-allowed",
+                         MakeValidIpAddresses(),
+                         ServiceInfo(),
+                         kInvalidServiceId);
+}
+
+TEST_F(ServiceTest, ShouldRejectHyphenSuffix) {
+  AssertMakeServiceFails("not-allowed-",
+                         MakeValidIpAddresses(),
+                         ServiceInfo(),
+                         kInvalidServiceId);
+}
+
+TEST_F(ServiceTest, ShouldRejectAdjacentHyphens) {
+  AssertMakeServiceFails("not--allowed",
                          MakeValidIpAddresses(),
                          ServiceInfo(),
                          kInvalidServiceId);
@@ -92,7 +114,7 @@ TEST_F(ServiceTest, ShouldRejectInvalidCharInServiceId) {
 
 TEST_F(ServiceTest, ShouldRejectInvalidCharInServiceInfoKey) {
   const ServiceInfo info = {{"spaces are illegal", "valid value"}};
-  AssertMakeServiceFails("valid_id",
+  AssertMakeServiceFails(kValidServiceId,
                          MakeValidIpAddresses(),
                          info,
                          kInvalidServiceInfo);
@@ -102,14 +124,14 @@ TEST_F(ServiceTest, ShouldRejectServiceInfoPairTooLong) {
   const ServiceInfo info = {
       {"k", string(Service::kMaxServiceInfoPairLength, 'v')},
   };
-  AssertMakeServiceFails("valid_id",
+  AssertMakeServiceFails(kValidServiceId,
                          MakeValidIpAddresses(),
                          info,
                          kInvalidServiceInfo);
 }
 
 TEST_F(ServiceTest, RegisterWhenInputIsValid) {
-  auto service = AssertMakeServiceSuccess("valid_id",
+  auto service = AssertMakeServiceSuccess(kValidServiceId,
                                           MakeValidIpAddresses(),
                                           ServiceInfo());
 }

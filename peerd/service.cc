@@ -26,7 +26,7 @@ namespace {
 const char kValidServiceIdCharacters[] = "abcdefghijklmnopqrstuvwxyz"
                                          "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                                          "0123456789"
-                                         "_";
+                                         "-";
 const char kValidServiceInfoKeyCharacters[] = "abcdefghijklmnopqrstuvwxyz"
                                               "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                                               "0123456789"
@@ -81,6 +81,16 @@ unique_ptr<Service> Service::MakeServiceImpl(
 
 bool Service::IsValidServiceId(chromeos::ErrorPtr* error,
                                const std::string& service_id) {
+  // From RFC 6335 (mDNS service names):
+  // Valid service names are hereby normatively defined as follows:
+  //
+  //   o  MUST be at least 1 character and no more than 15 characters long
+  //   o  MUST contain only US-ASCII [ANSI.X3.4-1986] letters 'A' - 'Z' and
+  //      'a' - 'z', digits '0' - '9', and hyphens ('-', ASCII 0x2D or
+  //       decimal 45)
+  //   o  MUST contain at least one letter ('A' - 'Z' or 'a' - 'z')
+  //   o  MUST NOT begin or end with a hyphen
+  //   o  hyphens MUST NOT be adjacent to other hyphens
   if (service_id.empty() || service_id.length() > kMaxServiceIdLength) {
     Error::AddTo(error,
                  kPeerdErrorDomain,
@@ -93,6 +103,20 @@ bool Service::IsValidServiceId(chromeos::ErrorPtr* error,
                  kPeerdErrorDomain,
                  errors::service::kInvalidServiceId,
                  "Invalid character in service ID.");
+    return false;
+  }
+  if (service_id.front() == '-' || service_id.back() == '-') {
+    Error::AddTo(error,
+                 kPeerdErrorDomain,
+                 errors::service::kInvalidServiceId,
+                 "Service ID may not start or end with hyphens.");
+    return false;
+  }
+  if (service_id.find("--") != string::npos) {
+    Error::AddTo(error,
+                 kPeerdErrorDomain,
+                 errors::service::kInvalidServiceId,
+                 "Service ID may not contain adjacent hyphens.");
     return false;
   }
   return true;

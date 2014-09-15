@@ -214,14 +214,14 @@ TEST_F(PeerTest, ShouldNotifyExistingPublishersOnServiceAdded) {
   ErrorPtr error;
   peer->RegisterServicePublisher(publisher->weak_ptr_factory_.GetWeakPtr());
   EXPECT_CALL(*publisher, OnServiceUpdated(&error, _)).Times(1);
-  peer->AddService(&error, "some_service",
+  peer->AddService(&error, "some-service",
                    Service::IpAddresses(), Service::ServiceInfo());
 }
 
 TEST_F(PeerTest, ShouldNotifyNewPublisherAboutExistingServices) {
   auto peer = MakePeer();
   ErrorPtr error;
-  peer->AddService(&error, "some_service",
+  peer->AddService(&error, "some-service",
                    Service::IpAddresses(), Service::ServiceInfo());
   unique_ptr<MockServicePublisher> publisher(new MockServicePublisher());
   EXPECT_CALL(*publisher, OnServiceUpdated(nullptr, _)).Times(1);
@@ -231,7 +231,7 @@ TEST_F(PeerTest, ShouldNotifyNewPublisherAboutExistingServices) {
 TEST_F(PeerTest, ShouldPrunePublisherList) {
   auto peer = MakePeer();
   ErrorPtr error;
-  peer->AddService(&error, "some_service",
+  peer->AddService(&error, "some-service",
                    Service::IpAddresses(), Service::ServiceInfo());
   unique_ptr<MockServicePublisher> publisher(new MockServicePublisher());
   unique_ptr<MockServicePublisher> publisher2(new MockServicePublisher());
@@ -241,7 +241,7 @@ TEST_F(PeerTest, ShouldPrunePublisherList) {
   peer->RegisterServicePublisher(publisher2->weak_ptr_factory_.GetWeakPtr());
   publisher.reset();
   // At this point, we should notice that |publisher| has been deleted.
-  peer->AddService(&error, "another_service",
+  peer->AddService(&error, "another-service",
                    Service::IpAddresses(), Service::ServiceInfo());
 }
 
