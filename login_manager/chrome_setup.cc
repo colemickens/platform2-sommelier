@@ -211,6 +211,9 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
   if (builder->UseFlagIsSet("legacy_power_button"))
     builder->AddArg("--aura-legacy-power-button");
 
+  if (builder->UseFlagIsSet("touchview"))
+    builder->AddArg("--ash-enable-power-button-quick-lock");
+
   if (builder->UseFlagIsSet("disable_login_animations")) {
     builder->AddArg("--disable-login-animations");
     builder->AddArg("--disable-boot-animation");
