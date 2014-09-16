@@ -21,14 +21,14 @@
 //  using chromeos::dbus_utils::CallMethodAndBlock;
 //  using chromeos::dbus_utils::ExtractMethodCallResults;
 //
+//  chromeos::ErrorPtr error;
 //  auto resp = CallMethodAndBlock(obj,
 //                                 "org.chromium.MyService.MyInterface",
 //                                 "MyMethod",
+//                                 &error,
 //                                 2, 8.7);
-//
-//  chromeos::ErrorPtr error;
 //  std::string return_value;
-//  if (ExtractMethodCallResults(resp.get(), &error, &return_value)) {
+//  if (resp && ExtractMethodCallResults(resp.get(), &error, &return_value)) {
 //    // Use the |return_value|.
 //  } else {
 //    // An error occurred. Use |error| to get details.
@@ -47,6 +47,7 @@
 #include <chromeos/errors/error_codes.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
+#include <dbus/scoped_dbus_error.h>
 
 namespace chromeos {
 namespace dbus_utils {
@@ -73,12 +74,19 @@ inline std::unique_ptr<dbus::Response> CallMethodAndBlockWithTimeout(
   // Add method arguments to the message buffer.
   dbus::MessageWriter writer(&method_call);
   DBusParamWriter::Append(&writer, args...);
-  auto response = object->CallMethodAndBlock(&method_call, timeout_ms);
+  dbus::ScopedDBusError dbus_error;
+  auto response = object->CallMethodAndBlockWithErrorDetails(
+      &method_call, timeout_ms, &dbus_error);
   if (!response) {
-    Error::AddToPrintf(error, errors::dbus::kDomain, DBUS_ERROR_FAILED,
-                       "Failed to call D-Bus method: %s.%s",
-                       interface_name.c_str(),
-                       method_name.c_str());
+    if (dbus_error.is_set()) {
+      Error::AddTo(error, errors::dbus::kDomain,
+                   dbus_error.name(), dbus_error.message());
+    } else {
+      Error::AddToPrintf(error, errors::dbus::kDomain, DBUS_ERROR_FAILED,
+                         "Failed to call D-Bus method: %s.%s",
+                         interface_name.c_str(),
+                         method_name.c_str());
+    }
   }
   return std::unique_ptr<dbus::Response>(response.release());
 }

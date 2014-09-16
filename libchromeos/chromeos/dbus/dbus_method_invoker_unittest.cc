@@ -8,6 +8,7 @@
 
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
+#include <dbus/scoped_dbus_error.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -46,7 +47,8 @@ class DBusMethodInvokerTest: public testing::Test {
                                       dbus::ObjectPath(kTestPath)))
         .WillRepeatedly(Return(mock_object_proxy_.get()));
     int def_timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
-    EXPECT_CALL(*mock_object_proxy_, MockCallMethodAndBlock(_, def_timeout_ms))
+    EXPECT_CALL(*mock_object_proxy_,
+                MockCallMethodAndBlockWithErrorDetails(_, def_timeout_ms, _))
         .WillRepeatedly(Invoke(this, &DBusMethodInvokerTest::CreateResponse));
   }
 
@@ -54,7 +56,9 @@ class DBusMethodInvokerTest: public testing::Test {
     bus_ = nullptr;
   }
 
-  Response* CreateResponse(dbus::MethodCall* method_call, int timeout_ms) {
+  Response* CreateResponse(dbus::MethodCall* method_call,
+                           int timeout_ms,
+                           dbus::ScopedDBusError* dbus_error) {
     if (method_call->GetInterface() == kTestInterface) {
       if (method_call->GetMember() == kTestMethod1) {
         MessageReader reader(method_call);
@@ -69,10 +73,8 @@ class DBusMethodInvokerTest: public testing::Test {
         }
       } else if (method_call->GetMember() == kTestMethod2) {
         method_call->SetSerial(123);
-        auto response = dbus::ErrorResponse::FromMethodCall(method_call,
-                                                            "org.MyError",
-                                                            "My error message");
-        return response.release();
+        dbus_set_error(dbus_error->get(), "org.MyError", "My error message");
+        return nullptr;
       }
     }
 
@@ -104,24 +106,18 @@ TEST_F(DBusMethodInvokerTest, TestSuccess) {
   EXPECT_EQ("-4", CallTestMethod(13, -17));
 }
 
-// TODO(avakulenko): This test is disabled until //dbus is fixed to return
-// error information from dbus::ObjectProxy::CallMethodAndBlock() method.
-// See: crbug.com/414838
-//
-// TEST_F(DBusMethodInvokerTest, TestFailure) {
-//   chromeos::ErrorPtr error;
-//   std::unique_ptr<dbus::Response> response =
-//       chromeos::dbus_utils::CallMethodAndBlock(mock_object_proxy_.get(),
-//                                                kTestInterface,
-//                                                kTestMethod2,
-//                                                nullptr);
-//   EXPECT_NE(nullptr, response.get());
-//   using chromeos::dbus_utils::ExtractMethodCallResults;
-//   EXPECT_FALSE(ExtractMethodCallResults(response.get(), &error));
-//   EXPECT_EQ(chromeos::errors::dbus::kDomain, error->GetDomain());
-//   EXPECT_EQ("org.MyError", error->GetCode());
-//   EXPECT_EQ("My error message", error->GetMessage());
-// }
+TEST_F(DBusMethodInvokerTest, TestFailure) {
+  chromeos::ErrorPtr error;
+  std::unique_ptr<dbus::Response> response =
+      chromeos::dbus_utils::CallMethodAndBlock(mock_object_proxy_.get(),
+                                               kTestInterface,
+                                               kTestMethod2,
+                                               &error);
+  EXPECT_EQ(nullptr, response.get());
+  EXPECT_EQ(chromeos::errors::dbus::kDomain, error->GetDomain());
+  EXPECT_EQ("org.MyError", error->GetCode());
+  EXPECT_EQ("My error message", error->GetMessage());
+}
 
 }  // namespace dbus_utils
 }  // namespace chromeos
