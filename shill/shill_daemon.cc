@@ -65,8 +65,7 @@ void Daemon::Run() {
 void Daemon::Quit() {
   SLOG(Daemon, 1) << "Starting termination actions.";
   if (!manager_->RunTerminationActionsAndNotifyMetrics(
-          Bind(&Daemon::TerminationActionsCompleted, Unretained(this)),
-          Metrics::kTerminationActionReasonTerminate)) {
+          Bind(&Daemon::TerminationActionsCompleted, Unretained(this)))) {
     SLOG(Daemon, 1) << "No termination actions were run";
     StopAndReturnToMain();
   }
@@ -74,8 +73,7 @@ void Daemon::Quit() {
 
 void Daemon::TerminationActionsCompleted(const Error &error) {
   SLOG(Daemon, 1) << "Finished termination actions.  Result: " << error;
-  metrics_->NotifyTerminationActionsCompleted(
-      Metrics::kTerminationActionReasonTerminate, error.IsSuccess());
+  metrics_->NotifyTerminationActionsCompleted(error.IsSuccess());
 
   // Daemon::TerminationActionsCompleted() should not directly call
   // Daemon::Stop(). Otherwise, it could lead to the call sequence below. That

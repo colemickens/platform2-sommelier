@@ -133,9 +133,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
   virtual void Scan(ScanType scan_type, Error *error,
                     const std::string &reason);
-  // Callback for system suspend. The base class implementation is invoked
-  // unconditionally.
-  virtual void OnBeforeSuspend();
+  // Callback for system suspend.
+  virtual void OnBeforeSuspend(const ResultCallback &callback);
   // Callback for system resume. If this WiFi device is idle, a scan
   // is initiated. Additionally, the base class implementation is
   // invoked unconditionally.
@@ -299,7 +298,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, ScanStateUma);  // ScanState, ScanMethod
   FRIEND_TEST(WiFiMainTest, Stop);  // weak_ptr_factory_
   FRIEND_TEST(WiFiMainTest, TimeoutPendingServiceWithEndpoints);
-  FRIEND_TEST(WiFiMainTest, RetrySetWakeOnPacketConnections);
+  FRIEND_TEST(WiFiMainTest, RetryApplyWakeOnWiFiSettingsLessThanMaxRetries);
+  FRIEND_TEST(WiFiMainTest,
+              RetryApplyWakeOnWiFiSettingsMaxAttemptsWithCallbackSet);
+  FRIEND_TEST(WiFiMainTest,
+              RetryApplyWakeOnWiFiSettingsMaxAttemptsWithCallbackUnset);
   FRIEND_TEST(WiFiPropertyTest, BgscanMethodProperty);  // bgscan_method_
   FRIEND_TEST(WiFiTimerTest, FastRescan);  // kFastScanIntervalSeconds
   FRIEND_TEST(WiFiTimerTest, RequestStationInfo);  // kRequestStationInfoPeriod
@@ -541,7 +544,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Calls |ApplyWakeOnWiFiSettings| and counts this call as
   // a retry. If |kMaxSetWakeOnPacketRetries| retries have already been
   // performed, resets counter and returns.
-  void RetrySetWakeOnPacketConnections();
+  void RetryApplyWakeOnWiFiSettings();
 
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider *provider_;
@@ -651,6 +654,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   std::set<WakeOnWiFi::WakeOnWiFiTrigger> wake_on_wifi_triggers_supported_;
   // Max number of patterns this WiFi device can match.
   size_t wake_on_wifi_max_patterns_;
+
+  // Callback to be invoked after all suspend actions finish executing.
+  ResultCallback suspend_actions_done_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };

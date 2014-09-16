@@ -768,7 +768,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->OnAfterResume();
   }
   void OnBeforeSuspend() {
-    wifi_->OnBeforeSuspend();
+    ResultCallback callback(
+        base::Bind(&WiFiObjectTest::SuspendCallback, base::Unretained(this)));
+    wifi_->OnBeforeSuspend(callback);
   }
   void OnSupplicantAppear() {
     wifi_->OnSupplicantAppear(WPASupplicant::kDBusAddr, ":1.7");
@@ -916,8 +918,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return &wifi_->wake_on_packet_connections_;
   }
 
-  int *GetNumSetWakeOnPacketRetries() {
-    return &wifi_->num_set_wake_on_packet_retries_;
+  int GetNumSetWakeOnPacketRetries() {
+    return wifi_->num_set_wake_on_packet_retries_;
+  }
+
+  void SetNumSetWakeOnPacketRetries(int num_retries) {
+    wifi_->num_set_wake_on_packet_retries_ = num_retries;
   }
 
   set<WakeOnWiFi::WakeOnWiFiTrigger> *GetWakeOnWiFiTriggers() {
@@ -955,9 +961,20 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->ApplyWakeOnWiFiSettings();
   }
 
-  void RetrySetWakeOnPacketConnections() {
-    wifi_->RetrySetWakeOnPacketConnections();
+  void RetryApplyWakeOnWiFiSettings() {
+    wifi_->RetryApplyWakeOnWiFiSettings();
   }
+
+  void SetSuspendActionsDoneCallback() {
+    wifi_->suspend_actions_done_callback_ =
+        base::Bind(&WiFiObjectTest::SuspendCallback, base::Unretained(this));
+  }
+
+  bool SuspendActionsCallbackIsNull() {
+    return wifi_->suspend_actions_done_callback_.is_null();
+  }
+
+  MOCK_METHOD1(SuspendCallback, void(const Error &error));
 
   EventDispatcher *event_dispatcher_;
   MockScanSession *scan_session_;  // Owned by |wifi_|.
@@ -1544,8 +1561,11 @@ TEST_F(WiFiMainTest, SuspendDoesNotStartScan_FullScan) {
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   ASSERT_TRUE(wifi()->IsIdle());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(1);
+  EXPECT_CALL(
+      netlink_manager_,
+      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
+                                          SetWakeOnPacketConnMessage::kCommand),
+                         _, _, _)).Times(1);
   OnBeforeSuspend();
   dispatcher_.DispatchPendingEvents();
 }
@@ -1556,9 +1576,13 @@ TEST_F(WiFiMainTest, SuspendDoesNotStartScan) {
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   ASSERT_TRUE(wifi()->IsIdle());
-  EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _, _)).Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
   EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
+  EXPECT_CALL(
+      netlink_manager_,
+      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
+                                          SetWakeOnPacketConnMessage::kCommand),
+                         _, _, _)).Times(1);
   OnBeforeSuspend();
   dispatcher_.DispatchPendingEvents();
 }
@@ -4084,12 +4108,40 @@ TEST_F(WiFiMainTest, RequestWakeOnPacketSettings) {
   RequestWakeOnPacketSettings();
 }
 
-TEST_F(WiFiMainTest, VerifyWakeOnWiFiSettings) {
+MATCHER_P(ErrorType, type, "") { return arg.type() == type; }
+
+TEST_F(WiFiMainTest, VerifyWakeOnWiFiSettingsWithNoWakeOnPacketRules) {
   ScopedMockLog log;
   const uint8_t kResponseNoIPAddresses[] = {
       0x14, 0x00, 0x00, 0x00, 0x14, 0x00, 0x01, 0x00, 0x01, 0x00,
       0x00, 0x00, 0x57, 0x40, 0x00, 0x00, 0x49, 0x01, 0x00, 0x00};
-  const uint8_t kResponseIPV40WakeOnDisconnect[] = {
+  // Create an Nl80211 response to a NL80211_CMD_GET_WOWLAN request
+  // indicating that there are no wake-on-packet rules programmed into the NIC.
+  GetWakeOnPacketConnMessage msg;
+  msg.InitFromNlmsg(reinterpret_cast<const nlmsghdr *>(kResponseNoIPAddresses));
+  // Successful verification and consequent invocation of callback.
+  SetSuspendActionsDoneCallback();
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
+  EXPECT_FALSE(SuspendActionsCallbackIsNull());
+  EXPECT_CALL(*this, SuspendCallback(ErrorType(Error::kSuccess))).Times(1);
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(_, _, EndsWith("successfully verified")));
+  VerifyWakeOnWiFiSettings(msg);
+  // Suspend action callback cleared after being invoked.
+  EXPECT_TRUE(SuspendActionsCallbackIsNull());
+
+  // Unsuccessful verification if locally stored settings do not match.
+  GetWakeOnPacketConnections()->AddUnique(IPAddress("1.1.1.1"));
+  GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kIPAddress);
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("structure detected")));
+  VerifyWakeOnWiFiSettings(msg);
+}
+
+TEST_F(WiFiMainTest,
+       VerifyWakeOnWiFiSettingsWithWakeOnPatternAndDisconnectRules) {
+  ScopedMockLog log;
+  const uint8_t kResponseIPV4WakeOnDisconnect[] = {
       0x50, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
       0x57, 0x40, 0x00, 0x00, 0x49, 0x01, 0x00, 0x00, 0x3C, 0x00, 0x75, 0x00,
       0x04, 0x00, 0x02, 0x00, 0x34, 0x00, 0x04, 0x00, 0x30, 0x00, 0x01, 0x00,
@@ -4097,74 +4149,95 @@ TEST_F(WiFiMainTest, VerifyWakeOnWiFiSettings) {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0xC0, 0xA8, 0x0A, 0x14, 0x00, 0x00};
-  // Create an Nl80211 response to a NL80211_CMD_GET_WOWLAN request
-  // indicating that there are no wake-on-packet rules programmed into the NIC.
-  scoped_ptr<uint8_t[]> message_memory1(
-      new uint8_t[sizeof(kResponseNoIPAddresses)]);
-  memcpy(message_memory1.get(), kResponseNoIPAddresses,
-         sizeof(kResponseNoIPAddresses));
-  nlmsghdr *hdr1 = reinterpret_cast<nlmsghdr *>(message_memory1.get());
-  GetWakeOnPacketConnMessage msg1;
-  msg1.InitFromNlmsg(hdr1);
-  // Successful verification.
-  EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
-  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log, Log(_, _, EndsWith("successfully verified")));
-  VerifyWakeOnWiFiSettings(msg1);
-  // Unsuccessful verification.
-  GetWakeOnPacketConnections()->AddUnique(IPAddress("1.1.1.1"));
-  GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kIPAddress);
-  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("structure detected")));
-  VerifyWakeOnWiFiSettings(msg1);
-
   // Create a non-trivial Nl80211 response to a NL80211_CMD_GET_WOWLAN request
   // indicating that that the NIC wakes on packets from 192.168.10.20 and on
   // disconnects.
-  GetWakeOnPacketConnections()->Clear();
-  GetWakeOnWiFiTriggers()->clear();
-  scoped_ptr<uint8_t[]> message_memory2(
-      new uint8_t[sizeof(kResponseIPV40WakeOnDisconnect)]);
-  memcpy(message_memory2.get(), kResponseIPV40WakeOnDisconnect,
-         sizeof(kResponseIPV40WakeOnDisconnect));
-  nlmsghdr *hdr2 = reinterpret_cast<nlmsghdr *>(message_memory2.get());
-  GetWakeOnPacketConnMessage msg2;
-  msg2.InitFromNlmsg(hdr2);
-  // Successful verification.
+  GetWakeOnPacketConnMessage msg;
+  msg.InitFromNlmsg(
+      reinterpret_cast<const nlmsghdr *>(kResponseIPV4WakeOnDisconnect));
+  // Successful verification and consequent invocation of callback.
+  SetSuspendActionsDoneCallback();
+  EXPECT_FALSE(SuspendActionsCallbackIsNull());
   GetWakeOnPacketConnections()->AddUnique(IPAddress("192.168.10.20"));
   GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kIPAddress);
   GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kDisconnect);
+  EXPECT_CALL(*this, SuspendCallback(ErrorType(Error::kSuccess))).Times(1);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, EndsWith("successfully verified")));
-  VerifyWakeOnWiFiSettings(msg2);
-  // Unsuccessful verification.
+  VerifyWakeOnWiFiSettings(msg);
+  // Suspend action callback cleared after being invoked.
+  EXPECT_TRUE(SuspendActionsCallbackIsNull());
+
+  // Unsuccessful verification if locally stored settings do not match.
   GetWakeOnWiFiTriggers()->erase(WakeOnWiFi::kDisconnect);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("structure detected")));
-  VerifyWakeOnWiFiSettings(msg2);
+  VerifyWakeOnWiFiSettings(msg);
 }
 
-TEST_F(WiFiMainTest, RetrySetWakeOnPacketConnections) {
+TEST_F(WiFiMainTest, VerifyWakeOnWiFiSettingsSuccessWithNoSuspendCallback) {
   ScopedMockLog log;
-  *GetNumSetWakeOnPacketRetries() = WiFi::kMaxSetWakeOnPacketRetries - 1;
+  const uint8_t kResponseNoIPAddresses[] = {
+      0x14, 0x00, 0x00, 0x00, 0x14, 0x00, 0x01, 0x00, 0x01, 0x00,
+      0x00, 0x00, 0x57, 0x40, 0x00, 0x00, 0x49, 0x01, 0x00, 0x00};
+  // Create an Nl80211 response to a NL80211_CMD_GET_WOWLAN request
+  // indicating that there are no wake-on-packet rules programmed into the NIC.
+  GetWakeOnPacketConnMessage msg;
+  msg.InitFromNlmsg(reinterpret_cast<const nlmsghdr *>(kResponseNoIPAddresses));
+  // Successful verification, but since there is no suspend action callback
+  // set, no callback is invoked.
+  EXPECT_TRUE(SuspendActionsCallbackIsNull());
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
+  EXPECT_CALL(*this, SuspendCallback(_)).Times(0);
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(_, _, EndsWith("successfully verified")));
+  VerifyWakeOnWiFiSettings(msg);
+}
+
+TEST_F(WiFiMainTest, RetryApplyWakeOnWiFiSettingsLessThanMaxRetries) {
+  ScopedMockLog log;
+  // Max retries not reached yet, so send Nl80211 message to program NIC again.
+  SetNumSetWakeOnPacketRetries(WiFi::kMaxSetWakeOnPacketRetries - 1);
   EXPECT_CALL(
       netlink_manager_,
       SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
                                           SetWakeOnPacketConnMessage::kCommand),
                          _, _, _)).Times(1);
-  RetrySetWakeOnPacketConnections();
-  EXPECT_EQ(*GetNumSetWakeOnPacketRetries(),
-            WiFi::kMaxSetWakeOnPacketRetries);
+  RetryApplyWakeOnWiFiSettings();
+  EXPECT_EQ(GetNumSetWakeOnPacketRetries(), WiFi::kMaxSetWakeOnPacketRetries);
+}
 
+TEST_F(WiFiMainTest, RetryApplyWakeOnWiFiSettingsMaxAttemptsWithCallbackSet) {
+  ScopedMockLog log;
+  // Max retry attempts reached. Suspend actions done callback is set, so it
+  // is invoked.
+  SetNumSetWakeOnPacketRetries(WiFi::kMaxSetWakeOnPacketRetries);
+  SetSuspendActionsDoneCallback();
+  EXPECT_FALSE(SuspendActionsCallbackIsNull());
+  EXPECT_CALL(*this, SuspendCallback(ErrorType(Error::kOperationFailed)))
+      .Times(1);
   EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _, _)).Times(0);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, EndsWith("max retry attempts reached")));
-  RetrySetWakeOnPacketConnections();
-  EXPECT_EQ(*GetNumSetWakeOnPacketRetries(), 0);
+  RetryApplyWakeOnWiFiSettings();
+  EXPECT_TRUE(SuspendActionsCallbackIsNull());
+  EXPECT_EQ(GetNumSetWakeOnPacketRetries(), 0);
+}
+
+TEST_F(WiFiMainTest, RetryApplyWakeOnWiFiSettingsMaxAttemptsWithCallbackUnset) {
+  ScopedMockLog log;
+  // If there is no suspend action callback set, no suspend callback should be
+  // invoked.
+  SetNumSetWakeOnPacketRetries(WiFi::kMaxSetWakeOnPacketRetries);
+  EXPECT_TRUE(SuspendActionsCallbackIsNull());
+  EXPECT_CALL(*this, SuspendCallback(_)).Times(0);
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(_, _, EndsWith("max retry attempts reached")));
+  RetryApplyWakeOnWiFiSettings();
 }
 
 TEST_F(WiFiMainTest, ApplyWakeOnWiFiSettings) {
-  // Disable wake on wifi if there are no wake on wifi triggers registered.
+  // Disable wake on WiFi if there are no wake on WiFi triggers registered.
   EXPECT_CALL(
       netlink_manager_,
       SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
@@ -4190,29 +4263,27 @@ TEST_F(WiFiMainTest, ApplyWakeOnWiFiSettings) {
 }
 
 TEST_F(WiFiMainTest, WakeOnWiFiSettingsAppliedBeforeSuspend) {
-  // When wake_on_packet_connections_ is empty, disable wake on WiFi.
-  EXPECT_CALL(
-      netlink_manager_,
-      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
-                                          SetWakeOnPacketConnMessage::kCommand),
-                         _, _, _)).Times(0);
+  // Program NIC to disable wake on WiFi if wake_on_packet_connections_ is
+  // empty.
+  EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
+  EXPECT_CALL(*this, SuspendCallback(_)).Times(0);
   EXPECT_CALL(netlink_manager_,
               SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(1);
   OnBeforeSuspend();
-  EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
+  dispatcher_.DispatchPendingEvents();
 
   // When wake_on_packet_connections_ is not empty, program NIC to wake on
   // IP address patterns.
   IPAddress ip_addr("1.1.1.1");
   GetWakeOnPacketConnections()->AddUnique(ip_addr);
+  EXPECT_CALL(*this, SuspendCallback(_)).Times(0);
   EXPECT_CALL(
       netlink_manager_,
       SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
                                           SetWakeOnPacketConnMessage::kCommand),
                          _, _, _)).Times(1);
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(0);
   OnBeforeSuspend();
+  dispatcher_.DispatchPendingEvents();
   EXPECT_FALSE(GetWakeOnWiFiTriggers()->empty());
   EXPECT_TRUE(GetWakeOnWiFiTriggers()->find(WakeOnWiFi::kIPAddress) !=
               GetWakeOnWiFiTriggers()->end());

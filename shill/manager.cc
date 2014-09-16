@@ -1099,12 +1099,11 @@ void Manager::RunTerminationActions(const ResultCallback &done_callback) {
 }
 
 bool Manager::RunTerminationActionsAndNotifyMetrics(
-    const ResultCallback &done_callback,
-    Metrics::TerminationActionReason reason) {
+    const ResultCallback &done_callback) {
   if (termination_actions_.IsEmpty())
     return false;
 
-  metrics_->NotifyTerminationActionsStarted(reason);
+  metrics_->NotifyTerminationActionsStarted();
   RunTerminationActions(done_callback);
   return true;
 }
@@ -1248,14 +1247,20 @@ void Manager::EmitDefaultService() {
 }
 
 void Manager::OnSuspendImminent() {
-  for (const auto &device : devices_) {
-    device->OnBeforeSuspend();
+  auto result_aggregator(make_scoped_refptr(new ResultAggregator(
+      Bind(&Manager::OnSuspendActionsComplete, AsWeakPtr()), dispatcher_,
+      kTerminationActionsTimeoutMilliseconds)));
+  if (devices_.empty()) {
+    // If there are no devices, then suspend actions succeeded synchronously.
+    // Make a call to the Manager::OnSuspendActionsComplete directly, since
+    // result_aggregator will not.
+    OnSuspendActionsComplete(Error(Error::kSuccess));
+    return;
   }
-  if (!RunTerminationActionsAndNotifyMetrics(
-           Bind(&Manager::OnSuspendActionsComplete, AsWeakPtr()),
-           Metrics::kTerminationActionReasonSuspend)) {
-    LOG(INFO) << "No asynchronous suspend actions were run.";
-    power_manager_->ReportSuspendReadiness();
+  for (const auto &device : devices_) {
+    ResultCallback aggregator_callback(
+        Bind(&ResultAggregator::ReportResult, result_aggregator));
+    device->OnBeforeSuspend(aggregator_callback);
   }
 }
 
@@ -1284,8 +1289,7 @@ void Manager::OnDarkSuspendImminent() {
 
 void Manager::OnSuspendActionsComplete(const Error &error) {
   LOG(INFO) << "Finished suspend actions. Result: " << error;
-  metrics_->NotifyTerminationActionsCompleted(
-      Metrics::kTerminationActionReasonSuspend, error.IsSuccess());
+  metrics_->NotifyTerminationActionsCompleted(error.IsSuccess());
   power_manager_->ReportSuspendReadiness();
 }
 

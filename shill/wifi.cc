@@ -1740,9 +1740,8 @@ void WiFi::HelpRegisterConstDerivedBool(
       BoolAccessor(new CustomAccessor<WiFi, bool>(this, get, nullptr)));
 }
 
-void WiFi::OnBeforeSuspend() {
+void WiFi::OnBeforeSuspend(const ResultCallback &callback) {
   LOG(INFO) << __func__;
-  Device::OnBeforeSuspend();
 
   // Program NIC to wake on disconnects and packets from certain IP addresses
   // iff we have buffered wake on packet programming requests.
@@ -1753,8 +1752,10 @@ void WiFi::OnBeforeSuspend() {
     // when the kernel/powerd can identify a wake on disconnect signal and
     // put the system into dark resume.
     // wake_on_wifi_triggers_.insert(WakeOnWiFi::kDisconnect);
+    suspend_actions_done_callback_ = callback;
   }
-  ApplyWakeOnWiFiSettings();
+  dispatcher()->PostTask(
+      Bind(&WiFi::ApplyWakeOnWiFiSettings, weak_ptr_factory_.GetWeakPtr()));
 }
 
 void WiFi::OnAfterResume() {
@@ -1910,11 +1911,15 @@ void WiFi::VerifyWakeOnWiFiSettings(
                                           wake_on_packet_connections_)) {
     SLOG(WiFi, 2) << __func__ << ": "
                   << "Wake-on-packet settings successfully verified";
+    if (!suspend_actions_done_callback_.is_null()) {
+      suspend_actions_done_callback_.Run(Error(Error::kSuccess));
+      suspend_actions_done_callback_.Reset();
+    }
   } else {
     LOG(ERROR) << __func__ << " failed: discrepancy between wake-on-packet "
                               "settings on NIC and those in local data "
                               "structure detected";
-    RetrySetWakeOnPacketConnections();
+    RetryApplyWakeOnWiFiSettings();
   }
 }
 
@@ -1965,7 +1970,7 @@ void WiFi::DisableWakeOnWiFi() {
       kVerifyWakeOnWiFiSettingsDelaySeconds * 1000);
 }
 
-void WiFi::RetrySetWakeOnPacketConnections() {
+void WiFi::RetryApplyWakeOnWiFiSettings() {
   if (num_set_wake_on_packet_retries_ < kMaxSetWakeOnPacketRetries) {
     Error e;
     SLOG(WiFi, 2) << __func__;
@@ -1974,6 +1979,10 @@ void WiFi::RetrySetWakeOnPacketConnections() {
   } else {
     SLOG(WiFi, 2) << __func__ << ": max retry attempts reached";
     num_set_wake_on_packet_retries_ = 0;
+    if (!suspend_actions_done_callback_.is_null()) {
+      suspend_actions_done_callback_.Run(Error(Error::kOperationFailed));
+      suspend_actions_done_callback_.Reset();
+    }
   }
 }
 

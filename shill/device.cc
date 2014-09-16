@@ -371,8 +371,9 @@ bool Device::Save(StoreInterface *storage) {
   return true;
 }
 
-void Device::OnBeforeSuspend() {
-  // Nothing to be done in the general case.
+void Device::OnBeforeSuspend(const ResultCallback &callback) {
+  // Nothing to be done in the general case, so immediately report success.
+  callback.Run(Error(Error::kSuccess));
 }
 
 void Device::OnAfterResume() {

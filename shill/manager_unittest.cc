@@ -3107,7 +3107,7 @@ TEST_F(ManagerTest, Suspend) {
   manager()->RegisterDevice(mock_devices_[0]);
   dispatcher()->DispatchPendingEvents();
 
-  EXPECT_CALL(*mock_devices_[0], OnBeforeSuspend());
+  EXPECT_CALL(*mock_devices_[0], OnBeforeSuspend(_));
   OnSuspendImminent();
   EXPECT_CALL(*service, AutoConnect()).Times(0);
   dispatcher()->DispatchPendingEvents();
@@ -3166,8 +3166,18 @@ TEST_F(ManagerTest, RunTerminationActions) {
                                         test_action.AsWeakPtr()));
 }
 
-TEST_F(ManagerTest, OnSuspendImminent) {
-  EXPECT_TRUE(GetTerminationActions()->IsEmpty());
+TEST_F(ManagerTest, OnSuspendImminentDevicesPresent) {
+  EXPECT_CALL(*mock_devices_[0].get(), OnBeforeSuspend(_));
+  EXPECT_CALL(*mock_devices_[1].get(), OnBeforeSuspend(_));
+  EXPECT_CALL(*mock_devices_[2].get(), OnBeforeSuspend(_));
+  manager()->RegisterDevice(mock_devices_[0]);
+  manager()->RegisterDevice(mock_devices_[1]);
+  manager()->RegisterDevice(mock_devices_[2]);
+  SetPowerManager();
+  OnSuspendImminent();
+}
+
+TEST_F(ManagerTest, OnSuspendImminentNoDevicesPresent) {
   EXPECT_CALL(*power_manager_, ReportSuspendReadiness());
   SetPowerManager();
   OnSuspendImminent();

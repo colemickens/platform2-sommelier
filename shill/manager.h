@@ -342,16 +342,14 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Runs the termination actions and notifies the metrics framework
   // that the termination actions started running, only if any termination
-  // actions have been registered. |reason| specifies whether this method was
-  // called due to termination or suspend. If all actions complete within
+  // actions have been registered. If all actions complete within
   // |kTerminationActionsTimeoutMilliseconds|, |done_callback| is called with a
   // value of Error::kSuccess. Otherwise, it is called with
   // Error::kOperationTimeout.
   //
   // Returns true, if termination actions were run.
   bool RunTerminationActionsAndNotifyMetrics(
-      const ResultCallback &done_callback,
-      Metrics::TerminationActionReason reason);
+      const ResultCallback &done_callback);
 
   // Registers a |callback| that's invoked whenever the default service
   // changes. Returns a unique tag that can be used to deregister the

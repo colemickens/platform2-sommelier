@@ -201,9 +201,10 @@ class Metrics {
     kTerminationActionResultMax
   };
 
-  enum TerminationActionReason {
-    kTerminationActionReasonSuspend,
-    kTerminationActionReasonTerminate
+  enum SuspendActionResult {
+    kSuspendActionResultSuccess,
+    kSuspendActionResultFailure,
+    kSuspendActionResultMax
   };
 
   enum Cellular3GPPRegistrationDelayedDrop {
@@ -519,12 +520,16 @@ class Metrics {
   static const char kMetricLinkApDisconnectType[];
 
   // Shill termination action statistics.
-  static const char kMetricTerminationActionTimeOnTerminate[];
-  static const char kMetricTerminationActionResultOnTerminate[];
-  static const char kMetricTerminationActionTimeOnSuspend[];
-  static const char kMetricTerminationActionResultOnSuspend[];
+  static const char kMetricTerminationActionTime[];
+  static const char kMetricTerminationActionResult[];
   static const int kMetricTerminationActionTimeMillisecondsMax;
   static const int kMetricTerminationActionTimeMillisecondsMin;
+
+  // Shill suspend action statistics.
+  static const char kMetricSuspendActionTime[];
+  static const char kMetricSuspendActionResult[];
+  static const int kMetricSuspendActionTimeMillisecondsMax;
+  static const int kMetricSuspendActionTimeMillisecondsMin;
 
   // WiFiService Entry Fixup.
   static const char kMetricServiceFixupEntriesSuffix[];
@@ -703,12 +708,18 @@ class Metrics {
   void NotifySuspendDone();
 
   // Notifies this object that termination actions started executing.
-  void NotifyTerminationActionsStarted(TerminationActionReason reason);
+  void NotifyTerminationActionsStarted();
 
   // Notifies this object that termination actions have been completed.
   // |success| is true, if the termination actions completed successfully.
-  void NotifyTerminationActionsCompleted(
-      TerminationActionReason reason, bool success);
+  void NotifyTerminationActionsCompleted(bool success);
+
+  // Notifies this object that suspend actions started executing.
+  void NotifySuspendActionsStarted();
+
+  // Notifies this object that suspend actions have been completed.
+  // |success| is true, if the suspend actions completed successfully.
+  void NotifySuspendActionsCompleted(bool success);
 
   // Notifies this object of a failure in LinkMonitor.
   void NotifyLinkMonitorFailure(
@@ -949,6 +960,10 @@ class Metrics {
     chromeos_metrics::Timer *timer) {
     time_termination_actions_timer.reset(timer);  // Passes ownership
   }
+  void set_time_suspend_actions_timer(
+    chromeos_metrics::Timer *timer) {
+    time_suspend_actions_timer.reset(timer);  // Passes ownership
+  }
   void set_time_to_scan_timer(int interface_index,
                               chromeos_metrics::TimerReporter *timer) {
     DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
@@ -978,6 +993,7 @@ class Metrics {
   scoped_ptr<chromeos_metrics::Timer> time_to_drop_timer_;
   scoped_ptr<chromeos_metrics::Timer> time_resume_to_ready_timer_;
   scoped_ptr<chromeos_metrics::Timer> time_termination_actions_timer;
+  scoped_ptr<chromeos_metrics::Timer> time_suspend_actions_timer;
   bool collect_bootstats_;
   DeviceMetricsLookupMap devices_metrics_;
 

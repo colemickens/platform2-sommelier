@@ -248,13 +248,15 @@ class Device : public base::RefCounted<Device> {
   DeviceAdaptorInterface *adaptor() const { return adaptor_.get(); }
 
   // Suspend event handler. Called by Manager before the system
-  // suspends. This handler, along with any other suspect handlers,
+  // suspends. This handler, along with any other suspend handlers,
   // will have Manager::kTerminationActionsTimeoutMilliseconds to
-  // execute before the system enters the suspend state.
+  // execute before the system enters the suspend state. |callback|
+  // must be invoked after all synchronous and/or asynchronous actions
+  // this function performs complete.
   //
   // Code that needs to run on exit, as well as on suspend, should use
   // Manager::AddTerminationAction, rather than OnBeforeSuspend.
-  virtual void OnBeforeSuspend();
+  virtual void OnBeforeSuspend(const ResultCallback &callback);
 
   // Resume event handler. Called by Manager as the system resumes.
   // The base class implementation takes care of renewing a DHCP lease
