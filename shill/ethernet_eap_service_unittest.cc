@@ -58,7 +58,7 @@ TEST_F(EthernetEapServiceTest, OnEapCredentialsChanged) {
   EXPECT_TRUE(service_->has_ever_connected());
   EXPECT_CALL(manager_, ethernet_eap_provider()).WillOnce(Return(&provider_));
   EXPECT_CALL(provider_, OnCredentialsChanged());
-  service_->OnEapCredentialsChanged();
+  service_->OnEapCredentialsChanged(Service::kReasonPropertyUpdate);
   EXPECT_FALSE(service_->has_ever_connected());
 }
 

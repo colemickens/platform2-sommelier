@@ -139,11 +139,11 @@ class WiFiService : public Service {
 
   // Override from parent Service class to correctly update connectability
   // when the EAP credentials change for 802.1x networks.
-  void OnEapCredentialsChanged();
+  void OnEapCredentialsChanged(Service::UpdateCredentialsReason reason);
 
   // Called by WiFiService to reset state associated with prior success
   // of a connection with particular EAP credentials or a passphrase.
-  void OnCredentialChange();
+  void OnCredentialChange(Service::UpdateCredentialsReason reason);
 
   // Override from parent Service class to register hidden services once they
   // have been configured.
@@ -194,7 +194,9 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, GetTethering);
   FRIEND_TEST(WiFiServiceTest, IsAutoConnectable);
   FRIEND_TEST(WiFiServiceTest, LoadHidden);
+  FRIEND_TEST(WiFiServiceTest, SetPassphraseForNonPassphraseService);
   FRIEND_TEST(WiFiServiceTest, LoadAndUnloadPassphrase);
+  FRIEND_TEST(WiFiServiceTest, LoadPassphraseClearCredentials);
   FRIEND_TEST(WiFiServiceTest, SecurityFromCurrentEndpoint);  // GetSecurity
   FRIEND_TEST(WiFiServiceTest, SetPassphraseResetHasEverConnected);
   FRIEND_TEST(WiFiServiceTest, SetPassphraseRemovesCachedCredentials);
@@ -260,10 +262,24 @@ class WiFiService : public Service {
   // "psk" name or if they use the (legacy) specific "wpa" or "rsn" names.
   KeyValueStore GetStorageProperties() const;
 
-  // Called during Load() to validate then apply a passphrase for this service.
-  bool SetPassphraseInternal(const std::string &passphrase, Error *error);
-  // Called from DBus to call SetPassphraseInternal and OnCredentialChange.
+  // Called from DBus and during Load to validate and apply a passphrase for
+  // this service.  If the passphrase is successfully changed, UpdateConnectable
+  // and OnCredentialChange are both called and the method returns true.  This
+  // method will return false if the passphrase cannot be set.  If the
+  // passphrase is already set to the value of |passphrase|, this method will
+  // return false.  If it is due to an error, |error| will be populated with the
+  // appropriate information.
   bool SetPassphrase(const std::string &passphrase, Error *error);
+
+  // Called by SetPassphrase and LoadPassphrase to perform the check on a
+  // passphrase change.  |passphrase| is the new passphrase to be used for the
+  // service.  If the new passphrase is not different from the existing
+  // passphrase, SetPassphraseInternal will return false.  |reason| signals how
+  // the SetPassphraseInternal method was triggered.  If the method was called
+  // from Load, the has_ever_connected flag will not be reset.  If the method
+  // was called from SetPassphrase, has_ever_connected will be set to false.
+  bool SetPassphraseInternal(const std::string &passphrase,
+                             Service::UpdateCredentialsReason reason);
 
   // Select a WiFi device (e.g, for connecting a hidden service with no
   // endpoints).

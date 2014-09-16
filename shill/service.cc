@@ -492,14 +492,11 @@ bool Service::Load(StoreInterface *storage) {
 
   static_ip_parameters_.Load(storage, id);
 
-  // The OnEapCredentialsChanged() call below will call
-  // SetHasEverConnected(false) for some Service subclasses.  To
-  // avoid the side-effects of this call, reset has_ever_connected_
-  // first, and load the new value from the profile later.
+  // Call OnEapCredentialsChanged with kReasonCredentialsLoaded to avoid
+  // resetting the has_ever_connected value.
   if (mutable_eap()) {
-    has_ever_connected_ = false;
     mutable_eap()->Load(storage, id);
-    OnEapCredentialsChanged();
+    OnEapCredentialsChanged(kReasonCredentialsLoaded);
   }
 
   ClearExplicitlyDisconnected();
@@ -1119,7 +1116,7 @@ void Service::SetProfile(const ProfileRefPtr &p) {
 void Service::OnPropertyChanged(const string &property) {
   SLOG(Service, 1) << __func__ << " " << property;
   if (Is8021x() && EapCredentials::IsEapAuthenticationProperty(property)) {
-    OnEapCredentialsChanged();
+    OnEapCredentialsChanged(kReasonPropertyUpdate);
   }
   SaveToProfile();
   if ((property == kCheckPortalProperty ||
@@ -1468,7 +1465,6 @@ void Service::SetHasEverConnected(bool has_ever_connected) {
   if (has_ever_connected_ == has_ever_connected)
     return;
   has_ever_connected_ = has_ever_connected;
-  SaveToProfile();
 }
 
 int32_t Service::GetPriority(Error *error) {

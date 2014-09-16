@@ -205,9 +205,11 @@ bool WiMaxService::IsVisible() const {
   return IsStarted();
 }
 
-void WiMaxService::OnEapCredentialsChanged() {
+void WiMaxService::OnEapCredentialsChanged(
+    Service::UpdateCredentialsReason reason) {
   need_passphrase_ = !eap()->IsConnectableUsingPassphrase();
-  SetHasEverConnected(false);
+  if (reason == Service::kReasonPropertyUpdate)
+    SetHasEverConnected(false);
   UpdateConnectable();
 }
 
@@ -287,7 +289,7 @@ string WiMaxService::CreateStorageIdentifier(const WiMaxNetworkId &id,
 void WiMaxService::ClearPassphrase() {
   SLOG(WiMax, 2) << __func__;
   mutable_eap()->set_password("");
-  OnEapCredentialsChanged();
+  OnEapCredentialsChanged(Service::kReasonPropertyUpdate);
 }
 
 }  // namespace shill

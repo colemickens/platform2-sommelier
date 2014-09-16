@@ -29,7 +29,7 @@ class EthernetEapService : public Service {
   virtual std::string GetStorageIdentifier() const;
   virtual bool Is8021x() const { return true; }
   virtual bool IsVisible() const { return false; }
-  virtual void OnEapCredentialsChanged();
+  virtual void OnEapCredentialsChanged(Service::UpdateCredentialsReason reason);
   virtual bool Unload();
 };
 

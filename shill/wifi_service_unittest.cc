@@ -99,7 +99,7 @@ class WiFiServiceTest : public PropertyStoreTest {
       EXPECT_CALL(*eap, key_management())
           .WillRepeatedly(ReturnRef(kKeyManagement8021x));
     }
-    service->OnEapCredentialsChanged();
+    service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
     return service->connectable();
   }
   WiFiEndpoint *MakeEndpoint(const string &ssid, const string &bssid,
@@ -525,7 +525,7 @@ TEST_F(WiFiServiceTest, ConnectTask8021x) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurity8021x);
   service->mutable_eap()->set_identity("identity");
   service->mutable_eap()->set_password("mumble");
-  service->OnEapCredentialsChanged();
+  service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
   EXPECT_CALL(*wifi(), ConnectTo(service.get()));
   service->Connect(NULL, "in test");
   DBusPropertiesMap params = service->GetSupplicantConfigurationParameters();
@@ -538,7 +538,7 @@ TEST_F(WiFiServiceTest, ConnectTask8021xWithMockEap) {
   MockEapCredentials *eap = SetMockEap(service);
   EXPECT_CALL(*eap, IsConnectable()).WillOnce(Return(true));
   EXPECT_CALL(*wifi(), ConnectTo(service.get()));
-  service->OnEapCredentialsChanged();
+  service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
   service->Connect(NULL, "in test");
 
   EXPECT_CALL(*eap, PopulateSupplicantProperties(_, _));
@@ -681,7 +681,7 @@ TEST_F(WiFiServiceTest, ConnectTaskDynamicWEP) {
   wifi_service->mutable_eap()->SetKeyManagement("IEEE8021X", NULL);
   wifi_service->mutable_eap()->set_identity("something");
   wifi_service->mutable_eap()->set_password("mumble");
-  wifi_service->OnEapCredentialsChanged();
+  wifi_service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   wifi_service->Connect(NULL, "in test");
   DBusPropertiesMap params =
@@ -754,14 +754,28 @@ TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
   }
 
   {
-    // Any change to EAP parameters (including a null one) will trigger cache
-    // removal.  This is a lot less granular than the passphrase checks above.
-    // Changes in EAP parameters should also clear has_ever_connected_.
+    // A change to EAP parameters in a PSK (non 802.1x) service will not
+    // trigger cache removal.
     wifi_service->has_ever_connected_ = true;
     EXPECT_TRUE(wifi_service->has_ever_connected());
-    EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
-    wifi_service->OnEapCredentialsChanged();
-    EXPECT_FALSE(wifi_service->has_ever_connected());
+    EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get())).Times(0);
+    wifi_service->OnEapCredentialsChanged(Service::kReasonPropertyUpdate);
+    EXPECT_TRUE(wifi_service->has_ever_connected());
+    Mock::VerifyAndClearExpectations(wifi());
+  }
+
+  WiFiServiceRefPtr eap_wifi_service = MakeServiceWithWiFi(kSecurity8021x);
+
+  {
+    // Any change to EAP parameters (including a null one) will trigger cache
+    // removal in an 802.1x service.  This is a lot less granular than the
+    // passphrase checks above.
+    // Changes in EAP parameters should also clear has_ever_connected_.
+    eap_wifi_service->has_ever_connected_ = true;
+    EXPECT_TRUE(eap_wifi_service->has_ever_connected());
+    EXPECT_CALL(*wifi(), ClearCachedCredentials(eap_wifi_service.get()));
+    eap_wifi_service->OnEapCredentialsChanged(Service::kReasonPropertyUpdate);
+    EXPECT_FALSE(eap_wifi_service->has_ever_connected());
     Mock::VerifyAndClearExpectations(wifi());
   }
 }
@@ -867,7 +881,7 @@ TEST_F(WiFiServiceTest, LoadHidden) {
   EXPECT_TRUE(service->hidden_ssid_);
 }
 
-TEST_F(WiFiServiceTest, LoadPassphraseForNonPassphraseService) {
+TEST_F(WiFiServiceTest, SetPassphraseForNonPassphraseService) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityNone);
   NiceMock<MockStore> mock_store;
   const string storage_id = service->GetStorageIdentifier();
@@ -879,24 +893,11 @@ TEST_F(WiFiServiceTest, LoadPassphraseForNonPassphraseService) {
       ContainsWiFiProperties(
           simple_ssid(), kModeManaged, kSecurityNone)))
       .WillRepeatedly(Return(groups));
-  EXPECT_CALL(mock_store,
-              GetCryptedString(StrEq(storage_id),
-                               StrNe(WiFiService::kStoragePassphrase), _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_store,
-              GetCryptedString(StrEq(storage_id),
-                               WiFiService::kStoragePassphrase, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(string("password")), Return(true)))
-      .WillOnce(DoAll(SetArgumentPointee<2>(string()), Return(true)));
-  ScopedMockLog log;
-  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
-                       HasSubstr("Passphrase could not be set: "
-                                 "org.chromium.flimflam.Error.NotSupported")))
-      .Times(1);
+
   EXPECT_TRUE(service->Load(&mock_store));
-  Mock::VerifyAndClearExpectations(&log);
-  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, _)).Times(0);
-  EXPECT_TRUE(service->Load(&mock_store));
+  Error error;
+  EXPECT_FALSE(service->SetPassphrase("password", &error));
+  EXPECT_TRUE(error.type() == Error::kNotSupported);
 }
 
 TEST_F(WiFiServiceTest, LoadMultipleMatchingGroups) {
@@ -949,35 +950,99 @@ TEST_F(WiFiServiceSecurityTest, LoadMapping) {
 TEST_F(WiFiServiceTest, LoadAndUnloadPassphrase) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityPsk);
   NiceMock<MockStore> mock_store;
-  const string storage_id = service->GetStorageIdentifier();
-  EXPECT_CALL(mock_store, ContainsGroup(StrEq(storage_id)))
+  const string kStorageId = service->GetStorageIdentifier();
+  EXPECT_CALL(mock_store, ContainsGroup(StrEq(kStorageId)))
       .WillRepeatedly(Return(true));
   set<string> groups;
-  groups.insert(storage_id);
+  groups.insert(kStorageId);
   EXPECT_CALL(mock_store, GetGroupsWithProperties(
       ContainsWiFiProperties(
           simple_ssid(), kModeManaged, kSecurityPsk)))
       .WillRepeatedly(Return(groups));
   EXPECT_CALL(mock_store, GetBool(_, _, _))
       .WillRepeatedly(Return(false));
-  const string passphrase = "passphrase";
+  const string kPassphrase = "passphrase";
   EXPECT_CALL(mock_store,
-              GetCryptedString(StrEq(storage_id),
+              GetCryptedString(StrEq(kStorageId),
                                WiFiService::kStoragePassphrase, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(passphrase), Return(true)));
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kPassphrase), Return(true)));
   EXPECT_CALL(mock_store,
-              GetCryptedString(StrEq(storage_id),
+              GetCryptedString(StrEq(kStorageId),
                                StrNe(WiFiService::kStoragePassphrase), _))
       .WillRepeatedly(Return(false));
   EXPECT_TRUE(service->need_passphrase_);
   EXPECT_TRUE(service->Load(&mock_store));
-  EXPECT_EQ(passphrase, service->passphrase_);
+  EXPECT_EQ(kPassphrase, service->passphrase_);
   EXPECT_TRUE(service->connectable());
   EXPECT_FALSE(service->need_passphrase_);
   service->Unload();
   EXPECT_EQ(string(""), service->passphrase_);
   EXPECT_FALSE(service->connectable());
   EXPECT_TRUE(service->need_passphrase_);
+}
+
+TEST_F(WiFiServiceTest, LoadPassphraseClearCredentials) {
+  const string kOldPassphrase = "oldpassphrase";
+  const string kPassphrase = "passphrase";
+
+  const bool kHasEverConnected = true;
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityPsk);
+  NiceMock<MockStore> mock_store;
+  const string kStorageId = service->GetStorageIdentifier();
+  EXPECT_CALL(mock_store, ContainsGroup(StrEq(kStorageId)))
+      .WillRepeatedly(Return(true));
+  set<string> groups;
+  groups.insert(kStorageId);
+  EXPECT_CALL(mock_store, GetGroupsWithProperties(
+      ContainsWiFiProperties(
+          simple_ssid(), kModeManaged, kSecurityPsk)))
+      .WillRepeatedly(Return(groups));
+  EXPECT_CALL(mock_store, GetBool(_, _, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_store,
+              GetCryptedString(StrEq(kStorageId),
+                               WiFiService::kStoragePassphrase, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kPassphrase), Return(true)));
+  EXPECT_CALL(mock_store,
+              GetCryptedString(StrEq(kStorageId),
+                               StrNe(WiFiService::kStoragePassphrase), _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_store,
+              GetBool(kStorageId, Service::kStorageHasEverConnected, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kHasEverConnected),
+                            Return(true)));
+  // Set old passphrase for service
+  EXPECT_TRUE(service->need_passphrase_);
+  service->passphrase_ = kOldPassphrase;
+  service->has_ever_connected_ = true;
+
+  scoped_refptr<MockProfile> mock_profile(
+      new NiceMock<MockProfile>(control_interface(), metrics(), manager()));
+  service->set_profile(mock_profile);
+  // Detect if the service is going to attempt to update the stored profile.
+  EXPECT_CALL(*mock_profile, GetConstStorage()).Times(0);
+
+  // The kOldPassphrase is different than the newly loaded passhprase,
+  // so the credentials should be cleared.
+  EXPECT_CALL(*wifi(), ClearCachedCredentials(_)).Times(1);
+  EXPECT_CALL(*mock_profile, UpdateService(_)).Times(0);
+  EXPECT_TRUE(service->Load(&mock_store));
+  EXPECT_EQ(kPassphrase, service->passphrase_);
+  EXPECT_TRUE(service->has_ever_connected_);
+
+  Mock::VerifyAndClearExpectations(wifi());
+  Mock::VerifyAndClearExpectations(mock_profile);
+
+
+  // Repeat Service::Load with same old and new passphrase. Since the old
+  // and new passphrase match, verify the cache is not cleared during
+  // profile load.
+  service->set_profile(mock_profile);
+  EXPECT_CALL(*mock_profile, GetConstStorage()).Times(0);
+  EXPECT_CALL(*wifi(), ClearCachedCredentials(_)).Times(0);
+  EXPECT_TRUE(service->Load(&mock_store));
+  EXPECT_EQ(kPassphrase, service->passphrase_);
+  EXPECT_TRUE(service->has_ever_connected_);
 }
 
 TEST_F(WiFiServiceTest, ConfigureMakesConnectable) {

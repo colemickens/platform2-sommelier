@@ -404,7 +404,7 @@ class ServiceWithOnEapCredentialsChangedOverride : public ServiceUnderTest {
       : ServiceUnderTest(control_interface, dispatcher, metrics, manager) {
     SetEapCredentials(eap);
   }
-  void OnEapCredentialsChanged() override {
+  void OnEapCredentialsChanged(Service::UpdateCredentialsReason) override {
     SetHasEverConnected(false);
   }
 };
@@ -1486,7 +1486,7 @@ class ServiceWithMockOnEapCredentialsChanged : public ServiceUnderTest {
                                          Manager *manager)
       : ServiceUnderTest(control_interface, dispatcher, metrics, manager),
         is_8021x_(false) {}
-  MOCK_METHOD0(OnEapCredentialsChanged, void());
+  MOCK_METHOD1(OnEapCredentialsChanged, void(Service::UpdateCredentialsReason));
   virtual bool Is8021x() const { return is_8021x_; }
   void set_is_8021x(bool is_8021x) { is_8021x_ = is_8021x; }
 
@@ -1520,7 +1520,7 @@ TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
   };
   // While this is not an 802.1x-based service, none of these property
   // changes should cause a call to set_eap().
-  EXPECT_CALL(*service, OnEapCredentialsChanged()).Times(0);
+  EXPECT_CALL(*service, OnEapCredentialsChanged(_)).Times(0);
   for (size_t i = 0; i < arraysize(eap_credential_properties); ++i)
     service->OnPropertyChanged(eap_credential_properties[i]);
   for (size_t i = 0; i < arraysize(eap_non_credential_properties); ++i)
@@ -1532,7 +1532,9 @@ TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
   // When this is an 802.1x-based service, set_eap should be called for
   // all credential-carrying properties.
   for (size_t i = 0; i < arraysize(eap_credential_properties); ++i) {
-    EXPECT_CALL(*service, OnEapCredentialsChanged()).Times(1);
+    EXPECT_CALL(*service,
+                OnEapCredentialsChanged(
+                    Service::kReasonPropertyUpdate)).Times(1);
     service->OnPropertyChanged(eap_credential_properties[i]);
     Mock::VerifyAndClearExpectations(service.get());
   }
@@ -1540,11 +1542,12 @@ TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
   // The key management property is a special case.  While not strictly
   // a credential, it can change which credentials are used.  Therefore it
   // should also trigger a call to set_eap();
-  EXPECT_CALL(*service, OnEapCredentialsChanged()).Times(1);
+  EXPECT_CALL(*service,
+              OnEapCredentialsChanged(Service::kReasonPropertyUpdate)).Times(1);
   service->OnPropertyChanged(kEapKeyMgmtProperty);
   Mock::VerifyAndClearExpectations(service.get());
 
-  EXPECT_CALL(*service, OnEapCredentialsChanged()).Times(0);
+  EXPECT_CALL(*service, OnEapCredentialsChanged(_)).Times(0);
   for (size_t i = 0; i < arraysize(eap_non_credential_properties); ++i)
     service->OnPropertyChanged(eap_non_credential_properties[i]);
 }

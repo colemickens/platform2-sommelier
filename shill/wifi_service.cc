@@ -225,8 +225,7 @@ string WiFiService::GetStorageIdentifier() const {
   return storage_identifier_;
 }
 
-bool WiFiService::SetPassphraseInternal(
-    const string &passphrase, Error *error) {
+bool WiFiService::SetPassphrase(const string &passphrase, Error *error) {
   if (security_ == kSecurityWep) {
     ValidateWEPPassphrase(passphrase, error);
   } else if (security_ == kSecurityPsk ||
@@ -238,8 +237,16 @@ bool WiFiService::SetPassphraseInternal(
   }
 
   if (!error->IsSuccess()) {
+    LOG(ERROR) << "Passphrase could not be set: " << error;
     return false;
   }
+
+  return SetPassphraseInternal(passphrase, Service::kReasonPropertyUpdate);
+}
+
+bool WiFiService::SetPassphraseInternal(
+    const string &passphrase,
+    Service::UpdateCredentialsReason reason) {
   if (passphrase_ == passphrase) {
     // After a user logs in, Chrome may reconfigure a Service with the
     // same credentials as before login. When that occurs, we don't
@@ -247,16 +254,8 @@ bool WiFiService::SetPassphraseInternal(
     // early. (See crbug.com/231456#c17)
     return false;
   }
-
   passphrase_ = passphrase;
-  UpdateConnectable();
-  return true;
-}
-
-bool WiFiService::SetPassphrase(const string &passphrase, Error *error) {
-  if (!SetPassphraseInternal(passphrase, error))
-    return false;
-  OnCredentialChange();
+  OnCredentialChange(reason);
   return true;
 }
 
@@ -333,11 +332,8 @@ bool WiFiService::Load(StoreInterface *storage) {
 
   string passphrase;
   if (storage->GetCryptedString(id, kStoragePassphrase, &passphrase)) {
-    Error error;
-    SetPassphraseInternal(passphrase, &error);
-    if (!error.IsSuccess() &&
-        !(passphrase.empty() && error.type() == Error::kNotSupported)) {
-      LOG(ERROR) << "Passphrase could not be set: " << error;
+    if (SetPassphraseInternal(passphrase, Service::kReasonCredentialsLoaded)) {
+      SLOG(Service, 3) << "Loaded passphrase in WiFiService::Load.";
     }
   }
 
@@ -1096,13 +1092,19 @@ void WiFiService::ClearCachedCredentials() {
   }
 }
 
-void WiFiService::OnEapCredentialsChanged() {
-  OnCredentialChange();
+void WiFiService::OnEapCredentialsChanged(
+    Service::UpdateCredentialsReason reason) {
+  if (Is8021x()) {
+    OnCredentialChange(reason);
+  }
 }
 
-void WiFiService::OnCredentialChange() {
+void WiFiService::OnCredentialChange(Service::UpdateCredentialsReason reason) {
   ClearCachedCredentials();
-  SetHasEverConnected(false);
+  // Credential changes due to a property update are new and have not
+  // necessarily been used for a successful connection.
+  if (reason == kReasonPropertyUpdate)
+    SetHasEverConnected(false);
   UpdateConnectable();
   ResetSuspectedCredentialFailures();
 }

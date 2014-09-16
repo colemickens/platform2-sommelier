@@ -126,6 +126,11 @@ class Service : public base::RefCounted<Service> {
     kCryptoAes
   };
 
+  enum UpdateCredentialsReason{
+    kReasonCredentialsLoaded,
+    kReasonPropertyUpdate
+  };
+
   static const int kPriorityNone;
 
   // A constructor for the Service object
@@ -445,7 +450,7 @@ class Service : public base::RefCounted<Service> {
   // Notification that occurs when an EAP credential property has been
   // changed.  Some service subclasses can choose to respond to this
   // event.
-  virtual void OnEapCredentialsChanged() {}
+  virtual void OnEapCredentialsChanged(UpdateCredentialsReason reason) {}
 
   // Called by the manager once after a resume.
   virtual void OnAfterResume();
@@ -663,6 +668,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(WiFiServiceTest, SetPassphraseResetHasEverConnected);
   FRIEND_TEST(WiFiServiceTest, SuspectedCredentialFailure);
   FRIEND_TEST(WiFiServiceTest, SetPassphraseRemovesCachedCredentials);
+  FRIEND_TEST(WiFiServiceTest, LoadPassphraseClearCredentials);
   FRIEND_TEST(WiFiTimerTest, ReconnectTimer);
   FRIEND_TEST(WiFiMainTest, EAPEvent);  // For eap_.
   FRIEND_TEST(WiMaxServiceTest, ChangeCredResetHasEverConnected);

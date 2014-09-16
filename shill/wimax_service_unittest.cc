@@ -167,19 +167,19 @@ TEST_F(WiMaxServiceTest, Connectable) {
       .WillRepeatedly(Return(true));
 
   // No WiMaxCredentials.
-  service_->OnEapCredentialsChanged();
+  service_->OnEapCredentialsChanged(Service::kReasonPropertyUpdate);
   EXPECT_TRUE(service_->need_passphrase_);
   EXPECT_FALSE(service_->connectable());
 
   // Not started (no proxy).
-  service_->OnEapCredentialsChanged();
+  service_->OnEapCredentialsChanged(Service::kReasonPropertyUpdate);
   EXPECT_FALSE(service_->need_passphrase_);
   EXPECT_FALSE(service_->connectable());
 
   // Connectable.
   service_->proxy_.reset(proxy_.release());
   ExpectUpdateService();
-  service_->OnEapCredentialsChanged();
+  service_->OnEapCredentialsChanged(Service::kReasonPropertyUpdate);
   EXPECT_FALSE(service_->need_passphrase_);
   EXPECT_TRUE(service_->connectable());
 
@@ -197,7 +197,7 @@ TEST_F(WiMaxServiceTest, Connectable) {
 TEST_F(WiMaxServiceTest, ChangeCredResetHasEverConnected) {
   service_->has_ever_connected_ = true;
   EXPECT_TRUE(service_->has_ever_connected());
-  service_->OnEapCredentialsChanged();
+  service_->OnEapCredentialsChanged(Service::kReasonPropertyUpdate);
   EXPECT_FALSE(service_->has_ever_connected());
 }
 

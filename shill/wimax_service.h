@@ -73,7 +73,7 @@ class WiMaxService : public Service {
   virtual std::string GetStorageIdentifier() const;
   virtual bool Is8021x() const;
   virtual bool IsVisible() const;
-  virtual void OnEapCredentialsChanged();
+  virtual void OnEapCredentialsChanged(Service::UpdateCredentialsReason reason);
   virtual bool Save(StoreInterface *storage);
   virtual bool Unload();
   virtual void SetState(ConnectState state);
