@@ -9,13 +9,12 @@
 
 #include <base/basictypes.h>
 
-#include "power_manager/powerd/system/input_observer.h"
+#include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/udev_tagged_device_observer.h"
 
 namespace power_manager {
 namespace system {
 class AcpiWakeupHelperInterface;
-class InputWatcherInterface;
 class TaggedDevice;
 class UdevInterface;
 }  // namespace system
@@ -32,8 +31,7 @@ enum WakeupMode {
 };
 
 // Configures wakeup-capable devices according to the current lid state.
-class WakeupController : public system::InputObserver,
-                         public system::UdevTaggedDeviceObserver {
+class WakeupController : public system::UdevTaggedDeviceObserver {
  public:
   // Powerd tags.
   static const char kTagInhibit[];
@@ -57,19 +55,20 @@ class WakeupController : public system::InputObserver,
   WakeupController();
   virtual ~WakeupController();
 
-  void Init(system::InputWatcherInterface* input_watcher,
-            system::UdevInterface* udev,
-            system::AcpiWakeupHelperInterface* acpi_wakeup_helper);
+  void Init(system::UdevInterface* udev,
+            system::AcpiWakeupHelperInterface* acpi_wakeup_helper,
+            LidState lid_state);
 
-  // Implementation of InputObserver.
-  void OnLidEvent(LidState state) override;
-  void OnPowerButtonEvent(ButtonState state) override;
+  void SetLidState(LidState lid_state);
 
   // Implementation of TaggedDeviceObserver.
   void OnTaggedDeviceChanged(const system::TaggedDevice& device) override;
   void OnTaggedDeviceRemoved(const system::TaggedDevice& device) override;
 
  private:
+  // Derive the currently applicable WakeupMode according to lid state.
+  WakeupMode GetWakeupMode() const;
+
   // Enables or disables wakeup from S3 for this device (through power/wakeup).
   void SetWakeupFromS3(const system::TaggedDevice& device, bool enabled);
 
@@ -80,16 +79,20 @@ class WakeupController : public system::InputObserver,
   void ConfigureWakeup(const system::TaggedDevice& device);
 
   // Re-configures ACPI wakeup.
-  void UpdateAcpiWakeup();
+  void ConfigureAcpiWakeup();
 
   // Re-configures all known devices to reflect a policy change.
-  void PolicyChanged();
+  void UpdatePolicy();
 
-  system::InputWatcherInterface* input_watcher_;  // weak
   system::UdevInterface* udev_;  // weak
   system::AcpiWakeupHelperInterface* acpi_wakeup_helper_;  // weak
 
+  LidState lid_state_;
+
+  // The mode calculated in the most recent invocation of UpdatePolicy().
   WakeupMode mode_;
+
+  bool initialized_;
 
   DISALLOW_COPY_AND_ASSIGN(WakeupController);
 };

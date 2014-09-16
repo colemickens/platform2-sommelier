@@ -437,6 +437,7 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       suspend_announced_path_(run_dir.Append(kSuspendAnnouncedFile)),
       session_state_(SESSION_STOPPED),
       state_controller_initialized_(false),
+      wakeup_controller_initialized_(false),
       created_suspended_state_file_(false),
       lock_vt_before_suspend_(false),
       log_suspend_with_mosys_eventlog_(false),
@@ -534,13 +535,15 @@ void Daemon::Init() {
   CHECK(input_watcher_->Init(prefs_.get(), udev_.get()));
   input_controller_->Init(input_watcher_.get(), this, display_watcher_.get(),
                           dbus_sender_.get(), prefs_.get());
-  wakeup_controller_->Init(input_watcher_.get(), udev_.get(),
-                           acpi_wakeup_helper_.get());
+
+  const LidState lid_state = input_watcher_->QueryLidState();
+  wakeup_controller_->Init(udev_.get(), acpi_wakeup_helper_.get(), lid_state);
+  wakeup_controller_initialized_ = true;
 
   const PowerSource power_source =
       power_status.line_power_on ? POWER_AC : POWER_BATTERY;
   state_controller_->Init(state_controller_delegate_.get(), prefs_.get(),
-                          power_source, input_watcher_->QueryLidState());
+                          power_source, lid_state);
   state_controller_initialized_ = true;
 
   audio_client_->Init(cras_dbus_proxy_);
@@ -594,6 +597,11 @@ void Daemon::OnBrightnessChanged(
 }
 
 void Daemon::HandleLidClosed() {
+  // It is important that we notify WakeupController first so that it can
+  // inhibit input devices quickly. StateController will issue a blocking call
+  // to Chrome which can take longer than a second.
+  if (wakeup_controller_initialized_)
+    wakeup_controller_->SetLidState(LID_CLOSED);
   if (state_controller_initialized_)
     state_controller_->HandleLidStateChange(LID_CLOSED);
 }
@@ -602,6 +610,8 @@ void Daemon::HandleLidOpened() {
   suspender_->HandleLidOpened();
   if (state_controller_initialized_)
     state_controller_->HandleLidStateChange(LID_OPEN);
+  if (wakeup_controller_initialized_)
+    wakeup_controller_->SetLidState(LID_OPEN);
 }
 
 void Daemon::HandlePowerButtonEvent(ButtonState state) {

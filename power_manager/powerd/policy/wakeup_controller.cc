@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "power_manager/powerd/system/acpi_wakeup_helper.h"
-#include "power_manager/powerd/system/input_watcher_interface.h"
 #include "power_manager/powerd/system/tagged_device.h"
 #include "power_manager/powerd/system/udev.h"
 
@@ -46,48 +45,37 @@ const char WakeupController::kTPAD[] = "TPAD";
 const char WakeupController::kTSCR[] = "TSCR";
 
 WakeupController::WakeupController()
-    : input_watcher_(NULL),
-      udev_(NULL),
+    : udev_(NULL),
       acpi_wakeup_helper_(NULL),
-      mode_(WAKEUP_MODE_LAPTOP) {}
+      lid_state_(LID_OPEN),
+      mode_(WAKEUP_MODE_LAPTOP),
+      initialized_(false) {}
 
 WakeupController::~WakeupController() {
-  if (input_watcher_)
-    input_watcher_->RemoveObserver(this);
   if (udev_)
     udev_->RemoveTaggedDeviceObserver(this);
 }
 
 void WakeupController::Init(
-    system::InputWatcherInterface* input_watcher,
     system::UdevInterface* udev,
-    system::AcpiWakeupHelperInterface* acpi_wakeup_helper) {
-  input_watcher_ = input_watcher;
+    system::AcpiWakeupHelperInterface* acpi_wakeup_helper,
+    LidState lid_state) {
   udev_ = udev;
   acpi_wakeup_helper_ = acpi_wakeup_helper;
 
-  input_watcher_->AddObserver(this);
   udev_->AddTaggedDeviceObserver(this);
 
-  OnLidEvent(input_watcher_->QueryLidState());
+  // Trigger initial configuration.
+  lid_state_ = lid_state;
+  UpdatePolicy();
+
+  initialized_ = true;
 }
 
-void WakeupController::OnLidEvent(LidState state) {
-  switch (state) {
-    case LID_CLOSED:
-      mode_ = WAKEUP_MODE_CLOSED;
-      break;
-
-    case LID_OPEN:
-    case LID_NOT_PRESENT:
-      mode_ = WAKEUP_MODE_LAPTOP;
-      break;
-  }
-
-  PolicyChanged();
+void WakeupController::SetLidState(LidState lid_state) {
+  lid_state_ = lid_state;
+  UpdatePolicy();
 }
-
-void WakeupController::OnPowerButtonEvent(ButtonState state) {}
 
 void WakeupController::OnTaggedDeviceChanged(
     const system::TaggedDevice& device) {
@@ -125,7 +113,7 @@ void WakeupController::ConfigureInhibit(
   if (!device.HasTag(kTagInhibit))
     return;
   bool inhibit = !IsUsableInMode(device, mode_);
-  VLOG(1) << (inhibit ? "Inhbiting " : "Un-inhibiting ") << device.syspath();
+  VLOG(1) << (inhibit ? "Inhibiting " : "Un-inhibiting ") << device.syspath();
   udev_->SetSysattr(device.syspath(), kInhibited, inhibit ? "1" : "0");
 }
 
@@ -141,7 +129,7 @@ void WakeupController::ConfigureWakeup(
   SetWakeupFromS3(device, wakeup);
 }
 
-void WakeupController::UpdateAcpiWakeup() {
+void WakeupController::ConfigureAcpiWakeup() {
   // On x86 systems, setting power/wakeup in sysfs is not enough, we also need
   // to go through /proc/acpi/wakeup.
 
@@ -152,18 +140,35 @@ void WakeupController::UpdateAcpiWakeup() {
   acpi_wakeup_helper_->SetWakeupEnabled(kTSCR, false);
 }
 
-void WakeupController::PolicyChanged() {
-  VLOG(1) << "Policy changed, updating wakeup for existing devices";
+WakeupMode WakeupController::GetWakeupMode() const {
+  if (lid_state_ == LID_OPEN)
+    return WAKEUP_MODE_LAPTOP;
+  else if (lid_state_ == LID_CLOSED)
+    return WAKEUP_MODE_CLOSED;
+  else
+    return WAKEUP_MODE_LAPTOP;
+}
+
+void WakeupController::UpdatePolicy() {
+  DCHECK(udev_);
+
+  WakeupMode new_mode = GetWakeupMode();
+  if (initialized_ && mode_ == new_mode)
+    return;
+
+  mode_ = new_mode;
+
+  VLOG(1) << "Policy changed, re-configuring existing devices";
 
   std::vector<system::TaggedDevice> devices = udev_->GetTaggedDevices();
   // Configure inhibit first, as it is somewhat time-critical (we want to block
-  // off events as fast as possible), and wakeup takes a few ms to set.
+  // events as fast as possible), and wakeup takes a few milliseconds to set.
   for (const system::TaggedDevice& device : devices)
     ConfigureInhibit(device);
   for (const system::TaggedDevice& device : devices)
     ConfigureWakeup(device);
 
-  UpdateAcpiWakeup();
+  ConfigureAcpiWakeup();
 }
 
 }  // namespace policy
