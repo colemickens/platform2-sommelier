@@ -1613,6 +1613,8 @@ void Manager::ConnectToBestServicesTask() {
 }
 
 void Manager::CreateConnectivityReport(Error */*error*/) {
+  LOG(INFO) << "Creating Connectivity Report";
+
   // For each of the connected services, perform a single portal detection
   // test to assess connectivity.  The results should be written to the log.
   for (const auto &service : services_) {
@@ -1621,7 +1623,6 @@ void Manager::CreateConnectivityReport(Error */*error*/) {
       // connected either.
       break;
     }
-
     // Get the underlying device for this service and perform connectivity test.
     for (const auto &device : devices_) {
       if (device->IsConnectedToService(service)) {

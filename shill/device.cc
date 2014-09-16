@@ -20,6 +20,7 @@
 
 #include "shill/async_connection.h"
 #include "shill/connection.h"
+#include "shill/connection_tester.h"
 #include "shill/control_interface.h"
 #include "shill/device_dbus_adaptor.h"
 #include "shill/dhcp_config.h"
@@ -122,7 +123,9 @@ Device::Device(ControlInterface *control_interface,
       dhcp_provider_(DHCPProvider::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
       time_(Time::GetInstance()),
-      last_link_monitor_failed_time_(0) {
+      last_link_monitor_failed_time_(0),
+      connection_tester_callback_(Bind(&Device::ConnectionTesterCallback,
+                                       weak_ptr_factory_.GetWeakPtr())) {
   store_.RegisterConstString(kAddressProperty, &hardware_address_);
 
   // kBgscanMethodProperty: Registered in WiFi
@@ -642,6 +645,11 @@ void Device::HelpRegisterConstDerivedUint64(
           new CustomAccessor<Device, uint64_t>(this, get, NULL)));
 }
 
+void Device::ConnectionTesterCallback() {
+  LOG(INFO) << "Device " << FriendlyName() << ": Completed Connectivity Test";
+  return;
+}
+
 void Device::ConfigureStaticIPTask() {
   SLOG(Device, 2) << __func__ << " selected_service " << selected_service_.get()
                   << " ipconfig " << ipconfig_.get();
@@ -1015,11 +1023,13 @@ void Device::StopPortalDetection() {
 }
 
 bool Device::StartConnectivityTest() {
-  SLOG(Device, 3) << "Device " << FriendlyName()
-                  << " starting connectivity test.";
+  LOG(INFO) << "Device " << FriendlyName() << " starting connectivity test.";
 
-  // TODO(silberst) Implement actual connectivity test.
-  return false;
+  connection_tester_.reset(new ConnectionTester(connection_,
+                                                dispatcher_,
+                                                connection_tester_callback_));
+  connection_tester_->Start();
+  return true;
 }
 
 void Device::set_link_monitor(LinkMonitor *link_monitor) {

@@ -16,6 +16,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
+#include "shill/connection_tester.h"
 #include "shill/connectivity_trial.h"
 #include "shill/dns_server_tester.h"
 #include "shill/event_dispatcher.h"
@@ -309,6 +310,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceHealthCheckerTest, HealthCheckerPersistsAcrossDeviceReset);
   FRIEND_TEST(DeviceHealthCheckerTest, RequestConnectionHealthCheck);
   FRIEND_TEST(DeviceHealthCheckerTest, SetupHealthChecker);
+  FRIEND_TEST(DevicePortalDetectionTest, RequestStartConnectivityTest);
   FRIEND_TEST(DeviceTest, AcquireIPConfig);
   FRIEND_TEST(DeviceTest, AvailableIPConfigs);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
@@ -534,6 +536,9 @@ class Device : public base::RefCounted<Device> {
       const std::string &name,
       uint64_t(Device::*get)(Error *));
 
+  // Called by the ConnectionTester whenever a connectivity test completes.
+  virtual void ConnectionTesterCallback();
+
   // Property getters reserved for subclasses
   ControlInterface *control_interface() const { return control_interface_; }
   Metrics *metrics() const { return metrics_; }
@@ -714,6 +719,9 @@ class Device : public base::RefCounted<Device> {
   // Time when link monitor last failed.
   Time *time_;
   time_t last_link_monitor_failed_time_;
+
+  scoped_ptr<ConnectionTester> connection_tester_;
+  base::Callback<void()> connection_tester_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };

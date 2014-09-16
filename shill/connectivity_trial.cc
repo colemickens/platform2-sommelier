@@ -151,12 +151,11 @@ void ConnectivityTrial::RequestResultCallback(
   CompleteTrial(GetPortalResultForRequestResult(result));
 }
 
-
 void ConnectivityTrial::CompleteTrial(Result result) {
-  LOG(INFO) << StringPrintf("Connectivity Trial completed "
-                            "with phase==%s, status==%s",
-                            PhaseToString(result.phase).c_str(),
-                            StatusToString(result.status).c_str());
+  SLOG(Portal, 3) << StringPrintf("Connectivity Trial completed "
+                                  "with phase==%s, status==%s",
+                                  PhaseToString(result.phase).c_str(),
+                                  StatusToString(result.status).c_str());
   CleanupTrial(false);
   trial_callback_.Run(result);
 }

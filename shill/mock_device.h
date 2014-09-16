@@ -56,6 +56,7 @@ class MockDevice : public Device {
   MOCK_METHOD0(OnIPv6AddressChanged, void());
   MOCK_CONST_METHOD0(GetGeolocationObjects, std::vector<GeolocationInfo>());
   MOCK_METHOD0(OnIPv6DnsServerAddressesChanged, void());
+  MOCK_METHOD0(StartConnectivityTest, bool());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDevice);

@@ -3834,7 +3834,150 @@ TEST_F(ManagerTest, ConnectToBestServices) {
 }
 
 TEST_F(ManagerTest, CreateConnectivityReport) {
-  // TODO(silberst) Test needs full implementation.
+  // Add devices
+  // WiFi
+  auto wifi_device = make_scoped_refptr(
+       new NiceMock<MockDevice>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager(),
+                                "null",
+                                "addr",
+                                0));
+  manager()->RegisterDevice(wifi_device);
+  // Cell
+  auto cell_device = make_scoped_refptr(
+      new NiceMock<MockDevice>(control_interface(),
+                               dispatcher(),
+                               metrics(),
+                               manager(),
+                               "null",
+                               "addr",
+                               1));
+  manager()->RegisterDevice(cell_device);
+  // WiMax
+  auto wimax_device = make_scoped_refptr(
+      new NiceMock<MockDevice>(control_interface(),
+                               dispatcher(),
+                               metrics(),
+                               manager(),
+                               "null",
+                               "addr",
+                               2));
+  manager()->RegisterDevice(wimax_device);
+  // Ethernet
+  auto eth_device = make_scoped_refptr(
+      new NiceMock<MockDevice>(control_interface(),
+                               dispatcher(),
+                               metrics(),
+                               manager(),
+                               "null",
+                               "addr",
+                               3));
+  manager()->RegisterDevice(eth_device);
+  // VPN Device -- base device for a service that will not be connected
+  auto vpn_device = make_scoped_refptr(
+      new NiceMock<MockDevice>(control_interface(),
+                               dispatcher(),
+                               metrics(),
+                               manager(),
+                               "null",
+                               "addr",
+                               4));
+  manager()->RegisterDevice(vpn_device);
+
+  // Add service for multiple devices
+  // WiFi
+  MockServiceRefPtr wifi_service =
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager());
+  manager()->RegisterService(wifi_service);
+  EXPECT_CALL(*wifi_service.get(), state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(*wifi_service.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*wifi_device.get(),
+              IsConnectedToService(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*wifi_device.get(),
+              IsConnectedToService(IsRefPtrTo(wifi_service)))
+      .WillRepeatedly(Return(true));
+
+  // Cell
+  MockServiceRefPtr cell_service =
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager());
+  manager()->RegisterService(cell_service);
+  EXPECT_CALL(*cell_service.get(), state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(*cell_service.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*cell_device.get(),
+              IsConnectedToService(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*cell_device.get(),
+              IsConnectedToService(IsRefPtrTo(cell_service)))
+      .WillRepeatedly(Return(true));
+
+  // WiMax
+  MockServiceRefPtr wimax_service =
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager());
+  manager()->RegisterService(wimax_service);
+  EXPECT_CALL(*wimax_service.get(), state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(*wimax_service.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(*wimax_device.get(),
+              IsConnectedToService(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*wimax_device.get(),
+              IsConnectedToService(IsRefPtrTo(wimax_service)))
+      .WillRepeatedly(Return(true));
+
+  // Ethernet
+  MockServiceRefPtr eth_service =
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager());
+  manager()->RegisterService(eth_service);
+  EXPECT_CALL(*eth_service.get(), state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(*eth_service.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*eth_device.get(),
+              IsConnectedToService(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*eth_device.get(),
+              IsConnectedToService(IsRefPtrTo(eth_service)))
+      .WillRepeatedly(Return(true));
+
+  // VPN: Service exists but is not connected and will not trigger a
+  // connectivity report.
+  MockServiceRefPtr vpn_service =
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager());
+  manager()->RegisterService(vpn_service);
+  EXPECT_CALL(*vpn_service.get(), state())
+      .WillRepeatedly(Return(Service::kStateIdle));
+  EXPECT_CALL(*vpn_service.get(), IsConnected())
+      .WillRepeatedly(Return(false));
+
+  EXPECT_CALL(*wifi_device.get(), StartConnectivityTest())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*cell_device.get(), StartConnectivityTest())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*wimax_device.get(), StartConnectivityTest())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*eth_device.get(), StartConnectivityTest())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*vpn_device.get(), StartConnectivityTest()).Times(0);
   manager()->CreateConnectivityReport(NULL);
   dispatcher()->DispatchPendingEvents();
 }

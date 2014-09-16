@@ -1596,8 +1596,18 @@ TEST_F(DevicePortalDetectionTest, RequestPortalDetection) {
 }
 
 TEST_F(DevicePortalDetectionTest, RequestStartConnectivityTest) {
-  // TODO(silberst) Implement actual test once code is implemented.
-  EXPECT_FALSE(device_->StartConnectivityTest());
+  const string kInterfaceName("int0");
+  EXPECT_CALL(*connection_.get(), interface_name())
+      .WillRepeatedly(ReturnRef(kInterfaceName));
+  EXPECT_CALL(*connection_.get(), IsIPv6())
+      .WillRepeatedly(Return(false));
+  const vector<string> kDNSServers;
+  EXPECT_CALL(*connection_.get(), dns_servers())
+      .WillRepeatedly(ReturnRef(kDNSServers));
+
+  EXPECT_EQ(nullptr, device_->connection_tester_);
+  EXPECT_TRUE(device_->StartConnectivityTest());
+  EXPECT_NE(nullptr, device_->connection_tester_);
 }
 
 TEST_F(DevicePortalDetectionTest, NotConnected) {
