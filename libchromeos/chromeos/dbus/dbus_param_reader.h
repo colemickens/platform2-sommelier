@@ -51,8 +51,8 @@ struct DBusParamReader<ParamType, RestOfParams...> {
   //  args...     - the callback parameters processed so far.
   template<typename CallbackType, typename... Args>
   static bool Invoke(const CallbackType& handler,
-                     ErrorPtr* error,
                      dbus::MessageReader* reader,
+                     ErrorPtr* error,
                      const Args&... args) {
     if (!reader->HasMoreData()) {
       Error::AddTo(error, errors::dbus::kDomain, DBUS_ERROR_INVALID_ARGS,
@@ -82,7 +82,8 @@ struct DBusParamReader<ParamType, RestOfParams...> {
     // reference to allow to use move-only types such as std::unique_ptr<> and
     // to eliminate unnecessarily copying data.
     return DBusParamReader<RestOfParams...>::Invoke(
-        handler, error, reader, args...,
+        handler, reader, error,
+        static_cast<const Args&>(args)...,
         static_cast<const ParamValueType&>(current_param));
   }
 };  // struct DBusParamReader<ParamType, RestOfParams...>
@@ -94,8 +95,8 @@ template<>
 struct DBusParamReader<> {
   template<typename CallbackType, typename... Args>
   static bool Invoke(const CallbackType& handler,
-                     ErrorPtr* error,
                      dbus::MessageReader* reader,
+                     ErrorPtr* error,
                      const Args&... args) {
     if (reader->HasMoreData()) {
       Error::AddTo(error, errors::dbus::kDomain, DBUS_ERROR_INVALID_ARGS,

@@ -22,14 +22,16 @@ int main(int argc, char* argv[]) {
       attestation::kAttestationServiceName,
       dbus::ObjectPath(attestation::kAttestationServicePath));
 
+  chromeos::ErrorPtr error;
   auto response = chromeos::dbus_utils::CallMethodAndBlock(
       object,
       attestation::kAttestationInterface,
-      attestation::kStatsMethod);
+      attestation::kStatsMethod,
+      &error);
 
   attestation::StatsResponse stats;
-  chromeos::ErrorPtr error;
-  if (chromeos::dbus_utils::ExtractMethodCallResults(response.get(),
+  if (response &&
+      chromeos::dbus_utils::ExtractMethodCallResults(response.get(),
                                                      &error,
                                                      &stats)) {
     printf("Attestation has been up for %u seconds.\n", stats.uptime());

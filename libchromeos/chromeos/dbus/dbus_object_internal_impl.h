@@ -86,8 +86,8 @@ struct TypedReturnDBusInvoker {
     // arguments, so give it another instance of ErrorPtr.
     ErrorPtr param_reader_error;
     if (!DBusParamReader<Args...>::Invoke(param_reader_callback,
-                                          &param_reader_error,
-                                          reader)) {
+                                          reader,
+                                          &param_reader_error)) {
       // Parsing the handler arguments failed. Return D-Bus error.
       return GetDBusError(method_call, param_reader_error.get());
     }
@@ -125,8 +125,8 @@ struct TypedReturnDBusInvoker<void, CallbackType, Args...> {
 
     ErrorPtr param_reader_error;
     if (!DBusParamReader<Args...>::Invoke(param_reader_callback,
-                                          &param_reader_error,
-                                          reader)) {
+                                          reader,
+                                          &param_reader_error)) {
       // Error parsing method arguments.
       return GetDBusError(method_call, param_reader_error.get());
     }
@@ -159,8 +159,8 @@ struct RawReturnDBusInvoker {
 
     ErrorPtr param_reader_error;
     if (!DBusParamReader<Args...>::Invoke(param_reader_callback,
-                                          &param_reader_error,
-                                          reader)) {
+                                          reader,
+                                          &param_reader_error)) {
       return GetDBusError(method_call, param_reader_error.get());
     }
     return handler_response;
