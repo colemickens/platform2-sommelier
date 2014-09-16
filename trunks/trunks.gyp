@@ -23,6 +23,8 @@
       ],
       'includes': ['../common-mk/common_test.gypi'],
       'sources': [
+        'hmac_auth_delegate.cc',
+        'hmac_auth_delegate_unittest.cc',
         'password_auth_delegate.cc',
         'password_auth_delegate_unittest.cc',
         'trunks_testrunner.cc',
@@ -67,6 +69,7 @@
         'tpm_generated.cc',
         'null_auth_delegate.cc',
         'password_auth_delegate.cc',
+        'hmac_auth_delegate.cc',
         'trunks_proxy.cc',
       ],
       'dependencies': [
