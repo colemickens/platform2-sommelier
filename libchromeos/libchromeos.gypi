@@ -252,6 +252,7 @@
             'chromeos/dbus/dbus_param_writer_unittest.cc',
             'chromeos/dbus/exported_object_manager_unittest.cc',
             'chromeos/dbus/exported_property_set_unittest.cc',
+            'chromeos/errors/error_codes_unittest.cc',
             'chromeos/errors/error_unittest.cc',
             'chromeos/glib/object_unittest.cc',
             'chromeos/http/http_utils_unittest.cc',

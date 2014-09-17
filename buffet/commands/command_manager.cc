@@ -16,6 +16,13 @@
 
 using chromeos::dbus_utils::ExportedObjectManager;
 
+namespace {
+
+const char kCommandManagerErrorDomain[] = "Buffet_CommandManager";
+const char kCommandManagerFileReadError[] = "file_read_error";
+
+}  // namespace
+
 namespace buffet {
 
 CommandManager::CommandManager() {
@@ -88,8 +95,9 @@ std::unique_ptr<const base::DictionaryValue> CommandManager::LoadJsonDict(
     const base::FilePath& json_file_path, chromeos::ErrorPtr* error) {
   std::string json_string;
   if (!base::ReadFileToString(json_file_path, &json_string)) {
-    chromeos::Error::AddToPrintf(error, chromeos::errors::file_system::kDomain,
-                                 chromeos::errors::file_system::kFileReadError,
+    chromeos::errors::system::AddSystemError(error, errno);
+    chromeos::Error::AddToPrintf(error, kCommandManagerErrorDomain,
+                                 kCommandManagerFileReadError,
                                  "Failed to read file '%s'",
                                  json_file_path.value().c_str());
     return std::unique_ptr<const base::DictionaryValue>();
