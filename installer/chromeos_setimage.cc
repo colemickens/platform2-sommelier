@@ -86,7 +86,8 @@ bool SetImage(const InstallConfig& install_config) {
     }
   }
   if (verity_args.empty()) {
-    printf("Didn't find verity '%s'\n", dm_config.c_str());
+    printf("Didn't find verity args in the dm command line: '%s'\n",
+           dm_config.c_str());
     return false;
   }
 
