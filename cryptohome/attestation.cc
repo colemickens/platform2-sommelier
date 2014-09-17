@@ -185,6 +185,19 @@ const Attestation::CertificateAuthority Attestation::kKnownEndorsementCA[] = {
     "9394ac7a243a5c1cd85f92b8648a8e0d23165fdd86fad06990bfd16fb3293379" }
 };
 
+const Attestation::CertificateAuthority
+    Attestation::kKnownCrosCoreEndorsementCA[] = {
+  { "IFX TPM EK Intermediate CA 24",
+    "9D3F39677EBDB7B95F383021EA6EF90AD2BEA4E38B10CA65DCD84D0B33D400FA"
+    "E7E56FC553975FDADD425227F055C029B6544331E3BA50ED33F6CC02D833EA4E"
+    "0EECFE9AD1ADD7095F3A804C560F031E8705A3AD5189CBD62678B5B8205C37ED"
+    "780A3EDE8DE64A08980C048872E789937A49FC4048EADCAC9B3FD0F0DD085E76"
+    "30DDF9C0C31EFF3B77C6C3601AA7C3DCD10F08616C01435697746A61F920335C"
+    "0C45A41149F5D22FCD23DBE35003A9AF7FD91C18715E3709F86A38AB149113C4"
+    "D5273C3C90599734FF627ACBF408B082C76E486091F27446E175C50D340DA0FE"
+    "5C3FE3D590B8729F4E364E5BF7D854D9AE28EFBCD0CE8F19E6462B3A593983DF" }
+};
+
 const Attestation::PCRValue Attestation::kKnownPCRValues[] = {
   { false, false, kVerified  },
   { false, false, kDeveloper },
@@ -499,7 +512,7 @@ void Attestation::PrepareForEnrollmentAsync() {
   base::PlatformThread::Create(0, this, &thread_);
 }
 
-bool Attestation::Verify() {
+bool Attestation::Verify(bool is_cros_core) {
   if (!IsTPMReady())
     return false;
   LOG(INFO) << "Attestation: Verifying data.";
@@ -513,7 +526,8 @@ bool Attestation::Verify() {
   SecureBlob ek_public_key(credentials.endorsement_public_key());
   if (!VerifyEndorsementCredential(
           SecureBlob(credentials.endorsement_credential()),
-          ek_public_key)) {
+          ek_public_key,
+          is_cros_core)) {
     LOG(ERROR) << "Attestation: Bad endorsement credential.";
     return false;
   }
@@ -562,7 +576,7 @@ bool Attestation::Verify() {
   return true;
 }
 
-bool Attestation::VerifyEK() {
+bool Attestation::VerifyEK(bool is_cros_core) {
   if (!IsTPMReady())
     return false;
   base::AutoLock lock(lock_);
@@ -584,7 +598,7 @@ bool Attestation::VerifyEK() {
     LOG(ERROR) << __func__ << ": Failed to get EK public key.";
     return false;
   }
-  return VerifyEndorsementCredential(ek_cert, ek_public_key);
+  return VerifyEndorsementCredential(ek_cert, ek_public_key, is_cros_core);
 }
 
 bool Attestation::CreateEnrollRequest(PCAType pca_type,
@@ -1158,7 +1172,8 @@ void Attestation::CheckDatabasePermissions() {
 }
 
 bool Attestation::VerifyEndorsementCredential(const SecureBlob& credential,
-                                              const SecureBlob& public_key) {
+                                              const SecureBlob& public_key,
+                                              bool is_cros_core) {
   const unsigned char* asn1_ptr = &credential.front();
   scoped_ptr<X509, X509Deleter> x509(
       d2i_X509(NULL, &asn1_ptr, credential.size()));
@@ -1173,7 +1188,7 @@ bool Attestation::VerifyEndorsementCredential(const SecureBlob& credential,
                             issuer,
                             arraysize(issuer));
   scoped_ptr<EVP_PKEY, EVP_PKEYDeleter> issuer_key =
-      GetAuthorityPublicKey(issuer);
+      GetAuthorityPublicKey(issuer, is_cros_core);
   if (!issuer_key.get()) {
     LOG(ERROR) << "Unknown endorsement credential issuer.";
     return false;
@@ -1309,12 +1324,17 @@ bool Attestation::VerifyCertifiedKey(
 }
 
 scoped_ptr<EVP_PKEY, Attestation::EVP_PKEYDeleter>
-    Attestation::GetAuthorityPublicKey(const char* issuer_name) {
-  const int kNumIssuers = arraysize(kKnownEndorsementCA);
+    Attestation::GetAuthorityPublicKey(const char* issuer_name,
+                                       bool is_cros_core) {
+  const CertificateAuthority* const kKnownCA =
+      is_cros_core ? kKnownCrosCoreEndorsementCA : kKnownEndorsementCA;
+  const int kNumIssuers =
+      is_cros_core ? arraysize(kKnownCrosCoreEndorsementCA) :
+                     arraysize(kKnownEndorsementCA);
   for (int i = 0; i < kNumIssuers; ++i) {
-    if (0 == strcmp(issuer_name, kKnownEndorsementCA[i].issuer)) {
+    if (0 == strcmp(issuer_name, kKnownCA[i].issuer)) {
       scoped_ptr<RSA, RSADeleter> rsa = CreateRSAFromHexModulus(
-          kKnownEndorsementCA[i].modulus);
+          kKnownCA[i].modulus);
       scoped_ptr<EVP_PKEY, EVP_PKEYDeleter> pkey(EVP_PKEY_new());
       if (!pkey.get()) {
         return scoped_ptr<EVP_PKEY, EVP_PKEYDeleter>();

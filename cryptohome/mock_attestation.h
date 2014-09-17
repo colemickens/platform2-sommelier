@@ -30,8 +30,8 @@ class MockAttestation : public Attestation {
   MOCK_METHOD0(IsEnrolled, bool());
   MOCK_METHOD0(PrepareForEnrollment, void());
   MOCK_METHOD0(PrepareForEnrollmentAsync, void());
-  MOCK_METHOD0(Verify, bool());
-  MOCK_METHOD0(VerifyEK, bool());
+  MOCK_METHOD1(Verify, bool(bool));
+  MOCK_METHOD1(VerifyEK, bool(bool));
   MOCK_METHOD2(CreateEnrollRequest, bool(Attestation::PCAType,
                                          chromeos::SecureBlob*));
   MOCK_METHOD2(Enroll, bool(Attestation::PCAType,

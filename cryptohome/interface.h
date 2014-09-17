@@ -208,9 +208,11 @@ gboolean cryptohome_tpm_is_attestation_prepared(Cryptohome* self,
                                                 gboolean* OUT_prepared,
                                                 GError** error);
 gboolean cryptohome_tpm_verify_attestation_data(Cryptohome* self,
+                                                gboolean is_cros_core,
                                                 gboolean* OUT_verified,
                                                 GError** error);
 gboolean cryptohome_tpm_verify_ek(Cryptohome* self,
+                                  gboolean is_cros_core,
                                   gboolean* OUT_verified,
                                   GError** error);
 gboolean cryptohome_tpm_attestation_create_enroll_request(

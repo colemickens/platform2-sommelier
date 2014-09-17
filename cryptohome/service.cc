@@ -2218,14 +2218,17 @@ gboolean Service::TpmIsAttestationPrepared(gboolean* OUT_prepared,
   return TRUE;
 }
 
-gboolean Service::TpmVerifyAttestationData(gboolean* OUT_verified,
+gboolean Service::TpmVerifyAttestationData(gboolean is_cros_core,
+                                           gboolean* OUT_verified,
                                            GError** error) {
-  *OUT_verified = attestation_->Verify();
+  *OUT_verified = attestation_->Verify(is_cros_core);
   return TRUE;
 }
 
-gboolean Service::TpmVerifyEK(gboolean* OUT_verified, GError** error) {
-  *OUT_verified = attestation_->VerifyEK();
+gboolean Service::TpmVerifyEK(gboolean is_cros_core,
+                              gboolean* OUT_verified,
+                              GError** error) {
+  *OUT_verified = attestation_->VerifyEK(is_cros_core);
   return TRUE;
 }
 

@@ -331,9 +331,12 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean TpmClearStoredPassword(GError** error);
   virtual gboolean TpmIsAttestationPrepared(gboolean* OUT_prepared,
                                             GError** error);
-  virtual gboolean TpmVerifyAttestationData(gboolean* OUT_verified,
+  virtual gboolean TpmVerifyAttestationData(gboolean is_cros_core,
+                                            gboolean* OUT_verified,
                                             GError** error);
-  virtual gboolean TpmVerifyEK(gboolean* OUT_verified, GError** error);
+  virtual gboolean TpmVerifyEK(gboolean is_cros_core,
+                               gboolean* OUT_verified,
+                               GError** error);
   virtual gboolean TpmAttestationCreateEnrollRequest(gint pca_type,
                                                      GArray** OUT_pca_request,
                                                      GError** error);

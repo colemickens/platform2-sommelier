@@ -312,14 +312,16 @@ gboolean cryptohome_tpm_is_attestation_prepared(Cryptohome* self,
   CRYPTOHOME_WRAP_METHOD(TpmIsAttestationPrepared, OUT_prepared);
 }
 gboolean cryptohome_tpm_verify_attestation_data(Cryptohome* self,
+                                                gboolean is_cros_core,
                                                 gboolean* OUT_verified,
                                                 GError** error) {
-  CRYPTOHOME_WRAP_METHOD(TpmVerifyAttestationData, OUT_verified);
+  CRYPTOHOME_WRAP_METHOD(TpmVerifyAttestationData, is_cros_core, OUT_verified);
 }
 gboolean cryptohome_tpm_verify_ek(Cryptohome* self,
+                                  gboolean is_cros_core,
                                   gboolean* OUT_verified,
                                   GError** error) {
-  CRYPTOHOME_WRAP_METHOD(TpmVerifyEK, OUT_verified);
+  CRYPTOHOME_WRAP_METHOD(TpmVerifyEK, is_cros_core, OUT_verified);
 }
 gboolean cryptohome_tpm_attestation_create_enroll_request(
     Cryptohome* self,

@@ -192,6 +192,7 @@ namespace switches {
   static const char kAttrValueSwitch[] = "value";
   static const char kFileSwitch[] = "file";
   static const char kEnsureEphemeralSwitch[] = "ensure_ephemeral";
+  static const char kCrosCoreSwitch[] = "cros_core";
 }  // namespace switches
 
 #define DBUS_METHOD(method_name) \
@@ -1823,10 +1824,14 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_VERIFY_ATTESTATION],
       action.c_str())) {
+    bool is_cros_core = cl->HasSwitch(switches::kCrosCoreSwitch);
     chromeos::glib::ScopedError error;
     gboolean result = FALSE;
     if (!org_chromium_CryptohomeInterface_tpm_verify_attestation_data(
-        proxy.gproxy(), &result, &chromeos::Resetter(&error).lvalue())) {
+        proxy.gproxy(),
+        is_cros_core,
+        &result,
+        &chromeos::Resetter(&error).lvalue())) {
       printf("TpmVerifyAttestationData call failed: %s.\n", error->message);
     }
     if (result == FALSE) {
@@ -1835,10 +1840,14 @@ int main(int argc, char **argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_VERIFY_EK],
                      action.c_str())) {
+    bool is_cros_core = cl->HasSwitch(switches::kCrosCoreSwitch);
     chromeos::glib::ScopedError error;
     gboolean result = FALSE;
     if (!org_chromium_CryptohomeInterface_tpm_verify_ek(
-        proxy.gproxy(), &result, &chromeos::Resetter(&error).lvalue())) {
+        proxy.gproxy(),
+        is_cros_core,
+        &result,
+        &chromeos::Resetter(&error).lvalue())) {
       printf("TpmVerifyEK call failed: %s.\n", error->message);
     }
     if (result == FALSE) {

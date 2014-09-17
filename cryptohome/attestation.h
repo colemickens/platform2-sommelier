@@ -68,11 +68,13 @@ class Attestation : public base::PlatformThread::Delegate,
   virtual void PrepareForEnrollmentAsync();
 
   // Verifies all attestation data as an attestation server would. Returns true
-  // if all data is valid.
-  virtual bool Verify();
+  // if all data is valid. If |is_cros_core| is true, checks that the EK is
+  // endorsed for that configuration.
+  virtual bool Verify(bool is_cros_core);
 
-  // Verifies the EK certificate.
-  virtual bool VerifyEK();
+  // Verifies the EK certificate. If |is_cros_core| is true, checks that the EK
+  // is endorsed for that configuration.
+  virtual bool VerifyEK(bool is_cros_core);
 
   // Creates an enrollment request to be sent to the Privacy CA. This request
   // is a serialized AttestationEnrollmentRequest protobuf. Attestation
@@ -355,6 +357,11 @@ class Attestation : public base::PlatformThread::Delegate,
   struct NETSCAPE_SPKIDeleter {
     inline void operator()(void* ptr) const;
   };
+  // Just enough CA information to do a basic verification.
+  struct CertificateAuthority {
+    const char* issuer;
+    const char* modulus;  // In hex format.
+  };
   static const size_t kQuoteExternalDataSize;
   static const size_t kCipherKeySize;
   static const size_t kNonceSize;
@@ -365,10 +372,8 @@ class Attestation : public base::PlatformThread::Delegate,
   static const char kEnterpriseSigningPublicKey[];
   static const char kEnterpriseEncryptionPublicKey[];
   static const char kEnterpriseEncryptionPublicKeyID[];
-  static const struct CertificateAuthority {
-    const char* issuer;
-    const char* modulus;  // In hex format.
-  } kKnownEndorsementCA[];
+  static const CertificateAuthority kKnownEndorsementCA[];
+  static const CertificateAuthority kKnownCrosCoreEndorsementCA[];
   static const struct PCRValue {
     bool developer_mode_enabled;
     bool recovery_mode_enabled;
@@ -427,9 +432,12 @@ class Attestation : public base::PlatformThread::Delegate,
   // Ensures permissions of the database file are correct.
   void CheckDatabasePermissions();
 
-  // Verifies an endorsement credential against known Chrome OS issuers.
+  // Verifies an endorsement credential against known Chrome OS issuers. If
+  // |is_cros_core| is true, checks that the EK is endorsed for that
+  // configuration.
   bool VerifyEndorsementCredential(const chromeos::SecureBlob& credential,
-                                   const chromeos::SecureBlob& public_key);
+                                   const chromeos::SecureBlob& public_key,
+                                   bool is_cros_core);
 
   // Verifies identity key binding data.
   bool VerifyIdentityBinding(const IdentityBinding& binding);
@@ -446,7 +454,8 @@ class Attestation : public base::PlatformThread::Delegate,
 
   // Creates a public key based on a known credential issuer.
   scoped_ptr<EVP_PKEY, EVP_PKEYDeleter> GetAuthorityPublicKey(
-      const char* issuer_name);
+      const char* issuer_name,
+      bool is_cros_core);
 
   // Verifies an RSA-PKCS1-SHA1 digital signature.
   bool VerifySignature(const chromeos::SecureBlob& public_key,

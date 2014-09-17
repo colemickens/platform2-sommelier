@@ -208,9 +208,11 @@
       <arg type="b" name="prepared" direction="out" />
     </method>
     <method name="TpmVerifyAttestationData">
+      <arg type="b" name="is_cros_core" />
       <arg type="b" name="verified" direction="out" />
     </method>
     <method name="TpmVerifyEK">
+      <arg type="b" name="is_cros_core" />
       <arg type="b" name="verified" direction="out" />
     </method>
     <method name="TpmAttestationCreateEnrollRequest">

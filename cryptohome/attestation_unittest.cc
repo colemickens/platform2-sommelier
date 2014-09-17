@@ -291,8 +291,8 @@ TEST(AttestationTest_, NullTpm) {
   without_tpm.Initialize(NULL, NULL, NULL, &crypto, &install_attributes);
   without_tpm.PrepareForEnrollment();
   EXPECT_FALSE(without_tpm.IsPreparedForEnrollment());
-  EXPECT_FALSE(without_tpm.Verify());
-  EXPECT_FALSE(without_tpm.VerifyEK());
+  EXPECT_FALSE(without_tpm.Verify(false));
+  EXPECT_FALSE(without_tpm.VerifyEK(false));
   EXPECT_FALSE(without_tpm.CreateEnrollRequest(Attestation::kDefaultPCA, NULL));
   EXPECT_FALSE(without_tpm.Enroll(Attestation::kDefaultPCA, SecureBlob()));
   EXPECT_FALSE(without_tpm.CreateCertRequest(Attestation::kDefaultPCA,
