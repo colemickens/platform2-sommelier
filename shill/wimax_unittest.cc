@@ -294,7 +294,8 @@ TEST_F(WiMaxTest, ConnectTo) {
   EXPECT_CALL(*service, SetState(Service::kStateAssociating));
   device_->status_ = wimax_manager::kDeviceStatusScanning;
   EXPECT_CALL(*service, GetNetworkObjectPath()).WillOnce(Return(kPath));
-  EXPECT_CALL(*proxy_, Connect(kPath, _, _, _, _));
+  EXPECT_CALL(*proxy_, Connect(kPath, _, _, _, _))
+      .WillOnce(SetErrorTypeInArgument<2>(Error::kSuccess));
   device_->proxy_.reset(proxy_.release());
   Error error;
   device_->ConnectTo(service, &error);

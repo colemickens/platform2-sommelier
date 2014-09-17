@@ -4,6 +4,10 @@
 
 #include "shill/mock_power_manager_proxy.h"
 
+#include "shill/testing.h"
+
+using testing::_;
+
 namespace shill {
 
 MockPowerManagerProxy::MockPowerManagerProxy() {}

@@ -4,9 +4,16 @@
 
 #include "shill/mock_modem_gobi_proxy.h"
 
+#include "shill/testing.h"
+
+using testing::_;
+
 namespace shill {
 
-MockModemGobiProxy::MockModemGobiProxy() {}
+MockModemGobiProxy::MockModemGobiProxy() {
+  ON_CALL(*this, SetCarrier(_, _, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
+}
 
 MockModemGobiProxy::~MockModemGobiProxy() {}
 

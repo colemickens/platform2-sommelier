@@ -4,10 +4,19 @@
 
 #include "shill/mock_mm1_modem_modemcdma_proxy.h"
 
+#include "shill/testing.h"
+
+using testing::_;
+
 namespace shill {
 namespace mm1 {
 
-MockModemModemCdmaProxy::MockModemModemCdmaProxy() {}
+MockModemModemCdmaProxy::MockModemModemCdmaProxy() {
+  ON_CALL(*this, Activate(_, _, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
+  ON_CALL(*this, ActivateManual(_, _, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
+}
 
 MockModemModemCdmaProxy::~MockModemModemCdmaProxy() {}
 

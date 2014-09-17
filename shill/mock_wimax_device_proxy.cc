@@ -4,9 +4,24 @@
 
 #include "shill/mock_wimax_device_proxy.h"
 
+#include "shill/testing.h"
+
+using testing::_;
+
 namespace shill {
 
-MockWiMaxDeviceProxy::MockWiMaxDeviceProxy() {}
+MockWiMaxDeviceProxy::MockWiMaxDeviceProxy() {
+  ON_CALL(*this, Enable(_, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
+  ON_CALL(*this, Disable(_, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
+  ON_CALL(*this, ScanNetworks(_, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
+  ON_CALL(*this, Connect(_, _, _, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<2>());
+  ON_CALL(*this, Disconnect(_, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
+}
 
 MockWiMaxDeviceProxy::~MockWiMaxDeviceProxy() {}
 

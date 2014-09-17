@@ -4,10 +4,19 @@
 
 #include "shill/mock_mm1_modem_location_proxy.h"
 
+#include "shill/testing.h"
+
+using testing::_;
+
 namespace shill {
 namespace mm1 {
 
-MockModemLocationProxy::MockModemLocationProxy() {}
+MockModemLocationProxy::MockModemLocationProxy() {
+  ON_CALL(*this, Setup(_, _, _, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<2>());
+  ON_CALL(*this, GetLocation(_, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
+}
 
 MockModemLocationProxy::~MockModemLocationProxy() {}
 

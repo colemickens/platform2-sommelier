@@ -4,10 +4,19 @@
 
 #include "shill/mock_mm1_bearer_proxy.h"
 
+#include "shill/testing.h"
+
+using testing::_;
+
 namespace shill {
 namespace mm1 {
 
-MockBearerProxy::MockBearerProxy() {}
+MockBearerProxy::MockBearerProxy() {
+  ON_CALL(*this, Connect(_, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
+  ON_CALL(*this, Disconnect(_, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
+}
 
 MockBearerProxy::~MockBearerProxy() {}
 

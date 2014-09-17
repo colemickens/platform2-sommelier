@@ -24,6 +24,7 @@
 #include <dbus-c++/dbus.h>
 
 #include "shill/dbus_adaptor.h"
+#include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
 #include "shill/ieee80211.h"
@@ -117,6 +118,7 @@ const uint16_t kRandomScanFrequency1 = 5600;
 const uint16_t kRandomScanFrequency2 = 5560;
 const uint16_t kRandomScanFrequency3 = 2422;
 const int kInterfaceIndex = 1234;
+const char kSupplicantNameOwner[] = "9999";
 
 }  // namespace
 
@@ -743,9 +745,19 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     EXPECT_CALL(netlink_manager_, SendNl80211Message(
         IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
 
+    StringCallback supplicant_name_owner_callback;
+    if (supplicant_present)
+      EXPECT_CALL(*dbus_service_proxy_.get(),
+                  GetNameOwner(WPASupplicant::kDBusAddr, _, _, _))
+          .WillOnce(DoAll(SetErrorTypeInArgument<1>(Error::kOperationInitiated),
+                          SaveArg<2>(&supplicant_name_owner_callback)));
+
     dbus_manager_->Start();
     wifi_->supplicant_present_ = supplicant_present;
     wifi_->SetEnabled(true);  // Start(NULL, ResultCallback());
+    if (supplicant_present)
+      // Mimick the callback from |dbus_service_proxy_->GetNameOwner|.
+      supplicant_name_owner_callback.Run(kSupplicantNameOwner, Error());
   }
   void StartWiFi() {
     StartWiFi(true);
@@ -1158,8 +1170,6 @@ TEST_F(WiFiMainTest, RoamThresholdProperty) {
 TEST_F(WiFiMainTest, OnSupplicantAppearStarted) {
   EXPECT_TRUE(GetSupplicantProcessProxy() == NULL);
 
-  EXPECT_CALL(*dbus_service_proxy_.get(),
-              GetNameOwner(WPASupplicant::kDBusAddr, _, _, _));
   StartWiFi(false);  // No supplicant present.
   EXPECT_TRUE(GetSupplicantProcessProxy() == NULL);
 

@@ -4,9 +4,16 @@
 
 #include "shill/mock_dbus_service_proxy.h"
 
+#include "shill/testing.h"
+
+using testing::_;
+
 namespace shill {
 
-MockDBusServiceProxy::MockDBusServiceProxy() {}
+MockDBusServiceProxy::MockDBusServiceProxy() {
+  ON_CALL(*this, GetNameOwner(_, _, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
+}
 
 MockDBusServiceProxy::~MockDBusServiceProxy() {}
 

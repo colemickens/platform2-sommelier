@@ -4,11 +4,16 @@
 
 #include "shill/mock_dbus_objectmanager_proxy.h"
 
+#include "shill/testing.h"
+
 using ::testing::_;
 using ::testing::AnyNumber;
 
 namespace shill {
-MockDBusObjectManagerProxy::MockDBusObjectManagerProxy() {}
+MockDBusObjectManagerProxy::MockDBusObjectManagerProxy() {
+  ON_CALL(*this, GetManagedObjects(_, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
+}
 
 MockDBusObjectManagerProxy::~MockDBusObjectManagerProxy() {}
 

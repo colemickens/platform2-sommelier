@@ -4,10 +4,17 @@
 
 #include "shill/mock_mm1_modem_time_proxy.h"
 
+#include "shill/testing.h"
+
+using testing::_;
+
 namespace shill {
 namespace mm1 {
 
-MockModemTimeProxy::MockModemTimeProxy() {}
+MockModemTimeProxy::MockModemTimeProxy() {
+  ON_CALL(*this, GetNetworkTime(_, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
+}
 
 MockModemTimeProxy::~MockModemTimeProxy() {}
 

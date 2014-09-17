@@ -10,12 +10,24 @@
 #include "shill/callbacks.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/testing.h"
+
+using testing::_;
+using testing::DoAll;
+using testing::Return;
 
 namespace shill {
 
 MockCryptoUtilProxy::MockCryptoUtilProxy(
     EventDispatcher *dispatcher, GLib *glib)
-    : CryptoUtilProxy(dispatcher, glib) {}
+    : CryptoUtilProxy(dispatcher, glib) {
+  ON_CALL(*this, VerifyDestination(_, _, _, _, _, _, _, _, _))
+      .WillByDefault(DoAll(SetOperationFailedInArgumentAndWarn<8>(),
+                           Return(false)));
+  ON_CALL(*this, EncryptData(_, _, _, _))
+      .WillByDefault(DoAll(SetOperationFailedInArgumentAndWarn<3>(),
+                           Return(false)));
+}
 
 MockCryptoUtilProxy::~MockCryptoUtilProxy() {}
 

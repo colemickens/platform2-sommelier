@@ -4,10 +4,23 @@
 
 #include "shill/mock_mm1_sim_proxy.h"
 
+#include "shill/testing.h"
+
+using testing::_;
+
 namespace shill {
 namespace mm1 {
 
-MockSimProxy::MockSimProxy() {}
+MockSimProxy::MockSimProxy() {
+  ON_CALL(*this, SendPin(_, _, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
+  ON_CALL(*this, SendPuk(_, _, _, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<2>());
+  ON_CALL(*this, EnablePin(_, _, _, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<2>());
+  ON_CALL(*this, ChangePin(_, _, _, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<2>());
+}
 
 MockSimProxy::~MockSimProxy() {}
 
