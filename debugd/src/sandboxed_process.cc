@@ -12,7 +12,11 @@ const char *SandboxedProcess::kDefaultUser = "debugd";
 const char *SandboxedProcess::kDefaultGroup = "debugd";
 
 SandboxedProcess::SandboxedProcess()
-    : sandboxing_(true), user_(kDefaultUser), group_(kDefaultGroup) {}
+    : sandboxing_(true),
+      access_root_mount_ns_(false),
+      user_(kDefaultUser),
+      group_(kDefaultGroup) {
+}
 
 // static
 bool SandboxedProcess::GetHelperPath(const std::string& relative_path,
@@ -37,6 +41,7 @@ bool SandboxedProcess::Init() {
   if (sandboxing_) {
     if (user_.empty() || group_.empty())
       return false;
+
     AddArg(kMiniJail);
     if (user_ != "root") {
       AddArg("-u");
@@ -46,6 +51,16 @@ bool SandboxedProcess::Init() {
       AddArg("-g");
       AddArg(group_);
     }
+
+    if (access_root_mount_ns_) {
+      // Enter root mount namespace.
+      AddStringOption("-V", "/proc/1/ns/mnt");
+      // Enter a new mount namespace.
+      // This will maintain access to the root mount namespace but will not
+      // pollute it with new mounts.
+      AddArg("-v");
+    }
+
     AddArg("--");
   }
   return true;
@@ -60,6 +75,10 @@ void SandboxedProcess::SandboxAs(const std::string& user,
   sandboxing_ = true;
   user_ = user;
   group_ = group;
+}
+
+void SandboxedProcess::AllowAccessRootMountNamespace() {
+  access_root_mount_ns_ = true;
 }
 
 }  // namespace debugd

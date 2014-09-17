@@ -24,17 +24,21 @@ class SandboxedProcess : public chromeos::ProcessImpl {
 
   virtual bool Init();
 
-  // Disable the default sandboxing for this process
+  // Disable the default sandboxing for this process.
   virtual void DisableSandbox();
 
-  // Change the default sandboxing for this process
+  // Change the default sandboxing for this process.
   virtual void SandboxAs(const std::string& user, const std::string& group);
+
+  // Allow this process to access the root mount namespace.
+  virtual void AllowAccessRootMountNamespace();
 
   static const char *kDefaultUser;
   static const char *kDefaultGroup;
 
  private:
   bool sandboxing_;
+  bool access_root_mount_ns_;
   std::string user_;
   std::string group_;
 };
