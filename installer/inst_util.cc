@@ -541,7 +541,7 @@ string DumpKernelConfig(const string& kernel_dev) {
 
   char *config = FindKernelConfig(kernel_dev.c_str(), USE_PREAMBLE_LOAD_ADDR);
   if (!config) {
-    printf("Error parsing input file\n");
+    printf("Error retrieving kernel config from '%s'\n", kernel_dev.c_str());
     return result;
   }
 
