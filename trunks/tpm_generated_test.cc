@@ -54,6 +54,27 @@ TEST(GeneratorTest, SerializeParseStruct) {
   EXPECT_EQ(0, memcmp(&data, &data2, sizeof(TPM2B_CREATION_DATA)));
 }
 
+TEST(GeneratorTest, SerializeBufferOverflow) {
+  TPM2B_MAX_BUFFER value;
+  value.size = arraysize(value.buffer) + 1;
+  std::string tmp;
+  EXPECT_EQ(TPM_RC_INSUFFICIENT, Serialize_TPM2B_MAX_BUFFER(value, &tmp));
+}
+
+TEST(GeneratorTest, ParseBufferOverflow) {
+  TPM2B_MAX_BUFFER tmp;
+  // Case 1: Sufficient source but overflow the destination.
+  std::string malformed1 = "\x10\x00";
+  malformed1 += std::string(0x1000, 'A');
+  ASSERT_GT(0x1000, sizeof(tmp.buffer));
+  EXPECT_EQ(TPM_RC_INSUFFICIENT,
+            Parse_TPM2B_MAX_BUFFER(&malformed1, &tmp, NULL));
+  // Case 2: Sufficient destination but overflow the source.
+  std::string malformed2 = "\x00\x01";
+  EXPECT_EQ(TPM_RC_INSUFFICIENT,
+            Parse_TPM2B_MAX_BUFFER(&malformed2, &tmp, NULL));
+}
+
 // A fixture for asynchronous command flow tests.
 class CommandFlowTest : public testing::Test {
  public:
@@ -119,6 +140,7 @@ class Encryptor {
 };
 
 TEST_F(CommandFlowTest, SimpleCommandFlow) {
+  // A hand-rolled TPM2_Startup command.
   std::string expected_command("\x80\x01"          // tag=TPM_ST_NO_SESSIONS
                                "\x00\x00\x00\x0C"  // size=12
                                "\x00\x00\x01\x44"  // code=TPM_CC_Startup

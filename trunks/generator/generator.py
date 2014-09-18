@@ -334,6 +334,9 @@ TPM_RC Serialize_%(type)s(
   }
 """
   _SERIALIZE_FIELD_ARRAY = """
+  if (arraysize(value.%(name)s) < value.%(count)s) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.%(count)s; ++i) {
     result = Serialize_%(type)s(value.%(name)s[i], buffer);
     if (result) {
@@ -368,6 +371,9 @@ TPM_RC Parse_%(type)s(
   }
 """
   _PARSE_FIELD_ARRAY = """
+  if (arraysize(value->%(name)s) < value->%(count)s) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->%(count)s; ++i) {
     result = Parse_%(type)s(
         buffer,
@@ -410,6 +416,9 @@ TPM_RC Serialize_%(union_type)s(
 """
   _SERIALIZE_UNION_FIELD_ARRAY = """
   if (selector == %(selector_value)s) {
+    if (arraysize(value.%(field_name)s) < %(count)s) {
+      return TPM_RC_INSUFFICIENT;
+    }
     for (uint32_t i = 0; i < %(count)s; ++i) {
       result = Serialize_%(field_type)s(value.%(field_name)s[i], buffer);
       if (result) {
@@ -440,6 +449,9 @@ TPM_RC Parse_%(union_type)s(
 """
   _PARSE_UNION_FIELD_ARRAY = """
   if (selector == %(selector_value)s) {
+    if (arraysize(value->%(field_name)s) < %(count)s) {
+      return TPM_RC_INSUFFICIENT;
+    }
     for (uint32_t i = 0; i < %(count)s; ++i) {
       result = Parse_%(field_type)s(
           buffer,

@@ -740,6 +740,9 @@ TPM_RC Serialize_TPM2B_DIGEST(
     return result;
   }
 
+  if (arraysize(value.buffer) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.buffer[i], buffer);
     if (result) {
@@ -764,6 +767,9 @@ TPM_RC Parse_TPM2B_DIGEST(
     return result;
   }
 
+  if (arraysize(value->buffer) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -2029,6 +2035,9 @@ TPM_RC Serialize_TPMU_HA(
   VLOG(2) << __func__;
 
   if (selector == TPM_ALG_SHA384) {
+    if (arraysize(value.sha384) < SHA384_DIGEST_SIZE) {
+      return TPM_RC_INSUFFICIENT;
+    }
     for (uint32_t i = 0; i < SHA384_DIGEST_SIZE; ++i) {
       result = Serialize_BYTE(value.sha384[i], buffer);
       if (result) {
@@ -2038,6 +2047,9 @@ TPM_RC Serialize_TPMU_HA(
   }
 
   if (selector == TPM_ALG_SHA1) {
+    if (arraysize(value.sha1) < SHA1_DIGEST_SIZE) {
+      return TPM_RC_INSUFFICIENT;
+    }
     for (uint32_t i = 0; i < SHA1_DIGEST_SIZE; ++i) {
       result = Serialize_BYTE(value.sha1[i], buffer);
       if (result) {
@@ -2047,6 +2059,9 @@ TPM_RC Serialize_TPMU_HA(
   }
 
   if (selector == TPM_ALG_SM3_256) {
+    if (arraysize(value.sm3_256) < SM3_256_DIGEST_SIZE) {
+      return TPM_RC_INSUFFICIENT;
+    }
     for (uint32_t i = 0; i < SM3_256_DIGEST_SIZE; ++i) {
       result = Serialize_BYTE(value.sm3_256[i], buffer);
       if (result) {
@@ -2060,6 +2075,9 @@ TPM_RC Serialize_TPMU_HA(
   }
 
   if (selector == TPM_ALG_SHA256) {
+    if (arraysize(value.sha256) < SHA256_DIGEST_SIZE) {
+      return TPM_RC_INSUFFICIENT;
+    }
     for (uint32_t i = 0; i < SHA256_DIGEST_SIZE; ++i) {
       result = Serialize_BYTE(value.sha256[i], buffer);
       if (result) {
@@ -2069,6 +2087,9 @@ TPM_RC Serialize_TPMU_HA(
   }
 
   if (selector == TPM_ALG_SHA512) {
+    if (arraysize(value.sha512) < SHA512_DIGEST_SIZE) {
+      return TPM_RC_INSUFFICIENT;
+    }
     for (uint32_t i = 0; i < SHA512_DIGEST_SIZE; ++i) {
       result = Serialize_BYTE(value.sha512[i], buffer);
       if (result) {
@@ -2088,6 +2109,9 @@ TPM_RC Parse_TPMU_HA(
   VLOG(2) << __func__;
 
   if (selector == TPM_ALG_SHA384) {
+    if (arraysize(value->sha384) < SHA384_DIGEST_SIZE) {
+      return TPM_RC_INSUFFICIENT;
+    }
     for (uint32_t i = 0; i < SHA384_DIGEST_SIZE; ++i) {
       result = Parse_BYTE(
           buffer,
@@ -2100,6 +2124,9 @@ TPM_RC Parse_TPMU_HA(
   }
 
   if (selector == TPM_ALG_SHA1) {
+    if (arraysize(value->sha1) < SHA1_DIGEST_SIZE) {
+      return TPM_RC_INSUFFICIENT;
+    }
     for (uint32_t i = 0; i < SHA1_DIGEST_SIZE; ++i) {
       result = Parse_BYTE(
           buffer,
@@ -2112,6 +2139,9 @@ TPM_RC Parse_TPMU_HA(
   }
 
   if (selector == TPM_ALG_SM3_256) {
+    if (arraysize(value->sm3_256) < SM3_256_DIGEST_SIZE) {
+      return TPM_RC_INSUFFICIENT;
+    }
     for (uint32_t i = 0; i < SM3_256_DIGEST_SIZE; ++i) {
       result = Parse_BYTE(
           buffer,
@@ -2128,6 +2158,9 @@ TPM_RC Parse_TPMU_HA(
   }
 
   if (selector == TPM_ALG_SHA256) {
+    if (arraysize(value->sha256) < SHA256_DIGEST_SIZE) {
+      return TPM_RC_INSUFFICIENT;
+    }
     for (uint32_t i = 0; i < SHA256_DIGEST_SIZE; ++i) {
       result = Parse_BYTE(
           buffer,
@@ -2140,6 +2173,9 @@ TPM_RC Parse_TPMU_HA(
   }
 
   if (selector == TPM_ALG_SHA512) {
+    if (arraysize(value->sha512) < SHA512_DIGEST_SIZE) {
+      return TPM_RC_INSUFFICIENT;
+    }
     for (uint32_t i = 0; i < SHA512_DIGEST_SIZE; ++i) {
       result = Parse_BYTE(
           buffer,
@@ -2211,6 +2247,9 @@ TPM_RC Serialize_TPM2B_DATA(
     return result;
   }
 
+  if (arraysize(value.buffer) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.buffer[i], buffer);
     if (result) {
@@ -2235,6 +2274,9 @@ TPM_RC Parse_TPM2B_DATA(
     return result;
   }
 
+  if (arraysize(value->buffer) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -2275,6 +2317,9 @@ TPM_RC Serialize_TPM2B_EVENT(
     return result;
   }
 
+  if (arraysize(value.buffer) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.buffer[i], buffer);
     if (result) {
@@ -2299,6 +2344,9 @@ TPM_RC Parse_TPM2B_EVENT(
     return result;
   }
 
+  if (arraysize(value->buffer) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -2339,6 +2387,9 @@ TPM_RC Serialize_TPM2B_MAX_BUFFER(
     return result;
   }
 
+  if (arraysize(value.buffer) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.buffer[i], buffer);
     if (result) {
@@ -2363,6 +2414,9 @@ TPM_RC Parse_TPM2B_MAX_BUFFER(
     return result;
   }
 
+  if (arraysize(value->buffer) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -2403,6 +2457,9 @@ TPM_RC Serialize_TPM2B_MAX_NV_BUFFER(
     return result;
   }
 
+  if (arraysize(value.buffer) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.buffer[i], buffer);
     if (result) {
@@ -2427,6 +2484,9 @@ TPM_RC Parse_TPM2B_MAX_NV_BUFFER(
     return result;
   }
 
+  if (arraysize(value->buffer) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -2467,6 +2527,9 @@ TPM_RC Serialize_TPM2B_TIMEOUT(
     return result;
   }
 
+  if (arraysize(value.buffer) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.buffer[i], buffer);
     if (result) {
@@ -2491,6 +2554,9 @@ TPM_RC Parse_TPM2B_TIMEOUT(
     return result;
   }
 
+  if (arraysize(value->buffer) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -2531,6 +2597,9 @@ TPM_RC Serialize_TPM2B_IV(
     return result;
   }
 
+  if (arraysize(value.buffer) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.buffer[i], buffer);
     if (result) {
@@ -2555,6 +2624,9 @@ TPM_RC Parse_TPM2B_IV(
     return result;
   }
 
+  if (arraysize(value->buffer) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -2595,6 +2667,9 @@ TPM_RC Serialize_TPM2B_NAME(
     return result;
   }
 
+  if (arraysize(value.name) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.name[i], buffer);
     if (result) {
@@ -2619,6 +2694,9 @@ TPM_RC Parse_TPM2B_NAME(
     return result;
   }
 
+  if (arraysize(value->name) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -2659,6 +2737,9 @@ TPM_RC Serialize_TPMS_PCR_SELECT(
     return result;
   }
 
+  if (arraysize(value.pcr_select) < value.sizeof_select) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.sizeof_select; ++i) {
     result = Serialize_BYTE(value.pcr_select[i], buffer);
     if (result) {
@@ -2683,6 +2764,9 @@ TPM_RC Parse_TPMS_PCR_SELECT(
     return result;
   }
 
+  if (arraysize(value->pcr_select) < value->sizeof_select) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->sizeof_select; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -2711,6 +2795,9 @@ TPM_RC Serialize_TPMS_PCR_SELECTION(
     return result;
   }
 
+  if (arraysize(value.pcr_select) < value.sizeof_select) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.sizeof_select; ++i) {
     result = Serialize_BYTE(value.pcr_select[i], buffer);
     if (result) {
@@ -2743,6 +2830,9 @@ TPM_RC Parse_TPMS_PCR_SELECTION(
     return result;
   }
 
+  if (arraysize(value->pcr_select) < value->sizeof_select) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->sizeof_select; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -3068,6 +3158,9 @@ TPM_RC Serialize_TPMS_TAGGED_PCR_SELECT(
     return result;
   }
 
+  if (arraysize(value.pcr_select) < value.sizeof_select) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.sizeof_select; ++i) {
     result = Serialize_BYTE(value.pcr_select[i], buffer);
     if (result) {
@@ -3100,6 +3193,9 @@ TPM_RC Parse_TPMS_TAGGED_PCR_SELECT(
     return result;
   }
 
+  if (arraysize(value->pcr_select) < value->sizeof_select) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->sizeof_select; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -3123,6 +3219,9 @@ TPM_RC Serialize_TPML_CC(
     return result;
   }
 
+  if (arraysize(value.command_codes) < value.count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.count; ++i) {
     result = Serialize_TPM_CC(value.command_codes[i], buffer);
     if (result) {
@@ -3147,6 +3246,9 @@ TPM_RC Parse_TPML_CC(
     return result;
   }
 
+  if (arraysize(value->command_codes) < value->count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->count; ++i) {
     result = Parse_TPM_CC(
         buffer,
@@ -3170,6 +3272,9 @@ TPM_RC Serialize_TPML_CCA(
     return result;
   }
 
+  if (arraysize(value.command_attributes) < value.count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.count; ++i) {
     result = Serialize_TPMA_CC(value.command_attributes[i], buffer);
     if (result) {
@@ -3194,6 +3299,9 @@ TPM_RC Parse_TPML_CCA(
     return result;
   }
 
+  if (arraysize(value->command_attributes) < value->count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->count; ++i) {
     result = Parse_TPMA_CC(
         buffer,
@@ -3217,6 +3325,9 @@ TPM_RC Serialize_TPML_ALG(
     return result;
   }
 
+  if (arraysize(value.algorithms) < value.count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.count; ++i) {
     result = Serialize_TPM_ALG_ID(value.algorithms[i], buffer);
     if (result) {
@@ -3241,6 +3352,9 @@ TPM_RC Parse_TPML_ALG(
     return result;
   }
 
+  if (arraysize(value->algorithms) < value->count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->count; ++i) {
     result = Parse_TPM_ALG_ID(
         buffer,
@@ -3264,6 +3378,9 @@ TPM_RC Serialize_TPML_HANDLE(
     return result;
   }
 
+  if (arraysize(value.handle) < value.count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.count; ++i) {
     result = Serialize_TPM_HANDLE(value.handle[i], buffer);
     if (result) {
@@ -3288,6 +3405,9 @@ TPM_RC Parse_TPML_HANDLE(
     return result;
   }
 
+  if (arraysize(value->handle) < value->count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->count; ++i) {
     result = Parse_TPM_HANDLE(
         buffer,
@@ -3311,6 +3431,9 @@ TPM_RC Serialize_TPML_DIGEST(
     return result;
   }
 
+  if (arraysize(value.digests) < value.count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.count; ++i) {
     result = Serialize_TPM2B_DIGEST(value.digests[i], buffer);
     if (result) {
@@ -3335,6 +3458,9 @@ TPM_RC Parse_TPML_DIGEST(
     return result;
   }
 
+  if (arraysize(value->digests) < value->count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->count; ++i) {
     result = Parse_TPM2B_DIGEST(
         buffer,
@@ -3358,6 +3484,9 @@ TPM_RC Serialize_TPML_DIGEST_VALUES(
     return result;
   }
 
+  if (arraysize(value.digests) < value.count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.count; ++i) {
     result = Serialize_TPMT_HA(value.digests[i], buffer);
     if (result) {
@@ -3382,6 +3511,9 @@ TPM_RC Parse_TPML_DIGEST_VALUES(
     return result;
   }
 
+  if (arraysize(value->digests) < value->count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->count; ++i) {
     result = Parse_TPMT_HA(
         buffer,
@@ -3405,6 +3537,9 @@ TPM_RC Serialize_TPM2B_DIGEST_VALUES(
     return result;
   }
 
+  if (arraysize(value.buffer) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.buffer[i], buffer);
     if (result) {
@@ -3429,6 +3564,9 @@ TPM_RC Parse_TPM2B_DIGEST_VALUES(
     return result;
   }
 
+  if (arraysize(value->buffer) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -3469,6 +3607,9 @@ TPM_RC Serialize_TPML_PCR_SELECTION(
     return result;
   }
 
+  if (arraysize(value.pcr_selections) < value.count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.count; ++i) {
     result = Serialize_TPMS_PCR_SELECTION(value.pcr_selections[i], buffer);
     if (result) {
@@ -3493,6 +3634,9 @@ TPM_RC Parse_TPML_PCR_SELECTION(
     return result;
   }
 
+  if (arraysize(value->pcr_selections) < value->count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->count; ++i) {
     result = Parse_TPMS_PCR_SELECTION(
         buffer,
@@ -3516,6 +3660,9 @@ TPM_RC Serialize_TPML_ALG_PROPERTY(
     return result;
   }
 
+  if (arraysize(value.alg_properties) < value.count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.count; ++i) {
     result = Serialize_TPMS_ALG_PROPERTY(value.alg_properties[i], buffer);
     if (result) {
@@ -3540,6 +3687,9 @@ TPM_RC Parse_TPML_ALG_PROPERTY(
     return result;
   }
 
+  if (arraysize(value->alg_properties) < value->count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->count; ++i) {
     result = Parse_TPMS_ALG_PROPERTY(
         buffer,
@@ -3563,6 +3713,9 @@ TPM_RC Serialize_TPML_TAGGED_TPM_PROPERTY(
     return result;
   }
 
+  if (arraysize(value.tpm_property) < value.count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.count; ++i) {
     result = Serialize_TPMS_TAGGED_PROPERTY(value.tpm_property[i], buffer);
     if (result) {
@@ -3587,6 +3740,9 @@ TPM_RC Parse_TPML_TAGGED_TPM_PROPERTY(
     return result;
   }
 
+  if (arraysize(value->tpm_property) < value->count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->count; ++i) {
     result = Parse_TPMS_TAGGED_PROPERTY(
         buffer,
@@ -3610,6 +3766,9 @@ TPM_RC Serialize_TPML_TAGGED_PCR_PROPERTY(
     return result;
   }
 
+  if (arraysize(value.pcr_property) < value.count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.count; ++i) {
     result = Serialize_TPMS_TAGGED_PCR_SELECT(value.pcr_property[i], buffer);
     if (result) {
@@ -3634,6 +3793,9 @@ TPM_RC Parse_TPML_TAGGED_PCR_PROPERTY(
     return result;
   }
 
+  if (arraysize(value->pcr_property) < value->count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->count; ++i) {
     result = Parse_TPMS_TAGGED_PCR_SELECT(
         buffer,
@@ -3657,6 +3819,9 @@ TPM_RC Serialize_TPML_ECC_CURVE(
     return result;
   }
 
+  if (arraysize(value.ecc_curves) < value.count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.count; ++i) {
     result = Serialize_TPM_ECC_CURVE(value.ecc_curves[i], buffer);
     if (result) {
@@ -3681,6 +3846,9 @@ TPM_RC Parse_TPML_ECC_CURVE(
     return result;
   }
 
+  if (arraysize(value->ecc_curves) < value->count) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->count; ++i) {
     result = Parse_TPM_ECC_CURVE(
         buffer,
@@ -4625,6 +4793,9 @@ TPM_RC Serialize_TPM2B_ATTEST(
     return result;
   }
 
+  if (arraysize(value.attestation_data) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.attestation_data[i], buffer);
     if (result) {
@@ -4649,6 +4820,9 @@ TPM_RC Parse_TPM2B_ATTEST(
     return result;
   }
 
+  if (arraysize(value->attestation_data) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -5142,6 +5316,9 @@ TPM_RC Serialize_TPM2B_SYM_KEY(
     return result;
   }
 
+  if (arraysize(value.buffer) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.buffer[i], buffer);
     if (result) {
@@ -5166,6 +5343,9 @@ TPM_RC Parse_TPM2B_SYM_KEY(
     return result;
   }
 
+  if (arraysize(value->buffer) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -5236,6 +5416,9 @@ TPM_RC Serialize_TPM2B_SENSITIVE_DATA(
     return result;
   }
 
+  if (arraysize(value.buffer) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.buffer[i], buffer);
     if (result) {
@@ -5260,6 +5443,9 @@ TPM_RC Parse_TPM2B_SENSITIVE_DATA(
     return result;
   }
 
+  if (arraysize(value->buffer) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -6407,6 +6593,9 @@ TPM_RC Serialize_TPM2B_PUBLIC_KEY_RSA(
     return result;
   }
 
+  if (arraysize(value.buffer) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.buffer[i], buffer);
     if (result) {
@@ -6431,6 +6620,9 @@ TPM_RC Parse_TPM2B_PUBLIC_KEY_RSA(
     return result;
   }
 
+  if (arraysize(value->buffer) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -6471,6 +6663,9 @@ TPM_RC Serialize_TPM2B_PRIVATE_KEY_RSA(
     return result;
   }
 
+  if (arraysize(value.buffer) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.buffer[i], buffer);
     if (result) {
@@ -6495,6 +6690,9 @@ TPM_RC Parse_TPM2B_PRIVATE_KEY_RSA(
     return result;
   }
 
+  if (arraysize(value->buffer) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -6535,6 +6733,9 @@ TPM_RC Serialize_TPM2B_ECC_PARAMETER(
     return result;
   }
 
+  if (arraysize(value.buffer) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.buffer[i], buffer);
     if (result) {
@@ -6559,6 +6760,9 @@ TPM_RC Parse_TPM2B_ECC_PARAMETER(
     return result;
   }
 
+  if (arraysize(value->buffer) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -7227,6 +7431,9 @@ TPM_RC Serialize_TPM2B_ENCRYPTED_SECRET(
     return result;
   }
 
+  if (arraysize(value.secret) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.secret[i], buffer);
     if (result) {
@@ -7251,6 +7458,9 @@ TPM_RC Parse_TPM2B_ENCRYPTED_SECRET(
     return result;
   }
 
+  if (arraysize(value->secret) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -7852,6 +8062,9 @@ TPM_RC Serialize_TPM2B_PRIVATE_VENDOR_SPECIFIC(
     return result;
   }
 
+  if (arraysize(value.buffer) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.buffer[i], buffer);
     if (result) {
@@ -7876,6 +8089,9 @@ TPM_RC Parse_TPM2B_PRIVATE_VENDOR_SPECIFIC(
     return result;
   }
 
+  if (arraysize(value->buffer) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -8175,6 +8391,9 @@ TPM_RC Serialize_TPM2B_PRIVATE(
     return result;
   }
 
+  if (arraysize(value.buffer) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.buffer[i], buffer);
     if (result) {
@@ -8199,6 +8418,9 @@ TPM_RC Parse_TPM2B_PRIVATE(
     return result;
   }
 
+  if (arraysize(value->buffer) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -8282,6 +8504,9 @@ TPM_RC Serialize_TPM2B_ID_OBJECT(
     return result;
   }
 
+  if (arraysize(value.credential) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.credential[i], buffer);
     if (result) {
@@ -8306,6 +8531,9 @@ TPM_RC Parse_TPM2B_ID_OBJECT(
     return result;
   }
 
+  if (arraysize(value->credential) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -8471,6 +8699,9 @@ TPM_RC Serialize_TPM2B_CONTEXT_SENSITIVE(
     return result;
   }
 
+  if (arraysize(value.buffer) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.buffer[i], buffer);
     if (result) {
@@ -8495,6 +8726,9 @@ TPM_RC Parse_TPM2B_CONTEXT_SENSITIVE(
     return result;
   }
 
+  if (arraysize(value->buffer) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
@@ -8578,6 +8812,9 @@ TPM_RC Serialize_TPM2B_CONTEXT_DATA(
     return result;
   }
 
+  if (arraysize(value.buffer) < value.size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value.size; ++i) {
     result = Serialize_BYTE(value.buffer[i], buffer);
     if (result) {
@@ -8602,6 +8839,9 @@ TPM_RC Parse_TPM2B_CONTEXT_DATA(
     return result;
   }
 
+  if (arraysize(value->buffer) < value->size) {
+    return TPM_RC_INSUFFICIENT;
+  }
   for (uint32_t i = 0; i < value->size; ++i) {
     result = Parse_BYTE(
         buffer,
