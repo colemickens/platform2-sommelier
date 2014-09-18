@@ -12,10 +12,13 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
+#include <chromeos/variant_dictionary.h>
 #include <chromeos/process_mock.h>
 #include <gtest/gtest.h>
 
 using base::ScopedFD;
+using chromeos::VariantDictionary;
 using std::map;
 using std::string;
 using testing::_;
@@ -58,10 +61,10 @@ class ManagerTest : public testing::Test {
       int out_fd,
       base::ScopedFD *input_scoped_fd,
       base::ScopedFD *output_scoped_fd,
-      const map<string, ::DBus::Variant> &scan_properties,
+      const VariantDictionary &scan_properties,
       chromeos::Process *scan_process,
       chromeos::Process *convert_process,
-      ::DBus::Error *error) {
+      chromeos::ErrorPtr *error) {
     Manager::RunScanImageProcess(device_name,
                                  out_fd,
                                  input_scoped_fd,
@@ -102,9 +105,6 @@ class ManagerTest : public testing::Test {
     return Manager::ScannerInfoFromString(scanner_info_string);
   }
 
-  Manager::DBusAdaptor *GetDBusAdaptor() {
-    return manager_.dbus_adaptor_.get();
-  }
   static std::string GetScanConverterPath() {
     return Manager::kScanConverterPath;
   }
@@ -127,8 +127,11 @@ const char ManagerTest::kDeviceName[] = "scanner";
 const int ManagerTest::kResolution = 300;
 const char ManagerTest::kMode[] = "Color";
 
-TEST_F(ManagerTest, Construct) {
-  EXPECT_EQ(nullptr, GetDBusAdaptor());
+MATCHER_P(IsDbusErrorStartingWith, message, "") {
+  return arg != nullptr &&
+      arg->GetDomain() == chromeos::errors::dbus::kDomain &&
+      arg->GetCode() == kManagerServiceError &&
+      StartsWithASCII(arg->GetMessage(), message, false);
 }
 
 TEST_F(ManagerTest, RunListScannersProcess) {
@@ -143,9 +146,10 @@ TEST_F(ManagerTest, RunListScannersProcess) {
 }
 
 TEST_F(ManagerTest, RunScanImageProcessSuccess) {
-  map<string, ::DBus::Variant> props;
-  props["Mode"].writer().append_string(kMode);
-  props["Resolution"].writer().append_uint32(kResolution);
+  VariantDictionary props{
+      {"Mode", string{kMode}},
+      {"Resolution", uint32_t{kResolution}}
+  };
   chromeos::ProcessMock scan_process;
   chromeos::ProcessMock convert_process;
   InSequence seq;
@@ -155,7 +159,7 @@ TEST_F(ManagerTest, RunScanImageProcessSuccess) {
                   &convert_process);
   EXPECT_CALL(scan_process, Wait()).WillOnce(Return(0));
   EXPECT_CALL(convert_process, Wait()).WillOnce(Return(0));
-  DBus::Error error;
+  chromeos::ErrorPtr error;
   RunScanImageProcess(kDeviceName,
                       kOutputFd,
                       &input_scoped_fd_,
@@ -166,13 +170,12 @@ TEST_F(ManagerTest, RunScanImageProcessSuccess) {
                       &error);
   EXPECT_EQ(kInvalidFd, input_scoped_fd_.get());
   EXPECT_EQ(kInvalidFd, output_scoped_fd_.get());
-  EXPECT_FALSE(error.is_set());
+  EXPECT_EQ(nullptr, error.get());
 }
 
 TEST_F(ManagerTest, RunScanImageProcessInvalidArgument) {
-  map<string, ::DBus::Variant> props;
   const char kInvalidArgument[] = "InvalidArgument";
-  props[kInvalidArgument].writer().append_string("");
+  VariantDictionary props{{kInvalidArgument, ""}};
   chromeos::ProcessMock scan_process;
   chromeos::ProcessMock convert_process;
   // For "scanimage", "-d", "<device name>".
@@ -180,7 +183,7 @@ TEST_F(ManagerTest, RunScanImageProcessInvalidArgument) {
   EXPECT_CALL(convert_process, AddArg(_)).Times(0);
   EXPECT_CALL(convert_process, Start()).Times(0);
   EXPECT_CALL(scan_process, Start()).Times(0);
-  DBus::Error error;
+  chromeos::ErrorPtr error;
   RunScanImageProcess("", 0, nullptr, nullptr, props, &scan_process,
                       &convert_process, &error);
 
@@ -188,17 +191,13 @@ TEST_F(ManagerTest, RunScanImageProcessInvalidArgument) {
   EXPECT_EQ(kInputPipeFd, input_scoped_fd_.get());
   EXPECT_EQ(kOutputPipeFd, output_scoped_fd_.get());
 
-  EXPECT_TRUE(error.is_set());
-  EXPECT_TRUE(StartsWithASCII(error.message(),
-                              base::StringPrintf("Invalid scan parameter %s",
-                                                 kInvalidArgument),
-                              false));
+  EXPECT_THAT(error, IsDbusErrorStartingWith(
+      base::StringPrintf("Invalid scan parameter %s", kInvalidArgument)));
 }
 
 TEST_F(ManagerTest, RunScanImageInvalidModeArgument) {
-  map<string, ::DBus::Variant> props;
   const char kBadMode[] = "Raytrace";
-  props["Mode"].writer().append_string(kBadMode);
+  VariantDictionary props{{"Mode", string{kBadMode}}};
   chromeos::ProcessMock scan_process;
   chromeos::ProcessMock convert_process;
   // For "scanimage", "-d", "<device name>".
@@ -206,7 +205,7 @@ TEST_F(ManagerTest, RunScanImageInvalidModeArgument) {
   EXPECT_CALL(convert_process, AddArg(_)).Times(0);
   EXPECT_CALL(convert_process, Start()).Times(0);
   EXPECT_CALL(scan_process, Start()).Times(0);
-  DBus::Error error;
+  chromeos::ErrorPtr error;
   RunScanImageProcess(kDeviceName,
                       kOutputFd,
                       &input_scoped_fd_,
@@ -220,17 +219,15 @@ TEST_F(ManagerTest, RunScanImageInvalidModeArgument) {
   EXPECT_EQ(kInputPipeFd, input_scoped_fd_.get());
   EXPECT_EQ(kOutputPipeFd, output_scoped_fd_.get());
 
-  EXPECT_TRUE(error.is_set());
-  EXPECT_TRUE(StartsWithASCII(error.message(),
-                              base::StringPrintf("Invalid mode parameter %s",
-                                                 kBadMode),
-                              false));
+  EXPECT_THAT(error, IsDbusErrorStartingWith(
+      base::StringPrintf("Invalid mode parameter %s", kBadMode)));
 }
 
 TEST_F(ManagerTest, RunScanImageProcessCaptureFailure) {
-  map<string, ::DBus::Variant> props;
-  props["Mode"].writer().append_string(kMode);
-  props["Resolution"].writer().append_uint32(kResolution);
+  VariantDictionary props{
+      {"Mode", string{kMode}},
+      {"Resolution", uint32_t{kResolution}}
+  };
   chromeos::ProcessMock scan_process;
   chromeos::ProcessMock convert_process;
   InSequence seq;
@@ -242,7 +239,7 @@ TEST_F(ManagerTest, RunScanImageProcessCaptureFailure) {
   EXPECT_CALL(scan_process, Wait()).WillOnce(Return(kErrorResult));
   EXPECT_CALL(convert_process, Kill(SIGKILL, 1));
   EXPECT_CALL(convert_process, Wait()).Times(0);
-  DBus::Error error;
+  chromeos::ErrorPtr error;
   RunScanImageProcess(kDeviceName,
                       kOutputFd,
                       &input_scoped_fd_,
@@ -253,17 +250,15 @@ TEST_F(ManagerTest, RunScanImageProcessCaptureFailure) {
                       &error);
   EXPECT_EQ(kInvalidFd, input_scoped_fd_.get());
   EXPECT_EQ(kInvalidFd, output_scoped_fd_.get());
-  EXPECT_TRUE(error.is_set());
-  EXPECT_STREQ(
-      base::StringPrintf("Scan process exited with result %d",
-                         kErrorResult).c_str(),
-      error.message());
+  EXPECT_THAT(error, IsDbusErrorStartingWith(
+      base::StringPrintf("Scan process exited with result %d", kErrorResult)));
 }
 
 TEST_F(ManagerTest, RunScanImageProcessConvertFailure) {
-  map<string, ::DBus::Variant> props;
-  props["Mode"].writer().append_string(kMode);
-  props["Resolution"].writer().append_uint32(kResolution);
+  VariantDictionary props{
+      {"Mode", string{kMode}},
+      {"Resolution", uint32_t{kResolution}}
+  };
   chromeos::ProcessMock scan_process;
   chromeos::ProcessMock convert_process;
   InSequence seq;
@@ -274,7 +269,7 @@ TEST_F(ManagerTest, RunScanImageProcessConvertFailure) {
   EXPECT_CALL(scan_process, Wait()).WillOnce(Return(0));
   const int kErrorResult = 111;
   EXPECT_CALL(convert_process, Wait()).WillOnce(Return(kErrorResult));
-  DBus::Error error;
+  chromeos::ErrorPtr error;
   RunScanImageProcess(kDeviceName,
                       kOutputFd,
                       &input_scoped_fd_,
@@ -285,11 +280,9 @@ TEST_F(ManagerTest, RunScanImageProcessConvertFailure) {
                       &error);
   EXPECT_EQ(kInvalidFd, input_scoped_fd_.get());
   EXPECT_EQ(kInvalidFd, output_scoped_fd_.get());
-  EXPECT_TRUE(error.is_set());
-  EXPECT_STREQ(
+  EXPECT_THAT(error, IsDbusErrorStartingWith(
       base::StringPrintf("Image converter process failed with result %d",
-                         kErrorResult).c_str(),
-      error.message());
+                         kErrorResult)));
 }
 
 TEST_F(ManagerTest, ScannerInfoFromString) {

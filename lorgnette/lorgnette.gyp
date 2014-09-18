@@ -5,8 +5,6 @@
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
       ],
-      # lorgnette uses try/catch to interact with dbus-c++.
-      'enable_exceptions': 1,
     },
     'cflags': [
       '-Wextra',
@@ -22,14 +20,14 @@
       'target_name': 'lorgnette-adaptors',
       'type': 'none',
       'variables': {
-        'xml2cpp_type': 'adaptor',
-        'xml2cpp_in_dir': 'dbus_bindings',
-        'xml2cpp_out_dir': 'include/lorgnette/dbus_adaptors',
+        'generate_dbus_bindings_type': 'adaptor',
+        'generate_dbus_bindings_in_dir': 'dbus_bindings',
+        'generate_dbus_bindings_out_dir': 'include/lorgnette/dbus_adaptors',
       },
       'sources': [
-        '<(xml2cpp_in_dir)/org.chromium.lorgnette.Manager.xml',
+        '<(generate_dbus_bindings_in_dir)/org.chromium.lorgnette.Manager.xml',
       ],
-      'includes': ['../common-mk/xml2cpp.gypi'],
+      'includes': ['../common-mk/generate-dbus-bindings.gypi'],
     },
     {
       'target_name': 'lorgnette-proxies',
@@ -49,13 +47,9 @@
       'type': 'static_library',
       'dependencies': [
         'lorgnette-adaptors',
-        'lorgnette-proxies',
       ],
       'variables': {
         'exported_deps': [
-          'dbus-c++-1',
-          'gio-2.0',
-          'glib-2.0',
           'libmetrics-<(libbase_ver)',
         ],
         'deps': ['<@(exported_deps)'],
@@ -68,13 +62,6 @@
         },
       },
       'link_settings': {
-        'variables': {
-          'deps': [
-            'dbus-c++-1',
-            'gio-2.0',
-            'glib-2.0',
-          ],
-        },
         'libraries': [
           '-lminijail',
           '-lrt'

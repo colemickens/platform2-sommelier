@@ -4,6 +4,8 @@
 
 #include "lorgnette/daemon.h"
 
+#include <sysexits.h>
+
 #include <string>
 #include <vector>
 
@@ -12,8 +14,6 @@
 #include <base/message_loop/message_loop_proxy.h>
 #include <base/run_loop.h>
 #include <chromeos/dbus/service_constants.h>
-
-#include "lorgnette/manager.cc"
 
 using std::string;
 using std::vector;
@@ -25,45 +25,39 @@ const char Daemon::kScanGroupName[] = "scanner";
 const char Daemon::kScanUserName[] = "saned";
 const int Daemon::kShutdownTimeoutMilliseconds = 20000;
 
-Daemon::Daemon()
-    : dont_use_directly_(new base::MessageLoopForUI),
-      message_loop_proxy_(base::MessageLoopProxy::current()) {}
+Daemon::Daemon(const base::Closure& startup_callback)
+    : DBusServiceDaemon(kManagerServiceName, "/ObjectManager"),
+      startup_callback_(startup_callback) {}
 
-Daemon::~Daemon() {}
+int Daemon::OnInit() {
+  int return_code = chromeos::DBusServiceDaemon::OnInit();
+  if (return_code != EX_OK) {
+    return return_code;
+  }
 
-void Daemon::Run() {
-  LOG(INFO) << "Running main loop.";
-  base::MessageLoop::current()->Run();
-  LOG(INFO) << "Exited main loop.";
-}
-
-void Daemon::Quit() {
-  message_loop_proxy_->PostTask(FROM_HERE, base::MessageLoop::QuitClosure());
-}
-
-void Daemon::Start() {
-  CHECK(!connection_.get());
-  dispatcher_.reset(new DBus::Glib::BusDispatcher());
-  CHECK(dispatcher_.get()) << "Failed to create a dbus-dispatcher";
-  DBus::default_dispatcher = dispatcher_.get();
-  dispatcher_->attach(nullptr);
-  connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
-  CHECK(connection_.get()) << "Failed to create a dbus-connection";
-  CHECK(connection_->acquire_name(kManagerServiceName))
-      << "Failed to acquire D-Bus name " << kManagerServiceName << ". "
-      << "Is another lorgnette instance running?";
   manager_.reset(new Manager(
       base::Bind(&Daemon::PostponeShutdown, base::Unretained(this))));
-  manager_->InitDBus(connection_.get());
+  manager_->InitDBus(object_manager_.get());
+
   PostponeShutdown();
+
+  // Signal that we've acquired all resources.
+  startup_callback_.Run();
+  return EX_OK;
+}
+
+void Daemon::OnShutdown(int* return_code) {
+  manager_.reset();
+  chromeos::DBusServiceDaemon::OnShutdown(return_code);
 }
 
 void Daemon::PostponeShutdown() {
-  shutdown_callback_.Reset(base::Bind(&Daemon::Quit, base::Unretained(this)));
-  message_loop_proxy_->PostDelayedTask(FROM_HERE,
-                                       shutdown_callback_.callback(),
-                                       base::TimeDelta::FromMilliseconds(
-                                           kShutdownTimeoutMilliseconds));
+  shutdown_callback_.Reset(base::Bind(&chromeos::Daemon::Quit,
+                                      base::Unretained(this)));
+  base::MessageLoop::current()->PostDelayedTask(
+      FROM_HERE,
+      shutdown_callback_.callback(),
+      base::TimeDelta::FromMilliseconds(kShutdownTimeoutMilliseconds));
 }
 
 }  // namespace lorgnette

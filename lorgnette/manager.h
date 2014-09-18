@@ -6,25 +6,34 @@
 #define LORGNETTE_MANAGER_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
-#include <dbus-c++/dbus.h>
+#include <chromeos/variant_dictionary.h>
+#include <chromeos/errors/error.h>
 
 #include "lorgnette/dbus_adaptors/org.chromium.lorgnette.Manager.h"
+
 namespace chromeos {
 class Process;
+
+namespace dbus_utils {
+class ExportedObjectManager;
+}  // namespace dbus_utils
+
 }  // namespace chromeos
 
 namespace lorgnette {
 
 class Minijail;
 
-class Manager {
+class Manager
+    : public
+      org::chromium::lorgnette::ManagerAdaptor::ManagerAdaptorMethodInterface {
  public:
   typedef std::map<std::string, std::map<std::string, std::string>> ScannerInfo;
 
@@ -32,39 +41,18 @@ class Manager {
   virtual ~Manager();
 
   // Start DBus connection.
-  void InitDBus(DBus::Connection *connection);
+  void InitDBus(chromeos::dbus_utils::ExportedObjectManager *object_manager);
 
-  // Implementation of org::chromium::lorgnette::Manager_adaptor.
-  virtual ScannerInfo ListScanners(::DBus::Error *error);
+  // Implementation of ManagerAdaptorMethodInterface.
+  virtual ScannerInfo ListScanners(chromeos::ErrorPtr *error);
   virtual void ScanImage(
+      chromeos::ErrorPtr *error,
       const std::string &device_name,
-      const ::DBus::FileDescriptor &outfd,
-      const std::map<std::string, ::DBus::Variant> &scan_properties,
-      ::DBus::Error *error);
+      const dbus::FileDescriptor &outfd,
+      const chromeos::VariantDictionary &scan_properties);
 
  private:
   friend class ManagerTest;
-
-  class DBusAdaptor : public org::chromium::lorgnette::Manager_adaptor,
-                      public DBus::ObjectAdaptor,
-                      public DBus::IntrospectableAdaptor {
-   public:
-    DBusAdaptor(Manager *manager, DBus::Connection *connection);
-    virtual ~DBusAdaptor();
-
-    // Implementation of org::chromium::lorgnette::Manager_adaptor.
-    virtual ScannerInfo ListScanners(
-        ::DBus::Error &error);  // NOLINT(runtime/references)
-    virtual void ScanImage(
-        const std::string &device_name,
-        const ::DBus::FileDescriptor &outfd,
-        const std::map<std::string, ::DBus::Variant> &scan_properties,
-        ::DBus::Error &error);  // NOLINT(runtime/references)
-
-   private:
-    // Bare pointer is okay since this object is owned by this Manager instance.
-    Manager *manager_;
-  };
 
   static const char kScanConverterPath[];
   static const char kScanImageFormattedDeviceListCmd[];
@@ -86,10 +74,10 @@ class Manager {
       int out_fd,
       base::ScopedFD *pipe_fd_input,
       base::ScopedFD *pipe_fd_output,
-      const std::map<std::string, ::DBus::Variant> &scan_properties,
+      const chromeos::VariantDictionary &scan_properties,
       chromeos::Process *scan_process,
       chromeos::Process *convert_process,
-      ::DBus::Error *error);
+      chromeos::ErrorPtr *error);
 
   // Converts the formatted output of "scanimage" to a map of attribute-data
   // mappings suitable for returning to a caller to the ListScanners DBus
@@ -100,9 +88,9 @@ class Manager {
   // Sets the DBus error message and outputs a message to the logs.
   static void SetError(const std::string &method,
                        const std::string &message,
-                       ::DBus::Error *error);
+                       chromeos::ErrorPtr *error);
 
-  scoped_ptr<DBusAdaptor> dbus_adaptor_;
+  std::unique_ptr<org::chromium::lorgnette::ManagerAdaptor> dbus_adaptor_;
   base::Callback<void()> activity_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);

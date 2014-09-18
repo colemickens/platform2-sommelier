@@ -5,39 +5,28 @@
 #ifndef LORGNETTE_DAEMON_H_
 #define LORGNETTE_DAEMON_H_
 
+#include <memory>
 #include <string>
 
 #include <base/cancelable_callback.h>
-#include <base/memory/scoped_ptr.h>
-#include <base/message_loop/message_loop.h>
-#include <dbus-c++/glib-integration.h>
-#include <dbus-c++/util.h>
+#include <chromeos/daemons/dbus_daemon.h>
 
-namespace base {
-class MessageLoopProxy;
-}  // namespace base
+#include "lorgnette/manager.h"
 
 namespace lorgnette {
 
-class Manager;
-
-class Daemon {
+class Daemon : public chromeos::DBusServiceDaemon {
  public:
   // User and group to run the lorgnette process.
   static const char kScanGroupName[];
   static const char kScanUserName[];
 
-  Daemon();
-  ~Daemon();
+  explicit Daemon(const base::Closure& startup_callback);
+  ~Daemon() = default;
 
-  // Setup DBus resources for main loop.
-  void Start();
-
-  // Run main loop for scan manager.
-  void Run();
-
-  // Starts the termination actions in the manager.
-  void Quit();
+ protected:
+  int OnInit() override;
+  void OnShutdown(int* return_code) override;
 
  private:
   friend class DaemonTest;
@@ -48,11 +37,8 @@ class Daemon {
   // Restarts a timer for the termination of the daemon process.
   void PostponeShutdown();
 
-  scoped_ptr<base::MessageLoop> dont_use_directly_;
-  scoped_refptr<base::MessageLoopProxy> message_loop_proxy_;
-  scoped_ptr<DBus::Glib::BusDispatcher> dispatcher_;
-  scoped_ptr<DBus::Connection> connection_;
-  scoped_ptr<Manager> manager_;
+  std::unique_ptr<Manager> manager_;
+  base::Closure startup_callback_;
   base::CancelableClosure shutdown_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);

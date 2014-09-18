@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <errno.h>
-#include <glib-unix.h>
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
@@ -11,18 +10,14 @@
 #include <string>
 #include <vector>
 
-#include <base/at_exit.h>
+#include <base/bind.h>
 #include <base/command_line.h>
-#include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/string_split.h>
 #include <chromeos/minijail/minijail.h>
 #include <chromeos/syslog_logging.h>
 
 #include "lorgnette/daemon.h"
 
-using base::FilePath;
 using std::string;
 using std::vector;
 
@@ -51,7 +46,7 @@ const char *kLoggerUser = "syslog";
 // we are running in the foreground.
 void SetupLogging(chromeos::Minijail *minijail,
                   bool foreground,
-                  char *daemon_name) {
+                  const char *daemon_name) {
   int log_flags = 0;
   log_flags |= chromeos::kLogToSyslog;
   log_flags |= chromeos::kLogHeader;
@@ -67,7 +62,7 @@ void SetupLogging(chromeos::Minijail *minijail,
     logger_command_line.push_back(const_cast<char *>("--priority"));
     logger_command_line.push_back(const_cast<char *>("daemon.err"));
     logger_command_line.push_back(const_cast<char *>("--tag"));
-    logger_command_line.push_back(daemon_name);
+    logger_command_line.push_back(const_cast<char *>(daemon_name));
     logger_command_line.push_back(nullptr);
 
     struct minijail *jail = minijail->New();
@@ -90,13 +85,6 @@ void SetupLogging(chromeos::Minijail *minijail,
   }
 }
 
-gboolean ExitSigHandler(gpointer data) {
-  LOG(INFO) << "Shutting down due to received signal.";
-  lorgnette::Daemon *daemon = reinterpret_cast<lorgnette::Daemon*>(data);
-  daemon->Quit();
-  return TRUE;
-}
-
 // Enter a sanboxed vfs namespace.
 void EnterVFSNamespace(chromeos::Minijail *minijail) {
   struct minijail *jail = minijail->New();
@@ -113,11 +101,21 @@ void DropPrivileges(chromeos::Minijail *minijail) {
   minijail->Destroy(jail);
 }
 
+void OnStartup(const char *daemon_name, CommandLine *cl) {
+  chromeos::Minijail *minijail = chromeos::Minijail::GetInstance();
+  SetupLogging(minijail, cl->HasSwitch(switches::kForeground), daemon_name);
+
+  LOG(INFO) << __func__ << ": Dropping privileges";
+  EnterVFSNamespace(minijail);
+
+  // Now that the daemon has all the resources it needs to run, we can drop
+  // privileges further.
+  DropPrivileges(minijail);
+}
+
 int main(int argc, char **argv) {
-  base::AtExitManager exit_manager;
   CommandLine::Init(argc, argv);
   CommandLine *cl = CommandLine::ForCurrentProcess();
-  chromeos::Minijail *minijail = chromeos::Minijail::GetInstance();
 
   if (cl->HasSwitch(switches::kHelp)) {
     LOG(INFO) << switches::kHelpMessage;
@@ -128,20 +126,7 @@ int main(int argc, char **argv) {
   if (!cl->HasSwitch(switches::kForeground))
     PLOG_IF(FATAL, daemon(nochdir, noclose) == -1) << "Failed to daemonize";
 
-  SetupLogging(minijail, cl->HasSwitch(switches::kForeground), argv[0]);
-
-  lorgnette::Daemon daemon;
-
-  g_unix_signal_add(SIGINT, ExitSigHandler, &daemon);
-  g_unix_signal_add(SIGTERM, ExitSigHandler, &daemon);
-
-  daemon.Start();
-
-  EnterVFSNamespace(minijail);
-
-  // Now that the daemon has all the resources it needs to run, we can drop
-  // privileges further.
-  DropPrivileges(minijail);
+  lorgnette::Daemon daemon(base::Bind(&OnStartup, argv[0], cl));
 
   daemon.Run();
 

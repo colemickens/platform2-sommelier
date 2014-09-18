@@ -6,6 +6,7 @@
 
 #include <signal.h>
 #include <stdint.h>
+#include <unistd.h>
 
 #include <vector>
 
@@ -17,6 +18,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/variant_dictionary.h>
 #include <chromeos/process.h>
 
 #include "lorgnette/daemon.h"
@@ -36,35 +38,19 @@ const char Manager::kScanImageFormattedDeviceListCmd[] =
 const char Manager::kScanImagePath[] = "/usr/bin/scanimage";
 const int Manager::kTimeoutAfterKillSeconds = 1;
 
-Manager::DBusAdaptor::DBusAdaptor(Manager *manager, DBus::Connection *conn)
-    : DBus::ObjectAdaptor(*conn, kManagerServicePath),
-      manager_(manager) {}
-
-Manager::DBusAdaptor::~DBusAdaptor() {}
-
-Manager::ScannerInfo Manager::DBusAdaptor::ListScanners(
-    ::DBus::Error &error) {  // NOLINT(runtime/references)
-  return manager_->ListScanners(&error);
-}
-
-void Manager::DBusAdaptor::ScanImage(
-    const string &device_name,
-    const ::DBus::FileDescriptor &outfd,
-    const map<string, ::DBus::Variant> &scan_properties,
-    ::DBus::Error &error) {  // NOLINT(runtime/references)
-  manager_->ScanImage(device_name, outfd, scan_properties, &error);
-}
-
 Manager::Manager(base::Callback<void()> activity_callback)
     : activity_callback_(activity_callback) {}
 
 Manager::~Manager() {}
 
-void Manager::InitDBus(::DBus::Connection *connection) {
-  dbus_adaptor_.reset(new DBusAdaptor(this, connection));
+void Manager::InitDBus(
+    chromeos::dbus_utils::ExportedObjectManager *object_manager) {
+  dbus_adaptor_.reset(
+     new org::chromium::lorgnette::ManagerAdaptor(
+         object_manager, kManagerServicePath, this));
 }
 
-Manager::ScannerInfo Manager::ListScanners(::DBus::Error *error) {
+Manager::ScannerInfo Manager::ListScanners(chromeos::ErrorPtr *error) {
   base::FilePath output_path;
   FILE *output_file_handle;
   output_file_handle = base::CreateAndOpenTemporaryFile(&output_path);
@@ -90,10 +76,10 @@ Manager::ScannerInfo Manager::ListScanners(::DBus::Error *error) {
 }
 
 void Manager::ScanImage(
+    chromeos::ErrorPtr *error,
     const string &device_name,
-    const ::DBus::FileDescriptor &outfd,
-    const map<string, ::DBus::Variant> &scan_properties,
-    ::DBus::Error *error) {
+    const dbus::FileDescriptor &outfd,
+    const chromeos::VariantDictionary &scan_properties) {
   int pipe_fds[2];
   if (pipe(pipe_fds) != 0) {
     SetError(__func__, "Unable to create process pipe", error);
@@ -104,8 +90,12 @@ void Manager::ScanImage(
   ScopedFD pipe_fd_output(pipe_fds[1]);
   chromeos::ProcessImpl scan_process;
   chromeos::ProcessImpl convert_process;
+
+  // Since the FileDescriptor object retains ownership of this file descriptor,
+  // make a local copy.
+  int out_fd = dup(outfd.value());
   RunScanImageProcess(device_name,
-                      outfd.get(),
+                      out_fd,
                       &pipe_fd_input,
                       &pipe_fd_output,
                       scan_properties,
@@ -129,20 +119,20 @@ void Manager::RunScanImageProcess(
     int out_fd,
     ScopedFD *pipe_fd_input,
     ScopedFD *pipe_fd_output,
-    const map<string, ::DBus::Variant> &scan_properties,
+    const chromeos::VariantDictionary &scan_properties,
     chromeos::Process *scan_process,
     chromeos::Process *convert_process,
-    ::DBus::Error *error) {
+    chromeos::ErrorPtr *error) {
   scan_process->AddArg(kScanImagePath);
   scan_process->AddArg("-d");
   scan_process->AddArg(device_name);
 
   for (const auto &property : scan_properties) {
     const string &property_name = property.first;
-    const ::DBus::Variant &property_value = property.second;
+    const auto &property_value = property.second;
     if (property_name == kScanPropertyMode &&
-        property_value.signature() == ::DBus::type<string>::sig()) {
-      string mode = property_value.reader().get_string();
+        property_value.IsTypeCompatible<string>()) {
+      string mode = property_value.Get<string>();
       if (mode != kScanPropertyModeColor &&
           mode != kScanPropertyModeGray &&
           mode != kScanPropertyModeLineart) {
@@ -152,17 +142,17 @@ void Manager::RunScanImageProcess(
         return;
       }
       scan_process->AddArg("--mode");
-      scan_process->AddArg(property_value.reader().get_string());
+      scan_process->AddArg(mode);
     } else if (property_name == kScanPropertyResolution &&
-               property_value.signature() == ::DBus::type<uint32_t>::sig()) {
+               property_value.IsTypeCompatible<uint32_t>()) {
       scan_process->AddArg("--resolution");
       scan_process->AddArg(base::UintToString(
-          property_value.reader().get_uint32()));
+          property_value.Get<unsigned int>()));
     } else {
       SetError(__func__,
-               StringPrintf("Invalid scan parameter %s with signature %s",
+               StringPrintf("Invalid scan parameter %s of type %s",
                             property_name.c_str(),
-                            property_value.signature().c_str()),
+                            property_value.GetType().name()),
                error);
       return;
     }
@@ -225,8 +215,9 @@ Manager::ScannerInfo Manager::ScannerInfoFromString(
 // static
 void Manager::SetError(const string &method,
                        const string &message,
-                       ::DBus::Error *error) {
-  error->set(kManagerServiceError, message.c_str());
+                       chromeos::ErrorPtr *error) {
+  chromeos::Error::AddTo(
+      error, chromeos::errors::dbus::kDomain, kManagerServiceError, message);
   LOG(ERROR) << method << ": " << message;
 }
 
