@@ -277,14 +277,6 @@ class Daemon : public policy::BacklightControllerObserver,
   // Last session state that we have been informed of. Initialized as stopped.
   SessionState session_state_;
 
-  // Has |state_controller_| been initialized?  Daemon::Init() invokes a
-  // bunch of event-handling functions directly, but events shouldn't be
-  // passed to |state_controller_| until it's been initialized.
-  bool state_controller_initialized_;
-
-  // Has |wakeup_controller_| been initialized?
-  bool wakeup_controller_initialized_;
-
   // Set to true if powerd touched a file for crash-reporter before
   // suspending. If true, the file will be unlinked after resuming.
   bool created_suspended_state_file_;

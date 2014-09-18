@@ -436,8 +436,6 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
                                          true /* is_repeating */),
       suspend_announced_path_(run_dir.Append(kSuspendAnnouncedFile)),
       session_state_(SESSION_STOPPED),
-      state_controller_initialized_(false),
-      wakeup_controller_initialized_(false),
       created_suspended_state_file_(false),
       lock_vt_before_suspend_(false),
       log_suspend_with_mosys_eventlog_(false),
@@ -527,8 +525,6 @@ void Daemon::Init() {
   metrics_collector_->Init(prefs_.get(), display_backlight_controller_.get(),
                            keyboard_backlight_controller_.get(), power_status);
 
-  OnPowerStatusUpdate();
-
   dark_resume_->Init(power_supply_.get(), prefs_.get());
   suspender_->Init(this, dbus_sender_.get(), dark_resume_.get(), prefs_.get());
 
@@ -538,16 +534,17 @@ void Daemon::Init() {
 
   const LidState lid_state = input_watcher_->QueryLidState();
   wakeup_controller_->Init(udev_.get(), acpi_wakeup_helper_.get(), lid_state);
-  wakeup_controller_initialized_ = true;
 
   const PowerSource power_source =
       power_status.line_power_on ? POWER_AC : POWER_BATTERY;
   state_controller_->Init(state_controller_delegate_.get(), prefs_.get(),
                           power_source, lid_state);
-  state_controller_initialized_ = true;
 
   audio_client_->Init(cras_dbus_proxy_);
   peripheral_battery_watcher_->Init(dbus_sender_.get());
+
+  // Call this last to ensure that all of our members are already initialized.
+  OnPowerStatusUpdate();
 }
 
 bool Daemon::BoolPrefIsTrue(const std::string& name) const {
@@ -600,18 +597,14 @@ void Daemon::HandleLidClosed() {
   // It is important that we notify WakeupController first so that it can
   // inhibit input devices quickly. StateController will issue a blocking call
   // to Chrome which can take longer than a second.
-  if (wakeup_controller_initialized_)
-    wakeup_controller_->SetLidState(LID_CLOSED);
-  if (state_controller_initialized_)
-    state_controller_->HandleLidStateChange(LID_CLOSED);
+  wakeup_controller_->SetLidState(LID_CLOSED);
+  state_controller_->HandleLidStateChange(LID_CLOSED);
 }
 
 void Daemon::HandleLidOpened() {
   suspender_->HandleLidOpened();
-  if (state_controller_initialized_)
-    state_controller_->HandleLidStateChange(LID_OPEN);
-  if (wakeup_controller_initialized_)
-    wakeup_controller_->SetLidState(LID_OPEN);
+  state_controller_->HandleLidStateChange(LID_OPEN);
+  wakeup_controller_->SetLidState(LID_OPEN);
 }
 
 void Daemon::HandlePowerButtonEvent(ButtonState state) {
@@ -814,9 +807,6 @@ bool Daemon::CanSafelyExitDarkResume() {
 }
 
 void Daemon::OnAudioStateChange(bool active) {
-  // |state_controller_| needs to be ready at this point -- since notifications
-  // only arrive when the audio state changes, skipping any is unsafe.
-  CHECK(state_controller_initialized_);
   state_controller_->HandleAudioStateChange(active);
 }
 
@@ -833,8 +823,7 @@ void Daemon::OnPowerStatusUpdate() {
     display_backlight_controller_->HandlePowerSourceChange(power_source);
   if (keyboard_backlight_controller_)
     keyboard_backlight_controller_->HandlePowerSourceChange(power_source);
-  if (state_controller_initialized_)
-    state_controller_->HandlePowerSourceChange(power_source);
+  state_controller_->HandlePowerSourceChange(power_source);
 
   if (status.battery_is_present && status.battery_below_shutdown_threshold) {
     LOG(INFO) << "Shutting down due to low battery ("
@@ -1379,8 +1368,7 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
 
   session_state_ = state;
   metrics_collector_->HandleSessionStateChange(state);
-  if (state_controller_initialized_)
-    state_controller_->HandleSessionStateChange(state);
+  state_controller_->HandleSessionStateChange(state);
   if (display_backlight_controller_)
     display_backlight_controller_->HandleSessionStateChange(state);
   if (keyboard_backlight_controller_)

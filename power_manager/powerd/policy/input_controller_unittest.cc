@@ -132,12 +132,11 @@ class InputControllerTest : public ::testing::Test {
 TEST_F(InputControllerTest, LidEvents) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
-  // An initial event about the lid state should be sent at initialization.
+  // Initialization shouldn't generate a synthetic event.
   prefs_.SetInt64(kUseLidPref, 1);
   Init();
-  EXPECT_EQ(kLidOpened, delegate_.GetActions());
-  EXPECT_EQ(InputEvent_Type_LID_OPEN, GetInputEventSignalType());
-  EXPECT_EQ(Now().ToInternalValue(), GetInputEventSignalTimestamp());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
   dbus_sender_.ClearSentSignals();
 
   AdvanceTime(base::TimeDelta::FromSeconds(1));

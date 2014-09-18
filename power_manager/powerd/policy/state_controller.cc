@@ -205,7 +205,7 @@ void StateController::Init(Delegate* delegate,
 }
 
 void StateController::HandlePowerSourceChange(PowerSource source) {
-  DCHECK(initialized_);
+  CHECK(initialized_);
   if (source == power_source_)
     return;
 
@@ -216,7 +216,7 @@ void StateController::HandlePowerSourceChange(PowerSource source) {
 }
 
 void StateController::HandleLidStateChange(LidState state) {
-  DCHECK(initialized_);
+  CHECK(initialized_);
   if (state == lid_state_)
     return;
 
@@ -228,7 +228,7 @@ void StateController::HandleLidStateChange(LidState state) {
 }
 
 void StateController::HandleSessionStateChange(SessionState state) {
-  DCHECK(initialized_);
+  CHECK(initialized_);
   if (state == session_state_)
     return;
 
@@ -241,7 +241,7 @@ void StateController::HandleSessionStateChange(SessionState state) {
 }
 
 void StateController::HandleUpdaterStateChange(UpdaterState state) {
-  DCHECK(initialized_);
+  CHECK(initialized_);
   if (state == updater_state_)
     return;
 
@@ -251,7 +251,7 @@ void StateController::HandleUpdaterStateChange(UpdaterState state) {
 }
 
 void StateController::HandleDisplayModeChange(DisplayMode mode) {
-  DCHECK(initialized_);
+  CHECK(initialized_);
   if (mode == display_mode_ && got_initial_display_mode_)
     return;
 
@@ -269,7 +269,7 @@ void StateController::HandleDisplayModeChange(DisplayMode mode) {
 }
 
 void StateController::HandleResume() {
-  DCHECK(initialized_);
+  CHECK(initialized_);
   VLOG(1) << "System resumed";
 
   switch (delegate_->QueryLidState()) {
@@ -298,7 +298,7 @@ void StateController::HandleResume() {
 }
 
 void StateController::HandlePolicyChange(const PowerManagementPolicy& policy) {
-  DCHECK(initialized_);
+  CHECK(initialized_);
   VLOG(1) << "Received updated external policy: "
           << GetPolicyDebugString(policy);
   policy_ = policy;
@@ -310,7 +310,7 @@ void StateController::HandlePolicyChange(const PowerManagementPolicy& policy) {
 }
 
 void StateController::HandleUserActivity() {
-  DCHECK(initialized_);
+  CHECK(initialized_);
   VLOG(1) << "Saw user activity";
 
   // Ignore user activity reported while the lid is closed unless we're in
@@ -344,7 +344,7 @@ void StateController::HandleUserActivity() {
 }
 
 void StateController::HandleVideoActivity() {
-  DCHECK(initialized_);
+  CHECK(initialized_);
   VLOG(1) << "Saw video activity";
   if (screen_dimmed_ || screen_turned_off_) {
     VLOG(1) << "Ignoring video since screen is dimmed or off";
@@ -355,7 +355,7 @@ void StateController::HandleVideoActivity() {
 }
 
 void StateController::HandleAudioStateChange(bool active) {
-  DCHECK(initialized_);
+  CHECK(initialized_);
   VLOG(1) << "Audio is " << (active ? "active" : "inactive");
   if (active)
     audio_inactive_time_ = base::TimeTicks();
@@ -366,7 +366,7 @@ void StateController::HandleAudioStateChange(bool active) {
 }
 
 void StateController::OnPrefChanged(const std::string& pref_name) {
-  DCHECK(initialized_);
+  CHECK(initialized_);
   if (pref_name == kDisableIdleSuspendPref ||
       pref_name == kIgnoreExternalPolicyPref) {
     VLOG(1) << "Reloading prefs for " << pref_name << " change";

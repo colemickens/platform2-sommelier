@@ -57,7 +57,7 @@ void InputController::Init(system::InputWatcherInterface* input_watcher,
 
   bool use_lid = false;
   if (prefs->GetBool(kUseLidPref, &use_lid) && use_lid)
-    OnLidEvent(input_watcher_->QueryLidState());
+    lid_state_ = input_watcher_->QueryLidState();
 
   check_active_vt_timer_.Start(FROM_HERE,
       base::TimeDelta::FromSeconds(kCheckActiveVTFrequencySec),
