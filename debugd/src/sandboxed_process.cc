@@ -38,11 +38,16 @@ bool SandboxedProcess::GetHelperPath(const std::string& relative_path,
 
 bool SandboxedProcess::Init() {
   const char *kMiniJail = "/sbin/minijail0";
+
+  AddArg(kMiniJail);
+  // Enter a new mount namespace. This is done for every process to avoid
+  // affecting the original mount namespace.
+  AddArg("-v");
+
   if (sandboxing_) {
     if (user_.empty() || group_.empty())
       return false;
 
-    AddArg(kMiniJail);
     if (user_ != "root") {
       AddArg("-u");
       AddArg(user_);
@@ -51,18 +56,15 @@ bool SandboxedProcess::Init() {
       AddArg("-g");
       AddArg(group_);
     }
-
-    if (access_root_mount_ns_) {
-      // Enter root mount namespace.
-      AddStringOption("-V", "/proc/1/ns/mnt");
-      // Enter a new mount namespace.
-      // This will maintain access to the root mount namespace but will not
-      // pollute it with new mounts.
-      AddArg("-v");
-    }
-
-    AddArg("--");
   }
+
+  if (access_root_mount_ns_) {
+    // Enter root mount namespace.
+    AddStringOption("-V", "/proc/1/ns/mnt");
+  }
+
+  AddArg("--");
+
   return true;
 }
 

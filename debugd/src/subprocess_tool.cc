@@ -18,10 +18,17 @@ const char kErrorNoSuchProcess[] = "org.chromium.debugd.error.NoSuchProcess";
 
 }  // namespace
 
-ProcessWithId* SubprocessTool::CreateProcess(bool sandbox) {
+ProcessWithId* SubprocessTool::CreateProcess(bool sandboxed) {
+  return CreateProcess(sandboxed, false);
+}
+
+ProcessWithId* SubprocessTool::CreateProcess(bool sandboxed,
+                                             bool access_root_mount_ns) {
   ProcessWithId* p = new ProcessWithId();
-  if (!sandbox)
+  if (!sandboxed)
     p->DisableSandbox();
+  if (access_root_mount_ns)
+    p->AllowAccessRootMountNamespace();
   if (!p->Init() || processes_.count(p->id()) == 1)
     return NULL;
   processes_[p->id()] = p;

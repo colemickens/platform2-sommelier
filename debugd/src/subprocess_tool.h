@@ -20,7 +20,10 @@ class SubprocessTool {
   SubprocessTool() = default;
   virtual ~SubprocessTool() = default;
 
-  virtual ProcessWithId* CreateProcess(bool sandbox);
+  virtual ProcessWithId* CreateProcess(bool sandboxed);
+  virtual ProcessWithId* CreateProcess(bool sandboxed,
+                                       bool allow_root_mount_ns);
+
   virtual void Stop(const std::string& handle, DBus::Error* error);
 
  private:

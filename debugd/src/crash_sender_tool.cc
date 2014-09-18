@@ -9,12 +9,9 @@
 namespace debugd {
 
 void CrashSenderTool::UploadCrashes(DBus::Error* error) {
-  ProcessWithId* p = CreateProcess(false);
-  // TODO(jorgelo): This mount namespace shuffling should be handled by
-  // minijail.  See http://crbug.com/376987 for details.
-  p->AddArg("/usr/bin/nsenter");
-  p->AddArg("--mount=/proc/1/ns/mnt");
-  p->AddArg("--");
+  // 'crash_sender' requires accessing user mounts to upload user crashes.
+  ProcessWithId* p =
+      CreateProcess(false /* sandboxed */, true /* access_root_mount_ns */);
   p->AddArg("/sbin/crash_sender");
   p->AddStringOption("-e", "SECONDS_SEND_SPREAD=1");
   p->Run();
