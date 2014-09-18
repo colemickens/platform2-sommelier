@@ -52,4 +52,32 @@
   LAZY_STREAM(SPLOG_STREAM(verbose_level), \
               SLOG_IS_ON(scope, verbose_level) && (condition))
 
+namespace base {
+
+class CommandLine;
+
+}  // namespace base
+
+namespace shill {
+
+namespace switches {
+
+// Command line switches used to setup logging.
+// Clients may use this to display useful help messages.
+
+// Logging level:
+//   0 = LOG(INFO), 1 = LOG(WARNING), 2 = LOG(ERROR),
+//   -1 = SLOG(..., 1), -2 = SLOG(..., 2), etc.
+extern const char kLogLevel[];
+// Scopes to enable for SLOG()-based logging.
+extern const char kLogScopes[];
+
+}  // namespace switches
+
+// Looks for the command line switches |kLogLevelSwitch| and |kLogScopesSwitch|
+// in |cl| and accordingly sets log scopes and levels.
+void SetLogLevelFromCommandLine(base::CommandLine *cl);
+
+}  // namespace shill
+
 #endif  // SHILL_LOGGING_H_

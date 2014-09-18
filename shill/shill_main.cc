@@ -14,7 +14,6 @@
 #include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <chromeos/minijail/minijail.h>
 #include <chromeos/syslog_logging.h>
@@ -38,12 +37,6 @@ static const char kDeviceBlackList[] = "device-black-list";
 static const char kPortalList[] = "portal-list";
 // Flag that causes shill to show the help message and exit.
 static const char kHelp[] = "help";
-// Logging level:
-//   0 = LOG(INFO), 1 = LOG(WARNING), 2 = LOG(ERROR),
-//   -1 = SLOG(..., 1), -2 = SLOG(..., 2), etc.
-static const char kLogLevel[] = "log-level";
-// Scopes to enable for SLOG()-based logging.
-static const char kLogScopes[] = "log-scopes";
 
 // The help message shown if help flag is passed to the program.
 static const char kHelpMessage[] = "\n"
@@ -141,23 +134,7 @@ int main(int argc, char** argv) {
     PLOG_IF(FATAL, daemon(nochdir, noclose) == -1) << "Failed to daemonize";
 
   SetupLogging(cl->HasSwitch(switches::kForeground), argv[0]);
-  if (cl->HasSwitch(switches::kLogLevel)) {
-    string log_level = cl->GetSwitchValueASCII(switches::kLogLevel);
-    int level = 0;
-    if (base::StringToInt(log_level, &level) &&
-        level < logging::LOG_NUM_SEVERITIES) {
-      logging::SetMinLogLevel(level);
-      // Like VLOG, SLOG uses negative verbose level.
-      shill::ScopeLogger::GetInstance()->set_verbose_level(-level);
-    } else {
-      LOG(WARNING) << "Bad log level: " << log_level;
-    }
-  }
-
-  if (cl->HasSwitch(switches::kLogScopes)) {
-    string log_scopes = cl->GetSwitchValueASCII(switches::kLogScopes);
-    shill::ScopeLogger::GetInstance()->EnableScopesByName(log_scopes);
-  }
+  shill::SetLogLevelFromCommandLine(cl);
 
   // TODO(pstew): This should be chosen based on config
   // Make sure we delete the DBusControl object AFTER the LazyInstances

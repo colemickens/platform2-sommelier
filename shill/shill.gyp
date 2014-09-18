@@ -343,6 +343,7 @@
         'key_file_store.cc',
         'key_value_store.cc',
         'link_monitor.cc',
+        'logging.cc',
 	'mac80211_monitor.cc',
         'manager.cc',
         'manager_dbus_adaptor.cc',
