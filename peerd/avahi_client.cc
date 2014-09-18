@@ -63,7 +63,8 @@ void AvahiClient::RegisterOnAvahiRestartCallback(
 void AvahiClient::ReadInitialState(bool ignored_success) {
   auto resp = CallMethodAndBlock(
       server_, dbus_constants::avahi::kServerInterface,
-      dbus_constants::avahi::kServerMethodGetState);
+      dbus_constants::avahi::kServerMethodGetState,
+      nullptr);
   int32_t state;
   // We don't particularly care about errors.  If Avahi happens to be down
   // we'll wait for it to come up and rely on the signals it sends.
