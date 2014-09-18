@@ -36,25 +36,29 @@ void Command::SetProgress(int progress) {
   chromeos::dbus_utils::CallMethodAndBlock(GetObjectProxy(),
                                            dbus_constants::kCommandInterface,
                                            dbus_constants::kCommandSetProgress,
+                                           nullptr,
                                            progress);
 }
 
 void Command::Abort() {
   chromeos::dbus_utils::CallMethodAndBlock(GetObjectProxy(),
                                            dbus_constants::kCommandInterface,
-                                           dbus_constants::kCommandAbort);
+                                           dbus_constants::kCommandAbort,
+                                           nullptr);
 }
 
 void Command::Cancel() {
   chromeos::dbus_utils::CallMethodAndBlock(GetObjectProxy(),
                                            dbus_constants::kCommandInterface,
-                                           dbus_constants::kCommandCancel);
+                                           dbus_constants::kCommandCancel,
+                                           nullptr);
 }
 
 void Command::Done() {
   chromeos::dbus_utils::CallMethodAndBlock(GetObjectProxy(),
                                            dbus_constants::kCommandInterface,
-                                           dbus_constants::kCommandDone);
+                                           dbus_constants::kCommandDone,
+                                           nullptr);
 }
 
 int Command::GetProgress() const {
