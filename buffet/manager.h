@@ -12,6 +12,7 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/values.h>
+#include <chromeos/dbus/data_serialization.h>
 #include <chromeos/dbus/dbus_object.h>
 #include <chromeos/dbus/exported_property_set.h>
 #include <chromeos/errors/error.h>
@@ -27,6 +28,7 @@ class ExportedObjectManager;
 namespace buffet {
 
 class CommandManager;
+class StateManager;
 
 // The Manager is responsible for global state of Buffet.  It exposes
 // interfaces which affect the entire device such as device registration and
@@ -40,9 +42,6 @@ class Manager final {
       const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
  private:
-  // DBus properties:
-  chromeos::dbus_utils::ExportedProperty<std::string> state_;
-
   // DBus methods:
   // Handles calls to org.chromium.Buffet.Manager.CheckDeviceRegistered().
   std::string HandleCheckDeviceRegistered(chromeos::ErrorPtr* error);
@@ -57,7 +56,7 @@ class Manager final {
                                          const std::string& user_auth_code);
   // Handles calls to org.chromium.Buffet.Manager.UpdateState().
   void HandleUpdateState(chromeos::ErrorPtr* error,
-                         const std::string& json_state_fragment);
+                         const chromeos::dbus_utils::Dictionary& property_set);
   // Handles calls to org.chromium.Buffet.Manager.AddCommand().
   void HandleAddCommand(chromeos::ErrorPtr* error,
                         const std::string& json_command);
@@ -68,6 +67,7 @@ class Manager final {
   chromeos::dbus_utils::DBusObject dbus_object_;
 
   std::shared_ptr<CommandManager> command_manager_;
+  std::shared_ptr<StateManager> state_manager_;
   std::unique_ptr<DeviceRegistrationInfo> device_info_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);

@@ -1,0 +1,12 @@
+{
+  "base": {
+    "serialNumber": "string",
+    "manufacturer": "string",
+    "model": "string",
+    "firmwareVersion": "string",
+    "supportUrl": "string",
+    "updateUrl": "string",
+    "localDiscoveryEnabled": "boolean",
+    "isProximityTokenRequired": "boolean"
+  }
+}

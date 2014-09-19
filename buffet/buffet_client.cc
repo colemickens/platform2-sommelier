@@ -10,11 +10,12 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/values.h>
 #include <chromeos/any.h>
 #include <chromeos/data_encoding.h>
 #include <chromeos/dbus/data_serialization.h>
+#include <chromeos/dbus/dbus_method_invoker.h>
+#include <chromeos/errors/error.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
@@ -25,8 +26,13 @@
 
 using namespace buffet::dbus_constants;  // NOLINT(build/namespaces)
 
+using chromeos::dbus_utils::CallMethodAndBlock;
+using chromeos::dbus_utils::CallMethodAndBlockWithTimeout;
+using chromeos::dbus_utils::Dictionary;
+using chromeos::dbus_utils::ExtractMethodCallResults;
+using chromeos::ErrorPtr;
+
 namespace {
-static const int default_timeout_ms = 1000;
 
 void usage() {
   std::cerr << "Possible commands:" << std::endl;
@@ -40,7 +46,8 @@ void usage() {
   std::cerr << "  " << kManagerAddCommand
                     << " '{\"name\":\"command_name\",\"parameters\":{}}'"
                     << std::endl;
-  std::cerr << "  " << kManagerUpdateStateMethod << std::endl;
+  std::cerr << "  " << kManagerUpdateStateMethod
+                    << " prop_name prop_value" << std::endl;
   std::cerr << "  " << dbus::kObjectManagerGetManagedObjects << std::endl;
 }
 
@@ -64,21 +71,19 @@ class BuffetHelperProxy {
     if (!args.empty())
       message = args.front();
 
-    dbus::MethodCall method_call(kManagerInterface, kManagerTestMethod);
-    dbus::MessageWriter writer(&method_call);
-    writer.AppendString(message);
-    scoped_ptr<dbus::Response> response(
-        manager_proxy_->CallMethodAndBlock(&method_call, default_timeout_ms));
-    if (!response) {
-      std::cout << "Failed to receive a response." << std::endl;
+    ErrorPtr error;
+    auto response = CallMethodAndBlock(
+        manager_proxy_,
+        kManagerInterface, kManagerTestMethod, &error,
+        message);
+    std::string response_message;
+    if (!response ||
+        !ExtractMethodCallResults(response.get(), &error, &response_message)) {
+      std::cout << "Failed to receive a response:"
+                << error->GetMessage() << std::endl;
       return EX_UNAVAILABLE;
     }
-    dbus::MessageReader reader(response.get());
-    std::string response_message;
-    if (!reader.PopString(&response_message)) {
-      std::cout << "No valid response." << std::endl;
-      return EX_SOFTWARE;
-    }
+
     std::cout << "Received a response: " << response_message << std::endl;
     return EX_OK;
   }
@@ -90,21 +95,17 @@ class BuffetHelperProxy {
       usage();
       return EX_USAGE;
     }
-    dbus::MethodCall method_call(
-        kManagerInterface, kManagerCheckDeviceRegistered);
 
-    scoped_ptr<dbus::Response> response(
-        manager_proxy_->CallMethodAndBlock(&method_call, default_timeout_ms));
-    if (!response) {
-      std::cout << "Failed to receive a response." << std::endl;
-      return EX_UNAVAILABLE;
-    }
-
-    dbus::MessageReader reader(response.get());
+    ErrorPtr error;
+    auto response = CallMethodAndBlock(
+        manager_proxy_,
+        kManagerInterface, kManagerCheckDeviceRegistered, &error);
     std::string device_id;
-    if (!reader.PopString(&device_id)) {
-      std::cout << "No device ID in response." << std::endl;
-      return EX_SOFTWARE;
+    if (!response ||
+        !ExtractMethodCallResults(response.get(), &error, &device_id)) {
+      std::cout << "Failed to receive a response:"
+                << error->GetMessage() << std::endl;
+      return EX_UNAVAILABLE;
     }
 
     std::cout << "Device ID: "
@@ -120,21 +121,16 @@ class BuffetHelperProxy {
       usage();
       return EX_USAGE;
     }
-    dbus::MethodCall method_call(
-        kManagerInterface, kManagerGetDeviceInfo);
 
-    scoped_ptr<dbus::Response> response(
-        manager_proxy_->CallMethodAndBlock(&method_call, default_timeout_ms));
-    if (!response) {
-      std::cout << "Failed to receive a response." << std::endl;
-      return EX_UNAVAILABLE;
-    }
-
-    dbus::MessageReader reader(response.get());
+    ErrorPtr error;
+    auto response = CallMethodAndBlock(
+        manager_proxy_, kManagerInterface, kManagerGetDeviceInfo, &error);
     std::string device_info;
-    if (!reader.PopString(&device_info)) {
-      std::cout << "No device info in response." << std::endl;
-      return EX_SOFTWARE;
+    if (!response ||
+        !ExtractMethodCallResults(response.get(), &error, &device_info)) {
+      std::cout << "Failed to receive a response:"
+                << error->GetMessage() << std::endl;
+      return EX_UNAVAILABLE;
     }
 
     std::cout << "Device Info: "
@@ -150,8 +146,8 @@ class BuffetHelperProxy {
       usage();
       return EX_USAGE;
     }
-    chromeos::dbus_utils::Dictionary params;
 
+    Dictionary params;
     if (!args.empty()) {
       auto key_values = chromeos::data_encoding::WebParamsDecode(args.front());
       for (const auto& pair : key_values) {
@@ -159,25 +155,19 @@ class BuffetHelperProxy {
       }
     }
 
-    dbus::MethodCall method_call(
-        kManagerInterface, kManagerStartRegisterDevice);
-    dbus::MessageWriter writer(&method_call);
-    CHECK(chromeos::dbus_utils::AppendValueToWriter(&writer, params))
-        << "Failed to send the parameters over D-Bus";
-
+    ErrorPtr error;
     static const int timeout_ms = 3000;
-    scoped_ptr<dbus::Response> response(
-        manager_proxy_->CallMethodAndBlock(&method_call, timeout_ms));
-    if (!response) {
-      std::cout << "Failed to receive a response." << std::endl;
-      return EX_UNAVAILABLE;
-    }
-
-    dbus::MessageReader reader(response.get());
+    auto response = CallMethodAndBlockWithTimeout(
+        timeout_ms,
+        manager_proxy_,
+        kManagerInterface, kManagerStartRegisterDevice, &error,
+        params);
     std::string info;
-    if (!reader.PopString(&info)) {
-      std::cout << "No valid response." << std::endl;
-      return EX_SOFTWARE;
+    if (!response ||
+        !ExtractMethodCallResults(response.get(), &error, &info)) {
+      std::cout << "Failed to receive a response:"
+                << error->GetMessage() << std::endl;
+      return EX_UNAVAILABLE;
     }
 
     std::cout << "Registration started: " << info << std::endl;
@@ -191,25 +181,22 @@ class BuffetHelperProxy {
       usage();
       return EX_USAGE;
     }
-    dbus::MethodCall method_call(
-        kManagerInterface, kManagerFinishRegisterDevice);
-    dbus::MessageWriter writer(&method_call);
+
+    ErrorPtr error;
     std::string user_auth_code;
     if (!args.empty()) { user_auth_code = args.front(); }
-    writer.AppendString(user_auth_code);
     static const int timeout_ms = 10000;
-    scoped_ptr<dbus::Response> response(
-        manager_proxy_->CallMethodAndBlock(&method_call, timeout_ms));
-    if (!response) {
-      std::cout << "Failed to receive a response." << std::endl;
-      return EX_UNAVAILABLE;
-    }
-
-    dbus::MessageReader reader(response.get());
+    auto response = CallMethodAndBlockWithTimeout(
+        timeout_ms,
+        manager_proxy_,
+        kManagerInterface, kManagerFinishRegisterDevice, &error,
+        user_auth_code);
     std::string device_id;
-    if (!reader.PopString(&device_id)) {
-      std::cout << "No device ID in response." << std::endl;
-      return EX_SOFTWARE;
+    if (!response ||
+        !ExtractMethodCallResults(response.get(), &error, &device_id)) {
+      std::cout << "Failed to receive a response:"
+                << error->GetMessage() << std::endl;
+      return EX_UNAVAILABLE;
     }
 
     std::cout << "Device ID is "
@@ -219,20 +206,22 @@ class BuffetHelperProxy {
   }
 
   int CallManagerUpdateState(const CommandLine::StringVector& args) {
-    if (args.size() != 1) {
+    if (args.size() != 2) {
       std::cerr << "Invalid number of arguments for "
                 << "Manager." << kManagerUpdateStateMethod << std::endl;
       usage();
       return EX_USAGE;
     }
-    dbus::MethodCall method_call(
-        kManagerInterface, kManagerUpdateStateMethod);
-    dbus::MessageWriter writer(&method_call);
-    writer.AppendString(args.front());
-    scoped_ptr<dbus::Response> response(
-        manager_proxy_->CallMethodAndBlock(&method_call, default_timeout_ms));
-    if (!response) {
-      std::cout << "Failed to receive a response." << std::endl;
+
+    ErrorPtr error;
+    Dictionary property_set{{args.front(), args.back()}};
+    auto response = CallMethodAndBlock(
+        manager_proxy_,
+        kManagerInterface, kManagerUpdateStateMethod, &error,
+        property_set);
+    if (!response || !ExtractMethodCallResults(response.get(), &error)) {
+      std::cout << "Failed to receive a response:"
+                << error->GetMessage() << std::endl;
       return EX_UNAVAILABLE;
     }
     return EX_OK;
@@ -245,14 +234,15 @@ class BuffetHelperProxy {
       usage();
       return EX_USAGE;
     }
-    dbus::MethodCall method_call(
-        kManagerInterface, kManagerAddCommand);
-    dbus::MessageWriter writer(&method_call);
-    writer.AppendString(args.front());
-    scoped_ptr<dbus::Response> response(
-        manager_proxy_->CallMethodAndBlock(&method_call, default_timeout_ms));
-    if (!response) {
-      std::cout << "Failed to receive a response." << std::endl;
+
+    ErrorPtr error;
+    auto response = CallMethodAndBlock(
+        manager_proxy_,
+        kManagerInterface, kManagerAddCommand, &error,
+        args.front());
+    if (!response || !ExtractMethodCallResults(response.get(), &error)) {
+      std::cout << "Failed to receive a response:"
+                << error->GetMessage() << std::endl;
       return EX_UNAVAILABLE;
     }
     return EX_OK;
@@ -265,12 +255,15 @@ class BuffetHelperProxy {
       usage();
       return EX_USAGE;
     }
-    dbus::MethodCall method_call(
-        dbus::kObjectManagerInterface, dbus::kObjectManagerGetManagedObjects);
-    scoped_ptr<dbus::Response> response(
-        root_proxy_->CallMethodAndBlock(&method_call, default_timeout_ms));
+
+    ErrorPtr error;
+    auto response = CallMethodAndBlock(
+        manager_proxy_,
+        dbus::kObjectManagerInterface, dbus::kObjectManagerGetManagedObjects,
+        &error);
     if (!response) {
-      std::cout << "Failed to receive a response." << std::endl;
+      std::cout << "Failed to receive a response:"
+                << error->GetMessage() << std::endl;
       return EX_UNAVAILABLE;
     }
     std::cout << response->ToString() << std::endl;

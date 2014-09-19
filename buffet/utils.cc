@@ -15,6 +15,8 @@ namespace buffet {
 
 const char kErrorDomainBuffet[] = "buffet";
 const char kFileReadError[] = "file_read_error";
+const char kInvalidCategoryError[] = "invalid_category";
+const char kInvalidPackageError[] = "invalid_package";
 
 std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
     const base::FilePath& json_file_path, chromeos::ErrorPtr* error) {

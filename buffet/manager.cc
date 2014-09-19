@@ -21,6 +21,7 @@
 #include "buffet/commands/command_instance.h"
 #include "buffet/commands/command_manager.h"
 #include "buffet/libbuffet/dbus_constants.h"
+#include "buffet/states/state_manager.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
@@ -56,16 +57,14 @@ void Manager::RegisterAsync(const AsyncEventSequencer::CompletionAction& cb) {
   itf->AddMethodHandler(dbus_constants::kManagerTestMethod,
                         base::Unretained(this),
                         &Manager::HandleTestMethod);
-  itf->AddProperty("State", &state_);
-  // TODO(wiley): Initialize all properties appropriately before claiming
-  //              the properties interface.
-  state_.SetValue("{}");
   dbus_object_.RegisterAsync(cb);
   command_manager_ =
       std::make_shared<CommandManager>(dbus_object_.GetObjectManager());
   command_manager_->Startup();
+  state_manager_ = std::make_shared<StateManager>();
+  state_manager_->Startup();
   device_info_ = std::unique_ptr<DeviceRegistrationInfo>(
-      new DeviceRegistrationInfo(command_manager_));
+      new DeviceRegistrationInfo(command_manager_, state_manager_));
   device_info_->Load();
 }
 
@@ -118,9 +117,9 @@ std::string Manager::HandleFinishRegisterDevice(
 }
 
 void Manager::HandleUpdateState(
-    chromeos::ErrorPtr* error, const std::string& json_state_fragment) {
-  // TODO(wiley): Merge json state blobs intelligently.
-  state_.SetValue(json_state_fragment);
+    chromeos::ErrorPtr* error,
+    const chromeos::dbus_utils::Dictionary& property_set) {
+  state_manager_->UpdateProperties(property_set, error);
 }
 
 void Manager::HandleAddCommand(

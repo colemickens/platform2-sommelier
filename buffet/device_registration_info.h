@@ -25,6 +25,7 @@ class Value;
 namespace buffet {
 
 class CommandManager;
+class StateManager;
 
 extern const char kErrorDomainOAuth2[];
 extern const char kErrorDomainGCD[];
@@ -36,12 +37,14 @@ class DeviceRegistrationInfo {
   // This is a helper class for unit testing.
   class TestHelper;
   // This constructor uses CURL HTTP transport.
-  explicit DeviceRegistrationInfo(
-      const std::shared_ptr<CommandManager>& command_manager);
+  DeviceRegistrationInfo(
+      const std::shared_ptr<CommandManager>& command_manager,
+      const std::shared_ptr<const StateManager>& state_manager);
   // This constructor allows to pass in a custom HTTP transport
   // (mainly for testing).
   DeviceRegistrationInfo(
       const std::shared_ptr<CommandManager>& command_manager,
+      const std::shared_ptr<const StateManager>& state_manager,
       const std::shared_ptr<chromeos::http::Transport>& transport,
       const std::shared_ptr<StorageInterface>& storage);
 
@@ -143,6 +146,8 @@ class DeviceRegistrationInfo {
   std::shared_ptr<StorageInterface> storage_;
   // Global command manager.
   std::shared_ptr<CommandManager> command_manager_;
+  // Device state manager.
+  std::shared_ptr<const StateManager> state_manager_;
 
   friend class TestHelper;
   DISALLOW_COPY_AND_ASSIGN(DeviceRegistrationInfo);

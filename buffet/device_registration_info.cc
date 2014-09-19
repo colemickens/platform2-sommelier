@@ -19,6 +19,7 @@
 #include "buffet/commands/command_definition.h"
 #include "buffet/commands/command_manager.h"
 #include "buffet/device_registration_storage_keys.h"
+#include "buffet/states/state_manager.h"
 #include "buffet/storage_impls.h"
 #include "buffet/utils.h"
 
@@ -141,21 +142,26 @@ std::string BuildURL(const std::string& url,
 namespace buffet {
 
 DeviceRegistrationInfo::DeviceRegistrationInfo(
-    const std::shared_ptr<CommandManager>& command_manager)
-    : transport_(chromeos::http::Transport::CreateDefault()),
-      // TODO(avakulenko): Figure out security implications of storing
-      // this data unencrypted.
-      storage_(new FileStorage(base::FilePath(kDeviceInfoFilePath))),
-      command_manager_(command_manager) {
+    const std::shared_ptr<CommandManager>& command_manager,
+    const std::shared_ptr<const StateManager>& state_manager)
+    : DeviceRegistrationInfo(
+        command_manager,
+        state_manager,
+        chromeos::http::Transport::CreateDefault(),
+        // TODO(avakulenko): Figure out security implications of storing
+        // this data unencrypted.
+        std::make_shared<FileStorage>(base::FilePath{kDeviceInfoFilePath})) {
 }
 
 DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<CommandManager>& command_manager,
+    const std::shared_ptr<const StateManager>& state_manager,
     const std::shared_ptr<chromeos::http::Transport>& transport,
     const std::shared_ptr<StorageInterface>& storage)
-    : transport_(transport),
-      storage_(storage),
-      command_manager_(command_manager) {
+    : transport_{transport},
+      storage_{storage},
+      command_manager_{command_manager},
+      state_manager_{state_manager} {
 }
 
 std::pair<std::string, std::string>
@@ -367,6 +373,11 @@ std::string DeviceRegistrationInfo::StartRegistration(
   if (!commands)
     return std::string();
 
+  std::unique_ptr<base::DictionaryValue> state =
+      state_manager_->GetStateValuesAsJson(error);
+  if (!state)
+    return std::string();
+
   base::DictionaryValue req_json;
   req_json.SetString("oauthClientId", client_id_);
   req_json.SetString("deviceDraft.deviceKind", device_kind_);
@@ -374,6 +385,7 @@ std::string DeviceRegistrationInfo::StartRegistration(
   req_json.SetString("deviceDraft.displayName", display_name_);
   req_json.SetString("deviceDraft.channel.supportedType", "xmpp");
   req_json.Set("deviceDraft.commandDefs", commands.release());
+  req_json.Set("deviceDraft.state", state.release());
 
   std::string url = GetServiceURL("registrationTickets", {{"key", api_key_}});
   auto resp_json = chromeos::http::ParseJsonResponse(
