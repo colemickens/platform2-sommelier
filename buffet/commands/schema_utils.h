@@ -13,10 +13,12 @@
 #include <vector>
 
 #include <base/values.h>
+#include <chromeos/any.h>
 #include <chromeos/errors/error.h>
 
 namespace buffet {
 
+class PropType;
 class PropValue;
 class ObjectSchema;
 
@@ -70,7 +72,7 @@ std::unique_ptr<base::Value> TypedValueToJson(const std::vector<T>& values,
   return std::move(list);
 }
 
-// Similarly to CreateTypedValue() function above, the following overloaded
+// Similarly to TypedValueToJson() function above, the following overloaded
 // helper methods allow to extract specific C++ data types from base::Value.
 // Also used in template classes below to simplify specialization logic.
 bool TypedValueFromJson(const base::Value* value_in,
@@ -115,6 +117,18 @@ inline typename std::enable_if<std::is_floating_point<T>::value, bool>::type
 CompareValue(const T& v1, const T& v2) {
   return std::abs(v1 - v2) <= std::numeric_limits<T>::epsilon();
 }
+
+// Converts PropValue to Any in a format understood by D-Bus data serialization.
+// Has special handling for Object types where native_types::Object are
+// converted to chromeos::dbus_utils::Dictionary.
+chromeos::Any PropValueToDBusVariant(const PropValue* value);
+// Converts D-Bus variant to PropValue.
+// Has special handling for Object types where chromeos::dbus_utils::Dictionary
+// is converted to native_types::Object.
+std::shared_ptr<const PropValue> PropValueFromDBusVariant(
+    const PropType* type,
+    const chromeos::Any& value,
+    chromeos::ErrorPtr* error);
 
 }  // namespace buffet
 

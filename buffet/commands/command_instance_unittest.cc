@@ -168,7 +168,7 @@ TEST_F(CommandInstanceTest, FromJson_ParamError) {
             first->GetMessage());
   auto inner = error->GetInnerError();
   EXPECT_EQ("invalid_parameter_value", inner->GetCode());
-  EXPECT_EQ("Invalid parameter value for property 'volume'",
+  EXPECT_EQ("Invalid value for property 'volume'",
             inner->GetMessage());
   EXPECT_EQ("command_failed", error->GetCode());
   EXPECT_EQ("Failed to validate command 'robot.speak'", error->GetMessage());
