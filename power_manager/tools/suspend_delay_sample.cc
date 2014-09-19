@@ -4,22 +4,18 @@
 
 #include <base/at_exit.h>
 #include <base/bind.h>
+#include <base/command_line.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/flag_helper.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
-#include <gflags/gflags.h>
 
 #include "power_manager/proto_bindings/suspend.pb.h"
-
-DEFINE_int32(delay_ms, 5000,
-             "Milliseconds to wait before reporting suspend readiness");
-
-DEFINE_int32(timeout_ms, 7000, "Suspend timeout in milliseconds");
 
 namespace {
 
@@ -56,10 +52,11 @@ bool CallMethod(dbus::ObjectProxy* powerd_proxy,
 }
 
 // Registers a suspend delay and returns the corresponding ID.
-int RegisterSuspendDelay(dbus::ObjectProxy* powerd_proxy) {
+int RegisterSuspendDelay(dbus::ObjectProxy* powerd_proxy,
+                         int timeout_ms) {
   power_manager::RegisterSuspendDelayRequest request;
   request.set_timeout(
-      base::TimeDelta::FromMilliseconds(FLAGS_timeout_ms).ToInternalValue());
+      base::TimeDelta::FromMilliseconds(timeout_ms).ToInternalValue());
   request.set_description(kSuspendDelayDescription);
   power_manager::RegisterSuspendDelayReply reply;
   CHECK(CallMethod(powerd_proxy, power_manager::kRegisterSuspendDelayMethod,
@@ -85,6 +82,7 @@ void SendSuspendReady(scoped_refptr<dbus::ObjectProxy> powerd_proxy,
 // SendSuspendReady() after a delay.
 void HandleSuspendImminent(scoped_refptr<dbus::ObjectProxy> powerd_proxy,
                            int delay_id,
+                           int delay_ms,
                            dbus::Signal* signal) {
   power_manager::SuspendImminent info;
   dbus::MessageReader reader(signal);
@@ -92,10 +90,10 @@ void HandleSuspendImminent(scoped_refptr<dbus::ObjectProxy> powerd_proxy,
   int suspend_id = info.suspend_id();
 
   LOG(INFO) << "Got notification about suspend attempt " << suspend_id;
-  LOG(INFO) << "Sleeping " << FLAGS_delay_ms << " ms before responding";
+  LOG(INFO) << "Sleeping " << delay_ms << " ms before responding";
   base::MessageLoop::current()->PostDelayedTask(FROM_HERE,
       base::Bind(&SendSuspendReady, powerd_proxy, delay_id, suspend_id),
-      base::TimeDelta::FromMilliseconds(FLAGS_delay_ms));
+      base::TimeDelta::FromMilliseconds(delay_ms));
 }
 
 // Handles the completion of a suspend attempt.
@@ -118,10 +116,13 @@ void DBusSignalConnected(const std::string& interface,
 }
 
 int main(int argc, char* argv[]) {
-  google::SetUsageMessage(
+  DEFINE_int32(delay_ms, 5000,
+               "Milliseconds to wait before reporting suspend readiness");
+  DEFINE_int32(timeout_ms, 7000, "Suspend timeout in milliseconds");
+
+  chromeos::FlagHelper::Init(argc, argv,
       "Exercise powerd's functionality that permits other processes to\n"
       "perform last-minute work before the system suspends.");
-  google::ParseCommandLineFlags(&argc, &argv, true);
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
 
@@ -133,12 +134,12 @@ int main(int argc, char* argv[]) {
   dbus::ObjectProxy* powerd_proxy = bus->GetObjectProxy(
       power_manager::kPowerManagerServiceName,
       dbus::ObjectPath(power_manager::kPowerManagerServicePath));
-  const int delay_id = RegisterSuspendDelay(powerd_proxy);
+  const int delay_id = RegisterSuspendDelay(powerd_proxy, FLAGS_timeout_ms);
   powerd_proxy->ConnectToSignal(
       power_manager::kPowerManagerInterface,
       power_manager::kSuspendImminentSignal,
       base::Bind(&HandleSuspendImminent, make_scoped_refptr(powerd_proxy),
-                 delay_id),
+                 delay_id, FLAGS_delay_ms),
       base::Bind(&DBusSignalConnected));
   powerd_proxy->ConnectToSignal(
       power_manager::kPowerManagerInterface,

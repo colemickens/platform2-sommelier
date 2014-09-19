@@ -8,66 +8,16 @@
 // default policy, run it without any arguments.
 
 #include <base/at_exit.h>
+#include <base/command_line.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/flag_helper.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
-#include <gflags/gflags.h>
 
 #include "power_manager/proto_bindings/policy.pb.h"
-
-// These mirror the fields from the PowerManagementPolicy protocol buffer.
-DEFINE_string(ac_idle_action, "",
-              "Action to perform when idle on AC power (one of "
-              "suspend, stop_session, shut_down, do_nothing)");
-DEFINE_string(battery_idle_action, "",
-              "Action to perform when idle on battery power (one of "
-              "suspend, stop_session, shut_down, do_nothing)");
-DEFINE_string(lid_closed_action, "",
-              "Action to perform when lid is closed (one of "
-              "suspend, stop_session, shut_down, do_nothing)");
-DEFINE_int32(ac_screen_dim_delay, -1,
-             "Delay before dimming screen on AC power, in seconds");
-DEFINE_int32(ac_screen_off_delay, -1,
-             "Delay before turning screen off on AC power, in seconds");
-DEFINE_int32(ac_screen_lock_delay, -1,
-             "Delay before locking screen on AC power, in seconds");
-DEFINE_int32(ac_idle_warning_delay, -1,
-             "Delay before idle action warning on AC power, in seconds");
-DEFINE_int32(ac_idle_delay, -1,
-             "Delay before idle action on AC power, in seconds");
-DEFINE_int32(battery_screen_dim_delay, -1,
-             "Delay before dimming screen on battery power, in seconds");
-DEFINE_int32(battery_screen_off_delay, -1,
-             "Delay before turning screen off on battery power, in seconds");
-DEFINE_int32(battery_screen_lock_delay, -1,
-             "Delay before locking screen on battery power, in seconds");
-DEFINE_int32(battery_idle_warning_delay, -1,
-             "Delay before idle action warning on battery power, in seconds");
-DEFINE_int32(battery_idle_delay, -1,
-             "Delay before idle action on battery power, in seconds");
-DEFINE_int32(use_audio_activity, -1,
-             "Honor audio activity (1 is true, 0 is false, -1 is unset");
-DEFINE_int32(use_video_activity, -1,
-             "Honor video activity (1 is true, 0 is false, -1 is unset");
-DEFINE_int32(wait_for_initial_user_activity, -1,
-             "Wait for initial user activity before enforcing delays "
-             "(1 is true, 0 is false, -1 is unset");
-DEFINE_double(ac_brightness_percent, -1.0,
-              "Brightness percent to use while on AC power (less than 0.0 "
-              "means unset)");
-DEFINE_double(battery_brightness_percent, -1.0,
-              "Brightness percent to use while on battery power (less than 0.0 "
-              "means unset)");
-DEFINE_double(presentation_screen_dim_delay_factor, 0.0,
-              "Factor by which the screen-dim delay is scaled while presenting "
-              "(less than 1.0 means unset)");
-DEFINE_double(user_activity_screen_dim_delay_factor, 0.0,
-              "Factor by which the screen-dim delay is scaled if user activity "
-              "is observed while the screen is dimmed or soon after it's been "
-              "turned off (less than 1.0 means unset)");
 
 namespace {
 
@@ -102,10 +52,60 @@ power_manager::PowerManagementPolicy_Action GetAction(
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  google::SetUsageMessage(
+  // These mirror the fields from the PowerManagementPolicy protocol buffer.
+  DEFINE_string(ac_idle_action, "",
+                "Action to perform when idle on AC power (one of "
+                "suspend, stop_session, shut_down, do_nothing)");
+  DEFINE_string(battery_idle_action, "",
+                "Action to perform when idle on battery power (one of "
+                "suspend, stop_session, shut_down, do_nothing)");
+  DEFINE_string(lid_closed_action, "",
+                "Action to perform when lid is closed (one of "
+                "suspend, stop_session, shut_down, do_nothing)");
+  DEFINE_int32(ac_screen_dim_delay, -1,
+               "Delay before dimming screen on AC power, in seconds");
+  DEFINE_int32(ac_screen_off_delay, -1,
+               "Delay before turning screen off on AC power, in seconds");
+  DEFINE_int32(ac_screen_lock_delay, -1,
+               "Delay before locking screen on AC power, in seconds");
+  DEFINE_int32(ac_idle_warning_delay, -1,
+               "Delay before idle action warning on AC power, in seconds");
+  DEFINE_int32(ac_idle_delay, -1,
+               "Delay before idle action on AC power, in seconds");
+  DEFINE_int32(battery_screen_dim_delay, -1,
+               "Delay before dimming screen on battery power, in seconds");
+  DEFINE_int32(battery_screen_off_delay, -1,
+               "Delay before turning screen off on battery power, in seconds");
+  DEFINE_int32(battery_screen_lock_delay, -1,
+               "Delay before locking screen on battery power, in seconds");
+  DEFINE_int32(battery_idle_warning_delay, -1,
+               "Delay before idle action warning on battery power, in seconds");
+  DEFINE_int32(battery_idle_delay, -1,
+               "Delay before idle action on battery power, in seconds");
+  DEFINE_int32(use_audio_activity, -1,
+               "Honor audio activity (1 is true, 0 is false, -1 is unset");
+  DEFINE_int32(use_video_activity, -1,
+               "Honor video activity (1 is true, 0 is false, -1 is unset");
+  DEFINE_int32(wait_for_initial_user_activity, -1,
+               "Wait for initial user activity before enforcing delays "
+               "(1 is true, 0 is false, -1 is unset");
+  DEFINE_double(ac_brightness_percent, -1.0,
+                "Brightness percent to use while on AC power (less than 0.0 "
+                "means unset)");
+  DEFINE_double(battery_brightness_percent, -1.0,
+                "Brightness percent to use while on battery power (less than "
+                "0.0 means unset)");
+  DEFINE_double(presentation_screen_dim_delay_factor, 0.0,
+                "Factor by which the screen-dim delay is scaled while "
+                "presenting (less than 1.0 means unset)");
+  DEFINE_double(user_activity_screen_dim_delay_factor, 0.0,
+                "Factor by which the screen-dim delay is scaled if user "
+                "activity is observed while the screen is dimmed or soon after "
+                "it's been turned off (less than 1.0 means unset)");
+
+  chromeos::FlagHelper::Init(argc, argv,
       "Configures powerd's power management policy.\n\n"
       "When called without any arguments, uses default settings.");
-  google::ParseCommandLineFlags(&argc, &argv, true);
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
 

@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/at_exit.h>
+#include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -14,7 +15,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
-#include <gflags/gflags.h>
+#include <chromeos/flag_helper.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -88,9 +89,8 @@ class InfoDisplay {
 }  // namespace
 
 int main(int argc, char** argv) {
-  google::SetUsageMessage(
+  chromeos::FlagHelper::Init(argc, argv,
       "Print information obtained from /sys about the power supply.");
-  google::ParseCommandLineFlags(&argc, &argv, true);
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
 

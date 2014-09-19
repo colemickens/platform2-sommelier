@@ -18,23 +18,7 @@
 
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <gflags/gflags.h>
-
-DEFINE_string(action, "", "Action to perform.  Must be one of \"lock_vt\", "
-              "\"mosys_eventlog\", \"reboot\", \"shut_down\", \"suspend\", "
-              "and \"unlock_vt\".");
-DEFINE_string(mosys_eventlog_code, "", "Hexadecimal byte, e.g. \"0xa7\", "
-              "describing the event being logged.");
-DEFINE_string(shutdown_reason, "", "Optional shutdown reason starting with a "
-              "lowercase letter and consisting only of lowercase letters and "
-              "dashes.");
-DEFINE_int64(suspend_duration, -1, "Pass --suspend_duration <INT> to "
-             "powerd_suspend to resume after <INT> seconds for a dark "
-             "resume.");
-DEFINE_uint64(suspend_wakeup_count, 0, "Pass --wakeup_count <INT> to "
-              "powerd_suspend for the \"suspend\" action.");
-DEFINE_bool(suspend_wakeup_count_valid, false,
-            "Should --suspend_wakeup_count be honored?");
+#include <chromeos/flag_helper.h>
 
 // Maximum number of arguments supported for internally-defined commands.
 const size_t kMaxArgs = 64;
@@ -88,7 +72,22 @@ void SetVTSwitchingAllowed(bool allowed) {
 }
 
 int main(int argc, char* argv[]) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  DEFINE_string(action, "", "Action to perform.  Must be one of \"lock_vt\", "
+                "\"mosys_eventlog\", \"reboot\", \"shut_down\", \"suspend\", "
+                "and \"unlock_vt\".");
+  DEFINE_string(mosys_eventlog_code, "", "Hexadecimal byte, e.g. \"0xa7\", "
+                "describing the event being logged.");
+  DEFINE_string(shutdown_reason, "", "Optional shutdown reason starting with a "
+                "lowercase letter and consisting only of lowercase letters and "
+                "dashes.");
+  DEFINE_int64(suspend_duration, -1, "Pass --suspend_duration <INT> to "
+               "powerd_suspend to resume after <INT> seconds for a dark "
+               "resume.");
+  DEFINE_uint64(suspend_wakeup_count, 0, "Pass --wakeup_count <INT> to "
+                "powerd_suspend for the \"suspend\" action.");
+  DEFINE_bool(suspend_wakeup_count_valid, false,
+              "Should --suspend_wakeup_count be honored?");
+  chromeos::FlagHelper::Init(argc, argv, "powerd setuid helper");
 
   if (FLAGS_action == "lock_vt") {
     SetVTSwitchingAllowed(false);

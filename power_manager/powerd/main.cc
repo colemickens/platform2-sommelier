@@ -12,7 +12,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <gflags/gflags.h>
+#include <chromeos/flag_helper.h>
 
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
@@ -21,18 +21,6 @@
 #ifndef VCSID
 #define VCSID "<not set>"
 #endif
-
-DEFINE_string(prefs_dir, power_manager::kReadWritePrefsDir,
-              "Directory holding read/write preferences.");
-DEFINE_string(default_prefs_dir, power_manager::kReadOnlyPrefsDir,
-              "Directory holding read-only default settings.");
-DEFINE_string(log_dir, "", "Directory where logs are written.");
-DEFINE_string(run_dir, "", "Directory where stateful data is written.");
-// This flag is handled by libbase/libchrome's logging library instead of
-// directly by powerd, but it is defined here so gflags won't abort after
-// seeing an unexpected flag.
-DEFINE_string(vmodule, "",
-              "Per-module verbose logging levels, e.g. \"foo=1,bar=2\"");
 
 namespace {
 
@@ -62,14 +50,24 @@ std::string GetTimeAsString(time_t utime) {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  // gflags rewrites argv; give base::CommandLine first crack at it.
-  CommandLine::Init(argc, argv);
-  google::SetUsageMessage("powerd, the Chromium OS userspace power manager.");
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  DEFINE_string(prefs_dir, power_manager::kReadWritePrefsDir,
+                "Directory holding read/write preferences.");
+  DEFINE_string(default_prefs_dir, power_manager::kReadOnlyPrefsDir,
+                "Directory holding read-only default settings.");
+  DEFINE_string(log_dir, "", "Directory where logs are written.");
+  DEFINE_string(run_dir, "", "Directory where stateful data is written.");
+  // This flag is handled by libbase/libchrome's logging library instead of
+  // directly by powerd, but it is defined here so FlagHelper won't abort after
+  // seeing an unexpected flag.
+  DEFINE_string(vmodule, "",
+                "Per-module verbose logging levels, e.g. \"foo=1,bar=2\"");
+
+  chromeos::FlagHelper::Init(argc, argv,
+      "powerd, the Chromium OS userspace power manager.");
+
   CHECK(!FLAGS_prefs_dir.empty()) << "--prefs_dir is required";
   CHECK(!FLAGS_log_dir.empty()) << "--log_dir is required";
   CHECK(!FLAGS_run_dir.empty()) << "--run_dir is required";
-  CHECK_EQ(argc, 1) << "Unexpected arguments. Try --help";
 
   const base::FilePath log_file = base::FilePath(FLAGS_log_dir).Append(
       base::StringPrintf("powerd.%s", GetTimeAsString(::time(NULL)).c_str()));

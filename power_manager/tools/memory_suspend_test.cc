@@ -2,29 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// This #define is needed to avoid an "inttypes.h has already been included
-// before this header file, but without __STDC_FORMAT_MACROS defined." error
-// from base/format_macros.h when gflags/gflags.h is included first.
-#define __STDC_FORMAT_MACROS
-
 #include <stdint.h>
 
 #include <fcntl.h>
-#include <gflags/gflags.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #include <cstdio>
 #include <cstdlib>
 
+#include <base/command_line.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/flag_helper.h>
 
 #define PATTERN(i) ((i % 1) ? 0x55555555 : 0xAAAAAAAA)
-
-DEFINE_int64(size, 1024*1024*1024, "Amount of memory to allocate");
-DEFINE_uint64(wakeup_count, 0, "Value read from /sys/power/wakeup_count");
 
 void PrintAddrMap(void *vaddr) {
   int fd;
@@ -40,10 +33,10 @@ void PrintAddrMap(void *vaddr) {
          (page_data & (1LL << 63)) >> 63);
 }
 
-int Suspend(void) {
+int Suspend(uint64_t wakeup_count) {
   return system(base::StringPrintf(
       "powerd_dbus_suspend --delay=0 --wakeup_count=%" PRIu64,
-      FLAGS_wakeup_count).c_str());
+      wakeup_count).c_str());
 }
 
 uint32_t* Allocate(size_t size) {
@@ -77,16 +70,18 @@ bool Check(uint32_t *ptr, size_t size) {
 int main(int argc, char* argv[]) {
   uint32_t *ptr;
 
-  google::SetUsageMessage("\n"
+  DEFINE_int64(size, 1024*1024*1024, "Amount of memory to allocate");
+  DEFINE_uint64(wakeup_count, 0, "Value read from /sys/power/wakeup_count");
+
+  chromeos::FlagHelper::Init(argc, argv,
+      "Test memory retention across suspend/resume.\n\n"
       "  Fills memory with 0x55/0xAA patterns, performs a suspend, and checks\n"
       "  those patterns after resume. Will return 0 on success, 1 when the\n"
       "  suspend operation fails, and 2 when memory errors were detected.");
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  CHECK_EQ(argc, 1) << "Unexpected arguments. Try --help";
 
   ptr = Allocate(FLAGS_size);
   Fill(ptr, FLAGS_size);
-  if (Suspend()) {
+  if (Suspend(FLAGS_wakeup_count)) {
     printf("Error suspending\n");
     return 1;
   }

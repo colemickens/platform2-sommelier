@@ -12,25 +12,17 @@
 
 #include <base/at_exit.h>
 #include <base/bind.h>
+#include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/flag_helper.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
-#include <gflags/gflags.h>
-
-DEFINE_int32(delay, 1, "Delay before suspending in seconds. Useful if running "
-             "interactively to ensure that typing this command isn't "
-             "recognized as user activity that cancels the suspend request.");
-DEFINE_int32(timeout, 0, "How long to wait for a resume signal in seconds.");
-DEFINE_uint64(wakeup_count, 0, "Wakeup count to pass to powerd or 0 if unset.");
-DEFINE_int32(wakeup_timeout, 0, "RTC alarm timeout in seconds.  Sets an RTC "
-             "alarm that fires after the given interval.  Useful "
-             "to ensure that device resumes while testing remotely.");
 
 namespace {
 
@@ -60,8 +52,19 @@ void OnTimeout() {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  google::SetUsageMessage("Instruct powerd to suspend the system.");
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  DEFINE_int32(delay, 1, "Delay before suspending in seconds. Useful if "
+               "running interactively to ensure that typing this command "
+               "isn't recognized as user activity that cancels the suspend "
+               "request.");
+  DEFINE_int32(timeout, 0, "How long to wait for a resume signal in seconds.");
+  DEFINE_uint64(wakeup_count, 0, "Wakeup count to pass to powerd or 0 if "
+                "unset.");
+  DEFINE_int32(wakeup_timeout, 0, "RTC alarm timeout in seconds.  Sets an RTC "
+               "alarm that fires after the given interval.  Useful "
+               "to ensure that device resumes while testing remotely.");
+
+  chromeos::FlagHelper::Init(argc, argv,
+                             "Instruct powerd to suspend the system.");
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
 

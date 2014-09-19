@@ -2,36 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// This #define is needed to avoid an "inttypes.h has already been included
-// before this header file, but without __STDC_FORMAT_MACROS defined." error
-// from base/format_macros.h when gflags/gflags.h is included first.
-#define __STDC_FORMAT_MACROS
-
 #include <stdint.h>
 
 #include <cmath>
 #include <cstdio>
 
+#include <base/command_line.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/time/time.h>
-#include <gflags/gflags.h>
+#include <chromeos/flag_helper.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/internal_backlight.h"
-
-DEFINE_bool(get_brightness, false, "Print current brightness level");
-DEFINE_bool(get_brightness_percent, false,
-            "Print current brightness as linearly-calculated percent");
-DEFINE_bool(get_max_brightness, false, "Print max brightness level");
-DEFINE_int64(set_brightness, -1, "Set brightness level");
-DEFINE_double(set_brightness_percent, -1.0,
-              "Set brightness as linearly-calculated percent in [0.0, 100.0]");
-DEFINE_int64(set_resume_brightness, -2,
-             "Set brightness level on resume; -1 clears current level");
-DEFINE_double(set_resume_brightness_percent, -1.0,
-              "Set resume brightness as linearly-calculated percent in "
-              "[0.0, 100.0]");
 
 namespace {
 
@@ -46,10 +29,22 @@ int64_t PercentToLevel(
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  google::SetUsageMessage(
+  DEFINE_bool(get_brightness, false, "Print current brightness level");
+  DEFINE_bool(get_brightness_percent, false,
+              "Print current brightness as linearly-calculated percent");
+  DEFINE_bool(get_max_brightness, false, "Print max brightness level");
+  DEFINE_int64(set_brightness, -1, "Set brightness level");
+  DEFINE_double(set_brightness_percent, -1.0, "Set brightness as "
+                "linearly-calculated percent in [0.0, 100.0]");
+  DEFINE_int64(set_resume_brightness, -2,
+               "Set brightness level on resume; -1 clears current level");
+  DEFINE_double(set_resume_brightness_percent, -1.0,
+                "Set resume brightness as linearly-calculated percent in "
+                "[0.0, 100.0]");
+
+  chromeos::FlagHelper::Init(argc, argv,
       "Print or set the internal panel's backlight brightness.");
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  CHECK_EQ(argc, 1) << "Unexpected arguments. Try --help";
+
   CHECK_LT((FLAGS_get_brightness + FLAGS_get_max_brightness +
             FLAGS_get_brightness_percent), 2)
       << "-get_brightness, -get_brightness_percent, and -get_max_brightness "

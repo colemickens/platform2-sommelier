@@ -3,17 +3,13 @@
     'variables': {
       'deps': [
         'libchrome-<(libbase_ver)',
+        'libchromeos-<(libbase_ver)',
         'libudev',
         # system_api depends on protobuf (or protobuf-lite). It must appear
         # before protobuf here or the linker flags won't be in the right
         # order.
         'system_api',
         'protobuf-lite',
-      ],
-    },
-    'link_settings': {
-      'libraries': [
-        '-lgflags',
       ],
     },
   },
