@@ -91,6 +91,7 @@ const char Service::kStorageSaveCredentials[] = "SaveCredentials";
 const char Service::kStorageType[] = "Type";
 const char Service::kStorageUIData[] = "UIData";
 const char Service::kStorageConnectionId[] = "ConnectionId";
+const char Service::kStorageLinkMonitorDisabled[] = "LinkMonitorDisabled";
 
 const uint8_t Service::kStrengthMax = 100;
 const uint8_t Service::kStrengthMin = 0;
@@ -153,7 +154,8 @@ Service::Service(ControlInterface *control_interface,
       time_(Time::GetInstance()),
       diagnostics_reporter_(DiagnosticsReporter::GetInstance()),
       connection_id_(0),
-      is_dns_auto_fallback_allowed_(false) {
+      is_dns_auto_fallback_allowed_(false),
+      link_monitor_disabled_(false) {
   HelpRegisterDerivedBool(kAutoConnectProperty,
                           &Service::GetAutoConnect,
                           &Service::SetAutoConnectFull,
@@ -234,6 +236,7 @@ Service::Service(ControlInterface *control_interface,
                                   &Service::GetMisconnectsProperty);
   store_.RegisterConstInt32(kConnectionIdProperty, &connection_id_);
   store_.RegisterBool(kDnsAutoFallbackProperty, &is_dns_auto_fallback_allowed_);
+  store_.RegisterBool(kLinkMonitorDisableProperty, &link_monitor_disabled_);
 
   HelpRegisterObservedDerivedBool(kVisibleProperty,
                                   &Service::GetVisibleProperty,
@@ -485,6 +488,7 @@ bool Service::Load(StoreInterface *storage) {
 
   storage->GetInt(id, kStorageConnectionId, &connection_id_);
   storage->GetBool(id, kStorageDNSAutoFallback, &is_dns_auto_fallback_allowed_);
+  storage->GetBool(id, kStorageLinkMonitorDisabled, &link_monitor_disabled_);
 
   static_ip_parameters_.Load(storage, id);
 
@@ -520,6 +524,7 @@ bool Service::Unload() {
   ui_data_ = "";
   connection_id_ = 0;
   is_dns_auto_fallback_allowed_ = false;
+  link_monitor_disabled_ = false;
   if (mutable_eap()) {
     mutable_eap()->Reset();
   }
@@ -569,6 +574,7 @@ bool Service::Save(StoreInterface *storage) {
 
   storage->SetInt(id, kStorageConnectionId, connection_id_);
   storage->SetBool(id, kStorageDNSAutoFallback, is_dns_auto_fallback_allowed_);
+  storage->SetBool(id, kStorageLinkMonitorDisabled, link_monitor_disabled_);
 
   static_ip_parameters_.Save(storage, id);
   if (eap()) {

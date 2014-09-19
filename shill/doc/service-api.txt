@@ -592,6 +592,12 @@ Properties	boolean AutoConnect [readwrite]
 			Will be true if this service has a default route;
 			i.e.  network traffic is being sent through it.
 
+		boolean LinkMonitorDisable [readwrite]
+
+			Specifies whether to disable or enable link monitoring
+			for this service. When link monitor is enabled, periodic
+			ARP to the gateway IP address will be performed.
+
 		string Mode [readonly]
 
 			If the service type is "wifi", then this property is

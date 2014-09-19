@@ -81,6 +81,7 @@ class Service : public base::RefCounted<Service> {
   static const char kStorageType[];
   static const char kStorageUIData[];
   static const char kStorageConnectionId[];
+  static const char kStorageLinkMonitorDisabled[];
 
   static const uint8_t kStrengthMax;
   static const uint8_t kStrengthMin;
@@ -219,6 +220,8 @@ class Service : public base::RefCounted<Service> {
   virtual bool is_dns_auto_fallback_allowed() const {
     return is_dns_auto_fallback_allowed_;
   }
+
+  virtual bool link_monitor_disabled() const { return link_monitor_disabled_; }
 
   virtual ConnectFailure failure() const { return failure_; }
   // Sets the |previous_error_| property based on the current |failure_|, and
@@ -851,6 +854,9 @@ class Service : public base::RefCounted<Service> {
   // servers if the portal detection failed due to DNS failure and Google's DNS
   // servers are working.
   bool is_dns_auto_fallback_allowed_;
+  // When set to true, will not start link monitor when the connection to this
+  // service is established.
+  bool link_monitor_disabled_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

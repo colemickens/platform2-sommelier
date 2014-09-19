@@ -1022,6 +1022,12 @@ bool Device::StartLinkMonitor() {
     return false;
   }
 
+  if (selected_service_ && selected_service_->link_monitor_disabled()) {
+    SLOG(Device, 2) << "Device " << FriendlyName()
+                    << ": Link Monitoring is disabled for the selected service";
+    return false;
+  }
+
   if (!link_monitor()) {
     set_link_monitor(
       new LinkMonitor(
