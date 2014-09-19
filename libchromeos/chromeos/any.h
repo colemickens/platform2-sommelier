@@ -129,11 +129,11 @@ class CHROMEOS_EXPORT Any final {
     return &(data_buffer_.GetData<T>());
   }
 
-  // Returns immutable data contained in Any.
+  // Returns a copy of the data contained in Any.
   // If the Any doesn't contain a compatible value, the provided default
   // |def_val| is returned instead.
   template<typename T>
-  const T& TryGet(typename std::decay<T>::type const& def_val) const {
+  T TryGet(typename std::decay<T>::type const& def_val) const {
     if (!IsTypeCompatible<T>())
       return def_val;
     return data_buffer_.GetData<T>();
@@ -142,7 +142,7 @@ class CHROMEOS_EXPORT Any final {
   // A convenience specialization of the above function where the default
   // value of type T is returned in case the underlying Get() fails.
   template<typename T>
-  const T& TryGet() const {
+  T TryGet() const {
     return TryGet<T>(typename std::decay<T>::type());
   }
 
