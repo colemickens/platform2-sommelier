@@ -56,7 +56,6 @@ const char Metrics::kMetricNetworkSecuritySuffix[] = "Security";
 const int Metrics::kMetricNetworkSecurityMax = Metrics::kWiFiSecurityMax;
 const char Metrics::kMetricNetworkServiceErrors[] =
     "Network.Shill.ServiceErrors";
-const int Metrics::kMetricNetworkServiceErrorsMax = Service::kFailureMax;
 const char Metrics::kMetricNetworkSignalStrengthSuffix[] = "SignalStrength";
 const int Metrics::kMetricNetworkSignalStrengthMax = 200;
 const int Metrics::kMetricNetworkSignalStrengthMin = 0;
@@ -1327,9 +1326,80 @@ void Metrics::UpdateServiceStateTransitionMetrics(
 }
 
 void Metrics::SendServiceFailure(const Service &service) {
+  NetworkServiceError error = kNetworkServiceErrorUnknown;
+  // Explicitly map all possible failures. So when new failures are added,
+  // they will need to be mapped as well. Otherwise, the compiler will
+  // complain.
+  switch (service.failure()) {
+    case Service::kFailureUnknown:
+    case Service::kFailureMax:
+      error = kNetworkServiceErrorUnknown;
+      break;
+    case Service::kFailureAAA:
+      error = kNetworkServiceErrorAAA;
+      break;
+    case Service::kFailureActivation:
+      error = kNetworkServiceErrorActivation;
+      break;
+    case Service::kFailureBadPassphrase:
+      error = kNetworkServiceErrorBadPassphrase;
+      break;
+    case Service::kFailureBadWEPKey:
+      error = kNetworkServiceErrorBadWEPKey;
+      break;
+    case Service::kFailureConnect:
+      error = kNetworkServiceErrorConnect;
+      break;
+    case Service::kFailureDHCP:
+      error = kNetworkServiceErrorDHCP;
+      break;
+    case Service::kFailureDNSLookup:
+      error = kNetworkServiceErrorDNSLookup;
+      break;
+    case Service::kFailureEAPAuthentication:
+      error = kNetworkServiceErrorEAPAuthentication;
+      break;
+    case Service::kFailureEAPLocalTLS:
+      error = kNetworkServiceErrorEAPLocalTLS;
+      break;
+    case Service::kFailureEAPRemoteTLS:
+      error = kNetworkServiceErrorEAPRemoteTLS;
+      break;
+    case Service::kFailureHTTPGet:
+      error = kNetworkServiceErrorHTTPGet;
+      break;
+    case Service::kFailureIPSecCertAuth:
+      error = kNetworkServiceErrorIPSecCertAuth;
+      break;
+    case Service::kFailureIPSecPSKAuth:
+      error = kNetworkServiceErrorIPSecPSKAuth;
+      break;
+    case Service::kFailureInternal:
+      error = kNetworkServiceErrorInternal;
+      break;
+    case Service::kFailureNeedEVDO:
+      error = kNetworkServiceErrorNeedEVDO;
+      break;
+    case Service::kFailureNeedHomeNetwork:
+      error = kNetworkServiceErrorNeedHomeNetwork;
+      break;
+    case Service::kFailureOTASP:
+      error = kNetworkServiceErrorOTASP;
+      break;
+    case Service::kFailureOutOfRange:
+      error = kNetworkServiceErrorOutOfRange;
+      break;
+    case Service::kFailurePPPAuth:
+      error = kNetworkServiceErrorPPPAuth;
+      break;
+    case Service::kFailurePinMissing:
+      error = kNetworkServiceErrorPinMissing;
+      break;
+  }
+
   library_->SendEnumToUMA(kMetricNetworkServiceErrors,
-                          service.failure(),
-                          kMetricNetworkServiceErrorsMax);
+                          error,
+                          kNetworkServiceErrorMax);
 }
 
 Metrics::DeviceMetrics *Metrics::GetDeviceMetrics(int interface_index) const {

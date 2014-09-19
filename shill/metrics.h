@@ -361,6 +361,31 @@ class Metrics {
     kDeviceTechnologyTypeMax
   };
 
+  enum NetworkServiceError {
+    kNetworkServiceErrorUnknown = 0,
+    kNetworkServiceErrorAAA = 1,
+    kNetworkServiceErrorActivation = 2,
+    kNetworkServiceErrorBadPassphrase = 3,
+    kNetworkServiceErrorBadWEPKey = 4,
+    kNetworkServiceErrorConnect = 5,
+    kNetworkServiceErrorDHCP = 6,
+    kNetworkServiceErrorDNSLookup = 7,
+    kNetworkServiceErrorEAPAuthentication = 8,
+    kNetworkServiceErrorEAPLocalTLS = 9,
+    kNetworkServiceErrorEAPRemoteTLS = 10,
+    kNetworkServiceErrorHTTPGet = 11,
+    kNetworkServiceErrorIPSecCertAuth = 12,
+    kNetworkServiceErrorIPSecPSKAuth = 13,
+    kNetworkServiceErrorInternal = 14,
+    kNetworkServiceErrorNeedEVDO = 15,
+    kNetworkServiceErrorNeedHomeNetwork = 16,
+    kNetworkServiceErrorOTASP = 17,
+    kNetworkServiceErrorOutOfRange = 18,
+    kNetworkServiceErrorPPPAuth = 19,
+    kNetworkServiceErrorPinMissing = 20,
+    kNetworkServiceErrorMax
+  };
+
   static const char kMetricDisconnectSuffix[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -381,7 +406,6 @@ class Metrics {
   static const char kMetricNetworkSecuritySuffix[];
   static const int kMetricNetworkSecurityMax;
   static const char kMetricNetworkServiceErrors[];
-  static const int kMetricNetworkServiceErrorsMax;
   static const char kMetricNetworkSignalStrengthSuffix[];
   static const int kMetricNetworkSignalStrengthMin;
   static const int kMetricNetworkSignalStrengthMax;
