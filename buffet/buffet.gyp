@@ -40,6 +40,7 @@
         'device_registration_info.cc',
         'manager.cc',
         'storage_impls.cc',
+        'utils.cc',
       ],
     },
     {

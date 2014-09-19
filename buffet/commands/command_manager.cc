@@ -5,23 +5,14 @@
 #include "buffet/commands/command_manager.h"
 
 #include <base/files/file_enumerator.h>
-#include <base/files/file_util.h>
-#include <base/json/json_reader.h>
 #include <base/values.h>
 #include <chromeos/dbus/exported_object_manager.h>
 #include <chromeos/errors/error.h>
-#include <chromeos/errors/error_codes.h>
 
 #include "buffet/commands/schema_constants.h"
+#include "buffet/utils.h"
 
 using chromeos::dbus_utils::ExportedObjectManager;
-
-namespace {
-
-const char kCommandManagerErrorDomain[] = "Buffet_CommandManager";
-const char kCommandManagerFileReadError[] = "file_read_error";
-
-}  // namespace
 
 namespace buffet {
 
@@ -89,40 +80,6 @@ void CommandManager::Startup() {
         << "Failed to load the command definition file.";
     json_file_path = enumerator.Next();
   }
-}
-
-std::unique_ptr<const base::DictionaryValue> CommandManager::LoadJsonDict(
-    const base::FilePath& json_file_path, chromeos::ErrorPtr* error) {
-  std::string json_string;
-  if (!base::ReadFileToString(json_file_path, &json_string)) {
-    chromeos::errors::system::AddSystemError(error, errno);
-    chromeos::Error::AddToPrintf(error, kCommandManagerErrorDomain,
-                                 kCommandManagerFileReadError,
-                                 "Failed to read file '%s'",
-                                 json_file_path.value().c_str());
-    return std::unique_ptr<const base::DictionaryValue>();
-  }
-  std::string error_message;
-  base::Value* value = base::JSONReader::ReadAndReturnError(
-      json_string, base::JSON_PARSE_RFC, nullptr, &error_message);
-  if (!value) {
-    chromeos::Error::AddToPrintf(error, chromeos::errors::json::kDomain,
-                                 chromeos::errors::json::kParseError,
-                                 "Error parsing content of JSON file '%s': %s",
-                                 json_file_path.value().c_str(),
-                                 error_message.c_str());
-    return std::unique_ptr<const base::DictionaryValue>();
-  }
-  const base::DictionaryValue* dict_value = nullptr;
-  if (!value->GetAsDictionary(&dict_value)) {
-    delete value;
-    chromeos::Error::AddToPrintf(error, chromeos::errors::json::kDomain,
-                                 chromeos::errors::json::kObjectExpected,
-                                 "Content of file '%s' is not a JSON object",
-                                 json_file_path.value().c_str());
-    return std::unique_ptr<const base::DictionaryValue>();
-  }
-  return std::unique_ptr<const base::DictionaryValue>(dict_value);
 }
 
 std::string CommandManager::AddCommand(

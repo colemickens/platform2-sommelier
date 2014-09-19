@@ -29,7 +29,6 @@ class CommandManager;
 extern const char kErrorDomainOAuth2[];
 extern const char kErrorDomainGCD[];
 extern const char kErrorDomainGCDServer[];
-extern const char kErrorDomainBuffet[];
 
 // The DeviceRegistrationInfo class represents device registration information.
 class DeviceRegistrationInfo {

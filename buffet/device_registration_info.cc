@@ -20,11 +20,11 @@
 #include "buffet/commands/command_manager.h"
 #include "buffet/device_registration_storage_keys.h"
 #include "buffet/storage_impls.h"
+#include "buffet/utils.h"
 
 const char buffet::kErrorDomainOAuth2[] = "oauth2";
 const char buffet::kErrorDomainGCD[] = "gcd";
 const char buffet::kErrorDomainGCDServer[] = "gcd_server";
-const char buffet::kErrorDomainBuffet[] = "buffet";
 
 namespace buffet {
 namespace storage_keys {

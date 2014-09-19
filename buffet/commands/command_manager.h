@@ -79,12 +79,6 @@ class CommandManager final {
   std::string AddCommand(std::unique_ptr<CommandInstance> command_instance);
 
  private:
-  // Helper function to load a JSON file that is expected to be
-  // an object/dictionary. In case of error, returns empty unique ptr and fills
-  // in error details in |error|.
-  std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
-      const base::FilePath& json_file_path, chromeos::ErrorPtr* error);
-
   CommandDictionary base_dictionary_;  // Base/std command definitions/schemas.
   CommandDictionary dictionary_;  // Command definitions/schemas.
   CommandQueue command_queue_;
