@@ -14,6 +14,7 @@
 
 #include "buffet/commands/object_schema.h"
 #include "buffet/commands/prop_types.h"
+#include "buffet/commands/schema_constants.h"
 #include "buffet/commands/unittest_utils.h"
 
 using buffet::unittests::CreateValue;
@@ -124,6 +125,20 @@ TEST(CommandSchema, IntPropType_Validate) {
   EXPECT_EQ("type_mismatch", error->GetCode());
 }
 
+TEST(CommandSchema, IntPropType_CreateValue) {
+  buffet::IntPropType prop;
+  chromeos::ErrorPtr error;
+  auto val = prop.CreateValue(2, &error);
+  ASSERT_NE(nullptr, val.get());
+  EXPECT_EQ(nullptr, error.get());
+  EXPECT_EQ(2, val->GetValueAsAny().Get<int>());
+
+  val = prop.CreateValue("blah", &error);
+  EXPECT_EQ(nullptr, val.get());
+  ASSERT_NE(nullptr, error.get());
+  EXPECT_EQ(buffet::errors::commands::kTypeMismatch, error->GetCode());
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 TEST(CommandSchema, BoolPropType_Empty) {
@@ -186,6 +201,20 @@ TEST(CommandSchema, BoolPropType_Validate) {
   error.reset();
   EXPECT_FALSE(prop.ValidateValue(CreateValue("'3'").get(), &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
+}
+
+TEST(CommandSchema, BoolPropType_CreateValue) {
+  buffet::BooleanPropType prop;
+  chromeos::ErrorPtr error;
+  auto val = prop.CreateValue(true, &error);
+  ASSERT_NE(nullptr, val.get());
+  EXPECT_EQ(nullptr, error.get());
+  EXPECT_TRUE(val->GetValueAsAny().Get<bool>());
+
+  val = prop.CreateValue("blah", &error);
+  EXPECT_EQ(nullptr, val.get());
+  ASSERT_NE(nullptr, error.get());
+  EXPECT_EQ(buffet::errors::commands::kTypeMismatch, error->GetCode());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -283,6 +312,20 @@ TEST(CommandSchema, DoublePropType_Validate) {
   error.reset();
   EXPECT_FALSE(prop.ValidateValue(CreateValue("'0.0'").get(), &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
+}
+
+TEST(CommandSchema, DoublePropType_CreateValue) {
+  buffet::DoublePropType prop;
+  chromeos::ErrorPtr error;
+  auto val = prop.CreateValue(2.0, &error);
+  ASSERT_NE(nullptr, val.get());
+  EXPECT_EQ(nullptr, error.get());
+  EXPECT_DOUBLE_EQ(2.0, val->GetValueAsAny().Get<double>());
+
+  val = prop.CreateValue("blah", &error);
+  EXPECT_EQ(nullptr, val.get());
+  ASSERT_NE(nullptr, error.get());
+  EXPECT_EQ(buffet::errors::commands::kTypeMismatch, error->GetCode());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -386,6 +429,20 @@ TEST(CommandSchema, StringPropType_Validate) {
   EXPECT_FALSE(prop.ValidateValue(CreateValue("'xyz'").get(), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
+}
+
+TEST(CommandSchema, StringPropType_CreateValue) {
+  buffet::StringPropType prop;
+  chromeos::ErrorPtr error;
+  auto val = prop.CreateValue(std::string{"blah"}, &error);
+  ASSERT_NE(nullptr, val.get());
+  EXPECT_EQ(nullptr, error.get());
+  EXPECT_EQ("blah", val->GetValueAsAny().Get<std::string>());
+
+  val = prop.CreateValue(4, &error);
+  EXPECT_EQ(nullptr, val.get());
+  ASSERT_NE(nullptr, error.get());
+  EXPECT_EQ(buffet::errors::commands::kTypeMismatch, error->GetCode());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -499,6 +556,30 @@ TEST(CommandSchema, ObjectPropType_Validate_Enum) {
       "{'height':12,'width':10}").get(), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
+}
+
+TEST(CommandSchema, ObjectPropType_CreateValue) {
+  buffet::ObjectPropType prop;
+  buffet::IntPropType int_type;
+  ASSERT_TRUE(prop.FromJson(CreateDictionaryValue(
+      "{'properties':{'width':'integer','height':'integer'},"
+      "'enum':[{'width':10,'height':20},{'width':100,'height':200}]}").get(),
+      nullptr, nullptr));
+  buffet::native_types::Object obj{
+    {"width", int_type.CreateValue(10, nullptr)},
+    {"height", int_type.CreateValue(20, nullptr)},
+  };
+
+  chromeos::ErrorPtr error;
+  auto val = prop.CreateValue(obj, &error);
+  ASSERT_NE(nullptr, val.get());
+  EXPECT_EQ(nullptr, error.get());
+  EXPECT_EQ(obj, val->GetValueAsAny().Get<buffet::native_types::Object>());
+
+  val = prop.CreateValue("blah", &error);
+  EXPECT_EQ(nullptr, val.get());
+  ASSERT_NE(nullptr, error.get());
+  EXPECT_EQ(buffet::errors::commands::kTypeMismatch, error->GetCode());
 }
 
 ///////////////////////////////////////////////////////////////////////////////

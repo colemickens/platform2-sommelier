@@ -65,8 +65,8 @@ TEST(CommandInstance, Test) {
   buffet::native_types::Object params;
   buffet::IntPropType int_prop;
   buffet::DoublePropType dbl_prop;
-  params.insert(std::make_pair("freq", dbl_prop.CreateValue(800.5)));
-  params.insert(std::make_pair("volume", int_prop.CreateValue(100)));
+  params.insert(std::make_pair("freq", dbl_prop.CreateValue(800.5, nullptr)));
+  params.insert(std::make_pair("volume", int_prop.CreateValue(100, nullptr)));
   buffet::CommandInstance instance("robot._beep", "robotd", params);
 
   EXPECT_EQ("", instance.GetID());

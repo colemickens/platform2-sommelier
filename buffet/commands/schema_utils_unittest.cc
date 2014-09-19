@@ -56,8 +56,8 @@ TEST(CommandSchemaUtils, TypedValueToJson_Object) {
   buffet::IntPropType int_type;
   buffet::native_types::Object object;
 
-  object.insert(std::make_pair("width", int_type.CreateValue(640)));
-  object.insert(std::make_pair("height", int_type.CreateValue(480)));
+  object.insert(std::make_pair("width", int_type.CreateValue(640, nullptr)));
+  object.insert(std::make_pair("height", int_type.CreateValue(480, nullptr)));
   EXPECT_EQ("{'height':480,'width':640}",
             ValueToString(buffet::TypedValueToJson(object, nullptr).get()));
 }
@@ -167,9 +167,10 @@ TEST(CommandSchemaUtils, TypedValueFromJson_Object) {
   EXPECT_TRUE(buffet::TypedValueFromJson(
       CreateValue("{'age':20,'name':'Bob'}").get(), &schema, &value, nullptr));
   buffet::native_types::Object value2;
-  value2.insert(std::make_pair("age", age_prop->CreateValue(20)));
+  value2.insert(std::make_pair("age", age_prop->CreateValue(20, nullptr)));
   value2.insert(std::make_pair("name",
-                               name_prop->CreateValue(std::string("Bob"))));
+                               name_prop->CreateValue(std::string("Bob"),
+                                                      nullptr)));
   EXPECT_EQ(value2, value);
 
   chromeos::ErrorPtr error;

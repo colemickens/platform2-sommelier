@@ -83,7 +83,7 @@ class PropType {
   // type as a factory class.
   virtual std::shared_ptr<PropValue> CreateValue() const = 0;
   virtual std::shared_ptr<PropValue> CreateValue(
-      const chromeos::Any& val) const = 0;
+      const chromeos::Any& val, chromeos::ErrorPtr* error) const = 0;
 
   // Saves the parameter type definition as a JSON object.
   // If |full_schema| is set to true, the full type definition is saved,
@@ -163,6 +163,10 @@ class PropType {
   bool ValidateConstraints(const PropValue& value,
                            chromeos::ErrorPtr* error) const;
 
+  // Helper method to generate "type mismatch" error when creating a value
+  // from this type. Always returns false.
+  bool GenerateErrorValueTypeMismatch(chromeos::ErrorPtr* error) const;
+
  protected:
   // Specifies if this parameter definition is derived from a base
   // object schema.
@@ -190,10 +194,16 @@ class PropTypeBase : public PropType {
     return std::make_shared<Value>(this);
   }
   std::shared_ptr<PropValue> CreateValue(
-      const chromeos::Any& v) const override {
-    auto value = std::make_shared<Value>(this);
-    value->SetValue(v.Get<T>());
-    return std::move(value);
+      const chromeos::Any& v, chromeos::ErrorPtr* error) const override {
+    std::shared_ptr<PropValue> prop_value;
+    if (v.IsTypeCompatible<T>()) {
+      auto value = std::make_shared<Value>(this);
+      value->SetValue(v.Get<T>());
+      prop_value = std::move(value);
+    } else {
+      GenerateErrorValueTypeMismatch(error);
+    }
+    return prop_value;
   }
   bool ConstraintsFromJson(const base::DictionaryValue* value,
                            std::set<std::string>* processed_keys,

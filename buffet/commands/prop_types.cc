@@ -152,9 +152,8 @@ bool PropType::ValidateValue(const base::Value* value,
 
 bool PropType::ValidateValue(const chromeos::Any& value,
                              chromeos::ErrorPtr* error) const {
-  std::shared_ptr<PropValue> val = CreateValue(value);
-  CHECK(val) << "Failed to create value object";
-  return ValidateConstraints(*val, error);
+  std::shared_ptr<PropValue> val = CreateValue(value, error);
+  return val && ValidateConstraints(*val, error);
 }
 
 bool PropType::ValidateConstraints(const PropValue& value,
@@ -216,6 +215,14 @@ std::unique_ptr<PropType> PropType::Create(ValueType type) {
     break;
   }
   return std::unique_ptr<PropType>(prop);
+}
+
+bool PropType::GenerateErrorValueTypeMismatch(chromeos::ErrorPtr* error) const {
+  chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+                                errors::commands::kTypeMismatch,
+                                "Unable to convert value to type '%s'",
+                                GetTypeAsString().c_str());
+  return false;
 }
 
 template<typename T>
