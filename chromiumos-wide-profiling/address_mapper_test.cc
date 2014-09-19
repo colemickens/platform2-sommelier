@@ -6,8 +6,8 @@
 
 #include <algorithm>
 
-#include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
+#include "base/logging.h"
+#include "base/memory/scoped_ptr.h"
 
 #include "chromiumos-wide-profiling/quipper_test.h"
 

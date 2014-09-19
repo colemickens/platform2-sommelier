@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
+#include "base/macros.h"
 
 #include "chromiumos-wide-profiling/kernel/perf_internals.h"
 #include "chromiumos-wide-profiling/quipper_string.h"
