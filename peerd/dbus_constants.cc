@@ -10,6 +10,8 @@ namespace dbus_constants {
 
 const char kServiceName[] = "org.chromium.peerd";
 
+const char kRootServicePath[] = "/org/chromium/peerd";
+
 const char kManagerInterface[] = "org.chromium.peerd.Manager";
 const char kManagerServicePath[] = "/org/chromium/peerd/Manager";
 

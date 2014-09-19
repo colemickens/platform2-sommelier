@@ -12,6 +12,9 @@ namespace dbus_constants {
 // The service name claimed by peerd.
 extern const char kServiceName[];
 
+// Path of the ObjectManager.
+extern const char kRootServicePath[];
+
 // Interface implemented by the object at kManagerServicePath.
 extern const char kManagerInterface[];
 extern const char kManagerServicePath[];
