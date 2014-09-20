@@ -171,9 +171,6 @@ HELP_ADVANCED='
   "sound record [duration]" will start recording.
   "sound play <filename>" will play the recorded audio samples.
 
- storage_status
-  Reads storage device SMART health status, vendor attributes, and error log.
-
  storage_test_1
   Performs a short offline SMART test.
 
@@ -1210,34 +1207,7 @@ cmd_storage_test_2() (
 )
 
 cmd_storage_status() (
-  option="$1"
-
-  result=$(debugd Smartctl "string:health")
-  if [ "$option" != "-v" ]; then
-    echo "$result" | sed -n '1p;2p'
-    echo ""
-    echo "$result" | sed -n '/START OF READ/,$p' | sed -n '2,$p'
-  else
-    echo "$result"
-  fi
-
-  echo ""
-
-  result=$(debugd Smartctl "string:error")
-  if [ "$option" != "-v" ]; then
-    echo "$result" | sed -n '/START OF READ/,$p' | sed -n '3,$p'
-  else
-    echo "$result"
-  fi
-
-  echo ""
-
-  result=$(debugd Smartctl "string:attributes")
-  if [ "$option" != "-v" ]; then
-    echo "$result" | sed -n '/START OF READ/,$p' | sed -n '3,$p'
-  else
-    echo "$result"
-  fi
+  echo "Removed. See storage_info section in chrome://system"
 )
 
 cmd_memory_test() (
