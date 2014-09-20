@@ -310,8 +310,7 @@ void DBusAdaptor::ArgsToKeyValueStore(
 }
 
 // static
-::DBus::Variant DBusAdaptor::PathsToVariant(
-    const vector< ::DBus::Path> &value) {
+::DBus::Variant DBusAdaptor::PathsToVariant(const vector<::DBus::Path> &value) {
   ::DBus::MessageIter writer;
   ::DBus::Variant v;
 
@@ -419,12 +418,12 @@ bool DBusAdaptor::IsInt32(::DBus::Signature signature) {
 
 // static
 bool DBusAdaptor::IsPath(::DBus::Signature signature) {
-  return signature == ::DBus::type< ::DBus::Path >::sig();
+  return signature == ::DBus::type<::DBus::Path>::sig();
 }
 
 // static
 bool DBusAdaptor::IsPaths(::DBus::Signature signature) {
-  return signature == ::DBus::type<vector< ::DBus::Path >>::sig();
+  return signature == ::DBus::type<vector<::DBus::Path>>::sig();
 }
 
 // static
@@ -469,7 +468,7 @@ bool DBusAdaptor::IsUint64(::DBus::Signature signature) {
 
 // static
 bool DBusAdaptor::IsKeyValueStore(::DBus::Signature signature) {
-  return signature == ::DBus::type<map<string, ::DBus::Variant> >::sig();
+  return signature == ::DBus::type<map<string, ::DBus::Variant>>::sig();
 }
 
 void DBusAdaptor::DeferReply(const DBus::Tag *tag) {

@@ -303,7 +303,7 @@ class ConnectionHealthCheckerTest : public Test {
   NiceMock<MockDeviceInfo> device_info_;
   vector<string> dns_servers_;
 
-  scoped_refptr<NiceMock<MockConnection> > connection_;
+  scoped_refptr<NiceMock<MockConnection>> connection_;
   EventDispatcher dispatcher_;
   MockIPAddressStore remote_ips_;
   StrictMock<MockSockets> *socket_;
@@ -321,8 +321,8 @@ TEST_F(ConnectionHealthCheckerTest, Constructor) {
 }
 
 TEST_F(ConnectionHealthCheckerTest, SetConnection) {
-  scoped_refptr<NiceMock<MockConnection> > new_connection
-      = new NiceMock<MockConnection>(&device_info_);
+  scoped_refptr<NiceMock<MockConnection>> new_connection =
+      new NiceMock<MockConnection>(&device_info_);
   // If a health check was in progress when SetConnection is called, verify
   // that it restarts with the new connection.
   ExpectSuccessfulStart();

@@ -258,7 +258,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
             new NiceMock<MockSupplicantInterfaceProxy>()) {
     wifi_->mac80211_monitor_.reset(mac80211_monitor_);
     InstallMockScanSession();
-    ::testing::DefaultValue< ::DBus::Path>::Set("/default/path");
+    ::testing::DefaultValue<::DBus::Path>::Set("/default/path");
 
     EXPECT_CALL(*mac80211_monitor_, UpdateConnectedState(_))
         .Times(AnyNumber());

@@ -65,7 +65,7 @@ void DBusObjectManagerProxy::Proxy::InterfacesAdded(
 // Signal callback
 void DBusObjectManagerProxy::Proxy::InterfacesRemoved(
     const ::DBus::Path &object_path,
-    const std::vector< std::string > &interfaces) {
+    const std::vector<std::string> &interfaces) {
   SLOG(DBus, 2) << __func__ << "(" << object_path << ")";
   interfaces_removed_callback_.Run(object_path, interfaces);
 }

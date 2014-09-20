@@ -51,8 +51,8 @@ struct DNSClientState {
   DNSClientState() : channel(NULL), start_time{} {}
 
   ares_channel channel;
-  map< ares_socket_t, std::shared_ptr<IOHandler> > read_handlers;
-  map< ares_socket_t, std::shared_ptr<IOHandler> > write_handlers;
+  map<ares_socket_t, std::shared_ptr<IOHandler>> read_handlers;
+  map<ares_socket_t, std::shared_ptr<IOHandler>> write_handlers;
   struct timeval start_time;
 };
 
@@ -283,9 +283,9 @@ void DNSClient::ReceiveDNSReplyCB(void *arg, int status,
 }
 
 bool DNSClient::RefreshHandles() {
-  map< ares_socket_t, std::shared_ptr<IOHandler> > old_read =
+  map<ares_socket_t, std::shared_ptr<IOHandler>> old_read =
       resolver_state_->read_handlers;
-  map< ares_socket_t, std::shared_ptr<IOHandler> > old_write =
+  map<ares_socket_t, std::shared_ptr<IOHandler>> old_write =
       resolver_state_->write_handlers;
 
   resolver_state_->read_handlers.clear();

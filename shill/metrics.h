@@ -869,7 +869,7 @@ class Metrics {
     TimerReportersByState start_on_state;
     TimerReportersByState stop_on_state;
   };
-  typedef std::map<const Service *, std::shared_ptr<ServiceMetrics> >
+  typedef std::map<const Service *, std::shared_ptr<ServiceMetrics>>
       ServiceMetricsLookupMap;
 
   struct DeviceMetrics {
@@ -884,7 +884,7 @@ class Metrics {
     scoped_ptr<chromeos_metrics::TimerReporter> auto_connect_timer;
     int auto_connect_tries;
   };
-  typedef std::map<const int, std::shared_ptr<DeviceMetrics> >
+  typedef std::map<const int, std::shared_ptr<DeviceMetrics>>
       DeviceMetricsLookupMap;
 
   static const uint16_t kWiFiBandwidth5MHz;

@@ -18,7 +18,7 @@ namespace shill {
 class Error;
 
 typedef std::map<std::string, DBusPropertiesMap> DBusInterfaceToProperties;
-typedef std::map< ::DBus::Path, DBusInterfaceToProperties>
+typedef std::map<::DBus::Path, DBusInterfaceToProperties>
     DBusObjectsWithProperties;
 typedef base::Callback<void(const DBusObjectsWithProperties &, const Error &)>
     ManagedObjectsCallback;

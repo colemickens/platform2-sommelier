@@ -174,7 +174,7 @@ bool PropertyStore::SetStringmapProperty(const string &name,
 
 bool PropertyStore::SetStringmapsProperty(
     const string &name,
-    const vector<map<string, string> > &values,
+    const vector<map<string, string>> &values,
     Error *error) {
   return SetProperty(name, values, error, &stringmaps_properties_,
                      "a stringmaps");
@@ -652,13 +652,12 @@ bool PropertyStore::GetProperty(
     const string &name,
     V *value,
     Error *error,
-    const map< string, std::shared_ptr<
-        AccessorInterface<V> > >&collection,
+    const map<string, std::shared_ptr<AccessorInterface<V>>> &collection,
     const string &value_type_english) const {
   SLOG(Property, 2) << "Getting " << name << " as " << value_type_english
                     << ".";
-  typename map< string, std::shared_ptr<
-      AccessorInterface<V> > >::const_iterator it = collection.find(name);
+  typename map<string, std::shared_ptr<AccessorInterface<V>>>::const_iterator
+      it = collection.find(name);
   if (it != collection.end()) {
     V val = it->second->Get(error);
     if (error->IsSuccess()) {
@@ -682,7 +681,7 @@ bool PropertyStore::SetProperty(
     const string &name,
     const V &value,
     Error *error,
-    map< string, std::shared_ptr< AccessorInterface<V> > >* collection,
+    map<string, std::shared_ptr<AccessorInterface<V>>>* collection,
     const string &value_type_english) {
   bool ret = false;
   SLOG(Property, 2) << "Setting " << name << " as " << value_type_english

@@ -94,10 +94,10 @@ class DBusAdaptorTest : public PropertyStoreTest {
   int16_t ex_int16_;
   int32_t ex_int32_;
   ::DBus::Path ex_path_;
-  vector< ::DBus::Path> ex_paths_;
+  vector<::DBus::Path> ex_paths_;
   string ex_string_;
   map<string, string> ex_stringmap_;
-  vector<map<string, string> > ex_stringmaps_;
+  vector<map<string, string>> ex_stringmaps_;
   vector<string> ex_strings_;
 
   ::DBus::Variant bool_v_;
@@ -146,7 +146,7 @@ TEST_F(DBusAdaptorTest, Conversions) {
 
   EXPECT_EQ(ex_path_, path_v_.reader().get_path());
 
-  EXPECT_EQ(ex_path_, paths_v_.operator vector< ::DBus::Path>()[0]);
+  EXPECT_EQ(ex_path_, paths_v_.operator vector<::DBus::Path>()[0]);
 
   EXPECT_EQ(string(""), PropertyStoreTest::kStringV.reader().get_string());
   EXPECT_EQ(ex_string_, string_v_.reader().get_string());
@@ -157,7 +157,7 @@ TEST_F(DBusAdaptorTest, Conversions) {
               ContainerEq(strings_v_.operator vector<string>()));
   EXPECT_THAT(
       ex_stringmaps_,
-      ContainerEq(stringmaps_v_.operator vector<map<string, string> >()));
+      ContainerEq(stringmaps_v_.operator vector<map<string, string>>()));
   EXPECT_THAT(ex_uint16s_,
               ContainerEq(uint16s_v_.operator vector<uint16_t>()));
 }

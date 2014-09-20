@@ -78,7 +78,7 @@ void ManagerDBusAdaptor::EmitRpcIdentifierArrayChanged(
     const string &name,
     const vector<string> &value) {
   SLOG(DBus, 2) << __func__ << ": " << name;
-  vector< DBus::Path> paths;
+  vector<DBus::Path> paths;
   for (const auto &element : value) {
     paths.push_back(element);
   }

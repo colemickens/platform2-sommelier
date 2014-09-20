@@ -412,7 +412,7 @@ class ManagerTest : public PropertyStoreTest {
 
   NiceMock<MockProxyFactory> proxy_factory_;
   scoped_ptr<MockPowerManager> power_manager_;
-  vector<scoped_refptr<MockDevice> > mock_devices_;
+  vector<scoped_refptr<MockDevice>> mock_devices_;
   scoped_ptr<MockDeviceInfo> device_info_;
 
   // This service is held for the manager, and given ownership in a mock
@@ -690,7 +690,7 @@ TEST_F(ManagerTest, GetDevicesProperty) {
     DBusAdaptor::GetProperties(manager()->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(kDevicesProperty) == props.end());
     vector < ::DBus::Path> devices =
-        props[kDevicesProperty].operator vector< ::DBus::Path>();
+        props[kDevicesProperty].operator vector<::DBus::Path>();
     EXPECT_EQ(2, devices.size());
   }
 }

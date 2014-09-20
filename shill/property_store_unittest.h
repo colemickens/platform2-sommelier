@@ -26,7 +26,7 @@
 
 namespace shill {
 
-class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
+class PropertyStoreTest : public testing::TestWithParam<::DBus::Variant> {
  public:
   typedef ::testing::Types<bool, int16_t, int32_t, std::string, Stringmap,
                            Stringmaps, Strings, uint8_t, uint16_t, Uint16s,

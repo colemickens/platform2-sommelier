@@ -176,7 +176,7 @@ class ConnectionTest : public Test {
     return connection;
   }
 
-  scoped_ptr<StrictMock<MockDeviceInfo> > device_info_;
+  scoped_ptr<StrictMock<MockDeviceInfo>> device_info_;
   ConnectionRefPtr connection_;
   MockControl control_;
   IPConfigRefPtr ipconfig_;

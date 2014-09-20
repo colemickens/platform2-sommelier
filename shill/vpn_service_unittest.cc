@@ -108,7 +108,7 @@ class VPNServiceTest : public testing::Test {
   MockManager manager_;
   MockMetrics metrics_;
   MockDeviceInfo device_info_;
-  scoped_refptr<NiceMock<MockConnection> > connection_;
+  scoped_refptr<NiceMock<MockConnection>> connection_;
   MockSockets *sockets_;  // Owned by |service_|.
   VPNServiceRefPtr service_;
 };

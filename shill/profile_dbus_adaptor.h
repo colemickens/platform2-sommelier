@@ -52,8 +52,8 @@ class ProfileDBusAdaptor : public org::chromium::flimflam::Profile_adaptor,
 
   // Gets an "Entry", which is apparently a different set of properties than
   // those returned by GetProperties.
-  virtual std::map< std::string, DBus::Variant> GetEntry(
-      const std::string& ,
+  virtual std::map<std::string, DBus::Variant> GetEntry(
+      const std::string &,
       DBus::Error &error);  // NOLINT
 
   // Deletes an Entry.

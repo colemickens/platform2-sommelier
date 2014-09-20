@@ -70,8 +70,7 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static ::DBus::Variant Int32ToVariant(int32_t value);
   static ::DBus::Variant KeyValueStoreToVariant(const KeyValueStore &value);
   static ::DBus::Variant PathToVariant(const ::DBus::Path &value);
-  static ::DBus::Variant PathsToVariant(
-      const std::vector< ::DBus::Path> &value);
+  static ::DBus::Variant PathsToVariant(const std::vector<::DBus::Path> &value);
   static ::DBus::Variant StringToVariant(const std::string &value);
   static ::DBus::Variant StringmapToVariant(const Stringmap &value);
   static ::DBus::Variant StringmapsToVariant(const Stringmaps &value);

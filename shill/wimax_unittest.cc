@@ -112,7 +112,7 @@ TEST_F(WiMaxTest, StartStop) {
 }
 
 TEST_F(WiMaxTest, OnServiceStopped) {
-  scoped_refptr<NiceMock<MockWiMaxService> > service0(
+  scoped_refptr<NiceMock<MockWiMaxService>> service0(
       new NiceMock<MockWiMaxService>(
           &control_,
           reinterpret_cast<EventDispatcher *>(NULL),
@@ -208,7 +208,7 @@ TEST_F(WiMaxTest, UseNoArpGateway) {
 }
 
 TEST_F(WiMaxTest, DropService) {
-  scoped_refptr<NiceMock<MockWiMaxService> > service0(
+  scoped_refptr<NiceMock<MockWiMaxService>> service0(
       new NiceMock<MockWiMaxService>(
           &control_,
           reinterpret_cast<EventDispatcher *>(NULL),
@@ -312,7 +312,7 @@ TEST_F(WiMaxTest, ConnectTo) {
 
 TEST_F(WiMaxTest, IsIdle) {
   EXPECT_TRUE(device_->IsIdle());
-  scoped_refptr<NiceMock<MockWiMaxService> > service(
+  scoped_refptr<NiceMock<MockWiMaxService>> service(
       new NiceMock<MockWiMaxService>(
           &control_,
           reinterpret_cast<EventDispatcher *>(NULL),

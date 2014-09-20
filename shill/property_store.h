@@ -97,7 +97,7 @@ class PropertyStore {
 
   virtual bool SetStringmapsProperty(
       const std::string &name,
-      const std::vector<std::map<std::string, std::string> > &values,
+      const std::vector<std::map<std::string, std::string>> &values,
       Error *error);
 
   virtual bool SetStringsProperty(const std::string &name,
@@ -236,8 +236,8 @@ class PropertyStore {
       const std::string &name,
       V *value,
       Error *error,
-      const std::map< std::string, std::shared_ptr<
-          AccessorInterface<V> > > &collection,
+      const std::map<std::string,
+                     std::shared_ptr<AccessorInterface<V>>> &collection,
       const std::string &value_type_english) const;
 
   template <class V>
@@ -245,7 +245,7 @@ class PropertyStore {
       const std::string &name,
       const V &value,
       Error *error,
-      std::map< std::string, std::shared_ptr< AccessorInterface<V> > > *,
+      std::map<std::string, std::shared_ptr<AccessorInterface<V>>> *collection,
       const std::string &value_type_english);
 
   // These are std::maps instead of something cooler because the common

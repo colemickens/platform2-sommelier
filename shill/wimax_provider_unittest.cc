@@ -274,7 +274,7 @@ TEST_F(WiMaxProviderTest, StartLiveServices) {
   const uint32_t kIdentifier = 0x1234567;
   static const char kNetworkId[] = "01234567";
   static const char kName[] = "Some WiMAX Provider";
-  vector<scoped_refptr<MockWiMaxService> > services(4);
+  vector<scoped_refptr<MockWiMaxService>> services(4);
   for (size_t i = 0; i < services.size(); i++) {
     services[i] = new MockWiMaxService(&control_, NULL, &metrics_, &manager_);
     if (i == 0) {
@@ -313,7 +313,7 @@ TEST_F(WiMaxProviderTest, StartLiveServices) {
 }
 
 TEST_F(WiMaxProviderTest, DestroyAllServices) {
-  vector<scoped_refptr<MockWiMaxService> > services(2);
+  vector<scoped_refptr<MockWiMaxService>> services(2);
   for (size_t i = 0; i < services.size(); i++) {
     services[i] = new MockWiMaxService(&control_, NULL, &metrics_, &manager_);
     provider_.services_[services[i]->GetStorageIdentifier()] = services[i];
@@ -325,7 +325,7 @@ TEST_F(WiMaxProviderTest, DestroyAllServices) {
 }
 
 TEST_F(WiMaxProviderTest, StopDeadServices) {
-  vector<scoped_refptr<MockWiMaxService> > services(4);
+  vector<scoped_refptr<MockWiMaxService>> services(4);
   for (size_t i = 0; i < services.size(); i++) {
     services[i] = new MockWiMaxService(&control_, NULL, &metrics_, &manager_);
     if (i == 0) {

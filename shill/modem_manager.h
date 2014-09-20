@@ -53,7 +53,7 @@ class ModemManager {
   void OnDeviceInfoAvailable(const std::string &link_name);
 
  protected:
-  typedef std::map<std::string, std::shared_ptr<Modem> > Modems;
+  typedef std::map<std::string, std::shared_ptr<Modem>> Modems;
 
   const std::string &owner() const { return owner_; }
   const std::string &service() const { return service_; }
