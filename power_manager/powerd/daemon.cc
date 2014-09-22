@@ -39,6 +39,7 @@
 #include "power_manager/powerd/system/internal_backlight.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
+#include "power_manager/powerd/system/realtime_clock_alarm.h"
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
@@ -744,10 +745,19 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
                                " --suspend_wakeup_count %" PRIu64,
                                wakeup_count);
   }
+
+  scoped_ptr<system::RealtimeClockAlarm> alarm;
   if (duration != base::TimeDelta()) {
-    args += base::StringPrintf(" --suspend_duration %" PRId64,
-                               duration.InSeconds());
+    alarm.reset(new system::RealtimeClockAlarm(duration));
+    if (!alarm->Arm()) {
+      alarm.reset();
+      // Some older kernels might not like this clock type.
+      // Fall back to the sysfs rtc alarm if necessary.
+      args += base::StringPrintf(" --suspend_duration %" PRId64,
+                                 duration.InSeconds());
+    }
   }
+
   const int exit_code = RunSetuidHelper("suspend", args, true);
 
   // TODO(derat): Remove this once it's logged by the kernel:
