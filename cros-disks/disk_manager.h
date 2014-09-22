@@ -176,7 +176,7 @@ class DiskManager : public MountManager,
 
   // A mapping from a sysfs path of a disk, detected by the udev monitor,
   // to a set of sysfs paths of the immediate children of the disk.
-  std::map<std::string, std::set<std::string> > disks_detected_;
+  std::map<std::string, std::set<std::string>> disks_detected_;
 
   // A set of supported filesystems indexed by filesystem type.
   std::map<std::string, Filesystem> filesystems_;
