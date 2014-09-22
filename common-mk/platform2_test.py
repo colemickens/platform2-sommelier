@@ -405,8 +405,8 @@ class Platform2Test(object):
 
   def removeSysrootPrefix(self, path):
     """Returns the given path with any sysroot prefix removed."""
-
-    if path.startswith(self.sysroot):
+    # If the sysroot is /, then the paths are already normalized.
+    if self.sysroot != '/' and path.startswith(self.sysroot):
       path = path.replace(self.sysroot, '', 1)
 
     return path
@@ -695,6 +695,12 @@ def main(argv):
     raise AssertionError('You must provide only one of --board or --host')
   elif not options.host and not options.board and not options.sysroot:
     raise AssertionError('You must provide --board or --host or --sysroot')
+
+  if options.sysroot:
+    # Normalize the value so we can assume certain aspects.
+    options.sysroot = osutils.ExpandPath(options.sysroot)
+    if not os.path.isdir(options.sysroot):
+      raise AssertionError('Sysroot does not exist: %s' % options.sysroot)
 
   # Once we've finished sanity checking args, make sure we're root.
   _ReExecuteIfNeeded([sys.argv[0]] + argv)
