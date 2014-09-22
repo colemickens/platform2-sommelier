@@ -9,6 +9,8 @@ This handles the fun details like running against the right sysroot, via
 qemu, bind mounts, etc...
 """
 
+from __future__ import print_function
+
 import argparse
 import array
 import contextlib
@@ -563,9 +565,9 @@ class Platform2Test(object):
     #   sudo -u $SUDO_UID -g $SUDO_GID chroot $SYSROOT bash -c 'cd $CWD; $BIN'
     child = os.fork()
     if child == 0:
-      print 'chroot: %s' % self.sysroot
-      print 'cwd: %s' % cwd
-      print 'cmd: {%s} %s' % (cmd, ' '.join(map(repr, argv)))
+      print('chroot: %s' % self.sysroot)
+      print('cwd: %s' % cwd)
+      print('cmd: {%s} %s' % (cmd, ' '.join(map(repr, argv))))
       os.chroot(self.sysroot)
       os.chdir(cwd)
       # Some progs want this like bash else they get super confused.

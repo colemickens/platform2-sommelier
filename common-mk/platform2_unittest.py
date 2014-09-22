@@ -5,10 +5,11 @@
 
 """Tests for platform2 build logic"""
 
+from __future__ import print_function
+
 import glob
 import os
 import unittest
-
 
 import platform2_test
 

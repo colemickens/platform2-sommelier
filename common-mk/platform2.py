@@ -8,13 +8,14 @@
 Takes care of running gyp/ninja/etc... with all the right values.
 """
 
+from __future__ import print_function
+
 import argparse
 import glob
 import os
 import shutil
 import subprocess
 import sys
-
 
 from chromite.lib.cros_build_lib import ShellUnquote
 
