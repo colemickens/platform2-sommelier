@@ -39,7 +39,7 @@ class SystemUtils;
 class ServerBackedStateKeyGenerator {
  public:
   // Callback type for state key generation requests.
-  typedef base::Callback<void(const std::vector<std::vector<uint8_t> >&,
+  typedef base::Callback<void(const std::vector<std::vector<uint8_t>>&,
                               bool first_boot)> StateKeyCallback;
 
   // The power of two determining the size of the time quanta for device state
@@ -80,7 +80,7 @@ class ServerBackedStateKeyGenerator {
  private:
   // Computes the keys and stores them in |state_keys|. In case of error,
   // |state_keys| will be cleared.
-  void ComputeKeys(std::vector<std::vector<uint8_t> >* state_keys);
+  void ComputeKeys(std::vector<std::vector<uint8_t>>* state_keys);
 
   SystemUtils* system_utils_;
 

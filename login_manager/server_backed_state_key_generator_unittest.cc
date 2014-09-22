@@ -64,7 +64,7 @@ class ServerBackedStateKeyGeneratorTest : public ::testing::Test {
     ASSERT_TRUE(generator_.InitMachineInfo(params));
   }
 
-  void CompletionHandler(const std::vector<std::vector<uint8_t> >& state_keys,
+  void CompletionHandler(const std::vector<std::vector<uint8_t>>& state_keys,
                          bool first_boot) {
     state_keys_received_ = true;
     state_keys_ = state_keys;
@@ -85,7 +85,7 @@ class ServerBackedStateKeyGeneratorTest : public ::testing::Test {
   ServerBackedStateKeyGenerator generator_;
 
   bool state_keys_received_;
-  std::vector<std::vector<uint8_t> > state_keys_;
+  std::vector<std::vector<uint8_t>> state_keys_;
   bool first_boot_;
 
  private:
@@ -108,10 +108,10 @@ TEST_F(ServerBackedStateKeyGeneratorTest, TimedStateKeys) {
   RequestStateKeys(true);
   ASSERT_EQ(ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta,
             state_keys_.size());
-  std::vector<std::vector<uint8_t> > initial_state_keys = state_keys_;
+  std::vector<std::vector<uint8_t>> initial_state_keys = state_keys_;
 
   // All state keys are different.
-  std::set<std::vector<uint8_t> > state_key_set(state_keys_.begin(),
+  std::set<std::vector<uint8_t>> state_key_set(state_keys_.begin(),
                                                 state_keys_.end());
   EXPECT_EQ(ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta,
             state_key_set.size());

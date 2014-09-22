@@ -110,13 +110,13 @@ scoped_ptr<dbus::Response> CraftAppropriateResponseWithBytes(
 void HandleGetServerBackedStateKeysCompletion(
     dbus::MethodCall* call,
     const dbus::ExportedObject::ResponseSender& sender,
-    const std::vector<std::vector<uint8_t> >& state_keys,
+    const std::vector<std::vector<uint8_t>>& state_keys,
     bool first_boot) {
   scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call));
   dbus::MessageWriter writer(response.get());
   dbus::MessageWriter array_writer(NULL);
   writer.OpenArray("ay", &array_writer);
-  for (std::vector<std::vector<uint8_t> >::const_iterator state_key(
+  for (std::vector<std::vector<uint8_t>>::const_iterator state_key(
            state_keys.begin());
        state_key != state_keys.end();
        ++state_key) {
@@ -493,7 +493,7 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::SetFlagsForUser(
 void SessionManagerDBusAdaptor::GetServerBackedStateKeys(
     dbus::MethodCall* call,
     dbus::ExportedObject::ResponseSender sender) {
-  std::vector<std::vector<uint8_t> > state_keys;
+  std::vector<std::vector<uint8_t>> state_keys;
   impl_->RequestServerBackedStateKeys(
       base::Bind(&HandleGetServerBackedStateKeysCompletion, call, sender));
 }

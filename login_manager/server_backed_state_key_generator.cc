@@ -122,7 +122,7 @@ bool ServerBackedStateKeyGenerator::InitMachineInfo(
   LOG_IF(ERROR, disk_serial_number_.empty()) << "Disk serial number missing!";
 
   // Fire all pending callbacks.
-  std::vector<std::vector<uint8_t> > state_keys;
+  std::vector<std::vector<uint8_t>> state_keys;
   ComputeKeys(&state_keys);
   std::vector<StateKeyCallback> callbacks;
   callbacks.swap(pending_callbacks_);
@@ -143,13 +143,13 @@ void ServerBackedStateKeyGenerator::RequestStateKeys(
     return;
   }
 
-  std::vector<std::vector<uint8_t> > state_keys;
+  std::vector<std::vector<uint8_t>> state_keys;
   ComputeKeys(&state_keys);
   callback.Run(state_keys, activate_date_missing_);
 }
 
 void ServerBackedStateKeyGenerator::ComputeKeys(
-    std::vector<std::vector<uint8_t> >* state_keys) {
+    std::vector<std::vector<uint8_t>>* state_keys) {
   state_keys->clear();
 
   if (machine_serial_number_.empty() || disk_serial_number_.empty())

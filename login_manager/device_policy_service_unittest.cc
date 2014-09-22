@@ -311,7 +311,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   StrictMock<MockPolicyKey> key_;
   StrictMock<MockPolicyStore>* store_;
   scoped_ptr<MockMetrics> metrics_;
-  scoped_ptr<StrictMock<MockMitigator> > mitigator_;
+  scoped_ptr<StrictMock<MockMitigator>> mitigator_;
   MockPolicyServiceCompletion completion_;
 
   scoped_ptr<DevicePolicyService> service_;

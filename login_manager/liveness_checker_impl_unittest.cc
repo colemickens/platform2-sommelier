@@ -73,7 +73,7 @@ class LivenessCheckerImplTest : public ::testing::Test {
   base::MessageLoop loop_;
   scoped_refptr<base::MessageLoopProxy> loop_proxy_;
   scoped_refptr<MockObjectProxy> object_proxy_;
-  scoped_ptr<StrictMock<MockProcessManagerService> > manager_;
+  scoped_ptr<StrictMock<MockProcessManagerService>> manager_;
 
   scoped_ptr<LivenessCheckerImpl> checker_;
 
