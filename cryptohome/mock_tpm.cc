@@ -4,6 +4,8 @@
 
 #include "cryptohome/mock_tpm.h"
 
+#include <string>
+
 using testing::_;
 using testing::DoAll;
 using testing::SetArgumentPointee;
@@ -31,7 +33,7 @@ MockTpm::MockTpm() {
       .WillByDefault(Return(true));
   ON_CALL(*this, ActivateIdentity(_, _, _, _, _, _))
       .WillByDefault(Return(true));
-  ON_CALL(*this, QuotePCR0(_, _, _, _, _))
+  ON_CALL(*this, QuotePCR(_, _, _, _, _, _))
       .WillByDefault(Return(true));
   ON_CALL(*this, SealToPCR0(_, _))
       .WillByDefault(Return(true));
@@ -50,7 +52,9 @@ MockTpm::MockTpm() {
   ON_CALL(*this, VerifyPCRBoundKey(_, _, _))
       .WillByDefault(Return(true));
   ON_CALL(*this, ExtendPCR(_, _))
-      .WillByDefault(Return(true));
+      .WillByDefault(Invoke(this, &MockTpm::FakeExtendPCR));
+  ON_CALL(*this, ReadPCR(_, _))
+      .WillByDefault(Invoke(this, &MockTpm::FakeReadPCR));
 }
 
 MockTpm::~MockTpm() {}

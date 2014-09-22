@@ -52,6 +52,10 @@ message Quote {
   optional bytes quoted_data = 2;
   // The value of the PCR(s) at the time the quote was generated.
   optional bytes quoted_pcr_value = 3;
+  // Source data which was originally used to extend the PCR. If this field
+  // exists it can be expected that SHA1(pcr_source_hint) was extended into the
+  // PCR.
+  optional bytes pcr_source_hint = 4;
 }
 
 // Holds owner delegation information.
@@ -75,6 +79,8 @@ message AttestationEnrollmentRequest {
   optional bytes identity_public_key = 2;
   // PCR0 quoted by AIK.
   optional Quote pcr0_quote = 3;
+  // PCR1 quoted by AIK.
+  optional Quote pcr1_quote = 4;
 }
 
 // These two fields are suitable for passing to Tspi_TPM_ActivateIdentity()
@@ -172,6 +178,7 @@ message AttestationDatabase {
   optional IdentityBinding identity_binding = 3;
   optional IdentityKey identity_key = 4;
   optional Quote pcr0_quote = 5;
+  optional Quote pcr1_quote = 12;
   optional Delegation delegate = 6;
   repeated CertifiedKey device_keys = 7;
 
@@ -185,6 +192,7 @@ message AttestationDatabase {
   optional IdentityBinding alternate_identity_binding = 9;
   optional IdentityKey alternate_identity_key = 10;
   optional Quote alternate_pcr0_quote = 11;
+  optional Quote alternate_pcr1_quote = 13;
 }
 
 // Holds encrypted data and information required to decrypt it.

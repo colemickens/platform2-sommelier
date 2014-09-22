@@ -811,6 +811,11 @@ void Platform::Sync() {
   TimedSync();
 }
 
+std::string Platform::GetHardwareID() {
+  char buffer[VB_MAX_STRING_PROPERTY];
+  return VbGetSystemPropertyString("hwid", buffer, arraysize(buffer));
+}
+
 // Encapsulate these helpers to avoid include conflicts.
 namespace ecryptfs {
 extern "C" {

@@ -443,8 +443,17 @@ class Attestation : public base::PlatformThread::Delegate,
   bool VerifyIdentityBinding(const IdentityBinding& binding);
 
   // Verifies a quote of PCR0.
-  bool VerifyQuote(const chromeos::SecureBlob& aik_public_key,
-                   const Quote& quote);
+  bool VerifyPCR0Quote(const chromeos::SecureBlob& aik_public_key,
+                       const Quote& quote);
+
+  // Verifies a quote of PCR1.
+  bool VerifyPCR1Quote(const chromeos::SecureBlob& aik_public_key,
+                       const Quote& quote);
+
+  // Verifies that a quote signature is valid and matches the quoted data.
+  bool VerifyQuoteSignature(const chromeos::SecureBlob& aik_public_key,
+                            const Quote& quote,
+                            int pcr_index);
 
   // Verifies a certified key.
   bool VerifyCertifiedKey(const chromeos::SecureBlob& aik_public_key,
@@ -464,6 +473,12 @@ class Attestation : public base::PlatformThread::Delegate,
 
   // Clears the memory of the database protobuf.
   void ClearDatabase();
+
+  // Clears the memory of a Quote protobuf.
+  void ClearQuote(Quote* quote);
+
+  // Clears the memory of Identity protobufs.
+  void ClearIdentity(IdentityBinding* binding, IdentityKey* key);
 
   // Clears the memory of a std::string.
   void ClearString(std::string* s);
@@ -560,6 +575,10 @@ class Attestation : public base::PlatformThread::Delegate,
 
   // Returns true if the TPM is ready.
   bool IsTPMReady();
+
+  // If PCR1 is clear (i.e. all 0 bytes), extends the PCR with the HWID. This is
+  // a fallback if the device firmware does not already do this.
+  void ExtendPCR1IfClear();
 
   // Injects a TpmInit object to be used for RemoveTpmOwnerDependency
   void set_tpm_init(TpmInit* value) { tpm_init_ = value; }

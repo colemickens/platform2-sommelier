@@ -255,6 +255,7 @@ void Attestation::Initialize(Tpm* tpm,
   }
 
   if (tpm_) {
+    ExtendPCR1IfClear();
     string serial_encrypted_db;
     if (!LoadDatabase(&serial_encrypted_db)) {
       LOG(INFO) << "Attestation: Attestation data not found.";
@@ -349,27 +350,44 @@ void Attestation::PrepareForEnrollment() {
     LOG(ERROR) << "Attestation: GetRandomData failed.";
     return;
   }
-  SecureBlob quoted_pcr_value;
-  SecureBlob quoted_data;
-  SecureBlob quote;
-  if (!tpm_->QuotePCR0(identity_key_blob,
-                       external_data,
-                       &quoted_pcr_value,
-                       &quoted_data,
-                       &quote)) {
+  SecureBlob quoted_pcr_value0;
+  SecureBlob quoted_data0;
+  SecureBlob quote0;
+  if (!tpm_->QuotePCR(0,
+                      identity_key_blob,
+                      external_data,
+                      &quoted_pcr_value0,
+                      &quoted_data0,
+                      &quote0)) {
     LOG(ERROR) << "Attestation: Failed to generate quote.";
     return;
   }
-  // Create an AIK and quote for the alternate PCA.
+  // Quote PCR1.
+  SecureBlob quoted_pcr_value1;
+  SecureBlob quoted_data1;
+  SecureBlob quote1;
+  if (!tpm_->QuotePCR(1,
+                      identity_key_blob,
+                      external_data,
+                      &quoted_pcr_value1,
+                      &quoted_data1,
+                      &quote1)) {
+    LOG(ERROR) << "Attestation: Failed to generate quote.";
+    return;
+  }
+  // Create an AIK and quotes for the alternate PCA.
   SecureBlob alternate_identity_public_key_der;
   SecureBlob alternate_identity_public_key;
   SecureBlob alternate_identity_key_blob;
   SecureBlob alternate_identity_binding;
   SecureBlob alternate_identity_label;
   SecureBlob alternate_pca_public_key;
-  SecureBlob alternate_quoted_pcr_value;
-  SecureBlob alternate_quoted_data;
-  SecureBlob alternate_quote;
+  SecureBlob alternate_quoted_pcr_value0;
+  SecureBlob alternate_quoted_data0;
+  SecureBlob alternate_quote0;
+  SecureBlob alternate_quoted_pcr_value1;
+  SecureBlob alternate_quoted_data1;
+  SecureBlob alternate_quote1;
   if (enable_alternate_pca) {
     if (!tpm_->MakeIdentity(&alternate_identity_public_key_der,
                             &alternate_identity_public_key,
@@ -383,11 +401,21 @@ void Attestation::PrepareForEnrollment() {
       LOG(ERROR) << "Attestation: Failed to make AIK.";
       return;
     }
-    if (!tpm_->QuotePCR0(alternate_identity_key_blob,
-                         external_data,
-                         &alternate_quoted_pcr_value,
-                         &alternate_quoted_data,
-                         &alternate_quote)) {
+    if (!tpm_->QuotePCR(0,
+                        alternate_identity_key_blob,
+                        external_data,
+                        &alternate_quoted_pcr_value0,
+                        &alternate_quoted_data0,
+                        &alternate_quote0)) {
+      LOG(ERROR) << "Attestation: Failed to generate quote.";
+      return;
+    }
+    if (!tpm_->QuotePCR(1,
+                        alternate_identity_key_blob,
+                        external_data,
+                        &alternate_quoted_pcr_value1,
+                        &alternate_quoted_data1,
+                        &alternate_quote1)) {
       LOG(ERROR) << "Attestation: Failed to generate quote.";
       return;
     }
@@ -443,11 +471,17 @@ void Attestation::PrepareForEnrollment() {
                                       identity_public_key.size());
   binding_pb->set_identity_label(identity_label.data(), identity_label.size());
   binding_pb->set_pca_public_key(pca_public_key.data(), pca_public_key.size());
-  Quote* quote_pb = database_pb_.mutable_pcr0_quote();
-  quote_pb->set_quote(quote.data(), quote.size());
-  quote_pb->set_quoted_data(quoted_data.data(), quoted_data.size());
-  quote_pb->set_quoted_pcr_value(quoted_pcr_value.data(),
-                                 quoted_pcr_value.size());
+  Quote* quote_pb0 = database_pb_.mutable_pcr0_quote();
+  quote_pb0->set_quote(quote0.data(), quote0.size());
+  quote_pb0->set_quoted_data(quoted_data0.data(), quoted_data0.size());
+  quote_pb0->set_quoted_pcr_value(quoted_pcr_value0.data(),
+                                  quoted_pcr_value0.size());
+  Quote* quote_pb1 = database_pb_.mutable_pcr1_quote();
+  quote_pb1->set_quote(quote1.data(), quote1.size());
+  quote_pb1->set_quoted_data(quoted_data1.data(), quoted_data1.size());
+  quote_pb1->set_quoted_pcr_value(quoted_pcr_value1.data(),
+                                  quoted_pcr_value1.size());
+  quote_pb1->set_pcr_source_hint(platform_->GetHardwareID());
   if (enable_alternate_pca) {
     IdentityKey* alternate_key_pb =
         database_pb_.mutable_alternate_identity_key();
@@ -471,13 +505,22 @@ void Attestation::PrepareForEnrollment() {
                                              alternate_identity_label.size());
     alternate_binding_pb->set_pca_public_key(alternate_pca_public_key.data(),
                                              alternate_pca_public_key.size());
-    Quote* alternate_quote_pb = database_pb_.mutable_alternate_pcr0_quote();
-    alternate_quote_pb->set_quote(alternate_quote.data(),
-                                  alternate_quote.size());
-    alternate_quote_pb->set_quoted_data(alternate_quoted_data.data(),
-                                        alternate_quoted_data.size());
-    alternate_quote_pb->set_quoted_pcr_value(alternate_quoted_pcr_value.data(),
-                                             alternate_quoted_pcr_value.size());
+    Quote* alternate_quote_pb0 = database_pb_.mutable_alternate_pcr0_quote();
+    alternate_quote_pb0->set_quote(alternate_quote0.data(),
+                                   alternate_quote0.size());
+    alternate_quote_pb0->set_quoted_data(alternate_quoted_data0.data(),
+                                         alternate_quoted_data0.size());
+    alternate_quote_pb0->set_quoted_pcr_value(
+        alternate_quoted_pcr_value0.data(),
+        alternate_quoted_pcr_value0.size());
+    Quote* alternate_quote_pb1 = database_pb_.mutable_alternate_pcr1_quote();
+    alternate_quote_pb1->set_quote(alternate_quote1.data(),
+                                   alternate_quote1.size());
+    alternate_quote_pb1->set_quoted_data(alternate_quoted_data1.data(),
+                                         alternate_quoted_data1.size());
+    alternate_quote_pb1->set_quoted_pcr_value(
+        alternate_quoted_pcr_value1.data(),
+        alternate_quoted_pcr_value1.size());
   }
   Delegation* delegate_pb = database_pb_.mutable_delegate();
   delegate_pb->set_blob(delegate_blob.data(), delegate_blob.size());
@@ -537,9 +580,13 @@ bool Attestation::Verify(bool is_cros_core) {
   }
   SecureBlob aik_public_key = SecureBlob(
       database_pb_.identity_binding().identity_public_key_der());
-  if (!VerifyQuote(aik_public_key, database_pb_.pcr0_quote())) {
+  if (!VerifyPCR0Quote(aik_public_key, database_pb_.pcr0_quote())) {
     LOG(ERROR) << "Attestation: Bad PCR0 quote.";
     return false;
+  }
+  if (!VerifyPCR1Quote(aik_public_key, database_pb_.pcr1_quote())) {
+    // Don't fail because many devices don't use PCR1.
+    LOG(WARNING) << "Attestation: Bad PCR1 quote.";
   }
   SecureBlob nonce;
   if (!tpm_->GetRandomData(kNonceSize, &nonce)) {
@@ -622,6 +669,9 @@ bool Attestation::CreateEnrollRequest(PCAType pca_type,
   *request_pb.mutable_pcr0_quote() = use_alternate_pca ?
       database_pb_.alternate_pcr0_quote() :
       database_pb_.pcr0_quote();
+  *request_pb.mutable_pcr1_quote() = use_alternate_pca ?
+      database_pb_.alternate_pcr1_quote() :
+      database_pb_.pcr1_quote();
   string tmp;
   if (!request_pb.SerializeToString(&tmp)) {
     LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
@@ -1236,31 +1286,9 @@ bool Attestation::VerifyIdentityBinding(const IdentityBinding& binding) {
   return true;
 }
 
-bool Attestation::VerifyQuote(const SecureBlob& aik_public_key,
-                              const Quote& quote) {
-  if (!VerifySignature(aik_public_key,
-                       SecureBlob(quote.quoted_data()),
-                       SecureBlob(quote.quote()))) {
-    LOG(ERROR) << "Failed to verify quote signature.";
-    return false;
-  }
-
-  // Check that the quoted value matches the given PCR value. We can verify this
-  // by reconstructing the TPM_PCR_COMPOSITE structure the TPM would create.
-  const uint8_t header[] = {
-    static_cast<uint8_t>(0), static_cast<uint8_t>(2),
-    static_cast<uint8_t>(1), static_cast<uint8_t>(0),
-    static_cast<uint8_t>(0), static_cast<uint8_t>(0),
-    static_cast<uint8_t>(0),
-    static_cast<uint8_t>(quote.quoted_pcr_value().size())};
-  SecureBlob pcr_composite = SecureBlob::Combine(
-      SecureBlob(header, arraysize(header)),
-      SecureBlob(quote.quoted_pcr_value()));
-  SecureBlob pcr_digest = CryptoLib::Sha1(pcr_composite);
-  SecureBlob quoted_data(quote.quoted_data());
-  if (search(quoted_data.begin(), quoted_data.end(),
-             pcr_digest.begin(), pcr_digest.end()) == quoted_data.end()) {
-    LOG(ERROR) << "PCR0 value mismatch.";
+bool Attestation::VerifyPCR0Quote(const SecureBlob& aik_public_key,
+                                  const Quote& quote) {
+  if (!VerifyQuoteSignature(aik_public_key, quote, 0)) {
     return false;
   }
 
@@ -1290,6 +1318,78 @@ bool Attestation::VerifyQuote(const SecureBlob& aik_public_key,
     }
   }
   LOG(WARNING) << "PCR0 value not recognized.";
+  return true;
+}
+
+bool Attestation::VerifyPCR1Quote(const SecureBlob& aik_public_key,
+                                  const Quote& quote) {
+  if (!VerifyQuoteSignature(aik_public_key, quote, 1)) {
+    return false;
+  }
+
+  // Check that the source hint is correctly populated.
+  std::string hwid = platform_->GetHardwareID();
+  if (hwid != quote.pcr_source_hint()) {
+    LOG(ERROR) << "PCR1 source hint does not match HWID: " << hwid;
+    return false;
+  }
+
+  LOG(INFO) << "PCR1 verified as " << hwid;
+  return true;
+}
+
+bool Attestation::VerifyQuoteSignature(const SecureBlob& aik_public_key,
+                                       const Quote& quote,
+                                       int pcr_index) {
+  if (!VerifySignature(aik_public_key,
+                       SecureBlob(quote.quoted_data()),
+                       SecureBlob(quote.quote()))) {
+    LOG(ERROR) << "Failed to verify quote signature.";
+    return false;
+  }
+
+  // Check that the quoted value matches the given PCR value. We can verify this
+  // by reconstructing the TPM_PCR_COMPOSITE structure the TPM would create.
+  CHECK_LE(pcr_index, 16);
+  CHECK_LE(quote.quoted_pcr_value().size(), 256);
+  const uint8_t header[] = {
+    // TPM_PCR_SELECTION.sizeOfSelect: 16-bit length of PCR index bitmap.
+    uint8_t(0), uint8_t(2),
+    // TPM_PCR_SELECTION.pcrSelect: PCR index bitmap.
+    uint8_t(pcr_index < 8 ? (1 << pcr_index) : 0),
+    uint8_t(pcr_index < 8 ? 0 : (1 << (pcr_index - 8))),
+    // TPM_PCR_COMPOSITE.valueSize: 32-bit length of PCR value.
+    uint8_t(0), uint8_t(0), uint8_t(0),
+    uint8_t(quote.quoted_pcr_value().size())};
+  SecureBlob pcr_composite = SecureBlob::Combine(
+      SecureBlob(header, arraysize(header)),
+      SecureBlob(quote.quoted_pcr_value()));
+  SecureBlob pcr_digest = CryptoLib::Sha1(pcr_composite);
+  SecureBlob quoted_data(quote.quoted_data());
+  // The PCR digest should appear 8 bytes into the quoted data. See the
+  // TPM_QUOTE_INFO structure.
+  if (search(quoted_data.begin(), quoted_data.end(),
+             pcr_digest.begin(), pcr_digest.end()) != quoted_data.begin() + 8) {
+    LOG(ERROR) << "PCR value mismatch.";
+    return false;
+  }
+
+  if (quote.has_pcr_source_hint()) {
+    // Check if the PCR value matches the hint.
+    SecureBlob hint_digest = CryptoLib::Sha1(
+        SecureBlob(quote.pcr_source_hint()));
+    chromeos::Blob extend_pcr_value(kDigestSize, 0);
+    extend_pcr_value.insert(extend_pcr_value.end(),
+                            hint_digest.begin(),
+                            hint_digest.end());
+    SecureBlob final_pcr_value = CryptoLib::Sha1(extend_pcr_value);
+    if (quote.quoted_pcr_value().size() != final_pcr_value.size() ||
+        0 != memcmp(quote.quoted_pcr_value().data(), final_pcr_value.data(),
+                    final_pcr_value.size())) {
+      LOG(ERROR) << "PCR source hint is invalid.";
+      return false;
+    }
+  }
   return true;
 }
 
@@ -1367,38 +1467,41 @@ bool Attestation::VerifySignature(const SecureBlob& public_key,
 }
 
 void Attestation::ClearDatabase() {
-  if (database_pb_.has_credentials()) {
-    TPMCredentials* credentials = database_pb_.mutable_credentials();
-    ClearString(credentials->mutable_endorsement_public_key());
-    ClearString(credentials->mutable_endorsement_credential());
-    ClearString(credentials->mutable_platform_credential());
-    ClearString(credentials->mutable_conformance_credential());
-  }
-  if (database_pb_.has_identity_binding()) {
-    IdentityBinding* binding = database_pb_.mutable_identity_binding();
-    ClearString(binding->mutable_identity_binding());
-    ClearString(binding->mutable_identity_public_key_der());
-    ClearString(binding->mutable_identity_public_key());
-    ClearString(binding->mutable_identity_label());
-    ClearString(binding->mutable_pca_public_key());
-  }
-  if (database_pb_.has_identity_key()) {
-    IdentityKey* key = database_pb_.mutable_identity_key();
-    ClearString(key->mutable_identity_public_key());
-    ClearString(key->mutable_identity_key_blob());
-    ClearString(key->mutable_identity_credential());
-  }
-  if (database_pb_.has_pcr0_quote()) {
-    Quote* quote = database_pb_.mutable_pcr0_quote();
-    ClearString(quote->mutable_quote());
-    ClearString(quote->mutable_quoted_data());
-    ClearString(quote->mutable_quoted_pcr_value());
-  }
-  if (database_pb_.has_delegate()) {
-    Delegation* delegate = database_pb_.mutable_delegate();
-    ClearString(delegate->mutable_blob());
-    ClearString(delegate->mutable_secret());
-  }
+  TPMCredentials* credentials = database_pb_.mutable_credentials();
+  ClearString(credentials->mutable_endorsement_public_key());
+  ClearString(credentials->mutable_endorsement_credential());
+  ClearString(credentials->mutable_platform_credential());
+  ClearString(credentials->mutable_conformance_credential());
+  ClearIdentity(database_pb_.mutable_identity_binding(),
+                database_pb_.mutable_identity_key());
+  ClearQuote(database_pb_.mutable_pcr0_quote());
+  ClearQuote(database_pb_.mutable_pcr1_quote());
+  Delegation* delegate = database_pb_.mutable_delegate();
+  ClearString(delegate->mutable_blob());
+  ClearString(delegate->mutable_secret());
+  ClearIdentity(database_pb_.mutable_alternate_identity_binding(),
+                database_pb_.mutable_alternate_identity_key());
+  ClearQuote(database_pb_.mutable_alternate_pcr0_quote());
+  ClearQuote(database_pb_.mutable_alternate_pcr1_quote());
+  database_pb_.Clear();
+}
+
+void Attestation::ClearQuote(Quote* quote) {
+  ClearString(quote->mutable_quote());
+  ClearString(quote->mutable_quoted_data());
+  ClearString(quote->mutable_quoted_pcr_value());
+  ClearString(quote->mutable_pcr_source_hint());
+}
+
+void Attestation::ClearIdentity(IdentityBinding* binding, IdentityKey* key) {
+  ClearString(binding->mutable_identity_binding());
+  ClearString(binding->mutable_identity_public_key_der());
+  ClearString(binding->mutable_identity_public_key());
+  ClearString(binding->mutable_identity_label());
+  ClearString(binding->mutable_pca_public_key());
+  ClearString(key->mutable_identity_public_key());
+  ClearString(key->mutable_identity_key_blob());
+  ClearString(key->mutable_identity_credential());
 }
 
 void Attestation::ClearString(string* s) {
@@ -1931,6 +2034,25 @@ bool Attestation::IsTPMReady() {
                     tpm_->IsOwned() &&
                     !tpm_->IsBeingOwned();
   return is_tpm_ready_;
+}
+
+void Attestation::ExtendPCR1IfClear() {
+  SecureBlob current_pcr_value;
+  if (!tpm_->ReadPCR(1, &current_pcr_value) ||
+      current_pcr_value.size() != kDigestSize) {
+    LOG(WARNING) << "Failed to read PCR1.";
+    return;
+  }
+  chromeos::Blob default_pcr_value(kDigestSize, 0);
+  if (!std::equal(default_pcr_value.begin(), default_pcr_value.end(),
+                  current_pcr_value.begin())) {
+    // The PCR has already been extended.
+    return;
+  }
+  LOG(WARNING) << "Extending PCR1.";
+  if (!tpm_->ExtendPCR(1, SecureBlob(platform_->GetHardwareID()))) {
+    LOG(WARNING) << "Failed to extend PCR1.";
+  }
 }
 
 void Attestation::RSADeleter::operator()(void* ptr) const {

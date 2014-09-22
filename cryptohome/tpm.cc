@@ -1719,23 +1719,24 @@ bool Tpm::MakeIdentity(SecureBlob* identity_public_key_der,
   return true;
 }
 
-bool Tpm::QuotePCR0(const SecureBlob& identity_key_blob,
-                    const SecureBlob& external_data,
-                    SecureBlob* pcr_value,
-                    SecureBlob* quoted_data,
-                    SecureBlob* quote) {
+bool Tpm::QuotePCR(int pcr_index,
+                   const SecureBlob& identity_key_blob,
+                   const SecureBlob& external_data,
+                   SecureBlob* pcr_value,
+                   SecureBlob* quoted_data,
+                   SecureBlob* quote) {
   CHECK(pcr_value && quoted_data && quote);
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
-    LOG(ERROR) << "QuotePCR0: Failed to connect to the TPM.";
+    LOG(ERROR) << "QuotePCR: Failed to connect to the TPM.";
     return false;
   }
   // Load the Storage Root Key.
   TSS_RESULT result;
   ScopedTssKey srk_handle(context_handle);
   if (!LoadSrk(context_handle, srk_handle.ptr(), &result)) {
-    TPM_LOG(INFO, result) << "QuotePCR0: Failed to load SRK.";
+    TPM_LOG(INFO, result) << "QuotePCR: Failed to load SRK.";
     return false;
   }
   // Load the AIK (which is wrapped by the SRK).
@@ -1747,21 +1748,21 @@ bool Tpm::QuotePCR0(const SecureBlob& identity_key_blob,
       const_cast<BYTE*>(vector_as_array(&identity_key_blob)),
       identity_key.ptr());
   if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "QuotePCR0: Failed to load AIK.";
+    TPM_LOG(ERROR, result) << "QuotePCR: Failed to load AIK.";
     return false;
   }
 
-  // Create a PCRS object and select index 0.
+  // Create a PCRS object and select the index.
   ScopedTssPcrs pcrs(context_handle);
   result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_PCRS,
                                      TSS_PCRS_STRUCT_INFO, pcrs.ptr());
   if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "QuotePCR0: Failed to create PCRS object.";
+    TPM_LOG(ERROR, result) << "QuotePCR: Failed to create PCRS object.";
     return false;
   }
-  result = Tspi_PcrComposite_SelectPcrIndex(pcrs, 0);
+  result = Tspi_PcrComposite_SelectPcrIndex(pcrs, pcr_index);
   if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "QuotePCR0: Failed to select PCR0.";
+    TPM_LOG(ERROR, result) << "QuotePCR: Failed to select PCR.";
     return false;
   }
   // Generate the quote.
@@ -1772,7 +1773,7 @@ bool Tpm::QuotePCR0(const SecureBlob& identity_key_blob,
       const_cast<BYTE*>(vector_as_array(&external_data));
   result = Tspi_TPM_Quote(tpm_handle, identity_key, pcrs, &validation);
   if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "QuotePCR0: Failed to generate quote.";
+    TPM_LOG(ERROR, result) << "QuotePCR: Failed to generate quote.";
     return false;
   }
   ScopedTssMemory scoped_quoted_data(0, validation.rgbData);
@@ -1781,10 +1782,10 @@ bool Tpm::QuotePCR0(const SecureBlob& identity_key_blob,
   // Get the PCR value that was quoted.
   ScopedTssMemory pcr_value_buffer;
   UINT32 pcr_value_length = 0;
-  result = Tspi_PcrComposite_GetPcrValue(pcrs, 0, &pcr_value_length,
+  result = Tspi_PcrComposite_GetPcrValue(pcrs, pcr_index, &pcr_value_length,
                                          pcr_value_buffer.ptr());
   if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "QuotePCR0: Failed to get PCR value.";
+    TPM_LOG(ERROR, result) << "QuotePCR: Failed to get PCR value.";
     return false;
   }
   pcr_value->assign(&pcr_value_buffer.value()[0],

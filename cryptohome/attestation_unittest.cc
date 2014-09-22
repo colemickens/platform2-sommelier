@@ -52,7 +52,7 @@ class AttestationTest : public testing::Test {
       RSA_free(rsa_);
   }
 
-  void SetUp() {
+  virtual void SetUp() {
     attestation_.set_database_path(kTestPath);
     attestation_.set_user_key_store(&key_store_);
     // Fake up a single file by default.
@@ -64,6 +64,10 @@ class AttestationTest : public testing::Test {
     ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
     ON_CALL(tpm_, IsOwned()).WillByDefault(Return(true));
     ON_CALL(tpm_, IsBeingOwned()).WillByDefault(Return(false));
+    Initialize();
+  }
+
+  virtual void Initialize() {
     attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
                             &install_attributes_);
   }
@@ -73,6 +77,9 @@ class AttestationTest : public testing::Test {
     return true;
   }
   virtual bool ReadDB(const string& path, string* db) {
+    if (serialized_db_.empty()) {
+      return false;
+    }
     db->assign(serialized_db_);
     return true;
   }
@@ -311,6 +318,13 @@ TEST(AttestationTest_, NullTpm) {
 TEST_F(AttestationTest, PrepareForEnrollment) {
   attestation_.PrepareForEnrollment();
   EXPECT_TRUE(attestation_.IsPreparedForEnrollment());
+  AttestationDatabase db = GetPersistentDatabase();
+  EXPECT_TRUE(db.has_credentials());
+  EXPECT_TRUE(db.has_identity_binding());
+  EXPECT_TRUE(db.has_identity_key());
+  EXPECT_TRUE(db.has_pcr0_quote());
+  EXPECT_TRUE(db.has_pcr1_quote());
+  EXPECT_TRUE(db.has_delegate());
 }
 
 TEST_F(AttestationTest, Enroll) {
@@ -713,6 +727,24 @@ TEST_F(AttestationTest, IdentityResetRequest) {
   EXPECT_TRUE(attestation_.GetIdentityResetRequest("token", &blob));
   attestation_.PrepareForEnrollment();
   EXPECT_TRUE(attestation_.GetIdentityResetRequest("token", &blob));
+}
+
+// An AttestationTest class which does not initialize the Attestation instance.
+class AttestationTestNoInitialize : public AttestationTest {
+ public:
+  virtual void Initialize() {}
+};
+
+TEST_F(AttestationTestNoInitialize, AutoExtendPCR1) {
+  SecureBlob default_pcr(std::string(20, 0));
+  EXPECT_CALL(tpm_, ReadPCR(1, _))
+      .WillOnce(DoAll(SetArgumentPointee<1>(default_pcr), Return(true)));
+  std::string fake_hwid = "hwid";
+  EXPECT_CALL(tpm_, ExtendPCR(1, chromeos::SecureBlob(fake_hwid)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, GetHardwareID()).WillRepeatedly(Return(fake_hwid));
+  // Now initialize and the mocks will complain if PCR1 is not extended.
+  AttestationTest::Initialize();
 }
 
 }  // namespace cryptohome

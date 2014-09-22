@@ -448,6 +448,10 @@ class Platform {
   // expensive, use with even more care than SyncFile.
   virtual void Sync();
 
+  // Gets the system HWID. This is the same ID that is used on some systems to
+  // extend the TPM's PCR_1.
+  virtual std::string GetHardwareID();
+
  private:
   // Returns the process and open file information for the specified process id
   // with files open on the given path

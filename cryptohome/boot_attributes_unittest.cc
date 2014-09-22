@@ -79,8 +79,8 @@ class BootAttributesTest : public testing::Test {
  protected:
   const chromeos::SecureBlob fake_signature_;
 
-  MockBootLockbox mock_boot_lockbox_;
-  MockPlatform mock_platform_;
+  NiceMock<MockBootLockbox> mock_boot_lockbox_;
+  NiceMock<MockPlatform> mock_platform_;
 
   scoped_ptr<BootAttributes> boot_attributes_;
 

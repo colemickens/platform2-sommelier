@@ -250,10 +250,12 @@ class Tpm {
                             chromeos::SecureBlob* platform_credential,
                             chromeos::SecureBlob* conformance_credential);
 
-  // Generates a quote of PCR0 with the given identity key. PCR0 is used to
-  // differentiate normal mode from developer mode.
+  // Generates a quote of a given PCR with the given identity key.
+  // - PCR0 is used to differentiate normal mode from developer mode.
+  // - PCR1 is used on some systems to measure the HWID.
   //
   // Parameters
+  //   pcr_index - The index of the PCR to be quoted.
   //   identity_key_blob - The AIK blob, as provided by MakeIdentity.
   //   external_data - Data to be added to the quote, this must be at least 160
   //                   bits in length and only the first 160 bits will be used.
@@ -265,11 +267,12 @@ class Tpm {
   //   quote - The generated quote.
   //
   // Returns true on success.
-  virtual bool QuotePCR0(const chromeos::SecureBlob& identity_key_blob,
-                         const chromeos::SecureBlob& external_data,
-                         chromeos::SecureBlob* pcr_value,
-                         chromeos::SecureBlob* quoted_data,
-                         chromeos::SecureBlob* quote);
+  virtual bool QuotePCR(int pcr_index,
+                        const chromeos::SecureBlob& identity_key_blob,
+                        const chromeos::SecureBlob& external_data,
+                        chromeos::SecureBlob* pcr_value,
+                        chromeos::SecureBlob* quoted_data,
+                        chromeos::SecureBlob* quote);
 
   // Seals a secret to PCR0 with the SRK.
   //

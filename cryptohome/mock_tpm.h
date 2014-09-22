@@ -7,9 +7,10 @@
 
 #include "cryptohome/tpm.h"
 
+#include <set>
+
 #include <base/logging.h>
 #include <chromeos/secure_blob.h>
-
 #include <gmock/gmock.h>
 
 namespace cryptohome {
@@ -65,11 +66,12 @@ class MockTpm : public Tpm {
                                       const chromeos::SecureBlob&,
                                       const chromeos::SecureBlob&,
                                       chromeos::SecureBlob*));
-  MOCK_METHOD5(QuotePCR0, bool(const chromeos::SecureBlob&,
-                               const chromeos::SecureBlob&,
-                               chromeos::SecureBlob*,
-                               chromeos::SecureBlob*,
-                               chromeos::SecureBlob*));
+  MOCK_METHOD6(QuotePCR, bool(int,
+                              const chromeos::SecureBlob&,
+                              const chromeos::SecureBlob&,
+                              chromeos::SecureBlob*,
+                              chromeos::SecureBlob*,
+                              chromeos::SecureBlob*));
   MOCK_METHOD2(SealToPCR0, bool(const chromeos::Blob&, chromeos::Blob*));
   MOCK_METHOD2(Unseal, bool(const chromeos::Blob&, chromeos::Blob*));
   MOCK_METHOD3(CreateDelegate, bool(const chromeos::SecureBlob&,
@@ -93,6 +95,7 @@ class MockTpm : public Tpm {
                                        const chromeos::SecureBlob&,
                                        const chromeos::SecureBlob&));
   MOCK_METHOD2(ExtendPCR, bool(int, const chromeos::SecureBlob&));
+  MOCK_METHOD2(ReadPCR, bool(int, chromeos::SecureBlob*));
 
  private:
   bool Xor(TSS_HCONTEXT _context,
@@ -119,6 +122,18 @@ class MockTpm : public Tpm {
     blob->resize(num_bytes);
     return true;
   }
+
+  bool FakeExtendPCR(int index, const chromeos::SecureBlob& value) {
+    extended_pcrs_.insert(index);
+    return true;
+  }
+
+  bool FakeReadPCR(int index, chromeos::SecureBlob* value) {
+    value->assign(20, extended_pcrs_.count(index) ? 0xAA : 0);
+    return true;
+  }
+
+  std::set<int> extended_pcrs_;
 };
 }  // namespace cryptohome
 
