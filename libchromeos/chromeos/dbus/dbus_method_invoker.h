@@ -43,11 +43,11 @@
 
 #include <chromeos/dbus/dbus_param_reader.h>
 #include <chromeos/dbus/dbus_param_writer.h>
+#include <chromeos/dbus/utils.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/errors/error_codes.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
-#include <dbus/scoped_dbus_error.h>
 
 namespace chromeos {
 namespace dbus_utils {
@@ -74,7 +74,10 @@ inline std::unique_ptr<dbus::Response> CallMethodAndBlockWithTimeout(
   // Add method arguments to the message buffer.
   dbus::MessageWriter writer(&method_call);
   DBusParamWriter::Append(&writer, args...);
-  dbus::ScopedDBusError dbus_error;
+  // TODO(avakulenko): Replace ScopedDBusErrorWrapper with dbus::ScopedDBusError
+  // when its methods that call dbus-1 APIs are not inlined.
+  // See http://crbug.com/416628
+  ScopedDBusErrorWrapper dbus_error;
   auto response = object->CallMethodAndBlockWithErrorDetails(
       &method_call, timeout_ms, &dbus_error);
   if (!response) {

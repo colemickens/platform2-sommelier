@@ -12,6 +12,7 @@
 #include <chromeos/errors/error.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
+#include <dbus/scoped_dbus_error.h>
 
 namespace chromeos {
 namespace dbus_utils {
@@ -36,6 +37,19 @@ CHROMEOS_EXPORT std::unique_ptr<dbus::Response> CreateDBusErrorResponse(
 CHROMEOS_EXPORT std::unique_ptr<dbus::Response> GetDBusError(
     dbus::MethodCall* method_call,
     const chromeos::Error* error);
+
+// TODO(avakulenko): Until dbus::ScopedDBusError has inline dbus-1 function
+// calls removed from its header file, we need to create a wrapper around it.
+// This way we can hide calls to low-level dbus API calls from the call sites.
+// See http://crbug.com/416628
+class CHROMEOS_EXPORT ScopedDBusErrorWrapper : public dbus::ScopedDBusError {
+ public:
+  // Do not inline constructor/destructor.
+  ScopedDBusErrorWrapper();
+  ~ScopedDBusErrorWrapper();
+  // Hide the function of ScopedDBusError and provide our own...
+  bool is_set() const;
+};
 
 }  // namespace dbus_utils
 }  // namespace chromeos

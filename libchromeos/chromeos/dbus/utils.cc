@@ -30,6 +30,15 @@ void HandleSynchronousDBusMethodCall(
 
 }  // namespace
 
+// Do not inline ScopedDBusErrorWrapper constructor/destructor.
+ScopedDBusErrorWrapper::ScopedDBusErrorWrapper() {}
+ScopedDBusErrorWrapper::~ScopedDBusErrorWrapper() {}
+
+// Delegate the call to dbus::ScopedDBusError::is_set().
+bool ScopedDBusErrorWrapper::is_set() const {
+  return dbus::ScopedDBusError::is_set();
+}
+
 std::unique_ptr<dbus::Response> CreateDBusErrorResponse(
     dbus::MethodCall* method_call,
     const std::string& code,
