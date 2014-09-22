@@ -29,6 +29,7 @@ using testing::AnyNumber;
 using testing::Invoke;
 using testing::Property;
 using testing::Return;
+using testing::Unused;
 using testing::_;
 
 namespace {
@@ -42,11 +43,11 @@ Response* GetStateDelegate(dbus::MethodCall* method_call, int32_t state) {
   return response.release();
 }
 
-Response* ReturnsRunning(dbus::MethodCall* method_call, int timeout_ms) {
+Response* ReturnsRunning(dbus::MethodCall* method_call, Unused, Unused) {
   return GetStateDelegate(method_call, AVAHI_SERVER_RUNNING);
 }
 
-Response* ReturnsInvalid(dbus::MethodCall* method_call, int timeout_ms) {
+Response* ReturnsInvalid(dbus::MethodCall* method_call, Unused, Unused) {
   return GetStateDelegate(method_call, AVAHI_SERVER_INVALID);
 }
 
@@ -88,8 +89,8 @@ class AvahiClientTest : public ::testing::Test {
     if (is_running) { handler = &ReturnsRunning; }
     EXPECT_CALL(
         *avahi_proxy_,
-        MockCallMethodAndBlock(IsDBusMethodCallTo(kServerInterface,
-                                                  kServerMethodGetState), _))
+        MockCallMethodAndBlockWithErrorDetails(
+            IsMethodCallTo(kServerInterface, kServerMethodGetState), _, _))
         .WillOnce(Invoke(handler));
   }
 
