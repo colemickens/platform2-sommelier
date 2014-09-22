@@ -28,7 +28,7 @@ class ObjectImporter;
 
 // Key: Object handle.
 // Value: Object shared pointer.
-typedef std::map<int, std::shared_ptr<const Object> > HandleObjectMap;
+typedef std::map<int, std::shared_ptr<const Object>> HandleObjectMap;
 typedef std::set<const Object*> ObjectSet;
 
 class ObjectPoolImpl : public ObjectPool {

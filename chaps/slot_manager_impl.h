@@ -108,7 +108,7 @@ class SlotManagerImpl : public SlotManager,
     std::shared_ptr<ObjectPool> token_object_pool;
     // Key: A session identifier.
     // Value: The associated session object.
-    std::map<int, std::shared_ptr<Session> > sessions;
+    std::map<int, std::shared_ptr<Session>> sessions;
     std::shared_ptr<base::PlatformThread::Delegate> worker_thread;
     base::PlatformThreadHandle worker_thread_handle;
   };

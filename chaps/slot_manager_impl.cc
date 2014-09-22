@@ -436,8 +436,8 @@ void SlotManagerImpl::CloseAllSessions(const SecureBlob& isolate_credential,
   CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
   CHECK(IsTokenAccessible(isolate_credential, slot_id));
 
-  for (map<int, shared_ptr<Session> >::iterator iter =
-          slot_list_[slot_id].sessions.begin();
+  for (map<int, shared_ptr<Session>>::iterator iter =
+           slot_list_[slot_id].sessions.begin();
        iter != slot_list_[slot_id].sessions.end();
        ++iter) {
     session_slot_map_.erase(iter->first);
@@ -461,7 +461,7 @@ bool SlotManagerImpl::GetSession(const SecureBlob& isolate_credential,
   }
 
   // Lookup the session instance.
-  map<int, shared_ptr<Session> >::const_iterator session_iter =
+  map<int, shared_ptr<Session>>::const_iterator session_iter =
       slot_list_[slot_id].sessions.find(session_id);
   if (session_iter == slot_list_[slot_id].sessions.end())
     return false;
