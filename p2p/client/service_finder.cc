@@ -93,7 +93,7 @@ class ServiceFinderAvahi : public ServiceFinder {
   AvahiClient* client_;
   bool running_;
   vector<Peer*> peers_;
-  map<string, vector<Peer*> > file_to_servers_;
+  map<string, vector<Peer*>> file_to_servers_;
   AvahiServiceBrowser* lookup_browser_;
   bool lookup_all_for_now_;
   set<AvahiServiceResolver*> lookup_pending_resolvers_;
@@ -189,8 +189,7 @@ int ServiceFinderAvahi::NumTotalPeers() const {
 
 vector<const Peer*> ServiceFinderAvahi::GetPeersForFile(
     const string& file) const {
-  map<string, vector<Peer*> >::const_iterator it =
-    file_to_servers_.find(file);
+  map<string, vector<Peer*>>::const_iterator it = file_to_servers_.find(file);
   if (it == file_to_servers_.end())
     return vector<const Peer*>();
   return vector<const Peer*>(it->second.begin(), it->second.end());
