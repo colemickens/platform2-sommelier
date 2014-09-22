@@ -33,7 +33,7 @@ class AnonymizerTool {
       std::map<std::string, std::string>* identifier_space);
 
   std::map<std::string, std::string> mac_addresses_;
-  std::vector<std::map<std::string, std::string> > custom_patterns_;
+  std::vector<std::map<std::string, std::string>> custom_patterns_;
 
   DISALLOW_COPY_AND_ASSIGN(AnonymizerTool);
 };
