@@ -61,7 +61,7 @@ void DBusCommandProxy::RegisterAsync(
   progress_.SetValue(command_instance_->GetProgress());
   // Convert a string-to-PropValue map into a string-to-Any map which can be
   // sent over D-Bus.
-  chromeos::dbus_utils::Dictionary params;
+  chromeos::VariantDictionary params;
   for (const auto& param_pair : command_instance_->GetParameters()) {
     params.insert(std::make_pair(param_pair.first,
                                  param_pair.second->GetValueAsAny()));

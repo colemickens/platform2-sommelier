@@ -118,7 +118,7 @@ std::string Manager::HandleFinishRegisterDevice(
 
 void Manager::HandleUpdateState(
     chromeos::ErrorPtr* error,
-    const chromeos::dbus_utils::Dictionary& property_set) {
+    const chromeos::VariantDictionary& property_set) {
   state_manager_->UpdateProperties(property_set, error);
 }
 

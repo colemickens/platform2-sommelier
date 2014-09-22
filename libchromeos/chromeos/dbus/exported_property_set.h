@@ -14,9 +14,9 @@
 #include <base/memory/weak_ptr.h>
 #include <chromeos/any.h>
 #include <chromeos/chromeos_export.h>
-#include <chromeos/dbus/data_serialization.h>
 #include <chromeos/dbus/dbus_signal.h>
 #include <chromeos/errors/error.h>
+#include <chromeos/variant_dictionary.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 
@@ -77,7 +77,7 @@ class CHROMEOS_EXPORT ExportedPropertyBase {
 
 class CHROMEOS_EXPORT ExportedPropertySet {
  public:
-  using PropertyWriter = base::Callback<void(Dictionary* dict)>;
+  using PropertyWriter = base::Callback<void(VariantDictionary* dict)>;
 
   explicit ExportedPropertySet(dbus::Bus* bus);
   virtual ~ExportedPropertySet() = default;
@@ -97,7 +97,7 @@ class CHROMEOS_EXPORT ExportedPropertySet {
                         ExportedPropertyBase* exported_property);
 
   // D-Bus methods for org.freedesktop.DBus.Properties interface.
-  Dictionary HandleGetAll(
+  VariantDictionary HandleGetAll(
       chromeos::ErrorPtr* error,
       const std::string& interface_name);
   chromeos::Any HandleGet(
@@ -115,7 +115,7 @@ class CHROMEOS_EXPORT ExportedPropertySet {
       const chromeos::Any& value);
   // Returns a string-to-variant map of all the properties for the given
   // interface and their values.
-  Dictionary GetInterfaceProperties(
+  VariantDictionary GetInterfaceProperties(
       const std::string& interface_name) const;
 
  private:
@@ -124,7 +124,7 @@ class CHROMEOS_EXPORT ExportedPropertySet {
   // given interface.
   CHROMEOS_PRIVATE void WritePropertiesToDict(
       const std::string& interface_name,
-      Dictionary* dict);
+      VariantDictionary* dict);
   CHROMEOS_PRIVATE void HandlePropertyUpdated(
       const std::string& interface_name,
       const std::string& property_name,
@@ -139,7 +139,7 @@ class CHROMEOS_EXPORT ExportedPropertySet {
   base::WeakPtrFactory<ExportedPropertySet> weak_ptr_factory_;
 
   using SignalPropertiesChanged =
-      DBusSignal<std::string, Dictionary, std::vector<std::string>>;
+      DBusSignal<std::string, VariantDictionary, std::vector<std::string>>;
 
   std::weak_ptr<SignalPropertiesChanged> signal_properties_changed_;
 

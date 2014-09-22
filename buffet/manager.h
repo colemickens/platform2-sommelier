@@ -56,7 +56,7 @@ class Manager final {
                                          const std::string& user_auth_code);
   // Handles calls to org.chromium.Buffet.Manager.UpdateState().
   void HandleUpdateState(chromeos::ErrorPtr* error,
-                         const chromeos::dbus_utils::Dictionary& property_set);
+                         const chromeos::VariantDictionary& property_set);
   // Handles calls to org.chromium.Buffet.Manager.AddCommand().
   void HandleAddCommand(chromeos::ErrorPtr* error,
                         const std::string& json_command);

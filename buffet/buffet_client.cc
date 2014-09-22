@@ -16,6 +16,7 @@
 #include <chromeos/dbus/data_serialization.h>
 #include <chromeos/dbus/dbus_method_invoker.h>
 #include <chromeos/errors/error.h>
+#include <chromeos/variant_dictionary.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
@@ -28,8 +29,8 @@ using namespace buffet::dbus_constants;  // NOLINT(build/namespaces)
 
 using chromeos::dbus_utils::CallMethodAndBlock;
 using chromeos::dbus_utils::CallMethodAndBlockWithTimeout;
-using chromeos::dbus_utils::Dictionary;
 using chromeos::dbus_utils::ExtractMethodCallResults;
+using chromeos::VariantDictionary;
 using chromeos::ErrorPtr;
 
 namespace {
@@ -147,7 +148,7 @@ class BuffetHelperProxy {
       return EX_USAGE;
     }
 
-    Dictionary params;
+    VariantDictionary params;
     if (!args.empty()) {
       auto key_values = chromeos::data_encoding::WebParamsDecode(args.front());
       for (const auto& pair : key_values) {
@@ -214,7 +215,7 @@ class BuffetHelperProxy {
     }
 
     ErrorPtr error;
-    Dictionary property_set{{args.front(), args.back()}};
+    VariantDictionary property_set{{args.front(), args.back()}};
     auto response = CallMethodAndBlock(
         manager_proxy_,
         kManagerInterface, kManagerUpdateStateMethod, &error,

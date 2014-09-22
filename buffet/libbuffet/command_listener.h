@@ -12,8 +12,6 @@
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
-#include <chromeos/any.h>
-#include <chromeos/dbus/data_serialization.h>
 #include <dbus/object_manager.h>
 
 #include "libbuffet/export.h"

@@ -6,7 +6,6 @@
 
 #include <base/bind.h>
 #include <base/memory/scoped_ptr.h>
-#include <chromeos/any.h>
 #include <chromeos/errors/error_codes.h>
 
 namespace chromeos {

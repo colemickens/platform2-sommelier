@@ -68,8 +68,6 @@ class Any;
 
 namespace dbus_utils {
 
-using Dictionary = std::map<std::string, chromeos::Any>;
-
 //----------------------------------------------------------------------------
 // Get D-Bus data signature from C++ data types.
 // Specializations of a generic GetDBusSignature<T>() provide signature strings

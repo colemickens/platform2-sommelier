@@ -6,7 +6,7 @@
 
 #include <limits>
 
-#include <chromeos/any.h>
+#include <chromeos/variant_dictionary.h>
 #include <gtest/gtest.h>
 
 using dbus::FileDescriptor;
@@ -401,7 +401,7 @@ TEST(DBusUtils, ArraysAsVariant) {
   std::vector<std::string> str_array{"foo", "bar", "baz"};
   std::vector<double> dbl_array_empty{};
   std::map<std::string, std::string> dict_ss{{"k1", "v1"}, {"k2", "v2"}};
-  Dictionary dict_sv{{"k1", 1}, {"k2", "v2"}};
+  VariantDictionary dict_sv{{"k1", 1}, {"k2", "v2"}};
   EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, int_array));
   EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, str_array));
   EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, dbl_array_empty));
@@ -429,15 +429,15 @@ TEST(DBusUtils, ArraysAsVariant) {
   EXPECT_EQ(dbl_array_empty, dbl_array_out.Get<std::vector<double>>());
   EXPECT_EQ(dict_ss, (dict_ss_out.Get<std::map<std::string, std::string>>()));
   EXPECT_EQ(dict_sv["k1"].Get<int>(),
-            dict_sv_out.Get<Dictionary>().at("k1").Get<int>());
+            dict_sv_out.Get<VariantDictionary>().at("k1").Get<int>());
   EXPECT_EQ(dict_sv["k2"].Get<const char*>(),
-            dict_sv_out.Get<Dictionary>().at("k2").Get<std::string>());
+            dict_sv_out.Get<VariantDictionary>().at("k2").Get<std::string>());
 }
 
-TEST(DBusUtils, Dictionary) {
+TEST(DBusUtils, VariantDictionary) {
   std::unique_ptr<Response> message(Response::CreateEmpty().release());
   MessageWriter writer(message.get());
-  Dictionary values{
+  VariantDictionary values{
       {"key1", uint8_t{10}},
       {"key2", bool{true}},
       {"key3", int16_t{12}},
@@ -455,7 +455,7 @@ TEST(DBusUtils, Dictionary) {
   EXPECT_EQ("a{sv}", message->GetSignature());
 
   MessageReader reader(message.get());
-  Dictionary values_out;
+  VariantDictionary values_out;
   EXPECT_TRUE(PopValueFromReader(&reader, &values_out));
   EXPECT_FALSE(reader.HasMoreData());
   EXPECT_EQ(values.size(), values_out.size());
@@ -530,7 +530,7 @@ TEST(DBusUtils, ReinterpretVariant) {
   MessageWriter writer(message.get());
   std::vector<std::string> str_array{"foo", "bar", "baz"};
   std::map<std::string, std::string> dict_ss{{"k1", "v1"}, {"k2", "v2"}};
-  Dictionary dict_sv{{"k1", "v1"}, {"k2", "v2"}};
+  VariantDictionary dict_sv{{"k1", "v1"}, {"k2", "v2"}};
   EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, 123));
   EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, str_array));
   EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, 1.7));

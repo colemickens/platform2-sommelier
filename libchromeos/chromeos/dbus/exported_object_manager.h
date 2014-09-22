@@ -11,10 +11,10 @@
 
 #include <base/callback.h>
 #include <base/memory/weak_ptr.h>
-#include <chromeos/any.h>
 #include <chromeos/chromeos_export.h>
 #include <chromeos/dbus/dbus_object.h>
 #include <chromeos/dbus/exported_property_set.h>
+#include <chromeos/variant_dictionary.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
@@ -80,7 +80,7 @@ class CHROMEOS_EXPORT ExportedObjectManager
     : public base::SupportsWeakPtr<ExportedObjectManager> {
  public:
   using ObjectMap =
-      std::map<dbus::ObjectPath, std::map<std::string, Dictionary>>;
+      std::map<dbus::ObjectPath, std::map<std::string, VariantDictionary>>;
   using InterfaceProperties =
       std::map<std::string, ExportedPropertySet::PropertyWriter>;
 
@@ -115,7 +115,7 @@ class CHROMEOS_EXPORT ExportedObjectManager
   std::map<dbus::ObjectPath, InterfaceProperties> registered_objects_;
 
   using SignalInterfacesAdded =
-      DBusSignal<dbus::ObjectPath, std::map<std::string, Dictionary>>;
+      DBusSignal<dbus::ObjectPath, std::map<std::string, VariantDictionary>>;
   using SignalInterfacesRemoved =
       DBusSignal<dbus::ObjectPath, std::vector<std::string>>;
 

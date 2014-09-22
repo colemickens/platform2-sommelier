@@ -46,7 +46,7 @@ class DBusCommandProxy : public CommandProxyInterface {
   chromeos::dbus_utils::ExportedProperty<std::string> id_;
   chromeos::dbus_utils::ExportedProperty<std::string> status_;
   chromeos::dbus_utils::ExportedProperty<int32_t> progress_;
-  chromeos::dbus_utils::ExportedProperty<chromeos::dbus_utils::Dictionary>
+  chromeos::dbus_utils::ExportedProperty<chromeos::VariantDictionary>
       parameters_;
 
   // Handles calls to org.chromium.Buffet.Command.SetProgress(progress).

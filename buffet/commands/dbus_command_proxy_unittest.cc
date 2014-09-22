@@ -24,8 +24,8 @@ using ::testing::_;
 
 using buffet::unittests::CreateDictionaryValue;
 using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::Dictionary;
 using chromeos::dbus_utils::ExportedObjectManager;
+using chromeos::VariantDictionary;
 
 namespace buffet {
 
@@ -118,7 +118,7 @@ class DBusCommandProxyTest : public ::testing::Test {
     return command_proxy_->progress_.value();
   }
 
-  Dictionary GetParameters() const {
+  VariantDictionary GetParameters() const {
     return command_proxy_->parameters_.value();
   }
 
@@ -175,7 +175,7 @@ class DBusCommandProxyTest : public ::testing::Test {
 };
 
 TEST_F(DBusCommandProxyTest, Init) {
-  Dictionary params = {
+  VariantDictionary params = {
     {"height", int32_t{53}},
     {"_jumpType", std::string{"_withKick"}},
   };
@@ -192,7 +192,8 @@ TEST_F(DBusCommandProxyTest, Init) {
             GetPropertyValue<std::string>(dbus_constants::kCommandStatus));
   EXPECT_EQ(0, GetPropertyValue<int32_t>(dbus_constants::kCommandProgress));
   EXPECT_EQ(params,
-            GetPropertyValue<Dictionary>(dbus_constants::kCommandParameters));
+            GetPropertyValue<VariantDictionary>(
+                dbus_constants::kCommandParameters));
 }
 
 TEST_F(DBusCommandProxyTest, SetProgress) {

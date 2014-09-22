@@ -104,7 +104,7 @@ bool StateManager::SetPropertyValue(const std::string& full_property_name,
 }
 
 bool StateManager::UpdateProperties(
-    const chromeos::dbus_utils::Dictionary& property_set,
+    const chromeos::VariantDictionary& property_set,
     chromeos::ErrorPtr* error) {
   for (const auto& pair : property_set) {
     if (!SetPropertyValue(pair.first, pair.second, error))

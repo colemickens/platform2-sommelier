@@ -30,7 +30,7 @@ const std::string kClaimedInterface("claimed.interface");
 const std::string kTestPropertyName("PropertyName");
 const std::string kTestPropertyValue("PropertyValue");
 
-void WriteTestPropertyDict(Dictionary* dict) {
+void WriteTestPropertyDict(VariantDictionary* dict) {
   dict->insert(std::make_pair(kTestPropertyName, Any(kTestPropertyValue)));
 }
 

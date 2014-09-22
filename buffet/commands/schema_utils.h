@@ -120,10 +120,10 @@ CompareValue(const T& v1, const T& v2) {
 
 // Converts PropValue to Any in a format understood by D-Bus data serialization.
 // Has special handling for Object types where native_types::Object are
-// converted to chromeos::dbus_utils::Dictionary.
+// converted to chromeos::VariantDictionary.
 chromeos::Any PropValueToDBusVariant(const PropValue* value);
 // Converts D-Bus variant to PropValue.
-// Has special handling for Object types where chromeos::dbus_utils::Dictionary
+// Has special handling for Object types where chromeos::VariantDictionary
 // is converted to native_types::Object.
 std::shared_ptr<const PropValue> PropValueFromDBusVariant(
     const PropType* type,

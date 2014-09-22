@@ -28,7 +28,7 @@ const std::string& Command::GetCategory() const {
   return GetProperties()->category.value();
 }
 
-const chromeos::dbus_utils::Dictionary& Command::GetParameters() const {
+const chromeos::VariantDictionary& Command::GetParameters() const {
   return GetProperties()->parameters.value();
 }
 

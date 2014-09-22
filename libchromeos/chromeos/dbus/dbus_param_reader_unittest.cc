@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include <chromeos/any.h>
+#include <chromeos/variant_dictionary.h>
 #include <gtest/gtest.h>
 
 using dbus::MessageReader;
@@ -44,18 +44,19 @@ TEST(DBusParamReader, ManyArgs) {
   MessageWriter writer(message.get());
   AppendValueToWriter(&writer, true);
   AppendValueToWriter(&writer, 1972);
-  AppendValueToWriter(&writer, Dictionary{{"key", std::string{"value"}}});
+  AppendValueToWriter(&writer,
+                      VariantDictionary{{"key", std::string{"value"}}});
   MessageReader reader(message.get());
   bool called = false;
-  auto callback = [&called](bool param1, int param2, const Dictionary& param3) {
-    EXPECT_TRUE(param1);
-    EXPECT_EQ(1972, param2);
-    EXPECT_EQ(1, param3.size());
-    EXPECT_EQ("value", param3.find("key")->second.Get<std::string>());
+  auto callback = [&called](bool p1, int p2, const VariantDictionary& p3) {
+    EXPECT_TRUE(p1);
+    EXPECT_EQ(1972, p2);
+    EXPECT_EQ(1, p3.size());
+    EXPECT_EQ("value", p3.find("key")->second.Get<std::string>());
     called = true;
   };
-  EXPECT_TRUE((DBusParamReader<bool, int, Dictionary>::Invoke(callback, &reader,
-                                                              nullptr)));
+  EXPECT_TRUE((DBusParamReader<bool, int, VariantDictionary>::Invoke(
+      callback, &reader, nullptr)));
   EXPECT_TRUE(called);
 }
 
@@ -64,7 +65,8 @@ TEST(DBusParamReader, TooManyArgs) {
   MessageWriter writer(message.get());
   AppendValueToWriter(&writer, true);
   AppendValueToWriter(&writer, 1972);
-  AppendValueToWriter(&writer, Dictionary{{"key", std::string{"value"}}});
+  AppendValueToWriter(&writer,
+                      VariantDictionary{{"key", std::string{"value"}}});
   MessageReader reader(message.get());
   bool called = false;
   auto callback = [&called](bool param1, int param2) {

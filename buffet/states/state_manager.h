@@ -11,8 +11,8 @@
 #include <string>
 
 #include <base/macros.h>
-#include <chromeos/dbus/data_serialization.h>
 #include <chromeos/errors/error.h>
+#include <chromeos/variant_dictionary.h>
 
 #include "buffet/states/state_package.h"
 
@@ -47,7 +47,7 @@ class StateManager final {
 
   // Updates a number of state properties in one shot.
   // |property_set| is a (full_property_name)-to-(property_value) map.
-  bool UpdateProperties(const chromeos::dbus_utils::Dictionary& property_set,
+  bool UpdateProperties(const chromeos::VariantDictionary& property_set,
                         chromeos::ErrorPtr* error);
 
   // Returns all the categories the state properties are registered from.

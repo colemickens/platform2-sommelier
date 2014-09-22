@@ -9,8 +9,7 @@
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <chromeos/any.h>
-#include <chromeos/dbus/data_serialization.h>
+#include <chromeos/variant_dictionary.h>
 
 #include "libbuffet/export.h"
 
@@ -37,7 +36,7 @@ class LIBBUFFET_EXPORT Command {
   // Returns the command category.
   const std::string& GetCategory() const;
   // Returns the command parameters and their values.
-  const chromeos::dbus_utils::Dictionary& GetParameters() const;
+  const chromeos::VariantDictionary& GetParameters() const;
 
   // Updates the command execution progress. The |progress| must be between
   // 0 and 100. Returns false if the progress value is incorrect.

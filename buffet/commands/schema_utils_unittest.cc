@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <base/values.h>
+#include <chromeos/variant_dictionary.h>
 #include <gtest/gtest.h>
 
 #include "buffet/commands/object_schema.h"
@@ -19,7 +20,7 @@
 using buffet::unittests::CreateDictionaryValue;
 using buffet::unittests::CreateValue;
 using buffet::unittests::ValueToString;
-using chromeos::dbus_utils::Dictionary;
+using chromeos::VariantDictionary;
 
 TEST(CommandSchemaUtils, TypedValueToJson_Scalar) {
   EXPECT_EQ("true",
@@ -210,7 +211,8 @@ TEST(CommandSchemaUtils, PropValueToDBusVariant) {
     {"height", int_type.CreateValue(20, nullptr)},
   };
   prop_value = obj_type.CreateValue(obj, nullptr);
-  Dictionary dict = PropValueToDBusVariant(prop_value.get()).Get<Dictionary>();
+  VariantDictionary dict =
+      PropValueToDBusVariant(prop_value.get()).Get<VariantDictionary>();
   EXPECT_EQ(20, dict["height"].Get<int>());
   EXPECT_EQ(10, dict["width"].Get<int>());
 }
@@ -287,7 +289,7 @@ TEST(CommandSchemaUtils, PropValueFromDBusVariant_Object) {
       "'enum':[{'width':10,'height':20},{'width':100,'height':200}]}").get(),
       nullptr, nullptr));
 
-  Dictionary obj{
+  VariantDictionary obj{
     {"width", 100},
     {"height", 200},
   };

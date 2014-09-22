@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/json/json_writer.h>
+#include <chromeos/variant_dictionary.h>
 
 #include "buffet/commands/object_schema.h"
 #include "buffet/commands/prop_types.h"
@@ -201,8 +202,8 @@ chromeos::Any PropValueToDBusVariant(const PropValue* value) {
   if (value->GetType() != ValueType::Object)
     return value->GetValueAsAny();
   // Special case for object types.
-  // Convert native_types::Object to chromeos::dbus_utils::Dictionary
-  chromeos::dbus_utils::Dictionary dict;
+  // Convert native_types::Object to chromeos::VariantDictionary
+  chromeos::VariantDictionary dict;
   for (const auto& pair : value->GetObject()->GetValue()) {
     // Since we are inserting the elements from native_types::Object which is
     // a map, the keys are already sorted. So use the "end()" position as a hint
@@ -227,13 +228,13 @@ std::shared_ptr<const PropValue> PropValueFromDBusVariant(
   }
 
   // Special case for object types.
-  // We expect the |value| to contain chromeos::dbus_utils::Dictionary, while
+  // We expect the |value| to contain chromeos::VariantDictionary, while
   // PropValue must use native_types::Object instead. Do the conversion.
-  if (!value.IsTypeCompatible<chromeos::dbus_utils::Dictionary>()) {
+  if (!value.IsTypeCompatible<chromeos::VariantDictionary>()) {
     type->GenerateErrorValueTypeMismatch(error);
     return result;
   }
-  const auto& dict = value.Get<chromeos::dbus_utils::Dictionary>();
+  const auto& dict = value.Get<chromeos::VariantDictionary>();
   native_types::Object obj;
   CHECK(nullptr != type->GetObjectSchemaPtr())
       << "An object type must have a schema defined for it";

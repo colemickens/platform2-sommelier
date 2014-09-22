@@ -8,7 +8,6 @@
 #include <dbus/bus.h>
 #include <dbus/property.h>  // For kPropertyInterface
 
-#include <chromeos/any.h>
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/dbus_object.h>
 #include <chromeos/errors/error_codes.h>
@@ -54,16 +53,16 @@ void ExportedPropertySet::RegisterProperty(
   exported_property->SetUpdateCallback(cb);
 }
 
-dbus_utils::Dictionary ExportedPropertySet::HandleGetAll(
+VariantDictionary ExportedPropertySet::HandleGetAll(
     chromeos::ErrorPtr* error,
     const std::string& interface_name) {
   bus_->AssertOnOriginThread();
   return GetInterfaceProperties(interface_name);
 }
 
-dbus_utils::Dictionary ExportedPropertySet::GetInterfaceProperties(
+VariantDictionary ExportedPropertySet::GetInterfaceProperties(
      const std::string& interface_name) const {
-  dbus_utils::Dictionary properties;
+  VariantDictionary properties;
   auto property_map_itr = properties_.find(interface_name);
   if (property_map_itr != properties_.end()) {
     for (const auto& kv : property_map_itr->second)
@@ -74,7 +73,7 @@ dbus_utils::Dictionary ExportedPropertySet::GetInterfaceProperties(
 
 void ExportedPropertySet::WritePropertiesToDict(
     const std::string& interface_name,
-    dbus_utils::Dictionary* dict) {
+    VariantDictionary* dict) {
   *dict = GetInterfaceProperties(interface_name);
 }
 
@@ -126,9 +125,8 @@ void ExportedPropertySet::HandlePropertyUpdated(
   auto signal = signal_properties_changed_.lock();
   if (!signal)
     return;
-  dbus_utils::Dictionary changed_properties{
-      {property_name, exported_property->GetValue()}
-  };
+  VariantDictionary changed_properties{
+      {property_name, exported_property->GetValue()}};
   // The interface specification tells us to include this list of properties
   // which have changed, but for whom no value is conveyed.  Currently, we
   // don't do anything interesting here.

@@ -6,7 +6,7 @@
 #include <string>
 
 #include <base/values.h>
-#include <chromeos/dbus/data_serialization.h>
+#include <chromeos/variant_dictionary.h>
 #include <gtest/gtest.h>
 
 #include "buffet/commands/schema_constants.h"
@@ -176,7 +176,7 @@ TEST_F(StatePackageTest, GetPropertyValue) {
   EXPECT_EQ(200, value.TryGet<int>());
 
   value = package_->GetPropertyValue("direction", nullptr);
-  auto direction = value.TryGet<chromeos::dbus_utils::Dictionary>();
+  auto direction = value.TryGet<chromeos::VariantDictionary>();
   ASSERT_FALSE(direction.empty());
   EXPECT_DOUBLE_EQ(89.9, direction["altitude"].TryGet<double>());
   EXPECT_DOUBLE_EQ(57.2957795, direction["azimuth"].TryGet<double>());
@@ -208,7 +208,7 @@ TEST_F(StatePackageTest, SetPropertyValue_Simple) {
 }
 
 TEST_F(StatePackageTest, SetPropertyValue_Object) {
-  chromeos::dbus_utils::Dictionary direction{
+  chromeos::VariantDictionary direction{
     {"altitude", double{45.0}},
     {"azimuth", double{15.0}},
   };
@@ -245,7 +245,7 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_OutOfRange) {
 
 TEST_F(StatePackageTest, SetPropertyValue_Error_Object_TypeMismatch) {
   chromeos::ErrorPtr error;
-  chromeos::dbus_utils::Dictionary direction{
+  chromeos::VariantDictionary direction{
     {"altitude", double{45.0}},
     {"azimuth", int{15}},
   };
@@ -261,7 +261,7 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_Object_TypeMismatch) {
 
 TEST_F(StatePackageTest, SetPropertyValue_Error_Object_OutOfRange) {
   chromeos::ErrorPtr error;
-  chromeos::dbus_utils::Dictionary direction{
+  chromeos::VariantDictionary direction{
     {"altitude", double{100.0}},
     {"azimuth", double{290.0}},
   };
@@ -278,7 +278,7 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_Object_OutOfRange) {
 
 TEST_F(StatePackageTest, SetPropertyValue_Error_Object_UnknownProperty) {
   chromeos::ErrorPtr error;
-  chromeos::dbus_utils::Dictionary direction{
+  chromeos::VariantDictionary direction{
     {"altitude", double{10.0}},
     {"azimuth", double{20.0}},
     {"spin", double{30.0}},
@@ -291,7 +291,7 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_Object_UnknownProperty) {
 
 TEST_F(StatePackageTest, SetPropertyValue_Error_Object_MissingProperty) {
   chromeos::ErrorPtr error;
-  chromeos::dbus_utils::Dictionary direction{
+  chromeos::VariantDictionary direction{
     {"altitude", double{10.0}},
   };
   ASSERT_FALSE(package_->SetPropertyValue("direction", direction, &error));

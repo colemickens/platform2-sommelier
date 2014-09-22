@@ -7,7 +7,6 @@
 #include <vector>
 
 #include <chromeos/dbus/async_event_sequencer.h>
-#include <chromeos/dbus/data_serialization.h>
 #include <dbus/object_manager.h>
 
 using chromeos::dbus_utils::AsyncEventSequencer;
@@ -46,10 +45,10 @@ void ExportedObjectManager::ClaimInterface(
   //   org.freedesktop.DBus.ObjectManager.InterfacesAdded (
   //       OBJPATH object_path,
   //       DICT<STRING,DICT<STRING,VARIANT>> interfaces_and_properties);
-  dbus_utils::Dictionary property_dict;
+  VariantDictionary property_dict;
   property_writer.Run(&property_dict);
-  std::map<std::string, dbus_utils::Dictionary> interfaces_and_properties{
-      {interface_name, property_dict}
+  std::map<std::string, VariantDictionary> interfaces_and_properties{
+    {interface_name, property_dict}
   };
   signal_itf_added_.lock()->Send(path, interfaces_and_properties);
   registered_objects_[path][interface_name] = property_writer;
@@ -89,7 +88,8 @@ ExportedObjectManager::ObjectMap
   bus_->AssertOnOriginThread();
   ExportedObjectManager::ObjectMap objects;
   for (const auto path_pair : registered_objects_) {
-    std::map<std::string, Dictionary>& interfaces = objects[path_pair.first];
+    std::map<std::string, VariantDictionary>& interfaces =
+        objects[path_pair.first];
     const InterfaceProperties& interface2properties = path_pair.second;
     for (const auto interface : interface2properties) {
       interface.second.Run(&interfaces[interface.first]);
