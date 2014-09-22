@@ -460,6 +460,8 @@ class Platform2Test(object):
     is not registered in the sysroot, they get back errors.
     """
     MAGIC_GECOS = 'Added by your friendly platform test helper; do not modify'
+    # This is kept in sync with what sdk_lib/make_chroot.sh generates.
+    SDK_GECOS = 'ChromeOS Developer'
 
     user, uid, gid, home = self.GetNonRootAccount()
     if user == 'nobody':
@@ -472,6 +474,11 @@ class Platform2Test(object):
       for acct in accts:
         passwd = acct.split(':')
         if passwd[0] == user:
+          # Did the sdk make this account?
+          if passwd[4] == SDK_GECOS:
+            # Don't modify it (see below) since we didn't create it.
+            return
+
           # Did we make this account?
           if passwd[4] != MAGIC_GECOS:
             raise RuntimeError('your passwd db (%s) has unmanaged acct %s' %
