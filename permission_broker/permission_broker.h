@@ -84,7 +84,7 @@ class PermissionBroker {
   struct udev *udev_;
   gid_t access_group_;
   std::vector<Rule *> rules_;
-  std::set<std::pair<uint16_t, uint16_t> > usb_exceptions_;
+  std::set<std::pair<uint16_t, uint16_t>> usb_exceptions_;
 
   DISALLOW_COPY_AND_ASSIGN(PermissionBroker);
 };
