@@ -435,6 +435,9 @@ bool DevicePolicyImpl::GetAuP2PEnabled(bool* au_p2p_enabled) const {
   const enterprise_management::AutoUpdateSettingsProto& proto =
       device_policy_.auto_update_settings();
 
+  if (!proto.has_p2p_enabled())
+    return false;
+
   *au_p2p_enabled = proto.p2p_enabled();
   return true;
 }
