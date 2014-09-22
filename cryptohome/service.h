@@ -1,6 +1,7 @@
 // Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
 #ifndef CRYPTOHOME_SERVICE_H_
 #define CRYPTOHOME_SERVICE_H_
 
@@ -649,8 +650,8 @@ class Service : public chromeos::dbus::AbstractDbusService,
   bool enterprise_owned_;
 
   // Tracks Mount objects for each user by username.
-  typedef std::map<const std::string,
-                   scoped_refptr<cryptohome::Mount> > MountMap;
+  typedef std::map<const std::string, scoped_refptr<cryptohome::Mount>>
+      MountMap;
   MountMap mounts_;
   base::Lock mounts_lock_;  // Protects against parallel insertions only.
   scoped_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
@@ -659,8 +660,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
   scoped_ptr<cryptohome::DBusReplyFactory> default_reply_factory_;
   cryptohome::DBusReplyFactory* reply_factory_;
 
-  typedef std::map<int,
-                   scoped_refptr<MountTaskPkcs11Init> > Pkcs11TaskMap;
+  typedef std::map<int, scoped_refptr<MountTaskPkcs11Init>> Pkcs11TaskMap;
   Pkcs11TaskMap pkcs11_tasks_;
   scoped_ptr<HomeDirs> default_homedirs_;
   HomeDirs* homedirs_;
