@@ -21,7 +21,7 @@
 
 class GobiModem;
 
-typedef std::vector<std::map<std::string, std::string> > ScannedNetworkList;
+typedef std::vector<std::map<std::string, std::string>> ScannedNetworkList;
 
 class GobiGsmModem
     : public GobiModem,

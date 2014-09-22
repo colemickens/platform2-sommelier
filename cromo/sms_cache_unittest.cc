@@ -118,7 +118,7 @@ TEST(SmsCache, hello_get_list) {
                (*message)["timestamp"].reader().get_string());
   EXPECT_STREQ("hellohello", (*message)["text"].reader().get_string());
 
-  std::unique_ptr<std::vector<utilities::DBusPropertyMap> > messages(
+  std::unique_ptr<std::vector<utilities::DBusPropertyMap>> messages(
       cache.List(noerror, &fake));
   ASSERT_FALSE(noerror.is_set());
   ASSERT_TRUE(messages.get());
@@ -156,7 +156,7 @@ TEST(SmsCache, hello_list_get) {
   fake.Add(index, kPduHello, sizeof(kPduHello));
 
   DBus::Error noerror;
-  std::unique_ptr<std::vector<utilities::DBusPropertyMap> > messages(
+  std::unique_ptr<std::vector<utilities::DBusPropertyMap>> messages(
       cache.List(noerror, &fake));
   ASSERT_FALSE(noerror.is_set());
   ASSERT_TRUE(messages.get());
