@@ -40,6 +40,7 @@ class WakeupController : public system::UdevTaggedDeviceObserver {
   static const char kTagUsableWhenTablet[];
   static const char kTagWakeup[];
   static const char kTagWakeupOnlyWhenUsable[];
+  static const char kTagWakeupDisabled[];
 
   // Sysfs power/wakeup constants.
   static const char kPowerWakeup[];

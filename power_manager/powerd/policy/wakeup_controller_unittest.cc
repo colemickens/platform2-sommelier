@@ -101,6 +101,20 @@ TEST_F(WakeupControllerTest, DisableWakeupWhenClosed) {
   EXPECT_FALSE(GetAcpiWakeup(WakeupController::kTPAD));
 }
 
+TEST_F(WakeupControllerTest, PermanentlyDisableWakeup) {
+  AddDeviceWithTags(kSyspath0,
+                    base::StringPrintf("%s %s",
+                         WakeupController::kTagWakeup,
+                         WakeupController::kTagWakeupDisabled));
+
+  // Simulate a device that has wakeup enabled initially.
+  udev_.SetSysattr(kSyspath0, WakeupController::kPowerWakeup,
+                   WakeupController::kEnabled);
+  InitWakeupController();
+  EXPECT_EQ(WakeupController::kDisabled,
+            GetSysattr(kSyspath0, WakeupController::kPowerWakeup));
+}
+
 TEST_F(WakeupControllerTest, ConfigureInhibit) {
   AddDeviceWithTags(
       kSyspath0,

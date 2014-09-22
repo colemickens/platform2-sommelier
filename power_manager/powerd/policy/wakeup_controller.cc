@@ -34,6 +34,7 @@ const char WakeupController::kTagUsableWhenTablet[] = "usable_when_tablet";
 const char WakeupController::kTagWakeup[] = "wakeup";
 const char WakeupController::kTagWakeupOnlyWhenUsable[] =
     "wakeup_only_when_usable";
+const char WakeupController::kTagWakeupDisabled[] = "wakeup_disabled";
 
 const char WakeupController::kPowerWakeup[] = "power/wakeup";
 const char WakeupController::kEnabled[] = "enabled";
@@ -124,8 +125,11 @@ void WakeupController::ConfigureWakeup(
     return;
 
   bool wakeup = true;
-  if (device.HasTag(kTagWakeupOnlyWhenUsable))
+  if (device.HasTag(kTagWakeupDisabled))
+    wakeup = false;
+  else if (device.HasTag(kTagWakeupOnlyWhenUsable))
     wakeup = IsUsableInMode(device, mode_);
+
   SetWakeupFromS3(device, wakeup);
 }
 
