@@ -96,7 +96,7 @@ class ExternalBacklightController : public BacklightController,
 
   // Map from DRM device directories to ExternalDisplay objects for controlling
   // the corresponding displays.
-  typedef std::map<base::FilePath, linked_ptr<system::ExternalDisplay> >
+  typedef std::map<base::FilePath, linked_ptr<system::ExternalDisplay>>
       ExternalDisplayMap;
   ExternalDisplayMap external_displays_;
 

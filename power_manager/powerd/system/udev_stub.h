@@ -54,7 +54,7 @@ class UdevStub : public UdevInterface {
 
  private:
   // Registered observers keyed by subsystem.
-  typedef std::map<std::string, std::set<UdevSubsystemObserver*> >
+  typedef std::map<std::string, std::set<UdevSubsystemObserver*>>
       SubsystemObserverMap;
   SubsystemObserverMap subsystem_observers_;
 

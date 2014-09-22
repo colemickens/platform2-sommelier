@@ -90,7 +90,7 @@ class Prefs : public PrefsInterface {
   void SetDouble(const std::string& name, double value) override;
 
  private:
-  typedef std::map<std::string, linked_ptr<base::FilePathWatcher> >
+  typedef std::map<std::string, linked_ptr<base::FilePathWatcher>>
       FileWatcherMap;
 
   // Result of a pref file read operation.

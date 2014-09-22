@@ -125,8 +125,7 @@ class Udev : public UdevInterface, public base::MessageLoopForIO::Watcher {
   struct udev_monitor* udev_monitor_;
 
   // Maps from a subsystem name to the corresponding observers.
-  typedef std::map<std::string,
-                   linked_ptr<ObserverList<UdevSubsystemObserver> > >
+  typedef std::map<std::string, linked_ptr<ObserverList<UdevSubsystemObserver>>>
       SubsystemObserverMap;
   SubsystemObserverMap subsystem_observers_;
 

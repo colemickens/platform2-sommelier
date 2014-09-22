@@ -113,7 +113,7 @@ class InputWatcher : public InputWatcherInterface,
   UdevInterface* udev_;  // non-owned
 
   // Keyed by input event number.
-  typedef std::map<int, linked_ptr<InputFileDescriptor> > InputMap;
+  typedef std::map<int, linked_ptr<InputFileDescriptor>> InputMap;
   InputMap registered_inputs_;
 
   ObserverList<InputObserver> observers_;
