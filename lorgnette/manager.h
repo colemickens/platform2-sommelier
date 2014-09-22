@@ -26,8 +26,7 @@ class Minijail;
 
 class Manager {
  public:
-  typedef std::map< std::string,
-                    std::map<std::string, std::string> > ScannerInfo;
+  typedef std::map<std::string, std::map<std::string, std::string>> ScannerInfo;
 
   explicit Manager(base::Callback<void()> activity_callback);
   virtual ~Manager();
