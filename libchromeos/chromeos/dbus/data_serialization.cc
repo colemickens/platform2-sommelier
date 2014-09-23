@@ -153,8 +153,11 @@ bool PopValueFromReader(dbus::MessageReader* reader, dbus::ObjectPath* value) {
 bool PopValueFromReader(dbus::MessageReader* reader,
                         dbus::FileDescriptor* value) {
   dbus::MessageReader variant_reader(nullptr);
-  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
-         reader->PopFileDescriptor(value);
+  bool ok = details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
+            reader->PopFileDescriptor(value);
+  if (ok)
+    value->CheckValidity();
+  return ok;
 }
 
 namespace {

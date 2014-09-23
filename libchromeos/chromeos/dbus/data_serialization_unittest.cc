@@ -182,9 +182,8 @@ TEST(DBusUtils, AppendAndPopFileDescriptor) {
   EXPECT_TRUE(reader.HasMoreData());
   EXPECT_TRUE(PopValueFromReader(&reader, &fd_value));
   EXPECT_FALSE(reader.HasMoreData());
-  // Descriptor is not valid until explicitly checked.
-  EXPECT_FALSE(fd_value.is_valid());
-  fd_value.CheckValidity();
+  // Descriptor is automatically checked for validity as part of
+  // PopValueFromReader() call.
   EXPECT_TRUE(fd_value.is_valid());
 }
 
