@@ -678,9 +678,9 @@ Properties 	object ActiveProfile [readwrite]
 
 		void AddWakeOnPacketConnection(string endpoint)
 
-			Program a rule into the NIC to wake up from suspend on
-			the arrival of packets on the TCP connection specified
-			by source IP address in the string argument.  The format
+			Program a wake-on-packet rule into the NIC to wake the system
+			from suspend upon receiving packets from the source IP address
+			in the string argument. The format
 			of the argument is:
 
 			<source_ip>
@@ -703,9 +703,10 @@ Properties 	object ActiveProfile [readwrite]
 
 		void RemoveWakeOnPacketConnection(string endpoint)
 
-			Removes a wake-on-packet rule programmed into the NIC by
-			AddWakeOnPacketConnection. The argument format is the same
-			as that of AddWakeOnPacketConnection.
+			Removes a wake-on-packet rule previously programmed into the NIC to wake
+			the system from suspend upon receiving packets from the source IP address
+			in the string argument. The argument format is the same as that of
+			AddWakeOnPacketConnection.
 
 			Possible errors: [service].Error.InvalidArgument (argument parsing error)
 					 [service].Error.NotFound (no such request is active)

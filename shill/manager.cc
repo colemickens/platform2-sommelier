@@ -1389,9 +1389,6 @@ void Manager::SortServicesTask() {
     if (services_[0]->connection()) {
       services_[0]->connection()->SetIsDefault(true);
       if (default_service != services_[0]) {
-        // TODO(samueltan): never seems to get called when switching
-        // between ethernet and wifi; find out why.
-        TransferWakeOnPacketConnections(default_service, services_[0]);
         default_service = services_[0];
         LOG(INFO) << "Default service is now "
                   << default_service->unique_name();
@@ -2192,28 +2189,6 @@ void Manager::UpdateProviderMapping() {
 #if !defined(DISABLE_WIMAX)
   providers_[Technology::kWiMax] = wimax_provider_.get();
 #endif  // DISABLE_WIMAX
-}
-
-void Manager::TransferWakeOnPacketConnections(
-    const ServiceRefPtr &old_service, const ServiceRefPtr &new_service) {
-  string ip_string;
-  DeviceRefPtr old_device = GetDeviceConnectedToService(old_service);
-  DeviceRefPtr new_device = GetDeviceConnectedToService(new_service);
-  if (!old_device || !new_device) {
-    LOG(ERROR) << "Cannot find both old a new devices";
-    return;
-  }
-  if (old_device == new_device) {
-    return;  // No transfer required
-  }
-  new_device->AddWakeOnPacketConnections(
-      old_device->GetWakeOnPacketConnections());
-  Error e;
-  old_device->RemoveAllWakeOnPacketConnections(&e);
-  if (e.IsFailure()) {
-    LOG(ERROR) << "Failed to remove all connection from old device: "
-               << e.message();
-  }
 }
 
 DeviceRefPtr Manager::GetDeviceConnectedToService(ServiceRefPtr service) {

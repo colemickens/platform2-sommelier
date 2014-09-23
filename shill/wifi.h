@@ -144,19 +144,12 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Callback for when a service fails to configure with an IP.
   void OnIPConfigFailure() override;
 
-  // Enable the NIC to wake on packets received from |ip_endpoint|.
-  // Note: The actual programming of the NIC only happens before the system
-  // suspends, in |OnBeforeSuspend|.
+  // Calls corresponding functions of |wake_on_wifi_|. Refer to wake_on_wifi.h
+  // for documentation.
   void AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                  Error *error) override;
-  // Remove rule to wake on packets received from |ip_endpoint| from the NIC.
-  // Note: The actual programming of the NIC only happens before the system
-  // suspends, in |OnBeforeSuspend|.
   void RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                     Error *error) override;
-  // Remove all rules to wake on incoming packets from the NIC.
-  // Note: The actual programming of the NIC only happens before the system
-  // suspends, in |OnBeforeSuspend|.
   void RemoveAllWakeOnPacketConnections(Error *error) override;
 
   // Implementation of SupplicantEventDelegateInterface.  These methods
@@ -298,11 +291,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, ScanStateUma);  // ScanState, ScanMethod
   FRIEND_TEST(WiFiMainTest, Stop);  // weak_ptr_factory_
   FRIEND_TEST(WiFiMainTest, TimeoutPendingServiceWithEndpoints);
-  FRIEND_TEST(WiFiMainTest, RetryApplyWakeOnWiFiSettingsLessThanMaxRetries);
-  FRIEND_TEST(WiFiMainTest,
-              RetryApplyWakeOnWiFiSettingsMaxAttemptsWithCallbackSet);
-  FRIEND_TEST(WiFiMainTest,
-              RetryApplyWakeOnWiFiSettingsMaxAttemptsWithCallbackUnset);
   FRIEND_TEST(WiFiPropertyTest, BgscanMethodProperty);  // bgscan_method_
   FRIEND_TEST(WiFiTimerTest, FastRescan);  // kFastScanIntervalSeconds
   FRIEND_TEST(WiFiTimerTest, RequestStationInfo);  // kRequestStationInfoPeriod
@@ -332,8 +320,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // TODO(wdg): Remove after progressive scan field trial is over.
   static const char kProgressiveScanFieldTrialFlagFile[];
   static const size_t kStuckQueueLengthThreshold;
-  static const int kVerifyWakeOnWiFiSettingsDelaySeconds;
-  static const int kMaxSetWakeOnPacketRetries;
 
   // TODO(wdg): Remove after progressive scan field trial is over.
   void ParseFieldTrialFile(const base::FilePath &field_trial_file_path);
@@ -525,27 +511,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool ResolvePeerMacAddress(const std::string &input, std::string *output,
                              Error *error);
 
-  // Message handler for NL80211_CMD_SET_WOWLAN responses.
-  void OnSetWakeOnPacketConnectionResponse(
-      const Nl80211Message &nl80211_message);
-  // Request wake on WiFi settings for this WiFi device.
-  void RequestWakeOnPacketSettings();
-  // Verify that the wake on WiFi settings programmed into the NIC match
-  // those recorded locally for this device in |wake_on_packet_connections_|
-  // and |wake_on_wifi_triggers_|.
-  void VerifyWakeOnWiFiSettings(const Nl80211Message &nl80211_message);
-  // Sends an NL80211 message to program the NIC with wake on WiFi settings
-  // configured in |wake_on_packet_connections_| and |wake_on_wifi_triggers_|.
-  // If |wake_on_wifi_triggers_| is empty, calls |DisableWakeOnWiFi|.
-  void ApplyWakeOnWiFiSettings();
-  // Helper function called by |ApplyWakeOnWiFiSettings| that sends an NL80211
-  // message to program the NIC to disable wake on WiFi.
-  void DisableWakeOnWiFi();
-  // Calls |ApplyWakeOnWiFiSettings| and counts this call as
-  // a retry. If |kMaxSetWakeOnPacketRetries| retries have already been
-  // performed, resets counter and returns.
-  void RetryApplyWakeOnWiFiSettings();
-
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider *provider_;
 
@@ -593,10 +558,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Executes periodically while a service is connected, to update the
   // signal strength from the currently connected AP.
   base::CancelableClosure request_station_info_callback_;
-  // Executes after the NIC's wake-on-packet settings are configured via
-  // NL80211 messages to verify that the new configuration has taken effect.
-  // Calls RequestWakeOnPacketSettings.
-  base::CancelableClosure verify_wake_on_packet_settings_callback_;
   // Number of remaining fast scans to be done during startup and disconnect.
   int fast_scans_remaining_;
   // Indicates that the current BSS has reached the completed state according
@@ -619,7 +580,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   int32_t bgscan_signal_threshold_dbm_;
   uint16_t roam_threshold_db_;
   uint16_t scan_interval_seconds_;
-  uint32_t wiphy_index_;
 
   bool progressive_scan_enabled_;
   std::string scan_configuration_;
@@ -646,18 +606,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Used to report the current state of our wireless link.
   KeyValueStore link_statistics_;
 
-  // Number of retries to program the NIC's wake-on-packet settings.
-  int num_set_wake_on_packet_retries_;
-
-  // Keeps track of triggers that would wake this device.
-  std::set<WakeOnWiFi::WakeOnWiFiTrigger> wake_on_wifi_triggers_;
-  // Keeps track of what triggers this WiFi device supports.
-  std::set<WakeOnWiFi::WakeOnWiFiTrigger> wake_on_wifi_triggers_supported_;
-  // Max number of patterns this WiFi device can match.
-  size_t wake_on_wifi_max_patterns_;
-
-  // Callback to be invoked after all suspend actions finish executing.
-  ResultCallback suspend_actions_done_callback_;
+  std::unique_ptr<WakeOnWiFi> wake_on_wifi_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };

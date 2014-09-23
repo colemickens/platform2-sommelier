@@ -597,12 +597,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     power_manager_.reset(power_manager);
   }
 
-  // Removes all wake on packet connections rules registered on the device
-  // that is connected to the old service and adds them to the device connected
-  // to the new service
-  void TransferWakeOnPacketConnections(const ServiceRefPtr &old_service,
-                                       const ServiceRefPtr &new_service);
-
   DeviceRefPtr GetDeviceConnectedToService(ServiceRefPtr service);
 
   EventDispatcher *dispatcher_;

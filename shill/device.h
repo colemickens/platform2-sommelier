@@ -21,7 +21,6 @@
 #include "shill/dns_server_tester.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ip_address.h"
-#include "shill/ip_address_store.h"
 #include "shill/ipconfig.h"
 #include "shill/portal_detector.h"
 #include "shill/property_store.h"
@@ -286,24 +285,19 @@ class Device : public base::RefCounted<Device> {
   // detected in short period of time).
   virtual void OnUnreliableLink();
 
-  // Requests that NICs be programmed to wake up from suspend on the arrival of
-  // packets on the TCP connection specified by the string argument.
+  // Program a rule into the NIC to wake the system from suspend upon receiving
+  // packets from |ip_endpoint|. |error| indicates the result of the
+  // operation.
   virtual void AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                          Error *error);
-  // Removes a NIC programming request established by AddWakeOnPacketConnection.
+  // Removes a rule previously programmed into the NIC to wake the system from
+  // suspend upon receiving packets from |ip_endpoint|. |error| indicates the
+  // result of the operation.
   virtual void RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                             Error *error);
-  // Removes all NIC programming requests.
+  // Removes all wake-on-packet rules programmed into the NIC. |error| indicates
+  // the result of the operation.
   virtual void RemoveAllWakeOnPacketConnections(Error *error);
-
-  // Get all registered wake-on-packet connections
-  const IPAddressStore &GetWakeOnPacketConnections() const {
-    return wake_on_packet_connections_;
-  }
-
-  // Adds wake-on-packet connections specified by the IP addresses in
-  // |ip_addresses|
-  void AddWakeOnPacketConnections(const IPAddressStore &ip_addresses);
 
  protected:
   friend class base::RefCounted<Device>;
@@ -556,10 +550,6 @@ class Device : public base::RefCounted<Device> {
   void set_link_monitor(LinkMonitor *link_monitor);
   // Use for unit test.
   void set_traffic_monitor(TrafficMonitor *traffic_monitor);
-
-  // Keeps track of IP addresses that this device has wake-on-packet rules
-  // programmed for.
-  IPAddressStore wake_on_packet_connections_;
 
  private:
   friend class CellularCapabilityTest;

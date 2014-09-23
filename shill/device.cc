@@ -558,20 +558,6 @@ void Device::RemoveAllWakeOnPacketConnections(Error *error) {
   return;
 }
 
-void Device::AddWakeOnPacketConnections(
-    const IPAddressStore &ip_addresses) {
-  Error e;
-  for (const IPAddress &addr : ip_addresses.GetIPAddresses()) {
-    e.Reset();
-    AddWakeOnPacketConnection(addr, &e);
-    LOG(INFO) << "Added IP Address " << addr.ToString();
-    if (e.IsFailure()) {
-      LOG(ERROR) << "Failed to transfer connection with IP address "
-                 << addr.ToString() << ": " << e.message();
-    }
-  }
-}
-
 bool Device::ShouldUseArpGateway() const {
   return false;
 }
