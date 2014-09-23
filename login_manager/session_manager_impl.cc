@@ -65,7 +65,7 @@ const char kEmailSeparator = '@';
 const char kLegalCharacters[] =
     "abcdefghijklmnopqrstuvwxyz"
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    ".@1234567890-+_";
+    ".@1234567890!#$%&'*+-/=?^_`{|}~";
 
 // The flag to pass to chrome to open a named socket for testing.
 const char kTestingChannelFlag[] = "--testing-channel=NamedTestingInterface:";

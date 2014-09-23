@@ -699,8 +699,8 @@ class SessionManagerImplStaticTest : public ::testing::Test {
 };
 
 TEST_F(SessionManagerImplStaticTest, EmailAddressTest) {
-  const char valid[] = "user_who+we.like@some-where.com";
-  EXPECT_TRUE(ValidateEmail(valid));
+  EXPECT_TRUE(ValidateEmail("user_who+we.like@some-where.com"));
+  EXPECT_TRUE(ValidateEmail("john_doe's_mail@some-where.com"));
 }
 
 TEST_F(SessionManagerImplStaticTest, EmailAddressNonAsciiTest) {
