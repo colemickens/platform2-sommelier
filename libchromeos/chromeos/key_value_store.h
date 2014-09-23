@@ -6,29 +6,32 @@
 // key value store. Each key/value pair is stored on its own line and
 // separated by the first '=' on the line.
 
-#ifndef UPDATE_ENGINE_SIMPLE_KEY_VALUE_STORE_H_
-#define UPDATE_ENGINE_SIMPLE_KEY_VALUE_STORE_H_
+#ifndef LIBCHROMEOS_CHROMEOS_KEY_VALUE_STORE_H_
+#define LIBCHROMEOS_CHROMEOS_KEY_VALUE_STORE_H_
 
 #include <map>
 #include <string>
 
-namespace chromeos_update_engine {
+#include <base/files/file_path.h>
+#include <chromeos/chromeos_export.h>
 
-class KeyValueStore {
+namespace chromeos {
+
+class CHROMEOS_EXPORT KeyValueStore {
  public:
   // Creates an empty KeyValueStore.
-  KeyValueStore() {}
+  KeyValueStore() = default;
 
-  // Loads the key=value pairs from the given filename. Lines starting with
+  // Loads the key=value pairs from the given |path|. Lines starting with
   // '#' and empty lines are ignored. Adds all the readed key=values to the
   // store, overriding those already defined but persisting the ones that
   // aren't present on the passed file.
   // Returns whether reading the file succeeded.
-  bool Load(const std::string& filename);
+  bool Load(const base::FilePath& path);
 
-  // Saves the current store to the given |filename| file. Returns whether the
+  // Saves the current store to the given |path| file. Returns whether the
   // file creation succeeded.
-  bool Save(const std::string& filename) const;
+  bool Save(const base::FilePath& path) const;
 
   // Getter for the given key. Returns whether the key was found on the store.
   bool GetString(const std::string& key, std::string* value) const;
@@ -46,8 +49,10 @@ class KeyValueStore {
  private:
   // The map storing all the key-value pairs.
   std::map<std::string, std::string> store_;
+
+  DISALLOW_COPY_AND_ASSIGN(KeyValueStore);
 };
 
-}  // namespace chromeos_update_engine
+}  // namespace chromeos
 
-#endif  // UPDATE_ENGINE_SIMPLE_KEY_VALUE_STORE_H_
+#endif  // LIBCHROMEOS_CHROMEOS_KEY_VALUE_STORE_H_

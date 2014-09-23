@@ -2,55 +2,61 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "update_engine/simple_key_value_store.h"
+#include <chromeos/key_value_store.h>
 
 #include <map>
 #include <string>
 
-#include <gtest/gtest.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_util.h>
-
-#include "update_engine/test_utils.h"
+#include <gtest/gtest.h>
 
 using base::FilePath;
 using base::ReadFileToString;
 using std::map;
 using std::string;
 
-namespace chromeos_update_engine {
+namespace chromeos {
 
 class KeyValueStoreTest : public ::testing::Test {
+ public:
+  void SetUp() override {
+    CHECK(temp_dir_.CreateUniqueTempDir());
+    temp_file_ = temp_dir_.path().Append("temp.conf");
+  }
+
  protected:
-  ScopedTempFile file_;
+  base::FilePath temp_file_;
+  base::ScopedTempDir temp_dir_;
   KeyValueStore store_;  // KeyValueStore under test.
 };
 
 TEST_F(KeyValueStoreTest, CommentsAreIgnored) {
   string blob = "# comment\nA=B\n\n\n#another=comment\n\n";
-  ASSERT_TRUE(WriteFileString(file_.GetPath(), blob));
-  EXPECT_TRUE(store_.Load(file_.GetPath()));
+  ASSERT_EQ(blob.size(), base::WriteFile(temp_file_, blob.data(), blob.size()));
+  EXPECT_TRUE(store_.Load(temp_file_));
 
-  EXPECT_TRUE(store_.Save(file_.GetPath()));
+  EXPECT_TRUE(store_.Save(temp_file_));
   string read_blob;
-  ASSERT_TRUE(ReadFileToString(FilePath(file_.GetPath()), &read_blob));
+  ASSERT_TRUE(ReadFileToString(FilePath(temp_file_), &read_blob));
   EXPECT_EQ("A=B\n", read_blob);
 }
 
 TEST_F(KeyValueStoreTest, EmptyTest) {
-  ASSERT_TRUE(WriteFileString(file_.GetPath(), ""));
-  EXPECT_TRUE(store_.Load(file_.GetPath()));
+  ASSERT_EQ(0, base::WriteFile(temp_file_, "", 0));
+  EXPECT_TRUE(store_.Load(temp_file_));
 
-  EXPECT_TRUE(store_.Save(file_.GetPath()));
+  EXPECT_TRUE(store_.Save(temp_file_));
   string read_blob;
-  ASSERT_TRUE(ReadFileToString(FilePath(file_.GetPath()), &read_blob));
+  ASSERT_TRUE(ReadFileToString(FilePath(temp_file_), &read_blob));
   EXPECT_EQ("", read_blob);
 }
 
 TEST_F(KeyValueStoreTest, LoadAndReloadTest) {
   string blob = "A=B\nC=\n=\nFOO=BAR=BAZ\nBAR=BAX\nMISSING=NEWLINE";
-  ASSERT_TRUE(WriteFileString(file_.GetPath(), blob));
-  EXPECT_TRUE(store_.Load(file_.GetPath()));
+  ASSERT_EQ(blob.size(), base::WriteFile(temp_file_, blob.data(), blob.size()));
+  EXPECT_TRUE(store_.Load(temp_file_));
 
   map<string, string> expected = {
       {"A", "B"}, {"C", ""}, {"", ""}, {"FOO", "BAR=BAZ"}, {"BAR", "BAX"},
@@ -58,17 +64,17 @@ TEST_F(KeyValueStoreTest, LoadAndReloadTest) {
 
   // Test expected values
   string value;
-  for (auto& it : expected) {
+  for (const auto& it : expected) {
     EXPECT_TRUE(store_.GetString(it.first, &value));
     EXPECT_EQ(it.second, value) << "Testing key: " << it.first;
   }
 
   // Save, load and test again.
-  EXPECT_TRUE(store_.Save(file_.GetPath()));
+  EXPECT_TRUE(store_.Save(temp_file_));
   KeyValueStore new_store;
-  EXPECT_TRUE(new_store.Load(file_.GetPath()));
+  EXPECT_TRUE(new_store.Load(temp_file_));
 
-  for (auto& it : expected) {
+  for (const auto& it : expected) {
     EXPECT_TRUE(new_store.GetString(it.first, &value)) << "key: " << it.first;
     EXPECT_EQ(it.second, value) << "key: " << it.first;
   }
@@ -89,8 +95,8 @@ TEST_F(KeyValueStoreTest, SimpleBooleanTest) {
 
 TEST_F(KeyValueStoreTest, BooleanParsingTest) {
   string blob = "TRUE=true\nfalse=false\nvar=false\nDONT_SHOUT=TRUE\n";
-  WriteFileString(file_.GetPath(), blob);
-  EXPECT_TRUE(store_.Load(file_.GetPath()));
+  ASSERT_EQ(blob.size(), base::WriteFile(temp_file_, blob.data(), blob.size()));
+  EXPECT_TRUE(store_.Load(temp_file_));
 
   map<string, bool> expected = {
       {"TRUE", true}, {"false", false}, {"var", false}};
@@ -100,10 +106,10 @@ TEST_F(KeyValueStoreTest, BooleanParsingTest) {
   EXPECT_TRUE(store_.GetString("DONT_SHOUT", &str_value));
 
   // Test expected values
-  for (auto& it : expected) {
+  for (const auto& it : expected) {
     EXPECT_TRUE(store_.GetBoolean(it.first, &value)) << "key: " << it.first;
     EXPECT_EQ(it.second, value) << "key: " << it.first;
   }
 }
 
-}  // namespace chromeos_update_engine
+}  // namespace chromeos

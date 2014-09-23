@@ -2,56 +2,55 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "update_engine/simple_key_value_store.h"
+#include "chromeos/key_value_store.h"
 
 #include <map>
 #include <string>
 #include <vector>
 
 #include <base/files/file_util.h>
+#include <base/files/important_file_writer.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-
-#include "update_engine/utils.h"
 
 using std::map;
 using std::string;
 using std::vector;
 
-namespace chromeos_update_engine {
+namespace chromeos {
 
-bool KeyValueStore::Load(const string& filename) {
+bool KeyValueStore::Load(const base::FilePath& path) {
   string file_data;
-  if (!base::ReadFileToString(base::FilePath(filename), &file_data))
+  if (!base::ReadFileToString(path, &file_data))
     return false;
 
   // Split along '\n', then along '='
   vector<string> lines;
   base::SplitStringDontTrim(file_data, '\n', &lines);
-  for (auto& it : lines) {
-    if (it.empty() || it[0] == '#')
+  for (const auto& line : lines) {
+    if (line.empty() || line.front() == '#')
       continue;
-    string::size_type pos = it.find('=');
+    string::size_type pos = line.find('=');
     if (pos == string::npos)
       continue;
-    store_[it.substr(0, pos)] = it.substr(pos + 1);
+    store_[line.substr(0, pos)] = line.substr(pos + 1);
   }
   return true;
 }
 
-bool KeyValueStore::Save(const string& filename) const {
+bool KeyValueStore::Save(const base::FilePath& path) const {
   string data;
-  for (auto& it : store_)
-    data += it.first + "=" + it.second + "\n";
+  for (const auto& key_value : store_)
+    data += key_value.first + "=" + key_value.second + "\n";
 
-  return utils::WriteFile(filename.c_str(), data.c_str(), data.size());
+  return base::ImportantFileWriter::WriteFileAtomically(path, data);
 }
 
 bool KeyValueStore::GetString(const string& key, string* value) const {
-  auto it = store_.find(key);
-  if (it == store_.end())
+  const auto key_value = store_.find(key);
+  if (key_value == store_.end())
     return false;
-  *value = it->second;
+  *value = key_value->second;
   return true;
 }
 
@@ -60,17 +59,16 @@ void KeyValueStore::SetString(const string& key, const string& value) {
 }
 
 bool KeyValueStore::GetBoolean(const string& key, bool* value) const {
-  auto it = store_.find(key);
-  if (it == store_.end())
+  const auto key_value = store_.find(key);
+  if (key_value == store_.end())
     return false;
-  if (it->second == "true") {
+  if (key_value->second == "true") {
     *value = true;
     return true;
-  } else if (it-> second == "false") {
+  } else if (key_value-> second == "false") {
     *value = false;
     return true;
   }
-
   return false;
 }
 
@@ -78,4 +76,4 @@ void KeyValueStore::SetBoolean(const string& key, bool value) {
   store_[key] = value ? "true" : "false";
 }
 
-}  // namespace chromeos_update_engine
+}  // namespace chromeos
