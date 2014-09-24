@@ -7948,7 +7948,10 @@ TPM_RC Serialize_TPMT_PUBLIC(
     return result;
   }
 
-  result = Serialize_TPMU_PUBLIC_PARMS(value.parameters, value.type, buffer);
+  result = Serialize_TPMU_PUBLIC_PARMS(
+      value.parameters,
+      value.type,
+      buffer);
   if (result) {
     return result;
   }
@@ -8003,10 +8006,10 @@ TPM_RC Parse_TPMT_PUBLIC(
   }
 
   result = Parse_TPMU_PUBLIC_PARMS(
-    buffer,
-    value->type,
-    &value->parameters,
-    value_bytes);
+      buffer,
+      value->type,
+      &value->parameters,
+      value_bytes);
   if (result) {
     return result;
   }

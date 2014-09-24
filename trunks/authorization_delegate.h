@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/macros.h>
+
 namespace trunks {
 
 // AuthorizationDelegate is an interface passed to TPM commands. The delegate
@@ -15,6 +17,9 @@ namespace trunks {
 // commands and parameter decryption for responses.
 class AuthorizationDelegate {
  public:
+  AuthorizationDelegate() {}
+  virtual ~AuthorizationDelegate() {}
+
   // Provides authorization data for a command which has a cpHash value of
   // |command_hash|. On success, |authorization| is populated with the exact
   // octets for the Authorization Area of the command.  Returns true on success.
@@ -33,6 +38,9 @@ class AuthorizationDelegate {
 
   // Decrypts |parameter| if encryption is enabled. Returns true on success.
   virtual bool DecryptResponseParameter(std::string* parameter) = 0;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(AuthorizationDelegate);
 };
 
 }  // namespace trunks

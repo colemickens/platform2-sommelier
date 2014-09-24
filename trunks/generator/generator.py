@@ -186,20 +186,20 @@ TPM_RC Parse_%(type)s(
 }
 """
 _SERIALIZE_DECLARATION = """
-TPM_RC Serialize_%(type)s(
+TPM_RC CHROMEOS_EXPORT Serialize_%(type)s(
     const %(type)s& value,
     std::string* buffer);
 
-TPM_RC Parse_%(type)s(
+TPM_RC CHROMEOS_EXPORT Parse_%(type)s(
     std::string* buffer,
     %(type)s* value,
     std::string* value_bytes);
 """
 
 _TPM2B_HELPERS_DECLARATION = """
-%(type)s Make_%(type)s(
+%(type)s CHROMEOS_EXPORT Make_%(type)s(
     const std::string& bytes);
-std::string StringFrom_%(type)s(
+std::string CHROMEOS_EXPORT StringFrom_%(type)s(
     const %(type)s& tpm2b);
 """
 

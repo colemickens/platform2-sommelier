@@ -16,34 +16,30 @@
   },
   'targets': [
     {
-      'target_name': 'trunks_testrunner',
-      'type': 'executable',
+      'target_name': 'tpm_communication_proto',
+      'type': 'static_library',
+      'variables': {
+        'proto_in_dir': '.',
+        'proto_out_dir': 'include/trunks',
+      },
+      'sources': [
+        '<(proto_in_dir)/tpm_communication.proto',
+      ],
+      'includes': ['../common-mk/protoc.gypi'],
+    },
+    {
+      'target_name': 'trunks',
+      'type': 'shared_library',
       'libraries': [
         '-lchrome_crypto',
       ],
-      'includes': ['../common-mk/common_test.gypi'],
       'sources': [
         'hmac_auth_delegate.cc',
-        'hmac_auth_delegate_unittest.cc',
+        'null_auth_delegate.cc',
         'password_auth_delegate.cc',
-        'password_auth_delegate_unittest.cc',
-        'trunks_testrunner.cc',
         'tpm_generated.cc',
-        'tpm_generated_test.cc',
-        'mock_authorization_delegate.cc',
-        'mock_command_transceiver.cc'
-      ],
-    },
-    {
-      'target_name': 'trunksd',
-      'type': 'executable',
-      'libraries': [
-        '-lminijail',
-      ],
-      'sources': [
-        'trunks_service.cc',
-        'tpm_handle_impl.cc',
-        'trunksd.cc'
+        'tpm_utility_impl.cc',
+        'trunks_proxy.cc',
       ],
       'dependencies': [
         'tpm_communication_proto',
@@ -60,33 +56,48 @@
       ],
     },
     {
-      'target_name': 'trunks',
-      'type': 'shared_library',
+      'target_name': 'trunksd',
+      'type': 'executable',
       'libraries': [
-        '-lchrome_crypto',
+        '-lminijail',
       ],
       'sources': [
-        'tpm_generated.cc',
-        'null_auth_delegate.cc',
-        'password_auth_delegate.cc',
-        'hmac_auth_delegate.cc',
-        'trunks_proxy.cc',
+        'tpm_handle_impl.cc',
+        'trunks_service.cc',
+        'trunksd.cc',
       ],
       'dependencies': [
         'tpm_communication_proto',
       ],
     },
-    {
-      'target_name': 'tpm_communication_proto',
-      'type': 'static_library',
-      'variables': {
-        'proto_in_dir': '.',
-        'proto_out_dir': 'include/trunks',
-      },
-      'sources': [
-        '<(proto_in_dir)/tpm_communication.proto',
+  ],
+  'conditions': [
+    ['USE_test == 1', {
+      'targets': [
+        {
+          'target_name': 'trunks_testrunner',
+          'type': 'executable',
+          'libraries': [
+            '-lchrome_crypto',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'hmac_auth_delegate_unittest.cc',
+            'mock_authorization_delegate.cc',
+            'mock_command_transceiver.cc',
+            'mock_tpm.cc',
+            'mock_tpm_state.cc',
+            'password_auth_delegate_unittest.cc',
+            'tpm_generated_test.cc',
+            'tpm_utility_test.cc',
+            'trunks_factory_for_test.cc',
+            'trunks_testrunner.cc',
+          ],
+          'dependencies': [
+            'trunks',
+          ],
+        },
       ],
-      'includes': ['../common-mk/protoc.gypi'],
-    }
+    }],
   ],
 }
