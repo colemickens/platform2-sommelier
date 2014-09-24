@@ -228,7 +228,7 @@
         {
           'target_name': 'power_manager_util_test',
           'type': 'executable',
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
             'libutil',
             'libutil_test',
@@ -242,7 +242,7 @@
         {
           'target_name': 'power_manager_system_test',
           'type': 'executable',
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
             'libsystem',
             'libsystem_stub',
@@ -268,7 +268,7 @@
         {
           'target_name': 'power_manager_policy_test',
           'type': 'executable',
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
             'libpolicy',
             'libpolicy_stub',
@@ -293,7 +293,7 @@
         {
           'target_name': 'power_manager_daemon_test',
           'type': 'executable',
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
             'libpolicy',
             'libpolicy_stub',

@@ -54,7 +54,7 @@
       'sources': [
         '<(proto_in_dir)/mobile_operator_db.proto'
       ],
-      'includes': ['../../platform2/common-mk/protoc.gypi'],
+      'includes': ['../common-mk/protoc.gypi'],
     },
     {
       'target_name': 'mobile_operator_db-db',
@@ -69,7 +69,7 @@
       'sources': [
         '<(protoc_text_dir)/serviceproviders.prototxt',
       ],
-      'includes': ['../../platform2/common-mk/protoctxt.gypi'],
+      'includes': ['../common-mk/protoctxt.gypi'],
     },
     {
       'target_name': 'mobile_operator_db',
@@ -111,7 +111,7 @@
           ],
         }],
       ],
-      'includes': ['../../platform2/common-mk/xml2cpp.gypi'],
+      'includes': ['../common-mk/xml2cpp.gypi'],
     },
     {
       'target_name': 'shill-adaptors',
@@ -129,7 +129,7 @@
         '<(xml2cpp_in_dir)/org.chromium.flimflam.Service.xml',
         '<(xml2cpp_in_dir)/org.chromium.flimflam.Task.xml',
       ],
-      'includes': ['../../platform2/common-mk/xml2cpp.gypi'],
+      'includes': ['../common-mk/xml2cpp.gypi'],
     },
     {
       'target_name': 'shim-protos',
@@ -141,7 +141,7 @@
       'sources': [
         '<(proto_in_dir)/crypto_util.proto',
       ],
-      'includes': ['../../platform2/common-mk/protoc.gypi'],
+      'includes': ['../common-mk/protoc.gypi'],
     },
     {
       'target_name': 'crypto_util',
@@ -210,7 +210,7 @@
       'conditions': [
         ['USE_cellular == 1', {
           'dependencies': [
-            '../../platform2/common-mk/external_dependencies.gyp:modemmanager-dbus-proxies',
+            '../common-mk/external_dependencies.gyp:modemmanager-dbus-proxies',
           ],
           'variables': {
             'deps': [
@@ -514,7 +514,7 @@
           'target_name': 'shill_unittest',
           'type': 'executable',
           'dependencies': ['libshill'],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'variables': {
             'deps': [
               'libnetfilter_queue',

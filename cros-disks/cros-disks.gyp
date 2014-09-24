@@ -32,7 +32,7 @@
       'sources': [
         '<(xml2cpp_in_dir)/org.chromium.CrosDisks.xml',
       ],
-      'includes': ['../../platform2/common-mk/xml2cpp.gypi'],
+      'includes': ['../common-mk/xml2cpp.gypi'],
     },
     {
       'target_name': 'libdisks',
@@ -89,7 +89,7 @@
           'target_name': 'disks_testrunner',
           'type': 'executable',
           'dependencies': ['libdisks'],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'archive_manager_unittest.cc',
             'device_event_moderator_unittest.cc',

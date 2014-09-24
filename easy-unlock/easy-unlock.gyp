@@ -43,7 +43,7 @@
           'target_name': 'easy_unlock_test_runner',
           'type': 'executable',
           'dependencies': ['libeasyunlock'],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'variables': {
             'deps': [
               'libchrome-test-<(libbase_ver)',

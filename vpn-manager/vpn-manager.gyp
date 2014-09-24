@@ -47,7 +47,7 @@
           'target_name': 'daemon_test',
           'type': 'executable',
           'dependencies': ['libl2tpipsec_vpn'],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'daemon_test.cc',
           ]
@@ -56,7 +56,7 @@
           'target_name': 'ipsec_manager_test',
           'type': 'executable',
           'dependencies': ['libl2tpipsec_vpn'],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'ipsec_manager_test.cc',
           ]
@@ -65,7 +65,7 @@
           'target_name': 'l2tp_manager_test',
           'type': 'executable',
           'dependencies': ['libl2tpipsec_vpn'],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'l2tp_manager_test.cc',
           ]
@@ -74,7 +74,7 @@
           'target_name': 'service_manager_test',
           'type': 'executable',
           'dependencies': ['libl2tpipsec_vpn'],
-          'includes': ['../../platform2/common-mk/common_test.gypi'],
+          'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'service_manager_test.cc',
           ]
