@@ -120,17 +120,14 @@ class DeviceRegistrationInfo {
   // Persistent data. Some of default values for testing purposes are used.
   // TODO(avakulenko): remove these default values in the future.
   // http://crbug.com/364692
-  std::string client_id_ =
-    "583509257718-lnmeofvjef3b1tm33sbjmckfnumfvn8j.apps.googleusercontent.com";
-  std::string client_secret_ = "6fzZwQhgnsHhvYYvvFdpv5SD";
-  std::string api_key_ = "AIzaSyAp7KVig5m9g4LWWKr79mTS8sXWfUU6w9g";
+  std::string client_id_ = "58855907228.apps.googleusercontent.com";
+  std::string client_secret_ = "eHSAREAHrIqPsHBxCE9zPPBi";
+  std::string api_key_ = "AIzaSyDSq46gG-AxUnC3zoqD9COIPrjolFsMfMA";
   std::string refresh_token_;
   std::string device_id_;
   std::string device_robot_account_;
   std::string oauth_url_ = "https://accounts.google.com/o/oauth2/";
-  std::string service_url_ =
-    "https://www-googleapis-staging.sandbox.google.com/"
-    "clouddevices/v1/";
+  std::string service_url_ = "https://www.googleapis.com/clouddevices/v1/";
 
   // Transient data
   std::string access_token_;

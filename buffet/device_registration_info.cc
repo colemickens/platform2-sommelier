@@ -343,30 +343,15 @@ bool CheckParam(const std::string& param_name,
 std::string DeviceRegistrationInfo::StartRegistration(
     const std::map<std::string, std::string>& params,
     chromeos::ErrorPtr* error) {
+  GetParamValue(params, "ticket_id", &ticket_id_);
   GetParamValue(params, storage_keys::kClientId, &client_id_);
   GetParamValue(params, storage_keys::kClientSecret, &client_secret_);
   GetParamValue(params, storage_keys::kApiKey, &api_key_);
-  GetParamValue(params, storage_keys::kDeviceId, &device_id_);
   GetParamValue(params, storage_keys::kDeviceKind, &device_kind_);
   GetParamValue(params, storage_keys::kSystemName, &system_name_);
   GetParamValue(params, storage_keys::kDisplayName, &display_name_);
   GetParamValue(params, storage_keys::kOAuthURL, &oauth_url_);
   GetParamValue(params, storage_keys::kServiceURL, &service_url_);
-
-  if (!CheckParam(storage_keys::kClientId, client_id_, error))
-    return std::string();
-  if (!CheckParam(storage_keys::kClientSecret, client_secret_, error))
-    return std::string();
-  if (!CheckParam(storage_keys::kApiKey, api_key_, error))
-    return std::string();
-  if (!CheckParam(storage_keys::kDeviceKind, device_kind_, error))
-    return std::string();
-  if (!CheckParam(storage_keys::kSystemName, system_name_, error))
-    return std::string();
-  if (!CheckParam(storage_keys::kOAuthURL, oauth_url_, error))
-    return std::string();
-  if (!CheckParam(storage_keys::kServiceURL, service_url_, error))
-    return std::string();
 
   std::unique_ptr<base::DictionaryValue> commands =
       command_manager_->GetCommandDictionary().GetCommandsAsJson(true, error);
@@ -379,26 +364,27 @@ std::string DeviceRegistrationInfo::StartRegistration(
     return std::string();
 
   base::DictionaryValue req_json;
+  req_json.SetString("id", ticket_id_);
   req_json.SetString("oauthClientId", client_id_);
   req_json.SetString("deviceDraft.deviceKind", device_kind_);
   req_json.SetString("deviceDraft.systemName", system_name_);
-  req_json.SetString("deviceDraft.displayName", display_name_);
+  if (!display_name_.empty())
+    req_json.SetString("deviceDraft.displayName", display_name_);
   req_json.SetString("deviceDraft.channel.supportedType", "xmpp");
   req_json.Set("deviceDraft.commandDefs", commands.release());
   req_json.Set("deviceDraft.state", state.release());
 
-  std::string url = GetServiceURL("registrationTickets", {{"key", api_key_}});
+  int status_code{0};
+  auto url = GetServiceURL("registrationTickets/" + ticket_id_,
+                           {{"key", api_key_}});
   auto resp_json = chromeos::http::ParseJsonResponse(
-      chromeos::http::PostJson(url, &req_json, transport_, error).get(),
-      nullptr, error);
+      chromeos::http::PatchJson(url, &req_json, transport_, error).get(),
+      &status_code, error);
   if (!resp_json)
     return std::string();
 
-  if (!resp_json->GetString("id", &ticket_id_)) {
-    chromeos::Error::AddTo(error, kErrorDomainGCD, "unexpected_response",
-                           "Device ID missing");
+  if (status_code >= chromeos::http::status_code::BadRequest)
     return std::string();
-  }
 
   std::string auth_url = GetOAuthURL("auth", {
     {"scope", "https://www.googleapis.com/auth/clouddevices"},

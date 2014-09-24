@@ -273,12 +273,14 @@ TEST_F(DeviceRegistrationInfoTest, GetDeviceId) {
 TEST_F(DeviceRegistrationInfoTest, StartRegistration) {
   EXPECT_TRUE(dev_reg_->Load());
 
-  auto create_ticket = [](const ServerRequest& request,
+  auto update_ticket = [](const ServerRequest& request,
                           ServerResponse* response) {
     EXPECT_EQ(test_data::kApiKey, request.GetFormField("key"));
     auto json = request.GetDataAsJson();
     EXPECT_NE(nullptr, json.get());
     std::string value;
+    EXPECT_TRUE(json->GetString("id", &value));
+    EXPECT_EQ(test_data::kClaimTicketId, value);
     EXPECT_TRUE(json->GetString("deviceDraft.channel.supportedType", &value));
     EXPECT_EQ("xmpp", value);
     EXPECT_TRUE(json->GetString("oauthClientId", &value));
@@ -333,10 +335,12 @@ TEST_F(DeviceRegistrationInfoTest, StartRegistration) {
   })");
   EXPECT_TRUE(command_manager_->LoadCommands(*json_cmds, "", nullptr));
 
-  transport_->AddHandler(dev_reg_->GetServiceURL("registrationTickets"),
-                         chromeos::http::request_type::kPost,
-                         base::Bind(create_ticket));
+  transport_->AddHandler(dev_reg_->GetServiceURL(
+      std::string("registrationTickets/") + test_data::kClaimTicketId),
+      chromeos::http::request_type::kPatch,
+      base::Bind(update_ticket));
   std::map<std::string, std::string> params;
+  params["ticket_id"] = test_data::kClaimTicketId;
   std::string json_resp = dev_reg_->StartRegistration(params, nullptr);
   auto json = std::unique_ptr<base::Value>(base::JSONReader::Read(json_resp));
   EXPECT_NE(nullptr, json.get());
