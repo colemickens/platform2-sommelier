@@ -616,8 +616,9 @@ CryptohomeErrorCode HomeDirs::RemoveKeyset(
     return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED;
   }
 
-  // Keys without KeyData cannot use this call.
-  if (!vk->serialized().has_key_data() ||
+  // Legacy keys can remove any other key. Otherwise a key needs explicit
+  // privileges.
+  if (vk->serialized().has_key_data() &&
       !vk->serialized().key_data().privileges().remove()) {
     LOG(WARNING) << "RemoveKeyset: no remove() privilege";
     return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED;
