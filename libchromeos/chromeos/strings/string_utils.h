@@ -16,20 +16,54 @@ namespace string_utils {
 
 // Treats the string as a delimited list of substrings and returns the array
 // of original elements of the list.
-// By default, empty elements from the original string are omitted and
-// each element has all whitespaces trimmed off.
+// |trim_whitespaces| causes each element to have all whitespaces trimmed off.
+// |purge_empty_strings| specifies whether empty elements from the original
+// string should be omitted.
 CHROMEOS_EXPORT std::vector<std::string> Split(
     const std::string& str,
     char delimiter,
-    bool trim_whitespaces = true,
-    bool purge_empty_strings = true);
+    bool trim_whitespaces,
+    bool purge_empty_strings);
+// Splits the string, trims all whitespaces, omits empty string parts.
+inline std::vector<std::string> Split(const std::string& str, char delimiter) {
+  return Split(str, delimiter, true, true);
+}
+// Splits the string, omits empty string parts.
+inline std::vector<std::string> Split(const std::string& str,
+                                      char delimiter,
+                                      bool trim_whitespaces) {
+  return Split(str, delimiter, trim_whitespaces, true);
+}
 
 // Splits the string into two pieces at the first position of the specified
-// delimiter. By default, each part has all whitespaces trimmed off.
+// delimiter.
 CHROMEOS_EXPORT std::pair<std::string, std::string> SplitAtFirst(
     const std::string& str,
     char delimiter,
-    bool trim_whitespaces = true);
+    bool trim_whitespaces);
+// Splits the string into two pieces at the first position of the specified
+// delimiter. Both parts have all whitespaces trimmed off.
+inline std::pair<std::string, std::string> SplitAtFirst(
+    const std::string& str,
+    char delimiter) {
+  return SplitAtFirst(str, delimiter, true);
+}
+
+// The following overload returns false if the delimiter was not found in the
+// source string. In this case, |left_part| will be set to |str| and
+// |right_part| will be empty.
+CHROMEOS_EXPORT bool SplitAtFirst(const std::string& str,
+                                  char delimiter,
+                                  std::string* left_part,
+                                  std::string* right_part,
+                                  bool trim_whitespaces);
+// Always trims the white spaces in the split parts.
+inline bool SplitAtFirst(const std::string& str,
+                         char delimiter,
+                         std::string* left_part,
+                         std::string* right_part) {
+  return SplitAtFirst(str, delimiter, left_part, right_part, true);
+}
 
 // Joins an array of strings into a single string separated by |delimiter|.
 CHROMEOS_EXPORT std::string Join(char delimiter,

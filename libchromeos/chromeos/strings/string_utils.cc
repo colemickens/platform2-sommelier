@@ -44,27 +44,41 @@ std::vector<std::string> Split(const std::string& str,
   return tokens;
 }
 
+bool SplitAtFirst(const std::string& str,
+                  char delimiter,
+                  std::string* left_part,
+                  std::string* right_part,
+                  bool trim_whitespaces) {
+  if (delimiter == 0) {
+    left_part->clear();
+    right_part->clear();
+    return false;
+  }
+
+  bool delimiter_found = false;
+  const char* sz = str.c_str();
+  const char* szNext = strchr(sz, delimiter);
+  if (szNext) {
+    *left_part = std::string(sz, szNext);
+    *right_part = std::string(szNext + 1);
+    delimiter_found = true;
+  } else {
+    *left_part = str;
+  }
+
+  if (trim_whitespaces) {
+    base::TrimWhitespaceASCII(*left_part, base::TRIM_ALL, left_part);
+    base::TrimWhitespaceASCII(*right_part, base::TRIM_ALL, right_part);
+  }
+
+  return delimiter_found;
+}
+
 std::pair<std::string, std::string> SplitAtFirst(const std::string& str,
                                                  char delimiter,
                                                  bool trim_whitespaces) {
   std::pair<std::string, std::string> pair;
-  if (delimiter == 0)
-    return pair;
-
-  const char* sz = str.c_str();
-  const char* szNext = strchr(sz, delimiter);
-  if (szNext) {
-    pair.first = std::string(sz, szNext);
-    pair.second = std::string(szNext + 1);
-  } else {
-    pair.first = str;
-  }
-
-  if (trim_whitespaces) {
-    base::TrimWhitespaceASCII(pair.first, base::TRIM_ALL, &pair.first);
-    base::TrimWhitespaceASCII(pair.second, base::TRIM_ALL, &pair.second);
-  }
-
+  SplitAtFirst(str, delimiter, &pair.first, &pair.second, trim_whitespaces);
   return pair;
 }
 
