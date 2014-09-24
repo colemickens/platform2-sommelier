@@ -11,3 +11,29 @@ in userspace. This repository contains the following directories:
   powerd/system:  Low-level parts of powerd that communicate with the kernel.
   tools:          Utility programs; may depend on powerd code.
   udev:           udev configuration files and scripts.
+
+A note about logging: powerd receives input (e.g. user/video/audio activity, lid
+events, etc.) and performs actions sporadically; thirty-second intervals where
+nothing happens are common for an idle system. Having logs of these events is
+essential to reconstruct the past when investigating user feedback reports.
+
+powerd's unit tests, on the other hand, send a bunch of input very quickly.
+Logging all events drowns out the rest of the testing output.
+
+To produce useful output when running in production while producing readable
+output from tests, powerd logs messages at the LOG(INFO) level and above by
+default, while unit tests use LOG(WARNING) and above.
+
+Please use logging directives as follows within powerd:
+
+  VLOG(1)       Debugging info that is hidden by default but can be selectively
+                enabled by developers.
+  LOG(INFO)     Input from other systems or actions performed by powerd (i.e.
+                things that would be useful when trying to figure out what
+                powerd was thinking when investigating a bug report).
+  LOG(WARNING)  Minor errors (e.g. bad input from other daemons).
+  LOG(ERROR)    Major errors (e.g. problems communicating with the kernel).
+  LOG(FATAL)    Critical problems that make powerd unusable or that indicate
+                problems in the readonly system image (e.g. malformed preference
+                defaults).
+  CHECK(...)    Same as LOG(FATAL).

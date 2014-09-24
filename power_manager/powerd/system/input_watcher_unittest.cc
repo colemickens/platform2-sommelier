@@ -87,6 +87,7 @@ TEST_F(InputWatcherTest, DetectUSBDevices) {
 
 TEST_F(InputWatcherTest, RegisterForUdevEvents) {
   scoped_ptr<InputWatcher> input_watcher(new InputWatcher);
+  input_watcher->set_sysfs_input_path_for_testing(input_dir_.path());
   input_watcher->Init(
       scoped_ptr<EventDeviceFactoryInterface>(new EventDeviceFactoryStub()),
       &prefs_, &udev_);

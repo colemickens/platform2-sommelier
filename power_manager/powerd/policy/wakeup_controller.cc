@@ -97,12 +97,12 @@ void WakeupController::SetWakeupFromS3(const system::TaggedDevice& device,
   std::string parent_syspath;
   if (!udev_->FindParentWithSysattr(device.syspath(), kPowerWakeup,
                                     &parent_syspath)) {
-    LOG(WARNING) << "no " << kPowerWakeup << " sysattr available for "
+    LOG(WARNING) << "No " << kPowerWakeup << " sysattr available for "
                  << device.syspath();
     return;
   }
-  VLOG(1) << (enabled ? "Enabling" : "Disabling") << " wakeup for "
-          << device.syspath() << " through " << parent_syspath;
+  LOG(INFO) << (enabled ? "Enabling" : "Disabling") << " wakeup for "
+            << device.syspath() << " through " << parent_syspath;
   udev_->SetSysattr(parent_syspath,
                     kPowerWakeup,
                     enabled ? kEnabled : kDisabled);
@@ -114,7 +114,7 @@ void WakeupController::ConfigureInhibit(
   if (!device.HasTag(kTagInhibit))
     return;
   bool inhibit = !IsUsableInMode(device, mode_);
-  VLOG(1) << (inhibit ? "Inhibiting " : "Un-inhibiting ") << device.syspath();
+  LOG(INFO) << (inhibit ? "Inhibiting " : "Un-inhibiting ") << device.syspath();
   udev_->SetSysattr(device.syspath(), kInhibited, inhibit ? "1" : "0");
 }
 

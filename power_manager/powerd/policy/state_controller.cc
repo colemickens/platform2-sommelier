@@ -86,14 +86,14 @@ void HandleDelay(base::TimeDelta delay,
                  bool* action_already_performed) {
   if (delay > base::TimeDelta() && inactivity_duration >= delay) {
     if (!*action_already_performed) {
-      VLOG(1) << description << " after "
-              << util::TimeDeltaToString(inactivity_duration);
+      LOG(INFO) << description << " after "
+                << util::TimeDeltaToString(inactivity_duration);
       callback.Run();
       *action_already_performed = true;
     }
   } else if (*action_already_performed) {
     if (!undo_callback.is_null()) {
-      VLOG(1) << undo_description;
+      LOG(INFO) << undo_description;
       undo_callback.Run();
     }
     *action_already_performed = false;
@@ -114,6 +114,25 @@ bool GetMillisecondPref(PrefsInterface* prefs,
 
   *out = base::TimeDelta::FromMilliseconds(int_value);
   return true;
+}
+
+// Returns a string describing |delays| with each field prefixed by
+// |prefix|. Helper method for GetPolicyDebugString().
+std::string GetPolicyDelaysDebugString(
+    const PowerManagementPolicy::Delays& delays,
+    const std::string& prefix) {
+  std::string str;
+  if (delays.has_screen_dim_ms())
+    str += prefix + "_dim=" + MsToString(delays.screen_dim_ms()) + " ";
+  if (delays.has_screen_off_ms())
+    str += prefix + "_screen_off=" + MsToString(delays.screen_off_ms()) + " ";
+  if (delays.has_screen_lock_ms())
+    str += prefix + "_lock=" + MsToString(delays.screen_lock_ms()) + " ";
+  if (delays.has_idle_warning_ms())
+    str += prefix + "_idle_warn=" + MsToString(delays.idle_warning_ms()) + " ";
+  if (delays.has_idle_ms())
+    str += prefix + "_idle=" + MsToString(delays.idle_ms()) + " ";
+  return str;
 }
 
 }  // namespace
@@ -142,6 +161,48 @@ bool StateController::TestApi::TriggerInitialStateTimeout() {
 }
 
 const int StateController::kUserActivityAfterScreenOffIncreaseDelaysMs = 60000;
+
+// static
+std::string StateController::GetPolicyDebugString(
+    const PowerManagementPolicy& policy) {
+  std::string str = GetPolicyDelaysDebugString(policy.ac_delays(), "ac");
+  str += GetPolicyDelaysDebugString(policy.battery_delays(), "battery");
+
+  if (policy.has_ac_idle_action()) {
+    str += "ac_idle=" +
+        ActionToString(ProtoActionToAction(policy.ac_idle_action())) + " ";
+  }
+  if (policy.has_battery_idle_action()) {
+    str += "battery_idle=" +
+        ActionToString(ProtoActionToAction(policy.battery_idle_action())) + " ";
+  }
+  if (policy.has_lid_closed_action()) {
+    str += "lid_closed=" +
+        ActionToString(ProtoActionToAction(policy.lid_closed_action())) + " ";
+  }
+  if (policy.has_use_audio_activity())
+    str += "use_audio=" + base::IntToString(policy.use_audio_activity()) + " ";
+  if (policy.has_use_video_activity())
+    str += "use_video=" + base::IntToString(policy.use_video_activity()) + " ";
+  if (policy.has_presentation_screen_dim_delay_factor()) {
+    str += "presentation_factor=" +
+        base::DoubleToString(policy.presentation_screen_dim_delay_factor()) +
+        " ";
+  }
+  if (policy.has_user_activity_screen_dim_delay_factor()) {
+    str += "user_activity_factor=" + base::DoubleToString(
+        policy.user_activity_screen_dim_delay_factor()) + " ";
+  }
+  if (policy.has_wait_for_initial_user_activity()) {
+    str += "wait_for_initial_user_activity=" +
+        base::IntToString(policy.wait_for_initial_user_activity()) + " ";
+  }
+
+  if (policy.has_reason())
+    str += "(" + policy.reason() + ")";
+
+  return str.empty() ? "[empty]" : str;
+}
 
 StateController::StateController()
     : delegate_(NULL),
@@ -209,7 +270,6 @@ void StateController::HandlePowerSourceChange(PowerSource source) {
   if (source == power_source_)
     return;
 
-  VLOG(1) << "Power source changed to " << PowerSourceToString(source);
   power_source_ = source;
   UpdateLastUserActivityTime();
   UpdateSettingsAndState();
@@ -220,7 +280,6 @@ void StateController::HandleLidStateChange(LidState state) {
   if (state == lid_state_)
     return;
 
-  VLOG(1) << "Lid state changed to " << LidStateToString(state);
   lid_state_ = state;
   if (state == LID_OPEN)
     UpdateLastUserActivityTime();
@@ -232,7 +291,6 @@ void StateController::HandleSessionStateChange(SessionState state) {
   if (state == session_state_)
     return;
 
-  VLOG(1) << "Session state changed to " << SessionStateToString(state);
   session_state_ = state;
   saw_user_activity_soon_after_screen_dim_or_off_ = false;
   saw_user_activity_during_current_session_ = false;
@@ -245,7 +303,6 @@ void StateController::HandleUpdaterStateChange(UpdaterState state) {
   if (state == updater_state_)
     return;
 
-  VLOG(1) << "Updater state changed to " << UpdaterStateToString(state);
   updater_state_ = state;
   UpdateSettingsAndState();
 }
@@ -255,7 +312,6 @@ void StateController::HandleDisplayModeChange(DisplayMode mode) {
   if (mode == display_mode_ && got_initial_display_mode_)
     return;
 
-  VLOG(1) << "Display mode changed to " << DisplayModeToString(mode);
   display_mode_ = mode;
 
   if (!got_initial_display_mode_) {
@@ -270,8 +326,6 @@ void StateController::HandleDisplayModeChange(DisplayMode mode) {
 
 void StateController::HandleResume() {
   CHECK(initialized_);
-  VLOG(1) << "System resumed";
-
   switch (delegate_->QueryLidState()) {
     case LID_OPEN:  // fallthrough
     case LID_NOT_PRESENT:
@@ -287,8 +341,8 @@ void StateController::HandleResume() {
       if (lid_state_ == LID_CLOSED &&
           lid_closed_action_ == SUSPEND &&
           lid_closed_action_performed_) {
-        VLOG(1) << "Lid still closed after resuming from lid-close-triggered "
-                << "suspend; repeating lid-closed action";
+        LOG(INFO) << "Lid still closed after resuming from lid-close-triggered "
+                  << "suspend; repeating lid-closed action";
         lid_closed_action_performed_ = false;
       }
       break;
@@ -299,8 +353,6 @@ void StateController::HandleResume() {
 
 void StateController::HandlePolicyChange(const PowerManagementPolicy& policy) {
   CHECK(initialized_);
-  VLOG(1) << "Received updated external policy: "
-          << GetPolicyDebugString(policy);
   policy_ = policy;
   if (!got_initial_policy_) {
     got_initial_policy_ = true;
@@ -311,7 +363,6 @@ void StateController::HandlePolicyChange(const PowerManagementPolicy& policy) {
 
 void StateController::HandleUserActivity() {
   CHECK(initialized_);
-  VLOG(1) << "Saw user activity";
 
   // Ignore user activity reported while the lid is closed unless we're in
   // docked mode.
@@ -328,8 +379,8 @@ void StateController::HandleUserActivity() {
       kUserActivityAfterScreenOffIncreaseDelaysMs;
   if (!saw_user_activity_soon_after_screen_dim_or_off_ &&
       ((screen_dimmed_ && !screen_turned_off_) || screen_turned_off_recently)) {
-    VLOG(1) << "Scaling delays due to user activity while screen was dimmed "
-            << "or soon after it was turned off";
+    LOG(INFO) << "Scaling delays due to user activity while screen was dimmed "
+              << "or soon after it was turned off";
     saw_user_activity_soon_after_screen_dim_or_off_ = true;
   }
 
@@ -345,9 +396,8 @@ void StateController::HandleUserActivity() {
 
 void StateController::HandleVideoActivity() {
   CHECK(initialized_);
-  VLOG(1) << "Saw video activity";
   if (screen_dimmed_ || screen_turned_off_) {
-    VLOG(1) << "Ignoring video since screen is dimmed or off";
+    LOG(INFO) << "Ignoring video since screen is dimmed or off";
     return;
   }
   last_video_activity_time_ = clock_->GetCurrentTime();
@@ -356,7 +406,6 @@ void StateController::HandleVideoActivity() {
 
 void StateController::HandleAudioStateChange(bool active) {
   CHECK(initialized_);
-  VLOG(1) << "Audio is " << (active ? "active" : "inactive");
   if (active)
     audio_inactive_time_ = base::TimeTicks();
   else if (audio_is_active_)
@@ -369,7 +418,7 @@ void StateController::OnPrefChanged(const std::string& pref_name) {
   CHECK(initialized_);
   if (pref_name == kDisableIdleSuspendPref ||
       pref_name == kIgnoreExternalPolicyPref) {
-    VLOG(1) << "Reloading prefs for " << pref_name << " change";
+    LOG(INFO) << "Reloading prefs for " << pref_name << " change";
     LoadPrefs();
     UpdateSettingsAndState();
   }
@@ -407,66 +456,6 @@ StateController::Action StateController::ProtoActionToAction(
       NOTREACHED() << "Unhandled action " << proto_action;
       return DO_NOTHING;
   }
-}
-
-// static
-std::string StateController::GetPolicyDelaysDebugString(
-    const PowerManagementPolicy::Delays& delays,
-    const std::string& prefix) {
-  std::string str;
-  if (delays.has_screen_dim_ms())
-    str += prefix + "_dim=" + MsToString(delays.screen_dim_ms()) + " ";
-  if (delays.has_screen_off_ms())
-    str += prefix + "_screen_off=" + MsToString(delays.screen_off_ms()) + " ";
-  if (delays.has_screen_lock_ms())
-    str += prefix + "_lock=" + MsToString(delays.screen_lock_ms()) + " ";
-  if (delays.has_idle_warning_ms())
-    str += prefix + "_idle_warn=" + MsToString(delays.idle_warning_ms()) + " ";
-  if (delays.has_idle_ms())
-    str += prefix + "_idle=" + MsToString(delays.idle_ms()) + " ";
-  return str;
-}
-
-// static
-std::string StateController::GetPolicyDebugString(
-    const PowerManagementPolicy& policy) {
-  std::string str = GetPolicyDelaysDebugString(policy.ac_delays(), "ac");
-  str += GetPolicyDelaysDebugString(policy.battery_delays(), "battery");
-
-  if (policy.has_ac_idle_action()) {
-    str += "ac_idle=" +
-        ActionToString(ProtoActionToAction(policy.ac_idle_action())) + " ";
-  }
-  if (policy.has_battery_idle_action()) {
-    str += "battery_idle=" +
-        ActionToString(ProtoActionToAction(policy.battery_idle_action())) + " ";
-  }
-  if (policy.has_lid_closed_action()) {
-    str += "lid_closed=" +
-        ActionToString(ProtoActionToAction(policy.lid_closed_action())) + " ";
-  }
-  if (policy.has_use_audio_activity())
-    str += "use_audio=" + base::IntToString(policy.use_audio_activity()) + " ";
-  if (policy.has_use_video_activity())
-    str += "use_video=" + base::IntToString(policy.use_video_activity()) + " ";
-  if (policy.has_presentation_screen_dim_delay_factor()) {
-    str += "presentation_factor=" +
-        base::DoubleToString(policy.presentation_screen_dim_delay_factor()) +
-        " ";
-  }
-  if (policy.has_user_activity_screen_dim_delay_factor()) {
-    str += "user_activity_factor=" + base::DoubleToString(
-        policy.user_activity_screen_dim_delay_factor()) + " ";
-  }
-  if (policy.has_wait_for_initial_user_activity()) {
-    str += "wait_for_initial_user_activity=" +
-        base::IntToString(policy.wait_for_initial_user_activity()) + " ";
-  }
-
-  if (policy.has_reason())
-    str += "(" + policy.reason() + ")";
-
-  return str.empty() ? "[empty]" : str;
 }
 
 // static
@@ -725,19 +714,19 @@ void StateController::UpdateSettingsAndState() {
       delays_.idle_warning != base::TimeDelta() &&
       delays_.idle != old_idle_delay;
 
-  VLOG(1) << "Updated settings:"
-          << " dim=" << util::TimeDeltaToString(delays_.screen_dim)
-          << " screen_off=" << util::TimeDeltaToString(delays_.screen_off)
-          << " lock=" << util::TimeDeltaToString(delays_.screen_lock)
-          << " idle_warn=" << util::TimeDeltaToString(delays_.idle_warning)
-          << " idle=" << util::TimeDeltaToString(delays_.idle)
-          << " (" << ActionToString(idle_action_) << ")"
-          << " lid_closed=" << ActionToString(lid_closed_action_)
-          << " use_audio=" << use_audio_activity_
-          << " use_video=" << use_video_activity_;
+  LOG(INFO) << "Updated settings:"
+            << " dim=" << util::TimeDeltaToString(delays_.screen_dim)
+            << " screen_off=" << util::TimeDeltaToString(delays_.screen_off)
+            << " lock=" << util::TimeDeltaToString(delays_.screen_lock)
+            << " idle_warn=" << util::TimeDeltaToString(delays_.idle_warning)
+            << " idle=" << util::TimeDeltaToString(delays_.idle)
+            << " (" << ActionToString(idle_action_) << ")"
+            << " lid_closed=" << ActionToString(lid_closed_action_)
+            << " use_audio=" << use_audio_activity_
+            << " use_video=" << use_video_activity_;
   if (wait_for_initial_user_activity_) {
-    VLOG(1) << "Deferring inactivity-triggered actions until user activity "
-            << "is observed each time a session starts";
+    LOG(INFO) << "Deferring inactivity-triggered actions until user activity "
+              << "is observed each time a session starts";
   }
 
   UpdateState();
@@ -776,8 +765,8 @@ void StateController::UpdateState() {
               "Dimming screen", "Undimming screen", &screen_dimmed_);
   if (screen_dimmed_ && !screen_was_dimmed &&
       audio_is_active_ && delegate_->IsHdmiAudioActive()) {
-    VLOG(1) << "Audio is currently being sent to display; screen will not be "
-            << "turned off for inactivity";
+    LOG(INFO) << "Audio is currently being sent to display; screen will not be "
+              << "turned off for inactivity";
   }
 
   const bool screen_was_turned_off = screen_turned_off_;
@@ -800,9 +789,9 @@ void StateController::UpdateState() {
       idle_action_ != DO_NOTHING) {
     if (!sent_idle_warning_ || resend_idle_warning_) {
       const base::TimeDelta time_until_idle = delays_.idle - idle_duration;
-      VLOG(1) << "Emitting idle-imminent signal with "
-              << util::TimeDeltaToString(time_until_idle) << " after "
-              << util::TimeDeltaToString(idle_duration);
+      LOG(INFO) << "Emitting idle-imminent signal with "
+                << util::TimeDeltaToString(time_until_idle) << " after "
+                << util::TimeDeltaToString(idle_duration);
       delegate_->EmitIdleActionImminent(time_until_idle);
       sent_idle_warning_ = true;
     }
@@ -812,7 +801,7 @@ void StateController::UpdateState() {
     // signal if the idle action hasn't been performed yet or if it was a
     // no-op action.
     if (!idle_action_performed_ || idle_action_ == DO_NOTHING) {
-      VLOG(1) << "Emitting idle-deferred signal";
+      LOG(INFO) << "Emitting idle-deferred signal";
       delegate_->EmitIdleActionDeferred();
     }
   }
@@ -820,8 +809,8 @@ void StateController::UpdateState() {
 
   bool docked = in_docked_mode();
   if (docked != turned_panel_off_for_docked_mode_) {
-    VLOG(1) << "Turning panel " << (docked ? "off" : "on") << " after "
-            << (docked ? "entering" : "leaving") << " docked mode";
+    LOG(INFO) << "Turning panel " << (docked ? "off" : "on") << " after "
+              << (docked ? "entering" : "leaving") << " docked mode";
     delegate_->UpdatePanelForDockedMode(docked);
     turned_panel_off_for_docked_mode_ = docked;
   }
@@ -831,24 +820,24 @@ void StateController::UpdateState() {
     if (!idle_action_performed_) {
       idle_action_to_perform = idle_action_;
       if (!delegate_->IsOobeCompleted()) {
-        VLOG(1) << "Not performing idle action without OOBE completed";
+        LOG(INFO) << "Not performing idle action without OOBE completed";
         idle_action_to_perform = DO_NOTHING;
       }
       if (idle_action_to_perform == SUSPEND &&
           require_usb_input_device_to_suspend_ &&
           !delegate_->IsUsbInputDeviceConnected()) {
-        VLOG(1) << "Not suspending for idle without USB input device";
+        LOG(INFO) << "Not suspending for idle without USB input device";
         idle_action_to_perform = DO_NOTHING;
       }
       if (idle_action_to_perform == SUSPEND &&
           avoid_suspend_when_headphone_jack_plugged_ &&
           delegate_->IsHeadphoneJackPlugged()) {
-        VLOG(1) << "Not suspending for idle due to headphone jack";
+        LOG(INFO) << "Not suspending for idle due to headphone jack";
         idle_action_to_perform = DO_NOTHING;
       }
-      VLOG(1) << "Ready to perform idle action ("
-              << ActionToString(idle_action_to_perform) << ") after "
-              << util::TimeDeltaToString(idle_duration);
+      LOG(INFO) << "Ready to perform idle action ("
+                << ActionToString(idle_action_to_perform) << ") after "
+                << util::TimeDeltaToString(idle_duration);
       idle_action_performed_ = true;
     }
   } else {
@@ -863,8 +852,8 @@ void StateController::UpdateState() {
   if (lid_state_ == LID_CLOSED && !waiting_for_initial_state()) {
     if (!lid_closed_action_performed_) {
       lid_closed_action_to_perform = lid_closed_action_;
-      VLOG(1) << "Ready to perform lid-closed action ("
-              << ActionToString(lid_closed_action_to_perform) << ")";
+      LOG(INFO) << "Ready to perform lid-closed action ("
+                << ActionToString(lid_closed_action_to_perform) << ")";
       lid_closed_action_performed_ = true;
     }
   } else {

@@ -354,7 +354,7 @@ ExternalDisplay::SendResult ExternalDisplay::SendMessage(
   ioctl_data.msgs = &i2c_message;
   ioctl_data.nmsgs = 1;
 
-  VLOG(2) << "Sending data to " << delegate_->GetName()
+  VLOG(1) << "Sending data to " << delegate_->GetName()
           << ": " << base::HexEncode(&message[0], message.size());
   return delegate_->PerformI2COperation(&ioctl_data) ? SEND_SUCCESS :
       SEND_IOCTL_FAILED;
@@ -383,7 +383,7 @@ ExternalDisplay::ReceiveResult ExternalDisplay::ReceiveMessage(
   if (!delegate_->PerformI2COperation(&ioctl_data))
     return RECEIVE_IOCTL_FAILED;
 
-  VLOG(2) << "Received data from " << delegate_->GetName()
+  VLOG(1) << "Received data from " << delegate_->GetName()
           << ": " << base::HexEncode(&(message[0]), message.size());
 
   // The final byte in a message from the display is the "virtual host address"

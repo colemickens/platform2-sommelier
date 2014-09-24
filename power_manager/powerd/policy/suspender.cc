@@ -302,6 +302,7 @@ void Suspender::HandleEvent(Event event) {
           if (state_ == STATE_WAITING_FOR_SUSPEND_DELAYS ||
               !dark_resume_->InDarkResume() ||
               delegate_->CanSafelyExitDarkResume()) {
+            LOG(INFO) << "Aborting request in response to user activity";
             FinishRequest(false);
             state_ = STATE_IDLE;
           }
@@ -338,6 +339,9 @@ void Suspender::HandleEvent(Event event) {
 }
 
 void Suspender::StartRequest() {
+  suspend_request_id_++;
+  LOG(INFO) << "Starting request " << suspend_request_id_;
+
   if (suspend_request_supplied_wakeup_count_) {
     wakeup_count_ = suspend_request_wakeup_count_;
     wakeup_count_valid_ = true;
@@ -345,7 +349,6 @@ void Suspender::StartRequest() {
     wakeup_count_valid_ = delegate_->ReadSuspendWakeupCount(&wakeup_count_);
   }
 
-  suspend_request_id_++;
   suspend_request_start_time_ = clock_->GetCurrentWallTime();
   current_num_attempts_ = 0;
   initial_num_attempts_ = 0;
@@ -360,6 +363,8 @@ void Suspender::StartRequest() {
 }
 
 void Suspender::FinishRequest(bool success) {
+  LOG(INFO) << "Finishing request " << suspend_request_id_ << " "
+            << (success ? "" : "un") << "successfully";
   resuspend_timer_.Stop();
   base::TimeDelta suspend_duration = std::max(base::TimeDelta(),
       clock_->GetCurrentWallTime() - suspend_request_start_time_);

@@ -14,6 +14,7 @@ int main(int argc, char** argv) {
   logging::LoggingSettings settings;
   settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
   logging::InitLogging(settings);
+  logging::SetMinLogLevel(logging::LOG_WARNING);
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
   ::testing::InitGoogleTest(&argc, argv);

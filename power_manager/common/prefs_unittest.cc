@@ -4,9 +4,9 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/prefs.h"
@@ -170,7 +170,8 @@ TEST_F(PrefsTest, TestThreeDirectoriesStacked) {
   // This will test all the valid combinations of which directories have pref
   // files.
   for (int cycle = 1; cycle < (1 << kNumPrefDirectories); ++cycle) {
-    LOG(INFO) << "Testing stacked directories, cycle #" << cycle;
+    SCOPED_TRACE(
+        base::StringPrintf("Testing stacked directories, cycle %d", cycle));
     SetUp();
     Prefs prefs;
     ASSERT_TRUE(prefs.Init(paths_));

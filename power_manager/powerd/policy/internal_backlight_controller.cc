@@ -296,7 +296,7 @@ void InternalBacklightController::HandlePowerSourceChange(PowerSource source) {
   if (got_power_source_ && power_source_ == source)
     return;
 
-  VLOG(2) << "Power source changed to " << PowerSourceToString(source);
+  VLOG(1) << "Power source changed to " << PowerSourceToString(source);
 
   // Ensure that the screen isn't dimmed in response to a transition to AC
   // or brightened in response to a transition to battery.
@@ -360,16 +360,16 @@ void InternalBacklightController::HandleUserActivity(UserActivityType type) {
 void InternalBacklightController::HandlePolicyChange(
     const PowerManagementPolicy& policy) {
   if (policy.has_ac_brightness_percent()) {
-    VLOG(1) << "Got policy-triggered request to set AC brightness to "
-            << policy.ac_brightness_percent() << "%";
+    LOG(INFO) << "Got policy-triggered request to set AC brightness to "
+              << policy.ac_brightness_percent() << "%";
     SetExplicitBrightnessPercent(policy.ac_brightness_percent(),
                                  TRANSITION_FAST,
                                  BRIGHTNESS_CHANGE_AUTOMATED,
                                  POWER_AC);
   }
   if (policy.has_battery_brightness_percent()) {
-    VLOG(1) << "Got policy-triggered request to set battery brightness to "
-            << policy.battery_brightness_percent() << "%";
+    LOG(INFO) << "Got policy-triggered request to set battery brightness to "
+              << policy.battery_brightness_percent() << "%";
     SetExplicitBrightnessPercent(policy.battery_brightness_percent(),
                                  TRANSITION_FAST,
                                  BRIGHTNESS_CHANGE_AUTOMATED,
@@ -389,7 +389,7 @@ void InternalBacklightController::SetDimmedForInactivity(bool dimmed) {
   if (dimmed_for_inactivity_ == dimmed)
     return;
 
-  VLOG(2) << (dimmed ? "Dimming" : "No longer dimming") << " for inactivity";
+  VLOG(1) << (dimmed ? "Dimming" : "No longer dimming") << " for inactivity";
   dimmed_for_inactivity_ = dimmed;
   UpdateState();
 }
@@ -398,7 +398,7 @@ void InternalBacklightController::SetOffForInactivity(bool off) {
   if (off_for_inactivity_ == off)
     return;
 
-  VLOG(2) << (off ? "Turning backlight off" : "No longer keeping backlight off")
+  VLOG(1) << (off ? "Turning backlight off" : "No longer keeping backlight off")
           << " for inactivity";
   off_for_inactivity_ = off;
   UpdateState();
@@ -408,7 +408,7 @@ void InternalBacklightController::SetSuspended(bool suspended) {
   if (suspended_ == suspended)
     return;
 
-  VLOG(2) << (suspended ? "Suspending" : "Unsuspending") << " backlight";
+  VLOG(1) << (suspended ? "Suspending" : "Unsuspending") << " backlight";
   suspended_ = suspended;
   UpdateState();
 }
@@ -418,7 +418,7 @@ void InternalBacklightController::SetShuttingDown(bool shutting_down) {
     return;
 
   if (shutting_down)
-    VLOG(2) << "Preparing backlight for shutdown";
+    VLOG(1) << "Preparing backlight for shutdown";
   else
     LOG(WARNING) << "Exiting shutting-down state";
   shutting_down_ = shutting_down;
@@ -429,7 +429,7 @@ void InternalBacklightController::SetDocked(bool docked) {
   if (docked_ == docked)
     return;
 
-  VLOG(2) << (docked ? "Entering" : "Leaving") << " docked mode";
+  VLOG(1) << (docked ? "Entering" : "Leaving") << " docked mode";
   docked_ = docked;
   UpdateState();
 }
@@ -443,8 +443,8 @@ bool InternalBacklightController::GetBrightnessPercent(double* percent) {
 bool InternalBacklightController::SetUserBrightnessPercent(
     double percent,
     TransitionStyle style) {
-  VLOG(1) << "Got user-triggered request to set brightness to "
-          << percent << "%";
+  LOG(INFO) << "Got user-triggered request to set brightness to "
+            << percent << "%";
   user_adjustment_count_++;
   using_policy_brightness_ = false;
 
@@ -679,8 +679,8 @@ bool InternalBacklightController::ApplyBrightnessPercent(
     transition = TRANSITION_INSTANT;
 
   base::TimeDelta interval = TransitionStyleToTimeDelta(transition);
-  VLOG(1) << "Setting brightness to " << level << " (" << percent
-          << "%) over " << interval.InMilliseconds() << " ms";
+  LOG(INFO) << "Setting brightness to " << level << " (" << percent
+            << "%) over " << interval.InMilliseconds() << " ms";
   if (!backlight_->SetBrightnessLevel(level, interval)) {
     LOG(WARNING) << "Could not set brightness";
     return false;
@@ -695,8 +695,8 @@ bool InternalBacklightController::ApplyBrightnessPercent(
 bool InternalBacklightController::ApplyResumeBrightnessPercent(
     double resume_percent) {
   int64_t level = PercentToLevel(resume_percent);
-  VLOG(1) << "Setting resume brightness to " << level << " ("
-          << resume_percent << "%)";
+  LOG(INFO) << "Setting resume brightness to " << level << " ("
+            << resume_percent << "%)";
   return backlight_->SetResumeBrightnessLevel(level);
 }
 

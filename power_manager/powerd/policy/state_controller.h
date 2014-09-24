@@ -121,6 +121,9 @@ class StateController : public PrefsObserver {
   // off.
   static const int kUserActivityAfterScreenOffIncreaseDelaysMs;
 
+  // Returns a string describing |policy|.
+  static std::string GetPolicyDebugString(const PowerManagementPolicy& policy);
+
   StateController();
   virtual ~StateController();
 
@@ -172,21 +175,11 @@ class StateController : public PrefsObserver {
     DO_NOTHING,
   };
 
-  // Returns a human-readable description of |action|.
   static std::string ActionToString(Action action);
 
   // Converts an Action enum value from a PowerManagementPolicy protocol buffer
   // to the corresponding StateController::Action value.
   static Action ProtoActionToAction(PowerManagementPolicy_Action proto_action);
-
-  // Returns a string describing |delays| with each field prefixed by
-  // |prefix|.  Helper method for GetPolicyDebugString().
-  static std::string GetPolicyDelaysDebugString(
-      const PowerManagementPolicy::Delays& delays,
-      const std::string& prefix);
-
-  // Returns a string describing |policy|.
-  static std::string GetPolicyDebugString(const PowerManagementPolicy& policy);
 
   // Scales the |screen_dim| delay within |delays| by
   // |screen_dim_scale_factor| and lengthens the other delays to maintain

@@ -79,7 +79,7 @@ void AudioClient::MuteSystem() {
   }
 
   if (mute_stored_) {
-    VLOG(1) << "Muting system; old state was " << originally_muted_;
+    LOG(INFO) << "Muting system; old state was " << originally_muted_;
     SetOutputMute(true);
   }
 }
@@ -88,7 +88,7 @@ void AudioClient::RestoreMutedState() {
   if (!mute_stored_)
     return;
 
-  VLOG(1) << "Restoring system mute state to " << originally_muted_;
+  LOG(INFO) << "Restoring system mute state to " << originally_muted_;
   SetOutputMute(originally_muted_);
   mute_stored_ = false;
 }

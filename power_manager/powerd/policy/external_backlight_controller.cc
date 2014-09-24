@@ -200,7 +200,7 @@ void ExternalBacklightController::UpdateDisplays(
 
 void ExternalBacklightController::AdjustBrightnessByPercent(
     double percent_offset) {
-  VLOG(1) << "Adjusting brightness by " << percent_offset << "%";
+  LOG(INFO) << "Adjusting brightness by " << percent_offset << "%";
   for (ExternalDisplayMap::const_iterator it = external_displays_.begin();
        it != external_displays_.end(); ++it) {
     it->second->AdjustBrightnessByPercent(percent_offset);

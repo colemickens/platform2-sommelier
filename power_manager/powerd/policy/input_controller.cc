@@ -95,8 +95,6 @@ void InputController::HandlePowerButtonAcknowledgment(
 }
 
 void InputController::OnLidEvent(LidState state) {
-  LOG(INFO) << "Lid " << LidStateToString(state);
-
   lid_state_ = state;
   InputEvent proto;
   switch (lid_state_) {
@@ -116,8 +114,6 @@ void InputController::OnLidEvent(LidState state) {
 }
 
 void InputController::OnPowerButtonEvent(ButtonState state) {
-  LOG(INFO) << "Power button " << ButtonStateToString(state);
-
   if (state == BUTTON_DOWN && only_has_external_display_ &&
       display_watcher_->GetDisplays().empty()) {
     delegate_->ShutDownForPowerButtonWithNoDisplay();

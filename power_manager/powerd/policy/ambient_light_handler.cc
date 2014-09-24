@@ -113,8 +113,8 @@ void AmbientLightHandler::HandlePowerSourceChange(PowerSource source) {
   power_source_ = source;
   double new_percent = GetTargetPercent();
   if (new_percent != old_percent && sent_initial_adjustment_) {
-    VLOG(1) << "Going from " << old_percent << "% to " << new_percent
-            << "% for power source change (" << name_ << ")";
+    LOG(INFO) << "Going from " << old_percent << "% to " << new_percent
+              << "% for power source change (" << name_ << ")";
     delegate_->SetBrightnessPercentForAmbientLight(
         new_percent, CAUSED_BY_POWER_SOURCE);
   }
@@ -140,7 +140,7 @@ void AmbientLightHandler::OnAmbientLightUpdated(
   if (new_lux > lux_level_) {
     if (hysteresis_state_ != HYSTERESIS_IMMEDIATE &&
         hysteresis_state_ != HYSTERESIS_INCREASING) {
-      VLOG(2) << "ALS transitioned to brightness increasing (" << name_ << ")";
+      VLOG(1) << "ALS transitioned to brightness increasing (" << name_ << ")";
       hysteresis_state_ = HYSTERESIS_INCREASING;
       hysteresis_count_ = 0;
     }
@@ -152,7 +152,7 @@ void AmbientLightHandler::OnAmbientLightUpdated(
   } else if (new_lux < lux_level_) {
     if (hysteresis_state_ != HYSTERESIS_IMMEDIATE &&
         hysteresis_state_ != HYSTERESIS_DECREASING) {
-      VLOG(2) << "ALS transitioned to brightness decreasing (" << name_ << ")";
+      VLOG(1) << "ALS transitioned to brightness decreasing (" << name_ << ")";
       hysteresis_state_ = HYSTERESIS_DECREASING;
       hysteresis_count_ = 0;
     }
@@ -168,8 +168,8 @@ void AmbientLightHandler::OnAmbientLightUpdated(
   if (hysteresis_state_ == HYSTERESIS_IMMEDIATE) {
     step_index_ = new_step_index;
     double target_percent = GetTargetPercent();
-    VLOG(1) << "Immediately going to " << target_percent << "% (step "
-            << step_index_ << ") for lux " << new_lux << " (" << name_ << ")";
+    LOG(INFO) << "Immediately going to " << target_percent << "% (step "
+              << step_index_ << ") for lux " << new_lux << " (" << name_ << ")";
     lux_level_ = new_lux;
     hysteresis_state_ = HYSTERESIS_STABLE;
     hysteresis_count_ = 0;
@@ -183,15 +183,15 @@ void AmbientLightHandler::OnAmbientLightUpdated(
     return;
 
   hysteresis_count_++;
-  VLOG(2) << "Incremented hysteresis count to " << hysteresis_count_
+  VLOG(1) << "Incremented hysteresis count to " << hysteresis_count_
           << " (lux went from " << lux_level_ << " to " << new_lux << ") ("
           << name_ << ")";
   if (hysteresis_count_ >= kHysteresisThreshold) {
     step_index_ = new_step_index;
     double target_percent = GetTargetPercent();
-    VLOG(1) << "Hysteresis overcome; transitioning to " << target_percent
-            << "% (step " << step_index_ << ") for lux " << new_lux
-            << " (" << name_ << ")";
+    LOG(INFO) << "Hysteresis overcome; transitioning to " << target_percent
+              << "% (step " << step_index_ << ") for lux " << new_lux
+              << " (" << name_ << ")";
     lux_level_ = new_lux;
     hysteresis_count_ = 1;
     delegate_->SetBrightnessPercentForAmbientLight(

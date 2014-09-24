@@ -521,8 +521,8 @@ void PowerSupply::GetPowerSupplyPaths() {
       base::ReadFileToString(scope_path, &buf);
       base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING, &buf);
       if (buf == "Device") {
-        VLOG(1) << "Skipping Power supply " << path.value()
-                << " with scope: " << buf;
+        VLOG(1) << "Skipping power supply " << path.value()
+                << " with scope \"" << buf << "\"";
         continue;
       }
     }

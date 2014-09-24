@@ -599,6 +599,7 @@ void Daemon::OnBrightnessChanged(
 }
 
 void Daemon::HandleLidClosed() {
+  LOG(INFO) << "Lid closed";
   // It is important that we notify WakeupController first so that it can
   // inhibit input devices quickly. StateController will issue a blocking call
   // to Chrome which can take longer than a second.
@@ -607,12 +608,14 @@ void Daemon::HandleLidClosed() {
 }
 
 void Daemon::HandleLidOpened() {
+  LOG(INFO) << "Lid opened";
   suspender_->HandleLidOpened();
   state_controller_->HandleLidStateChange(LID_OPEN);
   wakeup_controller_->SetLidState(LID_OPEN);
 }
 
 void Daemon::HandlePowerButtonEvent(ButtonState state) {
+  LOG(INFO) << "Power button " << ButtonStateToString(state);
   metrics_collector_->HandlePowerButtonEvent(state);
   if (state == BUTTON_DOWN && display_backlight_controller_)
     display_backlight_controller_->HandlePowerButtonPress();
@@ -759,6 +762,7 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   }
 
   const int exit_code = RunSetuidHelper("suspend", args, true);
+  LOG(INFO) << "powerd_suspend returned " << exit_code;
 
   // TODO(derat): Remove this once it's logged by the kernel:
   // http://crosbug.com/p/16132
@@ -821,6 +825,7 @@ bool Daemon::CanSafelyExitDarkResume() {
 }
 
 void Daemon::OnAudioStateChange(bool active) {
+  LOG(INFO) << "Audio is " << (active ? "active" : "inactive");
   state_controller_->HandleAudioStateChange(active);
 }
 
@@ -1301,13 +1306,15 @@ scoped_ptr<dbus::Response> Daemon::HandleGetPowerSupplyPropertiesMethod(
 
 scoped_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(
     dbus::MethodCall* method_call) {
-  bool is_fullscreen = false;
+  bool fullscreen = false;
   dbus::MessageReader reader(method_call);
-  if (!reader.PopBool(&is_fullscreen))
+  if (!reader.PopBool(&fullscreen))
     LOG(ERROR) << "Unable to read " << kHandleVideoActivityMethod << " args";
 
+  LOG(INFO) << "Saw " << (fullscreen ? "fullscreen" : "normal")
+            << " video activity";
   if (keyboard_backlight_controller_)
-    keyboard_backlight_controller_->HandleVideoActivity(is_fullscreen);
+    keyboard_backlight_controller_->HandleVideoActivity(fullscreen);
   state_controller_->HandleVideoActivity();
   return scoped_ptr<dbus::Response>();
 }
@@ -1320,6 +1327,7 @@ scoped_ptr<dbus::Response> Daemon::HandleUserActivityMethod(
     LOG(ERROR) << "Unable to read " << kHandleUserActivityMethod << " args";
   UserActivityType type = static_cast<UserActivityType>(type_int);
 
+  LOG(INFO) << "Saw user activity";
   suspender_->HandleUserActivity();
   state_controller_->HandleUserActivity();
   if (display_backlight_controller_)
@@ -1339,6 +1347,8 @@ scoped_ptr<dbus::Response> Daemon::HandleSetIsProjectingMethod(
   }
 
   DisplayMode mode = is_projecting ? DISPLAY_PRESENTATION : DISPLAY_NORMAL;
+  LOG(INFO) << "Chrome is using " << DisplayModeToString(mode)
+            << " display mode";
   state_controller_->HandleDisplayModeChange(mode);
   if (display_backlight_controller_)
     display_backlight_controller_->HandleDisplayModeChange(mode);
@@ -1354,6 +1364,8 @@ scoped_ptr<dbus::Response> Daemon::HandleSetPolicyMethod(
     return CreateInvalidArgsError(method_call, "Expected protobuf");
   }
 
+  LOG(INFO) << "Received updated external policy: "
+            << policy::StateController::GetPolicyDebugString(policy);
   state_controller_->HandlePolicyChange(policy);
   if (display_backlight_controller_)
     display_backlight_controller_->HandlePolicyChange(policy);
@@ -1380,6 +1392,7 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
   if (state == session_state_)
     return;
 
+  LOG(INFO) << "Session state changed to " << SessionStateToString(state);
   session_state_ = state;
   metrics_collector_->HandleSessionStateChange(state);
   state_controller_->HandleSessionStateChange(state);
@@ -1390,6 +1403,7 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
 }
 
 void Daemon::OnUpdateOperation(const std::string& operation) {
+  LOG(INFO) << "Update operation is " << operation;
   UpdaterState state = UPDATER_IDLE;
   if (operation == update_engine::kUpdateStatusDownloading ||
       operation == update_engine::kUpdateStatusVerifying ||

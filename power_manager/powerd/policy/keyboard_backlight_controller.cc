@@ -376,8 +376,8 @@ bool KeyboardBacklightController::ApplyBrightnessPercent(
     return false;
 
   base::TimeDelta interval = GetTransitionDuration(transition);
-  VLOG(1) << "Setting brightness to " << level << " (" << percent
-          << "%) over " << interval.InMilliseconds() << " ms";
+  LOG(INFO) << "Setting brightness to " << level << " (" << percent
+            << "%) over " << interval.InMilliseconds() << " ms";
   if (!backlight_->SetBrightnessLevel(level, interval)) {
     LOG(ERROR) << "Failed to set brightness";
     return false;

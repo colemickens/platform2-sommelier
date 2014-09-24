@@ -53,7 +53,7 @@ void DarkResume::Init(PowerSupplyInterface* power_supply,
   bool disable = false;
   enabled_ = (!prefs_->GetBool(kDisableDarkResumePref, &disable) || !disable) &&
       ReadSuspendDurationsPref();
-  VLOG(1) << "Dark resume user space " << (enabled_ ? "enabled" : "disabled");
+  LOG(INFO) << "Dark resume user space " << (enabled_ ? "enabled" : "disabled");
   GetFiles(&dark_resume_sources_, kDarkResumeSourcesPref, kSourceFile);
   GetFiles(&dark_resume_devices_, kDarkResumeDevicesPref, kActiveFile);
   SetStates(dark_resume_sources_, enabled_);
