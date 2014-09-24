@@ -40,7 +40,8 @@ void HandleConnectToSignal(
     dbus::ObjectProxy::OnConnectedCallback on_connected_callback);
 
 dbus::Response* ReturnsEmptyResponse(dbus::MethodCall* method_call,
-                                     int timeout_ms);
+                                     testing::Unused,
+                                     testing::Unused);
 
 }  // namespace test_util
 }  // namespace peerd

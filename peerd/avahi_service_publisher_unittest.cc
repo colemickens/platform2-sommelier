@@ -34,13 +34,14 @@ using testing::AnyNumber;
 using testing::Invoke;
 using testing::Property;
 using testing::Return;
+using testing::Unused;
 using testing::_;
 
 namespace {
 
 const char kGroupPath[] = "/this/is/a/group/path";
 
-Response* ReturnsGroupPath(dbus::MethodCall* method_call, int timeout_ms) {
+Response* ReturnsGroupPath(dbus::MethodCall* method_call, Unused, Unused) {
   method_call->SetSerial(87);
   scoped_ptr<Response> response = Response::FromMethodCall(method_call);
   dbus::MessageWriter writer(response.get());
@@ -67,9 +68,9 @@ class AvahiServicePublisherTest : public ::testing::Test {
     EXPECT_CALL(*mock_bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*mock_bus_, AssertOnDBusThread()).Times(AnyNumber());
     // We might try to create a new EntryGroup as part of the test.
-    ON_CALL(*avahi_proxy_, MockCallMethodAndBlock(
+    ON_CALL(*avahi_proxy_, MockCallMethodAndBlockWithErrorDetails(
         IsDBusMethodCallTo(kServerInterface,
-                           kServerMethodEntryGroupNew), _))
+                           kServerMethodEntryGroupNew), _, _))
         .WillByDefault(Invoke(&ReturnsGroupPath));
     ON_CALL(*mock_bus_,
             GetObjectProxy(kServiceName,
@@ -98,8 +99,8 @@ class AvahiServicePublisherTest : public ::testing::Test {
 };
 
 TEST_F(AvahiServicePublisherTest, ShouldFreeAddedGroups) {
-  EXPECT_CALL(*group_proxy_, MockCallMethodAndBlock(
-      IsDBusMethodCallTo(kGroupInterface, kGroupMethodFree), _))
+  EXPECT_CALL(*group_proxy_, MockCallMethodAndBlockWithErrorDetails(
+      IsDBusMethodCallTo(kGroupInterface, kGroupMethodFree), _, _))
       .WillOnce(Invoke(&ReturnsEmptyResponse));
   auto service = CreateService("service-id");
   EXPECT_TRUE(publisher_->OnServiceUpdated(nullptr, *service));

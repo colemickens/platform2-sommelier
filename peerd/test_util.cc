@@ -16,6 +16,7 @@ using dbus::ObjectPath;
 using dbus::Response;
 using std::unique_ptr;
 using testing::AnyNumber;
+using testing::Unused;
 
 namespace {
 
@@ -60,7 +61,7 @@ void HandleConnectToSignal(
   on_connected_callback.Run(interface_name, signal_name, true);
 }
 
-Response* ReturnsEmptyResponse(dbus::MethodCall* method_call, int timeout_ms) {
+Response* ReturnsEmptyResponse(dbus::MethodCall* method_call, Unused, Unused) {
   method_call->SetSerial(87);
   scoped_ptr<Response> response = Response::FromMethodCall(method_call);
   // The mock wraps this back in a scoped_ptr in the function calling us.

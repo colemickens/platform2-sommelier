@@ -90,7 +90,7 @@ class AvahiClientTest : public ::testing::Test {
     EXPECT_CALL(
         *avahi_proxy_,
         MockCallMethodAndBlockWithErrorDetails(
-            IsMethodCallTo(kServerInterface, kServerMethodGetState), _, _))
+            IsDBusMethodCallTo(kServerInterface, kServerMethodGetState), _, _))
         .WillOnce(Invoke(handler));
   }
 
