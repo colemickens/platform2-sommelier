@@ -132,6 +132,12 @@ static const Log common_logs[] = {
   { "net-diags.net.log", "/bin/cat /var/log/net-diags.net.log" },
   { "netlog", "/usr/share/userfeedback/scripts/getmsgs --last '2 hours'"
               " /var/log/net.log" },
+  {
+    "nvmap_iovmm",
+    "/bin/cat /sys/kernel/debug/nvmap/iovmm/allocations 2> /dev/null",
+    SandboxedProcess::kDefaultUser,
+    kDebugfsGroup,
+  },
   { "platform_info", "/bin/cat /var/log/platform_info.txt" },
   { "power_supply_info", "/usr/bin/power_supply_info" },
   { "powerd.LATEST", "/bin/cat /var/log/power_manager/powerd.LATEST" },
