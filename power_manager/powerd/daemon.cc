@@ -34,6 +34,7 @@
 #include "power_manager/powerd/system/dark_resume.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
+#include "power_manager/powerd/system/event_device.h"
 #include "power_manager/powerd/system/input_watcher.h"
 #include "power_manager/powerd/system/internal_backlight.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
@@ -528,7 +529,10 @@ void Daemon::Init() {
   dark_resume_->Init(power_supply_.get(), prefs_.get());
   suspender_->Init(this, dbus_sender_.get(), dark_resume_.get(), prefs_.get());
 
-  CHECK(input_watcher_->Init(prefs_.get(), udev_.get()));
+  CHECK(input_watcher_->Init(
+      scoped_ptr<system::EventDeviceFactoryInterface>(
+          new system::EventDeviceFactory),
+      prefs_.get(), udev_.get()));
   input_controller_->Init(input_watcher_.get(), this, display_watcher_.get(),
                           dbus_sender_.get(), prefs_.get());
 

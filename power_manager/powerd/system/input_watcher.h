@@ -9,13 +9,10 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/linked_ptr.h>
-#include <base/memory/scoped_ptr.h>
-#include <base/message_loop/message_loop.h>
 #include <base/observer_list.h>
 
 #include "power_manager/common/power_constants.h"
@@ -30,11 +27,12 @@ class PrefsInterface;
 
 namespace system {
 
+class EventDeviceInterface;
+class EventDeviceFactoryInterface;
 class InputObserver;
 class UdevInterface;
 
 class InputWatcher : public InputWatcherInterface,
-                     public base::MessageLoopForIO::Watcher,
                      public UdevSubsystemObserver {
  public:
   // udev subsystem to watch for input device-related events.
@@ -48,7 +46,9 @@ class InputWatcher : public InputWatcherInterface,
   }
 
   // Returns true on success.
-  bool Init(PrefsInterface* prefs, UdevInterface* udev);
+  bool Init(scoped_ptr<EventDeviceFactoryInterface> event_device_factory,
+            PrefsInterface* prefs,
+            UdevInterface* udev);
 
   // InputWatcherInterface implementation:
   void AddObserver(InputObserver* observer) override;
@@ -57,26 +57,17 @@ class InputWatcher : public InputWatcherInterface,
   bool IsUSBInputDeviceConnected() const override;
   int GetActiveVT() override;
 
-  // base::MessageLoopForIO::Watcher implementation:
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override;
-
   // UdevSubsystemObserver implementation:
   void OnUdevEvent(const std::string& subsystem,
                    const std::string& sysname,
                    UdevAction action) override;
 
  private:
-  class InputFileDescriptor;
+  void OnNewEvents(EventDeviceInterface* device);
 
   // Handles an input being added to or removed from the system.
   void HandleAddedInput(const std::string& input_name, int input_num);
   void HandleRemovedInput(int input_num);
-
-  // Does a non-blocking read on |fd| and copies input events to |events_out|
-  // (after clearing it). Returns true if the read was successful and events
-  // were present.
-  bool ReadEvents(int fd, std::vector<input_event>* events_out);
 
   // Calls NotifyObserversAboutEvent() for each event in |queued_events_| and
   // clears the vector.
@@ -85,10 +76,12 @@ class InputWatcher : public InputWatcherInterface,
   // Notifies observers about |event| if came from a lid switch or power button.
   void NotifyObserversAboutEvent(const input_event& event);
 
-  // File descriptor corresponding to the lid switch. The InputFileDescriptor
-  // in |registered_inputs_| handles closing this FD; it's stored separately so
-  // it can be queried directly for the lid state.
-  int lid_fd_;
+  // Factory to access EventDevices.
+  scoped_ptr<EventDeviceFactoryInterface> event_device_factory_;
+
+  // The event device exposing the lid switch. Weak pointer to an element in
+  // |event_devices_|, or NULL if no lid device was found.
+  EventDeviceInterface* lid_device_;
 
   // Should the lid be watched for events if present?
   bool use_lid_;
@@ -96,8 +89,8 @@ class InputWatcher : public InputWatcherInterface,
   // Most-recently-seen lid state.
   LidState lid_state_;
 
-  // Events read from |lid_fd_| by QueryLidState() that haven't yet been sent to
-  // observers.
+  // Events read from |lid_device_| by QueryLidState() that haven't yet been
+  // sent to observers.
   std::vector<input_event> queued_events_;
 
   // Posted by QueryLidState() to run SendQueuedEvents() to notify observers
@@ -113,8 +106,8 @@ class InputWatcher : public InputWatcherInterface,
   UdevInterface* udev_;  // non-owned
 
   // Keyed by input event number.
-  typedef std::map<int, linked_ptr<InputFileDescriptor>> InputMap;
-  InputMap registered_inputs_;
+  typedef std::map<int, linked_ptr<EventDeviceInterface>> InputMap;
+  InputMap event_devices_;
 
   ObserverList<InputObserver> observers_;
 

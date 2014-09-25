@@ -10,6 +10,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+#include <base/callback.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -24,15 +25,9 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper.h"
+#include "power_manager/powerd/system/event_device_interface.h"
 #include "power_manager/powerd/system/input_observer.h"
 #include "power_manager/powerd/system/udev.h"
-
-#define BITS_PER_LONG (sizeof(long) * 8)  // NOLINT(runtime/int)
-#define NUM_BITS(x) ((((x) - 1) / BITS_PER_LONG) + 1)
-#define OFF(x)  ((x) % BITS_PER_LONG)
-#define BIT(x)  (1UL << OFF(x))
-#define LONG(x) ((x) / BITS_PER_LONG)
-#define IS_BIT_SET(bit, array)  ((array[LONG(bit)] >> OFF(bit)) & 1)
 
 using std::map;
 using std::string;
@@ -109,42 +104,8 @@ bool GetPowerButtonStateFromEvent(const input_event& event,
 
 const char InputWatcher::kInputUdevSubsystem[] = "input";
 
-// Takes ownership of a file descriptor and watches it for readability.
-class InputWatcher::InputFileDescriptor {
- public:
-  // Takes ownership of |fd| and closes it on destruction. |watcher| is notified
-  // when |fd| becomes readable.
-  InputFileDescriptor(int fd, base::MessageLoopForIO::Watcher* watcher)
-      : fd_(fd),
-        fd_watcher_(new base::MessageLoopForIO::FileDescriptorWatcher) {
-    if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
-            fd, true, base::MessageLoopForIO::WATCH_READ, fd_watcher_.get(),
-            watcher)) {
-      LOG(ERROR) << "Unable to watch FD " << fd;
-    }
-  }
-
-  ~InputFileDescriptor() {
-    fd_watcher_.reset();
-    // ENODEV is expected if the device was just unplugged.
-    if (close(fd_) != 0 && errno != ENODEV)
-      PLOG(ERROR) << "Unable to close FD " << fd_;
-  }
-
-  int fd() const { return fd_; }
-
- private:
-  // File descriptor that is being watched.
-  int fd_;
-
-  // Controller used to watch |fd_|.
-  scoped_ptr<base::MessageLoopForIO::FileDescriptorWatcher> fd_watcher_;
-
-  DISALLOW_COPY_AND_ASSIGN(InputFileDescriptor);
-};
-
 InputWatcher::InputWatcher()
-    : lid_fd_(-1),
+    : lid_device_(NULL),
       use_lid_(true),
       lid_state_(LID_OPEN),
       power_button_to_skip_(kPowerButtonToSkip),
@@ -159,7 +120,13 @@ InputWatcher::~InputWatcher() {
     close(console_fd_);
 }
 
-bool InputWatcher::Init(PrefsInterface* prefs, UdevInterface* udev) {
+bool InputWatcher::Init(
+    scoped_ptr<EventDeviceFactoryInterface> event_device_factory,
+    PrefsInterface* prefs,
+    UdevInterface* udev) {
+  event_device_factory_ = event_device_factory.Pass();
+  udev_ = udev;
+
   prefs->GetBool(kUseLidPref, &use_lid_);
   if (!use_lid_)
     lid_state_ = LID_NOT_PRESENT;
@@ -169,7 +136,6 @@ bool InputWatcher::Init(PrefsInterface* prefs, UdevInterface* udev) {
       legacy_power_button)
     power_button_to_skip_ = kPowerButtonToSkipForLegacy;
 
-  udev_ = udev;
   udev_->AddSubsystemObserver(kInputUdevSubsystem, this);
 
   // Don't bother doing anything more if we're running under a test.
@@ -208,13 +174,13 @@ void InputWatcher::RemoveObserver(InputObserver* observer) {
 }
 
 LidState InputWatcher::QueryLidState() {
-  if (lid_fd_ < 0)
+  if (!lid_device_)
     return LID_NOT_PRESENT;
 
   while (true) {
     // Stop when we fail to read any more events.
     std::vector<input_event> events;
-    if (!ReadEvents(lid_fd_, &events))
+    if (!lid_device_->ReadEvents(&events))
       break;
 
     // Get the state from the last lid event (|events| may also contain non-lid
@@ -284,24 +250,6 @@ int InputWatcher::GetActiveVT() {
   return state.v_active;
 }
 
-void InputWatcher::OnFileCanReadWithoutBlocking(int fd) {
-  SendQueuedEvents();
-
-  std::vector<input_event> events;
-  if (!ReadEvents(fd, &events))
-    return;
-
-  VLOG(1) << "Read " << events.size() << " event(s) from FD " << fd;
-  for (size_t i = 0; i < events.size(); ++i) {
-    GetLidStateFromEvent(events[i], &lid_state_);
-    NotifyObserversAboutEvent(events[i]);
-  }
-}
-
-void InputWatcher::OnFileCanWriteWithoutBlocking(int fd) {
-  NOTREACHED() << "Unexpected non-blocking write notification for FD " << fd;
-}
-
 void InputWatcher::OnUdevEvent(const std::string& subsystem,
                                const std::string& sysname,
                         UdevAction action) {
@@ -315,138 +263,80 @@ void InputWatcher::OnUdevEvent(const std::string& subsystem,
   }
 }
 
+void InputWatcher::OnNewEvents(EventDeviceInterface* device) {
+  SendQueuedEvents();
+
+  std::vector<input_event> events;
+  if (!device->ReadEvents(&events))
+    return;
+
+  VLOG(1) << "Read " << events.size() << " event(s) from "
+          << device->GetDebugName();
+  for (size_t i = 0; i < events.size(); ++i) {
+    if (device == lid_device_)
+      GetLidStateFromEvent(events[i], &lid_state_);
+    NotifyObserversAboutEvent(events[i]);
+  }
+}
+
 void InputWatcher::HandleAddedInput(const std::string& input_name,
                                     int input_num) {
-  if (registered_inputs_.count(input_num) > 0) {
+  if (event_devices_.count(input_num) > 0) {
     LOG(WARNING) << "Input " << input_num << " already registered";
     return;
   }
 
   base::FilePath path = base::FilePath(kDevInputPath).Append(input_name);
-  if (access(path.value().c_str(), R_OK) != 0) {
-    LOG(WARNING) << "Missing read access to " << path.value();
+  linked_ptr<EventDeviceInterface> device(
+      event_device_factory_->Open(path.value()));
+  if (!device.get()) {
+    LOG(ERROR) << "Failed to open " << path.value();
     return;
   }
 
-  int fd = -1;
-  if ((fd = open(path.value().c_str(), O_RDONLY|O_NONBLOCK)) < 0) {
-    PLOG(ERROR) << "open() failed for " << path.value();
-    return;
-  }
-
-  // Wrap the FD in an InputFileDescriptor so it'll be automatically closed if
-  // we return early.
-  linked_ptr<InputFileDescriptor> linked_fd(new InputFileDescriptor(fd, this));
-
-  char device_name[256] = "Unknown";
-  if (ioctl(fd, EVIOCGNAME(sizeof(device_name)), device_name) < 0) {
-    PLOG(ERROR) << "Could not get name of device (FD " << fd << ", input "
-                << input_num << ")";
-    return;
-  }
-  VLOG(1) << "Device name: " << device_name;
-
-  char phys[256] = "Unknown";
-  if (ioctl(fd, EVIOCGPHYS(sizeof(phys)), phys) < 0 && errno != ENOENT) {
-    PLOG(ERROR) << "Could not get topo phys path of device " << device_name;
-    return;
-  }
-  VLOG(1) << "Device topo phys: " << phys;
-
+  const std::string phys = device->GetPhysPath();
   if (StartsWithASCII(phys, power_button_to_skip_, true /* case_sensitive */)) {
-    VLOG(1) << "Skipping interface: " << phys;
-    return;
-  }
-
-  unsigned long events[NUM_BITS(EV_MAX)];  // NOLINT(runtime/int)
-  memset(events, 0, sizeof(events));
-  if (ioctl(fd, EVIOCGBIT(0, EV_MAX), events) < 0) {
-    PLOG(ERROR) << "EV_MAX ioctl failed for device " << device_name;
+    VLOG(1) << "Skipping event device with phys path: " << phys;
     return;
   }
 
   bool should_watch = false;
-
-  // Power button.
-  if (IS_BIT_SET(EV_KEY, events)) {
-    unsigned long keys[NUM_BITS(KEY_MAX)];  // NOLINT(runtime/int)
-    memset(keys, 0, sizeof(keys));
-    if (ioctl(fd, EVIOCGBIT(EV_KEY, KEY_MAX), keys) < 0) {
-      PLOG(ERROR) << "KEY_MAX ioctl failed for device " << device_name;
-    } else if (IS_BIT_SET(KEY_POWER, keys)) {
-      LOG(INFO) << "Watching " << phys << " (" << device_name
-                << ") for power button on FD " << fd;
-      should_watch = true;
-    }
+  if (device->IsPowerButton()) {
+    LOG(INFO) << "Watching power button: " << device->GetDebugName();
+    should_watch = true;
   }
 
-  // Lid switch. Note that it's possible for a power button and lid switch to
-  // share a single event file.
-  if (IS_BIT_SET(EV_SW, events)) {
-    unsigned long switch_events[NUM_BITS(SW_LID + 1)];  // NOLINT(runtime/int)
-    memset(switch_events, 0, sizeof(switch_events));
-    if (ioctl(fd, EVIOCGBIT(EV_SW, SW_LID + 1), switch_events) < 0) {
-      PLOG(ERROR) << "SW_LID ioctl failed for device " << device_name;
-    } else if (use_lid_ && IS_BIT_SET(SW_LID, switch_events)) {
-      LOG(INFO) << "Watching " << phys << " (" << device_name
-                << ") for lid switch on FD " << fd;
-      should_watch = true;
+  // Note that it's possible for a power button and lid switch to share a single
+  // event device.
+  if (use_lid_ && device->IsLidSwitch()) {
+    LOG(INFO) << "Watching lid switch: " << device->GetDebugName();
+    should_watch = true;
 
-      if (lid_fd_ >= 0)
-        LOG(WARNING) << "Multiple lid events found on system";
-      lid_fd_ = fd;
+    if (lid_device_)
+      LOG(WARNING) << "Multiple lid devices found on system";
+    lid_device_ = device.get();
 
-      if (ioctl(lid_fd_, EVIOCGSW(sizeof(switch_events)), switch_events) < 0) {
-        PLOG(ERROR) << "Reading initial lid state failed";
-      } else {
-        lid_state_ = IS_BIT_SET(SW_LID, switch_events) ? LID_CLOSED : LID_OPEN;
-        VLOG(1) << "Initial lid state is " << LidStateToString(lid_state_);
-      }
-    }
+    lid_state_ = device->GetInitialLidState();
+    VLOG(1) << "Initial lid state is " << LidStateToString(lid_state_);
   }
 
-  if (should_watch)
-    registered_inputs_.insert(std::make_pair(input_num, linked_fd));
+  if (should_watch) {
+    device->WatchForEvents(base::Bind(&InputWatcher::OnNewEvents,
+                                      base::Unretained(this),
+                                      base::Unretained(device.get())));
+    event_devices_.insert(std::make_pair(input_num, device));
+  }
 }
 
 
 void InputWatcher::HandleRemovedInput(int input_num) {
-  InputMap::iterator iter = registered_inputs_.find(input_num);
-  if (iter != registered_inputs_.end()) {
-    LOG(INFO) << "Stopping watching FD " << iter->second->fd();
-    if (iter->second->fd() == lid_fd_)
-      lid_fd_ = -1;
-    registered_inputs_.erase(iter);
-  }
-}
-
-bool InputWatcher::ReadEvents(int fd, std::vector<input_event>* events_out) {
-  DCHECK(events_out);
-  events_out->clear();
-
-  struct input_event events[64];
-  ssize_t read_size = HANDLE_EINTR(read(fd, events, sizeof(events)));
-  if (read_size < 0) {
-    // ENODEV is expected if the device was just unplugged.
-    if (errno != EAGAIN && errno != EWOULDBLOCK && errno != ENODEV)
-      PLOG(ERROR) << "Reading events from FD " << fd << " failed";
-    return false;
-  } else if (read_size == 0) {
-    LOG(ERROR) << "Didn't get any data when reading events from FD " << fd;
-    return false;
-  }
-
-  const size_t num_events = read_size / sizeof(struct input_event);
-  if (read_size % sizeof(struct input_event)) {
-    LOG(ERROR) << "Read " << read_size << " byte(s) while expecting "
-               << sizeof(struct input_event) << "-byte events";
-    return false;
-  }
-
-  events_out->reserve(num_events);
-  for (size_t i = 0; i < num_events; ++i)
-    events_out->push_back(events[i]);
-  return true;
+  InputMap::iterator it = event_devices_.find(input_num);
+  if (it == event_devices_.end())
+    return;
+  LOG(INFO) << "Stopping watching " << it->second->GetDebugName();
+  if (lid_device_ == it->second.get())
+    lid_device_ = NULL;
+  event_devices_.erase(it);
 }
 
 void InputWatcher::SendQueuedEvents() {

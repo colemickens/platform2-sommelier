@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/common/fake_prefs.h"
+#include "power_manager/powerd/system/event_device_stub.h"
 #include "power_manager/powerd/system/input_watcher.h"
 #include "power_manager/powerd/system/udev_stub.h"
 
@@ -21,7 +22,9 @@ class InputWatcherTest : public testing::Test {
   InputWatcherTest() {
     CHECK(input_dir_.CreateUniqueTempDir());
     input_watcher_.set_sysfs_input_path_for_testing(input_dir_.path());
-    input_watcher_.Init(&prefs_, &udev_);
+    input_watcher_.Init(
+        scoped_ptr<EventDeviceFactoryInterface>(new EventDeviceFactoryStub()),
+        &prefs_, &udev_);
   }
   virtual ~InputWatcherTest() {}
 
@@ -84,7 +87,9 @@ TEST_F(InputWatcherTest, DetectUSBDevices) {
 
 TEST_F(InputWatcherTest, RegisterForUdevEvents) {
   scoped_ptr<InputWatcher> input_watcher(new InputWatcher);
-  input_watcher->Init(&prefs_, &udev_);
+  input_watcher->Init(
+      scoped_ptr<EventDeviceFactoryInterface>(new EventDeviceFactoryStub()),
+      &prefs_, &udev_);
   EXPECT_TRUE(udev_.HasSubsystemObserver(InputWatcher::kInputUdevSubsystem,
                                          input_watcher.get()));
 
