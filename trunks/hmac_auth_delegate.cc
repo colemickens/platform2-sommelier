@@ -8,6 +8,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <crypto/secure_util.h>
+#include <openssl/aes.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 
@@ -20,7 +21,9 @@ const uint16_t kNonceMinSize = 16;
 const uint16_t kNonceMaxSize = 32;
 const uint8_t kDecryptSession = 1<<5;
 const uint8_t kEncryptSession = 1<<6;
-const std::string kAuthorizationKDFLabel = "ATH";
+const uint8_t kLabelSize = 4;
+const uint16_t kAesIVSize = 16;
+const uint32_t kTpmBufferSize = 4096;
 
 }  // namespace
 
@@ -54,14 +57,15 @@ bool HmacAuthDelegate::GetCommandAuthorization(
            TPM_RC_SUCCESS) << "Error serializing session attributes.";
 
   std::string hmac_key = session_key_ + entity_auth_value_;
-  std::string data;
-  data.append(command_hash);
-  data.append(reinterpret_cast<const char*>(caller_nonce_.buffer),
-              caller_nonce_.size);
-  data.append(reinterpret_cast<const char*>(tpm_nonce_.buffer),
-              tpm_nonce_.size);
-  data.append(attributes_bytes);
-  std::string digest = HmacSha256(hmac_key, data);
+  std::string hmac_data;
+  hmac_data.append(command_hash);
+  hmac_data.append(reinterpret_cast<const char*>(caller_nonce_.buffer),
+                   caller_nonce_.size);
+  hmac_data.append(reinterpret_cast<const char*>(tpm_nonce_.buffer),
+                   tpm_nonce_.size);
+  hmac_data.append(attributes_bytes);
+  std::string digest = HmacSha256(hmac_key, hmac_data);
+
   auth.hmac = Make_TPM2B_DIGEST(digest);
 
   TPM_RC serialize_error = Serialize_TPMS_AUTH_COMMAND(auth, authorization);
@@ -93,7 +97,8 @@ bool HmacAuthDelegate::CheckResponseAuthorization(
     LOG(ERROR) << "TPM auth hmac was incorrect size.";
     return false;
   }
-  if (auth_response.nonce.size < 16 || auth_response.nonce.size > 32) {
+  if (auth_response.nonce.size < kNonceMinSize ||
+      auth_response.nonce.size > kNonceMaxSize) {
     LOG(ERROR) << "TPM_nonce is not the correct length.";
     return false;
   }
@@ -108,14 +113,14 @@ bool HmacAuthDelegate::CheckResponseAuthorization(
            TPM_RC_SUCCESS) << "Error serializing session attributes.";
 
   std::string hmac_key = session_key_ + entity_auth_value_;
-  std::string data;
-  data.append(response_hash);
-  data.append(reinterpret_cast<const char*>(tpm_nonce_.buffer),
-              tpm_nonce_.size);
-  data.append(reinterpret_cast<const char*>(caller_nonce_.buffer),
-              caller_nonce_.size);
-  data.append(attributes_bytes);
-  std::string digest = HmacSha256(hmac_key, data);
+  std::string hmac_data;
+  hmac_data.append(response_hash);
+  hmac_data.append(reinterpret_cast<const char*>(tpm_nonce_.buffer),
+                   tpm_nonce_.size);
+  hmac_data.append(reinterpret_cast<const char*>(caller_nonce_.buffer),
+                   caller_nonce_.size);
+  hmac_data.append(attributes_bytes);
+  std::string digest = HmacSha256(hmac_key, hmac_data);
   CHECK_EQ(digest.size(), kHashDigestSize);
   if (!crypto::SecureMemEqual(digest.data(), auth_response.hmac.buffer,
                               digest.size())) {
@@ -126,26 +131,34 @@ bool HmacAuthDelegate::CheckResponseAuthorization(
 }
 
 bool HmacAuthDelegate::EncryptCommandParameter(std::string* parameter) {
-  if (!session_handle_) {
+  if (!session_handle_ || !parameter) {
     return false;
   }
-  if (!(attributes_ & kEncryptSession)) {
+  if ((!(attributes_ & kEncryptSession)) || (session_key_.size() == 0)) {
     // No parameter encryption enabled.
     return true;
   }
-  // TODO(usanghi): implement encryption
+  if (parameter->size() > kTpmBufferSize) {
+    LOG(ERROR) << "Parameter size is too large for TPM decryption.";
+    return false;
+  }
+  AesOperation(parameter, caller_nonce_, tpm_nonce_, AES_ENCRYPT);
   return true;
 }
 
 bool HmacAuthDelegate::DecryptResponseParameter(std::string* parameter) {
-  if (!session_handle_) {
+  if (!session_handle_ || !parameter) {
     return false;
   }
-  if (!(attributes_ & kDecryptSession)) {
+  if ((!(attributes_ & kDecryptSession)) || (session_key_.size() == 0)) {
     // No parameter decryption enabled.
     return true;
   }
-  // TODO(usanghi): implement decryption
+  if (parameter->size() > kTpmBufferSize) {
+    LOG(ERROR) << "Parameter size is too large for TPM encryption.";
+    return false;
+  }
+  AesOperation(parameter, tpm_nonce_, caller_nonce_, AES_DECRYPT);
   return true;
 }
 
@@ -162,7 +175,8 @@ bool HmacAuthDelegate::InitSession(TPM_HANDLE session_handle,
   }
   tpm_nonce_ = tpm_nonce;
   caller_nonce_ = caller_nonce;
-  session_key_ = CreateKey(bind_auth_value + salt, kAuthorizationKDFLabel,
+  std::string session_key_label("ATH", kLabelSize);
+  session_key_ = CreateKey(bind_auth_value + salt, session_key_label,
                            tpm_nonce_, caller_nonce_);
   return true;
 }
@@ -182,13 +196,14 @@ std::string HmacAuthDelegate::CreateKey(const std::string& hmac_key,
 
   std::string counter;
   std::string digest_size_bits;
-  if (Serialize_uint32_t(0, &counter) != TPM_RC_SUCCESS ||
+  if (Serialize_uint32_t(1, &counter) != TPM_RC_SUCCESS ||
       Serialize_uint32_t(kDigestBits, &digest_size_bits) != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error serializing uint32_t during session key generation.";
     return std::string();
   }
   CHECK_EQ(counter.size(), sizeof(uint32_t));
   CHECK_EQ(digest_size_bits.size(), sizeof(uint32_t));
+  CHECK_EQ(label.size(), kLabelSize);
 
   std::string data;
   data.append(counter);
@@ -215,6 +230,31 @@ std::string HmacAuthDelegate::HmacSha256(const std::string& key,
        &digest_length);
   CHECK_EQ(digest_length, kHashDigestSize);
   return std::string(reinterpret_cast<char*>(digest), digest_length);
+}
+
+void HmacAuthDelegate::AesOperation(std::string* parameter,
+                                    const TPM2B_NONCE& nonce_newer,
+                                    const TPM2B_NONCE& nonce_older,
+                                    int operation_type) {
+  std::string label("CFB", kLabelSize);
+  std::string compound_key = CreateKey(session_key_, label,
+                                       nonce_newer, nonce_older);
+  CHECK_EQ(compound_key.size(), kAesKeySize + kAesIVSize);
+  unsigned char aes_key[kAesKeySize];
+  unsigned char aes_iv[kAesIVSize];
+  memcpy(aes_key, &compound_key[0], kAesKeySize);
+  memcpy(aes_iv, &compound_key[kAesKeySize], kAesIVSize);
+  AES_KEY key;
+  int iv_offset = 0;
+  AES_set_encrypt_key(aes_key, kAesKeySize*8, &key);
+  unsigned char decrypted[kTpmBufferSize];
+  AES_cfb128_encrypt(reinterpret_cast<const unsigned char*>(parameter->data()),
+                     decrypted,
+                     parameter->size(),
+                     &key, aes_iv,
+                     &iv_offset,
+                     operation_type);
+  memcpy(string_as_array(parameter), decrypted, parameter->size());
 }
 
 void HmacAuthDelegate::RegenerateCallerNonce() {

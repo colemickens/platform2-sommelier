@@ -89,6 +89,13 @@ class CHROMEOS_EXPORT HmacAuthDelegate: public AuthorizationDelegate {
   // This method performs a FIPS198 HMAC operation on |data| using |key|
   virtual std::string HmacSha256(const std::string& key,
                                   const std::string& data);
+  // This method performs an AES operation using a 128 bit key.
+  // |operation_type| can be either AES_ENCRYPT or AES_DECRYPT and it
+  // determines if the operation is an encryption or decryption.
+  virtual void AesOperation(std::string* parameter,
+                            const TPM2B_NONCE& nonce_newer,
+                            const TPM2B_NONCE& nonce_older,
+                            int operation_type);
   // This method regenerates the caller nonce. The new nonce is the same
   // length as the previous nonce. The buffer is filled with random data using
   // openssl's |RAND_bytes| function.

@@ -37,10 +37,10 @@ TEST(HmacAuthDelegateTest, SessionKeyTest) {
       dummy_auth), true);
   EXPECT_EQ(delegate.session_key_.size(), kHashDigestSize);
   // TODO(usanghi): Use TCG TPM2.0 test vectors when available.
-  std::string expected_key("\x63\xdb\x03\xe1\x6c\x5a\x72\x89"
-                           "\x0f\xfb\xb2\x3f\x04\xe3\x78\xba"
-                           "\x58\x23\xa4\xe8\xa7\xbb\xf5\xfc"
-                           "\x0d\xac\xef\x3b\x7b\x98\xf1\x91",
+  std::string expected_key("\xfb\x2f\x3c\x33\x65\x3e\xdc\x47"
+                           "\xda\xbe\x4e\xb7\xf4\x6c\x19\x4d"
+                           "\xea\x50\xb2\x11\x54\x45\x32\x73"
+                           "\x47\x38\xef\xb3\x4a\x82\x29\x94",
                            kHashDigestSize);
   EXPECT_EQ(expected_key.compare(delegate.session_key_), 0);
 }
@@ -58,8 +58,9 @@ TEST(HmacAuthDelegateTest, EncryptDecryptTest) {
   TPM_HANDLE dummy_handle = HMAC_SESSION_FIRST;
   TPM2B_NONCE nonce;
   nonce.size = kAesKeySize;
+  std::string salt("salt");
   EXPECT_EQ(encrypt_delegate.InitSession(dummy_handle, nonce, nonce,
-      std::string(), std::string()), true);
+            salt, std::string()), true);
   EXPECT_EQ(encrypt_delegate.EncryptCommandParameter(&encrypted_parameter),
             true);
   EXPECT_NE(plaintext_parameter.compare(encrypted_parameter), 0);
