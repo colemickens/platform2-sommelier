@@ -2594,6 +2594,7 @@ mno {
       }
     }
   }
+  earmarked : true
 }
 
 mno {
@@ -5022,6 +5023,7 @@ mno {
       }
     }
   }
+  earmarked : true
 }
 
 mno {
@@ -5484,6 +5486,7 @@ mno {
       dns : "172.29.1.11"
     }
   }
+  earmarked : true
 }
 
 mno {
@@ -10699,7 +10702,6 @@ mno {
     localized_name {
       name : "Tele2"
     }
-    mccmnc : "24202"
     mccmnc : "24204"
     mobile_apn {
       apn : "internet.tele2.no"
@@ -10961,6 +10963,12 @@ mno {
       }
       dns : "202.73.206.16"
       dns : "202.73.198.16"
+    }
+    mobile_apn {
+      apn : "vodafone"
+      localized_name {
+        name : "Contract"
+      }
     }
   }
 }
@@ -13010,8 +13018,6 @@ mno {
         name : "Telenor"
       }
       mccmnc : "24004"
-      mccmnc : "24006"
-      mccmnc : "24008"
       mobile_apn {
         apn : "internet.telenor.se"
         plan : POSTPAID
@@ -13045,7 +13051,6 @@ mno {
     localized_name {
       name : "Comviq"
     }
-    mccmnc : "24007"
     mccmnc : "24005"
     mobile_apn {
       apn : "data.comviq.se"
@@ -13095,6 +13100,7 @@ mno {
       }
     }
   }
+  earmarked : true
 }
 
 mno {
@@ -13190,6 +13196,7 @@ mno {
       }
     }
   }
+  earmarked : true
 }
 
 mno {
@@ -13200,7 +13207,6 @@ mno {
     localized_name {
       name : "Telenor"
     }
-    mccmnc : "24004"
     mccmnc : "24006"
     mccmnc : "24008"
     mobile_apn {
@@ -13245,6 +13251,7 @@ mno {
       }
     }
   }
+  earmarked : true
 }
 
 mno {
