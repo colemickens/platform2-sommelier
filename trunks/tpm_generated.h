@@ -1502,6 +1502,7 @@ struct TPMT_PUBLIC {
   TPMI_ALG_HASH name_alg;
   TPMA_OBJECT object_attributes;
   TPM2B_DIGEST auth_policy;
+  TPMU_PUBLIC_PARMS parameters;
   TPMU_PUBLIC_ID unique;
 };
 

@@ -14868,7 +14868,9 @@ Shall be the Empty Buffer if no authorization policy is present.
 
 [type]parameters
 
-TPMU_PUBLIC_PARMS the algorithm or structure details
+TPMU_PUBLIC_PARMS
+
+the algorithm or structure details
 
 [type]unique
 

@@ -7948,6 +7948,11 @@ TPM_RC Serialize_TPMT_PUBLIC(
     return result;
   }
 
+  result = Serialize_TPMU_PUBLIC_PARMS(value.parameters, value.type, buffer);
+  if (result) {
+    return result;
+  }
+
   result = Serialize_TPMU_PUBLIC_ID(
       value.unique,
       value.type,
@@ -7993,6 +7998,15 @@ TPM_RC Parse_TPMT_PUBLIC(
       buffer,
       &value->auth_policy,
       value_bytes);
+  if (result) {
+    return result;
+  }
+
+  result = Parse_TPMU_PUBLIC_PARMS(
+    buffer,
+    value->type,
+    &value->parameters,
+    value_bytes);
   if (result) {
     return result;
   }
