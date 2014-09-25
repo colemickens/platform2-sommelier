@@ -302,35 +302,24 @@ TEST(WakeOnWiFiTest, ConfigureDisableWakeOnWiFiMessage) {
 TEST(WakeOnWiFiTest, WakeOnWiFiSettingsMatch) {
   IPAddressStore all_addresses;
   set<WakeOnWiFi::WakeOnWiFiTrigger> trigs;
-  scoped_ptr<uint8_t[]> message_memory_0(
-      new uint8_t[sizeof(kResponseNoIPAddresses)]);
-  memcpy(message_memory_0.get(), kResponseNoIPAddresses,
-         sizeof(kResponseNoIPAddresses));
-  nlmsghdr *hdr0 = reinterpret_cast<nlmsghdr *>(message_memory_0.get());
   GetWakeOnPacketConnMessage msg0;
-  msg0.InitFromNlmsg(hdr0);
+  msg0.InitFromNlmsg(
+      reinterpret_cast<const nlmsghdr *>(kResponseNoIPAddresses));
   EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses));
 
   trigs.insert(WakeOnWiFi::kIPAddress);
   all_addresses.AddUnique(
       IPAddress(string(kIPV4Address0, sizeof(kIPV4Address0))));
-  scoped_ptr<uint8_t[]> message_memory_1(new uint8_t[sizeof(kResponseIPV40)]);
-  memcpy(message_memory_1.get(), kResponseIPV40, sizeof(kResponseIPV40));
-  nlmsghdr *hdr1 = reinterpret_cast<nlmsghdr *>(message_memory_1.get());
   GetWakeOnPacketConnMessage msg1;
-  msg1.InitFromNlmsg(hdr1);
+  msg1.InitFromNlmsg(reinterpret_cast<const nlmsghdr *>(kResponseIPV40));
   EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses));
   EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses));
 
   // Test matching of wake-on-disconnect flag.
   trigs.insert(WakeOnWiFi::kDisconnect);
-  scoped_ptr<uint8_t[]> message_memory_2(
-      new uint8_t[sizeof(kResponseIPV40WakeOnDisconnect)]);
-  memcpy(message_memory_2.get(), kResponseIPV40WakeOnDisconnect,
-         sizeof(kResponseIPV40WakeOnDisconnect));
-  nlmsghdr *hdr2 = reinterpret_cast<nlmsghdr *>(message_memory_2.get());
   GetWakeOnPacketConnMessage msg2;
-  msg2.InitFromNlmsg(hdr2);
+  msg2.InitFromNlmsg(
+      reinterpret_cast<const nlmsghdr *>(kResponseIPV40WakeOnDisconnect));
   EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses));
   EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses));
   EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses));
@@ -338,11 +327,8 @@ TEST(WakeOnWiFiTest, WakeOnWiFiSettingsMatch) {
   trigs.erase(WakeOnWiFi::kDisconnect);
   all_addresses.AddUnique(
       IPAddress(string(kIPV4Address1, sizeof(kIPV4Address1))));
-  scoped_ptr<uint8_t[]> message_memory_3(new uint8_t[sizeof(kResponseIPV401)]);
-  memcpy(message_memory_3.get(), kResponseIPV401, sizeof(kResponseIPV401));
-  nlmsghdr *hdr3 = reinterpret_cast<nlmsghdr *>(message_memory_3.get());
   GetWakeOnPacketConnMessage msg3;
-  msg3.InitFromNlmsg(hdr3);
+  msg3.InitFromNlmsg(reinterpret_cast<const nlmsghdr *>(kResponseIPV401));
   EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses));
   EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses));
   EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses));
@@ -350,13 +336,9 @@ TEST(WakeOnWiFiTest, WakeOnWiFiSettingsMatch) {
 
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address0, sizeof(kIPV6Address0))));
-  scoped_ptr<uint8_t[]> message_memory_4(
-      new uint8_t[sizeof(kResponseIPV401IPV60)]);
-  memcpy(message_memory_4.get(), kResponseIPV401IPV60,
-         sizeof(kResponseIPV401IPV60));
-  nlmsghdr *hdr4 = reinterpret_cast<nlmsghdr *>(message_memory_4.get());
   GetWakeOnPacketConnMessage msg4;
-  msg4.InitFromNlmsg(hdr4);
+  msg4.InitFromNlmsg(
+      reinterpret_cast<const nlmsghdr *>((kResponseIPV401IPV60)));
   EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses));
   EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses));
   EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses));
@@ -365,13 +347,8 @@ TEST(WakeOnWiFiTest, WakeOnWiFiSettingsMatch) {
 
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address1, sizeof(kIPV6Address1))));
-  scoped_ptr<uint8_t[]> message_memory_5(
-      new uint8_t[sizeof(kResponseIPV401IPV601)]);
-  memcpy(message_memory_5.get(), kResponseIPV401IPV601,
-         sizeof(kResponseIPV401IPV601));
-  nlmsghdr *hdr5 = reinterpret_cast<nlmsghdr *>(message_memory_5.get());
   GetWakeOnPacketConnMessage msg5;
-  msg5.InitFromNlmsg(hdr5);
+  msg5.InitFromNlmsg(reinterpret_cast<const nlmsghdr *>(kResponseIPV401IPV601));
   EXPECT_TRUE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg5, trigs, all_addresses));
   EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses));
   EXPECT_FALSE(WakeOnWiFi::WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses));

@@ -477,12 +477,10 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
   MockHandler80211 handler_sent_2;
 
   // Set up the received message as a response to sent_message_1.
-  scoped_ptr<unsigned char[]> message_memory(
-      new unsigned char[sizeof(kNL80211_CMD_DISCONNECT)]);
-  memcpy(message_memory.get(), kNL80211_CMD_DISCONNECT,
+  unsigned char message_memory[sizeof(kNL80211_CMD_DISCONNECT)];
+  memcpy(message_memory, kNL80211_CMD_DISCONNECT,
          sizeof(kNL80211_CMD_DISCONNECT));
-  nlmsghdr *received_message =
-        reinterpret_cast<nlmsghdr *>(message_memory.get());
+  nlmsghdr *received_message = reinterpret_cast<nlmsghdr *>(message_memory);
 
   // Now, we can start the actual test...
 
@@ -549,12 +547,10 @@ TEST_F(NetlinkManagerTest, AckHandler) {
       &sent_message, handler_sent_1.on_netlink_message(),
       handler_sent_2.on_netlink_message(), null_error_handler));
   // Set up message as an ack in response to sent_message.
-  scoped_ptr<unsigned char[]> message_memory_1(
-      new unsigned char[sizeof(kNLMSG_ACK)]);
-  memcpy(message_memory_1.get(), kNLMSG_ACK,
-         sizeof(kNLMSG_ACK));
+  unsigned char message_memory_1[sizeof(kNLMSG_ACK)];
+  memcpy(message_memory_1, kNLMSG_ACK, sizeof(kNLMSG_ACK));
   nlmsghdr *received_ack_message =
-        reinterpret_cast<nlmsghdr *>(message_memory_1.get());
+      reinterpret_cast<nlmsghdr *>(message_memory_1);
   // Make it appear that this message is in response to our sent message.
   received_ack_message->nlmsg_seq = netlink_socket_->GetLastSequenceNumber();
   EXPECT_CALL(handler_sent_2, OnAckHandler(_))
@@ -565,12 +561,11 @@ TEST_F(NetlinkManagerTest, AckHandler) {
   // Receive an Nl80211 response message after handling the Ack and verify
   // that the Nl80211 response handler is invoked to ensure that it was not
   // deleted after the Ack handler was executed.
-  scoped_ptr<unsigned char[]> message_memory_2(
-      new unsigned char[sizeof(kNL80211_CMD_DISCONNECT)]);
-  memcpy(message_memory_2.get(), kNL80211_CMD_DISCONNECT,
+  unsigned char message_memory_2[sizeof(kNL80211_CMD_DISCONNECT)];
+  memcpy(message_memory_2, kNL80211_CMD_DISCONNECT,
          sizeof(kNL80211_CMD_DISCONNECT));
   nlmsghdr *received_response_message =
-        reinterpret_cast<nlmsghdr *>(message_memory_2.get());
+      reinterpret_cast<nlmsghdr *>(message_memory_2);
   // Make it appear that this message is in response to our sent message.
   received_response_message->nlmsg_seq = received_ack_message->nlmsg_seq;
   EXPECT_CALL(handler_sent_1, OnNetlinkMessage(_)).Times(1);
