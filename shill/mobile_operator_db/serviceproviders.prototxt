@@ -5256,7 +5256,7 @@ mno {
         name : "Pay and Go (Prepaid)"
       }
       username : "payandgo"
-      password : "payandgo"
+      password : "password"
     }
     mobile_apn {
       apn : "idata.o2.co.uk"
@@ -10292,6 +10292,12 @@ mno {
       dns : "62.133.126.29"
     }
     mobile_apn {
+      localized_name {
+        name : "Contract"
+      }
+      apn : "portalmmm.nl"
+    }
+    mobile_apn {
       apn : "noapn"
       plan : POSTPAID
       dns : "62.133.126.28"
@@ -10500,7 +10506,6 @@ mno {
     mobile_apn {
       apn : "internet"
       plan : POSTPAID
-      username : "telfortnl"
     }
   }
 }
@@ -10734,6 +10739,9 @@ mno {
       plan : POSTPAID
       dns : "212.17.131.3"
       dns : "148.122.161.2"
+    }
+    mobile_apn {
+      apn : "telenor.mbb"
     }
   }
 }
