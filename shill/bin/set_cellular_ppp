@@ -1,4 +1,4 @@
-#!/bin/dash
+#!/bin/sh
 
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -32,7 +32,7 @@ PROFILE_PROPERTY=Profile
 USERNAME_PROPERTY=Cellular.PPP.Username
 
 usage() {
-  echo $*
+  echo "$*"
   echo
   flags_help
   exit 1
@@ -148,7 +148,11 @@ move_service_to_profile() {
 
   local new_profile=$(
     get_property "${ISERVICE}" "${service}" "${PROFILE_PROPERTY}")
-  return $([ "${new_profile}" = "${profile}" ])
+  if [ "${new_profile}" != "${profile}" ]; then
+    return 1
+  else
+    return 0
+  fi
 }
 
 service="$(get_first_cellular_service)"

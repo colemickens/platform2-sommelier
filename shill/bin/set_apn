@@ -1,4 +1,4 @@
-#!/bin/dash
+#!/bin/sh
 
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -28,14 +28,14 @@ ISERVICE=${FLIMFLAM}.Service
 APN_PROPERTY=Cellular.APN
 LAST_GOOD_APN_PROPERTY=Cellular.LastGoodAPN
 
-LIBDIR=/usr/lib64
-if [ ! -d "${LIBDIR}" ]; then
-  LIBDIR=/usr/lib
+SET_APN_HELPER=$(ls /usr/lib*/shill/shims/set-apn-helper | head -1)
+if [ -z "$SET_APN_HELPER" ] ; then
+  echo "set-apn-helper script was not found!"
+  exit 1
 fi
-SET_APN_HELPER=${LIBDIR}/shill/shims/set-apn-helper
 
 usage() {
-  echo $*
+  echo "$*"
   echo
   flags_help
   exit 1

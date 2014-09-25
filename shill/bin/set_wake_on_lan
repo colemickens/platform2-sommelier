@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -49,7 +49,7 @@ display_value () {
   exit 0
 }
 
-if [[ $# < 1 ]]; then
+if [ $# -lt 1 ]; then
     display_value
 fi
 

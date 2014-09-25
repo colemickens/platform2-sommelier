@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -50,7 +50,7 @@ set_wpa_logging(){
     return 1
   fi
 
-  if [ $1 == `get_wpa_logging` ]; then
+  if [ $1 = `get_wpa_logging` ]; then
     return 1
   fi
 
@@ -60,7 +60,7 @@ set_wpa_logging(){
 
 
 if [ $# -gt 0 ]; then
-  for param in $@; do
+  for param in "$@"; do
     case $param in
     --reset)
       set_wpa_logging "info"

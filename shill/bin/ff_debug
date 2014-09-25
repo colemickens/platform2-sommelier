@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -60,7 +60,7 @@ get_ff_debug_tags() {
 }
 
 set_ff_debug_tags() {
-  ${SEND_FF_CMD}.SetDebugTags string:"$1" >& /dev/null
+  ${SEND_FF_CMD}.SetDebugTags string:"$1" > /dev/null 2>&1
 }
 
 get_ff_debug_level() {
@@ -68,14 +68,7 @@ get_ff_debug_level() {
 }
 
 set_ff_debug_level() {
-  ${SEND_FF_CMD}.SetDebugLevel int32:"$1" >& /dev/null
-}
-
-is_different(){
-  list1=`echo $1 | tr "[ +-]" "\n" | sort | tr "\n" " "`
-  list2=`echo $2 | tr "[ +-]" "\n" | sort | tr "\n" " "`
-
-  [[$list == "$list2"]]
+  ${SEND_FF_CMD}.SetDebugLevel int32:"$1" > /dev/null 2>&1
 }
 
 starting_ff_tags=`get_ff_debug_tags`
