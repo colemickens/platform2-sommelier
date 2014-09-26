@@ -86,9 +86,10 @@ WiFiService::WiFiService(ControlInterface *control_interface,
                                      &WiFiService::ClearPassphrase,
                                      NULL);
   store->RegisterBool(kPassphraseRequiredProperty, &need_passphrase_);
-  HelpRegisterDerivedString(kSecurityProperty,
-                            &WiFiService::GetSecurity,
-                            NULL);
+  HelpRegisterConstDerivedString(kSecurityProperty,
+                                 &WiFiService::GetSecurity);
+  HelpRegisterConstDerivedString(kSecurityClassProperty,
+                                 &WiFiService::GetSecurityClass);
 
   store->RegisterConstString(kWifiAuthMode, &auth_mode_);
   store->RegisterBool(kWifiHiddenSsid, &hidden_ssid_);
@@ -353,7 +354,8 @@ bool WiFiService::Save(StoreInterface *storage) {
   storage->SetString(id, kStorageMode, mode_);
   storage->SetCryptedString(id, kStoragePassphrase, passphrase_);
   storage->SetString(id, kStorageSecurity, security_);
-  storage->SetString(id, kStorageSecurityClass, GetSecurityClass(security_));
+  storage->SetString(id, kStorageSecurityClass,
+                     ComputeSecurityClass(security_));
   storage->SetString(id, kStorageSSID, hex_ssid_);
 
   return true;
@@ -384,7 +386,7 @@ void WiFiService::SetState(ConnectState state) {
 }
 
 bool WiFiService::IsSecurityMatch(const string &security) const {
-  return GetSecurityClass(security) == GetSecurityClass(security_);
+  return ComputeSecurityClass(security) == ComputeSecurityClass(security_);
 }
 
 bool WiFiService::AddSuspectedCredentialFailure() {
@@ -956,7 +958,7 @@ bool WiFiService::CheckWEPPrefix(const string &passphrase, Error *error) {
 }
 
 // static
-string WiFiService::GetSecurityClass(const string &security) {
+string WiFiService::ComputeSecurityClass(const string &security) {
   if (security == kSecurityRsn ||
       security == kSecurityWpa) {
     return kSecurityPsk;
@@ -1016,7 +1018,8 @@ bool WiFiService::FixupServiceEntries(StoreInterface *storage) {
       fixed_entry = true;
     }
     if (!storage->GetString(id, kStorageSecurityClass, NULL)) {
-      storage->SetString(id, kStorageSecurityClass, GetSecurityClass(security));
+      storage->SetString(id, kStorageSecurityClass,
+                         ComputeSecurityClass(security));
       fixed_entry = true;
     }
   }
@@ -1065,12 +1068,12 @@ KeyValueStore WiFiService::GetStorageProperties() const {
   args.SetString(kStorageType, kTypeWifi);
   args.SetString(kStorageSSID, hex_ssid_);
   args.SetString(kStorageMode, mode_);
-  args.SetString(kStorageSecurityClass, GetSecurityClass(security_));
+  args.SetString(kStorageSecurityClass, ComputeSecurityClass(security_));
   return args;
 }
 
 string WiFiService::GetDefaultStorageIdentifier() const {
-  string security = GetSecurityClass(security_);
+  string security = ComputeSecurityClass(security_);
   return base::StringToLowerASCII(base::StringPrintf("%s_%s_%s_%s_%s",
                                                      kTypeWifi,
                                                      kAnyDeviceAddress,
@@ -1084,6 +1087,10 @@ string WiFiService::GetSecurity(Error */*error*/) {
     return current_endpoint_->security_mode();
   }
   return security_;
+}
+
+string WiFiService::GetSecurityClass(Error *error) {
+  return ComputeSecurityClass(GetSecurity(error));
 }
 
 void WiFiService::ClearCachedCredentials() {

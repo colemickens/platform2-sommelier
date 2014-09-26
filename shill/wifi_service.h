@@ -157,7 +157,7 @@ class WiFiService : public Service {
 
   // "wpa", "rsn" and "psk" are equivalent from a configuration perspective.
   // This function maps them all into "psk".
-  static std::string GetSecurityClass(const std::string &security);
+  static std::string ComputeSecurityClass(const std::string &security);
 
   virtual bool IsAutoConnectable(const char **reason) const;
 
@@ -255,6 +255,14 @@ class WiFiService : public Service {
   // reported from the currently connected endpoint is returned.  Otherwise
   // the configured security for the service is returned.
   std::string GetSecurity(Error *error);
+
+  // Return the security class of this service.  If connected, the
+  // security class of the currently connected endpoint is returned.
+  // Otherwise the configured security class for the service is
+  // returned.
+  //
+  // See also: ComputeSecurityClass.
+  std::string GetSecurityClass(Error *error);
 
   // Profile data for a WPA/RSN service can be stored under a number of
   // different security types.  These functions create different storage

@@ -263,7 +263,7 @@ void WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr &endpoint) {
     service = AddService(
         endpoint->ssid(),
         endpoint->network_mode(),
-        WiFiService::GetSecurityClass(endpoint->security_mode()),
+        WiFiService::ComputeSecurityClass(endpoint->security_mode()),
         hidden_ssid);
   }
 
