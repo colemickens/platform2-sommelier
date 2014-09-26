@@ -48,6 +48,7 @@ const char kServiceName[] = "org.freedesktop.Avahi";
 const char kServerInterface[] = "org.freedesktop.Avahi.Server";
 const char kServerPath[] = "/";
 const char kServerMethodEntryGroupNew[] = "EntryGroupNew";
+const char kServerMethodGetHostName[] = "GetHostName";
 const char kServerMethodGetState[] = "GetState";
 const char kServerSignalStateChanged[] = "StateChanged";
 

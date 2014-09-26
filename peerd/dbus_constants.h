@@ -57,6 +57,7 @@ extern const char kServiceName[];
 extern const char kServerInterface[];
 extern const char kServerPath[];
 extern const char kServerMethodEntryGroupNew[];
+extern const char kServerMethodGetHostName[];
 extern const char kServerMethodGetState[];
 extern const char kServerSignalStateChanged[];
 

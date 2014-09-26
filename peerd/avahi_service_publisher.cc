@@ -15,8 +15,11 @@ using chromeos::dbus_utils::ExtractMethodCallResults;
 namespace peerd {
 
 AvahiServicePublisher::AvahiServicePublisher(
+    const std::string& lan_name,
     const scoped_refptr<dbus::Bus>& bus,
-    dbus::ObjectProxy* avahi_proxy) : bus_{bus}, avahi_proxy_{avahi_proxy} {
+    dbus::ObjectProxy* avahi_proxy) : lan_unique_hostname_{lan_name},
+                                      bus_{bus},
+                                      avahi_proxy_{avahi_proxy} {
 }
 
 AvahiServicePublisher::~AvahiServicePublisher() {

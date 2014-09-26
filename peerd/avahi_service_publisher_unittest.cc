@@ -39,6 +39,7 @@ using testing::_;
 
 namespace {
 
+const char kHost[] = "this_is_a_hostname";
 const char kGroupPath[] = "/this/is/a/group/path";
 
 Response* ReturnsGroupPath(dbus::MethodCall* method_call, Unused, Unused) {
@@ -63,7 +64,7 @@ class AvahiServicePublisherTest : public ::testing::Test {
         mock_bus_.get(), kServiceName, ObjectPath(kServerPath));
     group_proxy_ = new dbus::MockObjectProxy(
         mock_bus_.get(), kServiceName, ObjectPath(kGroupPath));
-    publisher_.reset(new AvahiServicePublisher(mock_bus_, avahi_proxy_));
+    publisher_.reset(new AvahiServicePublisher(kHost, mock_bus_, avahi_proxy_));
     // Ignore threading concerns.
     EXPECT_CALL(*mock_bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*mock_bus_, AssertOnDBusThread()).Times(AnyNumber());

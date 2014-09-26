@@ -21,7 +21,8 @@ namespace peerd {
 
 class AvahiServicePublisher : public ServicePublisherInterface {
  public:
-  AvahiServicePublisher(const scoped_refptr<dbus::Bus>& bus,
+  AvahiServicePublisher(const std::string& lan_name,
+                        const scoped_refptr<dbus::Bus>& bus,
                         dbus::ObjectProxy* avahi_proxy);
   ~AvahiServicePublisher();
   base::WeakPtr<AvahiServicePublisher> GetWeakPtr();
@@ -33,6 +34,7 @@ class AvahiServicePublisher : public ServicePublisherInterface {
   bool OnServiceRemoved(chromeos::ErrorPtr* error,
                         const std::string& service_id) override;
  private:
+  const std::string lan_unique_hostname_;
   scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* avahi_proxy_;
   std::map<std::string, dbus::ObjectProxy*> outstanding_groups_;
@@ -40,6 +42,7 @@ class AvahiServicePublisher : public ServicePublisherInterface {
   // Should be last member to invalidate weak pointers in child objects
   // (like avahi_proxy_) and avoid callbacks while partially destroyed.
   base::WeakPtrFactory<AvahiServicePublisher> weak_ptr_factory_{this};
+  DISALLOW_COPY_AND_ASSIGN(AvahiServicePublisher);
 };
 
 }  // namespace peerd

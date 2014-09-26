@@ -24,6 +24,10 @@ AvahiClient::AvahiClient(const scoped_refptr<dbus::Bus>& bus) : bus_{bus} {
   server_ = bus->GetObjectProxy(
       dbus_constants::avahi::kServiceName,
       ObjectPath(dbus_constants::avahi::kServerPath));
+  // This callback lives for the lifetime of the ObjectProxy.
+  server_->SetNameOwnerChangedCallback(
+      base::Bind(&AvahiClient::OnServiceOwnerChanged,
+                 weak_ptr_factory_.GetWeakPtr()));
 }
 
 AvahiClient::~AvahiClient() {
@@ -34,6 +38,7 @@ AvahiClient::~AvahiClient() {
 }
 
 void AvahiClient::RegisterAsync(const CompletionAction& completion_callback) {
+  // Reconnect to our signals on a new Avahi instance.
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   server_->ConnectToSignal(dbus_constants::avahi::kServerInterface,
                            dbus_constants::avahi::kServerSignalStateChanged,
@@ -46,8 +51,13 @@ void AvahiClient::RegisterAsync(const CompletionAction& completion_callback) {
                               true));
   sequencer->OnAllTasksCompletedCall(
       {completion_callback,
-       base::Bind(&AvahiClient::ReadInitialState,
-                  weak_ptr_factory_.GetWeakPtr())});
+       // Get a onetime callback with the initial state of Avahi.
+       AsyncEventSequencer::WrapCompletionTask(
+            base::Bind(&dbus::ObjectProxy::WaitForServiceToBeAvailable,
+                       server_,
+                       base::Bind(&AvahiClient::OnServiceAvailable,
+                                  weak_ptr_factory_.GetWeakPtr()))),
+      });
 }
 
 void AvahiClient::RegisterOnAvahiRestartCallback(
@@ -60,20 +70,17 @@ void AvahiClient::RegisterOnAvahiRestartCallback(
   }
 }
 
-void AvahiClient::ReadInitialState(bool ignored_success) {
-  auto resp = CallMethodAndBlock(
-      server_, dbus_constants::avahi::kServerInterface,
-      dbus_constants::avahi::kServerMethodGetState,
-      nullptr);
-  int32_t state;
-  // We don't particularly care about errors.  If Avahi happens to be down
-  // we'll wait for it to come up and rely on the signals it sends.
-  if (ExtractMethodCallResults(resp.get(), nullptr, &state)) {
-    HandleServerStateChange(state);
+void AvahiClient::OnServiceOwnerChanged(const string& old_owner,
+                                        const string& new_owner) {
+  if (new_owner.empty()) {
+    OnServiceAvailable(false);
+    return;
   }
+  OnServiceAvailable(true);
 }
 
 void AvahiClient::OnServerStateChanged(dbus::Signal* signal) {
+  VLOG(1) << "OnServerStateChanged fired.";
   dbus::MessageReader reader(signal);
   int32_t state;
   string error;
@@ -86,16 +93,39 @@ void AvahiClient::OnServerStateChanged(dbus::Signal* signal) {
   HandleServerStateChange(state);
 }
 
+void AvahiClient::OnServiceAvailable(bool avahi_is_on_dbus) {
+  VLOG(1) << "Avahi is "  << (avahi_is_on_dbus ? "up." : "down.");
+  int32_t state = AVAHI_SERVER_FAILURE;
+  if (avahi_is_on_dbus) {
+    auto resp = CallMethodAndBlock(
+        server_, dbus_constants::avahi::kServerInterface,
+        dbus_constants::avahi::kServerMethodGetState,
+        nullptr);
+    if (!resp || !ExtractMethodCallResults(resp.get(), nullptr, &state)) {
+      LOG(WARNING) << "Failed to get avahi initial state.  Relying on signal.";
+    }
+  }
+  VLOG(1) << "Initial Avahi state=" << state << ".";
+  HandleServerStateChange(state);
+}
+
 void AvahiClient::HandleServerStateChange(int32_t state) {
   switch (state) {
-    case AVAHI_SERVER_RUNNING:
+    case AVAHI_SERVER_RUNNING: {
       // All host RRs have been established.
+      VLOG(1) << "Avahi ready for action.";
+      if (avahi_is_up_) {
+        LOG(INFO) << "Ignoring redundant Avahi up event.";
+        return;
+      }
       avahi_is_up_ = true;
-      publisher_.reset(new AvahiServicePublisher(bus_, server_));
+      string host_name;
+      CHECK(GetHostName(&host_name)) << "Failed to resolve local hostname.";
+      publisher_.reset(new AvahiServicePublisher(host_name, bus_, server_));
       for (const auto& cb : avahi_ready_callbacks_) {
         cb.Run();
       }
-      break;
+    } break;
     case AVAHI_SERVER_INVALID:
       // Invalid state (initial).
     case AVAHI_SERVER_REGISTERING:
@@ -106,6 +136,7 @@ void AvahiClient::HandleServerStateChange(int32_t state) {
     case AVAHI_SERVER_FAILURE:
       // Some fatal failure happened, the server is unable to proceed.
       avahi_is_up_ = false;
+      VLOG(1) << "Avahi is down, resetting publisher.";
       publisher_.reset();
       break;
     default:
@@ -118,6 +149,14 @@ base::WeakPtr<ServicePublisherInterface> AvahiClient::GetPublisher() {
   base::WeakPtr<ServicePublisherInterface> result;
   if (publisher_) { result = publisher_->GetWeakPtr(); }
   return result;
+}
+
+bool AvahiClient::GetHostName(string* hostname) const {
+  auto resp = CallMethodAndBlock(
+      server_, dbus_constants::avahi::kServerInterface,
+      dbus_constants::avahi::kServerMethodGetHostName,
+      nullptr);
+  return resp && ExtractMethodCallResults(resp.get(), nullptr, hostname);
 }
 
 }  // namespace peerd

@@ -5,6 +5,7 @@
 #ifndef PEERD_AVAHI_CLIENT_H_
 #define PEERD_AVAHI_CLIENT_H_
 
+#include <string>
 #include <vector>
 
 #include <base/callback.h>
@@ -46,10 +47,16 @@ class AvahiClient {
  private:
   // Watch for changes in Avahi server state.
   void OnServerStateChanged(dbus::Signal* signal);
-  // Called just once to get the initial Avahi daemon state.
-  void ReadInitialState(bool ignored_success);
+  // ObjectProxy forces us to register a one off "ServiceAvailable"
+  // callback for startup, then register to listen to service owner changes
+  // in steady state.
+  void OnServiceOwnerChanged(const std::string& old_owner,
+                             const std::string& new_owner);
+  void OnServiceAvailable(bool avahi_is_on_dbus);
   // Logic to react to Avahi server state changes.
   void HandleServerStateChange(int32_t state);
+  // Ask Avahi for the current hostname.
+  bool GetHostName(std::string* hostname) const;
 
   scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* server_{nullptr};
