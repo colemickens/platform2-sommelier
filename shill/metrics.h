@@ -497,6 +497,13 @@ class Metrics {
   static const int kMetricLinkMonitorErrorCountMax;
   static const int kMetricLinkMonitorErrorCountNumBuckets;
 
+  // Signal strength when link becomes unreliable (multiple link monitor
+  // failures in short period of time).
+  static const char kMetricUnreliableLinkSignalStrengthSuffix[];
+  static const int kMetricSerivceSignalStrengthMin;
+  static const int kMetricServiceSignalStrengthMax;
+  static const int kMetricServiceSignalStrengthNumBuckets;
+
   static const char kMetricLinkClientDisconnectReason[];
   static const char kMetricLinkApDisconnectReason[];
   static const char kMetricLinkClientDisconnectType[];
@@ -834,6 +841,10 @@ class Metrics {
   // Notifies this object about the presence of given technology type device.
   virtual void NotifyDevicePresenceStatus(Technology::Identifier technology_id,
                                           bool status);
+
+  // Notifies this object about the signal strength when link is unreliable.
+  virtual void NotifyUnreliableLinkSignalStrength(
+      Technology::Identifier technology_id, int signal_strength);
 
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string &name, int sample, int max);

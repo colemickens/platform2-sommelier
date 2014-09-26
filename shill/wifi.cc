@@ -1641,6 +1641,8 @@ void WiFi::OnLinkMonitorFailure() {
     LOG(ERROR) << "In " << __func__ << "(): failed to call Reattach().";
     return;
   }
+
+  Device::OnLinkMonitorFailure();
 }
 
 bool WiFi::ShouldUseArpGateway() const {

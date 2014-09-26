@@ -349,6 +349,13 @@ const char Metrics::kMetricDevicePresenceStatusSuffix[] =
 const char Metrics::kMetricDeviceRemovedEvent[] =
     "Network.Shill.DeviceRemovedEvent";
 
+// static
+const char Metrics::kMetricUnreliableLinkSignalStrengthSuffix[] =
+    "UnreliableLinkSignalStrength";
+const int Metrics::kMetricSerivceSignalStrengthMin = 0;
+const int Metrics::kMetricServiceSignalStrengthMax = 100;
+const int Metrics::kMetricServiceSignalStrengthNumBuckets = 40;
+
 Metrics::Metrics(EventDispatcher *dispatcher)
     : dispatcher_(dispatcher),
       library_(&metrics_library_),
@@ -1264,6 +1271,17 @@ void Metrics::NotifyDeviceRemovedEvent(Technology::Identifier technology_id) {
       break;
   }
   SendEnumToUMA(kMetricDeviceRemovedEvent, type, kDeviceTechnologyTypeMax);
+}
+
+void Metrics::NotifyUnreliableLinkSignalStrength(
+    Technology::Identifier technology_id, int signal_strength) {
+  string histogram = GetFullMetricName(
+      kMetricUnreliableLinkSignalStrengthSuffix, technology_id);
+  SendToUMA(histogram,
+            signal_strength,
+            kMetricSerivceSignalStrengthMin,
+            kMetricServiceSignalStrengthMax,
+            kMetricServiceSignalStrengthNumBuckets);
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {

@@ -45,6 +45,7 @@
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
+#include "shill/mock_time.h"
 #include "shill/mock_traffic_monitor.h"
 #include "shill/portal_detector.h"
 #include "shill/property_store_unittest.h"
@@ -164,6 +165,7 @@ class DeviceTest : public PropertyStoreTest {
     DHCPProvider::GetInstance()->glib_ = glib();
     DHCPProvider::GetInstance()->control_interface_ = control_interface();
     DHCPProvider::GetInstance()->dispatcher_ = dispatcher();
+    device_->time_ = &time_;
   }
   virtual ~DeviceTest() {}
 
@@ -258,6 +260,7 @@ class DeviceTest : public PropertyStoreTest {
   scoped_refptr<TestDevice> device_;
   MockDeviceInfo device_info_;
   MockMetrics metrics_;
+  MockTime time_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
 };
 
@@ -417,6 +420,36 @@ TEST_F(DeviceTest, SelectedService) {
     .WillOnce(Return(Service::kStateFailure));
   EXPECT_CALL(*service, SetConnection(IsNullRefPtr()));
   SelectService(NULL);
+}
+
+TEST_F(DeviceTest, LinkMonitorFailure) {
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  manager()));
+  SelectService(service);
+  EXPECT_TRUE(device_->selected_service().get() == service.get());
+
+  const time_t kNow = 1000;
+
+  // Initial link monitor failure.
+  EXPECT_CALL(time_, GetSecondsBoottime(_)).WillOnce(
+      DoAll(SetArgPointee<0>(kNow), Return(true)));
+  EXPECT_CALL(metrics_, NotifyUnreliableLinkSignalStrength(_, _)).Times(0);
+  device_->OnLinkMonitorFailure();
+
+  // Another link monitor failure after 3 minutes, report signal strength.
+  EXPECT_CALL(time_, GetSecondsBoottime(_)).WillOnce(
+      DoAll(SetArgPointee<0>(kNow + 180), Return(true)));
+  EXPECT_CALL(metrics_, NotifyUnreliableLinkSignalStrength(_, _)).Times(1);
+  device_->OnLinkMonitorFailure();
+
+  // Another link monitor failure after 5 minutes, don't report signal strength.
+  EXPECT_CALL(time_, GetSecondsBoottime(_)).WillOnce(
+      DoAll(SetArgPointee<0>(kNow + 180 + 360), Return(true)));
+  EXPECT_CALL(metrics_, NotifyUnreliableLinkSignalStrength(_, _)).Times(0);
+  device_->OnLinkMonitorFailure();
 }
 
 TEST_F(DeviceTest, IPConfigUpdatedFailure) {

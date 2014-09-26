@@ -26,6 +26,7 @@
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
+#include "shill/shill_time.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -316,6 +317,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, GetProperties);
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithIPv6Config);
   FRIEND_TEST(DeviceTest, IsConnectedViaTether);
+  FRIEND_TEST(DeviceTest, LinkMonitorFailure);
   FRIEND_TEST(DeviceTest, Load);
   FRIEND_TEST(DeviceTest, OnIPv6AddressChanged);
   FRIEND_TEST(DeviceTest, OnIPv6ConfigurationCompleted);
@@ -574,6 +576,10 @@ class Device : public base::RefCounted<Device> {
   static const char* kFallbackDnsServers[];
   static const int kDNSTimeoutMilliseconds;
 
+  // Maximum seconds between two link monitor failures to declare this link
+  // (network) as unreliable.
+  static const int kLinkMonitorFailureUnreliableThresholdSeconds;
+
   // Configure static IP address parameters if the service provides them.
   void ConfigureStaticIPTask();
 
@@ -704,6 +710,10 @@ class Device : public base::RefCounted<Device> {
   // Cache singleton pointers for performance and test purposes.
   DHCPProvider *dhcp_provider_;
   RTNLHandler *rtnl_handler_;
+
+  // Time when link monitor last failed.
+  Time *time_;
+  time_t last_link_monitor_failed_time_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };

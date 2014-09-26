@@ -88,6 +88,7 @@ const char* Device::kFallbackDnsServers[] = {
 
 // static
 const int Device::kDNSTimeoutMilliseconds = 5000;
+const int Device::kLinkMonitorFailureUnreliableThresholdSeconds = 5 * 60;
 
 Device::Device(ControlInterface *control_interface,
                EventDispatcher *dispatcher,
@@ -119,7 +120,9 @@ Device::Device(ControlInterface *control_interface,
       receive_byte_offset_(0),
       transmit_byte_offset_(0),
       dhcp_provider_(DHCPProvider::GetInstance()),
-      rtnl_handler_(RTNLHandler::GetInstance()) {
+      rtnl_handler_(RTNLHandler::GetInstance()),
+      time_(Time::GetInstance()),
+      last_link_monitor_failed_time_(0) {
   store_.RegisterConstString(kAddressProperty, &hardware_address_);
 
   // kBgscanMethodProperty: Registered in WiFi
@@ -385,6 +388,9 @@ void Device::OnAfterResume() {
     SLOG(Device, 3) << "Informing Link Monitor of resume.";
     link_monitor_->OnAfterResume();
   }
+  // Resume from sleep, could be in different location now.
+  // Ignore previous link monitor failures.
+  last_link_monitor_failed_time_ = 0;
 }
 
 void Device::OnDarkResume() {
@@ -856,6 +862,11 @@ void Device::SelectService(const ServiceRefPtr &service) {
     selected_service_->SetConnection(NULL);
     StopAllActivities();
   }
+
+  // Newly selected service (network), previous failures doesn't apply
+  // anymore.
+  last_link_monitor_failed_time_ = 0;
+
   selected_service_ = service;
 }
 
@@ -1049,8 +1060,21 @@ void Device::StopLinkMonitor() {
 }
 
 void Device::OnLinkMonitorFailure() {
-  LOG(ERROR) << "Device " << FriendlyName()
-             << ": Link Monitor indicates failure.";
+  SLOG(Device, 2) << "Device " << FriendlyName()
+                  << ": Link Monitor indicates failure.";
+  if (!selected_service_) {
+    return;
+  }
+
+  time_t now;
+  time_->GetSecondsBoottime(&now);
+
+  if (now - last_link_monitor_failed_time_ <
+          kLinkMonitorFailureUnreliableThresholdSeconds) {
+    metrics_->NotifyUnreliableLinkSignalStrength(
+        technology_, selected_service_->strength());
+  }
+  last_link_monitor_failed_time_ = now;
 }
 
 void Device::OnLinkMonitorGatewayChange() {
