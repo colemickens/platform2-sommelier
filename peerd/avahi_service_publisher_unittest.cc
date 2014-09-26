@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <vector>
 
 #include <base/memory/ref_counted.h>
 #include <dbus/mock_bus.h>
@@ -20,7 +21,10 @@ using dbus::ObjectPath;
 using dbus::Response;
 using peerd::Service;
 using peerd::dbus_constants::avahi::kGroupInterface;
+using peerd::dbus_constants::avahi::kGroupMethodAddService;
+using peerd::dbus_constants::avahi::kGroupMethodCommit;
 using peerd::dbus_constants::avahi::kGroupMethodFree;
+using peerd::dbus_constants::avahi::kGroupMethodReset;
 using peerd::dbus_constants::avahi::kServerInterface;
 using peerd::dbus_constants::avahi::kServerMethodEntryGroupNew;
 using peerd::dbus_constants::avahi::kServerPath;
@@ -41,6 +45,7 @@ namespace {
 
 const char kHost[] = "this_is_a_hostname";
 const char kGroupPath[] = "/this/is/a/group/path";
+const char kServiceId[] = "service-id";
 
 Response* ReturnsGroupPath(dbus::MethodCall* method_call, Unused, Unused) {
   method_call->SetSerial(87);
@@ -79,18 +84,48 @@ class AvahiServicePublisherTest : public ::testing::Test {
       .WillByDefault(Return(group_proxy_.get()));
   }
 
-  unique_ptr<Service> CreateService(const std::string& service_id) {
+  unique_ptr<Service> CreateServiceWithInfo(const std::string& service_id,
+                                            const Service::ServiceInfo& info) {
     auto dbus_object = MakeMockDBusObject();
     EXPECT_CALL(*dbus_object, RegisterAsync(_)).Times(1);
     chromeos::ErrorPtr error;
     unique_ptr<Service> service(
         Service::MakeServiceImpl(&error, std::move(dbus_object),
                                  service_id, Service::IpAddresses(),
-                                 Service::ServiceInfo(),
+                                 info,
                                  MakeMockCompletionAction()));
     EXPECT_EQ(nullptr, error.get());
     EXPECT_NE(nullptr, service.get());
     return service;
+  }
+
+  unique_ptr<Service> CreateService(const std::string& service_id) {
+    return CreateServiceWithInfo(service_id, {});
+  }
+
+  void ExpectServiceAdded() {
+    EXPECT_CALL(*group_proxy_, MockCallMethodAndBlockWithErrorDetails(
+        IsDBusMethodCallTo(kGroupInterface, kGroupMethodAddService), _, _))
+        .Times(1)
+        .WillOnce(Invoke(&ReturnsEmptyResponse));
+    EXPECT_CALL(*group_proxy_, MockCallMethodAndBlockWithErrorDetails(
+        IsDBusMethodCallTo(kGroupInterface, kGroupMethodCommit), _, _))
+        .Times(1)
+        .WillOnce(Invoke(&ReturnsEmptyResponse));
+  }
+
+  void ExpectServiceResetAndCommit() {
+    EXPECT_CALL(*group_proxy_, MockCallMethodAndBlockWithErrorDetails(
+        IsDBusMethodCallTo(kGroupInterface, kGroupMethodReset), _, _))
+        .Times(1)
+        .WillOnce(Invoke(&ReturnsEmptyResponse));
+    ExpectServiceAdded();
+  }
+
+  void ExpectServiceFree() {
+    EXPECT_CALL(*group_proxy_, MockCallMethodAndBlockWithErrorDetails(
+        IsDBusMethodCallTo(kGroupInterface, kGroupMethodFree), _, _))
+        .WillOnce(Invoke(&ReturnsEmptyResponse));
   }
 
   scoped_refptr<dbus::MockBus> mock_bus_;
@@ -100,12 +135,39 @@ class AvahiServicePublisherTest : public ::testing::Test {
 };
 
 TEST_F(AvahiServicePublisherTest, ShouldFreeAddedGroups) {
-  EXPECT_CALL(*group_proxy_, MockCallMethodAndBlockWithErrorDetails(
-      IsDBusMethodCallTo(kGroupInterface, kGroupMethodFree), _, _))
-      .WillOnce(Invoke(&ReturnsEmptyResponse));
-  auto service = CreateService("service-id");
+  auto service = CreateService(kServiceId);
+  ExpectServiceAdded();
   EXPECT_TRUE(publisher_->OnServiceUpdated(nullptr, *service));
+  ExpectServiceFree();
   publisher_.reset();
+}
+
+TEST_F(AvahiServicePublisherTest, CanEncodeTxtRecords) {
+  auto service = CreateServiceWithInfo(
+      kServiceId, {{"a", "w"}, {"b", "foo"}});
+  std::vector<std::vector<uint8_t>> result{{'a', '=', 'w'},
+                                           {'b', '=', 'f', 'o', 'o'}};
+  EXPECT_EQ(result, AvahiServicePublisher::GetTxtRecord(*service));
+}
+
+TEST_F(AvahiServicePublisherTest, CanHandleServiceUpdates) {
+  auto service = CreateService(kServiceId);
+  ExpectServiceAdded();
+  EXPECT_TRUE(publisher_->OnServiceUpdated(nullptr, *service));
+  ExpectServiceResetAndCommit();
+  // The service publisher doesn't actually know anything about the previous
+  // values inside the service.  So we don't need to mutate the service.
+  EXPECT_TRUE(publisher_->OnServiceUpdated(nullptr, *service));
+  ExpectServiceFree();
+}
+
+TEST_F(AvahiServicePublisherTest, CanRemoveService) {
+  auto service = CreateService(kServiceId);
+  ExpectServiceAdded();
+  EXPECT_TRUE(publisher_->OnServiceUpdated(nullptr, *service));
+  ExpectServiceFree();
+  EXPECT_TRUE(publisher_->OnServiceRemoved(nullptr, kServiceId));
+  publisher_.reset();  // Note that we should *not* see a Group.Free() call.
 }
 
 }  // namespace peerd

@@ -57,6 +57,7 @@ const char kGroupMethodAddRecord[] = "AddRecord";
 const char kGroupMethodAddService[] = "AddService";
 const char kGroupMethodCommit[] = "Commit";
 const char kGroupMethodFree[] = "Free";
+const char kGroupMethodReset[]= "Reset";
 
 }  // namespace avahi
 

@@ -112,6 +112,7 @@ void Manager::StopMonitoring(ErrorPtr* error,
 string Manager::ExposeService(chromeos::ErrorPtr* error,
                               const string& service_id,
                               const map<string, string>& service_info) {
+  VLOG(1) << "Exposing service '" << service_id << "'.";
   string token;
   if (!self_->AddService(error, service_id, {}, service_info)) {
     return token;
