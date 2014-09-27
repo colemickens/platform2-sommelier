@@ -27,7 +27,7 @@ const char kGoodInterfaceFileContents[] =
     "      <arg name=\"args\" type=\"a{sv}\" direction=\"in\"/>\n"
     "    </method>\n"
     "    <method name=\"GetBlob\">\n"
-    "      <arg name=\"name\" type=\"s\" direction=\"in\"/>\n"
+    "      <arg name=\"name\" type=\"s\"/>\n"
     "      <arg name=\"data\" type=\"ay\" direction=\"out\"/>\n"
     "    </method>\n"
     "    <property name=\"Capabilities\" type=\"a{sv}\" access=\"read\"/>\n"
@@ -95,7 +95,7 @@ TEST_F(XmlInterfaceParserTest, GoodInputFile) {
   EXPECT_EQ(1, interface.methods[1].input_arguments.size());
   EXPECT_EQ(1, interface.methods[1].output_arguments.size());
 
-  // <arg name="name" type="s" direction="in"/>
+  // <arg name="name" type="s"/>  (direciton="in" is implicit)
   EXPECT_EQ(kNameArgument, interface.methods[1].input_arguments[0].name);
   EXPECT_EQ(kStringType, interface.methods[1].input_arguments[0].type);
 

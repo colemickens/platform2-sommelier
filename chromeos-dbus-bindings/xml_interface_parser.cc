@@ -87,10 +87,15 @@ void XmlInterfaceParser::OnOpenElement(
 void XmlInterfaceParser::AddMethodArgument(const XmlAttributeMap& attributes) {
   CHECK(!interface_.methods.empty())
       << " we have a method argument but the interface has no methods";
-  const string& argument_direction = GetValidatedElementAttribute(
-      attributes, kArgumentTag, kDirectionAttribute);
+  string argument_direction;
+  bool is_direction_paramter_present = GetElementAttribute(
+      attributes,
+      string(kMethodTag) + " " + kArgumentTag,
+      kDirectionAttribute,
+      &argument_direction);
   vector<Interface::Argument>* argument_list = nullptr;
-  if (argument_direction == kArgumentDirectionIn) {
+  if (!is_direction_paramter_present ||
+      argument_direction == kArgumentDirectionIn) {
     argument_list = &interface_.methods.back().input_arguments;
   } else if (argument_direction == kArgumentDirectionOut) {
     argument_list = &interface_.methods.back().output_arguments;
