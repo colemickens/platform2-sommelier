@@ -26,8 +26,6 @@ DEFINE_boolean skip_rootfs ${FLAGS_FALSE} \
   "Skip installing the rootfs; Only set up partition table"
 DEFINE_boolean yes ${FLAGS_FALSE} \
   "Answer yes to everything"
-DEFINE_boolean skip_vblock ${FLAGS_FALSE} \
-  "Skip copying the HD vblock to install destination"
 DEFINE_boolean preserve_stateful ${FLAGS_FALSE} \
   "Don't create a new filesystem for the stateful partition. Be careful \
 using this option as this may make the stateful partition not mountable."
