@@ -121,39 +121,6 @@ make_partition_dev() {
   fi
 }
 
-# List target devices functions.
-list_usb_disks() {
-  local sd
-  local remo
-  local size
-
-  for sd in /sys/block/sd*; do
-    if [ ! -r "${sd}/size" ]; then
-      continue
-    fi
-    size=$(cat "${sd}/size")
-    remo=$(cat "${sd}/removable")
-    if readlink -f ${sd}/device | grep -q usb &&
-      [ ${remo:-0} -eq 1 -a ${size:-0} -gt 0 ]; then
-      echo "${sd##*/}"
-    fi
-  done
-}
-
-# list mmc devices, including sd cards (for installation support candidates).
-list_mmc_disks() {
-  local mmc
-  for mmc in /sys/block/mmcblk*; do
-    if [ ! -r "${mmc}/size" ]; then
-      continue
-    fi
-    # We only select devices that are 1GB or larger.
-    if [ "$(cat "${mmc}/size")" -ge 2097152 ]; then
-      echo "${mmc##*/}"
-    fi
-  done
-}
-
 # Return the type of device.
 #
 # The type can be:
