@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <chromeos/flag_helper.h>
 #include <chromeos/syslog_logging.h>
-#include <gflags/gflags.h>
 #include <glib-object.h>
 #include <linux/usb/ch9.h>
 
@@ -36,12 +36,20 @@ using permission_broker::PermissionBroker;
 static const uint16_t kLinuxFoundationUsbVendorId = 0x1d6b;
 
 int main(int argc, char **argv) {
+  DEFINE_string(access_group, "", "The group which has resource access granted "
+                "to it. Must not be empty.");
+  DEFINE_int32(poll_interval, 100, "The interval at which to poll for udev "
+               "events.");
+  DEFINE_string(udev_run_path, "/run/udev",
+                "The path to udev's run directory.");
+
   g_type_init();
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  CommandLine::Init(argc, argv);
+  chromeos::FlagHelper::Init(argc, argv, "Chromium OS Permission Broker");
   chromeos::InitLog(chromeos::kLogToSyslog);
 
-  PermissionBroker broker;
+  PermissionBroker broker(FLAGS_access_group,
+                          FLAGS_udev_run_path,
+                          FLAGS_poll_interval);
   broker.AddRule(new AllowUsbDeviceRule());
   broker.AddRule(new AllowTtyDeviceRule());
   broker.AddRule(new DenyClaimedUsbDeviceRule());

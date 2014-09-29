@@ -25,7 +25,9 @@ class Rule;
 // is also responsible for providing a DBus interface to clients.
 class PermissionBroker {
  public:
-  PermissionBroker();
+  PermissionBroker(const std::string &access_group,
+                   const std::string &udev_run_path,
+                   int poll_interval_msecs);
   virtual ~PermissionBroker();
 
   // Initializes the broker and loops waiting for requests on the DBus
@@ -85,6 +87,9 @@ class PermissionBroker {
   gid_t access_group_;
   std::vector<Rule *> rules_;
   std::set<std::pair<uint16_t, uint16_t>> usb_exceptions_;
+
+  int poll_interval_msecs_;
+  std::string udev_run_path_;
 
   DISALLOW_COPY_AND_ASSIGN(PermissionBroker);
 };

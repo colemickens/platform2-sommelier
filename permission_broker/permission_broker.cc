@@ -6,7 +6,6 @@
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-#include <gflags/gflags.h>
 #include <glib.h>
 #include <grp.h>
 #include <libudev.h>
@@ -24,13 +23,8 @@
 #include "base/strings/stringprintf.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
+#include "chromeos/flag_helper.h"
 #include "permission_broker/rule.h"
-
-DEFINE_string(access_group, "", "The group which has resource access granted "
-              "to it. Must not be empty.");
-DEFINE_int32(poll_interval, 100, "The interval at which to poll for udev "
-             "events.");
-DEFINE_string(udev_run_path, "/run/udev", "The path to udev's run directory.");
 
 using std::string;
 using std::vector;
@@ -40,17 +34,23 @@ namespace permission_broker {
 PermissionBroker::PermissionBroker(const gid_t access_group)
     : udev_(udev_new()), access_group_(access_group) {}
 
-PermissionBroker::PermissionBroker() : udev_(udev_new()) {
+PermissionBroker::PermissionBroker(const std::string &access_group_name,
+                                   const std::string &udev_run_path,
+                                   int poll_interval_msecs)
+    : udev_(udev_new()) {
   CHECK(udev_) << "Could not create udev context, is sysfs mounted?";
-  CHECK(!FLAGS_access_group.empty()) << "You must specify a group name via the "
-                                     << "--access_group flag.";
+  CHECK(!access_group_name.empty()) << "You must specify a group name via the "
+                                    << "--access_group flag.";
+
+  poll_interval_msecs_ = poll_interval_msecs;
+  udev_run_path_ = udev_run_path;
 
   struct group group_buffer;
   struct group *access_group = NULL;
   char buffer[256];
-  getgrnam_r(FLAGS_access_group.c_str(), &group_buffer, buffer,
+  getgrnam_r(access_group_name.c_str(), &group_buffer, buffer,
              sizeof(buffer), &access_group);
-  CHECK(access_group) << "Could not resolve \"" << FLAGS_access_group << "\" "
+  CHECK(access_group) << "Could not resolve \"" << access_group_name << "\" "
                       << "to a named group.";
   access_group_ = access_group->gr_gid;
 }
@@ -173,12 +173,12 @@ void PermissionBroker::WaitForEmptyUdevQueue() {
   udev_poll.fd = inotify_init();
   udev_poll.events = POLLIN;
 
-  int watch = inotify_add_watch(udev_poll.fd, FLAGS_udev_run_path.c_str(),
+  int watch = inotify_add_watch(udev_poll.fd, udev_run_path_.c_str(),
                                 IN_MOVED_TO);
   CHECK_NE(watch, -1) << "Could not add watch for udev run directory.";
 
   while (!udev_queue_get_queue_is_empty(queue)) {
-    if (poll(&udev_poll, 1, FLAGS_poll_interval) > 0) {
+    if (poll(&udev_poll, 1, poll_interval_msecs_) > 0) {
       char buffer[sizeof(struct inotify_event)];
       const ssize_t result = read(udev_poll.fd, buffer, sizeof(buffer));
       if (result < 0)

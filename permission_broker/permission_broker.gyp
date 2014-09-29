@@ -11,11 +11,6 @@
         'libudev',
       ],
     },
-    'link_settings': {
-      'libraries': [
-        '-lgflags',
-      ],
-    },
   },
   'targets': [
     {
