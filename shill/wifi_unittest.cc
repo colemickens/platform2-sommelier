@@ -1561,11 +1561,6 @@ TEST_F(WiFiMainTest, SuspendDoesNotStartScan_FullScan) {
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   ASSERT_TRUE(wifi()->IsIdle());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
-  EXPECT_CALL(
-      netlink_manager_,
-      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
-                                          SetWakeOnPacketConnMessage::kCommand),
-                         _, _, _)).Times(1);
   OnBeforeSuspend();
   dispatcher_.DispatchPendingEvents();
 }
@@ -1578,11 +1573,6 @@ TEST_F(WiFiMainTest, SuspendDoesNotStartScan) {
   ASSERT_TRUE(wifi()->IsIdle());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
   EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
-  EXPECT_CALL(
-      netlink_manager_,
-      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
-                                          SetWakeOnPacketConnMessage::kCommand),
-                         _, _, _)).Times(1);
   OnBeforeSuspend();
   dispatcher_.DispatchPendingEvents();
 }
@@ -4263,12 +4253,15 @@ TEST_F(WiFiMainTest, ApplyWakeOnWiFiSettings) {
 }
 
 TEST_F(WiFiMainTest, WakeOnWiFiSettingsAppliedBeforeSuspend) {
-  // Program NIC to disable wake on WiFi if wake_on_packet_connections_ is
-  // empty.
+  // When wake_on_packet_connections_ is empty, do not program the NIC and
+  // immediately invoke the callback to report success.
   EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
-  EXPECT_CALL(*this, SuspendCallback(_)).Times(0);
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(1);
+  EXPECT_CALL(*this, SuspendCallback(ErrorType(Error::kSuccess))).Times(1);
+  EXPECT_CALL(
+      netlink_manager_,
+      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
+                                          SetWakeOnPacketConnMessage::kCommand),
+                         _, _, _)).Times(0);
   OnBeforeSuspend();
   dispatcher_.DispatchPendingEvents();
 

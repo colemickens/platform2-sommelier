@@ -1753,9 +1753,13 @@ void WiFi::OnBeforeSuspend(const ResultCallback &callback) {
     // put the system into dark resume.
     // wake_on_wifi_triggers_.insert(WakeOnWiFi::kDisconnect);
     suspend_actions_done_callback_ = callback;
+    dispatcher()->PostTask(
+        Bind(&WiFi::ApplyWakeOnWiFiSettings, weak_ptr_factory_.GetWeakPtr()));
+  } else {
+    // No need to program NIC if the system is not expected to wake on any
+    // packets, so report success immediately.
+    callback.Run(Error(Error::kSuccess));
   }
-  dispatcher()->PostTask(
-      Bind(&WiFi::ApplyWakeOnWiFiSettings, weak_ptr_factory_.GetWeakPtr()));
 }
 
 void WiFi::OnAfterResume() {
