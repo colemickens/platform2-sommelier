@@ -29,6 +29,8 @@ class EventDevice : public EventDeviceInterface,
   std::string GetPhysPath() override;
   bool IsLidSwitch() override;
   bool IsPowerButton() override;
+  bool IsHoverSupported() override;
+  bool HasLeftButton() override;
   LidState GetInitialLidState() override;
   bool ReadEvents(std::vector<input_event>* events_out) override;
   void WatchForEvents(base::Closure new_events_cb) override;

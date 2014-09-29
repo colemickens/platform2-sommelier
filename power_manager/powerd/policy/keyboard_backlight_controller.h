@@ -69,6 +69,9 @@ class KeyboardBacklightController
   // Called when a notification about video activity has been received.
   void HandleVideoActivity(bool is_fullscreen);
 
+  // Called when the user's hands start or stop hovering over the touchpad.
+  void HandleHoverStateChanged(bool hovering);
+
   // BacklightController implementation:
   void AddObserver(BacklightControllerObserver* observer) override;
   void RemoveObserver(BacklightControllerObserver* observer) override;
@@ -153,6 +156,7 @@ class KeyboardBacklightController
   bool off_for_inactivity_;
   bool shutting_down_;
   bool docked_;
+  bool hovering_;
 
   // Is a fullscreen video currently being played?
   bool fullscreen_video_playing_;

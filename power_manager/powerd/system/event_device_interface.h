@@ -39,6 +39,13 @@ class EventDeviceInterface {
   // Returns true if the device can report power button events.
   virtual bool IsPowerButton() = 0;
 
+  // Returns true if the device can report hover events.
+  virtual bool IsHoverSupported() = 0;
+
+  // Returns true if the device reports a left button. This can be used to
+  // distinguish touchpads from touchscreens.
+  virtual bool HasLeftButton() = 0;
+
   // Returns the current state of the lid switch or LID_NOT_PRESENT on error.
   // May not be called after ReadEvents() or WatchForEvents().
   virtual LidState GetInitialLidState() = 0;

@@ -20,6 +20,7 @@ const char kUnpluggedOffMsPref[] = "unplugged_off_ms";
 const char kUnpluggedSuspendMsPref[] = "unplugged_suspend_ms";
 const char kDisableIdleSuspendPref[] = "disable_idle_suspend";
 const char kUseLidPref[] = "use_lid";
+const char kDetectHoverPref[] = "detect_hover";
 const char kRetrySuspendMsPref[] = "retry_suspend_ms";
 const char kRetrySuspendAttemptsPref[] = "retry_suspend_attempts";
 const char kMinVisibleBacklightLevelPref[] = "min_visible_backlight_level";

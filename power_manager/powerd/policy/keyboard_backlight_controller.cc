@@ -73,6 +73,7 @@ KeyboardBacklightController::KeyboardBacklightController()
       off_for_inactivity_(false),
       shutting_down_(false),
       docked_(false),
+      hovering_(false),
       fullscreen_video_playing_(false),
       max_level_(0),
       current_level_(0),
@@ -168,6 +169,13 @@ void KeyboardBacklightController::HandleVideoActivity(bool is_fullscreen) {
         base::TimeDelta::FromMilliseconds(kVideoTimeoutIntervalMs),
         this, &KeyboardBacklightController::HandleVideoTimeout);
   }
+}
+
+void KeyboardBacklightController::HandleHoverStateChanged(bool hovering) {
+  if (hovering == hovering_)
+    return;
+  hovering_ = hovering;
+  UpdateState();
 }
 
 void KeyboardBacklightController::HandlePowerSourceChange(PowerSource source) {}
@@ -353,6 +361,11 @@ bool KeyboardBacklightController::UpdateState() {
   if (shutting_down_ || docked_) {
     percent = 0.0;
     transition = TRANSITION_INSTANT;
+  } else if (hovering_) {
+    // Force the backlight on if the user's hands are hovering over the
+    // touchpad.
+    percent = GetUndimmedPercent();
+    transition = TRANSITION_FAST;
   } else if ((!use_user && fullscreen_video_playing_) ||
              (!use_user && display_brightness_is_zero_) ||
              off_for_inactivity_) {

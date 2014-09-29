@@ -25,6 +25,10 @@ void InputWatcherStub::NotifyObserversAboutPowerButtonEvent(ButtonState state) {
   FOR_EACH_OBSERVER(InputObserver, observers_, OnPowerButtonEvent(state));
 }
 
+void InputWatcherStub::NotifyObserversAboutHoverState(bool hovering) {
+  FOR_EACH_OBSERVER(InputObserver, observers_, OnHoverStateChanged(hovering));
+}
+
 void InputWatcherStub::AddObserver(InputObserver* observer) {
   DCHECK(observer);
   observers_.AddObserver(observer);

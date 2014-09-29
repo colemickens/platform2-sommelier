@@ -27,6 +27,7 @@ class InputWatcherStub : public InputWatcherInterface {
   // Notifies registered observers about various events.
   void NotifyObserversAboutLidState();
   void NotifyObserversAboutPowerButtonEvent(ButtonState state);
+  void NotifyObserversAboutHoverState(bool hovering);
 
   // InputWatcherInterface implementation:
   void AddObserver(InputObserver* observer) override;

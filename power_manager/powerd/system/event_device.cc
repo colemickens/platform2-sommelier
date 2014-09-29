@@ -61,6 +61,14 @@ bool EventDevice::IsPowerButton() {
   return HasEventBit(0, EV_KEY) && HasEventBit(EV_KEY, KEY_POWER);
 }
 
+bool EventDevice::IsHoverSupported() {
+  return HasEventBit(0, EV_ABS) && HasEventBit(EV_ABS, ABS_MT_DISTANCE);
+}
+
+bool EventDevice::HasLeftButton() {
+  return HasEventBit(0, EV_KEY) && HasEventBit(EV_KEY, BTN_LEFT);
+}
+
 LidState EventDevice::GetInitialLidState() {
   CHECK(!fd_watcher_) << "GetInitialLidState called after WatchForEvents";
   return GetSwitchBit(SW_LID) ? LID_CLOSED : LID_OPEN;

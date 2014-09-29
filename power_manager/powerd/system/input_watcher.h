@@ -63,7 +63,16 @@ class InputWatcher : public InputWatcherInterface,
                    UdevAction action) override;
 
  private:
+  // Flushes queued events and reads new events from |device|.
   void OnNewEvents(EventDeviceInterface* device);
+
+  // Updates internal state and notifies observers in response to |event|.
+  void ProcessEvent(const input_event& event);
+
+  // Updates |current_multitouch_slot_| and |multitouch_slots_hover_state_| in
+  // response to |event|, doing nothing if it isn't actually an MT event. Helper
+  // method called by ProcessEvent().
+  void ProcessHoverEvent(const input_event& event);
 
   // Handles an input being added to or removed from the system.
   void HandleAddedInput(const std::string& input_name, int input_num);
@@ -83,11 +92,31 @@ class InputWatcher : public InputWatcherInterface,
   // |event_devices_|, or NULL if no lid device was found.
   EventDeviceInterface* lid_device_;
 
+  // The event device reporting hover events. Weak pointer to an element in
+  // |event_devices_|, or NULL if no hover device was found.
+  EventDeviceInterface* hover_device_;
+
   // Should the lid be watched for events if present?
   bool use_lid_;
 
   // Most-recently-seen lid state.
   LidState lid_state_;
+
+  // Should hover events be reported?
+  bool detect_hover_;
+
+  // Most-recently-reported hover state.
+  bool hovering_;
+
+  // Multitouch slot for which input events are currently being reported. See
+  // https://www.kernel.org/doc/Documentation/input/multi-touch-protocol.txt for
+  // more details about the protocol.
+  int current_multitouch_slot_;
+
+  // Bitmap containing the hover state of individual multitouch slots; if a bit
+  // is true, it indicates that the corresponding slot is either reporting a
+  // hover event above the touchpad or a touch event on the touchpad.
+  uint64_t multitouch_slots_hover_state_;
 
   // Events read from |lid_device_| by QueryLidState() that haven't yet been
   // sent to observers.

@@ -35,6 +35,9 @@ extern const char kDisableIdleSuspendPref[];
 // If true, powerd will monitor the lid switch.
 extern const char kUseLidPref[];
 
+// If true, powerd will detect hovering if a capable device is present.
+extern const char kDetectHoverPref[];
+
 // Integer amount of time that powerd should wait before retrying after a failed
 // suspend attempt.
 extern const char kRetrySuspendMsPref[];

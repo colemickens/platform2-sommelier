@@ -442,5 +442,68 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenDisplayBacklightIsOff) {
   EXPECT_EQ(100, backlight_.current_level());
 }
 
+TEST_F(KeyboardBacklightControllerTest, Hover) {
+  als_steps_pref_ = "50.0 -1 -1";
+  user_steps_pref_ = "0.0\n100.0";
+  Init();
+  controller_.HandleSessionStateChange(SESSION_STARTED);
+  light_sensor_.NotifyObservers();
+  ASSERT_EQ(50, backlight_.current_level());
+
+  // Fullscreen video should turn the backlight off.
+  controller_.HandleVideoActivity(true);
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(kSlowBacklightTransitionMs,
+            backlight_.current_interval().InMilliseconds());
+
+  // If hovering is detected, the backlight should be forced on.
+  controller_.HandleHoverStateChanged(true);
+  EXPECT_EQ(50, backlight_.current_level());
+  EXPECT_EQ(kFastBacklightTransitionMs,
+            backlight_.current_interval().InMilliseconds());
+
+  // Stopping hovering while the video is still playing should result in the
+  // backlight going off again.
+  controller_.HandleHoverStateChanged(false);
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(kSlowBacklightTransitionMs,
+            backlight_.current_interval().InMilliseconds());
+
+  // Stop the video.
+  test_api_.TriggerVideoTimeout();
+  EXPECT_EQ(50, backlight_.current_level());
+  EXPECT_EQ(kSlowBacklightTransitionMs,
+            backlight_.current_interval().InMilliseconds());
+
+  // Increase the brightness to 100, dim for inactivity, and check that hover
+  // restores the user-requested level.
+  ASSERT_TRUE(controller_.IncreaseUserBrightness());
+  controller_.SetDimmedForInactivity(true);
+  ASSERT_EQ(GetDimmedLevel(), backlight_.current_level());
+  controller_.HandleHoverStateChanged(true);
+  EXPECT_EQ(100, backlight_.current_level());
+  EXPECT_EQ(kFastBacklightTransitionMs,
+            backlight_.current_interval().InMilliseconds());
+
+  // The backlight should stay on while hovering even if it's requested to turn
+  // off for inactivity.
+  controller_.SetOffForInactivity(true);
+  EXPECT_EQ(100, backlight_.current_level());
+
+  // Stop hovering and check that starting again turns the backlight on again.
+  controller_.HandleHoverStateChanged(false);
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(kSlowBacklightTransitionMs,
+            backlight_.current_interval().InMilliseconds());
+  controller_.HandleHoverStateChanged(true);
+  EXPECT_EQ(100, backlight_.current_level());
+  EXPECT_EQ(kFastBacklightTransitionMs,
+            backlight_.current_interval().InMilliseconds());
+
+  // A notification that the system is shutting down should take precedence.
+  controller_.SetShuttingDown(true);
+  EXPECT_EQ(0, backlight_.current_level());
+}
+
 }  // namespace policy
 }  // namespace power_manager

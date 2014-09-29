@@ -47,6 +47,9 @@ class InputController : public system::InputObserver {
     // Handles the power button being pressed or released.
     virtual void HandlePowerButtonEvent(ButtonState state) = 0;
 
+    // Handles hovering/proximity changes.
+    virtual void HandleHoverStateChanged(bool hovering) = 0;
+
     // Defers the inactivity timeout in response to VT2 being active (since
     // Chrome can't detect user activity).
     virtual void DeferInactivityTimeoutForVT2() = 0;
@@ -96,6 +99,7 @@ class InputController : public system::InputObserver {
   // system::InputObserver implementation:
   void OnLidEvent(LidState state) override;
   void OnPowerButtonEvent(ButtonState state) override;
+  void OnHoverStateChanged(bool hovering) override;
 
  private:
   // Asks |delegate_| to defer the inactivity timeout if the second virtual

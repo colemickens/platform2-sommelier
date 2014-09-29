@@ -622,6 +622,12 @@ void Daemon::HandlePowerButtonEvent(ButtonState state) {
     display_backlight_controller_->HandlePowerButtonPress();
 }
 
+void Daemon::HandleHoverStateChanged(bool hovering) {
+  LOG(INFO) << "Hovering " << (hovering ? "on" : "off");
+  if (keyboard_backlight_controller_)
+    keyboard_backlight_controller_->HandleHoverStateChanged(hovering);
+}
+
 void Daemon::DeferInactivityTimeoutForVT2() {
   LOG(INFO) << "Reporting synthetic user activity since VT2 is active";
   state_controller_->HandleUserActivity();

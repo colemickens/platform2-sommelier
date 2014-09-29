@@ -145,6 +145,10 @@ void InputController::OnPowerButtonEvent(ButtonState state) {
   delegate_->HandlePowerButtonEvent(state);
 }
 
+void InputController::OnHoverStateChanged(bool hovering) {
+  delegate_->HandleHoverStateChanged(hovering);
+}
+
 void InputController::CheckActiveVT() {
   if (input_watcher_->GetActiveVT() == 2)
     delegate_->DeferInactivityTimeoutForVT2();

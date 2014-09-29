@@ -106,8 +106,13 @@ const char InputWatcher::kInputUdevSubsystem[] = "input";
 
 InputWatcher::InputWatcher()
     : lid_device_(NULL),
+      hover_device_(NULL),
       use_lid_(true),
       lid_state_(LID_OPEN),
+      detect_hover_(false),
+      hovering_(false),
+      current_multitouch_slot_(0),
+      multitouch_slots_hover_state_(0),
       power_button_to_skip_(kPowerButtonToSkip),
       console_fd_(-1),
       udev_(NULL) {
@@ -135,6 +140,8 @@ bool InputWatcher::Init(
   if (prefs->GetBool(kLegacyPowerButtonPref, &legacy_power_button) &&
       legacy_power_button)
     power_button_to_skip_ = kPowerButtonToSkipForLegacy;
+
+  prefs->GetBool(kDetectHoverPref, &detect_hover_);
 
   udev_->AddSubsystemObserver(kInputUdevSubsystem, this);
 
@@ -273,9 +280,73 @@ void InputWatcher::OnNewEvents(EventDeviceInterface* device) {
   VLOG(1) << "Read " << events.size() << " event(s) from "
           << device->GetDebugName();
   for (size_t i = 0; i < events.size(); ++i) {
+    // Update |lid_state_| here instead of in ProcessEvent() so we can avoid
+    // modifying it in response to queued events.
     if (device == lid_device_)
       GetLidStateFromEvent(events[i], &lid_state_);
-    NotifyObserversAboutEvent(events[i]);
+    ProcessEvent(events[i]);
+  }
+}
+
+void InputWatcher::ProcessEvent(const input_event& event) {
+  LidState lid_state = LID_OPEN;
+  if (GetLidStateFromEvent(event, &lid_state)) {
+    VLOG(1) << "Notifying observers about lid " << LidStateToString(lid_state)
+            << " event";
+    FOR_EACH_OBSERVER(InputObserver, observers_, OnLidEvent(lid_state));
+  }
+
+  ButtonState button_state = BUTTON_DOWN;
+  if (GetPowerButtonStateFromEvent(event, &button_state)) {
+    VLOG(1) << "Notifying observers about power button "
+            << ButtonStateToString(button_state) << " event";
+    FOR_EACH_OBSERVER(InputObserver, observers_,
+                      OnPowerButtonEvent(button_state));
+  }
+
+  ProcessHoverEvent(event);
+}
+
+void InputWatcher::ProcessHoverEvent(const input_event& event) {
+  if (event.type == EV_ABS && event.code == ABS_MT_SLOT) {
+    VLOG(2) << "ABS_MT_SLOT " << event.value;
+    // ABS_MT_SLOT events announce the slot that following multitouch events
+    // will refer to.
+    if (event.value < 0 ||
+        event.value >=
+        static_cast<int>(sizeof(multitouch_slots_hover_state_) * 8)) {
+      LOG(WARNING) << "Ignoring ABS_MT_SLOT event for slot "
+                   << event.value;
+      current_multitouch_slot_ = -1;
+    } else {
+      current_multitouch_slot_ = event.value;
+    }
+  } else if (event.type == EV_ABS && event.code == ABS_MT_TRACKING_ID) {
+    VLOG(2) << "ABS_MT_TRACKING_ID " << event.value;
+    // ABS_MT_TRACKING_ID events associate a tracking ID with the current slot,
+    // with -1 indicating that the slot is unused. Use them as a proxy for
+    // whether the slot is reporting a hover (or touch).
+    if (current_multitouch_slot_ >= 0) {
+      const uint64_t slot_bit =
+          static_cast<uint64_t>(1) << current_multitouch_slot_;
+      if (event.value >= 0)
+        multitouch_slots_hover_state_ |= slot_bit;
+      else
+        multitouch_slots_hover_state_ &= ~slot_bit;
+    }
+  } else if (event.type == EV_SYN && event.code == SYN_REPORT) {
+    // SYN_REPORT events indicate the end of the current set of multitouch data.
+    // Check whether the overall hovering state is different from before and
+    // notify observers if so.
+    VLOG(2) << "SYN_REPORT";
+    bool hovering = multitouch_slots_hover_state_ != 0;
+    if (hovering != hovering_) {
+      VLOG(1) << "Notifying observers about hover state change to "
+              << (hovering ? "on" : "off");
+      hovering_ = hovering;
+      FOR_EACH_OBSERVER(InputObserver, observers_,
+                        OnHoverStateChanged(hovering_));
+    }
   }
 }
 
@@ -320,6 +391,17 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
     VLOG(1) << "Initial lid state is " << LidStateToString(lid_state_);
   }
 
+  if (detect_hover_ && device->IsHoverSupported() && device->HasLeftButton()) {
+    if (hover_device_) {
+      LOG(WARNING) << "Skipping additional hover device "
+                   << device->GetDebugName();
+    } else {
+      LOG(INFO) << "Watching hover device: " << device->GetDebugName();
+      should_watch = true;
+      hover_device_ = device.get();
+    }
+  }
+
   if (should_watch) {
     device->WatchForEvents(base::Bind(&InputWatcher::OnNewEvents,
                                       base::Unretained(this),
@@ -336,30 +418,15 @@ void InputWatcher::HandleRemovedInput(int input_num) {
   LOG(INFO) << "Stopping watching " << it->second->GetDebugName();
   if (lid_device_ == it->second.get())
     lid_device_ = NULL;
+  if (hover_device_ == it->second.get())
+    hover_device_ = NULL;
   event_devices_.erase(it);
 }
 
 void InputWatcher::SendQueuedEvents() {
   for (size_t i = 0; i < queued_events_.size(); ++i)
-    NotifyObserversAboutEvent(queued_events_[i]);
+    ProcessEvent(queued_events_[i]);
   queued_events_.clear();
-}
-
-void InputWatcher::NotifyObserversAboutEvent(const input_event& event) {
-  LidState lid_state = LID_OPEN;
-  if (GetLidStateFromEvent(event, &lid_state)) {
-    VLOG(1) << "Notifying observers about lid " << LidStateToString(lid_state)
-            << " event";
-    FOR_EACH_OBSERVER(InputObserver, observers_, OnLidEvent(lid_state));
-  }
-
-  ButtonState button_state = BUTTON_DOWN;
-  if (GetPowerButtonStateFromEvent(event, &button_state)) {
-    VLOG(1) << "Notifying observers about power button "
-            << ButtonStateToString(button_state) << " event";
-    FOR_EACH_OBSERVER(InputObserver, observers_,
-                      OnPowerButtonEvent(button_state));
-  }
 }
 
 }  // namespace system

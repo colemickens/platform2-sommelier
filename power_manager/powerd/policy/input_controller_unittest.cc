@@ -36,6 +36,8 @@ const char kPowerButtonUp[] = "power_up";
 const char kDeferInactivity[] = "defer_inactivity";
 const char kShutDown[] = "shut_down";
 const char kMissingPowerButtonAcknowledgment[] = "missing_power_button_ack";
+const char kHoverOn[] = "hover_on";
+const char kHoverOff[] = "hover_off";
 
 std::string GetAcknowledgmentDelayAction(base::TimeDelta delay) {
   return base::StringPrintf("power_button_ack_delay(%" PRId64 ")",
@@ -69,6 +71,9 @@ class TestInputControllerDelegate : public InputController::Delegate,
   }
   void ReportPowerButtonAcknowledgmentDelay(base::TimeDelta delay) override {
     AppendAction(GetAcknowledgmentDelayAction(delay));
+  }
+  void HandleHoverStateChanged(bool hovering) override {
+    AppendAction(hovering ? kHoverOn : kHoverOff);
   }
 
  private:
@@ -256,6 +261,14 @@ TEST_F(InputControllerTest, AcknowledgePowerButtonPresses) {
   ASSERT_FALSE(controller_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   input_watcher_.NotifyObserversAboutPowerButtonEvent(BUTTON_UP);
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
+}
+
+TEST_F(InputControllerTest, OnHoverStateChangedTest) {
+  Init();
+  input_watcher_.NotifyObserversAboutHoverState(true);
+  EXPECT_EQ(kHoverOn, delegate_.GetActions());
+  input_watcher_.NotifyObserversAboutHoverState(false);
+  EXPECT_EQ(kHoverOff, delegate_.GetActions());
 }
 
 }  // namespace policy
