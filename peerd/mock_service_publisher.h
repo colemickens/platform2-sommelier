@@ -22,6 +22,10 @@ class MockServicePublisher : public ServicePublisherInterface {
                                       const Service& service));
   MOCK_METHOD2(OnServiceRemoved, bool(chromeos::ErrorPtr* error,
                                       const std::string& service_id));
+  MOCK_METHOD2(OnFriendlyNameChanged, bool(chromeos::ErrorPtr* error,
+                                           const std::string& name));
+  MOCK_METHOD2(OnNoteChanged, bool(chromeos::ErrorPtr* error,
+                                   const std::string& note));
 
   // Must be last member of MockServicePublisher.
   base::WeakPtrFactory<MockServicePublisher> weak_ptr_factory_{this};

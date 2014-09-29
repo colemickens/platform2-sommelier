@@ -7,6 +7,7 @@
 
 #include "peerd/peer.h"
 
+#include <string>
 #include <gmock/gmock.h>
 
 namespace peerd {
@@ -18,7 +19,11 @@ class MockAvahiClient: public AvahiClient {
   MOCK_METHOD1(RegisterAsync, void(const CompletionAction& cb));
   MOCK_METHOD1(RegisterOnAvahiRestartCallback,
                void(const OnAvahiRestartCallback& cb));
-  MOCK_METHOD0(GetPublisher, base::WeakPtr<ServicePublisherInterface>());
+  MOCK_METHOD3(GetPublisher,
+               base::WeakPtr<ServicePublisherInterface>(
+                   const std::string& uuid,
+                   const std::string& friendly_name,
+                   const std::string& note));
 };
 
 }  // namespace peerd

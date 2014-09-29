@@ -144,6 +144,18 @@ void Peer::SetLastSeen(uint64_t last_seen) {
   last_seen_.SetValue(last_seen);
 }
 
+std::string Peer::GetUUID() const {
+  return uuid_.value();
+}
+
+std::string Peer::GetFriendlyName() const {
+  return name_.value();
+}
+
+std::string Peer::GetNote() const {
+  return note_.value();
+}
+
 bool Peer::AddService(chromeos::ErrorPtr* error,
                       const string& service_id,
                       const vector<ip_addr>& addresses,

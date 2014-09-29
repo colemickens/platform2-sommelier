@@ -42,7 +42,10 @@ class AvahiClient {
   // When we come back from these states, we'll call all
   // OnAvahiRestartCallbacks that we have.  At that point, grab a new publisher
   // and repeat.
-  virtual base::WeakPtr<ServicePublisherInterface> GetPublisher();
+  virtual base::WeakPtr<ServicePublisherInterface> GetPublisher(
+      const std::string& uuid,
+      const std::string& friendly_name,
+      const std::string& note);
 
  private:
   // Watch for changes in Avahi server state.

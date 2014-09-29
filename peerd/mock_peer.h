@@ -32,11 +32,15 @@ class MockPeer : public Peer {
   }
   ~MockPeer() override = default;
 
+  MOCK_CONST_METHOD0(GetUUID, std::string());
+  MOCK_CONST_METHOD0(GetFriendlyName, std::string());
+  MOCK_CONST_METHOD0(GetNote, std::string());
   MOCK_METHOD2(SetFriendlyName, bool(chromeos::ErrorPtr* error,
                                      const std::string& friendly_name));
   MOCK_METHOD2(SetNote, bool(chromeos::ErrorPtr* error,
                              const std::string& note));
   MOCK_METHOD1(SetLastSeen, void(uint64_t last_seen));
+
   MOCK_METHOD4(AddService,
                bool(chromeos::ErrorPtr* error,
                     const std::string& service_id,

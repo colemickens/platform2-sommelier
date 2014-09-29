@@ -27,6 +27,7 @@ namespace errors {
 namespace avahi {
 
 extern const char kRemovedUnknownService[];
+extern const char kInvalidServiceId[];
 
 }  // namespace avahi
 }  // namespace errors
@@ -34,6 +35,9 @@ extern const char kRemovedUnknownService[];
 class AvahiServicePublisher : public ServicePublisherInterface {
  public:
   AvahiServicePublisher(const std::string& lan_name,
+                        const std::string& uuid,
+                        const std::string& friendly_name,
+                        const std::string& note,
                         const scoped_refptr<dbus::Bus>& bus,
                         dbus::ObjectProxy* avahi_proxy);
   ~AvahiServicePublisher();
@@ -42,14 +46,17 @@ class AvahiServicePublisher : public ServicePublisherInterface {
   // See comments in ServicePublisherInterface.
   bool OnServiceUpdated(chromeos::ErrorPtr* error,
                         const Service& service) override;
-  // See comments in ServicePublisherInterface.
   bool OnServiceRemoved(chromeos::ErrorPtr* error,
                         const std::string& service_id) override;
+  bool OnFriendlyNameChanged(chromeos::ErrorPtr* error,
+                             const std::string& name) override;
+  bool OnNoteChanged(chromeos::ErrorPtr* error,
+                     const std::string& note) override;
 
  private:
   using TxtRecord = std::vector<std::vector<uint8_t>>;
   // Transform a service_id to a mDNS compatible service type.
-  static std::string GetServiceType(const Service& service);
+  static std::string GetServiceType(const std::string& service_id);
   // Transform a service_info to a mDNS compatible TXT record value.
   // Concretely, a TXT record consists of a list of strings in the format
   // "key=value".  Each string must be less than 256 bytes long, since they are
@@ -58,18 +65,29 @@ class AvahiServicePublisher : public ServicePublisherInterface {
   //
   // We need a DBus type of "aay", which is a vector<vector<uint8_t>> in our
   // bindings.
-  static TxtRecord GetTxtRecord(const Service& service);
+  static TxtRecord GetTxtRecord(const Service::ServiceInfo& service);
 
-  // Attempts to add the given |service| to the given |group_proxy|.
-  // Returns true on success, false otherwise.  Does no cleanup.
+  bool UpdateGroup(chromeos::ErrorPtr* error,
+                   const std::string& service_id,
+                   const Service::ServiceInfo& service_info);
+  // Attempts to add the given |service_id|/|service_info| pair to the
+  // given |group_proxy|.  Returns true on success, false otherwise.
+  // Does no cleanup.
   bool AddServiceToGroup(chromeos::ErrorPtr* error,
-                         const Service& service,
+                         const std::string& service_id,
+                         const Service::ServiceInfo& service_info,
                          dbus::ObjectProxy* group_proxy);
   // Removes all records corresponding to the provided |group_proxy| and
   // detaches from any related signals.
   bool FreeGroup(chromeos::ErrorPtr* error, dbus::ObjectProxy* group_proxy);
+  // Update the master service listing to include the given |service_id|.
+  bool UpdateRootService(chromeos::ErrorPtr* error);
+
 
   const std::string lan_unique_hostname_;
+  const std::string uuid_;
+  std::string friendly_name_;
+  std::string note_;
   scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* avahi_proxy_;
   std::map<std::string, dbus::ObjectProxy*> outstanding_groups_;

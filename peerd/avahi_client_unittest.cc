@@ -91,18 +91,10 @@ class AvahiClientTest : public ::testing::Test {
                   MockCallMethodAndBlockWithErrorDetails(IsDBusMethodCallTo(
                       kServerInterface, kServerMethodGetState), _, _))
           .WillOnce(Invoke(this, &AvahiClientTest::ReturnsCurrentState));
-      EXPECT_CALL(*avahi_proxy_,
-                  MockCallMethodAndBlockWithErrorDetails(IsDBusMethodCallTo(
-                      kServerInterface, kServerMethodGetHostName), _, _))
-          .WillOnce(Invoke(&ReturnsHostName));
     } else {
       EXPECT_CALL(*avahi_proxy_,
                   MockCallMethodAndBlockWithErrorDetails(IsDBusMethodCallTo(
                       kServerInterface, kServerMethodGetState), _, _))
-          .Times(0);
-      EXPECT_CALL(*avahi_proxy_,
-                  MockCallMethodAndBlockWithErrorDetails(IsDBusMethodCallTo(
-                      kServerInterface, kServerMethodGetHostName), _, _))
           .Times(0);
     }
     current_avahi_state_ = state;
@@ -122,13 +114,6 @@ class AvahiClientTest : public ::testing::Test {
   }
 
   void SendOnStateChanged(AvahiServerState state) {
-    if (state == AVAHI_SERVER_RUNNING) {
-      // Any time we transition to UP we're going to want the hostname again.
-      EXPECT_CALL(*avahi_proxy_,
-                  MockCallMethodAndBlockWithErrorDetails(IsDBusMethodCallTo(
-                      kServerInterface, kServerMethodGetHostName), _, _))
-          .WillOnce(Invoke(&ReturnsHostName));
-    }
     dbus::Signal signal(kServerInterface, kServerSignalStateChanged);
     dbus::MessageWriter writer(&signal);
     // No error message to report cap'n.
@@ -169,6 +154,15 @@ TEST_F(AvahiClientTest, ShouldNotifyRestart_WhenAvahiComesUpLater) {
   // The StateChanged signal should trigger our callback.
   EXPECT_CALL(*this, AvahiReady()).Times(1);
   SendOnStateChanged(AVAHI_SERVER_RUNNING);
+}
+
+TEST_F(AvahiClientTest, CanGetPublisherWhenAvahiIsUp) {
+  RegisterAsyncWhenAvahiIs(true, AVAHI_SERVER_RUNNING);
+  EXPECT_CALL(*avahi_proxy_,
+              MockCallMethodAndBlockWithErrorDetails(IsDBusMethodCallTo(
+                  kServerInterface, kServerMethodGetHostName), _, _))
+      .WillOnce(Invoke(&ReturnsHostName));
+  EXPECT_NE(nullptr, client_->GetPublisher("uuid", "name", "note"));
 }
 
 }  // namespace peerd

@@ -69,11 +69,12 @@ class AvahiServicePublisherTest : public ::testing::Test {
         mock_bus_.get(), kServiceName, ObjectPath(kServerPath));
     group_proxy_ = new dbus::MockObjectProxy(
         mock_bus_.get(), kServiceName, ObjectPath(kGroupPath));
-    publisher_.reset(new AvahiServicePublisher(kHost, mock_bus_, avahi_proxy_));
+    publisher_.reset(new AvahiServicePublisher(kHost, "uuid", "name", "note",
+                                               mock_bus_, avahi_proxy_));
     // Ignore threading concerns.
     EXPECT_CALL(*mock_bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*mock_bus_, AssertOnDBusThread()).Times(AnyNumber());
-    // We might try to create a new EntryGroup as part of the test.
+    // We might try to create new EntryGroups as part of the test.
     ON_CALL(*avahi_proxy_, MockCallMethodAndBlockWithErrorDetails(
         IsDBusMethodCallTo(kServerInterface,
                            kServerMethodEntryGroupNew), _, _))
@@ -104,28 +105,35 @@ class AvahiServicePublisherTest : public ::testing::Test {
   }
 
   void ExpectServiceAdded() {
+    // Each new service triggers two AddService calls and two Commit calls.
+    // The first of each is for the service itself.  The second set is for
+    // the master Serbus record.
     EXPECT_CALL(*group_proxy_, MockCallMethodAndBlockWithErrorDetails(
         IsDBusMethodCallTo(kGroupInterface, kGroupMethodAddService), _, _))
-        .Times(1)
-        .WillOnce(Invoke(&ReturnsEmptyResponse));
+        .Times(2)
+        .WillRepeatedly(Invoke(&ReturnsEmptyResponse));
     EXPECT_CALL(*group_proxy_, MockCallMethodAndBlockWithErrorDetails(
         IsDBusMethodCallTo(kGroupInterface, kGroupMethodCommit), _, _))
-        .Times(1)
-        .WillOnce(Invoke(&ReturnsEmptyResponse));
+        .Times(2)
+        .WillRepeatedly(Invoke(&ReturnsEmptyResponse));
   }
 
-  void ExpectServiceResetAndCommit() {
+  void ExpectServiceModified() {
+    // When modifying existing services, we reset both the service in
+    // question and the master record.
     EXPECT_CALL(*group_proxy_, MockCallMethodAndBlockWithErrorDetails(
         IsDBusMethodCallTo(kGroupInterface, kGroupMethodReset), _, _))
-        .Times(1)
-        .WillOnce(Invoke(&ReturnsEmptyResponse));
+        .Times(2)
+        .WillRepeatedly(Invoke(&ReturnsEmptyResponse));
     ExpectServiceAdded();
   }
 
-  void ExpectServiceFree() {
+  void ExpectFinalServiceFree() {
+    // The final service free also removes the master record.
     EXPECT_CALL(*group_proxy_, MockCallMethodAndBlockWithErrorDetails(
         IsDBusMethodCallTo(kGroupInterface, kGroupMethodFree), _, _))
-        .WillOnce(Invoke(&ReturnsEmptyResponse));
+        .Times(2)
+        .WillRepeatedly(Invoke(&ReturnsEmptyResponse));
   }
 
   scoped_refptr<dbus::MockBus> mock_bus_;
@@ -138,7 +146,7 @@ TEST_F(AvahiServicePublisherTest, ShouldFreeAddedGroups) {
   auto service = CreateService(kServiceId);
   ExpectServiceAdded();
   EXPECT_TRUE(publisher_->OnServiceUpdated(nullptr, *service));
-  ExpectServiceFree();
+  ExpectFinalServiceFree();
   publisher_.reset();
 }
 
@@ -147,25 +155,26 @@ TEST_F(AvahiServicePublisherTest, CanEncodeTxtRecords) {
       kServiceId, {{"a", "w"}, {"b", "foo"}});
   std::vector<std::vector<uint8_t>> result{{'a', '=', 'w'},
                                            {'b', '=', 'f', 'o', 'o'}};
-  EXPECT_EQ(result, AvahiServicePublisher::GetTxtRecord(*service));
+  EXPECT_EQ(result,
+            AvahiServicePublisher::GetTxtRecord(service->GetServiceInfo()));
 }
 
 TEST_F(AvahiServicePublisherTest, CanHandleServiceUpdates) {
   auto service = CreateService(kServiceId);
   ExpectServiceAdded();
   EXPECT_TRUE(publisher_->OnServiceUpdated(nullptr, *service));
-  ExpectServiceResetAndCommit();
+  ExpectServiceModified();
   // The service publisher doesn't actually know anything about the previous
   // values inside the service.  So we don't need to mutate the service.
   EXPECT_TRUE(publisher_->OnServiceUpdated(nullptr, *service));
-  ExpectServiceFree();
+  ExpectFinalServiceFree();
 }
 
 TEST_F(AvahiServicePublisherTest, CanRemoveService) {
   auto service = CreateService(kServiceId);
   ExpectServiceAdded();
   EXPECT_TRUE(publisher_->OnServiceUpdated(nullptr, *service));
-  ExpectServiceFree();
+  ExpectFinalServiceFree();
   EXPECT_TRUE(publisher_->OnServiceRemoved(nullptr, kServiceId));
   publisher_.reset();  // Note that we should *not* see a Group.Free() call.
 }

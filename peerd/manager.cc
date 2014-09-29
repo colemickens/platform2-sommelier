@@ -186,7 +186,8 @@ void Manager::ShouldRefreshAvahiPublisher() {
   LOG(INFO) << "Publishing services to mDNS";
   // The old publisher has been invalidated, and the records pulled.  We should
   // re-register the records we care about.
-  self_->RegisterServicePublisher(avahi_client_->GetPublisher());
+  self_->RegisterServicePublisher(avahi_client_->GetPublisher(
+        self_->GetUUID(), self_->GetFriendlyName(), self_->GetNote()));
 }
 
 }  // namespace peerd

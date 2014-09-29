@@ -116,9 +116,7 @@ void AvahiClient::HandleServerStateChange(int32_t state) {
         return;
       }
       avahi_is_up_ = true;
-      string host_name;
-      CHECK(GetHostName(&host_name)) << "Failed to resolve local hostname.";
-      publisher_.reset(new AvahiServicePublisher(host_name, bus_, server_));
+      // We're going to lazily instantiate the publisher on demand.
       for (const auto& cb : avahi_ready_callbacks_) {
         cb.Run();
       }
@@ -142,9 +140,23 @@ void AvahiClient::HandleServerStateChange(int32_t state) {
   }
 }
 
-base::WeakPtr<ServicePublisherInterface> AvahiClient::GetPublisher() {
+base::WeakPtr<ServicePublisherInterface> AvahiClient::GetPublisher(
+    const std::string& uuid,
+    const std::string& friendly_name,
+    const std::string& note) {
   base::WeakPtr<ServicePublisherInterface> result;
-  if (publisher_) { result = publisher_->GetWeakPtr(); }
+  if (!avahi_is_up_) { return result; }
+  if (!publisher_) {
+    string host_name;
+    if (!GetHostName(&host_name)) {
+      LOG(ERROR) << "Failed to resolve local hostname.  Marking avahi down.";
+      avahi_is_up_ = false;
+      return result;
+    }
+    publisher_.reset(new AvahiServicePublisher(
+          host_name, uuid, friendly_name, note, bus_, server_));
+  }
+  result = publisher_->GetWeakPtr();
   return result;
 }
 

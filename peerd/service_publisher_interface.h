@@ -29,6 +29,20 @@ class ServicePublisherInterface {
   // a timely fashion, this is not guaranteed.
   virtual bool OnServiceRemoved(chromeos::ErrorPtr* error,
                                 const std::string& service_id) = 0;
+  // Signals to a service publisher that we have changed the friendly
+  // name of the local device.  Returns true if this change has been
+  // accurately reflected in the technology specify service advertisement.
+  // Note that while publishers should make best efforts to inform peers
+  // of name changes in a timely fashion, this is not guaranteed.
+  virtual bool OnFriendlyNameChanged(chromeos::ErrorPtr* error,
+                                     const std::string& name) = 0;
+  // Signals to a service publisher that we have changed the descriptive
+  // note of the local device.  Returns true if this change has been
+  // accurately reflected in the technology specify service advertisement.
+  // Note that while publishers should make best efforts to inform peers
+  // of note changes in a timely fashion, this is not guaranteed.
+  virtual bool OnNoteChanged(chromeos::ErrorPtr* error,
+                             const std::string& note) = 0;
 };
 
 }  // namespace peerd
