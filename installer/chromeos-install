@@ -295,12 +295,11 @@ loop_offset_setup() {
   local filename=$1
   local offset=$2
 
-  LOOP_DEV=$(losetup -f)
+  LOOP_DEV=$(losetup -f --show -o $(($offset * 512)) ${filename})
   if [ -z "$LOOP_DEV" ]; then
     echo "No free loop device. Free up a loop device or reboot. Exiting."
     exit 1
   fi
-  losetup -o $(($offset * 512)) ${LOOP_DEV} ${filename}
 
   LOOPS="${LOOP_DEV}${LOOPS:+ }${LOOPS:-}"
 }
