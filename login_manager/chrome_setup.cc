@@ -236,10 +236,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
 
 // Adds enterprise-related flags to the command line.
 void AddEnterpriseFlags(ChromiumCommandBuilder* builder) {
-  // Device Manager Server used to fetch the enterprise policy, if applicable.
-  builder->AddArg(
-      "--device-management-url=https://m.google.com/devicemanagement/data/api");
-
   builder->AddArg("--enterprise-enable-forced-re-enrollment");
   builder->AddArg("--enterprise-enrollment-initial-modulus=12");
   builder->AddArg("--enterprise-enrollment-modulus-limit=16");
