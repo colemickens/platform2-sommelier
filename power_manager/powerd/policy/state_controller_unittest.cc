@@ -794,7 +794,12 @@ TEST_F(StateControllerTest, DisableIdleSuspend) {
   controller_.HandlePolicyChange(policy);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
-  // The pref should also override shutdown-on-idle actions.
+  // Stop-session actions should still be honored.
+  policy.set_ac_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(kStopSession, delegate_.GetActions());
+
+  // Shutdown actions should be ignored, though.
   policy.set_ac_idle_action(PowerManagementPolicy_Action_SHUT_DOWN);
   controller_.HandlePolicyChange(policy);
   controller_.HandleSessionStateChange(SESSION_STOPPED);

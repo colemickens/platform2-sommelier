@@ -690,10 +690,11 @@ void StateController::UpdateSettingsAndState() {
   else if (saw_user_activity_soon_after_screen_dim_or_off_)
     ScaleDelays(&delays_, user_activity_factor);
 
-  // The disable-idle-suspend pref overrides |policy_|.  Note that it also
-  // overrides non-suspend actions; it should e.g. block the system from
-  // shutting down on idle if no session has been started.
-  if (disable_idle_suspend_)
+  // The disable-idle-suspend pref overrides |policy_|. Note that it also
+  // prevents the system from shutting down on idle if no session has been
+  // started.
+  if (disable_idle_suspend_ &&
+      (idle_action_ == SUSPEND || idle_action_ == SHUT_DOWN))
     idle_action_ = DO_NOTHING;
 
   // Avoid suspending or shutting down due to inactivity while a system
