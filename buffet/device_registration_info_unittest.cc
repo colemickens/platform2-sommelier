@@ -370,7 +370,7 @@ TEST_F(DeviceRegistrationInfoTest, FinishRegistration_NoAuth) {
 
   storage_->reset_save_count();
   DeviceRegistrationInfo::TestHelper::SetTestTicketId(dev_reg_.get());
-  EXPECT_TRUE(dev_reg_->FinishRegistration("", nullptr));
+  EXPECT_TRUE(dev_reg_->FinishRegistration(nullptr));
   EXPECT_EQ(1,
             storage_->save_count());  // The device info must have been saved.
   EXPECT_EQ(2, transport_->GetRequestCount());
@@ -396,57 +396,6 @@ TEST_F(DeviceRegistrationInfoTest, FinishRegistration_NoAuth) {
   EXPECT_EQ(test_data::kRobotAccountEmail, value);
   EXPECT_TRUE(dict->GetString(storage_keys::kServiceURL, &value));
   EXPECT_EQ(test_data::kServiceURL, value);
-}
-
-TEST_F(DeviceRegistrationInfoTest, FinishRegistration_Auth) {
-  // Test finalizing ticket with user authorization token.
-  EXPECT_TRUE(dev_reg_->Load());
-
-  // General ticket finalization handler.
-  std::string ticket_url =
-      dev_reg_->GetServiceURL("registrationTickets/" +
-                             std::string(test_data::kClaimTicketId));
-  transport_->AddHandler(ticket_url + "/finalize",
-                         chromeos::http::request_type::kPost,
-                         base::Bind(FinalizeTicketHandler));
-
-  transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
-                         chromeos::http::request_type::kPost,
-                         base::Bind(OAuth2Handler));
-
-  // Handle patching in the user email onto the device record.
-  auto email_patch_handler = [](const ServerRequest& request,
-                                ServerResponse* response) {
-    std::string auth_header = "Bearer ";
-    auth_header += test_data::kUserAccessToken;
-    EXPECT_EQ(auth_header,
-        request.GetHeader(chromeos::http::request_header::kAuthorization));
-    auto json = request.GetDataAsJson();
-    EXPECT_NE(nullptr, json.get());
-    std::string value;
-    EXPECT_TRUE(json->GetString("userEmail", &value));
-    EXPECT_EQ("me", value);
-
-    response->ReplyJson(chromeos::http::status_code::Ok, {
-      {"id", test_data::kClaimTicketId},
-      {"kind", "clouddevices#registrationTicket"},
-      {"oauthClientId", test_data::kClientId},
-      {"userEmail", "user@email.com"},
-      {"deviceDraft.id", test_data::kDeviceId},
-      {"deviceDraft.kind", "clouddevices#device"},
-      {"deviceDraft.channel.supportedType", "xmpp"},
-    });
-  };
-  transport_->AddHandler(ticket_url, chromeos::http::request_type::kPatch,
-                         base::Bind(email_patch_handler));
-
-  storage_->reset_save_count();
-  DeviceRegistrationInfo::TestHelper::SetTestTicketId(dev_reg_.get());
-  EXPECT_TRUE(dev_reg_->FinishRegistration(test_data::kUserAccountAuthCode,
-                                          nullptr));
-  EXPECT_EQ(1,
-            storage_->save_count());  // The device info must have been saved.
-  EXPECT_EQ(4, transport_->GetRequestCount());
 }
 
 }  // namespace buffet

@@ -52,8 +52,7 @@ class Manager final {
                                         const std::map<std::string,
                                                        std::string>& params);
   // Handles calls to org.chromium.Buffet.Manager.FinishRegisterDevice().
-  std::string HandleFinishRegisterDevice(chromeos::ErrorPtr* error,
-                                         const std::string& user_auth_code);
+  std::string HandleFinishRegisterDevice(chromeos::ErrorPtr* error);
   // Handles calls to org.chromium.Buffet.Manager.UpdateState().
   void HandleUpdateState(chromeos::ErrorPtr* error,
                          const chromeos::VariantDictionary& property_set);

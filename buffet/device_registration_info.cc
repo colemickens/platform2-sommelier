@@ -374,16 +374,15 @@ std::string DeviceRegistrationInfo::StartRegistration(
   req_json.Set("deviceDraft.commandDefs", commands.release());
   req_json.Set("deviceDraft.state", state.release());
 
-  int status_code{0};
   auto url = GetServiceURL("registrationTickets/" + ticket_id_,
                            {{"key", api_key_}});
-  auto resp_json = chromeos::http::ParseJsonResponse(
-      chromeos::http::PatchJson(url, &req_json, transport_, error).get(),
-      &status_code, error);
-  if (!resp_json)
+  std::unique_ptr<chromeos::http::Response> response =
+      chromeos::http::PatchJson(url, &req_json, transport_, error);
+  auto json_resp = chromeos::http::ParseJsonResponse(response.get(), nullptr,
+                                                     error);
+  if (!json_resp)
     return std::string();
-
-  if (status_code >= chromeos::http::status_code::BadRequest)
+  if (!response->IsSuccessful())
     return std::string();
 
   std::string auth_url = GetOAuthURL("auth", {
@@ -402,8 +401,7 @@ std::string DeviceRegistrationInfo::StartRegistration(
   return ret;
 }
 
-bool DeviceRegistrationInfo::FinishRegistration(
-    const std::string& user_auth_code, chromeos::ErrorPtr* error) {
+bool DeviceRegistrationInfo::FinishRegistration(chromeos::ErrorPtr* error) {
   if (ticket_id_.empty()) {
     LOG(ERROR) << "Finish registration without ticket ID";
     chromeos::Error::AddTo(error, kErrorDomainBuffet,
@@ -412,48 +410,10 @@ bool DeviceRegistrationInfo::FinishRegistration(
     return false;
   }
 
-  std::string url = GetServiceURL("registrationTickets/" + ticket_id_);
-  std::unique_ptr<chromeos::http::Response> response;
-  if (!user_auth_code.empty()) {
-    response = chromeos::http::PostFormData(GetOAuthURL("token"), {
-      {"code", user_auth_code},
-      {"client_id", client_id_},
-      {"client_secret", client_secret_},
-      {"redirect_uri", "urn:ietf:wg:oauth:2.0:oob"},
-      {"grant_type", "authorization_code"}
-    }, transport_, error);
-    if (!response)
-      return false;
-
-    auto json_resp = ParseOAuthResponse(response.get(), error);
-    if (!json_resp)
-      return false;
-
-    std::string user_access_token;
-    std::string token_type;
-    if (!json_resp->GetString("access_token", &user_access_token) ||
-        !json_resp->GetString("token_type", &token_type)) {
-      chromeos::Error::AddTo(error, kErrorDomainOAuth2, "unexpected_response",
-                             "User access_token is missing in response");
-      return false;
-    }
-
-    base::DictionaryValue user_info;
-    user_info.SetString("userEmail", "me");
-    response = chromeos::http::PatchJson(
-        url, &user_info, {BuildAuthHeader(token_type, user_access_token)},
-        transport_, error);
-
-    auto json = chromeos::http::ParseJsonResponse(response.get(), nullptr,
-                                                  error);
-    if (!json)
-      return false;
-  }
-
-  std::string auth_code;
-  url += "/finalize?key=" + api_key_;
-  LOG(INFO) << "Sending request to: " << url;
-  response = chromeos::http::PostBinary(url, nullptr, 0, transport_, error);
+  std::string url = GetServiceURL("registrationTickets/" + ticket_id_ +
+                                  "/finalize?key=" + api_key_);
+  std::unique_ptr<chromeos::http::Response> response =
+      chromeos::http::PostBinary(url, nullptr, 0, transport_, error);
   if (!response)
     return false;
   auto json_resp = chromeos::http::ParseJsonResponse(response.get(), nullptr,
@@ -464,6 +424,8 @@ bool DeviceRegistrationInfo::FinishRegistration(
     ParseGCDError(json_resp.get(), error);
     return false;
   }
+
+  std::string auth_code;
   if (!json_resp->GetString("robotAccountEmail", &device_robot_account_) ||
       !json_resp->GetString("robotAccountAuthorizationCode", &auth_code) ||
       !json_resp->GetString("deviceDraft.id", &device_id_)) {

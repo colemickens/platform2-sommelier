@@ -107,10 +107,9 @@ std::string Manager::HandleStartRegisterDevice(
   return device_info_->StartRegistration(params, error);
 }
 
-std::string Manager::HandleFinishRegisterDevice(
-    chromeos::ErrorPtr* error, const std::string& user_auth_code) {
+std::string Manager::HandleFinishRegisterDevice(chromeos::ErrorPtr* error) {
   LOG(INFO) << "Received call to Manager.FinishRegisterDevice()";
-  if (!device_info_->FinishRegistration(user_auth_code, error))
+  if (!device_info_->FinishRegistration(error))
     return std::string();
 
   return device_info_->GetDeviceId(error);

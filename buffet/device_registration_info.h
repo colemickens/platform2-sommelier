@@ -97,18 +97,15 @@ class DeviceRegistrationInfo {
   // Starts device registration procedure. |params| are a list of
   // key-value pairs of device information, such as client_id, client_secret,
   // and so on. If a particular key-value pair is omitted, a default value
-  // is used when possible. Returns a device claim ID on success.
+  // is used when possible. Returns a device registration ticket ID on success.
   // The values are all strings for now.
   std::string StartRegistration(
     const std::map<std::string, std::string>& params,
     chromeos::ErrorPtr* error);
 
-  // Finalizes the device registration. If |user_auth_code| is provided, then
-  // the device record is populated with user email on user's behalf. Otherwise
-  // the user is responsible to issue a PATCH request to provide a valid
-  // email address before calling FinishRegistration.
-  bool FinishRegistration(const std::string& user_auth_code,
-                          chromeos::ErrorPtr* error);
+  // Finalizes the device registration.
+  // StartRegistration must have been invoked before.
+  bool FinishRegistration(chromeos::ErrorPtr* error);
 
  private:
   // Saves the device registration to cache.

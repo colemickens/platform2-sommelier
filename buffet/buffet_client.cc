@@ -42,8 +42,7 @@ void usage() {
   std::cerr << "  " << kManagerGetDeviceInfo << std::endl;
   std::cerr << "  " << kManagerStartRegisterDevice
                     << " param1 = val1&param2 = val2..." << std::endl;
-  std::cerr << "  " << kManagerFinishRegisterDevice
-                    << " device_id" << std::endl;
+  std::cerr << "  " << kManagerFinishRegisterDevice << std::endl;
   std::cerr << "  " << kManagerAddCommand
                     << " '{\"name\":\"command_name\",\"parameters\":{}}'"
                     << std::endl;
@@ -176,7 +175,7 @@ class BuffetHelperProxy {
   }
 
   int CallManagerFinishRegisterDevice(const CommandLine::StringVector& args) {
-    if (args.size() > 1) {
+    if (args.size() > 0) {
       std::cerr << "Invalid number of arguments for "
                 << "Manager." << kManagerFinishRegisterDevice << std::endl;
       usage();
@@ -185,13 +184,11 @@ class BuffetHelperProxy {
 
     ErrorPtr error;
     std::string user_auth_code;
-    if (!args.empty()) { user_auth_code = args.front(); }
     static const int timeout_ms = 10000;
     auto response = CallMethodAndBlockWithTimeout(
         timeout_ms,
         manager_proxy_,
-        kManagerInterface, kManagerFinishRegisterDevice, &error,
-        user_auth_code);
+        kManagerInterface, kManagerFinishRegisterDevice, &error);
     std::string device_id;
     if (!response ||
         !ExtractMethodCallResults(response.get(), &error, &device_id)) {
