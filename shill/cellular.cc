@@ -271,7 +271,7 @@ void Cellular::HelpRegisterConstDerivedString(
     string(Cellular::*get)(Error *)) {
   mutable_store()->RegisterDerivedString(
       name,
-      StringAccessor(new CustomAccessor<Cellular, string>(this, get, NULL)));
+      StringAccessor(new CustomAccessor<Cellular, string>(this, get, nullptr)));
 }
 
 void Cellular::Start(Error *error,
@@ -682,7 +682,7 @@ void Cellular::DestroyService() {
     LOG(INFO) << "Deregistering cellular service " << service_->unique_name()
               << " for device " << link_name();
     manager()->DeregisterService(service_);
-    service_ = NULL;
+    service_ = nullptr;
   }
 }
 
@@ -756,11 +756,11 @@ void Cellular::OnConnected() {
   SetState(kStateConnected);
   if (!service_) {
     LOG(INFO) << "Disconnecting due to no cellular service.";
-    Disconnect(NULL, "no celluar service");
+    Disconnect(nullptr, "no celluar service");
   } else if (!capability_->AllowRoaming() &&
       service_->roaming_state() == kRoamingStateRoaming) {
     LOG(INFO) << "Disconnecting due to roaming.";
-    Disconnect(NULL, "roaming");
+    Disconnect(nullptr, "roaming");
   } else {
     EstablishLink();
   }
@@ -1081,7 +1081,7 @@ void Cellular::StopPPP() {
   }
   DropConnection();
   ppp_task_.reset();
-  ppp_device_ = NULL;
+  ppp_device_ = nullptr;
 }
 
 // called by |ppp_task_|
@@ -1139,7 +1139,7 @@ void Cellular::OnPPPConnected(const map<string, string> &params) {
 
   if (!ppp_device_ || ppp_device_->interface_index() != interface_index) {
     if (ppp_device_) {
-      ppp_device_->SelectService(NULL);  // No longer drives |service_|.
+      ppp_device_->SelectService(nullptr);  // No longer drives |service_|.
     }
     ppp_device_ = ppp_device_factory_->CreatePPPDevice(
         modem_info_->control_interface(),
@@ -1441,8 +1441,8 @@ void Cellular::set_apn_list(const Stringmaps &apn_list) {
   // There is no canonical form of a Stringmaps value.
   // So don't check for redundant updates.
   apn_list_ = apn_list;
-  // See crbug.com/215581: Sometimes adaptor may be NULL when |set_apn_list| is
-  // called.
+  // See crbug.com/215581: Sometimes adaptor may be nullptr when |set_apn_list|
+  // is called.
   if (adaptor())
     adaptor()->EmitStringmapsChanged(kCellularApnListProperty, apn_list_);
   else
@@ -1587,7 +1587,7 @@ void Cellular::UpdateServingOperator(
 Cellular::MobileOperatorInfoObserver::MobileOperatorInfoObserver(
     Cellular *cellular)
   : cellular_(cellular),
-    capability_(NULL) {}
+    capability_(nullptr) {}
 
 Cellular::MobileOperatorInfoObserver::~MobileOperatorInfoObserver() {}
 
@@ -1595,7 +1595,7 @@ void Cellular::MobileOperatorInfoObserver::OnOperatorChanged() {
   SLOG(Cellular, 3) << __func__;
 
   // Give the capabilities a chance to hook in and update their state.
-  // Some tests set |capability_| to NULL avoid having to expect the full
+  // Some tests set |capability_| to nullptr avoid having to expect the full
   // behaviour caused by this call.
   if (capability_) {
     capability_->OnOperatorChanged();
@@ -1623,7 +1623,7 @@ void Cellular::MobileOperatorInfoObserver::OnOperatorChanged() {
       cellular_->UpdateServingOperator(serving_operator_info,
                                        home_provider_info);
     } else {
-      cellular_->UpdateServingOperator(serving_operator_info, NULL);
+      cellular_->UpdateServingOperator(serving_operator_info, nullptr);
     }
   } else if (home_provider_known) {
     cellular_->UpdateServingOperator(home_provider_info, home_provider_info);

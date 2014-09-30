@@ -176,7 +176,7 @@ void CellularCapabilityUniversal::HelpRegisterConstDerivedKeyValueStore(
       name,
       KeyValueStoreAccessor(
           new CustomAccessor<CellularCapabilityUniversal, KeyValueStore>(
-              this, get, NULL)));
+              this, get, nullptr)));
 }
 
 void CellularCapabilityUniversal::InitProxies() {
@@ -257,7 +257,7 @@ void CellularCapabilityUniversal::EnableModemCompleted(
           Bind(&CellularCapabilityUniversal::EnableModem,
                weak_ptr_factory_.GetWeakPtr(),
                false,  // non-deferrable
-               static_cast<Error*>(NULL),
+               nullptr,
                callback);
     }
     return;
@@ -1280,7 +1280,7 @@ void CellularCapabilityUniversal::OnSimPathChanged(
   if (sim_path == sim_path_)
     return;
 
-  mm1::SimProxyInterface *proxy = NULL;
+  mm1::SimProxyInterface *proxy = nullptr;
   if (IsValidSimPath(sim_path))
     proxy = proxy_factory()->CreateSimProxy(sim_path,
                                             cellular()->dbus_owner());
@@ -1427,7 +1427,7 @@ void CellularCapabilityUniversal::OnLockTypeChanged(
 void CellularCapabilityUniversal::OnSimLockStatusChanged() {
   SLOG(Cellular, 3) << __func__;
   cellular()->adaptor()->EmitKeyValueStoreChanged(
-      kSIMLockStatusProperty, SimLockStatusToProperty(NULL));
+      kSIMLockStatusProperty, SimLockStatusToProperty(nullptr));
 
   // If the SIM is currently unlocked, assume that we need to refresh
   // carrier information, since a locked SIM prevents shill from obtaining

@@ -69,7 +69,7 @@ void ModemManager1::AddModem1(const string &path,
 
 void ModemManager1::InitModem1(shared_ptr<Modem1> modem,
                                const DBusInterfaceToProperties &properties) {
-  if (modem == NULL) {
+  if (modem == nullptr) {
     return;
   }
   modem->CreateDeviceMM1(properties);

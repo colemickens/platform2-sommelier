@@ -7,8 +7,8 @@
 namespace shill {
 
 MockModemInfo::MockModemInfo() :
-    ModemInfo(NULL, NULL, NULL, NULL, NULL),
-    mock_pending_activation_store_(NULL) {}
+    ModemInfo(nullptr, nullptr, nullptr, nullptr, nullptr),
+    mock_pending_activation_store_(nullptr) {}
 
 MockModemInfo::MockModemInfo(ControlInterface *control,
                              EventDispatcher *dispatcher,
@@ -16,7 +16,7 @@ MockModemInfo::MockModemInfo(ControlInterface *control,
                              Manager *manager,
                              GLib *glib) :
     ModemInfo(control, dispatcher, metrics, manager, glib),
-    mock_pending_activation_store_(NULL) {
+    mock_pending_activation_store_(nullptr) {
   SetMockMembers();
 }
 
@@ -29,23 +29,23 @@ void MockModemInfo::SetMockMembers() {
   mock_pending_activation_store_ =
       static_cast<MockPendingActivationStore*>(pending_activation_store());
   // These are replaced by mocks only if current unset in ModemInfo.
-  if (control_interface() == NULL) {
+  if (control_interface() == nullptr) {
     mock_control_.reset(new MockControl());
     set_control_interface(mock_control_.get());
   }
-  if (dispatcher() == NULL) {
+  if (dispatcher() == nullptr) {
     mock_dispatcher_.reset(new MockEventDispatcher());
     set_event_dispatcher(mock_dispatcher_.get());
   }
-  if (metrics() == NULL) {
+  if (metrics() == nullptr) {
     mock_metrics_.reset(new MockMetrics(dispatcher()));
     set_metrics(mock_metrics_.get());
   }
-  if (glib() == NULL) {
+  if (glib() == nullptr) {
     mock_glib_.reset(new MockGLib());
     set_glib(mock_glib_.get());
   }
-  if (manager() == NULL) {
+  if (manager() == nullptr) {
     mock_manager_.reset(new MockManager(control_interface(), dispatcher(),
                                         metrics(), glib()));
     set_manager(mock_manager_.get());

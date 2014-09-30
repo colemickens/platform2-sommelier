@@ -51,9 +51,9 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
  public:
   explicit CellularCapabilityUniversalCDMATest(EventDispatcher *dispatcher)
       : dispatcher_(dispatcher),
-        capability_(NULL),
-        device_adaptor_(NULL),
-        modem_info_(NULL, dispatcher, NULL, NULL, NULL),
+        capability_(nullptr),
+        device_adaptor_(nullptr),
+        modem_info_(nullptr, dispatcher, nullptr, nullptr, nullptr),
         modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
         modem_cdma_proxy_(new mm1::MockModemModemCdmaProxy()),
         modem_proxy_(new mm1::MockModemProxy()),
@@ -72,13 +72,13 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
                                &proxy_factory_)),
         service_(new MockCellularService(&modem_info_,
                                          cellular_)),
-        mock_home_provider_info_(NULL),
-        mock_serving_operator_info_(NULL) {}
+        mock_home_provider_info_(nullptr),
+        mock_serving_operator_info_(nullptr) {}
 
   virtual ~CellularCapabilityUniversalCDMATest() {
-    cellular_->service_ = NULL;
-    capability_ = NULL;
-    device_adaptor_ = NULL;
+    cellular_->service_ = nullptr;
+    capability_ = nullptr;
+    device_adaptor_ = nullptr;
   }
 
   virtual void SetUp() {
@@ -90,7 +90,7 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
   }
 
   virtual void TearDown() {
-    capability_->proxy_factory_ = NULL;
+    capability_->proxy_factory_ = nullptr;
   }
 
   void SetService() {
@@ -98,7 +98,7 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
   }
 
   void ClearService() {
-    cellular_->service_ = NULL;
+    cellular_->service_ = nullptr;
   }
 
   void ReleaseCapabilityProxies() {
@@ -219,7 +219,7 @@ class CellularCapabilityUniversalCDMADispatcherTest
     : public CellularCapabilityUniversalCDMATest {
  public:
   CellularCapabilityUniversalCDMADispatcherTest()
-      : CellularCapabilityUniversalCDMATest(NULL) {}
+      : CellularCapabilityUniversalCDMATest(nullptr) {}
 };
 
 TEST_F(CellularCapabilityUniversalCDMAMainTest, PropertiesChanged) {

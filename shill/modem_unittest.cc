@@ -54,7 +54,7 @@ const char kAddressAsString[] = "000102030405";
 class ModemTest : public Test {
  public:
   ModemTest()
-      : modem_info_(NULL, &dispatcher_, NULL, NULL, NULL),
+      : modem_info_(nullptr, &dispatcher_, nullptr, nullptr, nullptr),
         device_info_(modem_info_.control_interface(), modem_info_.dispatcher(),
                      modem_info_.metrics(), modem_info_.manager()),
         modem_(

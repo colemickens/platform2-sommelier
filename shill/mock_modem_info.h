@@ -24,7 +24,7 @@ class MockModemInfo : public ModemInfo {
  public:
   MockModemInfo();
 
-  // All NULL parameters are replaced by mock objects.
+  // All nullptr parameters are replaced by mock objects.
   MockModemInfo(ControlInterface *control,
                 EventDispatcher *dispatcher,
                 Metrics *metrics,
@@ -34,7 +34,7 @@ class MockModemInfo : public ModemInfo {
   ~MockModemInfo() override;
 
   // Replaces data members in ModemInfo by mock objects.
-  // The following are relaced by mocks if they are NULL: control_interface,
+  // The following are relaced by mocks if they are nullptr: control_interface,
   // dispatcher, metrics, manager, glib.
   // The following are always replaced by mocks: pending_activation_store.
   void SetMockMembers();

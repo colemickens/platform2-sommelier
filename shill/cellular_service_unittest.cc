@@ -35,7 +35,7 @@ namespace shill {
 class CellularServiceTest : public testing::Test {
  public:
   CellularServiceTest()
-      : modem_info_(NULL, &dispatcher_, NULL, NULL, NULL),
+      : modem_info_(nullptr, &dispatcher_, nullptr, nullptr, nullptr),
         device_(new MockCellular(&modem_info_,
                                  "usb0",
                                  kAddress,
@@ -46,17 +46,17 @@ class CellularServiceTest : public testing::Test {
                                  "",
                                  ProxyFactory::GetInstance())),
         service_(new CellularService(&modem_info_, device_)),
-        adaptor_(NULL) {}
+        adaptor_(nullptr) {}
 
   virtual ~CellularServiceTest() {
-    adaptor_ = NULL;
+    adaptor_ = nullptr;
   }
 
   virtual void SetUp() {
     adaptor_ =
         dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
     out_of_credits_detector_ =
-        new MockOutOfCreditsDetector(NULL, NULL, NULL, service_);
+        new MockOutOfCreditsDetector(nullptr, nullptr, nullptr, service_);
     // Passes ownership.
     service_->set_out_of_credits_detector(out_of_credits_detector_);
   }
@@ -236,7 +236,7 @@ TEST_F(CellularServiceTest, SetApn) {
   EXPECT_TRUE(it != resultapn.end() && it->second == kApn);
   it = resultapn.find(kApnUsernameProperty);
   EXPECT_TRUE(it != resultapn.end() && it->second == kUsername);
-  EXPECT_FALSE(service_->GetUserSpecifiedApn() == NULL);
+  EXPECT_NE(nullptr, service_->GetUserSpecifiedApn());
 }
 
 TEST_F(CellularServiceTest, ClearApn) {
@@ -274,7 +274,7 @@ TEST_F(CellularServiceTest, ClearApn) {
   EXPECT_TRUE(error.IsSuccess());
   resultapn = service_->GetApn(&error);
   EXPECT_TRUE(resultapn.empty());
-  EXPECT_TRUE(service_->GetUserSpecifiedApn() == NULL);
+  EXPECT_EQ(nullptr, service_->GetUserSpecifiedApn());;
 }
 
 TEST_F(CellularServiceTest, LastGoodApn) {
@@ -291,7 +291,7 @@ TEST_F(CellularServiceTest, LastGoodApn) {
               EmitStringmapChanged(kCellularLastGoodApnProperty, _));
   service_->SetLastGoodApn(testapn);
   Stringmap *resultapn = service_->GetLastGoodApn();
-  EXPECT_FALSE(resultapn == NULL);
+  EXPECT_NE(nullptr, resultapn);
   EXPECT_EQ(2, resultapn->size());
   Stringmap::const_iterator it = resultapn->find(kApnProperty);
   EXPECT_TRUE(it != resultapn->end() && it->second == kApn);
@@ -312,11 +312,11 @@ TEST_F(CellularServiceTest, LastGoodApn) {
   }
   Error error;
   service_->SetApn(userapn, &error);
-  EXPECT_TRUE(service_->GetLastGoodApn() == NULL);
+  EXPECT_EQ(nullptr, service_->GetLastGoodApn());;
 }
 
 TEST_F(CellularServiceTest, IsAutoConnectable) {
-  const char *reason = NULL;
+  const char *reason = nullptr;
 
   ON_CALL(*out_of_credits_detector_, IsDetecting())
       .WillByDefault(Return(false));

@@ -45,7 +45,7 @@ namespace {
 
 // Wrap some low level functions from the GNU regex librarly.
 string GetRegError(int code, const regex_t *compiled) {
-  size_t length = regerror(code, compiled, NULL, 0);
+  size_t length = regerror(code, compiled, nullptr, 0);
   scoped_ptr<char[]> buffer(new char[length]);
   DCHECK_EQ(length, regerror(code, compiled, buffer.get(), length));
   return buffer.get();
@@ -704,7 +704,7 @@ bool MobileOperatorInfoImpl::FilterMatches(const Filter &filter) {
   int regexec_error = regexec(&filter_regex,
                               to_match.c_str(),
                               0,
-                              NULL,
+                              nullptr,
                               0);
   if (regexec_error) {
     string error_string;

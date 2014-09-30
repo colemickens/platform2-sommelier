@@ -64,7 +64,7 @@ CellularService::CellularService(ModemInfo *modem_info,
   PropertyStore *store = this->mutable_store();
   HelpRegisterDerivedString(kActivationTypeProperty,
                             &CellularService::CalculateActivationType,
-                            NULL);
+                            nullptr);
   store->RegisterConstString(kActivationStateProperty, &activation_state_);
   HelpRegisterDerivedStringmap(kCellularApnProperty,
                                &CellularService::GetApn,
@@ -74,7 +74,7 @@ CellularService::CellularService(ModemInfo *modem_info,
   store->RegisterConstString(kNetworkTechnologyProperty, &network_technology_);
   HelpRegisterDerivedBool(kOutOfCreditsProperty,
                           &CellularService::IsOutOfCredits,
-                          NULL);
+                          nullptr);
   store->RegisterConstStringmap(kPaymentPortalProperty, &olp_);
   store->RegisterConstString(kRoamingStateProperty, &roaming_state_);
   store->RegisterConstStringmap(kServingOperatorProperty,
@@ -150,14 +150,14 @@ void CellularService::HelpRegisterDerivedBool(
 Stringmap *CellularService::GetUserSpecifiedApn() {
   Stringmap::iterator it = apn_info_.find(kApnProperty);
   if (it == apn_info_.end() || it->second.empty())
-    return NULL;
+    return nullptr;
   return &apn_info_;
 }
 
 Stringmap *CellularService::GetLastGoodApn() {
   Stringmap::iterator it = last_good_apn_info_.find(kApnProperty);
   if (it == last_good_apn_info_.end() || it->second.empty())
-    return NULL;
+    return nullptr;
   return &last_good_apn_info_;
 }
 

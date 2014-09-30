@@ -137,15 +137,15 @@ class CellularTest : public testing::Test {
         kServingOperatorCode("10002"),
         kServingOperatorCountry("ca"),
         kServingOperatorName("ServingOperatorName"),
-        modem_info_(NULL, &dispatcher_, NULL, NULL, NULL),
+        modem_info_(nullptr, &dispatcher_, nullptr, nullptr, nullptr),
         device_info_(modem_info_.control_interface(), &dispatcher_,
                      modem_info_.metrics(), modem_info_.manager()),
         dhcp_config_(new MockDHCPConfig(modem_info_.control_interface(),
                                         kTestDeviceName)),
         create_gsm_card_proxy_from_factory_(false),
         proxy_factory_(this),
-        mock_home_provider_info_(NULL),
-        mock_serving_operator_info_(NULL),
+        mock_home_provider_info_(nullptr),
+        mock_serving_operator_info_(nullptr),
         device_(new Cellular(&modem_info_,
                              kTestDeviceName,
                              kTestDeviceAddress,
@@ -173,10 +173,10 @@ class CellularTest : public testing::Test {
     device_->DestroyIPConfig();
     device_->state_ = Cellular::kStateDisabled;
     device_->capability_->ReleaseProxies();
-    device_->set_dhcp_provider(NULL);
+    device_->set_dhcp_provider(nullptr);
     // Break cycle between Cellular and CellularService.
-    device_->service_ = NULL;
-    device_->SelectService(NULL);
+    device_->service_ = nullptr;
+    device_->SelectService(nullptr);
   }
 
   void PopulateProxies() {
@@ -298,13 +298,13 @@ class CellularTest : public testing::Test {
   }
   void InvokeConnectFailNoService(DBusPropertiesMap props, Error *error,
                                   const ResultCallback &callback, int timeout) {
-    device_->service_ = NULL;
+    device_->service_ = nullptr;
     callback.Run(Error(Error::kNotOnHomeNetwork));
   }
   void InvokeConnectSuccessNoService(DBusPropertiesMap props, Error *error,
                                      const ResultCallback &callback,
                                      int timeout) {
-    device_->service_ = NULL;
+    device_->service_ = nullptr;
     callback.Run(Error());
   }
   void InvokeDisconnect(Error *error, const ResultCallback &callback,
@@ -341,12 +341,12 @@ class CellularTest : public testing::Test {
                 GetModemInfo(_, _, CellularCapability::kTimeoutDefault))
         .WillOnce(Invoke(this, &CellularTest::InvokeGetModemInfo));
     if (network_technology == kNetworkTechnology1Xrtt)
-      EXPECT_CALL(*cdma_proxy_, GetRegistrationState(NULL, _, _))
+      EXPECT_CALL(*cdma_proxy_, GetRegistrationState(nullptr, _, _))
           .WillOnce(Invoke(this, &CellularTest::InvokeGetRegistrationState1X));
     else
-      EXPECT_CALL(*cdma_proxy_, GetRegistrationState(NULL, _, _))
+      EXPECT_CALL(*cdma_proxy_, GetRegistrationState(nullptr, _, _))
           .WillOnce(Invoke(this, &CellularTest::InvokeGetRegistrationState));
-    EXPECT_CALL(*cdma_proxy_, GetSignalQuality(NULL, _, _))
+    EXPECT_CALL(*cdma_proxy_, GetSignalQuality(nullptr, _, _))
         .Times(2)
         .WillRepeatedly(Invoke(this, &CellularTest::InvokeGetSignalQuality));
     EXPECT_CALL(*this, TestCallback(IsSuccess()));
@@ -382,9 +382,9 @@ class CellularTest : public testing::Test {
   void FakeUpConnectedPPP() {
     const char kInterfaceName[] = "fake-ppp-device";
     const int kInterfaceIndex = -1;
-    auto mock_ppp_device = make_scoped_refptr(new MockPPPDevice(
-        modem_info_.control_interface(), NULL, NULL, NULL, kInterfaceName,
-        kInterfaceIndex));
+    auto mock_ppp_device = make_scoped_refptr(
+        new MockPPPDevice(modem_info_.control_interface(), nullptr, nullptr,
+                          nullptr, kInterfaceName, kInterfaceIndex));
     device_->ppp_device_ = mock_ppp_device;
     device_->state_ = Cellular::kStateConnected;
   }
@@ -480,14 +480,14 @@ class CellularTest : public testing::Test {
     virtual ModemGSMCardProxyInterface *CreateModemGSMCardProxy(
         const string &/*path*/,
         const string &/*service*/) {
-      // TODO(benchan): This code conditionally returns a NULL pointer to avoid
+      // TODO(benchan): This code conditionally returns a nullptr to avoid
       // CellularCapabilityGSM::InitProperties (and thus
       // CellularCapabilityGSM::GetIMSI) from being called during the
       // construction. Remove this workaround after refactoring the tests.
       CHECK(!test_->create_gsm_card_proxy_from_factory_ ||
             test_->gsm_card_proxy_);
       return test_->create_gsm_card_proxy_from_factory_ ?
-          test_->gsm_card_proxy_.release() : NULL;
+          test_->gsm_card_proxy_.release() : nullptr;
     }
 
     virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(
@@ -703,7 +703,7 @@ TEST_F(CellularTest, StartGSMRegister) {
   EXPECT_CALL(*gsm_network_proxy_,
               GetRegistrationInfo(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetRegistrationInfo));
-  EXPECT_CALL(*gsm_network_proxy_, GetSignalQuality(NULL, _, _))
+  EXPECT_CALL(*gsm_network_proxy_, GetSignalQuality(nullptr, _, _))
       .Times(2)
       .WillRepeatedly(Invoke(this,
                              &CellularTest::InvokeGetSignalQuality));
@@ -760,7 +760,7 @@ TEST_F(CellularTest, StartLinked) {
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::kStateLinked, device_->state_);
   EXPECT_EQ(Service::kStateConfiguring, device_->service_->state());
-  device_->SelectService(NULL);
+  device_->SelectService(nullptr);
 }
 
 TEST_F(CellularTest, FriendlyServiceName) {
@@ -772,7 +772,7 @@ TEST_F(CellularTest, FriendlyServiceName) {
 
   SetCellularType(Cellular::kTypeCDMA);
   // We are not testing the behaviour of capabilities here.
-  device_->mobile_operator_info_observer_->set_capability(NULL);
+  device_->mobile_operator_info_observer_->set_capability(nullptr);
 
   // (1) Service created, MNO not known => Default name.
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
@@ -1040,7 +1040,7 @@ TEST_F(CellularTest, StorageIdentifier) {
 
   SetCellularType(Cellular::kTypeCDMA);
   // We are not testing the behaviour of capabilities here.
-  device_->mobile_operator_info_observer_->set_capability(NULL);
+  device_->mobile_operator_info_observer_->set_capability(nullptr);
   ON_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
       .WillByDefault(Return(false));
 
@@ -1272,10 +1272,10 @@ TEST_F(CellularTest, ModemStateChangeEnable) {
   EXPECT_CALL(*proxy_,
               GetModemInfo(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetModemInfo));
-  EXPECT_CALL(*cdma_proxy_, GetRegistrationState(NULL, _, _))
+  EXPECT_CALL(*cdma_proxy_, GetRegistrationState(nullptr, _, _))
       .WillOnce(Invoke(this,
                        &CellularTest::InvokeGetRegistrationStateUnregistered));
-  EXPECT_CALL(*cdma_proxy_, GetSignalQuality(NULL, _, _))
+  EXPECT_CALL(*cdma_proxy_, GetSignalQuality(nullptr, _, _))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetSignalQuality));
   EXPECT_CALL(*modem_info_.mock_manager(), UpdateEnabledTechnologies());
   device_->state_ = Cellular::kStateDisabled;
@@ -1498,8 +1498,8 @@ TEST_F(CellularTest, Notify) {
   scoped_refptr<MockPPPDevice> ppp_device;
   map<string, string> ppp_config;
   ppp_device =
-      new MockPPPDevice(modem_info_.control_interface(),
-                        NULL, NULL, NULL, kInterfaceName, kInterfaceIndex);
+      new MockPPPDevice(modem_info_.control_interface(), nullptr, nullptr,
+                        nullptr, kInterfaceName, kInterfaceIndex);
   ppp_config[kPPPInterfaceName] = kInterfaceName;
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
       .WillOnce(Return(kInterfaceIndex));
@@ -1533,8 +1533,8 @@ TEST_F(CellularTest, Notify) {
   scoped_refptr<MockPPPDevice> ppp_device2;
   map<string, string> ppp_config2;
   ppp_device2 =
-      new MockPPPDevice(modem_info_.control_interface(),
-                        NULL, NULL, NULL, kInterfaceName2, kInterfaceIndex2);
+      new MockPPPDevice(modem_info_.control_interface(), nullptr, nullptr,
+                        nullptr, kInterfaceName2, kInterfaceIndex2);
   ppp_config2[kPPPInterfaceName] = kInterfaceName2;
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName2))
       .WillOnce(Return(kInterfaceIndex2));
@@ -1646,7 +1646,7 @@ TEST_F(CellularTest, DropConnection) {
 TEST_F(CellularTest, DropConnectionPPP) {
   scoped_refptr<MockPPPDevice> ppp_device(
       new MockPPPDevice(modem_info_.control_interface(),
-                        NULL, NULL, NULL, "fake_ppp0", -1));
+                        nullptr, nullptr, nullptr, "fake_ppp0", -1));
   EXPECT_CALL(*ppp_device, DropConnection());
   device_->ppp_device_ = ppp_device;
   device_->DropConnection();
@@ -1671,7 +1671,7 @@ TEST_F(CellularTest, ChangeServiceStatePPP) {
   MockCellularService *service(SetMockService());
   scoped_refptr<MockPPPDevice> ppp_device(
       new MockPPPDevice(modem_info_.control_interface(),
-                        NULL, NULL, NULL, "fake_ppp0", -1));
+                        nullptr, nullptr, nullptr, "fake_ppp0", -1));
   EXPECT_CALL(*ppp_device, SetServiceState(_));
   EXPECT_CALL(*ppp_device, SetServiceFailure(_));
   EXPECT_CALL(*ppp_device, SetServiceFailureSilent(_));

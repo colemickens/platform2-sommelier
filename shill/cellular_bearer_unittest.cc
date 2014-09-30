@@ -49,9 +49,9 @@ class CellularBearerTest : public testing::Test {
     EXPECT_FALSE(bearer_.connected());
     EXPECT_EQ("", bearer_.data_interface());
     EXPECT_EQ(IPConfig::kMethodUnknown, bearer_.ipv4_config_method());
-    EXPECT_TRUE(bearer_.ipv4_config_properties() == NULL);
+    EXPECT_EQ(nullptr, bearer_.ipv4_config_properties());;
     EXPECT_EQ(IPConfig::kMethodUnknown, bearer_.ipv6_config_method());
-    EXPECT_TRUE(bearer_.ipv6_config_properties() == NULL);
+    EXPECT_EQ(nullptr, bearer_.ipv6_config_properties());;
   }
 
   static DBusPropertiesMap ConstructIPv4ConfigProperties(
@@ -105,7 +105,7 @@ class CellularBearerTest : public testing::Test {
     EXPECT_EQ(IPConfig::kMethodStatic, bearer_.ipv4_config_method());
     const IPConfig::Properties *ipv4_config_properties =
         bearer_.ipv4_config_properties();
-    ASSERT_TRUE(ipv4_config_properties != NULL);
+    ASSERT_NE(nullptr, ipv4_config_properties);;
     EXPECT_EQ(IPAddress::kFamilyIPv4, ipv4_config_properties->address_family);
     EXPECT_EQ(kIPv4Address, ipv4_config_properties->address);
     EXPECT_EQ(kIPv4Gateway, ipv4_config_properties->gateway);
@@ -120,7 +120,7 @@ class CellularBearerTest : public testing::Test {
     EXPECT_EQ(IPConfig::kMethodStatic, bearer_.ipv6_config_method());
     const IPConfig::Properties *ipv6_config_properties =
         bearer_.ipv6_config_properties();
-    ASSERT_TRUE(ipv6_config_properties != NULL);
+    ASSERT_NE(nullptr, ipv6_config_properties);;
     EXPECT_EQ(IPAddress::kFamilyIPv6, ipv6_config_properties->address_family);
     EXPECT_EQ(kIPv6Address, ipv6_config_properties->address);
     EXPECT_EQ(kIPv6Gateway, ipv6_config_properties->gateway);

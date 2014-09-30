@@ -38,7 +38,7 @@ namespace shill {
 class ActivePassiveOutOfCreditsDetectorTest : public testing::Test {
  public:
   ActivePassiveOutOfCreditsDetectorTest()
-      : modem_info_(NULL, &dispatcher_, &metrics_, &manager_, NULL),
+      : modem_info_(nullptr, &dispatcher_, &metrics_, &manager_, nullptr),
         device_info_(modem_info_.control_interface(), modem_info_.dispatcher(),
                      modem_info_.metrics(), modem_info_.manager()),
         manager_(modem_info_.control_interface(), modem_info_.dispatcher(),
@@ -76,7 +76,7 @@ class ActivePassiveOutOfCreditsDetectorTest : public testing::Test {
   }
 
   virtual void TearDown() {
-    cellular_->service_ = NULL;  // Break circular reference.
+    cellular_->service_ = nullptr;  // Break circular reference.
   }
 
   void OnConnectionHealthCheckerResult(

@@ -204,8 +204,8 @@ void CellularCapabilityClassic::StopModem(Error *error,
   // TODO(ers): We can skip the call to Disconnect if the modem has
   // told us that the modem state is Disabled or Registered.
   tasks->push_back(Bind(&CellularCapabilityClassic::Disconnect,
-                        weak_ptr_factory_.GetWeakPtr(),
-                        static_cast<Error *>(NULL), cb_ignore_error));
+                        weak_ptr_factory_.GetWeakPtr(), nullptr,
+                        cb_ignore_error));
   // TODO(ers): We can skip the call to Disable if the modem has
   // told us that the modem state is Disabled.
   tasks->push_back(Bind(&CellularCapabilityClassic::DisableModem,

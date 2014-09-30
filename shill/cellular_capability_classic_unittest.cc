@@ -37,7 +37,7 @@ namespace shill {
 class CellularCapabilityTest : public testing::Test {
  public:
   CellularCapabilityTest()
-      : modem_info_(NULL, &dispatcher_, NULL, NULL, NULL),
+      : modem_info_(nullptr, &dispatcher_, nullptr, nullptr, nullptr),
         create_gsm_card_proxy_from_factory_(false),
         proxy_(new MockModemProxy()),
         simple_proxy_(new MockModemSimpleProxy()),
@@ -46,8 +46,8 @@ class CellularCapabilityTest : public testing::Test {
         gsm_network_proxy_(new MockModemGSMNetworkProxy()),
         gobi_proxy_(new MockModemGobiProxy()),
         proxy_factory_(this),
-        capability_(NULL),
-        device_adaptor_(NULL),
+        capability_(nullptr),
+        device_adaptor_(nullptr),
         cellular_(new Cellular(&modem_info_,
                                "",
                                "",
@@ -62,9 +62,9 @@ class CellularCapabilityTest : public testing::Test {
   }
 
   virtual ~CellularCapabilityTest() {
-    cellular_->service_ = NULL;
-    capability_ = NULL;
-    device_adaptor_ = NULL;
+    cellular_->service_ = nullptr;
+    capability_ = nullptr;
+    device_adaptor_ = nullptr;
   }
 
   virtual void SetUp() {
@@ -74,11 +74,11 @@ class CellularCapabilityTest : public testing::Test {
         cellular_->capability_.get());
     device_adaptor_ =
         dynamic_cast<DeviceMockAdaptor*>(cellular_->adaptor());
-    ASSERT_TRUE(device_adaptor_ != NULL);
+    ASSERT_NE(nullptr, device_adaptor_);;
   }
 
   virtual void TearDown() {
-    capability_->proxy_factory_ = NULL;
+    capability_->proxy_factory_ = nullptr;
   }
 
   void CreateService() {
@@ -184,12 +184,12 @@ class CellularCapabilityTest : public testing::Test {
     virtual ModemGSMCardProxyInterface *CreateModemGSMCardProxy(
         const string &/*path*/,
         const string &/*service*/) {
-      // TODO(benchan): This code conditionally returns a NULL pointer to avoid
+      // TODO(benchan): This code conditionally returns a nullptr to avoid
       // CellularCapabilityGSM::InitProperties (and thus
       // CellularCapabilityGSM::GetIMSI) from being called during the
       // construction. Remove this workaround after refactoring the tests.
       return test_->create_gsm_card_proxy_from_factory_ ?
-          test_->gsm_card_proxy_.release() : NULL;
+          test_->gsm_card_proxy_.release() : nullptr;
     }
 
     virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(
@@ -303,10 +303,11 @@ TEST_F(CellularCapabilityTest, EnableModemFail) {
 
 TEST_F(CellularCapabilityTest, FinishEnable) {
   EXPECT_CALL(*gsm_network_proxy_,
-              GetRegistrationInfo(NULL, _,
+              GetRegistrationInfo(nullptr, _,
                                   CellularCapability::kTimeoutDefault));
-  EXPECT_CALL(*gsm_network_proxy_,
-              GetSignalQuality(NULL, _, CellularCapability::kTimeoutDefault));
+  EXPECT_CALL(
+      *gsm_network_proxy_,
+      GetSignalQuality(nullptr, _, CellularCapability::kTimeoutDefault));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetGSMNetworkProxy();
   capability_->FinishEnable(
@@ -324,9 +325,9 @@ TEST_F(CellularCapabilityTest, UnsupportedOperation) {
 }
 
 TEST_F(CellularCapabilityTest, AllowRoaming) {
-  EXPECT_FALSE(cellular_->GetAllowRoaming(NULL));
-  cellular_->SetAllowRoaming(false, NULL);
-  EXPECT_FALSE(cellular_->GetAllowRoaming(NULL));
+  EXPECT_FALSE(cellular_->GetAllowRoaming(nullptr));
+  cellular_->SetAllowRoaming(false, nullptr);
+  EXPECT_FALSE(cellular_->GetAllowRoaming(nullptr));
 
   {
     InSequence seq;
@@ -339,16 +340,16 @@ TEST_F(CellularCapabilityTest, AllowRoaming) {
   cellular_->state_ = Cellular::kStateConnected;
   dynamic_cast<CellularCapabilityGSM *>(capability_)->registration_state_ =
       MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING;
-  cellular_->SetAllowRoaming(true, NULL);
-  EXPECT_TRUE(cellular_->GetAllowRoaming(NULL));
+  cellular_->SetAllowRoaming(true, nullptr);
+  EXPECT_TRUE(cellular_->GetAllowRoaming(nullptr));
   EXPECT_EQ(Cellular::kStateConnected, cellular_->state_);
 
   EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
       .WillOnce(Invoke(this, &CellularCapabilityTest::InvokeDisconnect));
   SetProxy();
   cellular_->state_ = Cellular::kStateConnected;
-  cellular_->SetAllowRoaming(false, NULL);
-  EXPECT_FALSE(cellular_->GetAllowRoaming(NULL));
+  cellular_->SetAllowRoaming(false, nullptr);
+  EXPECT_FALSE(cellular_->GetAllowRoaming(nullptr));
   EXPECT_EQ(Cellular::kStateRegistered, cellular_->state_);
 }
 

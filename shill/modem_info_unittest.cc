@@ -25,7 +25,7 @@ class ModemInfoTest : public Test {
   ModemInfoTest()
       : metrics_(&dispatcher_),
         manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
-        dbus_service_proxy_(NULL),
+        dbus_service_proxy_(nullptr),
         modem_info_(&control_interface_, &dispatcher_, &metrics_, &manager_,
                     &glib_) {}
 

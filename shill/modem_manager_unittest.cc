@@ -34,9 +34,9 @@ namespace shill {
 class ModemManagerTest : public Test {
  public:
   ModemManagerTest()
-      : manager_(&control_, &dispatcher_, NULL, NULL),
-        modem_info_(&control_, &dispatcher_, NULL, &manager_, NULL),
-        dbus_service_proxy_(NULL) {}
+      : manager_(&control_, &dispatcher_, nullptr, nullptr),
+        modem_info_(&control_, &dispatcher_, nullptr, &manager_, nullptr),
+        dbus_service_proxy_(nullptr) {}
 
   virtual void SetUp() {
     modem_.reset(new StrictModem(kOwner, kService, kModemPath, &modem_info_));
@@ -174,7 +174,7 @@ class ModemManagerClassicTest : public ModemManagerTest {
   }
 
   virtual void TearDown() {
-    modem_manager_.proxy_factory_ = NULL;
+    modem_manager_.proxy_factory_ = nullptr;
   }
 
   ModemManagerClassicMockInit modem_manager_;
@@ -225,7 +225,7 @@ class ModemManager1Test : public ModemManagerTest {
   }
 
   virtual void TearDown() {
-    modem_manager_.proxy_factory_ = NULL;
+    modem_manager_.proxy_factory_ = nullptr;
   }
 
   void Connect(const DBusObjectsWithProperties &expected_objects) {

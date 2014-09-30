@@ -232,9 +232,9 @@ class CellularCapability {
   // The default implementation does nothing.
   virtual void DisconnectCleanup();
 
-  // Returns a pointer to the current active bearer object or NULL if no active
-  // bearer exists. The returned bearer object is managed by this capability
-  // object. This implementation returns NULL by default.
+  // Returns a pointer to the current active bearer object or nullptr if no
+  // active bearer exists. The returned bearer object is managed by this
+  // capability object. This implementation returns nullptr by default.
   virtual CellularBearer *GetActiveBearer() const;
 
   // -------------------------------------------------------------------------

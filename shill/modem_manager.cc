@@ -137,7 +137,7 @@ void ModemManagerClassic::Disconnect() {
 
 void ModemManagerClassic::InitModemClassic(shared_ptr<ModemClassic> modem) {
   // TODO(rochberg): Switch to asynchronous calls (crbug.com/200687).
-  if (modem == NULL) {
+  if (modem == nullptr) {
     return;
   }
 

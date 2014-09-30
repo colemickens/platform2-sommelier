@@ -112,7 +112,7 @@ void CellularCapability::SetCarrier(const std::string &/*carrier*/,
 }
 
 CellularBearer *CellularCapability::GetActiveBearer() const {
-  return NULL;
+  return nullptr;
 }
 
 bool CellularCapability::IsActivating() const {

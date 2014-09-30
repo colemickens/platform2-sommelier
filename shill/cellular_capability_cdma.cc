@@ -307,7 +307,7 @@ void CellularCapabilityCDMA::GetSignalQuality() {
   SignalQualityCallback callback =
       Bind(&CellularCapabilityCDMA::OnGetSignalQualityReply,
            weak_ptr_factory_.GetWeakPtr());
-  proxy_->GetSignalQuality(NULL, callback, kTimeoutDefault);
+  proxy_->GetSignalQuality(nullptr, callback, kTimeoutDefault);
 }
 
 void CellularCapabilityCDMA::GetRegistrationState() {
@@ -315,7 +315,7 @@ void CellularCapabilityCDMA::GetRegistrationState() {
   RegistrationStateCallback callback =
       Bind(&CellularCapabilityCDMA::OnGetRegistrationStateReply,
            weak_ptr_factory_.GetWeakPtr());
-  proxy_->GetRegistrationState(NULL, callback, kTimeoutDefault);
+  proxy_->GetRegistrationState(nullptr, callback, kTimeoutDefault);
 }
 
 void CellularCapabilityCDMA::OnActivateReply(

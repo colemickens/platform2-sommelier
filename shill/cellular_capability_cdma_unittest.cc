@@ -34,7 +34,7 @@ namespace shill {
 class CellularCapabilityCDMATest : public testing::Test {
  public:
   CellularCapabilityCDMATest()
-      : modem_info_(NULL, &dispatcher_, NULL, NULL, NULL),
+      : modem_info_(nullptr, &dispatcher_, nullptr, nullptr, nullptr),
         cellular_(new MockCellular(&modem_info_,
                                    "",
                                    "",
@@ -46,14 +46,14 @@ class CellularCapabilityCDMATest : public testing::Test {
                                    ProxyFactory::GetInstance())),
         classic_proxy_(new MockModemProxy()),
         proxy_(new MockModemCDMAProxy()),
-        capability_(NULL) {
+        capability_(nullptr) {
     modem_info_.metrics()->RegisterDevice(cellular_->interface_index(),
                                           Technology::kCellular);
   }
 
   virtual ~CellularCapabilityCDMATest() {
-    cellular_->service_ = NULL;
-    capability_ = NULL;
+    cellular_->service_ = nullptr;
+    capability_ = nullptr;
   }
 
   virtual void SetUp() {
@@ -153,7 +153,7 @@ TEST_F(CellularCapabilityCDMATest, Activate) {
   EXPECT_CALL(*this, TestCallback(_));
   SetProxy();
   SetService();
-  capability_->Activate(kTestCarrier, NULL,
+  capability_->Activate(kTestCarrier, nullptr,
       Bind(&CellularCapabilityCDMATest::TestCallback, Unretained(this)));
   EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING,
             capability_->activation_state());
@@ -237,7 +237,7 @@ TEST_F(CellularCapabilityCDMATest, ActivateError) {
   EXPECT_CALL(*this, TestCallback(_));
   SetProxy();
   SetService();
-  capability_->Activate(kTestCarrier, NULL,
+  capability_->Activate(kTestCarrier, nullptr,
       Bind(&CellularCapabilityCDMATest::TestCallback, Unretained(this)));
   EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,
             capability_->activation_state());
@@ -349,7 +349,7 @@ TEST_F(CellularCapabilityCDMATest, GetRoamingStateString) {
 
 TEST_F(CellularCapabilityCDMATest, GetSignalQuality) {
   EXPECT_CALL(*proxy_,
-              GetSignalQuality(NULL, _, CellularCapability::kTimeoutDefault))
+              GetSignalQuality(nullptr, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this,
                        &CellularCapabilityCDMATest::InvokeGetSignalQuality));
   SetProxy();
@@ -366,7 +366,7 @@ TEST_F(CellularCapabilityCDMATest, GetRegistrationState) {
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
             capability_->registration_state_evdo());
   EXPECT_CALL(*proxy_,
-              GetRegistrationState(NULL, _,
+              GetRegistrationState(nullptr, _,
                                    CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(
           this,

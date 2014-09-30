@@ -56,7 +56,7 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
                                                    "ParseScanResult")),
       registration_state_(MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN),
       access_technology_(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN),
-      home_provider_info_(NULL),
+      home_provider_info_(nullptr),
       get_imsi_retries_(0),
       get_imsi_retry_delay_milliseconds_(kGetIMSIRetryDelayMilliseconds) {
   SLOG(Cellular, 2) << "Cellular capability constructed: GSM";
@@ -75,7 +75,7 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
       proxy_factory->CreateModemGSMCardProxy(cellular->dbus_path(),
                                              cellular->dbus_owner()));
   // TODO(benchan): To allow unit testing using a mock proxy without further
-  // complicating the code, the test proxy factory is set up to return a NULL
+  // complicating the code, the test proxy factory is set up to return a nullptr
   // pointer when CellularCapabilityGSM is constructed. Refactor the code to
   // avoid this hack.
   if (card_proxy_.get())
@@ -103,7 +103,7 @@ void CellularCapabilityGSM::HelpRegisterConstDerivedKeyValueStore(
       name,
       KeyValueStoreAccessor(
           new CustomAccessor<CellularCapabilityGSM, KeyValueStore>(
-              this, get, NULL)));
+              this, get, nullptr)));
 }
 
 void CellularCapabilityGSM::InitProxies() {
@@ -397,7 +397,7 @@ void CellularCapabilityGSM::GetSignalQuality() {
   SignalQualityCallback callback =
       Bind(&CellularCapabilityGSM::OnGetSignalQualityReply,
            weak_ptr_factory_.GetWeakPtr());
-  network_proxy_->GetSignalQuality(NULL, callback, kTimeoutDefault);
+  network_proxy_->GetSignalQuality(nullptr, callback, kTimeoutDefault);
 }
 
 void CellularCapabilityGSM::GetRegistrationState() {
@@ -405,7 +405,7 @@ void CellularCapabilityGSM::GetRegistrationState() {
   RegistrationInfoCallback callback =
       Bind(&CellularCapabilityGSM::OnGetRegistrationInfoReply,
            weak_ptr_factory_.GetWeakPtr());
-  network_proxy_->GetRegistrationInfo(NULL, callback, kTimeoutDefault);
+  network_proxy_->GetRegistrationInfo(nullptr, callback, kTimeoutDefault);
 }
 
 void CellularCapabilityGSM::GetProperties(const ResultCallback &callback) {
@@ -679,7 +679,7 @@ void CellularCapabilityGSM::OnDBusPropertiesChanged(
     if (emit) {
       cellular()->set_sim_present(true);
       cellular()->adaptor()->EmitKeyValueStoreChanged(
-          kSIMLockStatusProperty, SimLockStatusToProperty(NULL));
+          kSIMLockStatusProperty, SimLockStatusToProperty(nullptr));
     }
   }
 }

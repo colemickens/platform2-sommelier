@@ -114,7 +114,7 @@ class CellularBearer {
 
   // If |ipv4_config_method_| is set to |IPConfig::kMethodStatic|,
   // |ipv4_config_properties_| is guaranteed to contain valid IP configuration
-  // properties. Otherwise, |ipv4_config_properties_| is set to NULL.
+  // properties. Otherwise, |ipv4_config_properties_| is set to nullptr.
   // |ipv6_config_properties_| is handled similarly.
   IPConfig::Method ipv4_config_method_;
   scoped_ptr<IPConfig::Properties> ipv4_config_properties_;

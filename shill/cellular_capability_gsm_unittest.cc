@@ -44,15 +44,15 @@ namespace shill {
 class CellularCapabilityGSMTest : public testing::Test {
  public:
   CellularCapabilityGSMTest()
-      : modem_info_(NULL, &dispatcher_, NULL, NULL, NULL),
+      : modem_info_(nullptr, &dispatcher_, nullptr, nullptr, nullptr),
         create_card_proxy_from_factory_(false),
         proxy_(new MockModemProxy()),
         simple_proxy_(new MockModemSimpleProxy()),
         card_proxy_(new MockModemGSMCardProxy()),
         network_proxy_(new MockModemGSMNetworkProxy()),
         proxy_factory_(this),
-        capability_(NULL),
-        device_adaptor_(NULL),
+        capability_(nullptr),
+        device_adaptor_(nullptr),
         cellular_(new Cellular(&modem_info_,
                                "",
                                kAddress,
@@ -62,16 +62,16 @@ class CellularCapabilityGSMTest : public testing::Test {
                                "",
                                "",
                                &proxy_factory_)),
-        mock_home_provider_info_(NULL),
-        mock_serving_operator_info_(NULL) {
+        mock_home_provider_info_(nullptr),
+        mock_serving_operator_info_(nullptr) {
     modem_info_.metrics()->RegisterDevice(cellular_->interface_index(),
                                           Technology::kCellular);
   }
 
   virtual ~CellularCapabilityGSMTest() {
-    cellular_->service_ = NULL;
-    capability_ = NULL;
-    device_adaptor_ = NULL;
+    cellular_->service_ = nullptr;
+    capability_ = nullptr;
+    device_adaptor_ = nullptr;
   }
 
   virtual void SetUp() {
@@ -197,12 +197,12 @@ class CellularCapabilityGSMTest : public testing::Test {
     virtual ModemGSMCardProxyInterface *CreateModemGSMCardProxy(
         const string &/*path*/,
         const string &/*service*/) {
-      // TODO(benchan): This code conditionally returns a NULL pointer to avoid
+      // TODO(benchan): This code conditionally returns a nullptr to avoid
       // CellularCapabilityGSM::InitProperties (and thus
       // CellularCapabilityGSM::GetIMSI) from being called during the
       // construction. Remove this workaround after refactoring the tests.
       return test_->create_card_proxy_from_factory_ ?
-          test_->card_proxy_.release() : NULL;
+          test_->card_proxy_.release() : nullptr;
     }
 
     virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(

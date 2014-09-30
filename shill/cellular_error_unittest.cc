@@ -50,7 +50,7 @@ const char kErrorMessage[] = "Some error message.";
 TEST_F(CellularErrorTest, FromDBusError) {
   Error shill_error;
 
-  CellularError::FromDBusError(DBus::Error(), NULL);
+  CellularError::FromDBusError(DBus::Error(), nullptr);
   EXPECT_TRUE(shill_error.IsSuccess());
 
   CellularError::FromDBusError(DBus::Error(), &shill_error);
@@ -90,7 +90,7 @@ TEST_F(CellularErrorTest, FromDBusError) {
 TEST_F(CellularErrorTest, FromMM1DBusError) {
   Error shill_error;
 
-  CellularError::FromDBusError(DBus::Error(), NULL);
+  CellularError::FromDBusError(DBus::Error(), nullptr);
   EXPECT_TRUE(shill_error.IsSuccess());
 
   CellularError::FromMM1DBusError(DBus::Error(), &shill_error);

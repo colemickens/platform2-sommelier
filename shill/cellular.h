@@ -162,8 +162,8 @@ class Cellular : public Device, public RPCTaskDelegate {
   // information may be from the SIM / received OTA.
   void UpdateHomeProvider(const MobileOperatorInfo *operator_info);
   // Update the serving operator using information in |operator_info|.
-  // Additionally, if |home_provider_info| is not NULL, use it to come up with a
-  // better name.
+  // Additionally, if |home_provider_info| is not nullptr, use it to come up
+  // with a better name.
   void UpdateServingOperator(const MobileOperatorInfo *operator_info,
                              const MobileOperatorInfo *home_provider_info);
 

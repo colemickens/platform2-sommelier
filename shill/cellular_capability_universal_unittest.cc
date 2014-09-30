@@ -67,7 +67,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
  public:
   explicit CellularCapabilityUniversalTest(EventDispatcher *dispatcher)
       : dispatcher_(dispatcher),
-        modem_info_(NULL, dispatcher, NULL, NULL, NULL),
+        modem_info_(nullptr, dispatcher, nullptr, nullptr, nullptr),
         modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
         modem_cdma_proxy_(new mm1::MockModemModemCdmaProxy()),
         modem_proxy_(new mm1::MockModemProxy()),
@@ -75,8 +75,8 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
         sim_proxy_(new mm1::MockSimProxy()),
         properties_proxy_(new MockDBusPropertiesProxy()),
         proxy_factory_(this),
-        capability_(NULL),
-        device_adaptor_(NULL),
+        capability_(nullptr),
+        device_adaptor_(nullptr),
         cellular_(new Cellular(&modem_info_,
                                "",
                                "00:01:02:03:04:05",
@@ -87,16 +87,16 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
                                "",
                                &proxy_factory_)),
         service_(new MockCellularService(&modem_info_, cellular_)),
-        mock_home_provider_info_(NULL),
-        mock_serving_operator_info_(NULL) {
+        mock_home_provider_info_(nullptr),
+        mock_serving_operator_info_(nullptr) {
     modem_info_.metrics()->RegisterDevice(cellular_->interface_index(),
                                           Technology::kCellular);
   }
 
   virtual ~CellularCapabilityUniversalTest() {
-    cellular_->service_ = NULL;
-    capability_ = NULL;
-    device_adaptor_ = NULL;
+    cellular_->service_ = nullptr;
+    capability_ = nullptr;
+    device_adaptor_ = nullptr;
   }
 
   virtual void SetUp() {
@@ -116,7 +116,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   }
 
   virtual void TearDown() {
-    capability_->proxy_factory_ = NULL;
+    capability_->proxy_factory_ = nullptr;
   }
 
   void CreateService() {
@@ -144,7 +144,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   }
 
   void ClearService() {
-    cellular_->service_ = NULL;
+    cellular_->service_ = nullptr;
   }
 
   void ExpectModemAndModem3gppProperties() {
@@ -626,7 +626,7 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModemAltairNotConnected) {
   mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
   capability_->InitProxies();
-  capability_->set_active_bearer(NULL);
+  capability_->set_active_bearer(nullptr);
   cellular_->set_mm_plugin(CellularCapabilityUniversal::kAltairLTEMMPlugin);
 
   Error error;
@@ -801,11 +801,11 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
       .Times(1);
 
   EXPECT_FALSE(cellular_->sim_present());
-  EXPECT_TRUE(capability_->sim_proxy_ == NULL);
+  EXPECT_EQ(nullptr, capability_->sim_proxy_);;
 
   capability_->OnSimPathChanged(kSimPath);
   EXPECT_TRUE(cellular_->sim_present());
-  EXPECT_TRUE(capability_->sim_proxy_ != NULL);
+  EXPECT_NE(nullptr, capability_->sim_proxy_);;
   EXPECT_EQ(kSimPath, capability_->sim_path_);
 
   cellular_->set_imsi("");
@@ -840,7 +840,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   // SIM is missing and SIM path is "/".
   capability_->OnSimPathChanged(CellularCapabilityUniversal::kRootPath);
   EXPECT_FALSE(cellular_->sim_present());
-  EXPECT_TRUE(capability_->sim_proxy_ == NULL);
+  EXPECT_EQ(nullptr, capability_->sim_proxy_);;
   EXPECT_EQ(CellularCapabilityUniversal::kRootPath, capability_->sim_path_);
 
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
@@ -855,7 +855,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   // SIM is missing and SIM path is empty.
   capability_->OnSimPathChanged("");
   EXPECT_FALSE(cellular_->sim_present());
-  EXPECT_TRUE(capability_->sim_proxy_ == NULL);
+  EXPECT_EQ(nullptr, capability_->sim_proxy_);;
   EXPECT_EQ("", capability_->sim_path_);
 
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
@@ -1178,7 +1178,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
       .Times(1);
 
   EXPECT_FALSE(cellular_->sim_present());
-  EXPECT_TRUE(capability_->sim_proxy_ == NULL);
+  EXPECT_EQ(nullptr, capability_->sim_proxy_);;
   EXPECT_EQ("", capability_->sim_path_);
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->sim_identifier());
@@ -1186,7 +1186,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
 
   capability_->OnSimPathChanged(kSimPath);
   EXPECT_TRUE(cellular_->sim_present());
-  EXPECT_TRUE(capability_->sim_proxy_ != NULL);
+  EXPECT_NE(nullptr, capability_->sim_proxy_);;
   EXPECT_EQ(kSimPath, capability_->sim_path_);
   EXPECT_EQ(kImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
@@ -1195,7 +1195,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   // Changing to the same SIM path should be a no-op.
   capability_->OnSimPathChanged(kSimPath);
   EXPECT_TRUE(cellular_->sim_present());
-  EXPECT_TRUE(capability_->sim_proxy_ != NULL);
+  EXPECT_NE(nullptr, capability_->sim_proxy_);;
   EXPECT_EQ(kSimPath, capability_->sim_path_);
   EXPECT_EQ(kImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
@@ -1205,7 +1205,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
   Mock::VerifyAndClearExpectations(properties_proxy_.get());
   EXPECT_FALSE(cellular_->sim_present());
-  EXPECT_TRUE(capability_->sim_proxy_ == NULL);
+  EXPECT_EQ(nullptr, capability_->sim_proxy_);;
   EXPECT_EQ("", capability_->sim_path_);
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->sim_identifier());
@@ -1219,7 +1219,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
 
   capability_->OnSimPathChanged(kSimPath);
   EXPECT_TRUE(cellular_->sim_present());
-  EXPECT_TRUE(capability_->sim_proxy_ != NULL);
+  EXPECT_NE(nullptr, capability_->sim_proxy_);;
   EXPECT_EQ(kSimPath, capability_->sim_path_);
   EXPECT_EQ(kImsi, cellular_->imsi());
   EXPECT_EQ(kSimIdentifier, cellular_->sim_identifier());
@@ -1227,7 +1227,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
 
   capability_->OnSimPathChanged("/");
   EXPECT_FALSE(cellular_->sim_present());
-  EXPECT_TRUE(capability_->sim_proxy_ == NULL);
+  EXPECT_EQ(nullptr, capability_->sim_proxy_);;
   EXPECT_EQ("/", capability_->sim_path_);
   EXPECT_EQ("", cellular_->imsi());
   EXPECT_EQ("", cellular_->sim_identifier());
@@ -1320,7 +1320,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateActiveBearer) {
         base::StringPrintf("%s/%zu", kInactiveBearerPathPrefix, i);
   }
 
-  EXPECT_TRUE(capability_->GetActiveBearer() == NULL);
+  EXPECT_EQ(nullptr, capability_->GetActiveBearer());;
 
   // Check that |active_bearer_| is set correctly when an active bearer is
   // returned.
@@ -1330,16 +1330,16 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateActiveBearer) {
                                  inactive_paths[1],
                                  inactive_paths[2]});
   capability_->UpdateActiveBearer();
-  ASSERT_TRUE(capability_->GetActiveBearer() != NULL);
+  ASSERT_NE(nullptr, capability_->GetActiveBearer());;
   EXPECT_EQ(active_paths[2], capability_->GetActiveBearer()->dbus_path());
 
-  // Check that |active_bearer_| is NULL if no active bearers are returned.
+  // Check that |active_bearer_| is nullptr if no active bearers are returned.
   capability_->OnBearersChanged({inactive_paths[0],
                                  inactive_paths[1],
                                  inactive_paths[2],
                                  inactive_paths[1]});
   capability_->UpdateActiveBearer();
-  EXPECT_TRUE(capability_->GetActiveBearer() == NULL);
+  EXPECT_EQ(nullptr, capability_->GetActiveBearer());;
 
   // Check that returning multiple bearers causes death.
   capability_->OnBearersChanged({active_paths[0],
@@ -1352,7 +1352,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateActiveBearer) {
 
   capability_->OnBearersChanged({});
   capability_->UpdateActiveBearer();
-  EXPECT_TRUE(capability_->GetActiveBearer() == NULL);
+  EXPECT_EQ(nullptr, capability_->GetActiveBearer());;
 }
 
 // Validates expected behavior of Connect function
@@ -1387,7 +1387,7 @@ TEST_F(CellularCapabilityUniversalMainTest, Connect) {
   // does not crash if the connect failed and there is no
   // CellularService object.  This can happen if the modem is enabled
   // and then quickly disabled.
-  cellular_->service_ = NULL;
+  cellular_->service_ = nullptr;
   EXPECT_FALSE(capability_->cellular()->service());
   capability_->Connect(properties, &error, callback);
   EXPECT_TRUE(error.IsSuccess());
