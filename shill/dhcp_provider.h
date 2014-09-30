@@ -66,7 +66,7 @@ class DHCPProvider {
                                         bool arp_gateway);
 
   // Returns the DHCP configuration associated with DHCP client |pid|. Return
-  // NULL if |pid| is not bound to a configuration.
+  // nullptr if |pid| is not bound to a configuration.
   DHCPConfigRefPtr GetConfig(int pid);
 
   // Binds a |pid| to a DHCP |config|. When a DHCP config spawns a new DHCP

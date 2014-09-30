@@ -12,7 +12,7 @@ namespace shill {
 
 MockDNSServerTester::MockDNSServerTester(ConnectionRefPtr connection)
     : DNSServerTester(connection,
-                      NULL,
+                      nullptr,
                       std::vector<std::string>(),
                       false,
                       base::Callback<void(const DNSServerTester::Status)>()) {}

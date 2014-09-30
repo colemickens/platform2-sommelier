@@ -60,9 +60,9 @@ class ConnectionTest : public Test {
   ConnectionTest()
       : device_info_(new StrictMock<MockDeviceInfo>(
             &control_,
-            static_cast<EventDispatcher*>(NULL),
-            static_cast<Metrics*>(NULL),
-            static_cast<Manager*>(NULL))),
+            nullptr,
+            nullptr,
+            nullptr)),
         connection_(new Connection(
             kTestDeviceInterfaceIndex0,
             kTestDeviceName0,
@@ -101,7 +101,7 @@ class ConnectionTest : public Test {
 
   virtual void TearDown() {
     AddDestructorExpectations();
-    connection_ = NULL;
+    connection_ = nullptr;
   }
 
   void ReplaceSingletons(ConnectionRefPtr connection) {
@@ -265,9 +265,9 @@ TEST_F(ConnectionTest, AddConfig) {
 
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
       &control_,
-      reinterpret_cast<EventDispatcher *>(NULL),
-      reinterpret_cast<Metrics *>(NULL),
-      reinterpret_cast<Manager *>(NULL),
+      nullptr,
+      nullptr,
+      nullptr,
       kTestDeviceName0,
       string(),
       kTestDeviceInterfaceIndex0));
@@ -396,9 +396,9 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   EXPECT_CALL(resolver_, SetDNSFromLists(empty_list, empty_list));
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
       &control_,
-      reinterpret_cast<EventDispatcher *>(NULL),
-      reinterpret_cast<Metrics *>(NULL),
-      reinterpret_cast<Manager *>(NULL),
+      nullptr,
+      nullptr,
+      nullptr,
       kTestDeviceName0,
       string(),
       kTestDeviceInterfaceIndex0));
@@ -501,9 +501,9 @@ TEST_F(ConnectionTest, RouteRequest) {
   ConnectionRefPtr connection = GetNewConnection();
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
       &control_,
-      reinterpret_cast<EventDispatcher *>(NULL),
-      reinterpret_cast<Metrics *>(NULL),
-      reinterpret_cast<Manager *>(NULL),
+      nullptr,
+      nullptr,
+      nullptr,
       kTestDeviceName0,
       string(),
       kTestDeviceInterfaceIndex0));
@@ -536,7 +536,7 @@ TEST_F(ConnectionTest, Destructor) {
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex1));
   EXPECT_CALL(routing_table_, FlushRoutesWithTag(kTestDeviceInterfaceIndex1));
   EXPECT_CALL(*device_info_, FlushAddresses(kTestDeviceInterfaceIndex1));
-  connection = NULL;
+  connection = nullptr;
 }
 
 TEST_F(ConnectionTest, RequestHostRoute) {
@@ -744,7 +744,7 @@ TEST_F(ConnectionTest, Binders) {
   binder2.Attach(connection_);
 
   EXPECT_CALL(target3, CallTarget()).Times(0);
-  binder3.Attach(NULL);
+  binder3.Attach(nullptr);
 
   ASSERT_EQ(3, connection_->binders_.size());
   EXPECT_TRUE(connection_->binders_.at(0) == &binder0);
@@ -779,7 +779,7 @@ TEST_F(ConnectionTest, Binder) {
   EXPECT_TRUE(binder == connection1->binders_.at(0));
 
   // Unbind lower |connection1| and check if it's unbound.
-  binder->Attach(NULL);
+  binder->Attach(nullptr);
   EXPECT_FALSE(binder->IsBound());
   EXPECT_TRUE(connection1->binders_.empty());
 
@@ -791,7 +791,7 @@ TEST_F(ConnectionTest, Binder) {
   connection2->lower_binder_.Attach(connection1);
   EXPECT_FALSE(connection1->binders_.empty());
   AddDestructorExpectations();
-  connection2 = NULL;
+  connection2 = nullptr;
   EXPECT_TRUE(connection1->binders_.empty());
 
   // Bind lower |connection1| to upper |connection_| and destroy lower
@@ -805,7 +805,7 @@ TEST_F(ConnectionTest, Binder) {
   EXPECT_CALL(target, CallTarget()).Times(1);
   ASSERT_FALSE(connection_->binders_.empty());
   AddDestructorExpectations();
-  connection1 = NULL;
+  connection1 = nullptr;
   EXPECT_FALSE(binder->IsBound());
   EXPECT_FALSE(test_binder.IsBound());
   EXPECT_TRUE(connection_->binders_.empty());
@@ -824,7 +824,7 @@ TEST_F(ConnectionTest, Binder) {
 
     AddDestructorExpectations();
     EXPECT_CALL(target, CallTarget()).Times(1);
-    connection = NULL;
+    connection = nullptr;
   }
   {
     // Circular binding of multiple connections should be safe.
@@ -847,12 +847,12 @@ TEST_F(ConnectionTest, Binder) {
     AddDestructorExpectations();
     EXPECT_CALL(target_a, CallTarget()).Times(1);
     EXPECT_CALL(target_b, CallTarget()).Times(1);
-    connection_b = NULL;
+    connection_b = nullptr;
 
     EXPECT_TRUE(connection_a->binders_.empty());
 
     AddDestructorExpectations();
-    connection_a = NULL;
+    connection_a = nullptr;
   }
   {
     // Test the weak pointer to the bound Connection. This is not a case that
@@ -866,11 +866,11 @@ TEST_F(ConnectionTest, Binder) {
     connection->binders_.clear();
     AddDestructorExpectations();
     EXPECT_CALL(target, CallTarget()).Times(0);
-    connection = NULL;
+    connection = nullptr;
 
-    // Ensure no crash -- the weak pointer to connection should be NULL.
+    // Ensure no crash -- the weak pointer to connection should be nullptr.
     EXPECT_FALSE(binder.connection());
-    binder.Attach(NULL);
+    binder.Attach(nullptr);
   }
 }
 
@@ -879,9 +879,9 @@ TEST_F(ConnectionTest, OnRouteQueryResponse) {
   ConnectionRefPtr connection = GetNewConnection();
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
       &control_,
-      reinterpret_cast<EventDispatcher *>(NULL),
-      reinterpret_cast<Metrics *>(NULL),
-      reinterpret_cast<Manager *>(NULL),
+      nullptr,
+      nullptr,
+      nullptr,
       kTestDeviceName1,
       string(),
       kTestDeviceInterfaceIndex1));
@@ -929,9 +929,9 @@ TEST_F(ConnectionTest, OnRouteQueryResponse) {
   EXPECT_TRUE(binder->IsBound());
   EXPECT_EQ(mock_connection.get(), binder->connection().get());
 
-  device->connection_ = NULL;
+  device->connection_ = nullptr;
   AddDestructorExpectations();
-  connection = NULL;
+  connection = nullptr;
 }
 
 TEST_F(ConnectionTest, GetCarrierConnection) {
@@ -952,16 +952,16 @@ TEST_F(ConnectionTest, GetCarrierConnection) {
 
   // Create a cycle back to |connection1|.
   connection3->lower_binder_.Attach(connection1);
-  EXPECT_EQ(NULL, connection_->GetCarrierConnection().get());
+  EXPECT_EQ(nullptr, connection_->GetCarrierConnection().get());
 
   AddDestructorExpectations();
-  connection3 = NULL;
+  connection3 = nullptr;
 
   AddDestructorExpectations();
-  connection2 = NULL;
+  connection2 = nullptr;
 
   AddDestructorExpectations();
-  connection1 = NULL;
+  connection1 = nullptr;
 }
 
 }  // namespace shill

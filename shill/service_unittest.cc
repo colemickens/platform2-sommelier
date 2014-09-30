@@ -74,7 +74,7 @@ class ServiceTest : public PropertyStoreTest {
                                        metrics(),
                                        &mock_manager_)),
         storage_id_(ServiceUnderTest::kStorageId),
-        power_manager_(new MockPowerManager(NULL, &proxy_factory_)),
+        power_manager_(new MockPowerManager(nullptr, &proxy_factory_)),
         eap_(new MockEapCredentials()) {
     ON_CALL(proxy_factory_, CreatePowerManagerProxy(_))
         .WillByDefault(ReturnNull());
@@ -773,7 +773,7 @@ TEST_F(ServiceTest, State) {
   EXPECT_CALL(*mock_profile, UpdateService(IsRefPtrTo(service_)));
   service_->SetState(Service::kStateConnected);
   EXPECT_TRUE(service_->has_ever_connected_);
-  service_->set_profile(NULL);  // Break reference cycle.
+  service_->set_profile(nullptr);  // Break reference cycle.
 
   // Similar to the above, but emulate an emphemeral profile, which
   // has no storage. We can't update the service in the profile, but
@@ -782,11 +782,10 @@ TEST_F(ServiceTest, State) {
   service_->set_profile(mock_profile);
   service_->has_ever_connected_ = false;
   EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
-  EXPECT_CALL(*mock_profile, GetConstStorage()).
-      WillOnce(Return(static_cast<StoreInterface *>(NULL)));
+  EXPECT_CALL(*mock_profile, GetConstStorage()).WillOnce(Return(nullptr));
   service_->SetState(Service::kStateConnected);
   EXPECT_TRUE(service_->has_ever_connected_);
-  service_->set_profile(NULL);  // Break reference cycle.
+  service_->set_profile(nullptr);  // Break reference cycle.
 }
 
 TEST_F(ServiceTest, PortalDetectionFailure) {
@@ -921,7 +920,7 @@ TEST_F(ServiceTest, ReRetainAutoConnect) {
 }
 
 TEST_F(ServiceTest, IsAutoConnectable) {
-  const char *reason = NULL;
+  const char *reason = nullptr;
   service_->SetConnectable(true);
 
   // Services with non-primary connectivity technologies should not auto-connect
@@ -1106,7 +1105,7 @@ TEST_F(ServiceTest, ConfigureBoolProperty) {
 TEST_F(ServiceTest, ConfigureStringProperty) {
   const string kGuid0 = "guid_zero";
   const string kGuid1 = "guid_one";
-  service_->SetGuid(kGuid0, NULL);
+  service_->SetGuid(kGuid0, nullptr);
   ASSERT_EQ(kGuid0, service_->guid());
   KeyValueStore args;
   args.SetString(kGuidProperty, kGuid1);
@@ -1151,7 +1150,7 @@ TEST_F(ServiceTest, ConfigureEapStringProperty) {
 TEST_F(ServiceTest, ConfigureIntProperty) {
   const int kPriority0 = 100;
   const int kPriority1 = 200;
-  service_->SetPriority(kPriority0, NULL);
+  service_->SetPriority(kPriority0, nullptr);
   ASSERT_EQ(kPriority0, service_->priority());
   KeyValueStore args;
   args.SetInt(kPriorityProperty, kPriority1);
@@ -1188,10 +1187,10 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
   service_->SetAutoConnect(false);
   const string kGUID0 = "guid_zero";
   const string kGUID1 = "guid_one";
-  service_->SetGuid(kGUID0, NULL);
+  service_->SetGuid(kGUID0, nullptr);
   const uint32_t kPriority0 = 100;
   const uint32_t kPriority1 = 200;
-  service_->SetPriority(kPriority0, NULL);
+  service_->SetPriority(kPriority0, nullptr);
   const vector<string> kStrings0{ "string0", "string1" };
   const vector<string> kStrings1{ "string2", "string3" };
   service_->set_strings(kStrings0);
@@ -1239,7 +1238,7 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
 }
 
 TEST_F(ServiceTest, IsRemembered) {
-  service_->set_profile(NULL);
+  service_->set_profile(nullptr);
   EXPECT_CALL(mock_manager_, IsServiceEphemeral(_)).Times(0);
   EXPECT_FALSE(service_->IsRemembered());
 
@@ -1254,7 +1253,7 @@ TEST_F(ServiceTest, IsRemembered) {
 }
 
 TEST_F(ServiceTest, IsDependentOn) {
-  EXPECT_FALSE(service_->IsDependentOn(NULL));
+  EXPECT_FALSE(service_->IsDependentOn(nullptr));
 
   scoped_ptr<MockDeviceInfo> mock_device_info(
       new NiceMock<MockDeviceInfo>(control_interface(), dispatcher(), metrics(),
@@ -1269,7 +1268,7 @@ TEST_F(ServiceTest, IsDependentOn) {
       .WillRepeatedly(Return(mock_connection1));
   EXPECT_CALL(*mock_connection1, GetLowerConnection())
       .WillRepeatedly(Return(ConnectionRefPtr()));
-  EXPECT_FALSE(service_->IsDependentOn(NULL));
+  EXPECT_FALSE(service_->IsDependentOn(nullptr));
 
   scoped_refptr<ServiceUnderTest> service1 =
       new ServiceUnderTest(control_interface(),
@@ -1285,24 +1284,23 @@ TEST_F(ServiceTest, IsDependentOn) {
   EXPECT_TRUE(service_->IsDependentOn(service1));
 
   service_->connection_ = mock_connection1;
-  service1->connection_ = NULL;
+  service1->connection_ = nullptr;
   EXPECT_FALSE(service_->IsDependentOn(service1));
 
-  service_->connection_ = NULL;
+  service_->connection_ = nullptr;
 }
 
 TEST_F(ServiceTest, OnPropertyChanged) {
   scoped_refptr<MockProfile> profile(
       new StrictMock<MockProfile>(control_interface(), metrics(), manager()));
-  service_->set_profile(NULL);
+  service_->set_profile(nullptr);
   // Expect no crash.
   service_->OnPropertyChanged("");
 
   // Expect no call to Update if the profile has no storage.
   service_->set_profile(profile);
   EXPECT_CALL(*profile, UpdateService(_)).Times(0);
-  EXPECT_CALL(*profile, GetConstStorage())
-      .WillOnce(Return(reinterpret_cast<StoreInterface *>(NULL)));
+  EXPECT_CALL(*profile, GetConstStorage()).WillOnce(Return(nullptr));
   service_->OnPropertyChanged("");
 
   // Expect call to Update if the profile has storage.
@@ -1427,7 +1425,7 @@ TEST_P(WriteOnlyServicePropertyTest, PropertyWriteOnly) {
 
   string property(GetParam().reader().get_string());
   Error error;
-  EXPECT_FALSE(service_->store().GetStringProperty(property, NULL, &error));
+  EXPECT_FALSE(service_->store().GetStringProperty(property, nullptr, &error));
   EXPECT_EQ(Error::kPermissionDenied, error.type());
 }
 
@@ -1473,8 +1471,8 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
   }
 
   // Assure orderly destruction of the Connection before DeviceInfo.
-  service_->connection_ = NULL;
-  mock_connection = NULL;
+  service_->connection_ = nullptr;
+  mock_connection = nullptr;
   mock_device_info.reset();
 }
 
@@ -1747,7 +1745,7 @@ TEST_F(ServiceTest, NoteDisconnectEventDiscardOld) {
   EXPECT_CALL(diagnostics_reporter_, OnConnectivityEvent()).Times(0);
   for (int i = 0; i < 2; i++) {
     int now = 0;
-    deque<Timestamp> *events = NULL;
+    deque<Timestamp> *events = nullptr;
     if (i == 0) {
       SetStateField(Service::kStateConnected);
       now = GetDisconnectsMonitorSeconds() + 1;
@@ -1871,7 +1869,7 @@ TEST_F(ServiceTest, SetAutoConnectFull) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_FALSE(service_->auto_connect());
   EXPECT_TRUE(service_->retain_auto_connect());
-  EXPECT_FALSE(GetAutoConnect(NULL));
+  EXPECT_FALSE(GetAutoConnect(nullptr));
   Mock::VerifyAndClearExpectations(&mock_manager_);
 
   // Clear the |retain_auto_connect_| flag for the next test.
@@ -1883,7 +1881,7 @@ TEST_F(ServiceTest, SetAutoConnectFull) {
   SetAutoConnectFull(true, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(service_->auto_connect());
-  EXPECT_TRUE(GetAutoConnect(NULL));
+  EXPECT_TRUE(GetAutoConnect(nullptr));
   EXPECT_TRUE(service_->retain_auto_connect());
   Mock::VerifyAndClearExpectations(&mock_manager_);
 
@@ -1897,7 +1895,7 @@ TEST_F(ServiceTest, SetAutoConnectFull) {
   SetAutoConnectFull(true, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(service_->auto_connect());
-  EXPECT_TRUE(GetAutoConnect(NULL));
+  EXPECT_TRUE(GetAutoConnect(nullptr));
   EXPECT_TRUE(service_->retain_auto_connect());
   Mock::VerifyAndClearExpectations(&mock_manager_);
 
@@ -1911,7 +1909,7 @@ TEST_F(ServiceTest, SetAutoConnectFull) {
   SetAutoConnectFull(false, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_FALSE(service_->auto_connect());
-  EXPECT_FALSE(GetAutoConnect(NULL));
+  EXPECT_FALSE(GetAutoConnect(nullptr));
   EXPECT_TRUE(service_->retain_auto_connect());
   Mock::VerifyAndClearExpectations(&mock_manager_);
 }
@@ -1950,28 +1948,28 @@ TEST_F(ServiceTest, ClearAutoConnect) {
   ClearAutoConnect(&error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_FALSE(service_->retain_auto_connect());
-  EXPECT_FALSE(GetAutoConnect(NULL));
+  EXPECT_FALSE(GetAutoConnect(nullptr));
   Mock::VerifyAndClearExpectations(&mock_manager_);
 
   // false -> false
   SetAutoConnectFull(false, &error);
-  EXPECT_FALSE(GetAutoConnect(NULL));
+  EXPECT_FALSE(GetAutoConnect(nullptr));
   EXPECT_TRUE(service_->retain_auto_connect());
   EXPECT_CALL(mock_manager_, UpdateService(_)).Times(0);
   ClearAutoConnect(&error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_FALSE(service_->retain_auto_connect());
-  EXPECT_FALSE(GetAutoConnect(NULL));
+  EXPECT_FALSE(GetAutoConnect(nullptr));
   Mock::VerifyAndClearExpectations(&mock_manager_);
 
   // true -> false
   SetAutoConnectFull(true, &error);
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_TRUE(GetAutoConnect(NULL));
+  EXPECT_TRUE(GetAutoConnect(nullptr));
   EXPECT_CALL(mock_manager_, UpdateService(_)).Times(1);
   ClearAutoConnect(&error);
   EXPECT_FALSE(service_->retain_auto_connect());
-  EXPECT_FALSE(GetAutoConnect(NULL));
+  EXPECT_FALSE(GetAutoConnect(nullptr));
   Mock::VerifyAndClearExpectations(&mock_manager_);
 }
 

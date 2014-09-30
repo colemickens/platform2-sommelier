@@ -11,7 +11,7 @@ namespace shill {
 MockConnectivityTrial::MockConnectivityTrial(ConnectionRefPtr connection,
                                              int trial_timeout_seconds)
     : ConnectivityTrial(connection,
-                        NULL,
+                        nullptr,
                         trial_timeout_seconds,
                         base::Callback<void(ConnectivityTrial::Result)>()) {}
 

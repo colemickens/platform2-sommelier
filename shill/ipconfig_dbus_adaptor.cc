@@ -36,7 +36,7 @@ IPConfigDBusAdaptor::IPConfigDBusAdaptor(DBus::Connection *conn,
 }
 
 IPConfigDBusAdaptor::~IPConfigDBusAdaptor() {
-  ipconfig_ = NULL;
+  ipconfig_ = nullptr;
 }
 
 void IPConfigDBusAdaptor::EmitBoolChanged(const string &name, bool value) {

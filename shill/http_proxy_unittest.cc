@@ -96,16 +96,13 @@ class HTTPProxyTest : public Test {
  public:
   HTTPProxyTest()
       : interface_name_(kInterfaceName),
-        server_async_connection_(NULL),
+        server_async_connection_(nullptr),
         dns_servers_(kDNSServers, kDNSServers + 2),
-        dns_client_(NULL),
-        device_info_(new NiceMock<MockDeviceInfo>(
-            &control_,
-            reinterpret_cast<EventDispatcher*>(NULL),
-            reinterpret_cast<Metrics*>(NULL),
-            reinterpret_cast<Manager*>(NULL))),
+        dns_client_(nullptr),
+        device_info_(
+            new NiceMock<MockDeviceInfo>(&control_, nullptr, nullptr, nullptr)),
         connection_(new StrictMock<MockConnection>(device_info_.get())),
-        proxy_(connection_) { }
+        proxy_(connection_) {}
 
  protected:
   virtual void SetUp() {
@@ -404,8 +401,8 @@ class HTTPProxyTest : public Test {
   void StopProxy() {
     ExpectStop();
     proxy_.Stop();
-    server_async_connection_ = NULL;
-    dns_client_ = NULL;
+    server_async_connection_ = nullptr;
+    dns_client_ = nullptr;
     ExpectReset();
   }
   void WriteToClient(int fd) {

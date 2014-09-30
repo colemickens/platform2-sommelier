@@ -34,7 +34,7 @@ ManagerDBusAdaptor::ManagerDBusAdaptor(DBus::Connection *conn, Manager *manager)
 }
 
 ManagerDBusAdaptor::~ManagerDBusAdaptor() {
-  manager_ = NULL;
+  manager_ = nullptr;
 }
 
 void ManagerDBusAdaptor::UpdateRunning() {}
@@ -113,7 +113,7 @@ void ManagerDBusAdaptor::SetProperty(const string &name,
 
 string ManagerDBusAdaptor::GetState(DBus::Error &/*error*/) {  // NOLINT
   SLOG(DBus, 2) << __func__;
-  return manager_->CalculateState(NULL);
+  return manager_->CalculateState(nullptr);
 }
 
 DBus::Path ManagerDBusAdaptor::CreateProfile(const string &name,

@@ -322,7 +322,7 @@ TEST(PropertyAccessorTest, CustomAccessorCorrectness) {
     Error error;
     CustomAccessor<StringWrapper, string> accessor(&wrapper,
                                                    &StringWrapper::Get,
-                                                   NULL);
+                                                   nullptr);
     EXPECT_EQ(wrapper.value_, accessor.Get(&error));
 
     const string expected_string = "what";
@@ -339,7 +339,7 @@ TEST(PropertyAccessorTest, CustomAccessorCorrectness) {
     Error error;
     CustomAccessor<StringWrapper, string> accessor(&wrapper,
                                                    &StringWrapper::Get,
-                                                   NULL);
+                                                   nullptr);
     accessor.Clear(&error);
     ASSERT_FALSE(error.IsSuccess());
   }
@@ -348,7 +348,7 @@ TEST(PropertyAccessorTest, CustomAccessorCorrectness) {
     Error error;
     CustomAccessor<StringWrapper, string> accessor(&wrapper,
                                                    &StringWrapper::Get,
-                                                   NULL,
+                                                   nullptr,
                                                    &StringWrapper::Clear);
     wrapper.value_ = "empty this";
     accessor.Clear(&error);
@@ -364,7 +364,7 @@ TEST(PropertyAccessorTest, CustomWriteOnlyAccessorWithDefault) {
     Error error;
     const string default_value = "default value";
     CustomWriteOnlyAccessor<StringWrapper, string> accessor(
-        &wrapper, &StringWrapper::Set, NULL, &default_value);
+        &wrapper, &StringWrapper::Set, nullptr, &default_value);
     wrapper.value_ = "can't read this";
     EXPECT_EQ(string(), accessor.Get(&error));
     EXPECT_TRUE(error.IsFailure());
@@ -376,7 +376,7 @@ TEST(PropertyAccessorTest, CustomWriteOnlyAccessorWithDefault) {
     const string default_value = "default value";
     const string expected_string = "what";
     CustomWriteOnlyAccessor<StringWrapper, string> accessor(
-        &wrapper, &StringWrapper::Set, NULL, &default_value);
+        &wrapper, &StringWrapper::Set, nullptr, &default_value);
     EXPECT_TRUE(accessor.Set(expected_string, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_string, wrapper.value_);
@@ -391,7 +391,7 @@ TEST(PropertyAccessorTest, CustomWriteOnlyAccessorWithDefault) {
     Error error;
     const string default_value = "default value";
     CustomWriteOnlyAccessor<StringWrapper, string> accessor(
-        &wrapper, &StringWrapper::Set, NULL, &default_value);
+        &wrapper, &StringWrapper::Set, nullptr, &default_value);
     accessor.Set("new value", &error);
     EXPECT_EQ("new value", wrapper.value_);
     accessor.Clear(&error);
@@ -406,7 +406,7 @@ TEST(PropertyAccessorTest, CustomWriteOnlyAccessorWithClear) {
     // Test reading.
     Error error;
     CustomWriteOnlyAccessor<StringWrapper, string> accessor(
-        &wrapper, &StringWrapper::Set, &StringWrapper::Clear, NULL);
+        &wrapper, &StringWrapper::Set, &StringWrapper::Clear, nullptr);
     wrapper.value_ = "can't read this";
     EXPECT_EQ(string(), accessor.Get(&error));
     EXPECT_TRUE(error.IsFailure());
@@ -417,7 +417,7 @@ TEST(PropertyAccessorTest, CustomWriteOnlyAccessorWithClear) {
     Error error;
     const string expected_string = "what";
     CustomWriteOnlyAccessor<StringWrapper, string> accessor(
-        &wrapper, &StringWrapper::Set, &StringWrapper::Clear, NULL);
+        &wrapper, &StringWrapper::Set, &StringWrapper::Clear, nullptr);
     EXPECT_TRUE(accessor.Set(expected_string, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_string, wrapper.value_);
@@ -431,7 +431,7 @@ TEST(PropertyAccessorTest, CustomWriteOnlyAccessorWithClear) {
     // Test clearing.
     Error error;
     CustomWriteOnlyAccessor<StringWrapper, string> accessor(
-        &wrapper, &StringWrapper::Set, &StringWrapper::Clear, NULL);
+        &wrapper, &StringWrapper::Set, &StringWrapper::Clear, nullptr);
     EXPECT_TRUE(accessor.Set("new value", &error));
     EXPECT_EQ("new value", wrapper.value_);
     accessor.Clear(&error);

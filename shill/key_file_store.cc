@@ -30,7 +30,7 @@ const char KeyFileStore::kCorruptSuffix[] = ".corrupted";
 KeyFileStore::KeyFileStore(GLib *glib)
     : glib_(glib),
       crypto_(glib),
-      key_file_(NULL) {}
+      key_file_(nullptr) {}
 
 KeyFileStore::~KeyFileStore() {
   ReleaseKeyFile();
@@ -39,7 +39,7 @@ KeyFileStore::~KeyFileStore() {
 void KeyFileStore::ReleaseKeyFile() {
   if (key_file_) {
     glib_->KeyFileFree(key_file_);
-    key_file_ = NULL;
+    key_file_ = nullptr;
   }
 }
 
@@ -57,7 +57,7 @@ bool KeyFileStore::Open() {
     LOG(INFO) << "Creating a new key file at " << path_.value();
     return true;
   }
-  GError *error = NULL;
+  GError *error = nullptr;
   if (glib_->KeyFileLoadFromFile(
           key_file_,
           path_.value().c_str(),
@@ -80,7 +80,7 @@ bool KeyFileStore::Close() {
 
 bool KeyFileStore::Flush() {
   CHECK(key_file_);
-  GError *error = NULL;
+  GError *error = nullptr;
   gsize length = 0;
   gchar *data = glib_->KeyFileToData(key_file_, &length, &error);
 
@@ -139,7 +139,7 @@ set<string> KeyFileStore::GetGroupsWithKey(const string &key) const {
   set<string> groups = GetGroups();
   set<string> groups_with_key;
   for (const auto &group : groups) {
-    if (glib_->KeyFileHasKey(key_file_, group.c_str(), key.c_str(), NULL)) {
+    if (glib_->KeyFileHasKey(key_file_, group.c_str(), key.c_str(), nullptr)) {
       groups_with_key.insert(group);
     }
   }
@@ -165,7 +165,7 @@ bool KeyFileStore::ContainsGroup(const string &group) const {
 
 bool KeyFileStore::DeleteKey(const string &group, const string &key) {
   CHECK(key_file_);
-  GError *error = NULL;
+  GError *error = nullptr;
   glib_->KeyFileRemoveKey(key_file_, group.c_str(), key.c_str(), &error);
   if (error && error->code != G_KEY_FILE_ERROR_KEY_NOT_FOUND) {
     LOG(ERROR) << "Failed to delete (" << group << ":" << key << "): "
@@ -177,7 +177,7 @@ bool KeyFileStore::DeleteKey(const string &group, const string &key) {
 
 bool KeyFileStore::DeleteGroup(const string &group) {
   CHECK(key_file_);
-  GError *error = NULL;
+  GError *error = nullptr;
   glib_->KeyFileRemoveGroup(key_file_, group.c_str(), &error);
   if (error && error->code != G_KEY_FILE_ERROR_GROUP_NOT_FOUND) {
     LOG(ERROR) << "Failed to delete group " << group << ": "
@@ -188,8 +188,8 @@ bool KeyFileStore::DeleteGroup(const string &group) {
 }
 
 bool KeyFileStore::SetHeader(const string &header) {
-  GError *error = NULL;
-  glib_->KeyFileSetComment(key_file_, NULL, NULL, header.c_str(), &error);
+  GError *error = nullptr;
+  glib_->KeyFileSetComment(key_file_, nullptr, nullptr, header.c_str(), &error);
   if (error) {
     LOG(ERROR) << "Failed to to set header: "
                << glib_->ConvertErrorToMessage(error);
@@ -202,7 +202,7 @@ bool KeyFileStore::GetString(const string &group,
                              const string &key,
                              string *value) const {
   CHECK(key_file_);
-  GError *error = NULL;
+  GError *error = nullptr;
   gchar *data =
       glib_->KeyFileGetString(key_file_, group.c_str(), key.c_str(), &error);
   if (!data) {
@@ -230,7 +230,7 @@ bool KeyFileStore::GetBool(const string &group,
                            const string &key,
                            bool *value) const {
   CHECK(key_file_);
-  GError *error = NULL;
+  GError *error = nullptr;
   gboolean data =
       glib_->KeyFileGetBoolean(key_file_, group.c_str(), key.c_str(), &error);
   if (error) {
@@ -257,7 +257,7 @@ bool KeyFileStore::SetBool(const string &group, const string &key, bool value) {
 bool KeyFileStore::GetInt(
     const string &group, const string &key, int *value) const {
   CHECK(key_file_);
-  GError *error = NULL;
+  GError *error = nullptr;
   gint data =
       glib_->KeyFileGetInteger(key_file_, group.c_str(), key.c_str(), &error);
   if (error) {
@@ -315,7 +315,7 @@ bool KeyFileStore::GetStringList(const string &group,
                                  vector<string> *value) const {
   CHECK(key_file_);
   gsize length = 0;
-  GError *error = NULL;
+  GError *error = nullptr;
   gchar **data = glib_->KeyFileGetStringList(key_file_,
                                              group.c_str(),
                                              key.c_str(),

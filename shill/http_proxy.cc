@@ -69,10 +69,10 @@ HTTPProxy::HTTPProxy(ConnectionRefPtr connection)
                                   weak_ptr_factory_.GetWeakPtr())),
       write_server_callback_(Bind(&HTTPProxy::WriteToServer,
                                   weak_ptr_factory_.GetWeakPtr())),
-      dispatcher_(NULL),
+      dispatcher_(nullptr),
       proxy_port_(-1),
       proxy_socket_(-1),
-      sockets_(NULL),
+      sockets_(nullptr),
       client_socket_(-1),
       server_port_(kDefaultServerPort),
       server_socket_(-1),
@@ -145,13 +145,13 @@ void HTTPProxy::Stop() {
   StopClient();
 
   accept_handler_.reset();
-  dispatcher_ = NULL;
+  dispatcher_ = nullptr;
   dns_client_.reset();
   proxy_port_ = -1;
   server_async_connection_.reset();
   sockets_->Close(proxy_socket_);
   proxy_socket_ = -1;
-  sockets_ = NULL;
+  sockets_ = nullptr;
   state_ = kStateIdle;
 }
 
@@ -161,7 +161,7 @@ void HTTPProxy::Stop() {
 void HTTPProxy::AcceptClient(int fd) {
   SLOG(HTTPProxy, 3) << "In " << __func__;
 
-  int client_fd = sockets_->Accept(fd, NULL, NULL);
+  int client_fd = sockets_->Accept(fd, nullptr, nullptr);
   if (client_fd < 0) {
     PLOG(ERROR) << "Client accept failed";
     return;

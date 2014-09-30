@@ -27,10 +27,10 @@ constexpr char DHCPProvider::kDHCPCDPathFormatLease[];
 DHCPProvider::DHCPProvider()
     : proxy_factory_(ProxyFactory::GetInstance()),
       root_("/"),
-      control_interface_(NULL),
-      dispatcher_(NULL),
-      glib_(NULL),
-      metrics_(NULL) {
+      control_interface_(nullptr),
+      dispatcher_(nullptr),
+      glib_(nullptr),
+      metrics_(nullptr) {
   SLOG(DHCP, 2) << __func__;
 }
 
@@ -74,7 +74,7 @@ DHCPConfigRefPtr DHCPProvider::GetConfig(int pid) {
   SLOG(DHCP, 2) << __func__ << " pid: " << pid;
   PIDConfigMap::const_iterator it = configs_.find(pid);
   if (it == configs_.end()) {
-    return NULL;
+    return nullptr;
   }
   return it->second;
 }

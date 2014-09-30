@@ -168,7 +168,7 @@ bool Profile::AdoptService(const ServiceRefPtr &service) {
 
 bool Profile::AbandonService(const ServiceRefPtr &service) {
   if (service->profile() == this)
-    service->SetProfile(NULL);
+    service->SetProfile(nullptr);
   return storage_->DeleteGroup(service->GetStorageIdentifier()) &&
       storage_->Flush();
 }
@@ -380,8 +380,8 @@ void Profile::HelpRegisterConstDerivedStrings(
     const string &name,
     Strings(Profile::*get)(Error *)) {
   store_.RegisterDerivedStrings(
-      name,
-      StringsAccessor(new CustomAccessor<Profile, Strings>(this, get, NULL)));
+      name, StringsAccessor(
+                new CustomAccessor<Profile, Strings>(this, get, nullptr)));
 }
 
 }  // namespace shill

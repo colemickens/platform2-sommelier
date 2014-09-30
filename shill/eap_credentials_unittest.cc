@@ -446,7 +446,7 @@ TEST_F(EapCredentialsTest, Reset) {
   SetPrivateKey("foo");
   SetPin("foo");
   SetUseSystemCAs(false);
-  eap_.SetKeyManagement("foo", NULL);
+  eap_.SetKeyManagement("foo", nullptr);
   EXPECT_FALSE(IsReset());
   EXPECT_FALSE(GetKeyManagement().empty());
   eap_.Reset();
@@ -456,15 +456,15 @@ TEST_F(EapCredentialsTest, Reset) {
 
 TEST_F(EapCredentialsTest, SetKeyManagement) {
   const string kKeyManagement0("foo");
-  eap_.SetKeyManagement(kKeyManagement0, NULL);
+  eap_.SetKeyManagement(kKeyManagement0, nullptr);
   EXPECT_EQ(kKeyManagement0, GetKeyManagement());
 
   const string kKeyManagement1("bar");
-  eap_.SetKeyManagement(kKeyManagement1, NULL);
+  eap_.SetKeyManagement(kKeyManagement1, nullptr);
   EXPECT_EQ(kKeyManagement1, GetKeyManagement());
 
   // We should not be able to set the key management to an empty string.
-  eap_.SetKeyManagement("", NULL);
+  eap_.SetKeyManagement("", nullptr);
   EXPECT_EQ(kKeyManagement1, GetKeyManagement());
 }
 

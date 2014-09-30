@@ -38,7 +38,7 @@ namespace shill {
 
 class ProfileTest : public PropertyStoreTest {
  public:
-  ProfileTest() : mock_metrics_(new MockMetrics(NULL)) {
+  ProfileTest() : mock_metrics_(new MockMetrics(nullptr)) {
     Profile::Identifier id("rather", "irrelevant");
     profile_ =
         new Profile(control_interface(), metrics(), manager(), id, "", false);
@@ -258,7 +258,7 @@ TEST_F(ProfileTest, ServiceConfigure) {
                                               metrics(),
                                               manager()));
   // Change prioirty from default.
-  service1->SetPriority(service1->priority() + 1, NULL);
+  service1->SetPriority(service1->priority() + 1, nullptr);
   ASSERT_TRUE(profile_->AdoptService(service1));
   ASSERT_TRUE(profile_->ContainsService(service1));
 
@@ -463,7 +463,7 @@ TEST_F(ProfileTest, InitStorage) {
 }
 
 TEST_F(ProfileTest, UpdateDevice) {
-  EXPECT_FALSE(profile_->UpdateDevice(NULL));
+  EXPECT_FALSE(profile_->UpdateDevice(nullptr));
 }
 
 }  // namespace shill

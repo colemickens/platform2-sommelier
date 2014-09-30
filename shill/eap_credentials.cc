@@ -164,14 +164,14 @@ void EapCredentials::InitPropertyStore(PropertyStore *store) {
   HelpRegisterWriteOnlyDerivedString(store,
                                      kEapPasswordProperty,
                                      &EapCredentials::SetEapPassword,
-                                     NULL,
+                                     nullptr,
                                      &password_);
   store->RegisterString(kEapPinProperty, &pin_);
   store->RegisterString(kEapPrivateKeyProperty, &private_key_);
   HelpRegisterWriteOnlyDerivedString(store,
                                      kEapPrivateKeyPasswordProperty,
                                      &EapCredentials::SetEapPrivateKeyPassword,
-                                     NULL,
+                                     nullptr,
                                      &private_key_password_);
 
   // Non-authentication properties.
@@ -262,7 +262,7 @@ void EapCredentials::Load(StoreInterface *storage, const string &id) {
   storage->GetString(id, kStorageEapKeyID, &key_id_);
   string key_management;
   storage->GetString(id, kStorageEapKeyManagement, &key_management);
-  SetKeyManagement(key_management, NULL);
+  SetKeyManagement(key_management, nullptr);
   storage->GetCryptedString(id, kStorageEapPassword, &password_);
   storage->GetString(id, kStorageEapPIN, &pin_);
   storage->GetString(id, kStorageEapPrivateKey, &private_key_);

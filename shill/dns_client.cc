@@ -48,7 +48,7 @@ const int DNSClient::kDefaultDNSPort = 53;
 
 // Private to the implementation of resolver so callers don't include ares.h
 struct DNSClientState {
-  DNSClientState() : channel(NULL), start_time{} {}
+  DNSClientState() : channel(nullptr), start_time{} {}
 
   ares_channel channel;
   map<ares_socket_t, std::shared_ptr<IOHandler>> read_handlers;
@@ -222,12 +222,12 @@ void DNSClient::ReceiveDNSReply(int status, struct hostent *hostent) {
                              weak_ptr_factory_.GetWeakPtr()));
 
   if (status == ARES_SUCCESS &&
-      hostent != NULL &&
+      hostent != nullptr &&
       hostent->h_addrtype == address_.family() &&
       static_cast<size_t>(hostent->h_length) ==
       IPAddress::GetAddressLength(address_.family()) &&
-      hostent->h_addr_list != NULL &&
-      hostent->h_addr_list[0] != NULL) {
+      hostent->h_addr_list != nullptr &&
+      hostent->h_addr_list[0] != nullptr) {
     address_ = IPAddress(address_.family(),
                          ByteString(reinterpret_cast<unsigned char *>(
                              hostent->h_addr_list[0]), hostent->h_length));

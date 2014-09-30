@@ -69,11 +69,9 @@ class ConnectionHealthCheckerTest : public Test {
  public:
   ConnectionHealthCheckerTest()
       : interface_name_(kInterfaceName),
-        device_info_(&control_, &dispatcher_,
-                     reinterpret_cast<Metrics*>(NULL),
-                     reinterpret_cast<Manager*>(NULL)),
+        device_info_(&control_, &dispatcher_, nullptr, nullptr),
         connection_(new NiceMock<MockConnection>(&device_info_)),
-        socket_(NULL) {}
+        socket_(nullptr) {}
 
   // Invokes
   int GetSockName(int fd, struct sockaddr *addr_out, socklen_t *sockaddr_size) {
@@ -232,12 +230,12 @@ class ConnectionHealthCheckerTest : public Test {
     EXPECT_EQ(connection_.get(), health_checker_->connection_.get());
     EXPECT_EQ(&dispatcher_, health_checker_->dispatcher_);
     EXPECT_EQ(socket_, health_checker_->socket_.get());
-    EXPECT_FALSE(socket_ == NULL);
+    EXPECT_FALSE(socket_ == nullptr);
     EXPECT_EQ(socket_info_reader_, health_checker_->socket_info_reader_.get());
-    EXPECT_FALSE(socket_info_reader_ == NULL);
+    EXPECT_FALSE(socket_info_reader_ == nullptr);
     EXPECT_FALSE(health_checker_->connection_complete_callback_.is_null());
     EXPECT_EQ(tcp_connection_, health_checker_->tcp_connection_.get());
-    EXPECT_FALSE(tcp_connection_ == NULL);
+    EXPECT_FALSE(tcp_connection_ == nullptr);
     EXPECT_FALSE(health_checker_->health_check_in_progress_);
   }
 
@@ -340,7 +338,7 @@ TEST_F(ConnectionHealthCheckerTest, SetConnection) {
 
   // health_checker_ has reset tcp_connection_ to a new object.
   // Since it owned tcp_connection_, the object has been destroyed.
-  tcp_connection_ = NULL;
+  tcp_connection_ = nullptr;
 }
 
 TEST_F(ConnectionHealthCheckerTest, GarbageCollectDNSClients) {

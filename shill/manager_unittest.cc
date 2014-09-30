@@ -86,17 +86,16 @@ using ::testing::WithArg;
 class ManagerTest : public PropertyStoreTest {
  public:
   ManagerTest()
-      : power_manager_(new MockPowerManager(NULL, &proxy_factory_)),
-        device_info_(new NiceMock<MockDeviceInfo>(
-            control_interface(),
-            reinterpret_cast<EventDispatcher*>(NULL),
-            reinterpret_cast<Metrics*>(NULL),
-            reinterpret_cast<Manager*>(NULL))),
+      : power_manager_(new MockPowerManager(nullptr, &proxy_factory_)),
+        device_info_(new NiceMock<MockDeviceInfo>(control_interface(),
+                                                  nullptr,
+                                                  nullptr,
+                                                  nullptr)),
         manager_adaptor_(new NiceMock<ManagerMockAdaptor>()),
         ethernet_eap_provider_(new NiceMock<MockEthernetEapProvider>()),
         wifi_provider_(new NiceMock<MockWiFiProvider>()),
-        crypto_util_proxy_(new NiceMock<MockCryptoUtilProxy>(dispatcher(),
-                                                             glib())) {
+        crypto_util_proxy_(
+            new NiceMock<MockCryptoUtilProxy>(dispatcher(), glib())) {
     ON_CALL(proxy_factory_, CreatePowerManagerProxy(_))
         .WillByDefault(ReturnNull());
 
@@ -187,7 +186,7 @@ class ManagerTest : public PropertyStoreTest {
     scoped_ptr<KeyFileStore> storage(new KeyFileStore(glib));
     storage->set_path(final_path);
     if (!storage->Open())
-      return NULL;
+      return nullptr;
     Profile *profile(new Profile(control_interface(),
                                  metrics(),
                                  manager,
@@ -278,7 +277,7 @@ class ManagerTest : public PropertyStoreTest {
   }
 
   RpcIdentifier GetDefaultServiceRpcIdentifier() {
-    return manager()->GetDefaultServiceRpcIdentifier(NULL);
+    return manager()->GetDefaultServiceRpcIdentifier(nullptr);
   }
 
   void SetResolver(Resolver *resolver) {
@@ -300,7 +299,7 @@ class ManagerTest : public PropertyStoreTest {
   WiFiServiceRefPtr ReleaseTempMockService() {
     // Take a reference to hold during this function.
     WiFiServiceRefPtr temp_service = temp_mock_service_;
-    temp_mock_service_ = NULL;
+    temp_mock_service_ = nullptr;
     return temp_service;
   }
 
@@ -323,7 +322,7 @@ class ManagerTest : public PropertyStoreTest {
    public:
     static const char kActionName[];
 
-    TerminationActionTest() : manager_(NULL) {}
+    TerminationActionTest() : manager_(nullptr) {}
     virtual ~TerminationActionTest() {}
 
     MOCK_METHOD1(Done, void(const Error &error));
@@ -389,11 +388,11 @@ class ManagerTest : public PropertyStoreTest {
   }
 
   vector<string> EnumerateAvailableServices() {
-    return manager()->EnumerateAvailableServices(NULL);
+    return manager()->EnumerateAvailableServices(nullptr);
   }
 
   vector<string> EnumerateWatchedServices() {
-    return manager()->EnumerateWatchedServices(NULL);
+    return manager()->EnumerateWatchedServices(nullptr);
   }
 
   MockServiceRefPtr MakeAutoConnectableService() {
@@ -563,8 +562,8 @@ TEST_F(ManagerTest, ServiceRegistration) {
   EXPECT_TRUE(ContainsKey(ids, mock_service->GetRpcIdentifier()));
   EXPECT_TRUE(ContainsKey(ids, mock_service2->GetRpcIdentifier()));
 
-  EXPECT_TRUE(manager.FindService(service1_name).get() != NULL);
-  EXPECT_TRUE(manager.FindService(service2_name).get() != NULL);
+  EXPECT_NE(nullptr, manager.FindService(service1_name).get());
+  EXPECT_NE(nullptr, manager.FindService(service2_name).get());
 
   manager.set_power_manager(power_manager_.release());
   manager.Stop();
@@ -744,7 +743,7 @@ TEST_F(ManagerTest, MoveService) {
 
   // Force destruction of the original Profile, to ensure that the Service
   // is kept alive and populated with data.
-  profile = NULL;
+  profile = nullptr;
   ASSERT_TRUE(manager.ActiveProfile()->ContainsService(s2));
   manager.set_power_manager(power_manager_.release());
   manager.Stop();
@@ -1308,7 +1307,7 @@ TEST_F(ManagerTest, HandleProfileEntryDeletionWithUnload) {
                                 metrics(),
                                 manager()));
 
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(NULL))
+  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr))
       .Times(4);  // Once for each registration.
 
   string entry_name("entry_name");
@@ -1399,7 +1398,7 @@ TEST_F(ManagerTest, PopProfileWithUnload) {
                                 metrics(),
                                 manager()));
 
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(NULL))
+  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr))
       .Times(5);  // Once for each registration, and one after profile pop.
 
   manager()->RegisterService(s_will_remove0);
@@ -1801,7 +1800,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_TRUE(error.IsSuccess());
-  service->set_profile(NULL);  // Breaks refcounting loop.
+  service->set_profile(nullptr);  // Breaks refcounting loop.
 }
 
 // If we configure a service that is already a member of the specified
@@ -1849,7 +1848,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithSameProfile) {
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_TRUE(error.IsSuccess());
-  service->set_profile(NULL);  // Breaks refcounting loop.
+  service->set_profile(nullptr);  // Breaks refcounting loop.
 }
 
 // An unregistered service should remain unregistered, but its contents should
@@ -1911,7 +1910,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithNoType) {
       manager()->ConfigureServiceForProfile("", args, &error);
   EXPECT_EQ(Error::kInvalidArguments, error.type());
   EXPECT_EQ("must specify service type", error.message());
-  EXPECT_EQ(NULL, service.get());
+  EXPECT_EQ(nullptr, service.get());
 }
 
 TEST_F(ManagerTest, ConfigureServiceForProfileWithWrongType) {
@@ -1922,7 +1921,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithWrongType) {
       manager()->ConfigureServiceForProfile("", args, &error);
   EXPECT_EQ(Error::kNotSupported, error.type());
   EXPECT_EQ("service type is unsupported", error.message());
-  EXPECT_EQ(NULL, service.get());
+  EXPECT_EQ(nullptr, service.get());
 }
 
 TEST_F(ManagerTest, ConfigureServiceForProfileWithMissingProfile) {
@@ -1933,7 +1932,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithMissingProfile) {
       manager()->ConfigureServiceForProfile("/profile/foo", args, &error);
   EXPECT_EQ(Error::kNotFound, error.type());
   EXPECT_EQ("Profile specified was not found", error.message());
-  EXPECT_EQ(NULL, service.get());
+  EXPECT_EQ(nullptr, service.get());
 }
 
 TEST_F(ManagerTest, ConfigureServiceForProfileWithProfileMismatch) {
@@ -1951,7 +1950,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithProfileMismatch) {
   EXPECT_EQ(Error::kInvalidArguments, error.type());
   EXPECT_EQ("Profile argument does not match that in "
             "the configuration arguments", error.message());
-  EXPECT_EQ(NULL, service.get());
+  EXPECT_EQ(nullptr, service.get());
 }
 
 TEST_F(ManagerTest,
@@ -1972,7 +1971,7 @@ TEST_F(ManagerTest,
       manager()->ConfigureServiceForProfile(kProfileName0, args, &error);
   // Since we didn't set the error in the GetService expectation above...
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ(NULL, service.get());
+  EXPECT_EQ(nullptr, service.get());
 }
 
 TEST_F(ManagerTest, ConfigureServiceForProfileCreateNewService) {
@@ -2005,7 +2004,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileCreateNewService) {
       manager()->ConfigureServiceForProfile(kProfileName0, args, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(mock_service.get(), service.get());
-  mock_service->set_profile(NULL);  // Breaks reference cycle.
+  mock_service->set_profile(nullptr);  // Breaks reference cycle.
 }
 
 TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceByGUID) {
@@ -2015,7 +2014,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceByGUID) {
                                 metrics(),
                                 manager()));
   const string kGUID = "a guid";
-  mock_service->SetGuid(kGUID, NULL);
+  mock_service->SetGuid(kGUID, nullptr);
   manager()->RegisterService(mock_service);
   ServiceRefPtr mock_service_generic(mock_service.get());
 
@@ -2042,7 +2041,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceByGUID) {
     Error error;
     ServiceRefPtr service =
         manager()->ConfigureServiceForProfile(kProfileName, args, &error);
-    EXPECT_EQ(NULL, service.get());
+    EXPECT_EQ(nullptr, service.get());
     EXPECT_EQ(Error::kNotSupported, error.type());
     EXPECT_EQ("This GUID matches a non-wifi service", error.message());
   }
@@ -2058,7 +2057,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceByGUID) {
     EXPECT_EQ(mock_service.get(), service.get());
     EXPECT_EQ(profile.get(), service->profile().get());
   }
-  mock_service->set_profile(NULL);  // Breaks reference cycle.
+  mock_service->set_profile(nullptr);  // Breaks reference cycle.
 }
 
 TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceAndProfile) {
@@ -2094,7 +2093,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceAndProfile) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(mock_service.get(), service.get());
   EXPECT_EQ(profile.get(), service->profile().get());
-  mock_service->set_profile(NULL);  // Breaks reference cycle.
+  mock_service->set_profile(nullptr);  // Breaks reference cycle.
 }
 
 TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceEphemeralProfile) {
@@ -2129,7 +2128,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceEphemeralProfile) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(mock_service.get(), service.get());
   EXPECT_EQ(profile.get(), service->profile().get());
-  mock_service->set_profile(NULL);  // Breaks reference cycle.
+  mock_service->set_profile(nullptr);  // Breaks reference cycle.
 }
 
 TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServicePrecedingProfile) {
@@ -2173,7 +2172,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServicePrecedingProfile) {
       manager()->ConfigureServiceForProfile(kProfileName1, args, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(mock_service.get(), service.get());
-  mock_service->set_profile(NULL);  // Breaks reference cycle.
+  mock_service->set_profile(nullptr);  // Breaks reference cycle.
 }
 
 TEST_F(ManagerTest,
@@ -2234,7 +2233,7 @@ TEST_F(ManagerTest,
   ServiceRefPtr service =
       manager()->ConfigureServiceForProfile(kProfileName0, args, &error);
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ(NULL, service.get());
+  EXPECT_EQ(nullptr, service.get());
   EXPECT_EQ(profile1.get(), matching_service->profile().get());
 }
 
@@ -2381,7 +2380,7 @@ TEST_F(ManagerTest, SortServices) {
   EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
 
   // Priority.
-  mock_service2->SetPriority(1, NULL);
+  mock_service2->SetPriority(1, nullptr);
   manager()->UpdateService(mock_service2);
   EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
 
@@ -2546,9 +2545,9 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
       new NiceMock<MockConnection>(device_info_.get()));
 
   // A single registered Service, without a connection.  The
-  // DefaultService should be NULL.  If a change notification is
+  // DefaultService should be nullptr.  If a change notification is
   // generated, it should reference kNullPath.
-  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty,
                                        DBusAdaptor::kNullPath))
@@ -2559,7 +2558,7 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // Adding another Service, also without a connection, does not
   // change DefaultService.  Furthermore, we do not send a change
   // notification for DefaultService.
-  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _))
       .Times(0);
@@ -2568,7 +2567,7 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
 
   // An explicit sort doesn't change anything, and does not emit a
   // change notification for DefaultService.
-  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _))
       .Times(0);
@@ -2578,8 +2577,8 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // Re-ordering the unconnected Services doesn't change
   // DefaultService, and (hence) does not emit a change notification
   // for DefaultService.
-  mock_service1->SetPriority(1, NULL);
-  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  mock_service1->SetPriority(1, nullptr);
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _))
       .Times(0);
@@ -2589,8 +2588,8 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // Re-ordering the unconnected Services doesn't change
   // DefaultService, and (hence) does not emit a change notification
   // for DefaultService.
-  mock_service1->SetPriority(0, NULL);
-  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  mock_service1->SetPriority(0, nullptr);
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _))
       .Times(0);
@@ -2619,7 +2618,7 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
 
   // Changing the ordering causes the DefaultService to change, and
   // appropriate notifications are sent.
-  mock_service1->SetPriority(1, NULL);
+  mock_service1->SetPriority(1, nullptr);
   EXPECT_CALL(*mock_connection0.get(), SetIsDefault(false));
   EXPECT_CALL(*mock_connection1.get(), SetIsDefault(true));
   EXPECT_CALL(service_watcher, OnDefaultServiceChanged(_));
@@ -2641,22 +2640,22 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service0.get()));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
-  mock_service1->set_mock_connection(NULL);  // So DeregisterService works.
+  mock_service1->set_mock_connection(nullptr);  // So DeregisterService works.
   manager()->DeregisterService(mock_service1);
   CompleteServiceSort();
 
   // Deregistering the only Service causes the DefaultService to become
-  // NULL.  Appropriate notifications are sent.
-  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  // nullptr.  Appropriate notifications are sent.
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
-  mock_service0->set_mock_connection(NULL);  // So DeregisterService works.
+  mock_service0->set_mock_connection(nullptr);  // So DeregisterService works.
   manager()->DeregisterService(mock_service0);
   CompleteServiceSort();
 
   // An explicit sort doesn't change anything, and does not generate
   // an external notification.
-  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _)).Times(0);
   manager()->SortServicesTask();
@@ -2675,7 +2674,7 @@ TEST_F(ManagerTest, NotifyDefaultServiceChanged) {
   ServiceRefPtr service = mock_service;
   ServiceRefPtr null_service;
 
-  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
   manager()->NotifyDefaultServiceChanged(null_service);
 
   ServiceWatcher service_watcher1;
@@ -2693,7 +2692,7 @@ TEST_F(ManagerTest, NotifyDefaultServiceChanged) {
 
   EXPECT_CALL(service_watcher1, OnDefaultServiceChanged(null_service));
   EXPECT_CALL(service_watcher2, OnDefaultServiceChanged(null_service));
-  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
   manager()->NotifyDefaultServiceChanged(null_service);
 
   EXPECT_CALL(service_watcher1, OnDefaultServiceChanged(service));
@@ -2954,7 +2953,7 @@ TEST_F(ManagerTest, UpdateServiceConnectedPersistAutoConnect) {
   EXPECT_TRUE(mock_service->retain_auto_connect());
   EXPECT_TRUE(mock_service->auto_connect());
   // This releases the ref on the mock profile.
-  mock_service->set_profile(NULL);
+  mock_service->set_profile(nullptr);
 }
 
 TEST_F(ManagerTest, SaveSuccessfulService) {
@@ -3031,9 +3030,9 @@ TEST_F(ManagerTest, AutoConnectOnRegister) {
 
 TEST_F(ManagerTest, AutoConnectOnUpdate) {
   MockServiceRefPtr service1 = MakeAutoConnectableService();
-  service1->SetPriority(1, NULL);
+  service1->SetPriority(1, nullptr);
   MockServiceRefPtr service2 = MakeAutoConnectableService();
-  service2->SetPriority(2, NULL);
+  service2->SetPriority(2, nullptr);
   manager()->RegisterService(service1);
   manager()->RegisterService(service2);
   dispatcher()->DispatchPendingEvents();
@@ -3051,9 +3050,9 @@ TEST_F(ManagerTest, AutoConnectOnUpdate) {
 
 TEST_F(ManagerTest, AutoConnectOnDeregister) {
   MockServiceRefPtr service1 = MakeAutoConnectableService();
-  service1->SetPriority(1, NULL);
+  service1->SetPriority(1, nullptr);
   MockServiceRefPtr service2 = MakeAutoConnectableService();
-  service2->SetPriority(2, NULL);
+  service2->SetPriority(2, nullptr);
   manager()->RegisterService(service1);
   manager()->RegisterService(service2);
   dispatcher()->DispatchPendingEvents();
@@ -3182,7 +3181,7 @@ TEST_F(ManagerTest, RecheckPortal) {
   manager()->RegisterDevice(mock_devices_[1]);
   manager()->RegisterDevice(mock_devices_[2]);
 
-  manager()->RecheckPortal(NULL);
+  manager()->RecheckPortal(nullptr);
 }
 
 TEST_F(ManagerTest, RecheckPortalOnService) {
@@ -3228,7 +3227,7 @@ TEST_F(ManagerTest, GetDefaultService) {
   EXPECT_EQ(mock_service.get(), manager()->GetDefaultService().get());
   EXPECT_EQ(mock_service->GetRpcIdentifier(), GetDefaultServiceRpcIdentifier());
 
-  mock_service->set_mock_connection(NULL);
+  mock_service->set_mock_connection(nullptr);
   manager()->DeregisterService(mock_service);
 }
 
@@ -3273,8 +3272,8 @@ TEST_F(ManagerTest, GetServiceWithGUID) {
     EXPECT_FALSE(service);
   }
 
-  mock_service0->SetGuid(kGUID0, NULL);
-  mock_service1->SetGuid(kGUID1, NULL);
+  mock_service0->SetGuid(kGUID0, nullptr);
+  mock_service1->SetGuid(kGUID1, nullptr);
 
   {
     Error error;
@@ -3299,7 +3298,7 @@ TEST_F(ManagerTest, GetServiceWithGUID) {
 
 TEST_F(ManagerTest, CalculateStateOffline) {
   EXPECT_FALSE(manager()->IsConnected());
-  EXPECT_EQ("offline", manager()->CalculateState(NULL));
+  EXPECT_EQ("offline", manager()->CalculateState(nullptr));
 
   MockMetrics mock_metrics(dispatcher());
   SetMetrics(&mock_metrics);
@@ -3326,7 +3325,7 @@ TEST_F(ManagerTest, CalculateStateOffline) {
   manager()->RegisterService(mock_service1);
 
   EXPECT_FALSE(manager()->IsConnected());
-  EXPECT_EQ("offline", manager()->CalculateState(NULL));
+  EXPECT_EQ("offline", manager()->CalculateState(nullptr));
 
   manager()->DeregisterService(mock_service0);
   manager()->DeregisterService(mock_service1);
@@ -3363,7 +3362,7 @@ TEST_F(ManagerTest, CalculateStateOnline) {
   CompleteServiceSort();
 
   EXPECT_TRUE(manager()->IsConnected());
-  EXPECT_EQ("online", manager()->CalculateState(NULL));
+  EXPECT_EQ("online", manager()->CalculateState(nullptr));
 
   manager()->DeregisterService(mock_service0);
   manager()->DeregisterService(mock_service1);
@@ -3400,7 +3399,7 @@ TEST_F(ManagerTest, RefreshConnectionState) {
   RefreshConnectionState();
   Mock::VerifyAndClearExpectations(manager_adaptor_);
 
-  mock_service->set_mock_connection(NULL);
+  mock_service->set_mock_connection(nullptr);
   manager()->DeregisterService(mock_service);
 }
 
@@ -3409,7 +3408,7 @@ TEST_F(ManagerTest, StartupPortalList) {
   const string kProfileValue("wifi,vpn");
   manager()->props_.check_portal_list = kProfileValue;
 
-  EXPECT_EQ(kProfileValue, manager()->GetCheckPortalList(NULL));
+  EXPECT_EQ(kProfileValue, manager()->GetCheckPortalList(nullptr));
   EXPECT_TRUE(manager()->IsPortalDetectionEnabled(Technology::kWifi));
   EXPECT_FALSE(manager()->IsPortalDetectionEnabled(Technology::kCellular));
 
@@ -3420,7 +3419,7 @@ TEST_F(ManagerTest, StartupPortalList) {
   EXPECT_EQ(kProfileValue, manager()->props_.check_portal_list);
 
   // However we should read back a different list.
-  EXPECT_EQ(kStartupValue, manager()->GetCheckPortalList(NULL));
+  EXPECT_EQ(kStartupValue, manager()->GetCheckPortalList(nullptr));
   EXPECT_FALSE(manager()->IsPortalDetectionEnabled(Technology::kWifi));
   EXPECT_TRUE(manager()->IsPortalDetectionEnabled(Technology::kCellular));
 
@@ -3433,7 +3432,7 @@ TEST_F(ManagerTest, StartupPortalList) {
       kRuntimeValue,
       &error);
   ASSERT_TRUE(error.IsSuccess());
-  EXPECT_EQ(kRuntimeValue, manager()->GetCheckPortalList(NULL));
+  EXPECT_EQ(kRuntimeValue, manager()->GetCheckPortalList(nullptr));
   EXPECT_EQ(kRuntimeValue, manager()->props_.check_portal_list);
   EXPECT_FALSE(manager()->IsPortalDetectionEnabled(Technology::kCellular));
   EXPECT_TRUE(manager()->IsPortalDetectionEnabled(Technology::kPPP));
@@ -3568,19 +3567,19 @@ TEST_F(ManagerTest, IgnoredSearchList) {
   const string kIgnored0 = "chromium.org";
   ignored_paths.push_back(kIgnored0);
   EXPECT_CALL(*resolver.get(), set_ignored_search_list(ignored_paths));
-  SetIgnoredDNSSearchPaths(kIgnored0, NULL);
+  SetIgnoredDNSSearchPaths(kIgnored0, nullptr);
   EXPECT_EQ(kIgnored0, GetIgnoredDNSSearchPaths());
 
   const string kIgnored1 = "google.com";
   const string kIgnoredSum = kIgnored0 + "," + kIgnored1;
   ignored_paths.push_back(kIgnored1);
   EXPECT_CALL(*resolver.get(), set_ignored_search_list(ignored_paths));
-  SetIgnoredDNSSearchPaths(kIgnoredSum, NULL);
+  SetIgnoredDNSSearchPaths(kIgnoredSum, nullptr);
   EXPECT_EQ(kIgnoredSum, GetIgnoredDNSSearchPaths());
 
   ignored_paths.clear();
   EXPECT_CALL(*resolver.get(), set_ignored_search_list(ignored_paths));
-  SetIgnoredDNSSearchPaths("", NULL);
+  SetIgnoredDNSSearchPaths("", nullptr);
   EXPECT_EQ("", GetIgnoredDNSSearchPaths());
 
   SetResolver(Resolver::GetInstance());
@@ -3810,7 +3809,7 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   EXPECT_CALL(*wimax_service.get(), Connect(_, _)).Times(0);  // Is connected.
   EXPECT_CALL(*vpn_service.get(), Connect(_, _)).Times(0);  // Not autoconnect.
 
-  manager()->ConnectToBestServices(NULL);
+  manager()->ConnectToBestServices(nullptr);
   dispatcher()->DispatchPendingEvents();
 
   // After this operation, since the Connect calls above are mocked and
@@ -3964,7 +3963,7 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
   EXPECT_CALL(*eth_device.get(), StartConnectivityTest())
       .WillOnce(Return(true));
   EXPECT_CALL(*vpn_device.get(), StartConnectivityTest()).Times(0);
-  manager()->CreateConnectivityReport(NULL);
+  manager()->CreateConnectivityReport(nullptr);
   dispatcher()->DispatchPendingEvents();
 }
 

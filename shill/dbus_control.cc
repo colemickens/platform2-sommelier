@@ -25,7 +25,7 @@ DBusControl::~DBusControl() {}
 
 template <typename Object, typename AdaptorInterface, typename Adaptor>
 AdaptorInterface *DBusControl::CreateAdaptor(Object *object) {
-  AdaptorInterface *adaptor = NULL;
+  AdaptorInterface *adaptor = nullptr;
   try {
     adaptor = new Adaptor(connection_.get(), object);
   } catch(const DBus::ErrorObjectPathInUse &error) {
@@ -73,7 +73,7 @@ void DBusControl::Init() {
   dispatcher_.reset(new(std::nothrow) DBus::Glib::BusDispatcher());
   CHECK(dispatcher_.get()) << "Failed to create a dbus-dispatcher";
   DBus::default_dispatcher = dispatcher_.get();
-  dispatcher_->attach(NULL);
+  dispatcher_->attach(nullptr);
   connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
   if (!connection_->acquire_name(SHILL_INTERFACE)) {
     LOG(FATAL) << "Failed to acquire D-Bus name " << SHILL_INTERFACE << ". "

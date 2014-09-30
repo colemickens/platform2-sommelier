@@ -72,7 +72,7 @@ MATCHER_P(IsCryptoUtilCommandLine, command, "") {
     return false;
   }
 
-  if (arg[2] != NULL) {
+  if (arg[2] != nullptr) {
     return false;
   }
 
@@ -139,7 +139,7 @@ class CryptoUtilProxyTest : public testing::Test {
                                               NotNull(),  // pid
                                               NotNull(),  // stdin
                                               NotNull(),  // stdout
-                                              NULL))  // stderr
+                                              nullptr))  // stderr
         .WillOnce(Invoke(this, &CryptoUtilProxyTest::HandleRunPipesAndDestroy));
     // We should always schedule a shim timeout callback.
     EXPECT_CALL(dispatcher_, PostDelayedTask(_, _));
@@ -299,7 +299,7 @@ TEST_F(CryptoUtilProxyTest, ShimCleanedBeforeCallback) {
                                      &CryptoUtilProxyTest::AssertShimDead)));
     ExpectCleanup(Error(Error::kSuccess));
     InputData data;
-    data.buf = NULL;
+    data.buf = nullptr;
     data.len = 0;
     crypto_util_proxy_.HandleShimOutput(&data);
   }
@@ -385,7 +385,7 @@ TEST_F(CryptoUtilProxyTest, ShimLifeTime) {
   // Write 0 bytes in to signify the end of the stream. This should in turn
   // cause our callback to be called.
   data.len = 0;
-  data.buf = NULL;
+  data.buf = nullptr;
   EXPECT_CALL(
       crypto_util_proxy_,
       TestResultHandlerCallback(string(kTestSerializedCommandResponse),

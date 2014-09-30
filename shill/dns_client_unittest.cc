@@ -45,7 +45,7 @@ const char kGoodServer[] = "8.8.8.8";
 const char kBadServer[] = "10.9xx8.7";
 const char kNetworkInterface[] = "eth0";
 char kReturnAddressList0[] = { static_cast<char>(224), 0, 0, 1 };
-char *kReturnAddressList[] = { kReturnAddressList0, NULL };
+char *kReturnAddressList[] = { kReturnAddressList0, nullptr };
 char kFakeAresChannelData = 0;
 const ares_channel kAresChannel =
     reinterpret_cast<ares_channel>(&kFakeAresChannelData);

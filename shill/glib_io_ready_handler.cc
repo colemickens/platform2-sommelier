@@ -34,7 +34,7 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
 GlibIOReadyHandler::GlibIOReadyHandler(int fd,
                                        IOHandler::ReadyMode mode,
                                        const Callback<void(int)> &callback)
-    : channel_(NULL),
+    : channel_(nullptr),
       callback_(callback),
       source_id_(G_MAXUINT) {
   if (mode == kModeInput) {

@@ -122,7 +122,7 @@ void StaticIPParameters::PlumbPropertyStore(PropertyStore *store) {
       kSavedIPConfigProperty,
       KeyValueStoreAccessor(
           new CustomAccessor<StaticIPParameters, KeyValueStore>(
-              this, &StaticIPParameters::GetSavedIPConfig, NULL)));
+              this, &StaticIPParameters::GetSavedIPConfig, nullptr)));
   store->RegisterDerivedKeyValueStore(
       kStaticIPConfigProperty,
       KeyValueStoreAccessor(

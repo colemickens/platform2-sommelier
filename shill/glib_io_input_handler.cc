@@ -87,14 +87,15 @@ GlibIOInputHandler::GlibIOInputHandler(
   // To avoid blocking in g_io_channel_read_chars() due to its internal buffer,
   // set the channel to unbuffered, which in turns requires encoding to be NULL.
   // This assumes raw binary data are read from |fd| via the channel.
-  CHECK_EQ(G_IO_STATUS_NORMAL, g_io_channel_set_encoding(channel_, NULL, NULL));
+  CHECK_EQ(G_IO_STATUS_NORMAL,
+           g_io_channel_set_encoding(channel_, nullptr, nullptr));
   g_io_channel_set_buffered(channel_, FALSE);
   g_io_channel_set_close_on_unref(channel_, TRUE);
 }
 
 GlibIOInputHandler::~GlibIOInputHandler() {
   g_source_remove(source_id_);
-  g_io_channel_shutdown(channel_, TRUE, NULL);
+  g_io_channel_shutdown(channel_, TRUE, nullptr);
   g_io_channel_unref(channel_);
 }
 

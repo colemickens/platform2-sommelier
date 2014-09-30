@@ -196,7 +196,7 @@ TEST_F(StaticIpParametersTest, ControlInterface) {
 
   {
     Error error;
-    EXPECT_FALSE(store.GetStringProperty("StaticIP.Address", NULL, &error));
+    EXPECT_FALSE(store.GetStringProperty("StaticIP.Address", nullptr, &error));
     EXPECT_EQ(Error::kNotFound, error.type());
   }
   string string_value;
@@ -205,7 +205,7 @@ TEST_F(StaticIpParametersTest, ControlInterface) {
   EXPECT_EQ(kGateway, string_value);
   {
     Error error;
-    EXPECT_FALSE(store.GetInt32Property("StaticIP.Mtu", NULL, &error));
+    EXPECT_FALSE(store.GetInt32Property("StaticIP.Mtu", nullptr, &error));
     EXPECT_EQ(Error::kNotFound, error.type());
   }
   EXPECT_TRUE(store.GetStringProperty("StaticIP.NameServers", &string_value,

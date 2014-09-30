@@ -36,7 +36,7 @@ Connection::Binder::Binder(const string &name,
       client_disconnect_callback_(disconnect_callback) {}
 
 Connection::Binder::~Binder() {
-  Attach(NULL);
+  Attach(nullptr);
 }
 
 void Connection::Binder::Attach(const ConnectionRefPtr &to_connection) {
@@ -443,7 +443,7 @@ void Connection::OnRouteQueryResponse(int interface_index,
                                       const RoutingTableEntry &entry) {
   SLOG(Connection, 2) << __func__ << "(" << interface_index << ", "
                       << entry.tag << ")" << " @ " << interface_name_;
-  lower_binder_.Attach(NULL);
+  lower_binder_.Attach(nullptr);
   DeviceRefPtr device = device_info_->GetDevice(interface_index);
   if (!device) {
     LOG(ERROR) << "Unable to lookup device for index " << interface_index;
@@ -495,7 +495,7 @@ void Connection::NotifyBindersOnDisconnect() {
 
   // Unbinds the lower connection before notifying the binders. This ensures
   // correct behavior in case of circular binding.
-  lower_binder_.Attach(NULL);
+  lower_binder_.Attach(nullptr);
   while (!binders_.empty()) {
     // Pop the binder first and then notify it to ensure that each binder is
     // notified only once.
@@ -532,7 +532,7 @@ ConnectionRefPtr Connection::GetCarrierConnection() {
                  << carrier->interface_name();
       // If a loop is detected return a NULL value to signal that the carrier
       // connection is unknown.
-      return NULL;
+      return nullptr;
     }
     visited.insert(carrier.get());
     carrier = carrier->GetLowerConnection();

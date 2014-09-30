@@ -30,11 +30,11 @@ ByteString &ByteString::operator=(const ByteString &b) {
 }
 
 unsigned char *ByteString::GetData() {
-  return (GetLength() == 0) ? NULL : &*begin_;
+  return (GetLength() == 0) ? nullptr : &*begin_;
 }
 
 const unsigned char *ByteString::GetConstData() const {
-  return (GetLength() == 0) ? NULL : &*begin_;
+  return (GetLength() == 0) ? nullptr : &*begin_;
 }
 
 size_t ByteString::GetLength() const {
@@ -71,7 +71,7 @@ ByteString ByteString::CreateFromHexString(const string &hex_string) {
 }
 
 bool ByteString::ConvertToCPUUInt32(uint32_t *val) const {
-  if (val == NULL || GetLength() != sizeof(*val)) {
+  if (val == nullptr || GetLength() != sizeof(*val)) {
     return false;
   }
   memcpy(val, GetConstData(), sizeof(*val));

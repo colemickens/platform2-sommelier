@@ -22,7 +22,7 @@ CopyingInputStreamAdaptor *protobuf_lite_file_input_stream(
   if (fd == -1) {
     PLOG(ERROR) << __func__ << ": "
                 << "Could not load protobuf file [" << file_path << "] ";
-    return NULL;
+    return nullptr;
   }
 
   auto *file_stream(new ProtobufLiteCopyingFileInputStream(fd));

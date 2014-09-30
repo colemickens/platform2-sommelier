@@ -166,7 +166,7 @@ NetlinkManager::MessageType::MessageType() :
   family_id(NetlinkMessage::kIllegalMessageType) {}
 
 NetlinkManager::NetlinkManager()
-    : dispatcher_(NULL),
+    : dispatcher_(nullptr),
       weak_ptr_factory_(this),
       dispatcher_callback_(Bind(&NetlinkManager::OnRawNlMessageReceived,
                                 weak_ptr_factory_.GetWeakPtr())),
@@ -183,7 +183,7 @@ void NetlinkManager::Reset(bool full) {
   message_handlers_.clear();
   message_types_.clear();
   if (full) {
-    dispatcher_ = NULL;
+    dispatcher_ = nullptr;
     sock_.reset();
   }
 }
@@ -361,8 +361,8 @@ uint16_t NetlinkManager::GetFamily(const string &name,
     timersub(&end_time, &now, &wait_duration);
     int result = sock_->sockets()->Select(file_descriptor() + 1,
                                           &read_fds,
-                                          NULL,
-                                          NULL,
+                                          nullptr,
+                                          nullptr,
                                           &wait_duration);
     if (result < 0) {
       PLOG(ERROR) << "Select failed";
@@ -479,7 +479,7 @@ bool NetlinkManager::SendMessageInternal(
       // A timeout isn't always unexpected so this is not a warning.
       SLOG(WiFi, 3) << "Removing timed-out handler for sequence number "
                     << handler_it->first;
-      handler_it->second->HandleError(kTimeoutWaitingForResponse, NULL);
+      handler_it->second->HandleError(kTimeoutWaitingForResponse, nullptr);
       handler_it = message_handlers_.erase(handler_it);
     } else {
       ++handler_it;
@@ -580,7 +580,7 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
   const uint32_t sequence_number = msg->nlmsg_seq;
 
   scoped_ptr<NetlinkMessage> message(message_factory_.CreateMessage(msg));
-  if (message == NULL) {
+  if (message == nullptr) {
     SLOG(WiFi, 3) << "NL Message " << sequence_number << " <===";
     SLOG(WiFi, 3) << __func__ << "(msg:NULL)";
     return;  // Skip current message, continue parsing buffer.
@@ -621,9 +621,9 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
     if (!message_handlers_[sequence_number]->HandleMessage(*message)) {
       LOG(ERROR) << "Couldn't call message handler for " << sequence_number;
       // Call the error handler but, since we don't have an |ErrorAckMessage|,
-      // we'll have to pass a NULL pointer.
+      // we'll have to pass a nullptr.
       message_handlers_[sequence_number]->HandleError(kUnexpectedResponseType,
-                                                      NULL);
+                                                      nullptr);
     }
     if ((message->flags() & NLM_F_MULTI) &&
         (message->message_type() != NLMSG_DONE)) {

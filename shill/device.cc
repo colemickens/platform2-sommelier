@@ -384,7 +384,7 @@ void Device::OnAfterResume() {
     // Invalidate the old IPv6 configuration, will receive notifications
     // from kernel for new IPv6 configuration if there is one.
     StopIPv6DNSServerTimer();
-    ip6config_ = NULL;
+    ip6config_ = nullptr;
     UpdateIPConfigsProperty();
   }
   if (link_monitor_) {
@@ -403,19 +403,19 @@ void Device::OnDarkResume() {
 void Device::DropConnection() {
   SLOG(Device, 2) << __func__;
   DestroyIPConfig();
-  SelectService(NULL);
+  SelectService(nullptr);
 }
 
 void Device::DestroyIPConfig() {
   DisableIPv6();
   if (ipconfig_.get()) {
     ipconfig_->ReleaseIP(IPConfig::kReleaseReasonDisconnect);
-    ipconfig_ = NULL;
+    ipconfig_ = nullptr;
     UpdateIPConfigsProperty();
   }
   if (ip6config_.get()) {
     StopIPv6DNSServerTimer();
-    ip6config_ = NULL;
+    ip6config_ = nullptr;
     UpdateIPConfigsProperty();
   }
   DestroyConnection();
@@ -426,7 +426,7 @@ void Device::OnIPv6AddressChanged() {
   if (!manager_->device_info()->GetPrimaryIPv6Address(
           interface_index_, &address)) {
     if (ip6config_) {
-      ip6config_ = NULL;
+      ip6config_ = nullptr;
       UpdateIPConfigsProperty();
     }
     return;
@@ -624,7 +624,7 @@ void Device::HelpRegisterConstDerivedString(
     string(Device::*get)(Error *error)) {
   store_.RegisterDerivedString(
       name,
-      StringAccessor(new CustomAccessor<Device, string>(this, get, NULL)));
+      StringAccessor(new CustomAccessor<Device, string>(this, get, nullptr)));
 }
 
 void Device::HelpRegisterConstDerivedRpcIdentifiers(
@@ -633,7 +633,7 @@ void Device::HelpRegisterConstDerivedRpcIdentifiers(
   store_.RegisterDerivedRpcIdentifiers(
       name,
       RpcIdentifiersAccessor(
-          new CustomAccessor<Device, RpcIdentifiers>(this, get, NULL)));
+          new CustomAccessor<Device, RpcIdentifiers>(this, get, nullptr)));
 }
 
 void Device::HelpRegisterConstDerivedUint64(
@@ -642,7 +642,7 @@ void Device::HelpRegisterConstDerivedUint64(
   store_.RegisterDerivedUint64(
       name,
       Uint64Accessor(
-          new CustomAccessor<Device, uint64_t>(this, get, NULL)));
+          new CustomAccessor<Device, uint64_t>(this, get, nullptr)));
 }
 
 void Device::ConnectionTesterCallback() {
@@ -845,9 +845,9 @@ void Device::DestroyConnection() {
   if (selected_service_.get()) {
     SLOG(Device, 3) << "Clearing connection of service "
                     << selected_service_->unique_name();
-    selected_service_->SetConnection(NULL);
+    selected_service_->SetConnection(nullptr);
   }
-  connection_ = NULL;
+  connection_ = nullptr;
 }
 
 void Device::SelectService(const ServiceRefPtr &service) {
@@ -867,7 +867,7 @@ void Device::SelectService(const ServiceRefPtr &service) {
     }
     // Just in case the Device subclass has not already done so, make
     // sure the previously selected service has its connection removed.
-    selected_service_->SetConnection(NULL);
+    selected_service_->SetConnection(nullptr);
     StopAllActivities();
   }
 
@@ -1489,7 +1489,7 @@ void Device::SetEnabledUnchecked(bool enable, Error *error,
   } else {
     running_ = false;
     DestroyIPConfig();         // breaks a reference cycle
-    SelectService(NULL);       // breaks a reference cycle
+    SelectService(nullptr);    // breaks a reference cycle
     rtnl_handler_->SetInterfaceFlags(interface_index(), 0, IFF_UP);
     SLOG(Device, 3) << "Device " << link_name_ << " ipconfig_ "
                     << (ipconfig_ ? "is set." : "is not set.");
@@ -1505,7 +1505,7 @@ void Device::SetEnabledUnchecked(bool enable, Error *error,
 
 void Device::UpdateIPConfigsProperty() {
   adaptor_->EmitRpcIdentifierArrayChanged(
-      kIPConfigsProperty, AvailableIPConfigs(NULL));
+      kIPConfigsProperty, AvailableIPConfigs(nullptr));
 }
 
 }  // namespace shill

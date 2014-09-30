@@ -42,7 +42,7 @@ class TestEventDispatcher : public EventDispatcher {
       int /*fd*/,
       const IOHandler::InputCallback &/*input_callback*/,
       const IOHandler::ErrorCallback &/*error_callback*/) {
-    return NULL;
+    return nullptr;
   }
 };
 

@@ -75,8 +75,8 @@ class DHCPConfigTest : public PropertyStoreTest {
   }
 
   virtual void TearDown() {
-    config_->proxy_factory_ = NULL;
-    config_->minijail_ = NULL;
+    config_->proxy_factory_ = nullptr;
+    config_->minijail_ = nullptr;
   }
 
   void StopInstance() {
@@ -172,7 +172,7 @@ void DHCPConfigTest::StopRunningConfigAndExpect(DHCPConfigRefPtr config,
   // We use a non-zero exit status so that we get the log message.
   EXPECT_CALL(log, Log(_, _, ::testing::EndsWith("status 10")));
   DHCPConfig::ChildWatchCallback(kPID, 10, config.get());
-  EXPECT_EQ(NULL, DHCPProvider::GetInstance()->GetConfig(kPID).get());
+  EXPECT_EQ(nullptr, DHCPProvider::GetInstance()->GetConfig(kPID).get());
 
   EXPECT_FALSE(base::PathExists(pid_file_));
   EXPECT_EQ(lease_file_exists, base::PathExists(lease_file_));
@@ -336,7 +336,8 @@ MATCHER_P3(IsDHCPCDArgs, has_hostname, has_arp_gateway, has_lease_suffix, "") {
 
   string device_arg = has_lease_suffix ?
       string(kDeviceName) + "=" + string(kLeaseFileSuffix) : kDeviceName;
-  return string(arg[end_offset]) == device_arg && arg[end_offset + 1] == NULL;
+  return string(arg[end_offset]) == device_arg &&
+         arg[end_offset + 1] == nullptr;
 }
 
 TEST_F(DHCPConfigTest, StartWithHostname) {
@@ -593,7 +594,7 @@ TEST_F(DHCPConfigTest, ReleaseIPStaticIPWithLease) {
   EXPECT_CALL(*proxy_, Release(kDeviceName));
   config_->proxy_.reset(proxy_.release());
   EXPECT_TRUE(config_->ReleaseIP(IPConfig::kReleaseReasonStaticIP));
-  EXPECT_EQ(NULL, config_->proxy_.get());
+  EXPECT_EQ(nullptr, config_->proxy_.get());
   config_->pid_ = 0;
 }
 

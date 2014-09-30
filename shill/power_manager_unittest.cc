@@ -40,7 +40,7 @@ namespace {
 class FakeProxyFactory : public ProxyFactory {
  public:
   FakeProxyFactory()
-      : delegate_(NULL),
+      : delegate_(nullptr),
         power_manager_proxy_raw_(new MockPowerManagerProxy),
         dbus_service_proxy_raw_(new MockDBusServiceProxy),
         power_manager_proxy_(power_manager_proxy_raw_),

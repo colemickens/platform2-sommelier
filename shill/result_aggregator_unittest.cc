@@ -32,7 +32,7 @@ class ResultAggregatorTest : public ::testing::Test {
   virtual ~ResultAggregatorTest() {}
 
   virtual void TearDown() {
-    aggregator_ = NULL;  // Ensure ReportResult is invoked before our dtor.
+    aggregator_ = nullptr;  // Ensure ReportResult is invoked before our dtor.
   }
 
   MOCK_METHOD1(ReportResult, void(const Error &));

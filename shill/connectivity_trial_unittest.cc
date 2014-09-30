@@ -54,20 +54,15 @@ MATCHER_P(IsResult, result, "") {
 class ConnectivityTrialTest : public Test {
  public:
   ConnectivityTrialTest()
-      : device_info_(new NiceMock<MockDeviceInfo>(
-          &control_,
-          reinterpret_cast<EventDispatcher *>(NULL),
-          reinterpret_cast<Metrics *>(NULL),
-          reinterpret_cast<Manager *>(NULL))),
+      : device_info_(
+            new NiceMock<MockDeviceInfo>(&control_, nullptr, nullptr, nullptr)),
         connection_(new StrictMock<MockConnection>(device_info_.get())),
         connectivity_trial_(new ConnectivityTrial(
-            connection_.get(),
-            &dispatcher_,
-            kTrialTimeout,
+            connection_.get(), &dispatcher_, kTrialTimeout,
             callback_target_.result_callback())),
         interface_name_(kInterfaceName),
         dns_servers_(kDNSServers, kDNSServers + 2),
-        http_request_(NULL) {
+        http_request_(nullptr) {
     current_time_.tv_sec = current_time_.tv_usec = 0;
   }
 

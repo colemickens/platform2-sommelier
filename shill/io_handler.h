@@ -10,7 +10,7 @@ namespace shill {
 class Error;
 
 struct InputData {
-  InputData() : buf(NULL), len(0) {}
+  InputData() : buf(nullptr), len(0) {}
   InputData(unsigned char *in_buf, size_t in_len) : buf(in_buf), len(in_len) {}
 
   unsigned char *buf;

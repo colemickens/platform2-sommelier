@@ -263,7 +263,7 @@ NetlinkMessage *NetlinkMessageFactory::CreateMessage(
     const nlmsghdr *const_msg) const {
   if (!const_msg) {
     LOG(ERROR) << "NULL |const_msg| parameter";
-    return NULL;
+    return nullptr;
   }
 
   scoped_ptr<NetlinkMessage> message;
@@ -296,7 +296,7 @@ NetlinkMessage *NetlinkMessageFactory::CreateMessage(
 
   if (!message->InitFromNlmsg(const_msg)) {
     LOG(ERROR) << "Message did not initialize properly";
-    return NULL;
+    return nullptr;
   }
 
   return message.release();

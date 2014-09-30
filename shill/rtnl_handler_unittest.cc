@@ -52,7 +52,7 @@ class TestEventDispatcher : public EventDispatcher {
       int /*fd*/,
       const IOHandler::InputCallback &/*input_callback*/,
       const IOHandler::ErrorCallback &/*error_callback*/) {
-    return NULL;
+    return nullptr;
   }
 };
 
@@ -68,7 +68,7 @@ class RTNLHandlerTest : public Test {
 
   virtual void TearDown() {
     RTNLHandler::GetInstance()->Stop();
-    SetSockets(NULL);
+    SetSockets(nullptr);
   }
 
   MOCK_METHOD1(HandlerCallback, void(const RTNLMessage &));

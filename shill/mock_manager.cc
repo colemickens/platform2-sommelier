@@ -15,7 +15,7 @@ MockManager::MockManager(ControlInterface *control_interface,
                          Metrics *metrics,
                          GLib *glib)
     : Manager(control_interface, dispatcher, metrics, glib, "", "", ""),
-      mock_device_info_(NULL) {
+      mock_device_info_(nullptr) {
   EXPECT_CALL(*this, device_info())
       .WillRepeatedly(Invoke(this, &MockManager::mock_device_info));
 }

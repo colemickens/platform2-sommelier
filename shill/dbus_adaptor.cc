@@ -84,7 +84,7 @@ bool DBusAdaptor::SetProperty(PropertyStore *store,
     e.Populate(Error::kInternalError);
   }
 
-  if (error != NULL) {
+  if (error != nullptr) {
     e.ToDBusError(error);
   }
 
@@ -209,7 +209,7 @@ bool DBusAdaptor::ClearProperty(PropertyStore *store,
   Error e;
   store->ClearProperty(name, &e);
 
-  if (error != NULL) {
+  if (error != nullptr) {
     e.ToDBusError(error);
   }
 

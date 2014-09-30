@@ -9,9 +9,7 @@
 namespace shill {
 
 MockHTTPRequest::MockHTTPRequest(ConnectionRefPtr connection)
-    : HTTPRequest(connection,
-                  reinterpret_cast<EventDispatcher *>(NULL),
-                  reinterpret_cast<Sockets *>(NULL)) {}
+    : HTTPRequest(connection, nullptr, nullptr) {}
 
 MockHTTPRequest::~MockHTTPRequest() {}
 

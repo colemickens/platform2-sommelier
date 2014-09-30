@@ -320,7 +320,7 @@ NetlinkAttribute *AttributeList::GetAttribute(int id) const {
   map<int, AttributePointer>::const_iterator i;
   i = attributes_.find(id);
   if (i == attributes_.end()) {
-    return NULL;
+    return nullptr;
   }
   return i->second.get();
 }

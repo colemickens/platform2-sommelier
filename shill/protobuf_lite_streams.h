@@ -17,7 +17,7 @@ namespace shill {
 // Attempts to create a |google::protobuf::io::CopyingInputStreamAdaptor| using
 // a |shill::ProtobufLiteCopyingFileInputStream|. Returns a new instance on
 // success. The caller owns the new instance, and must free it when done.
-// Returns NULL on failure.
+// Returns nullptr on failure.
 google::protobuf::io::CopyingInputStreamAdaptor *
 protobuf_lite_file_input_stream(const std::string &file_path);
 

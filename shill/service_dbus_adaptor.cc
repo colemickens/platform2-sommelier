@@ -24,7 +24,7 @@ ServiceDBusAdaptor::ServiceDBusAdaptor(DBus::Connection *conn, Service *service)
     : DBusAdaptor(conn, kPath + service->unique_name()), service_(service) {}
 
 ServiceDBusAdaptor::~ServiceDBusAdaptor() {
-  service_ = NULL;
+  service_ = nullptr;
 }
 
 void ServiceDBusAdaptor::UpdateConnected() {}

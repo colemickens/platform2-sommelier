@@ -154,13 +154,13 @@ class DeviceTest : public PropertyStoreTest {
   DeviceTest()
       : device_(new TestDevice(control_interface(),
                                dispatcher(),
-                               NULL,
+                               nullptr,
                                manager(),
                                kDeviceName,
                                kDeviceAddress,
                                kDeviceInterfaceIndex,
                                Technology::kUnknown)),
-        device_info_(control_interface(), NULL, NULL, NULL),
+        device_info_(control_interface(), nullptr, nullptr, nullptr),
         metrics_(dispatcher()) {
     DHCPProvider::GetInstance()->glib_ = glib();
     DHCPProvider::GetInstance()->control_interface_ = control_interface();
@@ -342,7 +342,7 @@ TEST_F(DeviceTest, AcquireIPConfig) {
   ASSERT_TRUE(device_->ipconfig_.get());
   EXPECT_EQ(kDeviceName, device_->ipconfig_->device_name());
   EXPECT_FALSE(device_->ipconfig_->update_callback_.is_null());
-  device_->dhcp_provider_ = NULL;
+  device_->dhcp_provider_ = nullptr;
 }
 
 TEST_F(DeviceTest, EnableIPv6) {
@@ -412,14 +412,14 @@ TEST_F(DeviceTest, SelectedService) {
     .WillOnce(Return(Service::kStateUnknown));
   EXPECT_CALL(*service, SetState(Service::kStateIdle));
   EXPECT_CALL(*service, SetConnection(IsNullRefPtr()));
-  SelectService(NULL);
+  SelectService(nullptr);
 
   // A service in the "Failure" state should not be reset to "Idle"
   SelectService(service);
   EXPECT_CALL(*service, state())
     .WillOnce(Return(Service::kStateFailure));
   EXPECT_CALL(*service, SetConnection(IsNullRefPtr()));
-  SelectService(NULL);
+  SelectService(nullptr);
 }
 
 TEST_F(DeviceTest, LinkMonitorFailure) {
@@ -554,10 +554,10 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
 
 TEST_F(DeviceTest, IPConfigUpdatedSuccessNoSelectedService) {
   // Make sure shill doesn't crash if a service is disabled immediately
-  // after receiving its IP config (selected_service_ is NULL in this case).
+  // after receiving its IP config (selected_service_ is nullptr in this case).
   scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
                                                           kDeviceName);
-  SelectService(NULL);
+  SelectService(nullptr);
   OnIPConfigUpdated(ipconfig.get());
 }
 
@@ -736,7 +736,7 @@ TEST_F(DeviceTest, ResumeWithIPConfig) {
 
 TEST_F(DeviceTest, ResumeWithoutIPConfig) {
   // Just test that we don't crash in this case.
-  ASSERT_EQ(NULL, device_->ipconfig().get());
+  ASSERT_EQ(nullptr, device_->ipconfig().get());
   device_->OnAfterResume();
 }
 
@@ -826,7 +826,7 @@ TEST_F(DeviceTest, LinkMonitorCancelledOnSelectService) {
   EXPECT_CALL(*service, SetState(_));
   EXPECT_CALL(*service, SetConnection(_));
   EXPECT_TRUE(HasLinkMonitor());
-  SelectService(NULL);
+  SelectService(nullptr);
   EXPECT_FALSE(HasLinkMonitor());
 }
 
@@ -893,7 +893,7 @@ TEST_F(DeviceTest, TrafficMonitorCancelledOnSelectService) {
   EXPECT_CALL(*service, SetState(_));
   EXPECT_CALL(*service, SetConnection(_));
   EXPECT_CALL(*traffic_monitor, Stop());
-  SelectService(NULL);
+  SelectService(nullptr);
 }
 
 TEST_F(DeviceTest, ShouldUseArpGateway) {
@@ -901,8 +901,8 @@ TEST_F(DeviceTest, ShouldUseArpGateway) {
 }
 
 TEST_F(DeviceTest, PerformTDLSOperation) {
-  EXPECT_EQ("",
-            device_->PerformTDLSOperation("do something", "to someone", NULL));
+  EXPECT_EQ(
+      "", device_->PerformTDLSOperation("do something", "to someone", nullptr));
 }
 
 TEST_F(DeviceTest, IsConnectedViaTether) {
@@ -925,23 +925,23 @@ TEST_F(DeviceTest, IsConnectedViaTether) {
 }
 
 TEST_F(DeviceTest, AvailableIPConfigs) {
-  EXPECT_EQ(vector<string>(), device_->AvailableIPConfigs(NULL));
+  EXPECT_EQ(vector<string>(), device_->AvailableIPConfigs(nullptr));
   device_->ipconfig_ = new IPConfig(control_interface(), kDeviceName);
   EXPECT_EQ(vector<string> { IPConfigMockAdaptor::kRpcId },
-            device_->AvailableIPConfigs(NULL));
+            device_->AvailableIPConfigs(nullptr));
   device_->ip6config_ = new IPConfig(control_interface(), kDeviceName);
 
   // We don't really care that the RPC IDs for all IPConfig mock adaptors
   // are the same, or their ordering.  We just need to see that there are two
   // of them when both IPv6 and IPv4 IPConfigs are available.
-  EXPECT_EQ(2, device_->AvailableIPConfigs(NULL).size());
+  EXPECT_EQ(2, device_->AvailableIPConfigs(nullptr).size());
 
-  device_->ipconfig_ = NULL;
+  device_->ipconfig_ = nullptr;
   EXPECT_EQ(vector<string> { IPConfigMockAdaptor::kRpcId },
-            device_->AvailableIPConfigs(NULL));
+            device_->AvailableIPConfigs(nullptr));
 
-  device_->ip6config_ = NULL;
-  EXPECT_EQ(vector<string>(), device_->AvailableIPConfigs(NULL));
+  device_->ip6config_ = nullptr;
+  EXPECT_EQ(vector<string>(), device_->AvailableIPConfigs(nullptr));
 }
 
 TEST_F(DeviceTest, OnIPv6AddressChanged) {
@@ -952,7 +952,7 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
   manager.set_mock_device_info(&device_info_);
   SetManager(&manager);
 
-  // An IPv6 clear while ip6config_ is NULL will not emit a change.
+  // An IPv6 clear while ip6config_ is nullptr will not emit a change.
   EXPECT_CALL(device_info_, GetPrimaryIPv6Address(kDeviceInterfaceIndex, _))
       .WillOnce(Return(false));
   EXPECT_CALL(*GetDeviceMockAdaptor(),
@@ -966,7 +966,7 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
   const char kAddress0[] = "fe80::1aa9:5ff:abcd:1234";
   ASSERT_TRUE(address0.SetAddressFromString(kAddress0));
 
-  // Add an IPv6 address while ip6config_ is NULL.
+  // Add an IPv6 address while ip6config_ is nullptr.
   EXPECT_CALL(device_info_, GetPrimaryIPv6Address(kDeviceInterfaceIndex, _))
       .WillOnce(DoAll(SetArgPointee<1>(address0), Return(true)));
   EXPECT_CALL(*GetDeviceMockAdaptor(),
@@ -1016,7 +1016,7 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
   device_->OnIPv6AddressChanged();
   EXPECT_EQ(kAddress1, device_->ip6config_->properties().address);
 
-  // Return the IPv6 address to NULL.
+  // Return the IPv6 address to nullptr.
   EXPECT_CALL(device_info_, GetPrimaryIPv6Address(kDeviceInterfaceIndex, _))
       .WillOnce(Return(false));
   EXPECT_CALL(*GetDeviceMockAdaptor(),
@@ -1069,7 +1069,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   dns_server_addresses_str.push_back(kAddress1);
   dns_server_addresses_str.push_back(kAddress2);
 
-  // Add IPv6 DNS server addresses while ip6config_ is NULL.
+  // Add IPv6 DNS server addresses while ip6config_ is nullptr.
   EXPECT_CALL(device_info_,
               GetIPv6DnsServerAddresses(kDeviceInterfaceIndex, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(dns_server_addresses),
@@ -1152,7 +1152,7 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
 
-  // Return the DNS server addresses to NULL.
+  // Return the DNS server addresses to nullptr.
   EXPECT_CALL(device_info_,
               GetIPv6DnsServerAddresses(kDeviceInterfaceIndex, _, _))
       .WillOnce(Return(false));
@@ -1386,7 +1386,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
   EXPECT_TRUE(StartPortalDetection());
 
   // Drop all references to device_info before it falls out of scope.
-  SetConnection(NULL);
+  SetConnection(nullptr);
   StopPortalDetection();
 }
 
@@ -1417,7 +1417,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStartIPv6) {
   EXPECT_TRUE(StartPortalDetection());
 
   // Drop all references to device_info before it falls out of scope.
-  SetConnection(NULL);
+  SetConnection(nullptr);
   StopPortalDetection();
 }
 
@@ -1674,7 +1674,7 @@ TEST_F(DevicePortalDetectionTest, CancelledOnSelectService) {
       .WillOnce(Return(Service::kStateIdle));
   EXPECT_CALL(*service_.get(), SetState(_));
   EXPECT_CALL(*service_.get(), SetConnection(_));
-  SelectService(NULL);
+  SelectService(nullptr);
   ExpectPortalDetectorReset();
 }
 
@@ -1949,7 +1949,7 @@ TEST_F(DeviceByteCountTest, GetByteCounts) {
   tx_byte_count_ = 456;
   DeviceRefPtr device(new TestDevice(control_interface(),
                                      dispatcher(),
-                                     NULL,
+                                     nullptr,
                                      &manager_,
                                      kDeviceName,
                                      kDeviceAddress,

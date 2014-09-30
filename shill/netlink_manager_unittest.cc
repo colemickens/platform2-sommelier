@@ -722,8 +722,9 @@ TEST_F(NetlinkManagerTest, TimeoutResponseHandlers) {
       ack_handler.on_netlink_message(),
       auxilliary_handler.on_netlink_message()));
   received_message->nlmsg_seq = netlink_socket_->GetLastSequenceNumber();
-  EXPECT_CALL(auxilliary_handler,
-              OnErrorHandler(NetlinkManager::kTimeoutWaitingForResponse, NULL));
+  EXPECT_CALL(
+      auxilliary_handler,
+      OnErrorHandler(NetlinkManager::kTimeoutWaitingForResponse, nullptr));
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(&get_reg_message,
                                                    null_message_handler,
                                                    null_ack_handler,

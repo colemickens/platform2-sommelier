@@ -304,7 +304,7 @@ bool DHCPConfig::Start() {
                                        lease_file_suffix_.c_str());
   }
   args.push_back(const_cast<char *>(interface_arg.c_str()));
-  args.push_back(NULL);
+  args.push_back(nullptr);
 
   struct minijail *jail = minijail_->New();
   minijail_->DropRoot(jail, kDHCPCDUser, kDHCPCDUser);
@@ -347,7 +347,7 @@ void DHCPConfig::KillClient() {
   int num_iterations =
       kDHCPCDExitWaitMilliseconds / kDHCPCDExitPollMilliseconds;
   for (int count = 0; count < num_iterations; ++count) {
-    ret = waitpid(pid_, NULL, WNOHANG);
+    ret = waitpid(pid_, nullptr, WNOHANG);
     if (ret == pid_ || ret == -1)
       break;
     usleep(kDHCPCDExitPollMilliseconds * 1000);

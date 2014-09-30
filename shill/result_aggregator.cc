@@ -10,7 +10,7 @@
 namespace shill {
 
 ResultAggregator::ResultAggregator(const ResultCallback &callback)
-    : ResultAggregator(callback, NULL, -1) {}
+    : ResultAggregator(callback, nullptr, -1) {}
 
 ResultAggregator::ResultAggregator(const ResultCallback &callback,
                                    EventDispatcher *dispatcher,

@@ -8,7 +8,7 @@
 
 namespace shill {
 
-MockTrafficMonitor::MockTrafficMonitor() : TrafficMonitor(NULL, NULL) {}
+MockTrafficMonitor::MockTrafficMonitor() : TrafficMonitor(nullptr, nullptr) {}
 
 MockTrafficMonitor::~MockTrafficMonitor() {}
 

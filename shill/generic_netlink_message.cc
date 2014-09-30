@@ -112,7 +112,7 @@ bool ControlNetlinkMessage::InitFromNlmsg(const nlmsghdr *const_msg) {
   nlattr *tb[CTRL_ATTR_MAX + 1];
   nla_parse(tb, CTRL_ATTR_MAX,
             reinterpret_cast<nlattr *>(message.GetData()), message.GetLength(),
-            NULL);
+            nullptr);
 
   for (int i = 0; i < CTRL_ATTR_MAX + 1; ++i) {
     if (tb[i]) {
@@ -142,7 +142,7 @@ NetlinkMessage *ControlNetlinkMessage::CreateMessage(
     const nlmsghdr *const_msg) {
   if (!const_msg) {
     LOG(ERROR) << "NULL |const_msg| parameter";
-    return NULL;
+    return nullptr;
   }
   // Casting away constness since, while nlmsg_data doesn't change its
   // parameter, it also doesn't declare its paramenter as const.
@@ -160,7 +160,7 @@ NetlinkMessage *ControlNetlinkMessage::CreateMessage(
       return new UnknownControlMessage(gnlh->cmd);
       break;
   }
-  return NULL;
+  return nullptr;
 }
 
 }  // namespace shill.

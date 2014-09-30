@@ -52,7 +52,7 @@ void TestCommonPropertyChanges(ServiceRefPtr service,
   Mock::VerifyAndClearExpectations(adaptor);
 
   // Depending on our caller, AutoConnect may be true.
-  service->ClearAutoConnect(NULL);
+  service->ClearAutoConnect(nullptr);
   EXPECT_FALSE(service->auto_connect());
   EXPECT_CALL(*adaptor, EmitBoolChanged(kAutoConnectProperty, _));
   service->SetAutoConnect(true);
@@ -149,9 +149,7 @@ void TestCustomSetterNoopChange(ServiceRefPtr service,
   {
     Error error;
     scoped_refptr<MockProfile> profile(
-        new NiceMock<MockProfile>(static_cast<ControlInterface *>(NULL),
-                                  static_cast<Metrics *>(NULL),
-                                  static_cast<Manager *>(NULL)));
+        new NiceMock<MockProfile>(nullptr, nullptr, nullptr));
     service->set_profile(profile);
     EXPECT_FALSE(service->SetProfileRpcId(profile->GetRpcIdentifier(),
                                            &error));

@@ -23,7 +23,7 @@ RPCTaskDBusAdaptor::RPCTaskDBusAdaptor(DBus::Connection *conn, RPCTask *task)
       connection_name_(conn->unique_name()) {}
 
 RPCTaskDBusAdaptor::~RPCTaskDBusAdaptor() {
-  task_ = NULL;
+  task_ = nullptr;
 }
 
 const string &RPCTaskDBusAdaptor::GetRpcIdentifier() {

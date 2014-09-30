@@ -41,11 +41,11 @@ class Connection : public base::RefCounted<Connection> {
     ~Binder();
 
     // Binds to |to_connection|. Unbinds the previous bound connection, if
-    // any. Pass NULL to just unbind this Binder.
+    // any. Pass nullptr to just unbind this Binder.
     void Attach(const ConnectionRefPtr &to_connection);
 
     const std::string &name() const { return name_; }
-    bool IsBound() const { return connection_ != NULL; }
+    bool IsBound() const { return connection_ != nullptr; }
     ConnectionRefPtr connection() const { return connection_.get(); }
 
    private:
@@ -110,7 +110,7 @@ class Connection : public base::RefCounted<Connection> {
   void set_tethering(const std::string &tethering) { tethering_ = tethering; }
 
   // Return the lowest connection on which this connection depends. In case of
-  // error, a NULL is returned.
+  // error, a nullptr is returned.
   virtual ConnectionRefPtr GetCarrierConnection();
 
   // Return true if this is an IPv6 connection.

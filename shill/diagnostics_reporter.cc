@@ -65,7 +65,7 @@ void DiagnosticsReporter::OnConnectivityEvent() {
   if (IsReportingEnabled()) {
     args.push_back(const_cast<char *>("--upload"));
   }
-  args.push_back(NULL);
+  args.push_back(nullptr);
   pid_t pid = 0;
   struct minijail *jail = minijail_->New();
   minijail_->DropRoot(jail, kNetDiagsUploadUser, kNetDiagsUploadUser);

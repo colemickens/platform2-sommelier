@@ -348,7 +348,7 @@ class Device : public base::RefCounted<Device> {
 
   // Each device must implement this method to do the work needed to
   // enable the device to operate for establishing network connections.
-  // The |error| argument, if not NULL,
+  // The |error| argument, if not nullptr,
   // will refer to an Error that starts out with the value
   // Error::kOperationInitiated. This reflects the assumption that
   // enable (and disable) operations will usually be non-blocking,

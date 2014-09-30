@@ -95,7 +95,7 @@ bool ProfileDBusPropertyExporter::LoadWiFiServiceProperties(
     SetString(properties, kSecurityProperty, security);
   }
 
-  LoadEapServiceProperties(properties, NULL);
+  LoadEapServiceProperties(properties, nullptr);
 
   return true;
 }

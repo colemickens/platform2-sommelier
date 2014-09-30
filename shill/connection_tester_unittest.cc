@@ -34,20 +34,14 @@ namespace shill {
 class ConnectionTesterTest : public Test {
  public:
   ConnectionTesterTest()
-      : device_info_(new NiceMock<MockDeviceInfo>(
-            &control_,
-            reinterpret_cast<EventDispatcher *>(NULL),
-            reinterpret_cast<Metrics *>(NULL),
-            reinterpret_cast<Manager *>(NULL))),
+      : device_info_(
+            new NiceMock<MockDeviceInfo>(&control_, nullptr, nullptr, nullptr)),
         connection_(new StrictMock<MockConnection>(device_info_.get())),
         connection_tester_(
-            new ConnectionTester(connection_.get(),
-                                 &dispatcher_,
+            new ConnectionTester(connection_.get(), &dispatcher_,
                                  callback_target_.tester_callback())),
-        connectivity_trial_(
-            new StrictMock<MockConnectivityTrial>(
-                connection_,
-                ConnectionTester::kTrialTimeoutSeconds)) { }
+        connectivity_trial_(new StrictMock<MockConnectivityTrial>(
+            connection_, ConnectionTester::kTrialTimeoutSeconds)) {}
 
   virtual void SetUp() {
     EXPECT_CALL(*connection_.get(), IsIPv6())

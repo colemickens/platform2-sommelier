@@ -65,7 +65,7 @@ bool ExternalTask::Start(const FilePath &program,
   for (const auto &option : arguments) {
     process_args.push_back(const_cast<char *>(option.c_str()));
   }
-  process_args.push_back(NULL);
+  process_args.push_back(nullptr);
 
   vector<char *> process_env;
   vector<string> env_vars(local_rpc_task->GetEnvironment());
@@ -76,19 +76,19 @@ bool ExternalTask::Start(const FilePath &program,
     // See above regarding const_cast.
     process_env.push_back(const_cast<char *>(env_var.c_str()));
   }
-  process_env.push_back(NULL);
+  process_env.push_back(nullptr);
 
   GSpawnChildSetupFunc child_setup_func =
-      terminate_with_parent ? SetupTermination : NULL;
+      terminate_with_parent ? SetupTermination : nullptr;
 
-  if (!glib_->SpawnAsync(NULL,
+  if (!glib_->SpawnAsync(nullptr,
                          process_args.data(),
                          process_env.data(),
                          G_SPAWN_DO_NOT_REAP_CHILD,
                          child_setup_func,
-                         NULL,
+                         nullptr,
                          &pid_,
-                         NULL)) {
+                         nullptr)) {
     Error::PopulateAndLog(error, Error::kInternalError,
                           string("Unable to spawn: ") + process_args[0]);
     return false;

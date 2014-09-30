@@ -72,7 +72,7 @@ class TestEventDispatcherForDeviceInfo : public EventDispatcher {
       int /*fd*/,
       const IOHandler::InputCallback &/*input_callback*/,
       const IOHandler::ErrorCallback &/*error_callback*/) {
-    return NULL;
+    return nullptr;
   }
   MOCK_METHOD2(PostDelayedTask, bool(const base::Closure &task,
                                      int64_t delay_ms));
@@ -322,7 +322,7 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   EXPECT_CALL(manager_, DeregisterDevice(_)).Times(1);
   SendMessageToDeviceInfo(*message);
   EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
-  EXPECT_FALSE(device_info_.GetFlags(kTestDeviceIndex, NULL));
+  EXPECT_FALSE(device_info_.GetFlags(kTestDeviceIndex, nullptr));
   EXPECT_EQ(-1, device_info_.GetIndex(kTestDeviceName));
 }
 
@@ -392,7 +392,7 @@ TEST_F(DeviceInfoTest, GetUninitializedTechnologies) {
               ContainerEq(expected_technologies));
 
   device_info_.infos_[3].device = device;
-  device_info_.infos_[1].device = NULL;
+  device_info_.infos_[1].device = nullptr;
   technologies = device_info_.GetUninitializedTechnologies();
   EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
@@ -494,7 +494,7 @@ TEST_F(DeviceInfoTest, CreateDeviceEthernet) {
 
   // The Ethernet device destructor notifies the manager.
   EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(1);
-  device = NULL;
+  device = nullptr;
 }
 
 TEST_F(DeviceInfoTest, CreateDeviceVirtioEthernet) {
@@ -513,7 +513,7 @@ TEST_F(DeviceInfoTest, CreateDeviceVirtioEthernet) {
 
   // The Ethernet device destructor notifies the manager.
   EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(1);
-  device = NULL;
+  device = nullptr;
 }
 
 MATCHER_P(IsGetInterfaceMessage, index, "") {
@@ -958,7 +958,7 @@ TEST_F(DeviceInfoTest, GetMACAddressFromKernelIoctlFails) {
 
 MATCHER_P2(IfreqEquals, ifindex, ifname, "") {
   const struct ifreq *const ifr = static_cast<struct ifreq *>(arg);
-  return (ifr != NULL) &&
+  return (ifr != nullptr) &&
       (ifr->ifr_ifindex == ifindex) &&
       (strcmp(ifname, ifr->ifr_name) == 0);
 }
@@ -1059,7 +1059,7 @@ TEST_F(DeviceInfoTest, GetMACAddressOfPeerIoctlFails) {
 
 MATCHER_P2(ArpreqEquals, ifname, peer, "") {
   const struct arpreq *const areq = static_cast<struct arpreq *>(arg);
-  if (areq == NULL) {
+  if (areq == nullptr) {
     return false;
   }
 
@@ -1125,12 +1125,12 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
       "null0", "addr0", kTestDeviceIndex));
 
   // Device info entry does not exist.
-  EXPECT_FALSE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, NULL));
+  EXPECT_FALSE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, nullptr));
 
   device_info_.infos_[kTestDeviceIndex].device = device;
 
   // Device info entry contains no addresses.
-  EXPECT_FALSE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, NULL));
+  EXPECT_FALSE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, nullptr));
 
   IPAddress ipv4_address(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(ipv4_address.SetAddressFromString(kTestIPAddress0));
@@ -1141,7 +1141,7 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
 
   // We should ignore IPv4 addresses.
   SendMessageToDeviceInfo(*message);
-  EXPECT_FALSE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, NULL));
+  EXPECT_FALSE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, nullptr));
 
   IPAddress ipv6_address1(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ipv6_address1.SetAddressFromString(kTestIPAddress1));
@@ -1150,7 +1150,7 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
 
   // We should ignore non-SCOPE_UNIVERSE messages for IPv6.
   SendMessageToDeviceInfo(*message);
-  EXPECT_FALSE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, NULL));
+  EXPECT_FALSE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, nullptr));
 
   Mock::VerifyAndClearExpectations(device);
   IPAddress ipv6_address2(IPAddress::kFamilyIPv6);

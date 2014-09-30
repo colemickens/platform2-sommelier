@@ -27,7 +27,7 @@ DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection *conn, Device *device)
 }
 
 DeviceDBusAdaptor::~DeviceDBusAdaptor() {
-  device_ = NULL;
+  device_ = nullptr;
 }
 
 const string &DeviceDBusAdaptor::GetRpcIdentifier() {

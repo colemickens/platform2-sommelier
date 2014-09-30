@@ -666,7 +666,7 @@ bool NetlinkFlagAttribute::ToString(string *output) const {
 
 ByteString NetlinkFlagAttribute::Encode() const {
   if (has_a_value_ && value_) {
-    return NetlinkAttribute::EncodeGeneric(NULL, 0);
+    return NetlinkAttribute::EncodeGeneric(nullptr, 0);
   }
   return ByteString();  // Encoding of nothing implies 'false'.
 }

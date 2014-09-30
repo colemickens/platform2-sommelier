@@ -60,8 +60,8 @@ const uint8_t Nl80211Frame::kMinimumFrameByteCount = 26;
 const uint8_t Nl80211Frame::kFrameTypeMask = 0xfc;
 
 const char Nl80211Message::kMessageTypeString[] = "nl80211";
-map<uint16_t, string> *Nl80211Message::reason_code_string_ = NULL;
-map<uint16_t, string> *Nl80211Message::status_code_string_ = NULL;
+map<uint16_t, string> *Nl80211Message::reason_code_string_ = nullptr;
+map<uint16_t, string> *Nl80211Message::status_code_string_ = nullptr;
 uint16_t Nl80211Message::nl80211_message_type_ = kIllegalMessageType;
 
 // static
@@ -94,7 +94,7 @@ bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg) {
   nlattr *tb[NL80211_ATTR_MAX + 1];
   nla_parse(tb, NL80211_ATTR_MAX,
             reinterpret_cast<nlattr *>(message.GetData()), message.GetLength(),
-            NULL);
+            nullptr);
 
   for (int i = 0; i < NL80211_ATTR_MAX + 1; ++i) {
     if (tb[i]) {
@@ -586,7 +586,7 @@ const char NewInterfaceMessage::kCommandString[] = "NL80211_CMD_NEW_INTERFACE";
 NetlinkMessage *Nl80211Message::CreateMessage(const nlmsghdr *const_msg) {
   if (!const_msg) {
     LOG(ERROR) << "NULL |const_msg| parameter";
-    return NULL;
+    return nullptr;
   }
   // Casting away constness since, while nlmsg_data doesn't change its
   // parameter, it also doesn't declare its paramenter as const.
@@ -662,7 +662,7 @@ NetlinkMessage *Nl80211Message::CreateMessage(const nlmsghdr *const_msg) {
       return new UnknownNl80211Message(gnlh->cmd);
       break;
   }
-  return NULL;
+  return nullptr;
 }
 
 //

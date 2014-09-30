@@ -109,14 +109,10 @@ class LinkMonitorTest : public Test {
  public:
   LinkMonitorTest()
       : metrics_(&dispatcher_),
-        device_info_(
-            &control_,
-            reinterpret_cast<EventDispatcher*>(NULL),
-            reinterpret_cast<Metrics*>(NULL),
-            reinterpret_cast<Manager*>(NULL)),
+        device_info_(&control_, nullptr, nullptr, nullptr),
         connection_(new StrictMock<MockConnection>(&device_info_)),
         monitor_(connection_, &dispatcher_, &metrics_, &device_info_),
-        client_(NULL),
+        client_(nullptr),
         next_client_(new StrictMock<MockArpClient>()),
         gateway_ip_(IPAddress::kFamilyIPv4),
         local_ip_(IPAddress::kFamilyIPv4),

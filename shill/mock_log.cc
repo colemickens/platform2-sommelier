@@ -14,7 +14,7 @@ using testing::AnyNumber;
 
 namespace shill {
 
-ScopedMockLog *ScopedMockLog::instance_ = NULL;
+ScopedMockLog *ScopedMockLog::instance_ = nullptr;
 
 ScopedMockLog::ScopedMockLog() {
   previous_handler_ = ::logging::GetLogMessageHandler();
@@ -24,7 +24,7 @@ ScopedMockLog::ScopedMockLog() {
 
 ScopedMockLog::~ScopedMockLog() {
   ::logging::SetLogMessageHandler(previous_handler_);
-  instance_ = NULL;
+  instance_ = nullptr;
 }
 
 // static
@@ -50,7 +50,7 @@ bool ScopedMockLog::HandleLogMessages(int severity,
   instance_->Log(severity, file, message);
 
   // Invoke the previously installed message handler if there was one.
-  if (instance_->previous_handler_ != NULL) {
+  if (instance_->previous_handler_) {
     return (*instance_->previous_handler_)(severity, file, line,
                                            message_start, full_message);
   }

@@ -44,7 +44,7 @@ base::LazyInstance<RTNLHandler> g_rtnl_handler = LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
 RTNLHandler::RTNLHandler()
-    : sockets_(NULL),
+    : sockets_(nullptr),
       in_request_(false),
       rtnl_socket_(-1),
       request_flags_(0),
@@ -111,7 +111,7 @@ void RTNLHandler::Stop() {
   rtnl_handler_.reset();
   sockets_->Close(rtnl_socket_);
   in_request_ = false;
-  sockets_ = NULL;
+  sockets_ = nullptr;
   request_flags_ = 0;
   SLOG(RTNL, 2) << "RTNLHandler stopped";
 }

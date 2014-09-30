@@ -80,12 +80,9 @@ class HTTPRequestTest : public Test {
         server_async_connection_(new StrictMock<MockAsyncConnection>()),
         dns_servers_(kDNSServers, kDNSServers + 2),
         dns_client_(new StrictMock<MockDNSClient>()),
-        device_info_(new NiceMock<MockDeviceInfo>(
-            &control_,
-            reinterpret_cast<EventDispatcher*>(NULL),
-            reinterpret_cast<Metrics*>(NULL),
-            reinterpret_cast<Manager*>(NULL))),
-        connection_(new StrictMock<MockConnection>(device_info_.get())) { }
+        device_info_(
+            new NiceMock<MockDeviceInfo>(&control_, nullptr, nullptr, nullptr)),
+        connection_(new StrictMock<MockConnection>(device_info_.get())) {}
 
  protected:
   class CallbackTarget {

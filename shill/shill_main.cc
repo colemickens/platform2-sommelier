@@ -81,14 +81,14 @@ void SetupLogging(bool foreground, char *daemon_name) {
     logger_command_line.push_back(const_cast<char *>("daemon.err"));
     logger_command_line.push_back(const_cast<char *>("--tag"));
     logger_command_line.push_back(daemon_name);
-    logger_command_line.push_back(NULL);
+    logger_command_line.push_back(nullptr);
 
     chromeos::Minijail *minijail = chromeos::Minijail::GetInstance();
     struct minijail *jail = minijail->New();
     minijail->DropRoot(jail, kLoggerUser, kLoggerUser);
 
-    if (!minijail->RunPipeAndDestroy(jail, logger_command_line,
-                                     NULL, &logger_stdin_fd)) {
+    if (!minijail->RunPipeAndDestroy(jail, logger_command_line, nullptr,
+                                     &logger_stdin_fd)) {
       LOG(ERROR) << "Unable to spawn logger. "
                  << "Writes to stderr will be discarded.";
       return;

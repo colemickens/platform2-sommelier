@@ -87,7 +87,7 @@ bool RTNLMessage::DecodeInternal(const ByteString &msg) {
     return false;
   }
 
-  rtattr *attr_data = NULL;
+  rtattr *attr_data = nullptr;
   int attr_length = 0;
 
   switch (hdr->hdr.nlmsg_type) {

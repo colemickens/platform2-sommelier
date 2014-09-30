@@ -634,10 +634,11 @@ void Metrics::NotifyDefaultServiceChanged(const Service *service) {
   // Ignore changes that are not online/offline transitions; e.g.
   // switching between wired and wireless.  TimeToDrop measures
   // time online regardless of how we are connected.
-  if ((service == NULL && !was_online_) || (service != NULL && was_online_))
+  if ((service == nullptr && !was_online_) ||
+      (service != nullptr && was_online_))
     return;
 
-  if (service == NULL) {
+  if (service == nullptr) {
     time_to_drop_timer_->GetElapsedTime(&elapsed_seconds);
     SendToUMA(kMetricTimeToDropSeconds,
               elapsed_seconds.InSeconds(),
@@ -648,7 +649,7 @@ void Metrics::NotifyDefaultServiceChanged(const Service *service) {
     time_to_drop_timer_->Start();
   }
 
-  was_online_ = (service != NULL);
+  was_online_ = (service != nullptr);
 }
 
 void Metrics::NotifyServiceStateChanged(const Service &service,
@@ -911,7 +912,7 @@ bool Metrics::IsDeviceRegistered(int interface_index,
   SLOG(Metrics, 2) << __func__ << ": interface index: " << interface_index
                                << ", technology: " << technology;
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == NULL)
+  if (device_metrics == nullptr)
     return false;
   // Make sure the device technologies match.
   return (technology == device_metrics->technology);
@@ -921,7 +922,7 @@ void Metrics::DeregisterDevice(int interface_index) {
   SLOG(Metrics, 2) << __func__ << ": interface index: " << interface_index;
 
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics != NULL) {
+  if (device_metrics != nullptr) {
     NotifyDeviceRemovedEvent(device_metrics->technology);
   }
 
@@ -930,7 +931,7 @@ void Metrics::DeregisterDevice(int interface_index) {
 
 void Metrics::NotifyDeviceInitialized(int interface_index) {
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == NULL)
+  if (device_metrics == nullptr)
     return;
   if (!device_metrics->initialization_timer->Stop())
     return;
@@ -939,14 +940,14 @@ void Metrics::NotifyDeviceInitialized(int interface_index) {
 
 void Metrics::NotifyDeviceEnableStarted(int interface_index) {
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == NULL)
+  if (device_metrics == nullptr)
     return;
   device_metrics->enable_timer->Start();
 }
 
 void Metrics::NotifyDeviceEnableFinished(int interface_index) {
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == NULL)
+  if (device_metrics == nullptr)
     return;
   if (!device_metrics->enable_timer->Stop())
       return;
@@ -955,14 +956,14 @@ void Metrics::NotifyDeviceEnableFinished(int interface_index) {
 
 void Metrics::NotifyDeviceDisableStarted(int interface_index) {
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == NULL)
+  if (device_metrics == nullptr)
     return;
   device_metrics->disable_timer->Start();
 }
 
 void Metrics::NotifyDeviceDisableFinished(int interface_index) {
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == NULL)
+  if (device_metrics == nullptr)
     return;
   if (!device_metrics->disable_timer->Stop())
     return;
@@ -971,7 +972,7 @@ void Metrics::NotifyDeviceDisableFinished(int interface_index) {
 
 void Metrics::NotifyDeviceScanStarted(int interface_index) {
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == NULL)
+  if (device_metrics == nullptr)
     return;
   device_metrics->scan_timer->Start();
   device_metrics->scan_connect_timer->Start();
@@ -979,7 +980,7 @@ void Metrics::NotifyDeviceScanStarted(int interface_index) {
 
 void Metrics::NotifyDeviceScanFinished(int interface_index) {
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == NULL)
+  if (device_metrics == nullptr)
     return;
   if (!device_metrics->scan_timer->Stop())
     return;
@@ -995,7 +996,7 @@ void Metrics::NotifyDeviceScanFinished(int interface_index) {
 
 void Metrics::ResetScanTimer(int interface_index) {
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == NULL)
+  if (device_metrics == nullptr)
     return;
   device_metrics->scan_timer->Reset();
 }
@@ -1003,7 +1004,7 @@ void Metrics::ResetScanTimer(int interface_index) {
 void Metrics::NotifyDeviceConnectStarted(int interface_index,
                                          bool is_auto_connecting) {
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == NULL)
+  if (device_metrics == nullptr)
     return;
   device_metrics->connect_timer->Start();
 
@@ -1018,7 +1019,7 @@ void Metrics::NotifyDeviceConnectStarted(int interface_index,
 
 void Metrics::NotifyDeviceConnectFinished(int interface_index) {
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == NULL)
+  if (device_metrics == nullptr)
     return;
   if (!device_metrics->connect_timer->Stop())
     return;
@@ -1047,7 +1048,7 @@ void Metrics::NotifyDeviceConnectFinished(int interface_index) {
 
 void Metrics::ResetConnectTimer(int interface_index) {
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics == NULL)
+  if (device_metrics == nullptr)
     return;
   device_metrics->connect_timer->Reset();
   device_metrics->scan_connect_timer->Reset();
@@ -1431,7 +1432,7 @@ Metrics::DeviceMetrics *Metrics::GetDeviceMetrics(int interface_index) const {
   if (it == devices_metrics_.end()) {
     SLOG(Metrics, 2) << __func__ << ": device " << interface_index
                      << " not found";
-    return NULL;
+    return nullptr;
   }
   return it->second.get();
 }

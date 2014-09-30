@@ -429,7 +429,7 @@ class Service : public base::RefCounted<Service> {
   const ProfileRefPtr &profile() const;
 
   // Sets the profile property of this service. Broadcasts the new value if it's
-  // not NULL. If the new value is NULL, the service will either be set to
+  // not nullptr. If the new value is nullptr, the service will either be set to
   // another profile afterwards or it will not be visible and not monitored
   // anymore.
   void SetProfile(const ProfileRefPtr &p);

@@ -51,8 +51,8 @@ class TrafficMonitorTest : public Test {
   TrafficMonitorTest()
       : device_(new MockDevice(&control_,
                                &dispatcher_,
-                               reinterpret_cast<Metrics *>(NULL),
-                               reinterpret_cast<Manager *>(NULL),
+                               nullptr,
+                               nullptr,
                                "netdev0",
                                "00:11:22:33:44:55",
                                1)),

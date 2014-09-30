@@ -194,7 +194,7 @@ void DeviceInfo::DeregisterDevice(const DeviceRefPtr &device) {
     manager_->DeregisterDevice(device);
     // Release the reference to the device, but maintain the mapping
     // for the index.  That will be cleaned up by an RTNL message.
-    iter->second.device = NULL;
+    iter->second.device = nullptr;
   }
   metrics_->DeregisterDevice(device->interface_index());
 }
@@ -412,7 +412,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
       LOG(WARNING) << "Cellular support is not implemented. "
                    << "Ignore cellular device " << link_name << " at index "
                    << interface_index << ".";
-      return NULL;
+      return nullptr;
 #else
       // Cellular devices are managed by ModemInfo.
       SLOG(Device, 2) << "Cellular link " << link_name
@@ -446,7 +446,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
 #if defined(DISABLE_WIMAX)
       LOG(WARNING) << "WiMax support is not implemented. Ignore WiMax link "
                    << link_name << " at index " << interface_index << ".";
-      return NULL;
+      return nullptr;
 #else
       // WiMax devices are managed by WiMaxProvider.
       SLOG(Device, 2) << "WiMax link " << link_name
@@ -486,7 +486,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
       SLOG(Device, 2) << "Bringing up loopback device " << link_name
                       << " at index " << interface_index;
       rtnl_handler_->SetInterfaceFlags(interface_index, IFF_UP, IFF_UP);
-      return NULL;
+      return nullptr;
     case Technology::kCDCEthernet:
       // CDCEthernet devices are of indeterminate type when they are
       // initially created.  Some time later, tty devices may or may
@@ -498,7 +498,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
       LOG(INFO) << "Delaying creation of device for " << link_name
                 << " at index " << interface_index;
       DelayDeviceCreation(interface_index);
-      return NULL;
+      return nullptr;
     default:
       // We will not manage this device in shill.  Do not create a device
       // object or do anything to change its state.  We create a stub object
@@ -594,7 +594,7 @@ void DeviceInfo::DelLinkMsgHandler(const RTNLMessage &msg) {
 
 DeviceRefPtr DeviceInfo::GetDevice(int interface_index) const {
   const Info *info = GetInfo(interface_index);
-  return info ? info->device : NULL;
+  return info ? info->device : nullptr;
 }
 
 int DeviceInfo::GetIndex(const string &interface_name) const {
@@ -883,7 +883,7 @@ bool DeviceInfo::DeleteInterface(int interface_index) const {
 const DeviceInfo::Info *DeviceInfo::GetInfo(int interface_index) const {
   map<int, Info>::const_iterator iter = infos_.find(interface_index);
   if (iter == infos_.end()) {
-    return NULL;
+    return nullptr;
   }
   return &iter->second;
 }

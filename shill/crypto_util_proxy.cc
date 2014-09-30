@@ -161,9 +161,9 @@ bool CryptoUtilProxy::StartShimForCommand(
   vector<char *> args;
   args.push_back(const_cast<char *>(kCryptoUtilShimPath));
   args.push_back(const_cast<char *>(command.c_str()));
-  args.push_back(NULL);
+  args.push_back(nullptr);
   if (!minijail_->RunPipesAndDestroy(jail, args, &shim_pid_,
-                                     &shim_stdin_, &shim_stdout_, NULL)) {
+                                     &shim_stdin_, &shim_stdout_, nullptr)) {
     LOG(ERROR) << "Minijail couldn't run our child process";
     return false;
   }

@@ -15,7 +15,7 @@ using std::vector;
 namespace shill {
 
 MockDNSClient::MockDNSClient()
-    : DNSClient(IPAddress::kFamilyIPv4, "", vector<string>(), 0, NULL,
+    : DNSClient(IPAddress::kFamilyIPv4, "", vector<string>(), 0, nullptr,
                 ClientCallback()) {}
 
 MockDNSClient::~MockDNSClient() {}

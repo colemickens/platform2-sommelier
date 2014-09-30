@@ -48,11 +48,8 @@ const char *kDNSServers[] = { kDNSServer0, kDNSServer1 };
 class DNSServerTesterTest : public Test {
  public:
   DNSServerTesterTest()
-      : device_info_(new NiceMock<MockDeviceInfo>(
-          &control_,
-          reinterpret_cast<EventDispatcher *>(NULL),
-          reinterpret_cast<Metrics *>(NULL),
-          reinterpret_cast<Manager *>(NULL))),
+      : device_info_(
+            new NiceMock<MockDeviceInfo>(&control_, nullptr, nullptr, nullptr)),
         connection_(new StrictMock<MockConnection>(device_info_.get())),
         interface_name_(kInterfaceName),
         dns_servers_(kDNSServers, kDNSServers + 2) {}

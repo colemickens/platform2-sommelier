@@ -39,7 +39,7 @@ bool EphemeralProfile::AdoptService(const ServiceRefPtr &service) {
 
 bool EphemeralProfile::AbandonService(const ServiceRefPtr &service) {
   if (service->profile() == this)
-    service->SetProfile(NULL);
+    service->SetProfile(nullptr);
   SLOG(Profile, 2) << "Removing service " << service->unique_name()
                    << " from ephemeral profile.";
   return true;

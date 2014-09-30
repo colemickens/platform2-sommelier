@@ -88,7 +88,7 @@ Timestamp Time::GetNow() {
 
   GetTimeMonotonic(&now_monotonic);
   GetTimeBoottime(&now_boottime);
-  GetTimeOfDay(&now_wall_clock, NULL);
+  GetTimeOfDay(&now_wall_clock, nullptr);
   localtime_r(&now_wall_clock.tv_sec, &local_time);
   wall_clock_string = FormatTime(local_time, now_wall_clock.tv_usec);
 
@@ -119,7 +119,7 @@ string Time::FormatTime(const struct tm &date_time, suseconds_t usec) {
 }
 
 time_t Time::GetSecondsSinceEpoch() const {
-  return time(NULL);
+  return time(nullptr);
 }
 
 }  // namespace shill

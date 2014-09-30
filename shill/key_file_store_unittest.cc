@@ -322,7 +322,7 @@ TEST_F(KeyFileStoreTest, GetString) {
   EXPECT_EQ(kValue, value);
   EXPECT_FALSE(store_.GetString("something-else", kKey, &value));
   EXPECT_FALSE(store_.GetString(kGroup, "bar", &value));
-  EXPECT_TRUE(store_.GetString(kGroup, kKey, NULL));
+  EXPECT_TRUE(store_.GetString(kGroup, kKey, nullptr));
   ASSERT_TRUE(store_.Close());
 }
 
@@ -370,7 +370,7 @@ TEST_F(KeyFileStoreTest, GetBool) {
     EXPECT_FALSE(store_.GetBool(kGroup, "unknown", &value));
     EXPECT_FALSE(store_.GetBool("unknown", kKeyTrue, &value));
   }
-  EXPECT_TRUE(store_.GetBool(kGroup, kKeyFalse, NULL));
+  EXPECT_TRUE(store_.GetBool(kGroup, kKeyFalse, nullptr));
   ASSERT_TRUE(store_.Close());
 }
 
@@ -422,7 +422,7 @@ TEST_F(KeyFileStoreTest, GetInt) {
     EXPECT_FALSE(store_.GetInt(kGroup, "invalid", &value));
     EXPECT_FALSE(store_.GetInt("invalid", kKeyPos, &value));
   }
-  EXPECT_TRUE(store_.GetInt(kGroup, kKeyPos, NULL));
+  EXPECT_TRUE(store_.GetInt(kGroup, kKeyPos, nullptr));
   ASSERT_TRUE(store_.Close());
 }
 
@@ -471,7 +471,7 @@ TEST_F(KeyFileStoreTest, GetUint64) {
     EXPECT_FALSE(store_.GetUint64(kGroup, "invalid", &value));
     EXPECT_FALSE(store_.GetUint64("invalid", kKeyGood, &value));
   }
-  EXPECT_TRUE(store_.GetUint64(kGroup, kKeyGood, NULL));
+  EXPECT_TRUE(store_.GetUint64(kGroup, kKeyGood, nullptr));
   ASSERT_TRUE(store_.Close());
 }
 
@@ -542,7 +542,7 @@ TEST_F(KeyFileStoreTest, GetStringList) {
 
   EXPECT_FALSE(store_.GetStringList("unknown-string-lists", kKeyEmpty, &value));
   EXPECT_FALSE(store_.GetStringList(kGroup, "some-key", &value));
-  EXPECT_TRUE(store_.GetStringList(kGroup, kKeyValues, NULL));
+  EXPECT_TRUE(store_.GetStringList(kGroup, kKeyValues, nullptr));
   ASSERT_TRUE(store_.Close());
 }
 
@@ -615,7 +615,7 @@ TEST_F(KeyFileStoreTest, GetCryptedString) {
   EXPECT_EQ(kPlainText, value);
   EXPECT_FALSE(store_.GetCryptedString("something-else", kKey, &value));
   EXPECT_FALSE(store_.GetCryptedString(kGroup, "non-secret", &value));
-  EXPECT_TRUE(store_.GetCryptedString(kGroup, kKey, NULL));
+  EXPECT_TRUE(store_.GetCryptedString(kGroup, kKey, nullptr));
   ASSERT_TRUE(store_.Close());
 }
 

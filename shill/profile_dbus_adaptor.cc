@@ -31,7 +31,7 @@ ProfileDBusAdaptor::ProfileDBusAdaptor(DBus::Connection* conn, Profile *profile)
 }
 
 ProfileDBusAdaptor::~ProfileDBusAdaptor() {
-  profile_ = NULL;
+  profile_ = nullptr;
 }
 
 void ProfileDBusAdaptor::EmitBoolChanged(const string &name, bool value) {

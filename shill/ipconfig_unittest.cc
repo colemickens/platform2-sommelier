@@ -35,7 +35,7 @@ class IPConfigTest : public Test {
  public:
   IPConfigTest() : ipconfig_(new IPConfig(&control_, kDeviceName)) {}
   void DropRef(const IPConfigRefPtr &/*ipconfig*/) {
-    ipconfig_ = NULL;
+    ipconfig_ = nullptr;
   }
 
   MOCK_METHOD1(OnIPConfigUpdated, void(const IPConfigRefPtr &ipconfig));
@@ -166,7 +166,7 @@ TEST_F(IPConfigTest, Callbacks) {
   EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_)).Times(0);
   EXPECT_CALL(*this, OnIPConfigRefreshed(ipconfig_));
   EXPECT_CALL(*this, OnIPConfigExpired(ipconfig_)).Times(0);
-  ipconfig_->Refresh(NULL);
+  ipconfig_->Refresh(nullptr);
   Mock::VerifyAndClearExpectations(this);
 
   EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_)).Times(0);

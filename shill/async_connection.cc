@@ -112,7 +112,7 @@ void AsyncConnection::OnConnectCompletion(int fd) {
 }
 
 int AsyncConnection::ConnectTo(const IPAddress &address, int port) {
-  struct sockaddr *sock_addr = NULL;
+  struct sockaddr *sock_addr = nullptr;
   socklen_t addr_len = 0;
   struct sockaddr_in iaddr;
   struct sockaddr_in6 iaddr6;

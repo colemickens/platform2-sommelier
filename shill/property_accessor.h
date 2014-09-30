@@ -160,7 +160,7 @@ class CustomAccessor : public AccessorInterface<T> {
   CustomAccessor(C *target,
                  T(C::*getter)(Error *error),
                  bool(C::*setter)(const T &value, Error *error))
-      : CustomAccessor(target, getter, setter, NULL) {}
+      : CustomAccessor(target, getter, setter, nullptr) {}
   ~CustomAccessor() override {}
 
   void Clear(Error *error) {

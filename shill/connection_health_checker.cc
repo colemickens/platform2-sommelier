@@ -172,7 +172,7 @@ void ConnectionHealthChecker::Start() {
 }
 
 void ConnectionHealthChecker::Stop() {
-  if (tcp_connection_.get() != NULL)
+  if (tcp_connection_.get() != nullptr)
     tcp_connection_->Stop();
   verify_sent_data_callback_.Cancel();
   ClearSocketDescriptor();
@@ -381,7 +381,7 @@ bool ConnectionHealthChecker::GetSocketInfo(int sock_fd,
   char ipstr[INET_ADDRSTRLEN];
   const char *res = inet_ntop(AF_INET, &addr_in->sin_addr,
                               ipstr, sizeof(ipstr));
-  if (res == NULL) {
+  if (res == nullptr) {
     SLOG(Connection, 2) << __func__
                         << ": Could not convert IP address to string.";
     return false;

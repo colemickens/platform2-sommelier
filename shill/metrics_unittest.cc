@@ -334,7 +334,7 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
                                   Metrics::kMetricTimeToDropSecondsMin,
                                   Metrics::kMetricTimeToDropSecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
-  metrics_.NotifyDefaultServiceChanged(NULL);
+  metrics_.NotifyDefaultServiceChanged(nullptr);
 }
 
 TEST_F(MetricsTest, Disconnect) {

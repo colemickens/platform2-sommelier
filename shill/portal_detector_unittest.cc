@@ -57,20 +57,14 @@ MATCHER_P(IsResult, result, "") {
 class PortalDetectorTest : public Test {
  public:
   PortalDetectorTest()
-      : device_info_(new NiceMock<MockDeviceInfo>(
-          &control_,
-          reinterpret_cast<EventDispatcher *>(NULL),
-          reinterpret_cast<Metrics *>(NULL),
-          reinterpret_cast<Manager *>(NULL))),
+      : device_info_(
+            new NiceMock<MockDeviceInfo>(&control_, nullptr, nullptr, nullptr)),
         connection_(new StrictMock<MockConnection>(device_info_.get())),
-        portal_detector_(new PortalDetector(
-            connection_.get(),
-            &dispatcher_,
-            callback_target_.result_callback())),
-        connectivity_trial_(
-            new StrictMock<MockConnectivityTrial>(
-                connection_,
-                PortalDetector::kRequestTimeoutSeconds)),
+        portal_detector_(
+            new PortalDetector(connection_.get(), &dispatcher_,
+                               callback_target_.result_callback())),
+        connectivity_trial_(new StrictMock<MockConnectivityTrial>(
+            connection_, PortalDetector::kRequestTimeoutSeconds)),
         interface_name_(kInterfaceName),
         dns_servers_(kDNSServers, kDNSServers + 2) {
     current_time_.tv_sec = current_time_.tv_usec = 0;

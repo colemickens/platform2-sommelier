@@ -82,8 +82,8 @@ bool NetlinkSocket::RecvMessage(ByteString *message) {
       dummy_read.GetData(),
       dummy_read.GetLength(),
       MSG_TRUNC | MSG_PEEK,
-      NULL,
-      NULL);
+      nullptr,
+      nullptr);
   if (result < 0) {
     PLOG(ERROR) << "Socket recvfrom failed.";
     return false;
@@ -96,8 +96,8 @@ bool NetlinkSocket::RecvMessage(ByteString *message) {
       message->GetData(),
       message->GetLength(),
       0,
-      NULL,
-      NULL);
+      nullptr,
+      nullptr);
   if (result < 0) {
     PLOG(ERROR) << "Second socket recvfrom failed.";
     return false;

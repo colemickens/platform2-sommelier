@@ -197,7 +197,8 @@ Service::Service(ControlInterface *control_interface,
                                  &Service::GetHTTPProxyPort);
   HelpRegisterConstDerivedRpcIdentifier(kIPConfigProperty,
                                         &Service::GetIPConfigRpcIdentifier);
-  HelpRegisterDerivedBool(kIsActiveProperty, &Service::IsActive, NULL, NULL);
+  HelpRegisterDerivedBool(kIsActiveProperty, &Service::IsActive, nullptr,
+                          nullptr);
   // kModeProperty: Registered in WiFiService
 
   HelpRegisterDerivedString(kNameProperty,
@@ -223,11 +224,11 @@ Service::Service(ControlInterface *control_interface,
                                  &Service::GetTethering);
   HelpRegisterDerivedString(kTypeProperty,
                             &Service::CalculateTechnology,
-                            NULL);
+                            nullptr);
   // kSecurityProperty: Registered in WiFiService
   HelpRegisterDerivedString(kStateProperty,
                             &Service::CalculateState,
-                            NULL);
+                            nullptr);
   store_.RegisterConstUint8(kSignalStrengthProperty, &strength_);
   store_.RegisterString(kUIDataProperty, &ui_data_);
   HelpRegisterConstDerivedStrings(kDiagnosticsDisconnectsProperty,
@@ -240,8 +241,8 @@ Service::Service(ControlInterface *control_interface,
 
   HelpRegisterObservedDerivedBool(kVisibleProperty,
                                   &Service::GetVisibleProperty,
-                                  NULL,
-                                  NULL);
+                                  nullptr,
+                                  nullptr);
 
   store_.RegisterConstString(kPortalDetectionFailedPhaseProperty,
                              &portal_detection_failure_phase_);
@@ -265,7 +266,7 @@ Service::~Service() {
 }
 
 void Service::AutoConnect() {
-  const char *reason = NULL;
+  const char *reason = nullptr;
   if (IsAutoConnectable(&reason)) {
     Error error;
     LOG(INFO) << "Auto-connecting to service " << unique_name_;
@@ -434,7 +435,7 @@ void Service::SaveFailure() {
 void Service::SetFailure(ConnectFailure failure) {
   failure_ = failure;
   SaveFailure();
-  failed_time_ = time(NULL);
+  failed_time_ = time(nullptr);
   UpdateErrorProperty();
   SetState(kStateFailure);
 }
@@ -447,7 +448,7 @@ void Service::SetFailureSilent(ConnectFailure failure) {
   failure_ = failure;
   SaveFailure();
   UpdateErrorProperty();
-  failed_time_ = time(NULL);
+  failed_time_ = time(nullptr);
 }
 
 string Service::GetRpcIdentifier() const {
@@ -911,7 +912,7 @@ void Service::NoteDisconnectEvent() {
   }
   int period = 0;
   size_t threshold = 0;
-  deque<Timestamp> *events = NULL;
+  deque<Timestamp> *events = nullptr;
   // Sometimes services transition to Idle before going into a failed state so
   // take into account the last non-idle state.
   ConnectState state = state_ == kStateIdle ? previous_state_ : state_;
@@ -1364,7 +1365,7 @@ const string &Service::GetEAPKeyManagement() const {
 
 void Service::SetEAPKeyManagement(const string &key_management) {
   CHECK(mutable_eap());
-  mutable_eap()->SetKeyManagement(key_management, NULL);
+  mutable_eap()->SetKeyManagement(key_management, nullptr);
 }
 
 bool Service::GetAutoConnect(Error */*error*/) {

@@ -129,7 +129,7 @@ TestRPCTask::TestRPCTask(ControlInterface *control, ExternalTaskTest *test)
 
 TestRPCTask::~TestRPCTask() {
   test_->set_test_rpc_task_destroyed(true);
-  test_ = NULL;
+  test_ = nullptr;
 }
 
 }  // namespace
@@ -176,7 +176,7 @@ MATCHER_P(HasElementsMatching, expected_values, "") {
       }
       ++arg_local;
     }
-    if (*arg_local == NULL) {
+    if (*arg_local == nullptr) {
       *result_listener << "missing value " << expected_value << "\n";
       arg_local = arg;
       while (*arg_local) {
