@@ -309,10 +309,10 @@ const char *WiFiEndpoint::ParseMode(const string &mode_string) {
     return kModeAdhoc;
   } else if (mode_string == WPASupplicant::kNetworkModeAccessPoint) {
     NOTREACHED() << "Shill does not support AP mode at this time.";
-    return NULL;
+    return nullptr;
   } else {
     NOTREACHED() << "Unknown WiFi endpoint mode!";
-    return NULL;
+    return nullptr;
   }
 }
 

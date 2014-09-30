@@ -61,7 +61,7 @@ class WiFiService : public Service {
 
   // Called to update the identity of the currently connected endpoint.
   // To indicate that there is no currently connect endpoint, call with
-  // |endpoint| set to NULL.
+  // |endpoint| set to nullptr.
   virtual void NotifyCurrentEndpoint(const WiFiEndpointConstRefPtr &endpoint);
   // Called to inform of changes in the properties of an endpoint.
   // (Not necessarily the currently connected endpoint.)

@@ -106,13 +106,13 @@ class WiFiServiceTest : public PropertyStoreTest {
                              uint16_t frequency, int16_t signal_dbm,
                              bool has_wpa_property, bool has_rsn_property) {
     return WiFiEndpoint::MakeEndpoint(
-        NULL, wifi(), ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
+        nullptr, wifi(), ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
         frequency, signal_dbm, has_wpa_property, has_rsn_property);
   }
   WiFiEndpoint *MakeOpenEndpoint(const string &ssid, const string &bssid,
                                  uint16_t frequency, int16_t signal_dbm) {
     return WiFiEndpoint::MakeOpenEndpoint(
-        NULL, wifi(), ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
+        nullptr, wifi(), ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
         frequency, signal_dbm);
   }
   WiFiServiceRefPtr MakeSimpleService(const string &security) {
@@ -436,7 +436,7 @@ TEST_F(WiFiServiceTest, NonUTF8SSID) {
                                                    false);
   map<string, ::DBus::Variant> properties;
   // if service doesn't propertly sanitize SSID, this will generate SIGABRT.
-  DBusAdaptor::GetProperties(wifi_service->store(), &properties, NULL);
+  DBusAdaptor::GetProperties(wifi_service->store(), &properties, nullptr);
 }
 
 MATCHER(PSKSecurityArgs, "") {
@@ -461,7 +461,7 @@ TEST_F(WiFiServiceTest, ConnectReportBSSes) {
   wifi_service->AddEndpoint(endpoint2);
   EXPECT_CALL(*metrics(), NotifyWifiAvailableBSSes(2));
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
-  wifi_service->Connect(NULL, "in test");
+  wifi_service->Connect(nullptr, "in test");
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskWPA) {
@@ -469,7 +469,7 @@ TEST_F(WiFiServiceTest, ConnectTaskWPA) {
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   Error error;
   wifi_service->SetPassphrase("0:mumblemumblem", &error);
-  wifi_service->Connect(NULL, "in test");
+  wifi_service->Connect(nullptr, "in test");
   EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
               PSKSecurityArgs());
 }
@@ -479,7 +479,7 @@ TEST_F(WiFiServiceTest, ConnectTaskRSN) {
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   Error error;
   wifi_service->SetPassphrase("0:mumblemumblem", &error);
-  wifi_service->Connect(NULL, "in test");
+  wifi_service->Connect(nullptr, "in test");
   EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
               PSKSecurityArgs());
 }
@@ -516,7 +516,7 @@ TEST_F(WiFiServiceTest, ConnectTaskPSK) {
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   Error error;
   wifi_service->SetPassphrase("0:mumblemumblem", &error);
-  wifi_service->Connect(NULL, "in test");
+  wifi_service->Connect(nullptr, "in test");
   EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
               PSKSecurityArgs());
 }
@@ -527,7 +527,7 @@ TEST_F(WiFiServiceTest, ConnectTask8021x) {
   service->mutable_eap()->set_password("mumble");
   service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
   EXPECT_CALL(*wifi(), ConnectTo(service.get()));
-  service->Connect(NULL, "in test");
+  service->Connect(nullptr, "in test");
   DBusPropertiesMap params = service->GetSupplicantConfigurationParameters();
   EXPECT_TRUE(ContainsKey(params, WPASupplicant::kNetworkPropertyEapIdentity));
   EXPECT_TRUE(ContainsKey(params, WPASupplicant::kNetworkPropertyCaPath));
@@ -539,7 +539,7 @@ TEST_F(WiFiServiceTest, ConnectTask8021xWithMockEap) {
   EXPECT_CALL(*eap, IsConnectable()).WillOnce(Return(true));
   EXPECT_CALL(*wifi(), ConnectTo(service.get()));
   service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
-  service->Connect(NULL, "in test");
+  service->Connect(nullptr, "in test");
 
   EXPECT_CALL(*eap, PopulateSupplicantProperties(_, _));
   // The mocked function does not actually set EAP parameters so we cannot
@@ -557,7 +557,7 @@ TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityNone);
   wifi_service->AddEndpoint(endpoint_freq);
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
-  wifi_service->Connect(NULL, "in test");
+  wifi_service->Connect(nullptr, "in test");
 
   EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
               FrequencyArg(false));
@@ -573,7 +573,7 @@ TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
                                  false);
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   SetWiFiForService(wifi_service, wifi());
-  wifi_service->Connect(NULL, "in test");
+  wifi_service->Connect(nullptr, "in test");
 
   EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
               FrequencyArg(false));
@@ -590,7 +590,7 @@ TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
   wifi_service->AddEndpoint(endpoint_nofreq);
   SetWiFiForService(wifi_service, wifi());
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
-  wifi_service->Connect(NULL, "in test");
+  wifi_service->Connect(nullptr, "in test");
 
   EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
               FrequencyArg(false));
@@ -607,7 +607,7 @@ TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
   wifi_service->AddEndpoint(endpoint_freq);
   SetWiFiForService(wifi_service, wifi());
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
-  wifi_service->Connect(NULL, "in test");
+  wifi_service->Connect(nullptr, "in test");
   EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
               FrequencyArg(true));
 }
@@ -621,7 +621,7 @@ TEST_F(WiFiServiceTest, ConnectTaskWPA80211w) {
   Error error;
   wifi_service->SetPassphrase("0:mumblemumblem", &error);
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
-  wifi_service->Connect(NULL, "in test");
+  wifi_service->Connect(nullptr, "in test");
 
   DBusPropertiesMap params =
       wifi_service->GetSupplicantConfigurationParameters();
@@ -645,31 +645,31 @@ TEST_F(WiFiServiceTest, ConnectTaskWEP) {
   Error error;
   wifi_service->SetPassphrase("0:abcdefghijklm", &error);
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
-  wifi_service->Connect(NULL, "in test");
+  wifi_service->Connect(nullptr, "in test");
   EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
               WEPSecurityArgsKeyIndex(0));
 
   wifi_service->SetPassphrase("abcdefghijklm", &error);
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
-  wifi_service->Connect(NULL, "in test");
+  wifi_service->Connect(nullptr, "in test");
   EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
               WEPSecurityArgsKeyIndex(0));
 
   wifi_service->SetPassphrase("1:abcdefghijklm", &error);
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
-  wifi_service->Connect(NULL, "in test");
+  wifi_service->Connect(nullptr, "in test");
   EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
               WEPSecurityArgsKeyIndex(1));
 
   wifi_service->SetPassphrase("2:abcdefghijklm", &error);
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
-  wifi_service->Connect(NULL, "in test");
+  wifi_service->Connect(nullptr, "in test");
   EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
               WEPSecurityArgsKeyIndex(2));
 
   wifi_service->SetPassphrase("3:abcdefghijklm", &error);
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
-  wifi_service->Connect(NULL, "in test");
+  wifi_service->Connect(nullptr, "in test");
   EXPECT_THAT(wifi_service->GetSupplicantConfigurationParameters(),
               WEPSecurityArgsKeyIndex(3));
 }
@@ -678,12 +678,12 @@ TEST_F(WiFiServiceTest, ConnectTaskWEP) {
 TEST_F(WiFiServiceTest, ConnectTaskDynamicWEP) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityWep);
 
-  wifi_service->mutable_eap()->SetKeyManagement("IEEE8021X", NULL);
+  wifi_service->mutable_eap()->SetKeyManagement("IEEE8021X", nullptr);
   wifi_service->mutable_eap()->set_identity("something");
   wifi_service->mutable_eap()->set_password("mumble");
   wifi_service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
-  wifi_service->Connect(NULL, "in test");
+  wifi_service->Connect(nullptr, "in test");
   DBusPropertiesMap params =
       wifi_service->GetSupplicantConfigurationParameters();
   EXPECT_TRUE(ContainsKey(params, WPASupplicant::kNetworkPropertyEapIdentity));
@@ -1057,7 +1057,7 @@ TEST_F(WiFiServiceTest, ConfigureMakesConnectable) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurity8021x);
   // Hack the GUID in so that we don't have to mess about with WiFi to regsiter
   // our service.  This way, Manager will handle the lookup itself.
-  service->SetGuid(guid, NULL);
+  service->SetGuid(guid, nullptr);
   manager()->RegisterService(service);
   EXPECT_FALSE(service->connectable());
   EXPECT_EQ(service.get(), manager()->GetService(args, &error).get());
@@ -1071,7 +1071,7 @@ TEST_F(WiFiServiceTest, ConfigurePassphrase) {
   EXPECT_EQ(Error::kNotSupported,
             TestConfigurePassphrase(kSecurityNone, "foo"));
   EXPECT_EQ(Error::kSuccess,
-            TestConfigurePassphrase(kSecurityWep, NULL));
+            TestConfigurePassphrase(kSecurityWep, nullptr));
   EXPECT_EQ(Error::kInvalidPassphrase,
             TestConfigurePassphrase(kSecurityWep, ""));
   EXPECT_EQ(Error::kInvalidPassphrase,
@@ -1107,7 +1107,7 @@ TEST_F(WiFiServiceTest, ConfigurePassphrase) {
             TestConfigurePassphrase(kSecurityWep,
                                     "0:0x0102030405060708090a0b0c0d"));
   EXPECT_EQ(Error::kSuccess,
-            TestConfigurePassphrase(kSecurityWpa, NULL));
+            TestConfigurePassphrase(kSecurityWpa, nullptr));
   EXPECT_EQ(Error::kSuccess,
             TestConfigurePassphrase(kSecurityWpa, "secure password"));
   EXPECT_EQ(Error::kInvalidPassphrase,
@@ -1268,7 +1268,7 @@ TEST_F(WiFiServiceFixupStorageTest, MissingSecurityClassProperty) {
 
 TEST_F(WiFiServiceTest, Connectable) {
   // Open network should be connectable.
-  EXPECT_TRUE(CheckConnectable(kSecurityNone, NULL, false));
+  EXPECT_TRUE(CheckConnectable(kSecurityNone, nullptr, false));
 
   // Open network should remain connectable if we try to set a password on it.
   EXPECT_TRUE(CheckConnectable(kSecurityNone, "abcde", false));
@@ -1277,24 +1277,24 @@ TEST_F(WiFiServiceTest, Connectable) {
   EXPECT_TRUE(CheckConnectable(kSecurityWep, "abcde", false));
 
   // WEP network without passphrase set should NOT be connectable.
-  EXPECT_FALSE(CheckConnectable(kSecurityWep, NULL, false));
+  EXPECT_FALSE(CheckConnectable(kSecurityWep, nullptr, false));
 
   // A bad passphrase should not make a WEP network connectable.
   EXPECT_FALSE(CheckConnectable(kSecurityWep, "a", false));
 
   // Similar to WEP, for WPA.
   EXPECT_TRUE(CheckConnectable(kSecurityWpa, "abcdefgh", false));
-  EXPECT_FALSE(CheckConnectable(kSecurityWpa, NULL, false));
+  EXPECT_FALSE(CheckConnectable(kSecurityWpa, nullptr, false));
   EXPECT_FALSE(CheckConnectable(kSecurityWpa, "a", false));
 
   // 802.1x without connectable EAP credentials should NOT be connectable.
-  EXPECT_FALSE(CheckConnectable(kSecurity8021x, NULL, false));
+  EXPECT_FALSE(CheckConnectable(kSecurity8021x, nullptr, false));
 
   // 802.1x with connectable EAP credentials should be connectable.
-  EXPECT_TRUE(CheckConnectable(kSecurity8021x, NULL, true));
+  EXPECT_TRUE(CheckConnectable(kSecurity8021x, nullptr, true));
 
   // Dynamic WEP + 802.1X should be connectable under the same conditions.
-  EXPECT_TRUE(CheckConnectable(kSecurityWep, NULL, true));
+  EXPECT_TRUE(CheckConnectable(kSecurityWep, nullptr, true));
 }
 
 TEST_F(WiFiServiceTest, IsAutoConnectable) {
@@ -1517,7 +1517,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Connected) {
   EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, _)).Times(0);
   EXPECT_CALL(adaptor,
               EmitUint8Changed(kSignalStrengthProperty, _)).Times(0);
-  service->NotifyCurrentEndpoint(NULL);
+  service->NotifyCurrentEndpoint(nullptr);
   Mock::VerifyAndClearExpectations(&adaptor);
 }
 
@@ -1675,15 +1675,15 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, FrequencyList) {
 
 TEST_F(WiFiServiceTest, SecurityFromCurrentEndpoint) {
   WiFiServiceRefPtr service(MakeSimpleService(kSecurityPsk));
-  EXPECT_EQ(kSecurityPsk, service->GetSecurity(NULL));
+  EXPECT_EQ(kSecurityPsk, service->GetSecurity(nullptr));
   WiFiEndpoint *endpoint = MakeOpenEndpoint(
         simple_ssid_string(), "00:00:00:00:00:00", 0, 0);
   service->AddEndpoint(endpoint);
-  EXPECT_EQ(kSecurityPsk, service->GetSecurity(NULL));
+  EXPECT_EQ(kSecurityPsk, service->GetSecurity(nullptr));
   service->NotifyCurrentEndpoint(endpoint);
-  EXPECT_EQ(kSecurityNone, service->GetSecurity(NULL));
-  service->NotifyCurrentEndpoint(NULL);
-  EXPECT_EQ(kSecurityPsk, service->GetSecurity(NULL));
+  EXPECT_EQ(kSecurityNone, service->GetSecurity(nullptr));
+  service->NotifyCurrentEndpoint(nullptr);
+  EXPECT_EQ(kSecurityPsk, service->GetSecurity(nullptr));
 }
 
 TEST_F(WiFiServiceTest, UpdateSecurity) {
@@ -1924,12 +1924,12 @@ TEST_F(WiFiServiceTest, SuspectedCredentialFailure) {
 
 TEST_F(WiFiServiceTest, GetTethering) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityNone);
-  EXPECT_EQ(kTetheringNotDetectedState, service->GetTethering(NULL));
+  EXPECT_EQ(kTetheringNotDetectedState, service->GetTethering(nullptr));
 
   // Since the device isn't connected, we shouldn't even query the WiFi device.
   EXPECT_CALL(*wifi(), IsConnectedViaTether()).Times(0);
   SetWiFiForService(service, wifi());
-  EXPECT_EQ(kTetheringNotDetectedState, service->GetTethering(NULL));
+  EXPECT_EQ(kTetheringNotDetectedState, service->GetTethering(nullptr));
   Mock::VerifyAndClearExpectations(wifi());
 
   scoped_refptr<MockProfile> mock_profile(
@@ -1942,8 +1942,8 @@ TEST_F(WiFiServiceTest, GetTethering) {
   EXPECT_CALL(*wifi(), IsConnectedViaTether())
       .WillOnce(Return(true))
       .WillOnce(Return(false));
-  EXPECT_EQ(kTetheringConfirmedState, service->GetTethering(NULL));
-  EXPECT_EQ(kTetheringNotDetectedState, service->GetTethering(NULL));
+  EXPECT_EQ(kTetheringConfirmedState, service->GetTethering(nullptr));
+  EXPECT_EQ(kTetheringNotDetectedState, service->GetTethering(nullptr));
   Mock::VerifyAndClearExpectations(wifi());
 
   // Add two endpoints that have a BSSID associated with some Android devices
@@ -1957,12 +1957,12 @@ TEST_F(WiFiServiceTest, GetTethering) {
 
   // Since there are two endpoints, we should not detect tethering mode.
   EXPECT_CALL(*wifi(), IsConnectedViaTether()).WillOnce(Return(false));
-  EXPECT_EQ(kTetheringNotDetectedState, service->GetTethering(NULL));
+  EXPECT_EQ(kTetheringNotDetectedState, service->GetTethering(nullptr));
 
   // If the device reports that it is tethered, this should override any
   // findings gained from examining the endpoints.
   EXPECT_CALL(*wifi(), IsConnectedViaTether()).WillOnce(Return(true));
-  EXPECT_EQ(kTetheringConfirmedState, service->GetTethering(NULL));
+  EXPECT_EQ(kTetheringConfirmedState, service->GetTethering(nullptr));
 
   // Continue in the un-tethered device case for a few more tests below.
   Mock::VerifyAndClearExpectations(wifi());
@@ -1972,7 +1972,7 @@ TEST_F(WiFiServiceTest, GetTethering) {
   // Removing an endpoint so we only have one should put us in the "Suspected"
   // state.
   service->RemoveEndpoint(endpoint_android1);
-  EXPECT_EQ(kTetheringSuspectedState, service->GetTethering(NULL));
+  EXPECT_EQ(kTetheringSuspectedState, service->GetTethering(nullptr));
 
   // Add a different endpoint which has a locally administered MAC address
   // but not one used by Android.
@@ -1980,20 +1980,20 @@ TEST_F(WiFiServiceTest, GetTethering) {
   WiFiEndpointRefPtr endpoint_ios =
       MakeOpenEndpoint("a", "02:00:00:00:00:01", 2412, 0);
   service->AddEndpoint(endpoint_ios);
-  EXPECT_EQ(kTetheringNotDetectedState, service->GetTethering(NULL));
+  EXPECT_EQ(kTetheringNotDetectedState, service->GetTethering(nullptr));
 
   // If this endpoint reports the right vendor OUI, we should suspect
   // it to be tethered.  However since this evaluation normally only
   // happens in the endpoint constructor, we must force it to recalculate.
   endpoint_ios->vendor_information_.oui_set.insert(Tethering::kIosOui);
   endpoint_ios->CheckForTetheringSignature();
-  EXPECT_EQ(kTetheringSuspectedState, service->GetTethering(NULL));
+  EXPECT_EQ(kTetheringSuspectedState, service->GetTethering(nullptr));
 
   // If the device reports that it is tethered, this should override any
   // findings gained from examining the endpoints.
   Mock::VerifyAndClearExpectations(wifi());
   EXPECT_CALL(*wifi(), IsConnectedViaTether()).WillOnce(Return(true));
-  EXPECT_EQ(kTetheringConfirmedState, service->GetTethering(NULL));
+  EXPECT_EQ(kTetheringConfirmedState, service->GetTethering(nullptr));
 }
 
 TEST_F(WiFiServiceTest, IsVisible) {

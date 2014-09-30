@@ -179,7 +179,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       kLinkStatisticsProperty,
       KeyValueStoreAccessor(
           new CustomAccessor<WiFi, KeyValueStore>(
-              this, &WiFi::GetLinkStatistics, NULL)));
+              this, &WiFi::GetLinkStatistics, nullptr)));
 
   // TODO(quiche): Decide if scan_pending_ is close enough to
   // "currently scanning" that we don't care, or if we want to track
@@ -359,8 +359,8 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &/*callback*/) {
   supplicant_interface_proxy_.reset();  // breaks a reference cycle
   // TODO(quiche): Remove interface from supplicant.
   supplicant_process_proxy_.reset();
-  current_service_ = NULL;            // breaks a reference cycle
-  pending_service_ = NULL;            // breaks a reference cycle
+  current_service_ = nullptr;            // breaks a reference cycle
+  pending_service_ = nullptr;            // breaks a reference cycle
   is_debugging_connection_ = false;
   SetScanState(kScanIdle, kScanMethodNone, __func__);
   StopPendingTimer();
@@ -504,7 +504,7 @@ void WiFi::ConnectTo(WiFiService *service) {
               << "key management: " << service->key_management() << ", "
               << "physical mode: " << service->physical_mode() << ", "
               << "frequency: " << service->frequency();
-    // This is a signal to SetPendingService(NULL) to not modify the scan
+    // This is a signal to SetPendingService(nullptr) to not modify the scan
     // state since the overall story arc isn't reflected by the disconnect.
     // It is, instead, described by the transition to either kScanFoundNothing
     // or kScanConnecting (made by |SetPendingService|, below).
@@ -558,7 +558,7 @@ void WiFi::DisconnectFromIfActive(WiFiService *service) {
   SLOG(WiFi, 2) << __func__ << " service " << service->unique_name();
 
   if (service != current_service_ &&  service != pending_service_) {
-    if (!service->IsActive(NULL)) {
+    if (!service->IsActive(nullptr)) {
       SLOG(WiFi, 2) << "In " << __func__ << "():  service "
                     << service->unique_name()
                     << " is not active, no need to initiate disconnect";
@@ -609,7 +609,7 @@ void WiFi::DisconnectFrom(WiFiService *service) {
     ServiceDisconnected(pending_service_);
   }
 
-  SetPendingService(NULL);
+  SetPendingService(nullptr);
   StopReconnectTimer();
   StopRequestingStationInfo();
 
@@ -620,7 +620,7 @@ void WiFi::DisconnectFrom(WiFiService *service) {
     if (current_service_ == selected_service()) {
       DropConnection();
     }
-    current_service_ = NULL;
+    current_service_ = nullptr;
     return;
   }
 
@@ -649,10 +649,10 @@ void WiFi::DisconnectFrom(WiFiService *service) {
                     << (selected_service() ?
                         selected_service()->unique_name() : "(null)");
     }
-    current_service_ = NULL;
+    current_service_ = nullptr;
   }
 
-  CHECK(current_service_ == NULL ||
+  CHECK(current_service_ == nullptr ||
         current_service_.get() != pending_service_.get());
 }
 
@@ -838,7 +838,7 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
       // We may want to reconsider this immediate scan, if/when shill
       // takes greater responsibility for scanning (vs. letting
       // supplicant handle most of it).
-      Scan(kProgressiveScan, NULL, __func__);
+      Scan(kProgressiveScan, nullptr, __func__);
     }
   } else {
     HandleRoam(new_bss);
@@ -859,7 +859,7 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
   // Invariant check: a Service can either be current, or pending, but
   // not both.
   CHECK(current_service_.get() != pending_service_.get() ||
-        current_service_.get() == NULL);
+        current_service_.get() == nullptr);
 
   // If we are no longer debugging a problematic WiFi connection, return
   // to the debugging level indicated by the WiFi debugging scope.
@@ -896,7 +896,7 @@ void WiFi::HandleDisconnect() {
     ServiceDisconnected(affected_service);
   }
 
-  current_service_ = NULL;
+  current_service_ = nullptr;
 
   if (affected_service == selected_service()) {
     // If our selected service has disconnected, destroy IP configuration state.
@@ -918,14 +918,14 @@ void WiFi::HandleDisconnect() {
 
   metrics()->NotifySignalAtDisconnect(*affected_service,
                                       affected_service->SignalLevel());
-  affected_service->NotifyCurrentEndpoint(NULL);
+  affected_service->NotifyCurrentEndpoint(nullptr);
   metrics()->NotifyServiceDisconnect(*affected_service);
 
   if (affected_service == pending_service_.get()) {
     // The attempt to connect to |pending_service_| failed. Clear
     // |pending_service_|, to indicate we're no longer in the middle
     // of a connect request.
-    SetPendingService(NULL);
+    SetPendingService(nullptr);
   } else if (pending_service_.get()) {
     // We've attributed the disconnection to what was the
     // |current_service_|, rather than the |pending_service_|.
@@ -1033,7 +1033,7 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
                    << " nor part of current service "
                    << (current_service_ ?
                        current_service_->unique_name() :
-                       "(NULL)");
+                       "(nullptr)");
       // wpa_supplicant has no knowledge of the pending_service_ at this point.
       // Disconnect the pending_service_, so that it can be connectable again.
       // Otherwise, we'd have to wait for the pending timeout to trigger the
@@ -1052,11 +1052,11 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
     // for. Simply update |current_service_| and |pending_service_|.
     current_service_ = service;
     SetScanState(kScanConnected, scan_method_, __func__);
-    SetPendingService(NULL);
+    SetPendingService(nullptr);
     return;
   }
 
-  // |pending_service_| was NULL, so we weren't attempting to connect
+  // |pending_service_| was nullptr, so we weren't attempting to connect
   // to a new Service. Sanity check that we're still on
   // |current_service_|.
   if (service.get() != current_service_.get()) {
@@ -1083,7 +1083,7 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
     return;
   }
 
-  // At this point, we know that |pending_service_| was NULL, and that
+  // At this point, we know that |pending_service_| was nullptr, and that
   // we're still on |current_service_|.  We should track this roaming
   // event so we can refresh our IPConfig if it succeeds.
   is_roaming_in_progress_ = true;
@@ -1186,7 +1186,7 @@ void WiFi::BSSAddedTask(
   }
 
   if (endpoint->ssid()[0] == 0) {
-    // Assume that an SSID starting with NULL is bogus/misconfigured,
+    // Assume that an SSID starting with nullptr is bogus/misconfigured,
     // and filter it out.
     return;
   }
@@ -1315,7 +1315,7 @@ void WiFi::ScanDoneTask() {
                                 weak_ptr_factory_.GetWeakPtr()));
   }
   if (need_bss_flush_) {
-    CHECK(supplicant_interface_proxy_ != NULL);
+    CHECK(supplicant_interface_proxy_);
     // Compute |max_age| relative to |resumed_at_|, to account for the
     // time taken to scan.
     struct timeval now;
@@ -1704,7 +1704,7 @@ void WiFi::HelpRegisterConstDerivedBool(
     bool(WiFi::*get)(Error *error)) {
   store->RegisterDerivedBool(
       name,
-      BoolAccessor(new CustomAccessor<WiFi, bool>(this, get, NULL)));
+      BoolAccessor(new CustomAccessor<WiFi, bool>(this, get, nullptr)));
 }
 
 void WiFi::OnBeforeSuspend() {
@@ -1750,7 +1750,7 @@ void WiFi::OnAfterResume() {
 
   if (IsIdle()) {
     // Not scanning/connecting/connected, so let's get things rolling.
-    Scan(kProgressiveScan, NULL, __func__);
+    Scan(kProgressiveScan, nullptr, __func__);
     RestartFastScanAttempts();
   } else {
     SLOG(WiFi, 1) << __func__
@@ -1968,7 +1968,7 @@ void WiFi::StopScanTimer() {
 void WiFi::ScanTimerHandler() {
   SLOG(WiFi, 2) << "WiFi Device " << link_name() << ": " << __func__;
   if (scan_state_ == kScanIdle && IsIdle()) {
-    Scan(kProgressiveScan, NULL, __func__);
+    Scan(kProgressiveScan, nullptr, __func__);
     if (fast_scans_remaining_ > 0) {
       --fast_scans_remaining_;
     }
@@ -2008,7 +2008,7 @@ void WiFi::SetPendingService(const WiFiServiceRefPtr &service) {
     service->SetState(Service::kStateAssociating);
     StartPendingTimer();
   } else {
-    // SetPendingService(NULL) is called in the following cases:
+    // SetPendingService(nullptr) is called in the following cases:
     //  a) |ConnectTo|->|DisconnectFrom|.  Connecting to a service, disconnect
     //     the old service (scan_state_ == kScanTransitionToConnecting).  No
     //     state transition is needed here.
@@ -2243,7 +2243,7 @@ void WiFi::ConnectToSupplicant() {
                << "May be running an older version of wpa_supplicant.";
   }
 
-  Scan(kProgressiveScan, NULL, __func__);
+  Scan(kProgressiveScan, nullptr, __func__);
   StartScanTimer();
 }
 
@@ -2449,10 +2449,10 @@ void WiFi::SetScanState(ScanState new_state,
   // Actually change the state.
   ScanState old_state = scan_state_;
   ScanMethod old_method = scan_method_;
-  bool old_scan_pending = GetScanPending(NULL);
+  bool old_scan_pending = GetScanPending(nullptr);
   scan_state_ = new_state;
   scan_method_ = new_method;
-  bool new_scan_pending = GetScanPending(NULL);
+  bool new_scan_pending = GetScanPending(nullptr);
   if (old_scan_pending != new_scan_pending) {
     adaptor()->EmitBoolChanged(kScanningProperty, new_scan_pending);
   }

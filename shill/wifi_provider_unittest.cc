@@ -60,9 +60,8 @@ const time_t kTestDays = 20;
 class WiFiProviderTest : public testing::Test {
  public:
   WiFiProviderTest()
-      : metrics_(NULL),
-        manager_(&control_, &dispatcher_, &metrics_,
-                 reinterpret_cast<GLib *>(NULL)),
+      : metrics_(nullptr),
+        manager_(&control_, &dispatcher_, &metrics_, nullptr),
         provider_(&control_, &dispatcher_, &metrics_, &manager_),
         default_profile_(
             new NiceMock<MockProfile>(
@@ -306,8 +305,8 @@ class WiFiProviderTest : public testing::Test {
   WiFiEndpointRefPtr MakeEndpoint(const string &ssid, const string &bssid,
                                   uint16_t frequency, int16_t signal_dbm) {
     return WiFiEndpoint::MakeOpenEndpoint(
-        NULL, NULL, ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
-        frequency, signal_dbm);
+        nullptr, nullptr, ssid, bssid,
+        WPASupplicant::kNetworkModeInfrastructure, frequency, signal_dbm);
   }
   MockWiFiServiceRefPtr AddMockService(const vector<uint8_t> &ssid,
                                        const string &mode,
@@ -492,7 +491,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileMissingSSID) {
   set<string> groups;
   groups.insert(
       AddServiceToProfileStorage(
-          default_profile_, NULL, kModeManaged, kSecurityNone, false, true));
+          default_profile_, nullptr, kModeManaged, kSecurityNone, false, true));
   EXPECT_CALL(default_profile_storage_,
               GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
@@ -528,7 +527,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileMissingMode) {
   set<string> groups;
   groups.insert(
       AddServiceToProfileStorage(
-          default_profile_, "foo", NULL, kSecurityNone, false, true));
+          default_profile_, "foo", nullptr, kSecurityNone, false, true));
   EXPECT_CALL(default_profile_storage_,
               GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
@@ -564,7 +563,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileMissingSecurity) {
   set<string> groups;
   groups.insert(
       AddServiceToProfileStorage(
-          default_profile_, "foo", kModeManaged, NULL, false, true));
+          default_profile_, "foo", kModeManaged, nullptr, false, true));
   EXPECT_CALL(default_profile_storage_,
               GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
@@ -816,7 +815,7 @@ TEST_F(WiFiProviderTest, GetServiceEmptyMode) {
 TEST_F(WiFiProviderTest, GetServiceNoMode) {
   Error error;
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
-  EXPECT_TRUE(GetService("foo", NULL, kSecurityNone,
+  EXPECT_TRUE(GetService("foo", nullptr, kSecurityNone,
                           false, false, &error).get());
   EXPECT_TRUE(error.IsSuccess());
 }
@@ -832,7 +831,7 @@ TEST_F(WiFiProviderTest, GetServiceBadMode) {
 
 TEST_F(WiFiProviderTest, GetServiceNoSSID) {
   Error error;
-  EXPECT_FALSE(GetService(NULL, kModeManaged,
+  EXPECT_FALSE(GetService(nullptr, kModeManaged,
                           kSecurityNone, false, false,
                           &error).get());
   EXPECT_EQ(Error::kInvalidArguments, error.type());
@@ -882,7 +881,7 @@ TEST_F(WiFiProviderTest, GetServiceMinimal) {
   const string kSSID("foo");
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   WiFiServiceRefPtr service = GetService(kSSID.c_str(), kModeManaged,
-                                         NULL, false, false, &error);
+                                         nullptr, false, false, &error);
   EXPECT_TRUE(service.get());
   EXPECT_TRUE(error.IsSuccess());
   const string service_ssid(service->ssid().begin(), service->ssid().end());
@@ -990,7 +989,7 @@ TEST_F(WiFiProviderTest, FindSimilarService) {
   {
     Error error;
     ServiceRefPtr find_service = provider_.FindSimilarService(args, &error);
-    EXPECT_EQ(NULL, find_service.get());
+    EXPECT_EQ(nullptr, find_service.get());
     EXPECT_EQ(Error::kNotFound, error.type());
   }
 }
@@ -1040,7 +1039,7 @@ TEST_F(WiFiProviderTest, FindServiceWPA) {
   WiFiServiceRefPtr wep_service(FindService(ssid_bytes, kModeManaged,
                                             kSecurityWep));
   EXPECT_TRUE(service.get() != wep_service.get());
-  EXPECT_EQ(NULL, wep_service.get());
+  EXPECT_EQ(nullptr, wep_service.get());
 }
 
 TEST_F(WiFiProviderTest, FindServiceForEndpoint) {
@@ -1056,7 +1055,7 @@ TEST_F(WiFiProviderTest, FindServiceForEndpoint) {
   // Just because a matching service exists, we shouldn't necessarily have
   // it returned.  We will test that this function returns the correct
   // service if the endpoint is added below.
-  EXPECT_EQ(NULL, endpoint_service.get());
+  EXPECT_EQ(nullptr, endpoint_service.get());
 }
 
 TEST_F(WiFiProviderTest, OnEndpointAdded) {

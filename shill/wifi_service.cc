@@ -84,7 +84,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   HelpRegisterWriteOnlyDerivedString(kPassphraseProperty,
                                      &WiFiService::SetPassphrase,
                                      &WiFiService::ClearPassphrase,
-                                     NULL);
+                                     nullptr);
   store->RegisterBool(kPassphraseRequiredProperty, &need_passphrase_);
   HelpRegisterConstDerivedString(kSecurityProperty,
                                  &WiFiService::GetSecurity);
@@ -204,7 +204,7 @@ void WiFiService::RemoveEndpoint(const WiFiEndpointConstRefPtr &endpoint) {
   }
   endpoints_.erase(i);
   if (current_endpoint_ == endpoint) {
-    current_endpoint_ = NULL;
+    current_endpoint_ = nullptr;
   }
   UpdateFromEndpoints();
 }
@@ -480,7 +480,7 @@ void WiFiService::HelpRegisterConstDerivedString(
   mutable_store()->RegisterDerivedString(
       name,
       StringAccessor(
-          new CustomAccessor<WiFiService, string>(this, get, NULL)));
+          new CustomAccessor<WiFiService, string>(this, get, nullptr)));
 }
 
 void WiFiService::HelpRegisterDerivedString(
@@ -675,7 +675,7 @@ void WiFiService::UpdateConnectable() {
 }
 
 void WiFiService::UpdateFromEndpoints() {
-  const WiFiEndpoint *representative_endpoint = NULL;
+  const WiFiEndpoint *representative_endpoint = nullptr;
 
   if (current_endpoint_) {
     representative_endpoint = current_endpoint_;
@@ -826,7 +826,7 @@ Service::CryptoAlgorithm WiFiService::ComputeCipher8021x(
 // static
 void WiFiService::ValidateWEPPassphrase(const std::string &passphrase,
                                         Error *error) {
-  ParseWEPPassphrase(passphrase, NULL, NULL, error);
+  ParseWEPPassphrase(passphrase, nullptr, nullptr, error);
 }
 
 // static
@@ -1005,19 +1005,19 @@ bool WiFiService::FixupServiceEntries(StoreInterface *storage) {
                                 &network_mode, &security)) {
       continue;
     }
-    if (!storage->GetString(id, kStorageType, NULL)) {
+    if (!storage->GetString(id, kStorageType, nullptr)) {
       storage->SetString(id, kStorageType, kTypeWifi);
       fixed_entry = true;
     }
-    if (!storage->GetString(id, kStorageMode, NULL)) {
+    if (!storage->GetString(id, kStorageMode, nullptr)) {
       storage->SetString(id, kStorageMode, network_mode);
       fixed_entry = true;
     }
-    if (!storage->GetString(id, kStorageSecurity, NULL)) {
+    if (!storage->GetString(id, kStorageSecurity, nullptr)) {
       storage->SetString(id, kStorageSecurity, security);
       fixed_entry = true;
     }
-    if (!storage->GetString(id, kStorageSecurityClass, NULL)) {
+    if (!storage->GetString(id, kStorageSecurityClass, nullptr)) {
       storage->SetString(id, kStorageSecurityClass,
                          ComputeSecurityClass(security));
       fixed_entry = true;
@@ -1146,7 +1146,7 @@ WiFiRefPtr WiFiService::ChooseDevice() {
 }
 
 void WiFiService::ResetWiFi() {
-  SetWiFi(NULL);
+  SetWiFi(nullptr);
 }
 
 void WiFiService::SetWiFi(const WiFiRefPtr &new_wifi) {

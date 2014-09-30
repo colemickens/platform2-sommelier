@@ -176,7 +176,7 @@ ServiceRefPtr WiFiProvider::FindSimilarService(
 
   if (!GetServiceParametersFromArgs(
           args, &ssid, &mode, &security, &hidden_ssid, error)) {
-    return NULL;
+    return nullptr;
   }
 
   WiFiServiceRefPtr service(FindService(ssid, mode, security));
@@ -196,7 +196,7 @@ ServiceRefPtr WiFiProvider::CreateTemporaryService(
 
   if (!GetServiceParametersFromArgs(
           args, &ssid, &mode, &security, &hidden_ssid, error)) {
-    return NULL;
+    return nullptr;
   }
 
   return new WiFiService(control_interface_,
@@ -224,7 +224,7 @@ WiFiServiceRefPtr WiFiProvider::GetWiFiService(
 
   if (!GetServiceParametersFromArgs(
           args, &ssid_bytes, &mode, &security_method, &hidden_ssid, error)) {
-    return NULL;
+    return nullptr;
   }
 
   WiFiServiceRefPtr service(FindService(ssid_bytes, mode, security_method));
@@ -243,7 +243,7 @@ WiFiServiceRefPtr WiFiProvider::FindServiceForEndpoint(
   EndpointServiceMap::iterator service_it =
       service_by_endpoint_.find(endpoint);
   if (service_it == service_by_endpoint_.end())
-    return NULL;
+    return nullptr;
   return service_it->second;
 }
 
@@ -276,7 +276,7 @@ void WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr &endpoint) {
 WiFiServiceRefPtr WiFiProvider::OnEndpointRemoved(
     const WiFiEndpointConstRefPtr &endpoint) {
   if (!running_) {
-    return NULL;
+    return nullptr;
   }
 
   WiFiServiceRefPtr service = FindServiceForEndpoint(endpoint);
@@ -292,7 +292,7 @@ WiFiServiceRefPtr WiFiProvider::OnEndpointRemoved(
     // Keep services around if they are in a profile or have remaining
     // endpoints.
     manager_->UpdateService(service);
-    return NULL;
+    return nullptr;
   }
 
   ForgetService(service);
@@ -445,7 +445,7 @@ WiFiServiceRefPtr WiFiProvider::FindService(const vector<uint8_t> &ssid,
       return service;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 ByteArrays WiFiProvider::GetHiddenSSIDList() {
@@ -699,7 +699,7 @@ WiFiProvider::FrequencyCountList WiFiProvider::GetScanFrequencies() const {
 }
 
 void WiFiProvider::ReportAutoConnectableServices() {
-  const char *reason = NULL;
+  const char *reason = nullptr;
   int num_services = 0;
 
   // Determine the number of services available for auto-connect.

@@ -557,10 +557,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Map from Services to the D-Bus path for the corresponding wpa_supplicant
   // Network.
   ReverseServiceMap rpcid_by_service_;
-  // The Service we are presently connected to. May be NULL is we're not
+  // The Service we are presently connected to. May be nullptr is we're not
   // not connected to any Service.
   WiFiServiceRefPtr current_service_;
-  // The Service we're attempting to connect to. May be NULL if we're
+  // The Service we're attempting to connect to. May be nullptr if we're
   // not attempting to connect to a new Service. If non-NULL, should
   // be distinct from |current_service_|. (A service should not
   // simultaneously be both pending, and current.)
