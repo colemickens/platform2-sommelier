@@ -1351,7 +1351,7 @@ bool Attestation::VerifyQuoteSignature(const SecureBlob& aik_public_key,
   // Check that the quoted value matches the given PCR value. We can verify this
   // by reconstructing the TPM_PCR_COMPOSITE structure the TPM would create.
   CHECK_LE(pcr_index, 16);
-  CHECK_LE(quote.quoted_pcr_value().size(), 256);
+  CHECK_LE(quote.quoted_pcr_value().size(), 256U);
   const uint8_t header[] = {
     // TPM_PCR_SELECTION.sizeOfSelect: 16-bit length of PCR index bitmap.
     uint8_t(0), uint8_t(2),
