@@ -45,7 +45,7 @@ VPNService::VPNService(ControlInterface *control,
               new CustomAccessor<VPNService, string>(
                   this,
                   &VPNService::GetPhysicalTechologyProperty,
-                  NULL)));
+                  nullptr)));
 }
 
 VPNService::~VPNService() {}
@@ -219,7 +219,7 @@ bool VPNService::SetNameProperty(const string &name, Error *error) {
   // Update the storage identifier before invoking DeleteEntry to prevent it
   // from unloading this service.
   storage_id_ = new_storage_id;
-  profile()->DeleteEntry(old_storage_id, NULL);
+  profile()->DeleteEntry(old_storage_id, nullptr);
   profile()->UpdateService(this);
   return true;
 }

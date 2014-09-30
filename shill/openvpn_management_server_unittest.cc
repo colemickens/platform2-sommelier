@@ -161,13 +161,13 @@ const int OpenVPNManagementServerTest::kConnectedSocket = 555;
 
 TEST_F(OpenVPNManagementServerTest, StartStarted) {
   SetSockets();
-  EXPECT_TRUE(server_.Start(NULL, NULL, NULL));
+  EXPECT_TRUE(server_.Start(nullptr, nullptr, nullptr));
 }
 
 TEST_F(OpenVPNManagementServerTest, StartSocketFail) {
   EXPECT_CALL(sockets_, Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP))
       .WillOnce(Return(-1));
-  EXPECT_FALSE(server_.Start(NULL, &sockets_, NULL));
+  EXPECT_FALSE(server_.Start(nullptr, &sockets_, nullptr));
   ExpectNotStarted();
 }
 
@@ -179,7 +179,7 @@ TEST_F(OpenVPNManagementServerTest, StartGetSockNameFail) {
   EXPECT_CALL(sockets_, Listen(kSocket, 1)).WillOnce(Return(0));
   EXPECT_CALL(sockets_, GetSockName(kSocket, _, _)).WillOnce(Return(-1));
   EXPECT_CALL(sockets_, Close(kSocket)).WillOnce(Return(0));
-  EXPECT_FALSE(server_.Start(NULL, &sockets_, NULL));
+  EXPECT_FALSE(server_.Start(nullptr, &sockets_, nullptr));
   ExpectNotStarted();
 }
 
@@ -237,7 +237,7 @@ TEST_F(OpenVPNManagementServerTest, Stop) {
 TEST_F(OpenVPNManagementServerTest, OnReadyAcceptFail) {
   const int kSocket = 333;
   SetSockets();
-  EXPECT_CALL(sockets_, Accept(kSocket, NULL, NULL)).WillOnce(Return(-1));
+  EXPECT_CALL(sockets_, Accept(kSocket, nullptr, nullptr)).WillOnce(Return(-1));
   server_.OnReady(kSocket);
   EXPECT_EQ(-1, server_.connected_socket_);
 }
@@ -246,7 +246,7 @@ TEST_F(OpenVPNManagementServerTest, OnReady) {
   const int kSocket = 111;
   SetConnectedSocket();
   SetDispatcher();
-  EXPECT_CALL(sockets_, Accept(kSocket, NULL, NULL))
+  EXPECT_CALL(sockets_, Accept(kSocket, nullptr, nullptr))
       .WillOnce(Return(kConnectedSocket));
   server_.ready_handler_.reset(new IOHandler());
   EXPECT_CALL(dispatcher_, CreateInputHandler(kConnectedSocket, _, _))
@@ -295,7 +295,7 @@ TEST_F(OpenVPNManagementServerTest, OnInputStop) {
   // Stops the server after the first message is processed.
   EXPECT_CALL(driver_, FailService(Service::kFailureConnect,
                                    Service::kErrorDetailsNone))
-      .WillOnce(Assign(&server_.sockets_, reinterpret_cast<Sockets *>(NULL)));
+      .WillOnce(Assign(&server_.sockets_, nullptr));
   // The second message should not be processed.
   EXPECT_CALL(driver_, OnReconnecting(_)).Times(0);
   OnInput(&data);

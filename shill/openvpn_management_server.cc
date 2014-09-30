@@ -42,9 +42,9 @@ OpenVPNManagementServer::OpenVPNManagementServer(OpenVPNDriver *driver,
                                                  GLib *glib)
     : driver_(driver),
       glib_(glib),
-      sockets_(NULL),
+      sockets_(nullptr),
       socket_(-1),
-      dispatcher_(NULL),
+      dispatcher_(nullptr),
       connected_socket_(-1),
       hold_waiting_(false),
       hold_release_(false) {}
@@ -119,13 +119,13 @@ void OpenVPNManagementServer::Stop() {
     sockets_->Close(connected_socket_);
     connected_socket_ = -1;
   }
-  dispatcher_ = NULL;
+  dispatcher_ = nullptr;
   ready_handler_.reset();
   if (socket_ >= 0) {
     sockets_->Close(socket_);
     socket_ = -1;
   }
-  sockets_ = NULL;
+  sockets_ = nullptr;
 }
 
 void OpenVPNManagementServer::ReleaseHold() {
@@ -151,7 +151,7 @@ void OpenVPNManagementServer::Restart() {
 
 void OpenVPNManagementServer::OnReady(int fd) {
   SLOG(VPN, 2) << __func__ << "(" << fd << ")";
-  connected_socket_ = sockets_->Accept(fd, NULL, NULL);
+  connected_socket_ = sockets_->Accept(fd, nullptr, nullptr);
   if (connected_socket_ < 0) {
     PLOG(ERROR) << "Connected socket accept failed.";
     return;

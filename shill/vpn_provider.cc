@@ -75,17 +75,17 @@ ServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
   string host;
 
   if (!GetServiceParametersFromArgs(args, &type, &name, &host, error)) {
-    return NULL;
+    return nullptr;
   }
 
   string storage_id = VPNService::CreateStorageIdentifier(args, error);
   if (storage_id.empty()) {
-    return NULL;
+    return nullptr;
   }
 
   // Find a service in the provider list which matches these parameters.
   VPNServiceRefPtr service = FindService(type, name, host);
-  if (service == NULL) {
+  if (service == nullptr) {
     service = CreateService(type, name, storage_id, error);
   }
   return service;
@@ -99,7 +99,7 @@ ServiceRefPtr VPNProvider::FindSimilarService(const KeyValueStore &args,
   string host;
 
   if (!GetServiceParametersFromArgs(args, &type, &name, &host, error)) {
-    return NULL;
+    return nullptr;
   }
 
   // Find a service in the provider list which matches these parameters.
@@ -159,7 +159,7 @@ void VPNProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
     }
 
     VPNServiceRefPtr service = FindService(type, name, host);
-    if (service != NULL) {
+    if (service != nullptr) {
       // If the service already exists, it does not need to be configured,
       // since PushProfile would have already called ConfigureService on it.
       SLOG(VPN, 2) << "Service already exists " << group;
@@ -169,7 +169,7 @@ void VPNProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
     Error error;
     service = CreateService(type, name, group, &error);
 
-    if (service == NULL) {
+    if (service == nullptr) {
       LOG(ERROR) << "Could not create service for " << group;
       continue;
     }
@@ -190,7 +190,7 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const string &type,
 #if defined(DISABLE_VPN)
 
   Error::PopulateAndLog(error, Error::kNotSupported, "VPN is not supported.");
-  return NULL;
+  return nullptr;
 
 #else
 
@@ -206,7 +206,7 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const string &type,
   } else {
     Error::PopulateAndLog(
         error, Error::kNotSupported, "Unsupported VPN type: " + type);
-    return NULL;
+    return nullptr;
   }
 
   VPNServiceRefPtr service = new VPNService(
@@ -244,7 +244,7 @@ VPNServiceRefPtr VPNProvider::FindService(const string &type,
       return service;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 ServiceRefPtr VPNProvider::CreateTemporaryService(
@@ -254,12 +254,12 @@ ServiceRefPtr VPNProvider::CreateTemporaryService(
   string host;
 
   if (!GetServiceParametersFromArgs(args, &type, &name, &host, error)) {
-    return NULL;
+    return nullptr;
   }
 
   string storage_id = VPNService::CreateStorageIdentifier(args, error);
   if (storage_id.empty()) {
-    return NULL;
+    return nullptr;
   }
 
   return CreateServiceInner(type, name, storage_id, error);

@@ -118,8 +118,8 @@ class OpenVPNDriverTest
     driver_->default_service_callback_tag_ = 0;
     driver_->child_watch_tag_ = 0;
     driver_->pid_ = 0;
-    driver_->device_ = NULL;
-    driver_->service_ = NULL;
+    driver_->device_ = nullptr;
+    driver_->service_ = nullptr;
     if (!lsb_release_file_.empty()) {
       EXPECT_TRUE(base::DeleteFile(lsb_release_file_, false));
       lsb_release_file_.clear();
@@ -486,11 +486,12 @@ TEST_F(OpenVPNDriverTest, NotifyFail) {
 
 TEST_F(OpenVPNDriverTest, GetRouteOptionEntry) {
   OpenVPNDriver::RouteOptions routes;
-  EXPECT_EQ(NULL, OpenVPNDriver::GetRouteOptionEntry("foo", "bar", &routes));
+  EXPECT_EQ(nullptr, OpenVPNDriver::GetRouteOptionEntry("foo", "bar", &routes));
   EXPECT_TRUE(routes.empty());
-  EXPECT_EQ(NULL, OpenVPNDriver::GetRouteOptionEntry("foo", "foo", &routes));
+  EXPECT_EQ(nullptr, OpenVPNDriver::GetRouteOptionEntry("foo", "foo", &routes));
   EXPECT_TRUE(routes.empty());
-  EXPECT_EQ(NULL, OpenVPNDriver::GetRouteOptionEntry("foo", "fooZ", &routes));
+  EXPECT_EQ(nullptr,
+            OpenVPNDriver::GetRouteOptionEntry("foo", "fooz", &routes));
   EXPECT_TRUE(routes.empty());
   IPConfig::Route *route =
       OpenVPNDriver::GetRouteOptionEntry("foo", "foo12", &routes);
@@ -552,7 +553,7 @@ TEST_F(OpenVPNDriverTest, SetRoutes) {
 
 TEST_F(OpenVPNDriverTest, SplitPortFromHost) {
   string name, port;
-  EXPECT_FALSE(OpenVPNDriver::SplitPortFromHost("", NULL, NULL));
+  EXPECT_FALSE(OpenVPNDriver::SplitPortFromHost("", nullptr, nullptr));
   EXPECT_FALSE(OpenVPNDriver::SplitPortFromHost("", &name, &port));
   EXPECT_FALSE(OpenVPNDriver::SplitPortFromHost("v.com", &name, &port));
   EXPECT_FALSE(OpenVPNDriver::SplitPortFromHost("v.com:", &name, &port));
@@ -1369,7 +1370,7 @@ TEST_F(OpenVPNDriverTest, ParseLSBRelease) {
   EXPECT_EQ("Chromium OS", lsb_release[OpenVPNDriver::kChromeOSReleaseName]);
   EXPECT_EQ("2202.0", lsb_release[OpenVPNDriver::kChromeOSReleaseVersion]);
   driver_->lsb_release_file_ = FilePath("/non/existent/file");
-  EXPECT_FALSE(driver_->ParseLSBRelease(NULL));
+  EXPECT_FALSE(driver_->ParseLSBRelease(nullptr));
 }
 
 TEST_F(OpenVPNDriverTest, InitEnvironment) {

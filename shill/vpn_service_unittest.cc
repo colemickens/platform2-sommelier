@@ -39,12 +39,12 @@ class VPNServiceTest : public testing::Test {
   VPNServiceTest()
       : interface_name_("test-interface"),
         driver_(new MockVPNDriver()),
-        manager_(&control_, NULL, NULL, NULL),
-        metrics_(NULL),
-        device_info_(&control_, NULL, NULL, NULL),
+        manager_(&control_, nullptr, nullptr, nullptr),
+        metrics_(nullptr),
+        device_info_(&control_, nullptr, nullptr, nullptr),
         connection_(new NiceMock<MockConnection>(&device_info_)),
         sockets_(new MockSockets()),
-        service_(new VPNService(&control_, NULL, &metrics_, &manager_,
+        service_(new VPNService(&control_, nullptr, &metrics_, &manager_,
                                 driver_)) {
     service_->sockets_.reset(sockets_);  // Passes ownership.
   }
@@ -255,7 +255,7 @@ TEST_F(VPNServiceTest, OnConnectionDisconnected) {
 
 TEST_F(VPNServiceTest, IsAutoConnectableOffline) {
   EXPECT_TRUE(service_->connectable());
-  const char *reason = NULL;
+  const char *reason = nullptr;
   EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(false));
   EXPECT_FALSE(IsAutoConnectable(&reason));
   EXPECT_STREQ(GetAutoConnOffline(), reason);
@@ -264,7 +264,7 @@ TEST_F(VPNServiceTest, IsAutoConnectableOffline) {
 TEST_F(VPNServiceTest, IsAutoConnectableNeverConnected) {
   EXPECT_TRUE(service_->connectable());
   EXPECT_FALSE(service_->has_ever_connected());
-  const char *reason = NULL;
+  const char *reason = nullptr;
   EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(true));
   EXPECT_FALSE(IsAutoConnectable(&reason));
   EXPECT_STREQ(GetAutoConnNeverConnected(), reason);
@@ -277,13 +277,13 @@ TEST_F(VPNServiceTest, IsAutoConnectableVPNAlreadyActive) {
   MockVPNProvider *provider = new MockVPNProvider;
   SetVPNProvider(provider);
   EXPECT_CALL(*provider, HasActiveService()).WillOnce(Return(true));
-  const char *reason = NULL;
+  const char *reason = nullptr;
   EXPECT_FALSE(IsAutoConnectable(&reason));
   EXPECT_STREQ(GetAutoConnVPNAlreadyActive(), reason);
 }
 
 TEST_F(VPNServiceTest, IsAutoConnectableNotConnectable) {
-  const char *reason = NULL;
+  const char *reason = nullptr;
   SetConnectable(false);
   EXPECT_FALSE(IsAutoConnectable(&reason));
 }
@@ -295,7 +295,7 @@ TEST_F(VPNServiceTest, IsAutoConnectable) {
   MockVPNProvider *provider = new MockVPNProvider;
   SetVPNProvider(provider);
   EXPECT_CALL(*provider, HasActiveService()).WillOnce(Return(false));
-  const char *reason = NULL;
+  const char *reason = nullptr;
   EXPECT_TRUE(IsAutoConnectable(&reason));
   EXPECT_FALSE(reason);
 }

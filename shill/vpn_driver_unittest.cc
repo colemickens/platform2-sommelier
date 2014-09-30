@@ -154,7 +154,7 @@ bool VPNDriverTest::GetProviderPropertyString(const PropertyStore &store,
   if (!provider_properties.ContainsString(key)) {
     return false;
   }
-  if (value != NULL) {
+  if (value != nullptr) {
     *value = provider_properties.GetString(key);
   }
   return true;
@@ -170,7 +170,7 @@ bool VPNDriverTest::GetProviderPropertyStrings(const PropertyStore &store,
   if (!provider_properties.ContainsStrings(key)) {
     return false;
   }
-  if (value != NULL) {
+  if (value != nullptr) {
     *value = provider_properties.GetStrings(key);
   }
   return true;
@@ -283,16 +283,18 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   // An un-set property should not be readable.
   {
     Error error;
-    EXPECT_FALSE(store.GetStringProperty(kPortProperty, NULL, &error));
+    EXPECT_FALSE(store.GetStringProperty(kPortProperty, nullptr, &error));
     EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
   {
     Error error;
-    EXPECT_FALSE(store.GetStringsProperty(kEapCaCertPemProperty, NULL, &error));
+    EXPECT_FALSE(
+        store.GetStringsProperty(kEapCaCertPemProperty, nullptr, &error));
     EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
-  EXPECT_FALSE(GetProviderPropertyString(store, kPortProperty, NULL));
-  EXPECT_FALSE(GetProviderPropertyStrings(store, kEapCaCertPemProperty, NULL));
+  EXPECT_FALSE(GetProviderPropertyString(store, kPortProperty, nullptr));
+  EXPECT_FALSE(
+      GetProviderPropertyStrings(store, kEapCaCertPemProperty, nullptr));
 
   const string kProviderType = "boo";
   SetArg(kPortProperty, kPort);
@@ -307,12 +309,13 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   // key to the args directly.
   {
     Error error;
-    EXPECT_FALSE(store.GetStringProperty(kPortProperty, NULL, &error));
+    EXPECT_FALSE(store.GetStringProperty(kPortProperty, nullptr, &error));
     EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
   {
     Error error;
-    EXPECT_FALSE(store.GetStringsProperty(kEapCaCertPemProperty, NULL, &error));
+    EXPECT_FALSE(
+        store.GetStringsProperty(kEapCaCertPemProperty, nullptr, &error));
     EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
 
@@ -356,14 +359,14 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
     Error error;
     EXPECT_TRUE(store.ClearProperty(kPortProperty, &error));
     EXPECT_TRUE(error.IsSuccess());
-    EXPECT_FALSE(GetProviderPropertyString(store, kPortProperty, NULL));
+    EXPECT_FALSE(GetProviderPropertyString(store, kPortProperty, nullptr));
   }
   {
     Error error;
     EXPECT_TRUE(store.ClearProperty(kEapCaCertPemProperty, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_FALSE(GetProviderPropertyStrings(store, kEapCaCertPemProperty,
-                                            NULL));
+                                            nullptr));
   }
 
   // A second attempt to clear this property should return an error.
@@ -379,7 +382,7 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   }
 
   // Test write only properties.
-  EXPECT_FALSE(GetProviderPropertyString(store, kPINProperty, NULL));
+  EXPECT_FALSE(GetProviderPropertyString(store, kPINProperty, nullptr));
 
   // Write properties to the driver args using the PropertyStore interface.
   {
@@ -404,7 +407,7 @@ TEST_F(VPNDriverTest, ConnectTimeout) {
   StartConnectTimeout(0);
   EXPECT_FALSE(connect_timeout_callback().IsCancelled());
   EXPECT_TRUE(IsConnectTimeoutStarted());
-  set_dispatcher(NULL);
+  set_dispatcher(nullptr);
   StartConnectTimeout(0);  // Expect no crash.
   dispatcher_.DispatchPendingEvents();
   EXPECT_TRUE(connect_timeout_callback().IsCancelled());

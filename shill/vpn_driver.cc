@@ -146,7 +146,7 @@ void VPNDriver::InitPropertyStore(PropertyStore *store) {
       kProviderProperty,
       KeyValueStoreAccessor(
           new CustomAccessor<VPNDriver, KeyValueStore>(
-              this, &VPNDriver::GetProvider, NULL)));
+              this, &VPNDriver::GetProvider, nullptr)));
 }
 
 void VPNDriver::ClearMappedStringProperty(const size_t &index, Error *error) {

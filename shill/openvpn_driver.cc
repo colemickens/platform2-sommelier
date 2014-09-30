@@ -201,7 +201,7 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state,
     interface_index = device_->interface_index();
     device_->DropConnection();
     device_->SetEnabled(false);
-    device_ = NULL;
+    device_ = nullptr;
   }
   if (pid_) {
     Closure callback;
@@ -224,7 +224,7 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state,
     } else {
       service_->SetState(state);
     }
-    service_ = NULL;
+    service_ = nullptr;
   }
   ip_properties_ = IPConfig::Properties();
 }
@@ -304,7 +304,7 @@ bool OpenVPNDriver::SpawnOpenVPN() {
   process_args.push_back(const_cast<char *>("--config"));
   process_args.push_back(const_cast<char *>(
       openvpn_config_file_.value().c_str()));
-  process_args.push_back(NULL);
+  process_args.push_back(nullptr);
 
   vector<string> environment;
   InitEnvironment(&environment);
@@ -313,17 +313,17 @@ bool OpenVPNDriver::SpawnOpenVPN() {
   for (const auto &environment_variable : environment) {
     process_env.push_back(const_cast<char *>(environment_variable.c_str()));
   }
-  process_env.push_back(NULL);
+  process_env.push_back(nullptr);
 
   CHECK(!pid_);
-  if (!glib_->SpawnAsync(NULL,
+  if (!glib_->SpawnAsync(nullptr,
                          process_args.data(),
                          process_env.data(),
                          G_SPAWN_DO_NOT_REAP_CHILD,
-                         NULL,
-                         NULL,
+                         nullptr,
+                         nullptr,
                          &pid_,
-                         NULL)) {
+                         nullptr)) {
     LOG(ERROR) << "Unable to spawn: " << kOpenVPNPath;
     return false;
   }
@@ -521,7 +521,7 @@ IPConfig::Route *OpenVPNDriver::GetRouteOptionEntry(
   int order = 0;
   if (!StartsWithASCII(key, prefix, false) ||
       !base::StringToInt(key.substr(prefix.size()), &order)) {
-    return NULL;
+    return nullptr;
   }
   return &(*routes)[order];
 }

@@ -164,7 +164,7 @@ void L2TPIPSecDriver::Cleanup(Service::ConnectState state,
   if (device_) {
     device_->DropConnection();
     device_->SetEnabled(false);
-    device_ = NULL;
+    device_ = nullptr;
   }
   if (service_) {
     if (state == Service::kStateFailure) {
@@ -172,7 +172,7 @@ void L2TPIPSecDriver::Cleanup(Service::ConnectState state,
     } else {
       service_->SetState(state);
     }
-    service_ = NULL;
+    service_ = nullptr;
   }
 }
 

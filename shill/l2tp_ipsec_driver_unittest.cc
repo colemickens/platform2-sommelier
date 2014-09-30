@@ -65,8 +65,8 @@ class L2TPIPSecDriverTest : public testing::Test,
   }
 
   virtual void TearDown() {
-    driver_->device_ = NULL;
-    driver_->service_ = NULL;
+    driver_->device_ = nullptr;
+    driver_->service_ = nullptr;
     ASSERT_TRUE(temp_dir_.Delete());
   }
 
