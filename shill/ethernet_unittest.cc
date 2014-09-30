@@ -52,7 +52,7 @@ class EthernetTest : public testing::Test {
  public:
   EthernetTest()
       : metrics_(nullptr),
-        manager_(&control_interface_, NULL, &metrics_, &glib_),
+        manager_(&control_interface_, nullptr, &metrics_, &glib_),
         device_info_(&control_interface_, &dispatcher_, &metrics_, &manager_),
         ethernet_(new Ethernet(&control_interface_,
                                &dispatcher_,
@@ -89,12 +89,12 @@ class EthernetTest : public testing::Test {
   }
 
   virtual void TearDown() {
-    ethernet_eap_provider_.set_service(NULL);
-    ethernet_->set_dhcp_provider(NULL);
+    ethernet_eap_provider_.set_service(nullptr);
+    ethernet_->set_dhcp_provider(nullptr);
     ethernet_->eap_listener_.reset();
     ethernet_->sockets_.reset();
     Mock::VerifyAndClearExpectations(&manager_);
-    ethernet_->Stop(NULL, EnabledStateChangedCallback());
+    ethernet_->Stop(nullptr, EnabledStateChangedCallback());
   }
 
  protected:
@@ -123,7 +123,7 @@ class EthernetTest : public testing::Test {
   void StartEthernet() {
     EXPECT_CALL(rtnl_handler_,
                 SetInterfaceFlags(kInterfaceIndex, IFF_UP, IFF_UP));
-    ethernet_->Start(NULL, EnabledStateChangedCallback());
+    ethernet_->Start(nullptr, EnabledStateChangedCallback());
   }
   const SupplicantInterfaceProxyInterface *GetSupplicantInterfaceProxy() {
     return ethernet_->supplicant_interface_proxy_.get();
@@ -219,18 +219,18 @@ TEST_F(EthernetTest, Construct) {
   EXPECT_FALSE(GetIsEapDetected());
   EXPECT_TRUE(GetStore().Contains(kEapAuthenticationCompletedProperty));
   EXPECT_TRUE(GetStore().Contains(kEapAuthenticatorDetectedProperty));
-  EXPECT_EQ(NULL, GetService().get());
+  EXPECT_EQ(nullptr, GetService().get());
 }
 
 TEST_F(EthernetTest, StartStop) {
   StartEthernet();
 
-  EXPECT_FALSE(GetService().get() == NULL);
+  EXPECT_FALSE(GetService().get() == nullptr);
 
   Service* service = GetService().get();
   EXPECT_CALL(manager_, DeregisterService(Eq(service)));
-  ethernet_->Stop(NULL, EnabledStateChangedCallback());
-  EXPECT_EQ(NULL, GetService().get());
+  ethernet_->Stop(nullptr, EnabledStateChangedCallback());
+  EXPECT_EQ(nullptr, GetService().get());
 }
 
 TEST_F(EthernetTest, LinkEvent) {
@@ -285,7 +285,7 @@ TEST_F(EthernetTest, LinkEvent) {
 TEST_F(EthernetTest, ConnectToFailure) {
   StartEthernet();
   SetService(mock_service_);
-  EXPECT_EQ(NULL, GetSelectedService().get());
+  EXPECT_EQ(nullptr, GetSelectedService().get());
   EXPECT_CALL(dhcp_provider_, CreateConfig(_, _, _, _)).
       WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).WillOnce(Return(false));
@@ -298,7 +298,7 @@ TEST_F(EthernetTest, ConnectToFailure) {
 TEST_F(EthernetTest, ConnectToSuccess) {
   StartEthernet();
   SetService(mock_service_);
-  EXPECT_EQ(NULL, GetSelectedService().get());
+  EXPECT_EQ(nullptr, GetSelectedService().get());
   EXPECT_CALL(dhcp_provider_, CreateConfig(_, _, _, _)).
       WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).WillOnce(Return(true));
@@ -310,7 +310,7 @@ TEST_F(EthernetTest, ConnectToSuccess) {
 
   EXPECT_CALL(*mock_service_, SetState(Service::kStateIdle));
   ethernet_->DisconnectFrom(mock_service_);
-  EXPECT_EQ(NULL, GetSelectedService().get());
+  EXPECT_EQ(nullptr, GetSelectedService().get());
 }
 
 TEST_F(EthernetTest, OnEapDetected) {
@@ -340,7 +340,7 @@ TEST_F(EthernetTest, TryEapAuthenticationNotConnectableNotAuthenticated) {
                        EndsWith("EAP Service lacks 802.1X credentials; "
                                 "not doing EAP authentication.")));
   TriggerTryEapAuthentication();
-  SetService(NULL);
+  SetService(nullptr);
 }
 
 TEST_F(EthernetTest, TryEapAuthenticationNotConnectableAuthenticated) {
@@ -380,7 +380,7 @@ TEST_F(EthernetTest, StartSupplicant) {
   EXPECT_TRUE(InvokeStartSupplicant());
 
   // Also, the mock pointers should remain; if the MockProxyFactory was
-  // invoked again, they would be NULL.
+  // invoked again, they would be nullptr.
   EXPECT_EQ(interface_proxy, GetSupplicantInterfaceProxy());
   EXPECT_EQ(process_proxy, GetSupplicantProcessProxy());
   EXPECT_EQ(kInterfacePath, GetSupplicantInterfacePath());
@@ -412,8 +412,8 @@ TEST_F(EthernetTest, StartSupplicantWithUnknownException) {
           "test threw fi.w1.wpa_supplicant1.UnknownError")));
   EXPECT_CALL(*process_proxy, GetInterface(kDeviceName)).Times(0);
   EXPECT_FALSE(InvokeStartSupplicant());
-  EXPECT_EQ(NULL, GetSupplicantInterfaceProxy());
-  EXPECT_EQ(NULL, GetSupplicantProcessProxy());
+  EXPECT_EQ(nullptr, GetSupplicantInterfaceProxy());
+  EXPECT_EQ(nullptr, GetSupplicantProcessProxy());
   EXPECT_EQ("", GetSupplicantInterfacePath());
 }
 
@@ -483,8 +483,8 @@ TEST_F(EthernetTest, StopSupplicant) {
   EXPECT_CALL(*interface_proxy, EAPLogoff());
   EXPECT_CALL(*process_proxy, RemoveInterface(StrEq(kInterfacePath)));
   InvokeStopSupplicant();
-  EXPECT_EQ(NULL, GetSupplicantInterfaceProxy());
-  EXPECT_EQ(NULL, GetSupplicantProcessProxy());
+  EXPECT_EQ(nullptr, GetSupplicantInterfaceProxy());
+  EXPECT_EQ(nullptr, GetSupplicantProcessProxy());
   EXPECT_EQ("", GetSupplicantInterfacePath());
   EXPECT_EQ("", GetSupplicantNetworkPath());
   EXPECT_FALSE(GetIsEapAuthenticated());

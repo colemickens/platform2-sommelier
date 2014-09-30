@@ -76,7 +76,7 @@ Ethernet::Ethernet(ControlInterface *control_interface,
 }
 
 Ethernet::~Ethernet() {
-  Stop(NULL, EnabledStateChangedCallback());
+  Stop(nullptr, EnabledStateChangedCallback());
 }
 
 void Ethernet::Start(Error *error,
@@ -96,7 +96,7 @@ void Ethernet::Stop(Error *error,
                     const EnabledStateChangedCallback &/*callback*/) {
   if (service_) {
     manager()->DeregisterService(service_);
-    service_ = NULL;
+    service_ = nullptr;
   }
   StopSupplicant();
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
@@ -124,7 +124,7 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
     DestroyIPConfig();
     if (service_)
       manager()->DeregisterService(service_);
-    SelectService(NULL);
+    SelectService(nullptr);
     GetEapProvider()->ClearCredentialChangeCallback(this);
     SetIsEapAuthenticated(false);
     StopSupplicant();

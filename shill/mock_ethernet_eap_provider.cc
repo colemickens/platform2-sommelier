@@ -7,7 +7,7 @@
 namespace shill {
 
 MockEthernetEapProvider::MockEthernetEapProvider()
-    : EthernetEapProvider(NULL, NULL, NULL, NULL) {}
+    : EthernetEapProvider(nullptr, nullptr, nullptr, nullptr) {}
 
 MockEthernetEapProvider::~MockEthernetEapProvider() {}
 

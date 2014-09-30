@@ -45,7 +45,7 @@ class EthernetServiceTest : public PropertyStoreTest {
   static const char fake_mac[];
 
   bool GetAutoConnect() {
-    return service_->GetAutoConnect(NULL);
+    return service_->GetAutoConnect(nullptr);
   }
 
   bool SetAutoConnect(const bool connect, Error *error) {
@@ -113,8 +113,8 @@ TEST_F(EthernetServiceTest, GetTethering) {
   EXPECT_CALL(*ethernet_, IsConnectedViaTether())
       .WillOnce(Return(true))
       .WillOnce(Return(false));
-  EXPECT_EQ(kTetheringConfirmedState, service_->GetTethering(NULL));
-  EXPECT_EQ(kTetheringNotDetectedState, service_->GetTethering(NULL));
+  EXPECT_EQ(kTetheringConfirmedState, service_->GetTethering(nullptr));
+  EXPECT_EQ(kTetheringNotDetectedState, service_->GetTethering(nullptr));
 }
 
 }  // namespace shill
