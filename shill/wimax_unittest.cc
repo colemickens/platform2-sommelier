@@ -41,7 +41,7 @@ class WiMaxTest : public testing::Test {
   WiMaxTest()
       : proxy_(new MockWiMaxDeviceProxy()),
         metrics_(&dispatcher_),
-        manager_(&control_, &dispatcher_, &metrics_, NULL),
+        manager_(&control_, &dispatcher_, &metrics_, nullptr),
         dhcp_config_(new MockDHCPConfig(&control_,
                                         kTestLinkName)),
         device_(new WiMax(&control_, &dispatcher_, &metrics_, &manager_,
@@ -64,9 +64,9 @@ class WiMaxTest : public testing::Test {
   }
 
   virtual void TearDown() {
-    device_->SelectService(NULL);
-    device_->pending_service_ = NULL;
-    device_->proxy_factory_ = NULL;
+    device_->SelectService(nullptr);
+    device_->pending_service_ = nullptr;
+    device_->proxy_factory_ = nullptr;
   }
 
   scoped_ptr<MockWiMaxDeviceProxy> proxy_;
@@ -93,11 +93,11 @@ TEST_F(WiMaxTest, StartStop) {
   EXPECT_CALL(*proxy_, set_networks_changed_callback(_));
   EXPECT_CALL(*proxy_, set_status_changed_callback(_));
   EXPECT_CALL(*proxy_, Disable(_, _, _));
-  device_->Start(NULL, EnabledStateChangedCallback());
+  device_->Start(nullptr, EnabledStateChangedCallback());
   ASSERT_TRUE(device_->proxy_.get());
 
   scoped_refptr<MockWiMaxService> service(
-      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+      new MockWiMaxService(&control_, nullptr, &metrics_, &manager_));
   device_->pending_service_ = service;
   EXPECT_CALL(*service, SetState(Service::kStateIdle));
   device_->networks_.insert("path");
@@ -105,7 +105,7 @@ TEST_F(WiMaxTest, StartStop) {
   EXPECT_CALL(manager_, wimax_provider()).WillOnce(Return(&provider));
   EXPECT_CALL(provider, OnNetworksChanged());
   device_->StartConnectTimeout();
-  device_->Stop(NULL, EnabledStateChangedCallback());
+  device_->Stop(nullptr, EnabledStateChangedCallback());
   EXPECT_TRUE(device_->networks_.empty());
   EXPECT_FALSE(device_->IsConnectTimeoutStarted());
   EXPECT_FALSE(device_->pending_service_);
@@ -113,17 +113,13 @@ TEST_F(WiMaxTest, StartStop) {
 
 TEST_F(WiMaxTest, OnServiceStopped) {
   scoped_refptr<NiceMock<MockWiMaxService>> service0(
-      new NiceMock<MockWiMaxService>(
-          &control_,
-          reinterpret_cast<EventDispatcher *>(NULL),
-          &metrics_,
-          &manager_));
+      new NiceMock<MockWiMaxService>(&control_, nullptr, &metrics_, &manager_));
   scoped_refptr<MockWiMaxService> service1(
-      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+      new MockWiMaxService(&control_, nullptr, &metrics_, &manager_));
   device_->SelectService(service0);
   device_->pending_service_ = service1;
 
-  device_->OnServiceStopped(NULL);
+  device_->OnServiceStopped(nullptr);
   EXPECT_TRUE(device_->selected_service());
   EXPECT_TRUE(device_->pending_service_);
 
@@ -153,7 +149,7 @@ TEST_F(WiMaxTest, OnNetworksChanged) {
 
 TEST_F(WiMaxTest, OnConnectComplete) {
   scoped_refptr<MockWiMaxService> service(
-      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+      new MockWiMaxService(&control_, nullptr, &metrics_, &manager_));
   device_->pending_service_ = service;
   EXPECT_CALL(*service, SetState(_)).Times(0);
   EXPECT_TRUE(device_->pending_service_);
@@ -164,7 +160,7 @@ TEST_F(WiMaxTest, OnConnectComplete) {
 
 TEST_F(WiMaxTest, OnStatusChanged) {
   scoped_refptr<MockWiMaxService> service(
-      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+      new MockWiMaxService(&control_, nullptr, &metrics_, &manager_));
 
   EXPECT_EQ(wimax_manager::kDeviceStatusUninitialized, device_->status_);
   device_->pending_service_ = service;
@@ -198,7 +194,7 @@ TEST_F(WiMaxTest, OnStatusChanged) {
   EXPECT_EQ(wimax_manager::kDeviceStatusConnecting, device_->status_);
 
   EXPECT_CALL(*service, SetState(Service::kStateIdle));
-  device_->SelectService(NULL);
+  device_->SelectService(nullptr);
 }
 
 TEST_F(WiMaxTest, UseNoArpGateway) {
@@ -209,13 +205,9 @@ TEST_F(WiMaxTest, UseNoArpGateway) {
 
 TEST_F(WiMaxTest, DropService) {
   scoped_refptr<NiceMock<MockWiMaxService>> service0(
-      new NiceMock<MockWiMaxService>(
-          &control_,
-          reinterpret_cast<EventDispatcher *>(NULL),
-          &metrics_,
-          &manager_));
+      new NiceMock<MockWiMaxService>(&control_, nullptr, &metrics_, &manager_));
   scoped_refptr<MockWiMaxService> service1(
-      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+      new MockWiMaxService(&control_, nullptr, &metrics_, &manager_));
   device_->SelectService(service0);
   device_->pending_service_ = service1;
   device_->StartConnectTimeout();
@@ -234,7 +226,7 @@ TEST_F(WiMaxTest, DropService) {
 TEST_F(WiMaxTest, OnDeviceVanished) {
   device_->proxy_.reset(proxy_.release());
   scoped_refptr<MockWiMaxService> service(
-      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+      new MockWiMaxService(&control_, nullptr, &metrics_, &manager_));
   device_->pending_service_ = service;
   EXPECT_CALL(*service, SetState(Service::kStateIdle));
   device_->OnDeviceVanished();
@@ -275,10 +267,10 @@ TEST_F(WiMaxTest, ConnectTimeout) {
   device_->StartConnectTimeout();
   EXPECT_FALSE(device_->connect_timeout_callback_.IsCancelled());
   EXPECT_TRUE(device_->IsConnectTimeoutStarted());
-  device_->dispatcher_ = NULL;
+  device_->dispatcher_ = nullptr;
   device_->StartConnectTimeout();  // Expect no crash.
   scoped_refptr<MockWiMaxService> service(
-      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+      new MockWiMaxService(&control_, nullptr, &metrics_, &manager_));
   device_->pending_service_ = service;
   EXPECT_CALL(*service, SetState(Service::kStateFailure));
   dispatcher_.DispatchPendingEvents();
@@ -290,7 +282,7 @@ TEST_F(WiMaxTest, ConnectTimeout) {
 TEST_F(WiMaxTest, ConnectTo) {
   static const char kPath[] = "/network/path";
   scoped_refptr<MockWiMaxService> service(
-      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+      new MockWiMaxService(&control_, nullptr, &metrics_, &manager_));
   EXPECT_CALL(*service, SetState(Service::kStateAssociating));
   device_->status_ = wimax_manager::kDeviceStatusScanning;
   EXPECT_CALL(*service, GetNetworkObjectPath()).WillOnce(Return(kPath));
@@ -307,20 +299,16 @@ TEST_F(WiMaxTest, ConnectTo) {
   device_->ConnectTo(service, &error);
   EXPECT_EQ(Error::kInProgress, error.type());
 
-  device_->pending_service_ = NULL;
+  device_->pending_service_ = nullptr;
 }
 
 TEST_F(WiMaxTest, IsIdle) {
   EXPECT_TRUE(device_->IsIdle());
   scoped_refptr<NiceMock<MockWiMaxService>> service(
-      new NiceMock<MockWiMaxService>(
-          &control_,
-          reinterpret_cast<EventDispatcher *>(NULL),
-          &metrics_,
-          &manager_));
+      new NiceMock<MockWiMaxService>(&control_, nullptr, &metrics_, &manager_));
   device_->pending_service_ = service;
   EXPECT_FALSE(device_->IsIdle());
-  device_->pending_service_ = NULL;
+  device_->pending_service_ = nullptr;
   device_->SelectService(service);
   EXPECT_FALSE(device_->IsIdle());
 }

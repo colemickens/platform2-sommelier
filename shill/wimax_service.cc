@@ -77,7 +77,7 @@ void WiMaxService::Stop() {
   SetStrength(0);
   if (device_) {
     device_->OnServiceStopped(this);
-    SetDevice(NULL);
+    SetDevice(nullptr);
   }
   UpdateConnectable();
   NotifyPropertyChanges();
@@ -167,7 +167,7 @@ void WiMaxService::Disconnect(Error *error, const char *reason) {
   }
   Service::Disconnect(error, reason);
   device_->DisconnectFrom(this, error);
-  SetDevice(NULL);
+  SetDevice(nullptr);
 }
 
 string WiMaxService::GetStorageIdentifier() const {
@@ -262,7 +262,7 @@ void WiMaxService::SetState(ConnectState state) {
   Service::SetState(state);
   if (!IsConnecting() && !IsConnected()) {
     // Disassociate from any carrier device if it's not connected anymore.
-    SetDevice(NULL);
+    SetDevice(nullptr);
   }
 }
 

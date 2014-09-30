@@ -92,7 +92,7 @@ void WiMax::Stop(Error *error, const EnabledStateChangedCallback &callback) {
   StopConnectTimeout();
   if (pending_service_) {
     pending_service_->SetState(Service::kStateIdle);
-    pending_service_ = NULL;
+    pending_service_ = nullptr;
   }
   if (selected_service()) {
     Error error;
@@ -201,7 +201,7 @@ void WiMax::OnServiceStopped(const WiMaxServiceRefPtr &service) {
     DropConnection();
   }
   if (service == pending_service_) {
-    pending_service_ = NULL;
+    pending_service_ = nullptr;
   }
 }
 
@@ -280,7 +280,7 @@ void WiMax::OnStatusChanged(wimax_manager::DeviceStatus status) {
         LOG(INFO) << "WiMAX device " << link_name() << " connected to "
                   << pending_service_->GetStorageIdentifier();
         SelectService(pending_service_);
-        pending_service_ = NULL;
+        pending_service_ = nullptr;
         SetServiceState(Service::kStateConfiguring);
       } else {
         DropService(Service::kStateFailure);
@@ -316,7 +316,7 @@ void WiMax::DropService(Service::ConnectState state) {
     LOG(WARNING) << "Unable to initiate connection to: "
                  << pending_service_->GetStorageIdentifier();
     pending_service_->SetState(state);
-    pending_service_ = NULL;
+    pending_service_ = nullptr;
   }
   if (selected_service()) {
     LOG(WARNING) << "Service disconnected: "

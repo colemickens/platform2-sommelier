@@ -63,11 +63,11 @@ class WiMaxProviderTest : public testing::Test {
       : dbus_service_proxy_(new MockDBusServiceProxy()),
         wimax_manager_proxy_(new MockWiMaxManagerProxy()),
         network_proxy_(new MockWiMaxNetworkProxy()),
-        metrics_(NULL),
-        manager_(&control_, NULL, &metrics_, NULL),
-        device_info_(&control_, NULL, &metrics_, &manager_),
+        metrics_(nullptr),
+        manager_(&control_, nullptr, &metrics_, nullptr),
+        device_info_(&control_, nullptr, &metrics_, &manager_),
         dbus_manager_(new DBusManager()),
-        provider_(&control_, NULL, &metrics_, &manager_) {
+        provider_(&control_, nullptr, &metrics_, &manager_) {
     manager_.dbus_manager_.reset(dbus_manager_);  // Transfers ownership.
   }
 
@@ -80,8 +80,8 @@ class WiMaxProviderTest : public testing::Test {
   }
 
   virtual void TearDown() {
-    dbus_manager_->proxy_factory_ = NULL;
-    provider_.proxy_factory_ = NULL;
+    dbus_manager_->proxy_factory_ = nullptr;
+    provider_.proxy_factory_ = nullptr;
   }
 
   string GetServiceFriendlyName(const ServiceRefPtr &service) {
@@ -203,7 +203,7 @@ TEST_F(WiMaxProviderTest, CreateDevice) {
 TEST_F(WiMaxProviderTest, DestroyDeadDevices) {
   for (int i = 0; i < 4; i++) {
     scoped_refptr<MockWiMax> device(
-        new MockWiMax(&control_, NULL, &metrics_, &manager_,
+        new MockWiMax(&control_, nullptr, &metrics_, &manager_,
                       GetTestLinkName(i), "", i, GetTestPath(i)));
     EXPECT_CALL(*device, OnDeviceVanished()).Times((i == 0 || i == 3) ? 0 : 1);
     provider_.devices_[GetTestLinkName(i)] = device;
@@ -256,7 +256,7 @@ TEST_F(WiMaxProviderTest, RetrieveNetworkInfo) {
 TEST_F(WiMaxProviderTest, FindService) {
   EXPECT_FALSE(provider_.FindService("some_storage_id"));
   scoped_refptr<MockWiMaxService> service(
-      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+      new MockWiMaxService(&control_, nullptr, &metrics_, &manager_));
   static const char kName[] = "WiMAX Network";
   static const char kNetworkId[] = "76543210";
   service->set_friendly_name(kName);
@@ -276,7 +276,8 @@ TEST_F(WiMaxProviderTest, StartLiveServices) {
   static const char kName[] = "Some WiMAX Provider";
   vector<scoped_refptr<MockWiMaxService>> services(4);
   for (size_t i = 0; i < services.size(); i++) {
-    services[i] = new MockWiMaxService(&control_, NULL, &metrics_, &manager_);
+    services[i] =
+        new MockWiMaxService(&control_, nullptr, &metrics_, &manager_);
     if (i == 0) {
       services[0]->set_network_id("deadbeef");
     } else {
@@ -315,7 +316,8 @@ TEST_F(WiMaxProviderTest, StartLiveServices) {
 TEST_F(WiMaxProviderTest, DestroyAllServices) {
   vector<scoped_refptr<MockWiMaxService>> services(2);
   for (size_t i = 0; i < services.size(); i++) {
-    services[i] = new MockWiMaxService(&control_, NULL, &metrics_, &manager_);
+    services[i] =
+        new MockWiMaxService(&control_, nullptr, &metrics_, &manager_);
     provider_.services_[services[i]->GetStorageIdentifier()] = services[i];
     EXPECT_CALL(*services[i], Stop());
   }
@@ -327,7 +329,8 @@ TEST_F(WiMaxProviderTest, DestroyAllServices) {
 TEST_F(WiMaxProviderTest, StopDeadServices) {
   vector<scoped_refptr<MockWiMaxService>> services(4);
   for (size_t i = 0; i < services.size(); i++) {
-    services[i] = new MockWiMaxService(&control_, NULL, &metrics_, &manager_);
+    services[i] =
+        new MockWiMaxService(&control_, nullptr, &metrics_, &manager_);
     if (i == 0) {
       EXPECT_CALL(*services[i], IsStarted()).WillOnce(Return(false));
       EXPECT_CALL(*services[i], GetNetworkObjectPath()).Times(0);
@@ -359,7 +362,7 @@ TEST_F(WiMaxProviderTest, OnNetworksChanged) {
 
   // Started service to be stopped.
   scoped_refptr<MockWiMaxService> service0(
-      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+      new MockWiMaxService(&control_, nullptr, &metrics_, &manager_));
   EXPECT_CALL(*service0, IsStarted()).WillOnce(Return(true));
   EXPECT_CALL(*service0, GetNetworkObjectPath())
       .WillOnce(Return(GetTestNetworkPath(100)));
@@ -370,7 +373,7 @@ TEST_F(WiMaxProviderTest, OnNetworksChanged) {
 
   // Stopped service to be started.
   scoped_refptr<MockWiMaxService> service1(
-      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+      new MockWiMaxService(&control_, nullptr, &metrics_, &manager_));
   EXPECT_CALL(*service1, IsStarted()).Times(2).WillRepeatedly(Return(false));
   EXPECT_CALL(*service1, Start(_)).WillOnce(Return(true));
   EXPECT_CALL(*service1, Stop()).Times(0);
@@ -389,7 +392,7 @@ TEST_F(WiMaxProviderTest, OnNetworksChanged) {
 
   for (int i = 0; i < 3; i++) {
     scoped_refptr<MockWiMax> device(
-        new MockWiMax(&control_, NULL, &metrics_, &manager_,
+        new MockWiMax(&control_, nullptr, &metrics_, &manager_,
                       GetTestLinkName(i), "", i, GetTestPath(i)));
     provider_.devices_[GetTestLinkName(i)] = device;
     if (i > 0) {
@@ -414,7 +417,7 @@ TEST_F(WiMaxProviderTest, GetUniqueService) {
 
   // Service already exists.
   scoped_refptr<MockWiMaxService> service0(
-      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+      new MockWiMaxService(&control_, nullptr, &metrics_, &manager_));
   service0->set_network_id(kNetworkId);
   service0->set_friendly_name(kName0);
   service0->InitStorageIdentifier();
@@ -549,10 +552,10 @@ TEST_F(WiMaxProviderTest, GetService) {
 
 TEST_F(WiMaxProviderTest, SelectCarrier) {
   scoped_refptr<MockWiMaxService> service(
-      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+      new MockWiMaxService(&control_, nullptr, &metrics_, &manager_));
   EXPECT_FALSE(provider_.SelectCarrier(service));
   scoped_refptr<MockWiMax> device(
-      new MockWiMax(&control_, NULL, &metrics_, &manager_,
+      new MockWiMax(&control_, nullptr, &metrics_, &manager_,
                     GetTestLinkName(1), "", 1, GetTestPath(1)));
   provider_.devices_[GetTestLinkName(1)] = device;
   WiMaxRefPtr carrier = provider_.SelectCarrier(service);
@@ -561,10 +564,10 @@ TEST_F(WiMaxProviderTest, SelectCarrier) {
 
 TEST_F(WiMaxProviderTest, OnServiceUnloaded) {
   scoped_refptr<MockWiMaxService> service(
-      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+      new MockWiMaxService(&control_, nullptr, &metrics_, &manager_));
   EXPECT_FALSE(service->is_default());
   scoped_refptr<MockWiMaxService> service_default(
-      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+      new MockWiMaxService(&control_, nullptr, &metrics_, &manager_));
   service_default->set_is_default(true);
   provider_.services_[service->GetStorageIdentifier()] = service;
   provider_.services_[service_default->GetStorageIdentifier()] =

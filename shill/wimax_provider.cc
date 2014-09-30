@@ -174,7 +174,7 @@ ServiceRefPtr WiMaxProvider::GetService(const KeyValueStore &args,
   WiMaxNetworkId id;
   string name;
   if (!GetServiceParametersFromArgs(args, &id, &name, error)) {
-    return NULL;
+    return nullptr;
   }
   WiMaxServiceRefPtr service = GetUniqueService(id, name);
   CHECK(service);
@@ -190,7 +190,7 @@ ServiceRefPtr WiMaxProvider::FindSimilarService(const KeyValueStore &args,
   WiMaxNetworkId id;
   string name;
   if (!GetServiceParametersFromArgs(args, &id, &name, error)) {
-    return NULL;
+    return nullptr;
   }
   string storage_id = WiMaxService::CreateStorageIdentifier(id, name);
   WiMaxServiceRefPtr service = FindService(storage_id);
@@ -207,7 +207,7 @@ ServiceRefPtr WiMaxProvider::CreateTemporaryService(const KeyValueStore &args,
   WiMaxNetworkId id;
   string name;
   if (!GetServiceParametersFromArgs(args, &id, &name, error)) {
-    return NULL;
+    return nullptr;
   }
   return CreateService(id, name);
 }
@@ -255,7 +255,7 @@ WiMaxRefPtr WiMaxProvider::SelectCarrier(
   SLOG(WiMax, 2) << __func__ << "(" << service->GetStorageIdentifier() << ")";
   if (devices_.empty()) {
     LOG(ERROR) << "No WiMAX devices available.";
-    return NULL;
+    return nullptr;
   }
   // TODO(petkov): For now, just return the first available device. We need to
   // be smarter here and select a device that sees |service|'s network.
@@ -370,7 +370,7 @@ WiMaxServiceRefPtr WiMaxProvider::FindService(const string &storage_id) const {
   map<string, WiMaxServiceRefPtr>::const_iterator find_it =
       services_.find(storage_id);
   if (find_it == services_.end()) {
-    return NULL;
+    return nullptr;
   }
   const WiMaxServiceRefPtr &service = find_it->second;
   LOG_IF(ERROR, storage_id != service->GetStorageIdentifier());

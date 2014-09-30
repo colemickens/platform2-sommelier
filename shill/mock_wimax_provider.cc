@@ -9,7 +9,7 @@
 namespace shill {
 
 MockWiMaxProvider::MockWiMaxProvider()
-    : WiMaxProvider(NULL, NULL, NULL, NULL) {}
+    : WiMaxProvider(nullptr, nullptr, nullptr, nullptr) {}
 
 MockWiMaxProvider::~MockWiMaxProvider() {}
 

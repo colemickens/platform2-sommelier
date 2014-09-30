@@ -102,8 +102,8 @@ class WiMaxProvider : public ProviderInterface {
   // not already available.
   void RetrieveNetworkInfo(const RpcIdentifier &path);
 
-  // Finds and returns the service identified by |storage_id|. Returns NULL if
-  // the service is not found.
+  // Finds and returns the service identified by |storage_id|. Returns nullptr
+  // if the service is not found.
   WiMaxServiceRefPtr FindService(const std::string &storage_id) const;
 
   // Finds or creates a service with the given parameters. The parameters

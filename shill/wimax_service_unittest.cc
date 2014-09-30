@@ -49,12 +49,12 @@ class WiMaxServiceTest : public testing::Test {
  public:
   WiMaxServiceTest()
       : proxy_(new MockWiMaxNetworkProxy()),
-        manager_(&control_, NULL, NULL, NULL),
-        metrics_(static_cast<EventDispatcher *>(NULL)),
-        device_(new MockWiMax(&control_, NULL, &metrics_, &manager_,
+        manager_(&control_, nullptr, nullptr, nullptr),
+        metrics_(nullptr),
+        device_(new MockWiMax(&control_, nullptr, &metrics_, &manager_,
                               kTestLinkName, kTestAddress, kTestInterfaceIndex,
                               kTestPath)),
-        service_(new WiMaxService(&control_, NULL, &metrics_, &manager_)),
+        service_(new WiMaxService(&control_, nullptr, &metrics_, &manager_)),
         eap_(new MockEapCredentials()) {
     service_->set_friendly_name(kTestName);
     service_->set_network_id(kTestNetworkId);
@@ -66,7 +66,7 @@ class WiMaxServiceTest : public testing::Test {
 
  protected:
   virtual void TearDown() {
-    service_->device_ = NULL;
+    service_->device_ = nullptr;
   }
 
   void ExpectUpdateService() {
@@ -342,7 +342,7 @@ TEST_F(WiMaxServiceTest, PropertyChanges) {
 
   EXPECT_CALL(*adaptor,
               EmitRpcIdentifierChanged(kDeviceProperty, _));
-  SetDevice(NULL);
+  SetDevice(nullptr);
   Mock::VerifyAndClearExpectations(adaptor);
 }
 
