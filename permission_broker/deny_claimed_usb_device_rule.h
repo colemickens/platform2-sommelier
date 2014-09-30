@@ -16,7 +16,7 @@ struct udev;
 namespace permission_broker {
 
 // DenyClaimedUsbDeviceRule encapsulates the policy that any USB device that is
-// claimed by a driver is |DENY|'d, while all other requests are |IGNORE|d.  It
+// claimed by a driver is |DENY|'d, while all other requests are |IGNORE|'d. It
 // does this by walking the udev device tree (the entire tree, not just the USB
 // subsystem) and attempts, for each device entry, to find a parent device
 // within the USB subsystem whose device node property is the same as the |path|
