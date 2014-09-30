@@ -36,6 +36,12 @@ const char kValidServiceInfoKeyCharacters[] = "abcdefghijklmnopqrstuvwxyz"
 
 namespace peerd {
 
+namespace constants {
+
+const char kSerbusServiceId[] = "serbus";
+
+}  // namespace constants
+
 namespace errors {
 namespace service {
 

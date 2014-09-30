@@ -74,16 +74,22 @@ class Manager {
   std::string Ping(chromeos::ErrorPtr* error);
 
  private:
+  // Used in unit tests to inject mocks.
+  Manager(std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object,
+          std::unique_ptr<Peer> self,
+          std::unique_ptr<AvahiClient> avahi_client);
+
   // Called from AvahiClient.
   void ShouldRefreshAvahiPublisher();
 
-  chromeos::dbus_utils::DBusObject dbus_object_;
+  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<Peer> self_;
+  std::unique_ptr<AvahiClient> avahi_client_;
   std::map<std::string, std::string> service_token_to_id_;
   size_t services_added_{0};
-  AvahiClient avahi_client_;
 
   friend class ManagerDBusProxyTest;
+  friend class ManagerTest;
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };
 

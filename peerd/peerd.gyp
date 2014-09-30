@@ -54,6 +54,7 @@
             'avahi_client_unittest.cc',
             'avahi_service_publisher_unittest.cc',
             'dbus_data_serialization_unittest.cc',
+            'manager_unittest.cc',
             'peer_unittest.cc',
             'peerd_testrunner.cc',
             'service_unittest.cc',

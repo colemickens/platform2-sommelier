@@ -12,11 +12,13 @@
 #include <dbus/bus.h>
 
 #include "peerd/dbus_constants.h"
+#include "peerd/service.h"
 
 using chromeos::Error;
 using chromeos::ErrorPtr;
 using chromeos::dbus_utils::CallMethodAndBlock;
 using chromeos::dbus_utils::ExtractMethodCallResults;
+using peerd::constants::kSerbusServiceId;
 using std::vector;
 
 namespace peerd {

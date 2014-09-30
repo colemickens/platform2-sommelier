@@ -20,6 +20,10 @@
 
 namespace peerd {
 
+namespace constants {
+extern const char kSerbusServiceId[];
+}  // namespace constants
+
 namespace errors {
 namespace service {
 

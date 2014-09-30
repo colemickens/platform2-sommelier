@@ -53,23 +53,24 @@ class Peer {
   virtual ~Peer() = default;
 
   // Returns false on failure.
-  bool SetFriendlyName(chromeos::ErrorPtr* error,
-                       const std::string& friendly_name);
+  virtual bool SetFriendlyName(chromeos::ErrorPtr* error,
+                               const std::string& friendly_name);
   // Returns false on failure.
-  bool SetNote(chromeos::ErrorPtr* error, const std::string& note);
-  void SetLastSeen(uint64_t last_seen);
+  virtual bool SetNote(chromeos::ErrorPtr* error, const std::string& note);
+  virtual void SetLastSeen(uint64_t last_seen);
   // Add a service to be exported by this peer.  Can fail if this peer
   // is already advertising a service with |service_id| or if |service_id|
   // and/or |service_info| are malformed.  Returns false on error, and can
   // optionally provide detailed error information in |error|.
-  bool AddService(chromeos::ErrorPtr* error,
-                  const std::string& service_id,
-                  const std::vector<ip_addr>& addresses,
-                  const std::map<std::string, std::string>& service_info);
+  virtual bool AddService(
+      chromeos::ErrorPtr* error,
+      const std::string& service_id,
+      const std::vector<ip_addr>& addresses,
+      const std::map<std::string, std::string>& service_info);
   // Remove a service advertised by this peer.  Can fail if no service with id
   // |service_id| is in this peer.
-  bool RemoveService(chromeos::ErrorPtr* error,
-                     const std::string& service_id);
+  virtual bool RemoveService(chromeos::ErrorPtr* error,
+                             const std::string& service_id);
 
   // Peer objects will notify ServicePublishers when services are added,
   // updated, and removed.  This is only used for the self instance of peer
@@ -79,7 +80,7 @@ class Peer {
   //
   // The Peer will remove publishers implicitly when each publisher is
   // destroyed.
-  void RegisterServicePublisher(
+  virtual void RegisterServicePublisher(
       base::WeakPtr<ServicePublisherInterface> publisher);
 
  private:
@@ -100,6 +101,7 @@ class Peer {
   std::vector<base::WeakPtr<ServicePublisherInterface>> publishers_;
 
   friend class PeerTest;
+  friend class MockPeer;
   DISALLOW_COPY_AND_ASSIGN(Peer);
 };
 

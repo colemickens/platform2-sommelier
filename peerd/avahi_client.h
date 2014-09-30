@@ -29,20 +29,20 @@ class AvahiClient {
 
   explicit AvahiClient(const scoped_refptr<dbus::Bus>& bus);
   virtual ~AvahiClient();
-  void RegisterAsync(const CompletionAction& cb);
+  virtual void RegisterAsync(const CompletionAction& cb);
   // Register interest in Avahi daemon restarts.  For instance, Avahi
   // restarts should trigger us to re-register all exposed services,
   // since the hostname for our local host may have changed.
   // If Avahi is up right now, we'll call this callback immediately.
   // Registered callbacks are persistent for the life of AvahiClient.
-  void RegisterOnAvahiRestartCallback(const OnAvahiRestartCallback& cb);
+  virtual void RegisterOnAvahiRestartCallback(const OnAvahiRestartCallback& cb);
   // Get an instance of ServicePublisherInterface that knows how to advertise
   // services on Avahi.  From time to time, this pointer will transparently
   // become invalid as the remote daemon signals that bad things have happened.
   // When we come back from these states, we'll call all
   // OnAvahiRestartCallbacks that we have.  At that point, grab a new publisher
   // and repeat.
-  base::WeakPtr<ServicePublisherInterface> GetPublisher();
+  virtual base::WeakPtr<ServicePublisherInterface> GetPublisher();
 
  private:
   // Watch for changes in Avahi server state.

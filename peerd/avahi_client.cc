@@ -22,23 +22,26 @@ using std::string;
 namespace peerd {
 
 AvahiClient::AvahiClient(const scoped_refptr<dbus::Bus>& bus) : bus_{bus} {
-  server_ = bus->GetObjectProxy(
+}
+
+AvahiClient::~AvahiClient() {
+  publisher_.reset();
+  // In unittests, we don't have a server_ since we never call RegisterAsync().
+  if (server_) {
+    // The Bus would do this for us on destruction, but this prevents
+    // callbacks from the proxy after AvahiClient dies.
+    server_->Detach();
+  }
+}
+
+void AvahiClient::RegisterAsync(const CompletionAction& completion_callback) {
+  server_ = bus_->GetObjectProxy(
       dbus_constants::avahi::kServiceName,
       ObjectPath(dbus_constants::avahi::kServerPath));
   // This callback lives for the lifetime of the ObjectProxy.
   server_->SetNameOwnerChangedCallback(
       base::Bind(&AvahiClient::OnServiceOwnerChanged,
                  weak_ptr_factory_.GetWeakPtr()));
-}
-
-AvahiClient::~AvahiClient() {
-  publisher_.reset();
-  // The Bus would do this for us on destruction, but this prevents
-  // callbacks from the proxy after AvahiClient dies.
-  server_->Detach();
-}
-
-void AvahiClient::RegisterAsync(const CompletionAction& completion_callback) {
   // Reconnect to our signals on a new Avahi instance.
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   chromeos::dbus_utils::ConnectToSignal(

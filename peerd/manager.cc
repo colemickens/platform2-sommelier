@@ -14,12 +14,15 @@
 #include "peerd/dbus_constants.h"
 #include "peerd/ip_addr.h"
 #include "peerd/peer.h"
+#include "peerd/service.h"
 
 using chromeos::Error;
 using chromeos::ErrorPtr;
 using chromeos::dbus_utils::AsyncEventSequencer;
+using chromeos::dbus_utils::DBusObject;
 using chromeos::dbus_utils::ExportedObjectManager;
 using dbus::ObjectPath;
+using peerd::constants::kSerbusServiceId;
 using peerd::dbus_constants::kManagerExposeService;
 using peerd::dbus_constants::kManagerInterface;
 using peerd::dbus_constants::kManagerPing;
@@ -34,6 +37,7 @@ using peerd::dbus_constants::kSelfPath;
 using std::map;
 using std::set;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 
 namespace peerd {
@@ -48,15 +52,31 @@ const char kInvalidMonitoringToken[] = "manager.monitoring_token";
 }  // namespace errors
 
 Manager::Manager(ExportedObjectManager* object_manager)
-  : dbus_object_{object_manager, object_manager->GetBus(),
-                 ObjectPath(kManagerServicePath)},
-    avahi_client_{object_manager->GetBus()} {
+  : Manager(unique_ptr<DBusObject>{
+                new DBusObject{object_manager,
+                               object_manager->GetBus(),
+                               ObjectPath{kManagerServicePath}}},
+            unique_ptr<Peer>{},  // Fill in self_ in RegisterAsync().
+            unique_ptr<AvahiClient>{
+                new AvahiClient{object_manager->GetBus()}}) {
 }
+
+Manager::Manager(unique_ptr<DBusObject> dbus_object,
+                 unique_ptr<Peer> self,
+                 unique_ptr<AvahiClient> avahi_client)
+    : dbus_object_{std::move(dbus_object)},
+      self_{std::move(self)},
+      avahi_client_{std::move(avahi_client)} {
+  avahi_client_->RegisterOnAvahiRestartCallback(
+      base::Bind(&Manager::ShouldRefreshAvahiPublisher,
+                 base::Unretained(this)));
+}
+
 
 void Manager::RegisterAsync(const CompletionAction& completion_callback) {
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   chromeos::dbus_utils::DBusInterface* itf =
-      dbus_object_.AddOrGetInterface(kManagerInterface);
+      dbus_object_->AddOrGetInterface(kManagerInterface);
 
   itf->AddMethodHandler(kManagerStartMonitoring,
                         base::Unretained(this),
@@ -80,22 +100,21 @@ void Manager::RegisterAsync(const CompletionAction& completion_callback) {
                         base::Unretained(this),
                         &Manager::Ping);
   chromeos::ErrorPtr error;
-  self_ = Peer::MakePeer(
-      &error,
-      dbus_object_.GetObjectManager().get(),
-      ObjectPath(kSelfPath),
-      base::GenerateGUID(),  // Every boot is a new GUID for now.
-      "CrOS Core Device",  // TODO(wiley): persist name to disk.
-      "",  // TODO(wiley): persist note to disk.
-      0,  // Last seen time for self is defined to be 0.
-      sequencer->GetHandler("Failed exporting Self.", true));
-  CHECK(self_) << "Failed to construct Peer for Self.";
-  dbus_object_.RegisterAsync(
+  if (!self_) {
+    self_ = Peer::MakePeer(
+        &error,
+        dbus_object_->GetObjectManager().get(),
+        ObjectPath(kSelfPath),
+        base::GenerateGUID(),  // Every boot is a new GUID for now.
+        "CrOS Core Device",  // TODO(wiley): persist name to disk.
+        "",  // TODO(wiley): persist note to disk.
+        0,  // Last seen time for self is defined to be 0.
+        sequencer->GetHandler("Failed exporting Self.", true));
+    CHECK(self_) << "Failed to construct Peer for Self.";
+  }
+  dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed exporting Manager.", true));
-  avahi_client_.RegisterOnAvahiRestartCallback(
-      base::Bind(&Manager::ShouldRefreshAvahiPublisher,
-                 base::Unretained(this)));
-  avahi_client_.RegisterAsync(
+  avahi_client_->RegisterAsync(
       sequencer->GetHandler("Failed AvahiClient.RegisterAsync().", true));
   sequencer->OnAllTasksCompletedCall({completion_callback});
 }
@@ -114,6 +133,14 @@ string Manager::ExposeService(chromeos::ErrorPtr* error,
                               const map<string, string>& service_info) {
   VLOG(1) << "Exposing service '" << service_id << "'.";
   string token;
+  if (service_id == kSerbusServiceId) {
+    Error::AddToPrintf(error,
+                       kPeerdErrorDomain,
+                       errors::service::kInvalidServiceId,
+                       "Cannot expose a service named %s",
+                       kSerbusServiceId);
+    return token;
+  }
   if (!self_->AddService(error, service_id, {}, service_info)) {
     return token;
   }
@@ -159,7 +186,7 @@ void Manager::ShouldRefreshAvahiPublisher() {
   LOG(INFO) << "Publishing services to mDNS";
   // The old publisher has been invalidated, and the records pulled.  We should
   // re-register the records we care about.
-  self_->RegisterServicePublisher(avahi_client_.GetPublisher());
+  self_->RegisterServicePublisher(avahi_client_->GetPublisher());
 }
 
 }  // namespace peerd
