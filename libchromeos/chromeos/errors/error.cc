@@ -47,23 +47,11 @@ void Error::AddToPrintf(ErrorPtr* error, const std::string& domain,
 }
 
 bool Error::HasDomain(const std::string& domain) const {
-  const Error* err = this;
-  while (err) {
-    if (err->GetDomain() == domain)
-      return true;
-    err = err->GetInnerError();
-  }
-  return false;
+  return FindErrorOfDomain(this, domain) != nullptr;
 }
 
 bool Error::HasError(const std::string& domain, const std::string& code) const {
-  const Error* err = this;
-  while (err) {
-    if (err->GetDomain() == domain && err->GetCode() == code)
-      return true;
-    err = err->GetInnerError();
-  }
-  return false;
+  return FindError(this, domain, code) != nullptr;
 }
 
 const Error* Error::GetFirstError() const {
@@ -77,4 +65,26 @@ Error::Error(const std::string& domain, const std::string& code,
              const std::string& message, ErrorPtr inner_error) :
     domain_(domain), code_(code), message_(message),
     inner_error_(std::move(inner_error)) {
+}
+
+const Error* Error::FindErrorOfDomain(const Error* error_chain_start,
+                                      const std::string& domain) {
+  while (error_chain_start) {
+    if (error_chain_start->GetDomain() == domain)
+      break;
+    error_chain_start = error_chain_start->GetInnerError();
+  }
+  return error_chain_start;
+}
+
+const Error* Error::FindError(const Error* error_chain_start,
+                              const std::string& domain,
+                              const std::string& code) {
+  while (error_chain_start) {
+    if (error_chain_start->GetDomain() == domain &&
+        error_chain_start->GetCode() == code)
+      break;
+    error_chain_start = error_chain_start->GetInnerError();
+  }
+  return error_chain_start;
 }

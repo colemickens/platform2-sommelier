@@ -42,11 +42,12 @@ class CHROMEOS_EXPORT Error {
   const std::string& GetCode() const { return code_; }
   const std::string& GetMessage() const { return message_; }
 
-  // Checks if this or any of the inner error in the chain has the specified
+  // Checks if this or any of the inner errors in the chain has the specified
   // error domain.
   bool HasDomain(const std::string& domain) const;
-  // Checks if this or any of the inner error in the chain matches the specified
-  // error domain and code.
+
+  // Checks if this or any of the inner errors in the chain matches the
+  // specified error domain and code.
   bool HasError(const std::string& domain, const std::string& code) const;
 
   // Gets a pointer to the inner error, if present. Returns nullptr otherwise.
@@ -55,6 +56,22 @@ class CHROMEOS_EXPORT Error {
   // Gets a pointer to the first error occurred.
   // Returns itself if no inner error are available.
   const Error* GetFirstError() const;
+
+  // Finds an error object of particular domain in the error chain stating at
+  // |error_chain_start|. Returns the a pointer to the first matching error
+  // object found.
+  // Returns nullptr if no match is found.
+  // This method is safe to call on a nullptr |error_chain_start| in which case
+  // the result will also be nullptr.
+  static const Error* FindErrorOfDomain(const Error* error_chain_start,
+                                        const std::string& domain);
+  // Finds an error of particular domain with the given code in the error chain
+  // stating at |error_chain_start|. Returns the pointer to the first matching
+  // error object.
+  // Returns nullptr if no match is found or if |error_chain_start| is nullptr.
+  static const Error* FindError(const Error* error_chain_start,
+                                const std::string& domain,
+                                const std::string& code);
 
  protected:
   // Constructor is protected since this object is supposed to be
