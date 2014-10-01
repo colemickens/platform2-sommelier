@@ -22,6 +22,7 @@ LIBBUFFET_EXPORT extern const char kManagerInterface[];
 LIBBUFFET_EXPORT extern const char kManagerServicePath[];
 
 // Methods exposed as part of kManagerInterface.
+LIBBUFFET_EXPORT extern const char kManagerStartDevice[];
 LIBBUFFET_EXPORT extern const char kManagerCheckDeviceRegistered[];
 LIBBUFFET_EXPORT extern const char kManagerGetDeviceInfo[];
 LIBBUFFET_EXPORT extern const char kManagerStartRegisterDevice[];

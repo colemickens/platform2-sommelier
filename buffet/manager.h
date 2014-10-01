@@ -43,6 +43,8 @@ class Manager final {
 
  private:
   // DBus methods:
+  // Handles calls to org.chromium.Buffet.Manager.StartDevice().
+  void HandleStartDevice(chromeos::ErrorPtr* error);
   // Handles calls to org.chromium.Buffet.Manager.CheckDeviceRegistered().
   std::string HandleCheckDeviceRegistered(chromeos::ErrorPtr* error);
   // Handles calls to org.chromium.Buffet.Manager.GetDeviceInfo().

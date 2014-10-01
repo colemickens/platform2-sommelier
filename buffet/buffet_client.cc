@@ -38,6 +38,7 @@ namespace {
 void usage() {
   std::cerr << "Possible commands:" << std::endl;
   std::cerr << "  " << kManagerTestMethod << " <message>" << std::endl;
+  std::cerr << "  " << kManagerStartDevice << std::endl;
   std::cerr << "  " << kManagerCheckDeviceRegistered << std::endl;
   std::cerr << "  " << kManagerGetDeviceInfo << std::endl;
   std::cerr << "  " << kManagerStartRegisterDevice
@@ -85,6 +86,26 @@ class BuffetHelperProxy {
     }
 
     std::cout << "Received a response: " << response_message << std::endl;
+    return EX_OK;
+  }
+
+  int CallManagerStartDevice(const CommandLine::StringVector& args) {
+    if (!args.empty()) {
+      std::cerr << "Invalid number of arguments for "
+                << "Manager." << kManagerStartDevice << std::endl;
+      usage();
+      return EX_USAGE;
+    }
+
+    ErrorPtr error;
+    auto response = CallMethodAndBlock(
+        manager_proxy_,
+        kManagerInterface, kManagerStartDevice, &error);
+    if (!response || !ExtractMethodCallResults(response.get(), &error)) {
+      std::cout << "Failed to receive a response:"
+                << error->GetMessage() << std::endl;
+      return EX_UNAVAILABLE;
+    }
     return EX_OK;
   }
 
@@ -298,6 +319,9 @@ int main(int argc, char** argv) {
 
   if (command.compare(kManagerTestMethod) == 0) {
     err = helper.CallTestMethod(args);
+  } else if (command.compare(kManagerStartDevice) == 0 ||
+             command.compare("sd") == 0) {
+    err = helper.CallManagerStartDevice(args);
   } else if (command.compare(kManagerCheckDeviceRegistered) == 0 ||
              command.compare("cr") == 0) {
     err = helper.CallManagerCheckDeviceRegistered(args);

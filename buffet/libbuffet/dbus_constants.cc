@@ -15,6 +15,7 @@ const char kRootServicePath[] = "/org/chromium/Buffet";
 const char kManagerInterface[] = "org.chromium.Buffet.Manager";
 const char kManagerServicePath[] = "/org/chromium/Buffet/Manager";
 
+const char kManagerStartDevice[]            = "StartDevice";
 const char kManagerCheckDeviceRegistered[]  = "CheckDeviceRegistered";
 const char kManagerGetDeviceInfo[]          = "GetDeviceInfo";
 const char kManagerStartRegisterDevice[]    = "StartRegisterDevice";

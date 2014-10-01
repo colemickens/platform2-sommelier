@@ -36,6 +36,9 @@ Manager::Manager(const base::WeakPtr<ExportedObjectManager>& object_manager)
 void Manager::RegisterAsync(const AsyncEventSequencer::CompletionAction& cb) {
   chromeos::dbus_utils::DBusInterface* itf =
       dbus_object_.AddOrGetInterface(dbus_constants::kManagerInterface);
+  itf->AddMethodHandler(dbus_constants::kManagerStartDevice,
+                        base::Unretained(this),
+                        &Manager::HandleStartDevice);
   itf->AddMethodHandler(dbus_constants::kManagerCheckDeviceRegistered,
                         base::Unretained(this),
                         &Manager::HandleCheckDeviceRegistered);
@@ -66,6 +69,11 @@ void Manager::RegisterAsync(const AsyncEventSequencer::CompletionAction& cb) {
   device_info_ = std::unique_ptr<DeviceRegistrationInfo>(
       new DeviceRegistrationInfo(command_manager_, state_manager_));
   device_info_->Load();
+}
+
+void Manager::HandleStartDevice(chromeos::ErrorPtr* error) {
+  LOG(INFO) << "Received call to Manager.StartDevice()";
+  LOG(INFO) << "Not implemented";
 }
 
 std::string Manager::HandleCheckDeviceRegistered(chromeos::ErrorPtr* error) {
