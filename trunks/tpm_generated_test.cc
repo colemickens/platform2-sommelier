@@ -75,6 +75,72 @@ TEST(GeneratorTest, ParseBufferOverflow) {
             Parse_TPM2B_MAX_BUFFER(&malformed2, &tmp, NULL));
 }
 
+TEST(GeneratorTest, SynchronousCommand) {
+  // A hand-rolled TPM2_Startup command.
+  std::string expected_command("\x80\x01"          // tag=TPM_ST_NO_SESSIONS
+                               "\x00\x00\x00\x0C"  // size=12
+                               "\x00\x00\x01\x44"  // code=TPM_CC_Startup
+                               "\x00\x00",         // param=TPM_SU_CLEAR
+                               12);
+  std::string command_response("\x80\x01"           // tag=TPM_ST_NO_SESSIONS
+                               "\x00\x00\x00\x0A"   // size=10
+                               "\x00\x00\x00\x00",  // code=TPM_RC_SUCCESS
+                               10);
+  StrictMock<MockCommandTransceiver> transceiver;
+  EXPECT_CALL(transceiver, SendCommandAndWait(expected_command, _))
+    .WillOnce(DoAll(SetArgPointee<1>(command_response),
+                    Return(TPM_RC_SUCCESS)));
+  StrictMock<MockAuthorizationDelegate> authorization;
+  EXPECT_CALL(authorization, GetCommandAuthorization(_, _))
+    .WillOnce(Return(true));
+  Tpm tpm(&transceiver);
+  EXPECT_EQ(TPM_RC_SUCCESS, tpm.StartupSync(TPM_SU_CLEAR, &authorization));
+}
+
+TEST(GeneratorTest, SynchronousCommandWithError) {
+  // A hand-rolled TPM2_Startup command.
+  std::string expected_command("\x80\x01"          // tag=TPM_ST_NO_SESSIONS
+                               "\x00\x00\x00\x0C"  // size=12
+                               "\x00\x00\x01\x44"  // code=TPM_CC_Startup
+                               "\x00\x00",         // param=TPM_SU_CLEAR
+                               12);
+  std::string command_response("\x80\x01"           // tag=TPM_ST_NO_SESSIONS
+                               "\x00\x00\x00\x0A"   // size=10
+                               "\x00\x00\x01\x01",  // code=TPM_RC_FAILURE
+                               10);
+  StrictMock<MockCommandTransceiver> transceiver;
+  EXPECT_CALL(transceiver, SendCommandAndWait(expected_command, _))
+    .WillOnce(DoAll(SetArgPointee<1>(command_response),
+                    Return(TPM_RC_SUCCESS)));
+  StrictMock<MockAuthorizationDelegate> authorization;
+  EXPECT_CALL(authorization, GetCommandAuthorization(_, _))
+    .WillOnce(Return(true));
+  Tpm tpm(&transceiver);
+  EXPECT_EQ(TPM_RC_FAILURE, tpm.StartupSync(TPM_SU_CLEAR, &authorization));
+}
+
+TEST(GeneratorTest, SynchronousCommandWithTransceiverError) {
+  // A hand-rolled TPM2_Startup command.
+  std::string expected_command("\x80\x01"          // tag=TPM_ST_NO_SESSIONS
+                               "\x00\x00\x00\x0C"  // size=12
+                               "\x00\x00\x01\x44"  // code=TPM_CC_Startup
+                               "\x00\x00",         // param=TPM_SU_CLEAR
+                               12);
+  std::string command_response("\x80\x01"           // tag=TPM_ST_NO_SESSIONS
+                               "\x00\x00\x00\x0A"   // size=10
+                               "\x00\x00\x00\x00",  // code=TPM_RC_SUCCESS
+                               10);
+  StrictMock<MockCommandTransceiver> transceiver;
+  EXPECT_CALL(transceiver, SendCommandAndWait(expected_command, _))
+    .WillOnce(DoAll(SetArgPointee<1>(command_response),
+                    Return(TPM_RC_FAILURE)));
+  StrictMock<MockAuthorizationDelegate> authorization;
+  EXPECT_CALL(authorization, GetCommandAuthorization(_, _))
+    .WillOnce(Return(true));
+  Tpm tpm(&transceiver);
+  EXPECT_EQ(TPM_RC_FAILURE, tpm.StartupSync(TPM_SU_CLEAR, &authorization));
+}
+
 // A fixture for asynchronous command flow tests.
 class CommandFlowTest : public testing::Test {
  public:
@@ -86,8 +152,8 @@ class CommandFlowTest : public testing::Test {
   }
 
   void CertifyCallback(TPM_RC response_code,
-                       TPM2B_ATTEST certify_info,
-                       TPMT_SIGNATURE signature) {
+                       const TPM2B_ATTEST& certify_info,
+                       const TPMT_SIGNATURE& signature) {
     response_code_ = response_code;
     signed_data_ = StringFrom_TPM2B_ATTEST(certify_info);
     signature_ = StringFrom_TPM2B_PUBLIC_KEY_RSA(

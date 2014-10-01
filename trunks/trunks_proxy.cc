@@ -42,6 +42,10 @@ void TrunksProxy::SendCommand(const std::string& command,
                       base::Bind(&trunks::TrunksProxy::OnResponse, callback));
 }
 
+uint32_t TrunksProxy::SendCommandAndWait(const std::string& command,
+                                         std::string* response) {
+  return 0;
+}
 void TrunksProxy::OnResponse(const SendCommandCallback& callback,
                              dbus::Response* response) {
   if (!response) {

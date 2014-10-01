@@ -995,18 +995,17 @@ class Command(object):
   """Represents a TPM command."""
 
   _HANDLE_RE = re.compile(r'TPMI_.H_.*')
-  _APPENDED_ARGS = """
-      AuthorizationDelegate* authorization_delegate,
+  _CALLBACK_ARG = """
       const %(method_name)sResponse& callback"""
-  _METHOD_START = """
-void Tpm::%(method_name)s(%(method_args)s) {
+  _DELEGATE_ARG = """
+      AuthorizationDelegate* authorization_delegate"""
+  _SERIALIZE_ARG = """
+      std::string* serialized_command"""
+  _PARSE_ARG = """
+      const std::string& response"""
+  _SERIALIZE_FUNCTION_START = """
+TPM_RC Tpm::SerializeCommand_%(method_name)s(%(method_args)s) {
   TPM_RC rc = TPM_RC_SUCCESS;
-  base::Callback<void(TPM_RC)> error_reporter =
-      base::Bind(%(method_name)sErrorCallback, callback);
-  base::Callback<void(const std::string&)> parser =
-      base::Bind(%(method_name)sResponseParser,
-                 callback,
-                 authorization_delegate);
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
   std::string handle_section_bytes;
@@ -1019,15 +1018,13 @@ void Tpm::%(method_name)s(%(method_args)s) {
       %(var_name)s,
       &%(var_name)s_bytes);
   if (rc != TPM_RC_SUCCESS) {
-    error_reporter.Run(rc);
-    return;
+    return rc;
   }"""
   _ENCRYPT_PARAMETER = """
   // Encrypt just the parameter data, not the size.
   std::string tmp = %(var_name)s_bytes.substr(2);
   if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    error_reporter.Run(TRUNKS_RC_ENCRYPTION_FAILED);
-    return;
+    return TRUNKS_RC_ENCRYPTION_FAILED;
   }
   %(var_name)s_bytes.replace(2, std::string::npos, tmp);"""
   _HASH_START = """
@@ -1049,8 +1046,7 @@ void Tpm::%(method_name)s(%(method_args)s) {
   if (!authorization_delegate->GetCommandAuthorization(
       command_hash,
       &authorization_section_bytes)) {
-    error_reporter.Run(TRUNKS_RC_AUTHORIZATION_FAILED);
-    return;
+    return TRUNKS_RC_AUTHORIZATION_FAILED;
   }
   std::string authorization_size_bytes;
   if (!authorization_section_bytes.empty()) {
@@ -1059,42 +1055,26 @@ void Tpm::%(method_name)s(%(method_args)s) {
     rc = Serialize_UINT32(authorization_section_bytes.size(),
                           &authorization_size_bytes);
     if (rc != TPM_RC_SUCCESS) {
-      error_reporter.Run(rc);
-      return;
+      return rc;
     }
     command_size += authorization_size_bytes.size() +
                     authorization_section_bytes.size();
   }"""
-  _METHOD_END = """
-  std::string command = tag_bytes +
+  _SERIALIZE_FUNCTION_END = """
+  *serialized_command = tag_bytes +
                         command_size_bytes +
                         command_code_bytes +
                         handle_section_bytes +
                         authorization_size_bytes +
                         authorization_section_bytes +
                         parameter_section_bytes;
-  CHECK(command.size() == command_size) << "Command size mismatch!";
-  transceiver_->SendCommand(command, parser);
-}
-"""
-  _ERROR_CALLBACK_START = """
-void %(method_name)sErrorCallback(
-    const Tpm::%(method_name)sResponse& callback,
-    TPM_RC response_code) {
-  callback.Run(response_code"""
-  _ERROR_CALLBACK_ARG = """,
-               %(arg_type)s()"""
-  _ERROR_CALLBACK_END = """);
+  CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
+  return TPM_RC_SUCCESS;
 }
 """
   _RESPONSE_PARSER_START = """
-void %(method_name)sResponseParser(
-    const Tpm::%(method_name)sResponse& callback,
-    AuthorizationDelegate* authorization_delegate,
-    const std::string& response) {
+TPM_RC Tpm::ParseResponse_%(method_name)s(%(method_args)s) {
   TPM_RC rc = TPM_RC_SUCCESS;
-  base::Callback<void(TPM_RC)> error_reporter =
-      base::Bind(%(method_name)sErrorCallback, callback);
   std::string buffer(response);"""
   _PARSE_LOCAL_VAR = """
   %(var_type)s %(var_name)s;
@@ -1104,17 +1084,23 @@ void %(method_name)sResponseParser(
       &%(var_name)s,
       &%(var_name)s_bytes);
   if (rc != TPM_RC_SUCCESS) {
-    error_reporter.Run(rc);
-    return;
+    return rc;
+  }"""
+  _PARSE_ARG_VAR = """
+  std::string %(var_name)s_bytes;
+  rc = Parse_%(var_type)s(
+      &buffer,
+      %(var_name)s,
+      &%(var_name)s_bytes);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
   }"""
   _RESPONSE_ERROR_CHECK = """
   if (response_size != response.size()) {
-    error_reporter.Run(TPM_RC_SIZE);
-    return;
+    return TPM_RC_SIZE;
   }
   if (response_code != TPM_RC_SUCCESS) {
-    error_reporter.Run(response_code);
-    return;
+    return response_code;
   }"""
   _RESPONSE_SECTION_SPLIT = """
   std::string authorization_section_bytes;
@@ -1122,12 +1108,10 @@ void %(method_name)sResponseParser(
     UINT32 parameter_section_size = buffer.size();
     rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
     if (rc != TPM_RC_SUCCESS) {
-      error_reporter.Run(rc);
-      return;
+      return rc;
     }
     if (parameter_section_size > buffer.size()) {
-      error_reporter.Run(TPM_RC_INSUFFICIENT);
-      return;
+      return TPM_RC_INSUFFICIENT;
     }
     authorization_section_bytes = buffer.substr(parameter_section_size);
     // Keep the parameter section in |buffer|.
@@ -1140,8 +1124,7 @@ void %(method_name)sResponseParser(
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
-      error_reporter.Run(TRUNKS_RC_AUTHORIZATION_FAILED);
-      return;
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }"""
   _DECRYPT_PARAMETER = """
@@ -1149,25 +1132,89 @@ void %(method_name)sResponseParser(
     // Decrypt just the parameter data, not the size.
     std::string tmp = %(var_name)s_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      error_reporter.Run(TRUNKS_RC_ENCRYPTION_FAILED);
-      return;
+      return TRUNKS_RC_ENCRYPTION_FAILED;
     }
     %(var_name)s_bytes.replace(2, std::string::npos, tmp);
     rc = Parse_%(var_type)s(
         &%(var_name)s_bytes,
-        &%(var_name)s,
+        %(var_name)s,
         NULL);
     if (rc != TPM_RC_SUCCESS) {
-      error_reporter.Run(rc);
-      return;
+      return rc;
     }
   }"""
-  _RESPONSE_CALLBACK_START = """
-  callback.Run(response_code"""
-  _RESPONSE_CALLBACK_ARG = """,
-               %(arg_name)s"""
-  _RESPONSE_CALLBACK_END = ');'
   _RESPONSE_PARSER_END = """
+  return TPM_RC_SUCCESS;
+}
+"""
+  _ERROR_CALLBACK_START = """
+void %(method_name)sErrorCallback(
+    const Tpm::%(method_name)sResponse& callback,
+    TPM_RC response_code) {
+  callback.Run(response_code"""
+  _ERROR_CALLBACK_ARG = """,
+               %(arg_type)s()"""
+  _ERROR_CALLBACK_END = """);
+}
+"""
+  _RESPONSE_CALLBACK_START = """
+void %(method_name)sResponseParser(
+    const Tpm::%(method_name)sResponse& callback,
+    AuthorizationDelegate* authorization_delegate,
+    const std::string& response) {
+  base::Callback<void(TPM_RC)> error_reporter =
+      base::Bind(%(method_name)sErrorCallback, callback);"""
+  _DECLARE_ARG_VAR = """
+  %(var_type)s %(var_name)s;"""
+  _RESPONSE_CALLBACK_END = """
+  TPM_RC rc = Tpm::ParseResponse_%(method_name)s(
+      response,%(method_arg_names_out)s
+      authorization_delegate);
+  if (rc != TPM_RC_SUCCESS) {
+    error_reporter.Run(rc);
+    return;
+  }
+  callback.Run(
+      rc%(method_arg_names_in)s);
+}
+"""
+  _ASYNC_METHOD = """
+void Tpm::%(method_name)s(%(method_args)s) {
+  base::Callback<void(TPM_RC)> error_reporter =
+      base::Bind(%(method_name)sErrorCallback, callback);
+  base::Callback<void(const std::string&)> parser =
+      base::Bind(%(method_name)sResponseParser,
+                 callback,
+                 authorization_delegate);
+  std::string command;
+  TPM_RC rc = SerializeCommand_%(method_name)s(%(method_arg_names)s
+      &command,
+      authorization_delegate);
+  if (rc != TPM_RC_SUCCESS) {
+    error_reporter.Run(rc);
+    return;
+  }
+  transceiver_->SendCommand(command, parser);
+}
+"""
+  _SYNC_METHOD = """
+TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
+  std::string command;
+  TPM_RC rc = SerializeCommand_%(method_name)s(%(method_arg_names_in)s
+      &command,
+      authorization_delegate);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
+  std::string response;
+  rc = transceiver_->SendCommandAndWait(command, &response);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
+  rc = ParseResponse_%(method_name)s(
+      response,%(method_arg_names_out)s
+      authorization_delegate);
+  return rc;
 }
 """
 
@@ -1186,22 +1233,19 @@ void %(method_name)sResponseParser(
       out_file: Generated code is written to this file.
     """
     self._OutputCallbackSignature(out_file)
-    self._OutputMethodSignature(out_file)
+    self._OutputMethodSignatures(out_file)
 
-  def OutputMethodImplementation(self, out_file):
-    """Generates the implementation of a Tpm class method for this command.
-
-    The method assembles a command to be sent unmodified to the TPM and invokes
-    the CommandTransceiver with the command. Errors are reported directly to the
-    response callback via the error callback (see OutputErrorCallback).
+  def OutputSerializeFunction(self, out_file):
+    """Generates a serialize function for the command inputs.
 
     Args:
       out_file: Generated code is written to this file.
     """
     # Categorize arguments as either handles or parameters.
     handles, parameters = self._SplitArgs(self.request_args)
-    out_file.write(self._METHOD_START % {'method_name': self._MethodName(),
-                                         'method_args': self._MethodArgs()})
+    out_file.write(self._SERIALIZE_FUNCTION_START %
+      {'method_name': self._MethodName(),
+       'method_args': self._SerializeArgs()})
     out_file.write(self._DECLARE_COMMAND_CODE % {'command_code':
                                                  self.command_code})
     # Serialize the command code and all the handles and parameters.
@@ -1235,36 +1279,17 @@ void %(method_name)sResponseParser(
                     'var_type': 'TPMI_ST_COMMAND_TAG'})
     out_file.write(self._SERIALIZE_LOCAL_VAR % {'var_name': 'command_size',
                                                 'var_type': 'UINT32'})
-    out_file.write(self._METHOD_END)
+    out_file.write(self._SERIALIZE_FUNCTION_END)
 
-  def OutputErrorCallback(self, out_file):
-    """Generates the implementation of an error callback for this command.
-
-    The error callback simply calls the command response callback with the error
-    as the first argument and default values for all other arguments.
+  def OutputParseFunction(self, out_file):
+    """Generates a parse function for the command outputs.
 
     Args:
       out_file: Generated code is written to this file.
     """
-    out_file.write(self._ERROR_CALLBACK_START % {'method_name':
-                                                 self._MethodName()})
-    for arg in self.response_args:
-      out_file.write(self._ERROR_CALLBACK_ARG % {'arg_type': arg['type']})
-    out_file.write(self._ERROR_CALLBACK_END)
-
-  def OutputResponseParser(self, out_file):
-    """Generates the implementation of a response parser for this command.
-
-    The response parser takes the unmodified response from the TPM, parses it,
-    and invokes the original response callback with the parsed response args.
-    Errors during parsing or from the TPM are reported directly to the response
-    callback via the error callback (see OutputErrorCallback).
-
-    Args:
-      out_file: Generated code is written to this file.
-    """
-    out_file.write(self._RESPONSE_PARSER_START % {'method_name':
-                                                  self._MethodName()})
+    out_file.write(self._RESPONSE_PARSER_START %
+        {'method_name': self._MethodName(),
+         'method_args': self._ParseArgs()})
     # Parse the header -- this should always exist.
     out_file.write(self._PARSE_LOCAL_VAR % {'var_name': 'tag',
                                             'var_type': 'TPM_ST'})
@@ -1290,26 +1315,89 @@ void %(method_name)sResponseParser(
     out_file.write(self._AUTHORIZE_RESPONSE)
     # Parse response parameters.
     for arg in self.response_args:
-      out_file.write(self._PARSE_LOCAL_VAR % {'var_name': arg['name'],
-                                              'var_type': arg['type']})
+      out_file.write(self._PARSE_ARG_VAR % {'var_name': arg['name'],
+                                            'var_type': arg['type']})
     if self.response_args:
       out_file.write(self._DECRYPT_PARAMETER % {'var_name':
                                                 self.response_args[0]['name'],
                                                 'var_type':
                                                 self.response_args[0]['type']})
-    # All arguments are ready, run the response callback.
-    out_file.write(self._RESPONSE_CALLBACK_START)
-    for arg in self.response_args:
-      out_file.write(self._RESPONSE_CALLBACK_ARG % {'arg_name': arg['name']})
-    out_file.write(self._RESPONSE_CALLBACK_END)
     out_file.write(self._RESPONSE_PARSER_END)
 
-  def _OutputMethodSignature(self, out_file):
+  def OutputMethodImplementation(self, out_file):
+    """Generates the implementation of a Tpm class method for this command.
+
+    The method assembles a command to be sent unmodified to the TPM and invokes
+    the CommandTransceiver with the command. Errors are reported directly to the
+    response callback via the error callback (see OutputErrorCallback).
+
+    Args:
+      out_file: Generated code is written to this file.
+    """
+    out_file.write(self._ASYNC_METHOD %
+        {'method_name': self._MethodName(),
+         'method_args': self._AsyncArgs(),
+         'method_arg_names': self._ArgNameList(self._RequestArgs(),
+                                               trailing_comma=True)})
+    out_file.write(self._SYNC_METHOD %
+        {'method_name': self._MethodName(),
+         'method_args': self._SyncArgs(),
+         'method_arg_names_in': self._ArgNameList(self._RequestArgs(),
+                                                  trailing_comma=True),
+         'method_arg_names_out': self._ArgNameList(self.response_args,
+                                                   trailing_comma=True)})
+
+  def OutputErrorCallback(self, out_file):
+    """Generates the implementation of an error callback for this command.
+
+    The error callback simply calls the command response callback with the error
+    as the first argument and default values for all other arguments.
+
+    Args:
+      out_file: Generated code is written to this file.
+    """
+    out_file.write(self._ERROR_CALLBACK_START % {'method_name':
+                                                 self._MethodName()})
+    for arg in self.response_args:
+      out_file.write(self._ERROR_CALLBACK_ARG % {'arg_type': arg['type']})
+    out_file.write(self._ERROR_CALLBACK_END)
+
+  def OutputResponseCallback(self, out_file):
+    """Generates the implementation of a response callback for this command.
+
+    The response callback takes the unmodified response from the TPM, parses it,
+    and invokes the original response callback with the parsed response args.
+    Errors during parsing or from the TPM are reported directly to the response
+    callback via the error callback (see OutputErrorCallback).
+
+    Args:
+      out_file: Generated code is written to this file.
+    """
+    out_file.write(self._RESPONSE_CALLBACK_START % {'method_name':
+                                                    self._MethodName()})
+    for arg in self.response_args:
+      out_file.write(self._DECLARE_ARG_VAR % {'var_type': arg['type'],
+                                              'var_name': arg['name']})
+    out_file.write(self._RESPONSE_CALLBACK_END %
+        {'method_name': self._MethodName(),
+         'method_arg_names_in': self._ArgNameList(self.response_args,
+                                                  leading_comma=True),
+         'method_arg_names_out': self._ArgNameList(self.response_args,
+                                                   prefix='&',
+                                                   trailing_comma=True)})
+
+  def _OutputMethodSignatures(self, out_file):
+    out_file.write('  static TPM_RC SerializeCommand_%s(%s);\n' %
+        (self._MethodName(), self._SerializeArgs()))
+    out_file.write('  static TPM_RC ParseResponse_%s(%s);\n' %
+        (self._MethodName(), self._ParseArgs()))
     out_file.write('  virtual void %s(%s);\n' % (self._MethodName(),
-                                                 self._MethodArgs()))
+                                                 self._AsyncArgs()))
+    out_file.write('  virtual TPM_RC %sSync(%s);\n' % (self._MethodName(),
+                                                       self._SyncArgs()))
 
   def _OutputCallbackSignature(self, out_file):
-    args = self._ArgList(self.response_args)
+    args = self._InputArgList(self.response_args)
     if args:
       args = ',' + args
     args = '\n      TPM_RC response_code' + args
@@ -1321,10 +1409,29 @@ void %(method_name)sResponseParser(
       return self.name
     return self.name[5:]
 
-  def _ArgList(self, args):
+  def _InputArgList(self, args):
     if args:
-      arg_list = ['%s %s' % (a['type'], a['name']) for a in args]
+      arg_list = ['const %s& %s' % (a['type'], a['name']) for a in args]
       return '\n      ' + ',\n      '.join(arg_list)
+    return ''
+
+  def _OutputArgList(self, args):
+    if args:
+      arg_list = ['%s* %s' % (a['type'], a['name']) for a in args]
+      return '\n      ' + ',\n      '.join(arg_list)
+    return ''
+
+  def _ArgNameList(self, args, prefix='', leading_comma=False,
+                   trailing_comma=False):
+    if args:
+      arg_list = [(prefix + a['name']) for a in args]
+      header = ''
+      if leading_comma:
+        header = ','
+      trailer = ''
+      if trailing_comma:
+        trailer = ','
+      return header + '\n      ' + ',\n      '.join(arg_list) + trailer
     return ''
 
   def _SplitArgs(self, args):
@@ -1338,21 +1445,46 @@ void %(method_name)sResponseParser(
         parameters.append(arg)
     return handles, parameters
 
-  def _MethodArgs(self):
-    """Computes the argument list for a Tpm command method."""
+  def _RequestArgs(self):
+    """Computes the argument list for a Tpm request."""
     handles, parameters = self._SplitArgs(self.request_args)
     args = []
     # Add a name argument for every handle.  We'll need it to compute cpHash.
     for handle in handles:
       args.append(handle)
-      args.append({'type': 'const std::string&',
+      args.append({'type': 'std::string',
                    'name': '%s_name' % handle['name']})
     for parameter in parameters:
       args.append(parameter)
-    arg_list = self._ArgList(args)
-    if arg_list:
-      arg_list += ','
-    return arg_list + self._APPENDED_ARGS % {'method_name': self._MethodName()}
+    return args
+
+  def _AsyncArgs(self):
+    args = self._InputArgList(self._RequestArgs())
+    if args:
+      args += ','
+    return (args + self._DELEGATE_ARG + ',' +
+            self._CALLBACK_ARG % {'method_name': self._MethodName()})
+
+  def _SyncArgs(self):
+    request_arg_list = self._InputArgList(self._RequestArgs())
+    if request_arg_list:
+      request_arg_list += ','
+    response_arg_list = self._OutputArgList(self.response_args)
+    if response_arg_list:
+      response_arg_list += ','
+    return request_arg_list + response_arg_list + self._DELEGATE_ARG
+
+  def _SerializeArgs(self):
+    args = self._InputArgList(self._RequestArgs())
+    if args:
+      args += ','
+    return args + self._SERIALIZE_ARG + ',' + self._DELEGATE_ARG
+
+  def _ParseArgs(self):
+    args = self._OutputArgList(self.response_args)
+    if args:
+      args = ',' + args
+    return self._PARSE_ARG + args + ',' + self._DELEGATE_ARG
 
 
 class CommandParser(object):
@@ -1422,6 +1554,10 @@ class CommandParser(object):
       return None
     self._NextLine()
     cmd.response_args = self._ParseCommandArgs(cmd)
+    request_var_names = set([arg['name'] for arg in cmd.request_args])
+    for arg in cmd.response_args:
+      if arg['name'] in request_var_names:
+        arg['name'] += '_out'
     if not cmd.command_code:
       print 'Command code not found for %s' % name
       return None
@@ -1536,8 +1672,10 @@ def GenerateImplementation(types, structs, typemap, commands):
   for struct in structs:
     struct.OutputSerialize(out_file, serialized_types, typemap)
   for command in commands:
+    command.OutputSerializeFunction(out_file)
+    command.OutputParseFunction(out_file)
     command.OutputErrorCallback(out_file)
-    command.OutputResponseParser(out_file)
+    command.OutputResponseCallback(out_file)
     command.OutputMethodImplementation(out_file)
   out_file.write(_NAMESPACE_END)
   out_file.close()

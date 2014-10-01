@@ -22,6 +22,12 @@ class CommandTransceiver {
   virtual void SendCommand(
       const std::string& command,
       const base::Callback<void(const std::string& response)>& callback) = 0;
+
+  // Sends |command| unmodified to a TPM device and waits for the |response|. If
+  // a transmission error occurs a TCTI layer error code is returned. On success
+  // returns TPM_RC_SUCCESS.
+  virtual uint32_t SendCommandAndWait(const std::string& command,
+                                      std::string* response) = 0;
 };
 
 }  // namespace trunks

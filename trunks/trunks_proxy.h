@@ -34,6 +34,8 @@ class CHROMEOS_EXPORT TrunksProxy: public CommandTransceiver {
   // when the TPM is done processing |command|.
   virtual void SendCommand(const std::string& command,
                            const SendCommandCallback& callback);
+  virtual uint32_t SendCommandAndWait(const std::string& command,
+                                      std::string* response);
 
  private:
   static void OnResponse(const SendCommandCallback& callback,

@@ -23,6 +23,8 @@ class MockCommandTransceiver : public CommandTransceiver {
   MOCK_METHOD2(SendCommand, void(
       const std::string&,
       const base::Callback<void(const std::string& response)>&));
+  MOCK_METHOD2(SendCommandAndWait, uint32_t(const std::string&,
+                                            std::string*));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockCommandTransceiver);
