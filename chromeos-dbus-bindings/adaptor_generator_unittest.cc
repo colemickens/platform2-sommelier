@@ -51,7 +51,7 @@ namespace chromium {
 
 class TestInterfaceAdaptor {
  public:
-  class TestInterfaceAdaptorMethodInterface {
+  class MethodInterface {
    public:
     virtual std::string Kaneda(
         chromeos::ErrorPtr* /* error */,
@@ -66,7 +66,7 @@ class TestInterfaceAdaptor {
   TestInterfaceAdaptor(
       chromeos::dbus_utils::ExportedObjectManager* object_manager,
       const std::string& object_path,
-      TestInterfaceAdaptorMethodInterface* interface)  // Owned by caller.
+      MethodInterface* interface)  // Owned by caller.
       : interface_(interface),
         dbus_object_(
             object_manager,
@@ -77,15 +77,15 @@ class TestInterfaceAdaptor {
     dbus_interface_->AddMethodHandler(
         "Kaneda",
         base::Unretained(interface_),
-        &TestInterfaceAdaptorMethodInterface::Kaneda);
+        &MethodInterface::Kaneda);
     dbus_interface_->AddMethodHandler(
         "Tetsuo",
         base::Unretained(interface_),
-        &TestInterfaceAdaptorMethodInterface::Tetsuo);
+        &MethodInterface::Tetsuo);
     dbus_interface_->AddMethodHandler(
         "Kei",
         base::Unretained(interface_),
-        &TestInterfaceAdaptorMethodInterface::Kei);
+        &MethodInterface::Kei);
     dbus_object_.RegisterAsync(base::Bind(
         &TestInterfaceAdaptor::OnRegisterComplete, base::Unretained(this)));
   }
@@ -98,7 +98,7 @@ class TestInterfaceAdaptor {
   }
 
  private:
-  TestInterfaceAdaptorMethodInterface* interface_;  // Owned by caller.
+  MethodInterface* interface_;  // Owned by caller.
   chromeos::dbus_utils::DBusObject dbus_object_;
   // Owned by |dbus_object_|.
   chromeos::dbus_utils::DBusInterface* dbus_interface_;

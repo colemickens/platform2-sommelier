@@ -41,12 +41,10 @@ class AdaptorGenerator {
   // Generates the constructor for the adaptor.
   static void AddConstructor(const Interface& interface,
                              const std::string& class_name,
-                             const std::string& method_interface,
                              IndentedText *text);
 
   // Generates the method interface class.
   static void AddMethodInterface(const Interface& interface,
-                                 const std::string& class_name,
                                  IndentedText *text);
 
   // Returns a vector of nesting namepsaces.

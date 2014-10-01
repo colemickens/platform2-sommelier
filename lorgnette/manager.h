@@ -32,8 +32,7 @@ namespace lorgnette {
 class Minijail;
 
 class Manager
-    : public
-      org::chromium::lorgnette::ManagerAdaptor::ManagerAdaptorMethodInterface {
+    : public org::chromium::lorgnette::ManagerAdaptor::MethodInterface {
  public:
   typedef std::map<std::string, std::map<std::string, std::string>> ScannerInfo;
 
@@ -43,7 +42,7 @@ class Manager
   // Start DBus connection.
   void InitDBus(chromeos::dbus_utils::ExportedObjectManager *object_manager);
 
-  // Implementation of ManagerAdaptorMethodInterface.
+  // Implementation of MethodInterface.
   virtual ScannerInfo ListScanners(chromeos::ErrorPtr *error);
   virtual void ScanImage(
       chromeos::ErrorPtr *error,

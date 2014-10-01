@@ -60,11 +60,10 @@ bool AdaptorGenerator::GenerateAdaptor(
   string adaptor_name = StringPrintf("%sAdaptor", class_name.c_str());
   text.AddLine(StringPrintf("class %s {", adaptor_name.c_str()));
   text.AddLineWithOffset("public:", kScopeOffset);
-  string method_interface = StringPrintf("%sAdaptorMethodInterface",
-                                         class_name.c_str());
+
   text.PushOffset(kBlockOffset);
-  AddMethodInterface(interface, method_interface, &text);
-  AddConstructor(interface, adaptor_name, method_interface, &text);
+  AddMethodInterface(interface, &text);
+  AddConstructor(interface, adaptor_name, &text);
   text.AddLine(StringPrintf("virtual ~%s() = default;", adaptor_name.c_str()));
   text.AddLine("virtual void OnRegisterComplete(bool success) {}");
   text.PopOffset();
@@ -83,8 +82,7 @@ bool AdaptorGenerator::GenerateAdaptor(
   text.AddLineWithOffset("private:", kScopeOffset);
 
   text.PushOffset(kBlockOffset);
-  text.AddLine(StringPrintf("%s* interface_;  // Owned by caller.",
-                            method_interface.c_str()));
+  text.AddLine("MethodInterface* interface_;  // Owned by caller.");
   text.AddLine("chromeos::dbus_utils::DBusObject dbus_object_;");
   text.AddLine("// Owned by |dbus_object_|.");
   text.AddLine("chromeos::dbus_utils::DBusInterface* dbus_interface_;");
@@ -128,15 +126,13 @@ string AdaptorGenerator::GenerateHeaderGuard(
 // static
 void AdaptorGenerator::AddConstructor(const Interface& interface,
                                       const string& class_name,
-                                      const string& method_interface,
                                       IndentedText *text) {
   IndentedText block;
   block.AddLine(StringPrintf("%s(", class_name.c_str()));
   block.PushOffset(kLineContinuationOffset);
   block.AddLine("chromeos::dbus_utils::ExportedObjectManager* object_manager,");
   block.AddLine("const std::string& object_path,");
-  block.AddLine(StringPrintf("%s* interface)  // Owned by caller.",
-                             method_interface.c_str()));
+  block.AddLine("MethodInterface* interface)  // Owned by caller.");
   block.AddLine(": interface_(interface),");
   block.PushOffset(kBlockOffset);
   block.AddLine("dbus_object_(");
@@ -162,9 +158,7 @@ void AdaptorGenerator::AddConstructor(const Interface& interface,
     block.PushOffset(kLineContinuationOffset);
     block.AddLine(StringPrintf("\"%s\",", method.name.c_str()));
     block.AddLine("base::Unretained(interface_),");
-    block.AddLine(StringPrintf("&%s::%s);",
-                              method_interface.c_str(),
-                              method.name.c_str()));
+    block.AddLine(StringPrintf("&MethodInterface::%s);", method.name.c_str()));
     block.PopOffset();
   }
   block.AddLine("dbus_object_.RegisterAsync(base::Bind(");
@@ -179,10 +173,9 @@ void AdaptorGenerator::AddConstructor(const Interface& interface,
 
 // static
 void AdaptorGenerator::AddMethodInterface(const Interface& interface,
-                                          const string& class_name,
                                           IndentedText *text) {
   IndentedText block;
-  block.AddLine(StringPrintf("class %s {", class_name.c_str()));
+  block.AddLine("class MethodInterface {");
   block.AddLineWithOffset("public:", kScopeOffset);
   DbusSignature signature;
   block.PushOffset(kBlockOffset);
