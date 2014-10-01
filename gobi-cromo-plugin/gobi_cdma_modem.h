@@ -150,6 +150,10 @@ class GobiCdmaModem
   void MarkForExecPostActivationStepsAfterReset();
   // Checks to see if post activation steps should be executed.
   bool ShouldExecPostActivationSteps() const;
+  // Gets the latest registration state.
+  void GetRegistrationStateInternal(uint32_t& cdma_1x_state,
+                                    uint32_t& cdma_evdo_state,
+                                    DBus::Error& error);
 
   DISALLOW_COPY_AND_ASSIGN(GobiCdmaModem);
 };

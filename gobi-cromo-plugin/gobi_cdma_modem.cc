@@ -636,8 +636,23 @@ std::string GobiCdmaModem::GetEsn(DBus::Error& error) {
 }
 
 void GobiCdmaModem::GetRegistrationState(uint32_t& cdma_1x_state,
-                                     uint32_t& cdma_evdo_state,
-                                     DBus::Error& error) {
+                                         uint32_t& cdma_evdo_state,
+                                         DBus::Error& error) {
+  cdma_1x_state = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
+  cdma_evdo_state = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
+  // Ignore current registration state if the modem state itself hasn't
+  // transitioned to the registered state else a caller may think the modem is
+  // in the registered when we have not marked it as such so other operations
+  // may fail.
+  if (mm_state() < MM_MODEM_STATE_REGISTERED)
+    return;
+
+  GetRegistrationStateInternal(cdma_1x_state, cdma_evdo_state, error);
+}
+
+void GobiCdmaModem::GetRegistrationStateInternal(uint32_t& cdma_1x_state,
+                                                 uint32_t& cdma_evdo_state,
+                                                 DBus::Error& error) {
   ULONG reg_state_evdo;
   ULONG reg_state_1x;
   ULONG roaming_state;
@@ -739,7 +754,7 @@ void GobiCdmaModem::RegistrationStateHandler() {
   DBus::Error error;
   bool registered = false;
 
-  GetRegistrationState(cdma_1x_state, evdo_state, error);
+  GetRegistrationStateInternal(cdma_1x_state, evdo_state, error);
   if (error.is_set())
     return;
   if (cdma_1x_state != MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN ||
