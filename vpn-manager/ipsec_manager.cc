@@ -20,30 +20,10 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <chromeos/process.h>
-#include <gflags/gflags.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 
 #include "vpn-manager/daemon.h"
-
-#pragma GCC diagnostic ignored "-Wstrict-aliasing"
-// Cisco ASA L2TP/IPsec setup instructions indicate using md5 for
-// authentication for the IPsec SA.  Default StrongS/WAN setup is
-// to only propose SHA1.
-DEFINE_string(esp, "aes128-sha1,3des-sha1,aes128-md5,3des-md5",
-              "esp proposals");
-// Windows RRAS requires modp1024 dh-group.  Strongswan's
-// default is modp1536 which it does not support.
-DEFINE_string(ike, "3des-sha1-modp1024", "ike proposals");
-DEFINE_int32(ipsec_timeout, 30, "timeout for ipsec to be established");
-DEFINE_string(leftprotoport, "17/1701", "client protocol/port");
-DEFINE_bool(nat_traversal, true, "Enable NAT-T nat traversal");
-DEFINE_bool(pfs, false, "pfs");
-DEFINE_bool(rekey, true, "rekey");
-DEFINE_string(rightprotoport, "17/1701", "server protocol/port");
-DEFINE_string(tunnel_group, "", "Cisco Tunnel Group Name");
-DEFINE_string(type, "transport", "IPsec type (transport or tunnel)");
-#pragma GCC diagnostic error "-Wstrict-aliasing"
 
 using ::base::FilePath;
 using ::base::StringPrintf;
@@ -74,8 +54,23 @@ const char kSmartcardModuleName[] = "crypto_module";
 
 }  // namespace
 
-IpsecManager::IpsecManager()
+IpsecManager::IpsecManager(const std::string& esp,
+                           const std::string& ike,
+                           int ipsec_timeout,
+                           const std::string& left_protoport,
+                           bool rekey,
+                           const std::string& right_protoport,
+                           const std::string& tunnel_group,
+                           const std::string& type)
     : ServiceManager(kIpsecServiceName),
+      esp_(esp),
+      ike_(ike),
+      ipsec_timeout_(ipsec_timeout),
+      left_protoport_(left_protoport),
+      rekey_(rekey),
+      right_protoport_(right_protoport),
+      tunnel_group_(tunnel_group),
+      type_(type),
       force_local_address_(nullptr),
       output_fd_(-1),
       ike_version_(0),
@@ -370,8 +365,8 @@ std::string IpsecManager::FormatStarterConfigFile() {
   AppendStringSetting(&config, "uniqueids", "no");
 
   config.append("conn managed\n");
-  AppendStringSetting(&config, "ike", FLAGS_ike);
-  AppendStringSetting(&config, "esp", FLAGS_esp);
+  AppendStringSetting(&config, "ike", ike_);
+  AppendStringSetting(&config, "esp", esp_);
   AppendStringSetting(&config, "keyexchange",
                       ike_version_ == 1 ? "ikev1" : "ikev2");
   if (!psk_file_.empty()) {
@@ -383,7 +378,7 @@ std::string IpsecManager::FormatStarterConfigFile() {
       AppendStringSetting(&config, "authby", "psk");
     }
   }
-  AppendBoolSetting(&config, "rekey", FLAGS_rekey);
+  AppendBoolSetting(&config, "rekey", rekey_);
   AppendStringSetting(&config, "left", "%defaultroute");
   if (!client_cert_slot_.empty()) {
     std::string smartcard = StringPrintf("%%smartcard%s@%s:%s",
@@ -392,15 +387,14 @@ std::string IpsecManager::FormatStarterConfigFile() {
                                          client_cert_id_.c_str());
     AppendStringSetting(&config, "leftcert", smartcard);
   }
-  std::string tunnel_group = FLAGS_tunnel_group;
-  if (!tunnel_group.empty()) {
+  if (!tunnel_group_.empty()) {
     AppendStringSetting(&config, "aggressive", "yes");
     std::string hex_tunnel_id =
-      base::HexEncode(tunnel_group.c_str(), tunnel_group.length());
+      base::HexEncode(tunnel_group_.c_str(), tunnel_group_.length());
     std::string left_id = StringPrintf("@#%s", hex_tunnel_id.c_str());
     AppendStringSetting(&config, "leftid", left_id);
   }
-  AppendStringSetting(&config, "leftprotoport", FLAGS_leftprotoport);
+  AppendStringSetting(&config, "leftprotoport", left_protoport_);
   AppendStringSetting(&config, "leftupdown", IPSEC_UPDOWN);
   AppendStringSetting(&config, "right", remote_address_text_);
   if (!server_ca_subject_.empty()) {
@@ -411,8 +405,8 @@ std::string IpsecManager::FormatStarterConfigFile() {
   } else {
     AppendStringSetting(&config, "rightid", server_id_);
   }
-  AppendStringSetting(&config, "rightprotoport", FLAGS_rightprotoport);
-  AppendStringSetting(&config, "type", FLAGS_type);
+  AppendStringSetting(&config, "rightprotoport", right_protoport_);
+  AppendStringSetting(&config, "type", type_);
   AppendStringSetting(&config, "auto", "start");
   return config;
 }
@@ -554,7 +548,7 @@ int IpsecManager::Poll() {
   if (start_ticks_.is_null()) return -1;
   if (!base::PathExists(FilePath(ipsec_up_file_))) {
     if (base::TimeTicks::Now() - start_ticks_ >
-        base::TimeDelta::FromSeconds(FLAGS_ipsec_timeout)) {
+        base::TimeDelta::FromSeconds(ipsec_timeout_)) {
       LOG(ERROR) << "IPsec connection timed out";
       RegisterError(kServiceErrorIpsecConnectionFailed);
       OnStopped(false);

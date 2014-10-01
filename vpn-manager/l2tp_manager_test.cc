@@ -6,18 +6,9 @@
 #include <chromeos/process_mock.h>
 #include <chromeos/syslog_logging.h>
 #include <chromeos/test_helpers.h>
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 #include "vpn-manager/l2tp_manager.h"
-
-DECLARE_bool(defaultroute);
-DECLARE_bool(systemconfig);
-DECLARE_bool(usepeerdns);
-DECLARE_string(password);
-DECLARE_int32(ppp_setup_timeout);
-DECLARE_string(pppd_plugin);
-DECLARE_string(user);
 
 using ::base::FilePath;
 using ::base::StringPrintf;
@@ -44,12 +35,22 @@ class L2tpManagerTest : public ::testing::Test {
     pppd_config_path_ = test_path_.Append("pppd.config");
     ppp_interface_path_ = test_path_.Append("ppp0");
     l2tpd_ = new ProcessMock;
-    l2tp_.reset(new L2tpManager);
+    l2tp_.reset(new L2tpManager(true,  // default_route
+                                true,  // length_bit
+                                true,  // require_chap
+                                false,  // refuse_pap
+                                true,  // require_authentication
+                                "",  // password
+                                true,  // ppp_debug
+                                10,  // ppp_setup_timeout
+                                "",  // pppd_plugin
+                                true,  // usepeerdns
+                                "",  // user
+                                true));  // systemconfig
     l2tp_->l2tpd_.reset(l2tpd_);
     l2tp_->l2tpd_control_path_ = control_path_;
     l2tp_->ppp_interface_path_ = ppp_interface_path_;
-    FLAGS_pppd_plugin = "";
-    FLAGS_user = "me";
+    l2tp_->SetUserForTesting("me");
     EXPECT_TRUE(l2tp_->Initialize(remote_address_));
   }
 
@@ -107,25 +108,26 @@ TEST_F(L2tpManagerTest, FormatPppdConfiguration) {
       "mru 1410\n"
       "lock\n"
       "connect-delay 5000\n";
-  FLAGS_defaultroute = false;
-  FLAGS_usepeerdns = false;
+
+  l2tp_->SetDefaultRouteForTesting(false);
+  l2tp_->SetUsePeerDnsForTesting(false);
   std::string expected(kBaseExpected);
   expected.append("nodefaultroute\n");
   EXPECT_EQ(expected, l2tp_->FormatPppdConfiguration());
   expected = kBaseExpected;
-  FLAGS_defaultroute = true;
+  l2tp_->SetDefaultRouteForTesting(true);
   expected.append("defaultroute\n");
   l2tp_->ppp_output_fd_ = 4;
   l2tp_->ppp_output_path_ = FilePath("/tmp/pppd.log");
   expected.append("logfile /tmp/pppd.log\n");
   EXPECT_EQ(expected, l2tp_->FormatPppdConfiguration());
-  FLAGS_usepeerdns = true;
+  l2tp_->SetUsePeerDnsForTesting(true);
   expected.append("usepeerdns\n");
   EXPECT_EQ(expected, l2tp_->FormatPppdConfiguration());
-  FLAGS_systemconfig = false;
+  l2tp_->SetSystemConfigForTesting(false);
   expected.append("nosystemconfig\n");
   EXPECT_EQ(expected, l2tp_->FormatPppdConfiguration());
-  FLAGS_pppd_plugin = "myplugin";
+  l2tp_->SetPppdPluginForTesting("myplugin");
   expected.append("plugin myplugin\n");
   EXPECT_EQ(expected, l2tp_->FormatPppdConfiguration());
   l2tp_->set_debug(true);
@@ -134,11 +136,11 @@ TEST_F(L2tpManagerTest, FormatPppdConfiguration) {
 }
 
 TEST_F(L2tpManagerTest, Initiate) {
-  FLAGS_user = "me";
-  FLAGS_password = "password";
+  l2tp_->SetUserForTesting("me");
+  l2tp_->SetPasswordForTesting("password");
   EXPECT_TRUE(l2tp_->Initiate());
   ExpectFileEquals("c managed me password\n", control_path_.value().c_str());
-  FLAGS_pppd_plugin = "set";
+  l2tp_->SetPppdPluginForTesting("set");
   EXPECT_TRUE(l2tp_->Initiate());
   ExpectFileEquals("c managed\n", control_path_.value().c_str());
 }
@@ -176,7 +178,7 @@ TEST_F(L2tpManagerTest, PollWaitIfNotUpYet) {
 
 TEST_F(L2tpManagerTest, PollTimeoutWaitingForControl) {
   l2tp_->start_ticks_ = base::TimeTicks::Now() -
-      base::TimeDelta::FromSeconds(FLAGS_ppp_setup_timeout + 1);
+      base::TimeDelta::FromSeconds(l2tp_->GetPppSetupTimeoutForTesting() + 1);
   EXPECT_EQ(1000, l2tp_->Poll());
   EXPECT_TRUE(FindLog("PPP setup timed out"));
   EXPECT_TRUE(l2tp_->was_stopped());
@@ -185,7 +187,7 @@ TEST_F(L2tpManagerTest, PollTimeoutWaitingForControl) {
 
 TEST_F(L2tpManagerTest, PollTimeoutWaitingForUp) {
   l2tp_->start_ticks_ = base::TimeTicks::Now() -
-      base::TimeDelta::FromSeconds(FLAGS_ppp_setup_timeout + 1);
+      base::TimeDelta::FromSeconds(l2tp_->GetPppSetupTimeoutForTesting() + 1);
   l2tp_->was_initiated_ = true;
   EXPECT_EQ(1000, l2tp_->Poll());
   EXPECT_TRUE(FindLog("PPP setup timed out"));
@@ -197,7 +199,7 @@ TEST_F(L2tpManagerTest, PollInitiateConnection) {
   l2tp_->start_ticks_ = base::TimeTicks::Now();
   base::WriteFile(control_path_, "", 0);
   EXPECT_FALSE(l2tp_->was_initiated_);
-  FLAGS_pppd_plugin = "set";
+  l2tp_->SetPppdPluginForTesting("set");
   EXPECT_EQ(1000, l2tp_->Poll());
   EXPECT_TRUE(l2tp_->was_initiated_);
   ExpectFileEquals("c managed\n", control_path_.value().c_str());

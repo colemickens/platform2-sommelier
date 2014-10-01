@@ -31,8 +31,30 @@ namespace vpn_manager {
 // be started again with the same object.
 class L2tpManager : public ServiceManager {
  public:
-  L2tpManager();
+  L2tpManager(bool default_route,
+              bool length_bit,
+              bool require_chap,
+              bool refuse_pap,
+              bool require_authentication,
+              const std::string& password,
+              bool ppp_debug,
+              int ppp_setup_timeout,
+              const std::string& pppd_plugin,
+              bool use_peer_dns,
+              const std::string& user,
+              bool system_config);
   ~L2tpManager() override = default;
+
+  // Getters for private values, needed for unit tests.
+  int GetPppSetupTimeoutForTesting();
+
+  // Setters for private values, needed for unit tests.
+  void SetDefaultRouteForTesting(bool default_route);
+  void SetPasswordForTesting(const std::string& password);
+  void SetPppdPluginForTesting(const std::string& pppd_plugin);
+  void SetUsePeerDnsForTesting(bool use_peer_dns);
+  void SetUserForTesting(const std::string& user);
+  void SetSystemConfigForTesting(bool system_config);
 
   // Initialize the object using |remote_host|.  Returns false if
   // an illegal set of parameters has been given.  Has no side effects
@@ -73,6 +95,20 @@ class L2tpManager : public ServiceManager {
   std::string FormatPppdConfiguration();
   bool Initiate();
   bool Terminate();
+
+  // Command line flags.
+  bool default_route_;
+  bool length_bit_;
+  bool require_chap_;
+  bool refuse_pap_;
+  bool require_authentication_;
+  std::string password_;
+  bool ppp_debug_;
+  int ppp_setup_timeout_;
+  std::string pppd_plugin_;
+  bool use_peer_dns_;
+  std::string user_;
+  bool system_config_;
 
   // Has the L2TP connection been initiated yet.
   bool was_initiated_;

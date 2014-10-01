@@ -14,22 +14,6 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_util.h>
 #include <chromeos/process.h>
-#include <gflags/gflags.h>
-
-#pragma GCC diagnostic ignored "-Wstrict-aliasing"
-DEFINE_bool(defaultroute, true, "defaultroute");
-DEFINE_bool(length_bit, true, "length bit");
-DEFINE_bool(require_chap, true, "require chap");
-DEFINE_bool(refuse_pap, false, "refuse chap");
-DEFINE_bool(require_authentication, true, "require authentication");
-DEFINE_string(password, "", "password (insecure - use pppd plugin instead)");
-DEFINE_bool(ppp_debug, true, "ppp debug");
-DEFINE_int32(ppp_setup_timeout, 10, "timeout to setup ppp (seconds)");
-DEFINE_string(pppd_plugin, "", "pppd plugin");
-DEFINE_bool(usepeerdns, true, "usepeerdns - ask peer for DNS");
-DEFINE_string(user, "", "user name");
-DEFINE_bool(systemconfig, true, "enable ppp to configure IPs/routes/DNS");
-#pragma GCC diagnostic error "-Wstrict-aliasing"
 
 using ::base::FilePath;
 using ::base::StringPrintf;
@@ -49,13 +33,64 @@ const char kPppAuthenticationFailurePattern[] = "*authentication failed*";
 
 }  // namespace
 
-L2tpManager::L2tpManager()
+L2tpManager::L2tpManager(bool default_route,
+                         bool length_bit,
+                         bool require_chap,
+                         bool refuse_pap,
+                         bool require_authentication,
+                         const std::string& password,
+                         bool ppp_debug,
+                         int ppp_setup_timeout,
+                         const std::string& pppd_plugin,
+                         bool use_peer_dns,
+                         const std::string& user,
+                         bool system_config)
     : ServiceManager("l2tp"),
+      default_route_(default_route),
+      length_bit_(length_bit),
+      require_chap_(require_chap),
+      refuse_pap_(refuse_pap),
+      require_authentication_(require_authentication),
+      password_(password),
+      ppp_debug_(ppp_debug),
+      ppp_setup_timeout_(ppp_setup_timeout),
+      pppd_plugin_(pppd_plugin),
+      use_peer_dns_(use_peer_dns),
+      user_(user),
+      system_config_(system_config),
       was_initiated_(false),
       output_fd_(-1),
       ppp_output_fd_(-1),
       ppp_interface_path_(kPppInterfacePath),
       l2tpd_(new ProcessImpl) {
+}
+
+int L2tpManager::GetPppSetupTimeoutForTesting() {
+  return ppp_setup_timeout_;
+}
+
+void L2tpManager::SetDefaultRouteForTesting(bool default_route) {
+  default_route_ = default_route;
+}
+
+void L2tpManager::SetPasswordForTesting(const std::string& password) {
+  password_ = password;
+}
+
+void L2tpManager::SetPppdPluginForTesting(const std::string& pppd_plugin) {
+  pppd_plugin_ = pppd_plugin;
+}
+
+void L2tpManager::SetUsePeerDnsForTesting(bool use_peer_dns) {
+  use_peer_dns_ = use_peer_dns;
+}
+
+void L2tpManager::SetUserForTesting(const std::string& user) {
+  user_ = user;
+}
+
+void L2tpManager::SetSystemConfigForTesting(bool system_config) {
+  system_config_ = system_config;
 }
 
 bool L2tpManager::Initialize(const struct sockaddr& remote_address) {
@@ -66,16 +101,16 @@ bool L2tpManager::Initialize(const struct sockaddr& remote_address) {
   }
   remote_address_ = remote_address;
 
-  if (FLAGS_user.empty()) {
+  if (user_.empty()) {
     LOG(ERROR) << "l2tp layer requires user name";
     RegisterError(kServiceErrorInvalidArgument);
     return false;
   }
-  if (!FLAGS_pppd_plugin.empty() &&
-      !base::PathExists(FilePath(FLAGS_pppd_plugin))) {
-    LOG(WARNING) << "pppd_plugin (" << FLAGS_pppd_plugin << ") does not exist";
+  if (!pppd_plugin_.empty() &&
+      !base::PathExists(FilePath(pppd_plugin_))) {
+    LOG(WARNING) << "pppd_plugin (" << pppd_plugin_ << ") does not exist";
   }
-  if (!FLAGS_password.empty()) {
+  if (!password_.empty()) {
     LOG(WARNING) << "Passing a password on the command-line is insecure";
   }
   return true;
@@ -106,16 +141,16 @@ std::string L2tpManager::FormatL2tpdConfiguration(
   std::string l2tpd_config;
   l2tpd_config.append(StringPrintf("[lac %s]\n", kL2tpConnectionName));
   AddString(&l2tpd_config, "lns", remote_address_text_);
-  AddBool(&l2tpd_config, "require chap", FLAGS_require_chap);
-  AddBool(&l2tpd_config, "refuse pap", FLAGS_refuse_pap);
+  AddBool(&l2tpd_config, "require chap", require_chap_);
+  AddBool(&l2tpd_config, "refuse pap", refuse_pap_);
   AddBool(&l2tpd_config, "require authentication",
-          FLAGS_require_authentication);
-  AddString(&l2tpd_config, "name", FLAGS_user);
+          require_authentication_);
+  AddString(&l2tpd_config, "name", user_);
   if (debug()) {
-    AddBool(&l2tpd_config, "ppp debug", FLAGS_ppp_debug);
+    AddBool(&l2tpd_config, "ppp debug", ppp_debug_);
   }
   AddString(&l2tpd_config, "pppoptfile", ppp_config_path);
-  AddBool(&l2tpd_config, "length bit", FLAGS_length_bit);
+  AddBool(&l2tpd_config, "length bit", length_bit_);
   return l2tpd_config;
 }
 
@@ -134,22 +169,22 @@ std::string L2tpManager::FormatPppdConfiguration() {
       "lock\n"
       "connect-delay 5000\n");
   pppd_config.append(StringPrintf("%sdefaultroute\n",
-                                  FLAGS_defaultroute ? "" : "no"));
+                                  default_route_ ? "" : "no"));
   if (ppp_output_fd_ != -1) {
     pppd_config.append(StringPrintf("logfile %s\n",
                                     ppp_output_path_.value().c_str()));
   }
-  if (FLAGS_usepeerdns) {
+  if (use_peer_dns_) {
     pppd_config.append("usepeerdns\n");
   }
-  if (!FLAGS_systemconfig) {
+  if (!system_config_) {
     // nosystemconfig is only supported by the chromiumos patched
     // version of pppd.
     pppd_config.append("nosystemconfig\n");
   }
-  if (!FLAGS_pppd_plugin.empty()) {
-    DLOG(INFO) << "Using pppd plugin " << FLAGS_pppd_plugin;
-    pppd_config.append(StringPrintf("plugin %s\n", FLAGS_pppd_plugin.c_str()));
+  if (!pppd_plugin_.empty()) {
+    DLOG(INFO) << "Using pppd plugin " << pppd_plugin_;
+    pppd_config.append(StringPrintf("plugin %s\n", pppd_plugin_.c_str()));
   }
   if (debug()) {
     pppd_config.append("debug\n");
@@ -160,10 +195,10 @@ std::string L2tpManager::FormatPppdConfiguration() {
 bool L2tpManager::Initiate() {
   std::string control_string;
   control_string = StringPrintf("c %s", kL2tpConnectionName);
-  if (FLAGS_pppd_plugin.empty()) {
+  if (pppd_plugin_.empty()) {
     control_string.append(StringPrintf(" %s %s\n",
-                                       FLAGS_user.c_str(),
-                                       FLAGS_password.c_str()));
+                                       user_.c_str(),
+                                       password_.c_str()));
   } else {
     // otherwise the plugin must specify username and password.
     control_string.append("\n");
@@ -213,7 +248,7 @@ bool L2tpManager::Start() {
   l2tpd_control_path_ = temp_path()->Append("l2tpd.control");
   base::DeleteFile(l2tpd_control_path_, false);
 
-  if (!FLAGS_pppd_plugin.empty()) {
+  if (!pppd_plugin_.empty()) {
     // Pass the resolved LNS address to the plugin.
     setenv(kLnsAddress, remote_address_text_.c_str(), 1);
   }
@@ -254,7 +289,7 @@ int L2tpManager::Poll() {
   // setup, ppp connection setup.  Authentication happens after
   // the ppp device is created.
   if (base::TimeTicks::Now() - start_ticks_ >
-      base::TimeDelta::FromSeconds(FLAGS_ppp_setup_timeout)) {
+      base::TimeDelta::FromSeconds(ppp_setup_timeout_)) {
     RegisterError(kServiceErrorPppConnectionFailed);
     LOG(ERROR) << "PPP setup timed out";
     // Cleanly terminate if the control file exists.

@@ -7,11 +7,6 @@
         'openssl',
       ],
     },
-    'link_settings': {
-      'libraries': [
-        '-lgflags',
-      ],
-    },
     'defines': [
       'IPSEC_STARTER="/usr/libexec/ipsec/starter"',
       'IPSEC_WHACK="/usr/libexec/ipsec/whack"',

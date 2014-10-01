@@ -12,25 +12,13 @@
 #include <base/command_line.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <chromeos/flag_helper.h>
 #include <chromeos/process.h>
 #include <chromeos/syslog_logging.h>
-#include <gflags/gflags.h>
 
 #include "vpn-manager/daemon.h"
 #include "vpn-manager/ipsec_manager.h"
 #include "vpn-manager/l2tp_manager.h"
-
-#pragma GCC diagnostic ignored "-Wstrict-aliasing"
-DEFINE_string(client_cert_id, "", "PKCS#11 slot with client certificate");
-DEFINE_string(client_cert_slot, "", "PKCS#11 key ID for client certificate");
-DEFINE_bool(debug, false, "Log debugging information");
-DEFINE_string(psk_file, "", "File with IPsec pre-shared key");
-DEFINE_string(remote_host, "", "VPN server hostname");
-DEFINE_string(server_ca_file, "", "File with IPsec server CA in DER format");
-DEFINE_string(server_id, "", "ID expected from server");
-DEFINE_string(user_pin, "", "PKCS#11 User PIN");
-DEFINE_string(xauth_credentials_file, "", "File with Xauth user credentials");
-#pragma GCC diagnostic error "-Wstrict-aliasing"
 
 using vpn_manager::IpsecManager;
 using vpn_manager::L2tpManager;
@@ -109,15 +97,62 @@ static void RunEventLoop(IpsecManager* ipsec, L2tpManager* l2tp) {
 }
 
 int main(int argc, char* argv[]) {
+  DEFINE_string(client_cert_id, "", "PKCS#11 slot with client certificate");
+  DEFINE_string(client_cert_slot, "", "PKCS#11 key ID for client certificate");
+  DEFINE_bool(debug, false, "Log debugging information");
+  DEFINE_string(psk_file, "", "File with IPsec pre-shared key");
+  DEFINE_string(remote_host, "", "VPN server hostname");
+  DEFINE_string(server_ca_file, "", "File with IPsec server CA in DER format");
+  DEFINE_string(server_id, "", "ID expected from server");
+  DEFINE_string(user_pin, "", "PKCS#11 User PIN");
+  DEFINE_string(xauth_credentials_file, "", "File with Xauth user credentials");
+
+  // IpsecManager related flags.
+  // Cisco ASA L2TP/IPsec setup instructions indicate using md5 for
+  // authentication for the IPsec SA.  Default StrongS/WAN setup is
+  // to only propose SHA1.
+  DEFINE_string(esp, "aes128-sha1,3des-sha1,aes128-md5,3des-md5",
+                "esp proposals");
+  // Windows RRAS requires modp1024 dh-group.  Strongswan's
+  // default is modp1536 which it does not support.
+  DEFINE_string(ike, "3des-sha1-modp1024", "ike proposals");
+  DEFINE_int32(ipsec_timeout, 30, "timeout for ipsec to be established");
+  DEFINE_string(leftprotoport, "17/1701", "client protocol/port");
+  DEFINE_bool(nat_traversal, true, "Enable NAT-T nat traversal");
+  DEFINE_bool(pfs, false, "pfs");
+  DEFINE_bool(rekey, true, "rekey");
+  DEFINE_string(rightprotoport, "17/1701", "server protocol/port");
+  DEFINE_string(tunnel_group, "", "Cisco Tunnel Group Name");
+  DEFINE_string(type, "transport", "IPsec type (transport or tunnel)");
+
+  // L2tpManager related flags.
+  DEFINE_bool(defaultroute, true, "defaultroute");
+  DEFINE_bool(length_bit, true, "length bit");
+  DEFINE_bool(require_chap, true, "require chap");
+  DEFINE_bool(refuse_pap, false, "refuse chap");
+  DEFINE_bool(require_authentication, true, "require authentication");
+  DEFINE_string(password, "", "password (insecure - use pppd plugin instead)");
+  DEFINE_bool(ppp_debug, true, "ppp debug");
+  DEFINE_int32(ppp_setup_timeout, 10, "timeout to setup ppp (seconds)");
+  DEFINE_string(pppd_plugin, "", "pppd plugin");
+  DEFINE_bool(usepeerdns, true, "usepeerdns - ask peer for DNS");
+  DEFINE_string(user, "", "user name");
+  DEFINE_bool(systemconfig, true, "enable ppp to configure IPs/routes/DNS");
+
   base::ScopedTempDir temp_dir;
-  CommandLine::Init(argc, argv);
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  chromeos::FlagHelper::Init(argc, argv, "Chromium OS l2tpipsec VPN");
   int log_flags = chromeos::kLogToSyslog;
   if (isatty(STDOUT_FILENO)) log_flags |= chromeos::kLogToStderr;
   chromeos::InitLog(log_flags);
   chromeos::OpenLog("l2tpipsec_vpn", true);
-  IpsecManager ipsec;
-  L2tpManager l2tp;
+  IpsecManager ipsec(FLAGS_esp, FLAGS_ike, FLAGS_ipsec_timeout,
+                     FLAGS_leftprotoport, FLAGS_rekey, FLAGS_rightprotoport,
+                     FLAGS_tunnel_group, FLAGS_type);
+  L2tpManager l2tp(FLAGS_defaultroute, FLAGS_length_bit, FLAGS_require_chap,
+                   FLAGS_refuse_pap, FLAGS_require_authentication,
+                   FLAGS_password, FLAGS_ppp_debug, FLAGS_ppp_setup_timeout,
+                   FLAGS_pppd_plugin, FLAGS_usepeerdns, FLAGS_user,
+                   FLAGS_systemconfig);
 
   LockDownUmask();
 

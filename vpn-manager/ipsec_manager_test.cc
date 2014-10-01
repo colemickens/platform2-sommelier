@@ -5,11 +5,11 @@
 #include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/process_mock.h>
 #include <chromeos/syslog_logging.h>
 #include <chromeos/test_helpers.h>
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 #include "vpn-manager/daemon_mock.h"
@@ -21,8 +21,6 @@ using ::chromeos::ProcessMock;
 using ::testing::_;
 using ::testing::InSequence;
 using ::testing::Return;
-
-DECLARE_int32(ipsec_timeout);
 
 namespace vpn_manager {
 
@@ -73,7 +71,15 @@ class IpsecManagerTest : public ::testing::Test {
     chromeos::ClearLog();
     starter_daemon_ = new DaemonMock;
     charon_daemon_ = new DaemonMock;
-    ipsec_.reset(new IpsecManager);
+    ipsec_.reset(new IpsecManager(
+                     "aes128-sha1,3des-sha1,aes128-md5,3des-md5",  // esp
+                     "3des-sha1-modp1024",  // ike
+                     30,  // ipsec_timeout
+                     "17/1701",  // left_protoport
+                     true,  // rekey
+                     "17/1701",  // right_protoport
+                     "",  // tunnel_group
+                     "transport"));  // type
     ipsec_->starter_daemon_.reset(starter_daemon_);  // Passes ownership.
     ipsec_->charon_daemon_.reset(charon_daemon_);  // Passes ownership.
     ipsec_->persistent_path_ = persistent_path_;
@@ -208,8 +214,19 @@ TEST_F(IpsecManagerTest, PollWaitIfNotUpYet) {
 }
 
 TEST_F(IpsecManagerTest, PollTimeoutWaiting) {
+  int ipsec_timeout = 30;
+  if (base::CommandLine::InitializedForCurrentProcess()) {
+    base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
+    if (cl->HasSwitch("ipsec_timeout")) {
+      int conversion = 0;
+      if (base::StringToInt(cl->GetSwitchValueASCII("ipsec_timeout"),
+                            &conversion))
+        ipsec_timeout = conversion;
+    }
+  }
+
   ipsec_->start_ticks_ = base::TimeTicks::Now() -
-      base::TimeDelta::FromSeconds(FLAGS_ipsec_timeout + 1);
+      base::TimeDelta::FromSeconds(ipsec_timeout + 1);
   EXPECT_EQ(1000, ipsec_->Poll());
   EXPECT_TRUE(FindLog("IPsec connection timed out"));
   EXPECT_TRUE(ipsec_->was_stopped());

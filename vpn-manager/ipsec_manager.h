@@ -25,7 +25,14 @@ class Daemon;
 // charon daemon.
 class IpsecManager : public ServiceManager {
  public:
-  IpsecManager();
+  IpsecManager(const std::string& esp,
+               const std::string& ike,
+               int ipsec_timeout,
+               const std::string& left_protoport,
+               bool rekey,
+               const std::string& right_protoport,
+               const std::string& tunnel_group,
+               const std::string& type);
   ~IpsecManager() override = default;
 
   // Initialize the object to control IKE version |ike_version| daemon,
@@ -91,6 +98,16 @@ class IpsecManager : public ServiceManager {
   std::string FormatStarterConfigFile();
   bool StartStarter();
   bool SetIpsecGroup(const base::FilePath& file_path);
+
+  // Command line flags.
+  std::string esp_;
+  std::string ike_;
+  int ipsec_timeout_;
+  std::string left_protoport_;
+  bool rekey_;
+  std::string right_protoport_;
+  std::string tunnel_group_;
+  std::string type_;
 
   // for testing, always return these values from
   // GetAddressesFromRemoteHostname.
