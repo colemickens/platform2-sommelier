@@ -69,12 +69,25 @@ bool AdaptorGenerator::GenerateAdaptor(
   text.AddLine("virtual void OnRegisterComplete(bool success) {}");
   text.PopOffset();
 
+  text.AddBlankLine();
+  text.AddLineWithOffset("protected:", kScopeOffset);
+  text.PushOffset(kBlockOffset);
+  text.AddLine("chromeos::dbus_utils::DBusInterface* dbus_interface() {");
+  text.PushOffset(kBlockOffset);
+  text.AddLine("return dbus_interface_;");
+  text.PopOffset();
+  text.AddLine("}");
+  text.PopOffset();
+
+  text.AddBlankLine();
   text.AddLineWithOffset("private:", kScopeOffset);
 
   text.PushOffset(kBlockOffset);
   text.AddLine(StringPrintf("%s* interface_;  // Owned by caller.",
                             method_interface.c_str()));
   text.AddLine("chromeos::dbus_utils::DBusObject dbus_object_;");
+  text.AddLine("// Owned by |dbus_object_|.");
+  text.AddLine("chromeos::dbus_utils::DBusInterface* dbus_interface_;");
   text.AddLine(StringPrintf(
       "DISALLOW_COPY_AND_ASSIGN(%s);", adaptor_name.c_str()));
   text.PopOffset();
@@ -130,17 +143,22 @@ void AdaptorGenerator::AddConstructor(const Interface& interface,
   block.PushOffset(kLineContinuationOffset);
   block.AddLine("object_manager,");
   block.AddLine("object_manager->GetBus(),");
-  block.AddLine("dbus::ObjectPath(object_path)) {");
+  block.AddLine("dbus::ObjectPath(object_path)),");
+  block.PopOffset();
+  block.AddLine("dbus_interface_(");
+  block.PushOffset(kLineContinuationOffset);
+  block.AddLine(StringPrintf(
+      "dbus_object_.AddOrGetInterface(\"%s\")) {", interface.name.c_str()));
   block.PopOffset();
   block.PopOffset();
   block.PopOffset();
   block.PushOffset(kBlockOffset);
-  block.AddLine("auto* itf =");
-  block.AddLineWithOffset(StringPrintf(
-      "dbus_object_.AddOrGetInterface(\"%s\");", interface.name.c_str()),
-      kLineContinuationOffset);
   for (const auto& method : interface.methods) {
-    block.AddLine("itf->AddMethodHandler(");
+    if (method.output_arguments.size() > 1) {
+      // TODO(pstew): Accept multiple output arguments.  crbug.com/419271
+      continue;
+    }
+    block.AddLine("dbus_interface_->AddMethodHandler(");
     block.PushOffset(kLineContinuationOffset);
     block.AddLine(StringPrintf("\"%s\",", method.name.c_str()));
     block.AddLine("base::Unretained(interface_),");
@@ -171,10 +189,13 @@ void AdaptorGenerator::AddMethodInterface(const Interface& interface,
   for (const auto& method : interface.methods) {
     string return_type("void");
     if (!method.output_arguments.empty()) {
-      CHECK_EQ(1UL, method.output_arguments.size())
-          << "Method " << method.name << " has "
-          << method.output_arguments.size()
-          << " output arguments which is invalid.";
+      if (method.output_arguments.size() > 1) {
+        // TODO(pstew): Accept multiple output arguments.  crbug.com://419271
+        LOG(WARNING) << "Method " << method.name << " has "
+                     << method.output_arguments.size()
+                     << " output arguments which is unsupported.";
+        continue;
+      }
       CHECK(signature.Parse(method.output_arguments[0].type, &return_type));
     }
     block.AddLine(StringPrintf("virtual %s %s(",

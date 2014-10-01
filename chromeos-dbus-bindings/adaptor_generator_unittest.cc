@@ -32,6 +32,9 @@ const char kMethod1Name[] = "Tetsuo";
 const char kMethod1Argument1[] = "i";
 const char kMethod1Return[] = "x";
 const char kMethod2Name[] = "Kei";
+const char kMethod3Name[] = "Kiyoko";
+const char kMethod3Return0[] = "x";
+const char kMethod3Return1[] = "s";
 const char kInterfaceName[] = "org.chromium.TestInterface";
 const char kExpectedContent[] = R"literal_string(
 #include <string>
@@ -68,18 +71,18 @@ class TestInterfaceAdaptor {
         dbus_object_(
             object_manager,
             object_manager->GetBus(),
-            dbus::ObjectPath(object_path)) {
-    auto* itf =
-        dbus_object_.AddOrGetInterface("org.chromium.TestInterface");
-    itf->AddMethodHandler(
+            dbus::ObjectPath(object_path)),
+        dbus_interface_(
+            dbus_object_.AddOrGetInterface("org.chromium.TestInterface")) {
+    dbus_interface_->AddMethodHandler(
         "Kaneda",
         base::Unretained(interface_),
         &TestInterfaceAdaptorMethodInterface::Kaneda);
-    itf->AddMethodHandler(
+    dbus_interface_->AddMethodHandler(
         "Tetsuo",
         base::Unretained(interface_),
         &TestInterfaceAdaptorMethodInterface::Tetsuo);
-    itf->AddMethodHandler(
+    dbus_interface_->AddMethodHandler(
         "Kei",
         base::Unretained(interface_),
         &TestInterfaceAdaptorMethodInterface::Kei);
@@ -88,9 +91,17 @@ class TestInterfaceAdaptor {
   }
   virtual ~TestInterfaceAdaptor() = default;
   virtual void OnRegisterComplete(bool success) {}
+
+ protected:
+  chromeos::dbus_utils::DBusInterface* dbus_interface() {
+    return dbus_interface_;
+  }
+
  private:
   TestInterfaceAdaptorMethodInterface* interface_;  // Owned by caller.
   chromeos::dbus_utils::DBusObject dbus_object_;
+  // Owned by |dbus_object_|.
+  chromeos::dbus_utils::DBusInterface* dbus_interface_;
   DISALLOW_COPY_AND_ASSIGN(TestInterfaceAdaptor);
 };
 
@@ -124,14 +135,21 @@ TEST_F(AdaptorGeneratorTest, GenerateAdaptors) {
   interface.methods.emplace_back(
       kMethod0Name,
       vector<Interface::Argument>{
-          Interface::Argument(kMethod0ArgumentName0, kMethod0Argument0),
-          Interface::Argument(kMethod0ArgumentName1, kMethod0Argument1) },
-      vector<Interface::Argument>{ Interface::Argument("", kMethod0Return) });
+          {kMethod0ArgumentName0, kMethod0Argument0},
+          {kMethod0ArgumentName1, kMethod0Argument1}},
+      vector<Interface::Argument>{{"", kMethod0Return}});
   interface.methods.emplace_back(
       kMethod1Name,
-      vector<Interface::Argument>{ Interface::Argument("", kMethod1Argument1) },
-      vector<Interface::Argument>{ Interface::Argument("", kMethod1Return) });
+      vector<Interface::Argument>{{"", kMethod1Argument1}},
+      vector<Interface::Argument>{{"", kMethod1Return}});
   interface.methods.emplace_back(kMethod2Name);
+  // Interface methods with more than one return argument should be ignored.
+  interface.methods.emplace_back(
+      kMethod3Name,
+      vector<Interface::Argument>{},
+      vector<Interface::Argument>{
+          {"", kMethod3Return0},
+          {"", kMethod3Return1}});
   base::FilePath output_path = temp_dir_.path().Append("output.h");
   EXPECT_TRUE(generator_.GenerateAdaptor(interface, output_path));
   string contents;

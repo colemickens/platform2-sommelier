@@ -17,6 +17,10 @@ namespace chromeos_dbus_bindings {
 
 IndentedText::IndentedText() : offset_(0) {}
 
+void IndentedText::AddBlankLine() {
+  AddLine("");
+}
+
 void IndentedText::AddBlock(const IndentedText& block) {
   AddBlockWithOffset(block, 0);
 }
@@ -38,8 +42,10 @@ void IndentedText::AddLineWithOffset(const std::string& line, size_t shift) {
 string IndentedText::GetContents() const {
   string output;
   for (const auto& member : contents_) {
-    string indent(member.second, ' ');
-    output.append(indent + member.first + "\n");
+    const string& line = member.first;
+    size_t shift = line.empty() ? 0 : member.second;
+    string indent(shift, ' ');
+    output.append(indent + line + "\n");
   }
   return output;
 }

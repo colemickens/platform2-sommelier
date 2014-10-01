@@ -18,6 +18,9 @@ class IndentedText {
   IndentedText();
   virtual ~IndentedText() = default;
 
+  // Insert a blank line.
+  void AddBlankLine();
+
   // Insert a block of indented text.
   void AddBlock(const IndentedText& block);
   void AddBlockWithOffset(const IndentedText& block, size_t shift);
