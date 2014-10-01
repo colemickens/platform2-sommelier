@@ -6,11 +6,7 @@
 
 #include <string>
 
-#include <base/file_util.h>
-#include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/strings/string_split.h>
-#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "chromeos-dbus-bindings/dbus_signature.h"
@@ -23,31 +19,26 @@ using std::vector;
 
 namespace chromeos_dbus_bindings {
 
-namespace {
-const int kScopeOffset = 1;
-const int kBlockOffset = 2;
-const int kLineContinuationOffset = 4;
-}  // namespace
-
+// static
 bool AdaptorGenerator::GenerateAdaptor(
     const Interface& interface,
     const base::FilePath& output_file) {
   IndentedText text;
   text.AddLine(StringPrintf("// Automatic generation of interface for %s",
                             interface.name.c_str()));
-  string header_guard = GenerateHeaderGuard(output_file.value(),
-                                            interface.name);
+  string header_guard = GenerateHeaderGuard(output_file, interface.name);
   text.AddLine(StringPrintf("#ifndef %s", header_guard.c_str()));
   text.AddLine(StringPrintf("#define %s", header_guard.c_str()));
   text.AddLine("#include <string>");
   text.AddLine("#include <vector>");
-  text.AddLine("");
+  text.AddBlankLine();
   text.AddLine("#include <base/macros.h>");
   text.AddLine("#include <dbus/object_path.h>");
+  text.AddLine("#include <chromeos/any.h>");
   text.AddLine("#include <chromeos/dbus/dbus_object.h>");
   text.AddLine("#include <chromeos/dbus/exported_object_manager.h>");
   text.AddLine("#include <chromeos/variant_dictionary.h>");
-  text.AddLine("");
+  text.AddBlankLine();
 
   vector<string> namespaces;
   string class_name;
@@ -55,7 +46,7 @@ bool AdaptorGenerator::GenerateAdaptor(
   for (const auto& space : namespaces) {
     text.AddLine(StringPrintf("namespace %s {", space.c_str()));
   }
-  text.AddLine("");
+  text.AddBlankLine();
 
   string adaptor_name = StringPrintf("%sAdaptor", class_name.c_str());
   text.AddLine(StringPrintf("class %s {", adaptor_name.c_str()));
@@ -91,36 +82,14 @@ bool AdaptorGenerator::GenerateAdaptor(
   text.PopOffset();
 
   text.AddLine("};");
-  text.AddLine("");
+  text.AddBlankLine();
 
   for (auto it = namespaces.rbegin(); it != namespaces.rend(); ++it) {
     text.AddLine(StringPrintf("}  // namespace %s", it->c_str()));
   }
   text.AddLine(StringPrintf("#endif  // %s", header_guard.c_str()));
 
-  string contents = text.GetContents();
-  int expected_write_return = contents.size();
-  if (base::WriteFile(output_file, contents.c_str(), contents.size()) !=
-      expected_write_return) {
-    LOG(ERROR) << "Failed to write file " << output_file.value();
-    return false;
-  }
-  return true;
-}
-
-// static
-string AdaptorGenerator::GenerateHeaderGuard(
-    const string& filename, const string& interface_name) {
-  string guard = StringPrintf("____chrome_dbus_binding___%s__%s",
-                              interface_name.c_str(), filename.c_str());
-  for (auto& c : guard) {
-    if (IsAsciiAlpha(c)) {
-      c = base::ToUpperASCII(c);
-    } else if (!IsAsciiDigit(c)) {
-      c = '_';
-    }
-  }
-  return guard;
+  return WriteTextToFile(output_file, text);
 }
 
 // static
@@ -212,29 +181,6 @@ void AdaptorGenerator::AddMethodInterface(const Interface& interface,
   block.AddLine("};");
 
   text->AddBlock(block);
-}
-
-// static
-bool AdaptorGenerator::GetNamespacesAndClassName(
-    const string& interface_name,
-    vector<string>* namespaces,
-    string* class_name) {
-  vector<string> split_namespaces;
-  base::SplitString(interface_name, '.', &split_namespaces);
-  if (split_namespaces.size() < 2) {
-    LOG(ERROR) << "Interface name must have both a domain and object part "
-               << "separated by '.'.  Got " << interface_name << " instead.";
-    return false;
-  }
-  *class_name = split_namespaces.back();
-  split_namespaces.pop_back();
-  namespaces->swap(split_namespaces);
-  return true;
-}
-
-// static
-bool AdaptorGenerator::IsIntegralType(const string& type) {
-  return type.find("::") == std::string::npos;
 }
 
 }  // namespace chromeos_dbus_bindings

@@ -26,8 +26,10 @@
       'sources': [
         'adaptor_generator.cc',
         'dbus_signature.cc',
+        'header_generator.cc',
         'indented_text.cc',
         'method_name_generator.cc',
+        'proxy_generator.cc',
         'xml_interface_parser.cc',
       ],
       'variables': {
@@ -77,6 +79,7 @@
             'dbus_signature_unittest.cc',
             'indented_text_unittest.cc',
             'method_name_generator_unittest.cc',
+            'proxy_generator_unittest.cc',
             'xml_interface_parser_unittest.cc',
           ],
         },

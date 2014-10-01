@@ -10,6 +10,7 @@
 
 #include <base/macros.h>
 
+#include "chromeos-dbus-bindings/header_generator.h"
 #include "chromeos-dbus-bindings/indented_text.h"
 
 namespace base {
@@ -23,20 +24,13 @@ namespace chromeos_dbus_bindings {
 class IndentedText;
 struct Interface;
 
-class AdaptorGenerator {
+class AdaptorGenerator : public HeaderGenerator {
  public:
-  AdaptorGenerator() = default;
-  virtual ~AdaptorGenerator() = default;
-
-  bool GenerateAdaptor(const Interface& interface,
-                       const base::FilePath& output_file);
+  static bool GenerateAdaptor(const Interface& interface,
+                              const base::FilePath& output_file);
 
  private:
   friend class AdaptorGeneratorTest;
-
-  // Create a unique header guard string to protect multiple includes of header.
-  static std::string GenerateHeaderGuard(const std::string& filename,
-                                         const std::string& interface_name);
 
   // Generates the constructor for the adaptor.
   static void AddConstructor(const Interface& interface,
@@ -46,14 +40,6 @@ class AdaptorGenerator {
   // Generates the method interface class.
   static void AddMethodInterface(const Interface& interface,
                                  IndentedText *text);
-
-  // Returns a vector of nesting namepsaces.
-  static bool GetNamespacesAndClassName(const std::string& interface_name,
-                                        std::vector<std::string>* namespaces,
-                                        std::string* class_name);
-
-  // Used to decide whether the argument should be a const reference.
-  static bool IsIntegralType(const std::string& type);
 
   DISALLOW_COPY_AND_ASSIGN(AdaptorGenerator);
 };

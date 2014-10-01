@@ -11,6 +11,7 @@
 
 #include "chromeos-dbus-bindings/adaptor_generator.h"
 #include "chromeos-dbus-bindings/method_name_generator.h"
+#include "chromeos-dbus-bindings/proxy_generator.h"
 #include "chromeos-dbus-bindings/xml_interface_parser.h"
 
 namespace switches {
@@ -19,6 +20,7 @@ static const char kHelp[] = "help";
 static const char kInput[] = "input";
 static const char kMethodNames[] = "method-names";
 static const char kAdaptor[] = "adaptor";
+static const char kProxy[] = "proxy";
 static const char kHelpMessage[] = "\n"
     "Available Switches: \n"
     "  --input=<interface>\n"
@@ -26,7 +28,9 @@ static const char kHelpMessage[] = "\n"
     "  --method-names=<method name header filename>\n"
     "    The output header file with string constants for each method name.\n"
     "  --adaptor=<adaptor header filename>\n"
-    "    The output header file with DBus adaptor class.\n";
+    "    The output header file name containing the DBus adaptor class.\n"
+    "  --proxy=<proxy header filename>\n"
+    "    The output header file name containing the DBus proxy class.\n";
 
 }  // namespace switches
 
@@ -61,8 +65,7 @@ int main(int argc, char** argv) {
     std::string method_name_file =
         cl->GetSwitchValueASCII(switches::kMethodNames);
     VLOG(1) << "Outputting method names to " << method_name_file;
-    chromeos_dbus_bindings::MethodNameGenerator method_name_generator;
-    if (!method_name_generator.GenerateMethodNames(
+    if (!chromeos_dbus_bindings::MethodNameGenerator::GenerateMethodNames(
             parser.interface(),
             base::FilePath(method_name_file))) {
       LOG(ERROR) << "Failed to output method names.";
@@ -73,11 +76,21 @@ int main(int argc, char** argv) {
   if (cl->HasSwitch(switches::kAdaptor)) {
     std::string adaptor_file = cl->GetSwitchValueASCII(switches::kAdaptor);
     VLOG(1) << "Outputting adaptor to " << adaptor_file;
-    chromeos_dbus_bindings::AdaptorGenerator adaptor_generator;
-    if (!adaptor_generator.GenerateAdaptor(
+    if (!chromeos_dbus_bindings::AdaptorGenerator::GenerateAdaptor(
             parser.interface(),
             base::FilePath(adaptor_file))) {
       LOG(ERROR) << "Failed to output adaptor.";
+      return 1;
+     }
+  }
+
+  if (cl->HasSwitch(switches::kProxy)) {
+    std::string proxy_file = cl->GetSwitchValueASCII(switches::kProxy);
+    LOG(INFO) << "Outputting proxy to " << proxy_file;
+    if (!chromeos_dbus_bindings::ProxyGenerator::GenerateProxy(
+            parser.interface(),
+            base::FilePath(proxy_file))) {
+      LOG(ERROR) << "Failed to output proxy.";
       return 1;
      }
   }

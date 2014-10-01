@@ -42,6 +42,7 @@ const char kExpectedContent[] = R"literal_string(
 
 #include <base/macros.h>
 #include <dbus/object_path.h>
+#include <chromeos/any.h>
 #include <chromeos/dbus/dbus_object.h>
 #include <chromeos/dbus/exported_object_manager.h>
 #include <chromeos/variant_dictionary.h>
@@ -126,7 +127,6 @@ class AdaptorGeneratorTest : public Test {
   }
 
   base::ScopedTempDir temp_dir_;
-  AdaptorGenerator generator_;
 };
 
 TEST_F(AdaptorGeneratorTest, GenerateAdaptors) {
@@ -151,7 +151,7 @@ TEST_F(AdaptorGeneratorTest, GenerateAdaptors) {
           {"", kMethod3Return0},
           {"", kMethod3Return1}});
   base::FilePath output_path = temp_dir_.path().Append("output.h");
-  EXPECT_TRUE(generator_.GenerateAdaptor(interface, output_path));
+  EXPECT_TRUE(AdaptorGenerator::GenerateAdaptor(interface, output_path));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
   // The header guards contain the (temporary) filename, so we search for

@@ -23,6 +23,7 @@ string MethodNameGenerator::GenerateMethodNameConstant(
   return "k" + method_name + "Method";
 }
 
+// static
 bool MethodNameGenerator::GenerateMethodNames(
     const Interface& interface,
     const base::FilePath& output_file) {

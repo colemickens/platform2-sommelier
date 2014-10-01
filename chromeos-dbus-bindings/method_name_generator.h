@@ -21,11 +21,8 @@ struct Interface;
 
 class MethodNameGenerator {
  public:
-  MethodNameGenerator() = default;
-  virtual ~MethodNameGenerator() = default;
-
-  virtual bool GenerateMethodNames(const Interface &interface,
-                                   const base::FilePath& output_file);
+  static bool GenerateMethodNames(const Interface &interface,
+                                  const base::FilePath& output_file);
   static std::string GenerateMethodNameConstant(const std::string& method_name);
 
  private:

@@ -45,7 +45,6 @@ class MethodNameGeneratorTest : public Test {
   }
 
   base::ScopedTempDir temp_dir_;
-  MethodNameGenerator generator_;
 };
 
 TEST_F(MethodNameGeneratorTest, GnerateMethodNames) {
@@ -54,7 +53,7 @@ TEST_F(MethodNameGeneratorTest, GnerateMethodNames) {
   interface.methods.emplace_back(kMethodName1);
   interface.methods.emplace_back(kMethodName2);
   base::FilePath output_path = temp_dir_.path().Append("output.h");
-  EXPECT_TRUE(generator_.GenerateMethodNames(interface, output_path));
+  EXPECT_TRUE(MethodNameGenerator::GenerateMethodNames(interface, output_path));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
   EXPECT_STREQ(kExpectedOutput, contents.c_str());
