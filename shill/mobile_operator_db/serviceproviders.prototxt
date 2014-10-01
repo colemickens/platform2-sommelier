@@ -917,6 +917,7 @@ mno {
       }
     }
   }
+  earmarked : true
 }
 
 mno {
@@ -1151,6 +1152,7 @@ mno {
       }
     }
   }
+  earmarked : true
 }
 
 mno {
@@ -3918,6 +3920,7 @@ mno {
       dns : "212.88.64.14"
     }
   }
+  earmarked : true
 }
 
 mno {
@@ -5023,7 +5026,40 @@ mno {
       }
     }
   }
-  earmarked : true
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "TEN"
+    }
+    mvno_filter {
+      type : MCCMNC
+      regex : "20801"
+    }
+    data {
+      uuid : "a650fbb6-da7e-4b18-8aee-e20cdfa8da13"
+      country : "fr"
+      provider_type : GSM
+      localized_name {
+        name : "TEN"
+      }
+      mccmnc : "20801"
+      mobile_apn {
+        apn : "ao.fr"
+        plan : POSTPAID
+        username : "orange"
+        password : "orange"
+      }
+      mobile_apn {
+        apn : "ofnew.fr"
+        plan : POSTPAID
+        localized_name {
+          name : "Pay-by-MB"
+        }
+        username : "orange"
+        password : "orange"
+      }
+    }
+  }
 }
 
 mno {
@@ -5088,33 +5124,6 @@ mno {
       localized_name {
         name : "Internet (Neuf Telecom)"
       }
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "a650fbb6-da7e-4b18-8aee-e20cdfa8da13"
-    country : "fr"
-    provider_type : GSM
-    localized_name {
-      name : "TEN"
-    }
-    mccmnc : "20801"
-    mobile_apn {
-      apn : "ao.fr"
-      plan : POSTPAID
-      username : "orange"
-      password : "orange"
-    }
-    mobile_apn {
-      apn : "ofnew.fr"
-      plan : POSTPAID
-      localized_name {
-        name : "Pay-by-MB"
-      }
-      username : "orange"
-      password : "orange"
     }
   }
 }
@@ -6561,27 +6570,6 @@ mno {
 
 mno {
   data {
-    uuid : "660d2d0c-a60b-42be-aff6-2ed8a11ce766"
-    country : "ie"
-    provider_type : GSM
-    localized_name {
-      name : "E-Mobile"
-    }
-    mccmnc : "27203"
-    mobile_apn {
-      apn : "broadband.eircommbb.ie"
-      plan : POSTPAID
-      localized_name {
-        name : "Broadband To Go"
-      }
-      dns : "212.129.64.220"
-      dns : "212.129.64.221"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "1eadb2e5-384b-4f9e-b024-c05eed8725e2"
     country : "ie"
     provider_type : GSM
@@ -6615,6 +6603,30 @@ mno {
       }
       username : "my"
       password : "isp"
+    }
+  }
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "E-Mobile"
+    }
+    data {
+      uuid : "660d2d0c-a60b-42be-aff6-2ed8a11ce766"
+      country : "ie"
+      provider_type : GSM
+      localized_name {
+        name : "E-Mobile"
+      }
+      mccmnc : "27203"
+      mobile_apn {
+        apn : "broadband.eircommbb.ie"
+        plan : POSTPAID
+        localized_name {
+          name : "Broadband To Go"
+        }
+        dns : "212.129.64.220"
+        dns : "212.129.64.221"
+      }
     }
   }
 }
@@ -8075,6 +8087,35 @@ mno {
       }
     }
   }
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "b-mobile"
+    }
+    mvno_filter {
+      type : MCCMNC
+      regex : "44010"
+    }
+    data {
+      uuid : "186fd4e4-ca27-4ae9-8334-e095edd8ceaf"
+      country : "jp"
+      provider_type : GSM
+      localized_name {
+        name : "b-mobile"
+      }
+      mccmnc : "44010"
+      mobile_apn {
+        apn : "dm.jplat.net"
+        plan : POSTPAID
+        localized_name {
+          name : "u300"
+        }
+        username : "bmobile@u300"
+        password : "bmobile"
+      }
+    }
+  }
+
 }
 
 mno {
@@ -8131,27 +8172,6 @@ mno {
       password : "au"
       dns : "210.196.3.183"
       dns : "210.141.112.163"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "186fd4e4-ca27-4ae9-8334-e095edd8ceaf"
-    country : "jp"
-    provider_type : GSM
-    localized_name {
-      name : "b-mobile"
-    }
-    mccmnc : "44010"
-    mobile_apn {
-      apn : "dm.jplat.net"
-      plan : POSTPAID
-      localized_name {
-        name : "u300"
-      }
-      username : "bmobile@u300"
-      password : "bmobile"
     }
   }
 }
@@ -10369,22 +10389,6 @@ mno {
 
 mno {
   data {
-    uuid : "be304c19-e319-4918-bdb8-c120e5a8b7b2"
-    country : "nl"
-    provider_type : GSM
-    localized_name {
-      name : "Lebara"
-    }
-    mccmnc : "20412"
-    mobile_apn {
-      apn : "multimedia.lebara.nl"
-      plan : PREPAID
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "1a51347d-c546-4adc-873a-27337d03bd2f"
     country : "nl"
     provider_type : GSM
@@ -10397,26 +10401,6 @@ mno {
       plan : PREPAID
       username : "lmnl"
       password : "plus"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "18058bd5-2eba-4bf8-bf39-a96212ec9db2"
-    country : "nl"
-    provider_type : GSM
-    localized_name {
-      name : "MEDIONmobile"
-    }
-    mccmnc : "20408"
-    mccmnc : "20410"
-    mobile_apn {
-      apn : "portalmmm.nl"
-      plan : PREPAID
-      localized_name {
-        name : "Aldi Talk Mobiel Prepaid Internet"
-      }
     }
   }
 }
@@ -10508,6 +10492,26 @@ mno {
       plan : POSTPAID
     }
   }
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "Lebara"
+    }
+    data {
+      uuid : "be304c19-e319-4918-bdb8-c120e5a8b7b2"
+      country : "nl"
+      provider_type : GSM
+      localized_name {
+        name : "Lebara"
+      }
+      mccmnc : "20412"
+      mobile_apn {
+        apn : "multimedia.lebara.nl"
+        plan : PREPAID
+      }
+    }
+  }
+
 }
 
 mno {
@@ -10584,24 +10588,6 @@ mno {
 
 mno {
   data {
-    uuid : "185bd85d-12ec-4077-b72e-f8015668fc73"
-    country : "no"
-    provider_type : GSM
-    localized_name {
-      name : "Chess"
-    }
-    mccmnc : "24202"
-    mobile_apn {
-      apn : "netcom"
-      plan : POSTPAID
-      username : "chess"
-      password : "chess"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "0d9a4f48-1108-4698-a641-b7dd2fcb2f17"
     country : "no"
     provider_type : GSM
@@ -10612,21 +10598,6 @@ mno {
     mobile_apn {
       apn : "internet.ventelo.no"
       plan : POSTPAID
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "85b9894e-1fa4-4c93-89a3-d0842a6b30ae"
-    country : "no"
-    provider_type : GSM
-    localized_name {
-      name : "MyCall"
-    }
-    mccmnc : "24205"
-    mobile_apn {
-      apn : "internet"
     }
   }
 }
@@ -10649,6 +10620,27 @@ mno {
       dns : "212.45.188.254"
     }
   }
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "Chess"
+    }
+    data {
+      uuid : "185bd85d-12ec-4077-b72e-f8015668fc73"
+      country : "no"
+      provider_type : GSM
+      localized_name {
+        name : "Chess"
+      }
+      mccmnc : "24202"
+      mobile_apn {
+        apn : "netcom"
+        plan : POSTPAID
+        username : "chess"
+        password : "chess"
+      }
+    }
+  }
 }
 
 mno {
@@ -10664,21 +10656,62 @@ mno {
       apn : "internet"
     }
   }
-}
-
-mno {
-  data {
-    uuid : "bbc5f574-b33f-4bd5-a722-0ac35f9a920e"
-    country : "no"
-    provider_type : GSM
-    localized_name {
-      name : "OneCall"
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "MyCall"
     }
-    mccmnc : "24205"
-    mobile_apn {
-      apn : "internet"
+    data {
+      uuid : "85b9894e-1fa4-4c93-89a3-d0842a6b30ae"
+      country : "no"
+      provider_type : GSM
+      localized_name {
+        name : "MyCall"
+      }
+      mccmnc : "24205"
+      mobile_apn {
+        apn : "internet"
+      }
     }
   }
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "Telipol"
+    }
+    data {
+      uuid : "c7063ad0-6f01-4c0a-aea5-55a1a2b1f7eb"
+      country : "no"
+      provider_type : GSM
+      localized_name {
+        name : "Telipol"
+      }
+      mccmnc : "24205"
+      mobile_apn {
+        apn : "internet"
+        plan : POSTPAID
+      }
+    }
+  }
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "OneCall"
+    }
+    data {
+      uuid : "bbc5f574-b33f-4bd5-a722-0ac35f9a920e"
+      country : "no"
+      provider_type : GSM
+      localized_name {
+        name : "OneCall"
+      }
+      mccmnc : "24205"
+      mobile_apn {
+        apn : "internet"
+      }
+    }
+  }
+
 }
 
 mno {
@@ -10742,22 +10775,6 @@ mno {
     }
     mobile_apn {
       apn : "telenor.mbb"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "c7063ad0-6f01-4c0a-aea5-55a1a2b1f7eb"
-    country : "no"
-    provider_type : GSM
-    localized_name {
-      name : "Telipol"
-    }
-    mccmnc : "24205"
-    mobile_apn {
-      apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -13086,33 +13103,6 @@ mno {
 
 mno {
   data {
-    uuid : "5d8a1f20-f5cb-4ac6-b3dd-8eec5ab2300b"
-    country : "se"
-    provider_type : GSM
-    localized_name {
-      name : "Glocalnet"
-    }
-    mccmnc : "24008"
-    mobile_apn {
-      apn : "bredband.glocalnet.se"
-      plan : POSTPAID
-      localized_name {
-        name : "Mobilt Bredband"
-      }
-    }
-    mobile_apn {
-      apn : "internet.glocalnet.se"
-      plan : POSTPAID
-      localized_name {
-        name : "Glocalnet Internet"
-      }
-    }
-  }
-  earmarked : true
-}
-
-mno {
-  data {
     uuid : "09606112-356f-422d-9f25-b7b92e9c49a4"
     country : "se"
     provider_type : GSM
@@ -13236,6 +13226,39 @@ mno {
       plan : POSTPAID
       localized_name {
         name : "Mobilt Bredband"
+      }
+    }
+  }
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "Glocalnet"
+    }
+    mvno_filter {
+      type : MCCMNC
+      regex : "24008"
+    }
+    data {
+      uuid : "5d8a1f20-f5cb-4ac6-b3dd-8eec5ab2300b"
+      country : "se"
+      provider_type : GSM
+      localized_name {
+        name : "Glocalnet"
+      }
+      mccmnc : "24008"
+      mobile_apn {
+        apn : "bredband.glocalnet.se"
+        plan : POSTPAID
+        localized_name {
+          name : "Mobilt Bredband"
+        }
+      }
+      mobile_apn {
+        apn : "internet.glocalnet.se"
+        plan : POSTPAID
+        localized_name {
+          name : "Glocalnet Internet"
+        }
       }
     }
   }
