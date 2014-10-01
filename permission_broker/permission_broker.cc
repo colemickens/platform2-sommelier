@@ -29,8 +29,8 @@
 DEFINE_string(access_group, "", "The group which has resource access granted "
               "to it. Must not be empty.");
 DEFINE_int32(poll_interval, 100, "The interval at which to poll for udev "
-             "events");
-DEFINE_string(udev_run_path, "/run/udev", "The path to udev's run path");
+             "events.");
+DEFINE_string(udev_run_path, "/run/udev", "The path to udev's run directory.");
 
 using std::string;
 using std::vector;
@@ -63,7 +63,7 @@ PermissionBroker::~PermissionBroker() {
 void PermissionBroker::Run() {
   DBusConnection *const connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(connection) << "Cannot connect to system bus";
+  CHECK(connection) << "Cannot connect to system bus.";
 
   DBusError error;
   dbus_error_init(&error);
@@ -83,7 +83,7 @@ void PermissionBroker::Run() {
 
   const dbus_bool_t registration_result = dbus_connection_register_object_path(
       connection, kPermissionBrokerServicePath, &vtable, this);
-  CHECK(registration_result) << "Could not register object path";
+  CHECK(registration_result) << "Could not register object path.";
 
   GMainLoop *const loop = g_main_loop_new(NULL, false);
   g_main_loop_run(loop);
@@ -172,7 +172,7 @@ void PermissionBroker::WaitForEmptyUdevQueue() {
 
   int watch = inotify_add_watch(udev_poll.fd, FLAGS_udev_run_path.c_str(),
                                 IN_MOVED_TO);
-  CHECK_NE(watch, -1) << "Could not add watch for udev run path.";
+  CHECK_NE(watch, -1) << "Could not add watch for udev run directory.";
 
   while (!udev_queue_get_queue_is_empty(queue)) {
     if (poll(&udev_poll, 1, FLAGS_poll_interval) > 0) {
@@ -218,7 +218,7 @@ DBusHandlerResult PermissionBroker::MainDBusMethodHandler(
 DBusMessage *PermissionBroker::HandleRequestPathAccessMethod(
     DBusMessage *message) {
   DBusMessage *reply = dbus_message_new_method_return(message);
-  CHECK(reply) << "Could not allocate reply message for method call";
+  CHECK(reply) << "Could not allocate reply message for method call.";
 
   dbus_bool_t success = false;
   char *path = NULL;
@@ -254,7 +254,7 @@ DBusMessage *PermissionBroker::HandleRequestPathAccessMethod(
 DBusMessage *PermissionBroker::HandleRequestUsbAccessMethod(
     DBusMessage *message) {
   DBusMessage *reply = dbus_message_new_method_return(message);
-  CHECK(reply) << "Could not allocate reply message for method call";
+  CHECK(reply) << "Could not allocate reply message for method call.";
 
   dbus_bool_t success = false;
   uint16_t vendor_id;

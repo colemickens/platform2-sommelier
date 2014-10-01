@@ -30,7 +30,7 @@ Rule::Result DenyClaimedUsbDeviceRule::Process(const std::string &path,
     struct udev_device *device = udev_device_new_from_syspath(udev_,
                                                               entry_path);
 
-    // usb_interface entries--direct descendants of usb_device entires--are not,
+    // usb_interface entries (direct descendants of usb_device entries) are not,
     // for the purposes of this rule, considered as having claimed the device.
     const char *device_type = udev_device_get_devtype(device);
     if (device_type &&

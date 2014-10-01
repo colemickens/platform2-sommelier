@@ -7,7 +7,7 @@
 
 # TODO(benchan): Generate this file as part of the build process.
 # Extract the vendor/product IDs of supported devices from default.conf and
-# creates corresponding udev rules in this file.
+# create corresponding udev rules in this file.
 
 # If MIST_SUPPORTED_DEVICE is set to 1, the device has already been handled once
 # due to a prior udev add or change event.
