@@ -34,7 +34,7 @@ PC_DEPS = dbus-c++-1 protobuf-lite openssl \
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
-CXXFLAGS += -I$(SRC)/.. -I$(OUT) $(PC_CFLAGS) -DNDEBUG -std=gnu++11
+CXXFLAGS += -I$(SRC)/.. -I$(OUT) $(PC_CFLAGS) -DNDEBUG -std=gnu++11 -fexceptions
 LDLIBS += $(PC_LIBS)
 
 # Test if libmemenv is available, and whether libsnappy is required to
@@ -144,6 +144,17 @@ CXX_LIBRARY(libchaps.so): $(libchaps_OBJS)
 clean: CLEAN(libchaps.so)
 all: CXX_LIBRARY(libchaps.so)
 
+ifneq ($(CHAPS_VERSION_MAJOR),)
+ifneq ($(CHAPS_VERSION_MINOR),)
+CHAPS_VERSION=$(CHAPS_VERSION_MAJOR).$(CHAPS_VERSION_MINOR)
+# Also build a version with SONAME set.
+CXX_LIBRARY(libchaps.so.$(CHAPS_VERSION)): $(libchaps_OBJS)
+CXX_LIBRARY(libchaps.so.$(CHAPS_VERSION)): LDFLAGS += -Wl,-soname,libchaps.so.$(CHAPS_VERSION_MAJOR)
+clean: CLEAN(libchaps.so.$(CHAPS_VERSION))
+all: CXX_LIBRARY(libchaps.so.$(CHAPS_VERSION))
+endif
+endif
+
 # Chaps Client CLI App
 chaps_client_OBJS = $(COMMON_OBJS) chaps_client.o chaps_proxy.o \
                     token_manager_client.o isolate_$(PLATFORM).o
@@ -164,6 +175,7 @@ pamchaps_OBJS = $(COMMON_OBJS) chaps_pam_module.o chaps.o chaps_proxy.o \
                 token_file_manager_$(PLATFORM).o isolate_$(PLATFORM).o \
                 platform_globals_$(PLATFORM).o
 CXX_LIBRARY(pam_chaps.so): $(pamchaps_OBJS)
+CXX_LIBRARY(pam_chaps.so): LDLIBS += -lpam
 clean: CLEAN(pam_chaps.so)
 all: CXX_LIBRARY(pam_chaps.so)
 endif
@@ -173,7 +185,13 @@ ifeq ($(LINUX_BUILD), 1)
 install_files: all
 	$(INSTALL) -D $(OUT)/chapsd $(DESTDIR)/usr/sbin/chapsd
 	$(INSTALL) -D $(OUT)/chaps_client $(DESTDIR)/usr/bin/chaps_client
+ifneq ($(CHAPS_VERSION),)
+	$(INSTALL) -D $(OUT)/libchaps.so.$(CHAPS_VERSION) $(DESTDIR)$(LIB_DIR)/libchaps.so.$(CHAPS_VERSION)
+	cd $(DESTDIR)$(LIB_DIR) && ln -s -f libchaps.so.$(CHAPS_VERSION) libchaps.so.$(CHAPS_VERSION_MAJOR)
+	cd $(DESTDIR)$(LIB_DIR) && ln -s -f libchaps.so.$(CHAPS_VERSION_MAJOR) libchaps.so
+else
 	$(INSTALL) -D $(OUT)/libchaps.so $(DESTDIR)$(LIB_DIR)/libchaps.so
+endif
 	$(INSTALL_DATA) -D $(OUT)/org.chromium.Chaps.conf \
 	  $(DESTDIR)/etc/dbus-1/system.d/org.chromium.Chaps.conf
 	$(INSTALL_DATA) -D $(SRC)/org.chromium.Chaps.service \
