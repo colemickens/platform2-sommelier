@@ -111,6 +111,7 @@ class SessionImpl : public Session {
     bool is_cipher_;  // Set to true when cipher_context_ is valid.
     bool is_digest_;  // Set to true when digest_context_ is valid.
     bool is_hmac_;  // Set to true when hmac_context_ is valid.
+    bool is_incremental_;  // Set when an incremental operation is performed.
     bool is_finished_;  // Set to true when the operation completes.
     union {
       EVP_CIPHER_CTX cipher_context_;
@@ -133,6 +134,13 @@ class SessionImpl : public Session {
                       CK_OBJECT_CLASS object_class,
                       CK_KEY_TYPE key_type);
   bool IsValidMechanism(OperationType operation, CK_MECHANISM_TYPE mechanism);
+  CK_RV OperationUpdateInternal(OperationType operation,
+                                const std::string& data_in,
+                                int* required_out_length,
+                                std::string* data_out);
+  CK_RV OperationFinalInternal(OperationType operation,
+                               int* required_out_length,
+                               std::string* data_out);
   CK_RV CipherInit(bool is_encrypt,
                    CK_MECHANISM_TYPE mechanism,
                    const std::string& mechanism_parameter,

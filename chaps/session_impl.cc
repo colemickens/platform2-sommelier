@@ -280,6 +280,23 @@ CK_RV SessionImpl::OperationUpdate(OperationType operation,
     LOG(ERROR) << "Operation is not initialized.";
     return CKR_OPERATION_NOT_INITIALIZED;
   }
+  if (context->is_finished_) {
+    LOG(ERROR) << "Operation is finished.";
+    return CKR_OPERATION_ACTIVE;
+  }
+  context->is_incremental_ = true;
+  return OperationUpdateInternal(operation,
+                                 data_in,
+                                 required_out_length,
+                                 data_out);
+}
+
+CK_RV SessionImpl::OperationUpdateInternal(OperationType operation,
+                                           const string& data_in,
+                                           int* required_out_length,
+                                           string* data_out) {
+  CHECK(operation < kNumOperationTypes);
+  OperationContext* context = &operation_context_[operation];
   if (context->is_cipher_) {
     return CipherUpdate(context, data_in, required_out_length, data_out);
   } else if (context->is_digest_) {
@@ -310,6 +327,19 @@ CK_RV SessionImpl::OperationFinal(OperationType operation,
     LOG(ERROR) << "Operation is not initialized.";
     return CKR_OPERATION_NOT_INITIALIZED;
   }
+  if (!context->is_incremental_ && context->is_finished_) {
+    LOG(ERROR) << "Operation is not incremental.";
+    return CKR_OPERATION_ACTIVE;
+  }
+  context->is_incremental_ = true;
+  return OperationFinalInternal(operation, required_out_length, data_out);
+}
+
+CK_RV SessionImpl::OperationFinalInternal(OperationType operation,
+                                          int* required_out_length,
+                                          string* data_out) {
+  CHECK(operation < kNumOperationTypes);
+  OperationContext* context = &operation_context_[operation];
   context->is_valid_ = false;
   // Complete the operation if it has not already been done.
   if (!context->is_finished_) {
@@ -387,15 +417,23 @@ CK_RV SessionImpl::OperationSinglePart(OperationType operation,
                                        string* data_out) {
   CHECK(operation < kNumOperationTypes);
   OperationContext* context = &operation_context_[operation];
+  if (!context->is_valid_) {
+    LOG(ERROR) << "Operation is not initialized.";
+    return CKR_OPERATION_NOT_INITIALIZED;
+  }
+  if (context->is_incremental_) {
+    LOG(ERROR) << "Operation is incremental.";
+    return CKR_OPERATION_ACTIVE;
+  }
   CK_RV result = CKR_OK;
   if (!context->is_finished_) {
     string update, final;
     int max = INT_MAX;
-    result = OperationUpdate(operation, data_in, &max, &update);
+    result = OperationUpdateInternal(operation, data_in, &max, &update);
     if (result != CKR_OK)
       return result;
     max = INT_MAX;
-    result = OperationFinal(operation, &max, &final);
+    result = OperationFinalInternal(operation, &max, &final);
     if (result != CKR_OK)
       return result;
     context->data_ = update + final;
@@ -1332,6 +1370,7 @@ void SessionImpl::OperationContext::Clear() {
   is_cipher_ = false;
   is_digest_ = false;
   is_hmac_ = false;
+  is_incremental_ = false;
   is_finished_ = false;
   key_ = NULL;
   data_.clear();

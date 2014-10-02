@@ -440,6 +440,62 @@ TEST_F(TestSession, HMAC) {
   EXPECT_EQ(CKR_OK, session_->VerifyFinal(out));
 }
 
+// Test empty multi-part operation.
+TEST_F(TestSession, FinalWithNoUpdate) {
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", NULL));
+  int len = 20;
+  string out;
+  EXPECT_EQ(CKR_OK, session_->OperationFinal(kDigest, &len, &out));
+  EXPECT_EQ(20, len);
+}
+
+// Test multi-part and single-part operations inhibit each other.
+TEST_F(TestSession, UpdateOperationPreventsSinglePart) {
+  string in(30, 'A');
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", NULL));
+  EXPECT_EQ(CKR_OK, session_->OperationUpdate(kDigest,
+                                              in.substr(0, 10),
+                                              NULL,
+                                              NULL));
+  int len = 0;
+  string out;
+  EXPECT_EQ(CKR_OPERATION_ACTIVE,
+            session_->OperationSinglePart(kDigest,
+                                          in.substr(10, 20),
+                                          &len,
+                                          &out));
+}
+
+TEST_F(TestSession, SinglePartOperationPreventsUpdate) {
+  string in(30, 'A');
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", NULL));
+  string out;
+  int len = 0;
+  // Perform a single part operation but leave the output to be collected.
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
+            session_->OperationSinglePart(kDigest, in, &len, &out));
+
+  EXPECT_EQ(CKR_OPERATION_ACTIVE,
+            session_->OperationUpdate(kDigest,
+                                      in.substr(10, 10),
+                                      NULL,
+                                      NULL));
+}
+
+TEST_F(TestSession, SinglePartOperationPreventsFinal) {
+  string in(30, 'A');
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", NULL));
+  string out;
+  int len = 0;
+  // Perform a single part operation but leave the output to be collected.
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
+            session_->OperationSinglePart(kDigest, in, &len, &out));
+
+  len = 0;
+  EXPECT_EQ(CKR_OPERATION_ACTIVE,
+            session_->OperationFinal(kDigest, &len, &out));
+}
+
 // Test RSA PKCS #1 encryption.
 TEST_F(TestSession, RSAEncrypt) {
   const Object* pub = NULL;
