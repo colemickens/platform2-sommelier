@@ -130,6 +130,12 @@ DBUS_POLICY = "context=\"default\""
 else
 DBUS_POLICY = "group=\"pkcs11\""
 endif
+DBUS_FLAGS := $(call check_compile_cxx, \
+	'\#include <dbus-c++/dbus.h>\nint main(){\
+	DBus::Connection::SystemBus().acquire_name("dummy");\
+	return 0;}',,-DNO_DBUS_ACQUIRE_NAME)
+CXXFLAGS += $(DBUS_FLAGS)
+
 .PHONY: $(OUT)/org.chromium.Chaps.conf
 $(OUT)/org.chromium.Chaps.conf :
 	sed -e "s/@POLICY_PERMISSIONS@/$(DBUS_POLICY)/" \

@@ -25,7 +25,11 @@ namespace chaps {
 // Helper used when calling the ObjectAdaptor constructor.
 static DBus::Connection& GetConnection() {
   static DBus::Connection connection = DBus::Connection::SystemBus();
+#ifdef NO_DBUS_ACQUIRE_NAME
+  connection.request_name(kChapsServiceName);
+#else
   CHECK(connection.acquire_name(kChapsServiceName));
+#endif
   return connection;
 }
 
