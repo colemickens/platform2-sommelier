@@ -11,7 +11,7 @@ package quipper;
 //
 // See $kernel/tools/perf/design.txt for more details.
 
-// Next tag: 14
+// Next tag: 15
 message PerfDataProto {
 
   // Perf event attribute. Stores the event description.
@@ -419,6 +419,15 @@ message PerfDataProto {
     repeated uint64 data = 2;
   }
 
+  // Next tag: 3
+  message PerfTracingMetadata {
+    // The trace event metadata.
+    optional bytes tracing_data = 1;
+
+    // Trace event metedata Md5sum prefix.
+    optional uint64 tracing_data_md5_prefix = 2;
+  }
+
   // Next tag: 6
   message PerfBuildID {
     // Misc field in perf_event_header.
@@ -487,6 +496,8 @@ message PerfDataProto {
   // At the moment, only the first number is actually used.
   // See adds_features in perf_reader.cc
   repeated uint64 metadata_mask = 5;
+
+  optional PerfTracingMetadata tracing_data = 14;
 
   repeated PerfBuildID build_ids = 7;
 

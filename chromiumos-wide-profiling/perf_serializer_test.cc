@@ -17,6 +17,7 @@
 #include "chromiumos-wide-profiling/quipper_string.h"
 #include "chromiumos-wide-profiling/quipper_test.h"
 #include "chromiumos-wide-profiling/scoped_temp_path.h"
+#include "chromiumos-wide-profiling/test_perf_data.h"
 #include "chromiumos-wide-profiling/test_utils.h"
 #include "chromiumos-wide-profiling/utils.h"
 
@@ -379,6 +380,60 @@ TEST(PerfSerializerTest, TestBuildIDs) {
     PerfSerializer perf_serializer_build_ids;
     EXPECT_TRUE(perf_serializer_build_ids.Deserialize(perf_data_proto));
   }
+}
+
+TEST(PerfSerializerTest, SerializesAndDeserializesTraceMetadata) {
+  std::stringstream input;
+
+  const size_t attr_count = 1;
+
+  // header
+  testing::ExamplePerfDataFileHeader file_header(attr_count,
+                                                 1 << HEADER_TRACING_DATA);
+  file_header.WriteTo(&input);
+  const perf_file_header &header = file_header.header();
+  // attrs
+  testing::ExamplePerfFileAttr_Tracepoint(73).WriteTo(&input);
+  // data
+  CHECK_EQ(input.tellp(), header.data.offset);
+  testing::ExamplePerfSampleEvent_Tracepoint().WriteTo(&input);
+  CHECK_EQ(input.tellp(), file_header.data_end());
+  // metadata
+  const unsigned int metadata_count = 1;
+  // HEADER_TRACING_DATA
+  testing::ExampleTracingMetadata tracing_metadata(
+      file_header.data_end() + metadata_count*sizeof(perf_file_section));
+  tracing_metadata.index_entry().WriteTo(&input);
+  tracing_metadata.data().WriteTo(&input);
+
+  // Parse and Serialize
+
+  PerfSerializer perf_serializer;
+  // Disable mapping threshold--we have no mappable events.
+  PerfSerializer::Options options;
+  options.sample_mapping_percentage_threshold = 0.0;
+  perf_serializer.set_options(options);
+  PerfDataProto perf_data_proto;
+  EXPECT_TRUE(perf_serializer.ReadFromString(input.str()));
+  EXPECT_TRUE(perf_serializer.Serialize(&perf_data_proto));
+
+  const std::vector<char> &tracing_metadata_value =
+      tracing_metadata.data().value();
+  const string tracing_metadata_str(tracing_metadata_value.data(),
+                                    tracing_metadata_value.size());
+  uint64_t tracing_metadata_md5_prefix =
+      Md5Prefix(tracing_metadata_value);
+  EXPECT_EQ(tracing_metadata_str,
+            perf_data_proto.tracing_data().tracing_data());
+  EXPECT_EQ(tracing_metadata_md5_prefix,
+            perf_data_proto.tracing_data().tracing_data_md5_prefix());
+
+  // Deserialize
+
+  PerfSerializer deserializer;
+  deserializer.set_options(options);
+  EXPECT_TRUE(deserializer.Deserialize(perf_data_proto));
+  EXPECT_EQ(tracing_metadata_value, deserializer.tracing_data());
 }
 
 }  // namespace quipper

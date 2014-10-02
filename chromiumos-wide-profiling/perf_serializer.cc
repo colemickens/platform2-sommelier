@@ -731,6 +731,30 @@ bool PerfSerializer::DeserializeSampleInfo(
   return WritePerfSampleInfo(sample_info, event);
 }
 
+bool PerfSerializer::SerializeTracingMetadata(
+    const std::vector<char>& from, PerfDataProto* to) const {
+  if (from.empty()) {
+    return true;
+  }
+  PerfDataProto_PerfTracingMetadata* data = to->mutable_tracing_data();
+  data->set_tracing_data(from.data(), from.size());
+  data->set_tracing_data_md5_prefix(Md5Prefix(from));
+
+  return true;
+}
+
+bool PerfSerializer::DeserializeTracingMetadata(
+    const PerfDataProto& from, std::vector<char>* to) const {
+  if (!from.has_tracing_data()) {
+    to->clear();
+    return true;
+  }
+
+  const PerfDataProto_PerfTracingMetadata &data = from.tracing_data();
+  to->assign(data.tracing_data().begin(), data.tracing_data().end());
+  return true;
+}
+
 bool PerfSerializer::SerializeBuildIDs(
     const std::vector<build_id_event*>& from,
     RepeatedPtrField<PerfDataProto_PerfBuildID>* to) const {
@@ -749,7 +773,8 @@ bool PerfSerializer::DeserializeBuildIDs(
 }
 
 bool PerfSerializer::SerializeMetadata(PerfDataProto* to) const {
-  if (!SerializeBuildIDs(build_id_events_, to->mutable_build_ids()) ||
+  if (!SerializeTracingMetadata(tracing_data_, to) ||
+      !SerializeBuildIDs(build_id_events_, to->mutable_build_ids()) ||
       !SerializeUint32Metadata(uint32_metadata_,
                                to->mutable_uint32_metadata()) ||
       !SerializeUint64Metadata(uint64_metadata_,
@@ -829,7 +854,8 @@ bool PerfSerializer::SerializeMetadata(PerfDataProto* to) const {
 }
 
 bool PerfSerializer::DeserializeMetadata(const PerfDataProto& from) {
-  if (!DeserializeBuildIDs(from.build_ids(), &build_id_events_) ||
+  if (!DeserializeTracingMetadata(from, &tracing_data_) ||
+      !DeserializeBuildIDs(from.build_ids(), &build_id_events_) ||
       !DeserializeUint32Metadata(from.uint32_metadata(), &uint32_metadata_) ||
       !DeserializeUint64Metadata(from.uint64_metadata(), &uint64_metadata_) ||
       !DeserializeCPUTopologyMetadata(from.cpu_topology(), &cpu_topology_) ||

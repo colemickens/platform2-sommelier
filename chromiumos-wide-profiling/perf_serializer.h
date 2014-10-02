@@ -171,6 +171,11 @@ class PerfSerializer : public PerfParser {
       const quipper::PerfDataProto_SampleInfo& info,
       event_t* event) const;
 
+  bool SerializeTracingMetadata(const std::vector<char>& from,
+                                PerfDataProto* to) const;
+  bool DeserializeTracingMetadata(const PerfDataProto& from,
+                                  std::vector<char>* to) const;
+
   bool SerializeBuildIDs(
       const std::vector<build_id_event*>& from,
       RepeatedPtrField<PerfDataProto_PerfBuildID>* to)
