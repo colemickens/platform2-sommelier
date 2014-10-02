@@ -280,6 +280,10 @@ class Device : public base::RefCounted<Device> {
   // addresses from this interface.
   virtual void OnIPv6DnsServerAddressesChanged();
 
+  // Called when link becomes unreliable (multiple link monitor failures
+  // detected in short period of time).
+  virtual void OnUnreliableLink();
+
   // Requests that NICs be programmed to wake up from suspend on the arrival of
   // packets on the TCP connection specified by the string argument.
   virtual void AddWakeOnPacketConnection(const IPAddress &ip_endpoint,

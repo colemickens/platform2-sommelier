@@ -206,6 +206,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Called by Linkmonitor (overridden from Device superclass).
   virtual void OnLinkMonitorFailure();
 
+  // Called by Device when link becomes unreliable (overriden from Device
+  // superclass).
+  virtual void OnUnreliableLink();
+
   bool IsCurrentService(const WiFiServiceRefPtr service) {
     return service.get() == current_service_.get();
   }
@@ -440,6 +444,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // with the reason for failure.
   virtual bool RemoveNetworkForService(
       const WiFiService *service, Error *error);
+  // Update disable_ht40 setting in wpa_supplicant for the given service.
+  void SetHT40EnableForService(const WiFiService *service, bool enable);
   // Perform the next in a series of progressive scans.
   void ProgressiveScanTask();
   // Recovers from failed progressive scan.

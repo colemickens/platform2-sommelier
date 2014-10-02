@@ -1069,6 +1069,11 @@ void Device::StopLinkMonitor() {
   link_monitor_.reset();
 }
 
+void Device::OnUnreliableLink() {
+  metrics_->NotifyUnreliableLinkSignalStrength(
+      technology_, selected_service_->strength());
+}
+
 void Device::OnLinkMonitorFailure() {
   SLOG(Device, 2) << "Device " << FriendlyName()
                   << ": Link Monitor indicates failure.";
@@ -1081,8 +1086,7 @@ void Device::OnLinkMonitorFailure() {
 
   if (now - last_link_monitor_failed_time_ <
           kLinkMonitorFailureUnreliableThresholdSeconds) {
-    metrics_->NotifyUnreliableLinkSignalStrength(
-        technology_, selected_service_->strength());
+    OnUnreliableLink();
   }
   last_link_monitor_failed_time_ = now;
 }

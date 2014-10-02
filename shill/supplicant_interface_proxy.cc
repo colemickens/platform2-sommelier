@@ -159,6 +159,16 @@ void SupplicantInterfaceProxy::SelectNetwork(const ::DBus::Path &network) {
   }
 }
 
+void SupplicantInterfaceProxy::SetHT40Enable(const ::DBus::Path &network,
+                                             bool enable) {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.SetHT40Enable(network, enable);
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+  }
+}
+
 void SupplicantInterfaceProxy::SetFastReauth(bool enabled) {
   SLOG(DBus, 2) << __func__;
   try {

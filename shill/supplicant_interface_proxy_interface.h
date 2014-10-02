@@ -43,6 +43,7 @@ class SupplicantInterfaceProxyInterface {
   virtual void TDLSSetup(const std::string &peer) = 0;
   virtual std::string TDLSStatus(const std::string &peer) = 0;
   virtual void TDLSTeardown(const std::string &peer) = 0;
+  virtual void SetHT40Enable(const ::DBus::Path &network, bool enable) = 0;
 };
 
 }  // namespace shill

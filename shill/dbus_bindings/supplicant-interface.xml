@@ -63,6 +63,10 @@
     <method name="TDLSTeardown">
       <arg name="peer" type="s" direction="in"/>
     </method>
+    <method name="SetHT40Enable">
+      <arg name="network" type="o" direction="in"/>
+      <arg name="enable" type="b" direction="in"/>
+    </method>
     <property name="Capabilities" type="a{sv}" access="read"/>
     <property name="State" type="s" access="read"/>
     <property name="Scanning" type="b" access="read"/>

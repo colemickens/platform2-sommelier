@@ -550,6 +550,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
       EXPECT_CALL(*service, GetSupplicantConfigurationParameters());
       EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddNetwork(_))
           .WillOnce(Return(network_path));
+      EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+                  SetHT40Enable(network_path, true));
       EXPECT_CALL(*GetSupplicantInterfaceProxy(), SelectNetwork(network_path));
     }
     EXPECT_CALL(*service, SetState(Service::kStateAssociating));
@@ -830,6 +832,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
   void OnLinkMonitorFailure() {
     wifi_->OnLinkMonitorFailure();
+  }
+
+  void OnUnreliableLink() {
+    wifi_->OnUnreliableLink();
   }
 
   bool SetBgscanShortInterval(const uint16_t &interval, Error *error) {
@@ -1591,6 +1597,16 @@ TEST_F(WiFiMainTest, ResumeDoesNotStartScanWhenNotIdle) {
   EXPECT_TRUE(IsScanSessionNull());
   OnAfterResume();
   dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, ResumeWithCurrentService) {
+  StartWiFi();
+  SetupConnectedService(DBus::Path(), NULL, NULL);
+
+  EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _, _)).Times(1);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetHT40Enable(_, true)).Times(1);
+  OnAfterResume();
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 }
 
 TEST_F(WiFiMainTest, ScanResults) {
@@ -2795,6 +2811,15 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
                        EndsWith("Called Reattach()."))).Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(1);
   OnLinkMonitorFailure();
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+}
+
+TEST_F(WiFiMainTest, UnreliableLink) {
+  StartWiFi();
+  SetupConnectedService(DBus::Path(), NULL, NULL);
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetHT40Enable(_, false)).Times(1);
+  OnUnreliableLink();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 }
 

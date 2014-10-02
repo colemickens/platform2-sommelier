@@ -47,6 +47,7 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   MOCK_METHOD1(TDLSSetup, void(const std::string &peer));
   MOCK_METHOD1(TDLSStatus, std::string(const std::string &peer));
   MOCK_METHOD1(TDLSTeardown, void(const std::string &peer));
+  MOCK_METHOD2(SetHT40Enable, void(const ::DBus::Path &network, bool enable));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSupplicantInterfaceProxy);
