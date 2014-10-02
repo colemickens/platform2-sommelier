@@ -307,6 +307,32 @@ bool DeviceRegistrationInfo::ValidateAndRefreshAccessToken(
   return true;
 }
 
+std::unique_ptr<base::DictionaryValue>
+DeviceRegistrationInfo::BuildDeviceResource(chromeos::ErrorPtr* error) {
+  std::unique_ptr<base::DictionaryValue> commands =
+      command_manager_->GetCommandDictionary().GetCommandsAsJson(true, error);
+  if (!commands)
+    return nullptr;
+
+  std::unique_ptr<base::DictionaryValue> state =
+      state_manager_->GetStateValuesAsJson(error);
+  if (!state)
+    return nullptr;
+
+  std::unique_ptr<base::DictionaryValue> resource{new base::DictionaryValue};
+  if (!device_id_.empty())
+    resource->SetString("id", device_id_);
+  resource->SetString("deviceKind", device_kind_);
+  resource->SetString("systemName", system_name_);
+  if (!display_name_.empty())
+    resource->SetString("displayName", display_name_);
+  resource->SetString("channel.supportedType", "xmpp");
+  resource->Set("commandDefs", commands.release());
+  resource->Set("state", state.release());
+
+  return resource;
+}
+
 std::unique_ptr<base::Value> DeviceRegistrationInfo::GetDeviceInfo(
     chromeos::ErrorPtr* error) {
   if (!CheckRegistration(error))
@@ -353,26 +379,16 @@ std::string DeviceRegistrationInfo::StartRegistration(
   GetParamValue(params, storage_keys::kOAuthURL, &oauth_url_);
   GetParamValue(params, storage_keys::kServiceURL, &service_url_);
 
-  std::unique_ptr<base::DictionaryValue> commands =
-      command_manager_->GetCommandDictionary().GetCommandsAsJson(true, error);
-  if (!commands)
-    return std::string();
 
-  std::unique_ptr<base::DictionaryValue> state =
-      state_manager_->GetStateValuesAsJson(error);
-  if (!state)
+  std::unique_ptr<base::DictionaryValue> device_draft =
+      BuildDeviceResource(error);
+  if (!device_draft)
     return std::string();
 
   base::DictionaryValue req_json;
   req_json.SetString("id", ticket_id_);
   req_json.SetString("oauthClientId", client_id_);
-  req_json.SetString("deviceDraft.deviceKind", device_kind_);
-  req_json.SetString("deviceDraft.systemName", system_name_);
-  if (!display_name_.empty())
-    req_json.SetString("deviceDraft.displayName", display_name_);
-  req_json.SetString("deviceDraft.channel.supportedType", "xmpp");
-  req_json.Set("deviceDraft.commandDefs", commands.release());
-  req_json.Set("deviceDraft.state", state.release());
+  req_json.Set("deviceDraft", device_draft.release());
 
   auto url = GetServiceURL("registrationTickets/" + ticket_id_,
                            {{"key", api_key_}});
@@ -465,6 +481,34 @@ bool DeviceRegistrationInfo::FinishRegistration(chromeos::ErrorPtr* error) {
 
   Save();
   return true;
+}
+
+void DeviceRegistrationInfo::StartDevice(chromeos::ErrorPtr* error) {
+  if (!CheckRegistration(error))
+    return;
+
+  std::unique_ptr<base::DictionaryValue> device_resource =
+      BuildDeviceResource(error);
+  if (!device_resource)
+    return;
+
+  // TODO(antonm): Use PUT, not PATCH for updates.
+  std::unique_ptr<chromeos::http::Response> response =
+      chromeos::http::PatchJson(GetDeviceURL(), device_resource.release(),
+                                {GetAuthorizationHeader()}, transport_, error);
+  if (!response)
+    return;
+
+  int status_code = 0;
+  std::unique_ptr<base::DictionaryValue> json =
+      chromeos::http::ParseJsonResponse(response.get(), &status_code, error);
+  if (!json || status_code >= chromeos::http::status_code::BadRequest)
+    return;
+
+  // TODO(antonm): Implement the rest of startup sequence:
+  //   * Abort commands cloud thinks are running
+  //   * Poll for commands to run
+  //   * Schedule periodic polling
 }
 
 }  // namespace buffet

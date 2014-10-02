@@ -73,7 +73,8 @@ void Manager::RegisterAsync(const AsyncEventSequencer::CompletionAction& cb) {
 
 void Manager::HandleStartDevice(chromeos::ErrorPtr* error) {
   LOG(INFO) << "Received call to Manager.StartDevice()";
-  LOG(INFO) << "Not implemented";
+
+  device_info_->StartDevice(error);
 }
 
 std::string Manager::HandleCheckDeviceRegistered(chromeos::ErrorPtr* error) {

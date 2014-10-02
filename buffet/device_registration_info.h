@@ -107,12 +107,24 @@ class DeviceRegistrationInfo {
   // StartRegistration must have been invoked before.
   bool FinishRegistration(chromeos::ErrorPtr* error);
 
+  // Start device execution.
+  // Device will do required start up chores and then start to listen
+  // to new commands.
+  // TODO(antonm): Consider moving into some other class.
+  void StartDevice(chromeos::ErrorPtr* error);
+
  private:
   // Saves the device registration to cache.
   bool Save() const;
 
   // Makes sure the access token is available and up-to-date.
   bool ValidateAndRefreshAccessToken(chromeos::ErrorPtr* error);
+
+  // Builds Cloud API devices collection REST resouce which matches
+  // current state of the device including command definitions
+  // for all supported commands and current device state.
+  std::unique_ptr<base::DictionaryValue> BuildDeviceResource(
+      chromeos::ErrorPtr* error);
 
   // Persistent data. Some of default values for testing purposes are used.
   // TODO(avakulenko): remove these default values in the future.
