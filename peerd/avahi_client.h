@@ -46,7 +46,7 @@ class AvahiClient {
 
  private:
   // Watch for changes in Avahi server state.
-  void OnServerStateChanged(dbus::Signal* signal);
+  void OnServerStateChanged(int32_t state, const std::string& error);
   // ObjectProxy forces us to register a one off "ServiceAvailable"
   // callback for startup, then register to listen to service owner changes
   // in steady state.

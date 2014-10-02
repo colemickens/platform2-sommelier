@@ -5,6 +5,7 @@
 #include <avahi-common/defs.h>
 #include <base/memory/ref_counted.h>
 #include <chromeos/dbus/data_serialization.h>
+#include <chromeos/dbus/dbus_param_writer.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
@@ -29,9 +30,11 @@ using peerd::dbus_constants::avahi::kServerSignalStateChanged;
 using peerd::dbus_constants::avahi::kServiceName;
 using peerd::test_util::IsDBusMethodCallTo;
 using testing::AnyNumber;
+using testing::DoAll;
 using testing::Invoke;
 using testing::Property;
 using testing::Return;
+using testing::SaveArg;
 using testing::Unused;
 using testing::_;
 
@@ -77,7 +80,9 @@ class AvahiClientTest : public ::testing::Test {
                 ConnectToSignal(kServerInterface,
                                 kServerSignalStateChanged,
                                 _, _))
-        .WillOnce(Invoke(&test_util::HandleConnectToSignal));
+        .WillOnce(DoAll(Invoke(&test_util::HandleConnectToSignal),
+                        SaveArg<2>(&state_changed_signal_callback_)));
+
     // After we connect the signal, we'll be asked to handle a callback
     // for the initial state of Avahi.
     EXPECT_CALL(*avahi_proxy_, WaitForServiceToBeAvailable(_));
@@ -126,10 +131,12 @@ class AvahiClientTest : public ::testing::Test {
     }
     dbus::Signal signal(kServerInterface, kServerSignalStateChanged);
     dbus::MessageWriter writer(&signal);
-    chromeos::dbus_utils::AppendValueToWriter(&writer, int32_t{state});
     // No error message to report cap'n.
-    chromeos::dbus_utils::AppendValueToWriter(&writer, "");
-    client_->OnServerStateChanged(&signal);
+    chromeos::dbus_utils::DBusParamWriter::Append(&writer,
+                                                  int32_t{state},
+                                                  std::string{});
+    ASSERT_FALSE(state_changed_signal_callback_.is_null());
+    state_changed_signal_callback_.Run(&signal);
   }
 
   MOCK_METHOD0(AvahiReady, void());
@@ -138,6 +145,7 @@ class AvahiClientTest : public ::testing::Test {
   scoped_refptr<peerd::CompleteMockObjectProxy> avahi_proxy_;
   std::unique_ptr<AvahiClient> client_;
   AvahiServerState current_avahi_state_;
+  dbus::ObjectProxy::SignalCallback state_changed_signal_callback_;
 };  // class AvahiClientTest
 
 

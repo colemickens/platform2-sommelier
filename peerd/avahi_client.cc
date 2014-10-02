@@ -8,6 +8,7 @@
 
 #include <avahi-common/defs.h>
 #include <chromeos/dbus/dbus_method_invoker.h>
+#include <chromeos/dbus/dbus_signal_handler.h>
 #include <dbus/object_proxy.h>
 
 #include "peerd/dbus_constants.h"
@@ -40,15 +41,17 @@ AvahiClient::~AvahiClient() {
 void AvahiClient::RegisterAsync(const CompletionAction& completion_callback) {
   // Reconnect to our signals on a new Avahi instance.
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
-  server_->ConnectToSignal(dbus_constants::avahi::kServerInterface,
-                           dbus_constants::avahi::kServerSignalStateChanged,
-                           base::Bind(&AvahiClient::OnServerStateChanged,
-                                      weak_ptr_factory_.GetWeakPtr()),
-                           sequencer->GetExportHandler(
-                              dbus_constants::avahi::kServerInterface,
-                              dbus_constants::avahi::kServerSignalStateChanged,
-                              "Failed to subscribe to Avahi state change.",
-                              true));
+  chromeos::dbus_utils::ConnectToSignal(
+      server_,
+      dbus_constants::avahi::kServerInterface,
+      dbus_constants::avahi::kServerSignalStateChanged,
+      base::Bind(&AvahiClient::OnServerStateChanged,
+                 weak_ptr_factory_.GetWeakPtr()),
+      sequencer->GetExportHandler(
+          dbus_constants::avahi::kServerInterface,
+          dbus_constants::avahi::kServerSignalStateChanged,
+          "Failed to subscribe to Avahi state change.",
+          true));
   sequencer->OnAllTasksCompletedCall(
       {completion_callback,
        // Get a onetime callback with the initial state of Avahi.
@@ -79,17 +82,8 @@ void AvahiClient::OnServiceOwnerChanged(const string& old_owner,
   OnServiceAvailable(true);
 }
 
-void AvahiClient::OnServerStateChanged(dbus::Signal* signal) {
+void AvahiClient::OnServerStateChanged(int32_t state, const string& error) {
   VLOG(1) << "OnServerStateChanged fired.";
-  dbus::MessageReader reader(signal);
-  int32_t state;
-  string error;
-  if (!reader.PopInt32(&state)) { return; }
-  if (!reader.PopString(&error)) {
-    LOG(WARNING) << "Failed to parse Avahi error from signal "
-                 << dbus_constants::avahi::kServerSignalStateChanged;
-    return;
-  }
   HandleServerStateChange(state);
 }
 
