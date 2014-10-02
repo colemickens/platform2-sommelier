@@ -14,7 +14,9 @@
 #include "peerd/dbus_constants.h"
 #include "peerd/ip_addr.h"
 #include "peerd/peer.h"
+#include "peerd/peer_manager_impl.h"
 #include "peerd/service.h"
+#include "peerd/technologies.h"
 
 using chromeos::Error;
 using chromeos::ErrorPtr;
@@ -46,6 +48,7 @@ namespace errors {
 namespace manager {
 
 const char kInvalidServiceToken[] = "manager.service_token";
+const char kInvalidMonitoringTechnology[] = "manager.monitoring_technology";
 const char kInvalidMonitoringToken[] = "manager.monitoring_token";
 
 }  // namespace manager
@@ -53,23 +56,32 @@ const char kInvalidMonitoringToken[] = "manager.monitoring_token";
 
 Manager::Manager(ExportedObjectManager* object_manager)
   : Manager(unique_ptr<DBusObject>{
-                new DBusObject{object_manager,
-                               object_manager->GetBus(),
+                new DBusObject{object_manager, object_manager->GetBus(),
                                ObjectPath{kManagerServicePath}}},
-            unique_ptr<Peer>{},  // Fill in self_ in RegisterAsync().
-            unique_ptr<AvahiClient>{
-                new AvahiClient{object_manager->GetBus()}}) {
+            unique_ptr<Peer>{},
+            unique_ptr<PeerManagerInterface>{},
+            unique_ptr<AvahiClient>{}) {
 }
 
 Manager::Manager(unique_ptr<DBusObject> dbus_object,
                  unique_ptr<Peer> self,
+                 unique_ptr<PeerManagerInterface> peer_manager,
                  unique_ptr<AvahiClient> avahi_client)
     : dbus_object_{std::move(dbus_object)},
       self_{std::move(self)},
+      peer_manager_{std::move(peer_manager)},
       avahi_client_{std::move(avahi_client)} {
-  avahi_client_->RegisterOnAvahiRestartCallback(
-      base::Bind(&Manager::ShouldRefreshAvahiPublisher,
-                 base::Unretained(this)));
+  // If we haven't gotten mocks for these objects, make real ones.
+  if (!peer_manager_) {
+    peer_manager_.reset(
+        new PeerManagerImpl{dbus_object_->GetObjectManager()->GetBus(),
+                            dbus_object_->GetObjectManager().get()});
+  }
+  if (!avahi_client_) {
+    avahi_client_.reset(
+        new AvahiClient{dbus_object_->GetObjectManager()->GetBus(),
+                        peer_manager_.get()});
+  }
 }
 
 
@@ -114,18 +126,70 @@ void Manager::RegisterAsync(const CompletionAction& completion_callback) {
   }
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed exporting Manager.", true));
+  avahi_client_->RegisterOnAvahiRestartCallback(
+      base::Bind(&Manager::ShouldRefreshAvahiPublisher,
+                 base::Unretained(this)));
   avahi_client_->RegisterAsync(
       sequencer->GetHandler("Failed AvahiClient.RegisterAsync().", true));
   sequencer->OnAllTasksCompletedCall({completion_callback});
 }
 
-string Manager::StartMonitoring(ErrorPtr* error,
-                                const set<string>& technologies) {
-  return "a_monitor_token";
+string Manager::StartMonitoring(
+    ErrorPtr* error,
+    const vector<technologies::tech_t>& requested_technologies) {
+  string token;
+  if (requested_technologies.empty())  {
+    Error::AddTo(error,
+                 kPeerdErrorDomain,
+                 errors::manager::kInvalidMonitoringTechnology,
+                 "Expected at least one monitoring technology.");
+    return token;
+  }
+  technologies::tech_t combined = 0;
+  for (technologies::tech_t tech : requested_technologies) {
+    if (tech != technologies::kAll &&
+        tech != technologies::kMDNS) {
+      Error::AddToPrintf(error,
+                         kPeerdErrorDomain,
+                         errors::manager::kInvalidMonitoringTechnology,
+                         "Invalid monitoring technology: %d.", tech);
+      return token;
+    }
+    combined |= tech;
+  }
+  token = "monitoring_" + std::to_string(++monitoring_tokens_issued_);
+  monitoring_requests_[token] = combined;
+  if (((technologies::kAll | technologies::kMDNS) & combined) != 0) {
+    // Let the AvahiClient worry about if we're already monitoring.
+    avahi_client_->StartMonitoring();
+  }
+  // TODO(wiley): Monitor DBus identifier for disconnect.
+  return token;
 }
 
 void Manager::StopMonitoring(ErrorPtr* error,
                              const string& monitoring_token) {
+  auto it = monitoring_requests_.find(monitoring_token);
+  if (it == monitoring_requests_.end()) {
+      Error::AddToPrintf(error,
+                         kPeerdErrorDomain,
+                         errors::manager::kInvalidMonitoringToken,
+                         "Unknown monitoring token: %s.",
+                         monitoring_token.c_str());
+     return;
+  }
+  monitoring_requests_.erase(it);
+  technologies::tech_t combined = 0;
+  for (const auto& request : monitoring_requests_) {
+    combined |= request.second;
+  }
+  if (combined & technologies::kAll) {
+    // Carry on, everything we had going on should continue.
+    return;
+  }
+  if (!(combined & technologies::kMDNS)) {
+    avahi_client_->StopMonitoring();
+  }
 }
 
 string Manager::ExposeService(chromeos::ErrorPtr* error,

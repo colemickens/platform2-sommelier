@@ -7,6 +7,7 @@
 
 #include <map>
 #include <set>
+#include <stdint.h>
 #include <string>
 #include <vector>
 
@@ -17,6 +18,8 @@
 #include "peerd/avahi_client.h"
 #include "peerd/ip_addr.h"
 #include "peerd/peer.h"
+#include "peerd/peer_manager_interface.h"
+#include "peerd/technologies.h"
 #include "peerd/typedefs.h"
 
 namespace dbus {
@@ -35,6 +38,7 @@ namespace errors {
 namespace manager {
 
 extern const char kInvalidServiceToken[];
+extern const char kInvalidMonitoringTechnology[];
 extern const char kInvalidMonitoringToken[];
 
 }  // namespace manager
@@ -50,7 +54,7 @@ class Manager {
   // DBus handlers
   std::string StartMonitoring(
       chromeos::ErrorPtr* error,
-      const std::set<std::string>& technologies);
+      const std::vector<technologies::tech_t>& requested_technologies);
 
   void StopMonitoring(
       chromeos::ErrorPtr* error,
@@ -77,6 +81,7 @@ class Manager {
   // Used in unit tests to inject mocks.
   Manager(std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object,
           std::unique_ptr<Peer> self,
+          std::unique_ptr<PeerManagerInterface> peer_manager,
           std::unique_ptr<AvahiClient> avahi_client);
 
   // Called from AvahiClient.
@@ -84,9 +89,12 @@ class Manager {
 
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<Peer> self_;
+  std::unique_ptr<PeerManagerInterface> peer_manager_;
   std::unique_ptr<AvahiClient> avahi_client_;
   std::map<std::string, std::string> service_token_to_id_;
+  std::map<std::string, technologies::tech_t> monitoring_requests_;
   size_t services_added_{0};
+  size_t monitoring_tokens_issued_{0};
 
   friend class ManagerDBusProxyTest;
   friend class ManagerTest;

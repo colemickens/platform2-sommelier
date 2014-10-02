@@ -16,6 +16,7 @@
 #include "peerd/avahi_client.h"
 #include "peerd/complete_mock_object_proxy.h"
 #include "peerd/dbus_constants.h"
+#include "peerd/mock_peer_manager.h"
 #include "peerd/test_util.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
@@ -67,7 +68,9 @@ class AvahiClientTest : public ::testing::Test {
                 GetObjectProxy(kServiceName,
                                Property(&ObjectPath::value, kServerPath)))
         .WillRepeatedly(Return(avahi_proxy_.get()));
-    client_.reset(new AvahiClient(mock_bus_));
+    // Desctruction of the AvahiClient calls this every time.
+    EXPECT_CALL(peer_manager_, OnTechnologyShutdown(technologies::kMDNS));
+    client_.reset(new AvahiClient(mock_bus_, &peer_manager_));
   }
 
   void TearDown() override {
@@ -127,6 +130,7 @@ class AvahiClientTest : public ::testing::Test {
   MOCK_METHOD0(AvahiReady, void());
 
   scoped_refptr<MockBus> mock_bus_{new MockBus{dbus::Bus::Options{}}};
+  MockPeerManager peer_manager_;
   scoped_refptr<peerd::CompleteMockObjectProxy> avahi_proxy_;
   std::unique_ptr<AvahiClient> client_;
   AvahiServerState current_avahi_state_;

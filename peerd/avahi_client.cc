@@ -12,6 +12,8 @@
 #include <dbus/object_proxy.h>
 
 #include "peerd/dbus_constants.h"
+#include "peerd/peer_manager_interface.h"
+#include "peerd/technologies.h"
 
 using dbus::ObjectPath;
 using chromeos::dbus_utils::AsyncEventSequencer;
@@ -21,7 +23,10 @@ using std::string;
 
 namespace peerd {
 
-AvahiClient::AvahiClient(const scoped_refptr<dbus::Bus>& bus) : bus_{bus} {
+AvahiClient::AvahiClient(const scoped_refptr<dbus::Bus>& bus,
+                         PeerManagerInterface* peer_manager)
+    : bus_{bus},
+      peer_manager_(peer_manager) {
 }
 
 AvahiClient::~AvahiClient() {
@@ -32,6 +37,7 @@ AvahiClient::~AvahiClient() {
     // callbacks from the proxy after AvahiClient dies.
     server_->Detach();
   }
+  StopMonitoring();
 }
 
 void AvahiClient::RegisterAsync(const CompletionAction& completion_callback) {
@@ -74,6 +80,14 @@ void AvahiClient::RegisterOnAvahiRestartCallback(
     // we ought to call the callback now.
     cb.Run();
   }
+}
+
+void AvahiClient::StartMonitoring() {
+  // TODO(wiley) Implement service monitoring over mDNS.
+}
+
+void AvahiClient::StopMonitoring() {
+  peer_manager_->OnTechnologyShutdown(technologies::kMDNS);
 }
 
 void AvahiClient::OnServiceOwnerChanged(const string& old_owner,

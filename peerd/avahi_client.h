@@ -20,6 +20,7 @@
 namespace peerd {
 
 class AvahiServicePublisher;
+class PeerManagerInterface;
 class ServicePublisherInterface;
 
 // DBus client managing our interface to the Avahi daemon.
@@ -27,7 +28,8 @@ class AvahiClient {
  public:
   using OnAvahiRestartCallback = base::Closure;
 
-  explicit AvahiClient(const scoped_refptr<dbus::Bus>& bus);
+  AvahiClient(const scoped_refptr<dbus::Bus>& bus,
+              PeerManagerInterface* peer_manager);
   virtual ~AvahiClient();
   virtual void RegisterAsync(const CompletionAction& cb);
   // Register interest in Avahi daemon restarts.  For instance, Avahi
@@ -47,6 +49,9 @@ class AvahiClient {
       const std::string& friendly_name,
       const std::string& note);
 
+  virtual void StartMonitoring();
+  virtual void StopMonitoring();
+
  private:
   // Watch for changes in Avahi server state.
   void OnServerStateChanged(int32_t state, const std::string& error);
@@ -62,6 +67,7 @@ class AvahiClient {
   bool GetHostName(std::string* hostname) const;
 
   scoped_refptr<dbus::Bus> bus_;
+  PeerManagerInterface* peer_manager_;  // Outlives this.
   dbus::ObjectProxy* server_{nullptr};
   std::vector<OnAvahiRestartCallback> avahi_ready_callbacks_;
   bool avahi_is_up_{false};
