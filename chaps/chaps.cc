@@ -76,7 +76,7 @@ static CK_RV HandlePKCS11Output(CK_RV result,
     memcpy(out_buffer, &output.front(), output.size());
   } else {
     *out_buffer_length = static_cast<CK_ULONG>(output_length);
-    if (result == CKR_BUFFER_TOO_SMALL)
+    if (result == CKR_BUFFER_TOO_SMALL && !out_buffer)
       result = CKR_OK;
   }
   return result;

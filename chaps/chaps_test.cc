@@ -1467,6 +1467,24 @@ TEST_F(TestEncrypt, EncryptFail) {
             C_DecryptFinal(1, buffer_out_, &length_out_));
 }
 
+TEST_F(TestEncrypt, EncryptSmallBuffer) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, Encrypt(_, 1, data_in_, 1, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     Return(CKR_BUFFER_TOO_SMALL)));
+  EXPECT_CALL(proxy, Decrypt(_, 1, data_in_, 1, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     Return(CKR_BUFFER_TOO_SMALL)));
+  length_out_ = 1;
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
+            C_Encrypt(1, buffer_in_, length_in_, buffer_out_, &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  length_out_ = 1;
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
+            C_Decrypt(1, buffer_in_, length_in_, buffer_out_, &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+}
+
 TEST_F(TestEncrypt, EncryptLengthOnly) {
   ChapsProxyMock proxy(true);
   EXPECT_CALL(proxy, Encrypt(_, 1, data_in_, 0, _, _)).
