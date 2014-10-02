@@ -145,12 +145,12 @@ std::string DebugDaemon::GetLog(const std::string& name,
 
 std::map<std::string, std::string> DebugDaemon::GetAllLogs(
     DBus::Error& error) {  // NOLINT
-  return log_tool_->GetAllLogs(&error);
+  return log_tool_->GetAllLogs(dbus_, &error);
 }
 
 std::map<std::string, std::string> DebugDaemon::GetFeedbackLogs(
     DBus::Error& error) {  // NOLINT
-  return log_tool_->GetFeedbackLogs(&error);
+  return log_tool_->GetFeedbackLogs(dbus_, &error);
 }
 
 std::map<std::string, std::string> DebugDaemon::GetUserLogFiles(

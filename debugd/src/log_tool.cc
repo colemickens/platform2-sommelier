@@ -14,13 +14,32 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
+#include <chromeos/dbus/service_constants.h>
+
 #include "debugd/src/anonymizer_tool.h"
 #include "debugd/src/process_with_output.h"
+
+#include "shill/dbus_proxies/org.chromium.flimflam.Manager.h"
 
 namespace debugd {
 
 const char *kShell = "/bin/sh";
 const char *kDebugfsGroup = "debugfs-access";
+
+// Minimum time in seconds needed to allow shill to test active connections.
+const int kConnectionTesterTimeoutSeconds = 5;
+
+class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
+                     public DBus::ObjectProxy {
+ public:
+  ManagerProxy(DBus::Connection* connection,
+               const char* path,
+               const char* service)
+      : DBus::ObjectProxy(*connection, path, service) {}
+  ~ManagerProxy() override = default;
+  void PropertyChanged(const std::string&, const DBus::Variant&) override {}
+  void StateChanged(const std::string&) override {}
+};
 
 using std::string;
 using std::vector;
@@ -222,6 +241,19 @@ bool GetNamedLogFrom(const string& name, const struct Log* logs,
   return false;
 }
 
+void LogTool::CreateConnectivityReport(DBus::Connection* connection) {
+  // Perform ConnectivityTrial to report connection state in feedback log.
+  ManagerProxy shill(connection,
+                     shill::kFlimflamServicePath,
+                     shill::kFlimflamServiceName);
+  shill.CreateConnectivityReport();
+  // Give the connection trial time to test the connection and log the results
+  // before collecting the logs for feedback.
+  // TODO(silberst): Replace the simple approach of a single timeout with a more
+  // coordinated effort.
+  sleep(kConnectionTesterTimeoutSeconds);
+}
+
 string LogTool::GetLog(const string& name, DBus::Error* error) {
   string result;
      GetNamedLogFrom(name, common_logs, &result)
@@ -235,14 +267,18 @@ void GetLogsFrom(const struct Log* logs, LogTool::LogMap* map) {
     (*map)[logs[i].name] = Run(logs[i]);
 }
 
-LogTool::LogMap LogTool::GetAllLogs(DBus::Error* error) {
+LogTool::LogMap LogTool::GetAllLogs(DBus::Connection* connection,
+                                    DBus::Error* error) {
+  CreateConnectivityReport(connection);
   LogMap result;
   GetLogsFrom(common_logs, &result);
   GetLogsFrom(extra_logs, &result);
   return result;
 }
 
-LogTool::LogMap LogTool::GetFeedbackLogs(DBus::Error* error) {
+LogTool::LogMap LogTool::GetFeedbackLogs(DBus::Connection* connection,
+                                         DBus::Error* error) {
+  CreateConnectivityReport(connection);
   LogMap result;
   GetLogsFrom(common_logs, &result);
   GetLogsFrom(feedback_logs, &result);

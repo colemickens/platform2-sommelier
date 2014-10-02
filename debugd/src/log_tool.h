@@ -21,14 +21,15 @@ class LogTool {
   typedef std::map<std::string, std::string> LogMap;
 
   std::string GetLog(const std::string& name, DBus::Error* error);
-  LogMap GetAllLogs(DBus::Error* error);
-  LogMap GetFeedbackLogs(DBus::Error* error);
+  LogMap GetAllLogs(DBus::Connection* connection, DBus::Error* error);
+  LogMap GetFeedbackLogs(DBus::Connection* connection, DBus::Error* error);
   LogMap GetUserLogFiles(DBus::Error* error);
 
  private:
   friend class LogToolTest;
 
   void AnonymizeLogMap(LogMap* log_map);
+  void CreateConnectivityReport(DBus::Connection* connection);
 
   DISALLOW_COPY_AND_ASSIGN(LogTool);
 };
