@@ -183,6 +183,7 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo) {
 
 // PKCS #11 v2.20 section 11.4 page 106.
 CK_RV C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR ppFunctionList) {
+  LOG_CK_RV_AND_RETURN_IF(!ppFunctionList, CKR_ARGUMENTS_BAD);
   static CK_VERSION version = {2, 20};
   static CK_FUNCTION_LIST functionList = {
     version,
