@@ -12,6 +12,12 @@
 
 namespace trunks {
 
+namespace {
+
+const int kDbusMaxTimeout = 5 * 60 * 1000;  // 5 minutes.
+
+}  // namespace
+
 TrunksProxy::TrunksProxy() {}
 
 TrunksProxy::~TrunksProxy() {}
@@ -38,14 +44,38 @@ void TrunksProxy::SendCommand(const std::string& command,
   TpmCommand tpm_command_proto;
   tpm_command_proto.set_command(command);
   writer.AppendProtoAsArrayOfBytes(tpm_command_proto);
-  object_->CallMethod(&method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+  object_->CallMethod(&method_call, kDbusMaxTimeout,
                       base::Bind(&trunks::TrunksProxy::OnResponse, callback));
 }
 
 uint32_t TrunksProxy::SendCommandAndWait(const std::string& command,
                                          std::string* response) {
-  return 0;
+  dbus::MethodCall method_call(trunks::kTrunksInterface, trunks::kSendCommand);
+  dbus::MessageWriter writer(&method_call);
+  CHECK(!command.empty());
+  TpmCommand tpm_command_proto;
+  tpm_command_proto.set_command(command);
+  writer.AppendProtoAsArrayOfBytes(tpm_command_proto);
+  scoped_ptr<dbus::Response> dbus_response =
+      object_->CallMethodAndBlock(&method_call, kDbusMaxTimeout);
+  dbus::MessageReader reader(dbus_response.get());
+  TpmResponse tpm_response_proto;
+  if (!reader.PopArrayOfBytesAsProto(&tpm_response_proto)) {
+    LOG(ERROR) << "TrunksProxy was not able to parse the response.";
+    response->resize(0);
+    return SAPI_RC_MALFORMED_RESPONSE;
+  }
+  TPM_RC response_rc = TPM_RC_SUCCESS;
+  if (tpm_response_proto.has_result_code()) {
+    response_rc = tpm_response_proto.result_code();
+    if (response_rc != TPM_RC_SUCCESS) {
+      LOG(ERROR) << "Trunks Daemon returned an error code: " << response_rc;
+    }
+  }
+  *response = tpm_response_proto.response();
+  return response_rc;
 }
+
 void TrunksProxy::OnResponse(const SendCommandCallback& callback,
                              dbus::Response* response) {
   if (!response) {
