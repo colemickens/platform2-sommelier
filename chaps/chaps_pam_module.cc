@@ -102,6 +102,9 @@ static bool Init() {
 
 PAM_EXPORT_SPEC int pam_sm_authenticate(pam_handle_t* pam_handle, int flags,
                                         int argc, const char** argv) {
+  logging::SetMinLogLevel((flags & PAM_SILENT) ?
+                          logging::LOG_FATAL : logging::LOG_INFO);
+
   if (!Init())
     return PAM_SERVICE_ERR;
 
@@ -121,6 +124,8 @@ PAM_EXPORT_SPEC int pam_sm_authenticate(pam_handle_t* pam_handle, int flags,
 
 PAM_EXPORT_SPEC int pam_sm_open_session(pam_handle_t* pam_handle, int flags,
                                         int argc, const char** argv) {
+  logging::SetMinLogLevel((flags & PAM_SILENT) ?
+                          logging::LOG_FATAL : logging::LOG_INFO);
   if (!Init())
     return PAM_SERVICE_ERR;
 

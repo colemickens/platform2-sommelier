@@ -38,7 +38,7 @@ bool ChapsProxyImpl::Init() {
     if (proxy_.get()) {
       if (!WaitForService())
         return false;
-      LOG(INFO) << "Chaps proxy initialized (" << kChapsServicePath << ").";
+      VLOG(1) << "Chaps proxy initialized (" << kChapsServicePath << ").";
       return true;
     }
   } catch (DBus::Error err) {

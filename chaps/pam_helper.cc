@@ -116,7 +116,7 @@ bool PamHelper::RetrieveUserAndPassword(pam_handle_t* pam_handle,
 
   const void* user_data;
   if (pam_get_data(pam_handle, kUserKey, &user_data) != PAM_SUCCESS) {
-    LOG(INFO) << "Could not retrieve user name from PAM handle";
+    VLOG(1) << "Could not retrieve user name from PAM handle";
     return false;
   }
   *user = *reinterpret_cast<const string*>(user_data);

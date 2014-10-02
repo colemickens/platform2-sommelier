@@ -61,7 +61,7 @@ bool IsolateCredentialManager::GetUserIsolateCredential(
   if (!base::PathExists(credential_file) ||
       !base::ReadFileToString(credential_file, &credential_string)) {
     LOG(INFO) << "Failed to find or read isolate credential for user "
-               << user;
+              << user;
     return false;
   }
   const SecureBlob new_isolate_credential(credential_string);
