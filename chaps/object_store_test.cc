@@ -120,6 +120,7 @@ TEST_F(TestObjectStoreEncryption, CBCMode) {
   EXPECT_FALSE(encrypted_block1 == encrypted_block2);
 }
 
+#ifndef NO_MEMENV
 TEST(TestObjectStore, InsertLoad) {
   ObjectStoreImpl store;
   const FilePath::CharType database[] = FILE_PATH_LITERAL(":memory:");
@@ -224,6 +225,7 @@ TEST(TestObjectStore, DeleteAll) {
   EXPECT_TRUE(store.GetInternalBlob(1, &internal));
   EXPECT_EQ("internal", internal);
 }
+#endif
 
 }  // namespace chaps
 
