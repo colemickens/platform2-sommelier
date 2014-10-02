@@ -143,7 +143,7 @@ namespace {
 chromeos::FlagHelper* instance_ = nullptr;
 }  // namespace
 
-FlagHelper::FlagHelper() {
+FlagHelper::FlagHelper() : command_line_(nullptr) {
   AddFlag(std::unique_ptr<Flag>(new HelpFlag()));
 }
 
