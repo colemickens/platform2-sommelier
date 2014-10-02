@@ -7,6 +7,7 @@
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <chromeos/syslog_logging.h>
 
 #include "chromeos-dbus-bindings/adaptor_generator.h"
 #include "chromeos-dbus-bindings/method_name_generator.h"
@@ -33,6 +34,10 @@ int main(int argc, char** argv) {
   CommandLine::Init(argc, argv);
   CommandLine* cl = CommandLine::ForCurrentProcess();
 
+  // Setup logging to stderr. This also parses some implicit flags using the
+  // CommandLine singleton.
+  chromeos::InitLog(chromeos::kLogToStderr | chromeos::kLogHeader);
+
   if (cl->HasSwitch(switches::kHelp)) {
     LOG(INFO) << switches::kHelpMessage;
     return 0;
@@ -55,7 +60,7 @@ int main(int argc, char** argv) {
   if (cl->HasSwitch(switches::kMethodNames)) {
     std::string method_name_file =
         cl->GetSwitchValueASCII(switches::kMethodNames);
-    LOG(INFO) << "Outputting method names to " << method_name_file;
+    VLOG(1) << "Outputting method names to " << method_name_file;
     chromeos_dbus_bindings::MethodNameGenerator method_name_generator;
     if (!method_name_generator.GenerateMethodNames(
             parser.interface(),
@@ -67,7 +72,7 @@ int main(int argc, char** argv) {
 
   if (cl->HasSwitch(switches::kAdaptor)) {
     std::string adaptor_file = cl->GetSwitchValueASCII(switches::kAdaptor);
-    LOG(INFO) << "Outputting adaptor to " << adaptor_file;
+    VLOG(1) << "Outputting adaptor to " << adaptor_file;
     chromeos_dbus_bindings::AdaptorGenerator adaptor_generator;
     if (!adaptor_generator.GenerateAdaptor(
             parser.interface(),

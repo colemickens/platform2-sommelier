@@ -113,7 +113,7 @@ void XmlInterfaceParser::AddSignalArgument(const XmlAttributeMap& attributes) {
 }
 
 void XmlInterfaceParser::OnCloseElement(const string& element_name) {
-  LOG(INFO) << "Close Element " << element_name;
+  VLOG(1) << "Close Element " << element_name;
   CHECK(!element_path_.empty());
   CHECK_EQ(element_path_.back(), element_name);
   element_path_.pop_back();
@@ -129,8 +129,8 @@ bool XmlInterfaceParser::GetElementAttribute(
     return false;
   }
   *element_value = attributes.find(element_key)->second;
-  LOG(INFO) << "Got " << element_type << " element with "
-            << element_key << " = " << *element_value;
+  VLOG(1) << "Got " << element_type << " element with "
+          << element_key << " = " << *element_value;
   return true;
 }
 
