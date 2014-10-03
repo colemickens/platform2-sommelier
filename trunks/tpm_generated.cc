@@ -9940,21 +9940,6 @@ TPM_RC Tpm::ParseResponse_IncrementalSelfTest(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  if (tag == TPM_ST_SESSIONS) {
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = to_do_list_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    to_do_list_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPML_ALG(
-        &to_do_list_bytes,
-        to_do_list,
-        NULL);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
-  }
   return TPM_RC_SUCCESS;
 }
 
@@ -10481,6 +10466,14 @@ TPM_RC Tpm::ParseResponse_StartAuthSession(
   if (response_code != TPM_RC_SUCCESS) {
     return response_code;
   }
+  std::string session_handle_bytes;
+  rc = Parse_TPMI_SH_AUTH_SESSION(
+      &buffer,
+      session_handle,
+      &session_handle_bytes);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
   TPM_CC command_code = TPM_CC_StartAuthSession;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
@@ -10520,14 +10513,6 @@ TPM_RC Tpm::ParseResponse_StartAuthSession(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
-  std::string session_handle_bytes;
-  rc = Parse_TPMI_SH_AUTH_SESSION(
-      &buffer,
-      session_handle,
-      &session_handle_bytes);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
   std::string nonce_tpm_bytes;
   rc = Parse_TPM2B_NONCE(
       &buffer,
@@ -10538,14 +10523,14 @@ TPM_RC Tpm::ParseResponse_StartAuthSession(
   }
   if (tag == TPM_ST_SESSIONS) {
     // Decrypt just the parameter data, not the size.
-    std::string tmp = session_handle_bytes.substr(2);
+    std::string tmp = nonce_tpm_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
       return TRUNKS_RC_ENCRYPTION_FAILED;
     }
-    session_handle_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPMI_SH_AUTH_SESSION(
-        &session_handle_bytes,
-        session_handle,
+    nonce_tpm_bytes.replace(2, std::string::npos, tmp);
+    rc = Parse_TPM2B_NONCE(
+        &nonce_tpm_bytes,
+        nonce_tpm,
         NULL);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
@@ -11431,6 +11416,14 @@ TPM_RC Tpm::ParseResponse_Load(
   if (response_code != TPM_RC_SUCCESS) {
     return response_code;
   }
+  std::string object_handle_bytes;
+  rc = Parse_TPM_HANDLE(
+      &buffer,
+      object_handle,
+      &object_handle_bytes);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
   TPM_CC command_code = TPM_CC_Load;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
@@ -11470,14 +11463,6 @@ TPM_RC Tpm::ParseResponse_Load(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
-  std::string object_handle_bytes;
-  rc = Parse_TPM_HANDLE(
-      &buffer,
-      object_handle,
-      &object_handle_bytes);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
   std::string name_bytes;
   rc = Parse_TPM2B_NAME(
       &buffer,
@@ -11488,14 +11473,14 @@ TPM_RC Tpm::ParseResponse_Load(
   }
   if (tag == TPM_ST_SESSIONS) {
     // Decrypt just the parameter data, not the size.
-    std::string tmp = object_handle_bytes.substr(2);
+    std::string tmp = name_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
       return TRUNKS_RC_ENCRYPTION_FAILED;
     }
-    object_handle_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM_HANDLE(
-        &object_handle_bytes,
-        object_handle,
+    name_bytes.replace(2, std::string::npos, tmp);
+    rc = Parse_TPM2B_NAME(
+        &name_bytes,
+        name,
         NULL);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
@@ -11743,6 +11728,14 @@ TPM_RC Tpm::ParseResponse_LoadExternal(
   if (response_code != TPM_RC_SUCCESS) {
     return response_code;
   }
+  std::string object_handle_bytes;
+  rc = Parse_TPM_HANDLE(
+      &buffer,
+      object_handle,
+      &object_handle_bytes);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
   TPM_CC command_code = TPM_CC_LoadExternal;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
@@ -11782,14 +11775,6 @@ TPM_RC Tpm::ParseResponse_LoadExternal(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
-  std::string object_handle_bytes;
-  rc = Parse_TPM_HANDLE(
-      &buffer,
-      object_handle,
-      &object_handle_bytes);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
   std::string name_bytes;
   rc = Parse_TPM2B_NAME(
       &buffer,
@@ -11800,14 +11785,14 @@ TPM_RC Tpm::ParseResponse_LoadExternal(
   }
   if (tag == TPM_ST_SESSIONS) {
     // Decrypt just the parameter data, not the size.
-    std::string tmp = object_handle_bytes.substr(2);
+    std::string tmp = name_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
       return TRUNKS_RC_ENCRYPTION_FAILED;
     }
-    object_handle_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM_HANDLE(
-        &object_handle_bytes,
-        object_handle,
+    name_bytes.replace(2, std::string::npos, tmp);
+    rc = Parse_TPM2B_NAME(
+        &name_bytes,
+        name,
         NULL);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
@@ -15712,21 +15697,6 @@ TPM_RC Tpm::ParseResponse_ECC_Parameters(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  if (tag == TPM_ST_SESSIONS) {
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = parameters_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    parameters_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPMS_ALGORITHM_DETAIL_ECC(
-        &parameters_bytes,
-        parameters,
-        NULL);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
-  }
   return TPM_RC_SUCCESS;
 }
 
@@ -17725,6 +17695,14 @@ TPM_RC Tpm::ParseResponse_HMAC_Start(
   if (response_code != TPM_RC_SUCCESS) {
     return response_code;
   }
+  std::string sequence_handle_bytes;
+  rc = Parse_TPMI_DH_OBJECT(
+      &buffer,
+      sequence_handle,
+      &sequence_handle_bytes);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
   TPM_CC command_code = TPM_CC_HMAC_Start;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
@@ -17762,29 +17740,6 @@ TPM_RC Tpm::ParseResponse_HMAC_Start(
         response_hash,
         authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
-    }
-  }
-  std::string sequence_handle_bytes;
-  rc = Parse_TPMI_DH_OBJECT(
-      &buffer,
-      sequence_handle,
-      &sequence_handle_bytes);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = sequence_handle_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    sequence_handle_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPMI_DH_OBJECT(
-        &sequence_handle_bytes,
-        sequence_handle,
-        NULL);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
     }
   }
   return TPM_RC_SUCCESS;
@@ -18009,6 +17964,14 @@ TPM_RC Tpm::ParseResponse_HashSequenceStart(
   if (response_code != TPM_RC_SUCCESS) {
     return response_code;
   }
+  std::string sequence_handle_bytes;
+  rc = Parse_TPMI_DH_OBJECT(
+      &buffer,
+      sequence_handle,
+      &sequence_handle_bytes);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
   TPM_CC command_code = TPM_CC_HashSequenceStart;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
@@ -18046,29 +18009,6 @@ TPM_RC Tpm::ParseResponse_HashSequenceStart(
         response_hash,
         authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
-    }
-  }
-  std::string sequence_handle_bytes;
-  rc = Parse_TPMI_DH_OBJECT(
-      &buffer,
-      sequence_handle,
-      &sequence_handle_bytes);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = sequence_handle_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    sequence_handle_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPMI_DH_OBJECT(
-        &sequence_handle_bytes,
-        sequence_handle,
-        NULL);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
     }
   }
   return TPM_RC_SUCCESS;
@@ -18913,21 +18853,6 @@ TPM_RC Tpm::ParseResponse_EventSequenceComplete(
       &results_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = results_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    results_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPML_DIGEST_VALUES(
-        &results_bytes,
-        results,
-        NULL);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -21315,21 +21240,6 @@ TPM_RC Tpm::ParseResponse_Commit(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  if (tag == TPM_ST_SESSIONS) {
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = param_size_out_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    param_size_out_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_UINT32(
-        &param_size_out_bytes,
-        param_size_out,
-        NULL);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
-  }
   return TPM_RC_SUCCESS;
 }
 
@@ -21643,21 +21553,6 @@ TPM_RC Tpm::ParseResponse_EC_Ephemeral(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  if (tag == TPM_ST_SESSIONS) {
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = param_size_out_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    param_size_out_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_UINT32(
-        &param_size_out_bytes,
-        param_size_out,
-        NULL);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
-  }
   return TPM_RC_SUCCESS;
 }
 
@@ -21943,21 +21838,6 @@ TPM_RC Tpm::ParseResponse_VerifySignature(
       &validation_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = validation_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    validation_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPMT_TK_VERIFIED(
-        &validation_bytes,
-        validation,
-        NULL);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -22252,21 +22132,6 @@ TPM_RC Tpm::ParseResponse_Sign(
       &signature_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = signature_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    signature_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPMT_SIGNATURE(
-        &signature_bytes,
-        signature,
-        NULL);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -23064,21 +22929,6 @@ TPM_RC Tpm::ParseResponse_PCR_Event(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  if (tag == TPM_ST_SESSIONS) {
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = digests_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    digests_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPML_DIGEST_VALUES(
-        &digests_bytes,
-        digests,
-        NULL);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
-  }
   return TPM_RC_SUCCESS;
 }
 
@@ -23343,21 +23193,6 @@ TPM_RC Tpm::ParseResponse_PCR_Read(
       &pcr_values_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = pcr_update_counter_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    pcr_update_counter_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_UINT32(
-        &pcr_update_counter_bytes,
-        pcr_update_counter,
-        NULL);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -23649,21 +23484,6 @@ TPM_RC Tpm::ParseResponse_PCR_Allocate(
       &size_available_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = allocation_success_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    allocation_success_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPMI_YES_NO(
-        &allocation_success_bytes,
-        allocation_success,
-        NULL);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -29625,6 +29445,14 @@ TPM_RC Tpm::ParseResponse_CreatePrimary(
   if (response_code != TPM_RC_SUCCESS) {
     return response_code;
   }
+  std::string object_handle_bytes;
+  rc = Parse_TPM_HANDLE(
+      &buffer,
+      object_handle,
+      &object_handle_bytes);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
   TPM_CC command_code = TPM_CC_CreatePrimary;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
@@ -29663,14 +29491,6 @@ TPM_RC Tpm::ParseResponse_CreatePrimary(
         authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-  }
-  std::string object_handle_bytes;
-  rc = Parse_TPM_HANDLE(
-      &buffer,
-      object_handle,
-      &object_handle_bytes);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
   }
   std::string out_public_bytes;
   rc = Parse_TPM2B_PUBLIC(
@@ -29714,14 +29534,14 @@ TPM_RC Tpm::ParseResponse_CreatePrimary(
   }
   if (tag == TPM_ST_SESSIONS) {
     // Decrypt just the parameter data, not the size.
-    std::string tmp = object_handle_bytes.substr(2);
+    std::string tmp = out_public_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
       return TRUNKS_RC_ENCRYPTION_FAILED;
     }
-    object_handle_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM_HANDLE(
-        &object_handle_bytes,
-        object_handle,
+    out_public_bytes.replace(2, std::string::npos, tmp);
+    rc = Parse_TPM2B_PUBLIC(
+        &out_public_bytes,
+        out_public,
         NULL);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
@@ -33047,21 +32867,6 @@ TPM_RC Tpm::ParseResponse_FieldUpgradeData(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  if (tag == TPM_ST_SESSIONS) {
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = next_digest_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    next_digest_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPMT_HA(
-        &next_digest_bytes,
-        next_digest,
-        NULL);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
-  }
   return TPM_RC_SUCCESS;
 }
 
@@ -33562,21 +33367,6 @@ TPM_RC Tpm::ParseResponse_ContextSave(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  if (tag == TPM_ST_SESSIONS) {
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = context_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    context_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPMS_CONTEXT(
-        &context_bytes,
-        context,
-        NULL);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
-  }
   return TPM_RC_SUCCESS;
 }
 
@@ -33773,6 +33563,14 @@ TPM_RC Tpm::ParseResponse_ContextLoad(
   if (response_code != TPM_RC_SUCCESS) {
     return response_code;
   }
+  std::string loaded_handle_bytes;
+  rc = Parse_TPMI_DH_CONTEXT(
+      &buffer,
+      loaded_handle,
+      &loaded_handle_bytes);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
   TPM_CC command_code = TPM_CC_ContextLoad;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
@@ -33810,29 +33608,6 @@ TPM_RC Tpm::ParseResponse_ContextLoad(
         response_hash,
         authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
-    }
-  }
-  std::string loaded_handle_bytes;
-  rc = Parse_TPMI_DH_CONTEXT(
-      &buffer,
-      loaded_handle,
-      &loaded_handle_bytes);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = loaded_handle_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    loaded_handle_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPMI_DH_CONTEXT(
-        &loaded_handle_bytes,
-        loaded_handle,
-        NULL);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
     }
   }
   return TPM_RC_SUCCESS;
@@ -34571,21 +34346,6 @@ TPM_RC Tpm::ParseResponse_ReadClock(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  if (tag == TPM_ST_SESSIONS) {
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = return_code_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    return_code_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM_RC(
-        &return_code_bytes,
-        return_code,
-        NULL);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
-  }
   return TPM_RC_SUCCESS;
 }
 
@@ -34839,21 +34599,6 @@ TPM_RC Tpm::ParseResponse_ClockSet(
       &return_code_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = return_code_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    return_code_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM_RC(
-        &return_code_bytes,
-        return_code,
-        NULL);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -35114,21 +34859,6 @@ TPM_RC Tpm::ParseResponse_ClockRateAdjust(
       &return_code_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = return_code_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    return_code_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM_RC(
-        &return_code_bytes,
-        return_code,
-        NULL);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -35409,21 +35139,6 @@ TPM_RC Tpm::ParseResponse_GetCapability(
       &capability_data_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = more_data_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    more_data_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPMI_YES_NO(
-        &more_data_bytes,
-        more_data,
-        NULL);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }

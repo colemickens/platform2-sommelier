@@ -1299,6 +1299,12 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
                                             'var_type': 'TPM_RC'})
     # Handle the error case.
     out_file.write(self._RESPONSE_ERROR_CHECK)
+    # Categorize arguments as either handles or parameters.
+    handles, parameters = self._SplitArgs(self.response_args)
+    # Parse any handles.
+    for handle in handles:
+      out_file.write(self._PARSE_ARG_VAR % {'var_name': handle['name'],
+                                            'var_type': handle['type']})
     # Setup a serialized command code which is needed for the response hash.
     out_file.write(self._DECLARE_COMMAND_CODE % {'command_code':
                                                  self.command_code})
@@ -1314,14 +1320,14 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
     # Do authorization related stuff.
     out_file.write(self._AUTHORIZE_RESPONSE)
     # Parse response parameters.
-    for arg in self.response_args:
+    for arg in parameters:
       out_file.write(self._PARSE_ARG_VAR % {'var_name': arg['name'],
                                             'var_type': arg['type']})
-    if self.response_args:
+    if parameters and IsTPM2B(parameters[0]['type']):
       out_file.write(self._DECRYPT_PARAMETER % {'var_name':
-                                                self.response_args[0]['name'],
+                                                parameters[0]['name'],
                                                 'var_type':
-                                                self.response_args[0]['type']})
+                                                parameters[0]['type']})
     out_file.write(self._RESPONSE_PARSER_END)
 
   def OutputMethodImplementation(self, out_file):
