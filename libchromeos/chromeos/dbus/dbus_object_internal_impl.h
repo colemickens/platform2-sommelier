@@ -33,6 +33,7 @@
 
 #include <chromeos/dbus/data_serialization.h>
 #include <chromeos/dbus/dbus_param_reader.h>
+#include <chromeos/dbus/dbus_param_writer.h>
 #include <chromeos/dbus/utils.h>
 #include <chromeos/errors/error.h>
 #include <dbus/message.h>
@@ -58,6 +59,9 @@ using RawReturnDBusMethodHandler =
 //                  base::Callback<ReturnType(ErrorPtr*, Args...)>;
 //  Args          - types of arguments to read from the D-Bus message and
 //                  pass to the handler.
+// Methods can have OUT parameters (identified by pointer argument types).
+// If a method handler had any pointers in the argument list, the values pointed
+// to will be automatically sent in method response message.
 template<typename ReturnType, typename CallbackType, typename... Args>
 struct TypedReturnDBusInvoker {
   // TypedReturnDBusInvoker::Invoke() is a member function that actually
@@ -69,6 +73,10 @@ struct TypedReturnDBusInvoker {
   static std::unique_ptr<dbus::Response> Invoke(const CallbackType& handler,
                                                 dbus::MethodCall* method_call,
                                                 dbus::MessageReader* reader) {
+    // Prepare the response message beforehand in case the method argument
+    // list contains any OUT parameters that need to be automatically sent back.
+    auto response = dbus::Response::FromMethodCall(method_call);
+    dbus::MessageWriter writer(response.get());
     // This is a generic method and the handler is expected to return a
     // (non-void) return value. It can also return an error via the first
     // argument of type ErrorPtr*.
@@ -77,9 +85,15 @@ struct TypedReturnDBusInvoker {
     // them in the lambda objects and then using them to call the real handler.
     ErrorPtr handler_error;
     ReturnType handler_retval;
-    auto param_reader_callback =
-        [&handler_error, &handler_retval, &handler](const Args&... args) {
+    auto param_reader_callback = [&handler_error, &handler_retval,
+                                  &handler, &writer](const Args&... args) {
       handler_retval = handler.Run(&handler_error, args...);
+      if (!handler_error) {
+        DBusParamWriter::AppendDBusOutParams(&writer, args...);
+        // Send the actual return value last (as if it were an implicit OUT
+        // parameter at the and of argument list).
+        AppendValueToWriter(&writer, handler_retval);
+      }
     };
 
     // DBusParamReader<Args...>::Invoke() may return its own error when parsing
@@ -97,10 +111,6 @@ struct TypedReturnDBusInvoker {
     if (handler_error)
       return GetDBusError(method_call, handler_error.get());
 
-    // Send back the |handler_retval| value through D-Bus.
-    auto response = dbus::Response::FromMethodCall(method_call);
-    dbus::MessageWriter writer(response.get());
-    AppendValueToWriter(&writer, handler_retval);
     return std::unique_ptr<dbus::Response>(response.release());
   }
 };  // struct TypedReturnDBusInvoker<ReturnType, ...>
@@ -109,6 +119,9 @@ struct TypedReturnDBusInvoker {
 // which is not expected to return any value (ReturnType = void).
 // So the |handler| signature must be:
 //   base::Callback<void(ErrorPtr*, Args...)>;
+// Methods can have OUT parameters (identified by pointer argument types).
+// If a method handler had any pointers in the argument list, the values pointed
+// to will be automatically sent in method response message.
 template<typename CallbackType, typename... Args>
 struct TypedReturnDBusInvoker<void, CallbackType, Args...> {
   // Implementation of Invoke() is identical to the one above except there is no
@@ -117,10 +130,18 @@ struct TypedReturnDBusInvoker<void, CallbackType, Args...> {
   static std::unique_ptr<dbus::Response> Invoke(const CallbackType& handler,
                                                 dbus::MethodCall* method_call,
                                                 dbus::MessageReader* reader) {
+    // Prepare the response message beforehand in case the method argument
+    // list contains any OUT parameters that need to be automatically sent back.
+    auto response = dbus::Response::FromMethodCall(method_call);
+    dbus::MessageWriter writer(response.get());
+
     ErrorPtr handler_error;
     auto param_reader_callback =
-        [&handler_error, &handler](const Args&... args) {
+        [&handler_error, &handler, &writer](const Args&... args) {
       handler.Run(&handler_error, args...);
+      if (!handler_error) {
+        DBusParamWriter::AppendDBusOutParams(&writer, args...);
+      }
     };
 
     ErrorPtr param_reader_error;
@@ -135,8 +156,7 @@ struct TypedReturnDBusInvoker<void, CallbackType, Args...> {
     if (handler_error)
       return GetDBusError(method_call, handler_error.get());
 
-    return std::unique_ptr<dbus::Response>(
-        dbus::Response::FromMethodCall(method_call).release());
+    return std::unique_ptr<dbus::Response>(response.release());
   }
 };  // struct TypedReturnDBusInvoker<void, ...>
 

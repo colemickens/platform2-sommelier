@@ -38,10 +38,10 @@ struct DBusParamReader;
 // parameters. This specialization pops one parameter off the D-Bus message
 // buffer and calls other specializations of DBusParamReader with fewer
 // parameters to pop the remaining parameters.
-//  ParamType     - the type of the current method parameter we are processing.
+//  CurrentParam  - the type of the current method parameter we are processing.
 //  RestOfParams  - the types of remaining parameters to be processed.
-template<typename ParamType, typename... RestOfParams>
-struct DBusParamReader<ParamType, RestOfParams...> {
+template<typename CurrentParam, typename... RestOfParams>
+struct DBusParamReader<CurrentParam, RestOfParams...> {
   // DBusParamReader::Invoke() is a member function that actually extracts the
   // current parameter from the message buffer.
   //  handler     - the C++ callback functor to be called when all the
@@ -54,6 +54,26 @@ struct DBusParamReader<ParamType, RestOfParams...> {
                      dbus::MessageReader* reader,
                      ErrorPtr* error,
                      const Args&... args) {
+    return InvokeHelper<CurrentParam, CallbackType, Args...>(
+        handler, reader, error, static_cast<const Args&>(args)...);
+  }
+
+  //
+  // There are two specializations of this function:
+  //  1. For the case where ParamType is a value type (D-Bus IN parameter).
+  //  2. For the case where ParamType is a pointer (D-Bus OUT parameter).
+  // In the second case, the parameter is not popped off the message reader,
+  // since we do not expect the client to provide any data for it.
+  // However after the final handler is called, the values for the OUT
+  // parameters should be sent back in the method call response message.
+
+  // Overload 1: ParamType is not a pointer.
+  template<typename ParamType, typename CallbackType, typename... Args>
+  static typename std::enable_if<!std::is_pointer<ParamType>::value, bool>::type
+      InvokeHelper(const CallbackType& handler,
+                   dbus::MessageReader* reader,
+                   ErrorPtr* error,
+                   const Args&... args) {
     if (!reader->HasMoreData()) {
       Error::AddTo(error, errors::dbus::kDomain, DBUS_ERROR_INVALID_ARGS,
                    "Too few parameters in a method call");
@@ -85,6 +105,31 @@ struct DBusParamReader<ParamType, RestOfParams...> {
         handler, reader, error,
         static_cast<const Args&>(args)...,
         static_cast<const ParamValueType&>(current_param));
+  }
+
+  // Overload 2: ParamType is a pointer.
+  template<typename ParamType, typename CallbackType, typename... Args>
+  static typename std::enable_if<std::is_pointer<ParamType>::value, bool>::type
+      InvokeHelper(const CallbackType& handler,
+                   dbus::MessageReader* reader,
+                   ErrorPtr* error,
+                   const Args&... args) {
+    // ParamType is a pointer. This is expected to be an output parameter.
+    // Create storage for it and the handler will provide a value for it.
+    using ParamValueType = typename std::remove_pointer<ParamType>::type;
+    // The variable to hold the value of the current parameter we are passing
+    // to the handler.
+    ParamValueType current_param{};  // Default-initialize the value.
+    // Call DBusParamReader::Invoke() to process the rest of parameters.
+    // Note that this is not a recursive call because it is calling a different
+    // method of a different class. We exclude the current parameter type
+    // (ParamType) from DBusParamReader<> template parameter list and forward
+    // all the parameters to the arguments of Invoke() and append the current
+    // parameter to the end of the parameter list.
+    return DBusParamReader<RestOfParams...>::Invoke(
+        handler, reader, error,
+        static_cast<const Args&>(args)...,
+        &current_param);
   }
 };  // struct DBusParamReader<ParamType, RestOfParams...>
 

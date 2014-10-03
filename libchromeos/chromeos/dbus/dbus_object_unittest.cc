@@ -27,6 +27,8 @@ const char kTestInterface1[] = "org.chromium.Test.MathInterface";
 const char kTestMethod_Add[] = "Add";
 const char kTestMethod_Negate[] = "Negate";
 const char kTestMethod_Positive[] = "Positive";
+const char kTestMethod_AddSubtract[] = "AddSubtract";
+const char kTestMethod_Shady[] = "Shady_Kids_Dont_Do_This_At_Home";
 
 const char kTestInterface2[] = "org.chromium.Test.StringInterface";
 const char kTestMethod_StrLen[] = "StrLen";
@@ -42,6 +44,14 @@ struct Calc {
       return x;
     Error::AddTo(error, "test", "not_positive", "Negative value passed in");
     return 0.0;
+  }
+  void AddSubtract(ErrorPtr* error, int x, int y, int* sum, int* diff) {
+    *sum = x + y;
+    *diff = x - y;
+  }
+  int Shady(ErrorPtr* error, int in, int* out) {
+    *out = in * 2;
+    return in * 3;  // Both OUT param and return value. Why would you do this?
   }
 };
 
@@ -82,6 +92,10 @@ class DBusObjectTest : public ::testing::Test {
                            base::Unretained(&calc_), &Calc::Negate);
     itf1->AddMethodHandler(kTestMethod_Positive,
                            base::Unretained(&calc_), &Calc::Positive);
+    itf1->AddMethodHandler(kTestMethod_AddSubtract,
+                           base::Unretained(&calc_), &Calc::AddSubtract);
+    itf1->AddMethodHandler(kTestMethod_Shady,
+                           base::Unretained(&calc_), &Calc::Shady);
     DBusInterface* itf2 = dbus_object_->AddOrGetInterface(kTestInterface2);
     itf2->AddMethodHandler(kTestMethod_StrLen, StrLen);
     DBusInterface* itf3 = dbus_object_->AddOrGetInterface(kTestInterface3);
@@ -150,6 +164,37 @@ TEST_F(DBusObjectTest, PositiveFailure) {
   writer.AppendDouble(-23.2);
   auto response = CallMethod(*dbus_object_, &method_call);
   ExpectError(response.get(), DBUS_ERROR_FAILED);
+}
+
+TEST_F(DBusObjectTest, AddSubtract) {
+  dbus::MethodCall method_call(kTestInterface1, kTestMethod_AddSubtract);
+  method_call.SetSerial(123);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendInt32(2);
+  writer.AppendInt32(3);
+  auto response = CallMethod(*dbus_object_, &method_call);
+  dbus::MessageReader reader(response.get());
+  int sum = 0, diff = 0;
+  ASSERT_TRUE(reader.PopInt32(&sum));
+  ASSERT_TRUE(reader.PopInt32(&diff));
+  ASSERT_FALSE(reader.HasMoreData());
+  EXPECT_EQ(5, sum);
+  EXPECT_EQ(-1, diff);
+}
+
+TEST_F(DBusObjectTest, Shady) {
+  dbus::MethodCall method_call(kTestInterface1, kTestMethod_Shady);
+  method_call.SetSerial(123);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendInt32(5);
+  auto response = CallMethod(*dbus_object_, &method_call);
+  dbus::MessageReader reader(response.get());
+  int in_by_2 = 0, in_by_3 = 0;
+  ASSERT_TRUE(reader.PopInt32(&in_by_2));  // First, out parameters.
+  ASSERT_TRUE(reader.PopInt32(&in_by_3));  // Finally, the return value.
+  ASSERT_FALSE(reader.HasMoreData());
+  EXPECT_EQ(10, in_by_2);
+  EXPECT_EQ(15, in_by_3);
 }
 
 TEST_F(DBusObjectTest, StrLen0) {
