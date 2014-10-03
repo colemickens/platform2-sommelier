@@ -18,11 +18,11 @@ TEST(Utilities, ExtractString) {
   m["int32"].writer().append_int32(1);
 
   DBus::Error e_string;
-  EXPECT_STREQ("string", ExtractString(m, "string", NULL,  e_string));
+  EXPECT_STREQ("string", ExtractString(m, "string", nullptr, e_string));
   EXPECT_FALSE(e_string.is_set());
 
   DBus::Error e_int32;
-  EXPECT_EQ(NULL, ExtractString(m, "int32", NULL, e_int32));
+  EXPECT_EQ(nullptr, ExtractString(m, "int32", nullptr, e_int32));
   EXPECT_TRUE(e_int32.is_set());
 
   DBus::Error e_missing;
@@ -123,14 +123,14 @@ static const struct {
     gsm7_alphabet,
     sizeof(gsm7_alphabet) },
   { "\xC^{}\\[~]|€", gsm7_extended_chars, sizeof(gsm7_extended_chars) },
-  { "", NULL }
+  { "", nullptr }
 };
 
 TEST(Utilities, Gsm7ToUtf8) {
   using utilities::Gsm7ToUtf8String;
   std::string out;
 
-  for (int i = 0; gsm7_test_data[i].packed_gsm7 != NULL; ++i) {
+  for (int i = 0; gsm7_test_data[i].packed_gsm7 != nullptr; ++i) {
     out = Gsm7ToUtf8String(&gsm7_test_data[i].packed_gsm7[1],
                            gsm7_test_data[i].packed_gsm7_size - 1,
                            gsm7_test_data[i].packed_gsm7[0],
@@ -143,7 +143,7 @@ TEST(Utilities, Utf8ToGsm7) {
   using utilities::Utf8StringToGsm7;
   std::vector<uint8_t> out;
 
-  for (int i = 0; gsm7_test_data[i].packed_gsm7 != NULL; ++i) {
+  for (int i = 0; gsm7_test_data[i].packed_gsm7 != nullptr; ++i) {
     out = Utf8StringToGsm7(gsm7_test_data[i].utf8_string);
     EXPECT_EQ(gsm7_test_data[i].packed_gsm7_size, out.size());
     EXPECT_EQ(0, memcmp(&out[0], gsm7_test_data[i].packed_gsm7, out.size()));
@@ -156,7 +156,7 @@ TEST(Utilities, Utf8Gsm7RoundTrip) {
   std::vector<uint8_t> gsm7_out;
   std::string utf8_out;
 
-  for (int i = 0; gsm7_test_data[i].packed_gsm7 != NULL; ++i) {
+  for (int i = 0; gsm7_test_data[i].packed_gsm7 != nullptr; ++i) {
     gsm7_out = Utf8StringToGsm7(gsm7_test_data[i].utf8_string);
     utf8_out = Gsm7ToUtf8String(&gsm7_out[1],
                                 gsm7_out.size() - 1,
@@ -172,7 +172,7 @@ TEST(Utilities, Gsm7Utf8RoundTrip) {
   std::vector<uint8_t> gsm7_out;
   std::string utf8_out;
 
-  for (int i = 0; gsm7_test_data[i].packed_gsm7 != NULL; ++i) {
+  for (int i = 0; gsm7_test_data[i].packed_gsm7 != nullptr; ++i) {
     utf8_out = Gsm7ToUtf8String(&gsm7_test_data[i].packed_gsm7[1],
                                 gsm7_test_data[i].packed_gsm7_size - 1,
                                 gsm7_test_data[i].packed_gsm7[0],
@@ -262,14 +262,14 @@ static const struct {
 } ucs2_test_data[] = {
   {"Просто текст. Just some text.", ucs_sample1, sizeof(ucs_sample1)},
   {"тест", ucs_sample2, sizeof(ucs_sample2)},
-  {"", NULL}
+  {"", nullptr}
 };
 
 TEST(Utilities, Ucs2ToUtf8) {
   using utilities::Ucs2ToUtf8String;
   std::string out;
 
-  for (int i = 0; ucs2_test_data[i].ucs2_string != NULL; ++i) {
+  for (int i = 0; ucs2_test_data[i].ucs2_string != nullptr; ++i) {
     out = Ucs2ToUtf8String(&ucs2_test_data[i].ucs2_string[1],
                            ucs2_test_data[i].ucs2_string[0]);
     EXPECT_EQ(ucs2_test_data[i].utf8_string, out);
@@ -280,7 +280,7 @@ TEST(Utilities, Utf8ToUcs2) {
   using utilities::Utf8StringToUcs2;
   std::vector<uint8_t> out;
 
-  for (int i = 0; ucs2_test_data[i].ucs2_string != NULL; ++i) {
+  for (int i = 0; ucs2_test_data[i].ucs2_string != nullptr; ++i) {
     out = Utf8StringToUcs2(ucs2_test_data[i].utf8_string);
     EXPECT_EQ(ucs2_test_data[i].ucs2_size, out.size());
     EXPECT_EQ(0, memcmp(&out[0], ucs2_test_data[i].ucs2_string, out.size()));
@@ -293,7 +293,7 @@ TEST(Utilities, Utf8Ucs2RoundTrip) {
   std::vector<uint8_t> ucs2_out;
   std::string utf8_out;
 
-  for (int i = 0; ucs2_test_data[i].ucs2_string != NULL; ++i) {
+  for (int i = 0; ucs2_test_data[i].ucs2_string != nullptr; ++i) {
     ucs2_out = Utf8StringToUcs2(ucs2_test_data[i].utf8_string);
     utf8_out = Ucs2ToUtf8String(&ucs2_out[1], ucs2_out[0]);
     EXPECT_EQ(ucs2_test_data[i].utf8_string, utf8_out);
@@ -306,7 +306,7 @@ TEST(Utilities, Ucs2Utf8RoundTrip) {
   std::vector<uint8_t> ucs2_out;
   std::string utf8_out;
 
-  for (int i = 0; ucs2_test_data[i].ucs2_string != NULL; ++i) {
+  for (int i = 0; ucs2_test_data[i].ucs2_string != nullptr; ++i) {
     utf8_out = Ucs2ToUtf8String(&ucs2_test_data[i].ucs2_string[1],
                                 ucs2_test_data[i].ucs2_string[0]);
     ucs2_out = Utf8StringToUcs2(utf8_out);

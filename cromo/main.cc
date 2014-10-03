@@ -95,12 +95,12 @@ static void* handle_signals(void* arg) {
     sigwaitinfo(&sigs, &info);
     g_idle_add(do_signal, reinterpret_cast<void*>(info.si_signo));
   }
-  return NULL;
+  return nullptr;
 }
 
 static gboolean setup_signals(void* arg) {
   pthread_t thr;
-  pthread_create(&thr, NULL, handle_signals, NULL);
+  pthread_create(&thr, nullptr, handle_signals, nullptr);
   return FALSE;
 }
 
@@ -110,7 +110,7 @@ static void block_signals(void) {
   sigemptyset(&sigs);
   sigaddset(&sigs, SIGTERM);
   sigaddset(&sigs, SIGINT);
-  pthread_sigmask(SIG_BLOCK, &sigs, NULL);
+  pthread_sigmask(SIG_BLOCK, &sigs, nullptr);
 }
 
 // Always logs to the syslog and stderr.
@@ -143,7 +143,7 @@ int main(int argc, char* argv[]) {
   block_signals();
 
   DBus::default_dispatcher = &dispatcher;
-  dispatcher.attach(NULL);
+  dispatcher.attach(nullptr);
 
   DBus::Connection conn = DBus::Connection::SystemBus();
 
@@ -160,8 +160,8 @@ int main(int argc, char* argv[]) {
   PluginManager::LoadPlugins(server, plugins);
 
   dispatcher.enter();
-  main_loop = g_main_loop_new(NULL, false);
-  g_idle_add(setup_signals, NULL);
+  main_loop = g_main_loop_new(nullptr, false);
+  g_idle_add(setup_signals, nullptr);
   g_main_loop_run(main_loop);
 
   PluginManager::UnloadPlugins(false);

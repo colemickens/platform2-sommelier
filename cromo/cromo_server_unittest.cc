@@ -15,7 +15,7 @@
 TEST(Carrier, Find) {
   DBus::Glib::BusDispatcher dispatcher;
   DBus::default_dispatcher = &dispatcher;
-  dispatcher.attach(NULL);
+  dispatcher.attach(nullptr);
 
   DBus::Connection conn = DBus::Connection::SystemBus();
 
@@ -29,9 +29,9 @@ TEST(Carrier, Find) {
   CromoServer* server = new CromoServer(conn);
 
   Carrier* not_found = server->FindCarrierByName(kTestName);
-  EXPECT_EQ(NULL, not_found);
+  EXPECT_EQ(nullptr, not_found);
   not_found = server->FindCarrierByCarrierId(38747);
-  EXPECT_EQ(NULL, not_found);
+  EXPECT_EQ(nullptr, not_found);
 
   Carrier* test_carrier = new Carrier(
       kTestName, "dir", 17, MM_MODEM_TYPE_CDMA, Carrier::kNone, "activation");

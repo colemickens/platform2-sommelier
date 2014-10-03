@@ -5,6 +5,7 @@
 #include "cromo/sms_message.h"
 
 #include <base/logging.h>
+#include <base/stl_util.h>
 
 #include "cromo/utilities.h"
 
@@ -104,7 +105,7 @@ class Bytes {
       return 0;
   }
 
-  // Return a pointer to the next N bytes, or NULL if there aren't that many.
+  // Return a pointer to the next N bytes, or nullptr if there aren't that many.
   // Advances the internal pointer by N if successful.
   const uint8_t* NextBytes(int n) {
     if (BytesLeft() >= n) {
@@ -112,7 +113,7 @@ class Bytes {
       offset_ += n;
       return bytes;
     } else {
-      return NULL;
+      return nullptr;
     }
   }
 
@@ -364,7 +365,7 @@ SmsMessageFragment* SmsMessageFragment::CreateFragment(const uint8_t* pdu,
   if (pdu_len < kMinPduLen) {
     LOG(ERROR) << "PDU too short - needed at least " << kMinPduLen
                << " bytes, had " << pdu_len;
-    return NULL;
+    return nullptr;
   }
 
   Bytes bytes(pdu, pdu_len);
@@ -372,7 +373,7 @@ SmsMessageFragment* SmsMessageFragment::CreateFragment(const uint8_t* pdu,
 
   std::string smsc_address;
   if (!parse_smsc_address(&bytes, &smsc_address))
-    return NULL;
+    return nullptr;
 
   const int flags = bytes.NextByte();
   // we only handle SMS-DELIVER messages
@@ -380,29 +381,29 @@ SmsMessageFragment* SmsMessageFragment::CreateFragment(const uint8_t* pdu,
     LOG(WARNING) << "Unhandled message type: have "
                  << std::hex << static_cast<int>(flags & kMsgTypeMask)
                  << " need " << std::hex << static_cast<int>(kMsgTypeDeliver);
-    return NULL;
+    return nullptr;
   }
 
   std::string sender_address;
   if (!parse_sender_address(&bytes, &sender_address))
-    return NULL;
+    return nullptr;
   bytes.NextByte();  // skip over the protocol byte
   const int data_coding_scheme = bytes.NextByte();
   std::string sc_timestamp;
   if (!parse_timestamp(&bytes, &sc_timestamp))
-      return NULL;
+      return nullptr;
   const int user_data_len = bytes.NextByte();
   int user_data_header_len;
   int part_reference, part_sequence, part_count;
   if (!parse_user_data_header(&bytes, flags, user_data_len,
                               &user_data_header_len,
                               &part_reference, &part_sequence, &part_count))
-    return NULL;
+    return nullptr;
 
   std::string message_text;
   if (!parse_text(&bytes, user_data_len, user_data_header_len,
                   data_coding_scheme, &message_text))
-    return NULL;
+    return nullptr;
 
   return new SmsMessageFragment(smsc_address,
                                 sender_address,
@@ -434,7 +435,7 @@ void SmsMessage::AddFragment(SmsMessageFragment* sms) {
                  << sequence << " vs. " << base_->part_count();
     return;
   }
-  if (fragments_[sequence - 1] != NULL) {
+  if (fragments_[sequence - 1]) {
     LOG(WARNING) << "Part " << sequence << " already exists in message";
     return;
   }
@@ -451,7 +452,7 @@ const std::string& SmsMessage::GetMessageText() {
   composite_text_.clear();
 
   for (int i = 0; i < base_->part_count(); i++) {
-    if (fragments_[i] != NULL)
+    if (fragments_[i])
       composite_text_ += fragments_[i]->text();
   }
 
@@ -463,7 +464,7 @@ std::vector<int>* SmsMessage::MessageIndexList() const {
   for (std::vector<SmsMessageFragment*>::const_iterator it = fragments_.begin();
        it != fragments_.end();
        ++it) {
-    if (*it != NULL)
+    if (*it)
       ret->push_back((*it)->index());
   }
 
@@ -471,14 +472,7 @@ std::vector<int>* SmsMessage::MessageIndexList() const {
 }
 
 SmsMessage::~SmsMessage() {
-  for (std::vector<SmsMessageFragment*>::iterator it = fragments_.begin();
-       it != fragments_.end();
-       ++it) {
-    if (*it != NULL) {
-      delete *it;
-      *it = NULL;
-    }
-  }
+  STLDeleteElements(&fragments_);
 }
 
 }  // namespace cromo

@@ -107,7 +107,7 @@ class SmsMessage {
   int num_remaining_parts_;
   // Storage for the fragments that make up the message, indexed by
   // their part_sequence_ value minus one. Fragments that have not
-  // arrived yet are represented as NULL.
+  // arrived yet are represented as nullptr.
   std::vector<SmsMessageFragment*> fragments_;
   // The text of the complete message.
   std::string composite_text_;

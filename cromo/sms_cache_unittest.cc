@@ -23,7 +23,7 @@ class FakeModem : public SmsModemOperations {
     if (it == pdus_.end()) {
       error.set("org.freedesktop.ModemManager.Modem.GSM.InvalidIndex",
                 "GetSms");
-      return NULL;
+      return nullptr;
     }
     return SmsMessageFragment::CreateFragment(it->second.pdu, it->second.size,
                                               it->first);

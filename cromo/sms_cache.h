@@ -19,8 +19,8 @@ namespace cromo {
 class SmsModemOperations {
  public:
   // Given an integer storage index, returns a new SmsMessageFragment object
-  // representing that fragment on the device. On error, returns NULL and sets
-  // the error parameter.
+  // representing that fragment on the device. On error, returns nullptr and
+  // sets the error parameter.
   virtual SmsMessageFragment* GetSms(int index,
                                      DBus::Error& error) = 0;  // NOLINT - refs.
 
@@ -53,7 +53,7 @@ class SmsCache {
   // of a new message (fragment), passing in the storage index of the
   // new fragment.  If the fragment was a standalone message, or if
   // the fragment completes an existing multipart message, a
-  // SmsMessage object is returned; otherwise this returns NULL.
+  // SmsMessage object is returned; otherwise this returns nullptr.
   SmsMessage* SmsReceived(int index,
                           DBus::Error& error,  // NOLINT - refs.
                           SmsModemOperations* impl);
@@ -84,11 +84,11 @@ class SmsCache {
   void AddToCache(SmsMessageFragment* message);
 
   // Get the message corresponding to the index number from the cache,
-  // or NULL if there is no such message.
+  // or nullptr if there is no such message.
   // If the index refers to the canonical index of a multipart
   // message, the multipart message is returned rather than the
   // original fragment. If the index refers to a non-canonical index
-  // of a multipart message, NULL is returned.
+  // of a multipart message, nullptr is returned.
   SmsMessage* GetFromCache(int index);
 
   // Take the index number of a message fragment and return the

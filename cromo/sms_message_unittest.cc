@@ -33,7 +33,7 @@ TEST(CreateSmsMessage, SimpleMessage) {
                                                                 sizeof(kPdu),
                                                                 1);
 
-  ASSERT_TRUE(NULL != frag);
+  ASSERT_NE(nullptr, frag);
   EXPECT_EQ("+12345678901", frag->smsc_address());
   EXPECT_EQ("+18005551212", frag->sender_address());
   EXPECT_EQ("110101123456+00", frag->timestamp());
@@ -43,7 +43,7 @@ TEST(CreateSmsMessage, SimpleMessage) {
   EXPECT_EQ(1, frag->part_sequence());
 
   SmsMessage* sms = new SmsMessage(frag);
-  ASSERT_TRUE(NULL != sms);
+  ASSERT_NE(nullptr, sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456+00", sms->timestamp());
@@ -84,7 +84,7 @@ TEST(CreateSmsMessage, ExtendedChars) {
   SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
                                                                sizeof(kPdu),
                                                                1);
-  ASSERT_TRUE(NULL != sms);
+  ASSERT_NE(nullptr, sms);
   EXPECT_EQ("+12404492164", sms->smsc_address());
   EXPECT_EQ("+16175927198", sms->sender_address());
   EXPECT_EQ("110228115050-05", sms->timestamp());
@@ -106,7 +106,7 @@ TEST(CreateSmsMessage, AlphaSenderAndUcs2Text) {
   SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
                                                                sizeof(kPdu),
                                                                1);
-  ASSERT_TRUE(NULL != sms);
+  ASSERT_NE(nullptr, sms);
   EXPECT_EQ("+79037011111", sms->smsc_address());
   EXPECT_EQ("InternetSMS", sms->sender_address());
   EXPECT_EQ("110329192004+04", sms->timestamp());
@@ -136,7 +136,7 @@ TEST(CreateSmsMessage, NonzeroPid) {
   SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
                                                                sizeof(kPdu),
                                                                1);
-  ASSERT_TRUE(NULL != sms);
+  ASSERT_NE(nullptr, sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456+00", sms->timestamp());
@@ -166,7 +166,7 @@ TEST(CreateSmsMessage, MoreMessagesBitClear) {
   SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
                                                                sizeof(kPdu),
                                                                1);
-  ASSERT_TRUE(NULL != sms);
+  ASSERT_NE(nullptr, sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456+00", sms->timestamp());
@@ -194,7 +194,7 @@ TEST(CreateSmsMessage, TimeZoneOffsetGreaterThanTen) {
   SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
                                                                sizeof(kPdu),
                                                                1);
-  ASSERT_TRUE(NULL != sms);
+  ASSERT_NE(nullptr, sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456+03", sms->timestamp());
@@ -222,7 +222,7 @@ TEST(CreateSmsMessage, NegativeTimeZoneOffset) {
   SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
                                                                sizeof(kPdu),
                                                                1);
-  ASSERT_TRUE(NULL != sms);
+  ASSERT_NE(nullptr, sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456-03", sms->timestamp());
@@ -244,7 +244,7 @@ TEST(CreateSmsMessage, NationalSenderNumber) {
   SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
                                                                sizeof(kPdu),
                                                                1);
-  ASSERT_TRUE(NULL != sms);
+  ASSERT_NE(nullptr, sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("18005551212", sms->sender_address());  // no plus
   EXPECT_EQ("110101123456+00", sms->timestamp());
@@ -273,7 +273,7 @@ TEST(CreateSmsMessage, 8BitData) {
   SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
                                                                sizeof(kPdu),
                                                                1);
-  ASSERT_TRUE(NULL != sms);
+  ASSERT_NE(nullptr, sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456+00", sms->timestamp());
@@ -302,7 +302,7 @@ TEST(CreateSmsMessage, InsufficientUserData) {
   SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
                                                                sizeof(kPdu),
                                                                1);
-  EXPECT_TRUE(NULL == sms);
+  EXPECT_EQ(nullptr, sms);
 }
 
 TEST(CreateSmsMessage, GroupFDataCodingScheme) {
@@ -343,7 +343,7 @@ TEST(CreateSmsMessage, GroupFDataCodingScheme) {
   SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
                                                                sizeof(kPdu),
                                                                1);
-  ASSERT_TRUE(NULL != sms);
+  ASSERT_NE(nullptr, sms);
   EXPECT_EQ("+33609001390", sms->smsc_address());
   EXPECT_EQ("1800", sms->sender_address());
   EXPECT_EQ("110624130815+02", sms->timestamp());
@@ -367,7 +367,7 @@ TEST(CreateSmsMessage, GroupF8BitDataCodingScheme) {
   SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
                                                                sizeof(kPdu),
                                                                1);
-  ASSERT_TRUE(NULL != sms);
+  ASSERT_NE(nullptr, sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456+00", sms->timestamp());
@@ -396,7 +396,7 @@ TEST(CreateSmsMessage, ReservedCodingScheme) {
                                                                sizeof(kPdu),
                                                                1);
 
-  ASSERT_TRUE(NULL != sms);
+  ASSERT_NE(nullptr, sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456+00", sms->timestamp());
@@ -429,7 +429,7 @@ TEST(CreateSmsMessage, UserDataHeaderWithFillBits) {
                                                                sizeof(kPdu),
                                                                1);
 
-  ASSERT_TRUE(NULL != sms);
+  ASSERT_NE(nullptr, sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456+00", sms->timestamp());
@@ -479,7 +479,7 @@ TEST(CreateSmsMessage, UserDataHeaderNoFillBits) {
                                                                 sizeof(kPdu),
                                                                 1);
 
-  ASSERT_TRUE(NULL != frag);
+  ASSERT_NE(nullptr, frag);
   EXPECT_EQ("+31653131316", frag->smsc_address());
   EXPECT_EQ("1002", frag->sender_address());
   EXPECT_EQ("110629233219+02", frag->timestamp());
@@ -541,7 +541,7 @@ TEST(CreateSmsMessage, TwoPart) {
                                                                  sizeof(kPdu1),
                                                                  1);
 
-  ASSERT_TRUE(NULL != frag1);
+  ASSERT_NE(nullptr, frag1);
   EXPECT_EQ("+14044550010", frag1->smsc_address());
   EXPECT_EQ("+16175046925", frag1->sender_address());
   EXPECT_EQ("111025144014-07", frag1->timestamp());
@@ -561,7 +561,7 @@ TEST(CreateSmsMessage, TwoPart) {
   SmsMessageFragment* frag2 = SmsMessageFragment::CreateFragment(kPdu2,
                                                                  sizeof(kPdu2),
                                                                  2);
-  ASSERT_TRUE(NULL != frag2);
+  ASSERT_NE(nullptr, frag2);
   EXPECT_EQ("+14044550011", frag2->smsc_address());
   EXPECT_EQ("+16175046925", frag2->sender_address());
   EXPECT_EQ("111025144015-07", frag2->timestamp());
@@ -573,7 +573,7 @@ TEST(CreateSmsMessage, TwoPart) {
 
   SmsMessage* sms = new SmsMessage(frag1);
 
-  ASSERT_TRUE(NULL != sms);
+  ASSERT_NE(nullptr, sms);
   EXPECT_FALSE(sms->IsComplete());
 
   sms->AddFragment(frag2);
@@ -593,7 +593,7 @@ TEST(CreateSmsMessage, TwoPart) {
   EXPECT_TRUE(sms->IsComplete());
 
   SmsMessage* sms2 = new SmsMessage(frag2);
-  ASSERT_TRUE(NULL != sms2);
+  ASSERT_NE(nullptr, sms2);
   EXPECT_FALSE(sms2->IsComplete());
 
   sms2->AddFragment(frag1);
@@ -627,7 +627,7 @@ TEST(CreateSmsMessage, NonIntlSMSC) {
   SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
                                                                sizeof(kPdu),
                                                                1);
-  ASSERT_TRUE(NULL != sms);
+  ASSERT_NE(nullptr, sms);
   EXPECT_EQ("8960", sms->smsc_address());
   EXPECT_EQ("8960", sms->sender_address());
   EXPECT_EQ("120211214721+00", sms->timestamp());

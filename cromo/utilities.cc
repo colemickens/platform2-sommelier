@@ -187,7 +187,7 @@ std::string Gsm7ToUtf8String(const uint8_t* gsm7,
   // now map the septets into their corresponding UTF-8 characters
   std::string str;
   for (i = 0; i < nseptets; ++i, ++cp) {
-    uint8_t* mp = NULL;
+    uint8_t* mp = nullptr;
     if (*cp == 0x1b) {
       ++cp;
       for (int k = 0; k < 10; k++) {
@@ -201,9 +201,10 @@ std::string Gsm7ToUtf8String(const uint8_t* gsm7,
     } else {
       mp = &Gsm7ToUtf8Map[*cp][0];
     }
-    if (mp != NULL)
+    if (mp) {
       while (*mp != '\0')
         str += *mp++;
+    }
   }
 
   return str;

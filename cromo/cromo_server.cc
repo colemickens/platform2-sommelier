@@ -8,6 +8,7 @@
 #include <mm/mm-modem.h>
 
 #include <base/logging.h>
+#include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus-c++/glib-integration.h>
 
@@ -31,17 +32,8 @@ CromoServer::CromoServer(
 }
 
 CromoServer::~CromoServer() {
-  for (ModemHandlers::iterator it = modem_handlers_.begin();
-       it != modem_handlers_.end(); ++it) {
-    delete *it;
-  }
-  modem_handlers_.clear();
-
-  for (CarrierMap::iterator it = carriers_.begin();
-       it != carriers_.end(); ++it) {
-    delete it->second;
-  }
-  carriers_.clear();
+  STLDeleteElements(&modem_handlers_);
+  STLDeleteValues(&carriers_);
 }
 
 vector<DBus::Path> CromoServer::EnumerateDevices(
@@ -86,13 +78,17 @@ Carrier* CromoServer::FindCarrierByCarrierId(carrier_id_t id) {
       return i->second;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 Carrier* CromoServer::FindCarrierNoOp() {
-  if (carrier_no_op_.get() == NULL) {
-    carrier_no_op_.reset(new Carrier(
-        "no_op_name", "invalid", -1, MM_MODEM_TYPE_GSM, Carrier::kNone, NULL));
+  if (!carrier_no_op_) {
+    carrier_no_op_.reset(new Carrier("no_op_name",
+                                     "invalid",
+                                     -1,
+                                     MM_MODEM_TYPE_GSM,
+                                     Carrier::kNone,
+                                     nullptr));
   }
   return carrier_no_op_.get();
 }

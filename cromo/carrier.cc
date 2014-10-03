@@ -10,16 +10,16 @@
 
 void AddBaselineCarriers(CromoServer* server) {
   server->AddCarrier(new Carrier(
-      "Vodafone", "0", 202, MM_MODEM_TYPE_GSM, Carrier::kNone, NULL));
+      "Vodafone", "0", 202, MM_MODEM_TYPE_GSM, Carrier::kNone, nullptr));
   server->AddCarrier(new Carrier(
       "Verizon Wireless", "1", 101, MM_MODEM_TYPE_CDMA, Carrier::kOtasp,
       "*22899"));
   server->AddCarrier(new Carrier(
-      "AT&T", "2", 201, MM_MODEM_TYPE_GSM, Carrier::kNone, NULL));
+      "AT&T", "2", 201, MM_MODEM_TYPE_GSM, Carrier::kNone, nullptr));
   server->AddCarrier(new Carrier(
-      "Sprint", "3", 102, MM_MODEM_TYPE_CDMA, Carrier::kOmadm, NULL));
+      "Sprint", "3", 102, MM_MODEM_TYPE_CDMA, Carrier::kOmadm, nullptr));
   server->AddCarrier(new Carrier(
-      "T-Mobile", "4", 203, MM_MODEM_TYPE_GSM, Carrier::kNone, NULL));
+      "T-Mobile", "4", 203, MM_MODEM_TYPE_GSM, Carrier::kNone, nullptr));
   server->AddCarrier(new Carrier(
-      "Generic UMTS", "6", 1, MM_MODEM_TYPE_GSM, Carrier::kNone, NULL));
+      "Generic UMTS", "6", 1, MM_MODEM_TYPE_GSM, Carrier::kNone, nullptr));
 }

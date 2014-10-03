@@ -48,7 +48,7 @@ SmsMessage* SmsCache::GetFromCache(int index) {
   if (it != messages_.end())
     return it->second;
   else
-    return NULL;
+    return nullptr;
 }
 
 int SmsCache::GetCanonicalIndex(int index) {
@@ -100,7 +100,7 @@ SmsMessage* SmsCache::SmsReceived(int index,
                                   SmsModemOperations* impl) {
   SmsMessageFragment* frag = impl->GetSms(index, error);
   if (error.is_set())
-    return NULL;
+    return nullptr;
 
   AddToCache(frag);
   return GetFromCache(GetCanonicalIndex(index));
@@ -108,7 +108,7 @@ SmsMessage* SmsCache::SmsReceived(int index,
 
 static void SmsToPropertyMap(SmsMessage* sms,
                              utilities::DBusPropertyMap* result) {
-  CHECK(result != NULL);
+  CHECK(result);
   (*result)["number"].writer().append_string(sms->sender_address().c_str());
   (*result)["smsc"].writer().append_string(sms->smsc_address().c_str());
   (*result)["text"].writer().append_string(sms->GetMessageText().c_str());
@@ -124,7 +124,7 @@ utilities::DBusPropertyMap* SmsCache::Get(int index,
   if (cindex == -1) {
     SmsMessageFragment* frag = impl->GetSms(index, error);
     if (error.is_set())
-      return NULL;
+      return nullptr;
     AddToCache(frag);
     cindex = GetCanonicalIndex(index);
   }
@@ -133,7 +133,7 @@ utilities::DBusPropertyMap* SmsCache::Get(int index,
   if (!sms->IsComplete()) {
     LOG(WARNING) << "Message at index " << index << " was not complete.";
     error.set("Message is incomplete", "GetSMS");
-    return NULL;
+    return nullptr;
   }
 
   utilities::DBusPropertyMap* map = new utilities::DBusPropertyMap();
@@ -148,7 +148,7 @@ static const char kErrorInvalidIndex[] =
 void SmsCache::Delete(int index, DBus::Error& error,  // NOLINT - refs.
                       SmsModemOperations* impl) {
   const SmsMessage* sms = GetFromCache(index);
-  if (sms == NULL) {
+  if (!sms) {
     if (GetCanonicalIndex(index) == -1) {
       // We don't know anything about this index number. Pass the
       // delete operation through.
