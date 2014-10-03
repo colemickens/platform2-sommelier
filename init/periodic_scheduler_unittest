@@ -52,7 +52,9 @@ test1() {
 
   touch -t 199001010101 "${spool_file}"
   wake_sched_up ${pid}
-  local timeout=100
+  # Wait up to 60 seconds in case the build system is overloaded.
+  # http://crbug.com/420102
+  local timeout=600
   while [[ ! -e ${test_file} ]]; do
     sleep 0.1
     if [[ $(( --timeout )) -eq 0 ]]; then
