@@ -19,7 +19,8 @@ namespace p2p {
 
 namespace testutil {
 
-constexpr int kDefaultMainLoopTimeoutMs = 60000;
+// See chromium:419964 for discussion of why 10 minutes is used.
+constexpr int kDefaultMainLoopTimeoutMs = 10 * 60 * 1000;
 
 // This class will call exit() if the object is not destroyed before
 // a given timeout. Useful to cancel a test in deadlock when no other
