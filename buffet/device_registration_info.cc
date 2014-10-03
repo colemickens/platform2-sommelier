@@ -465,26 +465,101 @@ std::string DeviceRegistrationInfo::RegisterDevice(
   return device_id_;
 }
 
+namespace {
+
+template <class T>
+void PostToCallback(base::Callback<void(const T&)> callback,
+                    std::unique_ptr<T> value) {
+  auto cb = [callback] (T* result) {
+    callback.Run(*result);
+  };
+  base::MessageLoop::current()->PostTask(
+      FROM_HERE, base::Bind(cb, base::Owned(value.release())));
+}
+
+// TODO(antonm): May belong to chromeos/http.
+
+void SendRequestAsync(
+    const std::string& method,
+    const std::string& url,
+    const std::string& data,
+    const std::string& mime_type,
+    const chromeos::http::HeaderList& headers,
+    std::shared_ptr<chromeos::http::Transport> transport,
+    int num_retries,
+    base::Callback<void(const chromeos::http::Response&)> callback,
+    base::Callback<void(const chromeos::Error&)> errorback) {
+  chromeos::ErrorPtr error;
+
+  auto on_retriable_failure = [&error, method, url, data, mime_type,
+       headers, transport, num_retries, callback, errorback] () {
+    if (num_retries > 0) {
+      auto c = [method, url, data, mime_type, headers, transport,
+            num_retries, callback, errorback] () {
+        SendRequestAsync(method, url,
+                         data, mime_type,
+                         headers,
+                         transport,
+                         num_retries - 1,
+                         callback, errorback);
+      };
+      base::MessageLoop::current()->PostTask(
+          FROM_HERE, base::Bind(c));
+    } else {
+      PostToCallback(errorback, std::move(error));
+    }
+  };
+
+  chromeos::http::Request request(url, method.c_str(), transport);
+  request.AddHeaders(headers);
+  if (!data.empty()) {
+    request.SetContentType(mime_type.c_str());
+    if (!request.AddRequestBody(data.c_str(), data.size(), &error)) {
+      on_retriable_failure();
+      return;
+    }
+  }
+
+  std::unique_ptr<chromeos::http::Response> response{
+    request.GetResponse(&error)};
+  if (!response) {
+    on_retriable_failure();
+    return;
+  }
+
+  int status_code{response->GetStatusCode()};
+  if (status_code >= chromeos::http::status_code::Continue &&
+      status_code < chromeos::http::status_code::BadRequest) {
+    PostToCallback(callback, std::move(response));
+    return;
+  }
+
+  // TODO(antonm): Should add some useful information to error.
+  LOG(WARNING) << "Request failed. Response code = " << status_code;
+
+  if (status_code >= 500 && status_code < 600) {
+    // Request was valid, but server failed, retry.
+    // TODO(antonm): Implement exponential backoff.
+    // TODO(antonm): Reconsider status codes, maybe only some require
+    // retry.
+    // TODO(antonm): Support Retry-After header.
+    on_retriable_failure();
+  } else {
+    PostToCallback(errorback, std::move(error));
+  }
+}
+
+}  // namespace
+
 void DeviceRegistrationInfo::DoCloudRequest(
     const char* method,
     const std::string& url,
     const base::DictionaryValue* body,
     CloudRequestCallback callback,
     CloudRequestErroback errorback) {
-  // TODO(antonm): Add retries for 5xx.
   // TODO(antonm): Add reauthorisation on access token expiration (do not
   // forget about 5xx when fetching new access token).
   // TODO(antonm): Add support for device removal.
-
-  chromeos::ErrorPtr error;
-
-  auto report_error = [errorback, &error] () {
-    auto cb = [errorback] (chromeos::Error* error_ptr) {
-      errorback.Run(*error_ptr);
-    };
-    base::MessageLoop::current()->PostTask(
-        FROM_HERE, base::Bind(cb, base::Owned(error.release())));
-  };
 
   std::string data;
   if (body)
@@ -495,40 +570,26 @@ void DeviceRegistrationInfo::DoCloudRequest(
       chromeos::mime::parameters::kCharset,
       "utf-8")};
 
-  const std::unique_ptr<const chromeos::http::Response> response{
-      chromeos::http::SendRequest(
-          method,
-          url,
-          data.c_str(), data.size(),
-          mime_type.c_str(),
-          {GetAuthorizationHeader()},
-          transport_,
-          &error)};
-  if (!response) {
-    report_error();
-    return;
-  }
+  auto request_cb = [callback, errorback] (
+      const chromeos::http::Response& response) {
+    chromeos::ErrorPtr error;
 
-  int status_code{0};
-  std::unique_ptr<base::DictionaryValue> json_resp{
-      chromeos::http::ParseJsonResponse(response.get(), &status_code, &error)};
-  if (!json_resp) {
-    report_error();
-    return;
-  }
+    std::unique_ptr<base::DictionaryValue> json_resp{
+        chromeos::http::ParseJsonResponse(&response, nullptr, &error)};
+    if (!json_resp) {
+      PostToCallback(errorback, std::move(error));
+      return;
+    }
 
-  if (status_code >= chromeos::http::status_code::BadRequest) {
-    LOG(WARNING) << "Cloud request failed. Response code = " << status_code;
-    ParseGCDError(json_resp.get(), &error);
-    report_error();
-    return;
-  }
-
-  auto cb = [callback] (base::DictionaryValue* result) {
-    callback.Run(*result);
+    PostToCallback(callback, std::move(json_resp));
   };
-  base::MessageLoop::current()->PostTask(
-      FROM_HERE, base::Bind(cb, base::Owned(json_resp.release())));
+
+  SendRequestAsync(method, url,
+                   data, mime_type,
+                   {GetAuthorizationHeader()},
+                   transport_,
+                   7,
+                   base::Bind(request_cb), errorback);
 }
 
 void DeviceRegistrationInfo::StartDevice(chromeos::ErrorPtr* error) {
