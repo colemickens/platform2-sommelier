@@ -9,7 +9,9 @@
 #include <vector>
 
 #include <base/json/json_writer.h>
+#include <base/message_loop/message_loop.h>
 #include <base/values.h>
+#include <chromeos/bind_lambda.h>
 #include <chromeos/data_encoding.h>
 #include <chromeos/http/http_utils.h>
 #include <chromeos/mime_utils.h>
@@ -338,6 +340,7 @@ std::unique_ptr<base::Value> DeviceRegistrationInfo::GetDeviceInfo(
   if (!CheckRegistration(error))
     return std::unique_ptr<base::Value>();
 
+  // TODO(antonm): Switch to DoCloudRequest later.
   auto response = chromeos::http::Get(
       GetDeviceURL(), {GetAuthorizationHeader()}, transport_, error);
   int status_code = 0;
@@ -483,6 +486,72 @@ bool DeviceRegistrationInfo::FinishRegistration(chromeos::ErrorPtr* error) {
   return true;
 }
 
+void DeviceRegistrationInfo::DoCloudRequest(
+    const char* method,
+    const std::string& url,
+    const base::DictionaryValue* body,
+    CloudRequestCallback callback,
+    CloudRequestErroback errorback) {
+  // TODO(antonm): Add retries for 5xx.
+  // TODO(antonm): Add reauthorisation on access token expiration (do not
+  // forget about 5xx when fetching new access token).
+  // TODO(antonm): Add support for device removal.
+
+  chromeos::ErrorPtr error;
+
+  auto report_error = [errorback, &error] () {
+    auto cb = [errorback] (chromeos::Error* error_ptr) {
+      errorback.Run(*error_ptr);
+    };
+    base::MessageLoop::current()->PostTask(
+        FROM_HERE, base::Bind(cb, base::Owned(error.release())));
+  };
+
+  std::string data;
+  if (body)
+    base::JSONWriter::Write(body, &data);
+
+  const std::string mime_type{chromeos::mime::AppendParameter(
+      chromeos::mime::application::kJson,
+      chromeos::mime::parameters::kCharset,
+      "utf-8")};
+
+  const std::unique_ptr<const chromeos::http::Response> response{
+      chromeos::http::SendRequest(
+          method,
+          url,
+          data.c_str(), data.size(),
+          mime_type.c_str(),
+          {GetAuthorizationHeader()},
+          transport_,
+          &error)};
+  if (!response) {
+    report_error();
+    return;
+  }
+
+  int status_code{0};
+  std::unique_ptr<base::DictionaryValue> json_resp{
+      chromeos::http::ParseJsonResponse(response.get(), &status_code, &error)};
+  if (!json_resp) {
+    report_error();
+    return;
+  }
+
+  if (status_code >= chromeos::http::status_code::BadRequest) {
+    LOG(WARNING) << "Cloud request failed. Response code = " << status_code;
+    ParseGCDError(json_resp.get(), &error);
+    report_error();
+    return;
+  }
+
+  auto cb = [callback] (base::DictionaryValue* result) {
+    callback.Run(*result);
+  };
+  base::MessageLoop::current()->PostTask(
+      FROM_HERE, base::Bind(cb, base::Owned(json_resp.release())));
+}
+
 void DeviceRegistrationInfo::StartDevice(chromeos::ErrorPtr* error) {
   if (!CheckRegistration(error))
     return;
@@ -492,18 +561,13 @@ void DeviceRegistrationInfo::StartDevice(chromeos::ErrorPtr* error) {
   if (!device_resource)
     return;
 
-  // TODO(antonm): Use PUT, not PATCH for updates.
-  std::unique_ptr<chromeos::http::Response> response =
-      chromeos::http::PatchJson(GetDeviceURL(), device_resource.release(),
-                                {GetAuthorizationHeader()}, transport_, error);
-  if (!response)
-    return;
+  DoCloudRequest(
+      chromeos::http::request_type::kPut,
+      GetDeviceURL(),
+      device_resource.release(),
+      base::Bind([](const base::DictionaryValue& data) {}),
+      base::Bind([](const chromeos::Error& error) {}));
 
-  int status_code = 0;
-  std::unique_ptr<base::DictionaryValue> json =
-      chromeos::http::ParseJsonResponse(response.get(), &status_code, error);
-  if (!json || status_code >= chromeos::http::status_code::BadRequest)
-    return;
 
   // TODO(antonm): Implement the rest of startup sequence:
   //   * Abort commands cloud thinks are running

@@ -10,6 +10,7 @@
 #include <string>
 #include <utility>
 
+#include <base/callback.h>
 #include <base/macros.h>
 #include <base/time/time.h>
 #include <chromeos/data_encoding.h>
@@ -119,6 +120,23 @@ class DeviceRegistrationInfo {
 
   // Makes sure the access token is available and up-to-date.
   bool ValidateAndRefreshAccessToken(chromeos::ErrorPtr* error);
+
+  using CloudRequestCallback =
+      base::Callback<void(const base::DictionaryValue&)>;
+  using CloudRequestErroback =
+      base::Callback<void(const chromeos::Error& error)>;
+
+  // Do a HTTPS request to cloud services.
+  // Handles many cases like reauthorization, 5xx HTTP response codes
+  // and device removal.  It is a recommended way to do cloud API
+  // requests.
+  // TODO(antonm): Consider moving into some other class.
+  void DoCloudRequest(
+      const char* method,
+      const std::string& url,
+      const base::DictionaryValue* body,
+      CloudRequestCallback callback,
+      CloudRequestErroback errorback);
 
   // Builds Cloud API devices collection REST resouce which matches
   // current state of the device including command definitions
