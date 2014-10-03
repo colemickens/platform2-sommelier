@@ -88,11 +88,11 @@ TEST(GeneratorTest, SynchronousCommand) {
                                10);
   StrictMock<MockCommandTransceiver> transceiver;
   EXPECT_CALL(transceiver, SendCommandAndWait(expected_command, _))
-    .WillOnce(DoAll(SetArgPointee<1>(command_response),
-                    Return(TPM_RC_SUCCESS)));
+      .WillOnce(DoAll(SetArgPointee<1>(command_response),
+                      Return(TPM_RC_SUCCESS)));
   StrictMock<MockAuthorizationDelegate> authorization;
   EXPECT_CALL(authorization, GetCommandAuthorization(_, _))
-    .WillOnce(Return(true));
+      .WillOnce(Return(true));
   Tpm tpm(&transceiver);
   EXPECT_EQ(TPM_RC_SUCCESS, tpm.StartupSync(TPM_SU_CLEAR, &authorization));
 }
@@ -110,11 +110,11 @@ TEST(GeneratorTest, SynchronousCommandWithError) {
                                10);
   StrictMock<MockCommandTransceiver> transceiver;
   EXPECT_CALL(transceiver, SendCommandAndWait(expected_command, _))
-    .WillOnce(DoAll(SetArgPointee<1>(command_response),
-                    Return(TPM_RC_SUCCESS)));
+      .WillOnce(DoAll(SetArgPointee<1>(command_response),
+                      Return(TPM_RC_SUCCESS)));
   StrictMock<MockAuthorizationDelegate> authorization;
   EXPECT_CALL(authorization, GetCommandAuthorization(_, _))
-    .WillOnce(Return(true));
+      .WillOnce(Return(true));
   Tpm tpm(&transceiver);
   EXPECT_EQ(TPM_RC_FAILURE, tpm.StartupSync(TPM_SU_CLEAR, &authorization));
 }
@@ -132,13 +132,139 @@ TEST(GeneratorTest, SynchronousCommandWithTransceiverError) {
                                10);
   StrictMock<MockCommandTransceiver> transceiver;
   EXPECT_CALL(transceiver, SendCommandAndWait(expected_command, _))
-    .WillOnce(DoAll(SetArgPointee<1>(command_response),
-                    Return(TPM_RC_FAILURE)));
+      .WillOnce(DoAll(SetArgPointee<1>(command_response),
+                      Return(TPM_RC_FAILURE)));
   StrictMock<MockAuthorizationDelegate> authorization;
   EXPECT_CALL(authorization, GetCommandAuthorization(_, _))
-    .WillOnce(Return(true));
+      .WillOnce(Return(true));
   Tpm tpm(&transceiver);
   EXPECT_EQ(TPM_RC_FAILURE, tpm.StartupSync(TPM_SU_CLEAR, &authorization));
+}
+
+TEST(GeneratorTest, SynchronousCommandResponseTest) {
+  std::string auth_in(10, 'A');
+  std::string auth_out(10, 'B');
+  std::string auth_size("\x00\x00\x00\x0A", 4);
+  std::string handle_in("\x40\x00\x00\x07", 4);  // primary_handle = TPM_RH_NULL
+  std::string handle_out("\x80\x00\x00\x01", 4);  // out_handle
+  std::string sensitive("\x00\x05"   // sensitive.size = 5
+                        "\x00\x01"   // sensitive.auth.size = 1
+                        "\x61"       // sensitive.auth.buffer[0] = 0x65
+                        "\x00\x00",  // sensitive.data.size = 0
+                        7);
+  std::string public_data("\x00\x12"    // public.size = 18
+                          "\x00\x25"    // public.type = TPM_ALG_SYMCIPHER
+                          "\x00\x0B"    // public.name_alg = SHA256
+                          "\x00\x00\x00\x00"
+                          "\x00\x00"    // public.auth_policy.size = 0
+                          "\x00\x06"    // public.sym.alg = TPM_ALG_AES
+                          "\x00\x80"    // public.sym.key_bits = 128
+                          "\x00\x43"    // public.sym.mode = TPM_ALG_CFB
+                          "\x00\x00",   // public.unique.size = 0
+                          20);
+  std::string outside("\x00\x00", 2);  // outside_info.size = 0
+  std::string pcr_select("\x00\x00\x00\x00", 4);  // pcr_select.size = 0
+
+  std::string data("\x00\x0F"           // creation_data.size = 15
+                   "\x00\x00\x00\x00"   // creation.pcr = 0
+                   "\x00\x00"           // creation.digest.size = 0
+                   "\x00"               // creation.locality = 0
+                   "\x00\x00"           // creation.parent_alg = 0
+                   "\x00\x00"           // creation.parent_name.size = 0
+                   "\x00\x00"
+                   "\x00\x00",          // creation.outside.size = 0
+                   17);
+  std::string hash("\x00\x01"
+                   "\x62", 3);
+  std::string ticket("\x80\x02"           // tag = TPM_ST_SESSIONS
+                     "\x40\x00\x00\x07"   // parent = TPM_RH_NULL
+                     "\x00\x00", 8);
+  std::string name("\x00\x03" "KEY", 5);
+  std::string parameter_size("\x00\x00\x00\x35", 4);  // param_size = 38
+
+  std::string command_tag("\x80\x02"           // tag = TPM_ST_SESSIONS
+                          "\x00\x00\x00\x3D"   // size = 61
+                          "\x00\x00\x01\x31",  // code = TPM_CC_CreatePrimary
+                         10);
+  std::string response_tag("\x80\x02"           // tag = TPM_ST_SESSIONS
+                           "\x00\x00\x00\x51"   // size = 79
+                           "\x00\x00\x00\x00",  // rc = TPM_RC_SUCCESS
+                           10);
+
+  std::string expected_command = command_tag + handle_in + auth_size + auth_in +
+                                 sensitive + public_data + outside + pcr_select;
+  std::string command_response = response_tag + handle_out + parameter_size +
+                                 public_data + data + hash + ticket + name +
+                                 auth_out;
+
+  StrictMock<MockCommandTransceiver> transceiver;
+  EXPECT_CALL(transceiver, SendCommandAndWait(expected_command, _))
+      .WillOnce(DoAll(SetArgPointee<1>(command_response),
+                      Return(TPM_RC_SUCCESS)));
+  StrictMock<MockAuthorizationDelegate> authorization;
+  EXPECT_CALL(authorization, GetCommandAuthorization(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(auth_in), Return(true)));
+  EXPECT_CALL(authorization, CheckResponseAuthorization(_, auth_out))
+      .WillOnce(Return(true));
+  EXPECT_CALL(authorization, EncryptCommandParameter(_))
+      .WillOnce(Return(true));
+  EXPECT_CALL(authorization, DecryptResponseParameter(_))
+      .WillOnce(Return(true));
+
+  TPM2B_SENSITIVE_CREATE in_sensitive;
+  in_sensitive.size = 5;
+  in_sensitive.sensitive.user_auth.size = 1;
+  in_sensitive.sensitive.user_auth.buffer[0] = 'a';
+  in_sensitive.sensitive.data.size = 0;
+  TPM2B_PUBLIC in_public;
+  in_public.size = 18;
+  in_public.public_area.type = TPM_ALG_SYMCIPHER;
+  in_public.public_area.name_alg = TPM_ALG_SHA256;
+  in_public.public_area.object_attributes = 0;
+  in_public.public_area.auth_policy.size = 0;
+  in_public.public_area.parameters.sym_detail.sym.algorithm = TPM_ALG_AES;
+  in_public.public_area.parameters.sym_detail.sym.key_bits.aes = 128;
+  in_public.public_area.parameters.sym_detail.sym.mode.aes = TPM_ALG_CFB;
+  in_public.public_area.unique.sym.size = 0;
+  TPM2B_DATA outside_info;
+  outside_info.size = 0;
+  TPML_PCR_SELECTION create_pcr;
+  create_pcr.count = 0;
+
+  TPM_HANDLE key_handle;
+  TPM2B_PUBLIC out_public;
+  TPM2B_CREATION_DATA creation_data;
+  TPM2B_DIGEST creation_hash;
+  TPMT_TK_CREATION creation_ticket;
+  TPM2B_NAME key_name;
+
+  Tpm tpm(&transceiver);
+  TPM_RC rc = tpm.CreatePrimarySync(trunks::TPM_RH_NULL,
+                                    "",
+                                    in_sensitive,
+                                    in_public,
+                                    outside_info,
+                                    create_pcr,
+                                    &key_handle,
+                                    &out_public,
+                                    &creation_data,
+                                    &creation_hash,
+                                    &creation_ticket,
+                                    &key_name,
+                                    &authorization);
+  ASSERT_EQ(rc, TPM_RC_SUCCESS);
+  EXPECT_EQ(key_handle, 0x80000001);
+  EXPECT_EQ(out_public.size, 18);
+  EXPECT_EQ(creation_data.size, 15);
+  EXPECT_EQ(creation_hash.size, 1);
+  EXPECT_EQ(creation_hash.buffer[0], 'b');
+  EXPECT_EQ(creation_ticket.tag, 0x8002);
+  EXPECT_EQ(creation_ticket.hierarchy, 0x40000007);
+  EXPECT_EQ(creation_ticket.digest.size, 0);
+  EXPECT_EQ(key_name.size, 3);
+  EXPECT_EQ(key_name.name[0], 'K');
+  EXPECT_EQ(key_name.name[1], 'E');
+  EXPECT_EQ(key_name.name[2], 'Y');
 }
 
 // A fixture for asynchronous command flow tests.
@@ -218,10 +344,10 @@ TEST_F(CommandFlowTest, SimpleCommandFlow) {
                                10);
   StrictMock<MockCommandTransceiver> transceiver;
   EXPECT_CALL(transceiver, SendCommand(expected_command, _))
-    .WillOnce(WithArg<1>(Invoke(PostResponse(command_response))));
+      .WillOnce(WithArg<1>(Invoke(PostResponse(command_response))));
   StrictMock<MockAuthorizationDelegate> authorization;
   EXPECT_CALL(authorization, GetCommandAuthorization(_, _))
-    .WillOnce(Return(true));
+      .WillOnce(Return(true));
   Tpm tpm(&transceiver);
   response_code_ = TPM_RC_FAILURE;
   tpm.Startup(TPM_SU_CLEAR,
@@ -245,10 +371,10 @@ TEST_F(CommandFlowTest, SimpleCommandFlowWithError) {
                                10);
   StrictMock<MockCommandTransceiver> transceiver;
   EXPECT_CALL(transceiver, SendCommand(expected_command, _))
-    .WillOnce(WithArg<1>(Invoke(PostResponse(command_response))));
+      .WillOnce(WithArg<1>(Invoke(PostResponse(command_response))));
   StrictMock<MockAuthorizationDelegate> authorization;
   EXPECT_CALL(authorization, GetCommandAuthorization(_, _))
-    .WillOnce(Return(true));
+      .WillOnce(Return(true));
   Tpm tpm(&transceiver);
   tpm.Startup(TPM_SU_CLEAR,
               &authorization,
@@ -293,16 +419,16 @@ TEST_F(CommandFlowTest, FullCommandFlow) {
 
   StrictMock<MockCommandTransceiver> transceiver;
   EXPECT_CALL(transceiver, SendCommand(expected_command, _))
-    .WillOnce(WithArg<1>(Invoke(PostResponse(command_response))));
+      .WillOnce(WithArg<1>(Invoke(PostResponse(command_response))));
   StrictMock<MockAuthorizationDelegate> authorization;
   EXPECT_CALL(authorization, GetCommandAuthorization(_, _))
-    .WillOnce(DoAll(SetArgPointee<1>(auth_in), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(auth_in), Return(true)));
   EXPECT_CALL(authorization, CheckResponseAuthorization(_, auth_out))
-    .WillOnce(Return(true));
+      .WillOnce(Return(true));
   EXPECT_CALL(authorization, EncryptCommandParameter(_))
-    .WillOnce(Invoke(Encryptor("pt_user_data", "ct_user_data")));
+      .WillOnce(Invoke(Encryptor("pt_user_data", "ct_user_data")));
   EXPECT_CALL(authorization, DecryptResponseParameter(_))
-    .WillOnce(Invoke(Encryptor("ct_signed_data", "pt_signed_data")));
+      .WillOnce(Invoke(Encryptor("ct_signed_data", "pt_signed_data")));
 
   TPMT_SIG_SCHEME null_scheme;
   null_scheme.scheme = TPM_ALG_NULL;
