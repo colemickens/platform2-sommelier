@@ -52,6 +52,7 @@
 
 #include <base/logging.h>
 #include <chromeos/chromeos_export.h>
+#include <chromeos/type_name_undecorate.h>
 #include <dbus/message.h>
 
 namespace google {
@@ -86,7 +87,8 @@ template<typename T> std::string GetDBusSignature();  // Forward declaration.
 template<typename T>
 struct DBusSignature {
   inline static std::string get() {
-    LOG(ERROR) << "Type '" << typeid(T).name() << "' is not supported by D-Bus";
+    LOG(ERROR) << "Type '" << GetUndecoratedTypeName<T>()
+               << "' is not supported by D-Bus";
     return std::string();
   }
 };
@@ -208,7 +210,7 @@ inline std::string GetDBusSignature() { return DBusSignature<T>::get(); }
 template<typename T>
 inline bool AppendValueToWriter(dbus::MessageWriter* writer, const T& value) {
   LOG(ERROR) << "Serialization of type '"
-             << typeid(T).name() << "' not supported";
+             << GetUndecoratedTypeName<T>() << "' not supported";
   return false;
 }
 
@@ -359,7 +361,7 @@ inline bool DescendIntoVariantIfPresent(
 template<typename T>
 inline bool PopValueFromReader(dbus::MessageReader* reader, T* value) {
   LOG(ERROR) << "De-serialization of type '"
-             << typeid(T).name() << "' not supported";
+             << GetUndecoratedTypeName<T>() << "' not supported";
   return false;
 }
 

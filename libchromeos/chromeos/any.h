@@ -28,6 +28,7 @@
 #include <algorithm>
 
 #include <chromeos/chromeos_export.h>
+#include <chromeos/type_name_undecorate.h>
 
 namespace dbus {
 class MessageWriter;
@@ -111,10 +112,11 @@ class CHROMEOS_EXPORT Any final {
   // convertible to/compatible with it.
   template<typename T>
   const T& Get() const {
-    CHECK(IsTypeCompatible<T>()) << "Requesting value of type "
-                                 << typeid(T).name()
-                                 << " from variant containing "
-                                 << GetType().name();
+    CHECK(IsTypeCompatible<T>()) << "Requesting value of type '"
+                                 << GetUndecoratedTypeName<T>()
+                                 << "' from variant containing '"
+                                 << UndecorateTypeName(GetType().name())
+                                 << "'";
     return data_buffer_.GetData<T>();
   }
 

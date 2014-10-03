@@ -76,6 +76,7 @@
         'chromeos/secure_blob.cc',
         'chromeos/strings/string_utils.cc',
         'chromeos/syslog_logging.cc',
+        'chromeos/type_name_undecorate.cc',
         'chromeos/url_utils.cc',
       ],
     },

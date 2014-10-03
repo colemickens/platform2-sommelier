@@ -13,6 +13,7 @@
 
 #include <base/logging.h>
 #include <chromeos/dbus/data_serialization.h>
+#include <chromeos/type_name_undecorate.h>
 
 namespace chromeos {
 
@@ -168,8 +169,9 @@ struct TypedData : public Data {
   intmax_t GetAsInteger() const override {
     intmax_t int_val = 0;
     bool converted = TryConvert(value_, &int_val);
-    CHECK(converted) << "Unable to convert value of type " << typeid(T).name()
-                     << " to integer";
+    CHECK(converted) << "Unable to convert value of type '"
+                     << GetUndecoratedTypeName<T>()
+                     << "' to integer";
     return int_val;
   }
   bool AppendToDBusMessage(dbus::MessageWriter* writer) const override {

@@ -240,11 +240,12 @@ TEST(Any, Swap) {
 TEST(Any, TypeMismatch) {
   Any val(12);
   EXPECT_DEATH(val.Get<double>(),
-               "Requesting value of type \\w+ from variant containing \\w+");
+               "Requesting value of type 'double' from variant containing "
+               "'int'");
 
   val = std::string("123");
   EXPECT_DEATH(val.GetAsInteger(),
-               "Unable to convert value of type \\w+ to integer");
+               "Unable to convert value of type 'std::string' to integer");
 
   Any empty;
   EXPECT_DEATH(empty.GetAsInteger(), "Must not be called on an empty Any");
