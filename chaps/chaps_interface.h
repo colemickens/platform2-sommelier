@@ -208,6 +208,10 @@ class ChapsInterface {
                                 uint64_t max_out_length,
                                 uint64_t* actual_out_length,
                                 std::vector<uint8_t>* data_out) = 0;
+  // PKCS #11 v2.20 section 11.8 page 140,142: any errors terminate the active
+  // encryption operation.
+  virtual void EncryptCancel(const chromeos::SecureBlob& isolate_credential,
+                             uint64_t session_id) = 0;
   // PKCS #11 v2.20 section 11.9 page 144.
   virtual uint32_t DecryptInit(const chromeos::SecureBlob& isolate_credential,
                                uint64_t session_id,
@@ -234,6 +238,10 @@ class ChapsInterface {
                                 uint64_t max_out_length,
                                 uint64_t* actual_out_length,
                                 std::vector<uint8_t>* data_out) = 0;
+  // PKCS #11 v2.20 section 11.9 page 145,146: any errors terminate the active
+  // decryption operation.
+  virtual void DecryptCancel(const chromeos::SecureBlob& isolate_credential,
+                             uint64_t session_id) = 0;
   // PKCS #11 v2.20 section 11.10 page 148.
   virtual uint32_t DigestInit(
       const chromeos::SecureBlob& isolate_credential,
@@ -261,6 +269,10 @@ class ChapsInterface {
                                uint64_t max_out_length,
                                uint64_t* actual_out_length,
                                std::vector<uint8_t>* digest) = 0;
+  // PKCS #11 v2.20 section 11.10 page 149,151: any errors terminate the active
+  // digest operation.
+  virtual void DigestCancel(const chromeos::SecureBlob& isolate_credential,
+                            uint64_t session_id) = 0;
   // PKCS #11 v2.20 section 11.11 page 152.
   virtual uint32_t SignInit(const chromeos::SecureBlob& isolate_credential,
                             uint64_t session_id,
@@ -284,6 +296,10 @@ class ChapsInterface {
                              uint64_t max_out_length,
                              uint64_t* actual_out_length,
                              std::vector<uint8_t>* signature) = 0;
+  // PKCS #11 v2.20 section 11.11 page 153,154: any errors terminate the active
+  // signing operation.
+  virtual void SignCancel(const chromeos::SecureBlob& isolate_credential,
+                          uint64_t session_id) = 0;
   // PKCS #11 v2.20 section 11.11 page 155.
   virtual uint32_t SignRecoverInit(
      const chromeos::SecureBlob& isolate_credential,
@@ -317,6 +333,10 @@ class ChapsInterface {
   virtual uint32_t VerifyFinal(const chromeos::SecureBlob& isolate_credential,
                                uint64_t session_id,
                                const std::vector<uint8_t>& signature) = 0;
+  // PKCS #11 v2.20 section 11.12 page 159: any errors terminate the active
+  // verification operation.
+  virtual void VerifyCancel(const chromeos::SecureBlob& isolate_credential,
+                            uint64_t session_id) = 0;
   // PKCS #11 v2.20 section 11.12 page 161.
   virtual uint32_t VerifyRecoverInit(
       const chromeos::SecureBlob& isolate_credential,

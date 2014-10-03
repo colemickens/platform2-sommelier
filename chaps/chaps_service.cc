@@ -648,6 +648,17 @@ uint32_t ChapsServiceImpl::EncryptFinal(const SecureBlob& isolate_credential,
       PreservedByteVector(data_out));
 }
 
+void ChapsServiceImpl::EncryptCancel(const SecureBlob& isolate_credential,
+                                     uint64_t session_id) {
+  Session* session = NULL;
+  if (!slot_manager_->GetSession(isolate_credential,
+                                 session_id,
+                                 &session))
+    return;
+  CHECK(session);
+  session->OperationCancel(kEncrypt);
+}
+
 uint32_t ChapsServiceImpl::DecryptInit(
     const SecureBlob& isolate_credential,
     uint64_t session_id,
@@ -732,6 +743,18 @@ uint32_t ChapsServiceImpl::DecryptFinal(const SecureBlob& isolate_credential,
       PreservedByteVector(data_out));
 }
 
+void ChapsServiceImpl::DecryptCancel(const SecureBlob& isolate_credential,
+                                     uint64_t session_id) {
+  Session* session = NULL;
+  if (!slot_manager_->GetSession(isolate_credential,
+                                 session_id,
+                                 &session))
+    return;
+  CHECK(session);
+  session->OperationCancel(kDecrypt);
+}
+
+
 uint32_t ChapsServiceImpl::DigestInit(
     const SecureBlob& isolate_credential,
     uint64_t session_id,
@@ -811,6 +834,17 @@ uint32_t ChapsServiceImpl::DigestFinal(const SecureBlob& isolate_credential,
       PreservedByteVector(digest));
 }
 
+void ChapsServiceImpl::DigestCancel(const SecureBlob& isolate_credential,
+                                    uint64_t session_id) {
+  Session* session = NULL;
+  if (!slot_manager_->GetSession(isolate_credential,
+                                 session_id,
+                                 &session))
+    return;
+  CHECK(session);
+  session->OperationCancel(kDigest);
+}
+
 uint32_t ChapsServiceImpl::SignInit(
     const SecureBlob& isolate_credential,
     uint64_t session_id,
@@ -888,6 +922,17 @@ uint32_t ChapsServiceImpl::SignFinal(const SecureBlob& isolate_credential,
       PreservedByteVector(signature));
 }
 
+void ChapsServiceImpl::SignCancel(const SecureBlob& isolate_credential,
+                                  uint64_t session_id) {
+  Session* session = NULL;
+  if (!slot_manager_->GetSession(isolate_credential,
+                                 session_id,
+                                 &session))
+    return;
+  CHECK(session);
+  session->OperationCancel(kSign);
+}
+
 uint32_t ChapsServiceImpl::SignRecoverInit(
       const SecureBlob& isolate_credential,
       uint64_t session_id,
@@ -963,6 +1008,17 @@ uint32_t ChapsServiceImpl::VerifyFinal(const SecureBlob& isolate_credential,
                           CKR_SESSION_HANDLE_INVALID);
   CHECK(session);
   return session->VerifyFinal(ConvertByteVectorToString(signature));
+}
+
+void ChapsServiceImpl::VerifyCancel(const SecureBlob& isolate_credential,
+                                    uint64_t session_id) {
+  Session* session = NULL;
+  if (!slot_manager_->GetSession(isolate_credential,
+                                 session_id,
+                                 &session))
+    return;
+  CHECK(session);
+  session->OperationCancel(kVerify);
 }
 
 uint32_t ChapsServiceImpl::VerifyRecoverInit(

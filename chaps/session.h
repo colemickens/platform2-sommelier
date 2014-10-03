@@ -93,6 +93,8 @@ class Session {
   virtual CK_RV OperationFinal(OperationType operation,
                                int* required_out_length,
                                std::string* data_out) = 0;
+  // Cancels an operation that is already active (like C_EncryptUpdate).
+  virtual void OperationCancel(OperationType operation) = 0;
   // Finalizes a signature verification operation (like C_VerifyFinal).
   virtual CK_RV VerifyFinal(const std::string& signature) = 0;
   // Performs an entire operation in a single step (like C_Encrypt). This is

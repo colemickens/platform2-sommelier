@@ -440,6 +440,12 @@
       </arg>
     </method>
 
+    <!-- PKCS #11 v2.20 section 11.8 page 140,142 (implicit). -->
+    <method name="EncryptCancel">
+      <arg type="ay" name="isolate_credential" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+    </method>
+
     <!-- PKCS #11 v2.20 section 11.9 page 144. -->
     <method name="DecryptInit">
       <arg type="ay" name="isolate_credential" direction="in"/>
@@ -488,6 +494,12 @@
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.9 page 145,146 (implicit). -->
+    <method name="DecryptCancel">
+      <arg type="ay" name="isolate_credential" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
     </method>
 
     <!-- PKCS #11 v2.20 section 11.10 page 148. -->
@@ -546,6 +558,12 @@
       </arg>
     </method>
 
+    <!-- PKCS #11 v2.20 section 11.10 page 149,151 (implicit). -->
+    <method name="DigestCancel">
+      <arg type="ay" name="isolate_credential" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+    </method>
+
     <!-- PKCS #11 v2.20 section 11.11 page 152. -->
     <method name="SignInit">
       <arg type="ay" name="isolate_credential" direction="in"/>
@@ -591,6 +609,12 @@
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.11 page 153,154 (implicit). -->
+    <method name="SignCancel">
+      <arg type="ay" name="isolate_credential" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
     </method>
 
     <!-- PKCS #11 v2.20 section 11.11 page 155. -->
@@ -659,6 +683,12 @@
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.12 page 159. -->
+    <method name="VerifyCancel">
+      <arg type="ay" name="isolate_credential" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
     </method>
 
     <!-- PKCS #11 v2.20 section 11.12 page 161. -->

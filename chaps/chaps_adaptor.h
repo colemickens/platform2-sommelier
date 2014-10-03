@@ -257,6 +257,9 @@ class ChapsAdaptor : public org::chromium::Chaps_adaptor,
                             std::vector<uint8_t>& data_out,  // NOLINT - refs
                             uint32_t& result,  // NOLINT - refs
                             ::DBus::Error& error);  // NOLINT - refs
+  virtual void EncryptCancel(const std::vector<uint8_t>& isolate_credential,
+                             const uint64_t& session_id,
+                             ::DBus::Error& error);  // NOLINT - refs
   virtual uint32_t DecryptInit(const std::vector<uint8_t>& isolate_credential,
                                const uint64_t& session_id,
                                const uint64_t& mechanism_type,
@@ -286,6 +289,9 @@ class ChapsAdaptor : public org::chromium::Chaps_adaptor,
                             std::vector<uint8_t>& data_out,  // NOLINT - refs
                             uint32_t& result,  // NOLINT - refs
                             ::DBus::Error& error);  // NOLINT - refs
+  virtual void DecryptCancel(const std::vector<uint8_t>& isolate_credential,
+                             const uint64_t& session_id,
+                             ::DBus::Error& error);  // NOLINT - refs
   virtual uint32_t DigestInit(const std::vector<uint8_t>& isolate_credential,
                               const uint64_t& session_id,
                               const uint64_t& mechanism_type,
@@ -314,6 +320,9 @@ class ChapsAdaptor : public org::chromium::Chaps_adaptor,
                            std::vector<uint8_t>& digest,  // NOLINT - refs
                            uint32_t& result,  // NOLINT - refs
                            ::DBus::Error& error);  // NOLINT - refs
+  virtual void DigestCancel(const std::vector<uint8_t>& isolate_credential,
+                            const uint64_t& session_id,
+                            ::DBus::Error& error);  // NOLINT - refs
   virtual uint32_t SignInit(const std::vector<uint8_t>& isolate_credential,
                             const uint64_t& session_id,
                             const uint64_t& mechanism_type,
@@ -339,6 +348,9 @@ class ChapsAdaptor : public org::chromium::Chaps_adaptor,
                          std::vector<uint8_t>& signature,  // NOLINT - refs
                          uint32_t& result,  // NOLINT - refs
                          ::DBus::Error& error);  // NOLINT - refs
+  virtual void SignCancel(const std::vector<uint8_t>& isolate_credential,
+                          const uint64_t& session_id,
+                          ::DBus::Error& error);  // NOLINT - refs
   virtual uint32_t SignRecoverInit(
       const std::vector<uint8_t>& isolate_credential,
       const uint64_t& session_id,
@@ -373,6 +385,9 @@ class ChapsAdaptor : public org::chromium::Chaps_adaptor,
                                const uint64_t& session_id,
                                const std::vector<uint8_t>& signature,
                                ::DBus::Error& error);  // NOLINT - refs
+  virtual void VerifyCancel(const std::vector<uint8_t>& isolate_credential,
+                            const uint64_t& session_id,
+                            ::DBus::Error& error);  // NOLINT - refs
   virtual uint32_t VerifyRecoverInit(
       const std::vector<uint8_t>& isolate_credential,
       const uint64_t& session_id,
@@ -670,6 +685,8 @@ class ChapsAdaptor : public org::chromium::Chaps_adaptor,
                             uint64_t& actual_out_length,  // NOLINT - refs
                             std::vector<uint8_t>& data_out,  // NOLINT - refs
                             uint32_t& result);  // NOLINT - refs
+  virtual void EncryptCancel(const std::vector<uint8_t>& isolate_credential,
+                             const uint64_t& session_id);
   virtual uint32_t DecryptInit(const std::vector<uint8_t>& isolate_credential,
                                const uint64_t& session_id,
                                const uint64_t& mechanism_type,
@@ -695,6 +712,8 @@ class ChapsAdaptor : public org::chromium::Chaps_adaptor,
                             uint64_t& actual_out_length,  // NOLINT - refs
                             std::vector<uint8_t>& data_out,  // NOLINT - refs
                             uint32_t& result);  // NOLINT - refs
+  virtual void DecryptCancel(const std::vector<uint8_t>& isolate_credential,
+                             const uint64_t& session_id);
   virtual uint32_t DigestInit(const std::vector<uint8_t>& isolate_credential,
                               const uint64_t& session_id,
                               const uint64_t& mechanism_type,
@@ -718,6 +737,8 @@ class ChapsAdaptor : public org::chromium::Chaps_adaptor,
                            uint64_t& actual_out_length,  // NOLINT - refs
                            std::vector<uint8_t>& digest,  // NOLINT - refs
                            uint32_t& result);  // NOLINT - refs
+  virtual void DigestCancel(const std::vector<uint8_t>& isolate_credential,
+                            const uint64_t& session_id);
   virtual uint32_t SignInit(const std::vector<uint8_t>& isolate_credential,
                             const uint64_t& session_id,
                             const uint64_t& mechanism_type,
@@ -739,6 +760,8 @@ class ChapsAdaptor : public org::chromium::Chaps_adaptor,
                          uint64_t& actual_out_length,  // NOLINT - refs
                          std::vector<uint8_t>& signature,  // NOLINT - refs
                          uint32_t& result);  // NOLINT - refs
+  virtual void SignCancel(const std::vector<uint8_t>& isolate_credential,
+                          const uint64_t& session_id);
   virtual uint32_t SignRecoverInit(
       const std::vector<uint8_t>& isolate_credential,
       const uint64_t& session_id,
@@ -767,6 +790,8 @@ class ChapsAdaptor : public org::chromium::Chaps_adaptor,
   virtual uint32_t VerifyFinal(const std::vector<uint8_t>& isolate_credential,
                                const uint64_t& session_id,
                                const std::vector<uint8_t>& signature);
+  virtual void VerifyCancel(const std::vector<uint8_t>& isolate_credential,
+                            const uint64_t& session_id);
   virtual uint32_t VerifyRecoverInit(
       const std::vector<uint8_t>& isolate_credential,
       const uint64_t& session_id,

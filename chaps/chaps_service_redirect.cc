@@ -659,6 +659,12 @@ uint32_t ChapsServiceRedirect::EncryptFinal(
   return CKR_OK;
 }
 
+void ChapsServiceRedirect::EncryptCancel(
+      const SecureBlob& isolate_credential,
+      uint64_t session_id) {
+  LOG(ERROR) << "Unexpected cancel operation";
+}
+
 uint32_t ChapsServiceRedirect::DecryptInit(
     const SecureBlob& isolate_credential,
     uint64_t session_id,
@@ -763,6 +769,12 @@ uint32_t ChapsServiceRedirect::DecryptFinal(
   return CKR_OK;
 }
 
+void ChapsServiceRedirect::DecryptCancel(
+      const SecureBlob& isolate_credential,
+      uint64_t session_id) {
+  LOG(ERROR) << "Unexpected cancel operation";
+}
+
 uint32_t ChapsServiceRedirect::DigestInit(
     const SecureBlob& isolate_credential,
     uint64_t session_id,
@@ -854,6 +866,12 @@ uint32_t ChapsServiceRedirect::DigestFinal(const SecureBlob& isolate_credential,
   return CKR_OK;
 }
 
+void ChapsServiceRedirect::DigestCancel(
+      const SecureBlob& isolate_credential,
+      uint64_t session_id) {
+  LOG(ERROR) << "Unexpected cancel operation";
+}
+
 uint32_t ChapsServiceRedirect::SignInit(
     const SecureBlob& isolate_credential,
     uint64_t session_id,
@@ -934,6 +952,12 @@ uint32_t ChapsServiceRedirect::SignFinal(const SecureBlob& isolate_credential,
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *signature = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
+}
+
+void ChapsServiceRedirect::SignCancel(
+      const SecureBlob& isolate_credential,
+      uint64_t session_id) {
+  LOG(ERROR) << "Unexpected cancel operation";
 }
 
 uint32_t ChapsServiceRedirect::SignRecoverInit(
@@ -1044,6 +1068,12 @@ uint32_t ChapsServiceRedirect::VerifyFinal(const SecureBlob& isolate_credential,
                                               signature.size());
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
+}
+
+void ChapsServiceRedirect::VerifyCancel(
+      const SecureBlob& isolate_credential,
+      uint64_t session_id) {
+  LOG(ERROR) << "Unexpected cancel operation";
 }
 
 uint32_t ChapsServiceRedirect::VerifyRecoverInit(

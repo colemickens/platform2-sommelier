@@ -149,6 +149,8 @@ class ChapsProxyMock : public ChapsInterface {
                                       uint64_t,
                                       uint64_t*,
                                       std::vector<uint8_t>*));
+  MOCK_METHOD2(EncryptCancel, void(const chromeos::SecureBlob&,
+                                   uint64_t));
   MOCK_METHOD5(DecryptInit, uint32_t(const chromeos::SecureBlob&,
                                      uint64_t,
                                      uint64_t,
@@ -171,6 +173,8 @@ class ChapsProxyMock : public ChapsInterface {
                                       uint64_t,
                                       uint64_t*,
                                       std::vector<uint8_t>*));
+  MOCK_METHOD2(DecryptCancel, void(const chromeos::SecureBlob&,
+                                   uint64_t));
   MOCK_METHOD4(DigestInit, uint32_t(const chromeos::SecureBlob&,
                                     uint64_t,
                                     uint64_t,
@@ -192,6 +196,8 @@ class ChapsProxyMock : public ChapsInterface {
                                      uint64_t,
                                      uint64_t*,
                                      std::vector<uint8_t>*));
+  MOCK_METHOD2(DigestCancel, void(const chromeos::SecureBlob&,
+                                  uint64_t));
   MOCK_METHOD5(SignInit, uint32_t(const chromeos::SecureBlob&,
                                   uint64_t,
                                   uint64_t,
@@ -211,6 +217,8 @@ class ChapsProxyMock : public ChapsInterface {
                                    uint64_t,
                                    uint64_t*,
                                    std::vector<uint8_t>*));
+  MOCK_METHOD2(SignCancel, void(const chromeos::SecureBlob&,
+                                uint64_t));
   MOCK_METHOD5(SignRecoverInit, uint32_t(const chromeos::SecureBlob&,
                                          uint64_t,
                                          uint64_t,
@@ -237,6 +245,8 @@ class ChapsProxyMock : public ChapsInterface {
   MOCK_METHOD3(VerifyFinal, uint32_t(const chromeos::SecureBlob&,
                                      uint64_t,
                                      const std::vector<uint8_t>&));
+  MOCK_METHOD2(VerifyCancel, void(const chromeos::SecureBlob&,
+                                  uint64_t));
   MOCK_METHOD5(VerifyRecoverInit, uint32_t(const chromeos::SecureBlob&,
                                            uint64_t,
                                            uint64_t,

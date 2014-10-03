@@ -175,6 +175,8 @@ class ChapsServiceRedirect : public ChapsInterface {
                                 uint64_t max_out_length,
                                 uint64_t* actual_out_length,
                                 std::vector<uint8_t>* data_out);
+  virtual void EncryptCancel(const chromeos::SecureBlob& isolate_credential,
+                             uint64_t session_id);
   virtual uint32_t DecryptInit(const chromeos::SecureBlob& isolate_credential,
                                uint64_t session_id,
                                uint64_t mechanism_type,
@@ -197,6 +199,8 @@ class ChapsServiceRedirect : public ChapsInterface {
                                 uint64_t max_out_length,
                                 uint64_t* actual_out_length,
                                 std::vector<uint8_t>* data_out);
+  virtual void DecryptCancel(const chromeos::SecureBlob& isolate_credential,
+                             uint64_t session_id);
   virtual uint32_t DigestInit(const chromeos::SecureBlob& isolate_credential,
                               uint64_t session_id,
                               uint64_t mechanism_type,
@@ -218,6 +222,8 @@ class ChapsServiceRedirect : public ChapsInterface {
                                uint64_t max_out_length,
                                uint64_t* actual_out_length,
                                std::vector<uint8_t>* digest);
+  virtual void DigestCancel(const chromeos::SecureBlob& isolate_credential,
+                            uint64_t session_id);
   virtual uint32_t SignInit(const chromeos::SecureBlob& isolate_credential,
                             uint64_t session_id,
                             uint64_t mechanism_type,
@@ -237,6 +243,8 @@ class ChapsServiceRedirect : public ChapsInterface {
                              uint64_t max_out_length,
                              uint64_t* actual_out_length,
                              std::vector<uint8_t>* signature);
+  virtual void SignCancel(const chromeos::SecureBlob& isolate_credential,
+                          uint64_t session_id);
   virtual uint32_t SignRecoverInit(
       const chromeos::SecureBlob& isolate_credential,
       uint64_t session_id,
@@ -264,6 +272,8 @@ class ChapsServiceRedirect : public ChapsInterface {
   virtual uint32_t VerifyFinal(const chromeos::SecureBlob& isolate_credential,
                                uint64_t session_id,
                                const std::vector<uint8_t>& signature);
+  virtual void VerifyCancel(const chromeos::SecureBlob& isolate_credential,
+                            uint64_t session_id);
   virtual uint32_t VerifyRecoverInit(
       const chromeos::SecureBlob& isolate_credential,
       uint64_t session_id,

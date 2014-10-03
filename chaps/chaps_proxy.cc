@@ -788,6 +788,18 @@ uint32_t ChapsProxyImpl::EncryptFinal(const SecureBlob& isolate_credential,
   return result;
 }
 
+void ChapsProxyImpl::EncryptCancel(const SecureBlob& isolate_credential,
+                                   uint64_t session_id) {
+  AutoLock lock(lock_);
+  if (!proxy_.get())
+    return;
+  try {
+    proxy_->EncryptCancel(isolate_credential, session_id);
+  } catch (DBus::Error err) {
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+}
+
 uint32_t ChapsProxyImpl::DecryptInit(
     const SecureBlob& isolate_credential,
     uint64_t session_id,
@@ -881,6 +893,18 @@ uint32_t ChapsProxyImpl::DecryptFinal(const SecureBlob& isolate_credential,
     LOG(ERROR) << "DBus::Error - " << err.what();
   }
   return result;
+}
+
+void ChapsProxyImpl::DecryptCancel(const SecureBlob& isolate_credential,
+                                   uint64_t session_id) {
+  AutoLock lock(lock_);
+  if (!proxy_.get())
+    return;
+  try {
+    proxy_->DecryptCancel(isolate_credential, session_id);
+  } catch (DBus::Error err) {
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
 }
 
 uint32_t ChapsProxyImpl::DigestInit(
@@ -979,6 +1003,18 @@ uint32_t ChapsProxyImpl::DigestFinal(const SecureBlob& isolate_credential,
   return result;
 }
 
+void ChapsProxyImpl::DigestCancel(const SecureBlob& isolate_credential,
+                                  uint64_t session_id) {
+  AutoLock lock(lock_);
+  if (!proxy_.get())
+    return;
+  try {
+    proxy_->DigestCancel(isolate_credential, session_id);
+  } catch (DBus::Error err) {
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+}
+
 uint32_t ChapsProxyImpl::SignInit(const SecureBlob& isolate_credential,
                                   uint64_t session_id,
                                   uint64_t mechanism_type,
@@ -1059,6 +1095,18 @@ uint32_t ChapsProxyImpl::SignFinal(const SecureBlob& isolate_credential,
     LOG(ERROR) << "DBus::Error - " << err.what();
   }
   return result;
+}
+
+void ChapsProxyImpl::SignCancel(const SecureBlob& isolate_credential,
+                                uint64_t session_id) {
+  AutoLock lock(lock_);
+  if (!proxy_.get())
+    return;
+  try {
+    proxy_->SignCancel(isolate_credential, session_id);
+  } catch (DBus::Error err) {
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
 }
 
 uint32_t ChapsProxyImpl::SignRecoverInit(
@@ -1172,6 +1220,18 @@ uint32_t ChapsProxyImpl::VerifyFinal(const SecureBlob& isolate_credential,
     LOG(ERROR) << "DBus::Error - " << err.what();
   }
   return result;
+}
+
+void ChapsProxyImpl::VerifyCancel(const SecureBlob& isolate_credential,
+                                  uint64_t session_id) {
+  AutoLock lock(lock_);
+  if (!proxy_.get())
+    return;
+  try {
+    proxy_->VerifyCancel(isolate_credential, session_id);
+  } catch (DBus::Error err) {
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
 }
 
 uint32_t ChapsProxyImpl::VerifyRecoverInit(

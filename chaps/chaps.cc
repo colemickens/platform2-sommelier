@@ -722,8 +722,10 @@ CK_RV C_Encrypt(CK_SESSION_HANDLE hSession,
                 CK_BYTE_PTR pEncryptedData,
                 CK_ULONG_PTR pulEncryptedDataLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  if ((!pData && ulDataLen > 0) || !pulEncryptedDataLen)
+  if ((!pData && ulDataLen > 0) || !pulEncryptedDataLen) {
+    g_proxy->EncryptCancel(*g_user_isolate, hSession);
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   vector<uint8_t> data_out;
   uint64_t data_out_length;
   uint64_t max_out_length =
@@ -752,7 +754,10 @@ CK_RV C_EncryptUpdate(CK_SESSION_HANDLE hSession,
                       CK_BYTE_PTR pEncryptedPart,
                       CK_ULONG_PTR pulEncryptedPartLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  LOG_CK_RV_AND_RETURN_IF(!pPart || !pulEncryptedPartLen, CKR_ARGUMENTS_BAD);
+  if (!pPart || !pulEncryptedPartLen) {
+    g_proxy->EncryptCancel(*g_user_isolate, hSession);
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   vector<uint8_t> data_out;
   uint64_t data_out_length;
   uint64_t max_out_length =
@@ -779,7 +784,10 @@ CK_RV C_EncryptFinal(CK_SESSION_HANDLE hSession,
                      CK_BYTE_PTR pLastEncryptedPart,
                      CK_ULONG_PTR pulLastEncryptedPartLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  LOG_CK_RV_AND_RETURN_IF(!pulLastEncryptedPartLen, CKR_ARGUMENTS_BAD);
+  if (!pulLastEncryptedPartLen) {
+    g_proxy->EncryptCancel(*g_user_isolate, hSession);
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   vector<uint8_t> data_out;
   uint64_t data_out_length;
   uint64_t max_out_length =
@@ -825,8 +833,10 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession,
                 CK_BYTE_PTR pData,
                 CK_ULONG_PTR pulDataLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  if ((!pEncryptedData && ulEncryptedDataLen > 0) || !pulDataLen)
+  if ((!pEncryptedData && ulEncryptedDataLen > 0) || !pulDataLen) {
+    g_proxy->DecryptCancel(*g_user_isolate, hSession);
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   vector<uint8_t> data_out;
   uint64_t data_out_length;
   uint64_t max_out_length = pData ? static_cast<uint64_t>(*pulDataLen) : 0;
@@ -855,7 +865,10 @@ CK_RV C_DecryptUpdate(CK_SESSION_HANDLE hSession,
                       CK_BYTE_PTR pPart,
                       CK_ULONG_PTR pulPartLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  LOG_CK_RV_AND_RETURN_IF(!pEncryptedPart || !pulPartLen, CKR_ARGUMENTS_BAD);
+  if (!pEncryptedPart || !pulPartLen) {
+    g_proxy->DecryptCancel(*g_user_isolate, hSession);
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   vector<uint8_t> data_out;
   uint64_t data_out_length;
   uint64_t max_out_length = pPart ? static_cast<uint64_t>(*pulPartLen) : 0;
@@ -882,7 +895,10 @@ CK_RV C_DecryptFinal(CK_SESSION_HANDLE hSession,
                      CK_BYTE_PTR pLastPart,
                      CK_ULONG_PTR pulLastPartLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  LOG_CK_RV_AND_RETURN_IF(!pulLastPartLen, CKR_ARGUMENTS_BAD);
+  if (!pulLastPartLen) {
+    g_proxy->DecryptCancel(*g_user_isolate, hSession);
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   vector<uint8_t> data_out;
   uint64_t data_out_length;
   uint64_t max_out_length =
@@ -926,8 +942,10 @@ CK_RV C_Digest(CK_SESSION_HANDLE hSession,
                CK_BYTE_PTR pDigest,
                CK_ULONG_PTR pulDigestLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  if ((!pData && ulDataLen > 0) || !pulDigestLen)
+  if ((!pData && ulDataLen > 0) || !pulDigestLen) {
+    g_proxy->DigestCancel(*g_user_isolate, hSession);
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   vector<uint8_t> data_out;
   uint64_t data_out_length;
   uint64_t max_out_length = pDigest ? static_cast<uint64_t>(*pulDigestLen) : 0;
@@ -953,7 +971,10 @@ CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession,
                      CK_BYTE_PTR pPart,
                      CK_ULONG ulPartLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  LOG_CK_RV_AND_RETURN_IF(!pPart, CKR_ARGUMENTS_BAD);
+  if (!pPart) {
+    g_proxy->DigestCancel(*g_user_isolate, hSession);
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   CK_RV result = g_proxy->DigestUpdate(
       *g_user_isolate,
       hSession,
@@ -977,7 +998,10 @@ CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession,
                     CK_BYTE_PTR pDigest,
                     CK_ULONG_PTR pulDigestLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  LOG_CK_RV_AND_RETURN_IF(!pulDigestLen, CKR_ARGUMENTS_BAD);
+  if (!pulDigestLen) {
+    g_proxy->DigestCancel(*g_user_isolate, hSession);
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   vector<uint8_t> data_out;
   uint64_t data_out_length;
   uint64_t max_out_length = pDigest ? static_cast<uint64_t>(*pulDigestLen) : 0;
@@ -1022,8 +1046,10 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,
              CK_BYTE_PTR pSignature,
              CK_ULONG_PTR pulSignatureLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  if ((!pData && ulDataLen > 0) || !pulSignatureLen)
+  if ((!pData && ulDataLen > 0) || !pulSignatureLen) {
+    g_proxy->SignCancel(*g_user_isolate, hSession);
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   vector<uint8_t> data_out;
   uint64_t data_out_length;
   uint64_t max_out_length =
@@ -1050,7 +1076,10 @@ CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession,
                    CK_BYTE_PTR pPart,
                    CK_ULONG ulPartLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  LOG_CK_RV_AND_RETURN_IF(!pPart, CKR_ARGUMENTS_BAD);
+  if (!pPart) {
+    g_proxy->SignCancel(*g_user_isolate, hSession);
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   CK_RV result = g_proxy->SignUpdate(*g_user_isolate,
                                      hSession,
                                      chaps::ConvertByteBufferToVector(pPart,
@@ -1065,7 +1094,10 @@ CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,
                   CK_BYTE_PTR pSignature,
                   CK_ULONG_PTR pulSignatureLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  LOG_CK_RV_AND_RETURN_IF(!pulSignatureLen, CKR_ARGUMENTS_BAD);
+  if (!pulSignatureLen) {
+    g_proxy->SignCancel(*g_user_isolate, hSession);
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   vector<uint8_t> data_out;
   uint64_t data_out_length;
   uint64_t max_out_length =
@@ -1160,8 +1192,10 @@ CK_RV C_Verify(CK_SESSION_HANDLE hSession,
                CK_BYTE_PTR pSignature,
                CK_ULONG ulSignatureLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  if (!pSignature || (!pData && ulDataLen > 0))
+  if (!pSignature || (!pData && ulDataLen > 0)) {
+    g_proxy->VerifyCancel(*g_user_isolate, hSession);
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   CK_RV result = g_proxy->Verify(
       *g_user_isolate,
       hSession,
@@ -1177,7 +1211,10 @@ CK_RV C_VerifyUpdate(CK_SESSION_HANDLE hSession,
                      CK_BYTE_PTR pPart,
                      CK_ULONG ulPartLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  LOG_CK_RV_AND_RETURN_IF(!pPart, CKR_ARGUMENTS_BAD);
+  if (!pPart) {
+    g_proxy->VerifyCancel(*g_user_isolate, hSession);
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   CK_RV result = g_proxy->VerifyUpdate(
       *g_user_isolate,
       hSession,
@@ -1192,7 +1229,10 @@ CK_RV C_VerifyFinal(CK_SESSION_HANDLE hSession,
                     CK_BYTE_PTR pSignature,
                     CK_ULONG ulSignatureLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  LOG_CK_RV_AND_RETURN_IF(!pSignature, CKR_ARGUMENTS_BAD);
+  if (!pSignature) {
+    g_proxy->VerifyCancel(*g_user_isolate, hSession);
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   CK_RV result = g_proxy->VerifyFinal(
       *g_user_isolate,
       hSession,

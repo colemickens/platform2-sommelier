@@ -464,6 +464,11 @@ TEST_F(TestSession, UpdateOperationPreventsSinglePart) {
                                           in.substr(10, 20),
                                           &len,
                                           &out));
+
+  // The error also terminates the operation.
+  len = 0;
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED,
+            session_->OperationFinal(kDigest, &len, &out));
 }
 
 TEST_F(TestSession, SinglePartOperationPreventsUpdate) {
@@ -480,6 +485,10 @@ TEST_F(TestSession, SinglePartOperationPreventsUpdate) {
                                       in.substr(10, 10),
                                       NULL,
                                       NULL));
+
+  // The error also terminates the operation.
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED,
+            session_->OperationSinglePart(kDigest, in, &len, &out));
 }
 
 TEST_F(TestSession, SinglePartOperationPreventsFinal) {
@@ -494,6 +503,10 @@ TEST_F(TestSession, SinglePartOperationPreventsFinal) {
   len = 0;
   EXPECT_EQ(CKR_OPERATION_ACTIVE,
             session_->OperationFinal(kDigest, &len, &out));
+
+  // The error also terminates the operation.
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED,
+            session_->OperationSinglePart(kDigest, in, &len, &out));
 }
 
 // Test RSA PKCS #1 encryption.

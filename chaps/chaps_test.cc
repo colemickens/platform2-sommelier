@@ -1570,6 +1570,11 @@ TEST_F(TestEncrypt, EncryptBadArgs) {
   CK_ULONG_PTR ul = (CK_ULONG_PTR)0x1234;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_EncryptInit(1, NULL, 3));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_DecryptInit(1, NULL, 3));
+
+  // All of the following failures should trigger an attempt to cancel the
+  // operation in progress.
+  EXPECT_CALL(proxy, EncryptCancel(_, 1)).Times(5);
+  EXPECT_CALL(proxy, DecryptCancel(_, 1)).Times(5);
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Encrypt(1, p, 3, p, NULL));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Decrypt(1, p, 3, p, NULL));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Encrypt(1, NULL, 3, p, ul));
@@ -1745,6 +1750,10 @@ TEST_F(TestDigest, DigestBadArgs) {
   CK_BYTE_PTR p = (CK_BYTE_PTR)0x1234;
   CK_ULONG_PTR ul = (CK_ULONG_PTR)0x1234;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_DigestInit(1, NULL));
+
+  // All of the following failures should trigger an attempt to cancel the
+  // operation in progress.
+  EXPECT_CALL(proxy, DigestCancel(_, 1)).Times(5);
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Digest(1, p, 3, p, NULL));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Digest(1, NULL, 3, p, ul));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_DigestUpdate(1, NULL, 3));
@@ -1944,6 +1953,11 @@ TEST_F(TestSign, SignBadArgs) {
   CK_ULONG_PTR ul = (CK_ULONG_PTR)0x1234;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_SignInit(1, NULL, 3));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_VerifyInit(1, NULL, 3));
+
+  // All of the following failures should trigger an attempt to cancel the
+  // operation in progress.
+  EXPECT_CALL(proxy, SignCancel(_, 1)).Times(5);
+  EXPECT_CALL(proxy, VerifyCancel(_, 1)).Times(7);
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Sign(1, p, 3, p, NULL));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Sign(1, NULL, 3, p, ul));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Verify(1, NULL, 3, p, 3));

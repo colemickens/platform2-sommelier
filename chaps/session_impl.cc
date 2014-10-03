@@ -282,6 +282,7 @@ CK_RV SessionImpl::OperationUpdate(OperationType operation,
   }
   if (context->is_finished_) {
     LOG(ERROR) << "Operation is finished.";
+    OperationCancel(operation);
     return CKR_OPERATION_ACTIVE;
   }
   context->is_incremental_ = true;
@@ -298,7 +299,10 @@ CK_RV SessionImpl::OperationUpdateInternal(OperationType operation,
   CHECK(operation < kNumOperationTypes);
   OperationContext* context = &operation_context_[operation];
   if (context->is_cipher_) {
-    return CipherUpdate(context, data_in, required_out_length, data_out);
+    CK_RV rv = CipherUpdate(context, data_in, required_out_length, data_out);
+    if ((rv != CKR_OK) && (rv != CKR_BUFFER_TOO_SMALL))
+      OperationCancel(operation);
+    return rv;
   } else if (context->is_digest_) {
     EVP_DigestUpdate(&context->digest_context_,
                      data_in.data(),
@@ -316,6 +320,17 @@ CK_RV SessionImpl::OperationUpdateInternal(OperationType operation,
   return CKR_OK;
 }
 
+void SessionImpl::OperationCancel(OperationType operation) {
+  CHECK(operation < kNumOperationTypes);
+  OperationContext* context = &operation_context_[operation];
+  if (!context->is_valid_) {
+    LOG(ERROR) << "Operation is not initialized.";
+    return;
+  }
+  // Drop the context and any associated data.
+  context->Clear();
+}
+
 CK_RV SessionImpl::OperationFinal(OperationType operation,
                                   int* required_out_length,
                                   string* data_out) {
@@ -329,6 +344,7 @@ CK_RV SessionImpl::OperationFinal(OperationType operation,
   }
   if (!context->is_incremental_ && context->is_finished_) {
     LOG(ERROR) << "Operation is not incremental.";
+    OperationCancel(operation);
     return CKR_OPERATION_ACTIVE;
   }
   context->is_incremental_ = true;
@@ -423,6 +439,7 @@ CK_RV SessionImpl::OperationSinglePart(OperationType operation,
   }
   if (context->is_incremental_) {
     LOG(ERROR) << "Operation is incremental.";
+    OperationCancel(operation);
     return CKR_OPERATION_ACTIVE;
   }
   CK_RV result = CKR_OK;

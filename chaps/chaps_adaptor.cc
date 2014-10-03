@@ -1093,6 +1093,22 @@ void ChapsAdaptor::EncryptFinal(const vector<uint8_t>& isolate_credential,
                actual_out_length, data_out, result);
 }
 
+void ChapsAdaptor::EncryptCancel(const vector<uint8_t>& isolate_credential,
+                                 const uint64_t& session_id) {
+  AutoLock lock(*lock_);
+  VLOG(1) << "CALL: " << __func__;
+  SecureBlob isolate_credential_blob(&isolate_credential.front(),
+                                     isolate_credential.size());
+  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+  service_->EncryptCancel(isolate_credential_blob, session_id);
+}
+
+void ChapsAdaptor::EncryptCancel(const vector<uint8_t>& isolate_credential,
+                                 const uint64_t& session_id,
+                                 ::DBus::Error& /*error*/) {
+  EncryptCancel(isolate_credential, session_id);
+}
+
 uint32_t ChapsAdaptor::DecryptInit(
     const vector<uint8_t>& isolate_credential,
     const uint64_t& session_id,
@@ -1230,6 +1246,22 @@ void ChapsAdaptor::DecryptFinal(const vector<uint8_t>& isolate_credential,
                                 ::DBus::Error& /*error*/) {
   DecryptFinal(isolate_credential, session_id, max_out_length,
                actual_out_length, data_out, result);
+}
+
+void ChapsAdaptor::DecryptCancel(const vector<uint8_t>& isolate_credential,
+                                 const uint64_t& session_id) {
+  AutoLock lock(*lock_);
+  VLOG(1) << "CALL: " << __func__;
+  SecureBlob isolate_credential_blob(&isolate_credential.front(),
+                                     isolate_credential.size());
+  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+  service_->DecryptCancel(isolate_credential_blob, session_id);
+}
+
+void ChapsAdaptor::DecryptCancel(const vector<uint8_t>& isolate_credential,
+                                 const uint64_t& session_id,
+                                 ::DBus::Error& /*error*/) {
+  DecryptCancel(isolate_credential, session_id);
 }
 
 uint32_t ChapsAdaptor::DigestInit(
@@ -1375,6 +1407,22 @@ void ChapsAdaptor::DigestFinal(const vector<uint8_t>& isolate_credential,
               digest, result);
 }
 
+void ChapsAdaptor::DigestCancel(const vector<uint8_t>& isolate_credential,
+                                const uint64_t& session_id) {
+  AutoLock lock(*lock_);
+  VLOG(1) << "CALL: " << __func__;
+  SecureBlob isolate_credential_blob(&isolate_credential.front(),
+                                     isolate_credential.size());
+  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+  service_->DigestCancel(isolate_credential_blob, session_id);
+}
+
+void ChapsAdaptor::DigestCancel(const vector<uint8_t>& isolate_credential,
+                                const uint64_t& session_id,
+                                ::DBus::Error& /*error*/) {
+  DigestCancel(isolate_credential, session_id);
+}
+
 uint32_t ChapsAdaptor::SignInit(const vector<uint8_t>& isolate_credential,
                                 const uint64_t& session_id,
                                 const uint64_t& mechanism_type,
@@ -1495,6 +1543,22 @@ void ChapsAdaptor::SignFinal(const vector<uint8_t>& isolate_credential,
                              ::DBus::Error& /*error*/) {
   SignFinal(isolate_credential, session_id, max_out_length, actual_out_length,
             signature, result);
+}
+
+void ChapsAdaptor::SignCancel(const vector<uint8_t>& isolate_credential,
+                              const uint64_t& session_id) {
+  AutoLock lock(*lock_);
+  VLOG(1) << "CALL: " << __func__;
+  SecureBlob isolate_credential_blob(&isolate_credential.front(),
+                                     isolate_credential.size());
+  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+  service_->SignCancel(isolate_credential_blob, session_id);
+}
+
+void ChapsAdaptor::SignCancel(const vector<uint8_t>& isolate_credential,
+                              const uint64_t& session_id,
+                              ::DBus::Error& /*error*/) {
+  SignCancel(isolate_credential, session_id);
 }
 
 uint32_t ChapsAdaptor::SignRecoverInit(
@@ -1664,6 +1728,23 @@ uint32_t ChapsAdaptor::VerifyFinal(const vector<uint8_t>& isolate_credential,
                                    ::DBus::Error& /*error*/) {
   return VerifyFinal(isolate_credential, session_id, signature);
 }
+
+void ChapsAdaptor::VerifyCancel(const vector<uint8_t>& isolate_credential,
+                                const uint64_t& session_id) {
+  AutoLock lock(*lock_);
+  VLOG(1) << "CALL: " << __func__;
+  SecureBlob isolate_credential_blob(&isolate_credential.front(),
+                                     isolate_credential.size());
+  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+  service_->VerifyCancel(isolate_credential_blob, session_id);
+}
+
+void ChapsAdaptor::VerifyCancel(const vector<uint8_t>& isolate_credential,
+                                const uint64_t& session_id,
+                                ::DBus::Error& /*error*/) {
+  VerifyCancel(isolate_credential, session_id);
+}
+
 
 uint32_t ChapsAdaptor::VerifyRecoverInit(
       const vector<uint8_t>& isolate_credential,

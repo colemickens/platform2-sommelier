@@ -49,6 +49,7 @@ class SessionMock : public Session {
                                       int*,
                                       std::string*));
   MOCK_METHOD3(OperationFinal, CK_RV(OperationType, int*, std::string*));
+  MOCK_METHOD1(OperationCancel, void(OperationType));
   MOCK_METHOD1(VerifyFinal, CK_RV(const std::string&));
   MOCK_METHOD4(OperationSinglePart, CK_RV(OperationType,
                                           const std::string&,

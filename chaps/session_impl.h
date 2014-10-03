@@ -80,6 +80,7 @@ class SessionImpl : public Session {
   virtual CK_RV OperationFinal(OperationType operation,
                                int* required_out_length,
                                std::string* data_out);
+  virtual void OperationCancel(OperationType operation);
   virtual CK_RV VerifyFinal(const std::string& signature);
   virtual CK_RV OperationSinglePart(OperationType operation,
                                     const std::string& data_in,
