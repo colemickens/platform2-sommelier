@@ -75,14 +75,16 @@ class AvahiServicePublisherTest : public ::testing::Test {
     EXPECT_CALL(*mock_bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*mock_bus_, AssertOnDBusThread()).Times(AnyNumber());
     // We might try to create new EntryGroups as part of the test.
-    ON_CALL(*avahi_proxy_, MockCallMethodAndBlockWithErrorDetails(
+    EXPECT_CALL(*avahi_proxy_, MockCallMethodAndBlockWithErrorDetails(
         IsDBusMethodCallTo(kServerInterface,
                            kServerMethodEntryGroupNew), _, _))
-        .WillByDefault(Invoke(&ReturnsGroupPath));
-    ON_CALL(*mock_bus_,
+        .WillRepeatedly(Invoke(&ReturnsGroupPath));
+    EXPECT_CALL(*mock_bus_,
             GetObjectProxy(kServiceName,
                            Property(&ObjectPath::value, kGroupPath)))
-      .WillByDefault(Return(group_proxy_.get()));
+      .WillRepeatedly(Return(group_proxy_.get()));
+    // When we create EntryGroups, we destroy them eventually.
+    EXPECT_CALL(*group_proxy_, Detach()).Times(AnyNumber());
   }
 
   unique_ptr<Service> CreateServiceWithInfo(const std::string& service_id,
