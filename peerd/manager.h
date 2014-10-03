@@ -17,8 +17,8 @@
 
 #include "peerd/avahi_client.h"
 #include "peerd/ip_addr.h"
-#include "peerd/peer.h"
 #include "peerd/peer_manager_interface.h"
+#include "peerd/published_peer.h"
 #include "peerd/technologies.h"
 #include "peerd/typedefs.h"
 
@@ -80,7 +80,7 @@ class Manager {
  private:
   // Used in unit tests to inject mocks.
   Manager(std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object,
-          std::unique_ptr<Peer> self,
+          std::unique_ptr<PublishedPeer> self,
           std::unique_ptr<PeerManagerInterface> peer_manager,
           std::unique_ptr<AvahiClient> avahi_client);
 
@@ -88,7 +88,7 @@ class Manager {
   void ShouldRefreshAvahiPublisher();
 
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
-  std::unique_ptr<Peer> self_;
+  std::unique_ptr<PublishedPeer> self_;
   std::unique_ptr<PeerManagerInterface> peer_manager_;
   std::unique_ptr<AvahiClient> avahi_client_;
   std::map<std::string, std::string> service_token_to_id_;

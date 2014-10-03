@@ -52,6 +52,7 @@ class Service {
   // populated with meaningful error information.
   static std::unique_ptr<Service> MakeService(
       chromeos::ErrorPtr* error,
+      const scoped_refptr<dbus::Bus>& bus_,
       chromeos::dbus_utils::ExportedObjectManager* object_manager,
       const dbus::ObjectPath& path,
       const std::string& service_id,

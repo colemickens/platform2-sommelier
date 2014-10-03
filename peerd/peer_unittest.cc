@@ -6,7 +6,6 @@
 
 #include <string>
 
-#include <chromeos/dbus/exported_object_manager.h>
 #include <chromeos/dbus/mock_dbus_object.h>
 #include <chromeos/errors/error.h>
 #include <dbus/mock_bus.h>
@@ -14,7 +13,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "peerd/mock_service_publisher.h"
 #include "peerd/service.h"
 #include "peerd/test_util.h"
 
@@ -43,6 +41,7 @@ namespace {
 
 const char kPeerPath[] = "/some/path/ending/with";
 const char kServicePathPrefix[] = "/some/path/ending/with/services/";
+const char kServicePath[] = "/some/path/ending/with/services/1";
 
 const char kUUID[] = "123e4567-e89b-12d3-a456-426655440000";
 const char kValidName[] = "NAME";
@@ -55,29 +54,6 @@ namespace peerd {
 class PeerTest : public ::testing::Test {
  public:
   virtual void SetUp() {
-    Bus::Options options;
-    mock_bus_ = new MockBus(options);
-    object_manager_.reset(new ExportedObjectManager(mock_bus_,
-                                                    ObjectPath("/")));
-    om_object_ = new MockExportedObject(mock_bus_.get(), ObjectPath("/"));
-    peer_object_ = new MockExportedObject(
-        mock_bus_.get(), ObjectPath(kPeerPath));
-    service_object_ = new MockExportedObject(
-        mock_bus_.get(), ObjectPath(string(kServicePathPrefix) + "1"));
-    // Just immediately call callbacks on ExportMethod calls.
-    EXPECT_CALL(*om_object_, ExportMethod(_, _, _, _))
-        .WillRepeatedly(Invoke(&test_util::HandleMethodExport));
-    EXPECT_CALL(*peer_object_, ExportMethod(_, _, _, _))
-        .WillRepeatedly(Invoke(&test_util::HandleMethodExport));
-    EXPECT_CALL(*service_object_, ExportMethod(_, _, _, _))
-        .WillRepeatedly(Invoke(&test_util::HandleMethodExport));
-    // Ignore signals and Unregister calls
-    EXPECT_CALL(*om_object_, SendSignal(_)).Times(AnyNumber());
-    EXPECT_CALL(*peer_object_, SendSignal(_)).Times(AnyNumber());
-    EXPECT_CALL(*service_object_, SendSignal(_)).Times(AnyNumber());
-    EXPECT_CALL(*om_object_, Unregister()).Times(AnyNumber());
-    EXPECT_CALL(*peer_object_, Unregister()).Times(AnyNumber());
-    EXPECT_CALL(*service_object_, Unregister()).Times(AnyNumber());
     // Ignore threading concerns.
     EXPECT_CALL(*mock_bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*mock_bus_, AssertOnDBusThread()).Times(AnyNumber());
@@ -86,30 +62,30 @@ class PeerTest : public ::testing::Test {
                 GetExportedObject(Property(&ObjectPath::value,
                                            kPeerPath)))
         .WillRepeatedly(Return(peer_object_.get()));
-    // Just return one object to represent the service(s) we'll create.
     EXPECT_CALL(*mock_bus_,
                 GetExportedObject(Property(&ObjectPath::value,
                                            StartsWith(kServicePathPrefix))))
         .WillRepeatedly(Return(service_object_.get()));
-    EXPECT_CALL(*mock_bus_,
-                GetExportedObject(Property(&ObjectPath::value, "/")))
-        .WillRepeatedly(Return(om_object_.get()));
-    // Have to call RegisterAsync on the object manager, as the code to
-    // export interfaces assumes that exporting has finished.
-    object_manager_->RegisterAsync(MakeMockCompletionAction());
+    // Just immediately call callbacks on ExportMethod calls.
+    EXPECT_CALL(*peer_object_, ExportMethod(_, _, _, _))
+        .WillRepeatedly(Invoke(&test_util::HandleMethodExport));
+    EXPECT_CALL(*service_object_, ExportMethod(_, _, _, _))
+        .WillRepeatedly(Invoke(&test_util::HandleMethodExport));
+    // Ignore Unregister calls.
+    EXPECT_CALL(*peer_object_, Unregister()).Times(AnyNumber());
+    EXPECT_CALL(*service_object_, Unregister()).Times(AnyNumber());
   }
 
   unique_ptr<Peer> MakePeer() {
+    unique_ptr<Peer> peer{new Peer{mock_bus_, nullptr, ObjectPath{kPeerPath}}};
     chromeos::ErrorPtr error;
-    auto peer = Peer::MakePeer(&error,
-                               object_manager_.get(),
-                               ObjectPath(kPeerPath),
-                               kUUID,
-                               kValidName,
-                               kValidNote,
-                               0,
-                               MakeMockCompletionAction());
-    EXPECT_NE(nullptr, peer.get());
+    EXPECT_TRUE(peer->RegisterAsync(
+        &error,
+        kUUID,
+        kValidName,
+        kValidNote,
+        0,
+        MakeMockCompletionAction()));
     EXPECT_EQ(nullptr, error.get());
     return peer;
   }
@@ -119,28 +95,28 @@ class PeerTest : public ::testing::Test {
                             const string& note,
                             const string& error_code) {
     chromeos::ErrorPtr error;
-    auto peer = Peer::MakePeer(&error,
-                               object_manager_.get(),
-                               ObjectPath(kPeerPath),
-                               uuid,
-                               name,
-                               note,
-                               0,
-                               MakeMockCompletionAction());
+    unique_ptr<Peer> peer{
+        new Peer{mock_bus_, nullptr, ObjectPath{kPeerPath}}};
+    EXPECT_FALSE(peer->RegisterAsync(
+        &error,
+        uuid,
+        name,
+        note,
+        0,
+        MakeMockCompletionAction()));
     ASSERT_NE(nullptr, error.get());
     EXPECT_TRUE(error->HasError(peerd::kPeerdErrorDomain, error_code));
-    EXPECT_EQ(nullptr, peer.get());
   }
 
   void TestBadUUID(const string& uuid) {
     AssertBadFactoryArgs(uuid, kValidName, kValidNote, kInvalidUUID);
   }
 
-  scoped_refptr<MockBus> mock_bus_;
-  scoped_refptr<dbus::MockExportedObject> om_object_;
-  unique_ptr<ExportedObjectManager> object_manager_;
-  scoped_refptr<dbus::MockExportedObject> peer_object_;
-  scoped_refptr<dbus::MockExportedObject> service_object_;
+  scoped_refptr<MockBus> mock_bus_{new MockBus{Bus::Options{}}};
+  scoped_refptr<dbus::MockExportedObject> peer_object_{
+      new MockExportedObject{mock_bus_.get(), ObjectPath{kPeerPath}}};
+  scoped_refptr<dbus::MockExportedObject> service_object_{
+      new MockExportedObject{mock_bus_.get(), ObjectPath{kServicePath}}};
 };
 
 TEST_F(PeerTest, ShouldRejectObviouslyNotUUID) {
@@ -206,43 +182,6 @@ TEST_F(PeerTest, ShouldRejectNoteInvalidChars) {
   EXPECT_FALSE(peer->SetNote(&error, "* is also not allowed in notes"));
   ASSERT_NE(nullptr, error.get());
   EXPECT_TRUE(error->HasError(kPeerdErrorDomain, kInvalidNote));
-}
-
-TEST_F(PeerTest, ShouldNotifyExistingPublishersOnServiceAdded) {
-  auto peer = MakePeer();
-  unique_ptr<MockServicePublisher> publisher(new MockServicePublisher());
-  ErrorPtr error;
-  peer->RegisterServicePublisher(publisher->weak_ptr_factory_.GetWeakPtr());
-  EXPECT_CALL(*publisher, OnServiceUpdated(&error, _)).Times(1);
-  peer->AddService(&error, "some-service",
-                   Service::IpAddresses(), Service::ServiceInfo());
-}
-
-TEST_F(PeerTest, ShouldNotifyNewPublisherAboutExistingServices) {
-  auto peer = MakePeer();
-  ErrorPtr error;
-  peer->AddService(&error, "some-service",
-                   Service::IpAddresses(), Service::ServiceInfo());
-  unique_ptr<MockServicePublisher> publisher(new MockServicePublisher());
-  EXPECT_CALL(*publisher, OnServiceUpdated(nullptr, _)).Times(1);
-  peer->RegisterServicePublisher(publisher->weak_ptr_factory_.GetWeakPtr());
-}
-
-TEST_F(PeerTest, ShouldPrunePublisherList) {
-  auto peer = MakePeer();
-  ErrorPtr error;
-  peer->AddService(&error, "some-service",
-                   Service::IpAddresses(), Service::ServiceInfo());
-  unique_ptr<MockServicePublisher> publisher(new MockServicePublisher());
-  unique_ptr<MockServicePublisher> publisher2(new MockServicePublisher());
-  EXPECT_CALL(*publisher, OnServiceUpdated(_, _)).Times(1);
-  EXPECT_CALL(*publisher2, OnServiceUpdated(_, _)).Times(2);
-  peer->RegisterServicePublisher(publisher->weak_ptr_factory_.GetWeakPtr());
-  peer->RegisterServicePublisher(publisher2->weak_ptr_factory_.GetWeakPtr());
-  publisher.reset();
-  // At this point, we should notice that |publisher| has been deleted.
-  peer->AddService(&error, "another-service",
-                   Service::IpAddresses(), Service::ServiceInfo());
 }
 
 }  // namespace peerd

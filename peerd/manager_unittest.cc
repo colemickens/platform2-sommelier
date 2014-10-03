@@ -11,12 +11,13 @@
 #include <dbus/object_path.h>
 
 #include "peerd/mock_avahi_client.h"
-#include "peerd/mock_peer.h"
 #include "peerd/mock_peer_manager.h"
+#include "peerd/mock_published_peer.h"
 #include "peerd/service.h"
 
 using chromeos::dbus_utils::DBusObject;
 using dbus::MockBus;
+using dbus::ObjectPath;
 using peerd::constants::kSerbusServiceId;
 using std::string;
 using std::unique_ptr;
@@ -31,22 +32,22 @@ class ManagerTest : public testing::Test {
     unique_ptr<DBusObject> dbus_object{new DBusObject{
         nullptr,
         mock_bus_,
-        dbus::ObjectPath{"/manager/object/path"}}};
+        ObjectPath{"/manager/object/path"}}};
     // Ignore threading concerns.
     EXPECT_CALL(*mock_bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*mock_bus_, AssertOnDBusThread()).Times(AnyNumber());
-    peer_ = new MockPeer("/peer/prefix", "wish-this-was-a-uuid");
+    peer_ = new MockPublishedPeer{mock_bus_, ObjectPath{"/peer/prefix"}};
     peer_manager_ = new MockPeerManager();
     avahi_client_ = new MockAvahiClient(mock_bus_, peer_manager_);
     manager_.reset(new Manager{std::move(dbus_object),
-                               unique_ptr<Peer>{peer_},
+                               unique_ptr<PublishedPeer>{peer_},
                                unique_ptr<PeerManagerInterface>{peer_manager_},
                                unique_ptr<AvahiClient>{avahi_client_}});
   }
 
   scoped_refptr<MockBus> mock_bus_{new MockBus{dbus::Bus::Options{}}};
   unique_ptr<Manager> manager_;
-  MockPeer* peer_;  // manager_ owns this object.
+  MockPublishedPeer* peer_;  // manager_ owns this object.
   MockPeerManager* peer_manager_;  // manager_ owns this object.
   MockAvahiClient* avahi_client_;  // manager_ owns this object.
 };

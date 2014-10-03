@@ -13,8 +13,8 @@
 
 #include "peerd/dbus_constants.h"
 #include "peerd/ip_addr.h"
-#include "peerd/peer.h"
 #include "peerd/peer_manager_impl.h"
+#include "peerd/published_peer.h"
 #include "peerd/service.h"
 #include "peerd/technologies.h"
 
@@ -58,13 +58,13 @@ Manager::Manager(ExportedObjectManager* object_manager)
   : Manager(unique_ptr<DBusObject>{
                 new DBusObject{object_manager, object_manager->GetBus(),
                                ObjectPath{kManagerServicePath}}},
-            unique_ptr<Peer>{},
+            unique_ptr<PublishedPeer>{},
             unique_ptr<PeerManagerInterface>{},
             unique_ptr<AvahiClient>{}) {
 }
 
 Manager::Manager(unique_ptr<DBusObject> dbus_object,
-                 unique_ptr<Peer> self,
+                 unique_ptr<PublishedPeer> self,
                  unique_ptr<PeerManagerInterface> peer_manager,
                  unique_ptr<AvahiClient> avahi_client)
     : dbus_object_{std::move(dbus_object)},
@@ -72,6 +72,12 @@ Manager::Manager(unique_ptr<DBusObject> dbus_object,
       peer_manager_{std::move(peer_manager)},
       avahi_client_{std::move(avahi_client)} {
   // If we haven't gotten mocks for these objects, make real ones.
+  if (!self_) {
+    self_.reset(
+        new PublishedPeer{dbus_object_->GetObjectManager()->GetBus(),
+                          dbus_object_->GetObjectManager().get(),
+                          ObjectPath{kSelfPath}});
+  }
   if (!peer_manager_) {
     peer_manager_.reset(
         new PeerManagerImpl{dbus_object_->GetObjectManager()->GetBus(),
@@ -112,18 +118,14 @@ void Manager::RegisterAsync(const CompletionAction& completion_callback) {
                         base::Unretained(this),
                         &Manager::Ping);
   chromeos::ErrorPtr error;
-  if (!self_) {
-    self_ = Peer::MakePeer(
-        &error,
-        dbus_object_->GetObjectManager().get(),
-        ObjectPath(kSelfPath),
-        base::GenerateGUID(),  // Every boot is a new GUID for now.
-        "CrOS Core Device",  // TODO(wiley): persist name to disk.
-        "",  // TODO(wiley): persist note to disk.
-        0,  // Last seen time for self is defined to be 0.
-        sequencer->GetHandler("Failed exporting Self.", true));
-    CHECK(self_) << "Failed to construct Peer for Self.";
-  }
+  const bool self_success = self_->RegisterAsync(
+      &error,
+      base::GenerateGUID(),  // Every boot is a new GUID for now.
+      "CrOS Core Device",  // TODO(wiley): persist name to disk.
+      "",  // TODO(wiley): persist note to disk.
+      0,
+      sequencer->GetHandler("Failed exporting Self.", true));
+  CHECK(self_success) << "Failed to RegisterAsync Self.";
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed exporting Manager.", true));
   avahi_client_->RegisterOnAvahiRestartCallback(

@@ -14,10 +14,11 @@
 #include <chromeos/dbus/dbus_object.h>
 #include <chromeos/dbus/exported_property_set.h>
 #include <chromeos/errors/error.h>
+#include <dbus/bus.h>
 #include <gtest/gtest_prod.h>
 
 #include "peerd/ip_addr.h"
-#include "peerd/service_publisher_interface.h"
+#include "peerd/service.h"
 #include "peerd/typedefs.h"
 
 namespace peerd {
@@ -28,6 +29,7 @@ namespace peer {
 extern const char kInvalidUUID[];
 extern const char kInvalidName[];
 extern const char kInvalidNote[];
+extern const char kUnknownService[];
 
 }  // namespace peer
 }  // namespace errors
@@ -37,20 +39,17 @@ extern const char kInvalidNote[];
 // remote peers that we've discovered over various mediums.
 class Peer {
  public:
-  // Construct a Peer object and register it with DBus on the provided
-  // path.  On error, nullptr is returned, and |error| is populated with
-  // meaningful error information.
-  static std::unique_ptr<Peer> MakePeer(
+  Peer(const scoped_refptr<dbus::Bus>& bus,
+       chromeos::dbus_utils::ExportedObjectManager* object_manager,
+       const dbus::ObjectPath& path);
+  virtual ~Peer() = default;
+  bool RegisterAsync(
       chromeos::ErrorPtr* error,
-      chromeos::dbus_utils::ExportedObjectManager* object_manager,
-      const dbus::ObjectPath& path,
       const std::string& uuid,
       const std::string& friendly_name,
       const std::string& note,
       uint64_t last_seen,
       const CompletionAction& completion_callback);
-
-  virtual ~Peer() = default;
 
   virtual std::string GetUUID() const;
   virtual std::string GetFriendlyName() const;
@@ -76,24 +75,11 @@ class Peer {
   virtual bool RemoveService(chromeos::ErrorPtr* error,
                              const std::string& service_id);
 
-  // Peer objects will notify ServicePublishers when services are added,
-  // updated, and removed.  This is only used for the self instance of peer
-  // which represents ourselves to remote devices.  If a publisher is added
-  // while this peer has existing services, this will trigger immediate
-  // advertisement of services on that publisher.
-  //
-  // The Peer will remove publishers implicitly when each publisher is
-  // destroyed.
-  virtual void RegisterServicePublisher(
-      base::WeakPtr<ServicePublisherInterface> publisher);
+ protected:
+  std::map<std::string, std::unique_ptr<Service>> services_;
 
  private:
-  Peer(std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object,
-       const dbus::ObjectPath& service_path_prefix,
-       const std::string& uuid);
-
-  void RegisterAsync(const CompletionAction& completion_callback);
-
+  scoped_refptr<dbus::Bus> bus_;
   size_t services_added_{0};
   chromeos::dbus_utils::ExportedProperty<std::string> uuid_;
   chromeos::dbus_utils::ExportedProperty<std::string> name_;
@@ -101,8 +87,6 @@ class Peer {
   chromeos::dbus_utils::ExportedProperty<uint64_t> last_seen_;
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
   dbus::ObjectPath service_path_prefix_;
-  std::map<std::string, std::unique_ptr<Service>> services_;
-  std::vector<base::WeakPtr<ServicePublisherInterface>> publishers_;
 
   friend class PeerTest;
   friend class MockPeer;

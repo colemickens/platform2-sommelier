@@ -11,6 +11,7 @@
 #include <base/time/time.h>
 #include <dbus/bus.h>
 
+#include "peerd/peer.h"
 #include "peerd/peer_manager_interface.h"
 #include "peerd/service.h"
 #include "peerd/technologies.h"
@@ -45,7 +46,7 @@ class PeerManagerImpl : public PeerManagerInterface {
  private:
   scoped_refptr<dbus::Bus> bus_;
   chromeos::dbus_utils::ExportedObjectManager* object_manager_;
-
+  std::map<std::string, std::unique_ptr<Peer>> peers_;
   DISALLOW_COPY_AND_ASSIGN(PeerManagerImpl);
 };
 

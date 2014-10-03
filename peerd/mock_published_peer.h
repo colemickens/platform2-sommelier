@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PEERD_MOCK_PEER_H_
-#define PEERD_MOCK_PEER_H_
+#ifndef PEERD_MOCK_PUBLISHED_PEER_H_
+#define PEERD_MOCK_PUBLISHED_PEER_H_
 
 #include <map>
 #include <memory>
@@ -18,20 +18,25 @@
 #include <gmock/gmock.h>
 
 #include "peerd/ip_addr.h"
-#include "peerd/peer.h"
+#include "peerd/published_peer.h"
 #include "peerd/service_publisher_interface.h"
 
 namespace peerd {
 
-class MockPeer : public Peer {
+class MockPublishedPeer : public PublishedPeer {
  public:
-  MockPeer(const std::string& path_prefix, const std::string& uuid)
-      : Peer(std::unique_ptr<chromeos::dbus_utils::DBusObject>{},
-             dbus::ObjectPath{path_prefix},
-             uuid) {
-  }
-  ~MockPeer() override = default;
+  MockPublishedPeer(const scoped_refptr<dbus::Bus>& bus,
+                    const dbus::ObjectPath& path)
+      : PublishedPeer(bus, nullptr, path) { }
+  ~MockPublishedPeer() override = default;
 
+  MOCK_METHOD6(RegisterAsync,
+               bool(chromeos::ErrorPtr* error,
+                    const std::string& uuid,
+                    const std::string& friendly_name,
+                    const std::string& note,
+                    uint64_t last_seen,
+                    const CompletionAction& completion_callback));
   MOCK_CONST_METHOD0(GetUUID, std::string());
   MOCK_CONST_METHOD0(GetFriendlyName, std::string());
   MOCK_CONST_METHOD0(GetNote, std::string());
@@ -54,4 +59,4 @@ class MockPeer : public Peer {
 
 }  // namespace peerd
 
-#endif  // PEERD_MOCK_PEER_H_
+#endif  // PEERD_MOCK_PUBLISHED_PEER_H_

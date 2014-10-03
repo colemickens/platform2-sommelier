@@ -6,7 +6,6 @@
 #define PEERD_MOCK_AVAHI_CLIENT_H_
 
 #include "peerd/mock_peer_manager.h"
-#include "peerd/peer.h"
 
 #include <string>
 #include <gmock/gmock.h>

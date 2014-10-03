@@ -53,15 +53,15 @@ const char kInvalidServiceInfo[] = "service.info";
 
 unique_ptr<Service> Service::MakeService(
     chromeos::ErrorPtr* error,
+    const scoped_refptr<dbus::Bus>& bus,
     ExportedObjectManager* object_manager,
     const ObjectPath& path,
     const string& service_id,
     const IpAddresses& addresses,
     const ServiceInfo& service_info,
     const CompletionAction& completion_callback) {
-  CHECK(object_manager) << "object_manager is nullptr!";
   unique_ptr<DBusObject> dbus_object(
-      new DBusObject(object_manager, object_manager->GetBus(), path));
+      new DBusObject(object_manager, bus, path));
   return MakeServiceImpl(error, std::move(dbus_object),
                          service_id, addresses, service_info,
                          completion_callback);
