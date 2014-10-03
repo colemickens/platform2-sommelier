@@ -601,16 +601,76 @@ void DeviceRegistrationInfo::StartDevice(chromeos::ErrorPtr* error) {
   if (!device_resource)
     return;
 
-  DoCloudRequest(
-      chromeos::http::request_type::kPut,
-      GetDeviceURL(),
-      device_resource.release(),
-      base::Bind([](const base::DictionaryValue& data) {}),
-      base::Bind([](const chromeos::Error& error) {}));
+  auto std_errorback = base::Bind([](const chromeos::Error& error) {});
+
+  const std::string device_url{GetDeviceURL()};
+  auto update_device_resource = [device_url, std_errorback]
+      (DeviceRegistrationInfo* self, base::DictionaryValue* device_resource,
+       CloudRequestCallback callback) {
+    self->DoCloudRequest(
+        chromeos::http::request_type::kPut,
+        device_url,
+        device_resource,
+        // TODO(antonm): Failure to update device resource probably deserves
+        // some additional actions.
+        callback, std_errorback);
+  };
+
+  const std::string command_queue_url{
+    GetServiceURL("commands/queue", {{"deviceId", device_id_}})};
+  auto fetch_commands_cb = [command_queue_url, std_errorback]
+      (DeviceRegistrationInfo* self,
+       CloudRequestCallback callback, const base::DictionaryValue&) {
+    self->DoCloudRequest(chromeos::http::request_type::kGet,
+                         command_queue_url,
+                         nullptr,
+                         callback, std_errorback);
+  };
+
+  auto abort_commands_cb = [] (const base::DictionaryValue& json) {
+    const base::ListValue* commands{nullptr};
+    json.GetList("commands", &commands);
+    if (commands) {
+      const size_t size{commands->GetSize()};
+      for (size_t i = 0; i < size; ++i) {
+        const base::DictionaryValue* command{nullptr};
+        commands->GetDictionary(i, &command);
+        if (!command) {
+          LOG(WARNING) << "No command resource at " << i;
+          continue;
+        }
+        std::string command_state;
+        command->GetString("state", &command_state);
+        if (command_state.empty()) {
+          LOG(WARNING) << "Command with no state at " << i;
+          continue;
+        }
+        if (command_state != "error" &&
+            command_state != "inProgress" &&
+            command_state != "paused") {
+          // It's not a limbo command, ignore.
+          continue;
+        }
+        std::string command_id;
+        command->GetString("id", &command_id);
+        if (command_id.empty()) {
+          LOG(WARNING) << "Command with no ID at " << i;
+          continue;
+        }
+        // TODO(antonm): Really abort the command.
+      }
+    }
+  };
+
+  base::Bind(update_device_resource,
+             base::Unretained(this),
+             base::Owned(device_resource.release()),
+             base::Bind(fetch_commands_cb,
+                        base::Unretained(this),
+                        base::Bind(abort_commands_cb))).Run();
 
 
   // TODO(antonm): Implement the rest of startup sequence:
-  //   * Abort commands cloud thinks are running
   //   * Poll for commands to run
   //   * Schedule periodic polling
 }
