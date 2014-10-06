@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include <gflags/gflags.h>
+#include <base/command_line.h>
 #include <gtest/gtest.h>
 
 #include "chaps/attributes.h"
@@ -17,12 +17,15 @@
 using std::string;
 using std::vector;
 
-DEFINE_bool(use_dbus, false, "");
-
 namespace chaps {
 
 static chaps::ChapsInterface* CreateChapsInstance() {
-  if (FLAGS_use_dbus) {
+  bool use_dbus = false;
+  if (base::CommandLine::InitializedForCurrentProcess()) {
+    use_dbus = base::CommandLine::ForCurrentProcess()->HasSwitch("use_dbus");
+  }
+
+  if (use_dbus) {
     scoped_ptr<chaps::ChapsProxyImpl> proxy(new chaps::ChapsProxyImpl());
     if (proxy->Init())
       return proxy.release();
@@ -806,7 +809,7 @@ TEST_F(TestP11PublicSession, Random) {
 }  // namespace chaps
 
 int main(int argc, char** argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  base::CommandLine::Init(argc, argv);
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

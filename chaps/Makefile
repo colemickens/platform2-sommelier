@@ -366,7 +366,7 @@ more_tests: import_random
 # 6) Run 'chapsd_test --use_dbus'.
 chapsd_test_OBJS = $(COMMON_OBJS) chapsd_test.o chaps_proxy.o \
                    chaps_service_redirect.o
-chapsd_test_LIBS = -lgtest -lgflags -ldl
+chapsd_test_LIBS = -lgtest -ldl
 CXX_BINARY(chapsd_test): $(chapsd_test_OBJS) CXX_LIBRARY(libchaps.so)
 CXX_BINARY(chapsd_test): LDLIBS += $(chapsd_test_LIBS)
 clean: CLEAN(chapsd_test)
