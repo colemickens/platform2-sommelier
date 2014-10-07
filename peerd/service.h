@@ -47,19 +47,15 @@ class Service {
   // mDNS forbids service types longer than 15 characters.
   static const size_t kMaxServiceIdLength = 15;
 
-  // Construct a Service object and register it with DBus on the
-  // provided |path|.  On error, nullptr is returned, and |error| is
-  // populated with meaningful error information.
-  static std::unique_ptr<Service> MakeService(
+  Service(const scoped_refptr<dbus::Bus>& bus,
+          chromeos::dbus_utils::ExportedObjectManager* object_manager,
+          const dbus::ObjectPath& path);
+  bool RegisterAsync(
       chromeos::ErrorPtr* error,
-      const scoped_refptr<dbus::Bus>& bus_,
-      chromeos::dbus_utils::ExportedObjectManager* object_manager,
-      const dbus::ObjectPath& path,
       const std::string& service_id,
       const IpAddresses& addresses,
       const ServiceInfo& service_info,
       const CompletionAction& completion_callback);
-
   virtual ~Service() = default;
 
   // Getters called by publishers.
@@ -68,25 +64,10 @@ class Service {
   const ServiceInfo& GetServiceInfo() const;
 
  private:
-  // Used for testing, where we want to use a MockDBusObject.
-  static std::unique_ptr<Service> MakeServiceImpl(
-      chromeos::ErrorPtr* error,
-      std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object,
-      const std::string& service_id,
-      const IpAddresses& addresses,
-      const ServiceInfo& service_info,
-      const CompletionAction& completion_callback);
-
   static bool IsValidServiceId(chromeos::ErrorPtr* error,
                                const std::string& service_id);
   static bool IsValidServiceInfo(chromeos::ErrorPtr* error,
                                  const ServiceInfo& service_info);
-
-  Service(std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object,
-          const std::string& service_id,
-          const IpAddresses& addresses,
-          const ServiceInfo& service_info);
-  void RegisterAsync(const CompletionAction& completion_callback);
 
   chromeos::dbus_utils::ExportedProperty<std::string> service_id_;
   chromeos::dbus_utils::ExportedProperty<IpAddresses> ip_addresses_;

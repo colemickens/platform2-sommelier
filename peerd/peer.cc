@@ -150,16 +150,16 @@ bool Peer::AddService(chromeos::ErrorPtr* error,
   //              have to be careful in Service not to assume export has
   //              finished.
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
-  unique_ptr<Service> new_service(
-      Service::MakeService(error, bus_, dbus_object_->GetObjectManager().get(),
-                           service_path, service_id, addresses,
-                           service_info,
-                           sequencer->GetHandler("Failed exporting service.",
-                                                 true)));
-  if (!new_service) { return false; }
-  services_.emplace(service_id, std::move(new_service));
-  sequencer->OnAllTasksCompletedCall({});
-  return true;
+  unique_ptr<Service> new_service{new Service{
+      bus_, dbus_object_->GetObjectManager().get(), service_path}};
+  const bool success = new_service->RegisterAsync(
+      error, service_id, addresses, service_info,
+      sequencer->GetHandler("Failed exporting service.", true));
+  if (success) {
+    services_.emplace(service_id, std::move(new_service));
+    sequencer->OnAllTasksCompletedCall({});
+  }
+  return success;
 }
 
 bool Peer::RemoveService(chromeos::ErrorPtr* error,

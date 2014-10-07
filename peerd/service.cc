@@ -51,20 +51,28 @@ const char kInvalidServiceInfo[] = "service.info";
 }  // namespace service
 }  // namespace errors
 
-unique_ptr<Service> Service::MakeService(
-    chromeos::ErrorPtr* error,
-    const scoped_refptr<dbus::Bus>& bus,
-    ExportedObjectManager* object_manager,
-    const ObjectPath& path,
-    const string& service_id,
-    const IpAddresses& addresses,
-    const ServiceInfo& service_info,
-    const CompletionAction& completion_callback) {
-  unique_ptr<DBusObject> dbus_object(
-      new DBusObject(object_manager, bus, path));
-  return MakeServiceImpl(error, std::move(dbus_object),
-                         service_id, addresses, service_info,
-                         completion_callback);
+Service::Service(const scoped_refptr<dbus::Bus>& bus,
+                 chromeos::dbus_utils::ExportedObjectManager* object_manager,
+                 const dbus::ObjectPath& path)
+    : dbus_object_(new DBusObject{object_manager, bus, path}) {
+}
+
+bool Service::RegisterAsync(chromeos::ErrorPtr* error,
+                            const std::string& service_id,
+                            const IpAddresses& addresses,
+                            const ServiceInfo& service_info,
+                            const CompletionAction& completion_callback) {
+  if (!IsValidServiceId(error, service_id)) { return false; }
+  if (!IsValidServiceInfo(error, service_info)) { return false; }
+  service_id_.SetValue(service_id);
+  ip_addresses_.SetValue(addresses);
+  service_info_.SetValue(service_info);
+  DBusInterface* itf = dbus_object_->AddOrGetInterface(kServiceInterface);
+  itf->AddProperty(kServiceId, &service_id_);
+  itf->AddProperty(kServiceIpInfos, &ip_addresses_);
+  itf->AddProperty(kServiceInfo, &service_info_);
+  dbus_object_->RegisterAsync(completion_callback);
+  return true;
 }
 
 const std::string& Service::GetServiceId() const {
@@ -77,24 +85,6 @@ const Service::IpAddresses& Service::GetIpAddresses() const {
 
 const Service::ServiceInfo& Service::GetServiceInfo() const {
   return service_info_.value();
-}
-
-unique_ptr<Service> Service::MakeServiceImpl(
-    chromeos::ErrorPtr* error,
-    unique_ptr<DBusObject> dbus_object,
-    const string& service_id,
-    const IpAddresses& addresses,
-    const ServiceInfo& service_info,
-    const CompletionAction& completion_callback) {
-  unique_ptr<Service> result;
-  if (!IsValidServiceId(error, service_id))
-    return result;
-  if (!IsValidServiceInfo(error, service_info))
-    return result;
-  result.reset(
-      new Service(std::move(dbus_object), service_id, addresses, service_info));
-  result->RegisterAsync(completion_callback);
-  return result;
 }
 
 bool Service::IsValidServiceId(chromeos::ErrorPtr* error,
@@ -159,24 +149,6 @@ bool Service::IsValidServiceInfo(chromeos::ErrorPtr* error,
     }
   }
   return true;
-}
-
-Service::Service(unique_ptr<DBusObject> dbus_object,
-                 const string& service_id,
-                 const IpAddresses& addresses,
-                 const ServiceInfo& service_info)
-    : dbus_object_(std::move(dbus_object)) {
-  service_id_.SetValue(service_id);
-  ip_addresses_.SetValue(addresses);
-  service_info_.SetValue(service_info);
-}
-
-void Service::RegisterAsync(const CompletionAction& completion_callback) {
-  DBusInterface* itf = dbus_object_->AddOrGetInterface(kServiceInterface);
-  itf->AddProperty(kServiceId, &service_id_);
-  itf->AddProperty(kServiceIpInfos, &ip_addresses_);
-  itf->AddProperty(kServiceInfo, &service_id_);
-  dbus_object_->RegisterAsync(completion_callback);
 }
 
 }  // namespace peerd

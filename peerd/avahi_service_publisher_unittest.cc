@@ -7,6 +7,7 @@
 
 #include <base/memory/ref_counted.h>
 #include <dbus/mock_bus.h>
+#include <dbus/mock_exported_object.h>
 #include <dbus/mock_object_proxy.h>
 #include <dbus/object_path.h>
 #include <gmock/gmock.h>
@@ -17,6 +18,9 @@
 #include "peerd/service.h"
 #include "peerd/test_util.h"
 
+using dbus::Bus;
+using dbus::MockBus;
+using dbus::MockExportedObject;
 using dbus::ObjectPath;
 using dbus::Response;
 using peerd::Service;
@@ -46,6 +50,7 @@ namespace {
 const char kHost[] = "this_is_a_hostname";
 const char kGroupPath[] = "/this/is/a/group/path";
 const char kServiceId[] = "service-id";
+const char kServicePath[] = "/a/peerd/service/path";
 
 Response* ReturnsGroupPath(dbus::MethodCall* method_call, Unused, Unused) {
   method_call->SetSerial(87);
@@ -63,8 +68,6 @@ namespace peerd {
 class AvahiServicePublisherTest : public ::testing::Test {
  public:
   void SetUp() override {
-    dbus::Bus::Options options;
-    mock_bus_ = new dbus::MockBus(options);
     avahi_proxy_ = new dbus::MockObjectProxy(
         mock_bus_.get(), kServiceName, ObjectPath(kServerPath));
     group_proxy_ = new dbus::MockObjectProxy(
@@ -85,21 +88,25 @@ class AvahiServicePublisherTest : public ::testing::Test {
       .WillRepeatedly(Return(group_proxy_.get()));
     // When we create EntryGroups, we destroy them eventually.
     EXPECT_CALL(*group_proxy_, Detach()).Times(AnyNumber());
+    // We'll need peerd::Service objects as part of this test, they need
+    // MockExportedObjects.
+    EXPECT_CALL(*mock_bus_, GetExportedObject(_))
+        .WillRepeatedly(Return(service_object_.get()));
+    EXPECT_CALL(*service_object_, ExportMethod(_, _, _, _))
+        .WillRepeatedly(Invoke(&test_util::HandleMethodExport));
+    EXPECT_CALL(*service_object_, Unregister()).Times(AnyNumber());
   }
 
   unique_ptr<Service> CreateServiceWithInfo(const std::string& service_id,
                                             const Service::ServiceInfo& info) {
-    auto dbus_object = MakeMockDBusObject();
-    EXPECT_CALL(*dbus_object, RegisterAsync(_)).Times(1);
+    unique_ptr<Service> new_service{new Service{mock_bus_, nullptr,
+                                                ObjectPath{kServicePath}}};
     chromeos::ErrorPtr error;
-    unique_ptr<Service> service(
-        Service::MakeServiceImpl(&error, std::move(dbus_object),
-                                 service_id, Service::IpAddresses(),
-                                 info,
-                                 MakeMockCompletionAction()));
+    EXPECT_TRUE(new_service->RegisterAsync(
+        &error, service_id, {}, info,
+        MakeMockCompletionAction()));
     EXPECT_EQ(nullptr, error.get());
-    EXPECT_NE(nullptr, service.get());
-    return service;
+    return new_service;
   }
 
   unique_ptr<Service> CreateService(const std::string& service_id) {
@@ -138,9 +145,11 @@ class AvahiServicePublisherTest : public ::testing::Test {
         .WillRepeatedly(Invoke(&ReturnsEmptyResponse));
   }
 
-  scoped_refptr<dbus::MockBus> mock_bus_;
+  scoped_refptr<MockBus> mock_bus_{new MockBus{Bus::Options{}}};
   scoped_refptr<dbus::MockObjectProxy> avahi_proxy_;
   scoped_refptr<dbus::MockObjectProxy> group_proxy_;
+  scoped_refptr<dbus::MockExportedObject> service_object_{
+      new MockExportedObject{mock_bus_.get(), ObjectPath{kServicePath}}};
   unique_ptr<AvahiServicePublisher> publisher_;
 };
 
