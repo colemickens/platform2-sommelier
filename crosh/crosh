@@ -1001,7 +1001,7 @@ cmd_autest() (
   fi
 
   echo "Calling update_engine_client with omaha_url = $omaha_url"
-  /usr/bin/update_engine_client --omaha_url $omaha_url
+  /usr/bin/update_engine_client --omaha_url=$omaha_url
 )
 
 cmd_p2p_update() (
