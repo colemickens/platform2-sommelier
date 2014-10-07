@@ -26,6 +26,7 @@
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <vpn-manager/service_error.h>
 
@@ -227,10 +228,9 @@ bool L2TPIPSecDriver::InitOptions(vector<string> *options, Error *error) {
     return false;
   }
 
-  options->push_back("--remote_host");
-  options->push_back(vpnhost);
-  options->push_back("--pppd_plugin");
-  options->push_back(PPPDevice::kPluginPath);
+  options->push_back(base::StringPrintf("--remote_host=%s", vpnhost.c_str()));
+  options->push_back(base::StringPrintf("--pppd_plugin=%s",
+                                        PPPDevice::kPluginPath));
   // Disable pppd from configuring IP addresses, routes, DNS.
   options->push_back("--nosystemconfig");
 
@@ -276,8 +276,8 @@ bool L2TPIPSecDriver::InitPSKOptions(vector<string> *options, Error *error) {
           error, Error::kInternalError, "Unable to setup psk file.");
       return false;
     }
-    options->push_back("--psk_file");
-    options->push_back(psk_file_.value());
+    options->push_back(base::StringPrintf("--psk_file=%s",
+                                          psk_file_.value().c_str()));
   }
   return true;
 }
@@ -295,8 +295,8 @@ bool L2TPIPSecDriver::InitPEMOptions(vector<string> *options) {
     LOG(ERROR) << "Unable to extract certificates from PEM string.";
     return false;
   }
-  options->push_back("--server_ca_file");
-  options->push_back(certfile.value());
+  options->push_back(base::StringPrintf("--server_ca_file=%s",
+                                        certfile.value().c_str()));
   return true;
 }
 
@@ -325,8 +325,8 @@ bool L2TPIPSecDriver::InitXauthOptions(vector<string> *options, Error *error) {
         "Unable to setup XAUTH credentials file.");
     return false;
   }
-  options->push_back("--xauth_credentials_file");
-  options->push_back(xauth_credentials_file_.value());
+  options->push_back(base::StringPrintf("--xauth_credentials_file=%s",
+                         xauth_credentials_file_.value().c_str()));
   return true;
 }
 
@@ -334,8 +334,8 @@ bool L2TPIPSecDriver::AppendValueOption(
     const string &property, const string &option, vector<string> *options) {
   string value = args()->LookupString(property, "");
   if (!value.empty()) {
-    options->push_back(option);
-    options->push_back(value);
+    options->push_back(base::StringPrintf("%s=%s", option.c_str(),
+                                          value.c_str()));
     return true;
   }
   return false;

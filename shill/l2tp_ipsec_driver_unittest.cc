@@ -8,6 +8,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/weak_ptr.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 #include <vpn-manager/service_error.h>
 
@@ -201,14 +202,11 @@ void L2TPIPSecDriverTest::Notify(
 
 void L2TPIPSecDriverTest::ExpectInFlags(
     const vector<string> &options, const string &flag, const string &value) {
+  string flagValue = base::StringPrintf("%s=%s", flag.c_str(), value.c_str());
   vector<string>::const_iterator it =
-      find(options.begin(), options.end(), flag);
+      find(options.begin(), options.end(), flagValue);
 
-  ASSERT_TRUE(it != options.end());  // Don't crash below.
-  EXPECT_EQ(flag, *it);
-  it++;
-  ASSERT_TRUE(it != options.end());  // Don't crash below.
-  EXPECT_EQ(value, *it);
+  EXPECT_TRUE(it != options.end());
 }
 
 FilePath L2TPIPSecDriverTest::SetupPSKFile() {
@@ -450,11 +448,9 @@ TEST_F(L2TPIPSecDriverTest, AppendValueOption) {
   SetArg(kProperty2, kValue2);
   EXPECT_TRUE(driver_->AppendValueOption(kProperty, kOption, &options));
   EXPECT_TRUE(driver_->AppendValueOption(kProperty2, kOption2, &options));
-  EXPECT_EQ(4, options.size());
-  EXPECT_EQ(kOption, options[0]);
-  EXPECT_EQ(kValue, options[1]);
-  EXPECT_EQ(kOption2, options[2]);
-  EXPECT_EQ(kValue2, options[3]);
+  EXPECT_EQ(2, options.size());
+  EXPECT_EQ(base::StringPrintf("%s=%s", kOption, kValue), options[0]);
+  EXPECT_EQ(base::StringPrintf("%s=%s", kOption2, kValue2), options[1]);
 }
 
 TEST_F(L2TPIPSecDriverTest, AppendFlag) {
