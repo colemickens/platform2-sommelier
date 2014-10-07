@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/dbus_object.h>
 #include <chromeos/errors/error.h>
 #include <dbus/object_path.h>
@@ -44,7 +45,8 @@ class MockPublishedPeer : public PublishedPeer {
                                      const std::string& friendly_name));
   MOCK_METHOD2(SetNote, bool(chromeos::ErrorPtr* error,
                              const std::string& note));
-  MOCK_METHOD1(SetLastSeen, void(uint64_t last_seen));
+  MOCK_METHOD2(SetLastSeen, bool(chromeos::ErrorPtr* error,
+                                 const base::Time& last_seen));
 
   MOCK_METHOD4(AddService,
                bool(chromeos::ErrorPtr* error,

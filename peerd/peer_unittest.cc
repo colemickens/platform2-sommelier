@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/time/time.h>
 #include <chromeos/dbus/mock_dbus_object.h>
 #include <chromeos/errors/error.h>
 #include <dbus/mock_bus.h>
@@ -26,6 +27,7 @@ using dbus::ObjectPath;
 using peerd::Peer;
 using peerd::errors::peer::kInvalidName;
 using peerd::errors::peer::kInvalidNote;
+using peerd::errors::peer::kInvalidTime;
 using peerd::errors::peer::kInvalidUUID;
 using peerd::test_util::MakeMockCompletionAction;
 using std::string;
@@ -84,7 +86,7 @@ class PeerTest : public ::testing::Test {
         kUUID,
         kValidName,
         kValidNote,
-        0,
+        base::Time::UnixEpoch() + base::TimeDelta::FromDays(1),
         MakeMockCompletionAction()));
     EXPECT_EQ(nullptr, error.get());
     return peer;
@@ -102,7 +104,7 @@ class PeerTest : public ::testing::Test {
         uuid,
         name,
         note,
-        0,
+        base::Time::UnixEpoch(),
         MakeMockCompletionAction()));
     ASSERT_NE(nullptr, error.get());
     EXPECT_TRUE(error->HasError(peerd::kPeerdErrorDomain, error_code));
@@ -182,6 +184,14 @@ TEST_F(PeerTest, ShouldRejectNoteInvalidChars) {
   EXPECT_FALSE(peer->SetNote(&error, "* is also not allowed in notes"));
   ASSERT_NE(nullptr, error.get());
   EXPECT_TRUE(error->HasError(kPeerdErrorDomain, kInvalidNote));
+}
+
+TEST_F(PeerTest, ShouldRejectStaleUpdate) {
+  auto peer = MakePeer();
+  chromeos::ErrorPtr error;
+  EXPECT_FALSE(peer->SetLastSeen(&error, base::Time::UnixEpoch()));
+  ASSERT_NE(nullptr, error.get());
+  EXPECT_TRUE(error->HasError(kPeerdErrorDomain, kInvalidTime));
 }
 
 }  // namespace peerd

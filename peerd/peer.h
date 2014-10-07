@@ -29,6 +29,7 @@ namespace peer {
 extern const char kInvalidUUID[];
 extern const char kInvalidName[];
 extern const char kInvalidNote[];
+extern const char kInvalidTime[];
 extern const char kUnknownService[];
 
 }  // namespace peer
@@ -48,7 +49,7 @@ class Peer {
       const std::string& uuid,
       const std::string& friendly_name,
       const std::string& note,
-      uint64_t last_seen,
+      const base::Time& last_seen,
       const CompletionAction& completion_callback);
 
   virtual std::string GetUUID() const;
@@ -57,10 +58,11 @@ class Peer {
   // Returns false on failure.
   virtual bool SetFriendlyName(chromeos::ErrorPtr* error,
                                const std::string& friendly_name);
-  // Returns false on failure.
   virtual bool SetNote(chromeos::ErrorPtr* error, const std::string& note);
-  virtual void SetLastSeen(uint64_t last_seen);
+  virtual bool SetLastSeen(chromeos::ErrorPtr* error,
+                           const base::Time& last_seen);
 
+ protected:
   // Add a service to be exported by this peer.  Can fail if this peer
   // is already advertising a service with |service_id| or if |service_id|
   // and/or |service_info| are malformed.  Returns false on error, and can
@@ -75,7 +77,6 @@ class Peer {
   virtual bool RemoveService(chromeos::ErrorPtr* error,
                              const std::string& service_id);
 
- protected:
   std::map<std::string, std::unique_ptr<Service>> services_;
 
  private:

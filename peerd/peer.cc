@@ -53,6 +53,7 @@ namespace peer {
 const char kInvalidUUID[] = "peer.uuid";
 const char kInvalidName[] = "peer.name";
 const char kInvalidNote[] = "peer.note";
+const char kInvalidTime[] = "peer.time";
 const char kUnknownService[] = "peer.unknown_service";
 
 }  // namespace peer
@@ -71,7 +72,7 @@ bool Peer::RegisterAsync(
     const std::string& uuid,
     const std::string& friendly_name,
     const std::string& note,
-    uint64_t last_seen,
+    const base::Time& last_seen,
     const CompletionAction& completion_callback) {
   if (!base::IsValidGUID(uuid)) {
     Error::AddTo(error, kPeerdErrorDomain, errors::peer::kInvalidUUID,
@@ -80,7 +81,7 @@ bool Peer::RegisterAsync(
   }
   if (!SetFriendlyName(error, friendly_name)) { return false; }
   if (!SetNote(error, note)) { return false; }
-  SetLastSeen(last_seen);
+  if (!SetLastSeen(error, last_seen)) { return false; }
   DBusInterface* itf = dbus_object_->AddOrGetInterface(kPeerInterface);
   itf->AddProperty(kPeerUUID, &uuid_);
   itf->AddProperty(kPeerFriendlyName, &name_);
@@ -123,8 +124,21 @@ bool Peer::SetNote(chromeos::ErrorPtr* error, const string& note) {
   return true;
 }
 
-void Peer::SetLastSeen(uint64_t last_seen) {
-  last_seen_.SetValue(last_seen);
+bool Peer::SetLastSeen(chromeos::ErrorPtr* error, const base::Time& last_seen) {
+  int64_t time_diff = (last_seen - base::Time::UnixEpoch()).InMilliseconds();
+  if (time_diff < 0) {
+    Error::AddTo(error, kPeerdErrorDomain, errors::peer::kInvalidTime,
+                 "Negative time update is invalid.");
+    return false;
+  }
+  uint64_t milliseconds_since_epoch = static_cast<uint64_t>(time_diff);
+  if (milliseconds_since_epoch < last_seen_.value()) {
+    Error::AddTo(error, kPeerdErrorDomain, errors::peer::kInvalidTime,
+                 "Discarding update to last seen time as stale.");
+    return false;
+  }
+  last_seen_.SetValue(milliseconds_since_epoch);
+  return true;
 }
 
 std::string Peer::GetUUID() const {

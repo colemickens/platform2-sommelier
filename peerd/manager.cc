@@ -7,6 +7,7 @@
 #include <base/format_macros.h>
 #include <base/guid.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/exported_object_manager.h>
 #include <dbus/object_path.h>
@@ -123,7 +124,7 @@ void Manager::RegisterAsync(const CompletionAction& completion_callback) {
       base::GenerateGUID(),  // Every boot is a new GUID for now.
       "CrOS Core Device",  // TODO(wiley): persist name to disk.
       "",  // TODO(wiley): persist note to disk.
-      0,
+      base::Time::UnixEpoch(),
       sequencer->GetHandler("Failed exporting Self.", true));
   CHECK(self_success) << "Failed to RegisterAsync Self.";
   dbus_object_->RegisterAsync(
