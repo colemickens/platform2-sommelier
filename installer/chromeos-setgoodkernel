@@ -13,6 +13,12 @@ fi
 # Load functions and constants for chromeos-install.
 . /usr/share/misc/chromeos-common.sh || exit 1
 
+FAFT_LOCKFILE="/var/tmp/faft/lock"
+if [ -f "$FAFT_LOCKFILE" ]; then
+  echo "FAFT lockfile exists, skipping chromeos-setgoodkernel actions"
+  exit
+fi
+
 if grep -q 'cros_efi' /proc/cmdline ; then
   is_efi=1
 else
