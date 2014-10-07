@@ -645,6 +645,9 @@ bool Manager::HandleProfileEntryDeletion(const ProfileRefPtr &profile,
       ++it;
     }
   }
+  if (moved_services) {
+    SortServices();
+  }
   return moved_services;
 }
 

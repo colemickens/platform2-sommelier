@@ -267,9 +267,13 @@ class ManagerTest : public PropertyStoreTest {
   }
 
   void CompleteServiceSort() {
-    EXPECT_FALSE(manager()->sort_services_task_.IsCancelled());
+    EXPECT_TRUE(IsSortServicesTaskPending());
     dispatcher()->DispatchPendingEvents();
-    EXPECT_TRUE(manager()->sort_services_task_.IsCancelled());
+    EXPECT_FALSE(IsSortServicesTaskPending());
+  }
+
+  bool IsSortServicesTaskPending() {
+    return !manager()->sort_services_task_.IsCancelled();
   }
 
   void RefreshConnectionState() {
@@ -1233,11 +1237,15 @@ TEST_F(ManagerTest, HandleProfileEntryDeletion) {
   AdoptProfile(manager(), profile0);
   AdoptProfile(manager(), profile1);
 
+  CompleteServiceSort();
+
   // No services are a member of this profile.
   EXPECT_FALSE(manager()->HandleProfileEntryDeletion(profile0, entry_name));
+  EXPECT_FALSE(IsSortServicesTaskPending());
 
   // No services that are members of this profile have this entry name.
   EXPECT_FALSE(manager()->HandleProfileEntryDeletion(profile1, ""));
+  EXPECT_FALSE(IsSortServicesTaskPending());
 
   // Only services that are members of the profile and group will be abandoned.
   EXPECT_CALL(*profile1.get(),
@@ -1275,6 +1283,7 @@ TEST_F(ManagerTest, HandleProfileEntryDeletion) {
   EXPECT_CALL(*s_configure_succeed.get(), Unload()).Times(0);
 
   EXPECT_TRUE(manager()->HandleProfileEntryDeletion(profile1, entry_name));
+  EXPECT_TRUE(IsSortServicesTaskPending());
 
   EXPECT_EQ(GetEphemeralProfile(manager()), s_not_in_profile->profile().get());
   EXPECT_EQ(profile1, s_not_in_group->profile());
@@ -1367,7 +1376,9 @@ TEST_F(ManagerTest, HandleProfileEntryDeletionWithUnload) {
 
 
   // This will cause all the profiles to be unloaded.
+  EXPECT_FALSE(IsSortServicesTaskPending());
   EXPECT_TRUE(manager()->HandleProfileEntryDeletion(profile, entry_name));
+  EXPECT_TRUE(IsSortServicesTaskPending());
 
   // 2 of the 4 services added above should have been unregistered and
   // removed, leaving 2.
