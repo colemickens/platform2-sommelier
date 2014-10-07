@@ -1,19 +1,19 @@
 Some common workflows for developing with buffet:
 
 # Tell portage that you'd like to make local changes to Buffet:
-cros_workon start --board=${BOARD} platform2
+cros_workon start --board=${BOARD} buffet
 
 # Edit files in platform2/buffet/
 vim ...
 
 # Compile and install those changes into the chroot:
-USE=buffet emerge-<board> platform2
+USE=buffet emerge-${BOARD} buffet
 
 # Compile and run buffet unittests
-USE=buffet P2_TEST_FILTER="buffet::*" FEATURES=test emerge-<board> platform2
+USE=buffet FEATURES=test emerge-${BOARD} buffet
 
 # Deploy the most recently built version of buffet to a DUT:
-cros deploy --board=${BOARD} <remote host> platform2
+cros deploy --board=${BOARD} <remote host> buffet
 
 #To enable additional debug logging in buffet daemon, run it as:
 # buffet --v=<level>, where <level> is verbosity level of debug info:
