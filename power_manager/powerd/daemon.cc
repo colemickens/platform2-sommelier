@@ -746,7 +746,7 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   std::string args;
   if (wakeup_count_valid) {
     args += base::StringPrintf(" --suspend_wakeup_count_valid"
-                               " --suspend_wakeup_count %" PRIu64,
+                               " --suspend_wakeup_count=%" PRIu64,
                                wakeup_count);
   }
 
@@ -757,7 +757,7 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
       alarm.reset();
       // Some older kernels might not like this clock type.
       // Fall back to the sysfs rtc alarm if necessary.
-      args += base::StringPrintf(" --suspend_duration %" PRId64,
+      args += base::StringPrintf(" --suspend_duration=%" PRId64,
                                  duration.InSeconds());
     }
   }
