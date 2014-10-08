@@ -42,7 +42,7 @@
 #include "cryptohome/username_passkey.h"
 
 #include "attestation.pb.h"  // NOLINT(build/include)
-#include "bindings/client.h"
+#include "bindings/cryptohome.dbusclient.h"
 #include "key.pb.h"  // NOLINT(build/include)
 #include "marshal.glibmarshal.h"  // NOLINT(build/include)
 #include "rpc.pb.h"  // NOLINT(build/include)

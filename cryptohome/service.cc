@@ -56,7 +56,7 @@ using chromeos::SecureBlob;
 // modifying the files afterward.
 namespace cryptohome {
 namespace gobject {
-#include "bindings/server.h"  // NOLINT(build/include_alpha)
+#include "bindings/cryptohome.dbusserver.h"  // NOLINT(build/include_alpha)
 }  // namespace gobject
 }  // namespace cryptohome
 
