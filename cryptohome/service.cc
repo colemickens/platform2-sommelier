@@ -1721,6 +1721,10 @@ void Service::DoMountEx(AccountIdentifier* identifier,
     return;
   }
 
+  // Provide an authoritative filesystem-sanitized username.
+  mount_reply->set_sanitized_username(
+      chromeos::cryptohome::home::SanitizeUserName(identifier->email()));
+
   // While it would be cleaner to implement the privilege enforcement
   // here, that can only be done if a label was supplied.  If a wildcard
   // was supplied, then we can only perform the enforcement after the
@@ -1788,10 +1792,6 @@ void Service::DoMountEx(AccountIdentifier* identifier,
                                             mount_args,
                                             &code);
   user_mount->set_pkcs11_state(cryptohome::Mount::kUninitialized);
-
-  // Provide an authoritative filesystem-sanitized username.
-  mount_reply->set_sanitized_username(
-      chromeos::cryptohome::home::SanitizeUserName(identifier->email()));
 
   // Mark the timer as done.
   timer_collection_->UpdateTimer(TimerCollection::kMountExTimer, false);
