@@ -437,7 +437,7 @@ main() {
   fi
 
   # Light up the screen if possible.
-  backlight_tool --set_brightness_percent 100 || true
+  backlight_tool --set_brightness_percent=100 || true
 
   # Hides cursor and prevents console from blanking after long inactivity.
   setterm -cursor off -blank 0 -powersave off -powerdown 0 >"$STDOUT" || true
