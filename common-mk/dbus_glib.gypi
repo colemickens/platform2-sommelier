@@ -19,7 +19,7 @@
         '<(RULE_INPUT_PATH)',
         '--mode=glib-<(dbus_glib_type)',
         '--prefix=<(dbus_glib_prefix)',
-        '--output=<(RULE_INPUT_ROOT).dbus<(dbus_glib_type).h',
+        '--output=<(h_dir)/<(RULE_INPUT_ROOT).dbus<(dbus_glib_type).h',
       ],
       'msvs_cygwin_shell': 0,
       'message':
