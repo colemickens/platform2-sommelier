@@ -82,7 +82,7 @@ TEST_F(ArpPacketTest, GettersAndSetters) {
   EXPECT_TRUE(mac_address1_.Equals(packet_.remote_mac_address()));
 }
 
-TEST_F(ArpPacketTest, ParseReplyTinyPacket) {
+TEST_F(ArpPacketTest, ParseTinyPacket) {
   ScopedMockLog log;
   EXPECT_CALL(log,
       Log(logging::LOG_ERROR, _,
@@ -90,10 +90,10 @@ TEST_F(ArpPacketTest, ParseReplyTinyPacket) {
 
   ByteString arp_bytes(kArpReplyV4, arraysize(kArpReplyV4));
   arp_bytes.Resize(arp_bytes.GetLength() - 1);
-  EXPECT_FALSE(packet_.ParseReply(arp_bytes));
+  EXPECT_FALSE(packet_.Parse(arp_bytes));
 }
 
-TEST_F(ArpPacketTest, ParseReplyBadHRDType) {
+TEST_F(ArpPacketTest, ParseBadHRDType) {
   ScopedMockLog log;
   EXPECT_CALL(log,
       Log(logging::LOG_ERROR, _,
@@ -101,10 +101,10 @@ TEST_F(ArpPacketTest, ParseReplyBadHRDType) {
 
   ByteString arp_bytes(kArpReplyV4, arraysize(kArpReplyV4));
   arp_bytes.GetData()[0] = 0x1;
-  EXPECT_FALSE(packet_.ParseReply(arp_bytes));
+  EXPECT_FALSE(packet_.Parse(arp_bytes));
 }
 
-TEST_F(ArpPacketTest, ParseReplyBadProtocol) {
+TEST_F(ArpPacketTest, ParseBadProtocol) {
   ScopedMockLog log;
   EXPECT_CALL(log,
       Log(logging::LOG_ERROR, _,
@@ -112,10 +112,10 @@ TEST_F(ArpPacketTest, ParseReplyBadProtocol) {
 
   ByteString arp_bytes(kArpReplyV4, arraysize(kArpReplyV4));
   arp_bytes.GetData()[3] = 0x1;
-  EXPECT_FALSE(packet_.ParseReply(arp_bytes));
+  EXPECT_FALSE(packet_.Parse(arp_bytes));
 }
 
-TEST_F(ArpPacketTest, ParseReplyBadHardwareLength) {
+TEST_F(ArpPacketTest, ParseBadHardwareLength) {
   ScopedMockLog log;
   EXPECT_CALL(log,
       Log(logging::LOG_ERROR, _,
@@ -123,10 +123,10 @@ TEST_F(ArpPacketTest, ParseReplyBadHardwareLength) {
 
   ByteString arp_bytes(kArpReplyV4, arraysize(kArpReplyV4));
   arp_bytes.GetData()[4] = 0x1;
-  EXPECT_FALSE(packet_.ParseReply(arp_bytes));
+  EXPECT_FALSE(packet_.Parse(arp_bytes));
 }
 
-TEST_F(ArpPacketTest, ParseReplyBadProtocolLength) {
+TEST_F(ArpPacketTest, ParseBadProtocolLength) {
   ScopedMockLog log;
   EXPECT_CALL(log,
       Log(logging::LOG_ERROR, _,
@@ -134,21 +134,22 @@ TEST_F(ArpPacketTest, ParseReplyBadProtocolLength) {
 
   ByteString arp_bytes(kArpReplyV4, arraysize(kArpReplyV4));
   arp_bytes.GetData()[5] = 0x1;
-  EXPECT_FALSE(packet_.ParseReply(arp_bytes));
+  EXPECT_FALSE(packet_.Parse(arp_bytes));
 }
 
-TEST_F(ArpPacketTest, ParseReplyBadOpCode) {
+TEST_F(ArpPacketTest, ParseBadOpCode) {
   ScopedMockLog log;
   EXPECT_CALL(log,
       Log(logging::LOG_ERROR, _,
-          HasSubstr("Packet is not an ARP reply but of type 258"))).Times(1);
+          HasSubstr("Packet is not an ARP reply or request but of type 258")))
+              .Times(1);
 
   ByteString arp_bytes(kArpReplyV4, arraysize(kArpReplyV4));
   arp_bytes.GetData()[6] = 0x1;
-  EXPECT_FALSE(packet_.ParseReply(arp_bytes));
+  EXPECT_FALSE(packet_.Parse(arp_bytes));
 }
 
-TEST_F(ArpPacketTest, ParseReplyShortPacket) {
+TEST_F(ArpPacketTest, ParseShortPacket) {
   ScopedMockLog log;
   EXPECT_CALL(log,
       Log(logging::LOG_ERROR, _,
@@ -160,16 +161,17 @@ TEST_F(ArpPacketTest, ParseReplyShortPacket) {
   arp_bytes.Append(mac_address0_);
   arp_bytes.Append(ipv6_address1_.address());
   arp_bytes.Resize(arp_bytes.GetLength() - 1);
-  EXPECT_FALSE(packet_.ParseReply(arp_bytes));
+  EXPECT_FALSE(packet_.Parse(arp_bytes));
 }
 
-TEST_F(ArpPacketTest, ParseReplyIPv4) {
+TEST_F(ArpPacketTest, ParseIPv4) {
   ByteString arp_bytes(kArpReplyV4, arraysize(kArpReplyV4));
   arp_bytes.Append(mac_address0_);
   arp_bytes.Append(ipv4_address0_.address());
   arp_bytes.Append(mac_address1_);
   arp_bytes.Append(ipv4_address1_.address());
-  EXPECT_TRUE(packet_.ParseReply(arp_bytes));
+  EXPECT_TRUE(packet_.Parse(arp_bytes));
+  EXPECT_TRUE(packet_.IsReply());
   EXPECT_TRUE(ipv4_address0_.Equals(packet_.local_ip_address()));
   EXPECT_TRUE(ipv4_address1_.Equals(packet_.remote_ip_address()));
   EXPECT_TRUE(mac_address0_.Equals(packet_.local_mac_address()));
@@ -177,20 +179,35 @@ TEST_F(ArpPacketTest, ParseReplyIPv4) {
 
   // Parse should succeed with arbitrary trailing padding.
   arp_bytes.Append(ByteString(1000));
-  EXPECT_TRUE(packet_.ParseReply(arp_bytes));
+  EXPECT_TRUE(packet_.Parse(arp_bytes));
 }
 
-TEST_F(ArpPacketTest, ParseReplyIPv6) {
+TEST_F(ArpPacketTest, ParseIPv6) {
   ByteString arp_bytes(kArpReplyV6, arraysize(kArpReplyV6));
   arp_bytes.Append(mac_address1_);
   arp_bytes.Append(ipv6_address0_.address());
   arp_bytes.Append(mac_address0_);
   arp_bytes.Append(ipv6_address1_.address());
-  EXPECT_TRUE(packet_.ParseReply(arp_bytes));
+  EXPECT_TRUE(packet_.Parse(arp_bytes));
+  EXPECT_TRUE(packet_.IsReply());
   EXPECT_TRUE(ipv6_address0_.Equals(packet_.local_ip_address()));
   EXPECT_TRUE(ipv6_address1_.Equals(packet_.remote_ip_address()));
   EXPECT_TRUE(mac_address1_.Equals(packet_.local_mac_address()));
   EXPECT_TRUE(mac_address0_.Equals(packet_.remote_mac_address()));
+}
+
+TEST_F(ArpPacketTest, ParseRequest) {
+  ByteString arp_bytes(kArpRequestV4, arraysize(kArpRequestV4));
+  arp_bytes.Append(mac_address0_);
+  arp_bytes.Append(ipv4_address0_.address());
+  arp_bytes.Append(mac_address1_);
+  arp_bytes.Append(ipv4_address1_.address());
+  EXPECT_TRUE(packet_.Parse(arp_bytes));
+  EXPECT_FALSE(packet_.IsReply());
+  EXPECT_TRUE(ipv4_address0_.Equals(packet_.local_ip_address()));
+  EXPECT_TRUE(ipv4_address1_.Equals(packet_.remote_ip_address()));
+  EXPECT_TRUE(mac_address0_.Equals(packet_.local_mac_address()));
+  EXPECT_TRUE(mac_address1_.Equals(packet_.remote_mac_address()));
 }
 
 TEST_F(ArpPacketTest, FormatRequestInvalidAddress) {

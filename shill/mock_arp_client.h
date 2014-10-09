@@ -19,9 +19,11 @@ class MockArpClient : public ArpClient {
   MockArpClient();
   ~MockArpClient() override;
 
-  MOCK_METHOD0(Start, bool());
+  MOCK_METHOD0(StartReplyListener, bool());
+  MOCK_METHOD0(StartRequestListener, bool());
   MOCK_METHOD0(Stop, void());
-  MOCK_CONST_METHOD2(ReceiveReply, bool(ArpPacket *packet, ByteString *sender));
+  MOCK_CONST_METHOD2(ReceivePacket, bool(ArpPacket *packet,
+                                         ByteString *sender));
   MOCK_CONST_METHOD1(TransmitRequest, bool(const ArpPacket &packet));
   MOCK_CONST_METHOD0(socket, int());
 

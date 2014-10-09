@@ -59,7 +59,7 @@ class ArpClientTest : public Test {
   static const uint8_t kRemoteMACAddress[];
   static const int kArpOpOffset;
 
-  bool CreateSocket() { return client_.CreateSocket(); }
+  bool CreateSocket() { return client_.CreateSocket(ARPOP_REPLY); }
   int GetInterfaceIndex() { return client_.interface_index_; }
   size_t GetMaxArpPacketLength() { return ArpClient::kMaxArpPacketLength; }
   int GetSocket() { return client_.socket_; }
@@ -216,13 +216,13 @@ TEST_F(ArpClientTest, Receive) {
     EXPECT_CALL(log,
         Log(logging::LOG_ERROR, _,
             HasSubstr("Socket recvfrom failed"))).Times(1);
-    EXPECT_FALSE(client_.ReceiveReply(&reply, &sender));
+    EXPECT_FALSE(client_.ReceivePacket(&reply, &sender));
 
     // RecvFrom returns an empty response which fails to parse.
     EXPECT_CALL(log,
         Log(logging::LOG_ERROR, _,
-            HasSubstr("Failed to parse ARP reply"))).Times(1);
-    EXPECT_FALSE(client_.ReceiveReply(&reply, &sender));
+            HasSubstr("Failed to parse ARP packet"))).Times(1);
+    EXPECT_FALSE(client_.ReceivePacket(&reply, &sender));
 
     ArpPacket packet;
     SetupValidPacket(&packet);
@@ -234,7 +234,7 @@ TEST_F(ArpClientTest, Receive) {
     static const uint8_t kSenderBytes[] = { 0xa, 0xb, 0xc, 0xd, 0xe, 0xf };
     memcpy(&recvfrom_sender_.sll_addr, kSenderBytes, sizeof(kSenderBytes));
     recvfrom_sender_.sll_halen = sizeof(kSenderBytes);
-    EXPECT_TRUE(client_.ReceiveReply(&reply, &sender));
+    EXPECT_TRUE(client_.ReceivePacket(&reply, &sender));
     EXPECT_TRUE(reply.local_ip_address().Equals(packet.local_ip_address()));
     EXPECT_TRUE(reply.local_mac_address().Equals(packet.local_mac_address()));
     EXPECT_TRUE(reply.remote_ip_address().Equals(packet.remote_ip_address()));

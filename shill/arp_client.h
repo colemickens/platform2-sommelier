@@ -23,18 +23,22 @@ class ArpClient {
   explicit ArpClient(int interface_index);
   virtual ~ArpClient();
 
-  // Create a socket for tranmission and reception.  Returns true
-  // if successful, false otherwise.
-  virtual bool Start();
+  // Create a socket for reception of ARP replies, and packet trasmission.
+  // Returns true if successful, false otherwise.
+  virtual bool StartReplyListener();
+
+  // Create a socket for reception of ARP requests, and packet trasmission.
+  // Returns true if successful, false otherwise.
+  virtual bool StartRequestListener();
 
   // Destroy the client socket.
   virtual void Stop();
 
-  // Receive an ARP reply and parse its contents into |packet|.  Also
-  // return the sender's MAC address (which may be different from the
+  // Receive an ARP request or reply and parse its contents into |packet|.
+  // Also return the sender's MAC address (which may be different from the
   // MAC address in the ARP response) in |sender|.  Returns true on
   // succes, false otherwise.
-  virtual bool ReceiveReply(ArpPacket *packet, ByteString *sender) const;
+  virtual bool ReceivePacket(ArpPacket *packet, ByteString *sender) const;
 
   // Send a formatted ARP request from |packet|.  Returns true on
   // success, false otherwise.
@@ -51,7 +55,9 @@ class ArpClient {
   // The largest packet we expect to receive as an ARP client.
   static const size_t kMaxArpPacketLength;
 
-  bool CreateSocket();
+  // Start an ARP listener that listens for |arp_opcode| ARP packets.
+  bool Start(uint16_t arp_opcode);
+  bool CreateSocket(uint16_t arp_opcode);
 
   const int interface_index_;
   scoped_ptr<Sockets> sockets_;

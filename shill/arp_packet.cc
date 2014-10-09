@@ -16,7 +16,8 @@ namespace shill {
 const size_t ArpPacket::kMinPayloadSize = ETH_ZLEN - ETH_HLEN;
 
 ArpPacket::ArpPacket()
-    : local_ip_address_(IPAddress::kFamilyUnknown),
+    : operation_(0),
+      local_ip_address_(IPAddress::kFamilyUnknown),
       remote_ip_address_(IPAddress::kFamilyUnknown) {}
 
 ArpPacket::ArpPacket(
@@ -49,7 +50,7 @@ ArpPacket::~ArpPacket() {}
 // +-----------------------------------------------------------------------+
 // | Target IP Address (of length "Protocol Length")...                    |
 // +-----------------------------------------------------------------------+
-bool ArpPacket::ParseReply(const ByteString &packet) {
+bool ArpPacket::Parse(const ByteString &packet) {
   arphdr header;
   if (packet.GetLength() < sizeof(header)) {
     LOG(ERROR) << "Packet size " << packet.GetLength()
@@ -89,8 +90,8 @@ bool ArpPacket::ParseReply(const ByteString &packet) {
     return false;
   }
   const uint16_t operation = ntohs(header.ar_op);
-  if (operation != ARPOP_REPLY) {
-    NOTIMPLEMENTED() << "Packet is not an ARP reply but of type "
+  if (operation != ARPOP_REPLY && operation != ARPOP_REQUEST) {
+    NOTIMPLEMENTED() << "Packet is not an ARP reply or request but of type "
                      << operation;
     return false;
   }
@@ -104,6 +105,7 @@ bool ArpPacket::ParseReply(const ByteString &packet) {
                      << min_packet_size;
     return false;
   }
+  operation_ = operation;
   local_mac_address_ = packet.GetSubstring(sizeof(header), ETH_ALEN);
   local_ip_address_ = IPAddress(family, packet.GetSubstring(
       sizeof(header) + ETH_ALEN, ip_address_length));
@@ -164,6 +166,10 @@ bool ArpPacket::FormatRequest(ByteString *packet) const {
   }
 
   return true;
+}
+
+bool ArpPacket::IsReply() const {
+  return operation_ == ARPOP_REPLY;
 }
 
 }  // namespace shill

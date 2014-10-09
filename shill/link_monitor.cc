@@ -154,7 +154,7 @@ string LinkMonitor::HardwareAddressToString(const ByteString &address) {
 bool LinkMonitor::CreateClient() {
   arp_client_.reset(new ArpClient(connection_->interface_index()));
 
-  if (!arp_client_->Start()) {
+  if (!arp_client_->StartReplyListener()) {
     return false;
   }
   SLOG(Link, 4) << "Created ARP client; listening on socket "
@@ -215,7 +215,12 @@ void LinkMonitor::ReceiveResponse(int fd) {
   SLOG(Link, 2) << "In " << __func__ << ".";
   ArpPacket packet;
   ByteString sender;
-  if (!arp_client_->ReceiveReply(&packet, &sender)) {
+  if (!arp_client_->ReceivePacket(&packet, &sender)) {
+    return;
+  }
+
+  if (!packet.IsReply()) {
+    SLOG(Link, 4) << "This is not a reply packet.  Ignoring.";
     return;
   }
 

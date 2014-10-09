@@ -4,6 +4,8 @@
 
 #include "shill/link_monitor.h"
 
+#include <net/if_arp.h>
+
 #include <string>
 
 #include <base/bind.h>
@@ -283,28 +285,32 @@ class LinkMonitorTest : public Test {
   void ReportResume() {
     monitor_.OnAfterResume();
   }
-  bool SimulateReceiveReply(ArpPacket *packet, ByteString *sender) {
+  bool SimulateReceivePacket(ArpPacket *packet, ByteString *sender) {
+    packet->set_operation(rx_packet_.operation());
     packet->set_local_ip_address(rx_packet_.local_ip_address());
     packet->set_remote_ip_address(rx_packet_.remote_ip_address());
     packet->set_local_mac_address(rx_packet_.local_mac_address());
     packet->set_remote_mac_address(rx_packet_.remote_mac_address());
     return true;
   }
-  void ReceiveResponse(const IPAddress &local_ip,
+  void ReceiveResponse(uint16_t operation,
+                       const IPAddress &local_ip,
                        const ByteString &local_mac,
                        const IPAddress &remote_ip,
                        const ByteString &remote_mac) {
+    rx_packet_.set_operation(operation);
     rx_packet_.set_local_ip_address(local_ip);
     rx_packet_.set_local_mac_address(local_mac);
     rx_packet_.set_remote_ip_address(remote_ip);
     rx_packet_.set_remote_mac_address(remote_mac);
 
-    EXPECT_CALL(*client_, ReceiveReply(_, _))
-        .WillOnce(Invoke(this, &LinkMonitorTest::SimulateReceiveReply));
+    EXPECT_CALL(*client_, ReceivePacket(_, _))
+        .WillOnce(Invoke(this, &LinkMonitorTest::SimulateReceivePacket));
     monitor_.ReceiveResponse(0);
   }
   void ReceiveCorrectResponse() {
-    ReceiveResponse(gateway_ip_, gateway_mac_, local_ip_, local_mac_);
+    ReceiveResponse(ARPOP_REPLY, gateway_ip_, gateway_mac_,
+                    local_ip_, local_mac_);
   }
   void RunUnicastResponseCycle(int cycle_count,
                                bool should_respond_to_unicast_probes,
@@ -453,17 +459,25 @@ TEST_F(LinkMonitorTest, ReplyReception) {
 
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("not for our IP"))).Times(1);
-  ReceiveResponse(gateway_ip_, gateway_mac_, gateway_ip_, local_mac_);
+  ReceiveResponse(ARPOP_REPLY, gateway_ip_, gateway_mac_,
+                  gateway_ip_, local_mac_);
   Mock::VerifyAndClearExpectations(&log);
 
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("not for our MAC"))).Times(1);
-  ReceiveResponse(gateway_ip_, gateway_mac_, local_ip_, gateway_mac_);
+  ReceiveResponse(ARPOP_REPLY, gateway_ip_, gateway_mac_,
+                  local_ip_, gateway_mac_);
   Mock::VerifyAndClearExpectations(&log);
 
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("not from the gateway"))).Times(1);
-  ReceiveResponse(local_ip_, gateway_mac_, local_ip_, local_mac_);
+  ReceiveResponse(ARPOP_REPLY, local_ip_, gateway_mac_, local_ip_, local_mac_);
+  Mock::VerifyAndClearExpectations(&log);
+
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(_, _, HasSubstr("This is not a reply packet"))).Times(1);
+  ReceiveResponse(ARPOP_REQUEST, gateway_ip_, gateway_mac_,
+                  local_ip_, local_mac_);
   Mock::VerifyAndClearExpectations(&log);
 
   EXPECT_TRUE(GetArpClient());

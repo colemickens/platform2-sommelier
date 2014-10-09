@@ -21,10 +21,13 @@ class ArpPacket {
   virtual ~ArpPacket();
 
   // Parse a payload and save to local parameters.
-  bool ParseReply(const ByteString &packet);
+  bool Parse(const ByteString &packet);
 
   // Output a payload from local parameters.
   bool FormatRequest(ByteString *packet) const;
+
+  // Returns true if this packet is an ARP response.
+  bool IsReply() const;
 
   // Getters and seters.
   const IPAddress &local_ip_address() const { return local_ip_address_; }
@@ -47,6 +50,11 @@ class ArpPacket {
     remote_mac_address_ = address;
   }
 
+  uint16_t operation() const { return operation_; }
+  void set_operation(uint16_t operation) {
+    operation_ = operation;
+  }
+
  private:
   friend class ArpPacketTest;
 
@@ -54,6 +62,7 @@ class ArpPacket {
   // smallest valid Ethernet frame.
   static const size_t kMinPayloadSize;
 
+  uint16_t operation_;
   IPAddress local_ip_address_;
   IPAddress remote_ip_address_;
   ByteString local_mac_address_;

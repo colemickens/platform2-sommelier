@@ -31,8 +31,16 @@ ArpClient::ArpClient(int interface_index)
 
 ArpClient::~ArpClient() {}
 
-bool ArpClient::Start() {
-  if (!CreateSocket()) {
+bool ArpClient::StartReplyListener() {
+  return Start(ARPOP_REPLY);
+}
+
+bool ArpClient::StartRequestListener() {
+  return Start(ARPOP_REQUEST);
+}
+
+bool ArpClient::Start(uint16_t arp_opcode) {
+  if (!CreateSocket(arp_opcode)) {
     LOG(ERROR) << "Could not open ARP socket.";
     Stop();
     return false;
@@ -45,7 +53,7 @@ void ArpClient::Stop() {
 }
 
 
-bool ArpClient::CreateSocket() {
+bool ArpClient::CreateSocket(uint16_t arp_opcode) {
   int socket = sockets_->Socket(PF_PACKET, SOCK_DGRAM, htons(ETHERTYPE_ARP));
   if (socket == -1) {
     PLOG(ERROR) << "Could not create ARP socket";
@@ -54,11 +62,11 @@ bool ArpClient::CreateSocket() {
   socket_ = socket;
   socket_closer_.reset(new ScopedSocketCloser(sockets_.get(), socket_));
 
-  // Create a packet filter incoming ARP replies.
+  // Create a packet filter incoming ARP packets.
   static const sock_filter arp_reply_filter[] = {
-    // If we a packet contains ARPOP_REPLY as the ARP opcode...
+    // If a packet contains the ARP opcode we are looking for...
     BPF_STMT(BPF_LD | BPF_H | BPF_ABS, kArpOpOffset),
-    BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, ARPOP_REPLY, 0, 1),
+    BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, arp_opcode, 0, 1),
     // Return the the packet (up to largest expected packet size).
     BPF_STMT(BPF_RET | BPF_K, kMaxArpPacketLength),
     // Otherwise, drop it.
@@ -94,7 +102,7 @@ bool ArpClient::CreateSocket() {
   return true;
 }
 
-bool ArpClient::ReceiveReply(ArpPacket *packet, ByteString *sender) const {
+bool ArpClient::ReceivePacket(ArpPacket *packet, ByteString *sender) const {
   ByteString payload(kMaxArpPacketLength);
   sockaddr_ll socket_address;
   memset(&socket_address, 0, sizeof(socket_address));
@@ -112,8 +120,8 @@ bool ArpClient::ReceiveReply(ArpPacket *packet, ByteString *sender) const {
   }
 
   payload.Resize(result);
-  if (!packet->ParseReply(payload)) {
-    LOG(ERROR) << "Failed to parse ARP reply.";
+  if (!packet->Parse(payload)) {
+    LOG(ERROR) << "Failed to parse ARP packet.";
     return false;
   }
 
