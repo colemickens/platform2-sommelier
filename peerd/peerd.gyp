@@ -60,6 +60,7 @@
             'dbus_data_serialization_unittest.cc',
             'discovered_peer_unittest.cc',
             'manager_unittest.cc',
+            'peer_manager_impl_unittest.cc',
             'peer_unittest.cc',
             'published_peer_unittest.cc',
             'peerd_testrunner.cc',
