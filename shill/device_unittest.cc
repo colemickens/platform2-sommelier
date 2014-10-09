@@ -1294,6 +1294,7 @@ class DevicePortalDetectionTest : public DeviceTest {
   void InvokeConfigDNSResultCallback(DNSServerTester::Status status) {
     device_->ConfigDNSResultCallback(status);
   }
+  void DestroyConnection() { device_->DestroyConnection(); }
   scoped_refptr<MockConnection> connection_;
   StrictMock<MockManager> manager_;
   scoped_refptr<MockService> service_;
@@ -1857,6 +1858,46 @@ TEST_F(DevicePortalDetectionTest, ConfigDNSResultCallback) {
   Mock::VerifyAndClearExpectations(service_.get());
   Mock::VerifyAndClearExpectations(connection_.get());
   Mock::VerifyAndClearExpectations(ipconfig);
+}
+
+TEST_F(DevicePortalDetectionTest, DestroyConnection) {
+  scoped_refptr<MockConnection> connection =
+      new NiceMock<MockConnection>(&device_info_);
+  // This test holds a single reference to the mock connection.
+  EXPECT_TRUE(connection->HasOneRef());
+
+  SetConnection(connection);
+
+  EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*service_.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_.get(), HasProxyConfig())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*service_.get(), IsPortalDetectionAuto())
+      .WillOnce(Return(true));
+  EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
+      .WillOnce(Return(true));
+  const string portal_url(ConnectivityTrial::kDefaultURL);
+  EXPECT_CALL(manager_, GetPortalCheckURL())
+      .WillRepeatedly(ReturnRef(portal_url));
+  const string kInterfaceName("int0");
+  EXPECT_CALL(*connection.get(), interface_name())
+      .WillRepeatedly(ReturnRef(kInterfaceName));
+  EXPECT_CALL(*connection.get(), IsIPv6())
+      .WillRepeatedly(Return(false));
+  const vector<string> kDNSServers;
+  EXPECT_CALL(*connection.get(), dns_servers())
+      .WillRepeatedly(ReturnRef(kDNSServers));
+
+  EXPECT_TRUE(device_->StartConnectivityTest());
+  EXPECT_TRUE(StartPortalDetection());
+
+  // Ensure that the DestroyConnection method removes all connection references
+  // except the one left in this scope.
+  EXPECT_CALL(*service_.get(), SetConnection(IsNullRefPtr()));
+  DestroyConnection();
+  EXPECT_TRUE(connection->HasOneRef());
 }
 
 class DeviceByteCountTest : public DeviceTest {

@@ -527,6 +527,7 @@ void Device::IPv6DNSServerExpired() {
 void Device::StopAllActivities() {
   StopTrafficMonitor();
   StopPortalDetection();
+  StopConnectivityTest();
   StopLinkMonitor();
   StopDNSTest();
   StopIPv6DNSServerTimer();
@@ -1030,6 +1031,12 @@ bool Device::StartConnectivityTest() {
                                                 connection_tester_callback_));
   connection_tester_->Start();
   return true;
+}
+
+void Device::StopConnectivityTest() {
+  SLOG(Device, 2) << "Device " << FriendlyName()
+                  << ": Connectivity test stopping.";
+  connection_tester_.reset();
 }
 
 void Device::set_link_monitor(LinkMonitor *link_monitor) {

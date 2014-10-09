@@ -467,6 +467,9 @@ class Device : public base::RefCounted<Device> {
   // Stop portal detection if it is running.
   void StopPortalDetection();
 
+  // Stop connectivity tester if it exists.
+  void StopConnectivityTest();
+
   // Initiate link monitoring, if enabled for this device type.
   bool StartLinkMonitor();
 
