@@ -13,7 +13,17 @@
       'target_name': 'privetd_common',
       'type': 'static_library',
       'sources': [
-        # Main source files will go here...
+        'cloud_delegate.cc',
+        'cloud_delegate.h',
+        'device_delegate.cc',
+        'device_delegate.h',
+        'privet_handler.cc',
+        'privet_handler.h',
+        'privet_handler.h',
+        'security_delegate.cc',
+        'security_delegate.h',
+        'wifi_delegate.cc',
+        'wifi_delegate.h',
       ],
     },
     {
@@ -50,7 +60,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'privetd_testrunner.cc',
-            # Unit test source files will go here...
+            'privet_handler_unittest.cc',
           ],
         },
       ],
