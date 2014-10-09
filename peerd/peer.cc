@@ -13,6 +13,8 @@
 #include "peerd/dbus_constants.h"
 #include "peerd/typedefs.h"
 
+using base::Time;
+using base::TimeDelta;
 using chromeos::Error;
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::DBusInterface;
@@ -72,7 +74,7 @@ bool Peer::RegisterAsync(
     const std::string& uuid,
     const std::string& friendly_name,
     const std::string& note,
-    const base::Time& last_seen,
+    const Time& last_seen,
     const CompletionAction& completion_callback) {
   if (!base::IsValidGUID(uuid)) {
     Error::AddTo(error, kPeerdErrorDomain, errors::peer::kInvalidUUID,
@@ -93,50 +95,23 @@ bool Peer::RegisterAsync(
 
 bool Peer::SetFriendlyName(chromeos::ErrorPtr* error,
                            const string& friendly_name) {
-  if (friendly_name.length() > kMaxFriendlyNameLength) {
-    Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidName,
-                       "Bad length for %s: %" PRIuS,
-                       kPeerFriendlyName, friendly_name.length());
-    return false;
-  }
-  if (!base::ContainsOnlyChars(friendly_name, kValidFriendlyNameCharacters)) {
-    Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidName,
-                       "Invalid characters in %s.", kPeerFriendlyName);
-    return false;
-  }
+  if (!IsValidFriendlyName(error, friendly_name)) { return false; }
   name_.SetValue(friendly_name);
   return true;
 }
 
 bool Peer::SetNote(chromeos::ErrorPtr* error, const string& note) {
-  if (note.length() > kMaxNoteLength) {
-    Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidNote,
-                       "Bad length for %s: %" PRIuS,
-                       kPeerNote, note.length());
-    return false;
-  }
-  if (!base::ContainsOnlyChars(note, kValidNoteCharacters)) {
-    Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidNote,
-                       "Invalid characters in %s.", kPeerNote);
-    return false;
-  }
+  if (!IsValidNote(error, note)) { return false; }
   note_.SetValue(note);
   return true;
 }
 
-bool Peer::SetLastSeen(chromeos::ErrorPtr* error, const base::Time& last_seen) {
-  int64_t time_diff = (last_seen - base::Time::UnixEpoch()).InMilliseconds();
-  if (time_diff < 0) {
-    Error::AddTo(error, kPeerdErrorDomain, errors::peer::kInvalidTime,
-                 "Negative time update is invalid.");
+bool Peer::SetLastSeen(chromeos::ErrorPtr* error, const Time& last_seen) {
+  if (!IsValidUpdateTime(error, last_seen)) {
     return false;
   }
-  uint64_t milliseconds_since_epoch = static_cast<uint64_t>(time_diff);
-  if (milliseconds_since_epoch < last_seen_.value()) {
-    Error::AddTo(error, kPeerdErrorDomain, errors::peer::kInvalidTime,
-                 "Discarding update to last seen time as stale.");
-    return false;
-  }
+  uint64_t milliseconds_since_epoch = 0;
+  CHECK(TimeToMillisecondsSinceEpoch(last_seen, &milliseconds_since_epoch));
   last_seen_.SetValue(milliseconds_since_epoch);
   return true;
 }
@@ -151,6 +126,58 @@ std::string Peer::GetFriendlyName() const {
 
 std::string Peer::GetNote() const {
   return note_.value();
+}
+
+Time Peer::GetLastSeen() const {
+  return TimeDelta::FromMilliseconds(last_seen_.value()) + Time::UnixEpoch();
+}
+
+bool Peer::IsValidFriendlyName(chromeos::ErrorPtr* error,
+                               const std::string& friendly_name) const {
+  if (friendly_name.length() > kMaxFriendlyNameLength) {
+    Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidName,
+                       "Bad length for %s: %" PRIuS,
+                       kPeerFriendlyName, friendly_name.length());
+    return false;
+  }
+  if (!base::ContainsOnlyChars(friendly_name, kValidFriendlyNameCharacters)) {
+    Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidName,
+                       "Invalid characters in %s.", kPeerFriendlyName);
+    return false;
+  }
+  return true;
+}
+
+bool Peer::IsValidNote(chromeos::ErrorPtr* error,
+                       const std::string& note) const {
+  if (note.length() > kMaxNoteLength) {
+    Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidNote,
+                       "Bad length for %s: %" PRIuS,
+                       kPeerNote, note.length());
+    return false;
+  }
+  if (!base::ContainsOnlyChars(note, kValidNoteCharacters)) {
+    Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidNote,
+                       "Invalid characters in %s.", kPeerNote);
+    return false;
+  }
+  return true;
+}
+
+bool Peer::IsValidUpdateTime(chromeos::ErrorPtr* error,
+                             const base::Time& last_seen) const {
+  uint64_t milliseconds_since_epoch = 0;
+  if (!TimeToMillisecondsSinceEpoch(last_seen, &milliseconds_since_epoch)) {
+    Error::AddTo(error, kPeerdErrorDomain, errors::peer::kInvalidTime,
+                 "Negative time update is invalid.");
+    return false;
+  }
+  if (milliseconds_since_epoch < last_seen_.value()) {
+    Error::AddTo(error, kPeerdErrorDomain, errors::peer::kInvalidTime,
+                 "Discarding update to last seen time as stale.");
+    return false;
+  }
+  return true;
 }
 
 bool Peer::AddService(chromeos::ErrorPtr* error,
@@ -185,6 +212,15 @@ bool Peer::RemoveService(chromeos::ErrorPtr* error,
                  "Unknown service id.");
     return false;
   }
+  return true;
+}
+
+bool Peer::TimeToMillisecondsSinceEpoch(const Time& time, uint64_t* ret) const {
+  int64_t time_diff = (time - Time::UnixEpoch()).InMilliseconds();
+  if (time_diff < 0) {
+    return false;
+  }
+  *ret = static_cast<uint64_t>(time_diff);
   return true;
 }
 

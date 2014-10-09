@@ -63,6 +63,12 @@ class Service {
   const IpAddresses& GetIpAddresses() const;
   const ServiceInfo& GetServiceInfo() const;
 
+  // Update fields of this service.  If any field is found to be invalid, the
+  // entire update is discarded.  Returns true if update is applied.
+  bool Update(chromeos::ErrorPtr* error,
+              const IpAddresses& addresses,
+              const ServiceInfo& info);
+
  private:
   static bool IsValidServiceId(chromeos::ErrorPtr* error,
                                const std::string& service_id);

@@ -55,6 +55,7 @@ class Peer {
   virtual std::string GetUUID() const;
   virtual std::string GetFriendlyName() const;
   virtual std::string GetNote() const;
+  virtual base::Time GetLastSeen() const;
   // Returns false on failure.
   virtual bool SetFriendlyName(chromeos::ErrorPtr* error,
                                const std::string& friendly_name);
@@ -77,9 +78,17 @@ class Peer {
   virtual bool RemoveService(chromeos::ErrorPtr* error,
                              const std::string& service_id);
 
+  bool IsValidFriendlyName(chromeos::ErrorPtr* error,
+                           const std::string& friendly_name) const;
+  bool IsValidNote(chromeos::ErrorPtr* error,
+                   const std::string& note) const;
+  bool IsValidUpdateTime(chromeos::ErrorPtr* error,
+                         const base::Time& last_seen) const;
   std::map<std::string, std::unique_ptr<Service>> services_;
 
  private:
+  bool TimeToMillisecondsSinceEpoch(const base::Time& time,
+                                    uint64_t* ret) const;
   scoped_refptr<dbus::Bus> bus_;
   size_t services_added_{0};
   chromeos::dbus_utils::ExportedProperty<std::string> uuid_;

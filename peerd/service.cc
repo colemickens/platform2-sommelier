@@ -87,6 +87,17 @@ const Service::ServiceInfo& Service::GetServiceInfo() const {
   return service_info_.value();
 }
 
+bool Service::Update(chromeos::ErrorPtr* error,
+                     const IpAddresses& addresses,
+                     const ServiceInfo& info) {
+  if (!IsValidServiceInfo(error, info)) {
+    return false;
+  }
+  ip_addresses_.SetValue(addresses);
+  service_info_.SetValue(info);
+  return true;
+}
+
 bool Service::IsValidServiceId(chromeos::ErrorPtr* error,
                                const std::string& service_id) {
   // From RFC 6335 (mDNS service names):
