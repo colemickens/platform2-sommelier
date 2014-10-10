@@ -17,6 +17,7 @@
         'libbuffet/command.cc',
         'libbuffet/command_listener.cc',
         'libbuffet/dbus_constants.cc',
+        'libbuffet/private/command_property_set.cc',
       ],
       'includes': ['../common-mk/deps.gypi'],
     },

@@ -16,8 +16,6 @@
 
 namespace dbus {
 // Specialize dbus::Property for chromeos::VariantDictionary type.
-template class Property<chromeos::VariantDictionary>;
-
 template <>
 inline bool Property<chromeos::VariantDictionary>::PopValueFromReader(
     MessageReader* reader) {
@@ -29,6 +27,8 @@ inline void Property<chromeos::VariantDictionary>::AppendSetValueToWriter(
     MessageWriter* writer) {
   chromeos::dbus_utils::AppendValueToWriterAsVariant(writer, set_value_);
 }
+
+extern template class Property<chromeos::VariantDictionary>;
 }  // namespace dbus
 
 namespace buffet {
