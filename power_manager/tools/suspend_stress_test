@@ -21,8 +21,8 @@ DEFINE_boolean memory_check ${FLAGS_FALSE} "Use memory_suspend_test to suspend"
 # Minimum value for --suspend_min when --memory_check is true.
 MEMORY_TEST_SUSPEND_MIN_DELAY=10
 
-get_failed_count() {
-  awk '$1 == "fail:" { print $2 }' /sys/kernel/debug/suspend_stats
+get_success_count() {
+  awk '$1 == "success:" { print $2 }' /sys/kernel/debug/suspend_stats
 }
 
 random() {
@@ -65,8 +65,8 @@ dump_stats_and_exit() {
   restore_dark_resume_state
   echo ""
   echo "Finished ${cur} iterations."
-  echo "Suspend_failures: $(( $(get_failed_count) - ${initial_failed} ))"
-  echo "Suspend command failures: ${suspend_cmd_failures}"
+  echo "Suspend_failures: $(( ${cur} -
+                              ($(get_success_count) - ${initial_successes}) ))"
   echo "Firmware log errors: ${firmware_errors}"
   exit 0
 }
@@ -112,7 +112,7 @@ echo "  warnings fatal:  $(boolean_value ${FLAGS_warn_fatal})"
 echo "  crcs fatal:  $(boolean_value ${FLAGS_crc_fatal})"
 echo "  suspend command: ${suspend_cmd}"
 
-initial_failed=$(get_failed_count)
+initial_successes=$(get_success_count)
 suspend_interval=$(( FLAGS_suspend_max - FLAGS_suspend_min + 1 ))
 wake_interval=$(( FLAGS_wake_max - FLAGS_wake_min + 1 ))
 preserved_pm_print_times=$(cat /sys/power/pm_print_times)
@@ -124,8 +124,7 @@ disable_dark_resume
 
 cur=0
 firmware_errors=0
-last_failed=${initial_failed}
-suspend_cmd_failures=0
+last_successes=${initial_successes}
 exit_loop=0
 
 while true; do
@@ -134,6 +133,7 @@ while true; do
 
   sus_time=$(( ( $(random) % suspend_interval ) + FLAGS_suspend_min ))
   printf "sleep for %2d seconds..." ${sus_time}
+  wakeup_count=$(cat /sys/power/wakeup_count)
   echo 0 > /sys/class/rtc/rtc0/wakealarm
   echo "+${sus_time}" > /sys/class/rtc/rtc0/wakealarm
   if [ ${FLAGS_backup_rtc} -eq ${FLAGS_TRUE} ]; then
@@ -141,13 +141,7 @@ while true; do
     echo "+$(( sus_time + 5 ))" > /sys/class/rtc/rtc1/wakealarm
   fi
 
-  if ! eval $suspend_cmd; then
-    echo "Suspend command failed"
-    : $(( suspend_cmd_failures += 1))
-    if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
-      exit_loop=1
-    fi
-  fi
+  eval "$suspend_cmd --wakeup_count=${wakeup_count}"
 
   # Look for errors in firmware log.
   # Exempt a specific error string in Coreboot that is not a real error.
@@ -162,15 +156,16 @@ while true; do
     fi
   fi
   # Make sure suspend succeeded
-  cur_failed=$(get_failed_count)
-  if [ ${cur_failed} -gt ${last_failed} ]; then
+  cur_successes=$(get_success_count)
+  if [ ${cur_successes} -eq ${last_successes} ]; then
     if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
       echo "Suspend failed."
       exit_loop=1
+    else
+      printf "(suspend failed, ignoring)"
     fi
-    printf "(suspend failed, ignoring)"
-    last_failed=${cur_failed}
   fi
+  last_successes=${cur_successes}
   # For BUG and CRC errors counting existing occurrences in dmesg
   # is not that useful as dmesg will wrap so we would need to account
   # for the count shrinking over time.
