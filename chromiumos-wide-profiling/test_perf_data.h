@@ -25,8 +25,8 @@ class ExamplePerfDataFileHeader : public StreamWriteable {
                                      const unsigned long features);  // NOLINT
 
   const perf_file_header &header() const { return header_; }
-  const size_t data_end() const {
-    return header_.data.offset + header_.data.size; }
+  const ssize_t data_end() const {
+    return static_cast<ssize_t>(header_.data.offset + header_.data.size); }
 
   void WriteTo(std::ostream* out) const override;
 

@@ -15,7 +15,7 @@ namespace testing {
 
 ExamplePerfDataFileHeader::ExamplePerfDataFileHeader(
     const size_t attr_count, const unsigned long features) {  // NOLINT
-  CHECK_EQ(96, sizeof(perf_file_attr)) << "perf_file_attr has changed size!";
+  CHECK_EQ(96U, sizeof(perf_file_attr)) << "perf_file_attr has changed size!";
   const size_t attrs_size = attr_count * sizeof(perf_file_attr);
   header_ = {
     .magic = kPerfMagic,
@@ -30,8 +30,8 @@ ExamplePerfDataFileHeader::ExamplePerfDataFileHeader(
 
 void ExamplePerfDataFileHeader::WriteTo(std::ostream* out) const {
   out->write(reinterpret_cast<const char*>(&header_), sizeof(header_));
-  CHECK_EQ(out->tellp(), header_.size);
-  CHECK_EQ(out->tellp(), header_.attrs.offset);
+  CHECK_EQ(static_cast<u64>(out->tellp()), header_.size);
+  CHECK_EQ(static_cast<u64>(out->tellp()), header_.attrs.offset);
 }
 
 void ExamplePerfFileAttr_Tracepoint::WriteTo(std::ostream* out) const {
@@ -96,9 +96,10 @@ const std::vector<char> ExampleTracingMetadata::Data::kTraceMetadata(
 
 void ExampleTracingMetadata::Data::WriteTo(std::ostream* out) const {
   const perf_file_section &index_entry = parent_->index_entry_.index_entry_;
-  CHECK_EQ(out->tellp(), index_entry.offset);
+  CHECK_EQ(static_cast<u64>(out->tellp()), index_entry.offset);
   out->write(kTraceMetadata.data(), kTraceMetadata.size());
-  CHECK_EQ(out->tellp(), index_entry.offset + index_entry.size);
+  CHECK_EQ(static_cast<u64>(out->tellp()),
+           index_entry.offset + index_entry.size);
 }
 
 }  // namespace testing

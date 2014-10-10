@@ -291,7 +291,7 @@ TEST(PerfReaderTest, ReadsTraceMetadata) {
   testing::ExamplePerfFileAttr_Tracepoint(73).WriteTo(&input);
 
   // data
-  ASSERT_EQ(input.tellp(), header.data.offset);
+  ASSERT_EQ(static_cast<u64>(input.tellp()), header.data.offset);
   testing::ExamplePerfSampleEvent_Tracepoint().WriteTo(&input);
   ASSERT_EQ(input.tellp(), file_header.data_end());
 

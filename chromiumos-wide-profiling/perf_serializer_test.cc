@@ -395,9 +395,9 @@ TEST(PerfSerializerTest, SerializesAndDeserializesTraceMetadata) {
   // attrs
   testing::ExamplePerfFileAttr_Tracepoint(73).WriteTo(&input);
   // data
-  CHECK_EQ(input.tellp(), header.data.offset);
+  ASSERT_EQ(static_cast<u64>(input.tellp()), header.data.offset);
   testing::ExamplePerfSampleEvent_Tracepoint().WriteTo(&input);
-  CHECK_EQ(input.tellp(), file_header.data_end());
+  ASSERT_EQ(input.tellp(), file_header.data_end());
   // metadata
   const unsigned int metadata_count = 1;
   // HEADER_TRACING_DATA
