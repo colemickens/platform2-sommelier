@@ -23,7 +23,7 @@ GobiModem* GobiModemFactory::CreateModem(DBus::Connection& connection,
   ULONG rc = sdk->QCWWANConnect(device.deviceNode, device.deviceKey);
   if (rc != 0) {
     LOG(ERROR) << "CreateModem: QCWWANConnect() failed: " << rc;
-    return NULL;
+    return nullptr;
   }
 
   ULONG firmware_id;
@@ -39,7 +39,7 @@ GobiModem* GobiModemFactory::CreateModem(DBus::Connection& connection,
   if (rc != 0) {
     LOG(ERROR) << "CreateModem: cannot get firmware info: " << rc;
     (void)sdk->QCWWANDisconnect();
-    return NULL;
+    return nullptr;
   }
   GobiType devtype = GetDeviceType();
   std::unique_ptr<GobiModemHelper> helper;
@@ -53,10 +53,10 @@ GobiModem* GobiModemFactory::CreateModem(DBus::Connection& connection,
     default:
       LOG(ERROR) << "CreateModem: cannot get device type: " << devtype;
       (void)sdk->QCWWANDisconnect();
-      return NULL;
+      return nullptr;
   }
 
-  GobiModem *modem = NULL;
+  GobiModem *modem = nullptr;
   switch (technology) {
     case gobi::kConfigurationCdma:
       modem = new GobiCdmaModem(connection, path, device, sdk,

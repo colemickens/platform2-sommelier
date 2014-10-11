@@ -126,7 +126,7 @@ int GobiCdmaModem::GetMmActivationState() {
   ULONG carrier_id;
   ULONG region;
   ULONG gps_capability;
-  const Carrier *carrier = NULL;
+  const Carrier *carrier = nullptr;
   rc = sdk_->GetFirmwareInfo(&firmware_id,
                              &technology_id,
                              &carrier_id,
@@ -134,12 +134,12 @@ int GobiCdmaModem::GetMmActivationState() {
                              &gps_capability);
   if (rc == 0) {
     carrier = handler_->server().FindCarrierByCarrierId(carrier_id);
-    if (carrier == NULL)
+    if (!carrier)
       LOG(WARNING) << "Carrier lookup failed for ID " << carrier_id;
   } else {
     LOG(WARNING) << "GetFirmwareInfo failed: " << rc;
   }
-  if (carrier == NULL)
+  if (!carrier)
     return MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
 
   // Is the modem de-activated, or is there an activation in flight?
@@ -193,13 +193,13 @@ static BYTE* GetFileContents(const char* filename, ULONG* num_bytes) {
   fd = open(filename, O_RDONLY);
   if (fd == -1) {
     LOG(WARNING) << "Can't open '" << filename << "': " << strerror(errno);
-    return NULL;
+    return nullptr;
   }
 
   if (fstat(fd, &st) == -1) {
     LOG(WARNING) << "Can't fstat '" << filename << "': " << strerror(errno);
     close(fd);
-    return NULL;
+    return nullptr;
   }
 
   *num_bytes = st.st_size;
@@ -211,7 +211,7 @@ static BYTE* GetFileContents(const char* filename, ULONG* num_bytes) {
                  << "\": " << strerror(errno);
     delete [] buffer;
     close(fd);
-    return NULL;
+    return nullptr;
   }
 
   LOG(INFO) << "Read " << bytes_read << " bytes from file \""
@@ -226,7 +226,7 @@ gboolean GobiCdmaModem::ActivationStatusCallback(gpointer data) {
   LOG(INFO) << "OTASP status callback: " << args->device_activation_state;
   GobiCdmaModem* modem = LookupCdmaModem(handler_, *args->path);
 
-  if (modem != NULL) {
+  if (modem) {
     if (args->device_activation_state == gobi::kActivated ||
         args->device_activation_state == gobi::kNotActivated) {
       modem->ActivationFinished();
@@ -260,7 +260,7 @@ gboolean GobiCdmaModem::OmadmStateDeviceConfigureCallback(gpointer data) {
             << args->session_state;
   GobiCdmaModem* modem = LookupCdmaModem(handler_, *args->path);
   bool activation_done = true;
-  if (modem != NULL) {
+  if (modem) {
     switch (args->session_state) {
       case gobi::kOmadmComplete:
         modem->SendActivationStateChanged(
@@ -283,7 +283,7 @@ gboolean GobiCdmaModem::OmadmStateDeviceConfigureCallback(gpointer data) {
   }
 
   if (activation_done) {
-    modem->sdk_->SetOMADMStateCallback(NULL);
+    modem->sdk_->SetOMADMStateCallback(nullptr);
     modem->ActivationFinished();
   }
 
@@ -317,7 +317,7 @@ gboolean GobiCdmaModem::OmadmStateClientPrlUpdateCallback(gpointer data) {
       break;
   }
   if (done) {
-    modem->sdk_->SetOMADMStateCallback(NULL);
+    modem->sdk_->SetOMADMStateCallback(nullptr);
     modem->activation_in_progress_ = false;
   }
   return FALSE;
@@ -346,7 +346,7 @@ void GobiCdmaModem::RegisterCallbacks() {
   GobiModem::RegisterCallbacks();
   sdk_->SetOMADMAlertCallback(OMADMAlertCallback);
   sdk_->SetActivationStatusCallback(ActivationStatusCallbackTrampoline);
-  sdk_->SetOMADMStateCallback(NULL);
+  sdk_->SetOMADMStateCallback(nullptr);
 }
 
 //======================================================================
@@ -410,13 +410,13 @@ uint32_t GobiCdmaModem::Activate(const std::string& carrier_name,
   const Carrier *carrier;
   if (carrier_name.empty()) {
     carrier = handler_->server().FindCarrierByCarrierId(carrier_id);
-    if (carrier == NULL) {
+    if (!carrier) {
       LOG(ERROR) << "Unknown carrier id: " << carrier_id;
       return MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN;
     }
   } else {
     carrier = handler_->server().FindCarrierByName(carrier_name);
-    if (carrier == NULL) {
+    if (!carrier) {
       LOG(WARNING) << "Unknown carrier: " << carrier_name;
       return MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN;
     }
@@ -465,7 +465,7 @@ uint32_t GobiCdmaModem::Activate(const std::string& carrier_name,
         // ret is set in call above
         break;
       }
-      if (carrier->activation_code() == NULL) {
+      if (carrier->activation_code() == nullptr) {
         LOG(ERROR) << "Number was not supplied for OTASP activation";
         ret = MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN;
         break;
@@ -493,37 +493,37 @@ void GobiCdmaModem::ActivateManual(const DBusPropertyMap& const_properties,
 
   // TODO(rochberg): Does it make sense to set defaults from the
   // modem's current state?
-  const char* spc = NULL;
-  const char* prl_file = NULL;
+  const char* spc = nullptr;
+  const char* prl_file = nullptr;
   uint16_t system_id = 65535;
-  const char* mdn = NULL;
-  const char* min = NULL;
-  const char* mnha = NULL;
-  const char* mnaaa = NULL;
+  const char* mdn = nullptr;
+  const char* min = nullptr;
+  const char* mnha = nullptr;
+  const char* mnaaa = nullptr;
 
   DBusPropertyMap::const_iterator p;
   // try/catch required to cope with dbus-c++'s handling of type
   // mismatches
   try {  // Style guide violation forced by dbus-c++
     spc = ExtractString(properties, "spc", "000000", error);
-    prl_file = ExtractString(properties, "prlfile", NULL, error);
+    prl_file = ExtractString(properties, "prlfile", nullptr, error);
     p = properties.find("system_id");
     if (p != properties.end()) {
       system_id = p->second.reader().get_uint16();
     }
     mdn = ExtractString(properties, "mdn", "",  error);
     min = ExtractString(properties, "min", "", error);
-    mnha = ExtractString(properties, "mnha", NULL, error);
-    mnaaa = ExtractString(properties, "mnaaa", NULL, error);
+    mnha = ExtractString(properties, "mnha", nullptr, error);
+    mnaaa = ExtractString(properties, "mnaaa", nullptr, error);
   } catch (DBus::Error e) {
     error = e;
     return;
   }
-  BYTE* prl = NULL;
+  BYTE* prl = nullptr;
   ULONG prl_size = 0;
-  if (prl_file != NULL) {
+  if (prl_file) {
     prl = GetFileContents(prl_file, &prl_size);
-    if (prl == NULL) {
+    if (!prl) {
       error.set(kActivationError, "PRL file cannot be read");
       return;
     }
@@ -616,14 +616,14 @@ void GobiCdmaModem::StartClientInitiatedPrlUpdate() {
   if (rc != 0) {
     LOG(ERROR) << "OMA-DM client initiated PRL update failed to enable PRL "
                << "update: " << rc;
-    sdk_->SetOMADMStateCallback(NULL);
+    sdk_->SetOMADMStateCallback(nullptr);
     return;
   }
   rc = sdk_->OMADMStartSession(gobi::kPrlUpdate);
   if (rc != 0) {
     LOG(ERROR) << "OMA-DM client initiated PRL update failed to start: "
                << rc;
-    sdk_->SetOMADMStateCallback(NULL);
+    sdk_->SetOMADMStateCallback(nullptr);
   }
 }
 

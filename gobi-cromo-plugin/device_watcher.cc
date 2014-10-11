@@ -26,10 +26,10 @@ static gboolean timeout_event(gpointer data) {
 
 DeviceWatcher::DeviceWatcher(const char* subsystem)
   : subsystem_(subsystem),
-    device_callback_(NULL),
-    timeout_callback_(NULL),
-    udev_(NULL),
-    udev_monitor_(NULL),
+    device_callback_(nullptr),
+    timeout_callback_(nullptr),
+    udev_(nullptr),
+    udev_monitor_(nullptr),
     udev_watch_id_(0),
     timeout_id_(0) {
 }
@@ -39,45 +39,45 @@ DeviceWatcher::~DeviceWatcher() {
 }
 
 void DeviceWatcher::StartMonitoring() {
-  if (udev_ != NULL) {
+  if (udev_) {
     LOG(WARNING) << "StartMonitoring called with monitoring already in effect";
     return;
   }
   udev_ = udev_new();
-  if (udev_ == NULL) {
+  if (!udev_) {
     LOG(WARNING) << "Failed to create udev context";
     return;
   }
   udev_monitor_ = udev_monitor_new_from_netlink(udev_, "udev");
-  if (udev_monitor_ == NULL) {
+  if (!udev_monitor_) {
     LOG(WARNING) << "Failed to create udev monitor";
     udev_unref(udev_);
-    udev_ = NULL;
+    udev_ = nullptr;
     return;
   }
   int rc = udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_,
                                                            subsystem_.c_str(),
-                                                           NULL);
+                                                           nullptr);
   if (rc != 0) {
     LOG(WARNING) << "Failed to add udev_monitor subsystem filter: " << rc;
     udev_monitor_unref(udev_monitor_);
     udev_unref(udev_);
-    udev_ = NULL;
-    udev_monitor_ = NULL;
+    udev_ = nullptr;
+    udev_monitor_ = nullptr;
   }
   rc = udev_monitor_enable_receiving(udev_monitor_);
   if (rc != 0) {
     LOG(WARNING) << "Failed to start udev monitoring: " << rc;
     udev_monitor_unref(udev_monitor_);
     udev_unref(udev_);
-    udev_ = NULL;
-    udev_monitor_ = NULL;
+    udev_ = nullptr;
+    udev_monitor_ = nullptr;
   }
   int fd = udev_monitor_get_fd(udev_monitor_);
 
   GIOChannel* iochan = g_io_channel_unix_new(fd);
-  GError *gerror = NULL;
-  g_io_channel_set_encoding(iochan, NULL, &gerror);
+  GError *gerror = nullptr;
+  g_io_channel_set_encoding(iochan, nullptr, &gerror);
   g_io_channel_set_buffered(iochan, FALSE);
   udev_watch_id_ = g_io_add_watch(iochan, G_IO_IN, udev_event, this);
   g_io_channel_unref(iochan);
@@ -88,14 +88,14 @@ void DeviceWatcher::StopMonitoring() {
     g_source_remove(udev_watch_id_);
     udev_watch_id_ = 0;
   }
-  if (udev_monitor_ != NULL) {
+  if (udev_monitor_) {
     udev_monitor_filter_remove(udev_monitor_);
     udev_monitor_unref(udev_monitor_);
-    udev_monitor_ = NULL;
+    udev_monitor_ = nullptr;
   }
-  if (udev_ != NULL) {
+  if (udev_) {
     udev_unref(udev_);
-    udev_ = NULL;
+    udev_ = nullptr;
   }
 }
 
@@ -125,7 +125,7 @@ static const char *NullFilter(const char *p) {
 void DeviceWatcher::HandleUdevEvent() {
   struct udev_device* device = udev_monitor_receive_device(udev_monitor_);
 
-  if (device == NULL) {
+  if (!device) {
     LOG(WARNING) << "No device from receive_device";
     return;
   }
@@ -135,7 +135,7 @@ void DeviceWatcher::HandleUdevEvent() {
             << "  Subsystem: " << NullFilter(udev_device_get_subsystem(device))
             << "  Devtype: " << NullFilter(udev_device_get_devtype(device))
             << "  Driver: " << NullFilter(udev_device_get_driver(device));
-  if (device_callback_ != NULL) {
+  if (device_callback_) {
     device_callback_(device_callback_arg_,
                      udev_device_get_action(device),
                      udev_device_get_devnode(device));
@@ -144,7 +144,7 @@ void DeviceWatcher::HandleUdevEvent() {
 }
 
 void DeviceWatcher::HandlePollEvent() {
-  if (timeout_callback_ != NULL)
+  if (timeout_callback_)
     timeout_callback_(timeout_callback_arg_);
 }
 

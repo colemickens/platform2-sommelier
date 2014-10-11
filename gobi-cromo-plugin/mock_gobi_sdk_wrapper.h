@@ -34,7 +34,7 @@ namespace gobi {
 
 class ErrorSdk : public gobi::Sdk {
  public:
-  ErrorSdk() : Sdk(NULL), strict_(false) {}
+  ErrorSdk() : Sdk(nullptr), strict_(false) {}
 
   virtual ULONG QCWWANEnumerateDevices(
       BYTE *                     pDevicesSize,

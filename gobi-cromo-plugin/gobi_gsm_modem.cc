@@ -239,7 +239,7 @@ gboolean GobiGsmModem::CheckDataCapabilities(gpointer data) {
   CallbackArgs* args = static_cast<CallbackArgs*>(data);
   GobiGsmModem* modem =
       static_cast<GobiGsmModem *>(handler_->LookupByDbusPath(*args->path));
-  if (modem != NULL)
+  if (modem)
     modem->SendNetworkTechnologySignal(modem->GetMmAccessTechnology());
   return FALSE;
 }
@@ -250,7 +250,7 @@ gboolean GobiGsmModem::NewSmsCallback(gpointer data) {
             << " index " << args->message_index;
   GobiGsmModem* modem =
       static_cast<GobiGsmModem *>(handler_->LookupByDbusPath(*args->path));
-  if (modem == NULL)
+  if (!modem)
     return FALSE;
 
   DBus::Error error;
@@ -420,10 +420,10 @@ bool GobiGsmModem::CheckEnableOk(DBus::Error &error) {
       return false;
   }
   errname = QMIReturnCodeToMMError(error_code);
-  if (errname == NULL)
-    error.set(kPinError, "PIN error");
-  else
+  if (errname)
     error.set(errname, "PIN locked");
+  else
+    error.set(kPinError, "PIN error");
   return false;
 }
 
@@ -753,14 +753,14 @@ SmsMessageFragment* GobiGsmModem::GetSms(int index, DBus::Error& error) {
   size = sizeof(message);
   ULONG rc = sdk_->GetSMS(gobi::kSmsNonVolatileMemory, index,
                           &tag, &format, &size, message);
-  ENSURE_SDK_SUCCESS_WITH_RESULT(GetSMS, rc, kSdkError, NULL);
+  ENSURE_SDK_SUCCESS_WITH_RESULT(GetSMS, rc, kSdkError, nullptr);
 
   LOG(INFO) << "GetSms: " << "tag " << tag << " format " << format
             << " size " << size;
 
   SmsMessageFragment *fragment =
       SmsMessageFragment::CreateFragment(message, size, index);
-  if (fragment == NULL) {
+  if (!fragment) {
     error.set(kInvalidArgumentError, "Couldn't decode PDU");
     LOG(WARNING) << "Couldn't decode PDU";
   }
@@ -769,7 +769,7 @@ SmsMessageFragment* GobiGsmModem::GetSms(int index, DBus::Error& error) {
 
 void GobiGsmModem::DeleteSms(int index, DBus::Error& error) {
   ULONG lindex = index;
-  ULONG rc = sdk_->DeleteSMS(gobi::kSmsNonVolatileMemory, &lindex, NULL);
+  ULONG rc = sdk_->DeleteSMS(gobi::kSmsNonVolatileMemory, &lindex, nullptr);
   ENSURE_SDK_SUCCESS(DeleteSMS, rc, kSdkError);
 }
 
@@ -778,9 +778,9 @@ std::vector<int>* GobiGsmModem::ListSms(DBus::Error& error) {
   ULONG num_items;
 
   num_items = sizeof(items) / (2 * sizeof(items[0]));
-  ULONG rc = sdk_->GetSMSList(gobi::kSmsNonVolatileMemory, NULL, &num_items,
+  ULONG rc = sdk_->GetSMSList(gobi::kSmsNonVolatileMemory, nullptr, &num_items,
                               reinterpret_cast<BYTE*>(items));
-  ENSURE_SDK_SUCCESS_WITH_RESULT(GetSMSList, rc, kSdkError, NULL);
+  ENSURE_SDK_SUCCESS_WITH_RESULT(GetSMSList, rc, kSdkError, nullptr);
   LOG(INFO) << "GetSmsList: got " << num_items << " messages";
 
   std::vector<int>* result = new std::vector<int>();
@@ -822,7 +822,7 @@ std::string GobiGsmModem::GetSmsc(DBus::Error &error) {
 
 void GobiGsmModem::SetSmsc(const std::string& smsc, DBus::Error &error) {
   CHAR *addr = const_cast<CHAR*>(smsc.c_str());
-  ULONG rc = sdk_->SetSMSCAddress(addr, NULL);
+  ULONG rc = sdk_->SetSMSCAddress(addr, nullptr);
   ENSURE_SDK_SUCCESS(GetSMSCAddress, rc, kSdkError);
 }
 

@@ -122,9 +122,9 @@ class SessionStarter {
     for (int count = 0; count < GobiModem::kNumStartDataSessionRetries;
          ++count) {
       return_value_ = sdk_->StartDataSession(
-          NULL,
+          nullptr,
           apn_.get(),
-          NULL,  // Authentication
+          nullptr,  // Authentication
           username_.get(),
           password_.get(),
           &session_id_,  // OUT: session ID
@@ -153,14 +153,14 @@ class SessionStarter {
     }
     LOG(INFO) << "Starter completing";
     g_idle_add(CompletionCallback, this);
-    return NULL;
+    return nullptr;
   }
 
   static gboolean CompletionCallback(void *data) {
     // Runs on main thread;
     std::unique_ptr<SessionStarter> s(static_cast<SessionStarter *>(data));
 
-    int join_rc = pthread_join(s->thread_, NULL);
+    int join_rc = pthread_join(s->thread_, nullptr);
     if (join_rc != 0) {
       errno = join_rc;
       PLOG(ERROR) << "Join failed";
@@ -169,7 +169,7 @@ class SessionStarter {
     // GobiModem::handler_ is a static
     GobiModem *modem = GobiModem::handler_->LookupByDbusPath(
         s->modem_dbus_path_);
-    if (modem == NULL) {
+    if (!modem) {
       // The DBUs call is never completed; the object was unregistered
       // from the bus.
       LOG(ERROR) << "SessionStarter complete with no modem";
@@ -182,7 +182,7 @@ class SessionStarter {
   void StartDataSession(DBus::Error& error) {
     // Runs on main thread
     int rc = pthread_create(
-        &thread_, NULL /* attributes */, StarterThreadTrampoline, this);
+        &thread_, nullptr /* attributes */, StarterThreadTrampoline, this);
     if (rc != 0) {
       errno = rc;
       PLOG(ERROR) << "Thread creation failed: " << rc;
@@ -295,25 +295,25 @@ static struct udev_enumerate *enumerate_net_devices(struct udev *udev) {
   int rc;
   struct udev_enumerate *udev_enumerate = udev_enumerate_new(udev);
 
-  if (udev_enumerate == NULL) {
-    return NULL;
+  if (!udev_enumerate) {
+    return nullptr;
   }
 
   rc = udev_enumerate_add_match_subsystem(udev_enumerate, "net");
   if (rc != 0) {
     udev_enumerate_unref(udev_enumerate);
-    return NULL;
+    return nullptr;
   }
 
   rc = udev_enumerate_scan_devices(udev_enumerate);
   if (rc != 0) {
     udev_enumerate_unref(udev_enumerate);
-    return NULL;
+    return nullptr;
   }
   return udev_enumerate;
 }
 
-GobiModem* GobiModem::connected_modem_(NULL);
+GobiModem* GobiModem::connected_modem_(nullptr);
 GobiModemHandler* GobiModem::handler_;
 GobiModem::mutex_wrapper_ GobiModem::modem_mutex_;
 
@@ -379,7 +379,7 @@ GobiModem::~GobiModem() {
   getting_deallocated_ = true;
   pthread_mutex_unlock(&modem_mutex_.mutex_);
 
-  if (pending_enable_ != NULL) {
+  if (pending_enable_) {
     // Despite the imminent destruction of the modem, pretend that the
     // pending_enable succeeded.  It is a race anyway.
     FinishEnable(DBus::Error());
@@ -423,7 +423,7 @@ gboolean GobiModem::RetryDisableCallback(gpointer data) {
 
   // GobiModem::handler_ is a static
   GobiModem *modem = GobiModem::handler_->LookupByDbusPath(*args->path);
-  if (modem == NULL) {
+  if (!modem) {
     LOG(ERROR) << "DisableRetryCallback with no modem";
     return FALSE;
   }
@@ -551,14 +551,14 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
 
   LOG(INFO) << "Enable: " << Enabled() << " => " << enable;
 
-  if (pending_enable_ != NULL) {
+  if (pending_enable_) {
     LOG(INFO) << "Already have a pending Enable operation";
     error.set(kModeError, "Already have a pending Enable operation");
     return;
   }
   operation_pending = EnableHelper(enable, error, true);
   if (operation_pending) {
-    CHECK(pending_enable_ == NULL);
+    CHECK(!pending_enable_);
     CHECK(!error);
     // Cleaned up in PowerModeHandler or SessionStarterDoneCallback
     pending_enable_.reset(new PendingEnable(enable));
@@ -651,7 +651,7 @@ void GobiModem::Connect(const DBusPropertyMap& properties, DBus::Error& error) {
     error.set(kConnectError, "Modem is disabled");
     return;
   }
-  if (pending_enable_ != NULL) {
+  if (pending_enable_) {
     LOG(WARNING) << "Connect while modem "
                  << (pending_enable_->enable_ ? "enabling" : "disabling")
                  << ".";
@@ -668,13 +668,13 @@ void GobiModem::Connect(const DBusPropertyMap& properties, DBus::Error& error) {
     error.set(kConnectError, "Connect already in progress");
     return;
   }
-  const char* apn = utilities::ExtractString(properties, "apn", NULL, error);
+  const char* apn = utilities::ExtractString(properties, "apn", nullptr, error);
   const char* username =
-      utilities::ExtractString(properties, "username", NULL, error);
+      utilities::ExtractString(properties, "username", nullptr, error);
   const char* password =
-      utilities::ExtractString(properties, "password", NULL, error);
+      utilities::ExtractString(properties, "password", nullptr, error);
 
-  if (apn !=  NULL)
+  if (apn !=  nullptr)
     LOG(INFO) << "Starting data session for APN " << apn;
 
   SessionStarter *starter = new SessionStarter(sdk_,
@@ -734,7 +734,7 @@ gobi::RegistrationState GobiModem::GetRegistrationState(gobi::Sdk *sdk) {
 }
 
 void GobiModem::PerformDeferredDisable() {
-  if (pending_enable_ != NULL) {
+  if (pending_enable_) {
     DBus::Error disable_error;
     bool operation_pending;
     CHECK(pending_enable_->enable_ == false);
@@ -759,7 +759,7 @@ void GobiModem::SessionStarterDoneCallback(SessionStarter *starter) {
   if (starter->return_value_ == 0) {
     session_id_ = starter->session_id_;
 
-    if (pending_enable_ != NULL) {
+    if (pending_enable_) {
       error.set(kConnectError, "StartDataSession Cancelled");
       LOG(INFO) << "Cancellation arrived after connect succeeded";
       ULONG rc = StopDataSession(session_id_);
@@ -783,7 +783,7 @@ void GobiModem::SessionStarterDoneCallback(SessionStarter *starter) {
         break;
       case gobi::kErrorSendingQmiRequest:
       case gobi::kErrorReceivingQmiRequest:
-        if (pending_enable_ == NULL) {
+        if (!pending_enable_) {
           // Normally the SDK enqueues an SdkErrorHandler event when
           // it sees these errors.  But, since these errors occur
           // benignly on StartDataSession cancellation, the SDK
@@ -812,7 +812,7 @@ void GobiModem::SessionStarterDoneCallback(SessionStarter *starter) {
                  MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
   }
 
-  if (pending_enable_ != NULL)
+  if (pending_enable_)
     // The pending_enable_ operation (which is most certainly a
     // "DISABLE") should not be run until the SessionStateHandler has
     // run (assuming it gets run).  By defering this call for a
@@ -936,7 +936,7 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error_ignored) {
   ULONG carrier_id;
   ULONG region;
   ULONG gps_capability;
-  const Carrier *carrier = NULL;
+  const Carrier *carrier = nullptr;
   rc = sdk_->GetFirmwareInfo(&firmware_id,
                              &technology_id,
                              &carrier_id,
@@ -944,7 +944,7 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error_ignored) {
                              &gps_capability);
   if (rc == 0) {
     carrier = handler_->server().FindCarrierByCarrierId(carrier_id);
-    if (carrier != NULL)
+    if (carrier)
       result["carrier"].writer().append_string(carrier->name());
     else
       LOG(WARNING) << "Carrier lookup failed for ID " << carrier_id;
@@ -981,7 +981,7 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error_ignored) {
   }
 
   GetTechnologySpecificStatus(&result);
-  if (carrier != NULL)
+  if (carrier)
     carrier-> ModifyModemStatusReturn(&result);
 
   return result;
@@ -1065,10 +1065,10 @@ bool GobiModem::CanMakeMethodCalls(void) {
 }
 
 void GobiModem::ApiConnect(DBus::Error& error) {
-  // It is safe to test for NULL outside of a lock because ApiConnect
+  // It is safe to test for nullptr outside of a lock because ApiConnect
   // is only called by the main thread, and only the main thread can
   // modify connected_modem_.
-  if (connected_modem_ != NULL) {
+  if (connected_modem_) {
     LOG(INFO) << "ApiAlready connected: connected_modem_=0x" << connected_modem_
               << "this=0x" << this;
     error.set(kErrorOperationNotAllowed,
@@ -1103,7 +1103,7 @@ ULONG GobiModem::ApiDisconnect(void) {
     if (session_starter_in_flight_) {
       SessionStarter::CancelDataSession(sdk_);
     }
-    connected_modem_ = NULL;
+    connected_modem_ = nullptr;
     pthread_mutex_unlock(&modem_mutex_.mutex_);
     rc = sdk_->QCWWANDisconnect();
   } else {
@@ -1244,7 +1244,7 @@ uint32_t GobiModem::CommonGetSignalQuality(DBus::Error& error) {
     error.set(kModeError, "Modem is disabled");
   } else {
     int32_t signal_strength_dbm;
-    GetSignalStrengthDbm(signal_strength_dbm, NULL, error);
+    GetSignalStrengthDbm(signal_strength_dbm, nullptr, error);
     if (!error.is_set()) {
       uint32_t result = MapDbmToPercent(signal_strength_dbm);
       LOG(INFO) << "GetSignalQuality => " << result << "%";
@@ -1466,7 +1466,7 @@ void GobiModem::SinkSdkError(const std::string& modem_path,
 gboolean GobiModem::SdkErrorHandler(gpointer data) {
   SdkErrorArgs *args = static_cast<SdkErrorArgs *>(data);
   GobiModem* modem = handler_->LookupByDbusPath(*args->path);
-  if (modem != NULL) {
+  if (modem) {
     modem->ExitAndResetDevice(args->error);
   } else {
     LOG(INFO) << "Reset received for obsolete path "
@@ -1478,7 +1478,7 @@ gboolean GobiModem::SdkErrorHandler(gpointer data) {
 gboolean GobiModem::SignalStrengthCallback(gpointer data) {
   SignalStrengthArgs* args = static_cast<SignalStrengthArgs*>(data);
   GobiModem* modem = handler_->LookupByDbusPath(*args->path);
-  if (modem != NULL)
+  if (modem)
     modem->SignalStrengthHandler(args->signal_strength, args->radio_interface);
   return FALSE;
 }
@@ -1486,7 +1486,7 @@ gboolean GobiModem::SignalStrengthCallback(gpointer data) {
 gboolean GobiModem::PowerCallback(gpointer data) {
   CallbackArgs* args = static_cast<CallbackArgs*>(data);
   GobiModem* modem = handler_->LookupByDbusPath(*args->path);
-  if (modem != NULL)
+  if (modem)
     modem->PowerModeHandler();
   return FALSE;
 }
@@ -1494,7 +1494,7 @@ gboolean GobiModem::PowerCallback(gpointer data) {
 gboolean GobiModem::SessionStateCallback(gpointer data) {
   SessionStateArgs* args = static_cast<SessionStateArgs*>(data);
   GobiModem* modem = handler_->LookupByDbusPath(*args->path);
-  if (modem != NULL)
+  if (modem)
     modem->SessionStateHandler(args->state, args->session_end_reason);
   return FALSE;
 }
@@ -1502,7 +1502,7 @@ gboolean GobiModem::SessionStateCallback(gpointer data) {
 gboolean GobiModem::RegistrationStateCallback(gpointer data) {
   CallbackArgs* args = static_cast<CallbackArgs*>(data);
   GobiModem* modem = handler_->LookupByDbusPath(*args->path);
-  if (modem != NULL)
+  if (modem)
     modem->RegistrationStateHandler();
   return FALSE;
 }
@@ -1510,7 +1510,7 @@ gboolean GobiModem::RegistrationStateCallback(gpointer data) {
 gboolean GobiModem::DataCapabilitiesCallback(gpointer data) {
   DataCapabilitiesArgs* args = static_cast<DataCapabilitiesArgs*>(data);
   GobiModem* modem = handler_->LookupByDbusPath(*args->path);
-  if (modem != NULL)
+  if (modem)
     modem->DataCapabilitiesHandler(args->num_data_caps, args->data_caps);
   return FALSE;
 }
@@ -1518,7 +1518,7 @@ gboolean GobiModem::DataCapabilitiesCallback(gpointer data) {
 gboolean GobiModem::DataBearerTechnologyCallback(gpointer data) {
   DataBearerTechnologyArgs* args = static_cast<DataBearerTechnologyArgs*>(data);
   GobiModem* modem = handler_->LookupByDbusPath(*args->path);
-  if (modem != NULL)
+  if (modem)
     modem->DataBearerTechnologyHandler(args->technology);
   return FALSE;
 }
@@ -1545,7 +1545,7 @@ void GobiModem::PowerModeHandler() {
                  MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
     }
   }
-  if (pending_enable_ != NULL) {
+  if (pending_enable_) {
     FinishEnable(error);
     LOG(INFO) << "PowerModeHandler: finishing deferred call";
   }
@@ -1566,7 +1566,7 @@ void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
     disconnect_time_.Stop();
     session_id_ = 0;
     unsigned int reason = QMIReasonToMMReason(session_end_reason);
-    if (pending_enable_ != NULL)
+    if (pending_enable_)
       PerformDeferredDisable();
     else
       SetMmState(QCStateToMMState(state), reason);
@@ -1585,34 +1585,34 @@ void GobiModem::DataBearerTechnologyHandler(ULONG technology) {
 // The properties set here are Device, MasterDevice, and Driver.
 void GobiModem::SetDeviceProperties() {
   struct udev *udev = udev_new();
-  if (udev == NULL) {
-    LOG(WARNING) << "udev == NULL";
+  if (!udev) {
+    LOG(WARNING) << "udev == nullptr";
     return;
   }
 
   struct udev_enumerate *udev_enumerate = enumerate_net_devices(udev);
-  if (udev_enumerate == NULL) {
-    LOG(WARNING) << "udev_enumerate == NULL";
+  if (!udev_enumerate) {
+    LOG(WARNING) << "udev_enumerate == nullptr";
     udev_unref(udev);
     return;
   }
 
   struct udev_list_entry *entry;
   for (entry = udev_enumerate_get_list_entry(udev_enumerate);
-       entry != NULL;
+       entry != nullptr;
        entry = udev_list_entry_get_next(entry)) {
     std::string syspath(udev_list_entry_get_name(entry));
 
     struct udev_device *udev_device =
         udev_device_new_from_syspath(udev, syspath.c_str());
-    if (udev_device == NULL)
+    if (!udev_device)
       continue;
 
     std::string driver;
     struct udev_device *parent = udev_device_get_parent(udev_device);
-    if (parent != NULL) {
+    if (parent) {
       const char *udev_driver = udev_device_get_driver(parent);
-      if (udev_driver != NULL) {
+      if (udev_driver) {
         driver = udev_driver;
       }
     }
@@ -1625,9 +1625,9 @@ void GobiModem::SetDeviceProperties() {
       if (found != std::string::npos) {
         Device = syspath.substr(found + 1);
         struct udev_device *grandparent;
-        if (parent != NULL) {
+        if (parent) {
           grandparent = udev_device_get_parent(parent);
-          if (grandparent != NULL) {
+          if (grandparent) {
             sysfs_path_ = udev_device_get_syspath(grandparent);
             LOG(INFO) << "sysfs path: " << sysfs_path_;
             MasterDevice = sysfs_path_;
@@ -1669,7 +1669,7 @@ const char* QMIReturnCodeToMMError(unsigned int qmicode) {
       // zero, then the SIM is permanently blocked.
       return kErrorSimPukRequired;
     default:
-      return NULL;
+      return nullptr;
   }
 }
 

@@ -19,7 +19,7 @@ void Gobi2KModemHelper::SetCarrier(GobiModem *modem,
                                    const std::string& carrier_name,
                                    DBus::Error& error) {
   const Carrier *carrier = handler->server().FindCarrierByName(carrier_name);
-  if (carrier == NULL) {
+  if (!carrier) {
     // TODO(rochberg):  Do we need to sanitize this string?
     LOG(WARNING) << "Could not parse carrier: " << carrier_name;
     error.set(kFirmwareLoadError, kErrorUnknownCarrier);

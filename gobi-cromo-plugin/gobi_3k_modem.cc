@@ -16,7 +16,7 @@ void Gobi3KModemHelper::SetCarrier(GobiModem* modem,
                                    GobiModemHandler* handler,
                                    const std::string& carrier_name,
                                    DBus::Error& error) {
-  gobifw_init(NULL);
+  gobifw_init(nullptr);
   gobifw *fw = gobifw_bycarrier(carrier_name.c_str());
   enum gobifw_activate_status rc;
   bool was_connected = modem->IsApiConnected();

@@ -38,12 +38,12 @@ TEST_F(GobiSdkTest, InitGetServiceFromName) {
 
 const char *kDoesNotStartWithService[] = {
   "FunctionName",
-  NULL,
+  nullptr,
 };
 
 const char *kEmptyServiceName[] = {
   "",
-  NULL,
+  nullptr,
 };
 
 TEST_F(GobiSdkTest, InitGetServiceFromNameDeathTest) {
@@ -65,7 +65,7 @@ TEST_F(GobiSdkTest, BaseClosesAllDeathTest) {
   }
   sdk_->LeaveSdk("QCWWANConnect");
   for (int i = 0; i < sdk_->service_index_upper_bound_; ++i) {
-    EXPECT_EQ(NULL, sdk_->service_to_function_[i]);
+    EXPECT_EQ(nullptr, sdk_->service_to_function_[i]);
   }
 
   sdk_->EnterSdk("QCWWANConnect");
@@ -130,11 +130,11 @@ TEST_F(GobiSdkTest, InterleavedSdkCalls) {
 }
 
 TEST_F(GobiSdkTest, TemporaryCopier) {
-  gobi::CharStarCopier a(NULL);
-  EXPECT_EQ(NULL, a.get());
+  gobi::CharStarCopier a(nullptr);
+  EXPECT_EQ(nullptr, a.get());
 
   gobi::CharStarCopier b("");
-  EXPECT_NE(static_cast<const char *>(NULL), b.get());
+  EXPECT_NE(nullptr, b.get());
   EXPECT_STREQ("", b.get());
 
   const char *hello="hello";

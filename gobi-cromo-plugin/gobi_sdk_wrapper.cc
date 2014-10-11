@@ -201,7 +201,7 @@ const char *kServiceMapping[] = {
   "SetOMADMAlertCallback",
   "SetOMADMStateCallback",
 
-  NULL
+  nullptr
 };
 
 
@@ -226,7 +226,7 @@ ULONG Sdk::CallWrapper::CheckReturn(ULONG rc) {
     // it", but in this case we don't want to reset it.
     //    http://code.google.com/p/chromium-os/issues/detail?id=9372
     // tracks removing this workaround
-    if (strstr(function_name_, "OMADM") == NULL)  {
+    if (strstr(function_name_, "OMADM") == nullptr)  {
       sdk_->sdk_error_sink_(sdk_->current_modem_path_,
                             function_name_,
                             rc);
@@ -246,8 +246,8 @@ void Sdk::Init() {
   service_to_function_.insert(
       service_to_function_.end(),
       service_index_upper_bound_,
-      static_cast<const char *>(NULL));
-  pthread_mutex_init(&service_to_function_mutex_, NULL);
+      nullptr);
+  pthread_mutex_init(&service_to_function_mutex_, nullptr);
   fault_inject_sdk_error_ = 0;
 }
 
@@ -319,13 +319,13 @@ void Sdk::LeaveSdk(const char *function_name) {
   for (int i = service; i < GetServiceBound(service); ++i) {
     const char *recorded_function = service_to_function_[i];
     if (!recorded_function || strcmp(recorded_function, function_name) != 0) {
-      if (recorded_function == NULL) {
+      if (!recorded_function) {
         recorded_function = "None";
       }
       LOG(WARNING) << "Found exited/wrong service when exiting sdk function: "
                    << function_name << ", " << recorded_function;
     }
-    service_to_function_[i] = NULL;
+    service_to_function_[i] = nullptr;
   }
   rc = pthread_mutex_unlock(&service_to_function_mutex_);
   CHECK_EQ(rc, 0) << "rc = " << rc;
@@ -356,7 +356,7 @@ ULONG Sdk::CancelStartDataSession() {
 
   for (int i = 0; i < service_index_upper_bound_ ; ++i) {
     if (i != wireless_data_service_index &&
-        service_to_function_[i] != NULL) {
+        service_to_function_[i] != nullptr) {
       LOG(ERROR) << "Did not expect "
                  << service_to_function_[i] << " to be running";
     }
@@ -526,12 +526,12 @@ ULONG Sdk::StartDataSession(
   // persistently-failing state.
   return ::StartDataSession(
       pTechnology,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
+      nullptr,
+      nullptr,
+      nullptr,
+      nullptr,
       mutableAPNName.get(),
-      NULL,
+      nullptr,
       pAuthentication,
       mutableUsername.get(),
       mutablePassword.get(),

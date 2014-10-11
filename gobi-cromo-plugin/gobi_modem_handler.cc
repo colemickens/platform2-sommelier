@@ -49,7 +49,7 @@ static void timeout_callback(void* data) {
 GobiModemHandler::GobiModemHandler(CromoServer& server)
     : ModemHandler(server, "Gobi"),
       clear_device_list_on_destroy_(true),
-      device_watcher_(NULL),
+      device_watcher_(nullptr),
       scan_generation_(0) {
 }
 
@@ -164,7 +164,7 @@ GobiModemHandler::RemoveDeviceByIterator(ControlPathToModem::iterator p) {
   ++next;
 
   GobiModem *m = p->second;
-  if (m == NULL) {
+  if (!m) {
     LOG(ERROR) << "no modem";
     return next;
   }
@@ -228,7 +228,7 @@ bool GobiModemHandler::GetDeviceList() {
                                                    MakePath(),
                                                    devices[i],
                                                    sdk_.get());
-      if (m == NULL) {
+      if (!m) {
         LOG(ERROR) << "Could not create modem object for "
                    << devices[i].deviceNode;
         continue;
@@ -295,7 +295,7 @@ GobiModem* GobiModemHandler::LookupByDbusPath(const std::string& dbuspath) {
     if (m->path() == dbuspath)
       return m;
   }
-  return NULL;
+  return nullptr;
 }
 
 void GobiModemHandler::ExitLeavingModemsForCleanup() {

@@ -366,7 +366,7 @@ struct CharStarCopier {
  public:
   explicit CharStarCopier(const char *in) {
     if (!in) {
-      // str_ is constructed as NULL
+      // str_ is constructed as nullptr
     } else {
       str_.reset(strdup(in));
     }

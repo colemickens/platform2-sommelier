@@ -49,7 +49,7 @@ unsigned int QMIReasonToMMReason(unsigned int qmireason);
     do {                                                   \
       if (rc != 0) {                                       \
         const char *errname = QMIReturnCodeToMMError(rc);  \
-        if (errname != NULL)                               \
+        if (errname)                                       \
           error.set(errname, #function);                   \
         else                                               \
           error.set(errtype, #function);                   \
@@ -177,7 +177,7 @@ class GobiModem : public Modem,
 
   virtual CdmaAdaptor* cdma_adaptor() {
     LOG(WARNING) << "Modem::cdma_adaptor() called on non-CDMA modem.";
-    return NULL;
+    return nullptr;
   }
 
   // DBUS Methods: Modem
@@ -230,7 +230,7 @@ class GobiModem : public Modem,
 
   void ApiConnect(DBus::Error& error);
   ULONG ApiDisconnect(void);
-  bool IsApiConnected() { return connected_modem_ != NULL; }
+  bool IsApiConnected() { return connected_modem_ != nullptr; }
   virtual uint32_t CommonGetSignalQuality(DBus::Error& error);
   void GetSignalStrengthDbm(int& strength,
                             StrengthMap *interface_to_strength,
@@ -258,7 +258,7 @@ class GobiModem : public Modem,
   unsigned int QCStateToMMState(ULONG qcstate);
 
   struct CallbackArgs {
-    CallbackArgs() : path(NULL) {}
+    CallbackArgs() : path(nullptr) {}
     explicit CallbackArgs(DBus::Path* path) : path(path) {}
     ~CallbackArgs() { delete path; }
     DBus::Path* path;
@@ -268,7 +268,7 @@ class GobiModem : public Modem,
   };
 
   struct CallbackArgsWrapper {
-    CallbackArgsWrapper() : callback(NULL), callback_id(0), args(NULL) {}
+    CallbackArgsWrapper() : callback(nullptr), callback_id(0), args(nullptr) {}
     ~CallbackArgsWrapper() { delete args; }
     GSourceFunc callback;
     guint callback_id;
@@ -446,7 +446,7 @@ class GobiModem : public Modem,
   std::string sysfs_path_;
 
   struct mutex_wrapper_ {
-    mutex_wrapper_() { pthread_mutex_init(&mutex_, NULL); }
+    mutex_wrapper_() { pthread_mutex_init(&mutex_, nullptr); }
     pthread_mutex_t mutex_;
   };
   static GobiModem* connected_modem_;
