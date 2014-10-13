@@ -538,11 +538,11 @@ void SessionManagerImpl::InitMachineInfo(const std::string& data,
 }
 
 void SessionManagerImpl::OnPolicyPersisted(bool success) {
-  dbus_emitter_->EmitSignalWithSuccessFailure(kPropertyChangeCompleteSignal,
-                                              success);
   device_local_account_policy_->UpdateDeviceSettings(
       device_policy_->GetSettings());
   UpdateSystemSettings();
+  dbus_emitter_->EmitSignalWithSuccessFailure(kPropertyChangeCompleteSignal,
+                                              success);
 }
 
 void SessionManagerImpl::OnKeyPersisted(bool success) {
