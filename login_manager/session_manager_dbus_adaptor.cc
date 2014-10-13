@@ -110,8 +110,7 @@ scoped_ptr<dbus::Response> CraftAppropriateResponseWithBytes(
 void HandleGetServerBackedStateKeysCompletion(
     dbus::MethodCall* call,
     const dbus::ExportedObject::ResponseSender& sender,
-    const std::vector<std::vector<uint8_t>>& state_keys,
-    bool first_boot) {
+    const std::vector<std::vector<uint8_t>>& state_keys) {
   scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call));
   dbus::MessageWriter writer(response.get());
   dbus::MessageWriter array_writer(NULL);
@@ -123,7 +122,6 @@ void HandleGetServerBackedStateKeysCompletion(
     array_writer.AppendArrayOfBytes(state_key->data(), state_key->size());
   }
   writer.CloseContainer(&array_writer);
-  writer.AppendBool(first_boot);
   sender.Run(response.Pass());
 }
 

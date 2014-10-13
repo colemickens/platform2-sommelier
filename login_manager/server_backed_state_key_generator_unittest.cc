@@ -55,20 +55,16 @@ class ServerBackedStateKeyGeneratorTest : public ::testing::Test {
   virtual ~ServerBackedStateKeyGeneratorTest() {}
 
   // Installs mock data for the required parameters.
-  void InitMachineInfo(bool first_boot) {
+  void InitMachineInfo() {
     std::map<std::string, std::string> params;
     params["serial_number"] = "fake-machine-serial-number";
     params["root_disk_serial_number"] = "fake-disk-serial-number";
-    if (!first_boot)
-      params["ActivateDate"] = "2001-51";
     ASSERT_TRUE(generator_.InitMachineInfo(params));
   }
 
-  void CompletionHandler(const std::vector<std::vector<uint8_t>>& state_keys,
-                         bool first_boot) {
+  void CompletionHandler(const std::vector<std::vector<uint8_t>>& state_keys) {
     state_keys_received_ = true;
     state_keys_ = state_keys;
-    first_boot_ = first_boot;
   }
 
   void RequestStateKeys(bool expect_immediate_callback) {
@@ -86,22 +82,20 @@ class ServerBackedStateKeyGeneratorTest : public ::testing::Test {
 
   bool state_keys_received_;
   std::vector<std::vector<uint8_t>> state_keys_;
-  bool first_boot_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ServerBackedStateKeyGeneratorTest);
 };
 
 TEST_F(ServerBackedStateKeyGeneratorTest, RequestStateKeys) {
-  InitMachineInfo(false);
+  InitMachineInfo();
   RequestStateKeys(true);
-  EXPECT_EQ(ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta,
+  ASSERT_EQ(ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta,
             state_keys_.size());
-  EXPECT_FALSE(first_boot_);
 }
 
 TEST_F(ServerBackedStateKeyGeneratorTest, TimedStateKeys) {
-  InitMachineInfo(false);
+  InitMachineInfo();
   system_utils_.forward_time(base::TimeDelta::FromDays(100).InSeconds());
 
   // The correct number of state keys gets returned.
@@ -139,7 +133,7 @@ TEST_F(ServerBackedStateKeyGeneratorTest, PendingMachineInfo) {
   RequestStateKeys(false);
 
   // Supplying machine info fires callbacks.
-  InitMachineInfo(false);
+  InitMachineInfo();
   EXPECT_TRUE(state_keys_received_);
   EXPECT_EQ(ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta,
             state_keys_.size());
@@ -176,12 +170,6 @@ TEST_F(ServerBackedStateKeyGeneratorTest, ParseMachineInfoFailure) {
   std::map<std::string, std::string> params;
   EXPECT_FALSE(
       ServerBackedStateKeyGenerator::ParseMachineInfo("bad!", &params));
-}
-
-TEST_F(ServerBackedStateKeyGeneratorTest, FirstBoot) {
-  InitMachineInfo(true);
-  RequestStateKeys(true);
-  EXPECT_TRUE(first_boot_);
 }
 
 }  // namespace login_manager

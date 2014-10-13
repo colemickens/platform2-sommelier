@@ -26,7 +26,6 @@ const char kTrimChars[] = "\" ";
 // Keys in the tool-provided key-value pairs.
 const char kGroupCodeKey[] = "gbind_attribute";
 const char kDiskSerialNumberKey[] = "root_disk_serial_number";
-const char kActivateDateKey[] = "ActivateDate";
 
 // These are the machine serial number keys that we check in order until we
 // find a non-empty serial number. The VPD spec says the serial number should be
@@ -64,9 +63,7 @@ const int ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta;
 
 ServerBackedStateKeyGenerator::ServerBackedStateKeyGenerator(
     SystemUtils* system_utils)
-    : system_utils_(system_utils),
-      machine_info_available_(false),
-      activate_date_missing_(false) {
+    : system_utils_(system_utils), machine_info_available_(false) {
 }
 
 ServerBackedStateKeyGenerator::~ServerBackedStateKeyGenerator() {
@@ -114,8 +111,6 @@ bool ServerBackedStateKeyGenerator::InitMachineInfo(
   }
   group_code_key_ = GetMapValue(params, kGroupCodeKey);
   disk_serial_number_ = GetMapValue(params, kDiskSerialNumberKey);
-  std::string activate_date = GetMapValue(params, kActivateDateKey);
-  activate_date_missing_ = activate_date.empty();
 
   LOG_IF(ERROR, machine_serial_number_.empty())
       << "Machine serial number missing!";
@@ -130,7 +125,7 @@ bool ServerBackedStateKeyGenerator::InitMachineInfo(
       std::vector<StateKeyCallback>::const_iterator callback(callbacks.begin());
       callback != callbacks.end();
       ++callback) {
-    callback->Run(state_keys, activate_date_missing_);
+    callback->Run(state_keys);
   }
 
   return !machine_serial_number_.empty() && !disk_serial_number_.empty();
@@ -145,7 +140,7 @@ void ServerBackedStateKeyGenerator::RequestStateKeys(
 
   std::vector<std::vector<uint8_t>> state_keys;
   ComputeKeys(&state_keys);
-  callback.Run(state_keys, activate_date_missing_);
+  callback.Run(state_keys);
 }
 
 void ServerBackedStateKeyGenerator::ComputeKeys(

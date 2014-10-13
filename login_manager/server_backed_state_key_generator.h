@@ -39,8 +39,8 @@ class SystemUtils;
 class ServerBackedStateKeyGenerator {
  public:
   // Callback type for state key generation requests.
-  typedef base::Callback<void(const std::vector<std::vector<uint8_t>>&,
-                              bool first_boot)> StateKeyCallback;
+  typedef base::Callback<void(const std::vector<std::vector<uint8_t>>&)>
+      StateKeyCallback;
 
   // The power of two determining the size of the time quanta for device state
   // keys, i.e. the quanta will be of size 2^kDeviceStateKeyTimeQuantumPower
@@ -89,7 +89,6 @@ class ServerBackedStateKeyGenerator {
 
   // The data required to generate state keys.
   bool machine_info_available_;
-  bool activate_date_missing_;
   std::string machine_serial_number_;
   std::string disk_serial_number_;
   std::string group_code_key_;
