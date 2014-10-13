@@ -1698,12 +1698,12 @@ TEST_F(CellularTest, StopPPPOnDisconnect) {
   VerifyPPPStopped();
 }
 
-TEST_F(CellularTest, StopPPPOnTermination) {
+TEST_F(CellularTest, StopPPPOnSuspend) {
   const int kPID = 123;
   StartPPP(kPID);
   FakeUpConnectedPPP();
   ExpectPPPStopped();
-  device_->StartTermination();
+  device_->OnBeforeSuspend(ResultCallback());
   VerifyPPPStopped();
 }
 

@@ -214,6 +214,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   void SetServiceState(Service::ConnectState state) override;
   void SetServiceFailure(Service::ConnectFailure failure_state) override;
   void SetServiceFailureSilent(Service::ConnectFailure failure_state) override;
+  void OnBeforeSuspend(const ResultCallback &callback) override;
   void OnAfterResume() override;
 
   void StartModemCallback(const EnabledStateChangedCallback &callback,

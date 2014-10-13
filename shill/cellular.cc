@@ -507,6 +507,20 @@ void Cellular::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
   }
 }
 
+void Cellular::OnBeforeSuspend(const ResultCallback &callback) {
+  LOG(INFO) << __func__;
+  Error error;
+  StopPPP();
+  SetEnabledNonPersistent(false, &error, callback);
+  if (error.IsFailure() && error.type() != Error::kInProgress) {
+    // If we fail to disable the modem right away, proceed instead of wasting
+    // the time to wait for the suspend/termination delay to expire.
+    LOG(WARNING) << "Proceed with suspend/termination even though the modem "
+                 << "is not yet disabled: " << error;
+    callback.Run(error);
+  }
+}
+
 void Cellular::OnAfterResume() {
   SLOG(Cellular, 2) << __func__;
   if (enabled_persistent()) {
@@ -983,21 +997,9 @@ bool Cellular::SetAllowRoaming(const bool &value, Error */*error*/) {
 }
 
 void Cellular::StartTermination() {
-  LOG(INFO) << __func__;
-  Error error;
-  StopPPP();
-  SetEnabledNonPersistent(
-      false,
-      &error,
-      Bind(&Cellular::OnTerminationCompleted, weak_ptr_factory_.GetWeakPtr()));
-  if (error.IsFailure() && error.type() != Error::kInProgress) {
-    // If we fail to disable the modem right away, proceed to suspend instead of
-    // wasting the time to wait for the suspend delay to expire.
-    LOG(WARNING)
-        << "Proceed to suspend even through the modem is not yet disabled: "
-        << error;
-    OnTerminationCompleted(error);
-  }
+  SLOG(Cellular, 2) << __func__;
+  OnBeforeSuspend(Bind(&Cellular::OnTerminationCompleted,
+                       weak_ptr_factory_.GetWeakPtr()));
 }
 
 void Cellular::OnTerminationCompleted(const Error &error) {
