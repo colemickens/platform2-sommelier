@@ -86,7 +86,7 @@ void WiMaxService::Stop() {
 bool WiMaxService::Start(WiMaxNetworkProxyInterface *proxy) {
   SLOG(WiMax, 2) << __func__;
   CHECK(proxy);
-  scoped_ptr<WiMaxNetworkProxyInterface> local_proxy(proxy);
+  std::unique_ptr<WiMaxNetworkProxyInterface> local_proxy(proxy);
   if (IsStarted()) {
     return true;
   }

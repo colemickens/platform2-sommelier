@@ -5,6 +5,7 @@
 #ifndef SHILL_WIMAX_H_
 #define SHILL_WIMAX_H_
 
+#include <memory>
 #include <set>
 #include <string>
 
@@ -102,7 +103,7 @@ class WiMax : public Device {
   const RpcIdentifier path_;
 
   base::WeakPtrFactory<WiMax> weak_ptr_factory_;
-  scoped_ptr<WiMaxDeviceProxyInterface> proxy_;
+  std::unique_ptr<WiMaxDeviceProxyInterface> proxy_;
   bool scanning_;
   WiMaxServiceRefPtr pending_service_;
   std::set<RpcIdentifier> networks_;

@@ -88,9 +88,9 @@ class WiMaxProviderTest : public testing::Test {
     return service->friendly_name();
   }
 
-  scoped_ptr<MockDBusServiceProxy> dbus_service_proxy_;
-  scoped_ptr<MockWiMaxManagerProxy> wimax_manager_proxy_;
-  scoped_ptr<MockWiMaxNetworkProxy> network_proxy_;
+  std::unique_ptr<MockDBusServiceProxy> dbus_service_proxy_;
+  std::unique_ptr<MockWiMaxManagerProxy> wimax_manager_proxy_;
+  std::unique_ptr<MockWiMaxNetworkProxy> network_proxy_;
   MockProxyFactory proxy_factory_;
   NiceMockControl control_;
   MockMetrics metrics_;

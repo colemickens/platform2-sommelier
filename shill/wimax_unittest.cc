@@ -4,6 +4,7 @@
 
 #include "shill/wimax.h"
 
+#include <memory>
 #include <string>
 
 #include "shill/event_dispatcher.h"
@@ -69,7 +70,7 @@ class WiMaxTest : public testing::Test {
     device_->proxy_factory_ = nullptr;
   }
 
-  scoped_ptr<MockWiMaxDeviceProxy> proxy_;
+  std::unique_ptr<MockWiMaxDeviceProxy> proxy_;
   MockProxyFactory proxy_factory_;
   NiceMockControl control_;
   EventDispatcher dispatcher_;

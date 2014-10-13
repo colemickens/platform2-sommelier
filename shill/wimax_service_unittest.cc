@@ -86,7 +86,7 @@ class WiMaxServiceTest : public testing::Test {
     return dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
   }
 
-  scoped_ptr<MockWiMaxNetworkProxy> proxy_;
+  std::unique_ptr<MockWiMaxNetworkProxy> proxy_;
   NiceMockControl control_;
   MockManager manager_;
   NiceMock<MockMetrics> metrics_;

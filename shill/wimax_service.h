@@ -5,6 +5,7 @@
 #ifndef SHILL_WIMAX_SERVICE_H_
 #define SHILL_WIMAX_SERVICE_H_
 
+#include <memory>
 #include <string>
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -100,7 +101,7 @@ class WiMaxService : public Service {
   void SetDevice(WiMaxRefPtr new_device);
 
   WiMaxRefPtr device_;  // Update via SetDevice().
-  scoped_ptr<WiMaxNetworkProxyInterface> proxy_;
+  std::unique_ptr<WiMaxNetworkProxyInterface> proxy_;
   std::string storage_id_;
 
   WiMaxNetworkId network_id_;

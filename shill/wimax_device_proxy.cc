@@ -4,6 +4,8 @@
 
 #include "shill/wimax_device_proxy.h"
 
+#include <memory>
+
 #include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -192,7 +194,8 @@ void WiMaxDeviceProxy::Proxy::DisconnectCallback(const DBus::Error &error,
 // static
 void WiMaxDeviceProxy::Proxy::HandleCallback(const DBus::Error &error,
                                              void *data) {
-  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  std::unique_ptr<ResultCallback> callback(
+      reinterpret_cast<ResultCallback *>(data));
   Error e;
   FromDBusError(error, &e);
   callback->Run(e);

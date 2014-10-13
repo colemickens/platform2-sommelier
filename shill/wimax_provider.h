@@ -6,10 +6,10 @@
 #define SHILL_WIMAX_PROVIDER_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/accessor_interface.h"
@@ -142,9 +142,9 @@ class WiMaxProvider : public ProviderInterface {
   Manager *manager_;
 
   // Monitor WiMaxManager DBus name ownership to detect daemon presence.
-  scoped_ptr<DBusNameWatcher> wimax_manager_name_watcher_;
+  std::unique_ptr<DBusNameWatcher> wimax_manager_name_watcher_;
 
-  scoped_ptr<WiMaxManagerProxyInterface> wimax_manager_proxy_;
+  std::unique_ptr<WiMaxManagerProxyInterface> wimax_manager_proxy_;
 
   // Key is the interface link name.
   std::map<std::string, RpcIdentifier> pending_devices_;
