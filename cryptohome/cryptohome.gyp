@@ -65,46 +65,6 @@
       ],
     },
 
-    # Glib marshaled data.
-    {
-      'target_name': 'cryptohome-glib-gen-body',
-      'type': 'none',
-      'actions': [
-        {
-          'action_name': 'glib-gen-body',
-          'inputs': [
-            'marshal.list',
-          ],
-          'outputs': [
-            'marshal.glibmarshal.c',
-          ],
-          'action': [
-            'sh', '-c',
-            'glib-genmarshal --body --prefix=cryptohome marshal.list <@(_inputs) > <@(_outputs)',
-          ],
-        },
-      ],
-    },
-    {
-      'target_name': 'cryptohome-glib-gen-header',
-      'type': 'none',
-      'actions': [
-        {
-          'action_name': 'glib-gen-header',
-          'inputs': [
-            'marshal.list',
-          ],
-          'outputs': [
-            'marshal.glibmarshal.h',
-          ],
-          'action': [
-            'sh', '-c',
-            'glib-genmarshal --header --prefix=cryptohome marshal.list <@(_inputs) > <@(_outputs)',
-          ],
-        },
-      ],
-    },
-
     # D-Bus glib bindings.
     {
       'target_name': 'cryptohome-dbus-client',
@@ -149,8 +109,6 @@
       'target_name': 'libcryptohome',
       'type': 'static_library',
       'dependencies': [
-        'cryptohome-glib-gen-body',
-        'cryptohome-glib-gen-header',
         'cryptohome-dbus-server',
         'cryptohome-proto',
       ],
@@ -173,7 +131,6 @@
         'lockbox-cache.cc',
         'lockbox-cache-tpm.cc',
         'lockbox.cc',
-        'marshal.glibmarshal.c',
         'mount.cc',
         'mount_factory.cc',
         'mount_stack.cc',

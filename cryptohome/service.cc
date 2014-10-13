@@ -45,7 +45,6 @@
 #include "cryptohome/username_passkey.h"
 
 #include "key.pb.h"  // NOLINT(build/include)
-#include "marshal.glibmarshal.h"  // NOLINT(build/include)
 #include "rpc.pb.h"  // NOLINT(build/include)
 #include "vault_keyset.pb.h"  // NOLINT(build/include)
 
@@ -495,7 +494,7 @@ bool Service::Initialize() {
                                         0,
                                         NULL,
                                         NULL,
-                                        cryptohome_VOID__INT_BOOLEAN_INT,
+                                        nullptr,
                                         G_TYPE_NONE,
                                         3,
                                         G_TYPE_INT,
@@ -509,7 +508,7 @@ bool Service::Initialize() {
       0,
       NULL,
       NULL,
-      cryptohome_VOID__INT_BOOLEAN_POINTER,
+      nullptr,
       G_TYPE_NONE,
       3,
       G_TYPE_INT,
@@ -522,7 +521,7 @@ bool Service::Initialize() {
                                   0,
                                   NULL,
                                   NULL,
-                                  cryptohome_VOID__BOOLEAN_BOOLEAN_BOOLEAN,
+                                  nullptr,
                                   G_TYPE_NONE,
                                   3,
                                   G_TYPE_BOOLEAN,

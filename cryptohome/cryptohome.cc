@@ -44,7 +44,6 @@
 #include "attestation.pb.h"  // NOLINT(build/include)
 #include "bindings/cryptohome.dbusclient.h"
 #include "key.pb.h"  // NOLINT(build/include)
-#include "marshal.glibmarshal.h"  // NOLINT(build/include)
 #include "rpc.pb.h"  // NOLINT(build/include)
 #include "signed_secret.pb.h"  // NOLINT(build/include)
 #include "vault_keyset.pb.h"  // NOLINT(build/include)
@@ -376,7 +375,7 @@ class ClientLoop {
   }
 
   void Initialize(chromeos::dbus::Proxy* proxy) {
-    dbus_g_object_register_marshaller(cryptohome_VOID__INT_BOOLEAN_INT,
+    dbus_g_object_register_marshaller(g_cclosure_marshal_generic,
                                       G_TYPE_NONE,
                                       G_TYPE_INT,
                                       G_TYPE_BOOLEAN,
@@ -388,7 +387,7 @@ class ClientLoop {
     dbus_g_proxy_connect_signal(proxy->gproxy(), "AsyncCallStatus",
                                 G_CALLBACK(ClientLoop::CallbackThunk),
                                 this, NULL);
-    dbus_g_object_register_marshaller(cryptohome_VOID__INT_BOOLEAN_POINTER,
+    dbus_g_object_register_marshaller(g_cclosure_marshal_generic,
                                       G_TYPE_NONE,
                                       G_TYPE_INT,
                                       G_TYPE_BOOLEAN,
@@ -502,7 +501,7 @@ class TpmWaitLoop {
   }
 
   void Initialize(chromeos::dbus::Proxy* proxy) {
-    dbus_g_object_register_marshaller(cryptohome_VOID__BOOLEAN_BOOLEAN_BOOLEAN,
+    dbus_g_object_register_marshaller(g_cclosure_marshal_generic,
                                       G_TYPE_NONE,
                                       G_TYPE_BOOLEAN,
                                       G_TYPE_BOOLEAN,
