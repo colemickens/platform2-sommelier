@@ -25,8 +25,8 @@ BurnerImpl::BurnerImpl(FileSystemWriter* writer,
                        RootPathGetter* root_path_getter)
     : writer_(writer),
       reader_(reader),
-      root_path_getter_(root_path_getter),
       signal_sender_(signal_sender),
+      root_path_getter_(root_path_getter),
       data_block_size_(kBurningBlockSize) {
 }
 
