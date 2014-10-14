@@ -21,7 +21,7 @@ BINS = image_burner unittest_runner
 
 all: $(BINS)
 
-$(IMAGEBURN_OBJS) : bindings/server.h marshal.h
+$(IMAGEBURN_OBJS) : bindings/server.h
 
 image_burner: $(IMAGEBURN_OBJS) image_burner_main.o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
@@ -32,11 +32,8 @@ image_burner: $(IMAGEBURN_OBJS) image_burner_main.o
 bindings/server.h: image_burner.xml
 	dbus-binding-tool --mode=glib-server --prefix=$(basename $^) $^ > $@
 
-marshal.h: marshal.list
-	glib-genmarshal --header --body --prefix=image_burner $^ > $@
-
 clean:
-	rm -rf *.o $(BINDINGS_DIR)/* marshal.h $(BINS)
+	rm -rf *.o $(BINDINGS_DIR)/* $(BINS)
 
 UNITTEST_LIBS := $(shell gmock-config --libs) $(shell gtest-config --libs)
 unittest_runner: unittest_runner.o image_burner_impl_unittest.o $(COMMON_OBJS)

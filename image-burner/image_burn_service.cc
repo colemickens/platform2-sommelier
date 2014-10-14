@@ -13,7 +13,6 @@
 #include <dbus/dbus-glib-lowlevel.h>
 
 #include "image-burner/image_burner.h"
-#include "image-burner/marshal.h"
 
 namespace imageburn {
 #include "image-burner/bindings/server.h"  // NOLINT(build/include_alpha)
@@ -63,14 +62,14 @@ bool ImageBurnService::Initialize() {
                    image_burner_get_type(),
                    G_SIGNAL_RUN_FIRST,
                    0, NULL, NULL,
-                   image_burner_VOID__STRING_INT64_INT64, G_TYPE_NONE,
+                   nullptr, G_TYPE_NONE,
                    3, G_TYPE_STRING, G_TYPE_INT64, G_TYPE_INT64);
   signals_[kSignalBurnFinished] =
       g_signal_new(kSignalBurnFinishedName,
                    image_burner_get_type(),
                    G_SIGNAL_RUN_FIRST,
                    0, NULL, NULL,
-                   image_burner_VOID__STRING_BOOLEAN_STRING, G_TYPE_NONE,
+                   nullptr, G_TYPE_NONE,
                    3, G_TYPE_STRING, G_TYPE_BOOLEAN, G_TYPE_STRING);
 
   return Reset();
