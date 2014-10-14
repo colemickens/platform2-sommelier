@@ -160,7 +160,7 @@ class MountTest : public ::testing::Test {
 
   bool LoadSerializedKeyset(const chromeos::Blob& contents,
                             cryptohome::SerializedVaultKeyset* serialized) {
-    CHECK_NE(contents.size(), 0);
+    CHECK_NE(contents.size(), 0U);
     return serialized->ParseFromArray(
         static_cast<const unsigned char*>(&contents[0]), contents.size());
   }
