@@ -12,8 +12,6 @@
 
 namespace imageburn {
 
-// After every kSentSignalRatio IO operations, update signal will be emited.
-const int kSentSignalRatio = 256;
 const int kFsyncRatio = 1024;
 
 BurnWriter::BurnWriter() : file_(NULL),
