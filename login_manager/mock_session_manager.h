@@ -24,7 +24,7 @@ class MockSessionManager : public SessionManagerInterface {
   MOCK_METHOD0(GetStartUpFlags, std::vector<std::string>());
   MOCK_METHOD0(AnnounceSessionStoppingIfNeeded, void());
   MOCK_METHOD0(AnnounceSessionStopped, void());
-  MOCK_METHOD0(ScreenIsLocked, bool());
+  MOCK_METHOD0(ShouldEndSession, bool());
   MOCK_METHOD0(InitiateDeviceWipe, void());
 };
 }  // namespace login_manager

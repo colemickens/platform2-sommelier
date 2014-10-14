@@ -132,6 +132,7 @@ SessionManagerImpl::SessionManagerImpl(
     : session_started_(false),
       session_stopping_(false),
       screen_locked_(false),
+      supervised_user_creation_ongoing_(false),
       upstart_signal_emitter_(emitter.Pass()),
       lock_screen_closure_(lock_screen_closure),
       restart_device_closure_(restart_device_closure),
@@ -173,6 +174,11 @@ void SessionManagerImpl::AnnounceSessionStopped() {
   DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStopped;
   dbus_emitter_->EmitSignalWithString(kSessionStateChangedSignal, kStopped);
 }
+
+bool SessionManagerImpl::ShouldEndSession() {
+  return screen_locked_ || supervised_user_creation_ongoing_;
+}
+
 
 bool SessionManagerImpl::Initialize() {
   scoped_refptr<base::MessageLoopProxy> loop_proxy =
@@ -442,6 +448,14 @@ void SessionManagerImpl::RetrieveActiveSessions(
       (*active_sessions)[it->second->username] = it->second->userhash;
     }
   }
+}
+
+void SessionManagerImpl::HandleSupervisedUserCreationStarting() {
+  supervised_user_creation_ongoing_ = true;
+}
+
+void SessionManagerImpl::HandleSupervisedUserCreationFinished() {
+  supervised_user_creation_ongoing_ = false;
 }
 
 void SessionManagerImpl::LockScreen(Error* error) {

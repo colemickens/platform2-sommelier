@@ -600,11 +600,52 @@ TEST_F(SessionManagerImplTest, RestartJob) {
   EXPECT_EQ(TRUE, impl_.RestartJob(kDummyPid, arguments, NULL));
 }
 
+TEST_F(SessionManagerImplTest, SupervisedUserCreation) {
+  impl_.HandleSupervisedUserCreationStarting();
+  EXPECT_TRUE(impl_.ShouldEndSession());
+  impl_.HandleSupervisedUserCreationFinished();
+  EXPECT_FALSE(impl_.ShouldEndSession());
+}
+
 TEST_F(SessionManagerImplTest, LockScreen) {
   ExpectAndRunStartSession(kSaneEmail);
   ExpectLockScreen();
   impl_.LockScreen(NULL);
-  EXPECT_TRUE(impl_.ScreenIsLocked());
+  EXPECT_TRUE(impl_.ShouldEndSession());
+}
+
+TEST_F(SessionManagerImplTest, LockScreen_DuringSupervisedUserCreation) {
+  ExpectAndRunStartSession(kSaneEmail);
+  ExpectLockScreen();
+  EXPECT_CALL(dbus_emitter_, EmitSignal(_)).Times(AnyNumber());
+
+  impl_.HandleSupervisedUserCreationStarting();
+  EXPECT_TRUE(impl_.ShouldEndSession());
+  impl_.LockScreen(NULL);
+  EXPECT_TRUE(impl_.ShouldEndSession());
+  impl_.HandleLockScreenShown();
+  EXPECT_TRUE(impl_.ShouldEndSession());
+  impl_.HandleLockScreenDismissed();
+  EXPECT_TRUE(impl_.ShouldEndSession());
+  impl_.HandleSupervisedUserCreationFinished();
+  EXPECT_FALSE(impl_.ShouldEndSession());
+}
+
+TEST_F(SessionManagerImplTest, LockScreen_InterleavedSupervisedUserCreation) {
+  ExpectAndRunStartSession(kSaneEmail);
+  ExpectLockScreen();
+  EXPECT_CALL(dbus_emitter_, EmitSignal(_)).Times(AnyNumber());
+
+  impl_.HandleSupervisedUserCreationStarting();
+  EXPECT_TRUE(impl_.ShouldEndSession());
+  impl_.LockScreen(NULL);
+  EXPECT_TRUE(impl_.ShouldEndSession());
+  impl_.HandleLockScreenShown();
+  EXPECT_TRUE(impl_.ShouldEndSession());
+  impl_.HandleSupervisedUserCreationFinished();
+  EXPECT_TRUE(impl_.ShouldEndSession());
+  impl_.HandleLockScreenDismissed();
+  EXPECT_FALSE(impl_.ShouldEndSession());
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_MultiSession) {
@@ -612,7 +653,7 @@ TEST_F(SessionManagerImplTest, LockScreen_MultiSession) {
   ExpectAndRunStartSession("user2@somewhere");
   ExpectLockScreen();
   impl_.LockScreen(NULL);
-  EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
+  EXPECT_EQ(TRUE, impl_.ShouldEndSession());
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_NoSession) {
@@ -631,25 +672,25 @@ TEST_F(SessionManagerImplTest, LockScreen_UserAndGuest) {
   ExpectAndRunGuestSession();
   ExpectLockScreen();
   impl_.LockScreen(&error_);
-  EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
+  EXPECT_EQ(TRUE, impl_.ShouldEndSession());
 }
 
 TEST_F(SessionManagerImplTest, LockUnlockScreen) {
   ExpectAndRunStartSession(kSaneEmail);
   ExpectLockScreen();
   impl_.LockScreen(&error_);
-  EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
+  EXPECT_EQ(TRUE, impl_.ShouldEndSession());
 
   EXPECT_CALL(dbus_emitter_,
               EmitSignal(StrEq(login_manager::kScreenIsLockedSignal))).Times(1);
   impl_.HandleLockScreenShown();
-  EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
+  EXPECT_EQ(TRUE, impl_.ShouldEndSession());
 
   EXPECT_CALL(dbus_emitter_,
               EmitSignal(StrEq(login_manager::kScreenIsUnlockedSignal)))
       .Times(1);
   impl_.HandleLockScreenDismissed();
-  EXPECT_EQ(FALSE, impl_.ScreenIsLocked());
+  EXPECT_EQ(FALSE, impl_.ShouldEndSession());
 }
 
 TEST_F(SessionManagerImplTest, StartDeviceWipe_AlreadyLoggedIn) {

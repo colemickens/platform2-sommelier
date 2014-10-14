@@ -63,6 +63,11 @@ class SessionManagerDBusAdaptor {
   scoped_ptr<dbus::Response> RetrieveSessionState(dbus::MethodCall* call);
   scoped_ptr<dbus::Response> RetrieveActiveSessions(dbus::MethodCall* call);
 
+  scoped_ptr<dbus::Response> HandleSupervisedUserCreationStarting(
+      dbus::MethodCall* call);
+  scoped_ptr<dbus::Response> HandleSupervisedUserCreationFinished(
+      dbus::MethodCall* call);
+
   scoped_ptr<dbus::Response> LockScreen(dbus::MethodCall* call);
   scoped_ptr<dbus::Response> HandleLockScreenShown(dbus::MethodCall* call);
   scoped_ptr<dbus::Response> HandleLockScreenDismissed(dbus::MethodCall* call);

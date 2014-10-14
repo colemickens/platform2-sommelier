@@ -228,6 +228,25 @@
     </method>
 
     <!--
+	HandleSupervisedUserCreationStarting:
+
+        Handle notification from Chrome that creation of a supervised user is
+        underway. Browser crashes will trigger session termination until
+        someone calls HandleSupervisedUserCreationFinished.
+    -->
+    <method name="HandleSupervisedUserCreationStarting">
+    </method>
+
+    <!--
+	HandleSupervisedUserCreationFinished:
+
+        Handle notification from Chrome that creation of a supervised user is
+        completed. Browser crashes will once again trigger a browser restart.
+    -->
+    <method name="HandleSupervisedUserCreationFinished">
+    </method>
+
+    <!--
         LockScreen:
 
         Allows other processes to request screen locking.

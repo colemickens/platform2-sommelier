@@ -100,7 +100,7 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   void AnnounceSessionStoppingIfNeeded() override;
   void AnnounceSessionStopped() override;
-  bool ScreenIsLocked() override { return screen_locked_; }
+  bool ShouldEndSession() override;
   std::vector<std::string> GetStartUpFlags() override {
     return device_policy_->GetStartUpFlags();
   }
@@ -146,6 +146,9 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   const char* RetrieveSessionState();
   void RetrieveActiveSessions(std::map<std::string, std::string>* sessions);
+
+  void HandleSupervisedUserCreationStarting();
+  void HandleSupervisedUserCreationFinished();
 
   void LockScreen(Error* error);
   void HandleLockScreenShown();
@@ -199,6 +202,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   bool session_started_;
   bool session_stopping_;
   bool screen_locked_;
+  bool supervised_user_creation_ongoing_;
   std::string cookie_;
 
   base::FilePath chrome_testing_path_;

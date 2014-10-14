@@ -26,7 +26,9 @@ class SessionManagerInterface {
   virtual void AnnounceSessionStoppingIfNeeded() = 0;
   virtual void AnnounceSessionStopped() = 0;
 
-  virtual bool ScreenIsLocked() = 0;
+  // There are some times when, instead of restarting the browser on a crash,
+  // the user's session should end instead (e.g. screen is currently locked).
+  virtual bool ShouldEndSession() = 0;
 
     // Starts a 'Powerwash' of the device.
   virtual void InitiateDeviceWipe() = 0;

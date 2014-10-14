@@ -105,7 +105,7 @@ class SessionManagerProcessTest : public ::testing::Test {
 
   void ExpectOneJobReRun(FakeBrowserJob* job, int exit_status) {
     EXPECT_CALL(*job, KillEverything(SIGKILL, _)).Times(AnyNumber());
-    EXPECT_CALL(*session_manager_impl_, ScreenIsLocked())
+    EXPECT_CALL(*session_manager_impl_, ShouldEndSession())
         .WillRepeatedly(Return(false));
     EXPECT_CALL(*job, ShouldStop())
         .WillOnce(Return(false))
@@ -221,7 +221,8 @@ TEST_F(SessionManagerProcessTest, ChildExitFlagFileStop) {
   EXPECT_CALL(*job, ShouldStop()).WillOnce(Return(false));
   job->set_should_run(false);
 
-  EXPECT_CALL(*session_manager_impl_, ScreenIsLocked()).WillOnce(Return(false));
+  EXPECT_CALL(*session_manager_impl_, ShouldEndSession())
+      .WillOnce(Return(false));
 
   SimpleRunManager();
 }
@@ -259,7 +260,8 @@ TEST_F(SessionManagerProcessTest, LockedExit) {
   EXPECT_CALL(*job, KillEverything(SIGKILL, _)).Times(AnyNumber());
   EXPECT_CALL(*job, ShouldStop()).Times(0);
 
-  EXPECT_CALL(*session_manager_impl_, ScreenIsLocked()).WillOnce(Return(true));
+  EXPECT_CALL(*session_manager_impl_, ShouldEndSession())
+      .WillOnce(Return(true));
 
   SimpleRunManager();
 }
@@ -282,7 +284,7 @@ TEST_F(SessionManagerProcessTest, MustStopChild) {
   ExpectLivenessChecking();
   EXPECT_CALL(*job, KillEverything(SIGKILL, _)).Times(AnyNumber());
   EXPECT_CALL(*job, ShouldStop()).WillOnce(Return(true));
-  EXPECT_CALL(*session_manager_impl_, ScreenIsLocked())
+  EXPECT_CALL(*session_manager_impl_, ShouldEndSession())
       .WillRepeatedly(Return(false));
 
   SimpleRunManager();

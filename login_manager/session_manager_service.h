@@ -64,7 +64,7 @@ class SessionManagerService
  public:
   enum ExitCode {
     SUCCESS = 0,
-    CRASH_WHILE_SCREEN_LOCKED = 1,
+    CRASH_WHILE_RESTART_DISABLED = 1,
     CHILD_EXITING_TOO_FAST = 2,
     MUST_WIPE_DEVICE = 3,
   };

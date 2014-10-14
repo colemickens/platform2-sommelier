@@ -229,6 +229,14 @@ void SessionManagerDBusAdaptor::ExportDBusMethods(
                        kSessionManagerRetrieveActiveSessions,
                        &SessionManagerDBusAdaptor::RetrieveActiveSessions);
 
+  ExportSyncDBusMethod(
+      object,
+      kSessionManagerHandleSupervisedUserCreationStarting,
+      &SessionManagerDBusAdaptor::HandleSupervisedUserCreationStarting);
+  ExportSyncDBusMethod(
+      object,
+      kSessionManagerHandleSupervisedUserCreationFinished,
+      &SessionManagerDBusAdaptor::HandleSupervisedUserCreationFinished);
   ExportSyncDBusMethod(object,
                        kSessionManagerLockScreen,
                        &SessionManagerDBusAdaptor::LockScreen);
@@ -431,6 +439,20 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrieveActiveSessions(
   }
   writer.CloseContainer(&array_writer);
   return response.Pass();
+}
+
+scoped_ptr<dbus::Response>
+SessionManagerDBusAdaptor::HandleSupervisedUserCreationStarting(
+    dbus::MethodCall* call) {
+  impl_->HandleSupervisedUserCreationStarting();
+  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+}
+
+scoped_ptr<dbus::Response>
+SessionManagerDBusAdaptor::HandleSupervisedUserCreationFinished(
+    dbus::MethodCall* call) {
+  impl_->HandleSupervisedUserCreationFinished();
+  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
 }
 
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::LockScreen(

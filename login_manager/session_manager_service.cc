@@ -253,9 +253,9 @@ void SessionManagerService::HandleExit(const siginfo_t& ignored) {
 
   liveness_checker_->Stop();
 
-  if (impl_->ScreenIsLocked()) {
-    LOG(ERROR) << "Screen locked, shutting down";
-    SetExitAndScheduleShutdown(CRASH_WHILE_SCREEN_LOCKED);
+  if (impl_->ShouldEndSession()) {
+    LOG(ERROR) << "Choosing to end session rather than restart browser.";
+    SetExitAndScheduleShutdown(CRASH_WHILE_RESTART_DISABLED);
     return;
   }
 
