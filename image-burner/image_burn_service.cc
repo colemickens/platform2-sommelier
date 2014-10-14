@@ -139,8 +139,8 @@ void ImageBurnService::Cleanup() {
 
 void ImageBurnService::SendFinishedSignal(const char* target_path, bool success,
                                           const char* error_message) {
-  if (!signals_ || !image_burner_) {
-    LOG(WARNING) << "Finished signal not send due to sender not being "
+  if (!image_burner_) {
+    LOG(WARNING) << "Finished signal not sent due to sender not being "
                  << "initialized";
     return;
   }
@@ -152,8 +152,8 @@ void ImageBurnService::SendFinishedSignal(const char* target_path, bool success,
 void ImageBurnService::SendProgressSignal(int64_t amount_burnt,
                                           int64_t total_size,
                                           const char* target_path) {
-  if (!signals_ || !image_burner_) {
-    LOG(WARNING) << "Progresssignal not send due to sender not being "
+  if (!image_burner_) {
+    LOG(WARNING) << "Progress signal not sent due to sender not being "
                  << "initialized";
     return;
   }
