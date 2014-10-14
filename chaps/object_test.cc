@@ -211,6 +211,13 @@ TEST_F(TestObject, SetAttributes) {
   // Modify attributes successfully.
   EXPECT_EQ(CKR_OK, object_->SetAttributes(templ, 1));
   EXPECT_EQ(CKO_PUBLIC_KEY, object_->GetObjectClass());
+  // Attempt to set with invalid length; specifically, with the length value
+  // that is used to indicate an error on C_GetAttributeValue (so if an
+  // application re-used the CK_ATTRIBUTE template without checking/updating
+  // the length, this is what arrives).
+  CK_BYTE label[] = "label";
+  CK_ATTRIBUTE invalid[] = {{CKA_LABEL, &label, (CK_ULONG)-1}};
+  EXPECT_EQ(CKR_ATTRIBUTE_VALUE_INVALID, object_->SetAttributes(invalid, 1));
 }
 
 }  // namespace chaps

@@ -114,6 +114,11 @@ CK_RV ObjectImpl::GetAttributes(CK_ATTRIBUTE_PTR attributes,
 CK_RV ObjectImpl::SetAttributes(const CK_ATTRIBUTE_PTR attributes,
                                 int num_attributes) {
   for (int i = 0; i < num_attributes; ++i) {
+    // Watch out for -1 in the length; this survives serialization (because
+    // it is used as an error indicator for C_GetAttributeValue) but isn't
+    // valid when setting attributes.
+    if (attributes[i].ulValueLen == static_cast<CK_ULONG>(-1))
+      return CKR_ATTRIBUTE_VALUE_INVALID;
     string value(reinterpret_cast<const char*>(attributes[i].pValue),
                  attributes[i].ulValueLen);
     if (policy_.get()) {
