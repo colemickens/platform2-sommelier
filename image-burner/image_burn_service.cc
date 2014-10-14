@@ -15,7 +15,7 @@
 #include "image-burner/image_burner.h"
 
 namespace imageburn {
-#include "image-burner/bindings/server.h"  // NOLINT(build/include_alpha)
+#include "bindings/image_burner.dbusserver.h"  // NOLINT(build/include_alpha)
 
 namespace {
 // Update signal is emitted only when there is at least
