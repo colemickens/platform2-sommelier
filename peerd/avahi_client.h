@@ -14,8 +14,15 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 
+#include "peerd/avahi_service_discoverer.h"
 #include "peerd/avahi_service_publisher.h"
 #include "peerd/typedefs.h"
+
+namespace dbus {
+
+class ObjectProxy;
+
+}  // namespace dbus
 
 namespace peerd {
 
@@ -52,6 +59,9 @@ class AvahiClient {
   virtual void StartMonitoring();
   virtual void StopMonitoring();
 
+  // Transform a service_id to a mDNS compatible service type.
+  static std::string GetServiceType(const std::string& service_id);
+
  private:
   // Watch for changes in Avahi server state.
   void OnServerStateChanged(int32_t state, const std::string& error);
@@ -63,6 +73,8 @@ class AvahiClient {
   void OnServiceAvailable(bool avahi_is_on_dbus);
   // Logic to react to Avahi server state changes.
   void HandleServerStateChange(int32_t state);
+  // Logic to react to failure or success to start service discovery.
+  void HandleDiscoveryStartupResult(bool success);
   // Ask Avahi for the current hostname.
   bool GetHostName(std::string* hostname) const;
 
@@ -72,6 +84,8 @@ class AvahiClient {
   std::vector<OnAvahiRestartCallback> avahi_ready_callbacks_;
   bool avahi_is_up_{false};
   std::unique_ptr<AvahiServicePublisher> publisher_{nullptr};
+  std::unique_ptr<AvahiServiceDiscoverer> discoverer_{nullptr};
+  bool should_discover_{false};
   // Must be last member to invalidate pointers before actual desctruction.
   base::WeakPtrFactory<AvahiClient> weak_ptr_factory_{this};
 

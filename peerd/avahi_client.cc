@@ -31,13 +31,14 @@ AvahiClient::AvahiClient(const scoped_refptr<dbus::Bus>& bus,
 
 AvahiClient::~AvahiClient() {
   publisher_.reset();
+  StopMonitoring();
   // In unittests, we don't have a server_ since we never call RegisterAsync().
   if (server_) {
     // The Bus would do this for us on destruction, but this prevents
     // callbacks from the proxy after AvahiClient dies.
     server_->Detach();
+    server_ = nullptr;
   }
-  StopMonitoring();
 }
 
 void AvahiClient::RegisterAsync(const CompletionAction& completion_callback) {
@@ -83,11 +84,30 @@ void AvahiClient::RegisterOnAvahiRestartCallback(
 }
 
 void AvahiClient::StartMonitoring() {
-  // TODO(wiley) Implement service monitoring over mDNS.
+  if (discoverer_) { return; }  // Already monitoring for services to appear.
+  should_discover_ = true;
+  if (avahi_is_up_) {
+    LOG(INFO) << "Starting service discovery over mDNS.";
+    discoverer_.reset(new AvahiServiceDiscoverer{bus_, server_, peer_manager_});
+    discoverer_->RegisterAsync(
+        base::Bind(&AvahiClient::HandleDiscoveryStartupResult,
+                   weak_ptr_factory_.GetWeakPtr()));
+  } else {
+    LOG(INFO) << "Waiting for Avahi to come up before starting "
+                 "service discovery.";
+  }
 }
 
 void AvahiClient::StopMonitoring() {
-  peer_manager_->OnTechnologyShutdown(technologies::kMDNS);
+  should_discover_ = false;
+  discoverer_.reset();
+}
+
+string AvahiClient::GetServiceType(const string& service_id) {
+  // TODO(wiley) We're hardcoding TCP here, but in theory we could advertise UDP
+  //             services.  We'd have to pass that information down from our
+  //             DBus interface.
+  return "_" + service_id + "._tcp";
 }
 
 void AvahiClient::OnServiceOwnerChanged(const string& old_owner,
@@ -134,6 +154,9 @@ void AvahiClient::HandleServerStateChange(int32_t state) {
       for (const auto& cb : avahi_ready_callbacks_) {
         cb.Run();
       }
+      if (should_discover_) {
+        StartMonitoring();
+      }
     } break;
     case AVAHI_SERVER_INVALID:
       // Invalid state (initial).
@@ -145,8 +168,9 @@ void AvahiClient::HandleServerStateChange(int32_t state) {
     case AVAHI_SERVER_FAILURE:
       // Some fatal failure happened, the server is unable to proceed.
       avahi_is_up_ = false;
-      VLOG(1) << "Avahi is down, resetting publisher.";
+      VLOG(1) << "Avahi is down, resetting publisher, discoverer.";
       publisher_.reset();
+      discoverer_.reset();
       break;
     default:
       LOG(ERROR) << "Unknown Avahi server state change to " << state;
@@ -172,6 +196,15 @@ base::WeakPtr<ServicePublisherInterface> AvahiClient::GetPublisher(
   }
   result = publisher_->GetWeakPtr();
   return result;
+}
+
+void AvahiClient::HandleDiscoveryStartupResult(bool success) {
+  if (!success) {
+    LOG(ERROR) << "Failed to start discovering services over mDNS.";
+    discoverer_.reset();
+  } else {
+    VLOG(1) << "Service discovery started successfully.";
+  }
 }
 
 bool AvahiClient::GetHostName(string* hostname) const {

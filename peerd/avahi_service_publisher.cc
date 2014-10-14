@@ -12,6 +12,7 @@
 #include <chromeos/strings/string_utils.h>
 #include <dbus/bus.h>
 
+#include "peerd/avahi_client.h"
 #include "peerd/constants.h"
 #include "peerd/dbus_constants.h"
 #include "peerd/service.h"
@@ -152,14 +153,6 @@ bool AvahiServicePublisher::OnNoteChanged(ErrorPtr* error,
   return UpdateRootService(error);
 }
 
-std::string AvahiServicePublisher::GetServiceType(
-    const std::string& service_id) {
-  // TODO(wiley) We're hardcoding TCP here, but in theory we could advertise UDP
-  //             services.  We'd have to pass that information down from our
-  //             DBus interface.
-  return "_" + service_id + "._tcp";
-}
-
 AvahiServicePublisher::TxtRecord AvahiServicePublisher::GetTxtRecord(
     const Service::ServiceInfo& info) {
   TxtRecord result;
@@ -185,14 +178,14 @@ bool AvahiServicePublisher::AddServiceToGroup(
       dbus_constants::avahi::kGroupInterface,
       dbus_constants::avahi::kGroupMethodAddService,
       error,
-      (int32_t)AVAHI_IF_UNSPEC,
-      (int32_t)AVAHI_PROTO_UNSPEC,
-      (uint32_t)(AvahiPublishFlags) 0,
+      int32_t{AVAHI_IF_UNSPEC},
+      int32_t{AVAHI_PROTO_UNSPEC},
+      uint32_t{0},  // No flags.
       lan_unique_hostname_,
-      GetServiceType(service_id),
-      std::string(),  // domain.
-      std::string(),  // hostname
-      (uint16_t)0,  // TODO(wiley) port
+      AvahiClient::GetServiceType(service_id),
+      std::string{},  // domain.
+      std::string{},  // hostname
+      uint16_t{0},  // TODO(wiley) port
       GetTxtRecord(service_info));
   if (!resp || !ExtractMethodCallResults(resp.get(), error)) { return false; }
   resp = CallMethodAndBlock(group_proxy,

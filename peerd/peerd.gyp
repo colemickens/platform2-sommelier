@@ -14,6 +14,7 @@
       'type': 'static_library',
       'sources': [
         'avahi_client.cc',
+        'avahi_service_discoverer.cc',
         'avahi_service_publisher.cc',
         'constants.cc',
         'dbus_constants.cc',

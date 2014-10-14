@@ -17,7 +17,6 @@ class MockAvahiClient: public AvahiClient {
   MockAvahiClient(const scoped_refptr<dbus::Bus>& bus,
                   MockPeerManager* peer_manager)
       : AvahiClient(bus, peer_manager) {
-    EXPECT_CALL(*peer_manager, OnTechnologyShutdown(technologies::kMDNS));
   }
   ~MockAvahiClient() override = default;
   MOCK_METHOD1(RegisterAsync, void(const CompletionAction& cb));

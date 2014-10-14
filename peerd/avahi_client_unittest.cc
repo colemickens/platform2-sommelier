@@ -26,13 +26,21 @@ using dbus::Response;
 using peerd::dbus_constants::avahi::kServerInterface;
 using peerd::dbus_constants::avahi::kServerMethodGetHostName;
 using peerd::dbus_constants::avahi::kServerMethodGetState;
+using peerd::dbus_constants::avahi::kServerMethodServiceBrowserNew;
 using peerd::dbus_constants::avahi::kServerPath;
 using peerd::dbus_constants::avahi::kServerSignalStateChanged;
 using peerd::dbus_constants::avahi::kServiceName;
+using peerd::dbus_constants::avahi::kServiceBrowserInterface;
+using peerd::dbus_constants::avahi::kServiceBrowserMethodFree;
+using peerd::dbus_constants::avahi::kServiceBrowserSignalItemNew;
+using peerd::dbus_constants::avahi::kServiceBrowserSignalItemRemove;
+using peerd::dbus_constants::avahi::kServiceBrowserSignalFailure;
 using peerd::test_util::IsDBusMethodCallTo;
+using std::string;
 using testing::AnyNumber;
 using testing::DoAll;
 using testing::Invoke;
+using testing::Mock;
 using testing::Property;
 using testing::Return;
 using testing::SaveArg;
@@ -41,12 +49,23 @@ using testing::_;
 
 namespace {
 
+const char kDiscovererPath[] = "/path/to/avahi/discoverer";
+
 Response* ReturnsHostName(dbus::MethodCall* method_call, Unused, Unused) {
   method_call->SetSerial(87);
   scoped_ptr<Response> response = Response::FromMethodCall(method_call);
   dbus::MessageWriter writer(response.get());
   chromeos::dbus_utils::AppendValueToWriter(&writer,
-                                            std::string("this_is_a_hostname"));
+                                            string("this_is_a_hostname"));
+  return response.release();
+}
+
+Response* ReturnsDiscovererPath(dbus::MethodCall* method_call, Unused, Unused) {
+  method_call->SetSerial(87);
+  scoped_ptr<Response> response = Response::FromMethodCall(method_call);
+  dbus::MessageWriter writer(response.get());
+  chromeos::dbus_utils::AppendValueToWriter(
+      &writer, ObjectPath{string{kDiscovererPath}});
   return response.release();
 }
 
@@ -68,13 +87,14 @@ class AvahiClientTest : public ::testing::Test {
                 GetObjectProxy(kServiceName,
                                Property(&ObjectPath::value, kServerPath)))
         .WillRepeatedly(Return(avahi_proxy_.get()));
-    // Desctruction of the AvahiClient calls this every time.
-    EXPECT_CALL(peer_manager_, OnTechnologyShutdown(technologies::kMDNS));
     client_.reset(new AvahiClient(mock_bus_, &peer_manager_));
   }
 
   void TearDown() override {
-    EXPECT_CALL(*avahi_proxy_, Detach()).Times(1);
+    EXPECT_CALL(*avahi_proxy_, Detach());
+    if (client_->discoverer_) {
+      EXPECT_CALL(*service_browser_proxy_, Detach());
+    }
   }
 
   void RegisterAsyncWhenAvahiIs(bool is_running, AvahiServerState state) {
@@ -122,9 +142,42 @@ class AvahiClientTest : public ::testing::Test {
     // No error message to report cap'n.
     chromeos::dbus_utils::DBusParamWriter::Append(&writer,
                                                   int32_t{state},
-                                                  std::string{});
+                                                  string{});
     ASSERT_FALSE(state_changed_signal_callback_.is_null());
     state_changed_signal_callback_.Run(&signal);
+  }
+
+  void ExpectServiceDiscovererCreated(bool will_be_created) {
+    Mock::VerifyAndClearExpectations(avahi_proxy_.get());
+    Mock::VerifyAndClearExpectations(service_browser_proxy_.get());
+    if (!will_be_created) {
+      EXPECT_CALL(*avahi_proxy_,
+                  MockCallMethodAndBlockWithErrorDetails(IsDBusMethodCallTo(
+                      kServerInterface, kServerMethodServiceBrowserNew), _, _))
+          .Times(0);
+      return;
+    }
+    EXPECT_CALL(*avahi_proxy_,
+                MockCallMethodAndBlockWithErrorDetails(IsDBusMethodCallTo(
+                    kServerInterface, kServerMethodServiceBrowserNew), _, _))
+        .WillOnce(Invoke(&ReturnsDiscovererPath));
+    EXPECT_CALL(*mock_bus_,
+                GetObjectProxy(kServiceName,
+                               Property(&ObjectPath::value, kDiscovererPath)))
+        .WillRepeatedly(Return(service_browser_proxy_.get()));
+    EXPECT_CALL(*service_browser_proxy_,
+                ConnectToSignal(kServiceBrowserInterface,
+                                kServiceBrowserSignalItemNew,
+                                _, _)).Times(1);
+    EXPECT_CALL(*service_browser_proxy_,
+                ConnectToSignal(kServiceBrowserInterface,
+                                kServiceBrowserSignalItemRemove,
+                                _, _)).Times(1);
+    EXPECT_CALL(*service_browser_proxy_,
+                ConnectToSignal(kServiceBrowserInterface,
+                                kServiceBrowserSignalFailure,
+                                _, _)).Times(1);
+    EXPECT_CALL(*service_browser_proxy_, Detach()).Times(0);
   }
 
   MOCK_METHOD0(AvahiReady, void());
@@ -132,6 +185,9 @@ class AvahiClientTest : public ::testing::Test {
   scoped_refptr<MockBus> mock_bus_{new MockBus{dbus::Bus::Options{}}};
   MockPeerManager peer_manager_;
   scoped_refptr<peerd::CompleteMockObjectProxy> avahi_proxy_;
+  scoped_refptr<dbus::MockObjectProxy> service_browser_proxy_{
+      new dbus::MockObjectProxy{mock_bus_.get(), kServiceName,
+                                ObjectPath{kDiscovererPath}}};
   std::unique_ptr<AvahiClient> client_;
   AvahiServerState current_avahi_state_;
   dbus::ObjectProxy::SignalCallback state_changed_signal_callback_;
@@ -167,6 +223,54 @@ TEST_F(AvahiClientTest, CanGetPublisherWhenAvahiIsUp) {
                   kServerInterface, kServerMethodGetHostName), _, _))
       .WillOnce(Invoke(&ReturnsHostName));
   EXPECT_NE(nullptr, client_->GetPublisher("uuid", "name", "note"));
+}
+
+TEST_F(AvahiClientTest, ShouldStartMonitoringWhenUp) {
+  RegisterAsyncWhenAvahiIs(false, AVAHI_SERVER_INVALID);
+  ExpectServiceDiscovererCreated(false);
+  client_->StartMonitoring();
+  ExpectServiceDiscovererCreated(true);
+  SendOnStateChanged(AVAHI_SERVER_RUNNING);
+}
+
+TEST_F(AvahiClientTest, ShouldStopMonitoringWhenDown) {
+  RegisterAsyncWhenAvahiIs(true, AVAHI_SERVER_RUNNING);
+  ExpectServiceDiscovererCreated(true);
+  client_->StartMonitoring();
+  EXPECT_CALL(*service_browser_proxy_, Detach());
+  SendOnStateChanged(AVAHI_SERVER_INVALID);
+}
+
+TEST_F(AvahiClientTest, ShouldStopMonitoringWhenRequested) {
+  RegisterAsyncWhenAvahiIs(true, AVAHI_SERVER_RUNNING);
+  ExpectServiceDiscovererCreated(true);
+  client_->StartMonitoring();
+  EXPECT_CALL(*service_browser_proxy_, Detach());
+  client_->StopMonitoring();
+}
+
+TEST_F(AvahiClientTest, ShouldResumeMonitoring) {
+  RegisterAsyncWhenAvahiIs(true, AVAHI_SERVER_RUNNING);
+  ExpectServiceDiscovererCreated(true);
+  client_->StartMonitoring();
+  EXPECT_CALL(*service_browser_proxy_, Detach());
+  // We're not monitoring now, but if Avahi comes back, resume monitoring.
+  SendOnStateChanged(AVAHI_SERVER_INVALID);
+  ExpectServiceDiscovererCreated(true);
+  SendOnStateChanged(AVAHI_SERVER_RUNNING);
+}
+
+TEST_F(AvahiClientTest, StopMonitoringIsPersistent) {
+  RegisterAsyncWhenAvahiIs(true, AVAHI_SERVER_RUNNING);
+  ExpectServiceDiscovererCreated(true);
+  client_->StartMonitoring();
+  EXPECT_CALL(*service_browser_proxy_, Detach());
+  client_->StopMonitoring();
+  ExpectServiceDiscovererCreated(false);
+  // Changes in Avahi state going forward don't matter, no monitoring
+  // should happen.
+  SendOnStateChanged(AVAHI_SERVER_INVALID);
+  SendOnStateChanged(AVAHI_SERVER_RUNNING);
 }
 
 }  // namespace peerd

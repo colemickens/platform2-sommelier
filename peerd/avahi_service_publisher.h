@@ -55,8 +55,6 @@ class AvahiServicePublisher : public ServicePublisherInterface {
 
  private:
   using TxtRecord = std::vector<std::vector<uint8_t>>;
-  // Transform a service_id to a mDNS compatible service type.
-  static std::string GetServiceType(const std::string& service_id);
   // Transform a service_info to a mDNS compatible TXT record value.
   // Concretely, a TXT record consists of a list of strings in the format
   // "key=value".  Each string must be less than 256 bytes long, since they are
