@@ -3305,24 +3305,6 @@ mno {
 
 mno {
   data {
-    uuid : "7f988555-a3a3-4def-a374-d54e527a7970"
-    country : "de"
-    provider_type : GSM
-    localized_name {
-      name : "Materna BR"
-    }
-    mccmnc : "26216"
-    mobile_apn {
-      apn : "internet.vistream.net"
-      plan : POSTPAID
-      username : "web"
-      password : "vistream"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "71100bdc-ffc5-4696-b9a8-62273c995165"
     country : "de"
     provider_type : GSM
@@ -3386,60 +3368,6 @@ mno {
 
 mno {
   data {
-    uuid : "c85bde4d-f616-46f0-8003-4391b8f6a9f8"
-    country : "de"
-    provider_type : GSM
-    localized_name {
-      name : "PTT mobile"
-    }
-    mccmnc : "26216"
-    mobile_apn {
-      apn : "internet.vistream.net"
-      plan : POSTPAID
-      username : "web"
-      password : "vistream"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "6afdf77a-b103-4e98-a677-c009ca632c22"
-    country : "de"
-    provider_type : GSM
-    localized_name {
-      name : "SunSIM"
-    }
-    mccmnc : "26216"
-    mobile_apn {
-      apn : "internet.vistream.net"
-      plan : POSTPAID
-      username : "web"
-      password : "vistream"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "8bf23822-9232-489f-abf0-7b7b96fd45ce"
-    country : "de"
-    provider_type : GSM
-    localized_name {
-      name : "SüdkurierTel"
-    }
-    mccmnc : "26216"
-    mobile_apn {
-      apn : "internet.vistream.net"
-      plan : POSTPAID
-      username : "web"
-      password : "vistream"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "294269ce-b1f5-4a01-97fb-52e37039715a"
     country : "de"
     provider_type : GSM
@@ -3484,24 +3412,6 @@ mno {
       localized_name {
         name : "Tagesflat / Monats-Flatrate L / Monats-Flatrate XL"
       }
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "725415e5-0f9c-4ae5-bc81-f7625d6f2642"
-    country : "de"
-    provider_type : GSM
-    localized_name {
-      name : "TouristMobile"
-    }
-    mccmnc : "26216"
-    mobile_apn {
-      apn : "internet.vistream.net"
-      plan : POSTPAID
-      username : "web"
-      password : "vistream"
     }
   }
 }
@@ -3604,78 +3514,6 @@ mno {
           name : "BILDmobil Speedstick (Surfpakete)"
         }
       }
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "04a86ad7-dc58-424c-a2b3-c60ba200cde5"
-    country : "de"
-    provider_type : GSM
-    localized_name {
-      name : "igge & ko"
-    }
-    mccmnc : "26216"
-    mobile_apn {
-      apn : "internet.vistream.net"
-      plan : POSTPAID
-      username : "web"
-      password : "vistream"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "77feda13-eeeb-448a-8785-076796b334e9"
-    country : "de"
-    provider_type : GSM
-    localized_name {
-      name : "sdt.net"
-    }
-    mccmnc : "26216"
-    mobile_apn {
-      apn : "internet.vistream.net"
-      plan : POSTPAID
-      username : "web"
-      password : "vistream"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "c642d8fa-0bd8-46d6-bd39-35721437f4e8"
-    country : "de"
-    provider_type : GSM
-    localized_name {
-      name : "solomo"
-    }
-    mccmnc : "26216"
-    mobile_apn {
-      apn : "internet.vistream.net"
-      plan : POSTPAID
-      username : "web"
-      password : "vistream"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "055816e6-cb5a-48df-94dc-2af8f29eccae"
-    country : "de"
-    provider_type : GSM
-    localized_name {
-      name : "vistream"
-    }
-    mccmnc : "26216"
-    mobile_apn {
-      apn : "internet.vistream.net"
-      plan : POSTPAID
-      username : "web"
-      password : "vistream"
     }
   }
 }
@@ -7715,25 +7553,6 @@ mno {
 
 mno {
   data {
-    uuid : "2614d4d0-cb01-4443-9917-929ff2e0acfc"
-    country : "it"
-    provider_type : GSM
-    localized_name {
-      name : "CoopVoce"
-    }
-    mccmnc : "22201"
-    mobile_apn {
-      apn : "web.coopvoce.it"
-      plan : POSTPAID
-      localized_name {
-        name : "Internet Mobile"
-      }
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "670247cf-7801-41b4-bcfb-d6250fbb4ca3"
     country : "it"
     provider_type : GSM
@@ -7792,6 +7611,50 @@ mno {
       username : "WAPTIM"
       dns : "213.230.155.94"
       dns : "213.230.130.222"
+    }
+  }
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "CoopVoce"
+    }
+    data {
+      uuid : "2614d4d0-cb01-4443-9917-929ff2e0acfc"
+      country : "it"
+      provider_type : GSM
+      localized_name {
+        name : "CoopVoce"
+      }
+      mccmnc : "22201"
+      mobile_apn {
+        apn : "web.coopvoce.it"
+        plan : POSTPAID
+        localized_name {
+          name : "Internet Mobile"
+        }
+      }
+    }
+  }
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "Tiscali"
+    }
+    data {
+      uuid : "9d0a0879-d00b-4ac6-a895-3dffa841b830"
+      country : "it"
+      provider_type : GSM
+      localized_name {
+        name : "Tiscali"
+      }
+      mccmnc : "22201"
+      mobile_apn {
+        apn : "tiscalimobileinternet"
+        plan : PREPAID
+        localized_name {
+          name : "Tiscali Internet"
+        }
+      }
     }
   }
 }
