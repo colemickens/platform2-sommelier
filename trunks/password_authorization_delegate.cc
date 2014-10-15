@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "trunks/password_auth_delegate.h"
+#include "trunks/password_authorization_delegate.h"
 
 #include <base/logging.h>
 
@@ -12,13 +12,14 @@ namespace trunks {
 
 const uint8_t kContinueSession = 1;
 
-PasswordAuthDelegate::PasswordAuthDelegate(const std::string& password) {
+PasswordAuthorizationDelegate::PasswordAuthorizationDelegate(
+    const std::string& password) {
   password_ = Make_TPM2B_DIGEST(password);
 }
 
-PasswordAuthDelegate::~PasswordAuthDelegate() {}
+PasswordAuthorizationDelegate::~PasswordAuthorizationDelegate() {}
 
-bool PasswordAuthDelegate::GetCommandAuthorization(
+bool PasswordAuthorizationDelegate::GetCommandAuthorization(
     const std::string& command_hash,
     std::string* authorization) {
   TPMS_AUTH_COMMAND auth;
@@ -35,7 +36,7 @@ bool PasswordAuthDelegate::GetCommandAuthorization(
   return true;
 }
 
-bool PasswordAuthDelegate::CheckResponseAuthorization(
+bool PasswordAuthorizationDelegate::CheckResponseAuthorization(
     const std::string& response_hash,
     const std::string& authorization) {
   TPMS_AUTH_RESPONSE auth_response;
@@ -67,11 +68,13 @@ bool PasswordAuthDelegate::CheckResponseAuthorization(
   return true;
 }
 
-bool PasswordAuthDelegate::EncryptCommandParameter(std::string* parameter) {
+bool PasswordAuthorizationDelegate::EncryptCommandParameter(
+    std::string* parameter) {
   return true;
 }
 
-bool PasswordAuthDelegate::DecryptResponseParameter(std::string* parameter) {
+bool PasswordAuthorizationDelegate::DecryptResponseParameter(
+    std::string* parameter) {
   return true;
 }
 

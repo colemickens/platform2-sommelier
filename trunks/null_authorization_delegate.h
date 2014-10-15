@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef TRUNKS_NULL_AUTH_DELEGATE_H_
-#define TRUNKS_NULL_AUTH_DELEGATE_H_
+#ifndef TRUNKS_NULL_AUTHORIZATION_DELEGATE_H_
+#define TRUNKS_NULL_AUTHORIZATION_DELEGATE_H_
 
 #include <string>
 
@@ -14,14 +14,14 @@
 
 namespace trunks {
 
-// NullAuthDelegate is an implementation of the AuthorizationDelegate
+// NullAuthorizationDelegate is an implementation of the AuthorizationDelegate
 // interface. This delegate is used when authorization and parameter encryption
 // is not enabled. It returns no authorization data, performs no checks and
 // does no parameter encryption.
-class CHROMEOS_EXPORT NullAuthDelegate: public AuthorizationDelegate {
+class CHROMEOS_EXPORT NullAuthorizationDelegate: public AuthorizationDelegate {
  public:
-  NullAuthDelegate();
-  virtual ~NullAuthDelegate();
+  NullAuthorizationDelegate();
+  virtual ~NullAuthorizationDelegate();
   // AuthorizationDelegate methods.
   virtual bool GetCommandAuthorization(const std::string& command_hash,
                                        std::string* authorization);
@@ -31,9 +31,9 @@ class CHROMEOS_EXPORT NullAuthDelegate: public AuthorizationDelegate {
   virtual bool DecryptResponseParameter(std::string* parameter);
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(NullAuthDelegate);
+  DISALLOW_COPY_AND_ASSIGN(NullAuthorizationDelegate);
 };
 
 }  // namespace trunks
 
-#endif  // TRUNKS_NULL_AUTH_DELEGATE_H_
+#endif  // TRUNKS_NULL_AUTHORIZATION_DELEGATE_H_

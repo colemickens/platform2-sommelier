@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "trunks/hmac_auth_delegate.h"
+#include "trunks/hmac_authorization_delegate.h"
 
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
@@ -27,7 +27,8 @@ const uint32_t kTpmBufferSize = 4096;
 
 }  // namespace
 
-HmacAuthDelegate::HmacAuthDelegate(bool parameter_encryption) {
+HmacAuthorizationDelegate::HmacAuthorizationDelegate(
+    bool parameter_encryption) {
   session_handle_ = 0;
   attributes_ = kContinueSession;
   if (parameter_encryption) {
@@ -36,9 +37,9 @@ HmacAuthDelegate::HmacAuthDelegate(bool parameter_encryption) {
   }
 }
 
-HmacAuthDelegate::~HmacAuthDelegate() {}
+HmacAuthorizationDelegate::~HmacAuthorizationDelegate() {}
 
-bool HmacAuthDelegate::GetCommandAuthorization(
+bool HmacAuthorizationDelegate::GetCommandAuthorization(
     const std::string& command_hash,
     std::string* authorization) {
   if (!session_handle_) {
@@ -76,7 +77,7 @@ bool HmacAuthDelegate::GetCommandAuthorization(
   return true;
 }
 
-bool HmacAuthDelegate::CheckResponseAuthorization(
+bool HmacAuthorizationDelegate::CheckResponseAuthorization(
     const std::string& response_hash,
     const std::string& authorization) {
   if (!session_handle_) {
@@ -130,7 +131,8 @@ bool HmacAuthDelegate::CheckResponseAuthorization(
   return true;
 }
 
-bool HmacAuthDelegate::EncryptCommandParameter(std::string* parameter) {
+bool HmacAuthorizationDelegate::EncryptCommandParameter(
+    std::string* parameter) {
   if (!session_handle_ || !parameter) {
     return false;
   }
@@ -146,7 +148,8 @@ bool HmacAuthDelegate::EncryptCommandParameter(std::string* parameter) {
   return true;
 }
 
-bool HmacAuthDelegate::DecryptResponseParameter(std::string* parameter) {
+bool HmacAuthorizationDelegate::DecryptResponseParameter(
+    std::string* parameter) {
   if (!session_handle_ || !parameter) {
     return false;
   }
@@ -162,11 +165,12 @@ bool HmacAuthDelegate::DecryptResponseParameter(std::string* parameter) {
   return true;
 }
 
-bool HmacAuthDelegate::InitSession(TPM_HANDLE session_handle,
-                                   const TPM2B_NONCE& tpm_nonce,
-                                   const TPM2B_NONCE& caller_nonce,
-                                   const std::string& salt,
-                                   const std::string& bind_auth_value) {
+bool HmacAuthorizationDelegate::InitSession(
+    TPM_HANDLE session_handle,
+    const TPM2B_NONCE& tpm_nonce,
+    const TPM2B_NONCE& caller_nonce,
+    const std::string& salt,
+    const std::string& bind_auth_value) {
   session_handle_ = session_handle;
   if (caller_nonce.size < kNonceMinSize || caller_nonce.size > kNonceMaxSize ||
       tpm_nonce.size < kNonceMinSize || tpm_nonce.size > kNonceMaxSize) {
@@ -181,14 +185,16 @@ bool HmacAuthDelegate::InitSession(TPM_HANDLE session_handle,
   return true;
 }
 
-void HmacAuthDelegate::set_entity_auth_value(const std::string& auth_value) {
+void HmacAuthorizationDelegate::set_entity_auth_value(
+    const std::string& auth_value) {
   entity_auth_value_ = auth_value;
 }
 
-std::string HmacAuthDelegate::CreateKey(const std::string& hmac_key,
-                                        const std::string& label,
-                                        const TPM2B_NONCE& nonce_newer,
-                                        const TPM2B_NONCE& nonce_older) {
+std::string HmacAuthorizationDelegate::CreateKey(
+    const std::string& hmac_key,
+    const std::string& label,
+    const TPM2B_NONCE& nonce_newer,
+    const TPM2B_NONCE& nonce_older) {
   if (hmac_key.length() == 0) {
     LOG(INFO) << "No sessionKey generated for unsalted and unbound session.";
     return std::string();
@@ -217,8 +223,8 @@ std::string HmacAuthDelegate::CreateKey(const std::string& hmac_key,
   return key;
 }
 
-std::string HmacAuthDelegate::HmacSha256(const std::string& key,
-                                          const std::string& data) {
+std::string HmacAuthorizationDelegate::HmacSha256(const std::string& key,
+                                                  const std::string& data) {
   unsigned char digest[EVP_MAX_MD_SIZE];
   unsigned int digest_length;
   HMAC(EVP_sha256(),
@@ -232,10 +238,10 @@ std::string HmacAuthDelegate::HmacSha256(const std::string& key,
   return std::string(reinterpret_cast<char*>(digest), digest_length);
 }
 
-void HmacAuthDelegate::AesOperation(std::string* parameter,
-                                    const TPM2B_NONCE& nonce_newer,
-                                    const TPM2B_NONCE& nonce_older,
-                                    int operation_type) {
+void HmacAuthorizationDelegate::AesOperation(std::string* parameter,
+                                             const TPM2B_NONCE& nonce_newer,
+                                             const TPM2B_NONCE& nonce_older,
+                                             int operation_type) {
   std::string label("CFB", kLabelSize);
   std::string compound_key = CreateKey(session_key_, label,
                                        nonce_newer, nonce_older);
@@ -257,7 +263,7 @@ void HmacAuthDelegate::AesOperation(std::string* parameter,
   memcpy(string_as_array(parameter), decrypted, parameter->size());
 }
 
-void HmacAuthDelegate::RegenerateCallerNonce() {
+void HmacAuthorizationDelegate::RegenerateCallerNonce() {
   CHECK(session_handle_);
   // RAND_bytes takes a signed number, but since nonce_size is guaranteed to be
   // less than 32 bytes and greater than 16 we dont have to worry about it.

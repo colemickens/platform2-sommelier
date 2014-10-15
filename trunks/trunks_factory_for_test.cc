@@ -9,7 +9,7 @@
 #include "trunks/authorization_delegate.h"
 #include "trunks/mock_tpm.h"
 #include "trunks/mock_tpm_state.h"
-#include "trunks/null_auth_delegate.h"
+#include "trunks/null_authorization_delegate.h"
 #include "trunks/tpm_generated.h"
 #include "trunks/tpm_state.h"
 #include "trunks/tpm_utility.h"
@@ -78,8 +78,8 @@ TrunksFactoryForTest::TrunksFactoryForTest()
       tpm_(default_tpm_.get()),
       default_tpm_state_(new NiceMock<MockTpmState>()),
       tpm_state_(default_tpm_state_.get()),
-      default_auth_delegate_(new NullAuthDelegate()),
-      password_auth_delegate_(default_auth_delegate_.get()) {
+      default_authorization_delegate_(new NullAuthorizationDelegate()),
+      password_authorization_delegate_(default_authorization_delegate_.get()) {
 }
 
 TrunksFactoryForTest::~TrunksFactoryForTest() {
@@ -97,7 +97,7 @@ scoped_ptr<AuthorizationDelegate>
     TrunksFactoryForTest::GetPasswordAuthorization(
         const std::string& password) const {
   return scoped_ptr<AuthorizationDelegate>(
-      new AuthorizationDelegateForwarder(password_auth_delegate_));
+      new AuthorizationDelegateForwarder(password_authorization_delegate_));
 }
 
 }  // namespace trunks

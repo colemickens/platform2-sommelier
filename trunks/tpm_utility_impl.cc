@@ -8,7 +8,7 @@
 #include <base/memory/scoped_ptr.h>
 
 #include "trunks/authorization_delegate.h"
-#include "trunks/null_auth_delegate.h"
+#include "trunks/null_authorization_delegate.h"
 #include "trunks/tpm_state.h"
 #include "trunks/trunks_factory.h"
 
@@ -74,7 +74,7 @@ TPM_RC TpmUtilityImpl::InitializeTpm() {
 }
 
 TPM_RC TpmUtilityImpl::SetPlatformAuthorization(const std::string& password) {
-  NullAuthDelegate null_delegate;
+  NullAuthorizationDelegate null_delegate;
   CHECK_LE(password.size(), 32);
   return factory_.GetTpm()->HierarchyChangeAuthSync(
       TPM_RH_PLATFORM,

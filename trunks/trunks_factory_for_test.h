@@ -18,7 +18,7 @@ namespace trunks {
 class AuthorizationDelegate;
 class MockTpm;
 class MockTpmState;
-class NullAuthDelegate;
+class NullAuthorizationDelegate;
 class Tpm;
 class TpmState;
 class TpmUtility;
@@ -53,8 +53,8 @@ class CHROMEOS_EXPORT TrunksFactoryForTest : public TrunksFactory {
     tpm_state_ = tpm_state;
   }
 
-  void set_password_auth_delegate(AuthorizationDelegate* delegate) {
-    password_auth_delegate_ = delegate;
+  void set_password_authorization_delegate(AuthorizationDelegate* delegate) {
+    password_authorization_delegate_ = delegate;
   }
 
  private:
@@ -62,8 +62,8 @@ class CHROMEOS_EXPORT TrunksFactoryForTest : public TrunksFactory {
   Tpm* tpm_;
   scoped_ptr<MockTpmState> default_tpm_state_;
   TpmState* tpm_state_;
-  scoped_ptr<NullAuthDelegate> default_auth_delegate_;
-  AuthorizationDelegate* password_auth_delegate_;
+  scoped_ptr<NullAuthorizationDelegate> default_authorization_delegate_;
+  AuthorizationDelegate* password_authorization_delegate_;
 
   DISALLOW_COPY_AND_ASSIGN(TrunksFactoryForTest);
 };

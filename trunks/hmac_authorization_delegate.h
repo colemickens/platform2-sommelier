@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef TRUNKS_HMAC_AUTH_DELEGATE_H_
-#define TRUNKS_HMAC_AUTH_DELEGATE_H_
+#ifndef TRUNKS_HMAC_AUTHORIZATION_DELEGATE_H_
+#define TRUNKS_HMAC_AUTHORIZATION_DELEGATE_H_
 
 #include <string>
 
@@ -20,7 +20,7 @@ const uint8_t kContinueSession = 1;
 const uint16_t kAesKeySize = 16;      // 128 bits is minimum AES key size.
 const uint32_t kHashDigestSize = 32;  // 256 bits is SHA256 digest size.
 
-/* HmacAuthDelegate is an implementation of the AuthorizationDelegate
+/* HmacAuthorizationDelegate is an implementation of the AuthorizationDelegate
  * interface. It provides the necessary Auth data for HMAC sessions.
  * This delegate also does parameter encryption on sessions that support it.
  *
@@ -39,20 +39,21 @@ const uint32_t kHashDigestSize = 32;  // 256 bits is SHA256 digest size.
  *  TrunksProxy proxy;
  *  proxy.Init();
  *  Tpm tpm(&proxy);
- *  NullAuthDelegate null;
+ *  NullAuthorizationDelegate null;
  *  tpm.StartAuthSession(..., &null);
- *  HmacAuthDelegate hmac(false);
+ *  HmacAuthorizationDelegate hmac(false);
  *  hmac.InitSession(...);
  *  tpm.Create(..., &hmac);
  *  hmac.set_entity_auth_value(...);
  *  tpm.Load(..., &hmac);
  */
-class CHROMEOS_EXPORT HmacAuthDelegate: public AuthorizationDelegate {
+class CHROMEOS_EXPORT HmacAuthorizationDelegate: public AuthorizationDelegate {
  public:
-  // This constructor for the HmacAuthDelegate takes a boolean value which
-  // specifies if parameter encryption/decryption is enabled in this delegate.
-  explicit HmacAuthDelegate(bool parameter_encryption);
-  virtual ~HmacAuthDelegate();
+  // This constructor for the HmacAuthorizationDelegate takes a boolean value
+  // which specifies if parameter encryption/decryption is enabled in this
+  // delegate.
+  explicit HmacAuthorizationDelegate(bool parameter_encryption);
+  virtual ~HmacAuthorizationDelegate();
   // AuthorizationDelegate methods.
   virtual bool GetCommandAuthorization(const std::string& command_hash,
                                        std::string* authorization);
@@ -77,7 +78,7 @@ class CHROMEOS_EXPORT HmacAuthDelegate: public AuthorizationDelegate {
   virtual void set_entity_auth_value(const std::string& auth_value);
 
  protected:
-  FRIEND_TEST(HmacAuthDelegateTest, SessionKeyTest);
+  FRIEND_TEST(HmacAuthorizationDelegateTest, SessionKeyTest);
 
  private:
   // This method implements the key derivation function used in the TPM.
@@ -109,9 +110,9 @@ class CHROMEOS_EXPORT HmacAuthDelegate: public AuthorizationDelegate {
   std::string session_key_;
   std::string entity_auth_value_;
 
-  DISALLOW_COPY_AND_ASSIGN(HmacAuthDelegate);
+  DISALLOW_COPY_AND_ASSIGN(HmacAuthorizationDelegate);
 };
 
 }  // namespace trunks
 
-#endif  // TRUNKS_HMAC_AUTH_DELEGATE_H_
+#endif  // TRUNKS_HMAC_AUTHORIZATION_DELEGATE_H_

@@ -6,12 +6,12 @@
 
 #include <gtest/gtest.h>
 
-#include "trunks/hmac_auth_delegate.h"
+#include "trunks/hmac_authorization_delegate.h"
 
 namespace trunks {
 
-TEST(HmacAuthDelegateTest, UninitializedSessionTest) {
-  HmacAuthDelegate delegate(false);
+TEST(HmacAuthorizationDelegateTest, UninitializedSessionTest) {
+  HmacAuthorizationDelegate delegate(false);
   std::string dummy;
   std::string p_hash("test");
   EXPECT_EQ(delegate.GetCommandAuthorization(p_hash, &dummy), false);
@@ -21,8 +21,8 @@ TEST(HmacAuthDelegateTest, UninitializedSessionTest) {
   EXPECT_EQ(delegate.DecryptResponseParameter(&dummy), false);
 }
 
-TEST(HmacAuthDelegateTest, SessionKeyTest) {
-  HmacAuthDelegate delegate(false);
+TEST(HmacAuthorizationDelegateTest, SessionKeyTest) {
+  HmacAuthorizationDelegate delegate(false);
   TPM2B_NONCE nonce;
   nonce.size = kAesKeySize;
   memset(nonce.buffer, 0, nonce.size);
@@ -45,8 +45,8 @@ TEST(HmacAuthDelegateTest, SessionKeyTest) {
   EXPECT_EQ(expected_key.compare(delegate.session_key_), 0);
 }
 
-TEST(HmacAuthDelegateTest, EncryptDecryptTest) {
-  HmacAuthDelegate delegate(false);
+TEST(HmacAuthorizationDelegateTest, EncryptDecryptTest) {
+  HmacAuthorizationDelegate delegate(false);
   std::string plaintext_parameter("parameter");
   std::string encrypted_parameter(plaintext_parameter);
   // Check should fail as delegate isnt initialized
@@ -54,7 +54,7 @@ TEST(HmacAuthDelegateTest, EncryptDecryptTest) {
 
   // Check if AES encrypt and decrypt operations are symmetric with the same
   // nonce.
-  HmacAuthDelegate encrypt_delegate(true);
+  HmacAuthorizationDelegate encrypt_delegate(true);
   TPM_HANDLE dummy_handle = HMAC_SESSION_FIRST;
   TPM2B_NONCE nonce;
   nonce.size = kAesKeySize;
@@ -75,8 +75,8 @@ TEST(HmacAuthDelegateTest, EncryptDecryptTest) {
   EXPECT_EQ(plaintext_parameter.compare(encrypted_parameter), 0);
 }
 
-TEST(HmacAuthDelegateTest, CommandAuthTest) {
-  HmacAuthDelegate delegate(false);
+TEST(HmacAuthorizationDelegateTest, CommandAuthTest) {
+  HmacAuthorizationDelegate delegate(false);
   TPM_HANDLE dummy_handle = HMAC_SESSION_FIRST;
   TPM2B_NONCE nonce;
   nonce.size = kAesKeySize;
@@ -96,8 +96,8 @@ TEST(HmacAuthDelegateTest, CommandAuthTest) {
   EXPECT_EQ(auth_command.hmac.size, kHashDigestSize);
 }
 
-TEST(HmacAuthDelegateTest, ResponseAuthTest) {
-  HmacAuthDelegate delegate(false);
+TEST(HmacAuthorizationDelegateTest, ResponseAuthTest) {
+  HmacAuthorizationDelegate delegate(false);
   TPM_HANDLE dummy_handle = HMAC_SESSION_FIRST;
   TPM2B_NONCE nonce;
   nonce.size = kAesKeySize;
