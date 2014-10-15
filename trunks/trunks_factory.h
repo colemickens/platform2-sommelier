@@ -32,6 +32,9 @@ class CHROMEOS_EXPORT TrunksFactory {
   // Returns an uninitialized TpmState instance. The caller takes ownership.
   virtual scoped_ptr<TpmState> GetTpmState() const = 0;
 
+  // Returns a TpmUtility instance. The caller takes ownership.
+  virtual scoped_ptr<TpmUtility> GetTpmUtility() const = 0;
+
   // Returns an AuthorizationDelegate instance for basic password authorization.
   // The caller takes ownership.
   virtual scoped_ptr<AuthorizationDelegate> GetPasswordAuthorization(

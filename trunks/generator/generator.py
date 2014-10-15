@@ -72,7 +72,7 @@ _COPYRIGHT_HEADER = (
     '// Copyright 2014 The Chromium OS Authors. All rights reserved.\n'
     '// Use of this source code is governed by a BSD-style license that can '
     'be\n'
-    '// found in the LICENSE file.\n\n'
+    '// found in the LICENSE file.\n'
     '\n'
     '// THIS CODE IS GENERATED - DO NOT MODIFY!\n')
 _HEADER_FILE_GUARD_HEADER = """
@@ -97,6 +97,7 @@ _IMPLEMENTATION_FILE_INCLUDES = """
 #include <base/callback.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/sys_byteorder.h>
 #include <crypto/secure_hash.h>
 
@@ -1132,6 +1133,7 @@ class Command(object):
       const std::string& response"""
   _SERIALIZE_FUNCTION_START = """
 TPM_RC Tpm::SerializeCommand_%(method_name)s(%(method_args)s) {
+  VLOG(2) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -1196,11 +1198,15 @@ TPM_RC Tpm::SerializeCommand_%(method_name)s(%(method_args)s) {
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
+  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+                                            serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 """
   _RESPONSE_PARSER_START = """
 TPM_RC Tpm::ParseResponse_%(method_name)s(%(method_args)s) {
+  VLOG(2) << __func__;
+  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);"""
   _PARSE_LOCAL_VAR = """
@@ -1278,6 +1284,7 @@ TPM_RC Tpm::ParseResponse_%(method_name)s(%(method_args)s) {
 void %(method_name)sErrorCallback(
     const Tpm::%(method_name)sResponse& callback,
     TPM_RC response_code) {
+  VLOG(2) << __func__;
   callback.Run(response_code"""
   _ERROR_CALLBACK_ARG = """,
                %(arg_type)s()"""
@@ -1289,6 +1296,7 @@ void %(method_name)sResponseParser(
     const Tpm::%(method_name)sResponse& callback,
     AuthorizationDelegate* authorization_delegate,
     const std::string& response) {
+  VLOG(1) << __func__;
   base::Callback<void(TPM_RC)> error_reporter =
       base::Bind(%(method_name)sErrorCallback, callback);"""
   _DECLARE_ARG_VAR = """
@@ -1307,6 +1315,7 @@ void %(method_name)sResponseParser(
 """
   _ASYNC_METHOD = """
 void Tpm::%(method_name)s(%(method_args)s) {
+  VLOG(1) << __func__;
   base::Callback<void(TPM_RC)> error_reporter =
       base::Bind(%(method_name)sErrorCallback, callback);
   base::Callback<void(const std::string&)> parser =
@@ -1326,6 +1335,7 @@ void Tpm::%(method_name)s(%(method_args)s) {
 """
   _SYNC_METHOD = """
 TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
+  VLOG(1) << __func__;
   std::string command;
   TPM_RC rc = SerializeCommand_%(method_name)s(%(method_arg_names_in)s
       &command,
@@ -1626,8 +1636,12 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
     """Splits a list of args into handles and parameters."""
     handles = []
     parameters = []
+    always_handle = set(['TPM_HANDLE'])
+    always_not_handle = set(['TPMI_RH_ENABLES'])
     for arg in args:
-      if arg['type'] == 'TPM_HANDLE' or self._HANDLE_RE.search(arg['type']):
+      if (arg['type'] in always_handle or
+          (self._HANDLE_RE.search(arg['type']) and
+           arg['type'] not in always_not_handle)):
         handles.append(arg)
       else:
         parameters.append(arg)

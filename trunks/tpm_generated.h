@@ -5750,7 +5750,6 @@ class CHROMEOS_EXPORT Tpm {
       const TPMI_RH_HIERARCHY& auth_handle,
       const std::string& auth_handle_name,
       const TPMI_RH_ENABLES& enable,
-      const std::string& enable_name,
       const TPMI_YES_NO& state,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate);
@@ -5761,7 +5760,6 @@ class CHROMEOS_EXPORT Tpm {
       const TPMI_RH_HIERARCHY& auth_handle,
       const std::string& auth_handle_name,
       const TPMI_RH_ENABLES& enable,
-      const std::string& enable_name,
       const TPMI_YES_NO& state,
       AuthorizationDelegate* authorization_delegate,
       const HierarchyControlResponse& callback);
@@ -5769,7 +5767,6 @@ class CHROMEOS_EXPORT Tpm {
       const TPMI_RH_HIERARCHY& auth_handle,
       const std::string& auth_handle_name,
       const TPMI_RH_ENABLES& enable,
-      const std::string& enable_name,
       const TPMI_YES_NO& state,
       AuthorizationDelegate* authorization_delegate);
   typedef base::Callback<void(

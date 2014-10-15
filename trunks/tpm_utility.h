@@ -14,14 +14,19 @@
 
 namespace trunks {
 
-// An interface which provides common TPM operations.
+// An interface which provides convenient methods for common TPM operations.
 class CHROMEOS_EXPORT TpmUtility {
  public:
   TpmUtility() {}
   virtual ~TpmUtility() {}
 
-  // Synchronously prepares a TPM for use by Chromium OS. Typically this done by
-  // the platform firmware and, in that case, this method has no effect.
+  // Synchronously performs a TPM startup sequence and self tests. Typically
+  // this is done by the platform firmware. Returns the result of the startup
+  // and self-tests or, if already started, just the result of the self-tests.
+  virtual TPM_RC Startup() = 0;
+
+  // Synchronously prepares a TPM for use by Chromium OS. Typically this is done
+  // by the platform firmware and, in that case, this method has no effect.
   virtual TPM_RC InitializeTpm() = 0;
 
   // Stir the tpm random generation module with some random entropy data.

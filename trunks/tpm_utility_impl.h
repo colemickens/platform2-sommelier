@@ -26,6 +26,7 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
   virtual ~TpmUtilityImpl();
 
   // TpmUtility methods.
+  TPM_RC Startup() override;
   TPM_RC InitializeTpm() override;
   TPM_RC StirRandom(const std::string& entropy_data) override;
   TPM_RC GenerateRandom(int num_bytes,
@@ -33,14 +34,9 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
 
  private:
   const TrunksFactory& factory_;
-  NullAuthorizationDelegate null_delegate_;
 
   // Sets TPM platformAuth to |password|.
   TPM_RC SetPlatformAuthorization(const std::string& password);
-
-  // Sets the TPM NVRAM global write lock. This requires platform
-  // |authorization|.
-  TPM_RC SetGlobalWriteLock(AuthorizationDelegate* authorization);
 
   // Disables the TPM platform hierarchy until the next startup. This requires
   // platform |authorization|.

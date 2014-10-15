@@ -11,6 +11,8 @@
 #include <crypto/sha2.h>
 
 #include "trunks/authorization_delegate.h"
+#include "trunks/error_codes.h"
+#include "trunks/null_authorization_delegate.h"
 #include "trunks/tpm_state.h"
 #include "trunks/trunks_factory.h"
 
@@ -39,11 +41,30 @@ TpmUtilityImpl::TpmUtilityImpl(const TrunksFactory& factory)
 TpmUtilityImpl::~TpmUtilityImpl() {
 }
 
+TPM_RC TpmUtilityImpl::Startup() {
+  TPM_RC result = TPM_RC_SUCCESS;
+  Tpm* tpm = factory_.GetTpm();
+  NullAuthorizationDelegate authorization;
+  result = tpm->StartupSync(TPM_SU_CLEAR, &authorization);
+  // Ignore TPM_RC_INITIALIZE, that means it was already started.
+  if (result && result != TPM_RC_INITIALIZE) {
+    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
+    return result;
+  }
+  result = tpm->SelfTestSync(YES /* Full test. */, &authorization);
+  if (result) {
+    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
+    return result;
+  }
+  return TPM_RC_SUCCESS;
+}
+
 TPM_RC TpmUtilityImpl::InitializeTpm() {
   TPM_RC result = TPM_RC_SUCCESS;
   scoped_ptr<TpmState> tpm_state(factory_.GetTpmState());
   result = tpm_state->Initialize();
   if (result) {
+    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;
   }
   // Warn about various unexpected conditions.
@@ -59,16 +80,14 @@ TPM_RC TpmUtilityImpl::InitializeTpm() {
   if (tpm_state->IsPlatformHierarchyEnabled()) {
     result = SetPlatformAuthorization(kPlatformPassword);
     if (result) {
+      LOG(ERROR) << __func__ << ": " << GetErrorString(result);
       return result;
     }
     scoped_ptr<AuthorizationDelegate> authorization(
         factory_.GetPasswordAuthorization(kPlatformPassword));
-    result = SetGlobalWriteLock(authorization.get());
-    if (result) {
-      return result;
-    }
     result = DisablePlatformHierarchy(authorization.get());
     if (result) {
+      LOG(ERROR) << __func__ << ": " << GetErrorString(result);
       return result;
     }
   }
@@ -76,13 +95,15 @@ TPM_RC TpmUtilityImpl::InitializeTpm() {
 }
 
 TPM_RC TpmUtilityImpl::StirRandom(const std::string& entropy_data) {
+  NullAuthorizationDelegate null_delegate;
   std::string digest = crypto::SHA256HashString(entropy_data);
   TPM2B_SENSITIVE_DATA random_bytes = Make_TPM2B_SENSITIVE_DATA(digest);
-  return factory_.GetTpm()->StirRandomSync(random_bytes, &null_delegate_);
+  return factory_.GetTpm()->StirRandomSync(random_bytes, &null_delegate);
 }
 
 TPM_RC TpmUtilityImpl::GenerateRandom(int num_bytes,
                                       std::string* random_data) {
+  NullAuthorizationDelegate null_delegate;
   int bytes_left = num_bytes;
   random_data->clear();
   TPM_RC rc;
@@ -90,7 +111,7 @@ TPM_RC TpmUtilityImpl::GenerateRandom(int num_bytes,
   while (bytes_left > 0) {
     rc = factory_.GetTpm()->GetRandomSync(bytes_left,
                                           &digest,
-                                          &null_delegate_);
+                                          &null_delegate);
     if (rc) {
       LOG(ERROR) << "Error getting random data from tpm.";
       return rc;
@@ -103,20 +124,19 @@ TPM_RC TpmUtilityImpl::GenerateRandom(int num_bytes,
 }
 
 TPM_RC TpmUtilityImpl::SetPlatformAuthorization(const std::string& password) {
+  scoped_ptr<AuthorizationDelegate> authorization(
+      factory_.GetPasswordAuthorization(""));
   CHECK_LE(password.size(), 32);
-  return factory_.GetTpm()->HierarchyChangeAuthSync(
+  TPM_RC result = factory_.GetTpm()->HierarchyChangeAuthSync(
       TPM_RH_PLATFORM,
       NameFromHandle(TPM_RH_PLATFORM),
       Make_TPM2B_DIGEST(password),
-      &null_delegate_);
-}
-
-TPM_RC TpmUtilityImpl::SetGlobalWriteLock(
-    AuthorizationDelegate* authorization) {
-  return factory_.GetTpm()->NV_GlobalWriteLockSync(
-      TPM_RH_PLATFORM,
-      NameFromHandle(TPM_RH_PLATFORM),
-      authorization);
+      authorization.get());
+  if (GetFormatOneError(result) == TPM_RC_BAD_AUTH) {
+    // Most likely the platform hierarchy password has already been set.
+    return TPM_RC_SUCCESS;
+  }
+  return result;
 }
 
 TPM_RC TpmUtilityImpl::DisablePlatformHierarchy(
@@ -125,7 +145,6 @@ TPM_RC TpmUtilityImpl::DisablePlatformHierarchy(
       TPM_RH_PLATFORM,  // The authorizing entity.
       NameFromHandle(TPM_RH_PLATFORM),
       TPM_RH_PLATFORM,  // The target hierarchy.
-      NameFromHandle(TPM_RH_PLATFORM),
       0,  // Disable.
       authorization);
 }

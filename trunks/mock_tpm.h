@@ -1169,19 +1169,17 @@ class MockTpm : public Tpm {
              TPMT_TK_CREATION* creation_ticket,
              TPM2B_NAME* name,
              AuthorizationDelegate* authorization_delegate));
-  MOCK_METHOD7(HierarchyControl,
+  MOCK_METHOD6(HierarchyControl,
       void(const TPMI_RH_HIERARCHY& auth_handle,
            const std::string& auth_handle_name,
            const TPMI_RH_ENABLES& enable,
-           const std::string& enable_name,
            const TPMI_YES_NO& state,
            AuthorizationDelegate* authorization_delegate,
            const HierarchyControlResponse& callback));
-  MOCK_METHOD6(HierarchyControlSync,
+  MOCK_METHOD5(HierarchyControlSync,
       TPM_RC(const TPMI_RH_HIERARCHY& auth_handle,
              const std::string& auth_handle_name,
              const TPMI_RH_ENABLES& enable,
-             const std::string& enable_name,
              const TPMI_YES_NO& state,
              AuthorizationDelegate* authorization_delegate));
   MOCK_METHOD6(SetPrimaryPolicy,

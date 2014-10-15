@@ -18,6 +18,7 @@ namespace trunks {
 class AuthorizationDelegate;
 class MockTpm;
 class MockTpmState;
+class MockTpmUtility;
 class NullAuthorizationDelegate;
 class Tpm;
 class TpmState;
@@ -41,6 +42,7 @@ class CHROMEOS_EXPORT TrunksFactoryForTest : public TrunksFactory {
   // TrunksFactory methods.
   Tpm* GetTpm() const override;
   scoped_ptr<TpmState> GetTpmState() const override;
+  scoped_ptr<TpmUtility> GetTpmUtility() const override;
   scoped_ptr<AuthorizationDelegate> GetPasswordAuthorization(
       const std::string& password) const override;
 
@@ -53,6 +55,10 @@ class CHROMEOS_EXPORT TrunksFactoryForTest : public TrunksFactory {
     tpm_state_ = tpm_state;
   }
 
+  void set_tpm_utility(TpmUtility* tpm_utility) {
+    tpm_utility_ = tpm_utility;
+  }
+
   void set_password_authorization_delegate(AuthorizationDelegate* delegate) {
     password_authorization_delegate_ = delegate;
   }
@@ -62,6 +68,8 @@ class CHROMEOS_EXPORT TrunksFactoryForTest : public TrunksFactory {
   Tpm* tpm_;
   scoped_ptr<MockTpmState> default_tpm_state_;
   TpmState* tpm_state_;
+  scoped_ptr<MockTpmUtility> default_tpm_utility_;
+  TpmUtility* tpm_utility_;
   scoped_ptr<NullAuthorizationDelegate> default_authorization_delegate_;
   AuthorizationDelegate* password_authorization_delegate_;
 

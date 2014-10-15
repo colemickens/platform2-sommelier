@@ -2,50 +2,58 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// trunks_client is a command line tool that supports various TPM operations. It
+// does not provide direct access to the trunksd D-Bus interface.
+
 #include <stdio.h>
 #include <string>
 
-#include <base/at_exit.h>
-#include <base/bind.h>
 #include <base/command_line.h>
-#include <base/message_loop/message_loop.h>
+#include <base/logging.h>
+#include <chromeos/syslog_logging.h>
 
-#include "trunks/command_transceiver.h"
-#include "trunks/trunks_proxy.h"
+#include "trunks/error_codes.h"
+#include "trunks/tpm_utility.h"
+#include "trunks/trunks_factory_impl.h"
 
-void PrintString(const std::string& text) {
-  LOG(INFO) << "Trunks Client: printing string: " << text;
-  exit(0);
+namespace {
+
+void PrintUsage() {
+  puts("Options:");
+  puts("  --help - Prints this message.");
+  puts("  --startup - Performs startup and self-tests.");
+  puts("  --init_tpm - Initializes a TPM as CrOS firmware does.");
 }
 
-// trunks_client is a command line tool that allows us to
-// send a command to the TPM and view its response.
-// NOTE: At the moment it simply acts like an echo client
-// with TrunksService being the echo server.
+int Startup() {
+  trunks::TrunksFactoryImpl factory;
+  return factory.GetTpmUtility()->Startup();
+}
+
+int InitializeTpm() {
+  trunks::TrunksFactoryImpl factory;
+  return factory.GetTpmUtility()->InitializeTpm();
+}
+
+}  // namespace
+
+
 int main(int argc, char **argv) {
   CommandLine::Init(argc, argv);
+  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
   CommandLine *cl = CommandLine::ForCurrentProcess();
+  if (cl->HasSwitch("startup")) {
+    return Startup();
+  }
+  if (cl->HasSwitch("init_tpm")) {
+    return InitializeTpm();
+  }
   if (cl->HasSwitch("help")) {
-    puts("Trunks Client: A command line tool to access the TPM.\n");
-    puts("Options:\n");
-    puts("  --help - Repeats this message\n");
-    puts("  --command - command to send to the TPM(unimplemented)\n");
+    puts("Trunks Client: A command line tool to access the TPM.");
+    PrintUsage();
     return 0;
   }
-  std::string command_text;
-  if (cl->HasSwitch("command")) {
-    command_text = cl->GetSwitchValueASCII("command");
-  }
-
-  base::AtExitManager at_exit_manager;
-  base::MessageLoopForIO message_loop;
-  trunks::TrunksProxy proxy;
-  if (!proxy.Init()) {
-    LOG(ERROR) << "Trunks Client: Error initializing TrunksProxy.";
-    return -1;
-  }
-  proxy.SendCommand(command_text, base::Bind(PrintString));
-
-  message_loop.Run();
+  puts("Invalid options!");
+  PrintUsage();
   return -1;
 }

@@ -33,6 +33,32 @@ class TpmUtilityTest : public testing::Test {
   NiceMock<MockTpm> mock_tpm_;
 };
 
+TEST_F(TpmUtilityTest, StartupSuccess) {
+  TpmUtilityImpl utility(factory_);
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.Startup());
+}
+
+TEST_F(TpmUtilityTest, StartupAlreadyStarted) {
+  EXPECT_CALL(mock_tpm_, StartupSync(_, _))
+      .WillRepeatedly(Return(TPM_RC_INITIALIZE));
+  TpmUtilityImpl utility(factory_);
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.Startup());
+}
+
+TEST_F(TpmUtilityTest, StartupFailure) {
+  EXPECT_CALL(mock_tpm_, StartupSync(_, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  TpmUtilityImpl utility(factory_);
+  EXPECT_EQ(TPM_RC_FAILURE, utility.Startup());
+}
+
+TEST_F(TpmUtilityTest, StartupSelfTestFailure) {
+  EXPECT_CALL(mock_tpm_, SelfTestSync(_, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  TpmUtilityImpl utility(factory_);
+  EXPECT_EQ(TPM_RC_FAILURE, utility.Startup());
+}
+
 TEST_F(TpmUtilityTest, InitializeTpmAlreadyInit) {
   TpmUtilityImpl utility(factory_);
   EXPECT_EQ(TPM_RC_SUCCESS, utility.InitializeTpm());
@@ -57,24 +83,13 @@ TEST_F(TpmUtilityTest, InitializeTpmBadAuth) {
   EXPECT_EQ(TPM_RC_FAILURE, utility.InitializeTpm());
 }
 
-TEST_F(TpmUtilityTest, InitializeTpmLockNVFails) {
-  TpmUtilityImpl utility(factory_);
-  // Setup a hierarchy that needs to be disabled.
-  EXPECT_CALL(mock_tpm_state_, IsPlatformHierarchyEnabled())
-      .WillOnce(Return(true));
-  // Reject attempts to lock nv.
-  EXPECT_CALL(mock_tpm_, NV_GlobalWriteLockSync(_, _, _))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility.InitializeTpm());
-}
-
 TEST_F(TpmUtilityTest, InitializeTpmDisablePHFails) {
   TpmUtilityImpl utility(factory_);
   // Setup a hierarchy that needs to be disabled.
   EXPECT_CALL(mock_tpm_state_, IsPlatformHierarchyEnabled())
       .WillOnce(Return(true));
   // Reject attempts disable the platform hierarchy.
-  EXPECT_CALL(mock_tpm_, HierarchyControlSync(_, _, TPM_RH_PLATFORM, _, _, _))
+  EXPECT_CALL(mock_tpm_, HierarchyControlSync(_, _, TPM_RH_PLATFORM, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, utility.InitializeTpm());
 }

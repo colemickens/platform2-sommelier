@@ -9,6 +9,7 @@
 #include "trunks/authorization_delegate.h"
 #include "trunks/mock_tpm.h"
 #include "trunks/mock_tpm_state.h"
+#include "trunks/mock_tpm_utility.h"
 #include "trunks/null_authorization_delegate.h"
 #include "trunks/tpm_generated.h"
 #include "trunks/tpm_state.h"
@@ -45,6 +46,32 @@ class TpmStateForwarder : public TpmState {
 };
 
 // Forwards all calls to a target instance.
+class TpmUtilityForwarder : public TpmUtility {
+ public:
+  explicit TpmUtilityForwarder(TpmUtility* target) : target_(target) {}
+  virtual ~TpmUtilityForwarder() {}
+
+  TPM_RC Startup() override {
+    return target_->Startup();
+  }
+
+  TPM_RC InitializeTpm() override {
+    return target_->InitializeTpm();
+  }
+
+  TPM_RC StirRandom(const std::string& entropy_data) override {
+    return target_->StirRandom(entropy_data);
+  }
+
+  TPM_RC GenerateRandom(int num_bytes, std::string* random_data) override {
+    return target_->GenerateRandom(num_bytes, random_data);
+  }
+
+ private:
+  TpmUtility* target_;
+};
+
+// Forwards all calls to a target instance.
 class AuthorizationDelegateForwarder : public AuthorizationDelegate {
  public:
   explicit AuthorizationDelegateForwarder(AuthorizationDelegate* target)
@@ -78,6 +105,8 @@ TrunksFactoryForTest::TrunksFactoryForTest()
       tpm_(default_tpm_.get()),
       default_tpm_state_(new NiceMock<MockTpmState>()),
       tpm_state_(default_tpm_state_.get()),
+      default_tpm_utility_(new NiceMock<MockTpmUtility>()),
+      tpm_utility_(default_tpm_utility_.get()),
       default_authorization_delegate_(new NullAuthorizationDelegate()),
       password_authorization_delegate_(default_authorization_delegate_.get()) {
 }
@@ -91,6 +120,10 @@ Tpm* TrunksFactoryForTest::GetTpm() const {
 
 scoped_ptr<TpmState> TrunksFactoryForTest::GetTpmState() const {
   return scoped_ptr<TpmState>(new TpmStateForwarder(tpm_state_));
+}
+
+scoped_ptr<TpmUtility> TrunksFactoryForTest::GetTpmUtility() const {
+  return scoped_ptr<TpmUtility>(new TpmUtilityForwarder(tpm_utility_));
 }
 
 scoped_ptr<AuthorizationDelegate>
