@@ -40,6 +40,9 @@ class BootLockboxTest : public testing::Test {
         .WillByDefault(Return(true));
     ON_CALL(tpm_, ExtendPCR(_, _))
         .WillByDefault(InvokeWithoutArgs(this, &BootLockboxTest::FakeExtend));
+    ON_CALL(tpm_, ReadPCR(_, _))
+        .WillByDefault(WithArgs<1>(Invoke(this,
+                                          &BootLockboxTest::FakeReadPCR)));
     ON_CALL(crypto_, EncryptWithTpm(_, _))
         .WillByDefault(Invoke(this, &BootLockboxTest::FakeEncrypt));
     ON_CALL(crypto_, DecryptWithTpm(_, _))
@@ -86,6 +89,11 @@ class BootLockboxTest : public testing::Test {
 
   bool FakeExtend() {
     is_fake_extended_ = true;
+    return true;
+  }
+
+  bool FakeReadPCR(chromeos::SecureBlob* pcr) {
+    pcr->assign(20, is_fake_extended_ ? 0xAA : 0);
     return true;
   }
 
@@ -154,6 +162,12 @@ TEST_F(BootLockboxTest, CreateAfterFinalize) {
   chromeos::SecureBlob data(100);
   chromeos::SecureBlob signature;
   ASSERT_FALSE(lockbox_->Sign(data, &signature));
+}
+
+TEST_F(BootLockboxTest, VerifyIsFinalized) {
+  ASSERT_FALSE(lockbox_->IsFinalized());
+  ASSERT_TRUE(lockbox_->FinalizeBoot());
+  ASSERT_TRUE(lockbox_->IsFinalized());
 }
 
 TEST_F(BootLockboxTest, LoadFromFile) {

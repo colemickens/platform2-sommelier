@@ -26,6 +26,7 @@ class MockHomeDirs : public HomeDirs {
   MOCK_METHOD3(Init, bool(Platform*, Crypto*,
                           UserOldestActivityTimestampCache*));
   MOCK_METHOD0(FreeDiskSpace, bool());
+  MOCK_METHOD1(GetPlainOwner, bool(std::string*));
   MOCK_METHOD1(AreCredentialsValid, bool(const Credentials&));
   MOCK_METHOD2(GetValidKeyset, bool(const Credentials&, VaultKeyset*));
   MOCK_METHOD1(Remove, bool(const std::string&));
@@ -45,6 +46,11 @@ class MockHomeDirs : public HomeDirs {
                                                  const KeyData&));
   MOCK_METHOD2(ForceRemoveKeyset, bool(const std::string&, int));
   MOCK_METHOD3(MoveKeyset, bool(const std::string&, int, int));
+
+  // Some unit tests require that MockHomeDirs actually call the real
+  // GetPlainOwner() function. In those cases, you can use this function
+  // to forward the mocked GetOwner() to ActualGetOwner().
+  bool ActualGetPlainOwner(std::string* owner);
 };
 
 }  // namespace cryptohome

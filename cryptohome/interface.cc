@@ -717,6 +717,13 @@ gboolean cryptohome_flush_and_sign_boot_attributes(
   CRYPTOHOME_WRAP_METHOD(FlushAndSignBootAttributes, request);
 }
 
+
+gboolean cryptohome_get_login_status(Cryptohome* self,
+                                     GArray* request,
+                                     DBusGMethodInvocation* error) {
+  CRYPTOHOME_WRAP_METHOD(GetLoginStatus, request);
+}
+
 #undef CRYPTOHOME_WRAP_METHOD
 
 }  // namespace gobject

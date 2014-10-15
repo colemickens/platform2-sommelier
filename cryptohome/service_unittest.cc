@@ -1244,6 +1244,32 @@ TEST_F(ExTest, FlushAndSignBootAttributesError) {
   EXPECT_EQ(CRYPTOHOME_ERROR_BOOT_ATTRIBUTES_CANNOT_SIGN, reply.error());
 }
 
+TEST_F(ExTest, GetLoginStatusSuccess) {
+  SetupReply();
+  EXPECT_CALL(homedirs_, GetPlainOwner(_))
+    .WillOnce(Return(true));
+  EXPECT_CALL(lockbox_, IsFinalized())
+    .WillOnce(Return(false));
+
+  GetLoginStatusRequest request;
+  service_.DoGetLoginStatus(BlobFromProtobuf(request), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_FALSE(reply.has_error());
+  EXPECT_TRUE(reply.HasExtension(GetLoginStatusReply::reply));
+  EXPECT_TRUE(
+      reply.GetExtension(GetLoginStatusReply::reply).owner_user_exists());
+  EXPECT_FALSE(
+      reply.GetExtension(GetLoginStatusReply::reply).boot_lockbox_finalized());
+}
+
+TEST_F(ExTest, GetLoginStatusBadArgs) {
+  // Try with bad proto data.
+  SetupErrorReply();
+  service_.DoVerifyBootLockbox(SecureBlob("not_a_protobuf"), NULL);
+  ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
+  EXPECT_STRNE("", g_error_->message);
+}
+
 TEST_F(ExTest, GetKeyDataExNoMatch) {
   SetupReply();
   PrepareArguments();

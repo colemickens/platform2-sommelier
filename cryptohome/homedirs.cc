@@ -858,6 +858,7 @@ bool HomeDirs::LoadVaultKeysetForUser(const std::string& obfuscated_user,
 }
 
 bool HomeDirs::GetPlainOwner(std::string* owner) {
+  LoadDevicePolicy();
   if (!policy_provider_->device_policy_is_loaded())
     return false;
   policy_provider_->GetDevicePolicy().GetOwner(owner);

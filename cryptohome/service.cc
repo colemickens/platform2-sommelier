@@ -2878,6 +2878,33 @@ gboolean Service::FlushAndSignBootAttributes(const GArray* request,
   return TRUE;
 }
 
+void Service::DoGetLoginStatus(const chromeos::SecureBlob& request,
+                               DBusGMethodInvocation* context) {
+  GetLoginStatusRequest request_pb;
+  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size())) {
+    SendInvalidArgsReply(context, "Bad GetLoginStatusRequest");
+    return;
+  }
+  BaseReply reply;
+  std::string owner;
+  reply.MutableExtension(
+      GetLoginStatusReply::reply)->set_owner_user_exists(
+          homedirs_->GetPlainOwner(&owner));
+  reply.MutableExtension(
+      GetLoginStatusReply::reply)->set_boot_lockbox_finalized(
+          boot_lockbox_->IsFinalized());
+  SendReply(context, reply);
+}
+
+gboolean Service::GetLoginStatus(const GArray* request,
+                                 DBusGMethodInvocation* context) {
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoGetLoginStatus, base::Unretained(this),
+                 SecureBlob(request->data, request->len),
+                 base::Unretained(context)));
+  return TRUE;
+}
+
 gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   base::DictionaryValue dv;
   base::ListValue* mounts = new base::ListValue();

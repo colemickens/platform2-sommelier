@@ -186,6 +186,10 @@ class MountTest : public ::testing::Test {
     EXPECT_CALL(*device_policy, GetEphemeralUsersEnabled(_))
         .WillRepeatedly(SetEphemeralUsersEnabled(ephemeral_users_enabled));
     mount_->set_policy_provider(new policy::PolicyProvider(device_policy));
+    // By setting a policy up, we're expecting HomeDirs::GetPlainOwner() to
+    // actually execute the code rather than a mock.
+    EXPECT_CALL(homedirs_, GetPlainOwner(_))
+        .WillRepeatedly(Invoke(&homedirs_, &MockHomeDirs::ActualGetPlainOwner));
   }
 
  protected:

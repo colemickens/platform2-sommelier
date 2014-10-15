@@ -523,6 +523,11 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                             DBusGMethodInvocation* context);
   virtual gboolean FlushAndSignBootAttributes(const GArray* request,
                                               DBusGMethodInvocation* context);
+  // Runs on the mount thread.
+  virtual void DoGetLoginStatus(const chromeos::SecureBlob& request,
+                                DBusGMethodInvocation* context);
+  virtual gboolean GetLoginStatus(const GArray* request,
+                                  DBusGMethodInvocation* context);
 
  protected:
   FRIEND_TEST(Standalone, StoreEnrollmentState);

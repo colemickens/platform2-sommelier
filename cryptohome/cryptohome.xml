@@ -451,6 +451,15 @@
       <arg type="ay" name="request" direction="in" />
       <arg type="ay" name="reply" direction="out" />
     </method>
+    <!-- May be called asynchronously.  Both arguments are protobufs:
+         request: GetLoginStatusRequest
+         reply: BaseReply with a GetLoginStatusReply extension on success
+    -->
+    <method name="GetLoginStatus">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="request" direction="in" />
+      <arg type="ay" name="reply" direction="out" />
+    </method>"
     <signal name="TpmInitStatus">
       <arg type="b" name="ready" />
       <arg type="b" name="owned" />

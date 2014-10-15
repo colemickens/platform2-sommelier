@@ -14,4 +14,8 @@ MockHomeDirs::MockHomeDirs() {
 }
 MockHomeDirs::~MockHomeDirs() {}
 
+bool MockHomeDirs::ActualGetPlainOwner(std::string* owner) {
+  return HomeDirs::GetPlainOwner(owner);
+}
+
 }  // namespace cryptohome

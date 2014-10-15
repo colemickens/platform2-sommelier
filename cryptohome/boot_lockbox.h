@@ -51,6 +51,9 @@ class BootLockbox {
   // boot.  Returns true on success.
   virtual bool FinalizeBoot();
 
+  // Checks if BootLockbox has been finalized.
+  virtual bool IsFinalized();
+
  protected:
   // Returns the TPM |key_blob| for the lockbox key.  Returns true on success.
   bool GetKeyBlob(chromeos::SecureBlob* key_blob);

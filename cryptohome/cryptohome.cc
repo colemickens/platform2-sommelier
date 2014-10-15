@@ -119,6 +119,7 @@ namespace switches {
     "get_boot_attribute",
     "set_boot_attribute",
     "flush_and_sign_boot_attributes",
+    "get_login_status",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -173,7 +174,8 @@ namespace switches {
     ACTION_FINALIZE_LOCKBOX,
     ACTION_GET_BOOT_ATTRIBUTE,
     ACTION_SET_BOOT_ATTRIBUTE,
-    ACTION_FLUSH_AND_SIGN_BOOT_ATTRIBUTES
+    ACTION_FLUSH_AND_SIGN_BOOT_ATTRIBUTES,
+    ACTION_GET_LOGIN_STATUS
   };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
@@ -2416,6 +2418,22 @@ int main(int argc, char **argv) {
       return -1;
     }
     printf("FlushAndSignBootAttributes success.\n");
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_GET_LOGIN_STATUS],
+      action.c_str())) {
+    cryptohome::GetLoginStatusRequest request;
+    cryptohome::BaseReply reply;
+    if (!MakeProtoDBusCall("GetLoginStatus",
+                           DBUS_METHOD(get_login_status),
+                           DBUS_METHOD(get_login_status_async),
+                           cl, &proxy, request, &reply)) {
+      return -1;
+    }
+    if (!reply.HasExtension(cryptohome::GetLoginStatusReply::reply)) {
+      printf("GetLoginStatusReply missing.\n");
+      return -1;
+    }
+    printf("GetLoginStatus success.\n");
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)

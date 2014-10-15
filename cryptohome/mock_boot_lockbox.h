@@ -21,6 +21,7 @@ class MockBootLockbox : public BootLockbox {
   MOCK_METHOD2(Verify, bool(const chromeos::SecureBlob&,
                             const chromeos::SecureBlob&));
   MOCK_METHOD0(FinalizeBoot, bool());
+  MOCK_METHOD0(IsFinalized, bool());
 };
 
 }  // namespace cryptohome
