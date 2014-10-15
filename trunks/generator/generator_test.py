@@ -6,6 +6,8 @@
 
 """Unit tests for the TPM 2.0 code generator."""
 
+from __future__ import print_function
+
 import StringIO
 import unittest
 
@@ -124,15 +126,33 @@ class TestGenerators(unittest.TestCase):
     """Test generation of command methods and callbacks."""
     command = generator.Command('TPM2_Test')
     command.request_args = [self._MakeArg('int', 'input')]
-    command.response_args = [self._MakeArg('BYTE', 'output[sizeof(TEST)]')]
+    command.response_args = [self._MakeArg('char', 'output')]
     out_file = StringIO.StringIO()
     command.OutputDeclarations(out_file)
-    output_re = r'\s*typedef base::Callback<void\(\s*TPM_RC response_code,'
-    output_re += r'\s+BYTE output\[sizeof\(TEST\)\]\)> TestResponse;'
-    output_re += r'\s+virtual void Test\(\s*int input,'
-    output_re += r'\s+AuthorizationDelegate\* authorization_delegate,'
-    output_re += r'\s+const TestResponse& callback\s*\);\s+'
-    self.assertRegexpMatches(out_file.getvalue(), output_re)
+    expected_callback = """typedef base::Callback<void(
+      TPM_RC response_code,
+      const char& output)> TestResponse;"""
+    self.assertIn(expected_callback, out_file.getvalue())
+    expected_serialize = """static TPM_RC SerializeCommand_Test(
+      const int& input,
+      std::string* serialized_command,
+      AuthorizationDelegate* authorization_delegate);"""
+    self.assertIn(expected_serialize, out_file.getvalue())
+    expected_parse = """static TPM_RC ParseResponse_Test(
+      const std::string& response,
+      char* output,
+      AuthorizationDelegate* authorization_delegate);"""
+    self.assertIn(expected_parse, out_file.getvalue())
+    expected_async = """virtual void Test(
+      const int& input,
+      AuthorizationDelegate* authorization_delegate,
+      const TestResponse& callback);"""
+    self.assertIn(expected_async, out_file.getvalue())
+    expected_sync = """virtual TPM_RC TestSync(
+      const int& input,
+      char* output,
+      AuthorizationDelegate* authorization_delegate);"""
+    self.assertIn(expected_sync, out_file.getvalue())
     out_file.close()
 
 
