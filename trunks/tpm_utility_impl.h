@@ -12,6 +12,8 @@
 #include <base/macros.h>
 #include <chromeos/chromeos_export.h>
 
+#include "trunks/null_authorization_delegate.h"
+
 namespace trunks {
 
 class AuthorizationDelegate;
@@ -25,9 +27,13 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
 
   // TpmUtility methods.
   TPM_RC InitializeTpm() override;
+  TPM_RC StirRandom(const std::string& entropy_data) override;
+  TPM_RC GenerateRandom(int num_bytes,
+                        std::string* random_data) override;
 
  private:
   const TrunksFactory& factory_;
+  NullAuthorizationDelegate null_delegate_;
 
   // Sets TPM platformAuth to |password|.
   TPM_RC SetPlatformAuthorization(const std::string& password);

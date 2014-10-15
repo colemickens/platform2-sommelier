@@ -6,9 +6,11 @@
 
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/stl_util.h>
+#include <crypto/secure_hash.h>
+#include <crypto/sha2.h>
 
 #include "trunks/authorization_delegate.h"
-#include "trunks/null_authorization_delegate.h"
 #include "trunks/tpm_state.h"
 #include "trunks/trunks_factory.h"
 
@@ -73,14 +75,40 @@ TPM_RC TpmUtilityImpl::InitializeTpm() {
   return TPM_RC_SUCCESS;
 }
 
+TPM_RC TpmUtilityImpl::StirRandom(const std::string& entropy_data) {
+  std::string digest = crypto::SHA256HashString(entropy_data);
+  TPM2B_SENSITIVE_DATA random_bytes = Make_TPM2B_SENSITIVE_DATA(digest);
+  return factory_.GetTpm()->StirRandomSync(random_bytes, &null_delegate_);
+}
+
+TPM_RC TpmUtilityImpl::GenerateRandom(int num_bytes,
+                                      std::string* random_data) {
+  int bytes_left = num_bytes;
+  random_data->clear();
+  TPM_RC rc;
+  TPM2B_DIGEST digest;
+  while (bytes_left > 0) {
+    rc = factory_.GetTpm()->GetRandomSync(bytes_left,
+                                          &digest,
+                                          &null_delegate_);
+    if (rc) {
+      LOG(ERROR) << "Error getting random data from tpm.";
+      return rc;
+    }
+    random_data->append(StringFrom_TPM2B_DIGEST(digest));
+    bytes_left -= digest.size;
+  }
+  CHECK_EQ(random_data->size(), num_bytes);
+  return TPM_RC_SUCCESS;
+}
+
 TPM_RC TpmUtilityImpl::SetPlatformAuthorization(const std::string& password) {
-  NullAuthorizationDelegate null_delegate;
   CHECK_LE(password.size(), 32);
   return factory_.GetTpm()->HierarchyChangeAuthSync(
       TPM_RH_PLATFORM,
       NameFromHandle(TPM_RH_PLATFORM),
       Make_TPM2B_DIGEST(password),
-      &null_delegate);
+      &null_delegate_);
 }
 
 TPM_RC TpmUtilityImpl::SetGlobalWriteLock(
