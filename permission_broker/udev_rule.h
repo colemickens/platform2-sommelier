@@ -17,16 +17,18 @@ namespace permission_broker {
 
 class UdevRule : public Rule {
  public:
+  static std::string GetDevNodeGroupName(udev_device* device);
+
   explicit UdevRule(const std::string& name);
   ~UdevRule() override;
 
-  virtual Result ProcessDevice(struct udev_device *device) = 0;
+  virtual Result ProcessDevice(udev_device* device) = 0;
 
   Result Process(const std::string& path, int interface_id) override;
 
  private:
-  struct udev *const udev_;
-  struct udev_enumerate *const enumerate_;
+  struct udev* const udev_;
+  struct udev_enumerate* const enumerate_;
 
   DISALLOW_COPY_AND_ASSIGN(UdevRule);
 };
