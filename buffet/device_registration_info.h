@@ -95,18 +95,16 @@ class DeviceRegistrationInfo {
   // the device is not registered or communication failure.
   std::unique_ptr<base::Value> GetDeviceInfo(chromeos::ErrorPtr* error);
 
-  // Starts device registration procedure. |params| are a list of
-  // key-value pairs of device information, such as client_id, client_secret,
-  // and so on. If a particular key-value pair is omitted, a default value
-  // is used when possible. Returns a device registration ticket ID on success.
+  // Registers the device.
+  //
+  // |params| are a list of key-value pairs of device information,
+  // such as client_id, client_secret, and so on. If a particular key-value pair
+  // is omitted, a default value is used when possible.
+  // Returns a device ID on success.
   // The values are all strings for now.
-  std::string StartRegistration(
+  std::string RegisterDevice(
     const std::map<std::string, std::string>& params,
     chromeos::ErrorPtr* error);
-
-  // Finalizes the device registration.
-  // StartRegistration must have been invoked before.
-  bool FinishRegistration(chromeos::ErrorPtr* error);
 
   // Start device execution.
   // Device will do required start up chores and then start to listen

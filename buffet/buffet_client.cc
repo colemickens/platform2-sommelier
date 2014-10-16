@@ -41,9 +41,8 @@ void usage() {
   std::cerr << "  " << kManagerStartDevice << std::endl;
   std::cerr << "  " << kManagerCheckDeviceRegistered << std::endl;
   std::cerr << "  " << kManagerGetDeviceInfo << std::endl;
-  std::cerr << "  " << kManagerStartRegisterDevice
+  std::cerr << "  " << kManagerRegisterDevice
                     << " param1 = val1&param2 = val2..." << std::endl;
-  std::cerr << "  " << kManagerFinishRegisterDevice << std::endl;
   std::cerr << "  " << kManagerAddCommand
                     << " '{\"name\":\"command_name\",\"parameters\":{}}'"
                     << std::endl;
@@ -160,10 +159,10 @@ class BuffetHelperProxy {
     return EX_OK;
   }
 
-  int CallManagerStartRegisterDevice(const CommandLine::StringVector& args) {
+  int CallManagerRegisterDevice(const CommandLine::StringVector& args) {
     if (args.size() > 1) {
       std::cerr << "Invalid number of arguments for "
-                << "Manager." << kManagerStartRegisterDevice << std::endl;
+                << "Manager." << kManagerRegisterDevice << std::endl;
       usage();
       return EX_USAGE;
     }
@@ -181,35 +180,8 @@ class BuffetHelperProxy {
     auto response = CallMethodAndBlockWithTimeout(
         timeout_ms,
         manager_proxy_,
-        kManagerInterface, kManagerStartRegisterDevice, &error,
+        kManagerInterface, kManagerRegisterDevice, &error,
         params);
-    std::string info;
-    if (!response ||
-        !ExtractMethodCallResults(response.get(), &error, &info)) {
-      std::cout << "Failed to receive a response:"
-                << error->GetMessage() << std::endl;
-      return EX_UNAVAILABLE;
-    }
-
-    std::cout << "Registration started: " << info << std::endl;
-    return EX_OK;
-  }
-
-  int CallManagerFinishRegisterDevice(const CommandLine::StringVector& args) {
-    if (args.size() > 0) {
-      std::cerr << "Invalid number of arguments for "
-                << "Manager." << kManagerFinishRegisterDevice << std::endl;
-      usage();
-      return EX_USAGE;
-    }
-
-    ErrorPtr error;
-    std::string user_auth_code;
-    static const int timeout_ms = 10000;
-    auto response = CallMethodAndBlockWithTimeout(
-        timeout_ms,
-        manager_proxy_,
-        kManagerInterface, kManagerFinishRegisterDevice, &error);
     std::string device_id;
     if (!response ||
         !ExtractMethodCallResults(response.get(), &error, &device_id)) {
@@ -218,9 +190,7 @@ class BuffetHelperProxy {
       return EX_UNAVAILABLE;
     }
 
-    std::cout << "Device ID is "
-              << (device_id.empty() ? std::string("<unregistered>") : device_id)
-              << std::endl;
+    std::cout << "Device registered: " << device_id << std::endl;
     return EX_OK;
   }
 
@@ -328,12 +298,9 @@ int main(int argc, char** argv) {
   } else if (command.compare(kManagerGetDeviceInfo) == 0 ||
              command.compare("di") == 0) {
     err = helper.CallManagerGetDeviceInfo(args);
-  } else if (command.compare(kManagerStartRegisterDevice) == 0 ||
-             command.compare("sr") == 0) {
-    err = helper.CallManagerStartRegisterDevice(args);
-  } else if (command.compare(kManagerFinishRegisterDevice) == 0 ||
-             command.compare("fr") == 0) {
-    err = helper.CallManagerFinishRegisterDevice(args);
+  } else if (command.compare(kManagerRegisterDevice) == 0 ||
+             command.compare("rd") == 0) {
+    err = helper.CallManagerRegisterDevice(args);
   } else if (command.compare(kManagerUpdateStateMethod) == 0 ||
              command.compare("us") == 0) {
     err = helper.CallManagerUpdateState(args);

@@ -270,7 +270,7 @@ TEST_F(DeviceRegistrationInfoTest, GetDeviceId) {
   EXPECT_EQ(test_data::kDeviceId, id);
 }
 
-TEST_F(DeviceRegistrationInfoTest, StartRegistration) {
+TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
   EXPECT_TRUE(dev_reg_->Load());
 
   auto update_ticket = [](const ServerRequest& request,
@@ -339,24 +339,6 @@ TEST_F(DeviceRegistrationInfoTest, StartRegistration) {
       std::string("registrationTickets/") + test_data::kClaimTicketId),
       chromeos::http::request_type::kPatch,
       base::Bind(update_ticket));
-  std::map<std::string, std::string> params;
-  params["ticket_id"] = test_data::kClaimTicketId;
-  std::string json_resp = dev_reg_->StartRegistration(params, nullptr);
-  auto json = std::unique_ptr<base::Value>(base::JSONReader::Read(json_resp));
-  EXPECT_NE(nullptr, json.get());
-  base::DictionaryValue* dict = nullptr;
-  EXPECT_TRUE(json->GetAsDictionary(&dict));
-  std::string value;
-  EXPECT_TRUE(dict->GetString("ticket_id", &value));
-  EXPECT_EQ(test_data::kClaimTicketId, value);
-}
-
-TEST_F(DeviceRegistrationInfoTest, FinishRegistration_NoAuth) {
-  // Test finalizing ticket with no user authorization token.
-  // This assumes that a client would patch in their email separately.
-  EXPECT_TRUE(dev_reg_->Load());
-
-  // General ticket finalization handler.
   std::string ticket_url =
       dev_reg_->GetServiceURL("registrationTickets/" +
                              std::string(test_data::kClaimTicketId));
@@ -367,13 +349,17 @@ TEST_F(DeviceRegistrationInfoTest, FinishRegistration_NoAuth) {
   transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
                          chromeos::http::request_type::kPost,
                          base::Bind(OAuth2Handler));
-
   storage_->reset_save_count();
   DeviceRegistrationInfo::TestHelper::SetTestTicketId(dev_reg_.get());
-  EXPECT_TRUE(dev_reg_->FinishRegistration(nullptr));
+
+  std::map<std::string, std::string> params;
+  params["ticket_id"] = test_data::kClaimTicketId;
+  std::string device_id = dev_reg_->RegisterDevice(params, nullptr);
+
+  EXPECT_EQ(test_data::kDeviceId, device_id);
   EXPECT_EQ(1,
             storage_->save_count());  // The device info must have been saved.
-  EXPECT_EQ(2, transport_->GetRequestCount());
+  EXPECT_EQ(3, transport_->GetRequestCount());
 
   // Validate the device info saved to storage...
   auto storage_data = storage_->Load();

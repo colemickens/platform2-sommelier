@@ -369,7 +369,7 @@ bool CheckParam(const std::string& param_name,
   return false;
 }
 
-std::string DeviceRegistrationInfo::StartRegistration(
+std::string DeviceRegistrationInfo::RegisterDevice(
     const std::map<std::string, std::string>& params,
     chromeos::ErrorPtr* error) {
   GetParamValue(params, "ticket_id", &ticket_id_);
@@ -381,7 +381,6 @@ std::string DeviceRegistrationInfo::StartRegistration(
   GetParamValue(params, storage_keys::kDisplayName, &display_name_);
   GetParamValue(params, storage_keys::kOAuthURL, &oauth_url_);
   GetParamValue(params, storage_keys::kServiceURL, &service_url_);
-
 
   std::unique_ptr<base::DictionaryValue> device_draft =
       BuildDeviceResource(error);
@@ -411,37 +410,17 @@ std::string DeviceRegistrationInfo::StartRegistration(
     {"client_id", client_id_}
   });
 
-  base::DictionaryValue json;
-  json.SetString("ticket_id", ticket_id_);
-  json.SetString("auth_url", auth_url);
-
-  std::string ret;
-  base::JSONWriter::Write(&json, &ret);
-  return ret;
-}
-
-bool DeviceRegistrationInfo::FinishRegistration(chromeos::ErrorPtr* error) {
-  if (ticket_id_.empty()) {
-    LOG(ERROR) << "Finish registration without ticket ID";
-    chromeos::Error::AddTo(error, kErrorDomainBuffet,
-                           "registration_not_started",
-                           "Device registration not started");
-    return false;
-  }
-
-  std::string url = GetServiceURL("registrationTickets/" + ticket_id_ +
-                                  "/finalize?key=" + api_key_);
-  std::unique_ptr<chromeos::http::Response> response =
-      chromeos::http::PostBinary(url, nullptr, 0, transport_, error);
+  url = GetServiceURL("registrationTickets/" + ticket_id_ +
+                      "/finalize?key=" + api_key_);
+  response = chromeos::http::PostBinary(url, nullptr, 0, transport_, error);
   if (!response)
-    return false;
-  auto json_resp = chromeos::http::ParseJsonResponse(response.get(), nullptr,
-                                                     error);
+    return std::string();
+  json_resp = chromeos::http::ParseJsonResponse(response.get(), nullptr, error);
   if (!json_resp)
-    return false;
+    return std::string();
   if (!response->IsSuccessful()) {
     ParseGCDError(json_resp.get(), error);
-    return false;
+    return std::string();
   }
 
   std::string auth_code;
@@ -450,7 +429,7 @@ bool DeviceRegistrationInfo::FinishRegistration(chromeos::ErrorPtr* error) {
       !json_resp->GetString("deviceDraft.id", &device_id_)) {
     chromeos::Error::AddTo(error, kErrorDomainGCD, "unexpected_response",
                            "Device account missing in response");
-    return false;
+    return std::string();
   }
 
   // Now get access_token and refresh_token
@@ -463,7 +442,7 @@ bool DeviceRegistrationInfo::FinishRegistration(chromeos::ErrorPtr* error) {
     {"grant_type", "authorization_code"}
   }, transport_, error);
   if (!response)
-    return false;
+    return std::string();
 
   json_resp = ParseOAuthResponse(response.get(), error);
   int expires_in = 0;
@@ -476,14 +455,14 @@ bool DeviceRegistrationInfo::FinishRegistration(chromeos::ErrorPtr* error) {
       expires_in <= 0) {
     chromeos::Error::AddTo(error, kErrorDomainGCD, "unexpected_response",
                            "Device access_token missing in response");
-    return false;
+    return std::string();
   }
 
   access_token_expiration_ = base::Time::Now() +
                              base::TimeDelta::FromSeconds(expires_in);
 
   Save();
-  return true;
+  return device_id_;
 }
 
 void DeviceRegistrationInfo::DoCloudRequest(

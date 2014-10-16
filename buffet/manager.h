@@ -49,12 +49,10 @@ class Manager final {
   std::string HandleCheckDeviceRegistered(chromeos::ErrorPtr* error);
   // Handles calls to org.chromium.Buffet.Manager.GetDeviceInfo().
   std::string HandleGetDeviceInfo(chromeos::ErrorPtr* error);
-  // Handles calls to org.chromium.Buffet.Manager.StartRegisterDevice().
-  std::string HandleStartRegisterDevice(chromeos::ErrorPtr* error,
-                                        const std::map<std::string,
-                                                       std::string>& params);
-  // Handles calls to org.chromium.Buffet.Manager.FinishRegisterDevice().
-  std::string HandleFinishRegisterDevice(chromeos::ErrorPtr* error);
+  // Handles calls to org.chromium.Buffet.Manager.RegisterDevice().
+  std::string HandleRegisterDevice(
+      chromeos::ErrorPtr* error,
+      const std::map<std::string, std::string>& params);
   // Handles calls to org.chromium.Buffet.Manager.UpdateState().
   void HandleUpdateState(chromeos::ErrorPtr* error,
                          const chromeos::VariantDictionary& property_set);

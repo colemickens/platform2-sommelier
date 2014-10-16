@@ -45,12 +45,9 @@ void Manager::RegisterAsync(const AsyncEventSequencer::CompletionAction& cb) {
   itf->AddMethodHandler(dbus_constants::kManagerGetDeviceInfo,
                         base::Unretained(this),
                         &Manager::HandleGetDeviceInfo);
-  itf->AddMethodHandler(dbus_constants::kManagerStartRegisterDevice,
+  itf->AddMethodHandler(dbus_constants::kManagerRegisterDevice,
                         base::Unretained(this),
-                        &Manager::HandleStartRegisterDevice);
-  itf->AddMethodHandler(dbus_constants::kManagerFinishRegisterDevice,
-                        base::Unretained(this),
-                        &Manager::HandleFinishRegisterDevice);
+                        &Manager::HandleRegisterDevice);
   itf->AddMethodHandler(dbus_constants::kManagerUpdateStateMethod,
                         base::Unretained(this),
                         &Manager::HandleUpdateState);
@@ -108,20 +105,12 @@ std::string Manager::HandleGetDeviceInfo(chromeos::ErrorPtr* error) {
   return device_info_str;
 }
 
-std::string Manager::HandleStartRegisterDevice(
+std::string Manager::HandleRegisterDevice(
     chromeos::ErrorPtr* error,
     const std::map<std::string, std::string>& params) {
-  LOG(INFO) << "Received call to Manager.StartRegisterDevice()";
+  LOG(INFO) << "Received call to Manager.RegisterDevice()";
 
-  return device_info_->StartRegistration(params, error);
-}
-
-std::string Manager::HandleFinishRegisterDevice(chromeos::ErrorPtr* error) {
-  LOG(INFO) << "Received call to Manager.FinishRegisterDevice()";
-  if (!device_info_->FinishRegistration(error))
-    return std::string();
-
-  return device_info_->GetDeviceId(error);
+  return device_info_->RegisterDevice(params, error);
 }
 
 void Manager::HandleUpdateState(
