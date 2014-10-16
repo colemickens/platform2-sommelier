@@ -229,7 +229,7 @@ TEST_F(MountTest, BadInitTest) {
   // Salt creation failure because shadow_root is bogus.
   EXPECT_CALL(platform_, FileExists("/dev/null/salt"))
     .WillOnce(Return(false));
-  EXPECT_CALL(platform_, WriteFile("/dev/null/salt", _))
+  EXPECT_CALL(platform_, WriteFileAtomicDurable("/dev/null/salt", _, _))
     .WillOnce(Return(false));
   EXPECT_CALL(platform_, GetUserId("chronos", _, _))
     .WillOnce(DoAll(SetArgumentPointee<1>(1000), SetArgumentPointee<2>(1000),
@@ -382,7 +382,7 @@ TEST_F(MountTest, MountCryptohomeHasPrivileges) {
   // Unmount here to avoid the scoped Mount doing it implicitly.
   EXPECT_CALL(platform_, GetCurrentTime())
       .WillOnce(Return(base::Time::Now()));
-  EXPECT_CALL(platform_, WriteFile(user->keyset_path, _))
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, ClearUserKeyring())
     .WillOnce(Return(0));
@@ -651,7 +651,7 @@ TEST_F(MountTest, CreateCryptohomeTest) {
     .WillRepeatedly(Return(true));
 
   chromeos::Blob creds;
-  EXPECT_CALL(platform_, WriteFile(user->keyset_path, _))
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillOnce(DoAll(SaveArg<1>(&creds), Return(true)));
 
   bool created;
@@ -763,7 +763,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
                           Return(Tpm::RetryNone)));
 
   chromeos::Blob migrated_keyset;
-  EXPECT_CALL(platform_, WriteFile(user->keyset_path, _))
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillOnce(DoAll(SaveArg<1>(&migrated_keyset), Return(true)));
   int key_index = 0;
 
@@ -956,7 +956,7 @@ TEST_F(MountTest, MountCryptohomeNoChapsKey) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Move(_, _))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, WriteFile(user->keyset_path, _))
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillRepeatedly(DoAll(SaveArg<1>(&(user->credentials)), Return(true)));
   ASSERT_TRUE(mount_->ReEncryptVaultKeyset(up, vault_keyset, key_index,
                                            &serialized));
@@ -1094,7 +1094,7 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
   chromeos::Blob creds;
-  EXPECT_CALL(platform_, WriteFile(user->keyset_path, _))
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillOnce(DoAll(SaveArg<1>(&creds), Return(true)))
     .WillRepeatedly(Return(true));
 
@@ -1159,7 +1159,7 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   // background but here in the test we must call it manually.
   static const int kMagicTimestamp = 123;
   chromeos::Blob updated_keyset;
-  EXPECT_CALL(platform_, WriteFile(user->keyset_path, _))
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillRepeatedly(DoAll(SaveArg<1>(&updated_keyset), Return(true)));
   EXPECT_CALL(platform_, GetCurrentTime())
       .WillOnce(Return(base::Time::FromInternalValue(kMagicTimestamp)));
@@ -1453,7 +1453,7 @@ TEST_F(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
     .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, WriteFile(user->keyset_path, _))
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillRepeatedly(Return(true));
   std::vector<int> key_indices;
   key_indices.push_back(0);

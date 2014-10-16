@@ -678,9 +678,9 @@ TEST(Standalone, StoreEnrollmentState) {
       SetArgumentPointee<1>(encrypted_data), Return(true)));
 
   // Should write file as this device is enterprise enrolled.
-  EXPECT_CALL(platform, WriteStringToFile(
+  EXPECT_CALL(platform, WriteStringToFileAtomicDurable(
       "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb",
-      encrypted_data)).WillOnce(Return(true));
+      encrypted_data, _)).WillOnce(Return(true));
   EXPECT_TRUE(service.StoreEnrollmentState(test_array.get(), &success, &error));
   EXPECT_TRUE(success);
 

@@ -70,6 +70,7 @@ const char kMountDir[] = "mount";
 const char kSkeletonDir[] = "skeleton";
 const char kKeyFile[] = "master.";
 const int kKeyFileMax = 100;  // master.0 ... master.99
+const mode_t kKeyFilePermissions = 0600;
 const char kKeyLegacyPrefix[] = "legacy-";
 const char kEphemeralDir[] = "ephemeralfs";
 const char kEphemeralMountType[] = "tmpfs";
@@ -1004,9 +1005,10 @@ bool Mount::StoreVaultKeysetForUser(
   SecureBlob final_blob(serialized.ByteSize());
   serialized.SerializeWithCachedSizesToArray(
       static_cast<google::protobuf::uint8*>(final_blob.data()));
-  return platform_->WriteFile(
-    GetUserLegacyKeyFileForUser(obfuscated_username, index),
-    final_blob);
+  return platform_->WriteFileAtomicDurable(
+      GetUserLegacyKeyFileForUser(obfuscated_username, index),
+      final_blob,
+      kKeyFilePermissions);
 }
 
 bool Mount::DecryptVaultKeyset(const Credentials& credentials,
@@ -1182,7 +1184,7 @@ bool Mount::AddVaultKeyset(const Credentials& credentials,
 bool Mount::ReEncryptVaultKeyset(const Credentials& credentials,
                                  const VaultKeyset& vault_keyset,
                                  int key_index,
-                              SerializedVaultKeyset* serialized) const {
+                                 SerializedVaultKeyset* serialized) const {
   std::string obfuscated_username =
     credentials.GetObfuscatedUsername(system_salt_);
   std::vector<std::string> files(2);

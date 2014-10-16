@@ -4,6 +4,8 @@
 
 #include "cryptohome/install_attributes.h"
 
+#include <sys/types.h>
+
 #include <limits>
 #include <string>
 
@@ -22,9 +24,11 @@ const uint32_t InstallAttributes::kLockboxIndex = 0x20000004;
 // By default, we store this with other cryptohome state.
 const char* InstallAttributes::kDefaultDataFile =
   "/home/.shadow/install_attributes.pb";
+const mode_t InstallAttributes::kDataFilePermissions = 0644;
 // This is the default location for the cache file.
 const char* InstallAttributes::kDefaultCacheFile =
   "/var/run/lockbox/install_attributes.pb";
+const mode_t InstallAttributes::kCacheFilePermissions = 0644;
 
 InstallAttributes::InstallAttributes(Tpm* tpm)
   : is_first_install_(false),
@@ -277,15 +281,17 @@ bool InstallAttributes::Finalize() {
     return false;
   }
 
-  if (!platform_->WriteFile(data_file_, attr_bytes)) {
+  if (!platform_->WriteFileAtomicDurable(data_file_, attr_bytes,
+                                         kDataFilePermissions)) {
     LOG(ERROR) << "Finalize() write failed after locking the Lockbox.";
     SetIsInvalid(true);
     return false;
   }
 
-  mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+  // Since the cache file is re-created upon every boot, atomic write is not
+  // required.
   if (!platform_->WriteFile(cache_file_, attr_bytes) ||
-      !platform_->SetPermissions(cache_file_, mode)) {
+      !platform_->SetPermissions(cache_file_, kCacheFilePermissions)) {
     LOG(WARNING) << "Finalize() failed to create cache file.";
   }
 

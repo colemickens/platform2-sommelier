@@ -8,6 +8,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -166,6 +167,7 @@ const char kMetricNamePkcs11InitFail[] = "Cryptohome.PKCS11InitFail";
 // will persist across powerwashes.
 const char kPreservedEnrollmentStatePath[] =
     "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb";
+const mode_t kPreservedEnrollmentStatePermissions = 0600;
 
 // A helper function which maps an integer to a valid CertificateProfile.
 CertificateProfile GetProfile(int profile_value) {
@@ -621,7 +623,7 @@ bool Service::SeedUrandom() {
     return false;
   }
   if (!platform_->WriteFile(kDefaultEntropySource, random)) {
-    LOG(ERROR) << "Error writing data to /dev/urandom";
+    LOG(ERROR) << "Error writing data to " << kDefaultEntropySource;
     return false;
   }
   return true;
@@ -2693,8 +2695,10 @@ gboolean Service::StoreEnrollmentState(GArray* enrollment_state,
   if (!crypto_->EncryptWithTpm(data_blob, &encrypted_data)) {
     return TRUE;
   }
-  if (!platform_->WriteStringToFile(kPreservedEnrollmentStatePath,
-                                    encrypted_data)) {
+  if (!platform_->WriteStringToFileAtomicDurable(
+          kPreservedEnrollmentStatePath,
+          encrypted_data,
+          kPreservedEnrollmentStatePermissions)) {
     LOG(ERROR) << "Failed to write out enrollment state to "
                << kPreservedEnrollmentStatePath;
     return TRUE;

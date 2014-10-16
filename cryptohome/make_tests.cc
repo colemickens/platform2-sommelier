@@ -240,7 +240,7 @@ void TestUser::GenerateCredentials() {
   EXPECT_CALL(platform, CreateDirectory(_))
     .WillRepeatedly(Return(true));
   // Grab the generated credential
-  EXPECT_CALL(platform, WriteFile(keyset_path, _))
+  EXPECT_CALL(platform, WriteFileAtomicDurable(keyset_path, _, _))
     .WillOnce(DoAll(SaveArg<1>(&credentials), Return(true)));
   mount->EnsureCryptohome(up, &created);
   DCHECK(created && credentials.size());

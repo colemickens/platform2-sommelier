@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sys/types.h>
+
 #include <base/logging.h>
 #include <chromeos/secure_blob.h>
 
@@ -12,6 +14,10 @@
 #include "cryptohome/vault_keyset.h"
 
 using chromeos::SecureBlob;
+
+namespace {
+const mode_t kVaultFilePermissions = 0600;
+}
 
 namespace cryptohome {
 
@@ -235,18 +241,8 @@ bool VaultKeyset::Save(const std::string& filename) {
       static_cast<google::protobuf::uint8*>(contents.data());
   serialized_.SerializeWithCachedSizesToArray(buf);
 
-  // Ensure keysets at 600.
-  int previous_mask = platform_->SetMask(S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
-  std::string path = filename + ".new";
-  bool ok = true;
-  if (platform_->WriteFile(path, contents)) {
-    if (!platform_->Rename(path, filename)) {
-      ok = false;
-      // Delete the temporary file.
-      platform_->DeleteFile(path, false);
-    }
-  }
-  platform_->SetMask(previous_mask);
+  bool ok = platform_->WriteFileAtomicDurable(filename, contents,
+                                              kVaultFilePermissions);
   return ok;
 }
 

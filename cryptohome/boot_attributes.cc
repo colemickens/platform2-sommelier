@@ -105,6 +105,11 @@ bool BootAttributes::FlushAndSign() {
     return false;
   }
 
+  // Since two files are written, atomicity cannot be achieved easily.
+  // Therefore this only aims for durability.
+  platform_->DataSyncFile(kAttributeFile);
+  platform_->DataSyncFile(kSignatureFile);
+
   attributes_ = write_buffer_;
   return true;
 }

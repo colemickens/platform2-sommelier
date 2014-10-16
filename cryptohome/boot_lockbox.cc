@@ -4,6 +4,8 @@
 
 #include "cryptohome/boot_lockbox.h"
 
+#include <sys/types.h>
+
 #include <string>
 
 #include <base/stl_util.h>
@@ -33,6 +35,8 @@ const unsigned char kPCRValue[20] = {0};
 const char kPCRExtension[] = "CROS_PCR15_845A4A757B94";
 
 const char kKeyFilePath[] = "/var/lib/boot-lockbox/key";
+
+const mode_t kKeyFilePermissions = 0600;
 
 // So we can use scoped_ptr with openssl types.
 struct RSADeleter {
@@ -156,7 +160,9 @@ bool BootLockbox::SaveKey(const BootLockboxKey& key) {
     LOG(ERROR) << "Failed to encrypt boot-lockbox key.";
     return false;
   }
-  if (!platform_->WriteStringToFile(kKeyFilePath, encrypted_protobuf)) {
+  if (!platform_->WriteStringToFileAtomicDurable(kKeyFilePath,
+                                                 encrypted_protobuf,
+                                                 kKeyFilePermissions)) {
     LOG(ERROR) << "Failed to write boot-lockbox key.";
     return false;
   }

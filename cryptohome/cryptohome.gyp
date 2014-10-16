@@ -335,6 +335,7 @@
             'mount_task_unittest.cc',
             'mount_unittest.cc',
             'pkcs11_keystore_unittest.cc',
+	    'platform_unittest.cc',
             'service_unittest.cc',
             'stateful_recovery_unittest.cc',
             'username_passkey_unittest.cc',

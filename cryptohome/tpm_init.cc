@@ -233,14 +233,13 @@ bool TpmInit::SetupTpm(bool load_key) {
   get_tpm()->SetIsEnabled(is_enabled);
 
   if (successful_check && !is_owned) {
-    platform_->DeleteFile(kOpenCryptokiPath, true);
-    platform_->DeleteFile(kTpmOwnedFile, false);
-    platform_->DeleteFile(kTpmStatusFile, false);
+    platform_->DeleteFileDurable(kOpenCryptokiPath, true);
+    platform_->DeleteFileDurable(kTpmOwnedFile, false);
+    platform_->DeleteFileDurable(kTpmStatusFile, false);
   }
   if (successful_check && is_owned) {
     if (!platform_->FileExists(kTpmOwnedFile)) {
-      chromeos::Blob empty_blob(0);
-      platform_->WriteFile(kTpmOwnedFile, empty_blob);
+      platform_->TouchFileDurable(kTpmOwnedFile);
     }
   }
 
@@ -302,9 +301,9 @@ bool TpmInit::InitializeTpm(bool* OUT_took_ownership) {
   bool took_ownership = false;
   if (!IsTpmOwned()) {
     SetTpmBeingOwned(true);
-    platform_->DeleteFile(kOpenCryptokiPath, true);
-    platform_->DeleteFile(kTpmOwnedFile, false);
-    platform_->DeleteFile(kTpmStatusFile, false);
+    platform_->DeleteFileDurable(kOpenCryptokiPath, true);
+    platform_->DeleteFileDurable(kTpmOwnedFile, false);
+    platform_->DeleteFileDurable(kTpmStatusFile, false);
 
     if (!get_tpm()->IsEndorsementKeyAvailable(context_handle)) {
       if (!get_tpm()->CreateEndorsementKey(context_handle)) {
@@ -379,16 +378,14 @@ bool TpmInit::InitializeTpm(bool* OUT_took_ownership) {
                                         owner_password))) {
       get_tpm()->SetOwnerPassword(owner_password);
     }
-    chromeos::Blob empty_blob(0);
-    platform_->WriteFile(kTpmOwnedFile, empty_blob);
+    platform_->TouchFileDurable(kTpmOwnedFile);
   } else {
     // If we fall through here, then the TPM owned file doesn't exist, but we
     // couldn't auth with the well-known password.  In this case, we must assume
     // that the TPM has already been owned and set to a random password, so
     // touch the TPM owned file.
     if (!platform_->FileExists(kTpmOwnedFile)) {
-      chromeos::Blob empty_blob(0);
-      platform_->WriteFile(kTpmOwnedFile, empty_blob);
+      platform_->TouchFileDurable(kTpmOwnedFile);
     }
   }
 
@@ -413,8 +410,8 @@ bool TpmInit::LoadTpmStatus(TpmStatus* serialized) {
 }
 
 bool TpmInit::StoreTpmStatus(const TpmStatus& serialized) {
-  int old_mask = platform_->SetMask(kDefaultUmask);
   if (platform_->FileExists(kTpmStatusFile)) {
+    // Shred old status file, not very useful on SSD. :(
     do {
       int64_t file_size;
       if (!platform_->GetFileSize(kTpmStatusFile, &file_size)) {
@@ -424,23 +421,16 @@ bool TpmInit::StoreTpmStatus(const TpmStatus& serialized) {
       if (!get_tpm()->GetRandomData(file_size, &random)) {
         break;
       }
-      FILE* file = platform_->OpenFile(kTpmStatusFile, "wb+");
-      if (!file) {
-        break;
-      }
-      if (!platform_->WriteOpenFile(file, random)) {
-        platform_->CloseFile(file);
-        break;
-      }
-      platform_->CloseFile(file);
+      platform_->WriteFile(kTpmStatusFile, random);
+      platform_->DataSyncFile(kTpmStatusFile);
     } while (false);
     platform_->DeleteFile(kTpmStatusFile, false);
   }
+
   SecureBlob final_blob(serialized.ByteSize());
   serialized.SerializeWithCachedSizesToArray(
       static_cast<google::protobuf::uint8*>(final_blob.data()));
-  bool ok = platform_->WriteFile(kTpmStatusFile, final_blob);
-  platform_->SetMask(old_mask);
+  bool ok = platform_->WriteFileAtomicDurable(kTpmStatusFile, final_blob, 0600);
   return ok;
 }
 
@@ -555,9 +545,8 @@ bool TpmInit::CreateCryptohomeKey(TSS_HCONTEXT context_handle) {
 }
 
 bool TpmInit::SaveCryptohomeKey(const chromeos::SecureBlob& raw_key) {
-  int previous_mask = platform_->SetMask(cryptohome::kDefaultUmask);
-  bool ok = platform_->WriteFile(kDefaultCryptohomeKeyFile, raw_key);
-  platform_->SetMask(previous_mask);
+  bool ok = platform_->WriteFileAtomicDurable(kDefaultCryptohomeKeyFile,
+                                              raw_key, 0600);
   if (!ok)
     LOG(ERROR) << "Error writing key file of desired size: " << raw_key.size();
   return ok;

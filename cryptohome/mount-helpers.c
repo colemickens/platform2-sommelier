@@ -711,13 +711,61 @@ out:
 	return key;
 }
 
+/* Pushes a previously written file out to disk.  Returns 1 on success and 0 if
+ * it cannot be guaranteed that the file has hit the disk.
+ */
+int file_sync_full(const char *filename) {
+	int fd, sync_result, close_result;
+	int retval = 0;
+	char *dirname = g_path_get_dirname((gchar*)filename);
+
+	/* sync file */
+	fd = TEMP_FAILURE_RETRY(open(filename, O_WRONLY));
+	if (fd < 0) {
+		ERROR("Could not open %s for syncing", filename);
+		goto free_dirname;
+	}
+	sync_result = TEMP_FAILURE_RETRY(fdatasync(fd));
+	close_result = close(fd);  // close() may not be retried.
+	if (sync_result < 0) {
+		ERROR("Failed to sync %s", filename);
+		goto free_dirname;
+	}
+	if (close_result < 0) {
+		ERROR("Failed to close %s", filename);
+		goto free_dirname;
+	}
+
+	/* sync directory */
+	fd = TEMP_FAILURE_RETRY(open(dirname, O_RDONLY));
+	if (fd < 0) {
+		ERROR("Could not open directory %s for syncing", dirname);
+		goto free_dirname;
+	}
+	sync_result = TEMP_FAILURE_RETRY(fsync(fd));
+	close_result = close(fd);  // close() may not be retried.
+	if (sync_result < 0) {
+		ERROR("Failed to sync %s", filename);
+		goto free_dirname;
+	}
+	if (close_result < 0) {
+		ERROR("Failed to close %s", filename);
+		goto free_dirname;
+	}
+	retval = 1;
+
+free_dirname:
+	g_free(dirname);
+	return retval;
+}
+
 int keyfile_write(const char *keyfile, uint8_t *system_key, char *string)
 {
 	int rc = 0;
 	size_t length;
 	uint8_t plain[DIGEST_LENGTH];
 	uint8_t *cipher = NULL;
-	int cipher_length, final_len;
+	int cipher_length, final_len, tries, result;
 	GError *error = NULL;
 	EVP_CIPHER_CTX ctx;
 	const EVP_CIPHER *algo = EVP_aes_256_cbc();
@@ -784,11 +832,28 @@ int keyfile_write(const char *keyfile, uint8_t *system_key, char *string)
 	 * 	f |= EXT2_SECRM_FL;
 	 * 	ioctl(fd, EXT2_IOC_SETFLAGS, &f);
 	 */
-	if (!g_file_set_contents(keyfile, (gchar *)cipher, length, &error)) {
+	/* Note that the combination of g_file_set_contents() and
+	 * file_sync_full() isn't atomic, but the time window of non-atomicity
+	 * should be pretty small.
+	 */
+	tries = 3;
+	while (tries > 0 &&
+	       !(result = g_file_set_contents(keyfile, (gchar *)cipher,
+					      length, &error))) {
 		ERROR("Unable to write %s: %s", keyfile, error->message);
 		g_error_free(error);
-		goto free_ctx;
+		--tries;
 	}
+	if (!result)
+		goto free_ctx;
+
+	tries = 3;
+	while (tries > 0 && !(result = file_sync_full(keyfile))) {
+		ERROR("Unable to sync %s.", keyfile);
+		--tries;
+	}
+	if (!result)
+		goto free_ctx;
 
 	rc = 1;
 

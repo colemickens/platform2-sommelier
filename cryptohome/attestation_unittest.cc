@@ -33,6 +33,7 @@ using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
 using ::testing::StartsWith;
+using ::testing::WithArgs;
 
 namespace cryptohome {
 
@@ -56,10 +57,11 @@ class AttestationTest : public testing::Test {
     attestation_.set_database_path(kTestPath);
     attestation_.set_user_key_store(&key_store_);
     // Fake up a single file by default.
-    ON_CALL(platform_, WriteStringToFile(StartsWith(kTestPath), _))
-        .WillByDefault(Invoke(this, &AttestationTest::WriteDB));
+    ON_CALL(platform_,
+            WriteStringToFileAtomicDurable(StartsWith(kTestPath), _, _))
+        .WillByDefault(WithArgs<1>(Invoke(this, &AttestationTest::WriteDB)));
     ON_CALL(platform_, ReadFileToString(StartsWith(kTestPath), _))
-        .WillByDefault(Invoke(this, &AttestationTest::ReadDB));
+        .WillByDefault(WithArgs<1>(Invoke(this, &AttestationTest::ReadDB)));
     // Configure a TPM that is ready.
     ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
     ON_CALL(tpm_, IsOwned()).WillByDefault(Return(true));
@@ -72,11 +74,11 @@ class AttestationTest : public testing::Test {
                             &install_attributes_);
   }
 
-  virtual bool WriteDB(const string& path, const string& db) {
+  virtual bool WriteDB(const string& db) {
     serialized_db_.assign(db);
     return true;
   }
-  virtual bool ReadDB(const string& path, string* db) {
+  virtual bool ReadDB(string* db) {
     if (serialized_db_.empty()) {
       return false;
     }

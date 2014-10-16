@@ -6,6 +6,8 @@
 
 #include "cryptohome/crypto.h"
 
+#include <sys/types.h>
+
 #include <limits>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -81,6 +83,9 @@ const unsigned int kDefaultAesKeySize = 32;
 
 // Maximum size of the salt file.
 const int64_t Crypto::kSaltMax = (1 << 20);  // 1 MB
+
+// File permissions of salt file (modulo umask).
+const mode_t kSaltFilePermissions = 0644;
 
 Crypto::Crypto(Platform* platform)
     : use_tpm_(false),
@@ -167,12 +172,9 @@ bool Crypto::GetOrCreateSalt(const base::FilePath& path, unsigned int length,
     local_salt.resize(length);
     CryptoLib::GetSecureRandom(static_cast<unsigned char*>(local_salt.data()),
                                local_salt.size());
-    if (!platform_->WriteFile(path.value(), local_salt)) {
+    if (!platform_->WriteFileAtomicDurable(path.value(), local_salt,
+                                           kSaltFilePermissions)) {
       LOG(ERROR) << "Could not write user salt";
-      return false;
-    }
-    if (!platform_->SyncFile(path.value())) {
-      LOG(ERROR) << "Could not sync user salt.";
       return false;
     }
   } else {

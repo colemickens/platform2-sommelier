@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_ATTESTATION_H_
 #define CRYPTOHOME_ATTESTATION_H_
 
+#include <sys/types.h>
+
 #include <map>
 #include <string>
 
@@ -366,6 +368,7 @@ class Attestation : public base::PlatformThread::Delegate,
   static const size_t kCipherKeySize;
   static const size_t kNonceSize;
   static const size_t kDigestSize;
+  static const mode_t kDatabasePermissions;
   static const char kDefaultDatabasePath[];
   static const char kDefaultPCAPublicKey[];
   static const char kDefaultPCAPublicKeyID[];

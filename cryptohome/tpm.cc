@@ -15,7 +15,6 @@
 #include <openssl/rsa.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/stat.h>
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h

@@ -48,8 +48,9 @@ class BootLockboxTest : public testing::Test {
     ON_CALL(crypto_, DecryptWithTpm(_, _))
         .WillByDefault(Invoke(this, &BootLockboxTest::FakeDecrypt));
     // Configure a fake filesystem.
-    ON_CALL(platform_, WriteStringToFile(_, _))
-        .WillByDefault(Invoke(this, &BootLockboxTest::FakeWriteFile));
+    ON_CALL(platform_, WriteStringToFileAtomicDurable(_, _, _))
+        .WillByDefault(WithArgs<0, 1>(Invoke(this,
+                                             &BootLockboxTest::FakeWriteFile)));
     ON_CALL(platform_, ReadFileToString(_, _))
         .WillByDefault(Invoke(this, &BootLockboxTest::FakeReadFile));
     lockbox_.reset(new BootLockbox(&tpm_, &platform_, &crypto_));
@@ -183,7 +184,8 @@ TEST_F(BootLockboxTest, FileErrors) {
   chromeos::SecureBlob signature;
   ASSERT_TRUE(lockbox_->Sign(data, &signature));
 
-  EXPECT_CALL(platform_, WriteStringToFile(_, _)).WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, WriteStringToFileAtomicDurable(_, _, _))
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, ReadFileToString(_, _)).WillRepeatedly(Return(false));
 
   EXPECT_FALSE(lockbox2_->Sign(data, &signature));

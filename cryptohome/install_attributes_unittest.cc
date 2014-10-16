@@ -97,7 +97,9 @@ class InstallAttributesTest : public ::testing::Test {
         .Times(1)
         .WillOnce(Return(true));
     }
-    EXPECT_CALL(platform_, WriteFile(InstallAttributes::kDefaultDataFile, _))
+    EXPECT_CALL(platform_,
+                WriteFileAtomicDurable(InstallAttributes::kDefaultDataFile,
+                                       _, _))
       .Times(1)
       .WillOnce(DoAll(SaveArg<1>(serialized_data), Return(true)));
     chromeos::Blob cached_data;
@@ -182,7 +184,7 @@ TEST_F(InstallAttributesTest, OobeWithTpmBadWrite) {
   EXPECT_CALL(lockbox_, Store(_, _))
     .Times(1)
     .WillOnce(DoAll(SaveArg<0>(&serialized_data), Return(true)));
-  EXPECT_CALL(platform_, WriteFile(_, _))
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(_, _, _))
     .Times(1)
     .WillOnce(Return(false));
   EXPECT_FALSE(install_attrs_.Finalize());

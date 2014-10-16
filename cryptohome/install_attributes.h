@@ -185,8 +185,12 @@ class InstallAttributes {
   static const uint32_t kLockboxIndex;
   // Provides the default location for the attributes data file.
   static const char* kDefaultDataFile;
+  // File permissions of attributes data file (modulo umask).
+  static const mode_t kDataFilePermissions;
   // Provides the default location for the cache file.
   static const char* kDefaultCacheFile;
+  // File permissions of cache file (modulo umask).
+  static const mode_t kCacheFilePermissions;
 
  protected:
   // Helper to find a given entry index using its name.

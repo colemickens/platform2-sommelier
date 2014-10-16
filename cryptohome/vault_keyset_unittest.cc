@@ -144,10 +144,8 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
   keyset.CreateRandom();
   SecureBlob bytes;
 
-  EXPECT_CALL(platform, WriteFile("foo.new", _))
+  EXPECT_CALL(platform, WriteFileAtomicDurable("foo", _, _))
       .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)));
-  EXPECT_CALL(platform, Rename("foo.new", "foo"))
-      .WillOnce(Return(true));
   EXPECT_CALL(platform, ReadFile("foo", _))
       .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
 
@@ -161,7 +159,7 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
   EXPECT_TRUE(new_keyset.Decrypt(key));
 }
 
-TEST_F(VaultKeysetTest, BadSavePerms) {
+TEST_F(VaultKeysetTest, WriteError) {
   MockPlatform platform;
   Crypto crypto(&platform);
   VaultKeyset keyset;
@@ -170,14 +168,8 @@ TEST_F(VaultKeysetTest, BadSavePerms) {
   keyset.CreateRandom();
   SecureBlob bytes;
 
-  EXPECT_CALL(platform, WriteFile("foo.new", _))
-      .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)));
-  EXPECT_CALL(platform, SetMask(0066))
-    .WillOnce(Return(0022));
-  EXPECT_CALL(platform, SetMask(0022))
-    .WillOnce(Return(0066));
-  EXPECT_CALL(platform, DeleteFile("foo.new", false))
-      .WillOnce(Return(true));
+  EXPECT_CALL(platform, WriteFileAtomicDurable("foo", _, _))
+      .WillOnce(Return(false));
 
   SecureBlob key("key", 3);
   EXPECT_TRUE(keyset.Encrypt(key));

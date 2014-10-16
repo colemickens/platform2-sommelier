@@ -119,9 +119,16 @@ class MockPlatform : public Platform {
   MOCK_METHOD2(Rename, bool(const std::string&, const std::string&));
   MOCK_METHOD2(WriteOpenFile, bool(FILE*, const chromeos::Blob&));
   MOCK_METHOD2(WriteFile, bool(const std::string&, const chromeos::Blob&));
+  MOCK_METHOD3(WriteFileAtomicDurable, bool(const std::string&,
+                                            const chromeos::Blob&,
+                                            mode_t mode));
   MOCK_METHOD2(WriteStringToFile, bool(const std::string&, const std::string&));
+  MOCK_METHOD3(WriteStringToFileAtomicDurable, bool(const std::string&,
+                                                    const std::string&,
+                                                    mode_t mode));
   MOCK_METHOD3(WriteArrayToFile, bool(const std::string& path, const char* data,
                                       size_t size));
+  MOCK_METHOD1(TouchFileDurable, bool(const std::string& path));
   MOCK_CONST_METHOD0(GetCurrentTime, base::Time());
   MOCK_METHOD2(Copy, bool(const std::string&, const std::string&));
   MOCK_METHOD2(Move, bool(const std::string&, const std::string&));
@@ -133,6 +140,7 @@ class MockPlatform : public Platform {
   MOCK_METHOD3(EnumerateDirectoryEntries, bool(const std::string&, bool,
                                                std::vector<std::string>*));
   MOCK_METHOD2(DeleteFile, bool(const std::string&, bool));
+  MOCK_METHOD2(DeleteFileDurable, bool(const std::string&, bool));
   MOCK_METHOD1(DirectoryExists, bool(const std::string&));
   MOCK_METHOD1(CreateDirectory, bool(const std::string&));
   MOCK_METHOD0(ClearUserKeyring, long(void));  // NOLINT(runtime/int)
@@ -144,7 +152,7 @@ class MockPlatform : public Platform {
                                                   bool,
                                                   int));
   MOCK_METHOD0(FirmwareWriteProtected, bool(void));
-  MOCK_METHOD1(SyncFile, bool(const std::string&));
+  MOCK_METHOD1(DataSyncFile, bool(const std::string&));
   MOCK_METHOD0(Sync, void());
   MOCK_METHOD0(GetHardwareID, std::string(void));
 

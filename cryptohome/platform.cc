@@ -16,8 +16,8 @@
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/mount.h>
-#include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -39,6 +39,7 @@
 #include <base/time/time.h>
 #include <chromeos/process.h>
 #include <chromeos/secure_blob.h>
+#include <openssl/rand.h>
 
 // Uses libvboot_host for accessing crossystem variables.
 extern "C" {
@@ -521,6 +522,117 @@ bool Platform::WriteArrayToFile(const std::string& path, const char* data,
   return data_written == static_cast<int>(size);
 }
 
+std::string Platform::GetRandomSuffix() {
+  const int kBufferSize = 6;
+  unsigned char buffer[kBufferSize];
+  if (RAND_pseudo_bytes(buffer, kBufferSize) < 0) {
+    return std::string();
+  }
+  std::string suffix;
+  for (int i = 0; i < kBufferSize; ++i) {
+    int random_value = buffer[i] % (2 * 26 + 10);
+    if (random_value < 26) {
+      suffix.push_back('a' + random_value);
+    } else if (random_value < 2 * 26) {
+      suffix.push_back('A' + random_value - 26);
+    } else {
+      suffix.push_back('0' + random_value - 2 * 26);
+    }
+  }
+  return suffix;
+}
+
+bool Platform::WriteFileAtomic(const std::string& path,
+                               const chromeos::Blob& blob,
+                               mode_t mode) {
+  const std::string data(reinterpret_cast<const char*>(&blob[0]), blob.size());
+  return WriteStringToFileAtomic(path, data, mode);
+}
+
+bool Platform::WriteStringToFileAtomic(const std::string& path,
+                                       const std::string& data,
+                                       mode_t mode) {
+  FilePath file_path(path);
+  if (!base::DirectoryExists(file_path.DirName())) {
+    if (!base::CreateDirectory(file_path.DirName())) {
+      LOG(ERROR) << "Cannot create directory: " << file_path.DirName().value();
+      return false;
+    }
+  }
+  std::string random_suffix = GetRandomSuffix();
+  if (random_suffix.empty()) {
+    PLOG(WARNING) << "Could not compute random suffix";
+    return false;
+  }
+  std::string temp_name_string = FilePath(path).DirName().
+      Append(".org.chromium.cryptohome." + random_suffix).value();
+  const char * temp_name = temp_name_string.c_str();
+  int fd = HANDLE_EINTR(open(temp_name, O_CREAT|O_EXCL|O_WRONLY, mode));
+  if (fd < 0) {
+    PLOG(WARNING) << "Could not open " << temp_name << " for atomic write";
+    unlink(temp_name);
+    return false;
+  }
+
+  size_t position = 0;
+  while (position < data.size()) {
+    ssize_t bytes_written = HANDLE_EINTR(
+        write(fd, data.data()+position, data.size()-position));
+    if (bytes_written < 0) {
+      PLOG(WARNING) << "Could not write " << temp_name;
+      close(fd);
+      unlink(temp_name);
+      return false;
+    }
+    position += bytes_written;
+  }
+
+  int result = HANDLE_EINTR(fdatasync(fd));
+  if (result < 0) {
+    PLOG(WARNING) << "Could not fsync " << temp_name;
+    close(fd);
+    unlink(temp_name);
+    return false;
+  }
+  result = close(fd);
+  if (result < 0) {
+    PLOG(WARNING) << "Could not close " << temp_name;
+    unlink(temp_name);
+    return false;
+  }
+
+  result = rename(temp_name, path.c_str());
+  if (result < 0) {
+    PLOG(WARNING) << "Could not close " << temp_name;
+    unlink(temp_name);
+    return false;
+  }
+
+  return true;
+}
+
+bool Platform::WriteFileAtomicDurable(const std::string& path,
+                                      const chromeos::Blob& blob,
+                                      mode_t mode) {
+  const std::string data(reinterpret_cast<const char*>(&blob[0]), blob.size());
+  return WriteStringToFileAtomicDurable(path, data, mode);
+}
+
+bool Platform::WriteStringToFileAtomicDurable(const std::string& path,
+                                              const std::string& data,
+                                              mode_t mode) {
+  if (!WriteStringToFileAtomic(path, data, mode))
+    return false;
+  return SyncDirectory(FilePath(path).DirName().value());
+}
+
+bool Platform::TouchFileDurable(const std::string& path) {
+  chromeos::Blob empty_blob(0);
+  if (!WriteFile(path, empty_blob))
+    return false;
+  return SyncDirectory(FilePath(path).DirName().value());
+}
+
 bool Platform::ReadFile(const std::string& path, chromeos::Blob* blob) {
   int64_t file_size;
   FilePath file_path(path);
@@ -560,6 +672,12 @@ bool Platform::CreateDirectory(const std::string& path) {
 
 bool Platform::DeleteFile(const std::string& path, bool is_recursive) {
   return base::DeleteFile(FilePath(path), is_recursive);
+}
+
+bool Platform::DeleteFileDurable(const std::string& path, bool is_recursive) {
+  if (!base::DeleteFile(FilePath(path), is_recursive))
+    return false;
+  return SyncDirectory(FilePath(path).DirName().value());
 }
 
 bool Platform::Move(const std::string& from, const std::string& to) {
@@ -772,36 +890,34 @@ bool Platform::FirmwareWriteProtected() {
   return VbGetSystemPropertyInt("wpsw_boot") != 0;
 }
 
-bool Platform::SyncFile(const std::string& path) {
-  // Sync both the file and its parent directory.
-  return (SyncPath(path) && SyncPath(FilePath(path).DirName().value()));
+bool Platform::DataSyncFile(const std::string& path) {
+  return SyncFileOrDirectory(path, false /* directory */);
 }
 
-bool Platform::SyncPath(const std::string& path) {
-  int fd = -1;
-  DIR* dir = NULL;
-  if (base::DirectoryExists(FilePath(path))) {
-    dir = opendir(path.c_str());
-    if (!dir) {
-      PLOG(WARNING) << "Could not open directory " << path << " for syncing";
-      return false;
-    }
-    fd = dirfd(dir);
-  } else {
-    fd = HANDLE_EINTR(open(path.c_str(), O_WRONLY));
-  }
+bool Platform::SyncDirectory(const std::string& path) {
+  return SyncFileOrDirectory(path, true /* directory */);
+}
+
+bool Platform::SyncFileOrDirectory(const std::string& path, bool is_directory) {
+  int flags = (is_directory ? O_RDONLY|O_DIRECTORY : O_WRONLY);
+  int fd = HANDLE_EINTR(open(path.c_str(), flags));
   if (fd < 0) {
     PLOG(WARNING) << "Could not open " << path << " for syncing";
     return false;
   }
-  int result = fsync(fd);
-  if (dir) {
-    ignore_result(closedir(dir));
-  } else {
-    ignore_result(close(fd));
-  }
+  // POSIX specifies EINTR as a possible return value of fsync() but not for
+  // fdatasync().  To be on the safe side, it is handled in both cases.
+  int result =
+      (is_directory ? HANDLE_EINTR(fsync(fd)) : HANDLE_EINTR(fdatasync(fd)));
   if (result < 0) {
     PLOG(WARNING) << "Failed to sync " << path;
+    close(fd);
+    return false;
+  }
+  // close() may not be retried on error.
+  result = IGNORE_EINTR(close(fd));
+  if (result < 0) {
+    PLOG(WARNING) << "Failed to close after sync " << path;
     return false;
   }
   return true;

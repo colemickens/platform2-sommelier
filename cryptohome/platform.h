@@ -19,6 +19,7 @@
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/secure_blob.h>
+#include <gtest/gtest_prod.h>
 
 namespace base {
 class Thread;
@@ -295,11 +296,11 @@ class Platform {
   //  path - Pointer to where the file is created if successful.
   virtual FILE* CreateAndOpenTemporaryFile(std::string* path);
 
-  // Reads a file completely into a Blob.
+  // Reads a file completely into a blob/string.
   //
   // Parameters
-  //  path - Path of the file to read
-  //  blob - blob to populate
+  //  path              - Path of the file to read
+  //  blob/string (OUT) - blob/string to populate
   virtual bool ReadFile(const std::string& path, chromeos::Blob* blob);
   virtual bool ReadFileToString(const std::string& path, std::string* string);
 
@@ -310,29 +311,62 @@ class Platform {
   //   blob - data to write
   virtual bool WriteOpenFile(FILE* fp, const chromeos::Blob& blob);
 
-  // Writes the entirety of the data to the given file.
+  // Writes the entirety of the given data to |path| with 0640 permissions
+  // (modulo umask).  If missing, parent (and parent of parent etc.) directories
+  // are created with 0700 permissions (modulo umask).  Returns true on success.
   //
   // Parameters
-  //  path - Path of the file to write
-  //  blob - blob to populate from
+  //  path      - Path of the file to write
+  //  blob/data - blob/string/array to populate from
+  // (size      - array size)
   virtual bool WriteFile(const std::string& path, const chromeos::Blob& blob);
-
-  // Writes the entirety of the string to the given file.
-  //
-  // Parameters
-  //  path - Path of the file to write
-  //  data - string to write out
   virtual bool WriteStringToFile(const std::string& path,
                                  const std::string& data);
-
-  // Returns true if the |data| was completely written to |path|.
-  //
-  // Parameters
-  //   path - Path to the file to write
-  //   data - char array to write
-  //   size - length of |data|
   virtual bool WriteArrayToFile(const std::string& path, const char* data,
                                 size_t size);
+
+  // Atomically writes the entirety of the given data to |path| with |mode|
+  // permissions (modulo umask).  If missing, parent (and parent of parent etc.)
+  // directories are created with 0700 permissions (modulo umask).  Returns true
+  // if the file has been written successfully and it has physically hit the
+  // disk.  Returns false if either writing the file has failed or if it cannot
+  // be guaranteed that it has hit the disk.
+  //
+  // Parameters
+  //   path - Path of the file to write
+  //   data - Blob to populate from
+  //   mode - File permission bit-pattern, eg. 0644 for rw-r--r--
+  bool WriteFileAtomic(const std::string& path,
+                       const chromeos::Blob& blob,
+                       mode_t mode);
+  bool WriteStringToFileAtomic(const std::string& path,
+                               const std::string& data,
+                               mode_t mode);
+
+  // Atomically and durably writes the entirety of the given data to |path| with
+  // |mode| permissions (modulo umask).  If missing, parent (and parent of
+  // parent etc.)  directories are created with 0700 permissions (modulo umask).
+  // Returns true if the file has been written successfully and it has
+  // physically hit the disk.  Returns false if either writing the file has
+  // failed or if it cannot be guaranteed that it has hit the disk.
+  //
+  // Parameters
+  //  path      - Path of the file to write
+  //  blob/data - blob/string to populate from
+  //  mode      - File permission bit-pattern, eg. 0644 for rw-r--r--
+  virtual bool WriteFileAtomicDurable(const std::string& path,
+                                      const chromeos::Blob& blob,
+                                      mode_t mode);
+  virtual bool WriteStringToFileAtomicDurable(const std::string& path,
+                                              const std::string& data,
+                                              mode_t mode);
+
+  // Creates empty file durably, i.e. ensuring that the directory entry is
+  // created on-disk immediately.  Set 0640 permissions (modulo umask).
+  //
+  // Parameters
+  //   path - Path to the file to create
+  virtual bool TouchFileDurable(const std::string& path);
 
   // Delete file(s) at the given path
   //
@@ -341,7 +375,16 @@ class Platform {
   //  recursive - whether to perform recursive deletion of the subtree
   virtual bool DeleteFile(const std::string& path, bool recursive);
 
-  // Create a directory with the given path
+  // Deletes file durably, i.e. ensuring that the directory entry is immediately
+  // removed from the on-disk directory structure.
+  //
+  // Parameters
+  //   path - Path to the file to delete
+  virtual bool DeleteFileDurable(const std::string& path, bool recursive);
+
+  // Create a directory with the given path (including parent directories, if
+  // missing).  All created directories will have 0700 permissions (modulo
+  // umask).
   virtual bool CreateDirectory(const std::string& path);
 
   // Enumerate all directory entries in a given directory
@@ -440,9 +483,12 @@ class Platform {
   // Report condition of the Firmware Write-Protect flag.
   virtual bool FirmwareWriteProtected();
 
-  // Syncs file data and meta-data to disk for the given |path|.  This method is
-  // expensive and synchronous, use with care.  Returns true on success.
-  virtual bool SyncFile(const std::string& path);
+  // Syncs file data to disk for the given |path| but syncs metadata only to the
+  // extent that is required to acess the file's contents.  (I.e. the directory
+  // entry and file size are sync'ed if changed, but not atime or mtime.)  This
+  // method is expensive and synchronous, use with care.  Returns true on
+  // success.
+  virtual bool DataSyncFile(const std::string& path);
 
   // Syncs everything to disk.  This method is synchronous and very, very
   // expensive, use with even more care than SyncFile.
@@ -484,8 +530,23 @@ class Platform {
   //   link_path - The link to check
   std::string ReadLink(const std::string& link_path);
 
-  // Calls fsync() on |path|.  Returns true on success.
-  bool SyncPath(const std::string& path);
+  // Creates a random string suitable to append to a filename.  Returns empty
+  // string in case of error.
+  virtual std::string GetRandomSuffix();
+
+  // Calls fsync() on directory.  Returns true on success.
+  //
+  // Parameters
+  //   path - File/directory to be sync'ed
+  bool SyncDirectory(const std::string& path);
+
+  // Calls fdatasync() on file or fsync() on directory.  Returns true on
+  // success.
+  //
+  // Parameters
+  //   path - File/directory to be sync'ed
+  //   is_directory - True if |path| is a directory
+  bool SyncFileOrDirectory(const std::string& path, bool is_directory);
 
   // Calls |callback| with |path| and, if |path| is a directory, with every
   // entry recursively.  Order is not guaranteed, see base::FileEnumerator.  If
@@ -520,6 +581,8 @@ class Platform {
 
   std::string mtab_path_;
 
+  friend class PlatformTest;
+  FRIEND_TEST(PlatformTest, SyncDirectoryHasSaneReturnCodes);
   DISALLOW_COPY_AND_ASSIGN(Platform);
 };
 

@@ -4,11 +4,17 @@
 #include "cryptohome/lockbox-cache.h"
 
 #include <stdio.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <base/logging.h>
 
 #include "cryptohome/lockbox.h"
+
+namespace {
+// Permissions of cache file (modulo umask).
+const mode_t kCacheFilePermissions = 0644;
+}
 
 namespace cryptohome {
 
@@ -49,8 +55,9 @@ bool LockboxCache::LoadAndVerify(uint32_t index,
 }
 
 bool LockboxCache::Write(const std::string& cache_path) const {
-  // Note, this writes with the caller's umask.
-  if (!platform_->WriteFile(cache_path, contents_)) {
+  // Write atomically (not durably) because cache file resides on tmpfs.
+  if (!platform_->WriteFileAtomic(cache_path, contents_,
+                                  kCacheFilePermissions)) {
     LOG(ERROR) << "Failed to write cache file";
     return false;
   }

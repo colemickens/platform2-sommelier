@@ -51,6 +51,7 @@ const size_t Attestation::kQuoteExternalDataSize = 20;
 const size_t Attestation::kCipherKeySize = 32;
 const size_t Attestation::kNonceSize = 20;  // As per TPM_NONCE definition.
 const size_t Attestation::kDigestSize = 20;  // As per TPM_DIGEST definition.
+const mode_t Attestation::kDatabasePermissions = 0600;
 const char Attestation::kDefaultDatabasePath[] =
     "/mnt/stateful_partition/unencrypted/preserve/attestation.epb";
 
@@ -1184,13 +1185,12 @@ bool Attestation::DecryptDatabase(const string& serial_encrypted_db,
 }
 
 bool Attestation::StoreDatabase(const string& serial_encrypted_db) {
-  if (!platform_->WriteStringToFile(database_path_.value(),
-                                    serial_encrypted_db) ||
-      !platform_->SyncFile(database_path_.value())) {
+  if (!platform_->WriteStringToFileAtomicDurable(database_path_.value(),
+                                                 serial_encrypted_db,
+                                                 kDatabasePermissions)) {
     LOG(ERROR) << "Failed to write db.";
     return false;
   }
-  CheckDatabasePermissions();
   return true;
 }
 
