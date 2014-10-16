@@ -17,6 +17,7 @@
 #include "shill/openvpn_driver.h"
 #include "shill/profile.h"
 #include "shill/store_interface.h"
+#include "shill/third_party_vpn_driver.h"
 #include "shill/vpn_service.h"
 
 using std::set;
@@ -209,6 +210,11 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const string &type,
     driver.reset(new L2TPIPSecDriver(
         control_interface_, dispatcher_, metrics_, manager_,
         manager_->device_info(), manager_->glib()));
+  } else if (type == kProviderThirdPartyVpn) {
+    // For third party VPN host contains extension ID
+    driver.reset(new ThirdPartyVpnDriver(
+        control_interface_, dispatcher_, metrics_, manager_,
+        manager_->device_info(), name));
   } else {
     Error::PopulateAndLog(
         error, Error::kNotSupported, "Unsupported VPN type: " + type);

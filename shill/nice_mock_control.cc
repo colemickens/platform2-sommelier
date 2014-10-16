@@ -46,4 +46,11 @@ ServiceAdaptorInterface *NiceMockControl::CreateServiceAdaptor(
   return new NiceMock<ServiceMockAdaptor>();
 }
 
+#ifndef DISABLE_VPN
+ThirdPartyVpnAdaptorInterface *NiceMockControl::CreateThirdPartyVpnAdaptor(
+      ThirdPartyVpnDriver */*driver*/) {
+  return new NiceMock<ThirdPartyVpnMockAdaptor>();
+}
+#endif
+
 }  // namespace shill

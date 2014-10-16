@@ -164,6 +164,18 @@ class ServiceMockAdaptor : public ServiceAdaptorInterface {
   const std::string rpc_id_;
 };
 
+#ifndef DISABLE_VPN
+class ThirdPartyVpnMockAdaptor : public ThirdPartyVpnAdaptorInterface {
+ public:
+  ThirdPartyVpnMockAdaptor();
+  ~ThirdPartyVpnMockAdaptor() override;
+
+  MOCK_METHOD1(EmitPacketReceived, void(const std::vector<uint8_t> &packet));
+
+  MOCK_METHOD1(EmitPlatformMessage, void(uint32_t message));
+};
+#endif
+
 }  // namespace shill
 
 #endif  // SHILL_MOCK_ADAPTORS_H_

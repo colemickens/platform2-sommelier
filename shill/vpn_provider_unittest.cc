@@ -302,6 +302,7 @@ TEST_F(VPNProviderTest, CreateService) {
   static const char *kTypes[] = {
     kProviderOpenVpn,
     kProviderL2tpIpsec,
+    kProviderThirdPartyVpn
   };
   const size_t kTypesCount = arraysize(kTypes);
   EXPECT_CALL(manager_, device_info())

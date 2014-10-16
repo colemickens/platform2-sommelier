@@ -40,4 +40,11 @@ ServiceAdaptorInterface *MockControl::CreateServiceAdaptor(
   return new ServiceMockAdaptor();
 }
 
+#ifndef DISABLE_VPN
+ThirdPartyVpnAdaptorInterface *MockControl::CreateThirdPartyVpnAdaptor(
+      ThirdPartyVpnDriver */*driver*/) {
+  return new ThirdPartyVpnMockAdaptor();
+}
+#endif
+
 }  // namespace shill

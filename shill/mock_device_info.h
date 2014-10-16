@@ -61,6 +61,8 @@ class MockDeviceInfo : public DeviceInfo {
                     std::vector<IPAddress> *address_list,
                     uint32 *life_time));
   MOCK_CONST_METHOD1(CreateTunnelInterface,  bool(std::string *interface_name));
+  MOCK_CONST_METHOD1(OpenTunnelInterface,
+                     int(const std::string &interface_name));
   MOCK_CONST_METHOD1(DeleteInterface, bool(int interface_index));
   MOCK_METHOD1(RegisterDevice, void(const DeviceRefPtr &));
   MOCK_METHOD1(DeregisterDevice, void(const DeviceRefPtr &));

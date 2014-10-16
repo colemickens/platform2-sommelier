@@ -149,6 +149,15 @@ class ServiceAdaptorInterface {
                                     const Stringmap &value) = 0;
 };
 
+class ThirdPartyVpnAdaptorInterface {
+ public:
+  virtual ~ThirdPartyVpnAdaptorInterface();
+
+  virtual void EmitPacketReceived(const std::vector<uint8_t> &packet) = 0;
+
+  virtual void EmitPlatformMessage(uint32_t message) = 0;
+};
+
 }  // namespace shill
 
 #endif  // SHILL_ADAPTOR_INTERFACES_H_

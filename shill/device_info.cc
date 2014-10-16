@@ -886,6 +886,25 @@ bool DeviceInfo::CreateTunnelInterface(string *interface_name) const {
   return true;
 }
 
+int DeviceInfo::OpenTunnelInterface(const std::string &interface_name) const {
+  int fd = HANDLE_EINTR(open(kTunDeviceName, O_RDWR));
+  if (fd < 0) {
+    PLOG(ERROR) << "failed to open " << kTunDeviceName;
+    return -1;
+  }
+
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  strncpy(ifr.ifr_name, interface_name.c_str(), sizeof(ifr.ifr_name));
+  ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
+  if (HANDLE_EINTR(ioctl(fd, TUNSETIFF, &ifr))) {
+    PLOG(ERROR) << "failed to set tunnel interface name";
+    return -1;
+  }
+
+  return fd;
+}
+
 bool DeviceInfo::DeleteInterface(int interface_index) const {
   return rtnl_handler_->RemoveInterface(interface_index);
 }

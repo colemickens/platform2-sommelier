@@ -130,6 +130,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
       int interface_index, const IPAddress &address) const;
 
   virtual bool CreateTunnelInterface(std::string *interface_name) const;
+  virtual int OpenTunnelInterface(const std::string &interface_name) const;
   virtual bool DeleteInterface(int interface_index) const;
 
   // Returns the interface index for |interface_name| or -1 if unknown.

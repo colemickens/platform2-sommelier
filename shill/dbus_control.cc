@@ -16,6 +16,7 @@
 #include "shill/profile_dbus_adaptor.h"
 #include "shill/rpc_task_dbus_adaptor.h"
 #include "shill/service_dbus_adaptor.h"
+#include "shill/third_party_vpn_dbus_adaptor.h"
 
 namespace shill {
 
@@ -67,6 +68,14 @@ ServiceAdaptorInterface *DBusControl::CreateServiceAdaptor(Service *service) {
   return CreateAdaptor<Service, ServiceAdaptorInterface, ServiceDBusAdaptor>(
       service);
 }
+
+#ifndef DISABLE_VPN
+ThirdPartyVpnAdaptorInterface *DBusControl::CreateThirdPartyVpnAdaptor(
+    ThirdPartyVpnDriver *driver) {
+  return CreateAdaptor<ThirdPartyVpnDriver, ThirdPartyVpnAdaptorInterface,
+                       ThirdPartyVpnAdaptor>(driver);
+}
+#endif
 
 void DBusControl::Init() {
   CHECK(!connection_.get());

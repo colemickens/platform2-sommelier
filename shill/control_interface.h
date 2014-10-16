@@ -24,6 +24,8 @@ class RPCTask;
 class RPCTaskAdaptorInterface;
 class Service;
 class ServiceAdaptorInterface;
+class ThirdPartyVpnDriver;
+class ThirdPartyVpnAdaptorInterface;
 
 // This is the Interface for an object factory that creates adaptor objects
 class ControlInterface {
@@ -36,6 +38,10 @@ class ControlInterface {
   virtual ProfileAdaptorInterface *CreateProfileAdaptor(Profile *profile) = 0;
   virtual ServiceAdaptorInterface *CreateServiceAdaptor(Service *service) = 0;
   virtual RPCTaskAdaptorInterface *CreateRPCTaskAdaptor(RPCTask *task) = 0;
+#ifndef DISABLE_VPN
+  virtual ThirdPartyVpnAdaptorInterface *CreateThirdPartyVpnAdaptor(
+      ThirdPartyVpnDriver *driver) = 0;
+#endif
 
   static void RpcIdToStorageId(std::string *rpc_id) {
     CHECK(rpc_id);

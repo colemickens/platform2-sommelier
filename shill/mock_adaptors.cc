@@ -84,4 +84,10 @@ ServiceMockAdaptor::~ServiceMockAdaptor() {}
 
 const string &ServiceMockAdaptor::GetRpcIdentifier() { return rpc_id_; }
 
+#ifndef DISABLE_VPN
+ThirdPartyVpnMockAdaptor::ThirdPartyVpnMockAdaptor() {}
+
+ThirdPartyVpnMockAdaptor::~ThirdPartyVpnMockAdaptor() {}
+#endif
+
 }  // namespace shill

@@ -25,6 +25,10 @@ class DBusControl : public ControlInterface {
   virtual ProfileAdaptorInterface *CreateProfileAdaptor(Profile *profile);
   virtual RPCTaskAdaptorInterface *CreateRPCTaskAdaptor(RPCTask *task);
   virtual ServiceAdaptorInterface *CreateServiceAdaptor(Service *service);
+#ifndef DISABLE_VPN
+  virtual ThirdPartyVpnAdaptorInterface *CreateThirdPartyVpnAdaptor(
+      ThirdPartyVpnDriver *driver);
+#endif
 
   void Init();
   DBus::Connection *connection() { return connection_.get(); }

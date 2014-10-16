@@ -25,6 +25,10 @@ class MockControl : public ControlInterface {
   virtual ProfileAdaptorInterface *CreateProfileAdaptor(Profile *profile);
   virtual RPCTaskAdaptorInterface *CreateRPCTaskAdaptor(RPCTask *task);
   virtual ServiceAdaptorInterface *CreateServiceAdaptor(Service *service);
+#ifndef DISABLE_VPN
+  virtual ThirdPartyVpnAdaptorInterface *CreateThirdPartyVpnAdaptor(
+      ThirdPartyVpnDriver *driver);
+#endif
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockControl);
