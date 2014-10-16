@@ -191,7 +191,7 @@ void L2TPIPSecDriver::DeleteTemporaryFiles() {
 
 bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error *error) {
   SLOG(VPN, 2) << __func__;
-  scoped_ptr<ExternalTask> external_task_local(
+  std::unique_ptr<ExternalTask> external_task_local(
       new ExternalTask(control_, glib_,
                        weak_ptr_factory_.GetWeakPtr(),
                        Bind(&L2TPIPSecDriver::OnL2TPIPSecVPNDied,
@@ -206,7 +206,7 @@ bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error *error) {
 
   if (external_task_local->Start(
           FilePath(kL2TPIPSecVPNPath), options, environment, true, error)) {
-    external_task_ = external_task_local.Pass();
+    external_task_ = std::move(external_task_local);
     return true;
   }
   return false;

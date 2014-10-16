@@ -1387,7 +1387,7 @@ TEST_F(OpenVPNDriverTest, InitEnvironment) {
 }
 
 TEST_F(OpenVPNDriverTest, DeleteInterface) {
-  scoped_ptr<MockDeviceInfo> device_info(
+  std::unique_ptr<MockDeviceInfo> device_info(
       new MockDeviceInfo(&control_, &dispatcher_, &metrics_, &manager_));
   EXPECT_CALL(*device_info, DeleteInterface(kInterfaceIndex))
       .WillOnce(Return(true));

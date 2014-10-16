@@ -6,11 +6,11 @@
 #define SHILL_OPENVPN_DRIVER_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/glib.h"
@@ -258,14 +258,14 @@ class OpenVPNDriver : public VPNDriver,
   DeviceInfo *device_info_;
   GLib *glib_;
   Sockets sockets_;
-  scoped_ptr<OpenVPNManagementServer> management_server_;
-  scoped_ptr<CertificateFile> certificate_file_;
-  scoped_ptr<CertificateFile> extra_certificates_file_;
+  std::unique_ptr<OpenVPNManagementServer> management_server_;
+  std::unique_ptr<CertificateFile> certificate_file_;
+  std::unique_ptr<CertificateFile> extra_certificates_file_;
   ProcessKiller *process_killer_;
   base::FilePath lsb_release_file_;
 
   VPNServiceRefPtr service_;
-  scoped_ptr<RPCTask> rpc_task_;
+  std::unique_ptr<RPCTask> rpc_task_;
   std::string tunnel_interface_;
   VirtualDeviceRefPtr device_;
   base::FilePath tls_auth_file_;

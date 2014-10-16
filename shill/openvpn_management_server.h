@@ -5,11 +5,11 @@
 #ifndef SHILL_OPENVPN_MANAGEMENT_SERVER_H_
 #define SHILL_OPENVPN_MANAGEMENT_SERVER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 namespace shill {
@@ -139,10 +139,10 @@ class OpenVPNManagementServer {
 
   Sockets *sockets_;
   int socket_;
-  scoped_ptr<IOHandler> ready_handler_;
+  std::unique_ptr<IOHandler> ready_handler_;
   EventDispatcher *dispatcher_;
   int connected_socket_;
-  scoped_ptr<IOHandler> input_handler_;
+  std::unique_ptr<IOHandler> input_handler_;
 
   std::string state_;
 

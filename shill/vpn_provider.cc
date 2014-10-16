@@ -5,6 +5,7 @@
 #include "shill/vpn_provider.h"
 
 #include <algorithm>
+#include <memory>
 
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
@@ -194,7 +195,7 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const string &type,
 
 #else
 
-  scoped_ptr<VPNDriver> driver;
+  std::unique_ptr<VPNDriver> driver;
   if (type == kProviderOpenVpn) {
     driver.reset(new OpenVPNDriver(
         control_interface_, dispatcher_, metrics_, manager_,

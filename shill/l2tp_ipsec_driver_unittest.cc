@@ -532,7 +532,7 @@ TEST_F(L2TPIPSecDriverTest, SpawnL2TPIPSecVPN) {
   EXPECT_FALSE(driver_->SpawnL2TPIPSecVPN(&error));
   EXPECT_FALSE(driver_->external_task_);
   EXPECT_TRUE(driver_->SpawnL2TPIPSecVPN(&error));
-  EXPECT_TRUE(driver_->external_task_);
+  EXPECT_NE(nullptr, driver_->external_task_);
 }
 
 TEST_F(L2TPIPSecDriverTest, Connect) {

@@ -8,11 +8,11 @@
 #include <sys/types.h>
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/ipconfig.h"
@@ -139,10 +139,10 @@ class L2TPIPSecDriver : public VPNDriver,
   PPPDeviceFactory *ppp_device_factory_;
 
   VPNServiceRefPtr service_;
-  scoped_ptr<ExternalTask> external_task_;
+  std::unique_ptr<ExternalTask> external_task_;
   base::FilePath psk_file_;
   base::FilePath xauth_credentials_file_;
-  scoped_ptr<CertificateFile> certificate_file_;
+  std::unique_ptr<CertificateFile> certificate_file_;
   PPPDeviceRefPtr device_;
   base::WeakPtrFactory<L2TPIPSecDriver> weak_ptr_factory_;
 

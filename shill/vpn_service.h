@@ -5,9 +5,9 @@
 #ifndef SHILL_VPN_SERVICE_H_
 #define SHILL_VPN_SERVICE_H_
 
+#include <memory>
 #include <string>
 
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/connection.h"
@@ -69,8 +69,8 @@ class VPNService : public Service {
   std::string GetPhysicalTechologyProperty(Error *error);
 
   std::string storage_id_;
-  scoped_ptr<VPNDriver> driver_;
-  scoped_ptr<Connection::Binder> connection_binder_;
+  std::unique_ptr<VPNDriver> driver_;
+  std::unique_ptr<Connection::Binder> connection_binder_;
 
   // Provided only for compatibility.  crbug.com/211858
   std::string vpn_domain_;

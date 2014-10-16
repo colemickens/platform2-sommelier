@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <set>
 
 #include "shill/vpn_provider.h"
@@ -21,6 +22,7 @@
 #include "shill/nice_mock_control.h"
 
 using std::string;
+using std::unique_ptr;
 using testing::_;
 using testing::DoAll;
 using testing::NiceMock;
@@ -174,7 +176,7 @@ TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {
   const string kInterfaceName("tun0");
   const int kInterfaceIndex = 1;
 
-  scoped_ptr<MockVPNDriver> bad_driver(new MockVPNDriver());
+  unique_ptr<MockVPNDriver> bad_driver(new MockVPNDriver());
   EXPECT_CALL(*bad_driver.get(), ClaimInterface(_, _))
       .Times(2)
       .WillRepeatedly(Return(false));
@@ -184,13 +186,13 @@ TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {
   EXPECT_FALSE(provider_.OnDeviceInfoAvailable(kInterfaceName,
                                                kInterfaceIndex));
 
-  scoped_ptr<MockVPNDriver> good_driver(new MockVPNDriver());
+  unique_ptr<MockVPNDriver> good_driver(new MockVPNDriver());
   EXPECT_CALL(*good_driver.get(), ClaimInterface(_, _))
       .WillOnce(Return(true));
   provider_.services_.push_back(new VPNService(&control_, nullptr, &metrics_,
                                                nullptr, good_driver.release()));
 
-  scoped_ptr<MockVPNDriver> dup_driver(new MockVPNDriver());
+  unique_ptr<MockVPNDriver> dup_driver(new MockVPNDriver());
   EXPECT_CALL(*dup_driver.get(), ClaimInterface(_, _))
       .Times(0);
   provider_.services_.push_back(new VPNService(&control_, nullptr, &metrics_,
