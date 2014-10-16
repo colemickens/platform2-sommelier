@@ -630,14 +630,11 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
   FRIEND_TEST(ManagerTest, ConnectToBestServices);
-  // TODO(quiche): The SortServices test should probably move into
-  // service_unittest.cc. Then the following line should be removed.
-  // (crbug.com/206367)
-  FRIEND_TEST(ManagerTest, SortServices);
   FRIEND_TEST(ServiceTest, AutoConnectLogging);
   FRIEND_TEST(ServiceTest, CalculateState);
   FRIEND_TEST(ServiceTest, CalculateTechnology);
   FRIEND_TEST(ServiceTest, Certification);
+  FRIEND_TEST(ServiceTest, Compare);
   FRIEND_TEST(ServiceTest, ConfigureEapStringProperty);
   FRIEND_TEST(ServiceTest, ConfigureIgnoredProperty);
   FRIEND_TEST(ServiceTest, Constructor);

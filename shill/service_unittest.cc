@@ -4,6 +4,7 @@
 
 #include "shill/service.h"
 
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <string>
@@ -31,10 +32,12 @@
 #include "shill/mock_power_manager.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_proxy_factory.h"
+#include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/mock_time.h"
 #include "shill/property_store_unittest.h"
 #include "shill/service_property_change_test.h"
+#include "shill/service_sorter.h"
 #include "shill/service_under_test.h"
 #include "shill/testing.h"
 
@@ -183,6 +186,26 @@ class ServiceTest : public PropertyStoreTest {
     return service_->SetAutoConnectFull(connect, error);
   }
 
+  bool SortingOrderIs(const ServiceRefPtr &service0,
+                      const ServiceRefPtr &service1,
+                      bool should_compare_connectivity_state) {
+    vector<ServiceRefPtr> services;
+    services.push_back(service1);
+    services.push_back(service0);
+    std::sort(services.begin(), services.end(),
+              ServiceSorter(&mock_manager_, should_compare_connectivity_state,
+                            technology_order_for_sorting_));
+    return (service0.get() == services[0].get() &&
+            service1.get() == services[1].get());
+  }
+
+  bool DefaultSortingOrderIs(const ServiceRefPtr &service0,
+                             const ServiceRefPtr &service1) {
+    const bool kShouldCompareConnectivityState = true;
+    return SortingOrderIs(
+        service0, service1, kShouldCompareConnectivityState);
+  }
+
   MockManager mock_manager_;
   MockDiagnosticsReporter diagnostics_reporter_;
   MockTime time_;
@@ -192,6 +215,7 @@ class ServiceTest : public PropertyStoreTest {
   NiceMock<MockProxyFactory> proxy_factory_;
   MockPowerManager *power_manager_;  // Owned by |mock_manager_|.
   MockEapCredentials *eap_;  // Owned by |service_|.
+  vector<Technology::Identifier> technology_order_for_sorting_;
 };
 
 class AllMockServiceTest : public testing::Test {
@@ -2048,6 +2072,145 @@ TEST_F(ServiceTest, ClearExplicitlyDisconnected) {
   service_->ClearExplicitlyDisconnected();
   Mock::VerifyAndClearExpectations(&mock_manager_);
   EXPECT_FALSE(GetExplicitlyDisconnected());
+}
+
+TEST_F(ServiceTest, Compare) {
+  // Construct our Services so that the string comparison of
+  // unique_name_ differs from the numerical comparison of
+  // serial_number_.
+  vector<scoped_refptr<MockService>> mock_services;
+  for (size_t i = 0; i < 11; ++i) {
+    mock_services.push_back(
+        new NiceMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  manager()));
+  }
+  scoped_refptr<MockService> service2 = mock_services[2];
+  scoped_refptr<MockService> service10 = mock_services[10];
+  mock_services.clear();
+
+  // Services should already be sorted by |serial_number_|.
+  EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
+
+  // Two otherwise equal services should be reordered by strength
+  service10->SetStrength(1);
+  EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
+
+  scoped_refptr<MockProfile> profile2(
+      new MockProfile(control_interface(), metrics(), manager(), ""));
+  scoped_refptr<MockProfile> profile10(
+      new MockProfile(control_interface(), metrics(), manager(), ""));
+
+  service2->set_profile(profile2);
+  service10->set_profile(profile10);
+
+  // When comparing two services with different profiles, prefer the one
+  // that is not ephemeral.
+  EXPECT_CALL(mock_manager_, IsServiceEphemeral(IsRefPtrTo(service2)))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_manager_, IsServiceEphemeral(IsRefPtrTo(service10)))
+      .WillRepeatedly(Return(true));
+  EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
+  Mock::VerifyAndClearExpectations(&mock_manager_);
+
+  // Prefer the service with the more recently applied profile if neither
+  // service is ephemeral.
+  EXPECT_CALL(mock_manager_, IsServiceEphemeral(_))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_manager_, IsProfileBefore(IsRefPtrTo(profile2),
+                                             IsRefPtrTo(profile10)))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_manager_, IsProfileBefore(IsRefPtrTo(profile10),
+                                             IsRefPtrTo(profile2)))
+      .WillRepeatedly(Return(false));
+  EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
+
+  // Security
+  service2->SetSecurity(Service::kCryptoAes, true, true);
+  EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
+
+  // Technology
+  EXPECT_CALL(*service2.get(), technology())
+      .WillRepeatedly(Return((Technology::kWifi)));
+  EXPECT_CALL(*service10.get(), technology())
+      .WillRepeatedly(Return(Technology::kEthernet));
+
+  technology_order_for_sorting_ = {Technology::kEthernet, Technology::kWifi};
+  EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
+
+  technology_order_for_sorting_ = {Technology::kWifi, Technology::kEthernet};
+  EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
+
+  // Priority.
+  service2->SetPriority(1, nullptr);
+  EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
+
+  // HasEverConnected.
+  service10->has_ever_connected_ = true;
+  EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
+
+  // Auto-connect.
+  service2->SetAutoConnect(true);
+  service10->SetAutoConnect(false);
+  EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
+
+  // Test is-dependent-on.
+  EXPECT_CALL(*service10.get(),
+              IsDependentOn(IsRefPtrTo(service2.get())))
+      .WillOnce(Return(true))
+      .WillOnce(Return(false));
+  EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
+  EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
+
+  // It doesn't make sense to have is-dependent-on ranking comparison in any of
+  // the remaining subtests below.  Reset to the default.
+  EXPECT_CALL(*service10.get(), IsDependentOn(_)).WillRepeatedly(Return(false));
+  EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
+
+  // Connectable.
+  service10->SetConnectable(true);
+  service2->SetConnectable(false);
+  EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
+
+  // IsFailed.
+  EXPECT_CALL(*service2.get(), state())
+      .WillRepeatedly(Return(Service::kStateIdle));
+  EXPECT_CALL(*service2.get(), IsFailed())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*service10.get(), state())
+      .WillRepeatedly(Return(Service::kStateFailure));
+  EXPECT_CALL(*service10.get(), IsFailed())
+      .WillRepeatedly(Return(true));
+  EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
+
+  // Connecting.
+  EXPECT_CALL(*service10.get(), state())
+      .WillRepeatedly(Return(Service::kStateAssociating));
+  EXPECT_CALL(*service10.get(), IsConnecting())
+      .WillRepeatedly(Return(true));
+  EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
+
+  // Connected-but-portalled preferred over unconnected.
+  EXPECT_CALL(*service2.get(), state())
+      .WillRepeatedly(Return(Service::kStatePortal));
+  EXPECT_CALL(*service2.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
+
+  // Connected preferred over connected-but-portalled.
+  service10->SetConnectable(false);
+  service2->SetConnectable(true);
+  EXPECT_CALL(*service10.get(), state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(*service10.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
+
+  // Connectivity state ignored if this is specified.
+  const bool kDoNotCompareConnectivityState = false;
+  EXPECT_TRUE(SortingOrderIs(service2, service10,
+                             kDoNotCompareConnectivityState));
 }
 
 }  // namespace shill

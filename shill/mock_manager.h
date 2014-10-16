@@ -57,6 +57,9 @@ class MockManager : public Manager {
   MOCK_METHOD1(IsPortalDetectionEnabled, bool(Technology::Identifier tech));
   MOCK_CONST_METHOD1(IsServiceEphemeral,
                      bool(const ServiceConstRefPtr &service));
+  MOCK_CONST_METHOD2(IsProfileBefore,
+                     bool(const ProfileRefPtr &a,
+                          const ProfileRefPtr &b));
   MOCK_CONST_METHOD1(IsTechnologyConnected,
                      bool(Technology::Identifier tech));
   MOCK_CONST_METHOD1(IsTechnologyLinkMonitorEnabled,

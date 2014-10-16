@@ -246,8 +246,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Returns true if profile |a| has been pushed on the Manager's
   // |profiles_| stack before profile |b|.
-  bool IsProfileBefore(const ProfileRefPtr &a,
-                       const ProfileRefPtr &b) const;
+  virtual bool IsProfileBefore(const ProfileRefPtr &a,
+                               const ProfileRefPtr &b) const;
 
   // Return whether a service belongs to the ephemeral profile.
   virtual bool IsServiceEphemeral(const ServiceConstRefPtr &service) const;
@@ -463,7 +463,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, RegisterUnknownService);
   FRIEND_TEST(ManagerTest, RunTerminationActions);
   FRIEND_TEST(ManagerTest, ServiceRegistration);
-  FRIEND_TEST(ManagerTest, SortServices);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, StartupPortalList);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);

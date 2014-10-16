@@ -67,6 +67,7 @@ using ::testing::AnyNumber;
 using ::testing::AtLeast;
 using ::testing::ContainerEq;
 using ::testing::DoAll;
+using ::testing::ElementsAre;
 using ::testing::HasSubstr;
 using ::testing::InSequence;
 using ::testing::Invoke;
@@ -409,13 +410,17 @@ class ManagerTest : public PropertyStoreTest {
                                                           dispatcher(),
                                                           metrics(),
                                                           manager());
-    service->EnableAndRetainAutoConnect();
+    service->SetAutoConnect(true);
     service->SetConnectable(true);
     return service;
   }
 
   void SetEapProviderService(const ServiceRefPtr &service) {
     ethernet_eap_provider_->set_service(service);
+  }
+
+  const std::vector<Technology::Identifier> &GetTechnologyOrder() {
+    return manager()->technology_order_;
   }
 
   NiceMock<MockProxyFactory> proxy_factory_;
@@ -2298,8 +2303,16 @@ TEST_F(ManagerTest, FindMatchingService) {
 
 TEST_F(ManagerTest, TechnologyOrder) {
   Error error;
+  EXPECT_THAT(GetTechnologyOrder(), ElementsAre(Technology::kVPN,
+                                                Technology::kEthernet,
+                                                Technology::kWifi,
+                                                Technology::kWiMax,
+                                                Technology::kCellular));
+
+  EXPECT_FALSE(IsSortServicesTaskPending());
   manager()->SetTechnologyOrder(string(kTypeEthernet) + "," + string(kTypeWifi),
                                 &error);
+  EXPECT_TRUE(IsSortServicesTaskPending());
   ASSERT_TRUE(error.IsSuccess());
   EXPECT_EQ(manager()->GetTechnologyOrder(),
             string(kTypeEthernet) + "," + string(kTypeWifi));
@@ -2310,166 +2323,6 @@ TEST_F(ManagerTest, TechnologyOrder) {
   EXPECT_EQ(Error::kInvalidArguments, error.type());
   EXPECT_EQ(string(kTypeEthernet) + "," + string(kTypeWifi),
             manager()->GetTechnologyOrder());
-}
-
-TEST_F(ManagerTest, SortServices) {
-  // TODO(quiche): Some of these tests would probably fit better in
-  // service_unittest, since the actual comparison of Services is
-  // implemented in Service. (crbug.com/206367)
-
-  // Construct our Services so that the string comparison of
-  // unique_name_ differs from the numerical comparison of
-  // serial_number_.
-  vector<scoped_refptr<MockService>> mock_services;
-  for (size_t i = 0; i < 11; ++i) {
-    mock_services.push_back(
-        new NiceMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
-  }
-  scoped_refptr<MockService> mock_service2 = mock_services[2];
-  scoped_refptr<MockService> mock_service10 = mock_services[10];
-  mock_services.clear();
-
-  manager()->RegisterService(mock_service2);
-  manager()->RegisterService(mock_service10);
-
-  // Services should already be sorted by |serial_number_|.
-  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
-
-  // Asking explictly to sort services should not change anything
-  manager()->SortServicesTask();
-  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
-
-  // Two otherwise equal services should be reordered by strength
-  mock_service10->SetStrength(1);
-  manager()->UpdateService(mock_service10);
-  EXPECT_TRUE(ServiceOrderIs(mock_service10, mock_service2));
-
-
-  // Sort services based on profiles.  When comparing two services
-  // with different profiles, prefer the one that is not ephemeral.
-  // If both services have legitimate profiles, prefer the service
-  // with the more recently applied profile.
-  // Compare between an ephemeral and actual profile.
-  Error error;
-  scoped_refptr<MockProfile> default_profile(
-      new MockProfile(control_interface(), metrics(), manager(), ""));
-  string default_profile_name("/profile/default");
-  EXPECT_CALL(*default_profile, GetRpcIdentifier())
-      .WillRepeatedly(Return(default_profile_name));
-  AdoptProfile(manager(), default_profile);
-  mock_service2->set_profile(default_profile);
-  manager()->UpdateService(mock_service2);
-  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
-
-  // Compare between two different profiles
-  scoped_refptr<MockProfile> user_profile(
-      new MockProfile(control_interface(), metrics(), manager(), ""));
-  string user_profile_name("/profile/chonos/shill");
-  EXPECT_CALL(*user_profile, GetRpcIdentifier())
-      .WillRepeatedly(Return(user_profile_name));
-  AdoptProfile(manager(), user_profile);
-  mock_service10->set_profile(user_profile);
-  manager()->UpdateService(mock_service10);
-  EXPECT_TRUE(ServiceOrderIs(mock_service10, mock_service2));
-
-  // Security
-  mock_service2->SetSecurity(Service::kCryptoAes, true, true);
-  manager()->UpdateService(mock_service2);
-  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
-
-  // Technology
-  EXPECT_CALL(*mock_service2.get(), technology())
-      .WillRepeatedly(Return((Technology::kWifi)));
-  EXPECT_CALL(*mock_service10.get(), technology())
-      .WillRepeatedly(Return(Technology::kEthernet));
-
-  // Default technology ordering should favor Ethernet over WiFi.
-  manager()->SortServicesTask();
-  EXPECT_TRUE(ServiceOrderIs(mock_service10, mock_service2));
-
-  manager()->SetTechnologyOrder(string(kTypeWifi) + "," + string(kTypeEthernet),
-                                &error);
-  EXPECT_TRUE(error.IsSuccess());
-  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
-
-  // Priority.
-  mock_service2->SetPriority(1, nullptr);
-  manager()->UpdateService(mock_service2);
-  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
-
-  // HasEverConnected.
-  mock_service10->has_ever_connected_ = true;
-  manager()->UpdateService(mock_service10);
-  EXPECT_TRUE(ServiceOrderIs(mock_service10, mock_service2));
-
-  // Auto-connect.
-  mock_service2->SetAutoConnect(true);
-  manager()->UpdateService(mock_service2);
-  mock_service10->SetAutoConnect(false);
-  manager()->UpdateService(mock_service10);
-  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
-
-  // Test is-dependent-on.  It doesn't make sense to have this ranking compare
-  // to any of the others below, so we reset to the default state after
-  // testing.
-  EXPECT_CALL(*mock_service10.get(),
-              IsDependentOn(ServiceRefPtr(mock_service2.get())))
-      .WillOnce(Return(true))
-      .WillRepeatedly(Return(false));
-  manager()->UpdateService(mock_service10);
-  EXPECT_TRUE(ServiceOrderIs(mock_service10, mock_service2));
-  manager()->UpdateService(mock_service2);
-  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
-
-  // Connectable.
-  mock_service10->SetConnectable(true);
-  manager()->UpdateService(mock_service10);
-  mock_service2->SetConnectable(false);
-  manager()->UpdateService(mock_service2);
-  EXPECT_TRUE(ServiceOrderIs(mock_service10, mock_service2));
-
-  // IsFailed.
-  EXPECT_CALL(*mock_service2.get(), state())
-      .WillRepeatedly(Return(Service::kStateIdle));
-  EXPECT_CALL(*mock_service2.get(), IsFailed())
-      .WillRepeatedly(Return(false));
-  manager()->UpdateService(mock_service2);
-  EXPECT_CALL(*mock_service10.get(), state())
-      .WillRepeatedly(Return(Service::kStateFailure));
-  EXPECT_CALL(*mock_service10.get(), IsFailed())
-      .WillRepeatedly(Return(true));
-  manager()->UpdateService(mock_service10);
-  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
-
-  // Connecting.
-  EXPECT_CALL(*mock_service10.get(), state())
-      .WillRepeatedly(Return(Service::kStateAssociating));
-  EXPECT_CALL(*mock_service10.get(), IsConnecting())
-      .WillRepeatedly(Return(true));
-  manager()->UpdateService(mock_service10);
-  EXPECT_TRUE(ServiceOrderIs(mock_service10, mock_service2));
-
-  // Connected-but-portalled preferred over unconnected.
-  EXPECT_CALL(*mock_service2.get(), state())
-      .WillRepeatedly(Return(Service::kStatePortal));
-  EXPECT_CALL(*mock_service2.get(), IsConnected())
-      .WillRepeatedly(Return(true));
-  manager()->UpdateService(mock_service2);
-  EXPECT_TRUE(ServiceOrderIs(mock_service2, mock_service10));
-
-  // Connected preferred over connected-but-portalled.
-  EXPECT_CALL(*mock_service10.get(), state())
-      .WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*mock_service10.get(), IsConnected())
-      .WillRepeatedly(Return(true));
-  manager()->UpdateService(mock_service10);
-  EXPECT_TRUE(ServiceOrderIs(mock_service10, mock_service2));
-
-  manager()->DeregisterService(mock_service2);
-  manager()->DeregisterService(mock_service10);
 }
 
 TEST_F(ManagerTest, ConnectionStatusCheck) {
@@ -2932,12 +2785,8 @@ TEST_F(ManagerTest, UpdateServiceConnected) {
 
   EXPECT_CALL(*mock_service.get(), IsConnected())
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_service.get(), EnableAndRetainAutoConnect());
   manager()->UpdateService(mock_service);
-  // We can't EXPECT_CALL(..., EnableAndRetainAutoConnect), because that
-  // requires us to mock out EnableAndRetainAutoConnect. And mocking that out
-  // would break the SortServices test. (crbug.com/206367)
-  EXPECT_TRUE(mock_service->retain_auto_connect());
-  EXPECT_TRUE(mock_service->auto_connect());
 }
 
 TEST_F(ManagerTest, UpdateServiceConnectedPersistAutoConnect) {
@@ -2962,12 +2811,8 @@ TEST_F(ManagerTest, UpdateServiceConnectedPersistAutoConnect) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*profile,
               UpdateService(static_cast<ServiceRefPtr>(mock_service)));
+  EXPECT_CALL(*mock_service.get(), EnableAndRetainAutoConnect());
   manager()->UpdateService(mock_service);
-  // We can't EXPECT_CALL(..., EnableAndRetainAutoConnect), because that
-  // requires us to mock out EnableAndRetainAutoConnect. And mocking that out
-  // would break the SortServices test. (crbug.com/206367)
-  EXPECT_TRUE(mock_service->retain_auto_connect());
-  EXPECT_TRUE(mock_service->auto_connect());
   // This releases the ref on the mock profile.
   mock_service->set_profile(nullptr);
 }

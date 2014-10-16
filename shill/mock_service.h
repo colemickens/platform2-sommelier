@@ -72,6 +72,7 @@ class MockService : public Service {
   MOCK_CONST_METHOD0(is_dns_auto_fallback_allowed, bool());
   MOCK_METHOD0(NotifyIPConfigChanges, void());
   MOCK_CONST_METHOD0(link_monitor_disabled, bool());
+  MOCK_METHOD0(EnableAndRetainAutoConnect, void());
 
   // Set a string for this Service via |store|.  Can be wired to Save() for
   // test purposes.
