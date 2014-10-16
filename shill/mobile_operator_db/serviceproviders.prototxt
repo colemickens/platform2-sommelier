@@ -13895,7 +13895,7 @@ mno {
       name : "TW Mobile"
     }
     localized_name {
-      name : "台湾大哥大"
+      name : "台灣大哥大"
     }
     mccmnc : "46699"
     mobile_apn {
