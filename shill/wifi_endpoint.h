@@ -6,6 +6,7 @@
 #define SHILL_WIFI_ENDPOINT_H_
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -216,7 +217,7 @@ class WiFiEndpoint : public Endpoint {
   ProxyFactory *proxy_factory_;
   WiFiRefPtr device_;
   std::string rpc_id_;
-  scoped_ptr<SupplicantBSSProxyInterface> supplicant_bss_proxy_;
+  std::unique_ptr<SupplicantBSSProxyInterface> supplicant_bss_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFiEndpoint);
 };

@@ -5,11 +5,10 @@
 #ifndef SHILL_WIFI_SERVICE_H_
 #define SHILL_WIFI_SERVICE_H_
 
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
-
-#include <base/memory/scoped_ptr.h>
 
 #include "shill/dbus_properties.h"
 #include "shill/dbus_proxies/supplicant-interface.h"
@@ -337,7 +336,7 @@ class WiFiService : public Service {
   // Flag indicating if service disconnect is initiated by user for
   // connecting to other service.
   bool expecting_disconnect_;
-  scoped_ptr<CertificateFile> certificate_file_;
+  std::unique_ptr<CertificateFile> certificate_file_;
   // Bare pointer is safe because WiFi service instances are owned by
   // the WiFiProvider and are guaranteed to be deallocated by the time
   // the WiFiProvider is.

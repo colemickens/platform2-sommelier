@@ -43,7 +43,7 @@ class SupplicantBSSProxy : public SupplicantBSSProxyInterface {
         const std::map<std::string, ::DBus::Variant> &properties);
 
     // We use a bare pointer, because each SupplicantBSSProxy is owned
-    // (using a scoped_ptr) by a WiFiEndpoint. This means that if
+    // (using a unique_ptr) by a WiFiEndpoint. This means that if
     // |wifi_endpoint_| is invalid, then so is |this|.
     WiFiEndpoint *wifi_endpoint_;
     DISALLOW_COPY_AND_ASSIGN(Proxy);

@@ -15,7 +15,6 @@
 
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -79,6 +78,7 @@ using base::StringPrintf;
 using std::map;
 using std::set;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -1003,9 +1003,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   static const char kSSIDName[];
   static const uint16_t kRoamThreshold;
 
-  scoped_ptr<MockDBusServiceProxy> dbus_service_proxy_;
-  scoped_ptr<MockSupplicantProcessProxy> supplicant_process_proxy_;
-  scoped_ptr<MockSupplicantBSSProxy> supplicant_bss_proxy_;
+  unique_ptr<MockDBusServiceProxy> dbus_service_proxy_;
+  unique_ptr<MockSupplicantProcessProxy> supplicant_process_proxy_;
+  unique_ptr<MockSupplicantBSSProxy> supplicant_bss_proxy_;
   MockDHCPProvider dhcp_provider_;
   scoped_refptr<MockDHCPConfig> dhcp_config_;
   DBusManager *dbus_manager_;
@@ -1017,7 +1017,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   MockNetlinkManager netlink_manager_;
 
  private:
-  scoped_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
+  unique_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
   MockProxyFactory proxy_factory_;
 };
 
@@ -1256,7 +1256,7 @@ TEST_F(WiFiMainTest, OnSupplicantVanishedWhileConnected) {
                        EndsWith("silently resetting current_service_.")));
   EXPECT_CALL(*manager(), DeregisterDevice(_))
       .WillOnce(InvokeWithoutArgs(this, &WiFiObjectTest::StopWiFi));
-  scoped_ptr<EndpointRemovalHandler> handler(
+  unique_ptr<EndpointRemovalHandler> handler(
       MakeEndpointRemovalHandler(service));
   EXPECT_CALL(*wifi_provider(), OnEndpointRemoved(EndpointMatch(endpoint)))
       .WillOnce(Invoke(handler.get(),
@@ -1687,7 +1687,7 @@ TEST_F(WiFiMainTest, LoneBSSRemovedWhileConnected) {
   DBus::Path bss_path;
   WiFiServiceRefPtr service(
       SetupConnectedService(DBus::Path(), &endpoint, &bss_path));
-  scoped_ptr<EndpointRemovalHandler> handler(
+  unique_ptr<EndpointRemovalHandler> handler(
       MakeEndpointRemovalHandler(service));
   EXPECT_CALL(*wifi_provider(), OnEndpointRemoved(EndpointMatch(endpoint)))
       .WillOnce(Invoke(handler.get(),
@@ -1799,7 +1799,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentService) {
   EXPECT_EQ(service, GetCurrentService());
 
   // Expect that the entry associated with this network will be disabled.
-  scoped_ptr<MockSupplicantNetworkProxy> network_proxy(
+  unique_ptr<MockSupplicantNetworkProxy> network_proxy(
       new MockSupplicantNetworkProxy());
   EXPECT_CALL(*proxy_factory(),
               CreateSupplicantNetworkProxy(kPath, WPASupplicant::kDBusAddr))
@@ -1826,7 +1826,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithFailure) {
   EXPECT_EQ(service, GetCurrentService());
 
   // Expect that the entry associated with this network will be disabled.
-  scoped_ptr<MockSupplicantNetworkProxy> network_proxy(
+  unique_ptr<MockSupplicantNetworkProxy> network_proxy(
       new MockSupplicantNetworkProxy());
   EXPECT_CALL(*proxy_factory(),
               CreateSupplicantNetworkProxy(kPath, WPASupplicant::kDBusAddr))
@@ -2069,7 +2069,7 @@ TEST_F(WiFiMainTest, StopWhileConnected) {
   WiFiEndpointRefPtr endpoint;
   WiFiServiceRefPtr service(
       SetupConnectedService(DBus::Path(), &endpoint, nullptr));
-  scoped_ptr<EndpointRemovalHandler> handler(
+  unique_ptr<EndpointRemovalHandler> handler(
       MakeEndpointRemovalHandler(service));
   EXPECT_CALL(*wifi_provider(), OnEndpointRemoved(EndpointMatch(endpoint)))
       .WillOnce(Invoke(handler.get(),

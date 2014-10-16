@@ -662,7 +662,7 @@ void WiFi::DisconnectFrom(WiFiService *service) {
 }
 
 bool WiFi::DisableNetwork(const ::DBus::Path &network) {
-  scoped_ptr<SupplicantNetworkProxyInterface> supplicant_network_proxy(
+  std::unique_ptr<SupplicantNetworkProxyInterface> supplicant_network_proxy(
       proxy_factory_->CreateSupplicantNetworkProxy(
           network, WPASupplicant::kDBusAddr));
   try {

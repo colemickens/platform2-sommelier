@@ -76,6 +76,7 @@
 #include <time.h>
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -83,7 +84,6 @@
 #include <base/callback_forward.h>
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <dbus-c++/dbus.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -555,11 +555,12 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   ProxyFactory *proxy_factory_;
   Time *time_;
 
-  scoped_ptr<DBusNameWatcher> supplicant_name_watcher_;
+  std::unique_ptr<DBusNameWatcher> supplicant_name_watcher_;
   bool supplicant_present_;
 
-  scoped_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;
-  scoped_ptr<SupplicantInterfaceProxyInterface> supplicant_interface_proxy_;
+  std::unique_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;
+  std::unique_ptr<SupplicantInterfaceProxyInterface>
+      supplicant_interface_proxy_;
   // The rpcid used as the key is wpa_supplicant's D-Bus path for the
   // Endpoint (BSS, in supplicant parlance).
   EndpointMap endpoint_by_rpcid_;
@@ -608,9 +609,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Indicates that we are debugging a problematic connection.
   bool is_debugging_connection_;
   // Tracks the process of an EAP negotiation.
-  scoped_ptr<SupplicantEAPStateHandler> eap_state_handler_;
+  std::unique_ptr<SupplicantEAPStateHandler> eap_state_handler_;
   // Tracks mac80211 state, to diagnose problems such as queue stalls.
-  scoped_ptr<Mac80211Monitor> mac80211_monitor_;
+  std::unique_ptr<Mac80211Monitor> mac80211_monitor_;
 
   // Properties
   std::string bgscan_method_;
@@ -624,7 +625,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   std::string scan_configuration_;
   NetlinkManager *netlink_manager_;
   std::set<uint16_t> all_scan_frequencies_;
-  scoped_ptr<ScanSession> scan_session_;
+  std::unique_ptr<ScanSession> scan_session_;
   size_t min_frequencies_to_scan_;
   size_t max_frequencies_to_scan_;
   bool scan_all_frequencies_;
