@@ -312,10 +312,10 @@ class CellularCapabilityGSMTest : public testing::Test {
   EventDispatcher dispatcher_;
   MockModemInfo modem_info_;
   bool create_card_proxy_from_factory_;
-  scoped_ptr<MockModemProxy> proxy_;
-  scoped_ptr<MockModemSimpleProxy> simple_proxy_;
-  scoped_ptr<MockModemGSMCardProxy> card_proxy_;
-  scoped_ptr<MockModemGSMNetworkProxy> network_proxy_;
+  std::unique_ptr<MockModemProxy> proxy_;
+  std::unique_ptr<MockModemSimpleProxy> simple_proxy_;
+  std::unique_ptr<MockModemGSMCardProxy> card_proxy_;
+  std::unique_ptr<MockModemGSMNetworkProxy> network_proxy_;
   TestProxyFactory proxy_factory_;
   CellularCapabilityGSM *capability_;  // Owned by |cellular_|.
   DeviceMockAdaptor *device_adaptor_;  // Owned by |cellular_|.

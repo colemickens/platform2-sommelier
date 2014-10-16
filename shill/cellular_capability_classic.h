@@ -5,12 +5,12 @@
 #ifndef SHILL_CELLULAR_CAPABILITY_CLASSIC_H_
 #define SHILL_CELLULAR_CAPABILITY_CLASSIC_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -112,7 +112,7 @@ class CellularCapabilityClassic : public CellularCapability {
                              CellularTaskList *tasks,
                              const Error &error);
 
-  scoped_ptr<ModemSimpleProxyInterface> simple_proxy_;
+  std::unique_ptr<ModemSimpleProxyInterface> simple_proxy_;
 
  private:
   friend class CellularTest;
@@ -159,8 +159,8 @@ class CellularCapabilityClassic : public CellularCapability {
 
   Cellular *cellular_;
   base::WeakPtrFactory<CellularCapabilityClassic> weak_ptr_factory_;
-  scoped_ptr<ModemProxyInterface> proxy_;
-  scoped_ptr<ModemGobiProxyInterface> gobi_proxy_;
+  std::unique_ptr<ModemProxyInterface> proxy_;
+  std::unique_ptr<ModemGobiProxyInterface> gobi_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityClassic);
 };

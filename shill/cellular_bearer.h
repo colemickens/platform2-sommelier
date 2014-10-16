@@ -5,11 +5,11 @@
 #ifndef SHILL_CELLULAR_BEARER_H_
 #define SHILL_CELLULAR_BEARER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>
 
 #include "shill/dbus_properties.h"
@@ -76,7 +76,7 @@ class CellularBearer {
       const DBusPropertiesMap &properties,
       IPAddress::Family address_family,
       IPConfig::Method *ipconfig_method,
-      scoped_ptr<IPConfig::Properties> *ipconfig_properties) const;
+      std::unique_ptr<IPConfig::Properties> *ipconfig_properties) const;
 
   // Resets bearer properties.
   void ResetProperties();
@@ -94,21 +94,21 @@ class CellularBearer {
     ipv4_config_method_ = ipv4_config_method;
   }
   void set_ipv4_config_properties(
-      scoped_ptr<IPConfig::Properties> ipv4_config_properties) {
-    ipv4_config_properties_ = ipv4_config_properties.Pass();
+      std::unique_ptr<IPConfig::Properties> ipv4_config_properties) {
+    ipv4_config_properties_ = std::move(ipv4_config_properties);
   }
   void set_ipv6_config_method(IPConfig::Method ipv6_config_method) {
     ipv6_config_method_ = ipv6_config_method;
   }
   void set_ipv6_config_properties(
-      scoped_ptr<IPConfig::Properties> ipv6_config_properties) {
-    ipv6_config_properties_ = ipv6_config_properties.Pass();
+      std::unique_ptr<IPConfig::Properties> ipv6_config_properties) {
+    ipv6_config_properties_ = std::move(ipv6_config_properties);
   }
 
   ProxyFactory *proxy_factory_;
   std::string dbus_path_;
   std::string dbus_service_;
-  scoped_ptr<DBusPropertiesProxyInterface> dbus_properties_proxy_;
+  std::unique_ptr<DBusPropertiesProxyInterface> dbus_properties_proxy_;
   bool connected_;
   std::string data_interface_;
 
@@ -117,9 +117,9 @@ class CellularBearer {
   // properties. Otherwise, |ipv4_config_properties_| is set to nullptr.
   // |ipv6_config_properties_| is handled similarly.
   IPConfig::Method ipv4_config_method_;
-  scoped_ptr<IPConfig::Properties> ipv4_config_properties_;
+  std::unique_ptr<IPConfig::Properties> ipv4_config_properties_;
   IPConfig::Method ipv6_config_method_;
-  scoped_ptr<IPConfig::Properties> ipv6_config_properties_;
+  std::unique_ptr<IPConfig::Properties> ipv6_config_properties_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularBearer);
 };

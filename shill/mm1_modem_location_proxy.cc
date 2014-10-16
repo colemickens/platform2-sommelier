@@ -4,11 +4,14 @@
 
 #include "shill/mm1_modem_location_proxy.h"
 
+#include <memory>
+
 #include "shill/cellular_error.h"
 #include "shill/dbus_async_call_helper.h"
 #include "shill/logging.h"
 
 using std::string;
+using std::unique_ptr;
 
 namespace shill {
 namespace mm1 {
@@ -49,7 +52,7 @@ ModemLocationProxy::Proxy::~Proxy() {}
 void ModemLocationProxy::Proxy::SetupCallback(const ::DBus::Error &dberror,
                                               void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
@@ -60,7 +63,7 @@ void ModemLocationProxy::Proxy::GetLocationCallback(
     const ::DBus::Error &dberror,
     void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<DBusEnumValueMapCallback> callback(
+  unique_ptr<DBusEnumValueMapCallback> callback(
       reinterpret_cast<DBusEnumValueMapCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);

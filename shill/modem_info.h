@@ -5,9 +5,9 @@
 #ifndef SHILL_MODEM_INFO_H_
 #define SHILL_MODEM_INFO_H_
 
+#include <memory>
 #include <string>
 
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -83,7 +83,7 @@ class ModemInfo {
   GLib *glib_;
 
   // Post-payment activation state of the modem.
-  scoped_ptr<PendingActivationStore> pending_activation_store_;
+  std::unique_ptr<PendingActivationStore> pending_activation_store_;
 
   DISALLOW_COPY_AND_ASSIGN(ModemInfo);
 };

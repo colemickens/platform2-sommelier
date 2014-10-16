@@ -6,6 +6,7 @@
 #define SHILL_CELLULAR_SERVICE_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
@@ -222,7 +223,7 @@ class CellularService : public Service {
   // Time when the last resume occurred.
   base::Time resume_start_time_;
   // Out-of-credits detector.
-  scoped_ptr<OutOfCreditsDetector> out_of_credits_detector_;
+  std::unique_ptr<OutOfCreditsDetector> out_of_credits_detector_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularService);
 };

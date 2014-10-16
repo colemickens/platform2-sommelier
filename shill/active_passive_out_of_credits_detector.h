@@ -5,10 +5,12 @@
 #ifndef SHILL_ACTIVE_PASSIVE_OUT_OF_CREDITS_DETECTOR_H_
 #define SHILL_ACTIVE_PASSIVE_OUT_OF_CREDITS_DETECTOR_H_
 
-#include "shill/connection_health_checker.h"
-#include "shill/out_of_credits_detector.h"
+#include <memory>
 
 #include <base/time/time.h>
+
+#include "shill/connection_health_checker.h"
+#include "shill/out_of_credits_detector.h"
 
 namespace shill {
 
@@ -87,9 +89,9 @@ class ActivePassiveOutOfCreditsDetector : public OutOfCreditsDetector {
   base::WeakPtrFactory<ActivePassiveOutOfCreditsDetector> weak_ptr_factory_;
 
   // Passively monitors network traffic for network failures.
-  scoped_ptr<TrafficMonitor> traffic_monitor_;
+  std::unique_ptr<TrafficMonitor> traffic_monitor_;
   // Determine network health through active probes.
-  scoped_ptr<ConnectionHealthChecker> health_checker_;
+  std::unique_ptr<ConnectionHealthChecker> health_checker_;
 
   // The following members are used by the connect/disconnect loop detection.
   // Time when the last connect request started.

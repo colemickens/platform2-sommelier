@@ -4,11 +4,14 @@
 
 #include "shill/modem_cdma_proxy.h"
 
+#include <memory>
+
 #include "shill/cellular_error.h"
 #include "shill/dbus_async_call_helper.h"
 #include "shill/logging.h"
 
 using std::string;
+using std::unique_ptr;
 
 namespace shill {
 
@@ -119,7 +122,7 @@ void ModemCDMAProxy::Proxy::ActivateCallback(const uint32_t &status,
                                              const DBus::Error &dberror,
                                              void *data) {
   SLOG(DBus, 2) << __func__ << "(" << status << ")";
-  scoped_ptr<ActivationResultCallback> callback(
+  unique_ptr<ActivationResultCallback> callback(
       reinterpret_cast<ActivationResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -130,7 +133,7 @@ void ModemCDMAProxy::Proxy::GetRegistrationStateCallback(
     const uint32_t &state_1x, const uint32_t &state_evdo,
     const DBus::Error &dberror, void *data) {
   SLOG(DBus, 2) << __func__ << "(" << state_1x << ", " << state_evdo << ")";
-  scoped_ptr<RegistrationStateCallback> callback(
+  unique_ptr<RegistrationStateCallback> callback(
       reinterpret_cast<RegistrationStateCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -142,7 +145,7 @@ void ModemCDMAProxy::Proxy::GetSignalQualityCallback(const uint32_t &quality,
                                                      const DBus::Error &dberror,
                                                      void *data) {
   SLOG(DBus, 2) << __func__ << "(" << quality << ")";
-  scoped_ptr<SignalQualityCallback> callback(
+  unique_ptr<SignalQualityCallback> callback(
       reinterpret_cast<SignalQualityCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);

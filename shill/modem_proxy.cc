@@ -4,6 +4,8 @@
 
 #include "shill/modem_proxy.h"
 
+#include <memory>
+
 #include <base/bind.h>
 #include <base/strings/stringprintf.h>
 
@@ -16,6 +18,7 @@ using base::Bind;
 using base::Callback;
 using base::StringPrintf;
 using std::string;
+using std::unique_ptr;
 
 namespace shill {
 
@@ -76,7 +79,7 @@ void ModemProxy::Proxy::StateChanged(
 
 void ModemProxy::Proxy::EnableCallback(const DBus::Error &dberror, void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
   callback->Run(error);
@@ -86,7 +89,7 @@ void ModemProxy::Proxy::GetInfoCallback(const ModemHardwareInfo &info,
                                         const DBus::Error &dberror,
                                         void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<ModemInfoCallback> callback(
+  unique_ptr<ModemInfoCallback> callback(
       reinterpret_cast<ModemInfoCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -96,7 +99,7 @@ void ModemProxy::Proxy::GetInfoCallback(const ModemHardwareInfo &info,
 void ModemProxy::Proxy::DisconnectCallback(const DBus::Error &dberror,
                                            void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
   callback->Run(error);

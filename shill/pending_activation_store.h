@@ -5,10 +5,10 @@
 #ifndef SHILL_PENDING_ACTIVATION_STORE_H_
 #define SHILL_PENDING_ACTIVATION_STORE_H_
 
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/key_file_store.h"
@@ -93,7 +93,7 @@ class PendingActivationStore {
 
   static std::string IdentifierTypeToGroupId(IdentifierType type);
 
-  scoped_ptr<StoreInterface> storage_;
+  std::unique_ptr<StoreInterface> storage_;
 
   DISALLOW_COPY_AND_ASSIGN(PendingActivationStore);
 };

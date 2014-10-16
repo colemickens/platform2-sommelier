@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <ModemManager/ModemManager.h>
@@ -389,14 +388,14 @@ class CellularCapabilityUniversal : public CellularCapability {
     active_bearer_.reset(bearer);  // Takes ownership
   }
 
-  scoped_ptr<mm1::ModemModem3gppProxyInterface> modem_3gpp_proxy_;
-  scoped_ptr<mm1::ModemProxyInterface> modem_proxy_;
-  scoped_ptr<mm1::ModemSimpleProxyInterface> modem_simple_proxy_;
-  scoped_ptr<mm1::SimProxyInterface> sim_proxy_;
+  std::unique_ptr<mm1::ModemModem3gppProxyInterface> modem_3gpp_proxy_;
+  std::unique_ptr<mm1::ModemProxyInterface> modem_proxy_;
+  std::unique_ptr<mm1::ModemSimpleProxyInterface> modem_simple_proxy_;
+  std::unique_ptr<mm1::SimProxyInterface> sim_proxy_;
   // Used to enrich information about the network operator in |ParseScanResult|.
   // TODO(pprabhu) Instead instantiate a local |MobileOperatorInfo| instance
   // once the context has been separated out. (crbug.com/363874)
-  scoped_ptr<MobileOperatorInfo> mobile_operator_info_;
+  std::unique_ptr<MobileOperatorInfo> mobile_operator_info_;
 
   base::WeakPtrFactory<CellularCapabilityUniversal> weak_ptr_factory_;
 
@@ -419,7 +418,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   SimLockStatus sim_lock_status_;
   SubscriptionState subscription_state_;
   std::string sim_path_;
-  scoped_ptr<CellularBearer> active_bearer_;
+  std::unique_ptr<CellularBearer> active_bearer_;
   RpcIdentifiers bearer_paths_;
   bool reset_done_;
 

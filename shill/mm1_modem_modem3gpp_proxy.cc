@@ -4,11 +4,14 @@
 
 #include "shill/mm1_modem_modem3gpp_proxy.h"
 
+#include <memory>
+
 #include "shill/cellular_error.h"
 #include "shill/dbus_async_call_helper.h"
 #include "shill/logging.h"
 
 using std::string;
+using std::unique_ptr;
 
 namespace shill {
 namespace mm1 {
@@ -50,7 +53,7 @@ ModemModem3gppProxy::Proxy::~Proxy() {}
 void ModemModem3gppProxy::Proxy::RegisterCallback(const ::DBus::Error& dberror,
                                                   void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
@@ -60,7 +63,7 @@ void ModemModem3gppProxy::Proxy::ScanCallback(
     const std::vector<DBusPropertiesMap> &results,
     const ::DBus::Error& dberror, void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<DBusPropertyMapsCallback> callback(
+  unique_ptr<DBusPropertyMapsCallback> callback(
       reinterpret_cast<DBusPropertyMapsCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);

@@ -234,7 +234,7 @@ void CellularCapabilityUniversalCDMA::GetProperties() {
   SLOG(Cellular, 2) << __func__;
   CellularCapabilityUniversal::GetProperties();
 
-  scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
+  std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy(
       proxy_factory()->CreateDBusPropertiesProxy(cellular()->dbus_path(),
                                                  cellular()->dbus_owner()));
   DBusPropertiesMap properties(

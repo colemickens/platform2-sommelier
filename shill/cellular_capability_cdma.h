@@ -5,13 +5,13 @@
 #ifndef SHILL_CELLULAR_CAPABILITY_CDMA_H_
 #define SHILL_CELLULAR_CAPABILITY_CDMA_H_
 
-#include <base/memory/scoped_ptr.h>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-
-#include <string>
-#include <vector>
 
 #include "shill/cellular_capability.h"
 #include "shill/cellular_capability_classic.h"
@@ -98,7 +98,7 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
                                    const Error &error);
   void OnGetSignalQualityReply(uint32_t strength, const Error &error);
 
-  scoped_ptr<ModemCDMAProxyInterface> proxy_;
+  std::unique_ptr<ModemCDMAProxyInterface> proxy_;
   base::WeakPtrFactory<CellularCapabilityCDMA> weak_ptr_factory_;
 
   // Helper method to extract the online portal information from properties.

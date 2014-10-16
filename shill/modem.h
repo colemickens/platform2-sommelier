@@ -5,12 +5,12 @@
 #ifndef SHILL_MODEM_H_
 #define SHILL_MODEM_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
 #include <base/files/file_util.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/cellular.h"
@@ -106,7 +106,7 @@ class Modem {
 
   // A proxy to the org.freedesktop.DBusProperties interface used to obtain
   // ModemManager.Modem properties and watch for property changes
-  scoped_ptr<DBusPropertiesProxyInterface> dbus_properties_proxy_;
+  std::unique_ptr<DBusPropertiesProxyInterface> dbus_properties_proxy_;
 
   DBusInterfaceToProperties initial_properties_;
 

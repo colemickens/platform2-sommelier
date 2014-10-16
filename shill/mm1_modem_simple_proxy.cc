@@ -4,11 +4,14 @@
 
 #include "shill/mm1_modem_simple_proxy.h"
 
+#include <memory>
+
 #include "shill/cellular_error.h"
 #include "shill/dbus_async_call_helper.h"
 #include "shill/logging.h"
 
 using std::string;
+using std::unique_ptr;
 
 namespace shill {
 namespace mm1 {
@@ -61,7 +64,7 @@ void ModemSimpleProxy::Proxy::ConnectCallback(const ::DBus::Path &bearer,
                                               const ::DBus::Error &dberror,
                                               void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<DBusPathCallback> callback(
+  unique_ptr<DBusPathCallback> callback(
       reinterpret_cast<DBusPathCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
@@ -71,7 +74,7 @@ void ModemSimpleProxy::Proxy::ConnectCallback(const ::DBus::Path &bearer,
 void ModemSimpleProxy::Proxy::DisconnectCallback(const ::DBus::Error &dberror,
                                                  void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
@@ -82,7 +85,7 @@ void ModemSimpleProxy::Proxy::GetStatusCallback(
     const ::DBus::Error &dberror,
     void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<DBusPropertyMapCallback> callback(
+  unique_ptr<DBusPropertyMapCallback> callback(
       reinterpret_cast<DBusPropertyMapCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);

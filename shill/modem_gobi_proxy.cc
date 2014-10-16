@@ -4,6 +4,8 @@
 
 #include "shill/modem_gobi_proxy.h"
 
+#include <memory>
+
 #include <base/bind.h>
 
 #include "shill/cellular_error.h"
@@ -14,6 +16,7 @@
 using base::Bind;
 using base::Callback;
 using std::string;
+using std::unique_ptr;
 
 namespace shill {
 
@@ -43,7 +46,7 @@ ModemGobiProxy::Proxy::~Proxy() {}
 void ModemGobiProxy::Proxy::SetCarrierCallback(const DBus::Error &dberror,
                                                void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
   callback->Run(error);

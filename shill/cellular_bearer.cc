@@ -81,7 +81,7 @@ void CellularBearer::GetIPConfigMethodAndProperties(
     const DBusPropertiesMap &properties,
     IPAddress::Family address_family,
     IPConfig::Method *ipconfig_method,
-    scoped_ptr<IPConfig::Properties> *ipconfig_properties) const {
+    std::unique_ptr<IPConfig::Properties> *ipconfig_properties) const {
   DCHECK(ipconfig_method);
   DCHECK(ipconfig_properties);
 

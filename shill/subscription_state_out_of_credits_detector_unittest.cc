@@ -4,6 +4,8 @@
 
 #include "shill/subscription_state_out_of_credits_detector.h"
 
+#include <memory>
+
 #include <gtest/gtest.h>
 #include "ModemManager/ModemManager.h"
 
@@ -69,7 +71,8 @@ class SubscriptionStateOutOfCreditsDetectorTest : public testing::Test {
   scoped_refptr<NiceMock<MockCellular>> cellular_;
   scoped_refptr<NiceMock<MockCellularService>> service_;
   scoped_refptr<NiceMock<MockConnection>> connection_;
-  scoped_ptr<SubscriptionStateOutOfCreditsDetector> out_of_credits_detector_;
+  std::unique_ptr<SubscriptionStateOutOfCreditsDetector>
+      out_of_credits_detector_;
 };
 
 const char

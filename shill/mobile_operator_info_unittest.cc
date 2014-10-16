@@ -115,7 +115,7 @@ class MobileOperatorInfoInitTest : public Test {
 
   EventDispatcher dispatcher_;
   vector<FilePath> tmp_db_paths_;
-  scoped_ptr<MobileOperatorInfo> operator_info_;
+  std::unique_ptr<MobileOperatorInfo> operator_info_;
   // Owned by |operator_info_| and tied to its life cycle.
   MobileOperatorInfoImpl *operator_info_impl_;
 

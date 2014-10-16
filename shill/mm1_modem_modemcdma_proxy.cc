@@ -4,11 +4,14 @@
 
 #include "shill/mm1_modem_modemcdma_proxy.h"
 
+#include <memory>
+
 #include "shill/cellular_error.h"
 #include "shill/dbus_async_call_helper.h"
 #include "shill/logging.h"
 
 using std::string;
+using std::unique_ptr;
 
 namespace shill {
 namespace mm1 {
@@ -73,7 +76,7 @@ void ModemModemCdmaProxy::Proxy::ActivationStateChanged(
 void ModemModemCdmaProxy::Proxy::ActivateCallback(const ::DBus::Error& dberror,
                                                   void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
@@ -83,7 +86,7 @@ void ModemModemCdmaProxy::Proxy::ActivateManualCallback(
     const ::DBus::Error& dberror,
     void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);

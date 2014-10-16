@@ -6,6 +6,7 @@
 #define SHILL_CELLULAR_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -506,17 +507,17 @@ class Cellular : public Device, public RPCTaskDelegate {
   State state_;
   ModemState modem_state_;
 
-  scoped_ptr<CellularCapability> capability_;
+  std::unique_ptr<CellularCapability> capability_;
 
   // Operator info objects. These objects receive updates as we receive
   // information about the network operators from the SIM or OTA. In turn, they
   // send out updates through their observer interfaces whenever the identity of
   // the network operator changes, or any other property of the operator
   // changes.
-  scoped_ptr<MobileOperatorInfo> home_provider_info_;
-  scoped_ptr<MobileOperatorInfo> serving_operator_info_;
+  std::unique_ptr<MobileOperatorInfo> home_provider_info_;
+  std::unique_ptr<MobileOperatorInfo> serving_operator_info_;
   // Observer object to listen to updates from the operator info objects.
-  scoped_ptr<MobileOperatorInfoObserver> mobile_operator_info_observer_;
+  std::unique_ptr<MobileOperatorInfoObserver> mobile_operator_info_observer_;
 
   // ///////////////////////////////////////////////////////////////////////////
   // All DBus Properties exposed by the Cellular device.
@@ -575,7 +576,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   // Flag indicating that a disconnect has been explicitly requested.
   bool explicit_disconnect_;
 
-  scoped_ptr<ExternalTask> ppp_task_;
+  std::unique_ptr<ExternalTask> ppp_task_;
   PPPDeviceRefPtr ppp_device_;
   bool is_ppp_authenticating_;
 

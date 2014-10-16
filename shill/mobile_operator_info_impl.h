@@ -6,12 +6,12 @@
 #define SHILL_MOBILE_OPERATOR_INFO_IMPL_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/cancelable_callback.h>
 #include <base/files/file_util.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
@@ -155,7 +155,7 @@ class MobileOperatorInfoImpl {
   ObserverList<MobileOperatorInfo::Observer> observers_;
   base::CancelableClosure notify_operator_changed_task_;
 
-  scoped_ptr<mobile_operator_db::MobileOperatorDB> database_;
+  std::unique_ptr<mobile_operator_db::MobileOperatorDB> database_;
   StringToMNOListMap mccmnc_to_mnos_;
   StringToMNOListMap sid_to_mnos_;
   StringToMNOListMap name_to_mnos_;

@@ -178,7 +178,7 @@ class ModemManagerClassicTest : public ModemManagerTest {
   }
 
   ModemManagerClassicMockInit modem_manager_;
-  scoped_ptr<MockModemManagerProxy> proxy_;
+  std::unique_ptr<MockModemManagerProxy> proxy_;
 };
 
 TEST_F(ModemManagerClassicTest, Connect) {
@@ -253,7 +253,7 @@ class ModemManager1Test : public ModemManagerTest {
   }
 
   ModemManager1MockInit modem_manager_;
-  scoped_ptr<MockDBusObjectManagerProxy> proxy_;
+  std::unique_ptr<MockDBusObjectManagerProxy> proxy_;
   MockProxyFactory proxy_factory_;
 };
 

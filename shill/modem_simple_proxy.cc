@@ -4,6 +4,8 @@
 
 #include "shill/modem_simple_proxy.h"
 
+#include <memory>
+
 #include <base/bind.h>
 
 #include "shill/cellular_error.h"
@@ -14,6 +16,7 @@
 using base::Bind;
 using base::Callback;
 using std::string;
+using std::unique_ptr;
 
 namespace shill {
 
@@ -54,7 +57,7 @@ void ModemSimpleProxy::Proxy::GetStatusCallback(const DBusPropertiesMap &props,
                                                 const DBus::Error &dberror,
                                                 void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<DBusPropertyMapCallback> callback(
+  unique_ptr<DBusPropertyMapCallback> callback(
       reinterpret_cast<DBusPropertyMapCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -64,7 +67,7 @@ void ModemSimpleProxy::Proxy::GetStatusCallback(const DBusPropertiesMap &props,
 void ModemSimpleProxy::Proxy::ConnectCallback(const DBus::Error &dberror,
                                               void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
   callback->Run(error);

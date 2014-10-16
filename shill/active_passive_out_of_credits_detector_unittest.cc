@@ -110,7 +110,7 @@ class ActivePassiveOutOfCreditsDetectorTest : public testing::Test {
   vector<string> dns_servers_;
   string portal_check_url_;
   base::Time resume_start_time_;
-  scoped_ptr<ActivePassiveOutOfCreditsDetector> out_of_credits_detector_;
+  std::unique_ptr<ActivePassiveOutOfCreditsDetector> out_of_credits_detector_;
 };
 
 const char ActivePassiveOutOfCreditsDetectorTest::kAddress[] = "000102030405";

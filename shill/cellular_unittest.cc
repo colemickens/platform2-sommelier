@@ -52,6 +52,7 @@ using base::Bind;
 using base::Unretained;
 using std::map;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 using testing::_;
 using testing::AnyNumber;
@@ -375,7 +376,7 @@ class CellularTest : public testing::Test {
     EXPECT_FALSE(device_->ipconfig());  // No DHCP client.
     EXPECT_FALSE(device_->selected_service());
     EXPECT_FALSE(device_->is_ppp_authenticating_);
-    EXPECT_TRUE(device_->ppp_task_);
+    EXPECT_NE(nullptr, device_->ppp_task_);
     Mock::VerifyAndClearExpectations(&mock_glib);
   }
 
@@ -396,7 +397,7 @@ class CellularTest : public testing::Test {
   }
 
   void VerifyPPPStopped() {
-    EXPECT_FALSE(device_->ppp_task_);
+    EXPECT_EQ(nullptr, device_->ppp_task_);
     EXPECT_FALSE(device_->ppp_device_);
   }
 
@@ -565,10 +566,10 @@ class CellularTest : public testing::Test {
     device_->enabled_persistent_ = new_value;
   }
 
-  void SetCapabilityUniversalActiveBearer(scoped_ptr<CellularBearer> bearer) {
+  void SetCapabilityUniversalActiveBearer(unique_ptr<CellularBearer> bearer) {
     SetCellularType(Cellular::kTypeUniversal);
     CellularCapabilityUniversal *capability = GetCapabilityUniversal();
-    capability->active_bearer_ = bearer.Pass();
+    capability->active_bearer_ = std::move(bearer);
   }
 
   EventDispatcher dispatcher_;
@@ -580,15 +581,15 @@ class CellularTest : public testing::Test {
   scoped_refptr<MockDHCPConfig> dhcp_config_;
 
   bool create_gsm_card_proxy_from_factory_;
-  scoped_ptr<MockDBusPropertiesProxy> dbus_properties_proxy_;
-  scoped_ptr<MockModemProxy> proxy_;
-  scoped_ptr<MockModemSimpleProxy> simple_proxy_;
-  scoped_ptr<MockModemCDMAProxy> cdma_proxy_;
-  scoped_ptr<MockModemGSMCardProxy> gsm_card_proxy_;
-  scoped_ptr<MockModemGSMNetworkProxy> gsm_network_proxy_;
-  scoped_ptr<mm1::MockModemModem3gppProxy> mm1_modem_3gpp_proxy_;
-  scoped_ptr<mm1::MockModemProxy> mm1_proxy_;
-  scoped_ptr<mm1::MockModemSimpleProxy> mm1_simple_proxy_;
+  unique_ptr<MockDBusPropertiesProxy> dbus_properties_proxy_;
+  unique_ptr<MockModemProxy> proxy_;
+  unique_ptr<MockModemSimpleProxy> simple_proxy_;
+  unique_ptr<MockModemCDMAProxy> cdma_proxy_;
+  unique_ptr<MockModemGSMCardProxy> gsm_card_proxy_;
+  unique_ptr<MockModemGSMNetworkProxy> gsm_network_proxy_;
+  unique_ptr<mm1::MockModemModem3gppProxy> mm1_modem_3gpp_proxy_;
+  unique_ptr<mm1::MockModemProxy> mm1_proxy_;
+  unique_ptr<mm1::MockModemSimpleProxy> mm1_simple_proxy_;
   TestProxyFactory proxy_factory_;
   MockMobileOperatorInfo *mock_home_provider_info_;
   MockMobileOperatorInfo *mock_serving_operator_info_;
@@ -1409,13 +1410,13 @@ TEST_F(CellularTest, LinkEventUpWithPPP) {
   // If PPP is running, don't run DHCP as well.
   TestRPCTaskDelegate task_delegate;
   base::Callback<void(pid_t, int)> death_callback;
-  scoped_ptr<NiceMock<MockExternalTask>> mock_task(
+  unique_ptr<NiceMock<MockExternalTask>> mock_task(
       new NiceMock<MockExternalTask>(modem_info_.control_interface(),
                                      modem_info_.glib(),
                                      task_delegate.AsWeakPtr(),
                                      death_callback));
   EXPECT_CALL(*mock_task, OnDelete()).Times(AnyNumber());
-  device_->ppp_task_ = mock_task.Pass();
+  device_->ppp_task_ = std::move(mock_task);
   device_->state_ = Cellular::kStateConnected;
   EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, _))
       .Times(0);
@@ -1435,7 +1436,7 @@ TEST_F(CellularTest, LinkEventUpWithoutPPP) {
 
 TEST_F(CellularTest, StartPPP) {
   const int kPID = 234;
-  EXPECT_FALSE(device_->ppp_task_);
+  EXPECT_EQ(nullptr, device_->ppp_task_);
   StartPPP(kPID);
 }
 
@@ -1456,7 +1457,7 @@ TEST_F(CellularTest, StartPPPAfterEthernetUp) {
       .Times(AnyNumber())
       .WillRepeatedly(Return(true));
   const int kPID = 234;
-  EXPECT_FALSE(device_->ppp_task_);
+  EXPECT_EQ(nullptr, device_->ppp_task_);
   StartPPP(kPID);
   EXPECT_EQ(Cellular::kStateLinked, device_->state());
 }
@@ -1556,7 +1557,7 @@ TEST_F(CellularTest, Notify) {
   // Notify(kPPPReasonAuthenticated, ...).
   EXPECT_CALL(*ppp_device2, SetServiceFailure(Service::kFailureUnknown));
   device_->Notify(kPPPReasonDisconnect, kEmptyArgs);
-  EXPECT_FALSE(device_->ppp_task_);
+  EXPECT_EQ(nullptr, device_->ppp_task_);
 
   // |Cellular::ppp_task_| is destroyed on the task loop. Must dispatch once to
   // cleanup.
@@ -1575,7 +1576,7 @@ TEST_F(CellularTest, PPPConnectionFailedBeforeAuth) {
   ExpectDisconnectCapabilityUniversal();
   EXPECT_CALL(*service, SetFailure(Service::kFailureUnknown));
   device_->Notify(kPPPReasonDisconnect, kEmptyArgs);
-  EXPECT_FALSE(device_->ppp_task_);
+  EXPECT_EQ(nullptr, device_->ppp_task_);
   VerifyDisconnect();
 
   // |Cellular::ppp_task_| is destroyed on the task loop. Must dispatch once to
@@ -1596,7 +1597,7 @@ TEST_F(CellularTest, PPPConnectionFailedDuringAuth) {
   EXPECT_CALL(*service, SetFailure(Service::kFailurePPPAuth));
   device_->Notify(kPPPReasonAuthenticating, kEmptyArgs);
   device_->Notify(kPPPReasonDisconnect, kEmptyArgs);
-  EXPECT_FALSE(device_->ppp_task_);
+  EXPECT_EQ(nullptr, device_->ppp_task_);
   VerifyDisconnect();
 
   // |Cellular::ppp_task_| is destroyed on the task loop. Must dispatch once to
@@ -1619,7 +1620,7 @@ TEST_F(CellularTest, PPPConnectionFailedAfterAuth) {
   device_->Notify(kPPPReasonAuthenticating, kEmptyArgs);
   device_->Notify(kPPPReasonAuthenticated, kEmptyArgs);
   device_->Notify(kPPPReasonDisconnect, kEmptyArgs);
-  EXPECT_FALSE(device_->ppp_task_);
+  EXPECT_EQ(nullptr, device_->ppp_task_);
   VerifyDisconnect();
 
   // |Cellular::ppp_task_| is destroyed on the task loop. Must dispatch once to
@@ -2024,10 +2025,10 @@ TEST_F(CellularTest, ScanSuccess) {
 }
 
 TEST_F(CellularTest, EstablishLinkDHCP) {
-  scoped_ptr<CellularBearer> bearer(
+  unique_ptr<CellularBearer> bearer(
       new CellularBearer(&proxy_factory_, "", ""));
   bearer->set_ipv4_config_method(IPConfig::kMethodDHCP);
-  SetCapabilityUniversalActiveBearer(bearer.Pass());
+  SetCapabilityUniversalActiveBearer(std::move(bearer));
   device_->state_ = Cellular::kStateConnected;
 
   MockCellularService *service = SetMockService();
@@ -2045,10 +2046,10 @@ TEST_F(CellularTest, EstablishLinkDHCP) {
 }
 
 TEST_F(CellularTest, EstablishLinkPPP) {
-  scoped_ptr<CellularBearer> bearer(
+  unique_ptr<CellularBearer> bearer(
       new CellularBearer(&proxy_factory_, "", ""));
   bearer->set_ipv4_config_method(IPConfig::kMethodPPP);
-  SetCapabilityUniversalActiveBearer(bearer.Pass());
+  SetCapabilityUniversalActiveBearer(std::move(bearer));
   device_->state_ = Cellular::kStateConnected;
 
   const int kPID = 123;
@@ -2060,7 +2061,7 @@ TEST_F(CellularTest, EstablishLinkPPP) {
   EXPECT_FALSE(device_->ipconfig());  // No DHCP client.
   EXPECT_FALSE(device_->selected_service());
   EXPECT_FALSE(device_->is_ppp_authenticating_);
-  EXPECT_TRUE(device_->ppp_task_);
+  EXPECT_NE(nullptr, device_->ppp_task_);
 }
 
 TEST_F(CellularTest, EstablishLinkStatic) {
@@ -2070,7 +2071,7 @@ TEST_F(CellularTest, EstablishLinkStatic) {
   const int32_t kSubnetPrefix = 16;
   const char *const kDNS[] = {"10.0.0.2", "8.8.4.4", "8.8.8.8"};
 
-  scoped_ptr<IPConfig::Properties> ipconfig_properties(
+  unique_ptr<IPConfig::Properties> ipconfig_properties(
       new IPConfig::Properties);
   ipconfig_properties->address_family = kAddressFamily;
   ipconfig_properties->address = kAddress;
@@ -2078,11 +2079,11 @@ TEST_F(CellularTest, EstablishLinkStatic) {
   ipconfig_properties->subnet_prefix = kSubnetPrefix;
   ipconfig_properties->dns_servers = vector<string>{kDNS[0], kDNS[1], kDNS[2]};
 
-  scoped_ptr<CellularBearer> bearer(
+  unique_ptr<CellularBearer> bearer(
       new CellularBearer(&proxy_factory_, "", ""));
   bearer->set_ipv4_config_method(IPConfig::kMethodStatic);
-  bearer->set_ipv4_config_properties(ipconfig_properties.Pass());
-  SetCapabilityUniversalActiveBearer(bearer.Pass());
+  bearer->set_ipv4_config_properties(std::move(ipconfig_properties));
+  SetCapabilityUniversalActiveBearer(std::move(bearer));
   device_->state_ = Cellular::kStateConnected;
 
   MockCellularService *service = SetMockService();

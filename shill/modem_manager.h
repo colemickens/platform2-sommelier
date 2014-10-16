@@ -11,7 +11,6 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -94,7 +93,7 @@ class ModemManager {
 
   const std::string service_;
   const std::string path_;
-  scoped_ptr<DBusNameWatcher> name_watcher_;
+  std::unique_ptr<DBusNameWatcher> name_watcher_;
 
   std::string owner_;  // DBus service owner.
 
@@ -125,8 +124,8 @@ class ModemManagerClassic : public ModemManager {
   virtual void InitModemClassic(std::shared_ptr<ModemClassic> modem);
 
  private:
-  scoped_ptr<ModemManagerProxyInterface> proxy_;  // DBus service proxy
-  scoped_ptr<DBusPropertiesProxyInterface> dbus_properties_proxy_;
+  std::unique_ptr<ModemManagerProxyInterface> proxy_;  // DBus service proxy
+  std::unique_ptr<DBusPropertiesProxyInterface> dbus_properties_proxy_;
 
   FRIEND_TEST(ModemManagerClassicTest, Connect);
 
@@ -169,7 +168,7 @@ class ModemManager1 : public ModemManager {
   FRIEND_TEST(ModemManager1Test, Connect);
   FRIEND_TEST(ModemManager1Test, AddRemoveInterfaces);
 
-  scoped_ptr<DBusObjectManagerProxyInterface> proxy_;
+  std::unique_ptr<DBusObjectManagerProxyInterface> proxy_;
   base::WeakPtrFactory<ModemManager1> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(ModemManager1);

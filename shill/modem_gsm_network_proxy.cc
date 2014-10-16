@@ -4,6 +4,8 @@
 
 #include "shill/modem_gsm_network_proxy.h"
 
+#include <memory>
+
 #include "shill/cellular_error.h"
 #include "shill/dbus_async_call_helper.h"
 #include "shill/error.h"
@@ -11,6 +13,7 @@
 
 using base::Callback;
 using std::string;
+using std::unique_ptr;
 
 namespace shill {
 
@@ -126,7 +129,7 @@ void ModemGSMNetworkProxy::Proxy::NetworkMode(const uint32_t &mode) {
 void ModemGSMNetworkProxy::Proxy::RegisterCallback(const DBus::Error &dberror,
                                                    void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
   callback->Run(error);
@@ -135,7 +138,7 @@ void ModemGSMNetworkProxy::Proxy::RegisterCallback(const DBus::Error &dberror,
 void ModemGSMNetworkProxy::Proxy::GetRegistrationInfoCallback(
     const GSMRegistrationInfo &info, const DBus::Error &dberror, void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<RegistrationInfoCallback> callback(
+  unique_ptr<RegistrationInfoCallback> callback(
       reinterpret_cast<RegistrationInfoCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -145,7 +148,7 @@ void ModemGSMNetworkProxy::Proxy::GetRegistrationInfoCallback(
 void ModemGSMNetworkProxy::Proxy::GetSignalQualityCallback(
     const uint32_t &quality, const DBus::Error &dberror, void *data) {
   SLOG(DBus, 2) << __func__ << "(" << quality << ")";
-  scoped_ptr<SignalQualityCallback> callback(
+  unique_ptr<SignalQualityCallback> callback(
       reinterpret_cast<SignalQualityCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -156,7 +159,7 @@ void ModemGSMNetworkProxy::Proxy::ScanCallback(const GSMScanResults &results,
                                                const DBus::Error &dberror,
                                                void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<ScanResultsCallback> callback(
+  unique_ptr<ScanResultsCallback> callback(
       reinterpret_cast<ScanResultsCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);

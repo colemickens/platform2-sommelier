@@ -4,6 +4,8 @@
 
 #include "shill/modem_gsm_card_proxy.h"
 
+#include <memory>
+
 #include <base/bind.h>
 
 #include "shill/cellular_error.h"
@@ -14,6 +16,7 @@
 using base::Bind;
 using base::Callback;
 using std::string;
+using std::unique_ptr;
 
 namespace shill {
 
@@ -109,7 +112,7 @@ void ModemGSMCardProxy::Proxy::GetIdCallback(const string &id,
                                              const DBus::Error &dberror,
                                              void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<GSMIdentifierCallback> callback(
+  unique_ptr<GSMIdentifierCallback> callback(
       reinterpret_cast<GSMIdentifierCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -147,7 +150,7 @@ void ModemGSMCardProxy::Proxy::GetMsIsdnCallback(const string &msisdn,
 void ModemGSMCardProxy::Proxy::PinCallback(const DBus::Error &dberror,
                                            void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
   callback->Run(error);

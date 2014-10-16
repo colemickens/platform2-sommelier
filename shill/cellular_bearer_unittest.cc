@@ -131,7 +131,7 @@ class CellularBearerTest : public testing::Test {
     EXPECT_EQ(kIPv6DNS[2], ipv6_config_properties->dns_servers[2]);
   }
 
-  scoped_ptr<MockProxyFactory> proxy_factory_;
+  std::unique_ptr<MockProxyFactory> proxy_factory_;
   CellularBearer bearer_;
 };
 
@@ -142,7 +142,7 @@ TEST_F(CellularBearerTest, Constructor) {
 TEST_F(CellularBearerTest, Init) {
   // Ownership of |properties_proxy| is transferred to |bearer_| via
   // |proxy_factory_|.
-  scoped_ptr<MockDBusPropertiesProxy> properties_proxy(
+  std::unique_ptr<MockDBusPropertiesProxy> properties_proxy(
       new MockDBusPropertiesProxy);
   EXPECT_CALL(*proxy_factory_.get(),
               CreateDBusPropertiesProxy(kBearerDBusPath, kBearerDBusService))

@@ -5,6 +5,7 @@
 #ifndef SHILL_MOCK_MODEM_INFO_H_
 #define SHILL_MOCK_MODEM_INFO_H_
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
@@ -64,11 +65,11 @@ class MockModemInfo : public ModemInfo {
   MOCK_METHOD1(OnDeviceInfoAvailable, void(const std::string &link_name));
 
  private:
-  scoped_ptr<MockControl> mock_control_;
-  scoped_ptr<MockEventDispatcher> mock_dispatcher_;
-  scoped_ptr<MockMetrics> mock_metrics_;
-  scoped_ptr<MockManager> mock_manager_;
-  scoped_ptr<MockGLib> mock_glib_;
+  std::unique_ptr<MockControl> mock_control_;
+  std::unique_ptr<MockEventDispatcher> mock_dispatcher_;
+  std::unique_ptr<MockMetrics> mock_metrics_;
+  std::unique_ptr<MockManager> mock_manager_;
+  std::unique_ptr<MockGLib> mock_glib_;
 
   // owned by ModemInfo
   MockPendingActivationStore *mock_pending_activation_store_;

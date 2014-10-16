@@ -1064,7 +1064,7 @@ void Cellular::StartPPP(const string &serial_device) {
   args.push_back(PPPDevice::kPluginPath);
   args.push_back(serial_device);
   is_ppp_authenticating_ = false;
-  scoped_ptr<ExternalTask> new_ppp_task(
+  std::unique_ptr<ExternalTask> new_ppp_task(
       new ExternalTask(modem_info_->control_interface(),
                        modem_info_->glib(),
                        weak_ptr_factory_.GetWeakPtr(),
@@ -1072,7 +1072,7 @@ void Cellular::StartPPP(const string &serial_device) {
   if (new_ppp_task->Start(
           FilePath(PPPDevice::kDaemonPath), args, environment, true, &error)) {
     LOG(INFO) << "Forked pppd process.";
-    ppp_task_ = new_ppp_task.Pass();
+    ppp_task_ = std::move(new_ppp_task);
   }
 }
 

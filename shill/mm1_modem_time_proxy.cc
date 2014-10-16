@@ -4,11 +4,14 @@
 
 #include "shill/mm1_modem_time_proxy.h"
 
+#include <memory>
+
 #include "shill/cellular_error.h"
 #include "shill/dbus_async_call_helper.h"
 #include "shill/logging.h"
 
 using std::string;
+using std::unique_ptr;
 
 namespace shill {
 namespace mm1 {
@@ -57,7 +60,7 @@ void ModemTimeProxy::Proxy::GetNetworkTimeCallback(const string &time,
                                                    const ::DBus::Error &dberror,
                                                    void *data) {
   SLOG(DBus, 2) << __func__;
-  scoped_ptr<StringCallback> callback(reinterpret_cast<StringCallback *>(data));
+  unique_ptr<StringCallback> callback(reinterpret_cast<StringCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(time, error);

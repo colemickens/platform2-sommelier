@@ -131,8 +131,8 @@ class CellularCapabilityCDMATest : public testing::Test {
   EventDispatcher dispatcher_;
   MockModemInfo modem_info_;
   scoped_refptr<MockCellular> cellular_;
-  scoped_ptr<MockModemProxy> classic_proxy_;
-  scoped_ptr<MockModemCDMAProxy> proxy_;
+  std::unique_ptr<MockModemProxy> classic_proxy_;
+  std::unique_ptr<MockModemCDMAProxy> proxy_;
   CellularCapabilityCDMA *capability_;  // Owned by |cellular_|.
 };
 

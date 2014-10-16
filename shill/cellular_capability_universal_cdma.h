@@ -5,16 +5,16 @@
 #ifndef SHILL_CELLULAR_CAPABILITY_UNIVERSAL_CDMA_H_
 #define SHILL_CELLULAR_CAPABILITY_UNIVERSAL_CDMA_H_
 
-#include "shill/cellular.h"
-#include "shill/cellular_capability_universal.h"
-#include "shill/mm1_modem_modemcdma_proxy_interface.h"
-
-#include <base/memory/weak_ptr.h>
-
+#include <memory>
 #include <string>
 #include <vector>
 
+#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+
+#include "shill/cellular.h"
+#include "shill/cellular_capability_universal.h"
+#include "shill/mm1_modem_modemcdma_proxy_interface.h"
 
 namespace shill {
 
@@ -111,7 +111,7 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   static std::string GetActivationStateString(uint32_t state);
   static std::string GetActivationErrorString(uint32_t error);
 
-  scoped_ptr<mm1::ModemModemCdmaProxyInterface> modem_cdma_proxy_;
+  std::unique_ptr<mm1::ModemModemCdmaProxyInterface> modem_cdma_proxy_;
   // TODO(armansito): Should probably call this |weak_ptr_factory_| after
   // 3gpp refactor
   base::WeakPtrFactory<CellularCapabilityUniversalCDMA> weak_cdma_ptr_factory_;

@@ -67,9 +67,9 @@ class Modem1Test : public Test {
   EventDispatcher dispatcher_;
   MockModemInfo modem_info_;
   MockDeviceInfo device_info_;
-  scoped_ptr<MockDBusPropertiesProxy> proxy_;
+  std::unique_ptr<MockDBusPropertiesProxy> proxy_;
   MockProxyFactory proxy_factory_;
-  scoped_ptr<Modem1> modem_;
+  std::unique_ptr<Modem1> modem_;
   MockRTNLHandler rtnl_handler_;
   ByteString expected_address_;
 };

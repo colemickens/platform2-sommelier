@@ -5,7 +5,6 @@
 #include "shill/pending_activation_store.h"
 
 #include <base/files/scoped_temp_dir.h>
-#include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -31,7 +30,7 @@ class PendingActivationStoreTest : public ::testing::Test {
   }
 
   GLib glib_;
-  scoped_ptr<MockStore> mock_store_;
+  std::unique_ptr<MockStore> mock_store_;
   PendingActivationStore store_;
 };
 

@@ -41,6 +41,7 @@ using base::Bind;
 using base::StringPrintf;
 using base::Unretained;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 using testing::AnyNumber;
 using testing::InSequence;
@@ -332,12 +333,12 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
 
   EventDispatcher *dispatcher_;
   MockModemInfo modem_info_;
-  scoped_ptr<mm1::MockModemModem3gppProxy> modem_3gpp_proxy_;
-  scoped_ptr<mm1::MockModemModemCdmaProxy> modem_cdma_proxy_;
-  scoped_ptr<mm1::MockModemProxy> modem_proxy_;
-  scoped_ptr<mm1::MockModemSimpleProxy> modem_simple_proxy_;
-  scoped_ptr<mm1::MockSimProxy> sim_proxy_;
-  scoped_ptr<MockDBusPropertiesProxy> properties_proxy_;
+  unique_ptr<mm1::MockModemModem3gppProxy> modem_3gpp_proxy_;
+  unique_ptr<mm1::MockModemModemCdmaProxy> modem_cdma_proxy_;
+  unique_ptr<mm1::MockModemProxy> modem_proxy_;
+  unique_ptr<mm1::MockModemSimpleProxy> modem_simple_proxy_;
+  unique_ptr<mm1::MockSimProxy> sim_proxy_;
+  unique_ptr<MockDBusPropertiesProxy> properties_proxy_;
   TestProxyFactory proxy_factory_;
   CellularCapabilityUniversal *capability_;  // Owned by |cellular_|.
   DeviceMockAdaptor *device_adaptor_;  // Owned by |cellular_|.

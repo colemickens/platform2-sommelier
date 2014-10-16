@@ -141,7 +141,7 @@ void ModemManagerClassic::InitModemClassic(shared_ptr<ModemClassic> modem) {
     return;
   }
 
-  scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
+  std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy(
       proxy_factory()->CreateDBusPropertiesProxy(modem->path(),
                                                  modem->owner()));
   DBusPropertiesMap properties =

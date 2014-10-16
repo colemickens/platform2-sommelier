@@ -88,7 +88,7 @@ bool PendingActivationStore::InitStorage(
     return false;
   }
   FilePath path = storage_path.Append(kStorageFileName);
-  scoped_ptr<KeyFileStore> storage(new KeyFileStore(glib));
+  std::unique_ptr<KeyFileStore> storage(new KeyFileStore(glib));
   storage->set_path(path);
   bool already_exists = storage->IsNonEmpty();
   if (!storage->Open()) {

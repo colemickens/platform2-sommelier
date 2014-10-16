@@ -5,11 +5,11 @@
 #ifndef SHILL_MOBILE_OPERATOR_INFO_H_
 #define SHILL_MOBILE_OPERATOR_INFO_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file_util.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
 
 namespace shill {
@@ -209,7 +209,7 @@ class MobileOperatorInfo {
   MobileOperatorInfoImpl * impl() { return impl_.get(); }
 
  private:
-  scoped_ptr<MobileOperatorInfoImpl> impl_;
+  std::unique_ptr<MobileOperatorInfoImpl> impl_;
   DISALLOW_COPY_AND_ASSIGN(MobileOperatorInfo);
 };
 

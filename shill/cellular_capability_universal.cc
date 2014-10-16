@@ -727,7 +727,7 @@ bool CellularCapabilityUniversal::AllowRoaming() {
 void CellularCapabilityUniversal::GetProperties() {
   SLOG(Cellular, 3) << __func__;
 
-  scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
+  std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy(
       proxy_factory()->CreateDBusPropertiesProxy(cellular()->dbus_path(),
                                                  cellular()->dbus_owner()));
   DBusPropertiesMap properties(
@@ -773,7 +773,7 @@ void CellularCapabilityUniversal::UpdateActiveBearer() {
   // one. Right now, we don't allow more than one active bearer.
   active_bearer_.reset();
   for (const auto &path : bearer_paths_) {
-    scoped_ptr<CellularBearer> bearer(
+    std::unique_ptr<CellularBearer> bearer(
         new CellularBearer(proxy_factory(), path, cellular()->dbus_service()));
     // The bearer object may have vanished before ModemManager updates the
     // 'Bearers' property.
@@ -785,7 +785,7 @@ void CellularCapabilityUniversal::UpdateActiveBearer() {
 
     SLOG(Cellular, 2) << "Found active bearer \"" << path << "\".";
     CHECK(!active_bearer_) << "Found more than one active bearer.";
-    active_bearer_ = bearer.Pass();
+    active_bearer_ = std::move(bearer);
   }
 
   if (!active_bearer_)
@@ -1297,7 +1297,7 @@ void CellularCapabilityUniversal::OnSimPathChanged(
     cellular()->home_provider_info()->Reset();
   } else {
     cellular()->set_sim_present(true);
-    scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
+    std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy(
         proxy_factory()->CreateDBusPropertiesProxy(sim_path,
                                                    cellular()->dbus_owner()));
     // TODO(jglasgow): convert to async interface
@@ -1435,7 +1435,7 @@ void CellularCapabilityUniversal::OnSimLockStatusChanged() {
   if (IsValidSimPath(sim_path_) &&
       (sim_lock_status_.lock_type == MM_MODEM_LOCK_NONE ||
        sim_lock_status_.lock_type == MM_MODEM_LOCK_UNKNOWN)) {
-    scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
+    std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy(
         proxy_factory()->CreateDBusPropertiesProxy(sim_path_,
                                                    cellular()->dbus_owner()));
     DBusPropertiesMap properties(

@@ -46,9 +46,9 @@ namespace {
 // Wrap some low level functions from the GNU regex librarly.
 string GetRegError(int code, const regex_t *compiled) {
   size_t length = regerror(code, compiled, nullptr, 0);
-  scoped_ptr<char[]> buffer(new char[length]);
-  DCHECK_EQ(length, regerror(code, compiled, buffer.get(), length));
-  return buffer.get();
+  vector<char> buffer(length);
+  DCHECK_EQ(length, regerror(code, compiled, buffer.data(), length));
+  return buffer.data();
 }
 
 }  // namespace
@@ -85,7 +85,7 @@ bool MobileOperatorInfoImpl::Init() {
 
   for (const auto &database_path : database_paths_) {
     const char *database_path_cstr = database_path.value().c_str();
-    scoped_ptr<CopyingInputStreamAdaptor> database_stream;
+    std::unique_ptr<CopyingInputStreamAdaptor> database_stream;
     database_stream.reset(protobuf_lite_file_input_stream(database_path_cstr));
     if (!database_stream.get()) {
       LOG(ERROR) << "Failed to read mobile operator database: "
@@ -93,7 +93,7 @@ bool MobileOperatorInfoImpl::Init() {
       continue;
     }
 
-    scoped_ptr<MobileOperatorDB> database(new MobileOperatorDB());
+    std::unique_ptr<MobileOperatorDB> database(new MobileOperatorDB());
     if (!database->ParseFromZeroCopyStream(database_stream.get())) {
       LOG(ERROR) << "Could not parse mobile operator database: "
                  << database_path_cstr;

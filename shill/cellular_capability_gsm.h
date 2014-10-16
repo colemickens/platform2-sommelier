@@ -6,10 +6,10 @@
 #define SHILL_CELLULAR_CAPABILITY_GSM_H_
 
 #include <deque>
+#include <memory>
 #include <string>
 #include <vector>
 
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -198,13 +198,13 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
                    const Error &error);
   void OnConnectReply(const ResultCallback &callback, const Error &error);
 
-  scoped_ptr<ModemGSMCardProxyInterface> card_proxy_;
-  scoped_ptr<ModemGSMNetworkProxyInterface> network_proxy_;
+  std::unique_ptr<ModemGSMCardProxyInterface> card_proxy_;
+  std::unique_ptr<ModemGSMNetworkProxyInterface> network_proxy_;
   base::WeakPtrFactory<CellularCapabilityGSM> weak_ptr_factory_;
   // Used to enrich information about the network operator in |ParseScanResult|.
   // TODO(pprabhu) Instead instantiate a local |MobileOperatorInfo| instance
   // once the context has been separated out. (crbug.com/363874)
-  scoped_ptr<MobileOperatorInfo> mobile_operator_info_;
+  std::unique_ptr<MobileOperatorInfo> mobile_operator_info_;
 
   uint32_t registration_state_;
   uint32_t access_technology_;

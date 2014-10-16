@@ -236,12 +236,12 @@ class CellularCapabilityTest : public testing::Test {
   MockModemInfo modem_info_;
   MockRTNLHandler rtnl_handler_;
   bool create_gsm_card_proxy_from_factory_;
-  scoped_ptr<MockModemProxy> proxy_;
-  scoped_ptr<MockModemSimpleProxy> simple_proxy_;
-  scoped_ptr<MockModemCDMAProxy> cdma_proxy_;
-  scoped_ptr<MockModemGSMCardProxy> gsm_card_proxy_;
-  scoped_ptr<MockModemGSMNetworkProxy> gsm_network_proxy_;
-  scoped_ptr<MockModemGobiProxy> gobi_proxy_;
+  std::unique_ptr<MockModemProxy> proxy_;
+  std::unique_ptr<MockModemSimpleProxy> simple_proxy_;
+  std::unique_ptr<MockModemCDMAProxy> cdma_proxy_;
+  std::unique_ptr<MockModemGSMCardProxy> gsm_card_proxy_;
+  std::unique_ptr<MockModemGSMNetworkProxy> gsm_network_proxy_;
+  std::unique_ptr<MockModemGobiProxy> gobi_proxy_;
   TestProxyFactory proxy_factory_;
   CellularCapabilityClassic *capability_;  // Owned by |cellular_|.
   DeviceMockAdaptor *device_adaptor_;  // Owned by |cellular_|.
