@@ -18,7 +18,7 @@ if not service:
 if property_key in ["Priority"]:
     service.SetProperty(property_key, int(value))
 elif property_key in ["AutoConnect", "WiFi.HiddenSSID", "EAP.UseSystemCAs",
-  "SaveCredentials", "LinkMonitorDisable"]:
+  "SaveCredentials", "LinkMonitorDisable", "ManagedCredentials"]:
     service.SetProperty(property_key,
                         dbus.Boolean(value.lower() in ("true", "1")))
 else:

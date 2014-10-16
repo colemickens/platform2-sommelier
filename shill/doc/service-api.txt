@@ -598,6 +598,16 @@ Properties	boolean AutoConnect [readwrite]
 			for this service. When link monitor is enabled, periodic
 			ARP to the gateway IP address will be performed.
 
+		boolean ManagedCredentials [readwrite]
+
+			Specifies whether the credentials for this service
+			are managed outside of shill, and are validated
+			in some manner other than by the user.  As such, these
+			credentials need not be validated via an initial
+			connection attempt.  Even without this validation,
+			the service will be considered of equal priority to
+			other services that have been connected before.
+
 		string Mode [readonly]
 
 			If the service type is "wifi", then this property is

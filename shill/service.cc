@@ -92,6 +92,7 @@ const char Service::kStorageType[] = "Type";
 const char Service::kStorageUIData[] = "UIData";
 const char Service::kStorageConnectionId[] = "ConnectionId";
 const char Service::kStorageLinkMonitorDisabled[] = "LinkMonitorDisabled";
+const char Service::kStorageManagedCredentials[] = "ManagedCredentials";
 
 const uint8_t Service::kStrengthMax = 100;
 const uint8_t Service::kStrengthMin = 0;
@@ -155,7 +156,8 @@ Service::Service(ControlInterface *control_interface,
       diagnostics_reporter_(DiagnosticsReporter::GetInstance()),
       connection_id_(0),
       is_dns_auto_fallback_allowed_(false),
-      link_monitor_disabled_(false) {
+      link_monitor_disabled_(false),
+      managed_credentials_(false) {
   HelpRegisterDerivedBool(kAutoConnectProperty,
                           &Service::GetAutoConnect,
                           &Service::SetAutoConnectFull,
@@ -238,6 +240,7 @@ Service::Service(ControlInterface *control_interface,
   store_.RegisterConstInt32(kConnectionIdProperty, &connection_id_);
   store_.RegisterBool(kDnsAutoFallbackProperty, &is_dns_auto_fallback_allowed_);
   store_.RegisterBool(kLinkMonitorDisableProperty, &link_monitor_disabled_);
+  store_.RegisterBool(kManagedCredentialsProperty, &managed_credentials_);
 
   HelpRegisterObservedDerivedBool(kVisibleProperty,
                                   &Service::GetVisibleProperty,
@@ -490,6 +493,10 @@ bool Service::Load(StoreInterface *storage) {
   storage->GetInt(id, kStorageConnectionId, &connection_id_);
   storage->GetBool(id, kStorageDNSAutoFallback, &is_dns_auto_fallback_allowed_);
   storage->GetBool(id, kStorageLinkMonitorDisabled, &link_monitor_disabled_);
+  if (!storage->GetBool(id, kStorageManagedCredentials,
+                        &managed_credentials_)) {
+    managed_credentials_ = false;
+  }
 
   static_ip_parameters_.Load(storage, id);
 
@@ -523,6 +530,7 @@ bool Service::Unload() {
   connection_id_ = 0;
   is_dns_auto_fallback_allowed_ = false;
   link_monitor_disabled_ = false;
+  managed_credentials_ = false;
   if (mutable_eap()) {
     mutable_eap()->Reset();
   }
@@ -573,6 +581,7 @@ bool Service::Save(StoreInterface *storage) {
   storage->SetInt(id, kStorageConnectionId, connection_id_);
   storage->SetBool(id, kStorageDNSAutoFallback, is_dns_auto_fallback_allowed_);
   storage->SetBool(id, kStorageLinkMonitorDisabled, link_monitor_disabled_);
+  storage->SetBool(id, kStorageManagedCredentials, managed_credentials_);
 
   static_ip_parameters_.Save(storage, id);
   if (eap()) {
@@ -1038,7 +1047,9 @@ bool Service::Compare(Manager *manager,
     return ret;
   }
 
-  if (DecideBetween(a->has_ever_connected(), b->has_ever_connected(), &ret)) {
+  if (DecideBetween(a->has_ever_connected() || a->managed_credentials_,
+                    b->has_ever_connected() || b->managed_credentials_,
+                    &ret)) {
     *reason = kServiceSortHasEverConnected;
     return ret;
   }

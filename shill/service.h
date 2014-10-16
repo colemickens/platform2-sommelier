@@ -82,6 +82,7 @@ class Service : public base::RefCounted<Service> {
   static const char kStorageUIData[];
   static const char kStorageConnectionId[];
   static const char kStorageLinkMonitorDisabled[];
+  static const char kStorageManagedCredentials[];
 
   static const uint8_t kStrengthMax;
   static const uint8_t kStrengthMin;
@@ -860,6 +861,10 @@ class Service : public base::RefCounted<Service> {
   // When set to true, will not start link monitor when the connection to this
   // service is established.
   bool link_monitor_disabled_;
+  // When set to true, the credentials for this service will be considered
+  // valid, and will not require an initial connection to rank it highly for
+  // auto-connect.
+  bool managed_credentials_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
