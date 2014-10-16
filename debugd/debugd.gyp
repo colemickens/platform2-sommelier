@@ -35,7 +35,7 @@
       'type': 'none',
       'dependencies': [
         '../common-mk/external_dependencies.gyp:dbus-proxies',
-        '../shill/shill.gyp:shill-proxies',
+        '../shill/shill.gypi:shill-proxies',
       ],
       'conditions': [
         ['USE_cellular == 1', {
