@@ -57,13 +57,13 @@
 
 #include <list>
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 
 #include <base/bind.h>
 #include <base/lazy_instance.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/generic_netlink_message.h"
@@ -338,9 +338,9 @@ class NetlinkManager {
   EventDispatcher *dispatcher_;
   base::WeakPtrFactory<NetlinkManager> weak_ptr_factory_;
   base::Callback<void(InputData *)> dispatcher_callback_;
-  scoped_ptr<IOHandler> dispatcher_handler_;
+  std::unique_ptr<IOHandler> dispatcher_handler_;
 
-  scoped_ptr<NetlinkSocket> sock_;
+  std::unique_ptr<NetlinkSocket> sock_;
   std::map<const std::string, MessageType> message_types_;
   NetlinkMessageFactory message_factory_;
   Time *time_;

@@ -7,6 +7,7 @@
 #include <errno.h>
 
 #include <limits>
+#include <memory>
 #include <set>
 #include <vector>
 
@@ -118,7 +119,7 @@ class ScanSessionTest : public Test {
 
   MockEventDispatcher dispatcher_;
   MockNetlinkManager netlink_manager_;
-  scoped_ptr<ScanSession> scan_session_;
+  std::unique_ptr<ScanSession> scan_session_;
   base::WeakPtrFactory<ScanSessionTest> weak_ptr_factory_;
 };
 

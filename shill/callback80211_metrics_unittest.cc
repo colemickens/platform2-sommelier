@@ -8,6 +8,8 @@
 
 #include "shill/callback80211_metrics.h"
 
+#include <memory>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -19,6 +21,7 @@
 #include "shill/refptr_types.h"
 
 using base::Bind;
+using std::unique_ptr;
 using testing::_;
 using testing::Test;
 
@@ -140,7 +143,7 @@ class Callback80211MetricsTest : public Test {
 
 // Make sure that notifications happen for correctly formed messages.
 TEST_F(Callback80211MetricsTest, DisconnectMessage) {
-  scoped_ptr<NetlinkMessage> netlink_message(
+  unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(const_cast<nlmsghdr *>(
           reinterpret_cast<const nlmsghdr *>(kDisconnectMessage))));
   EXPECT_CALL(metrics_, Notify80211Disconnect(Metrics::kDisconnectedByAp,
@@ -149,7 +152,7 @@ TEST_F(Callback80211MetricsTest, DisconnectMessage) {
 }
 
 TEST_F(Callback80211MetricsTest, DeauthMessage) {
-  scoped_ptr<NetlinkMessage> netlink_message(
+  unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(const_cast<nlmsghdr *>(
           reinterpret_cast<const nlmsghdr *>(kDeauthenticateMessage))));
   EXPECT_CALL(metrics_, Notify80211Disconnect(Metrics::kDisconnectedNotByAp,
@@ -159,7 +162,7 @@ TEST_F(Callback80211MetricsTest, DeauthMessage) {
 
 // Make sure there's no notification if there's no reason code in the message.
 TEST_F(Callback80211MetricsTest, EmptyDisconnectMessage) {
-  scoped_ptr<NetlinkMessage> netlink_message(
+  unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(const_cast<nlmsghdr *>(
           reinterpret_cast<const nlmsghdr *>(
               kEmptyDisconnectMessage))));
@@ -168,7 +171,7 @@ TEST_F(Callback80211MetricsTest, EmptyDisconnectMessage) {
 }
 
 TEST_F(Callback80211MetricsTest, EmptyDeauthMessage) {
-  scoped_ptr<NetlinkMessage> netlink_message(
+  unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(const_cast<nlmsghdr *>(
           reinterpret_cast<const nlmsghdr *>(
               kEmptyDeauthenticateMessage))));
@@ -178,7 +181,7 @@ TEST_F(Callback80211MetricsTest, EmptyDeauthMessage) {
 
 // Make sure the callback doesn't notify anyone for message of the wrong type.
 TEST_F(Callback80211MetricsTest, Nl80211NotDisconnectDeauthMessage) {
-  scoped_ptr<NetlinkMessage> netlink_message(
+  unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(const_cast<nlmsghdr *>(
           reinterpret_cast<const nlmsghdr *>(
               kNewStationMessage))));
@@ -187,7 +190,7 @@ TEST_F(Callback80211MetricsTest, Nl80211NotDisconnectDeauthMessage) {
 }
 
 TEST_F(Callback80211MetricsTest, NotNl80211Message) {
-  scoped_ptr<NetlinkMessage> netlink_message(
+  unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(const_cast<nlmsghdr *>(
           reinterpret_cast<const nlmsghdr *>(
               kGetFamilyMessage))));

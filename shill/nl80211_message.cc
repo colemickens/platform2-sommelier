@@ -29,6 +29,7 @@
 
 #include <limits>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -593,7 +594,7 @@ NetlinkMessage *Nl80211Message::CreateMessage(const nlmsghdr *const_msg) {
   nlmsghdr *msg = const_cast<nlmsghdr *>(const_msg);
   void *payload = nlmsg_data(msg);
   genlmsghdr *gnlh = reinterpret_cast<genlmsghdr *>(payload);
-  scoped_ptr<NetlinkMessage> message;
+  std::unique_ptr<NetlinkMessage> message;
 
   switch (gnlh->cmd) {
     case AssociateMessage::kCommand:

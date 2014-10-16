@@ -7,6 +7,7 @@
 #include <netlink/attr.h>
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/format_macros.h>
@@ -20,6 +21,7 @@
 
 using std::map;
 using std::string;
+using std::unique_ptr;
 
 using base::StringAppendF;
 using base::StringPrintf;
@@ -42,7 +44,7 @@ NetlinkAttribute::NetlinkAttribute(int id,
 
 // static
 NetlinkAttribute *NetlinkAttribute::NewNl80211AttributeFromId(int id) {
-  scoped_ptr<NetlinkAttribute> attr;
+  unique_ptr<NetlinkAttribute> attr;
   switch (id) {
     case NL80211_ATTR_BSS:
       attr.reset(new Nl80211AttributeBss());
@@ -227,7 +229,7 @@ NetlinkAttribute *NetlinkAttribute::NewNl80211AttributeFromId(int id) {
 
 // static
 NetlinkAttribute *NetlinkAttribute::NewControlAttributeFromId(int id) {
-  scoped_ptr<NetlinkAttribute> attr;
+  unique_ptr<NetlinkAttribute> attr;
   switch (id) {
     case CTRL_ATTR_FAMILY_ID:
       attr.reset(new ControlAttributeFamilyId());
@@ -900,14 +902,14 @@ bool NetlinkNestedAttribute::ParseNestedStructure(
   // |nla_parse_nested| requires an array of |nla_policy|. While an attribute id
   // of zero is illegal, we still need to fill that spot in the policy
   // array so the loop will start at zero.
-  scoped_ptr<nla_policy[]> policy(new nla_policy[templates.size()]);
+  unique_ptr<nla_policy[]> policy(new nla_policy[templates.size()]);
   for (size_t id = 0; id < templates.size(); ++id) {
     memset(&policy[id], 0, sizeof(nla_policy));
     policy[id].type = templates[id].type;
   }
 
   // |nla_parse_nested| builds an array of |nlattr| from the input message.
-  scoped_ptr<nlattr *[]>attr(new nlattr *[templates.size()]);
+  unique_ptr<nlattr *[]>attr(new nlattr *[templates.size()]);
   if (nla_parse_nested(attr.get(), templates.size() - 1, attr_data,
                        policy.get())) {
     LOG(ERROR) << "nla_parse_nested failed";

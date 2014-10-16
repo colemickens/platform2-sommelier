@@ -25,10 +25,11 @@
 #ifndef SHILL_NETLINK_SOCKET_H_
 #define SHILL_NETLINK_SOCKET_H_
 
+#include <memory>
+
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 namespace shill {
@@ -80,7 +81,7 @@ class NetlinkSocket {
   friend class NetlinkSocketTest;
   FRIEND_TEST(NetlinkSocketTest, SequenceNumberTest);
 
-  scoped_ptr<Sockets> sockets_;
+  std::unique_ptr<Sockets> sockets_;
   int file_descriptor_;
 
   DISALLOW_COPY_AND_ASSIGN(NetlinkSocket);

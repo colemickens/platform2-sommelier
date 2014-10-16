@@ -5,13 +5,13 @@
 #ifndef SHILL_RTNL_HANDLER_H_
 #define SHILL_RTNL_HANDLER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/lazy_instance.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/device.h"
@@ -148,7 +148,7 @@ class RTNLHandler {
 
   std::vector<RTNLListener *> listeners_;
   base::Callback<void(InputData *)> rtnl_callback_;
-  scoped_ptr<IOHandler> rtnl_handler_;
+  std::unique_ptr<IOHandler> rtnl_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(RTNLHandler);
 };

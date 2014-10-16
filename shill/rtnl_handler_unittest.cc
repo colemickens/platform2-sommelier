@@ -130,7 +130,7 @@ void RTNLHandlerTest::AddLink() {
 
 TEST_F(RTNLHandlerTest, AddLinkTest) {
   StartRTNLHandler();
-  scoped_ptr<RTNLListener> link_listener(
+  std::unique_ptr<RTNLListener> link_listener(
       new RTNLListener(RTNLHandler::kRequestLink, callback_));
 
   EXPECT_CALL(*this, HandlerCallback(A<const RTNLMessage &>())).Times(1);

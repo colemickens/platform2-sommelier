@@ -11,6 +11,7 @@
 
 #include "shill/nl80211_message.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -27,6 +28,7 @@ using base::Bind;
 using base::StringPrintf;
 using base::Unretained;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 using testing::_;
 using testing::EndsWith;
@@ -431,14 +433,14 @@ class NetlinkMessageTest : public Test {
 };
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN) {
-  scoped_ptr<NetlinkMessage> netlink_message(
+  unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(const_cast<nlmsghdr *>(
           reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_TRIGGER_SCAN))));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  scoped_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
+  unique_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
       netlink_message.release()));
 
   EXPECT_EQ(NL80211_CMD_TRIGGER_SCAN, message->command());
@@ -483,14 +485,14 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN) {
 }
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS) {
-  scoped_ptr<NetlinkMessage> netlink_message(
+  unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(const_cast<nlmsghdr *>(
           reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_NEW_SCAN_RESULTS))));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  scoped_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
+  unique_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
       netlink_message.release()));
 
   EXPECT_EQ(NL80211_CMD_NEW_SCAN_RESULTS, message->command());
@@ -535,14 +537,14 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS) {
 }
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NEW_STATION) {
-  scoped_ptr<NetlinkMessage> netlink_message(
+  unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(const_cast<nlmsghdr *>(
           reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_NEW_STATION))));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  scoped_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
+  unique_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
       netlink_message.release()));
   EXPECT_EQ(NL80211_CMD_NEW_STATION, message->command());
 
@@ -575,14 +577,14 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NEW_STATION) {
 }
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_AUTHENTICATE) {
-  scoped_ptr<NetlinkMessage> netlink_message(
+  unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(const_cast<nlmsghdr *>(
           reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_AUTHENTICATE))));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  scoped_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
+  unique_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
       netlink_message.release()));
   EXPECT_EQ(NL80211_CMD_AUTHENTICATE, message->command());
 
@@ -613,14 +615,14 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_AUTHENTICATE) {
 }
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_ASSOCIATE) {
-  scoped_ptr<NetlinkMessage> netlink_message(
+  unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(const_cast<nlmsghdr *>(
           reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_ASSOCIATE))));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  scoped_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
+  unique_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
       netlink_message.release()));
   EXPECT_EQ(NL80211_CMD_ASSOCIATE, message->command());
 
@@ -651,14 +653,14 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_ASSOCIATE) {
 }
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_CONNECT) {
-  scoped_ptr<NetlinkMessage> netlink_message(
+  unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(const_cast<nlmsghdr *>(
           reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_CONNECT))));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  scoped_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
+  unique_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
       netlink_message.release()));
   EXPECT_EQ(NL80211_CMD_CONNECT, message->command());
 
@@ -747,14 +749,14 @@ TEST_F(NetlinkMessageTest, Build_NL80211_CMD_CONNECT) {
 
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DEAUTHENTICATE) {
-  scoped_ptr<NetlinkMessage> netlink_message(
+  unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(const_cast<nlmsghdr *>(
           reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DEAUTHENTICATE))));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  scoped_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
+  unique_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
       netlink_message.release()));
   EXPECT_EQ(NL80211_CMD_DEAUTHENTICATE, message->command());
 
@@ -785,14 +787,14 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DEAUTHENTICATE) {
 }
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DISCONNECT) {
-  scoped_ptr<NetlinkMessage> netlink_message(
+  unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(const_cast<nlmsghdr *>(
           reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DISCONNECT))));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  scoped_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
+  unique_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
       netlink_message.release()));
   EXPECT_EQ(NL80211_CMD_DISCONNECT, message->command());
 
@@ -822,14 +824,14 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DISCONNECT) {
 }
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NOTIFY_CQM) {
-  scoped_ptr<NetlinkMessage> netlink_message(
+  unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(const_cast<nlmsghdr *>(
           reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_NOTIFY_CQM))));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  scoped_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
+  unique_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
       netlink_message.release()));
   EXPECT_EQ(NL80211_CMD_NOTIFY_CQM, message->command());
 
@@ -869,14 +871,14 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NOTIFY_CQM) {
 }
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DISASSOCIATE) {
-  scoped_ptr<NetlinkMessage> netlink_message(
+  unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(const_cast<nlmsghdr *>(
           reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DISASSOCIATE))));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  scoped_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
+  unique_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
       netlink_message.release()));
   EXPECT_EQ(NL80211_CMD_DISASSOCIATE, message->command());
 
@@ -915,13 +917,13 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_UNKNOWN) {
       "Unknown/unhandled netlink nl80211 message 0x%02x",
       kCmdNL80211_CMD_UNKNOWN);
   EXPECT_CALL(log, Log(logging::LOG_WARNING, _, EndsWith(logmessage.c_str())));
-  scoped_ptr<NetlinkMessage> netlink_message(
+  unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(
           reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_UNKNOWN)));
   ASSERT_NE(nullptr, netlink_message.get());
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
   // The following is legal if the message_type is kNl80211FamilyId.
-  scoped_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
+  unique_ptr<Nl80211Message> message(dynamic_cast<Nl80211Message *>(
       netlink_message.release()));
   EXPECT_EQ(kCmdNL80211_CMD_UNKNOWN, message->command());
 }

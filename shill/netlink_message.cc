@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/format_macros.h>
@@ -266,7 +267,7 @@ NetlinkMessage *NetlinkMessageFactory::CreateMessage(
     return nullptr;
   }
 
-  scoped_ptr<NetlinkMessage> message;
+  std::unique_ptr<NetlinkMessage> message;
 
   if (const_msg->nlmsg_type == NoopMessage::kMessageType) {
     message.reset(new NoopMessage());
