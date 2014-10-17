@@ -24,15 +24,14 @@ class CHROMEOS_EXPORT OsReleaseReader {
 
   // Loads the key=value pairs from either /etc/os-release.d/<KEY> or
   // /etc/os-release.
-  // Returns false on errors.
-  bool Load();
+  void Load();
 
   // Same as the private Load method.
   // This need to be public so that services can use it in testing mode (for
   // autotest tests for example).
   // This should not be used in production so suffix it with TestingOnly to
   // make it obvious.
-  bool LoadTestingOnly(const base::FilePath& root_dir);
+  void LoadTestingOnly(const base::FilePath& root_dir);
 
   // Getter for the given key. Returns whether the key was found on the store.
   bool GetString(const std::string& key, std::string* value) const;
@@ -44,8 +43,8 @@ class CHROMEOS_EXPORT OsReleaseReader {
   // os-release can be lazily loaded if need be.
   bool initialized_;
 
-  // Load the data from a given root_dir. Return false on errors.
-  CHROMEOS_PRIVATE bool Load(const base::FilePath& root_dir);
+  // Load the data from a given root_dir.
+  CHROMEOS_PRIVATE void Load(const base::FilePath& root_dir);
 
   DISALLOW_COPY_AND_ASSIGN(OsReleaseReader);
 };

@@ -28,12 +28,12 @@ class OsReleaseReaderTest : public ::testing::Test {
 };
 
 TEST_F(OsReleaseReaderTest, MissingOsReleaseTest) {
-  ASSERT_TRUE(store_.LoadTestingOnly(temp_dir_.path()));
+  store_.LoadTestingOnly(temp_dir_.path());
 }
 
 TEST_F(OsReleaseReaderTest, MissingOsReleaseDTest) {
   base::DeleteFile(osreleased_, true);
-  ASSERT_TRUE(store_.LoadTestingOnly(temp_dir_.path()));
+  store_.LoadTestingOnly(temp_dir_.path());
 }
 
 TEST_F(OsReleaseReaderTest, CompleteTest) {
@@ -46,7 +46,7 @@ TEST_F(OsReleaseReaderTest, CompleteTest) {
   base::WriteFile(osreleased_.Append("GREETINGS"), ola.data(), ola.size());
   base::WriteFile(osrelease_, osreleasecontent.data(), osreleasecontent.size());
 
-  ASSERT_TRUE(store_.LoadTestingOnly(temp_dir_.path()));
+  store_.LoadTestingOnly(temp_dir_.path());
 
   string test_key_value;
   ASSERT_TRUE(store_.GetString("TEST_KEY", &test_key_value));
@@ -81,7 +81,7 @@ TEST_F(OsReleaseReaderTest, NoNewLine) {
                   bonjour.data(),
                   bonjour.size());
 
-  ASSERT_TRUE(store_.LoadTestingOnly(temp_dir_.path()));
+  store_.LoadTestingOnly(temp_dir_.path());
 
   string hello_value;
   string bonjour_value;

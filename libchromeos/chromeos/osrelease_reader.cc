@@ -11,8 +11,8 @@
 
 namespace chromeos {
 
-bool OsReleaseReader::Load() {
-  return Load(base::FilePath("/"));
+void OsReleaseReader::Load() {
+  Load(base::FilePath("/"));
 }
 
 bool OsReleaseReader::GetString(const std::string& key,
@@ -21,11 +21,11 @@ bool OsReleaseReader::GetString(const std::string& key,
   return store_.GetString(key, value);
 }
 
-bool OsReleaseReader::LoadTestingOnly(const base::FilePath& root_dir) {
-  return Load(root_dir);
+void OsReleaseReader::LoadTestingOnly(const base::FilePath& root_dir) {
+  Load(root_dir);
 }
 
-bool OsReleaseReader::Load(const base::FilePath& root_dir) {
+void OsReleaseReader::Load(const base::FilePath& root_dir) {
   base::FilePath osrelease = root_dir.Append("etc").Append("os-release");
   if (!store_.Load(osrelease)) {
     // /etc/os-release might not be present (cros deploying a new configuration
@@ -52,7 +52,6 @@ bool OsReleaseReader::Load(const base::FilePath& root_dir) {
     store_.SetString(path.BaseName().value(), content);
   }
   initialized_ = true;
-  return true;
 }
 
 }  // namespace chromeos
