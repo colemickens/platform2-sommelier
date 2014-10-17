@@ -67,6 +67,14 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->GenerateRandom(num_bytes, random_data);
   }
 
+  TPM_RC ExtendPCR(int pcr_index, const std::string& extend_data) override {
+    return target_->ExtendPCR(pcr_index, extend_data);
+  }
+
+  TPM_RC ReadPCR(int pcr_index, std::string* pcr_value) override {
+    return target_->ReadPCR(pcr_index, pcr_value);
+  }
+
  private:
   TpmUtility* target_;
 };

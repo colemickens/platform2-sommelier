@@ -123,6 +123,65 @@ TPM_RC TpmUtilityImpl::GenerateRandom(int num_bytes,
   return TPM_RC_SUCCESS;
 }
 
+TPM_RC TpmUtilityImpl::ExtendPCR(int pcr_index,
+                                 const std::string& extend_data) {
+  NullAuthorizationDelegate null_delegate;
+  if (pcr_index < 0 || pcr_index >= IMPLEMENTATION_PCR) {
+    LOG(ERROR) << "Using a PCR index that isnt implemented.";
+    return TPM_RC_FAILURE;
+  }
+  TPM_HANDLE pcr_handle = HR_PCR + pcr_index;
+  std::string pcr_name = NameFromHandle(pcr_handle);
+  TPML_DIGEST_VALUES digests;
+  digests.count = 1;
+  digests.digests[0].hash_alg = TPM_ALG_SHA256;
+  crypto::SHA256HashString(extend_data,
+                           digests.digests[0].digest.sha256,
+                           crypto::kSHA256Length);
+  return factory_.GetTpm()->PCR_ExtendSync(pcr_handle,
+                                           pcr_name,
+                                           digests,
+                                           &null_delegate);
+}
+
+TPM_RC TpmUtilityImpl::ReadPCR(int pcr_index, std::string* pcr_value) {
+  NullAuthorizationDelegate null_delegate;
+  TPML_PCR_SELECTION pcr_select_in;
+  uint32_t pcr_update_counter;
+  TPML_PCR_SELECTION pcr_select_out;
+  TPML_DIGEST pcr_values;
+  // This process of selecting pcrs is highlighted in TPM 2.0 Library Spec
+  // Part 2 (Section 10.5 - PCR structures).
+  uint8_t pcr_select_index = pcr_index / 8;
+  uint8_t pcr_select_byte = 1 << (pcr_index % 8);
+  pcr_select_in.count = 1;
+  pcr_select_in.pcr_selections[0].hash = TPM_ALG_SHA256;
+  pcr_select_in.pcr_selections[0].sizeof_select = pcr_select_index + 1;
+  pcr_select_in.pcr_selections[0].pcr_select[pcr_select_index] =
+      pcr_select_byte;
+
+  TPM_RC rc = factory_.GetTpm()->PCR_ReadSync(pcr_select_in,
+                                              &pcr_update_counter,
+                                              &pcr_select_out,
+                                              &pcr_values,
+                                              &null_delegate);
+  if (rc) {
+    LOG(INFO) << "Error trying to read a pcr: " << rc;
+    return rc;
+  }
+  if (pcr_select_out.count != 1 ||
+      pcr_select_out.pcr_selections[0].sizeof_select !=
+      (pcr_select_index + 1) ||
+      pcr_select_out.pcr_selections[0].pcr_select[pcr_select_index] !=
+      pcr_select_byte) {
+    LOG(ERROR) << "TPM did not return the requested PCR";
+    return TPM_RC_FAILURE;
+  }
+  CHECK_GE(pcr_values.count, 1);
+  pcr_value->assign(StringFrom_TPM2B_DIGEST(pcr_values.digests[0]));
+  return TPM_RC_SUCCESS;
+}
+
 TPM_RC TpmUtilityImpl::SetPlatformAuthorization(const std::string& password) {
   scoped_ptr<AuthorizationDelegate> authorization(
       factory_.GetPasswordAuthorization(""));

@@ -142,4 +142,59 @@ TEST_F(TpmUtilityTest, GenerateRandomFails) {
   EXPECT_EQ(TPM_RC_FAILURE, utility.GenerateRandom(num_bytes, &random_data));
 }
 
+TEST_F(TpmUtilityTest, ExtendPCRSuccess) {
+  TpmUtilityImpl utility(factory_);
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.ExtendPCR(1, "test digest"));
+}
+
+TEST_F(TpmUtilityTest, ExtendPCRFail) {
+  TpmUtilityImpl utility(factory_);
+  int pcr_index = 0;
+  TPM_HANDLE pcr_handle = HR_PCR + pcr_index;
+  EXPECT_CALL(mock_tpm_, PCR_ExtendSync(pcr_handle, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.ExtendPCR(pcr_index, "test digest"));
+}
+
+TEST_F(TpmUtilityTest, ExtendPCRBadParam) {
+  TpmUtilityImpl utility(factory_);
+  EXPECT_EQ(TPM_RC_FAILURE, utility.ExtendPCR(-1, "test digest"));
+}
+
+TEST_F(TpmUtilityTest, ReadPCRSuccess) {
+  TpmUtilityImpl utility(factory_);
+  // The |pcr_index| is chosen to match the structure for |pcr_select|.
+  // If you change |pcr_index|, remember to change |pcr_select|.
+  int pcr_index = 1;
+  std::string pcr_value;
+  TPML_PCR_SELECTION pcr_select;
+  pcr_select.count = 1;
+  pcr_select.pcr_selections[0].hash = TPM_ALG_SHA256;
+  pcr_select.pcr_selections[0].sizeof_select = 1;
+  pcr_select.pcr_selections[0].pcr_select[0] = 2;
+  TPML_DIGEST pcr_values;
+  pcr_values.count = 1;
+  EXPECT_CALL(mock_tpm_, PCR_ReadSync(_, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(pcr_select),
+                      SetArgPointee<3>(pcr_values),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.ReadPCR(pcr_index, &pcr_value));
+}
+
+TEST_F(TpmUtilityTest, ReadPCRFail) {
+  TpmUtilityImpl utility(factory_);
+  std::string pcr_value;
+  EXPECT_CALL(mock_tpm_, PCR_ReadSync(_, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.ReadPCR(1, &pcr_value));
+}
+
+TEST_F(TpmUtilityTest, ReadPCRBadReturn) {
+  TpmUtilityImpl utility(factory_);
+  std::string pcr_value;
+  EXPECT_CALL(mock_tpm_, PCR_ReadSync(_, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.ReadPCR(1, &pcr_value));
+}
+
 }  // namespace trunks
