@@ -5,6 +5,7 @@
 #include "shill/service.h"
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -1255,7 +1256,7 @@ TEST_F(ServiceTest, IsRemembered) {
 TEST_F(ServiceTest, IsDependentOn) {
   EXPECT_FALSE(service_->IsDependentOn(nullptr));
 
-  scoped_ptr<MockDeviceInfo> mock_device_info(
+  std::unique_ptr<MockDeviceInfo> mock_device_info(
       new NiceMock<MockDeviceInfo>(control_interface(), dispatcher(), metrics(),
                                    &mock_manager_));
   scoped_refptr<MockConnection> mock_connection0(
@@ -1444,7 +1445,7 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
     EXPECT_EQ(Error::kNotFound, error.type());
   }
 
-  scoped_ptr<MockDeviceInfo> mock_device_info(
+  std::unique_ptr<MockDeviceInfo> mock_device_info(
       new NiceMock<MockDeviceInfo>(control_interface(), dispatcher(), metrics(),
                                    &mock_manager_));
   scoped_refptr<MockConnection> mock_connection(

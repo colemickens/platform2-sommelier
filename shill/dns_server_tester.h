@@ -5,13 +5,13 @@
 #ifndef SHILL_DNS_SERVER_TESTER_H_
 #define SHILL_DNS_SERVER_TESTER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -83,7 +83,7 @@ class DNSServerTester {
   base::Callback<void(const Status)> dns_result_callback_;
   base::Callback<void(const Error &, const IPAddress &)>
       dns_client_callback_;
-  scoped_ptr<DNSClient> dns_test_client_;
+  std::unique_ptr<DNSClient> dns_test_client_;
 
   DISALLOW_COPY_AND_ASSIGN(DNSServerTester);
 };

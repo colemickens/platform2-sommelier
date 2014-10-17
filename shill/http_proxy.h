@@ -5,12 +5,12 @@
 #ifndef SHILL_HTTP_PROXY_H_
 #define SHILL_HTTP_PROXY_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 
 #include "shill/byte_string.h"
@@ -129,12 +129,12 @@ class HTTPProxy {
   base::Callback<void(int)> write_server_callback_;
 
   // State held while proxy is started (even if no transaction is active).
-  scoped_ptr<IOHandler> accept_handler_;
+  std::unique_ptr<IOHandler> accept_handler_;
   EventDispatcher *dispatcher_;
-  scoped_ptr<DNSClient> dns_client_;
+  std::unique_ptr<DNSClient> dns_client_;
   int proxy_port_;
   int proxy_socket_;
-  scoped_ptr<AsyncConnection> server_async_connection_;
+  std::unique_ptr<AsyncConnection> server_async_connection_;
   Sockets *sockets_;
 
   // State held while proxy is started and a transaction is active.
@@ -150,10 +150,10 @@ class HTTPProxy {
   std::string server_hostname_;
   ByteString client_data_;
   ByteString server_data_;
-  scoped_ptr<IOHandler> read_client_handler_;
-  scoped_ptr<IOHandler> write_client_handler_;
-  scoped_ptr<IOHandler> read_server_handler_;
-  scoped_ptr<IOHandler> write_server_handler_;
+  std::unique_ptr<IOHandler> read_client_handler_;
+  std::unique_ptr<IOHandler> write_client_handler_;
+  std::unique_ptr<IOHandler> read_server_handler_;
+  std::unique_ptr<IOHandler> write_server_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(HTTPProxy);
 };

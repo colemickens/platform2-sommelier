@@ -9,6 +9,7 @@
 #include <linux/if.h>  // NOLINT - Needs typedefs from sys/socket.h.
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -329,7 +330,7 @@ TEST_F(DeviceTest, DestroyIPConfigNULL) {
 
 TEST_F(DeviceTest, AcquireIPConfig) {
   device_->ipconfig_ = new IPConfig(control_interface(), "randomname");
-  scoped_ptr<MockDHCPProvider> dhcp_provider(new MockDHCPProvider());
+  std::unique_ptr<MockDHCPProvider> dhcp_provider(new MockDHCPProvider());
   device_->dhcp_provider_ = dhcp_provider.get();
   scoped_refptr<MockDHCPConfig> dhcp_config(new MockDHCPConfig(
                                                     control_interface(),

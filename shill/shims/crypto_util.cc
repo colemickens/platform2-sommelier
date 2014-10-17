@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <unistd.h>
+
 #include <limits>
 #include <string>
 #include <vector>
-#include <unistd.h>
 
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/posix/eintr_wrapper.h>
 #include <chromeos/syslog_logging.h>
 #include <openssl/bio.h>
@@ -71,14 +71,14 @@ bool EncryptByteStringImpl(const string &public_key,
     return false;
   }
 
-  scoped_ptr<unsigned char[]> rsa_output(new unsigned char[RSA_size(rsa)]);
+  vector<unsigned char> rsa_output(RSA_size(rsa));
   LOG(INFO) << "Encrypting data with public key.";
   const int encrypted_length = RSA_public_encrypt(
       data.length(),
       // The API helpfully tells us that this operation will treat this buffer
       // as read only, but fails to mark the parameter const.
       reinterpret_cast<unsigned char *>(const_cast<char *>(data.data())),
-      rsa_output.get(),
+      rsa_output.data(),
       rsa,
       RSA_PKCS1_PADDING);
   if (encrypted_length <= 0) {
@@ -86,7 +86,7 @@ bool EncryptByteStringImpl(const string &public_key,
     return false;
   }
 
-  encrypted_output->assign(reinterpret_cast<char *>(rsa_output.get()),
+  encrypted_output->assign(reinterpret_cast<char *>(rsa_output.data()),
                            encrypted_length);
   return true;
 }

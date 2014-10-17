@@ -5,6 +5,7 @@
 #include "shill/manager.h"
 
 #include <map>
+#include <memory>
 #include <set>
 
 #include <glib.h>
@@ -183,7 +184,7 @@ class ManagerTest : public PropertyStoreTest {
     Profile::Identifier id("rather", "irrelevant");
     FilePath final_path(storage_path());
     final_path = final_path.Append("test.profile");
-    scoped_ptr<KeyFileStore> storage(new KeyFileStore(glib));
+    std::unique_ptr<KeyFileStore> storage(new KeyFileStore(glib));
     storage->set_path(final_path);
     if (!storage->Open())
       return nullptr;
@@ -414,9 +415,9 @@ class ManagerTest : public PropertyStoreTest {
   }
 
   NiceMock<MockProxyFactory> proxy_factory_;
-  scoped_ptr<MockPowerManager> power_manager_;
+  std::unique_ptr<MockPowerManager> power_manager_;
   vector<scoped_refptr<MockDevice>> mock_devices_;
-  scoped_ptr<MockDeviceInfo> device_info_;
+  std::unique_ptr<MockDeviceInfo> device_info_;
 
   // This service is held for the manager, and given ownership in a mock
   // function.  This ensures that when the Manager takes ownership, there
@@ -3581,7 +3582,7 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
 }
 
 TEST_F(ManagerTest, IgnoredSearchList) {
-  scoped_ptr<MockResolver> resolver(new StrictMock<MockResolver>());
+  std::unique_ptr<MockResolver> resolver(new StrictMock<MockResolver>());
   vector<string> ignored_paths;
   SetResolver(resolver.get());
 
@@ -4335,7 +4336,7 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   // We need a real glib here, so that profiles are persisted.
   GLib glib;
   ScopedTempDir temp_dir;
-  scoped_ptr<Manager> manager;
+  std::unique_ptr<Manager> manager;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   // Instantiate a Manager with empty persistent storage. Check that
@@ -4401,7 +4402,7 @@ TEST_F(ManagerTest, ProfileStackChangeLogging) {
   // easy way to mock out KeyFileStore.
   GLib glib;
   ScopedTempDir temp_dir;
-  scoped_ptr<Manager> manager;
+  std::unique_ptr<Manager> manager;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   manager.reset(new Manager(control_interface(),
                             dispatcher(),

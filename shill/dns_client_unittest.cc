@@ -6,11 +6,11 @@
 
 #include <netdb.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/bind.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -216,7 +216,7 @@ class DNSClientTest : public Test {
     DNSClient::ClientCallback callback_;
   };
 
-  scoped_ptr<DNSClient> dns_client_;
+  std::unique_ptr<DNSClient> dns_client_;
   StrictMock<MockEventDispatcher> dispatcher_;
   string queued_request_;
   StrictMock<DNSCallbackTarget> callback_target_;

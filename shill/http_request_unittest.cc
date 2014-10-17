@@ -6,6 +6,7 @@
 
 #include <netinet/in.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -327,9 +328,9 @@ class HTTPRequestTest : public Test {
   StrictMock<MockDNSClient> *dns_client_;
   StrictMock<MockEventDispatcher> dispatcher_;
   MockControl control_;
-  scoped_ptr<MockDeviceInfo> device_info_;
+  std::unique_ptr<MockDeviceInfo> device_info_;
   scoped_refptr<MockConnection> connection_;
-  scoped_ptr<HTTPRequest> request_;
+  std::unique_ptr<HTTPRequest> request_;
   StrictMock<MockSockets> sockets_;
   StrictMock<CallbackTarget> target_;
   ByteString expected_response_;

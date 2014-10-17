@@ -5,11 +5,11 @@
 #ifndef SHILL_SHIMS_PPP_H_
 #define SHILL_SHIMS_PPP_H_
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
 #include <base/lazy_instance.h>
-#include <base/memory/scoped_ptr.h>
 
 namespace DBus {
 class BusDispatcher;
@@ -48,9 +48,9 @@ class PPP {
 
   static std::string ConvertIPToText(const void *addr);
 
-  scoped_ptr<DBus::BusDispatcher> dispatcher_;
-  scoped_ptr<DBus::Connection> connection_;
-  scoped_ptr<TaskProxy> proxy_;
+  std::unique_ptr<DBus::BusDispatcher> dispatcher_;
+  std::unique_ptr<DBus::Connection> connection_;
+  std::unique_ptr<TaskProxy> proxy_;
   bool running_;
 
   DISALLOW_COPY_AND_ASSIGN(PPP);

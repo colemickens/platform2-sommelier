@@ -4,6 +4,7 @@
 
 #include "shill/hook_table.h"
 
+#include <memory>
 #include <string>
 
 #include <base/bind.h>
@@ -235,7 +236,7 @@ class SomeClass : public base::RefCounted<SomeClass> {
 // This test verifies that a class that removes itself from a hook table upon
 // destruction does not crash if the hook table is destroyed first.
 TEST_F(HookTableTest, RefcountedObject) {
-  scoped_ptr<HookTable> ht(new HookTable(&event_dispatcher_));
+  std::unique_ptr<HookTable> ht(new HookTable(&event_dispatcher_));
   {
     scoped_refptr<SomeClass> ref_counted_object = new SomeClass();
     Closure start_callback = Bind(&SomeClass::StartAction, ref_counted_object);

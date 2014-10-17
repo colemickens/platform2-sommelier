@@ -4,10 +4,10 @@
 
 #include "shill/dns_server_tester.h"
 
+#include <memory>
 #include <string>
 
 #include <base/bind.h>
-#include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -94,12 +94,12 @@ class DNSServerTesterTest : public Test {
  private:
   StrictMock<MockEventDispatcher> dispatcher_;
   MockControl control_;
-  scoped_ptr<MockDeviceInfo> device_info_;
+  std::unique_ptr<MockDeviceInfo> device_info_;
   scoped_refptr<MockConnection> connection_;
   CallbackTarget callback_target_;
   const string interface_name_;
   vector<string> dns_servers_;
-  scoped_ptr<DNSServerTester> dns_server_tester_;
+  std::unique_ptr<DNSServerTester> dns_server_tester_;
 };
 
 TEST_F(DNSServerTesterTest, Constructor) {

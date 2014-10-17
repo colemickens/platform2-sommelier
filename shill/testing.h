@@ -14,14 +14,14 @@
 namespace shill {
 
 // A Google Mock action (similar to testing::ReturnPointee) that takes a pointer
-// to a scoped_ptr object, releases and returns the raw pointer managed by the
-// scoped_ptr object when the action is invoked.
+// to a unique_ptr object, releases and returns the raw pointer managed by the
+// unique_ptr object when the action is invoked.
 //
 // Example usage:
 //
 //   TEST(FactoryTest, CreateStuff) {
 //     MockFactory factory;
-//     scoped_ptr<Stuff> stuff(new Stuff());
+//     unique_ptr<Stuff> stuff(new Stuff());
 //     EXPECT_CALL(factory, CreateStuff())
 //         .WillOnce(ReturnAndReleasePointee(&stuff));
 //   }
@@ -30,8 +30,8 @@ namespace shill {
 // managed by |stuff| is transferred to the caller of |factory.CreateStuff()|.
 // Otherwise, the Stuff object will be destroyed once |stuff| goes out of
 // scope when the test completes.
-ACTION_P(ReturnAndReleasePointee, scoped_pointer) {
-  return scoped_pointer->release();
+ACTION_P(ReturnAndReleasePointee, unique_pointer) {
+  return unique_pointer->release();
 }
 
 MATCHER(IsSuccess, "") {

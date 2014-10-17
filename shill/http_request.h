@@ -5,13 +5,13 @@
 #ifndef SHILL_HTTP_REQUEST_H_
 #define SHILL_HTTP_REQUEST_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 
 #include "shill/byte_string.h"
@@ -116,10 +116,10 @@ class HTTPRequest {
   base::Callback<void(int)> write_server_callback_;
   base::Callback<void(Result, const ByteString &)> result_callback_;
   base::Callback<void(const ByteString &)> read_event_callback_;
-  scoped_ptr<IOHandler> read_server_handler_;
-  scoped_ptr<IOHandler> write_server_handler_;
-  scoped_ptr<DNSClient> dns_client_;
-  scoped_ptr<AsyncConnection> server_async_connection_;
+  std::unique_ptr<IOHandler> read_server_handler_;
+  std::unique_ptr<IOHandler> write_server_handler_;
+  std::unique_ptr<DNSClient> dns_client_;
+  std::unique_ptr<AsyncConnection> server_async_connection_;
   std::string server_hostname_;
   int server_port_;
   int server_socket_;

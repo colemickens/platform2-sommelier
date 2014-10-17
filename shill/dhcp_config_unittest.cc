@@ -4,6 +4,7 @@
 
 #include "shill/dhcp_config.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -32,6 +33,7 @@ using base::ScopedTempDir;
 using base::Unretained;
 using chromeos::MockMinijail;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 using testing::_;
 using testing::AnyNumber;
@@ -99,10 +101,10 @@ class DHCPConfigTest : public PropertyStoreTest {
   FilePath lease_file_;
   FilePath pid_file_;
   ScopedTempDir temp_dir_;
-  scoped_ptr<MockDHCPProxy> proxy_;
+  unique_ptr<MockDHCPProxy> proxy_;
   MockProxyFactory proxy_factory_;
   MockControl control_;
-  scoped_ptr<MockMinijail> minijail_;
+  unique_ptr<MockMinijail> minijail_;
   MockMetrics metrics_;
   DHCPConfigRefPtr config_;
 };

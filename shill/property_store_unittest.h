@@ -6,10 +6,10 @@
 #define SHILL_PROPERTY_STORE_UNITTEST_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
-#include <base/memory/scoped_ptr.h>
 #include <base/files/scoped_temp_dir.h>
 #include <dbus-c++/dbus.h>
 #include <gmock/gmock.h>

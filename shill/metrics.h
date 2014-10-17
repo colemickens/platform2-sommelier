@@ -7,6 +7,7 @@
 
 #include <list>
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/memory/scoped_vector.h>
@@ -906,13 +907,13 @@ class Metrics {
   struct DeviceMetrics {
     DeviceMetrics() : auto_connect_tries(0) {}
     Technology::Identifier technology;
-    scoped_ptr<chromeos_metrics::TimerReporter> initialization_timer;
-    scoped_ptr<chromeos_metrics::TimerReporter> enable_timer;
-    scoped_ptr<chromeos_metrics::TimerReporter> disable_timer;
-    scoped_ptr<chromeos_metrics::TimerReporter> scan_timer;
-    scoped_ptr<chromeos_metrics::TimerReporter> connect_timer;
-    scoped_ptr<chromeos_metrics::TimerReporter> scan_connect_timer;
-    scoped_ptr<chromeos_metrics::TimerReporter> auto_connect_timer;
+    std::unique_ptr<chromeos_metrics::TimerReporter> initialization_timer;
+    std::unique_ptr<chromeos_metrics::TimerReporter> enable_timer;
+    std::unique_ptr<chromeos_metrics::TimerReporter> disable_timer;
+    std::unique_ptr<chromeos_metrics::TimerReporter> scan_timer;
+    std::unique_ptr<chromeos_metrics::TimerReporter> connect_timer;
+    std::unique_ptr<chromeos_metrics::TimerReporter> scan_connect_timer;
+    std::unique_ptr<chromeos_metrics::TimerReporter> auto_connect_timer;
     int auto_connect_tries;
   };
   typedef std::map<const int, std::shared_ptr<DeviceMetrics>>
@@ -989,11 +990,11 @@ class Metrics {
   ServiceMetricsLookupMap services_metrics_;
   Technology::Identifier last_default_technology_;
   bool was_online_;
-  scoped_ptr<chromeos_metrics::Timer> time_online_timer_;
-  scoped_ptr<chromeos_metrics::Timer> time_to_drop_timer_;
-  scoped_ptr<chromeos_metrics::Timer> time_resume_to_ready_timer_;
-  scoped_ptr<chromeos_metrics::Timer> time_termination_actions_timer;
-  scoped_ptr<chromeos_metrics::Timer> time_suspend_actions_timer;
+  std::unique_ptr<chromeos_metrics::Timer> time_online_timer_;
+  std::unique_ptr<chromeos_metrics::Timer> time_to_drop_timer_;
+  std::unique_ptr<chromeos_metrics::Timer> time_resume_to_ready_timer_;
+  std::unique_ptr<chromeos_metrics::Timer> time_termination_actions_timer;
+  std::unique_ptr<chromeos_metrics::Timer> time_suspend_actions_timer;
   bool collect_bootstats_;
   DeviceMetricsLookupMap devices_metrics_;
 

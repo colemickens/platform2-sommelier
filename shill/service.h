@@ -9,13 +9,13 @@
 
 #include <deque>
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
 #include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -808,7 +808,7 @@ class Service : public base::RefCounted<Service> {
   std::string ui_data_;
   std::string guid_;
   bool save_credentials_;
-  scoped_ptr<EapCredentials> eap_;
+  std::unique_ptr<EapCredentials> eap_;
   Technology::Identifier technology_;
   // The time of the most recent failure. Value is 0 if the service is
   // not currently failed.
@@ -839,14 +839,14 @@ class Service : public base::RefCounted<Service> {
   // List of subject names reported by remote entity during TLS setup.
   std::vector<std::string> remote_certification_;
 
-  scoped_ptr<ServiceAdaptorInterface> adaptor_;
-  scoped_ptr<ServicePropertyChangeNotifier> property_change_notifier_;
-  scoped_ptr<HTTPProxy> http_proxy_;
+  std::unique_ptr<ServiceAdaptorInterface> adaptor_;
+  std::unique_ptr<ServicePropertyChangeNotifier> property_change_notifier_;
+  std::unique_ptr<HTTPProxy> http_proxy_;
   ConnectionRefPtr connection_;
   StaticIPParameters static_ip_parameters_;
   Metrics *metrics_;
   Manager *manager_;
-  scoped_ptr<Sockets> sockets_;
+  std::unique_ptr<Sockets> sockets_;
   Time *time_;
   DiagnosticsReporter *diagnostics_reporter_;
 

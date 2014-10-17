@@ -5,6 +5,7 @@
 #ifndef SHILL_CRYPTO_UTIL_PROXY_H_
 #define SHILL_CRYPTO_UTIL_PROXY_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -130,8 +131,8 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
   int shim_stdin_;
   int shim_stdout_;
   pid_t shim_pid_;
-  scoped_ptr<IOHandler> shim_stdin_handler_;
-  scoped_ptr<IOHandler> shim_stdout_handler_;
+  std::unique_ptr<IOHandler> shim_stdin_handler_;
+  std::unique_ptr<IOHandler> shim_stdout_handler_;
   Error shim_result_;
   StringCallback result_handler_;
   base::CancelableClosure shim_job_timeout_callback_;

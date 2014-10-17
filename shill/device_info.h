@@ -6,6 +6,7 @@
 #define SHILL_DEVICE_INFO_H_
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -14,7 +15,6 @@
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -277,9 +277,9 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   base::Callback<void(const RTNLMessage &)> link_callback_;
   base::Callback<void(const RTNLMessage &)> address_callback_;
   base::Callback<void(const RTNLMessage &)> rdnss_callback_;
-  scoped_ptr<RTNLListener> link_listener_;
-  scoped_ptr<RTNLListener> address_listener_;
-  scoped_ptr<RTNLListener> rdnss_listener_;
+  std::unique_ptr<RTNLListener> link_listener_;
+  std::unique_ptr<RTNLListener> address_listener_;
+  std::unique_ptr<RTNLListener> rdnss_listener_;
   std::set<std::string> black_list_;
   base::FilePath device_info_root_;
 
@@ -296,7 +296,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   NetlinkManager *netlink_manager_;
 
   // A member of the class so that a mock can be injected for testing.
-  scoped_ptr<Sockets> sockets_;
+  std::unique_ptr<Sockets> sockets_;
 
   Time *time_;
 

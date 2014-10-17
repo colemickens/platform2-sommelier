@@ -6,6 +6,7 @@
 #define SHILL_ROUTING_TABLE_H_
 
 #include <deque>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -13,7 +14,6 @@
 #include <base/callback.h>
 #include <base/lazy_instance.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "shill/ip_address.h"
 #include "shill/refptr_types.h"
@@ -153,7 +153,7 @@ class RoutingTable {
   Tables tables_;
 
   base::Callback<void(const RTNLMessage &)> route_callback_;
-  scoped_ptr<RTNLListener> route_listener_;
+  std::unique_ptr<RTNLListener> route_listener_;
   std::deque<Query> route_queries_;
 
   // Cache singleton pointer for performance and test purposes.

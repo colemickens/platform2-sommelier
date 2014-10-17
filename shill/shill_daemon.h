@@ -5,9 +5,8 @@
 #ifndef SHILL_SHILL_DAEMON_H_
 #define SHILL_SHILL_DAEMON_H_
 
+#include <memory>
 #include <string>
-
-#include <base/memory/scoped_ptr.h>
 
 #include "shill/callback80211_metrics.h"
 #include "shill/control_interface.h"
@@ -55,17 +54,17 @@ class Daemon {
   void Stop();
 
   Config *config_;
-  scoped_ptr<ControlInterface> control_;
+  std::unique_ptr<ControlInterface> control_;
   EventDispatcher dispatcher_;
   GLib glib_;
   Sockets sockets_;
-  scoped_ptr<Metrics> metrics_;
+  std::unique_ptr<Metrics> metrics_;
   ProxyFactory *proxy_factory_;
   RTNLHandler *rtnl_handler_;
   RoutingTable *routing_table_;
   DHCPProvider *dhcp_provider_;
   NetlinkManager *netlink_manager_;
-  scoped_ptr<Manager> manager_;
+  std::unique_ptr<Manager> manager_;
   Callback80211Metrics callback80211_metrics_;
 };
 

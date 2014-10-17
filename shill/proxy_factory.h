@@ -5,11 +5,11 @@
 #ifndef SHILL_PROXY_FACTORY_H_
 #define SHILL_PROXY_FACTORY_H_
 
+#include <memory>
 #include <string>
 
 #include <base/lazy_instance.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <dbus-c++/dbus.h>
 
 #include "shill/refptr_types.h"
@@ -181,7 +181,7 @@ class ProxyFactory {
  private:
   friend struct base::DefaultLazyInstanceTraits<ProxyFactory>;
 
-  scoped_ptr<DBus::Connection> connection_;
+  std::unique_ptr<DBus::Connection> connection_;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyFactory);
 };

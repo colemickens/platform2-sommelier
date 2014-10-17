@@ -6,10 +6,10 @@
 #define SHILL_ETHERNET_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/cancelable_callback.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 
 #include "shill/certificate_file.h"
@@ -108,14 +108,15 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
 
   // Track whether an EAP authenticator has been detected on this link.
   bool is_eap_detected_;
-  scoped_ptr<EapListener> eap_listener_;
+  std::unique_ptr<EapListener> eap_listener_;
 
   // Track the progress of EAP authentication.
   SupplicantEAPStateHandler eap_state_handler_;
 
   // Proxy instances used to talk to wpa_supplicant.
-  scoped_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;
-  scoped_ptr<SupplicantInterfaceProxyInterface> supplicant_interface_proxy_;
+  std::unique_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;
+  std::unique_ptr<SupplicantInterfaceProxyInterface>
+      supplicant_interface_proxy_;
   std::string supplicant_interface_path_;
   std::string supplicant_network_path_;
 
@@ -130,7 +131,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   // Store cached copy of proxy factory singleton for speed/ease of testing.
   ProxyFactory *proxy_factory_;
 
-  scoped_ptr<Sockets> sockets_;
+  std::unique_ptr<Sockets> sockets_;
 
   base::WeakPtrFactory<Ethernet> weak_ptr_factory_;
 

@@ -4,6 +4,8 @@
 
 #include <stdint.h>
 
+#include <memory>
+
 #include <base/bind.h>
 #include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
@@ -173,7 +175,7 @@ class MockEventDispatchTester {
   bool got_ready_;
   Callback<void(InputData*)> data_callback_;
   Callback<void(int)> ready_callback_;
-  scoped_ptr<IOHandler> input_handler_;
+  std::unique_ptr<IOHandler> input_handler_;
   WeakPtrFactory<MockEventDispatchTester> tester_factory_;
   CancelableClosure failsafe_;
 };

@@ -5,12 +5,12 @@
 #ifndef SHILL_DNS_CLIENT_H_
 #define SHILL_DNS_CLIENT_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -86,7 +86,7 @@ class DNSClient {
   ClientCallback callback_;
   int timeout_ms_;
   bool running_;
-  scoped_ptr<DNSClientState> resolver_state_;
+  std::unique_ptr<DNSClientState> resolver_state_;
   base::CancelableClosure timeout_closure_;
   base::WeakPtrFactory<DNSClient> weak_ptr_factory_;
   Ares *ares_;

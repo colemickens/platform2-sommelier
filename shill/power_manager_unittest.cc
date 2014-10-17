@@ -4,10 +4,10 @@
 
 #include "shill/power_manager.h"
 
+#include <memory>
 #include <string>
 
 #include <base/bind.h>
-#include <base/memory/scoped_ptr.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -74,8 +74,8 @@ class FakeProxyFactory : public ProxyFactory {
   PowerManagerProxyDelegate *delegate_;
   MockPowerManagerProxy *const power_manager_proxy_raw_;
   MockDBusServiceProxy *const dbus_service_proxy_raw_;
-  scoped_ptr<MockPowerManagerProxy> power_manager_proxy_;
-  scoped_ptr<MockDBusServiceProxy> dbus_service_proxy_;
+  std::unique_ptr<MockPowerManagerProxy> power_manager_proxy_;
+  std::unique_ptr<MockDBusServiceProxy> dbus_service_proxy_;
 };
 
 }  // namespace

@@ -5,12 +5,12 @@
 #ifndef SHILL_IPCONFIG_H_
 #define SHILL_IPCONFIG_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/ip_address.h"
@@ -193,7 +193,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   const std::string device_name_;
   const std::string type_;
   const uint serial_;
-  scoped_ptr<IPConfigAdaptorInterface> adaptor_;
+  std::unique_ptr<IPConfigAdaptorInterface> adaptor_;
   Properties properties_;
   Callback update_callback_;
   Callback failure_callback_;

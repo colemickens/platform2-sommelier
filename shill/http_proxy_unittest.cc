@@ -6,6 +6,7 @@
 
 #include <netinet/in.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -456,7 +457,7 @@ class HTTPProxyTest : public Test {
   StrictMock<MockDNSClient> *dns_client_;
   MockEventDispatcher dispatcher_;
   MockControl control_;
-  scoped_ptr<MockDeviceInfo> device_info_;
+  std::unique_ptr<MockDeviceInfo> device_info_;
   scoped_refptr<MockConnection> connection_;
   StrictMock<MockSockets> sockets_;
   HTTPProxy proxy_;  // Destroy first, before anything it references.

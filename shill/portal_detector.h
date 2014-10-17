@@ -5,13 +5,13 @@
 #ifndef SHILL_PORTAL_DETECTOR_H_
 #define SHILL_PORTAL_DETECTOR_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -151,7 +151,7 @@ class PortalDetector {
   base::Callback<void(ConnectivityTrial::Result)> connectivity_trial_callback_;
   Time *time_;
   int failures_in_content_phase_;
-  scoped_ptr<ConnectivityTrial> connectivity_trial_;
+  std::unique_ptr<ConnectivityTrial> connectivity_trial_;
 
 
   DISALLOW_COPY_AND_ASSIGN(PortalDetector);

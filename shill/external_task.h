@@ -8,12 +8,12 @@
 #include <sys/types.h>
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -50,7 +50,7 @@ class ExternalTask : public RPCTaskDelegate {
   //      }
   //
   //    private:
-  //      scoped_ptr<ExternalTask> task_;
+  //      std::unique_ptr<ExternalTask> task_;
   //   }
   void DestroyLater(EventDispatcher *dispatcher);
 
@@ -104,7 +104,7 @@ class ExternalTask : public RPCTaskDelegate {
   GLib *glib_;
   ProcessKiller *process_killer_;  // Field permits mocking.
 
-  scoped_ptr<RPCTask> rpc_task_;
+  std::unique_ptr<RPCTask> rpc_task_;
   base::WeakPtr<RPCTaskDelegate> task_delegate_;
   base::Callback<void(pid_t, int)> death_callback_;
 

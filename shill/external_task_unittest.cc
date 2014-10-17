@@ -5,6 +5,7 @@
 #include "shill/external_task.h"
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -106,7 +107,7 @@ class ExternalTaskTest : public testing::Test,
   MockProcessKiller process_killer_;
   base::WeakPtrFactory<ExternalTaskTest> weak_ptr_factory_;
   base::Callback<void(pid_t, int)> death_callback_;
-  scoped_ptr<ExternalTask> external_task_;
+  std::unique_ptr<ExternalTask> external_task_;
   bool test_rpc_task_destroyed_;
 };
 
@@ -222,7 +223,7 @@ TEST_F(ExternalTaskTest, Start) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kPID, external_task_->pid_);
   EXPECT_EQ(kTag, external_task_->child_watch_tag_);
-  EXPECT_TRUE(external_task_->rpc_task_);
+  EXPECT_NE(nullptr, external_task_->rpc_task_);
 }
 
 TEST_F(ExternalTaskTest, Stop) {
@@ -231,7 +232,7 @@ TEST_F(ExternalTaskTest, Stop) {
   FakeUpRunningProcess(kTag, kPID);
   ExpectStop(kTag, kPID);
   external_task_->Stop();
-  ASSERT_TRUE(external_task_);
+  ASSERT_NE(nullptr, external_task_);
   VerifyStop();
 }
 

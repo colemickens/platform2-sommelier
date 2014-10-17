@@ -5,12 +5,12 @@
 #ifndef SHILL_DEVICE_H_
 #define SHILL_DEVICE_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -684,16 +684,16 @@ class Device : public base::RefCounted<Device> {
   IPConfigRefPtr ip6config_;
   ConnectionRefPtr connection_;
   base::WeakPtrFactory<Device> weak_ptr_factory_;
-  scoped_ptr<DeviceAdaptorInterface> adaptor_;
-  scoped_ptr<PortalDetector> portal_detector_;
-  scoped_ptr<LinkMonitor> link_monitor_;
+  std::unique_ptr<DeviceAdaptorInterface> adaptor_;
+  std::unique_ptr<PortalDetector> portal_detector_;
+  std::unique_ptr<LinkMonitor> link_monitor_;
   // Used for verifying whether DNS server is functional.
-  scoped_ptr<DNSServerTester> dns_server_tester_;
+  std::unique_ptr<DNSServerTester> dns_server_tester_;
   base::Callback<void(const PortalDetector::Result &)>
       portal_detector_callback_;
   // Callback to invoke when IPv6 DNS servers lifetime expired.
   base::CancelableClosure ipv6_dns_server_expired_callback_;
-  scoped_ptr<TrafficMonitor> traffic_monitor_;
+  std::unique_ptr<TrafficMonitor> traffic_monitor_;
   // DNS servers obtained from ipconfig (either from DHCP or static config)
   // that are not working.
   std::vector<std::string> config_dns_servers_;
@@ -719,7 +719,7 @@ class Device : public base::RefCounted<Device> {
   Time *time_;
   time_t last_link_monitor_failed_time_;
 
-  scoped_ptr<ConnectionTester> connection_tester_;
+  std::unique_ptr<ConnectionTester> connection_tester_;
   base::Callback<void()> connection_tester_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);

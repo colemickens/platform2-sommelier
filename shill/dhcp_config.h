@@ -6,11 +6,11 @@
 #define SHILL_DHCP_CONFIG_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/minijail/minijail.h>
 #include <dbus-c++/types.h>
@@ -246,7 +246,7 @@ class DHCPConfig : public IPConfig {
   bool is_gateway_arp_active_;
 
   // The proxy for communicating with the DHCP client.
-  scoped_ptr<DHCPProxyInterface> proxy_;
+  std::unique_ptr<DHCPProxyInterface> proxy_;
 
   // Called if we fail to get a DHCP lease in a timely manner.
   base::CancelableClosure lease_acquisition_timeout_callback_;

@@ -6,11 +6,11 @@
 #define SHILL_RPC_TASK_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 
 namespace shill {
 
@@ -59,7 +59,7 @@ class RPCTask {
   RPCTaskDelegate *delegate_;
   static unsigned int serial_number_;
   std::string unique_name_;  // MUST be unique amongst RPC task instances
-  scoped_ptr<RPCTaskAdaptorInterface> adaptor_;
+  std::unique_ptr<RPCTaskAdaptorInterface> adaptor_;
 
   DISALLOW_COPY_AND_ASSIGN(RPCTask);
 };

@@ -10,11 +10,11 @@
 // PowerManagerProxy.
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "shill/power_manager_proxy_interface.h"
 
@@ -106,8 +106,8 @@ class PowerManager : public PowerManagerProxyDelegate {
 
   // The power manager proxy created by this class.  It dispatches the inherited
   // delegate methods of this object when changes in the power state occur.
-  const scoped_ptr<PowerManagerProxyInterface> power_manager_proxy_;
-  scoped_ptr<DBusNameWatcher> power_manager_name_watcher_;
+  const std::unique_ptr<PowerManagerProxyInterface> power_manager_proxy_;
+  std::unique_ptr<DBusNameWatcher> power_manager_name_watcher_;
   // The delay (in milliseconds) to request powerd to wait after a suspend
   // notification is received. powerd will actually suspend the system at least
   // |suspend_delay_| after the notification, if we do not

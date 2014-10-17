@@ -6,6 +6,7 @@
 #define SHILL_MANAGER_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -13,7 +14,6 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -604,17 +604,17 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   const base::FilePath storage_path_;
   const std::string user_storage_path_;
   base::FilePath user_profile_list_path_;  // Changed in tests.
-  scoped_ptr<ManagerAdaptorInterface> adaptor_;
-  scoped_ptr<DBusManager> dbus_manager_;
+  std::unique_ptr<ManagerAdaptorInterface> adaptor_;
+  std::unique_ptr<DBusManager> dbus_manager_;
   DeviceInfo device_info_;
 #if !defined(DISABLE_CELLULAR)
   ModemInfo modem_info_;
 #endif  // DISABLE_CELLULAR
-  scoped_ptr<EthernetEapProvider> ethernet_eap_provider_;
-  scoped_ptr<VPNProvider> vpn_provider_;
-  scoped_ptr<WiFiProvider> wifi_provider_;
+  std::unique_ptr<EthernetEapProvider> ethernet_eap_provider_;
+  std::unique_ptr<VPNProvider> vpn_provider_;
+  std::unique_ptr<WiFiProvider> wifi_provider_;
 #if !defined(DISABLE_WIMAX)
-  scoped_ptr<WiMaxProvider> wimax_provider_;
+  std::unique_ptr<WiMaxProvider> wimax_provider_;
 #endif  // DISABLE_WIMAX
   // Hold pointer to singleton Resolver instance for testing purposes.
   Resolver *resolver_;
@@ -636,7 +636,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   ControlInterface *control_interface_;
   Metrics *metrics_;
   GLib *glib_;
-  scoped_ptr<PowerManager> power_manager_;
+  std::unique_ptr<PowerManager> power_manager_;
 
   // The priority order of technologies
   std::vector<Technology::Identifier> technology_order_;
@@ -676,12 +676,12 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   int default_service_callback_tag_;
 
   // Delegate to handle destination verification operations for the manager.
-  scoped_ptr<CryptoUtilProxy> crypto_util_proxy_;
+  std::unique_ptr<CryptoUtilProxy> crypto_util_proxy_;
 
   // Stores IP addresses of some remote hosts that accept port 80 TCP
   // connections. ConnectionHealthChecker uses these IPs.
   // The store resides in Manager so that it persists across Device reset.
-  scoped_ptr<IPAddressStore> health_checker_remote_ips_;
+  std::unique_ptr<IPAddressStore> health_checker_remote_ips_;
 
   // Stores the most recent copy of geolocation information for each
   // technology type.

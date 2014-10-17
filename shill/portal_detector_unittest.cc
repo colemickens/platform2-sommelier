@@ -4,10 +4,10 @@
 
 #include "shill/portal_detector.h"
 
+#include <memory>
 #include <string>
 
 #include <base/bind.h>
-#include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -156,10 +156,10 @@ class PortalDetectorTest : public Test {
 
   StrictMock<MockEventDispatcher> dispatcher_;
   MockControl control_;
-  scoped_ptr<MockDeviceInfo> device_info_;
+  std::unique_ptr<MockDeviceInfo> device_info_;
   scoped_refptr<MockConnection> connection_;
   CallbackTarget callback_target_;
-  scoped_ptr<PortalDetector> portal_detector_;
+  std::unique_ptr<PortalDetector> portal_detector_;
   MockConnectivityTrial* connectivity_trial_;
   StrictMock<MockTime> time_;
   struct timeval current_time_;

@@ -5,7 +5,9 @@
 #ifndef SHILL_ICMP_H_
 #define SHILL_ICMP_H_
 
-#include <base/memory/scoped_ptr.h>
+#include <memory>
+
+#include <base/macros.h>
 
 namespace shill {
 
@@ -34,8 +36,8 @@ class Icmp {
  private:
   friend class IcmpTest;
 
-  scoped_ptr<Sockets> sockets_;
-  scoped_ptr<ScopedSocketCloser> socket_closer_;
+  std::unique_ptr<Sockets> sockets_;
+  std::unique_ptr<ScopedSocketCloser> socket_closer_;
   int socket_;
 
   DISALLOW_COPY_AND_ASSIGN(Icmp);

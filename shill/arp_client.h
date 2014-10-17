@@ -5,8 +5,9 @@
 #ifndef SHILL_ARP_CLIENT_H_
 #define SHILL_ARP_CLIENT_H_
 
+#include <memory>
+
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 
 namespace shill {
 
@@ -60,8 +61,8 @@ class ArpClient {
   bool CreateSocket(uint16_t arp_opcode);
 
   const int interface_index_;
-  scoped_ptr<Sockets> sockets_;
-  scoped_ptr<ScopedSocketCloser> socket_closer_;
+  std::unique_ptr<Sockets> sockets_;
+  std::unique_ptr<ScopedSocketCloser> socket_closer_;
   int socket_;
 
   DISALLOW_COPY_AND_ASSIGN(ArpClient);

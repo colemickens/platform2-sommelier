@@ -54,7 +54,7 @@ bool ExternalTask::Start(const FilePath &program,
   CHECK(!child_watch_tag_);
   CHECK(!rpc_task_);
 
-  scoped_ptr<RPCTask> local_rpc_task(new RPCTask(control_, this));
+  std::unique_ptr<RPCTask> local_rpc_task(new RPCTask(control_, this));
 
   // const_cast is safe here, because exec*() (and SpawnAsync) do not
   // modify the strings passed to them. This isn't captured in the

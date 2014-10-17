@@ -4,7 +4,8 @@
 
 #include "shill/crypto_provider.h"
 
-#include <base/memory/scoped_ptr.h>
+#include <memory>
+
 #include <base/strings/string_util.h>
 
 #include "shill/crypto_des_cbc.h"
@@ -25,7 +26,7 @@ void CryptoProvider::Init() {
   cryptos_.clear();
 
   // Register the crypto modules in priority order -- highest priority first.
-  scoped_ptr<CryptoDESCBC> des_cbc(new CryptoDESCBC(glib_));
+  std::unique_ptr<CryptoDESCBC> des_cbc(new CryptoDESCBC(glib_));
   if (des_cbc->LoadKeyMatter(key_matter_file_)) {
     cryptos_.push_back(des_cbc.release());
   }

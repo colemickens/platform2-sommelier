@@ -6,11 +6,11 @@
 #define SHILL_DHCP_PROVIDER_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/lazy_instance.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/refptr_types.h"
@@ -100,7 +100,7 @@ class DHCPProvider {
 
   // A single listener is used to catch signals from all DHCP clients and
   // dispatch them to the appropriate DHCP configuration instance.
-  scoped_ptr<DHCPCDListener> listener_;
+  std::unique_ptr<DHCPCDListener> listener_;
 
   // A map that binds PIDs to DHCP configuration instances.
   PIDConfigMap configs_;

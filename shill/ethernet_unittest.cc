@@ -8,8 +8,9 @@
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/ether.h
 #include <linux/sockios.h>
 
+#include <memory>
+
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "shill/mock_device_info.h"
 #include "shill/mock_dhcp_config.h"
@@ -203,8 +204,8 @@ class EthernetTest : public testing::Test {
   scoped_refptr<MockEthernetService> mock_service_;
   scoped_refptr<MockService> mock_eap_service_;
   NiceMock<MockProxyFactory> proxy_factory_;
-  scoped_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
-  scoped_ptr<MockSupplicantProcessProxy> supplicant_process_proxy_;
+  std::unique_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
+  std::unique_ptr<MockSupplicantProcessProxy> supplicant_process_proxy_;
 };
 
 // static

@@ -5,9 +5,9 @@
 #include <linux/rtnetlink.h>
 #include <sys/socket.h>
 
+#include <memory>
 #include <vector>
 
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <base/stl_util.h>
 #include <gtest/gtest.h>
@@ -133,7 +133,7 @@ class RoutingTableTest : public Test {
     const RoutingTable::Query::Callback unreached_callback_;
   };
 
-  scoped_ptr<RoutingTable> routing_table_;
+  std::unique_ptr<RoutingTable> routing_table_;
   TestEventDispatcher dispatcher_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
 };
@@ -773,7 +773,7 @@ TEST_F(RoutingTableTest, RequestHostRouteWithoutGatewayWithCallback) {
 TEST_F(RoutingTableTest, CancelQueryCallback) {
   IPAddress destination_address(IPAddress::kFamilyIPv4);
   destination_address.SetAddressFromString(kTestRemoteAddress4);
-  scoped_ptr<QueryCallbackTarget> target(new QueryCallbackTarget());
+  std::unique_ptr<QueryCallbackTarget> target(new QueryCallbackTarget());
   EXPECT_CALL(rtnl_handler_, SendMessage(_))
       .WillOnce(Invoke(this, &RoutingTableTest::SetSequenceForMessage));
   EXPECT_TRUE(

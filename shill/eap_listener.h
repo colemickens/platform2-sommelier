@@ -5,9 +5,10 @@
 #ifndef SHILL_EAP_LISTENER_H_
 #define SHILL_EAP_LISTENER_H_
 
+#include <memory>
+
 #include <base/callback.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 
 namespace shill {
 
@@ -62,16 +63,16 @@ class EapListener {
   EapRequestReceivedCallback request_received_callback_;
 
   // Sockets instance to perform socket calls on.
-  scoped_ptr<Sockets> sockets_;
+  std::unique_ptr<Sockets> sockets_;
 
   // Receive socket configured to receive PAE (Port Access Entity) packets.
   int socket_;
 
   // Scoped socket closer for the receive |socket_|.
-  scoped_ptr<ScopedSocketCloser> socket_closer_;
+  std::unique_ptr<ScopedSocketCloser> socket_closer_;
 
   // Input handler for |socket_|.  Calls ReceiveRequest().
-  scoped_ptr<IOHandler> receive_request_handler_;
+  std::unique_ptr<IOHandler> receive_request_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(EapListener);
 };

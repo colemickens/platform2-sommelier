@@ -5,12 +5,12 @@
 #ifndef SHILL_SERVICE_PROPERTY_CHANGE_NOTIFIER_H_
 #define SHILL_SERVICE_PROPERTY_CHANGE_NOTIFIER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "shill/accessor_interface.h"
 
@@ -58,7 +58,7 @@ class ServicePropertyChangeNotifier {
   void Int32PropertyUpdater(const std::string &name, const int32_t &value);
 
   ServiceAdaptorInterface *rpc_adaptor_;
-  std::vector<scoped_ptr<PropertyObserverInterface>> property_observers_;
+  std::vector<std::unique_ptr<PropertyObserverInterface>> property_observers_;
 
   DISALLOW_COPY_AND_ASSIGN(ServicePropertyChangeNotifier);
 };
