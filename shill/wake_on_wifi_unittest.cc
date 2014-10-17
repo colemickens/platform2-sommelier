@@ -30,6 +30,7 @@ using std::string;
 using testing::_;
 using ::testing::AnyNumber;
 using ::testing::EndsWith;
+using ::testing::Return;
 
 namespace shill {
 
@@ -479,8 +480,17 @@ class WakeOnWiFiTest : public ::testing::Test {
   virtual ~WakeOnWiFiTest() {}
 
   virtual void SetUp() {
-    // Set this flag so ApplyWakeOnWiFiSettings will execute.
+    // Assume our NIC has reported its wiphy index, and that it supports wake
+    // on IP address patterns and disconnects. Necessary to pass error checks in
+    // WakeOnWiFi::ApplyWakeOnWiFiSettings so that the function will execute.
     wake_on_wifi_->wiphy_index_received_ = true;
+    wake_on_wifi_->wake_on_wifi_triggers_supported_.insert(
+        WakeOnWiFi::kIPAddress);
+    wake_on_wifi_->wake_on_wifi_triggers_supported_.insert(
+        WakeOnWiFi::kDisconnect);
+
+    ON_CALL(netlink_manager_, SendNl80211Message(_, _, _, _))
+        .WillByDefault(Return(true));
   }
 
   void AddWakeOnPacketConnection(const IPAddress &ip_endpoint, Error *error) {
@@ -549,6 +559,10 @@ class WakeOnWiFiTest : public ::testing::Test {
 
   set<WakeOnWiFi::WakeOnWiFiTrigger> *GetWakeOnWiFiTriggersSupported() {
     return &wake_on_wifi_->wake_on_wifi_triggers_supported_;
+  }
+
+  void ClearWakeOnWiFiTriggersSupported() {
+    wake_on_wifi_->wake_on_wifi_triggers_supported_.clear();
   }
 
   IPAddressStore *GetWakeOnPacketConnections() {
@@ -911,6 +925,7 @@ TEST_F(WakeOnWiFiTest, AddRemoveWakeOnPacketConnection) {
 
   // Add and remove operations will fail if WiFi device does not support
   // pattern matching.
+  ClearWakeOnWiFiTriggersSupported();
   AddWakeOnPacketConnection(ip_addr1, &e);
   EXPECT_EQ(e.type(), Error::kNotSupported);
   EXPECT_STREQ(e.message().c_str(),
@@ -1169,7 +1184,7 @@ TEST_F(WakeOnWiFiTest, ParseWiphyIndex_Failure) {
 
 TEST_F(WakeOnWiFiTest,
        ParseWakeOnWiFiCapabilities_DisconnectAndPatternSupported) {
-  EXPECT_TRUE(GetWakeOnWiFiTriggersSupported()->empty());
+  ClearWakeOnWiFiTriggersSupported();
   NewWiphyMessage msg;
   msg.InitFromNlmsg(reinterpret_cast<const nlmsghdr *>(kNewWiphyNlMsg));
   ParseWakeOnWiFiCapabilities(msg);
@@ -1181,7 +1196,7 @@ TEST_F(WakeOnWiFiTest,
 }
 
 TEST_F(WakeOnWiFiTest, ParseWakeOnWiFiCapabilities_UnsupportedPatternLen) {
-  EXPECT_TRUE(GetWakeOnWiFiTriggersSupported()->empty());
+  ClearWakeOnWiFiTriggersSupported();
   NewWiphyMessage msg;
   // Modify the range of support pattern lengths to [0-1] bytes, which is less
   // than what we need to use  our IPV4 (30 bytes) or IPV6 (38 bytes) patterns.
@@ -1203,7 +1218,7 @@ TEST_F(WakeOnWiFiTest, ParseWakeOnWiFiCapabilities_UnsupportedPatternLen) {
 }
 
 TEST_F(WakeOnWiFiTest, ParseWakeOnWiFiCapabilities_DisconnectNotSupported) {
-  EXPECT_TRUE(GetWakeOnWiFiTriggersSupported()->empty());
+  ClearWakeOnWiFiTriggersSupported();
   NewWiphyMessage msg;
   // Change the NL80211_WOWLAN_TRIG_DISCONNECT flag attribute into the
   // NL80211_WOWLAN_TRIG_MAGIC_PKT flag attribute, so that this message
@@ -1293,8 +1308,6 @@ TEST_F(WakeOnWiFiTest, WakeOnWiFiSettingsAppliedBeforeSuspend) {
 }
 
 TEST_F(WakeOnWiFiTest, WakeOnWiFiDisabledAfterResume) {
-  GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kDisconnect);
-  GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kIPAddress);
   EXPECT_CALL(netlink_manager_,
               SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(1);
   OnAfterResume();

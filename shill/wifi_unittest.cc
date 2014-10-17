@@ -290,8 +290,14 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->progressive_scan_enabled_ = true;
     wifi_->adaptor_.reset(adaptor_);  // Transfers ownership.
 
-    // Set this flag so that WakeOnWiFi::ApplyWakeOnWiFiSettings will execute.
+    // Assume our NIC has reported its wiphy index, and that it supports wake
+    // on IP address patterns and disconnects. Necessary to pass error checks in
+    // WakeOnWiFi::ApplyWakeOnWiFiSettings so that the function will execute.
     wifi_->wake_on_wifi_->wiphy_index_received_ = true;
+    wifi_->wake_on_wifi_->wake_on_wifi_triggers_supported_.insert(
+        WakeOnWiFi::kIPAddress);
+    wifi_->wake_on_wifi_->wake_on_wifi_triggers_supported_.insert(
+        WakeOnWiFi::kDisconnect);
 
     // The following is only useful when a real |ScanSession| is used; it is
     // ignored by |MockScanSession|.

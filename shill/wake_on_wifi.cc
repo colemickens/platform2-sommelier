@@ -4,6 +4,7 @@
 
 #include "shill/wake_on_wifi.h"
 
+#include <errno.h>
 #include <linux/nl80211.h>
 #include <stdio.h>
 
@@ -494,6 +495,46 @@ void WakeOnWiFi::RemoveAllWakeOnPacketConnections(Error *error) {
   }
 }
 
+void WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse(
+    NetlinkManager::AuxilliaryMessageType type,
+    const NetlinkMessage *raw_message) {
+  Error error(Error::kOperationFailed);
+  switch (type) {
+    case NetlinkManager::kErrorFromKernel:
+      if (!raw_message) {
+        error.Populate(Error::kOperationFailed, "Unknown error from kernel");
+        break;
+      }
+      if (raw_message->message_type() == ErrorAckMessage::GetMessageType()) {
+        const ErrorAckMessage *error_ack_message =
+            dynamic_cast<const ErrorAckMessage *>(raw_message);
+        if (error_ack_message->error() == EOPNOTSUPP) {
+          error.Populate(Error::kNotSupported);
+        }
+      }
+      break;
+
+    case NetlinkManager::kUnexpectedResponseType:
+      error.Populate(Error::kNotRegistered,
+                     "Message not handled by regular message handler:");
+      break;
+
+    case NetlinkManager::kTimeoutWaitingForResponse:
+      error.Populate(Error::kOperationTimeout, "Timeout waiting for response");
+      break;
+
+    default:
+      error.Populate(
+          Error::kOperationFailed,
+          "Unexpected auxilliary message type: " + std::to_string(type));
+      break;
+  }
+  if (!suspend_actions_done_callback_.is_null()) {
+    suspend_actions_done_callback_.Run(error);
+    suspend_actions_done_callback_.Reset();
+  }
+}
+
 // static
 void WakeOnWiFi::OnSetWakeOnPacketConnectionResponse(
     const Nl80211Message &nl80211_message) {
@@ -551,10 +592,17 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
     LOG(ERROR) << error.message();
     return;
   }
-  netlink_manager_->SendNl80211Message(
-      &set_wowlan_msg, Bind(&WakeOnWiFi::OnSetWakeOnPacketConnectionResponse),
-      Bind(&NetlinkManager::OnAckDoNothing),
-      Bind(&NetlinkManager::OnNetlinkMessageError));
+  if (!netlink_manager_->SendNl80211Message(
+          &set_wowlan_msg,
+          Bind(&WakeOnWiFi::OnSetWakeOnPacketConnectionResponse),
+          Bind(&NetlinkManager::OnAckDoNothing),
+          Bind(&WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse,
+               weak_ptr_factory_.GetWeakPtr()))) {
+    if (!suspend_actions_done_callback_.is_null()) {
+      suspend_actions_done_callback_.Run(Error(Error::kOperationFailed));
+      suspend_actions_done_callback_.Reset();
+    }
+  }
 
   verify_wake_on_packet_settings_callback_.Reset(
       Bind(&WakeOnWiFi::RequestWakeOnPacketSettings,
@@ -572,11 +620,17 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
     LOG(ERROR) << error.message();
     return;
   }
-  netlink_manager_->SendNl80211Message(
-      &disable_wowlan_msg,
-      Bind(&WakeOnWiFi::OnSetWakeOnPacketConnectionResponse),
-      Bind(&NetlinkManager::OnAckDoNothing),
-      Bind(&NetlinkManager::OnNetlinkMessageError));
+  if (!netlink_manager_->SendNl80211Message(
+          &disable_wowlan_msg,
+          Bind(&WakeOnWiFi::OnSetWakeOnPacketConnectionResponse),
+          Bind(&NetlinkManager::OnAckDoNothing),
+          Bind(&WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse,
+               weak_ptr_factory_.GetWeakPtr()))) {
+    if (!suspend_actions_done_callback_.is_null()) {
+      suspend_actions_done_callback_.Run(Error(Error::kOperationFailed));
+      suspend_actions_done_callback_.Reset();
+    }
+  }
 
   verify_wake_on_packet_settings_callback_.Reset(
       Bind(&WakeOnWiFi::RequestWakeOnPacketSettings,
@@ -671,7 +725,8 @@ void WakeOnWiFi::ParseWiphyIndex(const Nl80211Message &nl80211_message) {
 void WakeOnWiFi::OnBeforeSuspend(const ResultCallback &callback) {
   // Program NIC to wake on disconnects and packets from certain IP addresses
   // iff we have buffered wake on packet programming requests.
-  if (!wake_on_packet_connections_.Empty()) {
+  if (!wake_on_wifi_triggers_supported_.empty() &&
+      !wake_on_packet_connections_.Empty()) {
     wake_on_wifi_triggers_.insert(WakeOnWiFi::kIPAddress);
     // TODO(samueltan): Currently we do not wake on disconnect as this will
     // trigger a full system resume. Program the NIC wake on disconnect only
@@ -690,8 +745,10 @@ void WakeOnWiFi::OnBeforeSuspend(const ResultCallback &callback) {
 
 void WakeOnWiFi::OnAfterResume() {
   // Unconditionally disable wake on WiFi on resume.
-  wake_on_wifi_triggers_.clear();
-  ApplyWakeOnWiFiSettings();
+  if (!wake_on_wifi_triggers_supported_.empty()) {
+    wake_on_wifi_triggers_.clear();
+    ApplyWakeOnWiFiSettings();
+  }
 }
 
 }  // namespace shill

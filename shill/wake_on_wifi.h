@@ -21,6 +21,7 @@
 #include "shill/callbacks.h"
 #include "shill/ip_address.h"
 #include "shill/ip_address_store.h"
+#include "shill/netlink_manager.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
@@ -29,7 +30,6 @@ class ByteString;
 class Error;
 class EventDispatcher;
 class GetWakeOnPacketConnMessage;
-class NetlinkManager;
 class Nl80211Message;
 class SetWakeOnPacketConnMessage;
 class WiFi;
@@ -149,6 +149,11 @@ class WakeOnWiFi {
   static bool WakeOnWiFiSettingsMatch(const Nl80211Message &msg,
                                       const std::set<WakeOnWiFiTrigger> &trigs,
                                       const IPAddressStore &addrs);
+  // Handler for NL80211 message error responses from NIC wake on WiFi setting
+  // programming attempts.
+  void OnWakeOnWiFiSettingsErrorResponse(
+      NetlinkManager::AuxilliaryMessageType type,
+      const NetlinkMessage *raw_message);
   // Message handler for NL80211_CMD_SET_WOWLAN responses.
   static void OnSetWakeOnPacketConnectionResponse(
       const Nl80211Message &nl80211_message);
