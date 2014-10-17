@@ -813,7 +813,14 @@ void Platform::Sync() {
 
 std::string Platform::GetHardwareID() {
   char buffer[VB_MAX_STRING_PROPERTY];
-  return VbGetSystemPropertyString("hwid", buffer, arraysize(buffer));
+  const char *rc = VbGetSystemPropertyString("hwid", buffer, arraysize(buffer));
+
+  if (rc != nullptr) {
+    return std::string(rc);
+  }
+
+  LOG(WARNING) << "Could not read hwid property";
+  return std::string();
 }
 
 // Encapsulate these helpers to avoid include conflicts.

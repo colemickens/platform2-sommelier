@@ -747,4 +747,15 @@ TEST_F(AttestationTestNoInitialize, AutoExtendPCR1) {
   AttestationTest::Initialize();
 }
 
+TEST_F(AttestationTestNoInitialize, AutoExtendPCR1NoHwID) {
+  SecureBlob default_pcr(std::string(20, 0));
+  EXPECT_CALL(tpm_, ReadPCR(1, _))
+      .WillOnce(DoAll(SetArgumentPointee<1>(default_pcr), Return(true)));
+  std::string no_hwid = "";
+  EXPECT_CALL(tpm_, ExtendPCR(_, _)).Times(0);
+  EXPECT_CALL(platform_, GetHardwareID()).WillRepeatedly(Return(no_hwid));
+  // Now initialize and the mocks will complain if PCR1 is extended.
+  AttestationTest::Initialize();
+}
+
 }  // namespace cryptohome

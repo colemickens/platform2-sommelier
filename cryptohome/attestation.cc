@@ -2049,8 +2049,9 @@ void Attestation::ExtendPCR1IfClear() {
     // The PCR has already been extended.
     return;
   }
+  std::string hwid = platform_->GetHardwareID();
   LOG(WARNING) << "Extending PCR1.";
-  if (!tpm_->ExtendPCR(1, SecureBlob(platform_->GetHardwareID()))) {
+  if (hwid.length() == 0 || !tpm_->ExtendPCR(1, SecureBlob(hwid))) {
     LOG(WARNING) << "Failed to extend PCR1.";
   }
 }
