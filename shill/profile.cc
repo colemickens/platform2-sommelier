@@ -73,7 +73,7 @@ bool Profile::InitStorage(GLib *glib, InitStorageOption storage_option,
                            name_.user.c_str(), name_.identifier.c_str()));
     return false;
   }
-  scoped_ptr<KeyFileStore> storage(new KeyFileStore(glib));
+  std::unique_ptr<KeyFileStore> storage(new KeyFileStore(glib));
   storage->set_path(final_path);
   bool already_exists = storage->IsNonEmpty();
   if (!already_exists && storage_option != kCreateNew &&

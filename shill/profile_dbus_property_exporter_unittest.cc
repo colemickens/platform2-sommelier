@@ -4,9 +4,9 @@
 
 #include "shill/profile_dbus_property_exporter.h"
 
+#include <memory>
 #include <string>
 
-#include <base/memory/scoped_ptr.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
@@ -75,8 +75,8 @@ class ProfileDBusPropertyExporterTest : public testing::Test {
 
  protected:
   string entry_name_;
-  scoped_ptr<MockStore> storage_;
-  scoped_ptr<ProfileDBusPropertyExporter> exporter_;
+  std::unique_ptr<MockStore> storage_;
+  std::unique_ptr<ProfileDBusPropertyExporter> exporter_;
 };
 
 TEST_F(ProfileDBusPropertyExporterTest, LoadWrongGroup) {

@@ -6,10 +6,10 @@
 #define SHILL_PROFILE_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
-#include <base/memory/scoped_ptr.h>
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -234,9 +234,9 @@ class Profile : public base::RefCounted<Profile> {
   const base::FilePath storage_path_;
 
   // Allows this profile to be backed with on-disk storage.
-  scoped_ptr<StoreInterface> storage_;
+  std::unique_ptr<StoreInterface> storage_;
 
-  scoped_ptr<ProfileAdaptorInterface> adaptor_;
+  std::unique_ptr<ProfileAdaptorInterface> adaptor_;
 
   DISALLOW_COPY_AND_ASSIGN(Profile);
 };

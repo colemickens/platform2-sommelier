@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/memory/scoped_ptr.h>
-
 #include "shill/event_dispatcher.h"
 #include "shill/profile.h"
 #include "shill/property_store.h"

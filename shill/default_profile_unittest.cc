@@ -5,6 +5,7 @@
 #include "shill/default_profile.h"
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -31,6 +32,7 @@
 using base::FilePath;
 using std::map;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 using ::testing::_;
 using ::testing::DoAll;
@@ -63,7 +65,7 @@ class DefaultProfileTest : public PropertyStoreTest {
     PropertyStoreTest::SetUp();
     FilePath final_path;
     ASSERT_TRUE(profile_->GetStoragePath(&final_path));
-    scoped_ptr<KeyFileStore> storage(new KeyFileStore(&real_glib_));
+    unique_ptr<KeyFileStore> storage(new KeyFileStore(&real_glib_));
     storage->set_path(final_path);
     ASSERT_TRUE(storage->Open());
     profile_->set_storage(storage.release());  // Passes ownership.
@@ -108,7 +110,7 @@ TEST_F(DefaultProfileTest, GetProperties) {
 }
 
 TEST_F(DefaultProfileTest, Save) {
-  scoped_ptr<MockStore> storage(new MockStore);
+  unique_ptr<MockStore> storage(new MockStore);
   EXPECT_CALL(*storage.get(), SetBool(DefaultProfile::kStorageId,
                                       DefaultProfile::kStorageArpGateway,
                                       true))
@@ -164,7 +166,7 @@ TEST_F(DefaultProfileTest, Save) {
 }
 
 TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
-  scoped_ptr<MockStore> storage(new MockStore);
+  unique_ptr<MockStore> storage(new MockStore);
   Manager::Properties manager_props;
   EXPECT_CALL(*storage.get(), GetBool(DefaultProfile::kStorageId,
                                       DefaultProfile::kStorageArpGateway,
@@ -226,7 +228,7 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
 }
 
 TEST_F(DefaultProfileTest, LoadManagerProperties) {
-  scoped_ptr<MockStore> storage(new MockStore);
+  unique_ptr<MockStore> storage(new MockStore);
   const string host_name("hostname");
   EXPECT_CALL(*storage.get(), GetBool(DefaultProfile::kStorageId,
                                       DefaultProfile::kStorageArpGateway,
@@ -303,7 +305,7 @@ TEST_F(DefaultProfileTest, GetStoragePath) {
 }
 
 TEST_F(DefaultProfileTest, ConfigureService) {
-  scoped_ptr<MockStore> storage(new MockStore);
+  unique_ptr<MockStore> storage(new MockStore);
   EXPECT_CALL(*storage, ContainsGroup(_))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*storage, Flush())
@@ -334,7 +336,7 @@ TEST_F(DefaultProfileTest, ConfigureService) {
 }
 
 TEST_F(DefaultProfileTest, UpdateDevice) {
-  scoped_ptr<MockStore> storage(new MockStore());
+  unique_ptr<MockStore> storage(new MockStore());
   EXPECT_CALL(*storage, Flush()).WillOnce(Return(true));
   EXPECT_CALL(*device_, Save(storage.get()))
       .WillOnce(Return(true))
@@ -348,7 +350,7 @@ TEST_F(DefaultProfileTest, UpdateWiFiProvider) {
   MockWiFiProvider wifi_provider;
 
   {
-    scoped_ptr<MockStore> storage(new MockStore());
+    unique_ptr<MockStore> storage(new MockStore());
     EXPECT_CALL(*storage, Flush()).Times(0);
     EXPECT_CALL(wifi_provider, Save(storage.get())).WillOnce(Return(false));
     profile_->set_storage(storage.release());
@@ -356,7 +358,7 @@ TEST_F(DefaultProfileTest, UpdateWiFiProvider) {
   }
 
   {
-    scoped_ptr<MockStore> storage(new MockStore());
+    unique_ptr<MockStore> storage(new MockStore());
     EXPECT_CALL(*storage, Flush()).WillOnce(Return(false));
     EXPECT_CALL(wifi_provider, Save(storage.get())).WillOnce(Return(true));
     profile_->set_storage(storage.release());
@@ -364,7 +366,7 @@ TEST_F(DefaultProfileTest, UpdateWiFiProvider) {
   }
 
   {
-    scoped_ptr<MockStore> storage(new MockStore());
+    unique_ptr<MockStore> storage(new MockStore());
     EXPECT_CALL(*storage, Flush()).WillOnce(Return(true));
     EXPECT_CALL(wifi_provider, Save(storage.get())).WillOnce(Return(true));
     profile_->set_storage(storage.release());

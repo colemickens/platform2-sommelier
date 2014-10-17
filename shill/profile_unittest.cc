@@ -8,7 +8,6 @@
 #include <vector>
 
 #include <base/files/file_util.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
 #include <gtest/gtest.h>
@@ -55,7 +54,7 @@ class ProfileTest : public PropertyStoreTest {
     PropertyStoreTest::SetUp();
     FilePath final_path(storage_path());
     final_path = final_path.Append("test.profile");
-    scoped_ptr<KeyFileStore> storage(new KeyFileStore(&real_glib_));
+    std::unique_ptr<KeyFileStore> storage(new KeyFileStore(&real_glib_));
     storage->set_path(final_path);
     ASSERT_TRUE(storage->Open());
     profile_->set_storage(storage.release());  // Passes ownership.
@@ -79,12 +78,12 @@ class ProfileTest : public PropertyStoreTest {
 
  protected:
   GLib real_glib_;
-  scoped_ptr<MockMetrics> mock_metrics_;
+  std::unique_ptr<MockMetrics> mock_metrics_;
   ProfileRefPtr profile_;
 };
 
 TEST_F(ProfileTest, DeleteEntry) {
-  scoped_ptr<MockManager> manager(new StrictMock<MockManager>(
+  std::unique_ptr<MockManager> manager(new StrictMock<MockManager>(
       control_interface(), dispatcher(), metrics(), glib()));
   profile_->manager_ = manager.get();
 
