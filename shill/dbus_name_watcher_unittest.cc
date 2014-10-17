@@ -5,7 +5,6 @@
 #include "shill/dbus_name_watcher.h"
 
 #include <base/bind.h>
-#include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -14,6 +13,7 @@
 using base::Bind;
 using base::Unretained;
 using std::string;
+using std::unique_ptr;
 using testing::_;
 
 namespace shill {
@@ -62,8 +62,8 @@ class DBusNameWatcherTest : public testing::Test {
  protected:
   DBusNameWatcherTest() : dbus_manager_(new DBusManager()) {}
 
-  scoped_ptr<DBusManager> dbus_manager_;
-  scoped_ptr<DBusNameWatcher> watcher_;
+  unique_ptr<DBusManager> dbus_manager_;
+  unique_ptr<DBusNameWatcher> watcher_;
 };
 
 TEST_F(DBusNameWatcherTest, DestructAfterDBusManager) {

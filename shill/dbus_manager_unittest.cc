@@ -15,6 +15,7 @@
 using base::Bind;
 using base::Unretained;
 using std::string;
+using std::unique_ptr;
 using testing::Invoke;
 using testing::SaveArg;
 using testing::WithArg;
@@ -86,9 +87,9 @@ class DBusManagerTest : public testing::Test {
     return proxy_.get();
   }
 
-  scoped_ptr<MockDBusServiceProxy> proxy_;
+  unique_ptr<MockDBusServiceProxy> proxy_;
   MockProxyFactory proxy_factory_;
-  scoped_ptr<DBusManager> manager_;
+  unique_ptr<DBusManager> manager_;
 };
 
 TEST_F(DBusManagerTest, GetNameOwnerFails) {
@@ -104,7 +105,7 @@ TEST_F(DBusManagerTest, GetNameOwnerFails) {
   EXPECT_CALL(observer, OnNameAppeared(_, _)).Times(0);
   EXPECT_CALL(observer, OnNameVanished(kName1));
 
-  scoped_ptr<DBusNameWatcher> watcher(
+  unique_ptr<DBusNameWatcher> watcher(
       manager_->CreateNameWatcher(kName1,
                                   observer.name_appeared_callback(),
                                   observer.name_vanished_callback()));
@@ -120,7 +121,7 @@ TEST_F(DBusManagerTest,
   StringCallback get_name_owner_callback;
   EXPECT_CALL(*proxy, GetNameOwner(kName1, _, _, _))
       .WillOnce(SaveArg<2>(&get_name_owner_callback));
-  scoped_ptr<DBusNameWatcher> watcher(
+  unique_ptr<DBusNameWatcher> watcher(
       manager_->CreateNameWatcher(kName1,
                                   DBusNameWatcher::NameAppearedCallback(),
                                   DBusNameWatcher::NameVanishedCallback()));
@@ -153,7 +154,7 @@ TEST_F(DBusManagerTest, NameWatchers) {
   EXPECT_CALL(*proxy, GetNameOwner(kName1, _, _, _))
       .WillOnce(SaveArg<2>(&get_name_owner_callback));
   DBusNameWatcherCallbackObserver observer1a;
-  scoped_ptr<DBusNameWatcher> watcher1a(
+  unique_ptr<DBusNameWatcher> watcher1a(
       manager_->CreateNameWatcher(kName1,
                                   observer1a.name_appeared_callback(),
                                   observer1a.name_vanished_callback()));
@@ -167,7 +168,7 @@ TEST_F(DBusManagerTest, NameWatchers) {
   EXPECT_CALL(*proxy, GetNameOwner(kName1, _, _, _))
       .WillOnce(SaveArg<2>(&get_name_owner_callback));
   DBusNameWatcherCallbackObserver observer1b;
-  scoped_ptr<DBusNameWatcher> watcher1b(
+  unique_ptr<DBusNameWatcher> watcher1b(
       manager_->CreateNameWatcher(kName1,
                                   observer1b.name_appeared_callback(),
                                   DBusNameWatcher::NameVanishedCallback()));
@@ -182,7 +183,7 @@ TEST_F(DBusManagerTest, NameWatchers) {
   EXPECT_CALL(*proxy, GetNameOwner(kName2, _, _, _))
       .WillOnce(SaveArg<2>(&get_name_owner_callback));
   DBusNameWatcherCallbackObserver observer2a;
-  scoped_ptr<DBusNameWatcher> watcher2a(
+  unique_ptr<DBusNameWatcher> watcher2a(
       manager_->CreateNameWatcher(kName2,
                                   observer2a.name_appeared_callback(),
                                   observer2a.name_vanished_callback()));
@@ -196,7 +197,7 @@ TEST_F(DBusManagerTest, NameWatchers) {
   EXPECT_CALL(*proxy, GetNameOwner(kName2, _, _, _))
       .WillOnce(SaveArg<2>(&get_name_owner_callback));
   DBusNameWatcherCallbackObserver observer2b;
-  scoped_ptr<DBusNameWatcher> watcher2b(
+  unique_ptr<DBusNameWatcher> watcher2b(
       manager_->CreateNameWatcher(kName2,
                                   DBusNameWatcher::NameAppearedCallback(),
                                   observer2b.name_vanished_callback()));

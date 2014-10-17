@@ -4,6 +4,8 @@
 
 #include "shill/dbus_service_proxy.h"
 
+#include <memory>
+
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -12,6 +14,7 @@
 #include "shill/logging.h"
 
 using std::string;
+using std::unique_ptr;
 
 namespace shill {
 
@@ -69,7 +72,7 @@ void DBusServiceProxy::Proxy::NameOwnerChanged(const string &name,
 void DBusServiceProxy::Proxy::GetNameOwnerCallback(const string &unique_name,
                                                    const DBus::Error &error,
                                                    void *data) {
-  scoped_ptr<StringCallback> callback(reinterpret_cast<StringCallback *>(data));
+  unique_ptr<StringCallback> callback(reinterpret_cast<StringCallback *>(data));
   Error e;
   FromDBusError(error, &e);
   callback->Run(unique_name, e);

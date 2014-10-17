@@ -7,12 +7,12 @@
 
 #include <list>
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -73,7 +73,7 @@ class DBusManager : public base::SupportsWeakPtr<DBusManager> {
 
   ProxyFactory *proxy_factory_;
 
-  scoped_ptr<DBusServiceProxyInterface> proxy_;
+  std::unique_ptr<DBusServiceProxyInterface> proxy_;
 
   std::map<std::string, std::list<DBusNameWatcher *>> name_watchers_;
 

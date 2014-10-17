@@ -5,7 +5,8 @@
 #ifndef SHILL_DBUS_CONTROL_H_
 #define SHILL_DBUS_CONTROL_H_
 
-#include <base/memory/scoped_ptr.h>
+#include <memory>
+
 #include <dbus-c++/glib-integration.h>
 #include <dbus-c++/util.h>
 
@@ -32,8 +33,8 @@ class DBusControl : public ControlInterface {
   template <typename Object, typename AdaptorInterface, typename Adaptor>
   AdaptorInterface *CreateAdaptor(Object *object);
 
-  scoped_ptr<DBus::Glib::BusDispatcher> dispatcher_;
-  scoped_ptr<DBus::Connection> connection_;
+  std::unique_ptr<DBus::Glib::BusDispatcher> dispatcher_;
+  std::unique_ptr<DBus::Connection> connection_;
 };
 
 }  // namespace shill

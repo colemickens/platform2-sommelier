@@ -7,6 +7,8 @@
 
 #include "shill/logging.h"
 
+#include <memory>
+
 #include <base/macros.h>  // for ignore_result
 #include <dbus-c++/error.h>
 
@@ -38,7 +40,7 @@ void BeginAsyncDBusCall(const TraceMsgT &trace_msg,
                         void(*error_converter)(const DBus::Error &, Error *),
                         int timeout, ArgTypes... call_args) {
   SLOG(DBus, 2) << trace_msg << " [timeout=" << timeout << "]";
-  auto cb = make_scoped_ptr(new CallbackT(callback));
+  std::unique_ptr<CallbackT> cb(new CallbackT(callback));
   try {
     (proxy.*call)(call_args..., cb.get(), timeout);
     // We've successfully passed ownership of |cb| to |proxy|, so we

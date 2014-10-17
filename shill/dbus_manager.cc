@@ -52,7 +52,7 @@ DBusNameWatcher *DBusManager::CreateNameWatcher(
     const DBusNameWatcher::NameVanishedCallback &name_vanished_callback) {
   // DBusNameWatcher holds a weak pointer to, and thus may outlive, this
   // DBusManager object.
-  scoped_ptr<DBusNameWatcher> name_watcher(new DBusNameWatcher(
+  std::unique_ptr<DBusNameWatcher> name_watcher(new DBusNameWatcher(
       this, name, name_appeared_callback, name_vanished_callback));
   name_watchers_[name].push_back(name_watcher.get());
 

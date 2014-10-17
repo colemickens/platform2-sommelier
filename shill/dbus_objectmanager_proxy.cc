@@ -1,7 +1,10 @@
 // Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
 #include "shill/dbus_objectmanager_proxy.h"
+
+#include <memory>
 
 #include "shill/cellular_error.h"
 #include "shill/dbus_async_call_helper.h"
@@ -78,7 +81,7 @@ void DBusObjectManagerProxy::Proxy::GetManagedObjectsCallback(
   SLOG(DBus, 2) << __func__;
   shill::Error error;
   CellularError::FromDBusError(dberror, &error);
-  scoped_ptr<ManagedObjectsCallback> callback(
+  std::unique_ptr<ManagedObjectsCallback> callback(
       reinterpret_cast<ManagedObjectsCallback *>(data));
 
   callback->Run(objects_with_properties, error);
