@@ -23,6 +23,15 @@ class CHROMEOS_EXPORT TpmState {
   // state information.
   virtual TPM_RC Initialize() = 0;
 
+  // Returns true iff TPMA_PERMANENT:ownerAuthSet is set.
+  virtual bool IsOwnerPasswordSet() = 0;
+
+  // Returns true iff TPMA_PERMANENT:endorsementAuthSet is set.
+  virtual bool IsEndorsementPasswordSet() = 0;
+
+  // Returns true iff TPMA_PERMANENT:lockoutAuthSet is set.
+  virtual bool IsLockoutPasswordSet() = 0;
+
   // Returns true iff TPMA_PERMANENT:inLockout is set.
   virtual bool IsInLockout() = 0;
 

@@ -70,6 +70,10 @@ class TpmStateTest : public testing::Test {
 TEST(TpmState_DeathTest, NotInitialized) {
   TrunksFactoryForTest factory;
   TpmStateImpl tpm_state(factory);
+  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsOwnerPasswordSet(), "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsEndorsementPasswordSet(),
+                            "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsLockoutPasswordSet(), "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsInLockout(), "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsPlatformHierarchyEnabled(),
                             "Check failed");
@@ -79,6 +83,9 @@ TEST(TpmState_DeathTest, NotInitialized) {
 TEST_F(TpmStateTest, FlagsClear) {
   TpmStateImpl tpm_state(factory_);
   EXPECT_EQ(TPM_RC_SUCCESS, tpm_state.Initialize());
+  EXPECT_FALSE(tpm_state.IsOwnerPasswordSet());
+  EXPECT_FALSE(tpm_state.IsEndorsementPasswordSet());
+  EXPECT_FALSE(tpm_state.IsLockoutPasswordSet());
   EXPECT_FALSE(tpm_state.IsInLockout());
   EXPECT_FALSE(tpm_state.IsPlatformHierarchyEnabled());
   EXPECT_FALSE(tpm_state.WasShutdownOrderly());
@@ -89,6 +96,9 @@ TEST_F(TpmStateTest, FlagsSet) {
   startup_clear_data_.data.tpm_properties.tpm_property[0].value = ~0U;
   TpmStateImpl tpm_state(factory_);
   EXPECT_EQ(TPM_RC_SUCCESS, tpm_state.Initialize());
+  EXPECT_TRUE(tpm_state.IsOwnerPasswordSet());
+  EXPECT_TRUE(tpm_state.IsEndorsementPasswordSet());
+  EXPECT_TRUE(tpm_state.IsLockoutPasswordSet());
   EXPECT_TRUE(tpm_state.IsInLockout());
   EXPECT_TRUE(tpm_state.IsPlatformHierarchyEnabled());
   EXPECT_TRUE(tpm_state.WasShutdownOrderly());

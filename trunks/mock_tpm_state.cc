@@ -9,6 +9,10 @@
 namespace trunks {
 
 MockTpmState::MockTpmState() {
+  ON_CALL(*this, IsOwnerPasswordSet()).WillByDefault(testing::Return(true));
+  ON_CALL(*this, IsEndorsementPasswordSet())
+      .WillByDefault(testing::Return(true));
+  ON_CALL(*this, IsLockoutPasswordSet()).WillByDefault(testing::Return(true));
   ON_CALL(*this, WasShutdownOrderly()).WillByDefault(testing::Return(true));
 }
 MockTpmState::~MockTpmState() {}

@@ -1637,11 +1637,12 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
     handles = []
     parameters = []
     always_handle = set(['TPM_HANDLE'])
-    always_not_handle = set(['TPMI_RH_ENABLES'])
+    # Handle types that exclusively appear as command parameters.
+    always_parameter = set(['TPMI_RH_ENABLES', 'TPMI_DH_PERSISTENT'])
     for arg in args:
       if (arg['type'] in always_handle or
           (self._HANDLE_RE.search(arg['type']) and
-           arg['type'] not in always_not_handle)):
+           arg['type'] not in always_parameter)):
         handles.append(arg)
       else:
         parameters.append(arg)

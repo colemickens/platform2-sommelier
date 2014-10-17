@@ -14,11 +14,14 @@
 namespace {
 
 // From definition of TPMA_PERMANENT.
-const trunks::TPMA_PERMANENT kInLockoutMask = 1UL << 9;
+const trunks::TPMA_PERMANENT kOwnerAuthSetMask = 1U;
+const trunks::TPMA_PERMANENT kEndorsementAuthSetMask = 1U << 1;
+const trunks::TPMA_PERMANENT kLockoutAuthSetMask = 1U << 2;
+const trunks::TPMA_PERMANENT kInLockoutMask = 1U << 9;
 
 // From definition of TPMA_STARTUP_CLEAR.
-const trunks::TPMA_STARTUP_CLEAR kPlatformHiearchyMask = 1UL;
-const trunks::TPMA_STARTUP_CLEAR kOrderlyShutdownMask = 1UL << 31;
+const trunks::TPMA_STARTUP_CLEAR kPlatformHierarchyMask = 1U;
+const trunks::TPMA_STARTUP_CLEAR kOrderlyShutdownMask = 1U << 31;
 
 }  // namespace
 
@@ -81,6 +84,22 @@ TPM_RC TpmStateImpl::Initialize() {
   return TPM_RC_SUCCESS;
 }
 
+bool TpmStateImpl::IsOwnerPasswordSet() {
+  CHECK(initialized_);
+  return ((permanent_flags_ & kOwnerAuthSetMask) == kOwnerAuthSetMask);
+}
+
+bool TpmStateImpl::IsEndorsementPasswordSet() {
+  CHECK(initialized_);
+  return ((permanent_flags_ & kEndorsementAuthSetMask) ==
+          kEndorsementAuthSetMask);
+}
+
+bool TpmStateImpl::IsLockoutPasswordSet() {
+  CHECK(initialized_);
+  return ((permanent_flags_ & kLockoutAuthSetMask) == kLockoutAuthSetMask);
+}
+
 bool TpmStateImpl::IsInLockout() {
   CHECK(initialized_);
   return ((permanent_flags_ & kInLockoutMask) == kInLockoutMask);
@@ -88,8 +107,8 @@ bool TpmStateImpl::IsInLockout() {
 
 bool TpmStateImpl::IsPlatformHierarchyEnabled() {
   CHECK(initialized_);
-  return ((startup_clear_flags_ & kPlatformHiearchyMask) ==
-      kPlatformHiearchyMask);
+  return ((startup_clear_flags_ & kPlatformHierarchyMask) ==
+      kPlatformHierarchyMask);
 }
 
 bool TpmStateImpl::WasShutdownOrderly() {

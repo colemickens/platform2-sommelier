@@ -24,6 +24,11 @@ class MockTpmUtility : public TpmUtility {
   MOCK_METHOD2(GenerateRandom, TPM_RC(int, std::string*));
   MOCK_METHOD2(ExtendPCR, TPM_RC(int, const std::string&));
   MOCK_METHOD2(ReadPCR, TPM_RC(int, std::string*));
+  MOCK_METHOD3(TakeOwnership, TPM_RC(const std::string& owner_password,
+                                     const std::string& endorsement_password,
+                                     const std::string& lockout_password));
+  MOCK_METHOD1(CreateStorageRootKeys,
+               TPM_RC(const std::string& owner_password));
 };
 
 }  // namespace trunks

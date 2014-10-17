@@ -87,6 +87,7 @@
           'sources': [
             'hmac_authorization_delegate_unittest.cc',
             'mock_authorization_delegate.cc',
+            'mock_authorization_session.cc',
             'mock_command_transceiver.cc',
             'mock_tpm.cc',
             'mock_tpm_state.cc',

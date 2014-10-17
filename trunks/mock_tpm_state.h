@@ -17,6 +17,9 @@ class MockTpmState : public TpmState {
   virtual ~MockTpmState();
 
   MOCK_METHOD0(Initialize, TPM_RC());
+  MOCK_METHOD0(IsOwnerPasswordSet, bool());
+  MOCK_METHOD0(IsEndorsementPasswordSet, bool());
+  MOCK_METHOD0(IsLockoutPasswordSet, bool());
   MOCK_METHOD0(IsInLockout, bool());
   MOCK_METHOD0(IsPlatformHierarchyEnabled, bool());
   MOCK_METHOD0(WasShutdownOrderly, bool());

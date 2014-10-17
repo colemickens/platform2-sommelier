@@ -16,6 +16,8 @@
 namespace trunks {
 
 class AuthorizationDelegate;
+class AuthorizationSession;
+class MockAuthorizationSession;
 class MockTpm;
 class MockTpmState;
 class MockTpmUtility;
@@ -45,6 +47,7 @@ class CHROMEOS_EXPORT TrunksFactoryForTest : public TrunksFactory {
   scoped_ptr<TpmUtility> GetTpmUtility() const override;
   scoped_ptr<AuthorizationDelegate> GetPasswordAuthorization(
       const std::string& password) const override;
+  scoped_ptr<AuthorizationSession> GetAuthorizationSession() const override;
 
   // Mutators to inject custom mocks.
   void set_tpm(Tpm* tpm) {
@@ -63,6 +66,10 @@ class CHROMEOS_EXPORT TrunksFactoryForTest : public TrunksFactory {
     password_authorization_delegate_ = delegate;
   }
 
+  void set_authorization_session(AuthorizationSession* session) {
+    authorization_session_ = session;
+  }
+
  private:
   scoped_ptr<MockTpm> default_tpm_;
   Tpm* tpm_;
@@ -72,6 +79,8 @@ class CHROMEOS_EXPORT TrunksFactoryForTest : public TrunksFactory {
   TpmUtility* tpm_utility_;
   scoped_ptr<NullAuthorizationDelegate> default_authorization_delegate_;
   AuthorizationDelegate* password_authorization_delegate_;
+  scoped_ptr<MockAuthorizationSession> default_authorization_session_;
+  AuthorizationSession* authorization_session_;
 
   DISALLOW_COPY_AND_ASSIGN(TrunksFactoryForTest);
 };

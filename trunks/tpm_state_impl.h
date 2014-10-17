@@ -24,6 +24,9 @@ class CHROMEOS_EXPORT TpmStateImpl : public TpmState {
 
   // TpmState methods.
   TPM_RC Initialize() override;
+  bool IsOwnerPasswordSet() override;
+  bool IsEndorsementPasswordSet() override;
+  bool IsLockoutPasswordSet() override;
   bool IsInLockout() override;
   bool IsPlatformHierarchyEnabled() override;
   bool WasShutdownOrderly() override;

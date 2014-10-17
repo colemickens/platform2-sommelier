@@ -14,6 +14,7 @@
 namespace trunks {
 
 class AuthorizationDelegate;
+class AuthorizationSession;
 class Tpm;
 class TpmState;
 class TpmUtility;
@@ -39,6 +40,9 @@ class CHROMEOS_EXPORT TrunksFactory {
   // The caller takes ownership.
   virtual scoped_ptr<AuthorizationDelegate> GetPasswordAuthorization(
       const std::string& password) const = 0;
+
+  // Returns an AuthorizationSession instance. The caller takes ownership.
+  virtual scoped_ptr<AuthorizationSession> GetAuthorizationSession() const = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TrunksFactory);

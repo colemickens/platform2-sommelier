@@ -11,6 +11,7 @@
 #include <crypto/sha2.h>
 
 #include "trunks/authorization_delegate.h"
+#include "trunks/authorization_session.h"
 #include "trunks/error_codes.h"
 #include "trunks/null_authorization_delegate.h"
 #include "trunks/tpm_state.h"
@@ -19,6 +20,14 @@
 namespace {
 
 const char kPlatformPassword[] = "cros-platform";
+const trunks::TPMA_OBJECT kFixedTPM = 1U << 1;
+const trunks::TPMA_OBJECT kStClear = 1U << 2;
+const trunks::TPMA_OBJECT kFixedParent = 1U << 4;
+const trunks::TPMA_OBJECT kSensitiveDataOrigin = 1U << 5;
+const trunks::TPMA_OBJECT kUserWithAuth = 1U << 6;
+const trunks::TPMA_OBJECT kNoDA = 1U << 10;
+const trunks::TPMA_OBJECT kRestricted = 1U << 16;
+const trunks::TPMA_OBJECT kDecrypt = 1U << 17;
 
 // Returns a serialized representation of the unmodified handle. This is useful
 // for predefined handle values, like TPM_RH_OWNER. For details on what types of
@@ -78,7 +87,15 @@ TPM_RC TpmUtilityImpl::InitializeTpm() {
   // We expect the firmware has already locked down the platform hierarchy. If
   // it hasn't, do it now.
   if (tpm_state->IsPlatformHierarchyEnabled()) {
-    result = SetPlatformAuthorization(kPlatformPassword);
+    scoped_ptr<AuthorizationDelegate> empty_password(
+        factory_.GetPasswordAuthorization(""));
+    result = SetHierarchyAuthorization(TPM_RH_PLATFORM,
+                                       kPlatformPassword,
+                                       empty_password.get());
+    if (GetFormatOneError(result) == TPM_RC_BAD_AUTH) {
+      // Most likely the platform password has already been set.
+      result = TPM_RC_SUCCESS;
+    }
     if (result) {
       LOG(ERROR) << __func__ << ": " << GetErrorString(result);
       return result;
@@ -182,20 +199,197 @@ TPM_RC TpmUtilityImpl::ReadPCR(int pcr_index, std::string* pcr_value) {
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC TpmUtilityImpl::SetPlatformAuthorization(const std::string& password) {
-  scoped_ptr<AuthorizationDelegate> authorization(
-      factory_.GetPasswordAuthorization(""));
-  CHECK_LE(password.size(), 32);
-  TPM_RC result = factory_.GetTpm()->HierarchyChangeAuthSync(
-      TPM_RH_PLATFORM,
-      NameFromHandle(TPM_RH_PLATFORM),
-      Make_TPM2B_DIGEST(password),
-      authorization.get());
-  if (GetFormatOneError(result) == TPM_RC_BAD_AUTH) {
-    // Most likely the platform hierarchy password has already been set.
+TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
+                                     const std::string& endorsement_password,
+                                     const std::string& lockout_password) {
+  TPM_RC result = InitializeSession();
+  if (result) {
+    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
+    return result;
+  }
+  scoped_ptr<TpmState> tpm_state(factory_.GetTpmState());
+  result = tpm_state->Initialize();
+  if (result) {
+    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
+    return result;
+  }
+  if (!tpm_state->IsOwnerPasswordSet()) {
+    result = SetHierarchyAuthorization(TPM_RH_OWNER,
+                                       owner_password,
+                                       session_->GetDelegate());
+    if (result) {
+      LOG(ERROR) << __func__ << ": " << GetErrorString(result);
+      return result;
+    }
+  }
+  if (!tpm_state->IsEndorsementPasswordSet()) {
+    result = SetHierarchyAuthorization(TPM_RH_ENDORSEMENT,
+                                       endorsement_password,
+                                       session_->GetDelegate());
+    if (result) {
+      LOG(ERROR) << __func__ << ": " << GetErrorString(result);
+      return result;
+    }
+  }
+  if (!tpm_state->IsLockoutPasswordSet()) {
+    result = SetHierarchyAuthorization(TPM_RH_LOCKOUT,
+                                       lockout_password,
+                                       session_->GetDelegate());
+    if (result) {
+      LOG(ERROR) << __func__ << ": " << GetErrorString(result);
+      return result;
+    }
+  }
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::CreateStorageRootKeys(
+    const std::string& owner_password) {
+  TPM_RC result = InitializeSession();
+  if (result) {
+    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
+    return result;
+  }
+  Tpm* tpm = factory_.GetTpm();
+  session_->SetEntityAuthorizationValue(owner_password);
+  TPM2B_PUBLIC rsa_public_area;
+  rsa_public_area.size = sizeof(TPMT_PUBLIC);
+  rsa_public_area.public_area.type = TPM_ALG_RSA;
+  rsa_public_area.public_area.name_alg = TPM_ALG_SHA256;
+  rsa_public_area.public_area.object_attributes =
+      kFixedTPM | kStClear | kFixedParent | kSensitiveDataOrigin |
+      kUserWithAuth | kNoDA | kRestricted | kDecrypt;
+  rsa_public_area.public_area.auth_policy = Make_TPM2B_DIGEST("");
+  rsa_public_area.public_area.parameters.rsa_detail.symmetric.algorithm =
+      TPM_ALG_AES;
+  rsa_public_area.public_area.parameters.rsa_detail.symmetric.key_bits.aes =
+      128;
+  rsa_public_area.public_area.parameters.rsa_detail.symmetric.mode.aes =
+      TPM_ALG_CFB;
+  rsa_public_area.public_area.parameters.rsa_detail.scheme.scheme =
+      TPM_ALG_NULL;
+  rsa_public_area.public_area.parameters.rsa_detail.key_bits = 2048;
+  rsa_public_area.public_area.parameters.rsa_detail.exponent = 0;
+  rsa_public_area.public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA("");
+  TPML_PCR_SELECTION creation_pcrs;
+  creation_pcrs.count = 0;
+  TPM2B_SENSITIVE_CREATE sensitive_create;
+  sensitive_create.size = sizeof(TPMS_SENSITIVE_CREATE);
+  sensitive_create.sensitive.user_auth = Make_TPM2B_DIGEST("");
+  sensitive_create.sensitive.data = Make_TPM2B_SENSITIVE_DATA("");
+  TPM_HANDLE object_handle;
+  TPM2B_CREATION_DATA creation_data;
+  TPM2B_DIGEST creation_digest;
+  TPMT_TK_CREATION creation_ticket;
+  TPM2B_NAME object_name;
+  result = tpm->CreatePrimarySync(TPM_RH_OWNER,
+                                  NameFromHandle(TPM_RH_OWNER),
+                                  sensitive_create,
+                                  rsa_public_area,
+                                  Make_TPM2B_DATA(""),
+                                  creation_pcrs,
+                                  &object_handle,
+                                  &rsa_public_area,
+                                  &creation_data,
+                                  &creation_digest,
+                                  &creation_ticket,
+                                  &object_name,
+                                  session_->GetDelegate());
+  if (result) {
+    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
+    return result;
+  }
+  // This will make the key persistent.
+  result = tpm->EvictControlSync(TPM_RH_OWNER,
+                                 NameFromHandle(TPM_RH_OWNER),
+                                 object_handle,
+                                 StringFrom_TPM2B_NAME(object_name),
+                                 kRSAStorageRootKey,
+                                 NameFromHandle(kRSAStorageRootKey),
+                                 session_->GetDelegate());
+  if (result) {
+    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
+    return result;
+  }
+  // Do it again for ECC.
+  TPM2B_PUBLIC ecc_public_area;
+  ecc_public_area.size = sizeof(TPMT_PUBLIC);
+  ecc_public_area.public_area.type = TPM_ALG_ECC;
+  ecc_public_area.public_area.name_alg = TPM_ALG_SHA256;
+  ecc_public_area.public_area.object_attributes =
+      kFixedTPM | kStClear | kFixedParent | kSensitiveDataOrigin |
+      kUserWithAuth | kNoDA | kRestricted | kDecrypt;
+  ecc_public_area.public_area.auth_policy = Make_TPM2B_DIGEST("");
+  ecc_public_area.public_area.parameters.ecc_detail.symmetric.algorithm =
+      TPM_ALG_AES;
+  ecc_public_area.public_area.parameters.ecc_detail.symmetric.key_bits.aes =
+      128;
+  ecc_public_area.public_area.parameters.ecc_detail.symmetric.mode.aes =
+      TPM_ALG_CFB;
+  ecc_public_area.public_area.parameters.ecc_detail.scheme.scheme =
+      TPM_ALG_NULL;
+  ecc_public_area.public_area.parameters.ecc_detail.curve_id =
+      TPM_ECC_NIST_P256;
+  ecc_public_area.public_area.parameters.ecc_detail.kdf.scheme = TPM_ALG_MGF1;
+  ecc_public_area.public_area.parameters.ecc_detail.kdf.details.mgf1.hash_alg =
+      TPM_ALG_SHA256;
+  ecc_public_area.public_area.unique.ecc.x = Make_TPM2B_ECC_PARAMETER("");
+  ecc_public_area.public_area.unique.ecc.y = Make_TPM2B_ECC_PARAMETER("");
+  result = tpm->CreatePrimarySync(TPM_RH_OWNER,
+                                  NameFromHandle(TPM_RH_OWNER),
+                                  sensitive_create,
+                                  ecc_public_area,
+                                  Make_TPM2B_DATA(""),
+                                  creation_pcrs,
+                                  &object_handle,
+                                  &ecc_public_area,
+                                  &creation_data,
+                                  &creation_digest,
+                                  &creation_ticket,
+                                  &object_name,
+                                  session_->GetDelegate());
+  if (result) {
+    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
+    return result;
+  }
+  // This will make the key persistent.
+  result = tpm->EvictControlSync(TPM_RH_OWNER,
+                                 NameFromHandle(TPM_RH_OWNER),
+                                 object_handle,
+                                 StringFrom_TPM2B_NAME(object_name),
+                                 kECCStorageRootKey,
+                                 NameFromHandle(kECCStorageRootKey),
+                                 session_->GetDelegate());
+  if (result) {
+    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
+    return result;
+  }
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::InitializeSession() {
+  if (session_.get()) {
     return TPM_RC_SUCCESS;
   }
-  return result;
+  scoped_ptr<AuthorizationSession> tmp_session(
+      factory_.GetAuthorizationSession());
+  TPM_RC result = tmp_session->StartUnboundSession(true /*Enable encryption.*/);
+  if (result) {
+    return result;
+  }
+  session_ = tmp_session.Pass();
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::SetHierarchyAuthorization(
+    TPMI_RH_HIERARCHY_AUTH hierarchy,
+    const std::string& password,
+    AuthorizationDelegate* authorization) {
+  return factory_.GetTpm()->HierarchyChangeAuthSync(
+      hierarchy,
+      NameFromHandle(hierarchy),
+      Make_TPM2B_DIGEST(crypto::SHA256HashString(password)),
+      authorization);
 }
 
 TPM_RC TpmUtilityImpl::DisablePlatformHierarchy(

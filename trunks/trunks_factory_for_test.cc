@@ -7,6 +7,8 @@
 #include <gmock/gmock.h>
 
 #include "trunks/authorization_delegate.h"
+#include "trunks/authorization_session.h"
+#include "trunks/mock_authorization_session.h"
 #include "trunks/mock_tpm.h"
 #include "trunks/mock_tpm_state.h"
 #include "trunks/mock_tpm_utility.h"
@@ -27,6 +29,18 @@ class TpmStateForwarder : public TpmState {
 
   TPM_RC Initialize() override {
     return target_->Initialize();
+  }
+
+  bool IsOwnerPasswordSet() override {
+    return target_->IsOwnerPasswordSet();
+  }
+
+  bool IsEndorsementPasswordSet() override {
+    return target_->IsEndorsementPasswordSet();
+  }
+
+  bool IsLockoutPasswordSet() override {
+    return target_->IsLockoutPasswordSet();
   }
 
   bool IsInLockout() override {
@@ -75,6 +89,18 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->ReadPCR(pcr_index, pcr_value);
   }
 
+  TPM_RC TakeOwnership(const std::string& owner_password,
+                       const std::string& endorsement_password,
+                       const std::string& lockout_password) override {
+    return target_->TakeOwnership(owner_password,
+                                  endorsement_password,
+                                  lockout_password);
+  }
+
+  TPM_RC CreateStorageRootKeys(const std::string& owner_password) override {
+    return target_->CreateStorageRootKeys(owner_password);
+  }
+
  private:
   TpmUtility* target_;
 };
@@ -108,6 +134,38 @@ class AuthorizationDelegateForwarder : public AuthorizationDelegate {
   AuthorizationDelegate* target_;
 };
 
+// Forwards all calls to a target instance.
+class AuthorizationSessionForwarder : public AuthorizationSession {
+ public:
+  explicit AuthorizationSessionForwarder(AuthorizationSession* target)
+      : target_(target) {}
+  virtual ~AuthorizationSessionForwarder() {}
+
+  AuthorizationDelegate* GetDelegate() override {
+    return target_->GetDelegate();
+  }
+
+  TPM_RC StartBoundSession(
+      TPMI_DH_ENTITY bind_entity,
+      const std::string& bind_authorization_value,
+      bool enable_encryption) override {
+    return target_->StartBoundSession(bind_entity,
+                                      bind_authorization_value,
+                                      enable_encryption);
+  }
+
+  TPM_RC StartUnboundSession(bool enable_encryption) override {
+    return target_->StartUnboundSession(enable_encryption);
+  }
+
+  void SetEntityAuthorizationValue(const std::string& value) override {
+    return target_->SetEntityAuthorizationValue(value);
+  }
+
+ private:
+  AuthorizationSession* target_;
+};
+
 TrunksFactoryForTest::TrunksFactoryForTest()
     : default_tpm_(new NiceMock<MockTpm>()),
       tpm_(default_tpm_.get()),
@@ -116,7 +174,9 @@ TrunksFactoryForTest::TrunksFactoryForTest()
       default_tpm_utility_(new NiceMock<MockTpmUtility>()),
       tpm_utility_(default_tpm_utility_.get()),
       default_authorization_delegate_(new NullAuthorizationDelegate()),
-      password_authorization_delegate_(default_authorization_delegate_.get()) {
+      password_authorization_delegate_(default_authorization_delegate_.get()),
+      default_authorization_session_(new NiceMock<MockAuthorizationSession>()),
+      authorization_session_(default_authorization_session_.get()) {
 }
 
 TrunksFactoryForTest::~TrunksFactoryForTest() {
@@ -139,6 +199,12 @@ scoped_ptr<AuthorizationDelegate>
         const std::string& password) const {
   return scoped_ptr<AuthorizationDelegate>(
       new AuthorizationDelegateForwarder(password_authorization_delegate_));
+}
+
+scoped_ptr<AuthorizationSession>
+    TrunksFactoryForTest::GetAuthorizationSession() const {
+  return scoped_ptr<AuthorizationSession>(
+      new AuthorizationSessionForwarder(authorization_session_));
 }
 
 }  // namespace trunks
