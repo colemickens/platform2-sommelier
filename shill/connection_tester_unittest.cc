@@ -4,10 +4,10 @@
 
 #include "shill/connection_tester.h"
 
+#include <memory>
 #include <string>
 
 #include <base/bind.h>
-#include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -22,6 +22,7 @@ using base::Bind;
 using base::Callback;
 using base::Unretained;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 using testing::_;
 using testing::NiceMock;
@@ -94,10 +95,10 @@ class ConnectionTesterTest : public Test {
  private:
   StrictMock<MockEventDispatcher> dispatcher_;
   MockControl control_;
-  scoped_ptr<MockDeviceInfo> device_info_;
+  unique_ptr<MockDeviceInfo> device_info_;
   scoped_refptr<MockConnection> connection_;
   CallbackTarget callback_target_;
-  scoped_ptr<ConnectionTester> connection_tester_;
+  unique_ptr<ConnectionTester> connection_tester_;
   MockConnectivityTrial* connectivity_trial_;
 };
 

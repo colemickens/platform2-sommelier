@@ -5,10 +5,10 @@
 #ifndef SHILL_ASYNC_CONNECTION_H_
 #define SHILL_ASYNC_CONNECTION_H_
 
+#include <memory>
 #include <string>
 
 #include <base/callback.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "shill/refptr_types.h"
 
@@ -72,7 +72,7 @@ class AsyncConnection {
   std::string error_;
   int fd_;
   base::Callback<void(int)> connect_completion_callback_;
-  scoped_ptr<IOHandler> connect_completion_handler_;
+  std::unique_ptr<IOHandler> connect_completion_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(AsyncConnection);
 };

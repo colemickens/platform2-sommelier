@@ -120,7 +120,7 @@ class AsyncConnectionTest : public Test {
   MockEventDispatcher dispatcher_;
   StrictMock<MockSockets> sockets_;
   StrictMock<ConnectCallbackTarget> callback_target_;
-  scoped_ptr<AsyncConnection> async_connection_;
+  std::unique_ptr<AsyncConnection> async_connection_;
   IPAddress ipv4_address_;
   IPAddress ipv6_address_;
 };

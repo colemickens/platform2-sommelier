@@ -5,13 +5,14 @@
 #ifndef SHILL_TRAFFIC_MONITOR_H_
 #define SHILL_TRAFFIC_MONITOR_H_
 
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-
-#include <map>
-#include <string>
-#include <vector>
 
 #include "shill/connection_info.h"
 #include "shill/connection_info_reader.h"
@@ -138,7 +139,7 @@ class TrafficMonitor {
   NetworkProblemDetectedCallback network_problem_detected_callback_;
 
   // Reads and parses socket information from the system.
-  scoped_ptr<SocketInfoReader> socket_info_reader_;
+  std::unique_ptr<SocketInfoReader> socket_info_reader_;
 
   // Number of consecutive congested tx-queue cases sampled.
   int accummulated_congested_tx_queues_samples_;
@@ -147,7 +148,7 @@ class TrafficMonitor {
   IPPortToTxQueueLengthMap old_tx_queue_lengths_;
 
   // Reads and parses connection information from the system.
-  scoped_ptr<ConnectionInfoReader> connection_info_reader_;
+  std::unique_ptr<ConnectionInfoReader> connection_info_reader_;
 
   // Number of consecutive sample intervals that contains failed DNS requests.
   int accummulated_dns_failures_samples_;

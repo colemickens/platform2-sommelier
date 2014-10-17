@@ -5,13 +5,13 @@
 #ifndef SHILL_CONNECTION_TESTER_H_
 #define SHILL_CONNECTION_TESTER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -59,7 +59,7 @@ class ConnectionTester {
   EventDispatcher *dispatcher_;
   base::WeakPtrFactory<ConnectionTester> weak_ptr_factory_;
   base::Callback<void()> tester_callback_;
-  scoped_ptr<ConnectivityTrial> connectivity_trial_;
+  std::unique_ptr<ConnectivityTrial> connectivity_trial_;
 
   DISALLOW_COPY_AND_ASSIGN(ConnectionTester);
 };

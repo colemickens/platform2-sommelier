@@ -5,10 +5,10 @@
 #include <arpa/inet.h>
 #include <linux/rtnetlink.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
@@ -176,7 +176,7 @@ class ConnectionTest : public Test {
     return connection;
   }
 
-  scoped_ptr<StrictMock<MockDeviceInfo>> device_info_;
+  std::unique_ptr<StrictMock<MockDeviceInfo>> device_info_;
   ConnectionRefPtr connection_;
   MockControl control_;
   IPConfigRefPtr ipconfig_;

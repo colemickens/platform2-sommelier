@@ -5,13 +5,13 @@
 #ifndef SHILL_CONNECTIVITY_TRIAL_H_
 #define SHILL_CONNECTIVITY_TRIAL_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -167,7 +167,7 @@ class ConnectivityTrial {
   base::Callback<void(const ByteString &)> request_read_callback_;
   base::Callback<void(HTTPRequest::Result, const ByteString &)>
         request_result_callback_;
-  scoped_ptr<HTTPRequest> request_;
+  std::unique_ptr<HTTPRequest> request_;
 
   Sockets sockets_;
   HTTPURL url_;

@@ -5,13 +5,14 @@
 #include "shill/connection_health_checker.h"
 
 #include <arpa/inet.h>
+
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
 #include <gtest/gtest.h>
 
@@ -311,7 +312,7 @@ class ConnectionHealthCheckerTest : public Test {
   // This allows us to chain calls to Expect* functions.
   Sequence seq_;
 
-  scoped_ptr<ConnectionHealthChecker> health_checker_;
+  std::unique_ptr<ConnectionHealthChecker> health_checker_;
 };
 
 TEST_F(ConnectionHealthCheckerTest, Constructor) {

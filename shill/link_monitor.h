@@ -7,11 +7,11 @@
 
 #include <time.h>
 
+#include <memory>
 #include <string>
 
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "shill/byte_string.h"
 #include "shill/refptr_types.h"
@@ -140,7 +140,7 @@ class LinkMonitor {
   // The MAC address of the default gateway.
   ByteString gateway_mac_address_;
   // ArpClient instance used for performing link tests.
-  scoped_ptr<ArpClient> arp_client_;
+  std::unique_ptr<ArpClient> arp_client_;
 
   // How frequently we send an ARP request. This is also the timeout
   // for a pending request.
@@ -175,7 +175,7 @@ class LinkMonitor {
 
   // IOCallback that fires when the socket associated with our ArpClient
   // has a packet to be received.  Calls ReceiveResponse().
-  scoped_ptr<IOHandler> receive_response_handler_;
+  std::unique_ptr<IOHandler> receive_response_handler_;
   // Callback method used for periodic transmission of ARP requests.
   // When the timer expires this will call SendRequest() through the
   // void callback function SendRequestTask().

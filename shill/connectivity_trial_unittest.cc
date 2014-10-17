@@ -4,10 +4,10 @@
 
 #include "shill/connectivity_trial.h"
 
+#include <memory>
 #include <string>
 
 #include <base/bind.h>
-#include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -22,6 +22,7 @@ using base::Bind;
 using base::Callback;
 using base::Unretained;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 using testing::_;
 using testing::AtLeast;
@@ -197,10 +198,10 @@ class ConnectivityTrialTest : public Test {
 
   StrictMock<MockEventDispatcher> dispatcher_;
   MockControl control_;
-  scoped_ptr<MockDeviceInfo> device_info_;
+  unique_ptr<MockDeviceInfo> device_info_;
   scoped_refptr<MockConnection> connection_;
   CallbackTarget callback_target_;
-  scoped_ptr<ConnectivityTrial> connectivity_trial_;
+  unique_ptr<ConnectivityTrial> connectivity_trial_;
   StrictMock<MockTime> time_;
   struct timeval current_time_;
   const string interface_name_;

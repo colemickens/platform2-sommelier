@@ -5,13 +5,13 @@
 #ifndef SHILL_CONNECTION_HEALTH_CHECKER_H_
 #define SHILL_CONNECTION_HEALTH_CHECKER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>
@@ -184,19 +184,19 @@ class ConnectionHealthChecker {
   IPAddressStore *remote_ips_;
   base::Callback<void(Result)> result_callback_;
 
-  scoped_ptr<Sockets> socket_;
+  std::unique_ptr<Sockets> socket_;
   base::WeakPtrFactory<ConnectionHealthChecker> weak_ptr_factory_;
 
   // Callback passed to |tcp_connection_| to report an established TCP
   // connection.
   const base::Callback<void(bool, int)> connection_complete_callback_;
   // Active TCP connection during health check.
-  scoped_ptr<AsyncConnection> tcp_connection_;
+  std::unique_ptr<AsyncConnection> tcp_connection_;
   const base::Callback<void(void)> report_result_;
   // Active socket for |tcp_connection_| during an active health check.
   int sock_fd_;
   // Interface to read TCP connection information from the system.
-  scoped_ptr<SocketInfoReader> socket_info_reader_;
+  std::unique_ptr<SocketInfoReader> socket_info_reader_;
 
   DNSClientFactory *dns_client_factory_;
   ScopedVector<DNSClient> dns_clients_;
