@@ -15,11 +15,11 @@
 
 #include <cassert>
 #include <cerrno>
+#include <memory>
 
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <metrics/metrics_library.h>
@@ -80,7 +80,7 @@ static void ListUrls(p2p::client::ServiceFinder* finder,
 }
 
 int main(int argc, char* argv[]) {
-  scoped_ptr<p2p::client::ServiceFinder> finder;
+  std::unique_ptr<p2p::client::ServiceFinder> finder;
 
   g_type_init();
   CommandLine::Init(argc, argv);

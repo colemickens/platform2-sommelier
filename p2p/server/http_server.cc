@@ -12,11 +12,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <memory>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 
 using std::string;
 using std::vector;
@@ -86,7 +86,7 @@ class HttpServerExternalProcess : public HttpServer {
   NumConnectionsCallback num_connections_callback_;
 
   // A message watch for child P2PServerMessages.
-  scoped_ptr<StructSerializerWatcher<P2PServerMessage>> child_watch_;
+  std::unique_ptr<StructSerializerWatcher<P2PServerMessage>> child_watch_;
 
   DISALLOW_COPY_AND_ASSIGN(HttpServerExternalProcess);
 };

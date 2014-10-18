@@ -12,12 +12,12 @@
 #include <glib.h>
 #include <stdint.h>
 
-#include <string>
 #include <map>
+#include <memory>
+#include <string>
 
 #include <base/command_line.h>
 #include <base/files/file_path.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/threading/simple_thread.h>
 
 
@@ -63,7 +63,7 @@ class Server : public ServerInterface {
   void UpdateNumConnections(int delta_num_connections);
 
   // Clock used for time-keeping and sleeping.
-  scoped_ptr<p2p::common::ClockInterface> clock_;
+  std::unique_ptr<p2p::common::ClockInterface> clock_;
 
   // Thread pool used for worker threads.
   base::DelegateSimpleThreadPool thread_pool_;
