@@ -43,9 +43,9 @@ static void InstallSignalHandlers() {
   struct sigaction sa;
   memset(&sa, 0, sizeof(sa));
   sa.sa_handler = HandleSignal;
-  sigaction(SIGTERM, &sa, NULL);
-  sigaction(SIGINT, &sa, NULL);
-  sigaction(SIGALRM, &sa, NULL);
+  sigaction(SIGTERM, &sa, nullptr);
+  sigaction(SIGINT, &sa, nullptr);
+  sigaction(SIGALRM, &sa, nullptr);
 }
 
 static void LockDownUmask() {
