@@ -404,12 +404,11 @@ void ChromiumCommandBuilder::SetUpPepperPlugins() {
     if (plugin_name == "Shockwave Flash") {
       AddArg("--ppapi-flash-path=" + file_name);
       AddArg("--ppapi-flash-version=" + version);
-
-      // TODO(ihf): Remove once crbug.com/237380 and crbug.com/276738 are fixed.
+      // TODO(ihf): Remove once crbug.com/441782 is fixed.
       const bool is_atom = IsBoard("x86-alex") || IsBoard("x86-alex_he") ||
           IsBoard("x86-mario") || IsBoard("x86-zgb") || IsBoard("x86-zgb_he");
       if (is_atom) {
-        AddArg("--ppapi-flash-args=enable_hw_video_decode=0"
+        AddArg("--ppapi-flash-args=enable_hw_video_decode=1"
                ",enable_low_latency_audio=0");
       } else {
         AddArg("--ppapi-flash-args=enable_hw_video_decode=1");
