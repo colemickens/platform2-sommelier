@@ -70,7 +70,7 @@ namespace {
 
 const char kPhoneNumber[] = "*99#";
 
-// This identifier is specified in the additional_providers.prototxt file.
+// This identifier is specified in the serviceproviders.prototxt file.
 const char kVzwIdentifier[] = "c83d6597-dc91-4d48-a3a7-d86b80123751";
 const size_t kVzwMdnLength = 10;
 
