@@ -153,11 +153,9 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kOperatorCodeProperty[];
   static const char kOperatorAccessTechnologyProperty[];
 
-  // Modem Model ID strings.  From modem firmware via modemmanager.
-  static const char kE362ModelId[];
-
-  // Plugin strings via modemmanager.
+  // Plugin strings via ModemManager.
   static const char kAltairLTEMMPlugin[];
+  static const char kNovatelLTEMMPlugin[];
 
   static const int64_t kActivationRegistrationTimeoutMilliseconds;
   static const int64_t kEnterPinTimeoutMilliseconds;

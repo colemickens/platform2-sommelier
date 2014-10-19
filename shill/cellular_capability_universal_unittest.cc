@@ -1874,13 +1874,13 @@ TEST_F(CellularCapabilityUniversalMainTest, GetNetworkTechnologyStringOnE362) {
   capability_->access_technologies_ = 0;
   EXPECT_TRUE(capability_->GetNetworkTechnologyString().empty());
 
-  cellular_->set_model_id(CellularCapabilityUniversal::kE362ModelId);
+  cellular_->set_mm_plugin(CellularCapabilityUniversal::kNovatelLTEMMPlugin);
   EXPECT_EQ(kNetworkTechnologyLte, capability_->GetNetworkTechnologyString());
 
   capability_->access_technologies_ = MM_MODEM_ACCESS_TECHNOLOGY_GPRS;
   EXPECT_EQ(kNetworkTechnologyLte, capability_->GetNetworkTechnologyString());
 
-  cellular_->set_model_id("");;
+  cellular_->set_mm_plugin("");
   EXPECT_EQ(kNetworkTechnologyGprs, capability_->GetNetworkTechnologyString());
 }
 

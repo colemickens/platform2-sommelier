@@ -62,7 +62,7 @@ const char CellularCapabilityUniversal::kOperatorCodeProperty[] =
 const char CellularCapabilityUniversal::kOperatorAccessTechnologyProperty[] =
     "access-technology";
 const char CellularCapabilityUniversal::kAltairLTEMMPlugin[] = "Altair LTE";
-const char CellularCapabilityUniversal::kE362ModelId[] = "E362 WWAN";
+const char CellularCapabilityUniversal::kNovatelLTEMMPlugin[] = "Novatel LTE";
 const int CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds =
     20000;
 
@@ -1054,14 +1054,15 @@ CellularBearer *CellularCapabilityUniversal::GetActiveBearer() const {
 }
 
 string CellularCapabilityUniversal::GetNetworkTechnologyString() const {
-  // If we know that the modem is an E362, return LTE here to make sure that
-  // Chrome sees LTE as the network technology even if the actual technology is
-  // unknown.
-  // TODO(armansito): This hack will cause the UI to display LTE even if the
-  // modem doesn't support it at a given time. This might be problematic if we
-  // ever want to support switching between access technologies (e.g. falling
-  // back to 3G when LTE is not available).
-  if (cellular()->model_id() == kE362ModelId)
+  // If we know that the modem is an E362 modem supported by the Novatel LTE
+  // plugin, return LTE here to make sure that Chrome sees LTE as the network
+  // technology even if the actual technology is unknown.
+  //
+  // This hack will cause the UI to display LTE even if the modem doesn't
+  // support it at a given time. This might be problematic if we ever want to
+  // support switching between access technologies (e.g. falling back to 3G
+  // when LTE is not available).
+  if (cellular()->mm_plugin() == kNovatelLTEMMPlugin)
     return kNetworkTechnologyLte;
 
   // Order is important.  Return the highest speed technology
@@ -1247,13 +1248,12 @@ bool CellularCapabilityUniversal::RetriableConnectError(
   if (error.type() == Error::kInvalidApn)
     return true;
 
-  // modemmanager does not ever return kInvalidApn for E362 modems
-  // with 1.41 firmware.  It remains to be seem if this will change
-  // with 3.x firmware.
-  if ((cellular()->model_id() == kE362ModelId) &&
-      (error.type() == Error::kOperationFailed))
+  // ModemManager does not ever return kInvalidApn for an E362 modem (with
+  // firmware version 1.41) supported by the Novatel LTE plugin.
+  if ((cellular()->mm_plugin() == kNovatelLTEMMPlugin) &&
+      (error.type() == Error::kOperationFailed)) {
     return true;
-
+  }
   return false;
 }
 
