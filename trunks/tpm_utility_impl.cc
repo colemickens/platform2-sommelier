@@ -45,6 +45,7 @@ namespace trunks {
 
 TpmUtilityImpl::TpmUtilityImpl(const TrunksFactory& factory)
     : factory_(factory) {
+  session_ = factory_.GetAuthorizationSession();
 }
 
 TpmUtilityImpl::~TpmUtilityImpl() {
@@ -367,6 +368,116 @@ TPM_RC TpmUtilityImpl::CreateStorageRootKeys(
   return TPM_RC_SUCCESS;
 }
 
+TPM_RC TpmUtilityImpl::AsymmetricEncrypt(TPM_HANDLE key_handle,
+                                         TPM_ALG_ID scheme,
+                                         const std::string& plaintext,
+                                         std::string* ciphertext) {
+  CHECK_LE(plaintext.size(), 256);
+  TPM2B_PUBLIC public_area;
+  TPM_RC return_code = GetKeyPublicArea(key_handle, &public_area);
+  if (return_code) {
+    LOG(ERROR) << "Error finding public area for: " << key_handle;
+    return return_code;
+  } else if (public_area.public_area.type != TPM_ALG_RSA) {
+    LOG(ERROR) << "Key handle given is not an RSA key";
+    return SAPI_RC_BAD_PARAMETER;
+  } else if ((public_area.public_area.object_attributes & kDecrypt) == 0) {
+    LOG(ERROR) << "Key handle given is not a decryption key";
+    return SAPI_RC_BAD_PARAMETER;
+  }
+  if ((public_area.public_area.object_attributes & kRestricted) != 0) {
+    LOG(ERROR) << "Cannot use RSAES for encryption with a restricted key";
+    return SAPI_RC_BAD_PARAMETER;
+  }
+  TPMT_RSA_DECRYPT in_scheme;
+  if (scheme == TPM_ALG_RSAES) {
+    in_scheme.scheme = TPM_ALG_RSAES;
+  } else {
+    in_scheme.scheme = TPM_ALG_NULL;
+  }
+  std::string key_name;
+  return_code = GetKeyName(key_handle, &key_name);
+  if (return_code) {
+    LOG(ERROR) << "Error finding key name for: " << key_handle;
+    return return_code;
+  }
+
+  NullAuthorizationDelegate null_delegate;
+  TPM2B_DATA label;
+  label.size = 0;
+  TPM2B_PUBLIC_KEY_RSA in_message = Make_TPM2B_PUBLIC_KEY_RSA(plaintext);
+  TPM2B_PUBLIC_KEY_RSA out_message;
+  return_code = factory_.GetTpm()->RSA_EncryptSync(key_handle,
+                                                   key_name,
+                                                   in_message,
+                                                   in_scheme,
+                                                   label,
+                                                   &out_message,
+                                                   &null_delegate);
+  if (return_code) {
+    LOG(ERROR) << "Error performing RSA encrypt: "
+               << GetErrorString(return_code);
+    return return_code;
+  }
+  ciphertext->assign(StringFrom_TPM2B_PUBLIC_KEY_RSA(out_message));
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::AsymmetricDecrypt(TPM_HANDLE key_handle,
+                                         TPM_ALG_ID scheme,
+                                         const std::string& password,
+                                         const std::string& ciphertext,
+                                         std::string* plaintext) {
+  TPM2B_PUBLIC public_area;
+  TPM_RC return_code = GetKeyPublicArea(key_handle, &public_area);
+  if (return_code) {
+    LOG(ERROR) << "Error finding public area for: " << key_handle;
+    return return_code;
+  } else if (public_area.public_area.type != TPM_ALG_RSA) {
+    LOG(ERROR) << "Key handle given is not an RSA key";
+    return SAPI_RC_BAD_PARAMETER;
+  } else if ((public_area.public_area.object_attributes & kDecrypt) == 0) {
+    LOG(ERROR) << "Key handle given is not a decryption key";
+    return SAPI_RC_BAD_PARAMETER;
+  }
+  if ((public_area.public_area.object_attributes & kRestricted) != 0) {
+    LOG(ERROR) << "Cannot use RSAES for encryption with a restricted key";
+    return SAPI_RC_BAD_PARAMETER;
+  }
+  TPMT_RSA_DECRYPT in_scheme;
+  if (scheme == TPM_ALG_RSAES) {
+    in_scheme.scheme = TPM_ALG_RSAES;
+  } else {
+    in_scheme.scheme = TPM_ALG_NULL;
+  }
+  std::string key_name;
+  return_code = GetKeyName(key_handle, &key_name);
+  if (return_code) {
+    LOG(ERROR) << "Error finding key name for: " << key_handle;
+    return return_code;
+  }
+
+  TPM2B_DATA label;
+  label.size = 0;
+  TPM2B_PUBLIC_KEY_RSA in_message = Make_TPM2B_PUBLIC_KEY_RSA(ciphertext);
+  TPM2B_PUBLIC_KEY_RSA out_message;
+  session_->SetEntityAuthorizationValue(password);
+  return_code = factory_.GetTpm()->RSA_DecryptSync(key_handle,
+                                                   key_name,
+                                                   in_message,
+                                                   in_scheme,
+                                                   label,
+                                                   &out_message,
+                                                   session_->GetDelegate());
+  if (return_code) {
+    LOG(ERROR) << "Error performing RSA decrypt: "
+               << GetErrorString(return_code);
+    return return_code;
+  }
+  plaintext->assign(StringFrom_TPM2B_PUBLIC_KEY_RSA(out_message));
+  return TPM_RC_SUCCESS;
+}
+
 TPM_RC TpmUtilityImpl::InitializeSession() {
   if (session_.get()) {
     return TPM_RC_SUCCESS;
@@ -400,6 +511,48 @@ TPM_RC TpmUtilityImpl::DisablePlatformHierarchy(
       TPM_RH_PLATFORM,  // The target hierarchy.
       0,  // Disable.
       authorization);
+}
+
+TPM_RC TpmUtilityImpl::GetKeyName(TPM_HANDLE handle, std::string* name) {
+  NullAuthorizationDelegate null_delegate;
+  TPM2B_PUBLIC public_data;
+  TPM2B_NAME out_name;
+  out_name.size = 0;
+  TPM2B_NAME qualified_name;
+  std::string handle_name;  // Unused
+  TPM_RC return_code = factory_.GetTpm()->ReadPublicSync(handle,
+                                                         handle_name,
+                                                         &public_data,
+                                                         &out_name,
+                                                         &qualified_name,
+                                                         &null_delegate);
+  if (return_code) {
+    LOG(ERROR) << "Error generating name for object: " << handle;
+    return return_code;
+  }
+  name->resize(out_name.size);
+  name->assign(StringFrom_TPM2B_NAME(out_name));
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::GetKeyPublicArea(TPM_HANDLE handle,
+                                        TPM2B_PUBLIC* public_data) {
+  CHECK(public_data);
+  NullAuthorizationDelegate null_delegate;
+  TPM2B_NAME out_name;
+  TPM2B_NAME qualified_name;
+  std::string handle_name;  // Unused
+  TPM_RC return_code = factory_.GetTpm()->ReadPublicSync(handle,
+                                                         handle_name,
+                                                         public_data,
+                                                         &out_name,
+                                                         &qualified_name,
+                                                         &null_delegate);
+  if (return_code) {
+    LOG(ERROR) << "Error generating name for object: " << handle;
+    return return_code;
+  }
+  return TPM_RC_SUCCESS;
 }
 
 }  // namespace trunks

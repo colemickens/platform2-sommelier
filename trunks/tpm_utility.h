@@ -60,6 +60,27 @@ class CHROMEOS_EXPORT TpmUtility {
   // with an empty authorization value until the TPM is cleared.
   virtual TPM_RC CreateStorageRootKeys(const std::string& owner_password) = 0;
 
+  // This method performs an encryption operation using a LOADED RSA key
+  // referrenced by its handle |key_handle|. The |plaintext| is then encrypted
+  // to give us the |ciphertext|. |scheme| refers to the encryption scheme
+  // to be used. By default keys use OAEP, but for an unrestricted key,
+  // TPM_ALG_RSAES is a valid input
+  virtual TPM_RC AsymmetricEncrypt(TPM_HANDLE key_handle,
+                                   TPM_ALG_ID scheme,
+                                   const std::string& plaintext,
+                                   std::string* ciphertext) = 0;
+
+  // This method performs a decyption operating using a loaded RSA key
+  // referenced by its handle |key_handle|. The |ciphertext| is then decrypted
+  // to give us the |plaintext|. We need |password| to authorize use of the
+  // key. |scheme| refers to the decryption scheme used. By default it is
+  // OAEP, but TPM_ALG_RSAES can be used with an unrestricted key.
+  virtual TPM_RC AsymmetricDecrypt(TPM_HANDLE key_handle,
+                                   TPM_ALG_ID scheme,
+                                   const std::string& password,
+                                   const std::string& ciphertext,
+                                   std::string* plaintext) = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(TpmUtility);
 };

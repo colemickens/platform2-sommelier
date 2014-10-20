@@ -13,8 +13,6 @@
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/chromeos_export.h>
 
-#include "trunks/null_authorization_delegate.h"
-
 namespace trunks {
 
 class AuthorizationDelegate;
@@ -39,6 +37,15 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
                        const std::string& endorsement_password,
                        const std::string& lockout_password) override;
   TPM_RC CreateStorageRootKeys(const std::string& owner_password) override;
+  TPM_RC AsymmetricEncrypt(TPM_HANDLE key_handle,
+                           TPM_ALG_ID scheme,
+                           const std::string& plaintext,
+                           std::string* ciphertext) override;
+  TPM_RC AsymmetricDecrypt(TPM_HANDLE key_handle,
+                           TPM_ALG_ID scheme,
+                           const std::string& password,
+                           const std::string& ciphertext,
+                           std::string* plaintext) override;
 
  private:
   const TrunksFactory& factory_;
@@ -58,6 +65,13 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
   // Disables the TPM platform hierarchy until the next startup. This requires
   // platform |authorization|.
   TPM_RC DisablePlatformHierarchy(AuthorizationDelegate* authorization);
+
+  // This function sets |name| to the name of the object referenced by
+  // |handle|. This function only works on Transient and Permanent objects.
+  TPM_RC GetKeyName(TPM_HANDLE handle, std::string* name);
+
+  // This function returns the public area of a handle in the tpm.
+  TPM_RC GetKeyPublicArea(TPM_HANDLE handle, TPM2B_PUBLIC* public_data);
 
   DISALLOW_COPY_AND_ASSIGN(TpmUtilityImpl);
 };

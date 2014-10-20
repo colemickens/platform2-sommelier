@@ -5,8 +5,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "trunks/error_codes.h"
+#include "trunks/mock_authorization_delegate.h"
+#include "trunks/mock_authorization_session.h"
 #include "trunks/mock_tpm.h"
 #include "trunks/mock_tpm_state.h"
+#include "trunks/null_authorization_delegate.h"
 #include "trunks/tpm_utility_impl.h"
 #include "trunks/trunks_factory_for_test.h"
 
@@ -18,6 +22,13 @@ using testing::SetArgPointee;
 
 namespace trunks {
 
+namespace {
+
+const trunks::TPMA_OBJECT kRestricted = 1U << 16;
+const trunks::TPMA_OBJECT kDecrypt = 1U << 17;
+
+}  // namespace
+
 // A test fixture for TpmUtility tests.
 class TpmUtilityTest : public testing::Test {
  public:
@@ -26,11 +37,13 @@ class TpmUtilityTest : public testing::Test {
   void SetUp() {
     factory_.set_tpm_state(&mock_tpm_state_);
     factory_.set_tpm(&mock_tpm_);
+    factory_.set_authorization_session(&mock_authorization_session_);
   }
  protected:
   TrunksFactoryForTest factory_;
   NiceMock<MockTpmState> mock_tpm_state_;
   NiceMock<MockTpm> mock_tpm_;
+  NiceMock<MockAuthorizationSession> mock_authorization_session_;
 };
 
 TEST_F(TpmUtilityTest, StartupSuccess) {
@@ -326,6 +339,133 @@ TEST_F(TpmUtilityTest, RootKeysPersistFailure) {
   EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, utility.CreateStorageRootKeys("password"));
+}
+
+TEST_F(TpmUtilityTest, AsymmetricEncryptSuccess) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string plaintext;
+  std::string output_ciphertext("ciphertext");
+  std::string ciphertext;
+  TPM2B_PUBLIC_KEY_RSA out_message = Make_TPM2B_PUBLIC_KEY_RSA(
+      output_ciphertext);
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kDecrypt;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, RSA_EncryptSync(key_handle, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<5>(out_message),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.AsymmetricEncrypt(key_handle,
+                                                      TPM_ALG_NULL,
+                                                      plaintext,
+                                                      &ciphertext));
+  EXPECT_EQ(0, ciphertext.compare(output_ciphertext));
+}
+
+TEST_F(TpmUtilityTest, AsymmetricEncryptFail) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string plaintext;
+  std::string ciphertext;
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kDecrypt;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, RSA_EncryptSync(key_handle, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.AsymmetricEncrypt(key_handle,
+                                                      TPM_ALG_NULL,
+                                                      plaintext,
+                                                      &ciphertext));
+}
+
+TEST_F(TpmUtilityTest, AsymmetricEncryptBadParams) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string plaintext;
+  std::string ciphertext;
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kDecrypt | kRestricted;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.AsymmetricEncrypt(key_handle,
+                                                             TPM_ALG_RSAES,
+                                                             plaintext,
+                                                             &ciphertext));
+}
+TEST_F(TpmUtilityTest, AsymmetricDecryptSuccess) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string plaintext;
+  std::string output_plaintext("plaintext");
+  std::string ciphertext;
+  std::string password;
+  TPM2B_PUBLIC_KEY_RSA out_message = Make_TPM2B_PUBLIC_KEY_RSA(
+      output_plaintext);
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kDecrypt;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, RSA_DecryptSync(key_handle, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<5>(out_message),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.AsymmetricDecrypt(key_handle,
+                                                      TPM_ALG_NULL,
+                                                      password,
+                                                      ciphertext,
+                                                      &plaintext));
+  EXPECT_EQ(0, plaintext.compare(output_plaintext));
+}
+
+TEST_F(TpmUtilityTest, AsymmetricDecryptFail) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string key_name;
+  std::string plaintext;
+  std::string ciphertext;
+  std::string password;
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kDecrypt;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, RSA_DecryptSync(key_handle, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.AsymmetricDecrypt(key_handle,
+                                                      TPM_ALG_NULL,
+                                                      password,
+                                                      ciphertext,
+                                                      &plaintext));
+}
+
+TEST_F(TpmUtilityTest, AsymmetricDecryptBadParams) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string key_name;
+  std::string plaintext;
+  std::string ciphertext;
+  std::string password;
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kDecrypt | kRestricted;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.AsymmetricDecrypt(key_handle,
+                                                             TPM_ALG_RSAES,
+                                                             password,
+                                                             ciphertext,
+                                                             &plaintext));
 }
 
 }  // namespace trunks

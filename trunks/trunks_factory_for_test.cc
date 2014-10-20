@@ -101,6 +101,28 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->CreateStorageRootKeys(owner_password);
   }
 
+  TPM_RC AsymmetricEncrypt(TPM_HANDLE key_handle,
+                           TPM_ALG_ID scheme,
+                           const std::string& plaintext,
+                           std::string* ciphertext) {
+    return target_->AsymmetricEncrypt(key_handle,
+                                      scheme,
+                                      plaintext,
+                                      ciphertext);
+  }
+
+  TPM_RC AsymmetricDecrypt(TPM_HANDLE key_handle,
+                           TPM_ALG_ID scheme,
+                           const std::string& password,
+                           const std::string& ciphertext,
+                           std::string* plaintext) {
+    return target_->AsymmetricDecrypt(key_handle,
+                                      scheme,
+                                      password,
+                                      ciphertext,
+                                      plaintext);
+  }
+
  private:
   TpmUtility* target_;
 };
