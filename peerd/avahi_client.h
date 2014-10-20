@@ -61,6 +61,8 @@ class AvahiClient {
 
   // Transform a service_id to a mDNS compatible service type.
   static std::string GetServiceType(const std::string& service_id);
+  // Transform a mDNS compatible service type to a service id.
+  static std::string GetServiceId(const std::string& service_type);
 
  private:
   // Watch for changes in Avahi server state.

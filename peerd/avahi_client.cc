@@ -9,6 +9,7 @@
 #include <avahi-common/defs.h>
 #include <chromeos/dbus/dbus_method_invoker.h>
 #include <chromeos/dbus/dbus_signal_handler.h>
+#include <chromeos/strings/string_utils.h>
 #include <dbus/object_proxy.h>
 
 #include "peerd/dbus_constants.h"
@@ -19,6 +20,7 @@ using dbus::ObjectPath;
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::CallMethodAndBlock;
 using chromeos::dbus_utils::ExtractMethodCallResults;
+using chromeos::string_utils::SplitAtFirst;
 using std::string;
 
 namespace peerd {
@@ -108,6 +110,12 @@ string AvahiClient::GetServiceType(const string& service_id) {
   //             services.  We'd have to pass that information down from our
   //             DBus interface.
   return "_" + service_id + "._tcp";
+}
+
+string AvahiClient::GetServiceId(const string& service_type) {
+  string service_id = SplitAtFirst(service_type, '.', false).first;
+  if (!service_id.empty()) { service_id = service_id.substr(1); }
+  return service_id;
 }
 
 void AvahiClient::OnServiceOwnerChanged(const string& old_owner,

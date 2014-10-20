@@ -30,6 +30,8 @@ void PeerManagerImpl::OnPeerDiscovered(const string& peer_id,
                                        const string& note,
                                        const base::Time& last_seen,
                                        tech_t which_technology) {
+  VLOG(1) << "Discovered peer=" << peer_id << " with name=" << name
+          << " with note=" << note;
   auto it = peers_.find(peer_id);
   if (it != peers_.end()) {
     it->second->UpdateFromAdvertisement(name, note, last_seen,
@@ -68,6 +70,8 @@ void PeerManagerImpl::OnServiceDiscovered(const string& peer_id,
                  << peer_id;
     return;
   }
+  VLOG(1) << "Updating service=" << service_id
+          << " from technology=" << which_technology;
   it->second->UpdateService(service_id, addresses, info,
                             last_seen, which_technology);
 }
