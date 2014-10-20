@@ -22,7 +22,7 @@ extern const char kServiceURL[];
 extern const char kRobotAccount[];
 // Transient keys
 extern const char kDeviceKind[];
-extern const char kSystemName[];
+extern const char kName[];
 extern const char kDisplayName[];
 
 }  // namespace storage_keys

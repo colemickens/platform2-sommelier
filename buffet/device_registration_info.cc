@@ -43,7 +43,7 @@ const char kServiceURL[]    = "service_url";
 const char kRobotAccount[]  = "robot_account";
 // Transient keys
 const char kDeviceKind[]    = "device_kind";
-const char kSystemName[]    = "system_name";
+const char kName[]          = "name";
 const char kDisplayName[]   = "display_name";
 
 }  // namespace storage_keys
@@ -325,7 +325,7 @@ DeviceRegistrationInfo::BuildDeviceResource(chromeos::ErrorPtr* error) {
   if (!device_id_.empty())
     resource->SetString("id", device_id_);
   resource->SetString("deviceKind", device_kind_);
-  resource->SetString("systemName", system_name_);
+  resource->SetString("name", name_);
   if (!display_name_.empty())
     resource->SetString("displayName", display_name_);
   resource->SetString("channel.supportedType", "xmpp");
@@ -377,7 +377,7 @@ std::string DeviceRegistrationInfo::RegisterDevice(
   GetParamValue(params, storage_keys::kClientSecret, &client_secret_);
   GetParamValue(params, storage_keys::kApiKey, &api_key_);
   GetParamValue(params, storage_keys::kDeviceKind, &device_kind_);
-  GetParamValue(params, storage_keys::kSystemName, &system_name_);
+  GetParamValue(params, storage_keys::kName, &name_);
   GetParamValue(params, storage_keys::kDisplayName, &display_name_);
   GetParamValue(params, storage_keys::kOAuthURL, &oauth_url_);
   GetParamValue(params, storage_keys::kServiceURL, &service_url_);

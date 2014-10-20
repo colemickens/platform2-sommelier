@@ -159,7 +159,7 @@ class DeviceRegistrationInfo {
   base::Time access_token_expiration_;
   std::string ticket_id_;
   std::string device_kind_ = "vendor";
-  std::string system_name_ = "coffee_pot";
+  std::string name_ = "coffee_pot";
   std::string display_name_ = "Coffee Pot";
 
   // HTTP transport used for communications.
