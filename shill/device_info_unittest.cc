@@ -1335,8 +1335,11 @@ void DeviceInfoTechnologyTest::CreateInfoSymLink(const string &name,
 }
 
 TEST_F(DeviceInfoTechnologyTest, Unknown) {
-  EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
-  // Should still be unknown even without a uevent file.
+  // With a uevent file but no driver symlink, we should act as if this
+  // is a regular Ethernet driver.
+  EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology());
+
+  // Should be unknown without a uevent file.
   EXPECT_TRUE(base::DeleteFile(GetInfoPath("uevent"), false));
   EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
 }

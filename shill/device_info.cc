@@ -288,7 +288,13 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
                                       __func__, iface_name.c_str());
       return Technology::kTunnel;
     }
-    return Technology::kUnknown;
+
+    // We don't know what sort of device it is.  Act the same as if there
+    // was a driver symlink, but we did not recognize the driver name.
+    SLOG(Device, 2) << StringPrintf("%s: device %s, without driver name "
+                                    "is defaulted to type ethernet",
+                                    __func__, iface_name.c_str());
+    return Technology::kEthernet;
   }
 
   string driver_name(driver_path.BaseName().value());
