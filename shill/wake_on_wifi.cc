@@ -22,6 +22,7 @@
 #include "shill/ip_address.h"
 #include "shill/ip_address_store.h"
 #include "shill/logging.h"
+#include "shill/manager.h"
 #include "shill/netlink_manager.h"
 #include "shill/nl80211_message.h"
 #include "shill/wifi.h"
@@ -38,9 +39,10 @@ const int WakeOnWiFi::kVerifyWakeOnWiFiSettingsDelaySeconds = 1;
 const int WakeOnWiFi::kMaxSetWakeOnPacketRetries = 2;
 
 WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
-                       EventDispatcher *dispatcher)
+                       EventDispatcher *dispatcher, Manager *manager)
     : dispatcher_(dispatcher),
       netlink_manager_(netlink_manager),
+      manager_(manager),
       num_set_wake_on_packet_retries_(0),
       wake_on_wifi_max_patterns_(0),
       wiphy_index_(kDefaultWiphyIndex),
@@ -462,8 +464,12 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(const Nl80211Message &msg,
 
 void WakeOnWiFi::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                            Error *error) {
-  if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
-      wake_on_wifi_triggers_supported_.end()) {
+  if (!manager_->IsWakeOnPacketEnabled()) {
+    Error::PopulateAndLog(
+        error, Error::kOperationFailed,
+        "Wake on Packet functionality disabled, so do nothing");
+  } else if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
+             wake_on_wifi_triggers_supported_.end()) {
     Error::PopulateAndLog(
         error, Error::kNotSupported,
         "Wake on IP address patterns not supported by this WiFi device");
@@ -478,8 +484,12 @@ void WakeOnWiFi::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
 
 void WakeOnWiFi::RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                               Error *error) {
-  if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
-      wake_on_wifi_triggers_supported_.end()) {
+  if (!manager_->IsWakeOnPacketEnabled()) {
+    Error::PopulateAndLog(
+        error, Error::kOperationFailed,
+        "Wake on Packet functionality disabled, so do nothing");
+  } else if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
+             wake_on_wifi_triggers_supported_.end()) {
     Error::PopulateAndLog(
         error, Error::kNotSupported,
         "Wake on IP address patterns not supported by this WiFi device");
@@ -492,8 +502,12 @@ void WakeOnWiFi::RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
 }
 
 void WakeOnWiFi::RemoveAllWakeOnPacketConnections(Error *error) {
-  if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
-      wake_on_wifi_triggers_supported_.end()) {
+  if (!manager_->IsWakeOnPacketEnabled()) {
+    Error::PopulateAndLog(
+        error, Error::kOperationFailed,
+        "Wake on Packet functionality disabled, so do nothing");
+  } else if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
+             wake_on_wifi_triggers_supported_.end()) {
     Error::PopulateAndLog(
         error, Error::kNotSupported,
         "Wake on IP address patterns not supported by this WiFi device");
@@ -577,7 +591,11 @@ void WakeOnWiFi::VerifyWakeOnWiFiSettings(
 }
 
 void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
-  Error error;
+  if (!manager_->IsWakeOnPacketEnabled()) {
+    LOG(INFO) << __func__
+              << ": Wake on Packet functionality disabled, so do nothing";
+    return;
+  }
   if (!wiphy_index_received_) {
     LOG(ERROR) << "Interface index not yet received";
     return;
@@ -586,6 +604,7 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
     DisableWakeOnWiFi();
     return;
   }
+  Error error;
   SetWakeOnPacketConnMessage set_wowlan_msg;
   if (!ConfigureSetWakeOnWiFiSettingsMessage(
           &set_wowlan_msg, wake_on_wifi_triggers_, wake_on_packet_connections_,
@@ -716,10 +735,9 @@ void WakeOnWiFi::ParseWiphyIndex(const Nl80211Message &nl80211_message) {
 }
 
 void WakeOnWiFi::OnBeforeSuspend(const ResultCallback &callback) {
-  // Program NIC to wake on disconnects and packets from certain IP addresses
-  // iff we have buffered wake on packet programming requests.
   if (!wake_on_wifi_triggers_supported_.empty() &&
-      !wake_on_packet_connections_.Empty()) {
+      !wake_on_packet_connections_.Empty() &&
+      manager_->IsWakeOnPacketEnabled()) {
     wake_on_wifi_triggers_.insert(WakeOnWiFi::kIPAddress);
     // TODO(samueltan): Currently we do not wake on disconnect as this will
     // trigger a full system resume. Program the NIC wake on disconnect only

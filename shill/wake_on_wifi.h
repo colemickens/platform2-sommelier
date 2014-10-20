@@ -30,13 +30,15 @@ class ByteString;
 class Error;
 class EventDispatcher;
 class GetWakeOnPacketConnMessage;
+class Manager;
 class Nl80211Message;
 class SetWakeOnPacketConnMessage;
 class WiFi;
 
 class WakeOnWiFi {
  public:
-  WakeOnWiFi(NetlinkManager *netlink_manager, EventDispatcher *dispatcher);
+  WakeOnWiFi(NetlinkManager *netlink_manager, EventDispatcher *dispatcher,
+             Manager *manager);
   ~WakeOnWiFi();
 
   // Types of triggers that can cause the NIC to wake the WiFi device.
@@ -180,6 +182,7 @@ class WakeOnWiFi {
   // Pointers to objects owned by the WiFi object that created this object.
   EventDispatcher *dispatcher_;
   NetlinkManager *netlink_manager_;
+  Manager *manager_;
   // Executes after the NIC's wake-on-packet settings are configured via
   // NL80211 messages to verify that the new configuration has taken effect.
   // Calls RequestWakeOnPacketSettings.

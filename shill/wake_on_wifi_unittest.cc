@@ -18,9 +18,13 @@
 #include "shill/ip_address.h"
 #include "shill/ip_address_store.h"
 #include "shill/logging.h"
+#include "shill/mock_glib.h"
 #include "shill/mock_log.h"
+#include "shill/mock_manager.h"
+#include "shill/mock_metrics.h"
 #include "shill/mock_netlink_manager.h"
 #include "shill/netlink_message_matchers.h"
+#include "shill/nice_mock_control.h"
 #include "shill/nl80211_message.h"
 #include "shill/testing.h"
 #include "shill/wake_on_wifi.h"
@@ -476,7 +480,10 @@ const int kNewWiphyNlMsg_WowlanTrigDisconnectAttributeOffset = 3304;
 class WakeOnWiFiTest : public ::testing::Test {
  public:
   WakeOnWiFiTest()
-      : wake_on_wifi_(new WakeOnWiFi(&netlink_manager_, &dispatcher_)) {}
+      : metrics_(nullptr),
+        manager_(&control_interface_, nullptr, &metrics_, &glib_),
+        wake_on_wifi_(
+            new WakeOnWiFi(&netlink_manager_, &dispatcher_, &manager_)) {}
   virtual ~WakeOnWiFiTest() {}
 
   virtual void SetUp() {
@@ -617,8 +624,12 @@ class WakeOnWiFiTest : public ::testing::Test {
   MOCK_METHOD1(SuspendCallback, void(const Error &error));
 
  protected:
+  NiceMockControl control_interface_;
+  MockMetrics metrics_;
+  MockGLib glib_;
   EventDispatcher dispatcher_;
   MockNetlinkManager netlink_manager_;
+  MockManager manager_;
   std::unique_ptr<WakeOnWiFi> wake_on_wifi_;
 };
 

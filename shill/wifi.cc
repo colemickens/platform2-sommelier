@@ -145,7 +145,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       scan_state_(kScanIdle),
       scan_method_(kScanMethodNone),
       receive_byte_count_at_connect_(0),
-      wake_on_wifi_(new WakeOnWiFi(netlink_manager_, dispatcher)) {
+      wake_on_wifi_(new WakeOnWiFi(netlink_manager_, dispatcher, manager)) {
   PropertyStore *store = this->mutable_store();
   store->RegisterDerivedString(
       kBgscanMethodProperty,

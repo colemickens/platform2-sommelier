@@ -676,6 +676,11 @@ Properties 	object ActiveProfile [readwrite]
 			enabled on new Ethernet links.  Currently connected
 			links are un-affected.
 
+		bool WakeOnPacketEnabled [readwrite]
+
+			Specifies whether Wake on Packet functionality should be
+			enabled on all WiFi devices.
+
 		void AddWakeOnPacketConnection(string endpoint)
 
 			Program a wake-on-packet rule into the NIC to wake the system

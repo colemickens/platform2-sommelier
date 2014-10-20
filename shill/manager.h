@@ -262,6 +262,11 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Return whether the Wake on LAN feature is enabled.
   virtual bool IsWakeOnLanEnabled() const { return is_wake_on_lan_enabled_; }
 
+  // Return whether Wake on Packet functionality is enabled.
+  virtual bool IsWakeOnPacketEnabled() const {
+    return is_wake_on_packet_enabled_;
+  }
+
   // Return whether a technology is disabled for auto-connect.
   virtual bool IsTechnologyAutoConnectDisabled(
       Technology::Identifier technology) const;
@@ -670,6 +675,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Whether Wake on LAN should be enabled for all Ethernet devices.
   bool is_wake_on_lan_enabled_;
+
+  // Whether Wake on Packet functionality should be enabled for all WiFi
+  // devices.
+  bool is_wake_on_packet_enabled_;
 
   // Maps tags to callbacks for monitoring default service changes.
   std::map<int, ServiceCallback> default_service_callbacks_;
