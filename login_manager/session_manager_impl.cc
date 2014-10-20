@@ -77,6 +77,12 @@ const base::FilePath::CharType kDeviceLocalAccountStateDir[] =
 // The name of the flag that indicates whether dev mode should be blocked.
 const char kCrossystemBlockDevmode[] = "block_devmode";
 
+// Crossystem property indicating firmware type.
+const char kCrossystemMainfwType[] = "mainfw_type";
+
+// Firmware type string returned when there is no Chrome OS firmware present.
+const char kCrossystemMainfwTypeNonchrome[] = "nonchrome";
+
 }  // namespace
 
 SessionManagerImpl::Error::Error() : set_(false) {
@@ -649,15 +655,23 @@ void SessionManagerImpl::UpdateSystemSettings() {
   if (!owner_key_.IsPopulated())
     return;
 
-  int block_devmode_setting =
-      device_policy_->GetSettings().system_settings().block_devmode() ? 1 : 0;
-  int block_devmode_value = VbGetSystemPropertyInt(kCrossystemBlockDevmode);
-  if (block_devmode_value == -1)
-    LOG(ERROR) << "Failed to read block_devmode flag!";
+  // Only write verified boot settings if running on Chrome OS firmware.
+  char buffer[VB_MAX_STRING_PROPERTY];
+  if (VbGetSystemPropertyString(kCrossystemMainfwType, buffer,
+                                sizeof(buffer)) &&
+      strcmp(kCrossystemMainfwTypeNonchrome, buffer)) {
+    int block_devmode_setting =
+        device_policy_->GetSettings().system_settings().block_devmode() ? 1 : 0;
+    int block_devmode_value = VbGetSystemPropertyInt(kCrossystemBlockDevmode);
+    if (block_devmode_value == -1)
+      LOG(ERROR) << "Failed to read block_devmode flag!";
 
-  if (block_devmode_setting != block_devmode_value) {
-    if (VbSetSystemPropertyInt(kCrossystemBlockDevmode, block_devmode_setting))
-      LOG(ERROR) << "Failed to write block_devmode flag!";
+    if (block_devmode_setting != block_devmode_value) {
+      if (VbSetSystemPropertyInt(kCrossystemBlockDevmode,
+                                 block_devmode_setting)) {
+        LOG(ERROR) << "Failed to write block_devmode flag!";
+      }
+    }
   }
 }
 
