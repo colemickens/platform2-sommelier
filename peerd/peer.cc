@@ -81,6 +81,7 @@ bool Peer::RegisterAsync(
                  "Invalid UUID for peer.");
     return false;
   }
+  uuid_.SetValue(uuid);
   if (!SetFriendlyName(error, friendly_name)) { return false; }
   if (!SetNote(error, note)) { return false; }
   if (!SetLastSeen(error, last_seen)) { return false; }

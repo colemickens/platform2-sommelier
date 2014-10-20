@@ -152,6 +152,9 @@ TEST_F(PeerTest, ShouldRejectBadNoteInFactory) {
 
 TEST_F(PeerTest, ShouldRegisterWithDBus) {
   auto peer = MakePeer();
+  EXPECT_EQ(peer->GetUUID(), kUUID);
+  EXPECT_EQ(peer->GetFriendlyName(), kValidName);
+  EXPECT_EQ(peer->GetNote(), kValidNote);
 }
 
 TEST_F(PeerTest, ShouldRejectNameTooLong) {
