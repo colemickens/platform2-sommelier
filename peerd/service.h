@@ -20,10 +20,6 @@
 
 namespace peerd {
 
-namespace constants {
-extern const char kSerbusServiceId[];
-}  // namespace constants
-
 namespace errors {
 namespace service {
 
@@ -39,6 +35,11 @@ class Service {
  public:
   using ServiceInfo = std::map<std::string, std::string>;
   using IpAddresses = std::vector<ip_addr>;
+
+  static bool IsValidServiceId(chromeos::ErrorPtr* error,
+                               const std::string& service_id);
+  static bool IsValidServiceInfo(chromeos::ErrorPtr* error,
+                                 const ServiceInfo& service_info);
 
   // For mDNS we'll encode each key/value pair as an entry in the TXT
   // record.  The max length there is 254 bytes + 1 byte to encode the
@@ -70,11 +71,6 @@ class Service {
               const ServiceInfo& info);
 
  private:
-  static bool IsValidServiceId(chromeos::ErrorPtr* error,
-                               const std::string& service_id);
-  static bool IsValidServiceInfo(chromeos::ErrorPtr* error,
-                                 const ServiceInfo& service_info);
-
   chromeos::dbus_utils::ExportedProperty<std::string> service_id_;
   chromeos::dbus_utils::ExportedProperty<IpAddresses> ip_addresses_;
   chromeos::dbus_utils::ExportedProperty<ServiceInfo> service_info_;

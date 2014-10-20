@@ -10,6 +10,7 @@
 #include <dbus/mock_bus.h>
 #include <dbus/object_path.h>
 
+#include "peerd/constants.h"
 #include "peerd/mock_avahi_client.h"
 #include "peerd/mock_peer_manager.h"
 #include "peerd/mock_published_peer.h"

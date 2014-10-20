@@ -12,6 +12,7 @@
 #include <chromeos/strings/string_utils.h>
 #include <dbus/bus.h>
 
+#include "peerd/constants.h"
 #include "peerd/dbus_constants.h"
 #include "peerd/service.h"
 
@@ -19,7 +20,9 @@ using chromeos::Error;
 using chromeos::ErrorPtr;
 using chromeos::dbus_utils::CallMethodAndBlock;
 using chromeos::dbus_utils::ExtractMethodCallResults;
+using chromeos::string_utils::Join;
 using peerd::constants::kSerbusServiceId;
+using peerd::constants::mdns::kSerbusServiceDelimiter;
 using std::vector;
 
 namespace peerd {
@@ -235,11 +238,12 @@ bool AvahiServicePublisher::UpdateRootService(ErrorPtr* error) {
     return success;
   }
   Service::ServiceInfo service_info{
-    {"ver", "1.0"},
-    {"id", uuid_},
-    {"note", note_},
-    {"name", friendly_name_},
-    {"services", chromeos::string_utils::Join('.', services)},
+    {constants::mdns::kSerbusVersion, "1.0"},
+    {constants::mdns::kSerbusPeerId, uuid_},
+    {constants::mdns::kSerbusNote, note_},
+    {constants::mdns::kSerbusName, friendly_name_},
+    {constants::mdns::kSerbusServiceList, Join(kSerbusServiceDelimiter,
+                                               services)},
   };
   return UpdateGroup(error, kSerbusServiceId, service_info);
 }

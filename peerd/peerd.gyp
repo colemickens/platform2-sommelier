@@ -15,6 +15,7 @@
       'sources': [
         'avahi_client.cc',
         'avahi_service_publisher.cc',
+        'constants.cc',
         'dbus_constants.cc',
         'dbus_data_serialization.cc',
         'discovered_peer.cc',

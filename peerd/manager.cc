@@ -12,6 +12,7 @@
 #include <chromeos/dbus/exported_object_manager.h>
 #include <dbus/object_path.h>
 
+#include "peerd/constants.h"
 #include "peerd/dbus_constants.h"
 #include "peerd/ip_addr.h"
 #include "peerd/peer_manager_impl.h"

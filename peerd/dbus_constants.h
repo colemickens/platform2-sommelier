@@ -57,6 +57,8 @@ extern const char kServiceName[];
 extern const char kServerInterface[];
 extern const char kServerPath[];
 extern const char kServerMethodEntryGroupNew[];
+extern const char kServerMethodServiceBrowserNew[];
+extern const char kServerMethodServiceResolverNew[];
 extern const char kServerMethodGetHostName[];
 extern const char kServerMethodGetState[];
 extern const char kServerSignalStateChanged[];
@@ -67,6 +69,17 @@ extern const char kGroupMethodAddService[];
 extern const char kGroupMethodCommit[];
 extern const char kGroupMethodFree[];
 extern const char kGroupMethodReset[];
+
+extern const char kServiceBrowserInterface[];
+extern const char kServiceBrowserMethodFree[];
+extern const char kServiceBrowserSignalItemNew[];
+extern const char kServiceBrowserSignalItemRemove[];
+extern const char kServiceBrowserSignalFailure[];
+
+extern const char kServiceResolverInterface[];
+extern const char kServiceResolverMethodFree[];
+extern const char kServiceResolverSignalFound[];
+extern const char kServiceResolverSignalFailure[];
 
 }  // namespace avahi
 
