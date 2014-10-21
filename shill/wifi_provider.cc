@@ -41,6 +41,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kWiFi;
+static string ObjectID(WiFiProvider *w) { return "(wifi_provider)"; }
+}
+
 // Note that WiFiProvider generates some manager-level errors, because it
 // implements the WiFi portion of the Manager.GetService flimflam API. The
 // API is implemented here, rather than in manager, to keep WiFi-specific
@@ -82,11 +87,11 @@ void WiFiProvider::Start() {
 }
 
 void WiFiProvider::Stop() {
-  SLOG(WiFi, 2) << __func__;
+  SLOG(this, 2) << __func__;
   while (!services_.empty()) {
     WiFiServiceRefPtr service = services_.back();
     ForgetService(service);
-    SLOG(WiFi, 3) << "WiFiProvider deregistering service "
+    SLOG(this, 3) << "WiFiProvider deregistering service "
                   << service->unique_name();
     manager_->DeregisterService(service);
   }
@@ -104,27 +109,27 @@ void WiFiProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
     vector<uint8_t> ssid_bytes;
     if (!storage->GetString(group, WiFiService::kStorageSSID, &ssid_hex) ||
         !base::HexStringToBytes(ssid_hex, &ssid_bytes)) {
-      SLOG(WiFi, 2) << "Storage group " << group << " is missing valid \""
+      SLOG(this, 2) << "Storage group " << group << " is missing valid \""
                     << WiFiService::kStorageSSID << "\" property";
       continue;
     }
     string network_mode;
     if (!storage->GetString(group, WiFiService::kStorageMode, &network_mode) ||
         network_mode.empty()) {
-      SLOG(WiFi, 2) << "Storage group " << group << " is missing \""
+      SLOG(this, 2) << "Storage group " << group << " is missing \""
                     <<  WiFiService::kStorageMode << "\" property";
       continue;
     }
     string security;
     if (!storage->GetString(group, WiFiService::kStorageSecurity, &security) ||
         !WiFiService::IsValidSecurityMethod(security)) {
-      SLOG(WiFi, 2) << "Storage group " << group << " has missing or invalid \""
+      SLOG(this, 2) << "Storage group " << group << " has missing or invalid \""
                     <<  WiFiService::kStorageSecurity << "\" property";
       continue;
     }
     bool is_hidden = false;
     if (!storage->GetBool(group, WiFiService::kStorageHiddenSSID, &is_hidden)) {
-      SLOG(WiFi, 2) << "Storage group " << group << " is missing \""
+      SLOG(this, 2) << "Storage group " << group << " is missing \""
                     << WiFiService::kStorageHiddenSSID << "\" property";
       continue;
     }
@@ -267,7 +272,7 @@ void WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr &endpoint) {
   service->AddEndpoint(endpoint);
   service_by_endpoint_[endpoint] = service;
 
-  SLOG(WiFi, 1) << "Assigned endpoint " << endpoint->bssid_string()
+  SLOG(this, 1) << "Assigned endpoint " << endpoint->bssid_string()
                 << " to service " << service->unique_name() << ".";
 
   manager_->UpdateService(service);
@@ -283,7 +288,7 @@ WiFiServiceRefPtr WiFiProvider::OnEndpointRemoved(
 
   CHECK(service) << "Can't find Service for Endpoint "
                  << "(with BSSID " << endpoint->bssid_string() << ").";
-  SLOG(WiFi, 1) << "Removing endpoint " << endpoint->bssid_string()
+  SLOG(this, 1) << "Removing endpoint " << endpoint->bssid_string()
                 << " from Service " << service->unique_name();
   service->RemoveEndpoint(endpoint);
   service_by_endpoint_.erase(endpoint);
@@ -369,7 +374,7 @@ void WiFiProvider::LoadAndFixupServiceEntries(Profile *profile) {
       string freq_string = StringPrintf("%s%d", kStorageFrequencies, freq);
       vector<string> frequencies;
       if (!storage->GetStringList(kStorageId, freq_string, &frequencies)) {
-        SLOG(WiFi, 7) << "Frequency list " << freq_string << " not found";
+        SLOG(this, 7) << "Frequency list " << freq_string << " not found";
         break;
       }
       time_t start_week = StringListToFrequencyMap(frequencies,
@@ -391,7 +396,7 @@ void WiFiProvider::LoadAndFixupServiceEntries(Profile *profile) {
         total_frequency_connections_ += freq_count.second;
       }
     }
-    SLOG(WiFi, 7) << __func__ << " - total count="
+    SLOG(this, 7) << __func__ << " - total count="
                   << total_frequency_connections_;
   }
 }
@@ -456,7 +461,7 @@ ByteArrays WiFiProvider::GetHiddenSSIDList() {
       hidden_ssids_set.insert(service->ssid());
     }
   }
-  SLOG(WiFi, 2) << "Found " << hidden_ssids_set.size() << " hidden services";
+  SLOG(this, 2) << "Found " << hidden_ssids_set.size() << " hidden services";
   return ByteArrays(hidden_ssids_set.begin(), hidden_ssids_set.end());
 }
 
@@ -591,7 +596,7 @@ time_t WiFiProvider::StringListToFrequencyMap(const vector<string> &strings,
   // Extract the start week from the first string.
   vector<string>::const_iterator strings_it = strings.begin();
   if (strings_it == strings.end()) {
-    SLOG(WiFi, 7) << "Empty |strings|.";
+    SLOG(nullptr, 7) << "Empty |strings|.";
     return kIllegalStartWeek;
   }
   time_t start_week = GetStringListStartWeek(*strings_it);
@@ -667,7 +672,7 @@ void WiFiProvider::IncrementConnectCount(uint16_t frequency_mhz) {
       connect_count_by_frequency_dated_.begin();
   time_t oldest_legal_week = this_week - kWeeksToKeepFrequencyCounts;
   while (oldest->first < oldest_legal_week) {
-    SLOG(WiFi, 6) << "Discarding frequency count info that's "
+    SLOG(this, 6) << "Discarding frequency count info that's "
                   << this_week - oldest->first << " weeks old";
     for (const auto &freq_count : oldest->second) {
       connect_count_by_frequency_[freq_count.first] -= freq_count.second;

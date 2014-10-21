@@ -12,6 +12,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDBus;
+static string ObjectID(const DBus::Path *p) { return *p; }
+}
+
 ModemManagerProxy::ModemManagerProxy(DBus::Connection *connection,
                                      ModemManagerClassic *manager,
                                      const string &path,
@@ -21,7 +26,7 @@ ModemManagerProxy::ModemManagerProxy(DBus::Connection *connection,
 ModemManagerProxy::~ModemManagerProxy() {}
 
 vector<DBus::Path> ModemManagerProxy::EnumerateDevices() {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.EnumerateDevices();
   } catch (const DBus::Error &e) {
@@ -40,12 +45,12 @@ ModemManagerProxy::Proxy::Proxy(DBus::Connection *connection,
 ModemManagerProxy::Proxy::~Proxy() {}
 
 void ModemManagerProxy::Proxy::DeviceAdded(const DBus::Path &device) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   manager_->OnDeviceAdded(device);
 }
 
 void ModemManagerProxy::Proxy::DeviceRemoved(const DBus::Path &device) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   manager_->OnDeviceRemoved(device);
 }
 

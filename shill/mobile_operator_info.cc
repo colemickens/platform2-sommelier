@@ -16,6 +16,13 @@ using std::string;
 using std::stringstream;
 using std::vector;
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kCellular;
+static string ObjectID(const MobileOperatorInfo *m) {
+  return "(mobile_operator_info)";
+}
+}
+
 // /////////////////////////////////////////////////////////////////////////////
 // MobileOperatorInfo implementation note:
 // MobileOperatorInfo simply forwards all operations to |impl_|.
@@ -33,78 +40,78 @@ string MobileOperatorInfo::GetLogPrefix(const char *func) const {
 }
 
 void MobileOperatorInfo::ClearDatabasePaths() {
-  SLOG(Cellular, 3) << GetLogPrefix(__func__);
+  SLOG(this, 3) << GetLogPrefix(__func__);
   impl_->ClearDatabasePaths();
 }
 
 void MobileOperatorInfo::AddDatabasePath(const FilePath &absolute_path) {
-  SLOG(Cellular, 3) << GetLogPrefix(__func__) << "(" << absolute_path.value()
-                    << ")";
+  SLOG(this, 3) << GetLogPrefix(__func__) << "(" << absolute_path.value()
+                << ")";
   impl_->AddDatabasePath(absolute_path);
 }
 
 bool MobileOperatorInfo::Init() {
   auto result = impl_->Init();
-  SLOG(Cellular, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
 void MobileOperatorInfo::AddObserver(MobileOperatorInfo::Observer *observer) {
-  SLOG(Cellular, 3) << GetLogPrefix(__func__);
+  SLOG(this, 3) << GetLogPrefix(__func__);
   impl_->AddObserver(observer);
 }
 
 void MobileOperatorInfo::RemoveObserver(
     MobileOperatorInfo::Observer *observer) {
-  SLOG(Cellular, 3) << GetLogPrefix(__func__);
+  SLOG(this, 3) << GetLogPrefix(__func__);
   impl_->RemoveObserver(observer);
 }
 
 bool MobileOperatorInfo::IsMobileNetworkOperatorKnown() const {
   auto result = impl_->IsMobileNetworkOperatorKnown();
-  SLOG(Cellular, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
 bool MobileOperatorInfo::IsMobileVirtualNetworkOperatorKnown() const {
   auto result = impl_->IsMobileVirtualNetworkOperatorKnown();
-  SLOG(Cellular, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
 const string &MobileOperatorInfo::uuid() const {
   const auto &result = impl_->uuid();
-  SLOG(Cellular, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
 const string &MobileOperatorInfo::operator_name() const {
   const auto &result = impl_->operator_name();
-  SLOG(Cellular, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
 const string &MobileOperatorInfo::country() const {
   const auto &result = impl_->country();
-  SLOG(Cellular, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
 const string &MobileOperatorInfo::mccmnc() const {
   const auto &result = impl_->mccmnc();
-  SLOG(Cellular, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
 const string &MobileOperatorInfo::sid() const {
   const auto &result = impl_->sid();
-  SLOG(Cellular, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
 const string &MobileOperatorInfo::nid() const {
   const auto &result = impl_->nid();
-  SLOG(Cellular, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
@@ -115,8 +122,8 @@ const vector<string> &MobileOperatorInfo::mccmnc_list() const {
     for (const auto &mccmnc : result) {
       pp_result << mccmnc << " ";
     }
-    SLOG(Cellular, 3) << GetLogPrefix(__func__) << ": Result["
-                      << pp_result.str() << "]";
+    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result["
+                  << pp_result.str() << "]";
   }
   return result;
 }
@@ -128,8 +135,8 @@ const vector<string> &MobileOperatorInfo::sid_list() const {
     for (const auto &sid : result) {
       pp_result << sid << " ";
     }
-    SLOG(Cellular, 3) << GetLogPrefix(__func__) << ": Result["
-                      << pp_result.str() << "]";
+    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result["
+                  << pp_result.str() << "]";
   }
   return result;
 }
@@ -143,8 +150,8 @@ MobileOperatorInfo::operator_name_list() const {
       pp_result << "(" << operator_name.name << ", " << operator_name.language
                 << ") ";
     }
-    SLOG(Cellular, 3) << GetLogPrefix(__func__) << ": Result["
-                      << pp_result.str() << "]";
+    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result["
+                  << pp_result.str() << "]";
   }
   return result;
 }
@@ -165,8 +172,8 @@ MobileOperatorInfo::apn_list() const {
       }
       pp_result << "') ";
     }
-    SLOG(Cellular, 3) << GetLogPrefix(__func__) << ": Result["
-                      << pp_result.str() << "]";
+    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result["
+                  << pp_result.str() << "]";
   }
   return result;
 }
@@ -180,66 +187,66 @@ const vector<MobileOperatorInfo::OnlinePortal> &MobileOperatorInfo::olp_list()
       pp_result << "(url: " << olp.url << ", method: " << olp.method
                 << ", post_data: " << olp.post_data << ") ";
     }
-    SLOG(Cellular, 3) << GetLogPrefix(__func__) << ": Result["
-                      << pp_result.str() << "]";
+    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result["
+                  << pp_result.str() << "]";
   }
   return result;
 }
 
 const string &MobileOperatorInfo::activation_code() const {
   const auto &result = impl_->activation_code();
-  SLOG(Cellular, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
 bool MobileOperatorInfo::requires_roaming() const {
   auto result = impl_->requires_roaming();
-  SLOG(Cellular, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
 void MobileOperatorInfo::UpdateIMSI(const string &imsi) {
-  SLOG(Cellular, 3) << GetLogPrefix(__func__) << "(" << imsi << ")";
+  SLOG(this, 3) << GetLogPrefix(__func__) << "(" << imsi << ")";
   impl_->UpdateIMSI(imsi);
 }
 
 void MobileOperatorInfo::UpdateICCID(const string &iccid) {
-  SLOG(Cellular, 3) << GetLogPrefix(__func__) << "(" << iccid << ")";
+  SLOG(this, 3) << GetLogPrefix(__func__) << "(" << iccid << ")";
   impl_->UpdateICCID(iccid);
 }
 
 void MobileOperatorInfo::UpdateMCCMNC(const string &mccmnc) {
-  SLOG(Cellular, 3) << GetLogPrefix(__func__) << "(" << mccmnc << ")";
+  SLOG(this, 3) << GetLogPrefix(__func__) << "(" << mccmnc << ")";
   impl_->UpdateMCCMNC(mccmnc);
 }
 
 void MobileOperatorInfo::UpdateSID(const string &sid) {
-  SLOG(Cellular, 3) << GetLogPrefix(__func__) << "(" << sid << ")";
+  SLOG(this, 3) << GetLogPrefix(__func__) << "(" << sid << ")";
   impl_->UpdateSID(sid);
 }
 
 void MobileOperatorInfo::UpdateNID(const string &nid) {
-  SLOG(Cellular, 3) << GetLogPrefix(__func__) << "(" << nid << ")";
+  SLOG(this, 3) << GetLogPrefix(__func__) << "(" << nid << ")";
   impl_->UpdateNID(nid);
 }
 
 void MobileOperatorInfo::UpdateOperatorName(const string &operator_name) {
-  SLOG(Cellular, 3) << GetLogPrefix(__func__) << "(" << operator_name << ")";
+  SLOG(this, 3) << GetLogPrefix(__func__) << "(" << operator_name << ")";
   impl_->UpdateOperatorName(operator_name);
 }
 
 void MobileOperatorInfo::UpdateOnlinePortal(const string &url,
                                             const string &method,
                                             const string &post_data) {
-  SLOG(Cellular, 3) << GetLogPrefix(__func__)
-                    << "(" << url
+  SLOG(this, 3) << GetLogPrefix(__func__)
+                << "(" << url
                     << ", " << method
                     << ", " << post_data << ")";
   impl_->UpdateOnlinePortal(url, method, post_data);
 }
 
 void MobileOperatorInfo::Reset() {
-  SLOG(Cellular, 3) << GetLogPrefix(__func__);
+  SLOG(this, 3) << GetLogPrefix(__func__);
   impl_->Reset();
 }
 

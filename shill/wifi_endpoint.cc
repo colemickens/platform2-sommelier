@@ -29,6 +29,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kWiFi;
+static string ObjectID(WiFiEndpoint *w) { return "(wifi_endpoint)"; }
+}
+
 // static
 const size_t WiFiEndpoint::kBSSIDLength = 6U;
 
@@ -93,13 +98,13 @@ void WiFiEndpoint::Start() {
 
 void WiFiEndpoint::PropertiesChanged(
     const map<string, ::DBus::Variant> &properties) {
-  SLOG(WiFi, 2) << __func__;
+  SLOG(this, 2) << __func__;
   bool should_notify = false;
   map<string, ::DBus::Variant>::const_iterator properties_it =
       properties.find(WPASupplicant::kBSSPropertySignal);
   if (properties_it != properties.end()) {
     signal_strength_ = properties_it->second.reader().get_int16();
-    SLOG(WiFi, 2) << "WiFiEndpoint " << bssid_string_ << " signal is now "
+    SLOG(this, 2) << "WiFiEndpoint " << bssid_string_ << " signal is now "
                   << signal_strength_;
     should_notify = true;
   }
@@ -109,7 +114,7 @@ void WiFiEndpoint::PropertiesChanged(
     string new_mode = ParseMode(properties_it->second);
     if (new_mode != network_mode_) {
       network_mode_ = new_mode;
-      SLOG(WiFi, 2) << "WiFiEndpoint " << bssid_string_ << " mode is now "
+      SLOG(this, 2) << "WiFiEndpoint " << bssid_string_ << " mode is now "
                     << network_mode_;
       should_notify = true;
     }
@@ -118,7 +123,7 @@ void WiFiEndpoint::PropertiesChanged(
   const char *new_security_mode = ParseSecurity(properties, &security_flags_);
   if (new_security_mode != security_mode()) {
     set_security_mode(new_security_mode);
-    SLOG(WiFi, 2) << "WiFiEndpoint " << bssid_string_ << " security is now "
+    SLOG(this, 2) << "WiFiEndpoint " << bssid_string_ << " security is now "
                   << security_mode();
     should_notify = true;
   }
@@ -133,7 +138,7 @@ void WiFiEndpoint::UpdateSignalStrength(int16_t strength) {
     return;
   }
 
-  SLOG(WiFi, 2) << __func__ << ": signal strength "
+  SLOG(this, 2) << __func__ << ": signal strength "
                 << signal_strength_ << " -> " << strength;
   signal_strength_ = strength;
   device_->NotifyEndpointChanged(this);
@@ -420,7 +425,7 @@ bool WiFiEndpoint::ParseIEs(
   map<string, ::DBus::Variant>::const_iterator ies_property =
       properties.find(WPASupplicant::kBSSPropertyIEs);
   if (ies_property == properties.end()) {
-    SLOG(WiFi, 2) << __func__ << ": No IE property in BSS.";
+    SLOG(nullptr, 2) << __func__ << ": No IE property in BSS.";
     return false;
   }
 

@@ -17,6 +17,11 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDBus;
+static string ObjectID(const DBus::Path *p) { return *p; }
+}
+
 SupplicantProcessProxy::SupplicantProcessProxy(DBus::Connection *bus,
                                                const char *dbus_path,
                                                const char *dbus_addr)
@@ -26,7 +31,7 @@ SupplicantProcessProxy::~SupplicantProcessProxy() {}
 
 ::DBus::Path SupplicantProcessProxy::CreateInterface(
     const map<string, ::DBus::Variant> &args) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.CreateInterface(args);
   } catch (const DBus::Error &e) {
@@ -37,7 +42,7 @@ SupplicantProcessProxy::~SupplicantProcessProxy() {}
 }
 
 void SupplicantProcessProxy::RemoveInterface(const ::DBus::Path &path) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.RemoveInterface(path);
   } catch (const DBus::Error &e) {
@@ -46,7 +51,7 @@ void SupplicantProcessProxy::RemoveInterface(const ::DBus::Path &path) {
 }
 
 ::DBus::Path SupplicantProcessProxy::GetInterface(const string &ifname) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.GetInterface(ifname);
   } catch (const DBus::Error &e) {
@@ -84,19 +89,19 @@ SupplicantProcessProxy::Proxy::~Proxy() {}
 void SupplicantProcessProxy::Proxy::InterfaceAdded(
     const ::DBus::Path& /*path*/,
     const map<string, ::DBus::Variant> &/*properties*/) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   // XXX
 }
 
 void SupplicantProcessProxy::Proxy::InterfaceRemoved(
     const ::DBus::Path& /*path*/) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   // XXX
 }
 
 void SupplicantProcessProxy::Proxy::PropertiesChanged(
     const map<string, ::DBus::Variant>& /*properties*/) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   // XXX
 }
 

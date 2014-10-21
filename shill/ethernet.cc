@@ -43,6 +43,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kEthernet;
+static string ObjectID(Ethernet *e) { return e->GetRpcIdentifier(); }
+}
+
 Ethernet::Ethernet(ControlInterface *control_interface,
                    EventDispatcher *dispatcher,
                    Metrics *metrics,
@@ -72,7 +77,7 @@ Ethernet::Ethernet(ControlInterface *control_interface,
                            &is_eap_detected_);
   eap_listener_->set_request_received_callback(
       base::Bind(&Ethernet::OnEapDetected, weak_ptr_factory_.GetWeakPtr()));
-  SLOG(Ethernet, 2) << "Ethernet device " << link_name << " initialized.";
+  SLOG(this, 2) << "Ethernet device " << link_name << " initialized.";
 }
 
 Ethernet::~Ethernet() {

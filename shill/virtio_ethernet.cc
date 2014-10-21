@@ -17,6 +17,11 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kEthernet;
+static string ObjectID(VirtioEthernet *v) { return v->GetRpcIdentifier(); }
+}
+
 VirtioEthernet::VirtioEthernet(ControlInterface *control_interface,
                                EventDispatcher *dispatcher,
                                Metrics *metrics,
@@ -31,7 +36,7 @@ VirtioEthernet::VirtioEthernet(ControlInterface *control_interface,
                link_name,
                address,
                interface_index) {
-  SLOG(Ethernet, 2) << "VirtioEthernet device " << link_name << " initialized.";
+  SLOG(this, 2) << "VirtioEthernet device " << link_name << " initialized.";
 }
 
 VirtioEthernet::~VirtioEthernet() {
@@ -51,9 +56,9 @@ void VirtioEthernet::Start(Error *error,
   // transmit any frames. (See crbug.com/212041)
   //
   // To avoid this, we sleep to let the device setup function complete.
-  SLOG(Ethernet, 2) << "Sleeping to let virtio initialize.";
+  SLOG(this, 2) << "Sleeping to let virtio initialize.";
   sleep(2);
-  SLOG(Ethernet, 2) << "Starting virtio Ethernet.";
+  SLOG(this, 2) << "Starting virtio Ethernet.";
   Ethernet::Start(error, callback);
 }
 

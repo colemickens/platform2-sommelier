@@ -64,6 +64,10 @@ const char *kLoggerUser = "syslog";
 
 }  // namespace
 
+namespace Logging {
+static string ObjectID(shill::Daemon *d) { return "(shill_main_daemon)"; }
+}
+
 // Always logs to the syslog and logs to stderr if
 // we are running in the foreground.
 void SetupLogging(bool foreground, char *daemon_name) {
@@ -107,7 +111,7 @@ void SetupLogging(bool foreground, char *daemon_name) {
 }
 
 void DeleteDBusControl(void* param) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(DBus, nullptr, 2) << __func__;
   shill::DBusControl* dbus_control =
       reinterpret_cast<shill::DBusControl*>(param);
   delete dbus_control;

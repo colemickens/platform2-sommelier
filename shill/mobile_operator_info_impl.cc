@@ -36,6 +36,13 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kCellular;
+static string ObjectID(const MobileOperatorInfoImpl *m) {
+  return "(mobile_operator_info_impl)";
+}
+}
+
 // static
 const char *MobileOperatorInfoImpl::kDefaultDatabasePath =
     "/usr/share/shill/serviceproviders.pbf";
@@ -382,7 +389,7 @@ void MobileOperatorInfoImpl::Reset() {
 }
 
 void MobileOperatorInfoImpl::PreprocessDatabase() {
-  SLOG(Cellular, 3) << __func__;
+  SLOG(this, 3) << __func__;
 
   mccmnc_to_mnos_.clear();
   sid_to_mnos_.clear();
@@ -491,7 +498,7 @@ string MobileOperatorInfoImpl::OperatorCodeString() const {
 }
 
 bool MobileOperatorInfoImpl::UpdateMNO() {
-  SLOG(Cellular, 3) << __func__;
+  SLOG(this, 3) << __func__;
   const MobileNetworkOperator *candidate = nullptr;
 
   // The only way |operator_code_type_| can be |kOperatorCodeTypeUnknown| is
@@ -530,12 +537,12 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
         const string &operator_code =
             (operator_code_type_ == kOperatorCodeTypeMCCMNC) ? user_mccmnc_ :
                                                                user_sid_;
-        SLOG(Cellular, 1) << "MNO determined by "
-                          << OperatorCodeString() << " [" << operator_code
-                          << "] does not match any suggested by name["
-                          << user_operator_name_
-                          << "]. "
-                          << OperatorCodeString() << " overrides name!";
+        SLOG(this, 1) << "MNO determined by "
+                      << OperatorCodeString() << " [" << operator_code
+                      << "] does not match any suggested by name["
+                      << user_operator_name_
+                      << "]. "
+                      << OperatorCodeString() << " overrides name!";
       }
     }
   } else if (candidates_by_operator_code_.size() > 1) {
@@ -556,12 +563,12 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
       const string &operator_code =
           (operator_code_type_ == kOperatorCodeTypeMCCMNC) ? user_mccmnc_ :
                                                              user_sid_;
-      SLOG(Cellular, 1) << "MNOs suggested by "
-                        << OperatorCodeString() << " [" << operator_code
-                        << "] are multiple and disjoint from those suggested "
-                        << "by name["
-                        << user_operator_name_
-                        << "].";
+      SLOG(this, 1) << "MNOs suggested by "
+                    << OperatorCodeString() << " [" << operator_code
+                    << "] are multiple and disjoint from those suggested "
+                    << "by name["
+                    << user_operator_name_
+                    << "].";
       candidate = PickOneFromDuplicates(candidates_by_operator_code_);
     }
   } else {  // candidates_by_operator_code_.size() == 0
@@ -571,19 +578,19 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
     if ((operator_code_type_ == kOperatorCodeTypeMCCMNC &&
          !user_mccmnc_.empty()) ||
         (operator_code_type_ == kOperatorCodeTypeSID && !user_sid_.empty())) {
-      SLOG(Cellular, 1) << "A non-matching "
-                        << OperatorCodeString() << " "
-                        << "was reported by the user."
-                        << "We fail the MNO match in this case.";
+      SLOG(this, 1) << "A non-matching "
+                    << OperatorCodeString() << " "
+                    << "was reported by the user."
+                    << "We fail the MNO match in this case.";
     } else if (candidates_by_name_.size() == 1) {
       candidate = candidates_by_name_[0];
     } else if (candidates_by_name_.size() > 1) {
-      SLOG(Cellular, 1) << "Multiple MNOs suggested by name["
-                        << user_operator_name_
-                        << "], and none by MCCMNC.";
+      SLOG(this, 1) << "Multiple MNOs suggested by name["
+                    << user_operator_name_
+                    << "], and none by MCCMNC.";
       candidate = PickOneFromDuplicates(candidates_by_name_);
     } else {  // candidates_by_name_.size() == 0
-      SLOG(Cellular, 1) << "No candidates suggested.";
+      SLOG(this, 1) << "No candidates suggested.";
     }
   }
 
@@ -596,7 +603,7 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
 }
 
 bool MobileOperatorInfoImpl::UpdateMVNO() {
-  SLOG(Cellular, 3) << __func__;
+  SLOG(this, 3) << __func__;
   if (current_mno_ == nullptr) {
     return false;
   }
@@ -635,12 +642,12 @@ const MobileNetworkOperator *MobileOperatorInfoImpl::PickOneFromDuplicates(
 
   for (auto candidate : duplicates) {
     if (candidate->earmarked()) {
-      SLOG(Cellular, 2) << "Picking earmarked candidate: "
-                        << candidate->data().uuid();
+      SLOG(this, 2) << "Picking earmarked candidate: "
+                    << candidate->data().uuid();
       return candidate;
     }
   }
-  SLOG(Cellular, 2) << "No earmarked candidate found. Choosing the first.";
+  SLOG(this, 2) << "No earmarked candidate found. Choosing the first.";
   return duplicates[0];
 }
 
@@ -664,14 +671,14 @@ bool MobileOperatorInfoImpl::FilterMatches(const Filter &filter) {
       to_match = user_mccmnc_;
       break;
     default:
-      SLOG(Cellular, 1) << "Unknown filter type [" << filter.type() << "]";
+      SLOG(this, 1) << "Unknown filter type [" << filter.type() << "]";
       return false;
   }
   // |to_match| can be empty if we have no *user provided* information of the
   // correct type.
   if (to_match.empty()) {
-    SLOG(Cellular, 2) << "Nothing to match against (filter: "
-                      << filter.regex() << ").";
+    SLOG(this, 2) << "Nothing to match against (filter: "
+                  << filter.regex() << ").";
     return false;
   }
 
@@ -709,9 +716,9 @@ bool MobileOperatorInfoImpl::FilterMatches(const Filter &filter) {
   if (regexec_error) {
     string error_string;
     error_string = GetRegError(regcomp_error, &filter_regex);
-    SLOG(Cellular, 2) << "Could not match string " << to_match << " "
-                      << "against regexp " << filter.regex() << ". "
-                      << "Error returned: " << error_string << ". ";
+    SLOG(this, 2) << "Could not match string " << to_match << " "
+                  << "against regexp " << filter.regex() << ". "
+                  << "Error returned: " << error_string << ". ";
     regfree(&filter_regex);
     return false;
   }
@@ -728,13 +735,13 @@ void MobileOperatorInfoImpl::RefreshDBInformation() {
 
   // |data| is a required field.
   DCHECK(current_mno_->has_data());
-  SLOG(Cellular, 2) << "Reloading MNO data.";
+  SLOG(this, 2) << "Reloading MNO data.";
   ReloadData(current_mno_->data());
 
   if (current_mvno_ != nullptr) {
     // |data| is a required field.
     DCHECK(current_mvno_->has_data());
-    SLOG(Cellular, 2) << "Reloading MVNO data.";
+    SLOG(this, 2) << "Reloading MVNO data.";
     ReloadData(current_mvno_->data());
   }
 }
@@ -758,7 +765,7 @@ void MobileOperatorInfoImpl::ClearDBInformation() {
 }
 
 void MobileOperatorInfoImpl::ReloadData(const Data &data) {
-  SLOG(Cellular, 3) << __func__;
+  SLOG(this, 3) << __func__;
   // |uuid_| is *always* overwritten. An MNO and MVNO should not share the
   // |uuid_|.
   CHECK(data.has_uuid());
@@ -923,7 +930,7 @@ void MobileOperatorInfoImpl::HandleOnlinePortalUpdate() {
 }
 
 void MobileOperatorInfoImpl::PostNotifyOperatorChanged() {
-  SLOG(Cellular, 3) << __func__;
+  SLOG(this, 3) << __func__;
   // If there was an outstanding task, it will get replaced.
   notify_operator_changed_task_.Reset(
       Bind(&MobileOperatorInfoImpl::NotifyOperatorChanged,

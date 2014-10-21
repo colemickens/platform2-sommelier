@@ -26,6 +26,12 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDaemon;
+static string ObjectID(Daemon *d) { return "(shill_daemon)"; }
+}
+
+
 Daemon::Daemon(Config *config, ControlInterface *control)
     : config_(config),
       control_(control),
@@ -57,22 +63,22 @@ void Daemon::SetStartupPortalList(const string &portal_list) {
 
 void Daemon::Run() {
   Start();
-  SLOG(Daemon, 1) << "Running main loop.";
+  SLOG(this, 1) << "Running main loop.";
   dispatcher_.DispatchForever();
-  SLOG(Daemon, 1) << "Exited main loop.";
+  SLOG(this, 1) << "Exited main loop.";
 }
 
 void Daemon::Quit() {
-  SLOG(Daemon, 1) << "Starting termination actions.";
+  SLOG(this, 1) << "Starting termination actions.";
   if (!manager_->RunTerminationActionsAndNotifyMetrics(
           Bind(&Daemon::TerminationActionsCompleted, Unretained(this)))) {
-    SLOG(Daemon, 1) << "No termination actions were run";
+    SLOG(this, 1) << "No termination actions were run";
     StopAndReturnToMain();
   }
 }
 
 void Daemon::TerminationActionsCompleted(const Error &error) {
-  SLOG(Daemon, 1) << "Finished termination actions.  Result: " << error;
+  SLOG(this, 1) << "Finished termination actions.  Result: " << error;
   metrics_->NotifyTerminationActionsCompleted(error.IsSuccess());
 
   // Daemon::TerminationActionsCompleted() should not directly call

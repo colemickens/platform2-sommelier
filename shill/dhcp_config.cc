@@ -30,6 +30,16 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDHCP;
+static string ObjectID(DHCPConfig *d) {
+  if (d == nullptr)
+    return "(dhcp_config)";
+  else
+    return d->device_name();
+}
+}
+
 // static
 const int DHCPConfig::kAcquisitionTimeoutSeconds = 30;
 const char DHCPConfig::kConfigurationKeyBroadcastAddress[] = "BroadcastAddress";
@@ -106,21 +116,21 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
       glib_(glib),
       metrics_(metrics),
       minijail_(chromeos::Minijail::GetInstance()) {
-  SLOG(DHCP, 2) << __func__ << ": " << device_name;
+  SLOG(this, 2) << __func__ << ": " << device_name;
   if (lease_file_suffix_.empty()) {
     lease_file_suffix_ = device_name;
   }
 }
 
 DHCPConfig::~DHCPConfig() {
-  SLOG(DHCP, 2) << __func__ << ": " << device_name();
+  SLOG(this, 2) << __func__ << ": " << device_name();
 
   // Don't leave behind dhcpcd running.
   Stop(__func__);
 }
 
 bool DHCPConfig::RequestIP() {
-  SLOG(DHCP, 2) << __func__ << ": " << device_name();
+  SLOG(this, 2) << __func__ << ": " << device_name();
   if (!pid_) {
     return Start();
   }
@@ -132,7 +142,7 @@ bool DHCPConfig::RequestIP() {
 }
 
 bool DHCPConfig::RenewIP() {
-  SLOG(DHCP, 2) << __func__ << ": " << device_name();
+  SLOG(this, 2) << __func__ << ": " << device_name();
   if (!pid_) {
     return Start();
   }
@@ -147,7 +157,7 @@ bool DHCPConfig::RenewIP() {
 }
 
 bool DHCPConfig::ReleaseIP(ReleaseReason reason) {
-  SLOG(DHCP, 2) << __func__ << ": " << device_name();
+  SLOG(this, 2) << __func__ << ": " << device_name();
   if (!pid_) {
     return true;
   }
@@ -222,7 +232,7 @@ void DHCPConfig::ProcessEventSignal(const string &reason,
 }
 
 void DHCPConfig::ProcessStatusChangeSignal(const string &status) {
-  SLOG(DHCP, 2) << __func__ << ": " << status;
+  SLOG(this, 2) << __func__ << ": " << status;
 
   if (status == kStatusArpGateway) {
     metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusArpGateway);
@@ -284,7 +294,7 @@ void DHCPConfig::NotifyFailure() {
 }
 
 bool DHCPConfig::Start() {
-  SLOG(DHCP, 2) << __func__ << ": " << device_name();
+  SLOG(this, 2) << __func__ << ": " << device_name();
 
   // TODO(quiche): This should be migrated to use ExternalTask.
   // (crbug.com/246263).
@@ -426,7 +436,7 @@ bool DHCPConfig::ParseClasslessStaticRoutes(const string &classless_routes,
     if (destination.prefix() == 0 && properties->gateway.empty()) {
       // If a default route is provided in the classless parameters and
       // we don't already have one, apply this as the default route.
-      SLOG(DHCP, 2) << "In " << __func__ << ": Setting default gateway to "
+      SLOG(nullptr, 2) << "In " << __func__ << ": Setting default gateway to "
                     << gateway_as_string;
       CHECK(gateway.IntoString(&properties->gateway));
     } else {
@@ -437,7 +447,7 @@ bool DHCPConfig::ParseClasslessStaticRoutes(const string &classless_routes,
       CHECK(netmask.IntoString(&route.netmask));
       CHECK(gateway.IntoString(&route.gateway));
       routes.push_back(route);
-      SLOG(DHCP, 2) << "In " << __func__ << ": Adding route to to "
+      SLOG(nullptr, 2) << "In " << __func__ << ": Adding route to to "
                     << destination_as_string << " via " << gateway_as_string;
     }
   }
@@ -452,7 +462,7 @@ bool DHCPConfig::ParseClasslessStaticRoutes(const string &classless_routes,
 // static
 bool DHCPConfig::ParseConfiguration(const Configuration &configuration,
                                     IPConfig::Properties *properties) {
-  SLOG(DHCP, 2) << __func__;
+  SLOG(nullptr, 2) << __func__;
   properties->method = kTypeDHCP;
   properties->address_family = IPAddress::kFamilyIPv4;
   string classless_static_routes;
@@ -461,7 +471,7 @@ bool DHCPConfig::ParseConfiguration(const Configuration &configuration,
        it != configuration.end(); ++it) {
     const string &key = it->first;
     const DBus::Variant &value = it->second;
-    SLOG(DHCP, 2) << "Processing key: " << key;
+    SLOG(nullptr, 2) << "Processing key: " << key;
     if (key == kConfigurationKeyIPAddress) {
       properties->address = GetIPv4AddressString(value.reader().get_uint32());
       if (properties->address.empty()) {
@@ -515,7 +525,7 @@ bool DHCPConfig::ParseConfiguration(const Configuration &configuration,
     } else if (key == kConfigurationKeyLeaseTime) {
       properties->lease_duration_seconds = value.reader().get_uint32();
     } else {
-      SLOG(DHCP, 2) << "Key ignored.";
+      SLOG(nullptr, 2) << "Key ignored.";
     }
   }
   ParseClasslessStaticRoutes(classless_static_routes, properties);
@@ -527,7 +537,7 @@ bool DHCPConfig::ParseConfiguration(const Configuration &configuration,
 
 void DHCPConfig::ChildWatchCallback(GPid pid, gint status, gpointer data) {
   if (status == EXIT_SUCCESS) {
-    SLOG(DHCP, 2) << "pid " << pid << " exit status " << status;
+    SLOG(nullptr, 2) << "pid " << pid << " exit status " << status;
   } else {
     LOG(WARNING) << "pid " << pid << " exit status " << status;
   }
@@ -539,7 +549,7 @@ void DHCPConfig::ChildWatchCallback(GPid pid, gint status, gpointer data) {
 }
 
 void DHCPConfig::CleanupClientState() {
-  SLOG(DHCP, 2) << __func__ << ": " << device_name();
+  SLOG(this, 2) << __func__ << ": " << device_name();
   StopAcquisitionTimeout();
   StopExpirationTimeout();
   if (child_watch_tag_) {
@@ -590,7 +600,7 @@ void DHCPConfig::ProcessAcquisitionTimeout() {
 
 void DHCPConfig::StartExpirationTimeout(uint32_t lease_duration_seconds) {
   CHECK(lease_acquisition_timeout_callback_.IsCancelled());
-  SLOG(DHCP, 2) << __func__ << ": " << device_name()
+  SLOG(this, 2) << __func__ << ": " << device_name()
                 << ": " << "Lease timeout is " << lease_duration_seconds
                 << " seconds.";
   lease_expiration_callback_.Reset(

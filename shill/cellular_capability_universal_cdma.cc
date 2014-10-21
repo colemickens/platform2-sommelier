@@ -28,6 +28,13 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kCellular;
+static string ObjectID(CellularCapabilityUniversalCDMA *c) {
+  return c->cellular()->GetRpcIdentifier();
+}
+}
+
 namespace {
 
 const char kPhoneNumber[] = "#777";
@@ -46,7 +53,7 @@ CellularCapabilityUniversalCDMA::CellularCapabilityUniversalCDMA(
       cdma_evdo_registration_state_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
       nid_(0),
       sid_(0) {
-  SLOG(Cellular, 2) << "Cellular capability constructed: Universal CDMA";
+  SLOG(this, 2) << "Cellular capability constructed: Universal CDMA";
   // TODO(armansito): Update PRL for activation over cellular.
   // See crbug.com/197330.
 }
@@ -54,7 +61,7 @@ CellularCapabilityUniversalCDMA::CellularCapabilityUniversalCDMA(
 CellularCapabilityUniversalCDMA::~CellularCapabilityUniversalCDMA() {}
 
 void CellularCapabilityUniversalCDMA::InitProxies() {
-  SLOG(Cellular, 2) << __func__;
+  SLOG(this, 2) << __func__;
   modem_cdma_proxy_.reset(
       proxy_factory()->CreateMM1ModemModemCdmaProxy(cellular()->dbus_path(),
                                                     cellular()->dbus_owner()));
@@ -65,7 +72,7 @@ void CellularCapabilityUniversalCDMA::InitProxies() {
 }
 
 void CellularCapabilityUniversalCDMA::ReleaseProxies() {
-  SLOG(Cellular, 2) << __func__;
+  SLOG(this, 2) << __func__;
   modem_cdma_proxy_.reset();
   CellularCapabilityUniversal::ReleaseProxies();
 }
@@ -81,7 +88,7 @@ void CellularCapabilityUniversalCDMA::Activate(const string &carrier,
 }
 
 void CellularCapabilityUniversalCDMA::CompleteActivation(Error *error) {
-  SLOG(Cellular, 2) << __func__;
+  SLOG(this, 2) << __func__;
   if (cellular()->state() < Cellular::kStateEnabled) {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
                           "Unable to activate in state " +
@@ -94,8 +101,8 @@ void CellularCapabilityUniversalCDMA::CompleteActivation(Error *error) {
 void CellularCapabilityUniversalCDMA::ActivateAutomatic() {
   if (!cellular()->serving_operator_info()->IsMobileNetworkOperatorKnown() ||
       cellular()->serving_operator_info()->activation_code().empty()) {
-    SLOG(Cellular, 2) << "OTA activation cannot be run in the presence of no "
-                      << "activation code.";
+    SLOG(this, 2) << "OTA activation cannot be run in the presence of no "
+                  << "activation code.";
     return;
   }
 
@@ -103,12 +110,12 @@ void CellularCapabilityUniversalCDMA::ActivateAutomatic() {
       modem_info()->pending_activation_store()->GetActivationState(
           PendingActivationStore::kIdentifierMEID, cellular()->meid());
   if (state == PendingActivationStore::kStatePending) {
-    SLOG(Cellular, 2) << "There's already a pending activation. Ignoring.";
+    SLOG(this, 2) << "There's already a pending activation. Ignoring.";
     return;
   }
   if (state == PendingActivationStore::kStateActivated) {
-    SLOG(Cellular, 2) << "A call to OTA activation has already completed "
-                      << "successfully. Ignoring.";
+    SLOG(this, 2) << "A call to OTA activation has already completed "
+                  << "successfully. Ignoring.";
     return;
   }
 
@@ -134,9 +141,9 @@ void CellularCapabilityUniversalCDMA::ActivateAutomatic() {
 }
 
 void CellularCapabilityUniversalCDMA::UpdatePendingActivationState() {
-  SLOG(Cellular, 2) << __func__;
+  SLOG(this, 2) << __func__;
   if (IsActivated()) {
-    SLOG(Cellular, 3) << "CDMA service activated. Clear store.";
+    SLOG(this, 3) << "CDMA service activated. Clear store.";
     modem_info()->pending_activation_store()->RemoveEntry(
         PendingActivationStore::kIdentifierMEID, cellular()->meid());
     return;
@@ -145,19 +152,19 @@ void CellularCapabilityUniversalCDMA::UpdatePendingActivationState() {
       modem_info()->pending_activation_store()->GetActivationState(
           PendingActivationStore::kIdentifierMEID, cellular()->meid());
   if (IsActivating() && state != PendingActivationStore::kStateFailureRetry) {
-    SLOG(Cellular, 3) << "OTA activation in progress. Nothing to do.";
+    SLOG(this, 3) << "OTA activation in progress. Nothing to do.";
     return;
   }
   switch (state) {
     case PendingActivationStore::kStateFailureRetry:
-      SLOG(Cellular, 3) << "OTA activation failed. Scheduling a retry.";
+      SLOG(this, 3) << "OTA activation failed. Scheduling a retry.";
       cellular()->dispatcher()->PostTask(
           Bind(&CellularCapabilityUniversalCDMA::ActivateAutomatic,
                weak_cdma_ptr_factory_.GetWeakPtr()));
       break;
     case PendingActivationStore::kStateActivated:
-      SLOG(Cellular, 3) << "OTA Activation has completed successfully. "
-                        << "Waiting for activation state update to finalize.";
+      SLOG(this, 3) << "OTA Activation has completed successfully. "
+                    << "Waiting for activation state update to finalize.";
       break;
     default:
       break;
@@ -183,7 +190,7 @@ bool CellularCapabilityUniversalCDMA::IsActivated() const {
 }
 
 void CellularCapabilityUniversalCDMA::OnServiceCreated() {
-  SLOG(Cellular, 2) << __func__;
+  SLOG(this, 2) << __func__;
   cellular()->service()->SetActivationType(
       CellularService::kActivationTypeOTASP);
   UpdateServiceActivationStateProperty();
@@ -203,7 +210,7 @@ void CellularCapabilityUniversalCDMA::UpdateServiceActivationStateProperty() {
 }
 
 void CellularCapabilityUniversalCDMA::UpdateServiceOLP() {
-  SLOG(Cellular, 2) << __func__;
+  SLOG(this, 2) << __func__;
 
   // In this case, the Home Provider is trivial. All information comes from the
   // Serving Operator.
@@ -218,7 +225,7 @@ void CellularCapabilityUniversalCDMA::UpdateServiceOLP() {
   }
 
   if (olp_list.size() > 1) {
-    SLOG(Cellular, 1) << "Found multiple online portals. Choosing the first.";
+    SLOG(this, 1) << "Found multiple online portals. Choosing the first.";
   }
   string post_data = olp_list[0].post_data;
   ReplaceSubstringsAfterOffset(&post_data, 0, "${esn}", cellular()->esn());
@@ -231,7 +238,7 @@ void CellularCapabilityUniversalCDMA::UpdateServiceOLP() {
 }
 
 void CellularCapabilityUniversalCDMA::GetProperties() {
-  SLOG(Cellular, 2) << __func__;
+  SLOG(this, 2) << __func__;
   CellularCapabilityUniversal::GetProperties();
 
   std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy(
@@ -246,7 +253,7 @@ void CellularCapabilityUniversalCDMA::OnActivationStateChangedSignal(
     uint32_t activation_state,
     uint32_t activation_error,
     const DBusPropertiesMap &status_changes) {
-  SLOG(Cellular, 2) << __func__;
+  SLOG(this, 2) << __func__;
 
   activation_state_ =
       static_cast<MMModemCdmaActivationState>(activation_state);
@@ -257,8 +264,8 @@ void CellularCapabilityUniversalCDMA::OnActivationStateChangedSignal(
   if (DBusProperties::GetString(status_changes, "min", &value))
     cellular()->set_min(value);
 
-  SLOG(Cellular, 2) << "Activation state: "
-                    << GetActivationStateString(activation_state_);
+  SLOG(this, 2) << "Activation state: "
+                << GetActivationStateString(activation_state_);
 
   HandleNewActivationStatus(activation_error);
   UpdatePendingActivationState();
@@ -267,7 +274,7 @@ void CellularCapabilityUniversalCDMA::OnActivationStateChangedSignal(
 void CellularCapabilityUniversalCDMA::OnActivateReply(
     const ResultCallback &callback,
     const Error &error) {
-  SLOG(Cellular, 2) << __func__;
+  SLOG(this, 2) << __func__;
   if (error.IsSuccess()) {
     LOG(INFO) << "Activation completed successfully.";
     modem_info()->pending_activation_store()->SetActivationState(
@@ -292,12 +299,12 @@ void CellularCapabilityUniversalCDMA::OnActivateReply(
 
 void CellularCapabilityUniversalCDMA::HandleNewActivationStatus(
     uint32_t error) {
-  SLOG(Cellular, 2) << __func__ << "(" << error << ")";
+  SLOG(this, 2) << __func__ << "(" << error << ")";
   if (!cellular()->service().get()) {
     LOG(ERROR) << "In " << __func__ << "(): service is null.";
     return;
   }
-  SLOG(Cellular, 2) << "Activation State: " << activation_state_;
+  SLOG(this, 2) << "Activation State: " << activation_state_;
   cellular()->service()->SetActivationState(
       GetActivationStateString(activation_state_));
   cellular()->service()->set_error(GetActivationErrorString(error));
@@ -441,7 +448,7 @@ void CellularCapabilityUniversalCDMA::OnDBusPropertiesChanged(
     const string &interface,
     const DBusPropertiesMap &changed_properties,
     const vector<string> &invalidated_properties) {
-  SLOG(Cellular, 2) << __func__ << "(" << interface << ")";
+  SLOG(this, 2) << __func__ << "(" << interface << ")";
   if (interface == MM_DBUS_INTERFACE_MODEM_MODEMCDMA) {
     OnModemCDMAPropertiesChanged(changed_properties, invalidated_properties);
   } else {
@@ -453,7 +460,7 @@ void CellularCapabilityUniversalCDMA::OnDBusPropertiesChanged(
 void CellularCapabilityUniversalCDMA::OnModemCDMAPropertiesChanged(
     const DBusPropertiesMap &properties,
     const std::vector<std::string> &/*invalidated_properties*/) {
-  SLOG(Cellular, 2) << __func__;
+  SLOG(this, 2) << __func__;
   string str_value;
   if (DBusProperties::GetString(properties,
                                 MM_MODEM_MODEMCDMA_PROPERTY_MEID,
@@ -513,9 +520,8 @@ void CellularCapabilityUniversalCDMA::OnCDMARegistrationChanged(
       MMModemCdmaRegistrationState state_1x,
       MMModemCdmaRegistrationState state_evdo,
       uint32_t sid, uint32_t nid) {
-  SLOG(Cellular, 2) << __func__
-                    << ": state_1x=" << state_1x
-                    << ", state_evdo=" << state_evdo;
+  SLOG(this, 2) << __func__ << ": state_1x=" << state_1x
+                            << ", state_evdo=" << state_evdo;
   cdma_1x_registration_state_ = state_1x;
   cdma_evdo_registration_state_ = state_evdo;
   sid_ = sid;

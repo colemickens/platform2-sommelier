@@ -16,6 +16,11 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDBus;
+static string ObjectID(const DBus::Path *p) { return *p; }
+}
+
 SupplicantNetworkProxy::SupplicantNetworkProxy(
     DBus::Connection *bus,
     const ::DBus::Path &object_path,
@@ -25,7 +30,7 @@ SupplicantNetworkProxy::SupplicantNetworkProxy(
 SupplicantNetworkProxy::~SupplicantNetworkProxy() {}
 
 void SupplicantNetworkProxy::SetEnabled(bool enabled) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.Enabled(enabled);
   } catch (const DBus::Error &e) {
@@ -45,7 +50,7 @@ SupplicantNetworkProxy::Proxy::~Proxy() {}
 
 void SupplicantNetworkProxy::Proxy::PropertiesChanged(
     const map<string, ::DBus::Variant> &properties) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   // TODO(pstew): Some day we could notify someone about this state change.
 }
 

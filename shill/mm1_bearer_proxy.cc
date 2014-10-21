@@ -14,6 +14,7 @@ using std::string;
 using std::unique_ptr;
 
 namespace shill {
+
 namespace mm1 {
 
 BearerProxy::BearerProxy(DBus::Connection *connection,
@@ -46,12 +47,11 @@ BearerProxy::Proxy::Proxy(DBus::Connection *connection,
 
 BearerProxy::Proxy::~Proxy() {}
 
-
 // Method callbacks inherited from
 // org::freedesktop::ModemManager1::BearerProxy
 void BearerProxy::Proxy::ConnectCallback(const ::DBus::Error &dberror,
                                          void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
@@ -60,7 +60,7 @@ void BearerProxy::Proxy::ConnectCallback(const ::DBus::Error &dberror,
 
 void BearerProxy::Proxy::DisconnectCallback(const ::DBus::Error &dberror,
                                             void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);

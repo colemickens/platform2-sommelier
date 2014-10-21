@@ -25,6 +25,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kStorage;
+static string ObjectID(const KeyFileStore *k) { return "(key_file_store)"; }
+}
+
 const char KeyFileStore::kCorruptSuffix[] = ".corrupted";
 
 KeyFileStore::KeyFileStore(GLib *glib)
@@ -207,8 +212,7 @@ bool KeyFileStore::GetString(const string &group,
       glib_->KeyFileGetString(key_file_, group.c_str(), key.c_str(), &error);
   if (!data) {
     string s = glib_->ConvertErrorToMessage(error);
-    SLOG(Storage, 10) << "Failed to lookup (" << group << ":" << key << "): "
-                      << s;
+    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << "): " << s;
     return false;
   }
   if (value) {
@@ -235,8 +239,7 @@ bool KeyFileStore::GetBool(const string &group,
       glib_->KeyFileGetBoolean(key_file_, group.c_str(), key.c_str(), &error);
   if (error) {
     string s = glib_->ConvertErrorToMessage(error);
-    SLOG(Storage, 10) << "Failed to lookup (" << group << ":" << key << "): "
-                      << s;
+    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << "): " << s;
     return false;
   }
   if (value) {
@@ -262,8 +265,7 @@ bool KeyFileStore::GetInt(
       glib_->KeyFileGetInteger(key_file_, group.c_str(), key.c_str(), &error);
   if (error) {
     string s = glib_->ConvertErrorToMessage(error);
-    SLOG(Storage, 10) << "Failed to lookup (" << group << ":" << key << "): "
-                      << s;
+    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << "): " << s;
     return false;
   }
   if (value) {
@@ -290,8 +292,8 @@ bool KeyFileStore::GetUint64(
 
   uint64_t data;
   if (!base::StringToUint64(data_string, &data)) {
-    SLOG(Storage, 10) << "Failed to convert (" << group << ":" << key << "): "
-                      << "string to uint64_t conversion failed";
+    SLOG(this, 10) << "Failed to convert (" << group << ":" << key << "): "
+                   << "string to uint64_t conversion failed";
     return false;
   }
 
@@ -323,8 +325,7 @@ bool KeyFileStore::GetStringList(const string &group,
                                              &error);
   if (!data) {
     string s = glib_->ConvertErrorToMessage(error);
-    SLOG(Storage, 10) << "Failed to lookup (" << group << ":" << key << "): "
-                      << s;
+    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << "): " << s;
     return false;
   }
   if (value) {

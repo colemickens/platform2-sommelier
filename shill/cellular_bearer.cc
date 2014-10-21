@@ -18,6 +18,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kCellular;
+static string ObjectID(const CellularBearer *c) { return "(cellular_bearer)"; }
+}
+
 namespace {
 
 const char kPropertyAddress[] = "address";
@@ -58,8 +63,8 @@ CellularBearer::CellularBearer(ProxyFactory *proxy_factory,
 CellularBearer::~CellularBearer() {}
 
 bool CellularBearer::Init() {
-  SLOG(Cellular, 3) << __func__ << ": path='" << dbus_path_
-                    << "', service='" << dbus_service_ << "'";
+  SLOG(this, 3) << __func__ << ": path='" << dbus_path_
+                << "', service='" << dbus_service_ << "'";
 
   dbus_properties_proxy_.reset(
       proxy_factory_->CreateDBusPropertiesProxy(dbus_path_, dbus_service_));
@@ -87,8 +92,8 @@ void CellularBearer::GetIPConfigMethodAndProperties(
 
   uint32_t method;
   if (!DBusProperties::GetUint32(properties, kPropertyMethod, &method)) {
-    SLOG(Cellular, 2) << "Bearer '" << dbus_path_
-                      << "' does not specify an IP configuration method.";
+    SLOG(this, 2) << "Bearer '" << dbus_path_
+                  << "' does not specify an IP configuration method.";
     method = MM_BEARER_IP_METHOD_UNKNOWN;
   }
   *ipconfig_method = ConvertMMBearerIPConfigMethod(method);
@@ -100,8 +105,8 @@ void CellularBearer::GetIPConfigMethodAndProperties(
   string address, gateway;
   if (!DBusProperties::GetString(properties, kPropertyAddress, &address) ||
       !DBusProperties::GetString(properties, kPropertyGateway, &gateway)) {
-    SLOG(Cellular, 2) << "Bearer '" << dbus_path_
-                      << "' static IP configuration does not specify valid "
+    SLOG(this, 2) << "Bearer '" << dbus_path_
+                  << "' static IP configuration does not specify valid "
                          "address/gateway information.";
     *ipconfig_method = IPConfig::kMethodUnknown;
     return;
@@ -161,8 +166,8 @@ void CellularBearer::OnDBusPropertiesChanged(
     const string &interface,
     const DBusPropertiesMap &changed_properties,
     const vector<string> &/*invalidated_properties*/) {
-  SLOG(Cellular, 3) << __func__ << ": path=" << dbus_path_
-                    << ", interface=" << interface;
+  SLOG(this, 3) << __func__ << ": path=" << dbus_path_
+                << ", interface=" << interface;
 
   if (interface != MM_DBUS_INTERFACE_BEARER)
     return;

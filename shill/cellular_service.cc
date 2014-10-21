@@ -18,6 +18,11 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kCellular;
+static string ObjectID(CellularService *c) { return c->GetRpcIdentifier(); }
+}
+
 // statics
 const char CellularService::kAutoConnActivating[] = "activating";
 const char CellularService::kAutoConnBadPPPCredentials[] =
@@ -349,7 +354,7 @@ void CellularService::SetState(ConnectState new_state) {
 }
 
 void CellularService::SetStorageIdentifier(const string &identifier) {
-  SLOG(Cellular, 3) << __func__ << ": " << identifier;
+  SLOG(this, 3) << __func__ << ": " << identifier;
   storage_identifier_ = identifier;
   std::replace_if(storage_identifier_.begin(),
                   storage_identifier_.end(),

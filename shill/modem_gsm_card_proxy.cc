@@ -94,7 +94,7 @@ void ModemGSMCardProxy::ChangePIN(const string &old_pin,
 }
 
 uint32_t ModemGSMCardProxy::EnabledFacilityLocks() {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.EnabledFacilityLocks();
   } catch (const DBus::Error &e) {
@@ -111,7 +111,7 @@ ModemGSMCardProxy::Proxy::Proxy(DBus::Connection *connection,
 void ModemGSMCardProxy::Proxy::GetIdCallback(const string &id,
                                              const DBus::Error &dberror,
                                              void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   unique_ptr<GSMIdentifierCallback> callback(
       reinterpret_cast<GSMIdentifierCallback *>(data));
   Error error;
@@ -122,34 +122,34 @@ void ModemGSMCardProxy::Proxy::GetIdCallback(const string &id,
 void ModemGSMCardProxy::Proxy::GetImeiCallback(const string &imei,
                                                const DBus::Error &dberror,
                                                void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   GetIdCallback(imei, dberror, data);
 }
 
 void ModemGSMCardProxy::Proxy::GetImsiCallback(const string &imsi,
                                                const DBus::Error &dberror,
                                                void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   GetIdCallback(imsi, dberror, data);
 }
 
 void ModemGSMCardProxy::Proxy::GetSpnCallback(const string &spn,
                                               const DBus::Error &dberror,
                                               void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   GetIdCallback(spn, dberror, data);
 }
 
 void ModemGSMCardProxy::Proxy::GetMsIsdnCallback(const string &msisdn,
                                                  const DBus::Error &dberror,
                                                  void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   GetIdCallback(msisdn, dberror, data);
 }
 
 void ModemGSMCardProxy::Proxy::PinCallback(const DBus::Error &dberror,
                                            void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -158,25 +158,25 @@ void ModemGSMCardProxy::Proxy::PinCallback(const DBus::Error &dberror,
 
 void ModemGSMCardProxy::Proxy::EnablePinCallback(const DBus::Error &dberror,
                                                  void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   PinCallback(dberror, data);
 }
 
 void ModemGSMCardProxy::Proxy::SendPinCallback(const DBus::Error &dberror,
                                                void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   PinCallback(dberror, data);
 }
 
 void ModemGSMCardProxy::Proxy::SendPukCallback(const DBus::Error &dberror,
                                                void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   PinCallback(dberror, data);
 }
 
 void ModemGSMCardProxy::Proxy::ChangePinCallback(const DBus::Error &dberror,
                                                  void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   PinCallback(dberror, data);
 }
 

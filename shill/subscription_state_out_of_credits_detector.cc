@@ -4,11 +4,21 @@
 
 #include "shill/subscription_state_out_of_credits_detector.h"
 
+#include <string>
+
 #include "ModemManager/ModemManager.h"
 
+#include "shill/cellular_service.h"
 #include "shill/logging.h"
 
+using std::string;
+
 namespace shill {
+
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kCellular;
+static string ObjectID(CellularService *c) { return c->GetRpcIdentifier(); }
+}
 
 SubscriptionStateOutOfCreditsDetector::SubscriptionStateOutOfCreditsDetector(
     EventDispatcher *dispatcher,
@@ -28,9 +38,9 @@ void SubscriptionStateOutOfCreditsDetector::NotifySubscriptionStateChanged(
               MM_MODEM_3GPP_SUBSCRIPTION_STATE_OUT_OF_DATA);
   if (ooc != out_of_credits()) {
     if (ooc)
-      SLOG(Cellular, 2) << "Marking service out-of-credits";
+      SLOG(service(), 2) << "Marking service out-of-credits";
     else
-      SLOG(Cellular, 2) << "Marking service as not out-of-credits";
+      SLOG(service(), 2) << "Marking service as not out-of-credits";
   }
   ReportOutOfCredits(ooc);
 }

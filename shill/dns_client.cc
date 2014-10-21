@@ -33,6 +33,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDNS;
+static string ObjectID(DNSClient *d) { return d->interface_name(); }
+}
+
 const char DNSClient::kErrorNoData[] = "The query response contains no answers";
 const char DNSClient::kErrorFormErr[] = "The server says the query is bad";
 const char DNSClient::kErrorServerFail[] = "The server says it had a failure";
@@ -156,7 +161,7 @@ bool DNSClient::Start(const string &hostname, Error *error) {
 }
 
 void DNSClient::Stop() {
-  SLOG(DNS, 3) << "In " << __func__;
+  SLOG(this, 3) << "In " << __func__;
   if (!resolver_state_.get()) {
     return;
   }
@@ -178,7 +183,7 @@ bool DNSClient::IsActive() const {
 // during the process of the execution of the callee (which is free to
 // call our destructor safely).
 void DNSClient::HandleCompletion() {
-  SLOG(DNS, 3) << "In " << __func__;
+  SLOG(this, 3) << "In " << __func__;
   Error error;
   error.CopyFrom(error_);
   IPAddress address(address_);
@@ -215,7 +220,7 @@ void DNSClient::ReceiveDNSReply(int status, struct hostent *hostent) {
     // We can be called during ARES shutdown -- ignore these events.
     return;
   }
-  SLOG(DNS, 3) << "In " << __func__;
+  SLOG(this, 3) << "In " << __func__;
   running_ = false;
   timeout_closure_.Cancel();
   dispatcher_->PostTask(Bind(&DNSClient::HandleCompletion,

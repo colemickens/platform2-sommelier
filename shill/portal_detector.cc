@@ -23,6 +23,11 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kPortal;
+static string ObjectID(Connection *c) { return c->interface_name(); }
+}
+
 const int PortalDetector::kDefaultCheckIntervalSeconds = 30;
 const char PortalDetector::kDefaultCheckPortalList[] = "ethernet,wifi,cellular";
 
@@ -61,7 +66,7 @@ bool PortalDetector::Start(const string &url_string) {
 
 bool PortalDetector::StartAfterDelay(const string &url_string,
                                      int delay_seconds) {
-  SLOG(Portal, 3) << "In " << __func__;
+  SLOG(connection_, 3) << "In " << __func__;
 
   if (!connectivity_trial_->Start(url_string, delay_seconds * 1000)) {
     return false;
@@ -77,7 +82,7 @@ bool PortalDetector::StartAfterDelay(const string &url_string,
 }
 
 void PortalDetector::Stop() {
-  SLOG(Portal, 3) << "In " << __func__;
+  SLOG(connection_, 3) << "In " << __func__;
 
   attempt_count_ = 0;
   failures_in_content_phase_ = 0;
@@ -144,8 +149,8 @@ int PortalDetector::AdjustStartDelay(int init_delay_seconds) {
     struct timeval now, elapsed_time;
     time_->GetTimeMonotonic(&now);
     timersub(&now, &attempt_start_time_, &elapsed_time);
-    SLOG(Portal, 4) << "Elapsed time from previous attempt is "
-                    << elapsed_time.tv_sec << " seconds.";
+    SLOG(connection_, 4) << "Elapsed time from previous attempt is "
+                         << elapsed_time.tv_sec << " seconds.";
     if (elapsed_time.tv_sec < kMinTimeBetweenAttemptsSeconds) {
       next_attempt_delay_seconds = kMinTimeBetweenAttemptsSeconds -
                                    elapsed_time.tv_sec;
@@ -154,9 +159,9 @@ int PortalDetector::AdjustStartDelay(int init_delay_seconds) {
     LOG(FATAL) << "AdjustStartDelay in PortalDetector called without "
                   "previous attempts";
   }
-  SLOG(Portal, 3) << "Adjusting trial start delay from "
-                  << init_delay_seconds << " seconds to "
-                  << next_attempt_delay_seconds << " seconds.";
+  SLOG(connection_, 3) << "Adjusting trial start delay from "
+                       << init_delay_seconds << " seconds to "
+                       << next_attempt_delay_seconds << " seconds.";
   return next_attempt_delay_seconds;
 }
 

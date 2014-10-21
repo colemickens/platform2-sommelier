@@ -48,6 +48,8 @@ class Mac80211Monitor {
   virtual void Stop();
   virtual void UpdateConnectedState(bool new_state);
 
+  const std::string &link_name() const { return link_name_; }
+
  private:
   friend class Mac80211MonitorTest;
   FRIEND_TEST(Mac80211MonitorTest, CheckAreQueuesStuckMultipleReasons);

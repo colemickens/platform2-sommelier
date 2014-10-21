@@ -79,7 +79,7 @@ void WiMaxDeviceProxy::set_status_changed_callback(
 }
 
 uint8_t WiMaxDeviceProxy::Index(Error *error) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.Index();
   } catch (const DBus::Error &e) {
@@ -89,7 +89,7 @@ uint8_t WiMaxDeviceProxy::Index(Error *error) {
 }
 
 string WiMaxDeviceProxy::Name(Error *error) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.Name();
   } catch (const DBus::Error &e) {
@@ -99,7 +99,7 @@ string WiMaxDeviceProxy::Name(Error *error) {
 }
 
 RpcIdentifiers WiMaxDeviceProxy::Networks(Error *error) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   vector<DBus::Path> dbus_paths;
   try {
     dbus_paths = proxy_.Networks();
@@ -144,7 +144,7 @@ void WiMaxDeviceProxy::Proxy::set_status_changed_callback(
 
 void WiMaxDeviceProxy::Proxy::NetworksChanged(
     const vector<DBus::Path> &networks) {
-  SLOG(DBus, 2) << __func__ << "(" << networks.size() << ")";
+  SLOG(&path(), 2) << __func__ << "(" << networks.size() << ")";
   if (networks_changed_callback_.is_null()) {
     return;
   }
@@ -154,7 +154,7 @@ void WiMaxDeviceProxy::Proxy::NetworksChanged(
 }
 
 void WiMaxDeviceProxy::Proxy::StatusChanged(const int32_t &status) {
-  SLOG(DBus, 2) << __func__ << "(" << status << ")";
+  SLOG(&path(), 2) << __func__ << "(" << status << ")";
   if (status_changed_callback_.is_null()) {
     return;
   }
@@ -163,31 +163,31 @@ void WiMaxDeviceProxy::Proxy::StatusChanged(const int32_t &status) {
 
 void WiMaxDeviceProxy::Proxy::EnableCallback(const DBus::Error &error,
                                              void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   HandleCallback(error, data);
 }
 
 void WiMaxDeviceProxy::Proxy::DisableCallback(const DBus::Error &error,
                                               void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   HandleCallback(error, data);
 }
 
 void WiMaxDeviceProxy::Proxy::ScanNetworksCallback(const DBus::Error &error,
                                                    void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   HandleCallback(error, data);
 }
 
 void WiMaxDeviceProxy::Proxy::ConnectCallback(const DBus::Error &error,
                                               void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   HandleCallback(error, data);
 }
 
 void WiMaxDeviceProxy::Proxy::DisconnectCallback(const DBus::Error &error,
                                                  void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   HandleCallback(error, data);
 }
 

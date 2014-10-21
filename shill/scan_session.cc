@@ -29,6 +29,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kWiFi;
+static string ObjectID(ScanSession *s) { return "(scan_session)"; }
+}
+
 const float ScanSession::kAllFrequencies = 1.1;
 const uint64_t ScanSession::kScanRetryDelayMilliseconds = 200;  // Arbitrary.
 const size_t ScanSession::kScanRetryCount = 50;
@@ -75,9 +80,9 @@ ScanSession::ScanSession(
     }
   }
 
-  SLOG(WiFi, 6) << "Frequency connections vector:";
+  SLOG(this, 6) << "Frequency connections vector:";
   for (const auto &freq_conn : frequency_list_) {
-    SLOG(WiFi, 6) << "    freq[" << freq_conn.frequency << "] = "
+    SLOG(this, 6) << "    freq[" << freq_conn.frequency << "] = "
                   << freq_conn.connection_count;
   }
 
@@ -104,7 +109,7 @@ vector<uint16_t> ScanSession::GetScanFrequencies(float fraction_wanted,
   vector<uint16_t> frequencies;
   WiFiProvider::FrequencyCountList::iterator freq_connect =
       frequency_list_.begin();
-  SLOG(WiFi, 7) << "Scanning for frequencies:";
+  SLOG(this, 7) << "Scanning for frequencies:";
   while (freq_connect != frequency_list_.end()) {
     if (frequencies.size() >= min_frequencies) {
       if (total_connects_provided_ >= total_connects_wanted)
@@ -116,7 +121,7 @@ vector<uint16_t> ScanSession::GetScanFrequencies(float fraction_wanted,
     size_t connection_count = freq_connect->connection_count;
     total_connects_provided_ += connection_count;
     frequencies.push_back(frequency);
-    SLOG(WiFi, 7) << "    freq[" << frequency << "] = " << connection_count;
+    SLOG(this, 7) << "    freq[" << frequency << "] = " << connection_count;
 
     freq_connect = frequency_list_.erase(freq_connect);
   }
@@ -156,11 +161,11 @@ void ScanSession::DoScan(const vector<uint16_t> &scan_frequencies) {
   trigger_scan.attributes()->SetNestedAttributeHasAValue(
       NL80211_ATTR_SCAN_FREQUENCIES);
 
-  SLOG(WiFi, 6) << "We have requested scan frequencies:";
+  SLOG(this, 6) << "We have requested scan frequencies:";
   string attribute_name;
   int i = 0;
   for (const auto freq : scan_frequencies) {
-    SLOG(WiFi, 6) << "  " << freq;
+    SLOG(this, 6) << "  " << freq;
     attribute_name = StringPrintf("Frequency-%d", i);
     frequency_list->CreateU32Attribute(i, attribute_name.c_str());
     frequency_list->SetU32AttributeValue(i, freq);
@@ -238,7 +243,7 @@ void ScanSession::OnTriggerScanErrorResponse(
               return;
             }
             --scan_tries_left_;
-            SLOG(WiFi, 3) << __func__ << " - trying again (" << scan_tries_left_
+            SLOG(this, 3) << __func__ << " - trying again (" << scan_tries_left_
                           << " remaining after this)";
             ebusy_timer_.Resume();
             dispatcher_->PostDelayedTask(Bind(&ScanSession::ReInitiateScan,
@@ -249,7 +254,7 @@ void ScanSession::OnTriggerScanErrorResponse(
           found_error_ = true;
           on_scan_failed_.Run();
         } else {
-          SLOG(WiFi, 6) << __func__ << ": Message ACKed";
+          SLOG(this, 6) << __func__ << ": Message ACKed";
         }
       }
       break;
@@ -277,17 +282,17 @@ void ScanSession::OnTriggerScanErrorResponse(
 }
 
 void ScanSession::ReportResults(int log_level) {
-  SLOG(WiFi, log_level) << "------ ScanSession finished ------";
-  SLOG(WiFi, log_level) << "Scanned "
+  SLOG(this, log_level) << "------ ScanSession finished ------";
+  SLOG(this, log_level) << "Scanned "
                         << original_frequency_count_ - frequency_list_.size()
                         << " frequencies (" << frequency_list_.size()
                         << " remaining)";
   if (found_error_) {
-    SLOG(WiFi, log_level) << "ERROR encountered during scan ("
+    SLOG(this, log_level) << "ERROR encountered during scan ("
                           << current_scan_frequencies_.size() << " frequencies"
                           << " dangling - counted as scanned but, really, not)";
   } else {
-    SLOG(WiFi, log_level) << "No error encountered during scan.";
+    SLOG(this, log_level) << "No error encountered during scan.";
   }
 
   base::TimeDelta elapsed_time;
@@ -299,7 +304,7 @@ void ScanSession::ReportResults(int log_level) {
                         Metrics::kMetricTimeToScanMillisecondsMax,
                         Metrics::kMetricTimeToScanMillisecondsNumBuckets);
   }
-  SLOG(WiFi, log_level) << "Spent " << elapsed_time.InMillisecondsRoundedUp()
+  SLOG(this, log_level) << "Spent " << elapsed_time.InMillisecondsRoundedUp()
                         << " milliseconds waiting for EBUSY.";
 }
 

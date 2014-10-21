@@ -14,6 +14,11 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDevice;
+static string ObjectID(VirtualDevice *v) { return "(virtual_device)"; }
+}
+
 namespace {
 const char kHardwareAddressEmpty[] = "";
 }  // namespace
@@ -56,7 +61,7 @@ void VirtualDevice::Stop(Error *error,
 }
 
 void VirtualDevice::UpdateIPConfig(const IPConfig::Properties &properties) {
-  SLOG(Device, 2) << __func__ << " on " << link_name();
+  SLOG(this, 2) << __func__ << " on " << link_name();
   if (!ipconfig()) {
     set_ipconfig(new IPConfig(control_interface(), link_name()));
   }

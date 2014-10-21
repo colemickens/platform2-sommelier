@@ -21,6 +21,13 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kLink;
+static string ObjectID(ConnectionInfoReader *c) {
+  return "(connection_info_reader)";
+}
+}
+
 namespace {
 
 const char kConnectionInfoFilePath[] = "/proc/net/ip_conntrack";
@@ -47,7 +54,7 @@ bool ConnectionInfoReader::LoadConnectionInfo(
   FilePath info_file_path = GetConnectionInfoFilePath();
   FileReader file_reader;
   if (!file_reader.Open(info_file_path)) {
-    SLOG(Link, 2) << __func__ << ": Failed to open '"
+    SLOG(this, 2) << __func__ << ": Failed to open '"
                   << info_file_path.value() << "'.";
     return false;
   }

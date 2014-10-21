@@ -48,7 +48,7 @@ void ModemCDMAProxy::GetSignalQuality(Error *error,
 
 const string ModemCDMAProxy::MEID() {
   LOG(INFO) << "ModemCDMAProxy::" << __func__;
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.Meid();
   } catch (const DBus::Error &e) {
@@ -98,30 +98,30 @@ void ModemCDMAProxy::Proxy::ActivationStateChanged(
     const uint32_t &activation_state,
     const uint32_t &activation_error,
     const DBusPropertiesMap &status_changes) {
-  SLOG(DBus, 2) << __func__ << "(" << activation_state << ", "
-                << activation_error << ")";
+  SLOG(&path(), 2) << __func__ << "(" << activation_state << ", "
+                   << activation_error << ")";
   activation_state_callback_.Run(activation_state,
                                   activation_error,
                                   status_changes);
 }
 
 void ModemCDMAProxy::Proxy::SignalQuality(const uint32_t &quality) {
-  SLOG(DBus, 2) << __func__ << "(" << quality << ")";
+  SLOG(&path(), 2) << __func__ << "(" << quality << ")";
   signal_quality_callback_.Run(quality);
 }
 
 void ModemCDMAProxy::Proxy::RegistrationStateChanged(
     const uint32_t &cdma_1x_state,
     const uint32_t &evdo_state) {
-  SLOG(DBus, 2) << __func__ << "(" << cdma_1x_state << ", "
-                << evdo_state << ")";
+  SLOG(&path(), 2) << __func__ << "(" << cdma_1x_state << ", "
+                   << evdo_state << ")";
   registration_state_callback_.Run(cdma_1x_state, evdo_state);
 }
 
 void ModemCDMAProxy::Proxy::ActivateCallback(const uint32_t &status,
                                              const DBus::Error &dberror,
                                              void *data) {
-  SLOG(DBus, 2) << __func__ << "(" << status << ")";
+  SLOG(&path(), 2) << __func__ << "(" << status << ")";
   unique_ptr<ActivationResultCallback> callback(
       reinterpret_cast<ActivationResultCallback *>(data));
   Error error;
@@ -132,7 +132,7 @@ void ModemCDMAProxy::Proxy::ActivateCallback(const uint32_t &status,
 void ModemCDMAProxy::Proxy::GetRegistrationStateCallback(
     const uint32_t &state_1x, const uint32_t &state_evdo,
     const DBus::Error &dberror, void *data) {
-  SLOG(DBus, 2) << __func__ << "(" << state_1x << ", " << state_evdo << ")";
+  SLOG(&path(), 2) << __func__ << "(" << state_1x << ", " << state_evdo << ")";
   unique_ptr<RegistrationStateCallback> callback(
       reinterpret_cast<RegistrationStateCallback *>(data));
   Error error;
@@ -144,7 +144,7 @@ void ModemCDMAProxy::Proxy::GetRegistrationStateCallback(
 void ModemCDMAProxy::Proxy::GetSignalQualityCallback(const uint32_t &quality,
                                                      const DBus::Error &dberror,
                                                      void *data) {
-  SLOG(DBus, 2) << __func__ << "(" << quality << ")";
+  SLOG(&path(), 2) << __func__ << "(" << quality << ")";
   unique_ptr<SignalQualityCallback> callback(
       reinterpret_cast<SignalQualityCallback *>(data));
   Error error;

@@ -24,6 +24,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kCrypto;
+static string ObjectID(CertificateFile *c) { return "(certificate_file)"; }
+}
+
 const char CertificateFile::kDefaultRootDirectory[] =
     RUNDIR "/certificate_export";
 const char CertificateFile::kPEMHeader[] = "-----BEGIN CERTIFICATE-----";
@@ -31,11 +36,11 @@ const char CertificateFile::kPEMFooter[] = "-----END CERTIFICATE-----";
 
 CertificateFile::CertificateFile()
     : root_directory_(FilePath(kDefaultRootDirectory)) {
-  SLOG(Crypto, 2) << __func__;
+  SLOG(this, 2) << __func__;
 }
 
 CertificateFile::~CertificateFile() {
-  SLOG(Crypto, 2) << __func__;
+  SLOG(this, 2) << __func__;
   if (!output_file_.empty()) {
     base::DeleteFile(output_file_, false);
   }

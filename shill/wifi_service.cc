@@ -42,6 +42,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kService;
+static string ObjectID(const WiFiService *w) { return w->GetRpcIdentifier(); }
+}
+
 const char WiFiService::kAutoConnNoEndpoint[] = "no endpoints";
 const char WiFiService::kAnyDeviceAddress[] = "any";
 const int WiFiService::kSuspectedCredentialFailureThreshold = 3;
@@ -334,7 +339,7 @@ bool WiFiService::Load(StoreInterface *storage) {
   string passphrase;
   if (storage->GetCryptedString(id, kStoragePassphrase, &passphrase)) {
     if (SetPassphraseInternal(passphrase, Service::kReasonCredentialsLoaded)) {
-      SLOG(Service, 3) << "Loaded passphrase in WiFiService::Load.";
+      SLOG(this, 3) << "Loaded passphrase in WiFiService::Load.";
     }
   }
 
@@ -402,7 +407,7 @@ void WiFiService::ResetSuspectedCredentialFailures() {
 }
 
 void WiFiService::InitializeCustomMetrics() const {
-  SLOG(Metrics, 2) << __func__ << " for " << unique_name();
+  SLOG(Metrics, this, 2) << __func__ << " for " << unique_name();
   string histogram = metrics()->GetFullMetricName(
       Metrics::kMetricTimeToJoinMillisecondsSuffix,
       technology());

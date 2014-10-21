@@ -25,6 +25,13 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kConnection;
+static string ObjectID(Connection *c) {
+  return c->interface_name();
+}
+}
+
 // static
 const uint32_t Connection::kDefaultMetric = 1;
 // static
@@ -59,7 +66,7 @@ void Connection::Binder::OnDisconnect() {
             << connection_->interface_name();
   connection_.reset();
   if (!client_disconnect_callback_.is_null()) {
-    SLOG(Connection, 2) << "Running client disconnect callback.";
+    SLOG(connection_.get(), 2) << "Running client disconnect callback.";
     client_disconnect_callback_.Run();
   }
 }
@@ -86,13 +93,13 @@ Connection::Connection(int interface_index,
       resolver_(Resolver::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()) {
-  SLOG(Connection, 2) << __func__ << "(" << interface_index << ", "
-                      << interface_name << ", "
-                      << Technology::NameFromIdentifier(technology) << ")";
+  SLOG(this, 2) << __func__ << "(" << interface_index << ", "
+                << interface_name << ", "
+                << Technology::NameFromIdentifier(technology) << ")";
 }
 
 Connection::~Connection() {
-  SLOG(Connection, 2) << __func__ << " " << interface_name_;
+  SLOG(this, 2) << __func__ << " " << interface_name_;
 
   NotifyBindersOnDisconnect();
 
@@ -103,7 +110,7 @@ Connection::~Connection() {
 }
 
 void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
-  SLOG(Connection, 2) << __func__ << " " << interface_name_;
+  SLOG(this, 2) << __func__ << " " << interface_name_;
 
   const IPConfig::Properties &properties = config->properties();
   IPAddress gateway(properties.address_family);
@@ -209,9 +216,9 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
 }
 
 void Connection::SetIsDefault(bool is_default) {
-  SLOG(Connection, 2) << __func__ << " " << interface_name_
-                      << " (index " << interface_index_ << ") "
-                      << is_default_ << " -> " << is_default;
+  SLOG(this, 2) << __func__ << " " << interface_name_
+                << " (index " << interface_index_ << ") "
+                << is_default_ << " -> " << is_default;
   if (is_default == is_default_) {
     return;
   }
@@ -242,8 +249,8 @@ void Connection::PushDNSConfig() {
 
   vector<string> domain_search = dns_domain_search_;
   if (domain_search.empty() && !dns_domain_name_.empty()) {
-    SLOG(Connection, 2) << "Setting domain search to domain name "
-                        << dns_domain_name_;
+    SLOG(this, 2) << "Setting domain search to domain name "
+                  << dns_domain_name_;
     domain_search.push_back(dns_domain_name_ + ".");
   }
   resolver_->SetDNSFromLists(dns_servers_, domain_search);
@@ -422,7 +429,7 @@ uint32_t Connection::GetMetric(bool is_default) {
 
 bool Connection::PinHostRoute(const IPAddress &trusted_ip,
                               const IPAddress &gateway) {
-  SLOG(Connection, 2) << __func__;
+  SLOG(this, 2) << __func__;
   if (!trusted_ip.IsValid()) {
     LOG(ERROR) << "No trusted IP -- unable to pin host route.";
     return false;
@@ -441,8 +448,8 @@ bool Connection::PinHostRoute(const IPAddress &trusted_ip,
 
 void Connection::OnRouteQueryResponse(int interface_index,
                                       const RoutingTableEntry &entry) {
-  SLOG(Connection, 2) << __func__ << "(" << interface_index << ", "
-                      << entry.tag << ")" << " @ " << interface_name_;
+  SLOG(this, 2) << __func__ << "(" << interface_index << ", "
+                << entry.tag << ")" << " @ " << interface_name_;
   lower_binder_.Attach(nullptr);
   DeviceRefPtr device = device_info_->GetDevice(interface_index);
   if (!device) {
@@ -480,7 +487,7 @@ bool Connection::CreateGatewayRoute() {
 }
 
 void Connection::OnLowerDisconnect() {
-  SLOG(Connection, 2) << __func__ << " @ " << interface_name_;
+  SLOG(this, 2) << __func__ << " @ " << interface_name_;
   // Ensures that |this| instance doesn't get destroyed in the middle of
   // notifying the binders. This method needs to be separate from
   // NotifyBindersOnDisconnect because the latter may be invoked by Connection's
@@ -491,7 +498,7 @@ void Connection::OnLowerDisconnect() {
 
 void Connection::NotifyBindersOnDisconnect() {
   // Note that this method may be invoked by the destructor.
-  SLOG(Connection, 2) << __func__ << " @ " << interface_name_;
+  SLOG(this, 2) << __func__ << " @ " << interface_name_;
 
   // Unbinds the lower connection before notifying the binders. This ensures
   // correct behavior in case of circular binding.
@@ -506,14 +513,14 @@ void Connection::NotifyBindersOnDisconnect() {
 }
 
 void Connection::AttachBinder(Binder *binder) {
-  SLOG(Connection, 2) << __func__ << "(" << binder->name() << ")" << " @ "
-                      << interface_name_;
+  SLOG(this, 2) << __func__ << "(" << binder->name() << ")" << " @ "
+                            << interface_name_;
   binders_.push_back(binder);
 }
 
 void Connection::DetachBinder(Binder *binder) {
-  SLOG(Connection, 2) << __func__ << "(" << binder->name() << ")" << " @ "
-                      << interface_name_;
+  SLOG(this, 2) << __func__ << "(" << binder->name() << ")" << " @ "
+                            << interface_name_;
   for (auto it = binders_.begin(); it != binders_.end(); ++it) {
     if (binder == *it) {
       binders_.erase(it);
@@ -523,7 +530,7 @@ void Connection::DetachBinder(Binder *binder) {
 }
 
 ConnectionRefPtr Connection::GetCarrierConnection() {
-  SLOG(Connection, 2) << __func__ << " @ " << interface_name_;
+  SLOG(this, 2) << __func__ << " @ " << interface_name_;
   set<Connection *> visited;
   ConnectionRefPtr carrier = this;
   while (carrier->GetLowerConnection()) {
@@ -537,8 +544,8 @@ ConnectionRefPtr Connection::GetCarrierConnection() {
     visited.insert(carrier.get());
     carrier = carrier->GetLowerConnection();
   }
-  SLOG(Connection, 2) << "Carrier connection: " << carrier->interface_name()
-                      << " @ " << interface_name_;
+  SLOG(this, 2) << "Carrier connection: " << carrier->interface_name()
+                << " @ " << interface_name_;
   return carrier;
 }
 

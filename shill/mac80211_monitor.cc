@@ -20,6 +20,11 @@ namespace shill {
 using std::string;
 using std::vector;
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kWiFi;
+static string ObjectID(Mac80211Monitor *m) { return m->link_name(); }
+}
+
 // statics
 // At 17-25 bytes per queue, this accommodates 80 queues.
 // ath9k has 4 queues, and WP2 has 16 queues.
@@ -58,7 +63,7 @@ Mac80211Monitor::~Mac80211Monitor() {
 }
 
 void Mac80211Monitor::Start(const string &phy_name) {
-  SLOG(WiFi, 2) << __func__ << " on " << link_name_ << " (" << phy_name << ")";
+  SLOG(this, 2) << __func__ << " on " << link_name_ << " (" << phy_name << ")";
   CHECK(!is_running_);
   phy_name_ = phy_name;
   queue_state_file_path_ = base::FilePath(
@@ -71,18 +76,18 @@ void Mac80211Monitor::Start(const string &phy_name) {
 }
 
 void Mac80211Monitor::Stop() {
-  SLOG(WiFi, 2) << __func__ << " on " << link_name_ << " (" << phy_name_ << ")";
+  SLOG(this, 2) << __func__ << " on " << link_name_ << " (" << phy_name_ << ")";
   StopTimer();
   is_running_ = false;
 }
 
 void Mac80211Monitor::UpdateConnectedState(bool new_state) {
-  SLOG(WiFi, 2) << __func__ << " (new_state=" << new_state << ")";
+  SLOG(this, 2) << __func__ << " (new_state=" << new_state << ")";
   is_device_connected_ = new_state;
 }
 
 void Mac80211Monitor::StartTimer() {
-  SLOG(WiFi, 2) << __func__;
+  SLOG(this, 2) << __func__;
   if (check_queues_callback_.IsCancelled()) {
     check_queues_callback_.Reset(
         Bind(&Mac80211Monitor::WakeQueuesIfNeeded,
@@ -93,17 +98,17 @@ void Mac80211Monitor::StartTimer() {
 }
 
 void Mac80211Monitor::StopTimer() {
-  SLOG(WiFi, 2) << __func__;
+  SLOG(this, 2) << __func__;
   check_queues_callback_.Cancel();
 }
 
 void Mac80211Monitor::WakeQueuesIfNeeded() {
-  SLOG(WiFi, 2) << __func__ << " on " << link_name_ << " (" << phy_name_ << ")";
+  SLOG(this, 2) << __func__ << " on " << link_name_ << " (" << phy_name_ << ")";
   CHECK(is_running_);
   StartTimer();  // Always re-arm timer.
 
   if (is_device_connected_) {
-    SLOG(WiFi, 5) << "Skipping queue check: device is connected.";
+    SLOG(this, 5) << "Skipping queue check: device is connected.";
     return;
   }
 
@@ -116,7 +121,7 @@ void Mac80211Monitor::WakeQueuesIfNeeded() {
 
   uint32_t stuck_flags =
       CheckAreQueuesStuck(ParseQueueState(queue_state_string));
-  SLOG(WiFi, 2) << __func__ << " stuck_flags=" << stuck_flags;
+  SLOG(this, 2) << __func__ << " stuck_flags=" << stuck_flags;
   if (!(stuck_flags & kStopFlagPowerSave)) {
     if (stuck_flags) {
       LOG(INFO) << "Skipping wake: stuck_flags is "
@@ -161,13 +166,13 @@ uint32_t Mac80211Monitor::CheckAreQueuesStuck(
   uint32_t stuck_flags = 0;
   for (const auto &queue_state : queue_states) {
     if (queue_state.queue_length < queue_length_limit_) {
-      SLOG(WiFi, 5) << __func__
+      SLOG(this, 5) << __func__
                     << " skipping queue of length " << queue_state.queue_length
                     << " (threshold is " << queue_length_limit_ << ")";
       continue;
     }
     if (!queue_state.stop_flags) {
-      SLOG(WiFi, 5) << __func__
+      SLOG(this, 5) << __func__
                     << " skipping queue of length " << queue_state.queue_length
                     << " (not stopped)";
       continue;

@@ -64,6 +64,12 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kManager;
+static string ObjectID(const Manager *m) { return "manager"; }
+}
+
+
 // statics
 const char Manager::kErrorNoDevice[] = "no wifi devices available";
 const char Manager::kErrorTypeRequired[] = "must specify service type";
@@ -199,7 +205,7 @@ Manager::Manager(ControlInterface *control_interface,
 
   UpdateProviderMapping();
 
-  SLOG(Manager, 2) << "Manager initialized.";
+  SLOG(this, 2) << "Manager initialized.";
 }
 
 Manager::~Manager() {}
@@ -327,7 +333,7 @@ void Manager::InitializeProfiles() {
 }
 
 void Manager::CreateProfile(const string &name, string *path, Error *error) {
-  SLOG(Manager, 2) << __func__ << " " << name;
+  SLOG(this, 2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
@@ -465,7 +471,7 @@ void Manager::PushProfileInternal(
 }
 
 void Manager::PushProfile(const string &name, string *path, Error *error) {
-  SLOG(Manager, 2) << __func__ << " " << name;
+  SLOG(this, 2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
@@ -479,7 +485,7 @@ void Manager::InsertUserProfile(const string &name,
                                 const string &user_hash,
                                 string *path,
                                 Error *error) {
-  SLOG(Manager, 2) << __func__ << " " << name;
+  SLOG(this, 2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident) ||
       ident.user.empty()) {
@@ -543,7 +549,7 @@ void Manager::OnProfilesChanged() {
 }
 
 void Manager::PopProfile(const string &name, Error *error) {
-  SLOG(Manager, 2) << __func__ << " " << name;
+  SLOG(this, 2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (profiles_.empty()) {
     Error::PopulateAndLog(error, Error::kNotFound, "Profile stack is empty");
@@ -564,7 +570,7 @@ void Manager::PopProfile(const string &name, Error *error) {
 }
 
 void Manager::PopAnyProfile(Error *error) {
-  SLOG(Manager, 2) << __func__;
+  SLOG(this, 2) << __func__;
   Profile::Identifier ident;
   if (profiles_.empty()) {
     Error::PopulateAndLog(error, Error::kNotFound, "Profile stack is empty");
@@ -574,7 +580,7 @@ void Manager::PopAnyProfile(Error *error) {
 }
 
 void Manager::PopAllUserProfiles(Error */*error*/) {
-  SLOG(Manager, 2) << __func__;
+  SLOG(this, 2) << __func__;
   while (!profiles_.empty() && !profiles_.back()->GetUser().empty()) {
     PopProfileInternal();
   }
@@ -687,7 +693,7 @@ ServiceRefPtr Manager::GetServiceWithStorageIdentifier(
   if (error) {
     error->Populate(Error::kNotFound, error_string);
   }
-  SLOG(Manager, 2) << error_string;
+  SLOG(this, 2) << error_string;
   return nullptr;
 }
 
@@ -705,14 +711,14 @@ ServiceRefPtr Manager::GetServiceWithGUID(
   if (error) {
     error->Populate(Error::kNotFound, error_string);
   }
-  SLOG(Manager, 2) << error_string;
+  SLOG(this, 2) << error_string;
   return nullptr;
 }
 
 ServiceRefPtr Manager::GetDefaultService() const {
-  SLOG(Manager, 2) << __func__;
+  SLOG(this, 2) << __func__;
   if (services_.empty() || !services_[0]->connection().get()) {
-    SLOG(Manager, 2) << "In " << __func__ << ": No default connection exists.";
+    SLOG(this, 2) << "In " << __func__ << ": No default connection exists.";
     return nullptr;
   }
   return services_[0];
@@ -804,12 +810,12 @@ bool Manager::IsActiveProfile(const ProfileRefPtr &profile) const {
 bool Manager::MoveServiceToProfile(const ServiceRefPtr &to_move,
                                    const ProfileRefPtr &destination) {
   const ProfileRefPtr from = to_move->profile();
-  SLOG(Manager, 2) << "Moving service "
-                   << to_move->unique_name()
-                   << " to profile "
-                   << destination->GetFriendlyName()
-                   << " from "
-                   << from->GetFriendlyName();
+  SLOG(this, 2) << "Moving service "
+                << to_move->unique_name()
+                << " to profile "
+                << destination->GetFriendlyName()
+                << " from "
+                << from->GetFriendlyName();
   return destination->AdoptService(to_move) && from->AbandonService(to_move);
 }
 
@@ -924,10 +930,10 @@ void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
 }
 
 void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
-  SLOG(Manager, 2) << __func__ << "(" << to_forget->FriendlyName() << ")";
+  SLOG(this, 2) << __func__ << "(" << to_forget->FriendlyName() << ")";
   for (auto it = devices_.begin(); it != devices_.end(); ++it) {
     if (to_forget.get() == it->get()) {
-      SLOG(Manager, 2) << "Deregistered device: " << to_forget->UniqueName();
+      SLOG(this, 2) << "Deregistered device: " << to_forget->UniqueName();
       UpdateDevice(to_forget);
       to_forget->SetEnabled(false);
       devices_.erase(it);
@@ -935,8 +941,8 @@ void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
       return;
     }
   }
-  SLOG(Manager, 2) << __func__ << " unknown device: "
-                   << to_forget->UniqueName();
+  SLOG(this, 2) << __func__ << " unknown device: "
+                << to_forget->UniqueName();
 }
 
 void Manager::LoadDeviceFromProfiles(const DeviceRefPtr &device) {
@@ -1013,7 +1019,7 @@ bool Manager::SetWakeOnWiFiEnabled(const std::string &enabled, Error *error) {
 }
 
 void Manager::RegisterService(const ServiceRefPtr &to_manage) {
-  SLOG(Manager, 2) << "Registering service " << to_manage->unique_name();
+  SLOG(this, 2) << "Registering service " << to_manage->unique_name();
 
   MatchProfileWithService(to_manage);
 
@@ -1058,8 +1064,8 @@ void Manager::UpdateService(const ServiceRefPtr &to_update) {
             << " state: " << Service::ConnectStateToString(to_update->state())
             << " failure: "
             << Service::ConnectFailureToString(to_update->failure());
-  SLOG(Manager, 2) << "IsConnected(): " << to_update->IsConnected();
-  SLOG(Manager, 2) << "IsConnecting(): " << to_update->IsConnecting();
+  SLOG(this, 2) << "IsConnected(): " << to_update->IsConnected();
+  SLOG(this, 2) << "IsConnecting(): " << to_update->IsConnecting();
   if (to_update->IsConnected()) {
     to_update->EnableAndRetainAutoConnect();
     // Persists the updated auto_connect setting in the profile.
@@ -1119,12 +1125,12 @@ void Manager::AddTerminationAction(const string &name,
 }
 
 void Manager::TerminationActionComplete(const string &name) {
-  SLOG(Manager, 2) << __func__;
+  SLOG(this, 2) << __func__;
   termination_actions_.ActionComplete(name);
 }
 
 void Manager::RemoveTerminationAction(const string &name) {
-  SLOG(Manager, 2) << __func__;
+  SLOG(this, 2) << __func__;
   termination_actions_.Remove(name);
 }
 
@@ -1417,7 +1423,7 @@ void Manager::SortServices() {
 }
 
 void Manager::SortServicesTask() {
-  SLOG(Manager, 4) << "In " << __func__;
+  SLOG(this, 4) << "In " << __func__;
   sort_services_task_.Cancel();
   ServiceRefPtr default_service;
 
@@ -1467,7 +1473,7 @@ void Manager::SortServicesTask() {
 }
 
 void Manager::DeviceStatusCheckTask() {
-  SLOG(Manager, 4) << "In " << __func__;
+  SLOG(this, 4) << "In " << __func__;
 
   ConnectionStatusCheck();
   DevicePresenceStatusCheck();
@@ -1477,7 +1483,7 @@ void Manager::DeviceStatusCheckTask() {
 }
 
 void Manager::ConnectionStatusCheck() {
-  SLOG(Manager, 4) << "In " << __func__;
+  SLOG(this, 4) << "In " << __func__;
   // Report current connection status.
   Metrics::ConnectionStatus status = Metrics::kConnectionStatusOffline;
   if (IsConnected()) {
@@ -1532,7 +1538,7 @@ void Manager::AutoConnect() {
   }
 
   if (SLOG_IS_ON(Manager, 4)) {
-    SLOG(Manager, 4) << "Sorted service list for AutoConnect: ";
+    SLOG(this, 4) << "Sorted service list for AutoConnect: ";
     for (size_t i = 0; i < services_.size(); ++i) {
       ServiceRefPtr service = services_[i];
       const char *compare_reason = nullptr;
@@ -1544,22 +1550,22 @@ void Manager::AutoConnect() {
       } else {
         compare_reason = "last";
       }
-      SLOG(Manager, 4) << "Service " << service->unique_name()
-                       << " Profile: " << service->profile()->GetFriendlyName()
-                       << " IsConnected: " << service->IsConnected()
-                       << " IsConnecting: " << service->IsConnecting()
-                       << " HasEverConnected: " << service->has_ever_connected()
-                       << " IsFailed: " << service->IsFailed()
-                       << " connectable: " << service->connectable()
-                       << " auto_connect: " << service->auto_connect()
-                       << " retain_auto_connect: "
-                       << service->retain_auto_connect()
-                       << " priority: " << service->priority()
-                       << " crypto_algorithm: " << service->crypto_algorithm()
-                       << " key_rotation: " << service->key_rotation()
-                       << " endpoint_auth: " << service->endpoint_auth()
-                       << " strength: " << service->strength()
-                       << " sorted: " << compare_reason;
+      SLOG(this, 4) << "Service " << service->unique_name()
+                    << " Profile: " << service->profile()->GetFriendlyName()
+                    << " IsConnected: " << service->IsConnected()
+                    << " IsConnecting: " << service->IsConnecting()
+                    << " HasEverConnected: " << service->has_ever_connected()
+                    << " IsFailed: " << service->IsFailed()
+                    << " connectable: " << service->connectable()
+                    << " auto_connect: " << service->auto_connect()
+                    << " retain_auto_connect: "
+                    << service->retain_auto_connect()
+                    << " priority: " << service->priority()
+                    << " crypto_algorithm: " << service->crypto_algorithm()
+                    << " key_rotation: " << service->key_rotation()
+                    << " endpoint_auth: " << service->endpoint_auth()
+                    << " strength: " << service->strength()
+                    << " sorted: " << compare_reason;
     }
   }
 
@@ -1625,7 +1631,7 @@ void Manager::ConnectToBestServicesTask() {
   }
 
   if (SLOG_IS_ON(Manager, 4)) {
-    SLOG(Manager, 4) << "Sorted service list for ConnectToBestServicesTask: ";
+    SLOG(this, 4) << "Sorted service list for ConnectToBestServicesTask: ";
     for (size_t i = 0; i < services_copy.size(); ++i) {
       ServiceRefPtr service = services_copy[i];
       const char *compare_reason = nullptr;
@@ -1642,22 +1648,22 @@ void Manager::ConnectToBestServicesTask() {
       } else {
         compare_reason = "last";
       }
-      SLOG(Manager, 4) << "Service " << service->unique_name()
-                       << " Profile: " << service->profile()->GetFriendlyName()
-                       << " IsConnected: " << service->IsConnected()
-                       << " IsConnecting: " << service->IsConnecting()
-                       << " HasEverConnected: " << service->has_ever_connected()
-                       << " IsFailed: " << service->IsFailed()
-                       << " connectable: " << service->connectable()
-                       << " auto_connect: " << service->auto_connect()
-                       << " retain_auto_connect: "
-                       << service->retain_auto_connect()
-                       << " priority: " << service->priority()
-                       << " crypto_algorithm: " << service->crypto_algorithm()
-                       << " key_rotation: " << service->key_rotation()
-                       << " endpoint_auth: " << service->endpoint_auth()
-                       << " strength: " << service->strength()
-                       << " sorted: " << compare_reason;
+      SLOG(this, 4) << "Service " << service->unique_name()
+                    << " Profile: " << service->profile()->GetFriendlyName()
+                    << " IsConnected: " << service->IsConnected()
+                    << " IsConnecting: " << service->IsConnecting()
+                    << " HasEverConnected: " << service->has_ever_connected()
+                    << " IsFailed: " << service->IsFailed()
+                    << " connectable: " << service->connectable()
+                    << " auto_connect: " << service->auto_connect()
+                    << " retain_auto_connect: "
+                    << service->retain_auto_connect()
+                    << " priority: " << service->priority()
+                    << " crypto_algorithm: " << service->crypto_algorithm()
+                    << " key_rotation: " << service->key_rotation()
+                    << " endpoint_auth: " << service->endpoint_auth()
+                    << " strength: " << service->strength()
+                    << " sorted: " << compare_reason;
     }
   }
 }
@@ -1677,11 +1683,11 @@ void Manager::CreateConnectivityReport(Error */*error*/) {
     for (const auto &device : devices_) {
       if (device->IsConnectedToService(service)) {
         if (device->StartConnectivityTest()) {
-          SLOG(Manager, 3) << "Started connectivity test for service "
-                           << service->unique_name();
+          SLOG(this, 3) << "Started connectivity test for service "
+                        << service->unique_name();
         } else {
-          SLOG(Manager, 3) << "Failed to start connectivity test for service "
-                           << service->unique_name()
+          SLOG(this, 3) << "Failed to start connectivity test for service "
+                        << service->unique_name()
                            << " device not reporting IsConnected.";
         }
         break;
@@ -1862,7 +1868,7 @@ ServiceRefPtr Manager::GetService(const KeyValueStore &args, Error *error) {
 ServiceRefPtr Manager::GetServiceInner(const KeyValueStore &args,
                                        Error *error) {
   if (args.ContainsString(kGuidProperty)) {
-    SLOG(Manager, 2) << __func__ << ": searching by GUID";
+    SLOG(this, 2) << __func__ << ": searching by GUID";
     ServiceRefPtr service =
         GetServiceWithGUID(args.GetString(kGuidProperty), nullptr);
     if (service) {
@@ -1883,7 +1889,7 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore &args,
     return nullptr;
   }
 
-  SLOG(Manager, 2) << __func__ << ": getting " << type << " Service";
+  SLOG(this, 2) << __func__ << ": getting " << type << " Service";
   return providers_[technology]->GetService(args, error);
 }
 
@@ -1910,20 +1916,20 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore &args,
 
   // First pull in any stored configuration associated with the service.
   if (service->profile() == profile) {
-    SLOG(Manager, 2) << __func__ << ": service " << service->unique_name()
-                     << " is already a member of profile "
+    SLOG(this, 2) << __func__ << ": service " << service->unique_name()
+                  << " is already a member of profile "
                      << profile->GetFriendlyName()
                      << " so a load is not necessary.";
   } else if (profile->LoadService(service)) {
-    SLOG(Manager, 2) << __func__ << ": applied stored information from profile "
-                     << profile->GetFriendlyName()
-                     << " into service "
-                     << service->unique_name();
+    SLOG(this, 2) << __func__ << ": applied stored information from profile "
+                  << profile->GetFriendlyName()
+                  << " into service "
+                  << service->unique_name();
   } else {
-    SLOG(Manager, 2) << __func__ << ": no previous information in profile "
-                     << profile->GetFriendlyName()
-                     << " exists for service "
-                     << service->unique_name();
+    SLOG(this, 2) << __func__ << ": no previous information in profile "
+                  << profile->GetFriendlyName()
+                  << " exists for service "
+                  << service->unique_name();
   }
 
   // Overlay this with the passed-in configuration parameters.
@@ -1942,8 +1948,8 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore &args,
     // profiles.
     if (IsServiceEphemeral(service) ||
         (profile_specified && service->profile() != profile)) {
-      SLOG(Manager, 2) << "Moving service to profile "
-                       << profile->GetFriendlyName();
+      SLOG(this, 2) << "Moving service to profile "
+                    << profile->GetFriendlyName();
       if (!MoveServiceToProfile(service, profile)) {
         Error::PopulateAndLog(error, Error::kInternalError,
                               "Unable to move service to profile");
@@ -1991,7 +1997,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
 
   ServiceRefPtr service;
   if (args.ContainsString(kGuidProperty)) {
-    SLOG(Manager, 2) << __func__ << ": searching by GUID";
+    SLOG(this, 2) << __func__ << ": searching by GUID";
     service = GetServiceWithGUID(args.GetString(kGuidProperty), nullptr);
     if (service && service->technology() != technology) {
       Error::PopulateAndLog(error, Error::kNotSupported,
@@ -2137,8 +2143,8 @@ const map<string, GeolocationInfos>
 }
 
 void Manager::OnDeviceGeolocationInfoUpdated(const DeviceRefPtr &device) {
-  SLOG(Manager, 2) << __func__ << " for technology "
-                   << Technology::NameFromIdentifier(device->technology());
+  SLOG(this, 2) << __func__ << " for technology "
+                << Technology::NameFromIdentifier(device->technology());
   switch (device->technology()) {
     // TODO(gauravsh): crbug.com/217833 Need a strategy for combining
     // geolocation objects from multiple devices of the same technolgy.
@@ -2208,7 +2214,7 @@ string Manager::GetTechnologyOrder() {
 
 void Manager::SetTechnologyOrder(const string &order, Error *error) {
   vector<Technology::Identifier> new_order;
-  SLOG(Manager, 2) << "Setting technology order to " << order;
+  SLOG(this, 2) << "Setting technology order to " << order;
   if (!Technology::GetTechnologyVectorFromString(order, &new_order, error)) {
     return;
   }

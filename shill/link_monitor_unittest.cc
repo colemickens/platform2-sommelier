@@ -43,10 +43,12 @@ using testing::Test;
 namespace shill {
 
 namespace {
+const char kInterfaceName[] = "int0";
 const char kLocalIPAddress[] = "10.0.1.1";
 const uint8_t kLocalMACAddress[] = { 0, 1, 2, 3, 4, 5 };
 const char kRemoteIPAddress[] = "10.0.1.2";
 const uint8_t kRemoteMACAddress[] = { 6, 7, 8, 9, 10, 11 };
+const char kDBusPath[] = "/dbus/path";
 }  // namespace
 
 
@@ -121,7 +123,8 @@ class LinkMonitorTest : public Test {
         gateway_mac_(kRemoteMACAddress, arraysize(kRemoteMACAddress)),
         local_mac_(kLocalMACAddress, arraysize(kLocalMACAddress)),
         zero_mac_(arraysize(kLocalMACAddress)),
-        link_scope_logging_was_enabled_(false) {}
+        link_scope_logging_was_enabled_(false),
+        interface_name_(kInterfaceName) {}
   virtual ~LinkMonitorTest() {}
 
   virtual void SetUp() {
@@ -141,6 +144,10 @@ class LinkMonitorTest : public Test {
     EXPECT_CALL(*connection_, gateway()).WillRepeatedly(ReturnRef(gateway_ip_));
     EXPECT_CALL(*connection_, technology())
         .WillRepeatedly(Return(Technology::kEthernet));
+    EXPECT_CALL(*connection_, ipconfig_rpc_identifier())
+        .WillRepeatedly(testing::ReturnPointee(&kDBusPath));
+    EXPECT_CALL(*connection_, interface_name())
+        .WillRepeatedly(ReturnRef(interface_name_));
   }
 
   virtual void TearDown() {
@@ -387,6 +394,7 @@ class LinkMonitorTest : public Test {
   ByteString zero_mac_;
   ArpPacket rx_packet_;
   bool link_scope_logging_was_enabled_;
+  const string interface_name_;
 };
 
 

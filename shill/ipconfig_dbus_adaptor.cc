@@ -22,6 +22,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDBus;
+static string ObjectID(IPConfigDBusAdaptor *i) { return i->GetRpcIdentifier(); }
+}
+
 // static
 const char IPConfigDBusAdaptor::kPath[] = "/ipconfig/";
 
@@ -40,36 +45,36 @@ IPConfigDBusAdaptor::~IPConfigDBusAdaptor() {
 }
 
 void IPConfigDBusAdaptor::EmitBoolChanged(const string &name, bool value) {
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::BoolToVariant(value));
 }
 
 void IPConfigDBusAdaptor::EmitUintChanged(const string &name,
                                           uint32_t value) {
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::Uint32ToVariant(value));
 }
 
 void IPConfigDBusAdaptor::EmitIntChanged(const string &name, int value) {
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::Int32ToVariant(value));
 }
 
 void IPConfigDBusAdaptor::EmitStringChanged(const string &name,
                                             const string &value) {
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::StringToVariant(value));
 }
 
 void IPConfigDBusAdaptor::EmitStringsChanged(const string &name,
                                              const vector<string> &value) {
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::StringsToVariant(value));
 }
 
 map<string, DBus::Variant> IPConfigDBusAdaptor::GetProperties(
     DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   map<string, DBus::Variant> properties;
   DBusAdaptor::GetProperties(ipconfig_->store(), &properties, &error);
   return properties;
@@ -78,7 +83,7 @@ map<string, DBus::Variant> IPConfigDBusAdaptor::GetProperties(
 void IPConfigDBusAdaptor::SetProperty(const string &name,
                                       const DBus::Variant &value,
                                       DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   if (DBusAdaptor::SetProperty(ipconfig_->mutable_store(),
                                name,
                                value,
@@ -89,16 +94,16 @@ void IPConfigDBusAdaptor::SetProperty(const string &name,
 
 void IPConfigDBusAdaptor::ClearProperty(const string &name,
                                         DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   DBusAdaptor::ClearProperty(ipconfig_->mutable_store(), name, &error);
 }
 
 void IPConfigDBusAdaptor::Remove(DBus::Error &/*error*/) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
 }
 
 void IPConfigDBusAdaptor::Refresh(DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   Error e;
   ipconfig_->Refresh(&e);
   e.ToDBusError(&error);

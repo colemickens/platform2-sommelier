@@ -19,6 +19,11 @@ using std::shared_ptr;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kMetrics;
+static string ObjectID(const Metrics *m) { return "(metrics)"; }
+}
+
 static const char kMetricPrefix[] = "Network.Shill";
 
 // static
@@ -433,8 +438,8 @@ Metrics::WiFiChannel Metrics::WiFiFrequencyToChannel(uint16_t frequency) {
   if (channel == kWiFiChannelUndef)
     LOG(WARNING) << "no mapping for frequency " << frequency;
   else
-    SLOG(Metrics, 3) << "mapped frequency " << frequency
-                     << " to enum bucket " << channel;
+    SLOG(nullptr, 3) << "mapped frequency " << frequency
+                  << " to enum bucket " << channel;
 
   return channel;
 }
@@ -577,15 +582,15 @@ Metrics::PortalResult Metrics::PortalDetectionResultToEnum(
 }
 
 void Metrics::Start() {
-  SLOG(Metrics, 2) << __func__;
+  SLOG(this, 2) << __func__;
 }
 
 void Metrics::Stop() {
-  SLOG(Metrics, 2) << __func__;
+  SLOG(this, 2) << __func__;
 }
 
 void Metrics::RegisterService(const Service &service) {
-  SLOG(Metrics, 2) << __func__;
+  SLOG(this, 2) << __func__;
   LOG_IF(WARNING, ContainsKey(services_metrics_, &service))
       << "Repeatedly registering " << service.unique_name();
   shared_ptr<ServiceMetrics> service_metrics(new ServiceMetrics());
@@ -602,12 +607,12 @@ void Metrics::AddServiceStateTransitionTimer(
     const string &histogram_name,
     Service::ConnectState start_state,
     Service::ConnectState stop_state) {
-  SLOG(Metrics, 2) << __func__ << ": adding " << histogram_name << " for "
-                   << Service::ConnectStateToString(start_state) << " -> "
-                   << Service::ConnectStateToString(stop_state);
+  SLOG(this, 2) << __func__ << ": adding " << histogram_name << " for "
+                << Service::ConnectStateToString(start_state) << " -> "
+                << Service::ConnectStateToString(stop_state);
   ServiceMetricsLookupMap::iterator it = services_metrics_.find(&service);
   if (it == services_metrics_.end()) {
-    SLOG(Metrics, 1) << "service not found";
+    SLOG(this, 1) << "service not found";
     DCHECK(false);
     return;
   }
@@ -668,7 +673,7 @@ void Metrics::NotifyServiceStateChanged(const Service &service,
                                         Service::ConnectState new_state) {
   ServiceMetricsLookupMap::iterator it = services_metrics_.find(&service);
   if (it == services_metrics_.end()) {
-    SLOG(Metrics, 1) << "service not found";
+    SLOG(this, 1) << "service not found";
     DCHECK(false);
     return;
   }
@@ -908,7 +913,7 @@ void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
 
 void Metrics::RegisterDevice(int interface_index,
                              Technology::Identifier technology) {
-  SLOG(Metrics, 2) << __func__ << ": " << interface_index;
+  SLOG(this, 2) << __func__ << ": " << interface_index;
   shared_ptr<DeviceMetrics> device_metrics(new DeviceMetrics);
   devices_metrics_[interface_index] = device_metrics;
   device_metrics->technology = technology;
@@ -973,8 +978,8 @@ void Metrics::RegisterDevice(int interface_index,
 
 bool Metrics::IsDeviceRegistered(int interface_index,
                                  Technology::Identifier technology) {
-  SLOG(Metrics, 2) << __func__ << ": interface index: " << interface_index
-                               << ", technology: " << technology;
+  SLOG(this, 2) << __func__ << ": interface index: " << interface_index
+                            << ", technology: " << technology;
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == nullptr)
     return false;
@@ -983,7 +988,7 @@ bool Metrics::IsDeviceRegistered(int interface_index,
 }
 
 void Metrics::DeregisterDevice(int interface_index) {
-  SLOG(Metrics, 2) << __func__ << ": interface index: " << interface_index;
+  SLOG(this, 2) << __func__ << ": interface index: " << interface_index;
 
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics != nullptr) {
@@ -1132,8 +1137,8 @@ void Metrics::Notify3GPPRegistrationDelayedDropCanceled() {
 
 void Metrics::NotifyCellularDeviceDrop(const string &network_technology,
                                        uint16_t signal_strength) {
-  SLOG(Metrics, 2) << __func__ << ": " << network_technology
-                               << ", " << signal_strength;
+  SLOG(this, 2) << __func__ << ": " << network_technology
+                            << ", " << signal_strength;
   CellularDropTechnology drop_technology = kCellularDropTechnologyUnknown;
   if (network_technology == kNetworkTechnology1Xrtt) {
     drop_technology = kCellularDropTechnology1Xrtt;
@@ -1355,14 +1360,14 @@ void Metrics::NotifyUnreliableLinkSignalStrength(
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {
-  SLOG(Metrics, 5)
+  SLOG(this, 5)
       << "Sending enum " << name << " with value " << sample << ".";
   return library_->SendEnumToUMA(name, sample, max);
 }
 
 bool Metrics::SendToUMA(const string &name, int sample, int min, int max,
                         int num_buckets) {
-  SLOG(Metrics, 5)
+  SLOG(this, 5)
       << "Sending metric " << name << " with value " << sample << ".";
   return library_->SendToUMA(name, sample, min, max, num_buckets);
 }
@@ -1396,18 +1401,18 @@ void Metrics::UpdateServiceStateTransitionMetrics(
     ServiceMetrics *service_metrics,
     Service::ConnectState new_state) {
   const char *state_string = Service::ConnectStateToString(new_state);
-  SLOG(Metrics, 5) << __func__ << ": new_state=" << state_string;
+  SLOG(this, 5) << __func__ << ": new_state=" << state_string;
   TimerReportersList &start_timers = service_metrics->start_on_state[new_state];
   for (auto &start_timer : start_timers) {
-    SLOG(Metrics, 5) << "Starting timer for " << start_timer->histogram_name()
-                     << " due to new state " << state_string << ".";
+    SLOG(this, 5) << "Starting timer for " << start_timer->histogram_name()
+                  << " due to new state " << state_string << ".";
     start_timer->Start();
   }
 
   TimerReportersList &stop_timers = service_metrics->stop_on_state[new_state];
   for (auto &stop_timer : stop_timers) {
-    SLOG(Metrics, 5) << "Stopping timer for " << stop_timer->histogram_name()
-                     << " due to new state " << state_string << ".";
+    SLOG(this, 5) << "Stopping timer for " << stop_timer->histogram_name()
+                  << " due to new state " << state_string << ".";
     if (stop_timer->Stop())
       stop_timer->ReportMilliseconds();
   }
@@ -1494,8 +1499,8 @@ Metrics::DeviceMetrics *Metrics::GetDeviceMetrics(int interface_index) const {
   DeviceMetricsLookupMap::const_iterator it =
       devices_metrics_.find(interface_index);
   if (it == devices_metrics_.end()) {
-    SLOG(Metrics, 2) << __func__ << ": device " << interface_index
-                     << " not found";
+    SLOG(this, 2) << __func__ << ": device " << interface_index
+                  << " not found";
     return nullptr;
   }
   return it->second.get();

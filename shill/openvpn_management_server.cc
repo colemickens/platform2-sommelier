@@ -31,6 +31,13 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kVPN;
+static string ObjectID(OpenVPNManagementServer *o) {
+  return o->GetServiceRpcIdentifier();
+}
+}
+
 namespace {
 const char kPasswordTagAuth[] = "Auth";
 }  // namespace
@@ -56,7 +63,7 @@ OpenVPNManagementServer::~OpenVPNManagementServer() {
 bool OpenVPNManagementServer::Start(EventDispatcher *dispatcher,
                                     Sockets *sockets,
                                     vector<vector<string>> *options) {
-  SLOG(VPN, 2) << __func__;
+  SLOG(this, 2) << __func__;
   if (IsStarted()) {
     return true;
   }
@@ -82,7 +89,7 @@ bool OpenVPNManagementServer::Start(EventDispatcher *dispatcher,
     return false;
   }
 
-  SLOG(VPN, 2) << "Listening socket: " << socket;
+  SLOG(this, 2) << "Listening socket: " << socket;
   sockets_ = sockets;
   socket_ = socket;
   ready_handler_.reset(
@@ -109,7 +116,7 @@ bool OpenVPNManagementServer::Start(EventDispatcher *dispatcher,
 }
 
 void OpenVPNManagementServer::Stop() {
-  SLOG(VPN, 2) << __func__;
+  SLOG(this, 2) << __func__;
   if (!IsStarted()) {
     return;
   }
@@ -129,7 +136,7 @@ void OpenVPNManagementServer::Stop() {
 }
 
 void OpenVPNManagementServer::ReleaseHold() {
-  SLOG(VPN, 2) << __func__;
+  SLOG(this, 2) << __func__;
   hold_release_ = true;
   if (!hold_waiting_) {
     return;
@@ -140,7 +147,7 @@ void OpenVPNManagementServer::ReleaseHold() {
 }
 
 void OpenVPNManagementServer::Hold() {
-  SLOG(VPN, 2) << __func__;
+  SLOG(this, 2) << __func__;
   hold_release_ = false;
 }
 
@@ -149,8 +156,12 @@ void OpenVPNManagementServer::Restart() {
   SendSignal("SIGUSR1");
 }
 
+std::string OpenVPNManagementServer::GetServiceRpcIdentifier() {
+  return driver_->GetServiceRpcIdentifier();
+}
+
 void OpenVPNManagementServer::OnReady(int fd) {
-  SLOG(VPN, 2) << __func__ << "(" << fd << ")";
+  SLOG(this, 2) << __func__ << "(" << fd << ")";
   connected_socket_ = sockets_->Accept(fd, nullptr, nullptr);
   if (connected_socket_ < 0) {
     PLOG(ERROR) << "Connected socket accept failed.";
@@ -165,7 +176,7 @@ void OpenVPNManagementServer::OnReady(int fd) {
 }
 
 void OpenVPNManagementServer::OnInput(InputData *data) {
-  SLOG(VPN, 2) << __func__ << "(" << data->len << ")";
+  SLOG(this, 2) << __func__ << "(" << data->len << ")";
   vector<string> messages;
   SplitString(
       string(reinterpret_cast<char *>(data->buf), data->len), '\n', &messages);
@@ -181,7 +192,7 @@ void OpenVPNManagementServer::OnInputError(const std::string &error_msg) {
 }
 
 void OpenVPNManagementServer::ProcessMessage(const string &message) {
-  SLOG(VPN, 2) << __func__ << "(" << message << ")";
+  SLOG(this, 2) << __func__ << "(" << message << ")";
   if (message.empty()) {
     return;
   }
@@ -230,8 +241,8 @@ bool OpenVPNManagementServer::ProcessNeedPasswordMessage(
 string OpenVPNManagementServer::ParseSubstring(const string &message,
                                                const string &start,
                                                const string &end) {
-  SLOG(VPN, 2) << __func__ << "(" << message
-               << ", " << start << ", " << end << ")";
+  SLOG(VPN, nullptr, 2) << __func__ << "(" << message
+                        << ", " << start << ", " << end << ")";
   DCHECK(!start.empty() && !end.empty());
   size_t start_pos = message.find(start);
   if (start_pos == string::npos) {
@@ -311,7 +322,7 @@ void OpenVPNManagementServer::PerformAuthentication(const string &tag) {
 }
 
 void OpenVPNManagementServer::SupplyTPMToken(const string &tag) {
-  SLOG(VPN, 2) << __func__ << "(" << tag << ")";
+  SLOG(this, 2) << __func__ << "(" << tag << ")";
   string pin = driver_->args()->LookupString(kOpenVPNPinProperty, "");
   if (pin.empty()) {
     NOTIMPLEMENTED() << ": Missing PIN.";
@@ -408,38 +419,38 @@ string OpenVPNManagementServer::EscapeToQuote(const string &str) {
 }
 
 void OpenVPNManagementServer::Send(const string &data) {
-  SLOG(VPN, 2) << __func__;
+  SLOG(this, 2) << __func__;
   ssize_t len = sockets_->Send(connected_socket_, data.data(), data.size(), 0);
   PLOG_IF(ERROR, len < 0 || static_cast<size_t>(len) != data.size())
       << "Send failed.";
 }
 
 void OpenVPNManagementServer::SendState(const string &state) {
-  SLOG(VPN, 2) << __func__ << "(" << state << ")";
+  SLOG(this, 2) << __func__ << "(" << state << ")";
   Send(StringPrintf("state %s\n", state.c_str()));
 }
 
 void OpenVPNManagementServer::SendUsername(const string &tag,
                                            const string &username) {
-  SLOG(VPN, 2) << __func__;
+  SLOG(this, 2) << __func__;
   Send(StringPrintf("username \"%s\" %s\n", tag.c_str(), username.c_str()));
 }
 
 void OpenVPNManagementServer::SendPassword(const string &tag,
                                            const string &password) {
-  SLOG(VPN, 2) << __func__;
+  SLOG(this, 2) << __func__;
   Send(StringPrintf("password \"%s\" \"%s\"\n",
                     tag.c_str(),
                     EscapeToQuote(password).c_str()));
 }
 
 void OpenVPNManagementServer::SendSignal(const string &signal) {
-  SLOG(VPN, 2) << __func__ << "(" << signal << ")";
+  SLOG(this, 2) << __func__ << "(" << signal << ")";
   Send(StringPrintf("signal %s\n", signal.c_str()));
 }
 
 void OpenVPNManagementServer::SendHoldRelease() {
-  SLOG(VPN, 2) << __func__;
+  SLOG(this, 2) << __func__;
   Send("hold release\n");
 }
 

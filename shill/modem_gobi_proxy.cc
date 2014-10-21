@@ -45,7 +45,7 @@ ModemGobiProxy::Proxy::~Proxy() {}
 
 void ModemGobiProxy::Proxy::SetCarrierCallback(const DBus::Error &dberror,
                                                void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);

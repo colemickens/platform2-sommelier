@@ -29,6 +29,11 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kPortal;
+static string ObjectID(Connection *c) { return c->interface_name(); }
+}
+
 const char ConnectivityTrial::kDefaultURL[] =
     "http://www.gstatic.com/generate_204";
 const char ConnectivityTrial::kResponseExpected[] = "HTTP/?.? 204";
@@ -56,7 +61,7 @@ ConnectivityTrial::~ConnectivityTrial() {
 }
 
 bool ConnectivityTrial::Retry(int start_delay_milliseconds) {
-  SLOG(Portal, 3) << "In " << __func__;
+  SLOG(connection_, 3) << "In " << __func__;
   if (request_.get())
     CleanupTrial(false);
   else
@@ -67,7 +72,7 @@ bool ConnectivityTrial::Retry(int start_delay_milliseconds) {
 
 bool ConnectivityTrial::Start(const string &url_string,
                               int start_delay_milliseconds) {
-  SLOG(Portal, 3) << "In " << __func__;
+  SLOG(connection_, 3) << "In " << __func__;
 
   if (!url_.ParseFromString(url_string)) {
     LOG(ERROR) << "Failed to parse URL string: " << url_string;
@@ -83,7 +88,7 @@ bool ConnectivityTrial::Start(const string &url_string,
 }
 
 void ConnectivityTrial::Stop() {
-  SLOG(Portal, 3) << "In " << __func__;
+  SLOG(connection_, 3) << "In " << __func__;
 
   if (!request_.get()) {
     return;
@@ -93,8 +98,8 @@ void ConnectivityTrial::Stop() {
 }
 
 void ConnectivityTrial::StartTrialAfterDelay(int start_delay_milliseconds) {
-  SLOG(Portal, 4) << "In " << __func__
-                  << " delay = " << start_delay_milliseconds << "ms.";
+  SLOG(connection_, 4) << "In " << __func__
+                       << " delay = " << start_delay_milliseconds << "ms.";
   trial_.Reset(Bind(&ConnectivityTrial::StartTrialTask,
                     weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(trial_.callback(), start_delay_milliseconds);
@@ -152,10 +157,10 @@ void ConnectivityTrial::RequestResultCallback(
 }
 
 void ConnectivityTrial::CompleteTrial(Result result) {
-  SLOG(Portal, 3) << StringPrintf("Connectivity Trial completed "
-                                  "with phase==%s, status==%s",
-                                  PhaseToString(result.phase).c_str(),
-                                  StatusToString(result.status).c_str());
+  SLOG(connection_, 3) << StringPrintf("Connectivity Trial completed "
+                                       "with phase==%s, status==%s",
+                                       PhaseToString(result.phase).c_str(),
+                                       StatusToString(result.status).c_str());
   CleanupTrial(false);
   trial_callback_.Run(result);
 }

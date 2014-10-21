@@ -17,6 +17,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDHCP;
+static string ObjectID(DHCPCDProxy *d) { return "(dhcpcd_proxy)"; }
+}
+
 const char DHCPCDProxy::kDBusInterfaceName[] = "org.chromium.dhcpcd";
 const char DHCPCDProxy::kDBusPath[] = "/org/chromium/dhcpcd";
 
@@ -29,7 +34,7 @@ DHCPCDListener::Proxy::Proxy(DBus::Connection *connection,
     : DBus::InterfaceProxy(DHCPCDProxy::kDBusInterfaceName),
       DBus::ObjectProxy(*connection, DHCPCDProxy::kDBusPath),
       provider_(provider) {
-  SLOG(DHCP, 2) << __func__;
+  SLOG(DHCP, nullptr, 2) << __func__;
   connect_signal(DHCPCDListener::Proxy, Event, EventSignal);
   connect_signal(DHCPCDListener::Proxy, StatusChanged, StatusChangedSignal);
 }
@@ -37,7 +42,7 @@ DHCPCDListener::Proxy::Proxy(DBus::Connection *connection,
 DHCPCDListener::Proxy::~Proxy() {}
 
 void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage &signal) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(DBus, nullptr, 2) << __func__;
   DBus::MessageIter ri = signal.reader();
   unsigned int pid = std::numeric_limits<unsigned int>::max();
   try {
@@ -47,7 +52,8 @@ void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage &signal) {
                << " interface: " << signal.interface()
                << " member: " << signal.member() << " path: " << signal.path();
   }
-  SLOG(DHCP, 2) << "sender(" << signal.sender() << ") pid(" << pid << ")";
+  SLOG(DHCP, nullptr, 2) << "sender(" << signal.sender()
+                         << ") pid(" << pid << ")";
 
   DHCPConfigRefPtr config = provider_->GetConfig(pid);
   if (!config.get()) {
@@ -77,7 +83,7 @@ void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage &signal) {
 
 void DHCPCDListener::Proxy::StatusChangedSignal(
     const DBus::SignalMessage &signal) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(DBus, nullptr, 2) << __func__;
   DBus::MessageIter ri = signal.reader();
   unsigned int pid = std::numeric_limits<unsigned int>::max();
   try {
@@ -87,7 +93,8 @@ void DHCPCDListener::Proxy::StatusChangedSignal(
                << " interface: " << signal.interface()
                << " member: " << signal.member() << " path: " << signal.path();
   }
-  SLOG(DHCP, 2) << "sender(" << signal.sender() << ") pid(" << pid << ")";
+  SLOG(DHCP, nullptr, 2) << "sender(" << signal.sender()
+                         << ") pid(" << pid << ")";
 
   // Accept StatusChanged signals just to get the sender address and create an
   // appropriate proxy for the PID/sender pair.
@@ -111,11 +118,11 @@ void DHCPCDListener::Proxy::StatusChangedSignal(
 
 DHCPCDProxy::DHCPCDProxy(DBus::Connection *connection, const string &service)
     : proxy_(connection, service) {
-  SLOG(DHCP, 2) << "DHCPCDProxy(service=" << service << ").";
+  SLOG(this, 2) << "DHCPCDProxy(service=" << service << ").";
 }
 
 void DHCPCDProxy::Rebind(const string &interface) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(DBus, nullptr, 2) << __func__;
   try {
     proxy_.Rebind(interface);
   } catch (const DBus::Error &e) {
@@ -125,7 +132,7 @@ void DHCPCDProxy::Rebind(const string &interface) {
 }
 
 void DHCPCDProxy::Release(const string &interface) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(DBus, nullptr, 2) << __func__;
   try {
     proxy_.Release(interface);
   } catch (const DBus::Error &e) {
@@ -154,13 +161,13 @@ void DHCPCDProxy::Proxy::Event(
     const uint32_t &/*pid*/,
     const std::string &/*reason*/,
     const DHCPConfig::Configuration &/*configuration*/) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(DBus, nullptr, 2) << __func__;
   NOTREACHED();
 }
 
 void DHCPCDProxy::Proxy::StatusChanged(const uint32_t &/*pid*/,
                                        const std::string &/*status*/) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(DBus, nullptr, 2) << __func__;
   NOTREACHED();
 }
 

@@ -23,6 +23,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kVPN;
+static string ObjectID(VPNDriver *v) { return "(vpn_driver)"; }
+}
+
 // static
 const int VPNDriver::kDefaultConnectTimeoutSeconds = 60;
 
@@ -40,7 +45,7 @@ VPNDriver::VPNDriver(EventDispatcher *dispatcher,
 VPNDriver::~VPNDriver() {}
 
 bool VPNDriver::Load(StoreInterface *storage, const string &storage_id) {
-  SLOG(VPN, 2) << __func__;
+  SLOG(this, 2) << __func__;
   for (size_t i = 0; i < property_count_; i++) {
     if ((properties_[i].flags & Property::kEphemeral)) {
       continue;
@@ -73,7 +78,7 @@ bool VPNDriver::Load(StoreInterface *storage, const string &storage_id) {
 bool VPNDriver::Save(StoreInterface *storage,
                      const string &storage_id,
                      bool save_credentials) {
-  SLOG(VPN, 2) << __func__;
+  SLOG(this, 2) << __func__;
   for (size_t i = 0; i < property_count_; i++) {
     if ((properties_[i].flags & Property::kEphemeral)) {
       continue;
@@ -107,7 +112,7 @@ bool VPNDriver::Save(StoreInterface *storage,
 }
 
 void VPNDriver::UnloadCredentials() {
-  SLOG(VPN, 2) << __func__;
+  SLOG(this, 2) << __func__;
   for (size_t i = 0; i < property_count_; i++) {
     if ((properties_[i].flags &
          (Property::kEphemeral | Property::kCredential))) {
@@ -117,7 +122,7 @@ void VPNDriver::UnloadCredentials() {
 }
 
 void VPNDriver::InitPropertyStore(PropertyStore *store) {
-  SLOG(VPN, 2) << __func__;
+  SLOG(this, 2) << __func__;
   for (size_t i = 0; i < property_count_; i++) {
     if (properties_[i].flags & Property::kArray) {
       store->RegisterDerivedStrings(
@@ -212,7 +217,7 @@ bool VPNDriver::SetMappedStringsProperty(
 }
 
 KeyValueStore VPNDriver::GetProvider(Error *error) {
-  SLOG(VPN, 2) << __func__;
+  SLOG(this, 2) << __func__;
   string provider_prefix = string(kProviderProperty) + ".";
   KeyValueStore provider_properties;
 
@@ -262,7 +267,7 @@ void VPNDriver::StartConnectTimeout(int timeout_seconds) {
 }
 
 void VPNDriver::StopConnectTimeout() {
-  SLOG(VPN, 2) << __func__;
+  SLOG(this, 2) << __func__;
   connect_timeout_callback_.Cancel();
   connect_timeout_seconds_ = 0;
 }

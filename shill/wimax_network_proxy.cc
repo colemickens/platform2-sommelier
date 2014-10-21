@@ -13,6 +13,11 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDBus;
+static string ObjectID(const DBus::Path *p) { return *p; }
+}
+
 WiMaxNetworkProxy::WiMaxNetworkProxy(DBus::Connection *connection,
                                      const DBus::Path &path)
     : proxy_(connection, path) {}
@@ -29,7 +34,7 @@ void WiMaxNetworkProxy::set_signal_strength_changed_callback(
 }
 
 uint32_t WiMaxNetworkProxy::Identifier(Error *error) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.Identifier();
   } catch (const DBus::Error &e) {
@@ -39,7 +44,7 @@ uint32_t WiMaxNetworkProxy::Identifier(Error *error) {
 }
 
 string WiMaxNetworkProxy::Name(Error *error) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.Name();
   } catch (const DBus::Error &e) {
@@ -49,7 +54,7 @@ string WiMaxNetworkProxy::Name(Error *error) {
 }
 
 int WiMaxNetworkProxy::Type(Error *error) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.Type();
   } catch (const DBus::Error &e) {
@@ -59,7 +64,7 @@ int WiMaxNetworkProxy::Type(Error *error) {
 }
 
 int WiMaxNetworkProxy::CINR(Error *error) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.CINR();
   } catch (const DBus::Error &e) {
@@ -69,7 +74,7 @@ int WiMaxNetworkProxy::CINR(Error *error) {
 }
 
 int WiMaxNetworkProxy::RSSI(Error *error) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.RSSI();
   } catch (const DBus::Error &e) {
@@ -79,7 +84,7 @@ int WiMaxNetworkProxy::RSSI(Error *error) {
 }
 
 int WiMaxNetworkProxy::SignalStrength(Error *error) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.SignalStrength();
   } catch (const DBus::Error &e) {
@@ -115,7 +120,7 @@ void WiMaxNetworkProxy::Proxy::set_signal_strength_changed_callback(
 
 void WiMaxNetworkProxy::Proxy::SignalStrengthChanged(
     const int32_t &signal_strength) {
-  SLOG(DBus, 2) << __func__ << "(" << signal_strength << ")";
+  SLOG(&path(), 2) << __func__ << "(" << signal_strength << ")";
   if (!signal_strength_changed_callback_.is_null()) {
     signal_strength_changed_callback_.Run(signal_strength);
   }

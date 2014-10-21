@@ -36,6 +36,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kWiFi;
+static std::string ObjectID(WakeOnWiFi *w) { return "(wake_on_wifi)"; }
+}
+
 const char WakeOnWiFi::kWakeOnIPAddressPatternsNotSupported[] =
     "Wake on IP address patterns not supported by this WiFi device";
 const char WakeOnWiFi::kWakeOnPacketDisabled[] =
@@ -592,7 +597,7 @@ void WakeOnWiFi::VerifyWakeOnWiFiSettings(
     const Nl80211Message &nl80211_message) {
   if (WakeOnWiFiSettingsMatch(nl80211_message, wake_on_wifi_triggers_,
                               wake_on_packet_connections_)) {
-    SLOG(WiFi, 2) << __func__ << ": "
+    SLOG(this, 2) << __func__ << ": "
                   << "Wake-on-packet settings successfully verified";
     RunAndResetSuspendActionsDoneCallback(Error(Error::kSuccess));
   } else {
@@ -670,11 +675,11 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
 
 void WakeOnWiFi::RetrySetWakeOnPacketConnections() {
   if (num_set_wake_on_packet_retries_ < kMaxSetWakeOnPacketRetries) {
-    SLOG(WiFi, 2) << __func__;
+    SLOG(this, 2) << __func__;
     ApplyWakeOnWiFiSettings();
     ++num_set_wake_on_packet_retries_;
   } else {
-    SLOG(WiFi, 2) << __func__ << ": max retry attempts reached";
+    SLOG(this, 2) << __func__ << ": max retry attempts reached";
     num_set_wake_on_packet_retries_ = 0;
     RunAndResetSuspendActionsDoneCallback(Error(Error::kOperationFailed));
   }
@@ -710,7 +715,7 @@ void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
             NL80211_WOWLAN_TRIG_DISCONNECT, &disconnect_supported)) {
       if (disconnect_supported) {
         wake_on_wifi_triggers_supported_.insert(WakeOnWiFi::kDisconnect);
-        SLOG(WiFi, 7) << "Waking on disconnect supported by this WiFi device";
+        SLOG(this, 7) << "Waking on disconnect supported by this WiFi device";
       }
     }
     ByteString data;
@@ -737,7 +742,7 @@ void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
               std::max(ipv4_pattern_len, ipv6_pattern_len)) {
         wake_on_wifi_triggers_supported_.insert(WakeOnWiFi::kIPAddress);
         wake_on_wifi_max_patterns_ = patt_support->max_patterns;
-        SLOG(WiFi, 7) << "Waking on up to " << wake_on_wifi_max_patterns_
+        SLOG(this, 7) << "Waking on up to " << wake_on_wifi_max_patterns_
                       << " registered patterns of "
                       << patt_support->min_pattern_len << "-"
                       << patt_support->max_pattern_len

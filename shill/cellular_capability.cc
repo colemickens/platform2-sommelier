@@ -17,6 +17,13 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kCellular;
+static string ObjectID(CellularCapability *c) {
+  return c->cellular()->GetRpcIdentifier();
+}
+}
+
 const char CellularCapability::kModemPropertyIMSI[] = "imsi";
 const char CellularCapability::kModemPropertyState[] = "State";
 // All timeout values are in milliseconds
@@ -124,14 +131,14 @@ bool CellularCapability::ShouldDetectOutOfCredit() const {
 }
 
 void CellularCapability::OnOperatorChanged() {
-  SLOG(Cellular, 3) << __func__;
+  SLOG(this, 3) << __func__;
   if (cellular()->service()) {
     UpdateServiceOLP();
   }
 }
 
 void CellularCapability::UpdateServiceOLP() {
-  SLOG(Cellular, 3) << __func__;
+  SLOG(this, 3) << __func__;
 }
 
 }  // namespace shill

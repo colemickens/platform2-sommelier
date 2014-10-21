@@ -4,6 +4,8 @@
 
 #include "shill/out_of_credits_detector.h"
 
+#include <string>
+
 #include "shill/active_passive_out_of_credits_detector.h"
 #include "shill/cellular_service.h"
 #include "shill/logging.h"
@@ -11,6 +13,13 @@
 #include "shill/subscription_state_out_of_credits_detector.h"
 
 namespace shill {
+
+using std::string;
+
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kCellular;
+static string ObjectID(CellularService *c) { return c->GetRpcIdentifier(); }
+}
 
 OutOfCreditsDetector::OutOfCreditsDetector(EventDispatcher *dispatcher,
                                            Manager *manager,
@@ -61,7 +70,7 @@ OutOfCreditsDetector::CreateDetector(OOCType detector_type,
 }
 
 void OutOfCreditsDetector::ReportOutOfCredits(bool state) {
-  SLOG(Cellular, 2) << __func__ << ": " << state;
+  SLOG(service_, 2) << __func__ << ": " << state;
   if (state == out_of_credits_) {
     return;
   }

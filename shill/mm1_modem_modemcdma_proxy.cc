@@ -14,6 +14,7 @@ using std::string;
 using std::unique_ptr;
 
 namespace shill {
+
 namespace mm1 {
 
 ModemModemCdmaProxy::ModemModemCdmaProxy(DBus::Connection *connection,
@@ -65,7 +66,7 @@ void ModemModemCdmaProxy::Proxy::ActivationStateChanged(
     const uint32_t &activation_state,
     const uint32_t &activation_error,
     const DBusPropertiesMap &status_changes) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   activation_state_callback_.Run(activation_state,
                                  activation_error,
                                  status_changes);
@@ -75,7 +76,7 @@ void ModemModemCdmaProxy::Proxy::ActivationStateChanged(
 // org::freedesktop::ModemManager1::Modem::ModemModemCdmaProxy
 void ModemModemCdmaProxy::Proxy::ActivateCallback(const ::DBus::Error& dberror,
                                                   void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
@@ -85,7 +86,7 @@ void ModemModemCdmaProxy::Proxy::ActivateCallback(const ::DBus::Error& dberror,
 void ModemModemCdmaProxy::Proxy::ActivateManualCallback(
     const ::DBus::Error& dberror,
     void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);

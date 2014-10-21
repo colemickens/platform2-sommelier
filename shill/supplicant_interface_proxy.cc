@@ -17,6 +17,11 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDBus;
+static string ObjectID(const DBus::Path *p) { return *p; }
+}
+
 SupplicantInterfaceProxy::SupplicantInterfaceProxy(
     SupplicantEventDelegateInterface *delegate,
     DBus::Connection *bus,
@@ -28,7 +33,7 @@ SupplicantInterfaceProxy::~SupplicantInterfaceProxy() {}
 
 ::DBus::Path SupplicantInterfaceProxy::AddNetwork(
     const map<string, ::DBus::Variant> &args) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.AddNetwork(args);
   } catch (const DBus::Error &e) {
@@ -39,7 +44,7 @@ SupplicantInterfaceProxy::~SupplicantInterfaceProxy() {}
 }
 
 void SupplicantInterfaceProxy::EnableHighBitrates() {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.EnableHighBitrates();
   } catch (const DBus::Error &e) {
@@ -49,7 +54,7 @@ void SupplicantInterfaceProxy::EnableHighBitrates() {
 }
 
 void SupplicantInterfaceProxy::EAPLogoff() {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.EAPLogoff();
   } catch (const DBus::Error &e) {
@@ -59,7 +64,7 @@ void SupplicantInterfaceProxy::EAPLogoff() {
 }
 
 void SupplicantInterfaceProxy::EAPLogon() {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.EAPLogon();
   } catch (const DBus::Error &e) {
@@ -69,7 +74,7 @@ void SupplicantInterfaceProxy::EAPLogon() {
 }
 
 void SupplicantInterfaceProxy::Disconnect() {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.Disconnect();
   } catch (const DBus::Error &e) {
@@ -79,7 +84,7 @@ void SupplicantInterfaceProxy::Disconnect() {
 }
 
 void SupplicantInterfaceProxy::FlushBSS(const uint32_t &age) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.FlushBSS(age);
   } catch (const DBus::Error &e) {
@@ -91,7 +96,7 @@ void SupplicantInterfaceProxy::FlushBSS(const uint32_t &age) {
 void SupplicantInterfaceProxy::NetworkReply(const ::DBus::Path &network,
                                             const string &field,
                                             const string &value) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.NetworkReply(network, field, value);
   } catch (const DBus::Error &e) {
@@ -101,7 +106,7 @@ void SupplicantInterfaceProxy::NetworkReply(const ::DBus::Path &network,
 }
 
 void SupplicantInterfaceProxy::Reassociate() {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.Reassociate();
   } catch (const DBus::Error &e) {
@@ -111,7 +116,7 @@ void SupplicantInterfaceProxy::Reassociate() {
 }
 
 void SupplicantInterfaceProxy::Reattach() {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.Reattach();
   } catch (const DBus::Error &e) {
@@ -121,7 +126,7 @@ void SupplicantInterfaceProxy::Reattach() {
 }
 
 void SupplicantInterfaceProxy::RemoveAllNetworks() {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.RemoveAllNetworks();
   } catch (const DBus::Error &e) {
@@ -130,7 +135,7 @@ void SupplicantInterfaceProxy::RemoveAllNetworks() {
 }
 
 void SupplicantInterfaceProxy::RemoveNetwork(const ::DBus::Path &network) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.RemoveNetwork(network);
   } catch (const DBus::Error &e) {
@@ -140,7 +145,7 @@ void SupplicantInterfaceProxy::RemoveNetwork(const ::DBus::Path &network) {
 }
 
 void SupplicantInterfaceProxy::Scan(const map<string, ::DBus::Variant> &args) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.Scan(args);
   } catch (const DBus::Error &e) {
@@ -151,7 +156,7 @@ void SupplicantInterfaceProxy::Scan(const map<string, ::DBus::Variant> &args) {
 }
 
 void SupplicantInterfaceProxy::SelectNetwork(const ::DBus::Path &network) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.SelectNetwork(network);
   } catch (const DBus::Error &e) {
@@ -161,7 +166,7 @@ void SupplicantInterfaceProxy::SelectNetwork(const ::DBus::Path &network) {
 
 void SupplicantInterfaceProxy::SetHT40Enable(const ::DBus::Path &network,
                                              bool enable) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.SetHT40Enable(network, enable);
   } catch (const DBus::Error &e) {
@@ -170,7 +175,7 @@ void SupplicantInterfaceProxy::SetHT40Enable(const ::DBus::Path &network,
 }
 
 void SupplicantInterfaceProxy::SetFastReauth(bool enabled) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.FastReauth(enabled);
   } catch (const DBus::Error &e) {
@@ -181,7 +186,7 @@ void SupplicantInterfaceProxy::SetFastReauth(bool enabled) {
 }
 
 void SupplicantInterfaceProxy::SetRoamThreshold(uint16_t threshold) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     proxy_.RoamThreshold(threshold);
     return;
@@ -193,7 +198,7 @@ void SupplicantInterfaceProxy::SetRoamThreshold(uint16_t threshold) {
 }
 
 void SupplicantInterfaceProxy::SetScanInterval(int32_t scan_interval) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.ScanInterval(scan_interval);
   } catch (const DBus::Error &e) {
@@ -205,7 +210,7 @@ void SupplicantInterfaceProxy::SetScanInterval(int32_t scan_interval) {
 
 void SupplicantInterfaceProxy::SetDisableHighBitrates(
     bool disable_high_bitrates) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.DisableHighBitrates(disable_high_bitrates);
   } catch (const DBus::Error &e) {
@@ -216,7 +221,7 @@ void SupplicantInterfaceProxy::SetDisableHighBitrates(
 }
 
 void SupplicantInterfaceProxy::TDLSDiscover(const string &peer) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.TDLSDiscover(peer);
   } catch (const DBus::Error &e) {
@@ -226,7 +231,7 @@ void SupplicantInterfaceProxy::TDLSDiscover(const string &peer) {
 }
 
 void SupplicantInterfaceProxy::TDLSSetup(const string &peer) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.TDLSSetup(peer);
   } catch (const DBus::Error &e) {
@@ -236,7 +241,7 @@ void SupplicantInterfaceProxy::TDLSSetup(const string &peer) {
 }
 
 string SupplicantInterfaceProxy::TDLSStatus(const string &peer) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.TDLSStatus(peer);
   } catch (const DBus::Error &e) {
@@ -246,7 +251,7 @@ string SupplicantInterfaceProxy::TDLSStatus(const string &peer) {
 }
 
 void SupplicantInterfaceProxy::TDLSTeardown(const string &peer) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.TDLSTeardown(peer);
   } catch (const DBus::Error &e) {
@@ -266,68 +271,68 @@ SupplicantInterfaceProxy::Proxy::Proxy(
 SupplicantInterfaceProxy::Proxy::~Proxy() {}
 
 void SupplicantInterfaceProxy::Proxy::BlobAdded(const string &/*blobname*/) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   // XXX
 }
 
 void SupplicantInterfaceProxy::Proxy::BlobRemoved(const string &/*blobname*/) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   // XXX
 }
 
 void SupplicantInterfaceProxy::Proxy::BSSAdded(
     const ::DBus::Path &BSS,
     const std::map<string, ::DBus::Variant> &properties) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   delegate_->BSSAdded(BSS, properties);
 }
 
 void SupplicantInterfaceProxy::Proxy::Certification(
     const std::map<string, ::DBus::Variant> &properties) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   delegate_->Certification(properties);
 }
 
 void SupplicantInterfaceProxy::Proxy::EAP(
     const string &status, const string &parameter) {
-  SLOG(DBus, 2) << __func__ << ": status " << status
+  SLOG(&path(), 2) << __func__ << ": status " << status
                 << ", parameter " << parameter;
   delegate_->EAPEvent(status, parameter);
 }
 
 void SupplicantInterfaceProxy::Proxy::BSSRemoved(const ::DBus::Path &BSS) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   delegate_->BSSRemoved(BSS);
 }
 
 void SupplicantInterfaceProxy::Proxy::NetworkAdded(
     const ::DBus::Path &/*network*/,
     const std::map<string, ::DBus::Variant> &/*properties*/) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   // XXX
 }
 
 void SupplicantInterfaceProxy::Proxy::NetworkRemoved(
     const ::DBus::Path &/*network*/) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   // TODO(quiche): Pass this up to the delegate, so that it can clean its
   // rpcid_by_service_ map. crbug.com/207648
 }
 
 void SupplicantInterfaceProxy::Proxy::NetworkSelected(
     const ::DBus::Path &/*network*/) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   // XXX
 }
 
 void SupplicantInterfaceProxy::Proxy::PropertiesChanged(
     const std::map<string, ::DBus::Variant> &properties) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   delegate_->PropertiesChanged(properties);
 }
 
 void SupplicantInterfaceProxy::Proxy::ScanDone(const bool& success) {
-  SLOG(DBus, 2) << __func__ << ": " << success;
+  SLOG(&path(), 2) << __func__ << ": " << success;
   if (success) {
     delegate_->ScanDone();
   }

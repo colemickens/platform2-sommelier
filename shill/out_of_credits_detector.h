@@ -7,6 +7,8 @@
 
 #include <base/macros.h>
 
+#include <string>
+
 #include "shill/service.h"
 
 namespace shill {

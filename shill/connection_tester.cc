@@ -22,6 +22,11 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kPortal;
+static string ObjectID(Connection *c) { return c->interface_name(); }
+}
+
 const int ConnectionTester::kTrialTimeoutSeconds = 5;
 
 ConnectionTester::ConnectionTester(
@@ -45,14 +50,14 @@ ConnectionTester::~ConnectionTester() {
 }
 
 void ConnectionTester::Start() {
-  SLOG(Portal, 3) << "In " << __func__;
+  SLOG(connection_, 3) << "In " << __func__;
   if (!connectivity_trial_->Start(ConnectivityTrial::kDefaultURL, 0))
     LOG(ERROR) << StringPrintf("ConnectivityTrial failed to parse default "
                                "URL %s", ConnectivityTrial::kDefaultURL);
 }
 
 void ConnectionTester::Stop() {
-  SLOG(Portal, 3) << "In " << __func__;
+  SLOG(connection_, 3) << "In " << __func__;
   connectivity_trial_->Stop();
 }
 

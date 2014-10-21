@@ -25,6 +25,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDBus;
+static string ObjectID(ManagerDBusAdaptor *m) { return m->GetRpcIdentifier(); }
+}
+
 // static
 const char ManagerDBusAdaptor::kPath[] = "/";
 
@@ -40,44 +45,44 @@ ManagerDBusAdaptor::~ManagerDBusAdaptor() {
 void ManagerDBusAdaptor::UpdateRunning() {}
 
 void ManagerDBusAdaptor::EmitBoolChanged(const string &name, bool value) {
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::BoolToVariant(value));
 }
 
 void ManagerDBusAdaptor::EmitUintChanged(const string &name,
                                          uint32_t value) {
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::Uint32ToVariant(value));
 }
 
 void ManagerDBusAdaptor::EmitIntChanged(const string &name, int value) {
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::Int32ToVariant(value));
 }
 
 void ManagerDBusAdaptor::EmitStringChanged(const string &name,
                                            const string &value) {
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::StringToVariant(value));
 }
 
 void ManagerDBusAdaptor::EmitStringsChanged(const string &name,
                                             const vector<string> &value) {
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::StringsToVariant(value));
 }
 
 void ManagerDBusAdaptor::EmitRpcIdentifierChanged(
     const string &name,
     const string &value) {
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::PathToVariant(value));
 }
 
 void ManagerDBusAdaptor::EmitRpcIdentifierArrayChanged(
     const string &name,
     const vector<string> &value) {
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   vector<DBus::Path> paths;
   for (const auto &element : value) {
     paths.push_back(element);
@@ -87,13 +92,13 @@ void ManagerDBusAdaptor::EmitRpcIdentifierArrayChanged(
 }
 
 void ManagerDBusAdaptor::EmitStateChanged(const string &new_state) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   StateChanged(new_state);
 }
 
 map<string, DBus::Variant> ManagerDBusAdaptor::GetProperties(
     DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   map<string, DBus::Variant> properties;
   DBusAdaptor::GetProperties(manager_->store(), &properties, &error);
   return properties;
@@ -102,7 +107,7 @@ map<string, DBus::Variant> ManagerDBusAdaptor::GetProperties(
 void ManagerDBusAdaptor::SetProperty(const string &name,
                                      const DBus::Variant &value,
                                      DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   if (DBusAdaptor::SetProperty(manager_->mutable_store(),
                                name,
                                value,
@@ -112,13 +117,13 @@ void ManagerDBusAdaptor::SetProperty(const string &name,
 }
 
 string ManagerDBusAdaptor::GetState(DBus::Error &/*error*/) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   return manager_->CalculateState(nullptr);
 }
 
 DBus::Path ManagerDBusAdaptor::CreateProfile(const string &name,
                                              DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   Error e;
   string path;
   manager_->CreateProfile(name, &path, &e);
@@ -130,7 +135,7 @@ DBus::Path ManagerDBusAdaptor::CreateProfile(const string &name,
 
 void ManagerDBusAdaptor::RemoveProfile(const string &name,
                                        DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   Error e;
   manager_->RemoveProfile(name, &e);
   e.ToDBusError(&error);
@@ -138,7 +143,7 @@ void ManagerDBusAdaptor::RemoveProfile(const string &name,
 
 DBus::Path ManagerDBusAdaptor::PushProfile(const string &name,
                                            DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   Error e;
   string path;
   manager_->PushProfile(name, &path, &e);
@@ -152,7 +157,7 @@ DBus::Path ManagerDBusAdaptor::InsertUserProfile(
     const string &name,
     const string &user_hash,
     DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   Error e;
   string path;
   manager_->InsertUserProfile(name, user_hash, &path, &e);
@@ -164,28 +169,28 @@ DBus::Path ManagerDBusAdaptor::InsertUserProfile(
 
 void ManagerDBusAdaptor::PopProfile(const string &name,
                                     DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__ << ": " << name;
+  SLOG(this, 2) << __func__ << ": " << name;
   Error e;
   manager_->PopProfile(name, &e);
   e.ToDBusError(&error);
 }
 
 void ManagerDBusAdaptor::PopAnyProfile(DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   Error e;
   manager_->PopAnyProfile(&e);
   e.ToDBusError(&error);
 }
 
 void ManagerDBusAdaptor::PopAllUserProfiles(DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   Error e;
   manager_->PopAllUserProfiles(&e);
   e.ToDBusError(&error);
 }
 
 void ManagerDBusAdaptor::RecheckPortal(DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   Error e;
   manager_->RecheckPortal(&e);
   e.ToDBusError(&error);
@@ -193,7 +198,7 @@ void ManagerDBusAdaptor::RecheckPortal(DBus::Error &error) {  // NOLINT
 
 void ManagerDBusAdaptor::RequestScan(const string &technology,
                                      DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__ << ": " << technology;
+  SLOG(this, 2) << __func__ << ": " << technology;
   Error e;
   manager_->RequestScan(Device::kFullScan, technology, &e);
   e.ToDBusError(&error);
@@ -201,7 +206,7 @@ void ManagerDBusAdaptor::RequestScan(const string &technology,
 
 void ManagerDBusAdaptor::EnableTechnology(const string &technology_name,
                                           DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__ << ": " << technology_name;
+  SLOG(this, 2) << __func__ << ": " << technology_name;
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
   manager_->SetEnabledStateForTechnology(technology_name, true, &e,
@@ -211,7 +216,7 @@ void ManagerDBusAdaptor::EnableTechnology(const string &technology_name,
 
 void ManagerDBusAdaptor::DisableTechnology(const string &technology_name,
                                            DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__ << ": " << technology_name;
+  SLOG(this, 2) << __func__ << ": " << technology_name;
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
   manager_->SetEnabledStateForTechnology(technology_name, false, &e,
@@ -223,7 +228,7 @@ void ManagerDBusAdaptor::DisableTechnology(const string &technology_name,
 DBus::Path ManagerDBusAdaptor::GetService(
     const map<string, DBus::Variant> &args,
     DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   ServiceRefPtr service;
   KeyValueStore args_store;
   Error e;
@@ -241,7 +246,7 @@ DBus::Path ManagerDBusAdaptor::GetService(
 DBus::Path ManagerDBusAdaptor::GetVPNService(
     const map<string, DBus::Variant> &args,
     DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   return GetService(args, error);
 }
 
@@ -249,7 +254,7 @@ DBus::Path ManagerDBusAdaptor::GetVPNService(
 DBus::Path ManagerDBusAdaptor::GetWifiService(
     const map<string, DBus::Variant> &args,
     DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   return GetService(args, error);
 }
 
@@ -257,7 +262,7 @@ DBus::Path ManagerDBusAdaptor::GetWifiService(
 DBus::Path ManagerDBusAdaptor::ConfigureService(
     const map<string, DBus::Variant> &args,
     DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   ServiceRefPtr service;
   KeyValueStore args_store;
   Error key_value_store_error;
@@ -277,7 +282,7 @@ DBus::Path ManagerDBusAdaptor::ConfigureServiceForProfile(
     const DBus::Path &profile_rpcid,
     const map<string, DBus::Variant> &args,
     DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   ServiceRefPtr service;
   KeyValueStore args_store;
   Error key_value_store_error;
@@ -297,7 +302,7 @@ DBus::Path ManagerDBusAdaptor::ConfigureServiceForProfile(
 DBus::Path ManagerDBusAdaptor::FindMatchingService(
     const map<string, DBus::Variant> &args,
     DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   KeyValueStore args_store;
   Error value_error;
   DBusAdaptor::ArgsToKeyValueStore(args, &args_store, &value_error);
@@ -318,7 +323,7 @@ DBus::Path ManagerDBusAdaptor::FindMatchingService(
 void ManagerDBusAdaptor::AddWakeOnPacketConnection(
     const string &ip_endpoint,
     DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   Error e;
   manager_->AddWakeOnPacketConnection(ip_endpoint, &e);
   e.ToDBusError(&error);
@@ -326,7 +331,7 @@ void ManagerDBusAdaptor::AddWakeOnPacketConnection(
 
 void ManagerDBusAdaptor::RemoveWakeOnPacketConnection(
     const string &ip_endpoint, DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   Error e;
   manager_->RemoveWakeOnPacketConnection(ip_endpoint, &e);
   e.ToDBusError(&error);
@@ -334,20 +339,20 @@ void ManagerDBusAdaptor::RemoveWakeOnPacketConnection(
 
 void ManagerDBusAdaptor::RemoveAllWakeOnPacketConnections(
     DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   Error e;
   manager_->RemoveAllWakeOnPacketConnections(&e);
   e.ToDBusError(&error);
 }
 
 int32_t ManagerDBusAdaptor::GetDebugLevel(DBus::Error &/*error*/) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   return logging::GetMinLogLevel();
 }
 
 void ManagerDBusAdaptor::SetDebugLevel(const int32_t &level,
                                        DBus::Error &/*error*/) {  // NOLINT
-  SLOG(DBus, 2) << __func__ << ": " << level;
+  SLOG(this, 2) << __func__ << ": " << level;
   if (level < logging::LOG_NUM_SEVERITIES) {
     logging::SetMinLogLevel(level);
     // Like VLOG, SLOG uses negative verbose level.
@@ -358,37 +363,37 @@ void ManagerDBusAdaptor::SetDebugLevel(const int32_t &level,
 }
 
 string ManagerDBusAdaptor::GetServiceOrder(DBus::Error &/*error*/) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   return manager_->GetTechnologyOrder();
 }
 
 void ManagerDBusAdaptor::SetServiceOrder(const string &order,
                                          DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__ << ": " << order;
+  SLOG(this, 2) << __func__ << ": " << order;
   Error e;
   manager_->SetTechnologyOrder(order, &e);
   e.ToDBusError(&error);
 }
 
 string ManagerDBusAdaptor::GetDebugTags(DBus::Error &/*error*/) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   return ScopeLogger::GetInstance()->GetEnabledScopeNames();
 }
 
 void ManagerDBusAdaptor::SetDebugTags(const string &tags,
                                       DBus::Error &/*error*/) {  // NOLINT
-  SLOG(DBus, 2) << __func__ << ": " << tags;
+  SLOG(this, 2) << __func__ << ": " << tags;
   ScopeLogger::GetInstance()->EnableScopesByName(tags);
 }
 
 string ManagerDBusAdaptor::ListDebugTags(DBus::Error &/*error*/) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   return ScopeLogger::GetInstance()->GetAllScopeNames();
 }
 
 map<string, DBus::Variant> ManagerDBusAdaptor::GetNetworksForGeolocation(
     DBus::Error &/*error*/) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   map<string, DBus::Variant> networks;
   for (const auto &network : manager_->GetNetworksForGeolocation()) {
     Stringmaps value;
@@ -409,7 +414,7 @@ bool ManagerDBusAdaptor::VerifyDestination(const string &certificate,
                                            const string &hotspot_ssid,
                                            const string &hotspot_bssid,
                                            DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
   manager_->VerifyDestination(certificate, public_key, nonce,
@@ -431,7 +436,7 @@ string ManagerDBusAdaptor::VerifyAndEncryptCredentials(
     const string &hotspot_bssid,
     const DBus::Path &network,
     DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
   manager_->VerifyAndEncryptCredentials(certificate, public_key, nonce,
@@ -455,7 +460,7 @@ string ManagerDBusAdaptor::VerifyAndEncryptData(
     const string &hotspot_bssid,
     const string &data,
     DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
   manager_->VerifyAndEncryptData(certificate, public_key, nonce,
@@ -469,14 +474,14 @@ string ManagerDBusAdaptor::VerifyAndEncryptData(
 }
 
 void ManagerDBusAdaptor::ConnectToBestServices(DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   Error e;
   manager_->ConnectToBestServices(&e);
   e.ToDBusError(&error);
 }
 
 void ManagerDBusAdaptor::CreateConnectivityReport(DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   Error e;
   manager_->CreateConnectivityReport(&e);
   e.ToDBusError(&error);

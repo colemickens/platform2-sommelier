@@ -12,6 +12,13 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kCellular;
+static string ObjectID(const PendingActivationStore *p) {
+  return "(pending_activation_store)";
+}
+}
+
 const char PendingActivationStore::kIccidGroupId[] = "iccid_list";
 const char PendingActivationStore::kMeidGroupId[] = "meid_list";
 // We're keeping the old file name here for backwards compatibility.
@@ -66,7 +73,7 @@ string PendingActivationStore::IdentifierTypeToGroupId(IdentifierType type) {
     case kIdentifierMEID:
       return kMeidGroupId;
     default:
-      SLOG(Cellular, 2) << "Incorrect identifier type: " << type;
+      SLOG(Cellular, nullptr, 2) << "Incorrect identifier type: " << type;
       return "";
   }
 }
@@ -107,19 +114,19 @@ PendingActivationStore::State PendingActivationStore::GetActivationState(
     IdentifierType type,
     const string &identifier) const {
   string formatted_identifier = FormattedIdentifier(type, identifier);
-  SLOG(Cellular, 2) << __func__ << ": " << formatted_identifier;
+  SLOG(this, 2) << __func__ << ": " << formatted_identifier;
   if (!storage_.get()) {
     LOG(ERROR) << "Underlying storage not initialized.";
     return kStateUnknown;
   }
   int state = 0;
   if (!storage_->GetInt(IdentifierTypeToGroupId(type), identifier, &state)) {
-    SLOG(Cellular, 2) << "No entry exists for " << formatted_identifier;
+    SLOG(this, 2) << "No entry exists for " << formatted_identifier;
     return kStateUnknown;
   }
   if (state <= 0 || state >= kStateMax) {
-    SLOG(Cellular, 2) << "State value read for " << formatted_identifier
-                      << " is invalid.";
+    SLOG(this, 2) << "State value read for " << formatted_identifier
+                  << " is invalid.";
     return kStateUnknown;
   }
   return static_cast<State>(state);
@@ -129,25 +136,25 @@ bool PendingActivationStore::SetActivationState(
     IdentifierType type,
     const string &identifier,
     State state) {
-  SLOG(Cellular, 2) << __func__ << ": State=" << StateToString(state) << ", "
-                    << FormattedIdentifier(type, identifier);
+  SLOG(this, 2) << __func__ << ": State=" << StateToString(state) << ", "
+                << FormattedIdentifier(type, identifier);
   if (!storage_.get()) {
     LOG(ERROR) << "Underlying storage not initialized.";
     return false;
   }
   if (state == kStateUnknown) {
-    SLOG(Cellular, 2) << "kStateUnknown cannot be used as a value.";
+    SLOG(this, 2) << "kStateUnknown cannot be used as a value.";
     return false;
   }
   if (state < 0 || state >= kStateMax) {
-    SLOG(Cellular, 2) << "Cannot set state to \"" << StateToString(state)
-                      << "\"";
+    SLOG(this, 2) << "Cannot set state to \"" << StateToString(state)
+                  << "\"";
     return false;
   }
   if (!storage_->SetInt(
       IdentifierTypeToGroupId(type), identifier, static_cast<int>(state))) {
-    SLOG(Cellular, 2) << "Failed to store the given identifier and state "
-                      << "values.";
+    SLOG(this, 2) << "Failed to store the given identifier and state "
+                  << "values.";
     return false;
   }
   return storage_->Flush();
@@ -155,14 +162,14 @@ bool PendingActivationStore::SetActivationState(
 
 bool PendingActivationStore::RemoveEntry(IdentifierType type,
                                          const std::string &identifier) {
-  SLOG(Cellular, 2) << __func__ << ": "
-                    << FormattedIdentifier(type, identifier);
+  SLOG(this, 2) << __func__ << ": "
+                << FormattedIdentifier(type, identifier);
   if (!storage_.get()) {
     LOG(ERROR) << "Underlying storage not initialized.";
     return false;
   }
   if (!storage_->DeleteKey(IdentifierTypeToGroupId(type), identifier)) {
-    SLOG(Cellular, 2) << "Failed to remove the given identifier.";
+    SLOG(this, 2) << "Failed to remove the given identifier.";
     return false;
   }
   return storage_->Flush();

@@ -30,6 +30,11 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kService;
+static string ObjectID(const EapCredentials *e) { return "(eap_credentials)"; }
+}
+
 const char EapCredentials::kStorageEapAnonymousIdentity[] =
     "EAP.AnonymousIdentity";
 const char EapCredentials::kStorageEapCACert[] = "EAP.CACert";
@@ -203,14 +208,14 @@ bool EapCredentials::IsEapAuthenticationProperty(const string property) {
 bool EapCredentials::IsConnectable() const {
   // Identity is required.
   if (identity_.empty()) {
-    SLOG(Service, 2) << "Not connectable: Identity is empty.";
+    SLOG(this, 2) << "Not connectable: Identity is empty.";
     return false;
   }
 
   if (!client_cert_.empty() || !cert_id_.empty()) {
     // If a client certificate is being used, we must have a private key.
     if (private_key_.empty() && key_id_.empty()) {
-      SLOG(Service, 2)
+      SLOG(this, 2)
           << "Not connectable: Client certificate but no private key.";
       return false;
     }
@@ -219,7 +224,7 @@ bool EapCredentials::IsConnectable() const {
       !ca_cert_id_.empty()) {
     // If PKCS#11 data is needed, a PIN is required.
     if (pin_.empty()) {
-      SLOG(Service, 2) << "Not connectable: PKCS#11 data but no PIN.";
+      SLOG(this, 2) << "Not connectable: PKCS#11 data but no PIN.";
       return false;
     }
   }
@@ -228,7 +233,7 @@ bool EapCredentials::IsConnectable() const {
   if (eap_.empty() || eap_ == kEapMethodTLS) {
     if ((!client_cert_.empty() || !cert_id_.empty()) &&
         (!private_key_.empty() || !key_id_.empty())) {
-      SLOG(Service, 2) << "Connectable: EAP-TLS with a client cert and key.";
+      SLOG(this, 2) << "Connectable: EAP-TLS with a client cert and key.";
       return true;
     }
   }
@@ -237,13 +242,12 @@ bool EapCredentials::IsConnectable() const {
   // minimum requirement), at least an identity + password is required.
   if (eap_.empty() || eap_ != kEapMethodTLS) {
     if (!password_.empty()) {
-      SLOG(Service, 2) << "Connectable. !EAP-TLS and has a password.";
+      SLOG(this, 2) << "Connectable. !EAP-TLS and has a password.";
       return true;
     }
   }
 
-  SLOG(Service, 2)
-      << "Not connectable: No suitable EAP configuration was found.";
+  SLOG(this, 2) << "Not connectable: No suitable EAP configuration was found.";
   return false;
 }
 

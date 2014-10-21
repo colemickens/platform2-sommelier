@@ -42,6 +42,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kService;
+static string ObjectID(const Service *s) { return s->GetRpcIdentifier(); }
+}
+
 const char Service::kAutoConnBusy[] = "busy";
 const char Service::kAutoConnConnected[] = "connected";
 const char Service::kAutoConnConnecting[] = "connecting";
@@ -277,7 +282,7 @@ void Service::AutoConnect() {
     Connect(&error, __func__);
   } else {
     if (reason == kAutoConnConnected || reason == kAutoConnBusy) {
-      SLOG(Service, 1)
+      SLOG(this, 1)
           << "Suppressed autoconnect to service " << unique_name_ << " "
           << "(" << reason << ")";
     } else {
@@ -598,60 +603,60 @@ void Service::SaveToCurrentProfile() {
 }
 
 void Service::Configure(const KeyValueStore &args, Error *error) {
-  SLOG(Service, 5) << "Configuring bool properties:";
+  SLOG(this, 5) << "Configuring bool properties:";
   for (const auto &bool_it : args.bool_properties()) {
     if (ContainsKey(parameters_ignored_for_configure_, bool_it.first)) {
       continue;
     }
-    SLOG(Service, 5) << "   " << bool_it.first;
+    SLOG(this, 5) << "   " << bool_it.first;
     Error set_error;
     store_.SetBoolProperty(bool_it.first, bool_it.second, &set_error);
     if (error->IsSuccess() && set_error.IsFailure()) {
       error->CopyFrom(set_error);
     }
   }
-  SLOG(Service, 5) << "Configuring int32_t properties:";
+  SLOG(this, 5) << "Configuring int32_t properties:";
   for (const auto &int_it : args.int_properties()) {
     if (ContainsKey(parameters_ignored_for_configure_, int_it.first)) {
       continue;
     }
-    SLOG(Service, 5) << "   " << int_it.first;
+    SLOG(this, 5) << "   " << int_it.first;
     Error set_error;
     store_.SetInt32Property(int_it.first, int_it.second, &set_error);
     if (error->IsSuccess() && set_error.IsFailure()) {
       error->CopyFrom(set_error);
     }
   }
-  SLOG(Service, 5) << "Configuring string properties:";
+  SLOG(this, 5) << "Configuring string properties:";
   for (const auto &string_it : args.string_properties()) {
     if (ContainsKey(parameters_ignored_for_configure_, string_it.first)) {
       continue;
     }
-    SLOG(Service, 5) << "   " << string_it.first;
+    SLOG(this, 5) << "   " << string_it.first;
     Error set_error;
     store_.SetStringProperty(string_it.first, string_it.second, &set_error);
     if (error->IsSuccess() && set_error.IsFailure()) {
       error->CopyFrom(set_error);
     }
   }
-  SLOG(Service, 5) << "Configuring string array properties:";
+  SLOG(this, 5) << "Configuring string array properties:";
   for (const auto &strings_it : args.strings_properties()) {
     if (ContainsKey(parameters_ignored_for_configure_, strings_it.first)) {
       continue;
     }
-    SLOG(Service, 5) << "   " << strings_it.first;
+    SLOG(this, 5) << "   " << strings_it.first;
     Error set_error;
     store_.SetStringsProperty(strings_it.first, strings_it.second, &set_error);
     if (error->IsSuccess() && set_error.IsFailure()) {
       error->CopyFrom(set_error);
     }
   }
-  SLOG(Service, 5) << "Configuring string map properties:";
+  SLOG(this, 5) << "Configuring string map properties:";
   for (const auto &stringmap_it : args.stringmap_properties()) {
     if (ContainsKey(parameters_ignored_for_configure_, stringmap_it.first)) {
       continue;
     }
-    SLOG(Service, 5) << "   " << stringmap_it.first;
+    SLOG(this, 5) << "   " << stringmap_it.first;
     Error set_error;
     store_.SetStringmapProperty(
         stringmap_it.first, stringmap_it.second, &set_error);
@@ -662,9 +667,9 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
 }
 
 bool Service::DoPropertiesMatch(const KeyValueStore &args) const {
-  SLOG(Service, 5) << "Checking bool properties:";
+  SLOG(this, 5) << "Checking bool properties:";
   for (const auto &bool_it : args.bool_properties()) {
-    SLOG(Service, 5) << "   " << bool_it.first;
+    SLOG(this, 5) << "   " << bool_it.first;
     Error get_error;
     bool value;
     if (!store_.GetBoolProperty(bool_it.first, &value, &get_error) ||
@@ -672,9 +677,9 @@ bool Service::DoPropertiesMatch(const KeyValueStore &args) const {
       return false;
     }
   }
-  SLOG(Service, 5) << "Checking int32_t properties:";
+  SLOG(this, 5) << "Checking int32_t properties:";
   for (const auto &int_it : args.int_properties()) {
-    SLOG(Service, 5) << "   " << int_it.first;
+    SLOG(this, 5) << "   " << int_it.first;
     Error get_error;
     int32_t value;
     if (!store_.GetInt32Property(int_it.first, &value, &get_error) ||
@@ -682,9 +687,9 @@ bool Service::DoPropertiesMatch(const KeyValueStore &args) const {
       return false;
     }
   }
-  SLOG(Service, 5) << "Checking string properties:";
+  SLOG(this, 5) << "Checking string properties:";
   for (const auto &string_it : args.string_properties()) {
-    SLOG(Service, 5) << "   " << string_it.first;
+    SLOG(this, 5) << "   " << string_it.first;
     Error get_error;
     string value;
     if (!store_.GetStringProperty(string_it.first, &value, &get_error) ||
@@ -692,9 +697,9 @@ bool Service::DoPropertiesMatch(const KeyValueStore &args) const {
       return false;
     }
   }
-  SLOG(Service, 5) << "Checking string array properties:";
+  SLOG(this, 5) << "Checking string array properties:";
   for (const auto &strings_it : args.strings_properties()) {
-    SLOG(Service, 5) << "   " << strings_it.first;
+    SLOG(this, 5) << "   " << strings_it.first;
     Error get_error;
     vector<string> value;
     if (!store_.GetStringsProperty(strings_it.first, &value, &get_error) ||
@@ -901,22 +906,22 @@ void Service::ExpireEventsBefore(
 }
 
 void Service::NoteDisconnectEvent() {
-  SLOG(Service, 2) << __func__;
+  SLOG(this, 2) << __func__;
   // Ignore the event if it's user-initiated explicit disconnect.
   if (explicitly_disconnected_) {
-    SLOG(Service, 2) << "Explicit disconnect ignored.";
+    SLOG(this, 2) << "Explicit disconnect ignored.";
     return;
   }
   // Ignore the event if manager is not running (e.g., service disconnects on
   // shutdown).
   if (!manager_->running()) {
-    SLOG(Service, 2) << "Disconnect while manager stopped ignored.";
+    SLOG(this, 2) << "Disconnect while manager stopped ignored.";
     return;
   }
   // Ignore the event if the system is suspending.
   PowerManager *power_manager = manager_->power_manager();
   if (!power_manager || power_manager->suspending()) {
-    SLOG(Service, 2) << "Disconnect in transitional power state ignored.";
+    SLOG(this, 2) << "Disconnect in transitional power state ignored.";
     return;
   }
   int period = 0;
@@ -936,7 +941,7 @@ void Service::NoteDisconnectEvent() {
     threshold = kReportMisconnectsThreshold;
     events = &misconnects_;
   } else {
-    SLOG(Service, 2)
+    SLOG(this, 2)
         << "Not connected or connecting, state transition ignored.";
     return;
   }
@@ -1109,10 +1114,10 @@ const ProfileRefPtr &Service::profile() const { return profile_; }
 void Service::set_profile(const ProfileRefPtr &p) { profile_ = p; }
 
 void Service::SetProfile(const ProfileRefPtr &p) {
-  SLOG(Service, 2) << "SetProfile from "
-                   << (profile_ ? profile_->GetFriendlyName() : "(none)")
-                   << " to " << (p ? p->GetFriendlyName() : "(none)")
-                   << ".";
+  SLOG(this, 2) << "SetProfile from "
+                << (profile_ ? profile_->GetFriendlyName() : "(none)")
+                << " to " << (p ? p->GetFriendlyName() : "(none)")
+                << ".";
   if (profile_ == p) {
     return;
   }
@@ -1126,7 +1131,7 @@ void Service::SetProfile(const ProfileRefPtr &p) {
 }
 
 void Service::OnPropertyChanged(const string &property) {
-  SLOG(Service, 1) << __func__ << " " << property;
+  SLOG(this, 1) << __func__ << " " << property;
   if (Is8021x() && EapCredentials::IsEapAuthenticationProperty(property)) {
     OnEapCredentialsChanged(kReasonPropertyUpdate);
   }

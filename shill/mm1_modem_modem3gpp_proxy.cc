@@ -14,6 +14,7 @@ using std::string;
 using std::unique_ptr;
 
 namespace shill {
+
 namespace mm1 {
 
 ModemModem3gppProxy::ModemModem3gppProxy(
@@ -52,7 +53,7 @@ ModemModem3gppProxy::Proxy::~Proxy() {}
 // org::freedesktop::ModemManager1::Modem::ModemModem3gppProxy
 void ModemModem3gppProxy::Proxy::RegisterCallback(const ::DBus::Error& dberror,
                                                   void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
@@ -62,7 +63,7 @@ void ModemModem3gppProxy::Proxy::RegisterCallback(const ::DBus::Error& dberror,
 void ModemModem3gppProxy::Proxy::ScanCallback(
     const std::vector<DBusPropertiesMap> &results,
     const ::DBus::Error& dberror, void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   unique_ptr<DBusPropertyMapsCallback> callback(
       reinterpret_cast<DBusPropertyMapsCallback *>(data));
   Error error;

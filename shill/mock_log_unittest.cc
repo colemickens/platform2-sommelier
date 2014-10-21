@@ -9,10 +9,16 @@
 
 #include "shill/logging.h"
 
+
 using ::std::string;
 using ::testing::_;
 
 namespace shill {
+
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kManager;
+static string ObjectID(testing::Test *m) { return "(mock_log_test)"; }
+}
 
 class MockLogTest : public testing::Test {
  protected:
@@ -21,10 +27,10 @@ class MockLogTest : public testing::Test {
   void LogSomething(const string &message) const {
     LOG(INFO) << message;
   }
-  void SlogSomething(const string &message) const {
+  void SlogSomething(testing::Test *t, const string &message) const {
     ScopeLogger::GetInstance()->EnableScopesByName("manager");
     ScopeLogger::GetInstance()->set_verbose_level(2);
-    SLOG(Manager, 2) << message;
+    SLOG(t, 2) << message;
     ScopeLogger::GetInstance()->EnableScopesByName("-manager");
     ScopeLogger::GetInstance()->set_verbose_level(0);
   }
@@ -69,8 +75,17 @@ TEST_F(MockLogTest, MatchMessageContainsBracketAndNewline) {
 TEST_F(MockLogTest, MatchSlog) {
   ScopedMockLog log;
   const string kMessage("Something");
-  EXPECT_CALL(log, Log(_, _, kMessage));
-  SlogSomething(kMessage);
+  const string kLogMessage("(anon) Something");
+  EXPECT_CALL(log, Log(_, _, kLogMessage));
+  SlogSomething(nullptr, kMessage);
+}
+
+TEST_F(MockLogTest, MatchSlogWithObject) {
+  ScopedMockLog log;
+  const string kMessage("Something");
+  const string kLogMessage("(mock_log_test) Something");
+  EXPECT_CALL(log, Log(_, _, kLogMessage));
+  SlogSomething(this, kMessage);
 }
 
 TEST_F(MockLogTest, MatchWithGmockMatchers) {

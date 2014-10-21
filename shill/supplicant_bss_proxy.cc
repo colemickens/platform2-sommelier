@@ -17,6 +17,12 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static string ObjectID(SupplicantBSSProxy *s) {
+  return "(supplicant_bss_proxy)";
+}
+}
+
 SupplicantBSSProxy::SupplicantBSSProxy(
     WiFiEndpoint *wifi_endpoint,
     DBus::Connection *bus,
@@ -38,7 +44,7 @@ SupplicantBSSProxy::Proxy::~Proxy() {}
 
 void SupplicantBSSProxy::Proxy::PropertiesChanged(
     const std::map<string, ::DBus::Variant> &properties) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(DBus, nullptr, 2) << __func__;
   wifi_endpoint_->PropertiesChanged(properties);
 }
 

@@ -18,6 +18,11 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDHCP;
+static string ObjectID(DHCPProvider *d) { return "(dhcp_provider)"; }
+}
+
 namespace {
 base::LazyInstance<DHCPProvider> g_dhcp_provider = LAZY_INSTANCE_INITIALIZER;
 }  // namespace
@@ -31,11 +36,11 @@ DHCPProvider::DHCPProvider()
       dispatcher_(nullptr),
       glib_(nullptr),
       metrics_(nullptr) {
-  SLOG(DHCP, 2) << __func__;
+  SLOG(this, 2) << __func__;
 }
 
 DHCPProvider::~DHCPProvider() {
-  SLOG(DHCP, 2) << __func__;
+  SLOG(this, 2) << __func__;
 }
 
 DHCPProvider* DHCPProvider::GetInstance() {
@@ -46,7 +51,7 @@ void DHCPProvider::Init(ControlInterface *control_interface,
                         EventDispatcher *dispatcher,
                         GLib *glib,
                         Metrics *metrics) {
-  SLOG(DHCP, 2) << __func__;
+  SLOG(this, 2) << __func__;
   listener_.reset(new DHCPCDListener(proxy_factory_->connection(), this));
   glib_ = glib;
   control_interface_ = control_interface;
@@ -58,7 +63,7 @@ DHCPConfigRefPtr DHCPProvider::CreateConfig(const string &device_name,
                                             const string &host_name,
                                             const string &lease_file_suffix,
                                             bool arp_gateway) {
-  SLOG(DHCP, 2) << __func__ << " device: " << device_name;
+  SLOG(this, 2) << __func__ << " device: " << device_name;
   return new DHCPConfig(control_interface_,
                         dispatcher_,
                         this,
@@ -71,7 +76,7 @@ DHCPConfigRefPtr DHCPProvider::CreateConfig(const string &device_name,
 }
 
 DHCPConfigRefPtr DHCPProvider::GetConfig(int pid) {
-  SLOG(DHCP, 2) << __func__ << " pid: " << pid;
+  SLOG(this, 2) << __func__ << " pid: " << pid;
   PIDConfigMap::const_iterator it = configs_.find(pid);
   if (it == configs_.end()) {
     return nullptr;
@@ -80,17 +85,17 @@ DHCPConfigRefPtr DHCPProvider::GetConfig(int pid) {
 }
 
 void DHCPProvider::BindPID(int pid, const DHCPConfigRefPtr &config) {
-  SLOG(DHCP, 2) << __func__ << " pid: " << pid;
+  SLOG(this, 2) << __func__ << " pid: " << pid;
   configs_[pid] = config;
 }
 
 void DHCPProvider::UnbindPID(int pid) {
-  SLOG(DHCP, 2) << __func__ << " pid: " << pid;
+  SLOG(this, 2) << __func__ << " pid: " << pid;
   configs_.erase(pid);
 }
 
 void DHCPProvider::DestroyLease(const string &name) {
-  SLOG(DHCP, 2) << __func__ << " name: " << name;
+  SLOG(this, 2) << __func__ << " name: " << name;
   base::DeleteFile(root_.Append(
       base::StringPrintf(kDHCPCDPathFormatLease,
                          name.c_str())), false);

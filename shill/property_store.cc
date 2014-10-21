@@ -20,6 +20,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kProperty;
+static string ObjectID(const PropertyStore *p) { return "(property_store)"; }
+}
+
 PropertyStore::PropertyStore() {}
 
 PropertyStore::PropertyStore(PropertyChangeCallback on_property_changed) :
@@ -226,7 +231,7 @@ bool PropertyStore::SetRpcIdentifierProperty(const string &name,
 }
 
 bool PropertyStore::ClearProperty(const string &name, Error *error) {
-  SLOG(Property, 2) << "Clearing " << name << ".";
+  SLOG(this, 2) << "Clearing " << name << ".";
 
   if (ContainsKey(bool_properties_, name)) {
     bool_properties_[name]->Clear(error);
@@ -654,8 +659,8 @@ bool PropertyStore::GetProperty(
     Error *error,
     const map<string, std::shared_ptr<AccessorInterface<V>>> &collection,
     const string &value_type_english) const {
-  SLOG(Property, 2) << "Getting " << name << " as " << value_type_english
-                    << ".";
+  SLOG(this, 2) << "Getting " << name << " as " << value_type_english
+                << ".";
   typename map<string, std::shared_ptr<AccessorInterface<V>>>::const_iterator
       it = collection.find(name);
   if (it != collection.end()) {
@@ -684,8 +689,8 @@ bool PropertyStore::SetProperty(
     map<string, std::shared_ptr<AccessorInterface<V>>>* collection,
     const string &value_type_english) {
   bool ret = false;
-  SLOG(Property, 2) << "Setting " << name << " as " << value_type_english
-                    << ".";
+  SLOG(this, 2) << "Setting " << name << " as " << value_type_english
+                << ".";
   if (ContainsKey(*collection, name)) {
     ret = (*collection)[name]->Set(value, error);
     if (ret) {

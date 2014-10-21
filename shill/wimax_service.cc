@@ -25,6 +25,11 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kWiMax;
+static string ObjectID(WiMaxService *w) { return w->GetRpcIdentifier(); }
+}
+
 const char WiMaxService::kStorageNetworkId[] = "NetworkId";
 const char WiMaxService::kNetworkIdProperty[] = "NetworkId";
 
@@ -84,7 +89,7 @@ void WiMaxService::Stop() {
 }
 
 bool WiMaxService::Start(WiMaxNetworkProxyInterface *proxy) {
-  SLOG(WiMax, 2) << __func__;
+  SLOG(this, 2) << __func__;
   CHECK(proxy);
   std::unique_ptr<WiMaxNetworkProxyInterface> local_proxy(proxy);
   if (IsStarted()) {
@@ -128,7 +133,7 @@ bool WiMaxService::IsStarted() const {
 }
 
 void WiMaxService::Connect(Error *error, const char *reason) {
-  SLOG(WiMax, 2) << __func__;
+  SLOG(this, 2) << __func__;
   if (device_) {
     // TODO(benchan): Populate error again after changing the way that
     // Chrome handles Error::kAlreadyConnected situation.
@@ -159,7 +164,7 @@ void WiMaxService::Connect(Error *error, const char *reason) {
 }
 
 void WiMaxService::Disconnect(Error *error, const char *reason) {
-  SLOG(WiMax, 2) << __func__;
+  SLOG(this, 2) << __func__;
   if (!device_) {
     Error::PopulateAndLog(
         error, Error::kNotConnected, "Not connected.");
@@ -214,13 +219,13 @@ void WiMaxService::OnEapCredentialsChanged(
 }
 
 void WiMaxService::UpdateConnectable() {
-  SLOG(WiMax, 2) << __func__ << "(started: " << IsStarted()
-                 << ", need passphrase: " << need_passphrase_ << ")";
+  SLOG(this, 2) << __func__ << "(started: " << IsStarted()
+                << ", need passphrase: " << need_passphrase_ << ")";
   SetConnectableFull(IsStarted() && !need_passphrase_);
 }
 
 void WiMaxService::OnSignalStrengthChanged(int strength) {
-  SLOG(WiMax, 2) << __func__ << "(" << strength << ")";
+  SLOG(this, 2) << __func__ << "(" << strength << ")";
   SetStrength(strength);
 }
 
@@ -238,7 +243,7 @@ void WiMaxService::SetDevice(WiMaxRefPtr new_device) {
 }
 
 bool WiMaxService::Save(StoreInterface *storage) {
-  SLOG(WiMax, 2) << __func__;
+  SLOG(this, 2) << __func__;
   if (!Service::Save(storage)) {
     return false;
   }
@@ -249,7 +254,7 @@ bool WiMaxService::Save(StoreInterface *storage) {
 }
 
 bool WiMaxService::Unload() {
-  SLOG(WiMax, 2) << __func__;
+  SLOG(this, 2) << __func__;
   // The base method also disconnects the service.
   Service::Unload();
   ClearPassphrase();
@@ -287,7 +292,7 @@ string WiMaxService::CreateStorageIdentifier(const WiMaxNetworkId &id,
 }
 
 void WiMaxService::ClearPassphrase() {
-  SLOG(WiMax, 2) << __func__;
+  SLOG(this, 2) << __func__;
   mutable_eap()->set_password("");
   OnEapCredentialsChanged(Service::kReasonPropertyUpdate);
 }

@@ -14,6 +14,7 @@ using std::string;
 using std::unique_ptr;
 
 namespace shill {
+
 namespace mm1 {
 
 ModemLocationProxy::ModemLocationProxy(DBus::Connection *connection,
@@ -51,7 +52,7 @@ ModemLocationProxy::Proxy::~Proxy() {}
 // org::freedesktop::ModemManager1::Modem:LocationProxy
 void ModemLocationProxy::Proxy::SetupCallback(const ::DBus::Error &dberror,
                                               void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
@@ -62,7 +63,7 @@ void ModemLocationProxy::Proxy::GetLocationCallback(
     const DBusEnumValueMap &location,
     const ::DBus::Error &dberror,
     void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   unique_ptr<DBusEnumValueMapCallback> callback(
       reinterpret_cast<DBusEnumValueMapCallback *>(data));
   Error error;

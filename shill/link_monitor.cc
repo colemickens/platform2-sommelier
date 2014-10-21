@@ -27,6 +27,11 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kLink;
+static string ObjectID(Connection *c) { return c->interface_name(); }
+}
+
 const int LinkMonitor::kDefaultTestPeriodMilliseconds = 5000;
 const char LinkMonitor::kDefaultLinkMonitorTechnologies[] = "wifi";
 const int LinkMonitor::kFailureThreshold = 5;
@@ -93,7 +98,7 @@ bool LinkMonitor::StartInternal(int probe_period_milliseconds) {
 }
 
 void LinkMonitor::Stop() {
-  SLOG(Link, 2) << "In " << __func__ << ".";
+  SLOG(connection_, 2) << "In " << __func__ << ".";
   local_mac_address_.Clear();
   gateway_mac_address_.Clear();
   arp_client_.reset();
@@ -126,8 +131,8 @@ int LinkMonitor::GetResponseTimeMilliseconds() const {
 }
 
 void LinkMonitor::AddResponseTimeSample(int response_time_milliseconds) {
-  SLOG(Link, 2) << "In " << __func__ << " with sample "
-                << response_time_milliseconds << ".";
+  SLOG(connection_, 2) << "In " << __func__ << " with sample "
+                       << response_time_milliseconds << ".";
   metrics_->NotifyLinkMonitorResponseTimeSampleAdded(
       connection_->technology(), response_time_milliseconds);
   response_sample_bucket_ += response_time_milliseconds;
@@ -156,8 +161,8 @@ bool LinkMonitor::CreateClient() {
   if (!arp_client_->StartReplyListener()) {
     return false;
   }
-  SLOG(Link, 4) << "Created ARP client; listening on socket "
-                << arp_client_->socket() << ".";
+  SLOG(connection_, 4) << "Created ARP client; listening on socket "
+                       << arp_client_->socket() << ".";
   receive_response_handler_.reset(
     dispatcher_->CreateReadyHandler(
         arp_client_->socket(),
@@ -167,7 +172,7 @@ bool LinkMonitor::CreateClient() {
 }
 
 bool LinkMonitor::AddMissedResponse() {
-  SLOG(Link, 2) << "In " << __func__ << ".";
+  SLOG(connection_, 2) << "In " << __func__ << ".";
   AddResponseTimeSample(test_period_milliseconds_);
 
   if (is_unicast_) {
@@ -211,7 +216,7 @@ bool LinkMonitor::IsGatewayFound() const {
 }
 
 void LinkMonitor::ReceiveResponse(int fd) {
-  SLOG(Link, 2) << "In " << __func__ << ".";
+  SLOG(connection_, 2) << "In " << __func__ << ".";
   ArpPacket packet;
   ByteString sender;
   if (!arp_client_->ReceivePacket(&packet, &sender)) {
@@ -219,24 +224,24 @@ void LinkMonitor::ReceiveResponse(int fd) {
   }
 
   if (!packet.IsReply()) {
-    SLOG(Link, 4) << "This is not a reply packet.  Ignoring.";
+    SLOG(connection_, 4) << "This is not a reply packet.  Ignoring.";
     return;
   }
 
   if (!connection_->local().address().Equals(
            packet.remote_ip_address().address())) {
-    SLOG(Link, 4) << "Response is not for our IP address.";
+    SLOG(connection_, 4) << "Response is not for our IP address.";
     return;
   }
 
   if (!local_mac_address_.Equals(packet.remote_mac_address())) {
-    SLOG(Link, 4) << "Response is not for our MAC address.";
+    SLOG(connection_, 4) << "Response is not for our MAC address.";
     return;
   }
 
   if (!connection_->gateway().address().Equals(
            packet.local_ip_address().address())) {
-    SLOG(Link, 4) << "Response is not from the gateway IP address.";
+    SLOG(connection_, 4) << "Response is not from the gateway IP address.";
     return;
   }
 
@@ -267,10 +272,10 @@ void LinkMonitor::ReceiveResponse(int fd) {
   if (!gateway_mac_address_.Equals(packet.local_mac_address())) {
     const ByteString &new_mac_address = packet.local_mac_address();
     if (!IsGatewayFound()) {
-      SLOG(Link, 2) << "Found gateway at "
-                    << HardwareAddressToString(new_mac_address);
+      SLOG(connection_, 2) << "Found gateway at "
+                           << HardwareAddressToString(new_mac_address);
     } else {
-      SLOG(Link, 2) << "Gateway MAC address changed.";
+      SLOG(connection_, 2) << "Gateway MAC address changed.";
     }
     gateway_mac_address_ = new_mac_address;
 
@@ -286,7 +291,7 @@ void LinkMonitor::ReceiveResponse(int fd) {
 }
 
 bool LinkMonitor::SendRequest() {
-  SLOG(Link, 2) << "In " << __func__ << ".";
+  SLOG(connection_, 2) << "In " << __func__ << ".";
   if (!arp_client_.get()) {
     if (!CreateClient()) {
       LOG(ERROR) << "Failed to start ARP client.";
@@ -309,7 +314,6 @@ bool LinkMonitor::SendRequest() {
     // Therefore we keep the already open ArpClient in the case of
     // a non-fatal timeout.
   }
-
   ByteString destination_mac_address(gateway_mac_address_.GetLength());
   if (!IsGatewayFound()) {
     // The remote MAC addess is set by convention to be all-zeroes in the

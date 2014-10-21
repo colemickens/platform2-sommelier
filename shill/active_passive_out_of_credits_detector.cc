@@ -4,6 +4,8 @@
 
 #include "shill/active_passive_out_of_credits_detector.h"
 
+#include <string>
+
 #include "shill/cellular_service.h"
 #include "shill/connection.h"
 #include "shill/connection_health_checker.h"
@@ -11,7 +13,16 @@
 #include "shill/manager.h"
 #include "shill/traffic_monitor.h"
 
+using std::string;
+
 namespace shill {
+
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kCellular;
+static string ObjectID(ActivePassiveOutOfCreditsDetector *a) {
+  return a->GetServiceRpcIdentifier();
+}
+}
 
 // static
 const int64_t
@@ -29,7 +40,8 @@ ActivePassiveOutOfCreditsDetector::ActivePassiveOutOfCreditsDetector(
     : OutOfCreditsDetector(dispatcher, manager, metrics, service),
       weak_ptr_factory_(this),
       traffic_monitor_(
-          new TrafficMonitor(service->cellular(), dispatcher)) {
+          new TrafficMonitor(service->cellular(), dispatcher)),
+      service_rpc_identifier_(service->GetRpcIdentifier()) {
   ResetDetector();
   traffic_monitor_->set_network_problem_detected_callback(
       Bind(&ActivePassiveOutOfCreditsDetector::OnNoNetworkRouting,
@@ -41,7 +53,7 @@ ActivePassiveOutOfCreditsDetector::~ActivePassiveOutOfCreditsDetector() {
 }
 
 void ActivePassiveOutOfCreditsDetector::ResetDetector() {
-  SLOG(Cellular, 2) << "Reset out-of-credits detection";
+  SLOG(this, 2) << "Reset out-of-credits detection";
   out_of_credits_detection_in_progress_ = false;
   num_connect_attempts_ = 0;
 }
@@ -52,7 +64,7 @@ bool ActivePassiveOutOfCreditsDetector::IsDetecting() const {
 
 void ActivePassiveOutOfCreditsDetector::NotifyServiceStateChanged(
     Service::ConnectState old_state, Service::ConnectState new_state) {
-  SLOG(Cellular, 2) << __func__ << ": " << old_state << " -> " << new_state;
+  SLOG(this, 2) << __func__ << ": " << old_state << " -> " << new_state;
   switch (new_state) {
     case Service::kStateUnknown:
     case Service::kStateIdle:
@@ -66,9 +78,9 @@ void ActivePassiveOutOfCreditsDetector::NotifyServiceStateChanged(
       if (old_state != Service::kStateAssociating) {
         connect_start_time_ = base::Time::Now();
         num_connect_attempts_++;
-        SLOG(Cellular, 2) << __func__
-                          << ": num_connect_attempts="
-                          << num_connect_attempts_;
+        SLOG(this, 2) << __func__
+                      << ": num_connect_attempts="
+                      << num_connect_attempts_;
       }
       break;
     case Service::kStateConnected:
@@ -76,8 +88,8 @@ void ActivePassiveOutOfCreditsDetector::NotifyServiceStateChanged(
       SetupConnectionHealthChecker();
       break;
     case Service::kStatePortal:
-      SLOG(Cellular, 2) << "Portal detection failed. Launching active probe "
-                        << "for out-of-credit detection.";
+      SLOG(this, 2) << "Portal detection failed. Launching active probe "
+                    << "for out-of-credit detection.";
       RequestConnectionHealthCheck();
       break;
     case Service::kStateConfiguring:
@@ -88,24 +100,24 @@ void ActivePassiveOutOfCreditsDetector::NotifyServiceStateChanged(
 }
 
 bool ActivePassiveOutOfCreditsDetector::StartTrafficMonitor() {
-  SLOG(Cellular, 2) << __func__;
-  SLOG(Cellular, 2) << "Service " << service()->friendly_name()
-                    << ": Traffic Monitor starting.";
+  SLOG(this, 2) << __func__;
+  SLOG(this, 2) << "Service " << service()->friendly_name()
+                << ": Traffic Monitor starting.";
   traffic_monitor_->Start();
   return true;
 }
 
 void ActivePassiveOutOfCreditsDetector::StopTrafficMonitor() {
-  SLOG(Cellular, 2) << __func__;
-  SLOG(Cellular, 2) << "Service " << service()->friendly_name()
-                    << ": Traffic Monitor stopping.";
+  SLOG(this, 2) << __func__;
+  SLOG(this, 2) << "Service " << service()->friendly_name()
+                << ": Traffic Monitor stopping.";
   traffic_monitor_->Stop();
 }
 
 void ActivePassiveOutOfCreditsDetector::OnNoNetworkRouting(int reason) {
-  SLOG(Cellular, 2) << "Service " << service()->friendly_name()
-                    << ": Traffic Monitor detected network congestion.";
-  SLOG(Cellular, 2) << "Requesting active probe for out-of-credit detection.";
+  SLOG(this, 2) << "Service " << service()->friendly_name()
+                << ": Traffic Monitor detected network congestion.";
+  SLOG(this, 2) << "Requesting active probe for out-of-credit detection.";
   RequestConnectionHealthCheck();
 }
 
@@ -132,12 +144,12 @@ void ActivePassiveOutOfCreditsDetector::SetupConnectionHealthChecker() {
 
 void ActivePassiveOutOfCreditsDetector::RequestConnectionHealthCheck() {
   if (!health_checker_.get()) {
-    SLOG(Cellular, 2) << "No health checker exists, cannot request "
-                      << "health check.";
+    SLOG(this, 2) << "No health checker exists, cannot request "
+                  << "health check.";
     return;
   }
   if (health_checker_->health_check_in_progress()) {
-    SLOG(Cellular, 2) << "Health check already in progress.";
+    SLOG(this, 2) << "Health check already in progress.";
     return;
   }
   health_checker_->Start();
@@ -145,8 +157,8 @@ void ActivePassiveOutOfCreditsDetector::RequestConnectionHealthCheck() {
 
 void ActivePassiveOutOfCreditsDetector::OnConnectionHealthCheckerResult(
     ConnectionHealthChecker::Result result) {
-  SLOG(Cellular, 2) << __func__ << "(Result = "
-                    << ConnectionHealthChecker::ResultToString(result) << ")";
+  SLOG(this, 2) << __func__ << "(Result = "
+                << ConnectionHealthChecker::ResultToString(result) << ")";
 
   if (result == ConnectionHealthChecker::kResultCongestedTxQueue) {
     LOG(WARNING) << "Active probe determined possible out-of-credits "
@@ -159,7 +171,7 @@ void ActivePassiveOutOfCreditsDetector::OnConnectionHealthCheckerResult(
       metrics()->NotifyCellularOutOfCredits(reason);
 
       ReportOutOfCredits(true);
-      SLOG(Cellular, 2) << "Disconnecting due to out-of-credit scenario.";
+      SLOG(this, 2) << "Disconnecting due to out-of-credit scenario.";
       Error error;
       service()->Disconnect(&error, "out-of-credits");
     }
@@ -180,8 +192,8 @@ void ActivePassiveOutOfCreditsDetector::DetectConnectDisconnectLoop(
   //
   // TODO(thieule): Remove this workaround (crosbug.com/p/18169).
   if (out_of_credits()) {
-    SLOG(Cellular, 2) << __func__
-                      << ": Already out-of-credits, skipping check";
+    SLOG(this, 2) << __func__
+                  << ": Already out-of-credits, skipping check";
     return;
   }
   base::TimeDelta
@@ -204,7 +216,7 @@ void ActivePassiveOutOfCreditsDetector::DetectConnectDisconnectLoop(
     //      out-of-credits warning.
     //   7. Udev fires device removed event.
     //   8. Udev fires new device event.
-    SLOG(Cellular, 2) <<
+    SLOG(this, 2) <<
         "Skipping out-of-credits detection, too soon since resume.";
     ResetDetector();
     return;
@@ -232,8 +244,8 @@ void ActivePassiveOutOfCreditsDetector::DetectConnectDisconnectLoop(
     return;
   if (time_since_connect.InSeconds() <= kOutOfCreditsConnectionDropSeconds) {
     if (num_connect_attempts_ < kOutOfCreditsMaxConnectAttempts) {
-      SLOG(Cellular, 2) << "Out-Of-Credits detection: Reconnecting "
-                        << "(retry #" << num_connect_attempts_ << ")";
+      SLOG(this, 2) << "Out-Of-Credits detection: Reconnecting "
+                    << "(retry #" << num_connect_attempts_ << ")";
       // Prevent autoconnect logic from kicking in while we perform the
       // out-of-credits detection.
       out_of_credits_detection_in_progress_ = true;

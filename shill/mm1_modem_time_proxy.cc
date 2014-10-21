@@ -14,6 +14,7 @@ using std::string;
 using std::unique_ptr;
 
 namespace shill {
+
 namespace mm1 {
 
 ModemTimeProxy::ModemTimeProxy(DBus::Connection *connection,
@@ -49,7 +50,7 @@ void ModemTimeProxy::Proxy::set_network_time_changed_callback(
 
 // Signal callbacks inherited from Proxy
 void ModemTimeProxy::Proxy::NetworkTimeChanged(const string &time) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   if (!network_time_changed_callback_.is_null())
     network_time_changed_callback_.Run(time);
 }
@@ -59,7 +60,7 @@ void ModemTimeProxy::Proxy::NetworkTimeChanged(const string &time) {
 void ModemTimeProxy::Proxy::GetNetworkTimeCallback(const string &time,
                                                    const ::DBus::Error &dberror,
                                                    void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   unique_ptr<StringCallback> callback(reinterpret_cast<StringCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);

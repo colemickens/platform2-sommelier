@@ -19,6 +19,11 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDBus;
+static string ObjectID(DBusManager *d) { return "(dbus_manager)"; }
+}
+
 namespace {
 
 const int kDefaultRPCTimeoutMS = 30000;
@@ -31,7 +36,7 @@ DBusManager::DBusManager()
 DBusManager::~DBusManager() {}
 
 void DBusManager::Start() {
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   if (proxy_.get()) {
     return;
   }
@@ -41,7 +46,7 @@ void DBusManager::Start() {
 }
 
 void DBusManager::Stop() {
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   proxy_.reset();
   name_watchers_.clear();
 }

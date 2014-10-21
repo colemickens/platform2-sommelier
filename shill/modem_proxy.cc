@@ -72,13 +72,13 @@ void ModemProxy::Proxy::set_state_changed_callback(
 
 void ModemProxy::Proxy::StateChanged(
     const uint32_t &old, const uint32_t &_new, const uint32_t &reason) {
-  SLOG(DBus, 2) << __func__ << "(" << old << ", " << _new << ", "
-                 << reason << ")";
+  SLOG(&path(), 2) << __func__ << "(" << old << ", " << _new << ", "
+                   << reason << ")";
   state_changed_callback_.Run(old, _new, reason);
 }
 
 void ModemProxy::Proxy::EnableCallback(const DBus::Error &dberror, void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -88,7 +88,7 @@ void ModemProxy::Proxy::EnableCallback(const DBus::Error &dberror, void *data) {
 void ModemProxy::Proxy::GetInfoCallback(const ModemHardwareInfo &info,
                                         const DBus::Error &dberror,
                                         void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   unique_ptr<ModemInfoCallback> callback(
       reinterpret_cast<ModemInfoCallback *>(data));
   Error error;
@@ -98,7 +98,7 @@ void ModemProxy::Proxy::GetInfoCallback(const ModemHardwareInfo &info,
 
 void ModemProxy::Proxy::DisconnectCallback(const DBus::Error &dberror,
                                            void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);

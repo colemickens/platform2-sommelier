@@ -6,6 +6,7 @@
 #define SHILL_ACTIVE_PASSIVE_OUT_OF_CREDITS_DETECTOR_H_
 
 #include <memory>
+#include <string>
 
 #include <base/time/time.h>
 
@@ -35,6 +36,10 @@ class ActivePassiveOutOfCreditsDetector : public OutOfCreditsDetector {
 
   const TrafficMonitor *traffic_monitor() const {
     return traffic_monitor_.get();
+  }
+
+  const std::string &GetServiceRpcIdentifier() const {
+    return service_rpc_identifier_;
   }
 
  private:
@@ -100,6 +105,9 @@ class ActivePassiveOutOfCreditsDetector : public OutOfCreditsDetector {
   int num_connect_attempts_;
   // Flag indicating whether out-of-credits detection is in progress.
   bool out_of_credits_detection_in_progress_;
+
+  // String to hold service identifier for scoped logging.
+  std::string service_rpc_identifier_;
 
   DISALLOW_COPY_AND_ASSIGN(ActivePassiveOutOfCreditsDetector);
 };

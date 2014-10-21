@@ -14,6 +14,7 @@ using std::string;
 using std::unique_ptr;
 
 namespace shill {
+
 namespace mm1 {
 
 template<typename TraceMsgT, typename CallT, typename CallbackT,
@@ -38,7 +39,7 @@ void SimProxy::SendPin(const string &pin,
                        const ResultCallback &callback,
                        int timeout) {
   // pin is intentionally not logged.
-  SLOG(Modem, 2) << __func__ << "( XXX, " << timeout << ")";
+  SLOG(&proxy_.path(), 2) << __func__ << "( XXX, " << timeout << ")";
   BeginCall(__func__, &Proxy::SendPinAsync, callback, error, timeout,
             pin);
 }
@@ -49,7 +50,7 @@ void SimProxy::SendPuk(const string &puk,
                        const ResultCallback &callback,
                        int timeout) {
   // pin and puk are intentionally not logged.
-  SLOG(Modem, 2) << __func__ << "( XXX, XXX, " << timeout << ")";
+  SLOG(&proxy_.path(), 2) << __func__ << "( XXX, XXX, " << timeout << ")";
   BeginCall(__func__, &Proxy::SendPukAsync, callback, error, timeout,
             puk, pin);
 }
@@ -60,7 +61,8 @@ void SimProxy::EnablePin(const string &pin,
                          const ResultCallback &callback,
                          int timeout) {
   // pin is intentionally not logged.
-  SLOG(Modem, 2) << __func__ << "( XXX, " << enabled << ", " << timeout << ")";
+  SLOG(&proxy_.path(), 2) << __func__ << "( XXX, "
+                          << enabled << ", " << timeout << ")";
   BeginCall(__func__, &Proxy::EnablePinAsync, callback, error, timeout,
             pin, enabled);
 }
@@ -71,7 +73,7 @@ void SimProxy::ChangePin(const string &old_pin,
                          const ResultCallback &callback,
                          int timeout) {
   // old_pin and new_pin are intentionally not logged.
-  SLOG(Modem, 2) << __func__ << "( XXX, XXX, " << timeout << ")";
+  SLOG(&proxy_.path(), 2) << __func__ << "( XXX, XXX, " << timeout << ")";
   BeginCall(__func__, &Proxy::ChangePinAsync, callback, error, timeout,
             old_pin, new_pin);
 }
@@ -83,12 +85,11 @@ SimProxy::Proxy::Proxy(DBus::Connection *connection,
 
 SimProxy::Proxy::~Proxy() {}
 
-
 // Method callbacks inherited from
 // org::freedesktop::ModemManager1::SimProxy
 void SimProxy::Proxy::SendPinCallback(const ::DBus::Error &dberror,
                                       void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(DBus, &path(), 2) << __func__;
   unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
@@ -97,7 +98,7 @@ void SimProxy::Proxy::SendPinCallback(const ::DBus::Error &dberror,
 
 void SimProxy::Proxy::SendPukCallback(const ::DBus::Error &dberror,
                                       void *data)  {
-  SLOG(DBus, 2) << __func__;
+  SLOG(DBus, &path(), 2) << __func__;
   unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
@@ -106,7 +107,7 @@ void SimProxy::Proxy::SendPukCallback(const ::DBus::Error &dberror,
 
 void SimProxy::Proxy::EnablePinCallback(const ::DBus::Error &dberror,
                                         void *data)  {
-  SLOG(DBus, 2) << __func__;
+  SLOG(DBus, &path(), 2) << __func__;
   unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
@@ -115,7 +116,7 @@ void SimProxy::Proxy::EnablePinCallback(const ::DBus::Error &dberror,
 
 void SimProxy::Proxy::ChangePinCallback(const ::DBus::Error &dberror,
                                         void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(DBus, &path(), 2) << __func__;
   unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);

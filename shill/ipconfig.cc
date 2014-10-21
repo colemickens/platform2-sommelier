@@ -20,6 +20,11 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kInet;
+static string ObjectID(IPConfig *i) { return i->GetRpcIdentifier(); }
+}
+
 namespace {
 
 const time_t kDefaultLeaseExpirationTime = LONG_MAX;
@@ -70,11 +75,11 @@ void IPConfig::Init() {
                              &properties_.web_proxy_auto_discovery);
   time_ = Time::GetInstance();
   current_lease_expiration_time_ = {kDefaultLeaseExpirationTime, 0};
-  SLOG(Inet, 2) << __func__ << " device: " << device_name();
+  SLOG(this, 2) << __func__ << " device: " << device_name();
 }
 
 IPConfig::~IPConfig() {
-  SLOG(Inet, 2) << __func__ << " device: " << device_name();
+  SLOG(this, 2) << __func__ << " device: " << device_name();
 }
 
 string IPConfig::GetRpcIdentifier() {

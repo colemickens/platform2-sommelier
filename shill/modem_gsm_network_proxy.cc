@@ -58,7 +58,7 @@ void ModemGSMNetworkProxy::Scan(Error *error,
 }
 
 uint32_t ModemGSMNetworkProxy::AccessTechnology() {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&proxy_.path(), 2) << __func__;
   try {
   return proxy_.AccessTechnology();
   } catch (const DBus::Error &e) {
@@ -105,7 +105,7 @@ void ModemGSMNetworkProxy::Proxy::set_registration_info_callback(
 }
 
 void ModemGSMNetworkProxy::Proxy::SignalQuality(const uint32_t &quality) {
-  SLOG(DBus, 2) << __func__ << "(" << quality << ")";
+  SLOG(&path(), 2) << __func__ << "(" << quality << ")";
   if (!signal_quality_callback_.is_null())
     signal_quality_callback_.Run(quality);
 }
@@ -114,21 +114,21 @@ void ModemGSMNetworkProxy::Proxy::RegistrationInfo(
     const uint32_t &status,
     const string &operator_code,
     const string &operator_name) {
-  SLOG(DBus, 2) << __func__ << "(" << status << ", " << operator_code << ", "
+  SLOG(&path(), 2) << __func__ << "(" << status << ", " << operator_code << ", "
                  << operator_name << ")";
   if (!registration_info_callback_.is_null())
     registration_info_callback_.Run(status, operator_code, operator_name);
 }
 
 void ModemGSMNetworkProxy::Proxy::NetworkMode(const uint32_t &mode) {
-  SLOG(DBus, 2) << __func__ << "(" << mode << ")";
+  SLOG(&path(), 2) << __func__ << "(" << mode << ")";
   if (!network_mode_callback_.is_null())
     network_mode_callback_.Run(mode);
 }
 
 void ModemGSMNetworkProxy::Proxy::RegisterCallback(const DBus::Error &dberror,
                                                    void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -137,7 +137,7 @@ void ModemGSMNetworkProxy::Proxy::RegisterCallback(const DBus::Error &dberror,
 
 void ModemGSMNetworkProxy::Proxy::GetRegistrationInfoCallback(
     const GSMRegistrationInfo &info, const DBus::Error &dberror, void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   unique_ptr<RegistrationInfoCallback> callback(
       reinterpret_cast<RegistrationInfoCallback *>(data));
   Error error;
@@ -147,7 +147,7 @@ void ModemGSMNetworkProxy::Proxy::GetRegistrationInfoCallback(
 
 void ModemGSMNetworkProxy::Proxy::GetSignalQualityCallback(
     const uint32_t &quality, const DBus::Error &dberror, void *data) {
-  SLOG(DBus, 2) << __func__ << "(" << quality << ")";
+  SLOG(&path(), 2) << __func__ << "(" << quality << ")";
   unique_ptr<SignalQualityCallback> callback(
       reinterpret_cast<SignalQualityCallback *>(data));
   Error error;
@@ -158,7 +158,7 @@ void ModemGSMNetworkProxy::Proxy::GetSignalQualityCallback(
 void ModemGSMNetworkProxy::Proxy::ScanCallback(const GSMScanResults &results,
                                                const DBus::Error &dberror,
                                                void *data) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(&path(), 2) << __func__;
   unique_ptr<ScanResultsCallback> callback(
       reinterpret_cast<ScanResultsCallback *>(data));
   Error error;

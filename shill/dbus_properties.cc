@@ -14,6 +14,10 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static string ObjectID(DBusProperties *d) { return "(dbus_properties)"; }
+}
+
 namespace {
 
 template <typename ValueType>
@@ -24,15 +28,16 @@ bool GetValue(const DBusPropertiesMap &properties,
 
   DBusPropertiesMap::const_iterator it = properties.find(key);
   if (it == properties.end()) {
-    SLOG(DBus, 2) << "Key '" << key << "' not found.";
+    SLOG(DBus, nullptr, 2) << "Key '" << key << "' not found.";
     return false;
   }
 
   string actual_type = it->second.signature();
   string expected_type = DBus::type<ValueType>::sig();
   if (actual_type != expected_type) {
-    SLOG(DBus, 2) << "Key '" << key << "' type mismatch (expected '"
-                  << expected_type << "', actual '" << actual_type << "').";
+    SLOG(DBus, nullptr, 2) << "Key '" << key << "' type mismatch (expected '"
+                           << expected_type << "', actual '" << actual_type
+                           << "').";
     return false;
   }
 

@@ -20,6 +20,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kModem;
+static string ObjectID(Modem *m) { return m->path().c_str(); }
+}
+
 // TODO(petkov): Consider generating these in mm/mm-modem.h.
 const char Modem::kPropertyLinkName[] = "Device";
 const char Modem::kPropertyIPMethod[] = "IpMethod";
@@ -64,7 +69,7 @@ void Modem::Init() {
 }
 
 void Modem::OnDeviceInfoAvailable(const string &link_name) {
-  SLOG(Modem, 2) << __func__;
+  SLOG(this, 2) << __func__;
   if (pending_device_info_ && link_name_ == link_name) {
     // pending_device_info_ is only set if we've already been through
     // CreateDeviceFromModemProperties() and saved our initial
@@ -92,7 +97,7 @@ Cellular *Modem::ConstructCellular(const string &link_name,
 
 void Modem::CreateDeviceFromModemProperties(
     const DBusInterfaceToProperties &properties) {
-  SLOG(Modem, 2) << __func__;
+  SLOG(this, 2) << __func__;
 
   if (device_.get()) {
     return;
@@ -170,8 +175,8 @@ void Modem::OnDBusPropertiesChanged(
     const string &interface,
     const DBusPropertiesMap &changed_properties,
     const vector<string> &invalidated_properties) {
-  SLOG(Modem, 2) << __func__;
-  SLOG(Modem, 3) << "PropertiesChanged signal received.";
+  SLOG(this, 2) << __func__;
+  SLOG(this, 3) << "PropertiesChanged signal received.";
   if (device_.get()) {
     device_->OnDBusPropertiesChanged(interface,
                                       changed_properties,

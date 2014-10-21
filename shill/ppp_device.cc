@@ -14,6 +14,11 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kPPP;
+static string ObjectID(PPPDevice *p) { return p->link_name(); }
+}
+
 // statics
 const char PPPDevice::kDaemonPath[] = "/usr/sbin/pppd";
 const char PPPDevice::kPluginPath[] = SHIMDIR "/shill-pppd-plugin.so";
@@ -31,7 +36,7 @@ PPPDevice::~PPPDevice() {}
 
 void PPPDevice::UpdateIPConfigFromPPP(const map<string, string> &configuration,
                                       bool blackhole_ipv6) {
-  SLOG(PPP, 2) << __func__ << " on " << link_name();
+  SLOG(this, 2) << __func__ << " on " << link_name();
   IPConfig::Properties properties =
       ParseIPConfiguration(link_name(), configuration);
   properties.blackhole_ipv6 = blackhole_ipv6;
@@ -49,7 +54,7 @@ string PPPDevice::GetInterfaceName(const map<string, string> &configuration) {
 // static
 IPConfig::Properties PPPDevice::ParseIPConfiguration(
     const string &link_name, const map<string, string> &configuration) {
-  SLOG(PPP, 2) << __func__ << " on " << link_name;
+  SLOG(PPP, nullptr, 2) << __func__ << " on " << link_name;
   IPConfig::Properties properties;
   properties.address_family = IPAddress::kFamilyIPv4;
   properties.subnet_prefix = IPAddress::GetMaxPrefixLength(
@@ -57,7 +62,7 @@ IPConfig::Properties PPPDevice::ParseIPConfiguration(
   for (const auto &it : configuration)  {
     const string &key = it.first;
     const string &value = it.second;
-    SLOG(PPP, 2) << "Processing: " << key << " -> " << value;
+    SLOG(PPP, nullptr, 2) << "Processing: " << key << " -> " << value;
     if (key == kPPPInternalIP4Address) {
       properties.address = value;
     } else if (key == kPPPExternalIP4Address) {
@@ -73,7 +78,7 @@ IPConfig::Properties PPPDevice::ParseIPConfiguration(
       // our PPP plugin.
       properties.trusted_ip = value;
     } else {
-      SLOG(PPP, 2) << "Key ignored.";
+      SLOG(PPP, nullptr, 2) << "Key ignored.";
     }
   }
   if (properties.gateway.empty()) {

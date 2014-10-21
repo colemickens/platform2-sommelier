@@ -13,6 +13,11 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDBus;
+static string ObjectID(RPCTaskDBusAdaptor *r) { return r->GetRpcIdentifier(); }
+}
+
 // static
 const char RPCTaskDBusAdaptor::kPath[] = "/task/";
 
@@ -43,14 +48,14 @@ const string &RPCTaskDBusAdaptor::GetRpcConnectionIdentifier() {
 
 void RPCTaskDBusAdaptor::getsec(
     string &user, string &password, DBus::Error &error) {  // NOLINT
-  SLOG(DBus, 2) << __func__ << ": " << user;
+  SLOG(this, 2) << __func__ << ": " << user;
   task_->GetLogin(&user, &password);
 }
 
 void RPCTaskDBusAdaptor::notify(const string &reason,
                                 const map<string, string> &dict,
                                 DBus::Error &/*error*/) {  // NOLINT
-  SLOG(DBus, 2) << __func__ << ": " << reason;
+  SLOG(this, 2) << __func__ << ": " << reason;
   task_->Notify(reason, dict);
 }
 

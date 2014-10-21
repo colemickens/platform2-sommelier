@@ -25,12 +25,21 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDBus;
+static string ObjectID(DBusAdaptor *d) {
+  if (d == nullptr)
+    return "(dbus_adaptor)";
+  return d->path();
+}
+}
+
 // public static
 const char DBusAdaptor::kNullPath[] = "/";
 
 DBusAdaptor::DBusAdaptor(DBus::Connection* conn, const string &object_path)
     : DBus::ObjectAdaptor(*conn, object_path) {
-  SLOG(DBus, 2) << "DBusAdaptor: " << object_path;
+  SLOG(this, 2) << "DBusAdaptor: " << object_path;
 }
 
 DBusAdaptor::~DBusAdaptor() {}
@@ -60,7 +69,7 @@ bool DBusAdaptor::SetProperty(PropertyStore *store,
                                       value.operator map<string, string>(),
                                       &e);
   } else if (DBusAdaptor::IsStringmaps(value.signature())) {
-    SLOG(DBus, 1) << " can't yet handle setting type " << value.signature();
+    SLOG(nullptr, 1) << " can't yet handle setting type " << value.signature();
     ret = false;
     e.Populate(Error::kInternalError);
   } else if (DBusAdaptor::IsStrings(value.signature())) {
@@ -75,7 +84,7 @@ bool DBusAdaptor::SetProperty(PropertyStore *store,
   } else if (DBusAdaptor::IsUint64(value.signature())) {
     ret = store->SetUint64Property(name, value.reader().get_uint64(), &e);
   } else if (DBusAdaptor::IsKeyValueStore(value.signature())) {
-    SLOG(DBus, 1) << " can't yet handle setting type " << value.signature();
+    SLOG(nullptr, 1) << " can't yet handle setting type " << value.signature();
     ret = false;
     e.Populate(Error::kInternalError);
   } else {
@@ -228,19 +237,19 @@ void DBusAdaptor::ArgsToKeyValueStore(
     DBus::type<int32_t> int32_type;
 
     if (key_value_pair.second.signature() == bool_type.sig()) {
-      SLOG(DBus, 5) << "Got bool property " << key;
+      SLOG(nullptr, 5) << "Got bool property " << key;
       out->SetBool(key, key_value_pair.second.reader().get_bool());
     } else if (key_value_pair.second.signature() == int32_type.sig()) {
-      SLOG(DBus, 5) << "Got int32_t property " << key;
+      SLOG(nullptr, 5) << "Got int32_t property " << key;
       out->SetInt(key, key_value_pair.second.reader().get_int32());
     } else if (key_value_pair.second.signature() == string_type.sig()) {
-      SLOG(DBus, 5) << "Got string property " << key;
+      SLOG(nullptr, 5) << "Got string property " << key;
       out->SetString(key, key_value_pair.second.reader().get_string());
     } else if (DBusAdaptor::IsStrings(key_value_pair.second.signature())) {
-      SLOG(DBus, 5) << "Got strings property " << key;
+      SLOG(nullptr, 5) << "Got strings property " << key;
       out->SetStrings(key, key_value_pair.second.operator vector<string>());
     } else if (DBusAdaptor::IsStringmap(key_value_pair.second.signature())) {
-      SLOG(DBus, 5) << "Got stringmap property " << key;
+      SLOG(nullptr, 5) << "Got stringmap property " << key;
       out->SetStringmap(
           key, key_value_pair.second.operator map<string, string>());
     } else {
@@ -493,7 +502,7 @@ void DBusAdaptor::ReplyNowWithError(const DBus::Tag *tag,
                                     const DBus::Error &error) {
   Continuation *cont = find_continuation(tag);
   CHECK(cont) << "Failed to find continuation.";
-  SLOG(DBus, 1) << "Returning error: (" << error.name() << ": "
+  SLOG(this, 1) << "Returning error: (" << error.name() << ": "
                 << error.message() << ")";
   return_error(cont, error);
 }

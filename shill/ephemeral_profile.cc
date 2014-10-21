@@ -15,6 +15,11 @@ namespace shill {
 
 using std::string;
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kProfile;
+static string ObjectID(EphemeralProfile *e) { return e->GetRpcIdentifier(); }
+}
+
 // static
 const char EphemeralProfile::kFriendlyName[] = "(ephemeral)";
 
@@ -31,8 +36,8 @@ string EphemeralProfile::GetFriendlyName() {
 }
 
 bool EphemeralProfile::AdoptService(const ServiceRefPtr &service) {
-  SLOG(Profile, 2) << "Adding service " << service->unique_name()
-                   << " to ephemeral profile.";
+  SLOG(this, 2) << "Adding service " << service->unique_name()
+                << " to ephemeral profile.";
   service->SetProfile(this);
   return true;
 }
@@ -40,8 +45,8 @@ bool EphemeralProfile::AdoptService(const ServiceRefPtr &service) {
 bool EphemeralProfile::AbandonService(const ServiceRefPtr &service) {
   if (service->profile() == this)
     service->SetProfile(nullptr);
-  SLOG(Profile, 2) << "Removing service " << service->unique_name()
-                   << " from ephemeral profile.";
+  SLOG(this, 2) << "Removing service " << service->unique_name()
+                << " from ephemeral profile.";
   return true;
 }
 

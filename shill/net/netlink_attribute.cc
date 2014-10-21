@@ -465,7 +465,6 @@ ByteString NetlinkU8Attribute::Encode() const {
       reinterpret_cast<const unsigned char *>(&value_), sizeof(value_));
 }
 
-
 // NetlinkU16Attribute
 
 const char NetlinkU16Attribute::kMyTypeString[] = "uint16_t";

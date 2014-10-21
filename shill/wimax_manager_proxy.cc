@@ -4,15 +4,23 @@
 
 #include "shill/wimax_manager_proxy.h"
 
+#include <string>
+
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/dbus_properties.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 
+using std::string;
 using std::vector;
 
 namespace shill {
+
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDBus;
+static string ObjectID(WiMaxManagerProxy *w) { return "(wimax_manager_proxy)"; }
+}
 
 WiMaxManagerProxy::WiMaxManagerProxy(DBus::Connection *connection)
     : proxy_(connection) {}
@@ -25,7 +33,7 @@ void WiMaxManagerProxy::set_devices_changed_callback(
 }
 
 RpcIdentifiers WiMaxManagerProxy::Devices(Error *error) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(this, 2) << __func__;
   vector<DBus::Path> dbus_devices;
   try {
     dbus_devices = proxy_.Devices();
@@ -51,7 +59,7 @@ void WiMaxManagerProxy::Proxy::set_devices_changed_callback(
 
 void WiMaxManagerProxy::Proxy::DevicesChanged(
     const vector<DBus::Path> &devices) {
-  SLOG(DBus, 2) << __func__ << "(" << devices.size() << ")";
+  SLOG(DBus, nullptr, 2) << __func__ << "(" << devices.size() << ")";
   if (devices_changed_callback_.is_null()) {
     return;
   }

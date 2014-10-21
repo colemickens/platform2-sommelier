@@ -21,6 +21,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kResolver;
+static string ObjectID(Resolver *r) { return "(resolver)"; }
+}
+
 namespace {
 base::LazyInstance<Resolver> g_resolver = LAZY_INSTANCE_INITIALIZER;
 }  // namespace
@@ -37,10 +42,10 @@ Resolver* Resolver::GetInstance() {
 
 bool Resolver::SetDNSFromLists(const std::vector<std::string> &dns_servers,
                                const std::vector<std::string> &domain_search) {
-  SLOG(Resolver, 2) << __func__;
+  SLOG(this, 2) << __func__;
 
   if (dns_servers.empty() && domain_search.empty()) {
-    SLOG(Resolver, 2) << "DNS list is empty";
+    SLOG(this, 2) << "DNS list is empty";
     return ClearDNS();
   }
 
@@ -83,14 +88,14 @@ bool Resolver::SetDNSFromLists(const std::vector<std::string> &dns_servers,
 
   string contents = JoinString(lines, '\n');
 
-  SLOG(Resolver, 2) << "Writing DNS out to " << path_.value();
+  SLOG(this, 2) << "Writing DNS out to " << path_.value();
   int count = base::WriteFile(path_, contents.c_str(), contents.size());
 
   return count == static_cast<int>(contents.size());
 }
 
 bool Resolver::ClearDNS() {
-  SLOG(Resolver, 2) << __func__;
+  SLOG(this, 2) << __func__;
 
   CHECK(!path_.empty());
 

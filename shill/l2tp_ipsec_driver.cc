@@ -49,6 +49,13 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kVPN;
+static string ObjectID(L2TPIPSecDriver *l) {
+  return l->GetServiceRpcIdentifier();
+}
+}
+
 namespace {
 const char kL2TPIPSecIPSecTimeoutProperty[] = "L2TPIPsec.IPsecTimeout";
 const char kL2TPIPSecLeftProtoPortProperty[] = "L2TPIPsec.LeftProtoPort";
@@ -111,6 +118,12 @@ L2TPIPSecDriver::~L2TPIPSecDriver() {
   IdleService();
 }
 
+std::string L2TPIPSecDriver::GetServiceRpcIdentifier() {
+  if (service_ == nullptr)
+    return "(l2tp_ipsec_driver)";
+  return service_->GetRpcIdentifier();
+}
+
 bool L2TPIPSecDriver::ClaimInterface(const string &link_name,
                                      int interface_index) {
   // TODO(petkov): crbug.com/212446.
@@ -128,7 +141,7 @@ void L2TPIPSecDriver::Connect(const VPNServiceRefPtr &service, Error *error) {
 }
 
 void L2TPIPSecDriver::Disconnect() {
-  SLOG(VPN, 2) << __func__;
+  SLOG(this, 2) << __func__;
   IdleService();
 }
 
@@ -156,9 +169,9 @@ void L2TPIPSecDriver::FailService(Service::ConnectFailure failure) {
 
 void L2TPIPSecDriver::Cleanup(Service::ConnectState state,
                               Service::ConnectFailure failure) {
-  SLOG(VPN, 2) << __func__ << "("
-               << Service::ConnectStateToString(state) << ", "
-               << Service::ConnectFailureToString(failure) << ")";
+  SLOG(this, 2) << __func__ << "("
+                << Service::ConnectStateToString(state) << ", "
+                << Service::ConnectFailureToString(failure) << ")";
   StopConnectTimeout();
   DeleteTemporaryFiles();
   external_task_.reset();
@@ -190,7 +203,7 @@ void L2TPIPSecDriver::DeleteTemporaryFiles() {
 }
 
 bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error *error) {
-  SLOG(VPN, 2) << __func__;
+  SLOG(this, 2) << __func__;
   std::unique_ptr<ExternalTask> external_task_local(
       new ExternalTask(control_, glib_,
                        weak_ptr_factory_.GetWeakPtr(),
@@ -456,7 +469,7 @@ bool L2TPIPSecDriver::IsPskRequired() const {
 }
 
 KeyValueStore L2TPIPSecDriver::GetProvider(Error *error) {
-  SLOG(VPN, 2) << __func__;
+  SLOG(this, 2) << __func__;
   KeyValueStore props = VPNDriver::GetProvider(error);
   props.SetBool(kPassphraseRequiredProperty,
                 args()->LookupString(kL2tpIpsecPasswordProperty, "").empty());

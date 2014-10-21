@@ -4,13 +4,24 @@
 
 #include "shill/callback80211_metrics.h"
 
+#include <string>
+
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
 
+using std::string;
+
 namespace shill {
+
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kWiFi;
+static string ObjectID(const Callback80211Metrics *c) {
+  return "(callback80211metrics)";
+}
+}
 
 Callback80211Metrics::Callback80211Metrics(Metrics *metrics)
     : metrics_(metrics) {}
@@ -25,7 +36,7 @@ IEEE_80211::WiFiReasonCode Callback80211Metrics::WiFiReasonCodeFromUint16(
       (reason >= IEEE_80211::kReasonCodeReservedBegin40 &&
        reason <= IEEE_80211::kReasonCodeReservedEnd44) ||
       reason >= IEEE_80211::kReasonCodeMax) {
-    SLOG(WiFi, 1) << "Invalid reason code in disconnect message";
+    SLOG(this, 1) << "Invalid reason code in disconnect message";
     reason_enum = IEEE_80211::kReasonCodeInvalid;
   } else {
     reason_enum = static_cast<IEEE_80211::WiFiReasonCode>(reason);
@@ -51,26 +62,26 @@ void Callback80211Metrics::CollectDisconnectStatistics(
   // disconnect message.
   uint16_t reason = IEEE_80211::kReasonCodeUnspecified;
   if (message.command() == DeauthenticateMessage::kCommand) {
-    SLOG(WiFi, 3) << "Handling Deauthenticate Message";
+    SLOG(this, 3) << "Handling Deauthenticate Message";
     message.Print(3, 3);
     // If there's no frame, this is probably an AP-caused disconnect and
     // there'll be a disconnect message to tell us about that.
     ByteString rawdata;
     if (!message.const_attributes()->GetRawAttributeValue(NL80211_ATTR_FRAME,
                                                           &rawdata)) {
-      SLOG(WiFi, 5) << "No frame in deauthenticate message, ignoring";
+      SLOG(this, 5) << "No frame in deauthenticate message, ignoring";
       return;
     }
     Nl80211Frame frame(rawdata);
     reason = frame.reason();
   } else if (message.command() == DisconnectMessage::kCommand) {
-    SLOG(WiFi, 3) << "Handling Disconnect Message";
+    SLOG(this, 3) << "Handling Disconnect Message";
     message.Print(3, 3);
     // If there's no reason code, this is probably a STA-caused disconnect and
     // there was be a disconnect message to tell us about that.
     if (!message.const_attributes()->GetU16AttributeValue(
             NL80211_ATTR_REASON_CODE, &reason)) {
-      SLOG(WiFi, 5) << "No reason code in disconnect message, ignoring";
+      SLOG(this, 5) << "No reason code in disconnect message, ignoring";
       return;
     }
   } else {
@@ -83,7 +94,7 @@ void Callback80211Metrics::CollectDisconnectStatistics(
       message.const_attributes()->IsFlagAttributeTrue(
           NL80211_ATTR_DISCONNECTED_BY_AP) ? Metrics::kDisconnectedByAp :
           Metrics::kDisconnectedNotByAp;
-  SLOG(WiFi, 1) << "Notify80211Disconnect by " << (by_whom ? "station" : "AP")
+  SLOG(this, 1) << "Notify80211Disconnect by " << (by_whom ? "station" : "AP")
                 << " because:" << reason_enum;
   metrics_->Notify80211Disconnect(by_whom, reason_enum);
 }

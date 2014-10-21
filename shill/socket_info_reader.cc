@@ -19,6 +19,11 @@ using std::vector;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kLink;
+static string ObjectID(SocketInfoReader *s) { return "(socket_info_reader)"; }
+}
+
 namespace {
 
 const char kTcpv4SocketInfoFilePath[] = "/proc/net/tcp";
@@ -51,7 +56,7 @@ bool SocketInfoReader::AppendSocketInfo(const FilePath &info_file_path,
                                         vector<SocketInfo> *info_list) {
   FileReader file_reader;
   if (!file_reader.Open(info_file_path)) {
-    SLOG(Link, 2) << __func__ << ": Failed to open '"
+    SLOG(this, 2) << __func__ << ": Failed to open '"
                   << info_file_path.value() << "'.";
     return false;
   }

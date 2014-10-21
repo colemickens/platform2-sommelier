@@ -8,13 +8,21 @@
 #include "shill/logging.h"
 
 #include <memory>
+#include <string>
 
 #include <base/macros.h>  // for ignore_result
 #include <dbus-c++/error.h>
 
 #include "shill/error.h"
 
+using std::string;
+
 namespace shill {
+
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDBus;
+static string ObjectID(const DBus::Path *p) { return *p;}
+}
 
 // The dbus-c++ async call mechanism has a funny way of handling the
 // callback parameter. In particular, the caller is responsible for
@@ -39,7 +47,7 @@ void BeginAsyncDBusCall(const TraceMsgT &trace_msg,
                         Error *error,
                         void(*error_converter)(const DBus::Error &, Error *),
                         int timeout, ArgTypes... call_args) {
-  SLOG(DBus, 2) << trace_msg << " [timeout=" << timeout << "]";
+  SLOG(&proxy.path(), 2) << trace_msg << " [timeout=" << timeout << "]";
   std::unique_ptr<CallbackT> cb(new CallbackT(callback));
   try {
     (proxy.*call)(call_args..., cb.get(), timeout);
