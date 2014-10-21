@@ -15,6 +15,7 @@ namespace testing {
 
 class StreamWriteable {
  public:
+  virtual ~StreamWriteable() {}
   virtual void WriteTo(std::ostream* out) const = 0;
 };
 
