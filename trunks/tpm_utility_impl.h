@@ -46,6 +46,17 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
                            const std::string& password,
                            const std::string& ciphertext,
                            std::string* plaintext) override;
+  TPM_RC Sign(TPM_HANDLE key_handle,
+              TPM_ALG_ID scheme,
+              TPM_ALG_ID hash_alg,
+              const std::string& password,
+              const std::string& digest,
+              std::string* signature) override;
+  TPM_RC Verify(TPM_HANDLE key_handle,
+                TPM_ALG_ID scheme,
+                TPM_ALG_ID hash_alg,
+                const std::string& digest,
+                const std::string& signature) override;
 
  private:
   const TrunksFactory& factory_;

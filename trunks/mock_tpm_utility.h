@@ -38,6 +38,17 @@ class MockTpmUtility : public TpmUtility {
                                          const std::string&,
                                          const std::string&,
                                          std::string*));
+  MOCK_METHOD6(Sign, TPM_RC(TPM_HANDLE,
+                            TPM_ALG_ID,
+                            TPM_ALG_ID,
+                            const std::string&,
+                            const std::string&,
+                            std::string*));
+  MOCK_METHOD5(Verify, TPM_RC(TPM_HANDLE,
+                              TPM_ALG_ID,
+                              TPM_ALG_ID,
+                              const std::string&,
+                              const std::string&));
 };
 
 }  // namespace trunks

@@ -63,8 +63,7 @@ class CHROMEOS_EXPORT TpmUtility {
   // This method performs an encryption operation using a LOADED RSA key
   // referrenced by its handle |key_handle|. The |plaintext| is then encrypted
   // to give us the |ciphertext|. |scheme| refers to the encryption scheme
-  // to be used. By default keys use OAEP, but for an unrestricted key,
-  // TPM_ALG_RSAES is a valid input
+  // to be used. By default keys use OAEP, but can also use TPM_ALG_RSAES.
   virtual TPM_RC AsymmetricEncrypt(TPM_HANDLE key_handle,
                                    TPM_ALG_ID scheme,
                                    const std::string& plaintext,
@@ -74,12 +73,38 @@ class CHROMEOS_EXPORT TpmUtility {
   // referenced by its handle |key_handle|. The |ciphertext| is then decrypted
   // to give us the |plaintext|. We need |password| to authorize use of the
   // key. |scheme| refers to the decryption scheme used. By default it is
-  // OAEP, but TPM_ALG_RSAES can be used with an unrestricted key.
+  // OAEP, but TPM_ALG_RSAES can be specified.
   virtual TPM_RC AsymmetricDecrypt(TPM_HANDLE key_handle,
                                    TPM_ALG_ID scheme,
                                    const std::string& password,
                                    const std::string& ciphertext,
                                    std::string* plaintext) = 0;
+
+  // This method takes an unrestricted signing key referenced by |key_handle|
+  // and uses it to sign the value of |digest|. The signature produced is
+  // returned using the |signature| argument. We use the |password| argument
+  // to authorize use of the key. |scheme| is used to specify the signature
+  // scheme used. By default it is TPM_ALG_RSASSA, but TPM_ALG_RSAPPS can
+  // be specified. hash_alg is the algorithm used in the signing operation.
+  // It is by default TPM_ALG_SHA256.
+  virtual TPM_RC Sign(TPM_HANDLE key_handle,
+                      TPM_ALG_ID scheme,
+                      TPM_ALG_ID hash_alg,
+                      const std::string& password,
+                      const std::string& digest,
+                      std::string* signature) = 0;
+
+  // This method verifies that the signature produced on the digest was
+  // performed by |key_handle|. |scheme| and |hash| refer to the signature
+  // scheme used to sign |digest| and produce the signature. This value is by
+  // default TPM_ALG_RSASSA with TPM_ALG_SHA256 but can take the value of
+  // TPM_ALG_RSAPPS with other hash algorithms supported by the tpm.
+  // Returns TPM_RC_SUCCESS when the signature is correct.
+  virtual TPM_RC Verify(TPM_HANDLE key_handle,
+                        TPM_ALG_ID scheme,
+                        TPM_ALG_ID hash_alg,
+                        const std::string& digest,
+                        const std::string& signature) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TpmUtility);

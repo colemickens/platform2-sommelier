@@ -104,7 +104,7 @@ class TpmUtilityForwarder : public TpmUtility {
   TPM_RC AsymmetricEncrypt(TPM_HANDLE key_handle,
                            TPM_ALG_ID scheme,
                            const std::string& plaintext,
-                           std::string* ciphertext) {
+                           std::string* ciphertext) override {
     return target_->AsymmetricEncrypt(key_handle,
                                       scheme,
                                       plaintext,
@@ -115,12 +115,34 @@ class TpmUtilityForwarder : public TpmUtility {
                            TPM_ALG_ID scheme,
                            const std::string& password,
                            const std::string& ciphertext,
-                           std::string* plaintext) {
+                           std::string* plaintext) override {
     return target_->AsymmetricDecrypt(key_handle,
                                       scheme,
                                       password,
                                       ciphertext,
                                       plaintext);
+  }
+
+  TPM_RC Sign(TPM_HANDLE key_handle,
+              TPM_ALG_ID scheme,
+              TPM_ALG_ID hash_alg,
+              const std::string& password,
+              const std::string& digest,
+              std::string* signature) override {
+    return target_->Sign(key_handle,
+                         scheme,
+                         hash_alg,
+                         password,
+                         digest,
+                         signature);
+  }
+
+  TPM_RC Verify(TPM_HANDLE key_handle,
+                TPM_ALG_ID scheme,
+                TPM_ALG_ID hash_alg,
+                const std::string& digest,
+                const std::string& signature) override {
+    return target_->Verify(key_handle, scheme, hash_alg, digest, signature);
   }
 
  private:

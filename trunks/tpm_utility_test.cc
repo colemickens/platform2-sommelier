@@ -18,6 +18,7 @@ using testing::_;
 using testing::DoAll;
 using testing::NiceMock;
 using testing::Return;
+using testing::SaveArg;
 using testing::SetArgPointee;
 
 namespace trunks {
@@ -26,6 +27,7 @@ namespace {
 
 const trunks::TPMA_OBJECT kRestricted = 1U << 16;
 const trunks::TPMA_OBJECT kDecrypt = 1U << 17;
+const trunks::TPMA_OBJECT kSign = 1U << 18;
 
 }  // namespace
 
@@ -466,6 +468,396 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptBadParams) {
                                                              password,
                                                              ciphertext,
                                                              &plaintext));
+}
+
+TEST_F(TpmUtilityTest, SignSuccess) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string password;
+  std::string digest;
+  TPMT_SIGNATURE signature_out;
+  signature_out.signature.rsassa.sig.size = 2;
+  signature_out.signature.rsassa.sig.buffer[0] = 'h';
+  signature_out.signature.rsassa.sig.buffer[1] = 'i';
+  std::string signature;
+  NullAuthorizationDelegate delegate;
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kSign;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, SignSync(key_handle, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<5>(signature_out),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.Sign(key_handle,
+                                         TPM_ALG_NULL,
+                                         TPM_ALG_NULL,
+                                         password,
+                                         digest,
+                                         &signature));
+  EXPECT_EQ(0, signature.compare("hi"));
+}
+
+TEST_F(TpmUtilityTest, SignFail) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string password;
+  std::string digest;
+  std::string signature;
+  NullAuthorizationDelegate delegate;
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kSign;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, SignSync(key_handle, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.Sign(key_handle,
+                                         TPM_ALG_NULL,
+                                         TPM_ALG_NULL,
+                                         password,
+                                         digest,
+                                         &signature));
+}
+
+TEST_F(TpmUtilityTest, SignBadParams1) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string password;
+  std::string digest;
+  std::string signature;
+  NullAuthorizationDelegate delegate;
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kSign | kRestricted;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.Sign(key_handle,
+                                                TPM_ALG_RSAPSS,
+                                                TPM_ALG_NULL,
+                                                password,
+                                                digest,
+                                                &signature));
+}
+
+TEST_F(TpmUtilityTest, SignBadParams2) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string password;
+  std::string digest;
+  std::string signature;
+  NullAuthorizationDelegate delegate;
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kDecrypt;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.Sign(key_handle,
+                                                TPM_ALG_RSAPSS,
+                                                TPM_ALG_NULL,
+                                                password,
+                                                digest,
+                                                &signature));
+}
+
+TEST_F(TpmUtilityTest, SignBadParams3) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string password;
+  std::string digest;
+  std::string signature;
+  NullAuthorizationDelegate delegate;
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_ECC;
+  public_area.public_area.object_attributes = kSign;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.Sign(key_handle,
+                                                TPM_ALG_RSAPSS,
+                                                TPM_ALG_NULL,
+                                                password,
+                                                digest,
+                                                &signature));
+}
+
+TEST_F(TpmUtilityTest, SignBadParams4) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string password;
+  std::string digest;
+  std::string signature;
+  NullAuthorizationDelegate delegate;
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kSign;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_FAILURE)));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.Sign(key_handle,
+                                         TPM_ALG_RSAPSS,
+                                         TPM_ALG_NULL,
+                                         password,
+                                         digest,
+                                         &signature));
+}
+
+TEST_F(TpmUtilityTest, SignBadParams5) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle = 0;
+  std::string password;
+  std::string digest;
+  std::string signature;
+  NullAuthorizationDelegate delegate;
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.Sign(key_handle,
+                                                TPM_ALG_AES,
+                                                TPM_ALG_NULL,
+                                                password,
+                                                digest,
+                                                &signature));
+}
+
+
+TEST_F(TpmUtilityTest, SignNullSchemeForward) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string password;
+  std::string digest;
+  TPMT_SIGNATURE signature_out;
+  signature_out.signature.rsassa.sig.size = 0;
+  std::string signature;
+  NullAuthorizationDelegate delegate;
+  TPM2B_PUBLIC public_area;
+  TPMT_SIG_SCHEME scheme;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kSign;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, SignSync(key_handle, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<5>(signature_out),
+                      SaveArg<3>(&scheme),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.Sign(key_handle,
+                                         TPM_ALG_NULL,
+                                         TPM_ALG_NULL,
+                                         password,
+                                         digest,
+                                         &signature));
+  EXPECT_EQ(scheme.scheme, TPM_ALG_RSASSA);
+  EXPECT_EQ(scheme.details.rsassa.hash_alg, TPM_ALG_SHA256);
+}
+
+TEST_F(TpmUtilityTest, SignSchemeForward) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string password;
+  std::string digest;
+  TPMT_SIGNATURE signature_out;
+  signature_out.signature.rsassa.sig.size = 0;
+  std::string signature;
+  NullAuthorizationDelegate delegate;
+  TPM2B_PUBLIC public_area;
+  TPMT_SIG_SCHEME scheme;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kSign;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, SignSync(key_handle, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<5>(signature_out),
+                      SaveArg<3>(&scheme),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.Sign(key_handle,
+                                         TPM_ALG_RSAPSS,
+                                         TPM_ALG_SHA512,
+                                         password,
+                                         digest,
+                                         &signature));
+  EXPECT_EQ(scheme.scheme, TPM_ALG_RSAPSS);
+  EXPECT_EQ(scheme.details.rsapss.hash_alg, TPM_ALG_SHA512);
+}
+
+TEST_F(TpmUtilityTest, VerifySuccess) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string digest;
+  std::string signature;
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kSign;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, VerifySignatureSync(key_handle, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.Verify(key_handle,
+                                           TPM_ALG_NULL,
+                                           TPM_ALG_NULL,
+                                           digest,
+                                           signature));
+}
+
+TEST_F(TpmUtilityTest, VerifyFail) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string digest;
+  std::string signature;
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kSign;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, VerifySignatureSync(key_handle, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.Verify(key_handle,
+                                           TPM_ALG_NULL,
+                                           TPM_ALG_NULL,
+                                           digest,
+                                           signature));
+}
+
+TEST_F(TpmUtilityTest, VerifyBadParams1) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string digest;
+  std::string signature;
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kSign | kRestricted;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.Verify(key_handle,
+                                                  TPM_ALG_NULL,
+                                                  TPM_ALG_NULL,
+                                                  digest,
+                                                  signature));
+}
+
+TEST_F(TpmUtilityTest, VerifyBadParams2) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string digest;
+  std::string signature;
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kDecrypt;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.Verify(key_handle,
+                                                  TPM_ALG_NULL,
+                                                  TPM_ALG_NULL,
+                                                  digest,
+                                                  signature));
+}
+
+TEST_F(TpmUtilityTest, VerifyBadParams3) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string digest;
+  std::string signature;
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_ECC;
+  public_area.public_area.object_attributes = kSign;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.Verify(key_handle,
+                                                  TPM_ALG_NULL,
+                                                  TPM_ALG_NULL,
+                                                  digest,
+                                                  signature));
+}
+
+TEST_F(TpmUtilityTest, VerifyBadParams4) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string digest;
+  std::string signature;
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kSign;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_FAILURE)));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.Verify(key_handle,
+                                           TPM_ALG_NULL,
+                                           TPM_ALG_NULL,
+                                           digest,
+                                           signature));
+}
+
+TEST_F(TpmUtilityTest, VerifyBadParams5) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string digest;
+  std::string signature;
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kSign;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.Verify(key_handle,
+                                                  TPM_ALG_AES,
+                                                  TPM_ALG_NULL,
+                                                  digest,
+                                                  signature));
+}
+
+TEST_F(TpmUtilityTest, VerifyNullSchemeForward) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string digest;
+  std::string signature;
+  TPM2B_PUBLIC public_area;
+  TPMT_SIGNATURE signature_in;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kSign;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, VerifySignatureSync(key_handle, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<3>(&signature_in),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.Verify(key_handle,
+                                           TPM_ALG_NULL,
+                                           TPM_ALG_NULL,
+                                           digest,
+                                           signature));
+  EXPECT_EQ(signature_in.sig_alg, TPM_ALG_RSASSA);
+  EXPECT_EQ(signature_in.signature.rsassa.hash, TPM_ALG_SHA256);
+}
+
+TEST_F(TpmUtilityTest, VerifySchemeForward) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string digest;
+  std::string signature;
+  TPM2B_PUBLIC public_area;
+  TPMT_SIGNATURE signature_in;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kSign;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, VerifySignatureSync(key_handle, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<3>(&signature_in),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.Verify(key_handle,
+                                           TPM_ALG_RSAPSS,
+                                           TPM_ALG_SHA512,
+                                           digest,
+                                           signature));
+  EXPECT_EQ(signature_in.sig_alg, TPM_ALG_RSAPSS);
+  EXPECT_EQ(signature_in.signature.rsassa.hash, TPM_ALG_SHA512);
 }
 
 }  // namespace trunks

@@ -28,6 +28,7 @@ const trunks::TPMA_OBJECT kUserWithAuth = 1U << 6;
 const trunks::TPMA_OBJECT kNoDA = 1U << 10;
 const trunks::TPMA_OBJECT kRestricted = 1U << 16;
 const trunks::TPMA_OBJECT kDecrypt = 1U << 17;
+const trunks::TPMA_OBJECT kSign = 1U << 18;
 
 // Returns a serialized representation of the unmodified handle. This is useful
 // for predefined handle values, like TPM_RH_OWNER. For details on what types of
@@ -475,6 +476,140 @@ TPM_RC TpmUtilityImpl::AsymmetricDecrypt(TPM_HANDLE key_handle,
     return return_code;
   }
   plaintext->assign(StringFrom_TPM2B_PUBLIC_KEY_RSA(out_message));
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
+                            TPM_ALG_ID scheme,
+                            TPM_ALG_ID hash_alg,
+                            const std::string& password,
+                            const std::string& digest,
+                            std::string* signature) {
+  TPMT_SIG_SCHEME in_scheme;
+  TPM_ALG_ID hash_in;
+  if (hash_alg == TPM_ALG_NULL) {
+    hash_in = TPM_ALG_SHA256;
+  } else {
+    hash_in = hash_alg;
+  }
+  if (scheme == TPM_ALG_RSAPSS) {
+    in_scheme.scheme = TPM_ALG_RSAPSS;
+    in_scheme.details.rsapss.hash_alg = hash_in;
+  } else if (scheme == TPM_ALG_RSASSA || scheme == TPM_ALG_NULL) {
+    in_scheme.scheme = TPM_ALG_RSASSA;
+    in_scheme.details.rsassa.hash_alg = hash_in;
+  } else {
+    LOG(ERROR) << "Invalid Signing scheme used.";
+    return SAPI_RC_BAD_PARAMETER;
+  }
+
+  TPM2B_PUBLIC public_area;
+  TPM_RC return_code = GetKeyPublicArea(key_handle, &public_area);
+  if (return_code) {
+    LOG(ERROR) << "Error finding public area for: " << key_handle;
+    return return_code;
+  } else if (public_area.public_area.type != TPM_ALG_RSA) {
+    LOG(ERROR) << "Key handle given is not an RSA key";
+    return SAPI_RC_BAD_PARAMETER;
+  } else if ((public_area.public_area.object_attributes & kSign) == 0) {
+    LOG(ERROR) << "Key handle given is not a signging key";
+    return SAPI_RC_BAD_PARAMETER;
+  } else if ((public_area.public_area.object_attributes & kRestricted) != 0) {
+    LOG(ERROR) << "Key handle references a restricted key";
+    return SAPI_RC_BAD_PARAMETER;
+  }
+
+  std::string key_name;
+  return_code = GetKeyName(key_handle, &key_name);
+  if (return_code) {
+    LOG(ERROR) << "Error finding key name for: " << key_handle;
+    return return_code;
+  }
+  TPM2B_DIGEST tpm_digest = Make_TPM2B_DIGEST(digest);
+  TPMT_SIGNATURE signature_out;
+  TPMT_TK_HASHCHECK validation;
+  validation.tag = TPM_ST_HASHCHECK;
+  validation.digest.size = 0;
+  session_->SetEntityAuthorizationValue(password);
+  return_code = factory_.GetTpm()->SignSync(key_handle,
+                                            key_name,
+                                            tpm_digest,
+                                            in_scheme,
+                                            validation,
+                                            &signature_out,
+                                            session_->GetDelegate());
+  if (return_code) {
+    LOG(ERROR) << "Error signing digest: " << GetErrorString(return_code);
+    return return_code;
+  }
+  if (scheme == TPM_ALG_RSAPSS) {
+    signature->resize(signature_out.signature.rsapss.sig.size);
+    signature->assign(StringFrom_TPM2B_PUBLIC_KEY_RSA(
+        signature_out.signature.rsapss.sig));
+  } else {
+    signature->resize(signature_out.signature.rsassa.sig.size);
+    signature->assign(StringFrom_TPM2B_PUBLIC_KEY_RSA(
+        signature_out.signature.rsassa.sig));
+  }
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
+                              TPM_ALG_ID scheme,
+                              TPM_ALG_ID hash_alg,
+                              const std::string& digest,
+                              const std::string& signature) {
+  TPM2B_PUBLIC public_area;
+  TPM_RC return_code = GetKeyPublicArea(key_handle, &public_area);
+  if (return_code) {
+    LOG(ERROR) << "Error finding public area for: " << key_handle;
+    return return_code;
+  } else if (public_area.public_area.type != TPM_ALG_RSA) {
+    LOG(ERROR) << "Key handle given is not an RSA key";
+    return SAPI_RC_BAD_PARAMETER;
+  } else if ((public_area.public_area.object_attributes & kSign) == 0) {
+    LOG(ERROR) << "Key handle given is not a signing key";
+    return SAPI_RC_BAD_PARAMETER;
+  } else if ((public_area.public_area.object_attributes & kRestricted) != 0) {
+    LOG(ERROR) << "Cannot use RSAPSS for signing with a restricted key";
+    return SAPI_RC_BAD_PARAMETER;
+  }
+  TPMT_SIGNATURE signature_in;
+  TPM_ALG_ID hash_in;
+  if (hash_alg == TPM_ALG_NULL) {
+    hash_in = TPM_ALG_SHA256;
+  } else {
+    hash_in = hash_alg;
+  }
+  if (scheme == TPM_ALG_RSAPSS) {
+    signature_in.sig_alg = TPM_ALG_RSAPSS;
+    signature_in.signature.rsapss.hash = hash_in;
+    signature_in.signature.rsapss.sig = Make_TPM2B_PUBLIC_KEY_RSA(signature);
+  } else if (scheme == TPM_ALG_NULL || scheme == TPM_ALG_RSASSA) {
+    signature_in.sig_alg = TPM_ALG_RSASSA;
+    signature_in.signature.rsassa.hash = hash_in;
+    signature_in.signature.rsassa.sig = Make_TPM2B_PUBLIC_KEY_RSA(signature);
+  } else {
+    LOG(ERROR) << "Invalid scheme used to verify signature.";
+    return SAPI_RC_BAD_PARAMETER;
+  }
+  NullAuthorizationDelegate null_delegate;
+  std::string key_name;
+  TPMT_TK_VERIFIED verified;
+  TPM2B_DIGEST tpm_digest = Make_TPM2B_DIGEST(digest);
+  return_code = factory_.GetTpm()->VerifySignatureSync(key_handle,
+                                                       key_name,
+                                                       tpm_digest,
+                                                       signature_in,
+                                                       &verified,
+                                                       &null_delegate);
+  if (return_code == TPM_RC_SIGNATURE) {
+    LOG(WARNING) << "Incorrect signature for given digest.";
+    return TPM_RC_SIGNATURE;
+  } else if (return_code && return_code != TPM_RC_SIGNATURE) {
+    LOG(ERROR) << "Error verifying signature: " << GetErrorString(return_code);
+    return return_code;
+  }
   return TPM_RC_SUCCESS;
 }
 
