@@ -68,7 +68,6 @@ class RTNLHandlerTest : public Test {
 
   virtual void TearDown() {
     RTNLHandler::GetInstance()->Stop();
-    SetSockets(nullptr);
   }
 
   MOCK_METHOD1(HandlerCallback, void(const RTNLMessage &));
@@ -159,7 +158,7 @@ TEST_F(RTNLHandlerTest, GetInterfaceName) {
       .WillOnce(Return(-1))
       .WillOnce(DoAll(SetInterfaceIndex(), Return(0)));
   EXPECT_CALL(sockets_, Close(kTestSocket))
-      .Times(3)
+      .Times(2)
       .WillRepeatedly(Return(0));
   EXPECT_EQ(-1, RTNLHandler::GetInstance()->GetInterfaceIndex("eth0"));
   EXPECT_EQ(-1, RTNLHandler::GetInstance()->GetInterfaceIndex("wlan0"));

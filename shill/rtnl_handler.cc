@@ -109,7 +109,11 @@ void RTNLHandler::Stop() {
     return;
 
   rtnl_handler_.reset();
-  sockets_->Close(rtnl_socket_);
+  // Close the socket if it is currently open.
+  if (rtnl_socket_ != -1) {
+    sockets_->Close(rtnl_socket_);
+    rtnl_socket_ = -1;
+  }
   in_request_ = false;
   sockets_ = nullptr;
   request_flags_ = 0;
