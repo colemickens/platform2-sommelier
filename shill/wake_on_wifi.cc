@@ -49,6 +49,13 @@ WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
 
 WakeOnWiFi::~WakeOnWiFi() {}
 
+void WakeOnWiFi::RunAndResetSuspendActionsDoneCallback(const Error &error) {
+  if (!suspend_actions_done_callback_.is_null()) {
+    suspend_actions_done_callback_.Run(error);
+    suspend_actions_done_callback_.Reset();
+  }
+}
+
 bool WakeOnWiFi::ByteStringPairIsLessThan(
     const std::pair<ByteString, ByteString> &lhs,
     const std::pair<ByteString, ByteString> &rhs) {
@@ -529,10 +536,7 @@ void WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse(
           "Unexpected auxilliary message type: " + std::to_string(type));
       break;
   }
-  if (!suspend_actions_done_callback_.is_null()) {
-    suspend_actions_done_callback_.Run(error);
-    suspend_actions_done_callback_.Reset();
-  }
+  RunAndResetSuspendActionsDoneCallback(error);
 }
 
 // static
@@ -563,10 +567,7 @@ void WakeOnWiFi::VerifyWakeOnWiFiSettings(
                               wake_on_packet_connections_)) {
     SLOG(WiFi, 2) << __func__ << ": "
                   << "Wake-on-packet settings successfully verified";
-    if (!suspend_actions_done_callback_.is_null()) {
-      suspend_actions_done_callback_.Run(Error(Error::kSuccess));
-      suspend_actions_done_callback_.Reset();
-    }
+    RunAndResetSuspendActionsDoneCallback(Error(Error::kSuccess));
   } else {
     LOG(ERROR) << __func__ << " failed: discrepancy between wake-on-packet "
                               "settings on NIC and those in local data "
@@ -598,10 +599,8 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
           Bind(&NetlinkManager::OnAckDoNothing),
           Bind(&WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse,
                weak_ptr_factory_.GetWeakPtr()))) {
-    if (!suspend_actions_done_callback_.is_null()) {
-      suspend_actions_done_callback_.Run(Error(Error::kOperationFailed));
-      suspend_actions_done_callback_.Reset();
-    }
+    RunAndResetSuspendActionsDoneCallback(Error(Error::kOperationFailed));
+    return;
   }
 
   verify_wake_on_packet_settings_callback_.Reset(
@@ -626,10 +625,8 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
           Bind(&NetlinkManager::OnAckDoNothing),
           Bind(&WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse,
                weak_ptr_factory_.GetWeakPtr()))) {
-    if (!suspend_actions_done_callback_.is_null()) {
-      suspend_actions_done_callback_.Run(Error(Error::kOperationFailed));
-      suspend_actions_done_callback_.Reset();
-    }
+    RunAndResetSuspendActionsDoneCallback(Error(Error::kOperationFailed));
+    return;
   }
 
   verify_wake_on_packet_settings_callback_.Reset(
@@ -642,17 +639,13 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
 
 void WakeOnWiFi::RetrySetWakeOnPacketConnections() {
   if (num_set_wake_on_packet_retries_ < kMaxSetWakeOnPacketRetries) {
-    Error e;
     SLOG(WiFi, 2) << __func__;
     ApplyWakeOnWiFiSettings();
     ++num_set_wake_on_packet_retries_;
   } else {
     SLOG(WiFi, 2) << __func__ << ": max retry attempts reached";
     num_set_wake_on_packet_retries_ = 0;
-    if (!suspend_actions_done_callback_.is_null()) {
-      suspend_actions_done_callback_.Run(Error(Error::kOperationFailed));
-      suspend_actions_done_callback_.Reset();
-    }
+    RunAndResetSuspendActionsDoneCallback(Error(Error::kOperationFailed));
   }
 }
 

@@ -82,6 +82,8 @@ class WakeOnWiFi {
   static const int kVerifyWakeOnWiFiSettingsDelaySeconds;
   static const int kMaxSetWakeOnPacketRetries;
 
+  // Helper function to run and reset |suspend_actions_done_callback_|.
+  void RunAndResetSuspendActionsDoneCallback(const Error &error);
   // Used for comparison of ByteString pairs in a set.
   static bool ByteStringPairIsLessThan(
       const std::pair<ByteString, ByteString> &lhs,
