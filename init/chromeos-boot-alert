@@ -456,4 +456,8 @@ main() {
 }
 
 # Main Entry
+if [ -x /usr/sbin/board_boot_alert ]; then
+  # Allow overriding boot-alert behavior for headless devices.
+  /usr/sbin/board_boot_alert "$@" && exit
+fi
 main "$@"
