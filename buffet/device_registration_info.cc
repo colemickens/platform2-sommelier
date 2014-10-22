@@ -478,6 +478,14 @@ void PostToCallback(base::Callback<void(const T&)> callback,
       FROM_HERE, base::Bind(cb, base::Owned(value.release())));
 }
 
+void PostRepeatingTask(const tracked_objects::Location& from_here,
+                       base::Closure task,
+                       base::TimeDelta delay) {
+  task.Run();
+  base::MessageLoop::current()->PostDelayedTask(
+      from_here, base::Bind(&PostRepeatingTask, from_here, task, delay), delay);
+}
+
 // TODO(antonm): May belong to chromeos/http.
 
 void SendRequestAsync(
@@ -504,8 +512,7 @@ void SendRequestAsync(
                          num_retries - 1,
                          callback, errorback);
       };
-      base::MessageLoop::current()->PostTask(
-          FROM_HERE, base::Bind(c));
+      base::MessageLoop::current()->PostTask(FROM_HERE, base::Bind(c));
     } else {
       PostToCallback(errorback, std::move(error));
     }
@@ -645,7 +652,7 @@ void DeviceRegistrationInfo::StartDevice(chromeos::ErrorPtr* error) {
 
   const std::string command_queue_url{
     GetServiceURL("commands/queue", {{"deviceId", device_id_}})};
-  auto fetch_commands_cb = [command_queue_url, std_errorback]
+  auto fetch_commands = [command_queue_url, std_errorback]
       (DeviceRegistrationInfo* self,
        CloudRequestCallback callback, const base::DictionaryValue&) {
     self->DoCloudRequest(chromeos::http::request_type::kGet,
@@ -654,7 +661,8 @@ void DeviceRegistrationInfo::StartDevice(chromeos::ErrorPtr* error) {
                          callback, std_errorback);
   };
 
-  auto abort_commands_cb = [] (const base::DictionaryValue& json) {
+  auto abort_commands = [](base::Callback<void(void)> callback,
+                           const base::DictionaryValue& json) {
     const base::ListValue* commands{nullptr};
     if (json.GetList("commands", &commands)) {
       const size_t size{commands->GetSize()};
@@ -683,19 +691,25 @@ void DeviceRegistrationInfo::StartDevice(chromeos::ErrorPtr* error) {
         // TODO(antonm): Really abort the command.
       }
     }
+    base::MessageLoop::current()->PostTask(FROM_HERE, callback);
+  };
+
+  auto delay = base::TimeDelta::FromSeconds(7);
+  auto poll_commands = [delay](DeviceRegistrationInfo* self) {
+    PostRepeatingTask(FROM_HERE, base::Bind([](){
+      VLOG(1) << "Poll commands";
+      // TODO(antonm): Implement real polling of commands.
+    }), delay);
   };
 
   base::Bind(update_device_resource,
              base::Unretained(this),
              base::Owned(device_resource.release()),
-             base::Bind(fetch_commands_cb,
+             base::Bind(fetch_commands,
                         base::Unretained(this),
-                        base::Bind(abort_commands_cb))).Run();
-
-
-  // TODO(antonm): Implement the rest of startup sequence:
-  //   * Poll for commands to run
-  //   * Schedule periodic polling
+                        base::Bind(abort_commands,
+                                   base::Bind(poll_commands,
+                                              base::Unretained(this))))).Run();
 }
 
 }  // namespace buffet
