@@ -20,20 +20,15 @@ typedef signed short	   s16;
 typedef unsigned char	   u8;
 typedef signed char	   s8;
 
-#define BITS_PER_BYTE           8
-#define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
-#define BITS_TO_LONGS(nr)       DIV_ROUND_UP(nr, BITS_PER_BYTE * sizeof(long))
-
-#define DECLARE_BITMAP(name,bits) \
-	unsigned long name[BITS_TO_LONGS(bits)]
-
-#define MAX_EVENT_NAME 64
-
 // The first 64 bits of the perf header, used as a perf data file ID tag.
 const uint64_t kPerfMagic = 0x32454c4946524550LL;  // "PERFILE2" little-endian
 
 // These data structures have been copied from the kernel. See files under
 // tools/perf/util.
+
+//
+// From tools/perf/util/header.h
+//
 
 enum {
 	HEADER_RESERVED		= 0,	/* always cleared */
@@ -54,32 +49,10 @@ enum {
 	HEADER_CPU_TOPOLOGY,
 	HEADER_NUMA_TOPOLOGY,
 	HEADER_BRANCH_STACK,
+	HEADER_PMU_MAPPINGS,
+	HEADER_GROUP_DESC,
 	HEADER_LAST_FEATURE,
 	HEADER_FEAT_BITS	= 256,
-};
-
-/* pseudo samples injected by perf-inject */
-enum perf_user_event_type { /* above any possible kernel type */
-        PERF_RECORD_USER_TYPE_START             = 64,
-        PERF_RECORD_HEADER_ATTR                 = 64,
-        PERF_RECORD_HEADER_EVENT_TYPE           = 65,
-        PERF_RECORD_HEADER_TRACING_DATA         = 66,
-        PERF_RECORD_HEADER_BUILD_ID             = 67,
-        PERF_RECORD_FINISHED_ROUND              = 68,
-        PERF_RECORD_HEADER_HOSTNAME             = 69,
-        PERF_RECORD_HEADER_OSRELEASE            = 70,
-        PERF_RECORD_HEADER_VERSION              = 71,
-        PERF_RECORD_HEADER_ARCH                 = 72,
-        PERF_RECORD_HEADER_NRCPUS               = 73,
-        PERF_RECORD_HEADER_CPUDESC              = 74,
-        PERF_RECORD_HEADER_CPUID                = 75,
-        PERF_RECORD_HEADER_TOTAL_MEM            = 76,
-        PERF_RECORD_HEADER_CMDLINE              = 77,
-        PERF_RECORD_HEADER_EVENT_DESC           = 78,
-        PERF_RECORD_HEADER_CPU_TOPOLOGY         = 79,
-        PERF_RECORD_HEADER_NUMA_TOPOLOGY        = 80,
-        PERF_RECORD_HEADER_PMU_MAPPINGS         = 81,
-        PERF_RECORD_HEADER_MAX
 };
 
 struct perf_file_section {
@@ -92,10 +65,12 @@ struct perf_file_attr {
 	struct perf_file_section	ids;
 };
 
-struct perf_trace_event_type {
-  u64     event_id;
-  char    name[MAX_EVENT_NAME];
-};
+#define BITS_PER_BYTE           8
+#define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
+#define BITS_TO_LONGS(nr)       DIV_ROUND_UP(nr, BITS_PER_BYTE * sizeof(long))
+
+#define DECLARE_BITMAP(name,bits) \
+	unsigned long name[BITS_TO_LONGS(bits)]
 
 struct perf_file_header {
 	u64				magic;
@@ -107,44 +82,19 @@ struct perf_file_header {
 	DECLARE_BITMAP(adds_features, HEADER_FEAT_BITS);
 };
 
+#undef BITS_PER_BYTE
+#undef DIV_ROUND_UP
+#undef BITS_TO_LONGS
+#undef DECLARE_BITMAP
+
 struct perf_pipe_file_header {
 	u64				magic;
 	u64				size;
 };
 
-struct attr_event {
-	struct perf_event_header header;
-	struct perf_event_attr attr;
-	uint64_t id[];
-};
-
-struct event_type_event {
-	struct perf_event_header header;
-	struct perf_trace_event_type event_type;
-};
-
-struct event_desc_event {
-  struct perf_event_header header;
-  uint32_t num_events;
-  uint32_t event_header_size;
-  uint8_t more_data[];
-};
-
-enum {
-	SHOW_KERNEL	= 1,
-	SHOW_USER	= 2,
-	SHOW_HV		= 4,
-};
-
-/*
- * PERF_SAMPLE_IP | PERF_SAMPLE_TID | *
- */
-struct ip_event {
-	struct perf_event_header header;
-	u64 ip;
-	u32 pid, tid;
-	unsigned char __more_data[];
-};
+//
+// From tools/perf/util/event.h
+//
 
 struct mmap_event {
 	struct perf_event_header header;
@@ -152,6 +102,21 @@ struct mmap_event {
 	u64 start;
 	u64 len;
 	u64 pgoff;
+	char filename[PATH_MAX];
+};
+
+struct mmap2_event {
+	struct perf_event_header header;
+	u32 pid, tid;
+	u64 start;
+	u64 len;
+	u64 pgoff;
+	u32 maj;
+	u32 min;
+	u64 ino;
+	u64 ino_generation;
+	u32 prot;
+	u32 flags;
 	char filename[PATH_MAX];
 };
 
@@ -174,15 +139,6 @@ struct lost_event {
 	u64 lost;
 };
 
-// This struct is found in comments in perf_event.h, and can be found as a
-// struct in tools/perf/util/python.c in the kernel.
-struct throttle_event {
-        struct perf_event_header header;
-        u64                      time;
-        u64                      id;
-        u64                      stream_id;
-};
-
 /*
  * PERF_FORMAT_ENABLED | PERF_FORMAT_RUNNING | PERF_FORMAT_ID
  */
@@ -195,9 +151,127 @@ struct read_event {
 	u64 id;
 };
 
-struct sample_event{
+struct throttle_event {
+	struct perf_event_header header;
+	u64 time;
+	u64 id;
+	u64 stream_id;
+};
+
+#define PERF_SAMPLE_MASK				\
+	(PERF_SAMPLE_IP | PERF_SAMPLE_TID |		\
+	 PERF_SAMPLE_TIME | PERF_SAMPLE_ADDR |		\
+	PERF_SAMPLE_ID | PERF_SAMPLE_STREAM_ID |	\
+	 PERF_SAMPLE_CPU | PERF_SAMPLE_PERIOD |		\
+	 PERF_SAMPLE_IDENTIFIER)
+
+/* perf sample has 16 bits size limit */
+#define PERF_SAMPLE_MAX_SIZE (1 << 16)
+
+struct sample_event {
 	struct perf_event_header        header;
 	u64 array[];
+};
+
+#if 0
+// PERF_REGS_MAX is arch-dependent, so this is not a useful struct as-is.
+struct regs_dump {
+	u64 abi;
+	u64 mask;
+	u64 *regs;
+
+	/* Cached values/mask filled by first register access. */
+	u64 cache_regs[PERF_REGS_MAX];
+	u64 cache_mask;
+};
+#endif
+
+struct stack_dump {
+	u16 offset;
+	u64 size;
+	char *data;
+};
+
+struct sample_read_value {
+	u64 value;
+	u64 id;
+};
+
+struct sample_read {
+	u64 time_enabled;
+	u64 time_running;
+	union {
+		struct {
+			u64 nr;
+			struct sample_read_value *values;
+		} group;
+		struct sample_read_value one;
+	};
+};
+
+struct ip_callchain {
+	u64 nr;
+	u64 ips[0];
+};
+
+struct branch_flags {
+	u64 mispred:1;
+	u64 predicted:1;
+	u64 in_tx:1;
+	u64 abort:1;
+	u64 reserved:60;
+};
+
+struct branch_entry {
+	u64			from;
+	u64			to;
+	struct branch_flags	flags;
+};
+
+struct branch_stack {
+	u64			nr;
+	struct branch_entry	entries[0];
+};
+
+// All the possible fields of a perf sample.  This is not an actual data
+// structure found in raw perf data, as each field may or may not be present in
+// the data.
+struct perf_sample {
+	u64 ip;
+	u32 pid, tid;
+	u64 time;
+	u64 addr;
+	u64 id;
+	u64 stream_id;
+	u64 period;
+	u64 weight;
+	u64 transaction;
+	u32 cpu;
+	u32 raw_size;
+	u64 data_src;
+	u32 flags;
+	u16 insn_len;
+	void *raw_data;
+	struct ip_callchain *callchain;
+	struct branch_stack *branch_stack;
+	//struct regs_dump  user_regs;  // See struct regs_dump above.
+	struct stack_dump user_stack;
+	struct {  // Copied from struct read_event.
+		u64 time_enabled;
+		u64 time_running;
+		u64 id;
+	} read;
+	// TODO(dhsharp) replace struct above with:
+	// struct sample_read read;
+
+	perf_sample() : raw_data(NULL),
+			callchain(NULL),
+			branch_stack(NULL) {}
+	~perf_sample() {
+	  delete [] callchain;
+	  delete [] branch_stack;
+	  delete [] reinterpret_cast<char*>(raw_data);
+	}
 };
 
 // Taken from tools/perf/util/include/linux/kernel.h
@@ -218,97 +292,74 @@ struct build_id_event {
 #undef __ALIGN_MASK
 #undef BUILD_ID_SIZE
 
+enum perf_user_event_type { /* above any possible kernel type */
+	PERF_RECORD_USER_TYPE_START		= 64,
+	PERF_RECORD_HEADER_ATTR			= 64,
+	PERF_RECORD_HEADER_EVENT_TYPE		= 65, /* depreceated */
+	PERF_RECORD_HEADER_TRACING_DATA		= 66,
+	PERF_RECORD_HEADER_BUILD_ID		= 67,
+	PERF_RECORD_FINISHED_ROUND		= 68,
+	/* Google-added pipe-mode event types: */
+	PERF_RECORD_HEADER_HOSTNAME		= 69,
+	PERF_RECORD_HEADER_OSRELEASE		= 70,
+	PERF_RECORD_HEADER_VERSION		= 71,
+	PERF_RECORD_HEADER_ARCH			= 72,
+	PERF_RECORD_HEADER_NRCPUS		= 73,
+	PERF_RECORD_HEADER_CPUDESC		= 74,
+	PERF_RECORD_HEADER_CPUID		= 75,
+	PERF_RECORD_HEADER_TOTAL_MEM		= 76,
+	PERF_RECORD_HEADER_CMDLINE		= 77,
+	PERF_RECORD_HEADER_EVENT_DESC		= 78,
+	PERF_RECORD_HEADER_CPU_TOPOLOGY		= 79,
+	PERF_RECORD_HEADER_NUMA_TOPOLOGY	= 80,
+	PERF_RECORD_HEADER_BRANCH_STACK		= 81,
+	PERF_RECORD_HEADER_PMU_MAPPINGS		= 82,
+	PERF_RECORD_HEADER_GROUP_DESC		= 83,
+	PERF_RECORD_HEADER_MAX
+};
+
+struct attr_event {
+	struct perf_event_header header;
+	struct perf_event_attr attr;
+	u64 id[];
+};
+
+#define MAX_EVENT_NAME 64
+
+struct perf_trace_event_type {
+	u64	event_id;
+	char	name[MAX_EVENT_NAME];
+};
+
+#undef MAX_EVENT_NAME
+
+struct event_type_event {
+	struct perf_event_header header;
+	struct perf_trace_event_type event_type;
+};
+
 struct tracing_data_event {
 	struct perf_event_header header;
 	u32 size;
 };
 
-// The addition of throttle_event is a custom addition for quipper.
-// It is used for both THROTTLE and UNTHROTTLE events.
-typedef union event_union {
+union perf_event {
 	struct perf_event_header	header;
-	struct ip_event			ip;
 	struct mmap_event		mmap;
+	struct mmap2_event		mmap2;
 	struct comm_event		comm;
 	struct fork_event		fork;
 	struct lost_event		lost;
-	struct throttle_event		throttle;
 	struct read_event		read;
+	struct throttle_event		throttle;
 	struct sample_event		sample;
+	struct attr_event		attr;
+	struct event_type_event		event_type;
 	struct tracing_data_event	tracing_data;
 	struct build_id_event		build_id;
-} event_t;
-
-struct ip_callchain {
-	u64 nr;
-	u64 ips[0];
 };
 
-struct branch_flags {
-	u64 mispred:1;
-	u64 predicted:1;
-	u64 reserved:62;
-};
-
-struct branch_entry {
-	u64				from;
-	u64				to;
-	struct branch_flags flags;
-};
-
-struct branch_stack {
-	u64				nr;
-	struct branch_entry	entries[0];
-};
-
-// All the possible fields of a perf sample.  This is not an actual data
-// structure found in raw perf data, as each field may or may not be present in
-// the data.
-struct perf_sample {
-	u64 ip;
-	u32 pid, tid;
-	u64 time;
-	u64 addr;
-	u64 id;
-	u64 stream_id;
-	u64 period;
-	u32 cpu;
-	struct {  // Copied from struct read_event.
-		u64 time_enabled;
-		u64 time_running;
-		u64 id;
-	} read;
-	u32 raw_size;
-	void *raw_data;
-	struct ip_callchain *callchain;
-	struct branch_stack *branch_stack;
-
-	perf_sample() : raw_data(NULL),
-			callchain(NULL),
-			branch_stack(NULL) {}
-	~perf_sample() {
-	  if (callchain) {
-	    delete [] callchain;
-	    callchain = NULL;
-	  }
-	  if (branch_stack) {
-	    delete [] branch_stack;
-	    branch_stack = NULL;
-	  }
-	  if (raw_data) {
-	    delete [] reinterpret_cast<char*>(raw_data);
-	    raw_data = NULL;
-	  }
-	}
-};
-
-// End data structures copied from the kernel.
-
-#undef BITS_PER_BYTE
-#undef DIV_ROUND_UP
-#undef BITS_TO_LONGS
-#undef DECLARE_BITMAP
-#undef MAX_EVENT_NAME
+typedef perf_event event_t;
 
 }  // namespace quipper
 
