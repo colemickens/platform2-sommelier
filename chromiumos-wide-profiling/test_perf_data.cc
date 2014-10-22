@@ -16,7 +16,7 @@ namespace testing {
 
 ExamplePerfDataFileHeader::ExamplePerfDataFileHeader(
     const size_t attr_count, const unsigned long features) {  // NOLINT
-  CHECK_EQ(96U, sizeof(perf_file_attr)) << "perf_file_attr has changed size!";
+  CHECK_EQ(112U, sizeof(perf_file_attr)) << "perf_file_attr has changed size!";
   const size_t attrs_size = attr_count * sizeof(perf_file_attr);
   header_ = {
     .magic = kPerfMagic,

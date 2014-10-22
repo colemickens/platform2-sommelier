@@ -135,9 +135,9 @@ void CheckNoEventHeaderPadding() {
 void CheckNoPerfEventAttrPadding() {
   perf_event_attr attr;
   CHECK_EQ(sizeof(attr),
-           (reinterpret_cast<u64>(&attr.branch_sample_type) -
+           (reinterpret_cast<u64>(&attr.__reserved_2) -
             reinterpret_cast<u64>(&attr)) +
-           sizeof(attr.branch_sample_type));
+           sizeof(attr.__reserved_2));
 }
 
 void CheckNoEventTypePadding() {
@@ -471,6 +471,19 @@ size_t ReadPerfSampleFromData(const uint64_t* array,
   //   { u64 from, to, flags } lbr[nr];} && PERF_SAMPLE_BRANCH_STACK
   if (sample_fields & PERF_SAMPLE_BRANCH_STACK) {
     array = ReadBranchStack(array, swap_bytes, sample);
+  }
+
+  static const u64 kUnimplementedSampleFields =
+      PERF_SAMPLE_REGS_USER  |
+      PERF_SAMPLE_STACK_USER |
+      PERF_SAMPLE_WEIGHT     |
+      PERF_SAMPLE_DATA_SRC   |
+      PERF_SAMPLE_IDENTIFIER |
+      PERF_SAMPLE_TRANSACTION;
+
+  if (sample_fields & kUnimplementedSampleFields) {
+    LOG(WARNING) << "Unimplemented sample fields 0x"
+                 << std::hex << (sample_fields & kUnimplementedSampleFields);
   }
 
   if (sample_fields & ~(PERF_SAMPLE_MAX-1)) {
@@ -1111,6 +1124,8 @@ bool PerfReader::ReadEventAttr(const ConstBufferWithSize& data, size_t* offset,
     ByteSwap(&attr->bp_addr);        // union with config1
     ByteSwap(&attr->bp_len);         // union with config2
     ByteSwap(&attr->branch_sample_type);
+    ByteSwap(&attr->sample_regs_user);
+    ByteSwap(&attr->sample_stack_user);
   }
 
   CHECK_EQ(attr_size, attr->size);
