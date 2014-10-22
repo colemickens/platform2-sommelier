@@ -19,7 +19,6 @@
     # These arguments shouldn't be changed here.
     'USE_attestation%': 0,
     'USE_cellular%': 0,
-    'USE_cros_disks%': 0,
     'USE_cros_host%': 0,
     'USE_debugd%': 0,
     'USE_feedback%': 0,
