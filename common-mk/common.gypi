@@ -18,9 +18,7 @@
     # DON'T EDIT BELOW THIS LINE.
     # These arguments shouldn't be changed here.
     'USE_attestation%': 0,
-    'USE_buffet%': 0,
     'USE_cellular%': 0,
-    'USE_crash_reporting%': 0,
     'USE_cros_disks%': 0,
     'USE_cros_host%': 0,
     'USE_debugd%': 0,
@@ -30,10 +28,8 @@
     'USE_passive_metrics%': 0,
     'USE_power_management%': 0,
     'USE_profile%': 0,
-    'USE_shill%': 0,
     'USE_tcmalloc%': 0,
     'USE_test%': 0,
-    'USE_tpm%': 0,
     'USE_vpn%': 0,
     'USE_wimax%': 0,
 
