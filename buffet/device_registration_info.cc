@@ -629,19 +629,16 @@ void DeviceRegistrationInfo::StartDevice(chromeos::ErrorPtr* error) {
 
   auto abort_commands_cb = [] (const base::DictionaryValue& json) {
     const base::ListValue* commands{nullptr};
-    json.GetList("commands", &commands);
-    if (commands) {
+    if (json.GetList("commands", &commands)) {
       const size_t size{commands->GetSize()};
       for (size_t i = 0; i < size; ++i) {
         const base::DictionaryValue* command{nullptr};
-        commands->GetDictionary(i, &command);
-        if (!command) {
+        if (!commands->GetDictionary(i, &command)) {
           LOG(WARNING) << "No command resource at " << i;
           continue;
         }
         std::string command_state;
-        command->GetString("state", &command_state);
-        if (command_state.empty()) {
+        if (!command->GetString("state", &command_state)) {
           LOG(WARNING) << "Command with no state at " << i;
           continue;
         }
@@ -652,8 +649,7 @@ void DeviceRegistrationInfo::StartDevice(chromeos::ErrorPtr* error) {
           continue;
         }
         std::string command_id;
-        command->GetString("id", &command_id);
-        if (command_id.empty()) {
+        if (!command->GetString("id", &command_id)) {
           LOG(WARNING) << "Command with no ID at " << i;
           continue;
         }
