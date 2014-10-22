@@ -35,6 +35,11 @@
           'DISABLE_VPN',
         ],
       }],
+      ['USE_wake_on_wifi == 0', {
+        'defines': [
+          'DISABLE_WAKE_ON_WIFI',
+        ],
+      }],
       ['USE_wimax == 0', {
         'defines': [
           'DISABLE_WIMAX',
@@ -615,6 +620,7 @@
             'mock_traffic_monitor.cc',
             'mock_virtual_device.cc',
             'mock_vpn_provider.cc',
+            'mock_wake_on_wifi.cc',
             'mock_wifi.cc',
             'mock_wifi_provider.cc',
             'mock_wifi_service.cc',

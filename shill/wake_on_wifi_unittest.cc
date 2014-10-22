@@ -925,93 +925,6 @@ TEST_F(WakeOnWiFiTest, ConfigureSetWakeOnWiFiSettingsMessage) {
   EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg9, trigs, all_addresses));
 }
 
-TEST_F(WakeOnWiFiTest, AddRemoveWakeOnPacketConnection) {
-  const string ip_string1("192.168.0.19");
-  const string ip_string2("192.168.0.55");
-  const string ip_string3("192.168.0.74");
-  IPAddress ip_addr1(ip_string1);
-  IPAddress ip_addr2(ip_string2);
-  IPAddress ip_addr3(ip_string3);
-  Error e;
-
-  // Add and remove operations will fail if WiFi device does not support
-  // pattern matching.
-  ClearWakeOnWiFiTriggersSupported();
-  AddWakeOnPacketConnection(ip_addr1, &e);
-  EXPECT_EQ(e.type(), Error::kNotSupported);
-  EXPECT_STREQ(e.message().c_str(),
-               "Wake on IP address patterns not supported by this WiFi device");
-  RemoveAllWakeOnPacketConnections(&e);
-  EXPECT_EQ(e.type(), Error::kNotSupported);
-  EXPECT_STREQ(e.message().c_str(),
-               "Wake on IP address patterns not supported by this WiFi device");
-  RemoveWakeOnPacketConnection(ip_addr2, &e);
-  EXPECT_EQ(e.type(), Error::kNotSupported);
-  EXPECT_STREQ(e.message().c_str(),
-               "Wake on IP address patterns not supported by this WiFi device");
-
-  // Add operation will fail if pattern matching is supported but the max number
-  // of IP address patterns have already been registered.
-  GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kIPAddress);
-  SetWakeOnWiFiMaxPatterns(0);
-  AddWakeOnPacketConnection(ip_addr1, &e);
-  EXPECT_EQ(e.type(), Error::kOperationFailed);
-  EXPECT_STREQ(e.message().c_str(),
-               "Max number of IP address patterns already registered");
-
-  SetWakeOnWiFiMaxPatterns(50);
-  GetWakeOnPacketConnections()->Clear();
-  EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
-  AddWakeOnPacketConnection(ip_addr1, &e);
-  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 1);
-  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr1));
-  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr2));
-  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr3));
-
-  AddWakeOnPacketConnection(ip_addr2, &e);
-  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 2);
-  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr1));
-  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr2));
-  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr3));
-
-  AddWakeOnPacketConnection(ip_addr3, &e);
-  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 3);
-  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr1));
-  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr2));
-  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr3));
-
-  RemoveWakeOnPacketConnection(ip_addr2, &e);
-  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 2);
-  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr1));
-  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr2));
-  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr3));
-
-  // Remove fails if no such address is registered.
-  RemoveWakeOnPacketConnection(ip_addr2, &e);
-  EXPECT_EQ(e.type(), Error::kNotFound);
-  EXPECT_STREQ(e.message().c_str(),
-               "No such IP address match registered to wake device");
-  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 2);
-
-  RemoveWakeOnPacketConnection(ip_addr1, &e);
-  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 1);
-  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr1));
-  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr2));
-  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr3));
-
-  AddWakeOnPacketConnection(ip_addr2, &e);
-  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 2);
-  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr1));
-  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr2));
-  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr3));
-
-  RemoveAllWakeOnPacketConnections(&e);
-  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 0);
-  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr1));
-  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr2));
-  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr3));
-}
-
 TEST_F(WakeOnWiFiTest, RequestWakeOnPacketSettings) {
   EXPECT_CALL(
       netlink_manager_,
@@ -1286,6 +1199,95 @@ TEST_F(WakeOnWiFiTest, ApplyWakeOnWiFiSettings_WiphyIndexReceived) {
   ApplyWakeOnWiFiSettings();
 }
 
+#if !defined(DISABLE_WAKE_ON_WIFI)
+
+TEST_F(WakeOnWiFiTest, AddRemoveWakeOnPacketConnection) {
+  const string ip_string1("192.168.0.19");
+  const string ip_string2("192.168.0.55");
+  const string ip_string3("192.168.0.74");
+  IPAddress ip_addr1(ip_string1);
+  IPAddress ip_addr2(ip_string2);
+  IPAddress ip_addr3(ip_string3);
+  Error e;
+
+  // Add and remove operations will fail if WiFi device does not support
+  // pattern matching.
+  ClearWakeOnWiFiTriggersSupported();
+  AddWakeOnPacketConnection(ip_addr1, &e);
+  EXPECT_EQ(e.type(), Error::kNotSupported);
+  EXPECT_STREQ(e.message().c_str(),
+               "Wake on IP address patterns not supported by this WiFi device");
+  RemoveAllWakeOnPacketConnections(&e);
+  EXPECT_EQ(e.type(), Error::kNotSupported);
+  EXPECT_STREQ(e.message().c_str(),
+               "Wake on IP address patterns not supported by this WiFi device");
+  RemoveWakeOnPacketConnection(ip_addr2, &e);
+  EXPECT_EQ(e.type(), Error::kNotSupported);
+  EXPECT_STREQ(e.message().c_str(),
+               "Wake on IP address patterns not supported by this WiFi device");
+
+  // Add operation will fail if pattern matching is supported but the max number
+  // of IP address patterns have already been registered.
+  GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kIPAddress);
+  SetWakeOnWiFiMaxPatterns(0);
+  AddWakeOnPacketConnection(ip_addr1, &e);
+  EXPECT_EQ(e.type(), Error::kOperationFailed);
+  EXPECT_STREQ(e.message().c_str(),
+               "Max number of IP address patterns already registered");
+
+  SetWakeOnWiFiMaxPatterns(50);
+  GetWakeOnPacketConnections()->Clear();
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
+  AddWakeOnPacketConnection(ip_addr1, &e);
+  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 1);
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr1));
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr2));
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr3));
+
+  AddWakeOnPacketConnection(ip_addr2, &e);
+  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 2);
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr1));
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr2));
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr3));
+
+  AddWakeOnPacketConnection(ip_addr3, &e);
+  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 3);
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr1));
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr2));
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr3));
+
+  RemoveWakeOnPacketConnection(ip_addr2, &e);
+  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 2);
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr1));
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr2));
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr3));
+
+  // Remove fails if no such address is registered.
+  RemoveWakeOnPacketConnection(ip_addr2, &e);
+  EXPECT_EQ(e.type(), Error::kNotFound);
+  EXPECT_STREQ(e.message().c_str(),
+               "No such IP address match registered to wake device");
+  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 2);
+
+  RemoveWakeOnPacketConnection(ip_addr1, &e);
+  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 1);
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr1));
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr2));
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr3));
+
+  AddWakeOnPacketConnection(ip_addr2, &e);
+  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 2);
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr1));
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr2));
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr3));
+
+  RemoveAllWakeOnPacketConnections(&e);
+  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 0);
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr1));
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr2));
+  EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr3));
+}
+
 TEST_F(WakeOnWiFiTest, WakeOnWiFiSettingsAppliedBeforeSuspend) {
   // When wake_on_packet_connections_ is empty, do not program the NIC and
   // immediately invoke the callback to report success.
@@ -1324,5 +1326,41 @@ TEST_F(WakeOnWiFiTest, WakeOnWiFiDisabledAfterResume) {
   OnAfterResume();
   EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
 }
+
+#else
+
+TEST_F(WakeOnWiFiTest, AddWakeOnPacketConnection_ReturnsError) {
+  Error e;
+  AddWakeOnPacketConnection(IPAddress("1.1.1.1"), &e);
+  EXPECT_EQ(e.type(), Error::kNotSupported);
+  EXPECT_STREQ(e.message().c_str(), WakeOnWiFi::kWakeOnWiFiDisabled);
+}
+
+TEST_F(WakeOnWiFiTest, RemoveWakeOnPacketConnection_ReturnsError) {
+  Error e;
+  RemoveWakeOnPacketConnection(IPAddress("1.1.1.1"), &e);
+  EXPECT_EQ(e.type(), Error::kNotSupported);
+  EXPECT_STREQ(e.message().c_str(), WakeOnWiFi::kWakeOnWiFiDisabled);
+}
+
+TEST_F(WakeOnWiFiTest, RemoveAllWakeOnPacketConnections_ReturnsError) {
+  Error e;
+  RemoveAllWakeOnPacketConnections(&e);
+  EXPECT_EQ(e.type(), Error::kNotSupported);
+  EXPECT_STREQ(e.message().c_str(), WakeOnWiFi::kWakeOnWiFiDisabled);
+}
+
+TEST_F(WakeOnWiFiTest, CallbackRunOnBeforeSuspend) {
+  EXPECT_CALL(*this, SuspendCallback(_));
+  OnBeforeSuspend();
+}
+
+TEST_F(WakeOnWiFiTest, OnAfterResume_DoesNothing) {
+  EXPECT_CALL(netlink_manager_,
+              SendNl80211Message(_, _, _, _)).Times(0);
+  OnAfterResume();
+}
+
+#endif  // DISABLE_WAKE_ON_WIFI
 
 }  // namespace shill

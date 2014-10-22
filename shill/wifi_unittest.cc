@@ -58,6 +58,7 @@
 #include "shill/mock_supplicant_network_proxy.h"
 #include "shill/mock_supplicant_process_proxy.h"
 #include "shill/mock_time.h"
+#include "shill/mock_wake_on_wifi.h"
 #include "shill/mock_wifi_provider.h"
 #include "shill/mock_wifi_service.h"
 #include "shill/netlink_message_matchers.h"
@@ -235,18 +236,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         metrics_(nullptr),
         manager_(&control_interface_, nullptr, &metrics_, &glib_),
         device_info_(&control_interface_, dispatcher, &metrics_, &manager_),
-        wifi_(new WiFi(&control_interface_,
-                       dispatcher,
-                       &metrics_,
-                       &manager_,
-                       kDeviceName,
-                       kDeviceAddress,
-                       kInterfaceIndex)),
+        wifi_(new WiFi(&control_interface_, dispatcher, &metrics_, &manager_,
+                       kDeviceName, kDeviceAddress, kInterfaceIndex)),
         bss_counter_(0),
-        mac80211_monitor_(
-            new StrictMock<MockMac80211Monitor>(
-                dispatcher, kDeviceName, WiFi::kStuckQueueLengthThreshold,
-                base::Closure(), &metrics_)),
+        mac80211_monitor_(new StrictMock<MockMac80211Monitor>(
+            dispatcher, kDeviceName, WiFi::kStuckQueueLengthThreshold,
+            base::Closure(), &metrics_)),
         dbus_service_proxy_(new MockDBusServiceProxy()),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
         supplicant_bss_proxy_(new NiceMock<MockSupplicantBSSProxy>()),
@@ -258,6 +253,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
             new NiceMock<MockSupplicantInterfaceProxy>()) {
     wifi_->mac80211_monitor_.reset(mac80211_monitor_);
     InstallMockScanSession();
+    InstallMockWakeOnWiFi();
     ::testing::DefaultValue<::DBus::Path>::Set("/default/path");
 
     EXPECT_CALL(*mac80211_monitor_, UpdateConnectedState(_))
@@ -286,18 +282,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->provider_ = &wifi_provider_;
     wifi_->time_ = &time_;
     wifi_->netlink_manager_ = &netlink_manager_;
-    wifi_->wake_on_wifi_->netlink_manager_ = &netlink_manager_;
     wifi_->progressive_scan_enabled_ = true;
     wifi_->adaptor_.reset(adaptor_);  // Transfers ownership.
-
-    // Assume our NIC has reported its wiphy index, and that it supports wake
-    // on IP address patterns and disconnects. Necessary to pass error checks in
-    // WakeOnWiFi::ApplyWakeOnWiFiSettings so that the function will execute.
-    wifi_->wake_on_wifi_->wiphy_index_received_ = true;
-    wifi_->wake_on_wifi_->wake_on_wifi_triggers_supported_.insert(
-        WakeOnWiFi::kIPAddress);
-    wifi_->wake_on_wifi_->wake_on_wifi_triggers_supported_.insert(
-        WakeOnWiFi::kDisconnect);
 
     // The following is only useful when a real |ScanSession| is used; it is
     // ignored by |MockScanSession|.
@@ -389,6 +375,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
                                         null_callback,
                                         nullptr);
     wifi_->scan_session_.reset(scan_session_);
+  }
+
+  void InstallMockWakeOnWiFi() {
+    wake_on_wifi_ = new MockWakeOnWiFi(&netlink_manager_, event_dispatcher_,
+                                         &manager_);
+    wifi_->wake_on_wifi_.reset(wake_on_wifi_);
   }
 
   // Or DisableProgressiveScan()...
@@ -928,6 +920,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
   EventDispatcher *event_dispatcher_;
   MockScanSession *scan_session_;  // Owned by |wifi_|.
+  MockWakeOnWiFi *wake_on_wifi_;  // Owned by |wifi_|.
   NiceMock<MockRTNLHandler> rtnl_handler_;
   MockTime time_;
 
@@ -1480,8 +1473,7 @@ TEST_F(WiFiMainTest, ResumeStartsScanWhenIdle_FullScan) {
   ReportScanDone();
   ASSERT_TRUE(wifi()->IsIdle());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(1);
+  EXPECT_CALL(*wake_on_wifi_, OnAfterResume());
   OnAfterResume();
   dispatcher_.DispatchPendingEvents();
 }
@@ -1494,8 +1486,7 @@ TEST_F(WiFiMainTest, ResumeStartsScanWhenIdle) {
   ReportScanDone();
   ASSERT_TRUE(wifi()->IsIdle());
   dispatcher_.DispatchPendingEvents();
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(1);
+  EXPECT_CALL(*wake_on_wifi_, OnAfterResume());
   OnAfterResume();
   EXPECT_NE(nullptr, scan_session_);;
   InstallMockScanSession();
@@ -1511,6 +1502,7 @@ TEST_F(WiFiMainTest, SuspendDoesNotStartScan_FullScan) {
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   ASSERT_TRUE(wifi()->IsIdle());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  EXPECT_CALL(*wake_on_wifi_, OnBeforeSuspend(_));
   OnBeforeSuspend();
   dispatcher_.DispatchPendingEvents();
 }
@@ -1523,6 +1515,7 @@ TEST_F(WiFiMainTest, SuspendDoesNotStartScan) {
   ASSERT_TRUE(wifi()->IsIdle());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
   EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
+  EXPECT_CALL(*wake_on_wifi_, OnBeforeSuspend(_));
   OnBeforeSuspend();
   dispatcher_.DispatchPendingEvents();
 }
@@ -1537,10 +1530,10 @@ TEST_F(WiFiMainTest, ResumeDoesNotStartScanWhenNotIdle_FullScan) {
       SetupConnectedService(DBus::Path(), nullptr, nullptr));
   EXPECT_FALSE(wifi()->IsIdle());
   ScopedMockLog log;
-  EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _, _)).Times(1);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, EndsWith("already connecting or connected.")));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  EXPECT_CALL(*wake_on_wifi_, OnAfterResume());
   OnAfterResume();
   dispatcher_.DispatchPendingEvents();
 }
@@ -1554,11 +1547,11 @@ TEST_F(WiFiMainTest, ResumeDoesNotStartScanWhenNotIdle) {
       SetupConnectedService(DBus::Path(), nullptr, nullptr));
   EXPECT_FALSE(wifi()->IsIdle());
   ScopedMockLog log;
-  EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _, _)).Times(1);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, EndsWith("already connecting or connected.")));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
   EXPECT_TRUE(IsScanSessionNull());
+  EXPECT_CALL(*wake_on_wifi_, OnAfterResume());
   OnAfterResume();
   dispatcher_.DispatchPendingEvents();
 }
@@ -1567,8 +1560,8 @@ TEST_F(WiFiMainTest, ResumeWithCurrentService) {
   StartWiFi();
   SetupConnectedService(DBus::Path(), nullptr, nullptr);
 
-  EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _, _)).Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetHT40Enable(_, true)).Times(1);
+  EXPECT_CALL(*wake_on_wifi_, OnAfterResume());
   OnAfterResume();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 }
@@ -2138,8 +2131,8 @@ TEST_F(WiFiMainTest, ScanWiFiDisabledAfterResume) {
   EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
   StartWiFi();
   StopWiFi();
+  EXPECT_CALL(*wake_on_wifi_, OnAfterResume());
   // A scan is queued when WiFi resumes.
-  EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _, _)).Times(1);
   OnAfterResume();
   dispatcher_.DispatchPendingEvents();
 }
@@ -2606,7 +2599,7 @@ TEST_F(WiFiMainTest, FlushBSSOnResume) {
       .WillOnce(DoAll(SetArgumentPointee<0>(scan_done_time), Return(0)));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(),
               FlushBSS(WiFi::kMaxBSSResumeAgeSeconds + 5));
-  EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _, _)).Times(1);
+  EXPECT_CALL(*wake_on_wifi_, OnAfterResume());
   OnAfterResume();
   ReportScanDone();
 }

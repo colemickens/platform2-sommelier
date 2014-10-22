@@ -39,7 +39,7 @@ class WakeOnWiFi {
  public:
   WakeOnWiFi(NetlinkManager *netlink_manager, EventDispatcher *dispatcher,
              Manager *manager);
-  ~WakeOnWiFi();
+  virtual ~WakeOnWiFi();
 
   // Types of triggers that can cause the NIC to wake the WiFi device.
   enum WakeOnWiFiTrigger { kIPAddress, kDisconnect };
@@ -64,15 +64,19 @@ class WakeOnWiFi {
   // wiphy index of the NIC and sets |wiphy_index_| with the parsed index.
   void ParseWiphyIndex(const Nl80211Message &nl80211_message);
   // Performs pre-suspend actions relevant to wake on wireless functionality.
-  void OnBeforeSuspend(const ResultCallback &callback);
+  virtual void OnBeforeSuspend(const ResultCallback &callback);
   // Performs post-resume actions relevant to wake on wireless functionality.
-  void OnAfterResume();
+  virtual void OnAfterResume();
 
  private:
   friend class WakeOnWiFiTest;  // access to several members for tests
   friend class WiFiObjectTest;  // netlink_manager_
+  // Tests that need kWakeOnWiFiDisabled.
+  FRIEND_TEST(WakeOnWiFiTest, AddWakeOnPacketConnection_ReturnsError);
+  FRIEND_TEST(WakeOnWiFiTest, RemoveWakeOnPacketConnection_ReturnsError);
+  FRIEND_TEST(WakeOnWiFiTest, RemoveAllWakeOnPacketConnections_ReturnsError);
   FRIEND_TEST(WakeOnWiFiTest, ParseWiphyIndex_Success);  // kDefaultWiphyIndex
-  // Tests that need kMaxSetWakeOnPacketRetries
+  // Tests that need kMaxSetWakeOnPacketRetries.
   FRIEND_TEST(WakeOnWiFiTest,
               RetrySetWakeOnPacketConnections_LessThanMaxRetries);
   FRIEND_TEST(WakeOnWiFiTest,
@@ -80,6 +84,9 @@ class WakeOnWiFi {
   FRIEND_TEST(WakeOnWiFiTest,
               RetrySetWakeOnPacketConnections_MaxAttemptsCallbackUnset);
 
+  static const char kWakeOnIPAddressPatternsNotSupported[];
+  static const char kWakeOnPacketDisabled[];
+  static const char kWakeOnWiFiDisabled[];
   static const uint32_t kDefaultWiphyIndex;
   static const int kVerifyWakeOnWiFiSettingsDelaySeconds;
   static const int kMaxSetWakeOnPacketRetries;

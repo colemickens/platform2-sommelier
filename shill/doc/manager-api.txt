@@ -703,7 +703,7 @@ Properties 	object ActiveProfile [readwrite]
 
 			Possible errors: [service].Error.InvalidArguments (argument parsing error)
 					 [service].Error.NotFound (there is no such connection)
-					 [service].Error.NotSupported (no wake-on-packet support in NIC)
+					 [service].Error.NotSupported (wake-on-packet not supported)
 					 [service].Error.OperationFailed (other failures)
 
 		void RemoveWakeOnPacketConnection(string endpoint)
@@ -715,6 +715,7 @@ Properties 	object ActiveProfile [readwrite]
 
 			Possible errors: [service].Error.InvalidArgument (argument parsing error)
 					 [service].Error.NotFound (no such request is active)
+					 [service].Error.NotSupported (wake-on-packet not supported)
 					 [service].Error.OperationFailed (other failures)
 
 		void RemoveAllWakeOnPacketConnections()
@@ -723,3 +724,4 @@ Properties 	object ActiveProfile [readwrite]
 			This is useful to ensure the NIC is in a known state.
 
 			Possible errors: [service].Error.OperationFailed (failed execution)
+					 [service].Error.NotSupported (wake-on-packet not supported)

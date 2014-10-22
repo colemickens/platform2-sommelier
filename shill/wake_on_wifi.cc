@@ -34,6 +34,11 @@ using std::vector;
 
 namespace shill {
 
+const char WakeOnWiFi::kWakeOnIPAddressPatternsNotSupported[] =
+    "Wake on IP address patterns not supported by this WiFi device";
+const char WakeOnWiFi::kWakeOnPacketDisabled[] =
+    "Wake on Packet functionality disabled, so do nothing";
+const char WakeOnWiFi::kWakeOnWiFiDisabled[] = "Wake on WiFi is disabled";
 const uint32_t WakeOnWiFi::kDefaultWiphyIndex = 999;
 const int WakeOnWiFi::kVerifyWakeOnWiFiSettingsDelaySeconds = 1;
 const int WakeOnWiFi::kMaxSetWakeOnPacketRetries = 2;
@@ -464,15 +469,14 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(const Nl80211Message &msg,
 
 void WakeOnWiFi::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                            Error *error) {
+#if !defined(DISABLE_WAKE_ON_WIFI)
   if (!manager_->IsWakeOnPacketEnabled()) {
-    Error::PopulateAndLog(
-        error, Error::kOperationFailed,
-        "Wake on Packet functionality disabled, so do nothing");
+    Error::PopulateAndLog(error, Error::kOperationFailed,
+                          kWakeOnPacketDisabled);
   } else if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
              wake_on_wifi_triggers_supported_.end()) {
-    Error::PopulateAndLog(
-        error, Error::kNotSupported,
-        "Wake on IP address patterns not supported by this WiFi device");
+    Error::PopulateAndLog(error, Error::kNotSupported,
+                          kWakeOnIPAddressPatternsNotSupported);
   } else if (wake_on_wifi_triggers_.size() >= wake_on_wifi_max_patterns_) {
     Error::PopulateAndLog(
         error, Error::kOperationFailed,
@@ -480,40 +484,47 @@ void WakeOnWiFi::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
   } else {
     wake_on_packet_connections_.AddUnique(ip_endpoint);
   }
+#else
+  Error::PopulateAndLog(error, Error::kNotSupported, kWakeOnWiFiDisabled);
+#endif  // DISABLE_WAKE_ON_WIFI
 }
 
 void WakeOnWiFi::RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                               Error *error) {
+#if !defined(DISABLE_WAKE_ON_WIFI)
   if (!manager_->IsWakeOnPacketEnabled()) {
-    Error::PopulateAndLog(
-        error, Error::kOperationFailed,
-        "Wake on Packet functionality disabled, so do nothing");
+    Error::PopulateAndLog(error, Error::kOperationFailed,
+                          kWakeOnPacketDisabled);
   } else if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
              wake_on_wifi_triggers_supported_.end()) {
-    Error::PopulateAndLog(
-        error, Error::kNotSupported,
-        "Wake on IP address patterns not supported by this WiFi device");
+    Error::PopulateAndLog(error, Error::kNotSupported,
+                          kWakeOnIPAddressPatternsNotSupported);
   } else if (!wake_on_packet_connections_.Contains(ip_endpoint)) {
     Error::PopulateAndLog(error, Error::kNotFound,
                           "No such IP address match registered to wake device");
   } else {
     wake_on_packet_connections_.Remove(ip_endpoint);
   }
+#else
+  Error::PopulateAndLog(error, Error::kNotSupported, kWakeOnWiFiDisabled);
+#endif  // DISABLE_WAKE_ON_WIFI
 }
 
 void WakeOnWiFi::RemoveAllWakeOnPacketConnections(Error *error) {
+#if !defined(DISABLE_WAKE_ON_WIFI)
   if (!manager_->IsWakeOnPacketEnabled()) {
-    Error::PopulateAndLog(
-        error, Error::kOperationFailed,
-        "Wake on Packet functionality disabled, so do nothing");
+    Error::PopulateAndLog(error, Error::kOperationFailed,
+                          kWakeOnPacketDisabled);
   } else if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
              wake_on_wifi_triggers_supported_.end()) {
-    Error::PopulateAndLog(
-        error, Error::kNotSupported,
-        "Wake on IP address patterns not supported by this WiFi device");
+    Error::PopulateAndLog(error, Error::kNotSupported,
+                          kWakeOnIPAddressPatternsNotSupported);
   } else {
     wake_on_packet_connections_.Clear();
   }
+#else
+  Error::PopulateAndLog(error, Error::kNotSupported, kWakeOnWiFiDisabled);
+#endif  // DISABLE_WAKE_ON_WIFI
 }
 
 void WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse(
@@ -735,6 +746,7 @@ void WakeOnWiFi::ParseWiphyIndex(const Nl80211Message &nl80211_message) {
 }
 
 void WakeOnWiFi::OnBeforeSuspend(const ResultCallback &callback) {
+#if !defined(DISABLE_WAKE_ON_WIFI)
   if (!wake_on_wifi_triggers_supported_.empty() &&
       !wake_on_packet_connections_.Empty() &&
       manager_->IsWakeOnPacketEnabled()) {
@@ -752,14 +764,20 @@ void WakeOnWiFi::OnBeforeSuspend(const ResultCallback &callback) {
     // packets, so report success immediately.
     callback.Run(Error(Error::kSuccess));
   }
+#else
+  // Wake on WiFi disabled, so immediately report success.
+  callback.Run(Error(Error::kSuccess));
+#endif  // DISABLE_WAKE_ON_WIFI
 }
 
 void WakeOnWiFi::OnAfterResume() {
+#if !defined(DISABLE_WAKE_ON_WIFI)
   // Unconditionally disable wake on WiFi on resume.
   if (!wake_on_wifi_triggers_supported_.empty()) {
     wake_on_wifi_triggers_.clear();
     ApplyWakeOnWiFiSettings();
   }
+#endif  // DISABLE_WAKE_ON_WIFI
 }
 
 }  // namespace shill
