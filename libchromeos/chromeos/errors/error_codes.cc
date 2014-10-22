@@ -19,6 +19,10 @@ const char kParseError[] = "json_parse_error";
 const char kObjectExpected[] = "json_object_expected";
 }  // namespace json
 
+namespace http {
+const char kDomain[] = "http";
+}  // namespace http
+
 namespace system {
 const char kDomain[] = "system";
 

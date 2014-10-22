@@ -13,6 +13,7 @@
 #include <base/values.h>
 #include <chromeos/bind_lambda.h>
 #include <chromeos/data_encoding.h>
+#include <chromeos/errors/error_codes.h>
 #include <chromeos/http/http_utils.h>
 #include <chromeos/mime_utils.h>
 #include <chromeos/strings/string_utils.h>
@@ -545,6 +546,9 @@ void SendRequestAsync(
     // TODO(antonm): Support Retry-After header.
     on_retriable_failure();
   } else {
+    chromeos::Error::AddTo(&error, chromeos::errors::http::kDomain,
+                           std::to_string(status_code),
+                           response->GetStatusText());
     PostToCallback(errorback, std::move(error));
   }
 }
@@ -552,7 +556,7 @@ void SendRequestAsync(
 }  // namespace
 
 void DeviceRegistrationInfo::DoCloudRequest(
-    const char* method,
+    const std::string& method,
     const std::string& url,
     const base::DictionaryValue* body,
     CloudRequestCallback callback,
@@ -584,12 +588,35 @@ void DeviceRegistrationInfo::DoCloudRequest(
     PostToCallback(callback, std::move(json_resp));
   };
 
+  auto transport = transport_;
+  auto errorback_with_reauthorization = base::Bind(
+      [method, url, data, mime_type, transport, request_cb, errorback]
+      (DeviceRegistrationInfo* self, const chromeos::Error& error) {
+    if (error.HasError(chromeos::errors::http::kDomain,
+                       std::to_string(chromeos::http::status_code::Denied))) {
+      chromeos::ErrorPtr reauthorization_error;
+      if (!self->ValidateAndRefreshAccessToken(&reauthorization_error)) {
+        // TODO(antonm): Check if the device has been actually removed.
+        errorback.Run(*reauthorization_error.get());
+        return;
+      }
+      SendRequestAsync(method, url,
+                       data, mime_type,
+                       {self->GetAuthorizationHeader()},
+                       transport,
+                       7,
+                       base::Bind(request_cb), errorback);
+    } else {
+      errorback.Run(error);
+    }
+  }, base::Unretained(this));
+
   SendRequestAsync(method, url,
                    data, mime_type,
                    {GetAuthorizationHeader()},
-                   transport_,
+                   transport,
                    7,
-                   base::Bind(request_cb), errorback);
+                   base::Bind(request_cb), errorback_with_reauthorization);
 }
 
 void DeviceRegistrationInfo::StartDevice(chromeos::ErrorPtr* error) {

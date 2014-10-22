@@ -130,7 +130,7 @@ class DeviceRegistrationInfo {
   // requests.
   // TODO(antonm): Consider moving into some other class.
   void DoCloudRequest(
-      const char* method,
+      const std::string& method,
       const std::string& url,
       const base::DictionaryValue* body,
       CloudRequestCallback callback,

@@ -23,6 +23,10 @@ CHROMEOS_EXPORT extern const char kParseError[];
 CHROMEOS_EXPORT extern const char kObjectExpected[];
 }  // namespace json
 
+namespace http {
+CHROMEOS_EXPORT extern const char kDomain[];
+}  // namespace http
+
 namespace system {
 CHROMEOS_EXPORT extern const char kDomain[];
 
