@@ -1565,7 +1565,7 @@ TEST_F(WiFiMainTest, ResumeDoesNotStartScanWhenNotIdle) {
 
 TEST_F(WiFiMainTest, ResumeWithCurrentService) {
   StartWiFi();
-  SetupConnectedService(DBus::Path(), NULL, NULL);
+  SetupConnectedService(DBus::Path(), nullptr, nullptr);
 
   EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _, _)).Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetHT40Enable(_, true)).Times(1);
@@ -2780,7 +2780,7 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
 
 TEST_F(WiFiMainTest, UnreliableLink) {
   StartWiFi();
-  SetupConnectedService(DBus::Path(), NULL, NULL);
+  SetupConnectedService(DBus::Path(), nullptr, nullptr);
 
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetHT40Enable(_, false)).Times(1);
   OnUnreliableLink();
