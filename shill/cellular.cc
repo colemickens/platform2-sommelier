@@ -1491,6 +1491,12 @@ void Cellular::UpdateHomeProvider(const MobileOperatorInfo *operator_info) {
   // TODO(pprabhu) Change |set_home_provider| to take Stringmap argument and
   // update this.
   Operator oper;
+  if (!operator_info->sid().empty()) {
+    oper.SetCode(operator_info->sid());
+  }
+  if (!operator_info->nid().empty()) {
+    oper.SetCode(operator_info->nid());
+  }
   if (!operator_info->mccmnc().empty()) {
     oper.SetCode(operator_info->mccmnc());
   }
@@ -1547,6 +1553,12 @@ void Cellular::UpdateServingOperator(
   // TODO(pprabhu) Update |CellularService::SetServingOperator| to take
   // Stringmap argument and update this.
   Operator oper;
+  if (!operator_info->sid().empty()) {
+    oper.SetCode(operator_info->sid());
+  }
+  if (!operator_info->nid().empty()) {
+    oper.SetCode(operator_info->nid());
+  }
   if (!operator_info->mccmnc().empty()) {
     oper.SetCode(operator_info->mccmnc());
   }
