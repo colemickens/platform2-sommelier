@@ -33,11 +33,6 @@
                 '<(DEPTH)/chromiumos-wide-profiling/quipper.gyp:*',
               ],
             }],
-            ['USE_vpn == 1', {
-              'dependencies': [
-                '<(DEPTH)/vpn-manager/vpn-manager.gyp:*',
-              ],
-            }],
           ],
         }],
       ],
