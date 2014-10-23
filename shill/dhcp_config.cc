@@ -267,9 +267,11 @@ void DHCPConfig::ProcessStatusChangeSignal(const string &status) {
 void DHCPConfig::UpdateProperties(const Properties &properties) {
   StopAcquisitionTimeout();
   if (properties.lease_duration_seconds) {
+    UpdateLeaseExpirationTime(properties.lease_duration_seconds);
     StartExpirationTimeout(properties.lease_duration_seconds);
   } else {
     LOG(WARNING) << "Lease duration is zero; not starting an expiration timer.";
+    ResetLeaseExpirationTime();
     StopExpirationTimeout();
   }
   IPConfig::UpdateProperties(properties);

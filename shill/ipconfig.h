@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <sys/time.h>
 #include <vector>
 
 #include <base/callback.h>
@@ -23,6 +24,7 @@ class ControlInterface;
 class Error;
 class IPConfigAdaptorInterface;
 class StaticIPParameters;
+class Time;
 
 // IPConfig superclass. Individual IP configuration types will inherit from this
 // class.
@@ -152,6 +154,18 @@ class IPConfig : public base::RefCounted<IPConfig> {
   // static IP parameters were previously applied.
   void RestoreSavedIPParameters(StaticIPParameters *static_ip_parameters);
 
+  // Updates |current_lease_expiration_time_| by adding |new_lease_duration| to
+  // the current time.
+  virtual void UpdateLeaseExpirationTime(uint32_t new_lease_duration);
+
+  // Resets |current_lease_expiration_time_| to its default value.
+  virtual void ResetLeaseExpirationTime();
+
+  // Returns the time left (in seconds) till the current DHCP lease is to be
+  // renewed in |time_left|. Returns false if an error occurs (i.e. current
+  // lease has already expired or no current DHCP lease), true otherwise.
+  bool TimeToLeaseExpiry(uint32_t *time_left);
+
  protected:
   // Inform RPC listeners of changes to our properties. MAY emit
   // changes even on unchanged properties.
@@ -178,6 +192,10 @@ class IPConfig : public base::RefCounted<IPConfig> {
   FRIEND_TEST(DeviceTest, OnIPConfigExpired);
   FRIEND_TEST(IPConfigTest, UpdateCallback);
   FRIEND_TEST(IPConfigTest, UpdateProperties);
+  FRIEND_TEST(IPConfigTest, UpdateLeaseExpirationTime);
+  FRIEND_TEST(IPConfigTest, TimeToLeaseExpiry_NoDHCPLease);
+  FRIEND_TEST(IPConfigTest, TimeToLeaseExpiry_CurrentLeaseExpired);
+  FRIEND_TEST(IPConfigTest, TimeToLeaseExpiry_Success);
   FRIEND_TEST(ResolverTest, Empty);
   FRIEND_TEST(ResolverTest, NonEmpty);
   FRIEND_TEST(RoutingTableTest, ConfigureRoutes);
@@ -199,6 +217,8 @@ class IPConfig : public base::RefCounted<IPConfig> {
   Callback failure_callback_;
   Callback refresh_callback_;
   Callback expire_callback_;
+  struct timeval current_lease_expiration_time_;
+  Time *time_;
 
   DISALLOW_COPY_AND_ASSIGN(IPConfig);
 };

@@ -484,13 +484,16 @@ void Device::OnIPv6DnsServerAddressesChanged() {
     addresses_str.push_back(address_str);
   }
 
-  // Setup timer to monitor DNS server lifetime if not infinite lifetime.
-  if (lifetime != ND_OPT_LIFETIME_INFINITY) {
-    StartIPv6DNSServerTimer(lifetime);
-  }
-
   if (!ip6config_) {
     ip6config_ = new IPConfig(control_interface_, link_name_);
+  }
+
+  if (lifetime != ND_OPT_LIFETIME_INFINITY) {
+    // Setup timer to monitor DNS server lifetime if not infinite lifetime.
+    StartIPv6DNSServerTimer(lifetime);
+    ip6config_->UpdateLeaseExpirationTime(lifetime);
+  } else {
+    ip6config_->ResetLeaseExpirationTime();
   }
 
   // Done if no change in server addresses.

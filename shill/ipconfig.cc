@@ -4,12 +4,15 @@
 
 #include "shill/ipconfig.h"
 
+#include <sys/time.h>
+
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
 #include "shill/error.h"
 #include "shill/logging.h"
+#include "shill/shill_time.h"
 #include "shill/static_ip_parameters.h"
 
 using base::Callback;
@@ -17,8 +20,15 @@ using std::string;
 
 namespace shill {
 
+namespace {
+
+const time_t kDefaultLeaseExpirationTime = LONG_MAX;
+
+}  // namespace
+
 // static
 const char IPConfig::kType[] = "ip";
+
 // static
 uint IPConfig::global_serial_ = 0;
 
@@ -58,6 +68,8 @@ void IPConfig::Init() {
                              &properties_.vendor_encapsulated_options);
   store_.RegisterConstString(kWebProxyAutoDiscoveryUrlProperty,
                              &properties_.web_proxy_auto_discovery);
+  time_ = Time::GetInstance();
+  current_lease_expiration_time_ = {kDefaultLeaseExpirationTime, 0};
   SLOG(Inet, 2) << __func__ << " device: " << device_name();
 }
 
@@ -98,6 +110,34 @@ void IPConfig::RestoreSavedIPParameters(
     StaticIPParameters *static_ip_parameters) {
   static_ip_parameters->RestoreTo(&properties_);
   EmitChanges();
+}
+
+void IPConfig::UpdateLeaseExpirationTime(uint32_t new_lease_duration) {
+  struct timeval new_expiration_time;
+  time_->GetTimeBoottime(&new_expiration_time);
+  new_expiration_time.tv_sec += new_lease_duration;
+  current_lease_expiration_time_ = new_expiration_time;
+}
+
+void IPConfig::ResetLeaseExpirationTime() {
+  current_lease_expiration_time_ = {kDefaultLeaseExpirationTime, 0};
+}
+
+bool IPConfig::TimeToLeaseExpiry(uint32_t *time_left) {
+  if (current_lease_expiration_time_.tv_sec == kDefaultLeaseExpirationTime) {
+    LOG(ERROR) << __func__ << ": "
+               << "No current DHCP lease";
+    return false;
+  }
+  struct timeval now;
+  time_->GetTimeBoottime(&now);
+  if (now.tv_sec > current_lease_expiration_time_.tv_sec) {
+    LOG(ERROR) << __func__ << ": "
+               << "Current DHCP lease has already expired";
+    return false;
+  }
+  *time_left = current_lease_expiration_time_.tv_sec - now.tv_sec;
+  return true;
 }
 
 void IPConfig::UpdateProperties(const Properties &properties) {

@@ -29,6 +29,8 @@ class MockIPConfig : public IPConfig {
   MOCK_METHOD0(EmitChanges, void(void));
   MOCK_METHOD1(UpdateDNSServers,
                void(const std::vector<std::string> &dns_servers));
+  MOCK_METHOD1(UpdateLeaseExpirationTime, void(uint32_t new_lease_duration));
+  MOCK_METHOD0(ResetLeaseExpirationTime, void(void));
 
  private:
   const Properties &real_properties() {

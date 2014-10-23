@@ -324,6 +324,8 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, OnIPv6AddressChanged);
   FRIEND_TEST(DeviceTest, OnIPv6ConfigurationCompleted);
   FRIEND_TEST(DeviceTest, OnIPv6DnsServerAddressesChanged);
+  FRIEND_TEST(DeviceTest,
+              OnIPv6DnsServerAddressesChanged_LeaseExpirationUpdated);
   FRIEND_TEST(DeviceTest, Save);
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(DeviceTest, SetEnabledNonPersistent);
