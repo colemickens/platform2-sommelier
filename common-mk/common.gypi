@@ -20,7 +20,6 @@
     'USE_attestation%': 0,
     'USE_cellular%': 0,
     'USE_cros_host%': 0,
-    'USE_debugd%': 0,
     'USE_feedback%': 0,
     'USE_gdmwimax%': 0,
     'USE_lorgnette%': 0,

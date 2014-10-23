@@ -13,11 +13,6 @@
                 '<(DEPTH)/attestation/attestation.gyp:*',
               ],
             }],
-            ['USE_debugd == 1', {
-              'dependencies': [
-                '<(DEPTH)/debugd/debugd.gyp:*',
-              ],
-            }],
             ['USE_feedback == 1', {
               'dependencies': [
                 '<(DEPTH)/feedback/feedback.gyp:*',
