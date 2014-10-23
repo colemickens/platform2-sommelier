@@ -100,6 +100,7 @@ void AdaptorGenerator::AddConstructor(const Interface& interface,
   block.AddLine(StringPrintf("%s(", class_name.c_str()));
   block.PushOffset(kLineContinuationOffset);
   block.AddLine("chromeos::dbus_utils::ExportedObjectManager* object_manager,");
+  block.AddLine("const scoped_refptr<dbus::Bus>& bus,");
   block.AddLine("const std::string& object_path,");
   block.AddLine("MethodInterface* interface)  // Owned by caller.");
   block.AddLine(": interface_(interface),");
@@ -107,7 +108,7 @@ void AdaptorGenerator::AddConstructor(const Interface& interface,
   block.AddLine("dbus_object_(");
   block.PushOffset(kLineContinuationOffset);
   block.AddLine("object_manager,");
-  block.AddLine("object_manager->GetBus(),");
+  block.AddLine("bus,");
   block.AddLine("dbus::ObjectPath(object_path)),");
   block.PopOffset();
   block.AddLine("dbus_interface_(");

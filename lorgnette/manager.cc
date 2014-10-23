@@ -47,7 +47,7 @@ void Manager::InitDBus(
     chromeos::dbus_utils::ExportedObjectManager *object_manager) {
   dbus_adaptor_.reset(
      new org::chromium::lorgnette::ManagerAdaptor(
-         object_manager, kManagerServicePath, this));
+         object_manager, object_manager->GetBus(), kManagerServicePath, this));
 }
 
 Manager::ScannerInfo Manager::ListScanners(chromeos::ErrorPtr *error) {

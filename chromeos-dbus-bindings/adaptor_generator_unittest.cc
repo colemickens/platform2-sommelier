@@ -66,12 +66,13 @@ class TestInterfaceAdaptor {
   };
   TestInterfaceAdaptor(
       chromeos::dbus_utils::ExportedObjectManager* object_manager,
+      const scoped_refptr<dbus::Bus>& bus,
       const std::string& object_path,
       MethodInterface* interface)  // Owned by caller.
       : interface_(interface),
         dbus_object_(
             object_manager,
-            object_manager->GetBus(),
+            bus,
             dbus::ObjectPath(object_path)),
         dbus_interface_(
             dbus_object_.AddOrGetInterface("org.chromium.TestInterface")) {
