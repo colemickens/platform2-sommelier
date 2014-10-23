@@ -170,21 +170,13 @@ class PerfParser : public PerfReader {
   bool MapForkEvent(const struct fork_event& event);
   bool MapCommEvent(const struct comm_event& event);
 
-  // Create a process mapper for a process. Optionally pass in a parent pid
-  // |ppid| from which to copy mappings.
-  void CreateProcessMapper(uint32_t pid, uint32_t ppid = -1);
-
   // Does a sample event remap and then returns DSO name and offset of sample.
   bool MapSampleEvent(ParsedEvent* parsed_event);
-
-  void ResetAddressMappers();
 
   std::vector<ParsedEvent> parsed_events_;
   std::vector<ParsedEvent*> parsed_events_sorted_by_time_;
 
   Options options_;   // Store all option flags as one struct.
-
-  std::map<uint32_t, AddressMapper*> process_mappers_;
 
   // Maps pid/tid to commands.
   std::map<PidTid, const string*> pidtid_to_comm_map_;
@@ -219,6 +211,15 @@ class PerfParser : public PerfReader {
       uint32_t pid,
       uint64_t* new_ip,
       ParsedEvent::DSOAndOffset* dso_and_offset);
+
+  // Create a process mapper for a process. Optionally pass in a parent pid
+  // |ppid| from which to copy mappings.
+  // Returns (mapper, true) if a new AddressMapper was created, and
+  // (mapper, false) if there is an existing mapper.
+  std::pair<AddressMapper*, bool> GetOrCreateProcessMapper(uint32_t pid,
+                                                           uint32_t ppid = -1);
+
+  std::map<uint32_t, std::unique_ptr<AddressMapper>> process_mappers_;
 
   DISALLOW_COPY_AND_ASSIGN(PerfParser);
 };

@@ -43,9 +43,7 @@ bool IsNullBranchStackEntry(const struct branch_entry& entry) {
 
 PerfParser::PerfParser() {}
 
-PerfParser::~PerfParser() {
-  ResetAddressMappers();
-}
+PerfParser::~PerfParser() {}
 
 PerfParser::PerfParser(const PerfParser::Options& options) {
   options_ = options;
@@ -56,7 +54,7 @@ void PerfParser::set_options(const PerfParser::Options& options) {
 }
 
 bool PerfParser::ParseRawEvents() {
-  ResetAddressMappers();
+  process_mappers_.clear();
   parsed_events_.resize(events_.size());
   for (size_t i = 0; i < events_.size(); ++i) {
     ParsedEvent& parsed_event = parsed_events_[i];
@@ -378,15 +376,11 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(
   // 2. Address space of its own process.
   // 3. Address space of the parent process.
 
-  AddressMapper* mapper = NULL;
   uint64_t mapped_addr = 0;
 
   // Sometimes the first event we see is a SAMPLE event and we don't have the
   // time to create an address mapper for a process. Example, for pid 0.
-  if (process_mappers_.find(pid) == process_mappers_.end()) {
-    CreateProcessMapper(pid);
-  }
-  mapper = process_mappers_[pid];
+  AddressMapper* mapper = GetOrCreateProcessMapper(pid).first;
   bool mapped = mapper->GetMappedAddress(ip, &mapped_addr);
   // TODO(asharif): What should we do when we cannot map a SAMPLE event?
 
@@ -425,13 +419,7 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64_t id) {
   // more secure, and make the mapping idempotent, we should remap all
   // addresses, both kernel and non-kernel.
 
-  AddressMapper* mapper = NULL;
-
-  uint32_t pid = event->pid;
-  if (process_mappers_.find(pid) == process_mappers_.end()) {
-    CreateProcessMapper(pid);
-  }
-  mapper = process_mappers_[pid];
+  AddressMapper* mapper = GetOrCreateProcessMapper(event->pid).first;
 
   uint64_t len = event->len;
   uint64_t start = event->start;
@@ -490,21 +478,27 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64_t id) {
   return true;
 }
 
-void PerfParser::CreateProcessMapper(uint32_t pid, uint32_t ppid) {
-  AddressMapper* mapper;
-  if (process_mappers_.find(ppid) != process_mappers_.end())
-    mapper = new AddressMapper(*process_mappers_[ppid]);
-  else
-    mapper = new AddressMapper();
+std::pair<AddressMapper*, bool> PerfParser::GetOrCreateProcessMapper(
+    uint32_t pid, uint32_t ppid) {
+  const auto& search = process_mappers_.find(pid);
+  if (search != process_mappers_.end()) {
+    return std::make_pair(search->second.get(), false);
+  }
 
-  process_mappers_[pid] = mapper;
+  std::unique_ptr<AddressMapper> mapper;
+  const auto& parent_mapper = process_mappers_.find(ppid);
+  if (parent_mapper != process_mappers_.end())
+    mapper.reset(new AddressMapper(*parent_mapper->second));
+  else
+    mapper.reset(new AddressMapper());
+
+  const auto inserted =
+      process_mappers_.insert(search, std::make_pair(pid, std::move(mapper)));
+  return std::make_pair(inserted->second.get(), true);
 }
 
 bool PerfParser::MapCommEvent(const struct comm_event& event) {
-  uint32_t pid = event.pid;
-  if (process_mappers_.find(pid) == process_mappers_.end()) {
-    CreateProcessMapper(pid);
-  }
+  GetOrCreateProcessMapper(event.pid);
   return true;
 }
 
@@ -516,26 +510,18 @@ bool PerfParser::MapForkEvent(const struct fork_event& event) {
     pidtid_to_comm_map_[child] = pidtid_to_comm_map_[parent];
   }
 
-  uint32_t pid = event.pid;
-  if (process_mappers_.find(pid) != process_mappers_.end()) {
-    DLOG(INFO) << "Found an existing process mapper with pid: " << pid;
-    return true;
-  }
+  const uint32_t pid = event.pid;
 
   // If the parent and child pids are the same, this is just a new thread
   // within the same process, so don't do anything.
   if (event.ppid == pid)
     return true;
 
-  CreateProcessMapper(pid, event.ppid);
-  return true;
-}
+  if (!GetOrCreateProcessMapper(pid, event.ppid).second) {
+    DLOG(INFO) << "Found an existing process mapper with pid: " << pid;
+  }
 
-void PerfParser::ResetAddressMappers() {
-  std::map<uint32_t, AddressMapper*>::iterator iter;
-  for (iter = process_mappers_.begin(); iter != process_mappers_.end(); ++iter)
-    delete iter->second;
-  process_mappers_.clear();
+  return true;
 }
 
 }  // namespace quipper
