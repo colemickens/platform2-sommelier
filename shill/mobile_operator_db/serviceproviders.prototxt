@@ -15897,12 +15897,35 @@ mno {
       name : "Test Network"
     }
     mccmnc : "001000"
+    mccmnc : "001001"
+    mccmnc : "001002"
+    mccmnc : "001003"
     mobile_apn {
       apn : "testinternet"
       localized_name {
         name : "Test Network APN"
       }
     }
+    activation_code : "99998"
+  }
+}
+
+mno {
+  data {
+    uuid : "test-network-cdma"
+    country : "us"
+    localized_name {
+      name : "Test Network"
+    }
+    mobile_apn {
+      apn : "testinternet"
+      localized_name {
+        name : "Test Network APN"
+      }
+    }
+    sid : "99995"
+    sid : "99996"
+    sid : "99997"
     sid : "99998"
     activation_code : "99998"
   }
