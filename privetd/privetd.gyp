@@ -22,6 +22,12 @@
       'dependencies': [
         'privetd_common',
       ],
+      'variables': {
+        'exported_deps': [
+          'libwebserv-<(libbase_ver)',
+        ],
+        'deps': ['<@(exported_deps)'],
+      },
       'sources': [
         'main.cc',
       ],
