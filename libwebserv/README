@@ -1,0 +1,10 @@
+// Copyright 2014 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+This directory contains a web server interface library.
+
+The current (temporary) implementation also include the actual web server
+functionality based on libmicrohttpd but this will be removed later in favor
+of a stand-alone web server (based either on Google's GFE-like solution or
+a standard stand-alone package like lighttpd or nginx).
