@@ -41,6 +41,14 @@ class AdaptorGenerator : public HeaderGenerator {
   static void AddMethodInterface(const Interface& interface,
                                  IndentedText *text);
 
+  // Generates adaptor methods to send the signals.
+  static void AddSendSignalMethods(const Interface& interface,
+                                   IndentedText *text);
+
+  // Generates DBusSignal data members for the signals.
+  static void AddSignalDataMembers(const Interface& interface,
+                                   IndentedText *text);
+
   DISALLOW_COPY_AND_ASSIGN(AdaptorGenerator);
 };
 

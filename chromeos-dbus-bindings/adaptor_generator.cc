@@ -55,6 +55,7 @@ bool AdaptorGenerator::GenerateAdaptor(
   text.PushOffset(kBlockOffset);
   AddMethodInterface(interface, &text);
   AddConstructor(interface, adaptor_name, &text);
+  AddSendSignalMethods(interface, &text);
   text.AddLine(StringPrintf("virtual ~%s() = default;", adaptor_name.c_str()));
   text.AddLine("virtual void OnRegisterComplete(bool success) {}");
   text.PopOffset();
@@ -75,6 +76,7 @@ bool AdaptorGenerator::GenerateAdaptor(
   text.PushOffset(kBlockOffset);
   text.AddLine("MethodInterface* interface_;  // Owned by caller.");
   text.AddLine("chromeos::dbus_utils::DBusObject dbus_object_;");
+  AddSignalDataMembers(interface, &text);
   text.AddLine("// Owned by |dbus_object_|.");
   text.AddLine("chromeos::dbus_utils::DBusInterface* dbus_interface_;");
   text.AddLine(StringPrintf(
@@ -111,6 +113,17 @@ void AdaptorGenerator::AddConstructor(const Interface& interface,
   block.AddLine("bus,");
   block.AddLine("dbus::ObjectPath(object_path)),");
   block.PopOffset();
+
+  // Signal constructors.
+  for (const auto& signal : interface.signals) {
+    block.AddLine(StringPrintf("signal_%s_(", signal.name.c_str()));
+    block.PushOffset(kLineContinuationOffset);
+    block.AddLine("&dbus_object_,");
+    block.AddLine(StringPrintf("\"%s\",", interface.name.c_str()));
+    block.AddLine(StringPrintf("\"%s\"),", signal.name.c_str()));
+    block.PopOffset();
+  }
+
   block.AddLine("dbus_interface_(");
   block.PushOffset(kLineContinuationOffset);
   block.AddLine(StringPrintf(
@@ -183,5 +196,68 @@ void AdaptorGenerator::AddMethodInterface(const Interface& interface,
 
   text->AddBlock(block);
 }
+
+// static
+void AdaptorGenerator::AddSendSignalMethods(const Interface& interface,
+                                            IndentedText *text) {
+  IndentedText block;
+  DbusSignature signature;
+
+  for (const auto& signal : interface.signals) {
+    block.AddLine(StringPrintf("void Send%sSignal(", signal.name.c_str()));
+    block.PushOffset(kLineContinuationOffset);
+    string last_argument;
+    int unnamed_args = 0;
+    string call_arguments;  // The arguments to pass to the Send() call.
+    for (const auto& argument : signal.arguments) {
+      if (!last_argument.empty())
+        block.AddLine(last_argument + ",");
+      CHECK(signature.Parse(argument.type, &last_argument));
+      if (!IsIntegralType(last_argument))
+        last_argument = StringPrintf("const %s&", last_argument.c_str());
+      string argument_name = argument.name;
+      if (argument.name.empty())
+        argument_name = StringPrintf("_arg_%d", ++unnamed_args);
+      last_argument.append(" " + argument_name);
+      if (!call_arguments.empty())
+        call_arguments.append(", ");
+      call_arguments.append(argument_name);
+    }
+    block.AddLine(last_argument + ") {");
+    block.PopOffset();
+    block.PushOffset(kBlockOffset);
+    block.AddLine(StringPrintf(
+        "signal_%s_.Send(%s);", signal.name.c_str(), call_arguments.c_str()));
+    block.PopOffset();
+    block.AddLine("}");
+  }
+  text->AddBlock(block);
+}
+
+// static
+void AdaptorGenerator::AddSignalDataMembers(const Interface& interface,
+                                            IndentedText *text) {
+  IndentedText block;
+  DbusSignature signature;
+
+  for (const auto& signal : interface.signals) {
+    block.AddLine("chromeos::dbus_utils::DBusSignal<");
+    block.PushOffset(kLineContinuationOffset);
+    string last_argument;
+    for (const auto& argument : signal.arguments) {
+      if (!last_argument.empty())
+        block.AddLine(last_argument + ",");
+      CHECK(signature.Parse(argument.type, &last_argument));
+      if (!argument.name.empty())
+        last_argument.append(StringPrintf(" /* %s */", argument.name.c_str()));
+    }
+    block.AddLine(StringPrintf(
+        "%s> signal_%s_;", last_argument.c_str(), signal.name.c_str()));
+    block.PopOffset();
+  }
+  text->AddBlock(block);
+}
+
+
 
 }  // namespace chromeos_dbus_bindings

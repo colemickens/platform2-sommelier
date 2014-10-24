@@ -35,6 +35,12 @@ const char kMethod2Name[] = "Kei";
 const char kMethod3Name[] = "Kiyoko";
 const char kMethod3Return0[] = "x";
 const char kMethod3Return1[] = "s";
+const char kSignal0Name[] = "Update";
+const char kSignal1Name[] = "Mapping";
+const char kSignal1Argument0[] = "s";
+const char kSignal1ArgumentName0[] = "key";
+const char kSignal1Argument1[] = "ao";
+
 const char kInterfaceName[] = "org.chromium.TestInterface";
 const char kExpectedContent[] = R"literal_string(
 #include <string>
@@ -74,6 +80,14 @@ class TestInterfaceAdaptor {
             object_manager,
             bus,
             dbus::ObjectPath(object_path)),
+        signal_Update_(
+            &dbus_object_,
+            "org.chromium.TestInterface",
+            "Update"),
+        signal_Mapping_(
+            &dbus_object_,
+            "org.chromium.TestInterface",
+            "Mapping"),
         dbus_interface_(
             dbus_object_.AddOrGetInterface("org.chromium.TestInterface")) {
     dbus_interface_->AddMethodHandler(
@@ -91,6 +105,15 @@ class TestInterfaceAdaptor {
     dbus_object_.RegisterAsync(base::Bind(
         &TestInterfaceAdaptor::OnRegisterComplete, base::Unretained(this)));
   }
+  void SendUpdateSignal(
+      ) {
+    signal_Update_.Send();
+  }
+  void SendMappingSignal(
+      const std::string& key,
+      const std::vector<dbus::ObjectPath>& _arg_1) {
+    signal_Mapping_.Send(key, _arg_1);
+  }
   virtual ~TestInterfaceAdaptor() = default;
   virtual void OnRegisterComplete(bool success) {}
 
@@ -102,6 +125,11 @@ class TestInterfaceAdaptor {
  private:
   MethodInterface* interface_;  // Owned by caller.
   chromeos::dbus_utils::DBusObject dbus_object_;
+  chromeos::dbus_utils::DBusSignal<
+      > signal_Update_;
+  chromeos::dbus_utils::DBusSignal<
+      std::string /* key */,
+      std::vector<dbus::ObjectPath>> signal_Mapping_;
   // Owned by |dbus_object_|.
   chromeos::dbus_utils::DBusInterface* dbus_interface_;
   DISALLOW_COPY_AND_ASSIGN(TestInterfaceAdaptor);
@@ -151,6 +179,16 @@ TEST_F(AdaptorGeneratorTest, GenerateAdaptors) {
       vector<Interface::Argument>{
           {"", kMethod3Return0},
           {"", kMethod3Return1}});
+  // Signals generate helper methods to send them.
+  interface.signals.emplace_back(
+      kSignal0Name,
+      vector<Interface::Argument>{});
+  interface.signals.emplace_back(
+      kSignal1Name,
+      vector<Interface::Argument>{
+          {kSignal1ArgumentName0, kSignal1Argument0},
+          {"", kSignal1Argument1}});
+
   base::FilePath output_path = temp_dir_.path().Append("output.h");
   EXPECT_TRUE(AdaptorGenerator::GenerateAdaptor(interface, output_path));
   string contents;
