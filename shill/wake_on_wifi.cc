@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <set>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -30,6 +31,7 @@
 using base::Bind;
 using std::pair;
 using std::set;
+using std::string;
 using std::vector;
 
 namespace shill {
@@ -37,7 +39,7 @@ namespace shill {
 const char WakeOnWiFi::kWakeOnIPAddressPatternsNotSupported[] =
     "Wake on IP address patterns not supported by this WiFi device";
 const char WakeOnWiFi::kWakeOnPacketDisabled[] =
-    "Wake on Packet functionality disabled, so do nothing";
+    "Wake on Packet feature disabled, so do nothing";
 const char WakeOnWiFi::kWakeOnWiFiDisabled[] = "Wake on WiFi is disabled";
 const uint32_t WakeOnWiFi::kDefaultWiphyIndex = 999;
 const int WakeOnWiFi::kVerifyWakeOnWiFiSettingsDelaySeconds = 1;
@@ -470,7 +472,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(const Nl80211Message &msg,
 void WakeOnWiFi::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                            Error *error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
-  if (!manager_->IsWakeOnPacketEnabled()) {
+  if (!WakeOnPacketEnabled(manager_->WakeOnWiFiEnabled())) {
     Error::PopulateAndLog(error, Error::kOperationFailed,
                           kWakeOnPacketDisabled);
   } else if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
@@ -492,7 +494,7 @@ void WakeOnWiFi::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
 void WakeOnWiFi::RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                               Error *error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
-  if (!manager_->IsWakeOnPacketEnabled()) {
+  if (!WakeOnPacketEnabled(manager_->WakeOnWiFiEnabled())) {
     Error::PopulateAndLog(error, Error::kOperationFailed,
                           kWakeOnPacketDisabled);
   } else if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
@@ -512,7 +514,7 @@ void WakeOnWiFi::RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
 
 void WakeOnWiFi::RemoveAllWakeOnPacketConnections(Error *error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
-  if (!manager_->IsWakeOnPacketEnabled()) {
+  if (!WakeOnPacketEnabled(manager_->WakeOnWiFiEnabled())) {
     Error::PopulateAndLog(error, Error::kOperationFailed,
                           kWakeOnPacketDisabled);
   } else if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
@@ -602,9 +604,8 @@ void WakeOnWiFi::VerifyWakeOnWiFiSettings(
 }
 
 void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
-  if (!manager_->IsWakeOnPacketEnabled()) {
-    LOG(INFO) << __func__
-              << ": Wake on Packet functionality disabled, so do nothing";
+  if (WakeOnWiFiFeaturesDisabled(manager_->WakeOnWiFiEnabled())) {
+    LOG(INFO) << __func__ << ": Wake on WiFi features disabled";
     return;
   }
   if (!wiphy_index_received_) {
@@ -679,6 +680,21 @@ void WakeOnWiFi::RetrySetWakeOnPacketConnections() {
   }
 }
 
+bool WakeOnWiFi::WakeOnPacketEnabled(const string &wake_on_wifi_enabled) {
+  return (wake_on_wifi_enabled == kWakeOnWiFiEnabledPacket ||
+          wake_on_wifi_enabled == kWakeOnWiFiEnabledPacketSSID);
+}
+
+bool WakeOnWiFi::WakeOnSSIDEnabled(const string &wake_on_wifi_enabled) {
+  return (wake_on_wifi_enabled == kWakeOnWiFiEnabledSSID ||
+          wake_on_wifi_enabled == kWakeOnWiFiEnabledPacketSSID);
+}
+
+bool WakeOnWiFi::WakeOnWiFiFeaturesDisabled(
+    const string &wake_on_wifi_enabled) {
+  return wake_on_wifi_enabled == kWakeOnWiFiEnabledNone;
+}
+
 void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
     const Nl80211Message &nl80211_message) {
   // Verify NL80211_CMD_NEW_WIPHY.
@@ -746,27 +762,47 @@ void WakeOnWiFi::ParseWiphyIndex(const Nl80211Message &nl80211_message) {
 }
 
 void WakeOnWiFi::OnBeforeSuspend(const ResultCallback &callback) {
-#if !defined(DISABLE_WAKE_ON_WIFI)
-  if (!wake_on_wifi_triggers_supported_.empty() &&
-      !wake_on_packet_connections_.Empty() &&
-      manager_->IsWakeOnPacketEnabled()) {
-    wake_on_wifi_triggers_.insert(WakeOnWiFi::kIPAddress);
-    // TODO(samueltan): Currently we do not wake on disconnect as this will
-    // trigger a full system resume. Program the NIC wake on disconnect only
-    // when the kernel/powerd can identify a wake on disconnect signal and
-    // put the system into dark resume.
-    // wake_on_wifi_triggers_.insert(WakeOnWiFi::kDisconnect);
-    suspend_actions_done_callback_ = callback;
-    dispatcher_->PostTask(Bind(&WakeOnWiFi::ApplyWakeOnWiFiSettings,
-                               weak_ptr_factory_.GetWeakPtr()));
-  } else {
-    // No need to program NIC if the system is not expected to wake on any
-    // packets, so report success immediately.
-    callback.Run(Error(Error::kSuccess));
-  }
-#else
+#if defined(DISABLE_WAKE_ON_WIFI)
   // Wake on WiFi disabled, so immediately report success.
   callback.Run(Error(Error::kSuccess));
+#else
+  if (wake_on_wifi_triggers_supported_.empty() ||
+      WakeOnWiFiFeaturesDisabled(manager_->WakeOnWiFiEnabled())) {
+    callback.Run(Error(Error::kSuccess));
+    return;
+  }
+
+  if (manager_->WakeOnWiFiEnabled() == kWakeOnWiFiEnabledPacket) {
+    wake_on_wifi_triggers_.insert(WakeOnWiFi::kIPAddress);
+  } else if (manager_->WakeOnWiFiEnabled() == kWakeOnWiFiEnabledSSID) {
+    wake_on_wifi_triggers_.insert(WakeOnWiFi::kDisconnect);
+    // TODO(samueltan): insert wake on SSID relevant triggers here once
+    // they become available.
+  } else {
+    DCHECK(manager_->WakeOnWiFiEnabled() == kWakeOnWiFiEnabledPacketSSID);
+    wake_on_wifi_triggers_.insert(WakeOnWiFi::kDisconnect);
+    wake_on_wifi_triggers_.insert(WakeOnWiFi::kIPAddress);
+    // TODO(samueltan): insert wake on SSID relevant triggers here once
+    // they become available.
+  }
+
+  if (wake_on_wifi_triggers_.find(WakeOnWiFi::kIPAddress) !=
+          wake_on_wifi_triggers_.end() &&
+      wake_on_packet_connections_.Empty()) {
+    // Do not program NIC to wake on IP address patterns if no wake on packet
+    // connections have been registered.
+    wake_on_wifi_triggers_.erase(WakeOnWiFi::kIPAddress);
+    if (wake_on_wifi_triggers_.empty()) {
+      // Optimization: report success and return immediately instead of
+      // asynchronously calling WakeOnWiFi::ApplyWakeOnPacketSettings.
+      callback.Run(Error(Error::kSuccess));
+      return;
+    }
+  }
+
+  suspend_actions_done_callback_ = callback;
+  dispatcher_->PostTask(Bind(&WakeOnWiFi::ApplyWakeOnWiFiSettings,
+                             weak_ptr_factory_.GetWeakPtr()));
 #endif  // DISABLE_WAKE_ON_WIFI
 }
 

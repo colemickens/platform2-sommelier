@@ -126,7 +126,11 @@ Manager::Manager(ControlInterface *control_interface,
       termination_actions_(dispatcher),
       suspend_delay_registered_(false),
       is_wake_on_lan_enabled_(true),
-      is_wake_on_packet_enabled_(true),
+#if defined(DISABLE_WAKE_ON_WIFI)
+      wake_on_wifi_enabled_(kWakeOnWiFiEnabledNone),
+#else
+      wake_on_wifi_enabled_(kWakeOnWiFiEnabledSSID),
+#endif  // DISABLE_WAKE_ON_WIFI
       default_service_callback_tag_(0),
       crypto_util_proxy_(new CryptoUtilProxy(dispatcher, glib)),
       health_checker_remote_ips_(new IPAddressStore()) {
@@ -181,8 +185,9 @@ Manager::Manager(ControlInterface *control_interface,
   HelpRegisterConstDerivedStrings(kUninitializedTechnologiesProperty,
                                   &Manager::UninitializedTechnologies);
   store_.RegisterBool(kWakeOnLanEnabledProperty, &is_wake_on_lan_enabled_);
-  store_.RegisterBool(kWakeOnPacketEnabledProperty,
-                      &is_wake_on_packet_enabled_);
+  HelpRegisterDerivedString(kWakeOnWiFiEnabledProperty,
+                            &Manager::GetWakeOnWiFiEnabled,
+                            &Manager::SetWakeOnWiFiEnabled);
 
   // Set default technology order "by hand", to avoid invoking side
   // effects of SetTechnologyOrder.
@@ -977,6 +982,34 @@ bool Manager::HasService(const ServiceRefPtr &service) {
       return true;
   }
   return false;
+}
+
+std::string Manager::GetWakeOnWiFiEnabled(Error *error) {
+  return wake_on_wifi_enabled_;
+}
+
+bool Manager::SetWakeOnWiFiEnabled(const std::string &enabled, Error *error) {
+  if (wake_on_wifi_enabled_ == enabled) {
+    return false;
+  }
+#if defined(DISABLE_WAKE_ON_WIFI)
+  if (enabled != kWakeOnWiFiEnabledNone) {
+    Error::PopulateAndLog(error, Error::kNotSupported,
+                          "Wake on WiFi is not supported");
+    return false;
+  }
+#else
+  if (enabled != kWakeOnWiFiEnabledPacket &&
+      enabled != kWakeOnWiFiEnabledSSID &&
+      enabled != kWakeOnWiFiEnabledPacketSSID &&
+      enabled != kWakeOnWiFiEnabledNone) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Invalid Wake on WiFi feature");
+    return false;
+  }
+#endif  // DISABLE_WAKE_ON_WIFI
+  wake_on_wifi_enabled_ = enabled;
+  return true;
 }
 
 void Manager::RegisterService(const ServiceRefPtr &to_manage) {

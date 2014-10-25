@@ -10,6 +10,7 @@
 #include <netinet/ip6.h>
 
 #include <set>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -185,6 +186,13 @@ class WakeOnWiFi {
   // a retry. If |kMaxSetWakeOnPacketRetries| retries have already been
   // performed, resets counter and returns.
   void RetrySetWakeOnPacketConnections();
+
+  // Utility functions to check which wake on WiFi features are currently
+  // enabled based on the descriptor |wake_on_wifi_enabled|.
+  static bool WakeOnPacketEnabled(const std::string &wake_on_wifi_enabled);
+  static bool WakeOnSSIDEnabled(const std::string &wake_on_wifi_enabled);
+  static bool WakeOnWiFiFeaturesDisabled(
+      const std::string &wake_on_wifi_enabled);
 
   // Pointers to objects owned by the WiFi object that created this object.
   EventDispatcher *dispatcher_;
