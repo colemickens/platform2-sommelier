@@ -737,7 +737,7 @@ bool PerfReader::RegenerateHeader() {
   memset(&out_header_, 0, sizeof(out_header_));
   out_header_.magic = kPerfMagic;
   out_header_.size = sizeof(out_header_);
-  out_header_.attr_size = sizeof(attrs_[0].attr) + sizeof(perf_file_section);
+  out_header_.attr_size = sizeof(perf_file_attr);
   out_header_.attrs.size = out_header_.attr_size * attrs_.size();
   for (size_t i = 0; i < events_.size(); i++)
     out_header_.data.size += events_[i]->header.size;
@@ -1048,7 +1048,7 @@ bool PerfReader::ReadAttr(const ConstBufferWithSize& data, size_t* offset) {
     ByteSwap(&ids.size);
   }
 
-  size_t num_ids = ids.size / sizeof(attr.ids[0]);
+  size_t num_ids = ids.size / sizeof(decltype(attr.ids)::value_type);
   // Convert the offset from u64 to size_t.
   size_t ids_offset = ids.offset;
   if (!ReadUniqueIDs(data, num_ids, &ids_offset, &attr.ids))
@@ -1626,7 +1626,7 @@ bool PerfReader::WriteAttrs(const BufferWithSize& data) const {
     const PerfFileAttr& attr = attrs_[i];
     struct perf_file_section ids;
     ids.offset = id_offset;
-    ids.size = attr.ids.size() * sizeof(attr.ids[0]);
+    ids.size = attr.ids.size() * sizeof(decltype(attr.ids)::value_type);
 
     for (size_t j = 0; j < attr.ids.size(); j++) {
       const uint64_t id = attr.ids[j];
@@ -1939,11 +1939,16 @@ bool PerfReader::WriteEventTypes(const BufferWithSize& data) const {
 
 bool PerfReader::ReadAttrEventBlock(const ConstBufferWithSize& data,
                                     size_t offset, size_t size) {
+  const size_t initial_offset = offset;
   PerfFileAttr attr;
   if (!ReadEventAttr(data, &offset, &attr.attr))
     return false;
 
-  size_t num_ids = (size - attr.attr.size) / sizeof(attr.ids[0]);
+  // attr.attr.size has been upgraded to the current size of perf_event_attr.
+  const size_t actual_attr_size = offset - initial_offset;
+
+  const size_t num_ids =
+      (size - actual_attr_size) / sizeof(decltype(attr.ids)::value_type);
   if (!ReadUniqueIDs(data, num_ids, &offset, &attr.ids))
     return false;
 

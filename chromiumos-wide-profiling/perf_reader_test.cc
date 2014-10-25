@@ -361,6 +361,97 @@ TEST(PerfReaderTest, ReadsTracingMetadataEvent) {
   EXPECT_EQ(trace_metadata, pr.tracing_data());
 }
 
+// Regression test for http://crbug.com/427767
+TEST(PerfReaderTest, CorrectlyReadsPerfEventAttrSize) {
+  std::stringstream input;
+
+  // header
+
+  const perf_pipe_file_header header = {
+    .magic = kPerfMagic,
+    .size = 16,
+  };
+  input.write(reinterpret_cast<const char*>(&header), sizeof(header));
+  ASSERT_EQ(input.tellp(), header.size);
+
+  // data
+
+  struct old_perf_event_attr {
+    __u32 type;
+    __u32 size;
+    __u64 config;
+    // union {
+            __u64 sample_period;
+    //      __u64 sample_freq;
+    // };
+    __u64 sample_type;
+    __u64 read_format;
+    // Skip the rest of the fields from perf_event_attr to simulate an
+    // older, smaller version of the struct.
+  };
+
+  struct old_attr_event {
+    struct perf_event_header header;
+    struct old_perf_event_attr attr;
+    u64 id[];
+  };
+
+
+  const old_attr_event attr = {
+    .header = {
+      .type = PERF_RECORD_HEADER_ATTR,
+      .misc = 0,
+      // A count of 8 ids is carefully selected to make the event exceed
+      // 96 bytes (sizeof(perf_event_attr)) so that the test fails instead of
+      // crashes with the old code.
+      .size = sizeof(old_attr_event) + 8*sizeof(u64),
+    },
+    .attr = {
+      .type = 0,
+      .size = sizeof(old_perf_event_attr),
+      .config = 0,
+      .sample_period = 10000001,
+      .sample_type = PERF_SAMPLE_IP | PERF_SAMPLE_TID | PERF_SAMPLE_TIME |
+                     PERF_SAMPLE_ID | PERF_SAMPLE_CPU,
+      .read_format = PERF_FORMAT_ID,
+    },
+  };
+
+  input.write(reinterpret_cast<const char*>(&attr), sizeof(attr));
+  for (u64 id : {301, 302, 303, 304, 305, 306, 307, 308})
+    input.write(reinterpret_cast<const char*>(&id), sizeof(id));
+
+  // Add some sample events so that there's something to over-read.
+  const sample_event sample = {
+    .header = {
+      .type = PERF_RECORD_SAMPLE,
+      .misc = 0,
+      .size = sizeof(perf_event_header) + 5*sizeof(u64),
+    }
+  };
+
+  for (int i = 0; i < 20; i++) {
+    input.write(reinterpret_cast<const char*>(&sample), sizeof(sample));
+    u64 qword = 0;
+    for (int j = 0; j < 5; j++)
+      input.write(reinterpret_cast<const char*>(&qword), sizeof(qword));
+  }
+
+  //
+  // Parse input.
+  //
+
+  PerfReader pr;
+  EXPECT_TRUE(pr.ReadFromString(input.str()));
+  ASSERT_EQ(pr.attrs().size(), 1);
+  const PerfFileAttr& actual_attr = pr.attrs()[0];
+  ASSERT_EQ(8, actual_attr.ids.size());
+  EXPECT_EQ(301, actual_attr.ids[0]);
+  EXPECT_EQ(302, actual_attr.ids[1]);
+  EXPECT_EQ(303, actual_attr.ids[2]);
+  EXPECT_EQ(304, actual_attr.ids[3]);
+}
+
 }  // namespace quipper
 
 int main(int argc, char* argv[]) {
