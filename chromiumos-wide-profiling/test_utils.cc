@@ -27,7 +27,7 @@ namespace {
 const char kNewLineDelimiter = '\n';
 
 // Extension of protobuf files in text format.
-const char kProtobufTextExtension[] = ".pb_text.gz";
+const char kProtobufTextExtension[] = ".pb_text";
 
 // Extension of build ID lists.
 const char kBuildIDListExtension[] = ".buildids";
@@ -89,7 +89,7 @@ void SeparateLines(const std::vector<char>& bytes, std::vector<string>* lines) {
 
 bool ReadExistingProtobufText(const string& filename, string* output_string) {
   std::vector<char> output_buffer;
-  if (!quipper::GZFileToBuffer(filename + kProtobufTextExtension,
+  if (!quipper::FileToBuffer(filename + kProtobufTextExtension,
                                &output_buffer)) {
     LOG(ERROR) << "Could not open file " << filename + kProtobufTextExtension;
     return false;
