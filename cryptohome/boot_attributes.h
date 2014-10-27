@@ -15,6 +15,10 @@ namespace cryptohome {
 class BootLockbox;
 class Platform;
 
+// BootAttributes is a key-value storage that is built on top of BootLockbox.
+// Data stored in BootAttributes can only be modified until a user session
+// starts after boot. The data is signed and is tamper-evident. See BootLockbox
+// for more detail.
 class BootAttributes {
  public:
   static const int kAttributeFileVersion;
