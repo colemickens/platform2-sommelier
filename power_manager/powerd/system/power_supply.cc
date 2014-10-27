@@ -49,6 +49,10 @@ const char kMainsType[] = "Mains";
 const char kBatteryStatusCharging[] = "Charging";
 const char kBatteryStatusFull[] = "Full";
 
+// Line power status reported by the kernel for a bidirectional port through
+// which the system is charging another device.
+const char kLinePowerStatusDischarging[] = "Discharging";
+
 // Reads the contents of |filename| within |directory| into |out|, trimming
 // trailing whitespace.  Returns true on success.
 bool ReadAndTrimString(const base::FilePath& directory,
@@ -82,7 +86,7 @@ double ReadScaledDouble(const base::FilePath& directory,
 
 // Returns true if |type|, a power supply type read from a "type" file in
 // sysfs, indicates USB.
-bool IsUsbType(const std::string& type) {
+bool IsUsbChargerType(const std::string& type) {
   // These are defined in drivers/power/power_supply_sysfs.c in the kernel.
   return type == "USB" || type == "USB_DCP" || type == "USB_CDP" ||
       type == "USB_ACA";
@@ -95,6 +99,19 @@ bool IsUsbType(const std::string& type) {
 bool IsOriginalSpringCharger(const std::string& model_name) {
   return model_name == PowerSupply::kOriginalSpringChargerModelName ||
       model_name == PowerSupply::kOldFirmwareModelName;
+}
+
+// Returns true if |path|, a sysfs directory, corresponds to an external
+// peripheral (e.g. a wireless mouse or keyboard).
+bool IsExternalPeripheral(const base::FilePath& path) {
+  std::string scope;
+  return ReadAndTrimString(path, "scope", &scope) && scope == "Device";
+}
+
+// Returns true if |path|, a sysfs directory, corresponds to a battery.
+bool IsBatteryPresent(const base::FilePath& path) {
+  int64_t present = 0;
+  return ReadInt64(path, "present", &present) && present != 0;
 }
 
 }  // namespace
@@ -151,7 +168,6 @@ void PowerSupply::Init(const base::FilePath& power_supply_path,
 
   prefs_ = prefs;
   power_supply_path_ = power_supply_path;
-  GetPowerSupplyPaths();
 
   poll_delay_ = GetMsPref(kBatteryPollIntervalPref, kDefaultPollMs);
   battery_stabilized_after_startup_delay_ = GetMsPref(
@@ -269,71 +285,46 @@ void PowerSupply::DeferBatterySampling(base::TimeDelta stabilized_delay) {
 }
 
 bool PowerSupply::UpdatePowerStatus() {
+  CHECK(prefs_) << "PowerSupply::Init() wasn't called";
+
   VLOG(1) << "Updating power status";
   PowerStatus status;
 
-  CHECK(prefs_) << "PowerSupply::Init() wasn't called";
+  // The battery state is dependent on the line power state, so defer reading it
+  // until all other directories have been examined.
+  base::FilePath battery_path;
 
-  if (battery_path_.empty() || line_power_path_.empty())
-    GetPowerSupplyPaths();
+  // Iterate through sysfs's power supply information.
+  base::FileEnumerator file_enum(
+      power_supply_path_, false, base::FileEnumerator::DIRECTORIES);
+  for (base::FilePath path = file_enum.Next(); !path.empty();
+       path = file_enum.Next()) {
+    if (IsExternalPeripheral(path))
+      continue;
 
-  status.line_power_path = line_power_path_.value();
-  status.battery_path = battery_path_.value();
+    std::string type;
+    if (!base::ReadFileToString(path.Append("type"), &type))
+      continue;
+    base::TrimWhitespaceASCII(type, base::TRIM_TRAILING, &type);
 
-  std::string battery_status_string;
-  if (base::PathExists(battery_path_)) {
-    int64_t present_value = 0;
-    ReadInt64(battery_path_, "present", &present_value);
-    status.battery_is_present = present_value != 0;
-    if (status.battery_is_present)
-      ReadAndTrimString(battery_path_, "status", &battery_status_string);
-  } else {
-    status.battery_is_present = false;
+    if (type == kBatteryType) {
+      if (battery_path.empty())
+        battery_path = path;
+      else
+        LOG(WARNING) << "Multiple batteries; skipping " << path.value();
+    } else {
+      ReadLinePowerDirectory(path, &status);
+    }
   }
 
-  if (base::PathExists(line_power_path_)) {
-    int64_t online_value = 0;
-    ReadInt64(line_power_path_, "online", &online_value);
-    status.line_power_on = online_value != 0;
-    ReadAndTrimString(line_power_path_, "type", &status.line_power_type);
-    ReadAndTrimString(line_power_path_, "model_name",
-                      &status.line_power_model_name);
-
-    if (status.line_power_on) {
-      status.external_power = IsUsbType(status.line_power_type) ?
-          PowerSupplyProperties_ExternalPower_USB :
-          (IsOriginalSpringCharger(status.line_power_model_name) ?
-           PowerSupplyProperties_ExternalPower_ORIGINAL_SPRING_CHARGER :
-           PowerSupplyProperties_ExternalPower_AC);
-      status.line_power_voltage =
-          ReadScaledDouble(line_power_path_, "voltage_now");
-      status.line_power_current =
-          ReadScaledDouble(line_power_path_, "current_now");
-    } else {
-      status.external_power = PowerSupplyProperties_ExternalPower_DISCONNECTED;
-    }
-  } else if (!status.battery_is_present) {
-    // If there's no battery, assume that the system is on AC power.
+  // If no battery was found, assume that the system is actually on AC power.
+  if (!status.line_power_on &&
+      (battery_path.empty() || !IsBatteryPresent(battery_path))) {
+    LOG(WARNING) << "Found neither line power nor a battery; assuming that "
+                 << "line power is connected";
     status.line_power_on = true;
     status.line_power_type = kMainsType;
     status.external_power = PowerSupplyProperties_ExternalPower_AC;
-  } else {
-    // Otherwise, infer the external power source from the kernel-reported
-    // battery status.
-    status.line_power_on =
-        battery_status_string == kBatteryStatusCharging ||
-        battery_status_string == kBatteryStatusFull;
-    status.external_power = status.line_power_on ?
-        PowerSupplyProperties_ExternalPower_AC :
-        PowerSupplyProperties_ExternalPower_DISCONNECTED;
-  }
-
-  // The rest of the calculations all require a battery.
-  if (!status.battery_is_present) {
-    status.battery_state = PowerSupplyProperties_BatteryState_NOT_PRESENT;
-    power_status_ = status;
-    power_status_initialized_ = true;
-    return true;
   }
 
   // Even though we haven't successfully finished initializing the status yet,
@@ -342,27 +333,120 @@ bool PowerSupply::UpdatePowerStatus() {
   if (!power_status_initialized_)
     power_status_ = status;
 
+  // Finally, read the battery status.
+  if (!battery_path.empty() && !ReadBatteryDirectory(battery_path, &status))
+    return false;
+
+  // Update running averages and use them to compute battery estimates.
+  if (status.battery_is_present) {
+    if (power_status_initialized_ &&
+        status.line_power_on != power_status_.line_power_on) {
+      DeferBatterySampling(status.line_power_on ?
+          battery_stabilized_after_line_power_connected_delay_ :
+          battery_stabilized_after_line_power_disconnected_delay_);
+      charge_samples_->Clear();
+
+      // Chargers can deliver highly-variable currents depending on various
+      // factors (e.g. negotiated current for USB chargers, charge level, etc.).
+      // If one was just connected, throw away the previous average.
+      if (status.line_power_on)
+        current_samples_on_line_power_->Clear();
+    }
+
+    base::TimeTicks now = clock_->GetCurrentTime();
+    if (now >= battery_stabilized_timestamp_) {
+      charge_samples_->AddSample(status.battery_charge, now);
+
+      if (status.battery_current > 0.0) {
+        const double signed_current =
+            (status.battery_state ==
+             PowerSupplyProperties_BatteryState_DISCHARGING) ?
+            -status.battery_current : status.battery_current;
+        if (status.line_power_on)
+          current_samples_on_line_power_->AddSample(signed_current, now);
+        else
+          current_samples_on_battery_power_->AddSample(signed_current, now);
+      }
+    }
+
+    UpdateObservedBatteryChargeRate(&status);
+    status.is_calculating_battery_time = !UpdateBatteryTimeEstimates(&status);
+    status.battery_below_shutdown_threshold =
+        IsBatteryBelowShutdownThreshold(status);
+  }
+
+  power_status_ = status;
+  power_status_initialized_ = true;
+  return true;
+}
+
+void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
+                                         PowerStatus* status) {
+  // If "online" is false, nothing is connected.
+  int64_t online_value = 0;
+  if (!ReadInt64(path, "online", &online_value) || !online_value)
+    return;
+
+  // Bidirectional ports export an additional "status" field.
+  // TODO(derat): Report dual-role devices: http://crbug.com/424246
+  std::string line_status;
+  ReadAndTrimString(path, "status", &line_status);
+  if (line_status == kLinePowerStatusDischarging)
+    return;
+
+  if (!status->line_power_path.empty()) {
+    LOG(WARNING) << "Skipping additional line power source at " << path.value()
+                 << " (previously saw " << status->line_power_path << ")";
+    return;
+  }
+
+  status->line_power_on = true;
+  status->line_power_path = path.value();
+  ReadAndTrimString(path, "type", &status->line_power_type);
+  ReadAndTrimString(path, "model_name", &status->line_power_model_name);
+  status->external_power = IsUsbChargerType(status->line_power_type) ?
+      PowerSupplyProperties_ExternalPower_USB :
+      (IsOriginalSpringCharger(status->line_power_model_name) ?
+       PowerSupplyProperties_ExternalPower_ORIGINAL_SPRING_CHARGER :
+       PowerSupplyProperties_ExternalPower_AC);
+  status->line_power_voltage = ReadScaledDouble(path, "voltage_now");
+  status->line_power_current = ReadScaledDouble(path, "current_now");
+
+  VLOG(1) << "Found line power of type \"" << status->line_power_type
+          << "\" at " << path.value();
+}
+
+bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
+                                       PowerStatus* status) {
+  VLOG(1) << "Reading battery status from  " << path.value();
+  status->battery_path = path.value();
+  status->battery_is_present = IsBatteryPresent(path);
+  if (!status->battery_is_present)
+    return true;
+
+  std::string status_value;
+  ReadAndTrimString(path, "status", &status_value);
+
   // POWER_SUPPLY_PROP_VENDOR does not seem to be a valid property
   // defined in <linux/power_supply.h>.
-  if (base::PathExists(battery_path_.Append("manufacturer")))
-    ReadAndTrimString(battery_path_, "manufacturer", &status.battery_vendor);
-  else
-    ReadAndTrimString(battery_path_, "vendor", &status.battery_vendor);
-  ReadAndTrimString(battery_path_, "model_name", &status.battery_model_name);
-  ReadAndTrimString(battery_path_, "serial_number", &status.battery_serial);
-  ReadAndTrimString(battery_path_, "technology", &status.battery_technology);
+  ReadAndTrimString(path,
+      base::PathExists(path.Append("manufacturer")) ? "manufacturer" : "vendor",
+      &status->battery_vendor);
+  ReadAndTrimString(path, "model_name", &status->battery_model_name);
+  ReadAndTrimString(path, "serial_number", &status->battery_serial);
+  ReadAndTrimString(path, "technology", &status->battery_technology);
 
-  double battery_voltage = ReadScaledDouble(battery_path_, "voltage_now");
-  status.battery_voltage = battery_voltage;
+  double voltage = ReadScaledDouble(path, "voltage_now");
+  status->battery_voltage = voltage;
 
   // Attempt to determine nominal voltage for time-remaining calculations. This
   // may or may not be the same as the instantaneous voltage |battery_voltage|,
   // as voltage levels vary over the time the battery is charged or discharged.
   double nominal_voltage = 0.0;
-  if (base::PathExists(battery_path_.Append("voltage_min_design")))
-    nominal_voltage = ReadScaledDouble(battery_path_, "voltage_min_design");
-  else if (base::PathExists(battery_path_.Append("voltage_max_design")))
-    nominal_voltage = ReadScaledDouble(battery_path_, "voltage_max_design");
+  if (base::PathExists(path.Append("voltage_min_design")))
+    nominal_voltage = ReadScaledDouble(path, "voltage_min_design");
+  else if (base::PathExists(path.Append("voltage_max_design")))
+    nominal_voltage = ReadScaledDouble(path, "voltage_max_design");
 
   // Nominal voltage is not required to obtain the charge level; if it's
   // missing, just use |battery_voltage|. Save the fact that it was zero so it
@@ -371,10 +455,10 @@ bool PowerSupply::UpdatePowerStatus() {
   const bool read_zero_nominal_voltage = nominal_voltage == 0.0;
   if (nominal_voltage <= 0) {
     LOG(WARNING) << "Got nominal voltage " << nominal_voltage << "; using "
-                 << "instantaneous voltage " << battery_voltage << " instead";
-    nominal_voltage = battery_voltage;
+                 << "instantaneous voltage " << voltage << " instead";
+    nominal_voltage = voltage;
   }
-  status.nominal_voltage = nominal_voltage;
+  status->nominal_voltage = nominal_voltage;
 
   // ACPI has two different battery types: charge_battery and energy_battery.
   // The main difference is that charge_battery type exposes
@@ -386,171 +470,79 @@ bool PowerSupply::UpdatePowerStatus() {
   // Change all the energy readings to charge format.
   // If both energy and charge reading are present (some non-ACPI drivers
   // expose both readings), read only the charge format.
-  double battery_charge_full = 0;
-  double battery_charge_full_design = 0;
-  double battery_charge = 0;
+  double charge_full = 0;
+  double charge_full_design = 0;
+  double charge = 0;
 
-  if (base::PathExists(battery_path_.Append("charge_full"))) {
-    battery_charge_full = ReadScaledDouble(battery_path_, "charge_full");
-    battery_charge_full_design =
-        ReadScaledDouble(battery_path_, "charge_full_design");
-    battery_charge = ReadScaledDouble(battery_path_, "charge_now");
-  } else if (base::PathExists(battery_path_.Append("energy_full"))) {
-    // Valid |battery_voltage| is required to determine the charge so return
-    // early if it is not present. In this case, we know nothing about
-    // battery state or remaining percentage, so set proper status.
-    if (battery_voltage <= 0) {
+  if (base::PathExists(path.Append("charge_full"))) {
+    charge_full = ReadScaledDouble(path, "charge_full");
+    charge_full_design = ReadScaledDouble(path, "charge_full_design");
+    charge = ReadScaledDouble(path, "charge_now");
+  } else if (base::PathExists(path.Append("energy_full"))) {
+    // Valid voltage is required to determine the charge so return early if it
+    // is not present. In this case, we know nothing about battery state or
+    // remaining percentage, so set proper status.
+    if (voltage <= 0) {
       LOG(WARNING) << "Invalid voltage_now reading for energy-to-charge"
-                   << " conversion: " << battery_voltage;
+                   << " conversion: " << voltage;
       return false;
     }
-    battery_charge_full =
-        ReadScaledDouble(battery_path_, "energy_full") / battery_voltage;
-    battery_charge_full_design =
-        ReadScaledDouble(battery_path_, "energy_full_design") / battery_voltage;
-    battery_charge =
-        ReadScaledDouble(battery_path_, "energy_now") / battery_voltage;
+    charge_full = ReadScaledDouble(path, "energy_full") / voltage;
+    charge_full_design = ReadScaledDouble(path, "energy_full_design") / voltage;
+    charge = ReadScaledDouble(path, "energy_now") / voltage;
   } else {
     LOG(WARNING) << "No charge/energy readings for battery";
     return false;
   }
 
-  if (battery_charge == 0.0 && read_zero_nominal_voltage) {
+  if (charge == 0.0 && read_zero_nominal_voltage) {
     LOG(WARNING) << "Ignoring reading with zero battery charge and nominal "
                  << "voltage (firmware update in progress?)";
     return false;
   }
-  if (battery_charge_full <= 0.0) {
-    LOG(WARNING) << "Ignoring reading with battery charge of " << battery_charge
-                 << " and battery-full charge of " << battery_charge_full;
+  if (charge_full <= 0.0) {
+    LOG(WARNING) << "Ignoring reading with battery charge of " << charge
+                 << " and battery-full charge of " << charge_full;
     return false;
   }
 
-  status.battery_charge_full = battery_charge_full;
-  status.battery_charge_full_design = battery_charge_full_design;
-  status.battery_charge = battery_charge;
+  status->battery_charge_full = charge_full;
+  status->battery_charge_full_design = charge_full_design;
+  status->battery_charge = charge;
 
-  // The current can be reported as negative on some systems but not on
-  // others, so it can't be used to determine whether the battery is
-  // charging or discharging.
-  double battery_current = 0.0;
-  if (base::PathExists(battery_path_.Append("power_now"))) {
-    battery_current = fabs(ReadScaledDouble(battery_path_, "power_now")) /
-        battery_voltage;
-  } else {
-    battery_current = fabs(ReadScaledDouble(battery_path_, "current_now"));
-  }
-  status.battery_current = battery_current;
+  // The current can be reported as negative on some systems but not on others,
+  // so it can't be used to determine whether the battery is charging or
+  // discharging.
+  double current = base::PathExists(path.Append("power_now")) ?
+      fabs(ReadScaledDouble(path, "power_now")) / voltage :
+      fabs(ReadScaledDouble(path, "current_now"));
+  status->battery_current = current;
 
-  status.battery_energy = battery_charge * nominal_voltage;
-  status.battery_energy_rate = battery_current * battery_voltage;
+  status->battery_energy = charge * nominal_voltage;
+  status->battery_energy_rate = current * voltage;
 
-  status.battery_percentage = util::ClampPercent(
-      100.0 * battery_charge / battery_charge_full);
-  status.display_battery_percentage = util::ClampPercent(
-      100.0 * (status.battery_percentage - low_battery_shutdown_percent_) /
+  status->battery_percentage = util::ClampPercent(100.0 * charge / charge_full);
+  status->display_battery_percentage = util::ClampPercent(
+      100.0 * (status->battery_percentage - low_battery_shutdown_percent_) /
       (100.0 * full_factor_ - low_battery_shutdown_percent_));
 
-  const bool battery_is_full =
-      battery_charge >= battery_charge_full * full_factor_;
+  const bool is_full = charge >= charge_full * full_factor_;
 
-  if (status.line_power_on) {
-    if (battery_is_full) {
-      status.battery_state = PowerSupplyProperties_BatteryState_FULL;
-    } else if (battery_current > 0.0 &&
-               (battery_status_string == kBatteryStatusCharging ||
-                battery_status_string == kBatteryStatusFull)) {
-      status.battery_state = PowerSupplyProperties_BatteryState_CHARGING;
+  if (status->line_power_on) {
+    if (is_full) {
+      status->battery_state = PowerSupplyProperties_BatteryState_FULL;
+    } else if (current > 0.0 &&
+               (status_value == kBatteryStatusCharging ||
+                status_value == kBatteryStatusFull)) {
+      status->battery_state = PowerSupplyProperties_BatteryState_CHARGING;
     } else {
-      status.battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
+      status->battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
     }
   } else {
-    status.battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
+    status->battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
   }
 
-  if (power_status_initialized_ &&
-      status.line_power_on != power_status_.line_power_on) {
-    DeferBatterySampling(status.line_power_on ?
-        battery_stabilized_after_line_power_connected_delay_ :
-        battery_stabilized_after_line_power_disconnected_delay_);
-    charge_samples_->Clear();
-
-    // Chargers can deliver highly-variable currents depending on various
-    // factors (e.g. negotiated current for USB chargers, charge level, etc.).
-    // If one was just connected, throw away the previous average.
-    if (status.line_power_on)
-      current_samples_on_line_power_->Clear();
-  }
-
-  base::TimeTicks now = clock_->GetCurrentTime();
-  if (now >= battery_stabilized_timestamp_) {
-    charge_samples_->AddSample(battery_charge, now);
-
-    if (battery_current > 0.0) {
-      const double signed_current =
-          (status.battery_state ==
-           PowerSupplyProperties_BatteryState_DISCHARGING) ?
-          -battery_current : battery_current;
-      if (status.line_power_on)
-        current_samples_on_line_power_->AddSample(signed_current, now);
-      else
-        current_samples_on_battery_power_->AddSample(signed_current, now);
-    }
-  }
-
-  UpdateObservedBatteryChargeRate(&status);
-  status.is_calculating_battery_time = !UpdateBatteryTimeEstimates(&status);
-  status.battery_below_shutdown_threshold =
-      IsBatteryBelowShutdownThreshold(status);
-
-  power_status_ = status;
-  power_status_initialized_ = true;
   return true;
-}
-
-void PowerSupply::GetPowerSupplyPaths() {
-  // First check if both line power and battery paths have been found and still
-  // exist.  If so, there is no need to do anything else.
-  if (base::PathExists(battery_path_) && base::PathExists(line_power_path_))
-    return;
-  // Use a FileEnumerator to browse through all files/subdirectories in the
-  // power supply sysfs directory.
-  base::FileEnumerator file_enum(
-      power_supply_path_, false, base::FileEnumerator::DIRECTORIES);
-  // Read type info from all power sources, and try to identify battery and line
-  // power sources.  Their paths are to be stored locally.
-  for (base::FilePath path = file_enum.Next();
-       !path.empty();
-       path = file_enum.Next()) {
-    // External devices have "scope" attributes containing the value "Device".
-    // Skip them.
-    base::FilePath scope_path = path.Append("scope");
-    if (base::PathExists(scope_path)) {
-      std::string buf;
-      base::ReadFileToString(scope_path, &buf);
-      base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING, &buf);
-      if (buf == "Device") {
-        VLOG(1) << "Skipping power supply " << path.value()
-                << " with scope \"" << buf << "\"";
-        continue;
-      }
-    }
-    std::string buf;
-    if (base::ReadFileToString(path.Append("type"), &buf)) {
-      base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING, &buf);
-      // Only look for battery / line power paths if they haven't been found
-      // already.  This makes the assumption that they don't change (but battery
-      // path can disappear if removed).  So this code should only be run once
-      // for each power source.
-      if (buf == kBatteryType && battery_path_.empty()) {
-        VLOG(1) << "Battery path found: " << path.value();
-        battery_path_ = path;
-      } else if (buf != kBatteryType && line_power_path_.empty()) {
-        VLOG(1) << "Line power path found: " << path.value();
-        line_power_path_ = path;
-      }
-    }
-  }
 }
 
 bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {

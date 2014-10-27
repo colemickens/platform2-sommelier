@@ -258,12 +258,21 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // be sampled again until at least |stabilized_delay| in the future.
   void DeferBatterySampling(base::TimeDelta stabilized_delay);
 
-  // Read data from power supply sysfs and fill out all fields of the
-  // PowerStatus structure if possible.
+  // Reads data from |power_supply_path_| and updates |power_status_|. Returns
+  // false if an error is encountered that prevents the status from being
+  // initialized.
   bool UpdatePowerStatus();
 
-  // Find sysfs directories to read from.
-  void GetPowerSupplyPaths();
+  // Helper method for UpdatePowerStatus() that reads |path|, a directory under
+  // |power_supply_path_| corresponding to a line power source (e.g. anything
+  // that isn't a battery), and updates |status|.
+  void ReadLinePowerDirectory(const base::FilePath& path,
+                              PowerStatus* status);
+
+  // Helper method for UpdatePowerStatus() that reads |path|, a directory under
+  // |power_supply_path_| corresponding to a battery, and updates |status|.
+  // Returns false if an error is encountered.
+  bool ReadBatteryDirectory(const base::FilePath& path, PowerStatus* status);
 
   // Updates |status|'s time-to-full and time-to-empty estimates or returns
   // false if estimates can't be calculated yet. Negative values are used
@@ -307,11 +316,9 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // True after |power_status_| has been successfully updated at least once.
   bool power_status_initialized_;
 
-  // Paths to power supply base sysfs directory and battery and line power
-  // subdirectories.
+  // Base sysfs directory containing subdirectories corresponding to power
+  // supplies.
   base::FilePath power_supply_path_;
-  base::FilePath line_power_path_;
-  base::FilePath battery_path_;
 
   // Remaining battery time at which the system will shut down automatically.
   // Empty if unset.

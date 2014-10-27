@@ -31,9 +31,11 @@ namespace {
 const char kAcType[] = "Mains";
 const char kBatteryType[] = "Battery";
 const char kUsbType[] = "USB";
+const char kUnknownType[] = "Unknown";
 
 const char kCharging[] = "Charging";
 const char kDischarging[] = "Discharging";
+const char kNotCharging[] = "Not charging";
 
 // Default voltage reported by sysfs.
 const double kVoltage = 2.5;
@@ -122,8 +124,8 @@ class PowerSupplyTest : public ::testing::Test {
   // Writes reasonable default values to |temp_dir_|.
   // The battery's max charge is initialized to 1.0 to make things simple.
   void WriteDefaultValues(PowerSource source) {
-    base::CreateDirectory(ac_dir_);
-    base::CreateDirectory(battery_dir_);
+    ASSERT_TRUE(base::CreateDirectory(ac_dir_));
+    ASSERT_TRUE(base::CreateDirectory(battery_dir_));
 
     UpdatePowerSourceAndBatteryStatus(source, kAcType,
         source == POWER_AC ? kCharging : kDischarging);
@@ -205,7 +207,7 @@ class PowerSupplyTest : public ::testing::Test {
 };
 
 // Test system without power supply sysfs (e.g. virtual machine).
-TEST_F(PowerSupplyTest, TestNoPowerSupplySysfs) {
+TEST_F(PowerSupplyTest, NoPowerSupplySysfs) {
   Init();
   PowerStatus power_status;
   ASSERT_TRUE(UpdateStatus(&power_status));
@@ -220,7 +222,7 @@ TEST_F(PowerSupplyTest, TestNoPowerSupplySysfs) {
 }
 
 // Test line power without battery.
-TEST_F(PowerSupplyTest, TestNoBattery) {
+TEST_F(PowerSupplyTest, NoBattery) {
   WriteDefaultValues(POWER_AC);
   base::DeleteFile(battery_dir_, true);
   Init();
@@ -236,7 +238,7 @@ TEST_F(PowerSupplyTest, TestNoBattery) {
 }
 
 // Test battery charging and discharging status.
-TEST_F(PowerSupplyTest, TestChargingAndDischarging) {
+TEST_F(PowerSupplyTest, ChargingAndDischarging) {
   const double kCharge = 0.5;
   const double kCurrent = 1.0;
   WriteDefaultValues(POWER_AC);
@@ -278,7 +280,7 @@ TEST_F(PowerSupplyTest, TestChargingAndDischarging) {
 }
 
 // Tests that the line power source doesn't need to be named "Mains".
-TEST_F(PowerSupplyTest, TestNonMainsLinePower) {
+TEST_F(PowerSupplyTest, NonMainsLinePower) {
   const char kType[] = "ArbitraryName";
   WriteDefaultValues(POWER_AC);
   UpdatePowerSourceAndBatteryStatus(POWER_AC, kType, kCharging);
@@ -292,8 +294,92 @@ TEST_F(PowerSupplyTest, TestNonMainsLinePower) {
   EXPECT_TRUE(power_status.battery_is_present);
 }
 
+TEST_F(PowerSupplyTest, DualRolePowerSources) {
+  // Delete the AC power supply and report two line power sources, both
+  // initially offline.
+  WriteDefaultValues(POWER_BATTERY);
+  base::DeleteFile(ac_dir_, true);
+
+  const base::FilePath line1_dir = temp_dir_.path().Append("line1");
+  ASSERT_TRUE(base::CreateDirectory(line1_dir));
+  WriteValue(line1_dir, "type", kUnknownType);
+  WriteValue(line1_dir, "online", "0");
+  WriteValue(line1_dir, "status", kNotCharging);
+
+  const base::FilePath line2_dir = temp_dir_.path().Append("line2");
+  ASSERT_TRUE(base::CreateDirectory(line2_dir));
+  WriteValue(line2_dir, "type", kUnknownType);
+  WriteValue(line2_dir, "online", "0");
+  WriteValue(line2_dir, "status", kNotCharging);
+
+  Init();
+  PowerStatus power_status;
+  ASSERT_TRUE(UpdateStatus(&power_status));
+  EXPECT_FALSE(power_status.line_power_on);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_DISCONNECTED,
+            power_status.external_power);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,
+            power_status.battery_state);
+
+  // Start charging from the first power source.
+  const char kPdType[] = "USB_PD";
+  WriteValue(line1_dir, "type", kPdType);
+  WriteValue(line1_dir, "online", "1");
+  WriteValue(line1_dir, "status", kCharging);
+  WriteValue(battery_dir_, "status", kCharging);
+  ASSERT_TRUE(UpdateStatus(&power_status));
+  EXPECT_TRUE(power_status.line_power_on);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC,
+            power_status.external_power);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL,
+            power_status.battery_state);
+
+  // Disconnect the first power source and start charging from the second one.
+  WriteValue(line1_dir, "type", kUnknownType);
+  WriteValue(line1_dir, "online", "0");
+  WriteValue(line1_dir, "status", kNotCharging);
+  WriteValue(line2_dir, "type", kAcType);
+  WriteValue(line2_dir, "online", "1");
+  WriteValue(line2_dir, "status", kCharging);
+  ASSERT_TRUE(UpdateStatus(&power_status));
+  EXPECT_TRUE(power_status.line_power_on);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC,
+            power_status.external_power);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL,
+            power_status.battery_state);
+
+  // Now discharge from the first power source (while still charging from the
+  // second one) and check that it's ignored.
+  WriteValue(line1_dir, "type", kPdType);
+  WriteValue(line1_dir, "online", "1");
+  WriteValue(line1_dir, "status", kDischarging);
+  ASSERT_TRUE(UpdateStatus(&power_status));
+  EXPECT_TRUE(power_status.line_power_on);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC,
+            power_status.external_power);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL,
+            power_status.battery_state);
+}
+
+TEST_F(PowerSupplyTest, IgnorePeripherals) {
+  // Power supplies corresponding to external peripherals (i.e. with a "scope"
+  // of "Device") should be ignored.
+  WriteDefaultValues(POWER_AC);
+  WriteValue(ac_dir_, "scope", "Device");
+  WriteValue(battery_dir_, "status", kDischarging);
+
+  Init();
+  PowerStatus power_status;
+  ASSERT_TRUE(UpdateStatus(&power_status));
+  EXPECT_FALSE(power_status.line_power_on);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_DISCONNECTED,
+            power_status.external_power);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,
+            power_status.battery_state);
+}
+
 // Test battery reporting energy instead of charge.
-TEST_F(PowerSupplyTest, TestEnergyDischarging) {
+TEST_F(PowerSupplyTest, EnergyDischarging) {
   WriteDefaultValues(POWER_BATTERY);
   base::DeleteFile(battery_dir_.Append("charge_full"), false);
   base::DeleteFile(battery_dir_.Append("charge_full_design"), false);
@@ -1004,6 +1090,7 @@ TEST_F(PowerSupplyTest, NotifyObserver) {
   // Check that observers are notified about updates asynchronously.
   TestObserver observer;
   power_supply_->AddObserver(&observer);
+  WriteDefaultValues(POWER_AC);
   Init();
   ASSERT_TRUE(power_supply_->RefreshImmediately());
   EXPECT_TRUE(observer.WaitForNotification());
