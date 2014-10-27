@@ -711,11 +711,40 @@ void DeviceRegistrationInfo::AbortLimboCommands(
 }
 
 void DeviceRegistrationInfo::PeriodicallyPollCommands() {
-  auto delay = base::TimeDelta::FromSeconds(7);
-  PostRepeatingTask(FROM_HERE, base::Bind([]{
-    VLOG(1) << "Poll commands";
-    // TODO(antonm): Implement real polling of commands.
-  }), delay);
+  VLOG(1) << "Poll commands";
+  PostRepeatingTask(
+      FROM_HERE,
+      base::Bind(
+          &DeviceRegistrationInfo::FetchCommands,
+          base::Unretained(this),
+          base::Bind(&DeviceRegistrationInfo::PublishCommands,
+                     base::Unretained(this))),
+      base::TimeDelta::FromSeconds(7));
+}
+
+void DeviceRegistrationInfo::PublishCommands(const base::ListValue& commands) {
+  const CommandDictionary& command_dictionary =
+      command_manager_->GetCommandDictionary();
+
+  const size_t size{commands.GetSize()};
+  for (size_t i = 0; i < size; ++i) {
+    const base::DictionaryValue* command{nullptr};
+    if (!commands.GetDictionary(i, &command)) {
+      LOG(WARNING) << "No command resource at " << i;
+      continue;
+    }
+
+    std::unique_ptr<CommandInstance> command_instance =
+        CommandInstance::FromJson(command, command_dictionary, nullptr);
+    if (!command_instance) {
+      LOG(WARNING) << "Failed to parse a command";
+      continue;
+    }
+
+    // TODO(antonm): Double check if there is a chance to publish
+    // the same command twice if it doesn't change its status.
+    command_manager_->AddCommand(std::move(command_instance));
+  }
 }
 
 }  // namespace buffet

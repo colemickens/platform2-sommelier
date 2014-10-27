@@ -145,6 +145,8 @@ class DeviceRegistrationInfo {
 
   void PeriodicallyPollCommands();
 
+  void PublishCommands(const base::ListValue& commands);
+
   // Builds Cloud API devices collection REST resouce which matches
   // current state of the device including command definitions
   // for all supported commands and current device state.
