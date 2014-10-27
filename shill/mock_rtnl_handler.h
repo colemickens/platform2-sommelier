@@ -19,7 +19,7 @@ class MockRTNLHandler : public RTNLHandler {
   MockRTNLHandler();
   ~MockRTNLHandler() override;
 
-  MOCK_METHOD2(Start, void(EventDispatcher *dispatcher, Sockets *sockets));
+  MOCK_METHOD1(Start, void(Sockets *sockets));
   MOCK_METHOD1(AddListener, void(RTNLListener *to_add));
   MOCK_METHOD1(RemoveListener, void(RTNLListener *to_remove));
   MOCK_METHOD3(SetInterfaceFlags, void(int interface_index,

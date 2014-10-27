@@ -67,7 +67,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/generic_netlink_message.h"
-#include "shill/io_handler.h"
+#include "shill/io_handler_factory.h"
 #include "shill/netlink_message.h"
 #include "shill/netlink_socket.h"
 #include "shill/shill_time.h"
@@ -185,8 +185,8 @@ class NetlinkManager {
   bool Init();
 
   // Passes the job of waiting for, and the subsequent reading from, the
-  // netlink socket to |dispatcher|.
-  void Start(EventDispatcher *dispatcher);
+  // netlink socket to the current message loop.
+  void Start();
 
   // The following methods deal with the network family table.  This table
   // associates netlink family names with family_ids (also called message
@@ -334,8 +334,6 @@ class NetlinkManager {
   // Message-specific callbacks, mapped by message ID.
   std::map<uint32_t, NetlinkResponseHandlerRefPtr> message_handlers_;
 
-  // Hooks needed to be called by shill's EventDispatcher.
-  EventDispatcher *dispatcher_;
   base::WeakPtrFactory<NetlinkManager> weak_ptr_factory_;
   base::Callback<void(InputData *)> dispatcher_callback_;
   std::unique_ptr<IOHandler> dispatcher_handler_;
@@ -344,6 +342,7 @@ class NetlinkManager {
   std::map<const std::string, MessageType> message_types_;
   NetlinkMessageFactory message_factory_;
   Time *time_;
+  IOHandlerFactory *io_handler_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(NetlinkManager);
 };

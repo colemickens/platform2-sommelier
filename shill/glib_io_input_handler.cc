@@ -29,7 +29,7 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
                                   GIOCondition cond,
                                   gpointer data) {
   GlibIOInputHandler *handler = reinterpret_cast<GlibIOInputHandler *>(data);
-  unsigned char buf[4096];
+  unsigned char buf[IOHandler::kDataBufferSize];
   gsize len = 0;
   gint fd = g_io_channel_unix_get_fd(chan);
   GError *err = 0;

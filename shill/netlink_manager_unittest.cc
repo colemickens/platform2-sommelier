@@ -20,6 +20,7 @@
 
 #include "shill/io_handler.h"
 #include "shill/mock_event_dispatcher.h"
+#include "shill/mock_io_handler_factory.h"
 #include "shill/mock_log.h"
 #include "shill/mock_netlink_socket.h"
 #include "shill/mock_sockets.h"
@@ -41,6 +42,7 @@ using testing::Invoke;
 using testing::Mock;
 using testing::Return;
 using testing::SetArgPointee;
+using testing::StrictMock;
 using testing::Test;
 
 namespace shill {
@@ -117,6 +119,7 @@ class NetlinkManagerTest : public Test {
     Nl80211Message::SetMessageType(kNl80211FamilyId);
     netlink_socket_->sockets_.reset(sockets_);  // Passes ownership.
     netlink_manager_->sock_.reset(netlink_socket_);  // Passes ownership.
+    netlink_manager_->io_handler_factory_ = &io_handler_factory_;
     EXPECT_TRUE(netlink_manager_->Init());
   }
 
@@ -246,6 +249,7 @@ class NetlinkManagerTest : public Test {
   NetlinkManager *netlink_manager_;
   MockNetlinkSocket *netlink_socket_;  // Owned by |netlink_manager_|.
   MockSockets *sockets_;  // Owned by |netlink_socket_|.
+  StrictMock<MockIOHandlerFactory> io_handler_factory_;
   ByteString saved_message_;
   uint32_t saved_sequence_number_;
 };
@@ -292,10 +296,8 @@ class TimeFunctor {
 }  // namespace
 
 TEST_F(NetlinkManagerTest, Start) {
-  MockEventDispatcher dispatcher;
-
-  EXPECT_CALL(dispatcher, CreateInputHandler(_, _, _));
-  netlink_manager_->Start(&dispatcher);
+  EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(_, _, _));
+  netlink_manager_->Start();
 }
 
 TEST_F(NetlinkManagerTest, SubscribeToEvents) {

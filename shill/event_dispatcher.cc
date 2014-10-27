@@ -13,9 +13,6 @@
 #include <base/run_loop.h>
 #include <base/time/time.h>
 
-#include "shill/glib_io_input_handler.h"
-#include "shill/glib_io_ready_handler.h"
-
 using base::Callback;
 using base::Closure;
 
@@ -23,7 +20,8 @@ namespace shill {
 
 EventDispatcher::EventDispatcher()
     : dont_use_directly_(new base::MessageLoopForUI),
-      message_loop_proxy_(base::MessageLoopProxy::current()) {
+      message_loop_proxy_(base::MessageLoopProxy::current()),
+      io_handler_factory_(IOHandlerFactory::GetInstance()) {
 }
 
 EventDispatcher::~EventDispatcher() {}
@@ -45,23 +43,26 @@ bool EventDispatcher::PostDelayedTask(const Closure &task, int64_t delay_ms) {
       FROM_HERE, task, base::TimeDelta::FromMilliseconds(delay_ms));
 }
 
+// TODO(zqiu): Remove all reference to this function and use the
+// IOHandlerFactory function directly. Delete this function once
+// all references are removed.
 IOHandler *EventDispatcher::CreateInputHandler(
     int fd,
     const IOHandler::InputCallback &input_callback,
     const IOHandler::ErrorCallback &error_callback) {
-  IOHandler *handler = new GlibIOInputHandler(
-      fd, input_callback, error_callback);
-  handler->Start();
-  return handler;
+  return io_handler_factory_->CreateIOInputHandler(
+          fd, input_callback, error_callback);
 }
 
+// TODO(zqiu): Remove all reference to this function and use the
+// IOHandlerFactory function directly. Delete this function once
+// all references are removed.
 IOHandler *EventDispatcher::CreateReadyHandler(
     int fd,
     IOHandler::ReadyMode mode,
     const Callback<void(int)> &ready_callback) {
-  IOHandler *handler = new GlibIOReadyHandler(fd, mode, ready_callback);
-  handler->Start();
-  return handler;
+  return io_handler_factory_->CreateIOReadyHandler(
+          fd, mode, ready_callback);
 }
 
 }  // namespace shill

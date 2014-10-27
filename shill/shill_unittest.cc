@@ -253,7 +253,7 @@ TEST_F(ShillDaemonTest, StartStop) {
   // create and start the device.
   EXPECT_CALL(proxy_factory_, Init());
   EXPECT_CALL(*metrics_, Start());
-  EXPECT_CALL(rtnl_handler_, Start(_, _));
+  EXPECT_CALL(rtnl_handler_, Start(_));
   Expectation routing_table_started = EXPECT_CALL(routing_table_, Start());
   EXPECT_CALL(dhcp_provider_, Init(_, _, _, _));
   EXPECT_CALL(*manager_, Start()).After(routing_table_started);
@@ -308,7 +308,7 @@ ACTION_P2(CompleteAction, manager, name) {
 TEST_F(ShillDaemonTest, Quit) {
   // The following expectations are to satisfy calls in Daemon::Start().
   EXPECT_CALL(proxy_factory_, Init());
-  EXPECT_CALL(rtnl_handler_, Start(_, _));
+  EXPECT_CALL(rtnl_handler_, Start(_));
   EXPECT_CALL(routing_table_, Start());
   EXPECT_CALL(dhcp_provider_, Init(_, _, _, _));
   EXPECT_CALL(*manager_, Start());

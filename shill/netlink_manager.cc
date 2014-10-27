@@ -166,11 +166,11 @@ NetlinkManager::MessageType::MessageType() :
   family_id(NetlinkMessage::kIllegalMessageType) {}
 
 NetlinkManager::NetlinkManager()
-    : dispatcher_(nullptr),
-      weak_ptr_factory_(this),
+    : weak_ptr_factory_(this),
       dispatcher_callback_(Bind(&NetlinkManager::OnRawNlMessageReceived,
                                 weak_ptr_factory_.GetWeakPtr())),
-      time_(Time::GetInstance()) {}
+      time_(Time::GetInstance()),
+      io_handler_factory_(IOHandlerFactory::GetInstance()) {}
 
 NetlinkManager::~NetlinkManager() {}
 
@@ -183,7 +183,6 @@ void NetlinkManager::Reset(bool full) {
   message_handlers_.clear();
   message_types_.clear();
   if (full) {
-    dispatcher_ = nullptr;
     sock_.reset();
   }
 }
@@ -295,12 +294,10 @@ bool NetlinkManager::Init() {
   return true;
 }
 
-void NetlinkManager::Start(EventDispatcher *dispatcher) {
-  dispatcher_ = dispatcher;
-  CHECK(dispatcher_);
-  // Install ourselves in the shill mainloop so we receive messages on the
-  // netlink socket.
-  dispatcher_handler_.reset(dispatcher_->CreateInputHandler(
+void NetlinkManager::Start() {
+  // Create an IO handler for receiving messages on the netlink socket.
+  // IO handler will be installed to the current message loop.
+  dispatcher_handler_.reset(io_handler_factory_->CreateIOInputHandler(
       file_descriptor(),
       dispatcher_callback_,
       Bind(&NetlinkManager::OnReadError, weak_ptr_factory_.GetWeakPtr())));

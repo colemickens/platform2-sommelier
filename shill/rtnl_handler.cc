@@ -50,7 +50,8 @@ RTNLHandler::RTNLHandler()
       request_flags_(0),
       request_sequence_(0),
       last_dump_sequence_(0),
-      rtnl_callback_(Bind(&RTNLHandler::ParseRTNL, Unretained(this))) {
+      rtnl_callback_(Bind(&RTNLHandler::ParseRTNL, Unretained(this))),
+      io_handler_factory_(IOHandlerFactory::GetInstance()) {
   SLOG(RTNL, 2) << "RTNLHandler created";
 }
 
@@ -63,7 +64,7 @@ RTNLHandler* RTNLHandler::GetInstance() {
   return g_rtnl_handler.Pointer();
 }
 
-void RTNLHandler::Start(EventDispatcher *dispatcher, Sockets *sockets) {
+void RTNLHandler::Start(Sockets *sockets) {
   struct sockaddr_nl addr;
 
   if (sockets_) {
@@ -94,7 +95,7 @@ void RTNLHandler::Start(EventDispatcher *dispatcher, Sockets *sockets) {
     return;
   }
 
-  rtnl_handler_.reset(dispatcher->CreateInputHandler(
+  rtnl_handler_.reset(io_handler_factory_->CreateIOInputHandler(
       rtnl_socket_,
       rtnl_callback_,
       Bind(&RTNLHandler::OnReadError, Unretained(this))));

@@ -16,7 +16,9 @@
 
 #include "shill/manager.h"
 #include "shill/mock_control.h"
+#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_glib.h"
+#include "shill/mock_io_handler_factory.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_sockets.h"
@@ -46,16 +48,6 @@ ACTION(SetInterfaceIndex) {
   }
 }
 
-class TestEventDispatcher : public EventDispatcher {
- public:
-  virtual IOHandler *CreateInputHandler(
-      int /*fd*/,
-      const IOHandler::InputCallback &/*input_callback*/,
-      const IOHandler::ErrorCallback &/*error_callback*/) {
-    return nullptr;
-  }
-};
-
 }  // namespace
 
 class RTNLHandlerTest : public Test {
@@ -64,6 +56,10 @@ class RTNLHandlerTest : public Test {
       : metrics_(&dispatcher_),
         manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
         callback_(Bind(&RTNLHandlerTest::HandlerCallback, Unretained(this))) {
+  }
+
+  virtual void SetUp() {
+    RTNLHandler::GetInstance()->io_handler_factory_ = &io_handler_factory_;
   }
 
   virtual void TearDown() {
@@ -90,7 +86,8 @@ class RTNLHandlerTest : public Test {
   MockControl control_interface_;
   MockMetrics metrics_;
   MockManager manager_;
-  TestEventDispatcher dispatcher_;
+  MockEventDispatcher dispatcher_;
+  StrictMock<MockIOHandlerFactory> io_handler_factory_;
   Callback<void(const RTNLMessage &)> callback_;
 };
 
@@ -104,7 +101,8 @@ void RTNLHandlerTest::StartRTNLHandler() {
   EXPECT_CALL(sockets_, Bind(kTestSocket, _, sizeof(sockaddr_nl)))
       .WillOnce(Return(0));
   EXPECT_CALL(sockets_, SetReceiveBuffer(kTestSocket, _)).WillOnce(Return(0));
-  RTNLHandler::GetInstance()->Start(&dispatcher_, &sockets_);
+  EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(kTestSocket, _, _));
+  RTNLHandler::GetInstance()->Start(&sockets_);
 }
 
 void RTNLHandlerTest::StopRTNLHandler() {

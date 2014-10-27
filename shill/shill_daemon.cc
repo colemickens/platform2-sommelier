@@ -108,7 +108,7 @@ void Daemon::Start() {
   glib_.TypeInit();
   proxy_factory_->Init();
   metrics_->Start();
-  rtnl_handler_->Start(&dispatcher_, &sockets_);
+  rtnl_handler_->Start(&sockets_);
   routing_table_->Start();
   dhcp_provider_->Init(control_.get(), &dispatcher_, &glib_, metrics_.get());
 
@@ -121,7 +121,7 @@ void Daemon::Start() {
       LOG(FATAL) << "Didn't get a legal message type for 'nl80211' messages.";
     }
     Nl80211Message::SetMessageType(nl80211_family_id);
-    netlink_manager_->Start(&dispatcher_);
+    netlink_manager_->Start();
 
     // Install handlers for NetlinkMessages that don't have specific handlers
     // (which are registered by message sequence number).

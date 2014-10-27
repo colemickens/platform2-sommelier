@@ -16,8 +16,7 @@
 
 #include "shill/device.h"
 
-#include "shill/event_dispatcher.h"
-#include "shill/io_handler.h"
+#include "shill/io_handler_factory.h"
 #include "shill/rtnl_listener.h"
 #include "shill/rtnl_message.h"
 
@@ -52,9 +51,9 @@ class RTNLHandler {
   static RTNLHandler *GetInstance();
 
   // This starts the event-monitoring function of the RTNL handler. This
-  // function requires an EventDispatcher pointer so it can add itself to the
-  // event loop.
-  virtual void Start(EventDispatcher *dispatcher, Sockets *sockets);
+  // function will create an IOHandler and add it to the current message
+  // loop.
+  virtual void Start(Sockets *sockets);
 
   // Add an RTNL event listener to the list of entities that will
   // be notified of RTNL events.
@@ -149,6 +148,7 @@ class RTNLHandler {
   std::vector<RTNLListener *> listeners_;
   base::Callback<void(InputData *)> rtnl_callback_;
   std::unique_ptr<IOHandler> rtnl_handler_;
+  IOHandlerFactory *io_handler_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(RTNLHandler);
 };

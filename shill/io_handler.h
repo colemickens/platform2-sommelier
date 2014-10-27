@@ -5,6 +5,8 @@
 #ifndef SHILL_IO_HANDLER_H_
 #define SHILL_IO_HANDLER_H_
 
+#include <base/callback.h>
+
 namespace shill {
 
 class Error;
@@ -27,6 +29,9 @@ class IOHandler {
   typedef base::Callback<void(const Error &)> ErrorCallback;
   typedef base::Callback<void(InputData *)> InputCallback;
   typedef base::Callback<void(int)> ReadyCallback;
+
+  // Data buffer size in bytes.
+  static const int kDataBufferSize = 4096;
 
   IOHandler() {}
   virtual ~IOHandler() {}
