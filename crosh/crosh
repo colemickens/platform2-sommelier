@@ -198,17 +198,6 @@ HELP_ADVANCED='
 
  wpa_debug [<debug_level>] [--help] [--list_valid_level] [--reset]
   Set wpa_supplicant debugging level.
-
- xset m [acc_mult[/acc_div] [thr]]
- xset m default
-  Tweak the mouse acceleration rate.
-
- xset r rate [delay [rate]]
-  Tweak autorepeat rates.  The delay is the number of milliseconds before
-  autorepeat starts.  The rate is the number of repeats per second.
- xset r [keycode] <on|off>
-  Turn autorepeat on/off.  If keycode is specified, it affects only that
-  key.  If not specified, it affects global behavior.
 '
 
 INTRO_TEXT="Welcome to crosh, the Chrome OS developer shell.
@@ -1147,14 +1136,6 @@ cmd_rlz() (
 
 cmd_syslog() (
   logger -t crosh -- "$*"
-)
-
-cmd_xset() (
-  case $1 in
-  m|r|-r) ;;
-  *) set -- ;; # Gets us a usage string.
-  esac
-  xset-mini "$@"
 )
 
 mk_fifo() {
