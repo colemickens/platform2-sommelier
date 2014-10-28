@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <string>
+#include <vector>
 
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
@@ -25,34 +26,43 @@
 namespace power_manager {
 
 class Clock;
+class PowerSupplyProperties;
 class PrefsInterface;
 
 namespace system {
 
+struct PowerStatus;
 class UdevInterface;
+
+// Copies fields from |status| into |proto|.
+void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
+                                     PowerSupplyProperties* proto);
+
+// Returns a string describing the battery status from |status|.
+std::string GetPowerStatusBatteryDebugString(const PowerStatus& status);
 
 // Structures used for passing power supply info.
 struct PowerStatus {
-  PowerStatus()
-      : line_power_on(false),
-        line_power_voltage(0.0),
-        line_power_current(0.0),
-        battery_energy(0.0),
-        battery_energy_rate(0.0),
-        battery_voltage(0.0),
-        battery_current(0.0),
-        battery_charge(0.0),
-        battery_charge_full(0.0),
-        battery_charge_full_design(0.0),
-        observed_battery_charge_rate(0.0),
-        nominal_voltage(0.0),
-        is_calculating_battery_time(false),
-        battery_percentage(-1.0),
-        display_battery_percentage(-1.0),
-        battery_is_present(false),
-        battery_below_shutdown_threshold(false),
-        external_power(PowerSupplyProperties_ExternalPower_DISCONNECTED),
-        battery_state(PowerSupplyProperties_BatteryState_NOT_PRESENT) {}
+  // Details about a power source.
+  struct Source {
+    Source(const std::string& id,
+           const std::string& name,
+           bool active_by_default);
+    ~Source();
+
+    // Opaque ID corresponding to the power source.
+    std::string id;
+
+    // User-friendly name describing the power source.
+    std::string name;
+
+    // True if the power source automatically provides charge when connected
+    // (e.g. a dedicated charger).
+    bool active_by_default;
+  };
+
+  PowerStatus();
+  ~PowerStatus();
 
   // Is a non-battery power source connected?
   bool line_power_on;
@@ -79,9 +89,8 @@ struct PowerStatus {
   double battery_current;  // In amperes.
   double battery_charge;   // In ampere-hours.
 
-  // Battery full charge level in ampere-hours.
+  // Battery full charge and design-charge levels in ampere-hours.
   double battery_charge_full;
-  // Battery full design charge level in ampere-hours.
   double battery_charge_full_design;
 
   // Observed rate at which the battery's charge has been changing, in amperes
@@ -129,6 +138,12 @@ struct PowerStatus {
 
   PowerSupplyProperties_ExternalPower external_power;
   PowerSupplyProperties_BatteryState battery_state;
+
+  // ID of the active source from |available_external_power_sources|.
+  std::string external_power_source_id;
+
+  // Connected external power sources.
+  std::vector<Source> available_external_power_sources;
 
   // /sys paths from which the line power and battery information was read.
   std::string line_power_path;
@@ -240,6 +255,9 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
                    UdevAction action) override;
 
  private:
+  std::string GetIdForPath(const base::FilePath& path) const;
+  base::FilePath GetPathForId(const std::string& id) const;
+
   // Returns the value of |pref_name|, an int64_t pref containing a
   // millisecond-based duration. |default_duration_ms| is returned if the pref
   // is unset.

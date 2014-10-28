@@ -300,39 +300,45 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   WriteDefaultValues(POWER_BATTERY);
   base::DeleteFile(ac_dir_, true);
 
-  const base::FilePath line1_dir = temp_dir_.path().Append("line1");
+  const char kLine1Id[] = "line1";
+  const base::FilePath line1_dir = temp_dir_.path().Append(kLine1Id);
   ASSERT_TRUE(base::CreateDirectory(line1_dir));
   WriteValue(line1_dir, "type", kUnknownType);
   WriteValue(line1_dir, "online", "0");
   WriteValue(line1_dir, "status", kNotCharging);
 
-  const base::FilePath line2_dir = temp_dir_.path().Append("line2");
+  const char kLine2Id[] = "line2";
+  const base::FilePath line2_dir = temp_dir_.path().Append(kLine2Id);
   ASSERT_TRUE(base::CreateDirectory(line2_dir));
   WriteValue(line2_dir, "type", kUnknownType);
   WriteValue(line2_dir, "online", "0");
   WriteValue(line2_dir, "status", kNotCharging);
 
   Init();
-  PowerStatus power_status;
-  ASSERT_TRUE(UpdateStatus(&power_status));
-  EXPECT_FALSE(power_status.line_power_on);
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_FALSE(status.line_power_on);
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_DISCONNECTED,
-            power_status.external_power);
+            status.external_power);
   EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,
-            power_status.battery_state);
+            status.battery_state);
+  EXPECT_EQ(0u, status.available_external_power_sources.size());
+  EXPECT_EQ("", status.external_power_source_id);
 
   // Start charging from the first power source.
-  const char kPdType[] = "USB_PD";
-  WriteValue(line1_dir, "type", kPdType);
+  WriteValue(line1_dir, "type", kUsbType);
   WriteValue(line1_dir, "online", "1");
   WriteValue(line1_dir, "status", kCharging);
   WriteValue(battery_dir_, "status", kCharging);
-  ASSERT_TRUE(UpdateStatus(&power_status));
-  EXPECT_TRUE(power_status.line_power_on);
-  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC,
-            power_status.external_power);
-  EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL,
-            power_status.battery_state);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_TRUE(status.line_power_on);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL, status.battery_state);
+  ASSERT_EQ(1u, status.available_external_power_sources.size());
+  EXPECT_EQ(kLine1Id, status.available_external_power_sources[0].id);
+  EXPECT_EQ(kLine1Id, status.available_external_power_sources[0].name);
+  EXPECT_FALSE(status.available_external_power_sources[0].active_by_default);
+  EXPECT_EQ(kLine1Id, status.external_power_source_id);
 
   // Disconnect the first power source and start charging from the second one.
   WriteValue(line1_dir, "type", kUnknownType);
@@ -341,24 +347,33 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   WriteValue(line2_dir, "type", kAcType);
   WriteValue(line2_dir, "online", "1");
   WriteValue(line2_dir, "status", kCharging);
-  ASSERT_TRUE(UpdateStatus(&power_status));
-  EXPECT_TRUE(power_status.line_power_on);
-  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC,
-            power_status.external_power);
-  EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL,
-            power_status.battery_state);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_TRUE(status.line_power_on);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL, status.battery_state);
+  ASSERT_EQ(1u, status.available_external_power_sources.size());
+  EXPECT_EQ(kLine2Id, status.available_external_power_sources[0].id);
+  EXPECT_EQ(kLine2Id, status.available_external_power_sources[0].name);
+  EXPECT_TRUE(status.available_external_power_sources[0].active_by_default);
+  EXPECT_EQ(kLine2Id, status.external_power_source_id);
 
   // Now discharge from the first power source (while still charging from the
   // second one) and check that it's ignored.
-  WriteValue(line1_dir, "type", kPdType);
+  WriteValue(line1_dir, "type", kUsbType);
   WriteValue(line1_dir, "online", "1");
   WriteValue(line1_dir, "status", kDischarging);
-  ASSERT_TRUE(UpdateStatus(&power_status));
-  EXPECT_TRUE(power_status.line_power_on);
-  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC,
-            power_status.external_power);
-  EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL,
-            power_status.battery_state);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_TRUE(status.line_power_on);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL, status.battery_state);
+  ASSERT_EQ(2u, status.available_external_power_sources.size());
+  EXPECT_EQ(kLine1Id, status.available_external_power_sources[0].id);
+  EXPECT_EQ(kLine1Id, status.available_external_power_sources[0].name);
+  EXPECT_FALSE(status.available_external_power_sources[0].active_by_default);
+  EXPECT_EQ(kLine2Id, status.available_external_power_sources[1].id);
+  EXPECT_EQ(kLine2Id, status.available_external_power_sources[1].name);
+  EXPECT_TRUE(status.available_external_power_sources[1].active_by_default);
+  EXPECT_EQ(kLine2Id, status.external_power_source_id);
 }
 
 TEST_F(PowerSupplyTest, IgnorePeripherals) {
@@ -1075,6 +1090,79 @@ TEST_F(PowerSupplyTest, RegisterForUdevEvents) {
   power_supply_.reset();
   EXPECT_FALSE(udev_.HasSubsystemObserver(PowerSupply::kUdevSubsystem,
                                           dead_ptr));
+}
+
+TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
+  // Start out with a status indicating that the system is charging.
+  PowerStatus status;
+  status.line_power_on = true;
+  status.battery_energy_rate = 3.4;
+  status.is_calculating_battery_time = false;
+  status.battery_time_to_full = base::TimeDelta::FromSeconds(900);
+  status.display_battery_percentage = 75.8;
+  status.battery_is_present = true;
+  status.external_power = PowerSupplyProperties_ExternalPower_AC;
+  status.battery_state = PowerSupplyProperties_BatteryState_CHARGING;
+
+  PowerSupplyProperties proto;
+  CopyPowerStatusToProtocolBuffer(status, &proto);
+  EXPECT_EQ(status.external_power, proto.external_power());
+  EXPECT_EQ(status.battery_state, proto.battery_state());
+  EXPECT_DOUBLE_EQ(status.display_battery_percentage, proto.battery_percent());
+  EXPECT_EQ(0, proto.battery_time_to_empty_sec());
+  EXPECT_EQ(status.battery_time_to_full.InSeconds(),
+            proto.battery_time_to_full_sec());
+  EXPECT_FALSE(proto.is_calculating_battery_time());
+  EXPECT_DOUBLE_EQ(-status.battery_energy_rate, proto.battery_discharge_rate());
+
+  // Check that power source details are copied.
+  const char kChargerId[] = "PORT1";
+  const char kChargerName[] = "AC Adapter";
+  const char kPhoneId[] = "PORT2";
+  const char kPhoneName[] = "Phone";
+  status.external_power_source_id = kChargerId;
+  status.available_external_power_sources.push_back(
+      PowerStatus::Source(kChargerId, kChargerName, true));
+  status.available_external_power_sources.push_back(
+      PowerStatus::Source(kPhoneId, kPhoneName, false));
+
+  proto.Clear();
+  CopyPowerStatusToProtocolBuffer(status, &proto);
+  EXPECT_EQ(kChargerId, proto.external_power_source_id());
+  ASSERT_EQ(2u, proto.available_external_power_source_size());
+  EXPECT_EQ(kChargerId, proto.available_external_power_source(0).id());
+  EXPECT_EQ(kChargerName, proto.available_external_power_source(0).name());
+  EXPECT_TRUE(proto.available_external_power_source(0).active_by_default());
+  EXPECT_EQ(kPhoneId, proto.available_external_power_source(1).id());
+  EXPECT_EQ(kPhoneName, proto.available_external_power_source(1).name());
+  EXPECT_FALSE(proto.available_external_power_source(1).active_by_default());
+
+  // Now disconnect everything and start discharging.
+  status.external_power_source_id.clear();
+  status.available_external_power_sources.clear();
+  status.line_power_on = false;
+  status.battery_time_to_full = base::TimeDelta();
+  status.battery_time_to_empty = base::TimeDelta::FromSeconds(1800);
+  status.battery_time_to_shutdown = base::TimeDelta::FromSeconds(1500);
+  status.external_power = PowerSupplyProperties_ExternalPower_DISCONNECTED;
+  status.battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
+
+  proto.Clear();
+  CopyPowerStatusToProtocolBuffer(status, &proto);
+  EXPECT_EQ(status.external_power, proto.external_power());
+  EXPECT_EQ(status.battery_state, proto.battery_state());
+  EXPECT_DOUBLE_EQ(status.display_battery_percentage, proto.battery_percent());
+  EXPECT_EQ(status.battery_time_to_shutdown.InSeconds(),
+            proto.battery_time_to_empty_sec());
+  EXPECT_EQ(0, proto.battery_time_to_full_sec());
+  EXPECT_FALSE(proto.is_calculating_battery_time());
+  EXPECT_DOUBLE_EQ(status.battery_energy_rate, proto.battery_discharge_rate());
+
+  // Check that the is-calculating value is copied.
+  status.is_calculating_battery_time = true;
+  proto.Clear();
+  CopyPowerStatusToProtocolBuffer(status, &proto);
+  EXPECT_TRUE(proto.is_calculating_battery_time());
 }
 
 }  // namespace system

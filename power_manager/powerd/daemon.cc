@@ -136,98 +136,6 @@ bool ExitDarkResume() {
   return true;
 }
 
-// Copies fields from |status| into |proto|.
-void CopyPowerStatusToProtocolBuffer(const system::PowerStatus& status,
-                                     PowerSupplyProperties* proto) {
-  DCHECK(proto);
-  proto->Clear();
-  proto->set_external_power(status.external_power);
-  proto->set_battery_state(status.battery_state);
-  proto->set_battery_percent(status.display_battery_percentage);
-  // Show the user the time until powerd will shut down the system automatically
-  // rather than the time until the battery is completely empty.
-  proto->set_battery_time_to_empty_sec(
-      status.battery_time_to_shutdown.InSeconds());
-  proto->set_battery_time_to_full_sec(
-      status.battery_time_to_full.InSeconds());
-  proto->set_is_calculating_battery_time(status.is_calculating_battery_time);
-  if (status.battery_state == PowerSupplyProperties_BatteryState_FULL ||
-      status.battery_state == PowerSupplyProperties_BatteryState_CHARGING) {
-    proto->set_battery_discharge_rate(-status.battery_energy_rate);
-  } else {
-    proto->set_battery_discharge_rate(status.battery_energy_rate);
-  }
-}
-
-// Returns a string describing the battery status from |status|.
-std::string GetPowerStatusBatteryDebugString(
-    const system::PowerStatus& status) {
-  if (!status.battery_is_present)
-    return std::string();
-
-  std::string output;
-  switch (status.external_power) {
-    case PowerSupplyProperties_ExternalPower_AC:
-    case PowerSupplyProperties_ExternalPower_USB:
-    case PowerSupplyProperties_ExternalPower_ORIGINAL_SPRING_CHARGER: {
-      const char* type =
-          status.external_power == PowerSupplyProperties_ExternalPower_USB ?
-          "USB" : "AC";
-
-      output = base::StringPrintf(
-          "On %s (%s", type, status.line_power_type.c_str());
-      if (status.line_power_current || status.line_power_voltage) {
-        output += base::StringPrintf(", %.3fA at %.1fV",
-            status.line_power_current, status.line_power_voltage);
-      }
-      output += ") with battery at ";
-      break;
-    }
-    case PowerSupplyProperties_ExternalPower_DISCONNECTED:
-      output = "On battery at ";
-      break;
-  }
-
-  int rounded_actual = lround(status.battery_percentage);
-  int rounded_display = lround(status.display_battery_percentage);
-  output += base::StringPrintf("%d%%", rounded_actual);
-  if (rounded_actual != rounded_display)
-    output += base::StringPrintf(" (displayed as %d%%)", rounded_display);
-  output += base::StringPrintf(", %.3f/%.3fAh at %.3fA", status.battery_charge,
-      status.battery_charge_full, status.battery_current);
-
-  switch (status.battery_state) {
-    case PowerSupplyProperties_BatteryState_FULL:
-      output += ", full";
-      break;
-    case PowerSupplyProperties_BatteryState_CHARGING:
-      if (status.battery_time_to_full >= base::TimeDelta()) {
-        output += ", " + util::TimeDeltaToString(status.battery_time_to_full) +
-            " until full";
-        if (status.is_calculating_battery_time)
-          output += " (calculating)";
-      }
-      break;
-    case PowerSupplyProperties_BatteryState_DISCHARGING:
-      if (status.battery_time_to_empty >= base::TimeDelta()) {
-        output += ", " + util::TimeDeltaToString(status.battery_time_to_empty) +
-            " until empty";
-        if (status.is_calculating_battery_time) {
-          output += " (calculating)";
-        } else if (status.battery_time_to_shutdown !=
-                   status.battery_time_to_empty) {
-          output += base::StringPrintf(" (%s until shutdown)",
-              util::TimeDeltaToString(status.battery_time_to_shutdown).c_str());
-        }
-      }
-      break;
-    case PowerSupplyProperties_BatteryState_NOT_PRESENT:
-      break;
-  }
-
-  return output;
-}
-
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
 // and sent.
@@ -826,7 +734,7 @@ void Daemon::OnAudioStateChange(bool active) {
 void Daemon::OnPowerStatusUpdate() {
   const system::PowerStatus status = power_supply_->GetPowerStatus();
   if (status.battery_is_present)
-    LOG(INFO) << GetPowerStatusBatteryDebugString(status);
+    LOG(INFO) << system::GetPowerStatusBatteryDebugString(status);
 
   metrics_collector_->HandlePowerStatusUpdate(status);
 
@@ -850,7 +758,7 @@ void Daemon::OnPowerStatusUpdate() {
   }
 
   PowerSupplyProperties protobuf;
-  CopyPowerStatusToProtocolBuffer(status, &protobuf);
+  system::CopyPowerStatusToProtocolBuffer(status, &protobuf);
   dbus_sender_->EmitSignalWithProtocolBuffer(kPowerSupplyPollSignal, protobuf);
 }
 
@@ -1290,7 +1198,8 @@ scoped_ptr<dbus::Response> Daemon::HandleIncreaseKeyboardBrightnessMethod(
 scoped_ptr<dbus::Response> Daemon::HandleGetPowerSupplyPropertiesMethod(
     dbus::MethodCall* method_call) {
   PowerSupplyProperties protobuf;
-  CopyPowerStatusToProtocolBuffer(power_supply_->GetPowerStatus(), &protobuf);
+  system::CopyPowerStatusToProtocolBuffer(power_supply_->GetPowerStatus(),
+                                          &protobuf);
   scoped_ptr<dbus::Response> response(
       dbus::Response::FromMethodCall(method_call));
   dbus::MessageWriter writer(response.get());

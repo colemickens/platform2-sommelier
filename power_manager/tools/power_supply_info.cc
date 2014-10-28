@@ -135,6 +135,12 @@ int main(int argc, char** argv) {
   display.PrintValue("voltage (V)", status.line_power_voltage);
   display.PrintValue("current (A)", status.line_power_current);
 
+  display.PrintStringValue("active source", status.external_power_source_id);
+  std::vector<std::string> sources;
+  for (const auto& source : status.available_external_power_sources)
+    sources.push_back(source.id + (source.active_by_default ? "*" : ""));
+  display.PrintStringValue("available sources", JoinString(sources, ", "));
+
   if (status.battery_is_present) {
     display.SetIndent(0, 0);
     display.PrintString("Device: Battery");

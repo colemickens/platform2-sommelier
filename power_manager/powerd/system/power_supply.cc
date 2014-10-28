@@ -15,12 +15,14 @@
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/udev.h"
+#include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
 namespace power_manager {
 namespace system {
@@ -43,6 +45,7 @@ const int kDefaultBatteryStabilizedAfterResumeDelayMs = 5000;
 // Different power supply types reported by the kernel.
 const char kBatteryType[] = "Battery";
 const char kMainsType[] = "Mains";
+const char kUnknownType[] = "Unknown";
 
 // Battery states reported by the kernel. This is not the full set of
 // possible states; see drivers/power/power_supply_sysfs.c.
@@ -50,8 +53,8 @@ const char kBatteryStatusCharging[] = "Charging";
 const char kBatteryStatusFull[] = "Full";
 
 // Line power status reported by the kernel for a bidirectional port through
-// which the system is charging another device.
-const char kLinePowerStatusDischarging[] = "Discharging";
+// which the system is being charged.
+const char kLinePowerStatusCharging[] = "Charging";
 
 // Reads the contents of |filename| within |directory| into |out|, trimming
 // trailing whitespace.  Returns true on success.
@@ -105,7 +108,159 @@ bool IsBatteryPresent(const base::FilePath& path) {
   return ReadInt64(path, "present", &present) && present != 0;
 }
 
+// Returns a string describing |type|.
+const char* ExternalPowerToString(PowerSupplyProperties_ExternalPower type) {
+  switch (type) {
+    case PowerSupplyProperties_ExternalPower_AC:
+      return "AC";
+    case PowerSupplyProperties_ExternalPower_USB:
+      return "USB";
+    case PowerSupplyProperties_ExternalPower_ORIGINAL_SPRING_CHARGER:
+      return "AC-orig-spring";
+    case PowerSupplyProperties_ExternalPower_DISCONNECTED:
+      return "none";
+  }
+  return "unknown";
+}
+
+// Less-than comparator for PowerStatus::Source structs.
+struct SourceComparator {
+  bool operator()(const PowerStatus::Source& a, const PowerStatus::Source& b) {
+    return a.id < b.id;
+  }
+};
+
 }  // namespace
+
+void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
+                                     PowerSupplyProperties* proto) {
+  DCHECK(proto);
+  proto->Clear();
+  proto->set_external_power(status.external_power);
+  proto->set_battery_state(status.battery_state);
+  proto->set_battery_percent(status.display_battery_percentage);
+
+  // Show the user the time until powerd will shut down the system automatically
+  // rather than the time until the battery is completely empty.
+  proto->set_battery_time_to_empty_sec(
+      status.battery_time_to_shutdown.InSeconds());
+  proto->set_battery_time_to_full_sec(
+      status.battery_time_to_full.InSeconds());
+  proto->set_is_calculating_battery_time(status.is_calculating_battery_time);
+
+  if (status.battery_state == PowerSupplyProperties_BatteryState_FULL ||
+      status.battery_state == PowerSupplyProperties_BatteryState_CHARGING) {
+    proto->set_battery_discharge_rate(-status.battery_energy_rate);
+  } else {
+    proto->set_battery_discharge_rate(status.battery_energy_rate);
+  }
+
+  for (auto source : status.available_external_power_sources) {
+    PowerSupplyProperties_PowerSource* proto_source =
+        proto->add_available_external_power_source();
+    proto_source->set_id(source.id);
+    proto_source->set_name(source.name);
+    proto_source->set_active_by_default(source.active_by_default);
+  }
+  if (!status.external_power_source_id.empty())
+    proto->set_external_power_source_id(status.external_power_source_id);
+}
+
+std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
+  if (!status.battery_is_present)
+    return std::string();
+
+  std::string output;
+  switch (status.external_power) {
+    case PowerSupplyProperties_ExternalPower_AC:
+    case PowerSupplyProperties_ExternalPower_USB:
+    case PowerSupplyProperties_ExternalPower_ORIGINAL_SPRING_CHARGER:
+      output = base::StringPrintf("On %s (%s",
+          ExternalPowerToString(status.external_power),
+          status.line_power_type.c_str());
+      if (status.line_power_current || status.line_power_voltage) {
+        output += base::StringPrintf(", %.3fA at %.1fV",
+            status.line_power_current, status.line_power_voltage);
+      }
+      output += ") with battery at ";
+      break;
+    case PowerSupplyProperties_ExternalPower_DISCONNECTED:
+      output = "On battery at ";
+      break;
+  }
+
+  int rounded_actual = lround(status.battery_percentage);
+  int rounded_display = lround(status.display_battery_percentage);
+  output += base::StringPrintf("%d%%", rounded_actual);
+  if (rounded_actual != rounded_display)
+    output += base::StringPrintf(" (displayed as %d%%)", rounded_display);
+  output += base::StringPrintf(", %.3f/%.3fAh at %.3fA", status.battery_charge,
+      status.battery_charge_full, status.battery_current);
+
+  switch (status.battery_state) {
+    case PowerSupplyProperties_BatteryState_FULL:
+      output += ", full";
+      break;
+    case PowerSupplyProperties_BatteryState_CHARGING:
+      if (status.battery_time_to_full >= base::TimeDelta()) {
+        output += ", " + util::TimeDeltaToString(status.battery_time_to_full) +
+            " until full";
+        if (status.is_calculating_battery_time)
+          output += " (calculating)";
+      }
+      break;
+    case PowerSupplyProperties_BatteryState_DISCHARGING:
+      if (status.battery_time_to_empty >= base::TimeDelta()) {
+        output += ", " + util::TimeDeltaToString(status.battery_time_to_empty) +
+            " until empty";
+        if (status.is_calculating_battery_time) {
+          output += " (calculating)";
+        } else if (status.battery_time_to_shutdown !=
+                   status.battery_time_to_empty) {
+          output += base::StringPrintf(" (%s until shutdown)",
+              util::TimeDeltaToString(status.battery_time_to_shutdown).c_str());
+        }
+      }
+      break;
+    case PowerSupplyProperties_BatteryState_NOT_PRESENT:
+      break;
+  }
+
+  return output;
+}
+
+PowerStatus::Source::Source(
+    const std::string& id,
+    const std::string& name,
+    bool active_by_default)
+    : id(id),
+      name(name),
+      active_by_default(active_by_default) {}
+
+PowerStatus::Source::~Source() {}
+
+PowerStatus::PowerStatus()
+    : line_power_on(false),
+      line_power_voltage(0.0),
+      line_power_current(0.0),
+      battery_energy(0.0),
+      battery_energy_rate(0.0),
+      battery_voltage(0.0),
+      battery_current(0.0),
+      battery_charge(0.0),
+      battery_charge_full(0.0),
+      battery_charge_full_design(0.0),
+      observed_battery_charge_rate(0.0),
+      nominal_voltage(0.0),
+      is_calculating_battery_time(false),
+      battery_percentage(-1.0),
+      display_battery_percentage(-1.0),
+      battery_is_present(false),
+      battery_below_shutdown_threshold(false),
+      external_power(PowerSupplyProperties_ExternalPower_DISCONNECTED),
+      battery_state(PowerSupplyProperties_BatteryState_NOT_PRESENT) {}
+
+PowerStatus::~PowerStatus() {}
 
 base::TimeTicks PowerSupply::TestApi::GetCurrentTime() const {
   return power_supply_->clock_->GetCurrentTime();
@@ -258,6 +413,23 @@ void PowerSupply::OnUdevEvent(const std::string& subsystem,
     RefreshImmediately();
 }
 
+std::string PowerSupply::GetIdForPath(const base::FilePath& path) const {
+  DCHECK(power_supply_path_.IsParent(path))
+      << path.value() << " isn't a child of " << power_supply_path_.value();
+  return path.BaseName().value();
+}
+
+base::FilePath PowerSupply::GetPathForId(const std::string& id) const {
+  base::FilePath path = power_supply_path_.Append(id);
+  // Double-check that nobody's playing games with bogus IDs.
+  if (!power_supply_path_.IsParent(path) || path.BaseName().value() != id ||
+      !base::DirectoryExists(path)) {
+    LOG(WARNING) << "Got invalid ID \"" << id << "\"";
+    return base::FilePath();
+  }
+  return path;
+}
+
 base::TimeDelta PowerSupply::GetMsPref(const std::string& pref_name,
                                        int64_t default_duration_ms) const {
   prefs_->GetInt64(pref_name, &default_duration_ms);
@@ -315,6 +487,11 @@ bool PowerSupply::UpdatePowerStatus() {
     status.line_power_type = kMainsType;
     status.external_power = PowerSupplyProperties_ExternalPower_AC;
   }
+
+  // Sort the power source list to make life easier for tests.
+  std::sort(status.available_external_power_sources.begin(),
+            status.available_external_power_sources.end(),
+            SourceComparator());
 
   // Even though we haven't successfully finished initializing the status yet,
   // save what we have so far so that if we bail out early due to a messed-up
@@ -376,11 +553,32 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   if (!ReadInt64(path, "online", &online_value) || !online_value)
     return;
 
+  // An "Unknown" type indicates a sink-only device that can't supply power.
+  std::string type;
+  ReadAndTrimString(path, "type", &type);
+  if (type == kUnknownType)
+    return;
+
   // Bidirectional ports export an additional "status" field.
-  // TODO(derat): Report dual-role devices: http://crbug.com/424246
   std::string line_status;
   ReadAndTrimString(path, "status", &line_status);
-  if (line_status == kLinePowerStatusDischarging)
+
+  // Okay, this is a potential power source. Add it to the list.
+  const std::string id = GetIdForPath(path);
+  // TODO(derat): Try to determine this by reading the manufacturer and/or
+  // model_name fields.
+  const std::string name = id;
+  // Most dedicated chargers will be reported as "Mains". On spring, low-power
+  // USB chargers instead have a "USB"-prefixed type, but they _don't_ have a
+  // "status" file (which _is_ present for dual-role USB PD devices).
+  const bool active_by_default =
+      type == kMainsType || (IsUsbChargerType(type) && line_status.empty());
+  status->available_external_power_sources.push_back(
+      PowerStatus::Source(id, name, active_by_default));
+
+  // If this is a dual-role device, make sure that we're actually getting
+  // charged by it.
+  if (!line_status.empty() && line_status != kLinePowerStatusCharging)
     return;
 
   if (!status->line_power_path.empty()) {
@@ -391,13 +589,19 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
 
   status->line_power_on = true;
   status->line_power_path = path.value();
-  ReadAndTrimString(path, "type", &status->line_power_type);
+  status->line_power_type = type;
   ReadAndTrimString(path, "model_name", &status->line_power_model_name);
-  status->external_power = IsUsbChargerType(status->line_power_type) ?
-      PowerSupplyProperties_ExternalPower_USB :
-      PowerSupplyProperties_ExternalPower_AC;
+  if (IsUsbChargerType(status->line_power_type)) {
+    status->external_power = line_status.empty() ?
+        PowerSupplyProperties_ExternalPower_USB :
+        // TODO(derat): Consider reporting this as USB_PD.
+        PowerSupplyProperties_ExternalPower_AC;
+  } else {
+    status->external_power = PowerSupplyProperties_ExternalPower_AC;
+  }
   status->line_power_voltage = ReadScaledDouble(path, "voltage_now");
   status->line_power_current = ReadScaledDouble(path, "current_now");
+  status->external_power_source_id = id;
 
   VLOG(1) << "Found line power of type \"" << status->line_power_type
           << "\" at " << path.value();
