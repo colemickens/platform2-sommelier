@@ -16,7 +16,7 @@
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
-#include "shill/ip_address.h"
+#include "shill/net/ip_address.h"
 #include "shill/refptr_types.h"
 
 struct hostent;

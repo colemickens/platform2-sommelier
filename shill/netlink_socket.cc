@@ -9,8 +9,8 @@
 #include <sys/socket.h>
 
 #include "shill/logging.h"
+#include "shill/net/sockets.h"
 #include "shill/netlink_message.h"
-#include "shill/sockets.h"
 
 // This is from a version of linux/socket.h that we don't have.
 #define SOL_NETLINK 270

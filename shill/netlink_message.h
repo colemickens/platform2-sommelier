@@ -14,7 +14,7 @@
 
 #include <gtest/gtest.h>  // for FRIEND_TEST.
 
-#include "shill/byte_string.h"
+#include "shill/net/byte_string.h"
 
 struct nlmsghdr;
 

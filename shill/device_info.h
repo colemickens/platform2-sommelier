@@ -18,11 +18,11 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/byte_string.h"
 #include "shill/device.h"
-#include "shill/ip_address.h"
-#include "shill/rtnl_listener.h"
-#include "shill/shill_time.h"
+#include "shill/net/byte_string.h"
+#include "shill/net/ip_address.h"
+#include "shill/net/rtnl_listener.h"
+#include "shill/net/shill_time.h"
 #include "shill/technology.h"
 
 namespace shill {

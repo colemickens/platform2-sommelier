@@ -9,8 +9,8 @@
 #include <base/files/file_util.h>
 #include <chromeos/minijail/minijail.h>
 
+#include "shill/net/shill_time.h"
 #include "shill/process_killer.h"
-#include "shill/shill_time.h"
 #include "shill/shims/net_diags_upload.h"
 
 using base::Closure;

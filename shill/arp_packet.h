@@ -5,8 +5,8 @@
 #ifndef SHILL_ARP_PACKET_H_
 #define SHILL_ARP_PACKET_H_
 
-#include "shill/byte_string.h"
-#include "shill/ip_address.h"
+#include "shill/net/byte_string.h"
+#include "shill/net/ip_address.h"
 
 namespace shill {
 

@@ -11,9 +11,9 @@
 #include <base/bind.h>
 #include <gtest/gtest.h>
 
-#include "shill/ip_address.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_sockets.h"
+#include "shill/net/ip_address.h"
+#include "shill/net/mock_sockets.h"
 
 using base::Bind;
 using base::Callback;

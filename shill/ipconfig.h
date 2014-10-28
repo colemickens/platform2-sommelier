@@ -14,7 +14,7 @@
 #include <base/memory/ref_counted.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/ip_address.h"
+#include "shill/net/ip_address.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
 #include "shill/routing_table_entry.h"

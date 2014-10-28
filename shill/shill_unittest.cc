@@ -14,7 +14,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/io_handler.h"
 #include "shill/logging.h"
 #include "shill/mock_control.h"
 #include "shill/mock_dhcp_provider.h"
@@ -23,7 +22,8 @@
 #include "shill/mock_netlink_manager.h"
 #include "shill/mock_proxy_factory.h"
 #include "shill/mock_routing_table.h"
-#include "shill/mock_rtnl_handler.h"
+#include "shill/net/io_handler.h"
+#include "shill/net/mock_rtnl_handler.h"
 #include "shill/nl80211_message.h"
 #include "shill/shill_daemon.h"
 #include "shill/shill_test_config.h"

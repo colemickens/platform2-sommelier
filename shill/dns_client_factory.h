@@ -12,7 +12,7 @@
 
 #include "shill/dns_client.h"
 #include "shill/event_dispatcher.h"
-#include "shill/ip_address.h"
+#include "shill/net/ip_address.h"
 
 namespace shill {
 

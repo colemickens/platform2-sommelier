@@ -67,10 +67,10 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/generic_netlink_message.h"
-#include "shill/io_handler_factory.h"
+#include "shill/net/io_handler_factory.h"
+#include "shill/net/shill_time.h"
 #include "shill/netlink_message.h"
 #include "shill/netlink_socket.h"
-#include "shill/shill_time.h"
 
 struct nlmsghdr;
 

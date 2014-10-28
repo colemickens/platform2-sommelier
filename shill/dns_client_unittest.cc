@@ -14,11 +14,11 @@
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
-#include "shill/io_handler.h"
 #include "shill/mock_ares.h"
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_time.h"
+#include "shill/net/io_handler.h"
+#include "shill/net/mock_time.h"
 #include "shill/testing.h"
 
 using base::Bind;

@@ -17,10 +17,10 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
-#include "shill/mock_sockets.h"
 #include "shill/mock_store.h"
 #include "shill/mock_vpn_driver.h"
 #include "shill/mock_vpn_provider.h"
+#include "shill/net/mock_sockets.h"
 #include "shill/nice_mock_control.h"
 #include "shill/service_property_change_test.h"
 

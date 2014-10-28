@@ -16,9 +16,9 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>
 
+#include "shill/net/sockets.h"
 #include "shill/refptr_types.h"
 #include "shill/socket_info.h"
-#include "shill/sockets.h"
 
 namespace shill {
 

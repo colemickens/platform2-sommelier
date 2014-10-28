@@ -12,10 +12,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/byte_string.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
-#include "shill/ip_address.h"
 #include "shill/ip_address_store.h"
 #include "shill/logging.h"
 #include "shill/mock_glib.h"
@@ -23,6 +21,8 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_netlink_manager.h"
+#include "shill/net/byte_string.h"
+#include "shill/net/ip_address.h"
 #include "shill/netlink_message_matchers.h"
 #include "shill/nice_mock_control.h"
 #include "shill/nl80211_message.h"

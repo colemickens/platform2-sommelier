@@ -8,19 +8,22 @@
 #include <memory>
 #include <vector>
 
+#include <base/bind.h>
+#include <base/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/stl_util.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "shill/byte_string.h"
+#include "shill/event_dispatcher.h"
+#include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/mock_control.h"
-#include "shill/mock_rtnl_handler.h"
+#include "shill/net/byte_string.h"
+#include "shill/net/mock_rtnl_handler.h"
+#include "shill/net/rtnl_message.h"
 #include "shill/routing_table.h"
 #include "shill/routing_table_entry.h"
-#include "shill/rtnl_handler.h"
-#include "shill/rtnl_message.h"
 
 using base::Bind;
 using base::Callback;

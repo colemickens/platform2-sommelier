@@ -20,8 +20,8 @@
 #include <base/memory/weak_ptr.h>
 
 #include "shill/callbacks.h"
-#include "shill/ip_address.h"
 #include "shill/ip_address_store.h"
+#include "shill/net/ip_address.h"
 #include "shill/netlink_manager.h"
 #include "shill/refptr_types.h"
 

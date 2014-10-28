@@ -16,7 +16,7 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_http_request.h"
-#include "shill/mock_time.h"
+#include "shill/net/mock_time.h"
 
 using base::Bind;
 using base::Callback;

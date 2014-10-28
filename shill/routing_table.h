@@ -15,9 +15,9 @@
 #include <base/lazy_instance.h>
 #include <base/memory/ref_counted.h>
 
-#include "shill/ip_address.h"
+#include "shill/net/ip_address.h"
+#include "shill/net/rtnl_message.h"
 #include "shill/refptr_types.h"
-#include "shill/rtnl_message.h"
 
 namespace shill {
 

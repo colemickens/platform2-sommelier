@@ -22,9 +22,9 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_modem.h"
 #include "shill/mock_modem_info.h"
-#include "shill/mock_rtnl_handler.h"
+#include "shill/net/mock_rtnl_handler.h"
+#include "shill/net/rtnl_handler.h"
 #include "shill/proxy_factory.h"
-#include "shill/rtnl_handler.h"
 
 using std::string;
 using std::vector;

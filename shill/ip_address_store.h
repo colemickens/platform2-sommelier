@@ -8,7 +8,7 @@
 #include <random>
 #include <set>
 
-#include "shill/ip_address.h"
+#include "shill/net/ip_address.h"
 
 namespace shill {
 

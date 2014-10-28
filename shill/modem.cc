@@ -10,8 +10,8 @@
 #include "shill/cellular.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
+#include "shill/net/rtnl_handler.h"
 #include "shill/proxy_factory.h"
-#include "shill/rtnl_handler.h"
 
 using base::Bind;
 using base::Unretained;

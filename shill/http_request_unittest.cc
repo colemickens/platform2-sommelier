@@ -15,14 +15,14 @@
 #include <gtest/gtest.h>
 
 #include "shill/http_url.h"
-#include "shill/ip_address.h"
 #include "shill/mock_async_connection.h"
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_dns_client.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_sockets.h"
+#include "shill/net/ip_address.h"
+#include "shill/net/mock_sockets.h"
 
 using base::Bind;
 using base::Callback;

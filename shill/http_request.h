@@ -14,9 +14,9 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 
-#include "shill/byte_string.h"
+#include "shill/net/byte_string.h"
+#include "shill/net/shill_time.h"
 #include "shill/refptr_types.h"
-#include "shill/shill_time.h"
 
 namespace shill {
 

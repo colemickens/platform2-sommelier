@@ -15,7 +15,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/timer.h>
 
-#include "shill/byte_string.h"
+#include "shill/net/byte_string.h"
 #include "shill/netlink_manager.h"
 #include "shill/wifi_provider.h"
 

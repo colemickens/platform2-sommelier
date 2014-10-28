@@ -34,7 +34,7 @@
 #include "shill/mock_proxy_factory.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
-#include "shill/mock_time.h"
+#include "shill/net/mock_time.h"
 #include "shill/property_store_unittest.h"
 #include "shill/service_property_change_test.h"
 #include "shill/service_sorter.h"

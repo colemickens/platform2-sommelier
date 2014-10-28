@@ -6,7 +6,7 @@
 #define SHILL_GENERIC_NETLINK_MESSAGE_H_
 
 #include "shill/attribute_list.h"
-#include "shill/byte_string.h"
+#include "shill/net/byte_string.h"
 #include "shill/netlink_message.h"
 #include "shill/refptr_types.h"
 

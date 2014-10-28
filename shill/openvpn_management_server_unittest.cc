@@ -13,7 +13,7 @@
 #include "shill/key_value_store.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_openvpn_driver.h"
-#include "shill/mock_sockets.h"
+#include "shill/net/mock_sockets.h"
 
 using base::Bind;
 using base::Unretained;

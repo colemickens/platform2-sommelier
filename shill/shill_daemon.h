@@ -13,7 +13,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/manager.h"
-#include "shill/sockets.h"
+#include "shill/net/sockets.h"
 
 namespace shill {
 

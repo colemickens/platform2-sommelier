@@ -33,7 +33,7 @@
 #include "shill/mock_modem_info.h"
 #include "shill/mock_pending_activation_store.h"
 #include "shill/mock_profile.h"
-#include "shill/mock_rtnl_handler.h"
+#include "shill/net/mock_rtnl_handler.h"
 #include "shill/proxy_factory.h"
 #include "shill/testing.h"
 

@@ -13,7 +13,7 @@
 
 #include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/shill_time.h"
+#include "shill/net/shill_time.h"
 
 namespace shill {
 

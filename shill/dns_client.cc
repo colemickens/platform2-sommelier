@@ -21,8 +21,8 @@
 #include <base/strings/string_number_conversions.h>
 
 #include "shill/logging.h"
+#include "shill/net/shill_time.h"
 #include "shill/shill_ares.h"
-#include "shill/shill_time.h"
 
 using base::Bind;
 using base::Unretained;

@@ -11,7 +11,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_process_killer.h"
-#include "shill/mock_time.h"
+#include "shill/net/mock_time.h"
 
 using base::FilePath;
 using chromeos::MockMinijail;

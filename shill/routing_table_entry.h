@@ -5,7 +5,7 @@
 #ifndef SHILL_ROUTING_TABLE_ENTRY_H_
 #define SHILL_ROUTING_TABLE_ENTRY_H_
 
-#include "shill/ip_address.h"
+#include "shill/net/ip_address.h"
 
 namespace shill {
 

@@ -34,12 +34,12 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/mobile_operator_info.h"
+#include "shill/net/rtnl_handler.h"
 #include "shill/ppp_device.h"
 #include "shill/ppp_device_factory.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
-#include "shill/rtnl_handler.h"
 #include "shill/store_interface.h"
 #include "shill/technology.h"
 

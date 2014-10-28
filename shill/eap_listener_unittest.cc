@@ -14,11 +14,11 @@
 #include <base/bind.h>
 #include <gtest/gtest.h>
 
-#include "shill/byte_string.h"
 #include "shill/eap_protocol.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
-#include "shill/mock_sockets.h"
+#include "shill/net/byte_string.h"
+#include "shill/net/mock_sockets.h"
 
 using testing::_;
 using testing::HasSubstr;

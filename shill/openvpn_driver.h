@@ -15,10 +15,10 @@
 
 #include "shill/glib.h"
 #include "shill/ipconfig.h"
+#include "shill/net/sockets.h"
 #include "shill/refptr_types.h"
 #include "shill/rpc_task.h"
 #include "shill/service.h"
-#include "shill/sockets.h"
 #include "shill/vpn_driver.h"
 
 namespace base {

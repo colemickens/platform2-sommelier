@@ -18,13 +18,13 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/io_handler.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_io_handler_factory.h"
 #include "shill/mock_log.h"
 #include "shill/mock_netlink_socket.h"
-#include "shill/mock_sockets.h"
-#include "shill/mock_time.h"
+#include "shill/net/io_handler.h"
+#include "shill/net/mock_io_handler_factory.h"
+#include "shill/net/mock_sockets.h"
+#include "shill/net/mock_time.h"
 #include "shill/netlink_attribute.h"
 #include "shill/nl80211_message.h"
 #include "shill/scope_logger.h"

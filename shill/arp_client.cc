@@ -11,9 +11,9 @@
 #include <string.h>
 
 #include "shill/arp_packet.h"
-#include "shill/byte_string.h"
 #include "shill/logging.h"
-#include "shill/sockets.h"
+#include "shill/net/byte_string.h"
+#include "shill/net/sockets.h"
 
 namespace shill {
 

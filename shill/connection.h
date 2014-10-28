@@ -13,8 +13,8 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/ip_address.h"
 #include "shill/ipconfig.h"
+#include "shill/net/ip_address.h"
 #include "shill/refptr_types.h"
 #include "shill/technology.h"
 

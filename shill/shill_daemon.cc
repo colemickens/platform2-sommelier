@@ -13,11 +13,11 @@
 #include "shill/diagnostics_reporter.h"
 #include "shill/error.h"
 #include "shill/logging.h"
+#include "shill/net/rtnl_handler.h"
 #include "shill/netlink_manager.h"
 #include "shill/nl80211_message.h"
 #include "shill/proxy_factory.h"
 #include "shill/routing_table.h"
-#include "shill/rtnl_handler.h"
 #include "shill/shill_config.h"
 
 using base::Bind;

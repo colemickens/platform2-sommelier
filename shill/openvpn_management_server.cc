@@ -18,8 +18,8 @@
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/logging.h"
+#include "shill/net/sockets.h"
 #include "shill/openvpn_driver.h"
-#include "shill/sockets.h"
 
 using base::Bind;
 using base::IntToString;

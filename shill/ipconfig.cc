@@ -12,7 +12,7 @@
 #include "shill/control_interface.h"
 #include "shill/error.h"
 #include "shill/logging.h"
-#include "shill/shill_time.h"
+#include "shill/net/shill_time.h"
 #include "shill/static_ip_parameters.h"
 
 using base::Callback;

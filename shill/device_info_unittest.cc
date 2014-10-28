@@ -25,7 +25,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/ip_address.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
@@ -37,14 +36,15 @@
 #include "shill/mock_modem_info.h"
 #include "shill/mock_netlink_manager.h"
 #include "shill/mock_routing_table.h"
-#include "shill/mock_rtnl_handler.h"
-#include "shill/mock_sockets.h"
-#include "shill/mock_time.h"
 #include "shill/mock_vpn_provider.h"
 #include "shill/mock_wimax_provider.h"
+#include "shill/net/ip_address.h"
+#include "shill/net/mock_rtnl_handler.h"
+#include "shill/net/mock_sockets.h"
+#include "shill/net/mock_time.h"
+#include "shill/net/rtnl_message.h"
 #include "shill/netlink_attribute.h"
 #include "shill/nl80211_message.h"
-#include "shill/rtnl_message.h"
 #include "shill/wimax.h"
 
 using base::Callback;

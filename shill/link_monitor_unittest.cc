@@ -12,8 +12,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/arp_packet.h"
-#include "shill/byte_string.h"
-#include "shill/ip_address.h"
 #include "shill/logging.h"
 #include "shill/mock_arp_client.h"
 #include "shill/mock_connection.h"
@@ -22,8 +20,10 @@
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_sockets.h"
-#include "shill/mock_time.h"
+#include "shill/net/byte_string.h"
+#include "shill/net/ip_address.h"
+#include "shill/net/mock_sockets.h"
+#include "shill/net/mock_time.h"
 
 using base::Bind;
 using base::Unretained;

@@ -11,8 +11,8 @@
 
 #include <base/lazy_instance.h>
 
-#include "shill/byte_string.h"
 #include "shill/generic_netlink_message.h"
+#include "shill/net/byte_string.h"
 
 struct nlmsghdr;
 

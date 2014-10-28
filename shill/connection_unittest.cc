@@ -20,7 +20,7 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_resolver.h"
 #include "shill/mock_routing_table.h"
-#include "shill/mock_rtnl_handler.h"
+#include "shill/net/mock_rtnl_handler.h"
 #include "shill/routing_table_entry.h"
 
 using std::string;

@@ -21,7 +21,7 @@
 #include "shill/mock_modem_proxy.h"
 #include "shill/mock_modem_simple_proxy.h"
 #include "shill/mock_profile.h"
-#include "shill/mock_rtnl_handler.h"
+#include "shill/net/mock_rtnl_handler.h"
 #include "shill/proxy_factory.h"
 #include "shill/testing.h"
 

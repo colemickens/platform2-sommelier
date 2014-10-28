@@ -22,9 +22,9 @@
 #include "shill/accessor_interface.h"
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
+#include "shill/net/shill_time.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
-#include "shill/shill_time.h"
 #include "shill/static_ip_parameters.h"
 #include "shill/technology.h"
 

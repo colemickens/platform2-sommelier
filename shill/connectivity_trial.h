@@ -17,9 +17,9 @@
 
 #include "shill/http_request.h"
 #include "shill/http_url.h"
+#include "shill/net/shill_time.h"
+#include "shill/net/sockets.h"
 #include "shill/refptr_types.h"
-#include "shill/shill_time.h"
-#include "shill/sockets.h"
 
 namespace shill {
 

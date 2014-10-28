@@ -10,7 +10,6 @@
 #include <gmock/gmock.h>
 
 #include "shill/arp_packet.h"
-#include "shill/byte_string.h"
 
 namespace shill {
 

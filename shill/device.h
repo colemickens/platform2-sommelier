@@ -20,13 +20,13 @@
 #include "shill/connectivity_trial.h"
 #include "shill/dns_server_tester.h"
 #include "shill/event_dispatcher.h"
-#include "shill/ip_address.h"
 #include "shill/ipconfig.h"
+#include "shill/net/ip_address.h"
+#include "shill/net/shill_time.h"
 #include "shill/portal_detector.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
-#include "shill/shill_time.h"
 #include "shill/technology.h"
 
 namespace shill {

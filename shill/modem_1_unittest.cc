@@ -16,8 +16,8 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_modem_info.h"
 #include "shill/mock_proxy_factory.h"
-#include "shill/mock_rtnl_handler.h"
-#include "shill/rtnl_handler.h"
+#include "shill/net/mock_rtnl_handler.h"
+#include "shill/net/rtnl_handler.h"
 #include "shill/testing.h"
 
 using base::FilePath;

@@ -13,7 +13,7 @@
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
 
-#include "shill/byte_string.h"
+#include "shill/net/byte_string.h"
 #include "shill/refptr_types.h"
 
 namespace shill {

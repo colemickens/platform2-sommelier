@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "shill/ip_address.h"
+#include "shill/net/ip_address.h"
 
 using std::string;
 using std::vector;

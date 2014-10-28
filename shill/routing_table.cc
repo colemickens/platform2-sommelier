@@ -25,12 +25,13 @@
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 
-#include "shill/byte_string.h"
+#include "shill/ipconfig.h"
 #include "shill/logging.h"
+#include "shill/net/byte_string.h"
+#include "shill/net/rtnl_handler.h"
+#include "shill/net/rtnl_listener.h"
+#include "shill/net/rtnl_message.h"
 #include "shill/routing_table_entry.h"
-#include "shill/rtnl_handler.h"
-#include "shill/rtnl_listener.h"
-#include "shill/rtnl_message.h"
 
 using base::Bind;
 using base::FilePath;

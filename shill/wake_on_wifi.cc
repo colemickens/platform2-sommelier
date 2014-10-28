@@ -17,13 +17,13 @@
 #include <base/cancelable_callback.h>
 
 #include "shill/attribute_list.h"
-#include "shill/byte_string.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
-#include "shill/ip_address.h"
 #include "shill/ip_address_store.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
+#include "shill/net/byte_string.h"
+#include "shill/net/ip_address.h"
 #include "shill/netlink_manager.h"
 #include "shill/nl80211_message.h"
 #include "shill/wifi.h"

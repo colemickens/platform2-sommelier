@@ -26,12 +26,12 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
+#include "shill/net/sockets.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
 #include "shill/service_dbus_adaptor.h"
 #include "shill/service_property_change_notifier.h"
-#include "shill/sockets.h"
 #include "shill/store_interface.h"
 
 using base::Bind;

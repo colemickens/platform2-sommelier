@@ -11,9 +11,9 @@
 
 #include "shill/device_info.h"
 #include "shill/logging.h"
+#include "shill/net/rtnl_handler.h"
 #include "shill/resolver.h"
 #include "shill/routing_table.h"
-#include "shill/rtnl_handler.h"
 
 using base::Bind;
 using base::Closure;

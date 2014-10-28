@@ -8,7 +8,7 @@
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/ether.h
 
 #include "shill/logging.h"
-#include "shill/rtnl_handler.h"
+#include "shill/net/rtnl_handler.h"
 
 using std::string;
 

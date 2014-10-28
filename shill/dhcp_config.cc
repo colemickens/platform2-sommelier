@@ -20,9 +20,9 @@
 #include "shill/dhcpcd_proxy.h"
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
-#include "shill/ip_address.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
+#include "shill/net/ip_address.h"
 #include "shill/proxy_factory.h"
 
 using std::string;

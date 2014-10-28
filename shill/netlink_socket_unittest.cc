@@ -12,8 +12,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/byte_string.h"
-#include "shill/mock_sockets.h"
+#include "shill/net/byte_string.h"
+#include "shill/net/mock_sockets.h"
 #include "shill/netlink_message.h"
 
 using std::min;

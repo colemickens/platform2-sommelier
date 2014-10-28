@@ -13,7 +13,7 @@
 
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_time.h"
+#include "shill/net/mock_time.h"
 
 using std::string;
 using std::vector;

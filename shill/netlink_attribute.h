@@ -13,8 +13,8 @@
 #include <base/macros.h>
 
 #include "shill/attribute_list.h"
-#include "shill/byte_string.h"
 #include "shill/logging.h"
+#include "shill/net/byte_string.h"
 #include "shill/refptr_types.h"
 
 struct nlattr;

@@ -21,12 +21,12 @@
 #include "shill/dns_client_factory.h"
 #include "shill/error.h"
 #include "shill/http_url.h"
-#include "shill/ip_address.h"
 #include "shill/ip_address_store.h"
 #include "shill/logging.h"
+#include "shill/net/ip_address.h"
+#include "shill/net/sockets.h"
 #include "shill/socket_info.h"
 #include "shill/socket_info_reader.h"
-#include "shill/sockets.h"
 
 using base::Bind;
 using base::Unretained;

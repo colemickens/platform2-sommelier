@@ -14,7 +14,7 @@
 #include "shill/eap_protocol.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
-#include "shill/sockets.h"
+#include "shill/net/sockets.h"
 
 namespace shill {
 

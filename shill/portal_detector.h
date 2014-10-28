@@ -16,8 +16,8 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/connectivity_trial.h"
+#include "shill/net/shill_time.h"
 #include "shill/refptr_types.h"
-#include "shill/shill_time.h"
 
 namespace shill {
 

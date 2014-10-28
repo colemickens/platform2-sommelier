@@ -12,9 +12,9 @@
 #include <gtest/gtest.h>
 
 #include "shill/arp_packet.h"
-#include "shill/ip_address.h"
 #include "shill/mock_log.h"
-#include "shill/mock_sockets.h"
+#include "shill/net/ip_address.h"
+#include "shill/net/mock_sockets.h"
 
 using testing::_;
 using testing::AnyNumber;

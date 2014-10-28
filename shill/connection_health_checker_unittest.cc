@@ -25,7 +25,7 @@
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_ip_address_store.h"
 #include "shill/mock_socket_info_reader.h"
-#include "shill/mock_sockets.h"
+#include "shill/net/mock_sockets.h"
 
 using base::Bind;
 using base::Callback;

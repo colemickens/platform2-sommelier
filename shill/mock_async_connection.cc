@@ -4,7 +4,7 @@
 
 #include "shill/mock_async_connection.h"
 
-#include "shill/ip_address.h"
+#include "shill/net/ip_address.h"
 
 namespace shill {
 
