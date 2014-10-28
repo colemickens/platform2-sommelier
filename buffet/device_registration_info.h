@@ -136,6 +136,15 @@ class DeviceRegistrationInfo {
       CloudRequestCallback callback,
       CloudRequestErroback errorback);
 
+  void UpdateDeviceResource(base::Closure callback);
+
+  void FetchCommands(base::Callback<void(const base::ListValue&)> callback);
+
+  void AbortLimboCommands(base::Closure callback,
+                          const base::ListValue& commands);
+
+  void PeriodicallyPollCommands();
+
   // Builds Cloud API devices collection REST resouce which matches
   // current state of the device including command definitions
   // for all supported commands and current device state.

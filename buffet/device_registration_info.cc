@@ -630,86 +630,92 @@ void DeviceRegistrationInfo::StartDevice(chromeos::ErrorPtr* error) {
   if (!CheckRegistration(error))
     return;
 
+  base::Bind(
+      &DeviceRegistrationInfo::UpdateDeviceResource,
+      base::Unretained(this),
+      base::Bind(
+          &DeviceRegistrationInfo::FetchCommands,
+          base::Unretained(this),
+          base::Bind(
+              &DeviceRegistrationInfo::AbortLimboCommands,
+              base::Unretained(this),
+              base::Bind(
+                  &DeviceRegistrationInfo::PeriodicallyPollCommands,
+                  base::Unretained(this))))).Run();
+}
+
+void DeviceRegistrationInfo::UpdateDeviceResource(base::Closure callback) {
   std::unique_ptr<base::DictionaryValue> device_resource =
-      BuildDeviceResource(error);
+      BuildDeviceResource(nullptr);
   if (!device_resource)
     return;
 
-  auto std_errorback = base::Bind([](const chromeos::Error& error) {});
+  DoCloudRequest(
+      chromeos::http::request_type::kPut,
+      GetDeviceURL(),
+      device_resource.get(),
+      base::Bind([callback](const base::DictionaryValue&){
+        base::MessageLoop::current()->PostTask(FROM_HERE, callback);
+      }),
+      // TODO(antonm): Failure to update device resource probably deserves
+      // some additional actions.
+      base::Bind([](const chromeos::Error&){}));
+}
 
-  const std::string device_url{GetDeviceURL()};
-  auto update_device_resource = [device_url, std_errorback]
-      (DeviceRegistrationInfo* self, base::DictionaryValue* device_resource,
-       CloudRequestCallback callback) {
-    self->DoCloudRequest(
-        chromeos::http::request_type::kPut,
-        device_url,
-        device_resource,
-        // TODO(antonm): Failure to update device resource probably deserves
-        // some additional actions.
-        callback, std_errorback);
-  };
+void DeviceRegistrationInfo::FetchCommands(
+    base::Callback<void(const base::ListValue&)> callback) {
+  DoCloudRequest(
+      chromeos::http::request_type::kGet,
+      GetServiceURL("commands/queue", {{"deviceId", device_id_}}),
+      nullptr,
+      base::Bind([callback](const base::DictionaryValue& json) {
+        const base::ListValue* commands{nullptr};
+        if (!json.GetList("commands", &commands)) {
+          VLOG(1) << "No commands in the response.";
+        }
+        const base::ListValue empty;
+        callback.Run(commands ? *commands : empty);
+      }),
+      base::Bind([](const chromeos::Error&){}));
+}
 
-  const std::string command_queue_url{
-    GetServiceURL("commands/queue", {{"deviceId", device_id_}})};
-  auto fetch_commands = [command_queue_url, std_errorback]
-      (DeviceRegistrationInfo* self,
-       CloudRequestCallback callback, const base::DictionaryValue&) {
-    self->DoCloudRequest(chromeos::http::request_type::kGet,
-                         command_queue_url,
-                         nullptr,
-                         callback, std_errorback);
-  };
-
-  auto abort_commands = [](base::Callback<void(void)> callback,
-                           const base::DictionaryValue& json) {
-    const base::ListValue* commands{nullptr};
-    if (json.GetList("commands", &commands)) {
-      const size_t size{commands->GetSize()};
-      for (size_t i = 0; i < size; ++i) {
-        const base::DictionaryValue* command{nullptr};
-        if (!commands->GetDictionary(i, &command)) {
-          LOG(WARNING) << "No command resource at " << i;
-          continue;
-        }
-        std::string command_state;
-        if (!command->GetString("state", &command_state)) {
-          LOG(WARNING) << "Command with no state at " << i;
-          continue;
-        }
-        if (command_state != "error" &&
-            command_state != "inProgress" &&
-            command_state != "paused") {
-          // It's not a limbo command, ignore.
-          continue;
-        }
-        std::string command_id;
-        if (!command->GetString("id", &command_id)) {
-          LOG(WARNING) << "Command with no ID at " << i;
-          continue;
-        }
-        // TODO(antonm): Really abort the command.
-      }
+void DeviceRegistrationInfo::AbortLimboCommands(
+    base::Closure callback, const base::ListValue& commands) {
+  const size_t size{commands.GetSize()};
+  for (size_t i = 0; i < size; ++i) {
+    const base::DictionaryValue* command{nullptr};
+    if (!commands.GetDictionary(i, &command)) {
+      LOG(WARNING) << "No command resource at " << i;
+      continue;
     }
-    base::MessageLoop::current()->PostTask(FROM_HERE, callback);
-  };
+    std::string command_state;
+    if (!command->GetString("state", &command_state)) {
+      LOG(WARNING) << "Command with no state at " << i;
+      continue;
+    }
+    if (command_state != "error" &&
+        command_state != "inProgress" &&
+        command_state != "paused") {
+      // It's not a limbo command, ignore.
+      continue;
+    }
+    std::string command_id;
+    if (!command->GetString("id", &command_id)) {
+      LOG(WARNING) << "Command with no ID at " << i;
+      continue;
+    }
+    // TODO(antonm): Really abort the command.
+  }
 
+  base::MessageLoop::current()->PostTask(FROM_HERE, callback);
+}
+
+void DeviceRegistrationInfo::PeriodicallyPollCommands() {
   auto delay = base::TimeDelta::FromSeconds(7);
-  auto poll_commands = [delay](DeviceRegistrationInfo* self) {
-    PostRepeatingTask(FROM_HERE, base::Bind([](){
-      VLOG(1) << "Poll commands";
-      // TODO(antonm): Implement real polling of commands.
-    }), delay);
-  };
-
-  base::Bind(update_device_resource,
-             base::Unretained(this),
-             base::Owned(device_resource.release()),
-             base::Bind(fetch_commands,
-                        base::Unretained(this),
-                        base::Bind(abort_commands,
-                                   base::Bind(poll_commands,
-                                              base::Unretained(this))))).Run();
+  PostRepeatingTask(FROM_HERE, base::Bind([]{
+    VLOG(1) << "Poll commands";
+    // TODO(antonm): Implement real polling of commands.
+  }), delay);
 }
 
 }  // namespace buffet
