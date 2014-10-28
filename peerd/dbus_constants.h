@@ -23,8 +23,6 @@ extern const char kManagerServicePath[];
 extern const char kManagerExposeService[];
 extern const char kManagerPing[];
 extern const char kManagerRemoveExposedService[];
-extern const char kManagerSetFriendlyName[];
-extern const char kManagerSetNote[];
 extern const char kManagerStartMonitoring[];
 extern const char kManagerStopMonitoring[];
 
@@ -34,9 +32,7 @@ extern const char kSelfPath[];
 extern const char kPeerPrefix[];
 
 // Properties exposed as part of kPeerInterface.
-extern const char kPeerFriendlyName[];
 extern const char kPeerLastSeen[];
-extern const char kPeerNote[];
 extern const char kPeerUUID[];
 
 // Interface implemented by the service objects.

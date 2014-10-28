@@ -52,9 +52,7 @@ class AvahiClient {
   // OnAvahiRestartCallbacks that we have.  At that point, grab a new publisher
   // and repeat.
   virtual base::WeakPtr<ServicePublisherInterface> GetPublisher(
-      const std::string& uuid,
-      const std::string& friendly_name,
-      const std::string& note);
+      const std::string& uuid);
 
   virtual void StartMonitoring();
   virtual void StopMonitoring();

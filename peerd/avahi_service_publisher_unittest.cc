@@ -72,7 +72,7 @@ class AvahiServicePublisherTest : public ::testing::Test {
         mock_bus_.get(), kServiceName, ObjectPath(kServerPath));
     group_proxy_ = new dbus::MockObjectProxy(
         mock_bus_.get(), kServiceName, ObjectPath(kGroupPath));
-    publisher_.reset(new AvahiServicePublisher(kHost, "uuid", "name", "note",
+    publisher_.reset(new AvahiServicePublisher(kHost, "uuid",
                                                mock_bus_, avahi_proxy_));
     // Ignore threading concerns.
     EXPECT_CALL(*mock_bus_, AssertOnOriginThread()).Times(AnyNumber());

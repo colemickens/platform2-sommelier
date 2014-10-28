@@ -32,8 +32,6 @@ using peerd::dbus_constants::kManagerInterface;
 using peerd::dbus_constants::kManagerPing;
 using peerd::dbus_constants::kManagerRemoveExposedService;
 using peerd::dbus_constants::kManagerServicePath;
-using peerd::dbus_constants::kManagerSetFriendlyName;
-using peerd::dbus_constants::kManagerSetNote;
 using peerd::dbus_constants::kManagerStartMonitoring;
 using peerd::dbus_constants::kManagerStopMonitoring;
 using peerd::dbus_constants::kPingResponse;
@@ -110,12 +108,6 @@ void Manager::RegisterAsync(const CompletionAction& completion_callback) {
   itf->AddMethodHandler(kManagerRemoveExposedService,
                         base::Unretained(this),
                         &Manager::RemoveExposedService);
-  itf->AddMethodHandler(kManagerSetFriendlyName,
-                        base::Unretained(this),
-                        &Manager::SetFriendlyName);
-  itf->AddMethodHandler(kManagerSetNote,
-                        base::Unretained(this),
-                        &Manager::SetNote);
   itf->AddMethodHandler(kManagerPing,
                         base::Unretained(this),
                         &Manager::Ping);
@@ -123,8 +115,6 @@ void Manager::RegisterAsync(const CompletionAction& completion_callback) {
   const bool self_success = self_->RegisterAsync(
       &error,
       base::GenerateGUID(),  // Every boot is a new GUID for now.
-      "CrOS Core Device",  // TODO(wiley): persist name to disk.
-      "",  // TODO(wiley): persist note to disk.
       base::Time::UnixEpoch(),
       sequencer->GetHandler("Failed exporting Self.", true));
   CHECK(self_success) << "Failed to RegisterAsync Self.";
@@ -237,15 +227,6 @@ void Manager::RemoveExposedService(ErrorPtr* error,
   //             information.
 }
 
-void Manager::SetFriendlyName(ErrorPtr* error,
-                              const string& friendly_name) {
-  self_->SetFriendlyName(error, friendly_name);
-}
-
-void Manager::SetNote(ErrorPtr* error, const string& note) {
-  self_->SetNote(error, note);
-}
-
 string Manager::Ping(ErrorPtr* error) {
   return kPingResponse;
 }
@@ -254,8 +235,8 @@ void Manager::ShouldRefreshAvahiPublisher() {
   LOG(INFO) << "Publishing services to mDNS";
   // The old publisher has been invalidated, and the records pulled.  We should
   // re-register the records we care about.
-  self_->RegisterServicePublisher(avahi_client_->GetPublisher(
-        self_->GetUUID(), self_->GetFriendlyName(), self_->GetNote()));
+  self_->RegisterServicePublisher(
+      avahi_client_->GetPublisher(self_->GetUUID()));
 }
 
 }  // namespace peerd

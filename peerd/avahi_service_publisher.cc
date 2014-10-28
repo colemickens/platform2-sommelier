@@ -40,13 +40,9 @@ const char kInvalidServiceId[] = "avahi.invalid_service_id";
 AvahiServicePublisher::AvahiServicePublisher(
     const std::string& lan_name,
     const std::string& uuid,
-    const std::string& friendly_name,
-    const std::string& note,
     const scoped_refptr<dbus::Bus>& bus,
     dbus::ObjectProxy* avahi_proxy) : lan_unique_hostname_{lan_name},
                                       uuid_{uuid},
-                                      friendly_name_{friendly_name},
-                                      note_{note},
                                       bus_{bus},
                                       avahi_proxy_{avahi_proxy} {
 }
@@ -135,24 +131,6 @@ bool AvahiServicePublisher::OnServiceRemoved(ErrorPtr* error,
   return UpdateRootService(error) && remove_successful;
 }
 
-bool AvahiServicePublisher::OnFriendlyNameChanged(ErrorPtr* error,
-                                                  const std::string& name) {
-  if (name == friendly_name_) {
-    return true;
-  }
-  friendly_name_ = name;
-  return UpdateRootService(error);
-}
-
-bool AvahiServicePublisher::OnNoteChanged(ErrorPtr* error,
-                                          const std::string& note) {
-  if (note == note_) {
-    return true;
-  }
-  note_ = note;
-  return UpdateRootService(error);
-}
-
 AvahiServicePublisher::TxtRecord AvahiServicePublisher::GetTxtRecord(
     const Service::ServiceInfo& info) {
   TxtRecord result;
@@ -233,8 +211,6 @@ bool AvahiServicePublisher::UpdateRootService(ErrorPtr* error) {
   Service::ServiceInfo service_info{
     {constants::mdns::kSerbusVersion, "1.0"},
     {constants::mdns::kSerbusPeerId, uuid_},
-    {constants::mdns::kSerbusNote, note_},
-    {constants::mdns::kSerbusName, friendly_name_},
     {constants::mdns::kSerbusServiceList, Join(kSerbusServiceDelimiter,
                                                services)},
   };

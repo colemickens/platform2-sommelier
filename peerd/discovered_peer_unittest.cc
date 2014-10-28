@@ -39,16 +39,10 @@ const char kServicePath[] = "/org/chromium/peerd/peers/1/services/1";
 
 const char kPeerId[] = "123e4567-e89b-12d3-a456-426655440000";
 // Initial peer values.
-const char kName[] = "friendly name";
-const char kNote[] = "descriptive note";
 const time_t kPeerLastSeen = 100;
 // Updated version of those fields.
-const char kNewName[] = "new friendly name";
-const char kNewNote[] = "new descriptive note";
 const time_t kNewPeerLastSeen = 200;
 // Bad values for peer fields.
-const char kBadName[] = "#evil name";
-const char kBadNote[] = "#evil note";
 const time_t kStalePeerLastSeen = 5;
 // Service bits.
 const char kServiceId[] = "a-service-id";
@@ -79,7 +73,7 @@ class DiscoveredPeerTest : public testing::Test {
     peer_.reset(new DiscoveredPeer{bus_, nullptr, ObjectPath{kPeerPath},
                                    kFakeTech1});
     EXPECT_TRUE(peer_->RegisterAsync(
-        nullptr, kPeerId, kName, kNote, Time::FromTimeT(kPeerLastSeen),
+        nullptr, kPeerId, Time::FromTimeT(kPeerLastSeen),
         AsyncEventSequencer::GetDefaultCompletionAction()));
     // By default, no services should be exported.
     EXPECT_CALL(*bus_, GetExportedObject(_)) .Times(0);
@@ -99,8 +93,6 @@ class DiscoveredPeerTest : public testing::Test {
   }
 
   void ExpectInitialPeerValues() {
-    EXPECT_EQ(kName, peer_->GetFriendlyName());
-    EXPECT_EQ(kNote, peer_->GetNote());
     EXPECT_EQ(Time::FromTimeT(kPeerLastSeen), peer_->GetLastSeen());
   }
 
@@ -153,36 +145,15 @@ class DiscoveredPeerTest : public testing::Test {
 };
 
 TEST_F(DiscoveredPeerTest, CanUpdateFromAdvertisement) {
-  peer_->UpdateFromAdvertisement(kNewName, kNewNote,
-                                 Time::FromTimeT(kNewPeerLastSeen),
+  peer_->UpdateFromAdvertisement(Time::FromTimeT(kNewPeerLastSeen),
                                  kFakeTech1);
-  EXPECT_EQ(kNewName, peer_->GetFriendlyName());
-  EXPECT_EQ(kNewNote, peer_->GetNote());
   EXPECT_EQ(Time::FromTimeT(kNewPeerLastSeen), peer_->GetLastSeen());
   EXPECT_EQ(1, peer_->GetTechnologyCount());
 }
 
-TEST_F(DiscoveredPeerTest, CannotUpdateFromInvalidAdvertisement) {
-  peer_->UpdateFromAdvertisement(kBadName, kNewNote,
-                                 Time::FromTimeT(kNewPeerLastSeen),
-                                 kFakeTech1);
-  ExpectInitialPeerValues();
-}
-
 TEST_F(DiscoveredPeerTest, CannotPartiallyUpdatePeer) {
-  // Only invalid note.
-  peer_->UpdateFromAdvertisement(kNewName, kBadNote,
-                                 Time::FromTimeT(kNewPeerLastSeen),
-                                 kFakeTech1);
-  ExpectInitialPeerValues();
-  // Only invalid name.
-  peer_->UpdateFromAdvertisement(kBadName, kNewNote,
-                                 Time::FromTimeT(kNewPeerLastSeen),
-                                 kFakeTech1);
-  ExpectInitialPeerValues();
   // Stale advertisement.
-  peer_->UpdateFromAdvertisement(kNewName, kNewNote,
-                                 Time::FromTimeT(kStalePeerLastSeen),
+  peer_->UpdateFromAdvertisement(Time::FromTimeT(kStalePeerLastSeen),
                                  kFakeTech1);
   ExpectInitialPeerValues();
 }
@@ -228,8 +199,7 @@ TEST_F(DiscoveredPeerTest, CannotPartiallyUpdateService) {
 }
 
 TEST_F(DiscoveredPeerTest, ShouldRejectStaleServiceUpdate) {
-  peer_->UpdateFromAdvertisement(kName, kNote,
-                                 Time::FromTimeT(kPeerLastSeen),
+  peer_->UpdateFromAdvertisement(Time::FromTimeT(kPeerLastSeen),
                                  kFakeTech2);
   ExpectServiceExposed();
   peer_->UpdateService(kServiceId, {}, {},
@@ -250,8 +220,7 @@ TEST_F(DiscoveredPeerTest, RemoveTechnologyIsRecursive) {
 }
 
 TEST_F(DiscoveredPeerTest, HandlesMultipleTechnologies) {
-  peer_->UpdateFromAdvertisement(kNewName, kNewNote,
-                                 Time::FromTimeT(kNewPeerLastSeen),
+  peer_->UpdateFromAdvertisement(Time::FromTimeT(kNewPeerLastSeen),
                                  kFakeTech2);
   EXPECT_EQ(2, peer_->GetTechnologyCount());
   ExpectServiceExposed();

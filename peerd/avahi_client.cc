@@ -187,9 +187,7 @@ void AvahiClient::HandleServerStateChange(int32_t state) {
 }
 
 base::WeakPtr<ServicePublisherInterface> AvahiClient::GetPublisher(
-    const std::string& uuid,
-    const std::string& friendly_name,
-    const std::string& note) {
+    const std::string& uuid) {
   base::WeakPtr<ServicePublisherInterface> result;
   if (!avahi_is_up_) { return result; }
   if (!publisher_) {
@@ -200,7 +198,7 @@ base::WeakPtr<ServicePublisherInterface> AvahiClient::GetPublisher(
       return result;
     }
     publisher_.reset(new AvahiServicePublisher(
-          host_name, uuid, friendly_name, note, bus_, server_));
+          host_name, uuid, bus_, server_));
   }
   result = publisher_->GetWeakPtr();
   return result;

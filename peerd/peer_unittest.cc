@@ -25,8 +25,6 @@ using dbus::MockBus;
 using dbus::MockExportedObject;
 using dbus::ObjectPath;
 using peerd::Peer;
-using peerd::errors::peer::kInvalidName;
-using peerd::errors::peer::kInvalidNote;
 using peerd::errors::peer::kInvalidTime;
 using peerd::errors::peer::kInvalidUUID;
 using peerd::test_util::MakeMockCompletionAction;
@@ -46,8 +44,6 @@ const char kServicePathPrefix[] = "/some/path/ending/with/services/";
 const char kServicePath[] = "/some/path/ending/with/services/1";
 
 const char kUUID[] = "123e4567-e89b-12d3-a456-426655440000";
-const char kValidName[] = "NAME";
-const char kValidNote[] = "notes are long and very descriptive for people.";
 
 }  // namespace
 
@@ -84,26 +80,19 @@ class PeerTest : public ::testing::Test {
     EXPECT_TRUE(peer->RegisterAsync(
         &error,
         kUUID,
-        kValidName,
-        kValidNote,
         base::Time::UnixEpoch() + base::TimeDelta::FromDays(1),
         MakeMockCompletionAction()));
     EXPECT_EQ(nullptr, error.get());
     return peer;
   }
 
-  void AssertBadFactoryArgs(const string& uuid,
-                            const string& name,
-                            const string& note,
-                            const string& error_code) {
+  void AssertBadFactoryArgs(const string& uuid, const string& error_code) {
     chromeos::ErrorPtr error;
     unique_ptr<Peer> peer{
         new Peer{mock_bus_, nullptr, ObjectPath{kPeerPath}}};
     EXPECT_FALSE(peer->RegisterAsync(
         &error,
         uuid,
-        name,
-        note,
         base::Time::UnixEpoch(),
         MakeMockCompletionAction()));
     ASSERT_NE(nullptr, error.get());
@@ -111,7 +100,7 @@ class PeerTest : public ::testing::Test {
   }
 
   void TestBadUUID(const string& uuid) {
-    AssertBadFactoryArgs(uuid, kValidName, kValidNote, kInvalidUUID);
+    AssertBadFactoryArgs(uuid, kInvalidUUID);
   }
 
   scoped_refptr<MockBus> mock_bus_{new MockBus{Bus::Options{}}};
@@ -141,52 +130,9 @@ TEST_F(PeerTest, ShouldRejectBadCharacterInUUID) {
   TestBadUUID(bad_uuid);
 }
 
-TEST_F(PeerTest, ShouldRejectBadNameInFactory) {
-  AssertBadFactoryArgs(kUUID, "* is not allowed", kValidNote, kInvalidName);
-}
-
-TEST_F(PeerTest, ShouldRejectBadNoteInFactory) {
-  AssertBadFactoryArgs(kUUID, kValidName,
-                       "notes also may not contain *", kInvalidNote);
-}
-
 TEST_F(PeerTest, ShouldRegisterWithDBus) {
   auto peer = MakePeer();
   EXPECT_EQ(peer->GetUUID(), kUUID);
-  EXPECT_EQ(peer->GetFriendlyName(), kValidName);
-  EXPECT_EQ(peer->GetNote(), kValidNote);
-}
-
-TEST_F(PeerTest, ShouldRejectNameTooLong) {
-  auto peer = MakePeer();
-  chromeos::ErrorPtr error;
-  EXPECT_FALSE(peer->SetFriendlyName(&error, string(33, 'a')));
-  ASSERT_NE(nullptr, error.get());
-  EXPECT_TRUE(error->HasError(kPeerdErrorDomain, kInvalidName));
-}
-
-TEST_F(PeerTest, ShouldRejectNameInvalidChars) {
-  auto peer = MakePeer();
-  chromeos::ErrorPtr error;
-  EXPECT_FALSE(peer->SetFriendlyName(&error, "* is not allowed"));
-  ASSERT_NE(nullptr, error.get());
-  EXPECT_TRUE(error->HasError(kPeerdErrorDomain, kInvalidName));
-}
-
-TEST_F(PeerTest, ShouldRejectNoteTooLong) {
-  auto peer = MakePeer();
-  chromeos::ErrorPtr error;
-  EXPECT_FALSE(peer->SetNote(&error, string(256, 'a')));
-  ASSERT_NE(nullptr, error.get());
-  EXPECT_TRUE(error->HasError(kPeerdErrorDomain, kInvalidNote));
-}
-
-TEST_F(PeerTest, ShouldRejectNoteInvalidChars) {
-  auto peer = MakePeer();
-  chromeos::ErrorPtr error;
-  EXPECT_FALSE(peer->SetNote(&error, "* is also not allowed in notes"));
-  ASSERT_NE(nullptr, error.get());
-  EXPECT_TRUE(error->HasError(kPeerdErrorDomain, kInvalidNote));
 }
 
 TEST_F(PeerTest, ShouldRejectStaleUpdate) {

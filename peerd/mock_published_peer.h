@@ -31,20 +31,12 @@ class MockPublishedPeer : public PublishedPeer {
       : PublishedPeer(bus, nullptr, path) { }
   ~MockPublishedPeer() override = default;
 
-  MOCK_METHOD6(RegisterAsync,
+  MOCK_METHOD4(RegisterAsync,
                bool(chromeos::ErrorPtr* error,
                     const std::string& uuid,
-                    const std::string& friendly_name,
-                    const std::string& note,
                     uint64_t last_seen,
                     const CompletionAction& completion_callback));
   MOCK_CONST_METHOD0(GetUUID, std::string());
-  MOCK_CONST_METHOD0(GetFriendlyName, std::string());
-  MOCK_CONST_METHOD0(GetNote, std::string());
-  MOCK_METHOD2(SetFriendlyName, bool(chromeos::ErrorPtr* error,
-                                     const std::string& friendly_name));
-  MOCK_METHOD2(SetNote, bool(chromeos::ErrorPtr* error,
-                             const std::string& note));
   MOCK_METHOD2(SetLastSeen, bool(chromeos::ErrorPtr* error,
                                  const base::Time& last_seen));
 

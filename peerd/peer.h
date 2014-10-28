@@ -27,8 +27,6 @@ namespace errors {
 namespace peer {
 
 extern const char kInvalidUUID[];
-extern const char kInvalidName[];
-extern const char kInvalidNote[];
 extern const char kInvalidTime[];
 extern const char kUnknownService[];
 
@@ -47,19 +45,12 @@ class Peer {
   bool RegisterAsync(
       chromeos::ErrorPtr* error,
       const std::string& uuid,
-      const std::string& friendly_name,
-      const std::string& note,
       const base::Time& last_seen,
       const CompletionAction& completion_callback);
 
   virtual std::string GetUUID() const;
-  virtual std::string GetFriendlyName() const;
-  virtual std::string GetNote() const;
   virtual base::Time GetLastSeen() const;
   // Returns false on failure.
-  virtual bool SetFriendlyName(chromeos::ErrorPtr* error,
-                               const std::string& friendly_name);
-  virtual bool SetNote(chromeos::ErrorPtr* error, const std::string& note);
   virtual bool SetLastSeen(chromeos::ErrorPtr* error,
                            const base::Time& last_seen);
 
@@ -78,10 +69,6 @@ class Peer {
   virtual bool RemoveService(chromeos::ErrorPtr* error,
                              const std::string& service_id);
 
-  bool IsValidFriendlyName(chromeos::ErrorPtr* error,
-                           const std::string& friendly_name) const;
-  bool IsValidNote(chromeos::ErrorPtr* error,
-                   const std::string& note) const;
   bool IsValidUpdateTime(chromeos::ErrorPtr* error,
                          const base::Time& last_seen) const;
   std::map<std::string, std::unique_ptr<Service>> services_;
@@ -92,8 +79,6 @@ class Peer {
   scoped_refptr<dbus::Bus> bus_;
   size_t services_added_{0};
   chromeos::dbus_utils::ExportedProperty<std::string> uuid_;
-  chromeos::dbus_utils::ExportedProperty<std::string> name_;
-  chromeos::dbus_utils::ExportedProperty<std::string> note_;
   chromeos::dbus_utils::ExportedProperty<uint64_t> last_seen_;
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
   dbus::ObjectPath service_path_prefix_;

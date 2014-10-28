@@ -222,7 +222,7 @@ TEST_F(AvahiClientTest, CanGetPublisherWhenAvahiIsUp) {
               MockCallMethodAndBlockWithErrorDetails(IsDBusMethodCallTo(
                   kServerInterface, kServerMethodGetHostName), _, _))
       .WillOnce(Invoke(&ReturnsHostName));
-  EXPECT_NE(nullptr, client_->GetPublisher("uuid", "name", "note"));
+  EXPECT_NE(nullptr, client_->GetPublisher("uuid"));
 }
 
 TEST_F(AvahiClientTest, ShouldStartMonitoringWhenUp) {

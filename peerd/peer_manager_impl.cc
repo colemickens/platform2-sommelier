@@ -26,16 +26,12 @@ PeerManagerImpl::PeerManagerImpl(const scoped_refptr<dbus::Bus> bus,
 }
 
 void PeerManagerImpl::OnPeerDiscovered(const string& peer_id,
-                                       const string& name,
-                                       const string& note,
                                        const base::Time& last_seen,
                                        tech_t which_technology) {
-  VLOG(1) << "Discovered peer=" << peer_id << " with name=" << name
-          << " with note=" << note;
+  VLOG(1) << "Discovered peer=" << peer_id;
   auto it = peers_.find(peer_id);
   if (it != peers_.end()) {
-    it->second->UpdateFromAdvertisement(name, note, last_seen,
-                                        which_technology);
+    it->second->UpdateFromAdvertisement(last_seen, which_technology);
     return;
   }
   dbus::ObjectPath path{
@@ -44,7 +40,7 @@ void PeerManagerImpl::OnPeerDiscovered(const string& peer_id,
       bus_, object_manager_, path, which_technology}};
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   const bool registered = peer->RegisterAsync(
-      nullptr, peer_id, name, note, last_seen,
+      nullptr, peer_id, last_seen,
       sequencer->GetHandler("Failed to expose DiscoveredPeer.", true));
   sequencer->OnAllTasksCompletedCall({});
   if (registered) {
@@ -63,9 +59,9 @@ void PeerManagerImpl::OnServiceDiscovered(const string& peer_id,
   auto it = peers_.find(peer_id);
   if (it == peers_.end()) {
     // A service was found that corresponds to no particular peer.
-    // We could just silently add a peer entry without name/note fields here,
-    // or we can discard the service.  Lets discard the service until it is
-    // known that we need to support this case.
+    // We could just silently add a peer entry here, or we can discard the
+    // service.  Lets discard the service until it is known that we need to
+    // support this case.
     LOG(WARNING) << "Found service=" << service_id << " but had no peer="
                  << peer_id;
     return;

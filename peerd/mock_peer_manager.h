@@ -18,9 +18,7 @@ namespace peerd {
 
 class MockPeerManager : public PeerManagerInterface {
  public:
-  MOCK_METHOD5(OnPeerDiscovered, void(const std::string& peer_id,
-                                      const std::string& name,
-                                      const std::string& note,
+  MOCK_METHOD3(OnPeerDiscovered, void(const std::string& peer_id,
                                       const base::Time& last_seen,
                                       technologies::tech_t which_technology));
   MOCK_METHOD6(OnServiceDiscovered,

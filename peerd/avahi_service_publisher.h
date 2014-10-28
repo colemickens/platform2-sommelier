@@ -36,8 +36,6 @@ class AvahiServicePublisher : public ServicePublisherInterface {
  public:
   AvahiServicePublisher(const std::string& lan_name,
                         const std::string& uuid,
-                        const std::string& friendly_name,
-                        const std::string& note,
                         const scoped_refptr<dbus::Bus>& bus,
                         dbus::ObjectProxy* avahi_proxy);
   ~AvahiServicePublisher();
@@ -48,10 +46,6 @@ class AvahiServicePublisher : public ServicePublisherInterface {
                         const Service& service) override;
   bool OnServiceRemoved(chromeos::ErrorPtr* error,
                         const std::string& service_id) override;
-  bool OnFriendlyNameChanged(chromeos::ErrorPtr* error,
-                             const std::string& name) override;
-  bool OnNoteChanged(chromeos::ErrorPtr* error,
-                     const std::string& note) override;
 
  private:
   using TxtRecord = std::vector<std::vector<uint8_t>>;
@@ -84,8 +78,6 @@ class AvahiServicePublisher : public ServicePublisherInterface {
 
   const std::string lan_unique_hostname_;
   const std::string uuid_;
-  std::string friendly_name_;
-  std::string note_;
   scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* avahi_proxy_;
   std::map<std::string, dbus::ObjectProxy*> outstanding_groups_;

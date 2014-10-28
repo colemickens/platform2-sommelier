@@ -69,12 +69,6 @@ class Manager {
       chromeos::ErrorPtr* error,
       const std::string& service_token);
 
-  void SetFriendlyName(
-      chromeos::ErrorPtr* error,
-      const std::string& friendly_name);
-
-  void SetNote(chromeos::ErrorPtr* error, const std::string& note);
-
   std::string Ping(chromeos::ErrorPtr* error);
 
  private:

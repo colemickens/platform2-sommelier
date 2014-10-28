@@ -23,13 +23,11 @@ class DiscoveredPeer : public Peer {
                  technologies::tech_t which_technology);
   ~DiscoveredPeer() override = default;
 
-  // Update |this| with the most recent versions of |name|, |note|, and
-  // |last_seen|.  Note that if |last_seen| is older than the current value
-  // we'll discard this advertisement.  Remember that we've seen this peer
-  // on the given |technology|.
-  virtual void UpdateFromAdvertisement(const std::string& name,
-                                       const std::string& note,
-                                       const base::Time& last_seen,
+  // Update |this| with the most recent time |last_seen|.  Note that if
+  // |last_seen| is older than the current value we'll discard this
+  // advertisement.  Remember that we've seen this peer on the given
+  // |technology|.
+  virtual void UpdateFromAdvertisement(const base::Time& last_seen,
                                        technologies::tech_t technology);
   // Add or update an existing service, and record that we've seen it
   // on the given |technology|.  Note that if the service has been updated

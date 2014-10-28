@@ -22,8 +22,6 @@ class PeerManagerInterface {
   // (according to |last_seen|) is maintained.  We continue exposing
   // a peer until all technologies remove it.
   virtual void OnPeerDiscovered(const std::string& peer_id,
-                                const std::string& name,
-                                const std::string& note,
                                 const base::Time& last_seen,
                                 technologies::tech_t which_technology) = 0;
   // Adds or updates service for peer with |peer_id|.  Corresponding

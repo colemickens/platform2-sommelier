@@ -31,9 +31,6 @@ const char kPeerPath[] = "/org/chromium/peerd/peers/1";
 const char kServicePath[] = "/org/chromium/peerd/peers/1/services/1";
 
 const char kPeerId[] = "123e4567-e89b-12d3-a456-426655440000";
-const char kName[] = "friendly name";
-const char kBadName[] = "#evil name";
-const char kNote[] = "descriptive note";
 const time_t kPeerLastSeen = 1;
 const char kServiceId[] = "a-service-id";
 const char kBadServiceId[] = "#bad_service_id";
@@ -115,13 +112,13 @@ class PeerManagerImplTest : public testing::Test {
 
 TEST_F(PeerManagerImplTest, CanDiscoverPeer) {
   ExpectPeerExposed();
-  manager_.OnPeerDiscovered(kPeerId, kName, kNote,
+  manager_.OnPeerDiscovered(kPeerId,
                             Time::FromTimeT(kPeerLastSeen), kFakeTech1);
 }
 
 TEST_F(PeerManagerImplTest, CanDiscoverServiceOnPeer) {
   ExpectPeerExposed();
-  manager_.OnPeerDiscovered(kPeerId, kName, kNote,
+  manager_.OnPeerDiscovered(kPeerId,
                             Time::FromTimeT(kPeerLastSeen), kFakeTech1);
   ExpectServiceExposed();
   manager_.OnServiceDiscovered(kPeerId, kServiceId, {}, {},
@@ -135,7 +132,7 @@ TEST_F(PeerManagerImplTest, CannotDiscoverServiceWithoutPeer) {
 
 TEST_F(PeerManagerImplTest, CanForgetPeer) {
   ExpectPeerExposed();
-  manager_.OnPeerDiscovered(kPeerId, kName, kNote,
+  manager_.OnPeerDiscovered(kPeerId,
                             Time::FromTimeT(kPeerLastSeen), kFakeTech1);
   ExpectPeerRemoved();
   manager_.OnPeerRemoved(kPeerId, kFakeTech1);
@@ -143,7 +140,7 @@ TEST_F(PeerManagerImplTest, CanForgetPeer) {
 
 TEST_F(PeerManagerImplTest, CanShutdownLoneTechnology) {
   ExpectPeerExposed();
-  manager_.OnPeerDiscovered(kPeerId, kName, kNote,
+  manager_.OnPeerDiscovered(kPeerId,
                             Time::FromTimeT(kPeerLastSeen), kFakeTech1);
   ExpectServiceExposed();
   manager_.OnServiceDiscovered(kPeerId, kServiceId, {}, {},
@@ -153,14 +150,9 @@ TEST_F(PeerManagerImplTest, CanShutdownLoneTechnology) {
   manager_.OnTechnologyShutdown(kFakeTech1);
 }
 
-TEST_F(PeerManagerImplTest, WillNotExposeCorruptPeer) {
-  manager_.OnPeerDiscovered(kPeerId, kBadName, kNote,
-                            Time::FromTimeT(kPeerLastSeen), kFakeTech1);
-}
-
 TEST_F(PeerManagerImplTest, WillNotExposeCorruptService) {
   ExpectPeerExposed();
-  manager_.OnPeerDiscovered(kPeerId, kName, kNote,
+  manager_.OnPeerDiscovered(kPeerId,
                             Time::FromTimeT(kPeerLastSeen), kFakeTech1);
   manager_.OnServiceDiscovered(kPeerId, kBadServiceId, {}, {},
                                Time::FromTimeT(kServiceLastSeen), kFakeTech1);

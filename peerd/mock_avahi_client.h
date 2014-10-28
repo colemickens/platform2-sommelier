@@ -22,11 +22,9 @@ class MockAvahiClient: public AvahiClient {
   MOCK_METHOD1(RegisterAsync, void(const CompletionAction& cb));
   MOCK_METHOD1(RegisterOnAvahiRestartCallback,
                void(const OnAvahiRestartCallback& cb));
-  MOCK_METHOD3(GetPublisher,
+  MOCK_METHOD1(GetPublisher,
                base::WeakPtr<ServicePublisherInterface>(
-                   const std::string& uuid,
-                   const std::string& friendly_name,
-                   const std::string& note));
+                   const std::string& uuid));
   MOCK_METHOD0(StartMonitoring, void());
   MOCK_METHOD0(StopMonitoring, void());
 };

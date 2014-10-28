@@ -338,26 +338,16 @@ void AvahiServiceDiscoverer::HandleFound(dbus::Signal* signal) {
   base::Time last_seen = base::Time::Now();
   if (type == constants::mdns::kSerbusServiceType) {
     VLOG(1) << "Found serbus TXT record update.";
-    if (info.size() != 5) {
+    if (info.size() != 3) {
       LOG(ERROR) << "Peer is advertising serbus record with incorrect number "
                     "of fields: " << info.size();
       return;
     }
     auto it_peer_id = info.find(constants::mdns::kSerbusPeerId);
-    auto it_name = info.find(constants::mdns::kSerbusName);
-    auto it_note = info.find(constants::mdns::kSerbusNote);
     auto it_version = info.find(constants::mdns::kSerbusVersion);
     auto it_services = info.find(constants::mdns::kSerbusServiceList);
     if (it_peer_id == info.end()) {
       LOG(ERROR) << "Ignoring Peer with missing peer id.";
-      return;
-    }
-    if (it_name == info.end()) {
-      LOG(ERROR) << "Ignoring Peer with missing name.";
-      return;
-    }
-    if (it_note == info.end()) {
-      LOG(ERROR) << "Ignoring Peer with missing note.";
       return;
     }
     if (it_version == info.end()) {
@@ -389,8 +379,7 @@ void AvahiServiceDiscoverer::HandleFound(dbus::Signal* signal) {
     // TODO(wiley) We don't actually do anything with the version
     const string& peer_id = it_peer_id->second;
     peer_manager_->OnPeerDiscovered(
-        peer_id, it_name->second, it_note->second,
-        last_seen, technologies::kMDNS);
+        peer_id, last_seen, technologies::kMDNS);
     const resolv_key_t serbus_key{interface, name, domain};
     auto pair = serbus_record_to_peer_id_.emplace(serbus_key, peer_id);
     if (!pair.second) {

@@ -26,8 +26,6 @@ class PeerManagerImpl : public PeerManagerInterface {
 
   // Inherited from PeerManagerInterface.  See comments there.
   void OnPeerDiscovered(const std::string& peer_id,
-                        const std::string& name,
-                        const std::string& note,
                         const base::Time& last_seen,
                         technologies::tech_t which_technology) override;
   void OnServiceDiscovered(const std::string& peer_id,

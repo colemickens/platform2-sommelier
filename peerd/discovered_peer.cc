@@ -23,17 +23,9 @@ DiscoveredPeer::DiscoveredPeer(const scoped_refptr<dbus::Bus>& bus,
       discovered_on_technologies_(which_technology) {
 }
 
-void DiscoveredPeer::UpdateFromAdvertisement(const std::string& name,
-                                             const std::string& note,
-                                             const base::Time& last_seen,
+void DiscoveredPeer::UpdateFromAdvertisement(const base::Time& last_seen,
                                              tech_t technology) {
-  if (!IsValidFriendlyName(nullptr, name) ||
-      !IsValidNote(nullptr, note) ||
-      !IsValidUpdateTime(nullptr, last_seen)) {
-    return;
-  }
-  SetFriendlyName(nullptr, name);
-  SetNote(nullptr, note);
+  if (!IsValidUpdateTime(nullptr, last_seen)) { return; }
   SetLastSeen(nullptr, last_seen);
   discovered_on_technologies_ |= technology;
 }

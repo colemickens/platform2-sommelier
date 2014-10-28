@@ -21,10 +21,8 @@ using chromeos::dbus_utils::DBusInterface;
 using chromeos::dbus_utils::DBusObject;
 using chromeos::dbus_utils::ExportedObjectManager;
 using dbus::ObjectPath;
-using peerd::dbus_constants::kPeerFriendlyName;
 using peerd::dbus_constants::kPeerInterface;
 using peerd::dbus_constants::kPeerLastSeen;
-using peerd::dbus_constants::kPeerNote;
 using peerd::dbus_constants::kPeerUUID;
 using peerd::dbus_constants::kServicePathFragment;
 using std::map;
@@ -32,29 +30,12 @@ using std::string;
 using std::vector;
 using std::unique_ptr;
 
-namespace {
-
-const size_t kMaxFriendlyNameLength = 31;
-const size_t kMaxNoteLength = 255;
-const char kValidFriendlyNameCharacters[] = "abcdefghijklmnopqrstuvwxyz"
-                                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                                            "0123456789"
-                                            "_-,.?! ";
-const char kValidNoteCharacters[] = "abcdefghijklmnopqrstuvwxyz"
-                                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                                    "0123456789"
-                                    "_-,.?! ";
-
-}  // namespace
-
 namespace peerd {
 
 namespace errors {
 namespace peer {
 
 const char kInvalidUUID[] = "peer.uuid";
-const char kInvalidName[] = "peer.name";
-const char kInvalidNote[] = "peer.note";
 const char kInvalidTime[] = "peer.time";
 const char kUnknownService[] = "peer.unknown_service";
 
@@ -72,8 +53,6 @@ Peer::Peer(const scoped_refptr<dbus::Bus>& bus,
 bool Peer::RegisterAsync(
     chromeos::ErrorPtr* error,
     const std::string& uuid,
-    const std::string& friendly_name,
-    const std::string& note,
     const Time& last_seen,
     const CompletionAction& completion_callback) {
   if (!base::IsValidGUID(uuid)) {
@@ -82,28 +61,11 @@ bool Peer::RegisterAsync(
     return false;
   }
   uuid_.SetValue(uuid);
-  if (!SetFriendlyName(error, friendly_name)) { return false; }
-  if (!SetNote(error, note)) { return false; }
   if (!SetLastSeen(error, last_seen)) { return false; }
   DBusInterface* itf = dbus_object_->AddOrGetInterface(kPeerInterface);
   itf->AddProperty(kPeerUUID, &uuid_);
-  itf->AddProperty(kPeerFriendlyName, &name_);
-  itf->AddProperty(kPeerNote, &note_);
   itf->AddProperty(kPeerLastSeen, &last_seen_);
   dbus_object_->RegisterAsync(completion_callback);
-  return true;
-}
-
-bool Peer::SetFriendlyName(chromeos::ErrorPtr* error,
-                           const string& friendly_name) {
-  if (!IsValidFriendlyName(error, friendly_name)) { return false; }
-  name_.SetValue(friendly_name);
-  return true;
-}
-
-bool Peer::SetNote(chromeos::ErrorPtr* error, const string& note) {
-  if (!IsValidNote(error, note)) { return false; }
-  note_.SetValue(note);
   return true;
 }
 
@@ -121,48 +83,8 @@ std::string Peer::GetUUID() const {
   return uuid_.value();
 }
 
-std::string Peer::GetFriendlyName() const {
-  return name_.value();
-}
-
-std::string Peer::GetNote() const {
-  return note_.value();
-}
-
 Time Peer::GetLastSeen() const {
   return TimeDelta::FromMilliseconds(last_seen_.value()) + Time::UnixEpoch();
-}
-
-bool Peer::IsValidFriendlyName(chromeos::ErrorPtr* error,
-                               const std::string& friendly_name) const {
-  if (friendly_name.length() > kMaxFriendlyNameLength) {
-    Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidName,
-                       "Bad length for %s: %" PRIuS,
-                       kPeerFriendlyName, friendly_name.length());
-    return false;
-  }
-  if (!base::ContainsOnlyChars(friendly_name, kValidFriendlyNameCharacters)) {
-    Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidName,
-                       "Invalid characters in %s.", kPeerFriendlyName);
-    return false;
-  }
-  return true;
-}
-
-bool Peer::IsValidNote(chromeos::ErrorPtr* error,
-                       const std::string& note) const {
-  if (note.length() > kMaxNoteLength) {
-    Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidNote,
-                       "Bad length for %s: %" PRIuS,
-                       kPeerNote, note.length());
-    return false;
-  }
-  if (!base::ContainsOnlyChars(note, kValidNoteCharacters)) {
-    Error::AddToPrintf(error, kPeerdErrorDomain, errors::peer::kInvalidNote,
-                       "Invalid characters in %s.", kPeerNote);
-    return false;
-  }
-  return true;
 }
 
 bool Peer::IsValidUpdateTime(chromeos::ErrorPtr* error,
