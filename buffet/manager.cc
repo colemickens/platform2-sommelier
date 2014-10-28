@@ -21,6 +21,7 @@
 #include "buffet/commands/command_instance.h"
 #include "buffet/commands/command_manager.h"
 #include "buffet/libbuffet/dbus_constants.h"
+#include "buffet/states/state_change_queue.h"
 #include "buffet/states/state_manager.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
@@ -28,10 +29,17 @@ using chromeos::dbus_utils::ExportedObjectManager;
 
 namespace buffet {
 
+namespace {
+// Max of 100 state update events should be enough in the queue.
+const size_t kMaxStateChangeQueueSize = 100;
+}  // anonymous namespace
+
 Manager::Manager(const base::WeakPtr<ExportedObjectManager>& object_manager)
     : dbus_object_(object_manager.get(),
                    object_manager->GetBus(),
                    dbus::ObjectPath(dbus_constants::kManagerServicePath)) {}
+
+Manager::~Manager() {}
 
 void Manager::RegisterAsync(const AsyncEventSequencer::CompletionAction& cb) {
   chromeos::dbus_utils::DBusInterface* itf =
@@ -61,7 +69,9 @@ void Manager::RegisterAsync(const AsyncEventSequencer::CompletionAction& cb) {
   command_manager_ =
       std::make_shared<CommandManager>(dbus_object_.GetObjectManager());
   command_manager_->Startup();
-  state_manager_ = std::make_shared<StateManager>();
+  state_change_queue_ = std::unique_ptr<StateChangeQueue>(
+      new StateChangeQueue(kMaxStateChangeQueueSize));
+  state_manager_ = std::make_shared<StateManager>(state_change_queue_.get());
   state_manager_->Startup();
   device_info_ = std::unique_ptr<DeviceRegistrationInfo>(
       new DeviceRegistrationInfo(command_manager_, state_manager_));

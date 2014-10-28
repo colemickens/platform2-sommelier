@@ -9,11 +9,13 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/variant_dictionary.h>
 
+#include "buffet/states/state_change_queue_interface.h"
 #include "buffet/states/state_package.h"
 
 namespace base {
@@ -28,7 +30,7 @@ namespace buffet {
 // to the GCD cloud server and local clients.
 class StateManager final {
  public:
-  StateManager() = default;
+  explicit StateManager(StateChangeQueueInterface* state_change_queue);
 
   // Initializes the state manager and load device state fragments.
   // Called by Buffet daemon at startup.
@@ -57,7 +59,16 @@ class StateManager final {
     return categories_;
   }
 
+  // Returns the recorded state changes since last time this method has been
+  // called.
+  std::vector<StateChange> GetAndClearRecordedStateChanges();
+
  private:
+  // Helper method to be used with SetPropertyValue() and UpdateProperties()
+  bool UpdatePropertyValue(const std::string& full_property_name,
+                           const chromeos::Any& value,
+                           chromeos::ErrorPtr* error);
+
   // Loads a device state fragment from a JSON object. |category| represents
   // a device daemon providing the state fragment or empty string for the
   // base state fragment.
@@ -89,6 +100,7 @@ class StateManager final {
   // Finds a package by its name. If none exists, one will be created.
   StatePackage* FindOrCreatePackage(const std::string& package_name);
 
+  StateChangeQueueInterface* state_change_queue_;  // Owned by buffet::Manager.
   std::map<std::string, std::unique_ptr<StatePackage>> packages_;
   std::set<std::string> categories_;
 

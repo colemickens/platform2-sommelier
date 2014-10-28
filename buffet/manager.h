@@ -28,6 +28,7 @@ class ExportedObjectManager;
 namespace buffet {
 
 class CommandManager;
+class StateChangeQueue;
 class StateManager;
 
 // The Manager is responsible for global state of Buffet.  It exposes
@@ -38,6 +39,8 @@ class Manager final {
   explicit Manager(
       const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
           object_manager);
+  ~Manager();
+
   void RegisterAsync(
       const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
@@ -66,6 +69,7 @@ class Manager final {
   chromeos::dbus_utils::DBusObject dbus_object_;
 
   std::shared_ptr<CommandManager> command_manager_;
+  std::unique_ptr<StateChangeQueue> state_change_queue_;
   std::shared_ptr<StateManager> state_manager_;
   std::unique_ptr<DeviceRegistrationInfo> device_info_;
 

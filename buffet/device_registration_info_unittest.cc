@@ -14,6 +14,7 @@
 #include "buffet/commands/unittest_utils.h"
 #include "buffet/device_registration_info.h"
 #include "buffet/device_registration_storage_keys.h"
+#include "buffet/states/mock_state_change_queue_interface.h"
 #include "buffet/states/state_manager.h"
 #include "buffet/storage_impls.h"
 
@@ -166,7 +167,7 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     storage_->Save(&data_);
     transport_ = std::make_shared<chromeos::http::fake::Transport>();
     command_manager_ = std::make_shared<CommandManager>();
-    state_manager_ = std::make_shared<StateManager>();
+    state_manager_ = std::make_shared<StateManager>(&mock_state_change_queue_);
     dev_reg_ = std::unique_ptr<DeviceRegistrationInfo>(
         new DeviceRegistrationInfo(command_manager_, state_manager_,
                                    transport_, storage_));
@@ -177,6 +178,7 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
   std::shared_ptr<chromeos::http::fake::Transport> transport_;
   std::unique_ptr<DeviceRegistrationInfo> dev_reg_;
   std::shared_ptr<CommandManager> command_manager_;
+  testing::NiceMock<MockStateChangeQueueInterface> mock_state_change_queue_;
   std::shared_ptr<StateManager> state_manager_;
 };
 

@@ -12,9 +12,15 @@
 #include <chromeos/strings/string_utils.h>
 
 #include "buffet/states/error_codes.h"
+#include "buffet/states/state_change_queue_interface.h"
 #include "buffet/utils.h"
 
 namespace buffet {
+
+StateManager::StateManager(StateChangeQueueInterface* state_change_queue)
+    : state_change_queue_(state_change_queue) {
+  CHECK(state_change_queue_) << "State change queue not specified";
+}
 
 void StateManager::Startup() {
   LOG(INFO) << "Initializing StateManager.";
@@ -73,9 +79,9 @@ std::unique_ptr<base::DictionaryValue> StateManager::GetStateValuesAsJson(
   return dict;
 }
 
-bool StateManager::SetPropertyValue(const std::string& full_property_name,
-                                    const chromeos::Any& value,
-                                    chromeos::ErrorPtr* error) {
+bool StateManager::UpdatePropertyValue(const std::string& full_property_name,
+                                       const chromeos::Any& value,
+                                       chromeos::ErrorPtr* error) {
   std::string package_name;
   std::string property_name;
   bool split = chromeos::string_utils::SplitAtFirst(
@@ -103,14 +109,36 @@ bool StateManager::SetPropertyValue(const std::string& full_property_name,
   return package->SetPropertyValue(property_name, value, error);
 }
 
+bool StateManager::SetPropertyValue(const std::string& full_property_name,
+                                    const chromeos::Any& value,
+                                    chromeos::ErrorPtr* error) {
+  if (!UpdatePropertyValue(full_property_name, value, error))
+    return false;
+
+  StateChange change;
+  change.timestamp = base::Time::Now();
+  change.property_set.emplace(full_property_name, value);
+  state_change_queue_->NotifyPropertiesUpdated(change);
+  return true;
+}
+
 bool StateManager::UpdateProperties(
     const chromeos::VariantDictionary& property_set,
     chromeos::ErrorPtr* error) {
   for (const auto& pair : property_set) {
-    if (!SetPropertyValue(pair.first, pair.second, error))
+    if (!UpdatePropertyValue(pair.first, pair.second, error))
       return false;
   }
+
+  StateChange change;
+  change.timestamp = base::Time::Now();
+  change.property_set = property_set;
+  state_change_queue_->NotifyPropertiesUpdated(change);
   return true;
+}
+
+std::vector<StateChange> StateManager::GetAndClearRecordedStateChanges() {
+  return state_change_queue_->GetAndClearRecordedStateChanges();
 }
 
 bool StateManager::LoadStateDefinition(const base::DictionaryValue& json,

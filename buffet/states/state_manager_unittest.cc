@@ -2,17 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cstdlib>  // for abs().
+#include <vector>
 
 #include <base/values.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "buffet/commands/schema_constants.h"
 #include "buffet/commands/unittest_utils.h"
 #include "buffet/states/error_codes.h"
+#include "buffet/states/mock_state_change_queue_interface.h"
 #include "buffet/states/state_manager.h"
 
 using buffet::unittests::CreateDictionaryValue;
 using buffet::unittests::ValueToString;
+using testing::Return;
+using testing::_;
 
 namespace buffet {
 
@@ -37,12 +43,23 @@ std::unique_ptr<base::DictionaryValue> GetTestValues() {
     }
   })");
 }
+
+MATCHER_P(IsStateChange, prop_set, "") {
+  return arg.property_set == prop_set &&
+         std::abs((arg.timestamp - base::Time::Now()).InSeconds()) < 2;
+}
+
 }  // anonymous namespace
 
 class StateManagerTest : public ::testing::Test {
  public:
   void SetUp() override {
-    mgr_.reset(new StateManager);
+    // Initial expectations.
+    EXPECT_CALL(mock_state_change_queue_, IsEmpty()).Times(0);
+    EXPECT_CALL(mock_state_change_queue_, NotifyPropertiesUpdated(_)).Times(0);
+    EXPECT_CALL(mock_state_change_queue_, GetAndClearRecordedStateChanges())
+      .Times(0);
+    mgr_.reset(new StateManager(&mock_state_change_queue_));
     LoadStateDefinition(GetTestSchema().get(), "default", nullptr);
     ASSERT_TRUE(mgr_->LoadStateDefaults(*GetTestValues().get(), nullptr));
   }
@@ -57,10 +74,12 @@ class StateManagerTest : public ::testing::Test {
   }
 
   std::unique_ptr<StateManager> mgr_;
+  MockStateChangeQueueInterface mock_state_change_queue_;
 };
 
 TEST(StateManager, Empty) {
-  StateManager manager;
+  MockStateChangeQueueInterface mock_state_change_queue;
+  StateManager manager(&mock_state_change_queue);
   EXPECT_TRUE(manager.GetCategories().empty());
 }
 
@@ -87,10 +106,30 @@ TEST_F(StateManagerTest, LoadStateDefinition) {
 }
 
 TEST_F(StateManagerTest, SetPropertyValue) {
+  chromeos::VariantDictionary expected_prop_set{
+    {"terminator.target", std::string{"John Connor"}},
+  };
+  EXPECT_CALL(mock_state_change_queue_,
+              NotifyPropertiesUpdated(IsStateChange(expected_prop_set)))
+      .WillOnce(Return(true));
   ASSERT_TRUE(mgr_->SetPropertyValue("terminator.target",
                                      std::string{"John Connor"}, nullptr));
   EXPECT_EQ("{'base':{'manufacturer':'Skynet','serialNumber':'T1000'},"
             "'terminator':{'target':'John Connor'}}",
+            ValueToString(mgr_->GetStateValuesAsJson(nullptr).get()));
+}
+
+TEST_F(StateManagerTest, UpdateProperties) {
+  chromeos::VariantDictionary prop_set{
+    {"base.serialNumber", std::string{"T1000.1"}},
+    {"terminator.target", std::string{"Sarah Connor"}},
+  };
+  EXPECT_CALL(mock_state_change_queue_,
+              NotifyPropertiesUpdated(IsStateChange(prop_set)))
+      .WillOnce(Return(true));
+  ASSERT_TRUE(mgr_->UpdateProperties(prop_set, nullptr));
+  EXPECT_EQ("{'base':{'manufacturer':'Skynet','serialNumber':'T1000.1'},"
+            "'terminator':{'target':'Sarah Connor'}}",
             ValueToString(mgr_->GetStateValuesAsJson(nullptr).get()));
 }
 
@@ -126,5 +165,24 @@ TEST_F(StateManagerTest, SetPropertyValue_Error_UnknownProperty) {
   EXPECT_EQ(errors::state::kPropertyNotDefined, error->GetCode());
   EXPECT_EQ("State property 'base.level' is not defined", error->GetMessage());
 }
+
+TEST_F(StateManagerTest, RetrievePropertyChanges) {
+  EXPECT_CALL(mock_state_change_queue_, NotifyPropertiesUpdated(_))
+      .WillOnce(Return(true));
+  ASSERT_TRUE(mgr_->SetPropertyValue("terminator.target",
+                                     std::string{"John Connor"}, nullptr));
+  std::vector<StateChange> expected_val;
+  expected_val.emplace_back();
+  expected_val.back().timestamp = base::Time::Now();
+  expected_val.back().property_set.emplace("terminator.target",
+                                           std::string{"John Connor"});
+  EXPECT_CALL(mock_state_change_queue_, GetAndClearRecordedStateChanges())
+      .WillOnce(Return(expected_val));
+  auto changes = mgr_->GetAndClearRecordedStateChanges();
+  ASSERT_EQ(1, changes.size());
+  EXPECT_EQ(expected_val.back().timestamp, changes.back().timestamp);
+  EXPECT_EQ(expected_val.back().property_set, changes.back().property_set);
+}
+
 
 }  // namespace buffet
