@@ -490,10 +490,14 @@ void ChromiumCommandBuilder::AddUiFlags() {
   }
 
   // Ozone platform configuration.
-  if (IsBoard("link_freon") && UseFlagIsSet("ozone_platform_gbm")) {
+  if ((IsBoard("link_freon") || IsBoard("peppy_freon")) &&
+       UseFlagIsSet("ozone_platform_gbm")) {
     // TODO(spang): Use freon/chromeos platform, not GBM example platform.
     AddArg("--ozone-platform=gbm");
-    AddArg("--ash-host-window-bounds=2560x1700*2");
+    if (IsBoard("link_freon"))
+      AddArg("--ash-host-window-bounds=2560x1700*2");
+    else if (IsBoard("peppy_freon"))
+      AddArg("--ash-host-window-bounds=1366x768");
   } else if (UseFlagIsSet("ozone_platform_dri")) {
     // TODO(spang): Use freon/chromeos platform, not DRI example platform.
     AddArg("--ozone-platform=dri");
