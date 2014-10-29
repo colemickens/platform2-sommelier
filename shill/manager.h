@@ -587,6 +587,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void OnDarkSuspendImminent();
 
   void OnSuspendActionsComplete(const Error &error);
+  void OnDarkResumeActionsComplete(const Error &error);
   void VerifyToEncryptLink(std::string public_key, std::string data,
                            ResultStringCallback cb, const Error &error,
                            bool success);

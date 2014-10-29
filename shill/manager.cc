@@ -1283,9 +1283,7 @@ void Manager::EmitDefaultService() {
 }
 
 void Manager::OnSuspendImminent() {
-  auto result_aggregator(make_scoped_refptr(new ResultAggregator(
-      Bind(&Manager::OnSuspendActionsComplete, AsWeakPtr()), dispatcher_,
-      kTerminationActionsTimeoutMilliseconds)));
+  metrics_->NotifySuspendActionsStarted();
   if (devices_.empty()) {
     // If there are no devices, then suspend actions succeeded synchronously.
     // Make a call to the Manager::OnSuspendActionsComplete directly, since
@@ -1293,6 +1291,9 @@ void Manager::OnSuspendImminent() {
     OnSuspendActionsComplete(Error(Error::kSuccess));
     return;
   }
+  auto result_aggregator(make_scoped_refptr(new ResultAggregator(
+      Bind(&Manager::OnSuspendActionsComplete, AsWeakPtr()), dispatcher_,
+      kTerminationActionsTimeoutMilliseconds)));
   for (const auto &device : devices_) {
     ResultCallback aggregator_callback(
         Bind(&ResultAggregator::ReportResult, result_aggregator));
@@ -1312,22 +1313,36 @@ void Manager::OnSuspendDone() {
 }
 
 void Manager::OnDarkSuspendImminent() {
+  metrics_->NotifyDarkResumeActionsStarted();
+  if (devices_.empty()) {
+    // If there are no devices, then suspend actions succeeded synchronously.
+    // Make a call to the Manager::OnDarkResumeActionsComplete directly, since
+    // result_aggregator will not.
+    OnDarkResumeActionsComplete(Error(Error::kSuccess));
+    return;
+  }
+  auto result_aggregator(make_scoped_refptr(new ResultAggregator(
+      Bind(&Manager::OnDarkResumeActionsComplete, AsWeakPtr()), dispatcher_,
+      kTerminationActionsTimeoutMilliseconds)));
   for (const auto &device : devices_) {
-    device->OnDarkResume();
+    ResultCallback aggregator_callback(
+        Bind(&ResultAggregator::ReportResult, result_aggregator));
+    device->OnDarkResume(aggregator_callback);
   }
-  for (const auto &service : services_) {
-    service->OnDarkResume();
-  }
-  // TODO(pprabhu): This should probably become asynchronous when devices
-  // implement dark suspend functionality.
-  power_manager_->ReportDarkSuspendReadiness();
 }
 
 void Manager::OnSuspendActionsComplete(const Error &error) {
   LOG(INFO) << "Finished suspend actions. Result: " << error;
-  metrics_->NotifyTerminationActionsCompleted(error.IsSuccess());
+  metrics_->NotifySuspendActionsCompleted(error.IsSuccess());
   power_manager_->ReportSuspendReadiness();
 }
+
+void Manager::OnDarkResumeActionsComplete(const Error &error) {
+  LOG(INFO) << "Finished dark resume actions. Result: " << error;
+  metrics_->NotifyDarkResumeActionsCompleted(error.IsSuccess());
+  power_manager_->ReportDarkSuspendReadiness();
+}
+
 
 void Manager::FilterByTechnology(Technology::Identifier tech,
                                  vector<DeviceRefPtr> *found) const {

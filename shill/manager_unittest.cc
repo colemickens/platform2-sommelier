@@ -384,6 +384,10 @@ class ManagerTest : public PropertyStoreTest {
     manager()->OnSuspendImminent();
   }
 
+  void OnDarkSuspendImminent() {
+    manager()->OnDarkSuspendImminent();
+  }
+
   void OnSuspendDone() {
     manager()->OnSuspendDone();
   }
@@ -3182,6 +3186,23 @@ TEST_F(ManagerTest, OnSuspendImminentNoDevicesPresent) {
   EXPECT_CALL(*power_manager_, ReportSuspendReadiness());
   SetPowerManager();
   OnSuspendImminent();
+}
+
+TEST_F(ManagerTest, OnDarkSuspendImminentDevicesPresent) {
+  EXPECT_CALL(*mock_devices_[0].get(), OnDarkResume(_));
+  EXPECT_CALL(*mock_devices_[1].get(), OnDarkResume(_));
+  EXPECT_CALL(*mock_devices_[2].get(), OnDarkResume(_));
+  manager()->RegisterDevice(mock_devices_[0]);
+  manager()->RegisterDevice(mock_devices_[1]);
+  manager()->RegisterDevice(mock_devices_[2]);
+  SetPowerManager();
+  OnDarkSuspendImminent();
+}
+
+TEST_F(ManagerTest, OnDarkSuspendImminentNoDevicesPresent) {
+  EXPECT_CALL(*power_manager_, ReportDarkSuspendReadiness());
+  SetPowerManager();
+  OnDarkSuspendImminent();
 }
 
 TEST_F(ManagerTest, OnSuspendActionsComplete) {

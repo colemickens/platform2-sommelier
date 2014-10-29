@@ -266,8 +266,10 @@ class Device : public base::RefCounted<Device> {
 
   // This method is invoked when the system resumes from suspend temporarily in
   // the "dark resume" state. The system will reenter suspend in
-  // Manager::kTerminationActionsTimeoutMilliseconds.
-  virtual void OnDarkResume();
+  // Manager::kTerminationActionsTimeoutMilliseconds. |callback| must be invoked
+  // after all synchronous and/or asynchronous actions this function performs
+  // and/or posts complete.
+  virtual void OnDarkResume(const ResultCallback &callback);
 
   // Destroy the lease, if any, with this |name|.
   // Called by the service during Unload() as part of the cleanup sequence.

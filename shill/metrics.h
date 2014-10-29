@@ -208,6 +208,12 @@ class Metrics {
     kSuspendActionResultMax
   };
 
+  enum DarkResumeActionResult {
+    kDarkResumeActionResultSuccess,
+    kDarkResumeActionResultFailure,
+    kDarkResumeActionResultMax
+  };
+
   enum Cellular3GPPRegistrationDelayedDrop {
     kCellular3GPPRegistrationDelayedDropPosted = 0,
     kCellular3GPPRegistrationDelayedDropCanceled = 1,
@@ -532,6 +538,12 @@ class Metrics {
   static const int kMetricSuspendActionTimeMillisecondsMax;
   static const int kMetricSuspendActionTimeMillisecondsMin;
 
+  // Shill dark resume action statistics.
+  static const char kMetricDarkResumeActionTime[];
+  static const char kMetricDarkResumeActionResult[];
+  static const int kMetricDarkResumeActionTimeMillisecondsMax;
+  static const int kMetricDarkResumeActionTimeMillisecondsMin;
+
   // WiFiService Entry Fixup.
   static const char kMetricServiceFixupEntriesSuffix[];
 
@@ -721,6 +733,13 @@ class Metrics {
   // Notifies this object that suspend actions have been completed.
   // |success| is true, if the suspend actions completed successfully.
   void NotifySuspendActionsCompleted(bool success);
+
+  // Notifies this object that dark resume actions started executing.
+  void NotifyDarkResumeActionsStarted();
+
+  // Notifies this object that dark resume actions have been completed.
+  // |success| is true, if the dark resume actions completed successfully.
+  void NotifyDarkResumeActionsCompleted(bool success);
 
   // Notifies this object of a failure in LinkMonitor.
   void NotifyLinkMonitorFailure(
@@ -995,6 +1014,7 @@ class Metrics {
   std::unique_ptr<chromeos_metrics::Timer> time_resume_to_ready_timer_;
   std::unique_ptr<chromeos_metrics::Timer> time_termination_actions_timer;
   std::unique_ptr<chromeos_metrics::Timer> time_suspend_actions_timer;
+  std::unique_ptr<chromeos_metrics::Timer> time_dark_resume_actions_timer;
   bool collect_bootstats_;
   DeviceMetricsLookupMap devices_metrics_;
 

@@ -397,8 +397,9 @@ void Device::OnAfterResume() {
   last_link_monitor_failed_time_ = 0;
 }
 
-void Device::OnDarkResume() {
-  // Nothing to be done in the general case.
+void Device::OnDarkResume(const ResultCallback &callback) {
+  // Nothing to be done in the general case, so immediately report success.
+  callback.Run(Error(Error::kSuccess));
 }
 
 void Device::DropConnection() {

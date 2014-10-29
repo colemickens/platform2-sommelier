@@ -22,6 +22,7 @@ class MockPowerManager : public PowerManager {
   ~MockPowerManager() override;
 
   MOCK_METHOD0(ReportSuspendReadiness, bool());
+  MOCK_METHOD0(ReportDarkSuspendReadiness, bool());
   MOCK_METHOD5(
       Start,
       void(DBusManager *dbus_manager,
