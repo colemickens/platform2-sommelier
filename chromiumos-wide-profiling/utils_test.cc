@@ -49,13 +49,6 @@ TEST(UtilsTest, TestHexToString) {
   EXPECT_EQ("8f02081840a08064", HexToString(hex_number, arraysize(hex_number)));
 }
 
-TEST(UtilsTest, TestGZRead) {
-  std::vector<char> contents;
-  GZFileToBuffer(GetTestInputFilePath("hello_world.txt.gz"), &contents);
-  string string_contents(contents.begin(), contents.end());
-  EXPECT_EQ(string_contents, "hello world\n");
-}
-
 TEST(UtilsTest, TestStringToHex) {
   u8 output[kHexArraySize], expected[kHexArraySize];
 
