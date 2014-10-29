@@ -199,6 +199,11 @@
       'sources': ['tools/power_supply_info.cc'],
     },
     {
+      'target_name': 'send_debug_power_status',
+      'type': 'executable',
+      'sources': ['tools/send_debug_power_status.cc'],
+    },
+    {
       'target_name': 'set_power_policy',
       'type': 'executable',
       'sources': ['tools/set_power_policy.cc'],
