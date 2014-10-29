@@ -51,15 +51,6 @@ namespace {
 
 const char kDiscovererPath[] = "/path/to/avahi/discoverer";
 
-Response* ReturnsHostName(dbus::MethodCall* method_call, Unused, Unused) {
-  method_call->SetSerial(87);
-  scoped_ptr<Response> response = Response::FromMethodCall(method_call);
-  dbus::MessageWriter writer(response.get());
-  chromeos::dbus_utils::AppendValueToWriter(&writer,
-                                            string("this_is_a_hostname"));
-  return response.release();
-}
-
 Response* ReturnsDiscovererPath(dbus::MethodCall* method_call, Unused, Unused) {
   method_call->SetSerial(87);
   scoped_ptr<Response> response = Response::FromMethodCall(method_call);
@@ -218,10 +209,6 @@ TEST_F(AvahiClientTest, ShouldNotifyRestart_WhenAvahiComesUpLater) {
 
 TEST_F(AvahiClientTest, CanGetPublisherWhenAvahiIsUp) {
   RegisterAsyncWhenAvahiIs(true, AVAHI_SERVER_RUNNING);
-  EXPECT_CALL(*avahi_proxy_,
-              MockCallMethodAndBlockWithErrorDetails(IsDBusMethodCallTo(
-                  kServerInterface, kServerMethodGetHostName), _, _))
-      .WillOnce(Invoke(&ReturnsHostName));
   EXPECT_NE(nullptr, client_->GetPublisher("uuid"));
 }
 

@@ -34,10 +34,11 @@ extern const char kInvalidServiceId[];
 
 class AvahiServicePublisher : public ServicePublisherInterface {
  public:
-  AvahiServicePublisher(const std::string& lan_name,
-                        const std::string& uuid,
+  AvahiServicePublisher(const std::string& uuid,
+                        const std::string& unique_prefix,
                         const scoped_refptr<dbus::Bus>& bus,
-                        dbus::ObjectProxy* avahi_proxy);
+                        dbus::ObjectProxy* avahi_proxy,
+                        const base::Closure& on_publish_failure);
   ~AvahiServicePublisher();
   base::WeakPtr<AvahiServicePublisher> GetWeakPtr();
 
@@ -74,13 +75,19 @@ class AvahiServicePublisher : public ServicePublisherInterface {
   bool FreeGroup(chromeos::ErrorPtr* error, dbus::ObjectProxy* group_proxy);
   // Update the master service listing to include the given |service_id|.
   bool UpdateRootService(chromeos::ErrorPtr* error);
+  // We get notified when a service in the group encounters a name collision,
+  // and other more innocuous events (like service publishing finishing).
+  // We must react to name collisions and other failures however and pick a
+  // new unique name prefix to register services under.
+  void HandleGroupStateChanged(int32_t state, const std::string& error_message);
 
 
-  const std::string lan_unique_hostname_;
   const std::string uuid_;
+  const std::string unique_prefix_;
   scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* avahi_proxy_;
   std::map<std::string, dbus::ObjectProxy*> outstanding_groups_;
+  base::Closure on_publish_failure_;
 
   // Should be last member to invalidate weak pointers in child objects
   // (like avahi_proxy_) and avoid callbacks while partially destroyed.

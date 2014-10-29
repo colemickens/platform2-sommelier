@@ -7,6 +7,7 @@
 #include <string>
 
 #include <avahi-common/defs.h>
+#include <base/guid.h>
 #include <chromeos/dbus/dbus_method_invoker.h>
 #include <chromeos/dbus/dbus_signal_handler.h>
 #include <chromeos/strings/string_utils.h>
@@ -191,14 +192,13 @@ base::WeakPtr<ServicePublisherInterface> AvahiClient::GetPublisher(
   base::WeakPtr<ServicePublisherInterface> result;
   if (!avahi_is_up_) { return result; }
   if (!publisher_) {
-    string host_name;
-    if (!GetHostName(&host_name)) {
-      LOG(ERROR) << "Failed to resolve local hostname.  Marking avahi down.";
-      avahi_is_up_ = false;
-      return result;
-    }
+    // The unique prefix must be < 63 characters, and have a low probability of
+    // colliding with another unique prefix on the subnet.
+    string unique_prefix = base::GenerateGUID();
     publisher_.reset(new AvahiServicePublisher(
-          host_name, uuid, bus_, server_));
+          uuid, unique_prefix, bus_, server_,
+          base::Bind(&AvahiClient::HandlePublishingFailure,
+                     weak_ptr_factory_.GetWeakPtr())));
   }
   result = publisher_->GetWeakPtr();
   return result;
@@ -213,12 +213,19 @@ void AvahiClient::HandleDiscoveryStartupResult(bool success) {
   }
 }
 
-bool AvahiClient::GetHostName(string* hostname) const {
-  auto resp = CallMethodAndBlock(
-      server_, dbus_constants::avahi::kServerInterface,
-      dbus_constants::avahi::kServerMethodGetHostName,
-      nullptr);
-  return resp && ExtractMethodCallResults(resp.get(), nullptr, hostname);
+void AvahiClient::HandlePublishingFailure() {
+  // The publisher encountered an error.  Most likely this is a name collision
+  // on the local subnet.  Respond by blowing the current instance away (since
+  // its in an error state).  Then notify people interested in resets that
+  // Avahi has been "restarted." This isn't strictly true, but we have lost all
+  // of our published state.
+  //
+  // If anyone is still interested in publishing services, we'll instantiate a
+  // new publisher, and that will cause us to pick a new unique prefix.
+  publisher_.reset();
+  for (const auto& cb : avahi_ready_callbacks_) {
+    cb.Run();
+  }
 }
 
 }  // namespace peerd

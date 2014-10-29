@@ -75,8 +75,10 @@ class AvahiClient {
   void HandleServerStateChange(int32_t state);
   // Logic to react to failure or success to start service discovery.
   void HandleDiscoveryStartupResult(bool success);
-  // Ask Avahi for the current hostname.
-  bool GetHostName(std::string* hostname) const;
+  // When we encounter problems publishing mDNS records, it should be
+  // related to name collisions on the local subnet.  We'll just pick
+  // a new unique prefix for our records and try again.
+  void HandlePublishingFailure();
 
   scoped_refptr<dbus::Bus> bus_;
   PeerManagerInterface* peer_manager_;  // Outlives this.
@@ -86,7 +88,7 @@ class AvahiClient {
   std::unique_ptr<AvahiServicePublisher> publisher_{nullptr};
   std::unique_ptr<AvahiServiceDiscoverer> discoverer_{nullptr};
   bool should_discover_{false};
-  // Must be last member to invalidate pointers before actual desctruction.
+  // Must be last member to invalidate pointers before actual destruction.
   base::WeakPtrFactory<AvahiClient> weak_ptr_factory_{this};
 
   friend class AvahiClientTest;

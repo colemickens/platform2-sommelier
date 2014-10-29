@@ -56,6 +56,7 @@ const char kGroupMethodAddService[] = "AddService";
 const char kGroupMethodCommit[] = "Commit";
 const char kGroupMethodFree[] = "Free";
 const char kGroupMethodReset[]= "Reset";
+const char kGroupSignalStateChanged[] = "StateChanged";
 
 const char kServiceBrowserInterface[] = "org.freedesktop.Avahi.ServiceBrowser";
 const char kServiceBrowserMethodFree[] = "Free";

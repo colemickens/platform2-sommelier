@@ -65,6 +65,7 @@ extern const char kGroupMethodAddService[];
 extern const char kGroupMethodCommit[];
 extern const char kGroupMethodFree[];
 extern const char kGroupMethodReset[];
+extern const char kGroupSignalStateChanged[];
 
 extern const char kServiceBrowserInterface[];
 extern const char kServiceBrowserMethodFree[];

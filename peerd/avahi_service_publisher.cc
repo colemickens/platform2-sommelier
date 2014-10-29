@@ -8,7 +8,11 @@
 
 #include <avahi-client/publish.h>
 #include <avahi-common/address.h>
+#include <base/message_loop/message_loop.h>
+#include <base/callback.h>
+#include <chromeos/bind_lambda.h>
 #include <chromeos/dbus/dbus_method_invoker.h>
+#include <chromeos/dbus/dbus_signal_handler.h>
 #include <chromeos/strings/string_utils.h>
 #include <dbus/bus.h>
 
@@ -38,13 +42,16 @@ const char kInvalidServiceId[] = "avahi.invalid_service_id";
 }  // namespace errors
 
 AvahiServicePublisher::AvahiServicePublisher(
-    const std::string& lan_name,
     const std::string& uuid,
+    const std::string& unique_prefix,
     const scoped_refptr<dbus::Bus>& bus,
-    dbus::ObjectProxy* avahi_proxy) : lan_unique_hostname_{lan_name},
-                                      uuid_{uuid},
-                                      bus_{bus},
-                                      avahi_proxy_{avahi_proxy} {
+    dbus::ObjectProxy* avahi_proxy,
+    const base::Closure& on_publish_failure)
+        : uuid_{uuid},
+          unique_prefix_{unique_prefix},
+          bus_{bus},
+          avahi_proxy_{avahi_proxy},
+          on_publish_failure_{on_publish_failure} {
 }
 
 AvahiServicePublisher::~AvahiServicePublisher() {
@@ -75,6 +82,7 @@ bool AvahiServicePublisher::UpdateGroup(
     ErrorPtr* error,
     const std::string& service_id,
     const Service::ServiceInfo& service_info) {
+  VLOG(1) << "Modifying group for service_id=" << service_id;
   auto it = outstanding_groups_.find(service_id);
   dbus::ObjectProxy* group_proxy = nullptr;
   if (it == outstanding_groups_.end()) {
@@ -89,6 +97,24 @@ bool AvahiServicePublisher::UpdateGroup(
     }
     group_proxy = bus_->GetObjectProxy(dbus_constants::avahi::kServiceName,
                                        group_path);
+    // If we fail to connect to the the StateChange signal for this group, just
+    // report that the whole thing has failed.
+    auto on_failure_to_connect_cb = [](const base::Closure& on_failure,
+                                       const std::string& interface_name,
+                                       const std::string& signal_name,
+                                       bool success) {
+      if (success) { return; }
+      LOG(WARNING) << "Failed to connect to StateChange signal "
+                      "from EntryGroup.";
+      base::MessageLoop::current()->PostTask(FROM_HERE, on_failure);
+    };
+    chromeos::dbus_utils::ConnectToSignal(
+        group_proxy,
+        dbus_constants::avahi::kGroupInterface,
+        dbus_constants::avahi::kGroupSignalStateChanged,
+        base::Bind(&AvahiServicePublisher::HandleGroupStateChanged,
+                   base::Unretained(this)),
+        base::Bind(on_failure_to_connect_cb, on_publish_failure_));
     outstanding_groups_[service_id] = group_proxy;
   } else {
     // Reset the entry group for this service.
@@ -159,7 +185,7 @@ bool AvahiServicePublisher::AddServiceToGroup(
       int32_t{AVAHI_IF_UNSPEC},
       int32_t{AVAHI_PROTO_UNSPEC},
       uint32_t{0},  // No flags.
-      lan_unique_hostname_,
+      unique_prefix_,
       AvahiClient::GetServiceType(service_id),
       std::string{},  // domain.
       std::string{},  // hostname
@@ -217,5 +243,13 @@ bool AvahiServicePublisher::UpdateRootService(ErrorPtr* error) {
   return UpdateGroup(error, kSerbusServiceId, service_info);
 }
 
+void AvahiServicePublisher::HandleGroupStateChanged(
+    int32_t state,
+    const std::string& error_message) {
+  if (state == AVAHI_ENTRY_GROUP_COLLISION ||
+      state == AVAHI_ENTRY_GROUP_FAILURE) {
+    base::MessageLoop::current()->PostTask(FROM_HERE, on_publish_failure_);
+  }
+}
 
 }  // namespace peerd

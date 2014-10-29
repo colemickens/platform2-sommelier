@@ -72,8 +72,10 @@ class AvahiServicePublisherTest : public ::testing::Test {
         mock_bus_.get(), kServiceName, ObjectPath(kServerPath));
     group_proxy_ = new dbus::MockObjectProxy(
         mock_bus_.get(), kServiceName, ObjectPath(kGroupPath));
-    publisher_.reset(new AvahiServicePublisher(kHost, "uuid",
-                                               mock_bus_, avahi_proxy_));
+    publisher_.reset(new AvahiServicePublisher(
+          kHost, "uuid", mock_bus_, avahi_proxy_,
+          base::Bind(&AvahiServicePublisherTest::OnGroupFailure,
+                     base::Unretained(this))));
     // Ignore threading concerns.
     EXPECT_CALL(*mock_bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*mock_bus_, AssertOnDBusThread()).Times(AnyNumber());
@@ -144,6 +146,8 @@ class AvahiServicePublisherTest : public ::testing::Test {
         .Times(2)
         .WillRepeatedly(Invoke(&ReturnsEmptyResponse));
   }
+
+  MOCK_METHOD0(OnGroupFailure, void(void));
 
   scoped_refptr<MockBus> mock_bus_{new MockBus{Bus::Options{}}};
   scoped_refptr<dbus::MockObjectProxy> avahi_proxy_;
