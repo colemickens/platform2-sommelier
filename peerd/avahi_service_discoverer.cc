@@ -5,6 +5,7 @@
 #include "peerd/avahi_service_discoverer.h"
 
 #include <avahi-common/address.h>
+#include <avahi-common/defs.h>
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
 #include <chromeos/bind_lambda.h>
@@ -280,6 +281,10 @@ void AvahiServiceDiscoverer::HandleItemNew(avahi_if_t interface,
                                            uint32_t flags) {
   VLOG(1) << "Discovered service: " << interface << ", " << protocol << ", "
           << name << ", " << type << ", " << domain << ", " << flags;
+  if ((flags & AVAHI_LOOKUP_RESULT_LOCAL) != 0) {
+    VLOG(1) << "Ignoring local service.";
+    return;
+  }
   CHECK(protocol == protocol_);
   RegisterResolver(interface, name, type, domain);
 }
