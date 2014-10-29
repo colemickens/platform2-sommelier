@@ -419,6 +419,36 @@ class CellularTest : public testing::Test {
     return mm1_proxy_.get();  // Before the capability snags it.
   }
 
+  void VerifyOperatorMap(const Stringmap &operator_map,
+                         const string &code,
+                         const string &name,
+                         const string &country) {
+    Stringmap::const_iterator it;
+    Stringmap::const_iterator endit = operator_map.end();
+
+    it = operator_map.find(kOperatorCodeKey);
+    if (code == "") {
+      EXPECT_EQ(endit, it);
+    } else {
+      ASSERT_NE(endit, it);
+      EXPECT_EQ(code, it->second);
+    }
+    it = operator_map.find(kOperatorNameKey);
+    if (name == "") {
+      EXPECT_EQ(endit, it);
+    } else {
+      ASSERT_NE(endit, it);
+      EXPECT_EQ(name, it->second);
+    }
+    it = operator_map.find(kOperatorCountryKey);
+    if (country == "") {
+      EXPECT_EQ(endit, it);
+    } else {
+      ASSERT_NE(endit, it);
+      EXPECT_EQ(country, it->second);
+    }
+  }
+
   MOCK_METHOD1(TestCallback, void(const Error &error));
 
  protected:
@@ -907,6 +937,9 @@ TEST_F(CellularTest, HomeProviderServingOperator) {
   SetMockMobileOperatorInfoObjects();
   CHECK(mock_home_provider_info_);
   CHECK(mock_serving_operator_info_);
+  Stringmap home_provider;
+  Stringmap serving_operator;
+
 
   // (1) Neither home provider nor serving operator known.
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
@@ -916,12 +949,10 @@ TEST_F(CellularTest, HomeProviderServingOperator) {
 
   device_->CreateService();
 
-  EXPECT_EQ("", device_->home_provider().GetCode());
-  EXPECT_EQ("", device_->home_provider().GetName());
-  EXPECT_EQ("", device_->home_provider().GetCountry());
-  EXPECT_EQ("", device_->service_->serving_operator().GetCode());
-  EXPECT_EQ("", device_->service_->serving_operator().GetName());
-  EXPECT_EQ("", device_->service_->serving_operator().GetCountry());
+  home_provider = device_->home_provider();
+  VerifyOperatorMap(home_provider, "", "", "");
+  serving_operator = device_->service_->serving_operator();
+  VerifyOperatorMap(serving_operator, "", "", "");
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
   device_->DestroyService();
@@ -942,15 +973,16 @@ TEST_F(CellularTest, HomeProviderServingOperator) {
 
   device_->CreateService();
 
-  EXPECT_EQ(kServingOperatorCode, device_->home_provider().GetCode());
-  EXPECT_EQ(kServingOperatorName, device_->home_provider().GetName());
-  EXPECT_EQ(kServingOperatorCountry, device_->home_provider().GetCountry());
-  EXPECT_EQ(kServingOperatorCode,
-            device_->service_->serving_operator().GetCode());
-  EXPECT_EQ(kServingOperatorName,
-            device_->service_->serving_operator().GetName());
-  EXPECT_EQ(kServingOperatorCountry,
-            device_->service_->serving_operator().GetCountry());
+  home_provider = device_->home_provider();
+  VerifyOperatorMap(home_provider,
+                    kServingOperatorCode,
+                    kServingOperatorName,
+                    kServingOperatorCountry);
+  serving_operator = device_->service_->serving_operator();
+  VerifyOperatorMap(serving_operator,
+                    kServingOperatorCode,
+                    kServingOperatorName,
+                    kServingOperatorCountry);
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
   device_->DestroyService();
@@ -971,15 +1003,16 @@ TEST_F(CellularTest, HomeProviderServingOperator) {
 
   device_->CreateService();
 
-  EXPECT_EQ(kHomeProviderCode, device_->home_provider().GetCode());
-  EXPECT_EQ(kHomeProviderName, device_->home_provider().GetName());
-  EXPECT_EQ(kHomeProviderCountry, device_->home_provider().GetCountry());
-  EXPECT_EQ(kHomeProviderCode,
-            device_->service_->serving_operator().GetCode());
-  EXPECT_EQ(kHomeProviderName,
-            device_->service_->serving_operator().GetName());
-  EXPECT_EQ(kHomeProviderCountry,
-            device_->service_->serving_operator().GetCountry());
+  home_provider = device_->home_provider();
+  VerifyOperatorMap(home_provider,
+                    kHomeProviderCode,
+                    kHomeProviderName,
+                    kHomeProviderCountry);
+  serving_operator = device_->service_->serving_operator();
+  VerifyOperatorMap(serving_operator,
+                    kHomeProviderCode,
+                    kHomeProviderName,
+                    kHomeProviderCountry);
   Mock::VerifyAndClearExpectations(mock_home_provider_info_);
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
   device_->DestroyService();
@@ -1006,15 +1039,16 @@ TEST_F(CellularTest, HomeProviderServingOperator) {
 
   device_->CreateService();
 
-  EXPECT_EQ(kHomeProviderCode, device_->home_provider().GetCode());
-  EXPECT_EQ(kHomeProviderName, device_->home_provider().GetName());
-  EXPECT_EQ(kHomeProviderCountry, device_->home_provider().GetCountry());
-  EXPECT_EQ(kServingOperatorCode,
-            device_->service_->serving_operator().GetCode());
-  EXPECT_EQ(kServingOperatorName,
-            device_->service_->serving_operator().GetName());
-  EXPECT_EQ(kServingOperatorCountry,
-            device_->service_->serving_operator().GetCountry());
+  home_provider = device_->home_provider();
+  VerifyOperatorMap(home_provider,
+                    kHomeProviderCode,
+                    kHomeProviderName,
+                    kHomeProviderCountry);
+  serving_operator = device_->service_->serving_operator();
+  VerifyOperatorMap(serving_operator,
+                    kServingOperatorCode,
+                    kServingOperatorName,
+                    kServingOperatorCountry);
 }
 
 static bool IllegalChar(char a) {

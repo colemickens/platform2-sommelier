@@ -133,14 +133,12 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     service->SetStorageIdentifier(kStorageIdentifier);
     service->SetFriendlyName(kFriendlyServiceName);
 
-    Cellular::Operator oper;
-    oper.SetCode(kOperatorCode);
-    oper.SetName(kOperatorName);
-    oper.SetCountry(kOperatorCountry);
-
-    service->SetServingOperator(oper);
-
-    cellular_->set_home_provider(oper);
+    Stringmap serving_operator;
+    serving_operator[kOperatorCodeKey] = kOperatorCode;
+    serving_operator[kOperatorNameKey] = kOperatorName;
+    serving_operator[kOperatorCountryKey] = kOperatorCountry;
+    service->set_serving_operator(serving_operator);
+    cellular_->set_home_provider(serving_operator);
     cellular_->service_ = service;
   }
 
@@ -961,7 +959,9 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
   cellular_->set_modem_state(Cellular::kModemStateConnected);
   SetRegistrationDroppedUpdateTimeout(0);
 
-  string home_provider = cellular_->home_provider().GetName();
+  const Stringmap &home_provider_map = cellular_->home_provider();
+  ASSERT_NE(home_provider_map.end(), home_provider_map.find(kOperatorNameKey));
+  string home_provider = home_provider_map.find(kOperatorNameKey)->second;
   string ota_name = cellular_->service_->friendly_name();
 
   // Home --> Roaming should be effective immediately.
@@ -1114,7 +1114,9 @@ TEST_F(CellularCapabilityUniversalMainTest,
   cellular_->set_modem_state(Cellular::kModemStateRegistered);
   SetRegistrationDroppedUpdateTimeout(0);
 
-  string home_provider = cellular_->home_provider().GetName();
+  const Stringmap &home_provider_map = cellular_->home_provider();
+  ASSERT_NE(home_provider_map.end(), home_provider_map.find(kOperatorNameKey));
+  string home_provider = home_provider_map.find(kOperatorNameKey)->second;
   string ota_name = cellular_->service_->friendly_name();
 
   // Home --> Searching should be effective immediately.

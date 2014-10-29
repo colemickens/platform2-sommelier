@@ -163,18 +163,24 @@ TEST_F(CellularServiceTest, SetStorageIdentifier) {
 }
 
 TEST_F(CellularServiceTest, SetServingOperator) {
-  EXPECT_CALL(*adaptor_,
-              EmitStringmapChanged(kServingOperatorProperty, _));
   static const char kCode[] = "123456";
   static const char kName[] = "Some Cellular Operator";
-  Cellular::Operator oper;
-  service_->SetServingOperator(oper);
-  oper.SetCode(kCode);
-  oper.SetName(kName);
-  service_->SetServingOperator(oper);
-  EXPECT_EQ(kCode, service_->serving_operator().GetCode());
-  EXPECT_EQ(kName, service_->serving_operator().GetName());
-  service_->SetServingOperator(oper);
+  Stringmap test_operator;
+  service_->set_serving_operator(test_operator);
+  test_operator[kOperatorCodeKey] = kCode;
+  test_operator[kOperatorNameKey] = kName;
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapChanged(kServingOperatorProperty, _));
+  service_->set_serving_operator(test_operator);
+  const Stringmap &serving_operator = service_->serving_operator();
+  ASSERT_NE(serving_operator.end(), serving_operator.find(kOperatorCodeKey));
+  ASSERT_NE(serving_operator.end(), serving_operator.find(kOperatorNameKey));
+  EXPECT_EQ(kCode, serving_operator.find(kOperatorCodeKey)->second);
+  EXPECT_EQ(kName, serving_operator.find(kOperatorNameKey)->second);
+  Mock::VerifyAndClearExpectations(adaptor_);
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapChanged(kServingOperatorProperty, _)).Times(0);
+  service_->set_serving_operator(serving_operator);
 }
 
 TEST_F(CellularServiceTest, SetOLP) {

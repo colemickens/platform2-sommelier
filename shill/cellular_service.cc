@@ -77,8 +77,7 @@ CellularService::CellularService(ModemInfo *modem_info,
                           nullptr);
   store->RegisterConstStringmap(kPaymentPortalProperty, &olp_);
   store->RegisterConstString(kRoamingStateProperty, &roaming_state_);
-  store->RegisterConstStringmap(kServingOperatorProperty,
-                                &serving_operator_.ToDict());
+  store->RegisterConstStringmap(kServingOperatorProperty, &serving_operator_);
   store->RegisterConstString(kUsageURLProperty, &usage_url_);
   store->RegisterString(kCellularPPPUsernameProperty, &ppp_username_);
   store->RegisterWriteOnlyString(kCellularPPPPasswordProperty, &ppp_password_);
@@ -441,16 +440,12 @@ void CellularService::SetRoamingState(const string &state) {
   adaptor()->EmitStringChanged(kRoamingStateProperty, state);
 }
 
-const Cellular::Operator &CellularService::serving_operator() const {
-  return serving_operator_;
-}
-
-void CellularService::SetServingOperator(const Cellular::Operator &oper) {
-  if (serving_operator_.Equals(oper)) {
+void CellularService::set_serving_operator(const Stringmap &serving_operator) {
+  if (serving_operator_ == serving_operator)
     return;
-  }
-  serving_operator_.CopyFrom(oper);
-  adaptor()->EmitStringmapChanged(kServingOperatorProperty, oper.ToDict());
+
+  serving_operator_ = serving_operator;
+  adaptor()->EmitStringmapChanged(kServingOperatorProperty, serving_operator_);
 }
 
 }  // namespace shill

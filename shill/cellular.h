@@ -255,7 +255,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   const std::string &dbus_owner() const { return dbus_owner_; }
   const std::string &dbus_service() const { return dbus_service_; }
   const std::string &dbus_path() const { return dbus_path_; }
-  const Operator &home_provider() const { return home_provider_; }
+  const Stringmap &home_provider() const { return home_provider_; }
   const std::string &carrier() const { return carrier_; }
   bool scanning_supported() const { return scanning_supported_; }
   const std::string &esn() const { return esn_; }
@@ -282,7 +282,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   uint16_t prl_version() const { return prl_version_; }
 
   // setters
-  void set_home_provider(const Operator &home_provider);
+  void set_home_provider(const Stringmap &home_provider);
   void set_carrier(const std::string &carrier);
   void set_scanning_supported(bool scanning_supported);
   void set_esn(const std::string &esn);
@@ -525,7 +525,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   const std::string dbus_owner_;  // :x.y
   const std::string dbus_service_;  // org.*.ModemManager*
   const std::string dbus_path_;  // ModemManager.Modem
-  Operator home_provider_;
+  Stringmap home_provider_;
 
   bool scanning_supported_;
   std::string carrier_;

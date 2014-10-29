@@ -94,14 +94,13 @@ class CellularCapabilityTest : public testing::Test {
     service->SetStorageIdentifier(kStorageIdentifier);
     service->SetFriendlyName(kFriendlyServiceName);
 
-    Cellular::Operator oper;
-    oper.SetCode(kOperatorCode);
-    oper.SetName(kOperatorName);
-    oper.SetCountry(kOperatorCountry);
+    Stringmap serving_operator;
+    serving_operator[kOperatorCodeKey] = kOperatorCode;
+    serving_operator[kOperatorNameKey] = kOperatorName;
+    serving_operator[kOperatorCountryKey] = kOperatorCountry;
 
-    service->SetServingOperator(oper);
-
-    cellular_->set_home_provider(oper);
+    service->set_serving_operator(serving_operator);
+    cellular_->set_home_provider(serving_operator);
     cellular_->service_ = service;
   }
 

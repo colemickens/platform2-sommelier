@@ -1218,8 +1218,7 @@ void Cellular::RegisterProperties() {
 
   // These properties have setters that should be used to change their values.
   // Events are generated whenever the values change.
-  store->RegisterConstStringmap(kHomeProviderProperty,
-                                &home_provider_.ToDict());
+  store->RegisterConstStringmap(kHomeProviderProperty, &home_provider_);
   store->RegisterConstString(kCarrierProperty, &carrier_);
   store->RegisterConstBool(kSupportNetworkScanProperty, &scanning_supported_);
   store->RegisterConstString(kEsnProperty, &esn_);
@@ -1253,15 +1252,12 @@ void Cellular::RegisterProperties() {
                           &Cellular::SetAllowRoaming);
 }
 
-void Cellular::set_home_provider(const Cellular::Operator &home_provider) {
-  if (home_provider_.Equals(home_provider)) {
+void Cellular::set_home_provider(const Stringmap &home_provider) {
+  if (home_provider_ == home_provider)
     return;
-  }
 
-  home_provider_.CopyFrom(home_provider);
-
-  adaptor()->EmitStringmapChanged(kHomeProviderProperty,
-                                  home_provider_.ToDict());
+  home_provider_ = home_provider;
+  adaptor()->EmitStringmapChanged(kHomeProviderProperty, home_provider_);
 }
 
 void Cellular::set_carrier(const string &carrier) {
@@ -1488,27 +1484,25 @@ void Cellular::set_serving_operator_info(
 
 void Cellular::UpdateHomeProvider(const MobileOperatorInfo *operator_info) {
   SLOG(Cellular, 3) << __func__;
-  // TODO(pprabhu) Change |set_home_provider| to take Stringmap argument and
-  // update this.
-  Operator oper;
+
+  Stringmap home_provider;
   if (!operator_info->sid().empty()) {
-    oper.SetCode(operator_info->sid());
+    home_provider[kOperatorCodeKey] = operator_info->sid();
   }
   if (!operator_info->nid().empty()) {
-    oper.SetCode(operator_info->nid());
+    home_provider[kOperatorCodeKey] = operator_info->nid();
   }
   if (!operator_info->mccmnc().empty()) {
-    oper.SetCode(operator_info->mccmnc());
+    home_provider[kOperatorCodeKey] = operator_info->mccmnc();
   }
   if (!operator_info->operator_name().empty()) {
-    oper.SetName(operator_info->operator_name());
+    home_provider[kOperatorNameKey] = operator_info->operator_name();
   }
   if (!operator_info->country().empty()) {
-    oper.SetCountry(operator_info->country());
+    home_provider[kOperatorCountryKey] = operator_info->country();
   }
-  set_home_provider(oper);
+  set_home_provider(home_provider);
 
-  // Update the APN list.
   const ScopedVector<MobileOperatorInfo::MobileAPN> &apn_list =
       operator_info->apn_list();
   Stringmaps apn_list_dict;
@@ -1550,25 +1544,23 @@ void Cellular::UpdateServingOperator(
     return;
   }
 
-  // TODO(pprabhu) Update |CellularService::SetServingOperator| to take
-  // Stringmap argument and update this.
-  Operator oper;
+  Stringmap serving_operator;
   if (!operator_info->sid().empty()) {
-    oper.SetCode(operator_info->sid());
+    serving_operator[kOperatorCodeKey] = operator_info->sid();
   }
   if (!operator_info->nid().empty()) {
-    oper.SetCode(operator_info->nid());
+    serving_operator[kOperatorCodeKey] = operator_info->nid();
   }
   if (!operator_info->mccmnc().empty()) {
-    oper.SetCode(operator_info->mccmnc());
+    serving_operator[kOperatorCodeKey] = operator_info->mccmnc();
   }
   if (!operator_info->operator_name().empty()) {
-    oper.SetName(operator_info->operator_name());
+    serving_operator[kOperatorNameKey] = operator_info->operator_name();
   }
   if (!operator_info->country().empty()) {
-    oper.SetCountry(operator_info->country());
+    serving_operator[kOperatorCountryKey] = operator_info->country();
   }
-  service()->SetServingOperator(oper);
+  service()->set_serving_operator(serving_operator);
 
   // Set friendly name of service.
   string service_name;
