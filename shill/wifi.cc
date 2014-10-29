@@ -194,6 +194,7 @@ WiFi::WiFi(ControlInterface *control_interface,
                             kScanIntervalProperty,
                             &WiFi::GetScanInterval,
                             &WiFi::SetScanInterval);
+  wake_on_wifi_->InitPropertyStore(store);
   ScopeLogger::GetInstance()->RegisterScopeEnableChangedCallback(
       ScopeLogger::kWiFi,
       Bind(&WiFi::OnWiFiDebugScopeChanged, weak_ptr_factory_.GetWeakPtr()));

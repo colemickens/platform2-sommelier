@@ -33,6 +33,7 @@ class EventDispatcher;
 class GetWakeOnPacketConnMessage;
 class Manager;
 class Nl80211Message;
+class PropertyStore;
 class SetWakeOnPacketConnMessage;
 class WiFi;
 
@@ -41,6 +42,9 @@ class WakeOnWiFi {
   WakeOnWiFi(NetlinkManager *netlink_manager, EventDispatcher *dispatcher,
              Manager *manager);
   virtual ~WakeOnWiFi();
+
+  // Registers |store| with properties related to wake on WiFi.
+  void InitPropertyStore(PropertyStore *store);
 
   // Types of triggers that can cause the NIC to wake the WiFi device.
   enum WakeOnWiFiTrigger { kIPAddress, kDisconnect };
@@ -92,6 +96,8 @@ class WakeOnWiFi {
   static const int kVerifyWakeOnWiFiSettingsDelaySeconds;
   static const int kMaxSetWakeOnPacketRetries;
 
+  std::string GetWakeOnWiFiFeaturesEnabled(Error *error);
+  bool SetWakeOnWiFiFeaturesEnabled(const std::string &enabled, Error *error);
   // Helper function to run and reset |suspend_actions_done_callback_|.
   void RunAndResetSuspendActionsDoneCallback(const Error &error);
   // Used for comparison of ByteString pairs in a set.
@@ -188,11 +194,10 @@ class WakeOnWiFi {
   void RetrySetWakeOnPacketConnections();
 
   // Utility functions to check which wake on WiFi features are currently
-  // enabled based on the descriptor |wake_on_wifi_enabled|.
-  static bool WakeOnPacketEnabled(const std::string &wake_on_wifi_enabled);
-  static bool WakeOnSSIDEnabled(const std::string &wake_on_wifi_enabled);
-  static bool WakeOnWiFiFeaturesDisabled(
-      const std::string &wake_on_wifi_enabled);
+  // enabled based on the descriptor |wake_on_wifi_features_enabled_|.
+  bool WakeOnPacketEnabled();
+  bool WakeOnSSIDEnabled();
+  bool WakeOnWiFiFeaturesDisabled();
 
   // Pointers to objects owned by the WiFi object that created this object.
   EventDispatcher *dispatcher_;
@@ -219,6 +224,8 @@ class WakeOnWiFi {
   IPAddressStore wake_on_packet_connections_;
   uint32_t wiphy_index_;
   bool wiphy_index_received_;
+  // Describes the wake on WiFi features that are currently enabled.
+  std::string wake_on_wifi_features_enabled_;
   base::WeakPtrFactory<WakeOnWiFi> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(WakeOnWiFi);

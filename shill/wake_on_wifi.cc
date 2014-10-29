@@ -21,11 +21,9 @@
 #include "shill/ip_address_store.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/net/attribute_list.h"
-#include "shill/net/byte_string.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
+#include "shill/property_accessor.h"
 #include "shill/wifi.h"
 
 using base::Bind;
@@ -59,9 +57,52 @@ WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
       wake_on_wifi_max_patterns_(0),
       wiphy_index_(kDefaultWiphyIndex),
       wiphy_index_received_(false),
-      weak_ptr_factory_(this) {}
+#if defined(DISABLE_WAKE_ON_WIFI)
+      wake_on_wifi_features_enabled_(kWakeOnWiFiFeaturesEnabledNone),
+#else
+      wake_on_wifi_features_enabled_(kWakeOnWiFiFeaturesEnabledSSID),
+#endif  // DISABLE_WAKE_ON_WIFI
+      weak_ptr_factory_(this) {
+}
 
 WakeOnWiFi::~WakeOnWiFi() {}
+
+void WakeOnWiFi::InitPropertyStore(PropertyStore *store) {
+  store->RegisterDerivedString(
+      kWakeOnWiFiFeaturesEnabledProperty,
+      StringAccessor(new CustomAccessor<WakeOnWiFi, string>(
+          this, &WakeOnWiFi::GetWakeOnWiFiFeaturesEnabled,
+          &WakeOnWiFi::SetWakeOnWiFiFeaturesEnabled)));
+}
+
+string WakeOnWiFi::GetWakeOnWiFiFeaturesEnabled(Error *error) {
+  return wake_on_wifi_features_enabled_;
+}
+
+bool WakeOnWiFi::SetWakeOnWiFiFeaturesEnabled(const std::string &enabled,
+                                              Error *error) {
+  if (wake_on_wifi_features_enabled_ == enabled) {
+    return false;
+  }
+#if defined(DISABLE_WAKE_ON_WIFI)
+  if (enabled != kWakeOnWiFiFeaturesEnabledNone) {
+    Error::PopulateAndLog(error, Error::kNotSupported,
+                          "Wake on WiFi is not supported");
+    return false;
+  }
+#else
+  if (enabled != kWakeOnWiFiFeaturesEnabledPacket &&
+      enabled != kWakeOnWiFiFeaturesEnabledSSID &&
+      enabled != kWakeOnWiFiFeaturesEnabledPacketSSID &&
+      enabled != kWakeOnWiFiFeaturesEnabledNone) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Invalid Wake on WiFi feature");
+    return false;
+  }
+#endif  // DISABLE_WAKE_ON_WIFI
+  wake_on_wifi_features_enabled_ = enabled;
+  return true;
+}
 
 void WakeOnWiFi::RunAndResetSuspendActionsDoneCallback(const Error &error) {
   if (!suspend_actions_done_callback_.is_null()) {
@@ -477,7 +518,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(const Nl80211Message &msg,
 void WakeOnWiFi::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                            Error *error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
-  if (!WakeOnPacketEnabled(manager_->WakeOnWiFiEnabled())) {
+  if (!WakeOnPacketEnabled()) {
     Error::PopulateAndLog(error, Error::kOperationFailed,
                           kWakeOnPacketDisabled);
   } else if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
@@ -499,7 +540,7 @@ void WakeOnWiFi::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
 void WakeOnWiFi::RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
                                               Error *error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
-  if (!WakeOnPacketEnabled(manager_->WakeOnWiFiEnabled())) {
+  if (!WakeOnPacketEnabled()) {
     Error::PopulateAndLog(error, Error::kOperationFailed,
                           kWakeOnPacketDisabled);
   } else if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
@@ -519,7 +560,7 @@ void WakeOnWiFi::RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
 
 void WakeOnWiFi::RemoveAllWakeOnPacketConnections(Error *error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
-  if (!WakeOnPacketEnabled(manager_->WakeOnWiFiEnabled())) {
+  if (!WakeOnPacketEnabled()) {
     Error::PopulateAndLog(error, Error::kOperationFailed,
                           kWakeOnPacketDisabled);
   } else if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
@@ -609,10 +650,6 @@ void WakeOnWiFi::VerifyWakeOnWiFiSettings(
 }
 
 void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
-  if (WakeOnWiFiFeaturesDisabled(manager_->WakeOnWiFiEnabled())) {
-    LOG(INFO) << __func__ << ": Wake on WiFi features disabled";
-    return;
-  }
   if (!wiphy_index_received_) {
     LOG(ERROR) << "Interface index not yet received";
     return;
@@ -685,19 +722,20 @@ void WakeOnWiFi::RetrySetWakeOnPacketConnections() {
   }
 }
 
-bool WakeOnWiFi::WakeOnPacketEnabled(const string &wake_on_wifi_enabled) {
-  return (wake_on_wifi_enabled == kWakeOnWiFiEnabledPacket ||
-          wake_on_wifi_enabled == kWakeOnWiFiEnabledPacketSSID);
+bool WakeOnWiFi::WakeOnPacketEnabled() {
+  return (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledPacket ||
+          wake_on_wifi_features_enabled_ ==
+              kWakeOnWiFiFeaturesEnabledPacketSSID);
 }
 
-bool WakeOnWiFi::WakeOnSSIDEnabled(const string &wake_on_wifi_enabled) {
-  return (wake_on_wifi_enabled == kWakeOnWiFiEnabledSSID ||
-          wake_on_wifi_enabled == kWakeOnWiFiEnabledPacketSSID);
+bool WakeOnWiFi::WakeOnSSIDEnabled() {
+  return (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledSSID ||
+          wake_on_wifi_features_enabled_ ==
+              kWakeOnWiFiFeaturesEnabledPacketSSID);
 }
 
-bool WakeOnWiFi::WakeOnWiFiFeaturesDisabled(
-    const string &wake_on_wifi_enabled) {
-  return wake_on_wifi_enabled == kWakeOnWiFiEnabledNone;
+bool WakeOnWiFi::WakeOnWiFiFeaturesDisabled() {
+  return wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledNone;
 }
 
 void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
@@ -772,19 +810,20 @@ void WakeOnWiFi::OnBeforeSuspend(const ResultCallback &callback) {
   callback.Run(Error(Error::kSuccess));
 #else
   if (wake_on_wifi_triggers_supported_.empty() ||
-      WakeOnWiFiFeaturesDisabled(manager_->WakeOnWiFiEnabled())) {
+      WakeOnWiFiFeaturesDisabled()) {
     callback.Run(Error(Error::kSuccess));
     return;
   }
 
-  if (manager_->WakeOnWiFiEnabled() == kWakeOnWiFiEnabledPacket) {
+  if (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledPacket) {
     wake_on_wifi_triggers_.insert(WakeOnWiFi::kIPAddress);
-  } else if (manager_->WakeOnWiFiEnabled() == kWakeOnWiFiEnabledSSID) {
+  } else if (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledSSID) {
     wake_on_wifi_triggers_.insert(WakeOnWiFi::kDisconnect);
     // TODO(samueltan): insert wake on SSID relevant triggers here once
     // they become available.
   } else {
-    DCHECK(manager_->WakeOnWiFiEnabled() == kWakeOnWiFiEnabledPacketSSID);
+    DCHECK(wake_on_wifi_features_enabled_ ==
+           kWakeOnWiFiFeaturesEnabledPacketSSID);
     wake_on_wifi_triggers_.insert(WakeOnWiFi::kDisconnect);
     wake_on_wifi_triggers_.insert(WakeOnWiFi::kIPAddress);
     // TODO(samueltan): insert wake on SSID relevant triggers here once
@@ -814,7 +853,8 @@ void WakeOnWiFi::OnBeforeSuspend(const ResultCallback &callback) {
 void WakeOnWiFi::OnAfterResume() {
 #if !defined(DISABLE_WAKE_ON_WIFI)
   // Unconditionally disable wake on WiFi on resume.
-  if (!wake_on_wifi_triggers_supported_.empty()) {
+  if (!wake_on_wifi_triggers_supported_.empty() &&
+      !WakeOnWiFiFeaturesDisabled()) {
     wake_on_wifi_triggers_.clear();
     ApplyWakeOnWiFiSettings();
   }

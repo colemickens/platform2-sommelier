@@ -175,6 +175,7 @@ Device::Device(ControlInterface *control_interface,
   // kRoamThresholdProperty: Registered in WiFi
   // kScanningProperty: Registered in WiFi, Cellular
   // kScanIntervalProperty: Registered in WiFi, Cellular
+  // kWakeOnWiFiFeaturesEnabledProperty: Registered in WiFi
 
   if (manager_ && manager_->device_info()) {  // Unit tests may not have these.
     manager_->device_info()->GetByteCounts(

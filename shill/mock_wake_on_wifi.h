@@ -6,7 +6,6 @@
 #define SHILL_MOCK_WAKE_ON_WIFI_H_
 
 #include <string>
-#include <vector>
 
 #include <gmock/gmock.h>
 

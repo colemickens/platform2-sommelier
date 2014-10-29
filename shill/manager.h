@@ -262,11 +262,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Return whether the Wake on LAN feature is enabled.
   virtual bool IsWakeOnLanEnabled() const { return is_wake_on_lan_enabled_; }
 
-  // Return the wake on WiFi features that are currently enabled.
-  std::string WakeOnWiFiEnabled() const {
-    return wake_on_wifi_enabled_;
-  }
-
   // Return whether a technology is disabled for auto-connect.
   virtual bool IsTechnologyAutoConnectDisabled(
       Technology::Identifier technology) const;
@@ -430,7 +425,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   friend class ModemManagerTest;
   friend class ServiceTest;
   friend class VPNServiceTest;
-  friend class WakeOnWiFiTest;
   friend class WiFiObjectTest;
   friend class WiMaxProviderTest;
 
@@ -503,8 +497,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void EmitDeviceProperties();
   bool SetDisableWiFiVHT(const bool &disable_wifi_vht, Error *error);
   bool GetDisableWiFiVHT(Error *error);
-  std::string GetWakeOnWiFiEnabled(Error *error);
-  bool SetWakeOnWiFiEnabled(const std::string &enabled, Error *error);
 
   // Unload a service while iterating through |services_|.  Returns true if
   // service was erased (which means the caller loop should not increment
@@ -678,9 +670,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Whether Wake on LAN should be enabled for all Ethernet devices.
   bool is_wake_on_lan_enabled_;
-
-  // Describes the wake on WiFi features that are currently enabled.
-  std::string wake_on_wifi_enabled_;
 
   // Maps tags to callbacks for monitoring default service changes.
   std::map<int, ServiceCallback> default_service_callbacks_;

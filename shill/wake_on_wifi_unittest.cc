@@ -496,32 +496,28 @@ class WakeOnWiFiTest : public ::testing::Test {
     wake_on_wifi_->wake_on_wifi_triggers_supported_.insert(
         WakeOnWiFi::kDisconnect);
 
-// Enable default wake On WiFi features (mirrors what is done in
-// WakeOnWiFi::WakeOnWiFi).
-#if defined(DISABLE_WAKE_ON_WIFI)
-    DisableWakeOnWiFiFeatures();
-#else
-    EnableWakeOnSSID();
-#endif  // DISABLE_WAKE_ON_WIFI
-
     ON_CALL(netlink_manager_, SendNl80211Message(_, _, _, _))
         .WillByDefault(Return(true));
   }
 
-  void EnableWakeOnPacket() {
-    manager_.wake_on_wifi_enabled_ = kWakeOnWiFiEnabledPacket;
+  void EnableWakeOnWiFiFeaturesPacket() {
+    wake_on_wifi_->wake_on_wifi_features_enabled_ =
+        kWakeOnWiFiFeaturesEnabledPacket;
   }
 
-  void EnableWakeOnSSID() {
-    manager_.wake_on_wifi_enabled_ = kWakeOnWiFiEnabledSSID;
+  void EnableWakeOnWiFiFeaturesSSID() {
+    wake_on_wifi_->wake_on_wifi_features_enabled_ =
+        kWakeOnWiFiFeaturesEnabledSSID;
   }
 
-  void EnableWakeOnPacketAndSSID() {
-    manager_.wake_on_wifi_enabled_ = kWakeOnWiFiEnabledPacketSSID;
+  void EnableWakeOnWiFiFeaturesPacketSSID() {
+    wake_on_wifi_->wake_on_wifi_features_enabled_ =
+        kWakeOnWiFiFeaturesEnabledPacketSSID;
   }
 
   void DisableWakeOnWiFiFeatures() {
-    manager_.wake_on_wifi_enabled_ = kWakeOnWiFiEnabledNone;
+    wake_on_wifi_->wake_on_wifi_features_enabled_ =
+        kWakeOnWiFiFeaturesEnabledNone;
   }
 
   void AddWakeOnPacketConnection(const IPAddress &ip_endpoint, Error *error) {
@@ -1045,8 +1041,6 @@ TEST_F(WakeOnWiFiTest, RetrySetWakeOnPacketConnections_LessThanMaxRetries) {
   ScopedMockLog log;
   // Max retries not reached yet, so send Nl80211 message to program NIC again.
   SetNumSetWakeOnPacketRetries(WakeOnWiFi::kMaxSetWakeOnPacketRetries - 1);
-  // Enable Wake on WiFi so we can call WakeOnWiFi::ApplyWiFiSettings.
-  EnableWakeOnPacketAndSSID();
   EXPECT_CALL(
       netlink_manager_,
       SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
@@ -1190,23 +1184,10 @@ TEST_F(WakeOnWiFiTest, ParseWakeOnWiFiCapabilities_DisconnectNotSupported) {
       GetWakeOnWiFiTriggersSupported()->end());
 }
 
-TEST_F(WakeOnWiFiTest, ApplyWakeOnWiFiSettings_WakeOnWiFiDisabled) {
-  ScopedMockLog log;
-  // ApplyWakeOnWiFiSettings should return immediately if Wake on WiFi features
-  // have been disabled.
-  DisableWakeOnWiFiFeatures();
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(0);
-  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log, Log(_, _, EndsWith("Wake on WiFi features disabled")));
-  ApplyWakeOnWiFiSettings();
-}
-
 TEST_F(WakeOnWiFiTest, ApplyWakeOnWiFiSettings_WiphyIndexNotReceived) {
   ScopedMockLog log;
   // ApplyWakeOnWiFiSettings should return immediately if the wifi interface
   // index has not been received when the function is called.
-  EnableWakeOnPacketAndSSID();
   SetWiphyIndexReceivedToFalse();
   EXPECT_CALL(netlink_manager_,
               SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(0);
@@ -1216,7 +1197,6 @@ TEST_F(WakeOnWiFiTest, ApplyWakeOnWiFiSettings_WiphyIndexNotReceived) {
 }
 
 TEST_F(WakeOnWiFiTest, ApplyWakeOnWiFiSettings_WiphyIndexReceived) {
-  EnableWakeOnPacketAndSSID();
   // Disable wake on WiFi if there are no wake on WiFi triggers registered.
   EXPECT_CALL(
       netlink_manager_,
@@ -1255,7 +1235,7 @@ TEST_F(WakeOnWiFiTest, AddRemoveWakeOnPacketConnection) {
 
   // Add and remove operations will fail if WiFi device does not support
   // pattern matching functionality, even if the feature is enabled.
-  EnableWakeOnPacket();
+  EnableWakeOnWiFiFeaturesPacket();
   ClearWakeOnWiFiTriggersSupported();
   AddWakeOnPacketConnection(ip_addr1, &e);
   EXPECT_EQ(e.type(), Error::kNotSupported);
@@ -1289,7 +1269,7 @@ TEST_F(WakeOnWiFiTest, AddRemoveWakeOnPacketConnection) {
 
   // Add operation will fail if pattern matching is supported but the max number
   // of IP address patterns have already been registered.
-  EnableWakeOnPacketAndSSID();
+  EnableWakeOnWiFiFeaturesPacketSSID();
   GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kIPAddress);
   SetWakeOnWiFiMaxPatterns(0);
   AddWakeOnPacketConnection(ip_addr1, &e);
@@ -1353,7 +1333,7 @@ TEST_F(WakeOnWiFiTest, AddRemoveWakeOnPacketConnection) {
 TEST_F(WakeOnWiFiTest, OnBeforeSuspend_NoConnections_PacketAndSSIDEnabled) {
   // When |wake_on_packet_connections_| is empty and both wake on packet and
   // SSID are enabled, program NIC.
-  EnableWakeOnPacketAndSSID();
+  EnableWakeOnWiFiFeaturesPacketSSID();
   EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
   EXPECT_CALL(*this, SuspendCallback(ErrorType(Error::kSuccess))).Times(0);
   EXPECT_CALL(
@@ -1369,7 +1349,7 @@ TEST_F(WakeOnWiFiTest, OnBeforeSuspend_NoConnections_PacketEnabled) {
   // When |wake_on_packet_connections_| is empty and only wake on packet is
   // enabled, do not program the NIC and immediately invoke the callback to
   // notify done.
-  EnableWakeOnPacket();
+  EnableWakeOnWiFiFeaturesPacket();
   EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
   EXPECT_CALL(*this, SuspendCallback(ErrorType(Error::kSuccess))).Times(1);
   EXPECT_CALL(
@@ -1384,7 +1364,7 @@ TEST_F(WakeOnWiFiTest, OnBeforeSuspend_NoConnections_PacketEnabled) {
 TEST_F(WakeOnWiFiTest, OnBeforeSuspend_NoConnections_SSIDEnabled) {
   // When |wake_on_packet_connections_| is empty and only wake on SSID is
   // enabled, program NIC.
-  EnableWakeOnSSID();
+  EnableWakeOnWiFiFeaturesSSID();
   EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
   EXPECT_CALL(*this, SuspendCallback(ErrorType(Error::kSuccess))).Times(0);
   EXPECT_CALL(
@@ -1399,7 +1379,7 @@ TEST_F(WakeOnWiFiTest, OnBeforeSuspend_NoConnections_SSIDEnabled) {
 TEST_F(WakeOnWiFiTest, OnBeforeSuspend_PacketAndSSIDEnabled) {
   // When wake_on_packet_connections_ is not empty and wake on WiFi features
   // are enabled, program NIC to wake on WiFi.
-  EnableWakeOnPacketAndSSID();
+  EnableWakeOnWiFiFeaturesPacketSSID();
   IPAddress ip_addr("1.1.1.1");
   GetWakeOnPacketConnections()->AddUnique(ip_addr);
   EXPECT_CALL(*this, SuspendCallback(_)).Times(0);
@@ -1436,6 +1416,7 @@ TEST_F(WakeOnWiFiTest, OnBeforeSuspend_WakeOnWiFiFeaturesDisabled) {
 TEST_F(WakeOnWiFiTest, OnBeforeSuspend_NoTriggersSupported) {
   // If the NIC does not support any wake on WiFi triggers, do not program
   // NIC and notify done.
+  EnableWakeOnWiFiFeaturesPacketSSID();
   GetWakeOnWiFiTriggersSupported()->clear();
   EXPECT_TRUE(GetWakeOnWiFiTriggersSupported()->empty());
   EXPECT_CALL(*this, SuspendCallback(ErrorType(Error::kSuccess))).Times(1);
@@ -1449,15 +1430,42 @@ TEST_F(WakeOnWiFiTest, OnBeforeSuspend_NoTriggersSupported) {
 }
 
 TEST_F(WakeOnWiFiTest, WakeOnWiFiDisabledAfterResume) {
+  // At least one wake on WiFi trigger supported and Wake on WiFi features
+  // are enabled, so disable Wake on WiFi on resume.
+  EnableWakeOnWiFiFeaturesPacketSSID();
+  GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kIPAddress);
+  EXPECT_FALSE(GetWakeOnWiFiTriggersSupported()->empty());
   EXPECT_CALL(netlink_manager_,
               SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(1);
   OnAfterResume();
   EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
+
+  // No wake no WiFi triggers supported, so do nothing.
+  ClearWakeOnWiFiTriggersSupported();
+  EXPECT_CALL(netlink_manager_,
+              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(0);
+  OnAfterResume();
+
+  // Wake on WiFi features disabled, so do nothing.
+  GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kIPAddress);
+  DisableWakeOnWiFiFeatures();
+  EXPECT_CALL(netlink_manager_,
+              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(0);
+  OnAfterResume();
+
+  // Both WakeOnWiFi triggers are empty and Wake on WiFi features are disabled,
+  // so do nothing.
+  ClearWakeOnWiFiTriggersSupported();
+  DisableWakeOnWiFiFeatures();
+  EXPECT_CALL(netlink_manager_,
+              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(0);
+  OnAfterResume();
 }
 
 #else
 
 TEST_F(WakeOnWiFiTest, AddWakeOnPacketConnection_ReturnsError) {
+  DisableWakeOnWiFiFeatures();
   Error e;
   AddWakeOnPacketConnection(IPAddress("1.1.1.1"), &e);
   EXPECT_EQ(e.type(), Error::kNotSupported);
@@ -1465,6 +1473,7 @@ TEST_F(WakeOnWiFiTest, AddWakeOnPacketConnection_ReturnsError) {
 }
 
 TEST_F(WakeOnWiFiTest, RemoveWakeOnPacketConnection_ReturnsError) {
+  DisableWakeOnWiFiFeatures();
   Error e;
   RemoveWakeOnPacketConnection(IPAddress("1.1.1.1"), &e);
   EXPECT_EQ(e.type(), Error::kNotSupported);
@@ -1472,6 +1481,7 @@ TEST_F(WakeOnWiFiTest, RemoveWakeOnPacketConnection_ReturnsError) {
 }
 
 TEST_F(WakeOnWiFiTest, RemoveAllWakeOnPacketConnections_ReturnsError) {
+  DisableWakeOnWiFiFeatures();
   Error e;
   RemoveAllWakeOnPacketConnections(&e);
   EXPECT_EQ(e.type(), Error::kNotSupported);
@@ -1479,11 +1489,23 @@ TEST_F(WakeOnWiFiTest, RemoveAllWakeOnPacketConnections_ReturnsError) {
 }
 
 TEST_F(WakeOnWiFiTest, CallbackRunOnBeforeSuspend) {
+  DisableWakeOnWiFiFeatures();
+  EXPECT_TRUE(SuspendActionsCallbackIsNull());
+  EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
   EXPECT_CALL(*this, SuspendCallback(_));
+  EXPECT_CALL(
+      netlink_manager_,
+      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
+                                          SetWakeOnPacketConnMessage::kCommand),
+                         _, _, _)).Times(0);
   OnBeforeSuspend();
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_TRUE(SuspendActionsCallbackIsNull());
+  EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
 }
 
 TEST_F(WakeOnWiFiTest, OnAfterResume_DoesNothing) {
+  DisableWakeOnWiFiFeatures();
   EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _, _)).Times(0);
   OnAfterResume();
 }
