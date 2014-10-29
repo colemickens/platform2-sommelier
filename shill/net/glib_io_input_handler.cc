@@ -16,8 +16,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
-#include "shill/error.h"
-
 using base::Callback;
 using base::StringPrintf;
 using std::string;
@@ -60,8 +58,7 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
         "Unexpected GLib return status: %d", status);
     LOG(ERROR) << condition;
     error_conditions.push_back(condition);
-    Error error(Error::kOperationFailed, JoinString(error_conditions, ';'));
-    handler->error_callback().Run(error);
+    handler->error_callback().Run(JoinString(error_conditions, ';'));
     return FALSE;
   }
 

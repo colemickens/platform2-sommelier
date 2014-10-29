@@ -445,7 +445,7 @@ class HTTPProxyTest : public Test {
     EXPECT_EQ(HTTPProxy::kStateTunnelData, GetProxyState());
   }
   void CauseReadError() {
-    proxy_.OnReadError(Error());
+    proxy_.OnReadError(string());
   }
 
  private:

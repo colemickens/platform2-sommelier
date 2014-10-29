@@ -107,6 +107,7 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
   // GLib on changes in file descriptor state.
   void HandleShimStdinReady(int fd);
   void HandleShimOutput(InputData *data);
+  void HandleShimReadError(const std::string &error_msg);
   void HandleShimError(const Error &error);
   void HandleShimTimeout();
   // Used to handle the final result of both operations.  |result| is a

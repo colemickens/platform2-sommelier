@@ -202,7 +202,7 @@ void HTTPRequest::OnConnectCompletion(bool success, int fd) {
   StartIdleTimeout(kInputTimeoutSeconds, kResultRequestTimeout);
 }
 
-void HTTPRequest::OnServerReadError(const Error &/*error*/) {
+void HTTPRequest::OnServerReadError(const string &/*error_msg*/) {
   SendStatus(kResultResponseFailure);
 }
 

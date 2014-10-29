@@ -186,7 +186,7 @@ bool CryptoUtilProxy::StartShimForCommand(
     shim_stdout_handler_.reset(dispatcher_->CreateInputHandler(
         shim_stdout_,
         Bind(&CryptoUtilProxy::HandleShimOutput, AsWeakPtr()),
-        Bind(&CryptoUtilProxy::HandleShimError, AsWeakPtr())));
+        Bind(&CryptoUtilProxy::HandleShimReadError, AsWeakPtr())));
     shim_stdin_handler_.reset(dispatcher_->CreateReadyHandler(
         shim_stdin_,
         IOHandler::kModeOutput,
@@ -295,6 +295,11 @@ void CryptoUtilProxy::HandleShimError(const Error &error) {
   // Abort abort abort.  There is very little we can do here.
   output_buffer_.clear();
   CleanupShim(error);
+}
+
+void CryptoUtilProxy::HandleShimReadError(const string &error_msg) {
+  Error e(Error::kOperationFailed, error_msg);
+  HandleShimError(e);
 }
 
 void CryptoUtilProxy::HandleShimTimeout() {

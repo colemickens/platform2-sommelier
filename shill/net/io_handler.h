@@ -5,11 +5,11 @@
 #ifndef SHILL_NET_IO_HANDLER_H_
 #define SHILL_NET_IO_HANDLER_H_
 
+#include <string>
+
 #include <base/callback.h>
 
 namespace shill {
-
-class Error;
 
 struct InputData {
   InputData() : buf(nullptr), len(0) {}
@@ -26,7 +26,7 @@ class IOHandler {
     kModeOutput
   };
 
-  typedef base::Callback<void(const Error &)> ErrorCallback;
+  typedef base::Callback<void(const std::string &)> ErrorCallback;
   typedef base::Callback<void(InputData *)> InputCallback;
   typedef base::Callback<void(int)> ReadyCallback;
 

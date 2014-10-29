@@ -227,7 +227,7 @@ void HTTPProxy::OnConnectCompletion(bool success, int fd) {
   StartTransmit();
 }
 
-void HTTPProxy::OnReadError(const Error &error) {
+void HTTPProxy::OnReadError(const string &error_msg) {
   StopClient();
 }
 

@@ -19,7 +19,6 @@
 #include <base/bind.h>
 #include <base/logging.h>
 
-#include "shill/error.h"
 #include "shill/net/io_handler.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/ndisc.h"
@@ -412,9 +411,9 @@ bool RTNLHandler::SendMessage(RTNLMessage *message) {
   return true;
 }
 
-void RTNLHandler::OnReadError(const Error &error) {
+void RTNLHandler::OnReadError(const string &error_msg) {
   LOG(FATAL) << "RTNL Socket read returns error: "
-             << error.message();
+             << error_msg;
 }
 
 }  // namespace shill

@@ -77,7 +77,6 @@ struct nlmsghdr;
 namespace shill {
 
 class ControlNetlinkMessage;
-class Error;
 class EventDispatcher;
 struct InputData;
 class Nl80211Message;
@@ -311,7 +310,7 @@ class NetlinkManager {
   void OnNlMessageReceived(nlmsghdr *msg);
 
   // Called by InputHandler on exceptional events.
-  void OnReadError(const Error &error);
+  void OnReadError(const std::string &error_msg);
 
   // Just for tests, this method turns off WiFi and clears the subscribed
   // events list. If |full| is true, also clears state set by Init.

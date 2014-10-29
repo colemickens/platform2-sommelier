@@ -15,7 +15,6 @@
 #include <base/stl_util.h>
 
 #include "shill/attribute_list.h"
-#include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/generic_netlink_message.h"
 #include "shill/logging.h"
@@ -640,12 +639,12 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
   }
 }
 
-void NetlinkManager::OnReadError(const Error &error) {
+void NetlinkManager::OnReadError(const string &error_msg) {
   // TODO(wdg): When netlink_manager is used for scan, et al., this should
   // either be LOG(FATAL) or the code should properly deal with errors,
   // e.g., dropped messages due to the socket buffer being full.
   LOG(ERROR) << "NetlinkManager's netlink Socket read returns error: "
-             << error.message();
+             << error_msg;
 }
 
 

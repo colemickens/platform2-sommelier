@@ -10,8 +10,6 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
-#include "shill/error.h"
-
 namespace shill {
 
 IOInputHandler::IOInputHandler(int fd,
@@ -46,8 +44,7 @@ void IOInputHandler::OnFileCanReadWithoutBlocking(int fd) {
     std::string condition = base::StringPrintf(
         "File read error: %d", errno);
     LOG(ERROR) << condition;
-    Error error(Error::kOperationFailed, condition);
-    error_callback_.Run(error);
+    error_callback_.Run(condition);
   }
 
   InputData input_data(buf, len);

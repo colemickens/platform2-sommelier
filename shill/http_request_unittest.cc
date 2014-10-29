@@ -316,7 +316,7 @@ class HTTPRequestTest : public Test {
     request_->TimeoutTask();
   }
   void CallServerErrorCallback() {
-    request_->OnServerReadError(Error());
+    request_->OnServerReadError(string());
   }
 
  private:

@@ -136,7 +136,6 @@
       'type': 'shared_library',
       'variables': {
         'exported_deps': [
-          'dbus-c++-1',
           'glib-2.0',
         ],
         'deps': ['<@(exported_deps)'],
@@ -145,7 +144,6 @@
         '-fvisibility=default',
       ],
       'sources': [
-        'error.cc',
         'net/byte_string.cc',
         'net/glib_io_input_handler.cc',
         'net/glib_io_ready_handler.cc',
@@ -337,6 +335,7 @@
         'eap_listener.cc',
         'endpoint.cc',
         'ephemeral_profile.cc',
+        'error.cc',
         'ethernet.cc',
         'ethernet_eap_provider.cc',
         'ethernet_eap_service.cc',

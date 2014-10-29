@@ -175,8 +175,8 @@ void OpenVPNManagementServer::OnInput(InputData *data) {
   }
 }
 
-void OpenVPNManagementServer::OnInputError(const Error &error) {
-  LOG(ERROR) << error;
+void OpenVPNManagementServer::OnInputError(const std::string &error_msg) {
+  LOG(ERROR) << error_msg;
   driver_->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
 }
 

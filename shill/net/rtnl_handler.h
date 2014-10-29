@@ -22,7 +22,6 @@ struct nlmsghdr;
 
 namespace shill {
 
-class Error;
 class Sockets;
 
 // This singleton class is responsible for interacting with the RTNL subsystem.
@@ -132,7 +131,7 @@ class RTNLHandler {
                       const IPAddress &peer);
 
   // Called by the RTNL read handler on exceptional events.
-  void OnReadError(const Error &error);
+  void OnReadError(const std::string &error_msg);
 
   Sockets *sockets_;
   bool in_request_;

@@ -87,7 +87,7 @@ class OpenVPNManagementServer {
   // IO handler callbacks.
   void OnReady(int fd);
   void OnInput(InputData *data);
-  void OnInputError(const Error &error);
+  void OnInputError(const std::string &error_msg);
 
   void Send(const std::string &data);
   void SendState(const std::string &state);
