@@ -16,7 +16,9 @@ namespace buffet {
 class MockStateChangeQueueInterface : public StateChangeQueueInterface {
  public:
   MOCK_CONST_METHOD0(IsEmpty, bool());
-  MOCK_METHOD1(NotifyPropertiesUpdated, bool(const StateChange&));
+  MOCK_METHOD2(NotifyPropertiesUpdated,
+               bool(base::Time timestamp,
+                    chromeos::VariantDictionary changed_properties));
   MOCK_METHOD0(GetAndClearRecordedStateChanges, std::vector<StateChange>());
 };
 

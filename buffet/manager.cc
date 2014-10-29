@@ -126,7 +126,10 @@ std::string Manager::HandleRegisterDevice(
 void Manager::HandleUpdateState(
     chromeos::ErrorPtr* error,
     const chromeos::VariantDictionary& property_set) {
-  state_manager_->UpdateProperties(property_set, error);
+  base::Time timestamp = base::Time::Now();
+  for (const auto& pair : property_set) {
+    state_manager_->SetPropertyValue(pair.first, pair.second, timestamp, error);
+  }
 }
 
 void Manager::HandleAddCommand(

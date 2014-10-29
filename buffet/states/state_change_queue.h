@@ -5,6 +5,7 @@
 #ifndef BUFFET_STATES_STATE_CHANGE_QUEUE_H_
 #define BUFFET_STATES_STATE_CHANGE_QUEUE_H_
 
+#include <map>
 #include <vector>
 
 #include <base/macros.h>
@@ -21,7 +22,9 @@ class StateChangeQueue : public StateChangeQueueInterface {
 
   // Overrides from StateChangeQueueInterface.
   bool IsEmpty() const override { return state_changes_.empty(); }
-  bool NotifyPropertiesUpdated(const StateChange& change) override;
+  bool NotifyPropertiesUpdated(
+      base::Time timestamp,
+      chromeos::VariantDictionary changed_properties) override;
   std::vector<StateChange> GetAndClearRecordedStateChanges() override;
 
  private:
@@ -32,10 +35,10 @@ class StateChangeQueue : public StateChangeQueueInterface {
 
   // Maximum queue size. If it is full, the oldest state update records are
   // merged together until the queue size is within the size limit.
-  size_t max_queue_size_;
+  const size_t max_queue_size_;
 
   // Accumulated list of device state change notifications.
-  std::vector<StateChange> state_changes_;
+  std::map<base::Time, chromeos::VariantDictionary> state_changes_;
 
   DISALLOW_COPY_AND_ASSIGN(StateChangeQueue);
 };

@@ -79,9 +79,10 @@ std::unique_ptr<base::DictionaryValue> StateManager::GetStateValuesAsJson(
   return dict;
 }
 
-bool StateManager::UpdatePropertyValue(const std::string& full_property_name,
-                                       const chromeos::Any& value,
-                                       chromeos::ErrorPtr* error) {
+bool StateManager::SetPropertyValue(const std::string& full_property_name,
+                                    const chromeos::Any& value,
+                                    const base::Time& timestamp,
+                                    chromeos::ErrorPtr* error) {
   std::string package_name;
   std::string property_name;
   bool split = chromeos::string_utils::SplitAtFirst(
@@ -106,34 +107,11 @@ bool StateManager::UpdatePropertyValue(const std::string& full_property_name,
                             package_name.c_str());
     return false;
   }
-  return package->SetPropertyValue(property_name, value, error);
-}
-
-bool StateManager::SetPropertyValue(const std::string& full_property_name,
-                                    const chromeos::Any& value,
-                                    chromeos::ErrorPtr* error) {
-  if (!UpdatePropertyValue(full_property_name, value, error))
+  if (!package->SetPropertyValue(property_name, value, error))
     return false;
 
-  StateChange change;
-  change.timestamp = base::Time::Now();
-  change.property_set.emplace(full_property_name, value);
-  state_change_queue_->NotifyPropertiesUpdated(change);
-  return true;
-}
-
-bool StateManager::UpdateProperties(
-    const chromeos::VariantDictionary& property_set,
-    chromeos::ErrorPtr* error) {
-  for (const auto& pair : property_set) {
-    if (!UpdatePropertyValue(pair.first, pair.second, error))
-      return false;
-  }
-
-  StateChange change;
-  change.timestamp = base::Time::Now();
-  change.property_set = property_set;
-  state_change_queue_->NotifyPropertiesUpdated(change);
+  chromeos::VariantDictionary prop_set{{full_property_name, value}};
+  state_change_queue_->NotifyPropertiesUpdated(timestamp, prop_set);
   return true;
 }
 

@@ -13,9 +13,21 @@ StateChangeQueue::StateChangeQueue(size_t max_queue_size)
   CHECK_GT(max_queue_size_, 0) << "Max queue size must not be zero";
 }
 
-bool StateChangeQueue::NotifyPropertiesUpdated(const StateChange& change) {
+bool StateChangeQueue::NotifyPropertiesUpdated(
+    base::Time timestamp,
+    chromeos::VariantDictionary changed_properties) {
   DCHECK(thread_checker_.CalledOnValidThread());
-  state_changes_.push_back(change);
+  auto it = state_changes_.lower_bound(timestamp);
+  if (it == state_changes_.end() || it->first != timestamp) {
+    // This timestamp doesn't exist. Insert a new element.
+    state_changes_.emplace_hint(it, timestamp, std::move(changed_properties));
+  } else {
+    // Merge the old property set and the new one.
+    // For properties that exist in both old and new property sets, keep the
+    // new values.
+    changed_properties.insert(it->second.begin(), it->second.end());
+    it->second = std::move(changed_properties);
+  }
   while (state_changes_.size() > max_queue_size_) {
     // Queue is full.
     // Merge the two oldest records into one. The merge strategy is:
@@ -26,8 +38,8 @@ bool StateChangeQueue::NotifyPropertiesUpdated(const StateChange& change) {
     auto element_old = state_changes_.begin();
     auto element_new = std::next(element_old);
     // This will skip elements that exist in both [old] and [new].
-    element_new->property_set.insert(element_old->property_set.begin(),
-                                     element_old->property_set.end());
+    element_new->second.insert(element_old->second.begin(),
+                               element_old->second.end());
     state_changes_.erase(element_old);
   }
   return true;
@@ -35,8 +47,13 @@ bool StateChangeQueue::NotifyPropertiesUpdated(const StateChange& change) {
 
 std::vector<StateChange> StateChangeQueue::GetAndClearRecordedStateChanges() {
   DCHECK(thread_checker_.CalledOnValidThread());
-  // Return the accumulated state changes and clear the current queue.
-  return std::move(state_changes_);
+  std::vector<StateChange> changes;
+  changes.reserve(state_changes_.size());
+  for (const auto& pair : state_changes_) {
+    changes.emplace_back(pair.first, std::move(pair.second));
+  }
+  state_changes_.clear();
+  return changes;
 }
 
 }  // namespace buffet

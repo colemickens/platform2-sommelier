@@ -21,6 +21,7 @@
 namespace base {
 class DictionaryValue;
 class FilePath;
+class Time;
 }  // namespace base
 
 namespace buffet {
@@ -45,11 +46,7 @@ class StateManager final {
   // name of the property to update in format "package.property".
   bool SetPropertyValue(const std::string& full_property_name,
                         const chromeos::Any& value,
-                        chromeos::ErrorPtr* error);
-
-  // Updates a number of state properties in one shot.
-  // |property_set| is a (full_property_name)-to-(property_value) map.
-  bool UpdateProperties(const chromeos::VariantDictionary& property_set,
+                        const base::Time& timestamp,
                         chromeos::ErrorPtr* error);
 
   // Returns all the categories the state properties are registered from.
@@ -64,11 +61,6 @@ class StateManager final {
   std::vector<StateChange> GetAndClearRecordedStateChanges();
 
  private:
-  // Helper method to be used with SetPropertyValue() and UpdateProperties()
-  bool UpdatePropertyValue(const std::string& full_property_name,
-                           const chromeos::Any& value,
-                           chromeos::ErrorPtr* error);
-
   // Loads a device state fragment from a JSON object. |category| represents
   // a device daemon providing the state fragment or empty string for the
   // base state fragment.
