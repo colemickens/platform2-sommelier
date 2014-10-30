@@ -2,14 +2,19 @@
 
 <node xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.EasyUnlock">
+    <method name="GenerateEcP256KeyPair">
+      <arg name="public_key" type="ay" direction="out"></arg>
+      <arg name="private_key" type="ay" direction="out"></arg>
+    </method>
+    <method name="WrapPublicKey">
+      <arg name="key_algorithm" type="s" direction="in"></arg>
+      <arg name="public_key" type="ay" direction="in"></arg>
+      <arg name="wrapped_public_key" type="ay" direction="out"></arg>
+    </method>
     <method name="PerformECDHKeyAgreement">
       <arg name="private_key" type="ay" direction="in"></arg>
       <arg name="public_key" type="ay" direction="in"></arg>
       <arg name="secret_key" type="ay" direction="out"></arg>
-    </method>
-    <method name="GenerateEcP256KeyPair">
-      <arg name="public_key" type="ay" direction="out"></arg>
-      <arg name="private_key" type="ay" direction="out"></arg>
     </method>
     <method name="CreateSecureMessage">
       <arg name="header_and_body_proto" type="ay" direction="in"></arg>

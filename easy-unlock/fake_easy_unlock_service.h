@@ -20,6 +20,9 @@ class FakeService : public Service {
   // easy_unlock::Service overrides:
   void GenerateEcP256KeyPair(std::vector<uint8_t>* private_key,
                              std::vector<uint8_t>* public_key) override;
+  std::vector<uint8_t> WrapPublicKey(
+      easy_unlock_crypto::ServiceImpl::KeyAlgorithm algorithm,
+      const std::vector<uint8_t>& public_key) override;
   std::vector<uint8_t> PerformECDHKeyAgreement(
       const std::vector<uint8_t>& private_key,
       const std::vector<uint8_t>& public_key) override;

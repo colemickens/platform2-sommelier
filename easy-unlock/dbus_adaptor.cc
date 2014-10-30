@@ -46,7 +46,7 @@ bool ReadArrayOfBytes(dbus::MessageReader* reader,
 }
 
 // Reads encryption type string passed in DBus method call and converts it to
-// ServiceImplementation::EncryptionType enum. Returns whether the parameter
+// ServiceImpl::EncryptionType enum. Returns whether the parameter
 // was successfully read and converted.
 bool ReadAndConvertEncryptionType(
     dbus::MessageReader* reader,
@@ -69,7 +69,7 @@ bool ReadAndConvertEncryptionType(
 }
 
 // Reads signature type string passed in DBus method call and converts it to
-// ServiceImplementation::SignatureType enum. Returns whether the parameter
+// ServiceImpl::SignatureType enum. Returns whether the parameter
 // was successfully read and converted.
 bool ReadAndConvertSignatureType(
     dbus::MessageReader* reader,
@@ -85,6 +85,29 @@ bool ReadAndConvertSignatureType(
 
   if (signature_type_str == kSignatureTypeHMACSHA256) {
     *type = easy_unlock_crypto::ServiceImpl::SIGNATURE_TYPE_HMAC_SHA256;
+    return true;
+  }
+
+  return false;
+}
+
+// Reads public key algorithm string passed to DBus method call and converts
+// it to ServiceImpl::KeyAlgorithm enum. Returns whether the parameter
+// was successfully read and converted.
+bool ReadAndConvertKeyAlgorithm(
+    dbus::MessageReader* reader,
+    easy_unlock_crypto::ServiceImpl::KeyAlgorithm* algorithm) {
+  std::string key_algorithm_str;
+  if (!reader->PopString(&key_algorithm_str))
+    return false;
+
+  if (key_algorithm_str == kKeyAlgorithmRSA) {
+    *algorithm = easy_unlock_crypto::ServiceImpl::KEY_ALGORITHM_RSA;
+    return true;
+  }
+
+  if (key_algorithm_str == kKeyAlgorithmECDSA) {
+    *algorithm = easy_unlock_crypto::ServiceImpl::KEY_ALGORITHM_ECDSA;
     return true;
   }
 
@@ -115,6 +138,8 @@ DBusAdaptor::~DBusAdaptor() {}
 void DBusAdaptor::ExportDBusMethods(dbus::ExportedObject* object) {
   ExportSyncDBusMethod(object, kGenerateEcP256KeyPairMethod,
                        &DBusAdaptor::GenerateEcP256KeyPair);
+  ExportSyncDBusMethod(object, kWrapPublicKeyMethod,
+                       &DBusAdaptor::WrapPublicKey);
   ExportSyncDBusMethod(object, kPerformECDHKeyAgreementMethod,
                        &DBusAdaptor::PerformECDHKeyAgreement);
   ExportSyncDBusMethod(object, kCreateSecureMessageMethod,
@@ -156,6 +181,26 @@ scoped_ptr<dbus::Response> DBusAdaptor::GenerateEcP256KeyPair(
   dbus::MessageWriter writer(response.get());
   writer.AppendArrayOfBytes(private_key.data(), private_key.size());
   writer.AppendArrayOfBytes(public_key.data(), public_key.size());
+  return response.Pass();
+}
+
+scoped_ptr<dbus::Response> DBusAdaptor::WrapPublicKey(
+    dbus::MethodCall* method_call) {
+  dbus::MessageReader reader(method_call);
+
+  easy_unlock_crypto::ServiceImpl::KeyAlgorithm algorithm;
+  std::vector<uint8_t> public_key;
+
+  std::vector<uint8_t> wrapped_key;
+  if (ReadAndConvertKeyAlgorithm(&reader, &algorithm) &&
+      ReadArrayOfBytes(&reader, &public_key)) {
+    wrapped_key = service_impl_->WrapPublicKey(algorithm, public_key);
+  }
+
+  scoped_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(method_call);
+  dbus::MessageWriter writer(response.get());
+  writer.AppendArrayOfBytes(wrapped_key.data(), wrapped_key.size());
   return response.Pass();
 }
 

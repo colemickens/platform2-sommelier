@@ -21,6 +21,12 @@ class ServiceImpl : public easy_unlock::Service {
     crypto_service_->GenerateEcP256KeyPair(private_key, public_key);
   }
 
+  std::vector<uint8_t> WrapPublicKey(
+      easy_unlock_crypto::ServiceImpl::KeyAlgorithm algorithm,
+      const std::vector<uint8_t>& public_key) override {
+    return crypto_service_->WrapPublicKey(algorithm, public_key);
+  }
+
   std::vector<uint8_t> PerformECDHKeyAgreement(
       const std::vector<uint8_t>& private_key,
       const std::vector<uint8_t>& public_key) override {

@@ -44,6 +44,13 @@ class MethodCallHandlers {
     return true;
   }
 
+  bool SetWrapPublicKeyHandler(const std::string& interface,
+                               const std::string& method,
+                               Handler handler) {
+    wrap_public_key_handler_ = handler;
+    return true;
+  }
+
   bool SetPerformECDHKeyAgreementHandler(const std::string& interface,
                                          const std::string& method,
                                          Handler handler) {
@@ -72,6 +79,13 @@ class MethodCallHandlers {
     generate_ec_p256_key_pair_handler_.Run(method_call, sender);
   }
 
+  void CallWrapPublicKey(
+      dbus::MethodCall* method_call,
+      const dbus::ExportedObject::ResponseSender& sender) {
+    ASSERT_FALSE(wrap_public_key_handler_.is_null());
+    wrap_public_key_handler_.Run(method_call, sender);
+  }
+
   void CallPerformECDHKeyAgreement(
       dbus::MethodCall* method_call,
       const dbus::ExportedObject::ResponseSender& sender) {
@@ -95,6 +109,7 @@ class MethodCallHandlers {
 
  private:
   Handler generate_ec_p256_key_pair_handler_;
+  Handler wrap_public_key_handler_;
   Handler perform_ecdh_key_agreement_handler_;
   Handler create_secure_message_handler_;
   Handler unwrap_secure_message_handler_;
@@ -174,6 +189,14 @@ class EasyUnlockTest : public ::testing::Test {
     EXPECT_CALL(*exported_object_,
                 ExportMethodAndBlock(
                     easy_unlock::kEasyUnlockServiceInterface,
+                    easy_unlock::kWrapPublicKeyMethod,
+                    _))
+        .WillOnce(
+             Invoke(method_call_handlers_.get(),
+                    &MethodCallHandlers::SetWrapPublicKeyHandler));
+    EXPECT_CALL(*exported_object_,
+                ExportMethodAndBlock(
+                    easy_unlock::kEasyUnlockServiceInterface,
                     easy_unlock::kPerformECDHKeyAgreementMethod,
                     _))
         .WillOnce(
@@ -250,6 +273,27 @@ TEST_F(EasyUnlockTest, GenerateEcP256KeyPair) {
       &method_call,
       base::Bind(&EasyUnlockTest::VerifyGenerateEcP256KeyPairResponse,
                  base::Unretained(this)));
+}
+
+TEST_F(EasyUnlockTest, WrapPublicKeyRSA) {
+  dbus::MethodCall method_call(easy_unlock::kEasyUnlockServiceInterface,
+                               easy_unlock::kWrapPublicKeyMethod);
+  // Set serial to an arbitrary value.
+  method_call.SetSerial(231);
+
+  const std::string public_key = "key";
+
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(easy_unlock::kKeyAlgorithmRSA);
+  writer.AppendArrayOfBytes(
+      reinterpret_cast<const uint8_t*>(public_key.data()),
+      public_key.length());
+  method_call_handlers_->CallWrapPublicKey(
+      &method_call,
+      base::Bind(
+          &EasyUnlockTest::VerifyDataResponse,
+          base::Unretained(this),
+          "public_key_RSA_key"));
 }
 
 TEST_F(EasyUnlockTest, PerformECDHKeyAgreement) {

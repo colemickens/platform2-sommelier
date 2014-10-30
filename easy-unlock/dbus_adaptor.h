@@ -38,6 +38,7 @@ class DBusAdaptor {
   // See service_impl.h in easy-unlock-crypto repo for more info on specific
   // methods.
   scoped_ptr<dbus::Response> GenerateEcP256KeyPair(dbus::MethodCall* call);
+  scoped_ptr<dbus::Response> WrapPublicKey(dbus::MethodCall* call);
   scoped_ptr<dbus::Response> PerformECDHKeyAgreement(dbus::MethodCall* call);
   scoped_ptr<dbus::Response> CreateSecureMessage(dbus::MethodCall* call);
   scoped_ptr<dbus::Response> UnwrapSecureMessage(dbus::MethodCall* call);

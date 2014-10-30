@@ -64,6 +64,18 @@ std::string SignatureTypeAsString(
   }
 }
 
+std::string KeyAlgorithmAsString(
+    easy_unlock_crypto::ServiceImpl::KeyAlgorithm type) {
+  switch (type) {
+    case easy_unlock_crypto::ServiceImpl::KEY_ALGORITHM_ECDSA:
+      return "ECDSA";
+    case easy_unlock_crypto::ServiceImpl::KEY_ALGORITHM_RSA:
+      return "RSA";
+    default:
+      return "";
+  }
+}
+
 }  // namespace
 
 namespace easy_unlock {
@@ -80,6 +92,15 @@ void FakeService::GenerateEcP256KeyPair(std::vector<uint8_t>* private_key,
       base::StringPrintf("private_key_%d", ++private_key_count_));
   *public_key = StringAsUint8Vector(
       base::StringPrintf("public_key_%d", ++public_key_count_));
+}
+
+std::vector<uint8_t> FakeService::WrapPublicKey(
+    easy_unlock_crypto::ServiceImpl::KeyAlgorithm algorithm,
+    const std::vector<uint8_t>& public_key) {
+  return StringAsUint8Vector(base::StringPrintf(
+      "public_key_%s_%s",
+      KeyAlgorithmAsString(algorithm).c_str(),
+      Uint8VectorAsString(public_key).c_str()));
 }
 
 std::vector<uint8_t> FakeService::PerformECDHKeyAgreement(
