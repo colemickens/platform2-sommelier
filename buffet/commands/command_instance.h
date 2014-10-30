@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <chromeos/errors/error.h>
@@ -58,9 +59,11 @@ class CommandInstance final {
   // Sets the command ID (normally done by CommandQueue when the command
   // instance is added to it).
   void SetID(const std::string& id) { id_ = id; }
-  // Sets the command proxy for the dispatch technology used.
+  // Adds a proxy for this command.
   // The proxy object is not owned by this class.
-  void SetProxy(CommandProxyInterface* proxy) { proxy_ = proxy; }
+  void AddProxy(CommandProxyInterface* proxy) { proxies_.push_back(proxy); }
+  // Removes all the proxies for this command.
+  void ClearProxies() { proxies_.clear(); }
   // Sets the pointer to queue this command is part of.
   void SetCommandQueue(CommandQueue* queue) { queue_ = queue; }
 
@@ -111,10 +114,8 @@ class CommandInstance final {
   std::string status_ = kStatusQueued;
   // Current command execution progress.
   int progress_ = 0;
-  // Command proxy class for the current dispatch technology (e.g. D-Bus).
-  // This is a weak pointer. The proxy's lifetime is managed by the command
-  // dispatcher.
-  CommandProxyInterface* proxy_ = nullptr;
+  // Command proxies for the command.
+  std::vector<CommandProxyInterface*> proxies_;
   // Pointer to the command queue this command instance is added to.
   // The queue owns the command instance, so it outlives this object.
   CommandQueue* queue_ = nullptr;

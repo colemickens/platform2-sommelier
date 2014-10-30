@@ -24,7 +24,7 @@ DBusCommandDispacher::DBusCommandDispacher(
 void DBusCommandDispacher::OnCommandAdded(CommandInstance* command_instance) {
   auto proxy = CreateDBusCommandProxy(command_instance);
   proxy->RegisterAsync(AsyncEventSequencer::GetDefaultCompletionAction());
-  command_instance->SetProxy(proxy.get());
+  command_instance->AddProxy(proxy.get());
 
   auto pair = std::make_pair(command_instance, std::move(proxy));
   CHECK(command_map_.insert(std::move(pair)).second)
@@ -32,7 +32,7 @@ void DBusCommandDispacher::OnCommandAdded(CommandInstance* command_instance) {
 }
 
 void DBusCommandDispacher::OnCommandRemoved(CommandInstance* command_instance) {
-  command_instance->SetProxy(nullptr);
+  command_instance->ClearProxies();
   CHECK_GT(command_map_.erase(command_instance), 0u)
       << "The command instance is not in the dispatcher command map";
 }

@@ -92,14 +92,14 @@ class DBusCommandProxyTest : public ::testing::Test {
 
     command_proxy_.reset(new DBusCommandProxy(nullptr, bus_,
                                               command_instance_.get()));
-    command_instance_->SetProxy(command_proxy_.get());
+    command_instance_->AddProxy(command_proxy_.get());
     command_proxy_->RegisterAsync(
         AsyncEventSequencer::GetDefaultCompletionAction());
   }
 
   void TearDown() override {
     EXPECT_CALL(*mock_exported_object_command_, Unregister()).Times(1);
-    command_instance_->SetProxy(nullptr);
+    command_instance_->ClearProxies();
     command_proxy_.reset();
     command_instance_.reset();
     dict_.Clear();

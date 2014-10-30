@@ -137,8 +137,9 @@ bool CommandInstance::SetProgress(int progress) {
   if (progress != progress_) {
     progress_ = progress;
     SetStatus(kStatusInProgress);
-    if (proxy_)
-      proxy_->OnProgressChanged(progress_);
+    for (auto& proxy : proxies_) {
+      proxy->OnProgressChanged(progress_);
+    }
   }
   return true;
 }
@@ -165,8 +166,9 @@ void CommandInstance::Done() {
 void CommandInstance::SetStatus(const std::string& status) {
   if (status != status_) {
     status_ = status;
-    if (proxy_)
-      proxy_->OnStatusChanged(status_);
+    for (auto& proxy : proxies_) {
+      proxy->OnStatusChanged(status_);
+    }
   }
 }
 
