@@ -11,7 +11,7 @@
 
 namespace debugd {
 
-const char* kRoute = "/sbin/route";
+const char* kIpTool = "/bin/ip";
 
 std::vector<std::string> RouteTool::GetRoutes(
     const std::map<std::string, DBus::Variant>& options, DBus::Error* error) {
@@ -19,11 +19,11 @@ std::vector<std::string> RouteTool::GetRoutes(
   ProcessWithOutput p;
   if (!p.Init())
     return result;
-  p.AddArg(kRoute);
-  if (options.count("numeric") == 1)
-    p.AddArg("-n");
+  p.AddArg(kIpTool);
   if (options.count("v6") == 1)
-    p.AddStringOption("-A", "inet6");
+    p.AddArg("-6");
+  p.AddArg("r");  // route
+  p.AddArg("s");  // show
   if (p.Run())
     return result;
   p.GetOutputLines(&result);

@@ -131,7 +131,7 @@ HELP_ADVANCED='
   available on non-stable channels and non-enterprise enrolled devices. Please
   note that this will powerwash your device.
 
- route [-n] [-6]
+ route [-6]
   Display the routing tables.
 
  set_apn [-n <network-id>] [-u <username>] [-p <password>] <apn>
@@ -919,22 +919,17 @@ cmd_chaps_debug() (
 cmd_route() (
   local option="dict:string:variant:"
 
-  # NB: use printf to avoid echo interpreting -n
-  while [ "$(printf '%s' "$1" | cut -c1)" = "-" ]; do
-    if [ "$1" = "-n" ]; then
-      option="${option}numeric,boolean:true,"
-    elif [ "$1" = "-6" ]; then
-      option="${option}v6,boolean:true,"
-    else
+  while [ $# -gt 0 ]; do
+    case $1 in
+    -6) option="${option}v6,boolean:true," ;;
+    *)
       echo "Unknown option: $1"
       return 1
-    fi
-
+    esac
     shift
   done
-  option=$(echo "$option" | sed 's/,$//')
 
-  debugd GetRoutes "$option"
+  debugd GetRoutes "${option%,}"
 )
 
 cmd_tracepath() (
