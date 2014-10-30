@@ -47,8 +47,18 @@ BoolFlag::BoolFlag(const char* name,
 }
 
 bool BoolFlag::SetValue(const std::string& value) {
-  *value_ = true;
-  *no_value_ = false;
+  if (value.empty()) {
+    *value_ = true;
+  } else {
+    if (!value.compare("true"))
+      *value_ = true;
+    else if (!value.compare("false"))
+      *value_ = false;
+    else
+      return false;
+  }
+
+  *no_value_ = !*value_;
 
   return true;
 }

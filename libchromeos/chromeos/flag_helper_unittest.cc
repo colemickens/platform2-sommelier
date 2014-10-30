@@ -70,6 +70,8 @@ TEST_F(FlagHelperTest, Defaults) {
 TEST_F(FlagHelperTest, SetValueDoubleDash) {
   DEFINE_bool(bool1, false, "Test bool flag");
   DEFINE_bool(bool2, true, "Test bool flag");
+  DEFINE_bool(bool3, false, "Test bool flag");
+  DEFINE_bool(bool4, true, "Test bool flag");
   DEFINE_int32(int32_1, 1, "Test int32 flag");
   DEFINE_int32(int32_2, 1, "Test int32 flag");
   DEFINE_int32(int32_3, 1, "Test int32 flag");
@@ -84,9 +86,9 @@ TEST_F(FlagHelperTest, SetValueDoubleDash) {
   DEFINE_string(string_1, "default", "Test string flag");
   DEFINE_string(string_2, "default", "Test string flag");
 
-  const char* argv[] = {"test_program", "--bool1", "--nobool2",
-      "--int32_1=-2147483648", "--int32_2=0", "--int32_3=2147483647",
-      "--int64_1=-9223372036854775808", "--int64_2=0",
+  const char* argv[] = {"test_program", "--bool1", "--nobool2", "--bool3=true",
+      "--bool4=false", "--int32_1=-2147483648", "--int32_2=0",
+      "--int32_3=2147483647", "--int64_1=-9223372036854775808", "--int64_2=0",
       "--int64_3=9223372036854775807", "--uint64_1=0",
       "--uint64_2=18446744073709551615", "--double_1=-100.5",
       "--double_2=0", "--double_3=100.5", "--string_1=", "--string_2=value"};
@@ -98,6 +100,8 @@ TEST_F(FlagHelperTest, SetValueDoubleDash) {
 
   EXPECT_TRUE(FLAGS_bool1);
   EXPECT_FALSE(FLAGS_bool2);
+  EXPECT_TRUE(FLAGS_bool3);
+  EXPECT_FALSE(FLAGS_bool4);
   EXPECT_EQ(FLAGS_int32_1, INT32_MIN);
   EXPECT_EQ(FLAGS_int32_2, 0);
   EXPECT_EQ(FLAGS_int32_3, INT32_MAX);
@@ -246,6 +250,29 @@ TEST_F(FlagHelperTest, UnknownFlag) {
   ASSERT_EXIT(chromeos::FlagHelper::Init(arraysize(argv), argv, "TestIntExit"),
               ::testing::ExitedWithCode(EX_USAGE),
               "ERROR: unknown command line flag 'flag'");
+
+  stdout = orig;
+}
+
+// Test that when passing an incorrect/unparsable type to a command line flag,
+// the program exits with code EX_DATAERR and outputs a corresponding message.
+TEST_F(FlagHelperTest, BoolParseError) {
+  DEFINE_bool(bool_1, 0, "Test bool flag");
+
+  const char* argv[] = {"test_program", "--bool_1=value" };
+  CommandLine command_line(arraysize(argv), argv);
+
+  chromeos::FlagHelper::GetInstance()->set_command_line_for_testing(
+      &command_line);
+
+  FILE* orig = stdout;
+  stdout = stderr;
+
+  ASSERT_EXIT(chromeos::FlagHelper::Init(arraysize(argv),
+                                         argv,
+                                         "TestBoolParseError"),
+              ::testing::ExitedWithCode(EX_DATAERR),
+              "ERROR: illegal value 'value' specified for bool flag 'bool_1'");
 
   stdout = orig;
 }
