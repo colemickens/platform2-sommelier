@@ -65,7 +65,6 @@
         'powerd/system/internal_backlight.cc',
         'powerd/system/peripheral_battery_watcher.cc',
         'powerd/system/power_supply.cc',
-        'powerd/system/realtime_clock_alarm.cc',
         'powerd/system/rolling_average.cc',
         'powerd/system/tagged_device.cc',
         'powerd/system/udev.cc',
@@ -248,6 +247,12 @@
             'libutil',
             'libutil_test',
           ],
+          'variables': {
+            'deps': [
+              # For base::MockTimer.
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
           'sources': [
             'common/testrunner.cc',
             'powerd/system/acpi_wakeup_helper_unittest.cc',
@@ -260,7 +265,6 @@
             'powerd/system/internal_backlight_unittest.cc',
             'powerd/system/peripheral_battery_watcher_unittest.cc',
             'powerd/system/power_supply_unittest.cc',
-            'powerd/system/realtime_clock_alarm_unittest.cc',
             'powerd/system/rolling_average_unittest.cc',
             'powerd/system/tagged_device_unittest.cc',
           ],

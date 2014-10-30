@@ -13,6 +13,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <components/timers/alarm_timer.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -37,7 +38,8 @@ DarkResume::DarkResume()
     : power_supply_(NULL),
       prefs_(NULL),
       dark_resume_state_path_(kDarkResumeStatePath),
-      battery_shutdown_threshold_(0.0) {
+      battery_shutdown_threshold_(0.0),
+      next_action_(SUSPEND) {
 }
 
 DarkResume::~DarkResume() {
@@ -49,6 +51,12 @@ void DarkResume::Init(PowerSupplyInterface* power_supply,
                       PrefsInterface* prefs) {
   power_supply_ = power_supply;
   prefs_ = prefs;
+
+  scoped_ptr<timers::AlarmTimer> timer(
+      new timers::AlarmTimer(true /* retain_user_task */,
+                             false /* is_repeating */));
+  if (timer->can_wake_from_suspend())
+    timer_ = timer.Pass();
 
   bool disable = false;
   enabled_ = (!prefs_->GetBool(kDisableDarkResumePref, &disable) || !disable) &&
@@ -71,6 +79,34 @@ void DarkResume::PrepareForSuspendAttempt(Action* action,
     return;
   }
 
+  const double battery = power_supply_->GetPowerStatus().battery_percentage;
+  SuspendMap::iterator suspend_it = suspend_durations_.upper_bound(battery);
+  if (suspend_it != suspend_durations_.begin())
+    suspend_it--;
+  base::TimeDelta duration = suspend_it->second;
+
+  // If we have a timer available, then we can use this to
+  // asynchronously set the correct suspend action for next time
+  // (and our impending action has already been set the last time we
+  // suspended).
+  // If we do schedule the wakeup using the timer, we have to make sure
+  // that we don't set an RTC wake alarm via sysfs as well, so we
+  // set a zero time delta to tell the daemon not to worry about it.
+  if (timer_) {
+    timer_->Start(FROM_HERE,
+                  duration,
+                  base::Bind(&DarkResume::UpdateNextAction,
+                             base::Unretained(this)));
+    *suspend_duration = base::TimeDelta();
+  } else {
+    UpdateNextAction();
+    *suspend_duration = duration;
+  }
+
+  *action = next_action_;
+}
+
+void DarkResume::UpdateNextAction() {
   const PowerStatus status = power_supply_->GetPowerStatus();
   const double battery = status.battery_percentage;
   const bool line_power = status.line_power_on;
@@ -87,17 +123,8 @@ void DarkResume::PrepareForSuspendAttempt(Action* action,
     LOG(INFO) << "Updated shutdown threshold to " << battery << "%";
   }
 
-  if (battery < battery_shutdown_threshold_ && !line_power) {
-    *action = SHUT_DOWN;
-    return;
-  }
-
-  // Determine how long the system should suspend.
-  *action = SUSPEND;
-  SuspendMap::iterator suspend_it = suspend_durations_.upper_bound(battery);
-  if (suspend_it != suspend_durations_.begin())
-    suspend_it--;
-  *suspend_duration = suspend_it->second;
+  next_action_ = (battery < battery_shutdown_threshold_ && !line_power)
+      ? SHUT_DOWN : SUSPEND;
 }
 
 bool DarkResume::InDarkResume() {

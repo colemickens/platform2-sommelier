@@ -11,6 +11,7 @@
 
 #include <base/macros.h>
 #include <base/time/time.h>
+#include <base/timer/timer.h>
 #include <base/files/file_path.h>
 
 #include "power_manager/powerd/system/power_supply.h"
@@ -39,7 +40,9 @@ class DarkResumeInterface {
   // Updates state in anticipation of the system suspending, returning the
   // action that should be performed. If SUSPEND is returned, |suspend_duration|
   // contains the duration for which the system should be suspended or an empty
-  // base::TimeDelta() if it should be suspended indefinitely.
+  // base::TimeDelta() if the caller should not try to set up a wake alarm. This
+  // may occur if the system should suspend indefinitely, or if DarkResume was
+  // successful in setting a wake alarm for some point in the future.
   virtual void PrepareForSuspendAttempt(Action* action,
                                         base::TimeDelta* suspend_duration) = 0;
 
@@ -65,6 +68,14 @@ class DarkResume : public DarkResumeInterface {
 
   void set_dark_resume_state_path_for_testing(const base::FilePath& path) {
     dark_resume_state_path_ = path;
+  }
+
+  void set_timer_for_testing(scoped_ptr<base::Timer> timer) {
+    timer_ = timer.Pass();
+  }
+
+  Action next_action_for_testing() const {
+    return next_action_;
   }
 
   // Reads preferences on how long to suspend, what devices are affected by
@@ -93,11 +104,20 @@ class DarkResume : public DarkResumeInterface {
   // Writes the passed-in state to all the files in |files|.
   void SetStates(const std::vector<base::FilePath>& files, bool enabled);
 
+  // Helper for scheduling a dark resume wakeup.
+  // Calculates a new |next_action_| to take based on the current battery level,
+  // line power status, and shutdown threshold. |next_action_| will then be
+  // used on the next suspend to decide whether to shut down or not.
+  void UpdateNextAction();
+
   // Is dark resume enabled?
   bool enabled_;
 
   PowerSupplyInterface* power_supply_;
   PrefsInterface* prefs_;
+
+  // Timer used to schedule system wakeups and check if we need to shut down.
+  scoped_ptr<base::Timer> timer_;
 
   // File read to get the dark resume state.
   base::FilePath dark_resume_state_path_;
@@ -110,6 +130,9 @@ class DarkResume : public DarkResumeInterface {
   // (keys).
   typedef std::map<double, base::TimeDelta> SuspendMap;
   SuspendMap suspend_durations_;
+
+  // What the next suspend-time action should be.
+  Action next_action_;
 
   std::vector<base::FilePath> dark_resume_sources_;
   std::vector<base::FilePath> dark_resume_devices_;
