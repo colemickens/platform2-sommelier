@@ -140,6 +140,9 @@ std::string BuildURL(const std::string& url,
   return chromeos::url::AppendQueryParams(result, params);
 }
 
+auto ignore_cloud_error = base::Bind([](const chromeos::Error&){});
+auto ignore_cloud_result = base::Bind([](const base::DictionaryValue&){});
+
 }  // anonymous namespace
 
 namespace buffet {
@@ -659,7 +662,7 @@ void DeviceRegistrationInfo::UpdateDeviceResource(base::Closure callback) {
       }),
       // TODO(antonm): Failure to update device resource probably deserves
       // some additional actions.
-      base::Bind([](const chromeos::Error&){}));
+      ignore_cloud_error);
 }
 
 void DeviceRegistrationInfo::FetchCommands(
@@ -676,7 +679,7 @@ void DeviceRegistrationInfo::FetchCommands(
         const base::ListValue empty;
         callback.Run(commands ? *commands : empty);
       }),
-      base::Bind([](const chromeos::Error&){}));
+      ignore_cloud_error);
 }
 
 void DeviceRegistrationInfo::AbortLimboCommands(
@@ -704,7 +707,14 @@ void DeviceRegistrationInfo::AbortLimboCommands(
       LOG(WARNING) << "Command with no ID at " << i;
       continue;
     }
-    // TODO(antonm): Really abort the command.
+
+    std::unique_ptr<base::DictionaryValue> command_copy{command->DeepCopy()};
+    command_copy->SetString("state", "aborted");
+    DoCloudRequest(
+        chromeos::http::request_type::kPut,
+        GetServiceURL("commands/" + command_id),
+        command_copy.get(),
+        ignore_cloud_result, ignore_cloud_error);
   }
 
   base::MessageLoop::current()->PostTask(FROM_HERE, callback);
