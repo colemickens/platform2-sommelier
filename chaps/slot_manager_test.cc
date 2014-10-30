@@ -609,6 +609,18 @@ TEST_F(SoftwareOnlyTest, CreateNew) {
   EXPECT_EQ(0, delete_all_num_calls_);
 }
 
+TEST_F(SoftwareOnlyTest, TestOpenIsolate) {
+  // Check that trying to open an invalid isolate creates new isolate.
+  SecureBlob isolate("invalid");
+  bool new_isolate_created = false;
+  EXPECT_TRUE(slot_manager_->OpenIsolate(&isolate, &new_isolate_created));
+  EXPECT_TRUE(new_isolate_created);
+
+  // Check opening an existing isolate.
+  EXPECT_TRUE(slot_manager_->OpenIsolate(&isolate, &new_isolate_created));
+  EXPECT_FALSE(new_isolate_created);
+}
+
 TEST_F(SoftwareOnlyTest, LoadExisting) {
   InitializeObjectPoolBlobs();
   int slot_id = 0;

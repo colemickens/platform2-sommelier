@@ -482,10 +482,16 @@ bool SlotManagerImpl::OpenIsolate(SecureBlob* isolate_credential,
   } else {
     VLOG(1) << "Creating new isolate.";
     std::string credential_string;
-    if (!tpm_utility_->GenerateRandom(kIsolateCredentialBytes,
-                                      &credential_string)) {
-      LOG(ERROR) << "Error generating random bytes for isolate credential";
-      return false;
+    if (tpm_utility_->IsTPMAvailable()) {
+      if (!tpm_utility_->GenerateRandom(kIsolateCredentialBytes,
+                                        &credential_string)) {
+        LOG(ERROR) << "Error generating random bytes for isolate credential";
+        return false;
+      }
+    } else {
+      credential_string.resize(kIsolateCredentialBytes);
+      RAND_bytes(ConvertStringToByteBuffer(credential_string.data()),
+                 kIsolateCredentialBytes);
     }
     SecureBlob new_isolate_credential(credential_string);
     ClearString(&credential_string);
