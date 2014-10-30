@@ -306,19 +306,24 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
         ::dbus_connection_send_with_reply_and_block(conn, get_pid, -1, NULL);
     ::dbus_message_unref(get_pid);
     if (!got_pid) {
-      LOG(ERROR) << "Could not look up sender of RestartJob";
+      LOG(ERROR) << "Could not look up sender of RestartJob.";
       return DBUS_HANDLER_RESULT_HANDLED;
     }
     uint32_t pid;
     if (!::dbus_message_get_args(
             got_pid, NULL, DBUS_TYPE_UINT32, &pid, DBUS_TYPE_INVALID)) {
       ::dbus_message_unref(got_pid);
-      LOG(ERROR) << "Could not extract pid of sender of RestartJob";
+      LOG(ERROR) << "Could not extract pid of sender of RestartJob.";
       return DBUS_HANDLER_RESULT_HANDLED;
     }
     ::dbus_message_unref(got_pid);
     if (!service->IsBrowser(pid)) {
       LOG(WARNING) << "Sender of RestartJob is no child of mine!";
+      DBusMessage* denial = dbus_message_new_error(message,
+                                                   DBUS_ERROR_ACCESS_DENIED,
+                                                   "Sender is not browser.");
+      if (!denial || !::dbus_connection_send(conn, denial, NULL))
+        LOG(ERROR) << "Could not create error response to RestartJob.";
       return DBUS_HANDLER_RESULT_HANDLED;
     }
   }
