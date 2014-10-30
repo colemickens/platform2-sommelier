@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string>
 #include <sysexits.h>
 
 #include <base/command_line.h>
@@ -23,25 +24,31 @@ namespace {
 
 static const char kHelpFlag[] = "help";
 static const char kLogToStdErrFlag[] = "log_to_stderr";
+static const char kInitialMDnsPrefix[] = "mdns_prefix";
 static const char kHelpMessage[] = "\n"
     "This is the peer discovery service daemon.\n"
     "Usage: peerd [--v=<logging level>]\n"
     "             [--vmodule=<see base/logging.h>]\n"
-    "             [--log_to_stderr]";
+    "             [--log_to_stderr]\n"
+    "             [--mdns_prefix=<first mdns record prefix to try>]\n";
 
 class Daemon : public DBusServiceDaemon {
  public:
-  Daemon() : DBusServiceDaemon(kServiceName, kRootServicePath) {}
+  explicit Daemon(const std::string& initial_mdns_prefix)
+      : DBusServiceDaemon(kServiceName, kRootServicePath),
+        initial_mdns_prefix_(initial_mdns_prefix) {
+  }
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
-    manager_.reset(new Manager(object_manager_.get()));
+    manager_.reset(new Manager(object_manager_.get(), initial_mdns_prefix_));
     manager_->RegisterAsync(
         sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
     LOG(INFO) << "peerd starting";
   }
 
  private:
+  const std::string initial_mdns_prefix_;
   std::unique_ptr<Manager> manager_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
@@ -60,7 +67,8 @@ int main(int argc, char* argv[]) {
   if (cl->HasSwitch(kLogToStdErrFlag)) {
     flags = chromeos::kLogToStderr;
   }
+  std::string initial_mdns_prefix(cl->GetSwitchValueASCII(kInitialMDnsPrefix));
   chromeos::InitLog(flags | chromeos::kLogHeader);
-  Daemon daemon;
+  Daemon daemon(initial_mdns_prefix);
   return daemon.Run();
 }

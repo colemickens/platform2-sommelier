@@ -47,7 +47,8 @@ extern const char kInvalidMonitoringToken[];
 // Manages global state of peerd.
 class Manager {
  public:
-  explicit Manager(chromeos::dbus_utils::ExportedObjectManager* object_manager);
+  Manager(chromeos::dbus_utils::ExportedObjectManager* object_manager,
+          const std::string& initial_mdns_prefix);
   virtual ~Manager() = default;
   void RegisterAsync(const CompletionAction& completion_callback);
 
@@ -76,7 +77,8 @@ class Manager {
   Manager(std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object,
           std::unique_ptr<PublishedPeer> self,
           std::unique_ptr<PeerManagerInterface> peer_manager,
-          std::unique_ptr<AvahiClient> avahi_client);
+          std::unique_ptr<AvahiClient> avahi_client,
+          const std::string& initial_mdns_prefix);
 
   // Called from AvahiClient.
   void ShouldRefreshAvahiPublisher();

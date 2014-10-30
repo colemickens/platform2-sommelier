@@ -106,6 +106,10 @@ void AvahiClient::StopMonitoring() {
   discoverer_.reset();
 }
 
+void AvahiClient::AttemptToUseMDnsPrefix(const string& mdns_prefix) {
+  next_mdns_prefix_ = mdns_prefix;
+}
+
 string AvahiClient::GetServiceType(const string& service_id) {
   // TODO(wiley) We're hardcoding TCP here, but in theory we could advertise UDP
   //             services.  We'd have to pass that information down from our
@@ -192,13 +196,16 @@ base::WeakPtr<ServicePublisherInterface> AvahiClient::GetPublisher(
   base::WeakPtr<ServicePublisherInterface> result;
   if (!avahi_is_up_) { return result; }
   if (!publisher_) {
-    // The unique prefix must be < 63 characters, and have a low probability of
-    // colliding with another unique prefix on the subnet.
-    string unique_prefix = base::GenerateGUID();
+    if (next_mdns_prefix_.empty()) {
+      // The unique prefix must be < 63 characters, and have a low probability
+      // of colliding with another unique prefix on the subnet.
+      next_mdns_prefix_ = base::GenerateGUID();
+    }
     publisher_.reset(new AvahiServicePublisher(
-          uuid, unique_prefix, bus_, server_,
+          uuid, next_mdns_prefix_, bus_, server_,
           base::Bind(&AvahiClient::HandlePublishingFailure,
                      weak_ptr_factory_.GetWeakPtr())));
+    next_mdns_prefix_.clear();
   }
   result = publisher_->GetWeakPtr();
   return result;

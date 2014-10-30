@@ -52,6 +52,7 @@ AvahiServicePublisher::AvahiServicePublisher(
           bus_{bus},
           avahi_proxy_{avahi_proxy},
           on_publish_failure_{on_publish_failure} {
+  VLOG(1) << "mDNS prefix is " << unique_prefix << ".";
 }
 
 AvahiServicePublisher::~AvahiServicePublisher() {

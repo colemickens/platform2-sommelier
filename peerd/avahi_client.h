@@ -57,6 +57,8 @@ class AvahiClient {
   virtual void StartMonitoring();
   virtual void StopMonitoring();
 
+  virtual void AttemptToUseMDnsPrefix(const std::string& mdns_prefix);
+
   // Transform a service_id to a mDNS compatible service type.
   static std::string GetServiceType(const std::string& service_id);
   // Transform a mDNS compatible service type to a service id.
@@ -88,6 +90,7 @@ class AvahiClient {
   std::unique_ptr<AvahiServicePublisher> publisher_{nullptr};
   std::unique_ptr<AvahiServiceDiscoverer> discoverer_{nullptr};
   bool should_discover_{false};
+  std::string next_mdns_prefix_;
   // Must be last member to invalidate pointers before actual destruction.
   base::WeakPtrFactory<AvahiClient> weak_ptr_factory_{this};
 

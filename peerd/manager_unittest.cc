@@ -43,7 +43,8 @@ class ManagerTest : public testing::Test {
     manager_.reset(new Manager{std::move(dbus_object),
                                unique_ptr<PublishedPeer>{peer_},
                                unique_ptr<PeerManagerInterface>{peer_manager_},
-                               unique_ptr<AvahiClient>{avahi_client_}});
+                               unique_ptr<AvahiClient>{avahi_client_},
+                               ""});
   }
 
   scoped_refptr<MockBus> mock_bus_{new MockBus{dbus::Bus::Options{}}};

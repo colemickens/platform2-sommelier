@@ -54,19 +54,22 @@ const char kInvalidMonitoringToken[] = "manager.monitoring_token";
 }  // namespace manager
 }  // namespace errors
 
-Manager::Manager(ExportedObjectManager* object_manager)
+Manager::Manager(ExportedObjectManager* object_manager,
+                 const string& initial_mdns_prefix)
   : Manager(unique_ptr<DBusObject>{
                 new DBusObject{object_manager, object_manager->GetBus(),
                                ObjectPath{kManagerServicePath}}},
             unique_ptr<PublishedPeer>{},
             unique_ptr<PeerManagerInterface>{},
-            unique_ptr<AvahiClient>{}) {
+            unique_ptr<AvahiClient>{},
+            initial_mdns_prefix) {
 }
 
 Manager::Manager(unique_ptr<DBusObject> dbus_object,
                  unique_ptr<PublishedPeer> self,
                  unique_ptr<PeerManagerInterface> peer_manager,
-                 unique_ptr<AvahiClient> avahi_client)
+                 unique_ptr<AvahiClient> avahi_client,
+                 const string& initial_mdns_prefix)
     : dbus_object_{std::move(dbus_object)},
       self_{std::move(self)},
       peer_manager_{std::move(peer_manager)},
@@ -87,6 +90,7 @@ Manager::Manager(unique_ptr<DBusObject> dbus_object,
     avahi_client_.reset(
         new AvahiClient{dbus_object_->GetObjectManager()->GetBus(),
                         peer_manager_.get()});
+    avahi_client_->AttemptToUseMDnsPrefix(initial_mdns_prefix);
   }
 }
 
