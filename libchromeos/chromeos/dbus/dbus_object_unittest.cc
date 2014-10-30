@@ -7,6 +7,7 @@
 #include <memory>
 
 #include <base/bind.h>
+#include <chromeos/dbus/dbus_object_test_helpers.h>
 #include <dbus/message.h>
 #include <dbus/property.h>
 #include <dbus/object_path.h>
@@ -28,38 +29,44 @@ const char kTestMethod_Add[] = "Add";
 const char kTestMethod_Negate[] = "Negate";
 const char kTestMethod_Positive[] = "Positive";
 const char kTestMethod_AddSubtract[] = "AddSubtract";
-const char kTestMethod_Shady[] = "Shady_Kids_Dont_Do_This_At_Home";
 
 const char kTestInterface2[] = "org.chromium.Test.StringInterface";
 const char kTestMethod_StrLen[] = "StrLen";
+const char kTestMethod_CheckNonEmpty[] = "CheckNonEmpty";
 
 const char kTestInterface3[] = "org.chromium.Test.NoOpInterface";
 const char kTestMethod_NoOp[] = "NoOp";
 
 struct Calc {
-  int Add(ErrorPtr* error, int x, int y) { return x + y; }
-  int Negate(ErrorPtr* error, int x) { return -x; }
-  double Positive(ErrorPtr* error, double x) {
-    if (x >= 0.0)
-      return x;
-    Error::AddTo(error, "test", "not_positive", "Negative value passed in");
-    return 0.0;
+  int Add(int x, int y) { return x + y; }
+  int Negate(int x) { return -x; }
+  void Positive(scoped_ptr<DBusMethodResponse> response, double x) {
+    if (x >= 0.0) {
+      response->Return(x);
+      return;
+    }
+    ErrorPtr error;
+    Error::AddTo(&error, "test", "not_positive", "Negative value passed in");
+    response->ReplyWithError(error.get());
   }
-  void AddSubtract(ErrorPtr* error, int x, int y, int* sum, int* diff) {
+  void AddSubtract(int x, int y, int* sum, int* diff) {
     *sum = x + y;
     *diff = x - y;
   }
-  int Shady(ErrorPtr* error, int in, int* out) {
-    *out = in * 2;
-    return in * 3;  // Both OUT param and return value. Why would you do this?
-  }
 };
 
-int StrLen(ErrorPtr* error, const std::string& str) {
+int StrLen(const std::string& str) {
   return str.size();
 }
 
-void NoOp(ErrorPtr* error) {}
+bool CheckNonEmpty(ErrorPtr* error, const std::string& str) {
+  if (!str.empty())
+    return true;
+  Error::AddTo(error, "test", "string_empty", "String is empty");
+  return false;
+}
+
+void NoOp() {}
 
 }  // namespace
 
@@ -86,21 +93,21 @@ class DBusObjectTest : public ::testing::Test {
         new DBusObject(nullptr, bus_, kMethodsExportedOnPath));
 
     DBusInterface* itf1 = dbus_object_->AddOrGetInterface(kTestInterface1);
-    itf1->AddMethodHandler(kTestMethod_Add,
-                           base::Unretained(&calc_), &Calc::Add);
-    itf1->AddMethodHandler(kTestMethod_Negate,
-                           base::Unretained(&calc_), &Calc::Negate);
+    itf1->AddSimpleMethodHandler(kTestMethod_Add,
+                                 base::Unretained(&calc_), &Calc::Add);
+    itf1->AddSimpleMethodHandler(kTestMethod_Negate,
+                                 base::Unretained(&calc_), &Calc::Negate);
     itf1->AddMethodHandler(kTestMethod_Positive,
                            base::Unretained(&calc_), &Calc::Positive);
-    itf1->AddMethodHandler(kTestMethod_AddSubtract,
-                           base::Unretained(&calc_), &Calc::AddSubtract);
-    itf1->AddMethodHandler(kTestMethod_Shady,
-                           base::Unretained(&calc_), &Calc::Shady);
+    itf1->AddSimpleMethodHandler(kTestMethod_AddSubtract,
+                                 base::Unretained(&calc_), &Calc::AddSubtract);
     DBusInterface* itf2 = dbus_object_->AddOrGetInterface(kTestInterface2);
-    itf2->AddMethodHandler(kTestMethod_StrLen, StrLen);
+    itf2->AddSimpleMethodHandler(kTestMethod_StrLen, StrLen);
+    itf2->AddSimpleMethodHandlerWithError(kTestMethod_CheckNonEmpty,
+                                          CheckNonEmpty);
     DBusInterface* itf3 = dbus_object_->AddOrGetInterface(kTestInterface3);
-    base::Callback<void(ErrorPtr*)> noop_callback = base::Bind(NoOp);
-    itf3->AddMethodHandler(kTestMethod_NoOp, noop_callback);
+    base::Callback<void()> noop_callback = base::Bind(NoOp);
+    itf3->AddSimpleMethodHandler(kTestMethod_NoOp, noop_callback);
 
     dbus_object_->RegisterAsync(
         AsyncEventSequencer::GetDefaultCompletionAction());
@@ -123,7 +130,7 @@ TEST_F(DBusObjectTest, Add) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendInt32(2);
   writer.AppendInt32(3);
-  auto response = CallMethod(*dbus_object_, &method_call);
+  auto response = testing::CallMethod(*dbus_object_, &method_call);
   dbus::MessageReader reader(response.get());
   int result;
   ASSERT_TRUE(reader.PopInt32(&result));
@@ -136,7 +143,7 @@ TEST_F(DBusObjectTest, Negate) {
   method_call.SetSerial(123);
   dbus::MessageWriter writer(&method_call);
   writer.AppendInt32(98765);
-  auto response = CallMethod(*dbus_object_, &method_call);
+  auto response = testing::CallMethod(*dbus_object_, &method_call);
   dbus::MessageReader reader(response.get());
   int result;
   ASSERT_TRUE(reader.PopInt32(&result));
@@ -149,7 +156,7 @@ TEST_F(DBusObjectTest, PositiveSuccess) {
   method_call.SetSerial(123);
   dbus::MessageWriter writer(&method_call);
   writer.AppendDouble(17.5);
-  auto response = CallMethod(*dbus_object_, &method_call);
+  auto response = testing::CallMethod(*dbus_object_, &method_call);
   dbus::MessageReader reader(response.get());
   double result;
   ASSERT_TRUE(reader.PopDouble(&result));
@@ -162,7 +169,7 @@ TEST_F(DBusObjectTest, PositiveFailure) {
   method_call.SetSerial(123);
   dbus::MessageWriter writer(&method_call);
   writer.AppendDouble(-23.2);
-  auto response = CallMethod(*dbus_object_, &method_call);
+  auto response = testing::CallMethod(*dbus_object_, &method_call);
   ExpectError(response.get(), DBUS_ERROR_FAILED);
 }
 
@@ -172,7 +179,7 @@ TEST_F(DBusObjectTest, AddSubtract) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendInt32(2);
   writer.AppendInt32(3);
-  auto response = CallMethod(*dbus_object_, &method_call);
+  auto response = testing::CallMethod(*dbus_object_, &method_call);
   dbus::MessageReader reader(response.get());
   int sum = 0, diff = 0;
   ASSERT_TRUE(reader.PopInt32(&sum));
@@ -182,27 +189,12 @@ TEST_F(DBusObjectTest, AddSubtract) {
   EXPECT_EQ(-1, diff);
 }
 
-TEST_F(DBusObjectTest, Shady) {
-  dbus::MethodCall method_call(kTestInterface1, kTestMethod_Shady);
-  method_call.SetSerial(123);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendInt32(5);
-  auto response = CallMethod(*dbus_object_, &method_call);
-  dbus::MessageReader reader(response.get());
-  int in_by_2 = 0, in_by_3 = 0;
-  ASSERT_TRUE(reader.PopInt32(&in_by_2));  // First, out parameters.
-  ASSERT_TRUE(reader.PopInt32(&in_by_3));  // Finally, the return value.
-  ASSERT_FALSE(reader.HasMoreData());
-  EXPECT_EQ(10, in_by_2);
-  EXPECT_EQ(15, in_by_3);
-}
-
 TEST_F(DBusObjectTest, StrLen0) {
   dbus::MethodCall method_call(kTestInterface2, kTestMethod_StrLen);
   method_call.SetSerial(123);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString("");
-  auto response = CallMethod(*dbus_object_, &method_call);
+  auto response = testing::CallMethod(*dbus_object_, &method_call);
   dbus::MessageReader reader(response.get());
   int result;
   ASSERT_TRUE(reader.PopInt32(&result));
@@ -215,7 +207,7 @@ TEST_F(DBusObjectTest, StrLen4) {
   method_call.SetSerial(123);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString("test");
-  auto response = CallMethod(*dbus_object_, &method_call);
+  auto response = testing::CallMethod(*dbus_object_, &method_call);
   dbus::MessageReader reader(response.get());
   int result;
   ASSERT_TRUE(reader.PopInt32(&result));
@@ -223,10 +215,49 @@ TEST_F(DBusObjectTest, StrLen4) {
   ASSERT_EQ(4, result);
 }
 
+TEST_F(DBusObjectTest, CheckNonEmpty_Success) {
+  dbus::MethodCall method_call(kTestInterface2, kTestMethod_CheckNonEmpty);
+  method_call.SetSerial(123);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString("test");
+  auto response = testing::CallMethod(*dbus_object_, &method_call);
+  ASSERT_EQ(dbus::Message::MESSAGE_METHOD_RETURN, response->GetMessageType());
+  dbus::MessageReader reader(response.get());
+  EXPECT_FALSE(reader.HasMoreData());
+}
+
+TEST_F(DBusObjectTest, CheckNonEmpty_Failure) {
+  dbus::MethodCall method_call(kTestInterface2, kTestMethod_CheckNonEmpty);
+  method_call.SetSerial(123);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString("");
+  auto response = testing::CallMethod(*dbus_object_, &method_call);
+  ASSERT_EQ(dbus::Message::MESSAGE_ERROR, response->GetMessageType());
+  ErrorPtr error;
+  ExtractMethodCallResults(response.get(), &error);
+  ASSERT_NE(nullptr, error.get());
+  EXPECT_EQ("test", error->GetDomain());
+  EXPECT_EQ("string_empty", error->GetCode());
+  EXPECT_EQ("String is empty", error->GetMessage());
+}
+
+TEST_F(DBusObjectTest, CheckNonEmpty_MissingParams) {
+  dbus::MethodCall method_call(kTestInterface2, kTestMethod_CheckNonEmpty);
+  method_call.SetSerial(123);
+  auto response = testing::CallMethod(*dbus_object_, &method_call);
+  ASSERT_EQ(dbus::Message::MESSAGE_ERROR, response->GetMessageType());
+  dbus::MessageReader reader(response.get());
+  std::string message;
+  ASSERT_TRUE(reader.PopString(&message));
+  EXPECT_EQ(DBUS_ERROR_INVALID_ARGS, response->GetErrorName());
+  EXPECT_EQ("Too few parameters in a method call", message);
+  EXPECT_FALSE(reader.HasMoreData());
+}
+
 TEST_F(DBusObjectTest, NoOp) {
   dbus::MethodCall method_call(kTestInterface3, kTestMethod_NoOp);
   method_call.SetSerial(123);
-  auto response = CallMethod(*dbus_object_, &method_call);
+  auto response = testing::CallMethod(*dbus_object_, &method_call);
   dbus::MessageReader reader(response.get());
   ASSERT_FALSE(reader.HasMoreData());
 }
@@ -236,7 +267,7 @@ TEST_F(DBusObjectTest, TooFewParams) {
   method_call.SetSerial(123);
   dbus::MessageWriter writer(&method_call);
   writer.AppendInt32(2);
-  auto response = CallMethod(*dbus_object_, &method_call);
+  auto response = testing::CallMethod(*dbus_object_, &method_call);
   ExpectError(response.get(), DBUS_ERROR_INVALID_ARGS);
 }
 
@@ -247,7 +278,7 @@ TEST_F(DBusObjectTest, TooManyParams) {
   writer.AppendInt32(1);
   writer.AppendInt32(2);
   writer.AppendInt32(3);
-  auto response = CallMethod(*dbus_object_, &method_call);
+  auto response = testing::CallMethod(*dbus_object_, &method_call);
   ExpectError(response.get(), DBUS_ERROR_INVALID_ARGS);
 }
 
@@ -257,7 +288,7 @@ TEST_F(DBusObjectTest, ParamTypeMismatch) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendInt32(1);
   writer.AppendBool(false);
-  auto response = CallMethod(*dbus_object_, &method_call);
+  auto response = testing::CallMethod(*dbus_object_, &method_call);
   ExpectError(response.get(), DBUS_ERROR_INVALID_ARGS);
 }
 
@@ -267,7 +298,7 @@ TEST_F(DBusObjectTest, ParamAsVariant) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendVariantOfInt32(10);
   writer.AppendVariantOfInt32(3);
-  auto response = CallMethod(*dbus_object_, &method_call);
+  auto response = testing::CallMethod(*dbus_object_, &method_call);
   dbus::MessageReader reader(response.get());
   int result;
   ASSERT_TRUE(reader.PopInt32(&result));
@@ -281,7 +312,7 @@ TEST_F(DBusObjectTest, UnknownMethod) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendInt32(1);
   writer.AppendBool(false);
-  auto response = CallMethod(*dbus_object_, &method_call);
+  auto response = testing::CallMethod(*dbus_object_, &method_call);
   ExpectError(response.get(), DBUS_ERROR_UNKNOWN_METHOD);
 }
 

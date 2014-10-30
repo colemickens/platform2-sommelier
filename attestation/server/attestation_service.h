@@ -14,7 +14,6 @@
 #include <base/callback.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/dbus/dbus_object.h>
-#include <chromeos/errors/error.h>
 
 #include "attestation/common/dbus_interface.h"
 
@@ -36,7 +35,7 @@ class AttestationService {
 
  private:
   // Callbacks for handling D-Bus signals and method calls.
-  StatsResponse HandleStatsMethod(chromeos::ErrorPtr* error);
+  StatsResponse HandleStatsMethod();
 
   base::Time start_time_;
   chromeos::dbus_utils::DBusObject dbus_object_;

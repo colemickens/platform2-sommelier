@@ -10,6 +10,7 @@
 #include <base/bind.h>
 #include <base/macros.h>
 #include <chromeos/dbus/dbus_object.h>
+#include <chromeos/dbus/dbus_object_test_helpers.h>
 #include <dbus/message.h>
 #include <dbus/property.h>
 #include <dbus/object_path.h>
@@ -129,7 +130,7 @@ class ExportedPropertySetTest : public ::testing::Test {
 
   void AssertMethodReturnsError(dbus::MethodCall* method_call) {
     method_call->SetSerial(123);
-    auto response = CallMethod(p_->dbus_object_, method_call);
+    auto response = testing::CallMethod(p_->dbus_object_, method_call);
     ASSERT_NE(dynamic_cast<dbus::ErrorResponse*>(response.get()), nullptr);
   }
 
@@ -141,7 +142,7 @@ class ExportedPropertySetTest : public ::testing::Test {
     dbus::MessageWriter writer(&method_call);
     writer.AppendString(interface_name);
     writer.AppendString(property_name);
-    return CallMethod(p_->dbus_object_, &method_call);
+    return testing::CallMethod(p_->dbus_object_, &method_call);
   }
 
   scoped_ptr<dbus::Response> last_response_;
@@ -186,7 +187,7 @@ TEST_F(ExportedPropertySetTest, GetAllInvalidInterface) {
   method_call.SetSerial(123);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString("org.chromium.BadInterface");
-  auto response = CallMethod(p_->dbus_object_, &method_call);
+  auto response = testing::CallMethod(p_->dbus_object_, &method_call);
   dbus::MessageReader response_reader(response.get());
   dbus::MessageReader dict_reader(nullptr);
   ASSERT_TRUE(response_reader.PopArray(&dict_reader));
@@ -212,7 +213,7 @@ TEST_F(ExportedPropertySetTest, GetAllCorrectness) {
   method_call.SetSerial(123);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(kTestInterface2);
-  auto response = CallMethod(p_->dbus_object_, &method_call);
+  auto response = testing::CallMethod(p_->dbus_object_, &method_call);
   dbus::MessageReader response_reader(response.get());
   dbus::MessageReader dict_reader(nullptr);
   dbus::MessageReader entry_reader(nullptr);
@@ -425,7 +426,7 @@ TEST_F(ExportedPropertySetTest, SetFailsGracefully) {
   writer.AppendString(kTestInterface1);
   writer.AppendString(kStringPropName);
   dbus_utils::AppendValueToWriter(&writer, chromeos::Any(4));
-  auto response = CallMethod(p_->dbus_object_, &method_call);
+  auto response = testing::CallMethod(p_->dbus_object_, &method_call);
   ASSERT_TRUE(
       dynamic_cast<dbus::ErrorResponse*>(response.get()) != nullptr);
   ASSERT_EQ(DBUS_ERROR_NOT_SUPPORTED, response->GetErrorName());

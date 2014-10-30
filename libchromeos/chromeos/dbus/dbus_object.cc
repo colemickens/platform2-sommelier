@@ -45,8 +45,8 @@ void DBusInterface::ExportAsync(
     std::string export_error = "Failed exporting " + method_name + " method";
     auto export_handler = sequencer->GetExportHandler(
         interface_name_, method_name, export_error, true);
-    auto method_handler = dbus_utils::GetExportableDBusMethod(
-        base::Bind(&DBusInterface::HandleMethodCall, base::Unretained(this)));
+    auto method_handler = base::Bind(&DBusInterface::HandleMethodCall,
+                                     base::Unretained(this));
     exported_object->ExportMethod(
         interface_name_, method_name, method_handler, export_handler);
   }
@@ -66,8 +66,9 @@ void DBusInterface::ExportAsync(
   sequencer->OnAllTasksCompletedCall(actions);
 }
 
-std::unique_ptr<dbus::Response> DBusInterface::HandleMethodCall(
-    dbus::MethodCall* method_call) {
+void DBusInterface::HandleMethodCall(
+    dbus::MethodCall* method_call,
+    ResponseSender sender) {
   std::string method_name = method_call->GetMember();
   // Make a local copy of |interface_name_| because calling HandleMethod()
   // can potentially kill this interface object...
@@ -76,24 +77,21 @@ std::unique_ptr<dbus::Response> DBusInterface::HandleMethodCall(
           << interface_name << "." << method_name
           << "(" << method_call->GetSignature() << ")";
   auto pair = handlers_.find(method_name);
-  if (pair == handlers_.end()) {
-    return CreateDBusErrorResponse(method_call,
-                                   DBUS_ERROR_UNKNOWN_METHOD,
-                                   "Unknown method: " + method_name);
+  if (pair != handlers_.end()) {
+    auto response = dbus::ErrorResponse::FromMethodCall(
+        method_call,
+        DBUS_ERROR_UNKNOWN_METHOD,
+        "Unknown method: " + method_name);
+    sender.Run(response.PassAs<dbus::Response>());
+    return;
   }
   LOG(INFO) << "Dispatching DBus method call: " << method_name;
-  auto response = pair->second->HandleMethod(method_call);
-  if (response) {
-    VLOG(1) << "Received response message from "
-            << interface_name << "." << method_name
-            << " with signature '" << response->GetSignature() << "'";
-  }
-  return response;
+  pair->second->HandleMethod(method_call, sender);
 }
 
 void DBusInterface::AddHandlerImpl(
     const std::string& method_name,
-    std::unique_ptr<DBusInterfaceMethodHandler> handler) {
+    std::unique_ptr<DBusInterfaceMethodHandlerInterface> handler) {
   VLOG(1) << "Declaring method handler: "
           << interface_name_ << "." << method_name;
   auto res = handlers_.insert(std::make_pair(method_name, std::move(handler)));
@@ -147,7 +145,7 @@ DBusInterface* DBusObject::AddOrGetInterface(
   return iter->second.get();
 }
 
-DBusInterfaceMethodHandler* DBusObject::FindMethodHandler(
+DBusInterfaceMethodHandlerInterface* DBusObject::FindMethodHandler(
       const std::string& interface_name, const std::string& method_name) const {
   auto itf_iter = interfaces_.find(interface_name);
   if (itf_iter == interfaces_.end())
@@ -168,15 +166,18 @@ void DBusObject::RegisterAsync(
 
   // Add the org.freedesktop.DBus.Properties interface to the object.
   DBusInterface* prop_interface = AddOrGetInterface(dbus::kPropertiesInterface);
-  prop_interface->AddMethodHandler(dbus::kPropertiesGetAll,
-                                   base::Unretained(&property_set_),
-                                   &ExportedPropertySet::HandleGetAll);
-  prop_interface->AddMethodHandler(dbus::kPropertiesGet,
-                                   base::Unretained(&property_set_),
-                                   &ExportedPropertySet::HandleGet);
-  prop_interface->AddMethodHandler(dbus::kPropertiesSet,
-                                   base::Unretained(&property_set_),
-                                   &ExportedPropertySet::HandleSet);
+  prop_interface->AddSimpleMethodHandler(
+      dbus::kPropertiesGetAll,
+      base::Unretained(&property_set_),
+      &ExportedPropertySet::HandleGetAll);
+  prop_interface->AddSimpleMethodHandlerWithError(
+      dbus::kPropertiesGet,
+      base::Unretained(&property_set_),
+      &ExportedPropertySet::HandleGet);
+  prop_interface->AddSimpleMethodHandlerWithError(
+      dbus::kPropertiesSet,
+      base::Unretained(&property_set_),
+      &ExportedPropertySet::HandleSet);
   property_set_.OnPropertiesInterfaceExported(prop_interface);
 
   // Export interface methods

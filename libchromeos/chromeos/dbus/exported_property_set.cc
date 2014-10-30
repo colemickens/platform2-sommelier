@@ -54,7 +54,6 @@ void ExportedPropertySet::RegisterProperty(
 }
 
 VariantDictionary ExportedPropertySet::HandleGetAll(
-    chromeos::ErrorPtr* error,
     const std::string& interface_name) {
   bus_->AssertOnOriginThread();
   return GetInterfaceProperties(interface_name);
@@ -77,10 +76,11 @@ void ExportedPropertySet::WritePropertiesToDict(
   *dict = GetInterfaceProperties(interface_name);
 }
 
-chromeos::Any ExportedPropertySet::HandleGet(
+bool ExportedPropertySet::HandleGet(
     chromeos::ErrorPtr* error,
     const std::string& interface_name,
-    const std::string& property_name) {
+    const std::string& property_name,
+    chromeos::Any* result) {
   bus_->AssertOnOriginThread();
   auto property_map_itr = properties_.find(interface_name);
   if (property_map_itr == properties_.end()) {
@@ -88,7 +88,7 @@ chromeos::Any ExportedPropertySet::HandleGet(
                            errors::dbus::kDomain,
                            DBUS_ERROR_INVALID_ARGS,
                            "No such interface on object.");
-    return chromeos::Any();
+    return false;
   }
   LOG(INFO) << "Looking for " << property_name << " on " << interface_name;
   auto property_itr = property_map_itr->second.find(property_name);
@@ -97,12 +97,13 @@ chromeos::Any ExportedPropertySet::HandleGet(
                            errors::dbus::kDomain,
                            DBUS_ERROR_INVALID_ARGS,
                            "No such property on interface.");
-    return chromeos::Any();
+    return false;
   }
-  return property_itr->second->GetValue();
+  *result = property_itr->second->GetValue();
+  return true;
 }
 
-void ExportedPropertySet::HandleSet(
+bool ExportedPropertySet::HandleSet(
     chromeos::ErrorPtr* error,
     const std::string& interface_name,
     const std::string& property_name,
@@ -112,6 +113,7 @@ void ExportedPropertySet::HandleSet(
                          errors::dbus::kDomain,
                          DBUS_ERROR_NOT_SUPPORTED,
                          "Method Set is not supported.");
+  return false;
 }
 
 void ExportedPropertySet::HandlePropertyUpdated(

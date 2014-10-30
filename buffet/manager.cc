@@ -25,6 +25,7 @@
 #include "buffet/states/state_manager.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
+using chromeos::dbus_utils::DBusMethodResponse;
 using chromeos::dbus_utils::ExportedObjectManager;
 
 namespace buffet {
@@ -62,9 +63,9 @@ void Manager::RegisterAsync(const AsyncEventSequencer::CompletionAction& cb) {
   itf->AddMethodHandler(dbus_constants::kManagerAddCommand,
                         base::Unretained(this),
                         &Manager::HandleAddCommand);
-  itf->AddMethodHandler(dbus_constants::kManagerTestMethod,
-                        base::Unretained(this),
-                        &Manager::HandleTestMethod);
+  itf->AddSimpleMethodHandler(dbus_constants::kManagerTestMethod,
+                              base::Unretained(this),
+                              &Manager::HandleTestMethod);
   dbus_object_.RegisterAsync(cb);
   command_manager_ =
       std::make_shared<CommandManager>(dbus_object_.GetObjectManager());
@@ -78,78 +79,115 @@ void Manager::RegisterAsync(const AsyncEventSequencer::CompletionAction& cb) {
   device_info_->Load();
 }
 
-void Manager::HandleStartDevice(chromeos::ErrorPtr* error) {
+void Manager::HandleStartDevice(scoped_ptr<DBusMethodResponse> response) {
   LOG(INFO) << "Received call to Manager.StartDevice()";
 
-  device_info_->StartDevice(error);
+  chromeos::ErrorPtr error;
+  device_info_->StartDevice(&error);
+  if (error)
+    response->ReplyWithError(error.get());
+  else
+    response->Return();
 }
 
-std::string Manager::HandleCheckDeviceRegistered(chromeos::ErrorPtr* error) {
+void Manager::HandleCheckDeviceRegistered(
+    scoped_ptr<DBusMethodResponse> response) {
   LOG(INFO) << "Received call to Manager.CheckDeviceRegistered()";
-  std::string device_id;
-  bool registered = device_info_->CheckRegistration(error);
+  chromeos::ErrorPtr error;
+  bool registered = device_info_->CheckRegistration(&error);
   // If it fails due to any reason other than 'device not registered',
   // treat it as a real error and report it to the caller.
   if (!registered &&
-      !(*error)->HasError(kErrorDomainGCD, "device_not_registered")) {
-    return device_id;
+      !error->HasError(kErrorDomainGCD, "device_not_registered")) {
+    response->ReplyWithError(error.get());
+    return;
   }
 
-  error->reset();
+  std::string device_id;
+  if (registered) {
+    error.reset();
+    device_id = device_info_->GetDeviceId(&error);
+    if (error) {
+      response->ReplyWithError(error.get());
+      return;
+    }
+  }
 
-  if (registered)
-    device_id = device_info_->GetDeviceId(error);
-
-  return device_id;
+  response->Return(device_id);
 }
 
-std::string Manager::HandleGetDeviceInfo(chromeos::ErrorPtr* error) {
+void Manager::HandleGetDeviceInfo(
+    scoped_ptr<DBusMethodResponse> response) {
   LOG(INFO) << "Received call to Manager.GetDeviceInfo()";
 
-  std::string device_info_str;
-  auto device_info = device_info_->GetDeviceInfo(error);
-  if (!device_info)
-    return device_info_str;
+  chromeos::ErrorPtr error;
+  auto device_info = device_info_->GetDeviceInfo(&error);
+  if (!device_info) {
+    response->ReplyWithError(error.get());
+    return;
+  }
 
+  std::string device_info_str;
   base::JSONWriter::Write(device_info.get(), &device_info_str);
-  return device_info_str;
+  response->Return(device_info_str);
 }
 
-std::string Manager::HandleRegisterDevice(
-    chromeos::ErrorPtr* error,
+void Manager::HandleRegisterDevice(
+    scoped_ptr<DBusMethodResponse> response,
     const std::map<std::string, std::string>& params) {
   LOG(INFO) << "Received call to Manager.RegisterDevice()";
 
-  return device_info_->RegisterDevice(params, error);
+  chromeos::ErrorPtr error;
+  std::string device_id = device_info_->RegisterDevice(params, &error);
+  if (error)
+    response->ReplyWithError(error.get());
+  else
+    response->Return(device_id);
 }
 
 void Manager::HandleUpdateState(
-    chromeos::ErrorPtr* error,
+    scoped_ptr<DBusMethodResponse> response,
     const chromeos::VariantDictionary& property_set) {
+  chromeos::ErrorPtr error;
   base::Time timestamp = base::Time::Now();
+  bool all_success = true;
   for (const auto& pair : property_set) {
-    state_manager_->SetPropertyValue(pair.first, pair.second, timestamp, error);
+    if (!state_manager_->SetPropertyValue(pair.first, pair.second,
+                                          timestamp, &error)) {
+      // Remember that an error occurred but keep going and update the rest of
+      // the properties if possible.
+      all_success = false;
+    }
   }
+  if (!all_success)
+    response->ReplyWithError(error.get());
+  else
+    response->Return();
 }
 
-void Manager::HandleAddCommand(
-    chromeos::ErrorPtr* error, const std::string& json_command) {
+void Manager::HandleAddCommand(scoped_ptr<DBusMethodResponse> response,
+                               const std::string& json_command) {
   std::string error_message;
   std::unique_ptr<base::Value> value(base::JSONReader::ReadAndReturnError(
       json_command, base::JSON_PARSE_RFC, nullptr, &error_message));
   if (!value) {
-    chromeos::Error::AddTo(error, chromeos::errors::json::kDomain,
-                           chromeos::errors::json::kParseError, error_message);
+    response->ReplyWithError(chromeos::errors::json::kDomain,
+                             chromeos::errors::json::kParseError,
+                             error_message);
     return;
   }
+  chromeos::ErrorPtr error;
   auto command_instance = buffet::CommandInstance::FromJson(
-      value.get(), command_manager_->GetCommandDictionary(), error);
-  if (command_instance)
-    command_manager_->AddCommand(std::move(command_instance));
+      value.get(), command_manager_->GetCommandDictionary(), &error);
+  if (!command_instance) {
+    response->ReplyWithError(error.get());
+    return;
+  }
+  command_manager_->AddCommand(std::move(command_instance));
+  response->Return();
 }
 
-std::string Manager::HandleTestMethod(chromeos::ErrorPtr* error,
-                                      const std::string& message) {
+std::string Manager::HandleTestMethod(const std::string& message) {
   LOG(INFO) << "Received call to test method: " << message;
   return message;
 }

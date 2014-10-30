@@ -47,24 +47,28 @@ class Manager final {
  private:
   // DBus methods:
   // Handles calls to org.chromium.Buffet.Manager.StartDevice().
-  void HandleStartDevice(chromeos::ErrorPtr* error);
+  void HandleStartDevice(
+      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse> response);
   // Handles calls to org.chromium.Buffet.Manager.CheckDeviceRegistered().
-  std::string HandleCheckDeviceRegistered(chromeos::ErrorPtr* error);
+  void HandleCheckDeviceRegistered(
+      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse> response);
   // Handles calls to org.chromium.Buffet.Manager.GetDeviceInfo().
-  std::string HandleGetDeviceInfo(chromeos::ErrorPtr* error);
+  void HandleGetDeviceInfo(
+      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse> response);
   // Handles calls to org.chromium.Buffet.Manager.RegisterDevice().
-  std::string HandleRegisterDevice(
-      chromeos::ErrorPtr* error,
+  void HandleRegisterDevice(
+      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse> response,
       const std::map<std::string, std::string>& params);
   // Handles calls to org.chromium.Buffet.Manager.UpdateState().
-  void HandleUpdateState(chromeos::ErrorPtr* error,
-                         const chromeos::VariantDictionary& property_set);
+  void HandleUpdateState(
+      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse> response,
+      const chromeos::VariantDictionary& property_set);
   // Handles calls to org.chromium.Buffet.Manager.AddCommand().
-  void HandleAddCommand(chromeos::ErrorPtr* error,
-                        const std::string& json_command);
+  void HandleAddCommand(
+      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse> response,
+      const std::string& json_command);
   // Handles calls to org.chromium.Buffet.Manager.Test()
-  std::string HandleTestMethod(chromeos::ErrorPtr* error,
-                               const std::string& message);
+  std::string HandleTestMethod(const std::string& message);
 
   chromeos::dbus_utils::DBusObject dbus_object_;
 

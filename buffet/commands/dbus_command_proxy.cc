@@ -32,18 +32,18 @@ void DBusCommandProxy::RegisterAsync(
     dbus_object_.AddOrGetInterface(dbus_constants::kCommandInterface);
 
   // DBus methods.
-  itf->AddMethodHandler(dbus_constants::kCommandSetProgress,
-                        base::Unretained(this),
-                        &DBusCommandProxy::HandleSetProgress);
-  itf->AddMethodHandler(dbus_constants::kCommandAbort,
-                        base::Unretained(this),
-                        &DBusCommandProxy::HandleAbort);
-  itf->AddMethodHandler(dbus_constants::kCommandCancel,
-                        base::Unretained(this),
-                        &DBusCommandProxy::HandleCancel);
-  itf->AddMethodHandler(dbus_constants::kCommandDone,
-                        base::Unretained(this),
-                        &DBusCommandProxy::HandleDone);
+  itf->AddSimpleMethodHandlerWithError(dbus_constants::kCommandSetProgress,
+                                       base::Unretained(this),
+                                       &DBusCommandProxy::HandleSetProgress);
+  itf->AddSimpleMethodHandler(dbus_constants::kCommandAbort,
+                              base::Unretained(this),
+                              &DBusCommandProxy::HandleAbort);
+  itf->AddSimpleMethodHandler(dbus_constants::kCommandCancel,
+                              base::Unretained(this),
+                              &DBusCommandProxy::HandleCancel);
+  itf->AddSimpleMethodHandler(dbus_constants::kCommandDone,
+                              base::Unretained(this),
+                              &DBusCommandProxy::HandleDone);
 
   // DBus properties.
   itf->AddProperty(dbus_constants::kCommandName, &name_);
@@ -80,7 +80,7 @@ void DBusCommandProxy::OnProgressChanged(int progress) {
   progress_.SetValue(progress);
 }
 
-void DBusCommandProxy::HandleSetProgress(chromeos::ErrorPtr* error,
+bool DBusCommandProxy::HandleSetProgress(chromeos::ErrorPtr* error,
                                          int32_t progress) {
   LOG(INFO) << "Received call to Command<"
             << command_instance_->GetName() << ">::SetProgress("
@@ -89,24 +89,26 @@ void DBusCommandProxy::HandleSetProgress(chromeos::ErrorPtr* error,
   // Validate |progress| parameter. Its value must be between 0 and 100.
   IntPropType progress_type;
   progress_type.AddMinMaxConstraint(0, 100);
-  if (progress_type.ValidateValue(progress, error)) {
-    command_instance_->SetProgress(progress);
-  }
+  if (!progress_type.ValidateValue(progress, error))
+    return false;
+
+  command_instance_->SetProgress(progress);
+  return true;
 }
 
-void DBusCommandProxy::HandleAbort(chromeos::ErrorPtr* error) {
+void DBusCommandProxy::HandleAbort() {
   LOG(INFO) << "Received call to Command<"
             << command_instance_->GetName() << ">::Abort()";
   command_instance_->Abort();
 }
 
-void DBusCommandProxy::HandleCancel(chromeos::ErrorPtr* error) {
+void DBusCommandProxy::HandleCancel() {
   LOG(INFO) << "Received call to Command<"
             << command_instance_->GetName() << ">::Cancel()";
   command_instance_->Cancel();
 }
 
-void DBusCommandProxy::HandleDone(chromeos::ErrorPtr* error) {
+void DBusCommandProxy::HandleDone() {
   LOG(INFO) << "Received call to Command<"
             << command_instance_->GetName() << ">::Done()";
   command_instance_->Done();

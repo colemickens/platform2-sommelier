@@ -107,7 +107,7 @@ class CHROMEOS_EXPORT ExportedObjectManager
   const scoped_refptr<dbus::Bus>& GetBus() const { return bus_; }
 
  private:
-  CHROMEOS_PRIVATE ObjectMap HandleGetManagedObjects(chromeos::ErrorPtr* error);
+  CHROMEOS_PRIVATE ObjectMap HandleGetManagedObjects();
 
   scoped_refptr<dbus::Bus> bus_;
   chromeos::dbus_utils::DBusObject dbus_object_;

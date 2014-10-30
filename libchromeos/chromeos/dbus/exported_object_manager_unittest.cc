@@ -5,6 +5,7 @@
 #include <chromeos/dbus/exported_object_manager.h>
 
 #include <base/bind.h>
+#include <chromeos/dbus/dbus_object_test_helpers.h>
 #include <chromeos/dbus/utils.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
@@ -127,7 +128,8 @@ class ExportedObjectManagerTest: public ::testing::Test {
     dbus::MethodCall method_call(dbus::kObjectManagerInterface,
                                  dbus::kObjectManagerGetManagedObjects);
     method_call.SetSerial(1234);
-    return chromeos::dbus_utils::CallMethod(om_->dbus_object_, &method_call);
+    return chromeos::dbus_utils::testing::CallMethod(om_->dbus_object_,
+                                                     &method_call);
   }
 
   scoped_refptr<dbus::MockBus> bus_;

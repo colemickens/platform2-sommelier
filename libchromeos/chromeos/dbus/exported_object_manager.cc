@@ -25,9 +25,9 @@ void ExportedObjectManager::RegisterAsync(
   bus_->AssertOnOriginThread();
   DBusInterface* itf =
       dbus_object_.AddOrGetInterface(dbus::kObjectManagerInterface);
-  itf->AddMethodHandler(dbus::kObjectManagerGetManagedObjects,
-                        base::Unretained(this),
-                        &ExportedObjectManager::HandleGetManagedObjects);
+  itf->AddSimpleMethodHandler(dbus::kObjectManagerGetManagedObjects,
+                              base::Unretained(this),
+                              &ExportedObjectManager::HandleGetManagedObjects);
 
   signal_itf_added_ = itf->RegisterSignalOfType<SignalInterfacesAdded>(
       dbus::kObjectManagerInterfacesAdded);
@@ -78,7 +78,7 @@ void ExportedObjectManager::ReleaseInterface(
 }
 
 ExportedObjectManager::ObjectMap
-    ExportedObjectManager::HandleGetManagedObjects(ErrorPtr* error) {
+    ExportedObjectManager::HandleGetManagedObjects() {
   // Implements the GetManagedObjects method:
   //
   // org.freedesktop.DBus.ObjectManager.GetManagedObjects (

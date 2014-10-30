@@ -108,7 +108,7 @@ class DBusCommandDispacherTest : public testing::Test {
   }
 
   void FinishCommand(DBusCommandProxy* proxy) {
-    proxy->HandleDone(nullptr);
+    proxy->HandleDone();
   }
 
   void SetProgress(DBusCommandProxy* proxy, int progress) {

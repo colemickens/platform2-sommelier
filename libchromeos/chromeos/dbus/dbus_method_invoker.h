@@ -121,7 +121,8 @@ inline bool ExtractMessageParametersAsTuple(
   auto callback = [val_tuple](const ResultTypes&... params) {
     *val_tuple = std::tie(params...);
   };
-  return DBusParamReader<ResultTypes...>::Invoke(callback, reader, error);
+  return DBusParamReader<false, ResultTypes...>::Invoke(callback, reader,
+                                                        error);
 }
 // Overload of ExtractMessageParametersAsTuple to handle reference types in
 // tuples created with std::tie().
@@ -133,7 +134,8 @@ inline bool ExtractMessageParametersAsTuple(
   auto callback = [ref_tuple](const ResultTypes&... params) {
     *ref_tuple = std::tie(params...);
   };
-  return DBusParamReader<ResultTypes...>::Invoke(callback, reader, error);
+  return DBusParamReader<false, ResultTypes...>::Invoke(callback, reader,
+                                                        error);
 }
 
 // A helper method to extract a list of values from a message buffer.

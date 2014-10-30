@@ -21,16 +21,16 @@ void AttestationService::RegisterAsync(const CompletionAction& callback) {
   chromeos::dbus_utils::DBusInterface* itf =
       dbus_object_.AddOrGetInterface(kAttestationInterface);
 
-  itf->AddMethodHandler(kStatsMethod,
-                        base::Unretained(this),
-                        &AttestationService::HandleStatsMethod);
+  itf->AddSimpleMethodHandler(kStatsMethod,
+                              base::Unretained(this),
+                              &AttestationService::HandleStatsMethod);
 
   dbus_object_.RegisterAsync(callback);
 
   start_time_ = base::Time::Now();
 }
 
-StatsResponse AttestationService::HandleStatsMethod(chromeos::ErrorPtr* error) {
+StatsResponse AttestationService::HandleStatsMethod() {
   LOG(INFO) << "Received call to stats method.";
   StatsResponse stats;
   stats.set_uptime((base::Time::Now() - start_time_).InSeconds());

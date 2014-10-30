@@ -17,17 +17,11 @@
 namespace chromeos {
 namespace dbus_utils {
 
-using MethodCallHandler =
-    base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)>;
-
-CHROMEOS_EXPORT dbus::ExportedObject::MethodCallCallback
-    GetExportableDBusMethod(const MethodCallHandler& handler);
-
 // A helper function to create a D-Bus error response object as unique_ptr<>.
 CHROMEOS_EXPORT std::unique_ptr<dbus::Response> CreateDBusErrorResponse(
     dbus::MethodCall* method_call,
-    const std::string& code,
-    const std::string& message);
+    const std::string& error_name,
+    const std::string& error_message);
 
 // Create a D-Bus error response object from chromeos::Error. If the last
 // error in the error chain belongs to "dbus" error domain, its error code
@@ -41,7 +35,7 @@ CHROMEOS_EXPORT std::unique_ptr<dbus::Response> GetDBusError(
 // AddDBusError() is the opposite of GetDBusError(). It de-serializes the Error
 // object received over D-Bus.
 CHROMEOS_EXPORT void AddDBusError(chromeos::ErrorPtr* error,
-                                  const std::string& dbus_error_code,
+                                  const std::string& dbus_error_name,
                                   const std::string& dbus_error_message);
 
 // TODO(avakulenko): Until dbus::ScopedDBusError has inline dbus-1 function

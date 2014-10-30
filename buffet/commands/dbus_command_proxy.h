@@ -50,13 +50,13 @@ class DBusCommandProxy : public CommandProxyInterface {
       parameters_;
 
   // Handles calls to org.chromium.Buffet.Command.SetProgress(progress).
-  void HandleSetProgress(chromeos::ErrorPtr* error, int32_t progress);
+  bool HandleSetProgress(chromeos::ErrorPtr* error, int32_t progress);
   // Handles calls to org.chromium.Buffet.Command.Abort().
-  void HandleAbort(chromeos::ErrorPtr* error);
+  void HandleAbort();
   // Handles calls to org.chromium.Buffet.Command.Cancel().
-  void HandleCancel(chromeos::ErrorPtr* error);
+  void HandleCancel();
   // Handles calls to org.chromium.Buffet.Command.Done().
-  void HandleDone(chromeos::ErrorPtr* error);
+  void HandleDone();
 
   dbus::ObjectPath object_path_;
   CommandInstance* command_instance_;

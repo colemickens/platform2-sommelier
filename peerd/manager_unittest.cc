@@ -56,29 +56,32 @@ class ManagerTest : public testing::Test {
 
 TEST_F(ManagerTest, ShouldRejectSerbusServiceId) {
   chromeos::ErrorPtr error;
-  string service_token = manager_->ExposeService(&error, kSerbusServiceId, {});
+  string service_token;
+  EXPECT_FALSE(manager_->ExposeService(&error, kSerbusServiceId, {},
+               &service_token));
   EXPECT_TRUE(service_token.empty());
   EXPECT_NE(nullptr, error.get());
 }
 
 TEST_F(ManagerTest, StartMonitoring_ShouldRejectEmptyTechnologies) {
   chromeos::ErrorPtr error;
-  string token = manager_->StartMonitoring(&error, {});
-  EXPECT_TRUE(token.empty());
+  string token;
+  EXPECT_FALSE(manager_->StartMonitoring(&error, {}, &token));
   EXPECT_NE(nullptr, error.get());
 }
 
 TEST_F(ManagerTest, StartMonitoring_ShouldRejectInvalidTechnologies) {
   chromeos::ErrorPtr error;
-  string token = manager_->StartMonitoring(&error, {-1u});
-  EXPECT_TRUE(token.empty());
+  string token;
+  EXPECT_FALSE(manager_->StartMonitoring(&error, {-1u}, &token));
   EXPECT_NE(nullptr, error.get());
 }
 
 TEST_F(ManagerTest, StartMonitoring_ShouldAcceptMDNS) {
   chromeos::ErrorPtr error;
   EXPECT_CALL(*avahi_client_, StartMonitoring());
-  string token = manager_->StartMonitoring(&error, {technologies::kMDNS});
+  string token;
+  EXPECT_TRUE(manager_->StartMonitoring(&error, {technologies::kMDNS}, &token));
   EXPECT_TRUE(!token.empty());
   EXPECT_EQ(nullptr, error.get());
 }
@@ -86,7 +89,8 @@ TEST_F(ManagerTest, StartMonitoring_ShouldAcceptMDNS) {
 TEST_F(ManagerTest, StartMonitoring_ShouldHandleAllTechnologies) {
   chromeos::ErrorPtr error;
   EXPECT_CALL(*avahi_client_, StartMonitoring());
-  string token = manager_->StartMonitoring(&error, {technologies::kAll});
+  string token;
+  EXPECT_TRUE(manager_->StartMonitoring(&error, {technologies::kAll}, &token));
   EXPECT_TRUE(!token.empty());
   EXPECT_EQ(nullptr, error.get());
 }
@@ -94,14 +98,15 @@ TEST_F(ManagerTest, StartMonitoring_ShouldHandleAllTechnologies) {
 
 TEST_F(ManagerTest, StopMonitoring_HandlesInvalidToken) {
   chromeos::ErrorPtr error;
-  manager_->StopMonitoring(&error, "invalid_token");
+  EXPECT_FALSE(manager_->StopMonitoring(&error, "invalid_token"));
   EXPECT_NE(nullptr, error.get());
 }
 
 TEST_F(ManagerTest, StopMonitoring_HandlesSingleSubscription) {
   chromeos::ErrorPtr error;
   EXPECT_CALL(*avahi_client_, StartMonitoring());
-  string token = manager_->StartMonitoring(&error, {technologies::kAll});
+  string token;
+  EXPECT_TRUE(manager_->StartMonitoring(&error, {technologies::kAll}, &token));
   EXPECT_TRUE(!token.empty());
   EXPECT_EQ(nullptr, error.get());
   EXPECT_CALL(*avahi_client_, StopMonitoring());
@@ -116,8 +121,12 @@ TEST_F(ManagerTest, StopMonitoring_HandlesMultipleSubscriptions) {
   chromeos::ErrorPtr error;
   // We don't bother to figure out if we're already monitoring on a technology.
   EXPECT_CALL(*avahi_client_, StartMonitoring()).Times(2);
-  string all_token = manager_->StartMonitoring(&error, {technologies::kAll});
-  string dns_token = manager_->StartMonitoring(&error, {technologies::kMDNS});
+  string all_token;
+  EXPECT_TRUE(manager_->StartMonitoring(&error, {technologies::kAll},
+                                        &all_token));
+  string dns_token;
+  EXPECT_TRUE(manager_->StartMonitoring(&error, {technologies::kMDNS},
+                                        &dns_token));
   EXPECT_TRUE(!all_token.empty());
   EXPECT_TRUE(!dns_token.empty());
   EXPECT_EQ(nullptr, error.get());

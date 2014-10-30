@@ -21,7 +21,7 @@ TEST(DBusParamReader, NoArgs) {
   MessageReader reader(message.get());
   bool called = false;
   auto callback = [&called]() { called = true; };
-  EXPECT_TRUE(DBusParamReader<>::Invoke(callback, &reader, nullptr));
+  EXPECT_TRUE(DBusParamReader<false>::Invoke(callback, &reader, nullptr));
   EXPECT_TRUE(called);
 }
 
@@ -35,7 +35,8 @@ TEST(DBusParamReader, OneArg) {
     EXPECT_EQ(123, param1);
     called = true;
   };
-  EXPECT_TRUE(DBusParamReader<int>::Invoke(callback, &reader, nullptr));
+  EXPECT_TRUE((DBusParamReader<false, int>::Invoke(callback, &reader,
+                                                   nullptr)));
   EXPECT_TRUE(called);
 }
 
@@ -55,7 +56,7 @@ TEST(DBusParamReader, ManyArgs) {
     EXPECT_EQ("value", p3.find("key")->second.Get<std::string>());
     called = true;
   };
-  EXPECT_TRUE((DBusParamReader<bool, int, VariantDictionary>::Invoke(
+  EXPECT_TRUE((DBusParamReader<false, bool, int, VariantDictionary>::Invoke(
       callback, &reader, nullptr)));
   EXPECT_TRUE(called);
 }
@@ -75,7 +76,8 @@ TEST(DBusParamReader, TooManyArgs) {
     called = true;
   };
   ErrorPtr error;
-  EXPECT_FALSE((DBusParamReader<bool, int>::Invoke(callback, &reader, &error)));
+  EXPECT_FALSE((DBusParamReader<false, bool, int>::Invoke(callback, &reader,
+                                                          &error)));
   EXPECT_FALSE(called);
   EXPECT_EQ(errors::dbus::kDomain, error->GetDomain());
   EXPECT_EQ(DBUS_ERROR_INVALID_ARGS, error->GetCode());
@@ -94,7 +96,8 @@ TEST(DBusParamReader, TooFewArgs) {
     called = true;
   };
   ErrorPtr error;
-  EXPECT_FALSE((DBusParamReader<bool, int>::Invoke(callback, &reader, &error)));
+  EXPECT_FALSE((DBusParamReader<false, bool, int>::Invoke(callback, &reader,
+                                                          &error)));
   EXPECT_FALSE(called);
   EXPECT_EQ(errors::dbus::kDomain, error->GetDomain());
   EXPECT_EQ(DBUS_ERROR_INVALID_ARGS, error->GetCode());
@@ -114,8 +117,8 @@ TEST(DBusParamReader, TypeMismatch) {
     called = true;
   };
   ErrorPtr error;
-  EXPECT_FALSE((DBusParamReader<bool, double>::Invoke(callback, &reader,
-                                                      &error)));
+  EXPECT_FALSE((DBusParamReader<false, bool, double>::Invoke(callback, &reader,
+                                                             &error)));
   EXPECT_FALSE(called);
   EXPECT_EQ(errors::dbus::kDomain, error->GetDomain());
   EXPECT_EQ(DBUS_ERROR_INVALID_ARGS, error->GetCode());
@@ -130,7 +133,8 @@ TEST(DBusParamReader, NoArgs_With_OUT) {
     EXPECT_EQ(0, *param1);
     called = true;
   };
-  EXPECT_TRUE(DBusParamReader<int*>::Invoke(callback, &reader, nullptr));
+  EXPECT_TRUE((DBusParamReader<true, int*>::Invoke(callback, &reader,
+                                                   nullptr)));
   EXPECT_TRUE(called);
 }
 
@@ -145,8 +149,8 @@ TEST(DBusParamReader, OneArg_Before_OUT) {
     EXPECT_DOUBLE_EQ(0.0, *param2);
     called = true;
   };
-  EXPECT_TRUE((DBusParamReader<int, double*>::Invoke(callback, &reader,
-                                                     nullptr)));
+  EXPECT_TRUE((DBusParamReader<true, int, double*>::Invoke(callback, &reader,
+                                                           nullptr)));
   EXPECT_TRUE(called);
 }
 
@@ -161,8 +165,8 @@ TEST(DBusParamReader, OneArg_After_OUT) {
     EXPECT_EQ(123, param2);
     called = true;
   };
-  EXPECT_TRUE((DBusParamReader<double*, int>::Invoke(callback, &reader,
-                                                     nullptr)));
+  EXPECT_TRUE((DBusParamReader<true, double*, int>::Invoke(callback, &reader,
+                                                           nullptr)));
   EXPECT_TRUE(called);
 }
 
@@ -190,7 +194,7 @@ TEST(DBusParamReader, ManyArgs_With_OUT) {
     EXPECT_FALSE(*p6);
     called = true;
   };
-  EXPECT_TRUE((DBusParamReader<bool, std::string*, int, int*,
+  EXPECT_TRUE((DBusParamReader<true, bool, std::string*, int, int*,
                                VariantDictionary, bool*>::Invoke(
       callback, &reader, nullptr)));
   EXPECT_TRUE(called);
@@ -212,8 +216,9 @@ TEST(DBusParamReader, TooManyArgs_With_OUT) {
     called = true;
   };
   ErrorPtr error;
-  EXPECT_FALSE((DBusParamReader<bool, int, int*>::Invoke(callback, &reader,
-                                                         &error)));
+  EXPECT_FALSE((DBusParamReader<true, bool, int, int*>::Invoke(callback,
+                                                               &reader,
+                                                               &error)));
   EXPECT_FALSE(called);
   EXPECT_EQ(errors::dbus::kDomain, error->GetDomain());
   EXPECT_EQ(DBUS_ERROR_INVALID_ARGS, error->GetCode());
@@ -233,8 +238,9 @@ TEST(DBusParamReader, TooFewArgs_With_OUT) {
     called = true;
   };
   ErrorPtr error;
-  EXPECT_FALSE((DBusParamReader<bool, int, int*>::Invoke(callback, &reader,
-                                                         &error)));
+  EXPECT_FALSE((DBusParamReader<true, bool, int, int*>::Invoke(callback,
+                                                               &reader,
+                                                               &error)));
   EXPECT_FALSE(called);
   EXPECT_EQ(errors::dbus::kDomain, error->GetDomain());
   EXPECT_EQ(DBUS_ERROR_INVALID_ARGS, error->GetCode());

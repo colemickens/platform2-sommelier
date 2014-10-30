@@ -9,6 +9,7 @@
 #include <dbus/mock_exported_object.h>
 #include <dbus/property.h>
 #include <chromeos/dbus/dbus_object.h>
+#include <chromeos/dbus/dbus_object_test_helpers.h>
 #include <gtest/gtest.h>
 
 #include "buffet/commands/command_dictionary.h"
@@ -131,8 +132,8 @@ class DBusCommandProxyTest : public ::testing::Test {
     dbus::MessageWriter writer(&method_call);
     if (param_callback)
       param_callback(&writer);
-    return chromeos::dbus_utils::CallMethod(*GetProxyDBusObject(),
-                                            &method_call);
+    return chromeos::dbus_utils::testing::CallMethod(*GetProxyDBusObject(),
+                                                     &method_call);
   }
 
   static bool IsResponseError(const std::unique_ptr<dbus::Response>& response) {
@@ -157,8 +158,8 @@ class DBusCommandProxyTest : public ::testing::Test {
     dbus::MessageWriter writer(&method_call);
     writer.AppendString(dbus_constants::kCommandInterface);
     writer.AppendString(property_name);
-    auto response = chromeos::dbus_utils::CallMethod(*GetProxyDBusObject(),
-                                                     &method_call);
+    auto response = chromeos::dbus_utils::testing::CallMethod(
+        *GetProxyDBusObject(), &method_call);
     T value{};
     VerifyResponse(response, [&value](dbus::MessageReader* reader) {
       EXPECT_TRUE(chromeos::dbus_utils::PopValueFromReader(reader, &value));

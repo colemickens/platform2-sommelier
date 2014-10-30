@@ -31,7 +31,9 @@ namespace dbus_utils {
 // a variable list of expected function parameters later on.
 // This struct in itself is not used. But its concrete template specializations
 // defined below are.
-template<typename...>
+// |allow_out_params| controls whether DBusParamReader allows the parameter
+// list to contain OUT parameters (pointers).
+template<bool allow_out_params, typename...>
 struct DBusParamReader;
 
 // A generic specialization of DBusParamReader to handle variable function
@@ -40,8 +42,8 @@ struct DBusParamReader;
 // parameters to pop the remaining parameters.
 //  CurrentParam  - the type of the current method parameter we are processing.
 //  RestOfParams  - the types of remaining parameters to be processed.
-template<typename CurrentParam, typename... RestOfParams>
-struct DBusParamReader<CurrentParam, RestOfParams...> {
+template<bool allow_out_params, typename CurrentParam, typename... RestOfParams>
+struct DBusParamReader<allow_out_params, CurrentParam, RestOfParams...> {
   // DBusParamReader::Invoke() is a member function that actually extracts the
   // current parameter from the message buffer.
   //  handler     - the C++ callback functor to be called when all the
@@ -101,7 +103,7 @@ struct DBusParamReader<CurrentParam, RestOfParams...> {
     // parameter to the end of the parameter list. We pass it as a const
     // reference to allow to use move-only types such as std::unique_ptr<> and
     // to eliminate unnecessarily copying data.
-    return DBusParamReader<RestOfParams...>::Invoke(
+    return DBusParamReader<allow_out_params, RestOfParams...>::Invoke(
         handler, reader, error,
         static_cast<const Args&>(args)...,
         static_cast<const ParamValueType&>(current_param));
@@ -109,7 +111,8 @@ struct DBusParamReader<CurrentParam, RestOfParams...> {
 
   // Overload 2: ParamType is a pointer.
   template<typename ParamType, typename CallbackType, typename... Args>
-  static typename std::enable_if<std::is_pointer<ParamType>::value, bool>::type
+  static typename std::enable_if<allow_out_params &&
+                                 std::is_pointer<ParamType>::value, bool>::type
       InvokeHelper(const CallbackType& handler,
                    dbus::MessageReader* reader,
                    ErrorPtr* error,
@@ -126,7 +129,7 @@ struct DBusParamReader<CurrentParam, RestOfParams...> {
     // (ParamType) from DBusParamReader<> template parameter list and forward
     // all the parameters to the arguments of Invoke() and append the current
     // parameter to the end of the parameter list.
-    return DBusParamReader<RestOfParams...>::Invoke(
+    return DBusParamReader<allow_out_params, RestOfParams...>::Invoke(
         handler, reader, error,
         static_cast<const Args&>(args)...,
         &current_param);
@@ -136,8 +139,8 @@ struct DBusParamReader<CurrentParam, RestOfParams...> {
 // The final specialization of DBusParamReader<> used when no more parameters
 // are expected in the message buffer. Actually dispatches the call to the
 // handler with all the accumulated arguments.
-template<>
-struct DBusParamReader<> {
+template<bool allow_out_params>
+struct DBusParamReader<allow_out_params> {
   template<typename CallbackType, typename... Args>
   static bool Invoke(const CallbackType& handler,
                      dbus::MessageReader* reader,

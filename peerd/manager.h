@@ -53,24 +53,26 @@ class Manager {
   void RegisterAsync(const CompletionAction& completion_callback);
 
   // DBus handlers
-  std::string StartMonitoring(
+  bool StartMonitoring(
       chromeos::ErrorPtr* error,
-      const std::vector<technologies::tech_t>& requested_technologies);
+      const std::vector<technologies::tech_t>& requested_technologies,
+      std::string* monitoring_token);
 
-  void StopMonitoring(
+  bool StopMonitoring(
       chromeos::ErrorPtr* error,
       const std::string& monitoring_token);
 
-  std::string ExposeService(
+  bool ExposeService(
       chromeos::ErrorPtr* error,
       const std::string& service_id,
-      const std::map<std::string, std::string>& service_info);
+      const std::map<std::string, std::string>& service_info,
+      std::string* service_token);
 
-  void RemoveExposedService(
+  bool RemoveExposedService(
       chromeos::ErrorPtr* error,
       const std::string& service_token);
 
-  std::string Ping(chromeos::ErrorPtr* error);
+  std::string Ping();
 
  private:
   // Used in unit tests to inject mocks.

@@ -100,21 +100,21 @@ void Manager::RegisterAsync(const CompletionAction& completion_callback) {
   chromeos::dbus_utils::DBusInterface* itf =
       dbus_object_->AddOrGetInterface(kManagerInterface);
 
-  itf->AddMethodHandler(kManagerStartMonitoring,
-                        base::Unretained(this),
-                        &Manager::StartMonitoring);
-  itf->AddMethodHandler(kManagerStopMonitoring,
-                        base::Unretained(this),
-                        &Manager::StopMonitoring);
-  itf->AddMethodHandler(kManagerExposeService,
-                        base::Unretained(this),
-                        &Manager::ExposeService);
-  itf->AddMethodHandler(kManagerRemoveExposedService,
-                        base::Unretained(this),
-                        &Manager::RemoveExposedService);
-  itf->AddMethodHandler(kManagerPing,
-                        base::Unretained(this),
-                        &Manager::Ping);
+  itf->AddSimpleMethodHandlerWithError(kManagerStartMonitoring,
+                                       base::Unretained(this),
+                                       &Manager::StartMonitoring);
+  itf->AddSimpleMethodHandlerWithError(kManagerStopMonitoring,
+                                       base::Unretained(this),
+                                       &Manager::StopMonitoring);
+  itf->AddSimpleMethodHandlerWithError(kManagerExposeService,
+                                       base::Unretained(this),
+                                       &Manager::ExposeService);
+  itf->AddSimpleMethodHandlerWithError(kManagerRemoveExposedService,
+                                       base::Unretained(this),
+                                       &Manager::RemoveExposedService);
+  itf->AddSimpleMethodHandler(kManagerPing,
+                              base::Unretained(this),
+                              &Manager::Ping);
   chromeos::ErrorPtr error;
   const bool self_success = self_->RegisterAsync(
       &error,
@@ -132,16 +132,16 @@ void Manager::RegisterAsync(const CompletionAction& completion_callback) {
   sequencer->OnAllTasksCompletedCall({completion_callback});
 }
 
-string Manager::StartMonitoring(
-    ErrorPtr* error,
-    const vector<technologies::tech_t>& requested_technologies) {
-  string token;
+bool Manager::StartMonitoring(
+    chromeos::ErrorPtr* error,
+    const vector<technologies::tech_t>& requested_technologies,
+    std::string* monitoring_token) {
   if (requested_technologies.empty())  {
     Error::AddTo(error,
                  kPeerdErrorDomain,
                  errors::manager::kInvalidMonitoringTechnology,
                  "Expected at least one monitoring technology.");
-    return token;
+    return false;
   }
   technologies::tech_t combined = 0;
   for (technologies::tech_t tech : requested_technologies) {
@@ -151,30 +151,31 @@ string Manager::StartMonitoring(
                          kPeerdErrorDomain,
                          errors::manager::kInvalidMonitoringTechnology,
                          "Invalid monitoring technology: %d.", tech);
-      return token;
+      return false;
     }
     combined |= tech;
   }
-  token = "monitoring_" + std::to_string(++monitoring_tokens_issued_);
-  monitoring_requests_[token] = combined;
+  *monitoring_token = "monitoring_" +
+                      std::to_string(++monitoring_tokens_issued_);
+  monitoring_requests_[*monitoring_token] = combined;
   if (((technologies::kAll | technologies::kMDNS) & combined) != 0) {
     // Let the AvahiClient worry about if we're already monitoring.
     avahi_client_->StartMonitoring();
   }
   // TODO(wiley): Monitor DBus identifier for disconnect.
-  return token;
+  return true;
 }
 
-void Manager::StopMonitoring(ErrorPtr* error,
+bool Manager::StopMonitoring(chromeos::ErrorPtr* error,
                              const string& monitoring_token) {
   auto it = monitoring_requests_.find(monitoring_token);
   if (it == monitoring_requests_.end()) {
-      Error::AddToPrintf(error,
-                         kPeerdErrorDomain,
-                         errors::manager::kInvalidMonitoringToken,
-                         "Unknown monitoring token: %s.",
-                         monitoring_token.c_str());
-     return;
+    Error::AddToPrintf(error,
+                       kPeerdErrorDomain,
+                       errors::manager::kInvalidMonitoringToken,
+                       "Unknown monitoring token: %s.",
+                       monitoring_token.c_str());
+    return false;
   }
   monitoring_requests_.erase(it);
   technologies::tech_t combined = 0;
@@ -183,37 +184,38 @@ void Manager::StopMonitoring(ErrorPtr* error,
   }
   if (combined & technologies::kAll) {
     // Carry on, everything we had going on should continue.
-    return;
+    return true;
   }
   if (!(combined & technologies::kMDNS)) {
     avahi_client_->StopMonitoring();
   }
+  return true;
 }
 
-string Manager::ExposeService(chromeos::ErrorPtr* error,
-                              const string& service_id,
-                              const map<string, string>& service_info) {
+bool Manager::ExposeService(chromeos::ErrorPtr* error,
+                            const string& service_id,
+                            const map<string, string>& service_info,
+                            std::string* service_token) {
   VLOG(1) << "Exposing service '" << service_id << "'.";
-  string token;
   if (service_id == kSerbusServiceId) {
     Error::AddToPrintf(error,
                        kPeerdErrorDomain,
                        errors::service::kInvalidServiceId,
                        "Cannot expose a service named %s",
                        kSerbusServiceId);
-    return token;
+    return false;
   }
   if (!self_->AddService(error, service_id, {}, service_info)) {
-    return token;
+    return false;
   }
-  token = "service_token_" + std::to_string(++services_added_);
-  service_token_to_id_.emplace(token, service_id);
+  *service_token = "service_token_" + std::to_string(++services_added_);
+  service_token_to_id_.emplace(*service_token, service_id);
   // TODO(wiley) Maybe trigger an advertisement run since we have updated
   //             information.
-  return token;
+  return true;
 }
 
-void Manager::RemoveExposedService(ErrorPtr* error,
+bool Manager::RemoveExposedService(chromeos::ErrorPtr* error,
                                    const string& service_token) {
   auto it = service_token_to_id_.find(service_token);
   if (it == service_token_to_id_.end()) {
@@ -221,17 +223,18 @@ void Manager::RemoveExposedService(ErrorPtr* error,
                  kPeerdErrorDomain,
                  errors::manager::kInvalidServiceToken,
                  "Invalid service token given to RemoveExposedService.");
-    return;
+    return false;
   }
-  self_->RemoveService(error, it->second);
+  bool success = self_->RemoveService(error, it->second);
   // Maybe RemoveService returned with an error, but either way, we should
   // forget this service token.
   service_token_to_id_.erase(it);
   // TODO(wiley) Maybe trigger an advertisement run since we have updated
   //             information.
+  return success;
 }
 
-string Manager::Ping(ErrorPtr* error) {
+string Manager::Ping() {
   return kPingResponse;
 }
 

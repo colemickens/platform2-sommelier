@@ -12,15 +12,19 @@
 /*
 class MyDbusObject {
  public:
-  MyDbusObject(const ExportedObjectManager_WeakPtr& object_manager)
-      : dbus_object_(object_manager, dbus::ObjectPath("/org/chromium/my_obj")) {
-  }
+  MyDbusObject(ExportedObjectManager* object_manager,
+               const scoped_refptr<dbus::Bus>& bus)
+      : dbus_object_(object_manager, bus,
+                     dbus::ObjectPath("/org/chromium/my_obj")) {}
 
   void Init(const AsyncEventSequencer::CompletionAction& callback) {
     DBusInterface* my_interface =
         dbus_object_.AddOrGetInterface("org.chromium.MyInterface");
-    my_interface->AddMethodHandler("Method1", this, &MyDbusObject::Method1);
-    my_interface->AddMethodHandler("Method2", this, &MyDbusObject::Method2);
+    my_interface->AddSimpleMethodHandler("Method1", this,
+                                         &MyDbusObject::Method1);
+    my_interface->AddSimpleMethodHandlerWithError("Method2", this,
+                                                  &MyDbusObject::Method2);
+    my_interface->AddMethodHandler("Method3", this, &MyDbusObject::Method3);
     my_interface->AddProperty("Property1", &prop1_);
     my_interface->AddProperty("Property2", &prop2_);
     prop1_.SetValue("prop1_value");
@@ -36,8 +40,19 @@ class MyDbusObject {
   // Make sure the properties outlive the DBusObject they are registered with.
   chromeos::dbus_utils::ExportedProperty<std::string> prop1_;
   chromeos::dbus_utils::ExportedProperty<int> prop2_;
-  int Method1(chromeos::ErrorPtr* error);
-  void Method2(chromeos::ErrorPtr* error, const std::string& message);
+  int Method1() { return 5; }
+  bool Method2(chromeos::ErrorPtr* error, const std::string& message);
+  void Method3(scoped_ptr<DBusMethodResponse> response,
+               const std::string& message) {
+    if (message.empty()) {
+       response->ReplyWithError(chromeos::errors::dbus::kDomain,
+                                DBUS_ERROR_INVALID_ARGS,
+                                "Message string cannot be empty");
+       return;
+    }
+    int32_t message_len = message.length();
+    response->Return(message_len);
+  }
 
   DISALLOW_COPY_AND_ASSIGN(MyDbusObject);
 };
@@ -68,216 +83,144 @@ namespace dbus_utils {
 
 class ExportedObjectManager;
 class ExportedPropertyBase;
-
-// This is an abstract base class to allow dispatching a native C++ callback
-// method when a corresponding D-Bus method is called.
-class DBusInterfaceMethodHandler {
- public:
-  virtual ~DBusInterfaceMethodHandler() = default;
-
-  virtual std::unique_ptr<dbus::Response> HandleMethod(
-      dbus::MethodCall* method_call) = 0;
-};
-
-// A template overload of DBusInterfaceMethodHandler that is specialized
-// for particular method handler type signature. The handler is expected
-// to take an arbitrary number of arguments of type |Args...| and return
-// a value of type |R| (which could be 'void' as well).
-template<typename R, typename... Args>
-class TypedDBusInterfaceMethodHandler : public DBusInterfaceMethodHandler {
- public:
-  // A constructor that takes a |handler| to be called when HandleMethod()
-  // virtual function is invoked.
-  TypedDBusInterfaceMethodHandler(
-      const base::Callback<R(chromeos::ErrorPtr*, Args...)>& handler)
-      : handler_(handler) {
-  }
-
-  // This method forwards the call to |handler_| and extracts the required
-  // arguments from the D-Bus message buffer specified in |method_call|.
-  // The return value of |handler_| (if any) is sent back via the returned
-  // dbus::Response object, which could also include error details if the
-  // handler call has failed.
-  std::unique_ptr<dbus::Response> HandleMethod(
-      dbus::MethodCall* method_call) override {
-    dbus::MessageReader reader(method_call);
-    using Handler = TypedReturnDBusMethodHandler<R, Args...>;
-    return TypedReturnDBusInvoker<R, Handler, Args...>::Invoke(handler_,
-                                                               method_call,
-                                                               &reader);
-  }
-
- private:
-  // C++ callback to be called when a D-Bus method is dispatched.
-  base::Callback<R(chromeos::ErrorPtr*, Args...)> handler_;
-
-  DISALLOW_COPY_AND_ASSIGN(TypedDBusInterfaceMethodHandler);
-};
-
-// A specialization of TypedDBusInterfaceMethodHandler for returning
-// dbus::Response object instead of arbitrary value. This specialization is
-// used when C++ callback expects parsed input parameters but its return
-// value is custom and it's up to the callback's implementer to return a valid
-// D-Bus response object. Also note that the callback does not take ErrorPtr*
-// as a first parameter, since the error information should be returned through
-// the D-Bus error response object.
-template<typename... Args>
-class TypedDBusInterfaceMethodHandler<std::unique_ptr<dbus::Response>, Args...>
-    : public DBusInterfaceMethodHandler {
- public:
-  // A constructor that takes a |handler| to be called when HandleMethod()
-  // virtual function is invoked.
-  TypedDBusInterfaceMethodHandler(
-      const base::Callback<std::unique_ptr<dbus::Response>(
-          dbus::MethodCall* method_call, Args...)>& handler)
-      : handler_(handler) {
-  }
-
-  // This method forwards the call to |handler_| and extracts the required
-  // arguments from the D-Bus message buffer specified in |method_call|.
-  // The dbus::Response return value of |handler_| is passed on to the caller.
-  std::unique_ptr<dbus::Response> HandleMethod(
-      dbus::MethodCall* method_call) override {
-    dbus::MessageReader reader(method_call);
-    using Handler = RawReturnDBusMethodHandler<Args...>;
-    return RawReturnDBusInvoker<Handler, Args...>::Invoke(handler_,
-                                                          method_call,
-                                                          &reader);
-  }
-
- private:
-  // C++ callback to be called when a D-Bus method is dispatched.
-  base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall* method_call,
-                                                 Args...)> handler_;
-
-  DISALLOW_COPY_AND_ASSIGN(TypedDBusInterfaceMethodHandler);
-};
-
-// An implementation of DBusInterfaceMethodHandler that has custom processing
-// of both input and output parameters. This class is used by
-// DBusObject::AddRawMethodHandler and expects the callback to be of the
-// following signature:
-//    std::unique_ptr<dbus::Response>(dbus::MethodCall* method_call)
-// It will be up to the callback to parse the input parameters from the
-// message buffer and construct the D-Bus Response object.
-class RawDBusInterfaceMethodHandler : public DBusInterfaceMethodHandler {
- public:
-  // A constructor that takes a |handler| to be called when HandleMethod()
-  // virtual function is invoked.
-  RawDBusInterfaceMethodHandler(
-      const base::Callback<std::unique_ptr<dbus::Response>(
-          dbus::MethodCall* method_call)>& handler)
-      : handler_(handler) {
-  }
-
-  std::unique_ptr<dbus::Response> HandleMethod(
-      dbus::MethodCall* method_call) override {
-    return handler_.Run(method_call);
-  }
-
- private:
-  // C++ callback to be called when a D-Bus method is dispatched.
-  base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall* method_call)>
-      handler_;
-
-  DISALLOW_COPY_AND_ASSIGN(RawDBusInterfaceMethodHandler);
-};
-
-class DBusObject;  // forward-declaration.
+class DBusObject;
 
 // This is an implementation proxy class for a D-Bus interface of an object.
 // The important functionality for the users is the ability to add D-Bus method
 // handlers and define D-Bus object properties. This is achieved by using one
-// of the overload of AddMethodHandler() and AddProperty() respectively.
-// There are six overloads for DBusInterface::AddMethodHandler():
-//  1. That takes a handler as base::Callback<R(ErrorPtr*, Args...)>
-//  2. That takes a static function of signature R(ErrorPtr*, Args...)
-//  3. That takes a class instance pointer and a class member function of
-//     signature R(ErrorPtr*, Args...).
-//  4-6. Same as 1-3 above but expect the callback to provide a custom response:
-//     std::unique_ptr<dbus::Response>(dbus::MethodCall*, Args...).
+// of the overload of AddSimpleMethodHandler()/AddMethodHandler() and
+// AddProperty() respectively.
+// There are three overloads for DBusInterface::AddSimpleMethodHandler() and
+// AddMethodHandler() each:
+//  1. That takes a handler as base::Callback
+//  2. That takes a static function
+//  3. That takes a class instance pointer and a class member function
+// The signature of the handler for AddSimpleMethodHandler must be one of:
+//    R(Args... args)                     [IN only]
+//    void(Args... args)                  [IN/OUT]
+// The signature of the handler for AddSimpleMethodHandlerWithError must be:
+//    bool(ErrorPtr* error, Args... args) [IN/OUT]
+// The signature of the handler for AddMethodHandler must be:
+//    void(scoped_ptr<DBusMethodResponse> response, Args... args) [IN only]
 // There is also an AddRawMethodHandler() call that lets provide a custom
 // handler that can parse its own input parameter and construct a custom
 // response.
+// The signature of the handler for AddRawMethodHandler must be:
+//    void(dbus::MethodCall* method_call, ResponseSender sender)
 class CHROMEOS_EXPORT DBusInterface final {
  public:
   DBusInterface(DBusObject* dbus_object, const std::string& interface_name);
 
-  // Register a DBus method handler for |method_name| as base::Callback.
+  // Register sync DBus method handler for |method_name| as base::Callback.
   template<typename R, typename... Args>
-  inline void AddMethodHandler(
+  inline void AddSimpleMethodHandler(
       const std::string& method_name,
-      const base::Callback<R(chromeos::ErrorPtr*, Args...)>& handler) {
-    std::unique_ptr<DBusInterfaceMethodHandler> typed_method_handler(
-        new TypedDBusInterfaceMethodHandler<R, Args...>(handler));
-    AddHandlerImpl(method_name, std::move(typed_method_handler));
+      const base::Callback<R(Args...)>& handler) {
+    std::unique_ptr<DBusInterfaceMethodHandlerInterface> sync_method_handler(
+        new SimpleDBusInterfaceMethodHandler<R, Args...>(handler));
+    AddHandlerImpl(method_name, std::move(sync_method_handler));
   }
 
-  // Register a D-Bus method handler for |method_name| as static function.
+  // Register sync D-Bus method handler for |method_name| as a static
+  // function.
   template<typename R, typename... Args>
-  inline void AddMethodHandler(
+  inline void AddSimpleMethodHandler(
       const std::string& method_name,
-      R(*handler)(chromeos::ErrorPtr*, Args...)) {
-    std::unique_ptr<DBusInterfaceMethodHandler> typed_method_handler(
-        new TypedDBusInterfaceMethodHandler<R, Args...>(base::Bind(handler)));
-    AddHandlerImpl(method_name, std::move(typed_method_handler));
+      R(*handler)(Args...)) {
+    std::unique_ptr<DBusInterfaceMethodHandlerInterface> sync_method_handler(
+        new SimpleDBusInterfaceMethodHandler<R, Args...>(base::Bind(handler)));
+    AddHandlerImpl(method_name, std::move(sync_method_handler));
   }
 
-  // Register a D-Bus method handler for |method_name| as class member function.
-  template<typename R, typename Instance, typename Class, typename... Args>
-  inline void AddMethodHandler(
+  // Register sync D-Bus method handler for |method_name| as a class member
+  // function.
+  template<typename Instance, typename Class, typename R, typename... Args>
+  inline void AddSimpleMethodHandler(
       const std::string& method_name,
       Instance instance,
-      R(Class::*handler)(chromeos::ErrorPtr*, Args...)) {
+      R(Class::*handler)(Args...)) {
     auto callback = base::Bind(handler, instance);
-    std::unique_ptr<DBusInterfaceMethodHandler> typed_method_handler(
-        new TypedDBusInterfaceMethodHandler<R, Args...>(callback));
-    AddHandlerImpl(method_name, std::move(typed_method_handler));
+    std::unique_ptr<DBusInterfaceMethodHandlerInterface> sync_method_handler(
+        new SimpleDBusInterfaceMethodHandler<R, Args...>(callback));
+    AddHandlerImpl(method_name, std::move(sync_method_handler));
   }
 
-  // Register a D-Bus method handler for |method_name| as base::Callback.
+  // Register sync DBus method handler for |method_name| as base::Callback.
+  template<typename... Args>
+  inline void AddSimpleMethodHandlerWithError(
+      const std::string& method_name,
+      const base::Callback<bool(ErrorPtr*, Args...)>& handler) {
+    std::unique_ptr<DBusInterfaceMethodHandlerInterface> sync_method_handler(
+        new SimpleDBusInterfaceMethodHandlerWithError<Args...>(handler));
+    AddHandlerImpl(method_name, std::move(sync_method_handler));
+  }
+
+  // Register sync D-Bus method handler for |method_name| as a static
+  // function.
+  template<typename... Args>
+  inline void AddSimpleMethodHandlerWithError(
+      const std::string& method_name,
+      bool(*handler)(ErrorPtr*, Args...)) {
+    std::unique_ptr<DBusInterfaceMethodHandlerInterface> sync_method_handler(
+        new SimpleDBusInterfaceMethodHandlerWithError<Args...>(
+            base::Bind(handler)));
+    AddHandlerImpl(method_name, std::move(sync_method_handler));
+  }
+
+  // Register sync D-Bus method handler for |method_name| as a class member
+  // function.
+  template<typename Instance, typename Class, typename... Args>
+  inline void AddSimpleMethodHandlerWithError(
+      const std::string& method_name,
+      Instance instance,
+      bool(Class::*handler)(ErrorPtr*, Args...)) {
+    auto callback = base::Bind(handler, instance);
+    std::unique_ptr<DBusInterfaceMethodHandlerInterface> sync_method_handler(
+        new SimpleDBusInterfaceMethodHandlerWithError<Args...>(callback));
+    AddHandlerImpl(method_name, std::move(sync_method_handler));
+  }
+
+  // Register an async DBus method handler for |method_name| as base::Callback.
   template<typename... Args>
   inline void AddMethodHandler(
       const std::string& method_name,
-      const base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*,
-                                                           Args...)>& handler) {
-    std::unique_ptr<DBusInterfaceMethodHandler> typed_method_handler(
-        new TypedDBusInterfaceMethodHandler<std::unique_ptr<dbus::Response>,
-                                            Args...>(handler));
-    AddHandlerImpl(method_name, std::move(typed_method_handler));
+      const base::Callback<void(scoped_ptr<DBusMethodResponse>, Args...)>&
+          handler) {
+    std::unique_ptr<DBusInterfaceMethodHandlerInterface> async_method_handler(
+        new DBusInterfaceMethodHandler<Args...>(handler));
+    AddHandlerImpl(method_name, std::move(async_method_handler));
   }
 
-  // Register a D-Bus method handler for |method_name| as static function.
+  // Register an async D-Bus method handler for |method_name| as a static
+  // function.
   template<typename... Args>
   inline void AddMethodHandler(
       const std::string& method_name,
-      std::unique_ptr<dbus::Response>(*handler)(dbus::MethodCall*, Args...)) {
-    std::unique_ptr<DBusInterfaceMethodHandler> typed_method_handler(
-        new TypedDBusInterfaceMethodHandler<std::unique_ptr<dbus::Response>,
-                                            Args...>(base::Bind(handler)));
-    AddHandlerImpl(method_name, std::move(typed_method_handler));
+      void(*handler)(scoped_ptr<DBusMethodResponse>, Args...)) {
+    std::unique_ptr<DBusInterfaceMethodHandlerInterface> async_method_handler(
+        new DBusInterfaceMethodHandler<Args...>(base::Bind(handler)));
+    AddHandlerImpl(method_name, std::move(async_method_handler));
   }
 
-  // Register a D-Bus method handler for |method_name| as class member function.
+  // Register an async D-Bus method handler for |method_name| as a class member
+  // function.
   template<typename Instance, typename Class, typename... Args>
   inline void AddMethodHandler(
       const std::string& method_name,
       Instance instance,
-      std::unique_ptr<dbus::Response>(Class::*handler)(dbus::MethodCall*,
-                                                       Args...)) {
+      void(Class::*handler)(scoped_ptr<DBusMethodResponse>, Args...)) {
     auto callback = base::Bind(handler, instance);
-    std::unique_ptr<DBusInterfaceMethodHandler> typed_method_handler(
-        new TypedDBusInterfaceMethodHandler<std::unique_ptr<dbus::Response>,
-                                            Args...>(callback));
-    AddHandlerImpl(method_name, std::move(typed_method_handler));
+    std::unique_ptr<DBusInterfaceMethodHandlerInterface> async_method_handler(
+        new DBusInterfaceMethodHandler<Args...>(callback));
+    AddHandlerImpl(method_name, std::move(async_method_handler));
   }
+
 
   // Register a raw D-Bus method handler for |method_name| as base::Callback.
   inline void AddRawMethodHandler(
       const std::string& method_name,
-      const base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)>&
-          handler) {
-    std::unique_ptr<DBusInterfaceMethodHandler> raw_method_handler(
+      const base::Callback<void(dbus::MethodCall*, ResponseSender)>& handler) {
+    std::unique_ptr<DBusInterfaceMethodHandlerInterface> raw_method_handler(
         new RawDBusInterfaceMethodHandler(handler));
     AddHandlerImpl(method_name, std::move(raw_method_handler));
   }
@@ -338,13 +281,14 @@ class CHROMEOS_EXPORT DBusInterface final {
   // A generic D-Bus method handler for the interface. It extracts the method
   // name from |method_call|, looks up a registered handler from |handlers_|
   // map and dispatched the call to that handler.
-  CHROMEOS_PRIVATE std::unique_ptr<dbus::Response> HandleMethodCall(
-      dbus::MethodCall* method_call);
+  CHROMEOS_PRIVATE void HandleMethodCall(dbus::MethodCall* method_call,
+                                         ResponseSender sender);
   // Helper to add a handler for method |method_name| to the |handlers_| map.
   // Not marked CHROMEOS_PRIVATE because it needs to be called by the inline
   // template functions AddMethodHandler(...)
-  void AddHandlerImpl(const std::string& method_name,
-                      std::unique_ptr<DBusInterfaceMethodHandler> handler);
+  void AddHandlerImpl(
+      const std::string& method_name,
+      std::unique_ptr<DBusInterfaceMethodHandlerInterface> handler);
   // Helper to add a signal object to the |signals_| map.
   // Not marked CHROMEOS_PRIVATE because it needs to be called by the inline
   // template function RegisterSignalOfType(...)
@@ -367,7 +311,8 @@ class CHROMEOS_EXPORT DBusInterface final {
       const AsyncEventSequencer::CompletionAction& completion_callback);
 
   // Method registration map.
-  std::map<std::string, std::unique_ptr<DBusInterfaceMethodHandler>> handlers_;
+  std::map<std::string,
+           std::unique_ptr<DBusInterfaceMethodHandlerInterface>> handlers_;
   // Signal registration map.
   std::map<std::string, std::shared_ptr<DBusSignalBase>> signals_;
 
@@ -404,7 +349,7 @@ class CHROMEOS_EXPORT DBusObject {
   // Finds a handler for the given method of a specific interface.
   // Returns nullptr if the interface is not registered or there is
   // no method with the specified name found on that interface.
-  DBusInterfaceMethodHandler* FindMethodHandler(
+  DBusInterfaceMethodHandlerInterface* FindMethodHandler(
       const std::string& interface_name, const std::string& method_name) const;
 
   // Returns the ExportedObjectManager proxy, if any. If DBusObject has been
@@ -435,26 +380,6 @@ class CHROMEOS_EXPORT DBusObject {
   friend class DBusInterface;
   DISALLOW_COPY_AND_ASSIGN(DBusObject);
 };
-
-// Dispatches a D-Bus method call to the corresponding handler.
-// Used mostly for testing purposes. This method is inlined so that it is
-// not included in the shipping code of libchromeos, and included at the
-// call sites.
-inline std::unique_ptr<dbus::Response> CallMethod(
-    const DBusObject& object, dbus::MethodCall* method_call) {
-  DBusInterfaceMethodHandler* handler = object.FindMethodHandler(
-      method_call->GetInterface(), method_call->GetMember());
-  std::unique_ptr<dbus::Response> response;
-  if (!handler) {
-    response = CreateDBusErrorResponse(
-        method_call,
-        DBUS_ERROR_UNKNOWN_METHOD,
-        "Unknown method");
-  } else {
-    response = handler->HandleMethod(method_call);
-  }
-  return response;
-}
 
 }  // namespace dbus_utils
 }  // namespace chromeos

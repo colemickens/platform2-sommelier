@@ -49,8 +49,9 @@ namespace dbus_utils {
 //  It is used as part of DBusObject to implement D-Bus object properties on
 //  registered interfaces. See description of DBusObject class for more details.
 
-class DBusObject;
 class DBusInterface;
+class DBusMethodResponse;
+class DBusObject;
 
 class CHROMEOS_EXPORT ExportedPropertyBase {
  public:
@@ -97,18 +98,17 @@ class CHROMEOS_EXPORT ExportedPropertySet {
                         ExportedPropertyBase* exported_property);
 
   // D-Bus methods for org.freedesktop.DBus.Properties interface.
-  VariantDictionary HandleGetAll(
-      chromeos::ErrorPtr* error,
-      const std::string& interface_name);
-  chromeos::Any HandleGet(
+  VariantDictionary HandleGetAll(const std::string& interface_name);
+  bool HandleGet(
       chromeos::ErrorPtr* error,
       const std::string& interface_name,
-      const std::string& property_name);
+      const std::string& property_name,
+      chromeos::Any* result);
   // While Properties.Set has a handler to complete the interface,  we don't
   // support writable properties.  This is almost a feature, since bindings for
   // many languages don't support errors coming back from invalid writes.
   // Instead, use setters in exposed interfaces.
-  void HandleSet(
+  bool HandleSet(
       chromeos::ErrorPtr* error,
       const std::string& interface_name,
       const std::string& property_name,
