@@ -92,7 +92,8 @@ class DBusCommandProxyTest : public ::testing::Test {
                 ExportMethod(_, _, _, _)).Times(AnyNumber());
 
     command_proxy_.reset(new DBusCommandProxy(nullptr, bus_,
-                                              command_instance_.get()));
+                                              command_instance_.get(),
+                                              cmd_path));
     command_instance_->AddProxy(command_proxy_.get());
     command_proxy_->RegisterAsync(
         AsyncEventSequencer::GetDefaultCompletionAction());

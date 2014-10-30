@@ -13,6 +13,7 @@
 #include <chromeos/dbus/dbus_object.h>
 
 #include "buffet/commands/command_proxy_interface.h"
+#include "buffet/libbuffet/dbus_constants.h"
 
 namespace chromeos {
 namespace dbus_utils {
@@ -28,7 +29,8 @@ class DBusCommandProxy : public CommandProxyInterface {
  public:
   DBusCommandProxy(chromeos::dbus_utils::ExportedObjectManager* object_manager,
                    const scoped_refptr<dbus::Bus>& bus,
-                   CommandInstance* command_instance);
+                   CommandInstance* command_instance,
+                   std::string object_path);
   ~DBusCommandProxy() override = default;
 
   void RegisterAsync(

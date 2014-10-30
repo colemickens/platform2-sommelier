@@ -128,6 +128,13 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
   instance.reset(new CommandInstance(command_name,
                                      command_def->GetCategory(),
                                      parameters));
+  // TODO(antonm): Move command_id to ctor and remove setter.
+  std::string command_id;
+  if (json->GetStringWithoutPathExpansion(commands::attributes::kCommand_Id,
+                                          &command_id)) {
+    instance->SetID(command_id);
+  }
+
   return instance;
 }
 

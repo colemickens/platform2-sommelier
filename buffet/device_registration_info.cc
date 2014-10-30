@@ -140,8 +140,11 @@ std::string BuildURL(const std::string& url,
   return chromeos::url::AppendQueryParams(result, params);
 }
 
-auto ignore_cloud_error = base::Bind([](const chromeos::Error&){});
-auto ignore_cloud_result = base::Bind([](const base::DictionaryValue&){});
+void IgnoreCloudError(const chromeos::Error&) {
+}
+
+void IgnoreCloudResult(const base::DictionaryValue&) {
+}
 
 }  // anonymous namespace
 
@@ -662,7 +665,7 @@ void DeviceRegistrationInfo::UpdateDeviceResource(base::Closure callback) {
       }),
       // TODO(antonm): Failure to update device resource probably deserves
       // some additional actions.
-      ignore_cloud_error);
+      base::Bind(&IgnoreCloudError));
 }
 
 void DeviceRegistrationInfo::FetchCommands(
@@ -679,7 +682,7 @@ void DeviceRegistrationInfo::FetchCommands(
         const base::ListValue empty;
         callback.Run(commands ? *commands : empty);
       }),
-      ignore_cloud_error);
+      base::Bind(&IgnoreCloudError));
 }
 
 void DeviceRegistrationInfo::AbortLimboCommands(
@@ -714,7 +717,7 @@ void DeviceRegistrationInfo::AbortLimboCommands(
         chromeos::http::request_type::kPut,
         GetServiceURL("commands/" + command_id),
         command_copy.get(),
-        ignore_cloud_result, ignore_cloud_error);
+        base::Bind(&IgnoreCloudResult), base::Bind(&IgnoreCloudError));
   }
 
   base::MessageLoop::current()->PostTask(FROM_HERE, callback);
@@ -751,9 +754,9 @@ void DeviceRegistrationInfo::PublishCommands(const base::ListValue& commands) {
       continue;
     }
 
-    // TODO(antonm): Double check if there is a chance to publish
-    // the same command twice if it doesn't change its status.
-    command_manager_->AddCommand(std::move(command_instance));
+    // TODO(antonm): Properly process cancellation of commands.
+    if (!command_manager_->FindCommand(command_instance->GetID()))
+      command_manager_->AddCommand(std::move(command_instance));
   }
 }
 

@@ -98,13 +98,13 @@ class DBusCommandDispacherTest : public testing::Test {
   }
 
 
-  std::string AddNewCommand(const std::string& json) {
+  void AddNewCommand(const std::string& json, const std::string& id) {
     auto command_instance = CommandInstance::FromJson(
         CreateDictionaryValue(json.c_str()).get(), dictionary_, nullptr);
+    command_instance->SetID(id);
     // Two interfaces are added - Command and Properties.
     EXPECT_CALL(*mock_exported_object_manager_, SendSignal(_)).Times(2);
-    return command_instance ?
-        command_queue_.Add(std::move(command_instance)) : std::string();
+    command_queue_.Add(std::move(command_instance));
   }
 
   void FinishCommand(DBusCommandProxy* proxy) {
@@ -126,8 +126,8 @@ class DBusCommandDispacherTest : public testing::Test {
 };
 
 TEST_F(DBusCommandDispacherTest, Test_Command_Base_Shutdown) {
-  std::string id = AddNewCommand("{'name':'base.shutdown'}");
-  EXPECT_EQ("1", id);
+  const std::string id = "id0000";
+  AddNewCommand("{'name':'base.shutdown'}", id);
   CommandInstance* command_instance = command_queue_.Find(id);
   ASSERT_NE(nullptr, command_instance);
   DBusCommandProxy* command_proxy =
@@ -157,13 +157,13 @@ TEST_F(DBusCommandDispacherTest, Test_Command_Base_Shutdown) {
 }
 
 TEST_F(DBusCommandDispacherTest, Test_Command_Base_Reboot) {
-  std::string id = AddNewCommand(R"({
+  const std::string id = "id0001";
+  AddNewCommand(R"({
     'name': 'base.reboot',
     'parameters': {
       'delay': 20
     }
-  })");
-  EXPECT_EQ("1", id);
+  })", id);
   CommandInstance* command_instance = command_queue_.Find(id);
   ASSERT_NE(nullptr, command_instance);
   DBusCommandProxy* command_proxy =

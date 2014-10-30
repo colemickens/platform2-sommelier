@@ -167,6 +167,7 @@ void Manager::HandleUpdateState(
 
 void Manager::HandleAddCommand(scoped_ptr<DBusMethodResponse> response,
                                const std::string& json_command) {
+  static int next_id = 0;
   std::string error_message;
   std::unique_ptr<base::Value> value(base::JSONReader::ReadAndReturnError(
       json_command, base::JSON_PARSE_RFC, nullptr, &error_message));
@@ -183,6 +184,7 @@ void Manager::HandleAddCommand(scoped_ptr<DBusMethodResponse> response,
     response->ReplyWithError(error.get());
     return;
   }
+  command_instance->SetID(std::to_string(++next_id));
   command_manager_->AddCommand(std::move(command_instance));
   response->Return();
 }

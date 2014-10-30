@@ -75,8 +75,13 @@ class CommandManager final {
   // the current device.
   void Startup();
 
-  // Adds a new command to the command queue. Returns command ID.
-  std::string AddCommand(std::unique_ptr<CommandInstance> command_instance);
+  // Adds a new command to the command queue.
+  void AddCommand(std::unique_ptr<CommandInstance> command_instance);
+
+  // Finds a command by the command |id|. Returns nullptr if the command with
+  // the given |id| is not found. The returned pointer should not be persisted
+  // for a long period of time.
+  CommandInstance* FindCommand(const std::string& id) const;
 
  private:
   CommandDictionary base_dictionary_;  // Base/std command definitions/schemas.

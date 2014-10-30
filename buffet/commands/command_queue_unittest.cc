@@ -15,9 +15,11 @@
 namespace {
 
 std::unique_ptr<buffet::CommandInstance> CreateDummyCommandInstance(
-    const std::string& name = "base.reboot") {
-  return std::unique_ptr<buffet::CommandInstance>(
+    const std::string& name, const std::string& id) {
+  auto cmd = std::unique_ptr<buffet::CommandInstance>(
       new buffet::CommandInstance(name, "powerd", {}));
+  cmd->SetID(id);
+  return cmd;
 }
 
 // Fake implementation of CommandDispachInterface.
@@ -61,19 +63,19 @@ TEST(CommandQueue, Empty) {
 
 TEST(CommandQueue, Add) {
   buffet::CommandQueue queue;
-  std::set<std::string> ids;  // Using set<> to check that IDs are unique.
-  ids.insert(queue.Add(CreateDummyCommandInstance()));
-  ids.insert(queue.Add(CreateDummyCommandInstance()));
-  ids.insert(queue.Add(CreateDummyCommandInstance()));
+  queue.Add(CreateDummyCommandInstance("base.reboot", "id1"));
+  queue.Add(CreateDummyCommandInstance("base.reboot", "id2"));
+  queue.Add(CreateDummyCommandInstance("base.reboot", "id3"));
   EXPECT_EQ(3, queue.GetCount());
-  EXPECT_EQ(3, ids.size());
   EXPECT_FALSE(queue.IsEmpty());
 }
 
 TEST(CommandQueue, Remove) {
   buffet::CommandQueue queue;
-  std::string id1 = queue.Add(CreateDummyCommandInstance());
-  std::string id2 = queue.Add(CreateDummyCommandInstance());
+  const std::string id1 = "id1";
+  const std::string id2 = "id2";
+  queue.Add(CreateDummyCommandInstance("base.reboot", id1));
+  queue.Add(CreateDummyCommandInstance("base.reboot", id2));
   EXPECT_FALSE(queue.IsEmpty());
   EXPECT_EQ(nullptr, queue.Remove("dummy").get());
   EXPECT_EQ(2, queue.GetCount());
@@ -92,8 +94,10 @@ TEST(CommandQueue, Dispatch) {
   FakeDispatchInterface dispatch;
   buffet::CommandQueue queue;
   queue.SetCommandDispachInterface(&dispatch);
-  std::string id1 = queue.Add(CreateDummyCommandInstance());
-  std::string id2 = queue.Add(CreateDummyCommandInstance());
+  const std::string id1 = "id1";
+  const std::string id2 = "id2";
+  queue.Add(CreateDummyCommandInstance("base.reboot", id1));
+  queue.Add(CreateDummyCommandInstance("base.reboot", id2));
   std::set<std::string> ids{id1, id2};  // Make sure they are sorted properly.
   std::string expected_set = chromeos::string_utils::Join(
       ',', std::vector<std::string>(ids.begin(), ids.end()));
@@ -106,8 +110,10 @@ TEST(CommandQueue, Dispatch) {
 
 TEST(CommandQueue, Find) {
   buffet::CommandQueue queue;
-  std::string id1 = queue.Add(CreateDummyCommandInstance("base.reboot"));
-  std::string id2 = queue.Add(CreateDummyCommandInstance("base.shutdown"));
+  const std::string id1 = "id1";
+  const std::string id2 = "id2";
+  queue.Add(CreateDummyCommandInstance("base.reboot", id1));
+  queue.Add(CreateDummyCommandInstance("base.shutdown", id2));
   EXPECT_EQ(nullptr, queue.Find("dummy"));
   auto cmd1 = queue.Find(id1);
   EXPECT_NE(nullptr, cmd1);

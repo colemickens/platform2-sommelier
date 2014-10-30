@@ -43,6 +43,7 @@ const char kOneOf_MetaSchema[] = "schema";
 
 const char kObject_Properties[] = "properties";
 
+const char kCommand_Id[] = "id";
 const char kCommand_Name[] = "name";
 const char kCommand_Parameters[] = "parameters";
 }  // namespace attributes

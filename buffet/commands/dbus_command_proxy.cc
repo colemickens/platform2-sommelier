@@ -10,7 +10,6 @@
 #include "buffet/commands/command_instance.h"
 #include "buffet/commands/prop_constraints.h"
 #include "buffet/commands/prop_types.h"
-#include "buffet/libbuffet/dbus_constants.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
@@ -19,9 +18,9 @@ namespace buffet {
 
 DBusCommandProxy::DBusCommandProxy(ExportedObjectManager* object_manager,
                                    const scoped_refptr<dbus::Bus>& bus,
-                                   CommandInstance* command_instance)
-    : object_path_(dbus_constants::kCommandServicePathPrefix +
-                   command_instance->GetID()),
+                                   CommandInstance* command_instance,
+                                   std::string object_path)
+    : object_path_(std::move(object_path)),
       command_instance_(command_instance),
       dbus_object_(object_manager, bus, object_path_) {
 }

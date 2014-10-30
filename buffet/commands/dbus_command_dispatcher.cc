@@ -16,7 +16,7 @@ namespace buffet {
 DBusCommandDispacher::DBusCommandDispacher(
     const scoped_refptr<dbus::Bus>& bus,
     ExportedObjectManager* object_manager)
-    : bus_(bus) {
+    : bus_(bus), next_id_(0) {
   if (object_manager)
     object_manager_ = object_manager->AsWeakPtr();
 }
@@ -44,9 +44,13 @@ DBusCommandProxy* DBusCommandDispacher::FindProxy(
 }
 
 std::unique_ptr<DBusCommandProxy> DBusCommandDispacher::CreateDBusCommandProxy(
-      CommandInstance* command_instance) const {
+      CommandInstance* command_instance) {
   return std::unique_ptr<DBusCommandProxy>(
-      new DBusCommandProxy(object_manager_.get(), bus_, command_instance));
+      new DBusCommandProxy(object_manager_.get(),
+                           bus_,
+                           command_instance,
+                           dbus_constants::kCommandServicePathPrefix +
+                           std::to_string(++next_id_)));
 }
 
 }  // namespace buffet

@@ -82,9 +82,13 @@ void CommandManager::Startup() {
   }
 }
 
-std::string CommandManager::AddCommand(
+void CommandManager::AddCommand(
     std::unique_ptr<CommandInstance> command_instance) {
-  return command_queue_.Add(std::move(command_instance));
+  command_queue_.Add(std::move(command_instance));
+}
+
+CommandInstance* CommandManager::FindCommand(const std::string& id) const {
+  return command_queue_.Find(id);
 }
 
 }  // namespace buffet
