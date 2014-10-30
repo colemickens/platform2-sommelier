@@ -77,31 +77,6 @@ class Cellular : public Device, public RPCTaskDelegate {
     kModemStateConnected = 11,
   };
 
-  class Operator {
-   public:
-    Operator();
-    ~Operator();
-
-    void CopyFrom(const Operator &oper);
-    bool Equals(const Operator &oper) const { return dict_ == oper.dict_; }
-
-    const std::string &GetName() const;
-    void SetName(const std::string &name);
-
-    const std::string &GetCode() const;
-    void SetCode(const std::string &code);
-
-    const std::string &GetCountry() const;
-    void SetCountry(const std::string &country);
-
-    const Stringmap &ToDict() const;
-
-   private:
-    Stringmap dict_;
-
-    DISALLOW_COPY_AND_ASSIGN(Operator);
-  };
-
   // |owner| is the ModemManager DBus service owner (e.g., ":1.17").
   // |path| is the ModemManager.Modem DBus object path (e.g.,
   // "/org/chromium/ModemManager/Gobi/0").

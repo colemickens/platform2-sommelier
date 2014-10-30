@@ -1456,8 +1456,16 @@ void CellularCapabilityUniversal::OnModem3GPPPropertiesChanged(
     cellular()->set_imei(imei);
 
   // Handle registration state changes as a single change
-  string operator_code = serving_operator_.GetCode();
-  string operator_name = serving_operator_.GetName();
+  Stringmap::const_iterator it;
+  string operator_code;
+  string operator_name;
+  it = serving_operator_.find(kOperatorCodeKey);
+  if (it != serving_operator_.end())
+    operator_code = it->second;
+  it = serving_operator_.find(kOperatorNameKey);
+  if (it != serving_operator_.end())
+    operator_name = it->second;
+
   MMModem3gppRegistrationState state = registration_state_;
   bool registration_changed = false;
   if (DBusProperties::GetUint32(properties,
@@ -1558,8 +1566,8 @@ void CellularCapabilityUniversal::Handle3GPPRegistrationChange(
                     << ", opername=" << updated_operator_name;
 
   registration_state_ = updated_state;
-  serving_operator_.SetCode(updated_operator_code);
-  serving_operator_.SetName(updated_operator_name);
+  serving_operator_[kOperatorCodeKey] = updated_operator_code;
+  serving_operator_[kOperatorNameKey] = updated_operator_name;
   cellular()->serving_operator_info()->UpdateMCCMNC(updated_operator_code);
   cellular()->serving_operator_info()->UpdateOperatorName(
       updated_operator_name);

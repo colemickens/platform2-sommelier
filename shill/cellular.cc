@@ -59,46 +59,6 @@ const int64_t Cellular::kDefaultScanningTimeoutMilliseconds = 60000;
 const char Cellular::kGenericServiceNamePrefix[] = "MobileNetwork";
 unsigned int Cellular::friendly_service_name_id_ = 1;
 
-Cellular::Operator::Operator() {
-  SetName("");
-  SetCode("");
-  SetCountry("");
-}
-
-Cellular::Operator::~Operator() {}
-
-void Cellular::Operator::CopyFrom(const Operator &oper) {
-  dict_ = oper.dict_;
-}
-
-const string &Cellular::Operator::GetName() const {
-  return dict_.find(kOperatorNameKey)->second;
-}
-
-void Cellular::Operator::SetName(const string &name) {
-  dict_[kOperatorNameKey] = name;
-}
-
-const string &Cellular::Operator::GetCode() const {
-  return dict_.find(kOperatorCodeKey)->second;
-}
-
-void Cellular::Operator::SetCode(const string &code) {
-  dict_[kOperatorCodeKey] = code;
-}
-
-const string &Cellular::Operator::GetCountry() const {
-  return dict_.find(kOperatorCountryKey)->second;
-}
-
-void Cellular::Operator::SetCountry(const string &country) {
-  dict_[kOperatorCountryKey] = country;
-}
-
-const Stringmap &Cellular::Operator::ToDict() const {
-  return dict_;
-}
-
 Cellular::Cellular(ModemInfo *modem_info,
                    const string &link_name,
                    const string &address,

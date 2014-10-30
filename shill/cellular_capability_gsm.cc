@@ -695,8 +695,6 @@ void CellularCapabilityGSM::OnRegistrationInfoSignal(
                     << ", opercode=" << operator_code
                     << ", opername=" << operator_name;
   registration_state_ = status;
-  serving_operator_.SetCode(operator_code);
-  serving_operator_.SetName(operator_name);
   cellular()->serving_operator_info()->UpdateMCCMNC(operator_code);
   cellular()->serving_operator_info()->UpdateOperatorName(operator_name);
   cellular()->HandleNewRegistrationState();

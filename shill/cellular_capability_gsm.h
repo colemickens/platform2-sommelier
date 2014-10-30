@@ -208,7 +208,6 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
 
   uint32_t registration_state_;
   uint32_t access_technology_;
-  Cellular::Operator serving_operator_;
   std::string spn_;
   mobile_provider *home_provider_info_;
   std::string desired_network_;

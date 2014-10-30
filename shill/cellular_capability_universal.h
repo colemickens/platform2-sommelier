@@ -406,7 +406,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   std::vector<ModemModes> supported_modes_;
   ModemModes current_modes_;
 
-  Cellular::Operator serving_operator_;
+  Stringmap serving_operator_;
   std::string spn_;
   std::string desired_network_;
 
