@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NETLINK_MESSAGE_H_
-#define SHILL_NETLINK_MESSAGE_H_
+#ifndef SHILL_NET_NETLINK_MESSAGE_H_
+#define SHILL_NET_NETLINK_MESSAGE_H_
 
 #include <linux/netlink.h>
 
@@ -227,4 +227,4 @@ class NetlinkMessageFactory {
 
 }  // namespace shill
 
-#endif  // SHILL_NETLINK_MESSAGE_H_
+#endif  // SHILL_NET_NETLINK_MESSAGE_H_

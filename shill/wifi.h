@@ -94,7 +94,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/key_value_store.h"
 #include "shill/metrics.h"
-#include "shill/netlink_manager.h"
+#include "shill/net/netlink_manager.h"
 #include "shill/power_manager.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"

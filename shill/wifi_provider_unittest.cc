@@ -16,13 +16,13 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
-#include "shill/ieee80211.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_store.h"
 #include "shill/mock_wifi_service.h"
+#include "shill/net/ieee80211.h"
 #include "shill/net/mock_time.h"
 #include "shill/nice_mock_control.h"
 #include "shill/technology.h"

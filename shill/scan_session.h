@@ -16,7 +16,7 @@
 #include <metrics/timer.h>
 
 #include "shill/net/byte_string.h"
-#include "shill/netlink_manager.h"
+#include "shill/net/netlink_manager.h"
 #include "shill/wifi_provider.h"
 
 namespace shill {

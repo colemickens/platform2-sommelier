@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/nl80211_attribute.h"
+#include "shill/net/nl80211_attribute.h"
 
 #include <netlink/attr.h>
 
@@ -10,9 +10,8 @@
 
 #include <base/bind.h>
 #include <base/format_macros.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
-
-#include "shill/logging.h"
 
 using base::Bind;
 using base::StringAppendF;

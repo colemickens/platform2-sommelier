@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_NETLINK_MANAGER_H_
-#define SHILL_MOCK_NETLINK_MANAGER_H_
+#ifndef SHILL_NET_MOCK_NETLINK_MANAGER_H_
+#define SHILL_NET_MOCK_NETLINK_MANAGER_H_
 
-#include "shill/netlink_manager.h"
+#include "shill/net/netlink_manager.h"
 
 #include <map>
 #include <string>
@@ -48,4 +48,4 @@ class MockNetlinkManager : public NetlinkManager {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_NETLINK_MANAGER_H_
+#endif  // SHILL_NET_MOCK_NETLINK_MANAGER_H_

@@ -8,7 +8,7 @@
 // messages.
 
 // This file tests the public interface to NetlinkManager.
-#include "shill/netlink_manager.h"
+#include "shill/net/netlink_manager.h"
 
 #include <map>
 #include <string>
@@ -18,16 +18,13 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/mock_event_dispatcher.h"
-#include "shill/mock_log.h"
-#include "shill/mock_netlink_socket.h"
 #include "shill/net/io_handler.h"
 #include "shill/net/mock_io_handler_factory.h"
+#include "shill/net/mock_netlink_socket.h"
 #include "shill/net/mock_sockets.h"
 #include "shill/net/mock_time.h"
-#include "shill/netlink_attribute.h"
-#include "shill/nl80211_message.h"
-#include "shill/scope_logger.h"
+#include "shill/net/netlink_attribute.h"
+#include "shill/net/nl80211_message.h"
 
 using base::Bind;
 using base::StringPrintf;
@@ -301,20 +298,12 @@ TEST_F(NetlinkManagerTest, Start) {
 }
 
 TEST_F(NetlinkManagerTest, SubscribeToEvents) {
-  ScopedMockLog log;
-  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-
   // Family not registered.
-  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
-                       EndsWith("doesn't exist")));
   EXPECT_CALL(*netlink_socket_, SubscribeToEvents(_)).Times(0);
   EXPECT_FALSE(netlink_manager_->SubscribeToEvents(kFamilyStoogesString,
                                                    kGroupMoeString));
 
   // Group not part of family
-  string in_family = StringPrintf("doesn't exist in family '%s'",
-                                  kFamilyMarxString);
-  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith(in_family)));
   EXPECT_CALL(*netlink_socket_, SubscribeToEvents(_)).Times(0);
   EXPECT_FALSE(netlink_manager_->SubscribeToEvents(kFamilyMarxString,
                                                    kGroupMoeString));
@@ -752,8 +741,6 @@ TEST_F(NetlinkManagerTest, OnInvalidRawNlMessageReceived) {
   };
 
   for (auto message : {bad_len_message, bad_hdr_message, bad_body_message}) {
-    ScopedMockLog log;
-    EXPECT_CALL(log, Log(logging::LOG_ERROR, _, _));
     EXPECT_CALL(message_handler, OnNetlinkMessage(_)).Times(0);
     InputData data(message.data(), message.size());
     netlink_manager_->OnRawNlMessageReceived(&data);
@@ -775,16 +762,12 @@ TEST_F(NetlinkManagerTest, OnInvalidRawNlMessageReceived) {
     vector<unsigned char> two_messages(
         good_message.begin(), good_message.end());
     two_messages.insert(two_messages.end(), bad_msg.begin(), bad_msg.end());
-    ScopedMockLog log;
-    EXPECT_CALL(log, Log(logging::LOG_ERROR, _, _));
     EXPECT_CALL(message_handler, OnNetlinkMessage(_)).Times(1);
     InputData data(two_messages.data(), two_messages.size());
     netlink_manager_->OnRawNlMessageReceived(&data);
     Mock::VerifyAndClearExpectations(&message_handler);
   }
 
-  ScopedMockLog log;
-  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, _));
   EXPECT_CALL(message_handler, OnNetlinkMessage(_)).Times(0);
   netlink_manager_->OnRawNlMessageReceived(nullptr);
 }

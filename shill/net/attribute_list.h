@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_ATTRIBUTE_LIST_H_
-#define SHILL_ATTRIBUTE_LIST_H_
+#ifndef SHILL_NET_ATTRIBUTE_LIST_H_
+#define SHILL_NET_ATTRIBUTE_LIST_H_
 
 #include <linux/nl80211.h>
 #include <netlink/netlink.h>
@@ -14,10 +14,12 @@
 
 #include <base/bind.h>
 
-#include "shill/refptr_types.h"
-
 struct nlattr;
 namespace shill {
+
+class AttributeList;
+typedef scoped_refptr<const AttributeList> AttributeListConstRefPtr;
+typedef scoped_refptr<AttributeList> AttributeListRefPtr;
 
 class ByteString;
 class NetlinkAttribute;
@@ -136,4 +138,4 @@ class AttributeIdIterator {
 
 }  // namespace shill
 
-#endif  // SHILL_ATTRIBUTE_LIST_H_
+#endif  // SHILL_NET_ATTRIBUTE_LIST_H_

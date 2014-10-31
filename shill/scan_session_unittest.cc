@@ -16,10 +16,10 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_netlink_manager.h"
-#include "shill/netlink_manager.h"
-#include "shill/netlink_message_matchers.h"
-#include "shill/nl80211_message.h"
+#include "shill/net/mock_netlink_manager.h"
+#include "shill/net/netlink_manager.h"
+#include "shill/net/netlink_message_matchers.h"
+#include "shill/net/nl80211_message.h"
 
 using std::set;
 using std::vector;

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/netlink_message.h"
+#include "shill/net/netlink_message.h"
 
 #include <limits.h>
 #include <netlink/msg.h>
@@ -14,10 +14,9 @@
 #include <string>
 
 #include <base/format_macros.h>
+#include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
-
-#include "shill/logging.h"
 
 using base::StringAppendF;
 using base::StringPrintf;
@@ -97,19 +96,19 @@ bool NetlinkMessage::InitFromNlmsg(const nlmsghdr *const_msg) {
 // static
 void NetlinkMessage::PrintBytes(int log_level, const unsigned char *buf,
                                 size_t num_bytes) {
-  SLOG(WiFi, log_level) << "Netlink Message -- Examining Bytes";
+  VLOG(log_level) << "Netlink Message -- Examining Bytes";
   if (!buf) {
-    SLOG(WiFi, log_level) << "<NULL Buffer>";
+    VLOG(log_level) << "<NULL Buffer>";
     return;
   }
 
   if (num_bytes >= sizeof(nlmsghdr)) {
       const nlmsghdr *header = reinterpret_cast<const nlmsghdr *>(buf);
-      SLOG(WiFi, log_level) << StringPrintf(
+      VLOG(log_level) << StringPrintf(
           "len:          %02x %02x %02x %02x = %u bytes",
           buf[0], buf[1], buf[2], buf[3], header->nlmsg_len);
 
-      SLOG(WiFi, log_level) << StringPrintf(
+      VLOG(log_level) << StringPrintf(
           "type | flags: %02x %02x %02x %02x - type:%u flags:%s%s%s%s%s",
           buf[4], buf[5], buf[6], buf[7], header->nlmsg_type,
           ((header->nlmsg_flags & NLM_F_REQUEST) ? " REQUEST" : ""),
@@ -118,18 +117,18 @@ void NetlinkMessage::PrintBytes(int log_level, const unsigned char *buf,
           ((header->nlmsg_flags & NLM_F_ECHO) ? " ECHO" : ""),
           ((header->nlmsg_flags & NLM_F_DUMP_INTR) ? " BAD-SEQ" : ""));
 
-      SLOG(WiFi, log_level) << StringPrintf(
+      VLOG(log_level) << StringPrintf(
           "sequence:     %02x %02x %02x %02x = %u",
           buf[8], buf[9], buf[10], buf[11], header->nlmsg_seq);
-      SLOG(WiFi, log_level) << StringPrintf(
+      VLOG(log_level) << StringPrintf(
           "pid:          %02x %02x %02x %02x = %u",
           buf[12], buf[13], buf[14], buf[15], header->nlmsg_pid);
       buf += sizeof(nlmsghdr);
       num_bytes -= sizeof(nlmsghdr);
   } else {
-    SLOG(WiFi, log_level) << "Not enough bytes (" << num_bytes
-                          << ") for a complete nlmsghdr (requires "
-                          << sizeof(nlmsghdr) << ").";
+    VLOG(log_level) << "Not enough bytes (" << num_bytes
+                    << ") for a complete nlmsghdr (requires "
+                    << sizeof(nlmsghdr) << ").";
   }
 
   while (num_bytes) {
@@ -138,7 +137,7 @@ void NetlinkMessage::PrintBytes(int log_level, const unsigned char *buf,
     for (size_t i = 0; i < bytes_this_row; ++i) {
       StringAppendF(&output, " %02x", *buf++);
     }
-    SLOG(WiFi, log_level) << output;
+    VLOG(log_level) << output;
     num_bytes -= bytes_this_row;
   }
 }
@@ -181,7 +180,7 @@ string ErrorAckMessage::ToString() const {
 
 void ErrorAckMessage::Print(int header_log_level,
                             int /*detail_log_level*/) const {
-  SLOG(WiFi, header_log_level) << ToString();
+  VLOG(header_log_level) << ToString();
 }
 
 // NoopMessage.
@@ -194,7 +193,7 @@ ByteString NoopMessage::Encode(uint32_t sequence_number) {
 }
 
 void NoopMessage::Print(int header_log_level, int /*detail_log_level*/) const {
-  SLOG(WiFi, header_log_level) << ToString();
+  VLOG(header_log_level) << ToString();
 }
 
 // DoneMessage.
@@ -206,7 +205,7 @@ ByteString DoneMessage::Encode(uint32_t sequence_number) {
 }
 
 void DoneMessage::Print(int header_log_level, int /*detail_log_level*/) const {
-  SLOG(WiFi, header_log_level) << ToString();
+  VLOG(header_log_level) << ToString();
 }
 
 // OverrunMessage.
@@ -220,7 +219,7 @@ ByteString OverrunMessage::Encode(uint32_t sequence_number) {
 
 void OverrunMessage::Print(int header_log_level,
                            int /*detail_log_level*/) const {
-  SLOG(WiFi, header_log_level) << ToString();
+  VLOG(header_log_level) << ToString();
 }
 
 // UnknownMessage.
@@ -239,7 +238,7 @@ void UnknownMessage::Print(int header_log_level,
   for (int i = 0; i < total_bytes; ++i) {
     StringAppendF(&output, " 0x%02x", const_data[i]);
   }
-  SLOG(WiFi, header_log_level) << output;
+  VLOG(header_log_level) << output;
 }
 
 //

@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/control_netlink_attribute.h"
+#include "shill/net/control_netlink_attribute.h"
 
 #include <netlink/attr.h>
 
-#include "shill/logging.h"
+#include <base/logging.h>
 
 namespace shill {
 

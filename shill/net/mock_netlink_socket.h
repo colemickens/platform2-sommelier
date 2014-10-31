@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_NETLINK_SOCKET_H_
-#define SHILL_MOCK_NETLINK_SOCKET_H_
+#ifndef SHILL_NET_MOCK_NETLINK_SOCKET_H_
+#define SHILL_NET_MOCK_NETLINK_SOCKET_H_
 
-#include "shill/netlink_socket.h"
+#include "shill/net/netlink_socket.h"
 
 #include <base/macros.h>
 
@@ -32,4 +32,4 @@ class MockNetlinkSocket : public NetlinkSocket {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_NETLINK_SOCKET_H_
+#endif  // SHILL_NET_MOCK_NETLINK_SOCKET_H_

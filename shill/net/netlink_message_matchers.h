@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NETLINK_MESSAGE_MATCHERS_H_
-#define SHILL_NETLINK_MESSAGE_MATCHERS_H_
+#ifndef SHILL_NET_NETLINK_MESSAGE_MATCHERS_H_
+#define SHILL_NET_NETLINK_MESSAGE_MATCHERS_H_
 
+#include <base/logging.h>
 #include <gmock/gmock.h>
 
-#include "shill/logging.h"
-#include "shill/netlink_message.h"
-#include "shill/nl80211_message.h"
+#include "shill/net/netlink_message.h"
+#include "shill/net/nl80211_message.h"
 
 namespace shill {
 
@@ -140,4 +140,4 @@ MATCHER_P(HasNoHiddenSSID, nl80211_message_type, "") {
 
 }  // namespace shill
 
-#endif  // SHILL_NETLINK_MESSAGE_MATCHERS_H_
+#endif  // SHILL_NET_NETLINK_MESSAGE_MATCHERS_H_

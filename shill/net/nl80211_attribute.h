@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NL80211_ATTRIBUTE_H_
-#define SHILL_NL80211_ATTRIBUTE_H_
+#ifndef SHILL_NET_NL80211_ATTRIBUTE_H_
+#define SHILL_NET_NL80211_ATTRIBUTE_H_
 
 #include <netlink/attr.h>
 
@@ -11,7 +11,7 @@
 
 #include <base/macros.h>
 
-#include "shill/netlink_attribute.h"
+#include "shill/net/netlink_attribute.h"
 
 struct nlattr;
 
@@ -660,4 +660,4 @@ class Nl80211AttributeRespIe : public NetlinkRawAttribute {
 
 }  // namespace shill
 
-#endif  // SHILL_NL80211_ATTRIBUTE_H_
+#endif  // SHILL_NET_NL80211_ATTRIBUTE_H_

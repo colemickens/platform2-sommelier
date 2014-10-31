@@ -2,16 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/generic_netlink_message.h"
+#include "shill/net/generic_netlink_message.h"
 
 #include <netlink/msg.h>
 #include <netlink/netlink.h>
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
-#include "shill/logging.h"
-#include "shill/netlink_attribute.h"
+#include "shill/net/netlink_attribute.h"
 
 using base::Bind;
 using base::StringPrintf;
@@ -85,9 +85,9 @@ bool GenericNetlinkMessage::InitAndStripHeader(ByteString *input) {
 
 void GenericNetlinkMessage::Print(int header_log_level,
                                   int detail_log_level) const {
-  SLOG(WiFi, header_log_level) << StringPrintf("Message %s (%d)",
-                                               command_string(),
-                                               command());
+  VLOG(header_log_level) << StringPrintf("Message %s (%d)",
+                                         command_string(),
+                                         command());
   attributes_->Print(detail_log_level, 1);
 }
 

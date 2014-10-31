@@ -4,11 +4,11 @@
 
 #include "shill/callback80211_metrics.h"
 
-#include "shill/ieee80211.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/netlink_manager.h"
-#include "shill/nl80211_message.h"
+#include "shill/net/ieee80211.h"
+#include "shill/net/netlink_manager.h"
+#include "shill/net/nl80211_message.h"
 
 namespace shill {
 

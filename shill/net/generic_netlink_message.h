@@ -2,13 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_GENERIC_NETLINK_MESSAGE_H_
-#define SHILL_GENERIC_NETLINK_MESSAGE_H_
+#ifndef SHILL_NET_GENERIC_NETLINK_MESSAGE_H_
+#define SHILL_NET_GENERIC_NETLINK_MESSAGE_H_
 
-#include "shill/attribute_list.h"
+#include "shill/net/attribute_list.h"
 #include "shill/net/byte_string.h"
-#include "shill/netlink_message.h"
-#include "shill/refptr_types.h"
+#include "shill/net/netlink_message.h"
 
 struct nlmsghdr;
 
@@ -143,4 +142,4 @@ class UnknownControlMessage : public ControlNetlinkMessage {
 
 }  // namespace shill
 
-#endif  // SHILL_GENERIC_NETLINK_MESSAGE_H_
+#endif  // SHILL_NET_GENERIC_NETLINK_MESSAGE_H_

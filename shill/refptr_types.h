@@ -9,10 +9,6 @@
 
 namespace shill {
 
-class AttributeList;
-typedef scoped_refptr<const AttributeList> AttributeListConstRefPtr;
-typedef scoped_refptr<AttributeList> AttributeListRefPtr;
-
 class Device;
 typedef scoped_refptr<const Device> DeviceConstRefPtr;
 typedef scoped_refptr<Device> DeviceRefPtr;

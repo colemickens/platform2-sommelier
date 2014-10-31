@@ -11,8 +11,8 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 
-#include "shill/ieee80211.h"
-#include "shill/netlink_manager.h"
+#include "shill/net/ieee80211.h"
+#include "shill/net/netlink_manager.h"
 
 namespace shill {
 

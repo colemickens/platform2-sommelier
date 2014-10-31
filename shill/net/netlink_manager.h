@@ -52,8 +52,8 @@
 // response to your message arrives, it'll call your handler.
 //
 
-#ifndef SHILL_NETLINK_MANAGER_H_
-#define SHILL_NETLINK_MANAGER_H_
+#ifndef SHILL_NET_NETLINK_MANAGER_H_
+#define SHILL_NET_NETLINK_MANAGER_H_
 
 #include <list>
 #include <map>
@@ -66,18 +66,17 @@
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/generic_netlink_message.h"
+#include "shill/net/generic_netlink_message.h"
 #include "shill/net/io_handler_factory.h"
+#include "shill/net/netlink_message.h"
+#include "shill/net/netlink_socket.h"
 #include "shill/net/shill_time.h"
-#include "shill/netlink_message.h"
-#include "shill/netlink_socket.h"
 
 struct nlmsghdr;
 
 namespace shill {
 
 class ControlNetlinkMessage;
-class EventDispatcher;
 struct InputData;
 class Nl80211Message;
 
@@ -86,13 +85,12 @@ class Nl80211Message;
 // to communicate between user-space and the cfg80211 module that manages wifi
 // drivers.  Bring NetlinkManager up as follows:
 //  NetlinkManager *netlink_manager_ = NetlinkManager::GetInstance();
-//  EventDispatcher dispatcher_;
 //  netlink_manager_->Init();  // Initialize the socket.
 //  // Get message types for all dynamic message types.
 //  Nl80211Message::SetMessageType(
 //      netlink_manager_->GetFamily(Nl80211Message::kMessageTypeString,
 //                              Bind(&Nl80211Message::CreateMessage)));
-//  netlink_manager_->Start(&dispatcher_);
+//  netlink_manager_->Start();
 class NetlinkManager {
  public:
   enum AuxilliaryMessageType {
@@ -297,7 +295,7 @@ class NetlinkManager {
   // Returns the file descriptor of socket used to read wifi data.
   int file_descriptor() const;
 
-  // EventDispatcher calls this when data is available on our socket.  This
+  // MessageLoop calls this when data is available on our socket.  This
   // method passes each, individual, message in the input to
   // |OnNlMessageReceived|.  Each part of a multipart message gets handled,
   // individually, by this method.
@@ -348,4 +346,4 @@ class NetlinkManager {
 
 }  // namespace shill
 
-#endif  // SHILL_NETLINK_MANAGER_H_
+#endif  // SHILL_NET_NETLINK_MANAGER_H_

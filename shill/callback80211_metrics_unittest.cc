@@ -13,11 +13,11 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/ieee80211.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
-#include "shill/nl80211_message.h"
+#include "shill/net/ieee80211.h"
+#include "shill/net/nl80211_message.h"
 #include "shill/refptr_types.h"
 
 using base::Bind;

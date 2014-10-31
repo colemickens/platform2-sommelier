@@ -17,9 +17,9 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/netlink_manager.h"
-#include "shill/nl80211_attribute.h"
-#include "shill/nl80211_message.h"
+#include "shill/net/netlink_manager.h"
+#include "shill/net/nl80211_attribute.h"
+#include "shill/net/nl80211_message.h"
 
 using base::Bind;
 using base::StringPrintf;

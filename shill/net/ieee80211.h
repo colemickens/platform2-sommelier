@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_IEEE80211_H_
-#define SHILL_IEEE80211_H_
+#ifndef SHILL_NET_IEEE80211_H_
+#define SHILL_NET_IEEE80211_H_
 
 namespace shill {
 
@@ -172,4 +172,4 @@ enum WiFiStatusCode {
 
 }  // namespace shill
 
-#endif  // SHILL_IEEE80211_H_
+#endif  // SHILL_NET_IEEE80211_H_

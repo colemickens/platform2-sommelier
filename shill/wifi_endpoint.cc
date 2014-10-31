@@ -12,9 +12,9 @@
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/ieee80211.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
+#include "shill/net/ieee80211.h"
 #include "shill/proxy_factory.h"
 #include "shill/supplicant_bss_proxy_interface.h"
 #include "shill/tethering.h"

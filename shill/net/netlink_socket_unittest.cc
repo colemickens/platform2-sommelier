@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/netlink_socket.h"
+#include "shill/net/netlink_socket.h"
 
 #include <linux/netlink.h>
 
@@ -14,7 +14,7 @@
 
 #include "shill/net/byte_string.h"
 #include "shill/net/mock_sockets.h"
-#include "shill/netlink_message.h"
+#include "shill/net/netlink_message.h"
 
 using std::min;
 using std::string;

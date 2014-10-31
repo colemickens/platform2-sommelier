@@ -9,7 +9,7 @@
 
 // This file tests the public interface to NetlinkMessage.
 
-#include "shill/nl80211_message.h"
+#include "shill/net/nl80211_message.h"
 
 #include <memory>
 #include <string>
@@ -19,10 +19,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/mock_log.h"
-#include "shill/mock_netlink_socket.h"
-#include "shill/netlink_attribute.h"
-#include "shill/refptr_types.h"
+#include "shill/net/mock_netlink_socket.h"
+#include "shill/net/netlink_attribute.h"
 
 using base::Bind;
 using base::StringPrintf;
@@ -912,11 +910,6 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DISASSOCIATE) {
 // This test is to ensure that an unknown nl80211 message generates an
 // Nl80211UnknownMessage with all Nl80211 parts.
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_UNKNOWN) {
-  ScopedMockLog log;
-  string logmessage = StringPrintf(
-      "Unknown/unhandled netlink nl80211 message 0x%02x",
-      kCmdNL80211_CMD_UNKNOWN);
-  EXPECT_CALL(log, Log(logging::LOG_WARNING, _, EndsWith(logmessage.c_str())));
   unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(
           reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_UNKNOWN)));

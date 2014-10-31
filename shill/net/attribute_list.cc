@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/attribute_list.h"
+#include "shill/net/attribute_list.h"
 
 #include <ctype.h>
 #include <linux/nl80211.h>
@@ -13,12 +13,11 @@
 #include <map>
 #include <string>
 
+#include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 
-#include "shill/logging.h"
-#include "shill/netlink_attribute.h"
-#include "shill/scope_logger.h"
+#include "shill/net/netlink_attribute.h"
 
 using base::StringAppendF;
 using base::WeakPtr;
@@ -30,7 +29,7 @@ namespace shill {
 bool AttributeList::CreateAttribute(
     int id, AttributeList::NewFromIdMethod factory) {
   if (ContainsKey(attributes_, id)) {
-    SLOG(WiFi, 7) << "Trying to re-add attribute " << id << ", not overwriting";
+    VLOG(7) << "Trying to re-add attribute " << id << ", not overwriting";
     return true;
   }
   attributes_[id] = AttributePointer(factory.Run(id));

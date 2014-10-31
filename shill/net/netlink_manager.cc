@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/netlink_manager.h"
+#include "shill/net/netlink_manager.h"
 
 #include <netlink/netlink.h>
 #include <sys/select.h>
@@ -11,19 +11,17 @@
 #include <list>
 #include <map>
 
+#include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/stl_util.h>
 
-#include "shill/attribute_list.h"
-#include "shill/event_dispatcher.h"
-#include "shill/generic_netlink_message.h"
-#include "shill/logging.h"
+#include "shill/net/attribute_list.h"
+#include "shill/net/generic_netlink_message.h"
 #include "shill/net/io_handler.h"
+#include "shill/net/netlink_message.h"
+#include "shill/net/nl80211_message.h"
 #include "shill/net/shill_time.h"
 #include "shill/net/sockets.h"
-#include "shill/netlink_message.h"
-#include "shill/nl80211_message.h"
-#include "shill/scope_logger.h"
 
 using base::Bind;
 using base::LazyInstance;
@@ -202,7 +200,7 @@ void NetlinkManager::OnNewFamilyMessage(const ControlNetlinkMessage &message) {
     return;
   }
 
-  SLOG(WiFi, 3) << "Socket family '" << family_name << "' has id=" << family_id;
+  VLOG(3) << "Socket family '" << family_name << "' has id=" << family_id;
 
   // Extract the available multicast groups from the message.
   AttributeListConstRefPtr multicast_groups;
@@ -225,7 +223,7 @@ void NetlinkManager::OnNewFamilyMessage(const ControlNetlinkMessage &message) {
         LOG(WARNING) << "Expected CTRL_ATTR_MCAST_GRP_ID, found none";
         continue;
       }
-      SLOG(WiFi, 3) << "  Adding group '" << group_name << "' = " << group_id;
+      VLOG(3) << "  Adding group '" << group_name << "' = " << group_id;
       message_types_[family_name].groups[group_name] = group_id;
     }
   }
@@ -250,8 +248,8 @@ void NetlinkManager::OnNetlinkMessageError(AuxilliaryMessageType type,
                      << error_ack_message->sequence_number() << ") failed: "
                      << error_ack_message->ToString();
         } else {
-          SLOG(WiFi, 6) << __func__ << ": Message (seq: "
-                     << error_ack_message->sequence_number() << ") ACKed";
+          VLOG(6) << __func__ << ": Message (seq: "
+                  << error_ack_message->sequence_number() << ") ACKed";
         }
       }
       break;
@@ -399,7 +397,7 @@ bool NetlinkManager::AddBroadcastHandler(const NetlinkMessageHandler &handler) {
     return false;
   }
   // And add the handler to the list.
-  SLOG(WiFi, 3) << "NetlinkManager::" << __func__ << " - adding handler";
+  VLOG(3) << "NetlinkManager::" << __func__ << " - adding handler";
   broadcast_handlers_.push_back(handler);
   return true;
 }
@@ -473,8 +471,8 @@ bool NetlinkManager::SendMessageInternal(
   while (handler_it != message_handlers_.end()) {
     if (timercmp(&now, &handler_it->second->delete_after(), >)) {
       // A timeout isn't always unexpected so this is not a warning.
-      SLOG(WiFi, 3) << "Removing timed-out handler for sequence number "
-                    << handler_it->first;
+      VLOG(3) << "Removing timed-out handler for sequence number "
+              << handler_it->first;
       handler_it->second->HandleError(kTimeoutWaitingForResponse, nullptr);
       handler_it = message_handlers_.erase(handler_it);
     } else {
@@ -486,7 +484,7 @@ bool NetlinkManager::SendMessageInternal(
   ByteString message_string = message->Encode(this->GetSequenceNumber());
 
   if (!response_handler) {
-    SLOG(WiFi, 3) << "Handler for message was null.";
+    VLOG(3) << "Handler for message was null.";
   } else if (ContainsKey(message_handlers_, message->sequence_number())) {
     LOG(ERROR) << "A handler already existed for sequence: "
                << message->sequence_number();
@@ -502,9 +500,9 @@ bool NetlinkManager::SendMessageInternal(
         NetlinkResponseHandlerRefPtr(response_handler);
   }
 
-  SLOG(WiFi, 5) << "NL Message " << message->sequence_number()
-                << " Sending (" << message_string.GetLength()
-                << " bytes) ===>";
+  VLOG(5) << "NL Message " << message->sequence_number()
+          << " Sending (" << message_string.GetLength()
+          << " bytes) ===>";
   message->Print(6, 7);
   NetlinkMessage::PrintBytes(8, message_string.GetConstData(),
                              message_string.GetLength());
@@ -577,35 +575,35 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
 
   std::unique_ptr<NetlinkMessage> message(message_factory_.CreateMessage(msg));
   if (message == nullptr) {
-    SLOG(WiFi, 3) << "NL Message " << sequence_number << " <===";
-    SLOG(WiFi, 3) << __func__ << "(msg:NULL)";
+    VLOG(3) << "NL Message " << sequence_number << " <===";
+    VLOG(3) << __func__ << "(msg:NULL)";
     return;  // Skip current message, continue parsing buffer.
   }
-  SLOG(WiFi, 5) << "NL Message " << sequence_number
+  VLOG(5) << "NL Message " << sequence_number
                 << " Received (" << msg->nlmsg_len << " bytes) <===";
   message->Print(6, 7);
   NetlinkMessage::PrintBytes(8, reinterpret_cast<const unsigned char *>(msg),
                              msg->nlmsg_len);
 
   if (message->message_type() == ErrorAckMessage::GetMessageType()) {
-    SLOG(WiFi, 3) << "Error/ACK response to message " << sequence_number;
+    VLOG(3) << "Error/ACK response to message " << sequence_number;
     const ErrorAckMessage *error_ack_message =
         dynamic_cast<const ErrorAckMessage *>(message.get());
     if (error_ack_message->error()) {
       if (ContainsKey(message_handlers_, sequence_number)) {
-        SLOG(WiFi, 6) << "Found message-specific error handler";
+        VLOG(6) << "Found message-specific error handler";
         message_handlers_[sequence_number]->HandleError(kErrorFromKernel,
                                                         message.get());
         message_handlers_.erase(sequence_number);
       }
     } else {
       if (ContainsKey(message_handlers_, sequence_number)) {
-        SLOG(WiFi, 6) << "Found message-specific ACK handler";
+        VLOG(6) << "Found message-specific ACK handler";
         if (message_handlers_[sequence_number]->HandleAck()) {
-          SLOG(WiFi, 6) << "ACK handler invoked -- removing callback";
+          VLOG(6) << "ACK handler invoked -- removing callback";
           message_handlers_.erase(sequence_number);
         } else {
-          SLOG(WiFi, 6) << "ACK handler invoked -- not removing callback";
+          VLOG(6) << "ACK handler invoked -- not removing callback";
         }
       }
     }
@@ -613,7 +611,7 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
   }
 
   if (ContainsKey(message_handlers_, sequence_number)) {
-    SLOG(WiFi, 6) << "Found message-specific handler";
+    VLOG(6) << "Found message-specific handler";
     if (!message_handlers_[sequence_number]->HandleMessage(*message)) {
       LOG(ERROR) << "Couldn't call message handler for " << sequence_number;
       // Call the error handler but, since we don't have an |ErrorAckMessage|,
@@ -623,16 +621,16 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
     }
     if ((message->flags() & NLM_F_MULTI) &&
         (message->message_type() != NLMSG_DONE)) {
-      SLOG(WiFi, 6) << "Multi-part message -- not removing callback";
+      VLOG(6) << "Multi-part message -- not removing callback";
     } else {
-      SLOG(WiFi, 6) << "Removing callbacks";
+      VLOG(6) << "Removing callbacks";
       message_handlers_.erase(sequence_number);
     }
     return;
   }
 
   for (const auto &handler : broadcast_handlers_) {
-    SLOG(WiFi, 6) << "Calling broadcast handler";
+    VLOG(6) << "Calling broadcast handler";
     if (!handler.is_null()) {
       handler.Run(*message);
     }

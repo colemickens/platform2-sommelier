@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NETLINK_ATTRIBUTE_H_
-#define SHILL_NETLINK_ATTRIBUTE_H_
+#ifndef SHILL_NET_NETLINK_ATTRIBUTE_H_
+#define SHILL_NET_NETLINK_ATTRIBUTE_H_
 
 #include <netlink/attr.h>
 
@@ -12,10 +12,8 @@
 
 #include <base/macros.h>
 
-#include "shill/attribute_list.h"
-#include "shill/logging.h"
+#include "shill/net/attribute_list.h"
 #include "shill/net/byte_string.h"
-#include "shill/refptr_types.h"
 
 struct nlattr;
 
@@ -384,4 +382,4 @@ class NetlinkAttributeGeneric : public NetlinkRawAttribute {
 
 }  // namespace shill
 
-#endif  // SHILL_NETLINK_ATTRIBUTE_H_
+#endif  // SHILL_NET_NETLINK_ATTRIBUTE_H_

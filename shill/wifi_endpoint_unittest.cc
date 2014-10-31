@@ -14,9 +14,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/ieee80211.h"
 #include "shill/mock_log.h"
 #include "shill/mock_wifi.h"
+#include "shill/net/ieee80211.h"
 #include "shill/property_store_unittest.h"
 #include "shill/refptr_types.h"
 #include "shill/tethering.h"

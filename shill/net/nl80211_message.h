@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NL80211_MESSAGE_H_
-#define SHILL_NL80211_MESSAGE_H_
+#ifndef SHILL_NET_NL80211_MESSAGE_H_
+#define SHILL_NET_NL80211_MESSAGE_H_
 
 #include <map>
 #include <string>
@@ -11,8 +11,8 @@
 
 #include <base/lazy_instance.h>
 
-#include "shill/generic_netlink_message.h"
 #include "shill/net/byte_string.h"
+#include "shill/net/generic_netlink_message.h"
 
 struct nlmsghdr;
 
@@ -512,4 +512,4 @@ class Nl80211MessageDataCollector {
 
 }  // namespace shill
 
-#endif  // SHILL_NL80211_MESSAGE_H_
+#endif  // SHILL_NET_NL80211_MESSAGE_H_

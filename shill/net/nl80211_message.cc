@@ -22,7 +22,7 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#include "shill/nl80211_message.h"
+#include "shill/net/nl80211_message.h"
 
 #include <netlink/msg.h>
 #include <netlink/netlink.h>
@@ -34,14 +34,13 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
-#include "shill/attribute_list.h"
-#include "shill/ieee80211.h"
-#include "shill/logging.h"
-#include "shill/netlink_attribute.h"
-#include "shill/nl80211_attribute.h"  // For Nl80211AttributeMac
-#include "shill/refptr_types.h"
+#include "shill/net/attribute_list.h"
+#include "shill/net/ieee80211.h"
+#include "shill/net/netlink_attribute.h"
+#include "shill/net/nl80211_attribute.h"  // For Nl80211AttributeMac
 
 using base::Bind;
 using base::LazyInstance;

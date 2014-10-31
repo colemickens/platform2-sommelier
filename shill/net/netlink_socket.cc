@@ -2,15 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/netlink_socket.h"
+#include "shill/net/netlink_socket.h"
 
 #include <linux/if_packet.h>
 #include <linux/netlink.h>
 #include <sys/socket.h>
 
-#include "shill/logging.h"
+#include <base/logging.h>
+
+#include "shill/net/netlink_message.h"
 #include "shill/net/sockets.h"
-#include "shill/netlink_message.h"
 
 // This is from a version of linux/socket.h that we don't have.
 #define SOL_NETLINK 270
@@ -62,7 +63,7 @@ bool NetlinkSocket::Init() {
     LOG(ERROR) << "Netlink socket bind failed";
     return false;
   }
-  SLOG(WiFi, 2) << "Netlink socket started";
+  VLOG(2) << "Netlink socket started";
 
   return true;
 }

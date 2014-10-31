@@ -16,7 +16,7 @@
 
 #include "shill/connectivity_trial.h"
 #include "shill/event_dispatcher.h"
-#include "shill/ieee80211.h"
+#include "shill/net/ieee80211.h"
 #include "shill/portal_detector.h"
 #include "shill/power_manager.h"
 #include "shill/refptr_types.h"

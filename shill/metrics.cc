@@ -9,9 +9,9 @@
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/bootstat.h>
 
-#include "shill/ieee80211.h"
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
+#include "shill/net/ieee80211.h"
 #include "shill/wifi_service.h"
 
 using std::string;

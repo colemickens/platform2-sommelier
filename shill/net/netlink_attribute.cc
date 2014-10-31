@@ -2,22 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/netlink_attribute.h"
+#include "shill/net/netlink_attribute.h"
 
 #include <netlink/attr.h>
 
+#include <cctype>
 #include <map>
 #include <memory>
 #include <string>
 
 #include <base/format_macros.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
-#include "shill/attribute_list.h"
-#include "shill/control_netlink_attribute.h"
-#include "shill/logging.h"
-#include "shill/nl80211_attribute.h"
-#include "shill/wifi.h"
+#include "shill/net/attribute_list.h"
+#include "shill/net/control_netlink_attribute.h"
+#include "shill/net/nl80211_attribute.h"
 
 using std::map;
 using std::string;
@@ -360,9 +360,9 @@ bool NetlinkAttribute::SetRawValue(const ByteString new_value) {
 
 void NetlinkAttribute::Print(int log_level, int indent) const {
   string attribute_value;
-  SLOG(WiFi, log_level) << HeaderToPrint(indent) << " "
-                        << (ToString(&attribute_value) ? attribute_value :
-                            "<DOES NOT EXIST>");
+  VLOG(log_level) << HeaderToPrint(indent) << " "
+                  << (ToString(&attribute_value) ? attribute_value :
+                      "<DOES NOT EXIST>");
 }
 
 string NetlinkAttribute::RawToString() const {
@@ -432,8 +432,8 @@ bool NetlinkU8Attribute::InitFromNlAttr(const nlattr *input) {
 
 bool NetlinkU8Attribute::GetU8Value(uint8_t *output) const {
   if (!has_a_value_) {
-    SLOG(WiFi, 7) << "U8 attribute " << id_string()
-                  << " hasn't been set to any value.";
+    VLOG(7) << "U8 attribute " << id_string()
+            << " hasn't been set to any value.";
     return false;
   }
   if (output) {
@@ -485,8 +485,8 @@ bool NetlinkU16Attribute::InitFromNlAttr(const nlattr *input) {
 
 bool NetlinkU16Attribute::GetU16Value(uint16_t *output) const {
   if (!has_a_value_) {
-    SLOG(WiFi, 7)  << "U16 attribute " << id_string()
-                   << " hasn't been set to any value.";
+    VLOG(7)  << "U16 attribute " << id_string()
+             << " hasn't been set to any value.";
     return false;
   }
   if (output) {
@@ -537,8 +537,8 @@ bool NetlinkU32Attribute::InitFromNlAttr(const nlattr *input) {
 
 bool NetlinkU32Attribute::GetU32Value(uint32_t *output) const {
   if (!has_a_value_) {
-    SLOG(WiFi, 7)  << "U32 attribute " << id_string()
-                   << " hasn't been set to any value.";
+    VLOG(7)  << "U32 attribute " << id_string()
+             << " hasn't been set to any value.";
     return false;
   }
   if (output) {
@@ -589,8 +589,8 @@ bool NetlinkU64Attribute::InitFromNlAttr(const nlattr *input) {
 
 bool NetlinkU64Attribute::GetU64Value(uint64_t *output) const {
   if (!has_a_value_) {
-    SLOG(WiFi, 7)  << "U64 attribute " << id_string()
-                   << " hasn't been set to any value.";
+    VLOG(7)  << "U64 attribute " << id_string()
+             << " hasn't been set to any value.";
     return false;
   }
   if (output) {
@@ -691,8 +691,8 @@ bool NetlinkStringAttribute::InitFromNlAttr(const nlattr *input) {
 
 bool NetlinkStringAttribute::GetStringValue(string *output) const {
   if (!has_a_value_) {
-    SLOG(WiFi, 7)  << "String attribute " << id_string()
-                   << " hasn't been set to any value.";
+    VLOG(7)  << "String attribute " << id_string()
+             << " hasn't been set to any value.";
     return false;
   }
   if (output) {
@@ -737,7 +737,18 @@ bool NetlinkSsidAttribute::ToString(string *output) const {
   if (!GetStringValue(&value))
     return false;
 
-  *output = WiFi::LogSSID(value);
+  string temp;
+  for (const auto &chr : value) {
+    // Replace '[' and ']' (in addition to non-printable characters) so that
+    // it's easy to match the right substring through a non-greedy regex.
+    if (chr == '[' || chr == ']' || !std::isprint(chr)) {
+      base::StringAppendF(&temp, "\\x%02x", chr);
+    } else {
+      temp += chr;
+    }
+  }
+  *output = StringPrintf("[SSID=%s]", temp.c_str());
+
   return true;
 }
 
@@ -778,7 +789,7 @@ ByteString NetlinkNestedAttribute::Encode() const {
 }
 
 void NetlinkNestedAttribute::Print(int log_level, int indent) const {
-  SLOG(WiFi, log_level) << HeaderToPrint(indent);
+  VLOG(log_level) << HeaderToPrint(indent);
   value_->Print(log_level, indent + 1);
 }
 
@@ -1052,8 +1063,8 @@ bool NetlinkRawAttribute::InitFromNlAttr(const nlattr *input) {
 
 bool NetlinkRawAttribute::GetRawValue(ByteString *output) const {
   if (!has_a_value_) {
-    SLOG(WiFi, 7)  << "Raw attribute " << id_string()
-                   << " hasn't been set to any value.";
+    VLOG(7)  << "Raw attribute " << id_string()
+             << " hasn't been set to any value.";
     return false;
   }
   if (output) {
@@ -1074,8 +1085,8 @@ bool NetlinkRawAttribute::ToString(string *output) const {
     return false;
   }
   if (!has_a_value_) {
-    SLOG(WiFi, 7)  << "Raw attribute " << id_string()
-                   << " hasn't been set to any value.";
+    VLOG(7)  << "Raw attribute " << id_string()
+             << " hasn't been set to any value.";
     return false;
   }
   int total_bytes = data_.GetLength();
