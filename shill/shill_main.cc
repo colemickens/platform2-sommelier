@@ -19,7 +19,9 @@
 #include <chromeos/syslog_logging.h>
 
 #include "shill/dbus_control.h"
+#include "shill/glib_io_handler_factory.h"
 #include "shill/logging.h"
+#include "shill/net/io_handler_factory_container.h"
 #include "shill/shill_config.h"
 #include "shill/shill_daemon.h"
 
@@ -135,6 +137,11 @@ int main(int argc, char** argv) {
 
   SetupLogging(cl->HasSwitch(switches::kForeground), argv[0]);
   shill::SetLogLevelFromCommandLine(cl);
+
+  // Overwrite default IOHandlerFactory with the glib version of it. This needs
+  // to be placed before any reference to the IOHandlerFactory.
+  shill::IOHandlerFactoryContainer::GetInstance()->SetIOHandlerFactory(
+        new shill::GlibIOHandlerFactory());
 
   // TODO(pstew): This should be chosen based on config
   // Make sure we delete the DBusControl object AFTER the LazyInstances

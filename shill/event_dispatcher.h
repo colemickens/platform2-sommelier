@@ -12,7 +12,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
 
-#include "shill/net/io_handler_factory.h"
+#include "shill/net/io_handler_factory_container.h"
 
 namespace base {
 class MessageLoopProxy;

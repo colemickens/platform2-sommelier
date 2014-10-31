@@ -21,7 +21,8 @@ namespace shill {
 EventDispatcher::EventDispatcher()
     : dont_use_directly_(new base::MessageLoopForUI),
       message_loop_proxy_(base::MessageLoopProxy::current()),
-      io_handler_factory_(IOHandlerFactory::GetInstance()) {
+      io_handler_factory_(
+          IOHandlerFactoryContainer::GetInstance()->GetIOHandlerFactory()) {
 }
 
 EventDispatcher::~EventDispatcher() {}

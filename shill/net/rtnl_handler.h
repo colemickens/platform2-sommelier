@@ -14,7 +14,7 @@
 #include <base/memory/ref_counted.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/net/io_handler_factory.h"
+#include "shill/net/io_handler_factory_container.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
 

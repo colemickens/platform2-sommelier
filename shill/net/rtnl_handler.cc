@@ -48,7 +48,8 @@ RTNLHandler::RTNLHandler()
       request_sequence_(0),
       last_dump_sequence_(0),
       rtnl_callback_(Bind(&RTNLHandler::ParseRTNL, Unretained(this))),
-      io_handler_factory_(IOHandlerFactory::GetInstance()) {
+      io_handler_factory_(
+          IOHandlerFactoryContainer::GetInstance()->GetIOHandlerFactory()) {
   VLOG(2) << "RTNLHandler created";
 }
 

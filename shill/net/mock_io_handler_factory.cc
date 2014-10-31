@@ -6,16 +6,7 @@
 
 namespace shill {
 
-namespace {
-base::LazyInstance<MockIOHandlerFactory> g_mock_io_handler_factory
-    = LAZY_INSTANCE_INITIALIZER;
-}  // namespace
-
 MockIOHandlerFactory::MockIOHandlerFactory() {}
 MockIOHandlerFactory::~MockIOHandlerFactory() {}
-
-MockIOHandlerFactory* MockIOHandlerFactory::GetInstance() {
-  return g_mock_io_handler_factory.Pointer();
-}
 
 }  // namespace shill

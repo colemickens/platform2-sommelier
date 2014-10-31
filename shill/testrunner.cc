@@ -7,7 +7,9 @@
 #include <chromeos/syslog_logging.h>
 #include <gtest/gtest.h>
 
+#include "shill/glib_io_handler_factory.h"
 #include "shill/logging.h"
+#include "shill/net/io_handler_factory_container.h"
 
 namespace switches {
 
@@ -35,5 +37,11 @@ int main(int argc, char** argv) {
   if (cl->HasSwitch(switches::kHelp)) {
     std::cerr << switches::kHelpMessage;
   }
+
+  // Overwrite default IOHandlerFactory with the glib version of it. This needs
+  // to be placed before any reference to the IOHandlerFactory.
+  shill::IOHandlerFactoryContainer::GetInstance()->SetIOHandlerFactory(
+        new shill::GlibIOHandlerFactory());
+
   return RUN_ALL_TESTS();
 }

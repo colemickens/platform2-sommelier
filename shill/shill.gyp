@@ -136,7 +136,6 @@
       'type': 'shared_library',
       'variables': {
         'exported_deps': [
-          'glib-2.0',
           'libnl-3.0',
           'libnl-genl-3.0',
         ],
@@ -150,9 +149,8 @@
         'net/byte_string.cc',
         'net/control_netlink_attribute.cc',
         'net/generic_netlink_message.cc',
-        'net/glib_io_input_handler.cc',
-        'net/glib_io_ready_handler.cc',
         'net/io_handler_factory.cc',
+        'net/io_handler_factory_container.cc',
         'net/io_input_handler.cc',
         'net/io_ready_handler.cc',
         'net/ip_address.cc',
@@ -354,6 +352,9 @@
         'file_reader.cc',
         'geolocation_info.cc',
         'glib.cc',
+        'glib_io_handler_factory.cc',
+        'glib_io_input_handler.cc',
+        'glib_io_ready_handler.cc',
         'hook_table.cc',
         'http_proxy.cc',
         'http_request.cc',

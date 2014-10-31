@@ -5,7 +5,6 @@
 #ifndef SHILL_NET_MOCK_IO_HANDLER_FACTORY_H_
 #define SHILL_NET_MOCK_IO_HANDLER_FACTORY_H_
 
-#include <base/lazy_instance.h>
 #include <gmock/gmock.h>
 
 #include "shill/net/io_handler_factory.h"
@@ -14,10 +13,8 @@ namespace shill {
 
 class MockIOHandlerFactory : public IOHandlerFactory {
  public:
+  MockIOHandlerFactory();
   ~MockIOHandlerFactory() override;
-
-  // This is a singleton. Use MockIOHandlerFactory::GetInstance()->Foo().
-  static MockIOHandlerFactory* GetInstance();
 
   MOCK_METHOD3(CreateIOInputHandler,
                IOHandler* (
@@ -31,12 +28,7 @@ class MockIOHandlerFactory : public IOHandlerFactory {
                    IOHandler::ReadyMode mode,
                    const IOHandler::ReadyCallback& ready_callback));
 
- protected:
-  MockIOHandlerFactory();
-
  private:
-  friend struct base::DefaultLazyInstanceTraits<MockIOHandlerFactory>;
-
   DISALLOW_COPY_AND_ASSIGN(MockIOHandlerFactory);
 };
 

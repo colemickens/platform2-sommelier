@@ -167,7 +167,8 @@ NetlinkManager::NetlinkManager()
       dispatcher_callback_(Bind(&NetlinkManager::OnRawNlMessageReceived,
                                 weak_ptr_factory_.GetWeakPtr())),
       time_(Time::GetInstance()),
-      io_handler_factory_(IOHandlerFactory::GetInstance()) {}
+      io_handler_factory_(
+          IOHandlerFactoryContainer::GetInstance()->GetIOHandlerFactory()) {}
 
 NetlinkManager::~NetlinkManager() {}
 

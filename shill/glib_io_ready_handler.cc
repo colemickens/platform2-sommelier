@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/glib_io_ready_handler.h"
+#include "shill/glib_io_ready_handler.h"
 
 #include <errno.h>
 #include <glib.h>
