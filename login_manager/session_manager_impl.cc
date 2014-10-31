@@ -588,7 +588,7 @@ void SessionManagerImpl::ImportValidateAndStoreGeneratedKey(
 
 void SessionManagerImpl::InitiateDeviceWipe() {
   const base::FilePath reset_path(kResetFile);
-  system_->AtomicFileWrite(reset_path, "fast safe");
+  system_->AtomicFileWrite(reset_path, "fast safe keepimg");
   restart_device_closure_.Run();
 }
 
