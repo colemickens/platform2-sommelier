@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/wimax_service.h"
+#include "shill/wimax/wimax_service.h"
 
 #include <string>
 
@@ -16,11 +16,11 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_store.h"
-#include "shill/mock_wimax.h"
-#include "shill/mock_wimax_network_proxy.h"
-#include "shill/mock_wimax_provider.h"
 #include "shill/nice_mock_control.h"
 #include "shill/service_property_change_test.h"
+#include "shill/wimax/mock_wimax.h"
+#include "shill/wimax/mock_wimax_network_proxy.h"
+#include "shill/wimax/mock_wimax_provider.h"
 
 using std::string;
 using testing::_;

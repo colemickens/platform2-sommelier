@@ -36,7 +36,6 @@
 #include "shill/mock_modem_info.h"
 #include "shill/mock_routing_table.h"
 #include "shill/mock_vpn_provider.h"
-#include "shill/mock_wimax_provider.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/mock_rtnl_handler.h"
@@ -45,7 +44,8 @@
 #include "shill/net/netlink_attribute.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/net/rtnl_message.h"
-#include "shill/wimax.h"
+#include "shill/wimax/mock_wimax_provider.h"
+#include "shill/wimax/wimax.h"
 
 using base::Callback;
 using base::FilePath;

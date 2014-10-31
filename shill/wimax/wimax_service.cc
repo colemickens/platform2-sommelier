@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/wimax_service.h"
+#include "shill/wimax/wimax_service.h"
 
 #include <algorithm>
 
@@ -18,7 +18,7 @@
 #include "shill/manager.h"
 #include "shill/store_interface.h"
 #include "shill/technology.h"
-#include "shill/wimax.h"
+#include "shill/wimax/wimax.h"
 
 using std::replace_if;
 using std::string;

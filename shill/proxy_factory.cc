@@ -34,9 +34,9 @@
 #endif
 
 #if !defined(DISABLE_WIMAX)
-#include "shill/wimax_device_proxy.h"
-#include "shill/wimax_manager_proxy.h"
-#include "shill/wimax_network_proxy.h"
+#include "shill/wimax/wimax_device_proxy.h"
+#include "shill/wimax/wimax_manager_proxy.h"
+#include "shill/wimax/wimax_network_proxy.h"
 #endif
 
 using std::string;

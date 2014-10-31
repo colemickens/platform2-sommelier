@@ -51,7 +51,7 @@
 #include "shill/wifi.h"
 #include "shill/wifi_provider.h"
 #include "shill/wifi_service.h"
-#include "shill/wimax_service.h"
+#include "shill/wimax/wimax_service.h"
 
 using base::Bind;
 using base::FilePath;

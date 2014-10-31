@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/wimax_provider.h"
+#include "shill/wimax/wimax_provider.h"
 
 #include <string>
 #include <vector>
@@ -21,13 +21,13 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_proxy_factory.h"
-#include "shill/mock_wimax.h"
-#include "shill/mock_wimax_manager_proxy.h"
-#include "shill/mock_wimax_network_proxy.h"
-#include "shill/mock_wimax_service.h"
 #include "shill/nice_mock_control.h"
 #include "shill/testing.h"
-#include "shill/wimax_service.h"
+#include "shill/wimax/mock_wimax.h"
+#include "shill/wimax/mock_wimax_manager_proxy.h"
+#include "shill/wimax/mock_wimax_network_proxy.h"
+#include "shill/wimax/mock_wimax_service.h"
+#include "shill/wimax/wimax_service.h"
 
 using base::FilePath;
 using std::string;

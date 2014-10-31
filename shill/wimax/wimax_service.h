@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_WIMAX_SERVICE_H_
-#define SHILL_WIMAX_SERVICE_H_
+#ifndef SHILL_WIMAX_WIMAX_SERVICE_H_
+#define SHILL_WIMAX_WIMAX_SERVICE_H_
 
 #include <memory>
 #include <string>
@@ -12,7 +12,7 @@
 
 #include "shill/refptr_types.h"
 #include "shill/service.h"
-#include "shill/wimax_network_proxy_interface.h"
+#include "shill/wimax/wimax_network_proxy_interface.h"
 
 namespace shill {
 
@@ -114,4 +114,4 @@ class WiMaxService : public Service {
 
 }  // namespace shill
 
-#endif  // SHILL_WIMAX_SERVICE_H_
+#endif  // SHILL_WIMAX_WIMAX_SERVICE_H_

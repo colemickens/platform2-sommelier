@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_WIMAX_PROVIDER_H_
-#define SHILL_WIMAX_PROVIDER_H_
+#ifndef SHILL_WIMAX_WIMAX_PROVIDER_H_
+#define SHILL_WIMAX_WIMAX_PROVIDER_H_
 
 #include <map>
 #include <memory>
@@ -16,7 +16,7 @@
 #include "shill/dbus_manager.h"
 #include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
-#include "shill/wimax_network_proxy_interface.h"
+#include "shill/wimax/wimax_network_proxy_interface.h"
 
 namespace shill {
 
@@ -160,4 +160,4 @@ class WiMaxProvider : public ProviderInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_WIMAX_PROVIDER_H_
+#endif  // SHILL_WIMAX_WIMAX_PROVIDER_H_

@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_WIMAX_DEVICE_PROXY_H_
-#define SHILL_MOCK_WIMAX_DEVICE_PROXY_H_
+#ifndef SHILL_WIMAX_MOCK_WIMAX_DEVICE_PROXY_H_
+#define SHILL_WIMAX_MOCK_WIMAX_DEVICE_PROXY_H_
 
 #include <string>
 
 #include <base/macros.h>
 #include <gmock/gmock.h>
 
-#include "shill/wimax_device_proxy_interface.h"
+#include "shill/wimax/wimax_device_proxy_interface.h"
 
 namespace shill {
 
@@ -50,4 +50,4 @@ class MockWiMaxDeviceProxy : public WiMaxDeviceProxyInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_WIMAX_DEVICE_PROXY_H_
+#endif  // SHILL_WIMAX_MOCK_WIMAX_DEVICE_PROXY_H_

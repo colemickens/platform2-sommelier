@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/mock_wimax_provider.h"
+#include "shill/wimax/mock_wimax_provider.h"
 
-#include "shill/wimax.h"
+#include "shill/wimax/wimax.h"
 
 namespace shill {
 

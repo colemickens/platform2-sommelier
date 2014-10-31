@@ -31,7 +31,7 @@
 #include "shill/property_store.h"
 #include "shill/service.h"
 #include "shill/wifi.h"
-#include "shill/wimax_provider.h"
+#include "shill/wimax/wimax_provider.h"
 
 namespace shill {
 

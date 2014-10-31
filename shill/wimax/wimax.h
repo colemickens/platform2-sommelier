@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_WIMAX_H_
-#define SHILL_WIMAX_H_
+#ifndef SHILL_WIMAX_WIMAX_H_
+#define SHILL_WIMAX_WIMAX_H_
 
 #include <memory>
 #include <set>
@@ -119,4 +119,4 @@ class WiMax : public Device {
 
 }  // namespace shill
 
-#endif  // SHILL_WIMAX_H_
+#endif  // SHILL_WIMAX_WIMAX_H_

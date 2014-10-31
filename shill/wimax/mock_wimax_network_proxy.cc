@@ -2,12 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/mock_wimax_manager_proxy.h"
+#include "shill/wimax/mock_wimax_network_proxy.h"
+
+#include <base/callback.h>
 
 namespace shill {
 
-MockWiMaxManagerProxy::MockWiMaxManagerProxy() {}
+MockWiMaxNetworkProxy::MockWiMaxNetworkProxy() {}
 
-MockWiMaxManagerProxy::~MockWiMaxManagerProxy() {}
+MockWiMaxNetworkProxy::~MockWiMaxNetworkProxy() {}
 
 }  // namespace shill

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/wimax_network_proxy.h"
+#include "shill/wimax/wimax_network_proxy.h"
 
 #include <chromeos/dbus/service_constants.h>
 

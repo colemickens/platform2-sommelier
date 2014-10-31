@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_WIMAX_PROVIDER_H_
-#define SHILL_MOCK_WIMAX_PROVIDER_H_
+#ifndef SHILL_WIMAX_MOCK_WIMAX_PROVIDER_H_
+#define SHILL_WIMAX_MOCK_WIMAX_PROVIDER_H_
 
 #include <string>
 
 #include <gmock/gmock.h>
 
-#include "shill/wimax_provider.h"
+#include "shill/wimax/wimax_provider.h"
 
 namespace shill {
 
@@ -30,4 +30,4 @@ class MockWiMaxProvider : public WiMaxProvider {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_WIMAX_PROVIDER_H_
+#endif  // SHILL_WIMAX_MOCK_WIMAX_PROVIDER_H_

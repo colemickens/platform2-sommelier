@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/wimax_manager_proxy.h"
+#include "shill/wimax/wimax_manager_proxy.h"
 
 #include <string>
 

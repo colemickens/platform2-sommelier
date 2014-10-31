@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/wimax.h"
+#include "shill/wimax/wimax.h"
 
 #include <memory>
 #include <string>
@@ -13,11 +13,11 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_proxy_factory.h"
-#include "shill/mock_wimax_device_proxy.h"
-#include "shill/mock_wimax_provider.h"
-#include "shill/mock_wimax_service.h"
 #include "shill/nice_mock_control.h"
 #include "shill/testing.h"
+#include "shill/wimax/mock_wimax_device_proxy.h"
+#include "shill/wimax/mock_wimax_provider.h"
+#include "shill/wimax/mock_wimax_service.h"
 
 using base::Bind;
 using base::Unretained;

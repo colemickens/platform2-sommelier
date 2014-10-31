@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_WIMAX_MANAGER_PROXY_H_
-#define SHILL_WIMAX_MANAGER_PROXY_H_
+#ifndef SHILL_WIMAX_WIMAX_MANAGER_PROXY_H_
+#define SHILL_WIMAX_WIMAX_MANAGER_PROXY_H_
 
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
 
-#include "shill/wimax_manager_proxy_interface.h"
+#include "shill/wimax/wimax_manager_proxy_interface.h"
 #include "wimax_manager/dbus_proxies/org.chromium.WiMaxManager.h"
 
 namespace shill {
@@ -53,4 +53,4 @@ class WiMaxManagerProxy : public WiMaxManagerProxyInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_WIMAX_MANAGER_PROXY_H_
+#endif  // SHILL_WIMAX_WIMAX_MANAGER_PROXY_H_

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_WIMAX_NETWORK_PROXY_INTERFACE_H_
-#define SHILL_WIMAX_NETWORK_PROXY_INTERFACE_H_
+#ifndef SHILL_WIMAX_WIMAX_NETWORK_PROXY_INTERFACE_H_
+#define SHILL_WIMAX_WIMAX_NETWORK_PROXY_INTERFACE_H_
 
 #include <string>
 
@@ -44,4 +44,4 @@ class WiMaxNetworkProxyInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_WIMAX_NETWORK_PROXY_INTERFACE_H_
+#endif  // SHILL_WIMAX_WIMAX_NETWORK_PROXY_INTERFACE_H_

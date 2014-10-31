@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/wimax_provider.h"
+#include "shill/wimax/wimax_provider.h"
 
 #include <algorithm>
 #include <set>
@@ -18,9 +18,9 @@
 #include "shill/profile.h"
 #include "shill/proxy_factory.h"
 #include "shill/store_interface.h"
-#include "shill/wimax.h"
-#include "shill/wimax_manager_proxy_interface.h"
-#include "shill/wimax_service.h"
+#include "shill/wimax/wimax.h"
+#include "shill/wimax/wimax_manager_proxy_interface.h"
+#include "shill/wimax/wimax_service.h"
 
 using base::Bind;
 using base::Unretained;
