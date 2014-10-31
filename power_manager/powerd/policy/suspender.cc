@@ -403,48 +403,72 @@ Suspender::State Suspender::Suspend() {
   // At this point, we've either resumed successfully or failed to suspend in
   // the first place.
   const bool in_dark_resume = dark_resume_->InDarkResume();
-  if (in_dark_resume && result == Delegate::SUSPEND_SUCCESSFUL) {
+
+  // We first deal with the common case: the suspend was successful and we have
+  // fully resumed.  We also check if an external wakeup count was provided and
+  // the suspend attempt failed due to a wakeup count mismatch -- this indicates
+  // that a test probably triggered this suspend attempt after setting a wake
+  // alarm, and if we retry later, it's likely that the alarm will have already
+  // fired and the system will never wake up.
+  if (!in_dark_resume &&
+      ((result == Delegate::SUSPEND_SUCCESSFUL) ||
+       (result == Delegate::SUSPEND_CANCELED &&
+        suspend_request_supplied_wakeup_count_))) {
+    FinishRequest(result == Delegate::SUSPEND_SUCCESSFUL);
+    return STATE_IDLE;
+  }
+
+  // If we reach this point there are three possibilities: the suspend attempt
+  // was successful but we are in dark resume, the suspend attempt was canceled
+  // due to a wakeup count mismatch, or the suspend attempt failed due to some
+  // (hopefully) transient kernel error.  We will deal with the first two cases
+  // here.  In either case, we want to announce the resuspend attempt to the
+  // registered listeners on devices that support this.  One or more of the
+  // listeners may have to do some work in response to the wake event and we
+  // should ensure that these listeners are given the time they need.  If it
+  // turns out that the wake event was triggered by the user, then chrome will
+  // send us a user activity message, which will abort the suspend request
+  // entirely and, if we are in dark resume, will trigger a transition to fully
+  // resumed (on devices that support this).
+  if ((in_dark_resume && result == Delegate::SUSPEND_SUCCESSFUL) ||
+      (result == Delegate::SUSPEND_CANCELED &&
+       current_num_attempts_ <= max_retries_)) {
     // Save the first run's number of attempts so it can be reported later.
-    if (!initial_num_attempts_)
+    if (in_dark_resume && !initial_num_attempts_)
       initial_num_attempts_ = current_num_attempts_;
 
     dark_suspend_id_++;
-    current_num_attempts_ = 0;
+
+    // We only reset the retry count if the suspend was successful.
+    if (result == Delegate::SUSPEND_SUCCESSFUL) {
+      current_num_attempts_ = 0;
+    } else {
+      LOG(WARNING) << "Suspend attempt #" << current_num_attempts_
+                   << " canceled due to wake event";
+    }
 
     // We don't want to emit a DarkSuspendImminent on devices with older kernels
     // because they probably don't have the hardware support to do any useful
     // work in dark resume anyway.
     if (delegate_->CanSafelyExitDarkResume()) {
+      LOG(INFO) << "Running registered dark suspend delays";
       dark_suspend_delay_controller_->PrepareForSuspend(dark_suspend_id_);
       EmitDarkSuspendImminentSignal(dark_suspend_id_);
     } else {
       wakeup_count_ = 0;
       wakeup_count_valid_ = false;
-      ScheduleResuspend(base::TimeDelta());
+      ScheduleResuspend(result == Delegate::SUSPEND_SUCCESSFUL
+                            ? base::TimeDelta()
+                            : retry_delay_);
     }
 
     return STATE_WAITING_TO_RESUSPEND;
   }
 
-  // Don't retry if an external wakeup count was supplied and the suspend
-  // attempt failed due to a wakeup count mismatch -- a test probably triggered
-  // this suspend attempt after setting a wake alarm, and if we retry later,
-  // it's likely that the alarm will have already fired and the system will
-  // never wake up.
-  if ((result == Delegate::SUSPEND_SUCCESSFUL) ||
-      (result == Delegate::SUSPEND_CANCELED &&
-       suspend_request_supplied_wakeup_count_ && !in_dark_resume)) {
-    FinishRequest(result == Delegate::SUSPEND_SUCCESSFUL);
-    return STATE_IDLE;
-  }
-
-  // TODO(chirantan): The suspend attempt may have been canceled during dark
-  // resume due to the arrival of more packets from the network.  In this case,
-  // we want to emit another DarkSuspendImminent signal rather than just
-  // retrying the suspend.  Once we have support to distinguish this case in the
-  // kernel, we should add a check here to potentially re-run the dark suspend
-  // delays.
-
+  // If we make it here then the suspend attempt failed due to some kernel error
+  // or we have exceeded the maximum number of retries.  If the number of
+  // suspend attempts _has_ exceeded |max_retries_|, then we shut down.
+  // Otherwise we reschedule another attempt in |retry_delay_|.
   if (current_num_attempts_ > max_retries_) {
     LOG(ERROR) << "Unsuccessfully attempted to suspend "
                << current_num_attempts_ << " times; shutting down";

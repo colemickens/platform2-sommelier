@@ -525,6 +525,7 @@ TEST_F(SuspenderTest, CancelAfterSuspend) {
 // a closed lid doesn't abort the suspend attempt (http://crosbug.com/38819).
 TEST_F(SuspenderTest, DontCancelForUserActivityWhileLidClosed) {
   delegate_.set_lid_closed(true);
+  delegate_.set_can_safely_exit_dark_resume(false);
   Init();
 
   // Report user activity before powerd_suspend is executed and check that
@@ -546,6 +547,20 @@ TEST_F(SuspenderTest, DontCancelForUserActivityWhileLidClosed) {
 
   delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_SUCCESSFUL);
   EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
+
+  // Report user activity after powerd_suspend fails when the system can safely
+  // wake from dark resume and check that the suspend attempt is not aborted.
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_CANCELED);
+  delegate_.set_can_safely_exit_dark_resume(true);
+  suspender_.RequestSuspend();
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  AnnounceReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  suspender_.HandleUserActivity();
+
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_SUCCESSFUL);
+  AnnounceReadyForDarkSuspend(test_api_.dark_suspend_id());
   EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
 }
 
@@ -897,6 +912,45 @@ TEST_F(SuspenderTest, DarkResumeOnLegacySystems) {
   dark_resume_.set_in_dark_resume(false);
   EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
+}
+
+// Test that we re-run the registered dark suspend delays if a resuspend attempt
+// is canceled due to a wake event but not if the suspend failed for any other
+// reason.
+TEST_F(SuspenderTest, RerunDarkSuspendDelaysForCanceledSuspend) {
+  Init();
+
+  // Suspend for 10 seconds.
+  const int kSuspendSec = 10;
+  dark_resume_.set_action(system::DarkResumeInterface::SUSPEND);
+  dark_resume_.set_suspend_duration(base::TimeDelta::FromSeconds(kSuspendSec));
+
+  // Do the initial suspend.
+  dark_resume_.set_in_dark_resume(true);
+  suspender_.RequestSuspend();
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  AnnounceReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  dbus_sender_.ClearSentSignals();
+
+  // The resuspend attempt is canceled due to a wake event.
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_CANCELED);
+  AnnounceReadyForDarkSuspend(test_api_.dark_suspend_id());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  EXPECT_TRUE(dbus_sender_.GetSentSignal(0, kDarkSuspendImminentSignal, NULL));
+  dbus_sender_.ClearSentSignals();
+
+  // The resuspend attempt fails due to a transient kernel error.
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_FAILED);
+  AnnounceReadyForDarkSuspend(test_api_.dark_suspend_id());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  EXPECT_EQ(0, dbus_sender_.num_sent_signals());
+
+  // The resuspend attempt is finally sucessful.
+  dark_resume_.set_in_dark_resume(false);
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_SUCCESSFUL);
+  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
+  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
 }
 
 TEST_F(SuspenderTest, ReportInitialSuspendAttempts) {
