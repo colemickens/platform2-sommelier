@@ -61,21 +61,32 @@ class DarkResumeInterface {
 // Real implementation of DarkResumeInterface that interacts with sysfs.
 class DarkResume : public DarkResumeInterface {
  public:
-  // Within a device directory, kPowerDir contains kActiveFile and kSourceFile.
+  // Within a device directory, kPowerDir contains kActiveFile, kSourceFile, and
+  // kWakeupTypeFile.
   static const char kPowerDir[];
   static const char kActiveFile[];
   static const char kSourceFile[];
+  static const char kWakeupTypeFile[];
 
   // Strings to write to sysfs files to enable/disable dark resume functionality
   // at the kernel level.
   static const char kEnabled[];
   static const char kDisabled[];
 
+  // Strings to write to sysfs device wakeup type files to enable dark resume
+  // behavior on wakeup by the device.
+  static const char kAutomatic[];
+  static const char kUnknown[];
+
   DarkResume();
   virtual ~DarkResume();
 
-  void set_dark_resume_state_path_for_testing(const base::FilePath& path) {
-    dark_resume_state_path_ = path;
+  void set_legacy_state_path_for_testing(const base::FilePath& path) {
+    legacy_state_path_ = path;
+  }
+
+  void set_wakeup_state_path_for_testing(const base::FilePath& path) {
+    wakeup_state_path_ = path;
   }
 
   void set_timer_for_testing(scoped_ptr<base::Timer> timer) {
@@ -112,7 +123,8 @@ class DarkResume : public DarkResumeInterface {
                 const std::string& base_file);
 
   // Writes the passed-in state to all the files in |files|.
-  void SetStates(const std::vector<base::FilePath>& files, bool enabled);
+  void SetStates(const std::vector<base::FilePath>& files,
+                 const std::string& state);
 
   // Callback which updates the next action and reschedules itself based on the
   // current power status.
@@ -129,14 +141,21 @@ class DarkResume : public DarkResumeInterface {
   // Is dark resume enabled?
   bool enabled_;
 
+  // Are we using the new wakeup_type sysfs interface for dark resume?
+  bool using_wakeup_type_;
+
   PowerSupplyInterface* power_supply_;
   PrefsInterface* prefs_;
 
   // Timer used to schedule system wakeups and check if we need to shut down.
   scoped_ptr<base::Timer> timer_;
 
+  // Two possible dark resume state paths.
+  base::FilePath legacy_state_path_;
+  base::FilePath wakeup_state_path_;
+
   // File read to get the dark resume state.
-  base::FilePath dark_resume_state_path_;
+  base::FilePath state_path_;
 
   // Battery percentage threshold at which the system should shut down after a
   // dark resume.

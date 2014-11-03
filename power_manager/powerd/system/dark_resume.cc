@@ -17,6 +17,7 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
+#include "power_manager/common/util.h"
 
 namespace power_manager {
 namespace system {
@@ -26,6 +27,10 @@ namespace {
 // Default file describing whether the system is currently in dark resume.
 const char kDarkResumeStatePath[] = "/sys/power/dark_resume_state";
 
+// In kernel 3.14 and later, we switch over to wakeup_type instead of
+// dark_resume_state.
+const char kWakeupTypePath[] = "/sys/power/wakeup_type";
+
 }  // namespace
 
 const char DarkResume::kPowerDir[] = "power";
@@ -33,18 +38,24 @@ const char DarkResume::kActiveFile[] = "dark_resume_active";
 const char DarkResume::kSourceFile[] = "dark_resume_source";
 const char DarkResume::kEnabled[] = "enabled";
 const char DarkResume::kDisabled[] = "disabled";
+// For kernel 3.14 and later
+const char DarkResume::kWakeupTypeFile[] = "wakeup_type";
+const char DarkResume::kAutomatic[] = "automatic";
+const char DarkResume::kUnknown[] = "unknown";
 
 DarkResume::DarkResume()
-    : power_supply_(NULL),
+    : using_wakeup_type_(false),
+      power_supply_(NULL),
       prefs_(NULL),
-      dark_resume_state_path_(kDarkResumeStatePath),
+      legacy_state_path_(kDarkResumeStatePath),
+      wakeup_state_path_(kWakeupTypePath),
       battery_shutdown_threshold_(0.0),
       next_action_(SUSPEND) {
 }
 
 DarkResume::~DarkResume() {
-  SetStates(dark_resume_sources_, false);
-  SetStates(dark_resume_devices_, false);
+  SetStates(dark_resume_sources_, using_wakeup_type_ ? kUnknown : kDisabled);
+  SetStates(dark_resume_devices_, kDisabled);
 }
 
 void DarkResume::Init(PowerSupplyInterface* power_supply,
@@ -62,10 +73,27 @@ void DarkResume::Init(PowerSupplyInterface* power_supply,
   enabled_ = (!prefs_->GetBool(kDisableDarkResumePref, &disable) || !disable) &&
       ReadSuspendDurationsPref();
   LOG(INFO) << "Dark resume user space " << (enabled_ ? "enabled" : "disabled");
-  GetFiles(&dark_resume_sources_, kDarkResumeSourcesPref, kSourceFile);
+
+  std::string source_file;
+  std::string source_state;
+  state_path_ = wakeup_state_path_;
+  if (base::PathExists(state_path_)) {
+    using_wakeup_type_ = true;
+    source_file = kWakeupTypeFile;
+    source_state = enabled_ ? kAutomatic : kUnknown;
+  } else if (base::PathExists(legacy_state_path_)) {
+    state_path_ = legacy_state_path_;
+    using_wakeup_type_ = false;
+    source_file = kSourceFile;
+    source_state = enabled_ ? kEnabled : kDisabled;
+  } else {
+    enabled_ = false;
+    LOG(WARNING) << "Dark resume state path not found";
+  }
+  GetFiles(&dark_resume_sources_, kDarkResumeSourcesPref, source_file);
   GetFiles(&dark_resume_devices_, kDarkResumeDevicesPref, kActiveFile);
-  SetStates(dark_resume_sources_, enabled_);
-  SetStates(dark_resume_devices_, enabled_);
+  SetStates(dark_resume_sources_, source_state);
+  SetStates(dark_resume_devices_, (enabled_ ? kEnabled : kDisabled));
 }
 
 void DarkResume::PrepareForSuspendRequest() {
@@ -145,13 +173,18 @@ bool DarkResume::InDarkResume() {
     return false;
 
   std::string buf;
-  if (!base::ReadFileToString(dark_resume_state_path_, &buf)) {
-    PLOG(ERROR) << "Unable to read " << dark_resume_state_path_.value();
+  if (!base::ReadFileToString(state_path_, &buf)) {
+    PLOG(ERROR) << "Unable to read " << state_path_.value();
     return false;
   }
+
   base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING, &buf);
-  uint64_t value = 0;
-  return base::StringToUint64(buf, &value) && value;
+  if (using_wakeup_type_) {
+    return buf == kAutomatic;
+  } else {
+    uint64_t value = 0;
+    return base::StringToUint64(buf, &value) && value;
+  }
 }
 
 bool DarkResume::ReadSuspendDurationsPref() {
@@ -209,12 +242,10 @@ void DarkResume::GetFiles(std::vector<base::FilePath>* files,
 }
 
 void DarkResume::SetStates(const std::vector<base::FilePath>& files,
-                           bool enabled) {
-  const char* state = enabled ? kEnabled : kDisabled;
+                           const std::string& state) {
   for (std::vector<base::FilePath>::const_iterator iter = files.begin();
        iter != files.end(); ++iter) {
-    if (base::WriteFile(*iter, state, strlen(state)) !=
-        static_cast<int>(strlen(state))) {
+    if (!util::WriteFileFully(*iter, state.c_str(), state.length())) {
       PLOG(ERROR) << "Failed writing \"" << state << "\" to " << iter->value();
     }
   }

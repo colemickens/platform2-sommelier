@@ -26,9 +26,9 @@ namespace {
 // suspend/resume process and report actions back to Suspender in
 // different ways, we need an adapter to make sure they are making the
 // same decisions and we are going to see the same behavior across each.
-class TimerContainer {
+class SystemAbstraction {
  public:
-  virtual ~TimerContainer() {}
+  virtual ~SystemAbstraction() {}
 
   // Get a timer.
   virtual scoped_ptr<base::Timer> CreateTimer() = 0;
@@ -43,10 +43,25 @@ class TimerContainer {
                        DarkResumeInterface::Action* action,
                        base::TimeDelta* suspend_duration,
                        bool woken_by_timer) = 0;
+
+  virtual void SetStatePath(DarkResume* dark_resume,
+                            const base::FilePath& path) = 0;
+  virtual void WriteDarkResumeState(const base::FilePath& path,
+                                    bool in_dark_resume) = 0;
+
+  static const char kStatePath[];
+  static const char kSourceFile[];
+  static const char kEnabled[];
+  static const char kDisabled[];
 };
 
+const char SystemAbstraction::kStatePath[] = "dark_resume_state";
+const char SystemAbstraction::kSourceFile[] = "dark_resume_source";
+const char SystemAbstraction::kEnabled[] = "enabled";
+const char SystemAbstraction::kDisabled[] = "disabled";
+
 // Test fixture helper for pre-3.11 kernel functionality.
-class LegacyTimerContainer : public TimerContainer {
+class LegacySystem : public SystemAbstraction {
  public:
   scoped_ptr<base::Timer> CreateTimer() override {
     return scoped_ptr<base::Timer>();
@@ -60,12 +75,22 @@ class LegacyTimerContainer : public TimerContainer {
                bool woken_by_timer) override {
     dark_resume->GetActionForSuspendAttempt(action, suspend_duration);
   }
+
+  void SetStatePath(DarkResume* dark_resume,
+                    const base::FilePath& path) override {
+    dark_resume->set_legacy_state_path_for_testing(path);
+  }
+
+  void WriteDarkResumeState(const base::FilePath& path,
+                            bool in_dark_resume) override {
+    ASSERT_EQ(1, base::WriteFile(path, in_dark_resume ? "1" : "0", 1));
+  }
 };
 
 // Test fixture helper for functionality from 3.11 kernel onwards.
-class AsyncTimerContainer : public TimerContainer {
+class WakeupTypeSystem : public SystemAbstraction {
  public:
-  AsyncTimerContainer() : timer_(NULL) {}
+  WakeupTypeSystem() : timer_(NULL) {}
 
   scoped_ptr<base::Timer> CreateTimer() override {
     timer_ = new base::MockTimer(true /* retain_user_task */,
@@ -101,23 +126,45 @@ class AsyncTimerContainer : public TimerContainer {
     *action = dark_resume->next_action_for_testing();
   }
 
+  void SetStatePath(DarkResume* dark_resume,
+                    const base::FilePath& path) override {
+    dark_resume->set_wakeup_state_path_for_testing(path);
+  }
+
+  void WriteDarkResumeState(const base::FilePath& path,
+                            bool in_dark_resume) override {
+    std::string state = in_dark_resume ? "automatic" : "user";
+    ASSERT_EQ(state.length(),
+              base::WriteFile(path, state.c_str(), state.length()));
+  }
+
+  static const char kStatePath[];
+  static const char kSourceFile[];
+  static const char kEnabled[];
+  static const char kDisabled[];
+
  private:
   // THIS IS A WEAK POINTER.
   // The timer will be owned by the DarkResume class.
   base::MockTimer* timer_;
 
-  DISALLOW_COPY_AND_ASSIGN(AsyncTimerContainer);
+  DISALLOW_COPY_AND_ASSIGN(WakeupTypeSystem);
 };
+
+const char WakeupTypeSystem::kStatePath[] = "wakeup_type";
+const char WakeupTypeSystem::kSourceFile[] = "wakeup_type";
+const char WakeupTypeSystem::kEnabled[] = "automatic";
+const char WakeupTypeSystem::kDisabled[] = "unknown";
 
 }  // namespace
 
-template <typename ContainerType>
+template <typename SystemType>
 class DarkResumeTest : public ::testing::Test {
  public:
   DarkResumeTest() : dark_resume_(new DarkResume) {
     CHECK(temp_dir_.CreateUniqueTempDir());
     CHECK(temp_dir_.IsValid());
-    state_path_ = temp_dir_.path().Append("dark_resume_state");
+    state_path_ = temp_dir_.path().Append(SystemType::kStatePath);
   }
 
  protected:
@@ -125,14 +172,14 @@ class DarkResumeTest : public ::testing::Test {
   void Init() {
     WriteDarkResumeState(false);
     SetBattery(100.0, false);
-    dark_resume_->set_dark_resume_state_path_for_testing(state_path_);
+    system_.SetStatePath(dark_resume_.get(), state_path_);
     dark_resume_->Init(&power_supply_, &prefs_);
-    dark_resume_->set_timer_for_testing(timer_container_.CreateTimer());
+    dark_resume_->set_timer_for_testing(system_.CreateTimer());
   }
 
   // Writes the passed-in dark resume state to |state_path_|.
   void WriteDarkResumeState(bool in_dark_resume) {
-    ASSERT_EQ(1, base::WriteFile(state_path_, in_dark_resume ? "1" : "0", 1));
+    system_.WriteDarkResumeState(state_path_, in_dark_resume);
   }
 
   // Updates the status returned by |power_supply_|.
@@ -154,7 +201,7 @@ class DarkResumeTest : public ::testing::Test {
   void Suspend(DarkResumeInterface::Action* action,
                base::TimeDelta* suspend_duration,
                bool woken_by_timer) {
-    timer_container_.Suspend(dark_resume_.get(), action, suspend_duration,
+    system_.Suspend(dark_resume_.get(), action, suspend_duration,
                              woken_by_timer);
   }
 
@@ -164,11 +211,11 @@ class DarkResumeTest : public ::testing::Test {
   PowerSupplyStub power_supply_;
   scoped_ptr<DarkResume> dark_resume_;
 
-  ContainerType timer_container_;
+  SystemType system_;
 };
 
 // We want to test both pathways.
-typedef ::testing::Types<LegacyTimerContainer, AsyncTimerContainer> Pathways;
+typedef ::testing::Types<LegacySystem, WakeupTypeSystem> Pathways;
 TYPED_TEST_CASE(DarkResumeTest, Pathways);
 
 // Tests.
@@ -301,7 +348,7 @@ TYPED_TEST(DarkResumeTest, EnableAndDisable) {
   const base::FilePath kDeviceDir = this->temp_dir_.path().Append("foo");
   const base::FilePath kPowerDir = kDeviceDir.Append(DarkResume::kPowerDir);
   const base::FilePath kActivePath = kPowerDir.Append(DarkResume::kActiveFile);
-  const base::FilePath kSourcePath = kPowerDir.Append(DarkResume::kSourceFile);
+  const base::FilePath kSourcePath = kPowerDir.Append(TypeParam::kSourceFile);
   ASSERT_TRUE(base::CreateDirectory(kPowerDir));
 
   this->prefs_.SetString(kDarkResumeDevicesPref, kDeviceDir.value());
@@ -311,12 +358,12 @@ TYPED_TEST(DarkResumeTest, EnableAndDisable) {
   // Dark resume should be enabled when the object is initialized.
   this->Init();
   EXPECT_EQ(DarkResume::kEnabled, this->ReadFile(kActivePath));
-  EXPECT_EQ(DarkResume::kEnabled, this->ReadFile(kSourcePath));
+  EXPECT_EQ(TypeParam::kEnabled, this->ReadFile(kSourcePath));
 
   // Dark resume should be disabled when the object is destroyed.
   this->dark_resume_.reset();
   EXPECT_EQ(DarkResume::kDisabled, this->ReadFile(kActivePath));
-  EXPECT_EQ(DarkResume::kDisabled, this->ReadFile(kSourcePath));
+  EXPECT_EQ(TypeParam::kDisabled, this->ReadFile(kSourcePath));
 
   // Set the "disable" pref and check that the files aren't set to the enabled
   // state after initializing a new object.
@@ -324,7 +371,7 @@ TYPED_TEST(DarkResumeTest, EnableAndDisable) {
   this->dark_resume_.reset(new DarkResume);
   this->Init();
   EXPECT_EQ(DarkResume::kDisabled, this->ReadFile(kActivePath));
-  EXPECT_EQ(DarkResume::kDisabled, this->ReadFile(kSourcePath));
+  EXPECT_EQ(TypeParam::kDisabled, this->ReadFile(kSourcePath));
   DarkResumeInterface::Action action;
   base::TimeDelta suspend_duration;
 
@@ -339,7 +386,7 @@ TYPED_TEST(DarkResumeTest, EnableAndDisable) {
   this->dark_resume_.reset(new DarkResume);
   this->Init();
   EXPECT_EQ(DarkResume::kEnabled, this->ReadFile(kActivePath));
-  EXPECT_EQ(DarkResume::kEnabled, this->ReadFile(kSourcePath));
+  EXPECT_EQ(TypeParam::kEnabled, this->ReadFile(kSourcePath));
 
   this->dark_resume_->PrepareForSuspendRequest();
   this->Suspend(&action, &suspend_duration, false);
@@ -353,7 +400,7 @@ TYPED_TEST(DarkResumeTest, EnableAndDisable) {
   this->dark_resume_.reset(new DarkResume);
   this->Init();
   EXPECT_EQ(DarkResume::kDisabled, this->ReadFile(kActivePath));
-  EXPECT_EQ(DarkResume::kDisabled, this->ReadFile(kSourcePath));
+  EXPECT_EQ(TypeParam::kDisabled, this->ReadFile(kSourcePath));
 
   this->dark_resume_->PrepareForSuspendRequest();
   this->Suspend(&action, &suspend_duration, false);
@@ -431,7 +478,7 @@ TYPED_TEST(DarkResumeTest, InterruptedDarkResume) {
 
   // This doesn't apply to legacy pathways, since there are no dark resumes
   // for other reasons.
-  if (base::is_same<TypeParam, LegacyTimerContainer>::value)
+  if (base::is_same<TypeParam, LegacySystem>::value)
     return;
 
   // We'll dark resume, but it will be for another reason, so the callback
