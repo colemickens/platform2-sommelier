@@ -577,7 +577,10 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
   int modulus_bits = public_object->GetAttributeInt(CKA_MODULUS_BITS, 0);
   if (modulus_bits < kMinRSAKeyBits || modulus_bits > kMaxRSAKeyBitsSW)
     return CKR_KEY_SIZE_RANGE;
-  ObjectPool* pool = token_object_pool_;
+  ObjectPool* public_pool = (public_object->IsTokenObject() ?
+                             token_object_pool_ : session_object_pool_.get());
+  ObjectPool* private_pool = (private_object->IsTokenObject() ?
+                              token_object_pool_ : session_object_pool_.get());
   // Check if we are able to back this key with the TPM.
   if (tpm_utility_->IsTPMAvailable() &&
       private_object->IsTokenObject() &&
@@ -601,8 +604,6 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
     private_object->SetAttributeString(kAuthDataAttribute, auth_data);
     private_object->SetAttributeString(kKeyBlobAttribute, key_blob);
   } else {
-    if (!private_object->IsTokenObject())
-      pool = session_object_pool_.get();
     if (!GenerateKeyPairSoftware(modulus_bits,
                                  public_exponent,
                                  public_object.get(),
@@ -623,10 +624,10 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
   result = private_object->FinalizeNewObject();
   if (result != CKR_OK)
     return result;
-  if (!pool->Insert(public_object.get()))
+  if (!public_pool->Insert(public_object.get()))
     return CKR_FUNCTION_FAILED;
-  if (!pool->Insert(private_object.get())) {
-    pool->Delete(public_object.release());
+  if (!private_pool->Insert(private_object.get())) {
+    public_pool->Delete(public_object.release());
     return CKR_FUNCTION_FAILED;
   }
   *new_public_key_handle = public_object.release()->handle();

@@ -162,7 +162,7 @@ class TestImporterBase {
         .WillRepeatedly(Invoke(CreateObjectMock));
 
     // Set expectations for the object pool mock.
-    pool_.SetupFake();
+    pool_.SetupFake(0);
     EXPECT_CALL(pool_, Insert(_)).Times(AnyNumber());
     EXPECT_CALL(pool_, Import(_)).Times(AnyNumber());
     EXPECT_CALL(pool_, Find(_, _)).Times(AnyNumber());

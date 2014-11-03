@@ -33,8 +33,8 @@ class ObjectPoolMock : public ObjectPool {
   MOCK_METHOD2(FindByHandle, bool(int, const Object**));
   MOCK_METHOD1(GetModifiableObject, Object*(const Object*));
   MOCK_METHOD1(Flush, bool(const Object*));
-  void SetupFake() {
-    last_handle_ = 0;
+  void SetupFake(int handle_base) {
+    last_handle_ = handle_base;
     ON_CALL(*this, Insert(testing::_))
         .WillByDefault(testing::Invoke(this, &ObjectPoolMock::FakeInsert));
     ON_CALL(*this, Import(testing::_))

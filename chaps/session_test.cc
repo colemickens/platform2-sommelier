@@ -35,8 +35,8 @@ using ::testing::StrictMock;
 
 namespace {
 
-void ConfigureObjectPool(chaps::ObjectPoolMock* op) {
-  op->SetupFake();
+void ConfigureObjectPool(chaps::ObjectPoolMock* op, int handle_base) {
+  op->SetupFake(handle_base);
   EXPECT_CALL(*op, Insert(_)).Times(AnyNumber());
   EXPECT_CALL(*op, Find(_, _)).Times(AnyNumber());
   EXPECT_CALL(*op, FindByHandle(_, _)).Times(AnyNumber());
@@ -46,7 +46,7 @@ void ConfigureObjectPool(chaps::ObjectPoolMock* op) {
 
 chaps::ObjectPool* CreateObjectPoolMock() {
   chaps::ObjectPoolMock* op = new chaps::ObjectPoolMock();
-  ConfigureObjectPool(op);
+  ConfigureObjectPool(op, 100);
   return op;
 }
 
@@ -104,7 +104,7 @@ class TestSession: public ::testing::Test {
         .WillRepeatedly(InvokeWithoutArgs(CreateObjectPoolMock));
     EXPECT_CALL(handle_generator_, CreateHandle())
         .WillRepeatedly(Return(1));
-    ConfigureObjectPool(&token_pool_);
+    ConfigureObjectPool(&token_pool_, 0);
     ConfigureTPMUtility(&tpm_);
   }
   void SetUp() {
@@ -817,6 +817,44 @@ TEST_F(TestSession, GenerateRSAWithTPM) {
   EXPECT_FALSE(object->IsAttributePresent(CKA_EXPONENT_1));
   EXPECT_FALSE(object->IsAttributePresent(CKA_EXPONENT_2));
   EXPECT_FALSE(object->IsAttributePresent(CKA_COEFFICIENT));
+}
+
+TEST_F(TestSession, GenerateRSAWithTPMInconsistentToken) {
+  EXPECT_CALL(tpm_, GenerateKey(_, _, _, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(tpm_, GetPublicKey(_, _, _)).WillRepeatedly(Return(true));
+
+  CK_BBOOL no = CK_FALSE;
+  CK_BBOOL yes = CK_TRUE;
+  CK_BYTE pubexp[] = {1, 0, 1};
+  int size = 2048;
+  CK_ATTRIBUTE pub_attr[] = {
+    {CKA_TOKEN, &no, sizeof(no)},
+    {CKA_ENCRYPT, &no, sizeof(no)},
+    {CKA_VERIFY, &yes, sizeof(yes)},
+    {CKA_PUBLIC_EXPONENT, pubexp, 3},
+    {CKA_MODULUS_BITS, &size, sizeof(size)}
+  };
+  CK_ATTRIBUTE priv_attr[] = {
+    {CKA_TOKEN, &yes, sizeof(yes)},
+    {CKA_DECRYPT, &no, sizeof(no)},
+    {CKA_SIGN, &yes, sizeof(yes)}
+  };
+  // Attempt to generate a private key on the token, but public key not on the
+  // token.
+  int pubh = 0, privh = 0;
+  ASSERT_EQ(CKR_OK, session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "",
+                                              pub_attr, 5, priv_attr, 3,
+                                              &pubh, &privh));
+  const Object* public_object = NULL;
+  const Object* private_object = NULL;
+  ASSERT_TRUE(session_->GetObject(pubh, &public_object));
+  ASSERT_TRUE(session_->GetObject(privh, &private_object));
+  EXPECT_FALSE(public_object->IsTokenObject());
+  EXPECT_TRUE(private_object->IsTokenObject());
+
+  // Destroy the objects.
+  EXPECT_EQ(CKR_OK, session_->DestroyObject(pubh));
+  EXPECT_EQ(CKR_OK, session_->DestroyObject(privh));
 }
 
 TEST_F(TestSession, GenerateRSAWithNoTPM) {
