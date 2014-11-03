@@ -44,6 +44,10 @@ const char kPreferredNetworkFile[] = "preferred_network";
 // if kAppIdFile doesn't exist.
 const char kAppSubdir[] = "app";
 
+// Optional file in kReadonlyDataPath containing an absolute path of an
+// executable to run instead of kAppShellPath.
+const char kExecutablePathFile[] = "executable_path";
+
 // Returns the first of the following paths that exists:
 // - a file named |filename| within |stateful_dir|
 // - a file named |filename| within |readonly_dir|
@@ -62,14 +66,18 @@ base::FilePath GetDataPath(const base::FilePath& stateful_dir,
   return base::FilePath();
 }
 
-// Calls GetDataPath() and reads the file to |data_out|.
-// Returns true on success.
+// Calls GetDataPath() and reads the file to |data_out|, trimming trailing
+// whitespace. Returns true on success.
 bool ReadData(const base::FilePath& stateful_dir,
               const base::FilePath& readonly_dir,
               const std::string& filename,
               std::string* data_out) {
   base::FilePath path = GetDataPath(stateful_dir, readonly_dir, filename);
-  return !path.empty() ? base::ReadFileToString(path, data_out) : false;
+  if (path.empty() || !base::ReadFileToString(path, data_out))
+    return false;
+
+  base::TrimWhitespaceASCII(*data_out, base::TRIM_TRAILING, data_out);
+  return true;
 }
 
 // Adds app_shell-specific flags.
@@ -84,7 +92,6 @@ void AddAppShellFlags(ChromiumCommandBuilder* builder) {
 
   std::string app_id;
   if (ReadData(stateful_dir, readonly_dir, kAppIdFile, &app_id)) {
-    base::TrimWhitespaceASCII(app_id, base::TRIM_ALL, &app_id);
     builder->AddArg("--app-shell-app-id=" + app_id);
   } else {
     const base::FilePath app_path =
@@ -94,10 +101,8 @@ void AddAppShellFlags(ChromiumCommandBuilder* builder) {
   }
 
   std::string network;
-  if (ReadData(stateful_dir, readonly_dir, kPreferredNetworkFile, &network)) {
-    base::TrimWhitespaceASCII(network, base::TRIM_ALL, &network);
+  if (ReadData(stateful_dir, readonly_dir, kPreferredNetworkFile, &network))
     builder->AddArg("--app-shell-preferred-network=" + network);
-  }
 }
 
 // Replaces the currently-running process with app_shell.
@@ -124,11 +129,17 @@ void ExecAppShell(const ChromiumCommandBuilder& builder) {
   for (size_t i = 0; i < arraysize(argv); ++i)
     argv[i] = nullptr;
 
-  argv[0] = const_cast<char*>(kAppShellPath);
+  // Check only the readonly dir for a file containing the path of an alternate
+  // executable.
+  std::string exec_path = kAppShellPath;
+  const base::FilePath readonly_dir(kReadonlyDataPath);
+  ReadData(readonly_dir, readonly_dir, kExecutablePathFile, &exec_path);
+
+  argv[0] = const_cast<char*>(exec_path.c_str());
   for (size_t i = 0; i < builder.arguments().size(); ++i)
     argv[i + 1] = const_cast<char*>(builder.arguments()[i].c_str());
 
-  PCHECK(execv(argv[0], argv) == 0);
+  PCHECK(execv(argv[0], argv) == 0) << "Couldn't exec " << argv[0];
 }
 
 }  // namespace
