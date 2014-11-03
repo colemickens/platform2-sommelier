@@ -42,11 +42,13 @@ class XmlInterfaceParser {
   static const char kMethodTag[];
   static const char kNodeTag[];
   static const char kSignalTag[];
+  static const char kPropertyTag[];
 
   // XML attribute names.
   static const char kNameAttribute[];
   static const char kTypeAttribute[];
   static const char kDirectionAttribute[];
+  static const char kAccessAttribute[];
 
   // XML argument directions.
   static const char kArgumentDirectionIn[];
@@ -84,6 +86,9 @@ class XmlInterfaceParser {
   // Method for extracting signal/method tag attributes to a struct.
   static Interface::Argument ParseArgument(const XmlAttributeMap& attributes,
                                            const std::string& element_type);
+
+  // Method for extracting property tag attributes to a struct.
+  static Interface::Property ParseProperty(const XmlAttributeMap& attributes);
 
   // Expat element callback functions.
   static void HandleElementStart(void* user_data,

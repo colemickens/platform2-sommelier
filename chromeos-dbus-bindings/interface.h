@@ -41,15 +41,27 @@ struct Interface {
     std::string name;
     std::vector<Argument> arguments;
   };
+  struct Property {
+    Property(const std::string& name_in,
+             const std::string& type_in,
+             const std::string& access_in)
+        : name(name_in), type(type_in), access(access_in) {}
+    std::string name;
+    std::string type;
+    std::string access;
+  };
 
   Interface() = default;
   Interface(const std::string& name_in,
             const std::vector<Method>& methods_in,
-            const std::vector<Signal>& signals_in)
-      : name(name_in), methods(methods_in), signals(signals_in) {}
+            const std::vector<Signal>& signals_in,
+            const std::vector<Property>& properties_in)
+      : name(name_in), methods(methods_in), signals(signals_in),
+        properties(properties_in) {}
   std::string name;
   std::vector<Method> methods;
   std::vector<Signal> signals;
+  std::vector<Property> properties;
 };
 
 }  // namespace chromeos_dbus_bindings

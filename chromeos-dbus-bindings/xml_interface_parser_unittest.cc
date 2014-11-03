@@ -48,6 +48,8 @@ const char kArrayByteType[] = "ay";
 const char kBssRemovedSignal[] = "BSSRemoved";
 const char kBssArgument[] = "BSS";
 const char kObjectType[] = "o";
+const char kCapabilitiesProperty[] = "Capabilities";
+const char kReadAccess[] = "read";
 }  // namespace
 
 class XmlInterfaceParserTest : public Test {
@@ -110,6 +112,11 @@ TEST_F(XmlInterfaceParserTest, GoodInputFile) {
   // <arg name="BSS" type="o"/>
   EXPECT_EQ(kBssArgument, interface.signals[0].arguments[0].name);
   EXPECT_EQ(kObjectType, interface.signals[0].arguments[0].type);
+
+  // <property name="Capabilities" type="s" access="read"/>
+  EXPECT_EQ(kCapabilitiesProperty, interface.properties[0].name);
+  EXPECT_EQ(kArrayStringVariantType, interface.properties[0].type);
+  EXPECT_EQ(kReadAccess, interface.properties[0].access);
 }
 
 }  // namespace chromeos_dbus_bindings

@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "chromeos-dbus-bindings/dbus_signature.h"
@@ -58,9 +59,11 @@ bool AdaptorGenerator::GenerateAdaptor(
   AddSendSignalMethods(interface, &text);
   text.AddLine(StringPrintf("virtual ~%s() = default;", adaptor_name.c_str()));
   text.AddLine("virtual void OnRegisterComplete(bool success) {}");
-  text.PopOffset();
 
   text.AddBlankLine();
+  AddPropertyMethods(interface, &text);
+  text.PopOffset();
+
   text.AddLineWithOffset("protected:", kScopeOffset);
   text.PushOffset(kBlockOffset);
   text.AddLine("chromeos::dbus_utils::DBusInterface* dbus_interface() {");
@@ -74,6 +77,8 @@ bool AdaptorGenerator::GenerateAdaptor(
   text.AddLineWithOffset("private:", kScopeOffset);
 
   text.PushOffset(kBlockOffset);
+  text.AddLine("// Exported properties");
+  AddPropertyDataMembers(interface, &text);
   text.AddLine("MethodInterface* interface_;  // Owned by caller.");
   text.AddLine("chromeos::dbus_utils::DBusObject dbus_object_;");
   AddSignalDataMembers(interface, &text);
@@ -142,6 +147,15 @@ void AdaptorGenerator::AddConstructor(const Interface& interface,
     block.AddLine(StringPrintf("\"%s\",", method.name.c_str()));
     block.AddLine("base::Unretained(interface_),");
     block.AddLine(StringPrintf("&MethodInterface::%s);", method.name.c_str()));
+    block.PopOffset();
+  }
+  // Register exported properties.
+  for (const auto& property : interface.properties) {
+    string variable_name = GetPropertyVariableName(property.name);
+    block.AddLine("dbus_interface_->AddProperty(");
+    block.PushOffset(kLineContinuationOffset);
+    block.AddLine(StringPrintf("\"%s\",", property.name.c_str()));
+    block.AddLine(StringPrintf("&%s_);", variable_name.c_str()));
     block.PopOffset();
   }
   block.AddLine("dbus_object_.RegisterAsync(base::Bind(");
@@ -258,6 +272,83 @@ void AdaptorGenerator::AddSignalDataMembers(const Interface& interface,
   text->AddBlock(block);
 }
 
+// static
+void AdaptorGenerator::AddPropertyMethods(const Interface& interface,
+                                          IndentedText *text) {
+  IndentedText block;
+  DbusSignature signature;
 
+  for (const auto& property : interface.properties) {
+    string type;
+    CHECK(signature.Parse(property.type, &type));
+    string variable_name = GetPropertyVariableName(property.name);
+
+    // Getter method.
+    block.AddLine(StringPrintf("%s Get%s() const {",
+                               type.c_str(),
+                               property.name.c_str()));
+    block.PushOffset(kBlockOffset);
+    block.AddLine(StringPrintf("return %s_.GetValue().Get<%s>();",
+                               variable_name.c_str(),
+                               type.c_str()));
+    block.PopOffset();
+    block.AddLine("}");
+
+    // Setter method.
+    block.AddLine(StringPrintf("void Set%s(", property.name.c_str()));
+    block.PushOffset(kLineContinuationOffset);
+    block.AddLine(StringPrintf("const %s& %s) {",
+                               type.c_str(),
+                               variable_name.c_str()));
+    block.PopOffset();
+    block.PushOffset(kBlockOffset);
+    block.AddLine(StringPrintf("%s_.SetValue(%s);",
+                               variable_name.c_str(),
+                               variable_name.c_str()));
+    block.PopOffset();
+    block.AddLine("}");
+    block.AddBlankLine();
+  }
+  text->AddBlock(block);
+}
+
+// static
+void AdaptorGenerator::AddPropertyDataMembers(const Interface& interface,
+                                              IndentedText *text) {
+  IndentedText block;
+  DbusSignature signature;
+
+  for (const auto& property : interface.properties) {
+    string type;
+    CHECK(signature.Parse(property.type, &type));
+    string variable_name = GetPropertyVariableName(property.name);
+
+    block.AddLine(StringPrintf("chromeos::dbus_utils::ExportedProperty<%s>",
+                               type.c_str()));
+    block.PushOffset(kLineContinuationOffset);
+    block.AddLine(StringPrintf("%s_;", variable_name.c_str()));
+    block.PopOffset();
+  }
+  text->AddBlock(block);
+}
+
+// static
+string AdaptorGenerator::GetPropertyVariableName(const string& property_name) {
+  // Convert CamelCase property name to google_style variable name.
+  string result;
+  for (size_t i = 0; i < property_name.length(); i++) {
+    char c = property_name[i];
+    if (c < 'A' || c > 'Z') {
+      result += c;
+      continue;
+    }
+
+    if (i != 0) {
+      result += '_';
+    }
+    result += base::ToLowerASCII(c);
+  }
+  return result;
+}
 
 }  // namespace chromeos_dbus_bindings

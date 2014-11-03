@@ -40,6 +40,9 @@ const char kSignal1Name[] = "Mapping";
 const char kSignal1Argument0[] = "s";
 const char kSignal1ArgumentName0[] = "key";
 const char kSignal1Argument1[] = "ao";
+const char kProperty0Name[] = "InterfaceName";
+const char kProperty0Type[] = "s";
+const char kProperty0Access[] = "read";
 
 const char kInterfaceName[] = "org.chromium.TestInterface";
 const char kExpectedContent[] = R"literal_string(
@@ -102,6 +105,9 @@ class TestInterfaceAdaptor {
         "Kei",
         base::Unretained(interface_),
         &MethodInterface::Kei);
+    dbus_interface_->AddProperty(
+        "InterfaceName",
+        &interface_name_);
     dbus_object_.RegisterAsync(base::Bind(
         &TestInterfaceAdaptor::OnRegisterComplete, base::Unretained(this)));
   }
@@ -117,12 +123,23 @@ class TestInterfaceAdaptor {
   virtual ~TestInterfaceAdaptor() = default;
   virtual void OnRegisterComplete(bool success) {}
 
+  std::string GetInterfaceName() const {
+    return interface_name_.GetValue().Get<std::string>();
+  }
+  void SetInterfaceName(
+      const std::string& interface_name) {
+    interface_name_.SetValue(interface_name);
+  }
+
  protected:
   chromeos::dbus_utils::DBusInterface* dbus_interface() {
     return dbus_interface_;
   }
 
  private:
+  // Exported properties
+  chromeos::dbus_utils::ExportedProperty<std::string>
+      interface_name_;
   MethodInterface* interface_;  // Owned by caller.
   chromeos::dbus_utils::DBusObject dbus_object_;
   chromeos::dbus_utils::DBusSignal<
@@ -188,6 +205,10 @@ TEST_F(AdaptorGeneratorTest, GenerateAdaptors) {
       vector<Interface::Argument>{
           {kSignal1ArgumentName0, kSignal1Argument0},
           {"", kSignal1Argument1}});
+  interface.properties.emplace_back(
+      kProperty0Name,
+      kProperty0Type,
+      kProperty0Access);
 
   base::FilePath output_path = temp_dir_.path().Append("output.h");
   EXPECT_TRUE(AdaptorGenerator::GenerateAdaptor(interface, output_path));

@@ -22,9 +22,11 @@ const char XmlInterfaceParser::kInterfaceTag[] = "interface";
 const char XmlInterfaceParser::kMethodTag[] = "method";
 const char XmlInterfaceParser::kNodeTag[] = "node";
 const char XmlInterfaceParser::kSignalTag[] = "signal";
+const char XmlInterfaceParser::kPropertyTag[] = "property";
 const char XmlInterfaceParser::kNameAttribute[] = "name";
 const char XmlInterfaceParser::kTypeAttribute[] = "type";
 const char XmlInterfaceParser::kDirectionAttribute[] = "direction";
+const char XmlInterfaceParser::kAccessAttribute[] = "access";
 const char XmlInterfaceParser::kArgumentDirectionIn[] = "in";
 const char XmlInterfaceParser::kArgumentDirectionOut[] = "out";
 
@@ -81,6 +83,9 @@ void XmlInterfaceParser::OnOpenElement(
   } else if (element_path_ == vector<string> {
                  kNodeTag, kInterfaceTag, kSignalTag, kArgumentTag }) {
     AddSignalArgument(attributes);
+  } else if (element_path_ == vector<string> {
+                 kNodeTag, kInterfaceTag, kPropertyTag }) {
+    interface_.properties.push_back(ParseProperty(attributes));
   }
 }
 
@@ -171,6 +176,20 @@ Interface::Argument XmlInterfaceParser::ParseArgument(
   string argument_type = GetValidatedElementAttribute(
       attributes, element_and_argument, kTypeAttribute);
   return Interface::Argument(argument_name, argument_type);
+}
+
+// static
+Interface::Property XmlInterfaceParser::ParseProperty(
+    const XmlAttributeMap& attributes) {
+  string property_name = GetValidatedElementName(attributes,
+                                                 kPropertyTag);
+  string property_type = GetValidatedElementAttribute(attributes,
+                                                      kPropertyTag,
+                                                      kTypeAttribute);
+  string property_access = GetValidatedElementAttribute(attributes,
+                                                        kPropertyTag,
+                                                        kAccessAttribute);
+  return Interface::Property(property_name, property_type, property_access);
 }
 
 // static

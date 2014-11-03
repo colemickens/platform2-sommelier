@@ -49,6 +49,17 @@ class AdaptorGenerator : public HeaderGenerator {
   static void AddSignalDataMembers(const Interface& interface,
                                    IndentedText *text);
 
+  // Generates adaptor accessor methods for the properties.
+  static void AddPropertyMethods(const Interface& interface,
+                                 IndentedText *text);
+
+  // Generate ExportProperty data members for the properties.
+  static void AddPropertyDataMembers(const Interface& interface,
+                                     IndentedText *text);
+
+  // Return a variable name based on the given property name.
+  static std::string GetPropertyVariableName(const std::string& property_name);
+
   DISALLOW_COPY_AND_ASSIGN(AdaptorGenerator);
 };
 
