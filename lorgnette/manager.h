@@ -31,24 +31,26 @@ namespace lorgnette {
 
 class Minijail;
 
-class Manager
-    : public org::chromium::lorgnette::ManagerAdaptor::MethodInterface {
+class Manager : public org::chromium::lorgnette::ManagerAdaptor,
+                public org::chromium::lorgnette::ManagerInterface {
  public:
   typedef std::map<std::string, std::map<std::string, std::string>> ScannerInfo;
 
   explicit Manager(base::Callback<void()> activity_callback);
   virtual ~Manager();
 
-  // Start DBus connection.
-  void InitDBus(chromeos::dbus_utils::ExportedObjectManager *object_manager);
+  void RegisterAsync(
+      chromeos::dbus_utils::ExportedObjectManager* object_manager,
+      chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   // Implementation of MethodInterface.
-  virtual ScannerInfo ListScanners(chromeos::ErrorPtr *error);
-  virtual void ScanImage(
+  bool ListScanners(chromeos::ErrorPtr *error,
+                    ScannerInfo* scanner_list) override;
+  bool ScanImage(
       chromeos::ErrorPtr *error,
       const std::string &device_name,
       const dbus::FileDescriptor &outfd,
-      const chromeos::VariantDictionary &scan_properties);
+      const chromeos::VariantDictionary &scan_properties) override;
 
  private:
   friend class ManagerTest;
@@ -89,7 +91,7 @@ class Manager
                        const std::string &message,
                        chromeos::ErrorPtr *error);
 
-  std::unique_ptr<org::chromium::lorgnette::ManagerAdaptor> dbus_adaptor_;
+  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
   base::Callback<void()> activity_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);

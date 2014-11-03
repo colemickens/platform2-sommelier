@@ -14,6 +14,10 @@
 #include "chromeos-dbus-bindings/proxy_generator.h"
 #include "chromeos-dbus-bindings/xml_interface_parser.h"
 
+using chromeos_dbus_bindings::AdaptorGenerator;
+using chromeos_dbus_bindings::MethodNameGenerator;
+using chromeos_dbus_bindings::ProxyGenerator;
+
 namespace switches {
 
 static const char kHelp[] = "help";
@@ -65,20 +69,19 @@ int main(int argc, char** argv) {
     std::string method_name_file =
         cl->GetSwitchValueASCII(switches::kMethodNames);
     VLOG(1) << "Outputting method names to " << method_name_file;
-    if (!chromeos_dbus_bindings::MethodNameGenerator::GenerateMethodNames(
-            parser.interface(),
+    if (!MethodNameGenerator::GenerateMethodNames(
+            parser.interfaces(),
             base::FilePath(method_name_file))) {
       LOG(ERROR) << "Failed to output method names.";
       return 1;
-     }
+    }
   }
 
   if (cl->HasSwitch(switches::kAdaptor)) {
     std::string adaptor_file = cl->GetSwitchValueASCII(switches::kAdaptor);
     VLOG(1) << "Outputting adaptor to " << adaptor_file;
-    if (!chromeos_dbus_bindings::AdaptorGenerator::GenerateAdaptor(
-            parser.interface(),
-            base::FilePath(adaptor_file))) {
+    if (!AdaptorGenerator::GenerateAdaptors(parser.interfaces(),
+                                            base::FilePath(adaptor_file))) {
       LOG(ERROR) << "Failed to output adaptor.";
       return 1;
      }
@@ -87,9 +90,8 @@ int main(int argc, char** argv) {
   if (cl->HasSwitch(switches::kProxy)) {
     std::string proxy_file = cl->GetSwitchValueASCII(switches::kProxy);
     LOG(INFO) << "Outputting proxy to " << proxy_file;
-    if (!chromeos_dbus_bindings::ProxyGenerator::GenerateProxy(
-            parser.interface(),
-            base::FilePath(proxy_file))) {
+    if (!ProxyGenerator::GenerateProxy(parser.interfaces(),
+                                       base::FilePath(proxy_file))) {
       LOG(ERROR) << "Failed to output proxy.";
       return 1;
      }

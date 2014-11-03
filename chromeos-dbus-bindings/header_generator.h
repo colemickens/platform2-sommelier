@@ -27,10 +27,15 @@ class HeaderGenerator {
   static std::string GenerateHeaderGuard(const base::FilePath& output_file,
                                          const std::string& interface_name);
 
-  // Returns a vector of nesting namepsaces.
+  // Returns a vector of nesting namespaces.
   static bool GetNamespacesAndClassName(const std::string& interface_name,
                                         std::vector<std::string>* namespaces,
                                         std::string* class_name);
+
+  // Returns a fully-qualified class name like "ns1::ns2::class_name".
+  static std::string GetFullClassName(
+      const std::vector<std::string>& namespaces,
+      const std::string& class_name);
 
   // Used to decide whether the argument should be a const reference.
   static bool IsIntegralType(const std::string& type);
@@ -38,6 +43,13 @@ class HeaderGenerator {
   // Writes indented text to a file.
   static bool WriteTextToFile(const base::FilePath& output_file,
                               const IndentedText& text);
+
+  // Generate a name of a method/signal argument based on the name provided in
+  // the XML file. If |arg_name| is empty, it generates a name using
+  // the |arg_index| counter.
+  static std::string GetArgName(const char* prefix,
+                                const std::string& arg_name,
+                                int arg_index);
 
   static const int kScopeOffset = 1;
   static const int kBlockOffset = 2;

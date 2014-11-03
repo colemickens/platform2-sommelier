@@ -35,15 +35,18 @@ int Daemon::OnInit() {
     return return_code;
   }
 
-  manager_.reset(new Manager(
-      base::Bind(&Daemon::PostponeShutdown, base::Unretained(this))));
-  manager_->InitDBus(object_manager_.get());
-
   PostponeShutdown();
 
   // Signal that we've acquired all resources.
   startup_callback_.Run();
   return EX_OK;
+}
+
+void Daemon::RegisterDBusObjectsAsync(
+    chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
+  manager_.reset(new Manager(base::Bind(&Daemon::PostponeShutdown,
+                                        base::Unretained(this))));
+  manager_->RegisterAsync(object_manager_.get(), sequencer);
 }
 
 void Daemon::OnShutdown(int* return_code) {

@@ -4,16 +4,14 @@
 
 #include "chromeos-dbus-bindings/method_name_generator.h"
 
-#include <string>
-
-#include <base/file_util.h>
 #include <base/files/file_path.h>
-#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
+#include "chromeos-dbus-bindings/indented_text.h"
 #include "chromeos-dbus-bindings/interface.h"
 
 using std::string;
+using std::vector;
 
 namespace chromeos_dbus_bindings {
 
@@ -25,23 +23,23 @@ string MethodNameGenerator::GenerateMethodNameConstant(
 
 // static
 bool MethodNameGenerator::GenerateMethodNames(
-    const Interface& interface,
+    const vector<Interface>& interfaces,
     const base::FilePath& output_file) {
   string contents;
-  for (const auto& method : interface.methods) {
-    contents.append(
-        base::StringPrintf("const char %s[] = \"%s\";\n",
-                           GenerateMethodNameConstant(method.name).c_str(),
-                           method.name.c_str()));
+  IndentedText text;
+  for (const auto& interface : interfaces) {
+    text.AddBlankLine();
+    text.AddLine(base::StringPrintf("namespace %s {", interface.name.c_str()));
+    for (const auto& method : interface.methods) {
+      text.AddLine(
+        base::StringPrintf("const char %s[] = \"%s\";",
+                            GenerateMethodNameConstant(method.name).c_str(),
+                            method.name.c_str()));
+    }
+    text.AddLine(base::StringPrintf("}  // namespace %s",
+                                    interface.name.c_str()));
   }
-
-  int expected_write_return = contents.size();
-  if (base::WriteFile(output_file, contents.c_str(), contents.size()) !=
-      expected_write_return) {
-    LOG(ERROR) << "Failed to write file " << output_file.value();
-    return false;
-  }
-  return true;
+  return HeaderGenerator::WriteTextToFile(output_file, text);
 }
 
 }  // namespace chromeos_dbus_bindings

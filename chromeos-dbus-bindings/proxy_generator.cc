@@ -6,6 +6,7 @@
 
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/strings/string_utils.h>
 
 #include "chromeos-dbus-bindings/dbus_signature.h"
 #include "chromeos-dbus-bindings/indented_text.h"
@@ -18,12 +19,22 @@ namespace chromeos_dbus_bindings {
 
 // static
 bool ProxyGenerator::GenerateProxy(
-    const Interface& interface,
+    const std::vector<Interface>& interfaces,
     const base::FilePath& output_file) {
   IndentedText text;
-  text.AddLine(StringPrintf("// Automatic generation of interface for %s",
-                            interface.name.c_str()));
-  string header_guard = GenerateHeaderGuard(output_file, interface.name);
+  CHECK(!interfaces.empty()) << "At least one interface must be provided";
+  vector<string> namespaces;
+  string proxy_name;
+  CHECK(GetNamespacesAndClassName(interfaces.front().name,
+                                  &namespaces,
+                                  &proxy_name));
+  proxy_name += "Proxy";
+
+  text.AddLine("// Automatic generation of D-Bus interfaces:");
+  for (const auto& interface : interfaces) {
+    text.AddLine(StringPrintf("//  - %s", interface.name.c_str()));
+  }
+  string header_guard = GenerateHeaderGuard(output_file, proxy_name);
   text.AddLine(StringPrintf("#ifndef %s", header_guard.c_str()));
   text.AddLine(StringPrintf("#define %s", header_guard.c_str()));
   text.AddLine("#include <string>");
@@ -44,24 +55,22 @@ bool ProxyGenerator::GenerateProxy(
   text.AddLine("#include <dbus/object_proxy.h>");
   text.AddBlankLine();
 
-  vector<string> namespaces;
-  string class_name;
-  CHECK(GetNamespacesAndClassName(interface.name, &namespaces, &class_name));
   for (const auto& space : namespaces) {
     text.AddLine(StringPrintf("namespace %s {", space.c_str()));
   }
   text.AddBlankLine();
 
-  string proxy_name = StringPrintf("%sProxy", class_name.c_str());
   text.AddLine(StringPrintf("class %s {", proxy_name.c_str()));
   text.AddLineWithOffset("public:", kScopeOffset);
   text.PushOffset(kBlockOffset);
-  AddMethodInterface(interface, &text);
-  AddConstructor(interface, proxy_name, &text);
+  AddSignalReceiver(interfaces, &text);
+  AddConstructor(interfaces, proxy_name, &text);
   AddDestructor(proxy_name, &text);
   AddSignalConnectedCallback(&text);
-  for (const auto& method : interface.methods) {
-    AddMethodProxy(method, interface.name, &text);
+  for (const auto& interface : interfaces) {
+    for (const auto& method : interface.methods) {
+      AddMethodProxy(method, interface.name, &text);
+    }
   }
 
   text.PopOffset();
@@ -91,9 +100,9 @@ bool ProxyGenerator::GenerateProxy(
 }
 
 // static
-void ProxyGenerator::AddConstructor(const Interface& interface,
-                                      const string& class_name,
-                                      IndentedText* text) {
+void ProxyGenerator::AddConstructor(const vector<Interface>& interfaces,
+                                    const string& class_name,
+                                    IndentedText* text) {
   IndentedText block;
   block.AddLine(StringPrintf("%s(", class_name.c_str()));
   block.PushOffset(kLineContinuationOffset);
@@ -112,26 +121,28 @@ void ProxyGenerator::AddConstructor(const Interface& interface,
   block.PopOffset();
   block.PopOffset();
   block.PushOffset(kBlockOffset);
-  for (const auto& signal : interface.signals) {
-    block.AddLine("chromeos::dbus_utils::ConnectToSignal(");
-    block.PushOffset(kLineContinuationOffset);
-    block.AddLine("dbus_object_proxy_,");
-    block.AddLine(StringPrintf("\"%s\",", interface.name.c_str()));
-    block.AddLine(StringPrintf("\"%s\",", signal.name.c_str()));
-    block.AddLine("base::Bind(");
-    block.PushOffset(kLineContinuationOffset);
-    block.AddLine(StringPrintf(
+  for (const auto& interface : interfaces) {
+    for (const auto& signal : interface.signals) {
+      block.AddLine("chromeos::dbus_utils::ConnectToSignal(");
+      block.PushOffset(kLineContinuationOffset);
+      block.AddLine("dbus_object_proxy_,");
+      block.AddLine(StringPrintf("\"%s\",", interface.name.c_str()));
+      block.AddLine(StringPrintf("\"%s\",", signal.name.c_str()));
+      block.AddLine("base::Bind(");
+      block.PushOffset(kLineContinuationOffset);
+      block.AddLine(StringPrintf(
         "&SignalReceiver::%s,",
         GetHandlerNameForSignal(signal.name).c_str()));
-    block.AddLine("base::Unretained(signal_receiver)),");
-    block.PopOffset();
-    block.AddLine("base::Bind(");
-    block.PushOffset(kLineContinuationOffset);
-    block.AddLine(StringPrintf(
+      block.AddLine("base::Unretained(signal_receiver)),");
+      block.PopOffset();
+      block.AddLine("base::Bind(");
+      block.PushOffset(kLineContinuationOffset);
+      block.AddLine(StringPrintf(
         "&%s::OnDBusSignalConnected,", class_name.c_str()));
-    block.AddLine("base::Unretained(this)));");
-    block.PopOffset();
-    block.PopOffset();
+      block.AddLine("base::Unretained(this)));");
+      block.PopOffset();
+      block.PopOffset();
+    }
   }
   block.PopOffset();
   block.AddLine("}");
@@ -179,35 +190,44 @@ void ProxyGenerator::AddSignalConnectedCallback(IndentedText* text) {
 }
 
 // static
-void ProxyGenerator::AddMethodInterface(const Interface& interface,
-                                        IndentedText* text) {
+void ProxyGenerator::AddSignalReceiver(const vector<Interface>& interfaces,
+                                       IndentedText* text) {
   IndentedText block;
   block.AddLine("class SignalReceiver {");
   block.AddLineWithOffset("public:", kScopeOffset);
   block.PushOffset(kBlockOffset);
   DbusSignature signature;
-  for (const auto& signal : interface.signals) {
-    if (signal.arguments.empty()) {
-      block.AddLine(StringPrintf("virtual void %s() {}",
-                                 GetHandlerNameForSignal(signal.name).c_str()));
-      continue;
-    }
-    block.AddLine(StringPrintf("virtual void %s(",
-                               GetHandlerNameForSignal(signal.name).c_str()));
-    block.PushOffset(kLineContinuationOffset);
-    string last_argument;
-    vector<string> argument_types;
-    for (const auto& argument : signal.arguments) {
-      if (!last_argument.empty()) {
-         block.AddLine(StringPrintf("%s,", last_argument.c_str()));
+  for (const auto& interface : interfaces) {
+    for (const auto& signal : interface.signals) {
+      string signal_begin = StringPrintf(
+          "virtual void %s(",
+          GetHandlerNameForSignal(signal.name).c_str());
+      string signal_end = ") {}";
+
+      if (signal.arguments.empty()) {
+        block.AddLine(signal_begin + signal_end);
+        continue;
       }
-      CHECK(signature.Parse(argument.type, &last_argument));
-      if (!IsIntegralType(last_argument)) {
-        last_argument = StringPrintf("const %s&", last_argument.c_str());
+      block.AddLine(signal_begin);
+      block.PushOffset(kLineContinuationOffset);
+      string last_argument;
+      vector<string> argument_types;
+      for (const auto& argument : signal.arguments) {
+        if (!last_argument.empty()) {
+           block.AddLine(StringPrintf("%s,", last_argument.c_str()));
+        }
+        CHECK(signature.Parse(argument.type, &last_argument));
+        if (!IsIntegralType(last_argument)) {
+          last_argument = StringPrintf("const %s&", last_argument.c_str());
+        }
+        if (!argument.name.empty()) {
+          last_argument += ' ';
+          last_argument += argument.name;
+        }
       }
+      block.AddLine(last_argument + signal_end);
+      block.PopOffset();
     }
-    block.AddLine(StringPrintf("%s) {}", last_argument.c_str()));
-    block.PopOffset();
   }
   block.PopOffset();
   block.AddLine("};");
@@ -220,21 +240,8 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
                                     const string& interface_name,
                                     IndentedText* text) {
   IndentedText block;
-  string return_type("void");
-  bool is_void_method = true;
   DbusSignature signature;
-  if (!method.output_arguments.empty()) {
-    if (method.output_arguments.size() > 1) {
-      LOG(WARNING) << "Method " << method.name << " has "
-                   << method.output_arguments.size()
-                   << " output arguments which is unsupported.";
-      return;
-    }
-    CHECK(signature.Parse(method.output_arguments[0].type, &return_type));
-    is_void_method = false;
-  }
-  block.AddLine(StringPrintf("virtual %s %s(",
-                             return_type.c_str(), method.name.c_str()));
+  block.AddLine(StringPrintf("virtual bool %s(", method.name.c_str()));
   block.PushOffset(kLineContinuationOffset);
   vector<string> argument_names;
   int argument_number = 0;
@@ -244,14 +251,19 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
     if (!IsIntegralType(argument_type)) {
       argument_type = StringPrintf("const %s&", argument_type.c_str());
     }
-    ++argument_number;
-    string argument_prefix(argument.name.empty() ?
-                           StringPrintf("argument%d", argument_number) :
-                           argument.name);
-    string argument_name(StringPrintf("%s_in", argument_prefix.c_str()));
+    string argument_name = GetArgName("in", argument.name, ++argument_number);
     argument_names.push_back(argument_name);
     block.AddLine(StringPrintf(
         "%s %s,", argument_type.c_str(), argument_name.c_str()));
+  }
+  vector<string> out_param_names{"response.get()", "error"};
+  for (const auto& argument : method.output_arguments) {
+    string argument_type;
+    CHECK(signature.Parse(argument.type, &argument_type));
+    string argument_name = GetArgName("out", argument.name, ++argument_number);
+    out_param_names.push_back(argument_name);
+    block.AddLine(StringPrintf(
+        "%s* %s,", argument_type.c_str(), argument_name.c_str()));
   }
   block.AddLine("chromeos::ErrorPtr* error) {");
   block.PopOffset();
@@ -270,21 +282,11 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
   block.AddLine(StringPrintf("%s);", last_argument.c_str()));
   block.PopOffset();
 
-  if (!is_void_method) {
-    block.AddLine(StringPrintf("%s result{};", return_type.c_str()));
-  }
-  block.AddLine("if (!response) {");
-  block.AddLineWithOffset(StringPrintf(
-      "return%s;", is_void_method ? "" : " result"), kBlockOffset);
-  block.AddLine("}");
-  block.AddLine("chromeos::dbus_utils::ExtractMethodCallResults(");
-  block.AddLineWithOffset(StringPrintf("response.get(), error%s);",
-                                       is_void_method ? "" : ", &result"),
-                          kLineContinuationOffset);
-  if (!is_void_method) {
-    block.AddLine("return result;");
-  }
-
+  block.AddLine("return response && "
+                "chromeos::dbus_utils::ExtractMethodCallResults(");
+  block.PushOffset(kLineContinuationOffset);
+  block.AddLine(chromeos::string_utils::Join(", ", out_param_names) + ");");
+  block.PopOffset();
   block.PopOffset();
   block.AddLine("}");
 

@@ -26,6 +26,8 @@ class Daemon : public chromeos::DBusServiceDaemon {
 
  protected:
   int OnInit() override;
+  void RegisterDBusObjectsAsync(
+      chromeos::dbus_utils::AsyncEventSequencer* sequencer) override;
   void OnShutdown(int* return_code) override;
 
  private:

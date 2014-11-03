@@ -5,6 +5,7 @@
 #include "chromeos-dbus-bindings/method_name_generator.h"
 
 #include <string>
+#include <vector>
 
 #include <base/file_util.h>
 #include <base/files/file_path.h>
@@ -23,10 +24,14 @@ namespace {
 const char kMethodName0[] = "Zircon";
 const char kMethodName1[] = "Encrusted";
 const char kMethodName2[] = "Tweezers";
-const char kExpectedOutput[] =
-    "const char kZirconMethod[] = \"Zircon\";\n"
-    "const char kEncrustedMethod[] = \"Encrusted\";\n"
-    "const char kTweezersMethod[] = \"Tweezers\";\n";
+const char kExpectedOutput[] = R"(
+namespace MyInterface {
+const char kZirconMethod[] = "Zircon";
+const char kEncrustedMethod[] = "Encrusted";
+const char kTweezersMethod[] = "Tweezers";
+}  // namespace MyInterface
+)";
+
 }  // namespace
 
 class MethodNameGeneratorTest : public Test {
@@ -49,11 +54,13 @@ class MethodNameGeneratorTest : public Test {
 
 TEST_F(MethodNameGeneratorTest, GnerateMethodNames) {
   Interface interface;
+  interface.name = "MyInterface";
   interface.methods.emplace_back(kMethodName0);
   interface.methods.emplace_back(kMethodName1);
   interface.methods.emplace_back(kMethodName2);
   base::FilePath output_path = temp_dir_.path().Append("output.h");
-  EXPECT_TRUE(MethodNameGenerator::GenerateMethodNames(interface, output_path));
+  EXPECT_TRUE(MethodNameGenerator::GenerateMethodNames({interface},
+                                                       output_path));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
   EXPECT_STREQ(kExpectedOutput, contents.c_str());

@@ -11,6 +11,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/strings/string_utils.h>
 
 #include "chromeos-dbus-bindings/indented_text.h"
 
@@ -53,6 +54,14 @@ bool HeaderGenerator::GetNamespacesAndClassName(
   return true;
 }
 
+std::string HeaderGenerator::GetFullClassName(
+    const std::vector<std::string>& namespaces,
+    const std::string& class_name) {
+  std::vector<std::string> parts = namespaces;
+  parts.push_back(class_name);
+  return chromeos::string_utils::Join("::", parts);
+}
+
 // static
 bool HeaderGenerator::IsIntegralType(const string& type) {
   return type.find("::") == std::string::npos;
@@ -69,6 +78,13 @@ bool HeaderGenerator::WriteTextToFile(
     return false;
   }
   return true;
+}
+
+string HeaderGenerator::GetArgName(const char* prefix,
+                                   const string& arg_name,
+                                   int arg_index) {
+  string name = arg_name.empty() ? std::to_string(arg_index) : arg_name;
+  return base::StringPrintf("%s_%s", prefix, name.c_str());
 }
 
 }  // namespace chromeos_dbus_bindings

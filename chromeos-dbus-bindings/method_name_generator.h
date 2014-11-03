@@ -6,8 +6,11 @@
 #define CHROMEOS_DBUS_BINDINGS_METHOD_NAME_GENERATOR_H_
 
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
+
+#include "chromeos-dbus-bindings/header_generator.h"
 
 namespace base {
 
@@ -19,9 +22,9 @@ namespace chromeos_dbus_bindings {
 
 struct Interface;
 
-class MethodNameGenerator {
+class MethodNameGenerator : public HeaderGenerator {
  public:
-  static bool GenerateMethodNames(const Interface &interface,
+  static bool GenerateMethodNames(const std::vector<Interface>& interfaces,
                                   const base::FilePath& output_file);
   static std::string GenerateMethodNameConstant(const std::string& method_name);
 

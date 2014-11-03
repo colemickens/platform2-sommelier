@@ -18,6 +18,12 @@ struct Interface {
     std::string type;
   };
   struct Method {
+    enum class Kind {
+      kSimple,
+      kNormal,
+      kAsync,
+      kRaw
+    };
     Method(const std::string& name_in,
            const std::vector<Argument>& input_arguments_in,
            const std::vector<Argument>& output_arguments_in)
@@ -32,6 +38,8 @@ struct Interface {
     std::string name;
     std::vector<Argument> input_arguments;
     std::vector<Argument> output_arguments;
+    Kind kind{Kind::kNormal};
+    bool is_const{false};
   };
   struct Signal {
     Signal(const std::string& name_in,

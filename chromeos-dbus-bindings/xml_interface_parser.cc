@@ -23,12 +23,26 @@ const char XmlInterfaceParser::kMethodTag[] = "method";
 const char XmlInterfaceParser::kNodeTag[] = "node";
 const char XmlInterfaceParser::kSignalTag[] = "signal";
 const char XmlInterfaceParser::kPropertyTag[] = "property";
+const char XmlInterfaceParser::kAnnotationTag[] = "annotation";
 const char XmlInterfaceParser::kNameAttribute[] = "name";
 const char XmlInterfaceParser::kTypeAttribute[] = "type";
+const char XmlInterfaceParser::kValueAttribute[] = "value";
 const char XmlInterfaceParser::kDirectionAttribute[] = "direction";
 const char XmlInterfaceParser::kAccessAttribute[] = "access";
 const char XmlInterfaceParser::kArgumentDirectionIn[] = "in";
 const char XmlInterfaceParser::kArgumentDirectionOut[] = "out";
+
+const char XmlInterfaceParser::kTrue[] = "true";
+const char XmlInterfaceParser::kFalse[] = "false";
+
+const char XmlInterfaceParser::kMethodConst[] =
+    "org.chromium.DBus.Method.Const";
+
+const char XmlInterfaceParser::kMethodKind[] = "org.chromium.DBus.Method.Kind";
+const char XmlInterfaceParser::kMethodKindSimple[] = "simple";
+const char XmlInterfaceParser::kMethodKindNormal[] = "normal";
+const char XmlInterfaceParser::kMethodKindAsync[] = "async";
+const char XmlInterfaceParser::kMethodKindRaw[] = "raw";
 
 bool XmlInterfaceParser::ParseXmlInterfaceFile(
     const base::FilePath& interface_file) {
@@ -62,36 +76,84 @@ bool XmlInterfaceParser::ParseXmlInterfaceFile(
 
 void XmlInterfaceParser::OnOpenElement(
     const string& element_name, const XmlAttributeMap& attributes) {
+  string prev_element;
+  if (!element_path_.empty())
+    prev_element = element_path_.back();
   element_path_.push_back(element_name);
-  if (element_path_ == vector<string> { kNodeTag, kInterfaceTag }) {
+  if (element_name == kNodeTag) {
+    CHECK(prev_element.empty())
+        << "Unexpected tag " << element_name << " inside " << prev_element;
+  } else if (element_name == kInterfaceTag) {
+    CHECK_EQ(kNodeTag, prev_element)
+        << "Unexpected tag " << element_name << " inside " << prev_element;
     string interface_name = GetValidatedElementName(attributes, kInterfaceTag);
-    CHECK(interface_.name.empty())
-        << "Found a second interface named " << interface_name << ". "
-        << "Interface " << interface_.name << " has already been parsed.";
-    interface_.name = interface_name;
-  } else if (element_path_ == vector<string> {
-                 kNodeTag, kInterfaceTag, kMethodTag }) {
-    interface_.methods.push_back(
+    interfaces_.emplace_back(interface_name,
+                             std::vector<Interface::Method>{},
+                             std::vector<Interface::Signal>{},
+                             std::vector<Interface::Property>{});
+  } else if (element_name == kMethodTag) {
+    CHECK_EQ(kInterfaceTag, prev_element)
+        << "Unexpected tag " << element_name << " inside " << prev_element;
+    interfaces_.back().methods.push_back(
         Interface::Method(GetValidatedElementName(attributes, kMethodTag)));
-  } else if (element_path_ == vector<string> {
-                 kNodeTag, kInterfaceTag, kMethodTag, kArgumentTag }) {
-    AddMethodArgument(attributes);
-  } else if (element_path_ == vector<string> {
-                 kNodeTag, kInterfaceTag, kSignalTag }) {
-    interface_.signals.push_back(
+  } else if (element_name == kSignalTag) {
+    CHECK_EQ(kInterfaceTag, prev_element)
+        << "Unexpected tag " << element_name << " inside " << prev_element;
+    interfaces_.back().signals.push_back(
         Interface::Signal(GetValidatedElementName(attributes, kSignalTag)));
-  } else if (element_path_ == vector<string> {
-                 kNodeTag, kInterfaceTag, kSignalTag, kArgumentTag }) {
-    AddSignalArgument(attributes);
-  } else if (element_path_ == vector<string> {
-                 kNodeTag, kInterfaceTag, kPropertyTag }) {
-    interface_.properties.push_back(ParseProperty(attributes));
+  } else if (element_name == kPropertyTag) {
+    CHECK_EQ(kInterfaceTag, prev_element)
+        << "Unexpected tag " << element_name << " inside " << prev_element;
+    interfaces_.back().properties.push_back(ParseProperty(attributes));
+  } else if (element_name == kArgumentTag) {
+    if (prev_element == kMethodTag) {
+      AddMethodArgument(attributes);
+    } else if (prev_element == kSignalTag) {
+      AddSignalArgument(attributes);
+    } else {
+      LOG(FATAL) << "Unexpected tag " << element_name
+                 << " inside " << prev_element;
+    }
+  } else if (element_name == kAnnotationTag) {
+    string element_path = prev_element + " " + element_name;
+    string name = GetValidatedElementAttribute(attributes, element_path,
+                                               kNameAttribute);
+    // Value is optional. Default to empty string if omitted.
+    string value;
+    GetElementAttribute(attributes, element_path, kValueAttribute, &value);
+    if (prev_element == kInterfaceTag) {
+      // Parse interface annotations...
+    } else if (prev_element == kMethodTag) {
+      // Parse method annotations...
+      Interface::Method& method = interfaces_.back().methods.back();
+      if (name == kMethodConst) {
+        CHECK(value == kTrue || value == kFalse);
+        method.is_const = (value == kTrue);
+      } else if (name == kMethodKind) {
+        if (value == kMethodKindSimple) {
+          method.kind = Interface::Method::Kind::kSimple;
+        } else if (value == kMethodKindNormal) {
+          method.kind = Interface::Method::Kind::kNormal;
+        } else if (value == kMethodKindAsync) {
+          method.kind = Interface::Method::Kind::kAsync;
+        } else if (value == kMethodKindRaw) {
+          method.kind = Interface::Method::Kind::kRaw;
+        } else {
+          LOG(FATAL) << "Invalid method kind: " << value;
+        }
+      }
+    } else if (prev_element == kSignalTag) {
+      // Parse signal annotations...
+    } else if (prev_element == kPropertyTag) {
+      // Parse property annotations...
+    } else {
+      LOG(FATAL) << "Unexpected tag " << element_name
+                 << " inside " << prev_element;
+    }
   }
 }
 
 void XmlInterfaceParser::AddMethodArgument(const XmlAttributeMap& attributes) {
-  CHECK(!interface_.methods.empty())
-      << " we have a method argument but the interface has no methods";
   string argument_direction;
   bool is_direction_paramter_present = GetElementAttribute(
       attributes,
@@ -101,9 +163,9 @@ void XmlInterfaceParser::AddMethodArgument(const XmlAttributeMap& attributes) {
   vector<Interface::Argument>* argument_list = nullptr;
   if (!is_direction_paramter_present ||
       argument_direction == kArgumentDirectionIn) {
-    argument_list = &interface_.methods.back().input_arguments;
+    argument_list = &interfaces_.back().methods.back().input_arguments;
   } else if (argument_direction == kArgumentDirectionOut) {
-    argument_list = &interface_.methods.back().output_arguments;
+    argument_list = &interfaces_.back().methods.back().output_arguments;
   } else {
     LOG(FATAL) << "Unknown method argument direction " << argument_direction;
   }
@@ -111,9 +173,7 @@ void XmlInterfaceParser::AddMethodArgument(const XmlAttributeMap& attributes) {
 }
 
 void XmlInterfaceParser::AddSignalArgument(const XmlAttributeMap& attributes) {
-  CHECK(interface_.signals.size())
-      << " we have a signal argument but the interface has no signals";
-  interface_.signals.back().arguments.push_back(
+  interfaces_.back().signals.back().arguments.push_back(
       ParseArgument(attributes, kSignalTag));
 }
 

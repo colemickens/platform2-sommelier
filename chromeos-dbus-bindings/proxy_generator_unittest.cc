@@ -23,6 +23,7 @@ namespace chromeos_dbus_bindings {
 namespace {
 
 const char kInterfaceName[] = "org.chromium.TestInterface";
+const char kInterfaceName2[] = "org.chromium.TestInterface2";
 const char kMethod1Name[] = "Elements";
 const char kMethod1Return[] = "s";
 const char kMethod1Argument1[] = "s";
@@ -34,6 +35,11 @@ const char kMethod2Return[] = "x";
 const char kMethod3Name[] = "NiceWeatherForDucks";
 const char kMethod3Argument1[] = "b";
 const char kMethod4Name[] = "ExperimentNumberSix";
+const char kMethod5Name[] = "GetPersonInfo";
+const char kMethod5Argument1[] = "s";
+const char kMethod5ArgumentName1[] = "name";
+const char kMethod5Argument2[] = "i";
+const char kMethod5ArgumentName2[] = "age";
 const char kSignal1Name[] = "Closer";
 const char kSignal2Name[] = "TheCurseOfKaZar";
 const char kSignal2Argument1[] = "as";
@@ -114,67 +120,65 @@ class TestInterfaceProxy {
           << object_path_.value();
     }
   }
-  virtual std::string Elements(
-      const std::string& space_walk_in,
-      const std::vector<dbus::ObjectPath>& ramblin_man_in,
+  virtual bool Elements(
+      const std::string& in_space_walk,
+      const std::vector<dbus::ObjectPath>& in_ramblin_man,
+      std::string* out_3,
       chromeos::ErrorPtr* error) {
     auto response = chromeos::dbus_utils::CallMethodAndBlock(
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "Elements",
         error,
-        space_walk_in,
-        ramblin_man_in);
-    std::string result{};
-    if (!response) {
-      return result;
-    }
-    chromeos::dbus_utils::ExtractMethodCallResults(
-        response.get(), error, &result);
-    return result;
+        in_space_walk,
+        in_ramblin_man);
+    return response && chromeos::dbus_utils::ExtractMethodCallResults(
+        response.get(), error, out_3);
   }
-  virtual int64_t ReturnToPatagonia(
+  virtual bool ReturnToPatagonia(
+      int64_t* out_1,
       chromeos::ErrorPtr* error) {
     auto response = chromeos::dbus_utils::CallMethodAndBlock(
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "ReturnToPatagonia",
         error);
-    int64_t result{};
-    if (!response) {
-      return result;
-    }
-    chromeos::dbus_utils::ExtractMethodCallResults(
-        response.get(), error, &result);
-    return result;
+    return response && chromeos::dbus_utils::ExtractMethodCallResults(
+        response.get(), error, out_1);
   }
-  virtual void NiceWeatherForDucks(
-      bool argument1_in,
+  virtual bool NiceWeatherForDucks(
+      bool in_1,
       chromeos::ErrorPtr* error) {
     auto response = chromeos::dbus_utils::CallMethodAndBlock(
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "NiceWeatherForDucks",
         error,
-        argument1_in);
-    if (!response) {
-      return;
-    }
-    chromeos::dbus_utils::ExtractMethodCallResults(
+        in_1);
+    return response && chromeos::dbus_utils::ExtractMethodCallResults(
         response.get(), error);
   }
-  virtual void ExperimentNumberSix(
+  virtual bool ExperimentNumberSix(
       chromeos::ErrorPtr* error) {
     auto response = chromeos::dbus_utils::CallMethodAndBlock(
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "ExperimentNumberSix",
         error);
-    if (!response) {
-      return;
-    }
-    chromeos::dbus_utils::ExtractMethodCallResults(
+    return response && chromeos::dbus_utils::ExtractMethodCallResults(
         response.get(), error);
+  }
+  virtual bool GetPersonInfo(
+      std::string* out_name,
+      int32_t* out_age,
+      chromeos::ErrorPtr* error) {
+    auto response = chromeos::dbus_utils::CallMethodAndBlock(
+        dbus_object_proxy_,
+        "org.chromium.TestInterface2",
+        "GetPersonInfo",
+        error);
+    return response && chromeos::dbus_utils::ExtractMethodCallResults(
+        response.get(), error, out_name, out_age);
   }
 
  private:
@@ -234,8 +238,17 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptors) {
       vector<Interface::Argument>{
           {"", kSignal2Argument1},
           {"", kSignal2Argument2}});
+  Interface interface2;
+  interface2.name = kInterfaceName2;
+  interface2.methods.emplace_back(
+      kMethod5Name,
+      vector<Interface::Argument>{},
+      vector<Interface::Argument>{
+          {kMethod5ArgumentName1, kMethod5Argument1},
+          {kMethod5ArgumentName2, kMethod5Argument2}});
+  vector<Interface> interfaces{interface, interface2};
   base::FilePath output_path = temp_dir_.path().Append("output.h");
-  EXPECT_TRUE(ProxyGenerator::GenerateProxy(interface, output_path));
+  EXPECT_TRUE(ProxyGenerator::GenerateProxy(interfaces, output_path));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
   // The header guards contain the (temporary) filename, so we search for

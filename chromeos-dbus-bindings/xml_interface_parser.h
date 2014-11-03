@@ -31,7 +31,7 @@ class XmlInterfaceParser {
   virtual ~XmlInterfaceParser() = default;
 
   virtual bool ParseXmlInterfaceFile(const base::FilePath& interface_file);
-  const Interface& interface() const { return interface_; }
+  const std::vector<Interface>& interfaces() const { return interfaces_; }
 
  private:
   friend class XmlInterfaceParserTest;
@@ -43,16 +43,30 @@ class XmlInterfaceParser {
   static const char kNodeTag[];
   static const char kSignalTag[];
   static const char kPropertyTag[];
+  static const char kAnnotationTag[];
 
   // XML attribute names.
   static const char kNameAttribute[];
   static const char kTypeAttribute[];
   static const char kDirectionAttribute[];
   static const char kAccessAttribute[];
+  static const char kValueAttribute[];
 
   // XML argument directions.
   static const char kArgumentDirectionIn[];
   static const char kArgumentDirectionOut[];
+
+  // XML annotations.
+  static const char kTrue[];
+  static const char kFalse[];
+
+  static const char kMethodConst[];
+
+  static const char kMethodKind[];
+  static const char kMethodKindSimple[];
+  static const char kMethodKindNormal[];
+  static const char kMethodKindAsync[];
+  static const char kMethodKindRaw[];
 
   // Element callbacks on |this| called by HandleElementStart() and
   // HandleElementEnd(), respectively.
@@ -78,7 +92,7 @@ class XmlInterfaceParser {
       const std::string& element_type,
       const std::string& element_key);
 
-  // Calls GetValidatedElementAttribute() for for the "name" property.
+  // Calls GetValidatedElementAttribute() for the "name" property.
   static std::string GetValidatedElementName(
       const XmlAttributeMap& attributes,
       const std::string& element_type);
@@ -97,7 +111,7 @@ class XmlInterfaceParser {
   static void HandleElementEnd(void* user_data, const XML_Char* element);
 
   // The output of the parse.
-  Interface interface_;
+  std::vector<Interface> interfaces_;
 
   // Tracks where in the element traversal our parse has taken us.
   std::vector<std::string> element_path_;

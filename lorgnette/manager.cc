@@ -18,8 +18,9 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/variant_dictionary.h>
 #include <chromeos/process.h>
+#include <chromeos/type_name_undecorate.h>
+#include <chromeos/variant_dictionary.h>
 
 #include "lorgnette/daemon.h"
 
@@ -39,24 +40,32 @@ const char Manager::kScanImagePath[] = "/usr/bin/scanimage";
 const int Manager::kTimeoutAfterKillSeconds = 1;
 
 Manager::Manager(base::Callback<void()> activity_callback)
-    : activity_callback_(activity_callback) {}
+    : org::chromium::lorgnette::ManagerAdaptor(this),
+      activity_callback_(activity_callback) {}
 
 Manager::~Manager() {}
 
-void Manager::InitDBus(
-    chromeos::dbus_utils::ExportedObjectManager *object_manager) {
-  dbus_adaptor_.reset(
-     new org::chromium::lorgnette::ManagerAdaptor(
-         object_manager, object_manager->GetBus(), kManagerServicePath, this));
+void Manager::RegisterAsync(
+    chromeos::dbus_utils::ExportedObjectManager* object_manager,
+    chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
+  CHECK(!dbus_object_) << "Already registered";
+  dbus_object_.reset(new chromeos::dbus_utils::DBusObject(
+        object_manager,
+        object_manager ? object_manager->GetBus() : nullptr,
+        dbus::ObjectPath(kManagerServicePath)));
+  RegisterWithDBusObject(dbus_object_.get());
+  dbus_object_->RegisterAsync(
+      sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
 }
 
-Manager::ScannerInfo Manager::ListScanners(chromeos::ErrorPtr *error) {
+bool Manager::ListScanners(chromeos::ErrorPtr *error,
+                           Manager::ScannerInfo* scanner_list) {
   base::FilePath output_path;
   FILE *output_file_handle;
   output_file_handle = base::CreateAndOpenTemporaryFile(&output_path);
   if (!output_file_handle) {
     SetError(__func__, "Unable to create temporary file.", error);
-    return ScannerInfo();
+    return false;
   }
 
   chromeos::ProcessImpl process;
@@ -69,13 +78,14 @@ Manager::ScannerInfo Manager::ListScanners(chromeos::ErrorPtr *error) {
   base::DeleteFile(output_path, recursive_delete);
   if (!read_status) {
     SetError(__func__, "Unable to read scanner list output file", error);
-    return ScannerInfo();
+    return false;
   }
   activity_callback_.Run();
-  return ScannerInfoFromString(scanner_output_string);
+  *scanner_list = ScannerInfoFromString(scanner_output_string);
+  return true;
 }
 
-void Manager::ScanImage(
+bool Manager::ScanImage(
     chromeos::ErrorPtr *error,
     const string &device_name,
     const dbus::FileDescriptor &outfd,
@@ -83,7 +93,7 @@ void Manager::ScanImage(
   int pipe_fds[2];
   if (pipe(pipe_fds) != 0) {
     SetError(__func__, "Unable to create process pipe", error);
-    return;
+    return false;
   }
 
   ScopedFD pipe_fd_input(pipe_fds[0]);
@@ -103,6 +113,7 @@ void Manager::ScanImage(
                       &convert_process,
                       error);
   activity_callback_.Run();
+  return true;
 }
 
 // static
@@ -152,7 +163,8 @@ void Manager::RunScanImageProcess(
       SetError(__func__,
                StringPrintf("Invalid scan parameter %s of type %s",
                             property_name.c_str(),
-                            property_value.GetType().name()),
+                            chromeos::UndecorateTypeName(
+                                property_value.GetType().name()).c_str()),
                error);
       return;
     }
