@@ -17,6 +17,7 @@
 #include "debugd/src/crash_sender_tool.h"
 #include "debugd/src/debug_logs_tool.h"
 #include "debugd/src/debug_mode_tool.h"
+#include "debugd/src/dev_features_tool.h"
 #include "debugd/src/example_tool.h"
 #include "debugd/src/icmp_tool.h"
 #include "debugd/src/log_tool.h"
@@ -27,6 +28,7 @@
 #include "debugd/src/packet_capture_tool.h"
 #include "debugd/src/perf_tool.h"
 #include "debugd/src/ping_tool.h"
+#include "debugd/src/restricted_tool_wrapper.h"
 #include "debugd/src/route_tool.h"
 #include "debugd/src/storage_tool.h"
 #include "debugd/src/sysrq_tool.h"
@@ -150,30 +152,40 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
                          DBus::Error& error) override;  // NOLINT
   void LogKernelTaskStates(DBus::Error& error) override;  // NOLINT
   void UploadCrashes(DBus::Error& error) override;  // NOLINT
+  void RemoveRootfsVerification(DBus::Error& error) override;  // NOLINT
+  void EnableBootFromUsb(DBus::Error& error) override;  // NOLINT
+  void ConfigureSshServer(DBus::Error& error) override;  // NOLINT
+  void SetUserPassword(const std::string& username,
+                       const std::string& password,
+                       DBus::Error& error) override;  // NOLINT
+  void EnableChromeDevFeatures(const std::string& root_password,
+                               DBus::Error& error) override;  // NOLINT
+  int32_t QueryDevFeatures(DBus::Error& error) override;  // NOLINT
 
  private:
   DBus::Connection* dbus_;
   DBus::BusDispatcher* dispatcher_;
 
-  CrashSenderTool* crash_sender_tool_;
-  DebugLogsTool* debug_logs_tool_;
-  DebugModeTool* debug_mode_tool_;
-  ExampleTool* example_tool_;
-  ICMPTool* icmp_tool_;
-  LogTool* log_tool_;
-  MemtesterTool* memory_tool_;
-  ModemStatusTool* modem_status_tool_;
-  NetifTool* netif_tool_;
-  NetworkStatusTool* network_status_tool_;
-  PacketCaptureTool* packet_capture_tool_;
-  PerfTool* perf_tool_;
-  PingTool* ping_tool_;
-  RouteTool* route_tool_;
-  StorageTool* storage_tool_;
-  SysrqTool* sysrq_tool_;
-  SystraceTool* systrace_tool_;
-  TracePathTool* tracepath_tool_;
-  WiMaxStatusTool* wimax_status_tool_;
+  CrashSenderTool* crash_sender_tool_ = nullptr;
+  DebugLogsTool* debug_logs_tool_ = nullptr;
+  DebugModeTool* debug_mode_tool_ = nullptr;
+  RestrictedToolWrapper<DevFeaturesTool>* dev_features_tool_wrapper_ = nullptr;
+  ExampleTool* example_tool_ = nullptr;
+  ICMPTool* icmp_tool_ = nullptr;
+  LogTool* log_tool_ = nullptr;
+  MemtesterTool* memory_tool_ = nullptr;
+  ModemStatusTool* modem_status_tool_ = nullptr;
+  NetifTool* netif_tool_ = nullptr;
+  NetworkStatusTool* network_status_tool_ = nullptr;
+  PacketCaptureTool* packet_capture_tool_ = nullptr;
+  PerfTool* perf_tool_ = nullptr;
+  PingTool* ping_tool_ = nullptr;
+  RouteTool* route_tool_ = nullptr;
+  StorageTool* storage_tool_ = nullptr;
+  SysrqTool* sysrq_tool_ = nullptr;
+  SystraceTool* systrace_tool_ = nullptr;
+  TracePathTool* tracepath_tool_ = nullptr;
+  WiMaxStatusTool* wimax_status_tool_ = nullptr;
 };
 
 }  // namespace debugd

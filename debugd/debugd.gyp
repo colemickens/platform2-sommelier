@@ -18,6 +18,22 @@
     ],
   },
   'targets': [
+    # External library protocol buffers needed to call D-Bus functions.
+    {
+      'target_name': 'external-proto',
+      'type': 'static_library',
+      'variables': {
+        'proto_in_dir': '<(sysroot)/usr/include/chromeos/dbus/cryptohome',
+        'proto_out_dir': 'include',
+      },
+      'sources': [
+        '<(proto_in_dir)/key.proto',
+        '<(proto_in_dir)/rpc.proto',
+      ],
+      'includes': [
+        '../common-mk/protoc.gypi'
+      ],
+    },
     {
       'target_name': 'debugd-adaptors',
       'type': 'none',
@@ -51,6 +67,7 @@
       'dependencies': [
         'debugd-proxies',
         'debugd-adaptors',
+        'external-proto',
       ],
       'link_settings': {
         'libraries': [
@@ -64,6 +81,8 @@
         'src/debug_daemon.cc',
         'src/debug_logs_tool.cc',
         'src/debug_mode_tool.cc',
+        'src/dev_features_tool.cc',
+        'src/dev_mode_no_owner_restriction.cc',
         'src/example_tool.cc',
         'src/icmp_tool.cc',
         'src/log_tool.cc',
@@ -97,7 +116,14 @@
     {
       'target_name': 'debugd',
       'type': 'executable',
-      'dependencies': ['libdebugd'],
+      'dependencies': [
+        'libdebugd'
+      ],
+      'variables': {
+        'deps': [
+          'protobuf',
+        ],
+      },
       'sources': [
         'src/main.cc',
       ]
@@ -111,6 +137,57 @@
       ],
       'sources': [
         'src/helpers/capture_packets.cc',
+      ]
+    },
+    {
+      'target_name': 'dev_features_password',
+      'type': 'executable',
+      'dependencies': [
+        'libdebugd'
+      ],
+      'sources': [
+        'src/helpers/dev_features_password.cc',
+        'src/helpers/dev_features_password_utils.cc',
+      ]
+    },
+    {
+      'target_name': 'dev_features_rootfs_verification',
+      'type': 'executable',
+      'dependencies': [
+        'libdebugd'
+      ],
+      'link_settings': {
+        'libraries': [
+          '-lrootdev',
+        ],
+      },
+      'sources': [
+        'src/helpers/dev_features_rootfs_verification.cc',
+      ]
+    },
+    {
+      'target_name': 'dev_features_ssh',
+      'type': 'executable',
+      'dependencies': [
+        'libdebugd'
+      ],
+      'sources': [
+        'src/helpers/dev_features_ssh.cc',
+      ]
+    },
+    {
+      'target_name': 'dev_features_usb_boot',
+      'type': 'executable',
+      'dependencies': [
+        'libdebugd'
+      ],
+      'link_settings': {
+        'libraries': [
+          '-lvboot_host',
+        ],
+      },
+      'sources': [
+        'src/helpers/dev_features_usb_boot.cc',
       ]
     },
     {
@@ -168,11 +245,19 @@
             'libdebugd',
             'debugd_dbus_utils',
           ],
+          'variables': {
+            'deps': [
+              'protobuf',
+            ],
+          },
           'includes': ['../common-mk/common_test.gypi'],
           'libraries': ['-lm',],
           'sources': [
             'src/anonymizer_tool_test.cc',
             'src/dbus_utils_unittest.cc',
+            'src/dev_mode_no_owner_restriction_test.cc',
+            'src/helpers/dev_features_password_utils.cc',
+            'src/helpers/dev_features_password_utils_test.cc',
             'src/log_tool_test.cc',
             'src/modem_status_tool_test.cc',
             'src/process_with_id_test.cc',

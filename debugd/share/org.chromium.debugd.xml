@@ -438,5 +438,114 @@
         Triggers uploading of system crashes (the crash_sender program).
       </tp:docstring>
     </method>
+    <method name="RemoveRootfsVerification">
+      <tp:docstring>
+        Removes rootfs verification. Requires a system reboot before it will
+        take effect. Restricted to pre-owner dev mode.
+      </tp:docstring>
+    </method>
+    <method name="EnableBootFromUsb">
+      <tp:docstring>
+        Enables OS booting from a USB image. Restricted to pre-owner dev mode.
+      </tp:docstring>
+    </method>
+    <method name="ConfigureSshServer">
+      <tp:docstring>
+        Sets up sshd to provide an SSH server immediately and on future reboots.
+        Also installs the test SSH keys to allow access by cros tools. Requires
+        that rootfs verification has been removed. Restricted to pre-owner dev
+        mode.
+      </tp:docstring>
+    </method>
+    <method name="SetUserPassword">
+      <tp:docstring>
+        Sets both the system and dev mode password for the indicated account.
+        Restricted to pre-owner dev mode.
+      </tp:docstring>
+      <arg name="username" type="s" direction="in">
+        <tp:docstring>
+          Username to set the new password for.
+        </tp:docstring>
+      </arg>
+      <arg name="password" type="s" direction="in">
+        <tp:docstring>
+          Password to assign.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="EnableChromeDevFeatures">
+      <tp:docstring>
+        Convenience function to enable a predefined set of tools from the Chrome
+        UI. Equivalent to calling these functions in order:
+          1. EnableBootFromUsb()
+          2. ConfigureSshServer()
+          3. SetUserPassword("root", root_password)
+        Requires that rootfs verification has been removed. If any sub-function
+        fails, this function will exit with an error without attempting any
+        further configuration or rollback. Restricted to pre-owner dev mode.
+      </tp:docstring>
+      <arg name="root_password" type="s" direction="in">
+        <tp:docstring>
+          Password to assign to the root user.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="QueryDevFeatures">
+      <tp:docstring>
+        Queries which dev features have been enabled. Each dev feature will be
+        indicated by a bit flag in the return value. Flags are defined in the
+        DevFeatureFlag enumeration. If the dev tools are unavailable (system is
+        not in dev mode/pre-login state), the DEV_FEATURES_DISABLED flag will be
+        set and the rest of the bits will always be set to 0.
+      </tp:docstring>
+      <arg name="features" type="i" direction="out">
+        <tp:docstring>
+          Feature enabled flags or DEV_FEATURES_DISABLED flag.
+        </tp:docstring>
+      </arg>
+    </method>
+    <tp:enum name="DevFeatureFlag" type="i">
+      <tp:docstring>
+        Bit flags representing individual development features. Currently
+        dbusxx-xml2cpp does not extract enum values, so any changes here should
+        be manually flushed to platform/system_api/dbus/service_constants.h.
+      </tp:docstring>
+      <tp:enumvalue suffix="DEV_FEATURES_DISABLED" value="0x0001">
+        <tp:docstring>
+          Dev features query is unavailable due to access restrictions.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="DEV_FEATURE_ROOTFS_VERIFICATION_REMOVED"
+                    value="0x0002">
+        <tp:docstring>
+          Rootfs verification has been removed, including the required system
+          reset.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="DEV_FEATURE_BOOT_FROM_USB_ENABLED" value="0x0004">
+        <tp:docstring>
+          Booting from USB has been enabled.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="DEV_FEATURE_SSH_SERVER_CONFIGURED" value="0x0008">
+        <tp:docstring>
+          The SSH server has been configured to auto-start on boot and the test
+          SSH keys have been installed. Both of these conditions must be met
+          for this flag to be signaled.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="DEV_FEATURE_DEV_MODE_ROOT_PASSWORD_SET"
+                    value="0x0010">
+        <tp:docstring>
+          The devmode root account password has been set.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="DEV_FEATURE_SYSTEM_ROOT_PASSWORD_SET"
+                    value="0x0020">
+        <tp:docstring>
+          The system root account password has been set.
+        </tp:docstring>
+      </tp:enumvalue>
+    </tp:enum>
   </interface>
 </node>
