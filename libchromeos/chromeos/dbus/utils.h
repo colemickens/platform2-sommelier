@@ -38,6 +38,12 @@ CHROMEOS_EXPORT std::unique_ptr<dbus::Response> GetDBusError(
     dbus::MethodCall* method_call,
     const chromeos::Error* error);
 
+// AddDBusError() is the opposite of GetDBusError(). It de-serializes the Error
+// object received over D-Bus.
+CHROMEOS_EXPORT void AddDBusError(chromeos::ErrorPtr* error,
+                                  const std::string& dbus_error_code,
+                                  const std::string& dbus_error_message);
+
 // TODO(avakulenko): Until dbus::ScopedDBusError has inline dbus-1 function
 // calls removed from its header file, we need to create a wrapper around it.
 // This way we can hide calls to low-level dbus API calls from the call sites.

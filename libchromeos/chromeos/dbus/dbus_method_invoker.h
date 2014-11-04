@@ -174,6 +174,12 @@ inline bool ExtractMethodCallResults(dbus::Message* message,
   CHECK(message) << "Unable to extract parameters from a NULL message.";
 
   dbus::MessageReader reader(message);
+  if (message->GetMessageType() == dbus::Message::MESSAGE_ERROR) {
+    std::string error_message;
+    if (ExtractMessageParameters(&reader, error, &error_message))
+      AddDBusError(error, message->GetErrorName(), error_message);
+    return false;
+  }
   return ExtractMessageParameters(&reader, error, results...);
 }
 
