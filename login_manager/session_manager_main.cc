@@ -196,15 +196,14 @@ int main(int argc, char* argv[]) {
       &metrics,
       &system);
 
-  LOG_IF(FATAL, !manager->Initialize());
-
-  // Allows devs to start/stop browser manually.
-  if (should_run_browser) {
-    message_loop.PostTask(
-        FROM_HERE, base::Bind(&SessionManagerService::RunBrowser, manager));
+  if (manager->Initialize()) {
+    // Allows devs to start/stop browser manually.
+    if (should_run_browser) {
+      message_loop.PostTask(
+          FROM_HERE, base::Bind(&SessionManagerService::RunBrowser, manager));
+    }
+    run_loop.Run();  // Returns when run_loop's QuitClosure is posted and run.
   }
-  run_loop.Run();  // Will return when run_loop's QuitClosure is posted and run.
-
   manager->Finalize();
 
   LOG_IF(WARNING, manager->exit_code() != SessionManagerService::SUCCESS)
