@@ -47,6 +47,12 @@ class ManagerTest : public testing::Test {
                                ""});
   }
 
+  std::vector<string> GetMonitoredTechnologies() {
+    return manager_->monitored_technologies_.value();
+  }
+
+  const std::map<std::string, chromeos::Any> kNoOptions;
+  const std::vector<std::string> kOnlyMdns{technologies::kMDNSText};
   scoped_refptr<MockBus> mock_bus_{new MockBus{dbus::Bus::Options{}}};
   unique_ptr<Manager> manager_;
   MockPublishedPeer* peer_;  // manager_ owns this object.
@@ -66,35 +72,29 @@ TEST_F(ManagerTest, ShouldRejectSerbusServiceId) {
 TEST_F(ManagerTest, StartMonitoring_ShouldRejectEmptyTechnologies) {
   chromeos::ErrorPtr error;
   string token;
-  EXPECT_FALSE(manager_->StartMonitoring(&error, {}, &token));
+  EXPECT_FALSE(manager_->StartMonitoring(&error, {}, kNoOptions, &token));
   EXPECT_NE(nullptr, error.get());
 }
 
 TEST_F(ManagerTest, StartMonitoring_ShouldRejectInvalidTechnologies) {
   chromeos::ErrorPtr error;
   string token;
-  EXPECT_FALSE(manager_->StartMonitoring(&error, {-1u}, &token));
+  EXPECT_FALSE(manager_->StartMonitoring(
+        &error, {"hot air balloon"}, kNoOptions, &token));
   EXPECT_NE(nullptr, error.get());
+  EXPECT_EQ(GetMonitoredTechnologies(), std::vector<string>{});
 }
 
 TEST_F(ManagerTest, StartMonitoring_ShouldAcceptMDNS) {
   chromeos::ErrorPtr error;
   EXPECT_CALL(*avahi_client_, StartMonitoring());
   string token;
-  EXPECT_TRUE(manager_->StartMonitoring(&error, {technologies::kMDNS}, &token));
+  EXPECT_TRUE(manager_->StartMonitoring(
+        &error, {technologies::kMDNSText}, kNoOptions, &token));
   EXPECT_TRUE(!token.empty());
   EXPECT_EQ(nullptr, error.get());
+  EXPECT_EQ(GetMonitoredTechnologies(), kOnlyMdns);
 }
-
-TEST_F(ManagerTest, StartMonitoring_ShouldHandleAllTechnologies) {
-  chromeos::ErrorPtr error;
-  EXPECT_CALL(*avahi_client_, StartMonitoring());
-  string token;
-  EXPECT_TRUE(manager_->StartMonitoring(&error, {technologies::kAll}, &token));
-  EXPECT_TRUE(!token.empty());
-  EXPECT_EQ(nullptr, error.get());
-}
-
 
 TEST_F(ManagerTest, StopMonitoring_HandlesInvalidToken) {
   chromeos::ErrorPtr error;
@@ -106,7 +106,8 @@ TEST_F(ManagerTest, StopMonitoring_HandlesSingleSubscription) {
   chromeos::ErrorPtr error;
   EXPECT_CALL(*avahi_client_, StartMonitoring());
   string token;
-  EXPECT_TRUE(manager_->StartMonitoring(&error, {technologies::kAll}, &token));
+  EXPECT_TRUE(manager_->StartMonitoring(
+      &error, {technologies::kMDNSText}, kNoOptions, &token));
   EXPECT_TRUE(!token.empty());
   EXPECT_EQ(nullptr, error.get());
   EXPECT_CALL(*avahi_client_, StopMonitoring());
@@ -121,23 +122,24 @@ TEST_F(ManagerTest, StopMonitoring_HandlesMultipleSubscriptions) {
   chromeos::ErrorPtr error;
   // We don't bother to figure out if we're already monitoring on a technology.
   EXPECT_CALL(*avahi_client_, StartMonitoring()).Times(2);
-  string all_token;
-  EXPECT_TRUE(manager_->StartMonitoring(&error, {technologies::kAll},
-                                        &all_token));
-  string dns_token;
-  EXPECT_TRUE(manager_->StartMonitoring(&error, {technologies::kMDNS},
-                                        &dns_token));
-  EXPECT_TRUE(!all_token.empty());
-  EXPECT_TRUE(!dns_token.empty());
+  string token1;
+  string token2;
+  EXPECT_TRUE(manager_->StartMonitoring(
+      &error, {technologies::kMDNSText}, kNoOptions, &token1));
+  EXPECT_TRUE(manager_->StartMonitoring(
+      &error, {technologies::kMDNSText}, kNoOptions, &token2));
+  EXPECT_TRUE(!token1.empty());
+  EXPECT_TRUE(!token2.empty());
   EXPECT_EQ(nullptr, error.get());
+  EXPECT_EQ(GetMonitoredTechnologies(), kOnlyMdns);
   Mock::VerifyAndClearExpectations(avahi_client_);
   // Now, remove one subscription, we should keep monitoring.
   EXPECT_CALL(*avahi_client_, StopMonitoring()).Times(0);
-  manager_->StopMonitoring(&error, all_token);
+  manager_->StopMonitoring(&error, token1);
   EXPECT_EQ(nullptr, error.get());
   Mock::VerifyAndClearExpectations(avahi_client_);
   EXPECT_CALL(*avahi_client_, StopMonitoring());
-  manager_->StopMonitoring(&error, dns_token);
+  manager_->StopMonitoring(&error, token2);
 }
 
 }  // namespace peerd

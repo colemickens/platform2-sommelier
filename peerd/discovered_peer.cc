@@ -9,7 +9,8 @@
 #include <string>
 
 using chromeos::dbus_utils::ExportedObjectManager;
-using peerd::technologies::tech_t;
+using peerd::technologies::TechnologySet;
+using peerd::technologies::Technology;
 using std::bitset;
 using std::string;
 
@@ -18,24 +19,24 @@ namespace peerd {
 DiscoveredPeer::DiscoveredPeer(const scoped_refptr<dbus::Bus>& bus,
                                ExportedObjectManager* object_manager,
                                const dbus::ObjectPath& path,
-                               tech_t which_technology)
-    : Peer(bus, object_manager, path),
-      discovered_on_technologies_(which_technology) {
+                               Technology which_technology)
+    : Peer(bus, object_manager, path) {
+  discovered_on_technologies_.set(which_technology);
 }
 
 void DiscoveredPeer::UpdateFromAdvertisement(const base::Time& last_seen,
-                                             tech_t technology) {
+                                             Technology technology) {
   if (!IsValidUpdateTime(nullptr, last_seen)) { return; }
   SetLastSeen(nullptr, last_seen);
-  discovered_on_technologies_ |= technology;
+  discovered_on_technologies_.set(technology);
 }
 
 void DiscoveredPeer::UpdateService(const std::string& service_id,
                                    const Service::IpAddresses& addresses,
                                    const Service::ServiceInfo& info,
                                    const base::Time& last_seen,
-                                   tech_t technology) {
-  if ((discovered_on_technologies_ & technology) == 0) {
+                                   Technology technology) {
+  if (!discovered_on_technologies_.test(technology)) {
     // We're updating a service for a technology, even though we haven't found
     // this peer on that technology.  We could allow this, but lets not until
     // we know this is valid use case.
@@ -59,7 +60,7 @@ void DiscoveredPeer::UpdateService(const std::string& service_id,
       LOG(WARNING) << "Discarding invalid service update.";
       return;
     }
-    metadata_it->second.technology |= technology;
+    metadata_it->second.technology.set(technology);
     metadata_it->second.last_seen = last_seen;
     return;
   }
@@ -68,15 +69,17 @@ void DiscoveredPeer::UpdateService(const std::string& service_id,
     LOG(WARNING) << "Failed to publish discovered service over DBus.";
     return;
   }
-  service_metadata_[service_id] = {technology, last_seen};
+  TechnologySet service_tech;
+  service_tech.set(technology);
+  service_metadata_[service_id] = {std::move(service_tech), last_seen};
 }
 
-void DiscoveredPeer::RemoveTechnology(tech_t technology) {
-  discovered_on_technologies_ &= ~technology;
+void DiscoveredPeer::RemoveTechnology(Technology technology) {
+  discovered_on_technologies_.reset(technology);
   auto it = service_metadata_.begin();
   while (it != service_metadata_.end()) {
-    it->second.technology &= ~technology;
-    if (it->second.technology == 0) {
+    it->second.technology.reset(technology);
+    if (it->second.technology.none()) {
       RemoveService(nullptr, it->first);
       it = service_metadata_.erase(it);
     } else {
@@ -86,24 +89,23 @@ void DiscoveredPeer::RemoveTechnology(tech_t technology) {
 }
 
 void DiscoveredPeer::RemoveTechnologyFromService(const std::string& service_id,
-                                                 tech_t technology) {
+                                                 Technology technology) {
   auto it = service_metadata_.find(service_id);
   if (it == service_metadata_.end()) {
     LOG(WARNING) << "Failed to find service previously discovered over "
                  << "technology=" << technology;
     return;
   }
-  it->second.technology &= ~technology;
+  it->second.technology.reset(technology);
   // Remove this service if there are no technologies claiming to see it.
-  if (it->second.technology == 0) {
+  if (it->second.technology.none()) {
     service_metadata_.erase(it);
     RemoveService(nullptr, service_id);
   }
 }
 
 size_t DiscoveredPeer::GetTechnologyCount() const {
-  return bitset<std::numeric_limits<tech_t>::digits>(
-      discovered_on_technologies_).count();
+  return discovered_on_technologies_.count();
 }
 
 }  // namespace peerd

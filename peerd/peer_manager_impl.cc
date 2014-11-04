@@ -12,7 +12,7 @@
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
-using peerd::technologies::tech_t;
+using peerd::technologies::Technology;
 using std::string;
 using std::to_string;
 using std::unique_ptr;
@@ -27,17 +27,17 @@ PeerManagerImpl::PeerManagerImpl(const scoped_refptr<dbus::Bus> bus,
 
 void PeerManagerImpl::OnPeerDiscovered(const string& peer_id,
                                        const base::Time& last_seen,
-                                       tech_t which_technology) {
+                                       Technology technology) {
   VLOG(1) << "Discovered peer=" << peer_id;
   auto it = peers_.find(peer_id);
   if (it != peers_.end()) {
-    it->second->UpdateFromAdvertisement(last_seen, which_technology);
+    it->second->UpdateFromAdvertisement(last_seen, technology);
     return;
   }
   dbus::ObjectPath path{
       string(dbus_constants::kPeerPrefix) + to_string(++peers_discovered_)};
   unique_ptr<DiscoveredPeer> peer{new DiscoveredPeer{
-      bus_, object_manager_, path, which_technology}};
+      bus_, object_manager_, path, technology}};
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   const bool registered = peer->RegisterAsync(
       nullptr, peer_id, last_seen,
@@ -55,7 +55,7 @@ void PeerManagerImpl::OnServiceDiscovered(const string& peer_id,
                                           const Service::ServiceInfo& info,
                                           const Service::IpAddresses& addresses,
                                           const base::Time& last_seen,
-                                          tech_t which_technology) {
+                                          Technology technology) {
   auto it = peers_.find(peer_id);
   if (it == peers_.end()) {
     // A service was found that corresponds to no particular peer.
@@ -67,21 +67,21 @@ void PeerManagerImpl::OnServiceDiscovered(const string& peer_id,
     return;
   }
   VLOG(1) << "Updating service=" << service_id
-          << " from technology=" << which_technology;
+          << " from technology=" << technology;
   it->second->UpdateService(service_id, addresses, info,
-                            last_seen, which_technology);
+                            last_seen, technology);
 }
 
 void PeerManagerImpl::OnPeerRemoved(const string& peer_id,
-                                    tech_t which_technology) {
+                                    Technology technology) {
   auto it = peers_.find(peer_id);
   if (it == peers_.end()) {
-    LOG(WARNING) << "Tried to remove technology=" << which_technology
+    LOG(WARNING) << "Tried to remove technology=" << technology
                  << " from peer=" << peer_id
                  << " that was never discovered.";
     return;
   }
-  it->second->RemoveTechnology(which_technology);
+  it->second->RemoveTechnology(technology);
   if (it->second->GetTechnologyCount() == 0) {
     peers_.erase(it);
   }
@@ -89,20 +89,20 @@ void PeerManagerImpl::OnPeerRemoved(const string& peer_id,
 
 void PeerManagerImpl::OnServiceRemoved(const string& peer_id,
                                        const string& service_id,
-                                       tech_t which_technology) {
+                                       Technology technology) {
   auto it = peers_.find(peer_id);
   if (it == peers_.end()) {
     LOG(WARNING) << "Tried to remove service from peer that was "
                  << "never discovered: " << peer_id;
     return;
   }
-  it->second->RemoveTechnologyFromService(service_id, which_technology);
+  it->second->RemoveTechnologyFromService(service_id, technology);
 }
 
-void PeerManagerImpl::OnTechnologyShutdown(tech_t which_technology) {
+void PeerManagerImpl::OnTechnologyShutdown(Technology technology) {
   auto it = peers_.begin();
   while (it != peers_.end()) {
-    it->second->RemoveTechnology(which_technology);
+    it->second->RemoveTechnology(technology);
     if (it->second->GetTechnologyCount() == 0) {
       it = peers_.erase(it);
     } else {

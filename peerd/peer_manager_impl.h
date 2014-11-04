@@ -27,19 +27,19 @@ class PeerManagerImpl : public PeerManagerInterface {
   // Inherited from PeerManagerInterface.  See comments there.
   void OnPeerDiscovered(const std::string& peer_id,
                         const base::Time& last_seen,
-                        technologies::tech_t which_technology) override;
+                        technologies::Technology technology) override;
   void OnServiceDiscovered(const std::string& peer_id,
                            const std::string& service_id,
                            const Service::ServiceInfo& info,
                            const Service::IpAddresses& addresses,
                            const base::Time& last_seen,
-                           technologies::tech_t which_technology) override;
+                           technologies::Technology technology) override;
   void OnPeerRemoved(const std::string& peer_id,
-                     technologies::tech_t which_technology) override;
+                     technologies::Technology technology) override;
   void OnServiceRemoved(const std::string& peer_id,
                         const std::string& service_id,
-                        technologies::tech_t which_technology) override;
-  void OnTechnologyShutdown(technologies::tech_t which_technology) override;
+                        technologies::Technology technology) override;
+  void OnTechnologyShutdown(technologies::Technology technology) override;
 
  private:
   scoped_refptr<dbus::Bus> bus_;

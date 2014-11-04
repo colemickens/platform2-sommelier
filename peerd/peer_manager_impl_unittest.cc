@@ -17,7 +17,7 @@
 using base::Time;
 using dbus::ObjectPath;
 using dbus::MockExportedObject;
-using peerd::technologies::tech_t;
+using peerd::technologies::kBT;
 using testing::AnyNumber;
 using testing::Invoke;
 using testing::Mock;
@@ -35,7 +35,6 @@ const time_t kPeerLastSeen = 1;
 const char kServiceId[] = "a-service-id";
 const char kBadServiceId[] = "#bad_service_id";
 const time_t kServiceLastSeen = 2;
-tech_t kFakeTech1 = 1 << 29;
 
 }  // namespace
 
@@ -113,49 +112,49 @@ class PeerManagerImplTest : public testing::Test {
 TEST_F(PeerManagerImplTest, CanDiscoverPeer) {
   ExpectPeerExposed();
   manager_.OnPeerDiscovered(kPeerId,
-                            Time::FromTimeT(kPeerLastSeen), kFakeTech1);
+                            Time::FromTimeT(kPeerLastSeen), kBT);
 }
 
 TEST_F(PeerManagerImplTest, CanDiscoverServiceOnPeer) {
   ExpectPeerExposed();
   manager_.OnPeerDiscovered(kPeerId,
-                            Time::FromTimeT(kPeerLastSeen), kFakeTech1);
+                            Time::FromTimeT(kPeerLastSeen), kBT);
   ExpectServiceExposed();
   manager_.OnServiceDiscovered(kPeerId, kServiceId, {}, {},
-                               Time::FromTimeT(kServiceLastSeen), kFakeTech1);
+                               Time::FromTimeT(kServiceLastSeen), kBT);
 }
 
 TEST_F(PeerManagerImplTest, CannotDiscoverServiceWithoutPeer) {
   manager_.OnServiceDiscovered(kPeerId, kServiceId, {}, {},
-                               Time::FromTimeT(kServiceLastSeen), kFakeTech1);
+                               Time::FromTimeT(kServiceLastSeen), kBT);
 }
 
 TEST_F(PeerManagerImplTest, CanForgetPeer) {
   ExpectPeerExposed();
   manager_.OnPeerDiscovered(kPeerId,
-                            Time::FromTimeT(kPeerLastSeen), kFakeTech1);
+                            Time::FromTimeT(kPeerLastSeen), kBT);
   ExpectPeerRemoved();
-  manager_.OnPeerRemoved(kPeerId, kFakeTech1);
+  manager_.OnPeerRemoved(kPeerId, kBT);
 }
 
 TEST_F(PeerManagerImplTest, CanShutdownLoneTechnology) {
   ExpectPeerExposed();
   manager_.OnPeerDiscovered(kPeerId,
-                            Time::FromTimeT(kPeerLastSeen), kFakeTech1);
+                            Time::FromTimeT(kPeerLastSeen), kBT);
   ExpectServiceExposed();
   manager_.OnServiceDiscovered(kPeerId, kServiceId, {}, {},
-                               Time::FromTimeT(kServiceLastSeen), kFakeTech1);
+                               Time::FromTimeT(kServiceLastSeen), kBT);
   ExpectServiceRemoved();
   ExpectPeerRemoved();
-  manager_.OnTechnologyShutdown(kFakeTech1);
+  manager_.OnTechnologyShutdown(kBT);
 }
 
 TEST_F(PeerManagerImplTest, WillNotExposeCorruptService) {
   ExpectPeerExposed();
   manager_.OnPeerDiscovered(kPeerId,
-                            Time::FromTimeT(kPeerLastSeen), kFakeTech1);
+                            Time::FromTimeT(kPeerLastSeen), kBT);
   manager_.OnServiceDiscovered(kPeerId, kBadServiceId, {}, {},
-                               Time::FromTimeT(kServiceLastSeen), kFakeTech1);
+                               Time::FromTimeT(kServiceLastSeen), kBT);
 }
 
 }  // namespace peerd

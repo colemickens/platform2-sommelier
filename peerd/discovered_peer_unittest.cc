@@ -22,7 +22,8 @@ using base::Time;
 using chromeos::dbus_utils::AsyncEventSequencer;
 using dbus::ObjectPath;
 using dbus::MockExportedObject;
-using peerd::technologies::tech_t;
+using peerd::technologies::kBT;
+using peerd::technologies::kBTLE;
 using std::string;
 using std::unique_ptr;
 using testing::AnyNumber;
@@ -51,9 +52,6 @@ const time_t kServiceStaleLastSeen = 201;
 const time_t kServiceLastSeen = 225;
 const time_t kServiceNewLastSeen = 250;
 
-tech_t kFakeTech1 = 1 << 29;
-tech_t kFakeTech2 = 1 << 30;
-
 }  // namespace
 
 namespace peerd {
@@ -71,7 +69,7 @@ class DiscoveredPeerTest : public testing::Test {
     EXPECT_CALL(*peer_object_, ExportMethod(_, _, _, _))
         .WillRepeatedly(Invoke(&test_util::HandleMethodExport));
     peer_.reset(new DiscoveredPeer{bus_, nullptr, ObjectPath{kPeerPath},
-                                   kFakeTech1});
+                                   kBT});
     EXPECT_TRUE(peer_->RegisterAsync(
         nullptr, kPeerId, Time::FromTimeT(kPeerLastSeen),
         AsyncEventSequencer::GetDefaultCompletionAction()));
@@ -121,7 +119,7 @@ class DiscoveredPeerTest : public testing::Test {
                               const Service::IpAddresses& ip_addr,
                               const Service::ServiceInfo& info,
                               const base::Time& last_seen,
-                              tech_t tech) {
+                              technologies::Technology tech) {
     auto service_it = peer_->services_.find(service_id);
     auto metadata_it = peer_->service_metadata_.find(service_id);
     // Better find this peer in both collections of data.
@@ -132,7 +130,8 @@ class DiscoveredPeerTest : public testing::Test {
     EXPECT_EQ(info, service_it->second->GetServiceInfo());
     // Metadata should also match.
     EXPECT_EQ(last_seen, metadata_it->second.last_seen);
-    EXPECT_EQ(tech, metadata_it->second.technology);
+    EXPECT_TRUE(metadata_it->second.technology.test(tech));
+    EXPECT_EQ(metadata_it->second.technology.count(), 1);
   }
 
   scoped_refptr<dbus::MockBus> bus_{new dbus::MockBus{dbus::Bus::Options{}}};
@@ -145,94 +144,89 @@ class DiscoveredPeerTest : public testing::Test {
 };
 
 TEST_F(DiscoveredPeerTest, CanUpdateFromAdvertisement) {
-  peer_->UpdateFromAdvertisement(Time::FromTimeT(kNewPeerLastSeen),
-                                 kFakeTech1);
+  peer_->UpdateFromAdvertisement(Time::FromTimeT(kNewPeerLastSeen), kBT);
   EXPECT_EQ(Time::FromTimeT(kNewPeerLastSeen), peer_->GetLastSeen());
   EXPECT_EQ(1, peer_->GetTechnologyCount());
 }
 
 TEST_F(DiscoveredPeerTest, CannotPartiallyUpdatePeer) {
   // Stale advertisement.
-  peer_->UpdateFromAdvertisement(Time::FromTimeT(kStalePeerLastSeen),
-                                 kFakeTech1);
+  peer_->UpdateFromAdvertisement(Time::FromTimeT(kStalePeerLastSeen), kBT);
   ExpectInitialPeerValues();
 }
 
 TEST_F(DiscoveredPeerTest, CanAddService) {
   ExpectServiceExposed();
   peer_->UpdateService(kServiceId, {}, {}, Time::FromTimeT(kServiceLastSeen),
-                       kFakeTech1);
+                       kBT);
 }
 
 TEST_F(DiscoveredPeerTest, CannotPartiallyAddService) {
   peer_->UpdateService(kBadServiceId, {}, {},
-                       Time::FromTimeT(kServiceLastSeen), kFakeTech1);
+                       Time::FromTimeT(kServiceLastSeen), kBT);
   ExpectNoServicesDiscovered();
 }
 
 TEST_F(DiscoveredPeerTest, CannotAddServiceForUnknownTechnology) {
   peer_->UpdateService(kServiceId, {}, {}, Time::FromTimeT(kServiceLastSeen),
-                       kFakeTech2);
+                       kBTLE);
 }
 
 TEST_F(DiscoveredPeerTest, CanUpdateService) {
   ExpectServiceExposed();
   peer_->UpdateService(kServiceId, {}, {},
-                       Time::FromTimeT(kServiceLastSeen), kFakeTech1);
+                       Time::FromTimeT(kServiceLastSeen), kBT);
   const Service::ServiceInfo valid_info{{"good_key", "valid value"}};
   peer_->UpdateService(kServiceId, {}, valid_info,
-                       Time::FromTimeT(kServiceNewLastSeen), kFakeTech1);
+                       Time::FromTimeT(kServiceNewLastSeen), kBT);
   ExpectServiceHasValues(kServiceId, {}, valid_info,
-                         Time::FromTimeT(kServiceNewLastSeen),
-                         kFakeTech1);
+                         Time::FromTimeT(kServiceNewLastSeen), kBT);
 }
 
 TEST_F(DiscoveredPeerTest, CannotPartiallyUpdateService) {
   ExpectServiceExposed();
   peer_->UpdateService(kServiceId, {}, {},
-                       Time::FromTimeT(kServiceLastSeen), kFakeTech1);
+                       Time::FromTimeT(kServiceLastSeen), kBT);
   const Service::ServiceInfo invalid_info{{"#badkey", "valid value"}};
   peer_->UpdateService(kServiceId, {}, invalid_info,
-                       Time::FromTimeT(kServiceLastSeen), kFakeTech2);
+                       Time::FromTimeT(kServiceLastSeen), kBTLE);
   ExpectServiceHasValues(kServiceId, {}, {}, Time::FromTimeT(kServiceLastSeen),
-                         kFakeTech1);
+                         kBT);
 }
 
 TEST_F(DiscoveredPeerTest, ShouldRejectStaleServiceUpdate) {
-  peer_->UpdateFromAdvertisement(Time::FromTimeT(kPeerLastSeen),
-                                 kFakeTech2);
+  peer_->UpdateFromAdvertisement(Time::FromTimeT(kPeerLastSeen), kBTLE);
   ExpectServiceExposed();
   peer_->UpdateService(kServiceId, {}, {},
-                       Time::FromTimeT(kServiceLastSeen), kFakeTech1);
+                       Time::FromTimeT(kServiceLastSeen), kBT);
   const Service::ServiceInfo valid_info{{"good_key", "valid value"}};
   peer_->UpdateService(kServiceId, {}, valid_info,
-                       Time::FromTimeT(kServiceStaleLastSeen), kFakeTech2);
+                       Time::FromTimeT(kServiceStaleLastSeen), kBTLE);
   ExpectServiceHasValues(kServiceId, {}, {},
-                         Time::FromTimeT(kServiceLastSeen), kFakeTech1);
+                         Time::FromTimeT(kServiceLastSeen), kBT);
 }
 
 TEST_F(DiscoveredPeerTest, RemoveTechnologyIsRecursive) {
   ExpectServiceExposed();
   peer_->UpdateService(kServiceId, {}, {}, Time::FromTimeT(kServiceLastSeen),
-                       kFakeTech1);
+                       kBT);
   ExpectServiceRemoved();
-  peer_->RemoveTechnology(kFakeTech1);
+  peer_->RemoveTechnology(kBT);
 }
 
 TEST_F(DiscoveredPeerTest, HandlesMultipleTechnologies) {
-  peer_->UpdateFromAdvertisement(Time::FromTimeT(kNewPeerLastSeen),
-                                 kFakeTech2);
+  peer_->UpdateFromAdvertisement(Time::FromTimeT(kNewPeerLastSeen), kBTLE);
   EXPECT_EQ(2, peer_->GetTechnologyCount());
   ExpectServiceExposed();
   peer_->UpdateService(kServiceId, {}, {}, Time::FromTimeT(kServiceLastSeen),
-                       kFakeTech1);
+                       kBT);
   // This should not create a new service object, just touch the existing one.
   peer_->UpdateService(kServiceId, {}, {}, Time::FromTimeT(kServiceLastSeen),
-                       kFakeTech2);
-  peer_->RemoveTechnology(kFakeTech2);
+                       kBTLE);
+  peer_->RemoveTechnology(kBTLE);
   EXPECT_EQ(1, peer_->GetTechnologyCount());
   ExpectServiceRemoved();
-  peer_->RemoveTechnologyFromService(kServiceId, kFakeTech1);
+  peer_->RemoveTechnologyFromService(kServiceId, kBT);
 }
 
 }  // namespace peerd

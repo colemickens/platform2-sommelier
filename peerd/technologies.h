@@ -5,15 +5,33 @@
 #ifndef PEERD_TECHNOLOGIES_H_
 #define PEERD_TECHNOLOGIES_H_
 
-#include <stdint.h>
+#include <bitset>
+#include <limits>
+#include <string>
+#include <vector>
 
 namespace peerd {
 namespace technologies {
 
-using tech_t = uint32_t;
+extern const char kMDNSText[];
+extern const char kBTText[];
+extern const char kBTLEText[];
 
-extern const tech_t kAll;
-extern const tech_t kMDNS;
+enum Technology {
+  kMDNS,
+  kBT,
+  kBTLE,
+};
+
+static const size_t kTechnologiesBitSize =
+    std::numeric_limits<std::underlying_type<Technology>::type>::digits;
+using TechnologySet = std::bitset<kTechnologiesBitSize>;
+
+// Adds a technology listed above to the given |tech|.
+bool add_to(const std::string& text, TechnologySet* tech);
+
+// Maps from a set of technologies to their string representations.
+std::vector<std::string> techs2strings(const TechnologySet& tech);
 
 }  // namespace technologies
 }  // namespace peerd

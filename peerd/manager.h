@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <chromeos/any.h>
 #include <chromeos/dbus/dbus_object.h>
 #include <chromeos/errors/error.h>
 
@@ -37,9 +38,10 @@ namespace peerd {
 namespace errors {
 namespace manager {
 
-extern const char kInvalidServiceToken[];
+extern const char kInvalidMonitoringOption[];
 extern const char kInvalidMonitoringTechnology[];
 extern const char kInvalidMonitoringToken[];
+extern const char kInvalidServiceToken[];
 
 }  // namespace manager
 }  // namespace errors
@@ -55,7 +57,8 @@ class Manager {
   // DBus handlers
   bool StartMonitoring(
       chromeos::ErrorPtr* error,
-      const std::vector<technologies::tech_t>& requested_technologies,
+      const std::vector<std::string>& requested_technologies,
+      const std::map<std::string, chromeos::Any>& options,
       std::string* monitoring_token);
 
   bool StopMonitoring(
@@ -85,12 +88,19 @@ class Manager {
   // Called from AvahiClient.
   void ShouldRefreshAvahiPublisher();
 
+  // Crawls the map of monitoring requests and updates
+  // |monitored_technologies_| to be consistent.  Calls StartMonitoring
+  // and StopMonitoring on technologies as appropriate.
+  void UpdateMonitoredTechnologies();
+
+  chromeos::dbus_utils::ExportedProperty<
+      std::vector<std::string>> monitored_technologies_;
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<PublishedPeer> self_;
   std::unique_ptr<PeerManagerInterface> peer_manager_;
   std::unique_ptr<AvahiClient> avahi_client_;
   std::map<std::string, std::string> service_token_to_id_;
-  std::map<std::string, technologies::tech_t> monitoring_requests_;
+  std::map<std::string, technologies::TechnologySet> monitoring_requests_;
   size_t services_added_{0};
   size_t monitoring_tokens_issued_{0};
 

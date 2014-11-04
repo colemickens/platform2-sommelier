@@ -20,6 +20,7 @@
 #include "peerd/service.h"
 #include "peerd/technologies.h"
 
+using chromeos::Any;
 using chromeos::Error;
 using chromeos::ErrorPtr;
 using chromeos::dbus_utils::AsyncEventSequencer;
@@ -47,9 +48,10 @@ namespace peerd {
 namespace errors {
 namespace manager {
 
-const char kInvalidServiceToken[] = "manager.service_token";
-const char kInvalidMonitoringTechnology[] = "manager.monitoring_technology";
+const char kInvalidMonitoringOption[] = "manager.option";
+const char kInvalidMonitoringTechnology[] = "manager.invalid_technology";
 const char kInvalidMonitoringToken[] = "manager.monitoring_token";
+const char kInvalidServiceToken[] = "manager.service_token";
 
 }  // namespace manager
 }  // namespace errors
@@ -133,8 +135,9 @@ void Manager::RegisterAsync(const CompletionAction& completion_callback) {
 }
 
 bool Manager::StartMonitoring(
-    chromeos::ErrorPtr* error,
-    const vector<technologies::tech_t>& requested_technologies,
+    ErrorPtr* error,
+    const vector<string>& requested_technologies,
+    const map<string, Any>& options,
     std::string* monitoring_token) {
   if (requested_technologies.empty())  {
     Error::AddTo(error,
@@ -143,25 +146,39 @@ bool Manager::StartMonitoring(
                  "Expected at least one monitoring technology.");
     return false;
   }
-  technologies::tech_t combined = 0;
-  for (technologies::tech_t tech : requested_technologies) {
-    if (tech != technologies::kAll &&
-        tech != technologies::kMDNS) {
+  // We don't support any options right now.
+  if (!options.empty()) {
+    Error::AddTo(error,
+                 kPeerdErrorDomain,
+                 errors::manager::kInvalidMonitoringOption,
+                 "Did not expect any options to monitoring.");
+    return false;
+  }
+  // Translate the technologies we're given to our internal bitmap
+  // representation.
+  technologies::TechnologySet combined;
+  for (const auto& tech_text : requested_technologies) {
+    if (!technologies::add_to(tech_text, &combined)) {
       Error::AddToPrintf(error,
                          kPeerdErrorDomain,
                          errors::manager::kInvalidMonitoringTechnology,
-                         "Invalid monitoring technology: %d.", tech);
+                         "Invalid monitoring technology: %s.",
+                         tech_text.c_str());
       return false;
     }
-    combined |= tech;
+  }
+  // Right now we don't support bluetooth technologies.
+  if (combined.test(technologies::kBT) || combined.test(technologies::kBTLE)) {
+      Error::AddTo(error,
+                   kPeerdErrorDomain,
+                   errors::manager::kInvalidMonitoringTechnology,
+                   "Unsupported monitoring technology.");
+      return false;
   }
   *monitoring_token = "monitoring_" +
                       std::to_string(++monitoring_tokens_issued_);
   monitoring_requests_[*monitoring_token] = combined;
-  if (((technologies::kAll | technologies::kMDNS) & combined) != 0) {
-    // Let the AvahiClient worry about if we're already monitoring.
-    avahi_client_->StartMonitoring();
-  }
+  UpdateMonitoredTechnologies();
   // TODO(wiley): Monitor DBus identifier for disconnect.
   return true;
 }
@@ -178,17 +195,7 @@ bool Manager::StopMonitoring(chromeos::ErrorPtr* error,
     return false;
   }
   monitoring_requests_.erase(it);
-  technologies::tech_t combined = 0;
-  for (const auto& request : monitoring_requests_) {
-    combined |= request.second;
-  }
-  if (combined & technologies::kAll) {
-    // Carry on, everything we had going on should continue.
-    return true;
-  }
-  if (!(combined & technologies::kMDNS)) {
-    avahi_client_->StopMonitoring();
-  }
+  UpdateMonitoredTechnologies();
   return true;
 }
 
@@ -244,6 +251,20 @@ void Manager::ShouldRefreshAvahiPublisher() {
   // re-register the records we care about.
   self_->RegisterServicePublisher(
       avahi_client_->GetPublisher(self_->GetUUID()));
+}
+
+void Manager::UpdateMonitoredTechnologies() {
+  technologies::TechnologySet combined;
+  for (const auto& request : monitoring_requests_) {
+    combined |= request.second;
+  }
+  monitored_technologies_.SetValue(technologies::techs2strings(combined));
+  if (combined.test(technologies::kMDNS)) {
+    // Let the AvahiClient worry about if we're already monitoring.
+    avahi_client_->StartMonitoring();
+  } else {
+    avahi_client_->StopMonitoring();
+  }
 }
 
 }  // namespace peerd

@@ -18,23 +18,26 @@ namespace peerd {
 
 class MockPeerManager : public PeerManagerInterface {
  public:
-  MOCK_METHOD3(OnPeerDiscovered, void(const std::string& peer_id,
-                                      const base::Time& last_seen,
-                                      technologies::tech_t which_technology));
+  MOCK_METHOD3(OnPeerDiscovered,
+               void(const std::string& peer_id,
+                    const base::Time& last_seen,
+                    technologies::Technology which_technology));
   MOCK_METHOD6(OnServiceDiscovered,
                void(const std::string& peer_id,
                     const std::string& service_id,
                     const Service::ServiceInfo& info,
                     const Service::IpAddresses& addresses,
                     const base::Time& last_seen,
-                    technologies::tech_t which_technology));
-  MOCK_METHOD2(OnPeerRemoved, void(const std::string& peer_id,
-                                   technologies::tech_t which_technology));
-  MOCK_METHOD3(OnServiceRemoved, void(const std::string& peer_id,
-                                      const std::string& service_id,
-                                      technologies::tech_t which_technology));
+                    technologies::Technology which_technology));
+  MOCK_METHOD2(OnPeerRemoved,
+               void(const std::string& peer_id,
+                    technologies::Technology which_technology));
+  MOCK_METHOD3(OnServiceRemoved,
+               void(const std::string& peer_id,
+                    const std::string& service_id,
+                    technologies::Technology which_technology));
   MOCK_METHOD1(OnTechnologyShutdown,
-               void(technologies::tech_t which_technology));
+               void(technologies::Technology which_technology));
 };
 
 }  // namespace peerd
