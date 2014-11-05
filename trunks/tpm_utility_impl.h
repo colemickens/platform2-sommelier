@@ -59,6 +59,9 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
                 TPM_ALG_ID hash_alg,
                 const std::string& digest,
                 const std::string& signature) override;
+  TPM_RC CreateRSAKey(AsymmetricKeyUsage key_type,
+                      const std::string& password,
+                      TPM_HANDLE* key_handle) override;
 
  private:
   const TrunksFactory& factory_;

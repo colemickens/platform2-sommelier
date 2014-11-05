@@ -634,6 +634,94 @@ TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
   return TPM_RC_SUCCESS;
 }
 
+// TODO(usanghi): Test this function on a real TPM
+TPM_RC TpmUtilityImpl::CreateRSAKey(AsymmetricKeyUsage key_type,
+                                    const std::string& password,
+                                    TPM_HANDLE* key_handle) {
+  CHECK(key_handle);
+  std::string parent_name;
+  TPM_RC return_code = GetKeyName(kRSAStorageRootKey, &parent_name);
+  if (return_code != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting Key name for RSA-SRK: "
+               << GetErrorString(return_code);
+    return return_code;
+  }
+
+  TPM2B_PUBLIC rsa_public_area;
+  rsa_public_area.size = sizeof(TPMT_PUBLIC);
+  rsa_public_area.public_area.type = TPM_ALG_RSA;
+  rsa_public_area.public_area.name_alg = TPM_ALG_SHA256;
+  rsa_public_area.public_area.auth_policy = Make_TPM2B_DIGEST("");
+  rsa_public_area.public_area.object_attributes =
+      kFixedTPM | kStClear | kFixedParent | kSensitiveDataOrigin |
+      kUserWithAuth | kNoDA;
+  TPMU_PUBLIC_PARMS& parameters = rsa_public_area.public_area.parameters;
+  switch (key_type) {
+    case AsymmetricKeyUsage::kDecryptKey:
+      rsa_public_area.public_area.object_attributes |= kDecrypt;
+      parameters.rsa_detail.scheme.scheme = TPM_ALG_OAEP;
+      parameters.rsa_detail.scheme.details.oaep.hash_alg = TPM_ALG_SHA256;
+      break;
+    case AsymmetricKeyUsage::kSignKey:
+      rsa_public_area.public_area.object_attributes |= kSign;
+      parameters.rsa_detail.scheme.scheme = TPM_ALG_RSASSA;
+      parameters.rsa_detail.scheme.details.rsassa.hash_alg = TPM_ALG_SHA256;
+      break;
+    case AsymmetricKeyUsage::kDecryptAndSignKey:
+      rsa_public_area.public_area.object_attributes |= kSign;
+      rsa_public_area.public_area.object_attributes |= kDecrypt;
+      parameters.rsa_detail.scheme.scheme = TPM_ALG_NULL;
+      break;
+  }
+  parameters.rsa_detail.symmetric.algorithm = TPM_ALG_NULL;
+  parameters.rsa_detail.key_bits = 2048;
+  parameters.rsa_detail.exponent = 0;
+  rsa_public_area.public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA("");
+  TPML_PCR_SELECTION creation_pcrs;
+  creation_pcrs.count = 0;
+  TPM2B_SENSITIVE_CREATE sensitive_create;
+  sensitive_create.size = sizeof(TPMS_SENSITIVE_CREATE);
+  sensitive_create.sensitive.user_auth = Make_TPM2B_DIGEST(password);
+  sensitive_create.sensitive.data = Make_TPM2B_SENSITIVE_DATA("");
+  TPM2B_DATA outside_info = Make_TPM2B_DATA("");
+
+  TPM2B_PRIVATE out_private;
+  TPM2B_PUBLIC out_public;
+  TPM2B_CREATION_DATA creation_data;
+  TPM2B_DIGEST creation_hash;
+  TPMT_TK_CREATION creation_ticket;
+
+  return_code = factory_.GetTpm()->CreateSync(kRSAStorageRootKey,
+                                              parent_name,
+                                              sensitive_create,
+                                              rsa_public_area,
+                                              outside_info,
+                                              creation_pcrs,
+                                              &out_private,
+                                              &out_public,
+                                              &creation_data,
+                                              &creation_hash,
+                                              &creation_ticket,
+                                              session_->GetDelegate());
+  if (return_code != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error creating RSA key: " << GetErrorString(return_code);
+    return return_code;
+  }
+  TPM2B_NAME key_name;
+  return_code = factory_.GetTpm()->LoadSync(kRSAStorageRootKey,
+                                            parent_name,
+                                            out_private,
+                                            out_public,
+                                            key_handle,
+                                            &key_name,
+                                            session_->GetDelegate());
+  if (return_code != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error loading RSA key: " << GetErrorString(return_code);
+    return return_code;
+  }
+  return TPM_RC_SUCCESS;
+}
+
 TPM_RC TpmUtilityImpl::InitializeSession() {
   if (session_.get()) {
     return TPM_RC_SUCCESS;

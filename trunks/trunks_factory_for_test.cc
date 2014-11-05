@@ -149,6 +149,12 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->Verify(key_handle, scheme, hash_alg, digest, signature);
   }
 
+  TPM_RC CreateRSAKey(AsymmetricKeyUsage key_type,
+                      const std::string& password,
+                      TPM_HANDLE* key_handle) override {
+    return target_->CreateRSAKey(key_type, password, key_handle);
+  }
+
  private:
   TpmUtility* target_;
 };

@@ -21,6 +21,12 @@ const TPMI_DH_PERSISTENT kECCStorageRootKey = PERSISTENT_FIRST + 1;
 // An interface which provides convenient methods for common TPM operations.
 class CHROMEOS_EXPORT TpmUtility {
  public:
+  enum AsymmetricKeyUsage {
+    kDecryptKey,
+    kSignKey,
+    kDecryptAndSignKey
+  };
+
   TpmUtility() {}
   virtual ~TpmUtility() {}
 
@@ -107,6 +113,15 @@ class CHROMEOS_EXPORT TpmUtility {
                         TPM_ALG_ID hash_alg,
                         const std::string& digest,
                         const std::string& signature) = 0;
+
+  // This method creates an RSA key. It creates a 2048 bit RSA key with
+  // public exponent of 0x10001. |key_type| determines whether the key is
+  // a signing key, a decryption key, or both. The |password| parameter
+  // is used as the authorization for the created key. The created key
+  // is then loaded and its handle is returned as |key_handle|.
+  virtual TPM_RC CreateRSAKey(AsymmetricKeyUsage key_type,
+                              const std::string& password,
+                              TPM_HANDLE* key_handle) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TpmUtility);
