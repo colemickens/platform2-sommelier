@@ -141,6 +141,16 @@ class CHROMEOS_EXPORT DBusInterface final {
         this, method_name, base::Bind(handler, instance));
   }
 
+  // Same as above but for const-method of a class.
+  template<typename Instance, typename Class, typename R, typename... Args>
+  inline void AddSimpleMethodHandler(
+      const std::string& method_name,
+      Instance instance,
+      R(Class::*handler)(Args...) const) {
+    Handler<SimpleDBusInterfaceMethodHandler<R, Args...>>::Add(
+        this, method_name, base::Bind(handler, instance));
+  }
+
   // Register sync DBus method handler for |method_name| as base::Callback.
   template<typename... Args>
   inline void AddSimpleMethodHandlerWithError(
@@ -167,6 +177,16 @@ class CHROMEOS_EXPORT DBusInterface final {
       const std::string& method_name,
       Instance instance,
       bool(Class::*handler)(ErrorPtr*, Args...)) {
+    Handler<SimpleDBusInterfaceMethodHandlerWithError<Args...>>::Add(
+        this, method_name, base::Bind(handler, instance));
+  }
+
+  // Same as above but for const-method of a class.
+  template<typename Instance, typename Class, typename... Args>
+  inline void AddSimpleMethodHandlerWithError(
+      const std::string& method_name,
+      Instance instance,
+      bool(Class::*handler)(ErrorPtr*, Args...) const) {
     Handler<SimpleDBusInterfaceMethodHandlerWithError<Args...>>::Add(
         this, method_name, base::Bind(handler, instance));
   }
@@ -198,6 +218,16 @@ class CHROMEOS_EXPORT DBusInterface final {
       const std::string& method_name,
       Instance instance,
       void(Class::*handler)(scoped_ptr<DBusMethodResponse>, Args...)) {
+    Handler<DBusInterfaceMethodHandler<Args...>>::Add(
+        this, method_name, base::Bind(handler, instance));
+  }
+
+  // Same as above but for const-method of a class.
+  template<typename Instance, typename Class, typename... Args>
+  inline void AddMethodHandler(
+      const std::string& method_name,
+      Instance instance,
+      void(Class::*handler)(scoped_ptr<DBusMethodResponse>, Args...) const) {
     Handler<DBusInterfaceMethodHandler<Args...>>::Add(
         this, method_name, base::Bind(handler, instance));
   }
