@@ -495,6 +495,7 @@ void ChromiumCommandBuilder::AddUiFlags() {
        UseFlagIsSet("ozone_platform_gbm")) {
     // TODO(spang): Use freon/chromeos platform, not GBM example platform.
     AddArg("--ozone-platform=gbm");
+    AddArg("--ozone-use-surfaceless");
     if (IsBoard("link_freon"))
       AddArg("--ash-host-window-bounds=2560x1700*2");
     else if (IsBoard("peppy_freon"))
