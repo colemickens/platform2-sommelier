@@ -136,7 +136,9 @@ bool PerfParser::ProcessEvents() {
     event_t& event = *parsed_event.raw_event;
     switch (event.header.type) {
       case PERF_RECORD_SAMPLE:
-        VLOG(1) << "IP: " << std::hex << event.ip.ip;
+        // SAMPLE doesn't have any fields to log at a fixed,
+        // previously-endian-swapped location. This used to log ip.
+        VLOG(1) << "SAMPLE";
         ++stats_.num_sample_events;
 
         if (MapSampleEvent(&parsed_event)) {
@@ -217,37 +219,40 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   bool mapping_failed = false;
 
   // Find the associated command.
+  if (!(sample_type_ & PERF_SAMPLE_IP && sample_type_ & PERF_SAMPLE_TID))
+    return false;
   perf_sample sample_info;
   if (!ReadPerfSampleInfo(*parsed_event->raw_event, &sample_info))
     return false;
   PidTid pidtid = std::make_pair(sample_info.pid, sample_info.tid);
-  std::map<PidTid, const string*>::const_iterator comm_iter =
-    pidtid_to_comm_map_.find(pidtid);
-  // If there is no command found for this sample, mark it with a NULL command
-  // pointer.
+  const auto comm_iter = pidtid_to_comm_map_.find(pidtid);
   if (comm_iter != pidtid_to_comm_map_.end()) {
     parsed_event->set_command(*comm_iter->second);
   }
 
-  struct ip_event& event = parsed_event->raw_event->ip;
-  uint64_t unmapped_event_ip = event.ip;
+  uint64_t unmapped_event_ip = sample_info.ip;
 
   // Map the event IP itself.
-  if (!MapIPAndPidAndGetNameAndOffset(event.ip,
-                                      event.pid,
-                                      &event.ip,
+  if (!MapIPAndPidAndGetNameAndOffset(sample_info.ip,
+                                      sample_info.pid,
+                                      &sample_info.ip,
                                       &parsed_event->dso_and_offset)) {
     mapping_failed = true;
   }
 
   if (sample_info.callchain &&
-      !MapCallchain(event, unmapped_event_ip, sample_info.callchain,
+      !MapCallchain(sample_info.ip,
+                    sample_info.pid,
+                    unmapped_event_ip,
+                    sample_info.callchain,
                     parsed_event)) {
     mapping_failed = true;
   }
 
   if (sample_info.branch_stack &&
-      !MapBranchStack(event, sample_info.branch_stack, parsed_event)) {
+      !MapBranchStack(sample_info.pid,
+                      sample_info.branch_stack,
+                      parsed_event)) {
     mapping_failed = true;
   }
 
@@ -262,8 +267,9 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   return !mapping_failed;
 }
 
-bool PerfParser::MapCallchain(const struct ip_event& event,
-                              uint64_t original_event_addr,
+bool PerfParser::MapCallchain(const uint64_t ip,
+                              const uint32_t pid,
+                              const uint64_t original_event_addr,
                               struct ip_callchain* callchain,
                               ParsedEvent* parsed_event) {
   if (!callchain) {
@@ -288,12 +294,12 @@ bool PerfParser::MapCallchain(const struct ip_event& event,
     }
     // The sample address has already been mapped so no need to map it.
     if (entry == original_event_addr) {
-      callchain->ips[j] = event.ip;
+      callchain->ips[j] = ip;
       continue;
     }
     if (!MapIPAndPidAndGetNameAndOffset(
             entry,
-            event.pid,
+            pid,
             &callchain->ips[j],
             &parsed_event->callchain[num_entries_mapped++])) {
       mapping_failed = true;
@@ -306,7 +312,7 @@ bool PerfParser::MapCallchain(const struct ip_event& event,
   return !mapping_failed;
 }
 
-bool PerfParser::MapBranchStack(const struct ip_event& event,
+bool PerfParser::MapBranchStack(const uint32_t pid,
                                 struct branch_stack* branch_stack,
                                 ParsedEvent* parsed_event) {
   if (!branch_stack) {
@@ -342,13 +348,13 @@ bool PerfParser::MapBranchStack(const struct ip_event& event,
     struct branch_entry& entry = branch_stack->entries[i];
     ParsedEvent::BranchEntry& parsed_entry = parsed_event->branch_stack[i];
     if (!MapIPAndPidAndGetNameAndOffset(entry.from,
-                                        event.pid,
+                                        pid,
                                         &entry.from,
                                         &parsed_entry.from)) {
       return false;
     }
     if (!MapIPAndPidAndGetNameAndOffset(entry.to,
-                                        event.pid,
+                                        pid,
                                         &entry.to,
                                         &parsed_entry.to)) {
       return false;

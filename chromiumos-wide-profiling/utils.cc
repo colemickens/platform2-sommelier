@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 
 #include <cctype>
+#include <cstddef>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>  // NOLINT(readability/streams)
@@ -169,11 +170,6 @@ uint64_t GetSampleFieldsForEventType(uint32_t event_type,
                                      uint64_t sample_type) {
   uint64_t mask = kuint64max;
   switch (event_type) {
-  case PERF_RECORD_SAMPLE:
-    // IP and pid/tid fields of sample events are read as part of event_t, so
-    // mask away those two fields.
-    mask = ~(PERF_SAMPLE_IP | PERF_SAMPLE_TID);
-    break;
   case PERF_RECORD_MMAP:
   case PERF_RECORD_FORK:
   case PERF_RECORD_EXIT:
@@ -184,6 +180,7 @@ uint64_t GetSampleFieldsForEventType(uint32_t event_type,
     mask = PERF_SAMPLE_TID | PERF_SAMPLE_TIME | PERF_SAMPLE_ID |
            PERF_SAMPLE_CPU;
     break;
+  case PERF_RECORD_SAMPLE:
   case PERF_RECORD_READ:
     break;
   default:
@@ -196,7 +193,7 @@ uint64_t GetPerfSampleDataOffset(const event_t& event) {
   uint64_t offset = kuint64max;
   switch (event.header.type) {
   case PERF_RECORD_SAMPLE:
-    offset = sizeof(event.ip);
+    offset = offsetof(event_t, sample.array);
     break;
   case PERF_RECORD_MMAP:
     offset = sizeof(event.mmap) - sizeof(event.mmap.filename) +

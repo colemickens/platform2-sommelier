@@ -943,15 +943,6 @@ bool PerfReader::ReadPerfSampleInfo(const event_t& event,
       is_cross_endian_,
       sample);
 
-  if (event.header.type == PERF_RECORD_SAMPLE) {
-    sample->pid = event.ip.pid;
-    sample->tid = event.ip.tid;
-    if (is_cross_endian_) {
-      ByteSwap(&sample->pid);
-      ByteSwap(&sample->tid);
-    }
-  }
-
   size_t expected_size = event.header.size - offset;
   if (size_read != expected_size) {
     LOG(ERROR) << "Read " << size_read << " bytes, expected "
@@ -1994,9 +1985,6 @@ bool PerfReader::ReadPerfEventBlock(const event_t& event) {
   if (is_cross_endian_) {
     switch (type) {
     case PERF_RECORD_SAMPLE:
-      ByteSwap(&event_copy->ip.ip);
-      ByteSwap(&event_copy->ip.pid);
-      ByteSwap(&event_copy->ip.tid);
       break;
     case PERF_RECORD_MMAP:
       ByteSwap(&event_copy->mmap.pid);

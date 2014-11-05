@@ -422,15 +422,12 @@ bool PerfSerializer::SerializeRecordSample(
   perf_sample sample_info;
   if (!ReadPerfSampleInfo(event, &sample_info))
     return false;
-  const struct ip_event& ip_event = event.ip;
 
   if (sample_type_ & PERF_SAMPLE_IP)
-    sample->set_ip(ip_event.ip);
+    sample->set_ip(sample_info.ip);
   if (sample_type_ & PERF_SAMPLE_TID) {
-    CHECK_EQ(ip_event.pid, sample_info.pid);
-    CHECK_EQ(ip_event.tid, sample_info.tid);
-    sample->set_pid(ip_event.pid);
-    sample->set_tid(ip_event.tid);
+    sample->set_pid(sample_info.pid);
+    sample->set_tid(sample_info.tid);
   }
   if (sample_type_ & PERF_SAMPLE_TIME)
     sample->set_sample_time_ns(sample_info.time);
@@ -468,13 +465,10 @@ bool PerfSerializer::DeserializeRecordSample(
     const PerfDataProto_SampleEvent& sample,
     event_t* event) const {
   perf_sample sample_info;
-  struct ip_event& ip_event = event->ip;
   if (sample.has_ip())
-    ip_event.ip = sample.ip();
+    sample_info.ip = sample.ip();
   if (sample.has_pid()) {
     CHECK(sample.has_tid()) << "Cannot have PID without TID.";
-    ip_event.pid = sample.pid();
-    ip_event.tid = sample.tid();
     sample_info.pid = sample.pid();
     sample_info.tid = sample.tid();
   }

@@ -191,14 +191,15 @@ class PerfParser : public PerfReader {
 
  private:
   // Calls MapIPAndPidAndGetNameAndOffset() on the callchain of a sample event.
-  bool MapCallchain(const struct ip_event& event,
+  bool MapCallchain(const uint64_t ip,
+                    const uint32_t pid,
                     uint64_t original_event_addr,
                     struct ip_callchain* callchain,
                     ParsedEvent* parsed_event);
 
   // Trims the branch stack for null entries and calls
   // MapIPAndPidAndGetNameAndOffset() on each entry.
-  bool MapBranchStack(const struct ip_event& event,
+  bool MapBranchStack(const uint32_t pid,
                       struct branch_stack* branch_stack,
                       ParsedEvent* parsed_event);
 
