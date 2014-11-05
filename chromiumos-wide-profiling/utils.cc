@@ -157,17 +157,18 @@ uint64_t GetSampleFieldsForEventType(uint32_t event_type,
   uint64_t mask = kuint64max;
   switch (event_type) {
   case PERF_RECORD_MMAP:
-  case PERF_RECORD_FORK:
-  case PERF_RECORD_EXIT:
-  case PERF_RECORD_COMM:
   case PERF_RECORD_LOST:
+  case PERF_RECORD_COMM:
+  case PERF_RECORD_EXIT:
   case PERF_RECORD_THROTTLE:
   case PERF_RECORD_UNTHROTTLE:
+  case PERF_RECORD_FORK:
+  case PERF_RECORD_READ:
+    // See perf_event.h "struct" sample_id and sample_id_all.
     mask = PERF_SAMPLE_TID | PERF_SAMPLE_TIME | PERF_SAMPLE_ID |
-           PERF_SAMPLE_STREAM_ID | PERF_SAMPLE_CPU;
+           PERF_SAMPLE_STREAM_ID | PERF_SAMPLE_CPU | PERF_SAMPLE_IDENTIFIER;
     break;
   case PERF_RECORD_SAMPLE:
-  case PERF_RECORD_READ:
     break;
   default:
     LOG(FATAL) << "Unknown event type " << event_type;

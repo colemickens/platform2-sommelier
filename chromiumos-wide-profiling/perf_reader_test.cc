@@ -572,6 +572,102 @@ TEST(PerfReaderTest, ReadsSampleAndSampleIdAll) {
   EXPECT_EQ(9, sample.cpu);
 }
 
+// Test that PERF_SAMPLE_IDENTIFIER is parsed correctly. This field
+// is in a different place in PERF_RECORD_SAMPLE events compared to the
+// struct sample_id placed at the end of all other events.
+TEST(PerfReaderTest, ReadsPerfSampleIdentifier) {
+  std::stringstream input;
+
+  // header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // data
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_IDENTIFIER |
+                                              PERF_SAMPLE_IP |
+                                              PERF_SAMPLE_TID,
+                                              true /*sample_id_all*/)
+      .WriteTo(&input);
+
+  // PERF_RECORD_SAMPLE
+  const sample_event written_sample_event = {
+    .header = {
+      .type = PERF_RECORD_SAMPLE,
+      .misc = PERF_RECORD_MISC_KERNEL,
+      .size = sizeof(struct sample_event) + 3*sizeof(u64),
+    }
+  };
+  const u64 sample_event_array[] = {
+    0x00000000deadbeef,  // IDENTIFIER
+    0x00007f999c38d15a,  // IP
+    0x0000068d0000068d,  // TID (u32 pid, tid)
+  };
+  ASSERT_EQ(written_sample_event.header.size,
+            sizeof(written_sample_event.header) + sizeof(sample_event_array));
+  input.write(reinterpret_cast<const char*>(&written_sample_event),
+              sizeof(written_sample_event));
+  input.write(reinterpret_cast<const char*>(sample_event_array),
+              sizeof(sample_event_array));
+
+  // PERF_RECORD_MMAP
+  ASSERT_EQ(40, offsetof(struct mmap_event, filename));
+  const size_t mmap_event_size =
+      offsetof(struct mmap_event, filename) +
+      10+6 /* ==16, nearest 64-bit boundary for filename */ +
+      2*sizeof(u64);
+
+  struct mmap_event written_mmap_event = {
+    .header = {
+      .type = PERF_RECORD_MMAP,
+      .misc = 0,
+      .size = mmap_event_size,
+    },
+    .pid = 0x68d, .tid = 0x68d,
+    .start = 0x1d000,
+    .len = 0x1000,
+    .pgoff = 0,
+    //.filename = ..., // written separately
+  };
+  const char mmap_filename[10+6] = "/dev/zero";
+  const u64 mmap_sample_id[] = {
+    // NB: PERF_SAMPLE_IP is not part of sample_id
+    0x0000068d0000068d,  // TID (u32 pid, tid)
+    0x00000000f00dbaad,  // IDENTIFIER
+  };
+  const size_t pre_mmap_offset = input.tellp();
+  input.write(reinterpret_cast<const char*>(&written_mmap_event),
+              offsetof(struct mmap_event, filename));
+  input.write(mmap_filename, 10+6);
+  input.write(reinterpret_cast<const char*>(mmap_sample_id),
+              sizeof(mmap_sample_id));
+  const size_t written_mmap_size =
+      static_cast<size_t>(input.tellp()) - pre_mmap_offset;
+  ASSERT_EQ(written_mmap_event.header.size,
+            static_cast<u64>(written_mmap_size));
+
+  //
+  // Parse input.
+  //
+
+  struct perf_sample sample;
+
+  PerfReader pr;
+  EXPECT_TRUE(pr.ReadFromString(input.str()));
+  // PERF_RECORD_HEADER_ATTR is added to attr(), not events().
+  EXPECT_EQ(2, pr.events().size());
+
+  const event_t* sample_event = pr.events()[0].get();
+  EXPECT_EQ(PERF_RECORD_SAMPLE, sample_event->header.type);
+  EXPECT_TRUE(pr.ReadPerfSampleInfo(*sample_event, &sample));
+  EXPECT_EQ(0xdeadbeefULL, sample.id);
+
+  const event_t* mmap_event = pr.events()[1].get();
+  EXPECT_EQ(PERF_RECORD_MMAP, mmap_event->header.type);
+  EXPECT_TRUE(pr.ReadPerfSampleInfo(*mmap_event, &sample));
+  EXPECT_EQ(0xf00dbaadULL, sample.id);
+}
+
 }  // namespace quipper
 
 int main(int argc, char* argv[]) {
