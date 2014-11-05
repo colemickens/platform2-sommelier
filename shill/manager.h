@@ -18,6 +18,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/cellular/modem_info.h"
 #include "shill/crypto_util_proxy.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
@@ -25,7 +26,6 @@
 #include "shill/geolocation_info.h"
 #include "shill/hook_table.h"
 #include "shill/metrics.h"
-#include "shill/modem_info.h"
 #include "shill/power_manager.h"
 #include "shill/profile.h"
 #include "shill/property_store.h"

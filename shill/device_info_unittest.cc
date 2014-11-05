@@ -25,6 +25,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/cellular/mock_modem_info.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
@@ -33,7 +34,6 @@
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_modem_info.h"
 #include "shill/mock_routing_table.h"
 #include "shill/mock_vpn_provider.h"
 #include "shill/net/ip_address.h"
