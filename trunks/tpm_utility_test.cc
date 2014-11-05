@@ -362,6 +362,7 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptSuccess) {
                       Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS, utility.AsymmetricEncrypt(key_handle,
                                                       TPM_ALG_NULL,
+                                                      TPM_ALG_NULL,
                                                       plaintext,
                                                       &ciphertext));
   EXPECT_EQ(0, ciphertext.compare(output_ciphertext));
@@ -382,6 +383,7 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptFail) {
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, utility.AsymmetricEncrypt(key_handle,
                                                       TPM_ALG_NULL,
+                                                      TPM_ALG_NULL,
                                                       plaintext,
                                                       &ciphertext));
 }
@@ -399,9 +401,66 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptBadParams) {
                             Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.AsymmetricEncrypt(key_handle,
                                                              TPM_ALG_RSAES,
+                                                             TPM_ALG_NULL,
                                                              plaintext,
                                                              &ciphertext));
 }
+
+TEST_F(TpmUtilityTest, AsymmetricEncryptNullSchemeForward) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string plaintext;
+  std::string output_ciphertext("ciphertext");
+  std::string ciphertext;
+  TPM2B_PUBLIC_KEY_RSA out_message = Make_TPM2B_PUBLIC_KEY_RSA(
+      output_ciphertext);
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kDecrypt;
+  TPMT_RSA_DECRYPT scheme;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, RSA_EncryptSync(key_handle, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<5>(out_message),
+                      SaveArg<3>(&scheme),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.AsymmetricEncrypt(key_handle,
+                                                      TPM_ALG_NULL,
+                                                      TPM_ALG_NULL,
+                                                      plaintext,
+                                                      &ciphertext));
+  EXPECT_EQ(scheme.scheme, TPM_ALG_OAEP);
+  EXPECT_EQ(scheme.details.oaep.hash_alg, TPM_ALG_SHA256);
+}
+
+TEST_F(TpmUtilityTest, AsymmetricEncryptSchemeForward) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string plaintext;
+  std::string output_ciphertext("ciphertext");
+  std::string ciphertext;
+  TPM2B_PUBLIC_KEY_RSA out_message = Make_TPM2B_PUBLIC_KEY_RSA(
+      output_ciphertext);
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kDecrypt;
+  TPMT_RSA_DECRYPT scheme;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, RSA_EncryptSync(key_handle, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<5>(out_message),
+                      SaveArg<3>(&scheme),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.AsymmetricEncrypt(key_handle,
+                                                      TPM_ALG_RSAES,
+                                                      TPM_ALG_NULL,
+                                                      plaintext,
+                                                      &ciphertext));
+  EXPECT_EQ(scheme.scheme, TPM_ALG_RSAES);
+}
+
 TEST_F(TpmUtilityTest, AsymmetricDecryptSuccess) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
@@ -421,6 +480,7 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptSuccess) {
       .WillOnce(DoAll(SetArgPointee<5>(out_message),
                       Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS, utility.AsymmetricDecrypt(key_handle,
+                                                      TPM_ALG_NULL,
                                                       TPM_ALG_NULL,
                                                       password,
                                                       ciphertext,
@@ -445,6 +505,7 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptFail) {
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, utility.AsymmetricDecrypt(key_handle,
                                                       TPM_ALG_NULL,
+                                                      TPM_ALG_NULL,
                                                       password,
                                                       ciphertext,
                                                       &plaintext));
@@ -465,9 +526,69 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptBadParams) {
                             Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.AsymmetricDecrypt(key_handle,
                                                              TPM_ALG_RSAES,
+                                                             TPM_ALG_NULL,
                                                              password,
                                                              ciphertext,
                                                              &plaintext));
+}
+
+TEST_F(TpmUtilityTest, AsymmetricDecryptNullSchemeForward) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string plaintext;
+  std::string output_plaintext("plaintext");
+  std::string ciphertext;
+  std::string password;
+  TPM2B_PUBLIC_KEY_RSA out_message = Make_TPM2B_PUBLIC_KEY_RSA(
+      output_plaintext);
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kDecrypt;
+  TPMT_RSA_DECRYPT scheme;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, RSA_DecryptSync(key_handle, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<5>(out_message),
+                      SaveArg<3>(&scheme),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.AsymmetricDecrypt(key_handle,
+                                                      TPM_ALG_NULL,
+                                                      TPM_ALG_NULL,
+                                                      password,
+                                                      ciphertext,
+                                                      &plaintext));
+  EXPECT_EQ(scheme.scheme, TPM_ALG_OAEP);
+  EXPECT_EQ(scheme.details.oaep.hash_alg, TPM_ALG_SHA256);
+}
+
+TEST_F(TpmUtilityTest, AsymmetricDecryptSchemeForward) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle;
+  std::string plaintext;
+  std::string output_plaintext("plaintext");
+  std::string ciphertext;
+  std::string password;
+  TPM2B_PUBLIC_KEY_RSA out_message = Make_TPM2B_PUBLIC_KEY_RSA(
+      output_plaintext);
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kDecrypt;
+  TPMT_RSA_DECRYPT scheme;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, RSA_DecryptSync(key_handle, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<5>(out_message),
+                      SaveArg<3>(&scheme),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.AsymmetricDecrypt(key_handle,
+                                                      TPM_ALG_RSAES,
+                                                      TPM_ALG_NULL,
+                                                      password,
+                                                      ciphertext,
+                                                      &plaintext));
+  EXPECT_EQ(scheme.scheme, TPM_ALG_RSAES);
 }
 
 TEST_F(TpmUtilityTest, SignSuccess) {

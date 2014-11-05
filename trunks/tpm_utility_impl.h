@@ -39,10 +39,12 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC CreateStorageRootKeys(const std::string& owner_password) override;
   TPM_RC AsymmetricEncrypt(TPM_HANDLE key_handle,
                            TPM_ALG_ID scheme,
+                           TPM_ALG_ID hash_alg,
                            const std::string& plaintext,
                            std::string* ciphertext) override;
   TPM_RC AsymmetricDecrypt(TPM_HANDLE key_handle,
                            TPM_ALG_ID scheme,
+                           TPM_ALG_ID hash_alg,
                            const std::string& password,
                            const std::string& ciphertext,
                            std::string* plaintext) override;

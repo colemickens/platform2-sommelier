@@ -103,21 +103,25 @@ class TpmUtilityForwarder : public TpmUtility {
 
   TPM_RC AsymmetricEncrypt(TPM_HANDLE key_handle,
                            TPM_ALG_ID scheme,
+                           TPM_ALG_ID hash_alg,
                            const std::string& plaintext,
                            std::string* ciphertext) override {
     return target_->AsymmetricEncrypt(key_handle,
                                       scheme,
+                                      hash_alg,
                                       plaintext,
                                       ciphertext);
   }
 
   TPM_RC AsymmetricDecrypt(TPM_HANDLE key_handle,
                            TPM_ALG_ID scheme,
+                           TPM_ALG_ID hash_alg,
                            const std::string& password,
                            const std::string& ciphertext,
                            std::string* plaintext) override {
     return target_->AsymmetricDecrypt(key_handle,
                                       scheme,
+                                      hash_alg,
                                       password,
                                       ciphertext,
                                       plaintext);

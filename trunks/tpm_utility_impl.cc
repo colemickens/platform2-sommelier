@@ -371,9 +371,26 @@ TPM_RC TpmUtilityImpl::CreateStorageRootKeys(
 
 TPM_RC TpmUtilityImpl::AsymmetricEncrypt(TPM_HANDLE key_handle,
                                          TPM_ALG_ID scheme,
+                                         TPM_ALG_ID hash_alg,
                                          const std::string& plaintext,
                                          std::string* ciphertext) {
-  CHECK_LE(plaintext.size(), 256);
+  TPMT_RSA_DECRYPT in_scheme;
+  TPM_ALG_ID hash_in;
+  if (hash_alg == TPM_ALG_NULL) {
+    hash_in = TPM_ALG_SHA256;
+  } else {
+    hash_in = hash_alg;
+  }
+  if (scheme == TPM_ALG_RSAES) {
+    in_scheme.scheme = TPM_ALG_RSAES;
+  } else if (scheme == TPM_ALG_OAEP || scheme == TPM_ALG_NULL) {
+    in_scheme.scheme = TPM_ALG_OAEP;
+    in_scheme.details.oaep.hash_alg = hash_in;
+  } else {
+    LOG(ERROR) << "Invalid Signing scheme used.";
+    return SAPI_RC_BAD_PARAMETER;
+  }
+
   TPM2B_PUBLIC public_area;
   TPM_RC return_code = GetKeyPublicArea(key_handle, &public_area);
   if (return_code) {
@@ -389,12 +406,6 @@ TPM_RC TpmUtilityImpl::AsymmetricEncrypt(TPM_HANDLE key_handle,
   if ((public_area.public_area.object_attributes & kRestricted) != 0) {
     LOG(ERROR) << "Cannot use RSAES for encryption with a restricted key";
     return SAPI_RC_BAD_PARAMETER;
-  }
-  TPMT_RSA_DECRYPT in_scheme;
-  if (scheme == TPM_ALG_RSAES) {
-    in_scheme.scheme = TPM_ALG_RSAES;
-  } else {
-    in_scheme.scheme = TPM_ALG_NULL;
   }
   std::string key_name;
   return_code = GetKeyName(key_handle, &key_name);
@@ -426,9 +437,27 @@ TPM_RC TpmUtilityImpl::AsymmetricEncrypt(TPM_HANDLE key_handle,
 
 TPM_RC TpmUtilityImpl::AsymmetricDecrypt(TPM_HANDLE key_handle,
                                          TPM_ALG_ID scheme,
+                                         TPM_ALG_ID hash_alg,
                                          const std::string& password,
                                          const std::string& ciphertext,
                                          std::string* plaintext) {
+  TPMT_RSA_DECRYPT in_scheme;
+  TPM_ALG_ID hash_in;
+  if (hash_alg == TPM_ALG_NULL) {
+    hash_in = TPM_ALG_SHA256;
+  } else {
+    hash_in = hash_alg;
+  }
+  if (scheme == TPM_ALG_RSAES) {
+    in_scheme.scheme = TPM_ALG_RSAES;
+  } else if (scheme == TPM_ALG_OAEP || scheme == TPM_ALG_NULL) {
+    in_scheme.scheme = TPM_ALG_OAEP;
+    in_scheme.details.oaep.hash_alg = hash_in;
+  } else {
+    LOG(ERROR) << "Invalid Signing scheme used.";
+    return SAPI_RC_BAD_PARAMETER;
+  }
+
   TPM2B_PUBLIC public_area;
   TPM_RC return_code = GetKeyPublicArea(key_handle, &public_area);
   if (return_code) {
@@ -444,12 +473,6 @@ TPM_RC TpmUtilityImpl::AsymmetricDecrypt(TPM_HANDLE key_handle,
   if ((public_area.public_area.object_attributes & kRestricted) != 0) {
     LOG(ERROR) << "Cannot use RSAES for encryption with a restricted key";
     return SAPI_RC_BAD_PARAMETER;
-  }
-  TPMT_RSA_DECRYPT in_scheme;
-  if (scheme == TPM_ALG_RSAES) {
-    in_scheme.scheme = TPM_ALG_RSAES;
-  } else {
-    in_scheme.scheme = TPM_ALG_NULL;
   }
   std::string key_name;
   return_code = GetKeyName(key_handle, &key_name);

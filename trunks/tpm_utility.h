@@ -66,6 +66,7 @@ class CHROMEOS_EXPORT TpmUtility {
   // to be used. By default keys use OAEP, but can also use TPM_ALG_RSAES.
   virtual TPM_RC AsymmetricEncrypt(TPM_HANDLE key_handle,
                                    TPM_ALG_ID scheme,
+                                   TPM_ALG_ID hash_alg,
                                    const std::string& plaintext,
                                    std::string* ciphertext) = 0;
 
@@ -76,6 +77,7 @@ class CHROMEOS_EXPORT TpmUtility {
   // OAEP, but TPM_ALG_RSAES can be specified.
   virtual TPM_RC AsymmetricDecrypt(TPM_HANDLE key_handle,
                                    TPM_ALG_ID scheme,
+                                   TPM_ALG_ID hash_alg,
                                    const std::string& password,
                                    const std::string& ciphertext,
                                    std::string* plaintext) = 0;

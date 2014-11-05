@@ -29,11 +29,13 @@ class MockTpmUtility : public TpmUtility {
                                      const std::string& lockout_password));
   MOCK_METHOD1(CreateStorageRootKeys,
                TPM_RC(const std::string& owner_password));
-  MOCK_METHOD4(AsymmetricEncrypt, TPM_RC(TPM_HANDLE,
+  MOCK_METHOD5(AsymmetricEncrypt, TPM_RC(TPM_HANDLE,
+                                         TPM_ALG_ID,
                                          TPM_ALG_ID,
                                          const std::string&,
                                          std::string*));
-  MOCK_METHOD5(AsymmetricDecrypt, TPM_RC(TPM_HANDLE,
+  MOCK_METHOD6(AsymmetricDecrypt, TPM_RC(TPM_HANDLE,
+                                         TPM_ALG_ID,
                                          TPM_ALG_ID,
                                          const std::string&,
                                          const std::string&,
