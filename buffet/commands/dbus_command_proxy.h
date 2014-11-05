@@ -5,7 +5,6 @@
 #ifndef BUFFET_COMMANDS_DBUS_COMMAND_PROXY_H_
 #define BUFFET_COMMANDS_DBUS_COMMAND_PROXY_H_
 
-#include <memory>
 #include <string>
 
 #include <base/macros.h>

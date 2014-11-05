@@ -19,6 +19,7 @@
 #include <chromeos/strings/string_utils.h>
 #include <chromeos/url_utils.h>
 
+#include "buffet/commands/cloud_command_proxy.h"
 #include "buffet/commands/command_definition.h"
 #include "buffet/commands/command_manager.h"
 #include "buffet/device_registration_storage_keys.h"
@@ -654,6 +655,16 @@ void DeviceRegistrationInfo::StartDevice(chromeos::ErrorPtr* error) {
                   base::Unretained(this))))).Run();
 }
 
+void DeviceRegistrationInfo::UpdateCommand(
+    const std::string& command_id,
+    const base::DictionaryValue& command_patch) {
+  DoCloudRequest(
+      chromeos::http::request_type::kPatch,
+      GetServiceURL("commands/" + command_id),
+      &command_patch,
+      base::Bind(&IgnoreCloudResult), base::Bind(&IgnoreCloudError));
+}
+
 void DeviceRegistrationInfo::UpdateDeviceResource(base::Closure callback) {
   std::unique_ptr<base::DictionaryValue> device_resource =
       BuildDeviceResource(nullptr);
@@ -759,8 +770,12 @@ void DeviceRegistrationInfo::PublishCommands(const base::ListValue& commands) {
     }
 
     // TODO(antonm): Properly process cancellation of commands.
-    if (!command_manager_->FindCommand(command_instance->GetID()))
+    if (!command_manager_->FindCommand(command_instance->GetID())) {
+      std::unique_ptr<CommandProxyInterface> cloud_proxy{
+          new CloudCommandProxy(command_instance.get(), this)};
+      command_instance->AddProxy(std::move(cloud_proxy));
       command_manager_->AddCommand(std::move(command_instance));
+    }
   }
 }
 

@@ -32,6 +32,7 @@
         'commands/command_queue.cc',
         'commands/dbus_command_dispatcher.cc',
         'commands/dbus_command_proxy.cc',
+        'commands/cloud_command_proxy.cc',
         'commands/object_schema.cc',
         'commands/prop_constraints.cc',
         'commands/prop_types.cc',

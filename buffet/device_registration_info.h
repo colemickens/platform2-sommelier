@@ -106,11 +106,17 @@ class DeviceRegistrationInfo {
     const std::map<std::string, std::string>& params,
     chromeos::ErrorPtr* error);
 
-  // Start device execution.
+  // Starts device execution.
   // Device will do required start up chores and then start to listen
   // to new commands.
   // TODO(antonm): Consider moving into some other class.
   void StartDevice(chromeos::ErrorPtr* error);
+
+  // Updates a command.
+  // TODO(antonm): Should solve the issues with async vs. sync.
+  // TODO(antonm): Consider moving some other class.
+  void UpdateCommand(const std::string& command_id,
+                     const base::DictionaryValue& command_patch);
 
  private:
   // Saves the device registration to cache.
