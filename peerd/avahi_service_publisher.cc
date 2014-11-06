@@ -75,14 +75,18 @@ bool AvahiServicePublisher::OnServiceUpdated(ErrorPtr* error,
                        kSerbusServiceId);
     return false;
   }
-  return UpdateGroup(error, service.GetServiceId(), service.GetServiceInfo()) &&
-         UpdateRootService(error);
+  const bool updated_group = UpdateGroup(
+      error, service.GetServiceId(),
+      service.GetServiceInfo(), service.GetMDnsOptions());
+  // Always update the master record.
+  return UpdateRootService(error) && updated_group;
 }
 
 bool AvahiServicePublisher::UpdateGroup(
     ErrorPtr* error,
     const std::string& service_id,
-    const Service::ServiceInfo& service_info) {
+    const Service::ServiceInfo& service_info,
+    const Service::MDnsOptions& mdns_options) {
   VLOG(1) << "Modifying group for service_id=" << service_id;
   auto it = outstanding_groups_.find(service_id);
   dbus::ObjectProxy* group_proxy = nullptr;
@@ -132,7 +136,8 @@ bool AvahiServicePublisher::UpdateGroup(
     }
   }
   // Now add records for this service/entry group.
-  if (!AddServiceToGroup(error, service_id, service_info, group_proxy)) {
+  if (!AddServiceToGroup(error, service_id, service_info,
+                         mdns_options, group_proxy)) {
     FreeGroup(error, group_proxy);
     outstanding_groups_.erase(service_id);  // |it| might be invalid
     return false;
@@ -177,6 +182,7 @@ bool AvahiServicePublisher::AddServiceToGroup(
     ErrorPtr* error,
     const std::string& service_id,
     const Service::ServiceInfo& service_info,
+    const Service::MDnsOptions& mdns_options,
     dbus::ObjectProxy* group_proxy) {
   auto resp = CallMethodAndBlock(
       group_proxy,
@@ -190,7 +196,7 @@ bool AvahiServicePublisher::AddServiceToGroup(
       AvahiClient::GetServiceType(service_id),
       std::string{},  // domain.
       std::string{},  // hostname
-      uint16_t{0},  // TODO(wiley) port
+      mdns_options.port,
       GetTxtRecord(service_info));
   if (!resp || !ExtractMethodCallResults(resp.get(), error)) { return false; }
   resp = CallMethodAndBlock(group_proxy,
@@ -241,7 +247,8 @@ bool AvahiServicePublisher::UpdateRootService(ErrorPtr* error) {
     {constants::mdns::kSerbusServiceList, Join(kSerbusServiceDelimiter,
                                                services)},
   };
-  return UpdateGroup(error, kSerbusServiceId, service_info);
+  return UpdateGroup(
+      error, kSerbusServiceId, service_info, Service::MDnsOptions{});
 }
 
 void AvahiServicePublisher::HandleGroupStateChanged(

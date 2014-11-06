@@ -62,13 +62,15 @@ class AvahiServicePublisher : public ServicePublisherInterface {
 
   bool UpdateGroup(chromeos::ErrorPtr* error,
                    const std::string& service_id,
-                   const Service::ServiceInfo& service_info);
+                   const Service::ServiceInfo& service_info,
+                   const Service::MDnsOptions& mdns_options);
   // Attempts to add the given |service_id|/|service_info| pair to the
   // given |group_proxy|.  Returns true on success, false otherwise.
   // Does no cleanup.
   bool AddServiceToGroup(chromeos::ErrorPtr* error,
                          const std::string& service_id,
                          const Service::ServiceInfo& service_info,
+                         const Service::MDnsOptions& mdns_options,
                          dbus::ObjectProxy* group_proxy);
   // Removes all records corresponding to the provided |group_proxy| and
   // detaches from any related signals.
