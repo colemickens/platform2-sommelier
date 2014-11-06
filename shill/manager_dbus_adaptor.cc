@@ -320,31 +320,6 @@ DBus::Path ManagerDBusAdaptor::FindMatchingService(
   return service->GetRpcIdentifier();
 }
 
-void ManagerDBusAdaptor::AddWakeOnPacketConnection(
-    const string &ip_endpoint,
-    DBus::Error &error) {  // NOLINT
-  SLOG(this, 2) << __func__;
-  Error e;
-  manager_->AddWakeOnPacketConnection(ip_endpoint, &e);
-  e.ToDBusError(&error);
-}
-
-void ManagerDBusAdaptor::RemoveWakeOnPacketConnection(
-    const string &ip_endpoint, DBus::Error &error) {  // NOLINT
-  SLOG(this, 2) << __func__;
-  Error e;
-  manager_->RemoveWakeOnPacketConnection(ip_endpoint, &e);
-  e.ToDBusError(&error);
-}
-
-void ManagerDBusAdaptor::RemoveAllWakeOnPacketConnections(
-    DBus::Error &error) {  // NOLINT
-  SLOG(this, 2) << __func__;
-  Error e;
-  manager_->RemoveAllWakeOnPacketConnections(&e);
-  e.ToDBusError(&error);
-}
-
 int32_t ManagerDBusAdaptor::GetDebugLevel(DBus::Error &/*error*/) {  // NOLINT
   SLOG(this, 2) << __func__;
   return logging::GetMinLogLevel();

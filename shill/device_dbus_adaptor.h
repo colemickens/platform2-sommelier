@@ -85,6 +85,12 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
   virtual void SetCarrier(const std::string &carrier,
                           DBus::Error &error);  // NOLINT
 
+  void AddWakeOnPacketConnection(const std::string &ip_endpoint,
+                                 DBus::Error &error);  // NOLINT
+  void RemoveWakeOnPacketConnection(const std::string &ip_endpoint,
+                                    DBus::Error &error);  // NOLINT
+  void RemoveAllWakeOnPacketConnections(DBus::Error &error);  // NOLINT
+
  private:
   Device *device_;
   const std::string connection_name_;

@@ -52,17 +52,18 @@ class WakeOnWiFi {
   // Enable the NIC to wake on packets received from |ip_endpoint|.
   // Note: The actual programming of the NIC only happens before the system
   // suspends, in |OnBeforeSuspend|.
-  void AddWakeOnPacketConnection(const IPAddress &ip_endpoint, Error *error);
+  void AddWakeOnPacketConnection(const std::string &ip_endpoint, Error *error);
   // Remove rule to wake on packets received from |ip_endpoint| from the NIC.
   // Note: The actual programming of the NIC only happens before the system
   // suspends, in |OnBeforeSuspend|.
-  void RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint, Error *error);
+  void RemoveWakeOnPacketConnection(const std::string &ip_endpoint,
+                                    Error *error);
   // Remove all rules to wake on incoming packets from the NIC.
   // Note: The actual programming of the NIC only happens before the system
   // suspends, in |OnBeforeSuspend|.
   void RemoveAllWakeOnPacketConnections(Error *error);
   // Given a NL80211_CMD_NEW_WIPHY message |nl80211_message|, parses the
-  // wake on wifi capabilities of the NIC and set relevant members of this
+  // wake on WiFi capabilities of the NIC and set relevant members of this
   // WakeOnWiFi object to reflect the supported capbilities.
   void ParseWakeOnWiFiCapabilities(const Nl80211Message &nl80211_message);
   // Given a NL80211_CMD_NEW_WIPHY message |nl80211_message|, parses the

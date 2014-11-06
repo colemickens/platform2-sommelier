@@ -142,18 +142,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
       Error *error);
   ServiceRefPtr FindMatchingService(const KeyValueStore &args, Error *error);
 
-  // Requests that NICs be programmed to wake up from
-  // suspend on the arrival of packets on any TCP connection
-  // with a source IP address matching the IP address
-  // specified in the string argument.
-  void AddWakeOnPacketConnection(const std::string &ip_endpoint,
-                                 Error *error);
-  // Removes a NIC programming request established by AddWakeOnPacketConnection.
-  void RemoveWakeOnPacketConnection(const std::string &ip_endpoint,
-                                    Error *error);
-  // Removes all NIC programming requests.
-  void RemoveAllWakeOnPacketConnections(Error *error);
-
   // Retrieve geolocation data from the Manager.
   const std::map<std::string, GeolocationInfos>
       &GetNetworksForGeolocation() const;

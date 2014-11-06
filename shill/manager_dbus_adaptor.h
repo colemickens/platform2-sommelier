@@ -95,12 +95,6 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
       const std::map<std::string, DBus::Variant> &args,
       DBus::Error &error);  // NOLINT
 
-  void AddWakeOnPacketConnection(const std::string &ip_endpoint,
-                                 DBus::Error &error);  // NOLINT
-  void RemoveWakeOnPacketConnection(const std::string &ip_endpoint,
-                                    DBus::Error &error);  // NOLINT
-  void RemoveAllWakeOnPacketConnections(DBus::Error &error);  // NOLINT
-
   int32_t GetDebugLevel(DBus::Error &error);  // NOLINT
   void SetDebugLevel(const int32_t &level, DBus::Error &error);  // NOLINT
 

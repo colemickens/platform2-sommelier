@@ -146,9 +146,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Calls corresponding functions of |wake_on_wifi_|. Refer to wake_on_wifi.h
   // for documentation.
-  void AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
+  void AddWakeOnPacketConnection(const std::string &ip_endpoint,
                                  Error *error) override;
-  void RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
+  void RemoveWakeOnPacketConnection(const std::string &ip_endpoint,
                                     Error *error) override;
   void RemoveAllWakeOnPacketConnections(Error *error) override;
 

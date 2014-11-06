@@ -544,7 +544,7 @@ void Device::StopAllActivities() {
   StopIPv6DNSServerTimer();
 }
 
-void Device::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
+void Device::AddWakeOnPacketConnection(const string &ip_endpoint,
                                        Error *error) {
   Error::PopulateAndLog(
       error, Error::kNotSupported,
@@ -552,7 +552,7 @@ void Device::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
   return;
 }
 
-void Device::RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
+void Device::RemoveWakeOnPacketConnection(const string &ip_endpoint,
                                           Error *error) {
   Error::PopulateAndLog(
       error, Error::kNotSupported,

@@ -1824,12 +1824,11 @@ void WiFi::OnIPConfigFailure() {
   Device::OnIPConfigFailure();
 }
 
-void WiFi::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
-                                     Error *error) {
+void WiFi::AddWakeOnPacketConnection(const string &ip_endpoint, Error *error) {
   wake_on_wifi_->AddWakeOnPacketConnection(ip_endpoint, error);
 }
 
-void WiFi::RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
+void WiFi::RemoveWakeOnPacketConnection(const string &ip_endpoint,
                                         Error *error) {
   wake_on_wifi_->RemoveWakeOnPacketConnection(ip_endpoint, error);
 }

@@ -290,12 +290,12 @@ class Device : public base::RefCounted<Device> {
   // Program a rule into the NIC to wake the system from suspend upon receiving
   // packets from |ip_endpoint|. |error| indicates the result of the
   // operation.
-  virtual void AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
+  virtual void AddWakeOnPacketConnection(const std::string &ip_endpoint,
                                          Error *error);
   // Removes a rule previously programmed into the NIC to wake the system from
   // suspend upon receiving packets from |ip_endpoint|. |error| indicates the
   // result of the operation.
-  virtual void RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
+  virtual void RemoveWakeOnPacketConnection(const std::string &ip_endpoint,
                                             Error *error);
   // Removes all wake-on-packet rules programmed into the NIC. |error| indicates
   // the result of the operation.

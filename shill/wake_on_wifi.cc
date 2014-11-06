@@ -515,44 +515,64 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(const Nl80211Message &msg,
   return true;
 }
 
-void WakeOnWiFi::AddWakeOnPacketConnection(const IPAddress &ip_endpoint,
+void WakeOnWiFi::AddWakeOnPacketConnection(const string &ip_endpoint,
                                            Error *error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
   if (!WakeOnPacketEnabled()) {
     Error::PopulateAndLog(error, Error::kOperationFailed,
                           kWakeOnPacketDisabled);
-  } else if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
-             wake_on_wifi_triggers_supported_.end()) {
+    return;
+  }
+  if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
+      wake_on_wifi_triggers_supported_.end()) {
     Error::PopulateAndLog(error, Error::kNotSupported,
                           kWakeOnIPAddressPatternsNotSupported);
-  } else if (wake_on_wifi_triggers_.size() >= wake_on_wifi_max_patterns_) {
+    return;
+  }
+  IPAddress ip_addr(ip_endpoint);
+  if (!ip_addr.IsValid()) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Invalid ip_address " + ip_endpoint);
+    return;
+  }
+  if (wake_on_wifi_triggers_.size() >= wake_on_wifi_max_patterns_) {
     Error::PopulateAndLog(
         error, Error::kOperationFailed,
         "Max number of IP address patterns already registered");
-  } else {
-    wake_on_packet_connections_.AddUnique(ip_endpoint);
+    return;
   }
+  wake_on_packet_connections_.AddUnique(ip_addr);
 #else
   Error::PopulateAndLog(error, Error::kNotSupported, kWakeOnWiFiDisabled);
 #endif  // DISABLE_WAKE_ON_WIFI
 }
 
-void WakeOnWiFi::RemoveWakeOnPacketConnection(const IPAddress &ip_endpoint,
+void WakeOnWiFi::RemoveWakeOnPacketConnection(const string &ip_endpoint,
                                               Error *error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
   if (!WakeOnPacketEnabled()) {
     Error::PopulateAndLog(error, Error::kOperationFailed,
                           kWakeOnPacketDisabled);
-  } else if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
-             wake_on_wifi_triggers_supported_.end()) {
+    return;
+  }
+  if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
+      wake_on_wifi_triggers_supported_.end()) {
     Error::PopulateAndLog(error, Error::kNotSupported,
                           kWakeOnIPAddressPatternsNotSupported);
-  } else if (!wake_on_packet_connections_.Contains(ip_endpoint)) {
+    return;
+  }
+  IPAddress ip_addr(ip_endpoint);
+  if (!ip_addr.IsValid()) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Invalid ip_address " + ip_endpoint);
+    return;
+  }
+  if (!wake_on_packet_connections_.Contains(ip_addr)) {
     Error::PopulateAndLog(error, Error::kNotFound,
                           "No such IP address match registered to wake device");
-  } else {
-    wake_on_packet_connections_.Remove(ip_endpoint);
+    return;
   }
+  wake_on_packet_connections_.Remove(ip_addr);
 #else
   Error::PopulateAndLog(error, Error::kNotSupported, kWakeOnWiFiDisabled);
 #endif  // DISABLE_WAKE_ON_WIFI
@@ -563,13 +583,15 @@ void WakeOnWiFi::RemoveAllWakeOnPacketConnections(Error *error) {
   if (!WakeOnPacketEnabled()) {
     Error::PopulateAndLog(error, Error::kOperationFailed,
                           kWakeOnPacketDisabled);
-  } else if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
-             wake_on_wifi_triggers_supported_.end()) {
+    return;
+  }
+  if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
+      wake_on_wifi_triggers_supported_.end()) {
     Error::PopulateAndLog(error, Error::kNotSupported,
                           kWakeOnIPAddressPatternsNotSupported);
-  } else {
-    wake_on_packet_connections_.Clear();
+    return;
   }
+  wake_on_packet_connections_.Clear();
 #else
   Error::PopulateAndLog(error, Error::kNotSupported, kWakeOnWiFiDisabled);
 #endif  // DISABLE_WAKE_ON_WIFI

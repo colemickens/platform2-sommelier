@@ -252,4 +252,29 @@ void DeviceDBusAdaptor::SetCarrier(const string &carrier,
   ReturnResultOrDefer(tag, e, &error);
 }
 
+void DeviceDBusAdaptor::AddWakeOnPacketConnection(
+    const string &ip_endpoint,
+    DBus::Error &error) {  // NOLINT
+  SLOG(this, 2) << __func__;
+  Error e;
+  device_->AddWakeOnPacketConnection(ip_endpoint, &e);
+  e.ToDBusError(&error);
+}
+
+void DeviceDBusAdaptor::RemoveWakeOnPacketConnection(
+    const string &ip_endpoint, DBus::Error &error) {  // NOLINT
+  SLOG(this, 2) << __func__;
+  Error e;
+  device_->RemoveWakeOnPacketConnection(ip_endpoint, &e);
+  e.ToDBusError(&error);
+}
+
+void DeviceDBusAdaptor::RemoveAllWakeOnPacketConnections(
+    DBus::Error &error) {  // NOLINT
+  SLOG(this, 2) << __func__;
+  Error e;
+  device_->RemoveAllWakeOnPacketConnections(&e);
+  e.ToDBusError(&error);
+}
+
 }  // namespace shill
