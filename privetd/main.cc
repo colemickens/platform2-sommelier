@@ -7,6 +7,7 @@
 
 #include <base/bind.h>
 #include <base/command_line.h>
+#include <base/strings/string_number_conversions.h>
 #include <chromeos/daemons/dbus_daemon.h>
 #include <chromeos/http/http_request.h>
 #include <chromeos/mime_utils.h>
@@ -16,13 +17,14 @@
 #include <libwebserv/server.h>
 
 namespace {
-
 const char kHelpFlag[] = "help";
+const char kPort[] = "port";
 const char kLogToStdErrFlag[] = "log_to_stderr";
 const char kHelpMessage[] = "\n"
     "This is the Privet protocol handler daemon.\n"
     "Usage: privetd [--v=<logging level>]\n"
     "               [--vmodule=<see base/logging.h>]\n"
+    "               [--port=<tcp_port>]\n"
     "               [--log_to_stderr]";
 
 using libwebserv::Request;
@@ -38,14 +40,14 @@ void HelloWorldRequestHandler(const std::shared_ptr<const Request>& request,
 
 class Daemon : public chromeos::DBusDaemon {
  public:
-  Daemon() {}
+  explicit Daemon(uint16_t port_number) : port_number_(port_number) {}
 
   int OnInit() override {
     int ret = DBusDaemon::OnInit();
     if (ret != EX_OK)
       return EX_OK;
 
-    if (!web_server_.Start(8080))
+    if (!web_server_.Start(port_number_))
       return EX_UNAVAILABLE;
     web_server_.AddHandlerCallback("/privet/",
                                    chromeos::http::request_type::kGet,
@@ -60,6 +62,7 @@ class Daemon : public chromeos::DBusDaemon {
 
  private:
   libwebserv::Server web_server_;
+  uint16_t port_number_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
@@ -77,7 +80,17 @@ int main(int argc, char* argv[]) {
   if (cl->HasSwitch(kLogToStdErrFlag)) {
     flags = chromeos::kLogToStderr;
   }
+  uint16_t port_number = 8080;  // Default port to use.
+  if (cl->HasSwitch(kPort)) {
+    std::string port_str = cl->GetSwitchValueASCII(kPort);
+    int value = 0;
+    if (!base::StringToInt(port_str, &value) || value < 1 || value > 0xFFFF) {
+      LOG(ERROR) << "Invalid port number specified: '" << port_str << "'.";
+      return EX_USAGE;
+    }
+    port_number = value;
+  }
   chromeos::InitLog(flags | chromeos::kLogHeader);
-  Daemon daemon;
+  Daemon daemon(port_number);
   return daemon.Run();
 }
