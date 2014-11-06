@@ -105,7 +105,7 @@ class AvahiServicePublisherTest : public ::testing::Test {
                                                 ObjectPath{kServicePath}}};
     chromeos::ErrorPtr error;
     EXPECT_TRUE(new_service->RegisterAsync(
-        &error, service_id, {}, info,
+        &error, service_id, {}, info, {},
         MakeMockCompletionAction()));
     EXPECT_EQ(nullptr, error.get());
     return new_service;

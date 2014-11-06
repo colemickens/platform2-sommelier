@@ -40,11 +40,11 @@ class MockPublishedPeer : public PublishedPeer {
   MOCK_METHOD2(SetLastSeen, bool(chromeos::ErrorPtr* error,
                                  const base::Time& last_seen));
 
-  MOCK_METHOD4(AddService,
+  MOCK_METHOD4(AddPublishedService,
                bool(chromeos::ErrorPtr* error,
                     const std::string& service_id,
-                    const std::vector<ip_addr>& addresses,
-                    const std::map<std::string, std::string>& service_info));
+                    const std::map<std::string, std::string>& service_info,
+                    const std::map<std::string, chromeos::Any>& options));
   MOCK_METHOD2(RemoveService, bool(chromeos::ErrorPtr* error,
                                    const std::string& service_id));
   MOCK_METHOD1(RegisterServicePublisher,

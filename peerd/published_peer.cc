@@ -10,12 +10,12 @@ using base::WeakPtr;
 
 namespace peerd {
 
-bool PublishedPeer::AddService(
+bool PublishedPeer::AddPublishedService(
     chromeos::ErrorPtr* error,
     const std::string& service_id,
-    const std::vector<ip_addr>& addresses,
-    const std::map<std::string, std::string>& service_info) {
-  if (!Peer::AddService(error, service_id, addresses, service_info)) {
+    const std::map<std::string, std::string>& service_info,
+    const std::map<std::string, chromeos::Any>& options) {
+  if (!Peer::AddService(error, service_id, {}, service_info, options)) {
     return false;
   }
   bool success = true;

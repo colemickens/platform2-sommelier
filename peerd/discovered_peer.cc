@@ -65,7 +65,7 @@ void DiscoveredPeer::UpdateService(const std::string& service_id,
     return;
   }
   // A new service is discovered!  Exposed it over DBus and update our metadata.
-  if (!Peer::AddService(nullptr, service_id, addresses, info)) {
+  if (!Peer::AddService(nullptr, service_id, addresses, info, {})) {
     LOG(WARNING) << "Failed to publish discovered service over DBus.";
     return;
   }

@@ -15,6 +15,7 @@
 
 using base::Time;
 using base::TimeDelta;
+using chromeos::Any;
 using chromeos::Error;
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::DBusInterface;
@@ -106,7 +107,8 @@ bool Peer::IsValidUpdateTime(chromeos::ErrorPtr* error,
 bool Peer::AddService(chromeos::ErrorPtr* error,
                       const string& service_id,
                       const vector<ip_addr>& addresses,
-                      const map<string, string>& service_info) {
+                      const map<string, string>& service_info,
+                      const map<string, Any>& options) {
   ObjectPath service_path(service_path_prefix_.value() +
                           std::to_string(++services_added_));
   // TODO(wiley): There is a potential race here.  If we remove the service
@@ -117,7 +119,7 @@ bool Peer::AddService(chromeos::ErrorPtr* error,
   unique_ptr<Service> new_service{new Service{
       bus_, dbus_object_->GetObjectManager().get(), service_path}};
   const bool success = new_service->RegisterAsync(
-      error, service_id, addresses, service_info,
+      error, service_id, addresses, service_info, options,
       sequencer->GetHandler("Failed exporting service.", true));
   if (success) {
     services_.emplace(service_id, std::move(new_service));

@@ -202,6 +202,7 @@ bool Manager::StopMonitoring(chromeos::ErrorPtr* error,
 bool Manager::ExposeService(chromeos::ErrorPtr* error,
                             const string& service_id,
                             const map<string, string>& service_info,
+                            const map<string, Any>& options,
                             std::string* service_token) {
   VLOG(1) << "Exposing service '" << service_id << "'.";
   if (service_id == kSerbusServiceId) {
@@ -212,7 +213,7 @@ bool Manager::ExposeService(chromeos::ErrorPtr* error,
                        kSerbusServiceId);
     return false;
   }
-  if (!self_->AddService(error, service_id, {}, service_info)) {
+  if (!self_->AddPublishedService(error, service_id, service_info, options)) {
     return false;
   }
   *service_token = "service_token_" + std::to_string(++services_added_);

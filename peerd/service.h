@@ -25,6 +25,7 @@ namespace service {
 
 extern const char kInvalidServiceId[];
 extern const char kInvalidServiceInfo[];
+extern const char kInvalidServiceOptions[];
 
 }  // namespace service
 }  // namespace errors
@@ -35,6 +36,9 @@ class Service {
  public:
   using ServiceInfo = std::map<std::string, std::string>;
   using IpAddresses = std::vector<ip_addr>;
+  struct MDnsOptions {
+    uint16_t port = 0;
+  };
 
   static bool IsValidServiceId(chromeos::ErrorPtr* error,
                                const std::string& service_id);
@@ -56,6 +60,7 @@ class Service {
       const std::string& service_id,
       const IpAddresses& addresses,
       const ServiceInfo& service_info,
+      const std::map<std::string, chromeos::Any>& options,
       const CompletionAction& completion_callback);
   virtual ~Service() = default;
 
@@ -63,6 +68,7 @@ class Service {
   const std::string& GetServiceId() const;
   const IpAddresses& GetIpAddresses() const;
   const ServiceInfo& GetServiceInfo() const;
+  const MDnsOptions& GetMDnsOptions() const;
 
   // Update fields of this service.  If any field is found to be invalid, the
   // entire update is discarded.  Returns true if update is applied.
@@ -71,10 +77,21 @@ class Service {
               const ServiceInfo& info);
 
  private:
+  // Parses options for services being published by this device.
+  bool ParseOptions(chromeos::ErrorPtr* error,
+                    const std::map<std::string, chromeos::Any>& options);
+  // Checks that |maybe_mdns_options| is a map<string, Any> and then removes
+  // values from that dictionary.  Stores the appropriate parsed values into
+  // |mdns_options_|.
+  bool ExtractMDnsOptions(chromeos::ErrorPtr* error,
+                          chromeos::Any* maybe_mdns_options);
+
+
   chromeos::dbus_utils::ExportedProperty<std::string> service_id_;
   chromeos::dbus_utils::ExportedProperty<IpAddresses> ip_addresses_;
   chromeos::dbus_utils::ExportedProperty<ServiceInfo> service_info_;
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  MDnsOptions parsed_mdns_options_;
 
   friend class AvahiServicePublisherTest;
   friend class ServiceTest;

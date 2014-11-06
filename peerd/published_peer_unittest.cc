@@ -65,17 +65,15 @@ TEST_F(PublishedPeerTest, ShouldNotifyExistingPublishersOnServiceAdded) {
   ErrorPtr error;
   peer_.RegisterServicePublisher(publisher->weak_ptr_factory_.GetWeakPtr());
   EXPECT_CALL(*publisher, OnServiceUpdated(&error, _)).WillOnce(Return(true));
-  EXPECT_TRUE(peer_.AddService(
-        &error, "some-service",
-        Service::IpAddresses(), Service::ServiceInfo()));
+  EXPECT_TRUE(peer_.AddPublishedService(
+        &error, "some-service", Service::ServiceInfo{}, {}));
   EXPECT_EQ(nullptr, error.get());
 }
 
 TEST_F(PublishedPeerTest, ShouldNotifyNewPublisherAboutExistingServices) {
   ErrorPtr error;
-  EXPECT_TRUE(peer_.AddService(
-        &error, "some-service",
-        Service::IpAddresses(), Service::ServiceInfo()));
+  EXPECT_TRUE(peer_.AddPublishedService(
+        &error, "some-service", Service::ServiceInfo{}, {}));
   EXPECT_EQ(nullptr, error.get());
   unique_ptr<MockServicePublisher> publisher(new MockServicePublisher());
   EXPECT_CALL(*publisher, OnServiceUpdated(nullptr, _)).WillOnce(Return(true));
@@ -84,9 +82,8 @@ TEST_F(PublishedPeerTest, ShouldNotifyNewPublisherAboutExistingServices) {
 
 TEST_F(PublishedPeerTest, ShouldPrunePublisherList) {
   ErrorPtr error;
-  EXPECT_TRUE(peer_.AddService(
-        &error, "some-service",
-        Service::IpAddresses(), Service::ServiceInfo()));
+  EXPECT_TRUE(peer_.AddPublishedService(
+        &error, "some-service", Service::ServiceInfo{}, {}));
   EXPECT_EQ(nullptr, error.get());
   unique_ptr<MockServicePublisher> publisher(new MockServicePublisher());
   unique_ptr<MockServicePublisher> publisher2(new MockServicePublisher());
@@ -98,9 +95,8 @@ TEST_F(PublishedPeerTest, ShouldPrunePublisherList) {
   peer_.RegisterServicePublisher(publisher2->weak_ptr_factory_.GetWeakPtr());
   publisher.reset();
   // At this point, we should notice that |publisher| has been deleted.
-  EXPECT_TRUE(peer_.AddService(
-        &error, "another-service",
-        Service::IpAddresses(), Service::ServiceInfo()));
+  EXPECT_TRUE(peer_.AddPublishedService(
+        &error, "another-service", Service::ServiceInfo{}, {}));
   EXPECT_EQ(nullptr, error.get());
 }
 

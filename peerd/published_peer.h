@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
+#include <chromeos/any.h>
 #include <chromeos/errors/error.h>
 
 #include "peerd/peer.h"
@@ -21,12 +22,13 @@ class PublishedPeer : public Peer {
  public:
   using Peer::Peer;
   ~PublishedPeer() override = default;
-  // Overloads to add service publishing functionality.
-  bool AddService(
+  // Add a local service to publish over DBus.
+  virtual bool AddPublishedService(
       chromeos::ErrorPtr* error,
       const std::string& service_id,
-      const std::vector<ip_addr>& addresses,
-      const std::map<std::string, std::string>& service_info) override;
+      const std::map<std::string, std::string>& service_info,
+      const std::map<std::string, chromeos::Any>& options);
+  // Overloaded to add service publishing functionality.
   bool RemoveService(chromeos::ErrorPtr* error,
                      const std::string& service_id) override;
 

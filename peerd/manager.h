@@ -69,6 +69,7 @@ class Manager {
       chromeos::ErrorPtr* error,
       const std::string& service_id,
       const std::map<std::string, std::string>& service_info,
+      const std::map<std::string, chromeos::Any>& options,
       std::string* service_token);
 
   bool RemoveExposedService(

@@ -24,6 +24,17 @@ const char kSerbusServiceDelimiter = '.';
 
 }  // namespace mdns
 
+namespace options {
+
+namespace service {
+
+const char kMDNSSectionName[] = "mdns";
+const char kMDNSPort[] = "port";
+
+}  // namespace service
+
+}  // namespace options
+
 }  // namespace constants
 
 }  // namespace peerd
