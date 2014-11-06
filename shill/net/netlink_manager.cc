@@ -244,14 +244,12 @@ void NetlinkManager::OnNetlinkMessageError(AuxilliaryMessageType type,
       if (raw_message->message_type() == ErrorAckMessage::GetMessageType()) {
         const ErrorAckMessage *error_ack_message =
             dynamic_cast<const ErrorAckMessage *>(raw_message);
-        if (error_ack_message->error()) {
-          LOG(ERROR) << __func__ << ": Message (seq: "
-                     << error_ack_message->sequence_number() << ") failed: "
-                     << error_ack_message->ToString();
-        } else {
-          VLOG(6) << __func__ << ": Message (seq: "
-                  << error_ack_message->sequence_number() << ") ACKed";
-        }
+        // error_ack_message->error() should be non-zero (i.e. not an ACK),
+        // since ACKs would be routed to a NetlinkAckHandler in
+        // NetlinkManager::OnNlMessageReceived.
+        LOG(ERROR) << __func__
+                   << ": Message (seq: " << error_ack_message->sequence_number()
+                   << ") failed: " << error_ack_message->ToString();
       }
       break;
 
