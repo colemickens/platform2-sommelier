@@ -397,7 +397,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
         }
       }
     }
-    if (tpm_unwrap_success) {
+    if (!tpm_unwrap_success) {
       LOG(ERROR) << "The TPM failed to unwrap the intermediate key with the "
                  << "supplied credentials";
       if (error)
