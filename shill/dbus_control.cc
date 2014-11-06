@@ -16,7 +16,7 @@
 #include "shill/profile_dbus_adaptor.h"
 #include "shill/rpc_task_dbus_adaptor.h"
 #include "shill/service_dbus_adaptor.h"
-#include "shill/third_party_vpn_dbus_adaptor.h"
+#include "shill/vpn/third_party_vpn_dbus_adaptor.h"
 
 namespace shill {
 

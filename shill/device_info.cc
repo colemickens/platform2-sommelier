@@ -47,7 +47,7 @@
 #include "shill/routing_table.h"
 #include "shill/service.h"
 #include "shill/virtio_ethernet.h"
-#include "shill/vpn_provider.h"
+#include "shill/vpn/vpn_provider.h"
 #include "shill/wifi.h"
 
 using base::Bind;
