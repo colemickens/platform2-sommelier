@@ -324,7 +324,7 @@ TEST_F(TpmUtilityTest, RootKeysHandleConsistency) {
   EXPECT_CALL(mock_tpm_, CreatePrimarySyncShort(_, _, _, _, _, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<3>(test_handle),
                             Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, test_handle, _, _, _, _))
+  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, test_handle, _, _, _))
       .WillRepeatedly(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(TPM_RC_SUCCESS, utility.CreateStorageRootKeys("password"));
 }
@@ -338,7 +338,7 @@ TEST_F(TpmUtilityTest, RootKeysCreateFailure) {
 
 TEST_F(TpmUtilityTest, RootKeysPersistFailure) {
   TpmUtilityImpl utility(factory_);
-  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, _, _, _, _, _))
+  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, utility.CreateStorageRootKeys("password"));
 }

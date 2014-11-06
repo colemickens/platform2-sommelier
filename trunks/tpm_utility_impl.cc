@@ -307,7 +307,6 @@ TPM_RC TpmUtilityImpl::CreateStorageRootKeys(
                                  object_handle,
                                  StringFrom_TPM2B_NAME(object_name),
                                  kRSAStorageRootKey,
-                                 NameFromHandle(kRSAStorageRootKey),
                                  session_->GetDelegate());
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
@@ -360,7 +359,6 @@ TPM_RC TpmUtilityImpl::CreateStorageRootKeys(
                                  object_handle,
                                  StringFrom_TPM2B_NAME(object_name),
                                  kECCStorageRootKey,
-                                 NameFromHandle(kECCStorageRootKey),
                                  session_->GetDelegate());
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);

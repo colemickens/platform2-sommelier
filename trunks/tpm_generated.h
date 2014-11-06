@@ -6129,7 +6129,6 @@ class CHROMEOS_EXPORT Tpm {
       const TPMI_DH_OBJECT& object_handle,
       const std::string& object_handle_name,
       const TPMI_DH_PERSISTENT& persistent_handle,
-      const std::string& persistent_handle_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate);
   static TPM_RC ParseResponse_EvictControl(
@@ -6141,7 +6140,6 @@ class CHROMEOS_EXPORT Tpm {
       const TPMI_DH_OBJECT& object_handle,
       const std::string& object_handle_name,
       const TPMI_DH_PERSISTENT& persistent_handle,
-      const std::string& persistent_handle_name,
       AuthorizationDelegate* authorization_delegate,
       const EvictControlResponse& callback);
   virtual TPM_RC EvictControlSync(
@@ -6150,7 +6148,6 @@ class CHROMEOS_EXPORT Tpm {
       const TPMI_DH_OBJECT& object_handle,
       const std::string& object_handle_name,
       const TPMI_DH_PERSISTENT& persistent_handle,
-      const std::string& persistent_handle_name,
       AuthorizationDelegate* authorization_delegate);
   typedef base::Callback<void(
       TPM_RC response_code,

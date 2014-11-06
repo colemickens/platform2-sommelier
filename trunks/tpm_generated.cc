@@ -34712,7 +34712,6 @@ TPM_RC Tpm::SerializeCommand_EvictControl(
       const TPMI_DH_OBJECT& object_handle,
       const std::string& object_handle_name,
       const TPMI_DH_PERSISTENT& persistent_handle,
-      const std::string& persistent_handle_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(2) << __func__;
@@ -34762,9 +34761,9 @@ TPM_RC Tpm::SerializeCommand_EvictControl(
                object_handle_name.size());
   handle_section_bytes += object_handle_bytes;
   command_size += object_handle_bytes.size();
-  hash->Update(persistent_handle_name.data(),
-               persistent_handle_name.size());
-  handle_section_bytes += persistent_handle_bytes;
+  hash->Update(persistent_handle_bytes.data(),
+               persistent_handle_bytes.size());
+  parameter_section_bytes += persistent_handle_bytes;
   command_size += persistent_handle_bytes.size();
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
@@ -34926,7 +34925,6 @@ void Tpm::EvictControl(
       const TPMI_DH_OBJECT& object_handle,
       const std::string& object_handle_name,
       const TPMI_DH_PERSISTENT& persistent_handle,
-      const std::string& persistent_handle_name,
       AuthorizationDelegate* authorization_delegate,
       const EvictControlResponse& callback) {
   VLOG(1) << __func__;
@@ -34943,7 +34941,6 @@ void Tpm::EvictControl(
       object_handle,
       object_handle_name,
       persistent_handle,
-      persistent_handle_name,
       &command,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
@@ -34959,7 +34956,6 @@ TPM_RC Tpm::EvictControlSync(
       const TPMI_DH_OBJECT& object_handle,
       const std::string& object_handle_name,
       const TPMI_DH_PERSISTENT& persistent_handle,
-      const std::string& persistent_handle_name,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(1) << __func__;
   std::string command;
@@ -34969,7 +34965,6 @@ TPM_RC Tpm::EvictControlSync(
       object_handle,
       object_handle_name,
       persistent_handle,
-      persistent_handle_name,
       &command,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
