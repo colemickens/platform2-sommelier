@@ -47,12 +47,12 @@ class LIBWEBSERV_EXPORT Response
   void Reply(int status_code,
              const void* data,
              size_t data_size,
-             const char* mime_type);
+             const std::string& mime_type);
 
   // Reply with text body.
   void ReplyWithText(int status_code,
                      const std::string& text,
-                     const char* mime_type);
+                     const std::string& mime_type);
 
   // Reply with JSON object. The content type will be "application/json".
   void ReplyWithJson(int status_code, const base::Value* json);

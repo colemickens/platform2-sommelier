@@ -84,21 +84,18 @@ void Response::AddHeaders(
 void Response::Reply(int status_code,
                      const void* data,
                      size_t data_size,
-                     const char* mime_type) {
+                     const std::string& mime_type) {
   status_code_ = status_code;
   const uint8_t* byte_ptr = static_cast<const uint8_t*>(data);
   data_.assign(byte_ptr, byte_ptr + data_size);
-  std::string data_mime_type =
-      mime_type ? mime_type : chromeos::mime::application::kOctet_stream;
-  AddHeader(chromeos::http::response_header::kContentType, data_mime_type);
+  AddHeader(chromeos::http::response_header::kContentType, mime_type);
   SendResponse();
 }
 
 void Response::ReplyWithText(int status_code,
                              const std::string& text,
-                             const char* mime_type) {
-  Reply(status_code, text.data(), text.size(),
-        mime_type ? mime_type : chromeos::mime::text::kPlain);
+                             const std::string& mime_type) {
+  Reply(status_code, text.data(), text.size(), mime_type);
 }
 
 void Response::ReplyWithJson(int status_code, const base::Value* json) {
@@ -129,8 +126,7 @@ void Response::Redirect(int status_code, const std::string& redirect_url) {
 
 void Response::ReplyWithError(int status_code, const std::string& error_text) {
   status_code_ = status_code;
-  const char* ptr = error_text.data();
-  data_.assign(ptr, ptr + error_text.size());
+  data_.assign(error_text.begin(), error_text.end());
   SendResponse();
 }
 
