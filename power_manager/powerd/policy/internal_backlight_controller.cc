@@ -620,16 +620,22 @@ void InternalBacklightController::UpdateState() {
         chromeos::DISPLAY_POWER_ALL_ON;
   }
 
+  if (set_display_power) {
+    SetDisplayPower(display_power,
+                    TransitionStyleToTimeDelta(display_transition));
+  }
+
+  // Apply the brightess after toggling the display power since the bl_power
+  // sysfs interface is an asynchronous request.  If we do it the other way
+  // around, then the brightness we set here has a potential to get interleaved
+  // with the display power toggle operation in some drivers resulting in the
+  // brightness getting set to the last value we applied.  See
+  // chrome-os-partner:31186 for more details.
   ApplyBrightnessPercent(brightness_percent, brightness_transition,
                          BRIGHTNESS_CHANGE_AUTOMATED);
 
   if (resume_percent >= 0.0)
     ApplyResumeBrightnessPercent(resume_percent);
-
-  if (set_display_power) {
-    SetDisplayPower(display_power,
-                    TransitionStyleToTimeDelta(display_transition));
-  }
 
   already_set_initial_state_ = true;
 }
