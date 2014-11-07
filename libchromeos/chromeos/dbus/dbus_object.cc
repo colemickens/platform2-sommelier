@@ -145,16 +145,10 @@ DBusInterface* DBusObject::AddOrGetInterface(
   return iter->second.get();
 }
 
-DBusInterfaceMethodHandlerInterface* DBusObject::FindMethodHandler(
-      const std::string& interface_name, const std::string& method_name) const {
+DBusInterface* DBusObject::FindInterface(
+      const std::string& interface_name) const {
   auto itf_iter = interfaces_.find(interface_name);
-  if (itf_iter == interfaces_.end())
-    return nullptr;
-
-  auto handler_iter = itf_iter->second->handlers_.find(method_name);
-  if (handler_iter == itf_iter->second->handlers_.end())
-    return nullptr;
-  return handler_iter->second.get();
+  return (itf_iter == interfaces_.end()) ? nullptr : itf_iter->second.get();
 }
 
 void DBusObject::RegisterAsync(

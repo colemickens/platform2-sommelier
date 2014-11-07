@@ -19,6 +19,18 @@
 
 namespace chromeos {
 namespace dbus_utils {
+
+// Helper friend class to call DBusInterface::HandleMethodCall() since it is
+// a private method of the class and we don't want to make it public.
+class DBusInterfaceTestHelper {
+ public:
+  static void HandleMethodCall(DBusInterface* itf,
+                               dbus::MethodCall* method_call,
+                               ResponseSender sender) {
+    itf->HandleMethodCall(method_call, sender);
+  }
+};
+
 namespace testing {
 
 // This is a simple class that has weak pointer semantics and holds an
@@ -43,18 +55,18 @@ struct ResponseHolder : public base::SupportsWeakPtr<ResponseHolder> {
 // (i.e. it is asynchronous).
 inline std::unique_ptr<dbus::Response> CallMethod(
     const DBusObject& object, dbus::MethodCall* method_call) {
-  DBusInterfaceMethodHandlerInterface* handler = object.FindMethodHandler(
-      method_call->GetInterface(), method_call->GetMember());
+  DBusInterface* itf = object.FindInterface(method_call->GetInterface());
   std::unique_ptr<dbus::Response> response;
-  if (!handler) {
-    response = CreateDBusErrorResponse(method_call,
-                                       DBUS_ERROR_UNKNOWN_METHOD,
-                                       "Unknown method");
+  if (!itf) {
+    response = CreateDBusErrorResponse(
+        method_call,
+        DBUS_ERROR_UNKNOWN_INTERFACE,
+        "Interface you invoked a method on isn't known by the object.");
   } else {
     ResponseHolder response_holder;
-    handler->HandleMethod(method_call,
-                          base::Bind(&ResponseHolder::ReceiveResponse,
-                                     response_holder.AsWeakPtr()));
+    DBusInterfaceTestHelper::HandleMethodCall(
+      itf, method_call, base::Bind(&ResponseHolder::ReceiveResponse,
+                                   response_holder.AsWeakPtr()));
     response = std::move(response_holder.response_);
   }
   return response;

@@ -313,8 +313,7 @@ class CHROMEOS_EXPORT DBusInterface final {
   // A generic D-Bus method handler for the interface. It extracts the method
   // name from |method_call|, looks up a registered handler from |handlers_|
   // map and dispatched the call to that handler.
-  CHROMEOS_PRIVATE void HandleMethodCall(dbus::MethodCall* method_call,
-                                         ResponseSender sender);
+  void HandleMethodCall(dbus::MethodCall* method_call, ResponseSender sender);
   // Helper to add a handler for method |method_name| to the |handlers_| map.
   // Not marked CHROMEOS_PRIVATE because it needs to be called by the inline
   // template functions AddMethodHandler(...)
@@ -349,6 +348,7 @@ class CHROMEOS_EXPORT DBusInterface final {
   std::map<std::string, std::shared_ptr<DBusSignalBase>> signals_;
 
   friend class DBusObject;
+  friend class DBusInterfaceTestHelper;
   DBusObject* dbus_object_;
   std::string interface_name_;
 
@@ -372,17 +372,15 @@ class CHROMEOS_EXPORT DBusObject {
   // interface proxy does not exist yet, it will be automatically created.
   DBusInterface* AddOrGetInterface(const std::string& interface_name);
 
+  // Finds an interface with the given name. Returns nullptr if there is no
+  // interface registered by this name.
+  DBusInterface* FindInterface(const std::string& interface_name) const;
+
   // Registers the object instance with D-Bus. This is an asynchronous call
   // that will call |completion_callback| when the object and all of its
   // interfaces are registered.
   virtual void RegisterAsync(
       const AsyncEventSequencer::CompletionAction& completion_callback);
-
-  // Finds a handler for the given method of a specific interface.
-  // Returns nullptr if the interface is not registered or there is
-  // no method with the specified name found on that interface.
-  DBusInterfaceMethodHandlerInterface* FindMethodHandler(
-      const std::string& interface_name, const std::string& method_name) const;
 
   // Returns the ExportedObjectManager proxy, if any. If DBusObject has been
   // constructed without an object manager, this method returns an empty
