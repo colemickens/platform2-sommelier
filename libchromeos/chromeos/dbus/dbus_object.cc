@@ -77,7 +77,7 @@ void DBusInterface::HandleMethodCall(
           << interface_name << "." << method_name
           << "(" << method_call->GetSignature() << ")";
   auto pair = handlers_.find(method_name);
-  if (pair != handlers_.end()) {
+  if (pair == handlers_.end()) {
     auto response = dbus::ErrorResponse::FromMethodCall(
         method_call,
         DBUS_ERROR_UNKNOWN_METHOD,
