@@ -4,6 +4,7 @@
 
 #include "peerd/avahi_service_discoverer.h"
 
+#include <arpa/inet.h>
 #include <avahi-common/address.h>
 #include <avahi-common/defs.h>
 #include <base/message_loop/message_loop.h>
@@ -403,11 +404,37 @@ void AvahiServiceDiscoverer::HandleFound(dbus::Signal* signal) {
       LOG(ERROR) << "Found service for unknown peer.";
       return;
     }
-    Service::IpAddresses addresses;
-    // TODO(wiley) parse addresses
+    CHECK(protocol == protocol_) << "Resolved record for unexpected protocol.";
+    ip_addr addr;
+    memset(&addr, 0, sizeof(addr));
+    if (protocol == AVAHI_PROTO_INET) {
+      sockaddr_in* as_ipv4 = reinterpret_cast<sockaddr_in*>(&addr);
+      as_ipv4->sin_family = AF_INET;
+      as_ipv4->sin_port = port;
+      if (inet_pton(as_ipv4->sin_family,
+                    address.c_str(),
+                    &as_ipv4->sin_addr.s_addr) != 1) {
+        LOG(ERROR) << "Failed to parse IPv4 address.";
+        return;
+      }
+    } else if (protocol == AVAHI_PROTO_INET6) {
+      sockaddr_in6* as_ipv6 = reinterpret_cast<sockaddr_in6*>(&addr);
+      as_ipv6->sin6_family = AF_INET6;
+      as_ipv6->sin6_port = port;
+      if (inet_pton(as_ipv6->sin6_family,
+                    address.c_str(),
+                    &as_ipv6->sin6_addr.s6_addr) != 1) {
+        LOG(ERROR) << "Failed to parse IPv6 address.";
+        return;
+      }
+    } else {
+      LOG(ERROR) << "Received mDNS records over a protocol other than IPv4/6 ("
+                 << protocol << ")?";
+      return;
+    }
     peer_manager_->OnServiceDiscovered(
         it->second, AvahiClient::GetServiceId(type),
-        info, addresses, last_seen, technologies::kMDNS);
+        info, {addr}, last_seen, technologies::kMDNS);
   }
 }
 
