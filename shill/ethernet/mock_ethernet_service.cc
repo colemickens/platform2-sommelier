@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/mock_ethernet_service.h"
+#include "shill/ethernet/mock_ethernet_service.h"
 
-#include "shill/ethernet.h"  // Needed to pass an EthernetRefPtr.
+#include "shill/ethernet/ethernet.h"  // Needed to pass an EthernetRefPtr.
 
 namespace shill {
 

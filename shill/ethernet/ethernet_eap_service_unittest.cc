@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/ethernet_eap_service.h"
+#include "shill/ethernet/ethernet_eap_service.h"
 
 #include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
+#include "shill/ethernet/mock_ethernet_eap_provider.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
-#include "shill/mock_ethernet_eap_provider.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"

@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_ETHERNET_SERVICE_H_
-#define SHILL_MOCK_ETHERNET_SERVICE_H_
+#ifndef SHILL_ETHERNET_MOCK_ETHERNET_SERVICE_H_
+#define SHILL_ETHERNET_MOCK_ETHERNET_SERVICE_H_
 
 #include <string>
 
 #include <gmock/gmock.h>
 
-#include "shill/ethernet_service.h"
+#include "shill/ethernet/ethernet_service.h"
 
 namespace shill {
 
@@ -40,4 +40,4 @@ class MockEthernetService : public EthernetService {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_ETHERNET_SERVICE_H_
+#endif  // SHILL_ETHERNET_MOCK_ETHERNET_SERVICE_H_

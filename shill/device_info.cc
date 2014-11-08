@@ -32,7 +32,8 @@
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/device_stub.h"
-#include "shill/ethernet.h"
+#include "shill/ethernet/ethernet.h"
+#include "shill/ethernet/virtio_ethernet.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/net/ndisc.h"
@@ -46,7 +47,6 @@
 #include "shill/net/sockets.h"
 #include "shill/routing_table.h"
 #include "shill/service.h"
-#include "shill/virtio_ethernet.h"
 #include "shill/vpn/vpn_provider.h"
 #include "shill/wifi.h"
 

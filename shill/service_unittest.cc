@@ -17,7 +17,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/dbus_adaptor.h"
-#include "shill/ethernet_service.h"
+#include "shill/ethernet/ethernet_service.h"
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"

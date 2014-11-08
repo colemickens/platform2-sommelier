@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_ETHERNET_EAP_PROVIDER_H_
-#define SHILL_MOCK_ETHERNET_EAP_PROVIDER_H_
+#ifndef SHILL_ETHERNET_MOCK_ETHERNET_EAP_PROVIDER_H_
+#define SHILL_ETHERNET_MOCK_ETHERNET_EAP_PROVIDER_H_
 
-#include "shill/ethernet_eap_provider.h"
+#include "shill/ethernet/ethernet_eap_provider.h"
 
 #include <gmock/gmock.h>
 
-#include "shill/ethernet_eap_service.h"
+#include "shill/ethernet/ethernet_eap_service.h"
 
 namespace shill {
 
@@ -31,4 +31,4 @@ class MockEthernetEapProvider : public EthernetEapProvider {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_ETHERNET_EAP_PROVIDER_H_
+#endif  // SHILL_ETHERNET_MOCK_ETHERNET_EAP_PROVIDER_H_

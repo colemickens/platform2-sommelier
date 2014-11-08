@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/ethernet_eap_service.h"
+#include "shill/ethernet/ethernet_eap_service.h"
 
 #include <string>
 
 #include <base/strings/stringprintf.h>
 
 #include "shill/eap_credentials.h"
-#include "shill/ethernet_eap_provider.h"
+#include "shill/ethernet/ethernet_eap_provider.h"
 #include "shill/manager.h"
 #include "shill/technology.h"
 

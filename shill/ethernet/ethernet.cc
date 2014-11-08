@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/ethernet.h"
+#include "shill/ethernet/ethernet.h"
 
 #include <linux/ethtool.h>
 #include <netinet/ether.h>
@@ -25,8 +25,8 @@
 #include "shill/device_info.h"
 #include "shill/eap_credentials.h"
 #include "shill/eap_listener.h"
-#include "shill/ethernet_eap_provider.h"
-#include "shill/ethernet_service.h"
+#include "shill/ethernet/ethernet_eap_provider.h"
+#include "shill/ethernet/ethernet_service.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/manager.h"

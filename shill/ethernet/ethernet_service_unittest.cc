@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/ethernet_service.h"
+#include "shill/ethernet/ethernet_service.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/ethernet/mock_ethernet.h"
 #include "shill/mock_adaptors.h"
-#include "shill/mock_ethernet.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_store.h"
 #include "shill/property_store_unittest.h"
