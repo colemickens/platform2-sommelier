@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/linked_ptr.h>
+#include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 
 #include "power_manager/common/power_constants.h"
@@ -38,11 +39,32 @@ class InputWatcher : public InputWatcherInterface,
   // udev subsystem to watch for input device-related events.
   static const char kInputUdevSubsystem[];
 
+  // Physical location (as returned by EVIOCGPHYS()) of power button devices
+  // that should be skipped.
+  //
+  // Skip input events from the ACPI power button (identified as LNXPWRBN) if a
+  // new power button is present on the keyboard.
+  static const char kPowerButtonToSkip[];
+
+  // Skip input events that are on the built-in keyboard if a legacy power
+  // button is used. Many of these devices advertise a power button but do not
+  // physically have one. Skipping will reduce the wasteful waking of powerd due
+  // to keyboard events.
+  static const char kPowerButtonToSkipForLegacy[];
+
   InputWatcher();
   virtual ~InputWatcher();
 
-  void set_sysfs_input_path_for_testing(const base::FilePath& path) {
-    sysfs_input_path_for_testing_ = path;
+  void set_dev_input_path_for_testing(const base::FilePath& path) {
+    dev_input_path_ = path;
+  }
+  void set_sys_class_input_path_for_testing(const base::FilePath& path) {
+    sys_class_input_path_ = path;
+  }
+  // Leaves the InputWatcher in an unusable state, but useful for tests that
+  // want to use the same factory across multiple InputWatchers.
+  EventDeviceFactoryInterface* release_event_device_factory_for_testing() {
+    return event_device_factory_.release();
   }
 
   // Returns true on success.
@@ -84,6 +106,9 @@ class InputWatcher : public InputWatcherInterface,
 
   // Notifies observers about |event| if came from a lid switch or power button.
   void NotifyObserversAboutEvent(const input_event& event);
+
+  base::FilePath dev_input_path_;
+  base::FilePath sys_class_input_path_;
 
   // Factory to access EventDevices.
   scoped_ptr<EventDeviceFactoryInterface> event_device_factory_;
@@ -143,6 +168,8 @@ class InputWatcher : public InputWatcherInterface,
   // Used by IsUSBInputDeviceConnected() instead of the default path if
   // non-empty.
   base::FilePath sysfs_input_path_for_testing_;
+
+  base::WeakPtrFactory<InputWatcher> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(InputWatcher);
 };

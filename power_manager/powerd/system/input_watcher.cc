@@ -15,6 +15,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/message_loop/message_loop.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -49,19 +50,6 @@ const char kBluetoothMatchString[] = "bluetooth";
 // Path to the console device where VT_GETSTATE ioctls are made to get the
 // currently-active VT.
 const char kConsolePath[] = "/dev/tty0";
-
-// Physical location (as returned by EVIOCGPHYS()) of power button devices that
-// should be skipped.
-//
-// Skip input events from the ACPI power button (identified as LNXPWRBN) if a
-// new power button is present on the keyboard.
-const char kPowerButtonToSkip[] = "LNXPWRBN";
-
-// Skip input events that are on the built-in keyboard if a legacy power button
-// is used. Many of these devices advertise a power button but do not physically
-// have one. Skipping will reduce the wasteful waking of powerd due to keyboard
-// events.
-const char kPowerButtonToSkipForLegacy[] = "isa";
 
 // Given a string |name| consisting of kInputBaseName followed by a base-10
 // integer, extracts the integer to |num_out|. Returns false if |name| didn't
@@ -103,9 +91,13 @@ bool GetPowerButtonStateFromEvent(const input_event& event,
 }  // namespace
 
 const char InputWatcher::kInputUdevSubsystem[] = "input";
+const char InputWatcher::kPowerButtonToSkip[] = "LNXPWRBN";
+const char InputWatcher::kPowerButtonToSkipForLegacy[] = "isa";
 
 InputWatcher::InputWatcher()
-    : lid_device_(NULL),
+    : dev_input_path_(kDevInputPath),
+      sys_class_input_path_(kSysClassInputPath),
+      lid_device_(NULL),
       hover_device_(NULL),
       use_lid_(true),
       lid_state_(LID_OPEN),
@@ -115,7 +107,8 @@ InputWatcher::InputWatcher()
       multitouch_slots_hover_state_(0),
       power_button_to_skip_(kPowerButtonToSkip),
       console_fd_(-1),
-      udev_(NULL) {
+      udev_(NULL),
+      weak_ptr_factory_(this) {
 }
 
 InputWatcher::~InputWatcher() {
@@ -145,21 +138,13 @@ bool InputWatcher::Init(
 
   udev_->AddSubsystemObserver(kInputUdevSubsystem, this);
 
-  // Don't bother doing anything more if we're running under a test.
-  if (!sysfs_input_path_for_testing_.empty())
-    return true;
-
-  if ((console_fd_ = open(kConsolePath, O_WRONLY)) == -1)
-    PLOG(ERROR) << "Unable to open " << kConsolePath;
-
-  base::FilePath input_dir(kDevInputPath);
-  if (!base::DirectoryExists(input_dir) ||
-      access(kDevInputPath, R_OK|X_OK) != 0) {
-    LOG(ERROR) << input_dir.value() << " isn't a readable directory";
+  if (!base::DirectoryExists(dev_input_path_) ||
+      access(dev_input_path_.value().c_str(), R_OK|X_OK) != 0) {
+    LOG(ERROR) << dev_input_path_.value() << " isn't a readable directory";
     return false;
   }
   base::FileEnumerator enumerator(
-      input_dir, false, base::FileEnumerator::FILES);
+      dev_input_path_, false, base::FileEnumerator::FILES);
   for (base::FilePath path = enumerator.Next(); !path.empty();
        path = enumerator.Next()) {
     const std::string name = path.BaseName().value();
@@ -214,11 +199,7 @@ LidState InputWatcher::QueryLidState() {
 }
 
 bool InputWatcher::IsUSBInputDeviceConnected() const {
-  base::FileEnumerator enumerator(
-      sysfs_input_path_for_testing_.empty() ?
-          base::FilePath(kSysClassInputPath) :
-          sysfs_input_path_for_testing_,
-      false,
+  base::FileEnumerator enumerator(sys_class_input_path_, false,
       static_cast<::base::FileEnumerator::FileType>(
           base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS),
       kInputMatchPattern);
@@ -249,6 +230,15 @@ bool InputWatcher::IsUSBInputDeviceConnected() const {
 }
 
 int InputWatcher::GetActiveVT() {
+  // It's not worthwhile creating an interface around this single ioctl to query
+  // the active VT. Defer opening the console until this method is called so
+  // that unit tests can step around this code.
+  if (console_fd_ < 0) {
+    if ((console_fd_ = open(kConsolePath, O_WRONLY)) == -1) {
+      PLOG(ERROR) << "Unable to open " << kConsolePath;
+      return -1;
+    }
+  }
   struct vt_stat state;
   if (ioctl(console_fd_, VT_GETSTATE, &state) == -1) {
     PLOG(ERROR) << "VT_GETSTATE ioctl on " << kConsolePath << "failed";
@@ -259,7 +249,7 @@ int InputWatcher::GetActiveVT() {
 
 void InputWatcher::OnUdevEvent(const std::string& subsystem,
                                const std::string& sysname,
-                        UdevAction action) {
+                               UdevAction action) {
   DCHECK_EQ(subsystem, kInputUdevSubsystem);
   int input_num = -1;
   if (GetInputNumber(sysname, &input_num)) {
@@ -357,9 +347,8 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
     return;
   }
 
-  base::FilePath path = base::FilePath(kDevInputPath).Append(input_name);
-  linked_ptr<EventDeviceInterface> device(
-      event_device_factory_->Open(path.value()));
+  const base::FilePath path = dev_input_path_.Append(input_name);
+  linked_ptr<EventDeviceInterface> device(event_device_factory_->Open(path));
   if (!device.get()) {
     LOG(ERROR) << "Failed to open " << path.value();
     return;
@@ -391,7 +380,7 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
     VLOG(1) << "Initial lid state is " << LidStateToString(lid_state_);
   }
 
-  if (detect_hover_ && device->IsHoverSupported() && device->HasLeftButton()) {
+  if (detect_hover_ && device->HoverSupported() && device->HasLeftButton()) {
     if (hover_device_) {
       LOG(WARNING) << "Skipping additional hover device "
                    << device->GetDebugName();
@@ -404,7 +393,7 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
 
   if (should_watch) {
     device->WatchForEvents(base::Bind(&InputWatcher::OnNewEvents,
-                                      base::Unretained(this),
+                                      weak_ptr_factory_.GetWeakPtr(),
                                       base::Unretained(device.get())));
     event_devices_.insert(std::make_pair(input_num, device));
   }

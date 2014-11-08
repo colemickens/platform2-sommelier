@@ -28,7 +28,7 @@ static constexpr int kMaxBit = MAX(MAX(EV_MAX, KEY_MAX), SW_MAX);
 
 // EventDevice
 
-EventDevice::EventDevice(int fd, const std::string& path)
+EventDevice::EventDevice(int fd, const base::FilePath& path)
     : fd_(fd),
       path_(path) {
 }
@@ -41,14 +41,14 @@ EventDevice::~EventDevice() {
 }
 
 std::string EventDevice::GetDebugName() {
-  return path_;
+  return path_.value();
 }
 
 std::string EventDevice::GetPhysPath() {
   char phys[256] = "";
 
   if (ioctl(fd_, EVIOCGPHYS(sizeof(phys)), phys) < 0 && errno != ENOENT)
-    PLOG(ERROR) << "Could not get topo phys path of device " << path_;
+    PLOG(ERROR) << "Could not get topo phys path of " << path_.value();
 
   return phys;
 }
@@ -61,7 +61,7 @@ bool EventDevice::IsPowerButton() {
   return HasEventBit(0, EV_KEY) && HasEventBit(EV_KEY, KEY_POWER);
 }
 
-bool EventDevice::IsHoverSupported() {
+bool EventDevice::HoverSupported() {
   return HasEventBit(0, EV_ABS) && HasEventBit(EV_ABS, ABS_MT_DISTANCE);
 }
 
@@ -81,7 +81,7 @@ bool EventDevice::HasEventBit(int event_type, int bit) {
   unsigned long bitmask[BITS_TO_LONGS(kMaxBit+1)];  // NOLINT(runtime/int)
   memset(bitmask, 0, sizeof(bitmask));
   if (ioctl(fd_, EVIOCGBIT(event_type, sizeof(bitmask)), bitmask) < 0) {
-    PLOG(ERROR) << "EVIOCGBIT failed for device " << path_;
+    PLOG(ERROR) << "EVIOCGBIT failed for " << path_.value();
     return false;
   }
   return BITMASK_GET_BIT(bitmask, bit);
@@ -94,7 +94,7 @@ bool EventDevice::GetSwitchBit(int bit) {
   unsigned long bitmask[BITS_TO_LONGS(SW_MAX+1)];  // NOLINT(runtime/int)
   memset(bitmask, 0, sizeof(bitmask));
   if (ioctl(fd_, EVIOCGSW(sizeof(bitmask)), bitmask) < 0) {
-    PLOG(ERROR) << "EVIOCGBIT failed for device " << path_;
+    PLOG(ERROR) << "EVIOCGBIT failed for " << path_.value();
     return false;
   }
   return BITMASK_GET_BIT(bitmask, bit);
@@ -109,10 +109,10 @@ bool EventDevice::ReadEvents(std::vector<input_event>* events_out) {
   if (read_size < 0) {
     // ENODEV is expected if the device was just unplugged.
     if (errno != EAGAIN && errno != EWOULDBLOCK && errno != ENODEV)
-      PLOG(ERROR) << "Reading events from " << path_ << " failed";
+      PLOG(ERROR) << "Reading events from " << path_.value() << " failed";
     return false;
   } else if (read_size == 0) {
-    LOG(ERROR) << "Read returned 0 when reading events from " << path_;
+    LOG(ERROR) << "Read returned 0 when reading events from " << path_.value();
     return false;
   }
 
@@ -155,10 +155,10 @@ EventDeviceFactory::EventDeviceFactory() {}
 EventDeviceFactory::~EventDeviceFactory() {}
 
 linked_ptr<EventDeviceInterface> EventDeviceFactory::Open(
-    const std::string& path) {
-  int fd = open(path.c_str(), O_RDONLY | O_NONBLOCK);
+    const base::FilePath& path) {
+  int fd = open(path.value().c_str(), O_RDONLY | O_NONBLOCK);
   if (fd < 0) {
-    PLOG(ERROR) << "open() failed for " << path;
+    PLOG(ERROR) << "open() failed for " << path.value();
     return linked_ptr<EventDeviceInterface>();
   }
   return linked_ptr<EventDeviceInterface>(new EventDevice(fd, path));

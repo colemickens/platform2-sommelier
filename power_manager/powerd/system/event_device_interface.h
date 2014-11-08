@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/callback_forward.h>
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/linked_ptr.h>
 
@@ -40,7 +41,7 @@ class EventDeviceInterface {
   virtual bool IsPowerButton() = 0;
 
   // Returns true if the device can report hover events.
-  virtual bool IsHoverSupported() = 0;
+  virtual bool HoverSupported() = 0;
 
   // Returns true if the device reports a left button. This can be used to
   // distinguish touchpads from touchscreens.
@@ -66,7 +67,7 @@ class EventDeviceFactoryInterface {
   virtual ~EventDeviceFactoryInterface() {}
 
   // Opens an event device by path. Returns the device or NULL on error.
-  virtual linked_ptr<EventDeviceInterface> Open(const std::string& path) = 0;
+  virtual linked_ptr<EventDeviceInterface> Open(const base::FilePath& path) = 0;
 };
 
 }  // namespace system

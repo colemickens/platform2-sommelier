@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/memory/linked_ptr.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop/message_loop.h>
@@ -21,7 +22,7 @@ namespace system {
 class EventDevice : public EventDeviceInterface,
                     public base::MessageLoopForIO::Watcher {
  public:
-  EventDevice(int fd, const std::string& path);
+  EventDevice(int fd, const base::FilePath& path);
   virtual ~EventDevice();
 
   // Implementation of EventDeviceInterface.
@@ -29,7 +30,7 @@ class EventDevice : public EventDeviceInterface,
   std::string GetPhysPath() override;
   bool IsLidSwitch() override;
   bool IsPowerButton() override;
-  bool IsHoverSupported() override;
+  bool HoverSupported() override;
   bool HasLeftButton() override;
   LidState GetInitialLidState() override;
   bool ReadEvents(std::vector<input_event>* events_out) override;
@@ -49,7 +50,7 @@ class EventDevice : public EventDeviceInterface,
   bool GetSwitchBit(int bit);
 
   int fd_;
-  std::string path_;
+  base::FilePath path_;
   base::Closure new_events_cb_;
   scoped_ptr<base::MessageLoopForIO::FileDescriptorWatcher> fd_watcher_;
 
@@ -62,7 +63,7 @@ class EventDeviceFactory : public EventDeviceFactoryInterface {
   virtual ~EventDeviceFactory();
 
   // Implementation of EventDeviceFactoryInterface.
-  linked_ptr<EventDeviceInterface> Open(const std::string& path) override;
+  linked_ptr<EventDeviceInterface> Open(const base::FilePath& path) override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(EventDeviceFactory);
