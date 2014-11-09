@@ -28,8 +28,8 @@ inline bool PopValueFromReader(dbus::MessageReader* reader,
 
 // Specializations/overloads to send "StatsResponse" structure over D-Bus.
 template<>
-struct DBusSignature<attestation::StatsResponse>
-    : public DBusSignature<google::protobuf::MessageLite> {};
+struct DBusType<attestation::StatsResponse>
+    : public DBusType<google::protobuf::MessageLite> {};
 
 
 }  // namespace dbus_utils

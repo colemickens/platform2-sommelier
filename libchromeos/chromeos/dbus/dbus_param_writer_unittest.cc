@@ -20,18 +20,18 @@ namespace dbus_utils {
 TEST(DBusParamWriter, Append_NoArgs) {
   std::unique_ptr<Response> message(Response::CreateEmpty().release());
   MessageWriter writer(message.get());
-  EXPECT_TRUE(DBusParamWriter::Append(&writer));
+  DBusParamWriter::Append(&writer);
   EXPECT_EQ("", message->GetSignature());
 }
 
 TEST(DBusParamWriter, Append_OneArg) {
   std::unique_ptr<Response> message(Response::CreateEmpty().release());
   MessageWriter writer(message.get());
-  EXPECT_TRUE(DBusParamWriter::Append(&writer, int32_t{2}));
+  DBusParamWriter::Append(&writer, int32_t{2});
   EXPECT_EQ("i", message->GetSignature());
-  EXPECT_TRUE(DBusParamWriter::Append(&writer, std::string{"foo"}));
+  DBusParamWriter::Append(&writer, std::string{"foo"});
   EXPECT_EQ("is", message->GetSignature());
-  EXPECT_TRUE(DBusParamWriter::Append(&writer, ObjectPath{"/o"}));
+  DBusParamWriter::Append(&writer, ObjectPath{"/o"});
   EXPECT_EQ("iso", message->GetSignature());
 
   int32_t int_value = 0;
@@ -51,7 +51,7 @@ TEST(DBusParamWriter, Append_OneArg) {
 TEST(DBusParamWriter, Append_ManyArgs) {
   std::unique_ptr<Response> message(Response::CreateEmpty().release());
   MessageWriter writer(message.get());
-  EXPECT_TRUE(DBusParamWriter::Append(&writer, int32_t{9}, Any{7.5}, true));
+  DBusParamWriter::Append(&writer, int32_t{9}, Any{7.5}, true);
   EXPECT_EQ("ivb", message->GetSignature());
 
   int32_t int_value = 0;
@@ -68,18 +68,10 @@ TEST(DBusParamWriter, Append_ManyArgs) {
   EXPECT_TRUE(bool_value);
 }
 
-TEST(DBusParamWriter, Append_UnsupportedType) {
-  std::unique_ptr<Response> message(Response::CreateEmpty().release());
-  MessageWriter writer(message.get());
-  // 'char' (AKA int8_t) is not supported by D-Bus.
-  EXPECT_FALSE(DBusParamWriter::Append(&writer, char{'s'}));
-  EXPECT_EQ("", message->GetSignature());
-}
-
 TEST(DBusParamWriter, AppendDBusOutParams_NoArgs) {
   std::unique_ptr<Response> message(Response::CreateEmpty().release());
   MessageWriter writer(message.get());
-  EXPECT_TRUE(DBusParamWriter::AppendDBusOutParams(&writer));
+  DBusParamWriter::AppendDBusOutParams(&writer);
   EXPECT_EQ("", message->GetSignature());
 }
 
@@ -90,11 +82,11 @@ TEST(DBusParamWriter, AppendDBusOutParams_OneArg) {
   std::string string_value_in{"bar"};
   ObjectPath path_value_in{"/obj/path"};
 
-  EXPECT_TRUE(DBusParamWriter::AppendDBusOutParams(&writer, &int_value_in));
+  DBusParamWriter::AppendDBusOutParams(&writer, &int_value_in);
   EXPECT_EQ("i", message->GetSignature());
-  EXPECT_TRUE(DBusParamWriter::AppendDBusOutParams(&writer, &string_value_in));
+  DBusParamWriter::AppendDBusOutParams(&writer, &string_value_in);
   EXPECT_EQ("is", message->GetSignature());
-  EXPECT_TRUE(DBusParamWriter::AppendDBusOutParams(&writer, &path_value_in));
+  DBusParamWriter::AppendDBusOutParams(&writer, &path_value_in);
   EXPECT_EQ("iso", message->GetSignature());
 
   int32_t int_value = 0;
@@ -117,10 +109,10 @@ TEST(DBusParamWriter, AppendDBusOutParams_ManyArgs) {
   int32_t int_value_in{8};
   Any variant_value_in{8.5};
   bool bool_value_in{true};
-  EXPECT_TRUE(DBusParamWriter::AppendDBusOutParams(&writer,
-                                                   &int_value_in,
-                                                   &variant_value_in,
-                                                   &bool_value_in));
+  DBusParamWriter::AppendDBusOutParams(&writer,
+                                       &int_value_in,
+                                       &variant_value_in,
+                                       &bool_value_in);
   EXPECT_EQ("ivb", message->GetSignature());
 
   int32_t int_value = 0;
@@ -140,7 +132,7 @@ TEST(DBusParamWriter, AppendDBusOutParams_ManyArgs) {
 TEST(DBusParamWriter, AppendDBusOutParams_Mixed_NoArgs) {
   std::unique_ptr<Response> message(Response::CreateEmpty().release());
   MessageWriter writer(message.get());
-  EXPECT_TRUE(DBusParamWriter::AppendDBusOutParams(&writer, 3, 5));
+  DBusParamWriter::AppendDBusOutParams(&writer, 3, 5);
   EXPECT_EQ("", message->GetSignature());
 }
 
@@ -151,12 +143,11 @@ TEST(DBusParamWriter, AppendDBusOutParams_Mixed_OneArg) {
   std::string str_value_in{"bar"};
   ObjectPath path_value_in{"/obj"};
 
-  EXPECT_TRUE(DBusParamWriter::AppendDBusOutParams(&writer, 2, &int_value_in));
+  DBusParamWriter::AppendDBusOutParams(&writer, 2, &int_value_in);
   EXPECT_EQ("i", message->GetSignature());
-  EXPECT_TRUE(DBusParamWriter::AppendDBusOutParams(&writer, &str_value_in, 0));
+  DBusParamWriter::AppendDBusOutParams(&writer, &str_value_in, 0);
   EXPECT_EQ("is", message->GetSignature());
-  EXPECT_TRUE(DBusParamWriter::AppendDBusOutParams(&writer, 1, &path_value_in,
-                                                   2));
+  DBusParamWriter::AppendDBusOutParams(&writer, 1, &path_value_in, 2);
   EXPECT_EQ("iso", message->GetSignature());
 
   int32_t int_value = 0;
@@ -179,14 +170,14 @@ TEST(DBusParamWriter, AppendDBusOutParams_Mixed_ManyArgs) {
   int32_t int_value_in{8};
   Any variant_value_in{7.5};
   bool bool_value_in{true};
-  EXPECT_TRUE(DBusParamWriter::AppendDBusOutParams(&writer,
-                                                   0,
-                                                   &int_value_in,
-                                                   1,
-                                                   &variant_value_in,
-                                                   2,
-                                                   &bool_value_in,
-                                                   3));
+  DBusParamWriter::AppendDBusOutParams(&writer,
+                                       0,
+                                       &int_value_in,
+                                       1,
+                                       &variant_value_in,
+                                       2,
+                                       &bool_value_in,
+                                       3);
   EXPECT_EQ("ivb", message->GetSignature());
 
   int32_t int_value = 0;

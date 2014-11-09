@@ -19,6 +19,56 @@ using dbus::Response;
 namespace chromeos {
 namespace dbus_utils {
 
+TEST(DBusUtils, Supported_BasicTypes) {
+  EXPECT_TRUE(IsTypeSupported<bool>::value);
+  EXPECT_TRUE(IsTypeSupported<uint8_t>::value);
+  EXPECT_TRUE(IsTypeSupported<int16_t>::value);
+  EXPECT_TRUE(IsTypeSupported<uint16_t>::value);
+  EXPECT_TRUE(IsTypeSupported<int32_t>::value);
+  EXPECT_TRUE(IsTypeSupported<uint32_t>::value);
+  EXPECT_TRUE(IsTypeSupported<int64_t>::value);
+  EXPECT_TRUE(IsTypeSupported<uint64_t>::value);
+  EXPECT_TRUE(IsTypeSupported<double>::value);
+  EXPECT_TRUE(IsTypeSupported<std::string>::value);
+  EXPECT_TRUE(IsTypeSupported<ObjectPath>::value);
+  EXPECT_TRUE(IsTypeSupported<FileDescriptor>::value);
+  EXPECT_TRUE(IsTypeSupported<Any>::value);
+}
+
+TEST(DBusUtils, Unsupported_BasicTypes) {
+  EXPECT_FALSE(IsTypeSupported<char>::value);
+  EXPECT_FALSE(IsTypeSupported<float>::value);
+}
+
+TEST(DBusUtils, Supported_ComplexTypes) {
+  EXPECT_TRUE(IsTypeSupported<std::vector<bool>>::value);
+  EXPECT_TRUE(IsTypeSupported<std::vector<uint8_t>>::value);
+  EXPECT_TRUE((IsTypeSupported<std::pair<int16_t, double>>::value));
+  EXPECT_TRUE((IsTypeSupported<std::map<uint16_t,
+                                        std::vector<int64_t>>>::value));
+}
+
+TEST(DBusUtils, Unsupported_ComplexTypes) {
+  EXPECT_FALSE(IsTypeSupported<std::vector<char>>::value);
+  EXPECT_FALSE((IsTypeSupported<std::pair<int16_t, float>>::value));
+  EXPECT_FALSE((IsTypeSupported<std::pair<char, int32_t>>::value));
+  EXPECT_FALSE((IsTypeSupported<std::map<int16_t, float>>::value));
+  EXPECT_FALSE((IsTypeSupported<std::map<char, int32_t>>::value));
+}
+
+TEST(DBusUtils, Supported_TypeSet) {
+  EXPECT_TRUE((IsTypeSupported<int32_t, double, std::string>::value));
+  EXPECT_TRUE((IsTypeSupported<bool, std::vector<int32_t>, uint8_t>::value));
+}
+
+TEST(DBusUtils, Unupported_TypeSet) {
+  EXPECT_FALSE((IsTypeSupported<int32_t, double, std::string, char>::value));
+  EXPECT_FALSE(
+      (IsTypeSupported<bool, std::pair<std::vector<float>, uint8_t>>::value));
+  EXPECT_FALSE((IsTypeSupported<char, double, std::string, int16_t>::value));
+  EXPECT_FALSE((IsTypeSupported<char, std::vector<float>, float>::value));
+}
+
 TEST(DBusUtils, Signatures_BasicTypes) {
   EXPECT_EQ("b", GetDBusSignature<bool>());
   EXPECT_EQ("y", GetDBusSignature<uint8_t>());
@@ -74,7 +124,7 @@ TEST(DBusUtils, Signatures_Pairs) {
 TEST(DBusUtils, AppendAndPopByte) {
   std::unique_ptr<Response> message(Response::CreateEmpty().release());
   MessageWriter writer(message.get());
-  EXPECT_TRUE(AppendValueToWriter(&writer, uint8_t{123}));
+  AppendValueToWriter(&writer, uint8_t{123});
   EXPECT_EQ("y", message->GetSignature());
 
   MessageReader reader(message.get());
@@ -100,17 +150,17 @@ TEST(DBusUtils, AppendAndPopBasicDataTypes) {
   MessageWriter writer(message.get());
 
   // Append 0, true, 2, 3, 4, 5, 6, 7, 8.0, "string", "/object/path".
-  EXPECT_TRUE(AppendValueToWriter(&writer, uint8_t{0}));
-  EXPECT_TRUE(AppendValueToWriter(&writer, bool{true}));
-  EXPECT_TRUE(AppendValueToWriter(&writer, int16_t{2}));
-  EXPECT_TRUE(AppendValueToWriter(&writer, uint16_t{3}));
-  EXPECT_TRUE(AppendValueToWriter(&writer, int32_t{4}));
-  EXPECT_TRUE(AppendValueToWriter(&writer, uint32_t{5}));
-  EXPECT_TRUE(AppendValueToWriter(&writer, int64_t{6}));
-  EXPECT_TRUE(AppendValueToWriter(&writer, uint64_t{7}));
-  EXPECT_TRUE(AppendValueToWriter(&writer, double{8.0}));
-  EXPECT_TRUE(AppendValueToWriter(&writer, std::string{"string"}));
-  EXPECT_TRUE(AppendValueToWriter(&writer, ObjectPath{"/object/path"}));
+  AppendValueToWriter(&writer, uint8_t{0});
+  AppendValueToWriter(&writer, bool{true});
+  AppendValueToWriter(&writer, int16_t{2});
+  AppendValueToWriter(&writer, uint16_t{3});
+  AppendValueToWriter(&writer, int32_t{4});
+  AppendValueToWriter(&writer, uint32_t{5});
+  AppendValueToWriter(&writer, int64_t{6});
+  AppendValueToWriter(&writer, uint64_t{7});
+  AppendValueToWriter(&writer, double{8.0});
+  AppendValueToWriter(&writer, std::string{"string"});
+  AppendValueToWriter(&writer, ObjectPath{"/object/path"});
 
   EXPECT_EQ("ybnqiuxtdso", message->GetSignature());
 
@@ -172,7 +222,7 @@ TEST(DBusUtils, AppendAndPopFileDescriptor) {
   // NB: thread IO requirements not relevant for unit tests.
   temp.CheckValidity();
   EXPECT_TRUE(temp.is_valid());
-  EXPECT_TRUE(AppendValueToWriter(&writer, temp));
+  AppendValueToWriter(&writer, temp);
 
   EXPECT_EQ("h", message->GetSignature());
 
@@ -193,18 +243,18 @@ TEST(DBusUtils, AppendAndPopVariantDataTypes) {
   MessageWriter writer(message.get());
 
   // Append 10, false, 12, 13, 14, 15, 16, 17, 18.5, "data", "/obj/path".
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, uint8_t{10}));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, bool{false}));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, int16_t{12}));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, uint16_t{13}));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, int32_t{14}));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, uint32_t{15}));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, int64_t{16}));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, uint64_t{17}));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, double{18.5}));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, std::string{"data"}));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, ObjectPath{"/obj/path"}));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, Any{17}));
+  AppendValueToWriterAsVariant(&writer, uint8_t{10});
+  AppendValueToWriterAsVariant(&writer, bool{false});
+  AppendValueToWriterAsVariant(&writer, int16_t{12});
+  AppendValueToWriterAsVariant(&writer, uint16_t{13});
+  AppendValueToWriterAsVariant(&writer, int32_t{14});
+  AppendValueToWriterAsVariant(&writer, uint32_t{15});
+  AppendValueToWriterAsVariant(&writer, int64_t{16});
+  AppendValueToWriterAsVariant(&writer, uint64_t{17});
+  AppendValueToWriterAsVariant(&writer, double{18.5});
+  AppendValueToWriterAsVariant(&writer, std::string{"data"});
+  AppendValueToWriterAsVariant(&writer, ObjectPath{"/obj/path"});
+  AppendValueToWriterAsVariant(&writer, Any{17});
 
   EXPECT_EQ("vvvvvvvvvvvv", message->GetSignature());
 
@@ -257,18 +307,17 @@ TEST(DBusUtils, AppendAndPopBasicAny) {
   MessageWriter writer(message.get());
 
   // Append 10, true, 12, 13, 14, 15, 16, 17, 18.5, "data", "/obj/path".
-  EXPECT_TRUE(AppendValueToWriter(&writer, Any(uint8_t{10})));
-  EXPECT_TRUE(AppendValueToWriter(&writer, Any(bool{true})));
-  EXPECT_TRUE(AppendValueToWriter(&writer, Any(int16_t{12})));
-  EXPECT_TRUE(AppendValueToWriter(&writer, Any(uint16_t{13})));
-  EXPECT_TRUE(AppendValueToWriter(&writer, Any(int32_t{14})));
-  EXPECT_TRUE(AppendValueToWriter(&writer, Any(uint32_t{15})));
-  EXPECT_TRUE(AppendValueToWriter(&writer, Any(int64_t{16})));
-  EXPECT_TRUE(AppendValueToWriter(&writer, Any(uint64_t{17})));
-  EXPECT_TRUE(AppendValueToWriter(&writer, Any(double{18.5})));
-  EXPECT_TRUE(AppendValueToWriter(&writer, Any(std::string{"data"})));
-  EXPECT_TRUE(AppendValueToWriter(&writer, Any(ObjectPath{"/obj/path"})));
-
+  AppendValueToWriter(&writer, Any(uint8_t{10}));
+  AppendValueToWriter(&writer, Any(bool{true}));
+  AppendValueToWriter(&writer, Any(int16_t{12}));
+  AppendValueToWriter(&writer, Any(uint16_t{13}));
+  AppendValueToWriter(&writer, Any(int32_t{14}));
+  AppendValueToWriter(&writer, Any(uint32_t{15}));
+  AppendValueToWriter(&writer, Any(int64_t{16}));
+  AppendValueToWriter(&writer, Any(uint64_t{17}));
+  AppendValueToWriter(&writer, Any(double{18.5}));
+  AppendValueToWriter(&writer, Any(std::string{"data"}));
+  AppendValueToWriter(&writer, Any(ObjectPath{"/obj/path"}));
   EXPECT_EQ("vvvvvvvvvvv", message->GetSignature());
 
   Any byte_value;
@@ -316,7 +365,7 @@ TEST(DBusUtils, ArrayOfBytes) {
   std::unique_ptr<Response> message(Response::CreateEmpty().release());
   MessageWriter writer(message.get());
   std::vector<uint8_t> bytes{1, 2, 3};
-  EXPECT_TRUE(AppendValueToWriter(&writer, bytes));
+  AppendValueToWriter(&writer, bytes);
 
   EXPECT_EQ("ay", message->GetSignature());
 
@@ -331,7 +380,7 @@ TEST(DBusUtils, ArrayOfBytes_Empty) {
   std::unique_ptr<Response> message(Response::CreateEmpty().release());
   MessageWriter writer(message.get());
   std::vector<uint8_t> bytes;
-  EXPECT_TRUE(AppendValueToWriter(&writer, bytes));
+  AppendValueToWriter(&writer, bytes);
 
   EXPECT_EQ("ay", message->GetSignature());
 
@@ -346,7 +395,7 @@ TEST(DBusUtils, ArrayOfStrings) {
   std::unique_ptr<Response> message(Response::CreateEmpty().release());
   MessageWriter writer(message.get());
   std::vector<std::string> strings{"foo", "bar", "baz"};
-  EXPECT_TRUE(AppendValueToWriter(&writer, strings));
+  AppendValueToWriter(&writer, strings);
 
   EXPECT_EQ("as", message->GetSignature());
 
@@ -363,7 +412,7 @@ TEST(DBusUtils, ArrayOfInt64) {
   std::vector<int64_t> values{-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5,
                               std::numeric_limits<int64_t>::min(),
                               std::numeric_limits<int64_t>::max()};
-  EXPECT_TRUE(AppendValueToWriter(&writer, values));
+  AppendValueToWriter(&writer, values);
 
   EXPECT_EQ("ax", message->GetSignature());
 
@@ -382,7 +431,7 @@ TEST(DBusUtils, ArrayOfObjectPaths) {
     ObjectPath("/object/path/2"),
     ObjectPath("/object/path/3"),
   };
-  EXPECT_TRUE(AppendValueToWriter(&writer, object_paths));
+  AppendValueToWriter(&writer, object_paths);
 
   EXPECT_EQ("ao", message->GetSignature());
 
@@ -401,11 +450,11 @@ TEST(DBusUtils, ArraysAsVariant) {
   std::vector<double> dbl_array_empty{};
   std::map<std::string, std::string> dict_ss{{"k1", "v1"}, {"k2", "v2"}};
   VariantDictionary dict_sv{{"k1", 1}, {"k2", "v2"}};
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, int_array));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, str_array));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, dbl_array_empty));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, dict_ss));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, dict_sv));
+  AppendValueToWriterAsVariant(&writer, int_array);
+  AppendValueToWriterAsVariant(&writer, str_array);
+  AppendValueToWriterAsVariant(&writer, dbl_array_empty);
+  AppendValueToWriterAsVariant(&writer, dict_ss);
+  AppendValueToWriterAsVariant(&writer, dict_sv);
 
   EXPECT_EQ("vvvvv", message->GetSignature());
 
@@ -449,7 +498,7 @@ TEST(DBusUtils, VariantDictionary) {
       {"keyA", std::string{"data"}},
       {"keyB", ObjectPath{"/obj/path"}},
   };
-  EXPECT_TRUE(AppendValueToWriter(&writer, values));
+  AppendValueToWriter(&writer, values);
 
   EXPECT_EQ("a{sv}", message->GetSignature());
 
@@ -492,7 +541,7 @@ TEST(DBusUtils, StringToStringMap) {
       {"key4", "value4"},
       {"key5", "value5"},
   };
-  EXPECT_TRUE(AppendValueToWriter(&writer, values));
+  AppendValueToWriter(&writer, values);
 
   EXPECT_EQ("a{ss}", message->GetSignature());
 
@@ -507,9 +556,9 @@ TEST(DBusUtils, Pair) {
   std::unique_ptr<Response> message(Response::CreateEmpty().release());
   MessageWriter writer(message.get());
   std::pair<std::string, int> struct1{"value2", 3};
-  EXPECT_TRUE(AppendValueToWriter(&writer, struct1));
+  AppendValueToWriter(&writer, struct1);
   std::pair<int, std::pair<int, int>> struct2{1, {2, 3}};
-  EXPECT_TRUE(AppendValueToWriter(&writer, struct2));
+  AppendValueToWriter(&writer, struct2);
 
   EXPECT_EQ("(si)(i(ii))", message->GetSignature());
 
@@ -530,11 +579,11 @@ TEST(DBusUtils, ReinterpretVariant) {
   std::vector<std::string> str_array{"foo", "bar", "baz"};
   std::map<std::string, std::string> dict_ss{{"k1", "v1"}, {"k2", "v2"}};
   VariantDictionary dict_sv{{"k1", "v1"}, {"k2", "v2"}};
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, 123));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, str_array));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, 1.7));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, dict_ss));
-  EXPECT_TRUE(AppendValueToWriter(&writer, dict_sv));
+  AppendValueToWriterAsVariant(&writer, 123);
+  AppendValueToWriterAsVariant(&writer, str_array);
+  AppendValueToWriterAsVariant(&writer, 1.7);
+  AppendValueToWriterAsVariant(&writer, dict_ss);
+  AppendValueToWriter(&writer, dict_sv);
 
   EXPECT_EQ("vvvva{sv}", message->GetSignature());
 
@@ -573,20 +622,14 @@ struct Person {
   }
 };
 
-// Specialize DBusSignature<T>::get() for "Person" structure.
-template<> struct DBusSignature<Person> {
-  static std::string get() { return "(ssi)"; }
-};
-
 // Overload AppendValueToWriter() for "Person" structure.
-bool AppendValueToWriter(dbus::MessageWriter* writer, const Person& value) {
+void AppendValueToWriter(dbus::MessageWriter* writer, const Person& value) {
   dbus::MessageWriter struct_writer(nullptr);
   writer->OpenStruct(&struct_writer);
-  bool success = AppendValueToWriter(&struct_writer, value.first_name) &&
-                 AppendValueToWriter(&struct_writer, value.last_name) &&
-                 AppendValueToWriter(&struct_writer, value.age);
+  AppendValueToWriter(&struct_writer, value.first_name);
+  AppendValueToWriter(&struct_writer, value.last_name);
+  AppendValueToWriter(&struct_writer, value.age);
   writer->CloseContainer(&struct_writer);
-  return success;
 }
 
 // Overload PopValueFromReader() for "Person" structure.
@@ -601,13 +644,27 @@ bool PopValueFromReader(dbus::MessageReader* reader, Person* value) {
          PopValueFromReader(&struct_reader, &value->age);
 }
 
+// Specialize DBusType<T> for "Person" structure.
+template<>
+struct DBusType<Person> {
+  inline static std::string GetSignature() {
+    return GetStructDBusSignature<std::string, std::string, int>();
+  }
+  inline static void Write(dbus::MessageWriter* writer, const Person& value) {
+    AppendValueToWriter(writer, value);
+  }
+  inline static bool Read(dbus::MessageReader* reader, Person* value) {
+    return PopValueFromReader(reader, value);
+  }
+};
+
 TEST(DBusUtils, CustomStruct) {
   std::unique_ptr<Response> message(Response::CreateEmpty().release());
   MessageWriter writer(message.get());
   std::vector<Person> people{{"John", "Doe", 32}, {"Jane", "Smith", 48}};
-  EXPECT_TRUE(AppendValueToWriter(&writer, people));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, people));
-  EXPECT_TRUE(AppendValueToWriterAsVariant(&writer, people));
+  AppendValueToWriter(&writer, people);
+  AppendValueToWriterAsVariant(&writer, people);
+  AppendValueToWriterAsVariant(&writer, people);
 
   EXPECT_EQ("a(ssi)vv", message->GetSignature());
 
@@ -624,6 +681,43 @@ TEST(DBusUtils, CustomStruct) {
   EXPECT_EQ(people, people_out1);
   EXPECT_EQ(people, people_out2);
   EXPECT_EQ(people, people_out3);
+}
+
+TEST(DBusUtils, CustomStructInComplexTypes) {
+  std::unique_ptr<Response> message(Response::CreateEmpty().release());
+  MessageWriter writer(message.get());
+  std::vector<Person> people{{"John", "Doe", 32}, {"Jane", "Smith", 48}};
+  std::vector<std::map<int, Person>> data{
+    {
+      {1, Person{"John", "Doe", 32}},
+      {2, Person{"Jane", "Smith", 48}},
+    }
+  };
+  AppendValueToWriter(&writer, data);
+
+  EXPECT_EQ("aa{i(ssi)}", message->GetSignature());
+
+  std::vector<std::map<int, Person>> data_out;;
+
+  MessageReader reader(message.get());
+  EXPECT_TRUE(PopValueFromReader(&reader, &data_out));
+  EXPECT_FALSE(reader.HasMoreData());
+
+  EXPECT_EQ(data, data_out);
+}
+
+TEST(DBusUtils, EmptyVariant) {
+  std::unique_ptr<Response> message(Response::CreateEmpty().release());
+  MessageWriter writer(message.get());
+  EXPECT_DEATH(AppendValueToWriter(&writer, Any{}),
+               "Must not be called on an empty Any");
+}
+
+TEST(DBusUtils, IncompatibleVariant) {
+  std::unique_ptr<Response> message(Response::CreateEmpty().release());
+  MessageWriter writer(message.get());
+  EXPECT_DEATH(AppendValueToWriter(&writer, Any{2.2f}),
+               "Type 'float' is not supported by D-Bus");
 }
 
 }  // namespace dbus_utils

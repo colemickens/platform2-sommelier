@@ -174,7 +174,7 @@ class CHROMEOS_EXPORT Any final {
   // (an appropriate specialization of AppendValueToWriter<T>() is available).
   // Returns false if the Any is empty or if there is no serialization method
   // defined for the contained data.
-  bool AppendToDBusMessageWriter(dbus::MessageWriter* writer) const;
+  void AppendToDBusMessageWriter(dbus::MessageWriter* writer) const;
 
  private:
   // The data buffer for contained object.

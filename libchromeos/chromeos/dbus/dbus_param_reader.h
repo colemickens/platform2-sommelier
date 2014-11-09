@@ -90,7 +90,7 @@ struct DBusParamReader<allow_out_params, CurrentParam, RestOfParams...> {
     // The variable to hold the value of the current parameter we reading from
     // the message buffer.
     ParamValueType current_param;
-    if (!PopValueFromReader(reader, &current_param)) {
+    if (!DBusType<ParamValueType>::Read(reader, &current_param)) {
       Error::AddTo(error, errors::dbus::kDomain, DBUS_ERROR_INVALID_ARGS,
                    "Method parameter type mismatch");
       return false;

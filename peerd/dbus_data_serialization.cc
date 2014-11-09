@@ -13,12 +13,12 @@ namespace chromeos {
 namespace dbus_utils {
 
 // Extend D-Bus serialization mechanism to handle "peerd::ip_addr" structure.
-std::string DBusSignature<peerd::ip_addr>::get() {
+std::string DBusType<peerd::ip_addr>::GetSignature() {
   // Returns "(ayq)".
   return GetDBusSignature<std::pair<std::vector<uint8_t>, uint16_t>>();
 }
 
-bool AppendValueToWriter(dbus::MessageWriter* writer,
+void AppendValueToWriter(dbus::MessageWriter* writer,
                          const peerd::ip_addr& value) {
   std::vector<uint8_t> address_bytes;
   uint16_t port = 0;
@@ -35,11 +35,9 @@ bool AppendValueToWriter(dbus::MessageWriter* writer,
     *reinterpret_cast<in6_addr*>(address_bytes.data()) = ipv6->sin6_addr;
     port = ipv6->sin6_port;
   } else {
-    LOG(ERROR) << "Address family " << value.ss_family << " not supported.";
-    return false;
+    LOG(FATAL) << "Address family " << value.ss_family << " not supported.";
   }
-  return AppendValueToWriter(writer,
-                             std::make_pair(std::move(address_bytes), port));
+  AppendValueToWriter(writer, std::make_pair(std::move(address_bytes), port));
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, peerd::ip_addr* value) {

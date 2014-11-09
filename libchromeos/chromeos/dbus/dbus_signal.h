@@ -54,8 +54,8 @@ class DBusSignal : public DBusSignalBase {
   bool Send(const Args&... args) const {
     dbus::Signal signal(interface_name_, signal_name_);
     dbus::MessageWriter signal_writer(&signal);
-    return DBusParamWriter::Append(&signal_writer, args...) &&
-           SendSignal(&signal);
+    DBusParamWriter::Append(&signal_writer, args...);
+    return SendSignal(&signal);
   }
 
  private:

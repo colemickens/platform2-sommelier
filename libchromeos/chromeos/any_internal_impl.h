@@ -148,7 +148,7 @@ struct Data {
   // Gets the contained integral value as an integer.
   virtual intmax_t GetAsInteger() const = 0;
   // Writes the contained value to the D-Bus message buffer.
-  virtual bool AppendToDBusMessage(dbus::MessageWriter* writer) const = 0;
+  virtual void AppendToDBusMessage(dbus::MessageWriter* writer) const = 0;
   // Compares if the two data containers have objects of the same value.
   virtual bool CompareEqual(const Data* other_data) const = 0;
 };
@@ -174,8 +174,21 @@ struct TypedData : public Data {
                      << "' to integer";
     return int_val;
   }
-  bool AppendToDBusMessage(dbus::MessageWriter* writer) const override {
-    return chromeos::dbus_utils::AppendValueToWriterAsVariant(writer, value_);
+
+  template<typename U>
+  static typename std::enable_if<dbus_utils::IsTypeSupported<U>::value>::type
+  AppendValueHelper(dbus::MessageWriter* writer, const U& value) {
+    chromeos::dbus_utils::AppendValueToWriterAsVariant(writer, value);
+  }
+  template<typename U>
+  static typename std::enable_if<!dbus_utils::IsTypeSupported<U>::value>::type
+  AppendValueHelper(dbus::MessageWriter* writer, const U& value) {
+    LOG(FATAL) << "Type '" << GetUndecoratedTypeName<U>()
+               << "' is not supported by D-Bus";
+  }
+
+  void AppendToDBusMessage(dbus::MessageWriter* writer) const override {
+    return AppendValueHelper(writer, value_);
   }
 
   bool CompareEqual(const Data* other_data) const override {

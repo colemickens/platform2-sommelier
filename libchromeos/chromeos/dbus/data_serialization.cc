@@ -10,76 +10,64 @@
 namespace chromeos {
 namespace dbus_utils {
 
-bool AppendValueToWriter(dbus::MessageWriter* writer, bool value) {
+void AppendValueToWriter(dbus::MessageWriter* writer, bool value) {
   writer->AppendBool(value);
-  return true;
 }
 
-bool AppendValueToWriter(dbus::MessageWriter* writer, uint8_t value) {
+void AppendValueToWriter(dbus::MessageWriter* writer, uint8_t value) {
   writer->AppendByte(value);
-  return true;
 }
 
-bool AppendValueToWriter(dbus::MessageWriter* writer, int16_t value) {
+void AppendValueToWriter(dbus::MessageWriter* writer, int16_t value) {
   writer->AppendInt16(value);
-  return true;
 }
 
-bool AppendValueToWriter(dbus::MessageWriter* writer, uint16_t value) {
+void AppendValueToWriter(dbus::MessageWriter* writer, uint16_t value) {
   writer->AppendUint16(value);
-  return true;
 }
 
-bool AppendValueToWriter(dbus::MessageWriter* writer, int32_t value) {
+void AppendValueToWriter(dbus::MessageWriter* writer, int32_t value) {
   writer->AppendInt32(value);
-  return true;
 }
 
-bool AppendValueToWriter(dbus::MessageWriter* writer, uint32_t value) {
+void AppendValueToWriter(dbus::MessageWriter* writer, uint32_t value) {
   writer->AppendUint32(value);
-  return true;
 }
 
-bool AppendValueToWriter(dbus::MessageWriter* writer, int64_t value) {
+void AppendValueToWriter(dbus::MessageWriter* writer, int64_t value) {
   writer->AppendInt64(value);
-  return true;
 }
 
-bool AppendValueToWriter(dbus::MessageWriter* writer, uint64_t value) {
+void AppendValueToWriter(dbus::MessageWriter* writer, uint64_t value) {
   writer->AppendUint64(value);
-  return true;
 }
 
-bool AppendValueToWriter(dbus::MessageWriter* writer, double value) {
+void AppendValueToWriter(dbus::MessageWriter* writer, double value) {
   writer->AppendDouble(value);
-  return true;
 }
 
-bool AppendValueToWriter(dbus::MessageWriter* writer,
+void AppendValueToWriter(dbus::MessageWriter* writer,
                          const std::string& value) {
   writer->AppendString(value);
-  return true;
 }
 
-bool AppendValueToWriter(dbus::MessageWriter* writer, const char* value) {
-  return AppendValueToWriter(writer, std::string(value));
+void AppendValueToWriter(dbus::MessageWriter* writer, const char* value) {
+  AppendValueToWriter(writer, std::string(value));
 }
 
-bool AppendValueToWriter(dbus::MessageWriter* writer,
+void AppendValueToWriter(dbus::MessageWriter* writer,
                          const dbus::ObjectPath& value) {
   writer->AppendObjectPath(value);
-  return true;
 }
 
-bool AppendValueToWriter(dbus::MessageWriter* writer,
+void AppendValueToWriter(dbus::MessageWriter* writer,
                          const dbus::FileDescriptor& value) {
   writer->AppendFileDescriptor(value);
-  return true;
 }
 
-bool AppendValueToWriter(dbus::MessageWriter* writer,
+void AppendValueToWriter(dbus::MessageWriter* writer,
                          const chromeos::Any& value) {
-  return value.AppendToDBusMessageWriter(writer);
+  value.AppendToDBusMessageWriter(writer);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
