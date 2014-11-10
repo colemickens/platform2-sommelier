@@ -64,6 +64,13 @@ void FireAndForgetDBusMethodCall(dbus::ObjectProxy* proxy,
                     dbus::ObjectProxy::EmptyResponseCallback());
 }
 
+void FireAndBlockOnDBusMethodCall(dbus::ObjectProxy* proxy,
+                                  const char* interface,
+                                  const char* method) {
+  dbus::MethodCall call(interface, method);
+  proxy->CallMethodAndBlock(&call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+}
+
 }  // anonymous namespace
 
 // TODO(mkrebs): Remove CollectChrome timeout and file when
@@ -158,7 +165,7 @@ bool SessionManagerService::Initialize() {
                                         base::Unretained(chrome_dbus_proxy),
                                         chromeos::kLibCrosServiceInterface,
                                         chromeos::kLockScreen),
-                             base::Bind(&FireAndForgetDBusMethodCall,
+                             base::Bind(&FireAndBlockOnDBusMethodCall,
                                         base::Unretained(powerd_dbus_proxy),
                                         power_manager::kPowerManagerInterface,
                                         power_manager::kRequestRestartMethod),
