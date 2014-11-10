@@ -32,6 +32,8 @@ CommandInstance::CommandInstance(const std::string& name,
     : name_(name), category_(category), parameters_(parameters) {
 }
 
+CommandInstance::~CommandInstance() = default;
+
 std::shared_ptr<const PropValue> CommandInstance::FindParameter(
     const std::string& name) const {
   std::shared_ptr<const PropValue> value;
@@ -136,6 +138,10 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
   }
 
   return instance;
+}
+
+void CommandInstance::AddProxy(std::unique_ptr<CommandProxyInterface> proxy) {
+  proxies_.push_back(std::move(proxy));
 }
 
 bool CommandInstance::SetProgress(int progress) {

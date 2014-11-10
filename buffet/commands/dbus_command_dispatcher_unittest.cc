@@ -108,9 +108,8 @@ class DBusCommandDispacherTest : public testing::Test {
   }
 
   DBusCommandProxy* FindProxy(CommandInstance* command_instance) {
-    const auto& command_map = command_dispatcher_->command_map_;
-    auto it = command_map.find(command_instance);
-    return it != command_map.end() ? it->second.get() : nullptr;
+    CHECK_EQ(command_instance->proxies_.size(), 1);
+    return static_cast<DBusCommandProxy*>(command_instance->proxies_[0].get());
   }
 
   void FinishCommand(DBusCommandProxy* proxy) {
@@ -156,7 +155,6 @@ TEST_F(DBusCommandDispacherTest, Test_Command_Base_Shutdown) {
   EXPECT_CALL(*mock_exported_object_manager_, SendSignal(_)).Times(2);
   FinishCommand(command_proxy);
 
-  EXPECT_EQ(nullptr, FindProxy(command_instance));
   EXPECT_EQ(nullptr, command_queue_.Find(id));
 }
 
@@ -190,7 +188,6 @@ TEST_F(DBusCommandDispacherTest, Test_Command_Base_Reboot) {
   EXPECT_CALL(*mock_exported_object_manager_, SendSignal(_)).Times(2);
   FinishCommand(command_proxy);
 
-  EXPECT_EQ(nullptr, FindProxy(command_instance));
   EXPECT_EQ(nullptr, command_queue_.Find(id));
 }
 

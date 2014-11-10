@@ -91,37 +91,39 @@ class DBusCommandProxyTest : public ::testing::Test {
     EXPECT_CALL(*mock_exported_object_command_,
                 ExportMethod(_, _, _, _)).Times(AnyNumber());
 
-    command_proxy_.reset(new DBusCommandProxy(nullptr, bus_,
-                                              command_instance_.get(),
-                                              cmd_path));
-    command_instance_->AddProxy(command_proxy_.get());
-    command_proxy_->RegisterAsync(
+    std::unique_ptr<CommandProxyInterface> command_proxy(
+        new DBusCommandProxy(nullptr, bus_, command_instance_.get(), cmd_path));
+    command_instance_->AddProxy(std::move(command_proxy));
+    GetCommandProxy()->RegisterAsync(
         AsyncEventSequencer::GetDefaultCompletionAction());
   }
 
   void TearDown() override {
     EXPECT_CALL(*mock_exported_object_command_, Unregister()).Times(1);
-    command_instance_->ClearProxies();
-    command_proxy_.reset();
     command_instance_.reset();
     dict_.Clear();
     bus_ = nullptr;
   }
 
+  DBusCommandProxy* GetCommandProxy() const {
+    CHECK_EQ(command_instance_->proxies_.size(), 1);
+    return static_cast<DBusCommandProxy*>(command_instance_->proxies_[0].get());
+  }
+
   chromeos::dbus_utils::DBusObject* GetProxyDBusObject() {
-    return &command_proxy_->dbus_object_;
+    return &GetCommandProxy()->dbus_object_;
   }
 
   std::string GetStatus() const {
-    return command_proxy_->status_.value();
+    return GetCommandProxy()->status_.value();
   }
 
   int32_t GetProgress() const {
-    return command_proxy_->progress_.value();
+    return GetCommandProxy()->progress_.value();
   }
 
   VariantDictionary GetParameters() const {
-    return command_proxy_->parameters_.value();
+    return GetCommandProxy()->parameters_.value();
   }
 
   std::unique_ptr<dbus::Response> CallMethod(
@@ -168,7 +170,6 @@ class DBusCommandProxyTest : public ::testing::Test {
     return value;
   }
 
-  std::unique_ptr<DBusCommandProxy> command_proxy_;
   std::unique_ptr<CommandInstance> command_instance_;
   CommandDictionary dict_;
 

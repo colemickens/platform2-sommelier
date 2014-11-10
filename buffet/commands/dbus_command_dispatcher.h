@@ -49,9 +49,6 @@ class DBusCommandDispacher : public CommandDispachInterface {
   scoped_refptr<dbus::Bus> bus_;
   base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager> object_manager_;
   int next_id_;
-  // This is the map that tracks relationship between CommandInstance and
-  // corresponding DBusCommandProxy objects.
-  std::map<CommandInstance*, std::unique_ptr<DBusCommandProxy>> command_map_;
 
   // Default constructor is used in special circumstances such as for testing.
   DBusCommandDispacher() = default;

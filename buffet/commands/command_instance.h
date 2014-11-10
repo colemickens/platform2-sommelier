@@ -34,6 +34,7 @@ class CommandInstance final {
   CommandInstance(const std::string& name,
                   const std::string& category,
                   const native_types::Object& parameters);
+  ~CommandInstance();
 
   // Returns the full command ID.
   const std::string& GetID() const { return id_; }
@@ -61,9 +62,7 @@ class CommandInstance final {
   void SetID(const std::string& id) { id_ = id; }
   // Adds a proxy for this command.
   // The proxy object is not owned by this class.
-  void AddProxy(CommandProxyInterface* proxy) { proxies_.push_back(proxy); }
-  // Removes all the proxies for this command.
-  void ClearProxies() { proxies_.clear(); }
+  void AddProxy(std::unique_ptr<CommandProxyInterface> proxy);
   // Sets the pointer to queue this command is part of.
   void SetCommandQueue(CommandQueue* queue) { queue_ = queue; }
 
@@ -115,11 +114,13 @@ class CommandInstance final {
   // Current command execution progress.
   int progress_ = 0;
   // Command proxies for the command.
-  std::vector<CommandProxyInterface*> proxies_;
+  std::vector<std::unique_ptr<CommandProxyInterface>> proxies_;
   // Pointer to the command queue this command instance is added to.
   // The queue owns the command instance, so it outlives this object.
   CommandQueue* queue_ = nullptr;
 
+  friend class DBusCommandDispacherTest;
+  friend class DBusCommandProxyTest;
   DISALLOW_COPY_AND_ASSIGN(CommandInstance);
 };
 
