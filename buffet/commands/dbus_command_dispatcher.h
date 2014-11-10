@@ -41,10 +41,6 @@ class DBusCommandDispacher : public CommandDispachInterface {
   void OnCommandAdded(CommandInstance* command_instance) override;
   void OnCommandRemoved(CommandInstance* command_instance) override;
 
-  // Finds a D-Bus command proxy for the given command instance.
-  // Returns nullptr if the proxy does not exist.
-  DBusCommandProxy* FindProxy(CommandInstance* command_instance) const;
-
  protected:
   virtual std::unique_ptr<DBusCommandProxy> CreateDBusCommandProxy(
       CommandInstance* command_instance);

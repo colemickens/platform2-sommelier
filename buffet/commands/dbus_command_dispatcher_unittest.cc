@@ -107,6 +107,12 @@ class DBusCommandDispacherTest : public testing::Test {
     command_queue_.Add(std::move(command_instance));
   }
 
+  DBusCommandProxy* FindProxy(CommandInstance* command_instance) {
+    const auto& command_map = command_dispatcher_->command_map_;
+    auto it = command_map.find(command_instance);
+    return it != command_map.end() ? it->second.get() : nullptr;
+  }
+
   void FinishCommand(DBusCommandProxy* proxy) {
     proxy->HandleDone();
   }
@@ -130,8 +136,7 @@ TEST_F(DBusCommandDispacherTest, Test_Command_Base_Shutdown) {
   AddNewCommand("{'name':'base.shutdown'}", id);
   CommandInstance* command_instance = command_queue_.Find(id);
   ASSERT_NE(nullptr, command_instance);
-  DBusCommandProxy* command_proxy =
-      command_dispatcher_->FindProxy(command_instance);
+  DBusCommandProxy* command_proxy = FindProxy(command_instance);
   ASSERT_NE(nullptr, command_proxy);
   EXPECT_EQ(CommandInstance::kStatusQueued, command_instance->GetStatus());
 
@@ -151,8 +156,7 @@ TEST_F(DBusCommandDispacherTest, Test_Command_Base_Shutdown) {
   EXPECT_CALL(*mock_exported_object_manager_, SendSignal(_)).Times(2);
   FinishCommand(command_proxy);
 
-  EXPECT_EQ(nullptr,
-            command_dispatcher_->FindProxy(command_instance));
+  EXPECT_EQ(nullptr, FindProxy(command_instance));
   EXPECT_EQ(nullptr, command_queue_.Find(id));
 }
 
@@ -166,8 +170,7 @@ TEST_F(DBusCommandDispacherTest, Test_Command_Base_Reboot) {
   })", id);
   CommandInstance* command_instance = command_queue_.Find(id);
   ASSERT_NE(nullptr, command_instance);
-  DBusCommandProxy* command_proxy =
-      command_dispatcher_->FindProxy(command_instance);
+  DBusCommandProxy* command_proxy = FindProxy(command_instance);
   ASSERT_NE(nullptr, command_proxy);
   EXPECT_EQ(CommandInstance::kStatusQueued, command_instance->GetStatus());
 
@@ -187,8 +190,7 @@ TEST_F(DBusCommandDispacherTest, Test_Command_Base_Reboot) {
   EXPECT_CALL(*mock_exported_object_manager_, SendSignal(_)).Times(2);
   FinishCommand(command_proxy);
 
-  EXPECT_EQ(nullptr,
-            command_dispatcher_->FindProxy(command_instance));
+  EXPECT_EQ(nullptr, FindProxy(command_instance));
   EXPECT_EQ(nullptr, command_queue_.Find(id));
 }
 

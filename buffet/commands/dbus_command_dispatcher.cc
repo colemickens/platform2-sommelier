@@ -37,12 +37,6 @@ void DBusCommandDispacher::OnCommandRemoved(CommandInstance* command_instance) {
       << "The command instance is not in the dispatcher command map";
 }
 
-DBusCommandProxy* DBusCommandDispacher::FindProxy(
-    CommandInstance* command_instance) const {
-  auto p = command_map_.find(command_instance);
-  return p != command_map_.end() ? p->second.get() : nullptr;
-}
-
 std::unique_ptr<DBusCommandProxy> DBusCommandDispacher::CreateDBusCommandProxy(
       CommandInstance* command_instance) {
   return std::unique_ptr<DBusCommandProxy>(
