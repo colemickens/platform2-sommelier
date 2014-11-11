@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cros-disks/device_event_queue.h"
+
 #include <algorithm>
 #include <string>
 
 #include <gtest/gtest.h>
 
 #include "cros-disks/device_event.h"
-#include "cros-disks/device_event_queue.h"
 
 namespace cros_disks {
 

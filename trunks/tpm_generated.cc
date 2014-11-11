@@ -6,7 +6,6 @@
 
 #include "trunks/tpm_generated.h"
 
-
 #include <string>
 
 #include <base/basictypes.h>

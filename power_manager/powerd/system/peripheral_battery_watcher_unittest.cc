@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/system/peripheral_battery_watcher.h"
+
 #include <string>
 
 #include <base/compiler_specific.h>
@@ -15,7 +17,6 @@
 
 #include "power_manager/common/dbus_sender_stub.h"
 #include "power_manager/common/test_main_loop_runner.h"
-#include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/proto_bindings/peripheral_battery_status.pb.h"
 
 namespace power_manager {

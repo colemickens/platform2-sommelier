@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "permission_broker/deny_claimed_hidraw_device_rule.h"
+
 #include <gtest/gtest.h>
 #include <libudev.h>
 
 #include <string>
 
-#include "permission_broker/deny_claimed_hidraw_device_rule.h"
 #include "permission_broker/udev_scopers.h"
 
 namespace permission_broker {

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/net/rtnl_handler.h"
+
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -22,7 +24,6 @@
 #include "shill/net/io_handler.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/ndisc.h"
-#include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
 #include "shill/net/sockets.h"

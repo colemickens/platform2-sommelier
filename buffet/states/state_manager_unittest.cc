@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "buffet/states/state_manager.h"
+
 #include <cstdlib>  // for abs().
 #include <vector>
 
@@ -13,7 +15,6 @@
 #include "buffet/commands/unittest_utils.h"
 #include "buffet/states/error_codes.h"
 #include "buffet/states/mock_state_change_queue_interface.h"
-#include "buffet/states/state_manager.h"
 
 using buffet::unittests::CreateDictionaryValue;
 using buffet::unittests::ValueToString;

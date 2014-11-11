@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "p2p/common/struct_serializer.h"
+
 #include "p2p/common/testutil.h"
 
 #include <fcntl.h>

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "buffet/device_registration_info.h"
+
 #include <base/json/json_reader.h>
 #include <base/values.h>
 #include <chromeos/bind_lambda.h>
@@ -12,7 +14,6 @@
 
 #include "buffet/commands/command_manager.h"
 #include "buffet/commands/unittest_utils.h"
-#include "buffet/device_registration_info.h"
 #include "buffet/device_registration_storage_keys.h"
 #include "buffet/states/mock_state_change_queue_interface.h"
 #include "buffet/states/state_manager.h"

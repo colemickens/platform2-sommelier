@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "buffet/commands/command_dispatch_interface.h"
 #include "buffet/commands/command_queue.h"
+
+#include "buffet/commands/command_dispatch_interface.h"
 
 namespace buffet {
 

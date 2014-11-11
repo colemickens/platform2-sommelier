@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/dbus_adaptor.h"
+
 #include <map>
 #include <string>
 #include <vector>
@@ -11,7 +13,6 @@
 #include <dbus-c++/dbus.h>
 
 #include "shill/accessor_interface.h"
-#include "shill/dbus_adaptor.h"
 #include "shill/error.h"
 #include "shill/key_value_store.h"
 #include "shill/logging.h"

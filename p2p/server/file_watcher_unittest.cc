@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "p2p/common/testutil.h"
 #include "p2p/server/file_watcher.h"
+
+#include "p2p/common/testutil.h"
 
 #include <stdarg.h>
 #include <sys/types.h>

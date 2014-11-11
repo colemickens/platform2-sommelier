@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/system/display/display_watcher.h"
+
 #include <string>
 #include <vector>
 
@@ -10,7 +12,6 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
-#include "power_manager/powerd/system/display/display_watcher.h"
 #include "power_manager/powerd/system/udev_stub.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 

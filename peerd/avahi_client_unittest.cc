@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "peerd/avahi_client.h"
+
 #include <avahi-common/defs.h>
 #include <base/memory/ref_counted.h>
 #include <chromeos/dbus/data_serialization.h>
@@ -13,7 +15,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "peerd/avahi_client.h"
 #include "peerd/complete_mock_object_proxy.h"
 #include "peerd/dbus_constants.h"
 #include "peerd/mock_peer_manager.h"

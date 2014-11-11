@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/crypto_util_proxy.h"
+
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -12,7 +14,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/callbacks.h"
-#include "shill/crypto_util_proxy.h"
 #include "shill/mock_crypto_util_proxy.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_file_io.h"

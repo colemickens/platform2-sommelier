@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cryptohome/vault_keyset.h"
+
 #include <sys/types.h>
 
 #include <base/logging.h>
@@ -11,7 +13,6 @@
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/vault_keyset.h"
 
 using chromeos::SecureBlob;
 

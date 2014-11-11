@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "chromiumos-wide-profiling/perf_reader.h"
+
 #include <byteswap.h>
 #include <limits.h>
 
@@ -13,7 +15,6 @@
 
 #include "base/logging.h"
 
-#include "chromiumos-wide-profiling/perf_reader.h"
 #include "chromiumos-wide-profiling/quipper_string.h"
 #include "chromiumos-wide-profiling/utils.h"
 

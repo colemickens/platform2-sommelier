@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/crypto_rot47.h"
+
 #include <string>
 
 #include <gtest/gtest.h>
-
-#include "shill/crypto_rot47.h"
 
 using std::string;
 using testing::Test;

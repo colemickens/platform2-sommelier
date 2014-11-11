@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "permission_broker/deny_claimed_usb_device_rule.h"
+
 #include <gtest/gtest.h>
 #include <libudev.h>
 
@@ -9,7 +11,6 @@
 #include <string>
 
 #include "base/logging.h"
-#include "permission_broker/deny_claimed_usb_device_rule.h"
 
 using std::set;
 using std::string;

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "buffet/commands/prop_constraints.h"
+
 #include "buffet/commands/prop_values.h"
 #include "buffet/commands/schema_constants.h"
 

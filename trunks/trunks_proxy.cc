@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "trunks/trunks_proxy.h"
+
 #include <base/bind.h>
 #include <base/stl_util.h>
 
 #include "trunks/dbus_interface.h"
 #include "trunks/error_codes.h"
 #include "trunks/tpm_communication.pb.h"
-#include "trunks/trunks_proxy.h"
 
 namespace trunks {
 
@@ -100,4 +101,3 @@ void TrunksProxy::OnResponse(const SendCommandCallback& callback,
 }
 
 }  // namespace trunks
-

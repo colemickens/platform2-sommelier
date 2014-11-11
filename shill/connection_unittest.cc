@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/connection.h"
+
 #include <arpa/inet.h>
 #include <linux/rtnetlink.h>
 
@@ -12,7 +14,6 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "shill/connection.h"
 #include "shill/ipconfig.h"
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"

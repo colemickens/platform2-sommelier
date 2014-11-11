@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "buffet/commands/object_schema.h"
+
 #include <algorithm>
 #include <limits>
 #include <memory>
@@ -12,7 +14,6 @@
 #include <base/values.h>
 #include <gtest/gtest.h>
 
-#include "buffet/commands/object_schema.h"
 #include "buffet/commands/prop_types.h"
 #include "buffet/commands/schema_constants.h"
 #include "buffet/commands/unittest_utils.h"
@@ -928,4 +929,3 @@ TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
   EXPECT_EQ("unexpected_parameter", error->GetFirstError()->GetCode());
   error.reset();
 }
-

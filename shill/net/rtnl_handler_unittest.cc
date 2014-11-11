@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/net/rtnl_handler.h"
+
 #include <string>
 
 #include <gtest/gtest.h>
@@ -15,7 +17,6 @@
 
 #include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_sockets.h"
-#include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_message.h"
 
 using base::Bind;

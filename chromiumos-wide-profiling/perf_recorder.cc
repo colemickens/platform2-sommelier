@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "chromiumos-wide-profiling/perf_recorder.h"
+
 #include <cstdio>
 #include <cstring>
 #include <sstream>
 #include <vector>
 
-#include "chromiumos-wide-profiling/perf_recorder.h"
 #include "chromiumos-wide-profiling/perf_serializer.h"
 #include "chromiumos-wide-profiling/quipper_string.h"
 #include "chromiumos-wide-profiling/scoped_temp_path.h"

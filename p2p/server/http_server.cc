@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "p2p/server/http_server.h"
+
 #include "p2p/common/constants.h"
 #include "p2p/common/server_message.h"
 #include "p2p/common/struct_serializer.h"
-#include "p2p/server/http_server.h"
 
 #include <glib.h>
 #include <signal.h>

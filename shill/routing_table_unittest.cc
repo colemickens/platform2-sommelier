@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/routing_table.h"
+
 #include <linux/rtnetlink.h>
 #include <sys/socket.h>
 
@@ -22,7 +24,6 @@
 #include "shill/net/byte_string.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/rtnl_message.h"
-#include "shill/routing_table.h"
 #include "shill/routing_table_entry.h"
 
 using base::Bind;

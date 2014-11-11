@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "permission_broker/permission_broker.h"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <string>
 
 #include "base/memory/scoped_ptr.h"
-#include "permission_broker/permission_broker.h"
 #include "permission_broker/rule.h"
 
 using std::string;

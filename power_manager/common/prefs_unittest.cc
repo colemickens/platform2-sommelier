@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/common/prefs.h"
+
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_ptr.h>
@@ -9,7 +11,6 @@
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
-#include "power_manager/common/prefs.h"
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/common/test_main_loop_runner.h"
 

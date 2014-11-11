@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "buffet/states/state_package.h"
+
 #include <memory>
 #include <string>
 
@@ -12,7 +14,6 @@
 #include "buffet/commands/schema_constants.h"
 #include "buffet/commands/unittest_utils.h"
 #include "buffet/states/error_codes.h"
-#include "buffet/states/state_package.h"
 
 using buffet::unittests::CreateDictionaryValue;
 using buffet::unittests::ValueToString;

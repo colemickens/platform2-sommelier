@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/crypto_provider.h"
+
 #include <string>
 
 #include <base/files/file_util.h>
@@ -9,7 +11,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/crypto_des_cbc.h"
-#include "shill/crypto_provider.h"
 #include "shill/crypto_rot47.h"
 #include "shill/glib.h"
 

@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/net/byte_string.h"
+
 #include <arpa/inet.h>
 #include <endian.h>
 
 #include <gtest/gtest.h>
 
 #include <string>
-
-#include "shill/net/byte_string.h"
 
 using testing::Test;
 using std::string;

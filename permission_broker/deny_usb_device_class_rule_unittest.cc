@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "permission_broker/deny_usb_device_class_rule.h"
+
 #include <gtest/gtest.h>
 #include <linux/usb/ch9.h>
-
-#include "permission_broker/deny_usb_device_class_rule.h"
 
 namespace permission_broker {
 

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "chromiumos-wide-profiling/utils.h"
+
 #include <openssl/md5.h>
 #include <sys/stat.h>
 
@@ -15,8 +17,6 @@
 
 #include "base/logging.h"
 #include "base/macros.h"
-
-#include "chromiumos-wide-profiling/utils.h"
 
 namespace {
 

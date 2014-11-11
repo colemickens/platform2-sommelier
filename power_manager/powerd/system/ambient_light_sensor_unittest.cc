@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/system/ambient_light_sensor.h"
+
 #include <base/compiler_specific.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -12,7 +14,6 @@
 
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/system/ambient_light_observer.h"
-#include "power_manager/powerd/system/ambient_light_sensor.h"
 
 namespace power_manager {
 namespace system {

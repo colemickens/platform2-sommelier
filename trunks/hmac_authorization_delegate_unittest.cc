@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "trunks/hmac_authorization_delegate.h"
+
 #include <string>
 
 #include <gtest/gtest.h>
-
-#include "trunks/hmac_authorization_delegate.h"
 
 namespace trunks {
 

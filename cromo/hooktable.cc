@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/logging.h>
-
 #include "cromo/hooktable.h"
+
+#include <base/logging.h>
 
 HookTable::Hook::Hook(Function func, void* arg) : func_(func), arg_(arg) {}
 

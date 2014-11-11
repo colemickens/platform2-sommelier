@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "p2p/server/peer_update_manager.h"
+
 #include "p2p/common/testutil.h"
 
 #include "p2p/server/fake_file_watcher.h"
 #include "p2p/server/mock_http_server.h"
 #include "p2p/server/mock_service_publisher.h"
-#include "p2p/server/peer_update_manager.h"
 
 #include <sys/stat.h>
 #include <sys/types.h>

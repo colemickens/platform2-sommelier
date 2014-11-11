@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "buffet/commands/command_manager.h"
+
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>
 #include <gtest/gtest.h>
 
-#include "buffet/commands/command_manager.h"
 #include "buffet/commands/unittest_utils.h"
 
 using buffet::unittests::CreateDictionaryValue;

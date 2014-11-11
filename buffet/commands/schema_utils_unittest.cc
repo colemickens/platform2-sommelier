@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "buffet/commands/schema_utils.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -14,7 +16,6 @@
 #include "buffet/commands/prop_types.h"
 #include "buffet/commands/prop_values.h"
 #include "buffet/commands/schema_constants.h"
-#include "buffet/commands/schema_utils.h"
 #include "buffet/commands/unittest_utils.h"
 
 using buffet::unittests::CreateDictionaryValue;

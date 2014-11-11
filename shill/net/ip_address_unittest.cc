@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/net/ip_address.h"
+
 #include <gtest/gtest.h>
 
 #include <arpa/inet.h>
 
 #include "shill/net/byte_string.h"
-#include "shill/net/ip_address.h"
 
 using std::string;
 using testing::Test;

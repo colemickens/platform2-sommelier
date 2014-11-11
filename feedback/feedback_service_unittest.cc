@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "feedback/feedback_service.h"
+
 #include <utime.h>
 
 #include <string>
@@ -21,7 +23,6 @@
 #include "components/feedback/feedback_report.h"
 #include "components/feedback/feedback_uploader.h"
 #include "components/feedback/proto/extension.pb.h"
-#include "feedback/feedback_service.h"
 
 namespace feedback {
 

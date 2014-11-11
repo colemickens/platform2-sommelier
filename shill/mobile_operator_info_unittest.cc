@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/mobile_operator_info.h"
+
 #include <fstream>
 #include <map>
 #include <ostream>
@@ -26,7 +28,6 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
-#include "shill/mobile_operator_info.h"
 #include "shill/mobile_operator_info_impl.h"
 
 using base::FilePath;

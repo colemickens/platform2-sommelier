@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cros-disks/mount_options.h"
+
 #include <sys/mount.h>
 
 #include <string>
@@ -9,8 +11,6 @@
 
 #include <base/macros.h>
 #include <gtest/gtest.h>
-
-#include "cros-disks/mount_options.h"
 
 using std::pair;
 using std::string;

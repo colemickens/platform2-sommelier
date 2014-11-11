@@ -3,9 +3,9 @@
 // found in the LICENSE file.
 
 
-#include <gtest/gtest.h>
-
 #include "buffet/states/state_change_queue.h"
+
+#include <gtest/gtest.h>
 
 namespace buffet {
 

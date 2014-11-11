@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/system/input_watcher.h"
+
 #include <string>
 #include <vector>
 
@@ -16,7 +18,6 @@
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/powerd/system/event_device_stub.h"
 #include "power_manager/powerd/system/input_observer.h"
-#include "power_manager/powerd/system/input_watcher.h"
 #include "power_manager/powerd/system/udev_stub.h"
 
 namespace power_manager {

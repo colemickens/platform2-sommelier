@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/system/async_file_reader.h"
+
 #include <algorithm>
 
 #include <base/bind.h>
@@ -14,7 +16,6 @@
 
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/common/util.h"
-#include "power_manager/powerd/system/async_file_reader.h"
 
 namespace power_manager {
 namespace system {

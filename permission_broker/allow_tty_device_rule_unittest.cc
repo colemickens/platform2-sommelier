@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
-
 #include "permission_broker/allow_tty_device_rule.h"
+
+#include <gtest/gtest.h>
 
 namespace permission_broker {
 

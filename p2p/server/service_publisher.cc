@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "p2p/common/util.h"
 #include "p2p/server/service_publisher.h"
+
+#include "p2p/common/util.h"
 
 #include <glib.h>
 #include <avahi-client/client.h>

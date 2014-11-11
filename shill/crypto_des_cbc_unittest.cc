@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/crypto_des_cbc.h"
+
 #include <string>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
-#include "shill/crypto_des_cbc.h"
 #include "shill/glib.h"
 
 using base::FilePath;

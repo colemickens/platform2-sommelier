@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/net/rtnl_listener.h"
+
 #include <linux/netlink.h>
 #include <sys/socket.h>
 
@@ -10,7 +12,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/net/rtnl_handler.h"
-#include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
 
 using base::Bind;

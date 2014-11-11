@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cros-disks/system_mounter.h"
+
 #include <sys/mount.h>
 
 #include <string>
@@ -11,7 +13,6 @@
 #include <gtest/gtest.h>
 
 #include "cros-disks/mount_options.h"
-#include "cros-disks/system_mounter.h"
 
 using std::string;
 using std::vector;

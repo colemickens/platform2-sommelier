@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/modem_info.h"
+
 #include <base/stl_util.h>
 #include <gtest/gtest.h>
 
@@ -11,7 +13,6 @@
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/modem_info.h"
 #include "shill/modem_manager.h"
 
 using testing::_;

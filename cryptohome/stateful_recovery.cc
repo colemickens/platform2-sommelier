@@ -4,6 +4,8 @@
 //
 // Provides the implementation of StatefulRecovery.
 
+#include "cryptohome/stateful_recovery.h"
+
 #include <linux/reboot.h>
 #include <sys/reboot.h>
 #include <unistd.h>
@@ -16,7 +18,6 @@
 
 #include "cryptohome/platform.h"
 #include "cryptohome/service.h"
-#include "cryptohome/stateful_recovery.h"
 
 using std::string;
 

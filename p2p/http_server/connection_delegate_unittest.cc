@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "p2p/http_server/connection_delegate.h"
+
 #include "p2p/common/constants.h"
 #include "p2p/common/fake_clock.h"
 #include "p2p/common/testutil.h"
 #include "p2p/common/util.h"
-#include "p2p/http_server/connection_delegate.h"
 #include "p2p/http_server/mock_server.h"
 
 #include <arpa/inet.h>

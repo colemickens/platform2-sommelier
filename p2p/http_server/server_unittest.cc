@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "p2p/http_server/server.h"
+
 #include "p2p/common/constants.h"
 #include "p2p/common/server_message.h"
 #include "p2p/common/struct_serializer.h"
@@ -9,7 +11,6 @@
 #include "p2p/common/util.h"
 #include "p2p/http_server/connection_delegate.h"
 #include "p2p/http_server/fake_connection_delegate.h"
-#include "p2p/http_server/server.h"
 
 #include <arpa/inet.h>
 #include <fcntl.h>

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "peerd/avahi_service_publisher.h"
+
 #include <memory>
 #include <vector>
 
@@ -13,7 +15,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "peerd/avahi_service_publisher.h"
 #include "peerd/dbus_constants.h"
 #include "peerd/service.h"
 #include "peerd/test_util.h"

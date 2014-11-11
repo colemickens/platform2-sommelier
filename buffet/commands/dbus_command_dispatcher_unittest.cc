@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "buffet/commands/dbus_command_dispatcher.h"
+
 #include <memory>
 #include <string>
 
@@ -14,7 +16,6 @@
 
 #include "buffet/commands/command_dictionary.h"
 #include "buffet/commands/command_queue.h"
-#include "buffet/commands/dbus_command_dispatcher.h"
 #include "buffet/commands/unittest_utils.h"
 #include "buffet/libbuffet/dbus_constants.h"
 

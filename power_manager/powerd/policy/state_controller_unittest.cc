@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/policy/state_controller.h"
+
 #include <stdint.h>
 
 #include <base/compiler_specific.h>
@@ -15,7 +17,6 @@
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/policy/state_controller.h"
 
 namespace power_manager {
 namespace policy {

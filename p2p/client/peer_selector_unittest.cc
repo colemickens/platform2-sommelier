@@ -3,8 +3,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "p2p/client/fake_service_finder.h"
 #include "p2p/client/peer_selector.h"
+
+#include "p2p/client/fake_service_finder.h"
 #include "p2p/common/fake_clock.h"
 #include "p2p/common/testutil.h"
 

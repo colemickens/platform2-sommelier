@@ -4,12 +4,12 @@
 
 // Unit tests for CryptohomeEventSource.
 
+#include "cryptohome/cryptohome_event_source.h"
+
 #include "cryptohome/vault_keyset.h"
 
 #include <base/logging.h>
 #include <gtest/gtest.h>
-
-#include "cryptohome/cryptohome_event_source.h"
 
 namespace cryptohome {
 

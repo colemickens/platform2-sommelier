@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/system/display/external_display.h"
+
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
@@ -15,7 +17,6 @@
 
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/metrics_sender_stub.h"
-#include "power_manager/powerd/system/display/external_display.h"
 
 namespace power_manager {
 namespace system {

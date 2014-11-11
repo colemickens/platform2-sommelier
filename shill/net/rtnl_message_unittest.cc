@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/net/rtnl_message.h"
+
 #include <sys/socket.h>
 #include <linux/if.h>  // NOLINT(build/include_alpha) - needs sockaddr.
 #include <linux/netlink.h>
@@ -13,7 +15,6 @@
 
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"
-#include "shill/net/rtnl_message.h"
 
 using std::string;
 using testing::Test;

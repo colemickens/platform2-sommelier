@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/system/internal_backlight.h"
+
 #include <string>
 
 #include <base/files/file_util.h>
@@ -14,7 +16,6 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/common/clock.h"
-#include "power_manager/powerd/system/internal_backlight.h"
 
 namespace power_manager {
 namespace system {

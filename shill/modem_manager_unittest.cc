@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/modem_manager.h"
+
 #include <base/stl_util.h>
 #include <ModemManager/ModemManager.h>
 
@@ -15,7 +17,6 @@
 #include "shill/mock_modem_manager_proxy.h"
 #include "shill/mock_proxy_factory.h"
 #include "shill/modem.h"
-#include "shill/modem_manager.h"
 #include "shill/testing.h"
 
 using std::string;

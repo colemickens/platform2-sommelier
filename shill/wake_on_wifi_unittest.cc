@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/wake_on_wifi.h"
+
 #include <linux/nl80211.h>
 #include <netlink/netlink.h>
 
@@ -27,7 +29,6 @@
 #include "shill/net/nl80211_message.h"
 #include "shill/nice_mock_control.h"
 #include "shill/testing.h"
-#include "shill/wake_on_wifi.h"
 
 using std::set;
 using std::string;

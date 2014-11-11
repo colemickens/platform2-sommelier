@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
-
 #include "permission_broker/deny_usb_vendor_id_rule.h"
+
+#include <gtest/gtest.h>
 
 static const uint16_t kLinuxFoundationUsbVendorId = 0x1d6b;
 

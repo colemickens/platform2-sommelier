@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/vpn_provider.h"
+
 #include <memory>
 #include <set>
-
-#include "shill/vpn_provider.h"
 
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>

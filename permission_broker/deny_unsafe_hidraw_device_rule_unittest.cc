@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "permission_broker/deny_unsafe_hidraw_device_rule.h"
+
 #include <vector>
 
 #include <gtest/gtest.h>
 
 #include "base/logging.h"
-#include "permission_broker/deny_unsafe_hidraw_device_rule.h"
 
 #define MAKE_DESCRIPTOR(array) GenerateReportDescriptor(array, sizeof(array))
 

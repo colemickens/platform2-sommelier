@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/property_store.h"
+
 #include "shill/property_store_unittest.h"
 
 #include <map>
@@ -21,7 +23,6 @@
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/property_accessor.h"
-#include "shill/property_store.h"
 
 using base::Bind;
 using base::Unretained;

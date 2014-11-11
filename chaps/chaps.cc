@@ -5,6 +5,8 @@
 // This is the Chaps client. Essentially it forwards all PKCS #11 calls to the
 // Chaps Daemon (chapsd) via D-Bus.
 
+#include "chaps/chaps.h"
+
 #include <string>
 #include <vector>
 
@@ -13,7 +15,6 @@
 #include <base/synchronization/waitable_event.h>
 
 #include "chaps/attributes.h"
-#include "chaps/chaps.h"
 #include "chaps/chaps_proxy.h"
 #include "chaps/chaps_utility.h"
 #include "chaps/isolate.h"

@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "p2p/client/peer.h"
 #include "p2p/client/peer_selector.h"
+
+#include "p2p/client/peer.h"
 #include "p2p/common/clock_interface.h"
 #include "p2p/common/constants.h"
 
