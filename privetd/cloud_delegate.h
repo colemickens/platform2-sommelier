@@ -5,6 +5,7 @@
 #ifndef PRIVETD_CLOUD_DELEGATE_H_
 #define PRIVETD_CLOUD_DELEGATE_H_
 
+#include <memory>
 #include <string>
 
 namespace privetd {
@@ -48,6 +49,9 @@ class CloudDelegate {
   // Starts device registration in GCD.
   virtual bool RegisterDevice(const std::string& ticket_id,
                               const std::string& user) = 0;
+
+  // Create default instance.
+  static std::unique_ptr<CloudDelegate> CreateDefault();
 };
 
 }  // namespace privetd

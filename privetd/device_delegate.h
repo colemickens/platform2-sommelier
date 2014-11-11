@@ -5,6 +5,7 @@
 #ifndef PRIVETD_DEVICE_DELEGATE_H_
 #define PRIVETD_DEVICE_DELEGATE_H_
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -38,10 +39,10 @@ class DeviceDelegate {
   // the second is the port for a pooling updates requests. The second value
   // could be 0. In this case the first port would be use for regular and for
   // updates requests.
-  virtual std::pair<int, int> GetHttpEnpoint() const = 0;
+  virtual std::pair<uint16_t, uint16_t> GetHttpEnpoint() const = 0;
 
   // The same |GetHttpEnpoint| but for HTTPS.
-  virtual std::pair<int, int> GetHttpsEnpoint() const = 0;
+  virtual std::pair<uint16_t, uint16_t> GetHttpsEnpoint() const = 0;
 
   // Returns device update.
   virtual base::TimeDelta GetUptime() const = 0;
@@ -54,6 +55,16 @@ class DeviceDelegate {
 
   // Sets the location of the the device.
   virtual void SetLocation(const std::string& location) = 0;
+
+  // Adds supported device type.
+  virtual void AddType(const std::string& type) = 0;
+
+  // Removes supported device type.
+  virtual void RemoveType(const std::string& type) = 0;
+
+  // Create default instance.
+  static std::unique_ptr<DeviceDelegate> CreateDefault(uint16_t http_port,
+                                                       uint16_t https_port);
 };
 
 }  // namespace privetd

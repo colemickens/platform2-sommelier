@@ -56,7 +56,7 @@ class MockPrivetHandlerDelegate : public DeviceDelegate,
                                   public WifiDelegate,
                                   public CloudDelegate,
                                   public SecurityDelegate {
-  using IntPair = std::pair<int, int>;
+  using IntPair = std::pair<uint16_t, uint16_t>;
 
  public:
   // Device
@@ -71,6 +71,8 @@ class MockPrivetHandlerDelegate : public DeviceDelegate,
   MOCK_METHOD1(SetName, void(const std::string&));
   MOCK_METHOD1(SetDescription, void(const std::string&));
   MOCK_METHOD1(SetLocation, void(const std::string&));
+  MOCK_METHOD1(AddType, void(const std::string&));
+  MOCK_METHOD1(RemoveType, void(const std::string&));
 
   // Wifi
   MOCK_CONST_METHOD0(GetWifiSsid, std::string());

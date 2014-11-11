@@ -5,6 +5,7 @@
 #ifndef PRIVETD_WIFI_DELEGATE_H_
 #define PRIVETD_WIFI_DELEGATE_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -48,6 +49,9 @@ class WifiDelegate {
   // Returns false if device is busy and cast start setup.
   virtual bool SetupWifi(const std::string& ssid,
                          const std::string& password) = 0;
+
+  // Create default instance.
+  static std::unique_ptr<WifiDelegate> CreateDefault();
 };
 
 }  // namespace privetd

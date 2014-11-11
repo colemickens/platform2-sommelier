@@ -5,6 +5,7 @@
 #ifndef PRIVETD_SECURITY_DELEGATE_H_
 #define PRIVETD_SECURITY_DELEGATE_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -46,6 +47,9 @@ class SecurityDelegate {
   // Returns true if |auth_code| provided by client is valid. Client should
   // obtain |auth_code| during pairing process.
   virtual bool IsValidPairingCode(const std::string& auth_code) const = 0;
+
+  // Create default instance.
+  static std::unique_ptr<SecurityDelegate> CreateDefault();
 };
 
 }  // namespace privetd
