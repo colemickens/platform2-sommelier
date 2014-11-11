@@ -261,9 +261,12 @@ bool TPMUtilityImpl::InitSRK() {
     result = Tspi_Policy_SetSecret(srk_policy, TSS_SECRET_MODE_PLAIN, 0, NULL);
   } else {
     LOG(INFO) << "Using non-empty secret for SRK policy.";
+    // If the authorization data is 20 null bytes, use SHA1 mode for
+    // compatibility with other tools that use this value.
     result = Tspi_Policy_SetSecret(
         srk_policy,
-        TSS_SECRET_MODE_PLAIN,
+        srk_auth_data_ == string(20, 0) ? TSS_SECRET_MODE_SHA1 :
+                                          TSS_SECRET_MODE_PLAIN,
         srk_auth_data_.length(),
         ConvertStringToByteBuffer(srk_auth_data_.data()));
   }
