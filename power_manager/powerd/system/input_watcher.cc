@@ -30,10 +30,6 @@
 #include "power_manager/powerd/system/input_observer.h"
 #include "power_manager/powerd/system/udev.h"
 
-using std::map;
-using std::string;
-using std::vector;
-
 namespace power_manager {
 namespace system {
 
@@ -169,6 +165,7 @@ LidState InputWatcher::QueryLidState() {
   if (!lid_device_)
     return LID_NOT_PRESENT;
 
+  const uint32_t device_types = GetDeviceTypes(lid_device_);
   while (true) {
     // Stop when we fail to read any more events.
     std::vector<input_event> events;
@@ -183,7 +180,9 @@ LidState InputWatcher::QueryLidState() {
         break;
     }
 
-    queued_events_.insert(queued_events_.end(), events.begin(), events.end());
+    queued_events_.reserve(queued_events_.size() + events.size());
+    for (auto event : events)
+      queued_events_.push_back(std::make_pair(event, device_types));
     VLOG(1) << "Queued " << events.size()
             << " event(s) while querying lid state";
   }
@@ -260,6 +259,18 @@ void InputWatcher::OnUdevEvent(const std::string& subsystem,
   }
 }
 
+uint32_t InputWatcher::GetDeviceTypes(
+    const EventDeviceInterface* device) const {
+  uint32_t device_types = DEVICE_NONE;
+  if (power_button_devices_.count(device))
+    device_types |= DEVICE_POWER_BUTTON;
+  if (device == lid_device_)
+    device_types |= DEVICE_LID_SWITCH;
+  if (device == hover_device_)
+    device_types |= DEVICE_HOVER;
+  return device_types;
+}
+
 void InputWatcher::OnNewEvents(EventDeviceInterface* device) {
   SendQueuedEvents();
 
@@ -269,32 +280,37 @@ void InputWatcher::OnNewEvents(EventDeviceInterface* device) {
 
   VLOG(1) << "Read " << events.size() << " event(s) from "
           << device->GetDebugName();
+  const uint32_t device_types = GetDeviceTypes(device);
   for (size_t i = 0; i < events.size(); ++i) {
     // Update |lid_state_| here instead of in ProcessEvent() so we can avoid
     // modifying it in response to queued events.
-    if (device == lid_device_)
+    if (device_types & DEVICE_LID_SWITCH)
       GetLidStateFromEvent(events[i], &lid_state_);
-    ProcessEvent(events[i]);
+    ProcessEvent(events[i], device_types);
   }
 }
 
-void InputWatcher::ProcessEvent(const input_event& event) {
+void InputWatcher::ProcessEvent(const input_event& event,
+                                uint32_t device_types) {
   LidState lid_state = LID_OPEN;
-  if (GetLidStateFromEvent(event, &lid_state)) {
+  if ((device_types & DEVICE_LID_SWITCH) &&
+      GetLidStateFromEvent(event, &lid_state)) {
     VLOG(1) << "Notifying observers about lid " << LidStateToString(lid_state)
             << " event";
     FOR_EACH_OBSERVER(InputObserver, observers_, OnLidEvent(lid_state));
   }
 
   ButtonState button_state = BUTTON_DOWN;
-  if (GetPowerButtonStateFromEvent(event, &button_state)) {
+  if ((device_types & DEVICE_POWER_BUTTON) &&
+      GetPowerButtonStateFromEvent(event, &button_state)) {
     VLOG(1) << "Notifying observers about power button "
             << ButtonStateToString(button_state) << " event";
     FOR_EACH_OBSERVER(InputObserver, observers_,
                       OnPowerButtonEvent(button_state));
   }
 
-  ProcessHoverEvent(event);
+  if (device_types & DEVICE_HOVER)
+    ProcessHoverEvent(event);
 }
 
 void InputWatcher::ProcessHoverEvent(const input_event& event) {
@@ -364,20 +380,22 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
   if (device->IsPowerButton()) {
     LOG(INFO) << "Watching power button: " << device->GetDebugName();
     should_watch = true;
+    power_button_devices_.insert(device.get());
   }
 
   // Note that it's possible for a power button and lid switch to share a single
   // event device.
   if (use_lid_ && device->IsLidSwitch()) {
-    LOG(INFO) << "Watching lid switch: " << device->GetDebugName();
-    should_watch = true;
-
-    if (lid_device_)
-      LOG(WARNING) << "Multiple lid devices found on system";
-    lid_device_ = device.get();
-
-    lid_state_ = device->GetInitialLidState();
-    VLOG(1) << "Initial lid state is " << LidStateToString(lid_state_);
+    if (lid_device_) {
+      LOG(WARNING) << "Skipping additional lid switch device "
+                   << device->GetDebugName();
+    } else {
+      LOG(INFO) << "Watching lid switch: " << device->GetDebugName();
+      should_watch = true;
+      lid_device_ = device.get();
+      lid_state_ = device->GetInitialLidState();
+      VLOG(1) << "Initial lid state is " << LidStateToString(lid_state_);
+    }
   }
 
   if (detect_hover_ && device->HoverSupported() && device->HasLeftButton()) {
@@ -405,6 +423,7 @@ void InputWatcher::HandleRemovedInput(int input_num) {
   if (it == event_devices_.end())
     return;
   LOG(INFO) << "Stopping watching " << it->second->GetDebugName();
+  power_button_devices_.erase(it->second.get());
   if (lid_device_ == it->second.get())
     lid_device_ = NULL;
   if (hover_device_ == it->second.get())
@@ -413,8 +432,8 @@ void InputWatcher::HandleRemovedInput(int input_num) {
 }
 
 void InputWatcher::SendQueuedEvents() {
-  for (size_t i = 0; i < queued_events_.size(); ++i)
-    ProcessEvent(queued_events_[i]);
+  for (auto event_pair : queued_events_)
+    ProcessEvent(event_pair.first, event_pair.second);
   queued_events_.clear();
 }
 

@@ -378,6 +378,80 @@ TEST_F(InputWatcherTest, IgnoreDevices) {
   EXPECT_TRUE(touchpad->new_events_cb().is_null());
 }
 
+TEST_F(InputWatcherTest, IgnoreUnexpectedEvents) {
+  linked_ptr<EventDeviceStub> touchpad(new EventDeviceStub);
+  touchpad->set_debug_name("touchpad");
+  touchpad->set_hover_supported(true);
+  touchpad->set_has_left_button(true);
+  AddDevice("event0", touchpad);
+
+  linked_ptr<EventDeviceStub> power_button(new EventDeviceStub);
+  power_button->set_debug_name("power_button");
+  power_button->set_is_power_button(true);
+  AddDevice("event1", power_button);
+
+  linked_ptr<EventDeviceStub> lid_switch(new EventDeviceStub);
+  lid_switch->set_debug_name("lid_switch");
+  lid_switch->set_is_lid_switch(true);
+  lid_switch->set_initial_lid_state(LID_OPEN);
+  AddDevice("event2", lid_switch);
+
+  detect_hover_pref_ = 1;
+  Init();
+
+  // Bizarro world: lid switch reports power-button-down, touchpad reports
+  // lid-closed, and power button reports hover. All of these events should be
+  // ignored.
+  lid_switch->AppendEvent(EV_KEY, KEY_POWER, 1);
+  lid_switch->NotifyAboutEvents();
+  touchpad->AppendEvent(EV_SW, SW_LID, 1);
+  touchpad->NotifyAboutEvents();
+  power_button->AppendEvent(EV_ABS, ABS_MT_TRACKING_ID, 0);
+  power_button->AppendEvent(EV_SYN, SYN_REPORT, 0);
+  power_button->NotifyAboutEvents();
+  EXPECT_EQ(kNoActions, observer_->GetActions());
+
+  // Now send the same events from the correct devices and check that they're
+  // reported to the observer.
+  power_button->AppendEvent(EV_KEY, KEY_POWER, 1);
+  power_button->NotifyAboutEvents();
+  lid_switch->AppendEvent(EV_SW, SW_LID, 1);
+  lid_switch->NotifyAboutEvents();
+  touchpad->AppendEvent(EV_ABS, ABS_MT_TRACKING_ID, 0);
+  touchpad->AppendEvent(EV_SYN, SYN_REPORT, 0);
+  touchpad->NotifyAboutEvents();
+  EXPECT_EQ(JoinActions(kPowerButtonDownAction,
+                        kLidClosedAction,
+                        kHoverOnAction,
+                        NULL),
+            observer_->GetActions());
+}
+
+TEST_F(InputWatcherTest, SingleDeviceForAllTypes) {
+  // Just to make sure that overlap is handled correctly, create a single device
+  // that claims to report all types of events.
+  linked_ptr<EventDeviceStub> device(new EventDeviceStub);
+  device->set_hover_supported(true);
+  device->set_has_left_button(true);
+  device->set_is_power_button(true);
+  device->set_is_lid_switch(true);
+  device->set_initial_lid_state(LID_OPEN);
+  AddDevice("event0", device);
+  detect_hover_pref_ = 1;
+  Init();
+
+  device->AppendEvent(EV_ABS, ABS_MT_TRACKING_ID, 0);
+  device->AppendEvent(EV_KEY, KEY_POWER, 1);
+  device->AppendEvent(EV_SW, SW_LID, 1);
+  device->AppendEvent(EV_SYN, SYN_REPORT, 0);
+  device->NotifyAboutEvents();
+  EXPECT_EQ(JoinActions(kPowerButtonDownAction,
+                        kLidClosedAction,
+                        kHoverOnAction,
+                        NULL),
+            observer_->GetActions());
+}
+
 TEST_F(InputWatcherTest, RegisterForUdevEvents) {
   Init();
   EXPECT_TRUE(udev_.HasSubsystemObserver(InputWatcher::kInputUdevSubsystem,

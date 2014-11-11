@@ -6,7 +6,9 @@
 #define POWER_MANAGER_POWERD_SYSTEM_INPUT_WATCHER_H_
 
 #include <map>
+#include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/cancelable_callback.h>
@@ -85,11 +87,25 @@ class InputWatcher : public InputWatcherInterface,
                    UdevAction action) override;
 
  private:
+  // Different types of devices monitored by InputWatcher. It's possible for a
+  // given device to fulfill more than one role.
+  enum DeviceType {
+    DEVICE_NONE         = 0,
+    DEVICE_POWER_BUTTON = 1 << 0,
+    DEVICE_LID_SWITCH   = 1 << 1,
+    DEVICE_HOVER        = 1 << 2,
+  };
+
+  // Returns a bitfield of DeviceType values describing |device|.
+  uint32_t GetDeviceTypes(const EventDeviceInterface* device) const;
+
   // Flushes queued events and reads new events from |device|.
   void OnNewEvents(EventDeviceInterface* device);
 
   // Updates internal state and notifies observers in response to |event|.
-  void ProcessEvent(const input_event& event);
+  // |device_types| is a DeviceType bitfield describing the device from which
+  // the event was read.
+  void ProcessEvent(const input_event& event, uint32_t device_types);
 
   // Updates |current_multitouch_slot_| and |multitouch_slots_hover_state_| in
   // response to |event|, doing nothing if it isn't actually an MT event. Helper
@@ -112,6 +128,10 @@ class InputWatcher : public InputWatcherInterface,
 
   // Factory to access EventDevices.
   scoped_ptr<EventDeviceFactoryInterface> event_device_factory_;
+
+  // Event devices reporting power button events. Weak pointers to elements in
+  // |event_devices_|.
+  std::set<const EventDeviceInterface*> power_button_devices_;
 
   // The event device exposing the lid switch. Weak pointer to an element in
   // |event_devices_|, or NULL if no lid device was found.
@@ -138,14 +158,14 @@ class InputWatcher : public InputWatcherInterface,
   // more details about the protocol.
   int current_multitouch_slot_;
 
-  // Bitmap containing the hover state of individual multitouch slots; if a bit
-  // is true, it indicates that the corresponding slot is either reporting a
+  // Bitfield containing the hover state of individual multitouch slots; if a
+  // bit is true, it indicates that the corresponding slot is either reporting a
   // hover event above the touchpad or a touch event on the touchpad.
   uint64_t multitouch_slots_hover_state_;
 
-  // Events read from |lid_device_| by QueryLidState() that haven't yet been
-  // sent to observers.
-  std::vector<input_event> queued_events_;
+  // (Events, DeviceType-bitfield) tuples read from |lid_device_| by
+  // QueryLidState() that haven't yet been sent to observers.
+  std::vector<std::pair<input_event, uint32_t>> queued_events_;
 
   // Posted by QueryLidState() to run SendQueuedEvents() to notify observers
   // about |queued_events_|.
