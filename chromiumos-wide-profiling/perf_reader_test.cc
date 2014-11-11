@@ -440,6 +440,138 @@ TEST(PerfReaderTest, CorrectlyReadsPerfEventAttrSize) {
   EXPECT_EQ(304, actual_attr.ids[3]);
 }
 
+TEST(PerfReaderTest, ReadsSampleAndSampleIdAll) {
+  std::stringstream input;
+
+  union PunU32U64 {
+    u32 v32[2];
+    u64 v64;
+  };
+
+  // header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // data
+
+  // PERF_RECORD_HEADER_ATTR
+  const u64 sample_type =      // * == in sample_id_all
+      PERF_SAMPLE_IP |
+      PERF_SAMPLE_TID |        // *
+      PERF_SAMPLE_TIME |       // *
+      PERF_SAMPLE_ADDR |
+      PERF_SAMPLE_ID |         // *
+      PERF_SAMPLE_STREAM_ID |  // *
+      PERF_SAMPLE_CPU |        // *
+      PERF_SAMPLE_PERIOD;
+  const size_t num_sample_event_bits = 8;
+  const size_t num_sample_id_bits = 5;
+  // not tested:
+  // PERF_SAMPLE_READ |
+  // PERF_SAMPLE_RAW |
+  // PERF_SAMPLE_CALLCHAIN |
+  // PERF_SAMPLE_BRANCH_STACK |
+  testing::ExamplePerfEventAttrEvent_Hardware(sample_type,
+                                              true /*sample_id_all*/)
+      .WriteTo(&input);
+
+  // PERF_RECORD_SAMPLE
+  const sample_event written_sample_event = {
+    .header = {
+      .type = PERF_RECORD_SAMPLE,
+      .misc = PERF_RECORD_MISC_KERNEL,
+      .size = sizeof(struct sample_event) + num_sample_event_bits*sizeof(u64),
+    }
+  };
+  const u64 sample_event_array[] = {
+    0xffffffff01234567,                  // IP
+    PunU32U64{.v32={0x68d, 0x68e}}.v64,  // TID (u32 pid, tid)
+    1415837014*1000000000ULL,            // TIME
+    0x00007f999c38d15a,                  // ADDR
+    2,                                   // ID
+    1,                                   // STREAM_ID
+    8,                                   // CPU
+    10001,                               // PERIOD
+  };
+  ASSERT_EQ(written_sample_event.header.size,
+            sizeof(written_sample_event.header) + sizeof(sample_event_array));
+  input.write(reinterpret_cast<const char*>(&written_sample_event),
+              sizeof(written_sample_event));
+  input.write(reinterpret_cast<const char*>(sample_event_array),
+              sizeof(sample_event_array));
+
+  // PERF_RECORD_MMAP
+  ASSERT_EQ(40, offsetof(struct mmap_event, filename));
+  const size_t mmap_event_size =
+      offsetof(struct mmap_event, filename) +
+      10+6 /* ==16, nearest 64-bit boundary for filename */ +
+      num_sample_id_bits*sizeof(u64);
+
+  struct mmap_event written_mmap_event = {
+    .header = {
+      .type = PERF_RECORD_MMAP,
+      .misc = 0,
+      .size = mmap_event_size,
+    },
+    .pid = 0x68d, .tid = 0x68d,
+    .start = 0x1d000,
+    .len = 0x1000,
+    .pgoff = 0,
+    // .filename = ..., // written separately
+  };
+  const char mmap_filename[10+6] = "/dev/zero";
+  const u64 mmap_sample_id[] = {
+    PunU32U64{.v32={0x68d, 0x68e}}.v64,  // TID (u32 pid, tid)
+    1415911367*1000000000ULL,            // TIME
+    3,                                   // ID
+    2,                                   // STREAM_ID
+    9,                                   // CPU
+  };
+  const size_t pre_mmap_offset = input.tellp();
+  input.write(reinterpret_cast<const char*>(&written_mmap_event),
+              offsetof(struct mmap_event, filename));
+  input.write(mmap_filename, 9+7);
+  input.write(reinterpret_cast<const char*>(mmap_sample_id),
+              sizeof(mmap_sample_id));
+  const size_t written_mmap_size =
+      static_cast<size_t>(input.tellp()) - pre_mmap_offset;
+  ASSERT_EQ(written_mmap_event.header.size,
+            static_cast<u64>(written_mmap_size));
+
+  //
+  // Parse input.
+  //
+
+  struct perf_sample sample;
+
+  PerfReader pr;
+  EXPECT_TRUE(pr.ReadFromString(input.str()));
+  // PERF_RECORD_HEADER_ATTR is added to attr(), not events().
+  EXPECT_EQ(2, pr.events().size());
+
+  const event_t* sample_event = pr.events()[0].get();
+  EXPECT_EQ(PERF_RECORD_SAMPLE, sample_event->header.type);
+  EXPECT_TRUE(pr.ReadPerfSampleInfo(*sample_event, &sample));
+  EXPECT_EQ(0xffffffff01234567, sample.ip);
+  EXPECT_EQ(0x68d, sample.pid);
+  EXPECT_EQ(0x68e, sample.tid);
+  EXPECT_EQ(1415837014*1000000000ULL, sample.time);
+  EXPECT_EQ(0x00007f999c38d15a, sample.addr);
+  EXPECT_EQ(2, sample.id);
+  EXPECT_EQ(1, sample.stream_id);
+  EXPECT_EQ(8, sample.cpu);
+  EXPECT_EQ(10001, sample.period);
+
+  const event_t* mmap_event = pr.events()[1].get();
+  EXPECT_EQ(PERF_RECORD_MMAP, mmap_event->header.type);
+  EXPECT_TRUE(pr.ReadPerfSampleInfo(*mmap_event, &sample));
+  EXPECT_EQ(0x68d, sample.pid);
+  EXPECT_EQ(0x68e, sample.tid);
+  EXPECT_EQ(1415911367*1000000000ULL, sample.time);
+  EXPECT_EQ(3, sample.id);
+  EXPECT_EQ(2, sample.stream_id);
+  EXPECT_EQ(9, sample.cpu);
+}
+
 }  // namespace quipper
 
 int main(int argc, char* argv[]) {

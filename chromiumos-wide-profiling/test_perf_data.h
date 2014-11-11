@@ -42,6 +42,20 @@ class ExamplePipedPerfDataFileHeader : public StreamWriteable {
   void WriteTo(std::ostream* out) const override;
 };
 
+// Produces a PERF_RECORD_HEADER_ATTR event with struct perf_event_attr
+// describing a hardware event. The sample_type mask and the sample_id_all
+// bit are paramatized.
+class ExamplePerfEventAttrEvent_Hardware : public StreamWriteable {
+ public:
+  explicit ExamplePerfEventAttrEvent_Hardware(u64 sample_type,
+                                              bool sample_id_all)
+      : sample_type_(sample_type), sample_id_all_(sample_id_all) {}
+  void WriteTo(std::ostream* out) const override;
+ private:
+  const u64 sample_type_;
+  const bool sample_id_all_;
+};
+
 // Produces a struct perf_file_attr with a perf_event_attr describing a
 // tracepoint event.
 class ExamplePerfFileAttr_Tracepoint : public StreamWriteable {

@@ -178,7 +178,7 @@ uint64_t GetSampleFieldsForEventType(uint32_t event_type,
   case PERF_RECORD_THROTTLE:
   case PERF_RECORD_UNTHROTTLE:
     mask = PERF_SAMPLE_TID | PERF_SAMPLE_TIME | PERF_SAMPLE_ID |
-           PERF_SAMPLE_CPU;
+           PERF_SAMPLE_STREAM_ID | PERF_SAMPLE_CPU;
     break;
   case PERF_RECORD_SAMPLE:
   case PERF_RECORD_READ:

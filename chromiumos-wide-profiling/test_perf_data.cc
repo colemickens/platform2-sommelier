@@ -43,6 +43,29 @@ void ExamplePipedPerfDataFileHeader::WriteTo(std::ostream* out) const {
   CHECK_EQ(static_cast<u64>(out->tellp()), header.size);
 }
 
+void ExamplePerfEventAttrEvent_Hardware::WriteTo(std::ostream* out) const {
+  // Due to the unnamed union fields (eg, sample_period), this structure can't
+  // be initialized with designated initializers.
+  perf_event_attr attr = {};
+  attr.type = PERF_TYPE_HARDWARE;
+  attr.size = sizeof(perf_event_attr);
+  attr.config = 0;
+  attr.sample_period = 100001;
+  attr.sample_type = sample_type_;
+  attr.sample_id_all = sample_id_all_;
+
+  const attr_event event = {
+    .header = {
+      .type = PERF_RECORD_HEADER_ATTR,
+      .misc = 0,
+      .size = sizeof(attr_event),  // No ids to add to size.
+    },
+    .attr = attr,
+  };
+
+  out->write(reinterpret_cast<const char*>(&event), sizeof(event));
+}
+
 void ExamplePerfFileAttr_Tracepoint::WriteTo(std::ostream* out) const {
   // Due to the unnamed union fields (eg, sample_period), this structure can't
   // be initialized with designated initializers.

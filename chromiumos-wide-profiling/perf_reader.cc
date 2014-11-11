@@ -95,6 +95,18 @@ void ByteSwap(T* input) {
   }
 }
 
+u64 MaybeSwap(u64 value, bool swap) {
+  if (swap)
+    return bswap_64(value);
+  return value;
+}
+
+u32 MaybeSwap(u32 value, bool swap) {
+  if (swap)
+    return bswap_32(value);
+  return value;
+}
+
 // The code currently assumes that the compiler will not add any padding to the
 // various structs.  These CHECKs make sure that this is true.
 void CheckNoEventHeaderPadding() {
@@ -365,114 +377,87 @@ size_t ReadPerfSampleFromData(const uint64_t* array,
                               bool swap_bytes,
                               struct perf_sample* sample) {
   const uint64_t* initial_array_ptr = array;
-  const uint64_t k32BitFields = PERF_SAMPLE_TID | PERF_SAMPLE_CPU;
-  bool read_read_info = false;
-  bool read_raw_data = false;
-  bool read_callchain = false;
-  bool read_branch_stack = false;
 
-  for (int index = 0; (sample_fields >> index) > 0; ++index) {
-    uint64_t sample_type = (1 << index);
-    union {
-      uint32_t val32[sizeof(uint64_t) / sizeof(uint32_t)];
-      uint64_t val64;
-    };
-    if (!(sample_type & sample_fields))
-      continue;
+  union {
+    uint32_t val32[sizeof(uint64_t) / sizeof(uint32_t)];
+    uint64_t val64;
+  };
 
-    val64 = *array;
+  // See structure for PERF_RECORD_SAMPLE in kernel/perf_event.h
 
-    if (swap_bytes) {
-      if (k32BitFields & sample_type) {
-        ByteSwap(&val32[0]);
-        ByteSwap(&val32[1]);
-      } else {
-        ByteSwap(&val64);
-      }
-    }
-
-    switch (sample_type) {
-    case PERF_SAMPLE_IP:
-      sample->ip = val64;
-      break;
-    case PERF_SAMPLE_TID:
-      sample->pid = val32[0];
-      sample->tid = val32[1];
-      break;
-    case PERF_SAMPLE_TIME:
-      sample->time = val64;
-      break;
-    case PERF_SAMPLE_ADDR:
-      sample->addr = val64;
-      break;
-    case PERF_SAMPLE_ID:
-      sample->id = val64;
-      break;
-    case PERF_SAMPLE_STREAM_ID:
-      sample->stream_id = val64;
-      break;
-    case PERF_SAMPLE_CPU:
-      sample->cpu = val32[0];
-      break;
-    case PERF_SAMPLE_PERIOD:
-      sample->period = val64;
-      break;
-    case PERF_SAMPLE_READ:
-      read_read_info = true;
-      break;
-    case PERF_SAMPLE_RAW:
-      read_raw_data = true;
-      break;
-    case PERF_SAMPLE_CALLCHAIN:
-      read_callchain = true;
-      break;
-    case PERF_SAMPLE_BRANCH_STACK:
-      read_branch_stack = true;
-      break;
-    default:
-      LOG(FATAL) << "Invalid sample type 0x" << std::hex << sample_type;
-      break;
-    }
-
-    switch (sample_type) {
-    case PERF_SAMPLE_IP:
-    case PERF_SAMPLE_TID:
-    case PERF_SAMPLE_TIME:
-    case PERF_SAMPLE_ADDR:
-    case PERF_SAMPLE_ID:
-    case PERF_SAMPLE_STREAM_ID:
-    case PERF_SAMPLE_CPU:
-    case PERF_SAMPLE_PERIOD:
-      ++array;
-      break;
-    case PERF_SAMPLE_READ:
-    case PERF_SAMPLE_RAW:
-    case PERF_SAMPLE_CALLCHAIN:
-    case PERF_SAMPLE_BRANCH_STACK:
-      // Read info, raw info, call chain, and branch stack are special cases.
-      // They come after the other fields in the sample info data, regardless of
-      // the order of |sample_type| bits.  So do not increment the data pointer.
-      break;
-    default:
-      LOG(FATAL) << "Invalid sample type 0x" << std::hex << sample_type;
-    }
+  // { u64                   ip;       } && PERF_SAMPLE_IP
+  if (sample_fields & PERF_SAMPLE_IP) {
+    sample->ip = MaybeSwap(*array++, swap_bytes);
   }
 
-  // Read each of the complex sample info fields.
-  if (read_read_info) {
+  // { u32                   pid, tid; } && PERF_SAMPLE_TID
+  if (sample_fields & PERF_SAMPLE_TID) {
+    val64 = *array++;
+    sample->pid = MaybeSwap(val32[0], swap_bytes);
+    sample->tid = MaybeSwap(val32[1], swap_bytes);
+  }
+
+  // { u64                   time;     } && PERF_SAMPLE_TIME
+  if (sample_fields & PERF_SAMPLE_TIME) {
+    sample->time = MaybeSwap(*array++, swap_bytes);
+  }
+
+  // { u64                   addr;     } && PERF_SAMPLE_ADDR
+  if (sample_fields & PERF_SAMPLE_ADDR) {
+    sample->addr = MaybeSwap(*array++, swap_bytes);
+  }
+
+  // { u64                   id;       } && PERF_SAMPLE_ID
+  if (sample_fields & PERF_SAMPLE_ID) {
+    sample->id = MaybeSwap(*array++, swap_bytes);
+  }
+
+  // { u64                   stream_id;} && PERF_SAMPLE_STREAM_ID
+  if (sample_fields & PERF_SAMPLE_STREAM_ID) {
+    sample->stream_id = MaybeSwap(*array++, swap_bytes);
+  }
+
+  // { u32                   cpu, res; } && PERF_SAMPLE_CPU
+  if (sample_fields & PERF_SAMPLE_CPU) {
+    val64 = *array++;
+    sample->cpu = MaybeSwap(val32[0], swap_bytes);
+    // sample->res = MaybeSwap(*val32[1], swap_bytes);  // not implemented?
+  }
+
+  // { u64                   period;   } && PERF_SAMPLE_PERIOD
+  if (sample_fields & PERF_SAMPLE_PERIOD) {
+    sample->period = MaybeSwap(*array++, swap_bytes);
+  }
+
+  // { struct read_format    values;   } && PERF_SAMPLE_READ
+  if (sample_fields & PERF_SAMPLE_READ) {
     // TODO(cwp-team): support grouped read info.
     if (read_format & PERF_FORMAT_GROUP)
       return 0;
     array = ReadReadInfo(array, swap_bytes, read_format, sample);
   }
-  if (read_callchain) {
+
+  // { u64                   nr,
+  //   u64                   ips[nr];  } && PERF_SAMPLE_CALLCHAIN
+  if (sample_fields & PERF_SAMPLE_CALLCHAIN) {
     array = ReadCallchain(array, swap_bytes, sample);
   }
-  if (read_raw_data) {
+
+  // { u32                   size;
+  //   char                  data[size];}&& PERF_SAMPLE_RAW
+  if (sample_fields & PERF_SAMPLE_RAW) {
     array = ReadRawData(array, swap_bytes, sample);
   }
-  if (read_branch_stack) {
+
+  // { u64                   nr;
+  //   { u64 from, to, flags } lbr[nr];} && PERF_SAMPLE_BRANCH_STACK
+  if (sample_fields & PERF_SAMPLE_BRANCH_STACK) {
     array = ReadBranchStack(array, swap_bytes, sample);
+  }
+
+  if (sample_fields & ~(PERF_SAMPLE_MAX-1)) {
+    LOG(WARNING) << "Unrecognized sample fields 0x"
+                 << std::hex << (sample_fields & ~(PERF_SAMPLE_MAX-1));
   }
 
   return (array - initial_array_ptr) * sizeof(uint64_t);
@@ -482,66 +467,64 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
                              const uint64_t sample_fields,
                              const uint64_t read_format,
                              uint64_t* array) {
-  uint64_t* initial_array_ptr = array;
-  bool write_read_info = false;
-  bool write_raw_data = false;
-  bool write_callchain = false;
-  bool write_branch_stack = false;
+  const uint64_t* initial_array_ptr = array;
 
-  for (int index = 0; (sample_fields >> index) > 0; ++index) {
-    uint64_t sample_type = (1 << index);
-    union {
-      uint32_t val32[sizeof(uint64_t) / sizeof(uint32_t)];
-      uint64_t val64;
-    };
-    if (!(sample_type & sample_fields))
-      continue;
+  union {
+    uint32_t val32[sizeof(uint64_t) / sizeof(uint32_t)];
+    uint64_t val64;
+  };
 
-    switch (sample_type) {
-    case PERF_SAMPLE_IP:
-      val64 = sample.ip;
-      break;
-    case PERF_SAMPLE_TID:
-      val32[0] = sample.pid;
-      val32[1] = sample.tid;
-      break;
-    case PERF_SAMPLE_TIME:
-      val64 = sample.time;
-      break;
-    case PERF_SAMPLE_ADDR:
-      val64 = sample.addr;
-      break;
-    case PERF_SAMPLE_ID:
-      val64 = sample.id;
-      break;
-    case PERF_SAMPLE_STREAM_ID:
-      val64 = sample.stream_id;
-      break;
-    case PERF_SAMPLE_CPU:
-      val64 = sample.cpu;
-      break;
-    case PERF_SAMPLE_PERIOD:
-      val64 = sample.period;
-      break;
-    case PERF_SAMPLE_READ:
-      write_read_info = true;
-      continue;
-    case PERF_SAMPLE_RAW:
-      write_raw_data = true;
-      continue;
-    case PERF_SAMPLE_CALLCHAIN:
-      write_callchain = true;
-      continue;
-    case PERF_SAMPLE_BRANCH_STACK:
-      write_branch_stack = true;
-      continue;
-    default:
-      LOG(FATAL) << "Invalid sample type " << std::hex << sample_type;
-    }
+  // { u64                   ip;       } && PERF_SAMPLE_IP
+  if (sample_fields & PERF_SAMPLE_IP) {
+    *array++ = sample.ip;
+  }
+
+  // { u32                   pid, tid; } && PERF_SAMPLE_TID
+  if (sample_fields & PERF_SAMPLE_TID) {
+    val32[0] = sample.pid;
+    val32[1] = sample.tid;
     *array++ = val64;
   }
 
-  if (write_read_info) {
+  // { u64                   time;     } && PERF_SAMPLE_TIME
+  if (sample_fields & PERF_SAMPLE_TIME) {
+    *array++ = sample.time;
+  }
+
+  // { u64                   addr;     } && PERF_SAMPLE_ADDR
+  if (sample_fields & PERF_SAMPLE_ADDR) {
+    *array++ = sample.addr;
+  }
+
+  // { u64                   id;       } && PERF_SAMPLE_ID
+  if (sample_fields & PERF_SAMPLE_ID) {
+    *array++ = sample.id;
+  }
+
+  // { u64                   stream_id;} && PERF_SAMPLE_STREAM_ID
+  if (sample_fields & PERF_SAMPLE_STREAM_ID) {
+    *array++ = sample.stream_id;
+  }
+
+  // { u32                   cpu, res; } && PERF_SAMPLE_CPU
+  if (sample_fields & PERF_SAMPLE_CPU) {
+    val32[0] = sample.cpu;
+    // val32[1] = sample.res;  // not implemented?
+    val32[1] = 0;
+    *array++ = val64;
+  }
+
+  //
+  // The remaining fields are only in PERF_RECORD_SAMPLE
+  //
+
+  // { u64                   period;   } && PERF_SAMPLE_PERIOD
+  if (sample_fields & PERF_SAMPLE_PERIOD) {
+    *array++ = sample.period;
+  }
+
+  // { struct read_format    values;   } && PERF_SAMPLE_READ
+  if (sample_fields & PERF_SAMPLE_READ) {
     // TODO(cwp-team): support grouped read info.
     if (read_format & PERF_FORMAT_GROUP)
       return 0;
@@ -553,7 +536,9 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
       *array++ = sample.read.id;
   }
 
-  if (write_callchain) {
+  // { u64                   nr,
+  //   u64                   ips[nr];  } && PERF_SAMPLE_CALLCHAIN
+  if (sample_fields & PERF_SAMPLE_CALLCHAIN) {
     if (!sample.callchain) {
       LOG(ERROR) << "Expecting callchain data, but none was found.";
     } else {
@@ -563,7 +548,9 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
     }
   }
 
-  if (write_raw_data) {
+  // { u32                   size;
+  //   char                  data[size];}&& PERF_SAMPLE_RAW
+  if (sample_fields & PERF_SAMPLE_RAW) {
     uint32_t* ptr = reinterpret_cast<uint32_t*>(array);
     *ptr++ = sample.raw_size;
     memcpy(ptr, sample.raw_data, sample.raw_size);
@@ -574,7 +561,9 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
     array += num_bytes / sizeof(uint64_t);
   }
 
-  if (write_branch_stack) {
+  // { u64                   nr;
+  //   { u64 from, to, flags } lbr[nr];} && PERF_SAMPLE_BRANCH_STACK
+  if (sample_fields & PERF_SAMPLE_BRANCH_STACK) {
     if (!sample.branch_stack) {
       LOG(ERROR) << "Expecting branch stack data, but none was found.";
     } else {
@@ -587,6 +576,7 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
       }
     }
   }
+
   return (array - initial_array_ptr) * sizeof(uint64_t);
 }
 
@@ -962,7 +952,7 @@ bool PerfReader::WritePerfSampleInfo(const perf_sample& sample,
   }
 
   uint64_t sample_format = GetSampleFieldsForEventType(event->header.type,
-                                                     sample_type_);
+                                                       sample_type_);
   uint64_t offset = GetPerfSampleDataOffset(*event);
 
   size_t expected_size = event->header.size - offset;
