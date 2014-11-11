@@ -717,11 +717,16 @@ gboolean cryptohome_flush_and_sign_boot_attributes(
   CRYPTOHOME_WRAP_METHOD(FlushAndSignBootAttributes, request);
 }
 
-
 gboolean cryptohome_get_login_status(Cryptohome* self,
                                      GArray* request,
                                      DBusGMethodInvocation* error) {
   CRYPTOHOME_WRAP_METHOD(GetLoginStatus, request);
+}
+
+gboolean cryptohome_get_tpm_status(Cryptohome* self,
+                                   GArray* request,
+                                   DBusGMethodInvocation* error) {
+  CRYPTOHOME_WRAP_METHOD(GetTpmStatus, request);
 }
 
 #undef CRYPTOHOME_WRAP_METHOD

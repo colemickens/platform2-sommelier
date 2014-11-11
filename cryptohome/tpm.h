@@ -536,6 +536,13 @@ class Tpm {
                  TSS_HKEY key,
                  Tpm::TpmStatusInfo* status);
 
+  // Gets the current state of the dictionary attack logic. Returns false on
+  // failure.
+  bool GetDictionaryAttackInfo(int* counter,
+                               int* threshold,
+                               bool* lockout,
+                               int* seconds_remaining);
+
  protected:
   // Default constructor
   Tpm();
@@ -658,6 +665,16 @@ class Tpm {
                         TSS_FLAG flag,
                         TSS_FLAG sub_flag,
                         chromeos::SecureBlob* data) const;
+
+  // Wrapper for Tspi_TPM_GetCapability. If |data| is not NULL, the raw
+  // capability data will be assigned. If |value| is not NULL, the capability
+  // data must be exactly 4 bytes and it will be decoded into |value|.
+  bool GetCapability(TSS_HCONTEXT context_handle,
+                     TSS_HTPM tpm_handle,
+                     UINT32 capability,
+                     UINT32 sub_capability,
+                     chromeos::Blob* data,
+                     UINT32* value) const;
 
   // Member variables
   bool initialized_;

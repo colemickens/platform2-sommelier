@@ -2909,6 +2909,57 @@ gboolean Service::GetLoginStatus(const GArray* request,
   return TRUE;
 }
 
+void Service::DoGetTpmStatus(const chromeos::SecureBlob& request,
+                             DBusGMethodInvocation* context) {
+  GetTpmStatusRequest request_pb;
+  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size())) {
+    SendInvalidArgsReply(context, "Bad GetTpmStatusRequest");
+    return;
+  }
+  BaseReply reply;
+  GetTpmStatusReply* extension = reply.MutableExtension(
+      GetTpmStatusReply::reply);
+  extension->set_enabled(tpm_init_->IsTpmEnabled());
+  extension->set_owned(tpm_init_->IsTpmOwned());
+  SecureBlob owner_password;
+  if (tpm_init_->GetTpmPassword(&owner_password)) {
+    extension->set_initialized(false);
+    extension->set_owner_password(owner_password.to_string());
+  } else {
+    // Initialized is true only when the TPM is owned and the owner password has
+    // already been destroyed.
+    extension->set_initialized(extension->owned());
+  }
+  extension->set_attestation_prepared(attestation_->IsPreparedForEnrollment());
+  extension->set_attestation_enrolled(attestation_->IsEnrolled());
+  int counter;
+  int threshold;
+  bool lockout;
+  int seconds_remaining;
+  if (tpm_->GetDictionaryAttackInfo(&counter, &threshold, &lockout,
+                                    &seconds_remaining)) {
+    extension->set_dictionary_attack_counter(counter);
+    extension->set_dictionary_attack_threshold(threshold);
+    extension->set_dictionary_attack_lockout_in_effect(lockout);
+    extension->set_dictionary_attack_lockout_seconds_remaining(
+        seconds_remaining);
+  }
+  extension->set_install_lockbox_finalized(extension->owned() &&
+                                           !install_attrs_->is_first_install());
+  extension->set_boot_lockbox_finalized(boot_lockbox_->IsFinalized());
+  extension->set_verified_boot_measured(attestation_->IsPCR0VerifiedMode());
+  SendReply(context, reply);
+}
+
+gboolean Service::GetTpmStatus(const GArray* request,
+                               DBusGMethodInvocation* context) {
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoGetTpmStatus, base::Unretained(this),
+                 SecureBlob(request->data, request->len),
+                 base::Unretained(context)));
+  return TRUE;
+}
+
 gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   base::DictionaryValue dv;
   base::ListValue* mounts = new base::ListValue();

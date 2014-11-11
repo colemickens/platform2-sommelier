@@ -319,6 +319,10 @@ class Attestation : public base::PlatformThread::Delegate,
   virtual bool GetIdentityResetRequest(const std::string& reset_token,
                                        chromeos::SecureBlob* reset_request);
 
+  // Helper method to determine PCR0 status. Returns true iff the current PCR0
+  // value shows a verified boot measurement.
+  virtual bool IsPCR0VerifiedMode();
+
   // Sets an alternative attestation database location. Useful in testing.
   virtual void set_database_path(const char* path) {
     database_path_ = base::FilePath(path);

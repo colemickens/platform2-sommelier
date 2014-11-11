@@ -1133,6 +1133,30 @@ bool Attestation::GetIdentityResetRequest(const string& reset_token,
   return true;
 }
 
+bool Attestation::IsPCR0VerifiedMode() {
+  if (!IsTPMReady())
+    return false;
+  SecureBlob current_pcr_value;
+  if (!tpm_->ReadPCR(0, &current_pcr_value) ||
+      current_pcr_value.size() != kDigestSize) {
+    LOG(WARNING) << "Failed to read PCR0.";
+    return false;
+  }
+  SecureBlob settings_blob(3);
+  settings_blob[0] = false;  // Developer mode enabled.
+  settings_blob[1] = false;  // Recovery mode enabled.
+  settings_blob[2] = kVerified;  // Firmware type.
+  SecureBlob settings_digest = CryptoLib::Sha1(settings_blob);
+  chromeos::Blob extend_pcr_value(kDigestSize, 0);
+  extend_pcr_value.insert(extend_pcr_value.end(), settings_digest.begin(),
+                          settings_digest.end());
+  SecureBlob expected_pcr_value = CryptoLib::Sha1(extend_pcr_value);
+  return (current_pcr_value.size() == expected_pcr_value.size() &&
+          0 == memcmp(current_pcr_value.data(),
+                      expected_pcr_value.data(),
+                      kDigestSize));
+}
+
 bool Attestation::EncryptDatabase(const AttestationDatabase& db,
                                   string* serial_encrypted_db) {
   CHECK(crypto_);

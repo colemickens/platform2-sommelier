@@ -186,6 +186,9 @@ HELP_ADVANCED='
  time_info
   Returns the current synchronization state for the time service.
 
+ tpm_status
+  Prints TPM status information.
+
  tracepath [-n] <destination>[/port]
   Trace the path/route to a network host.
 
@@ -1301,6 +1304,10 @@ cmd_battery_test() (
 cmd_dump_emk() (
   /usr/sbin/cryptohome --action=tpm_attestation_key_status \
                        --name=attest-ent-machine
+)
+
+cmd_tpm_status() (
+  /usr/sbin/cryptohome --action=tpm_more_status
 )
 
 substr() {

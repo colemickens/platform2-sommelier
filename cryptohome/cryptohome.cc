@@ -86,6 +86,7 @@ namespace switches {
     "dump_keyset",
     "dump_last_activity",
     "tpm_status",
+    "tpm_more_status",
     "status",
     "set_current_user_old",
     "do_free_disk_space_control",
@@ -142,6 +143,7 @@ namespace switches {
     ACTION_DUMP_KEYSET,
     ACTION_DUMP_LAST_ACTIVITY,
     ACTION_TPM_STATUS,
+    ACTION_TPM_MORE_STATUS,
     ACTION_STATUS,
     ACTION_SET_CURRENT_USER_OLD,
     ACTION_DO_FREE_DISK_SPACE_CONTROL,
@@ -1564,6 +1566,21 @@ int main(int argc, char **argv) {
       printf("TPM Password: %s\n", password);
       g_free(password);
     }
+  } else if (!strcmp(switches::kActions[switches::ACTION_TPM_MORE_STATUS],
+                     action.c_str())) {
+    cryptohome::GetTpmStatusRequest request;
+    cryptohome::BaseReply reply;
+    if (!MakeProtoDBusCall("GetTpmStatus",
+                           DBUS_METHOD(get_tpm_status),
+                           DBUS_METHOD(get_tpm_status_async),
+                           cl, &proxy, request, &reply)) {
+      return -1;
+    }
+    if (!reply.HasExtension(cryptohome::GetTpmStatusReply::reply)) {
+      printf("GetTpmStatusReply missing.\n");
+      return -1;
+    }
+    printf("GetTpmStatus success.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_STATUS],
                      action.c_str())) {
     chromeos::glib::ScopedError error;

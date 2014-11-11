@@ -429,6 +429,9 @@ gboolean cryptohome_flush_and_sign_boot_attributes(Cryptohome* self,
 gboolean cryptohome_get_login_status(Cryptohome* self,
                                      GArray* request,
                                      DBusGMethodInvocation* resp);
+gboolean cryptohome_get_tpm_status(Cryptohome* self,
+                                   GArray* request,
+                                   DBusGMethodInvocation* resp);
 
 }  // namespace gobject
 }  // namespace cryptohome

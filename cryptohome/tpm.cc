@@ -6,9 +6,12 @@
 
 #include "cryptohome/tpm.h"
 
+#include <algorithm>
+
 #include <arpa/inet.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <base/values.h>
@@ -231,6 +234,90 @@ void Tpm::GetStatus(TSS_HCONTEXT context,
     }
     status->CanDecrypt = true;
   }
+}
+
+bool Tpm::GetDictionaryAttackInfo(int* counter,
+                                  int* threshold,
+                                  bool* lockout,
+                                  int* seconds_remaining) {
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << __func__ << ": Failed to connect to the TPM.";
+    return false;
+  }
+  chromeos::Blob capability_data;
+  if (!GetCapability(context_handle,
+                     tpm_handle,
+                     TSS_TPMCAP_DA_LOGIC,
+                     TPM_ET_KEYHANDLE,
+                     &capability_data,
+                     NULL)) {
+    LOG(ERROR) << __func__ << ": Failed to query DA_LOGIC capability.";
+    return false;
+  }
+  if (static_cast<UINT16>(capability_data[1]) == TPM_TAG_DA_INFO) {
+    TPM_DA_INFO da_info;
+    UINT64 offset = 0;
+    Trspi_UnloadBlob_DA_INFO(&offset, capability_data.data(), &da_info);
+    VLOG(1) << "DA_INFO for TPM_ET_KEYHANDLE:";
+    VLOG(1) << "  Active: " << static_cast<int>(da_info.state);
+    VLOG(1) << "  Counter: " << da_info.currentCount;
+    VLOG(1) << "  Threshold: " << da_info.thresholdCount;
+    VLOG(1) << "  Action: " << da_info.actionAtThreshold.actions;
+    VLOG(1) << "  Action Value: " << da_info.actionDependValue;
+    VLOG(1) << "  Vendor Data Size: " << da_info.vendorDataSize;
+    if (da_info.vendorDataSize > 0) {
+      VLOG(1) << "  Vendor Data: "
+              << base::HexEncode(da_info.vendorData,
+                                 da_info.vendorDataSize);
+    }
+    *counter = da_info.currentCount;
+    *threshold = da_info.thresholdCount;
+    *lockout = (da_info.state == TPM_DA_STATE_ACTIVE);
+    *seconds_remaining = da_info.actionDependValue;
+    free(da_info.vendorData);
+  } else {
+    LOG(WARNING) << __func__ << ": Cannot read counter.";
+  }
+  // For Infineon, pull the counter out of vendor-specific data, and check if it
+  // matches the value in DA_INFO.
+  UINT32 manufacturer;
+  if (!GetCapability(context_handle,
+                     tpm_handle,
+                     TSS_TPMCAP_PROPERTY,
+                     TSS_TPMCAP_PROP_MANUFACTURER,
+                     NULL,
+                     &manufacturer)) {
+    LOG(ERROR) << __func__ << ": Failed to query TSS_TPMCAP_PROP_MANUFACTURER.";
+    return false;
+  }
+  const UINT32 kInfineon = 0x49465800;
+  if (manufacturer == kInfineon) {
+    chromeos::Blob capability_data;
+    if (!GetCapability(context_handle,
+                       tpm_handle,
+                       TSS_TPMCAP_MFR,
+                       0x00000802,  // Opaque vendor-specific bits.
+                       &capability_data,
+                       NULL)) {
+      LOG(ERROR) << __func__ << ": Failed to query MFR capability.";
+      return false;
+    }
+    const size_t kInfineonCounterOffset = 9;
+    if (capability_data.size() > kInfineonCounterOffset) {
+      if (*counter != capability_data[kInfineonCounterOffset]) {
+        LOG(WARNING) << __func__ << ": Counter mismatch: " << *counter << " vs "
+                     << capability_data[kInfineonCounterOffset];
+        *counter = std::max(*counter, static_cast<int>(
+            capability_data[kInfineonCounterOffset]));
+      }
+      VLOG(1) << __func__ << ": " << counter;
+    } else {
+      LOG(WARNING) << __func__ << ": Cannot read counter.";
+    }
+  }
+  return true;
 }
 
 bool Tpm::IsTransient(TSS_RESULT result) {
@@ -2587,6 +2674,38 @@ bool Tpm::GetDataAttribute(TSS_HCONTEXT context,
   SecureBlob tmp(buf.value(), length);
   chromeos::SecureMemset(buf.value(), 0, length);
   data->swap(tmp);
+  return true;
+}
+
+bool Tpm::GetCapability(TSS_HCONTEXT context_handle,
+                        TSS_HTPM tpm_handle,
+                        UINT32 capability,
+                        UINT32 sub_capability,
+                        chromeos::Blob* data,
+                        UINT32* value) const {
+  UINT32 length = 0;
+  ScopedTssMemory buf(context_handle);
+  TSS_RESULT result = Tspi_TPM_GetCapability(
+      tpm_handle,
+      capability,
+      sizeof(UINT32),
+      reinterpret_cast<BYTE*>(&sub_capability),
+      &length,
+      buf.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << __func__ << ": Failed to get capability.";
+    return false;
+  }
+  if (data) {
+    data->assign(buf.value(), buf.value() + length);
+  }
+  if (value) {
+    if (length != sizeof(UINT32)) {
+      return false;
+    }
+    UINT64 offset = 0;
+    Trspi_UnloadBlob_UINT32(&offset, value, buf.value());
+  }
   return true;
 }
 
