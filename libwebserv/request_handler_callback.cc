@@ -10,10 +10,9 @@ RequestHandlerCallback::RequestHandlerCallback(
     const base::Callback<HandlerSignature>& callback) : callback_(callback) {
 }
 
-void RequestHandlerCallback::HandleRequest(
-    const std::shared_ptr<const Request>& request,
-    const std::shared_ptr<Response>& response) {
-  callback_.Run(request, response);
+void RequestHandlerCallback::HandleRequest(scoped_ptr<Request> request,
+                                           scoped_ptr<Response> response) {
+  callback_.Run(request.Pass(), response.Pass());
 }
 
 }  // namespace libwebserv

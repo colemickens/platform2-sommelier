@@ -5,14 +5,12 @@
 #ifndef LIBWEBSERV_REQUEST_HANDLER_INTERFACE_H_
 #define LIBWEBSERV_REQUEST_HANDLER_INTERFACE_H_
 
-#include <memory>
+#include <base/memory/scoped_ptr.h>
+
+#include "libwebserv/request.h"
+#include "libwebserv/response.h"
 
 namespace libwebserv {
-
-class Request;
-class Response;
-using RequestPtr = std::shared_ptr<const Request>;
-using ResponsePtr = std::shared_ptr<Response>;
 
 // The base interface for HTTP request handlers. When registering a handler,
 // the RequestHandlerInterface is provided, and when a request comes in,
@@ -20,11 +18,10 @@ using ResponsePtr = std::shared_ptr<Response>;
 // send response.
 class RequestHandlerInterface {
  public:
-  using HandlerSignature = void(const std::shared_ptr<const Request>&,
-                                const std::shared_ptr<Response>&);
+  using HandlerSignature = void(scoped_ptr<Request>, scoped_ptr<Response>);
 
-  virtual void HandleRequest(const std::shared_ptr<const Request>& request,
-                             const std::shared_ptr<Response>& response) = 0;
+  virtual void HandleRequest(scoped_ptr<Request> request,
+                             scoped_ptr<Response> response) = 0;
 };
 
 }  // namespace libwebserv

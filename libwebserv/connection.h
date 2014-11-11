@@ -5,11 +5,13 @@
 #ifndef LIBWEBSERV_CONNECTION_H_
 #define LIBWEBSERV_CONNECTION_H_
 
-#include <memory>
+#include <map>
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
+#include <base/memory/scoped_ptr.h>
 #include <chromeos/errors/error.h>
 
 #include "libwebserv/export.h"
@@ -29,18 +31,18 @@ class Response;
 class Server;
 
 // A wrapper class around low-level HTTP connection.
-class LIBWEBSERV_EXPORT Connection final {
+class LIBWEBSERV_EXPORT Connection final : public base::RefCounted<Connection> {
  public:
   ~Connection();
 
   // Factory creator method. Creates an instance of the connection and
   // initializes some complex data members. This is safer and easier to
   // report possible failures than reply on just the constructor.
-  static std::shared_ptr<Connection> Create(Server* server,
-                                            const std::string& url,
-                                            const std::string& method,
-                                            MHD_Connection* connection,
-                                            RequestHandlerInterface* handler);
+  static scoped_refptr<Connection> Create(Server* server,
+                                          const std::string& url,
+                                          const std::string& method,
+                                          MHD_Connection* connection,
+                                          RequestHandlerInterface* handler);
 
  private:
   LIBWEBSERV_PRIVATE Connection(
@@ -67,9 +69,14 @@ class LIBWEBSERV_EXPORT Connection final {
   MHD_Connection* raw_connection_{nullptr};
   RequestHandlerInterface* handler_{nullptr};
   MHD_PostProcessor* post_processor_{nullptr};
-  std::unique_ptr<Request> request_;
-  std::unique_ptr<Response> response_;
-  bool request_processed_{false};
+  scoped_ptr<Request> request_;
+  scoped_ptr<Response> response_;
+
+  enum class State { kIdle, kRequestSent, kResponseReceived, kDone };
+  State state_{State::kIdle};
+  int response_status_code_{0};
+  std::vector<uint8_t> response_data_;
+  std::multimap<std::string, std::string> response_headers_;
 
   friend class ConnectionHelper;
   friend class Request;

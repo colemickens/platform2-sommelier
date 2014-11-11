@@ -4,8 +4,6 @@
 
 #include "libwebserv/request.h"
 
-#include <microhttpd.h>
-
 #include "libwebserv/connection.h"
 
 namespace libwebserv {
@@ -22,57 +20,21 @@ const std::vector<uint8_t>& FileInfo::GetData() const {
   return data_;
 }
 
-// Helper class to provide static callback methods to microhttpd library,
-// with the ability to access private methods of Request class.
-class RequestHelper {
- public:
-  static int ValueCallback(void* cls, MHD_ValueKind kind,
-                           const char* key, const char* value) {
-    auto self = reinterpret_cast<Request*>(cls);
-    std::string data;
-    if (value)
-      data = value;
-    if (kind == MHD_HEADER_KIND) {
-      self->headers_.emplace(Request::GetCanonicalHeaderName(key), data);
-    } else if (kind == MHD_COOKIE_KIND) {
-      // TODO(avakulenko): add support for cookies...
-    } else if (kind == MHD_POSTDATA_KIND) {
-      self->post_data_.emplace(key, data);
-    } else if (kind == MHD_GET_ARGUMENT_KIND) {
-      self->get_data_.emplace(key, data);
-    }
-    return MHD_YES;
-  }
-};
-
-Request::Request(const std::shared_ptr<Connection>& connection,
-                 const std::string& url,
-                 const std::string& method)
-    : connection_{connection}, url_{url}, method_{method} {
+Request::Request(const std::string& url, const std::string& method)
+    : url_{url}, method_{method} {
 }
 
-std::unique_ptr<Request> Request::Create(
-    const std::shared_ptr<Connection>& connection,
-    const std::string& url,
-    const std::string& method) {
-  std::unique_ptr<Request> request(new Request(connection, url, method));
-  return request;
+Request::~Request() {
+}
+
+scoped_ptr<Request> Request::Create(const std::string& url,
+                                    const std::string& method) {
+  // Can't use make_shared here since Request::Request is private.
+  return scoped_ptr<Request>(new Request(url, method));
 }
 
 const std::vector<uint8_t>& Request::GetData() const {
   return raw_data_;
-}
-
-bool Request::BeginRequestData() {
-  MHD_get_connection_values(connection_->raw_connection_, MHD_HEADER_KIND,
-                            &RequestHelper::ValueCallback, this);
-  MHD_get_connection_values(connection_->raw_connection_, MHD_COOKIE_KIND,
-                            &RequestHelper::ValueCallback, this);
-  MHD_get_connection_values(connection_->raw_connection_, MHD_POSTDATA_KIND,
-                            &RequestHelper::ValueCallback, this);
-  MHD_get_connection_values(connection_->raw_connection_, MHD_GET_ARGUMENT_KIND,
-                            &RequestHelper::ValueCallback, this);
-  return true;
 }
 
 bool Request::AddRawRequestData(const void* data, size_t size) {
@@ -120,9 +82,6 @@ bool Request::AppendPostFieldData(const char* key,
   --pair.second;  // Get the last form field with this name/key.
   pair.second->second.append(data, size);
   return true;
-}
-
-void Request::EndRequestData() {
 }
 
 std::vector<PairOfStrings> Request::GetFormData() const {
@@ -194,8 +153,10 @@ std::vector<PairOfStrings> Request::GetHeaders() const {
 std::vector<std::string> Request::GetHeader(const std::string& name) const {
   std::vector<std::string> data;
   auto pair = headers_.equal_range(GetCanonicalHeaderName(name));
-  while (pair.first != pair.second)
+  while (pair.first != pair.second) {
     data.push_back(pair.first->second);
+    ++pair.first;
+  }
   return data;
 }
 

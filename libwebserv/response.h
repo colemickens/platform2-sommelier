@@ -12,6 +12,8 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_ptr.h>
 
 #include "libwebserv/export.h"
 
@@ -33,8 +35,8 @@ class LIBWEBSERV_EXPORT Response
   ~Response();
 
   // Factory constructor method.
-  static std::unique_ptr<Response> Create(
-      const std::shared_ptr<Connection>& connection);
+  static scoped_ptr<Response> Create(
+      const scoped_refptr<Connection>& connection);
 
   // Adds a single HTTP response header to the response.
   void AddHeader(const std::string& header_name, const std::string& value);
@@ -76,11 +78,11 @@ class LIBWEBSERV_EXPORT Response
 
  private:
   LIBWEBSERV_PRIVATE explicit Response(
-      const std::shared_ptr<Connection>& connection);
+      const scoped_refptr<Connection>& connection);
 
   LIBWEBSERV_PRIVATE void SendResponse();
 
-  const std::shared_ptr<Connection>& connection_;
+  scoped_refptr<Connection> connection_;
   int status_code_{0};
   std::vector<uint8_t> data_;
   std::multimap<std::string, std::string> headers_;

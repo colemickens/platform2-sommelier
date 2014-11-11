@@ -22,8 +22,8 @@ class LIBWEBSERV_EXPORT RequestHandlerCallback
   explicit RequestHandlerCallback(
       const base::Callback<HandlerSignature>& callback);
 
-  void HandleRequest(const std::shared_ptr<const Request>& request,
-                     const std::shared_ptr<Response>& response) override;
+  void HandleRequest(scoped_ptr<Request> request,
+                     scoped_ptr<Response> response) override;
 
  private:
   base::Callback<HandlerSignature> callback_;

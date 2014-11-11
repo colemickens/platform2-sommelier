@@ -22,11 +22,12 @@ namespace {
 // Simple static request handler that just returns "404 Not Found" error.
 class PageNotFoundHandler : public RequestHandlerInterface {
  public:
-  void HandleRequest(const std::shared_ptr<const Request>& request,
-                     const std::shared_ptr<Response>& response) override {
+  void HandleRequest(scoped_ptr<Request> request,
+                     scoped_ptr<Response> response) override {
     response->ReplyWithErrorNotFound();
   }
 };
+
 }  // anonymous namespace
 
 // Helper class to provide static callback methods to microhttpd library,
@@ -52,16 +53,16 @@ class ServerHelper {
       if (!server_connection || !server_connection->BeginRequestData())
         return MHD_NO;
 
-      *con_cls = new ConnectionHolder(server_connection);
+      *con_cls = server_connection.get();
+      server_connection->AddRef();
     } else {
-      ConnectionHolder* holder = reinterpret_cast<ConnectionHolder*>(*con_cls);
-
+      Connection* connection = reinterpret_cast<Connection*>(*con_cls);
       if (*upload_data_size) {
-        if (!holder->connection->AddRequestData(upload_data, *upload_data_size))
+        if (!connection->AddRequestData(upload_data, *upload_data_size))
           return MHD_NO;
         *upload_data_size = 0;
       } else {
-        holder->connection->EndRequestData();
+        connection->EndRequestData();
       }
     }
     return MHD_YES;
@@ -71,17 +72,9 @@ class ServerHelper {
                                MHD_Connection* connection,
                                void** con_cls,
                                MHD_RequestTerminationCode toe) {
-    delete reinterpret_cast<ConnectionHolder*>(*con_cls);
+    reinterpret_cast<Connection*>(*con_cls)->Release();
     *con_cls = nullptr;
   }
-
- private:
-  class ConnectionHolder {
-   public:
-    explicit ConnectionHolder(const std::shared_ptr<Connection>& conn)
-        : connection(conn) {}
-    std::shared_ptr<Connection> connection;
-  };
 };
 
 Server::Server() {}

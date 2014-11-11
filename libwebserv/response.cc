@@ -18,43 +18,7 @@
 
 namespace libwebserv {
 
-// A helper wrapper to keep a reference to shared copy of Response inside
-// libmicrohttpd connection. It must be a raw pointer here.
-class ResponseHolder {
- public:
-  explicit ResponseHolder(const std::shared_ptr<Response>& resp)
-      : response(resp) {}
-  std::shared_ptr<Response> response;
-};
-
-// Helper class to provide static callback methods to microhttpd library,
-// with the ability to access private methods of Response class.
-class ResponseHelper {
- public:
-  static ssize_t ContentReaderCallback(void* cls,
-                                       uint64_t pos,
-                                       char* buf,
-                                       size_t max) {
-    Response* response = reinterpret_cast<ResponseHolder*>(cls)->response.get();
-    uint64_t data_size = response->data_.size();
-    if (pos > data_size)
-      return MHD_CONTENT_READER_END_WITH_ERROR;
-
-    if (pos == data_size)
-      return MHD_CONTENT_READER_END_OF_STREAM;
-
-    size_t max_data_size = static_cast<size_t>(data_size - pos);
-    size_t size_read = std::min(max, max_data_size);
-    memcpy(buf, response->data_.data() + pos, size_read);
-    return size_read;
-  }
-
-  static void ContentReaderFreeCallback(void* cls) {
-    delete reinterpret_cast<ResponseHolder*>(cls);
-  }
-};
-
-Response::Response(const std::shared_ptr<Connection>& connection)
+Response::Response(const scoped_refptr<Connection>& connection)
     : connection_(connection) {
 }
 
@@ -65,10 +29,9 @@ Response::~Response() {
   }
 }
 
-std::unique_ptr<Response> Response::Create(
-    const std::shared_ptr<Connection>& connection) {
-  std::unique_ptr<Response> response(new Response(connection));
-  return response;
+scoped_ptr<Response> Response::Create(
+    const scoped_refptr<Connection>& connection) {
+  return scoped_ptr<Response>(new Response(connection));
 }
 
 void Response::AddHeader(const std::string& header_name,
@@ -136,19 +99,13 @@ void Response::ReplyWithErrorNotFound() {
 
 void Response::SendResponse() {
   CHECK(!reply_sent_) << "Response already sent";
-  VLOG(1) << "Sending HTTP response for connection (" << connection_.get()
-          << "): " << status_code_ << ", data size = " << data_.size();
-  uint64_t size = data_.size();
-  MHD_Response* resp = MHD_create_response_from_callback(
-      size, 1024, &ResponseHelper::ContentReaderCallback,
-      new ResponseHolder(shared_from_this()),
-      &ResponseHelper::ContentReaderFreeCallback);
-  for (const auto& pair : headers_) {
-    MHD_add_response_header(resp, pair.first.c_str(), pair.second.c_str());
-  }
-  MHD_queue_response(connection_->raw_connection_, status_code_, resp);
-  MHD_destroy_response(resp);  // |resp| is ref-counted.
   reply_sent_ = true;
+  CHECK(connection_->state_ == Connection::State::kRequestSent)
+      << "Unexpected connection state";
+  connection_->response_status_code_ = status_code_;
+  connection_->response_data_ = std::move(data_);
+  connection_->response_headers_ = std::move(headers_);
+  connection_->state_ = Connection::State::kResponseReceived;
 }
 
 }  // namespace libwebserv

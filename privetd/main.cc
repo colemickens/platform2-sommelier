@@ -80,8 +80,8 @@ class Daemon : public chromeos::DBusDaemon {
   }
 
  private:
-  void PrivetRequestHandler(const std::shared_ptr<const Request>& request,
-                            const std::shared_ptr<Response>& response) {
+  void PrivetRequestHandler(scoped_ptr<Request> request,
+                            scoped_ptr<Response> response) {
     std::vector<std::string> auth_headers =
         request->GetHeader(chromeos::http::request_header::kAuthorization);
     std::string auth_header;
@@ -93,12 +93,12 @@ class Daemon : public chromeos::DBusDaemon {
     if (!privet_handler_->HandleRequest(
             request->GetPath(), auth_header, input,
             base::Bind(&Daemon::PrivetResponseHandler, base::Unretained(this),
-                       response))) {
+                       base::Passed(&response)))) {
       response->ReplyWithErrorNotFound();
     }
   }
 
-  void PrivetResponseHandler(const std::shared_ptr<Response>& response,
+  void PrivetResponseHandler(scoped_ptr<Response> response,
                              const base::DictionaryValue& output,
                              bool success) {
     response->ReplyWithJson(chromeos::http::status_code::Ok, &output);

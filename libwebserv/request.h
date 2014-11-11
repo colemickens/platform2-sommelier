@@ -12,8 +12,12 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_ptr.h>
 
 #include "libwebserv/export.h"
+
+struct MHD_Connection;
 
 namespace libwebserv {
 
@@ -44,11 +48,11 @@ class LIBWEBSERV_EXPORT FileInfo final {
 // A class that represents the HTTP request data.
 class LIBWEBSERV_EXPORT Request final {
  public:
+  ~Request();
+
   // Factory constructor method.
-  static std::unique_ptr<Request> Create(
-      const std::shared_ptr<Connection>& connection,
-      const std::string& url,
-      const std::string& method);
+  static scoped_ptr<Request> Create(const std::string& url,
+                                    const std::string& method);
 
   // Gets the request body data stream. Note that the stream is available
   // only for requests that provided data and if this data is not already
@@ -101,15 +105,12 @@ class LIBWEBSERV_EXPORT Request final {
   std::vector<std::string> GetHeader(const std::string& name) const;
 
  private:
-  LIBWEBSERV_PRIVATE Request(const std::shared_ptr<Connection>& connection,
-                             const std::string& url,
-                             const std::string& method);
+  LIBWEBSERV_PRIVATE Request(const std::string& url, const std::string& method);
 
   // Helper methods for processing request data coming from the raw HTTP
   // connection.
   // These methods parse the request headers and data so they can be accessed
   // by request handlers later.
-  LIBWEBSERV_PRIVATE bool BeginRequestData();
   LIBWEBSERV_PRIVATE bool AddRawRequestData(const void* data, size_t size);
   LIBWEBSERV_PRIVATE bool AddPostFieldData(const char* key,
                                            const char* filename,
@@ -120,15 +121,12 @@ class LIBWEBSERV_EXPORT Request final {
   LIBWEBSERV_PRIVATE bool AppendPostFieldData(const char* key,
                                               const char* data,
                                               size_t size);
-  LIBWEBSERV_PRIVATE void EndRequestData();
-
   // Converts a request header name to canonical form (lowercase with uppercase
   // first letter and each letter after a hyphen ('-')).
   // "content-TYPE" will be converted to "Content-Type".
   LIBWEBSERV_PRIVATE static std::string GetCanonicalHeaderName(
       const std::string& name);
 
-  std::shared_ptr<Connection> connection_;
   std::string url_;
   std::string method_;
   std::vector<uint8_t> raw_data_;
