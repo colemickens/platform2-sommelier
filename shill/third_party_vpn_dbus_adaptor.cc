@@ -49,13 +49,11 @@ bool ConvertConnectState(
 
 }  // namespace
 
-const std::string ThirdPartyVpnAdaptor::kPath = "/thirdpartyvpn/";
-
 ThirdPartyVpnAdaptorInterface::~ThirdPartyVpnAdaptorInterface() {}
 
 ThirdPartyVpnAdaptor::ThirdPartyVpnAdaptor(DBus::Connection *conn,
                                            ThirdPartyVpnDriver *client)
-    : DBusAdaptor(conn, kPath + client->extension_id() + "/" + client->name()),
+    : DBusAdaptor(conn, kObjectPathBase + client->object_path_suffix()),
       client_(client) {}
 
 ThirdPartyVpnAdaptor::~ThirdPartyVpnAdaptor() {}

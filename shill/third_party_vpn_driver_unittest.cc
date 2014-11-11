@@ -34,7 +34,7 @@ class ThirdPartyVpnDriverTest : public testing::Test {
         metrics_(&dispatcher_),
         manager_(&control_, &dispatcher_, &metrics_, &glib_),
         driver_(new ThirdPartyVpnDriver(&control_, &dispatcher_, &metrics_,
-                                        &manager_, &device_info_, kConfigName)),
+                                        &manager_, &device_info_)),
         adaptor_interface_(new ThirdPartyVpnMockAdaptor()),
         service_(new MockVPNService(&control_, &dispatcher_, &metrics_,
                                     &manager_, driver_)),
@@ -50,7 +50,6 @@ class ThirdPartyVpnDriverTest : public testing::Test {
   }
 
   virtual void TearDown() {
-    driver_->default_service_callback_tag_ = 0;
     driver_->device_ = nullptr;
     driver_->service_ = nullptr;
     driver_->file_io_ = nullptr;
@@ -82,7 +81,6 @@ TEST_F(ThirdPartyVpnDriverTest, ConnectAndDisconnect) {
   const std::string interface = kInterfaceName;
   IOHandler *io_handler = new IOHandler();  // Owned by |driver_|
   int fd = 1;
-  int default_service_callback_tag = 2;
 
   EXPECT_CALL(*service_, SetState(Service::kStateConfiguring)).Times(1);
   EXPECT_CALL(device_info_, CreateTunnelInterface(_))
@@ -97,16 +95,12 @@ TEST_F(ThirdPartyVpnDriverTest, ConnectAndDisconnect) {
       .WillOnce(Return(fd));
   EXPECT_CALL(dispatcher_, CreateInputHandler(fd, _, _))
       .WillOnce(Return(io_handler));
-  EXPECT_CALL(manager_, RegisterDefaultServiceCallback(_))
-      .WillOnce(Return(default_service_callback_tag));
   EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
                                        ThirdPartyVpnDriver::kConnected)));
   EXPECT_FALSE(driver_->ClaimInterface("eth1", kInterfaceIndex));
   EXPECT_TRUE(driver_->ClaimInterface(interface, kInterfaceIndex));
   EXPECT_EQ(driver_->active_client_, driver_);
   EXPECT_TRUE(driver_->parameters_expected_);
-  EXPECT_EQ(driver_->default_service_callback_tag_,
-            default_service_callback_tag);
   EXPECT_EQ(driver_->io_handler_.get(), io_handler);
   ASSERT_TRUE(driver_->device_);
   EXPECT_EQ(kInterfaceIndex, driver_->device_->interface_index());
@@ -114,8 +108,6 @@ TEST_F(ThirdPartyVpnDriverTest, ConnectAndDisconnect) {
   EXPECT_CALL(*service_, SetState(Service::kStateIdle)).Times(1);
   EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
                                        ThirdPartyVpnDriver::kDisconnected)));
-  EXPECT_CALL(manager_,
-              DeregisterDefaultServiceCallback(default_service_callback_tag));
   EXPECT_CALL(mock_file_io_, Close(fd));
   driver_->Disconnect();
   EXPECT_EQ(driver_->io_handler_.get(), nullptr);
@@ -183,29 +175,29 @@ TEST_F(ThirdPartyVpnDriverTest, SetParameters) {
   driver_->parameters_expected_ = true;
   driver_->SetParameters(parameters, &error);
   EXPECT_EQ(error,
-            "address is missing;bypass_tunnel_for_ip is missing;"
-            "subnet_prefix is missing;dns_servers is missing;");
+            "address is missing;subnet_prefix is missing;"
+            "dns_servers is missing;bypass_tunnel_for_ip is missing;");
 
   error.clear();
   parameters["address"] = "1234.1.1.1";
   driver_->SetParameters(parameters, &error);
   EXPECT_EQ(error,
-            "address is not a valid IP;bypass_tunnel_for_ip is missing;"
-            "subnet_prefix is missing;dns_servers is missing;");
+            "address is not a valid IP;subnet_prefix is missing;"
+            "dns_servers is missing;bypass_tunnel_for_ip is missing;");
 
   error.clear();
   parameters["address"] = "123.211.21.18";
   driver_->SetParameters(parameters, &error);
   EXPECT_EQ(error,
-            "bypass_tunnel_for_ip is missing;"
-            "subnet_prefix is missing;dns_servers is missing;");
+            "subnet_prefix is missing;dns_servers is missing;"
+            "bypass_tunnel_for_ip is missing;");
 
   error.clear();
   parameters["bypass_tunnel_for_ip"] = "1234.1.1.1";
   driver_->SetParameters(parameters, &error);
   EXPECT_EQ(error,
-            "bypass_tunnel_for_ip is not a valid IP;"
-            "subnet_prefix is missing;dns_servers is missing;");
+            "subnet_prefix is missing;dns_servers is missing;"
+            "bypass_tunnel_for_ip has no valid values or is empty;");
 
   error.clear();
   parameters["bypass_tunnel_for_ip"] = "123.211.21.18";

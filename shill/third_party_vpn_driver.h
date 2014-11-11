@@ -31,17 +31,14 @@ class ThirdPartyVpnAdaptorInterface;
 class ThirdPartyVpnDriver : public VPNDriver {
  public:
   enum PlatformMessage {
-    kConnected,
+    kConnected = 1,
     kDisconnected,
-    kRestartClient,
-    kNewUnderlyingNetwork,
-    kDefaultUnderlyingNetwork,
     kError
   };
 
   ThirdPartyVpnDriver(ControlInterface *control, EventDispatcher *dispatcher,
                       Metrics *metrics, Manager *manager,
-                      DeviceInfo *device_info, const std::string &name);
+                      DeviceInfo *device_info);
   ~ThirdPartyVpnDriver() override;
 
   // UpdateConnectionState is called by DBus adaptor when
@@ -73,11 +70,7 @@ class ThirdPartyVpnDriver : public VPNDriver {
   bool Save(StoreInterface *storage, const std::string &storage_id,
             bool save_credentials) override;
 
-  // Returns the extension_id of the extension that installed this driver.
-  const std::string &extension_id() const { return extension_id_; }
-
-  // Returns the name of the VPN configuration created by the extension.
-  const std::string &name() const { return name_; }
+  const std::string &object_path_suffix() const { return object_path_suffix_; }
 
  protected:
   void OnConnectTimeout() override;
@@ -119,7 +112,7 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // The flag |mandatory| when set to true, makes the function treat a missing
   // key as an error. The function adds to |error_messages|, when there is a
   // failure.
-  void ProcessDnsServerArray(
+  void ProcessIPArray(
       const std::map<std::string, std::string> &parameters, const char *key,
       char delimiter, std::vector<std::string> *target, bool mandatory,
       std::string *error_message);
@@ -154,9 +147,6 @@ class ThirdPartyVpnDriver : public VPNDriver {
   void OnInput(InputData *data);
   void OnInputError(const std::string &error);
 
-  // The function is called when the default service changes.
-  void OnDefaultServiceChanged(const ServiceRefPtr &service);
-
   static const Property kProperties[];
 
   // This variable keeps track of the active instance. There can be multiple
@@ -173,10 +163,9 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // an unique identifier for the ThirdPartyVpnDriver.
   std::unique_ptr<ThirdPartyVpnAdaptorInterface> adaptor_interface_;
 
-  // Combination of Extension ID and name uniquely identifies the configuration
-  // of the third party VPN client.
-  std::string extension_id_;
-  std::string name_;
+  // Object path suffix is made of Extension ID and name that collectively
+  // identifies the configuration of the third party VPN client.
+  std::string object_path_suffix_;
 
   // File descriptor for the tun device.
   int tun_fd_;
@@ -199,9 +188,6 @@ class ThirdPartyVpnDriver : public VPNDriver {
 
   // The object is used to write to tun device.
   FileIO *file_io_;
-
-  // Default service watch callback tag.
-  int default_service_callback_tag_;
 
   // The boolean indicates if parameters are expected from the VPN client.
   bool parameters_expected_;

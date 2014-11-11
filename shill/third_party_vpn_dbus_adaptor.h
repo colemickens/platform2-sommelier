@@ -26,10 +26,8 @@ class ThirdPartyVpnAdaptor
       public DBusAdaptor,
       public ThirdPartyVpnAdaptorInterface {
  public:
-  static const std::string kPath;
-
   enum ExternalConnectState {
-    kStateConnected,
+    kStateConnected = 1,
     kStatePortal,
     kStateFailure,
     kStateOnline

@@ -28,7 +28,6 @@
 
 namespace shill {
 
-
 namespace Logging {
 
 static auto kModuleLogScope = ScopeLogger::kVPN;
@@ -40,9 +39,7 @@ static std::string ObjectID(const ThirdPartyVpnDriver *v) {
 
 namespace {
 
-const int kReconnectOfflineTimeoutSeconds = 2 * 60;
 const int32_t kConstantMaxMtu = (1 << 16) - 1;
-const char kExtensionIdProperty[] = "ExtensionId";
 
 }  // namespace
 
@@ -56,16 +53,13 @@ ThirdPartyVpnDriver *ThirdPartyVpnDriver::active_client_ = nullptr;
 ThirdPartyVpnDriver::ThirdPartyVpnDriver(ControlInterface *control,
                                          EventDispatcher *dispatcher,
                                          Metrics *metrics, Manager *manager,
-                                         DeviceInfo *device_info,
-                                         const std::string &name)
+                                         DeviceInfo *device_info)
     : VPNDriver(dispatcher, manager, kProperties, arraysize(kProperties)),
       control_(control),
       dispatcher_(dispatcher),
       metrics_(metrics),
       device_info_(device_info),
-      name_(name),
       tun_fd_(-1),
-      default_service_callback_tag_(0),
       parameters_expected_(false) {
   file_io_ = FileIO::GetInstance();
 }
@@ -78,7 +72,7 @@ ThirdPartyVpnDriver::~ThirdPartyVpnDriver() {
 void ThirdPartyVpnDriver::InitPropertyStore(PropertyStore *store) {
   VPNDriver::InitPropertyStore(store);
   store->RegisterDerivedString(
-      kExtensionIdProperty,
+      kObjectPathSuffixProperty,
       StringAccessor(
           new CustomWriteOnlyAccessor<ThirdPartyVpnDriver, std::string>(
               this, &ThirdPartyVpnDriver::SetExtensionId,
@@ -89,7 +83,8 @@ bool ThirdPartyVpnDriver::Load(StoreInterface *storage,
                                const std::string &storage_id) {
   bool return_value = VPNDriver::Load(storage, storage_id);
   if (adaptor_interface_ == nullptr) {
-    storage->GetString(storage_id, kExtensionIdProperty, &extension_id_);
+    storage->GetString(storage_id, kObjectPathSuffixProperty,
+                       &object_path_suffix_);
     adaptor_interface_.reset(control_->CreateThirdPartyVpnAdaptor(this));
   }
   return return_value;
@@ -99,7 +94,8 @@ bool ThirdPartyVpnDriver::Save(StoreInterface *storage,
                                const std::string &storage_id,
                                bool save_credentials) {
   bool return_value = VPNDriver::Save(storage, storage_id, save_credentials);
-  storage->SetString(storage_id, kExtensionIdProperty, extension_id_);
+  storage->SetString(storage_id, kObjectPathSuffixProperty,
+                     object_path_suffix_);
   return return_value;
 }
 
@@ -111,7 +107,7 @@ void ThirdPartyVpnDriver::ClearExtensionId(Error *error) {
 bool ThirdPartyVpnDriver::SetExtensionId(const std::string &value,
                                          Error *error) {
   if (adaptor_interface_ == nullptr) {
-    extension_id_ = value;
+    object_path_suffix_ = value;
     adaptor_interface_.reset(control_->CreateThirdPartyVpnAdaptor(this));
     return true;
   }
@@ -165,7 +161,7 @@ void ThirdPartyVpnDriver::ProcessIp(
   }
 }
 
-void ThirdPartyVpnDriver::ProcessDnsServerArray(
+void ThirdPartyVpnDriver::ProcessIPArray(
     const std::map<std::string, std::string> &parameters, const char *key,
     char delimiter, std::vector<std::string> *target, bool mandatory,
     std::string *error_message) {
@@ -239,26 +235,33 @@ void ThirdPartyVpnDriver::SetParameters(
     return;
   }
 
+  ip_properties_.address_family = IPAddress::kFamilyIPv4;
+
   ProcessIp(parameters, "address", &ip_properties_.address, true,
             error_message);
   ProcessIp(parameters, "broadcast_address", &ip_properties_.broadcast_address,
             false, error_message);
-  ProcessIp(parameters, "gateway", &ip_properties_.gateway, false,
-            error_message);
-  ProcessIp(parameters, "bypass_tunnel_for_ip", &ip_properties_.trusted_ip,
-            true, error_message);
 
   ProcessInt32(parameters, "subnet_prefix", &ip_properties_.subnet_prefix, 0,
                31, true, error_message);
   ProcessInt32(parameters, "mtu", &ip_properties_.mtu, DHCPConfig::kMinMTU,
                kConstantMaxMtu, false, error_message);
 
-  ProcessSearchDomainArray(parameters, "domain_search", ':',
+  ProcessSearchDomainArray(parameters, "domain_search", kNonIPDelimiter,
                            &ip_properties_.domain_search, false, error_message);
-  ProcessDnsServerArray(parameters, "dns_servers", ' ',
-                        &ip_properties_.dns_servers, true, error_message);
+  ProcessIPArray(parameters, "dns_servers", kIPDelimiter,
+                 &ip_properties_.dns_servers, true, error_message);
+
+  std::vector<std::string> trusted_ips;
+  ProcessIPArray(parameters, "bypass_tunnel_for_ip", kIPDelimiter,
+                 &trusted_ips, true, error_message);
+  if (trusted_ips.size()) {
+    ip_properties_.trusted_ip = trusted_ips[0];
+  }
 
   if (error_message->empty()) {
+    ip_properties_.gateway = ip_properties_.address;
+    device_->SelectService(service_);
     device_->UpdateIPConfig(ip_properties_);
     StopConnectTimeout();
     parameters_expected_ = false;
@@ -286,10 +289,6 @@ void ThirdPartyVpnDriver::Cleanup(Service::ConnectState state,
   SLOG(this, 2) << __func__ << "(" << Service::ConnectStateToString(state)
                << ", " << error_details << ")";
   StopConnectTimeout();
-  if (default_service_callback_tag_) {
-    manager()->DeregisterDefaultServiceCallback(default_service_callback_tag_);
-    default_service_callback_tag_ = 0;
-  }
   int interface_index = -1;
   if (device_) {
     interface_index = device_->interface_index();
@@ -365,9 +364,6 @@ bool ThirdPartyVpnDriver::ClaimInterface(const std::string &link_name,
         base::Bind(&ThirdPartyVpnDriver::OnInput, base::Unretained(this)),
         base::Bind(&ThirdPartyVpnDriver::OnInputError,
                    base::Unretained(this))));
-    default_service_callback_tag_ = manager()->RegisterDefaultServiceCallback(
-        base::Bind(&ThirdPartyVpnDriver::OnDefaultServiceChanged,
-                   base::Unretained(this)));
     active_client_ = this;
     parameters_expected_ = true;
     adaptor_interface_->EmitPlatformMessage(
@@ -390,18 +386,8 @@ std::string ThirdPartyVpnDriver::GetProviderType() const {
 }
 
 void ThirdPartyVpnDriver::OnConnectionDisconnected() {
-  SLOG(this, 2) << __func__;
-  CHECK_EQ(active_client_, this);
-  adaptor_interface_->EmitPlatformMessage(
-      static_cast<uint32_t>(PlatformMessage::kRestartClient));
-  // TODO(kaliamoorthi): Figure out the right behavior for third party clients.
-  StartConnectTimeout(kReconnectOfflineTimeoutSeconds);
-  if (device_) {
-    device_->DropConnection();
-  }
-  if (service_) {
-    service_->SetState(Service::kStateAssociating);
-  }
+  Cleanup(Service::kStateFailure, Service::kFailureInternal,
+          "Underlying network disconnected.");
 }
 
 void ThirdPartyVpnDriver::OnConnectTimeout() {
@@ -409,21 +395,6 @@ void ThirdPartyVpnDriver::OnConnectTimeout() {
   VPNDriver::OnConnectTimeout();
   Cleanup(Service::kStateFailure, Service::kFailureConnect,
           "Connection timed out");
-}
-
-void ThirdPartyVpnDriver::OnDefaultServiceChanged(
-    const ServiceRefPtr &service) {
-  SLOG(this, 2) << __func__ << "(" << (service ? service->unique_name() : "-")
-               << ")";
-  CHECK_EQ(active_client_, this);
-  // TODO(kaliamoorthi): Figure out the right behavior for third party clients.
-  if (service && service != service_ && service->IsConnected()) {
-    adaptor_interface_->EmitPlatformMessage(
-        static_cast<uint32_t>(PlatformMessage::kNewUnderlyingNetwork));
-  } else {
-    adaptor_interface_->EmitPlatformMessage(
-        static_cast<uint32_t>(PlatformMessage::kDefaultUnderlyingNetwork));
-  }
 }
 
 }  // namespace shill

@@ -214,7 +214,7 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const string &type,
     // For third party VPN host contains extension ID
     driver.reset(new ThirdPartyVpnDriver(
         control_interface_, dispatcher_, metrics_, manager_,
-        manager_->device_info(), name));
+        manager_->device_info()));
   } else {
     Error::PopulateAndLog(
         error, Error::kNotSupported, "Unsupported VPN type: " + type);
