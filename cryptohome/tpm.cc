@@ -320,6 +320,24 @@ bool Tpm::GetDictionaryAttackInfo(int* counter,
   return true;
 }
 
+bool Tpm::ResetDictionaryAttackMitigation() {
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsOwner(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << __func__ << ": Failed to connect to the TPM.";
+    return false;
+  }
+  TSS_RESULT result = Tspi_TPM_SetStatus(tpm_handle,
+                                         TSS_TPMSTATUS_RESETLOCK,
+                                         true /* Will be ignored. */);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << __func__ << ": Failed to reset lock.";
+    return false;
+  }
+  VLOG(1) << __func__ << ": Success!";
+  return true;
+}
+
 bool Tpm::IsTransient(TSS_RESULT result) {
   bool transient = false;
   switch (ERROR_CODE(result)) {

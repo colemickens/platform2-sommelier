@@ -185,6 +185,7 @@ void TpmInit::ThreadMain() {
   if (initialize_took_ownership_) {
     LOG(ERROR) << "TPM initialization took " << initialization_time_ << "ms";
   }
+  get_tpm()->ResetDictionaryAttackMitigation();
   if (notify_callback_) {
     notify_callback_->InitializeTpmComplete(initialize_result,
                                             initialize_took_ownership_);
@@ -249,6 +250,7 @@ bool TpmInit::SetupTpm(bool load_key) {
       SecureBlob local_owner_password;
       if (LoadOwnerPassword(tpm_status, &local_owner_password)) {
         get_tpm()->SetOwnerPassword(local_owner_password);
+        get_tpm()->ResetDictionaryAttackMitigation();
       }
     }
   }

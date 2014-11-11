@@ -543,6 +543,9 @@ class Tpm {
                                bool* lockout,
                                int* seconds_remaining);
 
+  // Requires owner permissions.
+  bool ResetDictionaryAttackMitigation();
+
  protected:
   // Default constructor
   Tpm();
