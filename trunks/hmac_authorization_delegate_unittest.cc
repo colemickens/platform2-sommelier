@@ -11,7 +11,7 @@
 namespace trunks {
 
 TEST(HmacAuthorizationDelegateTest, UninitializedSessionTest) {
-  HmacAuthorizationDelegate delegate(false);
+  HmacAuthorizationDelegate delegate;
   std::string dummy;
   std::string p_hash("test");
   EXPECT_EQ(delegate.GetCommandAuthorization(p_hash, &dummy), false);
@@ -22,19 +22,19 @@ TEST(HmacAuthorizationDelegateTest, UninitializedSessionTest) {
 }
 
 TEST(HmacAuthorizationDelegateTest, SessionKeyTest) {
-  HmacAuthorizationDelegate delegate(false);
+  HmacAuthorizationDelegate delegate;
   TPM2B_NONCE nonce;
   nonce.size = kAesKeySize;
   memset(nonce.buffer, 0, nonce.size);
   TPM_HANDLE dummy_handle = HMAC_SESSION_FIRST;
   EXPECT_EQ(delegate.InitSession(dummy_handle, nonce, nonce, std::string(),
-      std::string()), true);
+      std::string(), false), true);
   EXPECT_EQ(delegate.session_key_.size(), 0);
 
   std::string dummy_auth = std::string("authorization");
   std::string dummy_salt = std::string("salt");
   EXPECT_EQ(delegate.InitSession(dummy_handle, nonce, nonce, dummy_salt,
-      dummy_auth), true);
+      dummy_auth, false), true);
   EXPECT_EQ(delegate.session_key_.size(), kHashDigestSize);
   // TODO(usanghi): Use TCG TPM2.0 test vectors when available.
   std::string expected_key("\xfb\x2f\x3c\x33\x65\x3e\xdc\x47"
@@ -46,7 +46,7 @@ TEST(HmacAuthorizationDelegateTest, SessionKeyTest) {
 }
 
 TEST(HmacAuthorizationDelegateTest, EncryptDecryptTest) {
-  HmacAuthorizationDelegate delegate(false);
+  HmacAuthorizationDelegate delegate;
   std::string plaintext_parameter("parameter");
   std::string encrypted_parameter(plaintext_parameter);
   // Check should fail as delegate isnt initialized
@@ -54,13 +54,13 @@ TEST(HmacAuthorizationDelegateTest, EncryptDecryptTest) {
 
   // Check if AES encrypt and decrypt operations are symmetric with the same
   // nonce.
-  HmacAuthorizationDelegate encrypt_delegate(true);
+  HmacAuthorizationDelegate encrypt_delegate;
   TPM_HANDLE dummy_handle = HMAC_SESSION_FIRST;
   TPM2B_NONCE nonce;
   nonce.size = kAesKeySize;
   std::string salt("salt");
   EXPECT_EQ(encrypt_delegate.InitSession(dummy_handle, nonce, nonce,
-            salt, std::string()), true);
+            salt, std::string(), true), true);
   EXPECT_EQ(encrypt_delegate.EncryptCommandParameter(&encrypted_parameter),
             true);
   EXPECT_NE(plaintext_parameter.compare(encrypted_parameter), 0);
@@ -76,12 +76,12 @@ TEST(HmacAuthorizationDelegateTest, EncryptDecryptTest) {
 }
 
 TEST(HmacAuthorizationDelegateTest, CommandAuthTest) {
-  HmacAuthorizationDelegate delegate(false);
+  HmacAuthorizationDelegate delegate;
   TPM_HANDLE dummy_handle = HMAC_SESSION_FIRST;
   TPM2B_NONCE nonce;
   nonce.size = kAesKeySize;
   EXPECT_EQ(delegate.InitSession(dummy_handle, nonce, nonce, std::string(),
-      std::string()), true);
+      std::string(), false), true);
   std::string command_hash;
   std::string authorization;
   EXPECT_EQ(delegate.GetCommandAuthorization(command_hash, &authorization),
@@ -97,13 +97,13 @@ TEST(HmacAuthorizationDelegateTest, CommandAuthTest) {
 }
 
 TEST(HmacAuthorizationDelegateTest, ResponseAuthTest) {
-  HmacAuthorizationDelegate delegate(false);
+  HmacAuthorizationDelegate delegate;
   TPM_HANDLE dummy_handle = HMAC_SESSION_FIRST;
   TPM2B_NONCE nonce;
   nonce.size = kAesKeySize;
   memset(nonce.buffer, 0, kAesKeySize);
   EXPECT_EQ(delegate.InitSession(dummy_handle, nonce, nonce, std::string(),
-      std::string()), true);
+      std::string(), false), true);
   TPMS_AUTH_RESPONSE auth_response;
   auth_response.session_attributes = kContinueSession;
   auth_response.nonce.size = kAesKeySize;

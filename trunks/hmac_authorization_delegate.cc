@@ -27,15 +27,8 @@ const uint32_t kTpmBufferSize = 4096;
 
 }  // namespace
 
-HmacAuthorizationDelegate::HmacAuthorizationDelegate(
-    bool parameter_encryption) {
-  session_handle_ = 0;
-  attributes_ = kContinueSession;
-  if (parameter_encryption) {
-    attributes_ |= kDecryptSession;
-    attributes_ |= kEncryptSession;
-  }
-}
+HmacAuthorizationDelegate::HmacAuthorizationDelegate()
+    : session_handle_(0) {}
 
 HmacAuthorizationDelegate::~HmacAuthorizationDelegate() {}
 
@@ -47,7 +40,6 @@ bool HmacAuthorizationDelegate::GetCommandAuthorization(
     LOG(ERROR) << "Delegate being used before Initialization,";
     return false;
   }
-
   TPMS_AUTH_COMMAND auth;
   auth.session_handle = session_handle_;
   RegenerateCallerNonce();
@@ -170,8 +162,13 @@ bool HmacAuthorizationDelegate::InitSession(
     const TPM2B_NONCE& tpm_nonce,
     const TPM2B_NONCE& caller_nonce,
     const std::string& salt,
-    const std::string& bind_auth_value) {
+    const std::string& bind_auth_value,
+    bool parameter_encryption) {
   session_handle_ = session_handle;
+  attributes_ = kContinueSession;
+  if (parameter_encryption) {
+    attributes_ |= (kDecryptSession | kEncryptSession);
+  }
   if (caller_nonce.size < kNonceMinSize || caller_nonce.size > kNonceMaxSize ||
       tpm_nonce.size < kNonceMinSize || tpm_nonce.size > kNonceMaxSize) {
     LOG(INFO) << "Session Nonces have to be between 16 and 32 bytes long.";

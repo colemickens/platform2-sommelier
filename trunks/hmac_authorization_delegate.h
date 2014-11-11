@@ -41,7 +41,7 @@ const uint32_t kHashDigestSize = 32;  // 256 bits is SHA256 digest size.
  *  Tpm tpm(&proxy);
  *  NullAuthorizationDelegate null;
  *  tpm.StartAuthSession(..., &null);
- *  HmacAuthorizationDelegate hmac(false);
+ *  HmacAuthorizationDelegate hmac();
  *  hmac.InitSession(...);
  *  tpm.Create(..., &hmac);
  *  hmac.set_entity_auth_value(...);
@@ -49,10 +49,7 @@ const uint32_t kHashDigestSize = 32;  // 256 bits is SHA256 digest size.
  */
 class CHROMEOS_EXPORT HmacAuthorizationDelegate: public AuthorizationDelegate {
  public:
-  // This constructor for the HmacAuthorizationDelegate takes a boolean value
-  // which specifies if parameter encryption/decryption is enabled in this
-  // delegate.
-  explicit HmacAuthorizationDelegate(bool parameter_encryption);
+  HmacAuthorizationDelegate();
   virtual ~HmacAuthorizationDelegate();
   // AuthorizationDelegate methods.
   virtual bool GetCommandAuthorization(const std::string& command_hash,
@@ -65,12 +62,16 @@ class CHROMEOS_EXPORT HmacAuthorizationDelegate: public AuthorizationDelegate {
   // This function is called with the return data of |StartAuthSession|. It
   // will initialize the session to start providing auth information. It can
   // only be called once per delegate, and must be called before the delegate
-  // is used for any operation.
+  // is used for any operation. The boolean arg |parameter_encryption|
+  // specifies if parameter encryption is enabled for this delegate.
+  // |salt| and |bind_auth_value| specify the injected auth values into this
+  // delegate.
   virtual bool InitSession(TPM_HANDLE session_handle,
                            const TPM2B_NONCE& tpm_nonce,
                            const TPM2B_NONCE& caller_nonce,
                            const std::string& salt,
-                           const std::string& bind_auth_value);
+                           const std::string& bind_auth_value,
+                           bool parameter_encryption);
   // This method is used to inject an auth_value associated with an entity.
   // This auth_value is then used when generating HMACs.
   // Note: after providing authorization for an entity this needs to be,
