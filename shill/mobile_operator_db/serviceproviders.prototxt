@@ -15975,6 +15975,15 @@ mno {
     localized_name {
       name : "Test Network"
     }
+    olp {
+      olp_filter {
+        type: MCCMNC
+        regex: "[0-9]+"
+      }
+      method : POST
+      url : "https://test.test-network.com/bbportal/chrome/start4g.do"
+      post_data : "iccid=${iccid}&imei=${imei}&mdn=${mdn}"
+    }
     mccmnc : "001000"
     mccmnc : "001001"
     mccmnc : "001002"
@@ -16001,6 +16010,15 @@ mno {
       localized_name {
         name : "Test Network APN"
       }
+    }
+    olp {
+      olp_filter {
+        type: SID
+        regex: "[0-9]+"
+      }
+      method : POST
+      url : "https://test.test-network.com/bbportal/chrome/start.do"
+      post_data : "mdn=${mdn}&meid=${meid}"
     }
     sid : "99995"
     sid : "99996"
