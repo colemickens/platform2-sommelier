@@ -8,23 +8,30 @@
 
 namespace apmanager {
 
-Manager::Manager() {}
+Manager::Manager() : org::chromium::apmanager::ManagerAdaptor(this) {}
 
 Manager::~Manager() {}
 
-void Manager::InitDBus(
-    chromeos::dbus_utils::ExportedObjectManager* object_manager) {
-  dbus_adaptor_.reset(
-     new org::chromium::apmanager::ManagerAdaptor(
-         object_manager, kManagerPath, this));
+void Manager::RegisterAsync(
+    chromeos::dbus_utils::ExportedObjectManager* object_manager,
+    chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
+  CHECK(!dbus_object_) << "Already registered";
+  dbus_object_.reset(new chromeos::dbus_utils::DBusObject(
+      object_manager,
+      object_manager ? object_manager->GetBus() : nullptr,
+      dbus::ObjectPath(kManagerPath)));
+  dbus_object_->RegisterAsync(
+      sequencer->GetHandler("Manager.RegisterAsync() failed", true));
 }
 
-dbus::ObjectPath Manager::CreateService(chromeos::ErrorPtr* error) {
-  return dbus::ObjectPath();
+bool Manager::CreateService(chromeos::ErrorPtr* error,
+                            dbus::ObjectPath* out_service) {
+  return false;
 }
 
-void Manager::RemoveService(chromeos::ErrorPtr* error,
-                            const dbus::ObjectPath& service) {
+bool Manager::RemoveService(chromeos::ErrorPtr* error,
+                            const dbus::ObjectPath& in_service) {
+  return false;
 }
 
 }  // namespace apmanager

@@ -21,6 +21,7 @@
         'generate_dbus_bindings_out_dir': 'include/apmanager/dbus_adaptors',
       },
       'sources': [
+        '<(generate_dbus_bindings_in_dir)/org.chromium.apmanager.Config.xml',
         '<(generate_dbus_bindings_in_dir)/org.chromium.apmanager.Manager.xml',
       ],
       'includes': ['../common-mk/generate-dbus-bindings.gypi'],
@@ -35,6 +36,7 @@
       },
       'sources': [
         '<(xml2cpp_in_dir)/org.chromium.apmanager.Manager.xml',
+        '<(xml2cpp_in_dir)/org.chromium.apmanager.Config.xml',
       ],
       'includes': ['../common-mk/xml2cpp.gypi'],
     },
@@ -59,6 +61,7 @@
         },
       },
       'sources': [
+        'config.cc',
         'daemon.cc',
         'manager.cc',
       ],
@@ -86,6 +89,7 @@
           'dependencies': ['libapmanager'],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
+            'config_unittest.cc',
             'manager_unittest.cc',
             'testrunner.cc',
           ],

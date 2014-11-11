@@ -29,7 +29,7 @@ int Daemon::OnInit() {
   }
 
   manager_.reset(new Manager());
-  manager_->InitDBus(object_manager_.get());
+  // manager_->InitDBus(object_manager_.get());
 
   // Signal that we've acquired all resources.
   startup_callback_.Run();
