@@ -31,8 +31,8 @@ std::unique_ptr<http::Connection> Transport::CreateConnection(
   CURL* curl_handle = curl_easy_init();
   if (!curl_handle) {
     LOG(ERROR) << "Failed to initialize CURL";
-    chromeos::Error::AddTo(error, http::kErrorDomain, "curl_init_failed",
-                           "Failed to initialize CURL");
+    chromeos::Error::AddTo(error, FROM_HERE, http::kErrorDomain,
+                           "curl_init_failed", "Failed to initialize CURL");
     return std::unique_ptr<http::Connection>();
   }
 

@@ -32,7 +32,9 @@ CHROMEOS_EXPORT extern const char kDomain[];
 
 // Adds an Error object to the error chain identified by |error|, using
 // the system error code (see "errno").
-CHROMEOS_EXPORT void AddSystemError(ErrorPtr* error, int errnum);
+CHROMEOS_EXPORT void AddSystemError(ErrorPtr* error,
+                                    const tracked_objects::Location& location,
+                                    int errnum);
 }  // namespace system
 
 }  // namespace errors

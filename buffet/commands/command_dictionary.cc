@@ -36,7 +36,7 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
     std::string package_name = package_iter.key();
     const base::DictionaryValue* package_value = nullptr;
     if (!package_iter.value().GetAsDictionary(&package_value)) {
-      chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                    errors::commands::kTypeMismatch,
                                    "Expecting an object for package '%s'",
                                    package_name.c_str());
@@ -48,7 +48,7 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
       std::string command_name = command_iter.key();
       if (command_name.empty()) {
         chromeos::Error::AddToPrintf(
-            error, errors::commands::kDomain,
+            error, FROM_HERE, errors::commands::kDomain,
             errors::commands::kInvalidCommandName,
             "Unnamed command encountered in package '%s'",
             package_name.c_str());
@@ -56,7 +56,8 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
       }
       const base::DictionaryValue* command_value = nullptr;
       if (!command_iter.value().GetAsDictionary(&command_value)) {
-        chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+        chromeos::Error::AddToPrintf(error, FROM_HERE,
+                                     errors::commands::kDomain,
                                      errors::commands::kTypeMismatch,
                                      "Expecting an object for command '%s'",
                                      command_name.c_str());
@@ -71,7 +72,7 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
       if (!command_value->GetDictionaryWithoutPathExpansion(
           commands::attributes::kCommand_Parameters, &command_schema_def)) {
         chromeos::Error::AddToPrintf(
-            error, errors::commands::kDomain,
+            error, FROM_HERE, errors::commands::kDomain,
             errors::commands::kPropertyMissing,
             "Command definition '%s' is missing property '%s'",
             full_command_name.c_str(),
@@ -93,7 +94,7 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
         if (!base_def) {
           if (command_name.front() != '_') {
             chromeos::Error::AddToPrintf(
-                error, errors::commands::kDomain,
+                error, FROM_HERE, errors::commands::kDomain,
                 errors::commands::kInvalidCommandName,
                 "The name of custom command '%s' in package '%s'"
                 " must start with '_'",
@@ -105,7 +106,8 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
 
       auto command_schema = std::make_shared<ObjectSchema>();
       if (!command_schema->FromJson(command_schema_def, base_def, error)) {
-        chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+        chromeos::Error::AddToPrintf(error, FROM_HERE,
+                                     errors::commands::kDomain,
                                      errors::commands::kInvalidObjectSchema,
                                      "Invalid definition for command '%s'",
                                      full_command_name.c_str());
@@ -128,7 +130,7 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
     auto iter = definitions_.find(pair.first);
     if (iter != definitions_.end()) {
         chromeos::Error::AddToPrintf(
-            error, errors::commands::kDomain,
+            error, FROM_HERE, errors::commands::kDomain,
             errors::commands::kDuplicateCommandDef,
             "Definition for command '%s' overrides an earlier "
             "definition in category '%s'",

@@ -88,20 +88,20 @@ bool StateManager::SetPropertyValue(const std::string& full_property_name,
   bool split = chromeos::string_utils::SplitAtFirst(
       full_property_name, '.', &package_name, &property_name);
   if (full_property_name.empty() || (split && property_name.empty())) {
-    chromeos::Error::AddTo(error, errors::state::kDomain,
+    chromeos::Error::AddTo(error, FROM_HERE, errors::state::kDomain,
                            errors::state::kPropertyNameMissing,
                            "Property name is missing");
     return false;
   }
   if (!split || package_name.empty()) {
-    chromeos::Error::AddTo(error, errors::state::kDomain,
+    chromeos::Error::AddTo(error, FROM_HERE, errors::state::kDomain,
                            errors::state::kPackageNameMissing,
                            "Package name is missing in the property name");
     return false;
   }
   StatePackage* package = FindPackage(package_name);
   if (package == nullptr) {
-    chromeos::Error::AddToPrintf(error, errors::state::kDomain,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::state::kDomain,
                             errors::state::kPropertyNotDefined,
                             "Unknown state property package '%s'",
                             package_name.c_str());
@@ -126,13 +126,15 @@ bool StateManager::LoadStateDefinition(const base::DictionaryValue& json,
   while (!iter.IsAtEnd()) {
     std::string package_name = iter.key();
     if (package_name.empty()) {
-      chromeos::Error::AddTo(error, kErrorDomainBuffet, kInvalidPackageError,
+      chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainBuffet,
+                             kInvalidPackageError,
                              "State package name is empty");
       return false;
     }
     const base::DictionaryValue* package_dict = nullptr;
     if (!iter.value().GetAsDictionary(&package_dict)) {
-      chromeos::Error::AddToPrintf(error, chromeos::errors::json::kDomain,
+      chromeos::Error::AddToPrintf(error, FROM_HERE,
+                                   chromeos::errors::json::kDomain,
                                    chromeos::errors::json::kObjectExpected,
                                    "State package '%s' must be an object",
                                    package_name.c_str());
@@ -158,7 +160,7 @@ bool StateManager::LoadStateDefinition(const base::FilePath& json_file_path,
     return false;
   std::string category = json_file_path.BaseName().RemoveExtension().value();
   if (category == kDefaultCategory) {
-    chromeos::Error::AddToPrintf(error, kErrorDomainBuffet,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
                                  kInvalidCategoryError,
                                  "Invalid state category specified in '%s'",
                                  json_file_path.value().c_str());
@@ -166,7 +168,7 @@ bool StateManager::LoadStateDefinition(const base::FilePath& json_file_path,
   }
 
   if (!LoadStateDefinition(*json, category, error)) {
-    chromeos::Error::AddToPrintf(error, kErrorDomainBuffet,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
                                  kFileReadError,
                                  "Failed to load file '%s'",
                                  json_file_path.value().c_str());
@@ -182,7 +184,7 @@ bool StateManager::LoadBaseStateDefinition(const base::FilePath& json_file_path,
   if (!json)
     return false;
   if (!LoadStateDefinition(*json, kDefaultCategory, error)) {
-    chromeos::Error::AddToPrintf(error, kErrorDomainBuffet,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
                                  kFileReadError,
                                  "Failed to load file '%s'",
                                  json_file_path.value().c_str());
@@ -197,13 +199,15 @@ bool StateManager::LoadStateDefaults(const base::DictionaryValue& json,
   while (!iter.IsAtEnd()) {
     std::string package_name = iter.key();
     if (package_name.empty()) {
-      chromeos::Error::AddTo(error, kErrorDomainBuffet, kInvalidPackageError,
+      chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainBuffet,
+                             kInvalidPackageError,
                              "State package name is empty");
       return false;
     }
     const base::DictionaryValue* package_dict = nullptr;
     if (!iter.value().GetAsDictionary(&package_dict)) {
-      chromeos::Error::AddToPrintf(error, chromeos::errors::json::kDomain,
+      chromeos::Error::AddToPrintf(error, FROM_HERE,
+                                   chromeos::errors::json::kDomain,
                                    chromeos::errors::json::kObjectExpected,
                                    "State package '%s' must be an object",
                                    package_name.c_str());
@@ -212,7 +216,7 @@ bool StateManager::LoadStateDefaults(const base::DictionaryValue& json,
     StatePackage* package = FindPackage(package_name);
     if (package == nullptr) {
       chromeos::Error::AddToPrintf(
-          error, chromeos::errors::json::kDomain,
+          error, FROM_HERE, chromeos::errors::json::kDomain,
           chromeos::errors::json::kObjectExpected,
           "Providing values for undefined state package '%s'",
           package_name.c_str());
@@ -232,7 +236,7 @@ bool StateManager::LoadStateDefaults(const base::FilePath& json_file_path,
   if (!json)
     return false;
   if (!LoadStateDefaults(*json, error)) {
-    chromeos::Error::AddToPrintf(error, kErrorDomainBuffet,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
                                  kFileReadError,
                                  "Failed to load file '%s'",
                                  json_file_path.value().c_str());

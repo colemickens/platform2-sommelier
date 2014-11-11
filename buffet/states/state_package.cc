@@ -27,7 +27,7 @@ bool StatePackage::AddSchemaFromJson(const base::DictionaryValue* json,
   // Scan first to make sure we have no property redefinitions.
   for (const auto& pair : schema.GetProps()) {
     if (types_.GetProp(pair.first)) {
-      chromeos::Error::AddToPrintf(error, errors::state::kDomain,
+      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::state::kDomain,
                                     errors::state::kPropertyRedefinition,
                                     "State property '%s.%s' is already defined",
                                     name_.c_str(), pair.first.c_str());
@@ -52,7 +52,7 @@ bool StatePackage::AddValuesFromJson(const base::DictionaryValue* json,
     std::string property_name = iter.key();
     auto it = values_.find(property_name);
     if (it == values_.end()) {
-      chromeos::Error::AddToPrintf(error, errors::state::kDomain,
+      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::state::kDomain,
                                     errors::state::kPropertyNotDefined,
                                     "State property '%s.%s' is not defined",
                                     name_.c_str(), property_name.c_str());
@@ -85,7 +85,7 @@ chromeos::Any StatePackage::GetPropertyValue(const std::string& property_name,
                                              chromeos::ErrorPtr* error) const {
   auto it = values_.find(property_name);
   if (it == values_.end()) {
-    chromeos::Error::AddToPrintf(error, errors::state::kDomain,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::state::kDomain,
                                   errors::state::kPropertyNotDefined,
                                   "State property '%s.%s' is not defined",
                                   name_.c_str(), property_name.c_str());
@@ -99,7 +99,7 @@ bool StatePackage::SetPropertyValue(const std::string& property_name,
                                     chromeos::ErrorPtr* error) {
   auto it = values_.find(property_name);
   if (it == values_.end()) {
-    chromeos::Error::AddToPrintf(error, errors::state::kDomain,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::state::kDomain,
                                   errors::state::kPropertyNotDefined,
                                   "State property '%s.%s' is not defined",
                                   name_.c_str(), property_name.c_str());

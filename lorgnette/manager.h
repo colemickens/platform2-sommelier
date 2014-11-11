@@ -86,11 +86,6 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
   static ScannerInfo ScannerInfoFromString(
       const std::string &scanner_info_string);
 
-  // Sets the DBus error message and outputs a message to the logs.
-  static void SetError(const std::string &method,
-                       const std::string &message,
-                       chromeos::ErrorPtr *error);
-
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
   base::Callback<void()> activity_callback_;
 

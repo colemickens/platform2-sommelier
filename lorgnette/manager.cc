@@ -64,7 +64,10 @@ bool Manager::ListScanners(chromeos::ErrorPtr *error,
   FILE *output_file_handle;
   output_file_handle = base::CreateAndOpenTemporaryFile(&output_path);
   if (!output_file_handle) {
-    SetError(__func__, "Unable to create temporary file.", error);
+    chromeos::Error::AddTo(error, FROM_HERE,
+                           chromeos::errors::dbus::kDomain,
+                           kManagerServiceError,
+                           "Unable to create temporary file.");
     return false;
   }
 
@@ -77,7 +80,10 @@ bool Manager::ListScanners(chromeos::ErrorPtr *error,
   const bool recursive_delete = false;
   base::DeleteFile(output_path, recursive_delete);
   if (!read_status) {
-    SetError(__func__, "Unable to read scanner list output file", error);
+    chromeos::Error::AddTo(error, FROM_HERE,
+                           chromeos::errors::dbus::kDomain,
+                           kManagerServiceError,
+                           "Unable to read scanner list output file");
     return false;
   }
   activity_callback_.Run();
@@ -92,7 +98,10 @@ bool Manager::ScanImage(
     const chromeos::VariantDictionary &scan_properties) {
   int pipe_fds[2];
   if (pipe(pipe_fds) != 0) {
-    SetError(__func__, "Unable to create process pipe", error);
+    chromeos::Error::AddTo(error, FROM_HERE,
+                           chromeos::errors::dbus::kDomain,
+                           kManagerServiceError,
+                           "Unable to create process pipe");
     return false;
   }
 
@@ -147,9 +156,11 @@ void Manager::RunScanImageProcess(
       if (mode != kScanPropertyModeColor &&
           mode != kScanPropertyModeGray &&
           mode != kScanPropertyModeLineart) {
-        SetError(__func__,
-                 StringPrintf("Invalid mode parameter %s", mode.c_str()),
-                 error);
+        chromeos::Error::AddToPrintf(error, FROM_HERE,
+                                     chromeos::errors::dbus::kDomain,
+                                     kManagerServiceError,
+                                     "Invalid mode parameter %s",
+                                     mode.c_str());
         return;
       }
       scan_process->AddArg("--mode");
@@ -160,12 +171,13 @@ void Manager::RunScanImageProcess(
       scan_process->AddArg(base::UintToString(
           property_value.Get<unsigned int>()));
     } else {
-      SetError(__func__,
-               StringPrintf("Invalid scan parameter %s of type %s",
-                            property_name.c_str(),
-                            chromeos::UndecorateTypeName(
-                                property_value.GetType().name()).c_str()),
-               error);
+      chromeos::Error::AddToPrintf(
+          error, FROM_HERE,
+          chromeos::errors::dbus::kDomain, kManagerServiceError,
+          "Invalid scan parameter %s of type %s",
+          property_name.c_str(),
+          chromeos::UndecorateTypeName(
+              property_value.GetType().name()).c_str());
       return;
     }
   }
@@ -180,9 +192,11 @@ void Manager::RunScanImageProcess(
 
   int scan_result = scan_process->Wait();
   if (scan_result != 0) {
-    SetError(__func__,
-             StringPrintf("Scan process exited with result %d", scan_result),
-             error);
+    chromeos::Error::AddToPrintf(error, FROM_HERE,
+                                 chromeos::errors::dbus::kDomain,
+                                 kManagerServiceError,
+                                 "Scan process exited with result %d",
+                                 scan_result);
     // Explicitly kill and reap the converter since we may fail to successfully
     // reap the processes as it exits this scope.
     convert_process->Kill(SIGKILL, kTimeoutAfterKillSeconds);
@@ -191,10 +205,9 @@ void Manager::RunScanImageProcess(
 
   int converter_result = convert_process->Wait();
   if (converter_result != 0) {
-    SetError(__func__,
-             StringPrintf("Image converter process failed with result %d",
-                          converter_result),
-             error);
+    chromeos::Error::AddToPrintf(
+        error, FROM_HERE, chromeos::errors::dbus::kDomain, kManagerServiceError,
+        "Image converter process failed with result %d", converter_result);
     return;
   }
 
@@ -222,15 +235,6 @@ Manager::ScannerInfo Manager::ScannerInfoFromString(
   }
 
   return scanners;
-}
-
-// static
-void Manager::SetError(const string &method,
-                       const string &message,
-                       chromeos::ErrorPtr *error) {
-  chromeos::Error::AddTo(
-      error, chromeos::errors::dbus::kDomain, kManagerServiceError, message);
-  LOG(ERROR) << method << ": " << message;
 }
 
 }  // namespace lorgnette

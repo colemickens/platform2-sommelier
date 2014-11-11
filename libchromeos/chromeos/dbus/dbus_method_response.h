@@ -52,7 +52,8 @@ class CHROMEOS_EXPORT DBusMethodResponse final {
 
   // Constructs chromeos::Error object from the parameters specified and send
   // the error information over D-Bus using the method above.
-  void ReplyWithError(const std::string& error_domain,
+  void ReplyWithError(const tracked_objects::Location& location,
+                      const std::string& error_domain,
                       const std::string& error_code,
                       const std::string& error_message);
 

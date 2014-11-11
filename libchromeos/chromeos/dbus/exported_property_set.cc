@@ -85,6 +85,7 @@ bool ExportedPropertySet::HandleGet(
   auto property_map_itr = properties_.find(interface_name);
   if (property_map_itr == properties_.end()) {
     chromeos::Error::AddTo(error,
+                           FROM_HERE,
                            errors::dbus::kDomain,
                            DBUS_ERROR_INVALID_ARGS,
                            "No such interface on object.");
@@ -94,6 +95,7 @@ bool ExportedPropertySet::HandleGet(
   auto property_itr = property_map_itr->second.find(property_name);
   if (property_itr == property_map_itr->second.end()) {
     chromeos::Error::AddTo(error,
+                           FROM_HERE,
                            errors::dbus::kDomain,
                            DBUS_ERROR_INVALID_ARGS,
                            "No such property on interface.");
@@ -110,6 +112,7 @@ bool ExportedPropertySet::HandleSet(
     const chromeos::Any& value) {
   bus_->AssertOnOriginThread();
   chromeos::Error::AddTo(error,
+                         FROM_HERE,
                          errors::dbus::kDomain,
                          DBUS_ERROR_NOT_SUPPORTED,
                          "Method Set is not supported.");

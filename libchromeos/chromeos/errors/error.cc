@@ -10,40 +10,66 @@
 using chromeos::Error;
 using chromeos::ErrorPtr;
 
-ErrorPtr Error::Create(const std::string& domain,
+namespace {
+inline void LogError(const tracked_objects::Location& location,
+                     const std::string& domain,
+                     const std::string& code,
+                     const std::string& message) {
+  // Use logging::LogMessage() directly instead of LOG(ERROR) to substitute
+  // the current error location with the location passed in to the Error object.
+  // This way the log will contain the actual location of the error, and not
+  // as if it always comes from chromeos/errors/error.cc(22).
+  logging::LogMessage(location.file_name(),
+                      location.line_number(),
+                      logging::LOG_ERROR).stream()
+      << location.function_name() << "(...): "
+      << "Domain=" << domain
+      << ", Code=" << code
+      << ", Message=" << message;
+}
+}  // anonymous namespace
+
+ErrorPtr Error::Create(const tracked_objects::Location& location,
+                       const std::string& domain,
                        const std::string& code,
                        const std::string& message) {
-  return Create(domain, code, message, ErrorPtr());
+  return Create(location, domain, code, message, ErrorPtr());
 }
 
-ErrorPtr Error::Create(const std::string& domain,
+ErrorPtr Error::Create(const tracked_objects::Location& location,
+                       const std::string& domain,
                        const std::string& code,
                        const std::string& message,
                        ErrorPtr inner_error) {
-  LOG(ERROR) << "Error::Create: Domain=" << domain
-             << ", Code=" << code << ", Message=" << message;
-  return ErrorPtr(new Error(domain, code, message, std::move(inner_error)));
+  LogError(location, domain, code, message);
+  return ErrorPtr(new Error(location, domain, code, message,
+                            std::move(inner_error)));
 }
 
-void Error::AddTo(ErrorPtr* error, const std::string& domain,
-                  const std::string& code, const std::string& message) {
+void Error::AddTo(ErrorPtr* error,
+                  const tracked_objects::Location& location,
+                  const std::string& domain,
+                  const std::string& code,
+                  const std::string& message) {
   if (error) {
-    *error = Create(domain, code, message, std::move(*error));
+    *error = Create(location, domain, code, message, std::move(*error));
   } else {
     // Create already logs the error, but if |error| is nullptr,
     // we still want to log the error...
-    LOG(ERROR) << "Error::Create: Domain=" << domain
-               << ", Code=" << code << ", Message=" << message;
+    LogError(location, domain, code, message);
   }
 }
 
-void Error::AddToPrintf(ErrorPtr* error, const std::string& domain,
-                        const std::string& code, const char* format, ...) {
+void Error::AddToPrintf(ErrorPtr* error,
+                        const tracked_objects::Location& location,
+                        const std::string& domain,
+                        const std::string& code,
+                        const char* format, ...) {
   va_list ap;
   va_start(ap, format);
   std::string message = base::StringPrintV(format, ap);
   va_end(ap);
-  AddTo(error, domain, code, message);
+  AddTo(error, location, domain, code, message);
 }
 
 bool Error::HasDomain(const std::string& domain) const {
@@ -61,9 +87,12 @@ const Error* Error::GetFirstError() const {
   return err;
 }
 
-Error::Error(const std::string& domain, const std::string& code,
-             const std::string& message, ErrorPtr inner_error) :
-    domain_(domain), code_(code), message_(message),
+Error::Error(const tracked_objects::Location& location,
+             const std::string& domain,
+             const std::string& code,
+             const std::string& message,
+             ErrorPtr inner_error) :
+    domain_(domain), code_(code), message_(message), location_(location),
     inner_error_(std::move(inner_error)) {
 }
 

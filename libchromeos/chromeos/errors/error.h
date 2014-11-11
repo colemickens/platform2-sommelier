@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/macros.h>
+#include <base/tracked_objects.h>
 #include <chromeos/chromeos_export.h>
 
 namespace chromeos {
@@ -22,25 +23,40 @@ class CHROMEOS_EXPORT Error {
   virtual ~Error() = default;
 
   // Creates an instance of Error class.
-  static ErrorPtr Create(const std::string& domain, const std::string& code,
+  static ErrorPtr Create(const tracked_objects::Location& location,
+                         const std::string& domain,
+                         const std::string& code,
                          const std::string& message);
-  static ErrorPtr Create(const std::string& domain, const std::string& code,
-                         const std::string& message, ErrorPtr inner_error);
+  static ErrorPtr Create(const tracked_objects::Location& location,
+                         const std::string& domain,
+                         const std::string& code,
+                         const std::string& message,
+                         ErrorPtr inner_error);
   // If |error| is not nullptr, creates another instance of Error class,
   // initializes it with specified arguments and adds it to the head of
   // the error chain pointed to by |error|.
-  static void AddTo(ErrorPtr* error, const std::string& domain,
-                    const std::string& code, const std::string& message);
+  static void AddTo(ErrorPtr* error,
+                    const tracked_objects::Location& location,
+                    const std::string& domain,
+                    const std::string& code,
+                    const std::string& message);
   // Same as the Error::AddTo above, but allows to pass in a printf-like
   // format string and optional parameters to format the error message.
-  static void AddToPrintf(ErrorPtr* error, const std::string& domain,
+  static void AddToPrintf(ErrorPtr* error,
+                          const tracked_objects::Location& location,
+                          const std::string& domain,
                           const std::string& code,
-                          const char* format, ...) PRINTF_FORMAT(4, 5);
+                          const char* format, ...) PRINTF_FORMAT(5, 6);
 
   // Returns the error domain, code and message
   const std::string& GetDomain() const { return domain_; }
   const std::string& GetCode() const { return code_; }
   const std::string& GetMessage() const { return message_; }
+
+  // Returns the location of the error in the source code.
+  const tracked_objects::LocationSnapshot& GetLocation() const {
+    return location_;
+  }
 
   // Checks if this or any of the inner errors in the chain has the specified
   // error domain.
@@ -76,8 +92,11 @@ class CHROMEOS_EXPORT Error {
  protected:
   // Constructor is protected since this object is supposed to be
   // created via the Create factory methods.
-  Error(const std::string& domain, const std::string& code,
-        const std::string& message, ErrorPtr inner_error);
+  Error(const tracked_objects::Location& location,
+        const std::string& domain,
+        const std::string& code,
+        const std::string& message,
+        ErrorPtr inner_error);
 
   // Error domain. The domain defines the scopes for error codes.
   // Two errors with the same code but different domains are different errors.
@@ -86,6 +105,8 @@ class CHROMEOS_EXPORT Error {
   std::string code_;
   // Human-readable error message.
   std::string message_;
+  // Error origin in the source code.
+  tracked_objects::LocationSnapshot location_;
   // Pointer to inner error, if any. This forms a chain of errors.
   ErrorPtr inner_error_;
 

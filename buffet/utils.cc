@@ -23,8 +23,8 @@ std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
   std::unique_ptr<const base::DictionaryValue> result;
   std::string json_string;
   if (!base::ReadFileToString(json_file_path, &json_string)) {
-    chromeos::errors::system::AddSystemError(error, errno);
-    chromeos::Error::AddToPrintf(error, kErrorDomainBuffet,
+    chromeos::errors::system::AddSystemError(error, FROM_HERE, errno);
+    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
                                  kFileReadError,
                                  "Failed to read file '%s'",
                                  json_file_path.value().c_str());
@@ -34,7 +34,8 @@ std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
   base::Value* value = base::JSONReader::ReadAndReturnError(
       json_string, base::JSON_PARSE_RFC, nullptr, &error_message);
   if (!value) {
-    chromeos::Error::AddToPrintf(error, chromeos::errors::json::kDomain,
+    chromeos::Error::AddToPrintf(error, FROM_HERE,
+                                 chromeos::errors::json::kDomain,
                                  chromeos::errors::json::kParseError,
                                  "Error parsing content of JSON file '%s': %s",
                                  json_file_path.value().c_str(),
@@ -44,7 +45,8 @@ std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
   const base::DictionaryValue* dict_value = nullptr;
   if (!value->GetAsDictionary(&dict_value)) {
     delete value;
-    chromeos::Error::AddToPrintf(error, chromeos::errors::json::kDomain,
+    chromeos::Error::AddToPrintf(error, FROM_HERE,
+                                 chromeos::errors::json::kDomain,
                                  chromeos::errors::json::kObjectExpected,
                                  "Content of file '%s' is not a JSON object",
                                  json_file_path.value().c_str());

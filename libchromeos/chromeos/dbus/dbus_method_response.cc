@@ -28,11 +28,13 @@ void DBusMethodResponse::ReplyWithError(const chromeos::Error* error) {
   SendRawResponse(scoped_ptr<dbus::Response>(response.release()));
 }
 
-void DBusMethodResponse::ReplyWithError(const std::string& error_domain,
-                                        const std::string& error_code,
-                                        const std::string& error_message) {
+void DBusMethodResponse::ReplyWithError(
+    const tracked_objects::Location& location,
+    const std::string& error_domain,
+    const std::string& error_code,
+    const std::string& error_message) {
   ErrorPtr error;
-  Error::AddTo(&error, error_domain, error_code, error_message);
+  Error::AddTo(&error, location, error_domain, error_code, error_message);
   ReplyWithError(error.get());
 }
 

@@ -2,22 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/files/file_path.h>
-#include <gtest/gtest.h>
-
 #include <chromeos/errors/error.h>
+
+#include <gtest/gtest.h>
 
 using chromeos::Error;
 
 namespace {
 
 chromeos::ErrorPtr GenerateNetworkError() {
-  return Error::Create("network", "not_found", "Resource not found");
+  tracked_objects::Location loc("GenerateNetworkError", "error_unittest.cc",
+                                15, ::tracked_objects::GetProgramCounter());
+  return Error::Create(loc, "network", "not_found", "Resource not found");
 }
 
 chromeos::ErrorPtr GenerateHttpError() {
   auto inner = GenerateNetworkError();
-  return Error::Create("HTTP", "404", "Not found", std::move(inner));
+  return Error::Create(FROM_HERE, "HTTP", "404", "Not found", std::move(inner));
 }
 
 }  // namespace
@@ -27,6 +28,9 @@ TEST(Error, Single) {
   EXPECT_EQ("network", err->GetDomain());
   EXPECT_EQ("not_found", err->GetCode());
   EXPECT_EQ("Resource not found", err->GetMessage());
+  EXPECT_EQ("GenerateNetworkError", err->GetLocation().function_name);
+  EXPECT_EQ("error_unittest.cc", err->GetLocation().file_name);
+  EXPECT_EQ(15, err->GetLocation().line_number);
   EXPECT_EQ(nullptr, err->GetInnerError());
   EXPECT_TRUE(err->HasDomain("network"));
   EXPECT_FALSE(err->HasDomain("HTTP"));

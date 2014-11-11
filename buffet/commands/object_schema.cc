@@ -64,7 +64,7 @@ static std::unique_ptr<PropType> CreatePropType(const std::string& type_name,
   if (PropType::GetTypeFromTypeString(type_name, &type))
     prop = PropType::Create(type);
   if (!prop) {
-    chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                  errors::commands::kUnknownType,
                                  "Unknown type %s for parameter %s",
                                  type_name.c_str(), prop_name.c_str());
@@ -74,7 +74,7 @@ static std::unique_ptr<PropType> CreatePropType(const std::string& type_name,
 
 static bool ErrorInvalidTypeInfo(const std::string& prop_name,
                                  chromeos::ErrorPtr* error) {
-  chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+  chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                errors::commands::kNoTypeInfo,
                                "Unable to determine parameter type for %s",
                                prop_name.c_str());
@@ -100,7 +100,7 @@ bool ObjectSchema::PropFromJson(const std::string& prop_name,
     return PropFromJsonObject(prop_name, value, base_schema, properties,
                               error);
   }
-  chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+  chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                errors::commands::kInvalidPropDef,
                                "Invalid parameter definition for %s",
                                prop_name.c_str());
@@ -119,7 +119,7 @@ bool ObjectSchema::PropFromJsonString(const std::string& prop_name,
     return false;
   base::DictionaryValue empty;
   if (!prop->FromJson(&empty, base_schema, error)) {
-    chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                  errors::commands::kInvalidPropDef,
                                  "Error in definition of property '%s'",
                                  prop_name.c_str());
@@ -179,7 +179,7 @@ bool ObjectSchema::PropFromJsonArray(const std::string& prop_name,
   array_object.SetWithoutPathExpansion(commands::attributes::kOneOf_Enum,
                                        list->DeepCopy());
   if (!prop->FromJson(&array_object, base_schema, error)) {
-    chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                  errors::commands::kInvalidPropDef,
                                  "Error in definition of property '%s'",
                                  prop_name.c_str());
@@ -262,7 +262,7 @@ bool ObjectSchema::PropFromJsonObject(const std::string& prop_name,
   if (!prop)
     return false;
   if (!prop->FromJson(dict, base_schema, error)) {
-    chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                  errors::commands::kInvalidPropDef,
                                  "Error in definition of property '%s'",
                                  prop_name.c_str());

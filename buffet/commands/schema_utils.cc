@@ -23,7 +23,7 @@ void ReportJsonTypeMismatch(const base::Value* value_in,
                             chromeos::ErrorPtr* error) {
   std::string value_as_string;
   base::JSONWriter::Write(value_in, &value_as_string);
-  chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+  chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                errors::commands::kTypeMismatch,
                                "Unable to convert value %s into %s",
                                value_as_string.c_str(), expected_type.c_str());
@@ -42,7 +42,7 @@ bool ReportUnexpectedJson(const base::Value* value_in, T*,
 }
 
 bool ErrorMissingProperty(chromeos::ErrorPtr* error, const char* param_name) {
-  chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+  chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                errors::commands::kPropertyMissing,
                                "Required parameter missing: %s", param_name);
   return false;
@@ -129,7 +129,8 @@ bool TypedValueFromJson(const base::Value* value_in,
       CHECK(dict->GetWithoutPathExpansion(pair.first, &param_value))
           << "Unable to get parameter";
       if (!value->FromJson(param_value, error)) {
-        chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+        chromeos::Error::AddToPrintf(error, FROM_HERE,
+                                     errors::commands::kDomain,
                                      errors::commands::kInvalidPropValue,
                                      "Invalid value for property '%s'",
                                      pair.first.c_str());
@@ -153,7 +154,7 @@ bool TypedValueFromJson(const base::Value* value_in,
     std::string key = iter.key();
     if (keys_processed.find(key) == keys_processed.end() &&
         !object_schema->GetExtraPropertiesAllowed()) {
-      chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                    errors::commands::kUnknownProperty,
                                    "Unrecognized parameter '%s'", key.c_str());
       return false;
@@ -166,7 +167,7 @@ bool TypedValueFromJson(const base::Value* value_in,
     const PropType* prop_type = pair.second->GetPropType();
     CHECK(prop_type) << "Value property type must be available";
     if (!prop_type->ValidateConstraints(*pair.second, error)) {
-      chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                    errors::commands::kInvalidPropValue,
                                    "Invalid value for property '%s'",
                                    pair.first.c_str());
@@ -249,7 +250,8 @@ std::shared_ptr<const PropValue> PropValueFromDBusVariant(
       CHECK(prop_type) << "Value property type must be available";
       auto prop_value = PropValueFromDBusVariant(prop_type, it->second, error);
       if (!prop_value) {
-        chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+        chromeos::Error::AddToPrintf(error, FROM_HERE,
+                                     errors::commands::kDomain,
                                      errors::commands::kInvalidPropValue,
                                      "Invalid value for property '%s'",
                                      pair.first.c_str());
@@ -271,7 +273,8 @@ std::shared_ptr<const PropValue> PropValueFromDBusVariant(
   if (!type->GetObjectSchemaPtr()->GetExtraPropertiesAllowed()) {
     for (const auto& pair : dict) {
       if (keys_processed.find(pair.first) == keys_processed.end()) {
-        chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+        chromeos::Error::AddToPrintf(error, FROM_HERE,
+                                     errors::commands::kDomain,
                                      errors::commands::kUnknownProperty,
                                      "Unrecognized property '%s'",
                                      pair.first.c_str());

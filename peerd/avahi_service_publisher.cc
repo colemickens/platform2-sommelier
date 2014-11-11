@@ -68,7 +68,7 @@ base::WeakPtr<AvahiServicePublisher> AvahiServicePublisher::GetWeakPtr() {
 bool AvahiServicePublisher::OnServiceUpdated(ErrorPtr* error,
                                              const Service& service) {
   if (service.GetServiceId() == kSerbusServiceId) {
-    Error::AddToPrintf(error,
+    Error::AddToPrintf(error, FROM_HERE,
                        kPeerdErrorDomain,
                        errors::avahi::kInvalidServiceId,
                        "Service name is reserved: %s.",
@@ -150,7 +150,7 @@ bool AvahiServicePublisher::OnServiceRemoved(ErrorPtr* error,
                                              const std::string& service_id) {
   auto it = outstanding_groups_.find(service_id);
   if (it == outstanding_groups_.end()) {
-    Error::AddToPrintf(error,
+    Error::AddToPrintf(error, FROM_HERE,
                        kPeerdErrorDomain,
                        errors::avahi::kRemovedUnknownService,
                        "Attempted to remove unknown service: %s.",

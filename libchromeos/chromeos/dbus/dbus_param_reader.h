@@ -77,7 +77,8 @@ struct DBusParamReader<allow_out_params, CurrentParam, RestOfParams...> {
                    ErrorPtr* error,
                    const Args&... args) {
     if (!reader->HasMoreData()) {
-      Error::AddTo(error, errors::dbus::kDomain, DBUS_ERROR_INVALID_ARGS,
+      Error::AddTo(error, FROM_HERE, errors::dbus::kDomain,
+                   DBUS_ERROR_INVALID_ARGS,
                    "Too few parameters in a method call");
       return false;
     }
@@ -91,7 +92,8 @@ struct DBusParamReader<allow_out_params, CurrentParam, RestOfParams...> {
     // the message buffer.
     ParamValueType current_param;
     if (!DBusType<ParamValueType>::Read(reader, &current_param)) {
-      Error::AddTo(error, errors::dbus::kDomain, DBUS_ERROR_INVALID_ARGS,
+      Error::AddTo(error, FROM_HERE, errors::dbus::kDomain,
+                   DBUS_ERROR_INVALID_ARGS,
                    "Method parameter type mismatch");
       return false;
     }
@@ -147,7 +149,8 @@ struct DBusParamReader<allow_out_params> {
                      ErrorPtr* error,
                      const Args&... args) {
     if (reader->HasMoreData()) {
-      Error::AddTo(error, errors::dbus::kDomain, DBUS_ERROR_INVALID_ARGS,
+      Error::AddTo(error, FROM_HERE, errors::dbus::kDomain,
+                   DBUS_ERROR_INVALID_ARGS,
                    "Too many parameters in a method call");
       return false;
     }

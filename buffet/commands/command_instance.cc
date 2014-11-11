@@ -63,7 +63,8 @@ bool GetCommandParameters(const base::DictionaryValue* json,
                                     &params_value)) {
     // Make sure the "parameters" property is actually an object.
     if (!params_value->GetAsDictionary(&params)) {
-      chromeos::Error::AddToPrintf(error, chromeos::errors::json::kDomain,
+      chromeos::Error::AddToPrintf(error, FROM_HERE,
+                                   chromeos::errors::json::kDomain,
                                    chromeos::errors::json::kObjectExpected,
                                    "Property '%s' must be a JSON object",
                                    commands::attributes::kCommand_Parameters);
@@ -93,7 +94,7 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
   // Get the command JSON object from the value.
   const base::DictionaryValue* json = nullptr;
   if (!value->GetAsDictionary(&json)) {
-    chromeos::Error::AddTo(error, chromeos::errors::json::kDomain,
+    chromeos::Error::AddTo(error, FROM_HERE, chromeos::errors::json::kDomain,
                            chromeos::errors::json::kObjectExpected,
                            "Command instance is not a JSON object");
     return instance;
@@ -103,7 +104,7 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
   std::string command_name;
   if (!json->GetStringWithoutPathExpansion(commands::attributes::kCommand_Name,
                                            &command_name)) {
-    chromeos::Error::AddTo(error, errors::commands::kDomain,
+    chromeos::Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
                            errors::commands::kPropertyMissing,
                            "Command name is missing");
     return instance;
@@ -111,7 +112,7 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
   // Make sure we know how to handle the command with this name.
   const CommandDefinition* command_def = dictionary.FindCommand(command_name);
   if (!command_def) {
-    chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                  errors::commands::kInvalidCommandName,
                                  "Unknown command received: %s",
                                  command_name.c_str());
@@ -120,7 +121,7 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
 
   native_types::Object parameters;
   if (!GetCommandParameters(json, command_def, &parameters, error)) {
-    chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                  errors::commands::kCommandFailed,
                                  "Failed to validate command '%s'",
                                  command_name.c_str());

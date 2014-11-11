@@ -46,7 +46,8 @@ struct Calc {
       return;
     }
     ErrorPtr error;
-    Error::AddTo(&error, "test", "not_positive", "Negative value passed in");
+    Error::AddTo(&error, FROM_HERE, "test", "not_positive",
+                 "Negative value passed in");
     response->ReplyWithError(error.get());
   }
   void AddSubtract(int x, int y, int* sum, int* diff) {
@@ -62,7 +63,7 @@ int StrLen(const std::string& str) {
 bool CheckNonEmpty(ErrorPtr* error, const std::string& str) {
   if (!str.empty())
     return true;
-  Error::AddTo(error, "test", "string_empty", "String is empty");
+  Error::AddTo(error, FROM_HERE, "test", "string_empty", "String is empty");
   return false;
 }
 

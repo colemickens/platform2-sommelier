@@ -98,7 +98,8 @@ void AddDBusError(chromeos::ErrorPtr* error,
 
   // Go backwards and add the parsed errors to the error chain.
   for (auto it = errors.crbegin(); it != errors.crend(); ++it) {
-    Error::AddTo(error, std::get<0>(*it), std::get<1>(*it), std::get<2>(*it));
+    Error::AddTo(error, FROM_HERE,
+                 std::get<0>(*it), std::get<1>(*it), std::get<2>(*it));
   }
 }
 

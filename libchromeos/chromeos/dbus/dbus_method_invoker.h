@@ -82,10 +82,11 @@ inline std::unique_ptr<dbus::Response> CallMethodAndBlockWithTimeout(
       &method_call, timeout_ms, &dbus_error);
   if (!response) {
     if (dbus_error.is_set()) {
-      Error::AddTo(error, errors::dbus::kDomain,
+      Error::AddTo(error, FROM_HERE, errors::dbus::kDomain,
                    dbus_error.name(), dbus_error.message());
     } else {
-      Error::AddToPrintf(error, errors::dbus::kDomain, DBUS_ERROR_FAILED,
+      Error::AddToPrintf(error, FROM_HERE, errors::dbus::kDomain,
+                         DBUS_ERROR_FAILED,
                          "Failed to call D-Bus method: %s.%s",
                          interface_name.c_str(),
                          method_name.c_str());

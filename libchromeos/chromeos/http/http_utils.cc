@@ -141,7 +141,7 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
   auto content_type = RemoveParameters(response->GetContentType());
   if (content_type != chromeos::mime::application::kJson &&
       content_type != chromeos::mime::text::kPlain) {
-    chromeos::Error::AddTo(error, chromeos::errors::json::kDomain,
+    chromeos::Error::AddTo(error, FROM_HERE, chromeos::errors::json::kDomain,
                            "non_json_content_type",
                            "Unexpected response content type: " + content_type);
     return std::unique_ptr<base::DictionaryValue>();
@@ -152,14 +152,14 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
   base::Value* value = base::JSONReader::ReadAndReturnError(
       json, base::JSON_PARSE_RFC, nullptr, &error_message);
   if (!value) {
-    chromeos::Error::AddTo(error, chromeos::errors::json::kDomain,
+    chromeos::Error::AddTo(error, FROM_HERE, chromeos::errors::json::kDomain,
                            chromeos::errors::json::kParseError, error_message);
     return std::unique_ptr<base::DictionaryValue>();
   }
   base::DictionaryValue* dict_value = nullptr;
   if (!value->GetAsDictionary(&dict_value)) {
     delete value;
-    chromeos::Error::AddTo(error, chromeos::errors::json::kDomain,
+    chromeos::Error::AddTo(error, FROM_HERE, chromeos::errors::json::kDomain,
                            chromeos::errors::json::kObjectExpected,
                            "Response is not a valid JSON object");
     return std::unique_ptr<base::DictionaryValue>();

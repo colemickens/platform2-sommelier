@@ -84,10 +84,10 @@ std::unique_ptr<base::DictionaryValue> ParseOAuthResponse(
       std::string error_code, error_message;
       if (resp->GetString("error", &error_code) &&
           resp->GetString("error_description", &error_message)) {
-        chromeos::Error::AddTo(error, buffet::kErrorDomainOAuth2, error_code,
-                               error_message);
+        chromeos::Error::AddTo(error, FROM_HERE, buffet::kErrorDomainOAuth2,
+                               error_code, error_message);
       } else {
-        chromeos::Error::AddTo(error, buffet::kErrorDomainOAuth2,
+        chromeos::Error::AddTo(error, FROM_HERE, buffet::kErrorDomainOAuth2,
                                "unexpected_response", "Unexpected OAuth error");
       }
     }
@@ -97,8 +97,8 @@ std::unique_ptr<base::DictionaryValue> ParseOAuthResponse(
 }
 
 inline void SetUnexpectedError(chromeos::ErrorPtr* error) {
-  chromeos::Error::AddTo(error, buffet::kErrorDomainGCD, "unexpected_response",
-                         "Unexpected GCD error");
+  chromeos::Error::AddTo(error, FROM_HERE, buffet::kErrorDomainGCD,
+                         "unexpected_response", "Unexpected GCD error");
 }
 
 void ParseGCDError(const base::DictionaryValue* json,
@@ -125,7 +125,7 @@ void ParseGCDError(const base::DictionaryValue* json,
     std::string error_code, error_message;
     if (error_object->GetString("reason", &error_code) &&
         error_object->GetString("message", &error_message)) {
-      chromeos::Error::AddTo(error, buffet::kErrorDomainGCDServer,
+      chromeos::Error::AddTo(error, FROM_HERE, buffet::kErrorDomainGCDServer,
                              error_code, error_message);
     } else {
       SetUnexpectedError(error);
@@ -264,7 +264,8 @@ bool DeviceRegistrationInfo::CheckRegistration(chromeos::ErrorPtr* error) {
       device_id_.empty() ||
       device_robot_account_.empty()) {
     LOG(INFO) << "No valid device registration record found.";
-    chromeos::Error::AddTo(error, kErrorDomainGCD, "device_not_registered",
+    chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainGCD,
+                           "device_not_registered",
                            "No valid device registration record found");
     return false;
   }
@@ -302,7 +303,7 @@ bool DeviceRegistrationInfo::ValidateAndRefreshAccessToken(
       access_token_.empty() ||
       expires_in <= 0) {
     LOG(ERROR) << "Access token unavailable.";
-    chromeos::Error::AddTo(error, kErrorDomainOAuth2,
+    chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainOAuth2,
                            "unexpected_server_response",
                            "Access token unavailable");
     return false;
@@ -370,7 +371,8 @@ bool CheckParam(const std::string& param_name,
   if (!param_value.empty())
     return true;
 
-  chromeos::Error::AddToPrintf(error, kErrorDomainBuffet, "missing_parameter",
+  chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
+                               "missing_parameter",
                                "Parameter %s not specified",
                                param_name.c_str());
   return false;
@@ -434,7 +436,8 @@ std::string DeviceRegistrationInfo::RegisterDevice(
   if (!json_resp->GetString("robotAccountEmail", &device_robot_account_) ||
       !json_resp->GetString("robotAccountAuthorizationCode", &auth_code) ||
       !json_resp->GetString("deviceDraft.id", &device_id_)) {
-    chromeos::Error::AddTo(error, kErrorDomainGCD, "unexpected_response",
+    chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainGCD,
+                           "unexpected_response",
                            "Device account missing in response");
     return std::string();
   }
@@ -460,7 +463,8 @@ std::string DeviceRegistrationInfo::RegisterDevice(
       access_token_.empty() ||
       refresh_token_.empty() ||
       expires_in <= 0) {
-    chromeos::Error::AddTo(error, kErrorDomainGCD, "unexpected_response",
+    chromeos::Error::AddTo(error, FROM_HERE,
+                           kErrorDomainGCD, "unexpected_response",
                            "Device access_token missing in response");
     return std::string();
   }
@@ -559,7 +563,7 @@ void SendRequestAsync(
     // TODO(antonm): Support Retry-After header.
     on_retriable_failure();
   } else {
-    chromeos::Error::AddTo(&error, chromeos::errors::http::kDomain,
+    chromeos::Error::AddTo(&error, FROM_HERE, chromeos::errors::http::kDomain,
                            std::to_string(status_code),
                            response->GetStatusText());
     PostToCallback(errorback, std::move(error));

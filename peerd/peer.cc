@@ -57,7 +57,10 @@ bool Peer::RegisterAsync(
     const Time& last_seen,
     const CompletionAction& completion_callback) {
   if (!base::IsValidGUID(uuid)) {
-    Error::AddTo(error, kPeerdErrorDomain, errors::peer::kInvalidUUID,
+    Error::AddTo(error,
+                 FROM_HERE,
+                 kPeerdErrorDomain,
+                 errors::peer::kInvalidUUID,
                  "Invalid UUID for peer.");
     return false;
   }
@@ -92,12 +95,18 @@ bool Peer::IsValidUpdateTime(chromeos::ErrorPtr* error,
                              const base::Time& last_seen) const {
   uint64_t milliseconds_since_epoch = 0;
   if (!TimeToMillisecondsSinceEpoch(last_seen, &milliseconds_since_epoch)) {
-    Error::AddTo(error, kPeerdErrorDomain, errors::peer::kInvalidTime,
+    Error::AddTo(error,
+                 FROM_HERE,
+                 kPeerdErrorDomain,
+                 errors::peer::kInvalidTime,
                  "Negative time update is invalid.");
     return false;
   }
   if (milliseconds_since_epoch < last_seen_.value()) {
-    Error::AddTo(error, kPeerdErrorDomain, errors::peer::kInvalidTime,
+    Error::AddTo(error,
+                 FROM_HERE,
+                 kPeerdErrorDomain,
+                 errors::peer::kInvalidTime,
                  "Discarding update to last seen time as stale.");
     return false;
   }
@@ -132,6 +141,7 @@ bool Peer::RemoveService(chromeos::ErrorPtr* error,
                          const string& service_id) {
   if (services_.erase(service_id) == 0) {
     Error::AddTo(error,
+                 FROM_HERE,
                  kPeerdErrorDomain,
                  errors::peer::kUnknownService,
                  "Unknown service id.");

@@ -86,7 +86,7 @@ bool PropType::FromJson(const base::DictionaryValue* value,
                         const PropType* base_schema,
                         chromeos::ErrorPtr* error) {
   if (base_schema && base_schema->GetType() != GetType()) {
-    chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                  errors::commands::kPropTypeChanged,
                                  "Redefining a property of type %s as %s",
                                  base_schema->GetTypeAsString().c_str(),
@@ -113,7 +113,7 @@ bool PropType::FromJson(const base::DictionaryValue* value,
   while (!iter.IsAtEnd()) {
     std::string key = iter.key();
     if (processed_keys.find(key) == processed_keys.end()) {
-      chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                    errors::commands::kUnknownProperty,
                                    "Unexpected property '%s'", key.c_str());
       return false;
@@ -218,7 +218,7 @@ std::unique_ptr<PropType> PropType::Create(ValueType type) {
 }
 
 bool PropType::GenerateErrorValueTypeMismatch(chromeos::ErrorPtr* error) const {
-  chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+  chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                 errors::commands::kTypeMismatch,
                                 "Unable to convert value to type '%s'",
                                 GetTypeAsString().c_str());
@@ -232,7 +232,7 @@ static std::shared_ptr<Constraint> LoadOneOfConstraint(
   const base::ListValue* list = nullptr;
   if (!value->GetListWithoutPathExpansion(commands::attributes::kOneOf_Enum,
                                           &list)) {
-    chromeos::Error::AddTo(error, errors::commands::kDomain,
+    chromeos::Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
                            errors::commands::kTypeMismatch,
                            "Expecting an array");
     return std::shared_ptr<Constraint>();
@@ -426,7 +426,7 @@ bool ObjectPropType::ObjectSchemaFromJson(
     processed_keys->insert(kObject_Properties);
     auto object_schema = std::make_shared<ObjectSchema>();
     if (!object_schema->FromJson(props, base_object_schema.get(), error)) {
-      chromeos::Error::AddTo(error, errors::commands::kDomain,
+      chromeos::Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
                              errors::commands::kInvalidObjectSchema,
                              "Error parsing object property schema");
       return false;
@@ -437,7 +437,7 @@ bool ObjectPropType::ObjectSchemaFromJson(
     object_schema_.value = base_object_schema;
     object_schema_.is_inherited = true;
   } else {
-    chromeos::Error::AddToPrintf(error, errors::commands::kDomain,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                  errors::commands::kInvalidObjectSchema,
                                  "Object type definition must include the "
                                  "object schema ('%s' field not found)",

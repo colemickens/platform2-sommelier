@@ -185,7 +185,9 @@ std::string ErrorCodeFromSystemError(int errnum) {
 
 }  // anonymous namespace
 
-void AddSystemError(ErrorPtr* error, int errnum) {
+void AddSystemError(ErrorPtr* error,
+                    const tracked_objects::Location& location,
+                    int errnum) {
   std::string message = safe_strerror(errnum);
   std::string code = ErrorCodeFromSystemError(errnum);
   if (message.empty())
@@ -194,7 +196,7 @@ void AddSystemError(ErrorPtr* error, int errnum) {
   if (code.empty())
     code = "error_" + std::to_string(errnum);
 
-  Error::AddTo(error, kDomain, code, message);
+  Error::AddTo(error, location, kDomain, code, message);
 }
 
 }  // namespace system

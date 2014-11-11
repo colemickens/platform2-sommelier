@@ -117,6 +117,7 @@ bool Service::IsValidServiceId(chromeos::ErrorPtr* error,
   //   o  hyphens MUST NOT be adjacent to other hyphens
   if (service_id.empty() || service_id.length() > kMaxServiceIdLength) {
     Error::AddTo(error,
+                 FROM_HERE,
                  kPeerdErrorDomain,
                  errors::service::kInvalidServiceId,
                  "Invalid service ID length.");
@@ -124,6 +125,7 @@ bool Service::IsValidServiceId(chromeos::ErrorPtr* error,
   }
   if (!base::ContainsOnlyChars(service_id, kValidServiceIdCharacters)) {
     Error::AddTo(error,
+                 FROM_HERE,
                  kPeerdErrorDomain,
                  errors::service::kInvalidServiceId,
                  "Invalid character in service ID.");
@@ -131,6 +133,7 @@ bool Service::IsValidServiceId(chromeos::ErrorPtr* error,
   }
   if (service_id.front() == '-' || service_id.back() == '-') {
     Error::AddTo(error,
+                 FROM_HERE,
                  kPeerdErrorDomain,
                  errors::service::kInvalidServiceId,
                  "Service ID may not start or end with hyphens.");
@@ -138,6 +141,7 @@ bool Service::IsValidServiceId(chromeos::ErrorPtr* error,
   }
   if (service_id.find("--") != string::npos) {
     Error::AddTo(error,
+                 FROM_HERE,
                  kPeerdErrorDomain,
                  errors::service::kInvalidServiceId,
                  "Service ID may not contain adjacent hyphens.");
@@ -151,6 +155,7 @@ bool Service::IsValidServiceInfo(chromeos::ErrorPtr* error,
   for (const auto& kv : service_info) {
     if (kv.first.length() + kv.second.length() > kMaxServiceInfoPairLength) {
       Error::AddTo(error,
+                   FROM_HERE,
                    kPeerdErrorDomain,
                    errors::service::kInvalidServiceInfo,
                    "Invalid service info pair length.");
@@ -158,6 +163,7 @@ bool Service::IsValidServiceInfo(chromeos::ErrorPtr* error,
     }
     if (!base::ContainsOnlyChars(kv.first, kValidServiceInfoKeyCharacters)) {
       Error::AddTo(error,
+                   FROM_HERE,
                    kPeerdErrorDomain,
                    errors::service::kInvalidServiceInfo,
                    "Invalid service key.");
@@ -177,6 +183,7 @@ bool Service::ParseOptions(chromeos::ErrorPtr* error,
   }
   if (!options.empty()) {
     Error::AddTo(error,
+                 FROM_HERE,
                  kPeerdErrorDomain,
                  errors::service::kInvalidServiceOptions,
                  "Invalid service options.");
@@ -191,6 +198,7 @@ bool Service::ExtractMDnsOptions(chromeos::ErrorPtr* error,
       maybe_mdns_options->GetPtr<map<string, Any>>();
   if (mdns_options == nullptr) {
     Error::AddTo(error,
+                 FROM_HERE,
                  kPeerdErrorDomain,
                  errors::service::kInvalidServiceOptions,
                  "Invalid entry for mDNS options.");
@@ -201,6 +209,7 @@ bool Service::ExtractMDnsOptions(chromeos::ErrorPtr* error,
     uint16_t* port_value = port_it->second.GetPtr<uint16_t>();
     if (port_value == nullptr) {
       Error::AddTo(error,
+                   FROM_HERE,
                    kPeerdErrorDomain,
                    errors::service::kInvalidServiceOptions,
                    "Invalid entry for mDNS port.");
@@ -211,6 +220,7 @@ bool Service::ExtractMDnsOptions(chromeos::ErrorPtr* error,
   }
   if (!mdns_options->empty()) {
       Error::AddTo(error,
+                   FROM_HERE,
                    kPeerdErrorDomain,
                    errors::service::kInvalidServiceOptions,
                    "Extra entry in mDNS options.");

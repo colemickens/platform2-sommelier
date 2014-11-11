@@ -141,6 +141,7 @@ bool Manager::StartMonitoring(
     std::string* monitoring_token) {
   if (requested_technologies.empty())  {
     Error::AddTo(error,
+                 FROM_HERE,
                  kPeerdErrorDomain,
                  errors::manager::kInvalidMonitoringTechnology,
                  "Expected at least one monitoring technology.");
@@ -149,6 +150,7 @@ bool Manager::StartMonitoring(
   // We don't support any options right now.
   if (!options.empty()) {
     Error::AddTo(error,
+                 FROM_HERE,
                  kPeerdErrorDomain,
                  errors::manager::kInvalidMonitoringOption,
                  "Did not expect any options to monitoring.");
@@ -160,6 +162,7 @@ bool Manager::StartMonitoring(
   for (const auto& tech_text : requested_technologies) {
     if (!technologies::add_to(tech_text, &combined)) {
       Error::AddToPrintf(error,
+                         FROM_HERE,
                          kPeerdErrorDomain,
                          errors::manager::kInvalidMonitoringTechnology,
                          "Invalid monitoring technology: %s.",
@@ -170,6 +173,7 @@ bool Manager::StartMonitoring(
   // Right now we don't support bluetooth technologies.
   if (combined.test(technologies::kBT) || combined.test(technologies::kBTLE)) {
       Error::AddTo(error,
+                   FROM_HERE,
                    kPeerdErrorDomain,
                    errors::manager::kInvalidMonitoringTechnology,
                    "Unsupported monitoring technology.");
@@ -188,6 +192,7 @@ bool Manager::StopMonitoring(chromeos::ErrorPtr* error,
   auto it = monitoring_requests_.find(monitoring_token);
   if (it == monitoring_requests_.end()) {
     Error::AddToPrintf(error,
+                       FROM_HERE,
                        kPeerdErrorDomain,
                        errors::manager::kInvalidMonitoringToken,
                        "Unknown monitoring token: %s.",
@@ -207,6 +212,7 @@ bool Manager::ExposeService(chromeos::ErrorPtr* error,
   VLOG(1) << "Exposing service '" << service_id << "'.";
   if (service_id == kSerbusServiceId) {
     Error::AddToPrintf(error,
+                       FROM_HERE,
                        kPeerdErrorDomain,
                        errors::service::kInvalidServiceId,
                        "Cannot expose a service named %s",
@@ -228,6 +234,7 @@ bool Manager::RemoveExposedService(chromeos::ErrorPtr* error,
   auto it = service_token_to_id_.find(service_token);
   if (it == service_token_to_id_.end()) {
     Error::AddTo(error,
+                 FROM_HERE,
                  kPeerdErrorDomain,
                  errors::manager::kInvalidServiceToken,
                  "Invalid service token given to RemoveExposedService.");

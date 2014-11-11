@@ -172,7 +172,7 @@ void Manager::HandleAddCommand(scoped_ptr<DBusMethodResponse> response,
   std::unique_ptr<base::Value> value(base::JSONReader::ReadAndReturnError(
       json_command, base::JSON_PARSE_RFC, nullptr, &error_message));
   if (!value) {
-    response->ReplyWithError(chromeos::errors::json::kDomain,
+    response->ReplyWithError(FROM_HERE, chromeos::errors::json::kDomain,
                              chromeos::errors::json::kParseError,
                              error_message);
     return;
