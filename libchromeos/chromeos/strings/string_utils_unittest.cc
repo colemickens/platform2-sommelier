@@ -11,21 +11,23 @@ namespace chromeos {
 TEST(StringUtils, Split) {
   std::vector<std::string> parts;
 
-  parts = string_utils::Split(",a,bc , d,,e,", ',', true, true);
+  parts = string_utils::Split(",a,bc , d,  ,e, ", ',', true, true);
   EXPECT_EQ(4, parts.size());
   EXPECT_EQ("a", parts[0]);
   EXPECT_EQ("bc", parts[1]);
   EXPECT_EQ("d", parts[2]);
   EXPECT_EQ("e", parts[3]);
 
-  parts = string_utils::Split(",a,bc , d,,e,", ',', false, true);
-  EXPECT_EQ(4, parts.size());
+  parts = string_utils::Split(",a,bc , d,  ,e, ", ',', false, true);
+  EXPECT_EQ(6, parts.size());
   EXPECT_EQ("a", parts[0]);
   EXPECT_EQ("bc ", parts[1]);
   EXPECT_EQ(" d", parts[2]);
-  EXPECT_EQ("e", parts[3]);
+  EXPECT_EQ("  ", parts[3]);
+  EXPECT_EQ("e", parts[4]);
+  EXPECT_EQ(" ", parts[5]);
 
-  parts = string_utils::Split(",a,bc , d,,e,", ',', true, false);
+  parts = string_utils::Split(",a,bc , d,  ,e, ", ',', true, false);
   EXPECT_EQ(7, parts.size());
   EXPECT_EQ("", parts[0]);
   EXPECT_EQ("a", parts[1]);
@@ -35,15 +37,15 @@ TEST(StringUtils, Split) {
   EXPECT_EQ("e", parts[5]);
   EXPECT_EQ("", parts[6]);
 
-  parts = string_utils::Split(",a,bc , d,,e,", ',', false, false);
+  parts = string_utils::Split(",a,bc , d,  ,e, ", ',', false, false);
   EXPECT_EQ(7, parts.size());
   EXPECT_EQ("", parts[0]);
   EXPECT_EQ("a", parts[1]);
   EXPECT_EQ("bc ", parts[2]);
   EXPECT_EQ(" d", parts[3]);
-  EXPECT_EQ("", parts[4]);
+  EXPECT_EQ("  ", parts[4]);
   EXPECT_EQ("e", parts[5]);
-  EXPECT_EQ("", parts[6]);
+  EXPECT_EQ(" ", parts[6]);
 }
 
 TEST(StringUtils, SplitAtFirst) {

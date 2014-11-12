@@ -29,6 +29,9 @@ class IndentedText {
   void AddLine(const std::string& line);
   void AddLineWithOffset(const std::string& line, size_t shift);
 
+  // Adds a block of comments.
+  void AddComments(const std::string& doc_string);
+
   // Return a string representing the indented text.
   std::string GetContents() const;
 

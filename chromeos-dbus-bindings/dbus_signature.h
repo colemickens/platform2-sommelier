@@ -47,6 +47,9 @@ class DbusSignature {
   static const char kUnsigned32Typename[];
   static const char kUnsigned64Typename[];
   static const char kVariantTypename[];
+  static const char kVariantDictTypename[];
+  static const char kPairTypename[];
+  static const char kTupleTypename[];
 
   // Returns the C++ type name for the next D-Bus signature in the string at
   // |signature| in |output|, as well as the next position within the string
@@ -65,6 +68,15 @@ class DbusSignature {
                                     std::string::const_iterator end,
                                     std::string::const_iterator* next,
                                     std::string* output);
+
+  // Utility task for GetTypenameForSignature() which handles STRUCT objects
+  // and decodes them into a pair or tuple depending on the number of structure
+  // elements.  The arguments and return values are the same
+  // as GetTypenameForSignature().
+  bool GetStructTypenameForSignature(std::string::const_iterator signature,
+                                     std::string::const_iterator end,
+                                     std::string::const_iterator* next,
+                                     std::string* output);
 
 
   // The C++ typename to be used for D-Bus object pathnames.

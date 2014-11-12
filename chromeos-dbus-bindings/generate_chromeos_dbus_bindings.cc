@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
 
   if (cl->HasSwitch(switches::kProxy)) {
     std::string proxy_file = cl->GetSwitchValueASCII(switches::kProxy);
-    LOG(INFO) << "Outputting proxy to " << proxy_file;
+    VLOG(1) << "Outputting proxy to " << proxy_file;
     if (!ProxyGenerator::GenerateProxy(parser.interfaces(),
                                        base::FilePath(proxy_file))) {
       LOG(ERROR) << "Failed to output proxy.";

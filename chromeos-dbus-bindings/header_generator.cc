@@ -80,6 +80,7 @@ bool HeaderGenerator::WriteTextToFile(
   return true;
 }
 
+// static
 string HeaderGenerator::GetArgName(const char* prefix,
                                    const string& arg_name,
                                    int arg_index) {

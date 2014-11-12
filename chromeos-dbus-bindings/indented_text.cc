@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <chromeos/strings/string_utils.h>
 
 using std::string;
 using std::vector;
@@ -37,6 +38,14 @@ void IndentedText::AddLine(const std::string& line) {
 
 void IndentedText::AddLineWithOffset(const std::string& line, size_t shift) {
   contents_.emplace_back(line, shift + offset_);
+}
+
+void IndentedText::AddComments(const std::string& doc_string) {
+  // Split at \n, trim all whitespaces and eliminate empty strings.
+  auto lines = chromeos::string_utils::Split(doc_string, '\n', true, true);
+  for (const auto& line : lines) {
+    AddLine("// " + line);
+  }
 }
 
 string IndentedText::GetContents() const {

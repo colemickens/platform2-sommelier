@@ -49,6 +49,7 @@ bool ProxyGenerator::GenerateProxy(
   text.AddLine("#include <chromeos/dbus/dbus_method_invoker.h>");
   text.AddLine("#include <chromeos/dbus/dbus_signal_handler.h>");
   text.AddLine("#include <chromeos/errors/error.h>");
+  text.AddLine("#include <chromeos/variant_dictionary.h>");
   text.AddLine("#include <dbus/bus.h>");
   text.AddLine("#include <dbus/message.h>");
   text.AddLine("#include <dbus/object_path.h>");
@@ -60,7 +61,7 @@ bool ProxyGenerator::GenerateProxy(
   }
   text.AddBlankLine();
 
-  text.AddLine(StringPrintf("class %s {", proxy_name.c_str()));
+  text.AddLine(StringPrintf("class %s final {", proxy_name.c_str()));
   text.AddLineWithOffset("public:", kScopeOffset);
   text.PushOffset(kBlockOffset);
   AddSignalReceiver(interfaces, &text);
@@ -104,6 +105,7 @@ void ProxyGenerator::AddConstructor(const vector<Interface>& interfaces,
                                     const string& class_name,
                                     IndentedText* text) {
   IndentedText block;
+  block.AddBlankLine();
   block.AddLine(StringPrintf("%s(", class_name.c_str()));
   block.PushOffset(kLineContinuationOffset);
   block.AddLine("const scoped_refptr<dbus::Bus>& bus,");
@@ -154,7 +156,8 @@ void ProxyGenerator::AddConstructor(const vector<Interface>& interfaces,
 void ProxyGenerator::AddDestructor(const string& class_name,
                                    IndentedText* text) {
   IndentedText block;
-  block.AddLine(StringPrintf("virtual ~%s() {", class_name.c_str()));
+  block.AddBlankLine();
+  block.AddLine(StringPrintf("~%s() {", class_name.c_str()));
   block.PushOffset(kBlockOffset);
   block.AddLine("dbus_object_proxy_->Detach();");
   block.AddLine(
@@ -167,6 +170,7 @@ void ProxyGenerator::AddDestructor(const string& class_name,
 // static
 void ProxyGenerator::AddSignalConnectedCallback(IndentedText* text) {
   IndentedText block;
+  block.AddBlankLine();
   block.AddLine("void OnDBusSignalConnected(");
   block.PushOffset(kLineContinuationOffset);
   block.AddLine("const std::string& interface,");
@@ -199,9 +203,9 @@ void ProxyGenerator::AddSignalReceiver(const vector<Interface>& interfaces,
   DbusSignature signature;
   for (const auto& interface : interfaces) {
     for (const auto& signal : interface.signals) {
+      block.AddComments(signal.doc_string_);
       string signal_begin = StringPrintf(
-          "virtual void %s(",
-          GetHandlerNameForSignal(signal.name).c_str());
+          "virtual void %s(", GetHandlerNameForSignal(signal.name).c_str());
       string signal_end = ") {}";
 
       if (signal.arguments.empty()) {
@@ -241,7 +245,9 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
                                     IndentedText* text) {
   IndentedText block;
   DbusSignature signature;
-  block.AddLine(StringPrintf("virtual bool %s(", method.name.c_str()));
+  block.AddBlankLine();
+  block.AddComments(method.doc_string_);
+  block.AddLine(StringPrintf("bool %s(", method.name.c_str()));
   block.PushOffset(kLineContinuationOffset);
   vector<string> argument_names;
   int argument_number = 0;

@@ -45,6 +45,9 @@ const char kStringStringVariantDictSignature[] = "a{sa{sv}}";
 const char kStringVariantDictSignature[] = "a{sv}";
 const char kStringVariantDictWithTrailingSignature[] = "a{sv}NoneOfThisParses";
 const char kUnsigned64ArraySignature[] = "at";
+const char kIntVariantDictSignature[] = "a{iv}";
+const char kPairSignature[] = "(ib)";
+const char kTupleSignature[] = "(ibs)";
 
 // Corresponding typenames for signatures above.
 const char kBoolArrayTypename[] = "std::vector<bool>";
@@ -52,17 +55,20 @@ const char kByteArrayTypename[] = "std::vector<uint8_t>";
 const char kByteArrayArrayTypename[] = "std::vector<std::vector<uint8_t>>";
 const char kObjectArrayTypename[] = "std::vector<ObjectPathType>";
 const char kObjectDictBlobTypename[] =
-    "std::map<ObjectPathType,std::map<std::string,std::map"
-    "<std::string,chromeos::Any>>>";
-const char kObjectNameDictTypename[] = "std::map<ObjectPathType,std::string>";
+    "std::map<ObjectPathType, std::map<std::string, "
+    "chromeos::VariantDictionary>>";
+const char kObjectNameDictTypename[] = "std::map<ObjectPathType, std::string>";
 const char kStringArrayTypename[] = "std::vector<std::string>";
-const char kStringStringDictTypename[] = "std::map<std::string,std::string>";
+const char kStringStringDictTypename[] = "std::map<std::string, std::string>";
 const char kStringStringStringDictTypename[] =
-    "std::map<std::string,std::map<std::string,std::string>>";
+    "std::map<std::string, std::map<std::string, std::string>>";
 const char kStringStringVariantDictTypename[] =
-    "std::map<std::string,std::map<std::string,chromeos::Any>>";
-const char kStringVariantDictTypename[] = "std::map<std::string,chromeos::Any>";
+    "std::map<std::string, chromeos::VariantDictionary>";
+const char kStringVariantDictTypename[] = "chromeos::VariantDictionary";
 const char kUnsigned64ArrayTypename[] = "std::vector<uint64_t>";
+const char kIntVariantDictTypename[] = "std::map<int32_t, chromeos::Any>";
+const char kPairTypename[] = "std::tuple<int32_t, bool>";
+const char kTupleTypename[] = "std::tuple<int32_t, bool, std::string>";
 
 // Define an object type name to disambiguate the typenames above.
 const char kObjectPathTypename[] = "ObjectPathType";
@@ -132,6 +138,9 @@ TEST_F(DbusSignatureTest, ParseSuccesses) {
     { kStringVariantDictSignature, kStringVariantDictTypename },
     { kStringVariantDictWithTrailingSignature, kStringVariantDictTypename },
     { kUnsigned64ArraySignature, kUnsigned64ArrayTypename },
+    { kIntVariantDictSignature, kIntVariantDictTypename },
+    { kPairSignature, kPairTypename },
+    { kTupleSignature, kTupleTypename },
   };
   signature_.set_object_path_typename(kObjectPathTypename);
   for (const auto& parse_test : parse_values) {

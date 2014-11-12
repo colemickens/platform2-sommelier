@@ -44,6 +44,7 @@ class XmlInterfaceParser {
   static const char kSignalTag[];
   static const char kPropertyTag[];
   static const char kAnnotationTag[];
+  static const char kDocStringTag[];
 
   // XML attribute names.
   static const char kNameAttribute[];
@@ -61,6 +62,7 @@ class XmlInterfaceParser {
   static const char kFalse[];
 
   static const char kMethodConst[];
+  static const char kMethodAsync[];
 
   static const char kMethodKind[];
   static const char kMethodKindSimple[];
@@ -73,6 +75,7 @@ class XmlInterfaceParser {
   void OnOpenElement(const std::string& element_name,
                      const XmlAttributeMap& attributes);
   void OnCloseElement(const std::string& element_name);
+  void OnCharData(const std::string& content);
 
   // Methods for appending individual argument elements to the parser.
   void AddMethodArgument(const XmlAttributeMap& attributes);
@@ -109,6 +112,7 @@ class XmlInterfaceParser {
                                  const XML_Char* element,
                                  const XML_Char** attr);
   static void HandleElementEnd(void* user_data, const XML_Char* element);
+  static void HandleCharData(void* user_data, const char *content, int length);
 
   // The output of the parse.
   std::vector<Interface> interfaces_;

@@ -169,7 +169,7 @@ class Test2Interface {
   virtual std::string Kaneda2(
       const std::string& in_iwata) const = 0;
   virtual void Tetsuo2(
-      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse> response,
+      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<int64_t>> response,
       int32_t in_1) = 0;
 };
 
@@ -193,7 +193,6 @@ class Test2Adaptor {
   }
 
  private:
-
   Test2Interface* interface_;  // Owned by container of this adapter.
 
   DISALLOW_COPY_AND_ASSIGN(Test2Adaptor);
@@ -269,7 +268,7 @@ TEST_F(AdaptorGeneratorTest, GenerateAdaptors) {
   interface2.methods.emplace_back(
       kMethod1Name2,
       vector<Interface::Argument>{{"", kMethod1Argument1}},
-      vector<Interface::Argument>{});
+      vector<Interface::Argument>{{"", kMethod1Return}});
   interface2.methods.back().kind = Interface::Method::Kind::kAsync;
 
   base::FilePath output_path = temp_dir_.path().Append("output.h");

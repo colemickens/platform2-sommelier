@@ -39,6 +39,13 @@ std::vector<std::string> Split(const std::string& str,
     std::for_each(tokens.begin(), tokens.end(),
                   [](std::string& str) {
       base::TrimWhitespaceASCII(str, base::TRIM_ALL, &str); });
+    if (purge_empty_strings) {
+      // We might have removed all the characters from a string if they were
+      // all whitespaces. If we don't want empty strings, make sure we remove
+      // them.
+      tokens.erase(std::remove(tokens.begin(), tokens.end(), std::string{}),
+                   tokens.end());
+    }
   }
 
   return tokens;

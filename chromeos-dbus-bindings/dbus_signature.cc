@@ -6,6 +6,7 @@
 
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/strings/string_utils.h>
 #include <dbus/dbus-protocol.h>
 
 using base::StringPrintf;
@@ -30,6 +31,9 @@ const char DbusSignature::kUnsigned16Typename[] = "uint16_t";
 const char DbusSignature::kUnsigned32Typename[] = "uint32_t";
 const char DbusSignature::kUnsigned64Typename[] = "uint64_t";
 const char DbusSignature::kVariantTypename[] = "chromeos::Any";
+const char DbusSignature::kVariantDictTypename[] =
+    "chromeos::VariantDictionary";
+const char DbusSignature::kTupleTypename[] = "std::tuple";
 
 DbusSignature::DbusSignature()
     : object_path_typename_(kDefaultObjectPathTypename) {}
@@ -61,6 +65,12 @@ bool DbusSignature::GetTypenameForSignature(
   string::const_iterator cur = signature;
   int signature_value = *cur++;
   switch (signature_value) {
+    case DBUS_STRUCT_BEGIN_CHAR:
+      if (!GetStructTypenameForSignature(cur, end, &cur, output)) {
+        return false;
+      }
+      break;
+
     case DBUS_TYPE_ARRAY:
       if (!GetArrayTypenameForSignature(cur, end, &cur, output)) {
         return false;
@@ -168,8 +178,13 @@ bool DbusSignature::GetArrayTypenameForSignature(
                  << " where only 2 children is valid.";
       return false;
     }
-    *output = StringPrintf("%s<%s,%s>", kDictTypename,
-                           children[0].c_str(), children[1].c_str());
+    string dict_signature{signature, cur};
+    if (dict_signature == "{sv}") {
+      *output = kVariantDictTypename;
+    } else {
+      *output = StringPrintf("%s<%s, %s>", kDictTypename,
+                             children[0].c_str(), children[1].c_str());
+    }
   } else {
     string child;
     if (!GetTypenameForSignature(cur, end, &cur, &child)) {
@@ -179,6 +194,46 @@ bool DbusSignature::GetArrayTypenameForSignature(
     }
     *output = StringPrintf("%s<%s>", kArrayTypename, child.c_str());
   }
+
+  if (next) {
+    *next = cur;
+  }
+
+  return true;
+}
+
+bool DbusSignature::GetStructTypenameForSignature(
+    string::const_iterator signature,
+    string::const_iterator end,
+    string::const_iterator* next,
+    string* output) {
+  string::const_iterator cur = signature;
+  if (cur == end) {
+    LOG(ERROR) << "At end of string while reading struct parameter";
+    return false;
+  }
+
+  vector<string> children;
+  while (cur != end && *cur != DBUS_STRUCT_END_CHAR) {
+    children.emplace_back();
+    if (!GetTypenameForSignature(cur, end, &cur, &children.back())) {
+      LOG(ERROR) << "Unable to decode child elements starting at "
+                 << string(cur, end);
+      return false;
+    }
+  }
+  if (cur == end) {
+    LOG(ERROR) << "At end of string while processing struct "
+               << "starting at " << string(signature, end);
+    return false;
+  }
+
+  DCHECK_EQ(DBUS_STRUCT_END_CHAR, *cur);
+  ++cur;
+
+  *output = StringPrintf(
+      "%s<%s>", kTupleTypename,
+      chromeos::string_utils::Join(", ", children).c_str());
 
   if (next) {
     *next = cur;

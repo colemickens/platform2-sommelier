@@ -24,6 +24,7 @@ const char XmlInterfaceParser::kNodeTag[] = "node";
 const char XmlInterfaceParser::kSignalTag[] = "signal";
 const char XmlInterfaceParser::kPropertyTag[] = "property";
 const char XmlInterfaceParser::kAnnotationTag[] = "annotation";
+const char XmlInterfaceParser::kDocStringTag[] = "tp:docstring";
 const char XmlInterfaceParser::kNameAttribute[] = "name";
 const char XmlInterfaceParser::kTypeAttribute[] = "type";
 const char XmlInterfaceParser::kValueAttribute[] = "value";
@@ -37,6 +38,8 @@ const char XmlInterfaceParser::kFalse[] = "false";
 
 const char XmlInterfaceParser::kMethodConst[] =
     "org.chromium.DBus.Method.Const";
+const char XmlInterfaceParser::kMethodAsync[] =
+    "org.freedesktop.DBus.GLib.Async";
 
 const char XmlInterfaceParser::kMethodKind[] = "org.chromium.DBus.Method.Kind";
 const char XmlInterfaceParser::kMethodKindSimple[] = "simple";
@@ -56,6 +59,7 @@ bool XmlInterfaceParser::ParseXmlInterfaceFile(
   XML_SetElementHandler(parser,
                         &XmlInterfaceParser::HandleElementStart,
                         &XmlInterfaceParser::HandleElementEnd);
+  XML_SetCharacterDataHandler(parser, &XmlInterfaceParser::HandleCharData);
   const int kIsFinal = XML_TRUE;
 
   element_path_.clear();
@@ -81,7 +85,7 @@ void XmlInterfaceParser::OnOpenElement(
     prev_element = element_path_.back();
   element_path_.push_back(element_name);
   if (element_name == kNodeTag) {
-    CHECK(prev_element.empty())
+    CHECK(prev_element.empty() || prev_element == kNodeTag)
         << "Unexpected tag " << element_name << " inside " << prev_element;
   } else if (element_name == kInterfaceTag) {
     CHECK_EQ(kNodeTag, prev_element)
@@ -129,6 +133,9 @@ void XmlInterfaceParser::OnOpenElement(
       if (name == kMethodConst) {
         CHECK(value == kTrue || value == kFalse);
         method.is_const = (value == kTrue);
+      } else if (name == kMethodAsync) {
+        // Support GLib.Async annotation as well.
+        method.kind = Interface::Method::Kind::kAsync;
       } else if (name == kMethodKind) {
         if (value == kMethodKindSimple) {
           method.kind = Interface::Method::Kind::kSimple;
@@ -150,8 +157,37 @@ void XmlInterfaceParser::OnOpenElement(
       LOG(FATAL) << "Unexpected tag " << element_name
                  << " inside " << prev_element;
     }
+  } else if (element_name == kDocStringTag) {
+    CHECK(!prev_element.empty() && prev_element != kNodeTag)
+        << "Unexpected tag " << element_name << " inside " << prev_element;
   }
 }
+
+void XmlInterfaceParser::OnCharData(const std::string& content) {
+  // Handle the text data only for <tp:docstring> element.
+  if (element_path_.back() != kDocStringTag)
+    return;
+
+  CHECK_GT(element_path_.size(), 1u);
+  string* doc_string_ptr = nullptr;
+  string target_element = element_path_[element_path_.size() - 2];
+  if (target_element == kInterfaceTag) {
+    doc_string_ptr = &(interfaces_.back().doc_string_);
+  } else if (target_element == kMethodTag) {
+    doc_string_ptr = &(interfaces_.back().methods.back().doc_string_);
+  } else if (target_element == kSignalTag) {
+    doc_string_ptr = &(interfaces_.back().signals.back().doc_string_);
+  } else if (target_element == kPropertyTag) {
+    doc_string_ptr = &(interfaces_.back().properties.back().doc_string_);
+  }
+
+  // If <tp:docstring> is attached to elements we don't care about, do nothing.
+  if (doc_string_ptr == nullptr)
+    return;
+
+  (*doc_string_ptr) += content;
+}
+
 
 void XmlInterfaceParser::AddMethodArgument(const XmlAttributeMap& attributes) {
   string argument_direction;
@@ -273,6 +309,14 @@ void XmlInterfaceParser::HandleElementEnd(void* user_data,
                                           const XML_Char* element) {
   auto parser = reinterpret_cast<XmlInterfaceParser*>(user_data);
   parser->OnCloseElement(element);
+}
+
+// static
+void XmlInterfaceParser::HandleCharData(void* user_data,
+                                        const char *content,
+                                        int length) {
+  auto parser = reinterpret_cast<XmlInterfaceParser*>(user_data);
+  parser->OnCharData(string(content, length));
 }
 
 }  // namespace chromeos_dbus_bindings

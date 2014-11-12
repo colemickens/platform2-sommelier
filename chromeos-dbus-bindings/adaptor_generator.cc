@@ -73,6 +73,7 @@ void AdaptorGenerator::GenerateInterfaceAdaptor(
   text->AddBlankLine();
   text->AddLine(StringPrintf("// Interface definition for %s.",
                              full_itf_name.c_str()));
+  text->AddComments(interface.doc_string_);
   text->AddLine(StringPrintf("class %s {", itf_name.c_str()));
   text->AddLineWithOffset("public:", kScopeOffset);
   text->PushOffset(kBlockOffset);
@@ -99,7 +100,6 @@ void AdaptorGenerator::GenerateInterfaceAdaptor(
   AddSignalDataMembers(interface, text);
   AddPropertyDataMembers(interface, text);
 
-  text->AddBlankLine();
   text->AddLine(StringPrintf(
       "%s* interface_;  // Owned by container of this adapter.",
       itf_name.c_str()));
@@ -224,12 +224,19 @@ void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
         method_params.push_back("chromeos::ErrorPtr* error");
         return_type = "bool";
         break;
-      case Interface::Method::Kind::kAsync:
-        method_params.push_back(
-            "scoped_ptr<chromeos::dbus_utils::DBusMethodResponse> response");
-        // Async methods don't return values directly.
+      case Interface::Method::Kind::kAsync: {
+        std::vector<std::string> out_types;
+        for (const auto& argument : output_arguments_copy) {
+          string param_type;
+          CHECK(signature.Parse(argument.type, &param_type));
+          out_types.push_back(param_type);
+        }
+        method_params.push_back(base::StringPrintf(
+            "scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<%s>> response",
+             chromeos::string_utils::Join(", ", out_types).c_str()));
         output_arguments_copy.clear();
         break;
+      }
       case Interface::Method::Kind::kRaw:
         method_params.push_back("dbus::MethodCall* method_call");
         method_params.push_back("chromeos::dbus_utils::ResponseSender sender");
@@ -238,6 +245,7 @@ void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
         output_arguments_copy.clear();
         break;
     }
+    block.AddComments(method.doc_string_);
     string method_start = StringPrintf("virtual %s %s(",
                                        return_type.c_str(),
                                        method.name.c_str());
@@ -285,6 +293,7 @@ void AdaptorGenerator::AddSendSignalMethods(
     block.AddBlankLine();
 
   for (const auto& signal : interface.signals) {
+    block.AddComments(signal.doc_string_);
     string method_start = StringPrintf("void Send%sSignal(",
                                        signal.name.c_str());
     string method_end = ") {";
@@ -379,6 +388,7 @@ void AdaptorGenerator::AddPropertyMethodImplementation(
     string variable_name = GetPropertyVariableName(property.name);
 
     // Getter method.
+    block.AddComments(property.doc_string_);
     block.AddLine(StringPrintf("%s Get%s() const {",
                                type.c_str(),
                                property.name.c_str()));
@@ -423,6 +433,9 @@ void AdaptorGenerator::AddPropertyDataMembers(const Interface& interface,
     block.AddLine(StringPrintf("%s_;", variable_name.c_str()));
     block.PopOffset();
   }
+  if (!interface.properties.empty())
+    block.AddBlankLine();
+
   text->AddBlock(block);
 }
 

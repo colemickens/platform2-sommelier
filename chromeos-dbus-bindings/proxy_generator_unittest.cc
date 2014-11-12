@@ -57,6 +57,7 @@ const char kExpectedContent[] = R"literal_string(
 #include <chromeos/dbus/dbus_method_invoker.h>
 #include <chromeos/dbus/dbus_signal_handler.h>
 #include <chromeos/errors/error.h>
+#include <chromeos/variant_dictionary.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
@@ -65,7 +66,7 @@ const char kExpectedContent[] = R"literal_string(
 namespace org {
 namespace chromium {
 
-class TestInterfaceProxy {
+class TestInterfaceProxy final {
  public:
   class SignalReceiver {
    public:
@@ -74,6 +75,7 @@ class TestInterfaceProxy {
         const std::vector<std::string>&,
         uint8_t) {}
   };
+
   TestInterfaceProxy(
       const scoped_refptr<dbus::Bus>& bus,
       const std::string& service_name,
@@ -105,10 +107,12 @@ class TestInterfaceProxy {
             &TestInterfaceProxy::OnDBusSignalConnected,
             base::Unretained(this)));
   }
-  virtual ~TestInterfaceProxy() {
+
+  ~TestInterfaceProxy() {
     dbus_object_proxy_->Detach();
     bus_->RemoveObjectProxy(service_name_, object_path_, base::Closure());
   }
+
   void OnDBusSignalConnected(
       const std::string& interface,
       const std::string& signal,
@@ -120,7 +124,8 @@ class TestInterfaceProxy {
           << object_path_.value();
     }
   }
-  virtual bool Elements(
+
+  bool Elements(
       const std::string& in_space_walk,
       const std::vector<dbus::ObjectPath>& in_ramblin_man,
       std::string* out_3,
@@ -135,7 +140,8 @@ class TestInterfaceProxy {
     return response && chromeos::dbus_utils::ExtractMethodCallResults(
         response.get(), error, out_3);
   }
-  virtual bool ReturnToPatagonia(
+
+  bool ReturnToPatagonia(
       int64_t* out_1,
       chromeos::ErrorPtr* error) {
     auto response = chromeos::dbus_utils::CallMethodAndBlock(
@@ -146,7 +152,8 @@ class TestInterfaceProxy {
     return response && chromeos::dbus_utils::ExtractMethodCallResults(
         response.get(), error, out_1);
   }
-  virtual bool NiceWeatherForDucks(
+
+  bool NiceWeatherForDucks(
       bool in_1,
       chromeos::ErrorPtr* error) {
     auto response = chromeos::dbus_utils::CallMethodAndBlock(
@@ -158,7 +165,10 @@ class TestInterfaceProxy {
     return response && chromeos::dbus_utils::ExtractMethodCallResults(
         response.get(), error);
   }
-  virtual bool ExperimentNumberSix(
+
+  // Comment line1
+  // line2
+  bool ExperimentNumberSix(
       chromeos::ErrorPtr* error) {
     auto response = chromeos::dbus_utils::CallMethodAndBlock(
         dbus_object_proxy_,
@@ -168,7 +178,8 @@ class TestInterfaceProxy {
     return response && chromeos::dbus_utils::ExtractMethodCallResults(
         response.get(), error);
   }
-  virtual bool GetPersonInfo(
+
+  bool GetPersonInfo(
       std::string* out_name,
       int32_t* out_age,
       chromeos::ErrorPtr* error) {
@@ -238,6 +249,7 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptors) {
       vector<Interface::Argument>{
           {"", kSignal2Argument1},
           {"", kSignal2Argument2}});
+  interface.methods.back().doc_string_ = "Comment line1\nline2";
   Interface interface2;
   interface2.name = kInterfaceName2;
   interface2.methods.emplace_back(
