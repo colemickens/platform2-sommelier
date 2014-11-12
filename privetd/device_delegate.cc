@@ -86,7 +86,6 @@ class DeviceDelegateImpl : public DeviceDelegate {
  private:
   void SaveConfig() {
     base::FilePath path(kConfigPath);
-    CHECK(base::CreateDirectory(path.DirName()));
     CHECK(config_store_.Save(path));
   }
 
