@@ -124,7 +124,7 @@ class PerfReader {
   // Same as Localize, but joins on filenames instead of build ids.
   bool LocalizeUsingFilenames(const std::map<string, string>& filename_map);
 
-  // Stores a list of unique filenames found in MMAP events into
+  // Stores a list of unique filenames found in MMAP/MMAP2 events into
   // |filenames|.  Any existing data in |filenames| will be lost.
   void GetFilenames(std::vector<string>* filenames) const;
   void GetFilenamesAsSet(std::set<string>* filenames) const;
@@ -132,7 +132,7 @@ class PerfReader {
   // Uses build id events to populate |filenames_to_build_ids|.
   // Any existing data in |filenames_to_build_ids| will be lost.
   // Note:  A filename returned by GetFilenames need not be present in this map,
-  // since there may be no build id event corresponding to the MMAP.
+  // since there may be no build id event corresponding to the MMAP/MMAP2.
   void GetFilenamesToBuildIDs(
       std::map<string, string>* filenames_to_build_ids) const;
 
@@ -255,7 +255,7 @@ class PerfReader {
   // metadata of type |type|.
   bool NeedsNumberOfStringData(u32 type) const;
 
-  // Replaces existing filenames in MMAP events based on |filename_map|.
+  // Replaces existing filenames in MMAP/MMAP2 events based on |filename_map|.
   // This method does not change |build_id_events_|.
   bool LocalizeMMapFilenames(const std::map<string, string>& filename_map);
 

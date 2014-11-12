@@ -867,9 +867,10 @@ bool PerfReader::InjectBuildIDs(
   std::map<string, uint16_t> filename_to_misc;
   for (size_t i = 0; i < events_.size(); ++i) {
     const event_t& event = *events_[i];
-    if (event.header.type != PERF_RECORD_MMAP)
-      continue;
-    filename_to_misc[event.mmap.filename] = event.header.misc;
+    if (event.header.type == PERF_RECORD_MMAP)
+      filename_to_misc[event.mmap.filename] = event.header.misc;
+    if (event.header.type == PERF_RECORD_MMAP2)
+      filename_to_misc[event.mmap2.filename] = event.header.misc;
   }
 
   std::map<string, string>::const_iterator it;
@@ -961,6 +962,8 @@ void PerfReader::GetFilenamesAsSet(std::set<string>* filenames) const {
     const event_t& event = *events_[i];
     if (event.header.type == PERF_RECORD_MMAP)
       filenames->insert(event.mmap.filename);
+    if (event.header.type == PERF_RECORD_MMAP2)
+      filenames->insert(event.mmap2.filename);
   }
 }
 
@@ -978,6 +981,7 @@ bool PerfReader::IsSupportedEventType(uint32_t type) {
   switch (type) {
   case PERF_RECORD_SAMPLE:
   case PERF_RECORD_MMAP:
+  case PERF_RECORD_MMAP2:
   case PERF_RECORD_FORK:
   case PERF_RECORD_EXIT:
   case PERF_RECORD_COMM:
@@ -2102,6 +2106,19 @@ bool PerfReader::ReadPerfEventBlock(const event_t& event) {
       ByteSwap(&event_copy->mmap.len);
       ByteSwap(&event_copy->mmap.pgoff);
       break;
+    case PERF_RECORD_MMAP2:
+      ByteSwap(&event_copy->mmap2.pid);
+      ByteSwap(&event_copy->mmap2.tid);
+      ByteSwap(&event_copy->mmap2.start);
+      ByteSwap(&event_copy->mmap2.len);
+      ByteSwap(&event_copy->mmap2.pgoff);
+      ByteSwap(&event_copy->mmap2.maj);
+      ByteSwap(&event_copy->mmap2.min);
+      ByteSwap(&event_copy->mmap2.ino);
+      ByteSwap(&event_copy->mmap2.ino_generation);
+      ByteSwap(&event_copy->mmap2.prot);
+      ByteSwap(&event_copy->mmap2.flags);
+      break;
     case PERF_RECORD_FORK:
     case PERF_RECORD_EXIT:
       ByteSwap(&event_copy->fork.pid);
@@ -2250,35 +2267,44 @@ bool PerfReader::NeedsNumberOfStringData(u32 type) const {
 
 bool PerfReader::LocalizeMMapFilenames(
     const std::map<string, string>& filename_map) {
-  // Search for mmap events for which the filename needs to be updated.
+  // Search for mmap/mmap2 events for which the filename needs to be updated.
   for (size_t i = 0; i < events_.size(); ++i) {
+    string filename;
+    size_t size_of_fixed_event_parts;
     event_t* event = events_[i].get();
-    if (event->header.type != PERF_RECORD_MMAP)
+    if (event->header.type == PERF_RECORD_MMAP) {
+      filename = string(event->mmap.filename);
+      size_of_fixed_event_parts =
+          sizeof(event->mmap) - sizeof(event->mmap.filename);
+    } else if (event->header.type == PERF_RECORD_MMAP2) {
+      filename = string(event->mmap2.filename);
+      size_of_fixed_event_parts =
+          sizeof(event->mmap2) - sizeof(event->mmap2.filename);
+    } else {
       continue;
+    }
 
-    string key = string(event->mmap.filename);
-    const auto it = filename_map.find(key);
+    const auto it = filename_map.find(filename);
     if (it == filename_map.end())  // not found
       continue;
 
     const string& new_filename = it->second;
-    size_t old_len = GetUint64AlignedStringLength(key);
+    size_t old_len = GetUint64AlignedStringLength(filename);
     size_t new_len = GetUint64AlignedStringLength(new_filename);
     size_t old_offset = GetPerfSampleDataOffset(*event);
     size_t sample_size = event->header.size - old_offset;
 
-    int size_increase = new_len - old_len;
-    size_t new_size = event->header.size + size_increase;
-    size_t new_offset = old_offset + size_increase;
+    int size_change = new_len - old_len;
+    size_t new_size = event->header.size + size_change;
+    size_t new_offset = old_offset + size_change;
 
-    if (size_increase > 0) {
+    if (size_change > 0) {
       // Allocate memory for a new event.
       event_t* old_event = event;
       malloced_unique_ptr<event_t> new_event(CallocMemoryForEvent(new_size));
 
       // Copy over everything except filename and sample info.
-      memcpy(new_event.get(), old_event,
-             sizeof(new_event->mmap) - sizeof(new_event->mmap.filename));
+      memcpy(new_event.get(), old_event, size_of_fixed_event_parts);
 
       // Copy over the sample info to the correct location.
       char* old_addr = reinterpret_cast<char*>(old_event);
@@ -2287,7 +2313,7 @@ bool PerfReader::LocalizeMMapFilenames(
 
       events_[i] = std::move(new_event);
       event = events_[i].get();
-    } else if (size_increase < 0) {
+    } else if (size_change < 0) {
       // Move the perf sample data to its new location.
       // Since source and dest could overlap, use memmove instead of memcpy.
       char* start_addr = reinterpret_cast<char*>(event);
@@ -2295,7 +2321,15 @@ bool PerfReader::LocalizeMMapFilenames(
     }
 
     // Copy over the new filename and fix the size of the event.
-    CHECK_GT(snprintf(event->mmap.filename, new_filename.size() + 1, "%s",
+    char *event_filename = nullptr;
+    if (event->header.type == PERF_RECORD_MMAP) {
+      event_filename = event->mmap.filename;
+    } else if (event->header.type == PERF_RECORD_MMAP2) {
+      event_filename = event->mmap2.filename;
+    } else {
+      LOG(FATAL) << "Unexpected event type";  // Impossible
+    }
+    CHECK_GT(snprintf(event_filename, new_filename.size() + 1, "%s",
                       new_filename.c_str()),
              0);
     event->header.size = new_size;

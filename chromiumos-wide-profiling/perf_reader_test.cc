@@ -668,6 +668,77 @@ TEST(PerfReaderTest, ReadsPerfSampleIdentifier) {
   EXPECT_EQ(0xf00dbaadULL, sample.id);
 }
 
+TEST(PerfReaderTest, ReadsMmap2Events) {
+  std::stringstream input;
+
+  // header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // data
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_IP,
+                                              false /*sample_id_all*/)
+      .WriteTo(&input);
+
+  // PERF_RECORD_MMAP2
+  ASSERT_EQ(72, offsetof(struct mmap2_event, filename));
+  const size_t mmap_event_size =
+      offsetof(struct mmap2_event, filename) +
+      10+6; /* ==16, nearest 64-bit boundary for filename */
+
+  struct mmap2_event written_mmap_event = {
+    .header = {
+      .type = PERF_RECORD_MMAP2,
+      .misc = 0,
+      .size = mmap_event_size,
+    },
+    .pid = 0x68d, .tid = 0x68d,
+    .start = 0x1d000,
+    .len = 0x1000,
+    .pgoff = 0,
+    .maj = 6,
+    .min = 7,
+    .ino = 8,
+    .ino_generation = 9,
+    .prot = 1|2,  // == PROT_READ | PROT_WRITE
+    .flags = 2,   // == MAP_PRIVATE
+    //.filename = ..., // written separately
+  };
+  const char mmap_filename[10+6] = "/dev/zero";
+  const size_t pre_mmap_offset = input.tellp();
+  input.write(reinterpret_cast<const char*>(&written_mmap_event),
+              offsetof(struct mmap2_event, filename));
+  input.write(mmap_filename, 10+6);
+  const size_t written_mmap_size =
+      static_cast<size_t>(input.tellp()) - pre_mmap_offset;
+  ASSERT_EQ(written_mmap_event.header.size,
+            static_cast<u64>(written_mmap_size));
+
+  //
+  // Parse input.
+  //
+
+  PerfReader pr;
+  EXPECT_TRUE(pr.ReadFromString(input.str()));
+  // PERF_RECORD_HEADER_ATTR is added to attr(), not events().
+  EXPECT_EQ(1, pr.events().size());
+
+  const event_t* mmap2_event = pr.events()[0].get();
+  EXPECT_EQ(PERF_RECORD_MMAP2, mmap2_event->header.type);
+  EXPECT_EQ(0x68d, mmap2_event->mmap2.pid);
+  EXPECT_EQ(0x68d, mmap2_event->mmap2.tid);
+  EXPECT_EQ(0x1d000, mmap2_event->mmap2.start);
+  EXPECT_EQ(0x1000, mmap2_event->mmap2.len);
+  EXPECT_EQ(0, mmap2_event->mmap2.pgoff);
+  EXPECT_EQ(6, mmap2_event->mmap2.maj);
+  EXPECT_EQ(7, mmap2_event->mmap2.min);
+  EXPECT_EQ(8, mmap2_event->mmap2.ino);
+  EXPECT_EQ(9, mmap2_event->mmap2.ino_generation);
+  EXPECT_EQ(1|2, mmap2_event->mmap2.prot);
+  EXPECT_EQ(2, mmap2_event->mmap2.flags);
+}
+
 }  // namespace quipper
 
 int main(int argc, char* argv[]) {
