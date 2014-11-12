@@ -42,7 +42,7 @@ class MyDbusObject {
   chromeos::dbus_utils::ExportedProperty<int> prop2_;
   int Method1() { return 5; }
   bool Method2(chromeos::ErrorPtr* error, const std::string& message);
-  void Method3(scoped_ptr<DBusMethodResponse> response,
+  void Method3(scoped_ptr<DBusMethodResponse<int_32>> response,
                const std::string& message) {
     if (message.empty()) {
        response->ReplyWithError(chromeos::errors::dbus::kDomain,
@@ -192,43 +192,52 @@ class CHROMEOS_EXPORT DBusInterface final {
   }
 
   // Register an async DBus method handler for |method_name| as base::Callback.
-  template<typename... Args>
+  template<typename Response, typename... Args>
   inline void AddMethodHandler(
       const std::string& method_name,
-      const base::Callback<void(scoped_ptr<DBusMethodResponse>, Args...)>&
-          handler) {
-    Handler<DBusInterfaceMethodHandler<Args...>>::Add(
+      const base::Callback<void(scoped_ptr<Response>, Args...)>& handler) {
+    static_assert(std::is_base_of<DBusMethodResponseBase, Response>::value,
+                  "Response must be DBusMethodResponse<T...>");
+    Handler<DBusInterfaceMethodHandler<Response, Args...>>::Add(
         this, method_name, handler);
   }
 
   // Register an async D-Bus method handler for |method_name| as a static
   // function.
-  template<typename... Args>
+  template<typename Response, typename... Args>
   inline void AddMethodHandler(
       const std::string& method_name,
-      void(*handler)(scoped_ptr<DBusMethodResponse>, Args...)) {
-    Handler<DBusInterfaceMethodHandler<Args...>>::Add(
+      void(*handler)(scoped_ptr<Response>, Args...)) {
+    static_assert(std::is_base_of<DBusMethodResponseBase, Response>::value,
+                  "Response must be DBusMethodResponse<T...>");
+    Handler<DBusInterfaceMethodHandler<Response, Args...>>::Add(
         this, method_name, base::Bind(handler));
   }
 
   // Register an async D-Bus method handler for |method_name| as a class member
   // function.
-  template<typename Instance, typename Class, typename... Args>
+  template<typename Response, typename Instance, typename Class,
+           typename... Args>
   inline void AddMethodHandler(
       const std::string& method_name,
       Instance instance,
-      void(Class::*handler)(scoped_ptr<DBusMethodResponse>, Args...)) {
-    Handler<DBusInterfaceMethodHandler<Args...>>::Add(
+      void(Class::*handler)(scoped_ptr<Response>, Args...)) {
+    static_assert(std::is_base_of<DBusMethodResponseBase, Response>::value,
+                  "Response must be DBusMethodResponse<T...>");
+    Handler<DBusInterfaceMethodHandler<Response, Args...>>::Add(
         this, method_name, base::Bind(handler, instance));
   }
 
   // Same as above but for const-method of a class.
-  template<typename Instance, typename Class, typename... Args>
+  template<typename Response, typename Instance, typename Class,
+           typename... Args>
   inline void AddMethodHandler(
       const std::string& method_name,
       Instance instance,
-      void(Class::*handler)(scoped_ptr<DBusMethodResponse>, Args...) const) {
-    Handler<DBusInterfaceMethodHandler<Args...>>::Add(
+      void(Class::*handler)(scoped_ptr<Response>, Args...) const) {
+    static_assert(std::is_base_of<DBusMethodResponseBase, Response>::value,
+                  "Response must be DBusMethodResponse<T...>");
+    Handler<DBusInterfaceMethodHandler<Response, Args...>>::Add(
         this, method_name, base::Bind(handler, instance));
   }
 

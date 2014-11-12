@@ -48,24 +48,27 @@ class Manager final {
   // DBus methods:
   // Handles calls to org.chromium.Buffet.Manager.StartDevice().
   void HandleStartDevice(
-      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse> response);
+      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<>> response);
   // Handles calls to org.chromium.Buffet.Manager.CheckDeviceRegistered().
   void HandleCheckDeviceRegistered(
-      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse> response);
+      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<std::string>>
+          response);
   // Handles calls to org.chromium.Buffet.Manager.GetDeviceInfo().
   void HandleGetDeviceInfo(
-      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse> response);
+      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<std::string>>
+          response);
   // Handles calls to org.chromium.Buffet.Manager.RegisterDevice().
   void HandleRegisterDevice(
-      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse> response,
+      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<std::string>>
+          response,
       const std::map<std::string, std::string>& params);
   // Handles calls to org.chromium.Buffet.Manager.UpdateState().
   void HandleUpdateState(
-      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse> response,
+      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<>> response,
       const chromeos::VariantDictionary& property_set);
   // Handles calls to org.chromium.Buffet.Manager.AddCommand().
   void HandleAddCommand(
-      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse> response,
+      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<>> response,
       const std::string& json_command);
   // Handles calls to org.chromium.Buffet.Manager.Test()
   std::string HandleTestMethod(const std::string& message);

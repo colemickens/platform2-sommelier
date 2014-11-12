@@ -91,15 +91,15 @@ struct MethodHandlerInvoker {
   static RetType Call(
       ErrorPtr* error,
       Class* instance,
-      void(Class::*method)(scoped_ptr<DBusMethodResponse>, Params...),
+      void(Class::*method)(scoped_ptr<DBusMethodResponse<RetType>>, Params...),
       Args... args) {
     ResponseHolder response_holder;
     dbus::MethodCall method_call("test.interface", "TestMethod");
     method_call.SetSerial(123);
-    scoped_ptr<DBusMethodResponse> method_response{
-      new DBusMethodResponse(&method_call,
-                             base::Bind(&ResponseHolder::ReceiveResponse,
-                                        response_holder.AsWeakPtr()))
+    scoped_ptr<DBusMethodResponse<RetType>> method_response{
+      new DBusMethodResponse<RetType>(
+        &method_call, base::Bind(&ResponseHolder::ReceiveResponse,
+                                 response_holder.AsWeakPtr()))
     };
     (instance->*method)(method_response.Pass(), args...);
     CHECK(response_holder.response_.get())
@@ -118,15 +118,15 @@ struct MethodHandlerInvoker<void> {
   static void Call(
       ErrorPtr* error,
       Class* instance,
-      void(Class::*method)(scoped_ptr<DBusMethodResponse>, Params...),
+      void(Class::*method)(scoped_ptr<DBusMethodResponse<>>, Params...),
       Args... args) {
     ResponseHolder response_holder;
     dbus::MethodCall method_call("test.interface", "TestMethod");
     method_call.SetSerial(123);
-    scoped_ptr<DBusMethodResponse> method_response{
-      new DBusMethodResponse(&method_call,
-                             base::Bind(&ResponseHolder::ReceiveResponse,
-                                        response_holder.AsWeakPtr()))
+    scoped_ptr<DBusMethodResponse<>> method_response{
+      new DBusMethodResponse<>(&method_call,
+                               base::Bind(&ResponseHolder::ReceiveResponse,
+                                          response_holder.AsWeakPtr()))
     };
     (instance->*method)(method_response.Pass(), args...);
     CHECK(response_holder.response_.get())

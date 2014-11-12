@@ -22,25 +22,13 @@ namespace dbus_utils {
 
 using ResponseSender = dbus::ExportedObject::ResponseSender;
 
-// DBusMethodResponse is a helper class used with asynchronous D-Bus method
+// DBusMethodResponseBase is a helper class used with asynchronous D-Bus method
 // handlers to encapsulate the information needed to send the method call
 // response when it is available.
-class CHROMEOS_EXPORT DBusMethodResponse final {
+class CHROMEOS_EXPORT DBusMethodResponseBase {
  public:
-  DBusMethodResponse(dbus::MethodCall* method_call, ResponseSender sender);
-  ~DBusMethodResponse();
-
-  // Sends the a successful response. |return_values| can contain a list
-  // of return values to be sent to the caller. If the method does not return
-  // any values, just call Return() with no arguments.
-  template<typename... Args>
-  inline void Return(const Args&... return_values) {
-    CheckCanSendResponse();
-    auto response = CreateCustomResponse();
-    dbus::MessageWriter writer(response.get());
-    DBusParamWriter::Append(&writer, return_values...);
-    SendRawResponse(response.Pass());
-  }
+  DBusMethodResponseBase(dbus::MethodCall* method_call, ResponseSender sender);
+  virtual ~DBusMethodResponseBase();
 
   // Sends an error response. Marshals the |error| object over D-Bus.
   // If |error| is from the "dbus" error domain, takes the |error_code| from
@@ -66,12 +54,13 @@ class CHROMEOS_EXPORT DBusMethodResponse final {
   // Checks if the response has been sent already.
   bool IsResponseSent() const;
 
- private:
+ protected:
   void CheckCanSendResponse() const;
 
   // Aborts the method execution. Does not send any response message.
   void Abort();
 
+ private:
   // A callback to be called to send the method call response message.
   ResponseSender sender_;
   // |method_call_| is actually owned by |sender_| (it is embedded as scoped_ptr
@@ -80,7 +69,27 @@ class CHROMEOS_EXPORT DBusMethodResponse final {
   // to send a response again somehow.
   dbus::MethodCall* method_call_;
 
-  DISALLOW_COPY_AND_ASSIGN(DBusMethodResponse);
+  DISALLOW_COPY_AND_ASSIGN(DBusMethodResponseBase);
+};
+
+// DBusMethodResponse is an explicitly-typed version of DBusMethodResponse.
+// Using DBusMethodResponse<Types...> indicates the types a D-Bus method
+// is expected to return.
+template<typename... Types>
+class DBusMethodResponse : public DBusMethodResponseBase {
+ public:
+  // Make the base class's custom constructor available to DBusMethodResponse.
+  using DBusMethodResponseBase::DBusMethodResponseBase;
+
+  // Sends the a successful response. |return_values| can contain a list
+  // of return values to be sent to the caller.
+  inline void Return(const Types&... return_values) {
+    CheckCanSendResponse();
+    auto response = CreateCustomResponse();
+    dbus::MessageWriter writer(response.get());
+    DBusParamWriter::Append(&writer, return_values...);
+    SendRawResponse(response.Pass());
+  }
 };
 
 }  // namespace dbus_utils

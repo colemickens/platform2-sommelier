@@ -40,7 +40,7 @@ const char kTestMethod_NoOp[] = "NoOp";
 struct Calc {
   int Add(int x, int y) { return x + y; }
   int Negate(int x) { return -x; }
-  void Positive(scoped_ptr<DBusMethodResponse> response, double x) {
+  void Positive(scoped_ptr<DBusMethodResponse<double>> response, double x) {
     if (x >= 0.0) {
       response->Return(x);
       return;

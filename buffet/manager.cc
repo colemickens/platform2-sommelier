@@ -79,7 +79,7 @@ void Manager::RegisterAsync(const AsyncEventSequencer::CompletionAction& cb) {
   device_info_->Load();
 }
 
-void Manager::HandleStartDevice(scoped_ptr<DBusMethodResponse> response) {
+void Manager::HandleStartDevice(scoped_ptr<DBusMethodResponse<>> response) {
   LOG(INFO) << "Received call to Manager.StartDevice()";
 
   chromeos::ErrorPtr error;
@@ -91,7 +91,7 @@ void Manager::HandleStartDevice(scoped_ptr<DBusMethodResponse> response) {
 }
 
 void Manager::HandleCheckDeviceRegistered(
-    scoped_ptr<DBusMethodResponse> response) {
+    scoped_ptr<DBusMethodResponse<std::string>> response) {
   LOG(INFO) << "Received call to Manager.CheckDeviceRegistered()";
   chromeos::ErrorPtr error;
   bool registered = device_info_->CheckRegistration(&error);
@@ -117,7 +117,7 @@ void Manager::HandleCheckDeviceRegistered(
 }
 
 void Manager::HandleGetDeviceInfo(
-    scoped_ptr<DBusMethodResponse> response) {
+    scoped_ptr<DBusMethodResponse<std::string>> response) {
   LOG(INFO) << "Received call to Manager.GetDeviceInfo()";
 
   chromeos::ErrorPtr error;
@@ -133,7 +133,7 @@ void Manager::HandleGetDeviceInfo(
 }
 
 void Manager::HandleRegisterDevice(
-    scoped_ptr<DBusMethodResponse> response,
+    scoped_ptr<DBusMethodResponse<std::string>> response,
     const std::map<std::string, std::string>& params) {
   LOG(INFO) << "Received call to Manager.RegisterDevice()";
 
@@ -146,7 +146,7 @@ void Manager::HandleRegisterDevice(
 }
 
 void Manager::HandleUpdateState(
-    scoped_ptr<DBusMethodResponse> response,
+    scoped_ptr<DBusMethodResponse<>> response,
     const chromeos::VariantDictionary& property_set) {
   chromeos::ErrorPtr error;
   base::Time timestamp = base::Time::Now();
@@ -165,7 +165,7 @@ void Manager::HandleUpdateState(
     response->Return();
 }
 
-void Manager::HandleAddCommand(scoped_ptr<DBusMethodResponse> response,
+void Manager::HandleAddCommand(scoped_ptr<DBusMethodResponse<>> response,
                                const std::string& json_command) {
   static int next_id = 0;
   std::string error_message;

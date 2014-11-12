@@ -9,26 +9,26 @@
 namespace chromeos {
 namespace dbus_utils {
 
-DBusMethodResponse::DBusMethodResponse(dbus::MethodCall* method_call,
-                                       ResponseSender sender)
+DBusMethodResponseBase::DBusMethodResponseBase(dbus::MethodCall* method_call,
+                                               ResponseSender sender)
     : sender_(sender),
       method_call_(method_call) {
 }
 
-DBusMethodResponse::~DBusMethodResponse() {
+DBusMethodResponseBase::~DBusMethodResponseBase() {
   if (method_call_) {
     // Response hasn't been sent by the handler. Abort the call.
     Abort();
   }
 }
 
-void DBusMethodResponse::ReplyWithError(const chromeos::Error* error) {
+void DBusMethodResponseBase::ReplyWithError(const chromeos::Error* error) {
   CheckCanSendResponse();
   auto response = GetDBusError(method_call_, error);
   SendRawResponse(scoped_ptr<dbus::Response>(response.release()));
 }
 
-void DBusMethodResponse::ReplyWithError(
+void DBusMethodResponseBase::ReplyWithError(
     const tracked_objects::Location& location,
     const std::string& error_domain,
     const std::string& error_code,
@@ -38,25 +38,27 @@ void DBusMethodResponse::ReplyWithError(
   ReplyWithError(error.get());
 }
 
-void DBusMethodResponse::Abort() {
+void DBusMethodResponseBase::Abort() {
   SendRawResponse(scoped_ptr<dbus::Response>());
 }
 
-void DBusMethodResponse::SendRawResponse(scoped_ptr<dbus::Response> response) {
+void DBusMethodResponseBase::SendRawResponse(
+    scoped_ptr<dbus::Response> response) {
   CheckCanSendResponse();
   method_call_ = nullptr;  // Mark response as sent.
   sender_.Run(response.Pass());
 }
 
-scoped_ptr<dbus::Response> DBusMethodResponse::CreateCustomResponse() const {
+scoped_ptr<dbus::Response>
+DBusMethodResponseBase::CreateCustomResponse() const {
   return dbus::Response::FromMethodCall(method_call_);
 }
 
-bool DBusMethodResponse::IsResponseSent() const {
+bool DBusMethodResponseBase::IsResponseSent() const {
   return (method_call_ == nullptr);
 }
 
-void DBusMethodResponse::CheckCanSendResponse() const {
+void DBusMethodResponseBase::CheckCanSendResponse() const {
   CHECK(method_call_) << "Response already sent";
 }
 

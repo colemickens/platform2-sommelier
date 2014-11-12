@@ -50,7 +50,6 @@ namespace dbus_utils {
 //  registered interfaces. See description of DBusObject class for more details.
 
 class DBusInterface;
-class DBusMethodResponse;
 class DBusObject;
 
 class CHROMEOS_EXPORT ExportedPropertyBase {
