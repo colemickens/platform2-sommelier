@@ -37,11 +37,12 @@ using permission_broker::PermissionBroker;
 
 static const uint16_t kLinuxFoundationUsbVendorId = 0x1d6b;
 
-int main(int argc, char **argv) {
-  DEFINE_string(access_group, "", "The group which has resource access granted "
-                "to it. Must not be empty.");
-  DEFINE_int32(poll_interval, 100, "The interval at which to poll for udev "
-               "events.");
+int main(int argc, char** argv) {
+  DEFINE_string(access_group, "",
+                "The group which has resource access granted to it. "
+                "Must not be empty.");
+  DEFINE_int32(poll_interval, 100,
+               "The interval at which to poll for udev events.");
   DEFINE_string(udev_run_path, "/run/udev",
                 "The path to udev's run directory.");
 
@@ -49,8 +50,7 @@ int main(int argc, char **argv) {
   chromeos::FlagHelper::Init(argc, argv, "Chromium OS Permission Broker");
   chromeos::InitLog(chromeos::kLogToSyslog);
 
-  PermissionBroker broker(FLAGS_access_group,
-                          FLAGS_udev_run_path,
+  PermissionBroker broker(FLAGS_access_group, FLAGS_udev_run_path,
                           FLAGS_poll_interval);
   broker.AddRule(new AllowUsbDeviceRule());
   broker.AddRule(new AllowTtyDeviceRule());

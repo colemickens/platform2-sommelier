@@ -34,8 +34,8 @@ namespace permission_broker {
 PermissionBroker::PermissionBroker(const gid_t access_group)
     : udev_(udev_new()), access_group_(access_group) {}
 
-PermissionBroker::PermissionBroker(const std::string &access_group_name,
-                                   const std::string &udev_run_path,
+PermissionBroker::PermissionBroker(const std::string& access_group_name,
+                                   const std::string& udev_run_path,
                                    int poll_interval_msecs)
     : udev_(udev_new()) {
   CHECK(udev_) << "Could not create udev context, is sysfs mounted?";
@@ -46,10 +46,10 @@ PermissionBroker::PermissionBroker(const std::string &access_group_name,
   udev_run_path_ = udev_run_path;
 
   struct group group_buffer;
-  struct group *access_group = NULL;
+  struct group* access_group = NULL;
   char buffer[256];
-  getgrnam_r(access_group_name.c_str(), &group_buffer, buffer,
-             sizeof(buffer), &access_group);
+  getgrnam_r(access_group_name.c_str(), &group_buffer, buffer, sizeof(buffer),
+             &access_group);
   CHECK(access_group) << "Could not resolve \"" << access_group_name << "\" "
                       << "to a named group.";
   access_group_ = access_group->gr_gid;
@@ -61,18 +61,18 @@ PermissionBroker::~PermissionBroker() {
 }
 
 void PermissionBroker::Run() {
-  DBusConnection *const connection = dbus_g_connection_get_connection(
+  DBusConnection* const connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
   CHECK(connection) << "Cannot connect to system bus.";
 
   DBusError error;
   dbus_error_init(&error);
-  dbus_bus_request_name(connection,
-      permission_broker::kPermissionBrokerServiceName, 0, &error);
+  dbus_bus_request_name(
+      connection, permission_broker::kPermissionBrokerServiceName, 0, &error);
   if (dbus_error_is_set(&error)) {
     LOG(FATAL) << "Failed to register "
-               << permission_broker::kPermissionBrokerServiceName
-               << ": " << error.message;
+               << permission_broker::kPermissionBrokerServiceName << ": "
+               << error.message;
     dbus_error_free(&error);
     return;
   }
@@ -85,7 +85,7 @@ void PermissionBroker::Run() {
       connection, kPermissionBrokerServicePath, &vtable, this);
   CHECK(registration_result) << "Could not register object path.";
 
-  GMainLoop *const loop = g_main_loop_new(NULL, false);
+  GMainLoop* const loop = g_main_loop_new(NULL, false);
   g_main_loop_run(loop);
 }
 
@@ -94,27 +94,24 @@ void PermissionBroker::AddUsbException(const uint16_t vendor_id,
   usb_exceptions_.insert(std::make_pair(vendor_id, product_id));
 }
 
-void PermissionBroker::AddRule(Rule *rule) {
+void PermissionBroker::AddRule(Rule* rule) {
   CHECK(rule) << "Cannot add NULL as a rule.";
   rules_.push_back(rule);
 }
 
-bool PermissionBroker::ProcessPath(const string &path,
-                                   int interface_id) {
+bool PermissionBroker::ProcessPath(const string& path, int interface_id) {
   WaitForEmptyUdevQueue();
 
   LOG(INFO) << "ProcessPath(" << path << ")";
   Rule::Result result = Rule::IGNORE;
   for (unsigned int i = 0; i < rules_.size(); ++i) {
-    const Rule::Result rule_result = rules_[i]->Process(path,
-                                                        interface_id);
+    const Rule::Result rule_result = rules_[i]->Process(path, interface_id);
     LOG(INFO) << "  " << rules_[i]->name() << ": "
               << Rule::ResultToString(rule_result);
     if (rule_result == Rule::DENY) {
       result = Rule::DENY;
       break;
-    }
-    else if (rule_result == Rule::ALLOW) {
+    } else if (rule_result == Rule::ALLOW) {
       result = Rule::ALLOW;
     }
   }
@@ -125,7 +122,7 @@ bool PermissionBroker::ProcessPath(const string &path,
   return false;
 }
 
-bool PermissionBroker::GrantAccess(const std::string &path) {
+bool PermissionBroker::GrantAccess(const std::string& path) {
   if (chown(path.c_str(), -1, access_group_)) {
     LOG(INFO) << "Could not grant access to " << path;
     return false;
@@ -133,14 +130,13 @@ bool PermissionBroker::GrantAccess(const std::string &path) {
   return true;
 }
 
-bool PermissionBroker::ExpandUsbIdentifiersToPaths(
-    const uint16_t vendor_id,
-    const uint16_t product_id,
-    vector<string> *paths) {
+bool PermissionBroker::ExpandUsbIdentifiersToPaths(const uint16_t vendor_id,
+                                                   const uint16_t product_id,
+                                                   vector<string>* paths) {
   CHECK(paths) << "Cannot invoke ExpandUsbIdentifiersToPaths with NULL paths.";
   paths->clear();
 
-  struct udev_enumerate *const enumerate = udev_enumerate_new(udev_);
+  struct udev_enumerate* const enumerate = udev_enumerate_new(udev_);
   udev_enumerate_add_match_is_initialized(enumerate);
   udev_enumerate_add_match_subsystem(enumerate, "usb");
   udev_enumerate_add_match_sysattr(
@@ -149,10 +145,10 @@ bool PermissionBroker::ExpandUsbIdentifiersToPaths(
       enumerate, "idProduct", base::StringPrintf("%.4x", product_id).c_str());
   udev_enumerate_scan_devices(enumerate);
 
-  struct udev_list_entry *entry = NULL;
+  struct udev_list_entry* entry = NULL;
   udev_list_entry_foreach(entry, udev_enumerate_get_list_entry(enumerate)) {
-    const char *const path = udev_list_entry_get_name(entry);
-    struct udev_device *device = udev_device_new_from_syspath(udev_, path);
+    const char* const path = udev_list_entry_get_name(entry);
+    struct udev_device* device = udev_device_new_from_syspath(udev_, path);
     paths->push_back(udev_device_get_devnode(device));
     udev_device_unref(device);
   }
@@ -162,7 +158,7 @@ bool PermissionBroker::ExpandUsbIdentifiersToPaths(
 }
 
 void PermissionBroker::WaitForEmptyUdevQueue() {
-  struct udev_queue *queue = udev_queue_new(udev_);
+  struct udev_queue* queue = udev_queue_new(udev_);
   if (udev_queue_get_queue_is_empty(queue)) {
     udev_queue_unref(queue);
     return;
@@ -173,8 +169,8 @@ void PermissionBroker::WaitForEmptyUdevQueue() {
   udev_poll.fd = inotify_init();
   udev_poll.events = POLLIN;
 
-  int watch = inotify_add_watch(udev_poll.fd, udev_run_path_.c_str(),
-                                IN_MOVED_TO);
+  int watch =
+      inotify_add_watch(udev_poll.fd, udev_run_path_.c_str(), IN_MOVED_TO);
   CHECK_NE(watch, -1) << "Could not add watch for udev run directory.";
 
   while (!udev_queue_get_queue_is_empty(queue)) {
@@ -190,7 +186,9 @@ void PermissionBroker::WaitForEmptyUdevQueue() {
 }
 
 DBusHandlerResult PermissionBroker::MainDBusMethodHandler(
-    DBusConnection *connection, DBusMessage *message, void *data) {
+    DBusConnection* connection,
+    DBusMessage* message,
+    void* data) {
   CHECK(connection) << "Missing connection.";
   CHECK(message) << "Missing method.";
   CHECK(data) << "Missing pointer to broker.";
@@ -202,9 +200,9 @@ DBusHandlerResult PermissionBroker::MainDBusMethodHandler(
   if (interface != kPermissionBrokerInterface)
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-  DBusMessage *reply = NULL;
+  DBusMessage* reply = NULL;
   string member(dbus_message_get_member(message));
-  PermissionBroker *const broker = static_cast<PermissionBroker*>(data);
+  PermissionBroker* const broker = static_cast<PermissionBroker*>(data);
   if (member == kRequestPathAccess)
     reply = broker->HandleRequestPathAccessMethod(message);
   else if (member == kRequestUsbAccess)
@@ -218,45 +216,41 @@ DBusHandlerResult PermissionBroker::MainDBusMethodHandler(
   return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-DBusMessage *PermissionBroker::HandleRequestPathAccessMethod(
-    DBusMessage *message) {
-  DBusMessage *reply = dbus_message_new_method_return(message);
+DBusMessage* PermissionBroker::HandleRequestPathAccessMethod(
+    DBusMessage* message) {
+  DBusMessage* reply = dbus_message_new_method_return(message);
   CHECK(reply) << "Could not allocate reply message for method call.";
 
   dbus_bool_t success = false;
-  char *path = NULL;
+  char* path = NULL;
   int interface_id = Rule::ANY_INTERFACE;
 
   DBusError error;
   dbus_error_init(&error);
-  if (!dbus_message_get_args(message, &error,
-                             DBUS_TYPE_STRING, &path,
+  if (!dbus_message_get_args(message, &error, DBUS_TYPE_STRING, &path,
                              DBUS_TYPE_INT32, &interface_id,
                              DBUS_TYPE_INVALID)) {
     interface_id = Rule::ANY_INTERFACE;
-    if (!dbus_message_get_args(message, &error,
-                               DBUS_TYPE_STRING, &path,
+    if (!dbus_message_get_args(message, &error, DBUS_TYPE_STRING, &path,
                                DBUS_TYPE_INVALID)) {
       LOG(WARNING) << "Error parsing arguments: " << error.message;
       dbus_error_free(&error);
 
-      dbus_message_append_args(reply,
-                               DBUS_TYPE_BOOLEAN, &success,
+      dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &success,
                                DBUS_TYPE_INVALID);
       return reply;
     }
   }
 
   success = ProcessPath(path, interface_id);
-  dbus_message_append_args(reply,
-                           DBUS_TYPE_BOOLEAN, &success,
+  dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &success,
                            DBUS_TYPE_INVALID);
   return reply;
 }
 
-DBusMessage *PermissionBroker::HandleRequestUsbAccessMethod(
-    DBusMessage *message) {
-  DBusMessage *reply = dbus_message_new_method_return(message);
+DBusMessage* PermissionBroker::HandleRequestUsbAccessMethod(
+    DBusMessage* message) {
+  DBusMessage* reply = dbus_message_new_method_return(message);
   CHECK(reply) << "Could not allocate reply message for method call.";
 
   dbus_bool_t success = false;
@@ -266,21 +260,17 @@ DBusMessage *PermissionBroker::HandleRequestUsbAccessMethod(
 
   DBusError error;
   dbus_error_init(&error);
-  if (!dbus_message_get_args(message, &error,
-                             DBUS_TYPE_UINT16, &vendor_id,
-                             DBUS_TYPE_UINT16, &product_id,
-                             DBUS_TYPE_INT32, &interface_id,
-                             DBUS_TYPE_INVALID)) {
+  if (!dbus_message_get_args(message, &error, DBUS_TYPE_UINT16, &vendor_id,
+                             DBUS_TYPE_UINT16, &product_id, DBUS_TYPE_INT32,
+                             &interface_id, DBUS_TYPE_INVALID)) {
     interface_id = Rule::ANY_INTERFACE;
-    if (!dbus_message_get_args(message, &error,
-                               DBUS_TYPE_UINT16, &vendor_id,
+    if (!dbus_message_get_args(message, &error, DBUS_TYPE_UINT16, &vendor_id,
                                DBUS_TYPE_UINT16, &product_id,
                                DBUS_TYPE_INVALID)) {
       LOG(WARNING) << "Error parsing arguments: " << error.message;
       dbus_error_free(&error);
 
-      dbus_message_append_args(reply,
-                               DBUS_TYPE_BOOLEAN, &success,
+      dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &success,
                                DBUS_TYPE_INVALID);
       return reply;
     }
@@ -290,9 +280,7 @@ DBusMessage *PermissionBroker::HandleRequestUsbAccessMethod(
     success = true;
   } else {
     vector<string> paths;
-    if (ExpandUsbIdentifiersToPaths(vendor_id,
-                                    product_id,
-                                    &paths)) {
+    if (ExpandUsbIdentifiersToPaths(vendor_id, product_id, &paths)) {
       success = true;
       for (unsigned int i = 0; i < paths.size(); ++i)
         success &= ProcessPath(paths[i], interface_id);
@@ -302,8 +290,7 @@ DBusMessage *PermissionBroker::HandleRequestUsbAccessMethod(
     }
   }
 
-  dbus_message_append_args(reply,
-                           DBUS_TYPE_BOOLEAN, &success,
+  dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &success,
                            DBUS_TYPE_INVALID);
   return reply;
 }
