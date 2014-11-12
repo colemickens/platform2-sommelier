@@ -4,7 +4,6 @@
 
 #include "chromiumos-wide-profiling/perf_parser.h"
 
-#include <string.h>
 
 #include <algorithm>
 #include <cstdio>
@@ -13,6 +12,7 @@
 #include "base/logging.h"
 
 #include "chromiumos-wide-profiling/address_mapper.h"
+#include "chromiumos-wide-profiling/quipper_string.h"
 #include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
@@ -66,14 +66,15 @@ bool PerfParser::ParseRawEvents() {
   if (!options_.discard_unused_events)
     return true;
 
-  // Some MMAP events' mapped regions will not have any samples.  These MMAP
-  // events should be dropped.  |parsed_events_| should be reconstructed without
-  // these events.
+  // Some MMAP/MMAP2 events' mapped regions will not have any samples. These
+  // MMAP/MMAP2 events should be dropped. |parsed_events_| should be
+  // reconstructed without these events.
   size_t write_index = 0;
   size_t read_index;
   for (read_index = 0; read_index < parsed_events_.size(); ++read_index) {
     const ParsedEvent& event = parsed_events_[read_index];
-    if (event.raw_event->header.type == PERF_RECORD_MMAP &&
+    if ((event.raw_event->header.type == PERF_RECORD_MMAP ||
+         event.raw_event->header.type == PERF_RECORD_MMAP2) &&
         event.num_samples_in_mmap_region == 0) {
       continue;
     }
@@ -158,6 +159,19 @@ bool PerfParser::ProcessEvents() {
         dso_set_.insert(dso_info);
         break;
       }
+      case PERF_RECORD_MMAP2: {
+        VLOG(1) << "MMAP2: " << event.mmap2.filename;
+        ++stats_.num_mmap_events;
+        // Use the array index of the current mmap event as a unique identifier.
+        CHECK(MapMmapEvent(&event.mmap2, i)) << "Unable to map MMAP2 event!";
+        // No samples in this MMAP region yet, hopefully.
+        parsed_event.num_samples_in_mmap_region = 0;
+        DSOInfo dso_info;
+        // TODO(sque): Add Build ID as well.
+        dso_info.name = event.mmap2.filename;
+        dso_set_.insert(dso_info);
+        break;
+      }
       case PERF_RECORD_FORK:
         VLOG(1) << "FORK: " << event.fork.ppid << ":" << event.fork.ptid
                 << " -> " << event.fork.pid << ":" << event.fork.tid;
@@ -192,14 +206,13 @@ bool PerfParser::ProcessEvents() {
     }
   }
   // Print stats collected from parsing.
-  LOG(INFO) << "Parser processed:"
-            << " " << stats_.num_mmap_events << " MMAP events"
-            << ", " << stats_.num_comm_events << " COMM events"
-            << ", " << stats_.num_fork_events << " FORK events"
-            << ", " << stats_.num_exit_events << " EXIT events"
-            << ", " << stats_.num_sample_events << " SAMPLE events"
-            << ", " << stats_.num_sample_events_mapped
-            << " of these were mapped";
+  LOG(INFO) << "Parser processed: "
+            << stats_.num_mmap_events << " MMAP/MMAP2 events, "
+            << stats_.num_comm_events << " COMM events, "
+            << stats_.num_fork_events << " FORK events, "
+            << stats_.num_exit_events << " EXIT events, "
+            << stats_.num_sample_events << " SAMPLE events, "
+            << stats_.num_sample_events_mapped << " of these were mapped";
 
   float sample_mapping_percentage =
       static_cast<float>(stats_.num_sample_events_mapped) /
@@ -230,7 +243,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
     parsed_event->set_command(comm_iter->second);
   }
 
-  uint64_t unmapped_event_ip = sample_info.ip;
+  const uint64_t unmapped_event_ip = sample_info.ip;
 
   // Map the event IP itself.
   if (!MapIPAndPidAndGetNameAndOffset(sample_info.ip,
@@ -397,12 +410,19 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(
       // Make sure the ID points to a valid event.
       CHECK_LE(id, parsed_events_sorted_by_time_.size());
       ParsedEvent* parsed_event = parsed_events_sorted_by_time_[id];
-      CHECK_EQ(parsed_event->raw_event->header.type, PERF_RECORD_MMAP);
+      const event_t* raw_event = parsed_event->raw_event;
+
+      DSOInfo dso_info;
+      if (raw_event->header.type == PERF_RECORD_MMAP) {
+        dso_info.name = raw_event->mmap.filename;
+      } else if (raw_event->header.type == PERF_RECORD_MMAP2) {
+        dso_info.name = raw_event->mmap2.filename;
+      } else {
+        LOG(FATAL) << "Expected MMAP or MMAP2 event";
+      }
 
       // Find the mmap DSO filename in the set of known DSO names.
       // TODO(sque): take build IDs into account.
-      DSOInfo dso_info;
-      dso_info.name = parsed_event->raw_event->mmap.filename;
       std::set<DSOInfo>::const_iterator dso_iter = dso_set_.find(dso_info);
       CHECK(dso_iter != dso_set_.end());
       dso_and_offset->dso_info_ = &(*dso_iter);
@@ -415,16 +435,20 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(
   return mapped;
 }
 
-bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64_t id) {
+bool PerfParser::MapMmapEvent(uint64_t id,
+                              uint32_t pid,
+                              uint64_t* p_start,
+                              uint64_t* p_len,
+                              uint64_t* p_pgoff) {
   // We need to hide only the real kernel addresses.  However, to make things
   // more secure, and make the mapping idempotent, we should remap all
   // addresses, both kernel and non-kernel.
 
-  AddressMapper* mapper = GetOrCreateProcessMapper(event->pid).first;
+  AddressMapper* mapper = GetOrCreateProcessMapper(pid).first;
 
-  uint64_t len = event->len;
-  uint64_t start = event->start;
-  uint64_t pgoff = event->pgoff;
+  uint64_t start = *p_start;
+  uint64_t len = *p_len;
+  uint64_t pgoff = *p_pgoff;
 
   // |id| == 0 corresponds to the kernel mmap. We have several cases here:
   //
@@ -469,12 +493,12 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64_t id) {
     return false;
   }
 
-  uint64_t mapped_addr;
-  CHECK(mapper->GetMappedAddress(start, &mapped_addr));
   if (options_.do_remap) {
-    event->start = mapped_addr;
-    event->len = len;
-    event->pgoff = pgoff;
+    uint64_t mapped_addr;
+    CHECK(mapper->GetMappedAddress(start, &mapped_addr));
+    *p_start = mapped_addr;
+    *p_len = len;
+    *p_pgoff = pgoff;
   }
   return true;
 }

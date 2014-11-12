@@ -165,40 +165,55 @@ TEST(PerfParserTest, MapsSampleEventIp) {
       1001, 0x1c3000, 0x2000, 0x2000, "/usr/lib/bar.so").WriteTo(&input);  // 1
   // becomes: 0x1000, 0x2000, 0
 
+  // PERF_RECORD_MMAP2
+  testing::ExampleMmap2Event_Tid(
+      1002, 0x2c1000, 0x2000, 0, "/usr/lib/baz.so").WriteTo(&input);       // 2
+  // becomes: 0x0000, 0x2000, 0
+  testing::ExampleMmap2Event_Tid(
+      1002, 0x2c3000, 0x1000, 0x3000, "/usr/lib/xyz.so").WriteTo(&input);  // 3
+  // becomes: 0x1000, 0x1000, 0
+
   // PERF_RECORD_SAMPLE
   testing::ExamplePerfSampleEvent_IpTid(
-      0x00000000001c1000, 1001, 1001).WriteTo(&input);  // 2
+      0x00000000001c1000, 1001, 1001).WriteTo(&input);  // 4
   testing::ExamplePerfSampleEvent_IpTid(
-      0x00000000001c100a, 1001, 1001).WriteTo(&input);  // 3
+      0x00000000001c100a, 1001, 1001).WriteTo(&input);  // 5
   testing::ExamplePerfSampleEvent_IpTid(
-      0x00000000001c3fff, 1001, 1001).WriteTo(&input);  // 4
+      0x00000000001c3fff, 1001, 1001).WriteTo(&input);  // 6
   testing::ExamplePerfSampleEvent_IpTid(
-      0x00000000001c2bad, 1001, 1001).WriteTo(&input);  // 5 (not mapped)
+      0x00000000001c2bad, 1001, 1001).WriteTo(&input);  // 7 (not mapped)
+  testing::ExamplePerfSampleEvent_IpTid(
+      0x00000000002c100a, 1002, 1002).WriteTo(&input);  // 8
+  testing::ExamplePerfSampleEvent_IpTid(
+      0x00000000002c5bad, 1002, 1002).WriteTo(&input);  // 9 (not mapped)
+  testing::ExamplePerfSampleEvent_IpTid(
+      0x00000000002c300b, 1002, 1002).WriteTo(&input);  // 10
 
   // not mapped yet:
   testing::ExamplePerfSampleEvent_IpTid(
-      0x00000000002c400b, 1002, 1002).WriteTo(&input);  // 6
-  testing::ExampleMmapEvent_Tid(
-      1002, 0x2c4000, 0x1000, 0, "/usr/lib/new.so").WriteTo(&input);  // 7
+      0x00000000002c400b, 1002, 1002).WriteTo(&input);  // 11
+  testing::ExampleMmap2Event_Tid(
+      1002, 0x2c4000, 0x1000, 0, "/usr/lib/new.so").WriteTo(&input);  // 12
   testing::ExamplePerfSampleEvent_IpTid(
-      0x00000000002c400b, 1002, 1002).WriteTo(&input);  // 8
+      0x00000000002c400b, 1002, 1002).WriteTo(&input);  // 13
 
   //
   // Parse input.
   //
 
-  PerfParser::Options options = GetTestOptions();
+  PerfParser::Options options;
+  options.sample_mapping_percentage_threshold = 0;
   options.do_remap = true;
   PerfParser parser(options);
   EXPECT_TRUE(parser.ReadFromString(input.str()));
   EXPECT_TRUE(parser.ParseRawEvents());
-  EXPECT_EQ(3, parser.stats().num_mmap_events);
-  EXPECT_EQ(6, parser.stats().num_sample_events);
-  EXPECT_EQ(4, parser.stats().num_sample_events_mapped);
+  EXPECT_EQ(5, parser.stats().num_mmap_events);
+  EXPECT_EQ(9, parser.stats().num_sample_events);
+  EXPECT_EQ(6, parser.stats().num_sample_events_mapped);
 
 
   const std::vector<ParsedEvent>& events = parser.parsed_events();
-  ASSERT_EQ(9, events.size());
+  ASSERT_EQ(14, events.size());
 
   // MMAPs
 
@@ -214,40 +229,65 @@ TEST(PerfParserTest, MapsSampleEventIp) {
   EXPECT_EQ(0x2000, events[1].raw_event->mmap.len);
   EXPECT_EQ(0x2000, events[1].raw_event->mmap.pgoff);
 
+  EXPECT_EQ(PERF_RECORD_MMAP2, events[2].raw_event->header.type);
+  EXPECT_EQ("/usr/lib/baz.so", string(events[2].raw_event->mmap2.filename));
+  EXPECT_EQ(0x0000, events[2].raw_event->mmap2.start);
+  EXPECT_EQ(0x2000, events[2].raw_event->mmap2.len);
+  EXPECT_EQ(0, events[2].raw_event->mmap2.pgoff);
+
+  EXPECT_EQ(PERF_RECORD_MMAP2, events[3].raw_event->header.type);
+  EXPECT_EQ("/usr/lib/xyz.so", string(events[3].raw_event->mmap2.filename));
+  EXPECT_EQ(0x2000, events[3].raw_event->mmap2.start);
+  EXPECT_EQ(0x1000, events[3].raw_event->mmap2.len);
+  EXPECT_EQ(0x3000, events[3].raw_event->mmap2.pgoff);
+
   // SAMPLEs
 
-  EXPECT_EQ(PERF_RECORD_SAMPLE, events[2].raw_event->header.type);
-  EXPECT_EQ("/usr/lib/foo.so", events[2].dso_and_offset.dso_name());
-  EXPECT_EQ(0x0, events[2].dso_and_offset.offset());
-  EXPECT_EQ(0x0, events[2].raw_event->sample.array[0]);
-
-  EXPECT_EQ(PERF_RECORD_SAMPLE, events[3].raw_event->header.type);
-  EXPECT_EQ("/usr/lib/foo.so", events[3].dso_and_offset.dso_name());
-  EXPECT_EQ(0xa, events[3].dso_and_offset.offset());
-  EXPECT_EQ(0xa, events[3].raw_event->sample.array[0]);
-
   EXPECT_EQ(PERF_RECORD_SAMPLE, events[4].raw_event->header.type);
-  EXPECT_EQ("/usr/lib/bar.so", events[4].dso_and_offset.dso_name());
-  EXPECT_EQ(0x2fff, events[4].dso_and_offset.offset());
-  EXPECT_EQ(0x1fff, events[4].raw_event->sample.array[0]);
+  EXPECT_EQ("/usr/lib/foo.so", events[4].dso_and_offset.dso_name());
+  EXPECT_EQ(0x0, events[4].dso_and_offset.offset());
+  EXPECT_EQ(0x0, events[4].raw_event->sample.array[0]);
 
   EXPECT_EQ(PERF_RECORD_SAMPLE, events[5].raw_event->header.type);
-  EXPECT_EQ(0x00000000001c2bad, events[5].raw_event->sample.array[0]);
+  EXPECT_EQ("/usr/lib/foo.so", events[5].dso_and_offset.dso_name());
+  EXPECT_EQ(0xa, events[5].dso_and_offset.offset());
+  EXPECT_EQ(0xa, events[5].raw_event->sample.array[0]);
 
-  // not mapped yet:
   EXPECT_EQ(PERF_RECORD_SAMPLE, events[6].raw_event->header.type);
-  EXPECT_EQ(0x00000000002c400b, events[6].raw_event->sample.array[0]);
+  EXPECT_EQ("/usr/lib/bar.so", events[6].dso_and_offset.dso_name());
+  EXPECT_EQ(0x2fff, events[6].dso_and_offset.offset());
+  EXPECT_EQ(0x1fff, events[6].raw_event->sample.array[0]);
 
-  EXPECT_EQ(PERF_RECORD_MMAP, events[7].raw_event->header.type);
-  EXPECT_EQ("/usr/lib/new.so", string(events[7].raw_event->mmap.filename));
-  EXPECT_EQ(0x0000, events[7].raw_event->mmap.start);
-  EXPECT_EQ(0x1000, events[7].raw_event->mmap.len);
-  EXPECT_EQ(0, events[7].raw_event->mmap.pgoff);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[7].raw_event->header.type);
+  EXPECT_EQ(0x00000000001c2bad, events[7].raw_event->sample.array[0]);
 
   EXPECT_EQ(PERF_RECORD_SAMPLE, events[8].raw_event->header.type);
-  EXPECT_EQ("/usr/lib/new.so", events[8].dso_and_offset.dso_name());
-  EXPECT_EQ(0xb, events[8].dso_and_offset.offset());
-  EXPECT_EQ(0x000b, events[8].raw_event->sample.array[0]);
+  EXPECT_EQ("/usr/lib/baz.so", events[8].dso_and_offset.dso_name());
+  EXPECT_EQ(0xa, events[8].dso_and_offset.offset());
+  EXPECT_EQ(0xa, events[8].raw_event->sample.array[0]);
+
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[9].raw_event->header.type);
+  EXPECT_EQ(0x00000000002c5bad, events[9].raw_event->sample.array[0]);
+
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[10].raw_event->header.type);
+  EXPECT_EQ("/usr/lib/xyz.so", events[10].dso_and_offset.dso_name());
+  EXPECT_EQ(0x300b, events[10].dso_and_offset.offset());
+  EXPECT_EQ(0x200b, events[10].raw_event->sample.array[0]);
+
+  // not mapped yet:
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[11].raw_event->header.type);
+  EXPECT_EQ(0x00000000002c400b, events[11].raw_event->sample.array[0]);
+
+  EXPECT_EQ(PERF_RECORD_MMAP2, events[12].raw_event->header.type);
+  EXPECT_EQ("/usr/lib/new.so", string(events[12].raw_event->mmap2.filename));
+  EXPECT_EQ(0x3000, events[12].raw_event->mmap2.start);
+  EXPECT_EQ(0x1000, events[12].raw_event->mmap2.len);
+  EXPECT_EQ(0, events[12].raw_event->mmap2.pgoff);
+
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[13].raw_event->header.type);
+  EXPECT_EQ("/usr/lib/new.so", events[13].dso_and_offset.dso_name());
+  EXPECT_EQ(0xb, events[13].dso_and_offset.offset());
+  EXPECT_EQ(0x300b, events[13].raw_event->sample.array[0]);
 }
 
 }  // namespace quipper

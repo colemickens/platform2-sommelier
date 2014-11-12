@@ -126,6 +126,48 @@ void ExampleMmapEvent_Tid::WriteTo(std::ostream* out) const {
            static_cast<u64>(written_event_size));
 }
 
+void ExampleMmap2Event_Tid::WriteTo(std::ostream* out) const {
+  const size_t filename_aligned_length =
+      GetUint64AlignedStringLength(filename_);
+  const size_t event_size =
+      offsetof(struct mmap2_event, filename) +
+      filename_aligned_length +
+      1*sizeof(u64);  // sample_id_all
+
+  struct mmap2_event event = {
+    .header = {
+      .type = PERF_RECORD_MMAP2,
+      .misc = 0,
+      .size = static_cast<u16>(event_size),
+    },
+    .pid = pid_, .tid = pid_,
+    .start = start_,
+    .len = len_,
+    .pgoff = pgoff_,
+    .maj = 6,
+    .min = 7,
+    .ino = 8,
+    .ino_generation = 9,
+    .prot = 1|2,  // == PROT_READ | PROT_WRITE
+    .flags = 2,   // == MAP_PRIVATE
+    // .filename = ..., // written separately
+  };
+  const u64 sample_id[] = {
+    PunU32U64{.v32={pid_, pid_}}.v64,  // TID (u32 pid, tid)
+  };
+
+  const size_t pre_mmap_offset = out->tellp();
+  out->write(reinterpret_cast<const char*>(&event),
+             offsetof(struct mmap2_event, filename));
+  *out << filename_
+       << string(filename_aligned_length - filename_.size(), '\0');
+  out->write(reinterpret_cast<const char*>(sample_id), sizeof(sample_id));
+  const size_t written_event_size =
+      static_cast<size_t>(out->tellp()) - pre_mmap_offset;
+  CHECK_EQ(event.header.size,
+           static_cast<u64>(written_event_size));
+}
+
 void ExamplePerfSampleEvent_IpTid::WriteTo(std::ostream* out) const {
   const sample_event event = {
     .header = {
@@ -173,7 +215,7 @@ void ExamplePerfSampleEvent_Tracepoint::WriteTo(std::ostream* out) const {
            sizeof(event.header) + sizeof(sample_event_array));
   out->write(reinterpret_cast<const char*>(&event), sizeof(event));
   out->write(reinterpret_cast<const char*>(sample_event_array),
-              sizeof(sample_event_array));
+             sizeof(sample_event_array));
 }
 
 static const char kTraceMetadataValue[] =

@@ -166,7 +166,19 @@ class PerfParser : public PerfReader {
 
   // Used for processing events.  e.g. remapping with synthetic addresses.
   bool ProcessEvents();
-  bool MapMmapEvent(struct mmap_event* event, uint64_t id);
+  template <typename MMapEventT>
+  bool MapMmapEvent(MMapEventT* event, uint64_t id) {
+    return MapMmapEvent(id,
+                        event->pid,
+                        &event->start,
+                        &event->len,
+                        &event->pgoff);
+  }
+  bool MapMmapEvent(uint64_t id,
+                    uint32_t pid,
+                    uint64_t* p_start,
+                    uint64_t* p_len,
+                    uint64_t* p_pgoff);
   bool MapForkEvent(const struct fork_event& event);
   bool MapCommEvent(const struct comm_event& event);
 

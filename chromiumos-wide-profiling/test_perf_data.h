@@ -116,6 +116,8 @@ class ExampleMmap2Event_Tid : public StreamWriteable {
   const string filename_;
 };
 
+// Produces a simple PERF_RECORD_SAMPLE event for a sample_type of
+// PERF_SAMPLE_IP | PERF_SAMPLE_TID
 class ExamplePerfSampleEvent_IpTid : public StreamWriteable {
  public:
   ExamplePerfSampleEvent_IpTid(u64 ip, u32 pid, u32 tid)
