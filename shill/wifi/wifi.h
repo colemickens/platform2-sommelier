@@ -135,6 +135,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
                     const std::string &reason);
   // Callback for system suspend.
   virtual void OnBeforeSuspend(const ResultCallback &callback);
+  // Callback for dark resume.
+  virtual void OnDarkResume(const ResultCallback &callback);
   // Callback for system resume. If this WiFi device is idle, a scan
   // is initiated. Additionally, the base class implementation is
   // invoked unconditionally.
@@ -240,6 +242,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Overridden from Device superclass.
   bool IsTrafficMonitorEnabled() const override;
+
+  // Remove all networks from WPA supplicant.
+  // Passed as a callback to |wake_on_wifi_| where it is used.
+  void RemoveSupplicantNetworks();
 
  private:
   enum ScanMethod {
@@ -451,6 +457,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Abort any current scan (at the shill-level; let any request that's
   // already gone out finish).
   void AbortScan();
+  // Abort any current scan and start a new scan of type |type| if shill is
+  // currently idle.
+  void InitiateScan(ScanType scan_type);
   // Starts a timer in order to limit the length of an attempt to
   // connect to a pending network.
   void StartPendingTimer();
@@ -510,6 +519,14 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // false and populates |error|.
   bool ResolvePeerMacAddress(const std::string &input, std::string *output,
                              Error *error);
+
+  // In addition to calling the implementations of these functions in Device,
+  // calls WakeOnWiFi::PrepareForWakeOnWiFiBeforeSuspend.
+  void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig) override;
+  void OnIPv6ConfigUpdated() override;
+
+  // Returns true iff the WiFi device is connected to the current service.
+  bool IsConnectedToCurrentService();
 
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider *provider_;

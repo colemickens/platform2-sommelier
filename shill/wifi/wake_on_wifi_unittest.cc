@@ -19,6 +19,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/ip_address_store.h"
 #include "shill/logging.h"
+#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
@@ -30,11 +31,14 @@
 #include "shill/nice_mock_control.h"
 #include "shill/testing.h"
 
+using base::Bind;
+using base::Closure;
+using base::Unretained;
 using std::set;
 using std::string;
 using testing::_;
 using ::testing::AnyNumber;
-using ::testing::EndsWith;
+using ::testing::HasSubstr;
 using ::testing::Return;
 
 namespace shill {
@@ -475,26 +479,28 @@ const uint32_t kNewWiphyNlMsg_MaxPatterns = 20;
 const int kNewWiphyNlMsg_Nl80211AttrWiphyOffset = 20;
 const int kNewWiphyNlMsg_PattSupportOffset = 3336;
 const int kNewWiphyNlMsg_WowlanTrigDisconnectAttributeOffset = 3304;
+const uint32_t kTimeToNextLeaseRenewalShort = 1;
+const uint32_t kTimeToNextLeaseRenewalLong = 1000;
 
 }  // namespace
 
 class WakeOnWiFiTest : public ::testing::Test {
  public:
   WakeOnWiFiTest()
-      : metrics_(nullptr),
-        wake_on_wifi_(
-            new WakeOnWiFi(&netlink_manager_, &dispatcher_, &metrics_)) {}
+      : metrics_(nullptr) {}
   virtual ~WakeOnWiFiTest() {}
 
   virtual void SetUp() {
+    Nl80211Message::SetMessageType(kNl80211FamilyId);
     // Assume our NIC has reported its wiphy index, and that it supports wake
-    // on IP address patterns and disconnects. Necessary to pass error checks in
-    // WakeOnWiFi::ApplyWakeOnWiFiSettings so that the function will execute.
+    // all wake triggers.
     wake_on_wifi_->wiphy_index_received_ = true;
     wake_on_wifi_->wake_on_wifi_triggers_supported_.insert(
-        WakeOnWiFi::kIPAddress);
+        WakeOnWiFi::kPattern);
     wake_on_wifi_->wake_on_wifi_triggers_supported_.insert(
         WakeOnWiFi::kDisconnect);
+    wake_on_wifi_->wake_on_wifi_triggers_supported_.insert(
+        WakeOnWiFi::kSSID);
 
     ON_CALL(netlink_manager_, SendNl80211Message(_, _, _, _))
         .WillByDefault(Return(true));
@@ -601,11 +607,15 @@ class WakeOnWiFiTest : public ::testing::Test {
 
   void SetSuspendActionsDoneCallback() {
     wake_on_wifi_->suspend_actions_done_callback_ =
-        base::Bind(&WakeOnWiFiTest::SuspendCallback, base::Unretained(this));
+        Bind(&WakeOnWiFiTest::DoneCallback, Unretained(this));
   }
 
   bool SuspendActionsCallbackIsNull() {
     return wake_on_wifi_->suspend_actions_done_callback_.is_null();
+  }
+
+  void RunSuspendActionsCallback(const Error &error) {
+    wake_on_wifi_->suspend_actions_done_callback_.Run(error);
   }
 
   int GetNumSetWakeOnPacketRetries() {
@@ -616,13 +626,57 @@ class WakeOnWiFiTest : public ::testing::Test {
     wake_on_wifi_->num_set_wake_on_packet_retries_ = retries;
   }
 
-  void OnBeforeSuspend() {
-    ResultCallback callback(
-        base::Bind(&WakeOnWiFiTest::SuspendCallback, base::Unretained(this)));
-    wake_on_wifi_->OnBeforeSuspend(callback);
+  void OnBeforeSuspend(bool is_connected, bool have_dhcp_lease,
+                       uint32_t time_to_next_lease_renewal) {
+    ResultCallback done_callback(
+        Bind(&WakeOnWiFiTest::DoneCallback, Unretained(this)));
+    Closure renew_dhcp_lease_callback(
+        Bind(&WakeOnWiFiTest::RenewDHCPLeaseCallback, Unretained(this)));
+    Closure remove_supplicant_networks_callback(Bind(
+        &WakeOnWiFiTest::RemoveSupplicantNetworksCallback, Unretained(this)));
+    wake_on_wifi_->OnBeforeSuspend(is_connected, done_callback,
+                                   renew_dhcp_lease_callback,
+                                   remove_supplicant_networks_callback,
+                                   have_dhcp_lease, time_to_next_lease_renewal);
+  }
+
+  void OnDarkResume(bool is_connected) {
+    ResultCallback done_callback(
+        Bind(&WakeOnWiFiTest::DoneCallback, Unretained(this)));
+    Closure renew_dhcp_lease_callback(
+        Bind(&WakeOnWiFiTest::RenewDHCPLeaseCallback, Unretained(this)));
+    Closure initiate_scan_callback(
+        Bind(&WakeOnWiFiTest::InitiateScanCallback, Unretained(this)));
+    Closure remove_supplicant_networks_callback(Bind(
+        &WakeOnWiFiTest::RemoveSupplicantNetworksCallback, Unretained(this)));
+    wake_on_wifi_->OnDarkResume(
+        is_connected, done_callback, renew_dhcp_lease_callback,
+        initiate_scan_callback, remove_supplicant_networks_callback);
   }
 
   void OnAfterResume() { wake_on_wifi_->OnAfterResume(); }
+
+  void BeforeSuspendActions(bool is_connected, bool start_lease_renewal_timer,
+                            uint32_t time_to_next_lease_renewal) {
+    SetDarkResumeActionsTimeOutCallback();
+    EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
+    Closure remove_supplicant_networks_callback(Bind(
+        &WakeOnWiFiTest::RemoveSupplicantNetworksCallback, Unretained(this)));
+    wake_on_wifi_->BeforeSuspendActions(is_connected, start_lease_renewal_timer,
+                                        time_to_next_lease_renewal,
+                                        remove_supplicant_networks_callback);
+    EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
+  }
+
+  void OnDHCPLeaseObtained(bool start_lease_renewal_timer,
+                           uint32_t time_to_next_lease_renewal) {
+    wake_on_wifi_->OnDHCPLeaseObtained(start_lease_renewal_timer,
+                                       time_to_next_lease_renewal);
+  }
+
+  void SetInDarkResume(bool val) { wake_on_wifi_->in_dark_resume_ = val; }
+
+  bool GetInDarkResume() { return wake_on_wifi_->in_dark_resume_; }
 
   void SetWiphyIndexReceivedToFalse() {
     wake_on_wifi_->wiphy_index_received_ = false;
@@ -648,15 +702,133 @@ class WakeOnWiFiTest : public ::testing::Test {
     return wake_on_wifi_->wake_on_wifi_features_enabled_;
   }
 
-  MOCK_METHOD1(SuspendCallback, void(const Error &error));
+  void SetDarkResumeActionsTimeOutCallback() {
+    wake_on_wifi_->dark_resume_actions_timeout_callback_.Reset(Bind(
+        &WakeOnWiFiTest::DarkResumeActionsTimeoutCallback, Unretained(this)));
+  }
+
+  bool DarkResumeActionsTimeOutCallbackIsCancelled() {
+    return wake_on_wifi_->dark_resume_actions_timeout_callback_.IsCancelled();
+  }
+
+  void StartDHCPLeaseRenewalTimer() {
+    wake_on_wifi_->dhcp_lease_renewal_timer_.Start(
+        FROM_HERE, base::TimeDelta::FromSeconds(kTimeToNextLeaseRenewalLong),
+        Bind(&WakeOnWiFiTest::OnTimerWakeDoNothing, Unretained(this)));
+  }
+
+  void StartWakeToScanTimer() {
+    wake_on_wifi_->wake_to_scan_timer_.Start(
+        FROM_HERE, base::TimeDelta::FromSeconds(kTimeToNextLeaseRenewalLong),
+        Bind(&WakeOnWiFiTest::OnTimerWakeDoNothing, Unretained(this)));
+  }
+
+  void StopDHCPLeaseRenewalTimer() {
+    wake_on_wifi_->dhcp_lease_renewal_timer_.Stop();
+  }
+
+  void StopWakeToScanTimer() {
+    wake_on_wifi_->wake_to_scan_timer_.Stop();
+  }
+
+  bool DHCPLeaseRenewalTimerIsRunning() {
+    return wake_on_wifi_->dhcp_lease_renewal_timer_.IsRunning();
+  }
+
+  bool WakeToScanTimerIsRunning() {
+    return wake_on_wifi_->wake_to_scan_timer_.IsRunning();
+  }
+
+  void SetDarkResumeActionsTimeoutMilliseconds(int64_t timeout) {
+    wake_on_wifi_->DarkResumeActionsTimeoutMilliseconds = timeout;
+  }
+
+  void InitStateForDarkResume() {
+    SetInDarkResume(true);
+    GetWakeOnPacketConnections()->AddUnique(IPAddress("1.1.1.1"));
+    EnableWakeOnWiFiFeaturesPacketSSID();
+    SetDarkResumeActionsTimeoutMilliseconds(0);
+  }
+
+  void SetExpectationsDisconnectedBeforeSuspend() {
+    EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
+    EXPECT_CALL(*this, DoneCallback(_)).Times(0);
+    EXPECT_CALL(*this, RemoveSupplicantNetworksCallback())
+        .Times(1);
+    EXPECT_CALL(netlink_manager_,
+                SendNl80211Message(
+                    IsNl80211Command(kNl80211FamilyId,
+                                     SetWakeOnPacketConnMessage::kCommand),
+                    _, _, _));
+  }
+
+  void SetExpectationsConnectedBeforeSuspend() {
+    EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
+    EXPECT_CALL(*this, DoneCallback(_)).Times(0);
+    EXPECT_CALL(netlink_manager_,
+                SendNl80211Message(
+                    IsNl80211Command(kNl80211FamilyId,
+                                     SetWakeOnPacketConnMessage::kCommand),
+                    _, _, _));
+  }
+
+  void VerifyStateConnectedBeforeSuspend() {
+    EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
+    EXPECT_FALSE(GetInDarkResume());
+    EXPECT_EQ(GetWakeOnWiFiTriggers()->size(), 2);
+    EXPECT_TRUE(GetWakeOnWiFiTriggers()->find(WakeOnWiFi::kPattern) !=
+                 GetWakeOnWiFiTriggers()->end());
+    EXPECT_TRUE(GetWakeOnWiFiTriggers()->find(WakeOnWiFi::kDisconnect) !=
+                GetWakeOnWiFiTriggers()->end());
+  }
+
+  void VerifyStateDisconnectedBeforeSuspend() {
+    EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
+    EXPECT_FALSE(GetInDarkResume());
+    EXPECT_EQ(GetWakeOnWiFiTriggers()->size(), 1);
+    EXPECT_FALSE(GetWakeOnWiFiTriggers()->find(WakeOnWiFi::kPattern) !=
+                 GetWakeOnWiFiTriggers()->end());
+    EXPECT_TRUE(GetWakeOnWiFiTriggers()->find(WakeOnWiFi::kSSID) !=
+                GetWakeOnWiFiTriggers()->end());
+  }
+
+  MOCK_METHOD1(DoneCallback, void(const Error &error));
+  MOCK_METHOD0(RenewDHCPLeaseCallback, void(void));
+  MOCK_METHOD0(InitiateScanCallback, void(void));
+  MOCK_METHOD0(RemoveSupplicantNetworksCallback, void(void));
+  MOCK_METHOD0(DarkResumeActionsTimeoutCallback, void(void));
+  MOCK_METHOD0(OnTimerWakeDoNothing, void(void));
 
  protected:
   NiceMockControl control_interface_;
   MockMetrics metrics_;
   MockGLib glib_;
-  EventDispatcher dispatcher_;
   MockNetlinkManager netlink_manager_;
   std::unique_ptr<WakeOnWiFi> wake_on_wifi_;
+};
+
+class WakeOnWiFiTestWithDispatcher : public WakeOnWiFiTest {
+ public:
+  WakeOnWiFiTestWithDispatcher() : WakeOnWiFiTest() {
+    wake_on_wifi_.reset(
+        new WakeOnWiFi(&netlink_manager_, &dispatcher_, &metrics_));
+  }
+  virtual ~WakeOnWiFiTestWithDispatcher() {}
+
+ protected:
+  EventDispatcher dispatcher_;
+};
+
+class WakeOnWiFiTestWithMockDispatcher : public WakeOnWiFiTest {
+ public:
+  WakeOnWiFiTestWithMockDispatcher() : WakeOnWiFiTest() {
+    wake_on_wifi_.reset(
+        new WakeOnWiFi(&netlink_manager_, &mock_dispatcher_, &metrics_));
+  }
+  virtual ~WakeOnWiFiTestWithMockDispatcher() {}
+
+ protected:
+  MockEventDispatcher mock_dispatcher_;
 };
 
 ByteString CreatePattern(const unsigned char *prefix, size_t prefix_len,
@@ -666,7 +838,7 @@ ByteString CreatePattern(const unsigned char *prefix, size_t prefix_len,
   return result;
 }
 
-TEST_F(WakeOnWiFiTest, CreateIPAddressPatternAndMask) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher, CreateIPAddressPatternAndMask) {
   ByteString pattern;
   ByteString mask;
   ByteString expected_pattern;
@@ -769,7 +941,7 @@ TEST_F(WakeOnWiFiTest, CreateIPAddressPatternAndMask) {
   EXPECT_TRUE(mask.Equals(ByteString(kIPV6MaskBytes, sizeof(kIPV6MaskBytes))));
 }
 
-TEST_F(WakeOnWiFiTest, ConfigureWiphyIndex) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher, ConfigureWiphyIndex) {
   SetWakeOnPacketConnMessage msg;
   uint32_t value;
   EXPECT_FALSE(
@@ -781,7 +953,7 @@ TEST_F(WakeOnWiFiTest, ConfigureWiphyIndex) {
   EXPECT_EQ(value, 137);
 }
 
-TEST_F(WakeOnWiFiTest, ConfigureDisableWakeOnWiFiMessage) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher, ConfigureDisableWakeOnWiFiMessage) {
   SetWakeOnPacketConnMessage msg;
   Error e;
   uint32_t value;
@@ -795,7 +967,7 @@ TEST_F(WakeOnWiFiTest, ConfigureDisableWakeOnWiFiMessage) {
   EXPECT_EQ(value, 57);
 }
 
-TEST_F(WakeOnWiFiTest, WakeOnWiFiSettingsMatch) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiSettingsMatch) {
   IPAddressStore all_addresses;
   set<WakeOnWiFi::WakeOnWiFiTrigger> trigs;
   GetWakeOnPacketConnMessage msg0;
@@ -803,7 +975,7 @@ TEST_F(WakeOnWiFiTest, WakeOnWiFiSettingsMatch) {
       reinterpret_cast<const nlmsghdr *>(kResponseNoIPAddresses));
   EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses));
 
-  trigs.insert(WakeOnWiFi::kIPAddress);
+  trigs.insert(WakeOnWiFi::kPattern);
   all_addresses.AddUnique(
       IPAddress(string(kIPV4Address0, sizeof(kIPV4Address0))));
   GetWakeOnPacketConnMessage msg1;
@@ -852,13 +1024,14 @@ TEST_F(WakeOnWiFiTest, WakeOnWiFiSettingsMatch) {
   EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses));
 }
 
-TEST_F(WakeOnWiFiTest, ConfigureSetWakeOnWiFiSettingsMessage) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       ConfigureSetWakeOnWiFiSettingsMessage) {
   IPAddressStore all_addresses;
   set<WakeOnWiFi::WakeOnWiFiTrigger> trigs;
   int index = 1;  // wiphy device number
   SetWakeOnPacketConnMessage msg0;
   Error e;
-  trigs.insert(WakeOnWiFi::kIPAddress);
+  trigs.insert(WakeOnWiFi::kPattern);
   all_addresses.AddUnique(
       IPAddress(string(kIPV4Address0, sizeof(kIPV4Address0))));
   ByteString expected_mask = ByteString(kIPV4MaskBytes, sizeof(kIPV4MaskBytes));
@@ -951,7 +1124,7 @@ TEST_F(WakeOnWiFiTest, ConfigureSetWakeOnWiFiSettingsMessage) {
   EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg9, trigs, all_addresses));
 }
 
-TEST_F(WakeOnWiFiTest, RequestWakeOnPacketSettings) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher, RequestWakeOnPacketSettings) {
   EXPECT_CALL(
       netlink_manager_,
       SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
@@ -962,7 +1135,8 @@ TEST_F(WakeOnWiFiTest, RequestWakeOnPacketSettings) {
 
 MATCHER_P(ErrorType, type, "") { return arg.type() == type; }
 
-TEST_F(WakeOnWiFiTest, VerifyWakeOnWiFiSettings_NoWakeOnPacketRules) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       VerifyWakeOnWiFiSettings_NoWakeOnPacketRules) {
   ScopedMockLog log;
   // Create an Nl80211 response to a NL80211_CMD_GET_WOWLAN request
   // indicating that there are no wake-on-packet rules programmed into the NIC.
@@ -974,9 +1148,11 @@ TEST_F(WakeOnWiFiTest, VerifyWakeOnWiFiSettings_NoWakeOnPacketRules) {
   ScopeLogger::GetInstance()->set_verbose_level(2);
   EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
   EXPECT_FALSE(SuspendActionsCallbackIsNull());
-  EXPECT_CALL(*this, SuspendCallback(ErrorType(Error::kSuccess))).Times(1);
+  EXPECT_CALL(*this, DoneCallback(ErrorType(Error::kSuccess))).Times(1);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log, Log(_, _, EndsWith("successfully verified")));
+  EXPECT_CALL(
+      log,
+      Log(_, _, HasSubstr("Wake-on-packet settings successfully verified")));
   EXPECT_CALL(metrics_, NotifyVerifyWakeOnWiFiSettingsResult(
                             Metrics::kVerifyWakeOnWiFiSettingsResultSuccess));
   VerifyWakeOnWiFiSettings(msg);
@@ -987,14 +1163,18 @@ TEST_F(WakeOnWiFiTest, VerifyWakeOnWiFiSettings_NoWakeOnPacketRules) {
 
   // Unsuccessful verification if locally stored settings do not match.
   GetWakeOnPacketConnections()->AddUnique(IPAddress("1.1.1.1"));
-  GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kIPAddress);
-  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("structure detected")));
+  GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kPattern);
+  EXPECT_CALL(log,
+              Log(logging::LOG_ERROR, _,
+                  HasSubstr(
+                      " failed: discrepancy between wake-on-packet settings on "
+                      "NIC and those in local data structure detected")));
   EXPECT_CALL(metrics_, NotifyVerifyWakeOnWiFiSettingsResult(
                             Metrics::kVerifyWakeOnWiFiSettingsResultFailure));
   VerifyWakeOnWiFiSettings(msg);
 }
 
-TEST_F(WakeOnWiFiTest,
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
        VerifyWakeOnWiFiSettings_WakeOnPatternAndDisconnectRules) {
   ScopedMockLog log;
   // Create a non-trivial Nl80211 response to a NL80211_CMD_GET_WOWLAN request
@@ -1007,13 +1187,15 @@ TEST_F(WakeOnWiFiTest,
   SetSuspendActionsDoneCallback();
   EXPECT_FALSE(SuspendActionsCallbackIsNull());
   GetWakeOnPacketConnections()->AddUnique(IPAddress("192.168.10.20"));
-  GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kIPAddress);
+  GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kPattern);
   GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kDisconnect);
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(2);
-  EXPECT_CALL(*this, SuspendCallback(ErrorType(Error::kSuccess))).Times(1);
+  EXPECT_CALL(*this, DoneCallback(ErrorType(Error::kSuccess))).Times(1);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log, Log(_, _, EndsWith("successfully verified")));
+  EXPECT_CALL(
+      log,
+      Log(_, _, HasSubstr("Wake-on-packet settings successfully verified")));
   EXPECT_CALL(metrics_, NotifyVerifyWakeOnWiFiSettingsResult(
                             Metrics::kVerifyWakeOnWiFiSettingsResultSuccess));
   VerifyWakeOnWiFiSettings(msg);
@@ -1025,13 +1207,18 @@ TEST_F(WakeOnWiFiTest,
   // Unsuccessful verification if locally stored settings do not match.
   GetWakeOnWiFiTriggers()->erase(WakeOnWiFi::kDisconnect);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("structure detected")));
+  EXPECT_CALL(log,
+              Log(logging::LOG_ERROR, _,
+                  HasSubstr(
+                      " failed: discrepancy between wake-on-packet settings on "
+                      "NIC and those in local data structure detected")));
   EXPECT_CALL(metrics_, NotifyVerifyWakeOnWiFiSettingsResult(
                             Metrics::kVerifyWakeOnWiFiSettingsResultFailure));
   VerifyWakeOnWiFiSettings(msg);
 }
 
-TEST_F(WakeOnWiFiTest, VerifyWakeOnWiFiSettingsSuccess_NoSuspendCallback) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       VerifyWakeOnWiFiSettingsSuccess_NoDoneCallback) {
   ScopedMockLog log;
   // Create an Nl80211 response to a NL80211_CMD_GET_WOWLAN request
   // indicating that there are no wake-on-packet rules programmed into the NIC.
@@ -1043,9 +1230,11 @@ TEST_F(WakeOnWiFiTest, VerifyWakeOnWiFiSettingsSuccess_NoSuspendCallback) {
   EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(2);
-  EXPECT_CALL(*this, SuspendCallback(_)).Times(0);
+  EXPECT_CALL(*this, DoneCallback(_)).Times(0);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log, Log(_, _, EndsWith("successfully verified")));
+  EXPECT_CALL(
+      log,
+      Log(_, _, HasSubstr("Wake-on-packet settings successfully verified")));
   EXPECT_CALL(metrics_, NotifyVerifyWakeOnWiFiSettingsResult(
                             Metrics::kVerifyWakeOnWiFiSettingsResultSuccess));
   VerifyWakeOnWiFiSettings(msg);
@@ -1053,9 +1242,11 @@ TEST_F(WakeOnWiFiTest, VerifyWakeOnWiFiSettingsSuccess_NoSuspendCallback) {
   ScopeLogger::GetInstance()->set_verbose_level(0);
 }
 
-TEST_F(WakeOnWiFiTest, RetrySetWakeOnPacketConnections_LessThanMaxRetries) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       RetrySetWakeOnPacketConnections_LessThanMaxRetries) {
   ScopedMockLog log;
   // Max retries not reached yet, so send Nl80211 message to program NIC again.
+  GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kDisconnect);
   SetNumSetWakeOnPacketRetries(WakeOnWiFi::kMaxSetWakeOnPacketRetries - 1);
   EXPECT_CALL(
       netlink_manager_,
@@ -1067,7 +1258,7 @@ TEST_F(WakeOnWiFiTest, RetrySetWakeOnPacketConnections_LessThanMaxRetries) {
             WakeOnWiFi::kMaxSetWakeOnPacketRetries);
 }
 
-TEST_F(WakeOnWiFiTest,
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
        RetrySetWakeOnPacketConnections_MaxAttemptsWithCallbackSet) {
   ScopedMockLog log;
   // Max retry attempts reached. Suspend actions done callback is set, so it
@@ -1075,13 +1266,12 @@ TEST_F(WakeOnWiFiTest,
   SetNumSetWakeOnPacketRetries(WakeOnWiFi::kMaxSetWakeOnPacketRetries);
   SetSuspendActionsDoneCallback();
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
-  ScopeLogger::GetInstance()->set_verbose_level(2);
+  ScopeLogger::GetInstance()->set_verbose_level(3);
   EXPECT_FALSE(SuspendActionsCallbackIsNull());
-  EXPECT_CALL(*this, SuspendCallback(ErrorType(Error::kOperationFailed)))
-      .Times(1);
+  EXPECT_CALL(*this, DoneCallback(ErrorType(Error::kOperationFailed))).Times(1);
   EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _, _)).Times(0);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log, Log(_, _, EndsWith("max retry attempts reached")));
+  EXPECT_CALL(log, Log(_, _, HasSubstr("max retry attempts reached")));
   RetrySetWakeOnPacketConnections();
   EXPECT_TRUE(SuspendActionsCallbackIsNull());
   EXPECT_EQ(GetNumSetWakeOnPacketRetries(), 0);
@@ -1089,24 +1279,24 @@ TEST_F(WakeOnWiFiTest,
   ScopeLogger::GetInstance()->set_verbose_level(0);
 }
 
-TEST_F(WakeOnWiFiTest,
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
        RetrySetWakeOnPacketConnections_MaxAttemptsCallbackUnset) {
   ScopedMockLog log;
   // If there is no suspend action callback set, no suspend callback should be
   // invoked.
   SetNumSetWakeOnPacketRetries(WakeOnWiFi::kMaxSetWakeOnPacketRetries);
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
-  ScopeLogger::GetInstance()->set_verbose_level(2);
+  ScopeLogger::GetInstance()->set_verbose_level(3);
   EXPECT_TRUE(SuspendActionsCallbackIsNull());
-  EXPECT_CALL(*this, SuspendCallback(_)).Times(0);
+  EXPECT_CALL(*this, DoneCallback(_)).Times(0);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log, Log(_, _, EndsWith("max retry attempts reached")));
+  EXPECT_CALL(log, Log(_, _, HasSubstr("max retry attempts reached")));
   RetrySetWakeOnPacketConnections();
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
   ScopeLogger::GetInstance()->set_verbose_level(0);
 }
 
-TEST_F(WakeOnWiFiTest, ParseWiphyIndex_Success) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher, ParseWiphyIndex_Success) {
   // Verify that the wiphy index in kNewWiphyNlMsg is parsed, and that the flag
   // for having the wiphy index is set by ParseWiphyIndex.
   SetWiphyIndexReceivedToFalse();
@@ -1119,7 +1309,7 @@ TEST_F(WakeOnWiFiTest, ParseWiphyIndex_Success) {
   EXPECT_TRUE(GetWiphyIndexReceived());
 }
 
-TEST_F(WakeOnWiFiTest, ParseWiphyIndex_Failure) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher, ParseWiphyIndex_Failure) {
   ScopedMockLog log;
   SetWiphyIndexReceivedToFalse();
   EXPECT_FALSE(GetWiphyIndexReceived());
@@ -1134,15 +1324,15 @@ TEST_F(WakeOnWiFiTest, ParseWiphyIndex_Failure) {
   nl80211_attr_wiphy->nla_type = NL80211_ATTR_WIPHY_FREQ;
   msg.InitFromNlmsg(reinterpret_cast<const nlmsghdr *>(message_memory));
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log,
-              Log(_, _, "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_WIPHY"));
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_WIPHY"));
   ParseWiphyIndex(msg);
   // Since we failed to find NL80211_ATTR_WIPHY in the message,
   // |wiphy_index_received| should remain false.
   EXPECT_FALSE(GetWiphyIndexReceived());
 }
 
-TEST_F(WakeOnWiFiTest,
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
        ParseWakeOnWiFiCapabilities_DisconnectAndPatternSupported) {
   ClearWakeOnWiFiTriggersSupported();
   NewWiphyMessage msg;
@@ -1150,12 +1340,13 @@ TEST_F(WakeOnWiFiTest,
   ParseWakeOnWiFiCapabilities(msg);
   EXPECT_TRUE(GetWakeOnWiFiTriggersSupported()->find(WakeOnWiFi::kDisconnect) !=
               GetWakeOnWiFiTriggersSupported()->end());
-  EXPECT_TRUE(GetWakeOnWiFiTriggersSupported()->find(WakeOnWiFi::kIPAddress) !=
+  EXPECT_TRUE(GetWakeOnWiFiTriggersSupported()->find(WakeOnWiFi::kPattern) !=
               GetWakeOnWiFiTriggersSupported()->end());
   EXPECT_EQ(GetWakeOnWiFiMaxPatterns(), kNewWiphyNlMsg_MaxPatterns);
 }
 
-TEST_F(WakeOnWiFiTest, ParseWakeOnWiFiCapabilities_UnsupportedPatternLen) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       ParseWakeOnWiFiCapabilities_UnsupportedPatternLen) {
   ClearWakeOnWiFiTriggersSupported();
   NewWiphyMessage msg;
   // Modify the range of support pattern lengths to [0-1] bytes, which is less
@@ -1173,11 +1364,12 @@ TEST_F(WakeOnWiFiTest, ParseWakeOnWiFiCapabilities_UnsupportedPatternLen) {
               GetWakeOnWiFiTriggersSupported()->end());
   // Ensure that ParseWakeOnWiFiCapabilities realizes that our IP address
   // patterns cannot be used given the support pattern length range reported.
-  EXPECT_FALSE(GetWakeOnWiFiTriggersSupported()->find(WakeOnWiFi::kIPAddress) !=
+  EXPECT_FALSE(GetWakeOnWiFiTriggersSupported()->find(WakeOnWiFi::kPattern) !=
                GetWakeOnWiFiTriggersSupported()->end());
 }
 
-TEST_F(WakeOnWiFiTest, ParseWakeOnWiFiCapabilities_DisconnectNotSupported) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       ParseWakeOnWiFiCapabilities_DisconnectNotSupported) {
   ClearWakeOnWiFiTriggersSupported();
   NewWiphyMessage msg;
   // Change the NL80211_WOWLAN_TRIG_DISCONNECT flag attribute into the
@@ -1191,7 +1383,7 @@ TEST_F(WakeOnWiFiTest, ParseWakeOnWiFiCapabilities_DisconnectNotSupported) {
   wowlan_trig_disconnect_attr->nla_type = NL80211_WOWLAN_TRIG_MAGIC_PKT;
   msg.InitFromNlmsg(reinterpret_cast<const nlmsghdr *>(message_memory));
   ParseWakeOnWiFiCapabilities(msg);
-  EXPECT_TRUE(GetWakeOnWiFiTriggersSupported()->find(WakeOnWiFi::kIPAddress) !=
+  EXPECT_TRUE(GetWakeOnWiFiTriggersSupported()->find(WakeOnWiFi::kPattern) !=
               GetWakeOnWiFiTriggersSupported()->end());
   // Ensure that ParseWakeOnWiFiCapabilities realizes that wake on disconnect
   // is not supported.
@@ -1200,7 +1392,8 @@ TEST_F(WakeOnWiFiTest, ParseWakeOnWiFiCapabilities_DisconnectNotSupported) {
       GetWakeOnWiFiTriggersSupported()->end());
 }
 
-TEST_F(WakeOnWiFiTest, ApplyWakeOnWiFiSettings_WiphyIndexNotReceived) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       ApplyWakeOnWiFiSettings_WiphyIndexNotReceived) {
   ScopedMockLog log;
   // ApplyWakeOnWiFiSettings should return immediately if the wifi interface
   // index has not been received when the function is called.
@@ -1208,11 +1401,13 @@ TEST_F(WakeOnWiFiTest, ApplyWakeOnWiFiSettings_WiphyIndexNotReceived) {
   EXPECT_CALL(netlink_manager_,
               SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(0);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log, Log(_, _, EndsWith("Interface index not yet received")));
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("Interface index not yet received")));
   ApplyWakeOnWiFiSettings();
 }
 
-TEST_F(WakeOnWiFiTest, ApplyWakeOnWiFiSettings_WiphyIndexReceived) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       ApplyWakeOnWiFiSettings_WiphyIndexReceived) {
   // Disable wake on WiFi if there are no wake on WiFi triggers registered.
   EXPECT_CALL(
       netlink_manager_,
@@ -1226,7 +1421,7 @@ TEST_F(WakeOnWiFiTest, ApplyWakeOnWiFiSettings_WiphyIndexReceived) {
   // Otherwise, program the NIC.
   IPAddress ip_addr("1.1.1.1");
   GetWakeOnPacketConnections()->AddUnique(ip_addr);
-  GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kIPAddress);
+  GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kPattern);
   EXPECT_FALSE(GetWakeOnPacketConnections()->Empty());
   EXPECT_CALL(
       netlink_manager_,
@@ -1238,9 +1433,145 @@ TEST_F(WakeOnWiFiTest, ApplyWakeOnWiFiSettings_WiphyIndexReceived) {
   ApplyWakeOnWiFiSettings();
 }
 
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       BeforeSuspendActions_ReportDoneImmediately) {
+  ScopedMockLog log;
+  const bool is_connected = true;
+  const bool start_lease_renewal_timer = true;
+  // If no triggers are supported, no triggers will be programmed into the NIC.
+  ClearWakeOnWiFiTriggersSupported();
+  SetSuspendActionsDoneCallback();
+  SetInDarkResume(true);
+  // Do not report done immediately in dark resume, since we need to program it
+  // to disable wake on WiFi.
+  EXPECT_CALL(*this, DoneCallback(_)).Times(0);
+  BeforeSuspendActions(is_connected, start_lease_renewal_timer,
+                       kTimeToNextLeaseRenewalLong);
+  EXPECT_FALSE(GetInDarkResume());
+
+  SetInDarkResume(false);
+  // Report done immediately on normal suspend, since wake on WiFi should
+  // already have been disabled on the NIC on a previous resume.
+  EXPECT_CALL(*this, DoneCallback(_)).Times(1);
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(
+      log,
+      Log(logging::LOG_INFO, _,
+          HasSubstr(
+              "No need to disable wake on WiFi on NIC in regular suspend")));
+  BeforeSuspendActions(is_connected, start_lease_renewal_timer,
+                       kTimeToNextLeaseRenewalLong);
+}
+
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       BeforeSuspendActions_FeaturesDisabledOrTriggersUnsupported) {
+  const bool is_connected = true;
+  const bool start_lease_renewal_timer = true;
+  SetInDarkResume(false);
+  SetSuspendActionsDoneCallback();
+  // No features enabled, so no triggers programmed.
+  DisableWakeOnWiFiFeatures();
+  EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
+  EXPECT_CALL(*this, DoneCallback(_));
+  BeforeSuspendActions(is_connected, start_lease_renewal_timer,
+                       kTimeToNextLeaseRenewalLong);
+  EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
+
+  // No triggers supported, so no triggers programmed.
+  SetSuspendActionsDoneCallback();
+  EnableWakeOnWiFiFeaturesPacketSSID();
+  GetWakeOnWiFiTriggersSupported()->clear();
+  EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
+  EXPECT_CALL(*this, DoneCallback(_));
+  BeforeSuspendActions(is_connected, start_lease_renewal_timer,
+                       kTimeToNextLeaseRenewalLong);
+  EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
+
+  // Only wake on packet feature enabled and supported.
+  EnableWakeOnWiFiFeaturesPacket();
+  GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kPattern);
+  GetWakeOnPacketConnections()->AddUnique(IPAddress("1.1.1.1"));
+  EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
+  BeforeSuspendActions(is_connected, start_lease_renewal_timer,
+                       kTimeToNextLeaseRenewalLong);
+  EXPECT_EQ(GetWakeOnWiFiTriggers()->size(), 1);
+  EXPECT_TRUE(GetWakeOnWiFiTriggers()->find(WakeOnWiFi::kPattern) !=
+              GetWakeOnWiFiTriggers()->end());
+
+  // Only wake on SSID feature supported.
+  EnableWakeOnWiFiFeaturesSSID();
+  GetWakeOnPacketConnections()->Clear();
+  GetWakeOnWiFiTriggersSupported()->clear();
+  GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kDisconnect);
+  GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kSSID);
+  GetWakeOnWiFiTriggers()->clear();
+  EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
+  BeforeSuspendActions(is_connected, start_lease_renewal_timer,
+                       kTimeToNextLeaseRenewalLong);
+  EXPECT_EQ(GetWakeOnWiFiTriggers()->size(), 1);
+  EXPECT_TRUE(GetWakeOnWiFiTriggers()->find(WakeOnWiFi::kDisconnect) !=
+              GetWakeOnWiFiTriggers()->end());
+}
+
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       BeforeSuspendActions_ConnectedBeforeSuspend) {
+  const bool is_connected = true;
+  const bool start_lease_renewal_timer = true;
+  SetSuspendActionsDoneCallback();
+  EnableWakeOnWiFiFeaturesPacketSSID();
+  GetWakeOnPacketConnections()->AddUnique(IPAddress("1.1.1.1"));
+
+  SetInDarkResume(true);
+  GetWakeOnWiFiTriggers()->clear();
+  EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
+  StartWakeToScanTimer();
+  StopDHCPLeaseRenewalTimer();
+  EXPECT_TRUE(WakeToScanTimerIsRunning());
+  EXPECT_FALSE(DHCPLeaseRenewalTimerIsRunning());
+  EXPECT_CALL(*this, DoneCallback(_)).Times(0);
+  BeforeSuspendActions(is_connected, start_lease_renewal_timer,
+                       kTimeToNextLeaseRenewalLong);
+  EXPECT_FALSE(GetInDarkResume());
+  EXPECT_EQ(GetWakeOnWiFiTriggers()->size(), 2);
+  EXPECT_TRUE(GetWakeOnWiFiTriggers()->find(WakeOnWiFi::kDisconnect) !=
+              GetWakeOnWiFiTriggers()->end());
+  EXPECT_TRUE(GetWakeOnWiFiTriggers()->find(WakeOnWiFi::kPattern) !=
+              GetWakeOnWiFiTriggers()->end());
+  EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
+  EXPECT_FALSE(WakeToScanTimerIsRunning());
+}
+
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       BeforeSuspendActions_DisconnectedBeforeSuspend) {
+  const bool is_connected = false;
+  const bool start_lease_renewal_timer = true;
+  SetSuspendActionsDoneCallback();
+  EnableWakeOnWiFiFeaturesPacketSSID();
+  GetWakeOnPacketConnections()->AddUnique(IPAddress("1.1.1.1"));
+
+  SetInDarkResume(true);
+  GetWakeOnWiFiTriggers()->clear();
+  EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
+  StopWakeToScanTimer();
+  StartDHCPLeaseRenewalTimer();
+  EXPECT_FALSE(WakeToScanTimerIsRunning());
+  EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
+  EXPECT_CALL(*this, DoneCallback(_)).Times(0);
+  BeforeSuspendActions(is_connected, start_lease_renewal_timer,
+                       kTimeToNextLeaseRenewalLong);
+  EXPECT_FALSE(GetInDarkResume());
+  EXPECT_EQ(GetWakeOnWiFiTriggers()->size(), 1);
+  EXPECT_TRUE(GetWakeOnWiFiTriggers()->find(WakeOnWiFi::kSSID) !=
+              GetWakeOnWiFiTriggers()->end());
+  EXPECT_TRUE(GetWakeOnWiFiTriggers()->find(WakeOnWiFi::kPattern) ==
+              GetWakeOnWiFiTriggers()->end());
+  EXPECT_FALSE(DHCPLeaseRenewalTimerIsRunning());
+  EXPECT_TRUE(WakeToScanTimerIsRunning());
+}
+
 #if !defined(DISABLE_WAKE_ON_WIFI)
 
-TEST_F(WakeOnWiFiTest, AddRemoveWakeOnPacketConnection) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher, AddRemoveWakeOnPacketConnection) {
   const string bad_ip_string("1.1");
   const string ip_string1("192.168.0.19");
   const string ip_string2("192.168.0.55");
@@ -1282,7 +1613,7 @@ TEST_F(WakeOnWiFiTest, AddRemoveWakeOnPacketConnection) {
   // Add operation will fail if pattern matching is supported but the max number
   // of IP address patterns have already been registered.
   EnableWakeOnWiFiFeaturesPacketSSID();
-  GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kIPAddress);
+  GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kPattern);
   SetWakeOnWiFiMaxPatterns(0);
   AddWakeOnPacketConnection(ip_string1, &e);
   EXPECT_EQ(e.type(), Error::kOperationFailed);
@@ -1293,7 +1624,7 @@ TEST_F(WakeOnWiFiTest, AddRemoveWakeOnPacketConnection) {
   // feature has been disabled.
   SetWakeOnWiFiMaxPatterns(50);
   DisableWakeOnWiFiFeatures();
-  GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kIPAddress);
+  GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kPattern);
   AddWakeOnPacketConnection(ip_string1, &e);
   EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 1);
   EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr1));
@@ -1361,115 +1692,155 @@ TEST_F(WakeOnWiFiTest, AddRemoveWakeOnPacketConnection) {
   EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr3));
 }
 
-TEST_F(WakeOnWiFiTest, OnBeforeSuspend_NoConnections_PacketAndSSIDEnabled) {
-  // When |wake_on_packet_connections_| is empty and both wake on packet and
-  // SSID are enabled, program NIC.
-  EnableWakeOnWiFiFeaturesPacketSSID();
-  EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
-  EXPECT_CALL(*this, SuspendCallback(ErrorType(Error::kSuccess))).Times(0);
-  EXPECT_CALL(
-      netlink_manager_,
-      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
-                                          SetWakeOnPacketConnMessage::kCommand),
-                         _, _, _)).Times(1);
-  OnBeforeSuspend();
-  dispatcher_.DispatchPendingEvents();
+TEST_F(WakeOnWiFiTestWithMockDispatcher, OnBeforeSuspend_DHCPLeaseRenewal) {
+  bool is_connected;
+  bool have_dhcp_lease;
+  // If we are connected the time to next lease renewal is short enough, we will
+  // initiate DHCP lease renewal immediately.
+  is_connected = true;
+  have_dhcp_lease = true;
+  EXPECT_CALL(*this, RenewDHCPLeaseCallback()).Times(1);
+  EXPECT_CALL(mock_dispatcher_, PostTask(_)).Times(1);
+  OnBeforeSuspend(is_connected, have_dhcp_lease, kTimeToNextLeaseRenewalShort);
+
+  // No immediate DHCP lease renewal because we are not connected.
+  is_connected = false;
+  have_dhcp_lease = true;
+  EXPECT_CALL(*this, RenewDHCPLeaseCallback()).Times(0);
+  EXPECT_CALL(mock_dispatcher_, PostTask(_)).Times(1);
+  OnBeforeSuspend(is_connected, have_dhcp_lease, kTimeToNextLeaseRenewalShort);
+
+  // No immediate DHCP lease renewal because the time to the next lease renewal
+  // is longer than the threshold.
+  is_connected = true;
+  have_dhcp_lease = true;
+  EXPECT_CALL(*this, RenewDHCPLeaseCallback()).Times(0);
+  EXPECT_CALL(mock_dispatcher_, PostTask(_)).Times(1);
+  OnBeforeSuspend(is_connected, have_dhcp_lease, kTimeToNextLeaseRenewalLong);
+
+  // No immediate DHCP lease renewal because we do not have a DHCP lease that
+  // needs to be renewed.
+  is_connected = true;
+  have_dhcp_lease = false;
+  EXPECT_CALL(*this, RenewDHCPLeaseCallback()).Times(0);
+  EXPECT_CALL(mock_dispatcher_, PostTask(_)).Times(1);
+  OnBeforeSuspend(is_connected, have_dhcp_lease, kTimeToNextLeaseRenewalLong);
 }
 
-TEST_F(WakeOnWiFiTest, OnBeforeSuspend_NoConnections_PacketEnabled) {
-  // When |wake_on_packet_connections_| is empty and only wake on packet is
-  // enabled, do not program the NIC and immediately invoke the callback to
-  // notify done.
-  EnableWakeOnWiFiFeaturesPacket();
-  EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
-  EXPECT_CALL(*this, SuspendCallback(ErrorType(Error::kSuccess))).Times(1);
-  EXPECT_CALL(
-      netlink_manager_,
-      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
-                                          SetWakeOnPacketConnMessage::kCommand),
-                         _, _, _)).Times(0);
-  OnBeforeSuspend();
+TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_Connected_Timeout) {
+  // Test that correct actions are taken if we enter OnDarkResume while
+  // connected in dark resume.
+  const bool is_connected = true;
+  InitStateForDarkResume();
+  EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
+  // Renew DHCP lease if we are connected in dark resume.
+  EXPECT_CALL(*this, RenewDHCPLeaseCallback());
+  OnDarkResume(is_connected);
+  EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
+  // Trigger timeout callback.
+  // Since we timeout, we are disconnected before suspend.
+  StartDHCPLeaseRenewalTimer();
+  StopWakeToScanTimer();
+  SetExpectationsDisconnectedBeforeSuspend();
   dispatcher_.DispatchPendingEvents();
+  EXPECT_FALSE(DHCPLeaseRenewalTimerIsRunning());
+  EXPECT_TRUE(WakeToScanTimerIsRunning());
+  VerifyStateDisconnectedBeforeSuspend();
 }
 
-TEST_F(WakeOnWiFiTest, OnBeforeSuspend_NoConnections_SSIDEnabled) {
-  // When |wake_on_packet_connections_| is empty and only wake on SSID is
-  // enabled, program NIC.
-  EnableWakeOnWiFiFeaturesSSID();
-  EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
-  EXPECT_CALL(*this, SuspendCallback(ErrorType(Error::kSuccess))).Times(0);
-  EXPECT_CALL(
-      netlink_manager_,
-      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
-                                          SetWakeOnPacketConnMessage::kCommand),
-                         _, _, _)).Times(1);
-  OnBeforeSuspend();
-  dispatcher_.DispatchPendingEvents();
+TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_Connected_LeaseObtained) {
+  // Test that correct actions are taken if we enter OnDarkResume while
+  // connected in dark resume.
+  const bool is_connected = true;
+  const bool have_dhcp_lease = true;
+  const uint32_t time_to_next_lease_renewal = 10;
+  InitStateForDarkResume();
+  EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
+  // Renew DHCP lease if we are connected in dark resume.
+  EXPECT_CALL(*this, RenewDHCPLeaseCallback());
+  OnDarkResume(is_connected);
+  EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
+  // Lease obtained.
+  // Since a lease is obtained, we are connected before suspend.
+  StopDHCPLeaseRenewalTimer();
+  StartWakeToScanTimer();
+  SetExpectationsConnectedBeforeSuspend();
+  OnDHCPLeaseObtained(have_dhcp_lease, time_to_next_lease_renewal);
+  EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
+  EXPECT_FALSE(WakeToScanTimerIsRunning());
+  VerifyStateConnectedBeforeSuspend();
 }
 
-TEST_F(WakeOnWiFiTest, OnBeforeSuspend_PacketAndSSIDEnabled) {
-  // When wake_on_packet_connections_ is not empty and wake on WiFi features
-  // are enabled, program NIC to wake on WiFi.
-  EnableWakeOnWiFiFeaturesPacketSSID();
-  IPAddress ip_addr("1.1.1.1");
-  GetWakeOnPacketConnections()->AddUnique(ip_addr);
-  EXPECT_CALL(*this, SuspendCallback(_)).Times(0);
-  EXPECT_CALL(
-      netlink_manager_,
-      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
-                                          SetWakeOnPacketConnMessage::kCommand),
-                         _, _, _)).Times(1);
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(0);
-  OnBeforeSuspend();
+TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_NotConnected_Timeout) {
+  // Test that correct actions are taken if we enter OnDarkResume while
+  // not connected in dark resume.
+  const bool is_connected = false;
+  InitStateForDarkResume();
+  EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
+  // Initiate scan if we are not connected in dark resume.
+  EXPECT_CALL(*this, InitiateScanCallback());
+  OnDarkResume(is_connected);
+  EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
+  // Trigger timeout callback.
+  // Since we timeout, we are disconnected before suspend.
+  StartDHCPLeaseRenewalTimer();
+  StopWakeToScanTimer();
+  SetExpectationsDisconnectedBeforeSuspend();
   dispatcher_.DispatchPendingEvents();
-  EXPECT_FALSE(GetWakeOnWiFiTriggers()->empty());
-  EXPECT_TRUE(GetWakeOnWiFiTriggers()->find(WakeOnWiFi::kIPAddress) !=
-              GetWakeOnWiFiTriggers()->end());
-  EXPECT_TRUE(GetWakeOnWiFiTriggers()->find(WakeOnWiFi::kDisconnect) !=
-              GetWakeOnWiFiTriggers()->end());
+  EXPECT_FALSE(DHCPLeaseRenewalTimerIsRunning());
+  EXPECT_TRUE(WakeToScanTimerIsRunning());
+  VerifyStateDisconnectedBeforeSuspend();
 }
 
-TEST_F(WakeOnWiFiTest, OnBeforeSuspend_WakeOnWiFiFeaturesDisabled) {
-  // If all wake on WiFi features are disabled, do not program NIC and notify
-  // done.
-  DisableWakeOnWiFiFeatures();
-  EXPECT_CALL(*this, SuspendCallback(ErrorType(Error::kSuccess))).Times(1);
-  EXPECT_CALL(
-      netlink_manager_,
-      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
-                                          SetWakeOnPacketConnMessage::kCommand),
-                         _, _, _)).Times(0);
-  OnBeforeSuspend();
-  dispatcher_.DispatchPendingEvents();
+TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_NotConnected_LeaseObtained) {
+  // Test that correct actions are taken if we enter OnDarkResume while
+  // not connected in dark resume.
+  const bool is_connected = false;
+  const bool have_dhcp_lease = true;
+  const uint32_t time_to_next_lease_renewal = 10;
+  InitStateForDarkResume();
+  EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
+  // Initiate scan if we are not connected in dark resume.
+  EXPECT_CALL(*this, InitiateScanCallback());
+  OnDarkResume(is_connected);
+  EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
+  // Lease obtained.
+  // Since a lease is obtained, we are connected before suspend.
+  StopDHCPLeaseRenewalTimer();
+  StartWakeToScanTimer();
+  SetExpectationsConnectedBeforeSuspend();
+  OnDHCPLeaseObtained(have_dhcp_lease, time_to_next_lease_renewal);
+  EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
+  EXPECT_FALSE(WakeToScanTimerIsRunning());
+  VerifyStateConnectedBeforeSuspend();
 }
 
-TEST_F(WakeOnWiFiTest, OnBeforeSuspend_NoTriggersSupported) {
-  // If the NIC does not support any wake on WiFi triggers, do not program
-  // NIC and notify done.
-  EnableWakeOnWiFiFeaturesPacketSSID();
-  GetWakeOnWiFiTriggersSupported()->clear();
-  EXPECT_TRUE(GetWakeOnWiFiTriggersSupported()->empty());
-  EXPECT_CALL(*this, SuspendCallback(ErrorType(Error::kSuccess))).Times(1);
-  EXPECT_CALL(
-      netlink_manager_,
-      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
-                                          SetWakeOnPacketConnMessage::kCommand),
-                         _, _, _)).Times(0);
-  OnBeforeSuspend();
-  dispatcher_.DispatchPendingEvents();
+TEST_F(WakeOnWiFiTestWithMockDispatcher, OnDHCPLeaseObtained) {
+  const bool start_lease_renewal_timer = true;
+  ScopedMockLog log;
+
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  SetInDarkResume(true);
+  ScopeLogger::GetInstance()->EnableScopesByName("wifi");
+  ScopeLogger::GetInstance()->set_verbose_level(3);
+  EXPECT_CALL(log, Log(_, _, HasSubstr("BeforeSuspendActions")));
+  OnDHCPLeaseObtained(start_lease_renewal_timer, kTimeToNextLeaseRenewalLong);
+
+  SetInDarkResume(false);
+  EXPECT_CALL(log, Log(_, _, HasSubstr("Not in dark resume, so do nothing")));
+  OnDHCPLeaseObtained(start_lease_renewal_timer, kTimeToNextLeaseRenewalLong);
+  ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
+  ScopeLogger::GetInstance()->set_verbose_level(0);
 }
 
-TEST_F(WakeOnWiFiTest, WakeOnWiFiDisabledAfterResume) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiDisabledAfterResume) {
   // At least one wake on WiFi trigger supported and Wake on WiFi features
   // are enabled, so disable Wake on WiFi on resume.
   EnableWakeOnWiFiFeaturesPacketSSID();
-  GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kIPAddress);
-  EXPECT_FALSE(GetWakeOnWiFiTriggersSupported()->empty());
+  GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kPattern);
   EXPECT_CALL(netlink_manager_,
               SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(1);
   OnAfterResume();
-  EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
 
   // No wake no WiFi triggers supported, so do nothing.
   ClearWakeOnWiFiTriggersSupported();
@@ -1478,7 +1849,7 @@ TEST_F(WakeOnWiFiTest, WakeOnWiFiDisabledAfterResume) {
   OnAfterResume();
 
   // Wake on WiFi features disabled, so do nothing.
-  GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kIPAddress);
+  GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kPattern);
   DisableWakeOnWiFiFeatures();
   EXPECT_CALL(netlink_manager_,
               SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(0);
@@ -1493,7 +1864,7 @@ TEST_F(WakeOnWiFiTest, WakeOnWiFiDisabledAfterResume) {
   OnAfterResume();
 }
 
-TEST_F(WakeOnWiFiTest, SetWakeOnWiFiFeaturesEnabled) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher, SetWakeOnWiFiFeaturesEnabled) {
   const string bad_feature("blahblah");
   Error e;
   EnableWakeOnWiFiFeaturesPacketSSID();
@@ -1518,7 +1889,8 @@ TEST_F(WakeOnWiFiTest, SetWakeOnWiFiFeaturesEnabled) {
 
 #else
 
-TEST_F(WakeOnWiFiTest, AddWakeOnPacketConnection_ReturnsError) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       WakeOnWiFiDisabled_AddWakeOnPacketConnection_ReturnsError) {
   DisableWakeOnWiFiFeatures();
   Error e;
   AddWakeOnPacketConnection("1.1.1.1", &e);
@@ -1526,7 +1898,8 @@ TEST_F(WakeOnWiFiTest, AddWakeOnPacketConnection_ReturnsError) {
   EXPECT_STREQ(e.message().c_str(), WakeOnWiFi::kWakeOnWiFiDisabled);
 }
 
-TEST_F(WakeOnWiFiTest, RemoveWakeOnPacketConnection_ReturnsError) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       WakeOnWiFiDisabled_RemoveWakeOnPacketConnection_ReturnsError) {
   DisableWakeOnWiFiFeatures();
   Error e;
   RemoveWakeOnPacketConnection("1.1.1.1", &e);
@@ -1534,7 +1907,8 @@ TEST_F(WakeOnWiFiTest, RemoveWakeOnPacketConnection_ReturnsError) {
   EXPECT_STREQ(e.message().c_str(), WakeOnWiFi::kWakeOnWiFiDisabled);
 }
 
-TEST_F(WakeOnWiFiTest, RemoveAllWakeOnPacketConnections_ReturnsError) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       WakeOnWiFiDisabled_RemoveAllWakeOnPacketConnections_ReturnsError) {
   DisableWakeOnWiFiFeatures();
   Error e;
   RemoveAllWakeOnPacketConnections(&e);
@@ -1542,29 +1916,40 @@ TEST_F(WakeOnWiFiTest, RemoveAllWakeOnPacketConnections_ReturnsError) {
   EXPECT_STREQ(e.message().c_str(), WakeOnWiFi::kWakeOnWiFiDisabled);
 }
 
-TEST_F(WakeOnWiFiTest, CallbackRunOnBeforeSuspend) {
-  DisableWakeOnWiFiFeatures();
-  EXPECT_TRUE(SuspendActionsCallbackIsNull());
-  EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
-  EXPECT_CALL(*this, SuspendCallback(_));
-  EXPECT_CALL(
-      netlink_manager_,
-      SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
-                                          SetWakeOnPacketConnMessage::kCommand),
-                         _, _, _)).Times(0);
-  OnBeforeSuspend();
-  dispatcher_.DispatchPendingEvents();
-  EXPECT_TRUE(SuspendActionsCallbackIsNull());
-  EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       WakeOnWiFiDisabled_OnBeforeSuspend_ReportsDoneImmediately) {
+  bool is_connected = true;
+  bool have_dhcp_lease = true;
+  EXPECT_CALL(*this, DoneCallback(ErrorType(Error::kSuccess))).Times(1);
+  EXPECT_CALL(*this, RenewDHCPLeaseCallback()).Times(0);
+  OnBeforeSuspend(is_connected, have_dhcp_lease, kTimeToNextLeaseRenewalShort);
+
+  EXPECT_CALL(*this, DoneCallback(ErrorType(Error::kSuccess))).Times(1);
+  EXPECT_CALL(*this, RenewDHCPLeaseCallback()).Times(0);
+  OnBeforeSuspend(is_connected, have_dhcp_lease, kTimeToNextLeaseRenewalLong);
 }
 
-TEST_F(WakeOnWiFiTest, OnAfterResume_DoesNothing) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       WakeOnWiFiDisabled_OnDarkResume_ReportsDoneImmediately) {
+  bool is_connected = true;
+  EXPECT_CALL(*this, DoneCallback(ErrorType(Error::kSuccess))).Times(1);
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _)).Times(0);
+  OnDarkResume(is_connected);
+
+  EXPECT_CALL(*this, DoneCallback(ErrorType(Error::kSuccess))).Times(1);
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _)).Times(0);
+  OnDarkResume(is_connected);
+}
+
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       WakeOnWiFiDisabled_OnAfterResume_DoesNothing) {
   DisableWakeOnWiFiFeatures();
   EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _, _)).Times(0);
   OnAfterResume();
 }
 
-TEST_F(WakeOnWiFiTest, SetWakeOnWiFiFeaturesEnabled) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       WakeOnWiFiDisabled_SetWakeOnWiFiFeaturesEnabled) {
   Error e;
   DisableWakeOnWiFiFeatures();
   EXPECT_STREQ(GetWakeOnWiFiFeaturesEnabled().c_str(),
@@ -1580,6 +1965,26 @@ TEST_F(WakeOnWiFiTest, SetWakeOnWiFiFeaturesEnabled) {
                kWakeOnWiFiFeaturesEnabledNone);
   EXPECT_EQ(e.type(), Error::kNotSupported);
   EXPECT_STREQ(e.message().c_str(), "Wake on WiFi is not supported");
+}
+
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       WakeOnWiFiDisabled_OnDHCPLeaseObtained) {
+  ScopedMockLog log;
+  const bool start_lease_renewal_timer = true;
+  ScopeLogger::GetInstance()->EnableScopesByName("wifi");
+  ScopeLogger::GetInstance()->set_verbose_level(2);
+
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  SetInDarkResume(true);
+  EXPECT_CALL(
+      log, Log(_, _, HasSubstr("Wake on WiFi not supported, so do nothing")));
+  OnDHCPLeaseObtained(start_lease_renewal_timer, kTimeToNextLeaseRenewalLong);
+
+  SetInDarkResume(false);
+  EXPECT_CALL(log, Log(_, _, HasSubstr("Not in dark resume, so do nothing")));
+  OnDHCPLeaseObtained(start_lease_renewal_timer, kTimeToNextLeaseRenewalLong);
+  ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
+  ScopeLogger::GetInstance()->set_verbose_level(0);
 }
 
 #endif  // DISABLE_WAKE_ON_WIFI

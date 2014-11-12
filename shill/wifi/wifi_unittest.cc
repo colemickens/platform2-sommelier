@@ -685,6 +685,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void ReportIPConfigComplete() {
     wifi_->OnIPConfigUpdated(dhcp_config_);
   }
+  void ReportIPv6ConfigComplete() {
+    wifi_->OnIPv6ConfigUpdated();
+  }
   void ReportIPConfigFailure() {
     wifi_->OnIPConfigFailure();
   }
@@ -769,12 +772,18 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     StartWiFi(true);
   }
   void OnAfterResume() {
+    EXPECT_CALL(*wake_on_wifi_, OnAfterResume());
     wifi_->OnAfterResume();
   }
   void OnBeforeSuspend() {
     ResultCallback callback(
         base::Bind(&WiFiObjectTest::SuspendCallback, base::Unretained(this)));
     wifi_->OnBeforeSuspend(callback);
+  }
+  void OnDarkResume() {
+    ResultCallback callback(
+        base::Bind(&WiFiObjectTest::SuspendCallback, base::Unretained(this)));
+    wifi_->OnDarkResume(callback);
   }
   void OnSupplicantAppear() {
     wifi_->OnSupplicantAppear(WPASupplicant::kDBusAddr, ":1.7");
@@ -880,6 +889,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
   void OnNewWiphy(const Nl80211Message &new_wiphy_message) {
     wifi_->OnNewWiphy(new_wiphy_message);
+  }
+
+  bool IsConnectedToCurrentService() {
+    return wifi_->IsConnectedToCurrentService();
   }
 
   NiceMockControl *control_interface() {
@@ -1475,7 +1488,6 @@ TEST_F(WiFiMainTest, ResumeStartsScanWhenIdle_FullScan) {
   ReportScanDone();
   ASSERT_TRUE(wifi()->IsIdle());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));
-  EXPECT_CALL(*wake_on_wifi_, OnAfterResume());
   OnAfterResume();
   dispatcher_.DispatchPendingEvents();
 }
@@ -1488,7 +1500,6 @@ TEST_F(WiFiMainTest, ResumeStartsScanWhenIdle) {
   ReportScanDone();
   ASSERT_TRUE(wifi()->IsIdle());
   dispatcher_.DispatchPendingEvents();
-  EXPECT_CALL(*wake_on_wifi_, OnAfterResume());
   OnAfterResume();
   EXPECT_NE(nullptr, scan_session_);;
   InstallMockScanSession();
@@ -1504,7 +1515,6 @@ TEST_F(WiFiMainTest, SuspendDoesNotStartScan_FullScan) {
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   ASSERT_TRUE(wifi()->IsIdle());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
-  EXPECT_CALL(*wake_on_wifi_, OnBeforeSuspend(_));
   OnBeforeSuspend();
   dispatcher_.DispatchPendingEvents();
 }
@@ -1517,7 +1527,6 @@ TEST_F(WiFiMainTest, SuspendDoesNotStartScan) {
   ASSERT_TRUE(wifi()->IsIdle());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
   EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
-  EXPECT_CALL(*wake_on_wifi_, OnBeforeSuspend(_));
   OnBeforeSuspend();
   dispatcher_.DispatchPendingEvents();
 }
@@ -1535,7 +1544,6 @@ TEST_F(WiFiMainTest, ResumeDoesNotStartScanWhenNotIdle_FullScan) {
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, EndsWith("already connecting or connected.")));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
-  EXPECT_CALL(*wake_on_wifi_, OnAfterResume());
   OnAfterResume();
   dispatcher_.DispatchPendingEvents();
 }
@@ -1553,7 +1561,6 @@ TEST_F(WiFiMainTest, ResumeDoesNotStartScanWhenNotIdle) {
   EXPECT_CALL(log, Log(_, _, EndsWith("already connecting or connected.")));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
   EXPECT_TRUE(IsScanSessionNull());
-  EXPECT_CALL(*wake_on_wifi_, OnAfterResume());
   OnAfterResume();
   dispatcher_.DispatchPendingEvents();
 }
@@ -1563,7 +1570,6 @@ TEST_F(WiFiMainTest, ResumeWithCurrentService) {
   SetupConnectedService(DBus::Path(), nullptr, nullptr);
 
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetHT40Enable(_, true)).Times(1);
-  EXPECT_CALL(*wake_on_wifi_, OnAfterResume());
   OnAfterResume();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 }
@@ -2133,7 +2139,6 @@ TEST_F(WiFiMainTest, ScanWiFiDisabledAfterResume) {
   EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
   StartWiFi();
   StopWiFi();
-  EXPECT_CALL(*wake_on_wifi_, OnAfterResume());
   // A scan is queued when WiFi resumes.
   OnAfterResume();
   dispatcher_.DispatchPendingEvents();
@@ -2601,7 +2606,6 @@ TEST_F(WiFiMainTest, FlushBSSOnResume) {
       .WillOnce(DoAll(SetArgumentPointee<0>(scan_done_time), Return(0)));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(),
               FlushBSS(WiFi::kMaxBSSResumeAgeSeconds + 5));
-  EXPECT_CALL(*wake_on_wifi_, OnAfterResume());
   OnAfterResume();
   ReportScanDone();
 }
@@ -3948,6 +3952,36 @@ TEST_F(WiFiMainTest, StateChangedUpdatesMac80211Monitor) {
 
   EXPECT_CALL(*mac80211_monitor(), UpdateConnectedState(false));
   ReportStateChanged(WPASupplicant::kInterfaceStateAssociating);
+}
+
+TEST_F(WiFiMainTest, OnIPConfigUpdated_InvokeOnDHCPLeaseObtained) {
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  ScopeLogger::GetInstance()->EnableScopesByName("wifi");
+  ScopeLogger::GetInstance()->set_verbose_level(2);
+  EXPECT_CALL(log, Log(_, _, HasSubstr("IPv4 DHCP lease obtained")));
+  EXPECT_CALL(*wake_on_wifi_, OnDHCPLeaseObtained(_, _));
+  EXPECT_CALL(*manager(), device_info()).WillOnce(Return(device_info()));
+  ReportIPConfigComplete();
+
+  EXPECT_CALL(log, Log(_, _, HasSubstr("IPv6 configuration obtained")));
+  EXPECT_CALL(*wake_on_wifi_, OnDHCPLeaseObtained(_, _));
+  ReportIPv6ConfigComplete();
+
+  ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
+  ScopeLogger::GetInstance()->set_verbose_level(0);
+}
+
+TEST_F(WiFiMainTest, OnBeforeSuspend_CallsWakeOnWiFi) {
+  EXPECT_CALL(*wake_on_wifi_,
+              OnBeforeSuspend(IsConnectedToCurrentService(), _, _, _, _, _));
+  OnBeforeSuspend();
+}
+
+TEST_F(WiFiMainTest, OnDarkResume_CallsWakeOnWiFi) {
+  EXPECT_CALL(*wake_on_wifi_,
+              OnDarkResume(IsConnectedToCurrentService(), _, _, _, _));
+  OnDarkResume();
 }
 
 }  // namespace shill

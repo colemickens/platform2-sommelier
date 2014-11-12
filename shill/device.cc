@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <time.h>
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -449,17 +450,7 @@ void Device::OnBeforeSuspend(const ResultCallback &callback) {
 }
 
 void Device::OnAfterResume() {
-  if (ipconfig_) {
-    SLOG(this, 3) << "Renewing IP address on resume.";
-    ipconfig_->RenewIP();
-  }
-  if (ip6config_) {
-    // Invalidate the old IPv6 configuration, will receive notifications
-    // from kernel for new IPv6 configuration if there is one.
-    StopIPv6DNSServerTimer();
-    ip6config_ = nullptr;
-    UpdateIPConfigsProperty();
-  }
+  RenewDHCPLease();
   if (link_monitor_) {
     SLOG(this, 3) << "Informing Link Monitor of resume.";
     link_monitor_->OnAfterResume();
@@ -632,6 +623,23 @@ void Device::RemoveAllWakeOnPacketConnections(Error *error) {
       "RemoveAllWakeOnPacketConnections not implemented for " + link_name_ +
           ".");
   return;
+}
+
+void Device::RenewDHCPLease() {
+  LOG(INFO) << __func__;
+
+  if (ipconfig_) {
+    SLOG(this, 3) << "Renewing IPv4 Address";
+    ipconfig_->RenewIP();
+  }
+  if (ip6config_) {
+    SLOG(this, 3) << "Waiting for new IPv6 configuration";
+    // Invalidate the old IPv6 configuration, will receive notifications
+    // from kernel for new IPv6 configuration if there is one.
+    StopIPv6DNSServerTimer();
+    ip6config_ = nullptr;
+    UpdateIPConfigsProperty();
+  }
 }
 
 bool Device::ShouldUseArpGateway() const {
@@ -1252,6 +1260,22 @@ void Device::SwitchDNSServers(const vector<string> &dns_servers) {
 
 void Device::set_traffic_monitor(TrafficMonitor *traffic_monitor) {
   traffic_monitor_.reset(traffic_monitor);
+}
+
+bool Device::TimeToNextDHCPLeaseRenewal(uint32_t *result) {
+  if (!ipconfig() && !ip6config()) {
+    return false;
+  }
+  uint32_t time_to_ipv4_lease_expiry = UINT32_MAX;
+  uint32_t time_to_ipv6_lease_expiry = UINT32_MAX;
+  if (ipconfig()) {
+    ipconfig()->TimeToLeaseExpiry(&time_to_ipv4_lease_expiry);
+  }
+  if (ip6config()) {
+    ip6config()->TimeToLeaseExpiry(&time_to_ipv6_lease_expiry);
+  }
+  *result = std::min(time_to_ipv4_lease_expiry, time_to_ipv6_lease_expiry);
+  return true;
 }
 
 bool Device::IsTrafficMonitorEnabled() const {

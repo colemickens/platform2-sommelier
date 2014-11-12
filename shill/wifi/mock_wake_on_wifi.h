@@ -20,7 +20,20 @@ class MockWakeOnWiFi : public WakeOnWiFi {
   ~MockWakeOnWiFi() override;
 
   MOCK_METHOD0(OnAfterResume, void());
-  MOCK_METHOD1(OnBeforeSuspend, void(const ResultCallback &callback));
+  MOCK_METHOD6(OnBeforeSuspend,
+               void(bool is_connected, const ResultCallback &done_callback,
+                    const base::Closure &renew_dhcp_lease_callback,
+                    const base::Closure &
+                        remove_supplicant_networks_callback,
+                    bool have_dhcp_lease, uint32_t time_to_next_lease_renewal));
+  MOCK_METHOD5(OnDarkResume,
+               void(bool is_connected, const ResultCallback &done_callback,
+                    const base::Closure &renew_dhcp_lease_callback,
+                    const base::Closure &initiate_scan_callback,
+                    const base::Closure &
+                        remove_supplicant_networks_callback));
+  MOCK_METHOD2(OnDHCPLeaseObtained, void(bool start_lease_renewal_timer,
+                                         uint32_t time_to_next_lease_renewal));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWakeOnWiFi);

@@ -40,6 +40,7 @@ PowerManager::PowerManager(EventDispatcher *dispatcher,
       dark_suspend_delay_registered_(false),
       dark_suspend_delay_id_(0),
       suspending_(false),
+      in_dark_resume_(false),
       current_suspend_id_(0),
       current_dark_suspend_id_(0) {}
 
@@ -119,6 +120,7 @@ void PowerManager::OnSuspendDone(int suspend_id) {
   }
 
   suspending_ = false;
+  in_dark_resume_ = false;
   suspend_done_callback_.Run();
 }
 
@@ -131,7 +133,7 @@ void PowerManager::OnDarkSuspendImminent(int suspend_id) {
                  << "resuspend.";
     return;
   }
-
+  in_dark_resume_ = true;
   current_dark_suspend_id_ = suspend_id;
   dark_suspend_imminent_callback_.Run();
 }

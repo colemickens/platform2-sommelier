@@ -1689,7 +1689,8 @@ void Manager::AutoConnect() {
     LOG(INFO) << "Auto-connect suppressed -- not running.";
     return;
   }
-  if (power_manager_ && power_manager_->suspending()) {
+  if (power_manager_ && power_manager_->suspending() &&
+      !power_manager_->in_dark_resume()) {
     LOG(INFO) << "Auto-connect suppressed -- system is suspending.";
     return;
   }

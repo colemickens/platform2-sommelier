@@ -18,6 +18,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <components/timers/alarm_timer.h>
 
 #include "shill/callbacks.h"
 #include "shill/ip_address_store.h"
@@ -51,7 +52,7 @@ class WakeOnWiFi {
   void StartMetricsTimer();
 
   // Types of triggers that can cause the NIC to wake the WiFi device.
-  enum WakeOnWiFiTrigger { kIPAddress, kDisconnect };
+  enum WakeOnWiFiTrigger { kPattern, kDisconnect, kSSID };
 
   // Enable the NIC to wake on packets received from |ip_endpoint|.
   // Note: The actual programming of the NIC only happens before the system
@@ -74,25 +75,91 @@ class WakeOnWiFi {
   // wiphy index of the NIC and sets |wiphy_index_| with the parsed index.
   void ParseWiphyIndex(const Nl80211Message &nl80211_message);
   // Performs pre-suspend actions relevant to wake on wireless functionality.
-  virtual void OnBeforeSuspend(const ResultCallback &callback);
+  // Initiates DHCP lease renewal if there is a lease due to renewal soon,
+  // then calls WakeOnWiFi::BeforeSuspendActions.
+  //
+  // Arguments:
+  //  - |is_connected|: whether the WiFi device is connected.
+  //  - |done_callback|: callback to invoke when suspend  actions have
+  //    completed.
+  //  - |renew_dhcp_lease_callback|: callback to invoke to initiate DHCP lease
+  //    renewal.
+  //  - |remove_supplicant_networks_callback|: callback to invoke
+  //    to remove all networks from WPA supplicant.
+  //  - |have_dhcp_lease|: whether or not there is a DHCP lease to renew.
+  //  - |time_to_next_lease_renewal|: number of seconds until next DHCP lease
+  //    renewal is due.
+  virtual void OnBeforeSuspend(
+      bool is_connected,
+      const ResultCallback &done_callback,
+      const base::Closure &renew_dhcp_lease_callback,
+      const base::Closure &remove_supplicant_networks_callback,
+      bool have_dhcp_lease,
+      uint32_t time_to_next_lease_renewal);
   // Performs post-resume actions relevant to wake on wireless functionality.
   virtual void OnAfterResume();
+  // Performs and post actions to be performed in dark resume.
+  // When we wake up in dark resume and wake on WiFi is supported, we start a
+  // timeout timer, and do one of two things depending on whether the WiFi
+  // device is connected to a service:
+  //   - If the WiFi device is connected before suspend, initiate DHCP lease
+  //     renewal.
+  //   - Otherwise, WiFi device is not connected, so initiate a scan.
+  // There are two possible outcomes from these actions:
+  //   - A DHCP lease is obtained, either because of connection to a network
+  //     or successful lease renewal.
+  //   - The timer expires, so dark resume actions time out.
+  // In either case, WakeOnWiFi::BeforeSuspendActions is invoked asynchronously.
+  // If WiFi device is connected (in the case where we got the DHCP lease),
+  // we start the lease renewal timer, disable wake on SSID, and enable wake on
+  // disconnect. Otherwise, we stop the lease renewal timer, enable wake on
+  // SSID, disable wake on disconnect, and remove all networks from WPA
+  // supplicant. This is the same logic applied before regular suspend, and
+  // should ensure that the correct actions are taken both before regular
+  // suspend and suspend in dark resume to maintain connectivity.
+  //
+  // Arguments:
+  //  - |is_connected|: whether the WiFi device is connected.
+  //  - |done_callback|: callback to invoke when dark resume actions have
+  //    completed.
+  //  - |renew_dhcp_lease_callback|: callback to invoke to initiate DHCP lease
+  //    renewal.
+  //  - |initate_scan_callback|: callback to invoke to initiate a scan.
+  //  - |remove_supplicant_networks_callback|: callback to invoke
+  //    to remove all networks from WPA supplicant.
+  virtual void OnDarkResume(
+      bool is_connected,
+      const ResultCallback &done_callback,
+      const base::Closure &renew_dhcp_lease_callback,
+      const base::Closure &initiate_scan_callback,
+      const base::Closure &remove_supplicant_networks_callback);
+  // Wrapper around WakeOnWiFi::BeforeSuspendActions that checks if shill is
+  // currently in dark resume before invoking the function.
+  virtual void OnDHCPLeaseObtained(bool start_lease_renewal_timer,
+                                   uint32_t time_to_next_lease_renewal);
 
  private:
   friend class WakeOnWiFiTest;  // access to several members for tests
   friend class WiFiObjectTest;  // netlink_manager_
   // Tests that need kWakeOnWiFiDisabled.
-  FRIEND_TEST(WakeOnWiFiTest, AddWakeOnPacketConnection_ReturnsError);
-  FRIEND_TEST(WakeOnWiFiTest, RemoveWakeOnPacketConnection_ReturnsError);
-  FRIEND_TEST(WakeOnWiFiTest, RemoveAllWakeOnPacketConnections_ReturnsError);
-  FRIEND_TEST(WakeOnWiFiTest, ParseWiphyIndex_Success);  // kDefaultWiphyIndex
+  FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
+              WakeOnWiFiDisabled_AddWakeOnPacketConnection_ReturnsError);
+  FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
+              WakeOnWiFiDisabled_RemoveWakeOnPacketConnection_ReturnsError);
+  FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
+              WakeOnWiFiDisabled_RemoveAllWakeOnPacketConnections_ReturnsError);
+  FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
+              ParseWiphyIndex_Success);  // kDefaultWiphyIndex
   // Tests that need kMaxSetWakeOnPacketRetries.
-  FRIEND_TEST(WakeOnWiFiTest,
+  FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
               RetrySetWakeOnPacketConnections_LessThanMaxRetries);
-  FRIEND_TEST(WakeOnWiFiTest,
+  FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
               RetrySetWakeOnPacketConnections_MaxAttemptsWithCallbackSet);
-  FRIEND_TEST(WakeOnWiFiTest,
+  FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
               RetrySetWakeOnPacketConnections_MaxAttemptsCallbackUnset);
+  // Tests that need WakeOnWiFi::kDarkResumeActionsTimeoutMilliseconds
+  FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
+              OnBeforeSuspend_DHCPLeaseRenewal);
 
   static const char kWakeOnIPAddressPatternsNotSupported[];
   static const char kWakeOnPacketDisabled[];
@@ -102,6 +169,8 @@ class WakeOnWiFi {
   static const int kMaxSetWakeOnPacketRetries;
   static const int kMetricsReportingFrequencySeconds;
   static const uint32_t kDefaultWakeToScanFrequencySeconds;
+  static const uint32_t kImmediateDHCPLeaseRenewalThresholdSeconds;
+  static int64_t DarkResumeActionsTimeoutMilliseconds;  // non-const for testing
 
   std::string GetWakeOnWiFiFeaturesEnabled(Error *error);
   bool SetWakeOnWiFiFeaturesEnabled(const std::string &enabled, Error *error);
@@ -142,7 +211,7 @@ class WakeOnWiFi {
   // Creates and sets attributes in a SetWakeOnPacketConnMessage |msg|
   // so that the message will program the NIC with wiphy index |wiphy_index|
   // with wake on wireless triggers in |trigs|. If |trigs| contains the
-  // kIPAddress trigger, the NIC is programmed to wake on packets from the
+  // kPattern trigger, the NIC is programmed to wake on packets from the
   // IP addresses in |addrs|. Returns true iff |msg| is successfully configured.
   // NOTE: Assumes that |msg| has not been altered since construction.
   static bool ConfigureSetWakeOnWiFiSettingsMessage(
@@ -199,15 +268,33 @@ class WakeOnWiFi {
   // a retry. If |kMaxSetWakeOnPacketRetries| retries have already been
   // performed, resets counter and returns.
   void RetrySetWakeOnPacketConnections();
-
   // Utility functions to check which wake on WiFi features are currently
-  // enabled based on the descriptor |wake_on_wifi_features_enabled_|.
-  bool WakeOnPacketEnabled();
-  bool WakeOnSSIDEnabled();
-  bool WakeOnWiFiFeaturesDisabled();
-
+  // enabled based on the descriptor |wake_on_wifi_features_enabled_| and
+  // are supported by the NIC.
+  bool WakeOnPacketEnabledAndSupported();
+  bool WakeOnSSIDEnabledAndSupported();
   // Called by metrics_timer_ to reports metrics.
   void ReportMetrics();
+  // Actions executed before normal suspend and dark resume suspend.
+  //
+  // Arguments:
+  //  - |is_connected|: whether the WiFi device is connected.
+  //  - |start_lease_renewal_timer|: whether or not to start the DHCP lease
+  //    renewal timer.
+  //  - |time_to_next_lease_renewal|: number of seconds until next DHCP lease
+  //    renewal is due.
+  //  - |remove_supplicant_networks_callback|: callback to invoke
+  //    to remove all networks from WPA supplicant.
+  void BeforeSuspendActions(
+      bool is_connected,
+      bool start_lease_renewal_timer,
+      uint32_t time_to_next_lease_renewal,
+      const base::Closure &remove_supplicant_networks_callback);
+
+  // Needed for |dhcp_lease_renewal_timer_| and |wake_to_scan_timer_| since
+  // passing a empty base::Closure() causes a run-time DCHECK error when
+  // AlarmTimer::Start or AlarmTimer::Reset are called.
+  void OnTimerWakeDoNothing() {}
 
   // Pointers to objects owned by the WiFi object that created this object.
   EventDispatcher *dispatcher_;
@@ -217,7 +304,8 @@ class WakeOnWiFi {
   // NL80211 messages to verify that the new configuration has taken effect.
   // Calls RequestWakeOnPacketSettings.
   base::CancelableClosure verify_wake_on_packet_settings_callback_;
-  // Callback to be invoked after all suspend actions finish executing.
+  // Callback to be invoked after all suspend actions finish executing both
+  // before regular suspend and before suspend in dark resume.
   ResultCallback suspend_actions_done_callback_;
   // Callback to report wake on WiFi related metrics.
   base::CancelableClosure report_metrics_callback_;
@@ -238,6 +326,15 @@ class WakeOnWiFi {
   bool wiphy_index_received_;
   // Describes the wake on WiFi features that are currently enabled.
   std::string wake_on_wifi_features_enabled_;
+  // Timer that wakes the system to renew DHCP leases.
+  timers::AlarmTimer dhcp_lease_renewal_timer_;
+  // Timer that wakes the system to scan for networks.
+  timers::AlarmTimer wake_to_scan_timer_;
+  // Executes when the dark resume actions timer expires. Calls
+  // ScanTimerHandler.
+  base::CancelableClosure dark_resume_actions_timeout_callback_;
+  // Whether shill is currently in dark resume.
+  bool in_dark_resume_;
   // Frequency (in seconds) that the system is woken during suspend to perform
   // scans.
   uint32_t wake_to_scan_frequency_;

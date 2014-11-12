@@ -16,6 +16,7 @@
 
 #include <base/cancelable_callback.h>
 #include <chromeos/dbus/service_constants.h>
+#include <components/timers/alarm_timer.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -28,10 +29,12 @@
 #include "shill/wifi/wifi.h"
 
 using base::Bind;
+using base::Closure;
 using std::pair;
 using std::set;
 using std::string;
 using std::vector;
+using timers::AlarmTimer;
 
 namespace shill {
 
@@ -50,6 +53,13 @@ const int WakeOnWiFi::kVerifyWakeOnWiFiSettingsDelayMilliseconds = 300;
 const int WakeOnWiFi::kMaxSetWakeOnPacketRetries = 2;
 const int WakeOnWiFi::kMetricsReportingFrequencySeconds = 600;
 const uint32_t WakeOnWiFi::kDefaultWakeToScanFrequencySeconds = 900;
+const uint32_t WakeOnWiFi::kImmediateDHCPLeaseRenewalThresholdSeconds = 60;
+// If a connection is not established during dark resume, give up and prepare
+// the system to wake on SSID 1 second before suspending again.
+// TODO(samueltan): link this to
+// Manager::kTerminationActionsTimeoutMilliseconds rather than hard-coding
+// this value.
+int64_t WakeOnWiFi::DarkResumeActionsTimeoutMilliseconds = 8500;
 
 WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
                        EventDispatcher *dispatcher, Metrics *metrics)
@@ -70,6 +80,9 @@ WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
       // TODO(samueltan): re-enable once pending issues have been resolved.
       wake_on_wifi_features_enabled_(kWakeOnWiFiFeaturesEnabledNone),
 #endif  // DISABLE_WAKE_ON_WIFI
+      dhcp_lease_renewal_timer_(true, false),
+      wake_to_scan_timer_(true, false),
+      in_dark_resume_(false),
       wake_to_scan_frequency_(kDefaultWakeToScanFrequencySeconds),
       weak_ptr_factory_(this) {
 }
@@ -244,7 +257,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
                           "No triggers to configure.");
     return false;
   }
-  if (trigs.find(kIPAddress) != trigs.end() && addrs.Empty()) {
+  if (trigs.find(kPattern) != trigs.end() && addrs.Empty()) {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
                           "No IP addresses to configure.");
     return false;
@@ -298,7 +311,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
         }
         break;
       }
-      case kIPAddress: {
+      case kPattern: {
         if (!triggers->CreateNestedAttribute(NL80211_WOWLAN_TRIG_PKT_PATTERN,
                                              "Pattern trigger")) {
           Error::PopulateAndLog(error, Error::kOperationFailed,
@@ -330,6 +343,10 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
             return false;
           }
         }
+        break;
+      }
+      case kSSID: {
+        // TODO(samueltan): construct wake on SSID trigger when available.
         break;
       }
       default: {
@@ -456,7 +473,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(const Nl80211Message &msg,
         }
         break;
       }
-      case kIPAddress: {
+      case kPattern: {
         // Create pattern and masks that we expect to find in |msg|.
         set<pair<ByteString, ByteString>,
             bool (*)(const pair<ByteString, ByteString> &,
@@ -523,6 +540,10 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(const Nl80211Message &msg,
         }
         break;
       }
+      case kSSID: {
+        // TODO(samueltan): parse wake on SSID trigger when available.
+        break;
+      }
       default: {
         LOG(ERROR) << __func__ << ": Unrecognized trigger";
         return false;
@@ -535,7 +556,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(const Nl80211Message &msg,
 void WakeOnWiFi::AddWakeOnPacketConnection(const string &ip_endpoint,
                                            Error *error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
-  if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
+  if (wake_on_wifi_triggers_supported_.find(kPattern) ==
       wake_on_wifi_triggers_supported_.end()) {
     Error::PopulateAndLog(error, Error::kNotSupported,
                           kWakeOnIPAddressPatternsNotSupported);
@@ -562,7 +583,7 @@ void WakeOnWiFi::AddWakeOnPacketConnection(const string &ip_endpoint,
 void WakeOnWiFi::RemoveWakeOnPacketConnection(const string &ip_endpoint,
                                               Error *error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
-  if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
+  if (wake_on_wifi_triggers_supported_.find(kPattern) ==
       wake_on_wifi_triggers_supported_.end()) {
     Error::PopulateAndLog(error, Error::kNotSupported,
                           kWakeOnIPAddressPatternsNotSupported);
@@ -587,7 +608,7 @@ void WakeOnWiFi::RemoveWakeOnPacketConnection(const string &ip_endpoint,
 
 void WakeOnWiFi::RemoveAllWakeOnPacketConnections(Error *error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
-  if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
+  if (wake_on_wifi_triggers_supported_.find(kPattern) ==
       wake_on_wifi_triggers_supported_.end()) {
     Error::PopulateAndLog(error, Error::kNotSupported,
                           kWakeOnIPAddressPatternsNotSupported);
@@ -624,7 +645,11 @@ void WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse(
       break;
 
     case NetlinkManager::kTimeoutWaitingForResponse:
-      error.Populate(Error::kOperationTimeout, "Timeout waiting for response");
+      // CMD_SET_WOWLAN messages do not receive responses, so this error type
+      // is received when NetlinkManager times out the message handler. Return
+      // immediately rather than run the done callback since this event does
+      // not signify the completion of suspend actions.
+      return;
       break;
 
     default:
@@ -644,6 +669,7 @@ void WakeOnWiFi::OnSetWakeOnPacketConnectionResponse(
 }
 
 void WakeOnWiFi::RequestWakeOnPacketSettings() {
+  SLOG(this, 3) << __func__;
   Error e;
   GetWakeOnPacketConnMessage get_wowlan_msg;
   if (!ConfigureGetWakeOnWiFiSettingsMessage(&get_wowlan_msg, wiphy_index_,
@@ -660,6 +686,7 @@ void WakeOnWiFi::RequestWakeOnPacketSettings() {
 
 void WakeOnWiFi::VerifyWakeOnWiFiSettings(
     const Nl80211Message &nl80211_message) {
+  SLOG(this, 3) << __func__;
   if (WakeOnWiFiSettingsMatch(nl80211_message, wake_on_wifi_triggers_,
                               wake_on_packet_connections_)) {
     SLOG(this, 2) << __func__ << ": "
@@ -678,11 +705,13 @@ void WakeOnWiFi::VerifyWakeOnWiFiSettings(
 }
 
 void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
+  SLOG(this, 3) << __func__;
   if (!wiphy_index_received_) {
     LOG(ERROR) << "Interface index not yet received";
     return;
   }
   if (wake_on_wifi_triggers_.empty()) {
+    LOG(INFO) << "No triggers to be programmed, so disable wake on WiFi";
     DisableWakeOnWiFi();
     return;
   }
@@ -713,6 +742,7 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
 }
 
 void WakeOnWiFi::DisableWakeOnWiFi() {
+  SLOG(this, 3) << __func__;
   Error error;
   SetWakeOnPacketConnMessage disable_wowlan_msg;
   if (!ConfigureDisableWakeOnWiFiMessage(&disable_wowlan_msg, wiphy_index_,
@@ -739,31 +769,41 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
 }
 
 void WakeOnWiFi::RetrySetWakeOnPacketConnections() {
+  SLOG(this, 3) << __func__;
   if (num_set_wake_on_packet_retries_ < kMaxSetWakeOnPacketRetries) {
-    SLOG(this, 2) << __func__;
     ApplyWakeOnWiFiSettings();
     ++num_set_wake_on_packet_retries_;
   } else {
-    SLOG(this, 2) << __func__ << ": max retry attempts reached";
+    SLOG(this, 3) << __func__ << ": max retry attempts reached";
     num_set_wake_on_packet_retries_ = 0;
     RunAndResetSuspendActionsDoneCallback(Error(Error::kOperationFailed));
   }
 }
 
-bool WakeOnWiFi::WakeOnPacketEnabled() {
-  return (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledPacket ||
-          wake_on_wifi_features_enabled_ ==
-              kWakeOnWiFiFeaturesEnabledPacketSSID);
+bool WakeOnWiFi::WakeOnPacketEnabledAndSupported() {
+  if (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledNone ||
+      wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledSSID) {
+    return false;
+  }
+  if (wake_on_wifi_triggers_supported_.find(kPattern) ==
+      wake_on_wifi_triggers_supported_.end()) {
+    return false;
+  }
+  return true;
 }
 
-bool WakeOnWiFi::WakeOnSSIDEnabled() {
-  return (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledSSID ||
-          wake_on_wifi_features_enabled_ ==
-              kWakeOnWiFiFeaturesEnabledPacketSSID);
-}
-
-bool WakeOnWiFi::WakeOnWiFiFeaturesDisabled() {
-  return wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledNone;
+bool WakeOnWiFi::WakeOnSSIDEnabledAndSupported() {
+  if (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledNone ||
+      wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledPacket) {
+    return false;
+  }
+  if (wake_on_wifi_triggers_supported_.find(kDisconnect) ==
+          wake_on_wifi_triggers_supported_.end() ||
+      wake_on_wifi_triggers_supported_.find(kSSID) ==
+          wake_on_wifi_triggers_supported_.end()) {
+    return false;
+  }
+  return true;
 }
 
 void WakeOnWiFi::ReportMetrics() {
@@ -827,7 +867,7 @@ void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
               std::min(ipv4_pattern_len, ipv6_pattern_len) &&
           patt_support->max_pattern_len >=
               std::max(ipv4_pattern_len, ipv6_pattern_len)) {
-        wake_on_wifi_triggers_supported_.insert(WakeOnWiFi::kIPAddress);
+        wake_on_wifi_triggers_supported_.insert(WakeOnWiFi::kPattern);
         wake_on_wifi_max_patterns_ = patt_support->max_patterns;
         SLOG(this, 7) << "Waking on up to " << wake_on_wifi_max_patterns_
                       << " registered patterns of "
@@ -836,6 +876,9 @@ void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
                       << " bytes supported by this WiFi device";
       }
     }
+    // TODO(samueltan): remove this placeholder when wake on SSID capability
+    // can be parsed from NL80211 message.
+    wake_on_wifi_triggers_supported_.insert(WakeOnWiFi::kSSID);
   }
 }
 
@@ -853,61 +896,162 @@ void WakeOnWiFi::ParseWiphyIndex(const Nl80211Message &nl80211_message) {
   wiphy_index_received_ = true;
 }
 
-void WakeOnWiFi::OnBeforeSuspend(const ResultCallback &callback) {
+void WakeOnWiFi::OnBeforeSuspend(
+    bool is_connected,
+    const ResultCallback &done_callback,
+    const Closure &renew_dhcp_lease_callback,
+    const Closure &remove_supplicant_networks_callback,
+    bool have_dhcp_lease,
+    uint32_t time_to_next_lease_renewal) {
+  LOG(INFO) << __func__ << ": "
+            << (is_connected ? "connected" : "not connected");
 #if defined(DISABLE_WAKE_ON_WIFI)
   // Wake on WiFi disabled, so immediately report success.
-  callback.Run(Error(Error::kSuccess));
+  done_callback.Run(Error(Error::kSuccess));
 #else
-  if (wake_on_wifi_triggers_supported_.empty() ||
-      WakeOnWiFiFeaturesDisabled()) {
-    callback.Run(Error(Error::kSuccess));
-    return;
-  }
-
-  if (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledPacket) {
-    wake_on_wifi_triggers_.insert(WakeOnWiFi::kIPAddress);
-  } else if (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledSSID) {
-    wake_on_wifi_triggers_.insert(WakeOnWiFi::kDisconnect);
-    // TODO(samueltan): insert wake on SSID relevant triggers here once
-    // they become available.
+  suspend_actions_done_callback_ = done_callback;
+  if (have_dhcp_lease && is_connected &&
+      time_to_next_lease_renewal < kImmediateDHCPLeaseRenewalThresholdSeconds) {
+    // Renew DHCP lease immediately if we have one that is expiring soon.
+    renew_dhcp_lease_callback.Run();
+    dispatcher_->PostTask(
+        Bind(&WakeOnWiFi::BeforeSuspendActions, weak_ptr_factory_.GetWeakPtr(),
+             is_connected, false, time_to_next_lease_renewal,
+             remove_supplicant_networks_callback));
   } else {
-    DCHECK(wake_on_wifi_features_enabled_ ==
-           kWakeOnWiFiFeaturesEnabledPacketSSID);
-    wake_on_wifi_triggers_.insert(WakeOnWiFi::kDisconnect);
-    wake_on_wifi_triggers_.insert(WakeOnWiFi::kIPAddress);
-    // TODO(samueltan): insert wake on SSID relevant triggers here once
-    // they become available.
+    dispatcher_->PostTask(
+        Bind(&WakeOnWiFi::BeforeSuspendActions, weak_ptr_factory_.GetWeakPtr(),
+             is_connected, have_dhcp_lease, time_to_next_lease_renewal,
+             remove_supplicant_networks_callback));
   }
-
-  if (wake_on_wifi_triggers_.find(WakeOnWiFi::kIPAddress) !=
-          wake_on_wifi_triggers_.end() &&
-      wake_on_packet_connections_.Empty()) {
-    // Do not program NIC to wake on IP address patterns if no wake on packet
-    // connections have been registered.
-    wake_on_wifi_triggers_.erase(WakeOnWiFi::kIPAddress);
-    if (wake_on_wifi_triggers_.empty()) {
-      // Optimization: report success and return immediately instead of
-      // asynchronously calling WakeOnWiFi::ApplyWakeOnPacketSettings.
-      callback.Run(Error(Error::kSuccess));
-      return;
-    }
-  }
-
-  suspend_actions_done_callback_ = callback;
-  dispatcher_->PostTask(Bind(&WakeOnWiFi::ApplyWakeOnWiFiSettings,
-                             weak_ptr_factory_.GetWeakPtr()));
 #endif  // DISABLE_WAKE_ON_WIFI
 }
 
 void WakeOnWiFi::OnAfterResume() {
+  LOG(INFO) << __func__;
 #if !defined(DISABLE_WAKE_ON_WIFI)
-  // Unconditionally disable wake on WiFi on resume.
-  if (!wake_on_wifi_triggers_supported_.empty() &&
-      !WakeOnWiFiFeaturesDisabled()) {
-    wake_on_wifi_triggers_.clear();
-    ApplyWakeOnWiFiSettings();
+  wake_to_scan_timer_.Stop();
+  dhcp_lease_renewal_timer_.Stop();
+  if (WakeOnPacketEnabledAndSupported() || WakeOnSSIDEnabledAndSupported()) {
+    // Unconditionally disable wake on WiFi on resume if these features
+    // were enabled before the last suspend.
+    DisableWakeOnWiFi();
   }
 #endif  // DISABLE_WAKE_ON_WIFI
+}
+
+void WakeOnWiFi::OnDarkResume(
+    bool is_connected,
+    const ResultCallback &done_callback,
+    const Closure &renew_dhcp_lease_callback,
+    const Closure &initiate_scan_callback,
+    const Closure &remove_supplicant_networks_callback) {
+  LOG(INFO) << __func__ << ": "
+            << (is_connected ? "connected" : "not connected");
+#if defined(DISABLE_WAKE_ON_WIFI)
+  done_callback.Run(Error(Error::kSuccess));
+#else
+  in_dark_resume_ = true;
+  suspend_actions_done_callback_ = done_callback;
+  // Assume that we are disconnected if we time out. Consequently, we do not
+  // need to start a DHCP lease renewal timer.
+  dark_resume_actions_timeout_callback_.Reset(Bind(
+      &WakeOnWiFi::BeforeSuspendActions,
+      weak_ptr_factory_.GetWeakPtr(),
+      false,
+      false,
+      0,
+      remove_supplicant_networks_callback));
+  dispatcher_->PostDelayedTask(dark_resume_actions_timeout_callback_.callback(),
+                               DarkResumeActionsTimeoutMilliseconds);
+
+  if (is_connected) {
+    renew_dhcp_lease_callback.Run();
+  } else {
+    initiate_scan_callback.Run();
+  }
+#endif  // DISABLE_WAKE_ON_WIFI
+}
+
+void WakeOnWiFi::BeforeSuspendActions(
+    bool is_connected,
+    bool start_lease_renewal_timer,
+    uint32_t time_to_next_lease_renewal,
+    const Closure &remove_supplicant_networks_callback) {
+  SLOG(this, 3) << __func__ << ": "
+                << (is_connected ? "connected" : "not connected");
+  // Note: No conditional compilation because all entry points to this functions
+  // are already conditionally compiled based on DISABLE_WAKE_ON_WIFI.
+
+  // Create copy so callback can be run despite calling Cancel().
+  Closure supplicant_callback_copy(remove_supplicant_networks_callback);
+  dark_resume_actions_timeout_callback_.Cancel();
+
+  // Add relevant triggers to be programmed into the NIC.
+  wake_on_wifi_triggers_.clear();
+  if (!wake_on_packet_connections_.Empty() &&
+      WakeOnPacketEnabledAndSupported() && is_connected) {
+    SLOG(this, 3) << "Enabling wake on pattern";
+    wake_on_wifi_triggers_.insert(kPattern);
+  }
+  if (WakeOnSSIDEnabledAndSupported()) {
+    if (is_connected) {
+      SLOG(this, 3) << "Enabling wake on disconnect";
+      wake_on_wifi_triggers_.insert(kDisconnect);
+      wake_on_wifi_triggers_.erase(kSSID);
+      if (start_lease_renewal_timer) {
+        // Timer callback is NO-OP since dark resume logic will initiate DHCP
+        // lease renewal.
+        dhcp_lease_renewal_timer_.Start(
+            FROM_HERE, base::TimeDelta::FromSeconds(time_to_next_lease_renewal),
+            Bind(&WakeOnWiFi::OnTimerWakeDoNothing, base::Unretained(this)));
+      }
+      wake_to_scan_timer_.Stop();
+    } else {
+      SLOG(this, 3) << "Enabling wake on SSID";
+      // Force a disconnect in case supplicant is currently in the process of
+      // connecting, and remove all networks so scans triggered in dark resume
+      // are passive.
+      supplicant_callback_copy.Run();
+      wake_on_wifi_triggers_.erase(kDisconnect);
+      wake_on_wifi_triggers_.insert(kSSID);
+      dhcp_lease_renewal_timer_.Stop();
+      // Timer callback is NO-OP since dark resume logic will initiate scan.
+      wake_to_scan_timer_.Start(
+          FROM_HERE, base::TimeDelta::FromSeconds(wake_to_scan_frequency_),
+          Bind(&WakeOnWiFi::OnTimerWakeDoNothing, base::Unretained(this)));
+    }
+  }
+
+  if (!in_dark_resume_ && wake_on_wifi_triggers_.empty()) {
+    // No need program NIC on normal resume in this case since wake on WiFi
+    // would already have been disabled on the last (non-dark) resume.
+    LOG(INFO) << "No need to disable wake on WiFi on NIC in regular "
+                 "suspend";
+    RunAndResetSuspendActionsDoneCallback(Error(Error::kSuccess));
+    return;
+  }
+
+  in_dark_resume_ = false;
+  ApplyWakeOnWiFiSettings();
+}
+
+void WakeOnWiFi::OnDHCPLeaseObtained(bool start_lease_renewal_timer,
+                                     uint32_t time_to_next_lease_renewal) {
+  SLOG(this, 3) << __func__;
+  if (in_dark_resume_) {
+#if defined(DISABLE_WAKE_ON_WIFI)
+    SLOG(this, 2) << "Wake on WiFi not supported, so do nothing";
+#else
+    // If we obtain a DHCP lease, we are connected, so the callback to have
+    // supplicant remove networks will not be invoked in
+    // WakeOnWiFi::BeforeSuspendActions.
+    BeforeSuspendActions(true, start_lease_renewal_timer,
+                         time_to_next_lease_renewal, base::Closure());
+#endif  // DISABLE_WAKE_ON_WIFI
+  } else {
+    SLOG(this, 2) << "Not in dark resume, so do nothing";
+  }
 }
 
 }  // namespace shill

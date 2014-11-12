@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <algorithm>
 #include <limits>
 #include <map>
 #include <set>
@@ -47,6 +46,7 @@
 #include "shill/proxy_factory.h"
 #include "shill/scope_logger.h"
 #include "shill/supplicant/supplicant_eap_state_handler.h"
+#include "shill/supplicant/supplicant_interface_proxy.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_network_proxy_interface.h"
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
@@ -104,7 +104,7 @@ WiFi::WiFi(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
            Metrics *metrics,
            Manager *manager,
-           const string& link,
+           const string &link,
            const string &address,
            int interface_index)
     : Device(control_interface,
@@ -123,7 +123,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       supplicant_state_(kInterfaceStateUnknown),
       supplicant_bss_("(unknown)"),
       need_bss_flush_(false),
-      resumed_at_((struct timeval) {0}),
+      resumed_at_((struct timeval){0}),
       fast_scans_remaining_(kNumFastScanAttempts),
       has_already_completed_(false),
       is_roaming_in_progress_(false),
@@ -1751,7 +1751,26 @@ void WiFi::HelpRegisterConstDerivedBool(
 
 void WiFi::OnBeforeSuspend(const ResultCallback &callback) {
   LOG(INFO) << __func__;
-  wake_on_wifi_->OnBeforeSuspend(callback);
+  uint32_t time_to_next_lease_renewal;
+  bool have_dhcp_lease =
+      TimeToNextDHCPLeaseRenewal(&time_to_next_lease_renewal);
+  wake_on_wifi_->OnBeforeSuspend(
+      IsConnectedToCurrentService(),
+      callback,
+      Bind(&Device::RenewDHCPLease, weak_ptr_factory_.GetWeakPtr()),
+      Bind(&WiFi::RemoveSupplicantNetworks, weak_ptr_factory_.GetWeakPtr()),
+      have_dhcp_lease,
+      time_to_next_lease_renewal);
+}
+
+void WiFi::OnDarkResume(const ResultCallback &callback) {
+  LOG(INFO) << __func__;
+  wake_on_wifi_->OnDarkResume(
+      IsConnectedToCurrentService(),
+      callback,
+      Bind(&Device::RenewDHCPLease, weak_ptr_factory_.GetWeakPtr()),
+      Bind(&WiFi::InitiateScan, weak_ptr_factory_.GetWeakPtr(), kFullScan),
+      Bind(&WiFi::RemoveSupplicantNetworks, weak_ptr_factory_.GetWeakPtr()));
 }
 
 void WiFi::OnAfterResume() {
@@ -1771,18 +1790,7 @@ void WiFi::OnAfterResume() {
   time_->GetTimeMonotonic(&resumed_at_);
   need_bss_flush_ = true;
 
-  // Abort any current scan (at the shill-level; let any request that's
-  // already gone out finish) since we don't know when it started.
-  AbortScan();
-
-  if (IsIdle()) {
-    // Not scanning/connecting/connected, so let's get things rolling.
-    Scan(kProgressiveScan, nullptr, __func__);
-    RestartFastScanAttempts();
-  } else {
-    SLOG(this, 1) << __func__
-                  << " skipping scan, already connecting or connected.";
-  }
+  InitiateScan(kProgressiveScan);
 
   // Enable HT40 for current service in case if it was disabled previously due
   // to unreliable link.
@@ -1796,6 +1804,22 @@ void WiFi::AbortScan() {
     scan_session_.reset();
   }
   SetScanState(kScanIdle, kScanMethodNone, __func__);
+}
+
+void WiFi::InitiateScan(ScanType scan_type) {
+  LOG(INFO) << __func__;
+  // Abort any current scan (at the shill-level; let any request that's
+  // already gone out finish) since we don't know when it started.
+  AbortScan();
+
+  if (IsIdle()) {
+    // Not scanning/connecting/connected, so let's get things rolling.
+    Scan(scan_type, nullptr, __func__);
+    RestartFastScanAttempts();
+  } else {
+    SLOG(this, 1) << __func__
+                  << " skipping scan, already connecting or connected.";
+  }
 }
 
 void WiFi::OnConnected() {
@@ -2477,7 +2501,7 @@ void WiFi::ReportScanResultToUma(ScanState state, ScanMethod method) {
 }
 
 void WiFi::RequestStationInfo() {
-  if (!current_service_ || !current_service_->IsConnected()) {
+  if (!IsConnectedToCurrentService()) {
     LOG(ERROR) << "Not collecting station info because we are not connected.";
     return;
   }
@@ -2524,7 +2548,7 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message &nl80211_message) {
     return;
   }
 
-  if (!current_service_ || !current_service_->IsConnected()) {
+  if (!IsConnectedToCurrentService()) {
     LOG(ERROR) << "Not accepting station info because we are not connected.";
     return;
   }
@@ -2757,6 +2781,10 @@ bool WiFi::IsTrafficMonitorEnabled() const {
   return true;
 }
 
+void WiFi::RemoveSupplicantNetworks() {
+  supplicant_interface_proxy_->RemoveAllNetworks();
+}
+
 bool WiFi::ResolvePeerMacAddress(const string &input, string *output,
                                  Error *error) {
   if (!WiFiEndpoint::MakeHardwareAddressFromString(input).empty()) {
@@ -2803,6 +2831,30 @@ bool WiFi::ResolvePeerMacAddress(const string &input, string *output,
                     "Please try again.");
   }
   return false;
+}
+
+void WiFi::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig) {
+  Device::OnIPConfigUpdated(ipconfig);
+  SLOG(this, 2) << __func__ << ": " << "IPv4 DHCP lease obtained";
+  uint32_t time_to_next_lease_renewal;
+  bool have_dhcp_lease =
+      TimeToNextDHCPLeaseRenewal(&time_to_next_lease_renewal);
+  wake_on_wifi_->OnDHCPLeaseObtained(have_dhcp_lease,
+                                     time_to_next_lease_renewal);
+}
+
+void WiFi::OnIPv6ConfigUpdated() {
+  Device::OnIPv6ConfigUpdated();
+  SLOG(this, 2) << __func__ << ": " << "IPv6 configuration obtained";
+  uint32_t time_to_next_lease_renewal;
+  bool have_dhcp_lease =
+      TimeToNextDHCPLeaseRenewal(&time_to_next_lease_renewal);
+  wake_on_wifi_->OnDHCPLeaseObtained(have_dhcp_lease,
+                                     time_to_next_lease_renewal);
+}
+
+bool WiFi::IsConnectedToCurrentService() {
+  return (current_service_ && current_service_->IsConnected());
 }
 
 }  // namespace shill

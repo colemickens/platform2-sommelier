@@ -223,6 +223,7 @@ class Device : public base::RefCounted<Device> {
   std::string GetTechnologyString(Error *error);
 
   virtual const IPConfigRefPtr &ipconfig() const { return ipconfig_; }
+  virtual const IPConfigRefPtr &ip6config() const { return ip6config_; }
   void set_ipconfig(const IPConfigRefPtr &config) { ipconfig_ = config; }
 
   const std::string &FriendlyName() const;
@@ -255,10 +256,11 @@ class Device : public base::RefCounted<Device> {
   // will have Manager::kTerminationActionsTimeoutMilliseconds to
   // execute before the system enters the suspend state. |callback|
   // must be invoked after all synchronous and/or asynchronous actions
-  // this function performs complete.
-  //
-  // Code that needs to run on exit, as well as on suspend, should use
+  // this function performs complete. Code that needs to run on exit should use
   // Manager::AddTerminationAction, rather than OnBeforeSuspend.
+  //
+  // The default implementation invokes the |callback| immediately, since
+  // there is nothing to be done in the general case.
   virtual void OnBeforeSuspend(const ResultCallback &callback);
 
   // Resume event handler. Called by Manager as the system resumes.
@@ -273,6 +275,9 @@ class Device : public base::RefCounted<Device> {
   // Manager::kTerminationActionsTimeoutMilliseconds. |callback| must be invoked
   // after all synchronous and/or asynchronous actions this function performs
   // and/or posts complete.
+  //
+  // The default implementation invokes the |callback| immediately, since
+  // there is nothing to be done in the general case.
   virtual void OnDarkResume(const ResultCallback &callback);
 
   // Destroy the lease, if any, with this |name|.
@@ -304,6 +309,9 @@ class Device : public base::RefCounted<Device> {
   // Removes all wake-on-packet rules programmed into the NIC. |error| indicates
   // the result of the operation.
   virtual void RemoveAllWakeOnPacketConnections(Error *error);
+
+  // Initiate renewal of existing DHCP lease.
+  void RenewDHCPLease();
 
  protected:
   friend class base::RefCounted<Device>;
@@ -418,7 +426,10 @@ class Device : public base::RefCounted<Device> {
   void AssignIPConfig(const IPConfig::Properties &properties);
 
   // Callback invoked on successful IP configuration updates.
-  void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig);
+  virtual void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig);
+
+  // Called when IPv6 configuration changes.
+  virtual void OnIPv6ConfigUpdated();
 
   // Callback invoked on IP configuration failures.
   void OnIPConfigFailed(const IPConfigRefPtr &ipconfig);
@@ -558,6 +569,11 @@ class Device : public base::RefCounted<Device> {
   // Use for unit test.
   void set_traffic_monitor(TrafficMonitor *traffic_monitor);
 
+  // Calculates the time (in seconds) till a DHCP lease is due for renewal,
+  // and stores this value in |result|. Returns false is there is no upcoming
+  // DHCP lease renewal, true otherwise.
+  bool TimeToNextDHCPLeaseRenewal(uint32_t *result);
+
  private:
   friend class CellularCapabilityTest;
   friend class CellularTest;
@@ -666,9 +682,6 @@ class Device : public base::RefCounted<Device> {
   // Setup network connection with given IP configuration, and start portal
   // detection on that connection.
   void SetupConnection(const IPConfigRefPtr &ipconfig);
-
-  // Called when IPv6 configuration changes.
-  void OnIPv6ConfigUpdated();
 
   // |enabled_persistent_| is the value of the Powered property, as
   // read from the profile. If it is not found in the profile, it
