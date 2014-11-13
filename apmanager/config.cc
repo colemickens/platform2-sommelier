@@ -7,6 +7,8 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
+using chromeos::dbus_utils::AsyncEventSequencer;
+using chromeos::dbus_utils::ExportedObjectManager;
 using chromeos::ErrorPtr;
 using std::string;
 
@@ -51,10 +53,7 @@ const int Config::kHostapdDefaultFragmThreshold = 2346;
 // RTS threshold: disabled.
 const int Config::kHostapdDefaultRtsThreshold = 2347;
 
-Config::Config(
-    const string& service_path,
-    chromeos::dbus_utils::ExportedObjectManager* object_manager,
-    chromeos::dbus_utils::AsyncEventSequencer* sequencer)
+Config::Config(const string& service_path)
     : org::chromium::apmanager::ConfigAdaptor(this),
       dbus_path_(dbus::ObjectPath(
           base::StringPrintf("%s/config", service_path.c_str()))) {
@@ -69,11 +68,26 @@ Config::Config(
 
 Config::~Config() {}
 
+void Config::RegisterAsync(ExportedObjectManager* object_manager,
+                           AsyncEventSequencer* sequencer) {
+  CHECK(!dbus_object_) << "Already registered";
+  dbus_object_.reset(
+      new chromeos::dbus_utils::DBusObject(
+          object_manager,
+          object_manager ? object_manager->GetBus() : nullptr,
+          dbus_path_));
+  RegisterWithDBusObject(dbus_object_.get());
+  dbus_object_->RegisterAsync(
+      sequencer->GetHandler("Config.RegisterAsync() failed.", true));
+}
+
 bool Config::GenerateConfigFile(ErrorPtr* error, string* config_str) {
   // SSID.
   string ssid = GetSsid();
   if (ssid.empty()) {
-    SetError(__func__, "SSID not specified", error);
+    chromeos::Error::AddTo(
+        error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+        "SSID not specified");
     return false;
   }
   base::StringAppendF(
@@ -106,7 +120,7 @@ bool Config::GenerateConfigFile(ErrorPtr* error, string* config_str) {
   return true;
 }
 
-bool Config::AppendHwMode(chromeos::ErrorPtr* error, std::string* config_str) {
+bool Config::AppendHwMode(ErrorPtr* error, std::string* config_str) {
   string hw_mode = GetHwMode();
   string hostapd_hw_mode;
   if (hw_mode == kHwMode80211a) {
@@ -137,9 +151,9 @@ bool Config::AppendHwMode(chromeos::ErrorPtr* error, std::string* config_str) {
     // TODO(zqiu): Determine VHT Capabilities based on the interface PHY's
     // capababilites.
   } else {
-    SetError(__func__,
-             base::StringPrintf("Invalid hardware mode: %s", hw_mode.c_str()),
-             error);
+    chromeos::Error::AddToPrintf(
+        error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+        "Invalid hardware mode: %s", hw_mode.c_str());
     return false;
   }
 
@@ -148,7 +162,7 @@ bool Config::AppendHwMode(chromeos::ErrorPtr* error, std::string* config_str) {
   return true;
 }
 
-bool Config::AppendHostapdDefaults(chromeos::ErrorPtr* error,
+bool Config::AppendHostapdDefaults(ErrorPtr* error,
                                    std::string* config_str) {
   // Driver: NL80211.
   base::StringAppendF(
@@ -169,7 +183,7 @@ bool Config::AppendHostapdDefaults(chromeos::ErrorPtr* error,
   return true;
 }
 
-bool Config::AppendInterface(chromeos::ErrorPtr* error,
+bool Config::AppendInterface(ErrorPtr* error,
                              std::string* config_str) {
   string interface = GetInterfaceName();
   if (interface.empty()) {
@@ -182,7 +196,7 @@ bool Config::AppendInterface(chromeos::ErrorPtr* error,
   return true;
 }
 
-bool Config::AppendSecurityMode(chromeos::ErrorPtr* error,
+bool Config::AppendSecurityMode(ErrorPtr* error,
                                 std::string* config_str) {
   string security_mode = GetSecurityMode();
   if (security_mode == kSecurityModeNone) {
@@ -193,10 +207,9 @@ bool Config::AppendSecurityMode(chromeos::ErrorPtr* error,
   if (security_mode == kSecurityModeRSN) {
     string passphrase = GetPassphrase();
     if (passphrase.empty()) {
-      SetError(__func__,
-               base::StringPrintf("Passphrase not set for security mode: %s",
-                                  security_mode.c_str()),
-               error);
+      chromeos::Error::AddToPrintf(
+          error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+          "Passphrase not set for security mode: %s", security_mode.c_str());
       return false;
     }
 
@@ -216,20 +229,10 @@ bool Config::AppendSecurityMode(chromeos::ErrorPtr* error,
     return true;
   }
 
-  SetError(__func__,
-           base::StringPrintf("Invalid security mode: %s",
-                              security_mode.c_str()),
-           error);
-  return false;
-}
-
-// static.
-void Config::SetError(const string& method,
-                      const string& message,
-                      chromeos::ErrorPtr* error) {
   chromeos::Error::AddToPrintf(
-      error, chromeos::errors::dbus::kDomain, kConfigError,
-      "%s : %s", method.c_str(), message.c_str());
+      error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+      "Invalid security mode: %s", security_mode.c_str());
+  return false;
 }
 
 }  // namespace apmanager

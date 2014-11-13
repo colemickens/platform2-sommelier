@@ -28,9 +28,6 @@ int Daemon::OnInit() {
     return return_code;
   }
 
-  manager_.reset(new Manager());
-  // manager_->InitDBus(object_manager_.get());
-
   // Signal that we've acquired all resources.
   startup_callback_.Run();
   return EX_OK;
@@ -39,6 +36,12 @@ int Daemon::OnInit() {
 void Daemon::OnShutdown(int* return_code) {
   manager_.reset();
   chromeos::DBusServiceDaemon::OnShutdown(return_code);
+}
+
+void Daemon::RegisterDBusObjectsAsync(
+    chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
+  manager_.reset(new apmanager::Manager());
+  manager_->RegisterAsync(object_manager_.get(), sequencer);
 }
 
 }  // namespace apmanager

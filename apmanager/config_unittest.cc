@@ -63,17 +63,17 @@ const char kExpectedRsnConfigContent[] = "ssid=TestSsid\n"
 
 class ConfigTest : public testing::Test {
  public:
-  ConfigTest() : config_(kServicePath, nullptr, nullptr) {}
+  ConfigTest() : config_(kServicePath) {}
 
  protected:
   Config config_;
 };
 
-MATCHER_P(IsConfigErrorEndingWith, message, "") {
+MATCHER_P(IsConfigErrorStartingWith, message, "") {
   return arg != nullptr &&
       arg->GetDomain() == chromeos::errors::dbus::kDomain &&
       arg->GetCode() == kConfigError &&
-      EndsWith(arg->GetMessage(), message, false);
+      StartsWithASCII(arg->GetMessage(), message, false);
 }
 
 TEST_F(ConfigTest, NoSsid) {
@@ -84,7 +84,7 @@ TEST_F(ConfigTest, NoSsid) {
   std::string config_content;
   chromeos::ErrorPtr error;
   EXPECT_FALSE(config_.GenerateConfigFile(&error, &config_content));
-  EXPECT_THAT(error, IsConfigErrorEndingWith("SSID not specified"));
+  EXPECT_THAT(error, IsConfigErrorStartingWith("SSID not specified"));
 }
 
 TEST_F(ConfigTest, 80211gConfig) {
@@ -145,7 +145,7 @@ TEST_F(ConfigTest, RsnConfig) {
   std::string config_content;
   chromeos::ErrorPtr error;
   EXPECT_FALSE(config_.GenerateConfigFile(&error, &config_content));
-  EXPECT_THAT(error, IsConfigErrorEndingWith(
+  EXPECT_THAT(error, IsConfigErrorStartingWith(
       base::StringPrintf("Passphrase not set for security mode: %s",
                          kSecurityModeRSN)));
 

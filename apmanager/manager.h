@@ -5,18 +5,14 @@
 #ifndef APMANAGER_MANAGER_H_
 #define APMANAGER_MANAGER_H_
 
+#include <vector>
+
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 
 #include "apmanager/dbus_adaptors/org.chromium.apmanager.Manager.h"
 
-namespace chromeos {
-
-namespace dbus_utils {
-class ExportedObjectManager;
-}  // namespace dbus_utils
-
-}  // namespace chromeos
+#include "apmanager/service.h"
 
 namespace apmanager {
 
@@ -32,16 +28,30 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
       chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   // Implementation of ManagerInterface.
-  virtual bool CreateService(chromeos::ErrorPtr* error,
-                             dbus::ObjectPath* out_service);
+  // Handles calls to org.chromium.apmanager.Manager.CreateService().
+  // This is an asynchronous call, response is invoked when Service and Config
+  // dbus objects complete the DBus service registration.
+  virtual void CreateService(
+      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<dbus::ObjectPath>>
+          response);
+  // Handles calls to org.chromium.apmanager.Manager.RemoveService().
   virtual bool RemoveService(chromeos::ErrorPtr* error,
                              const dbus::ObjectPath& in_service);
 
  private:
   friend class ManagerTest;
 
-  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  // A callback that will be called when the Service/Config D-Bus
+  // objects/interfaces are exported successfully and ready to be used.
+  void ServiceRegistered(
+      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<dbus::ObjectPath>>
+          response,
+      scoped_ptr<Service> service,
+      bool success);
 
+  int service_identifier_;
+  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  std::vector<std::unique_ptr<Service>> services_;
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };
 

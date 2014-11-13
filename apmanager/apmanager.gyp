@@ -23,29 +23,15 @@
       'sources': [
         '<(generate_dbus_bindings_in_dir)/org.chromium.apmanager.Config.xml',
         '<(generate_dbus_bindings_in_dir)/org.chromium.apmanager.Manager.xml',
+        '<(generate_dbus_bindings_in_dir)/org.chromium.apmanager.Service.xml',
       ],
       'includes': ['../common-mk/generate-dbus-bindings.gypi'],
-    },
-    {
-      'target_name': 'apmanager-proxies',
-      'type': 'none',
-      'variables': {
-        'xml2cpp_type': 'proxy',
-        'xml2cpp_in_dir': 'dbus_bindings',
-        'xml2cpp_out_dir': 'include/apmanager/dbus_proxies',
-      },
-      'sources': [
-        '<(xml2cpp_in_dir)/org.chromium.apmanager.Manager.xml',
-        '<(xml2cpp_in_dir)/org.chromium.apmanager.Config.xml',
-      ],
-      'includes': ['../common-mk/xml2cpp.gypi'],
     },
     {
       'target_name': 'libapmanager',
       'type': 'static_library',
       'dependencies': [
         'apmanager-adaptors',
-        'apmanager-proxies',
       ],
       'variables': {
         'exported_deps': [
@@ -64,6 +50,7 @@
         'config.cc',
         'daemon.cc',
         'manager.cc',
+        'service.cc',
       ],
     },
     {
@@ -91,6 +78,9 @@
           'sources': [
             'config_unittest.cc',
             'manager_unittest.cc',
+            'mock_config.cc',
+            'mock_service.cc',
+            'service_unittest.cc',
             'testrunner.cc',
           ],
         },

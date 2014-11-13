@@ -19,10 +19,13 @@ class Config
     : public org::chromium::apmanager::ConfigAdaptor,
       public org::chromium::apmanager::ConfigInterface {
  public:
-  Config(const std::string& service_path,
-         chromeos::dbus_utils::ExportedObjectManager* object_manager,
-         chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+  explicit Config(const std::string& service_path);
   virtual ~Config();
+
+  // Register Config DBus object.
+  void RegisterAsync(
+      chromeos::dbus_utils::ExportedObjectManager* object_manager,
+      chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   // Generate a config file string for a hostapd instance. Raise appropriate
   // error when encounter invalid configuration. Return true if success,
@@ -89,12 +92,9 @@ class Config
   // Append security related configurations to the config file.
   bool AppendSecurityMode(chromeos::ErrorPtr* error, std::string* config_str);
 
-  static void SetError(const std::string& method,
-                       const std::string& message,
-                       chromeos::ErrorPtr* error);
-
   dbus::ObjectPath dbus_path_;
   std::string control_interface_;
+  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
 
   DISALLOW_COPY_AND_ASSIGN(Config);
 };

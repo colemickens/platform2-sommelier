@@ -10,7 +10,7 @@ namespace apmanager {
 
 class ManagerTest : public testing::Test {
  public:
-  ManagerTest() {}
+  ManagerTest() : manager_() {}
 
  protected:
   Manager manager_;
