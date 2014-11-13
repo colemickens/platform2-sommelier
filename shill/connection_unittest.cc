@@ -145,6 +145,10 @@ class ConnectionTest : public Test {
       return Connection::kNonDefaultMetricBase;
   }
 
+  void SetLocal(const IPAddress &local) {
+    connection_->local_ = local;
+  }
+
  protected:
   class DisconnectCallbackTarget {
    public:
@@ -510,7 +514,7 @@ TEST_F(ConnectionTest, RouteRequest) {
       kTestDeviceInterfaceIndex0));
   EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex0))
       .WillRepeatedly(Return(device));
-  EXPECT_CALL(*device.get(), DisableReversePathFilter()).Times(1);
+  EXPECT_CALL(*device.get(), SetLooseRouting(true)).Times(1);
   connection->RequestRouting();
   connection->RequestRouting();
 
@@ -518,7 +522,7 @@ TEST_F(ConnectionTest, RouteRequest) {
   connection->ReleaseRouting();
 
   // Another release will re-enable reverse-path filter.
-  EXPECT_CALL(*device.get(), EnableReversePathFilter());
+  EXPECT_CALL(*device.get(), SetLooseRouting(false));
   EXPECT_CALL(routing_table_, FlushCache());
   connection->ReleaseRouting();
 
@@ -898,6 +902,9 @@ TEST_F(ConnectionTest, OnRouteQueryResponse) {
   EXPECT_FALSE(binder->IsBound());
 
   // Check for graceful handling of a device with no connection.
+  ConnectionRefPtr device_connection;
+  EXPECT_CALL(*device, connection())
+      .WillRepeatedly(testing::ReturnRef(device_connection));
   EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex1))
       .WillOnce(Return(device));
   connection_->OnRouteQueryResponse(
@@ -912,7 +919,9 @@ TEST_F(ConnectionTest, OnRouteQueryResponse) {
   const string kInterfaceName(kTestDeviceName0);
   EXPECT_CALL(*mock_connection, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
-  device->connection_ = mock_connection;
+  device_connection = mock_connection.get();
+  EXPECT_CALL(*device, connection())
+      .WillRepeatedly(testing::ReturnRef(device_connection));
   EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex1))
       .WillOnce(Return(device));
 
@@ -930,7 +939,6 @@ TEST_F(ConnectionTest, OnRouteQueryResponse) {
   EXPECT_TRUE(binder->IsBound());
   EXPECT_EQ(mock_connection.get(), binder->connection().get());
 
-  device->connection_ = nullptr;
   AddDestructorExpectations();
   connection = nullptr;
 }
@@ -963,6 +971,13 @@ TEST_F(ConnectionTest, GetCarrierConnection) {
 
   AddDestructorExpectations();
   connection1 = nullptr;
+}
+
+TEST_F(ConnectionTest, GetSubnetName) {
+  IPAddress local("1.2.3.4");
+  local.set_prefix(24);
+  SetLocal(local);
+  EXPECT_EQ("1.2.3.0/24", connection_->GetSubnetName());
 }
 
 }  // namespace shill

@@ -1432,6 +1432,7 @@ void Manager::SortServicesTask() {
                               DefaultTechnology(&error));
   NotifyDefaultServiceChanged(default_service);
   RefreshConnectionState();
+  DetectMultiHomedDevices();
 
   AutoConnect();
 }
@@ -2160,6 +2161,30 @@ DeviceRefPtr Manager::GetDeviceConnectedToService(ServiceRefPtr service) {
     }
   }
   return nullptr;
+}
+
+void Manager::DetectMultiHomedDevices() {
+  map<string, vector<DeviceRefPtr>> subnet_buckets;
+  for (const auto &device : devices_) {
+    const auto &connection = device->connection();
+    if (!connection) {
+      device->SetIsMultiHomed(false);
+    } else {
+      subnet_buckets[connection->GetSubnetName()].push_back(device);
+    }
+  }
+
+  for (const auto &subnet_bucket : subnet_buckets) {
+    const auto &device_list = subnet_bucket.second;
+    if (device_list.size() > 1) {
+      for (const auto &device : device_list) {
+        device->SetIsMultiHomed(true);
+      }
+    } else {
+      DCHECK_EQ(1U, device_list.size());
+      device_list.back()->SetIsMultiHomed(false);
+    }
+  }
 }
 
 }  // namespace shill

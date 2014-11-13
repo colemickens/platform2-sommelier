@@ -39,6 +39,7 @@ class MockConnection : public Connection {
   MOCK_METHOD1(UpdateDNSServers,
                void(const std::vector<std::string> &dns_servers));
   MOCK_METHOD0(IsIPv6, bool());
+  MOCK_CONST_METHOD0(GetSubnetName, std::string());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockConnection);

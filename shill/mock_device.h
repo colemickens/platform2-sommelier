@@ -42,8 +42,8 @@ class MockDevice : public Device {
   MOCK_METHOD0(DisableIPv6, void());
   MOCK_METHOD0(EnableIPv6, void());
   MOCK_METHOD0(EnableIPv6Privacy, void());
-  MOCK_METHOD0(DisableReversePathFilter, void());
-  MOCK_METHOD0(EnableReversePathFilter, void());
+  MOCK_METHOD1(SetLooseRouting, void(bool));
+  MOCK_METHOD1(SetIsMultiHomed, void(bool is_multi_homed));
   MOCK_METHOD0(RestartPortalDetection, bool());
   MOCK_METHOD0(RequestPortalDetection, bool());
   MOCK_METHOD0(GetReceiveByteCount, uint64_t());
@@ -58,6 +58,7 @@ class MockDevice : public Device {
   MOCK_CONST_METHOD0(GetGeolocationObjects, std::vector<GeolocationInfo>());
   MOCK_METHOD0(OnIPv6DnsServerAddressesChanged, void());
   MOCK_METHOD0(StartConnectivityTest, bool());
+  MOCK_CONST_METHOD0(connection, const ConnectionRefPtr &());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDevice);

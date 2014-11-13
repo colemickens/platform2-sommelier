@@ -361,6 +361,49 @@ TEST_F(DeviceTest, EnableIPv6NotAllowed) {
   device_->EnableIPv6();
 }
 
+TEST_F(DeviceTest, MultiHomed) {
+  // Device should have multi-homing disabled by default.
+  EXPECT_CALL(*device_, SetIPFlag(_, _, _)).Times(0);
+  device_->SetIsMultiHomed(false);
+  Mock::VerifyAndClearExpectations(device_);
+
+  // Disabled -> enabled should change flags on the device.
+  EXPECT_CALL(*device_, SetIPFlag(IPAddress::kFamilyIPv4, StrEq("arp_announce"),
+                                  StrEq("2"))).WillOnce(Return(true));
+  EXPECT_CALL(*device_, SetIPFlag(IPAddress::kFamilyIPv4, StrEq("arp_ignore"),
+                                  StrEq("1"))).WillOnce(Return(true));
+  EXPECT_CALL(*device_, SetIPFlag(IPAddress::kFamilyIPv4, StrEq("rp_filter"),
+                                  StrEq("2"))).WillOnce(Return(true));
+  device_->SetIsMultiHomed(true);
+  Mock::VerifyAndClearExpectations(device_);
+
+  // Enabled -> enabled should be a no-op.
+  EXPECT_CALL(*device_, SetIPFlag(_, _, _)).Times(0);
+  device_->SetIsMultiHomed(true);
+
+  // Disabling or enabling reverse-path filtering should also be a no-op
+  // (since it is disabled due to multi-homing).
+  device_->SetLooseRouting(false);
+  device_->SetLooseRouting(true);
+  Mock::VerifyAndClearExpectations(device_);
+
+  // Enabled -> disabled should reset the flags back to the default, but
+  // because non-default routing is enabled, rp_filter will be left
+  // in loose mode.
+  EXPECT_CALL(*device_, SetIPFlag(IPAddress::kFamilyIPv4, StrEq("arp_announce"),
+                                  StrEq("0"))).WillOnce(Return(true));
+  EXPECT_CALL(*device_, SetIPFlag(IPAddress::kFamilyIPv4, StrEq("arp_ignore"),
+                                  StrEq("0"))).WillOnce(Return(true));
+  device_->SetIsMultiHomed(false);
+  Mock::VerifyAndClearExpectations(device_);
+
+  // Re-enable reverse-path filtering.
+  EXPECT_CALL(*device_, SetIPFlag(IPAddress::kFamilyIPv4, StrEq("rp_filter"),
+                                  StrEq("1"))).WillOnce(Return(true));
+  device_->SetLooseRouting(false);
+  Mock::VerifyAndClearExpectations(device_);
+}
+
 TEST_F(DeviceTest, Load) {
   NiceMock<MockStore> storage;
   const string id = device_->GetStorageIdentifier();

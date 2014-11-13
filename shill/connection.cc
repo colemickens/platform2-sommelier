@@ -9,6 +9,8 @@
 
 #include <set>
 
+#include <base/strings/stringprintf.h>
+
 #include "shill/device_info.h"
 #include "shill/logging.h"
 #include "shill/net/rtnl_handler.h"
@@ -264,7 +266,7 @@ void Connection::RequestRouting() {
       LOG(ERROR) << "Device is NULL!";
       return;
     }
-    device->DisableReversePathFilter();
+    device->SetLooseRouting(true);
   }
 }
 
@@ -277,7 +279,7 @@ void Connection::ReleaseRouting() {
       LOG(ERROR) << "Device is NULL!";
       return;
     }
-    device->EnableReversePathFilter();
+    device->SetLooseRouting(false);
 
     // Clear any cached routes that might have accumulated while reverse-path
     // filtering was disabled.
@@ -306,6 +308,12 @@ bool Connection::RequestHostRoute(const IPAddress &address) {
   }
 
   return true;
+}
+
+string Connection::GetSubnetName() const {
+  return base::StringPrintf("%s/%d",
+                            local().GetNetworkPart().ToString().c_str(),
+                            local().prefix());
 }
 
 // static

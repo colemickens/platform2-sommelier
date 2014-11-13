@@ -4447,4 +4447,32 @@ TEST_F(ManagerTest, IsWifiIdle) {
   EXPECT_FALSE(manager()->IsWifiIdle());
 }
 
+TEST_F(ManagerTest, DetectMultiHomedDevices) {
+  vector<scoped_refptr<MockConnection>> mock_connections;
+  vector<ConnectionRefPtr> device_connections;
+  for (const auto &device : mock_devices_) {
+    manager()->RegisterDevice(device);
+    mock_connections.emplace_back(
+        new NiceMock<MockConnection>(device_info_.get()));
+    device_connections.emplace_back(mock_connections.back());
+  }
+  EXPECT_CALL(*mock_connections[1], GetSubnetName()).WillOnce(Return("1"));
+  EXPECT_CALL(*mock_connections[2], GetSubnetName()).WillOnce(Return("2"));
+  EXPECT_CALL(*mock_connections[3], GetSubnetName()).WillOnce(Return("1"));
+
+  // Do not assign a connection to mock_devices_[0].
+  EXPECT_CALL(*mock_devices_[1], connection())
+      .WillRepeatedly(ReturnRef(device_connections[1]));
+  EXPECT_CALL(*mock_devices_[2], connection())
+      .WillRepeatedly(ReturnRef(device_connections[2]));
+  EXPECT_CALL(*mock_devices_[3], connection())
+      .WillRepeatedly(ReturnRef(device_connections[3]));
+
+  EXPECT_CALL(*mock_devices_[0], SetIsMultiHomed(false));
+  EXPECT_CALL(*mock_devices_[1], SetIsMultiHomed(true));
+  EXPECT_CALL(*mock_devices_[2], SetIsMultiHomed(false));
+  EXPECT_CALL(*mock_devices_[3], SetIsMultiHomed(true));
+  manager()->DetectMultiHomedDevices();
+}
+
 }  // namespace shill

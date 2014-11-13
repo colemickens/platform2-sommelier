@@ -17,15 +17,15 @@ class EventDispatcher;
 
 using ::testing::_;
 using ::testing::DefaultValue;
-using ::testing::Return;
+using ::testing::ReturnRef;
 using std::string;
 
 MockDevice::MockDevice(ControlInterface *control_interface,
                        EventDispatcher *dispatcher,
                        Metrics *metrics,
                        Manager *manager,
-                       const std::string &link_name,
-                       const std::string &address,
+                       const string &link_name,
+                       const string &address,
                        int interface_index)
     : Device(control_interface,
              dispatcher,
@@ -36,6 +36,8 @@ MockDevice::MockDevice(ControlInterface *control_interface,
              interface_index,
              Technology::kUnknown) {
   DefaultValue<Technology::Identifier>::Set(Technology::kUnknown);
+  ON_CALL(*this, connection())
+      .WillByDefault(testing::ReturnRef(Device::connection()));
 }
 
 MockDevice::~MockDevice() {}

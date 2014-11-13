@@ -140,14 +140,6 @@ class Device : public base::RefCounted<Device> {
   virtual void EnableIPv6();
   virtual void EnableIPv6Privacy();
 
-  // Request the removal of reverse-path filtering for this interface.
-  // This will allow packets destined for this interface to be accepted,
-  // even if this is not the default route for such a packet to arrive.
-  virtual void DisableReversePathFilter();
-
-  // Request reverse-path filtering for this interface.
-  virtual void EnableReversePathFilter();
-
   // Returns true if the selected service on the device (if any) is connected.
   // Returns false if there is no selected service, or if the selected service
   // is not connected.
@@ -209,10 +201,22 @@ class Device : public base::RefCounted<Device> {
   // Geolocation.
   virtual std::vector<GeolocationInfo> GetGeolocationObjects() const;
 
+  // Enable or disable this interface to receive packets even if it is not
+  // the default connection.  This is useful in limited situations such as
+  // during portal detection.
+  virtual void SetLooseRouting(bool is_loose_routing);
+
+  // Enable or disable same-net multi-home support for this interface.  When
+  // enabled, ARP filtering is enabled in order to avoid the "ARP Flux"
+  // effect where peers may end up with inaccurate IP address mappings due to
+  // the default Linux ARP transmit / reply behavior.  See
+  // http://linux-ip.net/html/ether-arp.html for more details on this effect.
+  virtual void SetIsMultiHomed(bool is_multi_homed);
+
   const std::string &address() const { return hardware_address_; }
   const std::string &link_name() const { return link_name_; }
   int interface_index() const { return interface_index_; }
-  const ConnectionRefPtr &connection() const { return connection_; }
+  virtual const ConnectionRefPtr &connection() const { return connection_; }
   bool enabled() const { return enabled_; }
   bool enabled_persistent() const { return enabled_persistent_; }
   virtual Technology::Identifier technology() const { return technology_; }
@@ -308,7 +312,6 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(CellularTest, EnableTrafficMonitor);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
   FRIEND_TEST(CellularTest, UseNoArpGateway);
-  FRIEND_TEST(ConnectionTest, OnRouteQueryResponse);
   FRIEND_TEST(DeviceHealthCheckerTest, HealthCheckerPersistsAcrossDeviceReset);
   FRIEND_TEST(DeviceHealthCheckerTest, RequestConnectionHealthCheck);
   FRIEND_TEST(DeviceHealthCheckerTest, SetupHealthChecker);
@@ -577,6 +580,12 @@ class Device : public base::RefCounted<Device> {
   static const char kIPFlagReversePathFilter[];
   static const char kIPFlagReversePathFilterEnabled[];
   static const char kIPFlagReversePathFilterLooseMode[];
+  static const char kIPFlagArpAnnounce[];
+  static const char kIPFlagArpAnnounceDefault[];
+  static const char kIPFlagArpAnnounceBestLocal[];
+  static const char kIPFlagArpIgnore[];
+  static const char kIPFlagArpIgnoreDefault[];
+  static const char kIPFlagArpIgnoreLocalOnly[];
   static const char kStoragePowered[];
   static const char kStorageReceiveByteCount[];
   static const char kStorageTransmitByteCount[];
@@ -604,6 +613,24 @@ class Device : public base::RefCounted<Device> {
   virtual bool SetIPFlag(IPAddress::Family family,
                          const std::string &flag,
                          const std::string &value);
+
+  // Request the removal of reverse-path filtering for this interface.
+  // This will allow packets destined for this interface to be accepted,
+  // even if this is not the default route for such a packet to arrive.
+  void DisableReversePathFilter();
+
+  // Request reverse-path filtering for this interface.
+  void EnableReversePathFilter();
+
+  // Disable ARP filtering on the device.  The interface will exhibit the
+  // default Linux behavior -- incoming ARP requests are responded to by all
+  // interfaces.  Outgoing ARP requests can contain any local address.
+  void DisableArpFiltering();
+
+  // Enable ARP filtering on the device.  Incoming ARP requests are responded
+  // to only by the interface(s) owning the address.  Outgoing ARP requests
+  // will contain the best local address for the target.
+  void EnableArpFiltering();
 
   std::vector<std::string> AvailableIPConfigs(Error *error);
   std::string GetRpcConnectionIdentifier();
@@ -725,6 +752,13 @@ class Device : public base::RefCounted<Device> {
 
   std::unique_ptr<ConnectionTester> connection_tester_;
   base::Callback<void()> connection_tester_callback_;
+
+  // Track whether packets from non-optimal routes will be accepted by this
+  // device.  This is referred to as "loose mode" (see RFC3704).
+  bool is_loose_routing_;
+
+  // Track the current same-net multi-home state.
+  bool is_multi_homed_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };

@@ -79,6 +79,18 @@ const char Device::kIPFlagReversePathFilterEnabled[] = "1";
 // static
 const char Device::kIPFlagReversePathFilterLooseMode[] = "2";
 // static
+const char Device::kIPFlagArpAnnounce[] = "arp_announce";
+// static
+const char Device::kIPFlagArpAnnounceDefault[] = "0";
+// static
+const char Device::kIPFlagArpAnnounceBestLocal[] = "2";
+// static
+const char Device::kIPFlagArpIgnore[] = "arp_ignore";
+// static
+const char Device::kIPFlagArpIgnoreDefault[] = "0";
+// static
+const char Device::kIPFlagArpIgnoreLocalOnly[] = "1";
+// static
 const char Device::kStoragePowered[] = "Powered";
 // static
 const char Device::kStorageReceiveByteCount[] = "ReceiveByteCount";
@@ -130,7 +142,9 @@ Device::Device(ControlInterface *control_interface,
       time_(Time::GetInstance()),
       last_link_monitor_failed_time_(0),
       connection_tester_callback_(Bind(&Device::ConnectionTesterCallback,
-                                       weak_ptr_factory_.GetWeakPtr())) {
+                                       weak_ptr_factory_.GetWeakPtr())),
+      is_loose_routing_(false),
+      is_multi_homed_(false) {
   store_.RegisterConstString(kAddressProperty, &hardware_address_);
 
   // kBgscanMethodProperty: Registered in WiFi
@@ -185,6 +199,9 @@ Device::Device(ControlInterface *control_interface,
     HelpRegisterConstDerivedUint64(kTransmitByteCountProperty,
                                    &Device::GetTransmitByteCountProperty);
   }
+
+  DisableArpFiltering();
+  EnableReversePathFilter();
 
   LOG(INFO) << "Device created: " << link_name_
             << " index " << interface_index_;
@@ -283,6 +300,22 @@ void Device::EnableIPv6Privacy() {
             kIPFlagUseTempAddrUsedAndDefault);
 }
 
+void Device::SetLooseRouting(bool is_loose_routing) {
+  if (is_loose_routing == is_loose_routing_) {
+    return;
+  }
+  is_loose_routing_ = is_loose_routing;
+  if (is_multi_homed_) {
+    // Nothing to do: loose routing is already enabled, and should remain so.
+    return;
+  }
+  if (is_loose_routing) {
+    DisableReversePathFilter();
+  } else {
+    EnableReversePathFilter();
+  }
+}
+
 void Device::DisableReversePathFilter() {
   // TODO(pstew): Current kernel doesn't offer reverse-path filtering flag
   // for IPv6.  crbug.com/207193
@@ -293,6 +326,39 @@ void Device::DisableReversePathFilter() {
 void Device::EnableReversePathFilter() {
   SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagReversePathFilter,
             kIPFlagReversePathFilterEnabled);
+}
+
+void Device::SetIsMultiHomed(bool is_multi_homed) {
+  if (is_multi_homed == is_multi_homed_) {
+    return;
+  }
+  LOG(INFO) << "Device " << FriendlyName() << " multi-home state is now "
+            << is_multi_homed;
+  is_multi_homed_ = is_multi_homed;
+  if (is_multi_homed) {
+    EnableArpFiltering();
+    if (!is_loose_routing_) {
+      DisableReversePathFilter();
+    }
+  } else {
+    DisableArpFiltering();
+    if (!is_loose_routing_) {
+      EnableReversePathFilter();
+    }
+  }
+}
+
+void Device::DisableArpFiltering() {
+  SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpAnnounce,
+            kIPFlagArpAnnounceDefault);
+  SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpIgnore, kIPFlagArpIgnoreDefault);
+}
+
+void Device::EnableArpFiltering() {
+  SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpAnnounce,
+            kIPFlagArpAnnounceBestLocal);
+  SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpIgnore,
+            kIPFlagArpIgnoreLocalOnly);
 }
 
 bool Device::IsConnected() const {

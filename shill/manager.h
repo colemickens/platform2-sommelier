@@ -426,6 +426,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, ConnectToBestServices);
   FRIEND_TEST(ManagerTest, CreateConnectivityReport);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
+  FRIEND_TEST(ManagerTest, DetectMultiHomedDevices);
   FRIEND_TEST(ManagerTest, DevicePresenceStatusCheck);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, DisableTechnology);
@@ -485,6 +486,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void EmitDeviceProperties();
   bool SetDisableWiFiVHT(const bool &disable_wifi_vht, Error *error);
   bool GetDisableWiFiVHT(Error *error);
+
+  // For every device instance that is sharing the same connectivity with
+  // another device, enable the multi-home flag.
+  void DetectMultiHomedDevices();
 
   // Unload a service while iterating through |services_|.  Returns true if
   // service was erased (which means the caller loop should not increment
