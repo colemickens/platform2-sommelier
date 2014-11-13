@@ -491,8 +491,8 @@ void ChromiumCommandBuilder::AddUiFlags() {
   }
 
   // Ozone platform configuration.
-  if ((IsBoard("link_freon") || IsBoard("peppy_freon")) &&
-       UseFlagIsSet("ozone_platform_gbm")) {
+  if ((IsBoard("link_freon") || IsBoard("peppy_freon") ||
+       IsBoard("zako_freon")) && UseFlagIsSet("ozone_platform_gbm")) {
     // TODO(spang): Use freon/chromeos platform, not GBM example platform.
     AddArg("--ozone-platform=gbm");
     AddArg("--ozone-use-surfaceless");
