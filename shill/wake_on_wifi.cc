@@ -60,7 +60,10 @@ WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
 #if defined(DISABLE_WAKE_ON_WIFI)
       wake_on_wifi_features_enabled_(kWakeOnWiFiFeaturesEnabledNone),
 #else
-      wake_on_wifi_features_enabled_(kWakeOnWiFiFeaturesEnabledSSID),
+      // Wake on WiFi features temporarily disabled at run-time for boards that
+      // support wake on WiFi.
+      // TODO(samueltan): re-enable once pending issues have been resolved.
+      wake_on_wifi_features_enabled_(kWakeOnWiFiFeaturesEnabledNone),
 #endif  // DISABLE_WAKE_ON_WIFI
       weak_ptr_factory_(this) {
 }
