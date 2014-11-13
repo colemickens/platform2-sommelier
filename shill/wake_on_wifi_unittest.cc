@@ -1263,23 +1263,6 @@ TEST_F(WakeOnWiFiTest, AddRemoveWakeOnPacketConnection) {
   EXPECT_STREQ(e.message().c_str(),
                "Wake on IP address patterns not supported by this WiFi device");
 
-  // Add and remove operations will fail if wake on WiFi features have been
-  // disabled.
-  DisableWakeOnWiFiFeatures();
-  GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kIPAddress);
-  AddWakeOnPacketConnection(ip_string1, &e);
-  EXPECT_EQ(e.type(), Error::kOperationFailed);
-  EXPECT_STREQ(e.message().c_str(),
-               "Wake on Packet feature disabled, so do nothing");
-  RemoveAllWakeOnPacketConnections(&e);
-  EXPECT_EQ(e.type(), Error::kOperationFailed);
-  EXPECT_STREQ(e.message().c_str(),
-               "Wake on Packet feature disabled, so do nothing");
-  RemoveWakeOnPacketConnection(ip_string2, &e);
-  EXPECT_EQ(e.type(), Error::kOperationFailed);
-  EXPECT_STREQ(e.message().c_str(),
-               "Wake on Packet feature disabled, so do nothing");
-
   // Add operation will fail if pattern matching is supported but the max number
   // of IP address patterns have already been registered.
   EnableWakeOnWiFiFeaturesPacketSSID();
@@ -1290,7 +1273,26 @@ TEST_F(WakeOnWiFiTest, AddRemoveWakeOnPacketConnection) {
   EXPECT_STREQ(e.message().c_str(),
                "Max number of IP address patterns already registered");
 
+  // Add and remove operations will still execute even when the wake on packet
+  // feature has been disabled.
   SetWakeOnWiFiMaxPatterns(50);
+  DisableWakeOnWiFiFeatures();
+  GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kIPAddress);
+  AddWakeOnPacketConnection(ip_string1, &e);
+  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 1);
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr1));
+  AddWakeOnPacketConnection(ip_string2, &e);
+  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 2);
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Contains(ip_addr2));
+  RemoveWakeOnPacketConnection(ip_string1, &e);
+  EXPECT_EQ(GetWakeOnPacketConnections()->Count(), 1);
+  RemoveAllWakeOnPacketConnections(&e);
+  EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
+
+  // Normal functioning of add/remove operations when wake on WiFi features
+  // are enabled, the NIC supports pattern matching, and the max number
+  // of patterns have not been registered yet.
+  EnableWakeOnWiFiFeaturesPacketSSID();
   GetWakeOnPacketConnections()->Clear();
   EXPECT_TRUE(GetWakeOnPacketConnections()->Empty());
   AddWakeOnPacketConnection(ip_string1, &e);

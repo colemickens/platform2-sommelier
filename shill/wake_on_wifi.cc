@@ -521,11 +521,6 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(const Nl80211Message &msg,
 void WakeOnWiFi::AddWakeOnPacketConnection(const string &ip_endpoint,
                                            Error *error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
-  if (!WakeOnPacketEnabled()) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
-                          kWakeOnPacketDisabled);
-    return;
-  }
   if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
       wake_on_wifi_triggers_supported_.end()) {
     Error::PopulateAndLog(error, Error::kNotSupported,
@@ -553,11 +548,6 @@ void WakeOnWiFi::AddWakeOnPacketConnection(const string &ip_endpoint,
 void WakeOnWiFi::RemoveWakeOnPacketConnection(const string &ip_endpoint,
                                               Error *error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
-  if (!WakeOnPacketEnabled()) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
-                          kWakeOnPacketDisabled);
-    return;
-  }
   if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
       wake_on_wifi_triggers_supported_.end()) {
     Error::PopulateAndLog(error, Error::kNotSupported,
@@ -583,11 +573,6 @@ void WakeOnWiFi::RemoveWakeOnPacketConnection(const string &ip_endpoint,
 
 void WakeOnWiFi::RemoveAllWakeOnPacketConnections(Error *error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
-  if (!WakeOnPacketEnabled()) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
-                          kWakeOnPacketDisabled);
-    return;
-  }
   if (wake_on_wifi_triggers_supported_.find(kIPAddress) ==
       wake_on_wifi_triggers_supported_.end()) {
     Error::PopulateAndLog(error, Error::kNotSupported,

@@ -675,7 +675,6 @@ Properties	string Address [readonly]
 			Possible errors: [service].Error.InvalidArguments (argument parsing error)
 					 [service].Error.NotFound (there is no such connection)
 					 [service].Error.NotSupported (wake-on-packet not supported)
-					 [service].Error.OperationFailed (other failures)
 
 		void RemoveWakeOnPacketConnection(string endpoint)
 
@@ -687,12 +686,11 @@ Properties	string Address [readonly]
 			Possible errors: [service].Error.InvalidArgument (argument parsing error)
 					 [service].Error.NotFound (no such request is active)
 					 [service].Error.NotSupported (wake-on-packet not supported)
-					 [service].Error.OperationFailed (other failures)
 
 		void RemoveAllWakeOnPacketConnections()
 
 			(WiFi only) Removes all wake-on-packet rules programmed into the NIC.
 			This is useful to ensure the NIC is in a known state.
 
-			Possible errors: [service].Error.OperationFailed (failed execution)
+			Possible errors:
 					 [service].Error.NotSupported (wake-on-packet not supported)
