@@ -4450,6 +4450,20 @@ TEST_F(ManagerTest, IsWifiIdle) {
 TEST_F(ManagerTest, DetectMultiHomedDevices) {
   vector<scoped_refptr<MockConnection>> mock_connections;
   vector<ConnectionRefPtr> device_connections;
+  mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
+                                                   dispatcher(),
+                                                   metrics(),
+                                                   manager(),
+                                                   "null4",
+                                                   "addr4",
+                                                   0));
+  mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
+                                                   dispatcher(),
+                                                   metrics(),
+                                                   manager(),
+                                                   "null5",
+                                                   "addr5",
+                                                   0));
   for (const auto &device : mock_devices_) {
     manager()->RegisterDevice(device);
     mock_connections.emplace_back(
@@ -4459,6 +4473,8 @@ TEST_F(ManagerTest, DetectMultiHomedDevices) {
   EXPECT_CALL(*mock_connections[1], GetSubnetName()).WillOnce(Return("1"));
   EXPECT_CALL(*mock_connections[2], GetSubnetName()).WillOnce(Return("2"));
   EXPECT_CALL(*mock_connections[3], GetSubnetName()).WillOnce(Return("1"));
+  EXPECT_CALL(*mock_connections[4], GetSubnetName()).WillOnce(Return(""));
+  EXPECT_CALL(*mock_connections[5], GetSubnetName()).WillOnce(Return(""));
 
   // Do not assign a connection to mock_devices_[0].
   EXPECT_CALL(*mock_devices_[1], connection())
@@ -4467,11 +4483,17 @@ TEST_F(ManagerTest, DetectMultiHomedDevices) {
       .WillRepeatedly(ReturnRef(device_connections[2]));
   EXPECT_CALL(*mock_devices_[3], connection())
       .WillRepeatedly(ReturnRef(device_connections[3]));
+  EXPECT_CALL(*mock_devices_[4], connection())
+      .WillRepeatedly(ReturnRef(device_connections[4]));
+  EXPECT_CALL(*mock_devices_[5], connection())
+      .WillRepeatedly(ReturnRef(device_connections[5]));
 
   EXPECT_CALL(*mock_devices_[0], SetIsMultiHomed(false));
   EXPECT_CALL(*mock_devices_[1], SetIsMultiHomed(true));
   EXPECT_CALL(*mock_devices_[2], SetIsMultiHomed(false));
   EXPECT_CALL(*mock_devices_[3], SetIsMultiHomed(true));
+  EXPECT_CALL(*mock_devices_[4], SetIsMultiHomed(false));
+  EXPECT_CALL(*mock_devices_[5], SetIsMultiHomed(false));
   manager()->DetectMultiHomedDevices();
 }
 

@@ -2167,10 +2167,14 @@ void Manager::DetectMultiHomedDevices() {
   map<string, vector<DeviceRefPtr>> subnet_buckets;
   for (const auto &device : devices_) {
     const auto &connection = device->connection();
-    if (!connection) {
+    string subnet_name;
+    if (connection) {
+      subnet_name = connection->GetSubnetName();
+    }
+    if (subnet_name.empty()) {
       device->SetIsMultiHomed(false);
     } else {
-      subnet_buckets[connection->GetSubnetName()].push_back(device);
+      subnet_buckets[subnet_name].push_back(device);
     }
   }
 

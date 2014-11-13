@@ -311,6 +311,9 @@ bool Connection::RequestHostRoute(const IPAddress &address) {
 }
 
 string Connection::GetSubnetName() const {
+  if (!local().IsValid()) {
+    return "";
+  }
   return base::StringPrintf("%s/%d",
                             local().GetNetworkPart().ToString().c_str(),
                             local().prefix());

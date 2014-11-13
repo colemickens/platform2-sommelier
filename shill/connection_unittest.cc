@@ -974,6 +974,7 @@ TEST_F(ConnectionTest, GetCarrierConnection) {
 }
 
 TEST_F(ConnectionTest, GetSubnetName) {
+  EXPECT_EQ("", connection_->GetSubnetName());
   IPAddress local("1.2.3.4");
   local.set_prefix(24);
   SetLocal(local);
