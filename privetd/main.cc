@@ -10,6 +10,7 @@
 #include <base/command_line.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/daemons/dbus_daemon.h>
+#include <chromeos/flag_helper.h>
 #include <chromeos/http/http_request.h>
 #include <chromeos/mime_utils.h>
 #include <chromeos/syslog_logging.h>
@@ -25,26 +26,15 @@
 
 namespace {
 
-const char kHelpFlag[] = "help";
-const char kPort[] = "port";
-const char kAllowEmptyAuth[] = "allow_empty_auth";
-const char kLogToStdErrFlag[] = "log_to_stderr";
-const char kHelpMessage[] =
-    "\n"
-    "This is the Privet protocol handler daemon.\n"
-    "Usage: privetd [--v=<logging level>]\n"
-    "               [--vmodule=<see base/logging.h>]\n"
-    "               [--port=<tcp_port>]\n"
-    "               [--allow_empty_auth]\n"
-    "               [--log_to_stderr]";
-
 using libwebserv::Request;
 using libwebserv::Response;
 
 class Daemon : public chromeos::DBusDaemon {
  public:
-  Daemon(uint16_t port_number, bool allow_empty_auth)
-      : port_number_(port_number), allow_empty_auth_(allow_empty_auth) {}
+  Daemon(uint16_t port_number, bool allow_empty_auth, bool enable_ping)
+      : port_number_(port_number),
+        allow_empty_auth_(allow_empty_auth),
+        enable_ping_(enable_ping) {}
 
   int OnInit() override {
     int ret = DBusDaemon::OnInit();
@@ -70,6 +60,12 @@ class Daemon : public chromeos::DBusDaemon {
     web_server_.AddHandlerCallback(
         "/privet/", chromeos::http::request_type::kPost,
         base::Bind(&Daemon::PrivetRequestHandler, base::Unretained(this)));
+
+    if (enable_ping_) {
+      web_server_.AddHandlerCallback(
+          "/privet/ping", chromeos::http::request_type::kGet,
+          base::Bind(&Daemon::HelloWorldHandler, base::Unretained(this)));
+    }
 
     return EX_OK;
   }
@@ -104,8 +100,16 @@ class Daemon : public chromeos::DBusDaemon {
     response->ReplyWithJson(chromeos::http::status_code::Ok, &output);
   }
 
+  void HelloWorldHandler(scoped_ptr<Request> request,
+                         scoped_ptr<Response> response) {
+    response->ReplyWithText(chromeos::http::status_code::Ok, "Hello, world!",
+                            chromeos::mime::text::kPlain);
+  }
+
+
   uint16_t port_number_;
   bool allow_empty_auth_;
+  bool enable_ping_;
   std::unique_ptr<privetd::CloudDelegate> cloud_;
   std::unique_ptr<privetd::DeviceDelegate> device_;
   std::unique_ptr<privetd::SecurityDelegate> security_;
@@ -119,28 +123,23 @@ class Daemon : public chromeos::DBusDaemon {
 }  // anonymous namespace
 
 int main(int argc, char* argv[]) {
-  CommandLine::Init(argc, argv);
-  CommandLine* cl = CommandLine::ForCurrentProcess();
+  DEFINE_bool(allow_empty_auth, false, "allow unauthenticated requests");
+  DEFINE_bool(enable_ping, false, "enable test HTTP handler at /privet/ping");
+  DEFINE_int32(port, 8080, "HTTP port to listen for requests on");
+  DEFINE_bool(log_to_stderr, false, "log trace messages to stderr as well");
+
+  chromeos::FlagHelper::Init(argc, argv, "Privet protocol handler daemon");
+
   int flags = chromeos::kLogToSyslog;
-  if (cl->HasSwitch(kLogToStdErrFlag))
+  if (FLAGS_log_to_stderr)
     flags |= chromeos::kLogToStderr;
   chromeos::InitLog(flags | chromeos::kLogHeader);
 
-  if (cl->HasSwitch(kHelpFlag)) {
-    LOG(INFO) << kHelpMessage;
+  if (FLAGS_port < 1 || FLAGS_port > 0xFFFF) {
+    LOG(ERROR) << "Invalid port number specified: '" << FLAGS_port << "'.";
     return EX_USAGE;
   }
 
-  uint16_t port_number = 8080;  // Default port to use.
-  if (cl->HasSwitch(kPort)) {
-    std::string port_str = cl->GetSwitchValueASCII(kPort);
-    int value = 0;
-    if (!base::StringToInt(port_str, &value) || value < 1 || value > 0xFFFF) {
-      LOG(ERROR) << "Invalid port number specified: '" << port_str << "'.";
-      return EX_USAGE;
-    }
-    port_number = value;
-  }
-  Daemon daemon(port_number, cl->HasSwitch(kAllowEmptyAuth));
+  Daemon daemon(FLAGS_port, FLAGS_allow_empty_auth, FLAGS_enable_ping);
   return daemon.Run();
 }

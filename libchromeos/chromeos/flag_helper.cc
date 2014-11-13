@@ -10,6 +10,7 @@
 #include <string>
 #include <sysexits.h>
 
+#include <base/base_switches.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
@@ -207,6 +208,10 @@ void FlagHelper::UpdateFlagValues() {
 
   for (const auto& pair : switch_map) {
     const std::string& key = pair.first;
+    // Make sure we allow the standard logging switches (--v and --vmodule).
+    if (key == switches::kV || key == switches::kVModule)
+      continue;
+
     const std::string& value = pair.second;
 
     auto df_it = defined_flags_.find(key);
