@@ -326,14 +326,8 @@ TEST(PerfReaderTest, ReadsTraceMetadata) {
 TEST(PerfReaderTest, ReadsTracingMetadataEvent) {
   std::stringstream input;
 
-  // header
-
-  const perf_pipe_file_header header = {
-    .magic = kPerfMagic,
-    .size = 16,
-  };
-  input.write(reinterpret_cast<const char*>(&header), sizeof(header));
-  ASSERT_EQ(input.tellp(), header.size);
+  // pipe header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
 
   // data
 
@@ -365,14 +359,8 @@ TEST(PerfReaderTest, ReadsTracingMetadataEvent) {
 TEST(PerfReaderTest, CorrectlyReadsPerfEventAttrSize) {
   std::stringstream input;
 
-  // header
-
-  const perf_pipe_file_header header = {
-    .magic = kPerfMagic,
-    .size = 16,
-  };
-  input.write(reinterpret_cast<const char*>(&header), sizeof(header));
-  ASSERT_EQ(input.tellp(), header.size);
+  // pipe header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
 
   // data
 

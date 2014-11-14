@@ -35,6 +35,13 @@ class ExamplePerfDataFileHeader : public StreamWriteable {
   perf_file_header header_;
 };
 
+// Produces the pipe-mode file header.
+class ExamplePipedPerfDataFileHeader : public StreamWriteable {
+ public:
+  ExamplePipedPerfDataFileHeader() {}
+  void WriteTo(std::ostream* out) const override;
+};
+
 // Produces a struct perf_file_attr with a perf_event_attr describing a
 // tracepoint event.
 class ExamplePerfFileAttr_Tracepoint : public StreamWriteable {

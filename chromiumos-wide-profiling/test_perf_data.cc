@@ -34,15 +34,24 @@ void ExamplePerfDataFileHeader::WriteTo(std::ostream* out) const {
   CHECK_EQ(static_cast<u64>(out->tellp()), header_.attrs.offset);
 }
 
+void ExamplePipedPerfDataFileHeader::WriteTo(std::ostream* out) const {
+  const perf_pipe_file_header header = {
+    .magic = kPerfMagic,
+    .size = 16,
+  };
+  out->write(reinterpret_cast<const char*>(&header), sizeof(header));
+  CHECK_EQ(static_cast<u64>(out->tellp()), header.size);
+}
+
 void ExamplePerfFileAttr_Tracepoint::WriteTo(std::ostream* out) const {
   // Due to the unnamed union fields (eg, sample_period), this structure can't
   // be initialized with designated initializers.
   perf_event_attr attr = {};
   // See kernel src: tools/perf/util/evsel.c perf_evsel__newtp()
-  attr.type = PERF_TYPE_TRACEPOINT,
-  attr.size = sizeof(perf_event_attr),
-  attr.config = tracepoint_event_id_,
-  attr.sample_period = 1,
+  attr.type = PERF_TYPE_TRACEPOINT;
+  attr.size = sizeof(perf_event_attr);
+  attr.config = tracepoint_event_id_;
+  attr.sample_period = 1;
   attr.sample_type = (PERF_SAMPLE_IP |
                       PERF_SAMPLE_TID |
                       PERF_SAMPLE_TIME |
@@ -61,7 +70,7 @@ void ExamplePerfSampleEvent_Tracepoint::WriteTo(std::ostream* out) const {
   const sample_event event = {
     .header = {
       .type = PERF_RECORD_SAMPLE,
-      .misc = 0x0002,
+      .misc = PERF_RECORD_MISC_USER,
       .size = 0x0078,
     }
   };
