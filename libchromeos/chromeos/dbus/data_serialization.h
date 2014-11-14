@@ -32,15 +32,12 @@
 //   STRING      |        s        |  std::string
 //   OBJECT_PATH |        o        |  dbus::ObjectPath
 //   ARRAY       |        aT       |  std::vector<T>
-//   STRUCT      |       (UV)      |  std::pair<U,V> (*)
+//   STRUCT      |       (UV)      |  std::pair<U,V>
+//               |     (UVW...)    |  std::tuple<U,V,W,...>
 //   DICT        |       a{KV}     |  std::map<K,V>
 //   VARIANT     |        v        |  chromeos::Any
 //   UNIX_FD     |        h        |  dbus::FileDescriptor
 //   SIGNATURE   |        g        |  (unsupported)
-//
-// (*) - Currently, only 2 element STRUCTs are supported as std::pair. In the
-// future we can add a generic std::tuple<...> support for arbitrary number
-// of struct members.
 //
 // Additional overloads/specialization can be provided for custom types.
 // In order to do that, provide overloads of AppendValueToWriter() and
@@ -56,6 +53,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -627,6 +625,104 @@ template<typename U, typename V>
 struct DBusType<std::pair<U, V>>
     : public details::DBusPairType<IsTypeSupported<U, V>::value, U, V> {
 };
+
+// std::tuple = D-Bus STRUCT with arbitrary number of members. ----------------
+namespace details {
+
+// TupleIterator<I, N, T...> is a helper class to iterate over all the elements
+// of a tuple<T...> from index I to N. TupleIterator<>::Read and ::Write methods
+// are called for each element of the tuple and iteration continues until I == N
+// in which case the specialization for I==N below stops the recursion.
+template<size_t I, size_t N, typename... T>
+struct TupleIterator {
+  // Tuple is just a convenience alias to a tuple containing elements of type T.
+  using Tuple = std::tuple<T...>;
+  // ValueType is the type of the element at index I.
+  using ValueType = typename std::tuple_element<I, Tuple>::type;
+
+  // Write the tuple element at index I to D-Bus message.
+  static void Write(dbus::MessageWriter* writer, const Tuple& value) {
+    // Use DBusType<T>::Write() instead of AppendValueToWriter() to delay
+    // binding to AppendValueToWriter() to the point of instantiation of this
+    // template.
+    DBusType<ValueType>::Write(writer, std::get<I>(value));
+    TupleIterator<I + 1, N, T...>::Write(writer, value);
+  }
+
+  // Read the tuple element at index I from D-Bus message.
+  static bool Read(dbus::MessageReader* reader, Tuple* value) {
+    // Use DBusType<T>::Read() instead of PopValueFromReader() to delay
+    // binding to PopValueFromReader() to the point of instantiation of this
+    // template.
+    return DBusType<ValueType>::Read(reader, &std::get<I>(*value)) &&
+           TupleIterator<I + 1, N, T...>::Read(reader, value);
+  }
+};
+
+// Specialization to end the iteration when the index reaches the last element.
+template<size_t N, typename... T>
+struct TupleIterator<N, N, T...> {
+  using Tuple = std::tuple<T...>;
+  static void Write(dbus::MessageWriter* writer, const Tuple& value) {}
+  static bool Read(dbus::MessageReader* reader, Tuple* value) {
+    return true;
+  }
+};
+
+}  // namespace details
+
+template<typename... T>
+typename std::enable_if<IsTypeSupported<T...>::value>::type
+AppendValueToWriter(dbus::MessageWriter* writer,
+                    const std::tuple<T...>& value) {
+  dbus::MessageWriter struct_writer(nullptr);
+  writer->OpenStruct(&struct_writer);
+  details::TupleIterator<0, sizeof...(T), T...>::Write(&struct_writer, value);
+  writer->CloseContainer(&struct_writer);
+}
+
+template<typename... T>
+typename std::enable_if<IsTypeSupported<T...>::value, bool>::type
+PopValueFromReader(dbus::MessageReader* reader, std::tuple<T...>* value) {
+  dbus::MessageReader variant_reader(nullptr);
+  dbus::MessageReader struct_reader(nullptr);
+  if (!details::DescendIntoVariantIfPresent(&reader, &variant_reader) ||
+      !reader->PopStruct(&struct_reader))
+    return false;
+  return details::TupleIterator<0, sizeof...(T), T...>::Read(&struct_reader,
+                                                             value);
+}
+
+namespace details {
+
+// DBusTupleType<> is a helper base class for DBusType<tuple<T...>> that
+// provides GetSignature/Write/Read methods for types that are supported by
+// D-Bus and not having those methods for types that are not supported by D-Bus.
+template<bool inner_type_supported, typename... T>
+struct DBusTupleType {
+  // Returns "(T...)", where "T..." are the signature strings for types T...
+  inline static std::string GetSignature() {
+    return GetStructDBusSignature<T...>();
+  }
+  inline static void Write(dbus::MessageWriter* writer,
+                           const std::tuple<T...>& value) {
+    AppendValueToWriter(writer, value);
+  }
+  inline static bool Read(dbus::MessageReader* reader,
+                          std::tuple<T...>* value) {
+    return PopValueFromReader(reader, value);
+  }
+};
+
+// Some/all of types T... are not supported by D-Bus.
+template<typename... T>
+struct DBusTupleType<false, T...> : public Unsupported {};
+
+}  // namespace details
+
+template<typename... T>
+struct DBusType<std::tuple<T...>>
+    : public details::DBusTupleType<IsTypeSupported<T...>::value, T...> {};
 
 // std::map = D-Bus ARRAY of DICT_ENTRY. --------------------------------------
 template<typename KEY, typename VALUE, typename PRED, typename ALLOC>

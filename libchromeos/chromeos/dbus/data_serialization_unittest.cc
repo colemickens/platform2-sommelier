@@ -46,6 +46,7 @@ TEST(DBusUtils, Supported_ComplexTypes) {
   EXPECT_TRUE((IsTypeSupported<std::pair<int16_t, double>>::value));
   EXPECT_TRUE((IsTypeSupported<std::map<uint16_t,
                                         std::vector<int64_t>>>::value));
+  EXPECT_TRUE((IsTypeSupported<std::tuple<bool, double, int32_t>>::value));
 }
 
 TEST(DBusUtils, Unsupported_ComplexTypes) {
@@ -54,6 +55,7 @@ TEST(DBusUtils, Unsupported_ComplexTypes) {
   EXPECT_FALSE((IsTypeSupported<std::pair<char, int32_t>>::value));
   EXPECT_FALSE((IsTypeSupported<std::map<int16_t, float>>::value));
   EXPECT_FALSE((IsTypeSupported<std::map<char, int32_t>>::value));
+  EXPECT_FALSE((IsTypeSupported<std::tuple<bool, char, int32_t>>::value));
 }
 
 TEST(DBusUtils, Supported_TypeSet) {
@@ -117,6 +119,14 @@ TEST(DBusUtils, Signatures_Pairs) {
   EXPECT_EQ("(sb)", (GetDBusSignature<std::pair<std::string, bool>>()));
   EXPECT_EQ("(sv)", (GetDBusSignature<std::pair<std::string, Any>>()));
   EXPECT_EQ("(id)", (GetDBusSignature<std::pair<int, double>>()));
+}
+
+TEST(DBusUtils, Signatures_Tuples) {
+  EXPECT_EQ("(i)", (GetDBusSignature<std::tuple<int>>()));
+  EXPECT_EQ("(sv)", (GetDBusSignature<std::tuple<std::string, Any>>()));
+  EXPECT_EQ("(id(si))",
+            (GetDBusSignature<std::tuple<int, double,
+                                         std::tuple<std::string, int>>>()));
 }
 
 // Test that a byte can be properly written and read. We only have this
@@ -564,6 +574,29 @@ TEST(DBusUtils, Pair) {
 
   std::pair<std::string, int> struct1_out;
   std::pair<int, std::pair<int, int>> struct2_out;
+
+  MessageReader reader(message.get());
+  EXPECT_TRUE(PopValueFromReader(&reader, &struct1_out));
+  EXPECT_TRUE(PopValueFromReader(&reader, &struct2_out));
+  EXPECT_FALSE(reader.HasMoreData());
+  EXPECT_EQ(struct1, struct1_out);
+  EXPECT_EQ(struct2, struct2_out);
+}
+
+TEST(DBusUtils, Tuple) {
+  std::unique_ptr<Response> message(Response::CreateEmpty().release());
+  MessageWriter writer(message.get());
+  std::tuple<std::string, int> struct1{"value2", 3};
+  AppendValueToWriter(&writer, struct1);
+  std::tuple<int, std::string, std::vector<std::pair<int, int>>> struct2{
+    1, "a", {{2, 3}}
+  };
+  AppendValueToWriter(&writer, struct2);
+
+  EXPECT_EQ("(si)(isa(ii))", message->GetSignature());
+
+  std::tuple<std::string, int> struct1_out;
+  std::tuple<int, std::string, std::vector<std::pair<int, int>>> struct2_out;
 
   MessageReader reader(message.get());
   EXPECT_TRUE(PopValueFromReader(&reader, &struct1_out));
