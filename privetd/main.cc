@@ -56,10 +56,7 @@ class Daemon : public chromeos::DBusDaemon {
     device_->AddType("camera");
 
     web_server_.AddHandlerCallback(
-        "/privet/", chromeos::http::request_type::kGet,
-        base::Bind(&Daemon::PrivetRequestHandler, base::Unretained(this)));
-    web_server_.AddHandlerCallback(
-        "/privet/", chromeos::http::request_type::kPost,
+        "/privet/", "",
         base::Bind(&Daemon::PrivetRequestHandler, base::Unretained(this)));
 
     if (enable_ping_) {
@@ -87,18 +84,19 @@ class Daemon : public chromeos::DBusDaemon {
     else if (allow_empty_auth_)
       auth_header = "Privet anonymous";
     base::DictionaryValue input;
-    if (!privet_handler_->HandleRequest(
-            request->GetPath(), auth_header, input,
-            base::Bind(&Daemon::PrivetResponseHandler, base::Unretained(this),
-                       base::Passed(&response)))) {
-      response->ReplyWithErrorNotFound();
-    }
+    privet_handler_->HandleRequest(
+        request->GetPath(), auth_header, input,
+        base::Bind(&Daemon::PrivetResponseHandler, base::Unretained(this),
+                   base::Passed(&response)));
   }
 
   void PrivetResponseHandler(scoped_ptr<Response> response,
-                             const base::DictionaryValue& output,
-                             bool success) {
-    response->ReplyWithJson(chromeos::http::status_code::Ok, &output);
+                             int status,
+                             const base::DictionaryValue& output) {
+    if (status == chromeos::http::status_code::NotFound)
+      response->ReplyWithErrorNotFound();
+    else
+      response->ReplyWithJson(status, &output);
   }
 
   void HelloWorldHandler(scoped_ptr<Request> request,

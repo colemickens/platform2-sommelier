@@ -191,19 +191,19 @@ class PrivetHandlerTest : public testing::Test {
     output_.Clear();
     base::DictionaryValue dictionary;
     LoadTestJson(json_input, &dictionary);
-    EXPECT_TRUE(
-        handler_->HandleRequest(api, auth_header_, dictionary,
-                                base::Bind(&PrivetHandlerTest::HandlerCallback,
-                                           base::Unretained(this))));
+    handler_->HandleRequest(api, auth_header_, dictionary,
+                            base::Bind(&PrivetHandlerTest::HandlerCallback,
+                                       base::Unretained(this)));
     base::RunLoop().RunUntilIdle();
     return output_;
   }
 
-  bool HandleUnknownRequest(const std::string& api) {
+  void HandleUnknownRequest(const std::string& api) {
     output_.Clear();
     base::DictionaryValue dictionary;
-    return handler_->HandleRequest(api, auth_header_, dictionary,
-                                   PrivetHandler::RequestCallback());
+    handler_->HandleRequest(api, auth_header_, dictionary,
+                            base::Bind(&PrivetHandlerTest::HandlerNoFound));
+    base::RunLoop().RunUntilIdle();
   }
 
   void SetNoWifiAndGcd() {
@@ -217,9 +217,13 @@ class PrivetHandlerTest : public testing::Test {
   std::string auth_header_;
 
  private:
-  void HandlerCallback(const base::DictionaryValue& output, bool success) {
-    EXPECT_NE(output.HasKey("reason"), success);
+  void HandlerCallback(int status, const base::DictionaryValue& output) {
+    EXPECT_NE(output.HasKey("reason"), status == 200);
     output_.MergeDictionary(&output);
+  }
+
+  static void HandlerNoFound(int status, const base::DictionaryValue&) {
+    EXPECT_EQ(status, 404);
   }
 
   base::MessageLoop message_loop_;
@@ -228,7 +232,7 @@ class PrivetHandlerTest : public testing::Test {
 };
 
 TEST_F(PrivetHandlerTest, UnknownApi) {
-  EXPECT_FALSE(HandleUnknownRequest("/privet/foo"));
+  HandleUnknownRequest("/privet/foo");
 }
 
 TEST_F(PrivetHandlerTest, MissingAuth) {

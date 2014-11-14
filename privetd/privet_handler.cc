@@ -11,6 +11,7 @@
 
 #include <base/bind.h>
 #include <base/values.h>
+#include <chromeos/http/http_request.h>
 #include <chromeos/strings/string_utils.h>
 
 #include "privetd/cloud_delegate.h"
@@ -239,16 +240,19 @@ void SetState(const T& state, base::DictionaryValue* parent) {
               CreateError(state.error, state.error_message).release());
 }
 
-bool ReturnErrorWithMessage(Error error,
+void ReturnErrorWithMessage(Error error,
                             const std::string& message,
                             const PrivetHandler::RequestCallback& callback) {
   std::unique_ptr<base::DictionaryValue> output = CreateError(error, message);
-  callback.Run(*output, false);
-  return true;
+  callback.Run(chromeos::http::status_code::BadRequest, *output);
 }
 
-bool ReturnError(Error error, const PrivetHandler::RequestCallback& callback) {
-  return ReturnErrorWithMessage(error, std::string(), callback);
+void ReturnError(Error error, const PrivetHandler::RequestCallback& callback) {
+  ReturnErrorWithMessage(error, std::string(), callback);
+}
+
+void ReturnNotFound(const PrivetHandler::RequestCallback& callback) {
+  callback.Run(chromeos::http::status_code::NotFound, base::DictionaryValue());
 }
 
 }  // namespace
@@ -275,13 +279,13 @@ PrivetHandler::PrivetHandler(CloudDelegate* cloud,
 PrivetHandler::~PrivetHandler() {
 }
 
-bool PrivetHandler::HandleRequest(const std::string& api,
+void PrivetHandler::HandleRequest(const std::string& api,
                                   const std::string& auth_header,
                                   const base::DictionaryValue& input,
                                   const RequestCallback& callback) {
   auto handler = handlers_.find(api);
   if (handler == handlers_.end())
-    return false;
+    return ReturnNotFound(callback);
   if (auth_header.empty())
     return ReturnError(Error::kMissingAuthorization, callback);
   std::string token = GetAuthTokenFromAuthHeader(auth_header);
@@ -301,10 +305,10 @@ bool PrivetHandler::HandleRequest(const std::string& api,
     return ReturnError(Error::kInvalidAuthorization, callback);
   if (handler->second.first > scope)
     return ReturnError(Error::kInvalidAuthorizationScope, callback);
-  return handler->second.second.Run(input, callback);
+  handler->second.second.Run(input, callback);
 }
 
-bool PrivetHandler::HandleInfo(const base::DictionaryValue&,
+void PrivetHandler::HandleInfo(const base::DictionaryValue&,
                                const RequestCallback& callback) {
   base::DictionaryValue output;
   output.SetString(kInfoVersionKey, kInfoVersionValue);
@@ -338,11 +342,10 @@ bool PrivetHandler::HandleInfo(const base::DictionaryValue&,
     apis->AppendString(key_value.first);
   output.Set(kInfoApiKey, apis.release());
 
-  callback.Run(output, true);
-  return true;
+  callback.Run(chromeos::http::status_code::Ok, output);
 }
 
-bool PrivetHandler::HandleAuth(const base::DictionaryValue& input,
+void PrivetHandler::HandleAuth(const base::DictionaryValue& input,
                                const RequestCallback& callback) {
   std::string auth_code_type;
   input.GetString(kAuthModeKey, &auth_code_type);
@@ -379,11 +382,10 @@ bool PrivetHandler::HandleAuth(const base::DictionaryValue& input,
   output.SetString(kAuthTokenTypeKey, kAuthorizationHeaderPrefix);
   output.SetInteger(kAuthExpiresInKey, kAccesssTokenExpirationSeconds);
   output.SetString(kAuthScopeKey, EnumToString(requested_auth_scope));
-  callback.Run(output, true);
-  return true;
+  callback.Run(chromeos::http::status_code::Ok, output);
 }
 
-bool PrivetHandler::HandleSetupStart(const base::DictionaryValue& input,
+void PrivetHandler::HandleSetupStart(const base::DictionaryValue& input,
                                      const RequestCallback& callback) {
   std::string param;
   if (input.GetString(kNameKey, &param))
@@ -427,7 +429,7 @@ bool PrivetHandler::HandleSetupStart(const base::DictionaryValue& input,
   return HandleSetupStatus(input, callback);
 }
 
-bool PrivetHandler::HandleSetupStatus(const base::DictionaryValue& input,
+void PrivetHandler::HandleSetupStatus(const base::DictionaryValue& input,
                                       const RequestCallback& callback) {
   base::DictionaryValue output;
 
@@ -453,8 +455,7 @@ bool PrivetHandler::HandleSetupStatus(const base::DictionaryValue& input,
     }
   }
 
-  callback.Run(output, true);
-  return true;
+  callback.Run(chromeos::http::status_code::Ok, output);
 }
 
 std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateEndpointsSection()

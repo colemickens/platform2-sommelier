@@ -31,11 +31,11 @@ enum class AuthScope;
 class PrivetHandler {
  public:
   // Callback to handle requests asynchronously.
-  // |success| is true if request handled successfully.
+  // |status| is HTTP status code.
   // |output| is result returned in HTTP response. Contains result of
   // successfully request of information about error.
   using RequestCallback =
-      base::Callback<void(const base::DictionaryValue& output, bool success)>;
+      base::Callback<void(int status, const base::DictionaryValue& output)>;
 
   PrivetHandler(CloudDelegate* cloud,
                 DeviceDelegate* device,
@@ -47,26 +47,24 @@ class PrivetHandler {
   // |api| is the path from the HTTP request, e.g /privet/info.
   // |auth_header| is the Authentication header from HTTP request.
   // |input| is the the POST data from HTTP request.
-  // |callback| is result callback which is called iff method returned true.
-  // If API is not available method returns false and |callback| will no be
-  // called. If true was returned, |callback| will be called exactly once during
-  // or after |HandleRequest| call.
-  bool HandleRequest(const std::string& api,
+  // |callback| will be called exactly once during or after |HandleRequest|
+  // call.
+  void HandleRequest(const std::string& api,
                      const std::string& auth_header,
                      const base::DictionaryValue& input,
                      const RequestCallback& callback);
 
  private:
-  using ApiHandler = base::Callback<bool(const base::DictionaryValue&,
+  using ApiHandler = base::Callback<void(const base::DictionaryValue&,
                                          const RequestCallback&)>;
 
-  bool HandleInfo(const base::DictionaryValue&,
+  void HandleInfo(const base::DictionaryValue&,
                   const RequestCallback& callback);
-  bool HandleAuth(const base::DictionaryValue& input,
+  void HandleAuth(const base::DictionaryValue& input,
                   const RequestCallback& callback);
-  bool HandleSetupStart(const base::DictionaryValue& input,
+  void HandleSetupStart(const base::DictionaryValue& input,
                         const RequestCallback& callback);
-  bool HandleSetupStatus(const base::DictionaryValue& input,
+  void HandleSetupStatus(const base::DictionaryValue& input,
                          const RequestCallback& callback);
 
   std::unique_ptr<base::DictionaryValue> CreateEndpointsSection() const;
