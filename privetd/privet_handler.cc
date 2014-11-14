@@ -84,7 +84,7 @@ const char kErrorMessageKey[] = "message";
 
 const char kSetupStartSsidKey[] = "ssid";
 const char kSetupStartPassKey[] = "passphrase";
-const char kSetupStartTicketIdKey[] = "ticketID";
+const char kSetupStartTicketIdKey[] = "ticketId";
 const char kSetupStartUserKey[] = "user";
 
 const int kAccesssTokenExpirationSeconds = 3600;

@@ -547,7 +547,7 @@ TEST_F(PrivetHandlerSetupTest, InvalidParams) {
 
   const char kInputRegistration[] = R"({
     'gcd': {
-      'ticketID': ''
+      'ticketId': ''
     }
   })";
   EXPECT_PRED2(IsEqualJson,
@@ -593,7 +593,7 @@ TEST_F(PrivetHandlerSetupTest, GcdSetupUnavailable) {
 TEST_F(PrivetHandlerSetupTest, GcdSetup) {
   const char kInput[] = R"({
     'gcd': {
-      'ticketID': 'testTicket',
+      'ticketId': 'testTicket',
       'user': 'testUser'
     }
   })";
