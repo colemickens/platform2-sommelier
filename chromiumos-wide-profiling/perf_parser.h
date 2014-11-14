@@ -57,8 +57,8 @@ struct ParsedEvent {
     return string();
   }
 
-  void set_command(const string& command) {
-    command_ = &command;
+  void set_command(const string* command) {
+    command_ = command;
   }
 
   // A struct that contains a DSO + offset pair.
