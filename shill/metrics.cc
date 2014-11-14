@@ -176,6 +176,9 @@ const char Metrics::kMetricDarkResumeActionResult[] =
 const int Metrics::kMetricDarkResumeActionTimeMillisecondsMax = 10000;
 const int Metrics::kMetricDarkResumeActionTimeMillisecondsMin = 1;
 
+const char Metrics::kMetricWakeOnWiFiFeaturesEnabledState[] =
+    "Network.Shill.WakeOnWiFiFeaturesEnabledState";
+
 // static
 const char Metrics::kMetricServiceFixupEntriesSuffix[] = "ServiceFixupEntries";
 
@@ -733,6 +736,12 @@ void Metrics::NotifySignalAtDisconnect(const Service &service,
 
 void Metrics::NotifySuspendDone() {
   time_resume_to_ready_timer_->Start();
+}
+
+void Metrics::NotifyWakeOnWiFiFeaturesEnabledState(
+    WakeOnWiFiFeaturesEnabledState state) {
+  SendEnumToUMA(kMetricWakeOnWiFiFeaturesEnabledState, state,
+                kWakeOnWiFiFeaturesEnabledStateMax);
 }
 
 void Metrics::NotifyTerminationActionsStarted() {

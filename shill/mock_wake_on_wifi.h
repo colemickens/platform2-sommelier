@@ -16,7 +16,7 @@ namespace shill {
 class MockWakeOnWiFi : public WakeOnWiFi {
  public:
   MockWakeOnWiFi(NetlinkManager *netlink_manager, EventDispatcher *dispatcher,
-                 Manager *manager);
+                 Metrics *metrics);
   ~MockWakeOnWiFi() override;
 
   MOCK_METHOD0(OnAfterResume, void());

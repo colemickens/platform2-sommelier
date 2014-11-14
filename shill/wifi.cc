@@ -150,7 +150,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       scan_state_(kScanIdle),
       scan_method_(kScanMethodNone),
       receive_byte_count_at_connect_(0),
-      wake_on_wifi_(new WakeOnWiFi(netlink_manager_, dispatcher, manager)) {
+      wake_on_wifi_(new WakeOnWiFi(netlink_manager_, dispatcher, metrics)) {
   PropertyStore *store = this->mutable_store();
   store->RegisterDerivedString(
       kBgscanMethodProperty,
@@ -339,6 +339,7 @@ void WiFi::Start(Error *error,
   // Connect to WPA supplicant if it's already present. If not, we'll connect to
   // it when it appears.
   ConnectToSupplicant();
+  wake_on_wifi_->StartMetricsTimer();
 }
 
 void WiFi::Stop(Error *error, const EnabledStateChangedCallback &/*callback*/) {

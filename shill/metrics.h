@@ -394,6 +394,14 @@ class Metrics {
     kNetworkServiceErrorMax
   };
 
+  enum WakeOnWiFiFeaturesEnabledState {
+    kWakeOnWiFiFeaturesEnabledStateNone = 0,
+    kWakeOnWiFiFeaturesEnabledStatePacket = 1,
+    kWakeOnWiFiFeaturesEnabledStateSSID = 2,
+    kWakeOnWiFiFeaturesEnabledStatePacketSSID = 3,
+    kWakeOnWiFiFeaturesEnabledStateMax
+  };
+
   static const char kMetricDisconnectSuffix[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -543,6 +551,9 @@ class Metrics {
   static const char kMetricDarkResumeActionResult[];
   static const int kMetricDarkResumeActionTimeMillisecondsMax;
   static const int kMetricDarkResumeActionTimeMillisecondsMin;
+
+  // Shill wake on WiFi feature state statistics.
+  static const char kMetricWakeOnWiFiFeaturesEnabledState[];
 
   // WiFiService Entry Fixup.
   static const char kMetricServiceFixupEntriesSuffix[];
@@ -719,6 +730,11 @@ class Metrics {
 
   // Notifies this object of the end of a suspend attempt.
   void NotifySuspendDone();
+
+  // Notifies this object of the current wake on WiFi features enabled
+  // represented by the WakeOnWiFiFeaturesEnabledState |state|.
+  virtual void NotifyWakeOnWiFiFeaturesEnabledState(
+      WakeOnWiFiFeaturesEnabledState state);
 
   // Notifies this object that termination actions started executing.
   void NotifyTerminationActionsStarted();

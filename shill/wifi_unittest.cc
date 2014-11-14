@@ -379,7 +379,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
   void InstallMockWakeOnWiFi() {
     wake_on_wifi_ = new MockWakeOnWiFi(&netlink_manager_, event_dispatcher_,
-                                         &manager_);
+                                         &metrics_);
     wifi_->wake_on_wifi_.reset(wake_on_wifi_);
   }
 
@@ -2967,6 +2967,8 @@ void WiFiTimerTest::ExpectInitialScanSequence() {
 }
 
 TEST_F(WiFiTimerTest, FastRescan) {
+  // This is to cover calls to PostDelayedTask by WakeOnWiFi::StartMetricsTimer.
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _)).Times(AnyNumber());
   // This PostTask is a result of the call to Scan(nullptr), and is meant to
   // post a task to call Scan() on the wpa_supplicant proxy immediately.
   EXPECT_CALL(mock_dispatcher_, PostTask(_));

@@ -31,7 +31,7 @@ class ByteString;
 class Error;
 class EventDispatcher;
 class GetWakeOnPacketConnMessage;
-class Manager;
+class Metrics;
 class Nl80211Message;
 class PropertyStore;
 class SetWakeOnPacketConnMessage;
@@ -40,11 +40,15 @@ class WiFi;
 class WakeOnWiFi {
  public:
   WakeOnWiFi(NetlinkManager *netlink_manager, EventDispatcher *dispatcher,
-             Manager *manager);
+             Metrics *metrics);
   virtual ~WakeOnWiFi();
 
   // Registers |store| with properties related to wake on WiFi.
   void InitPropertyStore(PropertyStore *store);
+
+  // Starts |metrics_timer_| so that wake on WiFi related metrics are
+  // periodically collected.
+  void StartMetricsTimer();
 
   // Types of triggers that can cause the NIC to wake the WiFi device.
   enum WakeOnWiFiTrigger { kIPAddress, kDisconnect };
@@ -96,6 +100,7 @@ class WakeOnWiFi {
   static const uint32_t kDefaultWiphyIndex;
   static const int kVerifyWakeOnWiFiSettingsDelaySeconds;
   static const int kMaxSetWakeOnPacketRetries;
+  static const int kMetricsReportingFrequencySeconds;
 
   std::string GetWakeOnWiFiFeaturesEnabled(Error *error);
   bool SetWakeOnWiFiFeaturesEnabled(const std::string &enabled, Error *error);
@@ -200,16 +205,21 @@ class WakeOnWiFi {
   bool WakeOnSSIDEnabled();
   bool WakeOnWiFiFeaturesDisabled();
 
+  // Called by metrics_timer_ to reports metrics.
+  void ReportMetrics();
+
   // Pointers to objects owned by the WiFi object that created this object.
   EventDispatcher *dispatcher_;
   NetlinkManager *netlink_manager_;
-  Manager *manager_;
+  Metrics *metrics_;
   // Executes after the NIC's wake-on-packet settings are configured via
   // NL80211 messages to verify that the new configuration has taken effect.
   // Calls RequestWakeOnPacketSettings.
   base::CancelableClosure verify_wake_on_packet_settings_callback_;
   // Callback to be invoked after all suspend actions finish executing.
   ResultCallback suspend_actions_done_callback_;
+  // Callback to report wake on WiFi related metrics.
+  base::CancelableClosure report_metrics_callback_;
   // Number of retry attempts to program the NIC's wake-on-packet settings.
   int num_set_wake_on_packet_retries_;
   // Keeps track of triggers that the NIC will be programmed to wake from
@@ -227,6 +237,7 @@ class WakeOnWiFi {
   bool wiphy_index_received_;
   // Describes the wake on WiFi features that are currently enabled.
   std::string wake_on_wifi_features_enabled_;
+
   base::WeakPtrFactory<WakeOnWiFi> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(WakeOnWiFi);

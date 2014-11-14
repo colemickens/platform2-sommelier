@@ -15,12 +15,13 @@
 #include <vector>
 
 #include <base/cancelable_callback.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ip_address_store.h"
 #include "shill/logging.h"
-#include "shill/manager.h"
+#include "shill/metrics.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/property_accessor.h"
@@ -47,12 +48,15 @@ const char WakeOnWiFi::kWakeOnWiFiDisabled[] = "Wake on WiFi is disabled";
 const uint32_t WakeOnWiFi::kDefaultWiphyIndex = 999;
 const int WakeOnWiFi::kVerifyWakeOnWiFiSettingsDelaySeconds = 1;
 const int WakeOnWiFi::kMaxSetWakeOnPacketRetries = 2;
+const int WakeOnWiFi::kMetricsReportingFrequencySeconds = 600;
 
 WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
-                       EventDispatcher *dispatcher, Manager *manager)
+                       EventDispatcher *dispatcher, Metrics *metrics)
     : dispatcher_(dispatcher),
       netlink_manager_(netlink_manager),
-      manager_(manager),
+      metrics_(metrics),
+      report_metrics_callback_(
+          Bind(&WakeOnWiFi::ReportMetrics, base::Unretained(this))),
       num_set_wake_on_packet_retries_(0),
       wake_on_wifi_max_patterns_(0),
       wiphy_index_(kDefaultWiphyIndex),
@@ -65,8 +69,7 @@ WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
       // TODO(samueltan): re-enable once pending issues have been resolved.
       wake_on_wifi_features_enabled_(kWakeOnWiFiFeaturesEnabledNone),
 #endif  // DISABLE_WAKE_ON_WIFI
-      weak_ptr_factory_(this) {
-}
+      weak_ptr_factory_(this) {}
 
 WakeOnWiFi::~WakeOnWiFi() {}
 
@@ -76,6 +79,13 @@ void WakeOnWiFi::InitPropertyStore(PropertyStore *store) {
       StringAccessor(new CustomAccessor<WakeOnWiFi, string>(
           this, &WakeOnWiFi::GetWakeOnWiFiFeaturesEnabled,
           &WakeOnWiFi::SetWakeOnWiFiFeaturesEnabled)));
+}
+
+void WakeOnWiFi::StartMetricsTimer() {
+#if !defined(DISABLE_WAKE_ON_WIFI)
+  dispatcher_->PostDelayedTask(report_metrics_callback_.callback(),
+                               kMetricsReportingFrequencySeconds * 1000);
+#endif  // DISABLE_WAKE_ON_WIFI
 }
 
 string WakeOnWiFi::GetWakeOnWiFiFeaturesEnabled(Error *error) {
@@ -746,6 +756,27 @@ bool WakeOnWiFi::WakeOnSSIDEnabled() {
 
 bool WakeOnWiFi::WakeOnWiFiFeaturesDisabled() {
   return wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledNone;
+}
+
+void WakeOnWiFi::ReportMetrics() {
+  Metrics::WakeOnWiFiFeaturesEnabledState reported_state;
+  if (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledNone) {
+    reported_state = Metrics::kWakeOnWiFiFeaturesEnabledStateNone;
+  } else if (wake_on_wifi_features_enabled_ ==
+             kWakeOnWiFiFeaturesEnabledPacket) {
+    reported_state = Metrics::kWakeOnWiFiFeaturesEnabledStatePacket;
+  } else if (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledSSID) {
+    reported_state = Metrics::kWakeOnWiFiFeaturesEnabledStateSSID;
+  } else if (wake_on_wifi_features_enabled_ ==
+             kWakeOnWiFiFeaturesEnabledPacketSSID) {
+    reported_state = Metrics::kWakeOnWiFiFeaturesEnabledStatePacketSSID;
+  } else {
+    LOG(ERROR) << __func__ << ": "
+               << "Invalid wake on WiFi features state";
+    return;
+  }
+  metrics_->NotifyWakeOnWiFiFeaturesEnabledState(reported_state);
+  StartMetricsTimer();
 }
 
 void WakeOnWiFi::ParseWakeOnWiFiCapabilities(

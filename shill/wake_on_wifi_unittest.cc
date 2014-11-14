@@ -11,6 +11,7 @@
 #include <string>
 #include <utility>
 
+#include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -20,7 +21,6 @@
 #include "shill/logging.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_log.h"
-#include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"
@@ -482,9 +482,8 @@ class WakeOnWiFiTest : public ::testing::Test {
  public:
   WakeOnWiFiTest()
       : metrics_(nullptr),
-        manager_(&control_interface_, nullptr, &metrics_, &glib_),
         wake_on_wifi_(
-            new WakeOnWiFi(&netlink_manager_, &dispatcher_, &manager_)) {}
+            new WakeOnWiFi(&netlink_manager_, &dispatcher_, &metrics_)) {}
   virtual ~WakeOnWiFiTest() {}
 
   virtual void SetUp() {
@@ -641,6 +640,14 @@ class WakeOnWiFiTest : public ::testing::Test {
     wake_on_wifi_->ParseWakeOnWiFiCapabilities(nl80211_message);
   }
 
+  bool SetWakeOnWiFiFeaturesEnabled(const std::string &enabled, Error *error) {
+    return wake_on_wifi_->SetWakeOnWiFiFeaturesEnabled(enabled, error);
+  }
+
+  const string &GetWakeOnWiFiFeaturesEnabled() {
+    return wake_on_wifi_->wake_on_wifi_features_enabled_;
+  }
+
   MOCK_METHOD1(SuspendCallback, void(const Error &error));
 
  protected:
@@ -649,7 +656,6 @@ class WakeOnWiFiTest : public ::testing::Test {
   MockGLib glib_;
   EventDispatcher dispatcher_;
   MockNetlinkManager netlink_manager_;
-  MockManager manager_;
   std::unique_ptr<WakeOnWiFi> wake_on_wifi_;
 };
 
@@ -1477,6 +1483,29 @@ TEST_F(WakeOnWiFiTest, WakeOnWiFiDisabledAfterResume) {
   OnAfterResume();
 }
 
+TEST_F(WakeOnWiFiTest, SetWakeOnWiFiFeaturesEnabled) {
+  const string bad_feature("blahblah");
+  Error e;
+  EnableWakeOnWiFiFeaturesPacketSSID();
+  EXPECT_STREQ(GetWakeOnWiFiFeaturesEnabled().c_str(),
+               kWakeOnWiFiFeaturesEnabledPacketSSID);
+  EXPECT_FALSE(
+      SetWakeOnWiFiFeaturesEnabled(kWakeOnWiFiFeaturesEnabledPacketSSID, &e));
+  EXPECT_STREQ(GetWakeOnWiFiFeaturesEnabled().c_str(),
+               kWakeOnWiFiFeaturesEnabledPacketSSID);
+
+  EXPECT_FALSE(SetWakeOnWiFiFeaturesEnabled(bad_feature, &e));
+  EXPECT_EQ(e.type(), Error::kInvalidArguments);
+  EXPECT_STREQ(e.message().c_str(), "Invalid Wake on WiFi feature");
+  EXPECT_STREQ(GetWakeOnWiFiFeaturesEnabled().c_str(),
+               kWakeOnWiFiFeaturesEnabledPacketSSID);
+
+  EXPECT_TRUE(
+      SetWakeOnWiFiFeaturesEnabled(kWakeOnWiFiFeaturesEnabledPacket, &e));
+  EXPECT_STREQ(GetWakeOnWiFiFeaturesEnabled().c_str(),
+               kWakeOnWiFiFeaturesEnabledPacket);
+}
+
 #else
 
 TEST_F(WakeOnWiFiTest, AddWakeOnPacketConnection_ReturnsError) {
@@ -1523,6 +1552,24 @@ TEST_F(WakeOnWiFiTest, OnAfterResume_DoesNothing) {
   DisableWakeOnWiFiFeatures();
   EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _, _)).Times(0);
   OnAfterResume();
+}
+
+TEST_F(WakeOnWiFiTest, SetWakeOnWiFiFeaturesEnabled) {
+  Error e;
+  DisableWakeOnWiFiFeatures();
+  EXPECT_STREQ(GetWakeOnWiFiFeaturesEnabled().c_str(),
+               kWakeOnWiFiFeaturesEnabledNone);
+  EXPECT_FALSE(
+      SetWakeOnWiFiFeaturesEnabled(kWakeOnWiFiFeaturesEnabledNone, &e));
+  EXPECT_STREQ(GetWakeOnWiFiFeaturesEnabled().c_str(),
+               kWakeOnWiFiFeaturesEnabledNone);
+
+  EXPECT_FALSE(
+      SetWakeOnWiFiFeaturesEnabled(kWakeOnWiFiFeaturesEnabledPacket, &e));
+  EXPECT_STREQ(GetWakeOnWiFiFeaturesEnabled().c_str(),
+               kWakeOnWiFiFeaturesEnabledNone);
+  EXPECT_EQ(e.type(), Error::kNotSupported);
+  EXPECT_STREQ(e.message().c_str(), "Wake on WiFi is not supported");
 }
 
 #endif  // DISABLE_WAKE_ON_WIFI
