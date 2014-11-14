@@ -8,6 +8,7 @@
 
 #include <base/bind.h>
 #include <base/command_line.h>
+#include <base/json/json_reader.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 #include <chromeos/daemons/dbus_daemon.h>
@@ -29,6 +30,11 @@ namespace {
 
 using libwebserv::Request;
 using libwebserv::Response;
+
+std::string GetFirstHeader(const Request& request, const std::string& name) {
+  std::vector<std::string> headers = request.GetHeader(name);
+  return headers.empty() ? std::string() : headers.front();
+}
 
 class Daemon : public chromeos::DBusDaemon {
  public:
@@ -76,16 +82,32 @@ class Daemon : public chromeos::DBusDaemon {
  private:
   void PrivetRequestHandler(scoped_ptr<Request> request,
                             scoped_ptr<Response> response) {
-    std::vector<std::string> auth_headers =
-        request->GetHeader(chromeos::http::request_header::kAuthorization);
-    std::string auth_header;
-    if (!auth_headers.empty())
-      auth_header = auth_headers.front();
-    else if (allow_empty_auth_)
+    std::string auth_header = GetFirstHeader(
+        *request, chromeos::http::request_header::kAuthorization);
+    if (auth_header.empty() && allow_empty_auth_)
       auth_header = "Privet anonymous";
-    base::DictionaryValue input;
+    std::string data(request->GetData().begin(), request->GetData().end());
+    VLOG(3) << "Input: " << data;
+
+    base::DictionaryValue empty;
+    std::unique_ptr<base::Value> value;
+    const base::DictionaryValue* dictionary = nullptr;
+
+    if (data.empty()) {
+      dictionary = &empty;
+    } else {
+      std::string content_type =
+          chromeos::mime::RemoveParameters(GetFirstHeader(
+              *request, chromeos::http::request_header::kContentType));
+      if (content_type == chromeos::mime::application::kJson) {
+        value.reset(base::JSONReader::Read(data));
+        if (value)
+          value->GetAsDictionary(&dictionary);
+      }
+    }
+
     privet_handler_->HandleRequest(
-        request->GetPath(), auth_header, input,
+        request->GetPath(), auth_header, dictionary,
         base::Bind(&Daemon::PrivetResponseHandler, base::Unretained(this),
                    base::Passed(&response)));
   }
@@ -93,6 +115,7 @@ class Daemon : public chromeos::DBusDaemon {
   void PrivetResponseHandler(scoped_ptr<Response> response,
                              int status,
                              const base::DictionaryValue& output) {
+    VLOG(3) << "status: " << status << ", Output: " << output;
     if (status == chromeos::http::status_code::NotFound)
       response->ReplyWithErrorNotFound();
     else
@@ -104,7 +127,6 @@ class Daemon : public chromeos::DBusDaemon {
     response->ReplyWithText(chromeos::http::status_code::Ok, "Hello, world!",
                             chromeos::mime::text::kPlain);
   }
-
 
   uint16_t port_number_;
   bool allow_empty_auth_;

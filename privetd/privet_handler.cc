@@ -155,6 +155,7 @@ const EnumToStringMap<SetupState::Status>::Map
 template <>
 const EnumToStringMap<Error>::Map EnumToStringMap<Error>::kMap[] = {
     {Error::kNone, nullptr},
+    {Error::kInvalidFormat, "invalidFormat"},
     {Error::kMissingAuthorization, "missingAuthorization"},
     {Error::kInvalidAuthorization, "invalidAuthorization"},
     {Error::kInvalidAuthorizationScope, "invalidAuthorizationScope"},
@@ -281,8 +282,10 @@ PrivetHandler::~PrivetHandler() {
 
 void PrivetHandler::HandleRequest(const std::string& api,
                                   const std::string& auth_header,
-                                  const base::DictionaryValue& input,
+                                  const base::DictionaryValue* input,
                                   const RequestCallback& callback) {
+  if (!input)
+    return ReturnError(Error::kInvalidFormat, callback);
   auto handler = handlers_.find(api);
   if (handler == handlers_.end())
     return ReturnNotFound(callback);
@@ -305,7 +308,7 @@ void PrivetHandler::HandleRequest(const std::string& api,
     return ReturnError(Error::kInvalidAuthorization, callback);
   if (handler->second.first > scope)
     return ReturnError(Error::kInvalidAuthorizationScope, callback);
-  handler->second.second.Run(input, callback);
+  handler->second.second.Run(*input, callback);
 }
 
 void PrivetHandler::HandleInfo(const base::DictionaryValue&,

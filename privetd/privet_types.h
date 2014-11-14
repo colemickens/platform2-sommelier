@@ -11,6 +11,7 @@ namespace privetd {
 
 enum class Error {
   kNone,
+  kInvalidFormat,
   kMissingAuthorization,
   kInvalidAuthorization,
   kInvalidAuthorizationScope,

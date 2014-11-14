@@ -186,22 +186,28 @@ class PrivetHandlerTest : public testing::Test {
     handler_.reset(new PrivetHandler(&cloud_, &device_, &security_, &wifi_));
   }
 
-  const base::DictionaryValue& HandleRequest(const std::string& api,
-                                             const std::string& json_input) {
+  const base::DictionaryValue& HandleRequest(
+      const std::string& api,
+      const base::DictionaryValue* input) {
     output_.Clear();
-    base::DictionaryValue dictionary;
-    LoadTestJson(json_input, &dictionary);
-    handler_->HandleRequest(api, auth_header_, dictionary,
+    handler_->HandleRequest(api, auth_header_, input,
                             base::Bind(&PrivetHandlerTest::HandlerCallback,
                                        base::Unretained(this)));
     base::RunLoop().RunUntilIdle();
     return output_;
   }
 
+  const base::DictionaryValue& HandleRequest(const std::string& api,
+                                             const std::string& json_input) {
+    base::DictionaryValue dictionary;
+    LoadTestJson(json_input, &dictionary);
+    return HandleRequest(api, &dictionary);
+  }
+
   void HandleUnknownRequest(const std::string& api) {
     output_.Clear();
     base::DictionaryValue dictionary;
-    handler_->HandleRequest(api, auth_header_, dictionary,
+    handler_->HandleRequest(api, auth_header_, &dictionary,
                             base::Bind(&PrivetHandlerTest::HandlerNoFound));
     base::RunLoop().RunUntilIdle();
   }
@@ -233,6 +239,12 @@ class PrivetHandlerTest : public testing::Test {
 
 TEST_F(PrivetHandlerTest, UnknownApi) {
   HandleUnknownRequest("/privet/foo");
+}
+
+TEST_F(PrivetHandlerTest, InvalidFormat) {
+  auth_header_ = "";
+  EXPECT_PRED2(IsEqualJson, "{'reason': 'invalidFormat'}",
+               HandleRequest("/privet/info", nullptr));
 }
 
 TEST_F(PrivetHandlerTest, MissingAuth) {

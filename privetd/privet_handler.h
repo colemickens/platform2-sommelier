@@ -46,12 +46,13 @@ class PrivetHandler {
   // Handles HTTP/HTTPS Privet request.
   // |api| is the path from the HTTP request, e.g /privet/info.
   // |auth_header| is the Authentication header from HTTP request.
-  // |input| is the the POST data from HTTP request.
+  // |input| is the the POST data from HTTP request. If nullptr, data format is
+  // not valid JSON.
   // |callback| will be called exactly once during or after |HandleRequest|
   // call.
   void HandleRequest(const std::string& api,
                      const std::string& auth_header,
-                     const base::DictionaryValue& input,
+                     const base::DictionaryValue* input,
                      const RequestCallback& callback);
 
  private:
