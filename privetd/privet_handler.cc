@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/values.h>
 #include <chromeos/strings/string_utils.h>
 
 #include "privetd/cloud_delegate.h"
@@ -33,30 +34,14 @@ const char kNameKey[] = "name";
 const char kDescrptionKey[] = "description";
 const char kLocationKey[] = "location";
 
-const char kRegistrationKey[] = "registration";
+const char kGcdKey[] = "gcd";
 const char kWifiKey[] = "wifi";
+const char kRequiredKey[] = "required";
+const char kStatusKey[] = "status";
+const char kErrorKey[] = "error";
 
 const char kInfoIdKey[] = "id";
 const char kInfoTypeKey[] = "type";
-
-const char kInfoAuthenticationKey[] = "authentication";
-
-const char kInfoCloudIdKey[] = "cloudId";
-
-const char kInfoCloudConnectionKey[] = "cloudConnection";
-const char kInfoCloudConnectingValue[] = "connecting";
-const char kInfoCloudOnlineValue[] = "online";
-const char kInfoCloudOfflineValue[] = "offline";
-const char kInfoCloudUnconfiguredValue[] = "unconfigured";
-const char kInfoCloudDisabledValue[] = "disabled";
-
-const char kInfoWirelessKey[] = "capabilities.wireless";
-const char kInfoWirelessWifi24Value[] = "wifi2.4";
-const char kInfoWirelessWifi25Value[] = "wifi5.0";
-
-const char kInfoPairingKey[] = "capabilities.pairing";
-const char kInfoPairingPinCodeValue[] = "pinCode";
-const char kInfoPairingEmbeddedCodeValue[] = "embeddedCode";
 
 const char kInfoEndpointsKey[] = "endpoints";
 const char kInfoEndpointsHttpPortKey[] = "httpPort";
@@ -64,11 +49,21 @@ const char kInfoEndpointsHttpUpdatePortKey[] = "httpUpdatesPort";
 const char kInfoEndpointsHttpsPortKey[] = "httpsPort";
 const char kInfoEndpointsHttpsUpdatePortKey[] = "httpsUpdatesPort";
 
-const char kInfoWifiSsidKey[] = "wifiSSID";
+const char kInfoAuthenticationKey[] = "authentication";
+const char kInfoAuthPairingKey[] = "pairing";
+
+const char kInfoAuthModeKey[] = "mode";
+const char kInfoAuthCryptoTypeKey[] = "crypto";
+const char kCryptoP256Spake2Value[] = "p256_spake2";
+
+const char kInfoWifiCapabilitiesKey[] = "capabilities";
+const char kInfoWifiSsidKey[] = "ssid";
+const char kInfoWifiHostedSsidKey[] = "hostedSsid";
+
 const char kInfoUptimeKey[] = "uptime";
 const char kInfoApiKey[] = "api";
 
-const char kAuthCodeTypeKey[] = "authCodeType";
+const char kAuthModeKey[] = "authMode";
 const char kAuthTypeAnonymousValue[] = "anonymous";
 const char kAuthTypePairingValue[] = "pairing";
 const char kAuthTypeCloudValue[] = "cloud";
@@ -76,10 +71,6 @@ const char kAuthTypeCloudValue[] = "cloud";
 const char kAuthCodeKey[] = "authCode";
 const char kAuthRequestedScopeKey[] = "requestedScope";
 const char kAuthScopeAutoValue[] = "auto";
-const char kAuthScopeOwnerValue[] = "owner";
-const char kAuthScopeUserValue[] = "user";
-const char kAuthScopeViewerValue[] = "viewer";
-const char kAuthScopeGuestValue[] = "guest";
 
 const char kAuthAccessTokenKey[] = "accessToken";
 const char kAuthTokenTypeKey[] = "tokenType";
@@ -90,42 +81,13 @@ const char kAuthorizationHeaderPrefix[] = "Privet";
 const char kErrorReasonKey[] = "reason";
 const char kErrorMessageKey[] = "message";
 
-const char kSetupStateRequiredKey[] = "required";
-const char kSetupStateStatusKey[] = "status";
-const char kSetupStateIdKey[] = "id";
-const char kSetupStateSsidKey[] = "ssid";
-const char kSetupStatusErrorPath[] = "error.reason";
-
 const char kSetupStartSsidKey[] = "ssid";
 const char kSetupStartPassKey[] = "passphrase";
 const char kSetupStartTicketIdKey[] = "ticketID";
 const char kSetupStartUserKey[] = "user";
 
-const char kSetupStatusAvailableValue[] = "available";
-const char kSetupStatusCompleteValue[] = "complete";
-const char kSetupStatusInProgressValue[] = "inProgress";
-const char kSetupStatusErrorValue[] = "error";
-
-const char kSetupErrorInvalidTicketValue[] = "invalidTicket";
-const char kSetupErrorServerErrorValue[] = "serverError";
-const char kSetupErrorOfflineValue[] = "offline";
-const char kSetupErrorDeviceConfigErrorValue[] = "deviceConfigError";
-const char kSetupErrorUnknownSsidValue[] = "unknownSsid";
-const char kSetupErrorInvalidPassphraseValue[] = "invalidPassphrase";
-
-// Errors
-const char kMissingAuthorization[] = "missingAuthorization";
-const char kInvalidAuthorization[] = "invalidAuthorization";
-const char kInvalidAuthorizationScope[] = "invalidAuthorizationScope";
-const char kInvalidAuthCode[] = "invalidAuthCode";
-const char kInvalidAuthCodeType[] = "invalidAuthCodeType";
-const char kInvalidRequestedScope[] = "invalidRequestedScope";
-const char kAccessDenied[] = "accessDenied";
-const char kInvalidParams[] = "invalidParams";
-const char kSetupUnavailable[] = "setupUnavailable";
-const char kDeviceBusy[] = "deviceBusy";
-
 const int kAccesssTokenExpirationSeconds = 3600;
+
 // Threshold to reduce probability of expiration because of clock difference
 // between device and client. Value is just a guess.
 const int kAccesssTokenExpirationThresholdSeconds = 300;
@@ -137,72 +99,117 @@ std::unique_ptr<base::ListValue> ToValue(const std::vector<std::string> list) {
   return std::move(value_list);
 }
 
-std::string ConnectionTypeToString(CloudState state) {
-  switch (state) {
-    case CloudState::kConnecting:
-      return kInfoCloudConnectingValue;
-    case CloudState::kOnline:
-      return kInfoCloudOnlineValue;
-    case CloudState::kOffline:
-      return kInfoCloudOfflineValue;
-    case CloudState::kUnconfigured:
-      return kInfoCloudUnconfiguredValue;
-    case CloudState::kDisabled:
-      return kInfoCloudDisabledValue;
+template <typename T>
+class EnumToStringMap {
+ public:
+  static std::string FindNameById(T id) {
+    for (const Map& m : kMap) {
+      if (m.id == id) {
+        CHECK(m.name);
+        return m.name;
+      }
+    }
+    NOTREACHED();
+    return std::string();
   }
-  NOTREACHED();
-  return kInfoCloudUnconfiguredValue;
+
+  static bool FindIdByName(const std::string& name, T* id) {
+    for (const Map& m : kMap) {
+      if (m.name && m.name == name) {
+        *id = m.id;
+        return true;
+      }
+    }
+    return false;
+  }
+
+ private:
+  struct Map {
+    const T id;
+    const char* const name;
+  };
+  static const Map kMap[];
+};
+
+template <>
+const EnumToStringMap<ConnectionState::Status>::Map
+    EnumToStringMap<ConnectionState::Status>::kMap[] = {
+        {ConnectionState::kDisabled, "disabled"},
+        {ConnectionState::kUnconfigured, "unconfigured"},
+        {ConnectionState::kConnecting, "connecting"},
+        {ConnectionState::kOnline, "online"},
+        {ConnectionState::kOffline, "offline"},
+        {ConnectionState::kError, "error"},
+};
+
+template <>
+const EnumToStringMap<SetupState::Status>::Map
+    EnumToStringMap<SetupState::Status>::kMap[] = {
+        {SetupState::kNone, nullptr},
+        {SetupState::kInProgress, "inProgress"},
+        {SetupState::kSuccess, "success"},
+        {SetupState::kError, "error"},
+};
+
+template <>
+const EnumToStringMap<Error>::Map EnumToStringMap<Error>::kMap[] = {
+    {Error::kNone, nullptr},
+    {Error::kMissingAuthorization, "missingAuthorization"},
+    {Error::kInvalidAuthorization, "invalidAuthorization"},
+    {Error::kInvalidAuthorizationScope, "invalidAuthorizationScope"},
+    {Error::kInvalidAuthCode, "invalidAuthCode"},
+    {Error::kInvalidAuthMode, "invalidAuthMode"},
+    {Error::kInvalidRequestedScope, "invalidRequestedScope"},
+    {Error::kAccessDenied, "accessDenied"},
+    {Error::kInvalidParams, "invalidParams"},
+    {Error::kSetupUnavailable, "setupUnavailable"},
+    {Error::kDeviceBusy, "deviceBusy"},
+    {Error::kInvalidTicket, "invalidTicket"},
+    {Error::kServerError, "serverError"},
+    {Error::kDeviceConfigError, "deviceConfigError"},
+    {Error::kInvalidSsid, "invalidSsid"},
+    {Error::kInvalidPassphrase, "invalidPassphrase"},
+};
+
+template <>
+const EnumToStringMap<WifiType>::Map EnumToStringMap<WifiType>::kMap[] = {
+    {WifiType::kWifi24, "2.4GHz"},
+    {WifiType::kWifi50, "5.0GHz"},
+};
+
+template <>
+const EnumToStringMap<PairingType>::Map EnumToStringMap<PairingType>::kMap[] = {
+    {PairingType::kPinCode, "pinCode"},
+    {PairingType::kEmbeddedCode, "embeddedCode"},
+    {PairingType::kUltrasoundDsssBroadcaster, "ultrasoundDsssBroadcaster"},
+    {PairingType::kAudibleDtmfBroadcaster, "audibleDtmfBroadcaster"},
+};
+
+template <>
+const EnumToStringMap<AuthScope>::Map EnumToStringMap<AuthScope>::kMap[] = {
+    {AuthScope::kNone, nullptr},
+    {AuthScope::kGuest, "guest"},
+    {AuthScope::kViewer, "viewer"},
+    {AuthScope::kUser, "user"},
+    {AuthScope::kOwner, "owner"},
+};
+
+template <typename T>
+std::string EnumToString(T id) {
+  return EnumToStringMap<T>::FindNameById(id);
 }
 
-std::string WifiTypeToString(WifiType type) {
-  switch (type) {
-    case WifiType::kWifi24:
-      return kInfoWirelessWifi24Value;
-    case WifiType::kWifi50:
-      return kInfoWirelessWifi25Value;
-  }
-  NOTREACHED();
-  return std::string();
-}
-
-std::string PairingTypeToString(PairingType type) {
-  switch (type) {
-    case PairingType::kPinCode:
-      return kInfoPairingPinCodeValue;
-    case PairingType::kEmbeddedCode:
-      return kInfoPairingEmbeddedCodeValue;
-  }
-  NOTREACHED();
-  return std::string();
+template <typename T>
+bool StringToEnum(const std::string& name, T* id) {
+  return EnumToStringMap<T>::FindIdByName(name, id);
 }
 
 AuthScope AuthScopeFromString(const std::string& scope, AuthScope auto_scope) {
   if (scope == kAuthScopeAutoValue)
     return auto_scope;
-  if (scope == kAuthScopeOwnerValue)
-    return AuthScope::kOwner;
-  if (scope == kAuthScopeUserValue)
-    return AuthScope::kUser;
-  if (scope == kAuthScopeViewerValue)
-    return AuthScope::kViewer;
-  if (scope == kAuthScopeGuestValue)
-    return AuthScope::kGuest;
-  return AuthScope::kNone;
-}
-
-std::string AuthScopeToString(AuthScope scope) {
-  switch (scope) {
-    case AuthScope::kOwner:
-      return kAuthScopeOwnerValue;
-    case AuthScope::kUser:
-      return kAuthScopeUserValue;
-    case AuthScope::kViewer:
-      return kAuthScopeViewerValue;
-    case AuthScope::kGuest:
-      return kAuthScopeGuestValue;
-    default:
-      return std::string();
-  }
+  AuthScope scope_id = AuthScope::kNone;
+  StringToEnum(scope, &scope_id);
+  return scope_id;
 }
 
 std::string GetAuthTokenFromAuthHeader(const std::string& auth_header) {
@@ -210,6 +217,38 @@ std::string GetAuthTokenFromAuthHeader(const std::string& auth_header) {
   std::string value;
   chromeos::string_utils::SplitAtFirst(auth_header, ' ', &name, &value);
   return value;
+}
+
+std::unique_ptr<base::DictionaryValue> CreateError(Error error,
+                                                   const std::string& message) {
+  if (error == Error::kNone)
+    return nullptr;
+  std::unique_ptr<base::DictionaryValue> output(new base::DictionaryValue);
+  output->SetString(kErrorReasonKey, EnumToString(error));
+  if (!message.empty())
+    output->SetString(kErrorMessageKey, message);
+  return output;
+}
+
+template <class T>
+void SetState(const T& state, base::DictionaryValue* parent) {
+  parent->SetString(kStatusKey, EnumToString(state.status));
+  if (state.error == Error::kNone)
+    return;
+  parent->Set(kErrorKey,
+              CreateError(state.error, state.error_message).release());
+}
+
+bool ReturnErrorWithMessage(Error error,
+                            const std::string& message,
+                            const PrivetHandler::RequestCallback& callback) {
+  std::unique_ptr<base::DictionaryValue> output = CreateError(error, message);
+  callback.Run(*output, false);
+  return true;
+}
+
+bool ReturnError(Error error, const PrivetHandler::RequestCallback& callback) {
+  return ReturnErrorWithMessage(error, std::string(), callback);
 }
 
 }  // namespace
@@ -244,10 +283,10 @@ bool PrivetHandler::HandleRequest(const std::string& api,
   if (handler == handlers_.end())
     return false;
   if (auth_header.empty())
-    return ReturnError(kMissingAuthorization, callback);
+    return ReturnError(Error::kMissingAuthorization, callback);
   std::string token = GetAuthTokenFromAuthHeader(auth_header);
   if (token.empty())
-    return ReturnError(kInvalidAuthorization, callback);
+    return ReturnError(Error::kInvalidAuthorization, callback);
   AuthScope scope = AuthScope::kNone;
   if (token == kAuthTypeAnonymousValue) {
     scope = AuthScope::kGuest;
@@ -259,27 +298,10 @@ bool PrivetHandler::HandleRequest(const std::string& api,
     scope = security_->GetScopeFromAccessToken(token, expiration);
   }
   if (scope == AuthScope::kNone)
-    return ReturnError(kInvalidAuthorization, callback);
+    return ReturnError(Error::kInvalidAuthorization, callback);
   if (handler->second.first > scope)
-    return ReturnError(kInvalidAuthorizationScope, callback);
+    return ReturnError(Error::kInvalidAuthorizationScope, callback);
   return handler->second.second.Run(input, callback);
-}
-
-bool PrivetHandler::ReturnError(const std::string& error,
-                                const RequestCallback& callback) const {
-  return ReturnErrorWithMessage(error, std::string(), callback);
-}
-
-bool PrivetHandler::ReturnErrorWithMessage(
-    const std::string& error,
-    const std::string& message,
-    const RequestCallback& callback) const {
-  base::DictionaryValue output;
-  output.SetString(kErrorReasonKey, error);
-  if (!message.empty())
-    output.SetString(kErrorMessageKey, message);
-  callback.Run(output, false);
-  return true;
 }
 
 bool PrivetHandler::HandleInfo(const base::DictionaryValue&,
@@ -299,50 +321,16 @@ bool PrivetHandler::HandleInfo(const base::DictionaryValue&,
 
   output.Set(kInfoTypeKey, ToValue(device_->GetTypes()).release());
 
-  std::unique_ptr<base::ListValue> auth_types(new base::ListValue());
-  auth_types->AppendString(kAuthTypeAnonymousValue);
-  auth_types->AppendString(kAuthTypePairingValue);
-  if (cloud_->GetConnectionState() == CloudState::kOnline)
-    auth_types->AppendString(kAuthTypeCloudValue);
-  output.Set(kInfoAuthenticationKey, auth_types.release());
+  output.Set(kInfoAuthenticationKey, CreateInfoAuthSection().release());
 
-  output.SetString(kInfoCloudIdKey, cloud_->GetCloudId());
+  output.Set(kInfoEndpointsKey, CreateEndpointsSection().release());
 
-  output.SetString(kInfoCloudConnectionKey,
-                   ConnectionTypeToString(cloud_->GetConnectionState()));
+  if (wifi_)
+    output.Set(kWifiKey, CreateWifiSection().release());
 
-  std::unique_ptr<base::ListValue> networking_types(new base::ListValue());
-  for (WifiType type : wifi_->GetWifiTypes())
-    networking_types->AppendString(WifiTypeToString(type));
-  output.Set(kInfoWirelessKey, networking_types.release());
+  if (cloud_)
+    output.Set(kGcdKey, CreateGcdSection().release());
 
-  std::unique_ptr<base::ListValue> pairing_types(new base::ListValue());
-  for (PairingType type : security_->GetPairingTypes())
-    pairing_types->AppendString(PairingTypeToString(type));
-  output.Set(kInfoPairingKey, pairing_types.release());
-
-  base::DictionaryValue* endpoints = new base::DictionaryValue();
-  output.Set(kInfoEndpointsKey, endpoints);
-  std::pair<int, int> http_endpoint = device_->GetHttpEnpoint();
-  if (http_endpoint.first > 0) {
-    endpoints->SetInteger(kInfoEndpointsHttpPortKey, http_endpoint.first);
-    if (http_endpoint.second > 0) {
-      endpoints->SetInteger(kInfoEndpointsHttpUpdatePortKey,
-                            http_endpoint.second);
-    }
-  }
-
-  std::pair<int, int> https_endpoint = device_->GetHttpsEnpoint();
-  if (https_endpoint.first > 0) {
-    endpoints->SetInteger(kInfoEndpointsHttpsPortKey, https_endpoint.first);
-    if (https_endpoint.second > 0) {
-      endpoints->SetInteger(kInfoEndpointsHttpsUpdatePortKey,
-                            https_endpoint.second);
-    }
-  }
-
-  std::string ssid = wifi_->GetWifiSsid();
-  output.SetString(kInfoWifiSsidKey, ssid);
   output.SetInteger(kInfoUptimeKey, device_->GetUptime().InSeconds());
 
   std::unique_ptr<base::ListValue> apis(new base::ListValue());
@@ -357,7 +345,7 @@ bool PrivetHandler::HandleInfo(const base::DictionaryValue&,
 bool PrivetHandler::HandleAuth(const base::DictionaryValue& input,
                                const RequestCallback& callback) {
   std::string auth_code_type;
-  input.GetString(kAuthCodeTypeKey, &auth_code_type);
+  input.GetString(kAuthModeKey, &auth_code_type);
 
   std::string auth_code;
   input.GetString(kAuthCodeKey, &auth_code);
@@ -368,10 +356,10 @@ bool PrivetHandler::HandleAuth(const base::DictionaryValue& input,
     max_auth_scope = AuthScope::kOwner;
   } else if (auth_code_type == kAuthTypePairingValue) {
     if (!security_->IsValidPairingCode(auth_code))
-      return ReturnError(kInvalidAuthCode, callback);
+      return ReturnError(Error::kInvalidAuthCode, callback);
     max_auth_scope = AuthScope::kOwner;
   } else {
-    return ReturnError(kInvalidAuthCodeType, callback);
+    return ReturnError(Error::kInvalidAuthMode, callback);
   }
 
   std::string requested_scope;
@@ -380,17 +368,17 @@ bool PrivetHandler::HandleAuth(const base::DictionaryValue& input,
   AuthScope requested_auth_scope =
       AuthScopeFromString(requested_scope, max_auth_scope);
   if (requested_auth_scope == AuthScope::kNone)
-    return ReturnError(kInvalidRequestedScope, callback);
+    return ReturnError(Error::kInvalidRequestedScope, callback);
 
   if (requested_auth_scope > max_auth_scope)
-    return ReturnError(kAccessDenied, callback);
+    return ReturnError(Error::kAccessDenied, callback);
 
   base::DictionaryValue output;
   output.SetString(kAuthAccessTokenKey,
                    security_->CreateAccessToken(requested_auth_scope));
   output.SetString(kAuthTokenTypeKey, kAuthorizationHeaderPrefix);
   output.SetInteger(kAuthExpiresInKey, kAccesssTokenExpirationSeconds);
-  output.SetString(kAuthScopeKey, AuthScopeToString(requested_auth_scope));
+  output.SetString(kAuthScopeKey, EnumToString(requested_auth_scope));
   callback.Run(output, true);
   return true;
 }
@@ -412,29 +400,29 @@ bool PrivetHandler::HandleSetupStart(const base::DictionaryValue& input,
 
   const base::DictionaryValue* wifi = nullptr;
   if (input.GetDictionary(kWifiKey, &wifi)) {
-    if (wifi_->GetWifiTypes().empty())
-      return ReturnError(kSetupUnavailable, callback);
+    if (!wifi_ || wifi_->GetTypes().empty())
+      return ReturnError(Error::kSetupUnavailable, callback);
     wifi->GetString(kSetupStartSsidKey, &ssid);
     if (ssid.empty())
-      return ReturnError(kInvalidParams, callback);
+      return ReturnError(Error::kInvalidParams, callback);
     wifi->GetString(kSetupStartPassKey, &passphrase);
   }
 
   const base::DictionaryValue* registration = nullptr;
-  if (input.GetDictionary(kRegistrationKey, &registration)) {
-    if (cloud_->GetRegistrationState() != RegistrationState::kAvalible)
-      return ReturnError(kSetupUnavailable, callback);
+  if (input.GetDictionary(kGcdKey, &registration)) {
+    if (!cloud_)
+      return ReturnError(Error::kSetupUnavailable, callback);
     registration->GetString(kSetupStartTicketIdKey, &ticket);
     if (ticket.empty())
-      return ReturnError(kInvalidParams, callback);
+      return ReturnError(Error::kInvalidParams, callback);
     registration->GetString(kSetupStartUserKey, &user);
   }
 
-  if (!ssid.empty() && !wifi_->SetupWifi(ssid, passphrase))
-    return ReturnError(kDeviceBusy, callback);
+  if (!ssid.empty() && !wifi_->Setup(ssid, passphrase))
+    return ReturnError(Error::kDeviceBusy, callback);
 
-  if (!ticket.empty() && !cloud_->RegisterDevice(ticket, user))
-    return ReturnError(kDeviceBusy, callback);
+  if (!ticket.empty() && !cloud_->Setup(ticket, user))
+    return ReturnError(Error::kDeviceBusy, callback);
 
   return HandleSetupStatus(input, callback);
 }
@@ -443,75 +431,100 @@ bool PrivetHandler::HandleSetupStatus(const base::DictionaryValue& input,
                                       const RequestCallback& callback) {
   base::DictionaryValue output;
 
-  if (cloud_->GetConnectionState() != CloudState::kDisabled) {
-    base::DictionaryValue* registration = new base::DictionaryValue;
-    output.Set(kRegistrationKey, registration);
-
-    registration->SetBoolean(kSetupStateRequiredKey,
-                             cloud_->IsRegistrationRequired());
-
-    std::string status = kSetupStatusErrorValue;
-    std::string error;
-    switch (cloud_->GetRegistrationState()) {
-      case RegistrationState::kAvalible:
-        status = kSetupStatusAvailableValue;
-        break;
-      case RegistrationState::kCompleted:
-        status = kSetupStatusCompleteValue;
-        registration->SetString(kSetupStateIdKey, cloud_->GetCloudId());
-        break;
-      case RegistrationState::kInProgress:
-        status = kSetupStatusInProgressValue;
-        break;
-      case RegistrationState::kInvalidTicket:
-        error = kSetupErrorInvalidTicketValue;
-        break;
-      case RegistrationState::kServerError:
-        error = kSetupErrorServerErrorValue;
-        break;
-      case RegistrationState::kOffline:
-        error = kSetupErrorOfflineValue;
-        break;
-      case RegistrationState::kDeviceConfigError:
-        error = kSetupErrorDeviceConfigErrorValue;
-        break;
+  if (cloud_) {
+    SetupState state = cloud_->GetSetupState();
+    if (state.status != SetupState::kNone) {
+      base::DictionaryValue* gcd = new base::DictionaryValue;
+      output.Set(kGcdKey, gcd);
+      SetState(state, gcd);
+      if (state.status == SetupState::kSuccess)
+        gcd->SetString(kInfoIdKey, cloud_->GetCloudId());
     }
-    registration->SetString(kSetupStateStatusKey, status);
-    if (!error.empty())
-      registration->SetString(kSetupStatusErrorPath, error);
   }
 
-  if (!wifi_->GetWifiTypes().empty()) {
-    base::DictionaryValue* wifi = new base::DictionaryValue();
-    output.Set(kWifiKey, wifi);
-    wifi->SetBoolean(kSetupStateRequiredKey, wifi_->IsWifiRequired());
-
-    std::string status = kSetupStatusErrorValue;
-    std::string error;
-    switch (wifi_->GetWifiSetupState()) {
-      case WifiSetupState::kAvalible:
-        status = kSetupStatusAvailableValue;
-        break;
-      case WifiSetupState::kCompleted:
-        status = kSetupStatusCompleteValue;
-        wifi->SetString(kSetupStateSsidKey, wifi_->GetWifiSsid());
-        break;
-      case WifiSetupState::kInProgress:
-        status = kSetupStatusInProgressValue;
-        break;
-      case WifiSetupState::kInvalidSsid:
-        error = kSetupErrorUnknownSsidValue;
-        break;
-      case WifiSetupState::kInvalidPassword:
-        error = kSetupErrorInvalidPassphraseValue;
-        break;
+  if (wifi_) {
+    SetupState state = wifi_->GetSetupState();
+    if (state.status != SetupState::kNone) {
+      base::DictionaryValue* wifi = new base::DictionaryValue;
+      output.Set(kWifiKey, wifi);
+      SetState(state, wifi);
+      if (state.status == SetupState::kSuccess)
+        wifi->SetString(kInfoWifiSsidKey, wifi_->GetSsid());
     }
-    wifi->SetString(kSetupStateStatusKey, status);
-    if (!error.empty())
-      wifi->SetString(kSetupStatusErrorPath, error);
   }
+
   callback.Run(output, true);
   return true;
+}
+
+std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateEndpointsSection()
+    const {
+  std::unique_ptr<base::DictionaryValue> endpoints(new base::DictionaryValue());
+  auto http_endpoint = device_->GetHttpEnpoint();
+  endpoints->SetInteger(kInfoEndpointsHttpPortKey, http_endpoint.first);
+  endpoints->SetInteger(kInfoEndpointsHttpUpdatePortKey, http_endpoint.second);
+
+  auto https_endpoint = device_->GetHttpsEnpoint();
+  endpoints->SetInteger(kInfoEndpointsHttpsPortKey, https_endpoint.first);
+  endpoints->SetInteger(kInfoEndpointsHttpsUpdatePortKey,
+                        https_endpoint.second);
+
+  return std::move(endpoints);
+}
+
+std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateInfoAuthSection()
+    const {
+  std::unique_ptr<base::DictionaryValue> auth(new base::DictionaryValue());
+
+  std::unique_ptr<base::ListValue> pairing_types(new base::ListValue());
+  for (PairingType type : security_->GetPairingTypes())
+    pairing_types->AppendString(EnumToString(type));
+  auth->Set(kInfoAuthPairingKey, pairing_types.release());
+
+  std::unique_ptr<base::ListValue> auth_types(new base::ListValue());
+  auth_types->AppendString(kAuthTypeAnonymousValue);
+  auth_types->AppendString(kAuthTypePairingValue);
+  if (cloud_ && cloud_->GetState().status == ConnectionState::kOnline)
+    auth_types->AppendString(kAuthTypeCloudValue);
+  auth->Set(kInfoAuthModeKey, auth_types.release());
+
+  std::unique_ptr<base::ListValue> crypto_types(new base::ListValue());
+  crypto_types->AppendString(kCryptoP256Spake2Value);
+  auth->Set(kInfoAuthCryptoTypeKey, crypto_types.release());
+
+  return std::move(auth);
+}
+
+std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateWifiSection()
+    const {
+  std::unique_ptr<base::DictionaryValue> wifi(new base::DictionaryValue());
+
+  wifi->SetBoolean(kRequiredKey, wifi_->IsRequired());
+
+  std::unique_ptr<base::ListValue> capabilities(new base::ListValue());
+  for (WifiType type : wifi_->GetTypes())
+    capabilities->AppendString(EnumToString(type));
+  wifi->Set(kInfoWifiCapabilitiesKey, capabilities.release());
+
+  wifi->SetString(kInfoWifiSsidKey, wifi_->GetSsid());
+
+  std::string hosted_ssid = wifi_->GetHostedSsid();
+  ConnectionState state = wifi_->GetState();
+  if (!hosted_ssid.empty()) {
+    DCHECK(state.status != ConnectionState::kDisabled);
+    DCHECK(state.status != ConnectionState::kOnline);
+    wifi->SetString(kInfoWifiHostedSsidKey, hosted_ssid);
+  }
+  SetState(state, wifi.get());
+  return std::move(wifi);
+}
+
+std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateGcdSection() const {
+  std::unique_ptr<base::DictionaryValue> gcd(new base::DictionaryValue());
+  gcd->SetBoolean(kRequiredKey, cloud_->IsRequired());
+  gcd->SetString(kInfoIdKey, cloud_->GetCloudId());
+  SetState(cloud_->GetState(), gcd.get());
+  return std::move(gcd);
 }
 
 }  // namespace privetd

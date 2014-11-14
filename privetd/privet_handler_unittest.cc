@@ -43,23 +43,42 @@ void LoadTestJson(const std::string& test_json,
     dictionary->MergeDictionary(dictionary_ptr);
 }
 
+bool IsEqualValue(const base::Value& val1, const base::Value& val2) {
+  return val1.Equals(&val2);
+}
+
 bool IsEqualJson(const std::string& test_json,
                  const base::DictionaryValue& dictionary) {
   base::DictionaryValue dictionary2;
   LoadTestJson(test_json, &dictionary2);
-  return dictionary2.Equals(&dictionary);
+
+  base::DictionaryValue::Iterator it1(dictionary);
+  base::DictionaryValue::Iterator it2(dictionary2);
+  for (; !it1.IsAtEnd() && !it2.IsAtEnd(); it1.Advance(), it2.Advance()) {
+    // Output mismatched keys.
+    EXPECT_EQ(it1.key(), it2.key());
+    // Output mismatched values.
+    EXPECT_PRED2(IsEqualValue, it1.value(), it2.value());
+    if (it1.key() != it2.key() || !it1.value().Equals(&it2.value()))
+      return false;
+  }
+
+  return it1.IsAtEnd() && it2.IsAtEnd();
+}
+
+bool IsNotEqualJson(const std::string& test_json,
+                    const base::DictionaryValue& dictionary) {
+  base::DictionaryValue dictionary2;
+  LoadTestJson(test_json, &dictionary2);
+  return !dictionary.Equals(&dictionary2);
 }
 
 }  // namespace
 
-class MockPrivetHandlerDelegate : public DeviceDelegate,
-                                  public WifiDelegate,
-                                  public CloudDelegate,
-                                  public SecurityDelegate {
+class MockDeviceDelegate : public DeviceDelegate {
   using IntPair = std::pair<uint16_t, uint16_t>;
 
  public:
-  // Device
   MOCK_CONST_METHOD0(GetId, std::string());
   MOCK_CONST_METHOD0(GetName, std::string());
   MOCK_CONST_METHOD0(GetDescription, std::string());
@@ -74,35 +93,98 @@ class MockPrivetHandlerDelegate : public DeviceDelegate,
   MOCK_METHOD1(AddType, void(const std::string&));
   MOCK_METHOD1(RemoveType, void(const std::string&));
 
-  // Wifi
-  MOCK_CONST_METHOD0(GetWifiSsid, std::string());
-  MOCK_CONST_METHOD0(GetWifiTypes, std::vector<WifiType>());
-  MOCK_CONST_METHOD0(IsWifiRequired, bool());
-  MOCK_CONST_METHOD0(GetWifiSetupState, WifiSetupState());
-  MOCK_METHOD2(SetupWifi, bool(const std::string&, const std::string&));
+  MockDeviceDelegate() {
+    EXPECT_CALL(*this, GetId()).WillRepeatedly(Return("TestId"));
+    EXPECT_CALL(*this, GetName()).WillRepeatedly(Return("TestDevice"));
+    EXPECT_CALL(*this, GetDescription()).WillRepeatedly(Return(""));
+    EXPECT_CALL(*this, GetLocation()).WillRepeatedly(Return(""));
+    EXPECT_CALL(*this, GetTypes())
+        .WillRepeatedly(Return(std::vector<std::string>{}));
+    EXPECT_CALL(*this, GetHttpEnpoint())
+        .WillRepeatedly(Return(std::make_pair(0, 0)));
+    EXPECT_CALL(*this, GetHttpsEnpoint())
+        .WillRepeatedly(Return(std::make_pair(0, 0)));
+    EXPECT_CALL(*this, GetUptime())
+        .WillRepeatedly(Return(base::TimeDelta::FromHours(1)));
+  }
+};
 
-  // Cloud
-  MOCK_CONST_METHOD0(IsRegistrationRequired, bool());
-  MOCK_CONST_METHOD0(GetCloudId, std::string());
-  MOCK_CONST_METHOD0(GetConnectionState, CloudState());
-  MOCK_CONST_METHOD0(GetRegistrationState, RegistrationState());
-  MOCK_METHOD2(RegisterDevice, bool(const std::string&, const std::string&));
-
-  // Security
+class MockSecurityDelegate : public SecurityDelegate {
+ public:
   MOCK_CONST_METHOD1(CreateAccessToken, std::string(AuthScope));
   MOCK_CONST_METHOD2(GetScopeFromAccessToken,
                      AuthScope(const std::string&, const base::Time&));
   MOCK_CONST_METHOD0(GetPairingTypes, std::vector<PairingType>());
   MOCK_CONST_METHOD1(IsValidPairingCode, bool(const std::string&));
+
+  MockSecurityDelegate() {
+    EXPECT_CALL(*this, CreateAccessToken(AuthScope::kOwner))
+        .WillRepeatedly(Return("TestAccessToken"));
+
+    EXPECT_CALL(*this, GetScopeFromAccessToken(_, _))
+        .WillRepeatedly(Return(AuthScope::kOwner));
+
+    EXPECT_CALL(*this, GetPairingTypes())
+        .WillRepeatedly(Return(std::vector<PairingType>{
+            PairingType::kPinCode,
+            PairingType::kEmbeddedCode,
+            PairingType::kUltrasoundDsssBroadcaster,
+            PairingType::kAudibleDtmfBroadcaster,
+        }));
+  }
+};
+
+class MockWifiDelegate : public WifiDelegate {
+ public:
+  MOCK_CONST_METHOD0(IsRequired, bool());
+  MOCK_CONST_METHOD0(GetState, ConnectionState());
+  MOCK_CONST_METHOD0(GetSetupState, SetupState());
+  MOCK_METHOD2(Setup, bool(const std::string&, const std::string&));
+  MOCK_CONST_METHOD0(GetSsid, std::string());
+  MOCK_CONST_METHOD0(GetHostedSsid, std::string());
+  MOCK_CONST_METHOD0(GetTypes, std::vector<WifiType>());
+
+  MockWifiDelegate() {
+    EXPECT_CALL(*this, IsRequired()).WillRepeatedly(Return(false));
+    EXPECT_CALL(*this, GetState())
+        .WillRepeatedly(Return(ConnectionState(ConnectionState::kOffline)));
+    EXPECT_CALL(*this, GetSetupState())
+        .WillRepeatedly(Return(SetupState(SetupState::kNone)));
+    EXPECT_CALL(*this, GetSsid()).WillRepeatedly(Return("TestSsid"));
+    EXPECT_CALL(*this, GetHostedSsid())
+        .WillRepeatedly(Return("Test_device.BBABCLAprv"));
+    EXPECT_CALL(*this, GetTypes())
+        .WillRepeatedly(Return(std::vector<WifiType>{WifiType::kWifi24}));
+  }
+};
+
+class MockCloudDelegate : public CloudDelegate {
+ public:
+  MOCK_CONST_METHOD0(IsRequired, bool());
+  MOCK_CONST_METHOD0(GetState, ConnectionState());
+  MOCK_CONST_METHOD0(GetSetupState, SetupState());
+  MOCK_METHOD2(Setup, bool(const std::string&, const std::string&));
+  MOCK_CONST_METHOD0(GetCloudId, std::string());
+
+  MockCloudDelegate() {
+    EXPECT_CALL(*this, IsRequired()).WillRepeatedly(Return(true));
+    EXPECT_CALL(*this, GetState())
+        .WillRepeatedly(Return(ConnectionState(ConnectionState::kOnline)));
+    EXPECT_CALL(*this, GetSetupState())
+        .WillRepeatedly(Return(SetupState(SetupState::kNone)));
+    EXPECT_CALL(*this, GetCloudId()).WillRepeatedly(Return("TestCloudId"));
+  }
 };
 
 class PrivetHandlerTest : public testing::Test {
  public:
-  PrivetHandlerTest()
-      : handler_(&delegate_, &delegate_, &delegate_, &delegate_) {}
+  PrivetHandlerTest() {}
 
  protected:
-  void SetUp() override { auth_header_ = "Privet anonymous"; }
+  void SetUp() override {
+    auth_header_ = "Privet anonymous";
+    handler_.reset(new PrivetHandler(&cloud_, &device_, &security_, &wifi_));
+  }
 
   const base::DictionaryValue& HandleRequest(const std::string& api,
                                              const std::string& json_input) {
@@ -110,11 +192,9 @@ class PrivetHandlerTest : public testing::Test {
     base::DictionaryValue dictionary;
     LoadTestJson(json_input, &dictionary);
     EXPECT_TRUE(
-        handler_.HandleRequest(api,
-                               auth_header_,
-                               dictionary,
-                               base::Bind(&PrivetHandlerTest::HandlerCallback,
-                                          base::Unretained(this))));
+        handler_->HandleRequest(api, auth_header_, dictionary,
+                                base::Bind(&PrivetHandlerTest::HandlerCallback,
+                                           base::Unretained(this))));
     base::RunLoop().RunUntilIdle();
     return output_;
   }
@@ -122,11 +202,18 @@ class PrivetHandlerTest : public testing::Test {
   bool HandleUnknownRequest(const std::string& api) {
     output_.Clear();
     base::DictionaryValue dictionary;
-    return handler_.HandleRequest(
-        api, auth_header_, dictionary, PrivetHandler::RequestCallback());
+    return handler_->HandleRequest(api, auth_header_, dictionary,
+                                   PrivetHandler::RequestCallback());
   }
 
-  testing::StrictMock<MockPrivetHandlerDelegate> delegate_;
+  void SetNoWifiAndGcd() {
+    handler_.reset(new PrivetHandler(nullptr, &device_, &security_, nullptr));
+  }
+
+  testing::StrictMock<MockCloudDelegate> cloud_;
+  testing::StrictMock<MockDeviceDelegate> device_;
+  testing::StrictMock<MockSecurityDelegate> security_;
+  testing::StrictMock<MockWifiDelegate> wifi_;
   std::string auth_header_;
 
  private:
@@ -136,7 +223,7 @@ class PrivetHandlerTest : public testing::Test {
   }
 
   base::MessageLoop message_loop_;
-  PrivetHandler handler_;
+  std::unique_ptr<PrivetHandler> handler_;
   base::DictionaryValue output_;
 };
 
@@ -164,29 +251,54 @@ TEST_F(PrivetHandlerTest, InvalidAuthScope) {
                HandleRequest("/privet/v3/setup/start", "{}"));
 }
 
+TEST_F(PrivetHandlerTest, InfoMinimal) {
+  SetNoWifiAndGcd();
+  EXPECT_CALL(security_, GetPairingTypes())
+      .WillRepeatedly(Return(std::vector<PairingType>{}));
+
+  const char kExpected[] = R"({
+    'version': '3.0',
+    'id': 'TestId',
+    'name': 'TestDevice',
+    'type': [],
+    'endpoints': {
+      'httpPort': 0,
+      'httpUpdatesPort': 0,
+      'httpsPort': 0,
+      'httpsUpdatesPort': 0
+    },
+    'authentication': {
+      'mode': [
+        'anonymous',
+        'pairing'
+      ],
+      'pairing': [
+      ],
+      'crypto': [
+        'p256_spake2'
+      ]
+    },
+    'uptime': 3600,
+    'api': [
+      '/privet/info',
+      '/privet/v3/auth',
+      '/privet/v3/setup/start',
+      '/privet/v3/setup/status'
+    ]
+  })";
+  EXPECT_PRED2(IsEqualJson, kExpected, HandleRequest("/privet/info", "{}"));
+}
+
 TEST_F(PrivetHandlerTest, Info) {
-  EXPECT_CALL(delegate_, GetId()).WillRepeatedly(Return("TestId"));
-  EXPECT_CALL(delegate_, GetName()).WillRepeatedly(Return("TestDevice"));
-  EXPECT_CALL(delegate_, GetDescription())
+  EXPECT_CALL(device_, GetDescription())
       .WillRepeatedly(Return("TestDescription"));
-  EXPECT_CALL(delegate_, GetLocation()).WillRepeatedly(Return("TestLocation"));
-  EXPECT_CALL(delegate_, GetTypes())
-      .WillRepeatedly(Return(std::vector<std::string>(1, "TestType")));
-  EXPECT_CALL(delegate_, GetCloudId()).WillRepeatedly(Return("TestCloudId"));
-  EXPECT_CALL(delegate_, GetConnectionState())
-      .WillRepeatedly(Return(CloudState::kOnline));
-  EXPECT_CALL(delegate_, GetHttpEnpoint())
+  EXPECT_CALL(device_, GetLocation()).WillRepeatedly(Return("TestLocation"));
+  EXPECT_CALL(device_, GetTypes())
+      .WillRepeatedly(Return(std::vector<std::string>{"TestType"}));
+  EXPECT_CALL(device_, GetHttpEnpoint())
       .WillRepeatedly(Return(std::make_pair(80, 10080)));
-  EXPECT_CALL(delegate_, GetHttpsEnpoint())
+  EXPECT_CALL(device_, GetHttpsEnpoint())
       .WillRepeatedly(Return(std::make_pair(443, 10443)));
-  EXPECT_CALL(delegate_, GetWifiSsid()).WillRepeatedly(Return("TestSsid"));
-  EXPECT_CALL(delegate_, GetUptime())
-      .WillRepeatedly(Return(base::TimeDelta::FromHours(1)));
-  EXPECT_CALL(delegate_, GetWifiTypes())
-      .WillRepeatedly(Return(std::vector<WifiType>(1, WifiType::kWifi24)));
-  EXPECT_CALL(delegate_, GetPairingTypes())
-      .WillRepeatedly(
-          Return(std::vector<PairingType>(1, PairingType::kEmbeddedCode)));
 
   const char kExpected[] = R"({
     'version': '3.0',
@@ -197,28 +309,42 @@ TEST_F(PrivetHandlerTest, Info) {
     'type': [
       'TestType'
     ],
-    'authentication': [
-      'anonymous',
-      'pairing',
-      'cloud'
-    ],
-    'cloudId': 'TestCloudId',
-    'cloudConnection': 'online',
-    'capabilities': {
-      'wireless': [
-        'wifi2.4'
-      ],
-      'pairing': [
-        'embeddedCode'
-      ]
-    },
     'endpoints': {
       'httpPort': 80,
       'httpUpdatesPort': 10080,
       'httpsPort': 443,
       'httpsUpdatesPort': 10443
     },
-    'wifiSSID':'TestSsid',
+    'authentication': {
+      'mode': [
+        'anonymous',
+        'pairing',
+        'cloud'
+      ],
+      'pairing': [
+        'pinCode',
+        'embeddedCode',
+        'ultrasoundDsssBroadcaster',
+        'audibleDtmfBroadcaster'
+      ],
+      'crypto': [
+        'p256_spake2'
+      ]
+    },
+    'wifi': {
+      'required': false,
+      'capabilities': [
+        '2.4GHz'
+      ],
+      'ssid': 'TestSsid',
+      'hostedSsid': 'Test_device.BBABCLAprv',
+      'status': 'offline'
+    },
+    'gcd': {
+      'required': true,
+      'id': 'TestCloudId',
+      'status': 'online'
+    },
     'uptime': 3600,
     'api': [
       '/privet/info',
@@ -231,48 +357,40 @@ TEST_F(PrivetHandlerTest, Info) {
 }
 
 TEST_F(PrivetHandlerTest, AuthErrorNoType) {
-  EXPECT_PRED2(IsEqualJson,
-               "{'reason': 'invalidAuthCodeType'}",
+  EXPECT_PRED2(IsEqualJson, "{'reason': 'invalidAuthMode'}",
                HandleRequest("/privet/v3/auth", "{}"));
 }
 
 TEST_F(PrivetHandlerTest, AuthErrorInvalidType) {
-  EXPECT_PRED2(IsEqualJson,
-               "{'reason':'invalidAuthCodeType'}",
-               HandleRequest("/privet/v3/auth", "{'authCodeType':'unknown'}"));
+  EXPECT_PRED2(IsEqualJson, "{'reason':'invalidAuthMode'}",
+               HandleRequest("/privet/v3/auth", "{'authMode':'unknown'}"));
 }
 
 TEST_F(PrivetHandlerTest, AuthErrorNoScope) {
-  EXPECT_PRED2(
-      IsEqualJson,
-      "{'reason':'invalidRequestedScope'}",
-      HandleRequest("/privet/v3/auth", "{'authCodeType':'anonymous'}"));
+  EXPECT_PRED2(IsEqualJson, "{'reason':'invalidRequestedScope'}",
+               HandleRequest("/privet/v3/auth", "{'authMode':'anonymous'}"));
 }
 
 TEST_F(PrivetHandlerTest, AuthErrorInvalidScope) {
   EXPECT_PRED2(
-      IsEqualJson,
-      "{'reason':'invalidRequestedScope'}",
+      IsEqualJson, "{'reason':'invalidRequestedScope'}",
       HandleRequest("/privet/v3/auth",
-                    "{'authCodeType':'anonymous','requestedScope':'unknown'}"));
+                    "{'authMode':'anonymous','requestedScope':'unknown'}"));
 }
 
 TEST_F(PrivetHandlerTest, AuthErrorAccessDenied) {
   // TODO(vitalybuka): Should fail when pairing is implemented.
-  EXPECT_CALL(delegate_, CreateAccessToken(AuthScope::kOwner))
-      .WillRepeatedly(Return("TestAccessToken"));
   EXPECT_PRED2(
-      std::not2(std::ref(IsEqualJson)),
-      "{'reason':'accessDenied'}",
+      IsNotEqualJson, "{'reason':'accessDenied'}",
       HandleRequest("/privet/v3/auth",
-                    "{'authCodeType':'anonymous','requestedScope':'owner'}"));
+                    "{'authMode':'anonymous','requestedScope':'owner'}"));
 }
 
 TEST_F(PrivetHandlerTest, AuthErrorInvalidAuthCode) {
-  EXPECT_CALL(delegate_, IsValidPairingCode("testToken"))
+  EXPECT_CALL(security_, IsValidPairingCode("testToken"))
       .WillRepeatedly(Return(false));
   const char kInput[] = R"({
-    'authCodeType': 'pairing',
+    'authMode': 'pairing',
     'requestedScope': 'user',
     'authCode': 'testToken'
   })";
@@ -282,9 +400,6 @@ TEST_F(PrivetHandlerTest, AuthErrorInvalidAuthCode) {
 }
 
 TEST_F(PrivetHandlerTest, AuthAnonymous) {
-  EXPECT_CALL(delegate_, CreateAccessToken(AuthScope::kOwner))
-      .WillRepeatedly(Return("TestAccessToken"));
-
   // TODO(vitalybuka): Should have anonymous scope when pairing is implemented.
   const char kExpected[] = R"({
     'accessToken': 'TestAccessToken',
@@ -293,20 +408,17 @@ TEST_F(PrivetHandlerTest, AuthAnonymous) {
     'tokenType': 'Privet'
   })";
   EXPECT_PRED2(
-      IsEqualJson,
-      kExpected,
+      IsEqualJson, kExpected,
       HandleRequest("/privet/v3/auth",
-                    "{'authCodeType':'anonymous','requestedScope':'auto'}"));
+                    "{'authMode':'anonymous','requestedScope':'auto'}"));
 }
 
 TEST_F(PrivetHandlerTest, AuthPairing) {
-  EXPECT_CALL(delegate_, CreateAccessToken(AuthScope::kOwner))
-      .WillRepeatedly(Return("TestAccessToken"));
-  EXPECT_CALL(delegate_, IsValidPairingCode("testToken"))
+  EXPECT_CALL(security_, IsValidPairingCode("testToken"))
       .WillRepeatedly(Return(true));
 
   const char kInput[] = R"({
-    'authCodeType': 'pairing',
+    'authMode': 'pairing',
     'requestedScope': 'owner',
     'authCode': 'testToken'
   })";
@@ -325,47 +437,23 @@ class PrivetHandlerSetupTest : public PrivetHandlerTest {
   void SetUp() override {
     PrivetHandlerTest::SetUp();
     auth_header_ = "Privet 123";
-    EXPECT_CALL(delegate_, GetScopeFromAccessToken(_, _))
-        .WillRepeatedly(Return(AuthScope::kOwner));
-    EXPECT_CALL(delegate_, GetConnectionState())
-        .WillRepeatedly(Return(CloudState::kDisabled));
-    EXPECT_CALL(delegate_, GetWifiTypes())
-        .WillRepeatedly(Return(std::vector<WifiType>()));
-  }
-
-  void SetupWifiStatus() {
-    EXPECT_CALL(delegate_, GetWifiTypes())
-        .WillRepeatedly(Return(std::vector<WifiType>(1, WifiType::kWifi24)));
-    EXPECT_CALL(delegate_, IsWifiRequired()).WillRepeatedly(Return(true));
-    EXPECT_CALL(delegate_, GetWifiSetupState())
-        .WillRepeatedly(Return(WifiSetupState::kCompleted));
-    EXPECT_CALL(delegate_, GetWifiSsid()).WillRepeatedly(Return("TestSsid"));
-  }
-
-  void SetupRegistrationStatus() {
-    EXPECT_CALL(delegate_, GetConnectionState())
-        .WillRepeatedly(Return(CloudState::kOnline));
-    EXPECT_CALL(delegate_, IsRegistrationRequired())
-        .WillRepeatedly(Return(false));
-    EXPECT_CALL(delegate_, GetRegistrationState())
-        .WillRepeatedly(Return(RegistrationState::kCompleted));
-    EXPECT_CALL(delegate_, GetCloudId()).WillRepeatedly(Return("TestCloudId"));
   }
 };
 
 TEST_F(PrivetHandlerSetupTest, StatusEmpty) {
+  SetNoWifiAndGcd();
   EXPECT_PRED2(
       IsEqualJson, "{}", HandleRequest("/privet/v3/setup/status", "{}"));
 }
 
 TEST_F(PrivetHandlerSetupTest, StatusWifi) {
-  SetupWifiStatus();
+  EXPECT_CALL(wifi_, GetSetupState())
+      .WillRepeatedly(Return(SetupState(SetupState::kSuccess)));
 
   const char kExpected[] = R"({
     'wifi': {
-        'required': true,
         'ssid': 'TestSsid',
-        'status': 'complete'
+        'status': 'success'
      }
   })";
   EXPECT_PRED2(
@@ -373,13 +461,11 @@ TEST_F(PrivetHandlerSetupTest, StatusWifi) {
 }
 
 TEST_F(PrivetHandlerSetupTest, StatusWifiError) {
-  SetupWifiStatus();
-  EXPECT_CALL(delegate_, GetWifiSetupState())
-      .WillRepeatedly(Return(WifiSetupState::kInvalidPassword));
+  EXPECT_CALL(wifi_, GetSetupState())
+      .WillRepeatedly(Return(SetupState(Error::kInvalidPassphrase)));
 
   const char kExpected[] = R"({
     'wifi': {
-        'required': true,
         'status': 'error',
         'error': {
           'reason': 'invalidPassphrase'
@@ -390,28 +476,26 @@ TEST_F(PrivetHandlerSetupTest, StatusWifiError) {
       IsEqualJson, kExpected, HandleRequest("/privet/v3/setup/status", "{}"));
 }
 
-TEST_F(PrivetHandlerSetupTest, StatusRegistration) {
-  SetupRegistrationStatus();
+TEST_F(PrivetHandlerSetupTest, StatusGcd) {
+  EXPECT_CALL(cloud_, GetSetupState())
+      .WillRepeatedly(Return(SetupState(SetupState::kSuccess)));
 
   const char kExpected[] = R"({
-    'registration': {
-        'required': false,
+    'gcd': {
         'id': 'TestCloudId',
-        'status': 'complete'
+        'status': 'success'
      }
   })";
   EXPECT_PRED2(
       IsEqualJson, kExpected, HandleRequest("/privet/v3/setup/status", "{}"));
 }
 
-TEST_F(PrivetHandlerSetupTest, StatusRegistrationError) {
-  SetupRegistrationStatus();
-  EXPECT_CALL(delegate_, GetRegistrationState())
-      .WillRepeatedly(Return(RegistrationState::kInvalidTicket));
+TEST_F(PrivetHandlerSetupTest, StatusGcdError) {
+  EXPECT_CALL(cloud_, GetSetupState())
+      .WillRepeatedly(Return(SetupState(Error::kInvalidTicket)));
 
   const char kExpected[] = R"({
-    'registration': {
-        'required': false,
+    'gcd': {
         'status': 'error',
         'error': {
           'reason': 'invalidTicket'
@@ -422,26 +506,20 @@ TEST_F(PrivetHandlerSetupTest, StatusRegistrationError) {
       IsEqualJson, kExpected, HandleRequest("/privet/v3/setup/status", "{}"));
 }
 
-TEST_F(PrivetHandlerSetupTest, StartNameDescriptionLocation) {
-  EXPECT_CALL(delegate_, SetName("testName")).Times(1);
-  EXPECT_CALL(delegate_, SetDescription("testDescription")).Times(1);
-  EXPECT_CALL(delegate_, SetLocation("testLocation")).Times(1);
+TEST_F(PrivetHandlerSetupTest, SetupNameDescriptionLocation) {
+  EXPECT_CALL(device_, SetName("testName")).Times(1);
+  EXPECT_CALL(device_, SetDescription("testDescription")).Times(1);
+  EXPECT_CALL(device_, SetLocation("testLocation")).Times(1);
   const char kInput[] = R"({
     'name': 'testName',
     'description': 'testDescription',
     'location': 'testLocation'
   })";
-  SetupWifiStatus();
-  SetupRegistrationStatus();
-  EXPECT_FALSE(HandleRequest("/privet/v3/setup/start", kInput).empty());
+  EXPECT_PRED2(IsEqualJson, "{}",
+               HandleRequest("/privet/v3/setup/start", kInput));
 }
 
 TEST_F(PrivetHandlerSetupTest, InvalidParams) {
-  EXPECT_CALL(delegate_, GetRegistrationState())
-      .WillRepeatedly(Return(RegistrationState::kAvalible));
-  EXPECT_CALL(delegate_, GetWifiTypes())
-      .WillRepeatedly(Return(std::vector<WifiType>(1, WifiType::kWifi50)));
-
   const char kInputWifi[] = R"({
     'wifi': {
       'ssid': ''
@@ -452,13 +530,19 @@ TEST_F(PrivetHandlerSetupTest, InvalidParams) {
                HandleRequest("/privet/v3/setup/start", kInputWifi));
 
   const char kInputRegistration[] = R"({
-    'registration': {
+    'gcd': {
       'ticketID': ''
     }
   })";
   EXPECT_PRED2(IsEqualJson,
                "{'reason':'invalidParams'}",
                HandleRequest("/privet/v3/setup/start", kInputRegistration));
+}
+
+TEST_F(PrivetHandlerSetupTest, WifiSetupUnavailable) {
+  SetNoWifiAndGcd();
+  EXPECT_PRED2(IsEqualJson, "{'reason':'setupUnavailable'}",
+               HandleRequest("/privet/v3/setup/start", "{'wifi': {}}"));
 }
 
 TEST_F(PrivetHandlerSetupTest, WifiSetup) {
@@ -468,46 +552,50 @@ TEST_F(PrivetHandlerSetupTest, WifiSetup) {
       'passphrase': 'testPass'
     }
   })";
-  EXPECT_PRED2(IsEqualJson,
-               "{'reason':'setupUnavailable'}",
+  EXPECT_CALL(wifi_, Setup(_, _)).WillOnce(Return(false));
+  EXPECT_PRED2(IsEqualJson, "{'reason':'deviceBusy'}",
                HandleRequest("/privet/v3/setup/start", kInput));
 
-  SetupWifiStatus();
-  EXPECT_CALL(delegate_, SetupWifi(_, _)).WillOnce(Return(false));
-  EXPECT_PRED2(IsEqualJson,
-               "{'reason':'deviceBusy'}",
+  const char kExpected[] = R"({
+    'wifi': {
+      'status': 'inProgress'
+    }
+  })";
+  EXPECT_CALL(wifi_, GetSetupState())
+      .WillRepeatedly(Return(SetupState(SetupState::kInProgress)));
+  EXPECT_CALL(wifi_, Setup("testSsid", "testPass")).WillOnce(Return(true));
+  EXPECT_PRED2(IsEqualJson, kExpected,
                HandleRequest("/privet/v3/setup/start", kInput));
-
-  EXPECT_CALL(delegate_, SetupWifi("testSsid", "testPass"))
-      .WillOnce(Return(true));
-  EXPECT_FALSE(HandleRequest("/privet/v3/setup/start", kInput).empty());
 }
 
-TEST_F(PrivetHandlerSetupTest, Registration) {
+TEST_F(PrivetHandlerSetupTest, GcdSetupUnavailable) {
+  SetNoWifiAndGcd();
+  EXPECT_PRED2(IsEqualJson, "{'reason':'setupUnavailable'}",
+               HandleRequest("/privet/v3/setup/start", "{'gcd': {}}"));
+}
+
+TEST_F(PrivetHandlerSetupTest, GcdSetup) {
   const char kInput[] = R"({
-    'registration': {
+    'gcd': {
       'ticketID': 'testTicket',
       'user': 'testUser'
     }
   })";
-
-  EXPECT_CALL(delegate_, GetRegistrationState())
-      .WillRepeatedly(Return(RegistrationState::kCompleted));
-  EXPECT_PRED2(IsEqualJson,
-               "{'reason':'setupUnavailable'}",
-               HandleRequest("/privet/v3/setup/start", kInput));
-
-  SetupRegistrationStatus();
-  EXPECT_CALL(delegate_, GetRegistrationState())
-      .WillRepeatedly(Return(RegistrationState::kAvalible));
-  EXPECT_CALL(delegate_, RegisterDevice(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(cloud_, Setup(_, _)).WillOnce(Return(false));
   EXPECT_PRED2(IsEqualJson,
                "{'reason':'deviceBusy'}",
                HandleRequest("/privet/v3/setup/start", kInput));
 
-  EXPECT_CALL(delegate_, RegisterDevice("testTicket", "testUser"))
-      .WillOnce(Return(true));
-  EXPECT_FALSE(HandleRequest("/privet/v3/setup/start", kInput).empty());
+  const char kExpected[] = R"({
+    'gcd': {
+      'status': 'inProgress'
+    }
+  })";
+  EXPECT_CALL(cloud_, GetSetupState())
+      .WillRepeatedly(Return(SetupState(SetupState::kInProgress)));
+  EXPECT_CALL(cloud_, Setup("testTicket", "testUser")).WillOnce(Return(true));
+  EXPECT_PRED2(IsEqualJson, kExpected,
+               HandleRequest("/privet/v3/setup/start", kInput));
 }
 
 }  // namespace privetd

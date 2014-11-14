@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include "privetd/privet_types.h"
+
 namespace privetd {
 
 enum class WifiType {
@@ -16,39 +18,38 @@ enum class WifiType {
   kWifi50,
 };
 
-enum class WifiSetupState {
-  kAvalible,
-  kCompleted,
-  kInProgress,
-  kInvalidSsid,
-  kInvalidPassword,
-};
-
-// Interface to provide wifi functionality for PrivetHandler.
+// Interface to provide WiFi functionality for PrivetHandler.
 class WifiDelegate {
  public:
   WifiDelegate();
   virtual ~WifiDelegate();
 
-  // Returns current SSID network device connected/trying to connect to.
-  // If device in bootstraping mode, returns special setup SSID.
-  // May return empty string if wifi is not available.
-  virtual std::string GetWifiSsid() const = 0;
+  // Returns true if WiFi setup is required.
+  virtual bool IsRequired() const = 0;
 
-  // Returns list of supported wifi types.
-  // Currently it's just frequencies.
-  virtual std::vector<WifiType> GetWifiTypes() const = 0;
+  // Returns status of the WiFi connection.
+  virtual ConnectionState GetState() const = 0;
 
-  // Returns true if wifi need to be setup for normal device functioning.
-  virtual bool IsWifiRequired() const = 0;
+  // Returns status of the last WiFi setup.
+  virtual SetupState GetSetupState() const = 0;
 
-  // Returns the sate of the last setup.
-  virtual WifiSetupState GetWifiSetupState() const = 0;
+  // Starts WiFi setup. Device should try to connect to provided SSID and
+  // password and store them on success. Result of setup should be available
+  // using GetSetupState().
+  // Returns false only if device is busy. Any other failures should be stored
+  // in GetSetupState().
+  virtual bool Setup(const std::string& ssid, const std::string& password) = 0;
 
-  // Starts wifi setup. Result could be retrieved with |GetWifiSetupState|.
-  // Returns false if device is busy and cast start setup.
-  virtual bool SetupWifi(const std::string& ssid,
-                         const std::string& password) = 0;
+  // Returns SSID of the currently configured WiFi network. Empty string, if
+  // WiFi has not been configured yet.
+  virtual std::string GetSsid() const = 0;
+
+  // Returns SSID of the WiFi network hosted by this device. Empty if device is
+  // not in setup or P2P modes.
+  virtual std::string GetHostedSsid() const = 0;
+
+  // Returns list of supported WiFi types. Currently it's just frequencies.
+  virtual std::vector<WifiType> GetTypes() const = 0;
 
   // Create default instance.
   static std::unique_ptr<WifiDelegate> CreateDefault();

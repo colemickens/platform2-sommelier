@@ -16,20 +16,22 @@ class CloudDelegateImpl : public CloudDelegate {
   ~CloudDelegateImpl() override {}
 
   // CloudDelegate methods
-  bool IsRegistrationRequired() const override { return false; }
-  std::string GetCloudId() const override { return std::string(); }
-  CloudState GetConnectionState() const override {
-    return CloudState::kDisabled;
+  bool IsRequired() const override { return false; }
+
+  ConnectionState GetState() const override {
+    return ConnectionState{ConnectionState::kUnconfigured};
   }
-  RegistrationState GetRegistrationState() const override {
-    NOTIMPLEMENTED();
-    return RegistrationState::kOffline;
+
+  SetupState GetSetupState() const override {
+    return SetupState{SetupState::kNone};
   }
-  bool RegisterDevice(const std::string& ticket_id,
-                      const std::string& user) override {
+
+  bool Setup(const std::string& ticket_id, const std::string& user) override {
     NOTIMPLEMENTED();
     return false;
   }
+
+  std::string GetCloudId() const override { return std::string(); }
 };
 
 }  // namespace

@@ -16,23 +16,26 @@ class WifiDelegateImpl : public WifiDelegate {
   ~WifiDelegateImpl() override {}
 
   // WifiDelegate methods
-  std::string GetWifiSsid() const override { return std::string(); }
+  bool IsRequired() const override { return false; }
 
-  std::vector<WifiType> GetWifiTypes() const override {
-    return std::vector<WifiType>();
+  ConnectionState GetState() const override {
+    return ConnectionState{ConnectionState::kUnconfigured};
   }
 
-  bool IsWifiRequired() const override { return false; }
-
-  WifiSetupState GetWifiSetupState() const override {
-    return WifiSetupState::kCompleted;
+  SetupState GetSetupState() const override {
+    return SetupState{SetupState::kNone};
   }
 
-  bool SetupWifi(const std::string& ssid,
-                 const std::string& password) override {
+  bool Setup(const std::string& ssid, const std::string& password) override {
     NOTIMPLEMENTED();
     return false;
   }
+
+  std::string GetSsid() const override { return std::string(); }
+
+  std::string GetHostedSsid() const override { return std::string(); }
+
+  std::vector<WifiType> GetTypes() const override { return {}; }
 };
 
 }  // namespace

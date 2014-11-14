@@ -8,25 +8,9 @@
 #include <memory>
 #include <string>
 
+#include "privetd/privet_types.h"
+
 namespace privetd {
-
-enum class CloudState {
-  kConnecting,
-  kOnline,
-  kOffline,
-  kUnconfigured,
-  kDisabled,
-};
-
-enum class RegistrationState {
-  kAvalible,
-  kCompleted,
-  kInProgress,
-  kInvalidTicket,
-  kServerError,
-  kOffline,
-  kDeviceConfigError,
-};
 
 // Interface to provide GCD functionality for PrivetHandler.
 class CloudDelegate {
@@ -35,20 +19,19 @@ class CloudDelegate {
   virtual ~CloudDelegate();
 
   // Returns true if GCD registration is required.
-  virtual bool IsRegistrationRequired() const = 0;
+  virtual bool IsRequired() const = 0;
+
+  // Returns status of the GCD connection.
+  virtual ConnectionState GetState() const = 0;
+
+  // Returns status of the last setup.
+  virtual SetupState GetSetupState() const = 0;
+
+  // Starts GCD setup.
+  virtual bool Setup(const std::string& ticket_id, const std::string& user) = 0;
 
   // Returns cloud id if the registered device or empty string if unregistered.
   virtual std::string GetCloudId() const = 0;
-
-  // Returns state of the GCD connection of the device.
-  virtual CloudState GetConnectionState() const = 0;
-
-  // Returns registration state of the device.
-  virtual RegistrationState GetRegistrationState() const = 0;
-
-  // Starts device registration in GCD.
-  virtual bool RegisterDevice(const std::string& ticket_id,
-                              const std::string& user) = 0;
 
   // Create default instance.
   static std::unique_ptr<CloudDelegate> CreateDefault();

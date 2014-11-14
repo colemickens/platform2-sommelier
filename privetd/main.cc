@@ -9,6 +9,7 @@
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/values.h>
 #include <chromeos/daemons/dbus_daemon.h>
 #include <chromeos/flag_helper.h>
 #include <chromeos/http/http_request.h>

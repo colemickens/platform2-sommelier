@@ -16,8 +16,11 @@ namespace privetd {
 enum class PairingType {
   kPinCode,
   kEmbeddedCode,
+  kUltrasoundDsssBroadcaster,
+  kAudibleDtmfBroadcaster
 };
 
+// Scopes in order of increasing privileges.
 enum class AuthScope {
   kNone,
   kGuest,

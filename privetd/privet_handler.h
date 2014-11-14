@@ -6,11 +6,16 @@
 #define PRIVETD_PRIVET_HANDLER_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 
 #include <base/callback_forward.h>
-#include <base/values.h>
+
+namespace base {
+class Value;
+class DictionaryValue;
+}  // namespace base
 
 namespace privetd {
 
@@ -55,12 +60,6 @@ class PrivetHandler {
   using ApiHandler = base::Callback<bool(const base::DictionaryValue&,
                                          const RequestCallback&)>;
 
-  bool ReturnError(const std::string& error,
-                   const RequestCallback& callback) const;
-  bool ReturnErrorWithMessage(const std::string& error,
-                              const std::string& message,
-                              const RequestCallback& callback) const;
-
   bool HandleInfo(const base::DictionaryValue&,
                   const RequestCallback& callback);
   bool HandleAuth(const base::DictionaryValue& input,
@@ -69,6 +68,11 @@ class PrivetHandler {
                         const RequestCallback& callback);
   bool HandleSetupStatus(const base::DictionaryValue& input,
                          const RequestCallback& callback);
+
+  std::unique_ptr<base::DictionaryValue> CreateEndpointsSection() const;
+  std::unique_ptr<base::DictionaryValue> CreateInfoAuthSection() const;
+  std::unique_ptr<base::DictionaryValue> CreateWifiSection() const;
+  std::unique_ptr<base::DictionaryValue> CreateGcdSection() const;
 
   CloudDelegate* cloud_ = nullptr;
   DeviceDelegate* device_ = nullptr;
