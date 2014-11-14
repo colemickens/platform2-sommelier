@@ -4,6 +4,7 @@
 
 #include "login_manager/session_manager_impl.h"
 
+#include <glib.h>
 #include <stdint.h>
 
 #include <string>

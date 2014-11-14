@@ -17,8 +17,6 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
-#include <dbus/dbus-glib.h>
-#include <glib.h>
 
 namespace base {
 class FilePath;

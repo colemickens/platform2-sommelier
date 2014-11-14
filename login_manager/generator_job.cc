@@ -7,6 +7,7 @@
 #include "login_manager/generator_job.h"
 
 #include <errno.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
 

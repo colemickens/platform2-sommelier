@@ -73,7 +73,7 @@ bool PolicyService::Store(const uint8_t* policy_blob,
     LOG(ERROR) << msg;
     Error error(dbus_error::kSigDecodeFail, msg);
     completion->ReportFailure(error);
-    return FALSE;
+    return false;
   }
 
   return StorePolicy(policy, completion, flags);
