@@ -107,7 +107,7 @@ class DBusCommandProxyTest : public ::testing::Test {
   }
 
   DBusCommandProxy* GetCommandProxy() const {
-    CHECK_EQ(command_instance_->proxies_.size(), 1);
+    CHECK_EQ(command_instance_->proxies_.size(), 1U);
     return static_cast<DBusCommandProxy*>(command_instance_->proxies_[0].get());
   }
 

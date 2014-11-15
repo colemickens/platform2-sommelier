@@ -10,7 +10,7 @@ namespace buffet {
 
 StateChangeQueue::StateChangeQueue(size_t max_queue_size)
     : max_queue_size_(max_queue_size) {
-  CHECK_GT(max_queue_size_, 0) << "Max queue size must not be zero";
+  CHECK_GT(max_queue_size_, 0U) << "Max queue size must not be zero";
 }
 
 bool StateChangeQueue::NotifyPropertiesUpdated(
