@@ -9,9 +9,11 @@
 
 #include <base/callback.h>
 
+#include "shill/shill_export.h"
+
 namespace shill {
 
-struct InputData {
+struct SHILL_EXPORT InputData {
   InputData() : buf(nullptr), len(0) {}
   InputData(unsigned char *in_buf, size_t in_len) : buf(in_buf), len(in_len) {}
 
@@ -19,7 +21,7 @@ struct InputData {
   size_t len;
 };
 
-class IOHandler {
+class SHILL_EXPORT IOHandler {
  public:
   enum ReadyMode {
     kModeInput,

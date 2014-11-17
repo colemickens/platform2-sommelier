@@ -10,10 +10,12 @@
 
 #include <base/macros.h>
 
+#include "shill/shill_export.h"
+
 namespace shill {
 
 // Provides a holder of a string of bytes
-class ByteString {
+class SHILL_EXPORT ByteString {
  public:
   ByteString() : begin_(data_.begin()) {}
   ByteString(const ByteString &b);

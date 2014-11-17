@@ -142,9 +142,6 @@
         ],
         'deps': ['<@(exported_deps)'],
       },
-      'cflags': [
-        '-fvisibility=default',
-      ],
       'sources': [
         'net/attribute_list.cc',
         'net/byte_string.cc',

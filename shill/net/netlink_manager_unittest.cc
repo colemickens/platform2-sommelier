@@ -321,14 +321,12 @@ TEST_F(NetlinkManagerTest, GetFamily) {
   const uint32_t kRandomSequenceNumber = 3;
 
   NewFamilyMessage new_family_message;
-  new_family_message.attributes()->CreateAttribute(
-      CTRL_ATTR_FAMILY_ID,
-      base::Bind(&NetlinkAttribute::NewControlAttributeFromId));
+  new_family_message.attributes()->CreateControlAttribute(
+      CTRL_ATTR_FAMILY_ID);
   new_family_message.attributes()->SetU16AttributeValue(
       CTRL_ATTR_FAMILY_ID, kSampleMessageType);
-  new_family_message.attributes()->CreateAttribute(
-      CTRL_ATTR_FAMILY_NAME,
-      base::Bind(&NetlinkAttribute::NewControlAttributeFromId));
+  new_family_message.attributes()->CreateControlAttribute(
+      CTRL_ATTR_FAMILY_NAME);
   new_family_message.attributes()->SetStringAttributeValue(
       CTRL_ATTR_FAMILY_NAME, kSampleMessageName);
 
@@ -353,14 +351,12 @@ TEST_F(NetlinkManagerTest, GetFamilyOneInterstitialMessage) {
   const uint32_t kRandomSequenceNumber = 3;
 
   NewFamilyMessage new_family_message;
-  new_family_message.attributes()->CreateAttribute(
-      CTRL_ATTR_FAMILY_ID,
-      base::Bind(&NetlinkAttribute::NewControlAttributeFromId));
+  new_family_message.attributes()->CreateControlAttribute(
+      CTRL_ATTR_FAMILY_ID);
   new_family_message.attributes()->SetU16AttributeValue(
       CTRL_ATTR_FAMILY_ID, kSampleMessageType);
-  new_family_message.attributes()->CreateAttribute(
-      CTRL_ATTR_FAMILY_NAME,
-      base::Bind(&NetlinkAttribute::NewControlAttributeFromId));
+  new_family_message.attributes()->CreateControlAttribute(
+      CTRL_ATTR_FAMILY_NAME);
   new_family_message.attributes()->SetStringAttributeValue(
       CTRL_ATTR_FAMILY_NAME, kSampleMessageName);
 

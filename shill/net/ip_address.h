@@ -8,10 +8,11 @@
 #include <string>
 
 #include "shill/net/byte_string.h"
+#include "shill/shill_export.h"
 
 namespace shill {
 
-class IPAddress {
+class SHILL_EXPORT IPAddress {
  public:
   typedef unsigned char Family;
   static const Family kFamilyUnknown;

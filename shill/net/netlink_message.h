@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>  // for FRIEND_TEST.
 
 #include "shill/net/byte_string.h"
+#include "shill/shill_export.h"
 
 struct nlmsghdr;
 
@@ -63,7 +64,7 @@ namespace shill {
 // Do all of this before you start to create NetlinkMessages so that
 // NetlinkMessage can be instantiated with a valid |message_type_|.
 
-class NetlinkMessage {
+class SHILL_EXPORT NetlinkMessage {
  public:
   static const uint32_t kBroadcastSequenceNumber;
   static const uint16_t kIllegalMessageType;
@@ -121,7 +122,7 @@ class NetlinkMessage {
 // a malformed message or a busy kernel module).  Ack messages are received
 // from the kernel when a sent message has the NLM_F_ACK flag set, indicating
 // that an Ack is requested.
-class ErrorAckMessage : public NetlinkMessage {
+class SHILL_EXPORT ErrorAckMessage : public NetlinkMessage {
  public:
   static const uint16_t kMessageType;
 
@@ -142,7 +143,7 @@ class ErrorAckMessage : public NetlinkMessage {
 };
 
 
-class NoopMessage : public NetlinkMessage {
+class SHILL_EXPORT NoopMessage : public NetlinkMessage {
  public:
   static const uint16_t kMessageType;
 
@@ -157,7 +158,7 @@ class NoopMessage : public NetlinkMessage {
 };
 
 
-class DoneMessage : public NetlinkMessage {
+class SHILL_EXPORT DoneMessage : public NetlinkMessage {
  public:
   static const uint16_t kMessageType;
 
@@ -172,7 +173,7 @@ class DoneMessage : public NetlinkMessage {
 };
 
 
-class OverrunMessage : public NetlinkMessage {
+class SHILL_EXPORT OverrunMessage : public NetlinkMessage {
  public:
   static const uint16_t kMessageType;
 
@@ -187,7 +188,7 @@ class OverrunMessage : public NetlinkMessage {
 };
 
 
-class UnknownMessage : public NetlinkMessage {
+class SHILL_EXPORT UnknownMessage : public NetlinkMessage {
  public:
   UnknownMessage(uint16_t message_type, ByteString message_body) :
       NetlinkMessage(message_type), message_body_(message_body) {}
@@ -205,7 +206,7 @@ class UnknownMessage : public NetlinkMessage {
 // Factory class.
 //
 
-class NetlinkMessageFactory {
+class SHILL_EXPORT NetlinkMessageFactory {
  public:
   typedef base::Callback<NetlinkMessage *(const nlmsghdr *msg)> FactoryMethod;
 

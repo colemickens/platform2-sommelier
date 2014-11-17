@@ -36,6 +36,16 @@ bool AttributeList::CreateAttribute(
   return true;
 }
 
+bool AttributeList::CreateControlAttribute(int id) {
+  return CreateAttribute(
+      id, base::Bind(&NetlinkAttribute::NewControlAttributeFromId));
+}
+
+bool AttributeList::CreateNl80211Attribute(int id) {
+  return CreateAttribute(
+      id, base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
+}
+
 bool AttributeList::CreateAndInitAttribute(
     int id, const nlattr *data, AttributeList::NewFromIdMethod factory) {
   if (!CreateAttribute(id, factory)) {

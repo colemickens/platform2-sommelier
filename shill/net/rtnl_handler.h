@@ -17,6 +17,7 @@
 #include "shill/net/io_handler_factory_container.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
+#include "shill/shill_export.h"
 
 struct nlmsghdr;
 
@@ -33,7 +34,7 @@ class Sockets;
 // RTNLHandler provides access to these events through a callback system and
 // provides utility functions to make changes to interface, address and routing
 // state.
-class RTNLHandler {
+class SHILL_EXPORT RTNLHandler {
  public:
   // Request mask.
   static const int kRequestLink = 1;

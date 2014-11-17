@@ -13,10 +13,12 @@
 
 #include <base/macros.h>
 
+#include "shill/shill_export.h"
+
 namespace shill {
 
 // A "sys/socket.h" abstraction allowing mocking in tests.
-class Sockets {
+class SHILL_EXPORT Sockets {
  public:
   Sockets();
   virtual ~Sockets();
@@ -108,7 +110,7 @@ class Sockets {
   DISALLOW_COPY_AND_ASSIGN(Sockets);
 };
 
-class ScopedSocketCloser {
+class SHILL_EXPORT ScopedSocketCloser {
  public:
   ScopedSocketCloser(Sockets *sockets, int fd);
   ~ScopedSocketCloser();

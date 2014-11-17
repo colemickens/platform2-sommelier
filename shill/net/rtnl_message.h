@@ -13,6 +13,7 @@
 
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"
+#include "shill/shill_export.h"
 
 struct rtattr;
 
@@ -20,7 +21,7 @@ namespace shill {
 
 struct RTNLHeader;
 
-class RTNLMessage {
+class SHILL_EXPORT RTNLMessage {
  public:
   enum Type {
     kTypeUnknown,
@@ -173,29 +174,29 @@ class RTNLMessage {
   }
 
  private:
-  bool DecodeInternal(const ByteString &msg);
-  bool DecodeLink(const RTNLHeader *hdr,
-                  Mode mode,
-                  rtattr **attr_data,
-                  int *attr_length);
-  bool DecodeAddress(const RTNLHeader *hdr,
-                      Mode mode,
-                      rtattr **attr_data,
-                      int *attr_length);
-  bool DecodeRoute(const RTNLHeader *hdr,
-                    Mode mode,
-                    rtattr **attr_data,
-                    int *attr_length);
-  bool DecodeNdUserOption(const RTNLHeader *hdr,
-                       Mode mode,
-                       rtattr **attr_data,
-                       int *attr_length);
-  bool ParseRdnssOption(const uint8_t *data,
-                        int length,
-                        uint32_t lifetime);
-  bool EncodeLink(RTNLHeader *hdr) const;
-  bool EncodeAddress(RTNLHeader *hdr) const;
-  bool EncodeRoute(RTNLHeader *hdr) const;
+  SHILL_PRIVATE bool DecodeInternal(const ByteString &msg);
+  SHILL_PRIVATE bool DecodeLink(const RTNLHeader *hdr,
+                                Mode mode,
+                                rtattr **attr_data,
+                                int *attr_length);
+  SHILL_PRIVATE bool DecodeAddress(const RTNLHeader *hdr,
+                                   Mode mode,
+                                   rtattr **attr_data,
+                                   int *attr_length);
+  SHILL_PRIVATE bool DecodeRoute(const RTNLHeader *hdr,
+                                 Mode mode,
+                                 rtattr **attr_data,
+                                 int *attr_length);
+  SHILL_PRIVATE bool DecodeNdUserOption(const RTNLHeader *hdr,
+                                        Mode mode,
+                                        rtattr **attr_data,
+                                        int *attr_length);
+  SHILL_PRIVATE bool ParseRdnssOption(const uint8_t *data,
+                                      int length,
+                                      uint32_t lifetime);
+  SHILL_PRIVATE bool EncodeLink(RTNLHeader *hdr) const;
+  SHILL_PRIVATE bool EncodeAddress(RTNLHeader *hdr) const;
+  SHILL_PRIVATE bool EncodeRoute(RTNLHeader *hdr) const;
 
   Type type_;
   Mode mode_;

@@ -8,6 +8,7 @@
 #include "shill/net/attribute_list.h"
 #include "shill/net/byte_string.h"
 #include "shill/net/netlink_message.h"
+#include "shill/shill_export.h"
 
 struct nlmsghdr;
 
@@ -53,7 +54,7 @@ namespace shill {
 //                       |<----nla_attr_size---->| |
 //                       |<-----nla_total_size---->|
 
-class GenericNetlinkMessage : public NetlinkMessage {
+class SHILL_EXPORT GenericNetlinkMessage : public NetlinkMessage {
  public:
   GenericNetlinkMessage(uint16_t my_message_type, uint8_t command,
                         const char *command_string)
@@ -90,7 +91,7 @@ class GenericNetlinkMessage : public NetlinkMessage {
 
 // Control Messages
 
-class ControlNetlinkMessage : public GenericNetlinkMessage {
+class SHILL_EXPORT ControlNetlinkMessage : public GenericNetlinkMessage {
  public:
   static const uint16_t kMessageType;
   ControlNetlinkMessage(uint8_t command, const char *command_string)
@@ -107,7 +108,7 @@ class ControlNetlinkMessage : public GenericNetlinkMessage {
   DISALLOW_COPY_AND_ASSIGN(ControlNetlinkMessage);
 };
 
-class NewFamilyMessage : public ControlNetlinkMessage {
+class SHILL_EXPORT NewFamilyMessage : public ControlNetlinkMessage {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -118,7 +119,7 @@ class NewFamilyMessage : public ControlNetlinkMessage {
   DISALLOW_COPY_AND_ASSIGN(NewFamilyMessage);
 };
 
-class GetFamilyMessage : public ControlNetlinkMessage {
+class SHILL_EXPORT GetFamilyMessage : public ControlNetlinkMessage {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -129,7 +130,7 @@ class GetFamilyMessage : public ControlNetlinkMessage {
   DISALLOW_COPY_AND_ASSIGN(GetFamilyMessage);
 };
 
-class UnknownControlMessage : public ControlNetlinkMessage {
+class SHILL_EXPORT UnknownControlMessage : public ControlNetlinkMessage {
  public:
   explicit UnknownControlMessage(uint8_t command)
       : ControlNetlinkMessage(command, "<UNKNOWN CONTROL MESSAGE>"),

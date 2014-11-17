@@ -12,6 +12,8 @@
 
 #include <base/lazy_instance.h>
 
+#include "shill/shill_export.h"
+
 namespace shill {
 
 // Timestamp encapsulates a |monotonic| and a |boottime| clock that can be used
@@ -20,7 +22,7 @@ namespace shill {
 // format. Note that the monotonic clock does not necessarily advance during
 // suspend, while boottime clock does include any time that the system is
 // suspended.
-struct Timestamp {
+struct SHILL_EXPORT Timestamp {
   Timestamp() : monotonic{} {}
   Timestamp(const struct timeval &in_monotonic,
             const struct timeval &in_boottime,
@@ -35,7 +37,7 @@ struct Timestamp {
 };
 
 // A "sys/time.h" abstraction allowing mocking in tests.
-class Time {
+class SHILL_EXPORT Time {
  public:
   virtual ~Time();
 

@@ -71,6 +71,7 @@
 #include "shill/net/netlink_message.h"
 #include "shill/net/netlink_socket.h"
 #include "shill/net/shill_time.h"
+#include "shill/shill_export.h"
 
 struct nlmsghdr;
 
@@ -91,7 +92,7 @@ class Nl80211Message;
 //      netlink_manager_->GetFamily(Nl80211Message::kMessageTypeString,
 //                              Bind(&Nl80211Message::CreateMessage)));
 //  netlink_manager_->Start();
-class NetlinkManager {
+class SHILL_EXPORT NetlinkManager {
  public:
   enum AuxilliaryMessageType {
     kErrorFromKernel,

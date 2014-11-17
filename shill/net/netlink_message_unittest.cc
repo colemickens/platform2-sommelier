@@ -702,32 +702,30 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_CONNECT) {
 TEST_F(NetlinkMessageTest, Build_NL80211_CMD_CONNECT) {
   // Build the message that is found in kNL80211_CMD_CONNECT.
   ConnectMessage message;
-  EXPECT_TRUE(message.attributes()->CreateAttribute(NL80211_ATTR_WIPHY,
-      Bind(&NetlinkAttribute::NewNl80211AttributeFromId)));
+  EXPECT_TRUE(message.attributes()->CreateNl80211Attribute(NL80211_ATTR_WIPHY));
   EXPECT_TRUE(message.attributes()->SetU32AttributeValue(NL80211_ATTR_WIPHY,
                                                         kWiPhy));
 
-  EXPECT_TRUE(message.attributes()->CreateAttribute(NL80211_ATTR_IFINDEX,
-      Bind(&NetlinkAttribute::NewNl80211AttributeFromId)));
+  EXPECT_TRUE(message.attributes()->CreateNl80211Attribute(
+      NL80211_ATTR_IFINDEX));
   EXPECT_TRUE(message.attributes()->SetU32AttributeValue(
       NL80211_ATTR_IFINDEX, kExpectedIfIndex));
 
-  EXPECT_TRUE(message.attributes()->CreateAttribute(NL80211_ATTR_MAC,
-      Bind(&NetlinkAttribute::NewNl80211AttributeFromId)));
+  EXPECT_TRUE(message.attributes()->CreateNl80211Attribute(NL80211_ATTR_MAC));
   EXPECT_TRUE(message.attributes()->SetRawAttributeValue(NL80211_ATTR_MAC,
       ByteString(kMacAddressBytes, arraysize(kMacAddressBytes))));
 
   // In the middle, let's try adding an attribute without populating it.
-  EXPECT_TRUE(message.attributes()->CreateAttribute(NL80211_ATTR_REG_TYPE,
-      Bind(&NetlinkAttribute::NewNl80211AttributeFromId)));
+  EXPECT_TRUE(message.attributes()->CreateNl80211Attribute(
+      NL80211_ATTR_REG_TYPE));
 
-  EXPECT_TRUE(message.attributes()->CreateAttribute(NL80211_ATTR_STATUS_CODE,
-      Bind(&NetlinkAttribute::NewNl80211AttributeFromId)));
+  EXPECT_TRUE(message.attributes()->CreateNl80211Attribute(
+      NL80211_ATTR_STATUS_CODE));
   EXPECT_TRUE(message.attributes()->SetU16AttributeValue(
       NL80211_ATTR_STATUS_CODE, kExpectedConnectStatus));
 
-  EXPECT_TRUE(message.attributes()->CreateAttribute(NL80211_ATTR_RESP_IE,
-      Bind(&NetlinkAttribute::NewNl80211AttributeFromId)));
+  EXPECT_TRUE(message.attributes()->CreateNl80211Attribute(
+      NL80211_ATTR_RESP_IE));
   EXPECT_TRUE(message.attributes()->SetRawAttributeValue(NL80211_ATTR_RESP_IE,
       ByteString(kRespIeBytes, arraysize(kRespIeBytes))));
 

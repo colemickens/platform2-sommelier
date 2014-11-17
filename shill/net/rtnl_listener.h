@@ -7,11 +7,13 @@
 
 #include <base/callback.h>
 
+#include "shill/shill_export.h"
+
 namespace shill {
 
 class RTNLMessage;
 
-class RTNLListener {
+class SHILL_EXPORT RTNLListener {
  public:
   RTNLListener(int listen_flags,
                const base::Callback<void(const RTNLMessage &)> &callback);

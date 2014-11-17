@@ -14,6 +14,8 @@
 
 #include <base/bind.h>
 
+#include "shill/shill_export.h"
+
 struct nlattr;
 namespace shill {
 
@@ -25,7 +27,7 @@ class ByteString;
 class NetlinkAttribute;
 class NetlinkRawAttribute;
 
-class AttributeList : public base::RefCounted<AttributeList> {
+class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
  public:
   typedef std::shared_ptr<NetlinkAttribute> AttributePointer;
   typedef base::Callback<NetlinkAttribute *(int id)> NewFromIdMethod;
@@ -35,6 +37,12 @@ class AttributeList : public base::RefCounted<AttributeList> {
   // Instantiates an NetlinkAttribute of the appropriate type from |id|,
   // and adds it to |attributes_|.
   bool CreateAttribute(int id, NewFromIdMethod factory);
+
+  // Helper function for creating control attribute.
+  bool CreateControlAttribute(int id);
+
+  // Helper function for creating nl80211 attribute.
+  bool CreateNl80211Attribute(int id);
 
   // Instantiates an NetlinkAttribute of the appropriate type from |id|,
   // initializes it from |data|, and adds it to |attributes_|.
@@ -109,7 +117,7 @@ class AttributeList : public base::RefCounted<AttributeList> {
   friend class NetlinkNestedAttribute;
 
   // Using this to get around issues with const and operator[].
-  NetlinkAttribute *GetAttribute(int id) const;
+  SHILL_PRIVATE NetlinkAttribute *GetAttribute(int id) const;
 
   AttributeMap attributes_;
 

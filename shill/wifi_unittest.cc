@@ -7,6 +7,7 @@
 #include <linux/if.h>
 #include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
 #include <netinet/ether.h>
+#include <netlink/attr.h>
 #include <sys/socket.h>
 
 #include <map>
@@ -120,6 +121,7 @@ const uint16_t kRandomScanFrequency2 = 5560;
 const uint16_t kRandomScanFrequency3 = 2422;
 const int kInterfaceIndex = 1234;
 const char kSupplicantNameOwner[] = "9999";
+const char kNl80211AttrWiphyNameStr[] = "NL80211_ATTR_WIPHY_NAME";
 
 }  // namespace
 
@@ -3928,10 +3930,10 @@ TEST_F(WiFiMainTest, OnNewWiphy) {
   Nl80211Message new_wiphy_message(
       NewWiphyMessage::kCommand, NewWiphyMessage::kCommandString);
   new_wiphy_message.attributes()->
-      CreateStringAttribute(Nl80211AttributeWiphyName::kName,
-                            Nl80211AttributeWiphyName::kNameString);
+      CreateStringAttribute(NL80211_ATTR_WIPHY_NAME,
+                            kNl80211AttrWiphyNameStr);
   new_wiphy_message.attributes()->
-      SetStringAttributeValue(Nl80211AttributeWiphyName::kName,
+      SetStringAttributeValue(NL80211_ATTR_WIPHY_NAME,
                               "test-phy");
   EXPECT_CALL(*mac80211_monitor(), Start(_));
   OnNewWiphy(new_wiphy_message);

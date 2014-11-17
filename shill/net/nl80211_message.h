@@ -13,6 +13,7 @@
 
 #include "shill/net/byte_string.h"
 #include "shill/net/generic_netlink_message.h"
+#include "shill/shill_export.h"
 
 struct nlmsghdr;
 
@@ -20,7 +21,7 @@ namespace shill {
 
 // Class for messages received from the mac80211 drivers by way of the
 // cfg80211 kernel module.
-class Nl80211Message : public GenericNetlinkMessage {
+class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
  public:
   static const char kMessageTypeString[];
 
@@ -59,7 +60,7 @@ class Nl80211Message : public GenericNetlinkMessage {
   DISALLOW_COPY_AND_ASSIGN(Nl80211Message);
 };
 
-class Nl80211Frame {
+class SHILL_EXPORT Nl80211Frame {
  public:
   enum Type {
     kAssocResponseFrameType = 0x10,
@@ -96,7 +97,7 @@ class Nl80211Frame {
 // Specific Nl80211Message types.
 //
 
-class AssociateMessage : public Nl80211Message {
+class SHILL_EXPORT AssociateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -108,7 +109,7 @@ class AssociateMessage : public Nl80211Message {
 };
 
 
-class AuthenticateMessage : public Nl80211Message {
+class SHILL_EXPORT AuthenticateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -120,7 +121,7 @@ class AuthenticateMessage : public Nl80211Message {
 };
 
 
-class CancelRemainOnChannelMessage : public Nl80211Message {
+class SHILL_EXPORT CancelRemainOnChannelMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -133,7 +134,7 @@ class CancelRemainOnChannelMessage : public Nl80211Message {
 };
 
 
-class ConnectMessage : public Nl80211Message {
+class SHILL_EXPORT ConnectMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -145,7 +146,7 @@ class ConnectMessage : public Nl80211Message {
 };
 
 
-class DeauthenticateMessage : public Nl80211Message {
+class SHILL_EXPORT DeauthenticateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -157,7 +158,7 @@ class DeauthenticateMessage : public Nl80211Message {
 };
 
 
-class DeleteStationMessage : public Nl80211Message {
+class SHILL_EXPORT DeleteStationMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -169,7 +170,7 @@ class DeleteStationMessage : public Nl80211Message {
 };
 
 
-class DisassociateMessage : public Nl80211Message {
+class SHILL_EXPORT DisassociateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -181,7 +182,7 @@ class DisassociateMessage : public Nl80211Message {
 };
 
 
-class DisconnectMessage : public Nl80211Message {
+class SHILL_EXPORT DisconnectMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -193,7 +194,7 @@ class DisconnectMessage : public Nl80211Message {
 };
 
 
-class FrameTxStatusMessage : public Nl80211Message {
+class SHILL_EXPORT FrameTxStatusMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -204,7 +205,7 @@ class FrameTxStatusMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(FrameTxStatusMessage);
 };
 
-class GetRegMessage : public Nl80211Message {
+class SHILL_EXPORT GetRegMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -215,7 +216,7 @@ class GetRegMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(GetRegMessage);
 };
 
-class GetStationMessage : public Nl80211Message {
+class SHILL_EXPORT GetStationMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -226,7 +227,7 @@ class GetStationMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(GetStationMessage);
 };
 
-class SetWakeOnPacketConnMessage : public Nl80211Message {
+class SHILL_EXPORT SetWakeOnPacketConnMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -237,7 +238,7 @@ class SetWakeOnPacketConnMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(SetWakeOnPacketConnMessage);
 };
 
-class GetWakeOnPacketConnMessage : public Nl80211Message {
+class SHILL_EXPORT GetWakeOnPacketConnMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -248,7 +249,7 @@ class GetWakeOnPacketConnMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(GetWakeOnPacketConnMessage);
 };
 
-class GetWiphyMessage : public Nl80211Message {
+class SHILL_EXPORT GetWiphyMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -260,7 +261,7 @@ class GetWiphyMessage : public Nl80211Message {
 };
 
 
-class JoinIbssMessage : public Nl80211Message {
+class SHILL_EXPORT JoinIbssMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -272,7 +273,7 @@ class JoinIbssMessage : public Nl80211Message {
 };
 
 
-class MichaelMicFailureMessage : public Nl80211Message {
+class SHILL_EXPORT MichaelMicFailureMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -284,7 +285,7 @@ class MichaelMicFailureMessage : public Nl80211Message {
 };
 
 
-class NewScanResultsMessage : public Nl80211Message {
+class SHILL_EXPORT NewScanResultsMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -296,7 +297,7 @@ class NewScanResultsMessage : public Nl80211Message {
 };
 
 
-class NewStationMessage : public Nl80211Message {
+class SHILL_EXPORT NewStationMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -308,7 +309,7 @@ class NewStationMessage : public Nl80211Message {
 };
 
 
-class NewWiphyMessage : public Nl80211Message {
+class SHILL_EXPORT NewWiphyMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -320,7 +321,7 @@ class NewWiphyMessage : public Nl80211Message {
 };
 
 
-class NotifyCqmMessage : public Nl80211Message {
+class SHILL_EXPORT NotifyCqmMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -332,7 +333,7 @@ class NotifyCqmMessage : public Nl80211Message {
 };
 
 
-class PmksaCandidateMessage : public Nl80211Message {
+class SHILL_EXPORT PmksaCandidateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -344,7 +345,7 @@ class PmksaCandidateMessage : public Nl80211Message {
 };
 
 
-class RegBeaconHintMessage : public Nl80211Message {
+class SHILL_EXPORT RegBeaconHintMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -356,7 +357,7 @@ class RegBeaconHintMessage : public Nl80211Message {
 };
 
 
-class RegChangeMessage : public Nl80211Message {
+class SHILL_EXPORT RegChangeMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -368,7 +369,7 @@ class RegChangeMessage : public Nl80211Message {
 };
 
 
-class RemainOnChannelMessage : public Nl80211Message {
+class SHILL_EXPORT RemainOnChannelMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -380,7 +381,7 @@ class RemainOnChannelMessage : public Nl80211Message {
 };
 
 
-class RoamMessage : public Nl80211Message {
+class SHILL_EXPORT RoamMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -392,7 +393,7 @@ class RoamMessage : public Nl80211Message {
 };
 
 
-class ScanAbortedMessage : public Nl80211Message {
+class SHILL_EXPORT ScanAbortedMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -404,7 +405,7 @@ class ScanAbortedMessage : public Nl80211Message {
 };
 
 
-class GetScanMessage : public Nl80211Message {
+class SHILL_EXPORT GetScanMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -416,7 +417,7 @@ class GetScanMessage : public Nl80211Message {
 };
 
 
-class TriggerScanMessage : public Nl80211Message {
+class SHILL_EXPORT TriggerScanMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -428,7 +429,7 @@ class TriggerScanMessage : public Nl80211Message {
 };
 
 
-class UnknownNl80211Message : public Nl80211Message {
+class SHILL_EXPORT UnknownNl80211Message : public Nl80211Message {
  public:
   explicit UnknownNl80211Message(uint8_t command)
       : Nl80211Message(command, "<UNKNOWN NL80211 MESSAGE>"),
@@ -440,7 +441,7 @@ class UnknownNl80211Message : public Nl80211Message {
 };
 
 
-class UnprotDeauthenticateMessage : public Nl80211Message {
+class SHILL_EXPORT UnprotDeauthenticateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -453,7 +454,7 @@ class UnprotDeauthenticateMessage : public Nl80211Message {
 };
 
 
-class UnprotDisassociateMessage : public Nl80211Message {
+class SHILL_EXPORT UnprotDisassociateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -465,7 +466,7 @@ class UnprotDisassociateMessage : public Nl80211Message {
 };
 
 
-class GetInterfaceMessage : public Nl80211Message {
+class SHILL_EXPORT GetInterfaceMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
@@ -476,7 +477,7 @@ class GetInterfaceMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(GetInterfaceMessage);
 };
 
-class NewInterfaceMessage : public Nl80211Message {
+class SHILL_EXPORT NewInterfaceMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];

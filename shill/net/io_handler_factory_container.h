@@ -16,7 +16,7 @@ namespace shill {
 // By default, this container will use the IOHandlerFactory that uses
 // libbase's FileDescriptorWatcher. The caller can implement their own
 // IOHandlerFactory and overwrite the default using SetIOHandlerFactory.
-class IOHandlerFactoryContainer {
+class SHILL_EXPORT IOHandlerFactoryContainer {
  public:
   virtual ~IOHandlerFactoryContainer();
 

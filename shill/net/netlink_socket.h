@@ -32,6 +32,8 @@
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/shill_export.h"
+
 namespace shill {
 
 class Sockets;
@@ -42,7 +44,7 @@ class ByteString;
 // for documentation on how netlink sockets work (note that most of the rest of
 // this document discusses libnl -- something not used by this code for
 // netlink communication).
-class NetlinkSocket {
+class SHILL_EXPORT NetlinkSocket {
  public:
   static const int kReceiveBufferSize;
 
