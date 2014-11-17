@@ -900,37 +900,6 @@ TEST_F(PowerSupplyTest, ConnectedToUsb) {
             status.external_power);
 }
 
-TEST_F(PowerSupplyTest, OriginalSpringCharger) {
-  const char kModelNameFile[] = "model_name";
-  WriteDefaultValues(POWER_AC);
-  Init();
-
-  PowerStatus status;
-  ASSERT_TRUE(UpdateStatus(&status));
-  EXPECT_EQ("", status.line_power_model_name);
-  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
-
-  WriteValue(ac_dir_, kModelNameFile, PowerSupply::kOldFirmwareModelName);
-  ASSERT_TRUE(UpdateStatus(&status));
-  EXPECT_EQ(PowerSupply::kOldFirmwareModelName, status.line_power_model_name);
-  EXPECT_EQ(PowerSupplyProperties_ExternalPower_ORIGINAL_SPRING_CHARGER,
-            status.external_power);
-
-  WriteValue(ac_dir_, kModelNameFile,
-             PowerSupply::kOriginalSpringChargerModelName);
-  ASSERT_TRUE(UpdateStatus(&status));
-  EXPECT_EQ(PowerSupply::kOriginalSpringChargerModelName,
-            status.line_power_model_name);
-  EXPECT_EQ(PowerSupplyProperties_ExternalPower_ORIGINAL_SPRING_CHARGER,
-            status.external_power);
-
-  const char kBogusModelName[] = "0x1b";
-  WriteValue(ac_dir_, kModelNameFile, kBogusModelName);
-  ASSERT_TRUE(UpdateStatus(&status));
-  EXPECT_EQ(kBogusModelName, status.line_power_model_name);
-  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
-}
-
 TEST_F(PowerSupplyTest, ShutdownPercentAffectsBatteryTime) {
   const double kShutdownPercent = 10.0;
   prefs_.SetDouble(kLowBatteryShutdownPercentPref, kShutdownPercent);

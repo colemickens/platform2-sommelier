@@ -92,15 +92,6 @@ bool IsUsbChargerType(const std::string& type) {
       type == "USB_ACA";
 }
 
-// Returns true if |model_name|, a line power source's model, indicates that an
-// original spring AC charger is connected. Also assumes that an original spring
-// AC charger is connected if the firmware is outdated and doesn't report the
-// model.
-bool IsOriginalSpringCharger(const std::string& model_name) {
-  return model_name == PowerSupply::kOriginalSpringChargerModelName ||
-      model_name == PowerSupply::kOldFirmwareModelName;
-}
-
 // Returns true if |path|, a sysfs directory, corresponds to an external
 // peripheral (e.g. a wireless mouse or keyboard).
 bool IsExternalPeripheral(const base::FilePath& path) {
@@ -142,8 +133,6 @@ const char PowerSupply::kUdevSubsystem[] = "power_supply";
 const int PowerSupply::kObservedBatteryChargeRateMinMs = kDefaultPollMs;
 const int PowerSupply::kBatteryStabilizedSlackMs = 50;
 const double PowerSupply::kLowBatteryShutdownSafetyPercent = 5.0;
-const char PowerSupply::kOriginalSpringChargerModelName[] = "0x17";
-const char PowerSupply::kOldFirmwareModelName[] = "0x00";
 
 PowerSupply::PowerSupply()
     : prefs_(NULL),
@@ -406,9 +395,7 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   ReadAndTrimString(path, "model_name", &status->line_power_model_name);
   status->external_power = IsUsbChargerType(status->line_power_type) ?
       PowerSupplyProperties_ExternalPower_USB :
-      (IsOriginalSpringCharger(status->line_power_model_name) ?
-       PowerSupplyProperties_ExternalPower_ORIGINAL_SPRING_CHARGER :
-       PowerSupplyProperties_ExternalPower_AC);
+      PowerSupplyProperties_ExternalPower_AC;
   status->line_power_voltage = ReadScaledDouble(path, "voltage_now");
   status->line_power_current = ReadScaledDouble(path, "current_now");
 
