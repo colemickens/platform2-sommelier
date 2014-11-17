@@ -74,6 +74,28 @@ TEST_F(TpmUtilityTest, StartupSelfTestFailure) {
   EXPECT_EQ(TPM_RC_FAILURE, utility.Startup());
 }
 
+TEST_F(TpmUtilityTest, ClearSuccess) {
+  TpmUtilityImpl utility(factory_);
+  EXPECT_CALL(mock_tpm_, ClearSync(_, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.Clear());
+}
+
+TEST_F(TpmUtilityTest, ClearAfterBadInit) {
+  TpmUtilityImpl utility(factory_);
+  EXPECT_CALL(mock_tpm_, ClearSync(_, _, _))
+      .WillOnce(Return(TPM_RC_AUTH_MISSING))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.Clear());
+}
+
+TEST_F(TpmUtilityTest, ClearFail) {
+  TpmUtilityImpl utility(factory_);
+  EXPECT_CALL(mock_tpm_, ClearSync(_, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.Clear());
+}
+
 TEST_F(TpmUtilityTest, InitializeTpmAlreadyInit) {
   TpmUtilityImpl utility(factory_);
   EXPECT_EQ(TPM_RC_SUCCESS, utility.InitializeTpm());

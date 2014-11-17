@@ -22,12 +22,18 @@ void PrintUsage() {
   puts("Options:");
   puts("  --help - Prints this message.");
   puts("  --startup - Performs startup and self-tests.");
+  puts("  --clear - Clears the TPM. Use before initializing the TPM.");
   puts("  --init_tpm - Initializes a TPM as CrOS firmware does.");
 }
 
 int Startup() {
   trunks::TrunksFactoryImpl factory;
   return factory.GetTpmUtility()->Startup();
+}
+
+int Clear() {
+  trunks::TrunksFactoryImpl factory;
+  return factory.GetTpmUtility()->Clear();
 }
 
 int InitializeTpm() {
@@ -44,6 +50,9 @@ int main(int argc, char **argv) {
   CommandLine *cl = CommandLine::ForCurrentProcess();
   if (cl->HasSwitch("startup")) {
     return Startup();
+  }
+  if (cl->HasSwitch("clear")) {
+    return Clear();
   }
   if (cl->HasSwitch("init_tpm")) {
     return InitializeTpm();

@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include <string>
 
+#include "trunks/tpm_generated.h"
+
 namespace trunks {
 
 // This class is instantiated in the trunks daemon and is

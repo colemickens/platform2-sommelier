@@ -35,6 +35,12 @@ class CHROMEOS_EXPORT TpmUtility {
   // and self-tests or, if already started, just the result of the self-tests.
   virtual TPM_RC Startup() = 0;
 
+  // This method removes all TPM context associated with a specific Owner.
+  // As part of this process, it resets the SPS to a new random value, and
+  // clears ownerAuth, endorsementAuth and lockoutAuth.
+  // NOTE: This method needs to be called before InitializeTPM.
+  virtual TPM_RC Clear() = 0;
+
   // Synchronously prepares a TPM for use by Chromium OS. Typically this is done
   // by the platform firmware and, in that case, this method has no effect.
   virtual TPM_RC InitializeTpm() = 0;

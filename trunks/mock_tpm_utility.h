@@ -19,6 +19,7 @@ class MockTpmUtility : public TpmUtility {
   virtual ~MockTpmUtility();
 
   MOCK_METHOD0(Startup, TPM_RC());
+  MOCK_METHOD0(Clear, TPM_RC());
   MOCK_METHOD0(InitializeTpm, TPM_RC());
   MOCK_METHOD1(StirRandom, TPM_RC(const std::string&));
   MOCK_METHOD2(GenerateRandom, TPM_RC(int, std::string*));

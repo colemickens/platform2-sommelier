@@ -27,6 +27,7 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
 
   // TpmUtility methods.
   TPM_RC Startup() override;
+  TPM_RC Clear() override;
   TPM_RC InitializeTpm() override;
   TPM_RC StirRandom(const std::string& entropy_data) override;
   TPM_RC GenerateRandom(int num_bytes,

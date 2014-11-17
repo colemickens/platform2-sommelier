@@ -70,6 +70,33 @@ TPM_RC TpmUtilityImpl::Startup() {
   return TPM_RC_SUCCESS;
 }
 
+TPM_RC TpmUtilityImpl::Clear() {
+  TPM_RC result = TPM_RC_SUCCESS;
+  scoped_ptr<AuthorizationDelegate> password_delegate(
+      factory_.GetPasswordAuthorization(""));
+  result = factory_.GetTpm()->ClearSync(TPM_RH_PLATFORM,
+                                        NameFromHandle(TPM_RH_PLATFORM),
+                                        password_delegate.get());
+  // If there was an error in the initialization, platform auth is in a bad
+  // state.
+  if (result == TPM_RC_AUTH_MISSING) {
+    scoped_ptr<AuthorizationDelegate> authorization(
+        factory_.GetPasswordAuthorization(kPlatformPassword));
+    result = factory_.GetTpm()->ClearSync(TPM_RH_PLATFORM,
+                                          NameFromHandle(TPM_RH_PLATFORM),
+                                          authorization.get());
+  }
+  if (GetFormatOneError(result) == TPM_RC_BAD_AUTH) {
+    LOG(INFO) << "Clear failed because of BAD_AUTH. This probably means "
+              << "that the TPM was already initialized.";
+    return result;
+  }
+  if (result) {
+    LOG(ERROR) << "Failed to clear the TPM: " << GetErrorString(result);
+  }
+  return result;
+}
+
 TPM_RC TpmUtilityImpl::InitializeTpm() {
   TPM_RC result = TPM_RC_SUCCESS;
   scoped_ptr<TpmState> tpm_state(factory_.GetTpmState());
