@@ -475,7 +475,7 @@ void ChromiumCommandBuilder::AddUiFlags() {
     AddArg("--gpu-sandbox-start-early");
 
   if (IsBoard("peach_pit") || IsBoard("peach_pi") || IsBoard("nyan") ||
-      IsBoard("nyan_big") || IsBoard("nyan_blaze"))
+      IsBoard("nyan_big") || IsBoard("nyan_blaze") || IsBoard("nyan_kitty"))
     AddArg("--enable-webrtc-hw-vp8-encoding");
 
   if (IsBoard("peach_pi") || IsBoard("nyan") || IsBoard("nyan_big") ||
