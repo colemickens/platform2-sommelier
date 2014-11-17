@@ -11,6 +11,8 @@
 
 #include <base/time/time.h>
 
+#include "privetd/privet_types.h"
+
 namespace privetd {
 
 enum class PairingType {
@@ -49,6 +51,15 @@ class SecurityDelegate {
   // Returns true if |auth_code| provided by client is valid. Client should
   // obtain |auth_code| during pairing process.
   virtual bool IsValidPairingCode(const std::string& auth_code) const = 0;
+
+  virtual Error StartPairing(PairingType mode,
+                             std::string* session_id,
+                             std::string* device_commitment) = 0;
+
+  virtual Error ConfirmPairing(const std::string& sessionId,
+                               const std::string& client_commitment,
+                               std::string* fingerprint,
+                               std::string* signature) = 0;
 
   // Create default instance.
   static std::unique_ptr<SecurityDelegate> CreateDefault();

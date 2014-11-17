@@ -15,6 +15,8 @@ enum class Error {
   kMissingAuthorization,
   kInvalidAuthorization,
   kInvalidAuthorizationScope,
+  kCommitmentMismatch,
+  kUnknownSession,
   kInvalidAuthCode,
   kInvalidAuthMode,
   kInvalidRequestedScope,

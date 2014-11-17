@@ -118,6 +118,12 @@ class MockSecurityDelegate : public SecurityDelegate {
                      AuthScope(const std::string&, base::Time*));
   MOCK_CONST_METHOD0(GetPairingTypes, std::vector<PairingType>());
   MOCK_CONST_METHOD1(IsValidPairingCode, bool(const std::string&));
+  MOCK_METHOD3(StartPairing, Error(PairingType, std::string*, std::string*));
+  MOCK_METHOD4(ConfirmPairing,
+               Error(const std::string&,
+                     const std::string&,
+                     std::string*,
+                     std::string*));
 
   MockSecurityDelegate() {
     EXPECT_CALL(*this, CreateAccessToken(AuthScope::kOwner, _))
@@ -134,6 +140,16 @@ class MockSecurityDelegate : public SecurityDelegate {
             PairingType::kUltrasoundDsssBroadcaster,
             PairingType::kAudibleDtmfBroadcaster,
         }));
+
+    EXPECT_CALL(*this, StartPairing(_, _, _))
+        .WillRepeatedly(DoAll(SetArgPointee<1>("testSession"),
+                              SetArgPointee<2>("testCommitment"),
+                              Return(Error::kNone)));
+
+    EXPECT_CALL(*this, ConfirmPairing(_, _, _, _))
+        .WillRepeatedly(DoAll(SetArgPointee<2>("testFingerprint"),
+                              SetArgPointee<3>("testSignature"),
+                              Return(Error::kNone)));
   }
 };
 
@@ -301,6 +317,8 @@ TEST_F(PrivetHandlerTest, InfoMinimal) {
     'api': [
       '/privet/info',
       '/privet/v3/auth',
+      '/privet/v3/pairing/confirm',
+      '/privet/v3/pairing/start',
       '/privet/v3/setup/start',
       '/privet/v3/setup/status'
     ]
@@ -368,11 +386,40 @@ TEST_F(PrivetHandlerTest, Info) {
     'api': [
       '/privet/info',
       '/privet/v3/auth',
+      '/privet/v3/pairing/confirm',
+      '/privet/v3/pairing/start',
       '/privet/v3/setup/start',
       '/privet/v3/setup/status'
     ]
   })";
   EXPECT_PRED2(IsEqualJson, kExpected, HandleRequest("/privet/info", "{}"));
+}
+
+TEST_F(PrivetHandlerTest, PairingStartInvalidParams) {
+  EXPECT_PRED2(IsEqualJson, "{'reason': 'invalidParams'}",
+               HandleRequest("/privet/v3/pairing/start",
+                             "{'mode': 'embeddedCode', 'crypto': 'crypto'}"));
+
+  EXPECT_PRED2(IsEqualJson, "{'reason': 'invalidParams'}",
+               HandleRequest("/privet/v3/pairing/start",
+                             "{'mode': 'code', 'crypto': 'p256_spake2'}"));
+}
+
+TEST_F(PrivetHandlerTest, PairingStart) {
+  EXPECT_PRED2(
+      IsEqualJson,
+      "{'deviceCommitment': 'testCommitment', 'sessionId': 'testSession'}",
+      HandleRequest("/privet/v3/pairing/start",
+                    "{'mode': 'embeddedCode', 'crypto': 'p256_spake2'}"));
+}
+
+TEST_F(PrivetHandlerTest, PairingConfirm) {
+  EXPECT_PRED2(
+      IsEqualJson,
+      "{'certFingerprint':'testFingerprint','certSignature':'testSignature'}",
+      HandleRequest(
+          "/privet/v3/pairing/confirm",
+          "{'sessionId':'testSession','clientCommitment':'testCommitment'}"));
 }
 
 TEST_F(PrivetHandlerTest, AuthErrorNoType) {

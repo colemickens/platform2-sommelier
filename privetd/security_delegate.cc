@@ -116,10 +116,31 @@ class SecurityDelegateImpl : public SecurityDelegate {
   }
 
   bool IsValidPairingCode(const std::string& auth_code) const override {
-    return true;
+    return auth_code == (device_commitment_ + client_commitment_);
+  }
+
+  Error StartPairing(PairingType mode,
+                     std::string* session_id,
+                     std::string* device_commitment) override {
+    *session_id = session_id_;
+    *device_commitment = device_commitment_;
+    return Error::kNone;
+  }
+
+  Error ConfirmPairing(const std::string& sessionId,
+                       const std::string& client_commitment,
+                       std::string* fingerprint,
+                       std::string* signature) override {
+    client_commitment_ = client_commitment;
+    *fingerprint = "fingerprint";
+    *signature = "signature";
+    return Error::kNone;
   }
 
  private:
+  std::string session_id_ = "111";
+  std::string client_commitment_;
+  std::string device_commitment_ = "1234";
   chromeos::SecureBlob secret_;
 };
 

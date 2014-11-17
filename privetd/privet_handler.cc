@@ -24,6 +24,8 @@ namespace privetd {
 namespace {
 
 const char kInfoApiPath[] = "/privet/info";
+const char kPairingStartApiPath[] = "/privet/v3/pairing/start";
+const char kPairingConfirmApiPath[] = "/privet/v3/pairing/confirm";
 const char kAuthApiPath[] = "/privet/v3/auth";
 const char kSetupStartApiPath[] = "/privet/v3/setup/start";
 const char kSetupStatusApiPath[] = "/privet/v3/setup/status";
@@ -40,6 +42,8 @@ const char kWifiKey[] = "wifi";
 const char kRequiredKey[] = "required";
 const char kStatusKey[] = "status";
 const char kErrorKey[] = "error";
+const char kModeKey[] = "mode";
+const char kCryptoKey[] = "crypto";
 
 const char kInfoIdKey[] = "id";
 const char kInfoTypeKey[] = "type";
@@ -53,8 +57,6 @@ const char kInfoEndpointsHttpsUpdatePortKey[] = "httpsUpdatesPort";
 const char kInfoAuthenticationKey[] = "authentication";
 const char kInfoAuthPairingKey[] = "pairing";
 
-const char kInfoAuthModeKey[] = "mode";
-const char kInfoAuthCryptoTypeKey[] = "crypto";
 const char kCryptoP256Spake2Value[] = "p256_spake2";
 
 const char kInfoWifiCapabilitiesKey[] = "capabilities";
@@ -63,6 +65,12 @@ const char kInfoWifiHostedSsidKey[] = "hostedSsid";
 
 const char kInfoUptimeKey[] = "uptime";
 const char kInfoApiKey[] = "api";
+
+const char kPairingSessionIdKey[] = "sessionId";
+const char kPairingDeviceCommitmentKey[] = "deviceCommitment";
+const char kPairingClientCommitmentKey[] = "clientCommitment";
+const char kPairingFingerprintKey[] = "certFingerprint";
+const char kPairingSignatureKey[] = "certSignature";
 
 const char kAuthModeKey[] = "authMode";
 const char kAuthTypeAnonymousValue[] = "anonymous";
@@ -159,6 +167,8 @@ const EnumToStringMap<Error>::Map EnumToStringMap<Error>::kMap[] = {
     {Error::kMissingAuthorization, "missingAuthorization"},
     {Error::kInvalidAuthorization, "invalidAuthorization"},
     {Error::kInvalidAuthorizationScope, "invalidAuthorizationScope"},
+    {Error::kCommitmentMismatch, "commitmentMismatch"},
+    {Error::kUnknownSession, "unknownSession"},
     {Error::kInvalidAuthCode, "invalidAuthCode"},
     {Error::kInvalidAuthMode, "invalidAuthMode"},
     {Error::kInvalidRequestedScope, "invalidRequestedScope"},
@@ -266,6 +276,12 @@ PrivetHandler::PrivetHandler(CloudDelegate* cloud,
   handlers_[kInfoApiPath] = std::make_pair(
       AuthScope::kGuest,
       base::Bind(&PrivetHandler::HandleInfo, base::Unretained(this)));
+  handlers_[kPairingStartApiPath] = std::make_pair(
+      AuthScope::kGuest,
+      base::Bind(&PrivetHandler::HandlePairingStart, base::Unretained(this)));
+  handlers_[kPairingConfirmApiPath] = std::make_pair(
+      AuthScope::kGuest,
+      base::Bind(&PrivetHandler::HandlePairingConfirm, base::Unretained(this)));
   handlers_[kAuthApiPath] = std::make_pair(
       AuthScope::kGuest,
       base::Bind(&PrivetHandler::HandleAuth, base::Unretained(this)));
@@ -347,6 +363,57 @@ void PrivetHandler::HandleInfo(const base::DictionaryValue&,
     apis->AppendString(key_value.first);
   output.Set(kInfoApiKey, apis.release());
 
+  callback.Run(chromeos::http::status_code::Ok, output);
+}
+
+void PrivetHandler::HandlePairingStart(const base::DictionaryValue& input,
+                                       const RequestCallback& callback) {
+  std::string mode;
+  input.GetString(kModeKey, &mode);
+
+  std::string crypto;
+  input.GetString(kCryptoKey, &crypto);
+
+  if (crypto != kCryptoP256Spake2Value)
+    return ReturnError(Error::kInvalidParams, callback);
+
+  PairingType pairing;
+  std::vector<PairingType> modes = security_->GetPairingTypes();
+  if (crypto != kCryptoP256Spake2Value || !StringToEnum(mode, &pairing) ||
+      std::find(modes.begin(), modes.end(), pairing) == modes.end()) {
+    return ReturnError(Error::kInvalidParams, callback);
+  }
+
+  std::string id;
+  std::string commitment;
+  Error error = security_->StartPairing(pairing, &id, &commitment);
+  if (error != Error::kNone)
+    return ReturnError(error, callback);
+
+  base::DictionaryValue output;
+  output.SetString(kPairingSessionIdKey, id);
+  output.SetString(kPairingDeviceCommitmentKey, commitment);
+  callback.Run(chromeos::http::status_code::Ok, output);
+}
+
+void PrivetHandler::HandlePairingConfirm(const base::DictionaryValue& input,
+                                         const RequestCallback& callback) {
+  std::string id;
+  input.GetString(kPairingSessionIdKey, &id);
+
+  std::string commitment;
+  input.GetString(kPairingClientCommitmentKey, &commitment);
+
+  std::string fingerprint;
+  std::string signature;
+  Error error =
+      security_->ConfirmPairing(id, commitment, &fingerprint, &signature);
+  if (error != Error::kNone)
+    return ReturnError(error, callback);
+
+  base::DictionaryValue output;
+  output.SetString(kPairingFingerprintKey, fingerprint);
+  output.SetString(kPairingSignatureKey, signature);
   callback.Run(chromeos::http::status_code::Ok, output);
 }
 
@@ -493,11 +560,11 @@ std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateInfoAuthSection()
   auth_types->AppendString(kAuthTypePairingValue);
   if (cloud_ && cloud_->GetState().status == ConnectionState::kOnline)
     auth_types->AppendString(kAuthTypeCloudValue);
-  auth->Set(kInfoAuthModeKey, auth_types.release());
+  auth->Set(kModeKey, auth_types.release());
 
   std::unique_ptr<base::ListValue> crypto_types(new base::ListValue());
   crypto_types->AppendString(kCryptoP256Spake2Value);
-  auth->Set(kInfoAuthCryptoTypeKey, crypto_types.release());
+  auth->Set(kCryptoKey, crypto_types.release());
 
   return std::move(auth);
 }

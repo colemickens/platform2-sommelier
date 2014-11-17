@@ -61,6 +61,10 @@ class PrivetHandler {
 
   void HandleInfo(const base::DictionaryValue&,
                   const RequestCallback& callback);
+  void HandlePairingStart(const base::DictionaryValue& input,
+                          const RequestCallback& callback);
+  void HandlePairingConfirm(const base::DictionaryValue& input,
+                            const RequestCallback& callback);
   void HandleAuth(const base::DictionaryValue& input,
                   const RequestCallback& callback);
   void HandleSetupStart(const base::DictionaryValue& input,
