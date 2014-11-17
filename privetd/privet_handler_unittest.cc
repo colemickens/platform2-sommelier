@@ -24,6 +24,7 @@
 
 using testing::_;
 using testing::Return;
+using testing::SetArgPointee;
 
 namespace privetd {
 
@@ -56,9 +57,9 @@ bool IsEqualJson(const std::string& test_json,
   base::DictionaryValue::Iterator it2(dictionary2);
   for (; !it1.IsAtEnd() && !it2.IsAtEnd(); it1.Advance(), it2.Advance()) {
     // Output mismatched keys.
-    EXPECT_EQ(it1.key(), it2.key());
+    EXPECT_EQ(it2.key(), it1.key());
     // Output mismatched values.
-    EXPECT_PRED2(IsEqualValue, it1.value(), it2.value());
+    EXPECT_PRED2(IsEqualValue, it2.value(), it1.value());
     if (it1.key() != it2.key() || !it1.value().Equals(&it2.value()))
       return false;
   }
@@ -111,18 +112,20 @@ class MockDeviceDelegate : public DeviceDelegate {
 
 class MockSecurityDelegate : public SecurityDelegate {
  public:
-  MOCK_CONST_METHOD1(CreateAccessToken, std::string(AuthScope));
-  MOCK_CONST_METHOD2(GetScopeFromAccessToken,
-                     AuthScope(const std::string&, const base::Time&));
+  MOCK_CONST_METHOD2(CreateAccessToken,
+                     std::string(AuthScope, const base::Time&));
+  MOCK_CONST_METHOD2(ParseAccessToken,
+                     AuthScope(const std::string&, base::Time*));
   MOCK_CONST_METHOD0(GetPairingTypes, std::vector<PairingType>());
   MOCK_CONST_METHOD1(IsValidPairingCode, bool(const std::string&));
 
   MockSecurityDelegate() {
-    EXPECT_CALL(*this, CreateAccessToken(AuthScope::kOwner))
+    EXPECT_CALL(*this, CreateAccessToken(AuthScope::kOwner, _))
         .WillRepeatedly(Return("TestAccessToken"));
 
-    EXPECT_CALL(*this, GetScopeFromAccessToken(_, _))
-        .WillRepeatedly(Return(AuthScope::kOwner));
+    EXPECT_CALL(*this, ParseAccessToken(_, _))
+        .WillRepeatedly(DoAll(SetArgPointee<1>(base::Time::Now()),
+                              Return(AuthScope::kOwner)));
 
     EXPECT_CALL(*this, GetPairingTypes())
         .WillRepeatedly(Return(std::vector<PairingType>{

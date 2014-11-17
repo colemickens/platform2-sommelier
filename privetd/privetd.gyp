@@ -3,6 +3,7 @@
     'variables': {
       'deps': [
         'dbus-1',
+        'openssl',
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
       ],
@@ -61,6 +62,7 @@
           'sources': [
             'privetd_testrunner.cc',
             'privet_handler_unittest.cc',
+            'security_delegate_unittest.cc',
           ],
         },
       ],

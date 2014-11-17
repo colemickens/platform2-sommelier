@@ -35,14 +35,13 @@ class SecurityDelegate {
   SecurityDelegate();
   virtual ~SecurityDelegate();
 
-  // Creates access token for the given |scope|.
-  virtual std::string CreateAccessToken(AuthScope scope) const = 0;
+  // Creates access token for the given |scope| and |time|.
+  virtual std::string CreateAccessToken(AuthScope scope,
+                                        const base::Time& time) const = 0;
 
-  // Validates |token| and returns |scope| for it. Discards all tokens issued
-  // before |expire_before| time.
-  virtual AuthScope GetScopeFromAccessToken(
-      const std::string& token,
-      const base::Time& expire_before) const = 0;
+  // Validates |token| and returns |scope| for it.
+  virtual AuthScope ParseAccessToken(const std::string& token,
+                                     base::Time* time) const = 0;
 
   // Returns list of pairing methods by device.
   virtual std::vector<PairingType> GetPairingTypes() const = 0;

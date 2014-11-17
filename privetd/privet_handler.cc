@@ -298,11 +298,13 @@ void PrivetHandler::HandleRequest(const std::string& api,
   if (token == kAuthTypeAnonymousValue) {
     scope = AuthScope::kGuest;
   } else {
-    base::Time expiration =
-        base::Time::Now() -
-        base::TimeDelta::FromSeconds(kAccesssTokenExpirationSeconds +
-                                     kAccesssTokenExpirationThresholdSeconds);
-    scope = security_->GetScopeFromAccessToken(token, expiration);
+    base::Time time;
+    scope = security_->ParseAccessToken(token, &time);
+    time += base::TimeDelta::FromSeconds(kAccesssTokenExpirationSeconds);
+    time +=
+        base::TimeDelta::FromSeconds(kAccesssTokenExpirationThresholdSeconds);
+    if (time < base::Time::Now())
+      scope = AuthScope::kNone;
   }
   if (scope == AuthScope::kNone)
     return ReturnError(Error::kInvalidAuthorization, callback);
@@ -380,8 +382,9 @@ void PrivetHandler::HandleAuth(const base::DictionaryValue& input,
     return ReturnError(Error::kAccessDenied, callback);
 
   base::DictionaryValue output;
-  output.SetString(kAuthAccessTokenKey,
-                   security_->CreateAccessToken(requested_auth_scope));
+  output.SetString(
+      kAuthAccessTokenKey,
+      security_->CreateAccessToken(requested_auth_scope, base::Time::Now()));
   output.SetString(kAuthTokenTypeKey, kAuthorizationHeaderPrefix);
   output.SetInteger(kAuthExpiresInKey, kAccesssTokenExpirationSeconds);
   output.SetString(kAuthScopeKey, EnumToString(requested_auth_scope));
