@@ -97,7 +97,7 @@ void AddAppShellFlags(ChromiumCommandBuilder* builder) {
     const base::FilePath app_path =
         GetDataPath(stateful_dir, readonly_dir, kAppSubdir);
     if (!app_path.empty())
-      builder->AddArg("--app-shell-app-path=" + app_path.value());
+      builder->AddArg("--load-apps=" + app_path.value());
   }
 
   std::string network;
