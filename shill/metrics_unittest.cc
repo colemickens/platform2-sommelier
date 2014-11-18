@@ -18,7 +18,7 @@
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_service.h"
-#include "shill/mock_wifi_service.h"
+#include "shill/wifi/mock_wifi_service.h"
 
 using std::string;
 

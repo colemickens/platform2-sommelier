@@ -43,14 +43,14 @@
 #include "shill/mock_resolver.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
-#include "shill/mock_wifi_provider.h"
-#include "shill/mock_wifi_service.h"
 #include "shill/portal_detector.h"
 #include "shill/property_store_unittest.h"
 #include "shill/resolver.h"
 #include "shill/service_under_test.h"
 #include "shill/testing.h"
-#include "shill/wifi_service.h"
+#include "shill/wifi/mock_wifi_provider.h"
+#include "shill/wifi/mock_wifi_service.h"
+#include "shill/wifi/wifi_service.h"
 #include "shill/wimax/wimax_service.h"
 
 using base::Bind;

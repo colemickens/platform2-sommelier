@@ -8,12 +8,12 @@
 #include <memory>
 #include <string>
 
-#include "shill/callback80211_metrics.h"
 #include "shill/control_interface.h"
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/manager.h"
 #include "shill/net/sockets.h"
+#include "shill/wifi/callback80211_metrics.h"
 
 namespace shill {
 

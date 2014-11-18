@@ -10,7 +10,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/profile.h"
-#include "shill/wifi_provider.h"
+#include "shill/wifi/wifi_provider.h"
 
 namespace shill {
 

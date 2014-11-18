@@ -15,7 +15,7 @@
 #include "shill/service.h"
 #include "shill/store_interface.h"
 #include "shill/technology.h"
-#include "shill/wifi_service.h"
+#include "shill/wifi/wifi_service.h"
 
 using std::string;
 

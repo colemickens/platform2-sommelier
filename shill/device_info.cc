@@ -48,7 +48,7 @@
 #include "shill/routing_table.h"
 #include "shill/service.h"
 #include "shill/vpn/vpn_provider.h"
-#include "shill/wifi.h"
+#include "shill/wifi/wifi.h"
 
 using base::Bind;
 using base::FileEnumerator;

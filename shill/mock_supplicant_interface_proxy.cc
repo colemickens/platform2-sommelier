@@ -4,8 +4,6 @@
 
 #include "shill/mock_supplicant_interface_proxy.h"
 
-#include "shill/wifi.h"
-
 namespace shill {
 
 MockSupplicantInterfaceProxy::MockSupplicantInterfaceProxy() {}

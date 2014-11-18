@@ -30,7 +30,7 @@
 #include "shill/profile.h"
 #include "shill/property_store.h"
 #include "shill/service.h"
-#include "shill/wifi.h"
+#include "shill/wifi/wifi.h"
 #include "shill/wimax/wimax_provider.h"
 
 namespace shill {

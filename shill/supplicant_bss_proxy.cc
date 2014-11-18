@@ -10,7 +10,7 @@
 #include <dbus-c++/dbus.h>
 
 #include "shill/logging.h"
-#include "shill/wifi_endpoint.h"
+#include "shill/wifi/wifi_endpoint.h"
 
 using std::map;
 using std::string;

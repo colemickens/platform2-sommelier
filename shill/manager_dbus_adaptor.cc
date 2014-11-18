@@ -17,7 +17,7 @@
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/wifi_service.h"
+#include "shill/wifi/wifi_service.h"
 
 using std::map;
 using std::string;

@@ -23,11 +23,11 @@
 #include "shill/mock_device.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
-#include "shill/mock_wifi_provider.h"
 #include "shill/portal_detector.h"
 #include "shill/property_store_unittest.h"
 #include "shill/resolver.h"
-#include "shill/wifi_service.h"
+#include "shill/wifi/mock_wifi_provider.h"
+#include "shill/wifi/wifi_service.h"
 
 using base::FilePath;
 using std::map;

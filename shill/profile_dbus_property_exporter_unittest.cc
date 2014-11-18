@@ -14,7 +14,7 @@
 #include "shill/error.h"
 #include "shill/mock_store.h"
 #include "shill/service.h"
-#include "shill/wifi_service.h"
+#include "shill/wifi/wifi_service.h"
 
 using std::string;
 using testing::_;

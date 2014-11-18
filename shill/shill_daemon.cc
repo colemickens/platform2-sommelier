@@ -8,7 +8,6 @@
 
 #include <base/bind.h>
 
-#include "shill/callback80211_metrics.h"
 #include "shill/dhcp_provider.h"
 #include "shill/diagnostics_reporter.h"
 #include "shill/error.h"
@@ -19,6 +18,7 @@
 #include "shill/proxy_factory.h"
 #include "shill/routing_table.h"
 #include "shill/shill_config.h"
+#include "shill/wifi/callback80211_metrics.h"
 
 using base::Bind;
 using base::Unretained;

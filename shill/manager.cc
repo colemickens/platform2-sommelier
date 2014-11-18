@@ -48,9 +48,9 @@
 #include "shill/service_sorter.h"
 #include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
-#include "shill/wifi.h"
-#include "shill/wifi_provider.h"
-#include "shill/wifi_service.h"
+#include "shill/wifi/wifi.h"
+#include "shill/wifi/wifi_provider.h"
+#include "shill/wifi/wifi_service.h"
 #include "shill/wimax/wimax_service.h"
 
 using base::Bind;
