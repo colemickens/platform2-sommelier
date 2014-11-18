@@ -37,14 +37,22 @@ class DarkResumeInterface {
   DarkResumeInterface() {}
   virtual ~DarkResumeInterface() {}
 
+  // These methods bracket each suspend request. PrepareForSuspendRequest will
+  // schedule the dark resume callback if it is able to, and
+  // UndoPrepareForSuspendRequest will deschedule it if necessary.
+  virtual void PrepareForSuspendRequest() = 0;
+  virtual void UndoPrepareForSuspendRequest() = 0;
+
   // Updates state in anticipation of the system suspending, returning the
   // action that should be performed. If SUSPEND is returned, |suspend_duration|
   // contains the duration for which the system should be suspended or an empty
   // base::TimeDelta() if the caller should not try to set up a wake alarm. This
   // may occur if the system should suspend indefinitely, or if DarkResume was
   // successful in setting a wake alarm for some point in the future.
-  virtual void PrepareForSuspendAttempt(Action* action,
-                                        base::TimeDelta* suspend_duration) = 0;
+  // This may be called more than once per suspend request.
+  virtual void GetActionForSuspendAttempt(
+      Action* action,
+      base::TimeDelta* suspend_duration) = 0;
 
   // Returns true if the system is currently in dark resume.
   virtual bool InDarkResume() = 0;
@@ -84,8 +92,10 @@ class DarkResume : public DarkResumeInterface {
   void Init(PowerSupplyInterface* power_supply, PrefsInterface* prefs);
 
   // DarkResumeInterface implementation:
-  void PrepareForSuspendAttempt(Action* action,
-                                base::TimeDelta* suspend_duration) override;
+  void PrepareForSuspendRequest() override;
+  void UndoPrepareForSuspendRequest() override;
+  void GetActionForSuspendAttempt(Action* action,
+                                  base::TimeDelta* suspend_duration) override;
   bool InDarkResume() override;
 
  private:
@@ -104,7 +114,13 @@ class DarkResume : public DarkResumeInterface {
   // Writes the passed-in state to all the files in |files|.
   void SetStates(const std::vector<base::FilePath>& files, bool enabled);
 
-  // Helper for scheduling a dark resume wakeup.
+  // Callback which updates the next action and reschedules itself based on the
+  // current power status.
+  void ScheduleBatteryCheck();
+
+  // Gets the length of time to resuspend for given the current battery level.
+  base::TimeDelta GetNextSuspendDuration();
+
   // Calculates a new |next_action_| to take based on the current battery level,
   // line power status, and shutdown threshold. |next_action_| will then be
   // used on the next suspend to decide whether to shut down or not.

@@ -15,7 +15,11 @@ DarkResumeStub::DarkResumeStub()
 DarkResumeStub::~DarkResumeStub() {
 }
 
-void DarkResumeStub::PrepareForSuspendAttempt(
+void DarkResumeStub::PrepareForSuspendRequest() {}
+
+void DarkResumeStub::UndoPrepareForSuspendRequest() {}
+
+void DarkResumeStub::GetActionForSuspendAttempt(
     Action* action,
     base::TimeDelta* suspend_duration) {
   CHECK(action);

@@ -36,9 +36,13 @@ class TimerContainer {
   // Perform a fake suspend preparation using |dark_resume|,
   // putting the next action to take and time to suspend for
   // in |action| and |suspend_duration|, respectively.
+  // If we are in "dark resume" and |woken_by_timer| is set,
+  // then we will pretend that this timer fired to wake us up
+  // from the suspend.
   virtual void Suspend(DarkResume* dark_resume,
                        DarkResumeInterface::Action* action,
-                       base::TimeDelta* suspend_duration) = 0;
+                       base::TimeDelta* suspend_duration,
+                       bool woken_by_timer) = 0;
 };
 
 // Test fixture helper for pre-3.11 kernel functionality.
@@ -52,8 +56,9 @@ class LegacyTimerContainer : public TimerContainer {
   // so just call into |dark_resume|.
   void Suspend(DarkResume* dark_resume,
                DarkResumeInterface::Action* action,
-               base::TimeDelta* suspend_duration) override {
-    dark_resume->PrepareForSuspendAttempt(action, suspend_duration);
+               base::TimeDelta* suspend_duration,
+               bool woken_by_timer) override {
+    dark_resume->GetActionForSuspendAttempt(action, suspend_duration);
   }
 };
 
@@ -80,8 +85,9 @@ class AsyncTimerContainer : public TimerContainer {
   // to.
   void Suspend(DarkResume* dark_resume,
                DarkResumeInterface::Action* action,
-               base::TimeDelta* suspend_duration) override {
-    dark_resume->PrepareForSuspendAttempt(action, suspend_duration);
+               base::TimeDelta* suspend_duration,
+               bool woken_by_timer) override {
+    dark_resume->GetActionForSuspendAttempt(action, suspend_duration);
     // In this pathway, we should never set |suspend_duration|.
     // Setting the wake alarm has already been done by DarkResume.
     EXPECT_EQ(0, suspend_duration->InSeconds());
@@ -89,7 +95,8 @@ class AsyncTimerContainer : public TimerContainer {
     // legacy pathway.
     if (timer_->IsRunning()) {
       *suspend_duration = timer_->GetCurrentDelay();
-      timer_->Fire();
+      if (dark_resume->InDarkResume() && woken_by_timer)
+        timer_->Fire();
     }
     *action = dark_resume->next_action_for_testing();
   }
@@ -144,10 +151,11 @@ class DarkResumeTest : public ::testing::Test {
     return value;
   }
 
-  // Dispatches to |timer_container_|.
   void Suspend(DarkResumeInterface::Action* action,
-               base::TimeDelta* suspend_duration) {
-    timer_container_.Suspend(dark_resume_.get(), action, suspend_duration);
+               base::TimeDelta* suspend_duration,
+               bool woken_by_timer) {
+    timer_container_.Suspend(dark_resume_.get(), action, suspend_duration,
+                             woken_by_timer);
   }
 
   base::ScopedTempDir temp_dir_;
@@ -177,7 +185,10 @@ TYPED_TEST(DarkResumeTest, SuspendAndShutDown) {
   this->SetBattery(60.0, false);
   DarkResumeInterface::Action action;
   base::TimeDelta suspend_duration;
-  this->Suspend(&action, &suspend_duration);
+
+  this->dark_resume_->PrepareForSuspendRequest();
+  this->Suspend(&action, &suspend_duration, false);
+  this->dark_resume_->UndoPrepareForSuspendRequest();
   EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
   EXPECT_EQ(10, suspend_duration.InSeconds());
   EXPECT_FALSE(this->dark_resume_->InDarkResume());
@@ -186,7 +197,9 @@ TYPED_TEST(DarkResumeTest, SuspendAndShutDown) {
   // resuspend.
   this->WriteDarkResumeState(true);
   this->SetBattery(61.0, false);
-  this->Suspend(&action, &suspend_duration);
+
+  this->dark_resume_->PrepareForSuspendRequest();
+  this->Suspend(&action, &suspend_duration, true);
   EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
   EXPECT_EQ(10, suspend_duration.InSeconds());
   EXPECT_TRUE(this->dark_resume_->InDarkResume());
@@ -194,7 +207,7 @@ TYPED_TEST(DarkResumeTest, SuspendAndShutDown) {
   // The higher battery charge should be used as the new shutdown threshold for
   // the next dark resume.
   this->SetBattery(60.5, false);
-  this->Suspend(&action, &suspend_duration);
+  this->Suspend(&action, &suspend_duration, true);
   EXPECT_EQ(DarkResumeInterface::SHUT_DOWN, action);
   EXPECT_TRUE(this->dark_resume_->InDarkResume());
 }
@@ -209,37 +222,57 @@ TYPED_TEST(DarkResumeTest, UserResumes) {
   this->Init();
   DarkResumeInterface::Action action;
   base::TimeDelta suspend_duration;
-  this->Suspend(&action, &suspend_duration);
+
+  this->dark_resume_->PrepareForSuspendRequest();
+  this->Suspend(&action, &suspend_duration, false);
+  this->dark_resume_->UndoPrepareForSuspendRequest();
   EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
   EXPECT_EQ(500, suspend_duration.InSeconds());
 
   this->SetBattery(80.0, false);
-  this->Suspend(&action, &suspend_duration);
+
+  this->dark_resume_->PrepareForSuspendRequest();
+  this->Suspend(&action, &suspend_duration, false);
+  this->dark_resume_->UndoPrepareForSuspendRequest();
   EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
   EXPECT_EQ(500, suspend_duration.InSeconds());
 
   this->SetBattery(50.0, false);
-  this->Suspend(&action, &suspend_duration);
+
+  this->dark_resume_->PrepareForSuspendRequest();
+  this->Suspend(&action, &suspend_duration, false);
+  this->dark_resume_->UndoPrepareForSuspendRequest();
   EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
   EXPECT_EQ(100, suspend_duration.InSeconds());
 
   this->SetBattery(25.0, false);
-  this->Suspend(&action, &suspend_duration);
+
+  this->dark_resume_->PrepareForSuspendRequest();
+  this->Suspend(&action, &suspend_duration, false);
+  this->dark_resume_->UndoPrepareForSuspendRequest();
   EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
   EXPECT_EQ(50, suspend_duration.InSeconds());
 
   this->SetBattery(20.0, false);
-  this->Suspend(&action, &suspend_duration);
+
+  this->dark_resume_->PrepareForSuspendRequest();
+  this->Suspend(&action, &suspend_duration, false);
+  this->dark_resume_->UndoPrepareForSuspendRequest();
   EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
   EXPECT_EQ(50, suspend_duration.InSeconds());
 
   this->SetBattery(5.0, false);
-  this->Suspend(&action, &suspend_duration);
+  this->dark_resume_->PrepareForSuspendRequest();
+  this->Suspend(&action, &suspend_duration, false);
+  this->dark_resume_->UndoPrepareForSuspendRequest();
+
   EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
   EXPECT_EQ(10, suspend_duration.InSeconds());
-
   this->SetBattery(1.0, false);
-  this->Suspend(&action, &suspend_duration);
+
+  this->dark_resume_->PrepareForSuspendRequest();
+  this->Suspend(&action, &suspend_duration, false);
+  this->dark_resume_->UndoPrepareForSuspendRequest();
   EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
   EXPECT_EQ(10, suspend_duration.InSeconds());
 }
@@ -251,12 +284,16 @@ TYPED_TEST(DarkResumeTest, LinePower) {
   this->Init();
   DarkResumeInterface::Action action;
   base::TimeDelta suspend_duration;
-  this->Suspend(&action, &suspend_duration);
+
+  this->dark_resume_->PrepareForSuspendRequest();
+  this->Suspend(&action, &suspend_duration, true);
   EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
 
+  // We'll dark resume in a lower battery state.
   this->WriteDarkResumeState(true);
   this->SetBattery(50.0, true);
-  this->Suspend(&action, &suspend_duration);
+
+  this->Suspend(&action, &suspend_duration, true);
   EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
 }
 
@@ -290,7 +327,10 @@ TYPED_TEST(DarkResumeTest, EnableAndDisable) {
   EXPECT_EQ(DarkResume::kDisabled, this->ReadFile(kSourcePath));
   DarkResumeInterface::Action action;
   base::TimeDelta suspend_duration;
-  this->Suspend(&action, &suspend_duration);
+
+  this->dark_resume_->PrepareForSuspendRequest();
+  this->Suspend(&action, &suspend_duration, false);
+  this->dark_resume_->UndoPrepareForSuspendRequest();
   EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
   EXPECT_EQ(0, suspend_duration.InSeconds());
 
@@ -300,7 +340,10 @@ TYPED_TEST(DarkResumeTest, EnableAndDisable) {
   this->Init();
   EXPECT_EQ(DarkResume::kEnabled, this->ReadFile(kActivePath));
   EXPECT_EQ(DarkResume::kEnabled, this->ReadFile(kSourcePath));
-  this->Suspend(&action, &suspend_duration);
+
+  this->dark_resume_->PrepareForSuspendRequest();
+  this->Suspend(&action, &suspend_duration, false);
+  this->dark_resume_->UndoPrepareForSuspendRequest();
   EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
   EXPECT_EQ(10, suspend_duration.InSeconds());
 
@@ -311,7 +354,10 @@ TYPED_TEST(DarkResumeTest, EnableAndDisable) {
   this->Init();
   EXPECT_EQ(DarkResume::kDisabled, this->ReadFile(kActivePath));
   EXPECT_EQ(DarkResume::kDisabled, this->ReadFile(kSourcePath));
-  this->Suspend(&action, &suspend_duration);
+
+  this->dark_resume_->PrepareForSuspendRequest();
+  this->Suspend(&action, &suspend_duration, false);
+  this->dark_resume_->UndoPrepareForSuspendRequest();
   EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
   EXPECT_EQ(0, suspend_duration.InSeconds());
 }
@@ -326,13 +372,19 @@ TYPED_TEST(DarkResumeTest, PowerStatusRefreshFails) {
   this->power_supply_.set_refresh_result(false);
   DarkResumeInterface::Action action;
   base::TimeDelta suspend_duration;
-  this->Suspend(&action, &suspend_duration);
+
+  this->dark_resume_->PrepareForSuspendRequest();
+  this->Suspend(&action, &suspend_duration, false);
+  this->dark_resume_->UndoPrepareForSuspendRequest();
   EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
   EXPECT_EQ(0, suspend_duration.InSeconds());
 
   // Now let the system suspend.
   this->power_supply_.set_refresh_result(true);
-  this->Suspend(&action, &suspend_duration);
+
+  this->dark_resume_->PrepareForSuspendRequest();
+  this->Suspend(&action, &suspend_duration, false);
+  this->dark_resume_->UndoPrepareForSuspendRequest();
   EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
   EXPECT_EQ(10, suspend_duration.InSeconds());
 
@@ -340,9 +392,66 @@ TYPED_TEST(DarkResumeTest, PowerStatusRefreshFails) {
   // indefinitely.
   this->WriteDarkResumeState(true);
   this->power_supply_.set_refresh_result(false);
-  this->Suspend(&action, &suspend_duration);
+  this->Suspend(&action, &suspend_duration, true);
   EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
   EXPECT_EQ(0, suspend_duration.InSeconds());
+}
+
+// Check that we don't fail to schedule work after a full resume.
+TYPED_TEST(DarkResumeTest, FullResumeReschedule) {
+  this->prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10\n"
+                                                          "50.0 20\n");
+  this->Init();
+
+  // This "full resume" will not have fired the timer.
+  this->SetBattery(80.0, false);
+  DarkResumeInterface::Action action;
+  base::TimeDelta suspend_duration;
+
+  this->dark_resume_->PrepareForSuspendRequest();
+  this->Suspend(&action, &suspend_duration, false);
+  this->dark_resume_->UndoPrepareForSuspendRequest();
+  EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
+  EXPECT_EQ(20, suspend_duration.InSeconds());
+
+  // Next time we suspend, we should have rescheduled work.
+  this->SetBattery(40.0, false);
+
+  this->dark_resume_->PrepareForSuspendRequest();
+  this->Suspend(&action, &suspend_duration, false);
+  EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
+  EXPECT_EQ(10, suspend_duration.InSeconds());
+}
+
+// Check that we don't reschedule work when we dark resume for another reason.
+TYPED_TEST(DarkResumeTest, InterruptedDarkResume) {
+  this->prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10\n"
+                                                          "50.0 20\n");
+  this->Init();
+
+  // This doesn't apply to legacy pathways, since there are no dark resumes
+  // for other reasons.
+  if (base::is_same<TypeParam, LegacyTimerContainer>::value)
+    return;
+
+  // We'll dark resume, but it will be for another reason, so the callback
+  // won't be run yet.
+  this->SetBattery(80.0, false);
+  this->WriteDarkResumeState(true);
+  DarkResumeInterface::Action action;
+  base::TimeDelta suspend_duration;
+
+  this->dark_resume_->PrepareForSuspendRequest();
+  this->Suspend(&action, &suspend_duration, false);
+  EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
+  EXPECT_EQ(20, suspend_duration.InSeconds());
+
+  // Next time we suspend, we should not have rescheduled work.
+  this->SetBattery(40.0, false);
+
+  this->Suspend(&action, &suspend_duration, false);
+  EXPECT_EQ(DarkResumeInterface::SUSPEND, action);
+  EXPECT_EQ(20, suspend_duration.InSeconds());
 }
 
 }  // namespace system

@@ -358,6 +358,7 @@ void Suspender::StartRequest() {
   // to the signal.
   delegate_->PrepareToSuspend();
   suspend_delay_controller_->PrepareForSuspend(suspend_request_id_);
+  dark_resume_->PrepareForSuspendRequest();
   delegate_->SetSuspendAnnounced(true);
   EmitSuspendImminentSignal(suspend_request_id_);
 }
@@ -373,12 +374,13 @@ void Suspender::FinishRequest(bool success) {
   delegate_->UndoPrepareToSuspend(success,
       initial_num_attempts_ ? initial_num_attempts_ : current_num_attempts_,
       dark_resume_->InDarkResume());
+  dark_resume_->UndoPrepareForSuspendRequest();
 }
 
 Suspender::State Suspender::Suspend() {
   system::DarkResumeInterface::Action action;
   base::TimeDelta duration;
-  dark_resume_->PrepareForSuspendAttempt(&action, &duration);
+  dark_resume_->GetActionForSuspendAttempt(&action, &duration);
   switch (action) {
     case system::DarkResumeInterface::SHUT_DOWN:
       LOG(INFO) << "Shutting down from dark resume";

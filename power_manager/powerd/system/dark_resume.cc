@@ -68,8 +68,18 @@ void DarkResume::Init(PowerSupplyInterface* power_supply,
   SetStates(dark_resume_devices_, enabled_);
 }
 
-void DarkResume::PrepareForSuspendAttempt(Action* action,
-                                          base::TimeDelta* suspend_duration) {
+void DarkResume::PrepareForSuspendRequest() {
+  if (timer_ && enabled_)
+    ScheduleBatteryCheck();
+}
+
+void DarkResume::UndoPrepareForSuspendRequest() {
+  if (timer_)
+    timer_->Stop();
+}
+
+void DarkResume::GetActionForSuspendAttempt(Action* action,
+                                            base::TimeDelta* suspend_duration) {
   DCHECK(action);
   DCHECK(suspend_duration);
 
@@ -79,31 +89,34 @@ void DarkResume::PrepareForSuspendAttempt(Action* action,
     return;
   }
 
+  if (timer_) {
+    *suspend_duration = base::TimeDelta();
+  } else {
+    UpdateNextAction();
+    *suspend_duration = GetNextSuspendDuration();
+  }
+
+  *action = next_action_;
+}
+
+void DarkResume::ScheduleBatteryCheck() {
+  if (!power_supply_->RefreshImmediately())
+    return;
+
+  UpdateNextAction();
+
+  timer_->Start(FROM_HERE,
+                GetNextSuspendDuration(),
+                base::Bind(&DarkResume::ScheduleBatteryCheck,
+                           base::Unretained(this)));
+}
+
+base::TimeDelta DarkResume::GetNextSuspendDuration() {
   const double battery = power_supply_->GetPowerStatus().battery_percentage;
   SuspendMap::iterator suspend_it = suspend_durations_.upper_bound(battery);
   if (suspend_it != suspend_durations_.begin())
     suspend_it--;
-  base::TimeDelta duration = suspend_it->second;
-
-  // If we have a timer available, then we can use this to
-  // asynchronously set the correct suspend action for next time
-  // (and our impending action has already been set the last time we
-  // suspended).
-  // If we do schedule the wakeup using the timer, we have to make sure
-  // that we don't set an RTC wake alarm via sysfs as well, so we
-  // set a zero time delta to tell the daemon not to worry about it.
-  if (timer_) {
-    timer_->Start(FROM_HERE,
-                  duration,
-                  base::Bind(&DarkResume::UpdateNextAction,
-                             base::Unretained(this)));
-    *suspend_duration = base::TimeDelta();
-  } else {
-    UpdateNextAction();
-    *suspend_duration = duration;
-  }
-
-  *action = next_action_;
+  return suspend_it->second;
 }
 
 void DarkResume::UpdateNextAction() {
