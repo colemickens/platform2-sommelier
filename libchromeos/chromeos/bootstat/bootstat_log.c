@@ -107,6 +107,9 @@ static void append_logdata(const char* input_path,
                              output_directory_name,
                              output_name_prefix,
                              BOOTSTAT_MAX_EVENT_LEN - 1, event_name);
+  // output_path_len is unused when the assert() is disabled. Prevent the
+  // warning.
+  (void)output_path_len;
   assert(output_path_len < sizeof(output_path));
   ofd = open(output_path, O_WRONLY | O_APPEND | O_CREAT | O_NOFOLLOW,
              kFileCreationMode);

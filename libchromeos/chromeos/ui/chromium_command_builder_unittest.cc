@@ -206,7 +206,7 @@ TEST_F(ChromiumCommandBuilderTest, UserConfig) {
       "--bar=3\n"
       "!--blah\n";
   base::FilePath path(util::GetReparentedPath("/config.txt", base_path_));
-  PCHECK(base::WriteFile(path, kConfig, strlen(kConfig)) == strlen(kConfig));
+  ASSERT_EQ(strlen(kConfig), base::WriteFile(path, kConfig, strlen(kConfig)));
 
   ASSERT_TRUE(builder_.ApplyUserConfig(path));
   ASSERT_EQ(2U, builder_.arguments().size());
@@ -226,14 +226,15 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigVmodule) {
   // vmodule flag.
   const char kConfig[] = "!--foo\n!--bar";
   base::FilePath path(util::GetReparentedPath("/config.txt", base_path_));
-  PCHECK(base::WriteFile(path, kConfig, strlen(kConfig)) == strlen(kConfig));
+  ASSERT_EQ(strlen(kConfig), base::WriteFile(path, kConfig, strlen(kConfig)));
   ASSERT_TRUE(builder_.ApplyUserConfig(path));
   builder_.AddVmodulePattern("b=1");
   ASSERT_EQ("--vmodule=a=2,b=1", GetFirstArgWithPrefix("--vmodule="));
 
   // Delete the --vmodule flag.
   const char kConfig2[] = "!--vmodule=";
-  PCHECK(base::WriteFile(path, kConfig2, strlen(kConfig2)) == strlen(kConfig2));
+  ASSERT_EQ(strlen(kConfig2),
+            base::WriteFile(path, kConfig2, strlen(kConfig2)));
   ASSERT_TRUE(builder_.ApplyUserConfig(path));
   EXPECT_TRUE(builder_.arguments().empty());
 
@@ -243,7 +244,8 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigVmodule) {
 
   // Check that vmodule directives in config files are handled.
   const char kConfig3[] = "vmodule=a=1\nvmodule=b=2";
-  PCHECK(base::WriteFile(path, kConfig3, strlen(kConfig3)) == strlen(kConfig3));
+  ASSERT_EQ(strlen(kConfig3),
+            base::WriteFile(path, kConfig3, strlen(kConfig3)));
   ASSERT_TRUE(builder_.ApplyUserConfig(path));
   ASSERT_EQ("--vmodule=c=1,a=1,b=2", GetFirstArgWithPrefix("--vmodule="));
 }
@@ -254,8 +256,9 @@ TEST_F(ChromiumCommandBuilderTest, PepperPlugins) {
       "FILE_NAME=/opt/google/chrome/pepper/flash.so\n"
       "PLUGIN_NAME=\"Shockwave Flash\"\n"
       "VERSION=1.2.3.4\n";
-  PCHECK(base::WriteFile(pepper_dir_.Append("flash.info"), kFlash,
-                         strlen(kFlash)) == strlen(kFlash));
+  ASSERT_EQ(strlen(kFlash),
+            base::WriteFile(pepper_dir_.Append("flash.info"), kFlash,
+                            strlen(kFlash)));
 
   const char kNetflix[] =
       "FILE_NAME=/opt/google/chrome/pepper/netflix.so\n"
@@ -263,20 +266,23 @@ TEST_F(ChromiumCommandBuilderTest, PepperPlugins) {
       "VERSION=2.0.0\n"
       "DESCRIPTION=Helper for the Netflix application\n"
       "MIME_TYPES=\"application/netflix\"\n";
-  PCHECK(base::WriteFile(pepper_dir_.Append("netflix.info"), kNetflix,
-                         strlen(kNetflix)) == strlen(kNetflix));
+  ASSERT_EQ(strlen(kNetflix),
+            base::WriteFile(pepper_dir_.Append("netflix.info"), kNetflix,
+                            strlen(kNetflix)));
 
   const char kOther[] =
       "PLUGIN_NAME=Some other plugin\n"
       "FILE_NAME=/opt/google/chrome/pepper/other.so\n";
-  PCHECK(base::WriteFile(pepper_dir_.Append("other.info"), kOther,
-                         strlen(kOther)) == strlen(kOther));
+  ASSERT_EQ(strlen(kOther),
+            base::WriteFile(pepper_dir_.Append("other.info"), kOther,
+                            strlen(kOther)));
 
   const char kMissingFileName[] =
       "PLUGIN_NAME=Foo\n"
       "VERSION=2.3\n";
-  PCHECK(base::WriteFile(pepper_dir_.Append("broken.info"), kMissingFileName,
-                         strlen(kMissingFileName)) == strlen(kMissingFileName));
+  ASSERT_EQ(strlen(kMissingFileName),
+            base::WriteFile(pepper_dir_.Append("broken.info"), kMissingFileName,
+                            strlen(kMissingFileName)));
 
   ASSERT_TRUE(Init());
   ASSERT_TRUE(builder_.SetUpChromium(base::FilePath()));
@@ -314,8 +320,8 @@ TEST_F(ChromiumCommandBuilderTest, DeepMemoryProfiler) {
 TEST_F(ChromiumCommandBuilderTest, SetUpX11) {
   const base::FilePath kXauthPath(base_path_.Append("test_xauth"));
   const char kXauthData[] = "foo";
-  PCHECK(base::WriteFile(kXauthPath, kXauthData, strlen(kXauthData)) ==
-         strlen(kXauthData));
+  ASSERT_EQ(strlen(kXauthData),
+            base::WriteFile(kXauthPath, kXauthData, strlen(kXauthData)));
 
   ASSERT_TRUE(Init());
   ASSERT_TRUE(builder_.SetUpChromium(kXauthPath));

@@ -4,10 +4,11 @@
       'deps': [
         'libchrome-<(libbase_ver)'
       ],
-      # This project has code that triggers warnings when using gtest.
-      # Need to sort that out before we enable this.
-      'enable_werror': 0,
     },
+    'cflags': [
+      # glib uses the deprecated "register" attribute in some header files.
+      '-Wno-deprecated-register',
+    ],
     'include_dirs': [
       '../libchromeos',
     ],
