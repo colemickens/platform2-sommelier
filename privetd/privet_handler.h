@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <base/callback_forward.h>
+#include <base/macros.h>
 
 namespace base {
 class Value;
@@ -83,6 +84,8 @@ class PrivetHandler {
   WifiDelegate* wifi_ = nullptr;
 
   std::map<std::string, std::pair<AuthScope, ApiHandler>> handlers_;
+
+  DISALLOW_COPY_AND_ASSIGN(PrivetHandler);
 };
 
 }  // namespace privetd

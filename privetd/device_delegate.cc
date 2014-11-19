@@ -10,11 +10,11 @@
 #include <base/guid.h>
 #include <chromeos/key_value_store.h>
 
+#include "privetd/constants.h"
+
 namespace privetd {
 
 namespace {
-
-const char kConfigPath[] = "/var/lib/privetd/privetd.conf";
 
 const char kIdKey[] = "id";
 const char kNameKey[] = "name";
@@ -27,7 +27,7 @@ class DeviceDelegateImpl : public DeviceDelegate {
  public:
   DeviceDelegateImpl(uint16_t http_port, uint16_t https_port)
       : http_port_(http_port), https_port_(https_port) {
-    config_store_.Load(base::FilePath(kConfigPath));
+    config_store_.Load(base::FilePath(constants::kDefaultConfigPath));
     if (GetId().empty()) {
       config_store_.SetString(kIdKey, base::GenerateGUID());
       SaveConfig();
@@ -89,7 +89,7 @@ class DeviceDelegateImpl : public DeviceDelegate {
 
  private:
   void SaveConfig() {
-    base::FilePath path(kConfigPath);
+    base::FilePath path(constants::kDefaultConfigPath);
     CHECK(config_store_.Save(path));
   }
 

@@ -21,8 +21,8 @@ enum class WifiType {
 // Interface to provide WiFi functionality for PrivetHandler.
 class WifiDelegate {
  public:
-  WifiDelegate();
-  virtual ~WifiDelegate();
+  WifiDelegate() = default;
+  virtual ~WifiDelegate() = default;
 
   // Returns true if WiFi setup is required.
   virtual bool IsRequired() const = 0;
@@ -51,9 +51,6 @@ class WifiDelegate {
 
   // Returns list of supported WiFi types. Currently it's just frequencies.
   virtual std::vector<WifiType> GetTypes() const = 0;
-
-  // Create default instance.
-  static std::unique_ptr<WifiDelegate> CreateDefault();
 };
 
 }  // namespace privetd

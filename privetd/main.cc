@@ -21,10 +21,11 @@
 #include <libwebserv/server.h>
 
 #include "privetd/cloud_delegate.h"
+#include "privetd/constants.h"
 #include "privetd/device_delegate.h"
 #include "privetd/privet_handler.h"
 #include "privetd/security_delegate.h"
-#include "privetd/wifi_delegate.h"
+#include "privetd/wifi_bootstrap_manager.h"
 
 namespace {
 
@@ -54,9 +55,11 @@ class Daemon : public chromeos::DBusDaemon {
     cloud_ = privetd::CloudDelegate::CreateDefault();
     device_ = privetd::DeviceDelegate::CreateDefault(port_number_, 0);
     security_ = privetd::SecurityDelegate::CreateDefault();
-    wifi_ = privetd::WifiDelegate::CreateDefault();
+    wifi_bootstrap_manager_.reset(new privetd::WifiBootstrapManager(
+        privetd::constants::kDefaultWifiBootstrapStateFilePath));
     privet_handler_.reset(new privetd::PrivetHandler(
-        cloud_.get(), device_.get(), security_.get(), wifi_.get()));
+        cloud_.get(), device_.get(), security_.get(),
+        wifi_bootstrap_manager_.get()));
 
     // TODO(vitalybuka): Device daemons should populate supported types on boot.
     device_->AddType("camera");
@@ -134,7 +137,7 @@ class Daemon : public chromeos::DBusDaemon {
   std::unique_ptr<privetd::CloudDelegate> cloud_;
   std::unique_ptr<privetd::DeviceDelegate> device_;
   std::unique_ptr<privetd::SecurityDelegate> security_;
-  std::unique_ptr<privetd::WifiDelegate> wifi_;
+  std::unique_ptr<privetd::WifiBootstrapManager> wifi_bootstrap_manager_;
   std::unique_ptr<privetd::PrivetHandler> privet_handler_;
   libwebserv::Server web_server_;
 
