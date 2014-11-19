@@ -128,6 +128,9 @@ class MockSecurityDelegate : public SecurityDelegate {
                      const std::string&,
                      std::string*,
                      std::string*));
+  MOCK_METHOD0(InitTlsData, void());
+  MOCK_CONST_METHOD0(GetTlsPrivateKey, const chromeos::SecureBlob&());
+  MOCK_CONST_METHOD0(GetTlsCertificate, const chromeos::Blob&());
 
   MockSecurityDelegate() {
     EXPECT_CALL(*this, CreateAccessToken(AuthScope::kOwner, _))

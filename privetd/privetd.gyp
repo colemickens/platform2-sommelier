@@ -15,16 +15,10 @@
       'type': 'static_library',
       'sources': [
         'cloud_delegate.cc',
-        'cloud_delegate.h',
         'device_delegate.cc',
-        'device_delegate.h',
         'privet_handler.cc',
-        'privet_handler.h',
-        'privet_handler.h',
         'security_delegate.cc',
-        'security_delegate.h',
         'wifi_delegate.cc',
-        'wifi_delegate.h',
       ],
     },
     {

@@ -13,6 +13,7 @@
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_piece.h>
+#include <chromeos/secure_blob.h>
 
 #include "libwebserv/export.h"
 #include "libwebserv/request_handler_interface.h"
@@ -33,8 +34,13 @@ class LIBWEBSERV_EXPORT Server final {
   Server();
   ~Server();
 
-  // Starts the server and makes it listen to requests on the given port.
+  // Starts the server and makes it listen to HTTP requests on the given port.
   bool Start(uint16_t port);
+
+  // Starts the server and makes it listen to HTTPS requests on the given port.
+  bool StartWithTLS(uint16_t port,
+                    const chromeos::SecureBlob& private_key,
+                    const chromeos::Blob& certificate);
 
   // Stops the server.
   bool Stop();

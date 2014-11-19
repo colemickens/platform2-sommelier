@@ -6,8 +6,9 @@
 
 #include <algorithm>
 #include <memory>
-#include <base/logging.h>
 
+#include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <gtest/gtest.h>
 
@@ -59,6 +60,20 @@ TEST_F(SecurityDelegateTest, ParseAccessToken) {
     // Token timestamp resolution is one second.
     EXPECT_GE(1, std::abs((time_ - time2).InSeconds()));
   }
+}
+
+TEST_F(SecurityDelegateTest, TlsData) {
+  security_->InitTlsData();
+
+  std::string key_str = security_->GetTlsPrivateKey().to_string();
+  EXPECT_TRUE(StartsWithASCII(key_str, "-----BEGIN RSA PRIVATE KEY-----",
+                              false));
+  EXPECT_TRUE(EndsWith(key_str, "-----END RSA PRIVATE KEY-----\n", false));
+
+  const chromeos::Blob& cert = security_->GetTlsCertificate();
+  std::string cert_str(cert.begin(), cert.end());
+  EXPECT_TRUE(StartsWithASCII(cert_str, "-----BEGIN CERTIFICATE-----", false));
+  EXPECT_TRUE(EndsWith(cert_str, "-----END CERTIFICATE-----\n", false));
 }
 
 }  // namespace privetd

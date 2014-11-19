@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/time/time.h>
+#include <chromeos/secure_blob.h>
 
 #include "privetd/privet_types.h"
 
@@ -34,8 +35,7 @@ enum class AuthScope {
 // Interface to provide Security related logic for |PrivetHandler|.
 class SecurityDelegate {
  public:
-  SecurityDelegate();
-  virtual ~SecurityDelegate();
+  virtual ~SecurityDelegate() = default;
 
   // Creates access token for the given |scope| and |time|.
   virtual std::string CreateAccessToken(AuthScope scope,
@@ -60,6 +60,15 @@ class SecurityDelegate {
                                const std::string& client_commitment,
                                std::string* fingerprint,
                                std::string* signature) = 0;
+
+  // Loads/generates TLS certificates and encryption keys.
+  virtual void InitTlsData() = 0;
+
+  // Returns the private key to be used for HTTPS.
+  virtual const chromeos::SecureBlob& GetTlsPrivateKey() const = 0;
+
+  // Returns the certificate to be used for HTTPS.
+  virtual const chromeos::Blob& GetTlsCertificate() const = 0;
 
   // Create default instance.
   static std::unique_ptr<SecurityDelegate> CreateDefault();
