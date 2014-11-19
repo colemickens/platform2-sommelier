@@ -5,9 +5,9 @@
 #include "chromiumos-wide-profiling/address_mapper.h"
 
 #include <algorithm>
+#include <memory>
 
 #include "base/logging.h"
-#include "base/memory/scoped_ptr.h"
 
 #include "chromiumos-wide-profiling/quipper_test.h"
 
@@ -174,7 +174,7 @@ class AddressMapperTest : public ::testing::Test {
     EXPECT_EQ(expected_mapped_addr + range.size - 1, mapped_addr);
   }
 
-  scoped_ptr<AddressMapper> mapper_;
+  std::unique_ptr<AddressMapper> mapper_;
 };
 
 // Map one range at a time and test looking up addresses.
