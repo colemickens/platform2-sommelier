@@ -177,7 +177,7 @@ const int Metrics::kMetricDarkResumeActionTimeMillisecondsMax = 10000;
 const int Metrics::kMetricDarkResumeActionTimeMillisecondsMin = 1;
 
 const char Metrics::kMetricWakeOnWiFiFeaturesEnabledState[] =
-    "Network.Shill.WakeOnWiFiFeaturesEnabledState";
+    "Network.Shill.WiFi.WakeOnWiFiFeaturesEnabledState";
 
 // static
 const char Metrics::kMetricServiceFixupEntriesSuffix[] = "ServiceFixupEntries";
