@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/supplicant_eap_state_handler.h"
+#include "shill/supplicant/supplicant_eap_state_handler.h"
 
 #include "shill/logging.h"
-#include "shill/wpa_supplicant.h"
+#include "shill/supplicant/wpa_supplicant.h"
 
 namespace shill {
 

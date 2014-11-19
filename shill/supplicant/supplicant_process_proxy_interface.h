@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_SUPPLICANT_PROCESS_PROXY_INTERFACE_H_
-#define SHILL_SUPPLICANT_PROCESS_PROXY_INTERFACE_H_
+#ifndef SHILL_SUPPLICANT_SUPPLICANT_PROCESS_PROXY_INTERFACE_H_
+#define SHILL_SUPPLICANT_SUPPLICANT_PROCESS_PROXY_INTERFACE_H_
 
 #include <map>
 #include <string>
@@ -27,4 +27,4 @@ class SupplicantProcessProxyInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_SUPPLICANT_PROCESS_PROXY_INTERFACE_H_
+#endif  // SHILL_SUPPLICANT_SUPPLICANT_PROCESS_PROXY_INTERFACE_H_

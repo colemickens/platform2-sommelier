@@ -19,7 +19,7 @@
 #include "shill/property_store.h"
 #include "shill/service.h"
 #include "shill/store_interface.h"
-#include "shill/wpa_supplicant.h"
+#include "shill/supplicant/wpa_supplicant.h"
 
 using base::FilePath;
 using std::map;

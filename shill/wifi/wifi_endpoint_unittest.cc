@@ -18,9 +18,9 @@
 #include "shill/net/ieee80211.h"
 #include "shill/property_store_unittest.h"
 #include "shill/refptr_types.h"
+#include "shill/supplicant/wpa_supplicant.h"
 #include "shill/tethering.h"
 #include "shill/wifi/mock_wifi.h"
-#include "shill/wpa_supplicant.h"
 
 using std::map;
 using std::set;

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/supplicant_bss_proxy.h"
+#include "shill/supplicant/supplicant_bss_proxy.h"
 
 #include <map>
 #include <string>

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_SUPPLICANT_BSS_PROXY_H_
-#define SHILL_SUPPLICANT_BSS_PROXY_H_
+#ifndef SHILL_SUPPLICANT_SUPPLICANT_BSS_PROXY_H_
+#define SHILL_SUPPLICANT_SUPPLICANT_BSS_PROXY_H_
 
 #include <map>
 #include <string>
@@ -12,7 +12,7 @@
 #include <dbus-c++/dbus.h>
 
 #include "shill/dbus_proxies/supplicant-bss.h"
-#include "shill/supplicant_bss_proxy_interface.h"
+#include "shill/supplicant/supplicant_bss_proxy_interface.h"
 
 namespace shill {
 
@@ -56,4 +56,4 @@ class SupplicantBSSProxy : public SupplicantBSSProxyInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_SUPPLICANT_BSS_PROXY_H_
+#endif  // SHILL_SUPPLICANT_SUPPLICANT_BSS_PROXY_H_

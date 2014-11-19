@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/supplicant_interface_proxy.h"
+#include "shill/supplicant/supplicant_interface_proxy.h"
 
 #include <map>
 #include <string>
@@ -10,7 +10,7 @@
 #include <dbus-c++/dbus.h>
 
 #include "shill/logging.h"
-#include "shill/supplicant_event_delegate_interface.h"
+#include "shill/supplicant/supplicant_event_delegate_interface.h"
 
 using std::map;
 using std::string;

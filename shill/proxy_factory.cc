@@ -9,10 +9,10 @@
 #include "shill/dhcpcd_proxy.h"
 #include "shill/logging.h"
 #include "shill/power_manager_proxy.h"
-#include "shill/supplicant_bss_proxy.h"
-#include "shill/supplicant_interface_proxy.h"
-#include "shill/supplicant_network_proxy.h"
-#include "shill/supplicant_process_proxy.h"
+#include "shill/supplicant/supplicant_bss_proxy.h"
+#include "shill/supplicant/supplicant_interface_proxy.h"
+#include "shill/supplicant/supplicant_network_proxy.h"
+#include "shill/supplicant/supplicant_process_proxy.h"
 
 #if !defined(DISABLE_CELLULAR)
 #include "shill/cellular/dbus_objectmanager_proxy.h"

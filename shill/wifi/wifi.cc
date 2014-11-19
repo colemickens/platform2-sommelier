@@ -46,10 +46,11 @@
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 #include "shill/scope_logger.h"
-#include "shill/supplicant_eap_state_handler.h"
-#include "shill/supplicant_interface_proxy_interface.h"
-#include "shill/supplicant_network_proxy_interface.h"
-#include "shill/supplicant_process_proxy_interface.h"
+#include "shill/supplicant/supplicant_eap_state_handler.h"
+#include "shill/supplicant/supplicant_interface_proxy_interface.h"
+#include "shill/supplicant/supplicant_network_proxy_interface.h"
+#include "shill/supplicant/supplicant_process_proxy_interface.h"
+#include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 #include "shill/wifi/mac80211_monitor.h"
 #include "shill/wifi/scan_session.h"
@@ -57,7 +58,6 @@
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_provider.h"
 #include "shill/wifi/wifi_service.h"
-#include "shill/wpa_supplicant.h"
 
 using base::Bind;
 using base::FilePath;

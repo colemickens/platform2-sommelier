@@ -30,10 +30,10 @@
 #include "shill/net/ieee80211.h"
 #include "shill/property_accessor.h"
 #include "shill/store_interface.h"
+#include "shill/supplicant/wpa_supplicant.h"
 #include "shill/wifi/wifi.h"
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_provider.h"
-#include "shill/wpa_supplicant.h"
 
 using std::map;
 using std::set;

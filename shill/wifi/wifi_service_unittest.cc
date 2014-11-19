@@ -32,12 +32,12 @@
 #include "shill/property_store_unittest.h"
 #include "shill/refptr_types.h"
 #include "shill/service_property_change_test.h"
+#include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 #include "shill/tethering.h"
 #include "shill/wifi/mock_wifi.h"
 #include "shill/wifi/mock_wifi_provider.h"
 #include "shill/wifi/wifi_endpoint.h"
-#include "shill/wpa_supplicant.h"
 
 using base::FilePath;
 using std::map;

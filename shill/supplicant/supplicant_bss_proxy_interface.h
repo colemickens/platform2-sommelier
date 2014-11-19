@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_SUPPLICANT_BSS_PROXY_INTERFACE_H_
-#define SHILL_SUPPLICANT_BSS_PROXY_INTERFACE_H_
+#ifndef SHILL_SUPPLICANT_SUPPLICANT_BSS_PROXY_INTERFACE_H_
+#define SHILL_SUPPLICANT_SUPPLICANT_BSS_PROXY_INTERFACE_H_
 
 namespace shill {
 
@@ -16,4 +16,4 @@ class SupplicantBSSProxyInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_SUPPLICANT_BSS_PROXY_INTERFACE_H_
+#endif  // SHILL_SUPPLICANT_SUPPLICANT_BSS_PROXY_INTERFACE_H_

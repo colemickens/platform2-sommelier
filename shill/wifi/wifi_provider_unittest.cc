@@ -24,10 +24,10 @@
 #include "shill/net/ieee80211.h"
 #include "shill/net/mock_time.h"
 #include "shill/nice_mock_control.h"
+#include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 #include "shill/wifi/mock_wifi_service.h"
 #include "shill/wifi/wifi_endpoint.h"
-#include "shill/wpa_supplicant.h"
 
 using base::StringPrintf;
 using std::map;

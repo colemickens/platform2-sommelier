@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_SUPPLICANT_PROCESS_PROXY_H_
-#define SHILL_MOCK_SUPPLICANT_PROCESS_PROXY_H_
+#ifndef SHILL_SUPPLICANT_MOCK_SUPPLICANT_PROCESS_PROXY_H_
+#define SHILL_SUPPLICANT_MOCK_SUPPLICANT_PROCESS_PROXY_H_
 
 #include <map>
 #include <string>
@@ -12,7 +12,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/dbus_variant_gmock_printer.h"
-#include "shill/supplicant_process_proxy_interface.h"
+#include "shill/supplicant/supplicant_process_proxy_interface.h"
 
 namespace shill {
 
@@ -35,4 +35,4 @@ class MockSupplicantProcessProxy : public SupplicantProcessProxyInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_SUPPLICANT_PROCESS_PROXY_H_
+#endif  // SHILL_SUPPLICANT_MOCK_SUPPLICANT_PROCESS_PROXY_H_

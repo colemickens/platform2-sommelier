@@ -2,12 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/mock_supplicant_network_proxy.h"
+#include "shill/supplicant/mock_supplicant_bss_proxy.h"
 
 namespace shill {
 
-MockSupplicantNetworkProxy::MockSupplicantNetworkProxy() {}
+MockSupplicantBSSProxy::MockSupplicantBSSProxy() {}
 
-MockSupplicantNetworkProxy::~MockSupplicantNetworkProxy() {}
+MockSupplicantBSSProxy::~MockSupplicantBSSProxy() {
+  Die();
+}
 
 }  // namespace shill

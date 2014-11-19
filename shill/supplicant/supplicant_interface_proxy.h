@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_SUPPLICANT_INTERFACE_PROXY_H_
-#define SHILL_SUPPLICANT_INTERFACE_PROXY_H_
+#ifndef SHILL_SUPPLICANT_SUPPLICANT_INTERFACE_PROXY_H_
+#define SHILL_SUPPLICANT_SUPPLICANT_INTERFACE_PROXY_H_
 
 #include <map>
 #include <string>
@@ -12,7 +12,7 @@
 
 #include "shill/dbus_proxies/supplicant-interface.h"
 #include "shill/refptr_types.h"
-#include "shill/supplicant_interface_proxy_interface.h"
+#include "shill/supplicant/supplicant_interface_proxy_interface.h"
 
 namespace shill {
 
@@ -104,4 +104,4 @@ class SupplicantInterfaceProxy
 
 }  // namespace shill
 
-#endif  // SHILL_SUPPLICANT_INTERFACE_PROXY_H_
+#endif  // SHILL_SUPPLICANT_SUPPLICANT_INTERFACE_PROXY_H_

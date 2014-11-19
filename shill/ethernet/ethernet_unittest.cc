@@ -26,13 +26,13 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_proxy_factory.h"
 #include "shill/mock_service.h"
-#include "shill/mock_supplicant_interface_proxy.h"
-#include "shill/mock_supplicant_process_proxy.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/mock_sockets.h"
 #include "shill/nice_mock_control.h"
+#include "shill/supplicant/mock_supplicant_interface_proxy.h"
+#include "shill/supplicant/mock_supplicant_process_proxy.h"
+#include "shill/supplicant/wpa_supplicant.h"
 #include "shill/testing.h"
-#include "shill/wpa_supplicant.h"
 
 using std::string;
 using testing::_;

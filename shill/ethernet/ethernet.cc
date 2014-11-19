@@ -33,9 +33,9 @@
 #include "shill/net/rtnl_handler.h"
 #include "shill/profile.h"
 #include "shill/proxy_factory.h"
-#include "shill/supplicant_interface_proxy_interface.h"
-#include "shill/supplicant_process_proxy_interface.h"
-#include "shill/wpa_supplicant.h"
+#include "shill/supplicant/supplicant_interface_proxy_interface.h"
+#include "shill/supplicant/supplicant_process_proxy_interface.h"
+#include "shill/supplicant/wpa_supplicant.h"
 
 using std::map;
 using std::string;

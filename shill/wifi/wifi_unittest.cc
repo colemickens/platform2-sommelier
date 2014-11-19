@@ -47,11 +47,6 @@
 #include "shill/mock_profile.h"
 #include "shill/mock_proxy_factory.h"
 #include "shill/mock_store.h"
-#include "shill/mock_supplicant_bss_proxy.h"
-#include "shill/mock_supplicant_eap_state_handler.h"
-#include "shill/mock_supplicant_interface_proxy.h"
-#include "shill/mock_supplicant_network_proxy.h"
-#include "shill/mock_supplicant_process_proxy.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/mock_netlink_manager.h"
@@ -62,6 +57,12 @@
 #include "shill/net/nl80211_message.h"
 #include "shill/nice_mock_control.h"
 #include "shill/property_store_unittest.h"
+#include "shill/supplicant/mock_supplicant_bss_proxy.h"
+#include "shill/supplicant/mock_supplicant_eap_state_handler.h"
+#include "shill/supplicant/mock_supplicant_interface_proxy.h"
+#include "shill/supplicant/mock_supplicant_network_proxy.h"
+#include "shill/supplicant/mock_supplicant_process_proxy.h"
+#include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 #include "shill/testing.h"
 #include "shill/wifi/mock_mac80211_monitor.h"
@@ -73,7 +74,6 @@
 #include "shill/wifi/wake_on_wifi.h"
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_service.h"
-#include "shill/wpa_supplicant.h"
 
 using base::FilePath;
 using base::StringPrintf;

@@ -98,7 +98,7 @@
 #include "shill/power_manager.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
-#include "shill/supplicant_event_delegate_interface.h"
+#include "shill/supplicant/supplicant_event_delegate_interface.h"
 #include "shill/wifi/wake_on_wifi.h"
 
 namespace shill {
