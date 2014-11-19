@@ -40,12 +40,12 @@ class DeviceRegistrationInfo {
   // This constructor uses CURL HTTP transport.
   DeviceRegistrationInfo(
       const std::shared_ptr<CommandManager>& command_manager,
-      const std::shared_ptr<const StateManager>& state_manager);
+      const std::shared_ptr<StateManager>& state_manager);
   // This constructor allows to pass in a custom HTTP transport
   // (mainly for testing).
   DeviceRegistrationInfo(
       const std::shared_ptr<CommandManager>& command_manager,
-      const std::shared_ptr<const StateManager>& state_manager,
+      const std::shared_ptr<StateManager>& state_manager,
       const std::shared_ptr<chromeos::http::Transport>& transport,
       const std::shared_ptr<StorageInterface>& storage);
 
@@ -153,6 +153,8 @@ class DeviceRegistrationInfo {
 
   void PublishCommands(const base::ListValue& commands);
 
+  void PublishStateUpdates();
+
   // Builds Cloud API devices collection REST resouce which matches
   // current state of the device including command definitions
   // for all supported commands and current device state.
@@ -186,7 +188,7 @@ class DeviceRegistrationInfo {
   // Global command manager.
   std::shared_ptr<CommandManager> command_manager_;
   // Device state manager.
-  std::shared_ptr<const StateManager> state_manager_;
+  std::shared_ptr<StateManager> state_manager_;
 
   friend class TestHelper;
   DISALLOW_COPY_AND_ASSIGN(DeviceRegistrationInfo);

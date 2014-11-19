@@ -153,7 +153,7 @@ namespace buffet {
 
 DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<CommandManager>& command_manager,
-    const std::shared_ptr<const StateManager>& state_manager)
+    const std::shared_ptr<StateManager>& state_manager)
     : DeviceRegistrationInfo(
         command_manager,
         state_manager,
@@ -165,7 +165,7 @@ DeviceRegistrationInfo::DeviceRegistrationInfo(
 
 DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<CommandManager>& command_manager,
-    const std::shared_ptr<const StateManager>& state_manager,
+    const std::shared_ptr<StateManager>& state_manager,
     const std::shared_ptr<chromeos::http::Transport>& transport,
     const std::shared_ptr<StorageInterface>& storage)
     : transport_{transport},
@@ -748,6 +748,14 @@ void DeviceRegistrationInfo::PeriodicallyPollCommands() {
           base::Bind(&DeviceRegistrationInfo::PublishCommands,
                      base::Unretained(this))),
       base::TimeDelta::FromSeconds(7));
+  // TODO(antonm): Use better trigger: when StateManager registers new updates,
+  // it should call closure which will post a task, probabluy with some
+  // throtlling, to publish state updates.
+  PostRepeatingTask(
+      FROM_HERE,
+      base::Bind(&DeviceRegistrationInfo::PublishStateUpdates,
+                 base::Unretained(this)),
+      base::TimeDelta::FromSeconds(7));
 }
 
 void DeviceRegistrationInfo::PublishCommands(const base::ListValue& commands) {
@@ -777,6 +785,44 @@ void DeviceRegistrationInfo::PublishCommands(const base::ListValue& commands) {
       command_manager_->AddCommand(std::move(command_instance));
     }
   }
+}
+
+void DeviceRegistrationInfo::PublishStateUpdates() {
+  VLOG(1) << "PublishStateUpdates";
+  const std::vector<StateChange> state_changes{
+      state_manager_->GetAndClearRecordedStateChanges()};
+  if (state_changes.empty())
+    return;
+
+  std::unique_ptr<base::ListValue> patches{new base::ListValue};
+  for (const auto& state_change : state_changes) {
+    std::unique_ptr<base::DictionaryValue> patch{new base::DictionaryValue};
+    // TODO(antonm): Weird part: API requires long here while there is no
+    // such thing like long in JSON.  Also, ToJavaTime produces int64.
+    patch->SetInteger("timeMs", state_change.timestamp.ToJavaTime());
+
+    std::unique_ptr<base::DictionaryValue> changes{new base::DictionaryValue};
+    for (const auto& pair : state_change.changed_properties) {
+      auto value = pair.second->ToJson(nullptr);
+      if (!value) {
+        return;
+      }
+      changes->SetWithoutPathExpansion(pair.first, value.release());
+    }
+    patch->Set("patch", changes.release());
+
+    patches->Append(patch.release());
+  }
+
+  base::DictionaryValue body;
+  body.SetInteger("requestTimeMs", base::Time::Now().ToJavaTime());
+  body.Set("patches", patches.release());
+
+  DoCloudRequest(
+      chromeos::http::request_type::kPost,
+      GetDeviceURL("patchState"),
+      &body,
+      base::Bind(&IgnoreCloudResult), base::Bind(&IgnoreCloudError));
 }
 
 }  // namespace buffet
