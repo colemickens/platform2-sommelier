@@ -32,8 +32,15 @@ class DeviceDelegate {
   // Returns the location of the device.
   virtual std::string GetLocation() const = 0;
 
-  // Returns the list of types supported by device. E.g. printer, scanner etc.
-  virtual std::vector<std::string> GetTypes() const = 0;
+  // Returns the class of the device.
+  virtual std::string GetClass() const = 0;
+
+  // Returns the model ID of the device.
+  virtual std::string GetModelId() const = 0;
+
+  // Returns the list of services supported by device.
+  // E.g. printer, scanner etc. Should match services published on mDNS.
+  virtual std::vector<std::string> GetServices() const = 0;
 
   // Returns HTTP ports for Privet. The first one is the primary port,
   // the second is the port for a pooling updates requests. The second value

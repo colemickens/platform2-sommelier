@@ -84,7 +84,9 @@ class MockDeviceDelegate : public DeviceDelegate {
   MOCK_CONST_METHOD0(GetName, std::string());
   MOCK_CONST_METHOD0(GetDescription, std::string());
   MOCK_CONST_METHOD0(GetLocation, std::string());
-  MOCK_CONST_METHOD0(GetTypes, std::vector<std::string>());
+  MOCK_CONST_METHOD0(GetClass, std::string());
+  MOCK_CONST_METHOD0(GetModelId, std::string());
+  MOCK_CONST_METHOD0(GetServices, std::vector<std::string>());
   MOCK_CONST_METHOD0(GetHttpEnpoint, IntPair());
   MOCK_CONST_METHOD0(GetHttpsEnpoint, IntPair());
   MOCK_CONST_METHOD0(GetUptime, base::TimeDelta());
@@ -99,7 +101,9 @@ class MockDeviceDelegate : public DeviceDelegate {
     EXPECT_CALL(*this, GetName()).WillRepeatedly(Return("TestDevice"));
     EXPECT_CALL(*this, GetDescription()).WillRepeatedly(Return(""));
     EXPECT_CALL(*this, GetLocation()).WillRepeatedly(Return(""));
-    EXPECT_CALL(*this, GetTypes())
+    EXPECT_CALL(*this, GetClass()).WillRepeatedly(Return("TestClass"));
+    EXPECT_CALL(*this, GetModelId()).WillRepeatedly(Return("TestModelId"));
+    EXPECT_CALL(*this, GetServices())
         .WillRepeatedly(Return(std::vector<std::string>{}));
     EXPECT_CALL(*this, GetHttpEnpoint())
         .WillRepeatedly(Return(std::make_pair(0, 0)));
@@ -297,7 +301,9 @@ TEST_F(PrivetHandlerTest, InfoMinimal) {
     'version': '3.0',
     'id': 'TestId',
     'name': 'TestDevice',
-    'type': [],
+    'class': "TestClass",
+    'modelId': "TestModelId",
+    'services': [],
     'endpoints': {
       'httpPort': 0,
       'httpUpdatesPort': 0,
@@ -332,8 +338,8 @@ TEST_F(PrivetHandlerTest, Info) {
   EXPECT_CALL(device_, GetDescription())
       .WillRepeatedly(Return("TestDescription"));
   EXPECT_CALL(device_, GetLocation()).WillRepeatedly(Return("TestLocation"));
-  EXPECT_CALL(device_, GetTypes())
-      .WillRepeatedly(Return(std::vector<std::string>{"TestType"}));
+  EXPECT_CALL(device_, GetServices())
+      .WillRepeatedly(Return(std::vector<std::string>{"service1", "service2"}));
   EXPECT_CALL(device_, GetHttpEnpoint())
       .WillRepeatedly(Return(std::make_pair(80, 10080)));
   EXPECT_CALL(device_, GetHttpsEnpoint())
@@ -345,8 +351,11 @@ TEST_F(PrivetHandlerTest, Info) {
     'name': 'TestDevice',
     'description': 'TestDescription',
     'location': 'TestLocation',
-    'type': [
-      'TestType'
+    'class': "TestClass",
+    'modelId': "TestModelId",
+    'services': [
+      "service1",
+      "service2"
     ],
     'endpoints': {
       'httpPort': 80,
@@ -400,11 +409,11 @@ TEST_F(PrivetHandlerTest, Info) {
 TEST_F(PrivetHandlerTest, PairingStartInvalidParams) {
   EXPECT_PRED2(IsEqualJson, "{'reason': 'invalidParams'}",
                HandleRequest("/privet/v3/pairing/start",
-                             "{'mode': 'embeddedCode', 'crypto': 'crypto'}"));
+                             "{'pairing':'embeddedCode','crypto':'crypto'}"));
 
   EXPECT_PRED2(IsEqualJson, "{'reason': 'invalidParams'}",
                HandleRequest("/privet/v3/pairing/start",
-                             "{'mode': 'code', 'crypto': 'p256_spake2'}"));
+                             "{'pairing':'code','crypto':'p256_spake2'}"));
 }
 
 TEST_F(PrivetHandlerTest, PairingStart) {
@@ -412,7 +421,7 @@ TEST_F(PrivetHandlerTest, PairingStart) {
       IsEqualJson,
       "{'deviceCommitment': 'testCommitment', 'sessionId': 'testSession'}",
       HandleRequest("/privet/v3/pairing/start",
-                    "{'mode': 'embeddedCode', 'crypto': 'p256_spake2'}"));
+                    "{'pairing': 'embeddedCode', 'crypto': 'p256_spake2'}"));
 }
 
 TEST_F(PrivetHandlerTest, PairingConfirm) {
@@ -431,34 +440,33 @@ TEST_F(PrivetHandlerTest, AuthErrorNoType) {
 
 TEST_F(PrivetHandlerTest, AuthErrorInvalidType) {
   EXPECT_PRED2(IsEqualJson, "{'reason':'invalidAuthMode'}",
-               HandleRequest("/privet/v3/auth", "{'authMode':'unknown'}"));
+               HandleRequest("/privet/v3/auth", "{'mode':'unknown'}"));
 }
 
 TEST_F(PrivetHandlerTest, AuthErrorNoScope) {
   EXPECT_PRED2(IsEqualJson, "{'reason':'invalidRequestedScope'}",
-               HandleRequest("/privet/v3/auth", "{'authMode':'anonymous'}"));
+               HandleRequest("/privet/v3/auth", "{'mode':'anonymous'}"));
 }
 
 TEST_F(PrivetHandlerTest, AuthErrorInvalidScope) {
   EXPECT_PRED2(
       IsEqualJson, "{'reason':'invalidRequestedScope'}",
       HandleRequest("/privet/v3/auth",
-                    "{'authMode':'anonymous','requestedScope':'unknown'}"));
+                    "{'mode':'anonymous','requestedScope':'unknown'}"));
 }
 
 TEST_F(PrivetHandlerTest, AuthErrorAccessDenied) {
   // TODO(vitalybuka): Should fail when pairing is implemented.
-  EXPECT_PRED2(
-      IsNotEqualJson, "{'reason':'accessDenied'}",
-      HandleRequest("/privet/v3/auth",
-                    "{'authMode':'anonymous','requestedScope':'owner'}"));
+  EXPECT_PRED2(IsNotEqualJson, "{'reason':'accessDenied'}",
+               HandleRequest("/privet/v3/auth",
+                             "{'mode':'anonymous','requestedScope':'owner'}"));
 }
 
 TEST_F(PrivetHandlerTest, AuthErrorInvalidAuthCode) {
   EXPECT_CALL(security_, IsValidPairingCode("testToken"))
       .WillRepeatedly(Return(false));
   const char kInput[] = R"({
-    'authMode': 'pairing',
+    'mode': 'pairing',
     'requestedScope': 'user',
     'authCode': 'testToken'
   })";
@@ -475,10 +483,9 @@ TEST_F(PrivetHandlerTest, AuthAnonymous) {
     'scope': 'owner',
     'tokenType': 'Privet'
   })";
-  EXPECT_PRED2(
-      IsEqualJson, kExpected,
-      HandleRequest("/privet/v3/auth",
-                    "{'authMode':'anonymous','requestedScope':'auto'}"));
+  EXPECT_PRED2(IsEqualJson, kExpected,
+               HandleRequest("/privet/v3/auth",
+                             "{'mode':'anonymous','requestedScope':'auto'}"));
 }
 
 TEST_F(PrivetHandlerTest, AuthPairing) {
@@ -486,7 +493,7 @@ TEST_F(PrivetHandlerTest, AuthPairing) {
       .WillRepeatedly(Return(true));
 
   const char kInput[] = R"({
-    'authMode': 'pairing',
+    'mode': 'pairing',
     'requestedScope': 'owner',
     'authCode': 'testToken'
   })";

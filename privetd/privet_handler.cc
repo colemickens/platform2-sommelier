@@ -42,11 +42,12 @@ const char kWifiKey[] = "wifi";
 const char kRequiredKey[] = "required";
 const char kStatusKey[] = "status";
 const char kErrorKey[] = "error";
-const char kModeKey[] = "mode";
 const char kCryptoKey[] = "crypto";
 
 const char kInfoIdKey[] = "id";
-const char kInfoTypeKey[] = "type";
+const char kInfoServicesKey[] = "services";
+const char kInfoClassKey[] = "class";
+const char kInfoModelIdKey[] = "modelId";
 
 const char kInfoEndpointsKey[] = "endpoints";
 const char kInfoEndpointsHttpPortKey[] = "httpPort";
@@ -55,7 +56,6 @@ const char kInfoEndpointsHttpsPortKey[] = "httpsPort";
 const char kInfoEndpointsHttpsUpdatePortKey[] = "httpsUpdatesPort";
 
 const char kInfoAuthenticationKey[] = "authentication";
-const char kInfoAuthPairingKey[] = "pairing";
 
 const char kCryptoP256Spake2Value[] = "p256_spake2";
 
@@ -66,17 +66,18 @@ const char kInfoWifiHostedSsidKey[] = "hostedSsid";
 const char kInfoUptimeKey[] = "uptime";
 const char kInfoApiKey[] = "api";
 
+const char kPairingKey[] = "pairing";
 const char kPairingSessionIdKey[] = "sessionId";
 const char kPairingDeviceCommitmentKey[] = "deviceCommitment";
 const char kPairingClientCommitmentKey[] = "clientCommitment";
 const char kPairingFingerprintKey[] = "certFingerprint";
 const char kPairingSignatureKey[] = "certSignature";
 
-const char kAuthModeKey[] = "authMode";
 const char kAuthTypeAnonymousValue[] = "anonymous";
 const char kAuthTypePairingValue[] = "pairing";
 const char kAuthTypeCloudValue[] = "cloud";
 
+const char kAuthModeKey[] = "mode";
 const char kAuthCodeKey[] = "authCode";
 const char kAuthRequestedScopeKey[] = "requestedScope";
 const char kAuthScopeAutoValue[] = "auto";
@@ -289,7 +290,7 @@ PrivetHandler::PrivetHandler(CloudDelegate* cloud,
       AuthScope::kOwner,
       base::Bind(&PrivetHandler::HandleSetupStart, base::Unretained(this)));
   handlers_[kSetupStatusApiPath] = std::make_pair(
-      AuthScope::kViewer,
+      AuthScope::kOwner,
       base::Bind(&PrivetHandler::HandleSetupStatus, base::Unretained(this)));
 }
 
@@ -344,7 +345,9 @@ void PrivetHandler::HandleInfo(const base::DictionaryValue&,
   if (!location.empty())
     output.SetString(kLocationKey, location);
 
-  output.Set(kInfoTypeKey, ToValue(device_->GetTypes()).release());
+  output.SetString(kInfoClassKey, device_->GetClass());
+  output.SetString(kInfoModelIdKey, device_->GetModelId());
+  output.Set(kInfoServicesKey, ToValue(device_->GetServices()).release());
 
   output.Set(kInfoAuthenticationKey, CreateInfoAuthSection().release());
 
@@ -369,7 +372,7 @@ void PrivetHandler::HandleInfo(const base::DictionaryValue&,
 void PrivetHandler::HandlePairingStart(const base::DictionaryValue& input,
                                        const RequestCallback& callback) {
   std::string mode;
-  input.GetString(kModeKey, &mode);
+  input.GetString(kPairingKey, &mode);
 
   std::string crypto;
   input.GetString(kCryptoKey, &crypto);
@@ -553,14 +556,14 @@ std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateInfoAuthSection()
   std::unique_ptr<base::ListValue> pairing_types(new base::ListValue());
   for (PairingType type : security_->GetPairingTypes())
     pairing_types->AppendString(EnumToString(type));
-  auth->Set(kInfoAuthPairingKey, pairing_types.release());
+  auth->Set(kPairingKey, pairing_types.release());
 
   std::unique_ptr<base::ListValue> auth_types(new base::ListValue());
   auth_types->AppendString(kAuthTypeAnonymousValue);
   auth_types->AppendString(kAuthTypePairingValue);
   if (cloud_ && cloud_->GetConnectionState().status == ConnectionState::kOnline)
     auth_types->AppendString(kAuthTypeCloudValue);
-  auth->Set(kModeKey, auth_types.release());
+  auth->Set(kAuthModeKey, auth_types.release());
 
   std::unique_ptr<base::ListValue> crypto_types(new base::ListValue());
   crypto_types->AppendString(kCryptoP256Spake2Value);

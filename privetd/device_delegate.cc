@@ -56,7 +56,11 @@ class DeviceDelegateImpl : public DeviceDelegate {
     config_store_.GetString(kLocationKey, &location);
     return location;
   }
-  std::vector<std::string> GetTypes() const override {
+  std::string GetClass() const override { return "BB"; }
+  std::string GetModelId() const override {
+    return "///";  // No model id.
+  }
+  std::vector<std::string> GetServices() const override {
     return std::vector<std::string>(types_.begin(), types_.end());
   }
   std::pair<uint16_t, uint16_t> GetHttpEnpoint() const override {
