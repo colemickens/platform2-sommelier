@@ -28,7 +28,7 @@ class WifiDelegate {
   virtual bool IsRequired() const = 0;
 
   // Returns status of the WiFi connection.
-  virtual ConnectionState GetState() const = 0;
+  virtual ConnectionState GetConnectionState() const = 0;
 
   // Returns status of the last WiFi setup.
   virtual SetupState GetSetupState() const = 0;
@@ -38,11 +38,12 @@ class WifiDelegate {
   // using GetSetupState().
   // Returns false only if device is busy. Any other failures should be stored
   // in GetSetupState().
-  virtual bool Setup(const std::string& ssid, const std::string& password) = 0;
+  virtual bool ConfigureCredentials(const std::string& ssid,
+                                    const std::string& password) = 0;
 
   // Returns SSID of the currently configured WiFi network. Empty string, if
   // WiFi has not been configured yet.
-  virtual std::string GetSsid() const = 0;
+  virtual std::string GetCurrentlyConnectedSsid() const = 0;
 
   // Returns SSID of the WiFi network hosted by this device. Empty if device is
   // not in setup or P2P modes.

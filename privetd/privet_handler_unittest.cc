@@ -156,20 +156,22 @@ class MockSecurityDelegate : public SecurityDelegate {
 class MockWifiDelegate : public WifiDelegate {
  public:
   MOCK_CONST_METHOD0(IsRequired, bool());
-  MOCK_CONST_METHOD0(GetState, ConnectionState());
+  MOCK_CONST_METHOD0(GetConnectionState, ConnectionState());
   MOCK_CONST_METHOD0(GetSetupState, SetupState());
-  MOCK_METHOD2(Setup, bool(const std::string&, const std::string&));
-  MOCK_CONST_METHOD0(GetSsid, std::string());
+  MOCK_METHOD2(ConfigureCredentials,
+               bool(const std::string&, const std::string&));
+  MOCK_CONST_METHOD0(GetCurrentlyConnectedSsid, std::string());
   MOCK_CONST_METHOD0(GetHostedSsid, std::string());
   MOCK_CONST_METHOD0(GetTypes, std::vector<WifiType>());
 
   MockWifiDelegate() {
     EXPECT_CALL(*this, IsRequired()).WillRepeatedly(Return(false));
-    EXPECT_CALL(*this, GetState())
+    EXPECT_CALL(*this, GetConnectionState())
         .WillRepeatedly(Return(ConnectionState(ConnectionState::kOffline)));
     EXPECT_CALL(*this, GetSetupState())
         .WillRepeatedly(Return(SetupState(SetupState::kNone)));
-    EXPECT_CALL(*this, GetSsid()).WillRepeatedly(Return("TestSsid"));
+    EXPECT_CALL(*this, GetCurrentlyConnectedSsid())
+        .WillRepeatedly(Return("TestSsid"));
     EXPECT_CALL(*this, GetHostedSsid())
         .WillRepeatedly(Return("Test_device.BBABCLAprv"));
     EXPECT_CALL(*this, GetTypes())
@@ -180,14 +182,14 @@ class MockWifiDelegate : public WifiDelegate {
 class MockCloudDelegate : public CloudDelegate {
  public:
   MOCK_CONST_METHOD0(IsRequired, bool());
-  MOCK_CONST_METHOD0(GetState, ConnectionState());
+  MOCK_CONST_METHOD0(GetConnectionState, ConnectionState());
   MOCK_CONST_METHOD0(GetSetupState, SetupState());
   MOCK_METHOD2(Setup, bool(const std::string&, const std::string&));
   MOCK_CONST_METHOD0(GetCloudId, std::string());
 
   MockCloudDelegate() {
     EXPECT_CALL(*this, IsRequired()).WillRepeatedly(Return(true));
-    EXPECT_CALL(*this, GetState())
+    EXPECT_CALL(*this, GetConnectionState())
         .WillRepeatedly(Return(ConnectionState(ConnectionState::kOnline)));
     EXPECT_CALL(*this, GetSetupState())
         .WillRepeatedly(Return(SetupState(SetupState::kNone)));
@@ -618,7 +620,7 @@ TEST_F(PrivetHandlerSetupTest, WifiSetup) {
       'passphrase': 'testPass'
     }
   })";
-  EXPECT_CALL(wifi_, Setup(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(wifi_, ConfigureCredentials(_, _)).WillOnce(Return(false));
   EXPECT_PRED2(IsEqualJson, "{'reason':'deviceBusy'}",
                HandleRequest("/privet/v3/setup/start", kInput));
 
@@ -629,7 +631,8 @@ TEST_F(PrivetHandlerSetupTest, WifiSetup) {
   })";
   EXPECT_CALL(wifi_, GetSetupState())
       .WillRepeatedly(Return(SetupState(SetupState::kInProgress)));
-  EXPECT_CALL(wifi_, Setup("testSsid", "testPass")).WillOnce(Return(true));
+  EXPECT_CALL(wifi_, ConfigureCredentials("testSsid", "testPass"))
+      .WillOnce(Return(true));
   EXPECT_PRED2(IsEqualJson, kExpected,
                HandleRequest("/privet/v3/setup/start", kInput));
 }

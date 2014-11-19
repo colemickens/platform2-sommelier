@@ -493,7 +493,7 @@ void PrivetHandler::HandleSetupStart(const base::DictionaryValue& input,
     registration->GetString(kSetupStartUserKey, &user);
   }
 
-  if (!ssid.empty() && !wifi_->Setup(ssid, passphrase))
+  if (!ssid.empty() && !wifi_->ConfigureCredentials(ssid, passphrase))
     return ReturnError(Error::kDeviceBusy, callback);
 
   if (!ticket.empty() && !cloud_->Setup(ticket, user))
@@ -524,7 +524,7 @@ void PrivetHandler::HandleSetupStatus(const base::DictionaryValue& input,
       output.Set(kWifiKey, wifi);
       SetState(state, wifi);
       if (state.status == SetupState::kSuccess)
-        wifi->SetString(kInfoWifiSsidKey, wifi_->GetSsid());
+        wifi->SetString(kInfoWifiSsidKey, wifi_->GetCurrentlyConnectedSsid());
     }
   }
 
@@ -558,7 +558,7 @@ std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateInfoAuthSection()
   std::unique_ptr<base::ListValue> auth_types(new base::ListValue());
   auth_types->AppendString(kAuthTypeAnonymousValue);
   auth_types->AppendString(kAuthTypePairingValue);
-  if (cloud_ && cloud_->GetState().status == ConnectionState::kOnline)
+  if (cloud_ && cloud_->GetConnectionState().status == ConnectionState::kOnline)
     auth_types->AppendString(kAuthTypeCloudValue);
   auth->Set(kModeKey, auth_types.release());
 
@@ -580,10 +580,10 @@ std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateWifiSection()
     capabilities->AppendString(EnumToString(type));
   wifi->Set(kInfoWifiCapabilitiesKey, capabilities.release());
 
-  wifi->SetString(kInfoWifiSsidKey, wifi_->GetSsid());
+  wifi->SetString(kInfoWifiSsidKey, wifi_->GetCurrentlyConnectedSsid());
 
   std::string hosted_ssid = wifi_->GetHostedSsid();
-  ConnectionState state = wifi_->GetState();
+  ConnectionState state = wifi_->GetConnectionState();
   if (!hosted_ssid.empty()) {
     DCHECK(state.status != ConnectionState::kDisabled);
     DCHECK(state.status != ConnectionState::kOnline);
@@ -597,7 +597,7 @@ std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateGcdSection() const {
   std::unique_ptr<base::DictionaryValue> gcd(new base::DictionaryValue());
   gcd->SetBoolean(kRequiredKey, cloud_->IsRequired());
   gcd->SetString(kInfoIdKey, cloud_->GetCloudId());
-  SetState(cloud_->GetState(), gcd.get());
+  SetState(cloud_->GetConnectionState(), gcd.get());
   return std::move(gcd);
 }
 

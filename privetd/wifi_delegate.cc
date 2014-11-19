@@ -21,11 +21,12 @@ class WifiDelegateImpl : public WifiDelegate {
   // WifiDelegate methods
   bool IsRequired() const override { return false; }
 
-  ConnectionState GetState() const override { return state_; }
+  ConnectionState GetConnectionState() const override { return state_; }
 
   SetupState GetSetupState() const override { return setup_state_; }
 
-  bool Setup(const std::string& ssid, const std::string& password) override {
+  bool ConfigureCredentials(const std::string& ssid,
+                            const std::string& password) override {
     if (setup_state_.status == SetupState::kInProgress)
       return false;
     VLOG(1) << "WiFi Setup started. ssid: " << ssid << ", pass:" << password;
@@ -37,7 +38,7 @@ class WifiDelegateImpl : public WifiDelegate {
     return true;
   }
 
-  std::string GetSsid() const override { return ssid_; }
+  std::string GetCurrentlyConnectedSsid() const override { return ssid_; }
 
   std::string GetHostedSsid() const override { return std::string(); }
 

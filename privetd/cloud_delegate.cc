@@ -21,7 +21,7 @@ class CloudDelegateImpl : public CloudDelegate {
   // CloudDelegate methods
   bool IsRequired() const override { return false; }
 
-  ConnectionState GetState() const override { return state_; }
+  ConnectionState GetConnectionState() const override { return state_; }
 
   SetupState GetSetupState() const override { return setup_state_; }
 

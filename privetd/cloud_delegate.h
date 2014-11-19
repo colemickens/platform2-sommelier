@@ -22,7 +22,7 @@ class CloudDelegate {
   virtual bool IsRequired() const = 0;
 
   // Returns status of the GCD connection.
-  virtual ConnectionState GetState() const = 0;
+  virtual ConnectionState GetConnectionState() const = 0;
 
   // Returns status of the last setup.
   virtual SetupState GetSetupState() const = 0;
