@@ -19,14 +19,12 @@
       'target_name': 'lorgnette-adaptors',
       'type': 'none',
       'variables': {
-        'generate_dbus_bindings_type': 'adaptor',
-        'generate_dbus_bindings_in_dir': 'dbus_bindings',
-        'generate_dbus_bindings_out_dir': 'include/lorgnette/dbus_adaptors',
+        'dbus_adaptors_out_dir': 'include/lorgnette/dbus_adaptors',
       },
       'sources': [
-        '<(generate_dbus_bindings_in_dir)/org.chromium.lorgnette.Manager.xml',
+        'dbus_bindings/org.chromium.lorgnette.Manager.xml',
       ],
-      'includes': ['../common-mk/generate-dbus-bindings.gypi'],
+      'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     },
     {
       'target_name': 'liblorgnette',

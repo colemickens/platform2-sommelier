@@ -66,6 +66,7 @@ const char kExpectedContent[] = R"literal_string(
 namespace org {
 namespace chromium {
 
+// Interface proxy for org::chromium::TestInterface.
 class TestInterfaceProxy final {
  public:
   class SignalReceiver {
@@ -79,13 +80,20 @@ class TestInterfaceProxy final {
   TestInterfaceProxy(
       const scoped_refptr<dbus::Bus>& bus,
       const std::string& service_name,
-      const std::string& object_path,
-      SignalReceiver* signal_receiver)
+      const std::string& object_path)
       : bus_(bus),
         service_name_(service_name),
         object_path_(object_path),
         dbus_object_proxy_(
             bus_->GetObjectProxy(service_name_, object_path_)) {
+  }
+
+  TestInterfaceProxy(
+      const scoped_refptr<dbus::Bus>& bus,
+      const std::string& service_name,
+      const std::string& object_path,
+      SignalReceiver* signal_receiver)
+      : TestInterfaceProxy(bus, service_name, object_path) {
     chromeos::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
         "org.chromium.TestInterface",
@@ -109,8 +117,10 @@ class TestInterfaceProxy final {
   }
 
   ~TestInterfaceProxy() {
-    dbus_object_proxy_->Detach();
-    bus_->RemoveObjectProxy(service_name_, object_path_, base::Closure());
+  }
+
+  void ReleaseObjectProxy(const base::Closure& callback) {
+    bus_->RemoveObjectProxy(service_name_, object_path_, callback);
   }
 
   void OnDBusSignalConnected(
@@ -179,6 +189,42 @@ class TestInterfaceProxy final {
         response.get(), error);
   }
 
+ private:
+  scoped_refptr<dbus::Bus> bus_;
+  std::string service_name_;
+  dbus::ObjectPath object_path_;
+  dbus::ObjectProxy* dbus_object_proxy_;
+
+  DISALLOW_COPY_AND_ASSIGN(TestInterfaceProxy);
+};
+
+}  // namespace chromium
+}  // namespace org
+
+namespace org {
+namespace chromium {
+
+// Interface proxy for org::chromium::TestInterface2.
+class TestInterface2Proxy final {
+ public:
+  TestInterface2Proxy(
+      const scoped_refptr<dbus::Bus>& bus,
+      const std::string& service_name,
+      const std::string& object_path)
+      : bus_(bus),
+        service_name_(service_name),
+        object_path_(object_path),
+        dbus_object_proxy_(
+            bus_->GetObjectProxy(service_name_, object_path_)) {
+  }
+
+  ~TestInterface2Proxy() {
+  }
+
+  void ReleaseObjectProxy(const base::Closure& callback) {
+    bus_->RemoveObjectProxy(service_name_, object_path_, callback);
+  }
+
   bool GetPersonInfo(
       std::string* out_name,
       int32_t* out_age,
@@ -198,11 +244,12 @@ class TestInterfaceProxy final {
   dbus::ObjectPath object_path_;
   dbus::ObjectProxy* dbus_object_proxy_;
 
-  DISALLOW_COPY_AND_ASSIGN(TestInterfaceProxy);
+  DISALLOW_COPY_AND_ASSIGN(TestInterface2Proxy);
 };
 
 }  // namespace chromium
 }  // namespace org
+
 )literal_string";
 
 }  // namespace
@@ -260,7 +307,7 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptors) {
           {kMethod5ArgumentName2, kMethod5Argument2}});
   vector<Interface> interfaces{interface, interface2};
   base::FilePath output_path = temp_dir_.path().Append("output.h");
-  EXPECT_TRUE(ProxyGenerator::GenerateProxy(interfaces, output_path));
+  EXPECT_TRUE(ProxyGenerator::GenerateProxies(interfaces, output_path));
   string contents;
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
   // The header guards contain the (temporary) filename, so we search for

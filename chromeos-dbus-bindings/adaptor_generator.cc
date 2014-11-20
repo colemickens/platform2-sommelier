@@ -32,7 +32,7 @@ bool AdaptorGenerator::GenerateAdaptors(
   for (const auto& interface : interfaces) {
     text.AddLine(StringPrintf("//  - %s", interface.name.c_str()));
   }
-  string header_guard = GenerateHeaderGuard(output_file, "");
+  string header_guard = GenerateHeaderGuard(output_file);
   text.AddLine(StringPrintf("#ifndef %s", header_guard.c_str()));
   text.AddLine(StringPrintf("#define %s", header_guard.c_str()));
   text.AddLine("#include <memory>");

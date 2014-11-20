@@ -22,9 +22,8 @@ namespace chromeos_dbus_bindings {
 
 // static
 string HeaderGenerator::GenerateHeaderGuard(
-    const base::FilePath& output_file, const string& interface_name) {
-  string guard = base::StringPrintf("____chromeos_dbus_binding___%s__%s",
-                                    interface_name.c_str(),
+    const base::FilePath& output_file) {
+  string guard = base::StringPrintf("____chromeos_dbus_binding__%s",
                                     output_file.value().c_str());
   for (auto& c : guard) {
     if (IsAsciiAlpha(c)) {

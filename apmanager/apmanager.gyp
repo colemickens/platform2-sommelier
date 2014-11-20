@@ -16,16 +16,14 @@
       'target_name': 'apmanager-adaptors',
       'type': 'none',
       'variables': {
-        'generate_dbus_bindings_type': 'adaptor',
-        'generate_dbus_bindings_in_dir': 'dbus_bindings',
-        'generate_dbus_bindings_out_dir': 'include/apmanager/dbus_adaptors',
+        'dbus_adaptors_out_dir': 'include/apmanager/dbus_adaptors',
       },
       'sources': [
-        '<(generate_dbus_bindings_in_dir)/org.chromium.apmanager.Config.xml',
-        '<(generate_dbus_bindings_in_dir)/org.chromium.apmanager.Manager.xml',
-        '<(generate_dbus_bindings_in_dir)/org.chromium.apmanager.Service.xml',
+        'dbus_bindings/org.chromium.apmanager.Config.xml',
+        'dbus_bindings/org.chromium.apmanager.Manager.xml',
+        'dbus_bindings/org.chromium.apmanager.Service.xml',
       ],
-      'includes': ['../common-mk/generate-dbus-bindings.gypi'],
+      'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     },
     {
       'target_name': 'libapmanager',

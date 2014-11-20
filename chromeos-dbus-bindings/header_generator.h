@@ -24,8 +24,7 @@ class  IndentedText;
 class HeaderGenerator {
  protected:
   // Create a unique header guard string to protect multiple includes of header.
-  static std::string GenerateHeaderGuard(const base::FilePath& output_file,
-                                         const std::string& interface_name);
+  static std::string GenerateHeaderGuard(const base::FilePath& output_file);
 
   // Returns a vector of nesting namespaces.
   static bool GetNamespacesAndClassName(const std::string& interface_name,

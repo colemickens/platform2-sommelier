@@ -27,24 +27,32 @@ struct Interface;
 
 class ProxyGenerator : public HeaderGenerator {
  public:
-  static bool GenerateProxy(const std::vector<Interface>& interfaces,
-                            const base::FilePath& output_file);
+  static bool GenerateProxies(const std::vector<Interface>& interfaces,
+                              const base::FilePath& output_file);
 
  private:
   friend class ProxyGeneratorTest;
 
+  // Generates one interface proxy.
+  static void GenerateInterfaceProxy(const Interface& interface,
+                                     IndentedText* text);
+
   // Generates the constructor and destructor for the proxy.
-  static void AddConstructor(const std::vector<Interface>& interfaces,
+  static void AddConstructor(const Interface& interface,
                              const std::string& class_name,
                              IndentedText* text);
   static void AddDestructor(const std::string& class_name,
                             IndentedText* text);
 
   // Generates a callback for signal receiver registration completion.
-  static void AddSignalConnectedCallback(IndentedText *text);
+  static void AddSignalConnectedCallback(IndentedText* text);
+
+  // Generates ReleaseObjectProxy() method to release ownership
+  // of the object proxy.
+  static void AddReleaseObjectProxy(IndentedText* text);
 
   // Generates the method signatures for signal receivers.
-  static void AddSignalReceiver(const std::vector<Interface>& interfaces,
+  static void AddSignalReceiver(const Interface& interface,
                                 IndentedText* text);
 
   // Generates a native C++ method which calls a D-Bus method on the proxy.

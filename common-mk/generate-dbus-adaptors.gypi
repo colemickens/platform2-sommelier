@@ -1,23 +1,21 @@
 {
   'variables': {
-    'h_dir': '<(SHARED_INTERMEDIATE_DIR)/<(generate_dbus_bindings_out_dir)',
-    'generate_dbus_bindings_in_dir%': '.',
-    'generate_dbus_bindings': '<!(which generate-chromeos-dbus-bindings)',
+    'h_dir': '<(SHARED_INTERMEDIATE_DIR)/<(dbus_adaptors_out_dir)',
   },
   'rules': [
     {
-      'rule_name': 'generate_dbus_bindings',
+      'rule_name': 'generate_dbus_adaptors',
       'extension': 'xml',
       'inputs': [
-        '<(generate_dbus_bindings)',
+        '<(RULE_INPUT_PATH)',
       ],
       'outputs': [
         '<(h_dir)/<(RULE_INPUT_ROOT).h',
       ],
       'action': [
-        '<(generate_dbus_bindings)',
-        '--input=<(RULE_INPUT_PATH)',
-        '--<(generate_dbus_bindings_type)=<(h_dir)/<(RULE_INPUT_ROOT).h',
+        '<!(which generate-chromeos-dbus-bindings)',
+        '<(RULE_INPUT_PATH)',
+        '--adaptor=<(h_dir)/<(RULE_INPUT_ROOT).h',
       ],
       'msvs_cygwin_shell': 0,
       'message': 'Generating C++ header from <(RULE_INPUT_PATH)',
