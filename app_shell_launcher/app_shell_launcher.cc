@@ -139,6 +139,8 @@ void ExecAppShell(const ChromiumCommandBuilder& builder) {
   for (size_t i = 0; i < builder.arguments().size(); ++i)
     argv[i + 1] = const_cast<char*>(builder.arguments()[i].c_str());
 
+  LOG(INFO) << "Exec-ing " << exec_path << " "
+            << JoinString(builder.arguments(), ' ');
   PCHECK(execv(argv[0], argv) == 0) << "Couldn't exec " << argv[0];
 }
 
