@@ -108,7 +108,6 @@ _IMPLEMENTATION_FILE_INCLUDES = """
 """
 _LOCAL_INCLUDE = """
 #include "trunks/%(filename)s"
-
 """
 _NAMESPACE_BEGIN = """
 namespace trunks {
@@ -197,17 +196,25 @@ TPM_RC CHROMEOS_EXPORT Parse_%(type)s(
     std::string* value_bytes);
 """
 
-_TPM2B_HELPERS_DECLARATION = """
+_SIMPLE_TPM2B_HELPERS_DECLARATION = """
 %(type)s CHROMEOS_EXPORT Make_%(type)s(
     const std::string& bytes);
 std::string CHROMEOS_EXPORT StringFrom_%(type)s(
     const %(type)s& tpm2b);
 """
+_COMPLEX_TPM2B_HELPERS_DECLARATION = """
+%(type)s CHROMEOS_EXPORT Make_%(type)s(
+    const %(inner_type)s inner);
+"""
 
 
 def FixName(name):
   """Fixes names to conform to Chromium style."""
+  # Handle names with array notation. E.g. 'myVar[10]' is grouped as 'myVar' and
+  # '[10]'.
   match = re.search(r'([^\[]*)(\[.*\])*', name)
+  # Transform the name to Chromium style. E.g. 'myVarAgain' becomes
+  # 'my_var_again'.
   fixed_name = re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', match.group(1)).lower()
   return fixed_name + match.group(2) if match.group(2) else fixed_name
 
@@ -400,6 +407,19 @@ TPM_RC Serialize_%(type)s(
     return result;
   }
 """
+  _SERIALIZE_COMPLEX_TPM2B = """
+  std::string field_bytes;
+  result = Serialize_%(type)s(value.%(name)s, &field_bytes);
+  if (result) {
+    return result;
+  }
+  std::string size_bytes;
+  result = Serialize_UINT16(field_bytes.size(), &size_bytes);
+  if (result) {
+    return result;
+  }
+  buffer->append(size_bytes + field_bytes);
+"""
   _PARSE_FUNCTION_START = """
 TPM_RC Parse_%(type)s(
     std::string* buffer,
@@ -515,7 +535,7 @@ TPM_RC Parse_%(union_type)s(
     // Do nothing.
   }
 """
-  _TPM2B_HELPERS = """
+  _SIMPLE_TPM2B_HELPERS = """
 %(type)s Make_%(type)s(
     const std::string& bytes) {
   %(type)s tpm2b;
@@ -531,6 +551,15 @@ std::string StringFrom_%(type)s(
   const char* char_buffer = reinterpret_cast<const char*>(
       tpm2b.%(buffer_name)s);
   return std::string(char_buffer, tpm2b.size);
+}
+"""
+  _COMPLEX_TPM2B_HELPERS = """
+%(type)s Make_%(type)s(
+    const %(inner_type)s& inner) {
+  %(type)s tpm2b;
+  tpm2b.size = sizeof(%(inner_type)s);
+  tpm2b.%(inner_name)s = inner;
+  return tpm2b;
 }
 """
 
@@ -572,9 +601,13 @@ std::string StringFrom_%(type)s(
     """
     self.depends_on.append(required_type)
 
-  def IsBasicTPM2B(self):
+  def IsSimpleTPM2B(self):
     """Returns whether this struct is a TPM2B structure with raw bytes."""
     return self.name.startswith('TPM2B_') and self.fields[1][0] == 'BYTE'
+
+  def IsComplexTPM2B(self):
+    """Returns whether this struct is a TPM2B structure with an inner struct."""
+    return self.name.startswith('TPM2B_') and self.fields[1][0] != 'BYTE'
 
   def _GetFieldTypes(self):
     """Creates a set which holds all current field types.
@@ -656,15 +689,21 @@ std::string StringFrom_%(type)s(
       serialized_types.add(self.name)
       return
     out_file.write(self._SERIALIZE_FUNCTION_START % {'type': self.name})
-    for field in self.fields:
-      if self._ARRAY_FIELD_RE.search(field[1]):
-        self._OutputArrayField(out_file, field, self._SERIALIZE_FIELD_ARRAY)
-      elif self._UNION_TYPE_RE.search(field[0]):
-        self._OutputUnionField(out_file, field,
-                               self._SERIALIZE_FIELD_WITH_SELECTOR)
-      else:
-        out_file.write(self._SERIALIZE_FIELD % {'type': field[0],
-                                                'name': field[1]})
+    if self.IsComplexTPM2B():
+      field_type = self.fields[1][0]
+      field_name = self.fields[1][1]
+      out_file.write(self._SERIALIZE_COMPLEX_TPM2B % {'type': field_type,
+                                                      'name': field_name})
+    else:
+      for field in self.fields:
+        if self._ARRAY_FIELD_RE.search(field[1]):
+          self._OutputArrayField(out_file, field, self._SERIALIZE_FIELD_ARRAY)
+        elif self._UNION_TYPE_RE.search(field[0]):
+          self._OutputUnionField(out_file, field,
+                                 self._SERIALIZE_FIELD_WITH_SELECTOR)
+        else:
+          out_file.write(self._SERIALIZE_FIELD % {'type': field[0],
+                                                  'name': field[1]})
     out_file.write(self._SERIALIZE_FUNCTION_END)
     out_file.write(self._PARSE_FUNCTION_START % {'type': self.name})
     for field in self.fields:
@@ -677,10 +716,16 @@ std::string StringFrom_%(type)s(
                                             'name': field[1]})
     out_file.write(self._SERIALIZE_FUNCTION_END)
     # If this is a TPM2B structure throw in a few convenience functions.
-    if self.IsBasicTPM2B():
+    if self.IsSimpleTPM2B():
       field_name = self._ARRAY_FIELD_RE.search(self.fields[1][1]).group(1)
-      out_file.write(self._TPM2B_HELPERS % {'type': self.name,
-                                            'buffer_name': field_name})
+      out_file.write(self._SIMPLE_TPM2B_HELPERS % {'type': self.name,
+                                                   'buffer_name': field_name})
+    elif self.IsComplexTPM2B():
+      field_type = self.fields[1][0]
+      field_name = self.fields[1][1]
+      out_file.write(self._COMPLEX_TPM2B_HELPERS % {'type': self.name,
+                                                    'inner_type': field_type,
+                                                    'inner_name': field_name})
     serialized_types.add(self.name)
 
   def _OutputUnionSerialize(self, out_file):
@@ -1871,8 +1916,12 @@ def GenerateHeader(types, constants, structs, defines, typemap, commands):
     out_file.write(_SERIALIZE_DECLARATION % {'type': typedef.new_type})
   for struct in structs:
     out_file.write(_SERIALIZE_DECLARATION % {'type': struct.name})
-    if struct.IsBasicTPM2B():
-      out_file.write(_TPM2B_HELPERS_DECLARATION % {'type': struct.name})
+    if struct.IsSimpleTPM2B():
+      out_file.write(_SIMPLE_TPM2B_HELPERS_DECLARATION % {'type': struct.name})
+    elif struct.IsComplexTPM2B():
+      out_file.write(_COMPLEX_TPM2B_HELPERS_DECLARATION %
+                        {'type': struct.name,
+                         'inner_type': struct.fields[1][0]})
   # Generate a declaration for a 'Tpm' class, which includes one method for
   # every TPM 2.0 command.
   out_file.write(_CLASS_BEGIN)

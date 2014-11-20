@@ -3063,6 +3063,9 @@ TPM_RC CHROMEOS_EXPORT Parse_TPM2B_SENSITIVE_CREATE(
     TPM2B_SENSITIVE_CREATE* value,
     std::string* value_bytes);
 
+TPM2B_SENSITIVE_CREATE CHROMEOS_EXPORT Make_TPM2B_SENSITIVE_CREATE(
+    const TPMS_SENSITIVE_CREATE inner);
+
 TPM_RC CHROMEOS_EXPORT Serialize_TPMS_SCHEME_SIGHASH(
     const TPMS_SCHEME_SIGHASH& value,
     std::string* buffer);
@@ -3258,6 +3261,9 @@ TPM_RC CHROMEOS_EXPORT Parse_TPM2B_ECC_POINT(
     TPM2B_ECC_POINT* value,
     std::string* value_bytes);
 
+TPM2B_ECC_POINT CHROMEOS_EXPORT Make_TPM2B_ECC_POINT(
+    const TPMS_ECC_POINT inner);
+
 TPM_RC CHROMEOS_EXPORT Serialize_TPMT_ECC_SCHEME(
     const TPMT_ECC_SCHEME& value,
     std::string* buffer);
@@ -3389,6 +3395,9 @@ TPM_RC CHROMEOS_EXPORT Parse_TPM2B_PUBLIC(
     TPM2B_PUBLIC* value,
     std::string* value_bytes);
 
+TPM2B_PUBLIC CHROMEOS_EXPORT Make_TPM2B_PUBLIC(
+    const TPMT_PUBLIC inner);
+
 TPM_RC CHROMEOS_EXPORT Serialize_TPM2B_PRIVATE_VENDOR_SPECIFIC(
     const TPM2B_PRIVATE_VENDOR_SPECIFIC& value,
     std::string* buffer);
@@ -3420,6 +3429,9 @@ TPM_RC CHROMEOS_EXPORT Parse_TPM2B_SENSITIVE(
     std::string* buffer,
     TPM2B_SENSITIVE* value,
     std::string* value_bytes);
+
+TPM2B_SENSITIVE CHROMEOS_EXPORT Make_TPM2B_SENSITIVE(
+    const TPMT_SENSITIVE inner);
 
 TPM_RC CHROMEOS_EXPORT Serialize__PRIVATE(
     const _PRIVATE& value,
@@ -3485,6 +3497,9 @@ TPM_RC CHROMEOS_EXPORT Parse_TPM2B_NV_PUBLIC(
     TPM2B_NV_PUBLIC* value,
     std::string* value_bytes);
 
+TPM2B_NV_PUBLIC CHROMEOS_EXPORT Make_TPM2B_NV_PUBLIC(
+    const TPMS_NV_PUBLIC inner);
+
 TPM_RC CHROMEOS_EXPORT Serialize_TPM2B_CONTEXT_SENSITIVE(
     const TPM2B_CONTEXT_SENSITIVE& value,
     std::string* buffer);
@@ -3548,6 +3563,9 @@ TPM_RC CHROMEOS_EXPORT Parse_TPM2B_CREATION_DATA(
     std::string* buffer,
     TPM2B_CREATION_DATA* value,
     std::string* value_bytes);
+
+TPM2B_CREATION_DATA CHROMEOS_EXPORT Make_TPM2B_CREATION_DATA(
+    const TPMS_CREATION_DATA inner);
 
 TPM_RC CHROMEOS_EXPORT Serialize_TPMU_HA(
     const TPMU_HA& value,

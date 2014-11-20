@@ -51,7 +51,10 @@ TEST(GeneratorTest, SerializeParseStruct) {
   ASSERT_EQ(TPM_RC_SUCCESS, rc);
   EXPECT_EQ(0, buffer.size());
   EXPECT_EQ(buffer_before, buffer_parsed);
-  EXPECT_EQ(0, memcmp(&data, &data2, sizeof(TPM2B_CREATION_DATA)));
+  EXPECT_EQ(buffer_before.size() - 2, data2.size);
+  EXPECT_EQ(0, memcmp(&data.creation_data,
+                      &data2.creation_data,
+                      sizeof(TPMS_CREATION_DATA)));
 }
 
 TEST(GeneratorTest, SerializeBufferOverflow) {
