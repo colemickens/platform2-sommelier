@@ -11,7 +11,6 @@
 #include <base/files/file_util.h>
 #include <chromeos/cryptohome.h>
 
-#include "login_manager/fake_generator_job.h"
 #include "login_manager/generator_job.h"
 #include "login_manager/system_utils.h"
 
