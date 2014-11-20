@@ -151,10 +151,8 @@ HELP_ADVANCED='
   effect after re-connecting to Ethernet and is not persistent across system
   restarts.
 
- set_wake_on_wifi <packet | ssid | packet_and_ssid | none>
-  Toggles Wake on WiFi features (wake-on-packet, wake-on-ssid, both, or none)
-  for the WiFi devices. Cannot be set to anything other than "none" if Wake
-  on WiFi is not supported by this device.
+ set_wake_on_wifi <true | false>
+  Enable or disable Wake on WiFi functionality for WiFi devices.
 
  set_cellular_ppp [-u <username>] [-p <password>]
   Set the PPP username and/or password for an existing cellular connection.
@@ -750,7 +748,7 @@ cmd_set_wake_on_lan() (
 
 cmd_set_wake_on_wifi() (
   case "$1" in
-    "packet"|"ssid"|"packet_and_ssid"|"none")
+    "true"|"false")
       /usr/bin/set_wake_on_wifi "$1"
       ;;
     "")

@@ -3,7 +3,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
-# Set the Wake on WiFi features enabled.
+# Set the Wake on WiFi behavior.
+# TODO(samueltan): make this script accept parameters to choose which wake
+# on WiFi feature (e.g. wake on packet, wake on SSID) feature to switch on/off.
 
 FLAGS_HELP="Usage:
 
@@ -11,107 +13,52 @@ FLAGS_HELP="Usage:
 
 or
 
-  $(basename $0) [packet | ssid | packet_and_ssid | none] "
+  $(basename $0) [true | false] "
 
 FLIMFLAM=org.chromium.flimflam
-IMANAGER=${FLIMFLAM}.Manager
-IDEVICE=${FLIMFLAM}.Device
-PROPERTY_NAME=WakeOnWiFiFeaturesEnabled
-PROPERTY_DESC="Wake on WiFi features enabled"
+IMANAGER="${FLIMFLAM}.Manager"
+PROPERTY_NAME=WakeOnPacketEnabled
+PROPERTY_DESC="Wake on Packet"
 
 usage() {
   echo "Invalid invocation: $*"
   echo
-  echo "${FLAGS_HELP}"
+  echo $FLAGS_HELP
   exit 1
 }
 
-dbus() {
-  local obj
-  local meth
-
-  obj="$1"
-  meth="$2"
+dbus () {
+  local obj="$1"
+  local meth="$2"
   shift 2
 
-  dbus-send --system --print-reply --fixed --dest="${FLIMFLAM}" "${obj}" \
-    "${meth}" "$@"
+  dbus-send --system --print-reply --fixed --dest="${FLIMFLAM}" "${obj}" "${meth}" "$@"
 }
 
-get_property() {
-  local interface
-  local object
-  local property
-
-  interface="${1:?internal error}"
-  object="${2:?internal error}"
-  property="${3:?internal error}"
-
-  dbus "${object}" "${interface}.GetProperties" 2>/dev/null \
-    | sed -n "/\/${property}/{s/.* //p}"
+get_manager_property () {
+  dbus / "${IMANAGER}.GetProperties" | sed -n "/$1/s/.* //p"
 }
 
-get_devices() {
-  dbus / "${IMANAGER}.GetProperties" 2>/dev/null \
-    | sed -n "/\/Devices\//{s/.* //p}"
-}
+display_value () {
+  local value=$(get_manager_property "${PROPERTY_NAME}")
 
-get_first_wifi_device() {
-  local device
-  local device_type
-
-  for device in $(get_devices); do
-    device_type="$(get_property ${IDEVICE} ${device} Type)"
-    if [ "${device_type}" = "wifi" ]; then
-      echo "${device}"
-      break
-    fi
-  done
-}
-
-display_value() {
-  local wifi_device
-  local value
-
-  wifi_device="$1"
-  value=$(get_property "${IDEVICE}" "${wifi_device}" "${PROPERTY_NAME}")
-
-  if [ -n "${value}" ]; then
-    echo "Current ${PROPERTY_DESC} : ${value}"
-    return
-  fi
-
-  echo "This connection manager instance does not support ${PROPERTY_DESC}"
-}
-
-main() {
-  local wifi_device
-  wifi_device="$(get_first_wifi_device)"
-
-  if [ -z "${wifi_device}" ]; then
-    echo "No WiFi device"
-    exit 1
-  fi
-
-  if [ $# -gt 1 ]; then
-    usage "No more than one argument may be provided"
-  fi
-
-  if [ $# -lt 1 ]; then
-    display_value "${wifi_device}"
+  if [ -n "${value}" ] ; then
+    echo "Current ${PROPERTY_DESC} setting: " $value
     exit 0
   fi
 
-  local set_value
-  set_value="$1"
-
-  case "${set_value}" in
-    packet|ssid|packet_and_ssid|none) ;;
-    *) usage "Invalid argument: $1" ;;
-  esac
-
-  dbus "${wifi_device}" "${IDEVICE}.SetProperty" string:"${PROPERTY_NAME}" \
-    "variant:string:${set_value}"
+  echo "This connection manager instance does not support ${PROPERTY_DESC}"
+  exit 0
 }
 
-main "$@"
+if [ $# -lt 1 ]; then
+    display_value
+fi
+
+set_value="$1"
+
+if [ "${set_value}" != "false" -a "${set_value}" != "true" ] ; then
+    usage "Argument must be 'true' or 'false'"
+fi
+
+dbus / "${IMANAGER}.SetProperty" string:"${PROPERTY_NAME}" "variant:boolean:${set_value}"
