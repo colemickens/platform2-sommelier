@@ -9,9 +9,16 @@
 #include <vector>
 
 #include "chromiumos-wide-profiling/kernel/perf_internals.h"
+#include "chromiumos-wide-profiling/quipper_string.h"
 
 namespace quipper {
 namespace testing {
+
+// Union for punning 32-bit words into a 64-bit word.
+union PunU32U64 {
+  u32 v32[2];
+  u64 v64;
+};
 
 class StreamWriteable {
  public:
@@ -65,6 +72,59 @@ class ExamplePerfFileAttr_Tracepoint : public StreamWriteable {
   void WriteTo(std::ostream* out) const override;
  private:
   const u64 tracepoint_event_id_;
+};
+
+// Produces a PERF_RECORD_MMAP event with the given file and mapping.
+// Assumes attr.sample_id_all and PERF_SAMPLE_TID
+class ExampleMmapEvent_Tid : public StreamWriteable {
+ public:
+  // pid is used as both pid and tid.
+  ExampleMmapEvent_Tid(u32 pid, u64 start, u64 len, u64 pgoff, string filename)
+      : pid_(pid),
+        start_(start),
+        len_(len),
+        pgoff_(pgoff),
+        filename_(filename) {
+  }
+  void WriteTo(std::ostream* out) const override;
+ private:
+  const u32 pid_;
+  const u64 start_;
+  const u64 len_;
+  const u64 pgoff_;
+  const string filename_;
+};
+
+// Produces a PERF_RECORD_MMAP2 event with the given file and mapping.
+// Assumes attr.sample_id_all and PERF_SAMPLE_TID
+class ExampleMmap2Event_Tid : public StreamWriteable {
+ public:
+  // pid is used as both pid and tid.
+  ExampleMmap2Event_Tid(u32 pid, u64 start, u64 len, u64 pgoff, string filename)
+      : pid_(pid),
+        start_(start),
+        len_(len),
+        pgoff_(pgoff),
+        filename_(filename) {
+  }
+  void WriteTo(std::ostream* out) const override;
+ private:
+  const u32 pid_;
+  const u64 start_;
+  const u64 len_;
+  const u64 pgoff_;
+  const string filename_;
+};
+
+class ExamplePerfSampleEvent_IpTid : public StreamWriteable {
+ public:
+  ExamplePerfSampleEvent_IpTid(u64 ip, u32 pid, u32 tid)
+      : ip_(ip), pid_(pid), tid_(tid) {}
+  void WriteTo(std::ostream* out) const override;
+ private:
+  const u64 ip_;
+  const u32 pid_;
+  const u32 tid_;
 };
 
 // Produces a struct sample_event matching ExamplePerfFileAttr_Tracepoint.

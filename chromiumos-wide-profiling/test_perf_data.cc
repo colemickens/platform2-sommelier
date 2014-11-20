@@ -9,6 +9,7 @@
 #include "base/logging.h"
 
 #include "chromiumos-wide-profiling/kernel/perf_internals.h"
+#include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
 namespace testing {
@@ -87,6 +88,61 @@ void ExamplePerfFileAttr_Tracepoint::WriteTo(std::ostream* out) const {
     .ids = {.offset = 104, .size = 0},
   };
   out->write(reinterpret_cast<const char*>(&file_attr), sizeof(file_attr));
+}
+
+void ExampleMmapEvent_Tid::WriteTo(std::ostream* out) const {
+  const size_t filename_aligned_length =
+      GetUint64AlignedStringLength(filename_);
+  const size_t event_size =
+      offsetof(struct mmap_event, filename) +
+      filename_aligned_length +
+      1*sizeof(u64);  // sample_id_all
+
+  struct mmap_event event = {
+    .header = {
+      .type = PERF_RECORD_MMAP,
+      .misc = 0,
+      .size = static_cast<u16>(event_size),
+    },
+    .pid = pid_, .tid = pid_,
+    .start = start_,
+    .len = len_,
+    .pgoff = pgoff_,
+    // .filename = ..., // written separately
+  };
+  const u64 sample_id[] = {
+    PunU32U64{.v32={pid_, pid_}}.v64,  // TID (u32 pid, tid)
+  };
+
+  const size_t pre_mmap_offset = out->tellp();
+  out->write(reinterpret_cast<const char*>(&event),
+             offsetof(struct mmap_event, filename));
+  *out << filename_
+       << string(filename_aligned_length - filename_.size(), '\0');
+  out->write(reinterpret_cast<const char*>(sample_id), sizeof(sample_id));
+  const size_t written_event_size =
+      static_cast<size_t>(out->tellp()) - pre_mmap_offset;
+  CHECK_EQ(event.header.size,
+           static_cast<u64>(written_event_size));
+}
+
+void ExamplePerfSampleEvent_IpTid::WriteTo(std::ostream* out) const {
+  const sample_event event = {
+    .header = {
+      .type = PERF_RECORD_SAMPLE,
+      .misc = PERF_RECORD_MISC_USER,
+      .size = sizeof(struct sample_event) + 2*sizeof(u64),
+    }
+  };
+  const u64 sample_event_array[] = {
+    ip_,                               // IP
+    PunU32U64{.v32={pid_, tid_}}.v64,  // TID (u32 pid, tid)
+  };
+  CHECK_EQ(event.header.size,
+           sizeof(event.header) + sizeof(sample_event_array));
+  out->write(reinterpret_cast<const char*>(&event), sizeof(event));
+  out->write(reinterpret_cast<const char*>(sample_event_array),
+             sizeof(sample_event_array));
 }
 
 void ExamplePerfSampleEvent_Tracepoint::WriteTo(std::ostream* out) const {

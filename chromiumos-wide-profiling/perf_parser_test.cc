@@ -15,6 +15,7 @@
 #include "chromiumos-wide-profiling/quipper_string.h"
 #include "chromiumos-wide-profiling/quipper_test.h"
 #include "chromiumos-wide-profiling/scoped_temp_path.h"
+#include "chromiumos-wide-profiling/test_perf_data.h"
 #include "chromiumos-wide-profiling/test_utils.h"
 
 namespace quipper {
@@ -140,6 +141,113 @@ TEST(PerfParserTest, TestPipedProcessing) {
     PerfParser parser(GetTestOptions());
     ReadFileAndCheckInternals(input_perf_data, &parser);
   }
+}
+
+TEST(PerfParserTest, MapsSampleEventIp) {
+  std::stringstream input;
+
+  // header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // data
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_IP |
+                                              PERF_SAMPLE_TID,
+                                              true /*sample_id_all*/)
+      .WriteTo(&input);
+
+  // PERF_RECORD_MMAP
+  testing::ExampleMmapEvent_Tid(
+      1001, 0x1c1000, 0x1000, 0, "/usr/lib/foo.so").WriteTo(&input);       // 0
+  // becomes: 0x0000, 0x1000, 0
+  testing::ExampleMmapEvent_Tid(
+      1001, 0x1c3000, 0x2000, 0x2000, "/usr/lib/bar.so").WriteTo(&input);  // 1
+  // becomes: 0x1000, 0x2000, 0
+
+  // PERF_RECORD_SAMPLE
+  testing::ExamplePerfSampleEvent_IpTid(
+      0x00000000001c1000, 1001, 1001).WriteTo(&input);  // 2
+  testing::ExamplePerfSampleEvent_IpTid(
+      0x00000000001c100a, 1001, 1001).WriteTo(&input);  // 3
+  testing::ExamplePerfSampleEvent_IpTid(
+      0x00000000001c3fff, 1001, 1001).WriteTo(&input);  // 4
+  testing::ExamplePerfSampleEvent_IpTid(
+      0x00000000001c2bad, 1001, 1001).WriteTo(&input);  // 5 (not mapped)
+
+  // not mapped yet:
+  testing::ExamplePerfSampleEvent_IpTid(
+      0x00000000002c400b, 1002, 1002).WriteTo(&input);  // 6
+  testing::ExampleMmapEvent_Tid(
+      1002, 0x2c4000, 0x1000, 0, "/usr/lib/new.so").WriteTo(&input);  // 7
+  testing::ExamplePerfSampleEvent_IpTid(
+      0x00000000002c400b, 1002, 1002).WriteTo(&input);  // 8
+
+  //
+  // Parse input.
+  //
+
+  PerfParser::Options options = GetTestOptions();
+  options.do_remap = true;
+  PerfParser parser(options);
+  EXPECT_TRUE(parser.ReadFromString(input.str()));
+  EXPECT_TRUE(parser.ParseRawEvents());
+  EXPECT_EQ(3, parser.stats().num_mmap_events);
+  EXPECT_EQ(6, parser.stats().num_sample_events);
+  EXPECT_EQ(4, parser.stats().num_sample_events_mapped);
+
+
+  const std::vector<ParsedEvent>& events = parser.parsed_events();
+  ASSERT_EQ(9, events.size());
+
+  // MMAPs
+
+  EXPECT_EQ(PERF_RECORD_MMAP, events[0].raw_event->header.type);
+  EXPECT_EQ("/usr/lib/foo.so", string(events[0].raw_event->mmap.filename));
+  EXPECT_EQ(0x0000, events[0].raw_event->mmap.start);
+  EXPECT_EQ(0x1000, events[0].raw_event->mmap.len);
+  EXPECT_EQ(0, events[0].raw_event->mmap.pgoff);
+
+  EXPECT_EQ(PERF_RECORD_MMAP, events[1].raw_event->header.type);
+  EXPECT_EQ("/usr/lib/bar.so", string(events[1].raw_event->mmap.filename));
+  EXPECT_EQ(0x1000, events[1].raw_event->mmap.start);
+  EXPECT_EQ(0x2000, events[1].raw_event->mmap.len);
+  EXPECT_EQ(0x2000, events[1].raw_event->mmap.pgoff);
+
+  // SAMPLEs
+
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[2].raw_event->header.type);
+  EXPECT_EQ("/usr/lib/foo.so", events[2].dso_and_offset.dso_name());
+  EXPECT_EQ(0x0, events[2].dso_and_offset.offset());
+  EXPECT_EQ(0x0, events[2].raw_event->sample.array[0]);
+
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[3].raw_event->header.type);
+  EXPECT_EQ("/usr/lib/foo.so", events[3].dso_and_offset.dso_name());
+  EXPECT_EQ(0xa, events[3].dso_and_offset.offset());
+  EXPECT_EQ(0xa, events[3].raw_event->sample.array[0]);
+
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[4].raw_event->header.type);
+  EXPECT_EQ("/usr/lib/bar.so", events[4].dso_and_offset.dso_name());
+  EXPECT_EQ(0x2fff, events[4].dso_and_offset.offset());
+  EXPECT_EQ(0x1fff, events[4].raw_event->sample.array[0]);
+
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[5].raw_event->header.type);
+  EXPECT_EQ(0x00000000001c2bad, events[5].raw_event->sample.array[0]);
+
+  // not mapped yet:
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[6].raw_event->header.type);
+  EXPECT_EQ(0x00000000002c400b, events[6].raw_event->sample.array[0]);
+
+  EXPECT_EQ(PERF_RECORD_MMAP, events[7].raw_event->header.type);
+  EXPECT_EQ("/usr/lib/new.so", string(events[7].raw_event->mmap.filename));
+  EXPECT_EQ(0x0000, events[7].raw_event->mmap.start);
+  EXPECT_EQ(0x1000, events[7].raw_event->mmap.len);
+  EXPECT_EQ(0, events[7].raw_event->mmap.pgoff);
+
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[8].raw_event->header.type);
+  EXPECT_EQ("/usr/lib/new.so", events[8].dso_and_offset.dso_name());
+  EXPECT_EQ(0xb, events[8].dso_and_offset.offset());
+  EXPECT_EQ(0x000b, events[8].raw_event->sample.array[0]);
 }
 
 }  // namespace quipper
