@@ -65,6 +65,13 @@ class StatePackage final {
                         const chromeos::Any& value,
                         chromeos::ErrorPtr* error);
 
+  std::shared_ptr<const PropValue>
+  GetProperty(const std::string& property_name) const {
+    auto it = values_.find(property_name);
+    return it != values_.end() ?
+        it->second : std::shared_ptr<const PropValue>{};
+  }
+
   // Returns the name of the this package.
   const std::string& GetName() const { return name_; }
 

@@ -15,7 +15,7 @@ StateChangeQueue::StateChangeQueue(size_t max_queue_size)
 
 bool StateChangeQueue::NotifyPropertiesUpdated(
     base::Time timestamp,
-    chromeos::VariantDictionary changed_properties) {
+    native_types::Object changed_properties) {
   DCHECK(thread_checker_.CalledOnValidThread());
   auto it = state_changes_.lower_bound(timestamp);
   if (it == state_changes_.end() || it->first != timestamp) {

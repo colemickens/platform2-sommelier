@@ -10,6 +10,8 @@
 #include <base/time/time.h>
 #include <chromeos/variant_dictionary.h>
 
+#include "commands/schema_utils.h"
+
 namespace buffet {
 
 // A simple notification record event to track device state changes.
@@ -18,10 +20,10 @@ namespace buffet {
 // which were updated at the time the event was recorded.
 struct StateChange {
   StateChange(base::Time time,
-              chromeos::VariantDictionary properties)
+              native_types::Object properties)
     : timestamp(time), changed_properties(std::move(properties)) {}
   base::Time timestamp;
-  chromeos::VariantDictionary changed_properties;
+  native_types::Object changed_properties;
 };
 
 // An abstract interface to StateChangeQueue to record and retrieve state
@@ -34,7 +36,7 @@ class StateChangeQueueInterface {
   // Called by StateManager when device state properties are updated.
   virtual bool NotifyPropertiesUpdated(
       base::Time timestamp,
-      chromeos::VariantDictionary changed_properties) = 0;
+      native_types::Object changed_properties) = 0;
 
   // Returns the recorded state changes since last time this method was called.
   virtual std::vector<StateChange> GetAndClearRecordedStateChanges() = 0;

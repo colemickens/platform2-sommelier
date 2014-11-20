@@ -18,7 +18,7 @@ class MockStateChangeQueueInterface : public StateChangeQueueInterface {
   MOCK_CONST_METHOD0(IsEmpty, bool());
   MOCK_METHOD2(NotifyPropertiesUpdated,
                bool(base::Time timestamp,
-                    chromeos::VariantDictionary changed_properties));
+                    native_types::Object changed_properties));
   MOCK_METHOD0(GetAndClearRecordedStateChanges, std::vector<StateChange>());
 };
 

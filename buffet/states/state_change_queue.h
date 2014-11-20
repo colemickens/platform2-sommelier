@@ -24,7 +24,7 @@ class StateChangeQueue : public StateChangeQueueInterface {
   bool IsEmpty() const override { return state_changes_.empty(); }
   bool NotifyPropertiesUpdated(
       base::Time timestamp,
-      chromeos::VariantDictionary changed_properties) override;
+      native_types::Object changed_properties) override;
   std::vector<StateChange> GetAndClearRecordedStateChanges() override;
 
  private:
@@ -38,7 +38,7 @@ class StateChangeQueue : public StateChangeQueueInterface {
   const size_t max_queue_size_;
 
   // Accumulated list of device state change notifications.
-  std::map<base::Time, chromeos::VariantDictionary> state_changes_;
+  std::map<base::Time, native_types::Object> state_changes_;
 
   DISALLOW_COPY_AND_ASSIGN(StateChangeQueue);
 };

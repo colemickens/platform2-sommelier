@@ -103,8 +103,8 @@ TEST_F(StateManagerTest, LoadStateDefinition) {
 }
 
 TEST_F(StateManagerTest, SetPropertyValue) {
-  chromeos::VariantDictionary expected_prop_set{
-    {"terminator.target", std::string{"John Connor"}},
+  native_types::Object expected_prop_set{
+    {"terminator.target", unittests::make_string_prop_value("John Connor")},
   };
   base::Time timestamp = base::Time::Now();
   EXPECT_CALL(mock_state_change_queue_,
@@ -166,8 +166,8 @@ TEST_F(StateManagerTest, GetAndClearRecordedStateChanges) {
   std::vector<StateChange> expected_val;
   expected_val.emplace_back(
       timestamp,
-      chromeos::VariantDictionary{{"terminator.target",
-                                   std::string{"John Connor"}}});
+      native_types::Object{{"terminator.target",
+                            unittests::make_string_prop_value("John Connor")}});
   EXPECT_CALL(mock_state_change_queue_, GetAndClearRecordedStateChanges())
       .WillOnce(Return(expected_val));
   auto changes = mgr_->GetAndClearRecordedStateChanges();
@@ -176,6 +176,5 @@ TEST_F(StateManagerTest, GetAndClearRecordedStateChanges) {
   EXPECT_EQ(expected_val.back().changed_properties,
             changes.back().changed_properties);
 }
-
 
 }  // namespace buffet

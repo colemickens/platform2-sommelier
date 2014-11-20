@@ -7,6 +7,8 @@
 
 #include <gtest/gtest.h>
 
+#include "buffet/commands/unittest_utils.h"
+
 namespace buffet {
 
 class StateChangeQueueTest : public ::testing::Test {
@@ -30,7 +32,7 @@ TEST_F(StateChangeQueueTest, Empty) {
 TEST_F(StateChangeQueueTest, UpdateOne) {
   StateChange change{
     base::Time::Now(),
-    chromeos::VariantDictionary{{"prop.name", int{23}}}
+    native_types::Object{{"prop.name", unittests::make_int_prop_value(23)}}
   };
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(change.timestamp,
                                               change.changed_properties));
@@ -46,16 +48,16 @@ TEST_F(StateChangeQueueTest, UpdateOne) {
 TEST_F(StateChangeQueueTest, UpdateMany) {
   StateChange change1{
     base::Time::Now(),
-    chromeos::VariantDictionary{{"prop.name1", int{23}}}
+    native_types::Object{{"prop.name1", unittests::make_int_prop_value(23)}}
   };
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(change1.timestamp,
                                               change1.changed_properties));
   StateChange change2{
     base::Time::Now(),
-    chromeos::VariantDictionary{
-      {"prop.name1", int{17}},
-      {"prop.name2", double{1.0}},
-      {"prop.name3", bool{false}},
+    native_types::Object{
+      {"prop.name1", unittests::make_int_prop_value(17)},
+      {"prop.name2", unittests::make_double_prop_value(1.0)},
+      {"prop.name3", unittests::make_bool_prop_value(false)},
     }
   };
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(change2.timestamp,
@@ -77,29 +79,29 @@ TEST_F(StateChangeQueueTest, GroupByTimestamp) {
 
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(
       timestamp,
-      chromeos::VariantDictionary{{"prop.name1", int{1}}}));
+      native_types::Object{{"prop.name1", unittests::make_int_prop_value(1)}}));
 
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(
       timestamp,
-      chromeos::VariantDictionary{{"prop.name2", int{2}}}));
+      native_types::Object{{"prop.name2", unittests::make_int_prop_value(2)}}));
 
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(
       timestamp,
-      chromeos::VariantDictionary{{"prop.name1", int{3}}}));
+      native_types::Object{{"prop.name1", unittests::make_int_prop_value(3)}}));
 
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(
       timestamp + time_delta,
-      chromeos::VariantDictionary{{"prop.name1", int{4}}}));
+      native_types::Object{{"prop.name1", unittests::make_int_prop_value(4)}}));
 
   auto changes = queue_->GetAndClearRecordedStateChanges();
   ASSERT_EQ(2, changes.size());
 
-  chromeos::VariantDictionary expected1{
-    {"prop.name1", int{3}},
-    {"prop.name2", int{2}},
+  native_types::Object expected1{
+    {"prop.name1", unittests::make_int_prop_value(3)},
+    {"prop.name2", unittests::make_int_prop_value(2)},
   };
-  chromeos::VariantDictionary expected2{
-    {"prop.name1", int{4}},
+  native_types::Object expected2{
+    {"prop.name1", unittests::make_int_prop_value(4)},
   };
   EXPECT_EQ(timestamp, changes[0].timestamp);
   EXPECT_EQ(expected1, changes[0].changed_properties);
@@ -115,39 +117,39 @@ TEST_F(StateChangeQueueTest, MaxQueueSize) {
 
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(
       start_time,
-      chromeos::VariantDictionary{
-        {"prop.name1", int{1}},
-        {"prop.name2", int{2}},
+      native_types::Object{
+        {"prop.name1", unittests::make_int_prop_value(1)},
+        {"prop.name2", unittests::make_int_prop_value(2)},
       }));
 
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(
       start_time + time_delta1,
-      chromeos::VariantDictionary{
-        {"prop.name1", int{3}},
-        {"prop.name3", int{4}},
+      native_types::Object{
+        {"prop.name1", unittests::make_int_prop_value(3)},
+        {"prop.name3", unittests::make_int_prop_value(4)},
       }));
 
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(
       start_time + time_delta2,
-      chromeos::VariantDictionary{
-        {"prop.name10", int{10}},
-        {"prop.name11", int{11}},
+      native_types::Object{
+        {"prop.name10", unittests::make_int_prop_value(10)},
+        {"prop.name11", unittests::make_int_prop_value(11)},
       }));
 
   auto changes = queue_->GetAndClearRecordedStateChanges();
   ASSERT_EQ(2, changes.size());
 
-  chromeos::VariantDictionary expected1{
-    {"prop.name1", int{3}},
-    {"prop.name2", int{2}},
-    {"prop.name3", int{4}},
+  native_types::Object expected1{
+    {"prop.name1", unittests::make_int_prop_value(3)},
+    {"prop.name2", unittests::make_int_prop_value(2)},
+    {"prop.name3", unittests::make_int_prop_value(4)},
   };
   EXPECT_EQ(start_time + time_delta1, changes[0].timestamp);
   EXPECT_EQ(expected1, changes[0].changed_properties);
 
-  chromeos::VariantDictionary expected2{
-    {"prop.name10", int{10}},
-    {"prop.name11", int{11}},
+  native_types::Object expected2{
+    {"prop.name10", unittests::make_int_prop_value(10)},
+    {"prop.name11", unittests::make_int_prop_value(11)},
   };
   EXPECT_EQ(start_time + time_delta2, changes[1].timestamp);
   EXPECT_EQ(expected2, changes[1].changed_properties);
