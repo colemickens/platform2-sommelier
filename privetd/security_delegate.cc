@@ -35,6 +35,7 @@ chromeos::SecureBlob HmacSha256(const chromeos::SecureBlob& key,
 
 std::string Base64Encode(const chromeos::Blob& input) {
   BIO* base64 = BIO_new(BIO_f_base64());
+  BIO_set_flags(base64, BIO_FLAGS_BASE64_NO_NL);
   BIO* bio = BIO_new(BIO_s_mem());
   bio = BIO_push(base64, bio);
   BIO_write(bio, input.data(), input.size());
@@ -50,6 +51,7 @@ std::string Base64Encode(const chromeos::Blob& input) {
 chromeos::Blob Base64Decode(std::string input) {
   chromeos::Blob result(input.size(), 0);
   BIO* base64 = BIO_new(BIO_f_base64());
+  BIO_set_flags(base64, BIO_FLAGS_BASE64_NO_NL);
   BIO* bio = BIO_new_mem_buf(&input.front(), input.length());
   bio = BIO_push(base64, bio);
   int size = BIO_read(bio, result.data(), input.size());

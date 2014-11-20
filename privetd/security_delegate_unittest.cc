@@ -21,6 +21,12 @@ class SecurityDelegateTest : public testing::Test {
   std::unique_ptr<SecurityDelegate> security_;
 };
 
+TEST_F(SecurityDelegateTest, IsBase64) {
+     for (char c : security_->CreateAccessToken(AuthScope::kGuest, time_)) {
+    EXPECT_TRUE(isalnum(c) || (c == '+') || (c == '/') || (c == '='));
+  }
+}
+
 TEST_F(SecurityDelegateTest, CreateSameToken) {
   EXPECT_EQ(security_->CreateAccessToken(AuthScope::kGuest, time_),
             security_->CreateAccessToken(AuthScope::kGuest, time_));
