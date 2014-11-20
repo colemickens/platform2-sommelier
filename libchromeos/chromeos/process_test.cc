@@ -41,6 +41,19 @@ TEST(SimpleProcess, Basic) {
   EXPECT_EQ("", GetLog());
 }
 
+TEST(SimpleProcess, NoSearchPath) {
+  ProcessImpl process;
+  process.AddArg("echo");
+  EXPECT_EQ(127, process.Run());
+}
+
+TEST(SimpleProcess, SearchPath) {
+  ProcessImpl process;
+  process.AddArg("echo");
+  process.SetSearchPath(true);
+  EXPECT_EQ(EXIT_SUCCESS, process.Run());
+}
+
 TEST(SimpleProcess, BindFd) {
   int fds[2];
   char buf[16];

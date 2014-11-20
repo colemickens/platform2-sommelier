@@ -73,6 +73,10 @@ class CHROMEOS_EXPORT Process {
   // to return false without starting the process.
   virtual void SetPreExecCallback(const PreExecCallback& cb) = 0;
 
+  // Sets whether starting the process should search the system path or not.
+  // By default the system path will not be searched.
+  virtual void SetSearchPath(bool search_path) = 0;
+
   // Gets the pipe file descriptor mapped to the process's |child_fd|.
   virtual int GetPipe(int child_fd) = 0;
 
@@ -132,6 +136,7 @@ class CHROMEOS_EXPORT ProcessImpl : public Process {
   virtual void SetUid(uid_t uid);
   virtual void SetGid(gid_t gid);
   virtual void SetPreExecCallback(const PreExecCallback& cb);
+  virtual void SetSearchPath(bool search_path);
   virtual int GetPipe(int child_fd);
   virtual bool Start();
   virtual int Wait();
@@ -174,6 +179,7 @@ class CHROMEOS_EXPORT ProcessImpl : public Process {
   uid_t uid_;
   gid_t gid_;
   PreExecCallback pre_exec_;
+  bool search_path_;
 };
 
 }  // namespace chromeos

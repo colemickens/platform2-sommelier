@@ -36,7 +36,8 @@ bool Process::ProcessExists(pid_t pid) {
 }
 
 ProcessImpl::ProcessImpl() : pid_(0), uid_(-1), gid_(-1),
-                             pre_exec_(base::Bind(&ReturnTrue)) {
+                             pre_exec_(base::Bind(&ReturnTrue)),
+                             search_path_(false) {
 }
 
 ProcessImpl::~ProcessImpl() {
@@ -81,6 +82,10 @@ void ProcessImpl::SetGid(gid_t gid) {
 
 void ProcessImpl::SetPreExecCallback(const PreExecCallback& cb) {
   pre_exec_ = cb;
+}
+
+void ProcessImpl::SetSearchPath(bool search_path) {
+  search_path_ = search_path;
 }
 
 int ProcessImpl::GetPipe(int child_fd) {
@@ -196,7 +201,11 @@ bool ProcessImpl::Start() {
       LOG(ERROR) << "Pre-exec callback failed";
       _exit(kErrorExitStatus);
     }
-    execv(argv[0], &argv[0]);
+    if (search_path_) {
+      execvp(argv[0], &argv[0]);
+    } else {
+      execv(argv[0], &argv[0]);
+    }
     saved_errno = errno;
     LOG(ERROR) << "Exec of " << argv[0] << " failed: " << saved_errno;
     _exit(kErrorExitStatus);
