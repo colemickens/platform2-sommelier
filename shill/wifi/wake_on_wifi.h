@@ -101,6 +101,7 @@ class WakeOnWiFi {
   static const int kVerifyWakeOnWiFiSettingsDelaySeconds;
   static const int kMaxSetWakeOnPacketRetries;
   static const int kMetricsReportingFrequencySeconds;
+  static const uint32_t kDefaultWakeToScanFrequencySeconds;
 
   std::string GetWakeOnWiFiFeaturesEnabled(Error *error);
   bool SetWakeOnWiFiFeaturesEnabled(const std::string &enabled, Error *error);
@@ -237,6 +238,9 @@ class WakeOnWiFi {
   bool wiphy_index_received_;
   // Describes the wake on WiFi features that are currently enabled.
   std::string wake_on_wifi_features_enabled_;
+  // Frequency (in seconds) that the system is woken during suspend to perform
+  // scans.
+  uint32_t wake_to_scan_frequency_;
 
   base::WeakPtrFactory<WakeOnWiFi> weak_ptr_factory_;
 

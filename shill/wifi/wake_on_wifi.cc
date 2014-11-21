@@ -49,6 +49,7 @@ const uint32_t WakeOnWiFi::kDefaultWiphyIndex = 999;
 const int WakeOnWiFi::kVerifyWakeOnWiFiSettingsDelaySeconds = 1;
 const int WakeOnWiFi::kMaxSetWakeOnPacketRetries = 2;
 const int WakeOnWiFi::kMetricsReportingFrequencySeconds = 600;
+const uint32_t WakeOnWiFi::kDefaultWakeToScanFrequencySeconds = 900;
 
 WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
                        EventDispatcher *dispatcher, Metrics *metrics)
@@ -69,7 +70,9 @@ WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
       // TODO(samueltan): re-enable once pending issues have been resolved.
       wake_on_wifi_features_enabled_(kWakeOnWiFiFeaturesEnabledNone),
 #endif  // DISABLE_WAKE_ON_WIFI
-      weak_ptr_factory_(this) {}
+      wake_to_scan_frequency_(kDefaultWakeToScanFrequencySeconds),
+      weak_ptr_factory_(this) {
+}
 
 WakeOnWiFi::~WakeOnWiFi() {}
 
@@ -79,6 +82,7 @@ void WakeOnWiFi::InitPropertyStore(PropertyStore *store) {
       StringAccessor(new CustomAccessor<WakeOnWiFi, string>(
           this, &WakeOnWiFi::GetWakeOnWiFiFeaturesEnabled,
           &WakeOnWiFi::SetWakeOnWiFiFeaturesEnabled)));
+  store->RegisterUint32(kWakeToScanFrequencyProperty, &wake_to_scan_frequency_);
 }
 
 void WakeOnWiFi::StartMetricsTimer() {
