@@ -797,9 +797,8 @@ void DeviceRegistrationInfo::PublishStateUpdates() {
   std::unique_ptr<base::ListValue> patches{new base::ListValue};
   for (const auto& state_change : state_changes) {
     std::unique_ptr<base::DictionaryValue> patch{new base::DictionaryValue};
-    // TODO(antonm): Weird part: API requires long here while there is no
-    // such thing like long in JSON.  Also, ToJavaTime produces int64.
-    patch->SetInteger("timeMs", state_change.timestamp.ToJavaTime());
+    patch->SetString("timeMs",
+                     std::to_string(state_change.timestamp.ToJavaTime()));
 
     std::unique_ptr<base::DictionaryValue> changes{new base::DictionaryValue};
     for (const auto& pair : state_change.changed_properties) {
@@ -815,7 +814,8 @@ void DeviceRegistrationInfo::PublishStateUpdates() {
   }
 
   base::DictionaryValue body;
-  body.SetInteger("requestTimeMs", base::Time::Now().ToJavaTime());
+  body.SetString("requestTimeMs",
+                 std::to_string(base::Time::Now().ToJavaTime()));
   body.Set("patches", patches.release());
 
   DoCloudRequest(
