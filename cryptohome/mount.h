@@ -24,7 +24,7 @@
 #include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/secure_blob.h>
-#include <gtest/gtest.h>
+#include <gtest/gtest_prod.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 

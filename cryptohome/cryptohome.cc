@@ -272,7 +272,7 @@ bool GetPassword(const chromeos::dbus::Proxy& proxy,
     tcsetattr(0, TCSANOW, &new_attr);
     printf("%s: ", prompt.c_str());
     fflush(stdout);
-    if (fgets(buffer, sizeof(buffer), stdin))
+    if (fgets(buffer, arraysize(buffer), stdin))
       password = buffer;
     printf("\n");
     tcsetattr(0, TCSANOW, &original_attr);
@@ -305,8 +305,15 @@ bool ConfirmRemove(const std::string& user) {
   printf("!!! cryptohome for the user.\n");
   printf("Enter the username <%s>: ", user.c_str());
   fflush(stdout);
-  std::string verification;
-  std::cin >> verification;
+
+  char buffer[256];
+  if (!fgets(buffer, arraysize(buffer), stdin)) {
+    printf("Error while reading username.\n");
+    return false;
+  }
+  string verification = buffer;
+  // fgets will append the newline character, remove it.
+  base::TrimWhitespaceASCII(verification, base::TRIM_ALL, &verification);
   if (user != verification) {
     printf("Usernames do not match.\n");
     return false;

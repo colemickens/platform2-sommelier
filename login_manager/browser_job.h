@@ -7,7 +7,7 @@
 
 #include "login_manager/child_job.h"
 
-#include <gtest/gtest.h>
+#include <gtest/gtest_prod.h>
 #include <time.h>
 #include <unistd.h>
 

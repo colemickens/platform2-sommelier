@@ -14,7 +14,7 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-#include <gtest/gtest.h>
+#include <gtest/gtest_prod.h>
 
 #include "login_manager/policy_service.h"
 

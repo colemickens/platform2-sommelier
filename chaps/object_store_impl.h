@@ -14,7 +14,7 @@
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/secure_blob.h>
-#include <gtest/gtest.h>
+#include <gtest/gtest_prod.h>
 #include <leveldb/db.h>
 #include <leveldb/env.h>
 

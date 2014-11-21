@@ -12,7 +12,7 @@
 
 #include <base/bind.h>
 
-#include <gtest/gtest.h>  // for FRIEND_TEST.
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST.
 
 #include "shill/net/byte_string.h"
 #include "shill/shill_export.h"
