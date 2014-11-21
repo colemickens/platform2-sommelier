@@ -26,14 +26,41 @@ namespace quipper {
 
 namespace {
 
+// Parse options from the format strings, set the options, and return the base
+// format. Returns the empty string if options are not recognized.
+string ParseFormatOptions(string format, PerfParser::Options* options) {
+  auto dot = format.find('.');
+  if (dot != string::npos) {
+    string opt = format.substr(dot+1);
+    format = format.substr(0, dot);
+    if (opt == "remap") {
+      options->do_remap = true;
+    } else if (opt == "discard") {
+      options->discard_unused_events = true;
+    } else if (opt == "remap.discard") {
+      options->do_remap = true;
+      options->discard_unused_events = true;
+    } else {
+      LOG(ERROR) << "Unknown option: " << opt;
+      return "";
+    }
+  }
+  return format;
+}
+
 // ReadInput reads the input and stores it within |perf_serializer|.
 bool ReadInput(const FormatAndFile& input, PerfSerializer* perf_serializer) {
   LOG(INFO) << "Reading input.";
-  if (input.format == kPerfFormat) {
+
+  PerfSerializer::Options options;
+  string format = ParseFormatOptions(input.format, &options);
+  perf_serializer->set_options(options);
+
+  if (format == kPerfFormat) {
     return perf_serializer->ReadFile(input.filename);
   }
 
-  if (input.format == kProtoTextFormat) {
+  if (format == kProtoTextFormat) {
     PerfDataProto perf_data_proto;
     std::vector<char> data;
     if (!FileToBuffer(input.filename, &data)) return false;
