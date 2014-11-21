@@ -13,3 +13,9 @@ sed \
   -e "s/@BSLOT@/${v}/g" \
   -e "s/@PRIVATE_PC@/${deps}/g" \
   "net/libshill-net.pc.in" > "${OUT}/lib/libshill-net-${v}.pc"
+
+deps_test=$(<"${OUT}"/gen/libshill-net-test-${v}-deps.txt)
+sed \
+  -e "s/@BSLOT@/${v}/g" \
+  -e "s/@PRIVATE_PC@/${deps_test}/g" \
+  "net/libshill-net-test.pc.in" > "${OUT}/lib/libshill-net-test-${v}.pc"
