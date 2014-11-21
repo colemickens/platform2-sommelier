@@ -204,7 +204,7 @@ std::string CHROMEOS_EXPORT StringFrom_%(type)s(
 """
 _COMPLEX_TPM2B_HELPERS_DECLARATION = """
 %(type)s CHROMEOS_EXPORT Make_%(type)s(
-    const %(inner_type)s inner);
+    const %(inner_type)s& inner);
 """
 
 
