@@ -6,6 +6,7 @@
 #include <sys/resource.h>
 #include <sys/types.h>
 
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -35,14 +36,16 @@ const char kReadonlyDataPath[] = "/usr/share/app_shell";
 // Subdirectory under $DATA_DIR where user data should be stored.
 const char kUserSubdir[] = "user";
 
-// Files in $DATA_DIR or kReadonlyDataPath containing the ID of the app that
-// should be loaded and the name of a preferred network to connect to.
-const char kAppIdFile[] = "app_id";
+// File in $DATA_DIR or kReadonlyDataPath containing the subdirectory name (not
+// the full path) of the app to launch.
+const char kMasterAppFile[] = "master_app";
+
+// File in $DATA_DIR or kReadonlyDataPath containing the name of a preferred
+// network to connect to.
 const char kPreferredNetworkFile[] = "preferred_network";
 
-// Subdirectory under $DATA_DIR or kReadonlyDataPath from which an app is loaded
-// if kAppIdFile doesn't exist.
-const char kAppSubdir[] = "app";
+// Subdirectory under $DATA_DIR or kReadonlyDataPath from which apps are loaded.
+const char kAppsSubdir[] = "apps";
 
 // Optional file in kReadonlyDataPath containing an absolute path of an
 // executable to run instead of kAppShellPath.
@@ -80,6 +83,47 @@ bool ReadData(const base::FilePath& stateful_dir,
   return true;
 }
 
+// Optionally adds the --load-apps flag with list of apps to load, for example:
+// --load-apps=/usr/share/app_shell/apps/foo,/usr/share/app_shell/apps/bar
+void AddLoadAppsFlag(ChromiumCommandBuilder* builder) {
+  const base::FilePath stateful_dir(builder->ReadEnvVar("DATA_DIR"));
+  const base::FilePath readonly_dir(kReadonlyDataPath);
+
+  // Look for an optional directory of unpacked apps.
+  const base::FilePath apps_path =
+      GetDataPath(stateful_dir, readonly_dir, kAppsSubdir);
+  if (apps_path.empty())
+    return;
+
+  // Look for an optional preferences file with a master app subdirectory name.
+  std::string master_app_name;
+  ReadData(stateful_dir, readonly_dir, kMasterAppFile, &master_app_name);
+
+  // Build a list of all subdirectories of the apps directory. If the master
+  // app is found it goes at the front of the list.
+  bool found_master = false;
+  std::vector<std::string> apps_list;
+  base::FileEnumerator dirs(apps_path, false /* recursive */,
+                            base::FileEnumerator::DIRECTORIES);
+  for (base::FilePath dir = dirs.Next(); !dir.empty(); dir = dirs.Next()) {
+    if (!master_app_name.empty() && master_app_name == dir.BaseName().value()) {
+      apps_list.insert(apps_list.begin(), dir.value());
+      found_master = true;
+    } else {
+      apps_list.push_back(dir.value());
+    }
+  }
+
+  // The developer probably intended to include at least one app.
+  CHECK(!apps_list.empty()) << "No app subdirectories found.";
+
+  // The developer probably wants the master app to be in the list of apps.
+  if (!master_app_name.empty())
+    CHECK(found_master) << "Master app " << master_app_name << " not found.";
+
+  builder->AddArg("--load-apps=" + JoinString(apps_list, ','));
+}
+
 // Adds app_shell-specific flags.
 void AddAppShellFlags(ChromiumCommandBuilder* builder) {
   const base::FilePath stateful_dir(builder->ReadEnvVar("DATA_DIR"));
@@ -90,19 +134,11 @@ void AddAppShellFlags(ChromiumCommandBuilder* builder) {
   CHECK(EnsureDirectoryExists(user_path, builder->uid(), builder->gid(), 0700));
   builder->AddArg("--data-path=" + user_path.value());
 
-  std::string app_id;
-  if (ReadData(stateful_dir, readonly_dir, kAppIdFile, &app_id)) {
-    builder->AddArg("--app-shell-app-id=" + app_id);
-  } else {
-    const base::FilePath app_path =
-        GetDataPath(stateful_dir, readonly_dir, kAppSubdir);
-    if (!app_path.empty())
-      builder->AddArg("--load-apps=" + app_path.value());
-  }
-
   std::string network;
   if (ReadData(stateful_dir, readonly_dir, kPreferredNetworkFile, &network))
     builder->AddArg("--app-shell-preferred-network=" + network);
+
+  AddLoadAppsFlag(builder);
 }
 
 // Replaces the currently-running process with app_shell.
