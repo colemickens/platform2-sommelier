@@ -9,6 +9,8 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/cancelable_callback.h>
+#include <base/files/file_path.h>
 #include <base/macros.h>
 
 #include "privetd/privet_types.h"
@@ -27,7 +29,7 @@ class WifiBootstrapManager : public WifiDelegate {
 
   using StateListener = base::Callback<void(State)>;
 
-  explicit WifiBootstrapManager(const std::string& state_file_path);
+  explicit WifiBootstrapManager(const base::FilePath& state_file_path);
   ~WifiBootstrapManager() override = default;
 
   virtual void AddStateChangeListener(const StateListener& cb);
@@ -49,24 +51,36 @@ class WifiBootstrapManager : public WifiDelegate {
   //   1) Do state appropriate work for entering the indicated state.
   //   2) Update the state variable to reflect that we're in a new state
   //   3) Call StateListeners to notify that we've transitioned.
-  virtual void StartBootstrapping();
-  virtual void StartConnecting(const std::string& ssid,
-                               const std::string& passphrase);
-  virtual void StartMonitoring();
+  void StartBootstrapping();
+  void StartConnecting(const std::string& ssid, const std::string& passphrase);
+  void StartMonitoring();
 
-  virtual void OnApShutdown();
-  virtual void OnConnectTimeout();
-  virtual void OnConnectSuccess();
+  // Update the current state, post tasks to notify listeners accordingly to
+  // the MessageLoop.
+  void UpdateState(State new_state);
+
+  // If we've been bootstrapped successfully before, and we're bootstrapping
+  // again because we slipped offline for a sufficiently longtime, we want
+  // to return to monitoring mode periodically in case our connectivity issues
+  // were temporary.
+  void OnBootstrapTimeout();
+  void OnConnectTimeout();
+  void OnConnectSuccess(const std::string& ssid);
 
   State state_{kDisabled};
   // Setup state is the temporal state of the most recent bootstrapping attempt.
   // It is not persisted to disk.
   SetupState setup_state_{SetupState::kNone};
+  const base::FilePath state_file_path_;
+  const uint32_t connect_timeout_seconds_{60};
+  const uint32_t bootstrap_timeout_seconds_{300};
   std::vector<StateListener> state_listeners_;
   bool have_ever_been_bootstrapped_{false};
   bool currently_online_{false};
   std::string last_configured_ssid_;
-  const std::string state_file_path_;
+  base::CancelableClosure on_connect_success_task_;
+  base::CancelableClosure on_connect_timeout_task_;
+  base::CancelableClosure on_bootstrap_timeout_task_;
   base::WeakPtrFactory<WifiBootstrapManager> weak_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(WifiBootstrapManager);

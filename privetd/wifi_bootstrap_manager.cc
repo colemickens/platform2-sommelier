@@ -6,54 +6,99 @@
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_loop.h>
+#include <chromeos/bind_lambda.h>
+#include <chromeos/key_value_store.h>
 
 #include "privetd/wifi_bootstrap_manager.h"
 
 namespace privetd {
 
-WifiBootstrapManager::WifiBootstrapManager(const std::string& state_file_path)
-    : state_file_path_(state_file_path) {
+namespace {
+
+const char kHaveBeenBootstrappedStateKey[] = "have_ever_been_bootstrapped";
+const char kLastConfiguredSSIDStateKey[] = "last_configured_ssid";
+
+}  // namespace
+
+WifiBootstrapManager::WifiBootstrapManager(
+    const base::FilePath& state_file_path) : state_file_path_(state_file_path) {
 }
 
 void WifiBootstrapManager::AddStateChangeListener(const StateListener& cb) {
 }
 
 void WifiBootstrapManager::Init() {
-  // TODO(wiley) Read whether we've ever been online from either shill or some
-  //             state on disk.
+  chromeos::KeyValueStore state_store;
+  state_store.Load(state_file_path_);
+  if (!state_store.GetBoolean(kHaveBeenBootstrappedStateKey,
+                              &have_ever_been_bootstrapped_) ||
+      !state_store.GetString(kLastConfiguredSSIDStateKey,
+                             &last_configured_ssid_)) {
+    have_ever_been_bootstrapped_ = false;
+  }
   if (!have_ever_been_bootstrapped_) {
-    // If we have no memory of being bootstrapped successfully, start in
-    // bootstrapping mode.
-    // TODO(wiley) Post task to start bootstrapping by entering pairing mode.
+    StartBootstrapping();
   } else {
-    // TODO(wiley) Post a task to enter monitoring mode
+    StartMonitoring();
   }
 }
 
 void WifiBootstrapManager::StartBootstrapping() {
-  // Here we're basically waiting to be provided with Wifi credentials.
-  state_ = kBootstrapping;
+  // TODO(wiley) Start up an AP with an SSID calculated from device info.
+  UpdateState(kBootstrapping);
+  if (have_ever_been_bootstrapped_) {
+    on_bootstrap_timeout_task_.Reset(
+        base::Bind(&WifiBootstrapManager::OnBootstrapTimeout,
+                   weak_factory_.GetWeakPtr()));
+    base::MessageLoop::current()->PostDelayedTask(
+        FROM_HERE, on_bootstrap_timeout_task_.callback(),
+        base::TimeDelta::FromSeconds(bootstrap_timeout_seconds_));
+  }
 }
 
 void WifiBootstrapManager::StartConnecting(const std::string& ssid,
                                            const std::string& passphrase) {
   VLOG(1) << "WiFi is attempting to connect. (ssid=" << ssid
           << ", pass=" << passphrase << ").";
-  // Shut down the ap we've started via apmanager
-  // Post a delayed task to timeout our connect attempt
-  // Set ourselves up to get called back on OnApShutdown() when AP is gone.
-  state_ = kConnecting;
-  last_configured_ssid_ = ssid;
+  // TODO(wiley) Shut down the ap we've started via apmanager
+  // TODO(wiley) Provide credentials to shill
+  // TODO(wiley) Ask shill to connect to network
+  // TODO(wiley) Set ourselves up to get called back if shill succeeds.
+  UpdateState(kConnecting);
+  on_bootstrap_timeout_task_.Cancel();
+  on_connect_success_task_.Reset(
+      base::Bind(&WifiBootstrapManager::OnConnectSuccess,
+                 weak_factory_.GetWeakPtr(), ssid));
+  on_connect_timeout_task_.Reset(
+      base::Bind(&WifiBootstrapManager::OnConnectTimeout,
+                 weak_factory_.GetWeakPtr()));
+  base::MessageLoop::current()->PostDelayedTask(
+      FROM_HERE, on_connect_timeout_task_.callback(),
+      base::TimeDelta::FromSeconds(connect_timeout_seconds_));
   // TODO(wiley) Remove this, we're just testing the general flow for now.
   base::MessageLoop::current()->PostDelayedTask(
-      FROM_HERE, base::Bind(&WifiBootstrapManager::OnConnectSuccess,
-                            weak_factory_.GetWeakPtr()),
+      FROM_HERE, on_connect_success_task_.callback(),
       base::TimeDelta::FromSeconds(5));
 }
 
 void WifiBootstrapManager::StartMonitoring() {
-  // Set up callbacks so that we get told when we go offline
-  state_ = kMonitoring;
+  UpdateState(kMonitoring);
+  on_bootstrap_timeout_task_.Cancel();
+  on_connect_success_task_.Cancel();
+  on_connect_timeout_task_.Cancel();
+  // TODO(wiley) Set up callbacks so that we get told when we go offline
+}
+
+void WifiBootstrapManager::UpdateState(State new_state) {
+  state_ = new_state;
+  auto callback = [] (const StateListener& listener, State state) {
+    listener.Run(state);
+  };
+  for (const StateListener& listener : state_listeners_) {
+    base::MessageLoop::current()->PostTask(
+        FROM_HERE,
+        base::Bind(callback, listener, new_state));
+  }
 }
 
 bool WifiBootstrapManager::IsRequired() const {
@@ -102,23 +147,31 @@ std::vector<WifiType> WifiBootstrapManager::GetTypes() const {
   return {WifiType::kWifi24};
 }
 
-void WifiBootstrapManager::OnApShutdown() {
-  // Provide credentials to shill
-  // Ask shill to connect to network
-  // Set ourselves up to get called back if shill succeeds.
-}
-
-void WifiBootstrapManager::OnConnectSuccess() {
-  // Atomically write down that bootstrapping worked.
+void WifiBootstrapManager::OnConnectSuccess(const std::string& ssid) {
   VLOG(1) << "Wifi was connected successfully";
+  on_connect_timeout_task_.Cancel();
+  have_ever_been_bootstrapped_ = true;
+  last_configured_ssid_ = ssid;
+  chromeos::KeyValueStore state_store;
+  state_store.Load(state_file_path_);
+  state_store.SetBoolean(kHaveBeenBootstrappedStateKey,
+                         have_ever_been_bootstrapped_);
+  state_store.SetString(kLastConfiguredSSIDStateKey, last_configured_ssid_);
+  state_store.Save(state_file_path_);
   StartMonitoring();
   setup_state_ = SetupState{SetupState::kSuccess};
 }
 
+void WifiBootstrapManager::OnBootstrapTimeout() {
+  VLOG(1) << "Bootstrapping has timed out.";
+  StartMonitoring();
+}
+
 void WifiBootstrapManager::OnConnectTimeout() {
   VLOG(1) << "Wifi timed out while connecting";
+  on_connect_success_task_.Cancel();
   setup_state_ = SetupState{SetupState::kError};
-  // TODO(wiley) We should probably start bootstrapping again from here.
+  StartBootstrapping();
 }
 
 }  // namespace privetd

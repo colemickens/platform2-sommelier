@@ -42,11 +42,13 @@ class Daemon : public chromeos::DBusDaemon {
   Daemon(uint16_t http_port_number,
          uint16_t https_port_number,
          bool allow_empty_auth,
-         bool enable_ping)
+         bool enable_ping,
+         const std::string& wifi_bootstrap_state_path)
       : http_port_number_(http_port_number),
         https_port_number_(https_port_number),
         allow_empty_auth_(allow_empty_auth),
-        enable_ping_(enable_ping) {}
+        enable_ping_(enable_ping),
+        wifi_bootstrap_state_path_(wifi_bootstrap_state_path) {}
 
   int OnInit() override {
     int ret = DBusDaemon::OnInit();
@@ -58,7 +60,8 @@ class Daemon : public chromeos::DBusDaemon {
     cloud_ = privetd::CloudDelegate::CreateDefault(bus_, device_.get());
     security_ = privetd::SecurityDelegate::CreateDefault();
     wifi_bootstrap_manager_.reset(new privetd::WifiBootstrapManager(
-        privetd::constants::kDefaultWifiBootstrapStateFilePath));
+        base::FilePath{wifi_bootstrap_state_path_}));
+    wifi_bootstrap_manager_->Init();
     privet_handler_.reset(new privetd::PrivetHandler(
         cloud_.get(), device_.get(), security_.get(),
         wifi_bootstrap_manager_.get()));
@@ -154,8 +157,9 @@ class Daemon : public chromeos::DBusDaemon {
   uint16_t https_port_number_;
   bool allow_empty_auth_;
   bool enable_ping_;
-  std::unique_ptr<privetd::DeviceDelegate> device_;
+  const std::string wifi_bootstrap_state_path_;
   std::unique_ptr<privetd::CloudDelegate> cloud_;
+  std::unique_ptr<privetd::DeviceDelegate> device_;
   std::unique_ptr<privetd::SecurityDelegate> security_;
   std::unique_ptr<privetd::WifiBootstrapManager> wifi_bootstrap_manager_;
   std::unique_ptr<privetd::PrivetHandler> privet_handler_;
@@ -173,6 +177,9 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(http_port, 8080, "HTTP port to listen for requests on");
   DEFINE_int32(https_port, 8081, "HTTPS port to listen for requests on");
   DEFINE_bool(log_to_stderr, false, "log trace messages to stderr as well");
+  DEFINE_string(wifi_bootstrap_state_path,
+                privetd::constants::kDefaultWifiBootstrapStateFilePath,
+                "Path to file containing WiFi bootstrap state information.");
 
   chromeos::FlagHelper::Init(argc, argv, "Privet protocol handler daemon");
 
@@ -192,6 +199,6 @@ int main(int argc, char* argv[]) {
   }
 
   Daemon daemon(FLAGS_http_port, FLAGS_https_port, FLAGS_allow_empty_auth,
-                FLAGS_enable_ping);
+                FLAGS_enable_ping, FLAGS_wifi_bootstrap_state_path);
   return daemon.Run();
 }
