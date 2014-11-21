@@ -54,8 +54,8 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
             package_name.c_str());
         return false;
       }
-      const base::DictionaryValue* command_value = nullptr;
-      if (!command_iter.value().GetAsDictionary(&command_value)) {
+      const base::DictionaryValue* command_def_json = nullptr;
+      if (!command_iter.value().GetAsDictionary(&command_def_json)) {
         chromeos::Error::AddToPrintf(error, FROM_HERE,
                                      errors::commands::kDomain,
                                      errors::commands::kTypeMismatch,
@@ -66,32 +66,22 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
       // Construct the compound command name as "pkg_name.cmd_name".
       std::string full_command_name = chromeos::string_utils::Join(
           '.', package_name, command_name);
-      // Get the "parameters" definition of the command and read it into
-      // an object schema.
-      const base::DictionaryValue* command_schema_def = nullptr;
-      if (!command_value->GetDictionaryWithoutPathExpansion(
-          commands::attributes::kCommand_Parameters, &command_schema_def)) {
-        chromeos::Error::AddToPrintf(
-            error, FROM_HERE, errors::commands::kDomain,
-            errors::commands::kPropertyMissing,
-            "Command definition '%s' is missing property '%s'",
-            full_command_name.c_str(),
-            commands::attributes::kCommand_Parameters);
-        return false;
-      }
 
-      const ObjectSchema* base_def = nullptr;
+      const ObjectSchema* base_parameters_def = nullptr;
+      const ObjectSchema* base_results_def = nullptr;
       if (base_commands) {
         const CommandDefinition* cmd =
             base_commands->FindCommand(full_command_name);
-        if (cmd)
-          base_def = cmd->GetParameters().get();
+        if (cmd) {
+          base_parameters_def = cmd->GetParameters().get();
+          base_results_def = cmd->GetResults().get();
+        }
 
         // If the base command dictionary was provided but the command was not
         // found in it, this must be a custom (vendor) command. GCD spec states
         // that all custom command names must begin with "_". Let's enforce
         // this rule here.
-        if (!base_def) {
+        if (!cmd) {
           if (command_name.front() != '_') {
             chromeos::Error::AddToPrintf(
                 error, FROM_HERE, errors::commands::kDomain,
@@ -104,17 +94,27 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
         }
       }
 
-      auto command_schema = std::make_shared<ObjectSchema>();
-      if (!command_schema->FromJson(command_schema_def, base_def, error)) {
-        chromeos::Error::AddToPrintf(error, FROM_HERE,
-                                     errors::commands::kDomain,
-                                     errors::commands::kInvalidObjectSchema,
-                                     "Invalid definition for command '%s'",
-                                     full_command_name.c_str());
+      auto parameters_schema = BuildObjectSchema(
+          command_def_json,
+          commands::attributes::kCommand_Parameters,
+          base_parameters_def,
+          full_command_name,
+          error);
+      if (!parameters_schema)
         return false;
-      }
+
+      auto results_schema = BuildObjectSchema(
+          command_def_json,
+          commands::attributes::kCommand_Results,
+          base_results_def,
+          full_command_name,
+          error);
+      if (!results_schema)
+        return false;
+
       auto command_def = std::make_shared<CommandDefinition>(category,
-                                                             command_schema);
+                                                             parameters_schema,
+                                                             results_schema);
       new_defs.insert(std::make_pair(full_command_name, command_def));
 
       command_iter.Advance();
@@ -148,6 +148,38 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
   // Insert new definitions into the global map.
   definitions_.insert(new_defs.begin(), new_defs.end());
   return true;
+}
+
+std::shared_ptr<ObjectSchema> CommandDictionary::BuildObjectSchema(
+    const base::DictionaryValue* command_def_json,
+    const char* property_name,
+    const ObjectSchema* base_def,
+    const std::string& command_name,
+    chromeos::ErrorPtr* error) {
+  auto object_schema = std::make_shared<ObjectSchema>();
+
+  const base::DictionaryValue* schema_def = nullptr;
+  if (!command_def_json->GetDictionaryWithoutPathExpansion(property_name,
+                                                           &schema_def)) {
+    chromeos::Error::AddToPrintf(
+        error, FROM_HERE, errors::commands::kDomain,
+        errors::commands::kPropertyMissing,
+        "Command definition '%s' is missing property '%s'",
+        command_name.c_str(),
+        property_name);
+    return {};
+  }
+
+  if (!object_schema->FromJson(schema_def, base_def, error)) {
+    chromeos::Error::AddToPrintf(error, FROM_HERE,
+                                 errors::commands::kDomain,
+                                 errors::commands::kInvalidObjectSchema,
+                                 "Invalid definition for command '%s'",
+                                 command_name.c_str());
+    return {};
+  }
+
+  return object_schema;
 }
 
 std::unique_ptr<base::DictionaryValue> CommandDictionary::GetCommandsAsJson(

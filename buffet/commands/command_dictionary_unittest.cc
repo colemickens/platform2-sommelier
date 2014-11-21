@@ -24,7 +24,8 @@ TEST(CommandDictionary, LoadCommands) {
         'parameters': {
           'height': 'integer',
           '_jumpType': ['_withAirFlip', '_withSpin', '_withKick']
-        }
+        },
+        'results': {}
       }
     }
   })");
@@ -35,10 +36,12 @@ TEST(CommandDictionary, LoadCommands) {
   json = CreateDictionaryValue(R"({
     'base': {
       'reboot': {
-        'parameters': {'delay': 'integer'}
+        'parameters': {'delay': 'integer'},
+        'results': {}
       },
       'shutdown': {
-        'parameters': {}
+        'parameters': {},
+        'results': {}
       }
     }
   })");
@@ -57,10 +60,18 @@ TEST(CommandDictionary, LoadCommands_Failures) {
   chromeos::ErrorPtr error;
 
   // Command definition missing 'parameters' property.
-  auto json = CreateDictionaryValue("{'robot':{'jump':{}}}");
+  auto json = CreateDictionaryValue("{'robot':{'jump':{'results':{}}}}");
   EXPECT_FALSE(dict.LoadCommands(*json, "robotd", nullptr, &error));
   EXPECT_EQ("parameter_missing", error->GetCode());
   EXPECT_EQ("Command definition 'robot.jump' is missing property 'parameters'",
+            error->GetMessage());
+  error.reset();
+
+  // Command definition missing 'results' property.
+  json = CreateDictionaryValue("{'robot':{'jump':{'parameters':{}}}}");
+  EXPECT_FALSE(dict.LoadCommands(*json, "robotd", nullptr, &error));
+  EXPECT_EQ("parameter_missing", error->GetCode());
+  EXPECT_EQ("Command definition 'robot.jump' is missing property 'results'",
             error->GetMessage());
   error.reset();
 
@@ -79,7 +90,8 @@ TEST(CommandDictionary, LoadCommands_Failures) {
   error.reset();
 
   // Invalid command definition is not an object.
-  json = CreateDictionaryValue("{'robot':{'jump':{'parameters':{'flip':0}}}}");
+  json = CreateDictionaryValue(
+      "{'robot':{'jump':{'parameters':{'flip':0},'results':{}}}}");
   EXPECT_FALSE(dict.LoadCommands(*json, "robotd", nullptr, &error));
   EXPECT_EQ("invalid_object_schema", error->GetCode());
   EXPECT_EQ("Invalid definition for command 'robot.jump'", error->GetMessage());
@@ -87,7 +99,7 @@ TEST(CommandDictionary, LoadCommands_Failures) {
   error.reset();
 
   // Empty command name.
-  json = CreateDictionaryValue("{'robot':{'':{'parameters':{'flip':0}}}}");
+  json = CreateDictionaryValue("{'robot':{'':{'parameters':{},'results':{}}}}");
   EXPECT_FALSE(dict.LoadCommands(*json, "robotd", nullptr, &error));
   EXPECT_EQ("invalid_command_name", error->GetCode());
   EXPECT_EQ("Unnamed command encountered in package 'robot'",
@@ -99,7 +111,8 @@ TEST(CommandDictionary, LoadCommands_RedefineInDifferentCategory) {
   // Redefine commands in different category.
   buffet::CommandDictionary dict;
   chromeos::ErrorPtr error;
-  auto json = CreateDictionaryValue("{'robot':{'jump':{'parameters':{}}}}");
+  auto json = CreateDictionaryValue(
+      "{'robot':{'jump':{'parameters':{},'results':{}}}}");
   dict.LoadCommands(*json, "category1", nullptr, &error);
   EXPECT_FALSE(dict.LoadCommands(*json, "category2", nullptr, &error));
   EXPECT_EQ("duplicate_command_definition", error->GetCode());
@@ -116,13 +129,15 @@ TEST(CommandDictionary, LoadCommands_CustomCommandNaming) {
   auto json = CreateDictionaryValue(R"({
     'base': {
       'reboot': {
-        'parameters': {'delay': 'integer'}
+        'parameters': {'delay': 'integer'},
+        'results': {}
       }
     }
   })");
   base_dict.LoadCommands(*json, "", nullptr, &error);
   EXPECT_TRUE(dict.LoadCommands(*json, "robotd", &base_dict, &error));
-  auto json2 = CreateDictionaryValue("{'base':{'jump':{'parameters':{}}}}");
+  auto json2 = CreateDictionaryValue(
+      "{'base':{'jump':{'parameters':{},'results':{}}}}");
   EXPECT_FALSE(dict.LoadCommands(*json2, "robotd", &base_dict, &error));
   EXPECT_EQ("invalid_command_name", error->GetCode());
   EXPECT_EQ("The name of custom command 'jump' in package 'base' must start "
@@ -130,7 +145,8 @@ TEST(CommandDictionary, LoadCommands_CustomCommandNaming) {
   error.reset();
 
   // If the command starts with "_", then it's Ok.
-  json2 = CreateDictionaryValue("{'base':{'_jump':{'parameters':{}}}}");
+  json2 = CreateDictionaryValue(
+      "{'base':{'_jump':{'parameters':{},'results':{}}}}");
   EXPECT_TRUE(dict.LoadCommands(*json2, "robotd", &base_dict, nullptr));
 }
 
@@ -142,15 +158,18 @@ TEST(CommandDictionary, LoadCommands_RedefineStdCommand) {
   auto json = CreateDictionaryValue(R"({
     'base': {
       'reboot': {
-        'parameters': {'delay': 'integer'}
+        'parameters': {'delay': 'integer'},
+        'results': {'version': 'integer'}
       }
     }
   })");
   base_dict.LoadCommands(*json, "", nullptr, &error);
+
   auto json2 = CreateDictionaryValue(R"({
     'base': {
       'reboot': {
-        'parameters': {'delay': 'string'}
+        'parameters': {'delay': 'string'},
+        'results': {'version': 'integer'}
       }
     }
   })");
@@ -165,16 +184,39 @@ TEST(CommandDictionary, LoadCommands_RedefineStdCommand) {
   EXPECT_EQ("Redefining a property of type integer as string",
             error->GetFirstError()->GetMessage());
   error.reset();
+
+  auto json3 = CreateDictionaryValue(R"({
+    'base': {
+      'reboot': {
+        'parameters': {'delay': 'integer'},
+        'results': {'version': 'string'}
+      }
+    }
+  })");
+  EXPECT_FALSE(dict.LoadCommands(*json3, "robotd", &base_dict, &error));
+  EXPECT_EQ("invalid_object_schema", error->GetCode());
+  EXPECT_EQ("Invalid definition for command 'base.reboot'",
+            error->GetMessage());
+  // TODO(antonm): remove parameter from error below and use some generic.
+  EXPECT_EQ("invalid_parameter_definition", error->GetInnerError()->GetCode());
+  EXPECT_EQ("Error in definition of property 'version'",
+            error->GetInnerError()->GetMessage());
+  EXPECT_EQ("param_type_changed", error->GetFirstError()->GetCode());
+  EXPECT_EQ("Redefining a property of type integer as string",
+            error->GetFirstError()->GetMessage());
+  error.reset();
 }
 
 TEST(CommandDictionary, GetCommandsAsJson) {
   auto json_base = CreateDictionaryValue(R"({
     'base': {
       'reboot': {
-        'parameters': {'delay': {'maximum': 100}}
+        'parameters': {'delay': {'maximum': 100}},
+        'results': {}
       },
       'shutdown': {
-        'parameters': {}
+        'parameters': {},
+        'results': {}
       }
     }
   })");
@@ -184,12 +226,14 @@ TEST(CommandDictionary, GetCommandsAsJson) {
   auto json = buffet::unittests::CreateDictionaryValue(R"({
     'base': {
       'reboot': {
-        'parameters': {'delay': {'minimum': 10}}
+        'parameters': {'delay': {'minimum': 10}},
+        'results': {}
       }
     },
     'robot': {
       '_jump': {
-        'parameters': {'_height': 'integer'}
+        'parameters': {'_height': 'integer'},
+        'results': {}
       }
     }
   })");

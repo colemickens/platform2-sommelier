@@ -21,7 +21,8 @@ class CommandInstanceTest : public ::testing::Test {
     auto json = CreateDictionaryValue(R"({
       'base': {
         'reboot': {
-          'parameters': {}
+          'parameters': {},
+          'results': {}
         }
       },
       'robot': {
@@ -36,7 +37,8 @@ class CommandInstanceTest : public ::testing::Test {
               'type': 'string',
               'enum': ['_withAirFlip', '_withSpin', '_withKick']
             }
-          }
+          },
+          'results': {}
         },
         'speak': {
           'parameters': {
@@ -50,7 +52,8 @@ class CommandInstanceTest : public ::testing::Test {
               'minimum': 0,
               'maximum': 10
             }
-          }
+          },
+          'results': {}
         }
       }
     })");
@@ -92,7 +95,8 @@ TEST_F(CommandInstanceTest, FromJson) {
     'parameters': {
       'height': 53,
       '_jumpType': '_withKick'
-    }
+    },
+    'results': {}
   })");
   auto instance = buffet::CommandInstance::FromJson(json.get(), dict_, nullptr);
   EXPECT_EQ("robot.jump", instance->GetName());

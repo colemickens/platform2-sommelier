@@ -21,6 +21,7 @@ class DictionaryValue;
 namespace buffet {
 
 class CommandDefinition;
+class ObjectSchema;
 
 // CommandDictionary is a wrapper around a map of command name and the
 // corresponding command definition schema. The command name (the key in
@@ -71,6 +72,13 @@ class CommandDictionary {
   const CommandDefinition* FindCommand(const std::string& command_name) const;
 
  private:
+  std::shared_ptr<ObjectSchema> BuildObjectSchema(
+      const base::DictionaryValue* command_def_json,
+      const char* property_name,
+      const ObjectSchema* base_def,
+      const std::string& command_name,
+      chromeos::ErrorPtr* error);
+
   using CommandMap = std::map<std::string,
                               std::shared_ptr<const CommandDefinition>>;
 

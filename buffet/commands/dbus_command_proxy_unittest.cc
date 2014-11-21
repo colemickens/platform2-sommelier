@@ -50,6 +50,7 @@ class DBusCommandProxyTest : public ::testing::Test {
     EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());
 
     // Command instance.
+    // TODO(antonm): Test results.
     auto json = CreateDictionaryValue(R"({
       'robot': {
         'jump': {
@@ -63,7 +64,8 @@ class DBusCommandProxyTest : public ::testing::Test {
               'type': 'string',
               'enum': ['_withAirFlip', '_withSpin', '_withKick']
             }
-          }
+          },
+          'results': {}
         }
       }
     })");

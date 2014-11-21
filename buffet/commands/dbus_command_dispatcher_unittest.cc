@@ -73,10 +73,12 @@ class DBusCommandDispacherTest : public testing::Test {
     auto json = CreateDictionaryValue(R"({
       'base': {
         'reboot': {
-          'parameters': {'delay': 'integer'}
+          'parameters': {'delay': 'integer'},
+          'results': {}
         },
         'shutdown': {
-          'parameters': {}
+          'parameters': {},
+          'results': {}
         }
       }
     })");

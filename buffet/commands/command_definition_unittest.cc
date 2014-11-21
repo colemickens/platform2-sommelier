@@ -8,7 +8,9 @@
 
 TEST(CommandDefinition, Test) {
   auto params = std::make_shared<buffet::ObjectSchema>();
-  buffet::CommandDefinition def("powerd", params);
+  auto results = std::make_shared<buffet::ObjectSchema>();
+  buffet::CommandDefinition def("powerd", params, results);
   EXPECT_EQ("powerd", def.GetCategory());
   EXPECT_EQ(params, def.GetParameters());
+  EXPECT_EQ(results, def.GetResults());
 }

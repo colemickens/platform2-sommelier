@@ -316,10 +316,12 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
   auto json_base = buffet::unittests::CreateDictionaryValue(R"({
     'base': {
       'reboot': {
-        'parameters': {'delay': 'integer'}
+        'parameters': {'delay': 'integer'},
+        'results': {}
       },
       'shutdown': {
-        'parameters': {}
+        'parameters': {},
+        'results': {}
       }
     }
   })");
@@ -327,12 +329,14 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
   auto json_cmds = buffet::unittests::CreateDictionaryValue(R"({
     'base': {
       'reboot': {
-        'parameters': {'delay': {'minimum': 10}}
+        'parameters': {'delay': {'minimum': 10}},
+        'results': {}
       }
     },
     'robot': {
       '_jump': {
-        'parameters': {'_height': 'integer'}
+        'parameters': {'_height': 'integer'},
+        'results': {}
       }
     }
   })");

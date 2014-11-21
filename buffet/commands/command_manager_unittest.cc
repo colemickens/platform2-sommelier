@@ -31,10 +31,12 @@ TEST(CommandManager, LoadBaseCommandsJSON) {
   auto json = CreateDictionaryValue(R"({
     'base': {
       'reboot': {
-        'parameters': {'delay': 'integer'}
+        'parameters': {'delay': 'integer'},
+        'results': {}
       },
       'shutdown': {
-        'parameters': {}
+        'parameters': {},
+        'results': {}
       }
     }
   })");
@@ -46,10 +48,12 @@ TEST(CommandManager, LoadBaseCommandsFile) {
   auto json = CreateDictionaryValue(R"({
     'base': {
       'reboot': {
-        'parameters': {'delay': 'integer'}
+        'parameters': {'delay': 'integer'},
+        'results': {}
       },
       'shutdown': {
-        'parameters': {}
+        'parameters': {},
+        'results': {}
       }
     }
   })");
@@ -63,10 +67,12 @@ TEST(CommandManager, LoadCommandsJSON) {
   auto json = CreateDictionaryValue(R"({
     'robot': {
       '_jump': {
-        'parameters': {'height': 'integer'}
+        'parameters': {'height': 'integer'},
+        'results': {}
       },
       '_speak': {
-        'parameters': {'phrase': 'string'}
+        'parameters': {'phrase': 'string'},
+        'results': {}
       }
     }
   })");
@@ -79,10 +85,12 @@ TEST(CommandManager, LoadCommandsFile) {
   auto json = CreateDictionaryValue(R"({
     'base': {
       'reboot': {
-        'parameters': {'delay': 'integer'}
+        'parameters': {'delay': 'integer'},
+        'results': {}
       },
       'shutdown': {
-        'parameters': {}
+        'parameters': {},
+        'results': {}
       }
     }
   })");
@@ -91,12 +99,14 @@ TEST(CommandManager, LoadCommandsFile) {
   json = CreateDictionaryValue(R"({
     'base': {
       'reboot': {
-        'parameters': {'delay': 'integer'}
+        'parameters': {'delay': 'integer'},
+        'results': {}
       }
     },
     'robot': {
       '_jump': {
-        'parameters': {'height': 'integer'}
+        'parameters': {'height': 'integer'},
+        'results': {}
       }
     }
   })");
