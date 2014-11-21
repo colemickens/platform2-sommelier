@@ -10,12 +10,15 @@
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
 using chromeos::dbus_utils::DBusMethodResponse;
+using std::string;
 
 namespace apmanager {
 
 Manager::Manager()
     : org::chromium::apmanager::ManagerAdaptor(this),
-      service_identifier_(0) {}
+      service_identifier_(0),
+      device_identifier_(0),
+      device_info_(this) {}
 
 Manager::~Manager() {}
 
@@ -32,10 +35,19 @@ void Manager::RegisterAsync(ExportedObjectManager* object_manager,
       sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
 }
 
+void Manager::Start() {
+  device_info_.Start();
+}
+
+void Manager::Stop() {
+  device_info_.Stop();
+}
+
 void Manager::CreateService(
     scoped_ptr<DBusMethodResponse<dbus::ObjectPath>> response) {
+  LOG(INFO) << "Manager::CreateService";
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
-  scoped_ptr<Service> service(new Service(service_identifier_++));
+  scoped_ptr<Service> service(new Service(this, service_identifier_++));
 
   service->RegisterAsync(dbus_object_->GetObjectManager().get(), sequencer);
   sequencer->OnAllTasksCompletedCall({
@@ -61,10 +73,45 @@ bool Manager::RemoveService(chromeos::ErrorPtr* error,
   return false;
 }
 
+scoped_refptr<Device> Manager::GetAvailableDevice() {
+  for (const auto& device : devices_) {
+    if (!device->GetInUsed()) {
+      return device;
+    }
+  }
+  return nullptr;
+}
+
+scoped_refptr<Device> Manager::GetDeviceFromInterfaceName(
+    const string& interface_name) {
+  for (const auto& device : devices_) {
+    if (device->InterfaceExists(interface_name)) {
+      return device;
+    }
+  }
+  return nullptr;
+}
+
+void Manager::RegisterDevice(scoped_refptr<Device> device) {
+  LOG(INFO) << "Manager::RegisterDevice: registering device "
+            << device->GetDeviceName();
+  // Register device DBbus interfaces.
+  scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
+  device->RegisterAsync(dbus_object_->GetObjectManager().get(),
+                        sequencer,
+                        device_identifier_++);
+  sequencer->OnAllTasksCompletedCall({
+    base::Bind(&Manager::DeviceRegistered,
+               base::Unretained(this),
+               device)
+  });
+}
+
 void Manager::ServiceRegistered(
     scoped_ptr<DBusMethodResponse<dbus::ObjectPath>> response,
     scoped_ptr<Service> service,
     bool success) {
+  LOG(INFO) << "ServiceRegistered";
   // Success should always be true since we've said that failures are fatal.
   CHECK(success) << "Init of one or more objects has failed.";
 
@@ -73,6 +120,14 @@ void Manager::ServiceRegistered(
   dbus::ObjectPath service_path = service->dbus_path();
   services_.push_back(std::unique_ptr<Service>(service.release()));
   response->Return(service_path);
+}
+
+void Manager::DeviceRegistered(scoped_refptr<Device> device, bool success) {
+  // Success should always be true since we've said that failures are fatal.
+  CHECK(success) << "Init of one or more objects has failed.";
+
+  devices_.push_back(device);
+  // TODO(zqiu): Property update for available devices.
 }
 
 }  // namespace apmanager

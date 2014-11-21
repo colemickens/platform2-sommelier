@@ -10,16 +10,17 @@
 #include <base/macros.h>
 #include <chromeos/process.h>
 
+#include "apmanager/config.h"
 #include "apmanager/dbus_adaptors/org.chromium.apmanager.Service.h"
 
 namespace apmanager {
 
-class Config;
+class Manager;
 
 class Service : public org::chromium::apmanager::ServiceAdaptor,
                 public org::chromium::apmanager::ServiceInterface {
  public:
-  explicit Service(int service_identifier);
+  Service(Manager* manager, int service_identifier);
   virtual ~Service();
 
   // Implementation of ServiceInterface.
@@ -52,6 +53,7 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
   // a SIGKILL if failed to terminated with SIGTERM.
   void StopHostapdProcess();
 
+  Manager* manager_;
   int service_identifier_;
   std::string service_path_;
   dbus::ObjectPath dbus_path_;

@@ -14,6 +14,7 @@
 #include <gtest/gtest.h>
 
 #include "apmanager/mock_config.h"
+#include "apmanager/mock_manager.h"
 
 using chromeos::ProcessMock;
 using ::testing::_;
@@ -30,7 +31,7 @@ namespace apmanager {
 
 class ServiceTest : public testing::Test {
  public:
-  ServiceTest() : service_(kServiceIdentifier) {}
+  ServiceTest() : service_(&manager_, kServiceIdentifier) {}
 
   void StartDummyProcess() {
     service_.hostapd_process_.reset(new chromeos::ProcessImpl);
@@ -46,6 +47,7 @@ class ServiceTest : public testing::Test {
 
  protected:
   Service service_;
+  MockManager manager_;
 };
 
 MATCHER_P(IsServiceErrorStartingWith, message, "") {
@@ -82,6 +84,7 @@ TEST_F(ServiceTest, StartSuccess) {
   chromeos::ErrorPtr error;
   EXPECT_CALL(*config, GenerateConfigFile(_, _)).WillOnce(
       DoAll(SetArgPointee<1>(config_str), Return(true)));
+  EXPECT_CALL(*config, ClaimDevice()).WillOnce(Return(true));
   EXPECT_TRUE(service_.Start(&error));
   EXPECT_EQ(nullptr, error);
 }
@@ -96,7 +99,10 @@ TEST_F(ServiceTest, StopWhenServiceNotRunning) {
 TEST_F(ServiceTest, StopSuccess) {
   StartDummyProcess();
 
+  MockConfig* config = new MockConfig();
+  SetConfig(config);
   chromeos::ErrorPtr error;
+  EXPECT_CALL(*config, ReleaseDevice()).Times(1);
   EXPECT_TRUE(service_.Stop(&error));
 }
 

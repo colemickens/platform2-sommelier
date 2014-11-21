@@ -30,6 +30,10 @@ int Daemon::OnInit() {
 
   // Signal that we've acquired all resources.
   startup_callback_.Run();
+
+  // Start manager.
+  manager_->Start();
+
   return EX_OK;
 }
 

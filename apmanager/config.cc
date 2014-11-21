@@ -7,6 +7,9 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "apmanager/device.h"
+#include "apmanager/manager.h"
+
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
 using chromeos::ErrorPtr;
@@ -53,8 +56,9 @@ const int Config::kHostapdDefaultFragmThreshold = 2346;
 // RTS threshold: disabled.
 const int Config::kHostapdDefaultRtsThreshold = 2347;
 
-Config::Config(const string& service_path)
+Config::Config(Manager* manager, const string& service_path)
     : org::chromium::apmanager::ConfigAdaptor(this),
+      manager_(manager),
       dbus_path_(dbus::ObjectPath(
           base::StringPrintf("%s/config", service_path.c_str()))) {
   // Initialize default configuration values.
@@ -118,6 +122,22 @@ bool Config::GenerateConfigFile(ErrorPtr* error, string* config_str) {
   }
 
   return true;
+}
+
+bool Config::ClaimDevice() {
+  if (!device_) {
+    LOG(ERROR) << "Failed to claim device: device doesn't exist.";
+    return false;
+  }
+  return device_->ClaimDevice();
+}
+
+bool Config::ReleaseDevice() {
+  if (!device_) {
+    LOG(ERROR) << "Failed to release device: device doesn't exist.";
+    return false;
+  }
+  return device_->ReleaseDevice();
 }
 
 bool Config::AppendHwMode(ErrorPtr* error, std::string* config_str) {
@@ -187,9 +207,28 @@ bool Config::AppendInterface(ErrorPtr* error,
                              std::string* config_str) {
   string interface = GetInterfaceName();
   if (interface.empty()) {
-    // TODO(zqiu): Ask manager for available ap mode interface.
-    return false;
+    // Ask manager for unused ap capable device.
+    device_ = manager_->GetAvailableDevice();
+    if (!device_) {
+      chromeos::Error::AddTo(
+          error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+          "No device available");
+      return false;
+    }
+  } else {
+    device_ = manager_->GetDeviceFromInterfaceName(interface);
+    if (device_->GetInUsed()) {
+      chromeos::Error::AddToPrintf(
+          error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+          "Device [%s] for interface [%s] already in use",
+          device_->GetDeviceName().c_str(),
+          interface.c_str());
+      return false;
+    }
   }
+
+  // Use the preferred AP interface from the device.
+  interface = device_->GetPreferredApInterface();
 
   base::StringAppendF(
       config_str, "%s=%s\n", kHostapdConfigKeyInterface, interface.c_str());

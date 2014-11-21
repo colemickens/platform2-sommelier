@@ -4,11 +4,19 @@
 
 #include "apmanager/config.h"
 
+#include <string>
+
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "apmanager/mock_device.h"
+#include "apmanager/mock_manager.h"
+
+using ::testing::Mock;
+using ::testing::Return;
 
 namespace apmanager {
 
@@ -63,10 +71,19 @@ const char kExpectedRsnConfigContent[] = "ssid=TestSsid\n"
 
 class ConfigTest : public testing::Test {
  public:
-  ConfigTest() : config_(kServicePath) {}
+  ConfigTest() : config_(&manager_, kServicePath) {}
+
+  void SetupDevice(const std::string& interface) {
+    // Setup mock device.
+    scoped_refptr<MockDevice> device = new MockDevice();
+    device->SetPreferredApInterface(interface);
+    EXPECT_CALL(manager_, GetDeviceFromInterfaceName(interface))
+        .WillRepeatedly(Return(device));
+  }
 
  protected:
   Config config_;
+  MockManager manager_;
 };
 
 MATCHER_P(IsConfigErrorStartingWith, message, "") {
@@ -87,11 +104,43 @@ TEST_F(ConfigTest, NoSsid) {
   EXPECT_THAT(error, IsConfigErrorStartingWith("SSID not specified"));
 }
 
+TEST_F(ConfigTest, NoInterface) {
+  // Basic 80211.g configuration.
+  config_.SetSsid(kSsid);
+  config_.SetChannel(k24GHzChannel);
+  config_.SetHwMode(kHwMode80211g);
+
+  // No device available, fail to generate config file.
+  chromeos::ErrorPtr error;
+  std::string config_content;
+  EXPECT_CALL(manager_, GetAvailableDevice()).WillOnce(Return(nullptr));
+  EXPECT_FALSE(config_.GenerateConfigFile(&error, &config_content));
+  EXPECT_THAT(error, IsConfigErrorStartingWith("No device available"));
+  Mock::VerifyAndClearExpectations(&manager_);
+
+  // Device available, config file should be generated without any problem.
+  scoped_refptr<MockDevice> device = new MockDevice();
+  device->SetPreferredApInterface(kInterface);
+  chromeos::ErrorPtr error1;
+  EXPECT_CALL(manager_, GetAvailableDevice()).WillOnce(Return(device));
+  EXPECT_TRUE(config_.GenerateConfigFile(&error1, &config_content));
+  EXPECT_NE(std::string::npos, config_content.find(
+                                   kExpected80211gConfigContent))
+      << "Expected to find the following config...\n"
+      << kExpected80211gConfigContent << "..within content...\n"
+      << config_content;
+  EXPECT_EQ(nullptr, error1.get());
+  Mock::VerifyAndClearExpectations(&manager_);
+}
+
 TEST_F(ConfigTest, 80211gConfig) {
   config_.SetSsid(kSsid);
   config_.SetChannel(k24GHzChannel);
   config_.SetHwMode(kHwMode80211g);
   config_.SetInterfaceName(kInterface);
+
+  // Setup mock device.
+  SetupDevice(kInterface);
 
   std::string config_content;
   chromeos::ErrorPtr error;
@@ -108,6 +157,9 @@ TEST_F(ConfigTest, 80211nConfig) {
   config_.SetSsid(kSsid);
   config_.SetHwMode(kHwMode80211n);
   config_.SetInterfaceName(kInterface);
+
+  // Setup mock device.
+  SetupDevice(kInterface);
 
   // 5GHz channel.
   config_.SetChannel(k5GHzChannel);
@@ -140,6 +192,9 @@ TEST_F(ConfigTest, RsnConfig) {
   config_.SetHwMode(kHwMode80211g);
   config_.SetInterfaceName(kInterface);
   config_.SetSecurityMode(kSecurityModeRSN);
+
+  // Setup mock device.
+  SetupDevice(kInterface);
 
   // Failed due to no passphrase specified.
   std::string config_content;

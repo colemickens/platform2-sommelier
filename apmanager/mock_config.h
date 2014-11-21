@@ -22,6 +22,8 @@ class MockConfig : public Config {
   MOCK_METHOD2(GenerateConfigFile,
                bool(chromeos::ErrorPtr *error,
                     std::string* config_str));
+  MOCK_METHOD0(ClaimDevice, bool());
+  MOCK_METHOD0(ReleaseDevice, bool());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockConfig);

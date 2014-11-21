@@ -15,11 +15,14 @@
 
 namespace apmanager {
 
+class Device;
+class Manager;
+
 class Config
     : public org::chromium::apmanager::ConfigAdaptor,
       public org::chromium::apmanager::ConfigInterface {
  public:
-  explicit Config(const std::string& service_path);
+  Config(Manager* manager, const std::string& service_path);
   virtual ~Config();
 
   // Register Config DBus object.
@@ -32,6 +35,10 @@ class Config
   // false otherwise.
   virtual bool GenerateConfigFile(chromeos::ErrorPtr* error,
                                   std::string* config_str);
+
+  // Claim and release the device needed for this configuration.
+  virtual bool ClaimDevice();
+  virtual bool ReleaseDevice();
 
   const std::string& control_interface() const { return control_interface_; }
   void set_control_interface(const std::string& control_interface) {
@@ -92,9 +99,11 @@ class Config
   // Append security related configurations to the config file.
   bool AppendSecurityMode(chromeos::ErrorPtr* error, std::string* config_str);
 
+  Manager* manager_;
   dbus::ObjectPath dbus_path_;
   std::string control_interface_;
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  scoped_refptr<Device> device_;
 
   DISALLOW_COPY_AND_ASSIGN(Config);
 };

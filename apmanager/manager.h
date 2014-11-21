@@ -5,6 +5,7 @@
 #ifndef APMANAGER_MANAGER_H_
 #define APMANAGER_MANAGER_H_
 
+#include <string>
 #include <vector>
 
 #include <base/macros.h>
@@ -12,6 +13,7 @@
 
 #include "apmanager/dbus_adaptors/org.chromium.apmanager.Manager.h"
 
+#include "apmanager/device_info.h"
 #include "apmanager/service.h"
 
 namespace apmanager {
@@ -21,11 +23,6 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
  public:
   Manager();
   virtual ~Manager();
-
-  // Register DBus object.
-  void RegisterAsync(
-      chromeos::dbus_utils::ExportedObjectManager* object_manager,
-      chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   // Implementation of ManagerInterface.
   // Handles calls to org.chromium.apmanager.Manager.CreateService().
@@ -38,6 +35,20 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
   virtual bool RemoveService(chromeos::ErrorPtr* error,
                              const dbus::ObjectPath& in_service);
 
+  // Register DBus object.
+  void RegisterAsync(
+      chromeos::dbus_utils::ExportedObjectManager* object_manager,
+      chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+
+  virtual void Start();
+  virtual void Stop();
+
+  virtual void RegisterDevice(scoped_refptr<Device> device);
+
+  virtual scoped_refptr<Device> GetAvailableDevice();
+  virtual scoped_refptr<Device> GetDeviceFromInterfaceName(
+      const std::string& interface_name);
+
  private:
   friend class ManagerTest;
 
@@ -49,9 +60,17 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
       scoped_ptr<Service> service,
       bool success);
 
+  // A callback that will be called when a Device D-Bus object/interface is
+  // exported successfully and ready to be used.
+  void DeviceRegistered(scoped_refptr<Device> device, bool success);
+
   int service_identifier_;
+  int device_identifier_;
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
   std::vector<std::unique_ptr<Service>> services_;
+  std::vector<scoped_refptr<Device>> devices_;
+  DeviceInfo device_info_;
+
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };
 

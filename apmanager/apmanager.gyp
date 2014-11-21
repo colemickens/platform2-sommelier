@@ -10,6 +10,9 @@
       '-Wextra',
       '-Wno-unused-parameter',  # base/lazy_instance.h, etc.
     ],
+    'cflags_cc': [
+      '-Wno-missing-field-initializers', # for LAZY_INSTANCE_INITIALIZER
+    ],
   },
   'targets': [
     {
@@ -20,6 +23,7 @@
       },
       'sources': [
         'dbus_bindings/org.chromium.apmanager.Config.xml',
+        'dbus_bindings/org.chromium.apmanager.Device.xml',
         'dbus_bindings/org.chromium.apmanager.Manager.xml',
         'dbus_bindings/org.chromium.apmanager.Service.xml',
       ],
@@ -33,7 +37,7 @@
       ],
       'variables': {
         'exported_deps': [
-          'libmetrics-<(libbase_ver)',
+          'libshill-net-<(libbase_ver)',
         ],
         'deps': ['<@(exported_deps)'],
       },
@@ -47,6 +51,8 @@
       'sources': [
         'config.cc',
         'daemon.cc',
+        'device.cc',
+        'device_info.cc',
         'manager.cc',
         'service.cc',
       ],
@@ -72,11 +78,20 @@
           'target_name': 'apmanager_testrunner',
           'type': 'executable',
           'dependencies': ['libapmanager'],
+          'variables': {
+            'deps': [
+              'libshill-net-test-<(libbase_ver)',
+            ],
+          },
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'config_unittest.cc',
+            'device_info_unittest.cc',
+            'device_unittest.cc',
             'manager_unittest.cc',
             'mock_config.cc',
+            'mock_device.cc',
+            'mock_manager.cc',
             'mock_service.cc',
             'service_unittest.cc',
             'testrunner.cc',

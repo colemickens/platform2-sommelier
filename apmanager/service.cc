@@ -11,7 +11,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/errors/error.h>
 
-#include "apmanager/config.h"
+#include "apmanager/manager.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
@@ -20,18 +20,19 @@ using std::string;
 namespace apmanager {
 
 // static.
-const char Service::kHostapdPath[] = "/sbin/hostapd";
+const char Service::kHostapdPath[] = "/usr/sbin/hostapd";
 const char Service::kHostapdConfigPathFormat[] = "/tmp/hostapd-%d";
 const int Service::kTerminationTimeoutSeconds = 2;
 
-Service::Service(int service_identifier)
+Service::Service(Manager* manager, int service_identifier)
     : org::chromium::apmanager::ServiceAdaptor(this),
+      manager_(manager),
       service_identifier_(service_identifier),
       service_path_(base::StringPrintf("%s/services/%d",
                                        kManagerPath,
                                        service_identifier)),
       dbus_path_(dbus::ObjectPath(service_path_)),
-      config_(new Config(service_path_)) {
+      config_(new Config(manager, service_path_)) {
   SetConfig(config_->dbus_path());
 }
 
@@ -39,6 +40,8 @@ Service::~Service() {
   // Stop hostapd process if still running.
   if (IsHostapdRunning()) {
     StopHostapdProcess();
+    // Release device used by this hostapd instance.
+    config_->ReleaseDevice();
   }
 }
 
@@ -85,11 +88,21 @@ bool Service::Start(chromeos::ErrorPtr* error) {
     return false;
   }
 
+  // Claim the device needed for this ap service.
+  if (!config_->ClaimDevice()) {
+    chromeos::Error::AddTo(
+        error, FROM_HERE, chromeos::errors::dbus::kDomain, kServiceError,
+        "Failed to claim the device for this service");
+    return false;
+  }
+
   // Start hostapd process.
   if (!StartHostapdProcess(file_path.value())) {
     chromeos::Error::AddTo(
         error, FROM_HERE, chromeos::errors::dbus::kDomain, kServiceError,
         "Failed to start hostapd");
+    // Release the device claimed for this service.
+    config_->ReleaseDevice();
     return false;
   }
 
@@ -105,6 +118,8 @@ bool Service::Stop(chromeos::ErrorPtr* error) {
   }
 
   StopHostapdProcess();
+  // Release the device used by this hostapd instance.
+  config_->ReleaseDevice();
   return true;
 }
 
@@ -115,7 +130,7 @@ bool Service::IsHostapdRunning() {
 
 bool Service::StartHostapdProcess(const string& config_file_path) {
   hostapd_process_.reset(new chromeos::ProcessImpl());
-  hostapd_process_->AddArg(string(kHostapdPath));
+  hostapd_process_->AddArg(kHostapdPath);
   hostapd_process_->AddArg(config_file_path);
   if (!hostapd_process_->Start()) {
     hostapd_process_.reset();

@@ -6,7 +6,7 @@
 
 namespace apmanager {
 
-MockService::MockService() : Service(0) {}
+MockService::MockService() : Service(nullptr, 0) {}
 
 MockService::~MockService() {}
 

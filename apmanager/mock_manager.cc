@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "apmanager/mock_config.h"
+#include "apmanager/mock_manager.h"
 
 namespace apmanager {
 
-MockConfig::MockConfig() : Config(nullptr, std::string()) {}
+MockManager::MockManager() : Manager() {}
 
-MockConfig::~MockConfig() {}
+MockManager::~MockManager() {}
 
 }  // namespace apmanager
