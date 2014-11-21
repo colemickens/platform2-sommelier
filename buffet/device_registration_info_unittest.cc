@@ -290,6 +290,12 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
     EXPECT_EQ(test_data::kClientId, value);
     EXPECT_TRUE(json->GetString("deviceDraft.deviceKind", &value));
     EXPECT_EQ("vendor", value);
+    EXPECT_TRUE(json->GetString("deviceDraft.description", &value));
+    EXPECT_EQ("Easy to clean", value);
+    EXPECT_TRUE(json->GetString("deviceDraft.location", &value));
+    EXPECT_EQ("Kitchen", value);
+    EXPECT_TRUE(json->GetString("deviceDraft.displayName", &value));
+    EXPECT_EQ("Coffee Pot", value);
     base::DictionaryValue* commandDefs = nullptr;
     EXPECT_TRUE(json->GetDictionary("deviceDraft.commandDefs", &commandDefs));
     EXPECT_FALSE(commandDefs->empty());

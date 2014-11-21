@@ -180,6 +180,8 @@ class DeviceRegistrationInfo {
   std::string device_kind_ = "vendor";
   std::string name_ = "coffee_pot";
   std::string display_name_ = "Coffee Pot";
+  std::string description_ = "Easy to clean";
+  std::string location_ = "Kitchen";
 
   // HTTP transport used for communications.
   std::shared_ptr<chromeos::http::Transport> transport_;

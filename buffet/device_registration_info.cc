@@ -47,6 +47,8 @@ const char kRobotAccount[]  = "robot_account";
 const char kDeviceKind[]    = "device_kind";
 const char kName[]          = "name";
 const char kDisplayName[]   = "display_name";
+const char kDescription[]   = "description";
+const char kLocation[]      = "location";
 
 }  // namespace storage_keys
 }  // namespace buffet
@@ -337,6 +339,10 @@ DeviceRegistrationInfo::BuildDeviceResource(chromeos::ErrorPtr* error) {
   resource->SetString("name", name_);
   if (!display_name_.empty())
     resource->SetString("displayName", display_name_);
+  if (!description_.empty())
+    resource->SetString("description", description_);
+  if (!location_.empty())
+    resource->SetString("location", location_);
   resource->SetString("channel.supportedType", "xmpp");
   resource->Set("commandDefs", commands.release());
   resource->Set("state", state.release());
@@ -389,6 +395,8 @@ std::string DeviceRegistrationInfo::RegisterDevice(
   GetParamValue(params, storage_keys::kDeviceKind, &device_kind_);
   GetParamValue(params, storage_keys::kName, &name_);
   GetParamValue(params, storage_keys::kDisplayName, &display_name_);
+  GetParamValue(params, storage_keys::kDescription, &description_);
+  GetParamValue(params, storage_keys::kLocation, &location_);
   GetParamValue(params, storage_keys::kOAuthURL, &oauth_url_);
   GetParamValue(params, storage_keys::kServiceURL, &service_url_);
 

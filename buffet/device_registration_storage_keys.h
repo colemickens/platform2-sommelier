@@ -24,6 +24,8 @@ extern const char kRobotAccount[];
 extern const char kDeviceKind[];
 extern const char kName[];
 extern const char kDisplayName[];
+extern const char kDescription[];
+extern const char kLocation[];
 
 }  // namespace storage_keys
 }  // namespace buffet
