@@ -83,7 +83,7 @@ void AsyncEventSequencer::HandleDBusMethodExported(
 void AsyncEventSequencer::RetireRegistration(int registration_number) {
   const size_t handlers_retired = outstanding_registrations_.erase(
       registration_number);
-  CHECK_EQ(1u, handlers_retired)
+  CHECK_EQ(1, handlers_retired)
       << "Tried to retire invalid handler " << registration_number << ")";
 }
 

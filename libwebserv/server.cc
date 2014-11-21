@@ -5,7 +5,6 @@
 #include "libwebserv/server.h"
 
 #include <limits>
-#include <vector>
 
 #include <base/logging.h>
 #include <base/message_loop/message_loop_proxy.h>
@@ -85,55 +84,28 @@ Server::~Server() {
 }
 
 bool Server::Start(uint16_t port) {
-  return StartWithTLS(port, chromeos::SecureBlob{}, chromeos::Blob{});
-}
-
-bool Server::StartWithTLS(uint16_t port,
-                          const chromeos::SecureBlob& private_key,
-                          const chromeos::Blob& certificate) {
   if (server_) {
-    LOG(ERROR) << "Web server is already running.";
+    LOG(ERROR) << "Server already running.";
     return false;
   }
 
-  // Either both keys and certificate must be specified or both muse be omitted.
-  CHECK_EQ(private_key.empty(), certificate.empty());
-
-  const bool use_tls = !private_key.empty();
-
   task_runner_ = base::MessageLoopProxy::current();
 
-  LOG(INFO) << "Starting " << (use_tls ? "HTTPS" : "HTTP")
-            << " Server on port: " << port;
-  auto callback_addr =
-      reinterpret_cast<intptr_t>(&ServerHelper::RequestCompleted);
-  uint32_t flags = MHD_USE_THREAD_PER_CONNECTION;
-
-  std::vector<MHD_OptionItem> options{
+  LOG(INFO) << "Starting HTTP Server on port: " << port;
+  MHD_OptionItem options[] = {
     {MHD_OPTION_CONNECTION_LIMIT, 10, nullptr},
     {MHD_OPTION_CONNECTION_TIMEOUT, 10, nullptr},
-    {MHD_OPTION_NOTIFY_COMPLETED, callback_addr, nullptr},
+    {MHD_OPTION_NOTIFY_COMPLETED,
+        reinterpret_cast<intptr_t>(&ServerHelper::RequestCompleted),
+                                   nullptr},
+    {MHD_OPTION_END, 0, nullptr }
   };
 
-  if (use_tls) {
-    flags |= MHD_USE_SSL;
-    options.push_back(MHD_OptionItem{
-        MHD_OPTION_HTTPS_MEM_KEY, 0,
-        const_cast<void*>(private_key.const_data())
-      });
-    options.push_back(MHD_OptionItem{
-        MHD_OPTION_HTTPS_MEM_CERT, 0,
-        const_cast<uint8_t*>(certificate.data())
-      });
-  }
-
-  options.push_back(MHD_OptionItem{MHD_OPTION_END, 0, nullptr});
-
-  server_ = MHD_start_daemon(flags,
+  server_ = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION,
                              port,
                              nullptr, nullptr,
                              &ServerHelper::ConnectionHandler, this,
-                             MHD_OPTION_ARRAY, options.data(),
+                             MHD_OPTION_ARRAY, options,
                              MHD_OPTION_END);
   if (!server_) {
     LOG(ERROR) << "Failed to start the web server on port " << port;
@@ -145,7 +117,7 @@ bool Server::StartWithTLS(uint16_t port,
 
 bool Server::Stop() {
   if (server_) {
-    LOG(INFO) << "Shutting down the web server...";
+    LOG(INFO) << "Shutting down the HTTP server...";
     MHD_stop_daemon(server_);
     server_ = nullptr;
     LOG(INFO) << "Server shutdown complete";
