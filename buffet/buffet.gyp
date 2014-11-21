@@ -19,11 +19,32 @@
         'libbuffet/dbus_constants.cc',
         'libbuffet/private/command_property_set.cc',
       ],
+      'actions': [
+        {
+          'action_name': 'generate-buffet-proxies',
+          'inputs': [
+            'dbus_bindings/org.chromium.Buffet.Command.xml',
+            'dbus_bindings/org.chromium.Buffet.Manager.xml',
+          ],
+          'outputs': [
+            '<(SHARED_INTERMEDIATE_DIR)/include/buffet/dbus-proxies.h',
+          ],
+          'action': [
+            '<!(which generate-chromeos-dbus-bindings)',
+            '>@(_inputs)',
+            '--proxy=>(_outputs)'
+          ],
+          'hard_dependency': 1,
+        },
+      ],
       'includes': ['../common-mk/deps.gypi'],
     },
     {
       'target_name': 'buffet_common',
       'type': 'static_library',
+      'variables': {
+        'dbus_adaptors_out_dir': 'include/buffet',
+      },
       'sources': [
         'commands/command_definition.cc',
         'commands/command_dictionary.cc',
@@ -40,6 +61,8 @@
         'commands/schema_constants.cc',
         'commands/schema_utils.cc',
         'device_registration_info.cc',
+        'dbus_bindings/org.chromium.Buffet.Command.xml',
+        'dbus_bindings/org.chromium.Buffet.Manager.xml',
         'manager.cc',
         'storage_impls.cc',
         'states/error_codes.cc',
@@ -48,6 +71,7 @@
         'states/state_package.cc',
         'utils.cc',
       ],
+      'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     },
     {
       'target_name': 'buffet',

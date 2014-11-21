@@ -13,6 +13,7 @@
 
 #include "buffet/commands/command_proxy_interface.h"
 #include "buffet/libbuffet/dbus_constants.h"
+#include "buffet/org.chromium.Buffet.Command.h"
 
 namespace chromeos {
 namespace dbus_utils {
@@ -24,7 +25,8 @@ namespace buffet {
 
 class CommandInstance;
 
-class DBusCommandProxy : public CommandProxyInterface {
+class DBusCommandProxy : public CommandProxyInterface,
+                         public org::chromium::Buffet::CommandInterface {
  public:
   DBusCommandProxy(chromeos::dbus_utils::ExportedObjectManager* object_manager,
                    const scoped_refptr<dbus::Bus>& bus,
@@ -41,27 +43,17 @@ class DBusCommandProxy : public CommandProxyInterface {
   void OnProgressChanged(int progress) override;
 
  private:
-  // DBus properties for org.chromium.Buffet.Command interface.
-  chromeos::dbus_utils::ExportedProperty<std::string> name_;
-  chromeos::dbus_utils::ExportedProperty<std::string> category_;
-  chromeos::dbus_utils::ExportedProperty<std::string> id_;
-  chromeos::dbus_utils::ExportedProperty<std::string> status_;
-  chromeos::dbus_utils::ExportedProperty<int32_t> progress_;
-  chromeos::dbus_utils::ExportedProperty<chromeos::VariantDictionary>
-      parameters_;
-
   // Handles calls to org.chromium.Buffet.Command.SetProgress(progress).
-  bool HandleSetProgress(chromeos::ErrorPtr* error, int32_t progress);
+  bool SetProgress(chromeos::ErrorPtr* error, int32_t progress) override;
   // Handles calls to org.chromium.Buffet.Command.Abort().
-  void HandleAbort();
+  void Abort() override;
   // Handles calls to org.chromium.Buffet.Command.Cancel().
-  void HandleCancel();
+  void Cancel() override;
   // Handles calls to org.chromium.Buffet.Command.Done().
-  void HandleDone();
+  void Done() override;
 
-  dbus::ObjectPath object_path_;
   CommandInstance* command_instance_;
-
+  org::chromium::Buffet::CommandAdaptor dbus_adaptor_{this};
   chromeos::dbus_utils::DBusObject dbus_object_;
 
   friend class DBusCommandProxyTest;

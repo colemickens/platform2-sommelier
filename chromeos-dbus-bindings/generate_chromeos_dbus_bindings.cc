@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
   if (cl->HasSwitch(switches::kAdaptor)) {
     std::string adaptor_file = cl->GetSwitchValueASCII(switches::kAdaptor);
     // GYP sometimes enclosed the target file name in extra set of quotes like:
-    // generate-chromeos-dbus-buindings in.xml "--adaptor=\"out.h\""
+    // generate-chromeos-dbus-bindings in.xml "--adaptor=\"out.h\""
     base::TrimString(adaptor_file, "\"'", &adaptor_file);
     VLOG(1) << "Outputting adaptor to " << adaptor_file;
     if (!AdaptorGenerator::GenerateAdaptors(parser.interfaces(),
@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
   if (cl->HasSwitch(switches::kProxy)) {
     std::string proxy_file = cl->GetSwitchValueASCII(switches::kProxy);
     // GYP sometimes enclosed the target file name in extra set of quotes like:
-    // generate-chromeos-dbus-buindings in.xml "--proxy=\"out.h\""
+    // generate-chromeos-dbus-bindings in.xml "--proxy=\"out.h\""
     base::TrimString(proxy_file, "\"'", &proxy_file);
     VLOG(1) << "Outputting proxy to " << proxy_file;
     if (!ProxyGenerator::GenerateProxies(parser.interfaces(),

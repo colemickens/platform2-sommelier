@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<node name="/"
+      xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.Buffet.Command">
+    <method name="SetProgress">
+      <arg name="progress" type="i" direction="in"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+    <method name="Abort">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="Cancel">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="Done">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <property name="Name" type="s" access="read"/>
+    <property name="Category" type="s" access="read"/>
+    <property name="Id" type="s" access="read"/>
+    <property name="Status" type="s" access="read"/>
+    <property name="Progress" type="i" access="read"/>
+    <property name="Parameters" type="a{sv}" access="read"/>
+  </interface>
+</node>

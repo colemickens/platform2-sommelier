@@ -25,7 +25,6 @@
 #include "buffet/states/state_manager.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::DBusMethodResponse;
 using chromeos::dbus_utils::ExportedObjectManager;
 
 namespace buffet {
@@ -43,30 +42,6 @@ Manager::Manager(const base::WeakPtr<ExportedObjectManager>& object_manager)
 Manager::~Manager() {}
 
 void Manager::RegisterAsync(const AsyncEventSequencer::CompletionAction& cb) {
-  chromeos::dbus_utils::DBusInterface* itf =
-      dbus_object_.AddOrGetInterface(dbus_constants::kManagerInterface);
-  itf->AddMethodHandler(dbus_constants::kManagerStartDevice,
-                        base::Unretained(this),
-                        &Manager::HandleStartDevice);
-  itf->AddMethodHandler(dbus_constants::kManagerCheckDeviceRegistered,
-                        base::Unretained(this),
-                        &Manager::HandleCheckDeviceRegistered);
-  itf->AddMethodHandler(dbus_constants::kManagerGetDeviceInfo,
-                        base::Unretained(this),
-                        &Manager::HandleGetDeviceInfo);
-  itf->AddMethodHandler(dbus_constants::kManagerRegisterDevice,
-                        base::Unretained(this),
-                        &Manager::HandleRegisterDevice);
-  itf->AddMethodHandler(dbus_constants::kManagerUpdateStateMethod,
-                        base::Unretained(this),
-                        &Manager::HandleUpdateState);
-  itf->AddMethodHandler(dbus_constants::kManagerAddCommand,
-                        base::Unretained(this),
-                        &Manager::HandleAddCommand);
-  itf->AddSimpleMethodHandler(dbus_constants::kManagerTestMethod,
-                              base::Unretained(this),
-                              &Manager::HandleTestMethod);
-  dbus_object_.RegisterAsync(cb);
   command_manager_ =
       std::make_shared<CommandManager>(dbus_object_.GetObjectManager());
   command_manager_->Startup();
@@ -77,9 +52,11 @@ void Manager::RegisterAsync(const AsyncEventSequencer::CompletionAction& cb) {
   device_info_ = std::unique_ptr<DeviceRegistrationInfo>(
       new DeviceRegistrationInfo(command_manager_, state_manager_));
   device_info_->Load();
+  dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
+  dbus_object_.RegisterAsync(cb);
 }
 
-void Manager::HandleStartDevice(scoped_ptr<DBusMethodResponse<>> response) {
+void Manager::StartDevice(DBusMethodResponse<> response) {
   LOG(INFO) << "Received call to Manager.StartDevice()";
 
   chromeos::ErrorPtr error;
@@ -90,8 +67,7 @@ void Manager::HandleStartDevice(scoped_ptr<DBusMethodResponse<>> response) {
     response->Return();
 }
 
-void Manager::HandleCheckDeviceRegistered(
-    scoped_ptr<DBusMethodResponse<std::string>> response) {
+void Manager::CheckDeviceRegistered(DBusMethodResponse<std::string> response) {
   LOG(INFO) << "Received call to Manager.CheckDeviceRegistered()";
   chromeos::ErrorPtr error;
   bool registered = device_info_->CheckRegistration(&error);
@@ -116,8 +92,7 @@ void Manager::HandleCheckDeviceRegistered(
   response->Return(device_id);
 }
 
-void Manager::HandleGetDeviceInfo(
-    scoped_ptr<DBusMethodResponse<std::string>> response) {
+void Manager::GetDeviceInfo(DBusMethodResponse<std::string> response) {
   LOG(INFO) << "Received call to Manager.GetDeviceInfo()";
 
   chromeos::ErrorPtr error;
@@ -132,22 +107,31 @@ void Manager::HandleGetDeviceInfo(
   response->Return(device_info_str);
 }
 
-void Manager::HandleRegisterDevice(
-    scoped_ptr<DBusMethodResponse<std::string>> response,
-    const std::map<std::string, std::string>& params) {
+void Manager::RegisterDevice(DBusMethodResponse<std::string> response,
+                             const chromeos::VariantDictionary& params) {
   LOG(INFO) << "Received call to Manager.RegisterDevice()";
 
   chromeos::ErrorPtr error;
-  std::string device_id = device_info_->RegisterDevice(params, &error);
+  std::map<std::string, std::string> str_params;
+  for (const auto& pair : params) {
+    if (!pair.second.IsTypeCompatible<std::string>()) {
+      response->ReplyWithError(FROM_HERE, chromeos::errors::dbus::kDomain,
+                               DBUS_ERROR_INVALID_ARGS,
+                               "String value expected");
+      return;
+    }
+    str_params.emplace_hint(str_params.end(),
+                            pair.first, pair.second.Get<std::string>());
+  }
+  std::string device_id = device_info_->RegisterDevice(str_params, &error);
   if (error)
     response->ReplyWithError(error.get());
   else
     response->Return(device_id);
 }
 
-void Manager::HandleUpdateState(
-    scoped_ptr<DBusMethodResponse<>> response,
-    const chromeos::VariantDictionary& property_set) {
+void Manager::UpdateState(DBusMethodResponse<> response,
+                          const chromeos::VariantDictionary& property_set) {
   chromeos::ErrorPtr error;
   base::Time timestamp = base::Time::Now();
   bool all_success = true;
@@ -165,8 +149,8 @@ void Manager::HandleUpdateState(
     response->Return();
 }
 
-void Manager::HandleAddCommand(scoped_ptr<DBusMethodResponse<>> response,
-                               const std::string& json_command) {
+void Manager::AddCommand(DBusMethodResponse<> response,
+                         const std::string& json_command) {
   static int next_id = 0;
   std::string error_message;
   std::unique_ptr<base::Value> value(base::JSONReader::ReadAndReturnError(
@@ -189,7 +173,7 @@ void Manager::HandleAddCommand(scoped_ptr<DBusMethodResponse<>> response,
   response->Return();
 }
 
-std::string Manager::HandleTestMethod(const std::string& message) {
+std::string Manager::TestMethod(const std::string& message) {
   LOG(INFO) << "Received call to test method: " << message;
   return message;
 }

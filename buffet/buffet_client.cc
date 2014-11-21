@@ -23,6 +23,7 @@
 #include <dbus/object_manager.h>
 #include <dbus/values_util.h>
 
+#include "buffet/dbus-proxies.h"
 #include "buffet/libbuffet/dbus_constants.h"
 
 using namespace buffet::dbus_constants;  // NOLINT(build/namespaces)
@@ -57,13 +58,13 @@ class BuffetHelperProxy {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
     bus_ = new dbus::Bus(options);
-    manager_proxy_ = bus_->GetObjectProxy(
-        kServiceName,
-        dbus::ObjectPath(kManagerServicePath));
+    manager_proxy_.reset(
+      new org::chromium::Buffet::ManagerProxy{bus_, kServiceName,
+                                              kManagerServicePath});
     root_proxy_ = bus_->GetObjectProxy(
         kServiceName,
         dbus::ObjectPath(kRootServicePath));
-    return EX_OK;
+  return EX_OK;
   }
 
   int CallTestMethod(const CommandLine::StringVector& args) {
@@ -72,13 +73,8 @@ class BuffetHelperProxy {
       message = args.front();
 
     ErrorPtr error;
-    auto response = CallMethodAndBlock(
-        manager_proxy_,
-        kManagerInterface, kManagerTestMethod, &error,
-        message);
     std::string response_message;
-    if (!response ||
-        !ExtractMethodCallResults(response.get(), &error, &response_message)) {
+    if (!manager_proxy_->TestMethod(message, &response_message, &error)) {
       std::cout << "Failed to receive a response:"
                 << error->GetMessage() << std::endl;
       return EX_UNAVAILABLE;
@@ -97,14 +93,12 @@ class BuffetHelperProxy {
     }
 
     ErrorPtr error;
-    auto response = CallMethodAndBlock(
-        manager_proxy_,
-        kManagerInterface, kManagerStartDevice, &error);
-    if (!response || !ExtractMethodCallResults(response.get(), &error)) {
+    if (!manager_proxy_->StartDevice(&error)) {
       std::cout << "Failed to receive a response:"
                 << error->GetMessage() << std::endl;
       return EX_UNAVAILABLE;
     }
+
     return EX_OK;
   }
 
@@ -117,12 +111,8 @@ class BuffetHelperProxy {
     }
 
     ErrorPtr error;
-    auto response = CallMethodAndBlock(
-        manager_proxy_,
-        kManagerInterface, kManagerCheckDeviceRegistered, &error);
     std::string device_id;
-    if (!response ||
-        !ExtractMethodCallResults(response.get(), &error, &device_id)) {
+    if (!manager_proxy_->CheckDeviceRegistered(&device_id, &error)) {
       std::cout << "Failed to receive a response:"
                 << error->GetMessage() << std::endl;
       return EX_UNAVAILABLE;
@@ -143,11 +133,8 @@ class BuffetHelperProxy {
     }
 
     ErrorPtr error;
-    auto response = CallMethodAndBlock(
-        manager_proxy_, kManagerInterface, kManagerGetDeviceInfo, &error);
     std::string device_info;
-    if (!response ||
-        !ExtractMethodCallResults(response.get(), &error, &device_info)) {
+    if (!manager_proxy_->GetDeviceInfo(&device_info, &error)) {
       std::cout << "Failed to receive a response:"
                 << error->GetMessage() << std::endl;
       return EX_UNAVAILABLE;
@@ -176,15 +163,8 @@ class BuffetHelperProxy {
     }
 
     ErrorPtr error;
-    static const int timeout_ms = 3000;
-    auto response = CallMethodAndBlockWithTimeout(
-        timeout_ms,
-        manager_proxy_,
-        kManagerInterface, kManagerRegisterDevice, &error,
-        params);
     std::string device_id;
-    if (!response ||
-        !ExtractMethodCallResults(response.get(), &error, &device_id)) {
+    if (!manager_proxy_->RegisterDevice(params, &device_id, &error)) {
       std::cout << "Failed to receive a response:"
                 << error->GetMessage() << std::endl;
       return EX_UNAVAILABLE;
@@ -204,11 +184,7 @@ class BuffetHelperProxy {
 
     ErrorPtr error;
     VariantDictionary property_set{{args.front(), args.back()}};
-    auto response = CallMethodAndBlock(
-        manager_proxy_,
-        kManagerInterface, kManagerUpdateStateMethod, &error,
-        property_set);
-    if (!response || !ExtractMethodCallResults(response.get(), &error)) {
+    if (!manager_proxy_->UpdateState(property_set, &error)) {
       std::cout << "Failed to receive a response:"
                 << error->GetMessage() << std::endl;
       return EX_UNAVAILABLE;
@@ -225,11 +201,7 @@ class BuffetHelperProxy {
     }
 
     ErrorPtr error;
-    auto response = CallMethodAndBlock(
-        manager_proxy_,
-        kManagerInterface, kManagerAddCommand, &error,
-        args.front());
-    if (!response || !ExtractMethodCallResults(response.get(), &error)) {
+    if (!manager_proxy_->AddCommand(args.front(), &error)) {
       std::cout << "Failed to receive a response:"
                 << error->GetMessage() << std::endl;
       return EX_UNAVAILABLE;
@@ -247,7 +219,7 @@ class BuffetHelperProxy {
 
     ErrorPtr error;
     auto response = CallMethodAndBlock(
-        manager_proxy_,
+        root_proxy_,
         dbus::kObjectManagerInterface, dbus::kObjectManagerGetManagedObjects,
         &error);
     if (!response) {
@@ -261,7 +233,7 @@ class BuffetHelperProxy {
 
  private:
   scoped_refptr<dbus::Bus> bus_;
-  dbus::ObjectProxy* manager_proxy_{nullptr};
+  std::unique_ptr<org::chromium::Buffet::ManagerProxy> manager_proxy_;
   dbus::ObjectProxy* root_proxy_{nullptr};
 };
 

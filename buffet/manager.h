@@ -18,6 +18,7 @@
 #include <chromeos/errors/error.h>
 
 #include "buffet/device_registration_info.h"
+#include "buffet/org.chromium.Buffet.Manager.h"
 
 namespace chromeos {
 namespace dbus_utils {
@@ -31,10 +32,14 @@ class CommandManager;
 class StateChangeQueue;
 class StateManager;
 
+template<typename... Types>
+using DBusMethodResponse =
+    scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<Types...>>;
+
 // The Manager is responsible for global state of Buffet.  It exposes
 // interfaces which affect the entire device such as device registration and
 // device state.
-class Manager final {
+class Manager final : public org::chromium::Buffet::ManagerInterface {
  public:
   explicit Manager(
       const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
@@ -47,32 +52,24 @@ class Manager final {
  private:
   // DBus methods:
   // Handles calls to org.chromium.Buffet.Manager.StartDevice().
-  void HandleStartDevice(
-      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<>> response);
+  void StartDevice(DBusMethodResponse<> response) override;
   // Handles calls to org.chromium.Buffet.Manager.CheckDeviceRegistered().
-  void HandleCheckDeviceRegistered(
-      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<std::string>>
-          response);
+  void CheckDeviceRegistered(DBusMethodResponse<std::string> response) override;
   // Handles calls to org.chromium.Buffet.Manager.GetDeviceInfo().
-  void HandleGetDeviceInfo(
-      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<std::string>>
-          response);
+  void GetDeviceInfo(DBusMethodResponse<std::string> response) override;
   // Handles calls to org.chromium.Buffet.Manager.RegisterDevice().
-  void HandleRegisterDevice(
-      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<std::string>>
-          response,
-      const std::map<std::string, std::string>& params);
+  void RegisterDevice(DBusMethodResponse<std::string> response,
+                      const chromeos::VariantDictionary& params) override;
   // Handles calls to org.chromium.Buffet.Manager.UpdateState().
-  void HandleUpdateState(
-      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<>> response,
-      const chromeos::VariantDictionary& property_set);
+  void UpdateState(DBusMethodResponse<> response,
+                   const chromeos::VariantDictionary& property_set) override;
   // Handles calls to org.chromium.Buffet.Manager.AddCommand().
-  void HandleAddCommand(
-      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<>> response,
-      const std::string& json_command);
+  void AddCommand(DBusMethodResponse<> response,
+                  const std::string& json_command) override;
   // Handles calls to org.chromium.Buffet.Manager.Test()
-  std::string HandleTestMethod(const std::string& message);
+  std::string TestMethod(const std::string& message) override;
 
+  org::chromium::Buffet::ManagerAdaptor dbus_adaptor_{this};
   chromeos::dbus_utils::DBusObject dbus_object_;
 
   std::shared_ptr<CommandManager> command_manager_;

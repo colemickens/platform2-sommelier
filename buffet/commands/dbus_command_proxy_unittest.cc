@@ -118,15 +118,15 @@ class DBusCommandProxyTest : public ::testing::Test {
   }
 
   std::string GetStatus() const {
-    return GetCommandProxy()->status_.value();
+    return GetCommandProxy()->dbus_adaptor_.GetStatus();
   }
 
   int32_t GetProgress() const {
-    return GetCommandProxy()->progress_.value();
+    return GetCommandProxy()->dbus_adaptor_.GetProgress();
   }
 
   VariantDictionary GetParameters() const {
-    return GetCommandProxy()->parameters_.value();
+    return GetCommandProxy()->dbus_adaptor_.GetParameters();
   }
 
   std::unique_ptr<dbus::Response> CallMethod(
