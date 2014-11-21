@@ -20,14 +20,9 @@
 #include "chromiumos-wide-profiling/quipper_string.h"
 #include "chromiumos-wide-profiling/utils.h"
 
-using quipper::kPerfFormat;
-using quipper::kProtoTextFormat;
-using quipper::BufferToFile;
-using quipper::FileToBuffer;
-using quipper::FormatAndFile;
-using quipper::PerfDataProto;
-using quipper::PerfSerializer;
 using google::protobuf::TextFormat;
+
+namespace quipper {
 
 namespace {
 
@@ -79,8 +74,6 @@ bool WriteOutput(const FormatAndFile& output, PerfSerializer* perf_serializer) {
 }
 
 }  // namespace
-
-namespace quipper {
 
 // Format string for perf.data.
 const char kPerfFormat[] = "perf";
