@@ -190,13 +190,20 @@ bool PerfSerializer::SerializePerfEventAttr(
   S(sample_id_all);
   S(exclude_host);
   S(exclude_guest);
+  S(exclude_callchain_kernel);
+  S(exclude_callchain_user);
+  S(mmap2);
+  S(comm_exec);
   if (perf_event_attr_proto->watermark())
     S(wakeup_watermark);
   else
     S(wakeup_events);
   S(bp_type);
-  S(bp_len);
+  S(bp_addr);  // TODO(dhsharp): or config1?
+  S(bp_len);   // TODO(dhsharp): or config2?
   S(branch_sample_type);
+  S(sample_regs_user);
+  S(sample_stack_user);
 #undef S
   return true;
 }
@@ -235,13 +242,20 @@ bool PerfSerializer::DeserializePerfEventAttr(
   S(sample_id_all);
   S(exclude_host);
   S(exclude_guest);
+  S(exclude_callchain_kernel);
+  S(exclude_callchain_user);
+  S(mmap2);
+  S(comm_exec);
   if (perf_event_attr->watermark)
     S(wakeup_watermark);
   else
     S(wakeup_events);
   S(bp_type);
-  S(bp_len);
+  S(bp_addr);  // TODO(dhsharp): or config1?
+  S(bp_len);   // TODO(dhsharp): or config2?
   S(branch_sample_type);
+  S(sample_regs_user);
+  S(sample_stack_user);
 #undef S
   return true;
 }
@@ -288,6 +302,10 @@ bool PerfSerializer::SerializeEvent(
       if (!SerializeMMapSample(raw_event, event_proto->mutable_mmap_event()))
         return false;
       break;
+    case PERF_RECORD_MMAP2:
+      if (!SerializeMMap2Sample(raw_event, event_proto->mutable_mmap_event()))
+        return false;
+      break;
     case PERF_RECORD_COMM:
       if (!SerializeCommSample(raw_event, event_proto->mutable_comm_event()))
         return false;
@@ -330,7 +348,7 @@ bool PerfSerializer::DeserializeEvent(
   // overrun the allocated space. sizeof(event_t) is almost meaningless wrt the
   // space necessary for the event--it is the size of the largest member of the
   // union. For better or worse, this is dominated by the PATH_MAX-sized array
-  // in struct mmap_event. However, events now often have a "sample id" placed
+  // in struct mmap2_event. However, events now often have a "sample id" placed
   // immediately after it. Previously to this, an on-stack event_t was used,
   // which is dangerous because the stack could have been overrun. Since no
   // issues were reported, we can presume that amount of space was sufficient.
@@ -352,6 +370,10 @@ bool PerfSerializer::DeserializeEvent(
       break;
     case PERF_RECORD_MMAP:
       if (!DeserializeMMapSample(event_proto.mmap_event(), temp_event.get()))
+        event_deserialized = false;
+      break;
+    case PERF_RECORD_MMAP2:
+      if (!DeserializeMMap2Sample(event_proto.mmap_event(), temp_event.get()))
         event_deserialized = false;
       break;
     case PERF_RECORD_COMM:
@@ -540,6 +562,47 @@ bool PerfSerializer::DeserializeMMapSample(
   mmap.start = sample.start();
   mmap.len = sample.len();
   mmap.pgoff = sample.pgoff();
+  snprintf(mmap.filename, PATH_MAX, "%s", sample.filename().c_str());
+
+  return DeserializeSampleInfo(sample.sample_info(), event);
+}
+
+bool PerfSerializer::SerializeMMap2Sample(
+    const event_t& event,
+    PerfDataProto_MMapEvent* sample) const {
+  const struct mmap2_event& mmap = event.mmap2;
+  sample->set_pid(mmap.pid);
+  sample->set_tid(mmap.tid);
+  sample->set_start(mmap.start);
+  sample->set_len(mmap.len);
+  sample->set_pgoff(mmap.pgoff);
+  sample->set_maj(mmap.maj);
+  sample->set_min(mmap.min);
+  sample->set_ino(mmap.ino);
+  sample->set_ino_generation(mmap.ino_generation);
+  sample->set_prot(mmap.prot);
+  sample->set_flags(mmap.flags);
+  sample->set_filename(mmap.filename);
+  sample->set_filename_md5_prefix(Md5Prefix(mmap.filename));
+
+  return SerializeSampleInfo(event, sample->mutable_sample_info());
+}
+
+bool PerfSerializer::DeserializeMMap2Sample(
+    const PerfDataProto_MMapEvent& sample,
+    event_t* event) const {
+  struct mmap2_event& mmap = event->mmap2;
+  mmap.pid = sample.pid();
+  mmap.tid = sample.tid();
+  mmap.start = sample.start();
+  mmap.len = sample.len();
+  mmap.pgoff = sample.pgoff();
+  mmap.maj = sample.maj();
+  mmap.min = sample.min();
+  mmap.ino = sample.ino();
+  mmap.ino_generation = sample.ino_generation();
+  mmap.prot = sample.prot();
+  mmap.flags = sample.flags();
   snprintf(mmap.filename, PATH_MAX, "%s", sample.filename().c_str());
 
   return DeserializeSampleInfo(sample.sample_info(), event);

@@ -17,7 +17,7 @@ message PerfDataProto {
   // Perf event attribute. Stores the event description.
   // This data structure is defined in the linux kernel:
   // $kernel/include/uapi/linux/perf_event.h.
-  // Next tag: 36
+  // Next tag: 42
   message PerfEventAttr {
     // Type of the event. Type is an enumeration and can be one of the values
     // described at: $kernel/include/linux/perf_event.h.
@@ -111,6 +111,18 @@ message PerfDataProto {
     // Exclude events that happen on a guest OS.
     optional bool exclude_guest = 27;
 
+    // Exclude kernel callchains.
+    optional bool exclude_callchain_kernel = 36;
+
+    // Exclude user callchains.
+    optional bool exclude_callchain_user = 37;
+
+    // Include mmap2 events that have inode data.
+    optional bool mmap2 = 38;
+
+    // Flag comm events that are due to an exec.
+    optional bool comm_exec = 39;
+
     // Contains the number of events after which we wake up.
     optional uint32 wakeup_events = 28;
 
@@ -134,6 +146,12 @@ message PerfDataProto {
 
     // Contains the type of branch, example: user, kernel, call, return, etc.
     optional uint64 branch_sample_type = 35;
+
+    // Defines set of user regs to dump on samples.
+    optional uint64 sample_regs_user = 40;
+
+    // Defines size of the user stack to dump on samples.
+    optional uint32 sample_stack_user = 41;
   }
 
   // Describes a perf.data file attribute.
@@ -204,7 +222,8 @@ message PerfDataProto {
     optional SampleInfo sample_info = 6;
   }
 
-  // Next tag: 9
+  // Represents both mmap_event and mmap2_event.
+  // Next tag: 15
   message MMapEvent {
     // Process id.
     optional uint32 pid = 1;
@@ -220,6 +239,19 @@ message PerfDataProto {
 
     // PG Offset.
     optional uint64 pgoff = 5;
+
+    // Only in MMAP2 events, information about the mapped inode:
+    // Major/minor numbers
+    optional uint32 maj = 9;
+    optional uint32 min = 10;
+    // Inode number and generation.
+    optional uint64 ino = 11;
+    optional uint64 ino_generation = 12;
+    // Protection bits and flags.
+    optional uint32 prot = 13;
+    optional uint32 flags = 14;
+
+    // In both MMAP and MMAP2 events:
 
     // Filename.
     optional string filename = 6;

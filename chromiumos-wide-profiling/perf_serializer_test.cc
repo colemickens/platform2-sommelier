@@ -436,6 +436,75 @@ TEST(PerfSerializerTest, SerializesAndDeserializesTraceMetadata) {
   EXPECT_EQ(tracing_metadata_value, deserializer.tracing_data());
 }
 
+TEST(PerfSerializerTest, SerializesAndDeserializesMmapEvents) {
+  std::stringstream input;
+
+  // header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // data
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_IP |
+                                              PERF_SAMPLE_TID,
+                                              true /*sample_id_all*/)
+      .WriteTo(&input);
+
+  // PERF_RECORD_MMAP
+  testing::ExampleMmapEvent_Tid(
+      1001, 0x1c1000, 0x1000, 0, "/usr/lib/foo.so").WriteTo(&input);
+
+  // PERF_RECORD_MMAP2
+  testing::ExampleMmap2Event_Tid(
+      1002, 0x2c1000, 0x2000, 0x3000, "/usr/lib/bar.so").WriteTo(&input);
+
+  // Parse and Serialize
+
+  PerfSerializer perf_serializer;
+  // Disable mapping threshold--we have no mappable events.
+  PerfSerializer::Options options;
+  options.sample_mapping_percentage_threshold = 0.0;
+  perf_serializer.set_options(options);
+  PerfDataProto perf_data_proto;
+  EXPECT_TRUE(perf_serializer.ReadFromString(input.str()));
+  EXPECT_TRUE(perf_serializer.Serialize(&perf_data_proto));
+
+  EXPECT_EQ(2, perf_data_proto.events().size());
+
+  {
+    const PerfDataProto::PerfEvent& event = perf_data_proto.events(0);
+    EXPECT_EQ(PERF_RECORD_MMAP, event.header().type());
+    EXPECT_TRUE(event.has_mmap_event());
+    const PerfDataProto::MMapEvent& mmap = event.mmap_event();
+    EXPECT_EQ(1001, mmap.pid());
+    EXPECT_EQ(1001, mmap.tid());
+    EXPECT_EQ(0x1c1000, mmap.start());
+    EXPECT_EQ(0x1000, mmap.len());
+    EXPECT_EQ(0, mmap.pgoff());
+    EXPECT_EQ("/usr/lib/foo.so", mmap.filename());
+  }
+
+  {
+    const PerfDataProto::PerfEvent& event = perf_data_proto.events(1);
+    EXPECT_EQ(PERF_RECORD_MMAP2, event.header().type());
+    EXPECT_TRUE(event.has_mmap_event());
+    const PerfDataProto::MMapEvent& mmap = event.mmap_event();
+    EXPECT_EQ(1002, mmap.pid());
+    EXPECT_EQ(1002, mmap.tid());
+    EXPECT_EQ(0x2c1000, mmap.start());
+    EXPECT_EQ(0x2000, mmap.len());
+    EXPECT_EQ(0x3000, mmap.pgoff());
+    EXPECT_EQ("/usr/lib/bar.so", mmap.filename());
+    // These values are hard-coded in ExampleMmap2Event_Tid:
+    EXPECT_EQ(6, mmap.maj());
+    EXPECT_EQ(7, mmap.min());
+    EXPECT_EQ(8, mmap.ino());
+    EXPECT_EQ(9, mmap.ino_generation());
+    EXPECT_EQ(1|2, mmap.prot());
+    EXPECT_EQ(2, mmap.flags());
+  }
+}
+
 }  // namespace quipper
 
 int main(int argc, char * argv[]) {

@@ -133,6 +133,12 @@ class PerfSerializer : public PerfParser {
       const quipper::PerfDataProto_MMapEvent& sample,
       event_t* event) const;
 
+  bool SerializeMMap2Sample(const event_t& event,
+                           quipper::PerfDataProto_MMapEvent* sample) const;
+  bool DeserializeMMap2Sample(
+      const quipper::PerfDataProto_MMapEvent& sample,
+      event_t* event) const;
+
   bool SerializeCommSample(
       const event_t& event,
       quipper::PerfDataProto_CommEvent* sample) const;
