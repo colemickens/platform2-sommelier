@@ -45,7 +45,7 @@ class Device : public base::RefCounted<Device>,
     }
   };
 
-  Device();
+  explicit Device(const std::string& device_name);
   virtual ~Device();
 
   // Register Device DBus object.
@@ -58,8 +58,8 @@ class Device : public base::RefCounted<Device>,
   virtual void RegisterInterface(const WiFiInterface& interface);
   virtual void DeregisterInterface(const WiFiInterface& interface);
 
-  // Parse device information from NL80211 message.
-  void ParseWiFiPhyInfo(const shill::Nl80211Message& msg);
+  // Parse device capability from NL80211 message.
+  void ParseWiphyCapability(const shill::Nl80211Message& msg);
 
   // Function for claiming/releasing ownership of this device. This will invoke
   // dbus calls to shill to claim/release all the interfaces reside on this

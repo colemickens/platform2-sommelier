@@ -37,7 +37,7 @@ const Device::WiFiInterface kMonitorModeInterface = {
 
 class DeviceTest : public testing::Test {
  public:
-  DeviceTest() : device_(new Device()) {}
+  DeviceTest() : device_(new Device(kDeviceName)) {}
 
   void VerifyInterfaceList(
       const vector<Device::WiFiInterface>& interface_list) {
@@ -125,16 +125,6 @@ TEST_F(DeviceTest, PreferredAPInterface) {
   // should be set to empty string.
   device_->DeregisterInterface(kManagedModeInterface1);
   VerifyPreferredApInterface("");
-}
-
-TEST_F(DeviceTest, ParseWiFiPhyInfo) {
-  // PHY info message.
-  shill::NewWiphyMessage message;
-  message.attributes()->CreateNl80211Attribute(NL80211_ATTR_WIPHY_NAME);
-  message.attributes()->SetStringAttributeValue(NL80211_ATTR_WIPHY_NAME,
-                                                kDeviceName);
-  device_->ParseWiFiPhyInfo(message);
-  EXPECT_EQ(kDeviceName, device_->GetDeviceName());
 }
 
 }  // namespace apmanager

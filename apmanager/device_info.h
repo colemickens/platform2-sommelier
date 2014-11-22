@@ -31,13 +31,9 @@ namespace apmanager {
 
 class Manager;
 
-// DeviceInfo will enumerate WiFi devices (PHYs) during startup, and use RTNL
-// to monitor creation/deletion of WiFi interfaces. Currently, we only enumerate
-// WiFi devices during startup, which would cause the WiFi devices to not get
-// enumerated if apmanager is started before WiFi drivers are loaded.
-// TODO(zqiu): add support for on-demand WiFi device enumeration, which will
-// enumerate WiFi device when interface is detected on a phy that has not been
-// enumerate.
+// DeviceInfo will enumerate WiFi devices (PHYs) during startup and on-demand
+// (when new interface is detected but the corresponding device is not
+// enumerated). And use RTNL to monitor creation/deletion of WiFi interfaces.
 class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
  public:
   explicit DeviceInfo(Manager* manager);

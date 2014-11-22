@@ -114,6 +114,10 @@ class DeviceInfoTest : public testing::Test {
     device_info_.interface_infos_[interface.iface_index] = interface;
   }
 
+  void OnWiFiPhyInfoReceived(const Nl80211Message& message) {
+    device_info_.OnWiFiPhyInfoReceived(message);
+  }
+
   void OnWiFiInterfaceInfoReceived(const Nl80211Message& message) {
     device_info_.OnWiFiInterfaceInfoReceived(message);
   }
@@ -156,6 +160,31 @@ MATCHER_P2(IsGetInfoMessage, command, index, "") {
 
 MATCHER_P(IsInterface, interface, "") {
   return arg.Equals(interface);
+}
+
+MATCHER_P(IsDevice, device_name, "") {
+  return arg->GetDeviceName() == device_name;
+}
+
+TEST_F(DeviceInfoTest, EnumerateDevices) {
+  shill::NewWiphyMessage message;
+
+  // No device name in the message, failed to create device.
+  EXPECT_CALL(manager_, RegisterDevice(_)).Times(0);
+  OnWiFiPhyInfoReceived(message);
+
+  // Device name in the message, device should be created/register to manager.
+  message.attributes()->CreateNl80211Attribute(NL80211_ATTR_WIPHY_NAME);
+  message.attributes()->SetStringAttributeValue(NL80211_ATTR_WIPHY_NAME,
+                                                kTestDeviceName);
+  EXPECT_CALL(manager_, RegisterDevice(IsDevice(kTestDeviceName))).Times(1);
+  OnWiFiPhyInfoReceived(message);
+  Mock::VerifyAndClearExpectations(&manager_);
+
+  // Receive a message for a device already created, should not create/register
+  // device again.
+  EXPECT_CALL(manager_, RegisterDevice(_)).Times(0);
+  OnWiFiPhyInfoReceived(message);
 }
 
 TEST_F(DeviceInfoTest, IsWiFiInterface) {
@@ -306,16 +335,19 @@ TEST_F(DeviceInfoTest, ReceivePhyInfoBeforePhyIsEnumerated) {
   Device::WiFiInterface interface(
       kTestInterface0Name, "", kTestInterface0Index, NL80211_IFTYPE_AP);
   AddInterface(interface);
+  vector<Device::WiFiInterface> interface_list;
+  interface_list.push_back(interface);
 
   // Received PHY info for the interface when the corresponding PHY is not
-  // enumerated yet, that interface should be removed so the interface
-  // discovery can be retried the next time it is detected.
+  // enumerated yet, new device should be created and register to manager.
   shill::NewWiphyMessage message;
   message.attributes()->CreateNl80211Attribute(NL80211_ATTR_WIPHY_NAME);
   message.attributes()->SetStringAttributeValue(NL80211_ATTR_WIPHY_NAME,
                                                 kTestDeviceName);
+  EXPECT_CALL(manager_, RegisterDevice(IsDevice(kTestDeviceName))).Times(1);
   OnWiFiInterfacePhyInfoReceived(kTestInterface0Index, message);
-  VerifyInterfaceList(vector<Device::WiFiInterface>());
+  interface_list[0].device_name = kTestDeviceName;
+  VerifyInterfaceList(interface_list);
 }
 
 TEST_F(DeviceInfoTest, RegisterDevice) {
@@ -326,8 +358,7 @@ TEST_F(DeviceInfoTest, RegisterDevice) {
   VerifyDeviceList(device_list);
 
   // Register a device.
-  device_list.push_back(new Device());
-  device_list[0]->SetDeviceName(kTestDeviceName);
+  device_list.push_back(new Device(kTestDeviceName));
   EXPECT_CALL(manager_, RegisterDevice(device_list[0]));
   RegisterDevice(device_list[0]);
   VerifyDeviceList(device_list);

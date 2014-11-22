@@ -68,6 +68,8 @@ void DeviceInfo::Start() {
   rtnl_handler_->Start(sockets_.get());
   link_listener_.reset(
       new RTNLListener(RTNLHandler::kRequestLink, link_callback_));
+  // Request link infos.
+  rtnl_handler_->RequestDump(RTNLHandler::kRequestLink);
 }
 
 void DeviceInfo::Stop() {
@@ -94,8 +96,20 @@ void DeviceInfo::OnWiFiPhyInfoReceived(const shill::Nl80211Message& msg) {
     return;
   }
 
-  scoped_refptr<Device> device = new Device();
-  device->ParseWiFiPhyInfo(msg);
+  string device_name;
+  if (!msg.const_attributes()->GetStringAttributeValue(NL80211_ATTR_WIPHY_NAME,
+                                                       &device_name)) {
+    LOG(ERROR) << "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_WIPHY_NAME";
+    return;
+  }
+
+  if (GetDevice(device_name)) {
+    LOG(INFO) << "Device " << device_name << " already enumerated.";
+    return;
+  }
+
+  scoped_refptr<Device> device = new Device(device_name);
+  device->ParseWiphyCapability(msg);
 
   // Register device
   RegisterDevice(device);
@@ -273,19 +287,13 @@ void DeviceInfo::OnWiFiInterfacePhyInfoReceived(
   }
 
   scoped_refptr<Device> device = GetDevice(device_name);
+  // Create device if it is not enumerated yet.
   if (!device) {
-    LOG(ERROR) << "Trying to register an interface [" << iter->second.iface_name
-               << "] on a PHY [" << device_name << "] that's not enumerated";
-    // This should never happen, the PHY should already be enumerated by
-    // the time WiFi interface is detected, since we don't expected WiFi device
-    // to be inserted/removed during run time.
-    // In the case if we detect an interface before PHY enumeration is
-    // completed, remove the interface info now so it will retry the interface
-    // discovery process (GetWiFiInterfaceInfo and GetWiFiInterfacePhyInfo)
-    // again when the interface is detected next time. And hopefully by then the
-    // PHY enumeration is completed.
-    interface_infos_.erase(iface_index);
-    return;
+    device = new Device(device_name);
+    device->ParseWiphyCapability(msg);
+
+    // Register device
+    RegisterDevice(device);
   }
   iter->second.device_name = device_name;
 

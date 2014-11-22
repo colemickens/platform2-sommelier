@@ -51,7 +51,7 @@ void Manager::CreateService(
 
   service->RegisterAsync(dbus_object_->GetObjectManager().get(), sequencer);
   sequencer->OnAllTasksCompletedCall({
-      base::Bind(&Manager::ServiceRegistered,
+      base::Bind(&Manager::OnServiceRegistered,
                  base::Unretained(this),
                  base::Passed(&response),
                  base::Passed(&service))
@@ -101,13 +101,13 @@ void Manager::RegisterDevice(scoped_refptr<Device> device) {
                         sequencer,
                         device_identifier_++);
   sequencer->OnAllTasksCompletedCall({
-    base::Bind(&Manager::DeviceRegistered,
+    base::Bind(&Manager::OnDeviceRegistered,
                base::Unretained(this),
                device)
   });
 }
 
-void Manager::ServiceRegistered(
+void Manager::OnServiceRegistered(
     scoped_ptr<DBusMethodResponse<dbus::ObjectPath>> response,
     scoped_ptr<Service> service,
     bool success) {
@@ -122,7 +122,7 @@ void Manager::ServiceRegistered(
   response->Return(service_path);
 }
 
-void Manager::DeviceRegistered(scoped_refptr<Device> device, bool success) {
+void Manager::OnDeviceRegistered(scoped_refptr<Device> device, bool success) {
   // Success should always be true since we've said that failures are fatal.
   CHECK(success) << "Init of one or more objects has failed.";
 

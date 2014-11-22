@@ -23,7 +23,7 @@ class MockDevice : public Device {
                void(const WiFiInterface& interface));
   MOCK_METHOD1(DeregisterInterface,
                void(const WiFiInterface& interface));
-  MOCK_METHOD1(ParseWiFiPhyInfo,
+  MOCK_METHOD1(ParseWiphyCapability,
                void(const shill::Nl80211Message& msg));
   MOCK_METHOD0(ClaimDevice, bool());
   MOCK_METHOD0(ReleaseDevice, bool());

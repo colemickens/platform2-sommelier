@@ -54,7 +54,7 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
 
   // A callback that will be called when the Service/Config D-Bus
   // objects/interfaces are exported successfully and ready to be used.
-  void ServiceRegistered(
+  void OnServiceRegistered(
       scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<dbus::ObjectPath>>
           response,
       scoped_ptr<Service> service,
@@ -62,7 +62,7 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
 
   // A callback that will be called when a Device D-Bus object/interface is
   // exported successfully and ready to be used.
-  void DeviceRegistered(scoped_refptr<Device> device, bool success);
+  void OnDeviceRegistered(scoped_refptr<Device> device, bool success);
 
   int service_identifier_;
   int device_identifier_;

@@ -15,8 +15,9 @@ using std::string;
 
 namespace apmanager {
 
-Device::Device()
+Device::Device(const string& device_name)
     : org::chromium::apmanager::DeviceAdaptor(this) {
+  SetDeviceName(device_name);
   SetInUsed(false);
 }
 
@@ -67,16 +68,7 @@ void Device::DeregisterInterface(const WiFiInterface& interface) {
   }
 }
 
-void Device::ParseWiFiPhyInfo(const shill::Nl80211Message& msg) {
-  string device_name;
-  if (!msg.const_attributes()->GetStringAttributeValue(NL80211_ATTR_WIPHY_NAME,
-                                                       &device_name)) {
-    LOG(ERROR) << "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_WIPHY_NAME";
-    return;
-  }
-  LOG(INFO) << "device_name: " << device_name;
-  SetDeviceName(device_name);
-
+void Device::ParseWiphyCapability(const shill::Nl80211Message& msg) {
   // TODO(zqiu): Parse capabilities.
 }
 
