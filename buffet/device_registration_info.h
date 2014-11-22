@@ -23,6 +23,10 @@ namespace base {
 class Value;
 }  // namespace base
 
+namespace chromeos {
+class KeyValueStore;
+}  // namespace chromeos
+
 namespace buffet {
 
 class CommandManager;
@@ -40,14 +44,18 @@ class DeviceRegistrationInfo {
   // This constructor uses CURL HTTP transport.
   DeviceRegistrationInfo(
       const std::shared_ptr<CommandManager>& command_manager,
-      const std::shared_ptr<StateManager>& state_manager);
+      const std::shared_ptr<StateManager>& state_manager,
+      std::unique_ptr<chromeos::KeyValueStore> config_store);
   // This constructor allows to pass in a custom HTTP transport
   // (mainly for testing).
   DeviceRegistrationInfo(
       const std::shared_ptr<CommandManager>& command_manager,
       const std::shared_ptr<StateManager>& state_manager,
+      std::unique_ptr<chromeos::KeyValueStore> config_store,
       const std::shared_ptr<chromeos::http::Transport>& transport,
       const std::shared_ptr<StorageInterface>& storage);
+
+  ~DeviceRegistrationInfo();
 
   // Returns the authorization HTTP header that can be used to talk
   // to GCD server for authenticated device communication.
@@ -155,33 +163,35 @@ class DeviceRegistrationInfo {
 
   void PublishStateUpdates();
 
+  void GetParamValue(
+    const std::map<std::string, std::string>& params,
+    const std::string& param_name,
+    std::string* param_value);
+
   // Builds Cloud API devices collection REST resouce which matches
   // current state of the device including command definitions
   // for all supported commands and current device state.
   std::unique_ptr<base::DictionaryValue> BuildDeviceResource(
       chromeos::ErrorPtr* error);
 
-  // Persistent data. Some of default values for testing purposes are used.
-  // TODO(avakulenko): remove these default values in the future.
-  // http://crbug.com/364692
-  std::string client_id_ = "58855907228.apps.googleusercontent.com";
-  std::string client_secret_ = "eHSAREAHrIqPsHBxCE9zPPBi";
-  std::string api_key_ = "AIzaSyDSq46gG-AxUnC3zoqD9COIPrjolFsMfMA";
+  std::string client_id_;
+  std::string client_secret_;
+  std::string api_key_;
   std::string refresh_token_;
   std::string device_id_;
   std::string device_robot_account_;
-  std::string oauth_url_ = "https://accounts.google.com/o/oauth2/";
-  std::string service_url_ = "https://www.googleapis.com/clouddevices/v1/";
+  std::string oauth_url_;
+  std::string service_url_;
 
   // Transient data
   std::string access_token_;
   base::Time access_token_expiration_;
   std::string ticket_id_;
-  std::string device_kind_ = "vendor";
-  std::string name_ = "coffee_pot";
-  std::string display_name_ = "Coffee Pot";
-  std::string description_ = "Easy to clean";
-  std::string location_ = "Kitchen";
+  std::string device_kind_;
+  std::string name_;
+  std::string display_name_;
+  std::string description_;
+  std::string location_;
 
   // HTTP transport used for communications.
   std::shared_ptr<chromeos::http::Transport> transport_;
@@ -191,6 +201,9 @@ class DeviceRegistrationInfo {
   std::shared_ptr<CommandManager> command_manager_;
   // Device state manager.
   std::shared_ptr<StateManager> state_manager_;
+
+  // Buffet configuration.
+  std::unique_ptr<chromeos::KeyValueStore> config_store_;
 
   friend class TestHelper;
   DISALLOW_COPY_AND_ASSIGN(DeviceRegistrationInfo);

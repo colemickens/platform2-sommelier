@@ -15,6 +15,7 @@
 #include <chromeos/data_encoding.h>
 #include <chromeos/errors/error_codes.h>
 #include <chromeos/http/http_utils.h>
+#include <chromeos/key_value_store.h>
 #include <chromeos/mime_utils.h>
 #include <chromeos/strings/string_utils.h>
 #include <chromeos/url_utils.h>
@@ -57,18 +58,6 @@ namespace {
 
 const base::FilePath::CharType kDeviceInfoFilePath[] =
     FILE_PATH_LITERAL("/var/lib/buffet/device_reg_info");
-
-bool GetParamValue(
-    const std::map<std::string, std::string>& params,
-    const std::string& param_name,
-    std::string* param_value) {
-  auto p = params.find(param_name);
-  if (p == params.end())
-    return false;
-
-  *param_value = p->second;
-  return true;
-}
 
 std::pair<std::string, std::string> BuildAuthHeader(
     const std::string& access_token_type,
@@ -155,10 +144,12 @@ namespace buffet {
 
 DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<CommandManager>& command_manager,
-    const std::shared_ptr<StateManager>& state_manager)
+    const std::shared_ptr<StateManager>& state_manager,
+    std::unique_ptr<chromeos::KeyValueStore> config_store)
     : DeviceRegistrationInfo(
         command_manager,
         state_manager,
+        std::move(config_store),
         chromeos::http::Transport::CreateDefault(),
         // TODO(avakulenko): Figure out security implications of storing
         // this data unencrypted.
@@ -168,13 +159,17 @@ DeviceRegistrationInfo::DeviceRegistrationInfo(
 DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<CommandManager>& command_manager,
     const std::shared_ptr<StateManager>& state_manager,
+    std::unique_ptr<chromeos::KeyValueStore> config_store,
     const std::shared_ptr<chromeos::http::Transport>& transport,
     const std::shared_ptr<StorageInterface>& storage)
     : transport_{transport},
       storage_{storage},
       command_manager_{command_manager},
-      state_manager_{state_manager} {
+      state_manager_{state_manager},
+      config_store_{std::move(config_store)} {
 }
+
+DeviceRegistrationInfo::~DeviceRegistrationInfo() = default;
 
 std::pair<std::string, std::string>
     DeviceRegistrationInfo::GetAuthorizationHeader() const {
@@ -831,6 +826,20 @@ void DeviceRegistrationInfo::PublishStateUpdates() {
       GetDeviceURL("patchState"),
       &body,
       base::Bind(&IgnoreCloudResult), base::Bind(&IgnoreCloudError));
+}
+
+void DeviceRegistrationInfo::GetParamValue(
+    const std::map<std::string, std::string>& params,
+    const std::string& param_name,
+    std::string* param_value) {
+  auto p = params.find(param_name);
+  if (p != params.end()) {
+    *param_value = p->second;
+    return;
+  }
+
+  bool present = config_store_->GetString(param_name, param_value);
+  CHECK(present) << "No default for parameter " << param_name;
 }
 
 }  // namespace buffet

@@ -9,6 +9,7 @@
 #include <chromeos/bind_lambda.h>
 #include <chromeos/http/http_request.h>
 #include <chromeos/http/http_transport_fake.h>
+#include <chromeos/key_value_store.h>
 #include <chromeos/mime_utils.h>
 #include <gtest/gtest.h>
 
@@ -169,8 +170,21 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     transport_ = std::make_shared<chromeos::http::fake::Transport>();
     command_manager_ = std::make_shared<CommandManager>();
     state_manager_ = std::make_shared<StateManager>(&mock_state_change_queue_);
+    std::unique_ptr<chromeos::KeyValueStore> config_store{
+      new chromeos::KeyValueStore};
+    config_store->SetString("client_id", test_data::kClientId);
+    config_store->SetString("client_secret", test_data::kClientSecret);
+    config_store->SetString("api_key", test_data::kApiKey);
+    config_store->SetString("device_kind",  "vendor");
+    config_store->SetString("name",  "coffee_pot");
+    config_store->SetString("display_name",  "Coffee Pot");
+    config_store->SetString("description",  "Easy to clean");
+    config_store->SetString("location",  "Kitchen");
+    config_store->SetString("oauth_url", test_data::kOAuthURL);
+    config_store->SetString("service_url", test_data::kServiceURL);
     dev_reg_ = std::unique_ptr<DeviceRegistrationInfo>(
         new DeviceRegistrationInfo(command_manager_, state_manager_,
+                                   std::move(config_store),
                                    transport_, storage_));
   }
 

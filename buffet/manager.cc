@@ -14,6 +14,7 @@
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/exported_object_manager.h>
 #include <chromeos/errors/error.h>
+#include <chromeos/key_value_store.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <dbus/values_util.h>
@@ -49,8 +50,14 @@ void Manager::RegisterAsync(const AsyncEventSequencer::CompletionAction& cb) {
       new StateChangeQueue(kMaxStateChangeQueueSize));
   state_manager_ = std::make_shared<StateManager>(state_change_queue_.get());
   state_manager_->Startup();
+  std::unique_ptr<chromeos::KeyValueStore> config_store{
+    new chromeos::KeyValueStore};
+  config_store->Load(base::FilePath(
+      FILE_PATH_LITERAL("/etc/buffet/buffet.conf")));
   device_info_ = std::unique_ptr<DeviceRegistrationInfo>(
-      new DeviceRegistrationInfo(command_manager_, state_manager_));
+      new DeviceRegistrationInfo(command_manager_,
+                                 state_manager_,
+                                 std::move(config_store)));
   device_info_->Load();
   dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAsync(cb);
