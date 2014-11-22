@@ -8,15 +8,55 @@
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_loop.h>
+#include <chromeos/errors/error.h>
+#include <chromeos/variant_dictionary.h>
+#include <dbus/bus.h>
+
+#include "buffet/dbus-proxies.h"
+#include "buffet/libbuffet/dbus_constants.h"
+#include "privetd/device_delegate.h"
 
 namespace privetd {
 
 namespace {
 
+using chromeos::VariantDictionary;
+using chromeos::ErrorPtr;
+
 class CloudDelegateImpl : public CloudDelegate {
  public:
-  CloudDelegateImpl() {}
-  ~CloudDelegateImpl() override {}
+  CloudDelegateImpl(const scoped_refptr<dbus::Bus>& bus, DeviceDelegate* device)
+      : manager_proxy_(bus,
+                       buffet::dbus_constants::kServiceName,
+                       buffet::dbus_constants::kManagerServicePath),
+        device_(device) {}
+
+  ~CloudDelegateImpl() override = default;
+
+  bool Init() {
+    // TODO(vitalybuka): check if buffet available and return false if missing.
+    ErrorPtr error;
+    // TODO(vitalybuka): monitor registration status.
+    if (!manager_proxy_.CheckDeviceRegistered(&cloud_id_, &error)) {
+      LOG(ERROR) << "CheckDeviceRegistered failed:" << error->GetMessage();
+      state_ = ConnectionState(ConnectionState::kUnconfigured);
+      return true;
+    }
+
+    std::string json;
+    // TODO(vitalybuka): monitor device status using state of GCD notification
+    // channel.
+    if (!manager_proxy_.GetDeviceInfo(&json, &error)) {
+      LOG(ERROR) << "GetDeviceInfo failed:" << error->GetMessage();
+      state_ = ConnectionState(ConnectionState::kOffline);
+      return true;
+    }
+
+    LOG(ERROR) << "GetDeviceInfo:" << json;
+
+    state_ = ConnectionState(ConnectionState::kOnline);
+    return true;
+  }
 
   // CloudDelegate methods
   bool IsRequired() const override { return false; }
@@ -31,10 +71,10 @@ class CloudDelegateImpl : public CloudDelegate {
     VLOG(1) << "GCD Setup started. ticket_id: " << ticket_id
             << ", user:" << user;
     setup_state_ = SetupState(SetupState::kInProgress);
-    base::MessageLoop::current()->PostDelayedTask(
-        FROM_HERE,
-        base::Bind(&CloudDelegateImpl::OnSetupDone, weak_factory_.GetWeakPtr()),
-        base::TimeDelta::FromSeconds(5));
+    base::MessageLoop::current()->PostTask(
+        FROM_HERE, base::Bind(&CloudDelegateImpl::CallManagerRegisterDevice,
+                              weak_factory_.GetWeakPtr(), ticket_id));
+    // Return true because we tried setup.
     return true;
   }
 
@@ -47,6 +87,29 @@ class CloudDelegateImpl : public CloudDelegate {
     state_ = ConnectionState(ConnectionState::kOnline);
     cloud_id_ = "FakeCloudId";
   }
+
+  void CallManagerRegisterDevice(const std::string& ticket_id) {
+    VariantDictionary params{
+        {"ticket_id", ticket_id},
+        {"display_name", device_->GetName()},
+        {"description", device_->GetDescription()},
+        {"location", device_->GetLocation()},
+    };
+
+    ErrorPtr error;
+    // TODO(vitalybuka): async call with updating setup_state_ from result.
+    if (!manager_proxy_.RegisterDevice(params, &cloud_id_, &error)) {
+      LOG(ERROR) << "Failed to receive a response:" << error->GetMessage();
+      setup_state_ = SetupState(Error::kServerError);
+      return;
+    }
+    VLOG(1) << "Device registered: " << cloud_id_ << std::endl;
+    setup_state_ = SetupState(SetupState::kSuccess);
+  }
+
+  org::chromium::Buffet::ManagerProxy manager_proxy_;
+
+  DeviceDelegate* device_;
 
   // Primary state of GCD.
   ConnectionState state_{ConnectionState::kUnconfigured};
@@ -69,8 +132,13 @@ CloudDelegate::~CloudDelegate() {
 }
 
 // static
-std::unique_ptr<CloudDelegate> CloudDelegate::CreateDefault() {
-  return std::unique_ptr<CloudDelegate>(new CloudDelegateImpl);
+std::unique_ptr<CloudDelegate> CloudDelegate::CreateDefault(
+    const scoped_refptr<dbus::Bus>& bus,
+    DeviceDelegate* device) {
+  std::unique_ptr<CloudDelegateImpl> gcd(new CloudDelegateImpl(bus, device));
+  if (!gcd->Init())
+    gcd.reset();
+  return std::move(gcd);
 }
 
 }  // namespace privetd

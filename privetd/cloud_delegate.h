@@ -8,9 +8,17 @@
 #include <memory>
 #include <string>
 
+#include <base/memory/ref_counted.h>
+
 #include "privetd/privet_types.h"
 
+namespace dbus {
+class Bus;
+}  // namespace dbus
+
 namespace privetd {
+
+class DeviceDelegate;
 
 // Interface to provide GCD functionality for PrivetHandler.
 class CloudDelegate {
@@ -34,7 +42,9 @@ class CloudDelegate {
   virtual std::string GetCloudId() const = 0;
 
   // Create default instance.
-  static std::unique_ptr<CloudDelegate> CreateDefault();
+  static std::unique_ptr<CloudDelegate> CreateDefault(
+      const scoped_refptr<dbus::Bus>& bus,
+      DeviceDelegate* device);
 };
 
 }  // namespace privetd

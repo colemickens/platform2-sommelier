@@ -53,9 +53,9 @@ class Daemon : public chromeos::DBusDaemon {
     if (ret != EX_OK)
       return EX_OK;
 
-    cloud_ = privetd::CloudDelegate::CreateDefault();
     device_ = privetd::DeviceDelegate::CreateDefault(http_port_number_,
                                                      https_port_number_);
+    cloud_ = privetd::CloudDelegate::CreateDefault(bus_, device_.get());
     security_ = privetd::SecurityDelegate::CreateDefault();
     wifi_bootstrap_manager_.reset(new privetd::WifiBootstrapManager(
         privetd::constants::kDefaultWifiBootstrapStateFilePath));
@@ -154,8 +154,8 @@ class Daemon : public chromeos::DBusDaemon {
   uint16_t https_port_number_;
   bool allow_empty_auth_;
   bool enable_ping_;
-  std::unique_ptr<privetd::CloudDelegate> cloud_;
   std::unique_ptr<privetd::DeviceDelegate> device_;
+  std::unique_ptr<privetd::CloudDelegate> cloud_;
   std::unique_ptr<privetd::SecurityDelegate> security_;
   std::unique_ptr<privetd::WifiBootstrapManager> wifi_bootstrap_manager_;
   std::unique_ptr<privetd::PrivetHandler> privet_handler_;

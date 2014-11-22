@@ -4,6 +4,7 @@
       'deps': [
         'dbus-1',
         'openssl',
+        'libbuffet-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
       ],
@@ -21,6 +22,29 @@
         'security_delegate.cc',
         'wifi_bootstrap_manager.cc',
       ],
+      'actions': [
+        {
+          'action_name': 'generate-buffet-proxies',
+          'variables': {
+            # Workaround for issues with ../ in generate-chromeos-dbus-bindings.
+            'depth_abs': '<!(realpath <(DEPTH))',
+          },
+          'inputs': [
+            '<(depth_abs)/buffet/dbus_bindings/org.chromium.Buffet.Command.xml',
+            '<(depth_abs)/buffet/dbus_bindings/org.chromium.Buffet.Manager.xml',
+          ],
+          'outputs': [
+            '<(SHARED_INTERMEDIATE_DIR)/include/buffet/dbus-proxies.h',
+          ],
+          'action': [
+            '<!(which generate-chromeos-dbus-bindings)',
+            '>@(_inputs)',
+            '--proxy=>(_outputs)'
+          ],
+          'hard_dependency': 1,
+        },
+      ],
+      'includes': ['../common-mk/deps.gypi'],
     },
     {
       'target_name': 'privetd',
