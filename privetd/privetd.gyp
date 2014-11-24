@@ -17,6 +17,7 @@
       'sources': [
         'constants.cc',
         'cloud_delegate.cc',
+        'daemon_state.cc',
         'device_delegate.cc',
         'privet_handler.cc',
         'security_delegate.cc',

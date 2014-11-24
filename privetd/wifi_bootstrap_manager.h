@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 
+#include "privetd/daemon_state.h"
 #include "privetd/privet_types.h"
 #include "privetd/wifi_delegate.h"
 
@@ -29,7 +30,7 @@ class WifiBootstrapManager : public WifiDelegate {
 
   using StateListener = base::Callback<void(State)>;
 
-  explicit WifiBootstrapManager(const base::FilePath& state_file_path);
+  explicit WifiBootstrapManager(DaemonState* state_store);
   ~WifiBootstrapManager() override = default;
 
   virtual void AddStateChangeListener(const StateListener& cb);
@@ -71,7 +72,7 @@ class WifiBootstrapManager : public WifiDelegate {
   // Setup state is the temporal state of the most recent bootstrapping attempt.
   // It is not persisted to disk.
   SetupState setup_state_{SetupState::kNone};
-  const base::FilePath state_file_path_;
+  DaemonState* state_store_;
   const uint32_t connect_timeout_seconds_{60};
   const uint32_t bootstrap_timeout_seconds_{300};
   std::vector<StateListener> state_listeners_;

@@ -15,13 +15,10 @@ namespace privetd {
 
 namespace {
 
-const char kHaveBeenBootstrappedStateKey[] = "have_ever_been_bootstrapped";
-const char kLastConfiguredSSIDStateKey[] = "last_configured_ssid";
-
 }  // namespace
 
-WifiBootstrapManager::WifiBootstrapManager(
-    const base::FilePath& state_file_path) : state_file_path_(state_file_path) {
+WifiBootstrapManager::WifiBootstrapManager(DaemonState* state_store)
+    : state_store_(state_store) {
 }
 
 void WifiBootstrapManager::AddStateChangeListener(const StateListener& cb) {
@@ -29,11 +26,10 @@ void WifiBootstrapManager::AddStateChangeListener(const StateListener& cb) {
 
 void WifiBootstrapManager::Init() {
   chromeos::KeyValueStore state_store;
-  state_store.Load(state_file_path_);
-  if (!state_store.GetBoolean(kHaveBeenBootstrappedStateKey,
-                              &have_ever_been_bootstrapped_) ||
-      !state_store.GetString(kLastConfiguredSSIDStateKey,
-                             &last_configured_ssid_)) {
+  if (!state_store_->GetBoolean(state_key::kWifiHasBeenBootstrapped,
+                                &have_ever_been_bootstrapped_) ||
+      !state_store_->GetString(state_key::kWifiLastConfiguredSSID,
+                               &last_configured_ssid_)) {
     have_ever_been_bootstrapped_ = false;
   }
   if (!have_ever_been_bootstrapped_) {
@@ -152,12 +148,11 @@ void WifiBootstrapManager::OnConnectSuccess(const std::string& ssid) {
   on_connect_timeout_task_.Cancel();
   have_ever_been_bootstrapped_ = true;
   last_configured_ssid_ = ssid;
-  chromeos::KeyValueStore state_store;
-  state_store.Load(state_file_path_);
-  state_store.SetBoolean(kHaveBeenBootstrappedStateKey,
-                         have_ever_been_bootstrapped_);
-  state_store.SetString(kLastConfiguredSSIDStateKey, last_configured_ssid_);
-  state_store.Save(state_file_path_);
+  state_store_->SetBoolean(state_key::kWifiHasBeenBootstrapped,
+                           have_ever_been_bootstrapped_);
+  state_store_->SetString(state_key::kWifiLastConfiguredSSID,
+                          last_configured_ssid_);
+  state_store_->Save();
   StartMonitoring();
   setup_state_ = SetupState{SetupState::kSuccess};
 }

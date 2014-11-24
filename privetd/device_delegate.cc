@@ -8,29 +8,27 @@
 
 #include <base/files/file_util.h>
 #include <base/guid.h>
-#include <chromeos/key_value_store.h>
 
 #include "privetd/constants.h"
+#include "privetd/daemon_state.h"
 
 namespace privetd {
 
 namespace {
 
-const char kIdKey[] = "id";
-const char kNameKey[] = "name";
-const char kDescriptionKey[] = "description";
-const char kLocationKey[] = "description";
-
 const char kDefaultDeviceName[] = "Unnamed Device";
 
 class DeviceDelegateImpl : public DeviceDelegate {
  public:
-  DeviceDelegateImpl(uint16_t http_port, uint16_t https_port)
-      : http_port_(http_port), https_port_(https_port) {
-    config_store_.Load(base::FilePath(constants::kDefaultConfigPath));
+  DeviceDelegateImpl(uint16_t http_port,
+                     uint16_t https_port,
+                     DaemonState* state_store) : http_port_(http_port),
+                                                 https_port_(https_port),
+                                                 state_store_(state_store) {
     if (GetId().empty()) {
-      config_store_.SetString(kIdKey, base::GenerateGUID());
-      SaveConfig();
+      // TODO(wiley) This should probably be consistent with the peerd UUID.
+      state_store_->SetString(state_key::kDeviceId, base::GenerateGUID());
+      state_store_->Save();
     }
   }
   ~DeviceDelegateImpl() override {}
@@ -38,22 +36,22 @@ class DeviceDelegateImpl : public DeviceDelegate {
   // DeviceDelegate methods.
   std::string GetId() const override {
     std::string id;
-    config_store_.GetString(kIdKey, &id);
+    state_store_->GetString(state_key::kDeviceId, &id);
     return id;
   }
   std::string GetName() const override {
     std::string name;
-    config_store_.GetString(kNameKey, &name);
+    state_store_->GetString(state_key::kDeviceName, &name);
     return name.empty() ? kDefaultDeviceName : name;
   }
   std::string GetDescription() const override {
     std::string description;
-    config_store_.GetString(kDescriptionKey, &description);
+    state_store_->GetString(state_key::kDeviceDescription, &description);
     return description;
   }
   std::string GetLocation() const override {
     std::string location;
-    config_store_.GetString(kLocationKey, &location);
+    state_store_->GetString(state_key::kDeviceLocation, &location);
     return location;
   }
   std::string GetClass() const override { return "BB"; }
@@ -73,29 +71,24 @@ class DeviceDelegateImpl : public DeviceDelegate {
     return base::Time::Now() - start_time_;
   }
   void SetName(const std::string& name) override {
-    config_store_.SetString(kNameKey, name);
-    SaveConfig();
+    state_store_->SetString(state_key::kDeviceName, name);
+    state_store_->Save();
   }
   void SetDescription(const std::string& description) override {
-    config_store_.SetString(kDescriptionKey, description);
-    SaveConfig();
+    state_store_->SetString(state_key::kDeviceDescription, description);
+    state_store_->Save();
   }
   void SetLocation(const std::string& location) override {
-    config_store_.SetString(kLocationKey, location);
-    SaveConfig();
+    state_store_->SetString(state_key::kDeviceLocation, location);
+    state_store_->Save();
   }
   void AddType(const std::string& type) override { types_.insert(type); }
   void RemoveType(const std::string& type) override { types_.erase(type); }
 
  private:
-  void SaveConfig() {
-    base::FilePath path(constants::kDefaultConfigPath);
-    CHECK(config_store_.Save(path));
-  }
-
-  chromeos::KeyValueStore config_store_;
-  uint16_t http_port_;
-  uint16_t https_port_;
+  const uint16_t http_port_;
+  const uint16_t https_port_;
+  DaemonState* state_store_;
   base::Time start_time_ = base::Time::Now();
   std::set<std::string> types_;
 };
@@ -111,9 +104,10 @@ DeviceDelegate::~DeviceDelegate() {
 // static
 std::unique_ptr<DeviceDelegate> DeviceDelegate::CreateDefault(
     uint16_t http_port,
-    uint16_t https_port) {
+    uint16_t https_port,
+    DaemonState* state_store) {
   return std::unique_ptr<DeviceDelegate>(
-      new DeviceDelegateImpl(http_port, https_port));
+      new DeviceDelegateImpl(http_port, https_port, state_store));
 }
 
 }  // namespace privetd

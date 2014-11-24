@@ -14,6 +14,8 @@
 
 namespace privetd {
 
+class DaemonState;
+
 // Interface to provide access to general information about device.
 class DeviceDelegate {
  public:
@@ -70,8 +72,10 @@ class DeviceDelegate {
   virtual void RemoveType(const std::string& type) = 0;
 
   // Create default instance.
-  static std::unique_ptr<DeviceDelegate> CreateDefault(uint16_t http_port,
-                                                       uint16_t https_port);
+  static std::unique_ptr<DeviceDelegate> CreateDefault(
+      uint16_t http_port,
+      uint16_t https_port,
+      DaemonState* state_store);
 };
 
 }  // namespace privetd

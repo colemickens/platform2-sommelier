@@ -7,9 +7,7 @@
 namespace privetd {
 namespace constants {
 
-const char kDefaultConfigPath[] = "/var/lib/privetd/privetd.conf";
-const char kDefaultWifiBootstrapStateFilePath[] =
-    "/var/lib/privetd/wifi_bootstrapping_state";
+const char kDefaultStateFilePath[] = "/var/lib/privetd/privetd.state";
 
 }  // namespace constants
 }  // namespace privetd

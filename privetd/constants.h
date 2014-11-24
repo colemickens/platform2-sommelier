@@ -8,8 +8,7 @@
 namespace privetd {
 namespace constants {
 
-extern const char kDefaultConfigPath[];
-extern const char kDefaultWifiBootstrapStateFilePath[];
+extern const char kDefaultStateFilePath[];
 
 }  // namespace constants
 }  // namespace privetd
