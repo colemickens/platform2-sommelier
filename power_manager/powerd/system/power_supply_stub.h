@@ -7,6 +7,8 @@
 
 #include "power_manager/powerd/system/power_supply.h"
 
+#include <string>
+
 namespace power_manager {
 namespace system {
 
@@ -25,6 +27,7 @@ class PowerSupplyStub : public PowerSupplyInterface {
   PowerStatus GetPowerStatus() const override;
   bool RefreshImmediately() override;
   void SetSuspended(bool suspended) override;
+  bool SetPowerSource(const std::string& id) override;
 
  private:
   // Result to return from RefreshImmediately().

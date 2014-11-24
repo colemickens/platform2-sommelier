@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 
 #include <base/bind.h>
 #include <base/files/file_enumerator.h>
@@ -285,6 +286,8 @@ bool PowerSupply::TestApi::TriggerPollTimeout() {
 }
 
 const char PowerSupply::kUdevSubsystem[] = "power_supply";
+const char PowerSupply::kChargeControlLimitMaxFile[] =
+    "charge_control_limit_max";
 const int PowerSupply::kObservedBatteryChargeRateMinMs = kDefaultPollMs;
 const int PowerSupply::kBatteryStabilizedSlackMs = 50;
 const double PowerSupply::kLowBatteryShutdownSafetyPercent = 5.0;
@@ -405,6 +408,25 @@ void PowerSupply::SetSuspended(bool suspended) {
   }
 }
 
+bool PowerSupply::SetPowerSource(const std::string& id) {
+  // An empty ID means we should write -1 to any power source (we'll use the
+  // active one) to ask the kernel to use the battery as the power source.
+  // Otherwise, write 0 to the requested power source to activate it.
+  const base::FilePath device_path = GetPathForId(
+      id.empty() ? power_status_.external_power_source_id : id);
+  if (device_path.empty())
+    return false;
+
+  const base::FilePath limit_path =
+      device_path.Append(kChargeControlLimitMaxFile);
+  const std::string value = id.empty() ? "-1" : "0";
+  if (!util::WriteFileFully(limit_path, value.c_str(), value.size())) {
+    LOG(ERROR) << "Failed to write " << value << " to " << limit_path.value();
+    return false;
+  }
+  return true;
+}
+
 void PowerSupply::OnUdevEvent(const std::string& subsystem,
                               const std::string& sysname,
                               UdevAction action) {
@@ -420,10 +442,14 @@ std::string PowerSupply::GetIdForPath(const base::FilePath& path) const {
 }
 
 base::FilePath PowerSupply::GetPathForId(const std::string& id) const {
-  base::FilePath path = power_supply_path_.Append(id);
   // Double-check that nobody's playing games with bogus IDs.
-  if (!power_supply_path_.IsParent(path) || path.BaseName().value() != id ||
-      !base::DirectoryExists(path)) {
+  if (id.empty() || id == "." || id == ".." ||
+      id.find('/') != std::string::npos) {
+    LOG(WARNING) << "Got invalid ID \"" << id << "\"";
+    return base::FilePath();
+  }
+  base::FilePath path = power_supply_path_.Append(id);
+  if (!base::DirectoryExists(path)) {
     LOG(WARNING) << "Got invalid ID \"" << id << "\"";
     return base::FilePath();
   }

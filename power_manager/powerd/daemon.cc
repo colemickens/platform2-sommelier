@@ -855,6 +855,8 @@ void Daemon::InitDBus() {
                    &Daemon::HandleSetIsProjectingMethod);
   ExportDBusMethod(kSetPolicyMethod,
                    &Daemon::HandleSetPolicyMethod);
+  ExportDBusMethod(kSetPowerSourceMethod,
+                   &Daemon::HandleSetPowerSourceMethod);
   ExportDBusMethod(kHandlePowerButtonAcknowledgmentMethod,
                    &Daemon::HandlePowerButtonAcknowledgment);
   CHECK(powerd_dbus_object_->ExportMethodAndBlock(
@@ -1273,6 +1275,23 @@ scoped_ptr<dbus::Response> Daemon::HandleSetPolicyMethod(
   state_controller_->HandlePolicyChange(policy);
   if (display_backlight_controller_)
     display_backlight_controller_->HandlePolicyChange(policy);
+  return scoped_ptr<dbus::Response>();
+}
+
+scoped_ptr<dbus::Response> Daemon::HandleSetPowerSourceMethod(
+    dbus::MethodCall* method_call) {
+  std::string id;
+  dbus::MessageReader reader(method_call);
+  if (!reader.PopString(&id)) {
+    LOG(ERROR) << "Unable to read " << kSetPowerSourceMethod << " args";
+    return CreateInvalidArgsError(method_call, "Expected string");
+  }
+
+  LOG(INFO) << "Received request to switch to power source " << id;
+  if (!power_supply_->SetPowerSource(id)) {
+    return scoped_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED, "Couldn't set power source"));
+  }
   return scoped_ptr<dbus::Response>();
 }
 

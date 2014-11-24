@@ -374,6 +374,33 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   EXPECT_EQ(kLine2Id, status.available_external_power_sources[1].name);
   EXPECT_TRUE(status.available_external_power_sources[1].active_by_default);
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
+
+  // Request switching to the first power source.
+  EXPECT_TRUE(power_supply_->SetPowerSource(kLine1Id));
+  std::string value;
+  EXPECT_TRUE(base::ReadFileToString(
+      line1_dir.Append(PowerSupply::kChargeControlLimitMaxFile), &value));
+  EXPECT_EQ("0", value);
+
+  // Now switch to the second one.
+  EXPECT_TRUE(power_supply_->SetPowerSource(kLine2Id));
+  EXPECT_TRUE(base::ReadFileToString(
+      line2_dir.Append(PowerSupply::kChargeControlLimitMaxFile), &value));
+  EXPECT_EQ("0", value);
+
+  // Passing an empty ID should result in -1 getting written to the active power
+  // source's limit file (resulting in a switch to the battery).
+  EXPECT_TRUE(power_supply_->SetPowerSource(""));
+  EXPECT_TRUE(base::ReadFileToString(
+      line2_dir.Append(PowerSupply::kChargeControlLimitMaxFile), &value));
+  EXPECT_EQ("-1", value);
+
+  // Ignore invalid IDs.
+  EXPECT_FALSE(power_supply_->SetPowerSource("bogus"));
+  EXPECT_FALSE(power_supply_->SetPowerSource("."));
+  EXPECT_FALSE(power_supply_->SetPowerSource(".."));
+  EXPECT_FALSE(power_supply_->SetPowerSource("../"));
+  EXPECT_FALSE(power_supply_->SetPowerSource(line1_dir.value()));
 }
 
 TEST_F(PowerSupplyTest, IgnorePeripherals) {

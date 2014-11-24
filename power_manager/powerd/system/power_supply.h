@@ -177,6 +177,10 @@ class PowerSupplyInterface {
   // On suspend, stops polling. On resume, updates the status immediately and
   // schedules a poll for the near future.
   virtual void SetSuspended(bool suspended) = 0;
+
+  // Handles a request to use the PowerStatus::Source described by |id|,
+  // returning true on success.
+  virtual bool SetPowerSource(const std::string& id) = 0;
 };
 
 // Real implementation of PowerSupplyInterface that reads from sysfs.
@@ -214,6 +218,10 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // Power supply subsystem for udev events.
   static const char kUdevSubsystem[];
 
+  // File within a sysfs device directory that can be used to request that the
+  // device be used to deliver power to the system.
+  static const char kChargeControlLimitMaxFile[];
+
   // Minimum duration of samples that need to be present in |charge_samples_|
   // for the observed battery charge rate to be calculated.
   static const int kObservedBatteryChargeRateMinMs;
@@ -248,6 +256,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   PowerStatus GetPowerStatus() const override;
   bool RefreshImmediately() override;
   void SetSuspended(bool suspended) override;
+  bool SetPowerSource(const std::string& id) override;
 
   // UdevSubsystemObserver implementation:
   void OnUdevEvent(const std::string& subsystem,

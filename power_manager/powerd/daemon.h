@@ -200,6 +200,8 @@ class Daemon : public policy::BacklightControllerObserver,
       dbus::MethodCall* method_call);
   scoped_ptr<dbus::Response> HandleSetPolicyMethod(
       dbus::MethodCall* method_call);
+  scoped_ptr<dbus::Response> HandleSetPowerSourceMethod(
+      dbus::MethodCall* method_call);
   scoped_ptr<dbus::Response> HandlePowerButtonAcknowledgment(
       dbus::MethodCall* method_call);
 
