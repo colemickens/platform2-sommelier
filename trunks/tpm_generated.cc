@@ -9204,22 +9204,24 @@ TPM_RC Tpm::SerializeCommand_Startup(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -9321,6 +9323,7 @@ TPM_RC Tpm::ParseResponse_Startup(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -9437,22 +9440,24 @@ TPM_RC Tpm::SerializeCommand_Shutdown(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -9554,6 +9559,7 @@ TPM_RC Tpm::ParseResponse_Shutdown(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -9670,22 +9676,24 @@ TPM_RC Tpm::SerializeCommand_SelfTest(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -9787,6 +9795,7 @@ TPM_RC Tpm::ParseResponse_SelfTest(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -9903,22 +9912,24 @@ TPM_RC Tpm::SerializeCommand_IncrementalSelfTest(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -10021,6 +10032,7 @@ TPM_RC Tpm::ParseResponse_IncrementalSelfTest(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -10139,22 +10151,24 @@ TPM_RC Tpm::SerializeCommand_GetTestResult(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -10258,6 +10272,7 @@ TPM_RC Tpm::ParseResponse_GetTestResult(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -10281,6 +10296,7 @@ TPM_RC Tpm::ParseResponse_GetTestResult(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = out_data_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -10452,12 +10468,14 @@ TPM_RC Tpm::SerializeCommand_StartAuthSession(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = nonce_caller_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = nonce_caller_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    nonce_caller_bytes.replace(2, std::string::npos, tmp);
   }
-  nonce_caller_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -10493,22 +10511,24 @@ TPM_RC Tpm::SerializeCommand_StartAuthSession(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -10620,6 +10640,7 @@ TPM_RC Tpm::ParseResponse_StartAuthSession(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -10635,6 +10656,7 @@ TPM_RC Tpm::ParseResponse_StartAuthSession(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = nonce_tpm_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -10804,22 +10826,24 @@ TPM_RC Tpm::SerializeCommand_PolicyRestart(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -10921,6 +10945,7 @@ TPM_RC Tpm::ParseResponse_PolicyRestart(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -11063,12 +11088,14 @@ TPM_RC Tpm::SerializeCommand_Create(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = in_sensitive_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = in_sensitive_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    in_sensitive_bytes.replace(2, std::string::npos, tmp);
   }
-  in_sensitive_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -11096,22 +11123,24 @@ TPM_RC Tpm::SerializeCommand_Create(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -11218,6 +11247,7 @@ TPM_RC Tpm::ParseResponse_Create(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -11265,6 +11295,7 @@ TPM_RC Tpm::ParseResponse_Create(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = out_private_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -11445,12 +11476,14 @@ TPM_RC Tpm::SerializeCommand_Load(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = in_private_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = in_private_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    in_private_bytes.replace(2, std::string::npos, tmp);
   }
-  in_private_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -11470,22 +11503,24 @@ TPM_RC Tpm::SerializeCommand_Load(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -11597,6 +11632,7 @@ TPM_RC Tpm::ParseResponse_Load(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -11612,6 +11648,7 @@ TPM_RC Tpm::ParseResponse_Load(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = name_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -11766,12 +11803,14 @@ TPM_RC Tpm::SerializeCommand_LoadExternal(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = in_private_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = in_private_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    in_private_bytes.replace(2, std::string::npos, tmp);
   }
-  in_private_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -11791,22 +11830,24 @@ TPM_RC Tpm::SerializeCommand_LoadExternal(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -11918,6 +11959,7 @@ TPM_RC Tpm::ParseResponse_LoadExternal(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -11933,6 +11975,7 @@ TPM_RC Tpm::ParseResponse_LoadExternal(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = name_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -12082,22 +12125,24 @@ TPM_RC Tpm::SerializeCommand_ReadPublic(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -12202,6 +12247,7 @@ TPM_RC Tpm::ParseResponse_ReadPublic(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -12233,6 +12279,7 @@ TPM_RC Tpm::ParseResponse_ReadPublic(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = out_public_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -12394,12 +12441,14 @@ TPM_RC Tpm::SerializeCommand_ActivateCredential(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = credential_blob_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = credential_blob_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    credential_blob_bytes.replace(2, std::string::npos, tmp);
   }
-  credential_blob_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -12423,22 +12472,24 @@ TPM_RC Tpm::SerializeCommand_ActivateCredential(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -12541,6 +12592,7 @@ TPM_RC Tpm::ParseResponse_ActivateCredential(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -12556,6 +12608,7 @@ TPM_RC Tpm::ParseResponse_ActivateCredential(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = cert_info_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -12712,12 +12765,14 @@ TPM_RC Tpm::SerializeCommand_MakeCredential(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = credential_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = credential_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    credential_bytes.replace(2, std::string::npos, tmp);
   }
-  credential_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -12737,22 +12792,24 @@ TPM_RC Tpm::SerializeCommand_MakeCredential(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -12855,6 +12912,7 @@ TPM_RC Tpm::ParseResponse_MakeCredential(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -12870,6 +12928,7 @@ TPM_RC Tpm::ParseResponse_MakeCredential(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = credential_blob_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -13013,22 +13072,24 @@ TPM_RC Tpm::SerializeCommand_Unseal(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -13131,6 +13192,7 @@ TPM_RC Tpm::ParseResponse_Unseal(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -13146,6 +13208,7 @@ TPM_RC Tpm::ParseResponse_Unseal(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = out_data_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -13287,12 +13350,14 @@ TPM_RC Tpm::SerializeCommand_ObjectChangeAuth(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = new_auth_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = new_auth_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    new_auth_bytes.replace(2, std::string::npos, tmp);
   }
-  new_auth_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -13312,22 +13377,24 @@ TPM_RC Tpm::SerializeCommand_ObjectChangeAuth(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -13430,6 +13497,7 @@ TPM_RC Tpm::ParseResponse_ObjectChangeAuth(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -13445,6 +13513,7 @@ TPM_RC Tpm::ParseResponse_ObjectChangeAuth(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = out_private_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -13606,12 +13675,14 @@ TPM_RC Tpm::SerializeCommand_Duplicate(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = encryption_key_in_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = encryption_key_in_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    encryption_key_in_bytes.replace(2, std::string::npos, tmp);
   }
-  encryption_key_in_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -13635,22 +13706,24 @@ TPM_RC Tpm::SerializeCommand_Duplicate(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -13754,6 +13827,7 @@ TPM_RC Tpm::ParseResponse_Duplicate(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -13777,6 +13851,7 @@ TPM_RC Tpm::ParseResponse_Duplicate(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = encryption_key_out_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -13948,12 +14023,14 @@ TPM_RC Tpm::SerializeCommand_Rewrap(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = in_duplicate_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = in_duplicate_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    in_duplicate_bytes.replace(2, std::string::npos, tmp);
   }
-  in_duplicate_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -13977,22 +14054,24 @@ TPM_RC Tpm::SerializeCommand_Rewrap(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -14095,6 +14174,7 @@ TPM_RC Tpm::ParseResponse_Rewrap(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -14110,6 +14190,7 @@ TPM_RC Tpm::ParseResponse_Rewrap(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = out_duplicate_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -14290,12 +14371,14 @@ TPM_RC Tpm::SerializeCommand_Import(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = encryption_key_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = encryption_key_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    encryption_key_bytes.replace(2, std::string::npos, tmp);
   }
-  encryption_key_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -14327,22 +14410,24 @@ TPM_RC Tpm::SerializeCommand_Import(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -14445,6 +14530,7 @@ TPM_RC Tpm::ParseResponse_Import(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -14460,6 +14546,7 @@ TPM_RC Tpm::ParseResponse_Import(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = out_private_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -14628,12 +14715,14 @@ TPM_RC Tpm::SerializeCommand_RSA_Encrypt(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = message_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = message_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    message_bytes.replace(2, std::string::npos, tmp);
   }
-  message_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -14657,22 +14746,24 @@ TPM_RC Tpm::SerializeCommand_RSA_Encrypt(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -14775,6 +14866,7 @@ TPM_RC Tpm::ParseResponse_RSA_Encrypt(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -14790,6 +14882,7 @@ TPM_RC Tpm::ParseResponse_RSA_Encrypt(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = out_data_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -14950,12 +15043,14 @@ TPM_RC Tpm::SerializeCommand_RSA_Decrypt(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = cipher_text_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = cipher_text_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    cipher_text_bytes.replace(2, std::string::npos, tmp);
   }
-  cipher_text_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -14979,22 +15074,24 @@ TPM_RC Tpm::SerializeCommand_RSA_Decrypt(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -15097,6 +15194,7 @@ TPM_RC Tpm::ParseResponse_RSA_Decrypt(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -15112,6 +15210,7 @@ TPM_RC Tpm::ParseResponse_RSA_Decrypt(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = message_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -15259,22 +15358,24 @@ TPM_RC Tpm::SerializeCommand_ECDH_KeyGen(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -15378,6 +15479,7 @@ TPM_RC Tpm::ParseResponse_ECDH_KeyGen(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -15401,6 +15503,7 @@ TPM_RC Tpm::ParseResponse_ECDH_KeyGen(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = z_point_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -15539,12 +15642,14 @@ TPM_RC Tpm::SerializeCommand_ECDH_ZGen(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = in_point_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = in_point_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    in_point_bytes.replace(2, std::string::npos, tmp);
   }
-  in_point_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -15560,22 +15665,24 @@ TPM_RC Tpm::SerializeCommand_ECDH_ZGen(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -15678,6 +15785,7 @@ TPM_RC Tpm::ParseResponse_ECDH_ZGen(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -15693,6 +15801,7 @@ TPM_RC Tpm::ParseResponse_ECDH_ZGen(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = out_point_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -15831,22 +15940,24 @@ TPM_RC Tpm::SerializeCommand_ECC_Parameters(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -15949,6 +16060,7 @@ TPM_RC Tpm::ParseResponse_ECC_Parameters(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -16101,12 +16213,14 @@ TPM_RC Tpm::SerializeCommand_ZGen_2Phase(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = in_qs_b_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = in_qs_b_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    in_qs_b_bytes.replace(2, std::string::npos, tmp);
   }
-  in_qs_b_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -16134,22 +16248,24 @@ TPM_RC Tpm::SerializeCommand_ZGen_2Phase(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -16253,6 +16369,7 @@ TPM_RC Tpm::ParseResponse_ZGen_2Phase(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -16276,6 +16393,7 @@ TPM_RC Tpm::ParseResponse_ZGen_2Phase(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = out_z1_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -16481,22 +16599,24 @@ TPM_RC Tpm::SerializeCommand_EncryptDecrypt(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -16600,6 +16720,7 @@ TPM_RC Tpm::ParseResponse_EncryptDecrypt(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -16623,6 +16744,7 @@ TPM_RC Tpm::ParseResponse_EncryptDecrypt(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = out_data_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -16785,12 +16907,14 @@ TPM_RC Tpm::SerializeCommand_Hash(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = data_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = data_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    data_bytes.replace(2, std::string::npos, tmp);
   }
-  data_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -16810,22 +16934,24 @@ TPM_RC Tpm::SerializeCommand_Hash(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -16929,6 +17055,7 @@ TPM_RC Tpm::ParseResponse_Hash(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -16952,6 +17079,7 @@ TPM_RC Tpm::ParseResponse_Hash(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = out_hash_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -17106,12 +17234,14 @@ TPM_RC Tpm::SerializeCommand_HMAC(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = buffer_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = buffer_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer_bytes.replace(2, std::string::npos, tmp);
   }
-  buffer_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -17131,22 +17261,24 @@ TPM_RC Tpm::SerializeCommand_HMAC(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -17249,6 +17381,7 @@ TPM_RC Tpm::ParseResponse_HMAC(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -17264,6 +17397,7 @@ TPM_RC Tpm::ParseResponse_HMAC(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = out_hmac_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -17406,22 +17540,24 @@ TPM_RC Tpm::SerializeCommand_GetRandom(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -17524,6 +17660,7 @@ TPM_RC Tpm::ParseResponse_GetRandom(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -17539,6 +17676,7 @@ TPM_RC Tpm::ParseResponse_GetRandom(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = random_bytes_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -17658,12 +17796,14 @@ TPM_RC Tpm::SerializeCommand_StirRandom(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = in_data_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = in_data_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    in_data_bytes.replace(2, std::string::npos, tmp);
   }
-  in_data_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -17675,22 +17815,24 @@ TPM_RC Tpm::SerializeCommand_StirRandom(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -17792,6 +17934,7 @@ TPM_RC Tpm::ParseResponse_StirRandom(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -17914,12 +18057,14 @@ TPM_RC Tpm::SerializeCommand_HMAC_Start(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = auth_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = auth_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    auth_bytes.replace(2, std::string::npos, tmp);
   }
-  auth_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -17939,22 +18084,24 @@ TPM_RC Tpm::SerializeCommand_HMAC_Start(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -18065,6 +18212,7 @@ TPM_RC Tpm::ParseResponse_HMAC_Start(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -18196,12 +18344,14 @@ TPM_RC Tpm::SerializeCommand_HashSequenceStart(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = auth_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = auth_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    auth_bytes.replace(2, std::string::npos, tmp);
   }
-  auth_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -18217,22 +18367,24 @@ TPM_RC Tpm::SerializeCommand_HashSequenceStart(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -18343,6 +18495,7 @@ TPM_RC Tpm::ParseResponse_HashSequenceStart(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -18467,12 +18620,14 @@ TPM_RC Tpm::SerializeCommand_SequenceUpdate(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = buffer_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = buffer_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer_bytes.replace(2, std::string::npos, tmp);
   }
-  buffer_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -18488,22 +18643,24 @@ TPM_RC Tpm::SerializeCommand_SequenceUpdate(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -18605,6 +18762,7 @@ TPM_RC Tpm::ParseResponse_SequenceUpdate(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -18736,12 +18894,14 @@ TPM_RC Tpm::SerializeCommand_SequenceComplete(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = buffer_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = buffer_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer_bytes.replace(2, std::string::npos, tmp);
   }
-  buffer_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -18761,22 +18921,24 @@ TPM_RC Tpm::SerializeCommand_SequenceComplete(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -18880,6 +19042,7 @@ TPM_RC Tpm::ParseResponse_SequenceComplete(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -18903,6 +19066,7 @@ TPM_RC Tpm::ParseResponse_SequenceComplete(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = result_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -19062,12 +19226,14 @@ TPM_RC Tpm::SerializeCommand_EventSequenceComplete(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = buffer_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = buffer_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer_bytes.replace(2, std::string::npos, tmp);
   }
-  buffer_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -19087,22 +19253,24 @@ TPM_RC Tpm::SerializeCommand_EventSequenceComplete(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -19205,6 +19373,7 @@ TPM_RC Tpm::ParseResponse_EventSequenceComplete(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -19366,12 +19535,14 @@ TPM_RC Tpm::SerializeCommand_Certify(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = qualifying_data_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = qualifying_data_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    qualifying_data_bytes.replace(2, std::string::npos, tmp);
   }
-  qualifying_data_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -19395,22 +19566,24 @@ TPM_RC Tpm::SerializeCommand_Certify(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -19514,6 +19687,7 @@ TPM_RC Tpm::ParseResponse_Certify(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -19537,6 +19711,7 @@ TPM_RC Tpm::ParseResponse_Certify(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = certify_info_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -19724,12 +19899,14 @@ TPM_RC Tpm::SerializeCommand_CertifyCreation(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = qualifying_data_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = qualifying_data_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    qualifying_data_bytes.replace(2, std::string::npos, tmp);
   }
-  qualifying_data_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -19761,22 +19938,24 @@ TPM_RC Tpm::SerializeCommand_CertifyCreation(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -19880,6 +20059,7 @@ TPM_RC Tpm::ParseResponse_CertifyCreation(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -19903,6 +20083,7 @@ TPM_RC Tpm::ParseResponse_CertifyCreation(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = certify_info_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -20081,12 +20262,14 @@ TPM_RC Tpm::SerializeCommand_Quote(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = qualifying_data_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = qualifying_data_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    qualifying_data_bytes.replace(2, std::string::npos, tmp);
   }
-  qualifying_data_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -20110,22 +20293,24 @@ TPM_RC Tpm::SerializeCommand_Quote(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -20229,6 +20414,7 @@ TPM_RC Tpm::ParseResponse_Quote(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -20252,6 +20438,7 @@ TPM_RC Tpm::ParseResponse_Quote(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = quoted_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -20428,12 +20615,14 @@ TPM_RC Tpm::SerializeCommand_GetSessionAuditDigest(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = qualifying_data_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = qualifying_data_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    qualifying_data_bytes.replace(2, std::string::npos, tmp);
   }
-  qualifying_data_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -20461,22 +20650,24 @@ TPM_RC Tpm::SerializeCommand_GetSessionAuditDigest(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -20580,6 +20771,7 @@ TPM_RC Tpm::ParseResponse_GetSessionAuditDigest(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -20603,6 +20795,7 @@ TPM_RC Tpm::ParseResponse_GetSessionAuditDigest(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = audit_info_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -20782,12 +20975,14 @@ TPM_RC Tpm::SerializeCommand_GetCommandAuditDigest(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = qualifying_data_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = qualifying_data_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    qualifying_data_bytes.replace(2, std::string::npos, tmp);
   }
-  qualifying_data_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -20811,22 +21006,24 @@ TPM_RC Tpm::SerializeCommand_GetCommandAuditDigest(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -20930,6 +21127,7 @@ TPM_RC Tpm::ParseResponse_GetCommandAuditDigest(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -20953,6 +21151,7 @@ TPM_RC Tpm::ParseResponse_GetCommandAuditDigest(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = audit_info_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -21124,12 +21323,14 @@ TPM_RC Tpm::SerializeCommand_GetTime(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = qualifying_data_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = qualifying_data_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    qualifying_data_bytes.replace(2, std::string::npos, tmp);
   }
-  qualifying_data_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -21153,22 +21354,24 @@ TPM_RC Tpm::SerializeCommand_GetTime(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -21272,6 +21475,7 @@ TPM_RC Tpm::ParseResponse_GetTime(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -21295,6 +21499,7 @@ TPM_RC Tpm::ParseResponse_GetTime(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = time_info_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -21500,22 +21705,24 @@ TPM_RC Tpm::SerializeCommand_Commit(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -21622,6 +21829,7 @@ TPM_RC Tpm::ParseResponse_Commit(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -21840,22 +22048,24 @@ TPM_RC Tpm::SerializeCommand_EC_Ephemeral(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -21960,6 +22170,7 @@ TPM_RC Tpm::ParseResponse_EC_Ephemeral(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -22128,12 +22339,14 @@ TPM_RC Tpm::SerializeCommand_VerifySignature(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = digest_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = digest_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    digest_bytes.replace(2, std::string::npos, tmp);
   }
-  digest_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -22153,22 +22366,24 @@ TPM_RC Tpm::SerializeCommand_VerifySignature(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -22271,6 +22486,7 @@ TPM_RC Tpm::ParseResponse_VerifySignature(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -22427,12 +22643,14 @@ TPM_RC Tpm::SerializeCommand_Sign(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = digest_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = digest_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    digest_bytes.replace(2, std::string::npos, tmp);
   }
-  digest_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -22456,22 +22674,24 @@ TPM_RC Tpm::SerializeCommand_Sign(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -22574,6 +22794,7 @@ TPM_RC Tpm::ParseResponse_Sign(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -22757,22 +22978,24 @@ TPM_RC Tpm::SerializeCommand_SetCommandCodeAuditStatus(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -22874,6 +23097,7 @@ TPM_RC Tpm::ParseResponse_SetCommandCodeAuditStatus(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -23019,22 +23243,24 @@ TPM_RC Tpm::SerializeCommand_PCR_Extend(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -23136,6 +23362,7 @@ TPM_RC Tpm::ParseResponse_PCR_Extend(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -23258,12 +23485,14 @@ TPM_RC Tpm::SerializeCommand_PCR_Event(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = event_data_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = event_data_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    event_data_bytes.replace(2, std::string::npos, tmp);
   }
-  event_data_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -23279,22 +23508,24 @@ TPM_RC Tpm::SerializeCommand_PCR_Event(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -23397,6 +23628,7 @@ TPM_RC Tpm::ParseResponse_PCR_Event(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -23535,22 +23767,24 @@ TPM_RC Tpm::SerializeCommand_PCR_Read(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -23655,6 +23889,7 @@ TPM_RC Tpm::ParseResponse_PCR_Read(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -23826,22 +24061,24 @@ TPM_RC Tpm::SerializeCommand_PCR_Allocate(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -23947,6 +24184,7 @@ TPM_RC Tpm::ParseResponse_PCR_Allocate(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -24142,12 +24380,14 @@ TPM_RC Tpm::SerializeCommand_PCR_SetAuthPolicy(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = auth_policy_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = auth_policy_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    auth_policy_bytes.replace(2, std::string::npos, tmp);
   }
-  auth_policy_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -24171,22 +24411,24 @@ TPM_RC Tpm::SerializeCommand_PCR_SetAuthPolicy(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -24288,6 +24530,7 @@ TPM_RC Tpm::ParseResponse_PCR_SetAuthPolicy(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -24422,12 +24665,14 @@ TPM_RC Tpm::SerializeCommand_PCR_SetAuthValue(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = auth_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = auth_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    auth_bytes.replace(2, std::string::npos, tmp);
   }
-  auth_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -24443,22 +24688,24 @@ TPM_RC Tpm::SerializeCommand_PCR_SetAuthValue(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -24560,6 +24807,7 @@ TPM_RC Tpm::ParseResponse_PCR_SetAuthValue(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -24685,22 +24933,24 @@ TPM_RC Tpm::SerializeCommand_PCR_Reset(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -24802,6 +25052,7 @@ TPM_RC Tpm::ParseResponse_PCR_Reset(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -24953,12 +25204,14 @@ TPM_RC Tpm::SerializeCommand_PolicySigned(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = nonce_tpm_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = nonce_tpm_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    nonce_tpm_bytes.replace(2, std::string::npos, tmp);
   }
-  nonce_tpm_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -24990,22 +25243,24 @@ TPM_RC Tpm::SerializeCommand_PolicySigned(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -25109,6 +25364,7 @@ TPM_RC Tpm::ParseResponse_PolicySigned(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -25132,6 +25388,7 @@ TPM_RC Tpm::ParseResponse_PolicySigned(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = timeout_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -25319,12 +25576,14 @@ TPM_RC Tpm::SerializeCommand_PolicySecret(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = nonce_tpm_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = nonce_tpm_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    nonce_tpm_bytes.replace(2, std::string::npos, tmp);
   }
-  nonce_tpm_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -25352,22 +25611,24 @@ TPM_RC Tpm::SerializeCommand_PolicySecret(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -25471,6 +25732,7 @@ TPM_RC Tpm::ParseResponse_PolicySecret(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -25494,6 +25756,7 @@ TPM_RC Tpm::ParseResponse_PolicySecret(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = timeout_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -25684,12 +25947,14 @@ TPM_RC Tpm::SerializeCommand_PolicyTicket(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = timeout_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = timeout_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    timeout_bytes.replace(2, std::string::npos, tmp);
   }
-  timeout_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -25721,22 +25986,24 @@ TPM_RC Tpm::SerializeCommand_PolicyTicket(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -25838,6 +26105,7 @@ TPM_RC Tpm::ParseResponse_PolicyTicket(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -25991,22 +26259,24 @@ TPM_RC Tpm::SerializeCommand_PolicyOR(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -26108,6 +26378,7 @@ TPM_RC Tpm::ParseResponse_PolicyOR(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -26238,12 +26509,14 @@ TPM_RC Tpm::SerializeCommand_PolicyPCR(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = pcr_digest_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = pcr_digest_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    pcr_digest_bytes.replace(2, std::string::npos, tmp);
   }
-  pcr_digest_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -26263,22 +26536,24 @@ TPM_RC Tpm::SerializeCommand_PolicyPCR(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -26380,6 +26655,7 @@ TPM_RC Tpm::ParseResponse_PolicyPCR(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -26521,22 +26797,24 @@ TPM_RC Tpm::SerializeCommand_PolicyLocality(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -26638,6 +26916,7 @@ TPM_RC Tpm::ParseResponse_PolicyLocality(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -26794,12 +27073,14 @@ TPM_RC Tpm::SerializeCommand_PolicyNV(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = operand_b_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = operand_b_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    operand_b_bytes.replace(2, std::string::npos, tmp);
   }
-  operand_b_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -26831,22 +27112,24 @@ TPM_RC Tpm::SerializeCommand_PolicyNV(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -26948,6 +27231,7 @@ TPM_RC Tpm::ParseResponse_PolicyNV(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -27110,12 +27394,14 @@ TPM_RC Tpm::SerializeCommand_PolicyCounterTimer(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = operand_b_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = operand_b_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    operand_b_bytes.replace(2, std::string::npos, tmp);
   }
-  operand_b_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -27139,22 +27425,24 @@ TPM_RC Tpm::SerializeCommand_PolicyCounterTimer(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -27256,6 +27544,7 @@ TPM_RC Tpm::ParseResponse_PolicyCounterTimer(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -27401,22 +27690,24 @@ TPM_RC Tpm::SerializeCommand_PolicyCommandCode(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -27518,6 +27809,7 @@ TPM_RC Tpm::ParseResponse_PolicyCommandCode(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -27643,22 +27935,24 @@ TPM_RC Tpm::SerializeCommand_PolicyPhysicalPresence(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -27760,6 +28054,7 @@ TPM_RC Tpm::ParseResponse_PolicyPhysicalPresence(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -27878,12 +28173,14 @@ TPM_RC Tpm::SerializeCommand_PolicyCpHash(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = cp_hash_a_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = cp_hash_a_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    cp_hash_a_bytes.replace(2, std::string::npos, tmp);
   }
-  cp_hash_a_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -27899,22 +28196,24 @@ TPM_RC Tpm::SerializeCommand_PolicyCpHash(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -28016,6 +28315,7 @@ TPM_RC Tpm::ParseResponse_PolicyCpHash(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -28138,12 +28438,14 @@ TPM_RC Tpm::SerializeCommand_PolicyNameHash(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = name_hash_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = name_hash_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    name_hash_bytes.replace(2, std::string::npos, tmp);
   }
-  name_hash_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -28159,22 +28461,24 @@ TPM_RC Tpm::SerializeCommand_PolicyNameHash(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -28276,6 +28580,7 @@ TPM_RC Tpm::ParseResponse_PolicyNameHash(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -28414,12 +28719,14 @@ TPM_RC Tpm::SerializeCommand_PolicyDuplicationSelect(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = object_name_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = object_name_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    object_name_bytes.replace(2, std::string::npos, tmp);
   }
-  object_name_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -28443,22 +28750,24 @@ TPM_RC Tpm::SerializeCommand_PolicyDuplicationSelect(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -28560,6 +28869,7 @@ TPM_RC Tpm::ParseResponse_PolicyDuplicationSelect(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -28714,12 +29024,14 @@ TPM_RC Tpm::SerializeCommand_PolicyAuthorize(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = approved_policy_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = approved_policy_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    approved_policy_bytes.replace(2, std::string::npos, tmp);
   }
-  approved_policy_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -28747,22 +29059,24 @@ TPM_RC Tpm::SerializeCommand_PolicyAuthorize(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -28864,6 +29178,7 @@ TPM_RC Tpm::ParseResponse_PolicyAuthorize(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -29001,22 +29316,24 @@ TPM_RC Tpm::SerializeCommand_PolicyAuthValue(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -29118,6 +29435,7 @@ TPM_RC Tpm::ParseResponse_PolicyAuthValue(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -29239,22 +29557,24 @@ TPM_RC Tpm::SerializeCommand_PolicyPassword(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -29356,6 +29676,7 @@ TPM_RC Tpm::ParseResponse_PolicyPassword(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -29477,22 +29798,24 @@ TPM_RC Tpm::SerializeCommand_PolicyGetDigest(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -29595,6 +29918,7 @@ TPM_RC Tpm::ParseResponse_PolicyGetDigest(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -29610,6 +29934,7 @@ TPM_RC Tpm::ParseResponse_PolicyGetDigest(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = policy_digest_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -29757,22 +30082,24 @@ TPM_RC Tpm::SerializeCommand_PolicyNvWritten(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -29874,6 +30201,7 @@ TPM_RC Tpm::ParseResponse_PolicyNvWritten(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -30020,12 +30348,14 @@ TPM_RC Tpm::SerializeCommand_CreatePrimary(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = in_sensitive_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = in_sensitive_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    in_sensitive_bytes.replace(2, std::string::npos, tmp);
   }
-  in_sensitive_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -30053,22 +30383,24 @@ TPM_RC Tpm::SerializeCommand_CreatePrimary(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -30184,6 +30516,7 @@ TPM_RC Tpm::ParseResponse_CreatePrimary(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -30231,6 +30564,7 @@ TPM_RC Tpm::ParseResponse_CreatePrimary(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = out_public_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -30436,22 +30770,24 @@ TPM_RC Tpm::SerializeCommand_HierarchyControl(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -30553,6 +30889,7 @@ TPM_RC Tpm::ParseResponse_HierarchyControl(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -30687,12 +31024,14 @@ TPM_RC Tpm::SerializeCommand_SetPrimaryPolicy(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = auth_policy_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = auth_policy_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    auth_policy_bytes.replace(2, std::string::npos, tmp);
   }
-  auth_policy_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -30712,22 +31051,24 @@ TPM_RC Tpm::SerializeCommand_SetPrimaryPolicy(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -30829,6 +31170,7 @@ TPM_RC Tpm::ParseResponse_SetPrimaryPolicy(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -30958,22 +31300,24 @@ TPM_RC Tpm::SerializeCommand_ChangePPS(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -31075,6 +31419,7 @@ TPM_RC Tpm::ParseResponse_ChangePPS(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -31196,22 +31541,24 @@ TPM_RC Tpm::SerializeCommand_ChangeEPS(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -31313,6 +31660,7 @@ TPM_RC Tpm::ParseResponse_ChangeEPS(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -31434,22 +31782,24 @@ TPM_RC Tpm::SerializeCommand_Clear(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -31551,6 +31901,7 @@ TPM_RC Tpm::ParseResponse_Clear(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -31684,22 +32035,24 @@ TPM_RC Tpm::SerializeCommand_ClearControl(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -31801,6 +32154,7 @@ TPM_RC Tpm::ParseResponse_ClearControl(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -31923,12 +32277,14 @@ TPM_RC Tpm::SerializeCommand_HierarchyChangeAuth(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = new_auth_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = new_auth_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    new_auth_bytes.replace(2, std::string::npos, tmp);
   }
-  new_auth_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -31944,22 +32300,24 @@ TPM_RC Tpm::SerializeCommand_HierarchyChangeAuth(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -32061,6 +32419,7 @@ TPM_RC Tpm::ParseResponse_HierarchyChangeAuth(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -32186,22 +32545,24 @@ TPM_RC Tpm::SerializeCommand_DictionaryAttackLockReset(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -32303,6 +32664,7 @@ TPM_RC Tpm::ParseResponse_DictionaryAttackLockReset(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -32460,22 +32822,24 @@ TPM_RC Tpm::SerializeCommand_DictionaryAttackParameters(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -32577,6 +32941,7 @@ TPM_RC Tpm::ParseResponse_DictionaryAttackParameters(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -32734,22 +33099,24 @@ TPM_RC Tpm::SerializeCommand_PP_Commands(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -32851,6 +33218,7 @@ TPM_RC Tpm::ParseResponse_PP_Commands(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -32992,22 +33360,24 @@ TPM_RC Tpm::SerializeCommand_SetAlgorithmSet(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -33109,6 +33479,7 @@ TPM_RC Tpm::ParseResponse_SetAlgorithmSet(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -33248,12 +33619,14 @@ TPM_RC Tpm::SerializeCommand_FieldUpgradeStart(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = fu_digest_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = fu_digest_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    fu_digest_bytes.replace(2, std::string::npos, tmp);
   }
-  fu_digest_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -33277,22 +33650,24 @@ TPM_RC Tpm::SerializeCommand_FieldUpgradeStart(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -33394,6 +33769,7 @@ TPM_RC Tpm::ParseResponse_FieldUpgradeStart(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -33519,12 +33895,14 @@ TPM_RC Tpm::SerializeCommand_FieldUpgradeData(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = fu_data_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = fu_data_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    fu_data_bytes.replace(2, std::string::npos, tmp);
   }
-  fu_data_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -33536,22 +33914,24 @@ TPM_RC Tpm::SerializeCommand_FieldUpgradeData(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -33655,6 +34035,7 @@ TPM_RC Tpm::ParseResponse_FieldUpgradeData(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -33799,22 +34180,24 @@ TPM_RC Tpm::SerializeCommand_FirmwareRead(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -33917,6 +34300,7 @@ TPM_RC Tpm::ParseResponse_FirmwareRead(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -33932,6 +34316,7 @@ TPM_RC Tpm::ParseResponse_FirmwareRead(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = fu_data_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -34063,22 +34448,24 @@ TPM_RC Tpm::SerializeCommand_ContextSave(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -34181,6 +34568,7 @@ TPM_RC Tpm::ParseResponse_ContextSave(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -34315,22 +34703,24 @@ TPM_RC Tpm::SerializeCommand_ContextLoad(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -34441,6 +34831,7 @@ TPM_RC Tpm::ParseResponse_ContextLoad(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -34564,22 +34955,24 @@ TPM_RC Tpm::SerializeCommand_FlushContext(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -34681,6 +35074,7 @@ TPM_RC Tpm::ParseResponse_FlushContext(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -34827,22 +35221,24 @@ TPM_RC Tpm::SerializeCommand_EvictControl(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -34944,6 +35340,7 @@ TPM_RC Tpm::ParseResponse_EvictControl(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -35064,22 +35461,24 @@ TPM_RC Tpm::SerializeCommand_ReadClock(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -35183,6 +35582,7 @@ TPM_RC Tpm::ParseResponse_ReadClock(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -35336,22 +35736,24 @@ TPM_RC Tpm::SerializeCommand_ClockSet(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -35454,6 +35856,7 @@ TPM_RC Tpm::ParseResponse_ClockSet(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -35605,22 +36008,24 @@ TPM_RC Tpm::SerializeCommand_ClockRateAdjust(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -35723,6 +36128,7 @@ TPM_RC Tpm::ParseResponse_ClockRateAdjust(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -35885,22 +36291,24 @@ TPM_RC Tpm::SerializeCommand_GetCapability(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -36004,6 +36412,7 @@ TPM_RC Tpm::ParseResponse_GetCapability(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -36156,22 +36565,24 @@ TPM_RC Tpm::SerializeCommand_TestParms(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -36273,6 +36684,7 @@ TPM_RC Tpm::ParseResponse_TestParms(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -36395,12 +36807,14 @@ TPM_RC Tpm::SerializeCommand_NV_DefineSpace(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = auth_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = auth_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    auth_bytes.replace(2, std::string::npos, tmp);
   }
-  auth_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -36420,22 +36834,24 @@ TPM_RC Tpm::SerializeCommand_NV_DefineSpace(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -36537,6 +36953,7 @@ TPM_RC Tpm::ParseResponse_NV_DefineSpace(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -36679,22 +37096,24 @@ TPM_RC Tpm::SerializeCommand_NV_UndefineSpace(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -36796,6 +37215,7 @@ TPM_RC Tpm::ParseResponse_NV_UndefineSpace(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -36938,22 +37358,24 @@ TPM_RC Tpm::SerializeCommand_NV_UndefineSpaceSpecial(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -37055,6 +37477,7 @@ TPM_RC Tpm::ParseResponse_NV_UndefineSpaceSpecial(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -37184,22 +37607,24 @@ TPM_RC Tpm::SerializeCommand_NV_ReadPublic(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -37303,6 +37728,7 @@ TPM_RC Tpm::ParseResponse_NV_ReadPublic(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -37326,6 +37752,7 @@ TPM_RC Tpm::ParseResponse_NV_ReadPublic(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = nv_public_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -37481,12 +37908,14 @@ TPM_RC Tpm::SerializeCommand_NV_Write(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = data_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = data_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    data_bytes.replace(2, std::string::npos, tmp);
   }
-  data_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -37510,22 +37939,24 @@ TPM_RC Tpm::SerializeCommand_NV_Write(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -37627,6 +38058,7 @@ TPM_RC Tpm::ParseResponse_NV_Write(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -37777,22 +38209,24 @@ TPM_RC Tpm::SerializeCommand_NV_Increment(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -37894,6 +38328,7 @@ TPM_RC Tpm::ParseResponse_NV_Increment(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -38029,12 +38464,14 @@ TPM_RC Tpm::SerializeCommand_NV_Extend(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = data_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = data_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    data_bytes.replace(2, std::string::npos, tmp);
   }
-  data_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -38054,22 +38491,24 @@ TPM_RC Tpm::SerializeCommand_NV_Extend(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -38171,6 +38610,7 @@ TPM_RC Tpm::ParseResponse_NV_Extend(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -38329,22 +38769,24 @@ TPM_RC Tpm::SerializeCommand_NV_SetBits(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -38446,6 +38888,7 @@ TPM_RC Tpm::ParseResponse_NV_SetBits(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -38592,22 +39035,24 @@ TPM_RC Tpm::SerializeCommand_NV_WriteLock(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -38709,6 +39154,7 @@ TPM_RC Tpm::ParseResponse_NV_WriteLock(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -38838,22 +39284,24 @@ TPM_RC Tpm::SerializeCommand_NV_GlobalWriteLock(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -38955,6 +39403,7 @@ TPM_RC Tpm::ParseResponse_NV_GlobalWriteLock(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -39113,22 +39562,24 @@ TPM_RC Tpm::SerializeCommand_NV_Read(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -39231,6 +39682,7 @@ TPM_RC Tpm::ParseResponse_NV_Read(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -39246,6 +39698,7 @@ TPM_RC Tpm::ParseResponse_NV_Read(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = data_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
@@ -39410,22 +39863,24 @@ TPM_RC Tpm::SerializeCommand_NV_ReadLock(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -39527,6 +39982,7 @@ TPM_RC Tpm::ParseResponse_NV_ReadLock(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -39653,12 +40109,14 @@ TPM_RC Tpm::SerializeCommand_NV_ChangeAuth(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = new_auth_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = new_auth_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    new_auth_bytes.replace(2, std::string::npos, tmp);
   }
-  new_auth_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -39674,22 +40132,24 @@ TPM_RC Tpm::SerializeCommand_NV_ChangeAuth(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -39791,6 +40251,7 @@ TPM_RC Tpm::ParseResponse_NV_ChangeAuth(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -39955,12 +40416,14 @@ TPM_RC Tpm::SerializeCommand_NV_Certify(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  // Encrypt just the parameter data, not the size.
-  std::string tmp = qualifying_data_bytes.substr(2);
-  if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
-    return TRUNKS_RC_ENCRYPTION_FAILED;
+  if (authorization_delegate) {
+    // Encrypt just the parameter data, not the size.
+    std::string tmp = qualifying_data_bytes.substr(2);
+    if (!authorization_delegate->EncryptCommandParameter(&tmp)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    qualifying_data_bytes.replace(2, std::string::npos, tmp);
   }
-  qualifying_data_bytes.replace(2, std::string::npos, tmp);
   scoped_ptr<crypto::SecureHash> hash(crypto::SecureHash::Create(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
@@ -39996,22 +40459,24 @@ TPM_RC Tpm::SerializeCommand_NV_Certify(
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
-  if (!authorization_delegate->GetCommandAuthorization(
-      command_hash,
-      &authorization_section_bytes)) {
-    return TRUNKS_RC_AUTHORIZATION_FAILED;
-  }
   std::string authorization_size_bytes;
-  if (!authorization_section_bytes.empty()) {
-    tag = TPM_ST_SESSIONS;
-    std::string tmp;
-    rc = Serialize_UINT32(authorization_section_bytes.size(),
-                          &authorization_size_bytes);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
+  if (authorization_delegate) {
+    if (!authorization_delegate->GetCommandAuthorization(
+        command_hash,
+        &authorization_section_bytes)) {
+      return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
-    command_size += authorization_size_bytes.size() +
-                    authorization_section_bytes.size();
+    if (!authorization_section_bytes.empty()) {
+      tag = TPM_ST_SESSIONS;
+      std::string tmp;
+      rc = Serialize_UINT32(authorization_section_bytes.size(),
+                            &authorization_size_bytes);
+      if (rc != TPM_RC_SUCCESS) {
+        return rc;
+      }
+      command_size += authorization_size_bytes.size() +
+                      authorization_section_bytes.size();
+    }
   }
   std::string tag_bytes;
   rc = Serialize_TPMI_ST_COMMAND_TAG(
@@ -40115,6 +40580,7 @@ TPM_RC Tpm::ParseResponse_NV_Certify(
   std::string response_hash(32, 0);
   hash->Finish(string_as_array(&response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(
         response_hash,
         authorization_section_bytes)) {
@@ -40138,6 +40604,7 @@ TPM_RC Tpm::ParseResponse_NV_Certify(
     return rc;
   }
   if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
     std::string tmp = certify_info_bytes.substr(2);
     if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
