@@ -6,7 +6,11 @@
 
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/strings/string_utils.h>
+#include <shill/net/attribute_list.h>
 #include <shill/net/ieee80211.h>
+
+#include "apmanager/config.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
@@ -69,7 +73,59 @@ void Device::DeregisterInterface(const WiFiInterface& interface) {
 }
 
 void Device::ParseWiphyCapability(const shill::Nl80211Message& msg) {
-  // TODO(zqiu): Parse capabilities.
+  // TODO(zqiu): Parse NL80211_ATTR_SUPPORTED_IFTYPES for supported interface
+  // modes.
+
+  // Parse WiFi band capabilities.
+  shill::AttributeListConstRefPtr wiphy_bands;
+  if (!msg.const_attributes()->ConstGetNestedAttributeList(
+      NL80211_ATTR_WIPHY_BANDS, &wiphy_bands)) {
+    LOG(ERROR) << "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_WIPHY_BANDS";
+    return;
+  }
+
+  shill::AttributeIdIterator band_iter(*wiphy_bands);
+  for (; !band_iter.AtEnd(); band_iter.Advance()) {
+    BandCapability band_cap;
+
+    shill::AttributeListConstRefPtr wiphy_band;
+    if (!wiphy_bands->ConstGetNestedAttributeList(band_iter.GetId(),
+                                                  &wiphy_band)) {
+      LOG(WARNING) << "WiFi band " << band_iter.GetId() << " not found";
+      continue;
+    }
+
+    // ...Each band has a FREQS attribute...
+    shill::AttributeListConstRefPtr frequencies;
+    if (!wiphy_band->ConstGetNestedAttributeList(NL80211_BAND_ATTR_FREQS,
+                                                 &frequencies)) {
+      LOG(ERROR) << "BAND " << band_iter.GetId()
+                 << " had no 'frequencies' attribute";
+      continue;
+    }
+
+    // ...And each FREQS attribute contains an array of information about the
+    // frequency...
+    shill::AttributeIdIterator freq_iter(*frequencies);
+    for (; !freq_iter.AtEnd(); freq_iter.Advance()) {
+      shill::AttributeListConstRefPtr frequency;
+      if (frequencies->ConstGetNestedAttributeList(freq_iter.GetId(),
+                                                   &frequency)) {
+        // ...Including the frequency, itself (the part we want).
+        uint32_t frequency_value = 0;
+        if (frequency->GetU32AttributeValue(NL80211_FREQUENCY_ATTR_FREQ,
+                                            &frequency_value)) {
+          band_cap.frequencies.push_back(frequency_value);
+        }
+      }
+    }
+
+    wiphy_band->GetU16AttributeValue(NL80211_BAND_ATTR_HT_CAPA,
+                                     &band_cap.ht_capability_mask);
+    wiphy_band->GetU16AttributeValue(NL80211_BAND_ATTR_VHT_CAPA,
+                                     &band_cap.vht_capability_mask);
+    band_capability_.push_back(band_cap);
+  }
 }
 
 bool Device::ClaimDevice() {
@@ -109,7 +165,173 @@ bool Device::InterfaceExists(const string& interface_name) {
   return false;
 }
 
+bool Device::GetHTCapability(uint16_t channel, string* ht_cap) {
+  // Get the band capability based on the channel.
+  BandCapability band_cap;
+  if (!GetBandCapability(channel, &band_cap)) {
+    LOG(ERROR) << "No band capability found for channel " << channel;
+    return false;
+  }
+
+  std::vector<string> ht_capability;
+  // LDPC coding capability.
+  if (band_cap.ht_capability_mask & shill::IEEE_80211::kHTCapMaskLdpcCoding) {
+    ht_capability.push_back("LDPC");
+  }
+
+  // Supported channel width set.
+  if (band_cap.ht_capability_mask &
+      shill::IEEE_80211::kHTCapMaskSupWidth2040) {
+    // Determine secondary channel is below or above the primary.
+    bool above = false;
+    if (!GetHTSecondaryChannelLocation(channel, &above)) {
+      LOG(ERROR) << "Unable to determine secondary channel location for "
+                 << "channel " << channel;
+      return false;
+    }
+    if (above) {
+      ht_capability.push_back("HT40+");
+    } else {
+      ht_capability.push_back("HT40-");
+    }
+  }
+
+  // Spatial Multiplexing (SM) Power Save.
+  uint16_t power_save_mask =
+      (band_cap.ht_capability_mask >>
+          shill::IEEE_80211::kHTCapMaskSmPsShift) & 0x3;
+  if (power_save_mask == 0) {
+    ht_capability.push_back("SMPS-STATIC");
+  } else if (power_save_mask == 1) {
+    ht_capability.push_back("SMPS-DYNAMIC");
+  }
+
+  // HT-greenfield.
+  if (band_cap.ht_capability_mask & shill::IEEE_80211::kHTCapMaskGrnFld) {
+    ht_capability.push_back("GF");
+  }
+
+  // Short GI for 20 MHz.
+  if (band_cap.ht_capability_mask & shill::IEEE_80211::kHTCapMaskSgi20) {
+    ht_capability.push_back("SHORT-GI-20");
+  }
+
+  // Short GI for 40 MHz.
+  if (band_cap.ht_capability_mask & shill::IEEE_80211::kHTCapMaskSgi40) {
+    ht_capability.push_back("SHORT-GI-40");
+  }
+
+  // Tx STBC.
+  if (band_cap.ht_capability_mask & shill::IEEE_80211::kHTCapMaskTxStbc) {
+    ht_capability.push_back("TX-STBC");
+  }
+
+  // Rx STBC.
+  uint16_t rx_stbc =
+      (band_cap.ht_capability_mask >>
+          shill::IEEE_80211::kHTCapMaskRxStbcShift) & 0x3;
+  if (rx_stbc == 1) {
+    ht_capability.push_back("RX-STBC1");
+  } else if (rx_stbc == 2) {
+    ht_capability.push_back("RX-STBC12");
+  } else if (rx_stbc == 3) {
+    ht_capability.push_back("RX-STBC123");
+  }
+
+  // HT-delayed Block Ack.
+  if (band_cap.ht_capability_mask & shill::IEEE_80211::kHTCapMaskDelayBA) {
+    ht_capability.push_back("DELAYED-BA");
+  }
+
+  // Maximum A-MSDU length.
+  if (band_cap.ht_capability_mask & shill::IEEE_80211::kHTCapMaskMaxAmsdu) {
+    ht_capability.push_back("MAX-AMSDU-7935");
+  }
+
+  // DSSS/CCK Mode in 40 MHz.
+  if (band_cap.ht_capability_mask & shill::IEEE_80211::kHTCapMaskDsssCck40) {
+    ht_capability.push_back("DSSS_CCK-40");
+  }
+
+  // 40 MHz intolerant.
+  if (band_cap.ht_capability_mask &
+      shill::IEEE_80211::kHTCapMask40MHzIntolerant) {
+    ht_capability.push_back("40-INTOLERANT");
+  }
+
+  *ht_cap = base::StringPrintf("[%s]",
+      chromeos::string_utils::Join(" ", ht_capability).c_str());
+  return true;
+}
+
+bool Device::GetVHTCapability(uint16_t channel, string* vht_cap) {
+  // TODO(zqiu): to be implemented.
+  return false;
+}
+
+// static
+bool Device::GetHTSecondaryChannelLocation(uint16_t channel, bool* above) {
+  bool ret_val = true;
+
+  // Determine secondary channel location base on the channel. Refer to
+  // ht_cap section in hostapd.conf documentation.
+  switch (channel) {
+    case 7:
+    case 8:
+    case 9:
+    case 10:
+    case 11:
+    case 12:
+    case 13:
+    case 40:
+    case 48:
+    case 56:
+    case 64:
+      *above = false;
+      break;
+
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+    case 36:
+    case 44:
+    case 52:
+    case 60:
+      *above = true;
+      break;
+
+    default:
+      ret_val = false;
+      break;
+  }
+
+  return ret_val;
+}
+
+bool Device::GetBandCapability(uint16_t channel, BandCapability* capability) {
+  uint32_t frequency;
+  if (!Config::GetFrequencyFromChannel(channel, &frequency)) {
+    LOG(ERROR) << "Invalid channel " << channel;
+    return false;
+  }
+
+  for (const auto& band : band_capability_) {
+    if (std::find(band.frequencies.begin(),
+                  band.frequencies.end(),
+                  frequency) != band.frequencies.end()) {
+      *capability = band;
+      return true;
+    }
+  }
+  return false;
+}
+
 void Device::UpdatePreferredAPInterface() {
+  // TODO(zqiu): return if device doesn't support AP interface mode.
+
   // Use the first registered AP mode interface if there is one, otherwise use
   // the first registered managed mode interface. If none are available, then
   // no interface can be used for AP operation on this device.

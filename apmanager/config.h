@@ -25,6 +25,10 @@ class Config
   Config(Manager* manager, const std::string& service_path);
   virtual ~Config();
 
+  // Calculate the frequency based on the given |channel|. Return true and set
+  // the output |frequency| if is valid channel, false otherwise.
+  static bool GetFrequencyFromChannel(uint16_t channel, uint32_t* freq);
+
   // Register Config DBus object.
   void RegisterAsync(
       chromeos::dbus_utils::ExportedObjectManager* object_manager,
@@ -54,6 +58,7 @@ class Config
   static const char kHostapdConfigKeyControlInterface[];
   static const char kHostapdConfigKeyDriver[];
   static const char kHostapdConfigKeyFragmThreshold[];
+  static const char kHostapdConfigKeyHTCapability[];
   static const char kHostapdConfigKeyHwMode[];
   static const char kHostapdConfigKeyIeee80211ac[];
   static const char kHostapdConfigKeyIeee80211n[];
@@ -85,6 +90,14 @@ class Config
   static const uint16_t kPropertyDefaultChannel;;
   static const bool kPropertyDefaultHiddenNetwork;
   static const uint16_t kPropertyDefaultServerAddressIndex;
+
+  // Constants use for converting channel to frequency.
+  static const uint16_t kBand24GHzChannelLow;
+  static const uint16_t kBand24GHzChannelHigh;
+  static const uint32_t kBand24GHzBaseFrequency;
+  static const uint16_t kBand5GHzChannelLow;
+  static const uint16_t kBand5GHzChannelHigh;
+  static const uint16_t kBand5GHzBaseFrequency;
 
   // Append default hostapd configurations to the config file.
   bool AppendHostapdDefaults(chromeos::ErrorPtr* error,

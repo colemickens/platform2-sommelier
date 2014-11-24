@@ -50,6 +50,23 @@ const uint16_t kRSNCapabilityFrameProtectionRequired = 0x0040;
 const uint16_t kRSNCapabilityFrameProtectionCapable = 0x0080;
 const uint16_t kRSNCapabilityPeerKey = 0x0200;
 
+/* 802.11n HT capabilities masks (for cap_info) */
+const uint16_t kHTCapMaskLdpcCoding = 0x0001;
+const uint16_t kHTCapMaskSupWidth2040 = 0x0002;
+const uint16_t kHTCapMaskSmPs = 0x000c;
+const uint16_t kHTCapMaskSmPsShift = 2;
+const uint16_t kHTCapMaskGrnFld = 0x0010;
+const uint16_t kHTCapMaskSgi20 = 0x0020;
+const uint16_t kHTCapMaskSgi40 = 0x0040;
+const uint16_t kHTCapMaskTxStbc = 0x0080;
+const uint16_t kHTCapMaskRxStbc = 0x0300;
+const uint16_t kHTCapMaskRxStbcShift = 8;
+const uint16_t kHTCapMaskDelayBA = 0x0400;
+const uint16_t kHTCapMaskMaxAmsdu = 0x0800;
+const uint16_t kHTCapMaskDsssCck40 = 0x1000;
+const uint16_t kHTCapMask40MHzIntolerant = 0x4000;
+const uint16_t kHTCapMaskLsigTxopProt = 0x8000;
+
 // This structure is incomplete.  Fields will be added as necessary.
 //
 // NOTE: the uint16_t stuff is in little-endian format so conversions are

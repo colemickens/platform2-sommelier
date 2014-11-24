@@ -28,6 +28,7 @@ class MockDevice : public Device {
   MOCK_METHOD0(ClaimDevice, bool());
   MOCK_METHOD0(ReleaseDevice, bool());
   MOCK_METHOD1(InterfaceExists, bool(const std::string& interface_name));
+  MOCK_METHOD2(GetHTCapability, bool(uint16_t channel, std::string* ht_capab));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDevice);

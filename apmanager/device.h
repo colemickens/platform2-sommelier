@@ -45,6 +45,12 @@ class Device : public base::RefCounted<Device>,
     }
   };
 
+  struct BandCapability {
+    std::vector<uint32_t> frequencies;
+    uint16_t ht_capability_mask;
+    uint16_t vht_capability_mask;
+  };
+
   explicit Device(const std::string& device_name);
   virtual ~Device();
 
@@ -71,18 +77,37 @@ class Device : public base::RefCounted<Device>,
   // false otherwise.
   virtual bool InterfaceExists(const std::string& interface_name);
 
+  // Get HT and VHT capability string based on the operating channel.
+  // Return true and set the output capability string if such capability
+  // exist for the band the given |channel| is in, false otherwise.
+  virtual bool GetHTCapability(uint16_t channel, std::string* ht_cap);
+  virtual bool GetVHTCapability(uint16_t channel, std::string* vht_cap);
+
  private:
   friend class DeviceTest;
+
+  // Get the HT secondary channel location base on the primary channel.
+  // Return true and set the output |above| flag if channel is valid,
+  // otherwise return false.
+  static bool GetHTSecondaryChannelLocation(uint16_t channel, bool* above);
 
   // Determine preferred interface to used for AP operation based on the list
   // of interfaces reside on this device
   void UpdatePreferredAPInterface();
+
+  // Get the capability for the band the given |channel| is in. Return true
+  // and set the output |capability| pointer if such capability exist for the
+  // band the given |channel| is in, false otherwise.
+  bool GetBandCapability(uint16_t channel, BandCapability* capability);
 
   // List of WiFi interfaces live on this device (PHY).
   std::vector<WiFiInterface> interface_list_;
 
   dbus::ObjectPath dbus_path_;
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+
+  // Wiphy band capabilities.
+  std::vector<BandCapability> band_capability_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };

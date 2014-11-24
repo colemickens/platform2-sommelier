@@ -7,8 +7,12 @@
 #include <string>
 #include <vector>
 
+#include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <shill/net/ieee80211.h>
+#include <shill/net/nl80211_attribute.h>
+#include <shill/net/nl80211_message.h>
 
 using std::vector;
 
@@ -49,6 +53,47 @@ class DeviceTest : public testing::Test {
 
   void VerifyPreferredApInterface(const std::string& interface_name) {
     EXPECT_EQ(interface_name, device_->GetPreferredApInterface());
+  }
+
+  void AddWiphyBandAttribute(shill::AttributeListRefPtr wiphy_bands,
+                             const std::string& band_name,
+                             int band_id,
+                             std::vector<uint32_t> frequency_list,
+                             uint16_t ht_cap_mask) {
+    // Band attribute.
+    shill::AttributeListRefPtr wiphy_band;
+    wiphy_bands->CreateNestedAttribute(band_id, band_name.c_str());
+    wiphy_bands->GetNestedAttributeList(band_id, &wiphy_band);
+    // Frequencies attribute.
+    shill::AttributeListRefPtr frequencies;
+    wiphy_band->CreateNestedAttribute(NL80211_BAND_ATTR_FREQS,
+                                      "NL80211_BAND_ATTR_FREQS");
+    wiphy_band->GetNestedAttributeList(NL80211_BAND_ATTR_FREQS,
+                                       &frequencies);
+    // Frequency attribute.
+    for (size_t i = 0; i < frequency_list.size(); i++) {
+      shill::AttributeListRefPtr frequency;
+      frequencies->CreateNestedAttribute(
+          i, base::StringPrintf("Frequency %d", frequency_list[i]).c_str());
+      frequencies->GetNestedAttributeList(i, &frequency);
+      frequency->CreateU32Attribute(NL80211_FREQUENCY_ATTR_FREQ,
+                                    "NL80211_FREQUENCY_ATTR_FREQ");
+      frequency->SetU32AttributeValue(NL80211_FREQUENCY_ATTR_FREQ,
+                                      frequency_list[i]);
+      frequencies->SetNestedAttributeHasAValue(i);
+    }
+    wiphy_band->SetNestedAttributeHasAValue(NL80211_BAND_ATTR_FREQS);
+
+    // HT Capability attribute.
+    wiphy_band->CreateU16Attribute(NL80211_BAND_ATTR_HT_CAPA,
+                                   "NL80211_BAND_ATTR_HT_CAPA");
+    wiphy_band->SetU16AttributeValue(NL80211_BAND_ATTR_HT_CAPA, ht_cap_mask);
+
+    wiphy_bands->SetNestedAttributeHasAValue(band_id);
+  }
+
+  void VerifyFrequencyList(int band_id, std::vector<uint32_t> frequency_list) {
+    EXPECT_EQ(frequency_list, device_->band_capability_[band_id].frequencies);
   }
 
  protected:
@@ -125,6 +170,66 @@ TEST_F(DeviceTest, PreferredAPInterface) {
   // should be set to empty string.
   device_->DeregisterInterface(kManagedModeInterface1);
   VerifyPreferredApInterface("");
+}
+
+TEST_F(DeviceTest, ParseHTCapability) {
+  shill::NewWiphyMessage message;
+  message.attributes()->CreateNestedAttribute(
+      NL80211_ATTR_WIPHY_BANDS, "NL80211_ATTR_WIPHY_BANDS");
+  shill::AttributeListRefPtr wiphy_bands;
+  message.attributes()->GetNestedAttributeList(
+      NL80211_ATTR_WIPHY_BANDS, &wiphy_bands);
+
+  // 2.4GHz band capability.
+  const uint32_t kBand24GHzFrequencies[] = {
+      2412, 2417, 2422, 2427, 2432, 2437, 2442, 2447, 2452, 2457, 2462, 2467};
+  const uint16_t kBand24GHzHTCapMask = shill::IEEE_80211::kHTCapMaskLdpcCoding |
+                                       shill::IEEE_80211::kHTCapMaskGrnFld |
+                                       shill::IEEE_80211::kHTCapMaskSgi20;
+  std::vector<uint32_t> band_24ghz_freq_list(
+      kBand24GHzFrequencies,
+      kBand24GHzFrequencies + sizeof(kBand24GHzFrequencies) /
+          sizeof(kBand24GHzFrequencies[0]));
+  AddWiphyBandAttribute(
+      wiphy_bands, "2.4GHz band", 0, band_24ghz_freq_list,
+      kBand24GHzHTCapMask);
+
+  // 5GHz band capability.
+  const uint32_t kBand5GHzFrequencies[] = {
+      5180, 5190, 5200, 5210, 5220, 5230, 5240, 5260, 5280, 5300, 5320};
+  const uint16_t kBand5GHzHTCapMask =
+      shill::IEEE_80211::kHTCapMaskLdpcCoding |
+      shill::IEEE_80211::kHTCapMaskSupWidth2040 |
+      shill::IEEE_80211::kHTCapMaskGrnFld |
+      shill::IEEE_80211::kHTCapMaskSgi20 |
+      shill::IEEE_80211::kHTCapMaskSgi40;
+  std::vector<uint32_t> band_5ghz_freq_list(
+      kBand5GHzFrequencies,
+      kBand5GHzFrequencies + sizeof(kBand5GHzFrequencies) /
+          sizeof(kBand5GHzFrequencies[0]));
+  AddWiphyBandAttribute(
+      wiphy_bands, "5GHz band", 1, band_5ghz_freq_list, kBand5GHzHTCapMask);
+
+  message.attributes()->SetNestedAttributeHasAValue(NL80211_ATTR_WIPHY_BANDS);
+
+  device_->ParseWiphyCapability(message);
+
+  // Verify frequency list for both bands.
+  VerifyFrequencyList(0, band_24ghz_freq_list);
+  VerifyFrequencyList(1, band_5ghz_freq_list);
+
+  // Verify HT Capablity for 2.4GHz band.
+  const char kBand24GHzHTCapability[] = "[LDPC SMPS-STATIC GF SHORT-GI-20]";
+  std::string band_24ghz_cap;
+  EXPECT_TRUE(device_->GetHTCapability(6, &band_24ghz_cap));
+  EXPECT_EQ(kBand24GHzHTCapability, band_24ghz_cap);
+
+  // Verify HT Capablity for 5GHz band.
+  const char kBand5GHzHTCapability[] =
+      "[LDPC HT40+ SMPS-STATIC GF SHORT-GI-20 SHORT-GI-40]";
+  std::string band_5ghz_cap;
+  EXPECT_TRUE(device_->GetHTCapability(36, &band_5ghz_cap));
+  EXPECT_EQ(kBand5GHzHTCapability, band_5ghz_cap);
 }
 
 }  // namespace apmanager

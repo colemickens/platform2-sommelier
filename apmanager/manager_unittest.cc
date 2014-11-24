@@ -26,10 +26,22 @@ class ManagerTest : public testing::Test {
 };
 
 TEST_F(ManagerTest, GetAvailableDevice) {
-  // Register two devices.
+  // Register a device without AP support (no preferred AP interface).
   scoped_refptr<MockDevice> device0 = new MockDevice();
-  scoped_refptr<MockDevice> device1 = new MockDevice();
   RegisterDevice(device0);
+
+  // No available device for AP operation.
+  EXPECT_EQ(nullptr, manager_.GetAvailableDevice());
+
+  // Add AP support to the device.
+  const char kTestInterface0[] = "test-interface0";
+  device0->SetPreferredApInterface(kTestInterface0);
+  EXPECT_EQ(device0, manager_.GetAvailableDevice());
+
+  // Register another device with AP support.
+  const char kTestInterface1[] = "test-interface1";
+  scoped_refptr<MockDevice> device1 = new MockDevice();
+  device1->SetPreferredApInterface(kTestInterface1);
   RegisterDevice(device1);
 
   // Both devices are idle by default, should return the first added device.

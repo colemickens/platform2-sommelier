@@ -23,6 +23,7 @@ const char Config::kHostapdConfigKeyChannel[] = "channel";
 const char Config::kHostapdConfigKeyControlInterface[] = "ctrl_interface";
 const char Config::kHostapdConfigKeyDriver[] = "driver";
 const char Config::kHostapdConfigKeyFragmThreshold[] = "fragm_threshold";
+const char Config::kHostapdConfigKeyHTCapability[] = "ht_capab";
 const char Config::kHostapdConfigKeyHwMode[] = "hw_mode";
 const char Config::kHostapdConfigKeyIeee80211ac[] = "ieee80211ac";
 const char Config::kHostapdConfigKeyIeee80211n[] = "ieee80211n";
@@ -56,6 +57,14 @@ const int Config::kHostapdDefaultFragmThreshold = 2346;
 // RTS threshold: disabled.
 const int Config::kHostapdDefaultRtsThreshold = 2347;
 
+// static
+const uint16_t Config::kBand24GHzChannelLow = 1;
+const uint16_t Config::kBand24GHzChannelHigh = 13;
+const uint32_t Config::kBand24GHzBaseFrequency = 2412;
+const uint16_t Config::kBand5GHzChannelLow = 34;
+const uint16_t Config::kBand5GHzChannelHigh = 165;
+const uint16_t Config::kBand5GHzBaseFrequency = 5170;
+
 Config::Config(Manager* manager, const string& service_path)
     : org::chromium::apmanager::ConfigAdaptor(this),
       manager_(manager),
@@ -71,6 +80,20 @@ Config::Config(Manager* manager, const string& service_path)
 }
 
 Config::~Config() {}
+
+// static.
+bool Config::GetFrequencyFromChannel(uint16_t channel, uint32_t* freq) {
+  bool ret_value = true;
+  if (channel >= kBand24GHzChannelLow && channel <= kBand24GHzChannelHigh) {
+    *freq = kBand24GHzBaseFrequency + (channel - kBand24GHzChannelLow) * 5;
+  } else if (channel >= kBand5GHzChannelLow &&
+             channel <= kBand5GHzChannelHigh) {
+    *freq = kBand5GHzBaseFrequency + (channel - kBand5GHzChannelLow) * 5;
+  } else {
+    ret_value = false;
+  }
+  return ret_value;
+}
 
 void Config::RegisterAsync(ExportedObjectManager* object_manager,
                            AsyncEventSequencer* sequencer) {
@@ -101,13 +124,13 @@ bool Config::GenerateConfigFile(ErrorPtr* error, string* config_str) {
   base::StringAppendF(
       config_str, "%s=%d\n", kHostapdConfigKeyChannel, GetChannel());
 
-  // Hardware mode.
-  if (!AppendHwMode(error, config_str)) {
+  // Interface.
+  if (!AppendInterface(error, config_str)) {
     return false;
   }
 
-  // Interface.
-  if (!AppendInterface(error, config_str)) {
+  // Hardware mode.
+  if (!AppendHwMode(error, config_str)) {
     return false;
   }
 
@@ -158,8 +181,17 @@ bool Config::AppendHwMode(ErrorPtr* error, std::string* config_str) {
     }
     base::StringAppendF(config_str, "%s=1\n", kHostapdConfigKeyIeee80211n);
 
-    // TODO(zqiu): Determine HT Capabilities based on the interface PHY's
-    // capababilites.
+    // Get HT Capability.
+    string ht_cap;
+    if (!device_->GetHTCapability(GetChannel(), &ht_cap)) {
+      chromeos::Error::AddTo(
+          error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+          "Failed to get HT Capability");
+      return false;
+    }
+    base::StringAppendF(config_str, "%s=%s\n",
+                        kHostapdConfigKeyHTCapability,
+                        ht_cap.c_str());
   } else if (hw_mode == kHwMode80211ac) {
     if (GetChannel() >= 34) {
       hostapd_hw_mode = kHostapdHwMode80211a;

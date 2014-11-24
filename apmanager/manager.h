@@ -45,7 +45,11 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
 
   virtual void RegisterDevice(scoped_refptr<Device> device);
 
+  // Return an unuse device with AP interface mode support.
   virtual scoped_refptr<Device> GetAvailableDevice();
+
+  // Return the device that's associated with the given interface
+  // |interface_name|.
   virtual scoped_refptr<Device> GetDeviceFromInterfaceName(
       const std::string& interface_name);
 

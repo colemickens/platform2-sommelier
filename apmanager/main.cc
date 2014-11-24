@@ -83,6 +83,8 @@ void SetupLogging(chromeos::Minijail* minijail,
 }
 
 void DropPrivileges(chromeos::Minijail* minijail) {
+  // TODO(zqiu): Need to figure out the right set of privileges to allow
+  // hostapd to configure interfaces.
   struct minijail* jail = minijail->New();
   minijail->DropRoot(jail, apmanager::Daemon::kAPManagerUserName,
                      apmanager::Daemon::kAPManagerGroupName);
