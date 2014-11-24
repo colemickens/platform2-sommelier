@@ -64,11 +64,9 @@ bool Peer::RegisterAsync(
                  "Invalid UUID for peer.");
     return false;
   }
-  uuid_.SetValue(uuid);
+  dbus_adaptor_.SetUUID(uuid);
   if (!SetLastSeen(error, last_seen)) { return false; }
-  DBusInterface* itf = dbus_object_->AddOrGetInterface(kPeerInterface);
-  itf->AddProperty(kPeerUUID, &uuid_);
-  itf->AddProperty(kPeerLastSeen, &last_seen_);
+  dbus_adaptor_.RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(completion_callback);
   return true;
 }
@@ -79,16 +77,17 @@ bool Peer::SetLastSeen(chromeos::ErrorPtr* error, const Time& last_seen) {
   }
   uint64_t milliseconds_since_epoch = 0;
   CHECK(TimeToMillisecondsSinceEpoch(last_seen, &milliseconds_since_epoch));
-  last_seen_.SetValue(milliseconds_since_epoch);
+  dbus_adaptor_.SetLastSeen(milliseconds_since_epoch);
   return true;
 }
 
 std::string Peer::GetUUID() const {
-  return uuid_.value();
+  return dbus_adaptor_.GetUUID();
 }
 
 Time Peer::GetLastSeen() const {
-  return TimeDelta::FromMilliseconds(last_seen_.value()) + Time::UnixEpoch();
+  return TimeDelta::FromMilliseconds(dbus_adaptor_.GetLastSeen()) +
+         Time::UnixEpoch();
 }
 
 bool Peer::IsValidUpdateTime(chromeos::ErrorPtr* error,
@@ -102,7 +101,7 @@ bool Peer::IsValidUpdateTime(chromeos::ErrorPtr* error,
                  "Negative time update is invalid.");
     return false;
   }
-  if (milliseconds_since_epoch < last_seen_.value()) {
+  if (milliseconds_since_epoch < dbus_adaptor_.GetLastSeen()) {
     Error::AddTo(error,
                  FROM_HERE,
                  kPeerdErrorDomain,
@@ -115,7 +114,7 @@ bool Peer::IsValidUpdateTime(chromeos::ErrorPtr* error,
 
 bool Peer::AddService(chromeos::ErrorPtr* error,
                       const string& service_id,
-                      const vector<ip_addr>& addresses,
+                      const Service::IpAddresses& addresses,
                       const map<string, string>& service_info,
                       const map<string, Any>& options) {
   ObjectPath service_path(service_path_prefix_.value() +

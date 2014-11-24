@@ -12,15 +12,19 @@
     {
       'target_name': 'peerd_common',
       'type': 'static_library',
+      'variables': {
+        'dbus_adaptors_out_dir': 'include/peerd',
+      },
       'sources': [
         'avahi_client.cc',
         'avahi_service_discoverer.cc',
         'avahi_service_publisher.cc',
         'constants.cc',
         'dbus_constants.cc',
-        'dbus_data_serialization.cc',
+        'dbus_bindings/org.chromium.peerd.Manager.xml',
+        'dbus_bindings/org.chromium.peerd.Peer.xml',
+        'dbus_bindings/org.chromium.peerd.Service.xml',
         'discovered_peer.cc',
-        'ip_addr.cc',
         'manager.cc',
         'peer.cc',
         'peer_manager_impl.cc',
@@ -29,6 +33,7 @@
         'technologies.cc',
         'typedefs.cc',
       ],
+      'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     },
     {
       'target_name': 'peerd',
@@ -59,7 +64,6 @@
           'sources': [
             'avahi_client_unittest.cc',
             'avahi_service_publisher_unittest.cc',
-            'dbus_data_serialization_unittest.cc',
             'discovered_peer_unittest.cc',
             'manager_unittest.cc',
             'peer_manager_impl_unittest.cc',

@@ -66,27 +66,24 @@ bool Service::RegisterAsync(chromeos::ErrorPtr* error,
   if (!IsValidServiceId(error, service_id)) { return false; }
   if (!IsValidServiceInfo(error, service_info)) { return false; }
   if (!ParseOptions(error, options)) { return false; }
-  service_id_.SetValue(service_id);
-  ip_addresses_.SetValue(addresses);
-  service_info_.SetValue(service_info);
-  DBusInterface* itf = dbus_object_->AddOrGetInterface(kServiceInterface);
-  itf->AddProperty(kServiceId, &service_id_);
-  itf->AddProperty(kServiceIpInfos, &ip_addresses_);
-  itf->AddProperty(kServiceInfo, &service_info_);
+  dbus_adaptor_.SetServiceId(service_id);
+  dbus_adaptor_.SetIpInfos(addresses);
+  dbus_adaptor_.SetServiceInfo(service_info);
+  dbus_adaptor_.RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(completion_callback);
   return true;
 }
 
-const std::string& Service::GetServiceId() const {
-  return service_id_.value();
+std::string Service::GetServiceId() const {
+  return dbus_adaptor_.GetServiceId();
 }
 
-const Service::IpAddresses& Service::GetIpAddresses() const {
-  return ip_addresses_.value();
+Service::IpAddresses Service::GetIpAddresses() const {
+  return dbus_adaptor_.GetIpInfos();
 }
 
-const Service::ServiceInfo& Service::GetServiceInfo() const {
-  return service_info_.value();
+Service::ServiceInfo Service::GetServiceInfo() const {
+  return dbus_adaptor_.GetServiceInfo();
 }
 const Service::MDnsOptions& Service::GetMDnsOptions() const {
   return parsed_mdns_options_;
@@ -98,8 +95,8 @@ bool Service::Update(chromeos::ErrorPtr* error,
   if (!IsValidServiceInfo(error, info)) {
     return false;
   }
-  ip_addresses_.SetValue(addresses);
-  service_info_.SetValue(info);
+  dbus_adaptor_.SetIpInfos(addresses);
+  dbus_adaptor_.SetServiceInfo(info);
   return true;
 }
 

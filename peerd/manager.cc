@@ -14,7 +14,6 @@
 
 #include "peerd/constants.h"
 #include "peerd/dbus_constants.h"
-#include "peerd/ip_addr.h"
 #include "peerd/peer_manager_impl.h"
 #include "peerd/published_peer.h"
 #include "peerd/service.h"
@@ -99,27 +98,9 @@ Manager::Manager(unique_ptr<DBusObject> dbus_object,
 
 void Manager::RegisterAsync(const CompletionAction& completion_callback) {
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
-  chromeos::dbus_utils::DBusInterface* itf =
-      dbus_object_->AddOrGetInterface(kManagerInterface);
-
-  itf->AddSimpleMethodHandlerWithError(kManagerStartMonitoring,
-                                       base::Unretained(this),
-                                       &Manager::StartMonitoring);
-  itf->AddSimpleMethodHandlerWithError(kManagerStopMonitoring,
-                                       base::Unretained(this),
-                                       &Manager::StopMonitoring);
-  itf->AddSimpleMethodHandlerWithError(kManagerExposeService,
-                                       base::Unretained(this),
-                                       &Manager::ExposeService);
-  itf->AddSimpleMethodHandlerWithError(kManagerRemoveExposedService,
-                                       base::Unretained(this),
-                                       &Manager::RemoveExposedService);
-  itf->AddSimpleMethodHandler(kManagerPing,
-                              base::Unretained(this),
-                              &Manager::Ping);
-  chromeos::ErrorPtr error;
+  dbus_adaptor_.RegisterWithDBusObject(dbus_object_.get());
   const bool self_success = self_->RegisterAsync(
-      &error,
+      nullptr,
       base::GenerateGUID(),  // Every boot is a new GUID for now.
       base::Time::UnixEpoch(),
       sequencer->GetHandler("Failed exporting Self.", true));
@@ -266,7 +247,8 @@ void Manager::UpdateMonitoredTechnologies() {
   for (const auto& request : monitoring_requests_) {
     combined |= request.second;
   }
-  monitored_technologies_.SetValue(technologies::techs2strings(combined));
+  dbus_adaptor_.SetMonitoredTechnologies(
+      technologies::techs2strings(combined));
   if (combined.test(technologies::kMDNS)) {
     // Let the AvahiClient worry about if we're already monitoring.
     avahi_client_->StartMonitoring();

@@ -17,7 +17,7 @@
 #include <chromeos/errors/error.h>
 
 #include "peerd/avahi_client.h"
-#include "peerd/ip_addr.h"
+#include "peerd/org.chromium.peerd.Manager.h"
 #include "peerd/peer_manager_interface.h"
 #include "peerd/published_peer.h"
 #include "peerd/technologies.h"
@@ -47,7 +47,7 @@ extern const char kInvalidServiceToken[];
 }  // namespace errors
 
 // Manages global state of peerd.
-class Manager {
+class Manager : public org::chromium::peerd::ManagerInterface {
  public:
   Manager(chromeos::dbus_utils::ExportedObjectManager* object_manager,
           const std::string& initial_mdns_prefix);
@@ -59,24 +59,24 @@ class Manager {
       chromeos::ErrorPtr* error,
       const std::vector<std::string>& requested_technologies,
       const std::map<std::string, chromeos::Any>& options,
-      std::string* monitoring_token);
+      std::string* monitoring_token) override;
 
   bool StopMonitoring(
       chromeos::ErrorPtr* error,
-      const std::string& monitoring_token);
+      const std::string& monitoring_token) override;
 
   bool ExposeService(
       chromeos::ErrorPtr* error,
       const std::string& service_id,
       const std::map<std::string, std::string>& service_info,
       const std::map<std::string, chromeos::Any>& options,
-      std::string* service_token);
+      std::string* service_token) override;
 
   bool RemoveExposedService(
       chromeos::ErrorPtr* error,
-      const std::string& service_token);
+      const std::string& service_token) override;
 
-  std::string Ping();
+  std::string Ping() override;
 
  private:
   // Used in unit tests to inject mocks.
@@ -94,8 +94,7 @@ class Manager {
   // and StopMonitoring on technologies as appropriate.
   void UpdateMonitoredTechnologies();
 
-  chromeos::dbus_utils::ExportedProperty<
-      std::vector<std::string>> monitored_technologies_;
+  org::chromium::peerd::ManagerAdaptor dbus_adaptor_{this};
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<PublishedPeer> self_;
   std::unique_ptr<PeerManagerInterface> peer_manager_;

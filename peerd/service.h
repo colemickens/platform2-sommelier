@@ -7,6 +7,7 @@
 
 #include <map>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include <base/macros.h>
@@ -14,8 +15,7 @@
 #include <chromeos/dbus/exported_property_set.h>
 #include <chromeos/errors/error.h>
 
-#include "peerd/dbus_data_serialization.h"
-#include "peerd/ip_addr.h"
+#include "peerd/org.chromium.peerd.Service.h"
 #include "peerd/typedefs.h"
 
 namespace peerd {
@@ -32,10 +32,11 @@ extern const char kInvalidServiceOptions[];
 
 // Exposes a Service over DBus.  This class is used to represent
 // services exposed by the local device as well as remote devices.
-class Service {
+class Service : public org::chromium::peerd::ServiceInterface {
  public:
   using ServiceInfo = std::map<std::string, std::string>;
-  using IpAddresses = std::vector<ip_addr>;
+  using IpAddress = std::tuple<std::vector<uint8_t>, uint16_t>;
+  using IpAddresses = std::vector<IpAddress>;
   struct MDnsOptions {
     uint16_t port = 0;
   };
@@ -65,9 +66,9 @@ class Service {
   virtual ~Service() = default;
 
   // Getters called by publishers.
-  const std::string& GetServiceId() const;
-  const IpAddresses& GetIpAddresses() const;
-  const ServiceInfo& GetServiceInfo() const;
+  std::string GetServiceId() const;
+  IpAddresses GetIpAddresses() const;
+  ServiceInfo GetServiceInfo() const;
   const MDnsOptions& GetMDnsOptions() const;
 
   // Update fields of this service.  If any field is found to be invalid, the
@@ -87,9 +88,7 @@ class Service {
                           chromeos::Any* maybe_mdns_options);
 
 
-  chromeos::dbus_utils::ExportedProperty<std::string> service_id_;
-  chromeos::dbus_utils::ExportedProperty<IpAddresses> ip_addresses_;
-  chromeos::dbus_utils::ExportedProperty<ServiceInfo> service_info_;
+  org::chromium::peerd::ServiceAdaptor dbus_adaptor_{this};
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
   MDnsOptions parsed_mdns_options_;
 

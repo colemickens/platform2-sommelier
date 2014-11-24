@@ -6,7 +6,6 @@
 
 #include <avahi-common/defs.h>
 #include <base/memory/ref_counted.h>
-#include <chromeos/dbus/data_serialization.h>
 #include <chromeos/dbus/dbus_param_writer.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>

@@ -48,7 +48,7 @@ class ManagerTest : public testing::Test {
   }
 
   std::vector<string> GetMonitoredTechnologies() {
-    return manager_->monitored_technologies_.value();
+    return manager_->dbus_adaptor_.GetMonitoredTechnologies();
   }
 
   const std::map<std::string, chromeos::Any> kNoOptions;

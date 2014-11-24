@@ -18,7 +18,6 @@
 #include <dbus/object_path.h>
 #include <gmock/gmock.h>
 
-#include "peerd/ip_addr.h"
 #include "peerd/published_peer.h"
 #include "peerd/service_publisher_interface.h"
 

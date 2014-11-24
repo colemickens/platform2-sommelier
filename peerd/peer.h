@@ -18,7 +18,7 @@
 #include <dbus/bus.h>
 #include <gtest/gtest_prod.h>
 
-#include "peerd/ip_addr.h"
+#include "peerd/org.chromium.peerd.Peer.h"
 #include "peerd/service.h"
 #include "peerd/typedefs.h"
 
@@ -37,7 +37,7 @@ extern const char kUnknownService[];
 // Exposes a Peer interface over DBus.  We use this class to represent
 // ourself over DBus to interested viewers.  We also use it to represent
 // remote peers that we've discovered over various mediums.
-class Peer {
+class Peer : public org::chromium::peerd::PeerInterface {
  public:
   Peer(const scoped_refptr<dbus::Bus>& bus,
        chromeos::dbus_utils::ExportedObjectManager* object_manager,
@@ -64,7 +64,7 @@ class Peer {
   virtual bool AddService(
       chromeos::ErrorPtr* error,
       const std::string& service_id,
-      const std::vector<ip_addr>& addresses,
+      const Service::IpAddresses& addresses,
       const std::map<std::string, std::string>& service_info,
       const std::map<std::string, chromeos::Any>& options);
   // Remove a service advertised by this peer.  Can fail if no service with id
@@ -81,8 +81,7 @@ class Peer {
                                     uint64_t* ret) const;
   scoped_refptr<dbus::Bus> bus_;
   size_t services_added_{0};
-  chromeos::dbus_utils::ExportedProperty<std::string> uuid_;
-  chromeos::dbus_utils::ExportedProperty<uint64_t> last_seen_;
+  org::chromium::peerd::PeerAdaptor dbus_adaptor_{this};
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
   dbus::ObjectPath service_path_prefix_;
 

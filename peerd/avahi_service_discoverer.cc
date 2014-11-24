@@ -405,28 +405,23 @@ void AvahiServiceDiscoverer::HandleFound(dbus::Signal* signal) {
       return;
     }
     CHECK(protocol == protocol_) << "Resolved record for unexpected protocol.";
-    ip_addr addr;
-    memset(&addr, 0, sizeof(addr));
+    vector<uint8_t> addr_bytes;
     if (protocol == AVAHI_PROTO_INET) {
-      sockaddr_in* as_ipv4 = reinterpret_cast<sockaddr_in*>(&addr);
-      as_ipv4->sin_family = AF_INET;
-      as_ipv4->sin_port = port;
-      if (inet_pton(as_ipv4->sin_family,
-                    address.c_str(),
-                    &as_ipv4->sin_addr.s_addr) != 1) {
+      in_addr raw_addr;
+      if (inet_pton(AF_INET, address.c_str(), &raw_addr) != 1) {
         LOG(ERROR) << "Failed to parse IPv4 address.";
         return;
       }
+      auto ptr = reinterpret_cast<const uint8_t*>(&raw_addr.s_addr);
+      addr_bytes.assign(ptr, ptr + sizeof(raw_addr.s_addr));
     } else if (protocol == AVAHI_PROTO_INET6) {
-      sockaddr_in6* as_ipv6 = reinterpret_cast<sockaddr_in6*>(&addr);
-      as_ipv6->sin6_family = AF_INET6;
-      as_ipv6->sin6_port = port;
-      if (inet_pton(as_ipv6->sin6_family,
-                    address.c_str(),
-                    &as_ipv6->sin6_addr.s6_addr) != 1) {
+      in6_addr raw_addr;
+      if (inet_pton(AF_INET6, address.c_str(), &raw_addr) != 1) {
         LOG(ERROR) << "Failed to parse IPv6 address.";
         return;
       }
+      auto ptr = reinterpret_cast<const uint8_t*>(&raw_addr.s6_addr);
+      addr_bytes.assign(ptr, ptr + sizeof(raw_addr.s6_addr));
     } else {
       LOG(ERROR) << "Received mDNS records over a protocol other than IPv4/6 ("
                  << protocol << ")?";
@@ -434,7 +429,8 @@ void AvahiServiceDiscoverer::HandleFound(dbus::Signal* signal) {
     }
     peer_manager_->OnServiceDiscovered(
         it->second, AvahiClient::GetServiceId(type),
-        info, {addr}, last_seen, technologies::kMDNS);
+        info, {Service::IpAddress{addr_bytes, port}},
+        last_seen, technologies::kMDNS);
   }
 }
 
