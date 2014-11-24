@@ -45,7 +45,9 @@ const int32_t kConstantMaxMtu = (1 << 16) - 1;
 
 const VPNDriver::Property ThirdPartyVpnDriver::kProperties[] = {
   { kProviderHostProperty, 0 },
-  { kProviderTypeProperty, 0 }
+  { kProviderTypeProperty, 0 },
+  { kExtensionNameProperty, 0 },
+  { kConfigurationNameProperty, 0 }
 };
 
 ThirdPartyVpnDriver *ThirdPartyVpnDriver::active_client_ = nullptr;

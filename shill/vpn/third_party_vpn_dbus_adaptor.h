@@ -28,9 +28,7 @@ class ThirdPartyVpnAdaptor
  public:
   enum ExternalConnectState {
     kStateConnected = 1,
-    kStatePortal,
     kStateFailure,
-    kStateOnline
   };
 
   ThirdPartyVpnAdaptor(DBus::Connection *conn, ThirdPartyVpnDriver *client);
