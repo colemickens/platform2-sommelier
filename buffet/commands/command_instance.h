@@ -22,6 +22,7 @@ class Value;
 
 namespace buffet {
 
+class CommandDefinition;
 class CommandDictionary;
 class CommandProxyInterface;
 class CommandQueue;
@@ -31,9 +32,10 @@ class CommandInstance final {
   // Construct a command instance given the full command |name| which must
   // be in format "<package_name>.<command_name>", a command |category| and
   // a list of parameters and their values specified in |parameters|.
-  CommandInstance(const std::string& name,
-                  const std::string& category,
-                  const native_types::Object& parameters);
+  CommandInstance(
+      const std::string& name,
+      const std::shared_ptr<const CommandDefinition>& command_definition,
+      const native_types::Object& parameters);
   ~CommandInstance();
 
   // Returns the full command ID.
@@ -41,12 +43,19 @@ class CommandInstance final {
   // Returns the full name of the command.
   const std::string& GetName() const { return name_; }
   // Returns the command category.
-  const std::string& GetCategory() const { return category_; }
+  const std::string& GetCategory() const;
   // Returns the command parameters and their values.
   const native_types::Object& GetParameters() const { return parameters_; }
+  // Returns the command results and their values.
+  const native_types::Object& GetResults() const { return results_; }
   // Finds a command parameter value by parameter |name|. If the parameter
   // with given name does not exist, returns null shared_ptr.
   std::shared_ptr<const PropValue> FindParameter(const std::string& name) const;
+
+  // Returns command definition.
+  std::shared_ptr<const CommandDefinition> GetCommandDefinition() const {
+    return command_definition_;
+  }
 
   // Parses a command instance JSON definition and constructs a CommandInstance
   // object, checking the JSON |value| against the command definition schema
@@ -66,8 +75,12 @@ class CommandInstance final {
   // Sets the pointer to queue this command is part of.
   void SetCommandQueue(CommandQueue* queue) { queue_ = queue; }
 
+  // Updates the command results. The |results| should match the schema.
+  // Returns false if |results| value is incorrect.
+  bool SetResults(const native_types::Object& results);
+
   // Updates the command execution progress. The |progress| must be between
-  // 0 and 100. Returns false if the progress value is incorrect.
+  // 0 and 100. Returns false if |progress| value is incorrect.
   bool SetProgress(int progress);
   // Aborts command execution.
   void Abort();
@@ -103,12 +116,12 @@ class CommandInstance final {
   std::string id_;
   // Full command name as "<package_name>.<command_name>".
   std::string name_;
-  // Command category. See comments for CommandDefinitions::LoadCommands for the
-  // detailed description of what command categories are and what they are used
-  // for.
-  std::string category_;
+  // Command definition.
+  std::shared_ptr<const CommandDefinition> command_definition_;
   // Command parameters and their values.
   native_types::Object parameters_;
+  // Command results.
+  native_types::Object results_;
   // Current command status.
   std::string status_ = kStatusQueued;
   // Current command execution progress.

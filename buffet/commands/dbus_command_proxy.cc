@@ -7,7 +7,9 @@
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/exported_object_manager.h>
 
+#include "buffet/commands/command_definition.h"
 #include "buffet/commands/command_instance.h"
+#include "buffet/commands/object_schema.h"
 #include "buffet/commands/prop_constraints.h"
 #include "buffet/commands/prop_types.h"
 
@@ -34,17 +36,18 @@ void DBusCommandProxy::RegisterAsync(
   dbus_adaptor_.SetId(command_instance_->GetID());
   dbus_adaptor_.SetStatus(command_instance_->GetStatus());
   dbus_adaptor_.SetProgress(command_instance_->GetProgress());
-  // Convert a string-to-PropValue map into a string-to-Any map which can be
-  // sent over D-Bus.
-  chromeos::VariantDictionary params;
-  for (const auto& param_pair : command_instance_->GetParameters()) {
-    params.insert(std::make_pair(param_pair.first,
-                                 param_pair.second->GetValueAsAny()));
-  }
-  dbus_adaptor_.SetParameters(params);
+
+  dbus_adaptor_.SetParameters(ObjectToDBusVariant(
+      command_instance_->GetParameters()));
+  dbus_adaptor_.SetResults(ObjectToDBusVariant(
+      command_instance_->GetResults()));
 
   // Register the command DBus object and expose its methods and properties.
   dbus_object_.RegisterAsync(completion_callback);
+}
+
+void DBusCommandProxy::OnResultsChanged(const native_types::Object& results) {
+  dbus_adaptor_.SetResults(ObjectToDBusVariant(results));
 }
 
 void DBusCommandProxy::OnStatusChanged(const std::string& status) {
@@ -68,6 +71,20 @@ bool DBusCommandProxy::SetProgress(chromeos::ErrorPtr* error,
     return false;
 
   command_instance_->SetProgress(progress);
+  return true;
+}
+
+bool DBusCommandProxy::SetResults(chromeos::ErrorPtr* error,
+                                  const chromeos::VariantDictionary& results) {
+  LOG(INFO) << "Received call to Command<"
+            << command_instance_->GetName() << ">::SetResults()";
+
+  auto results_schema = command_instance_->GetCommandDefinition()->GetResults();
+  native_types::Object obj;
+  if (!ObjectFromDBusVariant(results_schema.get(), results, &obj, error))
+    return false;
+
+  command_instance_->SetResults(obj);
   return true;
 }
 

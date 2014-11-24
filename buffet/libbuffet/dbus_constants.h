@@ -35,6 +35,7 @@ LIBBUFFET_EXPORT extern const char kCommandInterface[];
 LIBBUFFET_EXPORT extern const char kCommandServicePathPrefix[];
 
 // Methods exposed as part of kCommandInterface.
+LIBBUFFET_EXPORT extern const char kCommandSetResults[];
 LIBBUFFET_EXPORT extern const char kCommandSetProgress[];
 LIBBUFFET_EXPORT extern const char kCommandAbort[];
 LIBBUFFET_EXPORT extern const char kCommandCancel[];
@@ -47,6 +48,7 @@ LIBBUFFET_EXPORT extern const char kCommandId[];
 LIBBUFFET_EXPORT extern const char kCommandStatus[];
 LIBBUFFET_EXPORT extern const char kCommandProgress[];
 LIBBUFFET_EXPORT extern const char kCommandParameters[];
+LIBBUFFET_EXPORT extern const char kCommandResults[];
 
 }  // namespace dbus_constants
 

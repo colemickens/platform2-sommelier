@@ -70,8 +70,7 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
       const ObjectSchema* base_parameters_def = nullptr;
       const ObjectSchema* base_results_def = nullptr;
       if (base_commands) {
-        const CommandDefinition* cmd =
-            base_commands->FindCommand(full_command_name);
+        auto cmd = base_commands->FindCommand(full_command_name);
         if (cmd) {
           base_parameters_def = cmd->GetParameters().get();
           base_results_def = cmd->GetResults().get();
@@ -210,10 +209,11 @@ std::unique_ptr<base::DictionaryValue> CommandDictionary::GetCommandsAsJson(
   return dict;
 }
 
-const CommandDefinition* CommandDictionary::FindCommand(
+std::shared_ptr<const CommandDefinition> CommandDictionary::FindCommand(
     const std::string& command_name) const {
   auto pair = definitions_.find(command_name);
-  return (pair != definitions_.end()) ? pair->second.get() : nullptr;
+  return (pair != definitions_.end()) ? pair->second :
+      std::shared_ptr<const CommandDefinition>();
 }
 
 void CommandDictionary::Clear() {

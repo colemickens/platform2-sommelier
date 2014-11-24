@@ -65,7 +65,14 @@ class DBusCommandProxyTest : public ::testing::Test {
               'enum': ['_withAirFlip', '_withSpin', '_withKick']
             }
           },
-          'results': {}
+          'results': {
+            'foo': {
+              'type': 'integer'
+            },
+            'bar': {
+              'type': 'string'
+            }
+          }
         }
       }
     })");
@@ -129,6 +136,10 @@ class DBusCommandProxyTest : public ::testing::Test {
     return GetCommandProxy()->dbus_adaptor_.GetParameters();
   }
 
+  VariantDictionary GetResults() const {
+    return GetCommandProxy()->dbus_adaptor_.GetResults();
+  }
+
   std::unique_ptr<dbus::Response> CallMethod(
       const std::string& method_name,
       const std::function<void(dbus::MessageWriter*)>& param_callback) {
@@ -185,9 +196,12 @@ TEST_F(DBusCommandProxyTest, Init) {
     {"height", int32_t{53}},
     {"_jumpType", std::string{"_withKick"}},
   };
+  VariantDictionary results;
+
   EXPECT_EQ(CommandInstance::kStatusQueued, GetStatus());
   EXPECT_EQ(0, GetProgress());
   EXPECT_EQ(params, GetParameters());
+  EXPECT_EQ(results, GetResults());
   EXPECT_EQ("robot.jump",
             GetPropertyValue<std::string>(dbus_constants::kCommandName));
   EXPECT_EQ(kTestCommandCategoty,
@@ -200,6 +214,9 @@ TEST_F(DBusCommandProxyTest, Init) {
   EXPECT_EQ(params,
             GetPropertyValue<VariantDictionary>(
                 dbus_constants::kCommandParameters));
+  EXPECT_EQ(results,
+            GetPropertyValue<VariantDictionary>(
+                dbus_constants::kCommandResults));
 }
 
 TEST_F(DBusCommandProxyTest, SetProgress) {
@@ -224,6 +241,35 @@ TEST_F(DBusCommandProxyTest, SetProgress_OutOfRange) {
   EXPECT_TRUE(IsResponseError(response));
   EXPECT_EQ(CommandInstance::kStatusQueued, GetStatus());
   EXPECT_EQ(0, GetProgress());
+}
+
+TEST_F(DBusCommandProxyTest, SetResults) {
+  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
+  const VariantDictionary results = {
+    {"foo", int32_t{42}},
+    {"bar", std::string{"foobar"}},
+  };
+  auto response = CallMethod(dbus_constants::kCommandSetResults,
+                             [results](dbus::MessageWriter* writer) {
+    chromeos::dbus_utils::AppendValueToWriter(writer, results);
+  });
+  VerifyResponse(response, {});
+  EXPECT_EQ(results, GetResults());
+  EXPECT_EQ(results,
+            GetPropertyValue<VariantDictionary>(
+                dbus_constants::kCommandResults));
+}
+
+TEST_F(DBusCommandProxyTest, SetResults_UnknownProperty) {
+  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(0);
+  const VariantDictionary results = {
+    {"quux", int32_t{42}},
+  };
+  auto response = CallMethod(dbus_constants::kCommandSetResults,
+                             [results](dbus::MessageWriter* writer) {
+    chromeos::dbus_utils::AppendValueToWriter(writer, results);
+  });
+  EXPECT_TRUE(IsResponseError(response));
 }
 
 TEST_F(DBusCommandProxyTest, Abort) {

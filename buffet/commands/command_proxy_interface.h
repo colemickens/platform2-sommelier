@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include "buffet/commands/schema_utils.h"
+
 namespace buffet {
 
 // This interface lets the command instance to update its proxy of command
@@ -16,6 +18,7 @@ class CommandProxyInterface {
  public:
   virtual ~CommandProxyInterface() = default;
 
+  virtual void OnResultsChanged(const native_types::Object& results) = 0;
   virtual void OnStatusChanged(const std::string& status) = 0;
   virtual void OnProgressChanged(int progress) = 0;
 };

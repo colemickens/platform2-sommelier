@@ -69,7 +69,8 @@ class CommandDictionary {
   // Remove all the command definitions from the dictionary.
   void Clear();
   // Finds a definition for the given command.
-  const CommandDefinition* FindCommand(const std::string& command_name) const;
+  std::shared_ptr<const CommandDefinition> FindCommand(
+      const std::string& command_name) const;
 
  private:
   std::shared_ptr<ObjectSchema> BuildObjectSchema(

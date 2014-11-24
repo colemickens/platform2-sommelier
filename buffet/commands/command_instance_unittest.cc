@@ -8,6 +8,7 @@
 
 #include "buffet/commands/command_dictionary.h"
 #include "buffet/commands/prop_types.h"
+#include "buffet/commands/schema_utils.h"
 #include "buffet/commands/unittest_utils.h"
 
 using buffet::unittests::CreateDictionaryValue;
@@ -65,26 +66,36 @@ class CommandInstanceTest : public ::testing::Test {
 
 }  // anonymous namespace
 
-TEST(CommandInstance, Test) {
-  buffet::native_types::Object params;
+TEST_F(CommandInstanceTest, Test) {
+  buffet::StringPropType str_prop;
   buffet::IntPropType int_prop;
-  buffet::DoublePropType dbl_prop;
-  params.insert(std::make_pair("freq", dbl_prop.CreateValue(800.5, nullptr)));
-  params.insert(std::make_pair("volume", int_prop.CreateValue(100, nullptr)));
-  buffet::CommandInstance instance("robot._beep", "robotd", params);
+  buffet::native_types::Object params;
+  params["phrase"] = str_prop.CreateValue(std::string("iPityDaFool"),
+                                          nullptr);
+  params["volume"] = int_prop.CreateValue(5, nullptr);
+  buffet::CommandInstance instance("robot.speak",
+                                   dict_.FindCommand("robot.speak"),
+                                   params);
+
+  buffet::native_types::Object results;
+  results["foo"] = int_prop.CreateValue(239, nullptr);
+  instance.SetResults(results);
 
   EXPECT_EQ("", instance.GetID());
-  EXPECT_EQ("robot._beep", instance.GetName());
+  EXPECT_EQ("robot.speak", instance.GetName());
   EXPECT_EQ("robotd", instance.GetCategory());
   EXPECT_EQ(params, instance.GetParameters());
-  EXPECT_DOUBLE_EQ(800.5,
-                   instance.FindParameter("freq")->GetDouble()->GetValue());
-  EXPECT_EQ(100, instance.FindParameter("volume")->GetInt()->GetValue());
+  EXPECT_EQ("iPityDaFool",
+            instance.FindParameter("phrase")->GetString()->GetValue());
+  EXPECT_EQ(5, instance.FindParameter("volume")->GetInt()->GetValue());
   EXPECT_EQ(nullptr, instance.FindParameter("blah").get());
+  EXPECT_EQ(results, instance.GetResults());
 }
 
-TEST(CommandInstance, SetID) {
-  buffet::CommandInstance instance("robot._beep", "robotd", {});
+TEST_F(CommandInstanceTest, SetID) {
+  buffet::CommandInstance instance("robot._beep",
+                                   dict_.FindCommand("robot.speak"),
+                                   {});
   instance.SetID("command_id");
   EXPECT_EQ("command_id", instance.GetID());
 }

@@ -15,12 +15,14 @@
 #include <base/values.h>
 #include <chromeos/any.h>
 #include <chromeos/errors/error.h>
+#include <chromeos/variant_dictionary.h>
 
 namespace buffet {
 
 class PropType;
 class PropValue;
 class ObjectSchema;
+class ObjectValue;
 
 namespace native_types {
 // C++ representation of object values.
@@ -122,6 +124,10 @@ CompareValue(const T& v1, const T& v2) {
 // Has special handling for Object types where native_types::Object are
 // converted to chromeos::VariantDictionary.
 chromeos::Any PropValueToDBusVariant(const PropValue* value);
+// Converts native_types::Object to chromeos::VariantDictionary
+// with proper conversion of all nested properties.
+chromeos::VariantDictionary
+ObjectToDBusVariant(const native_types::Object& object);
 // Converts D-Bus variant to PropValue.
 // Has special handling for Object types where chromeos::VariantDictionary
 // is converted to native_types::Object.
@@ -129,6 +135,11 @@ std::shared_ptr<const PropValue> PropValueFromDBusVariant(
     const PropType* type,
     const chromeos::Any& value,
     chromeos::ErrorPtr* error);
+// Converts D-Bus variant to ObjectValue.
+bool ObjectFromDBusVariant(const ObjectSchema* object_schema,
+                           const chromeos::VariantDictionary& dict,
+                           native_types::Object* obj,
+                           chromeos::ErrorPtr* error);
 
 }  // namespace buffet
 

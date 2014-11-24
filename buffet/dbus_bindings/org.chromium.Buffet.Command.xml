@@ -7,6 +7,10 @@
       <arg name="progress" type="i" direction="in"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
+    <method name="SetResults">
+      <arg name="results" type="a{sv}" direction="in"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
     <method name="Abort">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
@@ -22,5 +26,6 @@
     <property name="Status" type="s" access="read"/>
     <property name="Progress" type="i" access="read"/>
     <property name="Parameters" type="a{sv}" access="read"/>
+    <property name="Results" type="a{sv}" access="read"/>
   </interface>
 </node>

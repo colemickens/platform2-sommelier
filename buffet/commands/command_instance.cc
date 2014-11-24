@@ -26,13 +26,21 @@ const char CommandInstance::kStatusCanceled[] = "canceled";
 const char CommandInstance::kStatusAborted[] = "aborted";
 const char CommandInstance::kStatusExpired[] = "expired";
 
-CommandInstance::CommandInstance(const std::string& name,
-                                 const std::string& category,
-                                 const native_types::Object& parameters)
-    : name_(name), category_(category), parameters_(parameters) {
+CommandInstance::CommandInstance(
+    const std::string& name,
+    const std::shared_ptr<const CommandDefinition>& command_definition,
+    const native_types::Object& parameters)
+    : name_(name),
+      command_definition_(command_definition),
+      parameters_(parameters) {
+  CHECK(command_definition_.get());
 }
 
 CommandInstance::~CommandInstance() = default;
+
+const std::string& CommandInstance::GetCategory() const {
+  return command_definition_->GetCategory();
+}
 
 std::shared_ptr<const PropValue> CommandInstance::FindParameter(
     const std::string& name) const {
@@ -110,7 +118,7 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
     return instance;
   }
   // Make sure we know how to handle the command with this name.
-  const CommandDefinition* command_def = dictionary.FindCommand(command_name);
+  auto command_def = dictionary.FindCommand(command_name);
   if (!command_def) {
     chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                  errors::commands::kInvalidCommandName,
@@ -120,7 +128,7 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
   }
 
   native_types::Object parameters;
-  if (!GetCommandParameters(json, command_def, &parameters, error)) {
+  if (!GetCommandParameters(json, command_def.get(), &parameters, error)) {
     chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                  errors::commands::kCommandFailed,
                                  "Failed to validate command '%s'",
@@ -128,9 +136,7 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
     return instance;
   }
 
-  instance.reset(new CommandInstance(command_name,
-                                     command_def->GetCategory(),
-                                     parameters));
+  instance.reset(new CommandInstance(command_name, command_def, parameters));
   // TODO(antonm): Move command_id to ctor and remove setter.
   std::string command_id;
   if (json->GetStringWithoutPathExpansion(commands::attributes::kCommand_Id,
@@ -143,6 +149,17 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
 
 void CommandInstance::AddProxy(std::unique_ptr<CommandProxyInterface> proxy) {
   proxies_.push_back(std::move(proxy));
+}
+
+bool CommandInstance::SetResults(const native_types::Object& results) {
+  // TODO(antonm): Add validation.
+  if (results != results_) {
+    results_ = results;
+    for (auto& proxy : proxies_) {
+      proxy->OnResultsChanged(results_);
+    }
+  }
+  return true;
 }
 
 bool CommandInstance::SetProgress(int progress) {

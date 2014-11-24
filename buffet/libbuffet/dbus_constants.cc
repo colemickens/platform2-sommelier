@@ -26,6 +26,7 @@ const char kManagerTestMethod[]             = "TestMethod";
 const char kCommandInterface[] = "org.chromium.Buffet.Command";
 const char kCommandServicePathPrefix[] = "/org/chromium/Buffet/commands/";
 
+const char kCommandSetResults[] = "SetResults";
 const char kCommandSetProgress[] = "SetProgress";
 const char kCommandAbort[] = "Abort";
 const char kCommandCancel[] = "Cancel";
@@ -37,6 +38,7 @@ const char kCommandId[] = "Id";
 const char kCommandStatus[] = "Status";
 const char kCommandProgress[] = "Progress";
 const char kCommandParameters[] = "Parameters";
+const char kCommandResults[] = "Results";
 
 }  // namespace dbus_constants
 

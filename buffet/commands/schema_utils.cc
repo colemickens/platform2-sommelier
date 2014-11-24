@@ -9,7 +9,6 @@
 #include <string>
 
 #include <base/json/json_writer.h>
-#include <chromeos/variant_dictionary.h>
 
 #include "buffet/commands/object_schema.h"
 #include "buffet/commands/prop_types.h"
@@ -202,10 +201,13 @@ std::string ToString(const native_types::Object& obj) {
 chromeos::Any PropValueToDBusVariant(const PropValue* value) {
   if (value->GetType() != ValueType::Object)
     return value->GetValueAsAny();
-  // Special case for object types.
-  // Convert native_types::Object to chromeos::VariantDictionary
+  return ObjectToDBusVariant(value->GetObject()->GetValue());
+}
+
+chromeos::VariantDictionary
+ObjectToDBusVariant(const native_types::Object& object) {
   chromeos::VariantDictionary dict;
-  for (const auto& pair : value->GetObject()->GetValue()) {
+  for (const auto& pair : object) {
     // Since we are inserting the elements from native_types::Object which is
     // a map, the keys are already sorted. So use the "end()" position as a hint
     // for dict.insert() so the destination map can optimize its insertion
@@ -213,7 +215,7 @@ chromeos::Any PropValueToDBusVariant(const PropValue* value) {
     chromeos::Any prop = PropValueToDBusVariant(pair.second.get());
     dict.emplace_hint(dict.end(), pair.first, std::move(prop));
   }
-  return chromeos::Any(std::move(dict));
+  return dict;
 }
 
 std::shared_ptr<const PropValue> PropValueFromDBusVariant(
@@ -221,28 +223,41 @@ std::shared_ptr<const PropValue> PropValueFromDBusVariant(
     const chromeos::Any& value,
     chromeos::ErrorPtr* error) {
   std::shared_ptr<const PropValue> result;
-  if (type->GetType() != ValueType::Object) {
+  if (type->GetType() == ValueType::Object) {
+    // Special case for object types.
+    // We expect the |value| to contain chromeos::VariantDictionary, while
+    // PropValue must use native_types::Object instead. Do the conversion.
+    if (!value.IsTypeCompatible<chromeos::VariantDictionary>()) {
+      type->GenerateErrorValueTypeMismatch(error);
+      return {};
+    }
+    CHECK(nullptr != type->GetObjectSchemaPtr())
+        << "An object type must have a schema defined for it";
+    native_types::Object obj;
+    if (!ObjectFromDBusVariant(type->GetObjectSchemaPtr(),
+                               value.Get<chromeos::VariantDictionary>(),
+                               &obj,
+                               error))
+      return {};
+
+    result = type->CreateValue(std::move(obj), error);
+  } else {
     result = type->CreateValue(value, error);
-    if (result && !type->ValidateConstraints(*result, error))
-      result.reset();
-    return result;
   }
 
-  // Special case for object types.
-  // We expect the |value| to contain chromeos::VariantDictionary, while
-  // PropValue must use native_types::Object instead. Do the conversion.
-  if (!value.IsTypeCompatible<chromeos::VariantDictionary>()) {
-    type->GenerateErrorValueTypeMismatch(error);
-    return result;
-  }
-  const auto& dict = value.Get<chromeos::VariantDictionary>();
-  native_types::Object obj;
-  CHECK(nullptr != type->GetObjectSchemaPtr())
-      << "An object type must have a schema defined for it";
+  if (result && !type->ValidateConstraints(*result, error))
+    result.reset();
+  return result;
+}
+
+bool ObjectFromDBusVariant(const ObjectSchema* object_schema,
+                           const chromeos::VariantDictionary& dict,
+                           native_types::Object* obj,
+                           chromeos::ErrorPtr* error) {
   std::set<std::string> keys_processed;
   // First go over all object parameters defined by type's object schema and
   // extract the corresponding parameters from the source dictionary.
-  for (const auto& pair : type->GetObjectSchemaPtr()->GetProps()) {
+  for (const auto& pair : object_schema->GetProps()) {
     const PropValue* def_value = pair.second->GetDefaultValue();
     auto it = dict.find(pair.first);
     if (it != dict.end()) {
@@ -255,22 +270,22 @@ std::shared_ptr<const PropValue> PropValueFromDBusVariant(
                                      errors::commands::kInvalidPropValue,
                                      "Invalid value for property '%s'",
                                      pair.first.c_str());
-        return result;
+        return false;
       }
-      obj.emplace_hint(obj.end(), pair.first, std::move(prop_value));
+      obj->emplace_hint(obj->end(), pair.first, std::move(prop_value));
     } else if (def_value) {
       std::shared_ptr<const PropValue> prop_value = def_value->Clone();
-      obj.emplace_hint(obj.end(), pair.first, std::move(prop_value));
+      obj->emplace_hint(obj->end(), pair.first, std::move(prop_value));
     } else {
       ErrorMissingProperty(error, pair.first.c_str());
-      return result;
+      return false;
     }
     keys_processed.insert(pair.first);
   }
 
   // Make sure that we processed all the necessary properties and there weren't
   // any extra (unknown) ones specified, unless the schema allows them.
-  if (!type->GetObjectSchemaPtr()->GetExtraPropertiesAllowed()) {
+  if (!object_schema->GetExtraPropertiesAllowed()) {
     for (const auto& pair : dict) {
       if (keys_processed.find(pair.first) == keys_processed.end()) {
         chromeos::Error::AddToPrintf(error, FROM_HERE,
@@ -278,15 +293,12 @@ std::shared_ptr<const PropValue> PropValueFromDBusVariant(
                                      errors::commands::kUnknownProperty,
                                      "Unrecognized property '%s'",
                                      pair.first.c_str());
-        return result;
+        return false;
       }
     }
   }
 
-  result = type->CreateValue(std::move(obj), error);
-  if (result && !type->ValidateConstraints(*result, error))
-    result.reset();
-  return result;
+  return true;
 }
 
 }  // namespace buffet

@@ -11,14 +11,20 @@
 #include <chromeos/strings/string_utils.h>
 #include <gtest/gtest.h>
 
+#include "buffet/commands/command_definition.h"
 #include "buffet/commands/command_dispatch_interface.h"
+#include "buffet/commands/object_schema.h"
 
 namespace {
 
 std::unique_ptr<buffet::CommandInstance> CreateDummyCommandInstance(
     const std::string& name, const std::string& id) {
+  auto command_definition = std::make_shared<const buffet::CommandDefinition>(
+      "powerd",
+      std::make_shared<const buffet::ObjectSchema>(),
+      std::make_shared<const buffet::ObjectSchema>());
   auto cmd = std::unique_ptr<buffet::CommandInstance>(
-      new buffet::CommandInstance(name, "powerd", {}));
+      new buffet::CommandInstance(name, command_definition, {}));
   cmd->SetID(id);
   return cmd;
 }

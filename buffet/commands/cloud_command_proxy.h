@@ -24,6 +24,7 @@ class CloudCommandProxy final : public CommandProxyInterface {
   ~CloudCommandProxy() override = default;
 
   // CommandProxyInterface implementation/overloads.
+  void OnResultsChanged(const native_types::Object& results) override;
   void OnStatusChanged(const std::string& status) override;
   void OnProgressChanged(int progress) override;
 

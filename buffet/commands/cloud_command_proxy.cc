@@ -18,6 +18,12 @@ CloudCommandProxy::CloudCommandProxy(
       device_registration_info_(device_registration_info) {
 }
 
+void CloudCommandProxy::OnResultsChanged(const native_types::Object& results) {
+  base::DictionaryValue patch;
+  patch.Set("results", TypedValueToJson(results, nullptr).get());
+  device_registration_info_->UpdateCommand(command_instance_->GetID(), patch);
+}
+
 void CloudCommandProxy::OnStatusChanged(const std::string& status) {
   base::DictionaryValue patch;
   // TODO(antonm): Change status to state.
