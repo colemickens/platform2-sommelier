@@ -22,7 +22,7 @@ const uint16_t kNonceMaxSize = 32;
 const uint8_t kDecryptSession = 1<<5;
 const uint8_t kEncryptSession = 1<<6;
 const uint8_t kLabelSize = 4;
-const uint16_t kAesIVSize = 16;
+const size_t kAesIVSize = 16;
 const uint32_t kTpmBufferSize = 4096;
 
 }  // namespace

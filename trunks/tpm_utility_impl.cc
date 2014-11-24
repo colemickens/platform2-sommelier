@@ -147,10 +147,10 @@ TPM_RC TpmUtilityImpl::StirRandom(const std::string& entropy_data) {
   return factory_.GetTpm()->StirRandomSync(random_bytes, &null_delegate);
 }
 
-TPM_RC TpmUtilityImpl::GenerateRandom(int num_bytes,
+TPM_RC TpmUtilityImpl::GenerateRandom(size_t num_bytes,
                                       std::string* random_data) {
   NullAuthorizationDelegate null_delegate;
-  int bytes_left = num_bytes;
+  size_t bytes_left = num_bytes;
   random_data->clear();
   TPM_RC rc;
   TPM2B_DIGEST digest;
@@ -223,7 +223,7 @@ TPM_RC TpmUtilityImpl::ReadPCR(int pcr_index, std::string* pcr_value) {
     LOG(ERROR) << "TPM did not return the requested PCR";
     return TPM_RC_FAILURE;
   }
-  CHECK_GE(pcr_values.count, 1);
+  CHECK_GE(pcr_values.count, 1U);
   pcr_value->assign(StringFrom_TPM2B_DIGEST(pcr_values.digests[0]));
   return TPM_RC_SUCCESS;
 }

@@ -30,7 +30,7 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC Clear() override;
   TPM_RC InitializeTpm() override;
   TPM_RC StirRandom(const std::string& entropy_data) override;
-  TPM_RC GenerateRandom(int num_bytes,
+  TPM_RC GenerateRandom(size_t num_bytes,
                         std::string* random_data) override;
   TPM_RC ExtendPCR(int pcr_index, const std::string& extend_data) override;
   TPM_RC ReadPCR(int pcr_index, std::string* pcr_value) override;

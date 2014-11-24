@@ -81,7 +81,7 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->StirRandom(entropy_data);
   }
 
-  TPM_RC GenerateRandom(int num_bytes, std::string* random_data) override {
+  TPM_RC GenerateRandom(size_t num_bytes, std::string* random_data) override {
     return target_->GenerateRandom(num_bytes, random_data);
   }
 
