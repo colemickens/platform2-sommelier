@@ -13,6 +13,7 @@
 #include <openssl/hmac.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
+#include <openssl/sha.h>
 
 #include <base/logging.h>
 #include <base/rand_util.h>
@@ -28,6 +29,15 @@ namespace {
 
 const char kTokenDelimeter = ':';
 const size_t kSha256OutputSize = 32;
+
+chromeos::Blob Sha256(const chromeos::Blob& data) {
+  chromeos::Blob hash(SHA256_DIGEST_LENGTH);
+  SHA256_CTX sha_context;
+  SHA256_Init(&sha_context);
+  SHA256_Update(&sha_context, data.data(), data.size());
+  SHA256_Final(hash.data(), &sha_context);
+  return hash;
+}
 
 chromeos::SecureBlob HmacSha256(const chromeos::SecureBlob& key,
                                 const chromeos::Blob& data) {
@@ -124,7 +134,7 @@ class SecurityDelegateImpl : public SecurityDelegate {
   }
 
   bool IsValidPairingCode(const std::string& auth_code) const override {
-    return auth_code == (device_commitment_ + client_commitment_);
+    return auth_code == GetPairingSecret();
   }
 
   Error StartPairing(PairingType mode,
@@ -139,9 +149,14 @@ class SecurityDelegateImpl : public SecurityDelegate {
                        const std::string& client_commitment,
                        std::string* fingerprint,
                        std::string* signature) override {
+    if (sessionId != session_id_)
+      return Error::kUnknownSession;
     client_commitment_ = client_commitment;
-    *fingerprint = "fingerprint";
-    *signature = "signature";
+    chromeos::Blob cert_hash = Sha256(GetTlsCertificate());
+    *fingerprint = Base64Encode(cert_hash);
+    chromeos::SecureBlob cert_hmac =
+        HmacSha256(chromeos::SecureBlob(GetPairingSecret()), cert_hash);
+    *signature = Base64Encode(cert_hmac);
     return Error::kNone;
   }
 
@@ -158,6 +173,10 @@ class SecurityDelegateImpl : public SecurityDelegate {
   }
 
  private:
+  std::string GetPairingSecret() const {
+    return device_commitment_ + client_commitment_;
+  }
+
   std::string session_id_ = "111";
   std::string client_commitment_;
   std::string device_commitment_ = "1234";

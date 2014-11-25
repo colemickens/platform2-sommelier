@@ -5,6 +5,7 @@
 #include "privetd/security_delegate.h"
 
 #include <algorithm>
+#include <cctype>
 #include <memory>
 
 #include <base/logging.h>
@@ -13,6 +14,20 @@
 #include <gtest/gtest.h>
 
 namespace privetd {
+
+namespace {
+
+bool IsBase64Char(char c) {
+  return isalnum(c) || (c == '+') || (c == '/') || (c == '=');
+}
+
+bool IsBase64(const std::string& text) {
+  return !text.empty() &&
+         std::find_if_not(text.begin(), text.end(), &IsBase64Char) ==
+             text.end();
+}
+
+}  // namespace
 
 class SecurityDelegateTest : public testing::Test {
  protected:
@@ -23,9 +38,7 @@ class SecurityDelegateTest : public testing::Test {
 };
 
 TEST_F(SecurityDelegateTest, IsBase64) {
-     for (char c : security_->CreateAccessToken(AuthScope::kGuest, time_)) {
-    EXPECT_TRUE(isalnum(c) || (c == '+') || (c == '/') || (c == '='));
-  }
+  EXPECT_TRUE(IsBase64(security_->CreateAccessToken(AuthScope::kGuest, time_)));
 }
 
 TEST_F(SecurityDelegateTest, CreateSameToken) {
@@ -74,6 +87,42 @@ TEST_F(SecurityDelegateTest, TlsData) {
   std::string cert_str(cert.begin(), cert.end());
   EXPECT_TRUE(StartsWithASCII(cert_str, "-----BEGIN CERTIFICATE-----", false));
   EXPECT_TRUE(EndsWith(cert_str, "-----END CERTIFICATE-----\n", false));
+}
+
+TEST_F(SecurityDelegateTest, PairingNoSession) {
+  std::string fingerprint;
+  std::string signature;
+  EXPECT_EQ(Error::kUnknownSession,
+            security_->ConfirmPairing("123", "345", &fingerprint, &signature));
+}
+
+TEST_F(SecurityDelegateTest, Pairing) {
+  security_->InitTlsData();
+
+  std::string session_id;
+  std::string device_commitment;
+  EXPECT_EQ(Error::kNone,
+            security_->StartPairing(PairingType::kEmbeddedCode, &session_id,
+                                    &device_commitment));
+  EXPECT_FALSE(session_id.empty());
+  EXPECT_FALSE(device_commitment.empty());
+
+  std::string fingerprint1;
+  std::string signature1;
+  EXPECT_EQ(Error::kNone, security_->ConfirmPairing(
+                              session_id, "345", &fingerprint1, &signature1));
+  EXPECT_TRUE(IsBase64(fingerprint1));
+  EXPECT_TRUE(IsBase64(signature1));
+
+  std::string fingerprint2;
+  std::string signature2;
+  EXPECT_EQ(Error::kNone, security_->ConfirmPairing(
+                              session_id, "678", &fingerprint2, &signature2));
+  EXPECT_TRUE(IsBase64(fingerprint2));
+  EXPECT_TRUE(IsBase64(signature2));
+
+  EXPECT_EQ(fingerprint1, fingerprint2);  // Same certificate.
+  EXPECT_NE(signature1, signature2);      // Signed with different secret.
 }
 
 }  // namespace privetd
