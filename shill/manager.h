@@ -73,6 +73,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     std::string link_monitor_technologies;
     // Comma-separated list of technologies for which auto-connect is disabled.
     std::string no_auto_connect_technologies;
+    // Comma-separated list of technologies that should never be enabled.
+    std::string prohibited_technologies;
     // Comma-separated list of DNS search paths to be ignored.
     std::string ignored_dns_search_paths;
     // Salt value use for calculating network connection ID.
@@ -254,6 +256,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual bool IsTechnologyAutoConnectDisabled(
       Technology::Identifier technology) const;
 
+  // Report whether |technology| is prohibited from being enabled.
+  virtual bool IsTechnologyProhibited(Technology::Identifier technology) const;
+
   // Called by Profile when a |storage| completes initialization.
   void OnProfileStorageInitialized(Profile *storage);
 
@@ -420,6 +425,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               TerminationActionRemovedByStopModem);
   FRIEND_TEST(CellularTest, LinkEventWontDestroyService);
+  FRIEND_TEST(DeviceTest, StartProhibited);
   FRIEND_TEST(ManagerTest, AvailableTechnologies);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, ConnectionStatusCheck);
@@ -437,6 +443,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, InitializeProfilesHandlesDefaults);
   FRIEND_TEST(ManagerTest, IsDefaultProfile);
   FRIEND_TEST(ManagerTest, IsTechnologyAutoConnectDisabled);
+  FRIEND_TEST(ManagerTest, IsTechnologyProhibited);
   FRIEND_TEST(ManagerTest, IsWifiIdle);
   FRIEND_TEST(ManagerTest, LinkMonitorEnabled);
   FRIEND_TEST(ManagerTest, MoveService);
@@ -486,6 +493,11 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void EmitDeviceProperties();
   bool SetDisableWiFiVHT(const bool &disable_wifi_vht, Error *error);
   bool GetDisableWiFiVHT(Error *error);
+  bool SetProhibitedTechnologies(const std::string &prohibited_technologies,
+                                 Error *error);
+  std::string GetProhibitedTechnologies(Error *error);
+  void OnTechnologyProhibited(Technology::Identifier technology,
+                              const Error &error);
 
   // For every device instance that is sharing the same connectivity with
   // another device, enable the multi-home flag.

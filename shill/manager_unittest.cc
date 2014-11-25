@@ -4497,4 +4497,93 @@ TEST_F(ManagerTest, DetectMultiHomedDevices) {
   manager()->DetectMultiHomedDevices();
 }
 
+TEST_F(ManagerTest, IsTechnologyProhibited) {
+  // Test initial state.
+  EXPECT_EQ("", manager()->props_.prohibited_technologies);
+  EXPECT_FALSE(manager()->IsTechnologyProhibited(Technology::kWiMax));
+  EXPECT_FALSE(manager()->IsTechnologyProhibited(Technology::kVPN));
+
+  Error smoke_error;
+  EXPECT_FALSE(manager()->SetProhibitedTechnologies("smoke_signal",
+                                                    &smoke_error));
+  EXPECT_EQ(Error::kInvalidArguments, smoke_error.type());
+
+  ON_CALL(*mock_devices_[0], technology())
+      .WillByDefault(Return(Technology::kVPN));
+  ON_CALL(*mock_devices_[1], technology())
+      .WillByDefault(Return(Technology::kWiMax));
+  ON_CALL(*mock_devices_[2], technology())
+      .WillByDefault(Return(Technology::kWifi));
+
+  manager()->RegisterDevice(mock_devices_[0]);
+  manager()->RegisterDevice(mock_devices_[1]);
+  manager()->RegisterDevice(mock_devices_[2]);
+
+  // Registered devices of prohibited technology types should be disabled.
+  EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(false, _, _));
+  EXPECT_CALL(*mock_devices_[1], SetEnabledPersistent(false, _, _));
+  EXPECT_CALL(*mock_devices_[2], SetEnabledPersistent(false, _, _)).Times(0);
+  Error error;
+  manager()->SetProhibitedTechnologies("wimax,vpn", &error);
+  EXPECT_TRUE(manager()->IsTechnologyProhibited(Technology::kVPN));
+  EXPECT_TRUE(manager()->IsTechnologyProhibited(Technology::kWiMax));
+  EXPECT_FALSE(manager()->IsTechnologyProhibited(Technology::kWifi));
+  Mock::VerifyAndClearExpectations(mock_devices_[0]);
+  Mock::VerifyAndClearExpectations(mock_devices_[1]);
+  Mock::VerifyAndClearExpectations(mock_devices_[2]);
+
+  // Newly registered devices should be disabled.
+  mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
+                                                   dispatcher(),
+                                                   metrics(),
+                                                   manager(),
+                                                   "null4",
+                                                   "addr4",
+                                                   0));
+  mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
+                                                   dispatcher(),
+                                                   metrics(),
+                                                   manager(),
+                                                   "null5",
+                                                   "addr5",
+                                                   0));
+  ON_CALL(*mock_devices_[3], technology())
+      .WillByDefault(Return(Technology::kVPN));
+  ON_CALL(*mock_devices_[4], technology())
+      .WillByDefault(Return(Technology::kWiMax));
+  ON_CALL(*mock_devices_[5], technology())
+      .WillByDefault(Return(Technology::kWifi));
+
+  EXPECT_CALL(*mock_devices_[3], SetEnabledPersistent(false, _, _));
+  EXPECT_CALL(*mock_devices_[4], SetEnabledPersistent(false, _, _));
+  EXPECT_CALL(*mock_devices_[5], SetEnabledPersistent(false, _, _)).Times(0);
+
+  manager()->RegisterDevice(mock_devices_[3]);
+  manager()->RegisterDevice(mock_devices_[4]);
+  manager()->RegisterDevice(mock_devices_[5]);
+  Mock::VerifyAndClearExpectations(mock_devices_[3]);
+  Mock::VerifyAndClearExpectations(mock_devices_[4]);
+  Mock::VerifyAndClearExpectations(mock_devices_[5]);
+
+  // Calls to enable a non-prohibited technology should succeed.
+  Error enable_error(Error::kOperationInitiated);
+  DisableTechnologyReplyHandler technology_reply_handler;
+  ResultCallback enable_technology_callback(
+      Bind(&DisableTechnologyReplyHandler::ReportResult,
+           technology_reply_handler.AsWeakPtr()));
+  EXPECT_CALL(*mock_devices_[2], SetEnabledPersistent(true, _, _));
+  EXPECT_CALL(*mock_devices_[5], SetEnabledPersistent(true, _, _));
+  manager()->SetEnabledStateForTechnology(
+      "wifi", true, &enable_error, enable_technology_callback);
+  EXPECT_EQ(Error::kOperationInitiated, enable_error.type());
+
+  // Calls to enable a prohibited technology should fail.
+  Error enable_prohibited_error(Error::kOperationInitiated);
+  EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(true, _, _)).Times(0);
+  EXPECT_CALL(*mock_devices_[3], SetEnabledPersistent(true, _, _)).Times(0);
+  manager()->SetEnabledStateForTechnology(
+      "vpn", true, &enable_prohibited_error, enable_technology_callback);
+  EXPECT_EQ(Error::kPermissionDenied, enable_prohibited_error.type());
+}
+
 }  // namespace shill

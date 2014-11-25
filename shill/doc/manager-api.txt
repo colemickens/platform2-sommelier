@@ -135,6 +135,7 @@ Methods
 			Possible Errors: [service].Error.InvalidArguments
 					 [service].Error.InProgress
 					 [service].Error.AlreadyEnabled
+					 [service].Error.PermissionDenied
 
 		void DisableTechnology(string type)
 
@@ -602,6 +603,18 @@ Properties 	object ActiveProfile [readwrite]
 			"portal" state.  Note that this check may fail
 			for multiple reasons that are indicated in the
 			Error property of the service.
+
+		string ProhibitedTechnologies [readwrite]
+
+			The list of technologies that should be disabled
+			and prohibited from being enabled.  This is a
+			comma-separated string, e.g.  "cellular,wimax".  All
+			devices that are one of these technology types will be
+			immediately disabled persistently, and when a new device
+			of this type appears, it will be disabled by default.
+			Attempts to enable such a device using the
+			EnableTechnology will fail.  The strings are the same
+			as the ones from the service types.
 
 		int32 PortalCheckInterval [readwrite]
 

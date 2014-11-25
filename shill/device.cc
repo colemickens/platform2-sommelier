@@ -1524,6 +1524,13 @@ void Device::SetEnabledChecked(bool enable,
   DCHECK(error);
   SLOG(this, 2) << "Device " << link_name_ << " "
                 << (enable ? "starting" : "stopping");
+  if (enable && manager_->IsTechnologyProhibited(technology())) {
+    error->Populate(Error::kPermissionDenied, "The " +
+                    Technology::NameFromIdentifier(technology()) +
+                    " technology is prohibited");
+    return;
+  }
+
   if (enable == enabled_) {
     if (enable != enabled_pending_ && persist) {
       // Return an error, as there is an ongoing operation to achieve the

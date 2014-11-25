@@ -36,6 +36,8 @@ const char DefaultProfile::kStorageArpGateway[] = "ArpGateway";
 // static
 const char DefaultProfile::kStorageCheckPortalList[] = "CheckPortalList";
 // static
+const char DefaultProfile::kStorageConnectionIdSalt[] = "ConnectionIdSalt";
+// static
 const char DefaultProfile::kStorageHostName[] = "HostName";
 // static
 const char DefaultProfile::kStorageIgnoredDNSSearchPaths[] =
@@ -56,7 +58,8 @@ const char DefaultProfile::kStoragePortalURL[] = "PortalURL";
 const char DefaultProfile::kStoragePortalCheckInterval[] =
     "PortalCheckInterval";
 // static
-const char DefaultProfile::kStorageConnectionIdSalt[] = "ConnectionIdSalt";
+const char DefaultProfile::kStorageProhibitedTechnologies[] =
+    "ProhibitedTechnologies";
 
 DefaultProfile::DefaultProfile(ControlInterface *control,
                                Metrics *metrics,
@@ -84,6 +87,8 @@ DefaultProfile::DefaultProfile(ControlInterface *control,
   store->RegisterConstString(kPortalURLProperty, &manager_props.portal_url);
   store->RegisterConstInt32(kPortalCheckIntervalProperty,
                             &manager_props.portal_check_interval_seconds);
+  store->RegisterConstString(kProhibitedTechnologiesProperty,
+                             &manager_props.prohibited_technologies);
 }
 
 DefaultProfile::~DefaultProfile() {}
@@ -98,6 +103,11 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
                             kStorageCheckPortalList,
                             &manager_props->check_portal_list)) {
     manager_props->check_portal_list = PortalDetector::kDefaultCheckPortalList;
+  }
+  if (!storage()->GetInt(kStorageId, kStorageConnectionIdSalt,
+                         &manager_props->connection_id_salt)) {
+    manager_props->connection_id_salt =
+        std::uniform_int_distribution<int>()(random_engine_);
   }
   if (!storage()->GetString(kStorageId,
                             kStorageIgnoredDNSSearchPaths,
@@ -128,10 +138,10 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
     manager_props->portal_check_interval_seconds =
         PortalDetector::kDefaultCheckIntervalSeconds;
   }
-  if (!storage()->GetInt(kStorageId, kStorageConnectionIdSalt,
-                         &manager_props->connection_id_salt)) {
-    manager_props->connection_id_salt =
-        std::uniform_int_distribution<int>()(random_engine_);
+  if (!storage()->GetString(kStorageId,
+                            kStorageProhibitedTechnologies,
+                            &manager_props->prohibited_technologies)) {
+    manager_props->prohibited_technologies = "";
   }
 }
 
@@ -158,6 +168,8 @@ bool DefaultProfile::Save() {
   storage()->SetString(kStorageId,
                        kStorageCheckPortalList,
                        props_.check_portal_list);
+  storage()->SetInt(kStorageId, kStorageConnectionIdSalt,
+                    props_.connection_id_salt);
   storage()->SetString(kStorageId,
                        kStorageIgnoredDNSSearchPaths,
                        props_.ignored_dns_search_paths);
@@ -173,8 +185,9 @@ bool DefaultProfile::Save() {
   storage()->SetString(kStorageId,
                        kStoragePortalCheckInterval,
                        base::IntToString(props_.portal_check_interval_seconds));
-  storage()->SetInt(kStorageId, kStorageConnectionIdSalt,
-                    props_.connection_id_salt);
+  storage()->SetString(kStorageId,
+                       kStorageProhibitedTechnologies,
+                       props_.prohibited_technologies);
   return Profile::Save();
 }
 

@@ -163,6 +163,7 @@ Manager::Manager(ControlInterface *control_interface,
   HelpRegisterDerivedString(kIgnoredDNSSearchPathsProperty,
                             &Manager::GetIgnoredDNSSearchPaths,
                             &Manager::SetIgnoredDNSSearchPaths);
+  store_.RegisterString(kHostNameProperty, &props_.host_name);
   store_.RegisterString(kLinkMonitorTechnologiesProperty,
                         &props_.link_monitor_technologies);
   store_.RegisterString(kNoAutoConnectTechnologiesProperty,
@@ -173,7 +174,9 @@ Manager::Manager(ControlInterface *control_interface,
                        &props_.portal_check_interval_seconds);
   HelpRegisterConstDerivedRpcIdentifiers(kProfilesProperty,
                                          &Manager::EnumerateProfiles);
-  store_.RegisterString(kHostNameProperty, &props_.host_name);
+  HelpRegisterDerivedString(kProhibitedTechnologiesProperty,
+                            &Manager::GetProhibitedTechnologies,
+                            &Manager::SetProhibitedTechnologies);
   HelpRegisterDerivedString(kStateProperty,
                             &Manager::CalculateState,
                             nullptr);
@@ -773,6 +776,11 @@ bool Manager::IsTechnologyAutoConnectDisabled(
   return IsTechnologyInList(props_.no_auto_connect_technologies, technology);
 }
 
+bool Manager::IsTechnologyProhibited(
+    Technology::Identifier technology) const {
+  return IsTechnologyInList(props_.prohibited_technologies, technology);
+}
+
 void Manager::OnProfileStorageInitialized(Profile *profile) {
   wifi_provider_->LoadAndFixupServiceEntries(profile);
 }
@@ -858,6 +866,11 @@ void Manager::SetEnabledStateForTechnology(const std::string &technology_name,
     error->Populate(Error::kInvalidArguments, "Unknown technology");
     return;
   }
+  if (enabled_state && IsTechnologyProhibited(id)) {
+    error->Populate(Error::kPermissionDenied,
+                    "The " + technology_name + " technology is prohibited");
+    return;
+  }
   bool deferred = false;
   auto result_aggregator(make_scoped_refptr(new ResultAggregator(callback)));
   for (auto &device : devices_) {
@@ -908,6 +921,11 @@ void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
   devices_.push_back(to_manage);
 
   LoadDeviceFromProfiles(to_manage);
+
+  if (IsTechnologyProhibited(to_manage->technology())) {
+    Error unused_error;
+    to_manage->SetEnabledPersistent(false, &unused_error, ResultCallback());
+  }
 
   // If |to_manage| is new, it needs to be persisted.
   UpdateDevice(to_manage);
@@ -972,6 +990,38 @@ bool Manager::SetDisableWiFiVHT(const bool &disable_wifi_vht, Error *error) {
 
 bool Manager::GetDisableWiFiVHT(Error *error) {
   return wifi_provider_->disable_vht();
+}
+
+bool Manager::SetProhibitedTechnologies(const string &prohibited_technologies,
+                                        Error *error) {
+  vector<Technology::Identifier> technology_vector;
+  if (!Technology::GetTechnologyVectorFromString(prohibited_technologies,
+                                                 &technology_vector,
+                                                 error)) {
+    return false;
+  }
+  for (const auto &technology : technology_vector) {
+    Error unused_error(Error::kOperationInitiated);
+    ResultCallback result_callback(Bind(
+        &Manager::OnTechnologyProhibited, Unretained(this), technology));
+    SetEnabledStateForTechnology(Technology::NameFromIdentifier(technology),
+                                 false,
+                                 &unused_error,
+                                 result_callback);
+  }
+  props_.prohibited_technologies = prohibited_technologies;
+
+  return true;
+}
+
+void Manager::OnTechnologyProhibited(Technology::Identifier technology,
+                                     const Error &error) {
+  SLOG(this, 2) << __func__ << " for "
+                << Technology::NameFromIdentifier(technology);
+}
+
+string Manager::GetProhibitedTechnologies(Error *error) {
+  return props_.prohibited_technologies;
 }
 
 bool Manager::HasService(const ServiceRefPtr &service) {

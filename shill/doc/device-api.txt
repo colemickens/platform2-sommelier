@@ -31,6 +31,8 @@ Methods		dict GetProperties()
 
 		        Enable the device.
 
+			Possible Errors: [service].Error.PermissionDenied
+
 		void Disable()
 
 		        Disable the device.

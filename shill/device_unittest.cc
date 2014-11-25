@@ -764,6 +764,33 @@ TEST_F(DeviceTest, Stop) {
   EXPECT_FALSE(device_->selected_service_.get());
 }
 
+TEST_F(DeviceTest, StartProhibited) {
+  DeviceRefPtr device(new TestDevice(control_interface(),
+                                     dispatcher(),
+                                     nullptr,
+                                     manager(),
+                                     kDeviceName,
+                                     kDeviceAddress,
+                                     kDeviceInterfaceIndex,
+                                     Technology::kWifi));
+  {
+    Error error;
+    manager()->SetProhibitedTechnologies("wifi", &error);
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  device->SetEnabled(true);
+  EXPECT_FALSE(device->running());
+
+  {
+    Error error;
+    manager()->SetProhibitedTechnologies("", &error);
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  device->SetEnabled(true);
+  EXPECT_TRUE(device->running());
+}
+
 TEST_F(DeviceTest, Reset) {
   Error e;
   device_->Reset(&e, ResultCallback());

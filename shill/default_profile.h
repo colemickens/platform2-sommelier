@@ -74,6 +74,7 @@ class DefaultProfile : public Profile {
   static const char kStorageId[];
   static const char kStorageArpGateway[];
   static const char kStorageCheckPortalList[];
+  static const char kStorageConnectionIdSalt[];
   static const char kStorageHostName[];
   static const char kStorageIgnoredDNSSearchPaths[];
   static const char kStorageLinkMonitorTechnologies[];
@@ -82,7 +83,7 @@ class DefaultProfile : public Profile {
   static const char kStorageOfflineMode[];
   static const char kStoragePortalCheckInterval[];
   static const char kStoragePortalURL[];
-  static const char kStorageConnectionIdSalt[];
+  static const char kStorageProhibitedTechnologies[];
 
   const base::FilePath storage_path_;
   const std::string profile_id_;

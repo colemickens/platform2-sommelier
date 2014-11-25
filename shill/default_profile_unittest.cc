@@ -146,6 +146,11 @@ TEST_F(DefaultProfileTest, Save) {
                         DefaultProfile::kStorageNoAutoConnectTechnologies,
                         ""))
       .WillOnce(Return(true));
+  EXPECT_CALL(*storage.get(),
+              SetString(DefaultProfile::kStorageId,
+                        DefaultProfile::kStorageProhibitedTechnologies,
+                        ""))
+      .WillOnce(Return(true));
   EXPECT_CALL(*storage.get(), SetString(DefaultProfile::kStorageId,
                                         DefaultProfile::kStoragePortalURL,
                                         ""))
@@ -199,6 +204,11 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
                         DefaultProfile::kStorageNoAutoConnectTechnologies,
                         _))
       .WillOnce(Return(false));
+  EXPECT_CALL(*storage.get(),
+              GetString(DefaultProfile::kStorageId,
+                        DefaultProfile::kStorageProhibitedTechnologies,
+                        _))
+      .WillOnce(Return(false));
   EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
                                         DefaultProfile::kStoragePortalURL,
                                         &manager_props.portal_url))
@@ -225,6 +235,7 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
   EXPECT_EQ(ConnectivityTrial::kDefaultURL, manager_props.portal_url);
   EXPECT_EQ(PortalDetector::kDefaultCheckIntervalSeconds,
             manager_props.portal_check_interval_seconds);
+  EXPECT_EQ("", manager_props.prohibited_technologies);
 }
 
 TEST_F(DefaultProfileTest, LoadManagerProperties) {
@@ -280,6 +291,13 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
                         _))
       .WillOnce(DoAll(SetArgumentPointee<2>(portal_check_interval_string),
                       Return(true)));
+  const string prohibited_technologies("vpn,wimax");
+  EXPECT_CALL(*storage.get(),
+              GetString(DefaultProfile::kStorageId,
+                        DefaultProfile::kStorageProhibitedTechnologies,
+                        _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(prohibited_technologies),
+                      Return(true)));
   profile_->set_storage(storage.release());
 
   Manager::Properties manager_props;
@@ -296,6 +314,7 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   EXPECT_EQ(portal_url, manager_props.portal_url);
   EXPECT_EQ(portal_check_interval_int,
             manager_props.portal_check_interval_seconds);
+  EXPECT_EQ(prohibited_technologies, manager_props.prohibited_technologies);
 }
 
 TEST_F(DefaultProfileTest, GetStoragePath) {
