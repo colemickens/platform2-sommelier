@@ -36,7 +36,6 @@
       'sources': [
         'error_codes.cc',
         'hmac_authorization_delegate.cc',
-        'null_authorization_delegate.cc',
         'password_authorization_delegate.cc',
         'scoped_key_handle.cc',
         'tpm_generated.cc',

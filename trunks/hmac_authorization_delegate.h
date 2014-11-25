@@ -39,8 +39,7 @@ const size_t kHashDigestSize = 32;  // 256 bits is SHA256 digest size.
  *  TrunksProxy proxy;
  *  proxy.Init();
  *  Tpm tpm(&proxy);
- *  NullAuthorizationDelegate null;
- *  tpm.StartAuthSession(..., &null);
+ *  tpm.StartAuthSession(...);
  *  HmacAuthorizationDelegate hmac();
  *  hmac.InitSession(...);
  *  tpm.Create(..., &hmac);

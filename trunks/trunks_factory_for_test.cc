@@ -12,7 +12,6 @@
 #include "trunks/mock_tpm.h"
 #include "trunks/mock_tpm_state.h"
 #include "trunks/mock_tpm_utility.h"
-#include "trunks/null_authorization_delegate.h"
 #include "trunks/tpm_generated.h"
 #include "trunks/tpm_state.h"
 #include "trunks/tpm_utility.h"
@@ -231,7 +230,7 @@ TrunksFactoryForTest::TrunksFactoryForTest()
       tpm_state_(default_tpm_state_.get()),
       default_tpm_utility_(new NiceMock<MockTpmUtility>()),
       tpm_utility_(default_tpm_utility_.get()),
-      default_authorization_delegate_(new NullAuthorizationDelegate()),
+      default_authorization_delegate_(new PasswordAuthorizationDelegate("")),
       password_authorization_delegate_(default_authorization_delegate_.get()),
       default_authorization_session_(new NiceMock<MockAuthorizationSession>()),
       authorization_session_(default_authorization_session_.get()) {

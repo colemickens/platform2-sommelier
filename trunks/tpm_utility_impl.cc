@@ -13,7 +13,6 @@
 #include "trunks/authorization_delegate.h"
 #include "trunks/authorization_session.h"
 #include "trunks/error_codes.h"
-#include "trunks/null_authorization_delegate.h"
 #include "trunks/tpm_state.h"
 #include "trunks/trunks_factory.h"
 
@@ -55,14 +54,13 @@ TpmUtilityImpl::~TpmUtilityImpl() {
 TPM_RC TpmUtilityImpl::Startup() {
   TPM_RC result = TPM_RC_SUCCESS;
   Tpm* tpm = factory_.GetTpm();
-  NullAuthorizationDelegate authorization;
-  result = tpm->StartupSync(TPM_SU_CLEAR, &authorization);
+  result = tpm->StartupSync(TPM_SU_CLEAR, NULL);
   // Ignore TPM_RC_INITIALIZE, that means it was already started.
   if (result && result != TPM_RC_INITIALIZE) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;
   }
-  result = tpm->SelfTestSync(YES /* Full test. */, &authorization);
+  result = tpm->SelfTestSync(YES /* Full test. */, NULL);
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;
@@ -141,15 +139,13 @@ TPM_RC TpmUtilityImpl::InitializeTpm() {
 }
 
 TPM_RC TpmUtilityImpl::StirRandom(const std::string& entropy_data) {
-  NullAuthorizationDelegate null_delegate;
   std::string digest = crypto::SHA256HashString(entropy_data);
   TPM2B_SENSITIVE_DATA random_bytes = Make_TPM2B_SENSITIVE_DATA(digest);
-  return factory_.GetTpm()->StirRandomSync(random_bytes, &null_delegate);
+  return factory_.GetTpm()->StirRandomSync(random_bytes, NULL);
 }
 
 TPM_RC TpmUtilityImpl::GenerateRandom(size_t num_bytes,
                                       std::string* random_data) {
-  NullAuthorizationDelegate null_delegate;
   size_t bytes_left = num_bytes;
   random_data->clear();
   TPM_RC rc;
@@ -157,7 +153,7 @@ TPM_RC TpmUtilityImpl::GenerateRandom(size_t num_bytes,
   while (bytes_left > 0) {
     rc = factory_.GetTpm()->GetRandomSync(bytes_left,
                                           &digest,
-                                          &null_delegate);
+                                          NULL);
     if (rc) {
       LOG(ERROR) << "Error getting random data from tpm.";
       return rc;
@@ -171,7 +167,6 @@ TPM_RC TpmUtilityImpl::GenerateRandom(size_t num_bytes,
 
 TPM_RC TpmUtilityImpl::ExtendPCR(int pcr_index,
                                  const std::string& extend_data) {
-  NullAuthorizationDelegate null_delegate;
   if (pcr_index < 0 || pcr_index >= IMPLEMENTATION_PCR) {
     LOG(ERROR) << "Using a PCR index that isnt implemented.";
     return TPM_RC_FAILURE;
@@ -187,11 +182,10 @@ TPM_RC TpmUtilityImpl::ExtendPCR(int pcr_index,
   return factory_.GetTpm()->PCR_ExtendSync(pcr_handle,
                                            pcr_name,
                                            digests,
-                                           &null_delegate);
+                                           NULL);
 }
 
 TPM_RC TpmUtilityImpl::ReadPCR(int pcr_index, std::string* pcr_value) {
-  NullAuthorizationDelegate null_delegate;
   TPML_PCR_SELECTION pcr_select_in;
   uint32_t pcr_update_counter;
   TPML_PCR_SELECTION pcr_select_out;
@@ -210,7 +204,7 @@ TPM_RC TpmUtilityImpl::ReadPCR(int pcr_index, std::string* pcr_value) {
                                               &pcr_update_counter,
                                               &pcr_select_out,
                                               &pcr_values,
-                                              &null_delegate);
+                                              NULL);
   if (rc) {
     LOG(INFO) << "Error trying to read a pcr: " << rc;
     return rc;
@@ -439,7 +433,6 @@ TPM_RC TpmUtilityImpl::AsymmetricEncrypt(TPM_HANDLE key_handle,
     return return_code;
   }
 
-  NullAuthorizationDelegate null_delegate;
   TPM2B_DATA label;
   label.size = 0;
   TPM2B_PUBLIC_KEY_RSA in_message = Make_TPM2B_PUBLIC_KEY_RSA(plaintext);
@@ -450,7 +443,7 @@ TPM_RC TpmUtilityImpl::AsymmetricEncrypt(TPM_HANDLE key_handle,
                                                    in_scheme,
                                                    label,
                                                    &out_message,
-                                                   &null_delegate);
+                                                   NULL);
   if (return_code) {
     LOG(ERROR) << "Error performing RSA encrypt: "
                << GetErrorString(return_code);
@@ -641,7 +634,6 @@ TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
     LOG(ERROR) << "Invalid scheme used to verify signature.";
     return SAPI_RC_BAD_PARAMETER;
   }
-  NullAuthorizationDelegate null_delegate;
   std::string key_name;
   TPMT_TK_VERIFIED verified;
   TPM2B_DIGEST tpm_digest = Make_TPM2B_DIGEST(digest);
@@ -650,7 +642,7 @@ TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
                                                        tpm_digest,
                                                        signature_in,
                                                        &verified,
-                                                       &null_delegate);
+                                                       NULL);
   if (return_code == TPM_RC_SIGNATURE) {
     LOG(WARNING) << "Incorrect signature for given digest.";
     return TPM_RC_SIGNATURE;
@@ -785,7 +777,6 @@ TPM_RC TpmUtilityImpl::DisablePlatformHierarchy(
 }
 
 TPM_RC TpmUtilityImpl::GetKeyName(TPM_HANDLE handle, std::string* name) {
-  NullAuthorizationDelegate null_delegate;
   TPM2B_PUBLIC public_data;
   TPM2B_NAME out_name;
   out_name.size = 0;
@@ -796,7 +787,7 @@ TPM_RC TpmUtilityImpl::GetKeyName(TPM_HANDLE handle, std::string* name) {
                                                          &public_data,
                                                          &out_name,
                                                          &qualified_name,
-                                                         &null_delegate);
+                                                         NULL);
   if (return_code) {
     LOG(ERROR) << "Error generating name for object: " << handle;
     return return_code;
@@ -809,7 +800,6 @@ TPM_RC TpmUtilityImpl::GetKeyName(TPM_HANDLE handle, std::string* name) {
 TPM_RC TpmUtilityImpl::GetKeyPublicArea(TPM_HANDLE handle,
                                         TPM2B_PUBLIC* public_data) {
   CHECK(public_data);
-  NullAuthorizationDelegate null_delegate;
   TPM2B_NAME out_name;
   TPM2B_NAME qualified_name;
   std::string handle_name;  // Unused
@@ -818,7 +808,7 @@ TPM_RC TpmUtilityImpl::GetKeyPublicArea(TPM_HANDLE handle,
                                                          public_data,
                                                          &out_name,
                                                          &qualified_name,
-                                                         &null_delegate);
+                                                         NULL);
   if (return_code) {
     LOG(ERROR) << "Error generating name for object: " << handle;
     return return_code;

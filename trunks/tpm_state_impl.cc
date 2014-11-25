@@ -7,7 +7,6 @@
 #include <base/logging.h>
 
 #include "trunks/error_codes.h"
-#include "trunks/null_authorization_delegate.h"
 #include "trunks/tpm_generated.h"
 #include "trunks/trunks_factory.h"
 
@@ -41,13 +40,12 @@ TPM_RC TpmStateImpl::Initialize() {
   Tpm* tpm = factory_.GetTpm();
   TPMI_YES_NO more_data;
   TPMS_CAPABILITY_DATA capability_data;
-  NullAuthorizationDelegate authorization;
   TPM_RC result = tpm->GetCapabilitySync(TPM_CAP_TPM_PROPERTIES,
                                          TPM_PT_PERMANENT,
                                          1,  // There is only one value.
                                          &more_data,
                                          &capability_data,
-                                         &authorization);
+                                         NULL);
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;
@@ -66,7 +64,7 @@ TPM_RC TpmStateImpl::Initialize() {
                                   1,  // There is only one value.
                                   &more_data,
                                   &capability_data,
-                                  &authorization);
+                                  NULL);
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;

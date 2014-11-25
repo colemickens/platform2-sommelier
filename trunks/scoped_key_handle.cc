@@ -7,7 +7,6 @@
 #include <base/logging.h>
 
 #include "trunks/error_codes.h"
-#include "trunks/null_authorization_delegate.h"
 
 namespace {
 
@@ -56,10 +55,7 @@ TPM_HANDLE ScopedKeyHandle::get() {
 
 void ScopedKeyHandle::FlushHandleContext(TPM_HANDLE handle) {
   TPM_RC result = TPM_RC_SUCCESS;
-  NullAuthorizationDelegate null_delegate;
-  result = factory_.GetTpm()->FlushContextSync(handle,
-                                               "",
-                                               &null_delegate);
+  result = factory_.GetTpm()->FlushContextSync(handle, "", NULL);
   if (result) {
     LOG(WARNING) << "Error closing handle: " << handle << " : "
                  << GetErrorString(result);

@@ -13,6 +13,8 @@
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/chromeos_export.h>
 
+#include "trunks/password_authorization_delegate.h"
+
 namespace trunks {
 
 class AuthorizationDelegate;
@@ -21,7 +23,7 @@ class MockAuthorizationSession;
 class MockTpm;
 class MockTpmState;
 class MockTpmUtility;
-class NullAuthorizationDelegate;
+class PasswordAuthorizationDelegate;
 class Tpm;
 class TpmState;
 class TpmUtility;
@@ -77,7 +79,7 @@ class CHROMEOS_EXPORT TrunksFactoryForTest : public TrunksFactory {
   TpmState* tpm_state_;
   scoped_ptr<MockTpmUtility> default_tpm_utility_;
   TpmUtility* tpm_utility_;
-  scoped_ptr<NullAuthorizationDelegate> default_authorization_delegate_;
+  scoped_ptr<PasswordAuthorizationDelegate> default_authorization_delegate_;
   AuthorizationDelegate* password_authorization_delegate_;
   scoped_ptr<MockAuthorizationSession> default_authorization_session_;
   AuthorizationSession* authorization_session_;

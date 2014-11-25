@@ -10,7 +10,6 @@
 #include "trunks/mock_authorization_session.h"
 #include "trunks/mock_tpm.h"
 #include "trunks/mock_tpm_state.h"
-#include "trunks/null_authorization_delegate.h"
 #include "trunks/tpm_utility_impl.h"
 #include "trunks/trunks_factory_for_test.h"
 
@@ -623,7 +622,6 @@ TEST_F(TpmUtilityTest, SignSuccess) {
   signature_out.signature.rsassa.sig.buffer[0] = 'h';
   signature_out.signature.rsassa.sig.buffer[1] = 'i';
   std::string signature;
-  NullAuthorizationDelegate delegate;
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kSign;
@@ -648,7 +646,6 @@ TEST_F(TpmUtilityTest, SignFail) {
   std::string password;
   std::string digest;
   std::string signature;
-  NullAuthorizationDelegate delegate;
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kSign;
@@ -671,7 +668,6 @@ TEST_F(TpmUtilityTest, SignBadParams1) {
   std::string password;
   std::string digest;
   std::string signature;
-  NullAuthorizationDelegate delegate;
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kSign | kRestricted;
@@ -692,7 +688,6 @@ TEST_F(TpmUtilityTest, SignBadParams2) {
   std::string password;
   std::string digest;
   std::string signature;
-  NullAuthorizationDelegate delegate;
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt;
@@ -713,7 +708,6 @@ TEST_F(TpmUtilityTest, SignBadParams3) {
   std::string password;
   std::string digest;
   std::string signature;
-  NullAuthorizationDelegate delegate;
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_ECC;
   public_area.public_area.object_attributes = kSign;
@@ -734,7 +728,6 @@ TEST_F(TpmUtilityTest, SignBadParams4) {
   std::string password;
   std::string digest;
   std::string signature;
-  NullAuthorizationDelegate delegate;
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kSign;
@@ -755,7 +748,6 @@ TEST_F(TpmUtilityTest, SignBadParams5) {
   std::string password;
   std::string digest;
   std::string signature;
-  NullAuthorizationDelegate delegate;
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.Sign(key_handle,
                                                 TPM_ALG_AES,
                                                 TPM_ALG_NULL,
@@ -773,7 +765,6 @@ TEST_F(TpmUtilityTest, SignNullSchemeForward) {
   TPMT_SIGNATURE signature_out;
   signature_out.signature.rsassa.sig.size = 0;
   std::string signature;
-  NullAuthorizationDelegate delegate;
   TPM2B_PUBLIC public_area;
   TPMT_SIG_SCHEME scheme;
   public_area.public_area.type = TPM_ALG_RSA;
@@ -803,7 +794,6 @@ TEST_F(TpmUtilityTest, SignSchemeForward) {
   TPMT_SIGNATURE signature_out;
   signature_out.signature.rsassa.sig.size = 0;
   std::string signature;
-  NullAuthorizationDelegate delegate;
   TPM2B_PUBLIC public_area;
   TPMT_SIG_SCHEME scheme;
   public_area.public_area.type = TPM_ALG_RSA;
