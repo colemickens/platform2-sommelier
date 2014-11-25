@@ -27,18 +27,21 @@ struct Interface;
 
 class ProxyGenerator : public HeaderGenerator {
  public:
-  static bool GenerateProxies(const std::vector<Interface>& interfaces,
+  static bool GenerateProxies(const ServiceConfig& config,
+                              const std::vector<Interface>& interfaces,
                               const base::FilePath& output_file);
 
  private:
   friend class ProxyGeneratorTest;
 
   // Generates one interface proxy.
-  static void GenerateInterfaceProxy(const Interface& interface,
+  static void GenerateInterfaceProxy(const ServiceConfig& config,
+                                     const Interface& interface,
                                      IndentedText* text);
 
   // Generates the constructor and destructor for the proxy.
-  static void AddConstructor(const Interface& interface,
+  static void AddConstructor(const ServiceConfig& config,
+                             const Interface& interface,
                              const std::string& class_name,
                              IndentedText* text);
   static void AddDestructor(const std::string& class_name,

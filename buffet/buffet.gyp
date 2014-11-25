@@ -22,19 +22,15 @@
       'actions': [
         {
           'action_name': 'generate-buffet-proxies',
-          'inputs': [
+          'variables': {
+            'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
+            'proxy_output_file': 'include/buffet/dbus-proxies.h'
+          },
+          'sources': [
             'dbus_bindings/org.chromium.Buffet.Command.xml',
             'dbus_bindings/org.chromium.Buffet.Manager.xml',
           ],
-          'outputs': [
-            '<(SHARED_INTERMEDIATE_DIR)/include/buffet/dbus-proxies.h',
-          ],
-          'action': [
-            '<!(which generate-chromeos-dbus-bindings)',
-            '>@(_inputs)',
-            '--proxy=>(_outputs)'
-          ],
-          'hard_dependency': 1,
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },
       ],
       'includes': ['../common-mk/deps.gypi'],
@@ -44,6 +40,7 @@
       'type': 'static_library',
       'variables': {
         'dbus_adaptors_out_dir': 'include/buffet',
+        'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
       },
       'sources': [
         'commands/command_definition.cc',

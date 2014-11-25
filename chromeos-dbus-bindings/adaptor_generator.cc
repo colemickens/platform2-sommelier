@@ -73,7 +73,7 @@ void AdaptorGenerator::GenerateInterfaceAdaptor(
   text->AddBlankLine();
   text->AddLine(StringPrintf("// Interface definition for %s.",
                              full_itf_name.c_str()));
-  text->AddComments(interface.doc_string_);
+  text->AddComments(interface.doc_string);
   text->AddLine(StringPrintf("class %s {", itf_name.c_str()));
   text->AddLineWithOffset("public:", kScopeOffset);
   text->PushOffset(kBlockOffset);
@@ -92,6 +92,15 @@ void AdaptorGenerator::GenerateInterfaceAdaptor(
   AddRegisterWithDBusObject(itf_name, interface, text);
   AddSendSignalMethods(interface, text);
   AddPropertyMethodImplementation(interface, text);
+  if (!interface.path.empty()) {
+    text->AddBlankLine();
+    text->AddLine("static dbus::ObjectPath GetObjectPath() {");
+    text->PushOffset(kBlockOffset);
+    text->AddLine(StringPrintf("return dbus::ObjectPath{\"%s\"};",
+                               interface.path.c_str()));
+    text->PopOffset();
+    text->AddLine("}");
+  }
   text->PopOffset();
 
   text->AddBlankLine();
@@ -245,7 +254,7 @@ void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
         output_arguments_copy.clear();
         break;
     }
-    block.AddComments(method.doc_string_);
+    block.AddComments(method.doc_string);
     string method_start = StringPrintf("virtual %s %s(",
                                        return_type.c_str(),
                                        method.name.c_str());
@@ -293,7 +302,7 @@ void AdaptorGenerator::AddSendSignalMethods(
     block.AddBlankLine();
 
   for (const auto& signal : interface.signals) {
-    block.AddComments(signal.doc_string_);
+    block.AddComments(signal.doc_string);
     string method_start = StringPrintf("void Send%sSignal(",
                                        signal.name.c_str());
     string method_end = ") {";
@@ -388,7 +397,7 @@ void AdaptorGenerator::AddPropertyMethodImplementation(
     string variable_name = GetPropertyVariableName(property.name);
 
     // Getter method.
-    block.AddComments(property.doc_string_);
+    block.AddComments(property.doc_string);
     block.AddLine(StringPrintf("%s Get%s() const {",
                                type.c_str(),
                                property.name.c_str()));

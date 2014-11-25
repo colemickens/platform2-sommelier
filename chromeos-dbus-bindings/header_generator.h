@@ -21,6 +21,10 @@ namespace chromeos_dbus_bindings {
 struct Interface;
 class  IndentedText;
 
+struct ServiceConfig {
+  std::string service_name;
+};
+
 class HeaderGenerator {
  protected:
   // Create a unique header guard string to protect multiple includes of header.

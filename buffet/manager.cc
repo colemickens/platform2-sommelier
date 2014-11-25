@@ -38,7 +38,7 @@ const size_t kMaxStateChangeQueueSize = 100;
 Manager::Manager(const base::WeakPtr<ExportedObjectManager>& object_manager)
     : dbus_object_(object_manager.get(),
                    object_manager->GetBus(),
-                   dbus::ObjectPath(dbus_constants::kManagerServicePath)) {}
+                   org::chromium::Buffet::ManagerAdaptor::GetObjectPath()) {}
 
 Manager::~Manager() {}
 

@@ -22,7 +22,7 @@ namespace {
 const char kBadInterfaceFileContents0[] = "This has no resemblance to XML";
 const char kBadInterfaceFileContents1[] = "<node>";
 const char kGoodInterfaceFileContents[] = R"literal_string(
-<node>
+<node name="/org/chromium/Test">
   <interface name="fi.w1.wpa_supplicant1.Interface">
     <method name="Scan">
       <arg name="args" type="a{sv}" direction="in"/>
@@ -38,6 +38,8 @@ const char kGoodInterfaceFileContents[] = R"literal_string(
       <arg name="BSS" type="o"/>
     </signal>
   </interface>
+  <node name="/"/>
+  <node/>
 </node>
 )literal_string";
 const char kInterfaceName[] = "fi.w1.wpa_supplicant1.Interface";
@@ -57,35 +59,23 @@ const char kReadAccess[] = "read";
 }  // namespace
 
 class XmlInterfaceParserTest : public Test {
- public:
-  void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-  }
-
  protected:
-  bool ParseXmlContents(const string& contents) {
-    base::FilePath path = temp_dir_.path().Append("interface.xml");
-    EXPECT_TRUE(base::WriteFile(path, contents.c_str(), contents.size()));
-    return parser_.ParseXmlInterfaceFile(path);
-  }
-
-  base::ScopedTempDir temp_dir_;
   XmlInterfaceParser parser_;
 };
 
 TEST_F(XmlInterfaceParserTest, BadInputFile) {
-  EXPECT_FALSE(parser_.ParseXmlInterfaceFile(base::FilePath()));
-  EXPECT_FALSE(ParseXmlContents(kBadInterfaceFileContents0));
-  EXPECT_FALSE(ParseXmlContents(kBadInterfaceFileContents1));
+  EXPECT_FALSE(parser_.ParseXmlInterfaceFile(kBadInterfaceFileContents0));
+  EXPECT_FALSE(parser_.ParseXmlInterfaceFile(kBadInterfaceFileContents1));
 }
 
 TEST_F(XmlInterfaceParserTest, GoodInputFile) {
-  EXPECT_TRUE(ParseXmlContents(kGoodInterfaceFileContents));
+  EXPECT_TRUE(parser_.ParseXmlInterfaceFile(kGoodInterfaceFileContents));
   const vector<Interface>& interfaces = parser_.interfaces();
   ASSERT_EQ(1, interfaces.size());
   const Interface& interface = interfaces.back();
 
   EXPECT_EQ(kInterfaceName, interface.name);
+  EXPECT_EQ("/org/chromium/Test", interface.path);
   ASSERT_EQ(2, interface.methods.size());
   ASSERT_EQ(1, interface.signals.size());
 

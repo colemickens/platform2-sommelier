@@ -1,12 +1,14 @@
 {
   'variables': {
     'h_dir': '<(SHARED_INTERMEDIATE_DIR)/<(dbus_adaptors_out_dir)',
+    'dbus_service_config%': '',
   },
   'rules': [
     {
       'rule_name': 'generate_dbus_adaptors',
       'extension': 'xml',
       'inputs': [
+        '<(dbus_service_config)',
         '<(RULE_INPUT_PATH)',
       ],
       'outputs': [
@@ -15,6 +17,7 @@
       'action': [
         '<!(which generate-chromeos-dbus-bindings)',
         '<(RULE_INPUT_PATH)',
+        '--service-config=<(dbus_service_config)',
         '--adaptor=<(h_dir)/<(RULE_INPUT_ROOT).h',
       ],
       'msvs_cygwin_shell': 0,

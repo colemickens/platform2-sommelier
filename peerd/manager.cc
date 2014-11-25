@@ -27,13 +27,6 @@ using chromeos::dbus_utils::DBusObject;
 using chromeos::dbus_utils::ExportedObjectManager;
 using dbus::ObjectPath;
 using peerd::constants::kSerbusServiceId;
-using peerd::dbus_constants::kManagerExposeService;
-using peerd::dbus_constants::kManagerInterface;
-using peerd::dbus_constants::kManagerPing;
-using peerd::dbus_constants::kManagerRemoveExposedService;
-using peerd::dbus_constants::kManagerServicePath;
-using peerd::dbus_constants::kManagerStartMonitoring;
-using peerd::dbus_constants::kManagerStopMonitoring;
 using peerd::dbus_constants::kPingResponse;
 using peerd::dbus_constants::kSelfPath;
 using std::map;
@@ -57,9 +50,9 @@ const char kInvalidServiceToken[] = "manager.service_token";
 
 Manager::Manager(ExportedObjectManager* object_manager,
                  const string& initial_mdns_prefix)
-  : Manager(unique_ptr<DBusObject>{
-                new DBusObject{object_manager, object_manager->GetBus(),
-                               ObjectPath{kManagerServicePath}}},
+  : Manager(unique_ptr<DBusObject>{new DBusObject{
+                object_manager, object_manager->GetBus(),
+                org::chromium::peerd::ManagerAdaptor::GetObjectPath()}},
             unique_ptr<PublishedPeer>{},
             unique_ptr<PeerManagerInterface>{},
             unique_ptr<AvahiClient>{},

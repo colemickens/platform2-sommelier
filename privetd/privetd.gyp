@@ -4,7 +4,6 @@
       'deps': [
         'dbus-1',
         'openssl',
-        'libbuffet-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
       ],
@@ -25,24 +24,31 @@
       ],
       'actions': [
         {
+          # Import D-Bus bindings from buffet.
           'action_name': 'generate-buffet-proxies',
           'variables': {
-            # Workaround for issues with ../ in generate-chromeos-dbus-bindings.
-            'depth_abs': '<!(realpath <(DEPTH))',
+            'dbus_service_config': '../buffet/dbus_bindings/dbus-service-config.json',
+            'proxy_output_file': 'include/buffet/dbus-proxies.h'
           },
-          'inputs': [
-            '<(depth_abs)/buffet/dbus_bindings/org.chromium.Buffet.Command.xml',
-            '<(depth_abs)/buffet/dbus_bindings/org.chromium.Buffet.Manager.xml',
+          'sources': [
+            '../buffet/dbus_bindings/org.chromium.Buffet.Command.xml',
+            '../buffet/dbus_bindings/org.chromium.Buffet.Manager.xml',
           ],
-          'outputs': [
-            '<(SHARED_INTERMEDIATE_DIR)/include/buffet/dbus-proxies.h',
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
+        {
+          # Import D-Bus bindings from peerd.
+          'action_name': 'generate-peerd-proxies',
+          'variables': {
+            'dbus_service_config': '../peerd/dbus_bindings/dbus-service-config.json',
+            'proxy_output_file': 'include/peerd/dbus-proxies.h'
+          },
+          'sources': [
+            '../peerd/dbus_bindings/org.chromium.peerd.Manager.xml',
+            '../peerd/dbus_bindings/org.chromium.peerd.Peer.xml',
+            '../peerd/dbus_bindings/org.chromium.peerd.Service.xml',
           ],
-          'action': [
-            '<!(which generate-chromeos-dbus-bindings)',
-            '>@(_inputs)',
-            '--proxy=>(_outputs)'
-          ],
-          'hard_dependency': 1,
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },
       ],
       'includes': ['../common-mk/deps.gypi'],

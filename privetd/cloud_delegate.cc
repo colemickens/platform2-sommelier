@@ -13,7 +13,6 @@
 #include <dbus/bus.h>
 
 #include "buffet/dbus-proxies.h"
-#include "buffet/libbuffet/dbus_constants.h"
 #include "privetd/device_delegate.h"
 
 namespace privetd {
@@ -26,10 +25,7 @@ using chromeos::ErrorPtr;
 class CloudDelegateImpl : public CloudDelegate {
  public:
   CloudDelegateImpl(const scoped_refptr<dbus::Bus>& bus, DeviceDelegate* device)
-      : manager_proxy_(bus,
-                       buffet::dbus_constants::kServiceName,
-                       buffet::dbus_constants::kManagerServicePath),
-        device_(device) {}
+      : manager_proxy_{bus}, device_{device} {}
 
   ~CloudDelegateImpl() override = default;
 

@@ -14,6 +14,7 @@
       'type': 'static_library',
       'variables': {
         'dbus_adaptors_out_dir': 'include/peerd',
+        'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
       },
       'sources': [
         'avahi_client.cc',

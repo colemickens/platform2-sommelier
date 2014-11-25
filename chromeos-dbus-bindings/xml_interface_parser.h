@@ -30,7 +30,7 @@ class XmlInterfaceParser {
   XmlInterfaceParser() = default;
   virtual ~XmlInterfaceParser() = default;
 
-  virtual bool ParseXmlInterfaceFile(const base::FilePath& interface_file);
+  virtual bool ParseXmlInterfaceFile(const std::string& contents);
   const std::vector<Interface>& interfaces() const { return interfaces_; }
 
  private:
@@ -84,7 +84,7 @@ class XmlInterfaceParser {
   // Finds the |element_key| element in |attributes|.  Returns true and sets
   // |element_value| on success.  Returns false otherwise.
   static bool GetElementAttribute(const XmlAttributeMap& attributes,
-                                  const std::string& element_type,
+                                  const std::vector<std::string>& element_path,
                                   const std::string& element_key,
                                   std::string* element_value);
 
@@ -92,20 +92,23 @@ class XmlInterfaceParser {
   // Returns the name on success, triggers a CHECK() otherwise.
   static std::string GetValidatedElementAttribute(
       const XmlAttributeMap& attributes,
-      const std::string& element_type,
+      const std::vector<std::string>& element_path,
       const std::string& element_key);
 
   // Calls GetValidatedElementAttribute() for the "name" property.
   static std::string GetValidatedElementName(
       const XmlAttributeMap& attributes,
-      const std::string& element_type);
+      const std::vector<std::string>& element_path);
 
   // Method for extracting signal/method tag attributes to a struct.
-  static Interface::Argument ParseArgument(const XmlAttributeMap& attributes,
-                                           const std::string& element_type);
+  static Interface::Argument ParseArgument(
+      const XmlAttributeMap& attributes,
+      const std::vector<std::string>& element_path);
 
   // Method for extracting property tag attributes to a struct.
-  static Interface::Property ParseProperty(const XmlAttributeMap& attributes);
+  static Interface::Property ParseProperty(
+      const XmlAttributeMap& attributes,
+      const std::vector<std::string>& element_path);
 
   // Expat element callback functions.
   static void HandleElementStart(void* user_data,
@@ -116,6 +119,9 @@ class XmlInterfaceParser {
 
   // The output of the parse.
   std::vector<Interface> interfaces_;
+
+  // A stack of <node> names used to track the object paths for interfaces.
+  std::vector<std::string> node_names_;
 
   // Tracks where in the element traversal our parse has taken us.
   std::vector<std::string> element_path_;

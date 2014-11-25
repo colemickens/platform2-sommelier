@@ -38,7 +38,7 @@ struct Interface {
     std::string name;
     std::vector<Argument> input_arguments;
     std::vector<Argument> output_arguments;
-    std::string doc_string_;
+    std::string doc_string;
     Kind kind{Kind::kNormal};
     bool is_const{false};
   };
@@ -49,7 +49,7 @@ struct Interface {
     explicit Signal(const std::string& name_in) : name(name_in) {}
     std::string name;
     std::vector<Argument> arguments;
-    std::string doc_string_;
+    std::string doc_string;
   };
   struct Property {
     Property(const std::string& name_in,
@@ -59,7 +59,7 @@ struct Interface {
     std::string name;
     std::string type;
     std::string access;
-    std::string doc_string_;
+    std::string doc_string;
   };
 
   Interface() = default;
@@ -70,10 +70,11 @@ struct Interface {
       : name(name_in), methods(methods_in), signals(signals_in),
         properties(properties_in) {}
   std::string name;
+  std::string path;
   std::vector<Method> methods;
   std::vector<Signal> signals;
   std::vector<Property> properties;
-  std::string doc_string_;
+  std::string doc_string;
 };
 
 }  // namespace chromeos_dbus_bindings

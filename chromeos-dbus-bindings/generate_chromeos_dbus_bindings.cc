@@ -2,12 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <string>
 
 #include <base/command_line.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <base/values.h>
 #include <chromeos/syslog_logging.h>
 
 #include "chromeos-dbus-bindings/adaptor_generator.h"
@@ -18,6 +22,7 @@
 using chromeos_dbus_bindings::AdaptorGenerator;
 using chromeos_dbus_bindings::MethodNameGenerator;
 using chromeos_dbus_bindings::ProxyGenerator;
+using chromeos_dbus_bindings::ServiceConfig;
 
 namespace switches {
 
@@ -25,6 +30,7 @@ static const char kHelp[] = "help";
 static const char kMethodNames[] = "method-names";
 static const char kAdaptor[] = "adaptor";
 static const char kProxy[] = "proxy";
+static const char kServiceConfig[] = "service-config";
 static const char kHelpMessage[] = "\n"
     "generate-chromeos-dbus-bindings itf1.xml [itf2.xml...] [switches]\n"
     "    itf1.xml, ... = the input interface file(s) [mandatory].\n"
@@ -34,9 +40,54 @@ static const char kHelpMessage[] = "\n"
     "  --adaptor=<adaptor header filename>\n"
     "    The output header file name containing the DBus adaptor class.\n"
     "  --proxy=<proxy header filename>\n"
-    "    The output header file name containing the DBus proxy class.\n";
+    "    The output header file name containing the DBus proxy class.\n"
+    "  --service-config=<config.json>\n"
+    "    The DBus service configuration file for the generator.\n";
 
 }  // namespace switches
+
+namespace {
+// GYP sometimes enclosed the target file name in extra set of quotes like:
+//    generate-chromeos-dbus-bindings in.xml "--adaptor=\"out.h\""
+// So, this function helps us to remove them.
+base::FilePath RemoveQuotes(const std::string& path) {
+  std::string unquoted;
+  base::TrimString(path, "\"'", &unquoted);
+  return base::FilePath{unquoted};
+}
+
+// Makes a canonical path by making the path absolute and by removing any
+// '..' which makes base::ReadFileToString() to fail.
+base::FilePath SanitizeFilePath(const std::string& path) {
+  base::FilePath path_in = RemoveQuotes(path);
+  base::FilePath path_out = base::MakeAbsoluteFilePath(path_in);
+  if (path_out.value().empty()) {
+    LOG(WARNING) << "Failed to canonicalize '" << path << "'";
+    path_out = path_in;
+  }
+  return path_out;
+}
+
+
+// Load the service configuration from the provided JSON file.
+bool LoadConfig(const base::FilePath& path, ServiceConfig *config) {
+  std::string contents;
+  if (!base::ReadFileToString(path, &contents))
+    return false;
+
+  std::unique_ptr<base::Value> json{base::JSONReader::Read(contents)};
+  if (!json)
+    return false;
+
+  base::DictionaryValue* dict = nullptr;  // Aliased with |json|.
+  if (!json->GetAsDictionary(&dict))
+    return false;
+
+  dict->GetStringWithoutPathExpansion("service_name", &config->service_name);
+  return true;
+}
+
+}   // anonymous namespace
 
 int main(int argc, char** argv) {
   CommandLine::Init(argc, argv);
@@ -60,8 +111,23 @@ int main(int argc, char** argv) {
 
   chromeos_dbus_bindings::XmlInterfaceParser parser;
   for (const auto& input : input_files) {
-    if (!parser.ParseXmlInterfaceFile(base::FilePath(input))) {
+    std::string contents;
+    if (!base::ReadFileToString(SanitizeFilePath(input), &contents)) {
+      LOG(ERROR) << "Failed to read file " << input;
+      return 1;
+    }
+    if (!parser.ParseXmlInterfaceFile(contents)) {
       LOG(ERROR) << "Failed to parse interface file.";
+      return 1;
+    }
+  }
+
+  ServiceConfig config;
+  if (cl->HasSwitch(switches::kServiceConfig)) {
+    std::string config_file = cl->GetSwitchValueASCII(switches::kServiceConfig);
+    if (!config_file.empty() &&
+        !LoadConfig(SanitizeFilePath(config_file), &config)) {
+      LOG(ERROR) << "Failed to load DBus service config file " << config_file;
       return 1;
     }
   }
@@ -72,7 +138,7 @@ int main(int argc, char** argv) {
     VLOG(1) << "Outputting method names to " << method_name_file;
     if (!MethodNameGenerator::GenerateMethodNames(
             parser.interfaces(),
-            base::FilePath(method_name_file))) {
+            RemoveQuotes(method_name_file))) {
       LOG(ERROR) << "Failed to output method names.";
       return 1;
     }
@@ -80,12 +146,9 @@ int main(int argc, char** argv) {
 
   if (cl->HasSwitch(switches::kAdaptor)) {
     std::string adaptor_file = cl->GetSwitchValueASCII(switches::kAdaptor);
-    // GYP sometimes enclosed the target file name in extra set of quotes like:
-    // generate-chromeos-dbus-bindings in.xml "--adaptor=\"out.h\""
-    base::TrimString(adaptor_file, "\"'", &adaptor_file);
     VLOG(1) << "Outputting adaptor to " << adaptor_file;
     if (!AdaptorGenerator::GenerateAdaptors(parser.interfaces(),
-                                            base::FilePath(adaptor_file))) {
+                                            RemoveQuotes(adaptor_file))) {
       LOG(ERROR) << "Failed to output adaptor.";
       return 1;
      }
@@ -93,12 +156,9 @@ int main(int argc, char** argv) {
 
   if (cl->HasSwitch(switches::kProxy)) {
     std::string proxy_file = cl->GetSwitchValueASCII(switches::kProxy);
-    // GYP sometimes enclosed the target file name in extra set of quotes like:
-    // generate-chromeos-dbus-bindings in.xml "--proxy=\"out.h\""
-    base::TrimString(proxy_file, "\"'", &proxy_file);
     VLOG(1) << "Outputting proxy to " << proxy_file;
-    if (!ProxyGenerator::GenerateProxies(parser.interfaces(),
-                                         base::FilePath(proxy_file))) {
+    if (!ProxyGenerator::GenerateProxies(config, parser.interfaces(),
+                                         RemoveQuotes(proxy_file))) {
       LOG(ERROR) << "Failed to output proxy.";
       return 1;
      }

@@ -4,6 +4,8 @@
 
 #include "chromeos-dbus-bindings/proxy_generator.h"
 
+#include <utility>
+
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/strings/string_utils.h>
@@ -12,13 +14,22 @@
 #include "chromeos-dbus-bindings/indented_text.h"
 
 using base::StringPrintf;
+using std::pair;
 using std::string;
 using std::vector;
 
 namespace chromeos_dbus_bindings {
 
+namespace {
+string GetParamString(const pair<string, string>& param_def) {
+  return StringPrintf("const %s& %s",
+                      param_def.first.c_str(), param_def.second.c_str());
+}
+}  // anonymous namespace
+
 // static
 bool ProxyGenerator::GenerateProxies(
+    const ServiceConfig& config,
     const std::vector<Interface>& interfaces,
     const base::FilePath& output_file) {
   IndentedText text;
@@ -50,7 +61,7 @@ bool ProxyGenerator::GenerateProxies(
   text.AddBlankLine();
 
   for (const auto& interface : interfaces) {
-    GenerateInterfaceProxy(interface, &text);
+    GenerateInterfaceProxy(config, interface, &text);
   }
 
   text.AddLine(StringPrintf("#endif  // %s", header_guard.c_str()));
@@ -58,7 +69,8 @@ bool ProxyGenerator::GenerateProxies(
 }
 
 // static
-void ProxyGenerator::GenerateInterfaceProxy(const Interface& interface,
+void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
+                                            const Interface& interface,
                                             IndentedText* text) {
   vector<string> namespaces;
   string itf_name;
@@ -78,7 +90,7 @@ void ProxyGenerator::GenerateInterfaceProxy(const Interface& interface,
   text->AddLineWithOffset("public:", kScopeOffset);
   text->PushOffset(kBlockOffset);
   AddSignalReceiver(interface, text);
-  AddConstructor(interface, proxy_name, text);
+  AddConstructor(config, interface, proxy_name, text);
   AddDestructor(proxy_name, text);
   AddReleaseObjectProxy(text);
   if (!interface.signals.empty())
@@ -92,8 +104,18 @@ void ProxyGenerator::GenerateInterfaceProxy(const Interface& interface,
 
   text->PushOffset(kBlockOffset);
   text->AddLine("scoped_refptr<dbus::Bus> bus_;");
-  text->AddLine("std::string service_name_;");
-  text->AddLine("dbus::ObjectPath object_path_;");
+  if (config.service_name.empty()) {
+    text->AddLine("std::string service_name_;");
+  } else {
+    text->AddLine(StringPrintf("const std::string service_name_{\"%s\"};",
+                               config.service_name.c_str()));
+  }
+  if (interface.path.empty()) {
+    text->AddLine("dbus::ObjectPath object_path_;");
+  } else {
+    text->AddLine(StringPrintf("const dbus::ObjectPath object_path_{\"%s\"};",
+                               interface.path.c_str()));
+  }
   text->AddLine("dbus::ObjectProxy* dbus_object_proxy_;");
   text->AddBlankLine();
 
@@ -112,36 +134,56 @@ void ProxyGenerator::GenerateInterfaceProxy(const Interface& interface,
 }
 
 // static
-void ProxyGenerator::AddConstructor(const Interface& interface,
+void ProxyGenerator::AddConstructor(const ServiceConfig& config,
+                                    const Interface& interface,
                                     const string& class_name,
                                     IndentedText* text) {
   IndentedText block;
-  block.AddLine(StringPrintf("%s(", class_name.c_str()));
+  vector<std::pair<string, string>> args{{"scoped_refptr<dbus::Bus>", "bus"}};
+  if (config.service_name.empty())
+    args.emplace_back("std::string", "service_name");
+  if (interface.path.empty())
+    args.emplace_back("std::string", "object_path");
+
+  if (args.size() == 1) {
+    block.AddLine(StringPrintf("%s(%s) :", class_name.c_str(),
+                               GetParamString(args.front()).c_str()));
+  } else {
+    block.AddLine(StringPrintf("%s(", class_name.c_str()));
+    block.PushOffset(kLineContinuationOffset);
+    for (size_t i = 0; i < args.size() - 1; i++) {
+      block.AddLine(StringPrintf("%s,", GetParamString(args[i]).c_str()));
+    }
+    block.AddLine(StringPrintf("%s) :", GetParamString(args.back()).c_str()));
+  }
   block.PushOffset(kLineContinuationOffset);
-  block.AddLine("const scoped_refptr<dbus::Bus>& bus,");
-  block.AddLine("const std::string& service_name,");
-  block.AddLine("const std::string& object_path)");
-  block.AddLine(": bus_(bus),");
-  block.PushOffset(kBlockOffset);
-  block.AddLine("service_name_(service_name),");
-  block.AddLine("object_path_(object_path),");
+  for (const auto& arg : args) {
+    block.AddLine(StringPrintf("%s_(%s),", arg.second.c_str(),
+                               arg.second.c_str()));
+  }
   block.AddLine("dbus_object_proxy_(");
   block.AddLineWithOffset(
       "bus_->GetObjectProxy(service_name_, object_path_)) {",
       kLineContinuationOffset);
   block.PopOffset();
-  block.PopOffset();
+  if (args.size() > 1)
+    block.PopOffset();
   block.AddLine("}");
   if (!interface.signals.empty()) {
     block.AddBlankLine();
     block.AddLine(StringPrintf("%s(", class_name.c_str()));
     block.PushOffset(kLineContinuationOffset);
-    block.AddLine("const scoped_refptr<dbus::Bus>& bus,");
-    block.AddLine("const std::string& service_name,");
-    block.AddLine("const std::string& object_path,");
-    block.AddLine("SignalReceiver* signal_receiver)");
-    block.AddLine(StringPrintf(": %s(bus, service_name, object_path) {",
-                               class_name.c_str()));
+    vector<string> param_names;
+    for (const auto& arg : args) {
+      block.AddLine(StringPrintf("%s,", GetParamString(arg).c_str()));
+      param_names.push_back(arg.second);
+    }
+    block.AddLine("SignalReceiver* signal_receiver) :");
+    string param_list = chromeos::string_utils::Join(", ", param_names);
+    block.PushOffset(kLineContinuationOffset);
+    block.AddLine(StringPrintf("%s(%s) {", class_name.c_str(),
+                               param_list.c_str()));
+    block.PopOffset();
     block.PopOffset();
     block.PushOffset(kBlockOffset);
     for (const auto& signal : interface.signals) {
@@ -233,7 +275,7 @@ void ProxyGenerator::AddSignalReceiver(const Interface& interface,
   block.PushOffset(kBlockOffset);
   DbusSignature signature;
   for (const auto& signal : interface.signals) {
-    block.AddComments(signal.doc_string_);
+    block.AddComments(signal.doc_string);
     string signal_begin = StringPrintf(
         "virtual void %s(", GetHandlerNameForSignal(signal.name).c_str());
     string signal_end = ") {}";
@@ -275,7 +317,7 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
                                     IndentedText* text) {
   IndentedText block;
   DbusSignature signature;
-  block.AddComments(method.doc_string_);
+  block.AddComments(method.doc_string);
   block.AddLine(StringPrintf("bool %s(", method.name.c_str()));
   block.PushOffset(kLineContinuationOffset);
   vector<string> argument_names;

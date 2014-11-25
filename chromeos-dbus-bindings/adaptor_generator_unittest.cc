@@ -138,6 +138,10 @@ class TestAdaptor {
     character_name_.SetValue(character_name);
   }
 
+  static dbus::ObjectPath GetObjectPath() {
+    return dbus::ObjectPath{"/org/chromium/Test"};
+  }
+
  private:
   using SignalUpdateType = chromeos::dbus_utils::DBusSignal<>;
   std::weak_ptr<SignalUpdateType> signal_Update_;
@@ -224,6 +228,7 @@ class AdaptorGeneratorTest : public Test {
 TEST_F(AdaptorGeneratorTest, GenerateAdaptors) {
   Interface interface;
   interface.name = kInterfaceName;
+  interface.path = "/org/chromium/Test";
   interface.methods.emplace_back(
       kMethod0Name,
       vector<Interface::Argument>{

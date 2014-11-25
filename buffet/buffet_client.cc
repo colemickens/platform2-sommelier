@@ -58,9 +58,7 @@ class BuffetHelperProxy {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
     bus_ = new dbus::Bus(options);
-    manager_proxy_.reset(
-      new org::chromium::Buffet::ManagerProxy{bus_, kServiceName,
-                                              kManagerServicePath});
+    manager_proxy_.reset(new org::chromium::Buffet::ManagerProxy{bus_});
     root_proxy_ = bus_->GetObjectProxy(
         kServiceName,
         dbus::ObjectPath(kRootServicePath));
