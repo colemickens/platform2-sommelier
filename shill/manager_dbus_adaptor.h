@@ -141,6 +141,12 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
 
   void CreateConnectivityReport(DBus::Error &error);  // NOLINT
 
+  void ClaimInterface(const std::string &service_name,
+                      const std::string &interface_name,
+                      DBus::Error &error);  // NOLINT
+  void ReleaseInterface(const std::string &interface_name,
+                        DBus::Error &error);  // NOLINT
+
  private:
   Manager *manager_;
 

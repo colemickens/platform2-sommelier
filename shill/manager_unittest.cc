@@ -32,7 +32,9 @@
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_crypto_util_proxy.h"
+#include "shill/mock_dbus_manager.h"
 #include "shill/mock_device.h"
+#include "shill/mock_device_claimer.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_log.h"
@@ -56,6 +58,7 @@
 using base::Bind;
 using base::FilePath;
 using base::ScopedTempDir;
+using base::Unretained;
 using std::map;
 using std::set;
 using std::string;
@@ -309,6 +312,14 @@ class ManagerTest : public PropertyStoreTest {
     return temp_service;
   }
 
+  void SetDBusManager(DBusManager *dbus_manager) {
+    manager()->dbus_manager_.reset(dbus_manager);
+  }
+
+  void SetDeviceClaimer(DeviceClaimer *device_claimer) {
+    manager()->device_claimer_.reset(device_claimer);
+  }
+
  protected:
   typedef scoped_refptr<MockService> MockServiceRefPtr;
 
@@ -367,6 +378,26 @@ class ManagerTest : public PropertyStoreTest {
 
    private:
     DISALLOW_COPY_AND_ASSIGN(DisableTechnologyReplyHandler);
+  };
+
+  class ResultCallbackObserver {
+   public:
+    ResultCallbackObserver()
+        : result_callback_(
+              Bind(&ResultCallbackObserver::OnResultCallback,
+                   Unretained(this))) {}
+    virtual ~ResultCallbackObserver() {}
+
+    MOCK_METHOD1(OnResultCallback, void(const Error &error));
+
+    const ResultCallback &result_callback() const {
+      return result_callback_;
+    }
+
+   private:
+    ResultCallback result_callback_;
+
+    DISALLOW_COPY_AND_ASSIGN(ResultCallbackObserver);
   };
 
   void SetSuspending(bool suspending) {
@@ -457,6 +488,11 @@ void SetErrorPermissionDenied(Error *error) {
 
 void SetErrorSuccess(Error *error) {
   error->Reset();
+}
+
+MATCHER_P(IsError, error, "") {
+  return arg.type() == error->type() &&
+         arg.message() == error->message();
 }
 
 TEST_F(ManagerTest, Contains) {
@@ -4584,6 +4620,257 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   manager()->SetEnabledStateForTechnology(
       "vpn", true, &enable_prohibited_error, enable_technology_callback);
   EXPECT_EQ(Error::kPermissionDenied, enable_prohibited_error.type());
+}
+
+TEST_F(ManagerTest, ClaimDeviceWithoutClaimer) {
+  const char kClaimerName[] = "test_claimer1";
+  const char kDeviceName[] = "test_device";
+
+  // Setup DBus manager and name watcher.
+  MockDBusManager *dbus_manager = new MockDBusManager();
+  SetDBusManager(dbus_manager);
+  DBusNameWatcher *name_watcher =
+      new DBusNameWatcher(dbus_manager,
+                          kClaimerName,
+                          DBusNameWatcher::NameAppearedCallback(),
+                          DBusNameWatcher::NameVanishedCallback());
+
+  // Claim device when device claimer doesn't exist yet.
+  ResultCallbackObserver observer;
+  Error error(Error::kOperationInitiated);
+  EXPECT_CALL(*dbus_manager, CreateNameWatcher(kClaimerName, _, _))
+      .WillOnce(Return(name_watcher));
+  manager()->ClaimDevice(
+      kClaimerName, kDeviceName, &error, observer.result_callback());
+  // Operation still in process.
+  EXPECT_TRUE(error.IsOngoing());
+  Mock::VerifyAndClearExpectations(dbus_manager);
+
+  // Verify device claimer is created.
+  EXPECT_NE(nullptr, manager()->device_claimer_.get());
+  // Verify pending callback and device name.
+  EXPECT_EQ(1U, manager()->pending_device_claims_.size());
+  EXPECT_EQ(string(kDeviceName),
+            manager()->pending_device_claims_[0].device_name);
+}
+
+TEST_F(ManagerTest, ClaimDeviceWithClaimer) {
+  const char kClaimer1Name[] = "test_claimer1";
+  const char kClaimer2Name[] = "test_claimer2";
+  const char kDeviceName[] = "test_device";
+
+  // Setup device claimer.
+  MockDeviceClaimer *device_claimer = new MockDeviceClaimer(kClaimer1Name);
+  SetDeviceClaimer(device_claimer);
+
+  // Claim device with empty string name.
+  const char kEmptyDeviceNameError[] = "Empty device name";
+  Error error;
+  manager()->ClaimDevice(kClaimer1Name, "", &error, ResultCallback());
+  EXPECT_EQ(string(kEmptyDeviceNameError), error.message());
+
+  // Device claim succeed.
+  error.Reset();
+  EXPECT_CALL(*device_claimer, Claim(kDeviceName, _)).WillOnce(Return(true));
+  manager()->ClaimDevice(kClaimer1Name, kDeviceName, &error, ResultCallback());
+  EXPECT_EQ(Error::kSuccess, error.type());
+  Mock::VerifyAndClearExpectations(device_claimer);
+
+  // Claimer mismatch, current implementation only allows one claimer at a time.
+  const char kInvalidClaimerError[] =
+      "Invalid claimer name test_claimer2. Claimer test_claimer1 already exist";
+  error.Reset();
+  EXPECT_CALL(*device_claimer, Claim(_, _)).Times(0);
+  manager()->ClaimDevice(kClaimer2Name, kDeviceName, &error, ResultCallback());
+  EXPECT_EQ(string(kInvalidClaimerError), error.message());
+}
+
+TEST_F(ManagerTest, ClaimDeviceWhenClaimerNotVerified) {
+  const char kClaimerName[] = "test_claimer";
+  const char kDevice1Name[] = "test_device1";
+  const char kDevice2Name[] = "test_device2";
+
+  // Setup pending device claims.
+  ResultCallbackObserver observer1;
+  manager()->pending_device_claims_.emplace_back(kDevice1Name,
+                                                 observer1.result_callback());
+  ResultCallbackObserver observer2;
+
+  // Setup device claimer.
+  MockDeviceClaimer *device_claimer = new MockDeviceClaimer(kClaimerName);
+  SetDeviceClaimer(device_claimer);
+
+  Error error(Error::kOperationInitiated);
+  EXPECT_CALL(*device_claimer, Claim(_, _)).Times(0);
+  manager()->ClaimDevice(
+      kClaimerName, kDevice2Name, &error, observer2.result_callback());
+  // Verify operation still ongoing.
+  EXPECT_TRUE(error.IsOngoing());
+  // Verify device claim is added to the pending list.
+  EXPECT_EQ(2U, manager()->pending_device_claims_.size());
+  EXPECT_EQ(string(kDevice2Name),
+                   manager()->pending_device_claims_[1].device_name);
+}
+
+TEST_F(ManagerTest, ClaimRegisteredDevice) {
+  const char kClaimerName[] = "test_claimer";
+
+  // Setup device claimer.
+  MockDeviceClaimer *device_claimer = new MockDeviceClaimer(kClaimerName);
+  SetDeviceClaimer(device_claimer);
+
+  // Register a device to manager.
+  ON_CALL(*mock_devices_[0].get(), technology())
+      .WillByDefault(Return(Technology::kWifi));
+  manager()->RegisterDevice(mock_devices_[0]);
+  // Verify device is registered.
+  EXPECT_TRUE(IsDeviceRegistered(mock_devices_[0], Technology::kWifi));
+
+  // Claim the registered device.
+  Error error;
+  EXPECT_CALL(*device_claimer, Claim(mock_devices_[0]->link_name(), _))
+      .WillOnce(Return(true));
+  manager()->ClaimDevice(
+      kClaimerName, mock_devices_[0]->link_name(), &error, ResultCallback());
+  EXPECT_EQ(Error::kSuccess, error.type());
+  Mock::VerifyAndClearExpectations(device_claimer);
+
+  // Expect device to not be registered anymore.
+  EXPECT_FALSE(IsDeviceRegistered(mock_devices_[0], Technology::kWifi));
+}
+
+TEST_F(ManagerTest, ReleaseDevice) {
+  const char kClaimerName[] = "test_claimer";
+  const char kDeviceName[] = "test_device";
+
+  // Release device without claimer.
+  const char kNoClaimerError[] = "Device claimer doesn't exist";
+  Error error;
+  manager()->ReleaseDevice(kDeviceName, &error);
+  EXPECT_EQ(string(kNoClaimerError), error.message());
+
+  // Setup device claimer.
+  MockDeviceClaimer *device_claimer = new MockDeviceClaimer(kClaimerName);
+  SetDeviceClaimer(device_claimer);
+
+  // Release device with claimer.
+  error.Reset();
+  EXPECT_CALL(*device_claimer, Release(kDeviceName, &error))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*device_claimer, DevicesClaimed()).WillOnce(Return(true));
+  manager()->ReleaseDevice(kDeviceName, &error);
+  Mock::VerifyAndClearExpectations(device_claimer);
+
+  // Release another device with claimer, no more device left on the claimer,
+  // claimer should be resetted.
+  error.Reset();
+  EXPECT_CALL(*device_claimer, Release(kDeviceName, &error))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*device_claimer, DevicesClaimed()).WillOnce(Return(false));
+  manager()->ReleaseDevice(kDeviceName, &error);
+  Mock::VerifyAndClearExpectations(device_claimer);
+  EXPECT_EQ(nullptr, manager()->device_claimer_.get());
+}
+
+TEST_F(ManagerTest, DeviceClaimerVanishedTask) {
+  const char kClaimerName[] = "test_claimer";
+  const char kDevice1Name[] = "test_device1";
+  const char kDevice2Name[] = "test_device2";
+  // Setup pending device claims.
+  ResultCallbackObserver observer1;
+  manager()->pending_device_claims_.emplace_back(kDevice1Name,
+                                                 observer1.result_callback());
+  ResultCallbackObserver observer2;
+  manager()->pending_device_claims_.emplace_back(kDevice2Name,
+                                                 observer2.result_callback());
+
+  // Setup device claimer.
+  MockDeviceClaimer *device_claimer = new MockDeviceClaimer(kClaimerName);
+  SetDeviceClaimer(device_claimer);
+
+  // Invoke result callback.
+  Error error(Error::kInvalidArguments, "Invalid DBus service name");
+  EXPECT_CALL(observer1, OnResultCallback(IsError(&error))).Times(1);
+  EXPECT_CALL(observer2, OnResultCallback(IsError(&error))).Times(1);
+  manager()->DeviceClaimerVanishedTask();
+  Mock::VerifyAndClearExpectations(&observer1);
+  Mock::VerifyAndClearExpectations(&observer2);
+
+  // Device claimer should be resetted.
+  EXPECT_EQ(nullptr, manager()->device_claimer_.get());
+
+  // Should not be any pending device claims.
+  EXPECT_TRUE(manager()->pending_device_claims_.empty());
+
+  // Result callback should not be invoke again.
+  EXPECT_CALL(observer1, OnResultCallback(_)).Times(0);
+  EXPECT_CALL(observer2, OnResultCallback(_)).Times(0);
+  manager()->DeviceClaimerVanishedTask();
+  Mock::VerifyAndClearExpectations(&observer1);
+  Mock::VerifyAndClearExpectations(&observer2);
+}
+
+TEST_F(ManagerTest, OnDeviceClaimerAppeared) {
+  const char kClaimerName[] = "test_claimer";
+  const char kDevice1Name[] = "test_device1";
+  const char kDevice2Name[] = "test_device2";
+  const char kOwnerName[] = "test_owner";
+  const char kOwner1Name[] = "test_owner1";
+
+  // Setup pending device claims.
+  ResultCallbackObserver observer1;
+  manager()->pending_device_claims_.emplace_back(kDevice1Name,
+                                                 observer1.result_callback());
+  ResultCallbackObserver observer2;
+  manager()->pending_device_claims_.emplace_back(kDevice2Name,
+                                                 observer2.result_callback());
+
+  // Setup device claimer.
+  MockDeviceClaimer *device_claimer = new MockDeviceClaimer(kClaimerName);
+  SetDeviceClaimer(device_claimer);
+
+  // DBus service appeared for the first time.
+  EXPECT_CALL(*device_claimer, Claim(kDevice1Name, _)).WillOnce(Return(true));
+  EXPECT_CALL(*device_claimer, Claim(kDevice2Name, _)).WillOnce(Return(true));
+  EXPECT_CALL(*device_claimer, DevicesClaimed()).WillOnce(Return(true));
+  Error error(Error::kSuccess);
+  EXPECT_CALL(observer1, OnResultCallback(IsError(&error))).Times(1);
+  EXPECT_CALL(observer2, OnResultCallback(IsError(&error))).Times(1);
+  manager()->OnDeviceClaimerAppeared(kClaimerName, kOwnerName);
+  Mock::VerifyAndClearExpectations(device_claimer);
+  Mock::VerifyAndClearExpectations(&observer1);
+  Mock::VerifyAndClearExpectations(&observer2);
+
+  // Claimer DBus service owner changed.
+  EXPECT_CALL(*device_claimer, Claim(_, _)).Times(0);
+  EXPECT_CALL(observer1, OnResultCallback(_)).Times(0);
+  EXPECT_CALL(observer2, OnResultCallback(_)).Times(0);
+  manager()->OnDeviceClaimerAppeared(kClaimerName, kOwner1Name);
+  Mock::VerifyAndClearExpectations(device_claimer);
+  Mock::VerifyAndClearExpectations(&observer1);
+  Mock::VerifyAndClearExpectations(&observer2);
+
+  // Claimer should be resetted.
+  EXPECT_EQ(nullptr, manager()->device_claimer_.get());
+
+  // Setup pending claims again.
+  manager()->pending_device_claims_.emplace_back(kDevice1Name,
+                                                 observer1.result_callback());
+
+  // Setup device claimer.
+  MockDeviceClaimer *device_claimer1 = new MockDeviceClaimer(kClaimerName);
+  SetDeviceClaimer(device_claimer1);
+  EXPECT_NE(nullptr, manager()->device_claimer_.get());
+
+  // Pending claims failed, no exist device claim on the claimer, claimer should
+  // be resetted.
+  EXPECT_CALL(*device_claimer1, Claim(kDevice1Name, _)).WillOnce(Return(false));
+  EXPECT_CALL(*device_claimer1, DevicesClaimed()).WillOnce(Return(false));
+  EXPECT_CALL(observer1, OnResultCallback(_)).Times(1);
+  manager()->OnDeviceClaimerAppeared(kClaimerName, kOwnerName);
+  Mock::VerifyAndClearExpectations(device_claimer1);
+  Mock::VerifyAndClearExpectations(&observer1);
+  EXPECT_EQ(nullptr, manager()->device_claimer_.get());
 }
 
 }  // namespace shill

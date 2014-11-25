@@ -115,6 +115,18 @@ DeviceInfo::~DeviceInfo() {}
 
 void DeviceInfo::AddDeviceToBlackList(const string &device_name) {
   black_list_.insert(device_name);
+  // Remove the current device info if it exist, since it will be out-dated.
+  RemoveInfo(GetIndex(device_name));
+  // Request link info update to allow device info to be recreated.
+  rtnl_handler_->RequestDump(RTNLHandler::kRequestLink);
+}
+
+void DeviceInfo::RemoveDeviceFromBlackList(const string &device_name) {
+  black_list_.erase(device_name);
+  // Remove the current device info if it exist, since it will be out-dated.
+  RemoveInfo(GetIndex(device_name));
+  // Request link info update to allow device info to be recreated.
+  rtnl_handler_->RequestDump(RTNLHandler::kRequestLink);
 }
 
 bool DeviceInfo::IsDeviceBlackListed(const string &device_name) {

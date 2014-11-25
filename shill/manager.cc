@@ -28,6 +28,7 @@
 #include "shill/dbus_manager.h"
 #include "shill/default_profile.h"
 #include "shill/device.h"
+#include "shill/device_claimer.h"
 #include "shill/device_info.h"
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
@@ -620,6 +621,142 @@ void Manager::RemoveProfile(const string &name, Error *error) {
   return;
 }
 
+void Manager::ClaimDevice(const string &claimer_name,
+                          const string &device_name,
+                          Error *error,
+                          const ResultCallback &callback) {
+  SLOG(this, 2) << __func__;
+
+  // Basic check for device name.
+  if (device_name.empty()) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Empty device name");
+    return;
+  }
+
+  // Create a new device claimer if one doesn't exist yet.
+  if (!device_claimer_) {
+    // Start a device claimer.
+    device_claimer_.reset(new DeviceClaimer(claimer_name, &device_info_));
+    device_claimer_->StartDBusNameWatcher(
+        dbus_manager_.get(),
+        Bind(&Manager::OnDeviceClaimerAppeared, Unretained(this)),
+        Bind(&Manager::OnDeviceClaimerVanished, Unretained(this)));
+
+    // Setup pending result callback and device name.
+    pending_device_claims_.push_back(DeviceClaim(device_name, callback));
+
+    // Nothing to be done now, the result callback will be invoke when the
+    // DBus name watcher callback is invoked.
+    return;
+  }
+
+  // Verify claimer's name, since we only allow one claimer to exist at a time.
+  if (device_claimer_->name() != claimer_name) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Invalid claimer name " + claimer_name +
+                          ". Claimer " + device_claimer_->name() +
+                          " already exist");
+    return;
+  }
+
+  // Still waiting to verify the claimer's DBus name, add this device claim to
+  // to the pending list.
+  if (!pending_device_claims_.empty()) {
+    pending_device_claims_.push_back(DeviceClaim(device_name, callback));
+    return;
+  }
+
+  // Error will be populated by the claimer if failed to claim the device.
+  if (!device_claimer_->Claim(device_name, error)) {
+    return;
+  }
+
+  // Deregister the device from manager if it is registered.
+  DeregisterDeviceByLinkName(device_name);
+
+  // Done, succeed synchronously,
+  error->Populate(Error::kSuccess);
+}
+
+void Manager::ReleaseDevice(const string &device_name, Error *error) {
+  SLOG(this, 2) << __func__;
+  if (!device_claimer_) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Device claimer doesn't exist");
+    return;
+  }
+  // Release the device from the claimer. Error should be populated by the
+  // claimer if it failed to release the given device.
+  device_claimer_->Release(device_name, error);
+
+  // Reset claimer if no more devices are claimed by this claimer.
+  if (!device_claimer_->DevicesClaimed()) {
+    device_claimer_.reset();
+  }
+}
+
+void Manager::OnDeviceClaimerAppeared(const string &/*name*/,
+                                      const string &owner) {
+  SLOG(this, 2) << __func__;
+  CHECK(device_claimer_);
+
+  // Claim device for any pending claims.
+  if (!pending_device_claims_.empty()) {
+    for (const auto &device_claim : pending_device_claims_) {
+      Error error;
+      if (device_claimer_->Claim(device_claim.device_name, &error)) {
+        DeregisterDeviceByLinkName(device_claim.device_name);
+      }
+      device_claim.result_callback.Run(error);
+    }
+    pending_device_claims_.clear();
+    // Reset claimer if no device is successfully claimed.
+    if (!device_claimer_->DevicesClaimed()) {
+      device_claimer_.reset();
+      return;
+    }
+  }
+
+  // Getting the owner information for the first time.
+  if (device_claimer_->owner().empty()) {
+    device_claimer_->set_owner(owner);
+    return;
+  }
+
+  // Owner for the claimer changed
+  if (device_claimer_->owner() != owner) {
+    // Release the device claimer.
+    device_claimer_.reset();
+  }
+}
+
+void Manager::OnDeviceClaimerVanished(const string &/*name*/) {
+  SLOG(this, 2) << __func__;
+
+  // Currently, this function can be called synchronously through creation
+  // of DBusNameWatcher or asynchronously from DBus proxy. To make
+  // ClaimerVanishedTask handling consistent in both scenarios, always invoke
+  // it asynchronously.
+  dispatcher_->PostTask(Bind(&Manager::DeviceClaimerVanishedTask, AsWeakPtr()));
+}
+
+void Manager::DeviceClaimerVanishedTask() {
+  // Invoke all pending callbacks.
+  if (!pending_device_claims_.empty()) {
+    Error error;
+    Error::PopulateAndLog(&error,
+                          Error::kInvalidArguments,
+                          "Invalid DBus service name");
+    for (const auto &device_claim : pending_device_claims_) {
+      device_claim.result_callback.Run(error);
+    }
+    pending_device_claims_.clear();
+  }
+  // Reset device claimer.
+  device_claimer_.reset();
+}
+
 void Manager::RemoveService(const ServiceRefPtr &service) {
   LOG(INFO) << __func__ << " for service " << service->unique_name();
   if (!IsServiceEphemeral(service)) {
@@ -953,6 +1090,15 @@ void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
   }
   SLOG(this, 2) << __func__ << " unknown device: "
                 << to_forget->UniqueName();
+}
+
+void Manager::DeregisterDeviceByLinkName(const string &link_name) {
+  for (const auto& device : devices_) {
+    if (device->link_name() == link_name) {
+      DeregisterDevice(device);
+      break;
+    }
+  }
 }
 
 void Manager::LoadDeviceFromProfiles(const DeviceRefPtr &device) {

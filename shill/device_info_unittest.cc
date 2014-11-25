@@ -647,6 +647,7 @@ TEST_F(DeviceInfoTest, CreateDeviceUnknown) {
 }
 
 TEST_F(DeviceInfoTest, DeviceBlackList) {
+  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink)).Times(1);
   device_info_.AddDeviceToBlackList(kTestDeviceName);
   unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
   SendMessageToDeviceInfo(*message);

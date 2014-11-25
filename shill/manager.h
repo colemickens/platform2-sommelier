@@ -37,6 +37,7 @@ namespace shill {
 
 class ControlInterface;
 class DBusManager;
+class DeviceClaimer;
 class DefaultProfile;
 class Error;
 class EthernetEapProvider;
@@ -192,6 +193,15 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void PopAllUserProfiles(Error *error);
   // Remove the underlying persistent storage for a profile.
   void RemoveProfile(const std::string &name, Error *error);
+  // Give the ownership of the device with name |device_name| to the DBus
+  // service with name |service_name|, shill will stop managing this device.
+  void ClaimDevice(const std::string &service_name,
+                   const std::string &interface_name,
+                   Error *error,
+                   const ResultCallback &callback);
+  // Caller release the ownership of the device with |interface_name| back to
+  // shill.
+  void ReleaseDevice(const std::string &interface_name, Error *error);
   // Called by a service to remove its associated configuration.  If |service|
   // is associated with a non-ephemeral profile, this configuration entry
   // will be removed and the manager will search for another matching profile.
@@ -427,12 +437,15 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(CellularTest, LinkEventWontDestroyService);
   FRIEND_TEST(DeviceTest, StartProhibited);
   FRIEND_TEST(ManagerTest, AvailableTechnologies);
+  FRIEND_TEST(ManagerTest, ClaimDeviceWhenClaimerNotVerified);
+  FRIEND_TEST(ManagerTest, ClaimDeviceWithoutClaimer);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, ConnectionStatusCheck);
   FRIEND_TEST(ManagerTest, ConnectToBestServices);
   FRIEND_TEST(ManagerTest, CreateConnectivityReport);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(ManagerTest, DetectMultiHomedDevices);
+  FRIEND_TEST(ManagerTest, DeviceClaimerVanishedTask);
   FRIEND_TEST(ManagerTest, DevicePresenceStatusCheck);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, DisableTechnology);
@@ -448,14 +461,26 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, LinkMonitorEnabled);
   FRIEND_TEST(ManagerTest, MoveService);
   FRIEND_TEST(ManagerTest, NotifyDefaultServiceChanged);
+  FRIEND_TEST(ManagerTest, OnDeviceClaimerAppeared);
   FRIEND_TEST(ManagerTest, PopProfileWithUnload);
   FRIEND_TEST(ManagerTest, RegisterKnownService);
   FRIEND_TEST(ManagerTest, RegisterUnknownService);
+  FRIEND_TEST(ManagerTest, ReleaseDevice);
   FRIEND_TEST(ManagerTest, RunTerminationActions);
   FRIEND_TEST(ManagerTest, ServiceRegistration);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, StartupPortalList);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
+
+  struct DeviceClaim {
+    DeviceClaim() {}
+    DeviceClaim(const std::string &in_device_name,
+                const ResultCallback &in_result_callback)
+        : device_name(in_device_name),
+          result_callback(in_result_callback) {}
+    std::string device_name;
+    ResultCallback result_callback;
+  };
 
   static const char kErrorNoDevice[];
   static const char kErrorTypeRequired[];
@@ -604,6 +629,16 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   DeviceRefPtr GetDeviceConnectedToService(ServiceRefPtr service);
 
+  // Called when the DBus service that claimed ownership of devices from shill
+  // appear/vanish from the DBus connection.
+  void OnDeviceClaimerAppeared(const std::string &/*name*/,
+                                    const std::string &owner);
+  void OnDeviceClaimerVanished(const std::string &/*name*/);
+  // Task for cleanup device claimer when it is vanished.
+  void DeviceClaimerVanishedTask();
+
+  void DeregisterDeviceByLinkName(const std::string &link_name);
+
   EventDispatcher *dispatcher_;
   const base::FilePath run_path_;
   const base::FilePath storage_path_;
@@ -694,6 +729,11 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Stores the state of the highest ranked connected service.
   std::string connection_state_;
+
+  // Device claimer is a remote DBus service that claim/release devices from/to
+  // shill. To reduce complexity, only allow one device claimer at a time.
+  std::unique_ptr<DeviceClaimer> device_claimer_;
+  std::vector<DeviceClaim> pending_device_claims_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };

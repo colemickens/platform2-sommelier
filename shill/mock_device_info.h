@@ -31,6 +31,8 @@ class MockDeviceInfo : public DeviceInfo {
   ~MockDeviceInfo() override;
 
   MOCK_METHOD1(IsDeviceBlackListed, bool(const std::string &device_name));
+  MOCK_METHOD1(AddDeviceToBlackList, void(const std::string &device_name));
+  MOCK_METHOD1(RemoveDeviceFromBlackList, void(const std::string &device_name));
   MOCK_CONST_METHOD1(GetDevice, DeviceRefPtr(int interface_index));
   MOCK_CONST_METHOD1(GetIndex, int(const std::string &interface_name));
   MOCK_CONST_METHOD2(GetMACAddress, bool(int interface_index,

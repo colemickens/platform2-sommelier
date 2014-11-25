@@ -170,6 +170,12 @@ void RTNLHandler::SetInterfaceFlags(int interface_index, unsigned int flags,
 }
 
 void RTNLHandler::RequestDump(int request_flags) {
+  if (!sockets_) {
+    LOG(ERROR) << __func__ << " called while not started.  "
+        "Assuming we are in unit tests.";
+    return;
+  }
+
   request_flags_ |= request_flags;
 
   VLOG(2) << "RTNLHandler got request to dump "
@@ -177,8 +183,9 @@ void RTNLHandler::RequestDump(int request_flags) {
           << request_flags
           << std::dec << std::noshowbase;
 
-  if (!in_request_ && sockets_)
+  if (!in_request_) {
     NextRequest(last_dump_sequence_);
+  }
 }
 
 void RTNLHandler::DispatchEvent(int type, const RTNLMessage &msg) {
