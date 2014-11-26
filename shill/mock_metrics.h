@@ -70,7 +70,8 @@ class MockMetrics : public Metrics {
                void(Technology::Identifier technology_id, bool status));
   MOCK_METHOD2(NotifyUnreliableLinkSignalStrength,
                void(Technology::Identifier technology_id, int signal_strength));
-  MOCK_METHOD0(NotifyWakeOnWiFiFeaturesDisabled, void());
+  MOCK_METHOD1(NotifyVerifyWakeOnWiFiSettingsResult,
+               void(VerifyWakeOnWiFiSettingsResult result));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);

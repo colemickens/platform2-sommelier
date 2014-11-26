@@ -977,6 +977,8 @@ TEST_F(WakeOnWiFiTest, VerifyWakeOnWiFiSettings_NoWakeOnPacketRules) {
   EXPECT_CALL(*this, SuspendCallback(ErrorType(Error::kSuccess))).Times(1);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, EndsWith("successfully verified")));
+  EXPECT_CALL(metrics_, NotifyVerifyWakeOnWiFiSettingsResult(
+                            Metrics::kVerifyWakeOnWiFiSettingsResultSuccess));
   VerifyWakeOnWiFiSettings(msg);
   // Suspend action callback cleared after being invoked.
   EXPECT_TRUE(SuspendActionsCallbackIsNull());
@@ -987,6 +989,8 @@ TEST_F(WakeOnWiFiTest, VerifyWakeOnWiFiSettings_NoWakeOnPacketRules) {
   GetWakeOnPacketConnections()->AddUnique(IPAddress("1.1.1.1"));
   GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kIPAddress);
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("structure detected")));
+  EXPECT_CALL(metrics_, NotifyVerifyWakeOnWiFiSettingsResult(
+                            Metrics::kVerifyWakeOnWiFiSettingsResultFailure));
   VerifyWakeOnWiFiSettings(msg);
 }
 
@@ -1010,6 +1014,8 @@ TEST_F(WakeOnWiFiTest,
   EXPECT_CALL(*this, SuspendCallback(ErrorType(Error::kSuccess))).Times(1);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, EndsWith("successfully verified")));
+  EXPECT_CALL(metrics_, NotifyVerifyWakeOnWiFiSettingsResult(
+                            Metrics::kVerifyWakeOnWiFiSettingsResultSuccess));
   VerifyWakeOnWiFiSettings(msg);
   // Suspend action callback cleared after being invoked.
   EXPECT_TRUE(SuspendActionsCallbackIsNull());
@@ -1020,6 +1026,8 @@ TEST_F(WakeOnWiFiTest,
   GetWakeOnWiFiTriggers()->erase(WakeOnWiFi::kDisconnect);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("structure detected")));
+  EXPECT_CALL(metrics_, NotifyVerifyWakeOnWiFiSettingsResult(
+                            Metrics::kVerifyWakeOnWiFiSettingsResultFailure));
   VerifyWakeOnWiFiSettings(msg);
 }
 
@@ -1038,6 +1046,8 @@ TEST_F(WakeOnWiFiTest, VerifyWakeOnWiFiSettingsSuccess_NoSuspendCallback) {
   EXPECT_CALL(*this, SuspendCallback(_)).Times(0);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, EndsWith("successfully verified")));
+  EXPECT_CALL(metrics_, NotifyVerifyWakeOnWiFiSettingsResult(
+                            Metrics::kVerifyWakeOnWiFiSettingsResultSuccess));
   VerifyWakeOnWiFiSettings(msg);
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
   ScopeLogger::GetInstance()->set_verbose_level(0);

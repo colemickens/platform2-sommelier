@@ -214,6 +214,12 @@ class Metrics {
     kDarkResumeActionResultMax
   };
 
+  enum VerifyWakeOnWiFiSettingsResult {
+    kVerifyWakeOnWiFiSettingsResultSuccess,
+    kVerifyWakeOnWiFiSettingsResultFailure,
+    kVerifyWakeOnWiFiSettingsResultMax
+  };
+
   enum Cellular3GPPRegistrationDelayedDrop {
     kCellular3GPPRegistrationDelayedDropPosted = 0,
     kCellular3GPPRegistrationDelayedDropCanceled = 1,
@@ -665,6 +671,9 @@ class Metrics {
   // Device removal event.
   static const char kMetricDeviceRemovedEvent[];
 
+  // The result of NIC wake on WiFi settings verification.
+  static const char kMetricVerifyWakeOnWiFiSettingsResult[];
+
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
 
@@ -733,8 +742,13 @@ class Metrics {
 
   // Notifies this object of the current wake on WiFi features enabled
   // represented by the WakeOnWiFiFeaturesEnabledState |state|.
-  virtual void NotifyWakeOnWiFiFeaturesEnabledState(
+  void NotifyWakeOnWiFiFeaturesEnabledState(
       WakeOnWiFiFeaturesEnabledState state);
+
+  // Notifies this object of the result of NIC wake on WiFi settings
+  // verification.
+  virtual void NotifyVerifyWakeOnWiFiSettingsResult(
+      VerifyWakeOnWiFiSettingsResult result);
 
   // Notifies this object that termination actions started executing.
   void NotifyTerminationActionsStarted();

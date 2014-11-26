@@ -664,11 +664,15 @@ void WakeOnWiFi::VerifyWakeOnWiFiSettings(
                               wake_on_packet_connections_)) {
     SLOG(this, 2) << __func__ << ": "
                   << "Wake-on-packet settings successfully verified";
+    metrics_->NotifyVerifyWakeOnWiFiSettingsResult(
+        Metrics::kVerifyWakeOnWiFiSettingsResultSuccess);
     RunAndResetSuspendActionsDoneCallback(Error(Error::kSuccess));
   } else {
     LOG(ERROR) << __func__ << " failed: discrepancy between wake-on-packet "
                               "settings on NIC and those in local data "
                               "structure detected";
+    metrics_->NotifyVerifyWakeOnWiFiSettingsResult(
+        Metrics::kVerifyWakeOnWiFiSettingsResultFailure);
     RetrySetWakeOnPacketConnections();
   }
 }

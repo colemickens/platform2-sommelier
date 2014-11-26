@@ -373,6 +373,10 @@ const char Metrics::kMetricDeviceRemovedEvent[] =
     "Network.Shill.DeviceRemovedEvent";
 
 // static
+const char Metrics::kMetricVerifyWakeOnWiFiSettingsResult[] =
+    "Network.Shill.WiFi.VerifyWakeOnWiFiSettingsResult";
+
+// static
 const char Metrics::kMetricUnreliableLinkSignalStrengthSuffix[] =
     "UnreliableLinkSignalStrength";
 const int Metrics::kMetricSerivceSignalStrengthMin = 0;
@@ -742,6 +746,12 @@ void Metrics::NotifyWakeOnWiFiFeaturesEnabledState(
     WakeOnWiFiFeaturesEnabledState state) {
   SendEnumToUMA(kMetricWakeOnWiFiFeaturesEnabledState, state,
                 kWakeOnWiFiFeaturesEnabledStateMax);
+}
+
+void Metrics::NotifyVerifyWakeOnWiFiSettingsResult(
+    VerifyWakeOnWiFiSettingsResult result) {
+  SendEnumToUMA(kMetricVerifyWakeOnWiFiSettingsResult, result,
+                kVerifyWakeOnWiFiSettingsResultMax);
 }
 
 void Metrics::NotifyTerminationActionsStarted() {
