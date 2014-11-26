@@ -8,28 +8,11 @@
 #include <string>
 
 #include <base/macros.h>
-#include <chromeos/dbus/data_serialization.h>
+#include <chromeos/dbus/dbus_property.h>
 #include <chromeos/variant_dictionary.h>
 #include <dbus/object_manager.h>
 
 #include "buffet/libbuffet/export.h"
-
-namespace dbus {
-// Specialize dbus::Property for chromeos::VariantDictionary type.
-template <>
-inline bool Property<chromeos::VariantDictionary>::PopValueFromReader(
-    MessageReader* reader) {
-  return chromeos::dbus_utils::PopVariantValueFromReader(reader, &value_);
-}
-
-template <>
-inline void Property<chromeos::VariantDictionary>::AppendSetValueToWriter(
-    MessageWriter* writer) {
-  chromeos::dbus_utils::AppendValueToWriterAsVariant(writer, set_value_);
-}
-
-extern template class Property<chromeos::VariantDictionary>;
-}  // namespace dbus
 
 namespace buffet {
 
@@ -39,12 +22,13 @@ class CommandPropertySet : public dbus::PropertySet {
   CommandPropertySet(dbus::ObjectProxy* object_proxy,
                      const std::string& interface_name,
                      const PropertyChangedCallback& callback);
-  dbus::Property<std::string> id;
-  dbus::Property<std::string> name;
-  dbus::Property<std::string> category;
-  dbus::Property<std::string> status;
-  dbus::Property<int32_t> progress;
-  dbus::Property<chromeos::VariantDictionary> parameters;
+  chromeos::dbus_utils::Property<std::string> id;
+  chromeos::dbus_utils::Property<std::string> name;
+  chromeos::dbus_utils::Property<std::string> category;
+  chromeos::dbus_utils::Property<std::string> status;
+  chromeos::dbus_utils::Property<int32_t> progress;
+  chromeos::dbus_utils::Property<chromeos::VariantDictionary> parameters;
+  chromeos::dbus_utils::Property<chromeos::VariantDictionary> results;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CommandPropertySet);

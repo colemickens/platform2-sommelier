@@ -4,4 +4,3 @@
 
 #include "libbuffet/private/command_property_set.h"
 
-template class dbus::Property<chromeos::VariantDictionary>;

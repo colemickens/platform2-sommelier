@@ -22,6 +22,7 @@ CommandPropertySet::CommandPropertySet(dbus::ObjectProxy* object_proxy,
   RegisterProperty(dbus_constants::kCommandStatus, &status);
   RegisterProperty(dbus_constants::kCommandProgress, &progress);
   RegisterProperty(dbus_constants::kCommandParameters, &parameters);
+  RegisterProperty(dbus_constants::kCommandResults, &results);
 }
 
 bool CommandListener::Init(
