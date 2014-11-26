@@ -14,10 +14,11 @@
       'target_name': 'privetd_common',
       'type': 'static_library',
       'sources': [
-        'constants.cc',
         'cloud_delegate.cc',
+        'constants.cc',
         'daemon_state.cc',
         'device_delegate.cc',
+        'peerd_client.cc',
         'privet_handler.cc',
         'security_delegate.cc',
         'wifi_bootstrap_manager.cc',

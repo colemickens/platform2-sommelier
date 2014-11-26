@@ -22,9 +22,12 @@ class DeviceDelegateImpl : public DeviceDelegate {
  public:
   DeviceDelegateImpl(uint16_t http_port,
                      uint16_t https_port,
-                     DaemonState* state_store) : http_port_(http_port),
-                                                 https_port_(https_port),
-                                                 state_store_(state_store) {
+                     DaemonState* state_store,
+                     const base::Closure& on_changed)
+      : http_port_(http_port),
+        https_port_(https_port),
+        state_store_(state_store),
+        on_changed_(on_changed) {
     if (GetId().empty()) {
       // TODO(wiley) This should probably be consistent with the peerd UUID.
       state_store_->SetString(state_key::kDeviceId, base::GenerateGUID());
@@ -73,22 +76,32 @@ class DeviceDelegateImpl : public DeviceDelegate {
   void SetName(const std::string& name) override {
     state_store_->SetString(state_key::kDeviceName, name);
     state_store_->Save();
+    on_changed_.Run();
   }
   void SetDescription(const std::string& description) override {
     state_store_->SetString(state_key::kDeviceDescription, description);
     state_store_->Save();
+    on_changed_.Run();
   }
   void SetLocation(const std::string& location) override {
     state_store_->SetString(state_key::kDeviceLocation, location);
     state_store_->Save();
+    on_changed_.Run();
   }
-  void AddType(const std::string& type) override { types_.insert(type); }
-  void RemoveType(const std::string& type) override { types_.erase(type); }
+  void AddType(const std::string& type) override {
+    types_.insert(type);
+    on_changed_.Run();
+  }
+  void RemoveType(const std::string& type) override {
+    types_.erase(type);
+    on_changed_.Run();
+  }
 
  private:
   const uint16_t http_port_;
   const uint16_t https_port_;
   DaemonState* state_store_;
+  base::Closure on_changed_;
   base::Time start_time_ = base::Time::Now();
   std::set<std::string> types_;
 };
@@ -105,9 +118,10 @@ DeviceDelegate::~DeviceDelegate() {
 std::unique_ptr<DeviceDelegate> DeviceDelegate::CreateDefault(
     uint16_t http_port,
     uint16_t https_port,
-    DaemonState* state_store) {
+    DaemonState* state_store,
+    const base::Closure& on_changed) {
   return std::unique_ptr<DeviceDelegate>(
-      new DeviceDelegateImpl(http_port, https_port, state_store));
+      new DeviceDelegateImpl(http_port, https_port, state_store, on_changed));
 }
 
 }  // namespace privetd

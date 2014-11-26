@@ -24,6 +24,7 @@
 #include "privetd/constants.h"
 #include "privetd/daemon_state.h"
 #include "privetd/device_delegate.h"
+#include "privetd/peerd_client.h"
 #include "privetd/privet_handler.h"
 #include "privetd/security_delegate.h"
 #include "privetd/wifi_bootstrap_manager.h"
@@ -57,14 +58,17 @@ class Daemon : public chromeos::DBusDaemon {
       return EX_OK;
 
     state_store_->Init();
-    device_ = privetd::DeviceDelegate::CreateDefault(http_port_number_,
-                                                     https_port_number_,
-                                                     state_store_.get());
-    cloud_ = privetd::CloudDelegate::CreateDefault(bus_, device_.get());
+    device_ = privetd::DeviceDelegate::CreateDefault(
+        http_port_number_, https_port_number_, state_store_.get(),
+        base::Bind(&Daemon::OnChanged, base::Unretained(this)));
+    cloud_ = privetd::CloudDelegate::CreateDefault(
+        bus_, device_.get(),
+        base::Bind(&Daemon::OnChanged, base::Unretained(this)));
     security_ = privetd::SecurityDelegate::CreateDefault();
     wifi_bootstrap_manager_.reset(new privetd::WifiBootstrapManager(
         state_store_.get()));
     wifi_bootstrap_manager_->Init();
+
     privet_handler_.reset(new privetd::PrivetHandler(
         cloud_.get(), device_.get(), security_.get(),
         wifi_bootstrap_manager_.get()));
@@ -97,6 +101,9 @@ class Daemon : public chromeos::DBusDaemon {
           "/privet/ping", chromeos::http::request_type::kGet,
           base::Bind(&Daemon::HelloWorldHandler, base::Unretained(this)));
     }
+
+    peerd_.reset(new privetd::PeerdClient(bus_, *device_, cloud_.get()));
+    peerd_->Start();
 
     return EX_OK;
   }
@@ -156,6 +163,13 @@ class Daemon : public chromeos::DBusDaemon {
                             chromeos::mime::text::kPlain);
   }
 
+  void OnChanged() {
+    if (peerd_) {
+      peerd_->Stop();
+      peerd_->Start();
+    }
+  }
+
   uint16_t http_port_number_;
   uint16_t https_port_number_;
   bool allow_empty_auth_;
@@ -168,6 +182,8 @@ class Daemon : public chromeos::DBusDaemon {
   std::unique_ptr<privetd::PrivetHandler> privet_handler_;
   libwebserv::Server http_server_;
   libwebserv::Server https_server_;
+
+  std::unique_ptr<privetd::PeerdClient> peerd_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };

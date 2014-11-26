@@ -10,11 +10,13 @@
 #include <utility>
 #include <vector>
 
+#include <base/callback.h>
 #include <base/time/time.h>
 
 namespace privetd {
 
 class DaemonState;
+class PeerdClient;
 
 // Interface to provide access to general information about device.
 class DeviceDelegate {
@@ -75,7 +77,10 @@ class DeviceDelegate {
   static std::unique_ptr<DeviceDelegate> CreateDefault(
       uint16_t http_port,
       uint16_t https_port,
-      DaemonState* state_store);
+      DaemonState* state_store,
+      // Allows owner to know that state of the object was changed. Used to
+      // notify PeerdClient.
+      const base::Closure& on_changed);
 };
 
 }  // namespace privetd

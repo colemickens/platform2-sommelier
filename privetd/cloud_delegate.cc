@@ -14,6 +14,7 @@
 
 #include "buffet/dbus-proxies.h"
 #include "privetd/device_delegate.h"
+#include "privetd/peerd_client.h"
 
 namespace privetd {
 
@@ -24,8 +25,10 @@ using chromeos::ErrorPtr;
 
 class CloudDelegateImpl : public CloudDelegate {
  public:
-  CloudDelegateImpl(const scoped_refptr<dbus::Bus>& bus, DeviceDelegate* device)
-      : manager_proxy_{bus}, device_{device} {}
+  CloudDelegateImpl(const scoped_refptr<dbus::Bus>& bus,
+                    DeviceDelegate* device,
+                    const base::Closure& on_changed)
+      : manager_proxy_{bus}, device_{device}, on_changed_{on_changed} {}
 
   ~CloudDelegateImpl() override = default;
 
@@ -67,9 +70,11 @@ class CloudDelegateImpl : public CloudDelegate {
     VLOG(1) << "GCD Setup started. ticket_id: " << ticket_id
             << ", user:" << user;
     setup_state_ = SetupState(SetupState::kInProgress);
+    cloud_id_.clear();
     base::MessageLoop::current()->PostTask(
         FROM_HERE, base::Bind(&CloudDelegateImpl::CallManagerRegisterDevice,
                               weak_factory_.GetWeakPtr(), ticket_id));
+    on_changed_.Run();
     // Return true because we tried setup.
     return true;
   }
@@ -77,13 +82,6 @@ class CloudDelegateImpl : public CloudDelegate {
   std::string GetCloudId() const override { return cloud_id_; }
 
  private:
-  void OnSetupDone() {
-    VLOG(1) << "GCD Setup done";
-    setup_state_ = SetupState(SetupState::kSuccess);
-    state_ = ConnectionState(ConnectionState::kOnline);
-    cloud_id_ = "FakeCloudId";
-  }
-
   void CallManagerRegisterDevice(const std::string& ticket_id) {
     VariantDictionary params{
         {"ticket_id", ticket_id},
@@ -101,11 +99,15 @@ class CloudDelegateImpl : public CloudDelegate {
     }
     VLOG(1) << "Device registered: " << cloud_id_ << std::endl;
     setup_state_ = SetupState(SetupState::kSuccess);
+
+    on_changed_.Run();
   }
 
   org::chromium::Buffet::ManagerProxy manager_proxy_;
 
   DeviceDelegate* device_;
+
+  base::Closure on_changed_;
 
   // Primary state of GCD.
   ConnectionState state_{ConnectionState::kUnconfigured};
@@ -130,8 +132,10 @@ CloudDelegate::~CloudDelegate() {
 // static
 std::unique_ptr<CloudDelegate> CloudDelegate::CreateDefault(
     const scoped_refptr<dbus::Bus>& bus,
-    DeviceDelegate* device) {
-  std::unique_ptr<CloudDelegateImpl> gcd(new CloudDelegateImpl(bus, device));
+    DeviceDelegate* device,
+    const base::Closure& on_changed) {
+  std::unique_ptr<CloudDelegateImpl> gcd(
+      new CloudDelegateImpl(bus, device, on_changed));
   if (!gcd->Init())
     gcd.reset();
   return std::move(gcd);

@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include <base/callback.h>
 #include <base/memory/ref_counted.h>
 
 #include "privetd/privet_types.h"
@@ -44,7 +45,10 @@ class CloudDelegate {
   // Create default instance.
   static std::unique_ptr<CloudDelegate> CreateDefault(
       const scoped_refptr<dbus::Bus>& bus,
-      DeviceDelegate* device);
+      DeviceDelegate* device,
+      // Allows owner to know that state of the object was changed. Used to
+      // notify PeerdClient.
+      const base::Closure& on_changed);
 };
 
 }  // namespace privetd
