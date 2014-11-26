@@ -21,7 +21,6 @@ import tempfile
 
 from platform2 import Platform2
 
-from chromite.lib import cros_build_lib
 from chromite.lib import namespaces
 from chromite.lib import osutils
 from chromite.lib import retry_util
@@ -618,30 +617,7 @@ def _ReExecuteIfNeeded(argv):
     cmd = _SudoCommand() + ['--'] + argv
     os.execvp(cmd[0], cmd)
   else:
-    # The mount namespace is the only one really guaranteed to exist --
-    # it's been supported forever and it cannot be turned off.
-    namespaces.Unshare(namespaces.CLONE_NEWNS)
-
-    # The UTS namespace was added 2.6.19 and may be disabled in the kernel.
-    try:
-      namespaces.Unshare(namespaces.CLONE_NEWUTS)
-    except OSError as e:
-      if e.errno != errno.EINVAL:
-        pass
-
-    # The net namespace was added in 2.6.24 and may be disabled in the kernel.
-    try:
-      namespaces.Unshare(namespaces.CLONE_NEWNET)
-      # Since we've unshared the net namespace, we need to bring up loopback.
-      # The kernel automatically adds the various ip addresses, so skip that.
-      try:
-        cros_build_lib.RunCommand(['ip', 'link', 'set', 'up', 'lo'])
-      except cros_build_lib.RunCommandError:
-        print('warning: could not bring up loopback for network; '
-              'install the iproute2 package')
-    except OSError as e:
-      if e.errno != errno.EINVAL:
-        pass
+    namespaces.SimpleUnshare(net=True, pid=True)
 
 
 class _ParseStringSetAction(argparse.Action):
