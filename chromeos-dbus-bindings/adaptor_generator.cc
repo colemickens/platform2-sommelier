@@ -37,6 +37,7 @@ bool AdaptorGenerator::GenerateAdaptors(
   text.AddLine(StringPrintf("#define %s", header_guard.c_str()));
   text.AddLine("#include <memory>");
   text.AddLine("#include <string>");
+  text.AddLine("#include <tuple>");
   text.AddLine("#include <vector>");
   text.AddBlankLine();
   text.AddLine("#include <base/macros.h>");
@@ -436,11 +437,9 @@ void AdaptorGenerator::AddPropertyDataMembers(const Interface& interface,
     CHECK(signature.Parse(property.type, &type));
     string variable_name = GetPropertyVariableName(property.name);
 
-    block.AddLine(StringPrintf("chromeos::dbus_utils::ExportedProperty<%s>",
-                               type.c_str()));
-    block.PushOffset(kLineContinuationOffset);
-    block.AddLine(StringPrintf("%s_;", variable_name.c_str()));
-    block.PopOffset();
+    block.AddLine(
+        StringPrintf("chromeos::dbus_utils::ExportedProperty<%s> %s_;",
+                     type.c_str(), variable_name.c_str()));
   }
   if (!interface.properties.empty())
     block.AddBlankLine();

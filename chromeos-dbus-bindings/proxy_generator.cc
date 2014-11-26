@@ -86,6 +86,7 @@ void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
 
   text->AddLine(StringPrintf("// Interface proxy for %s.",
                              GetFullClassName(namespaces, itf_name).c_str()));
+  text->AddComments(interface.doc_string);
   text->AddLine(StringPrintf("class %s final {", proxy_name.c_str()));
   text->AddLineWithOffset("public:", kScopeOffset);
   text->PushOffset(kBlockOffset);

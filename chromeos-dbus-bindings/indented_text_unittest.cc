@@ -125,4 +125,45 @@ TEST_F(IndentedTextTest, Reset) {
   EXPECT_TRUE(GetHistory().empty());
 }
 
+TEST_F(IndentedTextTest, AddComments_Empty) {
+  text_.AddComments("");
+  EXPECT_EQ("", text_.GetContents());
+}
+
+TEST_F(IndentedTextTest, AddComments_WhitespaceOnly) {
+  text_.AddComments("  \n \t  \n");
+  EXPECT_EQ("", text_.GetContents());
+}
+
+TEST_F(IndentedTextTest, AddComments_EmptyLines) {
+  string comment_block = R"(
+
+    line1
+
+    line2
+
+
+  )";
+  text_.AddComments(comment_block);
+  EXPECT_EQ("// line1\n"
+            "//\n"
+            "// line2\n", text_.GetContents());
+}
+
+TEST_F(IndentedTextTest, AddComments_Indentation) {
+  string comment_block = R"(
+    line1
+      - bullet1
+        line2
+      - bullet2
+  line3
+  )";
+  text_.AddComments(comment_block);
+  EXPECT_EQ("// line1\n"
+            "//   - bullet1\n"
+            "//     line2\n"
+            "//   - bullet2\n"
+            "// line3\n", text_.GetContents());
+}
+
 }  // namespace chromeos_dbus_bindings

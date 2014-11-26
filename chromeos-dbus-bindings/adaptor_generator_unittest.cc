@@ -52,6 +52,7 @@ const char kMethod1Name2[] = "Tetsuo2";
 const char kExpectedContent[] = R"literal_string(
 #include <memory>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include <base/macros.h>
@@ -151,8 +152,7 @@ class TestAdaptor {
       std::vector<dbus::ObjectPath>>;
   std::weak_ptr<SignalMappingType> signal_Mapping_;
 
-  chromeos::dbus_utils::ExportedProperty<std::string>
-      character_name_;
+  chromeos::dbus_utils::ExportedProperty<std::string> character_name_;
 
   TestInterface* interface_;  // Owned by container of this adapter.
 

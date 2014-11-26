@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <chromeos/strings/string_utils.h>
 
 using std::string;
@@ -41,10 +42,47 @@ void IndentedText::AddLineWithOffset(const std::string& line, size_t shift) {
 }
 
 void IndentedText::AddComments(const std::string& doc_string) {
-  // Split at \n, trim all whitespaces and eliminate empty strings.
-  auto lines = chromeos::string_utils::Split(doc_string, '\n', true, true);
-  for (const auto& line : lines) {
-    AddLine("// " + line);
+  // Try to retain indentation in the comments. Find the first non-empty line
+  // of the comment and find its whitespace indentation prefix.
+  // For all subsequent lines, remove the same whitespace prefix as found
+  // at the first line of the comment but keep any additional spaces to
+  // maintain the comment layout.
+  auto lines = chromeos::string_utils::Split(doc_string, '\n', false, false);
+  vector<string> lines_out;
+  lines_out.reserve(lines.size());
+  bool first_nonempty_found = false;
+  std::string trim_prefix;
+  for (string line : lines) {
+    base::TrimWhitespaceASCII(line, base::TRIM_TRAILING, &line);
+    if (!first_nonempty_found) {
+      size_t pos = line.find_first_not_of(" \t");
+      if (pos != std::string::npos) {
+        first_nonempty_found = true;
+        trim_prefix = line.substr(0, pos);
+        lines_out.push_back(line.substr(pos));
+      }
+    } else {
+      if (StartsWithASCII(line, trim_prefix, false)) {
+        line = line.substr(trim_prefix.length());
+      } else {
+        base::TrimWhitespaceASCII(line, base::TRIM_LEADING, &line);
+      }
+      lines_out.push_back(line);
+    }
+  }
+
+  // We already eliminated all empty lines at the beginning of the comment
+  // block. Now remove the trailing empty lines.
+  while (!lines_out.empty() && lines_out.back().empty())
+    lines_out.pop_back();
+
+  for (const string& line : lines_out) {
+    const bool all_whitespace = (line.find_first_not_of(" \t") == string::npos);
+    if (all_whitespace) {
+      AddLine("//");
+    } else {
+      AddLine("// " + line);
+    }
   }
 }
 
