@@ -76,10 +76,6 @@ class SystemUtils {
   virtual bool AtomicFileWrite(const base::FilePath& filename,
                                const std::string& data) = 0;
 
-  // Makes a best-effort attempt to append |msg| to the system log that is
-  // persisted across stateful partition wipes.
-  virtual void AppendToClobberLog(const char* msg) const = 0;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(SystemUtils);
 };

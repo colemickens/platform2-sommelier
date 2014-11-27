@@ -46,7 +46,6 @@ class SystemUtilsImpl : public SystemUtils {
   bool RemoveFile(const base::FilePath& filename) override;
   bool AtomicFileWrite(const base::FilePath& filename,
                        const std::string& data) override;
-  void AppendToClobberLog(const char* msg) const override;
 
  private:
   // If this file exists on the next boot, the stateful partition will be wiped.

@@ -166,12 +166,4 @@ bool SystemUtilsImpl::AtomicFileWrite(const base::FilePath& filename,
       base::SetPosixFilePermissions(filename, (S_IRUSR | S_IWUSR | S_IROTH)));
 }
 
-void SystemUtilsImpl::AppendToClobberLog(const char* msg) const {
-  chromeos::ProcessImpl appender;
-  appender.AddArg("/sbin/clobber-log");
-  appender.AddArg("--");
-  appender.AddArg(msg);
-  appender.Run();
-}
-
 }  // namespace login_manager
