@@ -13,7 +13,6 @@
 #include <openssl/hmac.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
-#include <openssl/sha.h>
 
 #include <base/logging.h>
 #include <base/rand_util.h>
@@ -29,15 +28,6 @@ namespace {
 
 const char kTokenDelimeter = ':';
 const size_t kSha256OutputSize = 32;
-
-chromeos::Blob Sha256(const chromeos::Blob& data) {
-  chromeos::Blob hash(SHA256_DIGEST_LENGTH);
-  SHA256_CTX sha_context;
-  SHA256_Init(&sha_context);
-  SHA256_Update(&sha_context, data.data(), data.size());
-  SHA256_Final(hash.data(), &sha_context);
-  return hash;
-}
 
 chromeos::SecureBlob HmacSha256(const chromeos::SecureBlob& key,
                                 const chromeos::Blob& data) {
@@ -151,11 +141,11 @@ class SecurityDelegateImpl : public SecurityDelegate {
                        std::string* signature) override {
     if (sessionId != session_id_)
       return Error::kUnknownSession;
+    CHECK(!TLS_certificate_fingerprint_.empty());
     client_commitment_ = client_commitment;
-    chromeos::Blob cert_hash = Sha256(GetTlsCertificate());
-    *fingerprint = Base64Encode(cert_hash);
-    chromeos::SecureBlob cert_hmac =
-        HmacSha256(chromeos::SecureBlob(GetPairingSecret()), cert_hash);
+    *fingerprint = Base64Encode(TLS_certificate_fingerprint_);
+    chromeos::SecureBlob cert_hmac = HmacSha256(
+        chromeos::SecureBlob(GetPairingSecret()), TLS_certificate_fingerprint_);
     *signature = Base64Encode(cert_hmac);
     return Error::kNone;
   }
@@ -182,6 +172,7 @@ class SecurityDelegateImpl : public SecurityDelegate {
   std::string device_commitment_ = "1234";
   chromeos::SecureBlob secret_;
   chromeos::Blob TLS_certificate_;
+  chromeos::Blob TLS_certificate_fingerprint_;
   chromeos::SecureBlob TLS_private_key_;
 };
 
@@ -250,6 +241,17 @@ chromeos::Blob StroreCertificate(X509* cert) {
   return chromeos::Blob(buffer, buffer + size);
 }
 
+// Same as openssl x509 -fingerprint -sha256.
+chromeos::Blob GetSha256Fingerprint(X509* cert) {
+  chromeos::Blob fingerpring(kSha256OutputSize);
+  uint32_t len = 0;
+  CHECK(X509_digest(cert, EVP_sha256(), fingerpring.data(), &len));
+  CHECK_EQ(len, kSha256OutputSize);
+  VLOG(3) << "Certificate fingerprint: " << base::HexEncode(fingerpring.data(),
+                                                            fingerpring.size());
+  return fingerpring;
+}
+
 }  // namespace
 
 void SecurityDelegateImpl::InitTlsData() {
@@ -286,6 +288,7 @@ void SecurityDelegateImpl::InitTlsData() {
   CHECK(X509_sign(cert.get(), key.get(), EVP_sha256()));
 
   TLS_certificate_ = StroreCertificate(cert.get());
+  TLS_certificate_fingerprint_ = GetSha256Fingerprint(cert.get());
   TLS_private_key_ = std::move(private_key);
 }
 
