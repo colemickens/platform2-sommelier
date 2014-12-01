@@ -96,9 +96,8 @@ bool BootLockbox::FinalizeBoot() {
       // The PCR is already not at the initial value, no need to extend again.
       return true;
   }
-  return tpm_->ExtendPCR(kPCRIndex,
-                         chromeos::SecureBlob(kPCRExtension,
-                                              arraysize(kPCRExtension)));
+  return tpm_->ExtendPCR(kPCRIndex, CryptoLib::Sha1(
+      chromeos::SecureBlob(kPCRExtension, arraysize(kPCRExtension))));
 }
 
 bool BootLockbox::IsFinalized() {

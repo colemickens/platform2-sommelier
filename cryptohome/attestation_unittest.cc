@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
@@ -742,7 +743,11 @@ TEST_F(AttestationTestNoInitialize, AutoExtendPCR1) {
   EXPECT_CALL(tpm_, ReadPCR(1, _))
       .WillOnce(DoAll(SetArgumentPointee<1>(default_pcr), Return(true)));
   std::string fake_hwid = "hwid";
-  EXPECT_CALL(tpm_, ExtendPCR(1, chromeos::SecureBlob(fake_hwid)))
+  chromeos::SecureBlob fake_hwid_expected_extension;
+  // First 20 bytes of SHA-256.
+  ASSERT_TRUE(base::HexStringToBytes("bc45e91a086497cd817cb3024ac5c0d733111a74",
+                                     &fake_hwid_expected_extension));
+  EXPECT_CALL(tpm_, ExtendPCR(1, fake_hwid_expected_extension))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, GetHardwareID()).WillRepeatedly(Return(fake_hwid));
   // Now initialize and the mocks will complain if PCR1 is not extended.

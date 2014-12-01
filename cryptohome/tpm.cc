@@ -58,6 +58,7 @@ const unsigned int kTpmPCRLocality = 1;
 const int kDelegateSecretSize = 20;
 const int kDelegateFamilyLabel = 1;
 const int kDelegateEntryLabel = 2;
+const size_t kPCRExtensionSize = 20;  // SHA-1 digest size.
 
 // This error is returned when an attempt is made to use the SRK but it does not
 // yet exist because the TPM has not been owned.
@@ -2638,13 +2639,14 @@ bool Tpm::ExtendPCR(int pcr_index, const chromeos::SecureBlob& extension) {
     LOG(ERROR) << __func__ << ": Failed to connect to the TPM.";
     return false;
   }
-  SecureBlob hash = CryptoLib::Sha1(extension);
+  CHECK_EQ(extension.size(), kPCRExtensionSize);
+  SecureBlob mutable_extension(extension.begin(), extension.end());
   UINT32 new_pcr_value_length = 0;
   ScopedTssMemory new_pcr_value(context_handle);
   TSS_RESULT result = Tspi_TPM_PcrExtend(tpm_handle,
                                          pcr_index,
-                                         hash.size(),
-                                         vector_as_array(&hash),
+                                         extension.size(),
+                                         vector_as_array(&mutable_extension),
                                          NULL,
                                          &new_pcr_value_length,
                                          new_pcr_value.ptr());

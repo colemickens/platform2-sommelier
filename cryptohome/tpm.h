@@ -389,7 +389,8 @@ class Tpm {
                                  const chromeos::SecureBlob& pcr_value,
                                  const chromeos::SecureBlob& key_blob);
 
-  // Extends the PCR given by |pcr_index| using a SHA-1 hash of |extension|.
+  // Extends the PCR given by |pcr_index| with |extension|. The |extension| must
+  // be exactly 20 bytes in length.
   virtual bool ExtendPCR(int pcr_index, const chromeos::SecureBlob& extension);
 
   // Reads the current |pcr_value| of the PCR given by |pcr_index|.

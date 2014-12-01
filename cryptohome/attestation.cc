@@ -2075,7 +2075,12 @@ void Attestation::ExtendPCR1IfClear() {
   }
   std::string hwid = platform_->GetHardwareID();
   LOG(WARNING) << "Extending PCR1.";
-  if (hwid.length() == 0 || !tpm_->ExtendPCR(1, SecureBlob(hwid))) {
+  // Take the first 20 bytes of a SHA-256 hash because this is what firmware
+  // would do. (Using SHA-256 allows a single precomputed hash to be stored
+  // along with the HWID for both TPM 1.2 and 2.0 platforms).
+  SecureBlob hwid_hash = CryptoLib::Sha256(SecureBlob(hwid));
+  SecureBlob extension(hwid_hash.begin(), hwid_hash.begin() + 20);
+  if (hwid.length() == 0 || !tpm_->ExtendPCR(1, extension)) {
     LOG(WARNING) << "Failed to extend PCR1.";
   }
 }
