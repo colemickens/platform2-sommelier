@@ -332,7 +332,7 @@ class Platform2Test(object):
 
   _BIND_MOUNT_PATHS = ('dev', 'dev/pts', 'proc', 'mnt/host/source', 'sys')
 
-  def __init__(self, test_bin, board, host, use_flags, package, framework,
+  def __init__(self, test_bin, board, host, use_flags, framework,
                run_as_root, gtest_filter, user_gtest_filter, cache_dir,
                sysroot, test_bin_args):
     if not test_bin_args:
@@ -343,7 +343,6 @@ class Platform2Test(object):
     self.args = test_bin_args
     self.board = board
     self.host = host
-    self.package = package
     self.use_flags = use_flags
     self.run_as_root = run_as_root
     (self.gtest_filter, self.user_gtest_filter) = \
@@ -396,11 +395,11 @@ class Platform2Test(object):
     """
 
     gtest_filter = cls.generateGtestSubfilter(filters)
-    user_gtest_filter = {}
+    user_gtest_filter = []
 
-    pkg_filters = dict([x.split('::') for x in user_filters.split()])
-    for pkg, pkg_filter in pkg_filters.items():
-      user_gtest_filter[pkg] = cls.generateGtestSubfilter(pkg_filter)
+    if user_filters:
+      filters = user_filters.split('::')[-1]
+      user_gtest_filter = cls.generateGtestSubfilter(filters)
 
     return (gtest_filter, user_gtest_filter)
 
@@ -538,11 +537,8 @@ class Platform2Test(object):
     negative_filters = self.gtest_filter[1]
 
     if self.user_gtest_filter:
-      if self.package not in self.user_gtest_filter:
-        return
-      else:
-        positive_filters += self.user_gtest_filter[self.package][0]
-        negative_filters += self.user_gtest_filter[self.package][1]
+      positive_filters += self.user_gtest_filter[0]
+      negative_filters += self.user_gtest_filter[1]
 
     filters = (':'.join(positive_filters), ':'.join(negative_filters))
     gtest_filter = '%s-%s' % filters
@@ -649,8 +645,6 @@ def main(argv):
                       help='args to pass to gtest/test binary')
   parser.add_argument('--host', action='store_true', default=False,
                       help='specify that we\'re testing for the host')
-  parser.add_argument('--package',
-                      help='name of the package we\'re running tests for')
   parser.add_argument('--run_as_root', action='store_true',
                       help='should the test be run as root')
   parser.add_argument('--use_flags', default=set(),
@@ -665,9 +659,6 @@ def main(argv):
   if options.action == 'run' and ((not options.bin or len(options.bin) == 0)
                                   and not options.cmdline):
     raise AssertionError('You must specify a binary for the "run" action')
-
-  if options.user_gtest_filter and not options.package:
-    raise AssertionError('You must specify a package with user gtest filters')
 
   if options.host and options.board:
     raise AssertionError('You must provide only one of --board or --host')
@@ -684,7 +675,7 @@ def main(argv):
   _ReExecuteIfNeeded([sys.argv[0]] + argv)
 
   p2test = Platform2Test(options.bin, options.board, options.host,
-                         options.use_flags, options.package, options.framework,
+                         options.use_flags, options.framework,
                          options.run_as_root, options.gtest_filter,
                          options.user_gtest_filter, options.cache_dir,
                          options.sysroot, options.cmdline)
