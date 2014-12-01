@@ -12,6 +12,7 @@
 
 #include "chromeos-dbus-bindings/dbus_signature.h"
 #include "chromeos-dbus-bindings/indented_text.h"
+#include "chromeos-dbus-bindings/name_parser.h"
 
 using base::StringPrintf;
 using std::pair;
@@ -72,20 +73,14 @@ bool ProxyGenerator::GenerateProxies(
 void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
                                             const Interface& interface,
                                             IndentedText* text) {
-  vector<string> namespaces;
-  string itf_name;
-  CHECK(GetNamespacesAndClassName(interface.name,
-                                  &namespaces,
-                                  &itf_name));
-  string proxy_name = itf_name + "Proxy";
+  NameParser parser{interface.name};
+  string proxy_name = parser.MakeProxyName(false);
 
-  for (const auto& space : namespaces) {
-    text->AddLine(StringPrintf("namespace %s {", space.c_str()));
-  }
+  parser.AddOpenNamespaces(text, false);
   text->AddBlankLine();
 
   text->AddLine(StringPrintf("// Interface proxy for %s.",
-                             GetFullClassName(namespaces, itf_name).c_str()));
+                             parser.MakeFullCppName().c_str()));
   text->AddComments(interface.doc_string);
   text->AddLine(StringPrintf("class %s final {", proxy_name.c_str()));
   text->AddLineWithOffset("public:", kScopeOffset);
@@ -127,9 +122,7 @@ void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
 
   text->AddBlankLine();
 
-  for (auto it = namespaces.rbegin(); it != namespaces.rend(); ++it) {
-    text->AddLine(StringPrintf("}  // namespace %s", it->c_str()));
-  }
+  parser.AddCloseNamespaces(text, false);
 
   text->AddBlankLine();
 }
@@ -294,9 +287,7 @@ void ProxyGenerator::AddSignalReceiver(const Interface& interface,
           block.AddLine(StringPrintf("%s,", last_argument.c_str()));
       }
       CHECK(signature.Parse(argument.type, &last_argument));
-      if (!IsIntegralType(last_argument)) {
-        last_argument = StringPrintf("const %s&", last_argument.c_str());
-      }
+      MakeConstReferenceIfNeeded(&last_argument);
       if (!argument.name.empty()) {
         last_argument += ' ';
         last_argument += argument.name;
@@ -326,9 +317,7 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
   for (const auto& argument : method.input_arguments) {
     string argument_type;
     CHECK(signature.Parse(argument.type, &argument_type));
-    if (!IsIntegralType(argument_type)) {
-      argument_type = StringPrintf("const %s&", argument_type.c_str());
-    }
+    MakeConstReferenceIfNeeded(&argument_type);
     string argument_name = GetArgName("in", argument.name, ++argument_number);
     argument_names.push_back(argument_name);
     block.AddLine(StringPrintf(

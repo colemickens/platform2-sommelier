@@ -8,7 +8,6 @@
 
 #include <base/file_util.h>
 #include <base/files/file_path.h>
-#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/strings/string_utils.h>
@@ -36,34 +35,15 @@ string HeaderGenerator::GenerateHeaderGuard(
 }
 
 // static
-bool HeaderGenerator::GetNamespacesAndClassName(
-    const string& interface_name,
-    vector<string>* namespaces,
-    string* class_name) {
-  vector<string> split_namespaces;
-  base::SplitString(interface_name, '.', &split_namespaces);
-  if (split_namespaces.size() < 2) {
-    LOG(ERROR) << "Interface name must have both a domain and object part "
-               << "separated by '.'.  Got " << interface_name << " instead.";
-    return false;
-  }
-  *class_name = split_namespaces.back();
-  split_namespaces.pop_back();
-  namespaces->swap(split_namespaces);
-  return true;
-}
-
-std::string HeaderGenerator::GetFullClassName(
-    const std::vector<std::string>& namespaces,
-    const std::string& class_name) {
-  std::vector<std::string> parts = namespaces;
-  parts.push_back(class_name);
-  return chromeos::string_utils::Join("::", parts);
+bool HeaderGenerator::IsIntegralType(const string& type) {
+  return type.find("::") == std::string::npos;
 }
 
 // static
-bool HeaderGenerator::IsIntegralType(const string& type) {
-  return type.find("::") == std::string::npos;
+void HeaderGenerator::MakeConstReferenceIfNeeded(std::string* type) {
+  if (!IsIntegralType(*type)) {
+    *type = base::StringPrintf("const %s&", type->c_str());
+  }
 }
 
 // static

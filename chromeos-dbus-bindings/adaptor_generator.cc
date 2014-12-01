@@ -14,6 +14,7 @@
 #include "chromeos-dbus-bindings/dbus_signature.h"
 #include "chromeos-dbus-bindings/indented_text.h"
 #include "chromeos-dbus-bindings/interface.h"
+#include "chromeos-dbus-bindings/name_parser.h"
 
 using base::StringPrintf;
 using std::string;
@@ -59,17 +60,13 @@ bool AdaptorGenerator::GenerateAdaptors(
 void AdaptorGenerator::GenerateInterfaceAdaptor(
     const Interface& interface,
     IndentedText *text) {
-  vector<string> namespaces;
-  string itf_name;
-  CHECK(GetNamespacesAndClassName(interface.name, &namespaces, &itf_name));
-  string class_name = itf_name + "Adaptor";
-  string full_itf_name = GetFullClassName(namespaces, itf_name);
-  itf_name += "Interface";
+  NameParser parser{interface.name};
+  string itf_name = parser.MakeInterfaceName(false);
+  string class_name = parser.MakeAdaptorName(false);
+  string full_itf_name = parser.MakeFullCppName();
 
   text->AddBlankLine();
-  for (const auto& ns : namespaces) {
-    text->AddLine(StringPrintf("namespace %s {", ns.c_str()));
-  }
+  parser.AddOpenNamespaces(text, false);
 
   text->AddBlankLine();
   text->AddLine(StringPrintf("// Interface definition for %s.",
@@ -121,9 +118,7 @@ void AdaptorGenerator::GenerateInterfaceAdaptor(
   text->AddLine("};");
 
   text->AddBlankLine();
-  for (auto it = namespaces.rbegin(); it != namespaces.rend(); ++it) {
-    text->AddLine(StringPrintf("}  // namespace %s", it->c_str()));
-  }
+  parser.AddCloseNamespaces(text, false);
 }
 
 // static
@@ -200,7 +195,7 @@ void AdaptorGenerator::RegisterInterface(const string& itf_name,
   if (!interface.properties.empty())
     text->AddBlankLine();
   for (const auto& property : interface.properties) {
-    string variable_name = GetPropertyVariableName(property.name);
+    string variable_name = NameParser{property.name}.MakeVariableName();
     text->AddLine(StringPrintf("itf->AddProperty(\"%s\", &%s_);",
                                property.name.c_str(), variable_name.c_str()));
   }
@@ -264,9 +259,7 @@ void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
     for (const auto& argument : input_arguments_copy) {
       string param_type;
       CHECK(signature.Parse(argument.type, &param_type));
-      if (!IsIntegralType(param_type)) {
-        param_type = StringPrintf("const %s&", param_type.c_str());
-      }
+      MakeConstReferenceIfNeeded(&param_type);
       string param_name = GetArgName("in", argument.name, ++index);
       method_params.push_back(param_type + ' ' + param_name);
     }
@@ -314,9 +307,7 @@ void AdaptorGenerator::AddSendSignalMethods(
     for (const auto& argument : signal.arguments) {
       string param_type;
       CHECK(signature.Parse(argument.type, &param_type));
-      if (!IsIntegralType(param_type)) {
-        param_type = StringPrintf("const %s&", param_type.c_str());
-      }
+      MakeConstReferenceIfNeeded(&param_type);
       string param_name = GetArgName("in", argument.name, ++index);
       param_names.push_back(param_name);
       method_params.push_back(param_type + ' ' + param_name);
@@ -395,7 +386,7 @@ void AdaptorGenerator::AddPropertyMethodImplementation(
     block.AddBlankLine();
     string type;
     CHECK(signature.Parse(property.type, &type));
-    string variable_name = GetPropertyVariableName(property.name);
+    string variable_name = NameParser{property.name}.MakeVariableName();
 
     // Getter method.
     block.AddComments(property.doc_string);
@@ -410,8 +401,7 @@ void AdaptorGenerator::AddPropertyMethodImplementation(
     block.AddLine("}");
 
     // Setter method.
-    if (!IsIntegralType(type))
-      type = StringPrintf("const %s&", type.c_str());
+    MakeConstReferenceIfNeeded(&type);
     block.AddLine(StringPrintf("void Set%s(%s %s) {",
                                property.name.c_str(),
                                type.c_str(),
@@ -435,7 +425,7 @@ void AdaptorGenerator::AddPropertyDataMembers(const Interface& interface,
   for (const auto& property : interface.properties) {
     string type;
     CHECK(signature.Parse(property.type, &type));
-    string variable_name = GetPropertyVariableName(property.name);
+    string variable_name = NameParser{property.name}.MakeVariableName();
 
     block.AddLine(
         StringPrintf("chromeos::dbus_utils::ExportedProperty<%s> %s_;",
@@ -445,25 +435,6 @@ void AdaptorGenerator::AddPropertyDataMembers(const Interface& interface,
     block.AddBlankLine();
 
   text->AddBlock(block);
-}
-
-// static
-string AdaptorGenerator::GetPropertyVariableName(const string& property_name) {
-  // Convert CamelCase property name to google_style variable name.
-  string result;
-  for (size_t i = 0; i < property_name.length(); i++) {
-    char c = property_name[i];
-    if (c < 'A' || c > 'Z') {
-      result += c;
-      continue;
-    }
-
-    if (i != 0) {
-      result += '_';
-    }
-    result += base::ToLowerASCII(c);
-  }
-  return result;
 }
 
 }  // namespace chromeos_dbus_bindings

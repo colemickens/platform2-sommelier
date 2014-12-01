@@ -30,18 +30,11 @@ class HeaderGenerator {
   // Create a unique header guard string to protect multiple includes of header.
   static std::string GenerateHeaderGuard(const base::FilePath& output_file);
 
-  // Returns a vector of nesting namespaces.
-  static bool GetNamespacesAndClassName(const std::string& interface_name,
-                                        std::vector<std::string>* namespaces,
-                                        std::string* class_name);
-
-  // Returns a fully-qualified class name like "ns1::ns2::class_name".
-  static std::string GetFullClassName(
-      const std::vector<std::string>& namespaces,
-      const std::string& class_name);
-
   // Used to decide whether the argument should be a const reference.
   static bool IsIntegralType(const std::string& type);
+
+  // If |type| is a non-integral type, converts it into a const reference.
+  static void MakeConstReferenceIfNeeded(std::string* type);
 
   // Writes indented text to a file.
   static bool WriteTextToFile(const base::FilePath& output_file,

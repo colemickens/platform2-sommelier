@@ -71,9 +71,6 @@ class AdaptorGenerator : public HeaderGenerator {
   static void AddPropertyDataMembers(const Interface& interface,
                                      IndentedText *text);
 
-  // Return a variable name based on the given property name.
-  static std::string GetPropertyVariableName(const std::string& property_name);
-
   DISALLOW_COPY_AND_ASSIGN(AdaptorGenerator);
 };
 

@@ -9,6 +9,7 @@
 
 #include "chromeos-dbus-bindings/indented_text.h"
 #include "chromeos-dbus-bindings/interface.h"
+#include "chromeos-dbus-bindings/name_parser.h"
 
 using std::string;
 using std::vector;
@@ -29,15 +30,15 @@ bool MethodNameGenerator::GenerateMethodNames(
   IndentedText text;
   for (const auto& interface : interfaces) {
     text.AddBlankLine();
-    text.AddLine(base::StringPrintf("namespace %s {", interface.name.c_str()));
+    NameParser parser{interface.name};
+    parser.AddOpenNamespaces(&text, true);
     for (const auto& method : interface.methods) {
       text.AddLine(
         base::StringPrintf("const char %s[] = \"%s\";",
                             GenerateMethodNameConstant(method.name).c_str(),
                             method.name.c_str()));
     }
-    text.AddLine(base::StringPrintf("}  // namespace %s",
-                                    interface.name.c_str()));
+    parser.AddCloseNamespaces(&text, true);
   }
   return HeaderGenerator::WriteTextToFile(output_file, text);
 }
