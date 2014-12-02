@@ -25,6 +25,7 @@ using ::testing::SetArgPointee;
 namespace {
   const int kServiceIdentifier = 1;
   const char kHostapdConfig[] = "ssid=test\n";
+  const char kBinSleep[] = "/bin/sleep";
 }  // namespace
 
 namespace apmanager {
@@ -35,7 +36,7 @@ class ServiceTest : public testing::Test {
 
   void StartDummyProcess() {
     service_.hostapd_process_.reset(new chromeos::ProcessImpl);
-    service_.hostapd_process_->AddArg("sleep");
+    service_.hostapd_process_->AddArg(kBinSleep);
     service_.hostapd_process_->AddArg("12345");
     CHECK(service_.hostapd_process_->Start());
     LOG(INFO) << "DummyProcess: " << service_.hostapd_process_->pid();
