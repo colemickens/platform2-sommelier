@@ -11,6 +11,7 @@
 #include <shill/net/ieee80211.h>
 
 #include "apmanager/config.h"
+#include "apmanager/manager.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
@@ -19,8 +20,9 @@ using std::string;
 
 namespace apmanager {
 
-Device::Device(const string& device_name)
-    : org::chromium::apmanager::DeviceAdaptor(this) {
+Device::Device(Manager* manager, const string& device_name)
+    : org::chromium::apmanager::DeviceAdaptor(this),
+      manager_(manager) {
   SetDeviceName(device_name);
   SetInUsed(false);
 }
@@ -135,8 +137,11 @@ bool Device::ClaimDevice() {
     return false;
   }
 
-  // TODO(zqiu): Issue dbus call to shill to claim all interfaces on this
+  // Issue DBus calls to shill to claim all interfaces on this
   // device.
+  for (const auto& interface : interface_list_) {
+    manager_->ClaimInterface(interface.iface_name);
+  }
 
   SetInUsed(true);
   return true;
@@ -149,8 +154,11 @@ bool Device::ReleaseDevice() {
     return false;
   }
 
-  // TODO(zqiu): Issue dbus call to shill to release all interfaces on this
+  // Issue DBus calls to shill to release all interfaces on this
   // device.
+  for (const auto& interface : interface_list_) {
+    manager_->ReleaseInterface(interface.iface_name);
+  }
 
   SetInUsed(false);
   return true;

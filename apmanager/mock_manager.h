@@ -25,6 +25,8 @@ class MockManager : public Manager {
   MOCK_METHOD0(GetAvailableDevice, scoped_refptr<Device>());
   MOCK_METHOD1(GetDeviceFromInterfaceName,
                scoped_refptr<Device>(const std::string& interface_name));
+  MOCK_METHOD1(ClaimInterface, void(const std::string& interface_name));
+  MOCK_METHOD1(ReleaseInterface, void(const std::string& interface_name));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockManager);

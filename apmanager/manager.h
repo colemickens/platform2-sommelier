@@ -15,6 +15,7 @@
 
 #include "apmanager/device_info.h"
 #include "apmanager/service.h"
+#include "apmanager/shill_proxy.h"
 
 namespace apmanager {
 
@@ -53,6 +54,11 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
   virtual scoped_refptr<Device> GetDeviceFromInterfaceName(
       const std::string& interface_name);
 
+  // Claim the given interface |interface_name| from shill.
+  virtual void ClaimInterface(const std::string& interface_name);
+  // Release the given interface |interface_name| to shill.
+  virtual void ReleaseInterface(const std::string& interface_name);
+
  private:
   friend class ManagerTest;
 
@@ -74,6 +80,9 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
   std::vector<std::unique_ptr<Service>> services_;
   std::vector<scoped_refptr<Device>> devices_;
   DeviceInfo device_info_;
+
+  // Proxy to shill DBus services.
+  std::unique_ptr<ShillProxy> shill_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };

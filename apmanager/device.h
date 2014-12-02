@@ -17,6 +17,8 @@
 
 namespace apmanager {
 
+class Manager;
+
 // Abstraction for WiFi Device (PHY). Each device can have one or more
 // interfaces defined on it.
 class Device : public base::RefCounted<Device>,
@@ -51,7 +53,7 @@ class Device : public base::RefCounted<Device>,
     uint16_t vht_capability_mask;
   };
 
-  explicit Device(const std::string& device_name);
+  Device(Manager* manager, const std::string& device_name);
   virtual ~Device();
 
   // Register Device DBus object.
@@ -99,6 +101,8 @@ class Device : public base::RefCounted<Device>,
   // and set the output |capability| pointer if such capability exist for the
   // band the given |channel| is in, false otherwise.
   bool GetBandCapability(uint16_t channel, BandCapability* capability);
+
+  Manager* manager_;
 
   // List of WiFi interfaces live on this device (PHY).
   std::vector<WiFiInterface> interface_list_;

@@ -358,7 +358,7 @@ TEST_F(DeviceInfoTest, RegisterDevice) {
   VerifyDeviceList(device_list);
 
   // Register a device.
-  device_list.push_back(new Device(kTestDeviceName));
+  device_list.push_back(new Device(&manager_, kTestDeviceName));
   EXPECT_CALL(manager_, RegisterDevice(device_list[0]));
   RegisterDevice(device_list[0]);
   VerifyDeviceList(device_list);

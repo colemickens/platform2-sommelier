@@ -55,6 +55,19 @@
         'device_info.cc',
         'manager.cc',
         'service.cc',
+        'shill_proxy.cc',
+      ],
+      'actions': [
+        {
+          'action_name': 'generate-shill-proxies',
+          'variables': {
+            'proxy_output_file': 'include/shill/dbus-proxies.h'
+          },
+          'sources': [
+            '../shill/dbus_bindings/org.chromium.flimflam.Manager.xml',
+          ],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
       ],
     },
     {

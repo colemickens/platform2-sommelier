@@ -14,6 +14,10 @@
 #include <shill/net/nl80211_attribute.h>
 #include <shill/net/nl80211_message.h>
 
+#include "apmanager/mock_manager.h"
+
+using ::testing::_;
+using ::testing::Mock;
 using std::vector;
 
 namespace apmanager {
@@ -41,7 +45,7 @@ const Device::WiFiInterface kMonitorModeInterface = {
 
 class DeviceTest : public testing::Test {
  public:
-  DeviceTest() : device_(new Device(kDeviceName)) {}
+  DeviceTest() : device_(new Device(&manager_, kDeviceName)) {}
 
   void VerifyInterfaceList(
       const vector<Device::WiFiInterface>& interface_list) {
@@ -97,6 +101,7 @@ class DeviceTest : public testing::Test {
   }
 
  protected:
+  MockManager manager_;
   scoped_refptr<Device> device_;
 };
 
@@ -230,6 +235,37 @@ TEST_F(DeviceTest, ParseHTCapability) {
   std::string band_5ghz_cap;
   EXPECT_TRUE(device_->GetHTCapability(36, &band_5ghz_cap));
   EXPECT_EQ(kBand5GHzHTCapability, band_5ghz_cap);
+}
+
+TEST_F(DeviceTest, ClaimAndReleaseDevice) {
+  // Register multiple interfaces.
+  device_->RegisterInterface(kApModeInterface1);
+  device_->RegisterInterface(kManagedModeInterface1);
+
+  // Claim the device should claim all interfaces registered on this device.
+  EXPECT_CALL(manager_, ClaimInterface(kApModeInterface1.iface_name)).Times(1);
+  EXPECT_CALL(manager_,
+              ClaimInterface(kManagedModeInterface1.iface_name)).Times(1);
+  EXPECT_TRUE(device_->ClaimDevice());
+  Mock::VerifyAndClearExpectations(&manager_);
+
+  // Claim the device when it is already claimed.
+  EXPECT_CALL(manager_, ClaimInterface(_)).Times(0);
+  EXPECT_FALSE(device_->ClaimDevice());
+  Mock::VerifyAndClearExpectations(&manager_);
+
+  // Release the device should release all interfaces registered on this device.
+  EXPECT_CALL(manager_,
+              ReleaseInterface(kApModeInterface1.iface_name)).Times(1);
+  EXPECT_CALL(manager_,
+              ReleaseInterface(kManagedModeInterface1.iface_name)).Times(1);
+  EXPECT_TRUE(device_->ReleaseDevice());
+  Mock::VerifyAndClearExpectations(&manager_);
+
+  // Release the device when it is not claimed.
+  EXPECT_CALL(manager_, ReleaseInterface(_)).Times(0);
+  EXPECT_FALSE(device_->ReleaseDevice());
+  Mock::VerifyAndClearExpectations(&manager_);
 }
 
 }  // namespace apmanager

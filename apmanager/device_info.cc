@@ -108,7 +108,7 @@ void DeviceInfo::OnWiFiPhyInfoReceived(const shill::Nl80211Message& msg) {
     return;
   }
 
-  scoped_refptr<Device> device = new Device(device_name);
+  scoped_refptr<Device> device = new Device(manager_, device_name);
   device->ParseWiphyCapability(msg);
 
   // Register device
@@ -289,7 +289,7 @@ void DeviceInfo::OnWiFiInterfacePhyInfoReceived(
   scoped_refptr<Device> device = GetDevice(device_name);
   // Create device if it is not enumerated yet.
   if (!device) {
-    device = new Device(device_name);
+    device = new Device(manager_, device_name);
     device->ParseWiphyCapability(msg);
 
     // Register device

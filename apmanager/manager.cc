@@ -18,7 +18,8 @@ Manager::Manager()
     : org::chromium::apmanager::ManagerAdaptor(this),
       service_identifier_(0),
       device_identifier_(0),
-      device_info_(this) {}
+      device_info_(this),
+      shill_proxy_(new ShillProxy()) {}
 
 Manager::~Manager() {}
 
@@ -106,6 +107,14 @@ void Manager::RegisterDevice(scoped_refptr<Device> device) {
                base::Unretained(this),
                device)
   });
+}
+
+void Manager::ClaimInterface(const string& interface_name) {
+  shill_proxy_->ClaimInterface(interface_name);
+}
+
+void Manager::ReleaseInterface(const string& interface_name) {
+  shill_proxy_->ReleaseInterface(interface_name);
 }
 
 void Manager::OnServiceRegistered(

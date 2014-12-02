@@ -6,7 +6,7 @@
 
 namespace apmanager {
 
-MockDevice::MockDevice() : Device("") {}
+MockDevice::MockDevice() : Device(nullptr, "") {}
 
 MockDevice::~MockDevice() {}
 
