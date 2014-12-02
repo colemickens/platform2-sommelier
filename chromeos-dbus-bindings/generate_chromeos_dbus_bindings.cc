@@ -84,6 +84,18 @@ bool LoadConfig(const base::FilePath& path, ServiceConfig *config) {
     return false;
 
   dict->GetStringWithoutPathExpansion("service_name", &config->service_name);
+
+  base::DictionaryValue* om_dict = nullptr;  // Owned by |dict|.
+  if (dict->GetDictionaryWithoutPathExpansion("object_manager", &om_dict)) {
+    if (!om_dict->GetStringWithoutPathExpansion("name",
+                                                &config->object_manager.name) &&
+        !config->service_name.empty()) {
+      config->object_manager.name = config->service_name + ".ObjectManager";
+    }
+    om_dict->GetStringWithoutPathExpansion("object_path",
+                                           &config->object_manager.object_path);
+  }
+
   return true;
 }
 

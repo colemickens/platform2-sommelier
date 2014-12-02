@@ -54,15 +54,80 @@ class ProxyGenerator : public HeaderGenerator {
   // of the object proxy.
   static void AddReleaseObjectProxy(IndentedText* text);
 
+  // Generates AddGetObjectPath() method.
+  static void AddGetObjectPath(IndentedText* text);
+
+  // Generates GetObjectProxy() method.
+  static void AddGetObjectProxy(IndentedText* text);
+
+  // Generates SetPropertyChangedCallback/GetProperties() methods.
+  static void AddPropertyPublicMethods(const std::string& class_name,
+                                       IndentedText* text);
+
+  // Generates OnPropertyChanged() method.
+  static void AddOnPropertyChanged(IndentedText* text);
+
   // Generates the method signatures for signal receivers.
   static void AddSignalReceiver(const Interface& interface,
                                 IndentedText* text);
+
+  // Generates the property set class to contain interface properties.
+  static void AddPropertySet(const ServiceConfig& config,
+                             const Interface& interface,
+                             IndentedText* text);
+
+  // Generates the property accessors.
+  static void AddProperties(const ServiceConfig& config,
+                            const Interface& interface,
+                            IndentedText* text);
 
   // Generates a native C++ method which calls a D-Bus method on the proxy.
   static void AddMethodProxy(const Interface::Method& interface,
                              const std::string& interface_name,
                              IndentedText* text);
 
+  // Generates the Object Manager proxy class.
+  struct ObjectManager {
+    // Generates the top-level class for Object Manager proxy.
+    static void GenerateProxy(const ServiceConfig& config,
+                              const std::vector<Interface>& interfaces,
+                              IndentedText* text);
+
+    // Generates Object Manager constructor.
+    static void AddConstructor(const ServiceConfig& config,
+                               const std::string& class_name,
+                               const std::vector<Interface>& interfaces,
+                               IndentedText* text);
+
+    // Generates GetObjectManagerProxy() method.
+    static void AddGetObjectManagerProxy(IndentedText* text);
+
+    // Generates code for interface-specific accessor methods
+    static void AddInterfaceAccessors(const Interface& interface,
+                                      IndentedText* text);
+
+    // Generates OnPropertyChanged() method.
+    static void AddOnPropertyChanged(const std::vector<Interface>& interfaces,
+                                     IndentedText* text);
+
+    // Generates ObjectAdded() method.
+    static void AddObjectAdded(const std::vector<Interface>& interfaces,
+                               IndentedText* text);
+
+    // Generates ObjectRemoved() method.
+    static void AddObjectRemoved(const std::vector<Interface>& interfaces,
+                                 IndentedText* text);
+
+    // Generates CreateProperties() method.
+    static void AddCreateProperties(const std::vector<Interface>& interfaces,
+                                    const std::string& class_name,
+                                    IndentedText* text);
+
+    // Generates data members of the class.
+    static void AddDataMembers(const std::vector<Interface>& interfaces,
+                               const std::string& class_name,
+                               IndentedText* text);
+  };
   // Generates the signal handler name for a given signal name.
   static std::string GetHandlerNameForSignal(const std::string& signal);
 

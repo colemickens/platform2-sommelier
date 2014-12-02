@@ -22,9 +22,20 @@ using std::vector;
 namespace chromeos_dbus_bindings {
 
 namespace {
-string GetParamString(const pair<string, string>& param_def) {
-  return StringPrintf("const %s& %s",
-                      param_def.first.c_str(), param_def.second.c_str());
+// Helper struct to encapsulate information about method call parameter during
+// code generation.
+struct ParamDef {
+  ParamDef(const string& param_type, const string& param_name, bool param_ref)
+      : type(param_type), name(param_name), is_const_ref(param_ref) {}
+
+  string type;
+  string name;
+  bool is_const_ref;
+};
+
+string GetParamString(const ParamDef& param_def) {
+  return StringPrintf(param_def.is_const_ref ? "const %s& %s" : "%s* %s",
+                      param_def.type.c_str(), param_def.name.c_str());
 }
 }  // anonymous namespace
 
@@ -42,6 +53,7 @@ bool ProxyGenerator::GenerateProxies(
   string header_guard = GenerateHeaderGuard(output_file);
   text.AddLine(StringPrintf("#ifndef %s", header_guard.c_str()));
   text.AddLine(StringPrintf("#define %s", header_guard.c_str()));
+  text.AddLine("#include <memory>");
   text.AddLine("#include <string>");
   text.AddLine("#include <vector>");
   text.AddBlankLine();
@@ -52,18 +64,32 @@ bool ProxyGenerator::GenerateProxies(
   text.AddLine("#include <base/memory/ref_counted.h>");
   text.AddLine("#include <chromeos/any.h>");
   text.AddLine("#include <chromeos/dbus/dbus_method_invoker.h>");
+  text.AddLine("#include <chromeos/dbus/dbus_property.h>");
   text.AddLine("#include <chromeos/dbus/dbus_signal_handler.h>");
   text.AddLine("#include <chromeos/errors/error.h>");
   text.AddLine("#include <chromeos/variant_dictionary.h>");
   text.AddLine("#include <dbus/bus.h>");
   text.AddLine("#include <dbus/message.h>");
+  text.AddLine("#include <dbus/object_manager.h>");
   text.AddLine("#include <dbus/object_path.h>");
   text.AddLine("#include <dbus/object_proxy.h>");
   text.AddBlankLine();
 
+  if (!config.object_manager.name.empty()) {
+    // Add forward-declaration for Object Manager proxy class.
+    NameParser parser{config.object_manager.name};
+    parser.AddOpenNamespaces(&text, false);
+    text.AddLine(StringPrintf("class %s;",
+                              parser.MakeProxyName(false).c_str()));
+    parser.AddCloseNamespaces(&text, false);
+    text.AddBlankLine();
+  }
+
   for (const auto& interface : interfaces) {
     GenerateInterfaceProxy(config, interface, &text);
   }
+
+  ObjectManager::GenerateProxy(config, interfaces, &text);
 
   text.AddLine(StringPrintf("#endif  // %s", header_guard.c_str()));
   return WriteTextToFile(output_file, text);
@@ -86,19 +112,27 @@ void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
   text->AddLineWithOffset("public:", kScopeOffset);
   text->PushOffset(kBlockOffset);
   AddSignalReceiver(interface, text);
+  AddPropertySet(config, interface, text);
   AddConstructor(config, interface, proxy_name, text);
   AddDestructor(proxy_name, text);
   AddReleaseObjectProxy(text);
+  AddGetObjectPath(text);
+  AddGetObjectProxy(text);
+  if (!config.object_manager.name.empty() && !interface.properties.empty())
+    AddPropertyPublicMethods(proxy_name, text);
   if (!interface.signals.empty())
     AddSignalConnectedCallback(text);
   for (const auto& method : interface.methods) {
     AddMethodProxy(method, interface.name, text);
   }
+  AddProperties(config, interface, text);
 
   text->PopOffset();
   text->AddLineWithOffset("private:", kScopeOffset);
 
   text->PushOffset(kBlockOffset);
+  if (!config.object_manager.name.empty() && !interface.properties.empty())
+    AddOnPropertyChanged(text);
   text->AddLine("scoped_refptr<dbus::Bus> bus_;");
   if (config.service_name.empty()) {
     text->AddLine("std::string service_name_;");
@@ -112,11 +146,22 @@ void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
     text->AddLine(StringPrintf("const dbus::ObjectPath object_path_{\"%s\"};",
                                interface.path.c_str()));
   }
+  if (!config.object_manager.name.empty() && !interface.properties.empty()) {
+    text->AddLine("PropertySet* property_set_;");
+    text->AddLine(StringPrintf("base::Callback<void(%s*, const std::string&)> "
+                               "on_property_changed_;",
+                               proxy_name.c_str()));
+  }
   text->AddLine("dbus::ObjectProxy* dbus_object_proxy_;");
   text->AddBlankLine();
 
-  text->AddLine(StringPrintf(
-      "DISALLOW_COPY_AND_ASSIGN(%s);", proxy_name.c_str()));
+  if (!config.object_manager.name.empty() && !interface.properties.empty()) {
+    text->AddLine(StringPrintf(
+        "friend class %s;",
+        NameParser{config.object_manager.name}.MakeProxyName(true).c_str()));
+  }
+  text->AddLine(StringPrintf("DISALLOW_COPY_AND_ASSIGN(%s);",
+                             proxy_name.c_str()));
   text->PopOffset();
   text->AddLine("};");
 
@@ -133,11 +178,13 @@ void ProxyGenerator::AddConstructor(const ServiceConfig& config,
                                     const string& class_name,
                                     IndentedText* text) {
   IndentedText block;
-  vector<std::pair<string, string>> args{{"scoped_refptr<dbus::Bus>", "bus"}};
+  vector<ParamDef> args{{"scoped_refptr<dbus::Bus>", "bus", true}};
   if (config.service_name.empty())
-    args.emplace_back("std::string", "service_name");
+    args.emplace_back("std::string", "service_name", true);
   if (interface.path.empty())
-    args.emplace_back("std::string", "object_path");
+    args.emplace_back("dbus::ObjectPath", "object_path", true);
+  if (!config.object_manager.name.empty() && !interface.properties.empty())
+    args.emplace_back("PropertySet", "property_set", false);
 
   if (args.size() == 1) {
     block.AddLine(StringPrintf("%s(%s) :", class_name.c_str(),
@@ -152,12 +199,12 @@ void ProxyGenerator::AddConstructor(const ServiceConfig& config,
   }
   block.PushOffset(kLineContinuationOffset);
   for (const auto& arg : args) {
-    block.AddLine(StringPrintf("%s_(%s),", arg.second.c_str(),
-                               arg.second.c_str()));
+    block.AddLine(StringPrintf("%s_{%s},", arg.name.c_str(),
+                               arg.name.c_str()));
   }
-  block.AddLine("dbus_object_proxy_(");
+  block.AddLine("dbus_object_proxy_{");
   block.AddLineWithOffset(
-      "bus_->GetObjectProxy(service_name_, object_path_)) {",
+      "bus_->GetObjectProxy(service_name_, object_path_)} {",
       kLineContinuationOffset);
   block.PopOffset();
   if (args.size() > 1)
@@ -170,7 +217,7 @@ void ProxyGenerator::AddConstructor(const ServiceConfig& config,
     vector<string> param_names;
     for (const auto& arg : args) {
       block.AddLine(StringPrintf("%s,", GetParamString(arg).c_str()));
-      param_names.push_back(arg.second);
+      param_names.push_back(arg.name);
     }
     block.AddLine("SignalReceiver* signal_receiver) :");
     string param_list = chromeos::string_utils::Join(", ", param_names);
@@ -220,15 +267,58 @@ void ProxyGenerator::AddDestructor(const string& class_name,
 
 // static
 void ProxyGenerator::AddReleaseObjectProxy(IndentedText* text) {
-  IndentedText block;
-  block.AddLine("void ReleaseObjectProxy(const base::Closure& callback) {");
-  block.PushOffset(kBlockOffset);
-  block.AddLine(
-      "bus_->RemoveObjectProxy(service_name_, object_path_, callback);");
-  block.PopOffset();
-  block.AddLine("}");
-  block.AddBlankLine();
-  text->AddBlock(block);
+  text->AddLine("void ReleaseObjectProxy(const base::Closure& callback) {");
+  text->AddLineWithOffset(
+      "bus_->RemoveObjectProxy(service_name_, object_path_, callback);",
+      kBlockOffset);
+  text->AddLine("}");
+  text->AddBlankLine();
+}
+
+// static
+void ProxyGenerator::AddGetObjectPath(IndentedText* text) {
+  text->AddLine("const dbus::ObjectPath& GetObjectPath() const {");
+  text->AddLineWithOffset("return object_path_;", kBlockOffset);
+  text->AddLine("}");
+  text->AddBlankLine();
+}
+
+// static
+void ProxyGenerator::AddGetObjectProxy(IndentedText* text) {
+  text->AddLine("dbus::ObjectProxy* GetObjectProxy() const { "
+                "return dbus_object_proxy_; }");
+  text->AddBlankLine();
+}
+
+// static
+void ProxyGenerator::AddPropertyPublicMethods(const string& class_name,
+                                              IndentedText* text) {
+  text->AddLine("void SetPropertyChangedCallback(");
+  text->AddLineWithOffset(
+      StringPrintf("const base::Callback<void(%s*, "
+                   "const std::string&)>& callback) {", class_name.c_str()),
+      kLineContinuationOffset);
+  text->AddLineWithOffset("on_property_changed_ = callback;", kBlockOffset);
+  text->AddLine("}");
+  text->AddBlankLine();
+
+  text->AddLine("const PropertySet* GetProperties() const "
+                "{ return property_set_; }");
+  text->AddLine("PropertySet* GetProperties() { return property_set_; }");
+  text->AddBlankLine();
+}
+
+// static
+void ProxyGenerator::AddOnPropertyChanged(IndentedText* text) {
+  text->AddLine("void OnPropertyChanged(const std::string& property_name) {");
+  text->PushOffset(kBlockOffset);
+  text->AddLine("if (!on_property_changed_.is_null())");
+  text->PushOffset(kBlockOffset);
+  text->AddLine("on_property_changed_.Run(this, property_name);");
+  text->PopOffset();
+  text->PopOffset();
+  text->AddLine("}");
+  text->AddBlankLine();
 }
 
 // static
@@ -304,6 +394,86 @@ void ProxyGenerator::AddSignalReceiver(const Interface& interface,
 }
 
 // static
+void ProxyGenerator::AddPropertySet(const ServiceConfig& config,
+                                    const Interface& interface,
+                                    IndentedText* text) {
+  // Must have ObjectManager in order for property system to work correctly.
+  if (config.object_manager.name.empty())
+    return;
+
+  IndentedText block;
+  block.AddLine("class PropertySet : public dbus::PropertySet {");
+  block.AddLineWithOffset("public:", kScopeOffset);
+  block.PushOffset(kBlockOffset);
+  block.AddLineAndPushOffsetTo("PropertySet(dbus::ObjectProxy* object_proxy,",
+                               1, '(');
+  block.AddLine("const PropertyChangedCallback& callback)");
+  block.PopOffset();
+  block.PushOffset(kLineContinuationOffset);
+  block.AddLineAndPushOffsetTo(": dbus::PropertySet{object_proxy,", 1, '{');
+  block.AddLine(StringPrintf("\"%s\",", interface.name.c_str()));
+  block.AddLine("callback} {");
+  block.PopOffset();
+  block.PopOffset();
+  block.PushOffset(kBlockOffset);
+  for (const auto& prop : interface.properties) {
+    block.AddLine(
+        StringPrintf("RegisterProperty(\"%s\", &%s);",
+                     prop.name.c_str(),
+                     NameParser{prop.name}.MakeVariableName().c_str()));
+  }
+  block.PopOffset();
+  block.AddLine("}");
+  block.AddBlankLine();
+
+  DbusSignature signature;
+  for (const auto& prop : interface.properties) {
+    string type;
+    CHECK(signature.Parse(prop.type, &type));
+    block.AddLine(
+        StringPrintf("chromeos::dbus_utils::Property<%s> %s;",
+                     type.c_str(),
+                     NameParser{prop.name}.MakeVariableName().c_str()));
+  }
+  block.AddBlankLine();
+
+  block.PopOffset();
+  block.AddLineWithOffset("private:", kScopeOffset);
+  block.AddLineWithOffset("DISALLOW_COPY_AND_ASSIGN(PropertySet);",
+                          kBlockOffset);
+  block.AddLine("};");
+  block.AddBlankLine();
+
+  text->AddBlock(block);
+}
+
+// static
+void ProxyGenerator::AddProperties(const ServiceConfig& config,
+                                   const Interface& interface,
+                                   IndentedText* text) {
+  // Must have ObjectManager in order for property system to work correctly.
+  if (config.object_manager.name.empty())
+    return;
+
+  DbusSignature signature;
+  for (const auto& prop : interface.properties) {
+    string type;
+    CHECK(signature.Parse(prop.type, &type));
+    MakeConstReferenceIfNeeded(&type);
+    string name = NameParser{prop.name}.MakeVariableName();
+    text->AddLine(
+        StringPrintf("%s %s() const {",
+                     type.c_str(),
+                     name.c_str()));
+    text->AddLineWithOffset(
+        StringPrintf("return property_set_->%s.value();", name.c_str()),
+        kBlockOffset);
+    text->AddLine("}");
+    text->AddBlankLine();
+  }
+}
+
+// static
 void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
                                     const string& interface_name,
                                     IndentedText* text) {
@@ -359,6 +529,369 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
   block.AddBlankLine();
 
   text->AddBlock(block);
+}
+
+// static
+void ProxyGenerator::ObjectManager::GenerateProxy(
+    const ServiceConfig& config,
+    const std::vector<Interface>& interfaces,
+    IndentedText* text) {
+  if (config.object_manager.name.empty())
+    return;
+
+  NameParser object_manager{config.object_manager.name};
+  object_manager.AddOpenNamespaces(text, false);
+  text->AddBlankLine();
+
+  string class_name = object_manager.type_name + "Proxy";
+  text->AddLine(StringPrintf("class %s : "
+                             "public dbus::ObjectManager::Interface {",
+                             class_name.c_str()));
+  text->AddLineWithOffset("public:", kScopeOffset);
+  text->PushOffset(kBlockOffset);
+
+  AddConstructor(config, class_name, interfaces, text);
+  AddGetObjectManagerProxy(text);
+  for (const auto& itf : interfaces) {
+    AddInterfaceAccessors(itf, text);
+  }
+  text->PopOffset();
+
+  text->AddLineWithOffset("private:", kScopeOffset);
+  text->PushOffset(kBlockOffset);
+  AddOnPropertyChanged(interfaces, text);
+  AddObjectAdded(interfaces, text);
+  AddObjectRemoved(interfaces, text);
+  AddCreateProperties(interfaces, class_name, text);
+  AddDataMembers(interfaces, class_name, text);
+
+  text->AddLine(StringPrintf("DISALLOW_COPY_AND_ASSIGN(%s);",
+                              class_name.c_str()));
+  text->PopOffset();
+  text->AddLine("};");
+  text->AddBlankLine();
+  object_manager.AddCloseNamespaces(text, false);
+  text->AddBlankLine();
+}
+
+void ProxyGenerator::ObjectManager::AddConstructor(
+    const ServiceConfig& config,
+    const std::string& class_name,
+    const std::vector<Interface>& interfaces,
+    IndentedText* text) {
+  if (config.service_name.empty()) {
+    text->AddLineAndPushOffsetTo(
+        StringPrintf("%s(const scoped_refptr<dbus::Bus>& bus,",
+                     class_name.c_str()),
+        1, '(');
+    text->AddLine("const std::string& service_name)");
+    text->PopOffset();
+  } else {
+    text->AddLine(StringPrintf("%s(const scoped_refptr<dbus::Bus>& bus)",
+                               class_name.c_str()));
+  }
+  text->PushOffset(kLineContinuationOffset);
+  text->AddLine(": bus_{bus},");
+  text->PushOffset(kBlockOffset);
+  text->AddLine("dbus_object_manager_{bus->GetObjectManager(");
+  text->PushOffset(kLineContinuationOffset);
+  if (config.service_name.empty()) {
+    text->AddLine("service_name,");
+  } else {
+    text->AddLine(StringPrintf("\"%s\",", config.service_name.c_str()));
+  }
+  text->AddLine(StringPrintf("dbus::ObjectPath{\"%s\"})} {",
+                             config.object_manager.object_path.c_str()));
+  text->PopOffset();
+  text->PopOffset();
+  text->PopOffset();
+  text->PushOffset(kBlockOffset);
+  for (const auto& itf : interfaces) {
+    text->AddLine(
+        StringPrintf("dbus_object_manager_->RegisterInterface(\"%s\", this);",
+                     itf.name.c_str()));
+  }
+  text->PopOffset();
+  text->AddLine("}");
+  text->AddBlankLine();
+}
+
+void ProxyGenerator::ObjectManager::AddGetObjectManagerProxy(
+    IndentedText* text) {
+  text->AddLine("dbus::ObjectManager* GetObjectManagerProxy() const {");
+  text->AddLineWithOffset("return dbus_object_manager_;", kBlockOffset);
+  text->AddLine("}");
+  text->AddBlankLine();
+}
+
+void ProxyGenerator::ObjectManager::AddInterfaceAccessors(
+    const Interface& interface,
+    IndentedText* text) {
+  NameParser itf_name{interface.name};
+  string map_name = itf_name.MakeVariableName() + "_instances_";
+
+  // GetProxy().
+  text->AddLine(StringPrintf("%s* Get%s(",
+                              itf_name.MakeProxyName(true).c_str(),
+                              itf_name.MakeProxyName(false).c_str()));
+  text->PushOffset(kLineContinuationOffset);
+  text->AddLine("const dbus::ObjectPath& object_path) {");
+  text->PopOffset();
+  text->PushOffset(kBlockOffset);
+  text->AddLine(StringPrintf("auto p = %s.find(object_path);",
+                              map_name.c_str()));
+  text->AddLine(StringPrintf("if (p != %s.end())", map_name.c_str()));
+  text->PushOffset(kBlockOffset);
+  text->AddLine("return p->second.get();");
+  text->PopOffset();
+  text->AddLine("return nullptr;");
+  text->PopOffset();
+  text->AddLine("}");
+
+  // GetInstances().
+  text->AddLine(StringPrintf("std::vector<%s*> Get%sInstances() const {",
+                              itf_name.MakeProxyName(true).c_str(),
+                              itf_name.type_name.c_str()));
+  text->PushOffset(kBlockOffset);
+  text->AddLine(StringPrintf("std::vector<%s*> values;",
+                             itf_name.MakeProxyName(true).c_str()));
+  text->AddLine(StringPrintf("values.reserve(%s.size());", map_name.c_str()));
+  text->AddLine(StringPrintf("for (const auto& pair : %s)", map_name.c_str()));
+  text->AddLineWithOffset("values.push_back(pair.second.get());", kBlockOffset);
+  text->AddLine("return values;");
+  text->PopOffset();
+  text->AddLine("}");
+
+  // SetAddedCallback().
+  text->AddLine(StringPrintf("void Set%sAddedCallback(",
+                              itf_name.type_name.c_str()));
+  text->PushOffset(kLineContinuationOffset);
+  text->AddLine(
+      StringPrintf("const base::Callback<void(%s*)>& callback) {",
+                    itf_name.MakeProxyName(true).c_str()));
+  text->PopOffset();
+  text->PushOffset(kBlockOffset);
+  text->AddLine(StringPrintf("on_%s_added_ = callback;",
+                              itf_name.MakeVariableName().c_str()));
+  text->PopOffset();
+  text->AddLine("}");
+
+  // SetRemovedCallback().
+  text->AddLine(StringPrintf("void Set%sRemovedCallback(",
+                              itf_name.type_name.c_str()));
+  text->PushOffset(kLineContinuationOffset);
+  text->AddLine("const base::Callback<void(const dbus::ObjectPath&)>& "
+                "callback) {");
+  text->PopOffset();
+  text->PushOffset(kBlockOffset);
+  text->AddLine(StringPrintf("on_%s_removed_ = callback;",
+                              itf_name.MakeVariableName().c_str()));
+  text->PopOffset();
+  text->AddLine("}");
+
+  text->AddBlankLine();
+}
+
+void ProxyGenerator::ObjectManager::AddOnPropertyChanged(
+    const std::vector<Interface>& interfaces,
+    IndentedText* text) {
+  text->AddLineAndPushOffsetTo("void OnPropertyChanged("
+                               "const dbus::ObjectPath& object_path,",
+                               1, '(');
+  text->AddLine("const std::string& interface_name,");
+  text->AddLine("const std::string& property_name) {");
+  text->PopOffset();
+  text->PushOffset(kBlockOffset);
+  for (const auto& itf : interfaces) {
+    if (itf.properties.empty())
+      continue;
+
+    NameParser itf_name{itf.name};
+    text->AddLine(StringPrintf("if (interface_name == \"%s\") {",
+                               itf.name.c_str()));
+    text->PushOffset(kBlockOffset);
+    string map_name = itf_name.MakeVariableName() + "_instances_";
+    text->AddLine(StringPrintf("auto p = %s.find(object_path);",
+                               map_name.c_str()));
+    text->AddLine(StringPrintf("if (p == %s.end())", map_name.c_str()));
+    text->PushOffset(kBlockOffset);
+    text->AddLine("return;");
+    text->PopOffset();
+    text->AddLine("p->second->OnPropertyChanged(property_name);");
+    text->AddLine("return;");
+    text->PopOffset();
+    text->AddLine("}");
+  }
+  text->PopOffset();
+  text->AddLine("}");
+  text->AddBlankLine();
+}
+
+void ProxyGenerator::ObjectManager::AddObjectAdded(
+    const std::vector<Interface>& interfaces,
+    IndentedText* text) {
+  text->AddLine("void ObjectAdded(");
+  text->PushOffset(kLineContinuationOffset);
+  text->AddLine("const dbus::ObjectPath& object_path,");
+  text->AddLine("const std::string& interface_name) override {");
+  text->PopOffset();
+  text->PushOffset(kBlockOffset);
+  for (const auto& itf : interfaces) {
+    NameParser itf_name{itf.name};
+    string var_name = itf_name.MakeVariableName();
+    text->AddLine(StringPrintf("if (interface_name == \"%s\") {",
+                               itf.name.c_str()));
+    text->PushOffset(kBlockOffset);
+    if (!itf.properties.empty()) {
+      text->AddLine("auto property_set =");
+      text->PushOffset(kLineContinuationOffset);
+      text->AddLine(StringPrintf("static_cast<%s::PropertySet*>(",
+                                 itf_name.MakeProxyName(true).c_str()));
+      text->PushOffset(kLineContinuationOffset);
+      text->AddLine("dbus_object_manager_->GetProperties(object_path, "
+                    "interface_name));");
+      text->PopOffset();
+      text->PopOffset();
+    }
+    text->AddLine(StringPrintf("std::unique_ptr<%s> %s_proxy{",
+                               itf_name.MakeProxyName(true).c_str(),
+                               var_name.c_str()));
+    text->PushOffset(kBlockOffset);
+    string new_instance = StringPrintf("new %s{bus_",
+                                       itf_name.MakeProxyName(true).c_str());
+    if (itf.path.empty())
+      new_instance += ", object_path";
+    if (!itf.properties.empty())
+      new_instance += ", property_set";
+    new_instance += "}";
+    text->AddLine(new_instance);
+    text->PopOffset();
+    text->AddLine("};");
+    text->AddLine(StringPrintf("auto p = %s_instances_.emplace(object_path, "
+                               "std::move(%s_proxy));",
+                               var_name.c_str(), var_name.c_str()));
+    text->AddLine(StringPrintf("if (!on_%s_added_.is_null())",
+                               var_name.c_str()));
+    text->PushOffset(kBlockOffset);
+    text->AddLine(StringPrintf("on_%s_added_.Run(p.first->second.get());",
+                               var_name.c_str()));
+    text->PopOffset();
+    text->AddLine("return;");
+    text->PopOffset();
+    text->AddLine("}");
+  }
+  text->PopOffset();
+  text->AddLine("}");
+  text->AddBlankLine();
+}
+
+void ProxyGenerator::ObjectManager::AddObjectRemoved(
+    const std::vector<Interface>& interfaces,
+    IndentedText* text) {
+  text->AddLine("void ObjectRemoved(");
+  text->PushOffset(kLineContinuationOffset);
+  text->AddLine("const dbus::ObjectPath& object_path,");
+  text->AddLine("const std::string& interface_name) override {");
+  text->PopOffset();
+  text->PushOffset(kBlockOffset);
+  for (const auto& itf : interfaces) {
+    NameParser itf_name{itf.name};
+    string var_name = itf_name.MakeVariableName();
+    text->AddLine(StringPrintf("if (interface_name == \"%s\") {",
+                               itf.name.c_str()));
+    text->PushOffset(kBlockOffset);
+    text->AddLine(StringPrintf("auto p = %s_instances_.find(object_path);",
+                               var_name.c_str()));
+    text->AddLine(StringPrintf("if (p != %s_instances_.end()) {",
+                               var_name.c_str()));
+    text->PushOffset(kBlockOffset);
+    text->AddLine(StringPrintf("if (!on_%s_removed_.is_null())",
+                               var_name.c_str()));
+    text->PushOffset(kBlockOffset);
+    text->AddLine(StringPrintf("on_%s_removed_.Run(object_path);",
+                               var_name.c_str()));
+    text->PopOffset();
+    text->AddLine(StringPrintf("%s_instances_.erase(p);",
+                               var_name.c_str()));
+    text->PopOffset();
+    text->AddLine("}");
+    text->AddLine("return;");
+    text->PopOffset();
+    text->AddLine("}");
+  }
+  text->PopOffset();
+  text->AddLine("}");
+  text->AddBlankLine();
+}
+
+void ProxyGenerator::ObjectManager::AddCreateProperties(
+    const std::vector<Interface>& interfaces,
+    const std::string& class_name,
+    IndentedText* text) {
+  text->AddLine("dbus::PropertySet* CreateProperties(");
+  text->PushOffset(kLineContinuationOffset);
+  text->AddLine("dbus::ObjectProxy* object_proxy,");
+  text->AddLine("const dbus::ObjectPath& object_path,");
+  text->AddLine("const std::string& interface_name) override {");
+  text->PopOffset();
+  text->PushOffset(kBlockOffset);
+  for (const auto& itf : interfaces) {
+    NameParser itf_name{itf.name};
+    text->AddLine(StringPrintf("if (interface_name == \"%s\") {",
+                               itf.name.c_str()));
+    text->PushOffset(kBlockOffset);
+    text->AddLine(StringPrintf("return new %s::PropertySet{",
+                               itf_name.MakeProxyName(true).c_str()));
+    text->PushOffset(kLineContinuationOffset);
+    text->AddLine("object_proxy,");
+    text->AddLineAndPushOffsetTo(
+        StringPrintf("base::Bind(&%s::OnPropertyChanged,",
+                     class_name.c_str()),
+        1, '(');
+    text->AddLine("weak_ptr_factory_.GetWeakPtr(),");
+    text->AddLine("object_path,");
+    text->AddLine("interface_name)");
+    text->PopOffset();
+    text->PopOffset();
+    text->AddLine("};");
+    text->PopOffset();
+    text->AddLine("}");
+  }
+  text->AddLineAndPushOffsetTo("LOG(FATAL) << \"Creating properties for "
+                               "unsupported interface \"", 1, ' ');
+  text->AddLine("<< interface_name;");
+  text->PopOffset();
+  text->AddLine("return nullptr;");
+  text->PopOffset();
+  text->AddLine("}");
+  text->AddBlankLine();
+}
+
+void ProxyGenerator::ObjectManager::AddDataMembers(
+    const std::vector<Interface>& interfaces,
+    const std::string& class_name,
+    IndentedText* text) {
+  text->AddLine("scoped_refptr<dbus::Bus> bus_;");
+  text->AddLine("dbus::ObjectManager* dbus_object_manager_;");
+  for (const auto& itf : interfaces) {
+    NameParser itf_name{itf.name};
+    string var_name = itf_name.MakeVariableName();
+    text->AddLineAndPushOffsetTo("std::map<dbus::ObjectPath,", 1, '<');
+    text->AddLine(StringPrintf("std::unique_ptr<%s>> %s_instances_;",
+                               itf_name.MakeProxyName(true).c_str(),
+                               var_name.c_str()));
+    text->PopOffset();
+    text->AddLine(StringPrintf("base::Callback<void(%s*)> on_%s_added_;",
+                               itf_name.MakeProxyName(true).c_str(),
+                               var_name.c_str()));
+    text->AddLine(StringPrintf("base::Callback<void(const dbus::ObjectPath&)> "
+                               "on_%s_removed_;",
+                               var_name.c_str()));
+  }
+  text->AddLine(
+      StringPrintf("base::WeakPtrFactory<%s> weak_ptr_factory_{this};",
+                   class_name.c_str()));
+  text->AddBlankLine();
 }
 
 // static

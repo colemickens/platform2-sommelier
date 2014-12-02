@@ -21,8 +21,25 @@ namespace chromeos_dbus_bindings {
 struct Interface;
 class  IndentedText;
 
+// General D-Bus service configuration settings used by Adaptor/Proxy code
+// generators.
 struct ServiceConfig {
+  // D-Bus service name to be used when constructing proxy objects.
+  // If omitted (empty), the service name parameter will be added to the
+  // constructor of generated proxy class(es).
   std::string service_name;
+  // Object Manager settings.
+  struct {
+    // The name of the Object Manager class to use. If empty, no object manager
+    // is generated in the proxy code (this also disables property support on
+    // proxy objects).
+    // This is a "fake" name used to generate namespaces and the actual class
+    // name for the object manager proxy. This name has no relationship to the
+    // actual D-Bus properties of the actual object manager.
+    std::string name;
+    // The D-Bus path to Object Manager instance.
+    std::string object_path;
+  } object_manager;
 };
 
 class HeaderGenerator {

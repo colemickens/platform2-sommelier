@@ -52,6 +52,11 @@ TEST_F(IndentedTextTest, AddLineWithOffset) {
   EXPECT_EQ(string(kShift, ' ') + kTestString + "\n", text_.GetContents());
 }
 
+TEST_F(IndentedTextTest, AddLineAndPushOffsetTo) {
+  text_.AddLineAndPushOffsetTo("foo(bar(baz", 2, '(');
+  EXPECT_THAT(GetHistory(), ElementsAre(8));
+}
+
 TEST_F(IndentedTextTest, AddBlock) {
   IndentedText block0;
   const char kTestString[] = "test";

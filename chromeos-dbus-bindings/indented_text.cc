@@ -41,6 +41,20 @@ void IndentedText::AddLineWithOffset(const std::string& line, size_t shift) {
   contents_.emplace_back(line, shift + offset_);
 }
 
+void IndentedText::AddLineAndPushOffsetTo(const std::string& line,
+                                          size_t occurrence,
+                                          char c) {
+  AddLine(line);
+  size_t pos = 0;
+  while (occurrence > 0) {
+    pos = line.find(c, pos);
+    CHECK(pos != string::npos);
+    pos++;
+    occurrence--;
+  }
+  PushOffset(pos);
+}
+
 void IndentedText::AddComments(const std::string& doc_string) {
   // Try to retain indentation in the comments. Find the first non-empty line
   // of the comment and find its whitespace indentation prefix.

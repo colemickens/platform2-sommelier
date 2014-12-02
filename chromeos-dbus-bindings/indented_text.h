@@ -28,6 +28,12 @@ class IndentedText {
   // Add a line at the current indentation.
   void AddLine(const std::string& line);
   void AddLineWithOffset(const std::string& line, size_t shift);
+  // Adds a line and pushes an offset past the |nth_occurrence| of character |c|
+  // in that line, effectively allowing to align following line to the position
+  // following that character.
+  void AddLineAndPushOffsetTo(const std::string& line,
+                              size_t nth_occurrence,
+                              char c);
 
   // Adds a block of comments.
   void AddComments(const std::string& doc_string);
