@@ -5,31 +5,26 @@
 #ifndef FIREWALLD_FIREWALL_DAEMON_H_
 #define FIREWALLD_FIREWALL_DAEMON_H_
 
-#include <dbus/dbus.h>
-#include <stdint.h>
-
 #include <base/macros.h>
+#include <chromeos/daemons/dbus_daemon.h>
+#include <chromeos/dbus/async_event_sequencer.h>
+
+#include "firewalld/dbus_interface.h"
+#include "firewalld/firewall_service.h"
+
+using chromeos::dbus_utils::AsyncEventSequencer;
 
 namespace firewalld {
 
-class FirewallDaemon {
+class FirewallDaemon : public chromeos::DBusServiceDaemon {
  public:
-  FirewallDaemon();
-  virtual ~FirewallDaemon();
+  FirewallDaemon() : chromeos::DBusServiceDaemon(kFirewallServiceName) {}
 
-  // Initializes the daemon and loops waiting for requests on the DBus
-  // interface. Never returns.
-  void Run();
+ protected:
+  void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override;
 
  private:
-  // The callback invoked by the DBus method handler in order to dispatch method
-  // calls to their individual handlers.
-  static DBusHandlerResult MainDBusMethodHandler(DBusConnection* connection,
-                                                 DBusMessage* message,
-                                                 void* data);
-
-  DBusMessage* HandlePunchHoleMethod(DBusMessage* message);
-  DBusMessage* HandlePlugHoleMethod(DBusMessage* message);
+  std::unique_ptr<FirewallService> firewall_service_;
 
   DISALLOW_COPY_AND_ASSIGN(FirewallDaemon);
 };

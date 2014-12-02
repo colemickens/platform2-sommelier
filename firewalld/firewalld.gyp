@@ -2,10 +2,6 @@
   'target_defaults': {
     'variables': {
       'deps': [
-        'dbus-1',
-        'dbus-glib-1',
-        'glib-2.0',
-        'gobject-2.0',
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
       ],
@@ -17,12 +13,28 @@
       'type': 'static_library',
       'sources': [
         'firewall_daemon.cc',
+        'firewall_service.cc',
       ],
+    },
+    {
+      'target_name': 'firewalld-dbus-adaptor',
+      'type': 'none',
+      'variables': {
+        'dbus_adaptors_type': 'adaptor',
+        'dbus_adaptors_out_dir': 'include/firewalld/dbus_adaptor',
+      },
+      'sources': [
+        'dbus_bindings/org.chromium.Firewalld.xml',
+      ],
+      'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     },
     {
       'target_name': 'firewalld',
       'type': 'executable',
-      'dependencies': ['libfirewalld'],
+      'dependencies': [
+        'libfirewalld',
+        'firewalld-dbus-adaptor'
+      ],
       'sources': ['main.cc'],
     },
   ],
