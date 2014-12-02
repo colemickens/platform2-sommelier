@@ -23,7 +23,7 @@ term_process() {
       return
     fi
     sleep .1
-    i=$((i + 100))
+    : $(( i += 100 ))
   done
 
   logger -t "term_process($process)" \
@@ -37,7 +37,7 @@ term_process() {
       return
     fi
     sleep .1
-    i=$((i + 100))
+    : $(( i += 100 ))
   done
   logger -t "term_process($process)" "PIDs ["$pid"] not dead after SIGKILL"
 }
