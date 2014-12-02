@@ -137,6 +137,9 @@ class WakeOnWiFi {
   // currently in dark resume before invoking the function.
   virtual void OnDHCPLeaseObtained(bool start_lease_renewal_timer,
                                    uint32_t time_to_next_lease_renewal);
+  // Callback invoked to report whether this WiFi device is connected to
+  // a service after waking from suspend.
+  virtual void ReportConnectedToServiceAfterWake(bool is_connected);
 
  private:
   friend class WakeOnWiFiTest;  // access to several members for tests

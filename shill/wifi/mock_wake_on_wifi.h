@@ -34,6 +34,7 @@ class MockWakeOnWiFi : public WakeOnWiFi {
                         remove_supplicant_networks_callback));
   MOCK_METHOD2(OnDHCPLeaseObtained, void(bool start_lease_renewal_timer,
                                          uint32_t time_to_next_lease_renewal));
+  MOCK_METHOD1(ReportConnectedToServiceAfterWake, void(bool is_connected));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWakeOnWiFi);

@@ -792,6 +792,10 @@ class WakeOnWiFiTest : public ::testing::Test {
                 GetWakeOnWiFiTriggers()->end());
   }
 
+  void ReportConnectedToServiceAfterWake(bool is_connected) {
+    wake_on_wifi_->ReportConnectedToServiceAfterWake(is_connected);
+  }
+
   MOCK_METHOD1(DoneCallback, void(const Error &error));
   MOCK_METHOD0(RenewDHCPLeaseCallback, void(void));
   MOCK_METHOD0(InitiateScanCallback, void(void));
@@ -1887,6 +1891,80 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, SetWakeOnWiFiFeaturesEnabled) {
                kWakeOnWiFiFeaturesEnabledPacket);
 }
 
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       ReportConnectedToServiceAfterWake_WakeOnSSIDEnabledAndConnected) {
+  const bool is_connected = true;
+  EnableWakeOnWiFiFeaturesPacketSSID();
+  EXPECT_CALL(
+      metrics_,
+      NotifyConnectedToServiceAfterWake(
+          Metrics::kWiFiConnetionStatusAfterWakeOnWiFiEnabledWakeConnected));
+  ReportConnectedToServiceAfterWake(is_connected);
+
+  EnableWakeOnWiFiFeaturesSSID();
+  EXPECT_CALL(
+      metrics_,
+      NotifyConnectedToServiceAfterWake(
+          Metrics::kWiFiConnetionStatusAfterWakeOnWiFiEnabledWakeConnected));
+  ReportConnectedToServiceAfterWake(is_connected);
+}
+
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       ReportConnectedToServiceAfterWake_WakeOnSSIDEnabledAndNotConnected) {
+  const bool is_connected = false;
+  EnableWakeOnWiFiFeaturesPacketSSID();
+  EXPECT_CALL(
+      metrics_,
+      NotifyConnectedToServiceAfterWake(
+          Metrics::kWiFiConnetionStatusAfterWakeOnWiFiEnabledWakeNotConnected));
+  ReportConnectedToServiceAfterWake(is_connected);
+
+  EnableWakeOnWiFiFeaturesSSID();
+  EXPECT_CALL(
+      metrics_,
+      NotifyConnectedToServiceAfterWake(
+          Metrics::kWiFiConnetionStatusAfterWakeOnWiFiEnabledWakeNotConnected));
+  ReportConnectedToServiceAfterWake(is_connected);
+}
+
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       ReportConnectedToServiceAfterWake_WakeOnSSIDDisabledAndConnected) {
+  const bool is_connected = true;
+  EnableWakeOnWiFiFeaturesPacket();
+  EXPECT_CALL(
+      metrics_,
+      NotifyConnectedToServiceAfterWake(
+          Metrics::kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeConnected));
+  ReportConnectedToServiceAfterWake(is_connected);
+
+  DisableWakeOnWiFiFeatures();
+  EXPECT_CALL(
+      metrics_,
+      NotifyConnectedToServiceAfterWake(
+          Metrics::kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeConnected));
+  ReportConnectedToServiceAfterWake(is_connected);
+}
+
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       ReportConnectedToServiceAfterWake_WakeOnSSIDDisabledAndNotConnected) {
+  const bool is_connected = false;
+  EnableWakeOnWiFiFeaturesPacket();
+  EXPECT_CALL(
+      metrics_,
+      NotifyConnectedToServiceAfterWake(
+          Metrics::
+              kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeNotConnected));
+  ReportConnectedToServiceAfterWake(is_connected);
+
+  DisableWakeOnWiFiFeatures();
+  EXPECT_CALL(
+      metrics_,
+      NotifyConnectedToServiceAfterWake(
+          Metrics::
+              kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeNotConnected));
+  ReportConnectedToServiceAfterWake(is_connected);
+}
+
 #else
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
@@ -1985,6 +2063,27 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   OnDHCPLeaseObtained(start_lease_renewal_timer, kTimeToNextLeaseRenewalLong);
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
   ScopeLogger::GetInstance()->set_verbose_level(0);
+}
+
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       WakeOnWiFiDisabled_ReportConnectedToServiceAfterWakeAndConnected) {
+  const bool is_connected = true;
+  EXPECT_CALL(
+      metrics_,
+      NotifyConnectedToServiceAfterWake(
+          Metrics::kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeConnected));
+  ReportConnectedToServiceAfterWake(is_connected);
+}
+
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       WakeOnWiFiDisabled_ReportConnectedToServiceAfterWakeAndNotConnected) {
+  const bool is_connected = false;
+  EXPECT_CALL(
+      metrics_,
+      NotifyConnectedToServiceAfterWake(
+          Metrics::
+              kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeNotConnected));
+  ReportConnectedToServiceAfterWake(is_connected);
 }
 
 #endif  // DISABLE_WAKE_ON_WIFI

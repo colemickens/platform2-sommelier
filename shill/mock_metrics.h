@@ -72,6 +72,8 @@ class MockMetrics : public Metrics {
                void(Technology::Identifier technology_id, int signal_strength));
   MOCK_METHOD1(NotifyVerifyWakeOnWiFiSettingsResult,
                void(VerifyWakeOnWiFiSettingsResult result));
+  MOCK_METHOD1(NotifyConnectedToServiceAfterWake,
+               void(WiFiConnectionStatusAfterWake status));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);

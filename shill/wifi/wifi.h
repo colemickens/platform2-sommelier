@@ -300,6 +300,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiPropertyTest, BgscanMethodProperty);  // bgscan_method_
   FRIEND_TEST(WiFiTimerTest, FastRescan);  // kFastScanIntervalSeconds
   FRIEND_TEST(WiFiTimerTest, RequestStationInfo);  // kRequestStationInfoPeriod
+  // kPostWakeConnectivityReportDelayMilliseconds
+  FRIEND_TEST(WiFiTimerTest, ResumeDispatchesConnectivityReportTask);
 
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
   typedef std::map<const WiFiService *, std::string> ReverseServiceMap;
@@ -326,6 +328,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // TODO(wdg): Remove after progressive scan field trial is over.
   static const char kProgressiveScanFieldTrialFlagFile[];
   static const size_t kStuckQueueLengthThreshold;
+  // Number of milliseconds to wait after waking from suspend to report the
+  // connection status to metrics.
+  static const int kPostWakeConnectivityReportDelayMilliseconds;
 
   // TODO(wdg): Remove after progressive scan field trial is over.
   void ParseFieldTrialFile(const base::FilePath &field_trial_file_path);
@@ -527,6 +532,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Returns true iff the WiFi device is connected to the current service.
   bool IsConnectedToCurrentService();
+
+  // Callback invoked to report whether this WiFi device is connected to
+  // a service after waking from suspend. Wraps around a Call the function
+  // with the same name in WakeOnWiFi.
+  void ReportConnectedToServiceAfterWake();
 
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider *provider_;

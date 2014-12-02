@@ -931,6 +931,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return mac80211_monitor_;
   }
 
+  void ReportConnectedToServiceAfterWake() {
+    wifi_->ReportConnectedToServiceAfterWake();
+  }
+
   MOCK_METHOD1(SuspendCallback, void(const Error &error));
 
   EventDispatcher *event_dispatcher_;
@@ -2928,6 +2932,12 @@ TEST_F(WiFiMainTest, SuspectCredentialsYieldFailureEAP) {
   ReportCurrentBSSChanged(WPASupplicant::kCurrentBSSNull);
 }
 
+TEST_F(WiFiMainTest, ReportConnectedToServiceAfterWake_CallsWakeOnWiFi) {
+  EXPECT_CALL(*wake_on_wifi_,
+              ReportConnectedToServiceAfterWake(IsConnectedToCurrentService()));
+  ReportConnectedToServiceAfterWake();
+}
+
 // Scanning tests will use a mock of the event dispatcher instead of a real
 // one.
 class WiFiTimerTest : public WiFiObjectTest {
@@ -3216,6 +3226,17 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   EXPECT_EQ(StringPrintf("%d.%d MBit/s VHT-MCS %d 80MHz VHT-NSS %d",
                          kVhtBitrate / 10, kVhtBitrate % 10, kVhtMCS, kVhtNSS),
             link_statistics.LookupString(kTransmitBitrateProperty, ""));
+}
+
+TEST_F(WiFiTimerTest, ResumeDispatchesConnectivityReportTask) {
+  EXPECT_CALL(mock_dispatcher_, PostTask(_)).Times(AnyNumber());
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _)).Times(AnyNumber());
+  StartWiFi();
+  SetupConnectedService(DBus::Path(), nullptr, nullptr);
+  EXPECT_CALL(
+      mock_dispatcher_,
+      PostDelayedTask(_, WiFi::kPostWakeConnectivityReportDelayMilliseconds));
+  OnAfterResume();
 }
 
 TEST_F(WiFiMainTest, EAPCertification) {

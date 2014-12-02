@@ -220,6 +220,14 @@ class Metrics {
     kVerifyWakeOnWiFiSettingsResultMax
   };
 
+  enum WiFiConnectionStatusAfterWake {
+    kWiFiConnetionStatusAfterWakeOnWiFiEnabledWakeConnected = 0,
+    kWiFiConnetionStatusAfterWakeOnWiFiEnabledWakeNotConnected = 1,
+    kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeConnected = 2,
+    kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeNotConnected = 3,
+    kWiFiConnetionStatusAfterWakeMax
+  };
+
   enum Cellular3GPPRegistrationDelayedDrop {
     kCellular3GPPRegistrationDelayedDropPosted = 0,
     kCellular3GPPRegistrationDelayedDropCanceled = 1,
@@ -674,6 +682,9 @@ class Metrics {
   // The result of NIC wake on WiFi settings verification.
   static const char kMetricVerifyWakeOnWiFiSettingsResult[];
 
+  // WiFi device connection status after waking from suspend.
+  static const char kMetricWiFiConnectionStatusAfterWake[];
+
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
 
@@ -749,6 +760,11 @@ class Metrics {
   // verification.
   virtual void NotifyVerifyWakeOnWiFiSettingsResult(
       VerifyWakeOnWiFiSettingsResult result);
+
+  // Notifies this object of whether or not the WiFi device is connected to a
+  // service after waking from suspend.
+  virtual void NotifyConnectedToServiceAfterWake(
+      WiFiConnectionStatusAfterWake status);
 
   // Notifies this object that termination actions started executing.
   void NotifyTerminationActionsStarted();

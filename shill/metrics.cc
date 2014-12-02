@@ -377,6 +377,10 @@ const char Metrics::kMetricVerifyWakeOnWiFiSettingsResult[] =
     "Network.Shill.WiFi.VerifyWakeOnWiFiSettingsResult";
 
 // static
+const char Metrics::kMetricWiFiConnectionStatusAfterWake[] =
+    "Network.Shill.WiFi.WiFiConnectionStatusAfterWake";
+
+// static
 const char Metrics::kMetricUnreliableLinkSignalStrengthSuffix[] =
     "UnreliableLinkSignalStrength";
 const int Metrics::kMetricSerivceSignalStrengthMin = 0;
@@ -752,6 +756,12 @@ void Metrics::NotifyVerifyWakeOnWiFiSettingsResult(
     VerifyWakeOnWiFiSettingsResult result) {
   SendEnumToUMA(kMetricVerifyWakeOnWiFiSettingsResult, result,
                 kVerifyWakeOnWiFiSettingsResultMax);
+}
+
+void Metrics::NotifyConnectedToServiceAfterWake(
+    WiFiConnectionStatusAfterWake status) {
+  SendEnumToUMA(kMetricWiFiConnectionStatusAfterWake, status,
+                kWiFiConnetionStatusAfterWakeMax);
 }
 
 void Metrics::NotifyTerminationActionsStarted() {

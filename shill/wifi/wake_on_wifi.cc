@@ -1054,4 +1054,30 @@ void WakeOnWiFi::OnDHCPLeaseObtained(bool start_lease_renewal_timer,
   }
 }
 
+void WakeOnWiFi::ReportConnectedToServiceAfterWake(bool is_connected) {
+#if defined(DISABLE_WAKE_ON_WIFI)
+  metrics_->NotifyConnectedToServiceAfterWake(
+      is_connected
+          ? Metrics::kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeConnected
+          : Metrics::
+                kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeNotConnected);
+#else
+  if (WakeOnSSIDEnabledAndSupported()) {
+    // Only logged if wake on WiFi is supported and wake on SSID was enabled to
+    // maintain connectivity while suspended.
+    metrics_->NotifyConnectedToServiceAfterWake(
+        is_connected
+            ? Metrics::kWiFiConnetionStatusAfterWakeOnWiFiEnabledWakeConnected
+            : Metrics::
+                  kWiFiConnetionStatusAfterWakeOnWiFiEnabledWakeNotConnected);
+  } else {
+    metrics_->NotifyConnectedToServiceAfterWake(
+        is_connected
+            ? Metrics::kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeConnected
+            : Metrics::
+                  kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeNotConnected);
+  }
+#endif  // DISABLE_WAKE_ON_WIFI
+}
+
 }  // namespace shill

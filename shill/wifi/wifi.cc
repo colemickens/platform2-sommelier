@@ -99,6 +99,10 @@ const float WiFi::kDefaultFractionPerScan = 0.34;
 const char WiFi::kProgressiveScanFieldTrialFlagFile[] =
     "/home/chronos/.progressive_scan_variation";
 const size_t WiFi::kStuckQueueLengthThreshold = 40;  // ~1 full-channel scan
+// 1 second is less than the time it takes to scan and establish a new
+// connection after waking, but should be enough time for supplicant to update
+// its state.
+const int WiFi::kPostWakeConnectivityReportDelayMilliseconds = 1000;
 
 WiFi::WiFi(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
@@ -1776,6 +1780,9 @@ void WiFi::OnDarkResume(const ResultCallback &callback) {
 void WiFi::OnAfterResume() {
   LOG(INFO) << __func__;
   Device::OnAfterResume();  // May refresh ipconfig_
+  dispatcher()->PostDelayedTask(Bind(&WiFi::ReportConnectedToServiceAfterWake,
+                                     weak_ptr_factory_.GetWeakPtr()),
+                                kPostWakeConnectivityReportDelayMilliseconds);
   wake_on_wifi_->OnAfterResume();
 
   // We want to flush the BSS cache, but we don't want to conflict
@@ -2855,6 +2862,11 @@ void WiFi::OnIPv6ConfigUpdated() {
 
 bool WiFi::IsConnectedToCurrentService() {
   return (current_service_ && current_service_->IsConnected());
+}
+
+void WiFi::ReportConnectedToServiceAfterWake() {
+  wake_on_wifi_->ReportConnectedToServiceAfterWake(
+      IsConnectedToCurrentService());
 }
 
 }  // namespace shill

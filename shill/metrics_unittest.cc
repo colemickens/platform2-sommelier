@@ -803,6 +803,35 @@ TEST_F(MetricsTest, DeregisterDevice) {
   metrics_.DeregisterDevice(kInterfaceIndex);
 }
 
+TEST_F(MetricsTest, NotifyWakeOnWiFiFeaturesEnabledState) {
+  const Metrics::WakeOnWiFiFeaturesEnabledState state =
+      Metrics::kWakeOnWiFiFeaturesEnabledStateNone;
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA("Network.Shill.WiFi.WakeOnWiFiFeaturesEnabledState", state,
+                    Metrics::kWakeOnWiFiFeaturesEnabledStateMax));
+  metrics_.NotifyWakeOnWiFiFeaturesEnabledState(state);
+}
+
+TEST_F(MetricsTest, NotifyVerifyWakeOnWiFiSettingsResult) {
+  const Metrics::VerifyWakeOnWiFiSettingsResult result =
+      Metrics::kVerifyWakeOnWiFiSettingsResultSuccess;
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA("Network.Shill.WiFi.VerifyWakeOnWiFiSettingsResult", result,
+                    Metrics::kVerifyWakeOnWiFiSettingsResultMax));
+  metrics_.NotifyVerifyWakeOnWiFiSettingsResult(result);
+}
+
+TEST_F(MetricsTest, NotifyConnectedToServiceAfterWake) {
+  const Metrics::WiFiConnectionStatusAfterWake status =
+      Metrics::kWiFiConnetionStatusAfterWakeOnWiFiEnabledWakeConnected;
+  EXPECT_CALL(library_,
+              SendEnumToUMA("Network.Shill.WiFi.WiFiConnectionStatusAfterWake",
+                            status, Metrics::kWiFiConnetionStatusAfterWakeMax));
+  metrics_.NotifyConnectedToServiceAfterWake(status);
+}
+
 #ifndef NDEBUG
 
 typedef MetricsTest MetricsDeathTest;
