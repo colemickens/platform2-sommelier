@@ -28,6 +28,10 @@ using ::testing::Return;
 
 namespace vpn_manager {
 
+namespace {
+const char kBinSleep[] = "/bin/sleep";
+}  // namespace
+
 class DaemonTest : public ::testing::Test {
  public:
   void SetUp() override {
@@ -54,7 +58,7 @@ class DaemonTest : public ::testing::Test {
 
   void MakeRealProcess() {
     real_process_.reset(new ProcessImpl);
-    real_process_->AddArg("sleep");
+    real_process_->AddArg(kBinSleep);
     real_process_->AddArg("12345");
     CHECK(real_process_->Start());
   }
