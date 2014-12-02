@@ -46,7 +46,7 @@ const char WakeOnWiFi::kWakeOnPacketDisabled[] =
     "Wake on Packet feature disabled, so do nothing";
 const char WakeOnWiFi::kWakeOnWiFiDisabled[] = "Wake on WiFi is disabled";
 const uint32_t WakeOnWiFi::kDefaultWiphyIndex = 999;
-const int WakeOnWiFi::kVerifyWakeOnWiFiSettingsDelaySeconds = 1;
+const int WakeOnWiFi::kVerifyWakeOnWiFiSettingsDelayMilliseconds = 300;
 const int WakeOnWiFi::kMaxSetWakeOnPacketRetries = 2;
 const int WakeOnWiFi::kMetricsReportingFrequencySeconds = 600;
 const uint32_t WakeOnWiFi::kDefaultWakeToScanFrequencySeconds = 900;
@@ -709,7 +709,7 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
            weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(
       verify_wake_on_packet_settings_callback_.callback(),
-      kVerifyWakeOnWiFiSettingsDelaySeconds * 1000);
+      kVerifyWakeOnWiFiSettingsDelayMilliseconds);
 }
 
 void WakeOnWiFi::DisableWakeOnWiFi() {
@@ -735,7 +735,7 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
            weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(
       verify_wake_on_packet_settings_callback_.callback(),
-      kVerifyWakeOnWiFiSettingsDelaySeconds * 1000);
+      kVerifyWakeOnWiFiSettingsDelayMilliseconds);
 }
 
 void WakeOnWiFi::RetrySetWakeOnPacketConnections() {

@@ -98,7 +98,7 @@ class WakeOnWiFi {
   static const char kWakeOnPacketDisabled[];
   static const char kWakeOnWiFiDisabled[];
   static const uint32_t kDefaultWiphyIndex;
-  static const int kVerifyWakeOnWiFiSettingsDelaySeconds;
+  static const int kVerifyWakeOnWiFiSettingsDelayMilliseconds;
   static const int kMaxSetWakeOnPacketRetries;
   static const int kMetricsReportingFrequencySeconds;
   static const uint32_t kDefaultWakeToScanFrequencySeconds;
