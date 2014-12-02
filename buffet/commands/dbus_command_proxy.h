@@ -12,7 +12,6 @@
 #include <chromeos/dbus/dbus_object.h>
 
 #include "buffet/commands/command_proxy_interface.h"
-#include "buffet/libbuffet/dbus_constants.h"
 #include "buffet/org.chromium.Buffet.Command.h"
 
 namespace chromeos {

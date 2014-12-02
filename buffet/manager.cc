@@ -21,7 +21,6 @@
 
 #include "buffet/commands/command_instance.h"
 #include "buffet/commands/command_manager.h"
-#include "buffet/libbuffet/dbus_constants.h"
 #include "buffet/states/state_change_queue.h"
 #include "buffet/states/state_manager.h"
 

@@ -17,8 +17,7 @@
 #include <chromeos/strings/string_utils.h>
 #include <chromeos/syslog_logging.h>
 
-#include "buffet/libbuffet/command.h"
-#include "buffet/libbuffet/command_listener.h"
+#include "buffet/dbus-proxies.h"
 
 class Daemon : public chromeos::DBusDaemon {
  public:
@@ -29,9 +28,14 @@ class Daemon : public chromeos::DBusDaemon {
   void OnShutdown(int* return_code) override;
 
  private:
-  buffet::CommandListener command_listener_;
+  std::unique_ptr<org::chromium::Buffet::ObjectManagerProxy> object_manager_;
 
-  void OnBuffetCommand(scoped_ptr<buffet::Command> command);
+  void OnBuffetCommand(org::chromium::Buffet::CommandProxy* command);
+  void OnBuffetCommandRemoved(const dbus::ObjectPath& object_path);
+  void OnPropertyChange(org::chromium::Buffet::CommandProxy* command,
+                        const std::string& property_name);
+  void OnCommandProgress(org::chromium::Buffet::CommandProxy* command,
+                         int progress);
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
@@ -41,10 +45,11 @@ int Daemon::OnInit() {
   if (return_code != EX_OK)
     return return_code;
 
-  if (!command_listener_.Init(bus_, base::Bind(&Daemon::OnBuffetCommand,
-                                               base::Unretained(this)))) {
-    return EX_SOFTWARE;
-  }
+  object_manager_.reset(new org::chromium::Buffet::ObjectManagerProxy{bus_});
+  object_manager_->SetCommandAddedCallback(
+      base::Bind(&Daemon::OnBuffetCommand, base::Unretained(this)));
+  object_manager_->SetCommandRemovedCallback(
+      base::Bind(&Daemon::OnBuffetCommandRemoved, base::Unretained(this)));
 
   printf("Waiting for commands...\n");
   return EX_OK;
@@ -54,18 +59,54 @@ void Daemon::OnShutdown(int* return_code) {
   printf("Shutting down...\n");
 }
 
-void Daemon::OnBuffetCommand(scoped_ptr<buffet::Command> command) {
-  printf("================================================\n");
-  printf("Command received: %s\n", command->GetName().c_str());
-  printf("        category: %s\n", command->GetCategory().c_str());
-  printf("              ID: %s\n", command->GetID().c_str());
-  printf("          status: %s\n", command->GetStatus().c_str());
-  printf(" # of parameters: %" PRIuS "\n", command->GetParameters().size());
-  auto set = chromeos::GetMapKeys(command->GetParameters());
+void Daemon::OnPropertyChange(org::chromium::Buffet::CommandProxy* command,
+                              const std::string& property_name) {
+  printf("Notification: property '%s' on command '%s' changed.\n",
+         property_name.c_str(), command->id().c_str());
+  printf("  Current command status: '%s' (%d)\n",
+         command->status().c_str(), command->progress());
+}
+
+void Daemon::OnBuffetCommand(org::chromium::Buffet::CommandProxy* command) {
+  command->SetPropertyChangedCallback(base::Bind(&Daemon::OnPropertyChange,
+                                                 base::Unretained(this)));
+  printf("++++++++++++++++++++++++++++++++++++++++++++++++\n");
+  printf("Command received: %s\n", command->name().c_str());
+  printf("DBus Object Path: %s\n", command->GetObjectPath().value().c_str());
+  printf("        category: %s\n", command->category().c_str());
+  printf("              ID: %s\n", command->id().c_str());
+  printf("          status: %s\n", command->status().c_str());
+  printf(" # of parameters: %" PRIuS "\n", command->parameters().size());
+  auto set = chromeos::GetMapKeys(command->parameters());
   std::string param_names = chromeos::string_utils::Join(
       ", ", std::vector<std::string>(set.begin(), set.end()));
   printf(" parameter names: %s\n", param_names.c_str());
-  command->Done();
+  OnCommandProgress(command, 0);
+}
+
+void Daemon::OnCommandProgress(org::chromium::Buffet::CommandProxy* command,
+                               int progress) {
+  if (progress >= 100) {
+    command->Done(nullptr);
+  } else {
+    printf("Updating command '%s' progress to %d%%\n",
+           command->id().c_str(), progress);
+    command->SetProgress(progress, nullptr);
+    progress += 10;
+    base::MessageLoop::current()->PostDelayedTask(
+        FROM_HERE,
+        base::Bind(&Daemon::OnCommandProgress,
+                   base::Unretained(this),
+                   command,
+                   progress),
+        base::TimeDelta::FromSeconds(1));
+  }
+}
+
+void Daemon::OnBuffetCommandRemoved(const dbus::ObjectPath& object_path) {
+  printf("------------------------------------------------\n");
+  printf("Command removed\n");
+  printf("DBus Object Path: %s\n", object_path.value().c_str());
 }
 
 int main(int argc, char* argv[]) {

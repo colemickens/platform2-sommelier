@@ -7,6 +7,7 @@
 #include <chromeos/dbus/exported_object_manager.h>
 
 #include "buffet/commands/command_instance.h"
+#include "buffet/dbus_constants.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;

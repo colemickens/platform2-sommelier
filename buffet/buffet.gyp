@@ -11,31 +11,6 @@
   },
   'targets': [
     {
-      'target_name': 'libbuffet-<(libbase_ver)',
-      'type': 'shared_library',
-      'sources': [
-        'libbuffet/command.cc',
-        'libbuffet/command_listener.cc',
-        'libbuffet/dbus_constants.cc',
-        'libbuffet/private/command_property_set.cc',
-      ],
-      'actions': [
-        {
-          'action_name': 'generate-buffet-proxies',
-          'variables': {
-            'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
-            'proxy_output_file': 'include/buffet/dbus-proxies.h'
-          },
-          'sources': [
-            'dbus_bindings/org.chromium.Buffet.Command.xml',
-            'dbus_bindings/org.chromium.Buffet.Manager.xml',
-          ],
-          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-        },
-      ],
-      'includes': ['../common-mk/deps.gypi'],
-    },
-    {
       'target_name': 'buffet_common',
       'type': 'static_library',
       'variables': {
@@ -60,6 +35,7 @@
         'device_registration_info.cc',
         'dbus_bindings/org.chromium.Buffet.Command.xml',
         'dbus_bindings/org.chromium.Buffet.Manager.xml',
+        'dbus_constants.cc',
         'manager.cc',
         'storage_impls.cc',
         'states/error_codes.cc',
@@ -69,13 +45,26 @@
         'utils.cc',
       ],
       'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
+      'actions': [
+        {
+          'action_name': 'generate-buffet-proxies',
+          'variables': {
+            'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
+            'proxy_output_file': 'include/buffet/dbus-proxies.h'
+          },
+          'sources': [
+            'dbus_bindings/org.chromium.Buffet.Command.xml',
+            'dbus_bindings/org.chromium.Buffet.Manager.xml',
+          ],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
+      ],
     },
     {
       'target_name': 'buffet',
       'type': 'executable',
       'dependencies': [
         'buffet_common',
-        'libbuffet-<(libbase_ver)',
       ],
       'sources': [
         'main.cc',
@@ -84,9 +73,6 @@
     {
       'target_name': 'buffet_test_daemon',
       'type': 'executable',
-      'dependencies': [
-        'libbuffet-<(libbase_ver)',
-      ],
       'sources': [
         'test_daemon/main.cc',
       ],
@@ -94,9 +80,6 @@
     {
       'target_name': 'buffet_client',
       'type': 'executable',
-      'dependencies': [
-        'libbuffet-<(libbase_ver)',
-      ],
       'sources': [
         'buffet_client.cc',
       ],
@@ -110,7 +93,6 @@
           'type': 'executable',
           'dependencies': [
             'buffet_common',
-            'libbuffet-<(libbase_ver)',
           ],
           'variables': {
             'deps': [

@@ -17,7 +17,7 @@
 #include "buffet/commands/command_dictionary.h"
 #include "buffet/commands/command_queue.h"
 #include "buffet/commands/unittest_utils.h"
-#include "buffet/libbuffet/dbus_constants.h"
+#include "buffet/dbus_constants.h"
 
 using buffet::unittests::CreateDictionaryValue;
 using chromeos::dbus_utils::AsyncEventSequencer;
