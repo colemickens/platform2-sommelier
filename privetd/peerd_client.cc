@@ -49,12 +49,12 @@ void PeerdClient::Start() {
       {"services", services},
       {"id", device_.GetId()},
       {"class", device_.GetClass()},
-      {"modelId", device_.GetModelId()},
+      {"model_id", device_.GetModelId()},
       {"flags", "DA"},  // TODO(vitalybuka): find owner for flags.
   };
 
   if (cloud_ && !cloud_->GetCloudId().empty())
-    txt_record.emplace("gcd.id", cloud_->GetCloudId());
+    txt_record.emplace("gcd_id", cloud_->GetCloudId());
 
   if (!device_.GetDescription().empty())
     txt_record.emplace("description", device_.GetDescription());
