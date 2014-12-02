@@ -356,8 +356,17 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &/*callback*/) {
     RemoveNetwork(map_entry.second);
   }
   rpcid_by_service_.clear();
+  // Remove interface from supplicant.
+  if (supplicant_process_proxy_ && supplicant_interface_proxy_) {
+    try {
+      supplicant_process_proxy_->RemoveInterface(supplicant_interface_path_);
+    } catch (const DBus::Error &e) {  // NOLINT
+      LOG(ERROR) << "Failed to remove interface " << supplicant_interface_path_
+                 << " from supplicant";
+    }
+  }
+  supplicant_interface_path_ = ::DBus::Path();
   supplicant_interface_proxy_.reset();  // breaks a reference cycle
-  // TODO(quiche): Remove interface from supplicant.
   supplicant_process_proxy_.reset();
   current_service_ = nullptr;            // breaks a reference cycle
   pending_service_ = nullptr;            // breaks a reference cycle
@@ -2072,7 +2081,6 @@ void WiFi::ConnectToSupplicant() {
           WPASupplicant::kDBusPath, WPASupplicant::kDBusAddr));
   OnWiFiDebugScopeChanged(
       ScopeLogger::GetInstance()->IsScopeEnabled(ScopeLogger::kWiFi));
-  ::DBus::Path interface_path;
   try {
     map<string, DBus::Variant> create_interface_args;
     create_interface_args[WPASupplicant::kInterfacePropertyName].writer().
@@ -2082,11 +2090,11 @@ void WiFi::ConnectToSupplicant() {
     create_interface_args[
         WPASupplicant::kInterfacePropertyConfigFile].writer().
         append_string(WPASupplicant::kSupplicantConfPath);
-    interface_path =
+    supplicant_interface_path_ =
         supplicant_process_proxy_->CreateInterface(create_interface_args);
   } catch (const DBus::Error &e) {  // NOLINT
     if (!strcmp(e.name(), WPASupplicant::kErrorInterfaceExists)) {
-      interface_path =
+      supplicant_interface_path_ =
           supplicant_process_proxy_->GetInterface(link_name());
       // TODO(quiche): Is it okay to crash here, if device is missing?
     } else {
@@ -2097,7 +2105,7 @@ void WiFi::ConnectToSupplicant() {
 
   supplicant_interface_proxy_.reset(
       proxy_factory_->CreateSupplicantInterfaceProxy(
-          this, interface_path, WPASupplicant::kDBusAddr));
+          this, supplicant_interface_path_, WPASupplicant::kDBusAddr));
 
   RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), IFF_UP,
                                                 IFF_UP);

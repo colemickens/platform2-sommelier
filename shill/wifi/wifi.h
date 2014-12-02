@@ -526,6 +526,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   std::unique_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;
   std::unique_ptr<SupplicantInterfaceProxyInterface>
       supplicant_interface_proxy_;
+  // wpa_supplicant's DBus path for this device/interface.
+  ::DBus::Path supplicant_interface_path_;
   // The rpcid used as the key is wpa_supplicant's D-Bus path for the
   // Endpoint (BSS, in supplicant parlance).
   EndpointMap endpoint_by_rpcid_;
