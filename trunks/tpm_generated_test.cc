@@ -94,7 +94,7 @@ TEST(GeneratorTest, SynchronousCommand) {
       .WillOnce(DoAll(SetArgPointee<1>(command_response),
                       Return(TPM_RC_SUCCESS)));
   StrictMock<MockAuthorizationDelegate> authorization;
-  EXPECT_CALL(authorization, GetCommandAuthorization(_, _))
+  EXPECT_CALL(authorization, GetCommandAuthorization(_, _, _, _))
       .WillOnce(Return(true));
   Tpm tpm(&transceiver);
   EXPECT_EQ(TPM_RC_SUCCESS, tpm.StartupSync(TPM_SU_CLEAR, &authorization));
@@ -116,7 +116,7 @@ TEST(GeneratorTest, SynchronousCommandWithError) {
       .WillOnce(DoAll(SetArgPointee<1>(command_response),
                       Return(TPM_RC_SUCCESS)));
   StrictMock<MockAuthorizationDelegate> authorization;
-  EXPECT_CALL(authorization, GetCommandAuthorization(_, _))
+  EXPECT_CALL(authorization, GetCommandAuthorization(_, _, _, _))
       .WillOnce(Return(true));
   Tpm tpm(&transceiver);
   EXPECT_EQ(TPM_RC_FAILURE, tpm.StartupSync(TPM_SU_CLEAR, &authorization));
@@ -138,7 +138,7 @@ TEST(GeneratorTest, SynchronousCommandWithTransceiverError) {
       .WillOnce(DoAll(SetArgPointee<1>(command_response),
                       Return(TPM_RC_FAILURE)));
   StrictMock<MockAuthorizationDelegate> authorization;
-  EXPECT_CALL(authorization, GetCommandAuthorization(_, _))
+  EXPECT_CALL(authorization, GetCommandAuthorization(_, _, _, _))
       .WillOnce(Return(true));
   Tpm tpm(&transceiver);
   EXPECT_EQ(TPM_RC_FAILURE, tpm.StartupSync(TPM_SU_CLEAR, &authorization));
@@ -205,8 +205,8 @@ TEST(GeneratorTest, SynchronousCommandResponseTest) {
       .WillOnce(DoAll(SetArgPointee<1>(command_response),
                       Return(TPM_RC_SUCCESS)));
   StrictMock<MockAuthorizationDelegate> authorization;
-  EXPECT_CALL(authorization, GetCommandAuthorization(_, _))
-      .WillOnce(DoAll(SetArgPointee<1>(auth_in), Return(true)));
+  EXPECT_CALL(authorization, GetCommandAuthorization(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(auth_in), Return(true)));
   EXPECT_CALL(authorization, CheckResponseAuthorization(_, auth_out))
       .WillOnce(Return(true));
   EXPECT_CALL(authorization, EncryptCommandParameter(_))
@@ -349,7 +349,7 @@ TEST_F(CommandFlowTest, SimpleCommandFlow) {
   EXPECT_CALL(transceiver, SendCommand(expected_command, _))
       .WillOnce(WithArg<1>(Invoke(PostResponse(command_response))));
   StrictMock<MockAuthorizationDelegate> authorization;
-  EXPECT_CALL(authorization, GetCommandAuthorization(_, _))
+  EXPECT_CALL(authorization, GetCommandAuthorization(_, _, _, _))
       .WillOnce(Return(true));
   Tpm tpm(&transceiver);
   response_code_ = TPM_RC_FAILURE;
@@ -376,7 +376,7 @@ TEST_F(CommandFlowTest, SimpleCommandFlowWithError) {
   EXPECT_CALL(transceiver, SendCommand(expected_command, _))
       .WillOnce(WithArg<1>(Invoke(PostResponse(command_response))));
   StrictMock<MockAuthorizationDelegate> authorization;
-  EXPECT_CALL(authorization, GetCommandAuthorization(_, _))
+  EXPECT_CALL(authorization, GetCommandAuthorization(_, _, _, _))
       .WillOnce(Return(true));
   Tpm tpm(&transceiver);
   tpm.Startup(TPM_SU_CLEAR,
@@ -424,8 +424,8 @@ TEST_F(CommandFlowTest, FullCommandFlow) {
   EXPECT_CALL(transceiver, SendCommand(expected_command, _))
       .WillOnce(WithArg<1>(Invoke(PostResponse(command_response))));
   StrictMock<MockAuthorizationDelegate> authorization;
-  EXPECT_CALL(authorization, GetCommandAuthorization(_, _))
-      .WillOnce(DoAll(SetArgPointee<1>(auth_in), Return(true)));
+  EXPECT_CALL(authorization, GetCommandAuthorization(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(auth_in), Return(true)));
   EXPECT_CALL(authorization, CheckResponseAuthorization(_, auth_out))
       .WillOnce(Return(true));
   EXPECT_CALL(authorization, EncryptCommandParameter(_))

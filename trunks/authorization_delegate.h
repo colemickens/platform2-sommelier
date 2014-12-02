@@ -21,10 +21,15 @@ class AuthorizationDelegate {
   virtual ~AuthorizationDelegate() {}
 
   // Provides authorization data for a command which has a cpHash value of
-  // |command_hash|. On success, |authorization| is populated with the exact
-  // octets for the Authorization Area of the command.  Returns true on success.
-  virtual bool GetCommandAuthorization(const std::string& command_hash,
-                                       std::string* authorization) = 0;
+  // |command_hash|. The availability of encryption for the command is indicated
+  // by |is_*_parameter_encryption_possible|. On success, |authorization| is
+  // populated with the exact octets for the Authorization Area of the command.
+  // Returns true on success.
+  virtual bool GetCommandAuthorization(
+      const std::string& command_hash,
+      bool is_command_parameter_encryption_possible,
+      bool is_response_parameter_encryption_possible,
+      std::string* authorization) = 0;
 
   // Checks authorization data for a response which has a rpHash value of
   // |response_hash|. The exact octets from the Authorization Area of the

@@ -24,14 +24,16 @@ class CHROMEOS_EXPORT PasswordAuthorizationDelegate
     : public AuthorizationDelegate {
  public:
   explicit PasswordAuthorizationDelegate(const std::string& password);
-  virtual ~PasswordAuthorizationDelegate();
+  ~PasswordAuthorizationDelegate() override;
   // AuthorizationDelegate methods.
-  virtual bool GetCommandAuthorization(const std::string& command_hash,
-                                       std::string* authorization);
-  virtual bool CheckResponseAuthorization(const std::string& response_hash,
-                                          const std::string& authorization);
-  virtual bool EncryptCommandParameter(std::string* parameter);
-  virtual bool DecryptResponseParameter(std::string* parameter);
+  bool GetCommandAuthorization(const std::string& command_hash,
+                               bool is_command_parameter_encryption_possible,
+                               bool is_response_parameter_encryption_possible,
+                               std::string* authorization) override;
+  bool CheckResponseAuthorization(const std::string& response_hash,
+                                  const std::string& authorization) override;
+  bool EncryptCommandParameter(std::string* parameter) override;
+  bool DecryptResponseParameter(std::string* parameter) override;
 
  protected:
   FRIEND_TEST(PasswordAuthorizationDelegateTest, NullInitialization);

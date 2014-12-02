@@ -28,12 +28,18 @@ const uint32_t kTpmBufferSize = 4096;
 }  // namespace
 
 HmacAuthorizationDelegate::HmacAuthorizationDelegate()
-    : session_handle_(0) {}
+    : session_handle_(0),
+      is_parameter_encryption_enabled_(false) {
+  tpm_nonce_.size = 0;
+  caller_nonce_.size = 0;
+}
 
 HmacAuthorizationDelegate::~HmacAuthorizationDelegate() {}
 
 bool HmacAuthorizationDelegate::GetCommandAuthorization(
     const std::string& command_hash,
+    bool is_command_parameter_encryption_possible,
+    bool is_response_parameter_encryption_possible,
     std::string* authorization) {
   if (!session_handle_) {
     authorization->clear();
@@ -44,9 +50,17 @@ bool HmacAuthorizationDelegate::GetCommandAuthorization(
   auth.session_handle = session_handle_;
   RegenerateCallerNonce();
   auth.nonce = caller_nonce_;
-  auth.session_attributes = attributes_;
+  auth.session_attributes = kContinueSession;
+  if (is_parameter_encryption_enabled_) {
+    if (is_command_parameter_encryption_possible) {
+      auth.session_attributes |= kEncryptSession;
+    }
+    if (is_response_parameter_encryption_possible) {
+      auth.session_attributes |= kDecryptSession;
+    }
+  }
   std::string attributes_bytes;
-  CHECK_EQ(Serialize_TPMA_SESSION(attributes_, &attributes_bytes),
+  CHECK_EQ(Serialize_TPMA_SESSION(auth.session_attributes, &attributes_bytes),
            TPM_RC_SUCCESS) << "Error serializing session attributes.";
 
   std::string hmac_key = session_key_ + entity_auth_value_;
@@ -95,14 +109,10 @@ bool HmacAuthorizationDelegate::CheckResponseAuthorization(
     LOG(ERROR) << "TPM_nonce is not the correct length.";
     return false;
   }
-  if ((auth_response.session_attributes & ~kContinueSession) !=
-      (attributes_ & ~kContinueSession)) {
-    LOG(ERROR) << "TPM attributes were incorrect.";
-    return false;
-  }
   tpm_nonce_ = auth_response.nonce;
   std::string attributes_bytes;
-  CHECK_EQ(Serialize_TPMA_SESSION(attributes_, &attributes_bytes),
+  CHECK_EQ(Serialize_TPMA_SESSION(auth_response.session_attributes,
+                                  &attributes_bytes),
            TPM_RC_SUCCESS) << "Error serializing session attributes.";
 
   std::string hmac_key = session_key_ + entity_auth_value_;
@@ -125,10 +135,16 @@ bool HmacAuthorizationDelegate::CheckResponseAuthorization(
 
 bool HmacAuthorizationDelegate::EncryptCommandParameter(
     std::string* parameter) {
-  if (!session_handle_ || !parameter) {
+  CHECK(parameter);
+  if (!session_handle_) {
+    LOG(ERROR) << __func__ << ": Invalid session handle.";
     return false;
   }
-  if ((!(attributes_ & kEncryptSession)) || (session_key_.size() == 0)) {
+  if (session_key_.size() == 0) {
+    LOG(ERROR) << __func__ << ": Invalid session key.";
+    return false;
+  }
+  if (!is_parameter_encryption_enabled_) {
     // No parameter encryption enabled.
     return true;
   }
@@ -142,10 +158,16 @@ bool HmacAuthorizationDelegate::EncryptCommandParameter(
 
 bool HmacAuthorizationDelegate::DecryptResponseParameter(
     std::string* parameter) {
-  if (!session_handle_ || !parameter) {
+  CHECK(parameter);
+  if (!session_handle_) {
+    LOG(ERROR) << __func__ << ": Invalid session handle.";
     return false;
   }
-  if ((!(attributes_ & kDecryptSession)) || (session_key_.size() == 0)) {
+  if (session_key_.size() == 0) {
+    LOG(ERROR) << __func__ << ": Invalid session key.";
+    return false;
+  }
+  if (!is_parameter_encryption_enabled_) {
     // No parameter decryption enabled.
     return true;
   }
@@ -163,12 +185,8 @@ bool HmacAuthorizationDelegate::InitSession(
     const TPM2B_NONCE& caller_nonce,
     const std::string& salt,
     const std::string& bind_auth_value,
-    bool parameter_encryption) {
+    bool enable_parameter_encryption) {
   session_handle_ = session_handle;
-  attributes_ = kContinueSession;
-  if (parameter_encryption) {
-    attributes_ |= (kDecryptSession | kEncryptSession);
-  }
   if (caller_nonce.size < kNonceMinSize || caller_nonce.size > kNonceMaxSize ||
       tpm_nonce.size < kNonceMinSize || tpm_nonce.size > kNonceMaxSize) {
     LOG(INFO) << "Session Nonces have to be between 16 and 32 bytes long.";
@@ -179,6 +197,7 @@ bool HmacAuthorizationDelegate::InitSession(
   std::string session_key_label("ATH", kLabelSize);
   session_key_ = CreateKey(bind_auth_value + salt, session_key_label,
                            tpm_nonce_, caller_nonce_);
+  is_parameter_encryption_enabled_ = enable_parameter_encryption;
   return true;
 }
 

@@ -9179,6 +9179,8 @@ TPM_RC Tpm::SerializeCommand_Startup(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_Startup;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -9208,6 +9210,8 @@ TPM_RC Tpm::SerializeCommand_Startup(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -9415,6 +9419,8 @@ TPM_RC Tpm::SerializeCommand_Shutdown(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_Shutdown;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -9444,6 +9450,8 @@ TPM_RC Tpm::SerializeCommand_Shutdown(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -9651,6 +9659,8 @@ TPM_RC Tpm::SerializeCommand_SelfTest(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_SelfTest;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -9680,6 +9690,8 @@ TPM_RC Tpm::SerializeCommand_SelfTest(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -9887,6 +9899,8 @@ TPM_RC Tpm::SerializeCommand_IncrementalSelfTest(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_IncrementalSelfTest;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -9916,6 +9930,8 @@ TPM_RC Tpm::SerializeCommand_IncrementalSelfTest(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -10137,6 +10153,8 @@ TPM_RC Tpm::SerializeCommand_GetTestResult(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_GetTestResult;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -10155,6 +10173,8 @@ TPM_RC Tpm::SerializeCommand_GetTestResult(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -10412,6 +10432,8 @@ TPM_RC Tpm::SerializeCommand_StartAuthSession(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_StartAuthSession;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -10515,6 +10537,8 @@ TPM_RC Tpm::SerializeCommand_StartAuthSession(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -10801,6 +10825,8 @@ TPM_RC Tpm::SerializeCommand_PolicyRestart(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PolicyRestart;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -10830,6 +10856,8 @@ TPM_RC Tpm::SerializeCommand_PolicyRestart(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -11046,6 +11074,8 @@ TPM_RC Tpm::SerializeCommand_Create(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_Create;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -11127,6 +11157,8 @@ TPM_RC Tpm::SerializeCommand_Create(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -11448,6 +11480,8 @@ TPM_RC Tpm::SerializeCommand_Load(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_Load;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -11507,6 +11541,8 @@ TPM_RC Tpm::SerializeCommand_Load(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -11775,6 +11811,8 @@ TPM_RC Tpm::SerializeCommand_LoadExternal(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_LoadExternal;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -11834,6 +11872,8 @@ TPM_RC Tpm::SerializeCommand_LoadExternal(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -12100,6 +12140,8 @@ TPM_RC Tpm::SerializeCommand_ReadPublic(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_ReadPublic;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -12129,6 +12171,8 @@ TPM_RC Tpm::SerializeCommand_ReadPublic(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -12406,6 +12450,8 @@ TPM_RC Tpm::SerializeCommand_ActivateCredential(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_ActivateCredential;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -12476,6 +12522,8 @@ TPM_RC Tpm::SerializeCommand_ActivateCredential(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -12737,6 +12785,8 @@ TPM_RC Tpm::SerializeCommand_MakeCredential(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_MakeCredential;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -12796,6 +12846,8 @@ TPM_RC Tpm::SerializeCommand_MakeCredential(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -13047,6 +13099,8 @@ TPM_RC Tpm::SerializeCommand_Unseal(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_Unseal;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -13076,6 +13130,8 @@ TPM_RC Tpm::SerializeCommand_Unseal(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -13322,6 +13378,8 @@ TPM_RC Tpm::SerializeCommand_ObjectChangeAuth(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_ObjectChangeAuth;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -13381,6 +13439,8 @@ TPM_RC Tpm::SerializeCommand_ObjectChangeAuth(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -13640,6 +13700,8 @@ TPM_RC Tpm::SerializeCommand_Duplicate(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_Duplicate;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -13710,6 +13772,8 @@ TPM_RC Tpm::SerializeCommand_Duplicate(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -13988,6 +14052,8 @@ TPM_RC Tpm::SerializeCommand_Rewrap(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_Rewrap;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -14058,6 +14124,8 @@ TPM_RC Tpm::SerializeCommand_Rewrap(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -14322,6 +14390,8 @@ TPM_RC Tpm::SerializeCommand_Import(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_Import;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -14414,6 +14484,8 @@ TPM_RC Tpm::SerializeCommand_Import(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -14680,6 +14752,8 @@ TPM_RC Tpm::SerializeCommand_RSA_Encrypt(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_RSA_Encrypt;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -14750,6 +14824,8 @@ TPM_RC Tpm::SerializeCommand_RSA_Encrypt(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -15008,6 +15084,8 @@ TPM_RC Tpm::SerializeCommand_RSA_Decrypt(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_RSA_Decrypt;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -15078,6 +15156,8 @@ TPM_RC Tpm::SerializeCommand_RSA_Decrypt(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -15333,6 +15413,8 @@ TPM_RC Tpm::SerializeCommand_ECDH_KeyGen(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_ECDH_KeyGen;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -15362,6 +15444,8 @@ TPM_RC Tpm::SerializeCommand_ECDH_KeyGen(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -15621,6 +15705,8 @@ TPM_RC Tpm::SerializeCommand_ECDH_ZGen(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_ECDH_ZGen;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -15669,6 +15755,8 @@ TPM_RC Tpm::SerializeCommand_ECDH_ZGen(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -15915,6 +16003,8 @@ TPM_RC Tpm::SerializeCommand_ECC_Parameters(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_ECC_Parameters;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -15944,6 +16034,8 @@ TPM_RC Tpm::SerializeCommand_ECC_Parameters(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -16171,6 +16263,8 @@ TPM_RC Tpm::SerializeCommand_ZGen_2Phase(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_ZGen_2Phase;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -16252,6 +16346,8 @@ TPM_RC Tpm::SerializeCommand_ZGen_2Phase(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -16530,6 +16626,8 @@ TPM_RC Tpm::SerializeCommand_EncryptDecrypt(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_EncryptDecrypt;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -16603,6 +16701,8 @@ TPM_RC Tpm::SerializeCommand_EncryptDecrypt(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -16879,6 +16979,8 @@ TPM_RC Tpm::SerializeCommand_Hash(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_Hash;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -16938,6 +17040,8 @@ TPM_RC Tpm::SerializeCommand_Hash(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -17206,6 +17310,8 @@ TPM_RC Tpm::SerializeCommand_HMAC(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_HMAC;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -17265,6 +17371,8 @@ TPM_RC Tpm::SerializeCommand_HMAC(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -17515,6 +17623,8 @@ TPM_RC Tpm::SerializeCommand_GetRandom(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_GetRandom;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -17544,6 +17654,8 @@ TPM_RC Tpm::SerializeCommand_GetRandom(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -17782,6 +17894,8 @@ TPM_RC Tpm::SerializeCommand_StirRandom(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_StirRandom;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -17819,6 +17933,8 @@ TPM_RC Tpm::SerializeCommand_StirRandom(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -18029,6 +18145,8 @@ TPM_RC Tpm::SerializeCommand_HMAC_Start(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_HMAC_Start;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -18088,6 +18206,8 @@ TPM_RC Tpm::SerializeCommand_HMAC_Start(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -18323,6 +18443,8 @@ TPM_RC Tpm::SerializeCommand_HashSequenceStart(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_HashSequenceStart;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -18371,6 +18493,8 @@ TPM_RC Tpm::SerializeCommand_HashSequenceStart(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -18599,6 +18723,8 @@ TPM_RC Tpm::SerializeCommand_SequenceUpdate(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_SequenceUpdate;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -18647,6 +18773,8 @@ TPM_RC Tpm::SerializeCommand_SequenceUpdate(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -18866,6 +18994,8 @@ TPM_RC Tpm::SerializeCommand_SequenceComplete(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_SequenceComplete;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -18925,6 +19055,8 @@ TPM_RC Tpm::SerializeCommand_SequenceComplete(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -19198,6 +19330,8 @@ TPM_RC Tpm::SerializeCommand_EventSequenceComplete(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_EventSequenceComplete;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -19257,6 +19391,8 @@ TPM_RC Tpm::SerializeCommand_EventSequenceComplete(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -19500,6 +19636,8 @@ TPM_RC Tpm::SerializeCommand_Certify(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_Certify;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -19570,6 +19708,8 @@ TPM_RC Tpm::SerializeCommand_Certify(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -19850,6 +19990,8 @@ TPM_RC Tpm::SerializeCommand_CertifyCreation(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_CertifyCreation;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -19942,6 +20084,8 @@ TPM_RC Tpm::SerializeCommand_CertifyCreation(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -20227,6 +20371,8 @@ TPM_RC Tpm::SerializeCommand_Quote(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_Quote;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -20297,6 +20443,8 @@ TPM_RC Tpm::SerializeCommand_Quote(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -20573,6 +20721,8 @@ TPM_RC Tpm::SerializeCommand_GetSessionAuditDigest(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_GetSessionAuditDigest;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -20654,6 +20804,8 @@ TPM_RC Tpm::SerializeCommand_GetSessionAuditDigest(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -20940,6 +21092,8 @@ TPM_RC Tpm::SerializeCommand_GetCommandAuditDigest(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_GetCommandAuditDigest;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -21010,6 +21164,8 @@ TPM_RC Tpm::SerializeCommand_GetCommandAuditDigest(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -21288,6 +21444,8 @@ TPM_RC Tpm::SerializeCommand_GetTime(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_GetTime;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -21358,6 +21516,8 @@ TPM_RC Tpm::SerializeCommand_GetTime(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -21636,6 +21796,8 @@ TPM_RC Tpm::SerializeCommand_Commit(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_Commit;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -21709,6 +21871,8 @@ TPM_RC Tpm::SerializeCommand_Commit(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -22012,6 +22176,8 @@ TPM_RC Tpm::SerializeCommand_EC_Ephemeral(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_EC_Ephemeral;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -22052,6 +22218,8 @@ TPM_RC Tpm::SerializeCommand_EC_Ephemeral(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -22311,6 +22479,8 @@ TPM_RC Tpm::SerializeCommand_VerifySignature(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_VerifySignature;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -22370,6 +22540,8 @@ TPM_RC Tpm::SerializeCommand_VerifySignature(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -22608,6 +22780,8 @@ TPM_RC Tpm::SerializeCommand_Sign(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_Sign;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -22678,6 +22852,8 @@ TPM_RC Tpm::SerializeCommand_Sign(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -22920,6 +23096,8 @@ TPM_RC Tpm::SerializeCommand_SetCommandCodeAuditStatus(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_SetCommandCodeAuditStatus;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -22982,6 +23160,8 @@ TPM_RC Tpm::SerializeCommand_SetCommandCodeAuditStatus(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -23207,6 +23387,8 @@ TPM_RC Tpm::SerializeCommand_PCR_Extend(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PCR_Extend;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -23247,6 +23429,8 @@ TPM_RC Tpm::SerializeCommand_PCR_Extend(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -23464,6 +23648,8 @@ TPM_RC Tpm::SerializeCommand_PCR_Event(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PCR_Event;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -23512,6 +23698,8 @@ TPM_RC Tpm::SerializeCommand_PCR_Event(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -23742,6 +23930,8 @@ TPM_RC Tpm::SerializeCommand_PCR_Read(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PCR_Read;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -23771,6 +23961,8 @@ TPM_RC Tpm::SerializeCommand_PCR_Read(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -24025,6 +24217,8 @@ TPM_RC Tpm::SerializeCommand_PCR_Allocate(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PCR_Allocate;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -24065,6 +24259,8 @@ TPM_RC Tpm::SerializeCommand_PCR_Allocate(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -24345,6 +24541,8 @@ TPM_RC Tpm::SerializeCommand_PCR_SetAuthPolicy(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PCR_SetAuthPolicy;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -24415,6 +24613,8 @@ TPM_RC Tpm::SerializeCommand_PCR_SetAuthPolicy(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -24644,6 +24844,8 @@ TPM_RC Tpm::SerializeCommand_PCR_SetAuthValue(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PCR_SetAuthValue;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -24692,6 +24894,8 @@ TPM_RC Tpm::SerializeCommand_PCR_SetAuthValue(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -24908,6 +25112,8 @@ TPM_RC Tpm::SerializeCommand_PCR_Reset(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PCR_Reset;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -24937,6 +25143,8 @@ TPM_RC Tpm::SerializeCommand_PCR_Reset(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -25155,6 +25363,8 @@ TPM_RC Tpm::SerializeCommand_PolicySigned(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PolicySigned;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -25247,6 +25457,8 @@ TPM_RC Tpm::SerializeCommand_PolicySigned(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -25534,6 +25746,8 @@ TPM_RC Tpm::SerializeCommand_PolicySecret(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PolicySecret;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -25615,6 +25829,8 @@ TPM_RC Tpm::SerializeCommand_PolicySecret(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -25898,6 +26114,8 @@ TPM_RC Tpm::SerializeCommand_PolicyTicket(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PolicyTicket;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -25990,6 +26208,8 @@ TPM_RC Tpm::SerializeCommand_PolicyTicket(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -26223,6 +26443,8 @@ TPM_RC Tpm::SerializeCommand_PolicyOR(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PolicyOR;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -26263,6 +26485,8 @@ TPM_RC Tpm::SerializeCommand_PolicyOR(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -26481,6 +26705,8 @@ TPM_RC Tpm::SerializeCommand_PolicyPCR(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PolicyPCR;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -26540,6 +26766,8 @@ TPM_RC Tpm::SerializeCommand_PolicyPCR(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -26761,6 +26989,8 @@ TPM_RC Tpm::SerializeCommand_PolicyLocality(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PolicyLocality;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -26801,6 +27031,8 @@ TPM_RC Tpm::SerializeCommand_PolicyLocality(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -27024,6 +27256,8 @@ TPM_RC Tpm::SerializeCommand_PolicyNV(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PolicyNV;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -27116,6 +27350,8 @@ TPM_RC Tpm::SerializeCommand_PolicyNV(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -27359,6 +27595,8 @@ TPM_RC Tpm::SerializeCommand_PolicyCounterTimer(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PolicyCounterTimer;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -27429,6 +27667,8 @@ TPM_RC Tpm::SerializeCommand_PolicyCounterTimer(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -27654,6 +27894,8 @@ TPM_RC Tpm::SerializeCommand_PolicyCommandCode(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PolicyCommandCode;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -27694,6 +27936,8 @@ TPM_RC Tpm::SerializeCommand_PolicyCommandCode(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -27910,6 +28154,8 @@ TPM_RC Tpm::SerializeCommand_PolicyPhysicalPresence(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PolicyPhysicalPresence;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -27939,6 +28185,8 @@ TPM_RC Tpm::SerializeCommand_PolicyPhysicalPresence(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -28152,6 +28400,8 @@ TPM_RC Tpm::SerializeCommand_PolicyCpHash(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PolicyCpHash;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -28200,6 +28450,8 @@ TPM_RC Tpm::SerializeCommand_PolicyCpHash(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -28417,6 +28669,8 @@ TPM_RC Tpm::SerializeCommand_PolicyNameHash(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PolicyNameHash;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -28465,6 +28719,8 @@ TPM_RC Tpm::SerializeCommand_PolicyNameHash(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -28684,6 +28940,8 @@ TPM_RC Tpm::SerializeCommand_PolicyDuplicationSelect(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PolicyDuplicationSelect;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -28754,6 +29012,8 @@ TPM_RC Tpm::SerializeCommand_PolicyDuplicationSelect(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -28982,6 +29242,8 @@ TPM_RC Tpm::SerializeCommand_PolicyAuthorize(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PolicyAuthorize;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -29063,6 +29325,8 @@ TPM_RC Tpm::SerializeCommand_PolicyAuthorize(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -29291,6 +29555,8 @@ TPM_RC Tpm::SerializeCommand_PolicyAuthValue(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PolicyAuthValue;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -29320,6 +29586,8 @@ TPM_RC Tpm::SerializeCommand_PolicyAuthValue(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -29532,6 +29800,8 @@ TPM_RC Tpm::SerializeCommand_PolicyPassword(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PolicyPassword;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -29561,6 +29831,8 @@ TPM_RC Tpm::SerializeCommand_PolicyPassword(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -29773,6 +30045,8 @@ TPM_RC Tpm::SerializeCommand_PolicyGetDigest(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PolicyGetDigest;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -29802,6 +30076,8 @@ TPM_RC Tpm::SerializeCommand_PolicyGetDigest(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -30046,6 +30322,8 @@ TPM_RC Tpm::SerializeCommand_PolicyNvWritten(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PolicyNvWritten;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -30086,6 +30364,8 @@ TPM_RC Tpm::SerializeCommand_PolicyNvWritten(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -30306,6 +30586,8 @@ TPM_RC Tpm::SerializeCommand_CreatePrimary(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_CreatePrimary;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -30387,6 +30669,8 @@ TPM_RC Tpm::SerializeCommand_CreatePrimary(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -30723,6 +31007,8 @@ TPM_RC Tpm::SerializeCommand_HierarchyControl(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_HierarchyControl;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -30774,6 +31060,8 @@ TPM_RC Tpm::SerializeCommand_HierarchyControl(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -30996,6 +31284,8 @@ TPM_RC Tpm::SerializeCommand_SetPrimaryPolicy(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_SetPrimaryPolicy;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -31055,6 +31345,8 @@ TPM_RC Tpm::SerializeCommand_SetPrimaryPolicy(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -31275,6 +31567,8 @@ TPM_RC Tpm::SerializeCommand_ChangePPS(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_ChangePPS;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -31304,6 +31598,8 @@ TPM_RC Tpm::SerializeCommand_ChangePPS(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -31516,6 +31812,8 @@ TPM_RC Tpm::SerializeCommand_ChangeEPS(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_ChangeEPS;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -31545,6 +31843,8 @@ TPM_RC Tpm::SerializeCommand_ChangeEPS(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -31757,6 +32057,8 @@ TPM_RC Tpm::SerializeCommand_Clear(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_Clear;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -31786,6 +32088,8 @@ TPM_RC Tpm::SerializeCommand_Clear(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -31999,6 +32303,8 @@ TPM_RC Tpm::SerializeCommand_ClearControl(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_ClearControl;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -32039,6 +32345,8 @@ TPM_RC Tpm::SerializeCommand_ClearControl(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -32256,6 +32564,8 @@ TPM_RC Tpm::SerializeCommand_HierarchyChangeAuth(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_HierarchyChangeAuth;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -32304,6 +32614,8 @@ TPM_RC Tpm::SerializeCommand_HierarchyChangeAuth(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -32520,6 +32832,8 @@ TPM_RC Tpm::SerializeCommand_DictionaryAttackLockReset(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_DictionaryAttackLockReset;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -32549,6 +32863,8 @@ TPM_RC Tpm::SerializeCommand_DictionaryAttackLockReset(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -32764,6 +33080,8 @@ TPM_RC Tpm::SerializeCommand_DictionaryAttackParameters(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_DictionaryAttackParameters;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -32826,6 +33144,8 @@ TPM_RC Tpm::SerializeCommand_DictionaryAttackParameters(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -33052,6 +33372,8 @@ TPM_RC Tpm::SerializeCommand_PP_Commands(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_PP_Commands;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -33103,6 +33425,8 @@ TPM_RC Tpm::SerializeCommand_PP_Commands(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -33324,6 +33648,8 @@ TPM_RC Tpm::SerializeCommand_SetAlgorithmSet(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_SetAlgorithmSet;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -33364,6 +33690,8 @@ TPM_RC Tpm::SerializeCommand_SetAlgorithmSet(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -33584,6 +33912,8 @@ TPM_RC Tpm::SerializeCommand_FieldUpgradeStart(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_FieldUpgradeStart;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -33654,6 +33984,8 @@ TPM_RC Tpm::SerializeCommand_FieldUpgradeStart(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -33881,6 +34213,8 @@ TPM_RC Tpm::SerializeCommand_FieldUpgradeData(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_FieldUpgradeData;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -33918,6 +34252,8 @@ TPM_RC Tpm::SerializeCommand_FieldUpgradeData(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -34155,6 +34491,8 @@ TPM_RC Tpm::SerializeCommand_FirmwareRead(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_FirmwareRead;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -34184,6 +34522,8 @@ TPM_RC Tpm::SerializeCommand_FirmwareRead(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -34423,6 +34763,8 @@ TPM_RC Tpm::SerializeCommand_ContextSave(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_ContextSave;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -34452,6 +34794,8 @@ TPM_RC Tpm::SerializeCommand_ContextSave(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -34678,6 +35022,8 @@ TPM_RC Tpm::SerializeCommand_ContextLoad(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_ContextLoad;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -34707,6 +35053,8 @@ TPM_RC Tpm::SerializeCommand_ContextLoad(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -34930,6 +35278,8 @@ TPM_RC Tpm::SerializeCommand_FlushContext(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_FlushContext;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -34959,6 +35309,8 @@ TPM_RC Tpm::SerializeCommand_FlushContext(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -35174,6 +35526,8 @@ TPM_RC Tpm::SerializeCommand_EvictControl(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_EvictControl;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -35225,6 +35579,8 @@ TPM_RC Tpm::SerializeCommand_EvictControl(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -35447,6 +35803,8 @@ TPM_RC Tpm::SerializeCommand_ReadClock(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_ReadClock;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -35465,6 +35823,8 @@ TPM_RC Tpm::SerializeCommand_ReadClock(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -35700,6 +36060,8 @@ TPM_RC Tpm::SerializeCommand_ClockSet(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_ClockSet;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -35740,6 +36102,8 @@ TPM_RC Tpm::SerializeCommand_ClockSet(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -35972,6 +36336,8 @@ TPM_RC Tpm::SerializeCommand_ClockRateAdjust(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_ClockRateAdjust;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -36012,6 +36378,8 @@ TPM_RC Tpm::SerializeCommand_ClockRateAdjust(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -36244,6 +36612,8 @@ TPM_RC Tpm::SerializeCommand_GetCapability(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_GetCapability;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -36295,6 +36665,8 @@ TPM_RC Tpm::SerializeCommand_GetCapability(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -36540,6 +36912,8 @@ TPM_RC Tpm::SerializeCommand_TestParms(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_TestParms;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -36569,6 +36943,8 @@ TPM_RC Tpm::SerializeCommand_TestParms(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -36779,6 +37155,8 @@ TPM_RC Tpm::SerializeCommand_NV_DefineSpace(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_NV_DefineSpace;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -36838,6 +37216,8 @@ TPM_RC Tpm::SerializeCommand_NV_DefineSpace(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -37060,6 +37440,8 @@ TPM_RC Tpm::SerializeCommand_NV_UndefineSpace(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_NV_UndefineSpace;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -37100,6 +37482,8 @@ TPM_RC Tpm::SerializeCommand_NV_UndefineSpace(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -37322,6 +37706,8 @@ TPM_RC Tpm::SerializeCommand_NV_UndefineSpaceSpecial(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_NV_UndefineSpaceSpecial;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -37362,6 +37748,8 @@ TPM_RC Tpm::SerializeCommand_NV_UndefineSpaceSpecial(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -37582,6 +37970,8 @@ TPM_RC Tpm::SerializeCommand_NV_ReadPublic(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_NV_ReadPublic;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -37611,6 +38001,8 @@ TPM_RC Tpm::SerializeCommand_NV_ReadPublic(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -37873,6 +38265,8 @@ TPM_RC Tpm::SerializeCommand_NV_Write(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_NV_Write;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -37943,6 +38337,8 @@ TPM_RC Tpm::SerializeCommand_NV_Write(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -38173,6 +38569,8 @@ TPM_RC Tpm::SerializeCommand_NV_Increment(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_NV_Increment;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -38213,6 +38611,8 @@ TPM_RC Tpm::SerializeCommand_NV_Increment(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -38436,6 +38836,8 @@ TPM_RC Tpm::SerializeCommand_NV_Extend(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_NV_Extend;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -38495,6 +38897,8 @@ TPM_RC Tpm::SerializeCommand_NV_Extend(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -38722,6 +39126,8 @@ TPM_RC Tpm::SerializeCommand_NV_SetBits(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_NV_SetBits;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -38773,6 +39179,8 @@ TPM_RC Tpm::SerializeCommand_NV_SetBits(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -38999,6 +39407,8 @@ TPM_RC Tpm::SerializeCommand_NV_WriteLock(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_NV_WriteLock;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -39039,6 +39449,8 @@ TPM_RC Tpm::SerializeCommand_NV_WriteLock(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -39259,6 +39671,8 @@ TPM_RC Tpm::SerializeCommand_NV_GlobalWriteLock(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_NV_GlobalWriteLock;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -39288,6 +39702,8 @@ TPM_RC Tpm::SerializeCommand_NV_GlobalWriteLock(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -39504,6 +39920,8 @@ TPM_RC Tpm::SerializeCommand_NV_Read(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_NV_Read;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -39566,6 +39984,8 @@ TPM_RC Tpm::SerializeCommand_NV_Read(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -39827,6 +40247,8 @@ TPM_RC Tpm::SerializeCommand_NV_ReadLock(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_NV_ReadLock;
+  bool is_command_parameter_encryption_possible = false;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -39867,6 +40289,8 @@ TPM_RC Tpm::SerializeCommand_NV_ReadLock(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -40088,6 +40512,8 @@ TPM_RC Tpm::SerializeCommand_NV_ChangeAuth(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_NV_ChangeAuth;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = false;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -40136,6 +40562,8 @@ TPM_RC Tpm::SerializeCommand_NV_ChangeAuth(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -40360,6 +40788,8 @@ TPM_RC Tpm::SerializeCommand_NV_Certify(
   std::string handle_section_bytes;
   std::string parameter_section_bytes;
   TPM_CC command_code = TPM_CC_NV_Certify;
+  bool is_command_parameter_encryption_possible = true;
+  bool is_response_parameter_encryption_possible = true;
   std::string command_code_bytes;
   rc = Serialize_TPM_CC(
       command_code,
@@ -40463,6 +40893,8 @@ TPM_RC Tpm::SerializeCommand_NV_Certify(
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }

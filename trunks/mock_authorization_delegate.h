@@ -19,7 +19,10 @@ class MockAuthorizationDelegate : public AuthorizationDelegate {
   MockAuthorizationDelegate();
   virtual ~MockAuthorizationDelegate();
 
-  MOCK_METHOD2(GetCommandAuthorization, bool(const std::string&, std::string*));
+  MOCK_METHOD4(GetCommandAuthorization, bool(const std::string&,
+                                             bool,
+                                             bool,
+                                             std::string*));
   MOCK_METHOD2(CheckResponseAuthorization, bool(const std::string&,
                                                 const std::string&));
   MOCK_METHOD1(EncryptCommandParameter, bool(std::string*));

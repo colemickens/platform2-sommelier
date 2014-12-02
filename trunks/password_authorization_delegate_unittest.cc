@@ -31,6 +31,7 @@ TEST(PasswordAuthorizationDelegateTest, SerializationTest) {
   std::string authorization;
   std::string command_hash;
   bool authorization_result = delegate.GetCommandAuthorization(command_hash,
+                                                               false, false,
                                                                &authorization);
   EXPECT_EQ(authorization_result, true);
   EXPECT_EQ(authorization.length(), expected_auth.length());

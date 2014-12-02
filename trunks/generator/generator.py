@@ -223,6 +223,12 @@ def IsTPM2B(name):
   return name.startswith('TPM2B_')
 
 
+def GetCppBool(condition):
+  if condition:
+    return 'true'
+  return 'false'
+
+
 class Typedef(object):
   """Represents a TPM typedef.
 
@@ -1186,6 +1192,8 @@ TPM_RC Tpm::SerializeCommand_%(method_name)s(%(method_args)s) {
   std::string parameter_section_bytes;"""
   _DECLARE_COMMAND_CODE = """
   TPM_CC command_code = %(command_code)s;"""
+  _DECLARE_BOOLEAN = """
+  bool %(var_name)s = %(value)s;"""
   _SERIALIZE_LOCAL_VAR = """
   std::string %(var_name)s_bytes;
   rc = Serialize_%(var_type)s(
@@ -1223,6 +1231,8 @@ TPM_RC Tpm::SerializeCommand_%(method_name)s(%(method_args)s) {
   if (authorization_delegate) {
     if (!authorization_delegate->GetCommandAuthorization(
         command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
         &authorization_section_bytes)) {
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
@@ -1436,11 +1446,19 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
     """
     # Categorize arguments as either handles or parameters.
     handles, parameters = self._SplitArgs(self.request_args)
-    out_file.write(self._SERIALIZE_FUNCTION_START %
-      {'method_name': self._MethodName(),
-       'method_args': self._SerializeArgs()})
+    response_parameters = self._SplitArgs(self.response_args)[1]
+    out_file.write(self._SERIALIZE_FUNCTION_START % {
+        'method_name': self._MethodName(),
+        'method_args': self._SerializeArgs()})
     out_file.write(self._DECLARE_COMMAND_CODE % {'command_code':
                                                  self.command_code})
+    out_file.write(self._DECLARE_BOOLEAN % {
+        'var_name': 'is_command_parameter_encryption_possible',
+        'value': GetCppBool(parameters and IsTPM2B(parameters[0]['type']))})
+    out_file.write(self._DECLARE_BOOLEAN % {
+        'var_name': 'is_response_parameter_encryption_possible',
+        'value': GetCppBool(response_parameters and
+                            IsTPM2B(response_parameters[0]['type']))})
     # Serialize the command code and all the handles and parameters.
     out_file.write(self._SERIALIZE_LOCAL_VAR % {'var_name': 'command_code',
                                                 'var_type': 'TPM_CC'})
@@ -1480,9 +1498,9 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
     Args:
       out_file: Generated code is written to this file.
     """
-    out_file.write(self._RESPONSE_PARSER_START %
-        {'method_name': self._MethodName(),
-         'method_args': self._ParseArgs()})
+    out_file.write(self._RESPONSE_PARSER_START % {
+        'method_name': self._MethodName(),
+        'method_args': self._ParseArgs()})
     # Parse the header -- this should always exist.
     out_file.write(self._PARSE_LOCAL_VAR % {'var_name': 'tag',
                                             'var_type': 'TPM_ST'})
@@ -1533,18 +1551,18 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
     Args:
       out_file: Generated code is written to this file.
     """
-    out_file.write(self._ASYNC_METHOD %
-        {'method_name': self._MethodName(),
-         'method_args': self._AsyncArgs(),
-         'method_arg_names': self._ArgNameList(self._RequestArgs(),
-                                               trailing_comma=True)})
-    out_file.write(self._SYNC_METHOD %
-        {'method_name': self._MethodName(),
-         'method_args': self._SyncArgs(),
-         'method_arg_names_in': self._ArgNameList(self._RequestArgs(),
-                                                  trailing_comma=True),
-         'method_arg_names_out': self._ArgNameList(self.response_args,
-                                                   trailing_comma=True)})
+    out_file.write(self._ASYNC_METHOD % {
+        'method_name': self._MethodName(),
+        'method_args': self._AsyncArgs(),
+        'method_arg_names': self._ArgNameList(self._RequestArgs(),
+                                              trailing_comma=True)})
+    out_file.write(self._SYNC_METHOD % {
+        'method_name': self._MethodName(),
+        'method_args': self._SyncArgs(),
+        'method_arg_names_in': self._ArgNameList(self._RequestArgs(),
+                                                 trailing_comma=True),
+        'method_arg_names_out': self._ArgNameList(self.response_args,
+                                                  trailing_comma=True)})
 
   def OutputErrorCallback(self, out_file):
     """Generates the implementation of an error callback for this command.
@@ -1577,13 +1595,13 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
     for arg in self.response_args:
       out_file.write(self._DECLARE_ARG_VAR % {'var_type': arg['type'],
                                               'var_name': arg['name']})
-    out_file.write(self._RESPONSE_CALLBACK_END %
-        {'method_name': self._MethodName(),
-         'method_arg_names_in': self._ArgNameList(self.response_args,
-                                                  leading_comma=True),
-         'method_arg_names_out': self._ArgNameList(self.response_args,
-                                                   prefix='&',
-                                                   trailing_comma=True)})
+    out_file.write(self._RESPONSE_CALLBACK_END % {
+        'method_name': self._MethodName(),
+        'method_arg_names_in': self._ArgNameList(self.response_args,
+                                                 leading_comma=True),
+        'method_arg_names_out': self._ArgNameList(self.response_args,
+                                                  prefix='&',
+                                                  trailing_comma=True)})
 
   def _OutputMethodSignatures(self, out_file):
     """Prints method declaration statements for this command.
@@ -1594,10 +1612,10 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
     Args:
       out_file: The output file.
     """
-    out_file.write('  static TPM_RC SerializeCommand_%s(%s);\n' %
-        (self._MethodName(), self._SerializeArgs()))
-    out_file.write('  static TPM_RC ParseResponse_%s(%s);\n' %
-        (self._MethodName(), self._ParseArgs()))
+    out_file.write('  static TPM_RC SerializeCommand_%s(%s);\n' % (
+        self._MethodName(), self._SerializeArgs()))
+    out_file.write('  static TPM_RC ParseResponse_%s(%s);\n' % (
+        self._MethodName(), self._ParseArgs()))
     out_file.write('  virtual void %s(%s);\n' % (self._MethodName(),
                                                  self._AsyncArgs()))
     out_file.write('  virtual TPM_RC %sSync(%s);\n' % (self._MethodName(),
@@ -1925,9 +1943,9 @@ def GenerateHeader(types, constants, structs, defines, typemap, commands):
     if struct.IsSimpleTPM2B():
       out_file.write(_SIMPLE_TPM2B_HELPERS_DECLARATION % {'type': struct.name})
     elif struct.IsComplexTPM2B():
-      out_file.write(_COMPLEX_TPM2B_HELPERS_DECLARATION %
-                        {'type': struct.name,
-                         'inner_type': struct.fields[1][0]})
+      out_file.write(_COMPLEX_TPM2B_HELPERS_DECLARATION % {
+          'type': struct.name,
+          'inner_type': struct.fields[1][0]})
   # Generate a declaration for a 'Tpm' class, which includes one method for
   # every TPM 2.0 command.
   out_file.write(_CLASS_BEGIN)

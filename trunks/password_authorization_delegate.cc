@@ -21,6 +21,8 @@ PasswordAuthorizationDelegate::~PasswordAuthorizationDelegate() {}
 
 bool PasswordAuthorizationDelegate::GetCommandAuthorization(
     const std::string& command_hash,
+    bool is_command_parameter_encryption_possible,
+    bool is_response_parameter_encryption_possible,
     std::string* authorization) {
   TPMS_AUTH_COMMAND auth;
   auth.session_handle = TPM_RS_PW;

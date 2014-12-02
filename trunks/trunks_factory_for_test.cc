@@ -170,8 +170,14 @@ class AuthorizationDelegateForwarder : public AuthorizationDelegate {
   virtual ~AuthorizationDelegateForwarder() {}
 
   bool GetCommandAuthorization(const std::string& command_hash,
+                               bool is_command_parameter_encryption_possible,
+                               bool is_response_parameter_encryption_possible,
                                std::string* authorization) override {
-    return target_->GetCommandAuthorization(command_hash, authorization);
+    return target_->GetCommandAuthorization(
+        command_hash,
+        is_command_parameter_encryption_possible,
+        is_response_parameter_encryption_possible,
+        authorization);
   }
 
   bool CheckResponseAuthorization(const std::string& response_hash,
