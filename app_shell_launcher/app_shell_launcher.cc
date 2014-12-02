@@ -47,9 +47,9 @@ const char kPreferredNetworkFile[] = "preferred_network";
 // Subdirectory under $DATA_DIR or kReadonlyDataPath from which apps are loaded.
 const char kAppsSubdir[] = "apps";
 
-// Optional file in kReadonlyDataPath containing an absolute path of an
-// executable to run instead of kAppShellPath.
-const char kExecutablePathFile[] = "executable_path";
+// Optional symlink in kReadonlyDataPath pointing to an executable to run
+// instead of kAppShellPath.
+const char kExecutableSymlink[] = "executable";
 
 // Returns the first of the following paths that exists:
 // - a file named |filename| within |stateful_dir|
@@ -165,11 +165,15 @@ void ExecAppShell(const ChromiumCommandBuilder& builder) {
   for (size_t i = 0; i < arraysize(argv); ++i)
     argv[i] = nullptr;
 
-  // Check only the readonly dir for a file containing the path of an alternate
+  // Check for a symlink in the readonly dir pointing to an alternate
   // executable.
   std::string exec_path = kAppShellPath;
-  const base::FilePath readonly_dir(kReadonlyDataPath);
-  ReadData(readonly_dir, readonly_dir, kExecutablePathFile, &exec_path);
+  base::FilePath link_dest;
+  if (base::ReadSymbolicLink(
+          base::FilePath(kReadonlyDataPath).Append(kExecutableSymlink),
+          &link_dest)) {
+    exec_path = link_dest.value();
+  }
 
   argv[0] = const_cast<char*>(exec_path.c_str());
   for (size_t i = 0; i < builder.arguments().size(); ++i)
