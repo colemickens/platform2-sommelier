@@ -276,7 +276,7 @@ TEST(PerfSerializeTest, TestCommMd5s) {
       CHECK(event.has_comm_event());
 
       string comm_md5_string =
-          UintToString(event.mmap_event().filename_md5_prefix());
+          UintToString(event.comm_event().comm_md5_prefix());
       // Make sure it fits in the comm string array, accounting for the null
       // terminator.
       struct comm_event dummy;
