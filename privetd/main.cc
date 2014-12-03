@@ -27,6 +27,7 @@
 #include "privetd/peerd_client.h"
 #include "privetd/privet_handler.h"
 #include "privetd/security_manager.h"
+#include "privetd/shill_client.h"
 #include "privetd/wifi_bootstrap_manager.h"
 
 namespace {
@@ -66,8 +67,9 @@ class Daemon : public chromeos::DBusDaemon {
         base::Bind(&Daemon::OnChanged, base::Unretained(this)));
     // TODO(vitalybuka): Provide real embeded password.
     security_.reset(new privetd::SecurityManager("1234", disable_security_));
+    shill_client_.reset(new privetd::ShillClient(bus_));
     wifi_bootstrap_manager_.reset(new privetd::WifiBootstrapManager(
-        state_store_.get()));
+        state_store_.get(), shill_client_.get()));
     wifi_bootstrap_manager_->Init();
 
     privet_handler_.reset(new privetd::PrivetHandler(
@@ -179,6 +181,7 @@ class Daemon : public chromeos::DBusDaemon {
   std::unique_ptr<privetd::CloudDelegate> cloud_;
   std::unique_ptr<privetd::DeviceDelegate> device_;
   std::unique_ptr<privetd::SecurityManager> security_;
+  std::unique_ptr<privetd::ShillClient> shill_client_;
   std::unique_ptr<privetd::WifiBootstrapManager> wifi_bootstrap_manager_;
   std::unique_ptr<privetd::PrivetHandler> privet_handler_;
   libwebserv::Server http_server_;

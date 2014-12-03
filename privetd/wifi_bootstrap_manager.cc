@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "privetd/wifi_bootstrap_manager.h"
+
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
@@ -9,7 +11,7 @@
 #include <chromeos/bind_lambda.h>
 #include <chromeos/key_value_store.h>
 
-#include "privetd/wifi_bootstrap_manager.h"
+#include "privetd/shill_client.h"
 
 namespace privetd {
 
@@ -17,8 +19,9 @@ namespace {
 
 }  // namespace
 
-WifiBootstrapManager::WifiBootstrapManager(DaemonState* state_store)
-    : state_store_(state_store) {
+WifiBootstrapManager::WifiBootstrapManager(DaemonState* state_store,
+                                           ShillClient* shill_client)
+    : state_store_(state_store), shill_client_(shill_client) {
 }
 
 void WifiBootstrapManager::AddStateChangeListener(const StateListener& cb) {
@@ -42,10 +45,11 @@ void WifiBootstrapManager::Init() {
 void WifiBootstrapManager::StartBootstrapping() {
   // TODO(wiley) Start up an AP with an SSID calculated from device info.
   UpdateState(kBootstrapping);
+  tasks_weak_factory_.InvalidateWeakPtrs();
   if (have_ever_been_bootstrapped_) {
     on_bootstrap_timeout_task_.Reset(
         base::Bind(&WifiBootstrapManager::OnBootstrapTimeout,
-                   weak_factory_.GetWeakPtr()));
+                   tasks_weak_factory_.GetWeakPtr()));
     base::MessageLoop::current()->PostDelayedTask(
         FROM_HERE, on_bootstrap_timeout_task_.callback(),
         base::TimeDelta::FromSeconds(bootstrap_timeout_seconds_));
@@ -57,31 +61,25 @@ void WifiBootstrapManager::StartConnecting(const std::string& ssid,
   VLOG(1) << "WiFi is attempting to connect. (ssid=" << ssid
           << ", pass=" << passphrase << ").";
   // TODO(wiley) Shut down the ap we've started via apmanager
-  // TODO(wiley) Provide credentials to shill
-  // TODO(wiley) Ask shill to connect to network
-  // TODO(wiley) Set ourselves up to get called back if shill succeeds.
   UpdateState(kConnecting);
-  on_bootstrap_timeout_task_.Cancel();
+  tasks_weak_factory_.InvalidateWeakPtrs();
   on_connect_success_task_.Reset(
       base::Bind(&WifiBootstrapManager::OnConnectSuccess,
-                 weak_factory_.GetWeakPtr(), ssid));
+                 tasks_weak_factory_.GetWeakPtr(), ssid));
   on_connect_timeout_task_.Reset(
       base::Bind(&WifiBootstrapManager::OnConnectTimeout,
-                 weak_factory_.GetWeakPtr()));
+                 tasks_weak_factory_.GetWeakPtr()));
   base::MessageLoop::current()->PostDelayedTask(
       FROM_HERE, on_connect_timeout_task_.callback(),
       base::TimeDelta::FromSeconds(connect_timeout_seconds_));
-  // TODO(wiley) Remove this, we're just testing the general flow for now.
-  base::MessageLoop::current()->PostDelayedTask(
-      FROM_HERE, on_connect_success_task_.callback(),
-      base::TimeDelta::FromSeconds(5));
+  shill_client_->ConnectToService(
+      ssid, passphrase, on_connect_success_task_.callback(), nullptr);
 }
 
 void WifiBootstrapManager::StartMonitoring() {
+  VLOG(1) << "Monitoring connectivity.";
   UpdateState(kMonitoring);
-  on_bootstrap_timeout_task_.Cancel();
-  on_connect_success_task_.Cancel();
-  on_connect_timeout_task_.Cancel();
+  tasks_weak_factory_.InvalidateWeakPtrs();
   // TODO(wiley) Set up callbacks so that we get told when we go offline
 }
 
@@ -124,12 +122,11 @@ bool WifiBootstrapManager::ConfigureCredentials(const std::string& ssid,
   base::MessageLoop::current()->PostTask(
       FROM_HERE,
       base::Bind(&WifiBootstrapManager::StartConnecting,
-                 weak_factory_.GetWeakPtr(), ssid, passphrase));
+                 tasks_weak_factory_.GetWeakPtr(), ssid, passphrase));
   return true;
 }
 
 std::string WifiBootstrapManager::GetCurrentlyConnectedSsid() const {
-  // TODO(wiley) Ask shill.
   return last_configured_ssid_;
 }
 
@@ -145,7 +142,6 @@ std::vector<WifiType> WifiBootstrapManager::GetTypes() const {
 
 void WifiBootstrapManager::OnConnectSuccess(const std::string& ssid) {
   VLOG(1) << "Wifi was connected successfully";
-  on_connect_timeout_task_.Cancel();
   have_ever_been_bootstrapped_ = true;
   last_configured_ssid_ = ssid;
   state_store_->SetBoolean(state_key::kWifiHasBeenBootstrapped,
@@ -153,8 +149,8 @@ void WifiBootstrapManager::OnConnectSuccess(const std::string& ssid) {
   state_store_->SetString(state_key::kWifiLastConfiguredSSID,
                           last_configured_ssid_);
   state_store_->Save();
-  StartMonitoring();
   setup_state_ = SetupState{SetupState::kSuccess};
+  StartMonitoring();
 }
 
 void WifiBootstrapManager::OnBootstrapTimeout() {
@@ -164,8 +160,29 @@ void WifiBootstrapManager::OnBootstrapTimeout() {
 
 void WifiBootstrapManager::OnConnectTimeout() {
   VLOG(1) << "Wifi timed out while connecting";
-  on_connect_success_task_.Cancel();
   setup_state_ = SetupState{SetupState::kError};
+  StartBootstrapping();
+}
+
+void WifiBootstrapManager::OnConnectivityChange(bool is_connected) {
+  if (state_ != kMonitoring) {
+    return;
+  }
+  if (is_connected) {
+    on_monitoring_timeout_task_.Cancel();
+  } else if (on_monitoring_timeout_task_.IsCancelled()) {
+    on_monitoring_timeout_task_.Reset(
+        base::Bind(&WifiBootstrapManager::OnMonitorTimeout,
+                   tasks_weak_factory_.GetWeakPtr()));
+    base::MessageLoop::current()->PostDelayedTask(
+        FROM_HERE, on_monitoring_timeout_task_.callback(),
+        base::TimeDelta::FromSeconds(monitor_timeout_seconds_));
+  }
+}
+
+void WifiBootstrapManager::OnMonitorTimeout() {
+  VLOG(1) << "Spent too long offline.  Entering bootstrap mode.";
+  // TODO(wiley) Retrieve relevant errors from shill.
   StartBootstrapping();
 }
 

@@ -19,6 +19,8 @@
 
 namespace privetd {
 
+class ShillClient;
+
 class WifiBootstrapManager : public WifiDelegate {
  public:
   enum State {
@@ -30,7 +32,8 @@ class WifiBootstrapManager : public WifiDelegate {
 
   using StateListener = base::Callback<void(State)>;
 
-  explicit WifiBootstrapManager(DaemonState* state_store);
+  explicit WifiBootstrapManager(DaemonState* state_store,
+                                ShillClient* shill_client);
   ~WifiBootstrapManager() override = default;
 
   virtual void AddStateChangeListener(const StateListener& cb);
@@ -67,14 +70,18 @@ class WifiBootstrapManager : public WifiDelegate {
   void OnBootstrapTimeout();
   void OnConnectTimeout();
   void OnConnectSuccess(const std::string& ssid);
+  void OnConnectivityChange(bool is_connected);
+  void OnMonitorTimeout();
 
   State state_{kDisabled};
   // Setup state is the temporal state of the most recent bootstrapping attempt.
   // It is not persisted to disk.
   SetupState setup_state_{SetupState::kNone};
   DaemonState* state_store_;
+  ShillClient* shill_client_;
   const uint32_t connect_timeout_seconds_{60};
   const uint32_t bootstrap_timeout_seconds_{300};
+  const uint32_t monitor_timeout_seconds_{120};
   std::vector<StateListener> state_listeners_;
   bool have_ever_been_bootstrapped_{false};
   bool currently_online_{false};
@@ -82,7 +89,8 @@ class WifiBootstrapManager : public WifiDelegate {
   base::CancelableClosure on_connect_success_task_;
   base::CancelableClosure on_connect_timeout_task_;
   base::CancelableClosure on_bootstrap_timeout_task_;
-  base::WeakPtrFactory<WifiBootstrapManager> weak_factory_{this};
+  base::CancelableClosure on_monitoring_timeout_task_;
+  base::WeakPtrFactory<WifiBootstrapManager> tasks_weak_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(WifiBootstrapManager);
 };

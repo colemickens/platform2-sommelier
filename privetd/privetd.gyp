@@ -6,6 +6,7 @@
         'openssl',
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
+        'system_api',
       ],
     },
     'link_settings': {
@@ -27,6 +28,7 @@
         'peerd_client.cc',
         'privet_handler.cc',
         'security_manager.cc',
+        'shill_client.cc',
         'wifi_bootstrap_manager.cc',
       ],
       'actions': [
