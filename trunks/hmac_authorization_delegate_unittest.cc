@@ -68,6 +68,11 @@ TEST(HmacAuthorizationDelegateTest, EncryptDecryptTest) {
                                    std::string(), true));
   EXPECT_TRUE(delegate.EncryptCommandParameter(&encrypted_parameter));
   EXPECT_NE(0, plaintext_parameter.compare(encrypted_parameter));
+  // Calling EncryptCommandParameter regenerated the caller_nonce.
+  // We need to manually switch tpm_nonce and caller_nonce to ensure
+  // that DecryptResponseParameter has the correct nonces.
+  delegate.tpm_nonce_ = delegate.caller_nonce_;
+  delegate.caller_nonce_ = nonce;
   EXPECT_TRUE(delegate.DecryptResponseParameter(&encrypted_parameter));
   EXPECT_EQ(0, plaintext_parameter.compare(encrypted_parameter));
 }
@@ -94,6 +99,45 @@ class HmacAuthorizationDelegateFixture : public testing::Test {
   TPM2B_NONCE session_nonce_;
   HmacAuthorizationDelegate delegate_;
 };
+
+TEST_F(HmacAuthorizationDelegateFixture, NonceRegenerationTest) {
+  ASSERT_TRUE(delegate_.InitSession(session_handle_,
+                                    session_nonce_,  // TPM nonce.
+                                    session_nonce_,  // Caller nonce.
+                                    std::string(),   // Salt.
+                                    std::string(),   // Bind auth value.
+                                    true));          // Enable encryption.
+  TPM2B_NONCE original_nonce = session_nonce_;
+  EXPECT_EQ(delegate_.caller_nonce_.size, original_nonce.size);
+  EXPECT_EQ(0, memcmp(delegate_.caller_nonce_.buffer,
+                      original_nonce.buffer,
+                      original_nonce.size));
+  // First we check that performing GetCommandAuthorization resets the nonce.
+  std::string command_hash;
+  std::string authorization;
+  EXPECT_TRUE(delegate_.GetCommandAuthorization(command_hash, false, false,
+                                                &authorization));
+  EXPECT_EQ(delegate_.caller_nonce_.size, original_nonce.size);
+  EXPECT_NE(0, memcmp(delegate_.caller_nonce_.buffer,
+                      original_nonce.buffer,
+                      original_nonce.size));
+  // Now we check that GetCommandAuthorization does not reset nonce
+  // when EncryptCommandParameter is called first.
+  original_nonce = delegate_.caller_nonce_;
+  std::string parameter;
+  EXPECT_TRUE(delegate_.EncryptCommandParameter(&parameter));
+  EXPECT_EQ(delegate_.caller_nonce_.size, original_nonce.size);
+  EXPECT_NE(0, memcmp(delegate_.caller_nonce_.buffer,
+                      original_nonce.buffer,
+                      original_nonce.size));
+  original_nonce = delegate_.caller_nonce_;
+  EXPECT_TRUE(delegate_.GetCommandAuthorization(command_hash, false, false,
+                                                &authorization));
+  EXPECT_EQ(delegate_.caller_nonce_.size, original_nonce.size);
+  EXPECT_EQ(0, memcmp(delegate_.caller_nonce_.buffer,
+                      original_nonce.buffer,
+                      original_nonce.size));
+}
 
 TEST_F(HmacAuthorizationDelegateFixture, CommandAuthTest) {
   std::string command_hash;
@@ -175,7 +219,7 @@ TEST_F(HmacAuthorizationDelegateFixture, SessionAttributes) {
   EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPMS_AUTH_COMMAND(&authorization,
                                                     &auth_command,
                                                     &auth_bytes));
-  EXPECT_EQ(kContinueSession | kEncryptSession,
+  EXPECT_EQ(kContinueSession | kDecryptSession,
             auth_command.session_attributes);
 
   // Encryption enabled and possible only for command output.
@@ -184,7 +228,7 @@ TEST_F(HmacAuthorizationDelegateFixture, SessionAttributes) {
   EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPMS_AUTH_COMMAND(&authorization,
                                                     &auth_command,
                                                     &auth_bytes));
-  EXPECT_EQ(kContinueSession | kDecryptSession,
+  EXPECT_EQ(kContinueSession | kEncryptSession,
             auth_command.session_attributes);
 
   // Encryption enabled and possible for command input and output.

@@ -10,6 +10,7 @@
 #include <base/gtest_prod_util.h>
 #include <chromeos/chromeos_export.h>
 #include <crypto/secure_hash.h>
+#include <gtest/gtest_prod.h>
 
 #include "trunks/authorization_delegate.h"
 #include "trunks/tpm_generated.h"
@@ -74,13 +75,25 @@ class CHROMEOS_EXPORT HmacAuthorizationDelegate: public AuthorizationDelegate {
                    const std::string& salt,
                    const std::string& bind_auth_value,
                    bool enable_parameter_encryption);
+
   // This method is used to inject an auth_value associated with an entity.
-  // This auth_value is then used when generating HMACs.
-  // Note: after providing authorization for an entity this needs to be,
-  // explicitly reset to the null string.
-  void set_entity_auth_value(const std::string& auth_value);
+  // This auth_value is then used when generating HMACs and encryption keys.
+  // Note: This value will be used for all commands until explicitly reset.
+  void set_entity_auth_value(const std::string& auth_value) {
+    entity_auth_value_ = auth_value;
+  }
+
+  std::string entity_auth_value() {
+    return entity_auth_value_;
+  }
+
+  TPM_HANDLE session_handle() {
+    return session_handle_;
+  }
 
  protected:
+  FRIEND_TEST(HmacAuthorizationDelegateFixture, NonceRegenerationTest);
+  FRIEND_TEST(HmacAuthorizationDelegateTest, EncryptDecryptTest);
   FRIEND_TEST(HmacAuthorizationDelegateTest, SessionKeyTest);
 
  private:
@@ -112,6 +125,7 @@ class CHROMEOS_EXPORT HmacAuthorizationDelegate: public AuthorizationDelegate {
   bool is_parameter_encryption_enabled_;
   std::string session_key_;
   std::string entity_auth_value_;
+  bool nonce_generated_;
 
   DISALLOW_COPY_AND_ASSIGN(HmacAuthorizationDelegate);
 };

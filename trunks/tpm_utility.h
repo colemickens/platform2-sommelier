@@ -41,6 +41,10 @@ class CHROMEOS_EXPORT TpmUtility {
   // NOTE: This method needs to be called before InitializeTPM.
   virtual TPM_RC Clear() = 0;
 
+  // Synchronously performs a TPM shutdown operation. It should always be
+  // successful.
+  virtual void Shutdown() = 0;
+
   // Synchronously prepares a TPM for use by Chromium OS. Typically this is done
   // by the platform firmware and, in that case, this method has no effect.
   virtual TPM_RC InitializeTpm() = 0;

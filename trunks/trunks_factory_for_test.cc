@@ -72,6 +72,10 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->Clear();
   }
 
+  void Shutdown() override {
+    return target_->Shutdown();
+  }
+
   TPM_RC InitializeTpm() override {
     return target_->InitializeTpm();
   }

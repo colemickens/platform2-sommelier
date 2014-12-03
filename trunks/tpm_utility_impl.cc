@@ -28,6 +28,7 @@ const trunks::TPMA_OBJECT kNoDA = 1U << 10;
 const trunks::TPMA_OBJECT kRestricted = 1U << 16;
 const trunks::TPMA_OBJECT kDecrypt = 1U << 17;
 const trunks::TPMA_OBJECT kSign = 1U << 18;
+const size_t kMaxPasswordLength = 32;
 
 // Returns a serialized representation of the unmodified handle. This is useful
 // for predefined handle values, like TPM_RH_OWNER. For details on what types of
@@ -39,14 +40,29 @@ std::string NameFromHandle(trunks::TPM_HANDLE handle) {
   return name;
 }
 
+// Returns the digest size (in bytes) of the given TPM hash algorithm.
+// Returns -1 when the algorithm is not recognized.
+size_t GetDigestSize(trunks::TPM_ALG_ID hash_alg) {
+  switch (hash_alg) {
+    case trunks::TPM_ALG_SHA1:
+      return SHA1_DIGEST_SIZE;
+    case trunks::TPM_ALG_SHA256:
+      return SHA256_DIGEST_SIZE;
+    case trunks::TPM_ALG_SHA384:
+      return SHA384_DIGEST_SIZE;
+    case trunks::TPM_ALG_SHA512:
+      return SHA512_DIGEST_SIZE;
+  }
+  NOTREACHED();
+  return -1;
+}
+
 }  // namespace
 
 namespace trunks {
 
 TpmUtilityImpl::TpmUtilityImpl(const TrunksFactory& factory)
-    : factory_(factory) {
-  session_ = factory_.GetAuthorizationSession();
-}
+    : factory_(factory) {}
 
 TpmUtilityImpl::~TpmUtilityImpl() {
 }
@@ -93,6 +109,15 @@ TPM_RC TpmUtilityImpl::Clear() {
     LOG(ERROR) << "Failed to clear the TPM: " << GetErrorString(result);
   }
   return result;
+}
+
+void TpmUtilityImpl::Shutdown() {
+  TPM_RC return_code = factory_.GetTpm()->ShutdownSync(TPM_SU_CLEAR,
+                                                       NULL);
+  if (return_code && return_code != TPM_RC_INITIALIZE) {
+    // This should not happen, but if it does, there is nothing we can do.
+    LOG(ERROR) << "Error shutting down: " << GetErrorString(return_code);
+  }
 }
 
 TPM_RC TpmUtilityImpl::InitializeTpm() {
@@ -227,7 +252,6 @@ TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
                                      const std::string& lockout_password) {
   TPM_RC result = InitializeSession();
   if (result) {
-    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;
   }
   scoped_ptr<TpmState> tpm_state(factory_.GetTpmState());
@@ -270,44 +294,39 @@ TPM_RC TpmUtilityImpl::CreateStorageRootKeys(
     const std::string& owner_password) {
   TPM_RC result = InitializeSession();
   if (result) {
-    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;
   }
   Tpm* tpm = factory_.GetTpm();
-  session_->SetEntityAuthorizationValue(owner_password);
-  TPM2B_PUBLIC rsa_public_area;
-  rsa_public_area.size = sizeof(TPMT_PUBLIC);
-  rsa_public_area.public_area.type = TPM_ALG_RSA;
-  rsa_public_area.public_area.name_alg = TPM_ALG_SHA256;
-  rsa_public_area.public_area.object_attributes =
+  TPMT_PUBLIC public_area;
+  public_area.type = TPM_ALG_RSA;
+  public_area.name_alg = TPM_ALG_SHA256;
+  public_area.object_attributes =
       kFixedTPM | kStClear | kFixedParent | kSensitiveDataOrigin |
       kUserWithAuth | kNoDA | kRestricted | kDecrypt;
-  rsa_public_area.public_area.auth_policy = Make_TPM2B_DIGEST("");
-  rsa_public_area.public_area.parameters.rsa_detail.symmetric.algorithm =
-      TPM_ALG_AES;
-  rsa_public_area.public_area.parameters.rsa_detail.symmetric.key_bits.aes =
-      128;
-  rsa_public_area.public_area.parameters.rsa_detail.symmetric.mode.aes =
-      TPM_ALG_CFB;
-  rsa_public_area.public_area.parameters.rsa_detail.scheme.scheme =
-      TPM_ALG_NULL;
-  rsa_public_area.public_area.parameters.rsa_detail.key_bits = 2048;
-  rsa_public_area.public_area.parameters.rsa_detail.exponent = 0;
-  rsa_public_area.public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA("");
+  public_area.auth_policy = Make_TPM2B_DIGEST("");
+  public_area.parameters.rsa_detail.symmetric.algorithm = TPM_ALG_AES;
+  public_area.parameters.rsa_detail.symmetric.key_bits.aes = 128;
+  public_area.parameters.rsa_detail.symmetric.mode.aes = TPM_ALG_CFB;
+  public_area.parameters.rsa_detail.scheme.scheme = TPM_ALG_NULL;
+  public_area.parameters.rsa_detail.key_bits = 2048;
+  public_area.parameters.rsa_detail.exponent = 0;
+  public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA("");
+  TPM2B_PUBLIC rsa_public_area = Make_TPM2B_PUBLIC(public_area);
   TPML_PCR_SELECTION creation_pcrs;
   creation_pcrs.count = 0;
-  TPM2B_SENSITIVE_CREATE sensitive_create;
-  sensitive_create.size = sizeof(TPMS_SENSITIVE_CREATE);
-  sensitive_create.sensitive.user_auth = Make_TPM2B_DIGEST("");
-  sensitive_create.sensitive.data = Make_TPM2B_SENSITIVE_DATA("");
+  TPMS_SENSITIVE_CREATE sensitive;
+  sensitive.user_auth = Make_TPM2B_DIGEST("");
+  sensitive.data = Make_TPM2B_SENSITIVE_DATA("");
   TPM_HANDLE object_handle;
   TPM2B_CREATION_DATA creation_data;
   TPM2B_DIGEST creation_digest;
   TPMT_TK_CREATION creation_ticket;
   TPM2B_NAME object_name;
+  object_name.size = 0;
+  session_->SetEntityAuthorizationValue(owner_password);
   result = tpm->CreatePrimarySync(TPM_RH_OWNER,
                                   NameFromHandle(TPM_RH_OWNER),
-                                  sensitive_create,
+                                  Make_TPM2B_SENSITIVE_CREATE(sensitive),
                                   rsa_public_area,
                                   Make_TPM2B_DATA(""),
                                   creation_pcrs,
@@ -333,33 +352,18 @@ TPM_RC TpmUtilityImpl::CreateStorageRootKeys(
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;
   }
+
   // Do it again for ECC.
-  TPM2B_PUBLIC ecc_public_area;
-  ecc_public_area.size = sizeof(TPMT_PUBLIC);
-  ecc_public_area.public_area.type = TPM_ALG_ECC;
-  ecc_public_area.public_area.name_alg = TPM_ALG_SHA256;
-  ecc_public_area.public_area.object_attributes =
-      kFixedTPM | kStClear | kFixedParent | kSensitiveDataOrigin |
-      kUserWithAuth | kNoDA | kRestricted | kDecrypt;
-  ecc_public_area.public_area.auth_policy = Make_TPM2B_DIGEST("");
-  ecc_public_area.public_area.parameters.ecc_detail.symmetric.algorithm =
-      TPM_ALG_AES;
-  ecc_public_area.public_area.parameters.ecc_detail.symmetric.key_bits.aes =
-      128;
-  ecc_public_area.public_area.parameters.ecc_detail.symmetric.mode.aes =
-      TPM_ALG_CFB;
-  ecc_public_area.public_area.parameters.ecc_detail.scheme.scheme =
-      TPM_ALG_NULL;
-  ecc_public_area.public_area.parameters.ecc_detail.curve_id =
-      TPM_ECC_NIST_P256;
-  ecc_public_area.public_area.parameters.ecc_detail.kdf.scheme = TPM_ALG_MGF1;
-  ecc_public_area.public_area.parameters.ecc_detail.kdf.details.mgf1.hash_alg =
-      TPM_ALG_SHA256;
-  ecc_public_area.public_area.unique.ecc.x = Make_TPM2B_ECC_PARAMETER("");
-  ecc_public_area.public_area.unique.ecc.y = Make_TPM2B_ECC_PARAMETER("");
+  public_area.type = TPM_ALG_ECC;
+  public_area.parameters.ecc_detail.curve_id = TPM_ECC_NIST_P256;
+  public_area.parameters.ecc_detail.kdf.scheme = TPM_ALG_MGF1;
+  public_area.parameters.ecc_detail.kdf.details.mgf1.hash_alg = TPM_ALG_SHA256;
+  public_area.unique.ecc.x = Make_TPM2B_ECC_PARAMETER("");
+  public_area.unique.ecc.y = Make_TPM2B_ECC_PARAMETER("");
+  TPM2B_PUBLIC ecc_public_area = Make_TPM2B_PUBLIC(public_area);
   result = tpm->CreatePrimarySync(TPM_RH_OWNER,
                                   NameFromHandle(TPM_RH_OWNER),
-                                  sensitive_create,
+                                  Make_TPM2B_SENSITIVE_CREATE(sensitive),
                                   ecc_public_area,
                                   Make_TPM2B_DATA(""),
                                   creation_pcrs,
@@ -394,17 +398,14 @@ TPM_RC TpmUtilityImpl::AsymmetricEncrypt(TPM_HANDLE key_handle,
                                          const std::string& plaintext,
                                          std::string* ciphertext) {
   TPMT_RSA_DECRYPT in_scheme;
-  TPM_ALG_ID hash_in;
   if (hash_alg == TPM_ALG_NULL) {
-    hash_in = TPM_ALG_SHA256;
-  } else {
-    hash_in = hash_alg;
+    hash_alg = TPM_ALG_SHA256;
   }
   if (scheme == TPM_ALG_RSAES) {
     in_scheme.scheme = TPM_ALG_RSAES;
   } else if (scheme == TPM_ALG_OAEP || scheme == TPM_ALG_NULL) {
     in_scheme.scheme = TPM_ALG_OAEP;
-    in_scheme.details.oaep.hash_alg = hash_in;
+    in_scheme.details.oaep.hash_alg = hash_alg;
   } else {
     LOG(ERROR) << "Invalid Signing scheme used.";
     return SAPI_RC_BAD_PARAMETER;
@@ -459,18 +460,20 @@ TPM_RC TpmUtilityImpl::AsymmetricDecrypt(TPM_HANDLE key_handle,
                                          const std::string& password,
                                          const std::string& ciphertext,
                                          std::string* plaintext) {
+  TPM_RC result = InitializeSession();
+  if (result) {
+    return result;
+  }
+
   TPMT_RSA_DECRYPT in_scheme;
-  TPM_ALG_ID hash_in;
   if (hash_alg == TPM_ALG_NULL) {
-    hash_in = TPM_ALG_SHA256;
-  } else {
-    hash_in = hash_alg;
+    hash_alg = TPM_ALG_SHA256;
   }
   if (scheme == TPM_ALG_RSAES) {
     in_scheme.scheme = TPM_ALG_RSAES;
   } else if (scheme == TPM_ALG_OAEP || scheme == TPM_ALG_NULL) {
     in_scheme.scheme = TPM_ALG_OAEP;
-    in_scheme.details.oaep.hash_alg = hash_in;
+    in_scheme.details.oaep.hash_alg = hash_alg;
   } else {
     LOG(ERROR) << "Invalid Signing scheme used.";
     return SAPI_RC_BAD_PARAMETER;
@@ -526,19 +529,25 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
                             const std::string& password,
                             const std::string& digest,
                             std::string* signature) {
+  TPM_RC result = InitializeSession();
+  if (result) {
+    return result;
+  }
+
   TPMT_SIG_SCHEME in_scheme;
-  TPM_ALG_ID hash_in;
   if (hash_alg == TPM_ALG_NULL) {
-    hash_in = TPM_ALG_SHA256;
-  } else {
-    hash_in = hash_alg;
+    hash_alg = TPM_ALG_SHA256;
+  }
+  size_t hash_size = GetDigestSize(hash_alg);
+  if (digest.size() != hash_size) {
+    return SAPI_RC_BAD_PARAMETER;
   }
   if (scheme == TPM_ALG_RSAPSS) {
     in_scheme.scheme = TPM_ALG_RSAPSS;
-    in_scheme.details.rsapss.hash_alg = hash_in;
+    in_scheme.details.rsapss.hash_alg = hash_alg;
   } else if (scheme == TPM_ALG_RSASSA || scheme == TPM_ALG_NULL) {
     in_scheme.scheme = TPM_ALG_RSASSA;
-    in_scheme.details.rsassa.hash_alg = hash_in;
+    in_scheme.details.rsassa.hash_alg = hash_alg;
   } else {
     LOG(ERROR) << "Invalid Signing scheme used.";
     return SAPI_RC_BAD_PARAMETER;
@@ -570,6 +579,7 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
   TPMT_SIGNATURE signature_out;
   TPMT_TK_HASHCHECK validation;
   validation.tag = TPM_ST_HASHCHECK;
+  validation.hierarchy = TPM_RH_NULL;
   validation.digest.size = 0;
   session_->SetEntityAuthorizationValue(password);
   return_code = factory_.GetTpm()->SignSync(key_handle,
@@ -615,20 +625,22 @@ TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
     LOG(ERROR) << "Cannot use RSAPSS for signing with a restricted key";
     return SAPI_RC_BAD_PARAMETER;
   }
-  TPMT_SIGNATURE signature_in;
-  TPM_ALG_ID hash_in;
   if (hash_alg == TPM_ALG_NULL) {
-    hash_in = TPM_ALG_SHA256;
-  } else {
-    hash_in = hash_alg;
+    hash_alg = TPM_ALG_SHA256;
   }
+  size_t hash_size = GetDigestSize(hash_alg);
+  if (digest.size() != hash_size) {
+    return SAPI_RC_BAD_PARAMETER;
+  }
+
+  TPMT_SIGNATURE signature_in;
   if (scheme == TPM_ALG_RSAPSS) {
     signature_in.sig_alg = TPM_ALG_RSAPSS;
-    signature_in.signature.rsapss.hash = hash_in;
+    signature_in.signature.rsapss.hash = hash_alg;
     signature_in.signature.rsapss.sig = Make_TPM2B_PUBLIC_KEY_RSA(signature);
   } else if (scheme == TPM_ALG_NULL || scheme == TPM_ALG_RSASSA) {
     signature_in.sig_alg = TPM_ALG_RSASSA;
-    signature_in.signature.rsassa.hash = hash_in;
+    signature_in.signature.rsassa.hash = hash_alg;
     signature_in.signature.rsassa.sig = Make_TPM2B_PUBLIC_KEY_RSA(signature);
   } else {
     LOG(ERROR) << "Invalid scheme used to verify signature.";
@@ -653,10 +665,14 @@ TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
   return TPM_RC_SUCCESS;
 }
 
-// TODO(usanghi): Test this function on a real TPM
 TPM_RC TpmUtilityImpl::CreateRSAKey(AsymmetricKeyUsage key_type,
                                     const std::string& password,
                                     TPM_HANDLE* key_handle) {
+  TPM_RC result = InitializeSession();
+  if (result) {
+    return result;
+  }
+
   CHECK(key_handle);
   std::string parent_name;
   TPM_RC return_code = GetKeyName(kRSAStorageRootKey, &parent_name);
@@ -666,42 +682,37 @@ TPM_RC TpmUtilityImpl::CreateRSAKey(AsymmetricKeyUsage key_type,
     return return_code;
   }
 
-  TPM2B_PUBLIC rsa_public_area;
-  rsa_public_area.size = sizeof(TPMT_PUBLIC);
-  rsa_public_area.public_area.type = TPM_ALG_RSA;
-  rsa_public_area.public_area.name_alg = TPM_ALG_SHA256;
-  rsa_public_area.public_area.auth_policy = Make_TPM2B_DIGEST("");
-  rsa_public_area.public_area.object_attributes =
+  TPMT_PUBLIC public_area;
+  public_area.type = TPM_ALG_RSA;
+  public_area.name_alg = TPM_ALG_SHA256;
+  public_area.auth_policy = Make_TPM2B_DIGEST("");
+  public_area.object_attributes =
       kFixedTPM | kStClear | kFixedParent | kSensitiveDataOrigin |
       kUserWithAuth | kNoDA;
-  TPMU_PUBLIC_PARMS& parameters = rsa_public_area.public_area.parameters;
   switch (key_type) {
     case AsymmetricKeyUsage::kDecryptKey:
-      rsa_public_area.public_area.object_attributes |= kDecrypt;
-      parameters.rsa_detail.scheme.scheme = TPM_ALG_OAEP;
-      parameters.rsa_detail.scheme.details.oaep.hash_alg = TPM_ALG_SHA256;
+      public_area.object_attributes |= kDecrypt;
       break;
     case AsymmetricKeyUsage::kSignKey:
-      rsa_public_area.public_area.object_attributes |= kSign;
-      parameters.rsa_detail.scheme.scheme = TPM_ALG_RSASSA;
-      parameters.rsa_detail.scheme.details.rsassa.hash_alg = TPM_ALG_SHA256;
+      public_area.object_attributes |= kSign;
       break;
     case AsymmetricKeyUsage::kDecryptAndSignKey:
-      rsa_public_area.public_area.object_attributes |= kSign;
-      rsa_public_area.public_area.object_attributes |= kDecrypt;
-      parameters.rsa_detail.scheme.scheme = TPM_ALG_NULL;
+      public_area.object_attributes |= (kSign | kDecrypt);
       break;
   }
-  parameters.rsa_detail.symmetric.algorithm = TPM_ALG_NULL;
-  parameters.rsa_detail.key_bits = 2048;
-  parameters.rsa_detail.exponent = 0;
-  rsa_public_area.public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA("");
+  public_area.parameters.rsa_detail.scheme.scheme = TPM_ALG_NULL;
+  public_area.parameters.rsa_detail.symmetric.algorithm = TPM_ALG_NULL;
+  public_area.parameters.rsa_detail.key_bits = 2048;
+  public_area.parameters.rsa_detail.exponent = 0;
+  public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA("");
+  TPM2B_PUBLIC rsa_public_area = Make_TPM2B_PUBLIC(public_area);
   TPML_PCR_SELECTION creation_pcrs;
   creation_pcrs.count = 0;
-  TPM2B_SENSITIVE_CREATE sensitive_create;
-  sensitive_create.size = sizeof(TPMS_SENSITIVE_CREATE);
-  sensitive_create.sensitive.user_auth = Make_TPM2B_DIGEST(password);
-  sensitive_create.sensitive.data = Make_TPM2B_SENSITIVE_DATA("");
+  TPMS_SENSITIVE_CREATE sensitive;
+  sensitive.user_auth = Make_TPM2B_DIGEST(password);
+  sensitive.data = Make_TPM2B_SENSITIVE_DATA("");
+  TPM2B_SENSITIVE_CREATE sensitive_create = Make_TPM2B_SENSITIVE_CREATE(
+      sensitive);
   TPM2B_DATA outside_info = Make_TPM2B_DATA("");
 
   TPM2B_PRIVATE out_private;
@@ -742,13 +753,15 @@ TPM_RC TpmUtilityImpl::CreateRSAKey(AsymmetricKeyUsage key_type,
 }
 
 TPM_RC TpmUtilityImpl::InitializeSession() {
+  TPM_RC result = TPM_RC_SUCCESS;
   if (session_.get()) {
     return TPM_RC_SUCCESS;
   }
   scoped_ptr<AuthorizationSession> tmp_session(
       factory_.GetAuthorizationSession());
-  TPM_RC result = tmp_session->StartUnboundSession(true /*Enable encryption.*/);
+  result = tmp_session->StartUnboundSession(true /*Enable encryption.*/);
   if (result) {
+    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;
   }
   session_ = tmp_session.Pass();
@@ -759,10 +772,15 @@ TPM_RC TpmUtilityImpl::SetHierarchyAuthorization(
     TPMI_RH_HIERARCHY_AUTH hierarchy,
     const std::string& password,
     AuthorizationDelegate* authorization) {
+  if (password.size() > kMaxPasswordLength) {
+    LOG(ERROR) << "Hierarchy passwords can be at most " << kMaxPasswordLength
+               << " bytes. Current password length is: " << password.size();
+    return SAPI_RC_BAD_SIZE;
+  }
   return factory_.GetTpm()->HierarchyChangeAuthSync(
       hierarchy,
       NameFromHandle(hierarchy),
-      Make_TPM2B_DIGEST(crypto::SHA256HashString(password)),
+      Make_TPM2B_DIGEST(password),
       authorization);
 }
 

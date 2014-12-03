@@ -29,7 +29,8 @@ const uint32_t kTpmBufferSize = 4096;
 
 HmacAuthorizationDelegate::HmacAuthorizationDelegate()
     : session_handle_(0),
-      is_parameter_encryption_enabled_(false) {
+      is_parameter_encryption_enabled_(false),
+      nonce_generated_(false) {
   tpm_nonce_.size = 0;
   caller_nonce_.size = 0;
 }
@@ -48,17 +49,21 @@ bool HmacAuthorizationDelegate::GetCommandAuthorization(
   }
   TPMS_AUTH_COMMAND auth;
   auth.session_handle = session_handle_;
-  RegenerateCallerNonce();
   auth.nonce = caller_nonce_;
   auth.session_attributes = kContinueSession;
   if (is_parameter_encryption_enabled_) {
     if (is_command_parameter_encryption_possible) {
-      auth.session_attributes |= kEncryptSession;
-    }
-    if (is_response_parameter_encryption_possible) {
       auth.session_attributes |= kDecryptSession;
     }
+    if (is_response_parameter_encryption_possible) {
+      auth.session_attributes |= kEncryptSession;
+    }
   }
+  if (!nonce_generated_) {
+    RegenerateCallerNonce();
+  }
+  // We reset the |nonce_generated| flag in preperation of the next command.
+  nonce_generated_ = false;
   std::string attributes_bytes;
   CHECK_EQ(Serialize_TPMA_SESSION(auth.session_attributes, &attributes_bytes),
            TPM_RC_SUCCESS) << "Error serializing session attributes.";
@@ -140,10 +145,6 @@ bool HmacAuthorizationDelegate::EncryptCommandParameter(
     LOG(ERROR) << __func__ << ": Invalid session handle.";
     return false;
   }
-  if (session_key_.size() == 0) {
-    LOG(ERROR) << __func__ << ": Invalid session key.";
-    return false;
-  }
   if (!is_parameter_encryption_enabled_) {
     // No parameter encryption enabled.
     return true;
@@ -152,6 +153,8 @@ bool HmacAuthorizationDelegate::EncryptCommandParameter(
     LOG(ERROR) << "Parameter size is too large for TPM decryption.";
     return false;
   }
+  RegenerateCallerNonce();
+  nonce_generated_ = true;
   AesOperation(parameter, caller_nonce_, tpm_nonce_, AES_ENCRYPT);
   return true;
 }
@@ -161,10 +164,6 @@ bool HmacAuthorizationDelegate::DecryptResponseParameter(
   CHECK(parameter);
   if (!session_handle_) {
     LOG(ERROR) << __func__ << ": Invalid session handle.";
-    return false;
-  }
-  if (session_key_.size() == 0) {
-    LOG(ERROR) << __func__ << ": Invalid session key.";
     return false;
   }
   if (!is_parameter_encryption_enabled_) {
@@ -195,15 +194,18 @@ bool HmacAuthorizationDelegate::InitSession(
   tpm_nonce_ = tpm_nonce;
   caller_nonce_ = caller_nonce;
   std::string session_key_label("ATH", kLabelSize);
-  session_key_ = CreateKey(bind_auth_value + salt, session_key_label,
-                           tpm_nonce_, caller_nonce_);
   is_parameter_encryption_enabled_ = enable_parameter_encryption;
+  if (salt.length() == 0 && bind_auth_value.length() == 0) {
+    // SessionKey is set to the empty string for unsalted and
+    // unbound sessions.
+    session_key_ = std::string();
+  } else {
+    session_key_ = CreateKey(bind_auth_value + salt,
+                             session_key_label,
+                             tpm_nonce_,
+                             caller_nonce_);
+  }
   return true;
-}
-
-void HmacAuthorizationDelegate::set_entity_auth_value(
-    const std::string& auth_value) {
-  entity_auth_value_ = auth_value;
 }
 
 std::string HmacAuthorizationDelegate::CreateKey(
@@ -211,11 +213,6 @@ std::string HmacAuthorizationDelegate::CreateKey(
     const std::string& label,
     const TPM2B_NONCE& nonce_newer,
     const TPM2B_NONCE& nonce_older) {
-  if (hmac_key.length() == 0) {
-    LOG(INFO) << "No sessionKey generated for unsalted and unbound session.";
-    return std::string();
-  }
-
   std::string counter;
   std::string digest_size_bits;
   if (Serialize_uint32_t(1, &counter) != TPM_RC_SUCCESS ||
@@ -259,8 +256,10 @@ void HmacAuthorizationDelegate::AesOperation(std::string* parameter,
                                              const TPM2B_NONCE& nonce_older,
                                              int operation_type) {
   std::string label("CFB", kLabelSize);
-  std::string compound_key = CreateKey(session_key_, label,
-                                       nonce_newer, nonce_older);
+  std::string compound_key = CreateKey(session_key_ + entity_auth_value_,
+                                       label,
+                                       nonce_newer,
+                                       nonce_older);
   CHECK_EQ(compound_key.size(), kAesKeySize + kAesIVSize);
   unsigned char aes_key[kAesKeySize];
   unsigned char aes_iv[kAesIVSize];

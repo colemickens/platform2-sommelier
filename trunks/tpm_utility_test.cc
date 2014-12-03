@@ -95,6 +95,12 @@ TEST_F(TpmUtilityTest, ClearFail) {
   EXPECT_EQ(TPM_RC_FAILURE, utility.Clear());
 }
 
+TEST_F(TpmUtilityTest, ShutdownTest) {
+  TpmUtilityImpl utility(factory_);
+  EXPECT_CALL(mock_tpm_, ShutdownSync(TPM_SU_CLEAR, _));
+  utility.Shutdown();
+}
+
 TEST_F(TpmUtilityTest, InitializeTpmAlreadyInit) {
   TpmUtilityImpl utility(factory_);
   EXPECT_EQ(TPM_RC_SUCCESS, utility.InitializeTpm());
@@ -210,6 +216,7 @@ TEST_F(TpmUtilityTest, ReadPCRSuccess) {
   pcr_select.pcr_selections[0].pcr_select[0] = 2;
   TPML_DIGEST pcr_values;
   pcr_values.count = 1;
+  pcr_values.digests[0].size = 5;
   EXPECT_CALL(mock_tpm_, PCR_ReadSync(_, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(pcr_select),
                       SetArgPointee<3>(pcr_values),
@@ -616,7 +623,7 @@ TEST_F(TpmUtilityTest, SignSuccess) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
   std::string password;
-  std::string digest;
+  std::string digest(32, 'a');
   TPMT_SIGNATURE signature_out;
   signature_out.signature.rsassa.sig.size = 2;
   signature_out.signature.rsassa.sig.buffer[0] = 'h';
@@ -644,7 +651,7 @@ TEST_F(TpmUtilityTest, SignFail) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
   std::string password;
-  std::string digest;
+  std::string digest(32, 'a');
   std::string signature;
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
@@ -666,7 +673,7 @@ TEST_F(TpmUtilityTest, SignBadParams1) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
   std::string password;
-  std::string digest;
+  std::string digest(32, 'a');
   std::string signature;
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
@@ -686,7 +693,7 @@ TEST_F(TpmUtilityTest, SignBadParams2) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
   std::string password;
-  std::string digest;
+  std::string digest(32, 'a');
   std::string signature;
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
@@ -706,7 +713,7 @@ TEST_F(TpmUtilityTest, SignBadParams3) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
   std::string password;
-  std::string digest;
+  std::string digest(32, 'a');
   std::string signature;
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_ECC;
@@ -726,7 +733,7 @@ TEST_F(TpmUtilityTest, SignBadParams4) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
   std::string password;
-  std::string digest;
+  std::string digest(32, 'a');
   std::string signature;
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
@@ -746,7 +753,7 @@ TEST_F(TpmUtilityTest, SignBadParams5) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle = 0;
   std::string password;
-  std::string digest;
+  std::string digest(32, 'a');
   std::string signature;
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.Sign(key_handle,
                                                 TPM_ALG_AES,
@@ -761,7 +768,7 @@ TEST_F(TpmUtilityTest, SignNullSchemeForward) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
   std::string password;
-  std::string digest;
+  std::string digest(32, 'a');
   TPMT_SIGNATURE signature_out;
   signature_out.signature.rsassa.sig.size = 0;
   std::string signature;
@@ -790,7 +797,7 @@ TEST_F(TpmUtilityTest, SignSchemeForward) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
   std::string password;
-  std::string digest;
+  std::string digest(64, 'a');
   TPMT_SIGNATURE signature_out;
   signature_out.signature.rsassa.sig.size = 0;
   std::string signature;
@@ -818,7 +825,7 @@ TEST_F(TpmUtilityTest, SignSchemeForward) {
 TEST_F(TpmUtilityTest, VerifySuccess) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
-  std::string digest;
+  std::string digest(32, 'a');
   std::string signature;
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
@@ -838,7 +845,7 @@ TEST_F(TpmUtilityTest, VerifySuccess) {
 TEST_F(TpmUtilityTest, VerifyFail) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
-  std::string digest;
+  std::string digest(32, 'a');
   std::string signature;
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
@@ -858,7 +865,7 @@ TEST_F(TpmUtilityTest, VerifyFail) {
 TEST_F(TpmUtilityTest, VerifyBadParams1) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
-  std::string digest;
+  std::string digest(32, 'a');
   std::string signature;
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
@@ -876,7 +883,7 @@ TEST_F(TpmUtilityTest, VerifyBadParams1) {
 TEST_F(TpmUtilityTest, VerifyBadParams2) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
-  std::string digest;
+  std::string digest(32, 'a');
   std::string signature;
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
@@ -894,7 +901,7 @@ TEST_F(TpmUtilityTest, VerifyBadParams2) {
 TEST_F(TpmUtilityTest, VerifyBadParams3) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
-  std::string digest;
+  std::string digest(32, 'a');
   std::string signature;
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_ECC;
@@ -912,7 +919,7 @@ TEST_F(TpmUtilityTest, VerifyBadParams3) {
 TEST_F(TpmUtilityTest, VerifyBadParams4) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
-  std::string digest;
+  std::string digest(32, 'a');
   std::string signature;
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
@@ -930,7 +937,7 @@ TEST_F(TpmUtilityTest, VerifyBadParams4) {
 TEST_F(TpmUtilityTest, VerifyBadParams5) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
-  std::string digest;
+  std::string digest(32, 'a');
   std::string signature;
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
@@ -948,7 +955,7 @@ TEST_F(TpmUtilityTest, VerifyBadParams5) {
 TEST_F(TpmUtilityTest, VerifyNullSchemeForward) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
-  std::string digest;
+  std::string digest(32, 'a');
   std::string signature;
   TPM2B_PUBLIC public_area;
   TPMT_SIGNATURE signature_in;
@@ -972,7 +979,7 @@ TEST_F(TpmUtilityTest, VerifyNullSchemeForward) {
 TEST_F(TpmUtilityTest, VerifySchemeForward) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
-  std::string digest;
+  std::string digest(64, 'a');
   std::string signature;
   TPM2B_PUBLIC public_area;
   TPMT_SIGNATURE signature_in;
@@ -1009,7 +1016,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyDecryptSuccess) {
   EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, kDecrypt);
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, 0);
   EXPECT_EQ(public_area.public_area.parameters.rsa_detail.scheme.scheme,
-            TPM_ALG_OAEP);
+            TPM_ALG_NULL);
 }
 
 TEST_F(TpmUtilityTest, CreateRSAKeySignSuccess) {
@@ -1028,7 +1035,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeySignSuccess) {
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
   EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, 0);
   EXPECT_EQ(public_area.public_area.parameters.rsa_detail.scheme.scheme,
-            TPM_ALG_RSASSA);
+            TPM_ALG_NULL);
 }
 
 TEST_F(TpmUtilityTest, CreateRSAKeyLegacySuccess) {
