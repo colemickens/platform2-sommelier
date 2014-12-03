@@ -87,20 +87,6 @@ uint64_t Md5Prefix(const std::vector<char>& input) {
   return Md5Prefix(data, input.size());
 }
 
-bool BufferToFile(const string& filename, const std::vector<char>& contents) {
-  FILE* fp = fopen(filename.c_str(), "wb");
-  if (!fp)
-    return false;
-  // Do not write anything if |contents| contains nothing.  fopen will create
-  // an empty file.
-  if (!contents.empty()) {
-    CHECK_GT(fwrite(&contents[0], contents.size() * sizeof(contents[0]), 1, fp),
-             0U);
-  }
-  fclose(fp);
-  return true;
-}
-
 bool FileToBuffer(const string& filename, std::vector<char>* contents) {
   FILE* fp = fopen(filename.c_str(), "rb");
   if (!fp)

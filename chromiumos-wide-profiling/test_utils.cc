@@ -206,17 +206,37 @@ bool GetPerfBuildIDMap(const string& filename,
   return true;
 }
 
+namespace {
+// Running tests while this is true will blindly make tests pass! So, remember
+// to look at the diffs and explain them before submitting.
+// TODO(dhsharp): replace this with a command-line flag.
+static const bool kWriteNewGoldenFiles = false;
+}  // namespace
+
 bool CheckPerfDataAgainstBaseline(const string& filename) {
+  string protobuf_text;
+  if (!GetProtobufTextFormat(filename, &protobuf_text)) {
+    return false;
+  }
   string existing_input_file = GetTestInputFilePath(basename(filename.c_str()));
   string baseline;
   if (!ReadExistingProtobufText(existing_input_file , &baseline)) {
     return false;
   }
-  string protobuf_text;
-  if (!GetProtobufTextFormat(filename, &protobuf_text)) {
-    return false;
+  bool matches_baseline = (baseline == protobuf_text);
+  if (kWriteNewGoldenFiles) {
+    string existing_input_pb_text =
+        existing_input_file + kProtobufTextExtension;
+    if (matches_baseline) {
+      LOG(INFO) << "NOT writing identical golden file! "
+                << existing_input_pb_text;
+      return true;
+    }
+    LOG(INFO) << "Writing new golden file! " << existing_input_pb_text;
+    BufferToFile(existing_input_pb_text, protobuf_text);
+    return true;
   }
-  return baseline == protobuf_text;
+  return matches_baseline;
 }
 
 bool ComparePerfBuildIDLists(const string& file1, const string& file2) {

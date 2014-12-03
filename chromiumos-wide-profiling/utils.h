@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 
+#include "base/logging.h"
+
 #include "chromiumos-wide-profiling/kernel/perf_internals.h"
 #include "chromiumos-wide-profiling/quipper_string.h"
 
@@ -36,7 +38,23 @@ build_id_event* CallocMemoryForBuildID(size_t size);
 
 bool FileToBuffer(const string& filename, std::vector<char>* contents);
 
-bool BufferToFile(const string& filename, const std::vector<char>& contents);
+template <typename CharContainer>
+bool BufferToFile(const string& filename, const CharContainer& contents) {
+  FILE* fp = fopen(filename.c_str(), "wb");
+  if (!fp)
+    return false;
+  // Do not write anything if |contents| contains nothing.  fopen will create
+  // an empty file.
+  if (!contents.empty()) {
+    CHECK_EQ(fwrite(contents.data(),
+                    sizeof(typename CharContainer::value_type),
+                    contents.size(),
+                    fp),
+             contents.size());
+  }
+  fclose(fp);
+  return true;
+}
 
 uint64_t Md5Prefix(const string& input);
 uint64_t Md5Prefix(const std::vector<char>& input);
