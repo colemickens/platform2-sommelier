@@ -1511,6 +1511,20 @@ TEST_F(WiFiMainTest, ResumeStartsScanWhenIdle) {
   dispatcher_.DispatchPendingEvents();
 }
 
+TEST_F(WiFiMainTest, ResumeDoesNotScanIfConnected) {
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  ReportScanDone();
+  ASSERT_TRUE(wifi()->IsIdle());
+  dispatcher_.DispatchPendingEvents();
+  OnAfterResume();
+  InstallMockScanSession();
+  SetCurrentService(MakeMockService(kSecurityNone));
+  EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
+  dispatcher_.DispatchPendingEvents();
+}
+
 TEST_F(WiFiMainTest, SuspendDoesNotStartScan_FullScan) {
   EnableFullScan();
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));

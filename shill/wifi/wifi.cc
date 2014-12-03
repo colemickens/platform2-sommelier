@@ -1797,7 +1797,9 @@ void WiFi::OnAfterResume() {
   time_->GetTimeMonotonic(&resumed_at_);
   need_bss_flush_ = true;
 
-  InitiateScan(kProgressiveScan);
+  if (!IsConnectedToCurrentService()) {
+    InitiateScan(kProgressiveScan);
+  }
 
   // Enable HT40 for current service in case if it was disabled previously due
   // to unreliable link.
