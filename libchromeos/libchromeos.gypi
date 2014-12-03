@@ -62,6 +62,7 @@
         'chromeos/dbus/async_event_sequencer.cc',
         'chromeos/dbus/data_serialization.cc',
         'chromeos/dbus/dbus.cc',
+        'chromeos/dbus/dbus_method_invoker.cc',
         'chromeos/dbus/dbus_method_response.cc',
         'chromeos/dbus/dbus_object.cc',
         'chromeos/dbus/dbus_signal.cc',

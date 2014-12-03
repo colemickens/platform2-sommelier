@@ -6,16 +6,20 @@
 // as if they were native C++ function calls.
 
 // CallMethodAndBlock (along with CallMethodAndBlockWithTimeout) lets you call
-// a D-Bus method and pass all the required parameters as C++ function
-// arguments. CallMethodAndBlock relies on automatic C++ to D-Bus data
+// a D-Bus method synchronously and pass all the required parameters as C++
+// function arguments. CallMethodAndBlock relies on automatic C++ to D-Bus data
 // serialization implemented in chromeos/dbus/data_serialization.h.
 // CallMethodAndBlock invokes the D-Bus method and returns the Response.
 
-// The method call response can (and should) be parsed with
-// ExtractMethodCallResults(). The method takes an optional list of pointers
-// to the expected return values of the D-Bus method.
+// The method call response should be parsed with ExtractMethodCallResults().
+// The method takes an optional list of pointers to the expected return values
+// of the D-Bus method.
 
-// Here is an example of usage.
+// CallMethod and CallMethodWithTimeout are similar to CallMethodAndBlock but
+// make the calls asynchronously. They take two callbacks: one for successful
+// method invocation and the second is for error conditions.
+
+// Here is an example of synchronous calls:
 // Call "std::string MyInterface::MyMethod(int, double)" over D-Bus:
 
 //  using chromeos::dbus_utils::CallMethodAndBlock;
@@ -34,6 +38,27 @@
 //    // An error occurred. Use |error| to get details.
 //  }
 
+// And here is how to call D-Bus methods asynchronously:
+// Call "std::string MyInterface::MyMethod(int, double)" over D-Bus:
+
+//  using chromeos::dbus_utils::CallMethod;
+//  using chromeos::dbus_utils::ExtractMethodCallResults;
+//
+//  void OnSuccess(const std::string& return_value) {
+//    // Use the |return_value|.
+//  }
+//
+//  void OnError(chromeos::Error* error) {
+//    // An error occurred. Use |error| to get details.
+//  }
+//
+//  chromeos::dbus_utils::CallMethod(obj,
+//                                   "org.chromium.MyService.MyInterface",
+//                                   "MyMethod",
+//                                   base::Bind(OnSuccess),
+//                                   base::Bind(OnError),
+//                                   2, 8.7);
+
 #ifndef LIBCHROMEOS_CHROMEOS_DBUS_DBUS_METHOD_INVOKER_H_
 #define LIBCHROMEOS_CHROMEOS_DBUS_DBUS_METHOD_INVOKER_H_
 
@@ -41,11 +66,13 @@
 #include <string>
 #include <tuple>
 
+#include <base/bind.h>
 #include <chromeos/dbus/dbus_param_reader.h>
 #include <chromeos/dbus/dbus_param_writer.h>
 #include <chromeos/dbus/utils.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/errors/error_codes.h>
+#include <chromeos/chromeos_export.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
@@ -184,6 +211,89 @@ inline bool ExtractMethodCallResults(dbus::Message* message,
     return false;
   }
   return ExtractMessageParameters(&reader, error, results...);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// Asynchronous method invocation support
+
+using AsyncErrorCallback = base::Callback<void(Error* error)>;
+
+// A helper function that translates dbus::ErrorResponse response
+// from D-Bus into chromeos::Error* and invokes the |callback|.
+void CHROMEOS_EXPORT TranslateErrorResponse(const AsyncErrorCallback& callback,
+                                            dbus::ErrorResponse* resp);
+
+// A helper function that translates dbus::Response from D-Bus into
+// a list of C++ values passed as parameters to |success_callback|. If the
+// response message doesn't have the correct number of parameters, or they
+// are of wrong types, an error is sent to |error_callback|.
+template<typename... OutArgs>
+void TranslateSuccessResponse(
+    const base::Callback<void(OutArgs...)>& success_callback,
+    const AsyncErrorCallback& error_callback,
+    dbus::Response* resp) {
+  auto callback = [&success_callback](const OutArgs&... params) {
+    if (!success_callback.is_null()) {
+      success_callback.Run(params...);
+    }
+  };
+  ErrorPtr error;
+  dbus::MessageReader reader(resp);
+  if (!DBusParamReader<false, OutArgs...>::Invoke(callback, &reader, &error) &&
+      !error_callback.is_null()) {
+    error_callback.Run(error.get());
+  }
+}
+
+// A helper method to dispatch a non-blocking D-Bus method call. Can specify
+// zero or more method call arguments in |params| which will be sent over D-Bus.
+// This method sends a D-Bus message and returns immediately.
+// When the remote method returns successfully, the success callback is
+// invoked with the return value(s), if any.
+// On error, the error callback is called. Note, the error callback can be
+// called synchronously (before CallMethodWithTimeout returns) if there was
+// a problem invoking a method (e.g. object or method doesn't exist).
+// If the response is not received within |timeout_ms|, an error callback is
+// called with DBUS_ERROR_NO_REPLY error code.
+template<typename... InArgs, typename... OutArgs>
+inline void CallMethodWithTimeout(
+    int timeout_ms,
+    dbus::ObjectProxy* object,
+    const std::string& interface_name,
+    const std::string& method_name,
+    const base::Callback<void(OutArgs...)>& success_callback,
+    const AsyncErrorCallback& error_callback,
+    const InArgs&... params) {
+  dbus::MethodCall method_call(interface_name, method_name);
+  dbus::MessageWriter writer(&method_call);
+  DBusParamWriter::Append(&writer, params...);
+
+  dbus::ObjectProxy::ErrorCallback dbus_error_callback =
+      base::Bind(&TranslateErrorResponse, error_callback);
+  dbus::ObjectProxy::ResponseCallback dbus_success_callback =
+      base::Bind(&TranslateSuccessResponse<OutArgs...>,
+                 success_callback, error_callback);
+
+  object->CallMethodWithErrorCallback(
+      &method_call, timeout_ms, dbus_success_callback, dbus_error_callback);
+}
+
+// Same as CallMethodWithTimeout() but uses a default timeout value.
+template<typename... InArgs, typename... OutArgs>
+inline void CallMethod(
+    dbus::ObjectProxy* object,
+    const std::string& interface_name,
+    const std::string& method_name,
+    const base::Callback<void(OutArgs...)>& success_callback,
+    const AsyncErrorCallback& error_callback,
+    const InArgs&... params) {
+  return CallMethodWithTimeout(dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+                               object,
+                               interface_name,
+                               method_name,
+                               success_callback,
+                               error_callback,
+                               params...);
 }
 
 }  // namespace dbus_utils
