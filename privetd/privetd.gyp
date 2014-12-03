@@ -51,6 +51,19 @@
           ],
           'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },
+        {
+          # Import D-Bus bindings from shill.
+          'action_name': 'generate-shill-proxies',
+          'variables': {
+            'dbus_service_config': '../shill/dbus_bindings/dbus-service-config.json',
+            'proxy_output_file': 'include/shill/dbus-proxies.h'
+          },
+          'sources': [
+            '../shill/dbus_bindings/org.chromium.flimflam.Manager.xml',
+            '../shill/dbus_bindings/org.chromium.flimflam.Service.xml',
+          ],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
       ],
       'includes': ['../common-mk/deps.gypi'],
     },
