@@ -34,11 +34,6 @@ class PermissionBroker {
   // interface. Never returns.
   void Run();
 
-  // Adds an exception to the rule processor that forces devices identified by
-  // |vendor_id| and |product_id| to be ignored by the broker, but to claim that
-  // they were successfully opened when requested.
-  void AddUsbException(const uint16_t vendor_id, const uint16_t product_id);
-
   // Adds |rule| to the end of the existing rule chain. Takes ownership of
   // |rule|.
   void AddRule(Rule* rule);
@@ -72,20 +67,11 @@ class PermissionBroker {
   // on the path to the one specified numerically by the 'access_group' flag.
   virtual bool GrantAccess(const std::string& path);
 
-  // Given |vendor_id| and |product_id|, scans the USB subsystem for devices
-  // whose idVendor and idProduct attributes match and inserts their device node
-  // paths into |path|, clearing |paths| first.
-  bool ExpandUsbIdentifiersToPaths(const uint16_t vendor_id,
-                                   const uint16_t product_id,
-                                   std::vector<std::string>* paths);
-
   DBusMessage* HandleRequestPathAccessMethod(DBusMessage* message);
-  DBusMessage* HandleRequestUsbAccessMethod(DBusMessage* message);
 
   struct udev* udev_;
   gid_t access_group_;
   std::vector<Rule*> rules_;
-  std::set<std::pair<uint16_t, uint16_t>> usb_exceptions_;
 
   int poll_interval_msecs_;
   std::string udev_run_path_;
