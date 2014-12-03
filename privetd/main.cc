@@ -26,7 +26,7 @@
 #include "privetd/device_delegate.h"
 #include "privetd/peerd_client.h"
 #include "privetd/privet_handler.h"
-#include "privetd/security_delegate.h"
+#include "privetd/security_manager.h"
 #include "privetd/wifi_bootstrap_manager.h"
 
 namespace {
@@ -64,7 +64,7 @@ class Daemon : public chromeos::DBusDaemon {
     cloud_ = privetd::CloudDelegate::CreateDefault(
         bus_, device_.get(),
         base::Bind(&Daemon::OnChanged, base::Unretained(this)));
-    security_ = privetd::SecurityDelegate::CreateDefault();
+    security_.reset(new privetd::SecurityManager());
     wifi_bootstrap_manager_.reset(new privetd::WifiBootstrapManager(
         state_store_.get()));
     wifi_bootstrap_manager_->Init();
@@ -177,7 +177,7 @@ class Daemon : public chromeos::DBusDaemon {
   std::unique_ptr<privetd::DaemonState> state_store_;
   std::unique_ptr<privetd::CloudDelegate> cloud_;
   std::unique_ptr<privetd::DeviceDelegate> device_;
-  std::unique_ptr<privetd::SecurityDelegate> security_;
+  std::unique_ptr<privetd::SecurityManager> security_;
   std::unique_ptr<privetd::WifiBootstrapManager> wifi_bootstrap_manager_;
   std::unique_ptr<privetd::PrivetHandler> privet_handler_;
   libwebserv::Server http_server_;

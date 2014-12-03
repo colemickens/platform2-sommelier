@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "privetd/security_delegate.h"
+#include "privetd/security_manager.h"
 
 #include <algorithm>
 #include <limits>
 #include <memory>
+#include <vector>
 
 #include <openssl/bio.h>
 #include <openssl/evp.h>
@@ -19,7 +20,6 @@
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
-#include <chromeos/secure_blob.h>
 #include <chromeos/strings/string_utils.h>
 
 namespace privetd {
@@ -88,93 +88,6 @@ AuthScope SplitTokenData(const std::string& token, base::Time* time) {
   *time = base::Time::FromTimeT(timestamp);
   return static_cast<AuthScope>(scope);
 }
-
-class SecurityDelegateImpl : public SecurityDelegate {
- public:
-  SecurityDelegateImpl() : secret_(kSha256OutputSize) {
-    base::RandBytes(secret_.data(), kSha256OutputSize);
-  }
-  ~SecurityDelegateImpl() override {}
-
-  // SecurityDelegate methods
-  // Returns "base64([hmac]scope:time)".
-  std::string CreateAccessToken(AuthScope scope,
-                                const base::Time& time) const override {
-    chromeos::SecureBlob data(CreateTokenData(scope, time));
-    chromeos::SecureBlob hash(HmacSha256(secret_, data));
-    return Base64Encode(chromeos::SecureBlob::Combine(hash, data));
-  }
-
-  // Parses "base64([hmac]scope:time)".
-  AuthScope ParseAccessToken(const std::string& token,
-                             base::Time* time) const override {
-    chromeos::Blob decoded = Base64Decode(token);
-    if (decoded.size() <= kSha256OutputSize)
-      return AuthScope::kNone;
-    chromeos::SecureBlob data(decoded.begin() + kSha256OutputSize,
-                              decoded.end());
-    decoded.resize(kSha256OutputSize);
-    if (decoded != HmacSha256(secret_, data))
-      return AuthScope::kNone;
-    return SplitTokenData(data.to_string(), time);
-  }
-
-  std::vector<PairingType> GetPairingTypes() const override {
-    return {PairingType::kEmbeddedCode};
-  }
-
-  bool IsValidPairingCode(const std::string& auth_code) const override {
-    return auth_code == GetPairingSecret();
-  }
-
-  Error StartPairing(PairingType mode,
-                     std::string* session_id,
-                     std::string* device_commitment) override {
-    *session_id = session_id_;
-    *device_commitment = device_commitment_;
-    return Error::kNone;
-  }
-
-  Error ConfirmPairing(const std::string& sessionId,
-                       const std::string& client_commitment,
-                       std::string* fingerprint,
-                       std::string* signature) override {
-    if (sessionId != session_id_)
-      return Error::kUnknownSession;
-    CHECK(!TLS_certificate_fingerprint_.empty());
-    client_commitment_ = client_commitment;
-    *fingerprint = Base64Encode(TLS_certificate_fingerprint_);
-    chromeos::SecureBlob cert_hmac = HmacSha256(
-        chromeos::SecureBlob(GetPairingSecret()), TLS_certificate_fingerprint_);
-    *signature = Base64Encode(cert_hmac);
-    return Error::kNone;
-  }
-
-  void InitTlsData() override;
-
-  const chromeos::SecureBlob& GetTlsPrivateKey() const override {
-    CHECK(!TLS_private_key_.empty()) << "InitTlsData must be called first";
-    return TLS_private_key_;
-  }
-
-  const chromeos::Blob& GetTlsCertificate() const override {
-    CHECK(!TLS_certificate_.empty()) << "InitTlsData must be called first";
-    return TLS_certificate_;
-  }
-
- private:
-  std::string GetPairingSecret() const {
-    return device_commitment_ + client_commitment_;
-  }
-
-  std::string session_id_ = "111";
-  std::string client_commitment_;
-  std::string device_commitment_ = "1234";
-  chromeos::SecureBlob secret_;
-  chromeos::Blob TLS_certificate_;
-  chromeos::Blob TLS_certificate_fingerprint_;
-  chromeos::SecureBlob TLS_private_key_;
-};
 
 std::unique_ptr<X509, void(*)(X509*)> CreateCertificate(
     int serial_number,
@@ -254,7 +167,64 @@ chromeos::Blob GetSha256Fingerprint(X509* cert) {
 
 }  // namespace
 
-void SecurityDelegateImpl::InitTlsData() {
+SecurityManager::SecurityManager() : secret_(kSha256OutputSize) {
+  base::RandBytes(secret_.data(), kSha256OutputSize);
+}
+
+// Returns "base64([hmac]scope:time)".
+std::string SecurityManager::CreateAccessToken(AuthScope scope,
+                                               const base::Time& time) const {
+  chromeos::SecureBlob data(CreateTokenData(scope, time));
+  chromeos::SecureBlob hash(HmacSha256(secret_, data));
+  return Base64Encode(chromeos::SecureBlob::Combine(hash, data));
+}
+
+// Parses "base64([hmac]scope:time)".
+privetd::AuthScope SecurityManager::ParseAccessToken(const std::string& token,
+                                                     base::Time* time) const {
+  chromeos::Blob decoded = Base64Decode(token);
+  if (decoded.size() <= kSha256OutputSize)
+    return AuthScope::kNone;
+  chromeos::SecureBlob data(decoded.begin() + kSha256OutputSize, decoded.end());
+  decoded.resize(kSha256OutputSize);
+  if (decoded != HmacSha256(secret_, data))
+    return AuthScope::kNone;
+  return SplitTokenData(data.to_string(), time);
+}
+
+std::vector<PairingType> SecurityManager::GetPairingTypes() const {
+  return {PairingType::kEmbeddedCode};
+}
+
+bool SecurityManager::IsValidPairingCode(const std::string& auth_code) const {
+  return auth_code == GetPairingSecret();
+}
+
+privetd::Error SecurityManager::StartPairing(PairingType mode,
+                                             std::string* session_id,
+                                             std::string* device_commitment) {
+  *session_id = session_id_;
+  *device_commitment = device_commitment_;
+  return Error::kNone;
+}
+
+privetd::Error SecurityManager::ConfirmPairing(
+    const std::string& sessionId,
+    const std::string& client_commitment,
+    std::string* fingerprint,
+    std::string* signature) {
+  if (sessionId != session_id_)
+    return Error::kUnknownSession;
+  CHECK(!TLS_certificate_fingerprint_.empty());
+  client_commitment_ = client_commitment;
+  *fingerprint = Base64Encode(TLS_certificate_fingerprint_);
+  chromeos::SecureBlob cert_hmac = HmacSha256(
+      chromeos::SecureBlob(GetPairingSecret()), TLS_certificate_fingerprint_);
+  *signature = Base64Encode(cert_hmac);
+  return Error::kNone;
+}
+
+void SecurityManager::InitTlsData() {
   CHECK(TLS_certificate_.empty() && TLS_private_key_.empty());
 
   // TODO(avakulenko): verify these constants and provide sensible values
@@ -277,8 +247,8 @@ void SecurityDelegateImpl::InitTlsData() {
   chromeos::SecureBlob private_key = StroreRSAPrivateKey(rsa_key_pair.get());
 
   // Create EVP key and set it to the certificate.
-  auto key = std::unique_ptr<EVP_PKEY, void(*)(EVP_PKEY*)>{
-      EVP_PKEY_new(), EVP_PKEY_free};
+  auto key = std::unique_ptr<EVP_PKEY, void (*)(EVP_PKEY*)>{EVP_PKEY_new(),
+                                                            EVP_PKEY_free};
   CHECK(key.get());
   // Transfer ownership of |rsa_key_pair| to |key|.
   CHECK(EVP_PKEY_assign_RSA(key.get(), rsa_key_pair.release()));
@@ -292,9 +262,14 @@ void SecurityDelegateImpl::InitTlsData() {
   TLS_private_key_ = std::move(private_key);
 }
 
-// static
-std::unique_ptr<SecurityDelegate> SecurityDelegate::CreateDefault() {
-  return std::unique_ptr<SecurityDelegate>(new SecurityDelegateImpl);
+const chromeos::SecureBlob& SecurityManager::GetTlsPrivateKey() const {
+  CHECK(!TLS_private_key_.empty()) << "InitTlsData must be called first";
+  return TLS_private_key_;
+}
+
+const chromeos::Blob& SecurityManager::GetTlsCertificate() const {
+  CHECK(!TLS_certificate_.empty()) << "InitTlsData must be called first";
+  return TLS_certificate_;
 }
 
 }  // namespace privetd

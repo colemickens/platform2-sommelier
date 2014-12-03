@@ -20,7 +20,7 @@
         'device_delegate.cc',
         'peerd_client.cc',
         'privet_handler.cc',
-        'security_delegate.cc',
+        'security_manager.cc',
         'wifi_bootstrap_manager.cc',
       ],
       'actions': [
@@ -89,7 +89,7 @@
           'sources': [
             'privetd_testrunner.cc',
             'privet_handler_unittest.cc',
-            'security_delegate_unittest.cc',
+            'security_manager_unittest.cc',
           ],
         },
       ],
