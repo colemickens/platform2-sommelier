@@ -16,17 +16,39 @@ namespace privetd {
 PeerdClient::PeerdClient(const scoped_refptr<dbus::Bus>& bus,
                          const DeviceDelegate& device,
                          const CloudDelegate* cloud)
-    : manager_proxy_{bus}, device_{device}, cloud_{cloud} {
+    : peerd_object_manager_proxy_{bus}, device_{device}, cloud_{cloud} {
+  peerd_object_manager_proxy_.SetManagerAddedCallback(
+      base::Bind(&PeerdClient::OnPeerdOnline, weak_ptr_factory_.GetWeakPtr()));
+  peerd_object_manager_proxy_.SetManagerRemovedCallback(
+      base::Bind(&PeerdClient::OnPeerdOffline, weak_ptr_factory_.GetWeakPtr()));
 }
 
 PeerdClient::~PeerdClient() {
   Stop();
 }
 
+void PeerdClient::OnPeerdOnline(
+    org::chromium::peerd::ManagerProxy* manager_proxy) {
+  peerd_manager_proxy_ = manager_proxy;
+  VLOG(1) << "Peerd manager is online at '"
+          << manager_proxy->GetObjectPath().value() << "'.";
+  Start();
+}
+
+void PeerdClient::OnPeerdOffline(const dbus::ObjectPath& object_path) {
+  peerd_manager_proxy_ = nullptr;
+  service_token_.clear();
+  VLOG(1) << "Peerd manager is now offline.";
+}
+
 void PeerdClient::Start() {
   CHECK(service_token_.empty());
-  chromeos::ErrorPtr error;
 
+  // If peerd hasn't started yet, don't do anything.
+  if (peerd_manager_proxy_ == nullptr)
+    return;
+
+  VLOG(1) << "Starting peerd advertising.";
   const uint16_t port = device_.GetHttpEnpoint().first;
   std::map<std::string, chromeos::Any> mdns_options{
       {"port", chromeos::Any{port}},
@@ -59,19 +81,21 @@ void PeerdClient::Start() {
   if (!device_.GetDescription().empty())
     txt_record.emplace("description", device_.GetDescription());
 
-  if (!manager_proxy_.ExposeService("privet", txt_record,
-                                    {{"mdns", mdns_options}}, &service_token_,
-                                    &error)) {
+  chromeos::ErrorPtr error;
+  if (!peerd_manager_proxy_->ExposeService("privet", txt_record,
+                                           {{"mdns", mdns_options}},
+                                           &service_token_, &error)) {
     LOG(ERROR) << "ExposeService failed:" << error->GetMessage();
   }
 }
 
 void PeerdClient::Stop() {
-  if (service_token_.empty())
+  if (service_token_.empty() || peerd_manager_proxy_ == nullptr)
     return;
-  chromeos::ErrorPtr error;
 
-  if (!manager_proxy_.RemoveExposedService(service_token_, &error)) {
+  VLOG(1) << "Stopping peerd advertising.";
+  chromeos::ErrorPtr error;
+  if (!peerd_manager_proxy_->RemoveExposedService(service_token_, &error)) {
     LOG(ERROR) << "RemoveExposedService failed:" << error->GetMessage();
   }
   service_token_.clear();

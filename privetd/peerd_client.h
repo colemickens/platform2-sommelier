@@ -37,12 +37,19 @@ class PeerdClient {
   void Stop();
 
  private:
-  org::chromium::peerd::ManagerProxy manager_proxy_;
+  void OnPeerdOnline(org::chromium::peerd::ManagerProxy* manager_proxy);
+  void OnPeerdOffline(const dbus::ObjectPath& object_path);
+
+  org::chromium::peerd::ObjectManagerProxy peerd_object_manager_proxy_;
+  // |peerd_manager_proxy_| is owned by |peerd_object_manager_proxy_|.
+  org::chromium::peerd::ManagerProxy* peerd_manager_proxy_{nullptr};
 
   std::string service_token_;
 
   const DeviceDelegate& device_;
   const CloudDelegate* cloud_{nullptr};  // Can be nullptr.
+
+  base::WeakPtrFactory<PeerdClient> weak_ptr_factory_{this};
 };
 
 }  // namespace privetd
