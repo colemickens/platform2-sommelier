@@ -67,13 +67,6 @@ bool IsEqualJson(const std::string& test_json,
   return it1.IsAtEnd() && it2.IsAtEnd();
 }
 
-bool IsNotEqualJson(const std::string& test_json,
-                    const base::DictionaryValue& dictionary) {
-  base::DictionaryValue dictionary2;
-  LoadTestJson(test_json, &dictionary2);
-  return !dictionary.Equals(&dictionary2);
-}
-
 }  // namespace
 
 class MockDeviceDelegate : public DeviceDelegate {
@@ -121,8 +114,10 @@ class MockSecurityDelegate : public SecurityDelegate {
   MOCK_CONST_METHOD2(ParseAccessToken,
                      AuthScope(const std::string&, base::Time*));
   MOCK_CONST_METHOD0(GetPairingTypes, std::vector<PairingType>());
+  MOCK_CONST_METHOD0(GetCryptoTypes, std::vector<CryptoType>());
   MOCK_CONST_METHOD1(IsValidPairingCode, bool(const std::string&));
-  MOCK_METHOD3(StartPairing, Error(PairingType, std::string*, std::string*));
+  MOCK_METHOD4(StartPairing,
+               Error(PairingType, CryptoType, std::string*, std::string*));
   MOCK_METHOD4(ConfirmPairing,
                Error(const std::string&,
                      const std::string&,
@@ -130,12 +125,12 @@ class MockSecurityDelegate : public SecurityDelegate {
                      std::string*));
 
   MockSecurityDelegate() {
-    EXPECT_CALL(*this, CreateAccessToken(AuthScope::kOwner, _))
-        .WillRepeatedly(Return("TestAccessToken"));
+    EXPECT_CALL(*this, CreateAccessToken(_, _))
+        .WillRepeatedly(Return("GuestAccessToken"));
 
     EXPECT_CALL(*this, ParseAccessToken(_, _))
         .WillRepeatedly(DoAll(SetArgPointee<1>(base::Time::Now()),
-                              Return(AuthScope::kOwner)));
+                              Return(AuthScope::kGuest)));
 
     EXPECT_CALL(*this, GetPairingTypes())
         .WillRepeatedly(Return(std::vector<PairingType>{
@@ -145,9 +140,14 @@ class MockSecurityDelegate : public SecurityDelegate {
             PairingType::kAudibleDtmfBroadcaster,
         }));
 
-    EXPECT_CALL(*this, StartPairing(_, _, _))
-        .WillRepeatedly(DoAll(SetArgPointee<1>("testSession"),
-                              SetArgPointee<2>("testCommitment"),
+    EXPECT_CALL(*this, GetCryptoTypes())
+        .WillRepeatedly(Return(std::vector<CryptoType>{
+            CryptoType::kSpake_p224, CryptoType::kSpake_p256,
+        }));
+
+    EXPECT_CALL(*this, StartPairing(_, _, _, _))
+        .WillRepeatedly(DoAll(SetArgPointee<2>("testSession"),
+                              SetArgPointee<3>("testCommitment"),
                               Return(Error::kNone)));
 
     EXPECT_CALL(*this, ConfirmPairing(_, _, _, _))
@@ -296,6 +296,8 @@ TEST_F(PrivetHandlerTest, InfoMinimal) {
   SetNoWifiAndGcd();
   EXPECT_CALL(security_, GetPairingTypes())
       .WillRepeatedly(Return(std::vector<PairingType>{}));
+  EXPECT_CALL(security_, GetCryptoTypes())
+      .WillRepeatedly(Return(std::vector<CryptoType>{}));
 
   const char kExpected[] = R"({
     'version': '3.0',
@@ -318,7 +320,6 @@ TEST_F(PrivetHandlerTest, InfoMinimal) {
       'pairing': [
       ],
       'crypto': [
-        'p256_spake2'
       ]
     },
     'uptime': 3600,
@@ -376,6 +377,7 @@ TEST_F(PrivetHandlerTest, Info) {
         'audibleDtmfBroadcaster'
       ],
       'crypto': [
+        'p224_spake2',
         'p256_spake2'
       ]
     },
@@ -456,8 +458,7 @@ TEST_F(PrivetHandlerTest, AuthErrorInvalidScope) {
 }
 
 TEST_F(PrivetHandlerTest, AuthErrorAccessDenied) {
-  // TODO(vitalybuka): Should fail when pairing is implemented.
-  EXPECT_PRED2(IsNotEqualJson, "{'reason':'accessDenied'}",
+  EXPECT_PRED2(IsEqualJson, "{'reason':'accessDenied'}",
                HandleRequest("/privet/v3/auth",
                              "{'mode':'anonymous','requestedScope':'owner'}"));
 }
@@ -476,11 +477,10 @@ TEST_F(PrivetHandlerTest, AuthErrorInvalidAuthCode) {
 }
 
 TEST_F(PrivetHandlerTest, AuthAnonymous) {
-  // TODO(vitalybuka): Should have anonymous scope when pairing is implemented.
   const char kExpected[] = R"({
-    'accessToken': 'TestAccessToken',
+    'accessToken': 'GuestAccessToken',
     'expiresIn': 3600,
-    'scope': 'owner',
+    'scope': 'guest',
     'tokenType': 'Privet'
   })";
   EXPECT_PRED2(IsEqualJson, kExpected,
@@ -491,14 +491,15 @@ TEST_F(PrivetHandlerTest, AuthAnonymous) {
 TEST_F(PrivetHandlerTest, AuthPairing) {
   EXPECT_CALL(security_, IsValidPairingCode("testToken"))
       .WillRepeatedly(Return(true));
-
+  EXPECT_CALL(security_, CreateAccessToken(_, _))
+      .WillRepeatedly(Return("OwnerAccessToken"));
   const char kInput[] = R"({
     'mode': 'pairing',
     'requestedScope': 'owner',
     'authCode': 'testToken'
   })";
   const char kExpected[] = R"({
-    'accessToken': 'TestAccessToken',
+    'accessToken': 'OwnerAccessToken',
     'expiresIn': 3600,
     'scope': 'owner',
     'tokenType': 'Privet'
@@ -512,6 +513,9 @@ class PrivetHandlerSetupTest : public PrivetHandlerTest {
   void SetUp() override {
     PrivetHandlerTest::SetUp();
     auth_header_ = "Privet 123";
+    EXPECT_CALL(security_, ParseAccessToken(_, _))
+        .WillRepeatedly(DoAll(SetArgPointee<1>(base::Time::Now()),
+                              Return(AuthScope::kOwner)));
   }
 };
 

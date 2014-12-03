@@ -64,7 +64,8 @@ class Daemon : public chromeos::DBusDaemon {
     cloud_ = privetd::CloudDelegate::CreateDefault(
         bus_, device_.get(),
         base::Bind(&Daemon::OnChanged, base::Unretained(this)));
-    security_.reset(new privetd::SecurityManager());
+    // TODO(vitalybuka): Provide real embeded password.
+    security_.reset(new privetd::SecurityManager("1234"));
     wifi_bootstrap_manager_.reset(new privetd::WifiBootstrapManager(
         state_store_.get()));
     wifi_bootstrap_manager_->Init();
@@ -196,8 +197,7 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(http_port, 8080, "HTTP port to listen for requests on");
   DEFINE_int32(https_port, 8081, "HTTPS port to listen for requests on");
   DEFINE_bool(log_to_stderr, false, "log trace messages to stderr as well");
-  DEFINE_string(state_path,
-                privetd::constants::kDefaultStateFilePath,
+  DEFINE_string(state_path, privetd::kDefaultStateFilePath,
                 "Path to file containing state information.");
 
   chromeos::FlagHelper::Init(argc, argv, "Privet protocol handler daemon");

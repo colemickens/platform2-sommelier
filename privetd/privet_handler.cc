@@ -57,8 +57,6 @@ const char kInfoEndpointsHttpsUpdatePortKey[] = "httpsUpdatesPort";
 
 const char kInfoAuthenticationKey[] = "authentication";
 
-const char kCryptoP256Spake2Value[] = "p256_spake2";
-
 const char kInfoWifiCapabilitiesKey[] = "capabilities";
 const char kInfoWifiSsidKey[] = "ssid";
 const char kInfoWifiHostedSsidKey[] = "hostedSsid";
@@ -196,6 +194,12 @@ const EnumToStringMap<PairingType>::Map EnumToStringMap<PairingType>::kMap[] = {
     {PairingType::kEmbeddedCode, "embeddedCode"},
     {PairingType::kUltrasoundDsssBroadcaster, "ultrasoundDsssBroadcaster"},
     {PairingType::kAudibleDtmfBroadcaster, "audibleDtmfBroadcaster"},
+};
+
+template <>
+const EnumToStringMap<CryptoType>::Map EnumToStringMap<CryptoType>::kMap[] = {
+    {CryptoType::kSpake_p224, "p224_spake2"},
+    {CryptoType::kSpake_p256, "p256_spake2"},
 };
 
 template <>
@@ -371,25 +375,29 @@ void PrivetHandler::HandleInfo(const base::DictionaryValue&,
 
 void PrivetHandler::HandlePairingStart(const base::DictionaryValue& input,
                                        const RequestCallback& callback) {
-  std::string mode;
-  input.GetString(kPairingKey, &mode);
+  std::string pairing_str;
+  input.GetString(kPairingKey, &pairing_str);
 
-  std::string crypto;
-  input.GetString(kCryptoKey, &crypto);
-
-  if (crypto != kCryptoP256Spake2Value)
-    return ReturnError(Error::kInvalidParams, callback);
+  std::string crypto_str;
+  input.GetString(kCryptoKey, &crypto_str);
 
   PairingType pairing;
   std::vector<PairingType> modes = security_->GetPairingTypes();
-  if (crypto != kCryptoP256Spake2Value || !StringToEnum(mode, &pairing) ||
+  if (!StringToEnum(pairing_str, &pairing) ||
       std::find(modes.begin(), modes.end(), pairing) == modes.end()) {
+    return ReturnError(Error::kInvalidParams, callback);
+  }
+
+  CryptoType crypto;
+  std::vector<CryptoType> cryptos = security_->GetCryptoTypes();
+  if (!StringToEnum(crypto_str, &crypto) ||
+      std::find(cryptos.begin(), cryptos.end(), crypto) == cryptos.end()) {
     return ReturnError(Error::kInvalidParams, callback);
   }
 
   std::string id;
   std::string commitment;
-  Error error = security_->StartPairing(pairing, &id, &commitment);
+  Error error = security_->StartPairing(pairing, crypto, &id, &commitment);
   if (error != Error::kNone)
     return ReturnError(error, callback);
 
@@ -430,8 +438,7 @@ void PrivetHandler::HandleAuth(const base::DictionaryValue& input,
 
   AuthScope max_auth_scope = AuthScope::kNone;
   if (auth_code_type == kAuthTypeAnonymousValue) {
-    // TODO(vitalybuka): Change to kAnonymous when pairing is implemented.
-    max_auth_scope = AuthScope::kOwner;
+    max_auth_scope = AuthScope::kGuest;
   } else if (auth_code_type == kAuthTypePairingValue) {
     if (!security_->IsValidPairingCode(auth_code))
       return ReturnError(Error::kInvalidAuthCode, callback);
@@ -566,7 +573,8 @@ std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateInfoAuthSection()
   auth->Set(kAuthModeKey, auth_types.release());
 
   std::unique_ptr<base::ListValue> crypto_types(new base::ListValue());
-  crypto_types->AppendString(kCryptoP256Spake2Value);
+  for (CryptoType type : security_->GetCryptoTypes())
+    crypto_types->AppendString(EnumToString(type));
   auth->Set(kCryptoKey, crypto_types.release());
 
   return std::move(auth);

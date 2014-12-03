@@ -32,6 +32,11 @@ enum class AuthScope {
   kOwner,
 };
 
+enum class CryptoType {
+  kSpake_p224,
+  kSpake_p256,
+};
+
 // Interface to provide Security related logic for |PrivetHandler|.
 class SecurityDelegate {
  public:
@@ -48,11 +53,15 @@ class SecurityDelegate {
   // Returns list of pairing methods by device.
   virtual std::vector<PairingType> GetPairingTypes() const = 0;
 
+  // Returns list of crypto methods supported by devices.
+  virtual std::vector<CryptoType> GetCryptoTypes() const = 0;
+
   // Returns true if |auth_code| provided by client is valid. Client should
   // obtain |auth_code| during pairing process.
   virtual bool IsValidPairingCode(const std::string& auth_code) const = 0;
 
   virtual Error StartPairing(PairingType mode,
+                             CryptoType crypto,
                              std::string* session_id,
                              std::string* device_commitment) = 0;
 

@@ -6,11 +6,16 @@
 #define PRIVETD_CONSTANTS_H_
 
 namespace privetd {
-namespace constants {
 
 extern const char kDefaultStateFilePath[];
 
-}  // namespace constants
+namespace errors {
+
+extern const char kPrivetdErrorDomain[];
+extern const char kInvalidSpakeMessage[];
+
+}  // namespace errors
+
 }  // namespace privetd
 
 #endif  // PRIVETD_CONSTANTS_H_

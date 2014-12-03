@@ -5,18 +5,36 @@
 #ifndef PRIVETD_SECURITY_MANAGER_H_
 #define PRIVETD_SECURITY_MANAGER_H_
 
+#include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
+#include <base/memory/weak_ptr.h>
+#include <chromeos/errors/error.h>
 #include <chromeos/secure_blob.h>
 
 #include "privetd/security_delegate.h"
+
+namespace crypto {
+class P224EncryptedKeyExchange;
+}  // namespace crypto
 
 namespace privetd {
 
 class SecurityManager : public SecurityDelegate {
  public:
-  SecurityManager();
+  class KeyExchanger {
+   public:
+    virtual ~KeyExchanger() = default;
+
+    virtual const std::string& GetMessage() = 0;
+    virtual bool ProcessMessage(const std::string& message,
+                                chromeos::ErrorPtr* error) = 0;
+    virtual const std::string& GetKey() const = 0;
+  };
+
+  explicit SecurityManager(const std::string& embedded_password);
   ~SecurityManager() override = default;
 
   // SecurityDelegate methods
@@ -25,10 +43,13 @@ class SecurityManager : public SecurityDelegate {
   AuthScope ParseAccessToken(const std::string& token,
                              base::Time* time) const override;
   std::vector<PairingType> GetPairingTypes() const override;
+  std::vector<CryptoType> GetCryptoTypes() const override;
   bool IsValidPairingCode(const std::string& auth_code) const override;
   Error StartPairing(PairingType mode,
+                     CryptoType crypto,
                      std::string* session_id,
                      std::string* device_commitment) override;
+
   Error ConfirmPairing(const std::string& sessionId,
                        const std::string& client_commitment,
                        std::string* fingerprint,
@@ -39,17 +60,16 @@ class SecurityManager : public SecurityDelegate {
   const chromeos::Blob& GetTlsCertificate() const;
 
  private:
-  std::string GetPairingSecret() const {
-    return device_commitment_ + client_commitment_;
-  }
+  void CloseSession(const std::string& session_id);
 
-  std::string session_id_ = "111";
-  std::string client_commitment_;
-  std::string device_commitment_ = "1234";
+  std::string embedded_password_;
+  std::map<std::string, std::unique_ptr<KeyExchanger> > sessions_;
   chromeos::SecureBlob secret_;
   chromeos::Blob TLS_certificate_;
   chromeos::Blob TLS_certificate_fingerprint_;
   chromeos::SecureBlob TLS_private_key_;
+
+  base::WeakPtrFactory<SecurityManager> weak_ptr_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(SecurityManager);
 };

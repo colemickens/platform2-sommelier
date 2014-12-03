@@ -8,6 +8,11 @@
         'libchromeos-<(libbase_ver)',
       ],
     },
+    'link_settings': {
+      'libraries': [
+        '-lchrome_crypto',
+      ],
+    },
   },
   'targets': [
     {

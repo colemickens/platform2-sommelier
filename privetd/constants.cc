@@ -5,9 +5,14 @@
 #include "privetd/constants.h"
 
 namespace privetd {
-namespace constants {
 
 const char kDefaultStateFilePath[] = "/var/lib/privetd/privetd.state";
 
-}  // namespace constants
+namespace errors {
+
+const char kPrivetdErrorDomain[] = "privetd";
+const char kInvalidSpakeMessage[] = "invalid_spake_message";
+
+}  // namespace errors
+
 }  // namespace privetd

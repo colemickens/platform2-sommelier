@@ -8,11 +8,16 @@
 #include <cctype>
 #include <functional>
 #include <memory>
+#include <utility>
 
 #include <base/logging.h>
-#include <base/strings/string_util.h>
+#include <base/message_loop/message_loop.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+#include <crypto/p224_spake.h>
 #include <gtest/gtest.h>
+
+#include "privetd/openssl_utils.h"
 
 namespace privetd {
 
@@ -33,7 +38,8 @@ bool IsBase64(const std::string& text) {
 class SecurityManagerTest : public testing::Test {
  protected:
   const base::Time time_ = base::Time::FromTimeT(1410000000);
-  SecurityManager security_;
+  base::MessageLoop message_loop_;
+  SecurityManager security_{"1234"};
 };
 
 TEST_F(SecurityManagerTest, IsBase64) {
@@ -58,13 +64,13 @@ TEST_F(SecurityManagerTest, CreateTokenDifferentTime) {
 
 TEST_F(SecurityManagerTest, CreateTokenDifferentInstance) {
   EXPECT_NE(security_.CreateAccessToken(AuthScope::kGuest, time_),
-            SecurityManager().CreateAccessToken(AuthScope::kGuest, time_));
+            SecurityManager("555").CreateAccessToken(AuthScope::kGuest, time_));
 }
 
 TEST_F(SecurityManagerTest, ParseAccessToken) {
   // Multiple attempts with random secrets.
   for (size_t i = 0; i < 1000; ++i) {
-    SecurityManager security;
+    SecurityManager security{"0987"};
     std::string token = security.CreateAccessToken(AuthScope::kUser, time_);
     base::Time time2;
     EXPECT_EQ(AuthScope::kUser, security.ParseAccessToken(token, &time2));
@@ -97,30 +103,36 @@ TEST_F(SecurityManagerTest, PairingNoSession) {
 TEST_F(SecurityManagerTest, Pairing) {
   security_.InitTlsData();
 
-  std::string session_id;
-  std::string device_commitment;
-  EXPECT_EQ(Error::kNone,
-            security_.StartPairing(PairingType::kEmbeddedCode, &session_id,
-                                   &device_commitment));
-  EXPECT_FALSE(session_id.empty());
-  EXPECT_FALSE(device_commitment.empty());
+  std::vector<std::pair<std::string, std::string> > fingerprints(2);
+  for (auto& fingerprint : fingerprints) {
+    std::string session_id;
+    std::string device_commitment;
+    EXPECT_EQ(Error::kNone,
+              security_.StartPairing(PairingType::kEmbeddedCode,
+                                     CryptoType::kSpake_p224, &session_id,
+                                     &device_commitment));
+    EXPECT_FALSE(session_id.empty());
+    EXPECT_FALSE(device_commitment.empty());
 
-  std::string fingerprint1;
-  std::string signature1;
-  EXPECT_EQ(Error::kNone, security_.ConfirmPairing(session_id, "345",
-                                                   &fingerprint1, &signature1));
-  EXPECT_TRUE(IsBase64(fingerprint1));
-  EXPECT_TRUE(IsBase64(signature1));
+    crypto::P224EncryptedKeyExchange spake{
+        crypto::P224EncryptedKeyExchange::kPeerTypeServer, "1234"};
 
-  std::string fingerprint2;
-  std::string signature2;
-  EXPECT_EQ(Error::kNone, security_.ConfirmPairing(session_id, "678",
-                                                   &fingerprint2, &signature2));
-  EXPECT_TRUE(IsBase64(fingerprint2));
-  EXPECT_TRUE(IsBase64(signature2));
+    std::string client_commitment =
+        Base64Encode(chromeos::SecureBlob(spake.GetMessage()));
+    EXPECT_EQ(Error::kNone, security_.ConfirmPairing(
+                                session_id, client_commitment,
+                                &fingerprint.first, &fingerprint.second));
+    spake.ProcessMessage(device_commitment);
 
-  EXPECT_EQ(fingerprint1, fingerprint2);  // Same certificate.
-  EXPECT_NE(signature1, signature2);      // Signed with different secret.
+    EXPECT_TRUE(IsBase64(fingerprint.first));
+    EXPECT_TRUE(IsBase64(fingerprint.second));
+  }
+
+  // Same certificate.
+  EXPECT_EQ(fingerprints.front().first, fingerprints.back().first);
+
+  // Signed with different secret.
+  EXPECT_NE(fingerprints.front().second, fingerprints.back().second);
 }
 
 }  // namespace privetd
