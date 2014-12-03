@@ -1,3 +1,6 @@
 {
-  "service_name": "org.chromium.peerd"
+  "service_name": "org.chromium.peerd",
+  "object_manager": {
+    "object_path": "/org/chromium/peerd"
+  }
 }

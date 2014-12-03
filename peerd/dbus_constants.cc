@@ -12,28 +12,10 @@ const char kServiceName[] = "org.chromium.peerd";
 
 const char kRootServicePath[] = "/org/chromium/peerd";
 
-const char kManagerInterface[] = "org.chromium.peerd.Manager";
-const char kManagerServicePath[] = "/org/chromium/peerd/Manager";
-
-const char kManagerExposeService[] = "ExposeService";
-const char kManagerPing[] = "Ping";
-const char kManagerRemoveExposedService[] = "RemoveExposedService";
-const char kManagerStartMonitoring[] = "StartMonitoring";
-const char kManagerStopMonitoring[] = "StopMonitoring";
-
-const char kPeerInterface[] = "org.chromium.peerd.Peer";
 const char kSelfPath[] = "/org/chromium/peerd/Self";
 const char kPeerPrefix[] = "/org/chromium/peerd/peers/";
 
-const char kPeerLastSeen[] = "LastSeen";
-const char kPeerUUID[] = "UUID";
-
-const char kServiceInterface[] = "org.chromium.peerd.Service";
 const char kServicePathFragment[] = "/services/";
-
-const char kServiceId[] = "ServiceId";
-const char kServiceInfo[] = "ServiceInfo";
-const char kServiceIpInfos[] = "IpInfos";
 
 const char kPingResponse[] = "Hello world!";
 

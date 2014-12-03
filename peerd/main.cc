@@ -16,7 +16,6 @@
 using chromeos::DBusServiceDaemon;
 using chromeos::dbus_utils::AsyncEventSequencer;
 using peerd::Manager;
-using peerd::dbus_constants::kManagerServicePath;
 using peerd::dbus_constants::kRootServicePath;
 using peerd::dbus_constants::kServiceName;
 

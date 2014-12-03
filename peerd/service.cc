@@ -13,16 +13,11 @@
 using chromeos::Any;
 using chromeos::Error;
 using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::DBusInterface;
 using chromeos::dbus_utils::DBusObject;
 using chromeos::dbus_utils::ExportedObjectManager;
 using dbus::ObjectPath;
 using peerd::constants::options::service::kMDNSPort;
 using peerd::constants::options::service::kMDNSSectionName;
-using peerd::dbus_constants::kServiceId;
-using peerd::dbus_constants::kServiceInfo;
-using peerd::dbus_constants::kServiceInterface;
-using peerd::dbus_constants::kServiceIpInfos;
 using std::map;
 using std::string;
 using std::unique_ptr;

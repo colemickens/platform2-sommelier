@@ -15,34 +15,12 @@ extern const char kServiceName[];
 // Path of the ObjectManager.
 extern const char kRootServicePath[];
 
-// Interface implemented by the object at kManagerServicePath.
-extern const char kManagerInterface[];
-extern const char kManagerServicePath[];
-
-// Methods exposed as part of kManagerInterface.
-extern const char kManagerExposeService[];
-extern const char kManagerPing[];
-extern const char kManagerRemoveExposedService[];
-extern const char kManagerStartMonitoring[];
-extern const char kManagerStopMonitoring[];
-
 // Interface implemented by the objects at kSelfPath and under kPeerPrefix.
-extern const char kPeerInterface[];
 extern const char kSelfPath[];
 extern const char kPeerPrefix[];
 
-// Properties exposed as part of kPeerInterface.
-extern const char kPeerLastSeen[];
-extern const char kPeerUUID[];
-
 // Interface implemented by the service objects.
-extern const char kServiceInterface[];
 extern const char kServicePathFragment[];
-
-// Properties exposed as part of kServiceInterface.
-extern const char kServiceId[];
-extern const char kServiceInfo[];
-extern const char kServiceIpInfos[];
 
 extern const char kPingResponse[];
 
