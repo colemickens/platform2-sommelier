@@ -94,6 +94,23 @@ bool LoadConfig(const base::FilePath& path, ServiceConfig *config) {
     }
     om_dict->GetStringWithoutPathExpansion("object_path",
                                            &config->object_manager.object_path);
+    if (config->object_manager.name.empty()) {
+      LOG(ERROR) << "Object manager name is missing.";
+      return false;
+    }
+  }
+
+  base::ListValue* list = nullptr;  // Owned by |dict|.
+  if (dict->GetListWithoutPathExpansion("ignore_interfaces", &list)) {
+    config->ignore_interfaces.reserve(list->GetSize());
+    for (base::Value* item : *list) {
+      std::string interface_name;
+      if (!item->GetAsString(&interface_name)) {
+        LOG(ERROR) << "Invalid interface name in [ignore_interfaces] section";
+        return false;
+      }
+      config->ignore_interfaces.push_back(interface_name);
+    }
   }
 
   return true;
@@ -121,6 +138,16 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  ServiceConfig config;
+  if (cl->HasSwitch(switches::kServiceConfig)) {
+    std::string config_file = cl->GetSwitchValueASCII(switches::kServiceConfig);
+    if (!config_file.empty() &&
+        !LoadConfig(SanitizeFilePath(config_file), &config)) {
+      LOG(ERROR) << "Failed to load DBus service config file " << config_file;
+      return 1;
+    }
+  }
+
   chromeos_dbus_bindings::XmlInterfaceParser parser;
   for (const auto& input : input_files) {
     std::string contents;
@@ -128,18 +155,8 @@ int main(int argc, char** argv) {
       LOG(ERROR) << "Failed to read file " << input;
       return 1;
     }
-    if (!parser.ParseXmlInterfaceFile(contents)) {
+    if (!parser.ParseXmlInterfaceFile(contents, config.ignore_interfaces)) {
       LOG(ERROR) << "Failed to parse interface file.";
-      return 1;
-    }
-  }
-
-  ServiceConfig config;
-  if (cl->HasSwitch(switches::kServiceConfig)) {
-    std::string config_file = cl->GetSwitchValueASCII(switches::kServiceConfig);
-    if (!config_file.empty() &&
-        !LoadConfig(SanitizeFilePath(config_file), &config)) {
-      LOG(ERROR) << "Failed to load DBus service config file " << config_file;
       return 1;
     }
   }

@@ -38,6 +38,7 @@ const char kGoodInterfaceFileContents[] = R"literal_string(
       <arg name="BSS" type="o"/>
     </signal>
   </interface>
+  <interface name="DummyInterface" />
   <node name="/"/>
   <node/>
 </node>
@@ -64,12 +65,13 @@ class XmlInterfaceParserTest : public Test {
 };
 
 TEST_F(XmlInterfaceParserTest, BadInputFile) {
-  EXPECT_FALSE(parser_.ParseXmlInterfaceFile(kBadInterfaceFileContents0));
-  EXPECT_FALSE(parser_.ParseXmlInterfaceFile(kBadInterfaceFileContents1));
+  EXPECT_FALSE(parser_.ParseXmlInterfaceFile(kBadInterfaceFileContents0, {}));
+  EXPECT_FALSE(parser_.ParseXmlInterfaceFile(kBadInterfaceFileContents1, {}));
 }
 
 TEST_F(XmlInterfaceParserTest, GoodInputFile) {
-  EXPECT_TRUE(parser_.ParseXmlInterfaceFile(kGoodInterfaceFileContents));
+  EXPECT_TRUE(parser_.ParseXmlInterfaceFile(kGoodInterfaceFileContents,
+                                            {"DummyInterface"}));
   const vector<Interface>& interfaces = parser_.interfaces();
   ASSERT_EQ(1, interfaces.size());
   const Interface& interface = interfaces.back();

@@ -56,7 +56,9 @@ string GetElementPath(const vector<string>& path) {
 
 }  // anonymous namespace
 
-bool XmlInterfaceParser::ParseXmlInterfaceFile(const std::string& contents) {
+bool XmlInterfaceParser::ParseXmlInterfaceFile(
+    const std::string& contents,
+    const std::vector<std::string>& ignore_interfaces) {
   auto parser = XML_ParserCreate(nullptr);
   XML_SetUserData(parser, this);
   XML_SetElementHandler(parser,
@@ -78,6 +80,16 @@ bool XmlInterfaceParser::ParseXmlInterfaceFile(const std::string& contents) {
   }
 
   CHECK(element_path_.empty());
+
+  if (!ignore_interfaces.empty()) {
+    // Remove interfaces whose names are in |ignore_interfaces| list.
+    auto condition = [&ignore_interfaces](const Interface& itf) {
+      return std::find(ignore_interfaces.begin(), ignore_interfaces.end(),
+                       itf.name) != ignore_interfaces.end();
+    };
+    auto p = std::remove_if(interfaces_.begin(), interfaces_.end(), condition);
+    interfaces_.erase(p, interfaces_.end());
+  }
   return true;
 }
 
@@ -93,12 +105,7 @@ void XmlInterfaceParser::OnOpenElement(
     // 'name' attribute is optional for <node> element.
     string name;
     GetElementAttribute(attributes, element_path_, kNameAttribute, &name);
-    // Treat object path of "/" as empty/unspecified, since that happens a lot
-    // in existing XML files. People don't know that 'name' can be omitted, so
-    // they use "/" to denote some fictional D-Bus path for the object.
     base::TrimWhitespaceASCII(name, base::TRIM_ALL, &name);
-    if (name == "/")
-      name.clear();
     node_names_.push_back(name);
   } else if (element_name == kInterfaceTag) {
     CHECK_EQ(kNodeTag, prev_element)

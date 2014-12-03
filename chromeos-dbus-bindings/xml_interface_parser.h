@@ -30,7 +30,8 @@ class XmlInterfaceParser {
   XmlInterfaceParser() = default;
   virtual ~XmlInterfaceParser() = default;
 
-  virtual bool ParseXmlInterfaceFile(const std::string& contents);
+  bool ParseXmlInterfaceFile(const std::string& contents,
+                             const std::vector<std::string>& ignore_interfaces);
   const std::vector<Interface>& interfaces() const { return interfaces_; }
 
  private:

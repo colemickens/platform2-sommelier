@@ -40,6 +40,10 @@ struct ServiceConfig {
     // The D-Bus path to Object Manager instance.
     std::string object_path;
   } object_manager;
+
+  // A list of interfaces we should ignore and not generate any adaptors and
+  // proxies for.
+  std::vector<std::string> ignore_interfaces;
 };
 
 class HeaderGenerator {
