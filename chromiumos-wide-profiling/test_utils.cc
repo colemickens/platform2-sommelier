@@ -220,15 +220,15 @@ bool CheckPerfDataAgainstBaseline(const string& filename) {
 }
 
 bool ComparePerfBuildIDLists(const string& file1, const string& file2) {
-  const string* files[] = { &file1, &file2 };
-  std::map<string, std::map<string, string> > outputs;
+  std::map<string, string> output1;
+  std::map<string, string> output2;
 
   // Generate a build id list for each file.
-  for (unsigned int i = 0; i < arraysize(files); ++i)
-    CHECK(GetPerfBuildIDMap(*files[i], &outputs[*files[i]]));
+  CHECK(GetPerfBuildIDMap(file1, &output1));
+  CHECK(GetPerfBuildIDMap(file2, &output2));
 
   // Compare the output strings.
-  return outputs[file1] == outputs[file2];
+  return output1 == output2;
 }
 
 PerfParser::Options GetTestOptions() {
