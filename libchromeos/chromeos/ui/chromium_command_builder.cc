@@ -485,9 +485,6 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (IsBoard("rush_ryu")) {
     // Workaround for wrong bounds from touchscreen firmware.
     AddArg("--touch-calibration=0,-1511,0,-1069");
-
-    // Workaround for lack of highdpi detection in athena.
-    AddArg("--force-device-scale-factor=2");
   }
 
   // Ozone platform configuration.
