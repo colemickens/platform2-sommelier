@@ -35,6 +35,24 @@
         'typedefs.cc',
       ],
       'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
+      'actions': [
+        {
+          # Import D-Bus bindings from Avahi.
+          'action_name': 'generate-avahi-proxies',
+          'variables': {
+            'dbus_service_config': 'dbus_bindings/avahi-service-config.json',
+            'proxy_output_file': 'include/avahi/dbus-proxies.h',
+            'shared_interface_dir': '<(sysroot)/usr/share/dbus-1/interfaces',
+          },
+          'sources': [
+            '<(shared_interface_dir)/org.freedesktop.Avahi.EntryGroup.xml',
+            '<(shared_interface_dir)/org.freedesktop.Avahi.Server.xml',
+            '<(shared_interface_dir)/org.freedesktop.Avahi.ServiceBrowser.xml',
+            '<(shared_interface_dir)/org.freedesktop.Avahi.ServiceResolver.xml',
+          ],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
+      ],
     },
     {
       'target_name': 'peerd',
