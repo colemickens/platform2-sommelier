@@ -72,14 +72,6 @@ namespace chromium {
 // Interface proxy for org::chromium::TestInterface.
 class TestInterfaceProxy final {
  public:
-  class SignalReceiver {
-   public:
-    virtual void OnCloserSignal() {}
-    virtual void OnTheCurseOfKaZarSignal(
-        const std::vector<std::string>&,
-        uint8_t) {}
-  };
-
   TestInterfaceProxy(
       const scoped_refptr<dbus::Bus>& bus,
       const std::string& service_name) :
@@ -89,34 +81,30 @@ class TestInterfaceProxy final {
               bus_->GetObjectProxy(service_name_, object_path_)} {
   }
 
-  TestInterfaceProxy(
-      const scoped_refptr<dbus::Bus>& bus,
-      const std::string& service_name,
-      SignalReceiver* signal_receiver) :
-          TestInterfaceProxy(bus, service_name) {
+  ~TestInterfaceProxy() {
+  }
+
+  void RegisterCloserSignalHandler(
+      const base::Closure& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
     chromeos::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "Closer",
-        base::Bind(
-            &SignalReceiver::OnCloserSignal,
-            base::Unretained(signal_receiver)),
-        base::Bind(
-            &TestInterfaceProxy::OnDBusSignalConnected,
-            base::Unretained(this)));
+        signal_callback,
+        on_connected_callback);
+  }
+
+  void RegisterTheCurseOfKaZarSignalHandler(
+      const base::Callback<void(const std::vector<std::string>&,
+                                uint8_t)>& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
     chromeos::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "TheCurseOfKaZar",
-        base::Bind(
-            &SignalReceiver::OnTheCurseOfKaZarSignal,
-            base::Unretained(signal_receiver)),
-        base::Bind(
-            &TestInterfaceProxy::OnDBusSignalConnected,
-            base::Unretained(this)));
-  }
-
-  ~TestInterfaceProxy() {
+        signal_callback,
+        on_connected_callback);
   }
 
   void ReleaseObjectProxy(const base::Closure& callback) {
@@ -128,18 +116,6 @@ class TestInterfaceProxy final {
   }
 
   dbus::ObjectProxy* GetObjectProxy() const { return dbus_object_proxy_; }
-
-  void OnDBusSignalConnected(
-      const std::string& interface,
-      const std::string& signal,
-      bool success) {
-    if (!success) {
-      LOG(ERROR)
-          << "Failed to connect to " << interface << "." << signal
-          << " for " << service_name_ << " at "
-          << object_path_.value();
-    }
-  }
 
   bool Elements(
       const std::string& in_space_walk,
@@ -291,34 +267,24 @@ namespace chromium {
 // Interface proxy for org::chromium::TestInterface.
 class TestInterfaceProxy final {
  public:
-  class SignalReceiver {
-   public:
-    virtual void OnCloserSignal() {}
-  };
-
   TestInterfaceProxy(const scoped_refptr<dbus::Bus>& bus) :
       bus_{bus},
       dbus_object_proxy_{
           bus_->GetObjectProxy(service_name_, object_path_)} {
   }
 
-  TestInterfaceProxy(
-      const scoped_refptr<dbus::Bus>& bus,
-      SignalReceiver* signal_receiver) :
-          TestInterfaceProxy(bus) {
+  ~TestInterfaceProxy() {
+  }
+
+  void RegisterCloserSignalHandler(
+      const base::Closure& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
     chromeos::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "Closer",
-        base::Bind(
-            &SignalReceiver::OnCloserSignal,
-            base::Unretained(signal_receiver)),
-        base::Bind(
-            &TestInterfaceProxy::OnDBusSignalConnected,
-            base::Unretained(this)));
-  }
-
-  ~TestInterfaceProxy() {
+        signal_callback,
+        on_connected_callback);
   }
 
   void ReleaseObjectProxy(const base::Closure& callback) {
@@ -330,18 +296,6 @@ class TestInterfaceProxy final {
   }
 
   dbus::ObjectProxy* GetObjectProxy() const { return dbus_object_proxy_; }
-
-  void OnDBusSignalConnected(
-      const std::string& interface,
-      const std::string& signal,
-      bool success) {
-    if (!success) {
-      LOG(ERROR)
-          << "Failed to connect to " << interface << "." << signal
-          << " for " << service_name_ << " at "
-          << object_path_.value();
-    }
-  }
 
  private:
   scoped_refptr<dbus::Bus> bus_;
@@ -430,11 +384,6 @@ namespace chromium {
 // Interface proxy for org::chromium::Itf1.
 class Itf1Proxy final {
  public:
-  class SignalReceiver {
-   public:
-    virtual void OnCloserSignal() {}
-  };
-
   class PropertySet : public dbus::PropertySet {
    public:
     PropertySet(dbus::ObjectProxy* object_proxy,
@@ -462,25 +411,18 @@ class Itf1Proxy final {
               bus_->GetObjectProxy(service_name_, object_path_)} {
   }
 
-  Itf1Proxy(
-      const scoped_refptr<dbus::Bus>& bus,
-      const std::string& service_name,
-      PropertySet* property_set,
-      SignalReceiver* signal_receiver) :
-          Itf1Proxy(bus, service_name, property_set) {
+  ~Itf1Proxy() {
+  }
+
+  void RegisterCloserSignalHandler(
+      const base::Closure& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
     chromeos::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
         "org.chromium.Itf1",
         "Closer",
-        base::Bind(
-            &SignalReceiver::OnCloserSignal,
-            base::Unretained(signal_receiver)),
-        base::Bind(
-            &Itf1Proxy::OnDBusSignalConnected,
-            base::Unretained(this)));
-  }
-
-  ~Itf1Proxy() {
+        signal_callback,
+        on_connected_callback);
   }
 
   void ReleaseObjectProxy(const base::Closure& callback) {
@@ -500,18 +442,6 @@ class Itf1Proxy final {
 
   const PropertySet* GetProperties() const { return property_set_; }
   PropertySet* GetProperties() { return property_set_; }
-
-  void OnDBusSignalConnected(
-      const std::string& interface,
-      const std::string& signal,
-      bool success) {
-    if (!success) {
-      LOG(ERROR)
-          << "Failed to connect to " << interface << "." << signal
-          << " for " << service_name_ << " at "
-          << object_path_.value();
-    }
-  }
 
   const std::string& data() const {
     return property_set_->data.value();
@@ -800,11 +730,6 @@ namespace chromium {
 // Interface proxy for org::chromium::Itf1.
 class Itf1Proxy final {
  public:
-  class SignalReceiver {
-   public:
-    virtual void OnCloserSignal() {}
-  };
-
   class PropertySet : public dbus::PropertySet {
    public:
     PropertySet(dbus::ObjectProxy* object_proxy,
@@ -825,23 +750,18 @@ class Itf1Proxy final {
           bus_->GetObjectProxy(service_name_, object_path_)} {
   }
 
-  Itf1Proxy(
-      const scoped_refptr<dbus::Bus>& bus,
-      SignalReceiver* signal_receiver) :
-          Itf1Proxy(bus) {
+  ~Itf1Proxy() {
+  }
+
+  void RegisterCloserSignalHandler(
+      const base::Closure& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
     chromeos::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
         "org.chromium.Itf1",
         "Closer",
-        base::Bind(
-            &SignalReceiver::OnCloserSignal,
-            base::Unretained(signal_receiver)),
-        base::Bind(
-            &Itf1Proxy::OnDBusSignalConnected,
-            base::Unretained(this)));
-  }
-
-  ~Itf1Proxy() {
+        signal_callback,
+        on_connected_callback);
   }
 
   void ReleaseObjectProxy(const base::Closure& callback) {
@@ -853,18 +773,6 @@ class Itf1Proxy final {
   }
 
   dbus::ObjectProxy* GetObjectProxy() const { return dbus_object_proxy_; }
-
-  void OnDBusSignalConnected(
-      const std::string& interface,
-      const std::string& signal,
-      bool success) {
-    if (!success) {
-      LOG(ERROR)
-          << "Failed to connect to " << interface << "." << signal
-          << " for " << service_name_ << " at "
-          << object_path_.value();
-    }
-  }
 
  private:
   scoped_refptr<dbus::Bus> bus_;

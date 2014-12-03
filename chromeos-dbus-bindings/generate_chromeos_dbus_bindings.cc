@@ -156,7 +156,7 @@ int main(int argc, char** argv) {
       return 1;
     }
     if (!parser.ParseXmlInterfaceFile(contents, config.ignore_interfaces)) {
-      LOG(ERROR) << "Failed to parse interface file.";
+      LOG(ERROR) << "Failed to parse interface file " << input;
       return 1;
     }
   }

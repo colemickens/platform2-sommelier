@@ -47,9 +47,6 @@ class ProxyGenerator : public HeaderGenerator {
   static void AddDestructor(const std::string& class_name,
                             IndentedText* text);
 
-  // Generates a callback for signal receiver registration completion.
-  static void AddSignalConnectedCallback(IndentedText* text);
-
   // Generates ReleaseObjectProxy() method to release ownership
   // of the object proxy.
   static void AddReleaseObjectProxy(IndentedText* text);
@@ -67,9 +64,9 @@ class ProxyGenerator : public HeaderGenerator {
   // Generates OnPropertyChanged() method.
   static void AddOnPropertyChanged(IndentedText* text);
 
-  // Generates the method signatures for signal receivers.
-  static void AddSignalReceiver(const Interface& interface,
-                                IndentedText* text);
+  // Generates logic permitting users to register handlers for signals.
+  static void AddSignalHandlerRegistration(const Interface& interface,
+                                           IndentedText* text);
 
   // Generates the property set class to contain interface properties.
   static void AddPropertySet(const ServiceConfig& config,

@@ -111,17 +111,15 @@ void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
   text->AddLine(StringPrintf("class %s final {", proxy_name.c_str()));
   text->AddLineWithOffset("public:", kScopeOffset);
   text->PushOffset(kBlockOffset);
-  AddSignalReceiver(interface, text);
   AddPropertySet(config, interface, text);
   AddConstructor(config, interface, proxy_name, text);
   AddDestructor(proxy_name, text);
+  AddSignalHandlerRegistration(interface, text);
   AddReleaseObjectProxy(text);
   AddGetObjectPath(text);
   AddGetObjectProxy(text);
   if (!config.object_manager.name.empty() && !interface.properties.empty())
     AddPropertyPublicMethods(proxy_name, text);
-  if (!interface.signals.empty())
-    AddSignalConnectedCallback(text);
   for (const auto& method : interface.methods) {
     AddMethodProxy(method, interface.name, text);
   }
@@ -210,47 +208,6 @@ void ProxyGenerator::AddConstructor(const ServiceConfig& config,
   if (args.size() > 1)
     block.PopOffset();
   block.AddLine("}");
-  if (!interface.signals.empty()) {
-    block.AddBlankLine();
-    block.AddLine(StringPrintf("%s(", class_name.c_str()));
-    block.PushOffset(kLineContinuationOffset);
-    vector<string> param_names;
-    for (const auto& arg : args) {
-      block.AddLine(StringPrintf("%s,", GetParamString(arg).c_str()));
-      param_names.push_back(arg.name);
-    }
-    block.AddLine("SignalReceiver* signal_receiver) :");
-    string param_list = chromeos::string_utils::Join(", ", param_names);
-    block.PushOffset(kLineContinuationOffset);
-    block.AddLine(StringPrintf("%s(%s) {", class_name.c_str(),
-                               param_list.c_str()));
-    block.PopOffset();
-    block.PopOffset();
-    block.PushOffset(kBlockOffset);
-    for (const auto& signal : interface.signals) {
-      block.AddLine("chromeos::dbus_utils::ConnectToSignal(");
-      block.PushOffset(kLineContinuationOffset);
-      block.AddLine("dbus_object_proxy_,");
-      block.AddLine(StringPrintf("\"%s\",", interface.name.c_str()));
-      block.AddLine(StringPrintf("\"%s\",", signal.name.c_str()));
-      block.AddLine("base::Bind(");
-      block.PushOffset(kLineContinuationOffset);
-      block.AddLine(StringPrintf(
-        "&SignalReceiver::%s,",
-        GetHandlerNameForSignal(signal.name).c_str()));
-      block.AddLine("base::Unretained(signal_receiver)),");
-      block.PopOffset();
-      block.AddLine("base::Bind(");
-      block.PushOffset(kLineContinuationOffset);
-      block.AddLine(StringPrintf(
-        "&%s::OnDBusSignalConnected,", class_name.c_str()));
-      block.AddLine("base::Unretained(this)));");
-      block.PopOffset();
-      block.PopOffset();
-    }
-    block.PopOffset();
-    block.AddLine("}");
-  }
   block.AddBlankLine();
   text->AddBlock(block);
 }
@@ -321,75 +278,56 @@ void ProxyGenerator::AddOnPropertyChanged(IndentedText* text) {
   text->AddBlankLine();
 }
 
-// static
-void ProxyGenerator::AddSignalConnectedCallback(IndentedText* text) {
+void ProxyGenerator::AddSignalHandlerRegistration(const Interface& interface,
+                                                  IndentedText* text) {
   IndentedText block;
-  block.AddLine("void OnDBusSignalConnected(");
-  block.PushOffset(kLineContinuationOffset);
-  block.AddLine("const std::string& interface,");
-  block.AddLine("const std::string& signal,");
-  block.AddLine("bool success) {");
-  block.PopOffset();
-  block.PushOffset(kBlockOffset);
-  block.AddLine("if (!success) {");
-  block.PushOffset(kBlockOffset);
-  block.AddLine("LOG(ERROR)");
-  block.PushOffset(kLineContinuationOffset);
-  block.AddLine("<< \"Failed to connect to \" << interface << \".\" << signal");
-  block.AddLine("<< \" for \" << service_name_ << \" at \"");
-  block.AddLine("<< object_path_.value();");
-  block.PopOffset();
-  block.PopOffset();
-  block.AddLine("}");
-  block.PopOffset();
-  block.AddLine("}");
-  block.AddBlankLine();
-  text->AddBlock(block);
-}
-
-// static
-void ProxyGenerator::AddSignalReceiver(const Interface& interface,
-                                       IndentedText* text) {
-  if (interface.signals.empty())
-    return;
-
-  IndentedText block;
-  block.AddLine("class SignalReceiver {");
-  block.AddLineWithOffset("public:", kScopeOffset);
-  block.PushOffset(kBlockOffset);
   DbusSignature signature;
   for (const auto& signal : interface.signals) {
-    block.AddComments(signal.doc_string);
-    string signal_begin = StringPrintf(
-        "virtual void %s(", GetHandlerNameForSignal(signal.name).c_str());
-    string signal_end = ") {}";
-
-    if (signal.arguments.empty()) {
-      block.AddLine(signal_begin + signal_end);
-      continue;
-    }
-    block.AddLine(signal_begin);
+    block.AddLine(
+        StringPrintf("void Register%sSignalHandler(", signal.name.c_str()));
     block.PushOffset(kLineContinuationOffset);
-    string last_argument;
-    vector<string> argument_types;
-    for (const auto& argument : signal.arguments) {
-      if (!last_argument.empty()) {
-          block.AddLine(StringPrintf("%s,", last_argument.c_str()));
+    if (signal.arguments.empty()) {
+      block.AddLine("const base::Closure& signal_callback,");
+    } else {
+      string last_argument;
+      string prefix{"const base::Callback<void("};
+      for (const auto argument : signal.arguments) {
+        if (!last_argument.empty()) {
+          if (!prefix.empty()) {
+            block.AddLineAndPushOffsetTo(
+                StringPrintf("%s%s,", prefix.c_str(), last_argument.c_str()),
+                1, '(');
+            prefix.clear();
+          } else {
+            block.AddLine(StringPrintf("%s,", last_argument.c_str()));
+          }
+        }
+        CHECK(signature.Parse(argument.type, &last_argument));
+        MakeConstReferenceIfNeeded(&last_argument);
       }
-      CHECK(signature.Parse(argument.type, &last_argument));
-      MakeConstReferenceIfNeeded(&last_argument);
-      if (!argument.name.empty()) {
-        last_argument += ' ';
-        last_argument += argument.name;
+      block.AddLine(StringPrintf("%s%s)>& signal_callback,",
+                                 prefix.c_str(),
+                                 last_argument.c_str()));
+      if (prefix.empty()) {
+        block.PopOffset();
       }
     }
-    block.AddLine(last_argument + signal_end);
-    block.PopOffset();
+    block.AddLine("dbus::ObjectProxy::OnConnectedCallback "
+                  "on_connected_callback) {");
+    block.PopOffset();  // Method signature arguments
+    block.PushOffset(kBlockOffset);
+    block.AddLine("chromeos::dbus_utils::ConnectToSignal(");
+    block.PushOffset(kLineContinuationOffset);
+    block.AddLine("dbus_object_proxy_,");
+    block.AddLine(StringPrintf("\"%s\",", interface.name.c_str()));
+    block.AddLine(StringPrintf("\"%s\",", signal.name.c_str()));
+    block.AddLine("signal_callback,");
+    block.AddLine("on_connected_callback);");
+    block.PopOffset();  // Function call line continuation
+    block.PopOffset();  // Method body
+    block.AddLine("}");
+    block.AddBlankLine();
   }
-  block.PopOffset();
-  block.AddLine("};");
-  block.AddBlankLine();
-
   text->AddBlock(block);
 }
 
