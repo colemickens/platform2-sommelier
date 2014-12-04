@@ -107,6 +107,23 @@ u32 MaybeSwap(u32 value, bool swap) {
   return value;
 }
 
+u8 ReverseByte(u8 x) {
+  x = (x & 0xf0) >> 4 | (x & 0x0f) << 4;  // exchange nibbles
+  x = (x & 0xcc) >> 2 | (x & 0x33) << 2;  // exchange pairs
+  x = (x & 0xaa) >> 1 | (x & 0x55) << 1;  // exchange neighbors
+  return x;
+}
+
+// If field points to the start of a bitfield padded to len bytes, this
+// performs an endian swap of the bitfield, assuming the compiler that produced
+// it conforms to the same ABI (bitfield layout is not completely specified by
+// the language).
+void SwapBitfieldOfBits(u8* field, size_t len) {
+  for (size_t i = 0; i < len; i++) {
+    field[i] = ReverseByte(field[i]);
+  }
+}
+
 // The code currently assumes that the compiler will not add any padding to the
 // various structs.  These CHECKs make sure that this is true.
 void CheckNoEventHeaderPadding() {
@@ -201,7 +218,8 @@ bool ReadDataFromBuffer(const ConstBufferWithSize& buffer,
                         void* dest) {
   size_t end_offset = *src_offset + size / sizeof(*buffer.ptr);
   if (buffer.size < end_offset) {
-    LOG(ERROR) << "Not enough bytes to read " << value_name;
+    LOG(ERROR) << "Not enough bytes to read " << value_name
+               << ". Requested " << size << " bytes";
     return false;
   }
   memcpy(dest, buffer.ptr + *src_offset, size);
@@ -1039,30 +1057,65 @@ bool PerfReader::ReadAttr(const ConstBufferWithSize& data, size_t* offset) {
   return true;
 }
 
+u32 PerfReader::ReadPerfEventAttrSize(const ConstBufferWithSize& data,
+                                      size_t attr_offset) {
+  static_assert(std::is_same<decltype(perf_event_attr::size), u32>::value,
+                "ReadPerfEventAttrSize return type should match "
+                "perf_event_attr.size");
+  u32 attr_size;
+  size_t attr_size_offset = attr_offset + offsetof(perf_event_attr, size);
+  if (!ReadDataFromBuffer(data, sizeof(perf_event_attr::size),
+                          "attr.size", &attr_size_offset, &attr_size)) {
+    return kuint32max;
+  }
+  return MaybeSwap(attr_size, is_cross_endian_);
+}
+
 bool PerfReader::ReadEventAttr(const ConstBufferWithSize& data, size_t* offset,
                                perf_event_attr* attr) {
   CheckNoPerfEventAttrPadding();
-  if (!ReadDataFromBuffer(data, sizeof(*attr), "attribute", offset, attr))
+  *attr = {0};
+
+  // read just size first
+  u32 attr_size = ReadPerfEventAttrSize(data, *offset);
+  if (attr_size == kuint32max) {
     return false;
+  }
+
+  // now read the the struct.
+  if (!ReadDataFromBuffer(data, attr_size, "attribute", offset,
+                          reinterpret_cast<char*>(attr))) {
+    return false;
+  }
 
   if (is_cross_endian_) {
+    // Depending on attr->size, some of these might not have actually been
+    // read. This is okay: they are zero.
     ByteSwap(&attr->type);
     ByteSwap(&attr->size);
     ByteSwap(&attr->config);
     ByteSwap(&attr->sample_period);
     ByteSwap(&attr->sample_type);
     ByteSwap(&attr->read_format);
-    ByteSwap(&attr->wakeup_events);
+
+    // NB: This will also reverse precise_ip : 2 as if it was two fields:
+    auto *const bitfield_start = &attr->read_format + 1;
+    SwapBitfieldOfBits(reinterpret_cast<u8*>(bitfield_start),
+                       sizeof(u64));
+    // ... So swap it back:
+    const auto tmp = attr->precise_ip;
+    attr->precise_ip = (tmp & 0x2) >> 1 | (tmp & 0x1) << 1;
+
+    ByteSwap(&attr->wakeup_events);  // union with wakeup_watermark
     ByteSwap(&attr->bp_type);
-    ByteSwap(&attr->bp_addr);
-    ByteSwap(&attr->bp_len);
+    ByteSwap(&attr->bp_addr);        // union with config1
+    ByteSwap(&attr->bp_len);         // union with config2
     ByteSwap(&attr->branch_sample_type);
   }
 
+  CHECK_EQ(attr_size, attr->size);
   // The actual perf_event_attr data size might be different from the size of
   // the struct definition.  Check against perf_event_attr's |size| field.
-  int size_diff = attr->size - sizeof(*attr);
-  *offset += size_diff;
   attr->size = sizeof(*attr);
 
   // Assign sample type if it hasn't been assigned, otherwise make sure all

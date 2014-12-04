@@ -10,6 +10,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "base/macros.h"
@@ -277,6 +278,9 @@ class PerfReader {
   bool is_cross_endian_;
 
  private:
+  u32 ReadPerfEventAttrSize(const ConstBufferWithSize& data,
+                            size_t attr_offset);
+
   // The file header is either a normal header or a piped header.
   union {
     struct perf_file_header header_;
