@@ -344,7 +344,12 @@ void ServiceFinderAvahi::on_service_browser_changed(
                                      (AvahiLookupFlags) 0,
                                      service_resolve_cb,
                                      finder);
-      finder->lookup_pending_resolvers_.insert(resolver);
+      if (!resolver) {
+        LOG(ERROR) << "avahi_service_resolver_new() failed: "
+                   << avahi_strerror(avahi_client_errno(finder->client_));
+      } else {
+        finder->lookup_pending_resolvers_.insert(resolver);
+      }
     } break;
 
     case AVAHI_BROWSER_REMOVE:
@@ -392,6 +397,14 @@ bool ServiceFinderAvahi::Lookup() {
                                               (AvahiLookupFlags) 0,
                                               on_service_browser_changed,
                                               this);
+  if (!lookup_browser_) {
+    LOG(ERROR) << "avahi_service_browser_new() failed: "
+               << avahi_strerror(avahi_client_errno(client_));
+    g_main_loop_unref(lookup_loop_);
+    lookup_loop_ = NULL;
+    return false;
+  }
+
   g_main_loop_run(lookup_loop_);
   g_main_loop_unref(lookup_loop_);
   lookup_loop_ = NULL;
