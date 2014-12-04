@@ -121,8 +121,10 @@ class TestInterfaceProxy final {
       const std::string& in_space_walk,
       const std::vector<dbus::ObjectPath>& in_ramblin_man,
       std::string* out_3,
-      chromeos::ErrorPtr* error) {
-    auto response = chromeos::dbus_utils::CallMethodAndBlock(
+      chromeos::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+    auto response = chromeos::dbus_utils::CallMethodAndBlockWithTimeout(
+        timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "Elements",
@@ -133,10 +135,29 @@ class TestInterfaceProxy final {
         response.get(), error, out_3);
   }
 
+  void ElementsAsync(
+      const std::string& in_space_walk,
+      const std::vector<dbus::ObjectPath>& in_ramblin_man,
+      const base::Callback<void(const std::string&)>& success_callback,
+      const base::Callback<void(chromeos::Error*)>& error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+    chromeos::dbus_utils::CallMethodWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "org.chromium.TestInterface",
+        "Elements",
+        success_callback,
+        error_callback,
+        in_space_walk,
+        in_ramblin_man);
+  }
+
   bool ReturnToPatagonia(
       int64_t* out_1,
-      chromeos::ErrorPtr* error) {
-    auto response = chromeos::dbus_utils::CallMethodAndBlock(
+      chromeos::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+    auto response = chromeos::dbus_utils::CallMethodAndBlockWithTimeout(
+        timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "ReturnToPatagonia",
@@ -145,10 +166,25 @@ class TestInterfaceProxy final {
         response.get(), error, out_1);
   }
 
+  void ReturnToPatagoniaAsync(
+      const base::Callback<void(int64_t)>& success_callback,
+      const base::Callback<void(chromeos::Error*)>& error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+    chromeos::dbus_utils::CallMethodWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "org.chromium.TestInterface",
+        "ReturnToPatagonia",
+        success_callback,
+        error_callback);
+  }
+
   bool NiceWeatherForDucks(
       bool in_1,
-      chromeos::ErrorPtr* error) {
-    auto response = chromeos::dbus_utils::CallMethodAndBlock(
+      chromeos::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+    auto response = chromeos::dbus_utils::CallMethodAndBlockWithTimeout(
+        timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "NiceWeatherForDucks",
@@ -158,17 +194,49 @@ class TestInterfaceProxy final {
         response.get(), error);
   }
 
+  void NiceWeatherForDucksAsync(
+      bool in_1,
+      const base::Callback<void()>& success_callback,
+      const base::Callback<void(chromeos::Error*)>& error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+    chromeos::dbus_utils::CallMethodWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "org.chromium.TestInterface",
+        "NiceWeatherForDucks",
+        success_callback,
+        error_callback,
+        in_1);
+  }
+
   // Comment line1
   // line2
   bool ExperimentNumberSix(
-      chromeos::ErrorPtr* error) {
-    auto response = chromeos::dbus_utils::CallMethodAndBlock(
+      chromeos::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+    auto response = chromeos::dbus_utils::CallMethodAndBlockWithTimeout(
+        timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface",
         "ExperimentNumberSix",
         error);
     return response && chromeos::dbus_utils::ExtractMethodCallResults(
         response.get(), error);
+  }
+
+  // Comment line1
+  // line2
+  void ExperimentNumberSixAsync(
+      const base::Callback<void()>& success_callback,
+      const base::Callback<void(chromeos::Error*)>& error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+    chromeos::dbus_utils::CallMethodWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "org.chromium.TestInterface",
+        "ExperimentNumberSix",
+        success_callback,
+        error_callback);
   }
 
  private:
@@ -216,14 +284,29 @@ class TestInterface2Proxy final {
   bool GetPersonInfo(
       std::string* out_name,
       int32_t* out_age,
-      chromeos::ErrorPtr* error) {
-    auto response = chromeos::dbus_utils::CallMethodAndBlock(
+      chromeos::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+    auto response = chromeos::dbus_utils::CallMethodAndBlockWithTimeout(
+        timeout_ms,
         dbus_object_proxy_,
         "org.chromium.TestInterface2",
         "GetPersonInfo",
         error);
     return response && chromeos::dbus_utils::ExtractMethodCallResults(
         response.get(), error, out_name, out_age);
+  }
+
+  void GetPersonInfoAsync(
+      const base::Callback<void(const std::string& /*name*/, int32_t /*age*/)>& success_callback,
+      const base::Callback<void(chromeos::Error*)>& error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+    chromeos::dbus_utils::CallMethodWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "org.chromium.TestInterface2",
+        "GetPersonInfo",
+        success_callback,
+        error_callback);
   }
 
  private:

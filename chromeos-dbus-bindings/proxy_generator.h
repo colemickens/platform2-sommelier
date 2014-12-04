@@ -83,6 +83,11 @@ class ProxyGenerator : public HeaderGenerator {
                              const std::string& interface_name,
                              IndentedText* text);
 
+  // Generates a native C++ method which calls a D-Bus method asynchronously.
+  static void AddAsyncMethodProxy(const Interface::Method& interface,
+                                  const std::string& interface_name,
+                                  IndentedText* text);
+
   // Generates the Object Manager proxy class.
   struct ObjectManager {
     // Generates the top-level class for Object Manager proxy.

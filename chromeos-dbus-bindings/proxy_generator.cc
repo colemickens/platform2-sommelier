@@ -122,6 +122,7 @@ void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
     AddPropertyPublicMethods(proxy_name, text);
   for (const auto& method : interface.methods) {
     AddMethodProxy(method, interface.name, text);
+    AddAsyncMethodProxy(method, interface.name, text);
   }
   AddProperties(config, interface, text);
 
@@ -440,12 +441,15 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
     block.AddLine(StringPrintf(
         "%s* %s,", argument_type.c_str(), argument_name.c_str()));
   }
-  block.AddLine("chromeos::ErrorPtr* error) {");
+  block.AddLine("chromeos::ErrorPtr* error,");
+  block.AddLine("int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {");
   block.PopOffset();
   block.PushOffset(kBlockOffset);
 
-  block.AddLine("auto response = chromeos::dbus_utils::CallMethodAndBlock(");
+  block.AddLine(
+      "auto response = chromeos::dbus_utils::CallMethodAndBlockWithTimeout(");
   block.PushOffset(kLineContinuationOffset);
+  block.AddLine("timeout_ms,");
   block.AddLine("dbus_object_proxy_,");
   block.AddLine(StringPrintf("\"%s\",", interface_name.c_str()));
   block.AddLine(StringPrintf("\"%s\",", method.name.c_str()));
@@ -462,6 +466,66 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
   block.PushOffset(kLineContinuationOffset);
   block.AddLine(chromeos::string_utils::Join(", ", out_param_names) + ");");
   block.PopOffset();
+  block.PopOffset();
+  block.AddLine("}");
+  block.AddBlankLine();
+
+  text->AddBlock(block);
+}
+
+// static
+void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
+                                         const string& interface_name,
+                                         IndentedText* text) {
+  IndentedText block;
+  DbusSignature signature;
+  block.AddComments(method.doc_string);
+  block.AddLine(StringPrintf("void %sAsync(", method.name.c_str()));
+  block.PushOffset(kLineContinuationOffset);
+  vector<string> argument_names;
+  int argument_number = 0;
+  for (const auto& argument : method.input_arguments) {
+    string argument_type;
+    CHECK(signature.Parse(argument.type, &argument_type));
+    MakeConstReferenceIfNeeded(&argument_type);
+    string argument_name = GetArgName("in", argument.name, ++argument_number);
+    argument_names.push_back(argument_name);
+    block.AddLine(StringPrintf(
+        "%s %s,", argument_type.c_str(), argument_name.c_str()));
+  }
+  vector<string> out_params;
+  for (const auto& argument : method.output_arguments) {
+    string argument_type;
+    CHECK(signature.Parse(argument.type, &argument_type));
+    MakeConstReferenceIfNeeded(&argument_type);
+    if (!argument.name.empty())
+      base::StringAppendF(&argument_type, " /*%s*/", argument.name.c_str());
+    out_params.push_back(argument_type);
+  }
+  block.AddLine(StringPrintf(
+      "const base::Callback<void(%s)>& success_callback,",
+      chromeos::string_utils::Join(", ", out_params).c_str()));
+  block.AddLine(
+      "const base::Callback<void(chromeos::Error*)>& error_callback,");
+  block.AddLine("int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {");
+  block.PopOffset();
+  block.PushOffset(kBlockOffset);
+
+  block.AddLine("chromeos::dbus_utils::CallMethodWithTimeout(");
+  block.PushOffset(kLineContinuationOffset);
+  block.AddLine("timeout_ms,");
+  block.AddLine("dbus_object_proxy_,");
+  block.AddLine(StringPrintf("\"%s\",", interface_name.c_str()));
+  block.AddLine(StringPrintf("\"%s\",", method.name.c_str()));
+  block.AddLine("success_callback,");
+  string last_argument = "error_callback";
+  for (const auto& argument_name : argument_names) {
+    block.AddLine(StringPrintf("%s,", last_argument.c_str()));
+    last_argument = argument_name;
+  }
+  block.AddLine(StringPrintf("%s);", last_argument.c_str()));
+  block.PopOffset();
+
   block.PopOffset();
   block.AddLine("}");
   block.AddBlankLine();
