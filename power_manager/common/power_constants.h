@@ -152,6 +152,10 @@ extern const char kLockVTBeforeSuspendPref[];
 // command.
 extern const char kMosysEventlogPref[];
 
+// If true, use /dev/tty0 to query the active VT periodically and avoid treating
+// the user as idle while VT2 is active.
+extern const char kCheckActiveVTPref[];
+
 // Miscellaneous constants.
 
 // Default directories where read/write and read-only powerd preference files

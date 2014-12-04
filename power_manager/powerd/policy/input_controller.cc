@@ -59,9 +59,12 @@ void InputController::Init(system::InputWatcherInterface* input_watcher,
   if (prefs->GetBool(kUseLidPref, &use_lid) && use_lid)
     lid_state_ = input_watcher_->QueryLidState();
 
-  check_active_vt_timer_.Start(FROM_HERE,
-      base::TimeDelta::FromSeconds(kCheckActiveVTFrequencySec),
-      this, &InputController::CheckActiveVT);
+  bool check_active_vt = false;
+  if (prefs->GetBool(kCheckActiveVTPref, &check_active_vt) && check_active_vt) {
+    check_active_vt_timer_.Start(FROM_HERE,
+        base::TimeDelta::FromSeconds(kCheckActiveVTFrequencySec),
+        this, &InputController::CheckActiveVT);
+  }
 }
 
 bool InputController::TriggerPowerButtonAcknowledgmentTimeoutForTesting() {

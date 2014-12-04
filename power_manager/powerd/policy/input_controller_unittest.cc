@@ -189,6 +189,7 @@ TEST_F(InputControllerTest, PowerButtonEvents) {
 }
 
 TEST_F(InputControllerTest, DeferInactivityTimeoutWhileVT2IsActive) {
+  prefs_.SetInt64(kCheckActiveVTPref, 1);
   Init();
 
   input_watcher_.set_active_vt(1);
@@ -201,6 +202,14 @@ TEST_F(InputControllerTest, DeferInactivityTimeoutWhileVT2IsActive) {
 
   input_watcher_.set_active_vt(3);
   EXPECT_TRUE(controller_.TriggerCheckActiveVTTimeoutForTesting());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+}
+
+TEST_F(InputControllerTest, HonorCheckActiveVTPref) {
+  // The timer shouldn't be started if the check-active-VT pref is unset.
+  Init();
+  input_watcher_.set_active_vt(2);
+  EXPECT_FALSE(controller_.TriggerCheckActiveVTTimeoutForTesting());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 }
 

@@ -65,6 +65,7 @@ const char kExternalDisplayOnlyPref[] = "external_display_only";
 const char kLegacyPowerButtonPref[] = "legacy_power_button";
 const char kLockVTBeforeSuspendPref[] = "lock_vt_before_suspend";
 const char kMosysEventlogPref[] = "mosys_eventlog";
+const char kCheckActiveVTPref[] = "check_active_vt";
 
 // Miscellaneous constants.
 const char kReadWritePrefsDir[] = "/var/lib/power_manager";
