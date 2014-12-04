@@ -5,6 +5,7 @@
 #include "chromeos/process.h"
 
 #include <fcntl.h>
+#include <signal.h>
 #include <stdint.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -37,7 +38,8 @@ bool Process::ProcessExists(pid_t pid) {
 
 ProcessImpl::ProcessImpl() : pid_(0), uid_(-1), gid_(-1),
                              pre_exec_(base::Bind(&ReturnTrue)),
-                             search_path_(false) {
+                             search_path_(false),
+                             inherit_parent_signal_mask_(false) {
 }
 
 ProcessImpl::~ProcessImpl() {
@@ -78,6 +80,10 @@ void ProcessImpl::SetUid(uid_t uid) {
 
 void ProcessImpl::SetGid(gid_t gid) {
   gid_ = gid;
+}
+
+void ProcessImpl::SetInheritParentSignalMask(bool inherit) {
+  inherit_parent_signal_mask_ = inherit;
 }
 
 void ProcessImpl::SetPreExecCallback(const PreExecCallback& cb) {
@@ -200,6 +206,13 @@ bool ProcessImpl::Start() {
     if (!pre_exec_.Run()) {
       LOG(ERROR) << "Pre-exec callback failed";
       _exit(kErrorExitStatus);
+    }
+    // Reset signal mask for the child process if not inheriting signal mask
+    // from the parent process.
+    if (!inherit_parent_signal_mask_) {
+      sigset_t signal_mask;
+      CHECK_EQ(0, sigemptyset(&signal_mask));
+      CHECK_EQ(0, sigprocmask(SIG_SETMASK, &signal_mask, nullptr));
     }
     if (search_path_) {
       execvp(argv[0], &argv[0]);

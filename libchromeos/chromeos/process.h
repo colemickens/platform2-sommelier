@@ -66,6 +66,14 @@ class CHROMEOS_EXPORT Process {
   // Set the real/effective/saved group ID of the child process.
   virtual void SetGid(gid_t gid) = 0;
 
+  // Set a flag |inherit| to indicate if the child process intend to
+  // inherit signal mask from the parent process. When |inherit| is
+  // set to true, the child process will inherit signal mask from the
+  // parent process. This could cause unintended side effect, where all
+  // the signals to the child process might be blocked if they are set
+  // in the parent's signal mask.
+  virtual void SetInheritParentSignalMask(bool inherit) = 0;
+
   typedef base::Callback<bool(void)> PreExecCallback;
 
   // Set the pre-exec callback. This is called after all setup is complete but
@@ -135,6 +143,7 @@ class CHROMEOS_EXPORT ProcessImpl : public Process {
   virtual void BindFd(int parent_fd, int child_fd);
   virtual void SetUid(uid_t uid);
   virtual void SetGid(gid_t gid);
+  virtual void SetInheritParentSignalMask(bool inherit);
   virtual void SetPreExecCallback(const PreExecCallback& cb);
   virtual void SetSearchPath(bool search_path);
   virtual int GetPipe(int child_fd);
@@ -180,6 +189,10 @@ class CHROMEOS_EXPORT ProcessImpl : public Process {
   gid_t gid_;
   PreExecCallback pre_exec_;
   bool search_path_;
+  // Flag indicating to inherit signal mask from the parent process. It
+  // is set to false by default, which means by default the child process
+  // will not inherit signal mask from the parent process.
+  bool inherit_parent_signal_mask_;
 };
 
 }  // namespace chromeos

@@ -24,6 +24,7 @@ class ProcessMock : public Process {
   MOCK_METHOD2(BindFd, void(int parent_fd, int child_fd));
   MOCK_METHOD1(SetUid, void(uid_t));
   MOCK_METHOD1(SetGid, void(gid_t));
+  MOCK_METHOD1(SetInheritParentSignalMask, void(bool));
   MOCK_METHOD1(SetPreExecCallback, void(const PreExecCallback&));
   MOCK_METHOD1(SetSearchPath, void(bool));
   MOCK_METHOD1(GetPipe, int(int child_fd));
