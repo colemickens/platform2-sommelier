@@ -32,16 +32,18 @@ Service::Service(Manager* manager, int service_identifier)
                                        kManagerPath,
                                        service_identifier)),
       dbus_path_(dbus::ObjectPath(service_path_)),
-      config_(new Config(manager, service_path_)) {
+      config_(new Config(manager, service_path_)),
+      dhcp_server_factory_(DHCPServerFactory::GetInstance()) {
   SetConfig(config_->dbus_path());
+  // TODO(zqiu): come up with better server address management. This is good
+  // enough for now.
+  config_->SetServerAddressIndex(service_identifier_ & 0xFF);
 }
 
 Service::~Service() {
   // Stop hostapd process if still running.
   if (IsHostapdRunning()) {
-    StopHostapdProcess();
-    // Release device used by this hostapd instance.
-    config_->ReleaseDevice();
+    ReleaseResources();
   }
 }
 
@@ -106,6 +108,20 @@ bool Service::Start(chromeos::ErrorPtr* error) {
     return false;
   }
 
+  // Start DHCP server if in server mode.
+  if (config_->GetOperationMode() == kOperationModeServer) {
+    dhcp_server_.reset(
+        dhcp_server_factory_->CreateDHCPServer(config_->GetServerAddressIndex(),
+                                               config_->selected_interface()));
+    if (!dhcp_server_->Start()) {
+      chromeos::Error::AddTo(
+          error, FROM_HERE, chromeos::errors::dbus::kDomain, kServiceError,
+          "Failed to start DHCP server");
+      ReleaseResources();
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -117,9 +133,7 @@ bool Service::Stop(chromeos::ErrorPtr* error) {
     return false;
   }
 
-  StopHostapdProcess();
-  // Release the device used by this hostapd instance.
-  config_->ReleaseDevice();
+  ReleaseResources();
   return true;
 }
 
@@ -144,6 +158,12 @@ void Service::StopHostapdProcess() {
     hostapd_process_->Kill(SIGKILL, kTerminationTimeoutSeconds);
   }
   hostapd_process_.reset();
+}
+
+void Service::ReleaseResources() {
+  StopHostapdProcess();
+  dhcp_server_.reset();
+  config_->ReleaseDevice();
 }
 
 }  // namespace apmanager

@@ -3,6 +3,9 @@
 <node name="/" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensio
 ns-v0">
   <interface name="org.chromium.apmanager.Config">
+    <method name="SsidSet">
+      <arg name="ssid" type="s" direction="in"/>
+    </method>
     <property name="Ssid" type="s" access="readwrite"/>
     <property name="InterfaceName" type="s" access="readwrite"/>
     <property name="SecurityMode" type="s" access="readwrite"/>

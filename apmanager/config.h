@@ -25,6 +25,11 @@ class Config
   Config(Manager* manager, const std::string& service_path);
   virtual ~Config();
 
+  // Implementation of ConfigInterface.
+  // Handles calls to org.chromium.apmanager.Config.SsidSet().
+  virtual bool SsidSet(chromeos::ErrorPtr* error,
+                       const std::string& ssid);
+
   // Calculate the frequency based on the given |channel|. Return true and set
   // the output |frequency| if is valid channel, false otherwise.
   static bool GetFrequencyFromChannel(uint16_t channel, uint32_t* freq);
@@ -48,6 +53,8 @@ class Config
   void set_control_interface(const std::string& control_interface) {
     control_interface_ = control_interface;
   }
+
+  const std::string& selected_interface() const { return selected_interface_; }
 
   const dbus::ObjectPath& dbus_path() const { return dbus_path_; }
 
@@ -115,6 +122,8 @@ class Config
   Manager* manager_;
   dbus::ObjectPath dbus_path_;
   std::string control_interface_;
+  // Interface selected for hostapd.
+  std::string selected_interface_;
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
   scoped_refptr<Device> device_;
 

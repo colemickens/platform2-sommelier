@@ -98,9 +98,11 @@ void OnStartup(const char* daemon_name, CommandLine* cl) {
 
   LOG(INFO) << __func__ << ": Dropping privileges";
 
+  // TODO(zqiu): temporary, until we figure out the exact privileges required
+  // to start required daemons (hostapd and dnsmasq).
   // Now that the daemon has all the resources it needs to run, we can drop
   // privileges further.
-  DropPrivileges(minijail);
+  // DropPrivileges(minijail);
 }
 
 int main(int argc, char* argv[]) {

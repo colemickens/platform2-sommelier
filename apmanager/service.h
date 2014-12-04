@@ -12,6 +12,7 @@
 
 #include "apmanager/config.h"
 #include "apmanager/dbus_adaptors/org.chromium.apmanager.Service.h"
+#include "apmanager/dhcp_server_factory.h"
 
 namespace apmanager {
 
@@ -53,6 +54,9 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
   // a SIGKILL if failed to terminated with SIGTERM.
   void StopHostapdProcess();
 
+  // Release resources allocated to this service.
+  void ReleaseResources();
+
   Manager* manager_;
   int service_identifier_;
   std::string service_path_;
@@ -60,6 +64,8 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
   std::unique_ptr<Config> config_;
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<chromeos::Process> hostapd_process_;
+  std::unique_ptr<DHCPServer> dhcp_server_;
+  DHCPServerFactory* dhcp_server_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

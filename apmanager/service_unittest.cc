@@ -14,6 +14,8 @@
 #include <gtest/gtest.h>
 
 #include "apmanager/mock_config.h"
+#include "apmanager/mock_dhcp_server.h"
+#include "apmanager/mock_dhcp_server_factory.h"
 #include "apmanager/mock_manager.h"
 
 using chromeos::ProcessMock;
@@ -44,6 +46,10 @@ class ServiceTest : public testing::Test {
 
   void SetConfig(Config* config) {
     service_.config_.reset(config);
+  }
+
+  void SetDHCPServerFactory(DHCPServerFactory* factory) {
+    service_.dhcp_server_factory_ = factory;
   }
 
  protected:
@@ -81,11 +87,20 @@ TEST_F(ServiceTest, StartSuccess) {
   MockConfig* config = new MockConfig();
   SetConfig(config);
 
+  // Setup mock DHCP server.
+  MockDHCPServerFactory* dhcp_server_factory =
+      MockDHCPServerFactory::GetInstance();
+  MockDHCPServer* dhcp_server = new MockDHCPServer();
+  SetDHCPServerFactory(dhcp_server_factory);
+
   std::string config_str(kHostapdConfig);
   chromeos::ErrorPtr error;
   EXPECT_CALL(*config, GenerateConfigFile(_, _)).WillOnce(
       DoAll(SetArgPointee<1>(config_str), Return(true)));
   EXPECT_CALL(*config, ClaimDevice()).WillOnce(Return(true));
+  EXPECT_CALL(*dhcp_server_factory, CreateDHCPServer(_, _))
+      .WillOnce(Return(dhcp_server));
+  EXPECT_CALL(*dhcp_server, Start()).WillOnce(Return(true));
   EXPECT_TRUE(service_.Start(&error));
   EXPECT_EQ(nullptr, error);
 }

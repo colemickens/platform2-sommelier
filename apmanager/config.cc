@@ -95,6 +95,12 @@ bool Config::GetFrequencyFromChannel(uint16_t channel, uint32_t* freq) {
   return ret_value;
 }
 
+bool Config::SsidSet(ErrorPtr* error, const string& ssid) {
+  // TODO(zqiu): validate ssid string.
+  SetSsid(ssid);
+  return true;
+}
+
 void Config::RegisterAsync(ExportedObjectManager* object_manager,
                            AsyncEventSequencer* sequencer) {
   CHECK(!dbus_object_) << "Already registered";
@@ -260,10 +266,11 @@ bool Config::AppendInterface(ErrorPtr* error,
   }
 
   // Use the preferred AP interface from the device.
-  interface = device_->GetPreferredApInterface();
-
-  base::StringAppendF(
-      config_str, "%s=%s\n", kHostapdConfigKeyInterface, interface.c_str());
+  selected_interface_ = device_->GetPreferredApInterface();
+  base::StringAppendF(config_str,
+                      "%s=%s\n",
+                      kHostapdConfigKeyInterface,
+                      selected_interface_.c_str());
   return true;
 }
 

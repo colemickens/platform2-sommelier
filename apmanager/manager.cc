@@ -21,7 +21,12 @@ Manager::Manager()
       device_info_(this),
       shill_proxy_(new ShillProxy()) {}
 
-Manager::~Manager() {}
+Manager::~Manager() {
+  // Terminate all services before cleanup other resources.
+  for (auto& service : services_) {
+    service.reset();
+  }
+}
 
 void Manager::RegisterAsync(ExportedObjectManager* object_manager,
                             AsyncEventSequencer* sequencer) {
