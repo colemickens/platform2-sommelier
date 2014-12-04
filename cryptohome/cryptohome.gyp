@@ -95,10 +95,20 @@
 
     # Common objects.
     {
+      'target_name': 'libcryptohome-metrics',
+      'type': 'static_library',
+      'dependencies': [
+      ],
+      'sources': [
+        'cryptohome_metrics.cc',
+      ],
+    },
+    {
       'target_name': 'libcrostpm',
       'type': 'static_library',
       'dependencies': [
         'cryptohome-proto',
+        'libcryptohome-metrics',
       ],
       'sources': [
         'tpm.cc',
@@ -111,6 +121,7 @@
       'dependencies': [
         'cryptohome-dbus-server',
         'cryptohome-proto',
+        'libcryptohome-metrics',
       ],
       'cflags': [
         # The generated dbus headers use "register".

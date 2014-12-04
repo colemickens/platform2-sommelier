@@ -25,8 +25,6 @@
 #include <chromeos/cryptohome.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/secure_blob.h>
-#include <metrics/metrics_library.h>
-#include <metrics/timer.h>
 #include <map>
 #include <string>
 #include <vector>
@@ -36,6 +34,7 @@
 #include "cryptohome/boot_lockbox.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_event_source.h"
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/dbus_transition.h"
 #include "cryptohome/install_attributes.h"
 #include "cryptohome/interface.h"
@@ -65,91 +64,6 @@ namespace cryptohome {
 const char kSaltFilePath[] = "/home/.shadow/salt";
 const char kPublicMountSaltFilePath[] = "/var/lib/public_mount_salt";
 const char kChapsSystemToken[] = "/var/lib/chaps";
-
-// Encapsulates histogram parameters, for UMA reporting.
-struct HistogramParams {
-  const char* metric_name;
-  int min_sample;
-  int max_sample;
-  int num_buckets;
-};
-
-// Wrapper for all timers used by Service.
-class TimerCollection {
- public:
-  enum TimerType {
-    kAsyncMountTimer,
-    kSyncMountTimer,
-    kAsyncGuestMountTimer,
-    kSyncGuestMountTimer,
-    kTpmTakeOwnershipTimer,
-    kPkcs11InitTimer,
-    kMountExTimer,
-    kNumTimerTypes  // For the number of timer types.
-  };
-
-  TimerCollection()
-      : timer_array_() {}
-  virtual ~TimerCollection() {}
-
-  // |is_start| represents whether the timer is supposed to start (true), or
-  // stop (false).
-  bool UpdateTimer(TimerType timer_type, bool is_start) {
-    chromeos_metrics::TimerReporter* timer = timer_array_[timer_type].get();
-    if (is_start) {
-      // Starts timer related to |timer_type|. Creates it if necessary.
-      if (!timer) {
-        timer = new chromeos_metrics::TimerReporter(
-            kHistogramParams[timer_type].metric_name,
-            kHistogramParams[timer_type].min_sample,
-            kHistogramParams[timer_type].max_sample,
-            kHistogramParams[timer_type].num_buckets);
-        timer_array_[timer_type].reset(timer);
-      }
-      return timer->Start();
-    }
-    // Stops the timer.
-    bool success = (timer && timer->HasStarted() &&
-                    timer->Stop() && timer->ReportMilliseconds());
-    if (!success) {
-      LOG(WARNING) << "Timer " << kHistogramParams[timer_type].metric_name
-                   << " failed to report";
-    }
-    return success;
-  }
-
- private:
-  // Histogram parameters. This should match the order of
-  // 'TimerCollection::TimerType'. Min and max samples are in milliseconds.
-  static const HistogramParams kHistogramParams[kNumTimerTypes];
-
-  // The array of timers. TimerReporter's need to be pointers, since each of
-  // them will be constructed with different arguments.
-  scoped_ptr<chromeos_metrics::TimerReporter> timer_array_[kNumTimerTypes];
-
-  DISALLOW_COPY_AND_ASSIGN(TimerCollection);
-};
-
-// static
-const HistogramParams TimerCollection::kHistogramParams[kNumTimerTypes] = {
-  {"Cryptohome.TimeToMountAsync", 0, 4000, 50},
-  {"Cryptohome.TimeToMountSync", 0, 4000, 50},
-  {"Cryptohome.TimeToMountGuestAsync", 0, 4000, 50},
-  {"Cryptohome.TimeToMountGuestSync", 0, 4000, 50},
-  {"Cryptohome.TimeToTakeTpmOwnership", 0, 100000, 50},
-  {"Cryptohome.TimeToInitPkcs11", 1000, 100000, 50},
-  {"Cryptohome.TimeToMountEx", 0, 4000, 50}
-};
-// A note on the PKCS#11 initialization time:
-// Max sample for PKCS#11 initialization time is 100s, since we are interested
-// in recording the very first PKCS#11 initialization time, which is the
-// lengthy one. Subsequent initializations are fast (under 1s) because they
-// just check if PKCS#11 was previously initialized, returning immediately.
-// These will all fall into the first histogram bucket. We are currently not
-// filtering these since this initialization is done via a separated process,
-// called via command line, and it is difficult to distinguish the first
-// initialization from the others.
-
 const int kAutoCleanupPeriodMS = 1000 * 60 * 60;  // 1 hour
 const int kUpdateUserActivityPeriod = 24;  // divider of the former
 const int kDefaultRandomSeedLength = 64;
@@ -158,10 +72,6 @@ const char kTpmInitStatusEventType[] = "TpmInitStatus";
 
 // The default entropy source to seed with random data from the TPM on startup.
 const char kDefaultEntropySource[] = "/dev/urandom";
-
-// The name of the UMA user action for reporting a failure to initialize the
-// PKCS#11.
-const char kMetricNamePkcs11InitFail[] = "Cryptohome.PKCS11InitFail";
 
 // Location of the path to store basic device enrollment information that
 // will persist across powerwashes.
@@ -262,7 +172,6 @@ Service::Service()
       default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
       install_attrs_(default_install_attrs_.get()),
       update_user_activity_period_(kUpdateUserActivityPeriod - 1),
-      timer_collection_(new TimerCollection()),
       reported_pkcs11_init_fail_(false),
       enterprise_owned_(false),
       mounts_lock_(),
@@ -447,10 +356,6 @@ bool Service::CleanUpStaleMounts(bool force) {
 bool Service::Initialize() {
   bool result = true;
 
-  // Initialize the metrics library for stat reporting.
-  metrics_lib_.Init();
-  chromeos_metrics::TimerReporter::set_metrics_lib(&metrics_lib_);
-
   crypto_->set_use_tpm(use_tpm_);
   if (!crypto_->Init(tpm_init_))
     return false;
@@ -604,7 +509,7 @@ void Service::InitializePkcs11(cryptohome::Mount* mount) {
 
   // Reset PKCS#11 initialization status. A successful completion of
   // MountTaskPkcs11_Init would set it in the service thread via NotifyEvent().
-  timer_collection_->UpdateTimer(TimerCollection::kPkcs11InitTimer, true);
+  ReportTimerStart(kPkcs11InitTimer);
   mount->set_pkcs11_state(cryptohome::Mount::kIsBeingInitialized);
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(mount, &event_source_);
@@ -685,8 +590,7 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
       // We only report and init PKCS#11 for successful mounts.
       if (result->return_status()) {
         if (!result->return_code()) {
-          timer_collection_->UpdateTimer(TimerCollection::kAsyncMountTimer,
-                                         false);
+          ReportTimerStop(kAsyncMountTimer);
         }
         // A return code of MOUNT_RECREATED will still need PKCS#11 init.
         InitializePkcs11(result->mount());
@@ -697,8 +601,7 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
         RemoveMountForUser(guest_user_);
       }
       if (result->return_status() && !result->return_code()) {
-        timer_collection_->UpdateTimer(TimerCollection::kAsyncGuestMountTimer,
-                                       false);
+        ReportTimerStop(kAsyncGuestMountTimer);
       }
     }
   } else if (!strcmp(event->GetEventName(), kTpmInitStatusEventType)) {
@@ -712,18 +615,10 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
     // Drop the reference since the work is done.
     pkcs11_tasks_.erase(result->sequence_id());
     if (result->return_status()) {
-      timer_collection_->UpdateTimer(TimerCollection::kPkcs11InitTimer, false);
+      ReportTimerStop(kPkcs11InitTimer);
       LOG(INFO) << "PKCS#11 initialization succeeded.";
       result->mount()->set_pkcs11_state(cryptohome::Mount::kIsInitialized);
       return;
-    }
-    // We only report failures on the PKCS#11 initialization once per
-    // initialization attempt, which is currently done once per login.
-    if (!reported_pkcs11_init_fail_) {
-      reported_pkcs11_init_fail_ =
-          metrics_lib_.SendUserActionToUMA(kMetricNamePkcs11InitFail);
-      LOG_IF(WARNING, !reported_pkcs11_init_fail_)
-          << "Failed to report a failure on PKCS#11 initialization.";
     }
     LOG(ERROR) << "PKCS#11 initialization failed.";
     result->mount()->set_pkcs11_state(cryptohome::Mount::kIsFailed);
@@ -739,8 +634,7 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
 void Service::InitializeTpmComplete(bool status, bool took_ownership) {
   if (took_ownership) {
     gboolean mounted = FALSE;
-    timer_collection_->UpdateTimer(TimerCollection::kTpmTakeOwnershipTimer,
-                                   false);
+    ReportTimerStop(kTpmTakeOwnershipTimer);
     // When TPM initialization finishes, we need to tell every Mount to
     // reinitialize its TPM context, since the TPM is now useable, and we might
     // need to kick off their PKCS11 initialization if they were blocked before.
@@ -1595,7 +1489,7 @@ gboolean Service::Mount(const gchar *userid,
   if (install_attrs_->is_first_install())
     install_attrs_->Finalize();
 
-  timer_collection_->UpdateTimer(TimerCollection::kSyncMountTimer, true);
+  ReportTimerStart(kSyncMountTimer);
   MountTaskResult result;
   base::WaitableEvent event(true, false);
   Mount::MountArgs mount_args;
@@ -1614,7 +1508,7 @@ gboolean Service::Mount(const gchar *userid,
   event.Wait();
   // We only report successful mounts.
   if (result.return_status() && !result.return_code())
-    timer_collection_->UpdateTimer(TimerCollection::kSyncMountTimer, false);
+    ReportTimerStop(kSyncMountTimer);
 
   user_mount->set_pkcs11_state(cryptohome::Mount::kUninitialized);
   if (result.return_status()) {
@@ -1784,7 +1678,7 @@ void Service::DoMountEx(AccountIdentifier* identifier,
 
   // As per the other timers, this really only tracks time spent in
   // MountCryptohome() not in the other areas prior.
-  timer_collection_->UpdateTimer(TimerCollection::kMountExTimer, true);
+  ReportTimerStart(kMountExTimer);
   MountError code = MOUNT_ERROR_NONE;
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = request->has_create();
@@ -1795,7 +1689,7 @@ void Service::DoMountEx(AccountIdentifier* identifier,
   user_mount->set_pkcs11_state(cryptohome::Mount::kUninitialized);
 
   // Mark the timer as done.
-  timer_collection_->UpdateTimer(TimerCollection::kMountExTimer, false);
+  ReportTimerStop(kMountExTimer);
   if (!status) {
     reply.set_error(MountErrorToCryptohomeError(code));
   }
@@ -1943,7 +1837,7 @@ void Service::DoAsyncMount(const std::string& userid,
         base::Bind(&MountTaskInstallAttrsFinalize::Run, finalize));
   }
 
-  timer_collection_->UpdateTimer(TimerCollection::kAsyncMountTimer, true);
+  ReportTimerStart(kAsyncMountTimer);
   mount_task->result()->set_pkcs11_init(true);
   user_mount->set_pkcs11_state(cryptohome::Mount::kUninitialized);
   mount_task->Run();
@@ -2002,7 +1896,7 @@ gboolean Service::MountGuest(gint *OUT_error_code,
 
   scoped_refptr<cryptohome::Mount> guest_mount =
     GetOrCreateMountForUser(guest_user_);
-  timer_collection_->UpdateTimer(TimerCollection::kSyncGuestMountTimer, true);
+  ReportTimerStart(kSyncGuestMountTimer);
   MountTaskResult result;
   base::WaitableEvent event(true, false);
   scoped_refptr<MountTaskMountGuest> mount_task
@@ -2014,8 +1908,7 @@ gboolean Service::MountGuest(gint *OUT_error_code,
   event.Wait();
   // We only report successful mounts.
   if (result.return_status() && !result.return_code())
-    timer_collection_->UpdateTimer(TimerCollection::kSyncGuestMountTimer,
-                                   false);
+    ReportTimerStop(kSyncGuestMountTimer);
   *OUT_error_code = result.return_code();
   *OUT_result = result.return_status();
   return TRUE;
@@ -2045,7 +1938,7 @@ gboolean Service::AsyncMountGuest(gint *OUT_async_id,
     return TRUE;
   }
 
-  timer_collection_->UpdateTimer(TimerCollection::kAsyncGuestMountTimer, true);
+  ReportTimerStart(kAsyncGuestMountTimer);
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(guest_mount.get(), &event_source_);
   scoped_refptr<MountTaskMountGuest> mount_task
@@ -2201,8 +2094,7 @@ gboolean Service::TpmIsBeingOwned(gboolean* OUT_owning, GError** error) {
 
 gboolean Service::TpmCanAttemptOwnership(GError** error) {
   if (!tpm_init_->HasInitializeBeenCalled()) {
-    timer_collection_->UpdateTimer(TimerCollection::kTpmTakeOwnershipTimer,
-                                   true);
+    ReportTimerStart(kTpmTakeOwnershipTimer);
     tpm_init_->AsyncInitializeTpm();
   }
   return TRUE;

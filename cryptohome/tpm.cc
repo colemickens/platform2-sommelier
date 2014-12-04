@@ -22,6 +22,7 @@
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
 
 using base::PlatformThread;
@@ -84,8 +85,6 @@ Tpm::Tpm()
       is_disabled_(true),
       is_owned_(false),
       is_being_owned_(false) {
-  metrics_.reset(new MetricsLibrary());
-  metrics_->Init();
 }
 
 Tpm::~Tpm() { }
@@ -370,11 +369,13 @@ Tpm::TpmRetryAction Tpm::HandleError(TSS_RESULT result) {
     // TODO(fes): We're considering this a communication failure for now.
     case ERROR_CODE(TCS_E_KM_LOADFAILED):
       LOG(ERROR) << "Key load failed; problem with parent key authorization.";
+      ReportCryptohomeError(kTcsKeyLoadFailed);
       status = Tpm::RetryCommFailure;
       break;
     case ERROR_CODE(TPM_E_DEFEND_LOCK_RUNNING):
       LOG(ERROR) << "The TPM is defending itself against possible dictionary "
                  << "attacks.";
+      ReportCryptohomeError(kTpmDefendLockRunning);
       status = Tpm::RetryDefendLock;
       break;
     // This error occurs on bad password.
@@ -384,7 +385,7 @@ Tpm::TpmRetryAction Tpm::HandleError(TSS_RESULT result) {
     // This error code occurs when the TPM is in an error state.
     case ERROR_CODE(TPM_E_FAIL):
       status = Tpm::RetryReboot;
-      metrics_->SendEnumToUMA("Cryptohome.Errors", 1, 10);
+      ReportCryptohomeError(kTpmFail);
       LOG(ERROR) << "The TPM returned TPM_E_FAIL.  A reboot is required.";
       break;
     default:
@@ -2879,6 +2880,7 @@ bool Tpm::LoadWrappedKey(TSS_HCONTEXT context_handle,
   if (!LoadSrk(context_handle, srk_handle.ptr(), result)) {
     if (*result != kKeyNotFoundError) {
       TPM_LOG(INFO, *result) << "LoadWrappedKey: Cannot load SRK";
+      ReportCryptohomeError(kCannotLoadTpmSrk);
     }
     return false;
   }
@@ -2889,6 +2891,7 @@ bool Tpm::LoadWrappedKey(TSS_HCONTEXT context_handle,
     SecureBlob pubkey;
     if (!GetPublicKeyBlob(context_handle, srk_handle, &pubkey, result)) {
       TPM_LOG(INFO, *result) << "LoadWrappedKey: Cannot load SRK public key";
+      ReportCryptohomeError(kCannotReadTpmSrkPublic);
       return false;
     }
   }
@@ -2902,12 +2905,17 @@ bool Tpm::LoadWrappedKey(TSS_HCONTEXT context_handle,
                                   key_handle))) {
     TPM_LOG(INFO, *result) << "LoadWrappedKey: Cannot load key " \
                            << "from blob";
+    ReportCryptohomeError(kCannotLoadTpmKey);
+    if (*result == TPM_E_BAD_KEY_PROPERTY) {
+      ReportCryptohomeError(kTpmBadKeyProperty);
+    }
     return false;
   }
 
   SecureBlob pub_key;
   // Make sure that we can get the public key
   if (!GetPublicKeyBlob(context_handle, *key_handle, &pub_key, result)) {
+    ReportCryptohomeError(kCannotReadTpmPublicKey);
     Tspi_Context_CloseObject(context_handle, *key_handle);
     return false;
   }

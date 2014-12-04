@@ -21,8 +21,6 @@
 #include <chromeos/secure_blob.h>
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
-#include <metrics/metrics_library.h>
-#include <metrics/timer.h>
 
 #include "cryptohome/attestation.h"
 #include "cryptohome/cryptohome_event_source.h"
@@ -651,10 +649,6 @@ class Service : public chromeos::dbus::AbstractDbusService,
   scoped_ptr<cryptohome::InstallAttributes> default_install_attrs_;
   cryptohome::InstallAttributes* install_attrs_;
   int update_user_activity_period_;
-  // Metrics library used by all metrics reporters in cryptohome.
-  MetricsLibrary metrics_lib_;
-  // Collection of timers for UMA reports.
-  scoped_ptr<TimerCollection> timer_collection_;
   // Keeps track of whether a failure on PKCS#11 initialization was reported
   // during this user login. We use this not to report a same failure multiple
   // times.

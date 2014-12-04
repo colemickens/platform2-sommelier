@@ -29,6 +29,7 @@
 #include "cryptohome/chaps_client_factory.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_common.h"
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/homedirs.h"
 #include "cryptohome/pkcs11_init.h"
@@ -1449,6 +1450,7 @@ bool Mount::InsertPkcs11Token() {
       pkcs11init.GetTpmTokenLabelForUser(current_user_->username()),
       &slot_id)) {
     LOG(ERROR) << "Failed to load PKCS #11 token.";
+    ReportCryptohomeError(kLoadPkcs11TokenFailed);
   }
   pkcs11_token_auth_data_.clear_contents();
   return true;

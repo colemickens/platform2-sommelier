@@ -12,6 +12,7 @@
 #include <dbus/dbus.h>
 #include <glib.h>
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/platform.h"
 
 // TODO(wad) This is a placeholder DBus service which allows
@@ -49,6 +50,8 @@ int main(int argc, char **argv) {
   // Initialize OpenSSL.
   OpenSSL_add_all_algorithms();
 
+  cryptohome::InitializeMetrics();
+
   cryptohome::Platform platform;
   cryptohome::Service service;
 
@@ -71,5 +74,8 @@ int main(int argc, char **argv) {
 
   // If PKCS #11 was initialized, this will tear it down.
   C_Finalize(NULL);
+
+  cryptohome::TearDownMetrics();
+
   return 0;
 }

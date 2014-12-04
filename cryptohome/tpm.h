@@ -13,7 +13,6 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/synchronization/lock.h>
 #include <chromeos/secure_blob.h>
-#include <metrics/metrics_library.h>
 #include <openssl/rsa.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
@@ -702,8 +701,6 @@ class Tpm {
 
   static Tpm* singleton_;
   static base::Lock singleton_lock_;
-
-  scoped_ptr<MetricsLibraryInterface> metrics_;
 
   DISALLOW_COPY_AND_ASSIGN(Tpm);
 };

@@ -26,6 +26,7 @@ extern "C" {
 }
 
 #include "cryptohome/cryptohome_common.h"
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm_init.h"
@@ -180,7 +181,7 @@ bool Crypto::GetOrCreateSalt(const base::FilePath& path, unsigned int length,
   } else {
     local_salt.resize(file_len);
     if (!platform_->ReadFile(path.value(), &local_salt)) {
-      LOG(ERROR) << "Could not read sale file of length " << file_len;
+      LOG(ERROR) << "Could not read salt file of length " << file_len;
       return false;
     }
   }
@@ -287,6 +288,7 @@ bool Crypto::IsTPMPubkeyHash(const string& hash,
   }
   if (retry_action != Tpm::RetryNone) {
     LOG(ERROR) << "Unable to get the cryptohome public key from the TPM.";
+    ReportCryptohomeError(kCannotReadTpmPublicKey);
     if (error)
       // This is a fatal error only if we don't get a transient error code.
       *error = TpmErrorToCrypto(retry_action);
@@ -325,6 +327,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
   }
   if (!serialized.has_tpm_key()) {
     LOG(ERROR) << "Decrypting with TPM, but no tpm key present";
+    ReportCryptohomeError(kDecryptAttemptButTpmKeyMissing);
     if (error)
       *error = CE_TPM_FATAL;
     return false;
@@ -338,6 +341,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
     LOG(ERROR) << "Fatal error--the TPM is enabled but not owned, and this "
                << "keyset was wrapped by the TPM.  It is impossible to "
                << "recover this keyset.";
+    ReportCryptohomeError(kDecryptAttemptButTpmNotOwned);
     if (error)
       *error = CE_TPM_FATAL;
     return false;
@@ -347,6 +351,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
   if (!is_cryptohome_key_loaded()) {
     LOG(ERROR) << "Vault keyset is wrapped by the TPM, but the TPM is "
                << "unavailable";
+    ReportCryptohomeError(kDecryptAttemptButTpmNotAvailable);
     if (error)
       *error = local_error;
     return false;
@@ -362,6 +367,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
   if (serialized.has_tpm_public_key_hash()) {
     if (!IsTPMPubkeyHash(serialized.tpm_public_key_hash(), error)) {
       LOG(ERROR) << "TPM public key hash mismatch.";
+      ReportCryptohomeError(kDecryptAttemptButTpmKeyMismatch);
       return false;
     }
   }
@@ -400,6 +406,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
     if (!tpm_unwrap_success) {
       LOG(ERROR) << "The TPM failed to unwrap the intermediate key with the "
                  << "supplied credentials";
+      ReportCryptohomeError(kDecryptAttemptWithTpmKeyFailed);
       if (error)
         // This is a fatal error only if we don't get a transient error code.
         *error = TpmErrorToCrypto(retry_action);
@@ -762,15 +769,19 @@ bool Crypto::EncryptVaultKeyset(const VaultKeyset& vault_keyset,
                                 const SecureBlob& vault_key,
                                 const SecureBlob& vault_key_salt,
                                 SerializedVaultKeyset* serialized) const {
-  if (!EncryptTPM(vault_keyset, vault_key, vault_key_salt, serialized))
-    if (!EncryptScrypt(vault_keyset, vault_key, serialized))
+  if (!EncryptTPM(vault_keyset, vault_key, vault_key_salt, serialized)) {
+    if (use_tpm_ && tpm_ && tpm_->IsOwned()) {
+      ReportCryptohomeError(kEncryptWithTpmFailed);
+    }
+    if (!EncryptScrypt(vault_keyset, vault_key, serialized)) {
       return false;
+    }
+  }
 
   serialized->set_salt(vault_key_salt.const_data(),
                        vault_key_salt.size());
   return true;
 }
-
 
 bool Crypto::EncryptWithTpm(const SecureBlob& data,
                             string* encrypted_data) const {

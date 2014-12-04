@@ -15,7 +15,6 @@
 #include <base/synchronization/lock.h>
 #include <base/threading/platform_thread.h>
 #include <chromeos/secure_blob.h>
-#include <metrics/metrics_library.h>
 #include <openssl/evp.h>
 
 #include "cryptohome/crypto.h"
@@ -411,7 +410,6 @@ class Attestation : public base::PlatformThread::Delegate,
   // If set, this will be used to sign / encrypt enterprise challenge-response
   // data instead of using kEnterprise*PublicKey.
   RSA* enterprise_test_key_;
-  MetricsLibrary metrics_;
   InstallAttributes* install_attributes_;
   ScopedObserver<InstallAttributes, InstallAttributes::Observer>
       install_attributes_observer_;

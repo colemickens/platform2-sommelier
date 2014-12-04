@@ -20,6 +20,7 @@
 #include <openssl/sha.h>
 #include <openssl/x509.h>
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/keystore.h"
 #include "cryptohome/pkcs11_keystore.h"
@@ -230,7 +231,6 @@ Attestation::Attestation()
       install_attributes_observer_(this),
       is_tpm_ready_(false),
       is_prepare_in_progress_(false) {
-  metrics_.Init();
 }
 
 Attestation::~Attestation() {
@@ -2000,7 +2000,7 @@ int Attestation::ChooseTemporalIndex(const std::string& user,
   }
   if (histogram[least_used_index] > 0) {
     LOG(WARNING) << "Unique origin-specific identifiers have been exhausted.";
-    metrics_.SendCrosEventToUMA("Attestation.OriginSpecificExhausted");
+    ReportCrosEvent(kAttestationOriginSpecificIdentifiersExhausted);
   }
   // Record our choice for later reference.
   AttestationDatabase::TemporalIndexRecord* new_record =
