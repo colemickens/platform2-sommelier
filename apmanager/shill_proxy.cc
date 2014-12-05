@@ -14,18 +14,19 @@ namespace apmanager {
 // static.
 const char ShillProxy::kManagerPath[] = "/";
 
-ShillProxy::ShillProxy() {
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  bus_ = new dbus::Bus(options);
-  manager_proxy_.reset(
-      new org::chromium::flimflam::ManagerProxy(
-          bus_, shill::kFlimflamServiceName, dbus::ObjectPath(kManagerPath)));
-}
+ShillProxy::ShillProxy() {}
 
 ShillProxy::~ShillProxy() {}
 
+void ShillProxy::Init(const scoped_refptr<dbus::Bus>& bus) {
+  CHECK(!manager_proxy_) << "Already init";
+  manager_proxy_.reset(
+      new org::chromium::flimflam::ManagerProxy(
+          bus, shill::kFlimflamServiceName, dbus::ObjectPath(kManagerPath)));
+}
+
 void ShillProxy::ClaimInterface(const string& interface_name) {
+  CHECK(manager_proxy_) << "Proxy not initialize yet";
   chromeos::ErrorPtr error;
   if (!manager_proxy_->ClaimInterface(kServiceName, interface_name, &error)) {
     // Ignore unknown object error (when shill is not running). Only report
@@ -39,6 +40,7 @@ void ShillProxy::ClaimInterface(const string& interface_name) {
 }
 
 void ShillProxy::ReleaseInterface(const string& interface_name) {
+  CHECK(manager_proxy_) << "Proxy not initialize yet";
   chromeos::ErrorPtr error;
   if (!manager_proxy_->ReleaseInterface(interface_name, &error)) {
     // Ignore unknown object error (when shill is not running). Only report

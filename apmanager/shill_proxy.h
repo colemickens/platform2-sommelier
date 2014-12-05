@@ -21,6 +21,8 @@ class ShillProxy {
   ShillProxy();
   virtual ~ShillProxy();
 
+  void Init(const scoped_refptr<dbus::Bus>& bus);
+
   // Claim the given interface |interface_name| from shill.
   virtual void ClaimInterface(const std::string& interface_name);
   // Release the given interface |interface_name| to shill.

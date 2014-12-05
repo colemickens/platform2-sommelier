@@ -39,6 +39,7 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
   // Register DBus object.
   void RegisterAsync(
       chromeos::dbus_utils::ExportedObjectManager* object_manager,
+      const scoped_refptr<dbus::Bus>& bus,
       chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   virtual void Start();
@@ -77,6 +78,7 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
   int service_identifier_;
   int device_identifier_;
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  scoped_refptr<dbus::Bus> bus_;
   std::vector<std::unique_ptr<Service>> services_;
   std::vector<scoped_refptr<Device>> devices_;
   DeviceInfo device_info_;

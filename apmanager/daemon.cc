@@ -45,7 +45,7 @@ void Daemon::OnShutdown(int* return_code) {
 void Daemon::RegisterDBusObjectsAsync(
     chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
   manager_.reset(new apmanager::Manager());
-  manager_->RegisterAsync(object_manager_.get(), sequencer);
+  manager_->RegisterAsync(object_manager_.get(), bus_, sequencer);
 }
 
 }  // namespace apmanager

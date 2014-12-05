@@ -48,19 +48,20 @@ Service::~Service() {
 }
 
 void Service::RegisterAsync(ExportedObjectManager* object_manager,
+                            const scoped_refptr<dbus::Bus>& bus,
                             AsyncEventSequencer* sequencer) {
   CHECK(!dbus_object_) << "Already registered";
   dbus_object_.reset(
       new chromeos::dbus_utils::DBusObject(
           object_manager,
-          object_manager ? object_manager->GetBus() : nullptr,
+          bus,
           dbus_path_));
   RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Service.RegisterAsync() failed.", true));
 
   // Register Config DBus object.
-  config_->RegisterAsync(object_manager, sequencer);
+  config_->RegisterAsync(object_manager, bus, sequencer);
 }
 
 bool Service::Start(chromeos::ErrorPtr* error) {

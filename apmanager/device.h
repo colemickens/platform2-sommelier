@@ -59,6 +59,7 @@ class Device : public base::RefCounted<Device>,
   // Register Device DBus object.
   void RegisterAsync(
       chromeos::dbus_utils::ExportedObjectManager* object_manager,
+      const scoped_refptr<dbus::Bus>& bus,
       chromeos::dbus_utils::AsyncEventSequencer* sequencer,
       int device_identifier);
 

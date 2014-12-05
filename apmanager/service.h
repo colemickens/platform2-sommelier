@@ -31,6 +31,7 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
   // Register Service DBus object.
   void RegisterAsync(
       chromeos::dbus_utils::ExportedObjectManager* object_manager,
+      const scoped_refptr<dbus::Bus>& bus,
       chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   const dbus::ObjectPath& dbus_path() const { return dbus_path_; }

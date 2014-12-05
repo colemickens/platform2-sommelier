@@ -37,6 +37,7 @@ class Config
   // Register Config DBus object.
   void RegisterAsync(
       chromeos::dbus_utils::ExportedObjectManager* object_manager,
+      const scoped_refptr<dbus::Bus>& bus,
       chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   // Generate a config file string for a hostapd instance. Raise appropriate

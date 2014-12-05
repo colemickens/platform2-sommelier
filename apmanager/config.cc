@@ -102,12 +102,13 @@ bool Config::SsidSet(ErrorPtr* error, const string& ssid) {
 }
 
 void Config::RegisterAsync(ExportedObjectManager* object_manager,
+                           const scoped_refptr<dbus::Bus>& bus,
                            AsyncEventSequencer* sequencer) {
   CHECK(!dbus_object_) << "Already registered";
   dbus_object_.reset(
       new chromeos::dbus_utils::DBusObject(
           object_manager,
-          object_manager ? object_manager->GetBus() : nullptr,
+          bus,
           dbus_path_));
   RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(

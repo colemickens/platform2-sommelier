@@ -30,6 +30,7 @@ Device::Device(Manager* manager, const string& device_name)
 Device::~Device() {}
 
 void Device::RegisterAsync(ExportedObjectManager* object_manager,
+                           const scoped_refptr<dbus::Bus>& bus,
                            AsyncEventSequencer* sequencer,
                            int device_identifier) {
   CHECK(!dbus_object_) << "Already registered";
@@ -40,7 +41,7 @@ void Device::RegisterAsync(ExportedObjectManager* object_manager,
   dbus_object_.reset(
       new chromeos::dbus_utils::DBusObject(
           object_manager,
-          object_manager ? object_manager->GetBus() : nullptr,
+          bus,
           dbus_path_));
   RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(

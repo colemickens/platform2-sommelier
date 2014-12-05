@@ -29,16 +29,21 @@ Manager::~Manager() {
 }
 
 void Manager::RegisterAsync(ExportedObjectManager* object_manager,
+                            const scoped_refptr<dbus::Bus>& bus,
                             AsyncEventSequencer* sequencer) {
   CHECK(!dbus_object_) << "Already registered";
   dbus_object_.reset(
       new chromeos::dbus_utils::DBusObject(
           object_manager,
-          object_manager ? object_manager->GetBus() : nullptr,
+          bus,
           dbus::ObjectPath(kManagerPath)));
   RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
+  bus_ = bus;
+
+  // Initialize shill proxy.
+  shill_proxy_->Init(bus);
 }
 
 void Manager::Start() {
@@ -55,7 +60,8 @@ void Manager::CreateService(
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   scoped_ptr<Service> service(new Service(this, service_identifier_++));
 
-  service->RegisterAsync(dbus_object_->GetObjectManager().get(), sequencer);
+  service->RegisterAsync(
+      dbus_object_->GetObjectManager().get(), bus_, sequencer);
   sequencer->OnAllTasksCompletedCall({
       base::Bind(&Manager::OnServiceRegistered,
                  base::Unretained(this),
@@ -105,6 +111,7 @@ void Manager::RegisterDevice(scoped_refptr<Device> device) {
   // Register device DBbus interfaces.
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   device->RegisterAsync(dbus_object_->GetObjectManager().get(),
+                        bus_,
                         sequencer,
                         device_identifier_++);
   sequencer->OnAllTasksCompletedCall({
