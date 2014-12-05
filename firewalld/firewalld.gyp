@@ -14,6 +14,7 @@
       'sources': [
         'firewall_daemon.cc',
         'firewall_service.cc',
+        'iptables.cc',
       ],
     },
     {
@@ -47,6 +48,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': ['libfirewalld'],
           'sources': [
+            'iptables_unittest.cc',
             'run_all_tests.cc',
           ],
         },

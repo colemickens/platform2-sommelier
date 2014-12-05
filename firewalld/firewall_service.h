@@ -9,17 +9,16 @@
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/dbus/dbus_object.h>
-#include <chromeos/errors/error.h>
 
 #include "firewalld/dbus_adaptor/org.chromium.Firewalld.h"
+#include "firewalld/iptables.h"
 
 using CompletionAction =
     chromeos::dbus_utils::AsyncEventSequencer::CompletionAction;
 
 namespace firewalld {
 
-class FirewallService : public org::chromium::FirewalldAdaptor,
-                        public org::chromium::FirewalldInterface {
+class FirewallService : public org::chromium::FirewalldAdaptor {
  public:
   explicit FirewallService(const scoped_refptr<dbus::Bus>& bus);
   virtual ~FirewallService() = default;
@@ -28,14 +27,8 @@ class FirewallService : public org::chromium::FirewalldAdaptor,
   void RegisterAsync(const CompletionAction& callback);
 
  private:
-  // D-Bus methods.
-  bool PunchHole(chromeos::ErrorPtr* error,
-                 uint16_t in_port,
-                 bool* out_success);
-
-  bool PlugHole(chromeos::ErrorPtr* error, uint16_t in_port, bool* out_success);
-
   chromeos::dbus_utils::DBusObject dbus_object_;
+  IpTables iptables_;
 
   DISALLOW_COPY_AND_ASSIGN(FirewallService);
 };
