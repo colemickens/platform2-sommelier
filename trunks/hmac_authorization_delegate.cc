@@ -49,6 +49,9 @@ bool HmacAuthorizationDelegate::GetCommandAuthorization(
   }
   TPMS_AUTH_COMMAND auth;
   auth.session_handle = session_handle_;
+  if (!nonce_generated_) {
+    RegenerateCallerNonce();
+  }
   auth.nonce = caller_nonce_;
   auth.session_attributes = kContinueSession;
   if (is_parameter_encryption_enabled_) {
@@ -58,9 +61,6 @@ bool HmacAuthorizationDelegate::GetCommandAuthorization(
     if (is_response_parameter_encryption_possible) {
       auth.session_attributes |= kEncryptSession;
     }
-  }
-  if (!nonce_generated_) {
-    RegenerateCallerNonce();
   }
   // We reset the |nonce_generated| flag in preperation of the next command.
   nonce_generated_ = false;

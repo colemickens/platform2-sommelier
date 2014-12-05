@@ -115,12 +115,20 @@ TEST_F(HmacAuthorizationDelegateFixture, NonceRegenerationTest) {
   // First we check that performing GetCommandAuthorization resets the nonce.
   std::string command_hash;
   std::string authorization;
+  TPMS_AUTH_COMMAND auth_command;
   EXPECT_TRUE(delegate_.GetCommandAuthorization(command_hash, false, false,
                                                 &authorization));
+  EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPMS_AUTH_COMMAND(&authorization,
+                                                    &auth_command,
+                                                    NULL));
   EXPECT_EQ(delegate_.caller_nonce_.size, original_nonce.size);
+  EXPECT_EQ(auth_command.nonce.size, original_nonce.size);
   EXPECT_NE(0, memcmp(delegate_.caller_nonce_.buffer,
                       original_nonce.buffer,
                       original_nonce.size));
+  EXPECT_EQ(0, memcmp(delegate_.caller_nonce_.buffer,
+                      auth_command.nonce.buffer,
+                      auth_command.nonce.size));
   // Now we check that GetCommandAuthorization does not reset nonce
   // when EncryptCommandParameter is called first.
   original_nonce = delegate_.caller_nonce_;
@@ -130,13 +138,21 @@ TEST_F(HmacAuthorizationDelegateFixture, NonceRegenerationTest) {
   EXPECT_NE(0, memcmp(delegate_.caller_nonce_.buffer,
                       original_nonce.buffer,
                       original_nonce.size));
+  EXPECT_TRUE(delegate_.nonce_generated_);
   original_nonce = delegate_.caller_nonce_;
   EXPECT_TRUE(delegate_.GetCommandAuthorization(command_hash, false, false,
                                                 &authorization));
+  EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPMS_AUTH_COMMAND(&authorization,
+                                                    &auth_command,
+                                                    NULL));
   EXPECT_EQ(delegate_.caller_nonce_.size, original_nonce.size);
+  EXPECT_EQ(auth_command.nonce.size, original_nonce.size);
   EXPECT_EQ(0, memcmp(delegate_.caller_nonce_.buffer,
                       original_nonce.buffer,
                       original_nonce.size));
+  EXPECT_EQ(0, memcmp(delegate_.caller_nonce_.buffer,
+                      auth_command.nonce.buffer,
+                      auth_command.nonce.size));
 }
 
 TEST_F(HmacAuthorizationDelegateFixture, CommandAuthTest) {
