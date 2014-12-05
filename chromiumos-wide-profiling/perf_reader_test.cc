@@ -276,7 +276,7 @@ TEST(PerfReaderTest, UnperfizeBuildID) {
   EXPECT_EQ("00000000000000000000000000000010", test);
 }
 
-TEST(PerfReaderTest, ReadsTraceMetadata) {
+TEST(PerfReaderTest, ReadsAndWritesTraceMetadata) {
   std::stringstream input;
 
   const size_t attr_count = 1;
@@ -352,6 +352,13 @@ TEST(PerfReaderTest, ReadsTracingMetadataEvent) {
 
   PerfReader pr;
   EXPECT_TRUE(pr.ReadFromString(input.str()));
+  EXPECT_EQ(trace_metadata, pr.tracing_data());
+
+  // Write it out and read it in again, tracing_data() should still be correct.
+  // NB: It does not get written as an event, but in a metadata section.
+  std::vector<char> output_perf_data;
+  EXPECT_TRUE(pr.WriteToVector(&output_perf_data));
+  EXPECT_TRUE(pr.ReadFromVector(output_perf_data));
   EXPECT_EQ(trace_metadata, pr.tracing_data());
 }
 
@@ -440,13 +447,10 @@ TEST(PerfReaderTest, CorrectlyReadsPerfEventAttrSize) {
   EXPECT_EQ(304, actual_attr.ids[3]);
 }
 
-TEST(PerfReaderTest, ReadsSampleAndSampleIdAll) {
-  std::stringstream input;
+TEST(PerfReaderTest, ReadsAndWritesSampleAndSampleIdAll) {
+  using testing::PunU32U64;
 
-  union PunU32U64 {
-    u32 v32[2];
-    u64 v64;
-  };
+  std::stringstream input;
 
   // header
   testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
@@ -529,7 +533,7 @@ TEST(PerfReaderTest, ReadsSampleAndSampleIdAll) {
   const size_t pre_mmap_offset = input.tellp();
   input.write(reinterpret_cast<const char*>(&written_mmap_event),
               offsetof(struct mmap_event, filename));
-  input.write(mmap_filename, 9+7);
+  input.write(mmap_filename, 10+6);
   input.write(reinterpret_cast<const char*>(mmap_sample_id),
               sizeof(mmap_sample_id));
   const size_t written_mmap_size =
@@ -543,39 +547,48 @@ TEST(PerfReaderTest, ReadsSampleAndSampleIdAll) {
 
   struct perf_sample sample;
 
-  PerfReader pr;
-  EXPECT_TRUE(pr.ReadFromString(input.str()));
-  // PERF_RECORD_HEADER_ATTR is added to attr(), not events().
-  EXPECT_EQ(2, pr.events().size());
+  PerfReader pr1;
+  EXPECT_TRUE(pr1.ReadFromString(input.str()));
+  // Write it out and read it in again, the two should have the same data.
+  std::vector<char> output_perf_data;
+  EXPECT_TRUE(pr1.WriteToVector(&output_perf_data));
+  PerfReader pr2;
+  EXPECT_TRUE(pr2.ReadFromVector(output_perf_data));
 
-  const event_t* sample_event = pr.events()[0].get();
-  EXPECT_EQ(PERF_RECORD_SAMPLE, sample_event->header.type);
-  EXPECT_TRUE(pr.ReadPerfSampleInfo(*sample_event, &sample));
-  EXPECT_EQ(0xffffffff01234567, sample.ip);
-  EXPECT_EQ(0x68d, sample.pid);
-  EXPECT_EQ(0x68e, sample.tid);
-  EXPECT_EQ(1415837014*1000000000ULL, sample.time);
-  EXPECT_EQ(0x00007f999c38d15a, sample.addr);
-  EXPECT_EQ(2, sample.id);
-  EXPECT_EQ(1, sample.stream_id);
-  EXPECT_EQ(8, sample.cpu);
-  EXPECT_EQ(10001, sample.period);
+  // Test both versions:
+  for (PerfReader* pr : {&pr1, &pr2}) {
+    // PERF_RECORD_HEADER_ATTR is added to attr(), not events().
+    EXPECT_EQ(2, pr->events().size());
 
-  const event_t* mmap_event = pr.events()[1].get();
-  EXPECT_EQ(PERF_RECORD_MMAP, mmap_event->header.type);
-  EXPECT_TRUE(pr.ReadPerfSampleInfo(*mmap_event, &sample));
-  EXPECT_EQ(0x68d, sample.pid);
-  EXPECT_EQ(0x68e, sample.tid);
-  EXPECT_EQ(1415911367*1000000000ULL, sample.time);
-  EXPECT_EQ(3, sample.id);
-  EXPECT_EQ(2, sample.stream_id);
-  EXPECT_EQ(9, sample.cpu);
+    const event_t* sample_event = pr->events()[0].get();
+    EXPECT_EQ(PERF_RECORD_SAMPLE, sample_event->header.type);
+    EXPECT_TRUE(pr->ReadPerfSampleInfo(*sample_event, &sample));
+    EXPECT_EQ(0xffffffff01234567, sample.ip);
+    EXPECT_EQ(0x68d, sample.pid);
+    EXPECT_EQ(0x68e, sample.tid);
+    EXPECT_EQ(1415837014*1000000000ULL, sample.time);
+    EXPECT_EQ(0x00007f999c38d15a, sample.addr);
+    EXPECT_EQ(2, sample.id);
+    EXPECT_EQ(1, sample.stream_id);
+    EXPECT_EQ(8, sample.cpu);
+    EXPECT_EQ(10001, sample.period);
+
+    const event_t* mmap_event = pr->events()[1].get();
+    EXPECT_EQ(PERF_RECORD_MMAP, mmap_event->header.type);
+    EXPECT_TRUE(pr->ReadPerfSampleInfo(*mmap_event, &sample));
+    EXPECT_EQ(0x68d, sample.pid);
+    EXPECT_EQ(0x68e, sample.tid);
+    EXPECT_EQ(1415911367*1000000000ULL, sample.time);
+    EXPECT_EQ(3, sample.id);
+    EXPECT_EQ(2, sample.stream_id);
+    EXPECT_EQ(9, sample.cpu);
+  }
 }
 
 // Test that PERF_SAMPLE_IDENTIFIER is parsed correctly. This field
 // is in a different place in PERF_RECORD_SAMPLE events compared to the
 // struct sample_id placed at the end of all other events.
-TEST(PerfReaderTest, ReadsPerfSampleIdentifier) {
+TEST(PerfReaderTest, ReadsAndWritesPerfSampleIdentifier) {
   std::stringstream input;
 
   // header
@@ -627,7 +640,7 @@ TEST(PerfReaderTest, ReadsPerfSampleIdentifier) {
     .start = 0x1d000,
     .len = 0x1000,
     .pgoff = 0,
-    //.filename = ..., // written separately
+    // .filename = ..., // written separately
   };
   const char mmap_filename[10+6] = "/dev/zero";
   const u64 mmap_sample_id[] = {
@@ -652,23 +665,32 @@ TEST(PerfReaderTest, ReadsPerfSampleIdentifier) {
 
   struct perf_sample sample;
 
-  PerfReader pr;
-  EXPECT_TRUE(pr.ReadFromString(input.str()));
-  // PERF_RECORD_HEADER_ATTR is added to attr(), not events().
-  EXPECT_EQ(2, pr.events().size());
+  PerfReader pr1;
+  EXPECT_TRUE(pr1.ReadFromString(input.str()));
+  // Write it out and read it in again, the two should have the same data.
+  std::vector<char> output_perf_data;
+  EXPECT_TRUE(pr1.WriteToVector(&output_perf_data));
+  PerfReader pr2;
+  EXPECT_TRUE(pr2.ReadFromVector(output_perf_data));
 
-  const event_t* sample_event = pr.events()[0].get();
-  EXPECT_EQ(PERF_RECORD_SAMPLE, sample_event->header.type);
-  EXPECT_TRUE(pr.ReadPerfSampleInfo(*sample_event, &sample));
-  EXPECT_EQ(0xdeadbeefULL, sample.id);
+  // Test both versions:
+  for (PerfReader* pr : {&pr1, &pr2}) {
+    // PERF_RECORD_HEADER_ATTR is added to attr(), not events().
+    EXPECT_EQ(2, pr->events().size());
 
-  const event_t* mmap_event = pr.events()[1].get();
-  EXPECT_EQ(PERF_RECORD_MMAP, mmap_event->header.type);
-  EXPECT_TRUE(pr.ReadPerfSampleInfo(*mmap_event, &sample));
-  EXPECT_EQ(0xf00dbaadULL, sample.id);
+    const event_t* sample_event = pr->events()[0].get();
+    EXPECT_EQ(PERF_RECORD_SAMPLE, sample_event->header.type);
+    EXPECT_TRUE(pr->ReadPerfSampleInfo(*sample_event, &sample));
+    EXPECT_EQ(0xdeadbeefULL, sample.id);
+
+    const event_t* mmap_event = pr->events()[1].get();
+    EXPECT_EQ(PERF_RECORD_MMAP, mmap_event->header.type);
+    EXPECT_TRUE(pr->ReadPerfSampleInfo(*mmap_event, &sample));
+    EXPECT_EQ(0xf00dbaadULL, sample.id);
+  }
 }
 
-TEST(PerfReaderTest, ReadsMmap2Events) {
+TEST(PerfReaderTest, ReadsAndWritesMmap2Events) {
   std::stringstream input;
 
   // header
@@ -703,7 +725,7 @@ TEST(PerfReaderTest, ReadsMmap2Events) {
     .ino_generation = 9,
     .prot = 1|2,  // == PROT_READ | PROT_WRITE
     .flags = 2,   // == MAP_PRIVATE
-    //.filename = ..., // written separately
+    // .filename = ..., // written separately
   };
   const char mmap_filename[10+6] = "/dev/zero";
   const size_t pre_mmap_offset = input.tellp();
@@ -719,24 +741,33 @@ TEST(PerfReaderTest, ReadsMmap2Events) {
   // Parse input.
   //
 
-  PerfReader pr;
-  EXPECT_TRUE(pr.ReadFromString(input.str()));
-  // PERF_RECORD_HEADER_ATTR is added to attr(), not events().
-  EXPECT_EQ(1, pr.events().size());
+  PerfReader pr1;
+  EXPECT_TRUE(pr1.ReadFromString(input.str()));
+  // Write it out and read it in again, the two should have the same data.
+  std::vector<char> output_perf_data;
+  EXPECT_TRUE(pr1.WriteToVector(&output_perf_data));
+  PerfReader pr2;
+  EXPECT_TRUE(pr2.ReadFromVector(output_perf_data));
 
-  const event_t* mmap2_event = pr.events()[0].get();
-  EXPECT_EQ(PERF_RECORD_MMAP2, mmap2_event->header.type);
-  EXPECT_EQ(0x68d, mmap2_event->mmap2.pid);
-  EXPECT_EQ(0x68d, mmap2_event->mmap2.tid);
-  EXPECT_EQ(0x1d000, mmap2_event->mmap2.start);
-  EXPECT_EQ(0x1000, mmap2_event->mmap2.len);
-  EXPECT_EQ(0, mmap2_event->mmap2.pgoff);
-  EXPECT_EQ(6, mmap2_event->mmap2.maj);
-  EXPECT_EQ(7, mmap2_event->mmap2.min);
-  EXPECT_EQ(8, mmap2_event->mmap2.ino);
-  EXPECT_EQ(9, mmap2_event->mmap2.ino_generation);
-  EXPECT_EQ(1|2, mmap2_event->mmap2.prot);
-  EXPECT_EQ(2, mmap2_event->mmap2.flags);
+  // Test both versions:
+  for (PerfReader* pr : {&pr1, &pr2}) {
+    // PERF_RECORD_HEADER_ATTR is added to attr(), not events().
+    EXPECT_EQ(1, pr->events().size());
+
+    const event_t* mmap2_event = pr->events()[0].get();
+    EXPECT_EQ(PERF_RECORD_MMAP2, mmap2_event->header.type);
+    EXPECT_EQ(0x68d, mmap2_event->mmap2.pid);
+    EXPECT_EQ(0x68d, mmap2_event->mmap2.tid);
+    EXPECT_EQ(0x1d000, mmap2_event->mmap2.start);
+    EXPECT_EQ(0x1000, mmap2_event->mmap2.len);
+    EXPECT_EQ(0, mmap2_event->mmap2.pgoff);
+    EXPECT_EQ(6, mmap2_event->mmap2.maj);
+    EXPECT_EQ(7, mmap2_event->mmap2.min);
+    EXPECT_EQ(8, mmap2_event->mmap2.ino);
+    EXPECT_EQ(9, mmap2_event->mmap2.ino_generation);
+    EXPECT_EQ(1|2, mmap2_event->mmap2.prot);
+    EXPECT_EQ(2, mmap2_event->mmap2.flags);
+  }
 }
 
 }  // namespace quipper
