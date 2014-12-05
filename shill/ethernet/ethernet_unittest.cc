@@ -66,7 +66,9 @@ class EthernetTest : public testing::Test {
                                         kDeviceName)),
         eap_listener_(new MockEapListener()),
         mock_sockets_(new StrictMock<MockSockets>()),
-        mock_service_(new MockEthernetService(&control_interface_, &metrics_)),
+        mock_service_(new MockEthernetService(
+            &control_interface_, &metrics_,
+            ethernet_->weak_ptr_factory_.GetWeakPtr())),
         mock_eap_service_(new MockService(&control_interface_,
                                           &dispatcher_,
                                           &metrics_,
@@ -74,8 +76,9 @@ class EthernetTest : public testing::Test {
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>()),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()) {}
+  ~EthernetTest() override {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     ethernet_->rtnl_handler_ = &rtnl_handler_;
     ethernet_->proxy_factory_ = &proxy_factory_;
     ethernet_->eap_listener_.reset(eap_listener_);  // Transfers ownership.
@@ -89,7 +92,7 @@ class EthernetTest : public testing::Test {
     ethernet_eap_provider_.set_service(mock_eap_service_);
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     ethernet_eap_provider_.set_service(nullptr);
     ethernet_->set_dhcp_provider(nullptr);
     ethernet_->eap_listener_.reset();
@@ -113,6 +116,7 @@ class EthernetTest : public testing::Test {
     ethernet_->is_eap_detected_ = is_eap_detected;
   }
   bool GetLinkUp() { return ethernet_->link_up_; }
+  void SetLinkUp(bool link_up) { ethernet_->link_up_ = link_up; }
   const ServiceRefPtr &GetSelectedService() {
     return ethernet_->selected_service();
   }
@@ -220,22 +224,24 @@ TEST_F(EthernetTest, Construct) {
   EXPECT_FALSE(GetIsEapDetected());
   EXPECT_TRUE(GetStore().Contains(kEapAuthenticationCompletedProperty));
   EXPECT_TRUE(GetStore().Contains(kEapAuthenticatorDetectedProperty));
-  EXPECT_EQ(nullptr, GetService().get());
+  EXPECT_NE(nullptr, GetService().get());
 }
 
 TEST_F(EthernetTest, StartStop) {
+  Service* service = GetService().get();
+  EXPECT_CALL(manager_, RegisterService(Eq(service)));
   StartEthernet();
 
-  EXPECT_FALSE(GetService().get() == nullptr);
-
-  Service* service = GetService().get();
   EXPECT_CALL(manager_, DeregisterService(Eq(service)));
   ethernet_->Stop(nullptr, EnabledStateChangedCallback());
-  EXPECT_EQ(nullptr, GetService().get());
+
+  // Ethernet device retains its service.
+  EXPECT_NE(nullptr, GetService());
 }
 
 TEST_F(EthernetTest, LinkEvent) {
   StartEthernet();
+  SetService(mock_service_);
 
   // Link-down event while already down.
   EXPECT_CALL(manager_, DeregisterService(_)).Times(0);
@@ -247,7 +253,8 @@ TEST_F(EthernetTest, LinkEvent) {
 
   // Link-up event while down.
   int kFakeFd = 789;
-  EXPECT_CALL(manager_, RegisterService(IsRefPtrTo(GetService().get())));
+  EXPECT_CALL(manager_, UpdateService(IsRefPtrTo(mock_service_)));
+  EXPECT_CALL(*mock_service_, OnVisibilityChanged());
   EXPECT_CALL(*eap_listener_, Start());
   EXPECT_CALL(*mock_sockets_, Socket(_, _, _)).WillOnce(Return(kFakeFd));
   EXPECT_CALL(*mock_sockets_, Ioctl(kFakeFd, SIOCETHTOOL, _));
@@ -256,14 +263,17 @@ TEST_F(EthernetTest, LinkEvent) {
   EXPECT_TRUE(GetLinkUp());
   EXPECT_FALSE(GetIsEapDetected());
   Mock::VerifyAndClearExpectations(&manager_);
+  Mock::VerifyAndClearExpectations(mock_service_);
 
   // Link-up event while already up.
-  EXPECT_CALL(manager_, RegisterService(_)).Times(0);
+  EXPECT_CALL(manager_, UpdateService(_)).Times(0);
+  EXPECT_CALL(*mock_service_, OnVisibilityChanged()).Times(0);
   EXPECT_CALL(*eap_listener_, Start()).Times(0);
   ethernet_->LinkEvent(IFF_LOWER_UP, 0);
   EXPECT_TRUE(GetLinkUp());
   EXPECT_FALSE(GetIsEapDetected());
   Mock::VerifyAndClearExpectations(&manager_);
+  Mock::VerifyAndClearExpectations(mock_service_);
 
   // Link-down event while up.
   SetIsEapDetected(true);
@@ -273,7 +283,8 @@ TEST_F(EthernetTest, LinkEvent) {
       .WillRepeatedly(Return(&ethernet_eap_provider_));
   EXPECT_CALL(ethernet_eap_provider_,
               ClearCredentialChangeCallback(ethernet_.get()));
-  EXPECT_CALL(manager_, DeregisterService(IsRefPtrTo(GetService().get())));
+  EXPECT_CALL(manager_, UpdateService(IsRefPtrTo(GetService().get())));
+  EXPECT_CALL(*mock_service_, OnVisibilityChanged());
   EXPECT_CALL(*eap_listener_, Stop());
   ethernet_->LinkEvent(0, IFF_LOWER_UP);
   EXPECT_FALSE(GetLinkUp());
@@ -283,9 +294,23 @@ TEST_F(EthernetTest, LinkEvent) {
   EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
 }
 
+TEST_F(EthernetTest, ConnectToLinkDown) {
+  StartEthernet();
+  SetService(mock_service_);
+  SetLinkUp(false);
+  EXPECT_EQ(nullptr, GetSelectedService().get());
+  EXPECT_CALL(dhcp_provider_, CreateConfig(_, _, _, _)).Times(0);
+  EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(0);
+  EXPECT_CALL(dispatcher_, PostTask(_)).Times(0);
+  EXPECT_CALL(*mock_service_, SetState(_)).Times(0);
+  ethernet_->ConnectTo(mock_service_);
+  EXPECT_EQ(nullptr, GetSelectedService().get());
+}
+
 TEST_F(EthernetTest, ConnectToFailure) {
   StartEthernet();
   SetService(mock_service_);
+  SetLinkUp(true);
   EXPECT_EQ(nullptr, GetSelectedService().get());
   EXPECT_CALL(dhcp_provider_, CreateConfig(_, _, _, _)).
       WillOnce(Return(dhcp_config_));
@@ -299,6 +324,7 @@ TEST_F(EthernetTest, ConnectToFailure) {
 TEST_F(EthernetTest, ConnectToSuccess) {
   StartEthernet();
   SetService(mock_service_);
+  SetLinkUp(true);
   EXPECT_EQ(nullptr, GetSelectedService().get());
   EXPECT_CALL(dhcp_provider_, CreateConfig(_, _, _, _)).
       WillOnce(Return(dhcp_config_));
@@ -322,15 +348,6 @@ TEST_F(EthernetTest, OnEapDetected) {
   EXPECT_CALL(dispatcher_, PostTask(_));  // Posts TryEapAuthenticationTask.
   TriggerOnEapDetected();
   EXPECT_TRUE(GetIsEapDetected());
-}
-
-TEST_F(EthernetTest, TryEapAuthenticationNoService) {
-  EXPECT_CALL(*mock_eap_service_, Is8021xConnectable()).Times(0);
-  NiceScopedMockLog log;
-  EXPECT_CALL(log, Log(logging::LOG_INFO, _,
-                       EndsWith("Service is missing; "
-                                "not doing EAP authentication.")));
-  TriggerTryEapAuthentication();
 }
 
 TEST_F(EthernetTest, TryEapAuthenticationNotConnectableNotAuthenticated) {

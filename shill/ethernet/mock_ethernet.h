@@ -36,6 +36,7 @@ class MockEthernet : public Ethernet {
   MOCK_METHOD1(ConnectTo, void(EthernetService *service));
   MOCK_METHOD1(DisconnectFrom, void(EthernetService *service));
   MOCK_CONST_METHOD0(IsConnectedViaTether, bool());
+  MOCK_CONST_METHOD0(link_up, bool());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockEthernet);

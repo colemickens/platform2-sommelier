@@ -28,41 +28,56 @@ using std::string;
 namespace shill {
 
 // static
+const char EthernetService::kAutoConnNoCarrier[] = "no carrier";
 const char EthernetService::kServiceType[] = "ethernet";
 
 EthernetService::EthernetService(ControlInterface *control_interface,
                                  EventDispatcher *dispatcher,
                                  Metrics *metrics,
                                  Manager *manager,
-                                 const EthernetRefPtr &device)
+                                 base::WeakPtr<Ethernet> ethernet)
     : Service(control_interface, dispatcher, metrics, manager,
               Technology::kEthernet),
-      ethernet_(device) {
+      ethernet_(ethernet) {
   SetConnectable(true);
   SetAutoConnect(true);
   set_friendly_name("Ethernet");
   SetStrength(kStrengthMax);
+
+  // Now that |this| is a fully constructed EthernetService, synchronize
+  // observers with our current state, and emit the appropriate change
+  // notifications. (Initial observer state may have been set in our base
+  // class.)
+  NotifyPropertyChanges();
 }
 
 EthernetService::~EthernetService() { }
 
 void EthernetService::Connect(Error *error, const char *reason) {
   Service::Connect(error, reason);
+  CHECK(ethernet_);
   ethernet_->ConnectTo(this);
 }
 
 void EthernetService::Disconnect(Error *error, const char *reason) {
   Service::Disconnect(error, reason);
+  CHECK(ethernet_);
   ethernet_->DisconnectFrom(this);
 }
 
 std::string EthernetService::GetDeviceRpcId(Error */*error*/) const {
+  CHECK(ethernet_);
   return ethernet_->GetRpcIdentifier();
 }
 
 string EthernetService::GetStorageIdentifier() const {
+  CHECK(ethernet_);
   return base::StringPrintf("%s_%s",
                             kServiceType, ethernet_->address().c_str());
+}
+
+bool EthernetService::IsAutoConnectByDefault() const {
+  return true;
 }
 
 bool EthernetService::SetAutoConnectFull(const bool &connect,
@@ -80,7 +95,29 @@ void EthernetService::Remove(Error *error) {
   error->Populate(Error::kNotSupported);
 }
 
+bool EthernetService::IsVisible() const {
+  CHECK(ethernet_);
+  return ethernet_->link_up();
+}
+
+bool EthernetService::IsAutoConnectable(const char **reason) const {
+  if (!Service::IsAutoConnectable(reason)) {
+    return false;
+  }
+  CHECK(ethernet_);
+  if (!ethernet_->link_up()) {
+    *reason = kAutoConnNoCarrier;
+    return false;
+  }
+  return true;
+}
+
+void EthernetService::OnVisibilityChanged() {
+  NotifyPropertyChanges();
+}
+
 string EthernetService::GetTethering(Error */*error*/) const {
+  CHECK(ethernet_);
   return ethernet_->IsConnectedViaTether() ? kTetheringConfirmedState :
       kTetheringNotDetectedState;
 }

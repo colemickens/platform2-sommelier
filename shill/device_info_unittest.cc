@@ -496,7 +496,8 @@ TEST_F(DeviceInfoTest, CreateDeviceEthernet) {
   Mock::VerifyAndClearExpectations(&rtnl_handler_);
 
   // The Ethernet device destructor notifies the manager.
-  EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(1);
+  EXPECT_CALL(manager_, UpdateEnabledTechnologies());
+  EXPECT_CALL(manager_, DeregisterService(_));
   device = nullptr;
 }
 
@@ -515,7 +516,8 @@ TEST_F(DeviceInfoTest, CreateDeviceVirtioEthernet) {
   Mock::VerifyAndClearExpectations(&rtnl_handler_);
 
   // The Ethernet device destructor notifies the manager.
-  EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(1);
+  EXPECT_CALL(manager_, UpdateEnabledTechnologies());
+  EXPECT_CALL(manager_, DeregisterService(_));
   device = nullptr;
 }
 

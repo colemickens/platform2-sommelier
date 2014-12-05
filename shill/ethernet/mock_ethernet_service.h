@@ -15,7 +15,8 @@ namespace shill {
 
 class MockEthernetService : public EthernetService {
  public:
-  MockEthernetService(ControlInterface *control_interface, Metrics *metrics);
+  MockEthernetService(ControlInterface *control_interface, Metrics *metrics,
+                      base::WeakPtr<Ethernet> ethernet);
   ~MockEthernetService() override;
 
   MOCK_METHOD2(AddEAPCertification, bool(const std::string &name,
@@ -33,6 +34,7 @@ class MockEthernetService : public EthernetService {
   MOCK_METHOD1(SetFailure, void(ConnectFailure failure));
   MOCK_METHOD1(SetFailureSilent, void(ConnectFailure failure));
   MOCK_METHOD1(SetState, void(ConnectState state));
+  MOCK_METHOD0(OnVisibilityChanged, void());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockEthernetService);

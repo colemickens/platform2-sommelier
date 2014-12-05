@@ -14,7 +14,7 @@ Here ${BOARD} is a valid board name, like link or x86-generic.
 - build the shill_unittest target
 - run the resulting shill_unittest binary
 - run the unit tests from your host machine under gdb
-  (chroot)$ FEATURES=test emerge-${BOARD} platform2
+  (chroot)$ FEATURES=test emerge-${BOARD} shill
   (chroot)$ gdb_x86_local --board ${BOARD} \
                 /build/${BOARD}/var/cache/portage/chromeos-base/platform2/out/Default/shill_unittest
   (Of course if the unit tests segfaulted, you wouldn't need the emerge
@@ -23,7 +23,7 @@ Here ${BOARD} is a valid board name, like link or x86-generic.
 - The emerge workflow given above is incremental. It uses ninja to rebuild only
   relevant objects in the shill target.
 - You can restrict the test runs to only shill unittests by using
-  (chroot)$ P2_TEST_FILTER="shill::*" FEATURES=test emerge-${BOARD} platform2
+  (chroot)$ P2_TEST_FILTER="shill::*" FEATURES=test emerge-${BOARD} shill
   The filter can be made more specific to include googletest filters like
   "shill::CellularTest.StartGSMRegister"
 - if you want to set a breakpoint in gdb, make sure to include the shill
@@ -37,13 +37,20 @@ Here ${BOARD} is a valid board name, like link or x86-generic.
 
 - alternate build command:
   - Another way to build which uses the emerge command behind the scenes:
-    (chroot)$ cros_workon_make --board ${BOARD} platform2
+    (chroot)$ cros_workon_make --board ${BOARD} shill
   - to see the actual compiler commands that are run:
     (chroot)$ CFLAGS="-print-cmdline" cros_workon_make --reconf \
-                --board=${BOARD} platform2
+                --board=${BOARD} shill
   - to abort compilation on the first error
     (chroot)$ MAKEFLAGS="--stop" cros_workon_make --test --board=${BOARD} \
-                --reconf platform2
+                --reconf shill
+
+Running unit tests with the address sanitizer
+---------------------------------------------
+USE="asan clang wimax" TEST_FILTER="shill::*" emerge-${BOARD} shill
+
+This also turns on "wimax" and its tests, since this is disabled on most
+platforms.
 
 Running integration tests
 -------------------------

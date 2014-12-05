@@ -77,6 +77,11 @@ Ethernet::Ethernet(ControlInterface *control_interface,
                            &is_eap_detected_);
   eap_listener_->set_request_received_callback(
       base::Bind(&Ethernet::OnEapDetected, weak_ptr_factory_.GetWeakPtr()));
+  service_ = new EthernetService(control_interface,
+                                 dispatcher,
+                                 metrics,
+                                 manager,
+                                 weak_ptr_factory_.GetWeakPtr());
   SLOG(this, 2) << "Ethernet device " << link_name << " initialized.";
 }
 
@@ -86,23 +91,17 @@ Ethernet::~Ethernet() {
 
 void Ethernet::Start(Error *error,
                      const EnabledStateChangedCallback &/*callback*/) {
-  service_ = new EthernetService(control_interface(),
-                                 dispatcher(),
-                                 metrics(),
-                                 manager(),
-                                 this);
   rtnl_handler()->SetInterfaceFlags(interface_index(), IFF_UP, IFF_UP);
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
+  LOG(INFO) << "Registering " << link_name() << " with manager.";
+  manager()->RegisterService(service_);
   if (error)
     error->Reset();       // indicate immediate completion
 }
 
 void Ethernet::Stop(Error *error,
                     const EnabledStateChangedCallback &/*callback*/) {
-  if (service_) {
-    manager()->DeregisterService(service_);
-    service_ = nullptr;
-  }
+  manager()->DeregisterService(service_);
   StopSupplicant();
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   if (error)
@@ -116,20 +115,17 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
     // We SetupWakeOnLan() here, instead of in Start(), because with
     // r8139, "ethtool -s eth0 wol g" fails when no cable is plugged
     // in.
+    manager()->UpdateService(service_);
+    service_->OnVisibilityChanged();
     SetupWakeOnLan();
-    if (service_) {
-      LOG(INFO) << "Registering " << link_name() << " with manager.";
-      // Manager will bring up L3 for us.
-      manager()->RegisterService(service_);
-    }
     eap_listener_->Start();
   } else if ((flags & IFF_LOWER_UP) == 0 && link_up_) {
     link_up_ = false;
     is_eap_detected_ = false;
     DestroyIPConfig();
-    if (service_)
-      manager()->DeregisterService(service_);
     SelectService(nullptr);
+    manager()->UpdateService(service_);
+    service_->OnVisibilityChanged();
     GetEapProvider()->ClearCredentialChangeCallback(this);
     SetIsEapAuthenticated(false);
     StopSupplicant();
@@ -140,6 +136,9 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
 void Ethernet::ConnectTo(EthernetService *service) {
   CHECK(service == service_.get()) << "Ethernet was asked to connect the "
                                    << "wrong service?";
+  if (!link_up_) {
+    return;
+  }
   SelectService(service);
   if (AcquireIPConfigWithLeaseName(service->GetStorageIdentifier())) {
     SetServiceState(Service::kStateConfiguring);
@@ -319,21 +318,15 @@ void Ethernet::SetIsEapAuthenticated(bool is_eap_authenticated) {
   // If our EAP authentication state changes, we have now joined a different
   // network.  Restart the DHCP process and any other connection state.
   DisconnectFrom(service_);
-  if (service_ && link_up_) {
-    ConnectTo(service_);
-  }
+  ConnectTo(service_);
   is_eap_authenticated_ = is_eap_authenticated;
   adaptor()->EmitBoolChanged(kEapAuthenticationCompletedProperty,
                              is_eap_authenticated_);
 }
 
 void Ethernet::CertificationTask(const string &subject, uint32_t depth) {
-  if (!service_) {
-    LOG(ERROR) << "Ethernet " << link_name() << " " << __func__
-               << " with no service.";
-    return;
-  }
-
+  CHECK(service_) << "Ethernet " << link_name() << " " << __func__
+                  << " with no service.";
   service_->AddEAPCertification(subject, depth);
 }
 
@@ -355,11 +348,6 @@ void Ethernet::SupplicantStateChangedTask(const string &state) {
 }
 
 void Ethernet::TryEapAuthenticationTask() {
-  if (!service_) {
-    LOG(INFO) << "Service is missing; not doing EAP authentication.";
-    return;
-  }
-
   if (!GetEapService()->Is8021xConnectable()) {
     if (is_eap_authenticated_) {
       LOG(INFO) << "EAP Service lost 802.1X credentials; "

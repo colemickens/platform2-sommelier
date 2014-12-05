@@ -38,8 +38,8 @@ class EthernetServiceTest : public PropertyStoreTest {
                                 dispatcher(),
                                 metrics(),
                                 &mock_manager_,
-                                ethernet_)) {}
-  virtual ~EthernetServiceTest() {}
+                                ethernet_->weak_ptr_factory_.GetWeakPtr())) {}
+  ~EthernetServiceTest() override {}
 
  protected:
   static const char fake_mac[];
@@ -82,6 +82,7 @@ TEST_F(EthernetServiceTest, AutoConnect) {
 }
 
 TEST_F(EthernetServiceTest, ConnectDisconnectDelegation) {
+  EXPECT_CALL(*ethernet_, link_up()).WillRepeatedly(Return(true));
   EXPECT_CALL(*ethernet_, ConnectTo(service_.get()));
   service_->AutoConnect();
   EXPECT_CALL(*ethernet_, DisconnectFrom(service_.get()));
@@ -115,6 +116,24 @@ TEST_F(EthernetServiceTest, GetTethering) {
       .WillOnce(Return(false));
   EXPECT_EQ(kTetheringConfirmedState, service_->GetTethering(nullptr));
   EXPECT_EQ(kTetheringNotDetectedState, service_->GetTethering(nullptr));
+}
+
+TEST_F(EthernetServiceTest, IsVisible) {
+  EXPECT_CALL(*ethernet_, link_up())
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  EXPECT_FALSE(service_->IsVisible());
+  EXPECT_TRUE(service_->IsVisible());
+}
+
+TEST_F(EthernetServiceTest, IsAutoConnectable) {
+  EXPECT_CALL(*ethernet_, link_up())
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  const char *reason;
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ("no carrier", reason);
+  EXPECT_TRUE(service_->IsAutoConnectable(nullptr));
 }
 
 }  // namespace shill

@@ -41,9 +41,11 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
            int interface_index);
   ~Ethernet() override;
 
-  virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
-  virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
-  virtual void LinkEvent(unsigned int flags, unsigned int change);
+  void Start(Error *error,
+             const EnabledStateChangedCallback &callback) override;
+  void Stop(Error *error, const EnabledStateChangedCallback &callback) override;
+  void LinkEvent(unsigned int flags, unsigned int change) override;
+
   virtual void ConnectTo(EthernetService *service);
   virtual void DisconnectFrom(EthernetService *service);
 
@@ -55,20 +57,23 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
-  virtual void BSSAdded(
+  void BSSAdded(
       const ::DBus::Path &BSS,
-      const std::map<std::string, ::DBus::Variant> &properties);
-  virtual void BSSRemoved(const ::DBus::Path &BSS);
-  virtual void Certification(
-      const std::map<std::string, ::DBus::Variant> &properties);
-  virtual void EAPEvent(
-      const std::string &status, const std::string &parameter);
-  virtual void PropertiesChanged(
-      const std::map<std::string, ::DBus::Variant> &properties);
-  virtual void ScanDone();
+      const std::map<std::string, ::DBus::Variant> &properties) override;
+  void BSSRemoved(const ::DBus::Path &BSS) override;
+  void Certification(
+      const std::map<std::string, ::DBus::Variant> &properties) override;
+  void EAPEvent(
+  const std::string &status, const std::string &parameter) override;
+  void PropertiesChanged(
+      const std::map<std::string, ::DBus::Variant> &properties) override;
+  void ScanDone() override;
+
+  virtual bool link_up() const { return link_up_; }
 
  private:
   friend class EthernetTest;
+  friend class EthernetServiceTest;  // For weak_ptr_factory_.
 
   // Return a pointer to the EAP provider for Ethernet devices.
   EthernetEapProvider *GetEapProvider();
