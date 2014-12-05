@@ -6,6 +6,7 @@
 #define FIREWALLD_FIREWALL_SERVICE_H_
 
 #include <base/callback.h>
+#include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/dbus/dbus_object.h>
 #include <chromeos/errors/error.h>
@@ -35,6 +36,8 @@ class FirewallService : public org::chromium::FirewalldAdaptor,
   bool PlugHole(chromeos::ErrorPtr* error, uint16_t in_port, bool* out_success);
 
   chromeos::dbus_utils::DBusObject dbus_object_;
+
+  DISALLOW_COPY_AND_ASSIGN(FirewallService);
 };
 
 }  // namespace firewalld
