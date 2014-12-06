@@ -553,12 +553,6 @@ TriggerScanMessage::TriggerScanMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
       NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
-  attributes()->CreateAttribute(
-      NL80211_ATTR_SCAN_FREQUENCIES,
-      Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
-  attributes()->CreateAttribute(
-      NL80211_ATTR_SCAN_SSIDS,
-      Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
 }
 
 const uint8_t UnprotDeauthenticateMessage::kCommand =

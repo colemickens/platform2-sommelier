@@ -151,6 +151,9 @@ void ScanSession::DoScan(const vector<uint16_t> &scan_frequencies) {
     return;
   }
   TriggerScanMessage trigger_scan;
+  trigger_scan.attributes()->CreateNl80211Attribute(
+      NL80211_ATTR_SCAN_FREQUENCIES);
+  trigger_scan.attributes()->CreateNl80211Attribute(NL80211_ATTR_SCAN_SSIDS);
   trigger_scan.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
                                                   wifi_interface_index_);
   AttributeListRefPtr frequency_list;
