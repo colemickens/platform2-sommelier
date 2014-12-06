@@ -1782,6 +1782,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_NotConnected_Timeout) {
   InitStateForDarkResume();
   EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
   // Initiate scan if we are not connected in dark resume.
+  EXPECT_CALL(*this, RemoveSupplicantNetworksCallback());
   EXPECT_CALL(*this, InitiateScanCallback());
   OnDarkResume(is_connected);
   EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
@@ -1805,6 +1806,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_NotConnected_LeaseObtained) {
   InitStateForDarkResume();
   EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
   // Initiate scan if we are not connected in dark resume.
+  EXPECT_CALL(*this, RemoveSupplicantNetworksCallback());
   EXPECT_CALL(*this, InitiateScanCallback());
   OnDarkResume(is_connected);
   EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());

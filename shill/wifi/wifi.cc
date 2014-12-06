@@ -1756,6 +1756,7 @@ void WiFi::HelpRegisterConstDerivedBool(
 
 void WiFi::OnBeforeSuspend(const ResultCallback &callback) {
   LOG(INFO) << __func__;
+  StopScanTimer();
   uint32_t time_to_next_lease_renewal;
   bool have_dhcp_lease =
       TimeToNextDHCPLeaseRenewal(&time_to_next_lease_renewal);
@@ -1770,11 +1771,13 @@ void WiFi::OnBeforeSuspend(const ResultCallback &callback) {
 
 void WiFi::OnDarkResume(const ResultCallback &callback) {
   LOG(INFO) << __func__;
+  StopScanTimer();
   wake_on_wifi_->OnDarkResume(
       IsConnectedToCurrentService(),
       callback,
       Bind(&Device::RenewDHCPLease, weak_ptr_factory_.GetWeakPtr()),
-      Bind(&WiFi::InitiateScan, weak_ptr_factory_.GetWeakPtr(), kFullScan),
+      Bind(&WiFi::InitiateScan, weak_ptr_factory_.GetWeakPtr(), kFullScan,
+           true),
       Bind(&WiFi::RemoveSupplicantNetworks, weak_ptr_factory_.GetWeakPtr()));
 }
 
@@ -1799,8 +1802,11 @@ void WiFi::OnAfterResume() {
   need_bss_flush_ = true;
 
   if (!IsConnectedToCurrentService()) {
-    InitiateScan(kProgressiveScan);
+    InitiateScan(kProgressiveScan, false);
   }
+
+  // Since we stopped the scan timer before suspending, start it again here.
+  StartScanTimer();
 
   // Enable HT40 for current service in case if it was disabled previously due
   // to unreliable link.
@@ -1816,20 +1822,36 @@ void WiFi::AbortScan() {
   SetScanState(kScanIdle, kScanMethodNone, __func__);
 }
 
-void WiFi::InitiateScan(ScanType scan_type) {
-  LOG(INFO) << __func__;
+void WiFi::InitiateScan(ScanType scan_type, bool do_passive_scan) {
+  LOG(INFO) << __func__ << ": " << (do_passive_scan ? "Passive" : "Active");
   // Abort any current scan (at the shill-level; let any request that's
   // already gone out finish) since we don't know when it started.
   AbortScan();
 
   if (IsIdle()) {
     // Not scanning/connecting/connected, so let's get things rolling.
-    Scan(scan_type, nullptr, __func__);
-    RestartFastScanAttempts();
+    if (do_passive_scan) {
+      TriggerPassiveScan();
+    } else {
+      Scan(scan_type, nullptr, __func__);
+      RestartFastScanAttempts();
+    }
   } else {
     SLOG(this, 1) << __func__
                   << " skipping scan, already connecting or connected.";
   }
+}
+
+void WiFi::TriggerPassiveScan() {
+  LOG(INFO) << __func__;
+  TriggerScanMessage trigger_scan;
+  trigger_scan.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
+                                                  interface_index());
+  netlink_manager_->SendNl80211Message(
+      &trigger_scan,
+      Bind(&WiFi::OnTriggerPassiveScanResponse, weak_ptr_factory_.GetWeakPtr()),
+      Bind(&NetlinkManager::OnAckDoNothing),
+      Bind(&NetlinkManager::OnNetlinkMessageError));
 }
 
 void WiFi::OnConnected() {
@@ -2281,6 +2303,13 @@ void WiFi::OnNewWiphy(const Nl80211Message &nl80211_message) {
       }
     }
   }
+}
+
+void WiFi::OnTriggerPassiveScanResponse(const Nl80211Message &netlink_message) {
+  LOG(WARNING) << "Didn't expect _this_netlink message ("
+               << netlink_message.command() << " here:";
+  netlink_message.Print(0, 0);
+  return;
 }
 
 KeyValueStore WiFi::GetLinkStatistics(Error */*error*/) {
@@ -2792,7 +2821,10 @@ bool WiFi::IsTrafficMonitorEnabled() const {
 }
 
 void WiFi::RemoveSupplicantNetworks() {
-  supplicant_interface_proxy_->RemoveAllNetworks();
+  for (const auto &map_entry : rpcid_by_service_) {
+    RemoveNetwork(map_entry.second);
+  }
+  rpcid_by_service_.clear();
 }
 
 bool WiFi::ResolvePeerMacAddress(const string &input, string *output,

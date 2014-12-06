@@ -463,8 +463,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // already gone out finish).
   void AbortScan();
   // Abort any current scan and start a new scan of type |type| if shill is
-  // currently idle.
-  void InitiateScan(ScanType scan_type);
+  // currently idle. |type| is ignored and a full passive scan is launched iff
+  // |do_passive_scan| is true.
+  void InitiateScan(ScanType scan_type, bool do_passive_scan);
+  void TriggerPassiveScan();
   // Starts a timer in order to limit the length of an attempt to
   // connect to a pending network.
   void StartPendingTimer();
@@ -510,6 +512,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // device's supported frequencies from that message into
   // |all_scan_frequencies_|.
   void OnNewWiphy(const Nl80211Message &nl80211_message);
+
+  void OnTriggerPassiveScanResponse(const Nl80211Message &netlink_message);
 
   void SetScanState(ScanState new_state,
                     ScanMethod new_method,

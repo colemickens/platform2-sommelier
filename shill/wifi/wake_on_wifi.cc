@@ -968,6 +968,7 @@ void WakeOnWiFi::OnDarkResume(
   if (is_connected) {
     renew_dhcp_lease_callback.Run();
   } else {
+    remove_supplicant_networks_callback.Run();
     initiate_scan_callback.Run();
   }
 #endif  // DISABLE_WAKE_ON_WIFI
@@ -999,6 +1000,7 @@ void WakeOnWiFi::BeforeSuspendActions(
       SLOG(this, 3) << "Enabling wake on disconnect";
       wake_on_wifi_triggers_.insert(kDisconnect);
       wake_on_wifi_triggers_.erase(kSSID);
+      wake_to_scan_timer_.Stop();
       if (start_lease_renewal_timer) {
         // Timer callback is NO-OP since dark resume logic will initiate DHCP
         // lease renewal.
@@ -1006,7 +1008,6 @@ void WakeOnWiFi::BeforeSuspendActions(
             FROM_HERE, base::TimeDelta::FromSeconds(time_to_next_lease_renewal),
             Bind(&WakeOnWiFi::OnTimerWakeDoNothing, base::Unretained(this)));
       }
-      wake_to_scan_timer_.Stop();
     } else {
       SLOG(this, 3) << "Enabling wake on SSID";
       // Force a disconnect in case supplicant is currently in the process of

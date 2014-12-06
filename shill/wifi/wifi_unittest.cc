@@ -732,6 +732,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
       const WiFiServiceRefPtr &service, const string &rpcid) {
     wifi_->rpcid_by_service_[service.get()] = rpcid;
   }
+  bool RpcIdByServiceIsEmpty() {
+    return wifi_->rpcid_by_service_.empty();
+  }
   bool SetScanInterval(uint16_t interval_seconds, Error *error) {
     return wifi_->SetScanInterval(interval_seconds, error);
   }
@@ -784,6 +787,15 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     ResultCallback callback(
         base::Bind(&WiFiObjectTest::SuspendCallback, base::Unretained(this)));
     wifi_->OnDarkResume(callback);
+  }
+  void RemoveSupplicantNetworks() {
+    wifi_->RemoveSupplicantNetworks();
+  }
+  void InitiateScan(Device::ScanType scan_type, bool do_passive_scan) {
+    wifi_->InitiateScan(scan_type, do_passive_scan);
+  }
+  void TriggerPassiveScan() {
+    wifi_->TriggerPassiveScan();
   }
   void OnSupplicantAppear() {
     wifi_->OnSupplicantAppear(WPASupplicant::kDBusAddr, ":1.7");
@@ -1516,9 +1528,12 @@ TEST_F(WiFiMainTest, ResumeDoesNotScanIfConnected) {
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   ReportScanDone();
+  CancelScanTimer();
+  EXPECT_TRUE(GetScanTimer().IsCancelled());
   ASSERT_TRUE(wifi()->IsIdle());
   dispatcher_.DispatchPendingEvents();
   OnAfterResume();
+  EXPECT_FALSE(GetScanTimer().IsCancelled());
   InstallMockScanSession();
   SetCurrentService(MakeMockService(kSecurityNone));
   EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
@@ -4008,15 +4023,87 @@ TEST_F(WiFiMainTest, OnIPConfigUpdated_InvokeOnDHCPLeaseObtained) {
 }
 
 TEST_F(WiFiMainTest, OnBeforeSuspend_CallsWakeOnWiFi) {
+  FireScanTimer();
   EXPECT_CALL(*wake_on_wifi_,
               OnBeforeSuspend(IsConnectedToCurrentService(), _, _, _, _, _));
   OnBeforeSuspend();
+  EXPECT_TRUE(GetScanTimer().IsCancelled());
 }
 
 TEST_F(WiFiMainTest, OnDarkResume_CallsWakeOnWiFi) {
+  FireScanTimer();
   EXPECT_CALL(*wake_on_wifi_,
               OnDarkResume(IsConnectedToCurrentService(), _, _, _, _));
   OnDarkResume();
+  EXPECT_TRUE(GetScanTimer().IsCancelled());
+}
+
+TEST_F(WiFiMainTest, RemoveSupplicantNetworks) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service1 = MakeMockService(kSecurity8021x);
+  MockWiFiServiceRefPtr service2 = MakeMockService(kSecurity8021x);
+  const char kNetworkRpcId1[] = "/service/network/rpcid1";
+  const char kNetworkRpcId2[] = "/service/network/rpcid2";
+  ::DBus::Path path1(kNetworkRpcId1);
+  ::DBus::Path path2(kNetworkRpcId2);
+  SetServiceNetworkRpcId(service1, kNetworkRpcId1);
+  SetServiceNetworkRpcId(service2, kNetworkRpcId2);
+  ASSERT_FALSE(RpcIdByServiceIsEmpty());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(path1));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(path2));
+  RemoveSupplicantNetworks();
+  ASSERT_TRUE(RpcIdByServiceIsEmpty());
+}
+
+TEST_F(WiFiMainTest, InitiateScan_NotIdle) {
+  const Device::ScanType scan_type = Device::kFullScan;
+  const bool do_passive_scan = true;
+  ScopedMockLog log;
+  ScopeLogger::GetInstance()->EnableScopesByName("wifi");
+  ScopeLogger::GetInstance()->set_verbose_level(1);
+  MockWiFiServiceRefPtr service = MakeMockService(kSecurityWpa);
+  SetPendingService(service);
+  EXPECT_FALSE(wifi()->IsIdle());
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(
+      log,
+      Log(_, _, HasSubstr("skipping scan, already connecting or connected.")));
+  InitiateScan(scan_type, do_passive_scan);
+  ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
+  ScopeLogger::GetInstance()->set_verbose_level(0);
+}
+
+TEST_F(WiFiMainTest, InitiateScan_Idle_PassiveScan) {
+  const Device::ScanType scan_type = Device::kFullScan;
+  const bool do_passive_scan = true;
+  ScopedMockLog log;
+  ASSERT_TRUE(wifi()->IsIdle());
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(_, _, HasSubstr("TriggerPassiveScan")));
+  InitiateScan(scan_type, do_passive_scan);
+}
+
+TEST_F(WiFiMainTest, InitiateScan_Idle_ActiveScan) {
+  ScopedMockLog log;
+  Device::ScanType scan_type = Device::kFullScan;
+  const bool do_passive_scan = false;
+  ASSERT_TRUE(wifi()->IsIdle());
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(_, _, HasSubstr("Scan [full]")));
+  InitiateScan(scan_type, do_passive_scan);
+
+  scan_type = Device::kProgressiveScan;
+  ASSERT_TRUE(wifi()->IsIdle());
+  EXPECT_CALL(log, Log(_, _, HasSubstr("Scan [progressive]")));
+  InitiateScan(scan_type, do_passive_scan);
+}
+
+TEST_F(WiFiMainTest, TriggerPassiveScan) {
+  EXPECT_CALL(netlink_manager_,
+              SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
+                                                  TriggerScanMessage::kCommand),
+                                 _, _, _));
+  TriggerPassiveScan();
 }
 
 }  // namespace shill
