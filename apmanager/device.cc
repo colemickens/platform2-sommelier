@@ -22,7 +22,8 @@ namespace apmanager {
 
 Device::Device(Manager* manager, const string& device_name)
     : org::chromium::apmanager::DeviceAdaptor(this),
-      manager_(manager) {
+      manager_(manager),
+      supports_ap_mode_(false) {
   SetDeviceName(device_name);
   SetInUsed(false);
 }
@@ -76,8 +77,15 @@ void Device::DeregisterInterface(const WiFiInterface& interface) {
 }
 
 void Device::ParseWiphyCapability(const shill::Nl80211Message& msg) {
-  // TODO(zqiu): Parse NL80211_ATTR_SUPPORTED_IFTYPES for supported interface
-  // modes.
+  // Parse NL80211_ATTR_SUPPORTED_IFTYPES for AP mode interface support.
+  shill::AttributeListConstRefPtr supported_iftypes;
+  if (!msg.const_attributes()->ConstGetNestedAttributeList(
+      NL80211_ATTR_SUPPORTED_IFTYPES, &supported_iftypes)) {
+    LOG(ERROR) << "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_SUPPORTED_IFTYPES";
+    return;
+  }
+  supported_iftypes->GetFlagAttributeValue(NL80211_IFTYPE_AP,
+                                           &supports_ap_mode_);
 
   // Parse WiFi band capabilities.
   shill::AttributeListConstRefPtr wiphy_bands;
@@ -339,7 +347,10 @@ bool Device::GetBandCapability(uint16_t channel, BandCapability* capability) {
 }
 
 void Device::UpdatePreferredAPInterface() {
-  // TODO(zqiu): return if device doesn't support AP interface mode.
+  // Return if device doesn't support AP interface mode.
+  if (!supports_ap_mode_) {
+    return;
+  }
 
   // Use the first registered AP mode interface if there is one, otherwise use
   // the first registered managed mode interface. If none are available, then

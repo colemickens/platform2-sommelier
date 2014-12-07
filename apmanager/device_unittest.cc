@@ -96,6 +96,14 @@ class DeviceTest : public testing::Test {
     wiphy_bands->SetNestedAttributeHasAValue(band_id);
   }
 
+  void EnableApModeSupport() {
+    device_->supports_ap_mode_ = true;
+  }
+
+  void VerifyApModeSupport(bool supports_ap_mode) {
+    EXPECT_EQ(supports_ap_mode, device_->supports_ap_mode_);
+  }
+
   void VerifyFrequencyList(int band_id, std::vector<uint32_t> frequency_list) {
     EXPECT_EQ(frequency_list, device_->band_capability_[band_id].frequencies);
   }
@@ -137,6 +145,8 @@ TEST_F(DeviceTest, DeregisterInterface) {
 }
 
 TEST_F(DeviceTest, PreferredAPInterface) {
+  EnableApModeSupport();
+
   // Register a monitor mode interface, no preferred AP mode interface.
   device_->RegisterInterface(kMonitorModeInterface);
   VerifyPreferredApInterface("");
@@ -177,8 +187,30 @@ TEST_F(DeviceTest, PreferredAPInterface) {
   VerifyPreferredApInterface("");
 }
 
-TEST_F(DeviceTest, ParseHTCapability) {
+TEST_F(DeviceTest, DeviceWithoutAPModeSupport) {
+  // AP mode support is not enabled for the device, so no preferred AP
+  // mode interface.
+  device_->RegisterInterface(kApModeInterface0);
+  VerifyPreferredApInterface("");
+}
+
+TEST_F(DeviceTest, ParseWiphyCapability) {
   shill::NewWiphyMessage message;
+
+  // Supported interface types attribute.
+  message.attributes()->CreateNestedAttribute(
+      NL80211_ATTR_SUPPORTED_IFTYPES, "NL80211_ATTR_SUPPORTED_IFTYPES");
+  shill::AttributeListRefPtr supported_iftypes;
+  message.attributes()->GetNestedAttributeList(
+      NL80211_ATTR_SUPPORTED_IFTYPES, &supported_iftypes);
+  // Add support for AP mode interface.
+  supported_iftypes->CreateFlagAttribute(
+      NL80211_IFTYPE_AP, "NL80211_IFTYPE_AP");
+  supported_iftypes->SetFlagAttributeValue(NL80211_IFTYPE_AP, true);
+  message.attributes()->SetNestedAttributeHasAValue(
+      NL80211_ATTR_SUPPORTED_IFTYPES);
+
+  // Wiphy bands attribute.
   message.attributes()->CreateNestedAttribute(
       NL80211_ATTR_WIPHY_BANDS, "NL80211_ATTR_WIPHY_BANDS");
   shill::AttributeListRefPtr wiphy_bands;
@@ -219,6 +251,9 @@ TEST_F(DeviceTest, ParseHTCapability) {
 
   device_->ParseWiphyCapability(message);
 
+  // Verify AP mode support.
+  VerifyApModeSupport(true);
+
   // Verify frequency list for both bands.
   VerifyFrequencyList(0, band_24ghz_freq_list);
   VerifyFrequencyList(1, band_5ghz_freq_list);
@@ -238,6 +273,8 @@ TEST_F(DeviceTest, ParseHTCapability) {
 }
 
 TEST_F(DeviceTest, ClaimAndReleaseDevice) {
+  EnableApModeSupport();
+
   // Register multiple interfaces.
   device_->RegisterInterface(kApModeInterface1);
   device_->RegisterInterface(kManagedModeInterface1);

@@ -111,6 +111,9 @@ class Device : public base::RefCounted<Device>,
   dbus::ObjectPath dbus_path_;
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
 
+  // Flag indicating if this device supports AP mode interface or not.
+  bool supports_ap_mode_;
+
   // Wiphy band capabilities.
   std::vector<BandCapability> band_capability_;
 
