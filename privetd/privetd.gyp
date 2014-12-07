@@ -18,6 +18,7 @@
         'constants.cc',
         'daemon_state.cc',
         'device_delegate.cc',
+        'openssl_utils.cc',
         'peerd_client.cc',
         'privet_handler.cc',
         'security_manager.cc',

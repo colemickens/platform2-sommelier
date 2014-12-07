@@ -11,7 +11,6 @@
 
 #include <openssl/bio.h>
 #include <openssl/evp.h>
-#include <openssl/hmac.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 
@@ -22,49 +21,14 @@
 #include <base/time/time.h>
 #include <chromeos/strings/string_utils.h>
 
+#include "privetd/constants.h"
+#include "privetd/openssl_utils.h"
+
 namespace privetd {
 
 namespace {
 
 const char kTokenDelimeter = ':';
-const size_t kSha256OutputSize = 32;
-
-chromeos::SecureBlob HmacSha256(const chromeos::SecureBlob& key,
-                                const chromeos::Blob& data) {
-  chromeos::SecureBlob mac(kSha256OutputSize);
-  uint32_t len = 0;
-  CHECK(HMAC(EVP_sha256(), vector_as_array(&key), key.size(),
-             vector_as_array(&data), data.size(), vector_as_array(&mac), &len));
-  CHECK_EQ(len, kSha256OutputSize);
-  return mac;
-}
-
-std::string Base64Encode(const chromeos::Blob& input) {
-  BIO* base64 = BIO_new(BIO_f_base64());
-  BIO_set_flags(base64, BIO_FLAGS_BASE64_NO_NL);
-  BIO* bio = BIO_new(BIO_s_mem());
-  bio = BIO_push(base64, bio);
-  BIO_write(bio, input.data(), input.size());
-  static_cast<void>(BIO_flush(bio));
-  char* data = nullptr;
-  size_t length = BIO_get_mem_data(bio, &data);
-  std::string output(data, length);
-  chromeos::SecureMemset(data, 0, length);
-  BIO_free_all(bio);
-  return output;
-}
-
-chromeos::Blob Base64Decode(std::string input) {
-  chromeos::Blob result(input.size(), 0);
-  BIO* base64 = BIO_new(BIO_f_base64());
-  BIO_set_flags(base64, BIO_FLAGS_BASE64_NO_NL);
-  BIO* bio = BIO_new_mem_buf(&input.front(), input.length());
-  bio = BIO_push(base64, bio);
-  int size = BIO_read(bio, result.data(), input.size());
-  BIO_free_all(bio);
-  result.resize(std::max<int>(0, size));
-  return result;
-}
 
 // Returns "scope:time".
 std::string CreateTokenData(AuthScope scope, const base::Time& time) {
@@ -175,8 +139,9 @@ SecurityManager::SecurityManager() : secret_(kSha256OutputSize) {
 std::string SecurityManager::CreateAccessToken(AuthScope scope,
                                                const base::Time& time) const {
   chromeos::SecureBlob data(CreateTokenData(scope, time));
-  chromeos::SecureBlob hash(HmacSha256(secret_, data));
-  return Base64Encode(chromeos::SecureBlob::Combine(hash, data));
+  chromeos::Blob hash(HmacSha256(secret_, data));
+  return Base64Encode(chromeos::SecureBlob::Combine(
+      chromeos::SecureBlob(hash.begin(), hash.end()), data));
 }
 
 // Parses "base64([hmac]scope:time)".
@@ -218,8 +183,9 @@ privetd::Error SecurityManager::ConfirmPairing(
   CHECK(!TLS_certificate_fingerprint_.empty());
   client_commitment_ = client_commitment;
   *fingerprint = Base64Encode(TLS_certificate_fingerprint_);
-  chromeos::SecureBlob cert_hmac = HmacSha256(
-      chromeos::SecureBlob(GetPairingSecret()), TLS_certificate_fingerprint_);
+  chromeos::Blob cert_hmac =
+      HmacSha256(chromeos::SecureBlob(GetPairingSecret()),
+                 TLS_certificate_fingerprint_);
   *signature = Base64Encode(cert_hmac);
   return Error::kNone;
 }
