@@ -560,6 +560,16 @@ class Nl80211AttributeStaInfo : public NetlinkNestedAttribute {
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeStaInfo);
 };
 
+class Nl80211AttributeSupportedIftypes : public NetlinkNestedAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeSupportedIftypes();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeSupportedIftypes);
+};
+
 class Nl80211AttributeWiphyBands : public NetlinkNestedAttribute {
  public:
   static const int kName;

@@ -166,6 +166,9 @@ NetlinkAttribute *NetlinkAttribute::NewNl80211AttributeFromId(int id) {
     case NL80211_ATTR_SUPPORT_MESH_AUTH:
       attr.reset(new Nl80211AttributeSupportMeshAuth());
       break;
+    case NL80211_ATTR_SUPPORTED_IFTYPES:
+      attr.reset(new Nl80211AttributeSupportedIftypes());
+      break;
     case NL80211_ATTR_TDLS_EXTERNAL_SETUP:
       attr.reset(new Nl80211AttributeTdlsExternalSetup());
       break;

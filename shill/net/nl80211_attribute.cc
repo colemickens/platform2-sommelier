@@ -521,6 +521,16 @@ Nl80211AttributeStaInfo::Nl80211AttributeStaInfo()
       NestedData(NLA_U32, "NL80211_STA_INFO_BEACON_LOSS", false));
 }
 
+const int Nl80211AttributeSupportedIftypes::kName =
+    NL80211_ATTR_SUPPORTED_IFTYPES;
+const char Nl80211AttributeSupportedIftypes::kNameString[] =
+    "NL80211_ATTR_SUPPORTED_IFTYPES";
+Nl80211AttributeSupportedIftypes::Nl80211AttributeSupportedIftypes()
+      : NetlinkNestedAttribute(kName, kNameString) {
+  nested_template_.push_back(
+      NestedData(NLA_FLAG, "NL80211_SUPPORTED_IFTYPES_IFTYPE", true));
+}
+
 const int Nl80211AttributeStatusCode::kName =
     NL80211_ATTR_STATUS_CODE;
 const char Nl80211AttributeStatusCode::kNameString[] =
