@@ -98,6 +98,18 @@ string DHCPServer::GenerateConfigFile() {
   config += "port=0\n";
   config += "bind-interfaces\n";
   config += "log-dhcp\n";
+  // By default, dnsmasq process will spawn off another process to run the
+  // dnsmasq task in the "background" and exit the current process immediately.
+  // This means the daemon would not have any knowledge of the background
+  // dnsmasq process, and it will continue to run even after the AP service is
+  // terminated. Configure dnsmasq to run in "foreground" so no extra process
+  // will be spawned.
+  config += "keep-in-foreground\n";
+  // TODO(zqiu): by default, dnsmasq process will be started under "nobody".
+  // Set the user to "root" for now, since both the daemon and hostapd are
+  // running under "root". Update the user once we switch the daemon and
+  // hostapd over to "apmanager" user.
+  config += "user=root\n";
   base::StringAppendF(
       &config, "dhcp-range=%s,%s\n", address_low.c_str(), address_high.c_str());
   base::StringAppendF(&config, "interface=%s\n", interface_name_.c_str());
