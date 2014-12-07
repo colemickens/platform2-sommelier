@@ -269,7 +269,7 @@ bool NssUtilImpl::Sign(const uint8_t* data,
                        std::vector<uint8_t>* OUT_signature,
                        RSAPrivateKey* key) {
   scoped_ptr<crypto::SignatureCreator> signer(
-      crypto::SignatureCreator::Create(key));
+      crypto::SignatureCreator::Create(key, crypto::SignatureCreator::SHA1));
   if (!signer->Update(data, data_len))
     return false;
   return signer->Final(OUT_signature);
