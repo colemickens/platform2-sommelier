@@ -26,7 +26,7 @@ TEST_F(DenyUsbDeviceClassRuleTest, IgnoreNonUsbDevice) {
                                         Rule::ANY_INTERFACE));
 }
 
-TEST_F(DenyUsbDeviceClassRuleTest, DenyMatchingUsbDevice) {
+TEST_F(DenyUsbDeviceClassRuleTest, DISABLED_DenyMatchingUsbDevice) {
   ASSERT_EQ(Rule::DENY, rule_.Process("/dev/bus/usb/001/001",
                                       Rule::ANY_INTERFACE));
 }

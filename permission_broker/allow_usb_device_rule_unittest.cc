@@ -25,7 +25,7 @@ TEST_F(AllowUsbDeviceRuleTest, IgnoreNonUsbDevice) {
                                         Rule::ANY_INTERFACE));
 }
 
-TEST_F(AllowUsbDeviceRuleTest, AllowUsbDevice) {
+TEST_F(AllowUsbDeviceRuleTest, DISABLED_AllowUsbDevice) {
   ASSERT_EQ(Rule::ALLOW, rule_.Process("/dev/bus/usb/001/001",
                                        Rule::ANY_INTERFACE));
 }
