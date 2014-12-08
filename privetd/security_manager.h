@@ -34,7 +34,8 @@ class SecurityManager : public SecurityDelegate {
     virtual const std::string& GetKey() const = 0;
   };
 
-  explicit SecurityManager(const std::string& embedded_password);
+  explicit SecurityManager(const std::string& embedded_password,
+                           bool disable_security = false);
   ~SecurityManager() override = default;
 
   // SecurityDelegate methods
@@ -62,6 +63,8 @@ class SecurityManager : public SecurityDelegate {
  private:
   void CloseSession(const std::string& session_id);
 
+  // If true allows unencrypted pairing and accepts any access code.
+  bool is_security_disabled_{false};
   std::string embedded_password_;
   std::map<std::string, std::unique_ptr<KeyExchanger> > sessions_;
   chromeos::SecureBlob secret_;

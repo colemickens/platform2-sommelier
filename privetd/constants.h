@@ -12,7 +12,7 @@ extern const char kDefaultStateFilePath[];
 namespace errors {
 
 extern const char kPrivetdErrorDomain[];
-extern const char kInvalidSpakeMessage[];
+extern const char kInvalidClientCommitment[];
 
 }  // namespace errors
 

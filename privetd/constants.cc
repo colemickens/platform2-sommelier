@@ -11,7 +11,7 @@ const char kDefaultStateFilePath[] = "/var/lib/privetd/privetd.state";
 namespace errors {
 
 const char kPrivetdErrorDomain[] = "privetd";
-const char kInvalidSpakeMessage[] = "invalid_spake_message";
+const char kInvalidClientCommitment[] = "invalid_client_commitment";
 
 }  // namespace errors
 

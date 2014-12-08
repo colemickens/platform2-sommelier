@@ -43,12 +43,12 @@ class Daemon : public chromeos::DBusDaemon {
  public:
   Daemon(uint16_t http_port_number,
          uint16_t https_port_number,
-         bool allow_empty_auth,
+         bool disable_security,
          bool enable_ping,
          const base::FilePath& state_path)
       : http_port_number_(http_port_number),
         https_port_number_(https_port_number),
-        allow_empty_auth_(allow_empty_auth),
+        disable_security_(disable_security),
         enable_ping_(enable_ping),
         state_store_(new privetd::DaemonState(state_path)) {}
 
@@ -65,7 +65,7 @@ class Daemon : public chromeos::DBusDaemon {
         bus_, device_.get(),
         base::Bind(&Daemon::OnChanged, base::Unretained(this)));
     // TODO(vitalybuka): Provide real embeded password.
-    security_.reset(new privetd::SecurityManager("1234"));
+    security_.reset(new privetd::SecurityManager("1234", disable_security_));
     wifi_bootstrap_manager_.reset(new privetd::WifiBootstrapManager(
         state_store_.get()));
     wifi_bootstrap_manager_->Init();
@@ -120,7 +120,7 @@ class Daemon : public chromeos::DBusDaemon {
                             scoped_ptr<Response> response) {
     std::string auth_header = GetFirstHeader(
         *request, chromeos::http::request_header::kAuthorization);
-    if (auth_header.empty() && allow_empty_auth_)
+    if (auth_header.empty() && disable_security_)
       auth_header = "Privet anonymous";
     std::string data(request->GetData().begin(), request->GetData().end());
     VLOG(3) << "Input: " << data;
@@ -173,7 +173,7 @@ class Daemon : public chromeos::DBusDaemon {
 
   uint16_t http_port_number_;
   uint16_t https_port_number_;
-  bool allow_empty_auth_;
+  bool disable_security_;
   bool enable_ping_;
   std::unique_ptr<privetd::DaemonState> state_store_;
   std::unique_ptr<privetd::CloudDelegate> cloud_;
@@ -192,7 +192,7 @@ class Daemon : public chromeos::DBusDaemon {
 }  // anonymous namespace
 
 int main(int argc, char* argv[]) {
-  DEFINE_bool(allow_empty_auth, false, "allow unauthenticated requests");
+  DEFINE_bool(disable_security, false, "disable Privet security for tests");
   DEFINE_bool(enable_ping, false, "enable test HTTP handler at /privet/ping");
   DEFINE_int32(http_port, 8080, "HTTP port to listen for requests on");
   DEFINE_int32(https_port, 8081, "HTTPS port to listen for requests on");
@@ -217,7 +217,7 @@ int main(int argc, char* argv[]) {
     return EX_USAGE;
   }
 
-  Daemon daemon(FLAGS_http_port, FLAGS_https_port, FLAGS_allow_empty_auth,
+  Daemon daemon(FLAGS_http_port, FLAGS_https_port, FLAGS_disable_security,
                 FLAGS_enable_ping, base::FilePath(FLAGS_state_path));
   return daemon.Run();
 }

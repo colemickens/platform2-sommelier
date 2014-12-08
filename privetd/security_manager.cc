@@ -140,6 +140,7 @@ class Spakep224Exchanger : public SecurityManager::KeyExchanger {
       : spake_(crypto::P224EncryptedKeyExchange::kPeerTypeServer, password) {}
   ~Spakep224Exchanger() override = default;
 
+  // SecurityManager::KeyExchanger methods.
   const std::string& GetMessage() override { return spake_.GetMessage(); }
 
   bool ProcessMessage(const std::string& message,
@@ -149,7 +150,8 @@ class Spakep224Exchanger : public SecurityManager::KeyExchanger {
         return true;
       case crypto::P224EncryptedKeyExchange::kResultFailed:
         chromeos::Error::AddTo(error, FROM_HERE, errors::kPrivetdErrorDomain,
-                               errors::kInvalidSpakeMessage, spake_.error());
+                               errors::kInvalidClientCommitment,
+                               spake_.error());
         return false;
       default:
         LOG(FATAL) << "SecurityManager uses only one round trip";
@@ -165,10 +167,38 @@ class Spakep224Exchanger : public SecurityManager::KeyExchanger {
   crypto::P224EncryptedKeyExchange spake_;
 };
 
+class UnsecureKeyExchanger : public SecurityManager::KeyExchanger {
+ public:
+  explicit UnsecureKeyExchanger(const std::string& password)
+      : password_(password) {}
+  ~UnsecureKeyExchanger() override = default;
+
+  // SecurityManager::KeyExchanger methods.
+  const std::string& GetMessage() override { return password_; }
+
+  bool ProcessMessage(const std::string& message,
+                      chromeos::ErrorPtr* error) override {
+    if (password_ == message)
+      return true;
+    chromeos::Error::AddTo(error, FROM_HERE, errors::kPrivetdErrorDomain,
+                           errors::kInvalidClientCommitment,
+                           "Commitment does not match the pairing code.");
+    return false;
+  }
+
+  const std::string& GetKey() const override { return password_; }
+
+ private:
+  std::string password_;
+};
+
 }  // namespace
 
-SecurityManager::SecurityManager(const std::string& embedded_password)
-    : embedded_password_(embedded_password), secret_(kSha256OutputSize) {
+SecurityManager::SecurityManager(const std::string& embedded_password,
+                                 bool disable_security)
+    : is_security_disabled_(disable_security),
+      embedded_password_(embedded_password),
+      secret_(kSha256OutputSize) {
   base::RandBytes(secret_.data(), kSha256OutputSize);
 }
 
@@ -199,10 +229,15 @@ std::vector<PairingType> SecurityManager::GetPairingTypes() const {
 }
 
 std::vector<CryptoType> SecurityManager::GetCryptoTypes() const {
-  return {CryptoType::kSpake_p224};
+  std::vector<CryptoType> result{CryptoType::kSpake_p224};
+  if (is_security_disabled_)
+    result.push_back(CryptoType::kNone);
+  return result;
 }
 
 bool SecurityManager::IsValidPairingCode(const std::string& auth_code) const {
+  if (is_security_disabled_)
+    return true;
   chromeos::Blob auth_decoded = Base64Decode(auth_code);
   for (const auto& session : sessions_) {
     if (auth_decoded ==
@@ -223,6 +258,11 @@ Error SecurityManager::StartPairing(PairingType mode,
 
   std::unique_ptr<KeyExchanger> spake;
   switch (crypto) {
+    case CryptoType::kNone:
+      if (!is_security_disabled_)
+        return Error::kInvalidParams;
+      spake.reset(new UnsecureKeyExchanger(embedded_password_));
+      break;
     case CryptoType::kSpake_p224:
       spake.reset(new Spakep224Exchanger(embedded_password_));
       break;
@@ -260,6 +300,7 @@ Error SecurityManager::ConfirmPairing(const std::string& sessionId,
   chromeos::Blob commitment{Base64Decode(client_commitment)};
   if (!session->second->ProcessMessage(
           std::string(commitment.begin(), commitment.end()), &error)) {
+    LOG(ERROR) << "Confirmation failed: " << error->GetMessage();
     CloseSession(sessionId);
     return Error::kCommitmentMismatch;
   }

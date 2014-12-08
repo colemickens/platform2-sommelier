@@ -198,6 +198,7 @@ const EnumToStringMap<PairingType>::Map EnumToStringMap<PairingType>::kMap[] = {
 
 template <>
 const EnumToStringMap<CryptoType>::Map EnumToStringMap<CryptoType>::kMap[] = {
+    {CryptoType::kNone, "none"},
     {CryptoType::kSpake_p224, "p224_spake2"},
     {CryptoType::kSpake_p256, "p256_spake2"},
 };
