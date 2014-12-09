@@ -56,11 +56,6 @@ int TakeOwnership(const std::string& owner_password) {
     LOG(ERROR) << "Error taking ownership: " << trunks::GetErrorString(rc);
     return rc;
   }
-  rc = factory.GetTpmUtility()->CreateStorageRootKeys(owner_password);
-  if (rc) {
-    LOG(ERROR) << "Error creating SRK: " << trunks::GetErrorString(rc);
-    return rc;
-  }
   return 0;
 }
 

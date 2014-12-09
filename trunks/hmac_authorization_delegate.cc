@@ -68,8 +68,8 @@ bool HmacAuthorizationDelegate::GetCommandAuthorization(
   CHECK_EQ(Serialize_TPMA_SESSION(auth.session_attributes, &attributes_bytes),
            TPM_RC_SUCCESS) << "Error serializing session attributes.";
 
-  std::string hmac_key = session_key_ + entity_auth_value_;
   std::string hmac_data;
+  std::string hmac_key = session_key_ + entity_auth_value_;
   hmac_data.append(command_hash);
   hmac_data.append(reinterpret_cast<const char*>(caller_nonce_.buffer),
                    caller_nonce_.size);
@@ -77,7 +77,6 @@ bool HmacAuthorizationDelegate::GetCommandAuthorization(
                    tpm_nonce_.size);
   hmac_data.append(attributes_bytes);
   std::string digest = HmacSha256(hmac_key, hmac_data);
-
   auth.hmac = Make_TPM2B_DIGEST(digest);
 
   TPM_RC serialize_error = Serialize_TPMS_AUTH_COMMAND(auth, authorization);
@@ -94,7 +93,6 @@ bool HmacAuthorizationDelegate::CheckResponseAuthorization(
   if (!session_handle_) {
     return false;
   }
-
   TPMS_AUTH_RESPONSE auth_response;
   std::string mutable_auth_string(authorization);
   TPM_RC parse_error;
@@ -129,7 +127,7 @@ bool HmacAuthorizationDelegate::CheckResponseAuthorization(
                    caller_nonce_.size);
   hmac_data.append(attributes_bytes);
   std::string digest = HmacSha256(hmac_key, hmac_data);
-  CHECK_EQ(digest.size(), kHashDigestSize);
+  CHECK_EQ(digest.size(), auth_response.hmac.size);
   if (!crypto::SecureMemEqual(digest.data(), auth_response.hmac.buffer,
                               digest.size())) {
     LOG(ERROR) << "Authorization response hash did not match expected value.";

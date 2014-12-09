@@ -17,6 +17,7 @@ namespace trunks {
 // These handles will be used by TpmUtility to create storage root keys.
 const TPMI_DH_PERSISTENT kRSAStorageRootKey = PERSISTENT_FIRST;
 const TPMI_DH_PERSISTENT kECCStorageRootKey = PERSISTENT_FIRST + 1;
+const TPMI_DH_PERSISTENT kSaltingKey = PERSISTENT_FIRST + 2;
 
 // An interface which provides convenient methods for common TPM operations.
 class CHROMEOS_EXPORT TpmUtility {
@@ -49,6 +50,12 @@ class CHROMEOS_EXPORT TpmUtility {
   // by the platform firmware and, in that case, this method has no effect.
   virtual TPM_RC InitializeTpm() = 0;
 
+  // Synchronously takes ownership of the TPM with the given passwords as
+  // authorization values.
+  virtual TPM_RC TakeOwnership(const std::string& owner_password,
+                               const std::string& endorsement_password,
+                               const std::string& lockout_password) = 0;
+
   // Stir the tpm random generation module with some random entropy data.
   virtual TPM_RC StirRandom(const std::string& entropy_data) = 0;
 
@@ -63,18 +70,6 @@ class CHROMEOS_EXPORT TpmUtility {
   // This method reads the pcr specified by |pcr_index| and returns its value
   // in |pcr_value|. NOTE: it assumes we are using SHA256 as our hash alg.
   virtual TPM_RC ReadPCR(int pcr_index, std::string* pcr_value) = 0;
-
-  // Synchronously takes ownership of the TPM with the given passwords as
-  // authorization values.
-  virtual TPM_RC TakeOwnership(const std::string& owner_password,
-                               const std::string& endorsement_password,
-                               const std::string& lockout_password) = 0;
-
-  // Synchronously derives storage root keys for RSA and ECC and persists the
-  // keys in the TPM. This operation must be authorized by the |owner_password|
-  // and, on success, KRSAStorageRootKey and kECCStorageRootKey can be used
-  // with an empty authorization value until the TPM is cleared.
-  virtual TPM_RC CreateStorageRootKeys(const std::string& owner_password) = 0;
 
   // This method performs an encryption operation using a LOADED RSA key
   // referrenced by its handle |key_handle|. The |plaintext| is then encrypted

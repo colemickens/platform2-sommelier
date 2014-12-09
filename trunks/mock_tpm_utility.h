@@ -22,15 +22,13 @@ class MockTpmUtility : public TpmUtility {
   MOCK_METHOD0(Clear, TPM_RC());
   MOCK_METHOD0(Shutdown, void());
   MOCK_METHOD0(InitializeTpm, TPM_RC());
+  MOCK_METHOD3(TakeOwnership, TPM_RC(const std::string& owner_password,
+                                     const std::string& endorsement_password,
+                                     const std::string& lockout_password));
   MOCK_METHOD1(StirRandom, TPM_RC(const std::string&));
   MOCK_METHOD2(GenerateRandom, TPM_RC(size_t, std::string*));
   MOCK_METHOD2(ExtendPCR, TPM_RC(int, const std::string&));
   MOCK_METHOD2(ReadPCR, TPM_RC(int, std::string*));
-  MOCK_METHOD3(TakeOwnership, TPM_RC(const std::string& owner_password,
-                                     const std::string& endorsement_password,
-                                     const std::string& lockout_password));
-  MOCK_METHOD1(CreateStorageRootKeys,
-               TPM_RC(const std::string& owner_password));
   MOCK_METHOD5(AsymmetricEncrypt, TPM_RC(TPM_HANDLE,
                                          TPM_ALG_ID,
                                          TPM_ALG_ID,

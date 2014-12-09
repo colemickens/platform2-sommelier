@@ -80,6 +80,14 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->InitializeTpm();
   }
 
+  TPM_RC TakeOwnership(const std::string& owner_password,
+                       const std::string& endorsement_password,
+                       const std::string& lockout_password) override {
+    return target_->TakeOwnership(owner_password,
+                                  endorsement_password,
+                                  lockout_password);
+  }
+
   TPM_RC StirRandom(const std::string& entropy_data) override {
     return target_->StirRandom(entropy_data);
   }
@@ -94,18 +102,6 @@ class TpmUtilityForwarder : public TpmUtility {
 
   TPM_RC ReadPCR(int pcr_index, std::string* pcr_value) override {
     return target_->ReadPCR(pcr_index, pcr_value);
-  }
-
-  TPM_RC TakeOwnership(const std::string& owner_password,
-                       const std::string& endorsement_password,
-                       const std::string& lockout_password) override {
-    return target_->TakeOwnership(owner_password,
-                                  endorsement_password,
-                                  lockout_password);
-  }
-
-  TPM_RC CreateStorageRootKeys(const std::string& owner_password) override {
-    return target_->CreateStorageRootKeys(owner_password);
   }
 
   TPM_RC AsymmetricEncrypt(TPM_HANDLE key_handle,
