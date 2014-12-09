@@ -207,6 +207,9 @@ int main(int argc, char* argv[]) {
     flags |= chromeos::kLogToStderr;
   chromeos::InitLog(flags | chromeos::kLogHeader);
 
+  if (FLAGS_state_path.empty())
+    FLAGS_state_path = privetd::kDefaultStateFilePath;
+
   if (FLAGS_http_port < 1 || FLAGS_http_port > 0xFFFF) {
     LOG(ERROR) << "Invalid HTTP port specified: '" << FLAGS_http_port << "'.";
     return EX_USAGE;
