@@ -189,11 +189,16 @@ class CHROMEOS_EXPORT StringFlag : public Flag {
       std::unique_ptr<chromeos::Flag>(                                         \
           new chromeos::classtype(#name, &FLAGS_##name, #value, help, true)));
 
-#define DEFINE_int32(...) DEFINE_type(int, Int32Flag, ## __VA_ARGS__)
-#define DEFINE_int64(...) DEFINE_type(int64_t, Int64Flag, ## __VA_ARGS__)
-#define DEFINE_uint64(...) DEFINE_type(uint64_t, UInt64Flag, ## __VA_ARGS__)
-#define DEFINE_double(...) DEFINE_type(double, DoubleFlag, ## __VA_ARGS__)
-#define DEFINE_string(...) DEFINE_type(std::string, StringFlag, ## __VA_ARGS__)
+#define DEFINE_int32(name, value, help) \
+    DEFINE_type(int, Int32Flag, name, value, help)
+#define DEFINE_int64(name, value, help) \
+    DEFINE_type(int64_t, Int64Flag, name, value, help)
+#define DEFINE_uint64(name, value, help) \
+    DEFINE_type(uint64_t, UInt64Flag, name, value, help)
+#define DEFINE_double(name, value, help) \
+    DEFINE_type(double, DoubleFlag, name, value, help)
+#define DEFINE_string(name, value, help) \
+    DEFINE_type(std::string, StringFlag, name, value, help)
 
 // Due to the FLAGS_no##name variables, can't re-use the same DEFINE_type macro
 // for defining bool flags
