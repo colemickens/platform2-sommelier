@@ -56,6 +56,9 @@ class DarkResumeInterface {
 
   // Returns true if the system is currently in dark resume.
   virtual bool InDarkResume() = 0;
+
+  // Returns true if dark resume is enabled on the system.
+  virtual bool IsEnabled() = 0;
 };
 
 // Real implementation of DarkResumeInterface that interacts with sysfs.
@@ -108,6 +111,7 @@ class DarkResume : public DarkResumeInterface {
   void GetActionForSuspendAttempt(Action* action,
                                   base::TimeDelta* suspend_duration) override;
   bool InDarkResume() override;
+  bool IsEnabled() override;
 
  private:
   // Fills |suspend_durations_|, returning false if the pref was unset or empty.

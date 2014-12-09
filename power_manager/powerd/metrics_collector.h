@@ -6,6 +6,7 @@
 #define POWER_MANAGER_POWERD_METRICS_COLLECTOR_H_
 
 #include <string>
+#include <vector>
 
 #include <base/compiler_specific.h>
 #include <base/macros.h>
@@ -71,6 +72,16 @@ class MetricsCollector {
   // Called after a suspend request (that is, a series of one or more suspend
   // attempts performed in response to e.g. the lid being closed) is canceled.
   void HandleCanceledSuspendRequest(int num_suspend_attempts);
+
+  // Called after a suspend request has completed (successfully or not).
+  // Generates UMA metrics for dark resume.  The size of |wake_durations| is the
+  // number of times the system woke up in dark resume during the suspend
+  // request and the value of each element is the time spent in dark resume for
+  // the corresponding wake.  |suspend_duration| is the total time the system
+  // spent in user-visible suspend (including the time spent in dark resume).
+  void GenerateDarkResumeMetrics(
+      const std::vector<base::TimeDelta>& wake_durations,
+      base::TimeDelta suspend_duration);
 
   // Generates UMA metrics on when leaving the idle state.
   void GenerateUserActivityMetrics();

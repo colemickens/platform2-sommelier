@@ -9,6 +9,7 @@
 #include <cmath>
 #include <set>
 #include <string>
+#include <vector>
 
 #include <base/format_macros.h>
 #include <base/logging.h>
@@ -450,6 +451,52 @@ TEST_F(MetricsCollectorTest, PowerButtonDownMetric) {
                kMetricPowerButtonDownTimeMax,
                kMetricDefaultBuckets);
   collector_.HandlePowerButtonEvent(BUTTON_UP);
+}
+
+TEST_F(MetricsCollectorTest, GatherDarkResumeMetrics) {
+  Init();
+
+  std::vector<base::TimeDelta> wake_durations;
+  base::TimeDelta suspend_duration;
+
+  // First test the basic case.
+  wake_durations.push_back(base::TimeDelta::FromSeconds(2));
+  wake_durations.push_back(base::TimeDelta::FromSeconds(6));
+  wake_durations.push_back(base::TimeDelta::FromMilliseconds(573));
+  wake_durations.push_back(base::TimeDelta::FromSeconds(7));
+
+  suspend_duration = base::TimeDelta::FromHours(2);
+
+  ExpectMetric(kMetricDarkResumeWakeupsPerHourName,
+               wake_durations.size() / suspend_duration.InHours(),
+               kMetricDarkResumeWakeupsPerHourMin,
+               kMetricDarkResumeWakeupsPerHourMax,
+               kMetricDefaultBuckets);
+  for (const base::TimeDelta& duration : wake_durations) {
+    ExpectMetric(kMetricDarkResumeWakeDurationMsName,
+                 duration.InMilliseconds(),
+                 kMetricDarkResumeWakeDurationMsMin,
+                 kMetricDarkResumeWakeDurationMsMax,
+                 kMetricDefaultBuckets);
+  }
+
+  collector_.GenerateDarkResumeMetrics(wake_durations, suspend_duration);
+
+  // If the suspend lasts for less than an hour, the wakeups per hour should be
+  // scaled up.
+  Mock::VerifyAndClearExpectations(metrics_lib_);
+  wake_durations.clear();
+
+  wake_durations.push_back(base::TimeDelta::FromMilliseconds(359));
+  suspend_duration = base::TimeDelta::FromMinutes(13);
+
+  IgnoreMetric(kMetricDarkResumeWakeDurationMsName);
+  ExpectMetric(kMetricDarkResumeWakeupsPerHourName, 4,
+               kMetricDarkResumeWakeupsPerHourMin,
+               kMetricDarkResumeWakeupsPerHourMax,
+               kMetricDefaultBuckets);
+
+  collector_.GenerateDarkResumeMetrics(wake_durations, suspend_duration);
 }
 
 TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {

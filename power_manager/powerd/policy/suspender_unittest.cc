@@ -28,6 +28,7 @@ const char kPrepare[] = "prepare";
 const char kSuspend[] = "suspend";
 const char kUnprepare[] = "unprepare";
 const char kShutDown[] = "shut_down";
+const char kGenerateDarkResumeMetrics[] = "generate_dark_resume_metrics";
 const char kNoActions[] = "";
 
 // Test implementation of Suspender::Delegate that just records the actions it
@@ -83,6 +84,13 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
     return suspend_canceled_while_in_dark_resume_;
   }
 
+  const std::vector<base::TimeDelta>& dark_resume_wake_durations() const {
+    return dark_resume_wake_durations_;
+  }
+  base::TimeDelta last_suspend_duration() const {
+    return last_suspend_duration_;
+  }
+
   // Delegate implementation:
   int GetInitialSuspendId() override { return 1; }
   int GetInitialDarkSuspendId() override { return 12701; }
@@ -107,8 +115,8 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   }
 
   SuspendResult DoSuspend(uint64_t wakeup_count,
-                                  bool wakeup_count_valid,
-                                  base::TimeDelta duration) override {
+                          bool wakeup_count_valid,
+                          base::TimeDelta duration) override {
     AppendAction(kSuspend);
     suspend_wakeup_count_ = wakeup_count;
     suspend_wakeup_count_valid_ = wakeup_count_valid;
@@ -125,6 +133,14 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
     num_suspend_attempts_ = num_suspend_attempts;
     suspend_canceled_while_in_dark_resume_ = canceled_while_in_dark_resume;
     RunAndResetCallback(&completion_callback_);
+  }
+
+  void GenerateDarkResumeMetrics(
+      const std::vector<base::TimeDelta>& dark_resume_wake_durations,
+      base::TimeDelta suspend_duration) override {
+    AppendAction(kGenerateDarkResumeMetrics);
+    dark_resume_wake_durations_ = dark_resume_wake_durations;
+    last_suspend_duration_ = suspend_duration;
   }
 
   void ShutDownForFailedSuspend() override {
@@ -187,6 +203,10 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
 
   // Value returned by CanSafelyExitDarkResume().
   bool can_safely_exit_dark_resume_;
+
+  // Dark resume wake data provided to GenerateDarkResumeMetrics().
+  std::vector<base::TimeDelta> dark_resume_wake_durations_;
+  base::TimeDelta last_suspend_duration_;
 
   DISALLOW_COPY_AND_ASSIGN(TestDelegate);
 };
@@ -951,6 +971,94 @@ TEST_F(SuspenderTest, RerunDarkSuspendDelaysForCanceledSuspend) {
   delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_SUCCESSFUL);
   EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
   EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
+}
+
+// Test that we report dark resume metrics only if it is enabled.
+TEST_F(SuspenderTest, GenerateDarkResumeMetricsOnlyIfEnabled) {
+  Init();
+
+  // Don't report metrics when dark resume is disabled.
+  suspender_.RequestSuspend();
+  AnnounceReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kUnprepare, NULL),
+            delegate_.GetActions());
+
+  // Report metrics when dark resume is enabled.
+  dark_resume_.set_enabled(true);
+  suspender_.RequestSuspend();
+  AnnounceReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kUnprepare,
+                        kGenerateDarkResumeMetrics, NULL),
+            delegate_.GetActions());
+}
+
+// Tests that the Suspender properly generates dark resume wake data.
+TEST_F(SuspenderTest, DarkResumeWakeData) {
+  Init();
+  dark_resume_.set_enabled(true);
+
+  // No dark resumes.
+  const base::TimeDelta kSuspendDuration = base::TimeDelta::FromMinutes(24);
+  const base::Time kRequestTime = base::Time::FromInternalValue(1576);
+  const base::Time kCompletionTime = kRequestTime + kSuspendDuration;
+
+  test_api_.SetCurrentWallTime(kRequestTime);
+  suspender_.RequestSuspend();
+  test_api_.SetCurrentWallTime(kCompletionTime);
+  AnnounceReadyForSuspend(test_api_.suspend_id());
+
+  EXPECT_EQ(0, delegate_.dark_resume_wake_durations().size());
+  EXPECT_EQ(kSuspendDuration, delegate_.last_suspend_duration());
+
+  // One dark resume.
+  const base::TimeDelta kDarkResumeDuration =
+      base::TimeDelta::FromMilliseconds(4566);
+  const base::Time kDarkResumeStartTime =
+      kRequestTime + base::TimeDelta::FromMinutes(7);
+  const base::Time kDarkResumeFinishTime =
+      kDarkResumeStartTime + kDarkResumeDuration;
+
+  test_api_.SetCurrentWallTime(kRequestTime);
+  suspender_.RequestSuspend();
+
+  test_api_.SetCurrentWallTime(kDarkResumeStartTime);
+  dark_resume_.set_in_dark_resume(true);
+  AnnounceReadyForSuspend(test_api_.suspend_id());
+
+  test_api_.SetCurrentWallTime(kDarkResumeFinishTime);
+  dark_resume_.set_in_dark_resume(false);
+  AnnounceReadyForDarkSuspend(test_api_.dark_suspend_id());
+
+  ASSERT_EQ(1, delegate_.dark_resume_wake_durations().size());
+  EXPECT_EQ(kDarkResumeDuration, delegate_.dark_resume_wake_durations().at(0));
+  EXPECT_EQ(kDarkResumeFinishTime - kRequestTime,
+            delegate_.last_suspend_duration());
+
+  // Dark resume with a failed resuspend.  The wake duration should include the
+  // time spent waiting to resuspend after the failed initial attempt.
+  const base::TimeDelta kResuspendDuration = base::TimeDelta::FromSeconds(7);
+  const base::Time kResuspendTime = kDarkResumeFinishTime + kResuspendDuration;
+
+  test_api_.SetCurrentWallTime(kRequestTime);
+  suspender_.RequestSuspend();
+
+  test_api_.SetCurrentWallTime(kDarkResumeStartTime);
+  dark_resume_.set_in_dark_resume(true);
+  AnnounceReadyForSuspend(test_api_.suspend_id());
+
+  test_api_.SetCurrentWallTime(kDarkResumeFinishTime);
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_CANCELED);
+  AnnounceReadyForDarkSuspend(test_api_.dark_suspend_id());
+
+  test_api_.SetCurrentWallTime(kResuspendTime);
+  dark_resume_.set_in_dark_resume(false);
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_SUCCESSFUL);
+  AnnounceReadyForDarkSuspend(test_api_.dark_suspend_id());
+
+  ASSERT_EQ(1, delegate_.dark_resume_wake_durations().size());
+  EXPECT_EQ(kDarkResumeDuration + kResuspendDuration,
+            delegate_.dark_resume_wake_durations().at(0));
+  EXPECT_EQ(kResuspendTime - kRequestTime, delegate_.last_suspend_duration());
 }
 
 TEST_F(SuspenderTest, ReportInitialSuspendAttempts) {

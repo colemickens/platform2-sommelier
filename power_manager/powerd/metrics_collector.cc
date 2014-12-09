@@ -196,6 +196,31 @@ void MetricsCollector::HandleCanceledSuspendRequest(int num_suspend_attempts) {
              kMetricSuspendAttemptsBuckets);
 }
 
+void MetricsCollector::GenerateDarkResumeMetrics(
+    const std::vector<base::TimeDelta>& wake_durations,
+    base::TimeDelta suspend_duration) {
+  if (suspend_duration.InSeconds() <= 0)
+    return;
+
+  // We want to get metrics even if the system suspended for less than an hour
+  // so we scale the number of wakes up.
+  static const int kSecondsPerHour = 60 * 60;
+  const int64 wakeups_per_hour =
+      wake_durations.size() * kSecondsPerHour / suspend_duration.InSeconds();
+  SendMetric(kMetricDarkResumeWakeupsPerHourName, wakeups_per_hour,
+             kMetricDarkResumeWakeupsPerHourMin,
+             kMetricDarkResumeWakeupsPerHourMax,
+             kMetricDefaultBuckets);
+
+  for (const base::TimeDelta& duration : wake_durations) {
+    SendMetric(kMetricDarkResumeWakeDurationMsName,
+               duration.InMilliseconds(),
+               kMetricDarkResumeWakeDurationMsMin,
+               kMetricDarkResumeWakeDurationMsMax,
+               kMetricDefaultBuckets);
+  }
+}
+
 void MetricsCollector::GenerateUserActivityMetrics() {
   if (last_idle_event_timestamp_.is_null())
     return;

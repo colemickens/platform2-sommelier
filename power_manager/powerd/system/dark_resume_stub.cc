@@ -9,7 +9,8 @@ namespace system {
 
 DarkResumeStub::DarkResumeStub()
     : action_(SUSPEND),
-      in_dark_resume_(false) {
+      in_dark_resume_(false),
+      enabled_(false) {
 }
 
 DarkResumeStub::~DarkResumeStub() {
@@ -30,6 +31,10 @@ void DarkResumeStub::GetActionForSuspendAttempt(
 
 bool DarkResumeStub::InDarkResume() {
   return in_dark_resume_;
+}
+
+bool DarkResumeStub::IsEnabled() {
+  return enabled_;
 }
 
 }  // namespace system

@@ -714,6 +714,13 @@ void Daemon::UndoPrepareToSuspend(bool success,
     metrics_collector_->HandleCanceledSuspendRequest(num_suspend_attempts);
 }
 
+void Daemon::GenerateDarkResumeMetrics(
+    const std::vector<base::TimeDelta>& dark_resume_wake_durations,
+    base::TimeDelta suspend_duration) {
+  metrics_collector_->GenerateDarkResumeMetrics(dark_resume_wake_durations,
+                                                suspend_duration);
+}
+
 void Daemon::ShutDownForFailedSuspend() {
   ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_SUSPEND_FAILED);
 }

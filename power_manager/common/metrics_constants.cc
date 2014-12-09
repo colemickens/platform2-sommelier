@@ -106,4 +106,14 @@ const char kMetricExternalDisplayOpenResultName[] =
     "Power.ExternalDisplayOpenResult";
 const int kMetricExternalDisplayResultMax = 10;
 
+const char kMetricDarkResumeWakeupsPerHourName[] =
+    "Power.DarkResumeWakeupsPerHour";
+const int kMetricDarkResumeWakeupsPerHourMin = 0;
+const int kMetricDarkResumeWakeupsPerHourMax = 60 * 60;
+
+const char kMetricDarkResumeWakeDurationMsName[] =
+    "Power.DarkResumeWakeDurationMs";
+const int kMetricDarkResumeWakeDurationMsMin = 0;
+const int kMetricDarkResumeWakeDurationMsMax = 10 * 60 * 1000;
+
 }  // namespace power_manager

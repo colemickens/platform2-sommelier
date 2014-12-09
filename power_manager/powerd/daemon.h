@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <string>
+#include <vector>
 
 #include <base/compiler_specific.h>
 #include <base/files/file_path.h>
@@ -109,6 +110,10 @@ class Daemon : public policy::BacklightControllerObserver,
   void UndoPrepareToSuspend(bool success,
                             int num_suspend_attempts,
                             bool canceled_while_in_dark_resume) override;
+  void GenerateDarkResumeMetrics(
+      const std::vector<base::TimeDelta>& dark_resume_wake_durations,
+      base::TimeDelta suspend_duration) override;
+
   void ShutDownForFailedSuspend() override;
   void ShutDownForDarkResume() override;
   bool CanSafelyExitDarkResume() override;

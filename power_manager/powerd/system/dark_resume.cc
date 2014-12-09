@@ -187,6 +187,10 @@ bool DarkResume::InDarkResume() {
   }
 }
 
+bool DarkResume::IsEnabled() {
+  return enabled_;
+}
+
 bool DarkResume::ReadSuspendDurationsPref() {
   suspend_durations_.clear();
 

@@ -353,6 +353,8 @@ void Suspender::StartRequest() {
   current_num_attempts_ = 0;
   initial_num_attempts_ = 0;
 
+  dark_resume_wake_durations_.clear();
+
   // Call PrepareToSuspend() before emitting SuspendImminent -- powerd needs to
   // set the backlight level to 0 before Chrome turns the display on in response
   // to the signal.
@@ -374,6 +376,13 @@ void Suspender::FinishRequest(bool success) {
   delegate_->UndoPrepareToSuspend(success,
       initial_num_attempts_ ? initial_num_attempts_ : current_num_attempts_,
       dark_resume_->InDarkResume());
+
+  // Only report dark resume metrics if it is actually enabled to prevent a
+  // bunch of noise in the data.
+  if (dark_resume_->IsEnabled()) {
+    delegate_->GenerateDarkResumeMetrics(dark_resume_wake_durations_,
+                                         suspend_duration);
+  }
   dark_resume_->UndoPrepareForSuspendRequest();
 }
 
@@ -398,6 +407,35 @@ Suspender::State Suspender::Suspend() {
   // Note: If this log message is changed, the power_AudioDetector test
   // must be updated.
   LOG(INFO) << "Starting suspend";
+
+  // Measuring time spent in dark resume is a little tricky because the
+  // resuspend attempt might fail and we wouldn't know until after the call to
+  // delegate_->DoSuspend() returns.  To deal with this, we split up counting
+  // the number of wakeups from measuring the time spent during that wakeup.
+  // Whenever the system enters dark resume and the previous suspend attempt was
+  // successful, we push a new dummy value to the end of
+  // |dark_resume_wake_durations_| and mark the time at which the dark resume
+  // started in |dark_resume_start_time_|.  When the system is about to
+  // resuspend, we calculate the difference between the current time and
+  // |dark_resume_start_time_| and store it in the last element of
+  // |dark_resume_wake_durations_|.
+  //
+  // If the resuspend is successful and we are still in dark resume, then a new
+  // dummy value is pushed to the end of |dark_resume_wake_durations_|.
+  // However, if the resuspend fails or is canceled then we schedule another
+  // resuspend and when we are about to perform the second resuspend attempt we
+  // again calculate the difference between the current time and
+  // |dark_resume_start_time_|, storing it in the last element of
+  // |dark_resume_wake_durations_|.  This overwrites the wake duration that was
+  // stored there before the first unsuccessful resuspend.  Additional
+  // unsuccessful attempts trigger further overwrites until an attempt is
+  // successful, ensuring that we account for all the time spent in dark resume
+  // during a particular wake.
+  if (!dark_resume_wake_durations_.empty()) {
+    dark_resume_wake_durations_.back() =
+        std::max(base::TimeDelta(),
+                 clock_->GetCurrentWallTime() - dark_resume_start_time_);
+  }
   current_num_attempts_++;
   const Delegate::SuspendResult result =
       delegate_->DoSuspend(wakeup_count_, wakeup_count_valid_, duration);
@@ -441,8 +479,12 @@ Suspender::State Suspender::Suspend() {
 
     dark_suspend_id_++;
 
-    // We only reset the retry count if the suspend was successful.
     if (result == Delegate::SUSPEND_SUCCESSFUL) {
+      // This is the start of a new dark resume wake.
+      dark_resume_start_time_ = clock_->GetCurrentWallTime();
+      dark_resume_wake_durations_.push_back(base::TimeDelta());
+
+      // We only reset the retry count if the suspend was successful.
       current_num_attempts_ = 0;
     } else {
       LOG(WARNING) << "Suspend attempt #" << current_num_attempts_

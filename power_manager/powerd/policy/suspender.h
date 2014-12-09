@@ -9,6 +9,7 @@
 
 #include <queue>
 #include <string>
+#include <vector>
 
 #include <base/compiler_specific.h>
 #include <base/macros.h>
@@ -142,6 +143,11 @@ class Suspender : public SuspendDelayObserver {
     virtual void UndoPrepareToSuspend(bool success,
                                       int num_suspend_attempts,
                                       bool canceled_while_in_dark_resume) = 0;
+
+    // Generates and reports metrics for wakeups in dark resume.
+    virtual void GenerateDarkResumeMetrics(
+        const std::vector<base::TimeDelta>& dark_resume_wake_durations,
+        base::TimeDelta suspend_duration_) = 0;
 
     // Shuts the system down in response to repeated failed suspend attempts.
     virtual void ShutDownForFailedSuspend() = 0;
@@ -367,6 +373,13 @@ class Suspender : public SuspendDelayObserver {
   // RequestSuspend() call. |current_num_attempts_| is copied here when doing a
   // dark resume.
   int initial_num_attempts_;
+
+  // The time at which the system entered dark resume.
+  base::Time dark_resume_start_time_;
+
+  // The amount of time spent in dark resume for each wake.  The number of wakes
+  // in dark resume is the size of this vector.
+  std::vector<base::TimeDelta> dark_resume_wake_durations_;
 
   // Runs HandleEvent(EVENT_READY_TO_RESUSPEND).
   base::OneShotTimer<Suspender> resuspend_timer_;

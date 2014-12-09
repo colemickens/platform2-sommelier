@@ -94,6 +94,14 @@ extern const char kMetricExternalBrightnessWriteResultName[];
 extern const char kMetricExternalDisplayOpenResultName[];
 extern const int kMetricExternalDisplayResultMax;
 
+extern const char kMetricDarkResumeWakeupsPerHourName[];
+extern const int kMetricDarkResumeWakeupsPerHourMin;
+extern const int kMetricDarkResumeWakeupsPerHourMax;
+
+extern const char kMetricDarkResumeWakeDurationMsName[];
+extern const int kMetricDarkResumeWakeDurationMsMin;
+extern const int kMetricDarkResumeWakeDurationMsMax;
+
 // Enum for kMetricBatteryInfoSample.
 enum BatteryInfoSampleResult {
   BATTERY_INFO_READ,

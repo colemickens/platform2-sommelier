@@ -23,6 +23,7 @@ class DarkResumeStub : public DarkResumeInterface {
   void set_in_dark_resume(bool in_dark_resume) {
     in_dark_resume_ = in_dark_resume;
   }
+  void set_enabled(bool enabled) { enabled_ = enabled; }
 
   // DarkResumeInterface implementation:
   void PrepareForSuspendRequest() override;
@@ -30,12 +31,14 @@ class DarkResumeStub : public DarkResumeInterface {
   void GetActionForSuspendAttempt(Action* action,
                                   base::TimeDelta* suspend_duration) override;
   bool InDarkResume() override;
+  bool IsEnabled() override;
 
  private:
   // Values to return.
   Action action_;
   base::TimeDelta suspend_duration_;
   bool in_dark_resume_;
+  bool enabled_;
 
   DISALLOW_COPY_AND_ASSIGN(DarkResumeStub);
 };
