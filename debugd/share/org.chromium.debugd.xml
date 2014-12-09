@@ -486,7 +486,8 @@
       </tp:docstring>
       <arg name="root_password" type="s" direction="in">
         <tp:docstring>
-          Password to assign to the root user.
+          Password to assign to the root user. If the string is empty, it will
+          default to "test0000".
         </tp:docstring>
       </arg>
     </method>

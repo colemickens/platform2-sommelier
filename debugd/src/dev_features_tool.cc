@@ -18,6 +18,8 @@ namespace {
 
 typedef ProcessWithOutput::ArgList ArgList;
 
+const char kDefaultRootPassword[] = "test0000";
+
 const char kDevFeaturesErrorString[] = "org.chromium.debugd.error.DevFeatures";
 const char kRootfsLockedErrorString[] =
     "Rootfs verification must be removed first";
@@ -139,7 +141,9 @@ void DevFeaturesTool::EnableChromeDevFeatures(const std::string& root_password,
   if (error->is_set()) {
     return;
   }
-  SetUserPassword("root", root_password, error);
+  SetUserPassword("root",
+                  root_password.empty() ? kDefaultRootPassword : root_password,
+                  error);
   if (error->is_set()) {
     return;
   }
