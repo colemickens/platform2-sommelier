@@ -11,6 +11,7 @@
 #include <base/macros.h>
 #include <chromeos/dbus/dbus_object.h>
 #include <chromeos/dbus/dbus_object_test_helpers.h>
+#include <chromeos/errors/error_codes.h>
 #include <dbus/message.h>
 #include <dbus/property.h>
 #include <dbus/object_path.h>
@@ -23,6 +24,7 @@ using ::testing::AnyNumber;
 using ::testing::Return;
 using ::testing::Invoke;
 using ::testing::_;
+using ::testing::Unused;
 
 namespace chromeos {
 
@@ -145,10 +147,48 @@ class ExportedPropertySetTest : public ::testing::Test {
     return testing::CallMethod(p_->dbus_object_, &method_call);
   }
 
+  std::unique_ptr<dbus::Response> SetPropertyOnInterface(
+      const std::string& interface_name,
+      const std::string& property_name,
+      const chromeos::Any& value) {
+    dbus::MethodCall method_call(dbus::kPropertiesInterface,
+                                 dbus::kPropertiesSet);
+    method_call.SetSerial(123);
+    dbus::MessageWriter writer(&method_call);
+    writer.AppendString(interface_name);
+    writer.AppendString(property_name);
+    dbus_utils::AppendValueToWriter(&writer, value);
+    return testing::CallMethod(p_->dbus_object_, &method_call);
+  }
+
   scoped_ptr<dbus::Response> last_response_;
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
   scoped_ptr<Properties> p_;
+};
+
+template <typename T>
+class PropertyValidatorObserver {
+ public:
+  PropertyValidatorObserver()
+      : validate_property_callback_(
+            base::Bind(&PropertyValidatorObserver::ValidateProperty,
+                       base::Unretained(this))) {}
+  virtual ~PropertyValidatorObserver() {}
+
+  MOCK_METHOD2_T(ValidateProperty,
+                 bool(chromeos::ErrorPtr* error, const T& value));
+
+  const base::Callback<bool(chromeos::ErrorPtr*, const T&)>&
+      validate_property_callback() const {
+    return validate_property_callback_;
+  }
+
+ private:
+  base::Callback<bool(chromeos::ErrorPtr*, const T&)>
+      validate_property_callback_;
+
+  DISALLOW_COPY_AND_ASSIGN(PropertyValidatorObserver);
 };
 
 TEST_F(ExportedPropertySetTest, UpdateNotifications) {
@@ -418,18 +458,107 @@ TEST_F(ExportedPropertySetTest, GetWorksWithUint8List) {
   ASSERT_FALSE(reader.HasMoreData());
 }
 
-TEST_F(ExportedPropertySetTest, SetFailsGracefully) {
-  dbus::MethodCall method_call(dbus::kPropertiesInterface,
-                               dbus::kPropertiesSet);
-  method_call.SetSerial(123);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendString(kTestInterface1);
-  writer.AppendString(kStringPropName);
-  dbus_utils::AppendValueToWriter(&writer, chromeos::Any(4));
-  auto response = testing::CallMethod(p_->dbus_object_, &method_call);
-  ASSERT_TRUE(
-      dynamic_cast<dbus::ErrorResponse*>(response.get()) != nullptr);
-  ASSERT_EQ(DBUS_ERROR_NOT_SUPPORTED, response->GetErrorName());
+TEST_F(ExportedPropertySetTest, SetInvalidInterface) {
+  auto response = SetPropertyOnInterface("BadInterfaceName",
+                                         kStringPropName,
+                                         chromeos::Any(kTestString));
+  ASSERT_EQ(dbus::Message::MESSAGE_ERROR, response->GetMessageType());
+  ASSERT_EQ(DBUS_ERROR_UNKNOWN_INTERFACE, response->GetErrorName());
+}
+
+TEST_F(ExportedPropertySetTest, SetBadPropertyName) {
+  auto response = SetPropertyOnInterface(kTestInterface3,
+                                         "IAmNotAProperty",
+                                         chromeos::Any(kTestString));
+  ASSERT_EQ(dbus::Message::MESSAGE_ERROR, response->GetMessageType());
+  ASSERT_EQ(DBUS_ERROR_UNKNOWN_PROPERTY, response->GetErrorName());
+}
+
+TEST_F(ExportedPropertySetTest, SetFailsWithReadOnlyProperty) {
+  auto response = SetPropertyOnInterface(kTestInterface3,
+                                         kStringPropName,
+                                         chromeos::Any(kTestString));
+  ASSERT_EQ(dbus::Message::MESSAGE_ERROR, response->GetMessageType());
+  ASSERT_EQ(DBUS_ERROR_PROPERTY_READ_ONLY, response->GetErrorName());
+}
+
+TEST_F(ExportedPropertySetTest, SetFailsWithMismatchedValueType) {
+  p_->string_prop_.SetAccessMode(ExportedPropertyBase::Access::kReadWrite);
+  auto response = SetPropertyOnInterface(kTestInterface3,
+                                         kStringPropName,
+                                         chromeos::Any(true));
+  ASSERT_EQ(dbus::Message::MESSAGE_ERROR, response->GetMessageType());
+  ASSERT_EQ(DBUS_ERROR_INVALID_ARGS, response->GetErrorName());
+}
+
+namespace {
+
+bool SetInvalidProperty(chromeos::ErrorPtr* error, Unused) {
+  chromeos::Error::AddTo(error,
+                         FROM_HERE,
+                         errors::dbus::kDomain,
+                         DBUS_ERROR_INVALID_ARGS,
+                         "Invalid value");
+    return false;
+}
+
+}  // namespace
+
+TEST_F(ExportedPropertySetTest, SetFailsWithValidator) {
+  PropertyValidatorObserver<std::string> property_validator;
+  p_->string_prop_.SetAccessMode(ExportedPropertyBase::Access::kReadWrite);
+  p_->string_prop_.SetValidator(
+      property_validator.validate_property_callback());
+
+  chromeos::ErrorPtr error = chromeos::Error::Create(
+      FROM_HERE, errors::dbus::kDomain, DBUS_ERROR_INVALID_ARGS, "");
+  EXPECT_CALL(property_validator, ValidateProperty(_, kTestString))
+      .WillOnce(Invoke(SetInvalidProperty));
+  auto response = SetPropertyOnInterface(kTestInterface3,
+                                         kStringPropName,
+                                         chromeos::Any(kTestString));
+  ASSERT_EQ(dbus::Message::MESSAGE_ERROR, response->GetMessageType());
+  ASSERT_EQ(DBUS_ERROR_INVALID_ARGS, response->GetErrorName());
+}
+
+TEST_F(ExportedPropertySetTest, SetWorksWithValidator) {
+  PropertyValidatorObserver<std::string> property_validator;
+  p_->string_prop_.SetAccessMode(ExportedPropertyBase::Access::kReadWrite);
+  p_->string_prop_.SetValidator(
+      property_validator.validate_property_callback());
+
+  EXPECT_CALL(property_validator, ValidateProperty(_, kTestString))
+      .WillOnce(Return(true));
+  auto response = SetPropertyOnInterface(kTestInterface3,
+                                         kStringPropName,
+                                         chromeos::Any(kTestString));
+  ASSERT_NE(dbus::Message::MESSAGE_ERROR, response->GetMessageType());
+  ASSERT_EQ(kTestString, p_->string_prop_.value());
+}
+
+TEST_F(ExportedPropertySetTest, SetWorksWithSameValue) {
+  PropertyValidatorObserver<std::string> property_validator;
+  p_->string_prop_.SetAccessMode(ExportedPropertyBase::Access::kReadWrite);
+  p_->string_prop_.SetValidator(
+      property_validator.validate_property_callback());
+  p_->string_prop_.SetValue(kTestString);
+
+  // No need to validate the value if it is the same as the current one.
+  EXPECT_CALL(property_validator, ValidateProperty(_, _)).Times(0);
+  auto response = SetPropertyOnInterface(kTestInterface3,
+                                         kStringPropName,
+                                         chromeos::Any(kTestString));
+  ASSERT_NE(dbus::Message::MESSAGE_ERROR, response->GetMessageType());
+  ASSERT_EQ(kTestString, p_->string_prop_.value());
+}
+
+TEST_F(ExportedPropertySetTest, SetWorksWithoutValidator) {
+  p_->string_prop_.SetAccessMode(ExportedPropertyBase::Access::kReadWrite);
+  auto response = SetPropertyOnInterface(kTestInterface3,
+                                         kStringPropName,
+                                         chromeos::Any(kTestString));
+  ASSERT_NE(dbus::Message::MESSAGE_ERROR, response->GetMessageType());
+  ASSERT_EQ(kTestString, p_->string_prop_.value());
 }
 
 namespace {

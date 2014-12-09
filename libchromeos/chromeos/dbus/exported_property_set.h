@@ -16,6 +16,7 @@
 #include <chromeos/chromeos_export.h>
 #include <chromeos/dbus/dbus_signal.h>
 #include <chromeos/errors/error.h>
+#include <chromeos/errors/error_codes.h>
 #include <chromeos/variant_dictionary.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
@@ -54,6 +55,12 @@ class DBusObject;
 
 class CHROMEOS_EXPORT ExportedPropertyBase {
  public:
+  enum class Access {
+    kReadOnly,
+    kWriteOnly,
+    kReadWrite,
+  };
+
   ExportedPropertyBase() = default;
   virtual ~ExportedPropertyBase() = default;
 
@@ -67,12 +74,20 @@ class CHROMEOS_EXPORT ExportedPropertyBase {
   // Returns the contained value as Any.
   virtual chromeos::Any GetValue() const = 0;
 
+  virtual bool SetValue(chromeos::ErrorPtr* error,
+                        const chromeos::Any& value) = 0;
+
+  void SetAccessMode(Access access_mode);
+  Access GetAccessMode() const;
+
  protected:
   // Notify the listeners of OnUpdateCallback that the property has changed.
   void NotifyPropertyChanged();
 
  private:
   OnUpdateCallback on_update_callback_;
+  // Default to read-only.
+  Access access_mode_{Access::kReadOnly};
 };
 
 class CHROMEOS_EXPORT ExportedPropertySet {
@@ -165,11 +180,47 @@ class ExportedProperty : public ExportedPropertyBase {
     }
   }
 
+  // Set the validator for value checking when setting the property by remote
+  // application.
+  void SetValidator(
+      const base::Callback<bool(chromeos::ErrorPtr*, const T&)>& validator) {
+    validator_ = validator;
+  }
+
   // Implementation provided by specialization.
   chromeos::Any GetValue() const override { return value_; }
 
+  bool SetValue(chromeos::ErrorPtr* error, const chromeos::Any& value) {
+    if (GetAccessMode() == ExportedPropertyBase::Access::kReadOnly) {
+      chromeos::Error::AddTo(error,
+                             FROM_HERE,
+                             errors::dbus::kDomain,
+                             DBUS_ERROR_PROPERTY_READ_ONLY,
+                             "Property is read-only.");
+      return false;
+    }
+    if (!value.IsTypeCompatible<T>()) {
+      chromeos::Error::AddTo(error,
+                             FROM_HERE,
+                             errors::dbus::kDomain,
+                             DBUS_ERROR_INVALID_ARGS,
+                             "Argument type mismatched.");
+      return false;
+    }
+    if (value_ == value.Get<T>()) {
+      // No change to the property value, nothing to be done.
+      return true;
+    }
+    if (!validator_.is_null() && !validator_.Run(error, value.Get<T>())) {
+      return false;
+    }
+    value_ = value.Get<T>();
+    return true;
+  }
+
  private:
   T value_{};
+  base::Callback<bool(chromeos::ErrorPtr*, const T&)> validator_;
 
   DISALLOW_COPY_AND_ASSIGN(ExportedProperty);
 };

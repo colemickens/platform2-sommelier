@@ -87,7 +87,7 @@ bool ExportedPropertySet::HandleGet(
     chromeos::Error::AddTo(error,
                            FROM_HERE,
                            errors::dbus::kDomain,
-                           DBUS_ERROR_INVALID_ARGS,
+                           DBUS_ERROR_UNKNOWN_INTERFACE,
                            "No such interface on object.");
     return false;
   }
@@ -97,7 +97,7 @@ bool ExportedPropertySet::HandleGet(
     chromeos::Error::AddTo(error,
                            FROM_HERE,
                            errors::dbus::kDomain,
-                           DBUS_ERROR_INVALID_ARGS,
+                           DBUS_ERROR_UNKNOWN_PROPERTY,
                            "No such property on interface.");
     return false;
   }
@@ -111,12 +111,27 @@ bool ExportedPropertySet::HandleSet(
     const std::string& property_name,
     const chromeos::Any& value) {
   bus_->AssertOnOriginThread();
-  chromeos::Error::AddTo(error,
-                         FROM_HERE,
-                         errors::dbus::kDomain,
-                         DBUS_ERROR_NOT_SUPPORTED,
-                         "Method Set is not supported.");
-  return false;
+  auto property_map_itr = properties_.find(interface_name);
+  if (property_map_itr == properties_.end()) {
+    chromeos::Error::AddTo(error,
+                           FROM_HERE,
+                           errors::dbus::kDomain,
+                           DBUS_ERROR_UNKNOWN_INTERFACE,
+                           "No such interface on object.");
+    return false;
+  }
+  LOG(INFO) << "Looking for " << property_name << " on " << interface_name;
+  auto property_itr = property_map_itr->second.find(property_name);
+  if (property_itr == property_map_itr->second.end()) {
+    chromeos::Error::AddTo(error,
+                           FROM_HERE,
+                           errors::dbus::kDomain,
+                           DBUS_ERROR_UNKNOWN_PROPERTY,
+                           "No such property on interface.");
+    return false;
+  }
+
+  return property_itr->second->SetValue(error, value);
 }
 
 void ExportedPropertySet::HandlePropertyUpdated(
@@ -152,6 +167,15 @@ void ExportedPropertyBase::NotifyPropertyChanged() {
 
 void ExportedPropertyBase::SetUpdateCallback(const OnUpdateCallback& cb) {
   on_update_callback_ = cb;
+}
+
+void ExportedPropertyBase::SetAccessMode(
+    ExportedPropertyBase::Access access_mode) {
+  access_mode_ = access_mode;
+}
+
+ExportedPropertyBase::Access ExportedPropertyBase::GetAccessMode() const {
+  return access_mode_;
 }
 
 }  // namespace dbus_utils
