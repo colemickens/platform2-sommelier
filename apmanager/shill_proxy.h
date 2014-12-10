@@ -29,6 +29,10 @@ class ShillProxy {
   virtual void ReleaseInterface(const std::string& interface_name);
 
  private:
+  void OnServiceAvailable(bool service_available);
+  void OnServiceNameChanged(const std::string& old_owner,
+                            const std::string& new_owner);
+
   static const char kManagerPath[];
 
   // Bus object for system bus.
