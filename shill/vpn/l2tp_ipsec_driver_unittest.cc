@@ -647,7 +647,7 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
       .WillOnce(Return(kInterfaceIndex));
   EXPECT_CALL(*mock_ppp_device_factory,
               CreatePPPDevice(_, _, _, _, kInterfaceName, kInterfaceIndex))
-      .WillOnce(Return(device_));
+      .WillOnce(Return(device_.get()));
 
   // Make sure that a notification of an intermediate state doesn't cause
   // the driver to fail the connection.

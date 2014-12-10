@@ -47,8 +47,7 @@ void HandleSynchronousDBusMethodCall(
 scoped_ptr<dbus::Response> CreateError(dbus::MethodCall* call,
                                        const std::string& name,
                                        const std::string& message) {
-  return dbus::ErrorResponse::FromMethodCall(call, name, message)
-      .PassAs<dbus::Response>();
+  return dbus::ErrorResponse::FromMethodCall(call, name, message).Pass();
 }
 
 // Creates a new "invalid args" reply to call.
@@ -171,7 +170,7 @@ void DBusMethodCompletion::ReportSuccess() {
 void DBusMethodCompletion::ReportFailure(const PolicyService::Error& error) {
   sender_.Run(
       dbus::ErrorResponse::FromMethodCall(call_, error.code(), error.message())
-          .PassAs<dbus::Response>());
+          .Pass());
   call_ = NULL;
   delete this;
 }

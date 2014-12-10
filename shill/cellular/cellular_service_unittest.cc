@@ -56,7 +56,7 @@ class CellularServiceTest : public testing::Test {
     adaptor_ =
         dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
     out_of_credits_detector_ =
-        new MockOutOfCreditsDetector(nullptr, nullptr, nullptr, service_);
+        new MockOutOfCreditsDetector(nullptr, nullptr, nullptr, service_.get());
     // Passes ownership.
     service_->set_out_of_credits_detector(out_of_credits_detector_);
   }

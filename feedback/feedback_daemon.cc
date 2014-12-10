@@ -43,7 +43,7 @@ Daemon::Daemon(const std::string& url)
     : loop_(base::MessageLoop::TYPE_IO),
       pool_(new base::SequencedWorkerPool(kMaxPoolThreads, kPoolName)),
       uploader_(new FeedbackUploaderHttp(base::FilePath(kFeedbackReportPath),
-                                         pool_, url)) {}
+                                         pool_.get(), url)) {}
 
 Daemon::~Daemon() {
   pool_->Shutdown();
@@ -53,7 +53,6 @@ void Daemon::Run() {
   base::RunLoop loop;
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  options.disconnected_callback = loop.QuitClosure();
 
   scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
   scoped_refptr<DBusFeedbackServiceImpl> impl =
@@ -64,7 +63,7 @@ void Daemon::Run() {
       uploader_->GetFeedbackReportsPath(),
       base::Bind(&FeedbackService::QueueExistingReport, impl.get()));
 
-  CHECK(impl->Start(bus)) << "Failed to start feedback service";
+  CHECK(impl->Start(bus.get())) << "Failed to start feedback service";
 
   loop.Run();
 }

@@ -82,7 +82,7 @@ void DBusInterface::HandleMethodCall(
         method_call,
         DBUS_ERROR_UNKNOWN_METHOD,
         "Unknown method: " + method_name);
-    sender.Run(response.PassAs<dbus::Response>());
+    sender.Run(response.Pass());
     return;
   }
   LOG(INFO) << "Dispatching DBus method call: " << method_name;
@@ -113,7 +113,7 @@ void DBusInterface::AddSignalImpl(
 DBusObject::DBusObject(ExportedObjectManager* object_manager,
                        const scoped_refptr<dbus::Bus>& bus,
                        const dbus::ObjectPath& object_path)
-    : property_set_(bus),
+    : property_set_(bus.get()),
       bus_(bus),
       object_path_(object_path) {
   if (object_manager)

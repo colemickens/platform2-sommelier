@@ -124,13 +124,15 @@ void ConnectionHealthChecker::AddRemoteURL(const string &url_string) {
 
   HTTPURL url;
   if (!url.ParseFromString(url_string)) {
-    SLOG(connection_, 2) << __func__ << ": Malformed url: "
-                         << url_string << ".";
+    SLOG(connection_.get(), 2) << __func__ << ": Malformed url: "
+                               << url_string << ".";
     return;
   }
   if (url.port() != kRemotePort) {
-    SLOG(connection_, 2) << __func__ << ": Remote connections only supported "
-                         << " to port 80, requested " << url.port() << ".";
+    SLOG(connection_.get(), 2) << __func__
+                               << ": Remote connections only supported "
+                               << " to port 80, requested " << url.port()
+                               << ".";
     return;
   }
   for (int i = 0; i < kNumDNSQueries; ++i) {
@@ -144,20 +146,21 @@ void ConnectionHealthChecker::AddRemoteURL(const string &url_string) {
                                            dns_client_callback_);
     dns_clients_.push_back(dns_client);
     if (!dns_clients_[i]->Start(url.host(), &error)) {
-      SLOG(connection_, 2) << __func__ << ": Failed to start DNS client "
-                           << "(query #" << i << "): "
-                           << error.message();
+      SLOG(connection_.get(), 2) << __func__ << ": Failed to start DNS client "
+                                 << "(query #" << i << "): "
+                                 << error.message();
     }
   }
 }
 
 void ConnectionHealthChecker::Start() {
   if (health_check_in_progress_) {
-    SLOG(connection_, 2) << __func__ << ": Health Check already in progress.";
+    SLOG(connection_.get(), 2) << __func__
+                               << ": Health Check already in progress.";
     return;
   }
   if (!connection_.get()) {
-    SLOG(connection_, 2) << __func__ << ": Connection not ready yet.";
+    SLOG(connection_.get(), 2) << __func__ << ": Connection not ready yet.";
     result_callback_.Run(kResultUnknown);
     return;
   }
@@ -170,7 +173,7 @@ void ConnectionHealthChecker::Start() {
   if (remote_ips_->Empty()) {
     // Nothing to try.
     Stop();
-    SLOG(connection_, 2) << __func__ << ": Not enough IPs.";
+    SLOG(connection_.get(), 2) << __func__ << ": Not enough IPs.";
     result_callback_.Run(kResultUnknown);
     return;
   }
@@ -192,7 +195,7 @@ void ConnectionHealthChecker::Stop() {
 }
 
 void ConnectionHealthChecker::SetConnection(ConnectionRefPtr connection) {
-  SLOG(connection_, 3) << __func__;
+  SLOG(connection_.get(), 3) << __func__;
   connection_ = connection;
   tcp_connection_.reset(new AsyncConnection(connection_->interface_name(),
                                             dispatcher_,
@@ -224,8 +227,8 @@ const char *ConnectionHealthChecker::ResultToString(
 void ConnectionHealthChecker::GetDNSResult(const Error &error,
                                            const IPAddress& ip) {
   if (!error.IsSuccess()) {
-    SLOG(connection_, 2) << __func__ << "DNSClient returned failure: "
-                         << error.message();
+    SLOG(connection_.get(), 2) << __func__ << "DNSClient returned failure: "
+                               << error.message();
     return;
   }
   remote_ips_->AddUnique(ip);
@@ -268,10 +271,10 @@ void ConnectionHealthChecker::NextHealthCheckSample() {
   //   (1) Repeated failed attempts for the same IP at start-up everytime.
   //   (2) All users attempting to connect to the same IP.
   IPAddress ip = remote_ips_->GetRandomIP();
-  SLOG(connection_, 3) << __func__ << ": Starting connection at "
-                       << ip.ToString();
+  SLOG(connection_.get(), 3) << __func__ << ": Starting connection at "
+                             << ip.ToString();
   if (!tcp_connection_->Start(ip, kRemotePort)) {
-    SLOG(connection_, 2) << __func__ << ": Connection attempt failed.";
+    SLOG(connection_.get(), 2) << __func__ << ": Connection attempt failed.";
     ++num_connection_failures_;
     NextHealthCheckSample();
   }
@@ -279,10 +282,10 @@ void ConnectionHealthChecker::NextHealthCheckSample() {
 
 void ConnectionHealthChecker::OnConnectionComplete(bool success, int sock_fd) {
   if (!success) {
-    SLOG(connection_, 2) << __func__
-                         << ": AsyncConnection connection attempt failed "
-                         << "with error: "
-                         << tcp_connection_->error();
+    SLOG(connection_.get(), 2) << __func__
+                               << ": AsyncConnection connection attempt failed "
+                               << "with error: "
+                               << tcp_connection_->error();
     ++num_connection_failures_;
     NextHealthCheckSample();
     return;
@@ -294,8 +297,9 @@ void ConnectionHealthChecker::OnConnectionComplete(bool success, int sock_fd) {
   if (!GetSocketInfo(sock_fd_, &sock_info) ||
       sock_info.connection_state() !=
           SocketInfo::kConnectionStateEstablished) {
-    SLOG(connection_, 2) << __func__
-                         << ": Connection originally not in established state.";
+    SLOG(connection_.get(), 2) << __func__
+                               << ": Connection originally not in established "
+                                  "state.";
     // Count this as a failed connection attempt.
     ++num_connection_failures_;
     ClearSocketDescriptor();
@@ -310,7 +314,7 @@ void ConnectionHealthChecker::OnConnectionComplete(bool success, int sock_fd) {
   // transfer.
   char buf;
   if (socket_->Send(sock_fd_, &buf, sizeof(buf), 0) == -1) {
-    SLOG(connection_, 2) << __func__ << ": " << socket_->ErrorString();
+    SLOG(connection_.get(), 2) << __func__ << ": " << socket_->ErrorString();
     // Count this as a failed connection attempt.
     ++num_connection_failures_;
     ClearSocketDescriptor();
@@ -336,18 +340,18 @@ void ConnectionHealthChecker::VerifySentData() {
            SocketInfo::kConnectionStateEstablished &&
       sock_info.connection_state() !=
            SocketInfo::kConnectionStateCloseWait)) {
-    SLOG(connection_, 2) << __func__
-                         << ": Connection not in acceptable state after send.";
+    SLOG(connection_.get(), 2)
+        << __func__ << ": Connection not in acceptable state after send.";
     if (sock_info_found)
-      SLOG(connection_, 3) << "Found socket info but in state: "
-                           << sock_info.connection_state();
+      SLOG(connection_.get(), 3) << "Found socket info but in state: "
+                                 << sock_info.connection_state();
     ++num_connection_failures_;
   } else if (sock_info.transmit_queue_value() > old_transmit_queue_value_ &&
       sock_info.timer_state() ==
           SocketInfo::kTimerStateRetransmitTimerPending) {
     if (num_tx_queue_polling_attempts_ < kMaxSentDataPollingAttempts) {
-      SLOG(connection_, 2) << __func__
-                           << ": Polling again.";
+      SLOG(connection_.get(), 2) << __func__
+                                 << ": Polling again.";
       ++num_tx_queue_polling_attempts_;
       verify_sent_data_callback_.Reset(
           Bind(&ConnectionHealthChecker::VerifySentData, Unretained(this)));
@@ -355,10 +359,10 @@ void ConnectionHealthChecker::VerifySentData() {
                                    tcp_state_update_wait_milliseconds_);
       return;
     }
-    SLOG(connection_, 2) << __func__ << ": Sampled congested Tx-Queue";
+    SLOG(connection_.get(), 2) << __func__ << ": Sampled congested Tx-Queue";
     ++num_congested_queue_detected_;
   } else {
-    SLOG(connection_, 2) << __func__ << ": Sampled successful send.";
+    SLOG(connection_.get(), 2) << __func__ << ": Sampled successful send.";
     ++num_successful_sends_;
   }
   ClearSocketDescriptor();
@@ -374,12 +378,12 @@ bool ConnectionHealthChecker::GetSocketInfo(int sock_fd,
   if (socket_->GetSockName(sock_fd,
                            reinterpret_cast<struct sockaddr *>(&addr),
                            &addrlen) != 0) {
-    SLOG(connection_, 2) << __func__
-                         << ": Failed to get address of created socket.";
+    SLOG(connection_.get(), 2) << __func__
+                               << ": Failed to get address of created socket.";
     return false;
   }
   if (addr.ss_family != AF_INET) {
-    SLOG(connection_, 2) << __func__ << ": IPv6 socket address found.";
+    SLOG(connection_.get(), 2) << __func__ << ": IPv6 socket address found.";
     return false;
   }
 
@@ -390,19 +394,20 @@ bool ConnectionHealthChecker::GetSocketInfo(int sock_fd,
   const char *res = inet_ntop(AF_INET, &addr_in->sin_addr,
                               ipstr, sizeof(ipstr));
   if (res == nullptr) {
-    SLOG(connection_, 2) << __func__
-                         << ": Could not convert IP address to string.";
+    SLOG(connection_.get(), 2) << __func__
+                               << ": Could not convert IP address to string.";
     return false;
   }
 
   IPAddress local_ip_address(IPAddress::kFamilyIPv4);
   CHECK(local_ip_address.SetAddressFromString(ipstr));
-  SLOG(connection_, 3) << "Local IP = " << local_ip_address.ToString()
-                       << ":" << local_port;
+  SLOG(connection_.get(), 3) << "Local IP = " << local_ip_address.ToString()
+                             << ":" << local_port;
 
   vector<SocketInfo> info_list;
   if (!socket_info_reader_->LoadTcpSocketInfo(&info_list)) {
-    SLOG(connection_, 2) << __func__ << ": Failed to load TCP socket info.";
+    SLOG(connection_.get(), 2) << __func__
+                               << ": Failed to load TCP socket info.";
     return false;
   }
 
@@ -411,7 +416,7 @@ bool ConnectionHealthChecker::GetSocketInfo(int sock_fd,
        ++info_list_it) {
     const SocketInfo &cur_sock_info = *info_list_it;
 
-    SLOG(connection_, 4)
+    SLOG(connection_.get(), 4)
         << "Testing against IP = "
         << cur_sock_info.local_ip_address().ToString()
         << ":" << cur_sock_info.local_port()
@@ -422,26 +427,27 @@ bool ConnectionHealthChecker::GetSocketInfo(int sock_fd,
 
     if (cur_sock_info.local_ip_address().Equals(local_ip_address) &&
         cur_sock_info.local_port() == local_port) {
-      SLOG(connection_, 3) << __func__ << ": Found matching TCP socket info.";
+      SLOG(connection_.get(), 3) << __func__
+                                 << ": Found matching TCP socket info.";
       *sock_info = cur_sock_info;
       return true;
     }
   }
 
-  SLOG(connection_, 2) << __func__ << ": No matching TCP socket info.";
+  SLOG(connection_.get(), 2) << __func__ << ": No matching TCP socket info.";
   return false;
 }
 
 void ConnectionHealthChecker::ReportResult() {
-  SLOG(connection_, 2) << __func__ << ": Result: "
-                       << ResultToString(health_check_result_);
+  SLOG(connection_.get(), 2) << __func__ << ": Result: "
+                             << ResultToString(health_check_result_);
   Stop();
   result_callback_.Run(health_check_result_);
 }
 
 void ConnectionHealthChecker::SetSocketDescriptor(int sock_fd) {
   if (sock_fd_ != kInvalidSocket) {
-    SLOG(connection_, 4) << "Closing socket";
+    SLOG(connection_.get(), 4) << "Closing socket";
     socket_->Close(sock_fd_);
   }
   sock_fd_ = sock_fd;

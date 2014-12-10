@@ -29,9 +29,6 @@ int DBusDaemon::OnInit() {
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  // If D-Bus connection drops, shut down the daemon so it can be restarted and
-  // D-Bus connection can be restored.
-  options.disconnected_callback = QuitClosure();
 
   bus_ = new dbus::Bus(options);
   CHECK(bus_->Connect());

@@ -17,6 +17,7 @@ CXXFLAGS+=\
 	-g \
 	-fno-exceptions \
 	-fno-strict-aliasing \
+	-std=gnu++11 \
 	-Wall \
 	-Wclobbered \
 	-Wempty-body \
@@ -34,7 +35,7 @@ CPPFLAGS+=\
 	-I../..
 
 PKG_CONFIG ?= pkg-config
-BASE_VER ?= 293518
+BASE_VER ?= 307740
 PC_DEPS = libchrome-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))

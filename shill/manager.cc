@@ -1440,7 +1440,7 @@ void Manager::NotifyDefaultServiceChanged(const ServiceRefPtr &service) {
   for (const auto &callback : default_service_callbacks_) {
     callback.second.Run(service);
   }
-  metrics_->NotifyDefaultServiceChanged(service);
+  metrics_->NotifyDefaultServiceChanged(service.get());
   EmitDefaultService();
 }
 

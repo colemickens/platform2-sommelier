@@ -46,7 +46,7 @@ TrafficMonitor::~TrafficMonitor() {
 }
 
 void TrafficMonitor::Start() {
-  SLOG(device_, 2) << __func__;
+  SLOG(device_.get(), 2) << __func__;
   Stop();
 
   sample_traffic_callback_.Reset(base::Bind(&TrafficMonitor::SampleTraffic,
@@ -56,7 +56,7 @@ void TrafficMonitor::Start() {
 }
 
 void TrafficMonitor::Stop() {
-  SLOG(device_, 2) << __func__;
+  SLOG(device_.get(), 2) << __func__;
   sample_traffic_callback_.Cancel();
   ResetCongestedTxQueuesStats();
   ResetDnsFailingStats();
@@ -67,32 +67,33 @@ void TrafficMonitor::ResetCongestedTxQueuesStats() {
 }
 
 void TrafficMonitor::ResetCongestedTxQueuesStatsWithLogging() {
-  SLOG(device_, 2) << __func__ << ": Tx-queues decongested";
+  SLOG(device_.get(), 2) << __func__ << ": Tx-queues decongested";
   ResetCongestedTxQueuesStats();
 }
 
 void TrafficMonitor::BuildIPPortToTxQueueLength(
     const vector<SocketInfo> &socket_infos,
     IPPortToTxQueueLengthMap *tx_queue_lengths) {
-  SLOG(device_, 3) << __func__;
+  SLOG(device_.get(), 3) << __func__;
   string device_ip_address = device_->ipconfig()->properties().address;
   for (const auto &info : socket_infos) {
-    SLOG(device_, 4) << "SocketInfo(IP=" << info.local_ip_address().ToString()
-                     << ", TX=" << info.transmit_queue_value()
-                     << ", State=" << info.connection_state()
-                     << ", TimerState=" << info.timer_state();
+    SLOG(device_.get(), 4) << "SocketInfo(IP="
+                           << info.local_ip_address().ToString()
+                           << ", TX=" << info.transmit_queue_value()
+                           << ", State=" << info.connection_state()
+                           << ", TimerState=" << info.timer_state();
     if (info.local_ip_address().ToString() != device_ip_address ||
         info.transmit_queue_value() == 0 ||
         info.connection_state() != SocketInfo::kConnectionStateEstablished ||
         (info.timer_state() != SocketInfo::kTimerStateRetransmitTimerPending &&
          info.timer_state() !=
             SocketInfo::kTimerStateZeroWindowProbeTimerPending)) {
-      SLOG(device_, 4) << "Connection Filtered.";
+      SLOG(device_.get(), 4) << "Connection Filtered.";
       continue;
     }
-    SLOG(device_, 3) << "Monitoring connection: TX="
-                     << info.transmit_queue_value()
-                     << " TimerState=" << info.timer_state();
+    SLOG(device_.get(), 3) << "Monitoring connection: TX="
+                           << info.transmit_queue_value()
+                           << " TimerState=" << info.timer_state();
 
     string local_ip_port =
         StringPrintf("%s:%d",
@@ -103,11 +104,11 @@ void TrafficMonitor::BuildIPPortToTxQueueLength(
 }
 
 bool TrafficMonitor::IsCongestedTxQueues() {
-  SLOG(device_, 4) << __func__;
+  SLOG(device_.get(), 4) << __func__;
   vector<SocketInfo> socket_infos;
   if (!socket_info_reader_->LoadTcpSocketInfo(&socket_infos) ||
       socket_infos.empty()) {
-    SLOG(device_, 3) << __func__ << ": Empty socket info";
+    SLOG(device_.get(), 3) << __func__ << ": Empty socket info";
     ResetCongestedTxQueuesStatsWithLogging();
     return false;
   }
@@ -115,7 +116,7 @@ bool TrafficMonitor::IsCongestedTxQueues() {
   IPPortToTxQueueLengthMap curr_tx_queue_lengths;
   BuildIPPortToTxQueueLength(socket_infos, &curr_tx_queue_lengths);
   if (curr_tx_queue_lengths.empty()) {
-    SLOG(device_, 3) << __func__ << ": No interesting socket info";
+    SLOG(device_.get(), 3) << __func__ << ": No interesting socket info";
     ResetCongestedTxQueuesStatsWithLogging();
   } else {
     for (const auto &length_entry : old_tx_queue_lengths_) {
@@ -133,9 +134,10 @@ bool TrafficMonitor::IsCongestedTxQueues() {
     }
     if (congested_tx_queues) {
       ++accummulated_congested_tx_queues_samples_;
-      SLOG(device_, 2) << __func__
-                       << ": Congested tx-queues detected ("
-                       << accummulated_congested_tx_queues_samples_ << ")";
+      SLOG(device_.get(), 2) << __func__
+                             << ": Congested tx-queues detected ("
+                             << accummulated_congested_tx_queues_samples_
+                             << ")";
     }
   }
   old_tx_queue_lengths_ = curr_tx_queue_lengths;
@@ -148,16 +150,16 @@ void TrafficMonitor::ResetDnsFailingStats() {
 }
 
 void TrafficMonitor::ResetDnsFailingStatsWithLogging() {
-  SLOG(device_, 2) << __func__ << ": DNS queries restored";
+  SLOG(device_.get(), 2) << __func__ << ": DNS queries restored";
   ResetDnsFailingStats();
 }
 
 bool TrafficMonitor::IsDnsFailing() {
-  SLOG(device_, 4) << __func__;
+  SLOG(device_.get(), 4) << __func__;
   vector<ConnectionInfo> connection_infos;
   if (!connection_info_reader_->LoadConnectionInfo(&connection_infos) ||
       connection_infos.empty()) {
-    SLOG(device_, 3) << __func__ << ": Empty connection info";
+    SLOG(device_.get(), 3) << __func__ << ": Empty connection info";
   } else {
     // The time-to-expire counter is used to determine when a DNS request
     // has timed out.  This counter is the number of seconds remaining until
@@ -183,9 +185,9 @@ bool TrafficMonitor::IsDnsFailing() {
         continue;
 
       ++accummulated_dns_failures_samples_;
-      SLOG(device_, 2) << __func__
-                       << ": DNS failures detected ("
-                       << accummulated_dns_failures_samples_ << ")";
+      SLOG(device_.get(), 2) << __func__
+                             << ": DNS failures detected ("
+                             << accummulated_dns_failures_samples_ << ")";
       return true;
     }
   }
@@ -194,7 +196,7 @@ bool TrafficMonitor::IsDnsFailing() {
 }
 
 void TrafficMonitor::SampleTraffic() {
-  SLOG(device_, 3) << __func__;
+  SLOG(device_.get(), 3) << __func__;
 
   // Schedule the sample callback first, so it is possible for the network
   // problem callback to stop the traffic monitor.

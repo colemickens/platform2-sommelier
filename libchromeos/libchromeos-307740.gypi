@@ -1,6 +1,6 @@
 {
   'variables': {
-    'libbase_ver': 293518,
+    'libbase_ver': 307740,
   },
   'includes': [
     '../libchromeos/libchromeos.gypi',

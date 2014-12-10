@@ -59,9 +59,9 @@ class DBusFeedbackServiceInterface : public FeedbackServiceInterface {
  public:
   DBusFeedbackServiceInterface();
 
-  virtual bool SendFeedback(
+  bool SendFeedback(
       const FeedbackCommon& feedback,
-      FeedbackResultCallback callback) OVERRIDE;
+      FeedbackResultCallback callback) override;
 
  private:
   scoped_refptr<dbus::Bus> bus_;

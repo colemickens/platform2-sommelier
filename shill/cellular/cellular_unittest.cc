@@ -162,7 +162,7 @@ class CellularTest : public testing::Test {
   }
 
   virtual void SetUp() {
-    static_cast<Device *>(device_)->rtnl_handler_ = &rtnl_handler_;
+    static_cast<Device *>(device_.get())->rtnl_handler_ = &rtnl_handler_;
     device_->set_dhcp_provider(&dhcp_provider_);
     EXPECT_CALL(*modem_info_.mock_manager(), device_info())
         .WillRepeatedly(Return(&device_info_));
@@ -585,7 +585,7 @@ class CellularTest : public testing::Test {
   // service.
   CellularService *SetService() {
     device_->service_ = new CellularService(&modem_info_, device_);
-    return device_->service_;
+    return device_->service_.get();
   }
   MockCellularService *SetMockService() {
     device_->service_ = new MockCellularService(&modem_info_, device_);
@@ -1541,13 +1541,13 @@ TEST_F(CellularTest, Notify) {
   EXPECT_CALL(device_info_, RegisterDevice(_));
   EXPECT_CALL(*ppp_device_factory,
               CreatePPPDevice(_, _, _, _, kInterfaceName, kInterfaceIndex))
-      .WillOnce(Return(ppp_device));
+      .WillOnce(Return(ppp_device.get()));
   EXPECT_CALL(*ppp_device, SetEnabled(true));
   EXPECT_CALL(*ppp_device, SelectService(_));
   EXPECT_CALL(*ppp_device, UpdateIPConfigFromPPP(ppp_config, false));
   device_->Notify(kPPPReasonConnect, ppp_config);
   Mock::VerifyAndClearExpectations(&device_info_);
-  Mock::VerifyAndClearExpectations(ppp_device);
+  Mock::VerifyAndClearExpectations(ppp_device.get());
 
   // Re-connect on same network device: if pppd sends us multiple connect
   // events, we behave sanely.
@@ -1558,7 +1558,7 @@ TEST_F(CellularTest, Notify) {
   EXPECT_CALL(*ppp_device, UpdateIPConfigFromPPP(ppp_config, false));
   device_->Notify(kPPPReasonConnect, ppp_config);
   Mock::VerifyAndClearExpectations(&device_info_);
-  Mock::VerifyAndClearExpectations(ppp_device);
+  Mock::VerifyAndClearExpectations(ppp_device.get());
 
   // Re-connect on new network device: if we still have the PPPDevice
   // from a prior connect, this new connect should DTRT. This is
@@ -1577,15 +1577,15 @@ TEST_F(CellularTest, Notify) {
               RegisterDevice(static_cast<DeviceRefPtr>(ppp_device2)));
   EXPECT_CALL(*ppp_device_factory,
               CreatePPPDevice(_, _, _, _, kInterfaceName2, kInterfaceIndex2))
-      .WillOnce(Return(ppp_device2));
+      .WillOnce(Return(ppp_device2.get()));
   EXPECT_CALL(*ppp_device, SelectService(ServiceRefPtr(nullptr)));
   EXPECT_CALL(*ppp_device2, SetEnabled(true));
   EXPECT_CALL(*ppp_device2, SelectService(_));
   EXPECT_CALL(*ppp_device2, UpdateIPConfigFromPPP(ppp_config2, false));
   device_->Notify(kPPPReasonConnect, ppp_config2);
   Mock::VerifyAndClearExpectations(&device_info_);
-  Mock::VerifyAndClearExpectations(ppp_device);
-  Mock::VerifyAndClearExpectations(ppp_device2);
+  Mock::VerifyAndClearExpectations(ppp_device.get());
+  Mock::VerifyAndClearExpectations(ppp_device2.get());
 
   // Disconnect should report unknown failure, since we had a
   // Notify(kPPPReasonAuthenticated, ...).
@@ -1674,7 +1674,7 @@ TEST_F(CellularTest, DropConnection) {
   device_->set_ipconfig(dhcp_config_);
   EXPECT_CALL(*dhcp_config_, ReleaseIP(_));
   device_->DropConnection();
-  Mock::VerifyAndClearExpectations(dhcp_config_);  // verify before dtor
+  Mock::VerifyAndClearExpectations(dhcp_config_.get());  // verify before dtor
   EXPECT_FALSE(device_->ipconfig());
 }
 

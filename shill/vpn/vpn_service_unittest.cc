@@ -388,7 +388,7 @@ TEST_F(VPNServiceTest, GetPhysicalTechologyPropertyOverWifi) {
 
   // Clear expectations now, so the Return(lower_connection_) action releases
   // the reference to |lower_connection_| allowing it to be destroyed now.
-  Mock::VerifyAndClearExpectations(connection_);
+  Mock::VerifyAndClearExpectations(connection_.get());
   // Destroying the |lower_connection_| at function exit will also call an extra
   // FlushAddresses on the |device_info_| object.
   EXPECT_CALL(device_info_, FlushAddresses(0));
@@ -436,7 +436,7 @@ TEST_F(VPNServiceTest, GetTethering) {
 
   // Clear expectations now, so the Return(lower_connection_) action releases
   // the reference to |lower_connection_| allowing it to be destroyed now.
-  Mock::VerifyAndClearExpectations(connection_);
+  Mock::VerifyAndClearExpectations(connection_.get());
   // Destroying the |lower_connection_| at function exit will also call an extra
   // FlushAddresses on the |device_info_| object.
   EXPECT_CALL(device_info_, FlushAddresses(0));

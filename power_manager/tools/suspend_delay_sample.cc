@@ -74,7 +74,7 @@ void SendSuspendReady(scoped_refptr<dbus::ObjectProxy> powerd_proxy,
   power_manager::SuspendReadinessInfo request;
   request.set_delay_id(delay_id);
   request.set_suspend_id(suspend_id);
-  CallMethod(powerd_proxy, power_manager::kHandleSuspendReadinessMethod,
+  CallMethod(powerd_proxy.get(), power_manager::kHandleSuspendReadinessMethod,
              request, NULL);
 }
 

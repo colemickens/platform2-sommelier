@@ -394,7 +394,7 @@ void SessionManagerService::InitializeDBus() {
   CHECK(bus_->Connect());
   CHECK(bus_->SetUpAsyncOperations());
 
-  CHECK(bus_->AddFilterFunction(&SessionManagerService::FilterMessage, this));
+  bus_->AddFilterFunction(&SessionManagerService::FilterMessage, this);
   dbus::ScopedDBusError error;
   bus_->AddMatch(match_rule_, error.get());
   CHECK(!error.is_set()) << "Failed to add match to bus: " << error.name()

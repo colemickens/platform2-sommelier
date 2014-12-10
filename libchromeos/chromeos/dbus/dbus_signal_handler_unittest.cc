@@ -56,7 +56,7 @@ class DBusSignalHandlerTest: public testing::Test {
         .WillOnce(SaveArg<2>(&signal_callback));
 
     chromeos::dbus_utils::ConnectToSignal(
-        mock_object_proxy_, kInterface, kSignal,
+        mock_object_proxy_.get(), kInterface, kSignal,
         base::Bind(&SignalHandlerSink::Handler, base::Unretained(sink)), {});
 
     dbus::Signal signal(kInterface, kSignal);
@@ -73,7 +73,7 @@ TEST_F(DBusSignalHandlerTest, ConnectToSignal) {
   EXPECT_CALL(*mock_object_proxy_,
               ConnectToSignal(kInterface, kSignal, _, _)).Times(1);
 
-  chromeos::dbus_utils::ConnectToSignal(mock_object_proxy_,
+  chromeos::dbus_utils::ConnectToSignal(mock_object_proxy_.get(),
                                         kInterface, kSignal,
                                         base::Closure{}, {});
 }

@@ -6,7 +6,7 @@ PWD ?= $(CURDIR)
 OUT ?= $(PWD)/build-opt-local
 
 include common.mk
-BASE_VER ?= 293518
+BASE_VER ?= 307740
 PC_DEPS = libchrome-$(BASE_VER) libchromeos-$(BASE_VER) openssl
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))

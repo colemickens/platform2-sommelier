@@ -2049,7 +2049,7 @@ TEST_F(ServiceTest, ConfigureServiceTriggersOnPropertyChanged) {
     service->Configure(args, &error);
     EXPECT_TRUE(error.IsSuccess());
   }
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
 
   // Calling Configure with the same values as before should not trigger
   // OnPropertyChanged().

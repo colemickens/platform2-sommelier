@@ -246,7 +246,7 @@ WiFiServiceRefPtr WiFiProvider::GetWiFiService(
 WiFiServiceRefPtr WiFiProvider::FindServiceForEndpoint(
     const WiFiEndpointConstRefPtr &endpoint) {
   EndpointServiceMap::iterator service_it =
-      service_by_endpoint_.find(endpoint);
+      service_by_endpoint_.find(endpoint.get());
   if (service_it == service_by_endpoint_.end())
     return nullptr;
   return service_it->second;
@@ -270,7 +270,7 @@ void WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr &endpoint) {
   }
 
   service->AddEndpoint(endpoint);
-  service_by_endpoint_[endpoint] = service;
+  service_by_endpoint_[endpoint.get()] = service;
 
   SLOG(this, 1) << "Assigned endpoint " << endpoint->bssid_string()
                 << " to service " << service->unique_name() << ".";
@@ -291,7 +291,7 @@ WiFiServiceRefPtr WiFiProvider::OnEndpointRemoved(
   SLOG(this, 1) << "Removing endpoint " << endpoint->bssid_string()
                 << " from Service " << service->unique_name();
   service->RemoveEndpoint(endpoint);
-  service_by_endpoint_.erase(endpoint);
+  service_by_endpoint_.erase(endpoint.get());
 
   if (service->HasEndpoints() || service->IsRemembered()) {
     // Keep services around if they are in a profile or have remaining
@@ -311,7 +311,7 @@ void WiFiProvider::OnEndpointUpdated(const WiFiEndpointConstRefPtr &endpoint) {
     return;
   }
 
-  WiFiService *service = FindServiceForEndpoint(endpoint);
+  WiFiService *service = FindServiceForEndpoint(endpoint).get();
   CHECK(service);
 
   // If the service still matches the endpoint in its new configuration,

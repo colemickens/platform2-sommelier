@@ -319,8 +319,8 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
                                   Metrics::kTimerHistogramNumBuckets)).Times(0);
   EXPECT_CALL(*mock_time_online_timer, Start()).Times(2);
   EXPECT_CALL(*mock_time_to_drop_timer, Start());
-  metrics_.NotifyDefaultServiceChanged(service_);
-  metrics_.NotifyDefaultServiceChanged(open_wifi_service_);
+  metrics_.NotifyDefaultServiceChanged(service_.get());
+  metrics_.NotifyDefaultServiceChanged(open_wifi_service_.get());
 
   EXPECT_CALL(*mock_time_online_timer, Start());
   EXPECT_CALL(*mock_time_to_drop_timer, Start()).Times(0);

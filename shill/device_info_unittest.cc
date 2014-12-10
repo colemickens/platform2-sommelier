@@ -340,7 +340,7 @@ TEST_F(DeviceInfoTest, DeviceRemovedEvent) {
   EXPECT_CALL(manager_, DeregisterDevice(_)).Times(1);
   EXPECT_CALL(metrics_, DeregisterDevice(kTestDeviceIndex)).Times(1);
   SendMessageToDeviceInfo(*message);
-  Mock::VerifyAndClearExpectations(device0);
+  Mock::VerifyAndClearExpectations(device0.get());
 
   // Deregister a Cellular device.
   scoped_refptr<MockDevice> device1(new MockDevice(
@@ -1154,7 +1154,7 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
   SendMessageToDeviceInfo(*message);
   EXPECT_FALSE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, nullptr));
 
-  Mock::VerifyAndClearExpectations(device);
+  Mock::VerifyAndClearExpectations(device.get());
   IPAddress ipv6_address2(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ipv6_address2.SetAddressFromString(kTestIPAddress2));
   message.reset(BuildAddressMessage(
@@ -1167,7 +1167,7 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
   IPAddress address0(IPAddress::kFamilyUnknown);
   EXPECT_TRUE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, &address0));
   EXPECT_TRUE(address0.Equals(ipv6_address2));
-  Mock::VerifyAndClearExpectations(device);
+  Mock::VerifyAndClearExpectations(device.get());
 
   IPAddress ipv6_address3(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ipv6_address3.SetAddressFromString(kTestIPAddress3));
@@ -1181,7 +1181,7 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
   IPAddress address1(IPAddress::kFamilyUnknown);
   EXPECT_TRUE(device_info_.GetPrimaryIPv6Address(kTestDeviceIndex, &address1));
   EXPECT_TRUE(address1.Equals(ipv6_address2));
-  Mock::VerifyAndClearExpectations(device);
+  Mock::VerifyAndClearExpectations(device.get());
 
   IPAddress ipv6_address4(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ipv6_address4.SetAddressFromString(kTestIPAddress4));

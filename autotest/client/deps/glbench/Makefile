@@ -28,12 +28,12 @@ SOURCES_ALL = $(SOURCES_COMMON) \
               $(SOURCES_WINDOWMANAGERTEST)
 
 PKG_CONFIG ?= pkg-config
-BASE_VER ?= 293518
+BASE_VER ?= 307740
 PC_DEPS = libchrome-$(BASE_VER) libpng
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
-CXXFLAGS = -g -Wall -Werror
+CXXFLAGS = -g -Wall -Werror -std=gnu++11
 CPPFLAGS += $(PC_CFLAGS)
 LDLIBS = $(PC_LIBS) -lgflags
 # To compile outside of chroot or with newest libchome, use the following two lines:

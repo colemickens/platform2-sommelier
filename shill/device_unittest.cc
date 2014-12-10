@@ -365,7 +365,7 @@ TEST_F(DeviceTest, MultiHomed) {
   // Device should have multi-homing disabled by default.
   EXPECT_CALL(*device_, SetIPFlag(_, _, _)).Times(0);
   device_->SetIsMultiHomed(false);
-  Mock::VerifyAndClearExpectations(device_);
+  Mock::VerifyAndClearExpectations(device_.get());
 
   // Disabled -> enabled should change flags on the device.
   EXPECT_CALL(*device_, SetIPFlag(IPAddress::kFamilyIPv4, StrEq("arp_announce"),
@@ -375,7 +375,7 @@ TEST_F(DeviceTest, MultiHomed) {
   EXPECT_CALL(*device_, SetIPFlag(IPAddress::kFamilyIPv4, StrEq("rp_filter"),
                                   StrEq("2"))).WillOnce(Return(true));
   device_->SetIsMultiHomed(true);
-  Mock::VerifyAndClearExpectations(device_);
+  Mock::VerifyAndClearExpectations(device_.get());
 
   // Enabled -> enabled should be a no-op.
   EXPECT_CALL(*device_, SetIPFlag(_, _, _)).Times(0);
@@ -385,7 +385,7 @@ TEST_F(DeviceTest, MultiHomed) {
   // (since it is disabled due to multi-homing).
   device_->SetLooseRouting(false);
   device_->SetLooseRouting(true);
-  Mock::VerifyAndClearExpectations(device_);
+  Mock::VerifyAndClearExpectations(device_.get());
 
   // Enabled -> disabled should reset the flags back to the default, but
   // because non-default routing is enabled, rp_filter will be left
@@ -395,13 +395,13 @@ TEST_F(DeviceTest, MultiHomed) {
   EXPECT_CALL(*device_, SetIPFlag(IPAddress::kFamilyIPv4, StrEq("arp_ignore"),
                                   StrEq("0"))).WillOnce(Return(true));
   device_->SetIsMultiHomed(false);
-  Mock::VerifyAndClearExpectations(device_);
+  Mock::VerifyAndClearExpectations(device_.get());
 
   // Re-enable reverse-path filtering.
   EXPECT_CALL(*device_, SetIPFlag(IPAddress::kFamilyIPv4, StrEq("rp_filter"),
                                   StrEq("1"))).WillOnce(Return(true));
   device_->SetLooseRouting(false);
-  Mock::VerifyAndClearExpectations(device_);
+  Mock::VerifyAndClearExpectations(device_.get());
 }
 
 TEST_F(DeviceTest, Load) {
@@ -1311,8 +1311,8 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   device_->OnIPv6AddressChanged();
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
-  Mock::VerifyAndClearExpectations(service);
-  Mock::VerifyAndClearExpectations(connection);
+  Mock::VerifyAndClearExpectations(service.get());
+  Mock::VerifyAndClearExpectations(connection.get());
 
   // IPv6 configuration update with IPv6 connection, connection update.
   IPAddress address2(IPAddress::kFamilyIPv6);
@@ -1345,8 +1345,8 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   device_->OnIPv6AddressChanged();
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
-  Mock::VerifyAndClearExpectations(service);
-  Mock::VerifyAndClearExpectations(connection);
+  Mock::VerifyAndClearExpectations(service.get());
+  Mock::VerifyAndClearExpectations(connection.get());
 }
 
 class DevicePortalDetectionTest : public DeviceTest {
@@ -1811,7 +1811,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
               ConnectivityTrial::kPhaseDNS,
               ConnectivityTrial::kStatusFailure),
           kPortalAttempts, true));
-  Mock::VerifyAndClearExpectations(device_);
+  Mock::VerifyAndClearExpectations(device_.get());
 
   // DNS Timeout, start DNS test for fallback DNS servers.
   EXPECT_CALL(*service_.get(), IsConnected())
@@ -1832,7 +1832,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
               ConnectivityTrial::kStatusTimeout),
       kPortalAttempts,
       true));
-  Mock::VerifyAndClearExpectations(device_);
+  Mock::VerifyAndClearExpectations(device_.get());
 
   // Other Failure, DNS server tester not started.
   EXPECT_CALL(*service_.get(), IsConnected())
@@ -1853,7 +1853,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
               ConnectivityTrial::kStatusFailure),
       kPortalAttempts,
       true));
-  Mock::VerifyAndClearExpectations(device_);
+  Mock::VerifyAndClearExpectations(device_.get());
 }
 
 TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
@@ -1870,7 +1870,7 @@ TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
           .Times(1);
   InvokeFallbackDNSResultCallback(DNSServerTester::kStatusFailure);
   Mock::VerifyAndClearExpectations(connection_.get());
-  Mock::VerifyAndClearExpectations(ipconfig);
+  Mock::VerifyAndClearExpectations(ipconfig.get());
   Mock::VerifyAndClearExpectations(&metrics_);
 
   // Fallback DNS test succeed with auto fallback disabled.
@@ -1886,7 +1886,7 @@ TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
   InvokeFallbackDNSResultCallback(DNSServerTester::kStatusSuccess);
   Mock::VerifyAndClearExpectations(service_.get());
   Mock::VerifyAndClearExpectations(connection_.get());
-  Mock::VerifyAndClearExpectations(ipconfig);
+  Mock::VerifyAndClearExpectations(ipconfig.get());
   Mock::VerifyAndClearExpectations(&metrics_);
 
   // Fallback DNS test succeed with auto fallback enabled.
@@ -1922,7 +1922,7 @@ TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
   InvokeFallbackDNSResultCallback(DNSServerTester::kStatusSuccess);
   Mock::VerifyAndClearExpectations(service_.get());
   Mock::VerifyAndClearExpectations(connection_.get());
-  Mock::VerifyAndClearExpectations(ipconfig);
+  Mock::VerifyAndClearExpectations(ipconfig.get());
   Mock::VerifyAndClearExpectations(&metrics_);
 }
 
@@ -1936,7 +1936,7 @@ TEST_F(DevicePortalDetectionTest, ConfigDNSResultCallback) {
   EXPECT_CALL(*ipconfig, UpdateDNSServers(_)).Times(0);
   InvokeConfigDNSResultCallback(DNSServerTester::kStatusFailure);
   Mock::VerifyAndClearExpectations(connection_.get());
-  Mock::VerifyAndClearExpectations(ipconfig);
+  Mock::VerifyAndClearExpectations(ipconfig.get());
 
   // DNS test succeed for configured DNS servers.
   EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
@@ -1964,7 +1964,7 @@ TEST_F(DevicePortalDetectionTest, ConfigDNSResultCallback) {
   InvokeConfigDNSResultCallback(DNSServerTester::kStatusSuccess);
   Mock::VerifyAndClearExpectations(service_.get());
   Mock::VerifyAndClearExpectations(connection_.get());
-  Mock::VerifyAndClearExpectations(ipconfig);
+  Mock::VerifyAndClearExpectations(ipconfig.get());
 }
 
 TEST_F(DevicePortalDetectionTest, DestroyConnection) {

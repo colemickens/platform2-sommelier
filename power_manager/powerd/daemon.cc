@@ -346,8 +346,7 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
           base::PathExists(base::FilePath(kPMTestDelayPath))) {
   scoped_ptr<MetricsLibrary> metrics_lib(new MetricsLibrary);
   metrics_lib->Init();
-  metrics_sender_.reset(
-      new MetricsSender(metrics_lib.PassAs<MetricsLibraryInterface>()));
+  metrics_sender_.reset(new MetricsSender(metrics_lib.Pass()));
 
   CHECK(prefs_->Init(util::GetPrefPaths(
       base::FilePath(read_write_prefs_dir),

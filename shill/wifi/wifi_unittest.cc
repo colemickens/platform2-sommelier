@@ -300,7 +300,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     ScopeLogger::GetInstance()->set_verbose_level(3);
     dbus_manager_->proxy_factory_ = &proxy_factory_;
     wifi_->proxy_factory_ = &proxy_factory_;
-    static_cast<Device *>(wifi_)->rtnl_handler_ = &rtnl_handler_;
+    static_cast<Device *>(wifi_.get())->rtnl_handler_ = &rtnl_handler_;
     wifi_->set_dhcp_provider(&dhcp_provider_);
     ON_CALL(manager_, device_info()).WillByDefault(Return(&device_info_));
     EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
@@ -534,13 +534,13 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return path;
   }
   void InitiateConnect(WiFiServiceRefPtr service) {
-    wifi_->ConnectTo(service);
+    wifi_->ConnectTo(service.get());
   }
   void InitiateDisconnect(WiFiServiceRefPtr service) {
-    wifi_->DisconnectFrom(service);
+    wifi_->DisconnectFrom(service.get());
   }
   void InitiateDisconnectIfActive(WiFiServiceRefPtr service) {
-    wifi_->DisconnectFromIfActive(service);
+    wifi_->DisconnectFromIfActive(service.get());
   }
   MockWiFiServiceRefPtr SetupConnectingService(
       const DBus::Path &network_path,
@@ -560,7 +560,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     }
     EXPECT_CALL(*service, SetState(Service::kStateAssociating));
     InitiateConnect(service);
-    Mock::VerifyAndClearExpectations(service);
+    Mock::VerifyAndClearExpectations(service.get());
     EXPECT_FALSE(GetPendingTimeout().IsCancelled());
     if (endpoint_ptr) {
       *endpoint_ptr = endpoint;
@@ -588,7 +588,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     EXPECT_CALL(*service, NotifyCurrentEndpoint(EndpointMatch(endpoint)));
     ReportCurrentBSSChanged(bss_path);
     EXPECT_TRUE(GetPendingTimeout().IsCancelled());
-    Mock::VerifyAndClearExpectations(service);
+    Mock::VerifyAndClearExpectations(service.get());
 
     EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
     EXPECT_CALL(*service, ResetSuspectedCredentialFailures());
@@ -596,7 +596,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
     EXPECT_CALL(wifi_provider_, IncrementConnectCount(_));
     ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
-    Mock::VerifyAndClearExpectations(service);
+    Mock::VerifyAndClearExpectations(service.get());
 
     EXPECT_EQ(service, GetCurrentService());
     return service;
@@ -765,7 +765,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->supplicant_present_ = supplicant_present;
     wifi_->SetEnabled(true);  // Start(nullptr, ResultCallback());
     if (supplicant_present)
-      // Mimick the callback from |dbus_service_proxy_->GetNameOwner|.
+      // Mimic the callback from |dbus_service_proxy_->GetNameOwner|.
       supplicant_name_owner_callback.Run(kSupplicantNameOwner, Error());
   }
   void StartWiFi() {
@@ -1265,7 +1265,7 @@ TEST_F(WiFiMainTest, ClearCachedCredentials) {
   DBus::Path network = "/test/path";
   WiFiServiceRefPtr service(SetupConnectedService(network, nullptr, nullptr));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(network));
-  ClearCachedCredentials(service);
+  ClearCachedCredentials(service.get());
 }
 
 TEST_F(WiFiMainTest, NotifyEndpointChanged) {
@@ -1311,7 +1311,7 @@ TEST_F(WiFiMainTest, UseArpGateway) {
   EXPECT_CALL(dhcp_provider_, CreateConfig(kDeviceName, _, _, true))
       .WillOnce(Return(dhcp_config_));
   const_cast<WiFi *>(wifi().get())->AcquireIPConfig();
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
 
   // Selected service that has a static IP address.
   EXPECT_CALL(*service, HasStaticIPAddress()).WillRepeatedly(Return(true));
@@ -1391,7 +1391,7 @@ TEST_F(WiFiMainTest, NoScansWhileConnecting_FullScan) {
   TriggerScan(WiFi::kScanMethodFull);
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
 
   // Terminate the scan.
   ExpectFoundNothing();
@@ -1403,7 +1403,7 @@ TEST_F(WiFiMainTest, NoScansWhileConnecting_FullScan) {
   TriggerScan(WiFi::kScanMethodFull);
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
 
   // Similarly, ignore scans when our connected service is reconnecting.
   ExpectScanStop();
@@ -1415,7 +1415,7 @@ TEST_F(WiFiMainTest, NoScansWhileConnecting_FullScan) {
   TriggerScan(WiFi::kScanMethodFull);
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
 
   // But otherwise we'll honor the request.
   EXPECT_CALL(*service, IsConnecting()).Times(AtLeast(2)).
@@ -1424,7 +1424,7 @@ TEST_F(WiFiMainTest, NoScansWhileConnecting_FullScan) {
   TriggerScan(WiFi::kScanMethodFull);
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
 
   // Silence messages from the destructor.
   ExpectScanStop();
@@ -1444,7 +1444,7 @@ TEST_F(WiFiMainTest, NoScansWhileConnecting) {
   EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
   TriggerScan(WiFi::kScanMethodProgressive);
   dispatcher_.DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
   Mock::VerifyAndClearExpectations(scan_session_);
 
   // Terminate the scan.
@@ -1457,7 +1457,7 @@ TEST_F(WiFiMainTest, NoScansWhileConnecting) {
   ExpectScanStart(WiFi::kScanMethodProgressive, false);
   TriggerScan(WiFi::kScanMethodProgressive);
   dispatcher_.DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
   Mock::VerifyAndClearExpectations(scan_session_);
 
   // Similarly, ignore scans when our connected service is reconnecting.
@@ -1470,7 +1470,7 @@ TEST_F(WiFiMainTest, NoScansWhileConnecting) {
   EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
   TriggerScan(WiFi::kScanMethodProgressive);
   dispatcher_.DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
   Mock::VerifyAndClearExpectations(scan_session_);
 
   // Unlike Full scan, Progressive scan will reject attempts to scan while
@@ -1479,7 +1479,7 @@ TEST_F(WiFiMainTest, NoScansWhileConnecting) {
   EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
   TriggerScan(WiFi::kScanMethodProgressive);
   dispatcher_.DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
   Mock::VerifyAndClearExpectations(scan_session_);
 }
 
@@ -1881,7 +1881,7 @@ TEST_F(WiFiMainTest, DisconnectWithWiFiServiceConnected) {
   InitiateDisconnectIfActive(service0);
 
   Mock::VerifyAndClearExpectations(&log);
-  Mock::VerifyAndClearExpectations(service0);
+  Mock::VerifyAndClearExpectations(service0.get());
   ScopeLogger::GetInstance()->set_verbose_level(0);
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
 }
@@ -1905,7 +1905,7 @@ TEST_F(WiFiMainTest, DisconnectWithWiFiServiceIdle) {
   InitiateDisconnectIfActive(service0);
 
   Mock::VerifyAndClearExpectations(&log);
-  Mock::VerifyAndClearExpectations(service0);
+  Mock::VerifyAndClearExpectations(service0.get());
   ScopeLogger::GetInstance()->set_verbose_level(0);
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
 }
@@ -1928,7 +1928,7 @@ TEST_F(WiFiMainTest, DisconnectWithWiFiServiceConnectedInError) {
   InitiateDisconnectIfActive(service0);
 
   Mock::VerifyAndClearExpectations(&log);
-  Mock::VerifyAndClearExpectations(service0);
+  Mock::VerifyAndClearExpectations(service0.get());
   ScopeLogger::GetInstance()->set_verbose_level(0);
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
 }
@@ -1966,7 +1966,7 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {
   VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
   // Service state should be idle, so it is connectable again.
   EXPECT_EQ(Service::kStateIdle, service->state());
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
 
   ScopeLogger::GetInstance()->set_verbose_level(0);
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
@@ -2311,7 +2311,7 @@ TEST_F(WiFiMainTest, StateChangeBackwardsWithService) {
             GetSupplicantState());
   // Verify expectations now, because WiFi may report other state changes
   // when WiFi is Stop()-ed (during TearDown()).
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
   EXPECT_CALL(*service, SetState(_)).Times(AnyNumber());
 }
 
@@ -2391,8 +2391,8 @@ TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToConnectedNewService) {
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
   EXPECT_EQ(service1.get(), GetCurrentService().get());
   EXPECT_FALSE(GetIsRoamingInProgress());
-  Mock::VerifyAndClearExpectations(service0);
-  Mock::VerifyAndClearExpectations(service1);
+  Mock::VerifyAndClearExpectations(service0.get());
+  Mock::VerifyAndClearExpectations(service1.get());
 }
 
 TEST_F(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint) {
@@ -2418,7 +2418,7 @@ TEST_F(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint) {
   EXPECT_CALL(*service, IsConnected()).WillOnce(Return(true));
   EXPECT_CALL(*ipconfig, RenewIP());
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
-  Mock::VerifyAndClearExpectations(ipconfig);
+  Mock::VerifyAndClearExpectations(ipconfig.get());
   EXPECT_FALSE(GetIsRoamingInProgress());
 }
 
@@ -2496,16 +2496,16 @@ TEST_F(WiFiMainTest, AppendBgscan) {
     // 1 endpoint, default bgscan method -- background scan disabled.
     std::map<std::string, DBus::Variant> params;
     EXPECT_CALL(*service, GetEndpointCount()).WillOnce(Return(1));
-    AppendBgscan(service, &params);
-    Mock::VerifyAndClearExpectations(service);
+    AppendBgscan(service.get(), &params);
+    Mock::VerifyAndClearExpectations(service.get());
     EXPECT_FALSE(ContainsKey(params, WPASupplicant::kNetworkPropertyBgscan));
   }
   {
     // 2 endpoints, default bgscan method -- background scan frequency reduced.
     map<string, DBus::Variant> params;
     EXPECT_CALL(*service, GetEndpointCount()).WillOnce(Return(2));
-    AppendBgscan(service, &params);
-    Mock::VerifyAndClearExpectations(service);
+    AppendBgscan(service.get(), &params);
+    Mock::VerifyAndClearExpectations(service.get());
     string config_string;
     EXPECT_TRUE(
         DBusProperties::GetString(params,
@@ -2523,8 +2523,8 @@ TEST_F(WiFiMainTest, AppendBgscan) {
     EXPECT_TRUE(SetBgscanMethod(WPASupplicant::kNetworkBgscanMethodSimple));
     std::map<std::string, DBus::Variant> params;
     EXPECT_CALL(*service, GetEndpointCount()).Times(0);
-    AppendBgscan(service, &params);
-    Mock::VerifyAndClearExpectations(service);
+    AppendBgscan(service.get(), &params);
+    Mock::VerifyAndClearExpectations(service.get());
     string config_string;
     EXPECT_TRUE(
         DBusProperties::GetString(params,
@@ -2542,7 +2542,7 @@ TEST_F(WiFiMainTest, AppendBgscan) {
     std::map<std::string, DBus::Variant> params;
     EXPECT_CALL(*service, GetEndpointCount()).Times(0);
     AppendBgscan(service.get(), &params);
-    Mock::VerifyAndClearExpectations(service);
+    Mock::VerifyAndClearExpectations(service.get());
     string config_string;
     EXPECT_FALSE(
         DBusProperties::GetString(params,
@@ -2561,7 +2561,7 @@ TEST_F(WiFiMainTest, StateAndIPIgnoreLinkEvent) {
 
   // Verify expectations now, because WiFi may cause |service| state
   // changes during TearDown().
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
 }
 
 TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
@@ -2843,7 +2843,7 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
 
   Mock::VerifyAndClearExpectations(device_info());
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
 
   // Successful connect.
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), EnableHighBitrates()).Times(1);
@@ -2862,7 +2862,7 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
                                               _,
                                               StrEq("OnIPConfigFailure")));
   ReportIPConfigFailure();
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
 
   // Connection failed during DHCP but service does not (yet) believe this is
   // due to a passphrase issue.
@@ -2872,7 +2872,7 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
                                               _,
                                               StrEq("OnIPConfigFailure")));
   ReportIPConfigFailure();
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
 
   // Connection failed during DHCP and service believes this is due to a
   // passphrase issue.
@@ -2894,17 +2894,17 @@ TEST_F(WiFiMainTest, SuspectCredentialsEAPInProgress) {
       .WillOnce(Return(true));
   EXPECT_CALL(*service, AddSuspectedCredentialFailure()).Times(0);
   EXPECT_FALSE(SuspectCredentials(service, nullptr));
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
 
   EXPECT_CALL(*service, AddSuspectedCredentialFailure()).WillOnce(Return(true));
   Service::ConnectFailure failure;
   EXPECT_TRUE(SuspectCredentials(service, &failure));
   EXPECT_EQ(Service::kFailureEAPAuthentication, failure);
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
 
   EXPECT_CALL(*service, AddSuspectedCredentialFailure()).Times(0);
   EXPECT_FALSE(SuspectCredentials(service, nullptr));
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
 
   EXPECT_CALL(*service, AddSuspectedCredentialFailure())
       .WillOnce(Return(false));
@@ -3299,7 +3299,7 @@ TEST_F(WiFiMainTest, EAPEvent) {
   EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _));
   SetCurrentService(service);
   ReportEAPEvent(kEAPStatus, kEAPParameter);
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
   Mock::VerifyAndClearExpectations(eap_state_handler_);
 
   EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _))

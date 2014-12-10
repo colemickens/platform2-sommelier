@@ -275,7 +275,7 @@ class WiFiServiceUpdateFromEndpointsTest : public WiFiServiceTest {
         kGoodEndpointStrength(
             WiFiService::SignalToStrength(kGoodEndpointSignal)),
         service(MakeGenericService()),
-        adaptor(*GetAdaptor(service)) {
+        adaptor(*GetAdaptor(service.get())) {
     ok_endpoint = MakeOpenEndpoint(
         simple_ssid_string(), kOkEndpointBssId, kOkEndpointFrequency,
         kOkEndpointSignal);
@@ -493,7 +493,7 @@ TEST_F(WiFiServiceTest, ConnectConditions) {
   // With nothing else going on, the service should attempt to connect.
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   wifi_service->Connect(&error, "in test");
-  Mock::VerifyAndClearExpectations(wifi());
+  Mock::VerifyAndClearExpectations(wifi().get());
 
   // But if we're already "connecting" or "connected" then we shouldn't attempt
   // again.
@@ -508,7 +508,7 @@ TEST_F(WiFiServiceTest, ConnectConditions) {
   wifi_service->Connect(&error, "in test");
   wifi_service->SetState(Service::kStateOnline);
   wifi_service->Connect(&error, "in test");
-  Mock::VerifyAndClearExpectations(wifi());
+  Mock::VerifyAndClearExpectations(wifi().get());
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskPSK) {
@@ -713,7 +713,7 @@ TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
     // A changed passphrase should trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
     wifi_service->SetPassphrase(kPassphrase, &error);
-    Mock::VerifyAndClearExpectations(wifi());
+    Mock::VerifyAndClearExpectations(wifi().get());
     EXPECT_TRUE(error.IsSuccess());
   }
 
@@ -722,7 +722,7 @@ TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
     // An unchanged passphrase should not trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(_)).Times(0);
     wifi_service->SetPassphrase(kPassphrase, &error);
-    Mock::VerifyAndClearExpectations(wifi());
+    Mock::VerifyAndClearExpectations(wifi().get());
     EXPECT_TRUE(error.IsSuccess());
   }
 
@@ -731,7 +731,7 @@ TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
     // A modified passphrase should trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
     wifi_service->SetPassphrase(kPassphrase + "X", &error);
-    Mock::VerifyAndClearExpectations(wifi());
+    Mock::VerifyAndClearExpectations(wifi().get());
     EXPECT_TRUE(error.IsSuccess());
   }
 
@@ -740,7 +740,7 @@ TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
     // A cleared passphrase should also trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
     wifi_service->ClearPassphrase(&error);
-    Mock::VerifyAndClearExpectations(wifi());
+    Mock::VerifyAndClearExpectations(wifi().get());
     EXPECT_TRUE(error.IsSuccess());
   }
 
@@ -749,7 +749,7 @@ TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
     // An invalid passphrase should not trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(_)).Times(0);
     wifi_service->SetPassphrase("", &error);
-    Mock::VerifyAndClearExpectations(wifi());
+    Mock::VerifyAndClearExpectations(wifi().get());
     EXPECT_FALSE(error.IsSuccess());
   }
 
@@ -761,7 +761,7 @@ TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get())).Times(0);
     wifi_service->OnEapCredentialsChanged(Service::kReasonPropertyUpdate);
     EXPECT_TRUE(wifi_service->has_ever_connected());
-    Mock::VerifyAndClearExpectations(wifi());
+    Mock::VerifyAndClearExpectations(wifi().get());
   }
 
   WiFiServiceRefPtr eap_wifi_service = MakeServiceWithWiFi(kSecurity8021x);
@@ -776,7 +776,7 @@ TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
     EXPECT_CALL(*wifi(), ClearCachedCredentials(eap_wifi_service.get()));
     eap_wifi_service->OnEapCredentialsChanged(Service::kReasonPropertyUpdate);
     EXPECT_FALSE(eap_wifi_service->has_ever_connected());
-    Mock::VerifyAndClearExpectations(wifi());
+    Mock::VerifyAndClearExpectations(wifi().get());
   }
 }
 
@@ -806,7 +806,7 @@ TEST_F(WiFiServiceTest, EapAuthPropertyChangeClearsCachedCredentials) {
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
     EXPECT_TRUE(property_store.SetStringProperty(
         kEapPasswordProperty, kPassword, &error));
-    Mock::VerifyAndClearExpectations(wifi());
+    Mock::VerifyAndClearExpectations(wifi().get());
     EXPECT_TRUE(error.IsSuccess());
   }
   {
@@ -815,7 +815,7 @@ TEST_F(WiFiServiceTest, EapAuthPropertyChangeClearsCachedCredentials) {
     EXPECT_CALL(*wifi(), ClearCachedCredentials(_)).Times(0);
     EXPECT_FALSE(property_store.SetStringProperty(
         kEapPasswordProperty, kPassword, &error));
-    Mock::VerifyAndClearExpectations(wifi());
+    Mock::VerifyAndClearExpectations(wifi().get());
     EXPECT_TRUE(error.IsSuccess());
   }
   {
@@ -824,7 +824,7 @@ TEST_F(WiFiServiceTest, EapAuthPropertyChangeClearsCachedCredentials) {
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
     EXPECT_TRUE(property_store.SetStringProperty(
         kEapPasswordProperty, kPassword + "X", &error));
-    Mock::VerifyAndClearExpectations(wifi());
+    Mock::VerifyAndClearExpectations(wifi().get());
     EXPECT_TRUE(error.IsSuccess());
   }
 
@@ -836,7 +836,7 @@ TEST_F(WiFiServiceTest, EapAuthPropertyChangeClearsCachedCredentials) {
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
     EXPECT_TRUE(property_store.SetStringProperty(
         kEapCertIdProperty, kCertId, &error));
-    Mock::VerifyAndClearExpectations(wifi());
+    Mock::VerifyAndClearExpectations(wifi().get());
     EXPECT_TRUE(error.IsSuccess());
   }
   {
@@ -845,7 +845,7 @@ TEST_F(WiFiServiceTest, EapAuthPropertyChangeClearsCachedCredentials) {
     EXPECT_CALL(*wifi(), ClearCachedCredentials(_)).Times(0);
     EXPECT_FALSE(property_store.SetStringProperty(
         kEapCertIdProperty, kCertId, &error));
-    Mock::VerifyAndClearExpectations(wifi());
+    Mock::VerifyAndClearExpectations(wifi().get());
     EXPECT_TRUE(error.IsSuccess());
   }
   {
@@ -854,7 +854,7 @@ TEST_F(WiFiServiceTest, EapAuthPropertyChangeClearsCachedCredentials) {
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
     EXPECT_TRUE(property_store.SetStringProperty(
         kEapCertIdProperty, kCertId + "X", &error));
-    Mock::VerifyAndClearExpectations(wifi());
+    Mock::VerifyAndClearExpectations(wifi().get());
     EXPECT_TRUE(error.IsSuccess());
   }
 }
@@ -1030,8 +1030,8 @@ TEST_F(WiFiServiceTest, LoadPassphraseClearCredentials) {
   EXPECT_EQ(kPassphrase, service->passphrase_);
   EXPECT_TRUE(service->has_ever_connected_);
 
-  Mock::VerifyAndClearExpectations(wifi());
-  Mock::VerifyAndClearExpectations(mock_profile);
+  Mock::VerifyAndClearExpectations(wifi().get());
+  Mock::VerifyAndClearExpectations(mock_profile.get());
 
 
   // Repeat Service::Load with same old and new passphrase. Since the old
@@ -1864,7 +1864,7 @@ TEST_F(WiFiServiceTest, Unload) {
 
 TEST_F(WiFiServiceTest, PropertyChanges) {
   WiFiServiceRefPtr service = MakeServiceWithMockManager();
-  ServiceMockAdaptor *adaptor = GetAdaptor(service);
+  ServiceMockAdaptor *adaptor = GetAdaptor(service.get());
   TestCommonPropertyChanges(service, adaptor);
   TestAutoConnectPropertyChange(service, adaptor);
 
@@ -1930,7 +1930,7 @@ TEST_F(WiFiServiceTest, GetTethering) {
   EXPECT_CALL(*wifi(), IsConnectedViaTether()).Times(0);
   SetWiFiForService(service, wifi());
   EXPECT_EQ(kTetheringNotDetectedState, service->GetTethering(nullptr));
-  Mock::VerifyAndClearExpectations(wifi());
+  Mock::VerifyAndClearExpectations(wifi().get());
 
   scoped_refptr<MockProfile> mock_profile(
       new NiceMock<MockProfile>(control_interface(), metrics(), manager()));
@@ -1944,7 +1944,7 @@ TEST_F(WiFiServiceTest, GetTethering) {
       .WillOnce(Return(false));
   EXPECT_EQ(kTetheringConfirmedState, service->GetTethering(nullptr));
   EXPECT_EQ(kTetheringNotDetectedState, service->GetTethering(nullptr));
-  Mock::VerifyAndClearExpectations(wifi());
+  Mock::VerifyAndClearExpectations(wifi().get());
 
   // Add two endpoints that have a BSSID associated with some Android devices
   // in tethering mode.
@@ -1965,7 +1965,7 @@ TEST_F(WiFiServiceTest, GetTethering) {
   EXPECT_EQ(kTetheringConfirmedState, service->GetTethering(nullptr));
 
   // Continue in the un-tethered device case for a few more tests below.
-  Mock::VerifyAndClearExpectations(wifi());
+  Mock::VerifyAndClearExpectations(wifi().get());
   EXPECT_CALL(*wifi(), IsConnectedViaTether())
       .WillRepeatedly(Return(false));
 
@@ -1991,14 +1991,14 @@ TEST_F(WiFiServiceTest, GetTethering) {
 
   // If the device reports that it is tethered, this should override any
   // findings gained from examining the endpoints.
-  Mock::VerifyAndClearExpectations(wifi());
+  Mock::VerifyAndClearExpectations(wifi().get());
   EXPECT_CALL(*wifi(), IsConnectedViaTether()).WillOnce(Return(true));
   EXPECT_EQ(kTetheringConfirmedState, service->GetTethering(nullptr));
 }
 
 TEST_F(WiFiServiceTest, IsVisible) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityNone);
-  ServiceMockAdaptor *adaptor = GetAdaptor(wifi_service);
+  ServiceMockAdaptor *adaptor = GetAdaptor(wifi_service.get());
 
   // Adding the first endpoint emits a change: Visible = true.
   EXPECT_CALL(*adaptor, EmitBoolChanged(kVisibleProperty, true));

@@ -568,7 +568,7 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
                     result->return_code());
       // TODO(wad) are there any non-mount uses of this type?
       if (!result->return_status()) {
-        RemoveMount(result->mount());
+        RemoveMount(result->mount().get());
       }
     } else {
       chromeos::glib::ScopedArray tmp_array(g_array_new(FALSE, FALSE, 1));
@@ -593,7 +593,7 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
           ReportTimerStop(kAsyncMountTimer);
         }
         // A return code of MOUNT_RECREATED will still need PKCS#11 init.
-        InitializePkcs11(result->mount());
+        InitializePkcs11(result->mount().get());
       }
     } else if (result->guest()) {
       if (!result->return_status()) {
@@ -639,7 +639,7 @@ void Service::InitializeTpmComplete(bool status, bool took_ownership) {
     // reinitialize its TPM context, since the TPM is now useable, and we might
     // need to kick off their PKCS11 initialization if they were blocked before.
     for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
-      cryptohome::Mount* mount = it->second;
+      cryptohome::Mount* mount = it->second.get();
       MountTaskResult ignored_result;
       base::WaitableEvent event(true, false);
       scoped_refptr<MountTaskResetTpmContext> mount_task =
@@ -1512,9 +1512,9 @@ gboolean Service::Mount(const gchar *userid,
 
   user_mount->set_pkcs11_state(cryptohome::Mount::kUninitialized);
   if (result.return_status()) {
-    InitializePkcs11(result.mount());
+    InitializePkcs11(result.mount().get());
   } else {
-    RemoveMount(result.mount());
+    RemoveMount(result.mount().get());
   }
 
   *OUT_error_code = result.return_code();
@@ -1706,7 +1706,7 @@ void Service::DoMountEx(AccountIdentifier* identifier,
   // Time to push the task for PKCS#11 initialization.
   // TODO(wad) This call will PostTask back to the same thread. It is safe, but
   //           it seems pointless.
-  InitializePkcs11(user_mount);
+  InitializePkcs11(user_mount.get());
 }
 
 gboolean Service::MountEx(const GArray *account_id,
@@ -2457,7 +2457,7 @@ gboolean Service::TpmAttestationResetIdentity(gchar* reset_token,
 gboolean Service::Pkcs11IsTpmTokenReady(gboolean* OUT_ready, GError** error) {
   *OUT_ready = TRUE;
   for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
-    cryptohome::Mount* mount = it->second;
+    cryptohome::Mount* mount = it->second.get();
     bool ok = (mount->pkcs11_state() == cryptohome::Mount::kIsInitialized);
     *OUT_ready = *OUT_ready && ok;
   }

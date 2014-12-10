@@ -526,7 +526,7 @@ void WiFi::ConnectTo(WiFiService *service) {
     }
     // Explicitly disconnect pending service.
     pending_service_->set_expecting_disconnect(true);
-    DisconnectFrom(pending_service_);
+    DisconnectFrom(pending_service_.get());
   }
 
   Error unused_error;
@@ -1078,7 +1078,7 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
       // Otherwise, we'd have to wait for the pending timeout to trigger the
       // disconnect. This will speed up the connection attempt process for
       // the pending_service_.
-      DisconnectFrom(pending_service_);
+      DisconnectFrom(pending_service_.get());
     }
     return;
   }
@@ -1261,7 +1261,7 @@ void WiFi::BSSRemovedTask(const ::DBus::Path &path) {
     return;
   }
   Error unused_error;
-  RemoveNetworkForService(service, &unused_error);
+  RemoveNetworkForService(service.get(), &unused_error);
 
   bool disconnect_service = !service->HasEndpoints() &&
       (service->IsConnecting() || service->IsConnected());
@@ -1269,7 +1269,7 @@ void WiFi::BSSRemovedTask(const ::DBus::Path &path) {
   if (disconnect_service) {
     LOG(INFO) << "Disconnecting from service " << service->unique_name()
               << ": BSSRemoved";
-    DisconnectFrom(service);
+    DisconnectFrom(service.get());
   }
 }
 
@@ -1300,7 +1300,8 @@ void WiFi::EAPEventTask(const string &status, const string &parameter) {
     // wpa_supplicant can sometimes forget the PIN on disconnect from the AP.
     const string &pin = current_service_->eap()->pin();
     Error unused_error;
-    string rpcid = FindNetworkRpcidForService(current_service_, &unused_error);
+    string rpcid = FindNetworkRpcidForService(current_service_.get(),
+                                              &unused_error);
     if (!pin.empty() && !rpcid.empty()) {
       // We have a PIN configured, so we can provide it back to wpa_supplicant.
       LOG(INFO) << "Re-supplying PIN parameter to wpa_supplicant.";
@@ -1686,7 +1687,7 @@ void WiFi::OnLinkMonitorFailure() {
 
 void WiFi::OnUnreliableLink() {
   // Disable HT40 for the current network.
-  SetHT40EnableForService(current_service_, false);
+  SetHT40EnableForService(current_service_.get(), false);
 
   Device::OnUnreliableLink();
 }
@@ -1698,12 +1699,12 @@ bool WiFi::ShouldUseArpGateway() const {
 void WiFi::DisassociateFromService(const WiFiServiceRefPtr &service) {
   SLOG(this, 2) << "In " << __func__ << " for service: "
                 << service->unique_name();
-  DisconnectFromIfActive(service);
+  DisconnectFromIfActive(service.get());
   if (service == selected_service()) {
     DropConnection();
   }
   Error unused_error;
-  RemoveNetworkForService(service, &unused_error);
+  RemoveNetworkForService(service.get(), &unused_error);
 }
 
 vector<GeolocationInfo> WiFi::GetGeolocationObjects() const {
@@ -1804,7 +1805,7 @@ void WiFi::OnAfterResume() {
   // Enable HT40 for current service in case if it was disabled previously due
   // to unreliable link.
   if (current_service_) {
-    SetHT40EnableForService(current_service_, true);
+    SetHT40EnableForService(current_service_.get(), true);
   }
 }
 
@@ -1992,7 +1993,7 @@ void WiFi::PendingTimeoutHandler() {
   if (pending_service_) {
     CHECK(!pending_service_->HasEndpoints());
     LOG(INFO) << "Hidden service was not found.";
-    DisconnectFrom(pending_service_);
+    DisconnectFrom(pending_service_.get());
   }
 
   // DisconnectWithFailure will leave the pending service's state in failure
@@ -2023,7 +2024,7 @@ void WiFi::ReconnectTimeoutHandler() {
   reconnect_timeout_callback_.Cancel();
   CHECK(current_service_);
   current_service_->SetFailure(Service::kFailureConnect);
-  DisconnectFrom(current_service_);
+  DisconnectFrom(current_service_.get());
 }
 
 void WiFi::OnSupplicantAppear(const string &/*name*/, const string &/*owner*/) {

@@ -68,7 +68,7 @@ class CellularCapabilityTest : public testing::Test {
   }
 
   virtual void SetUp() {
-    static_cast<Device *>(cellular_)->rtnl_handler_ = &rtnl_handler_;
+    static_cast<Device *>(cellular_.get())->rtnl_handler_ = &rtnl_handler_;
 
     capability_ = dynamic_cast<CellularCapabilityClassic *>(
         cellular_->capability_.get());

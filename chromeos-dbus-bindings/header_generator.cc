@@ -6,8 +6,8 @@
 
 #include <string>
 
-#include <base/file_util.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/strings/string_utils.h>

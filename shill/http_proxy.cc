@@ -91,7 +91,7 @@ HTTPProxy::~HTTPProxy() {
 
 bool HTTPProxy::Start(EventDispatcher *dispatcher,
                       Sockets *sockets) {
-  SLOG(connection_, 3) << "In " << __func__;
+  SLOG(connection_.get(), 3) << "In " << __func__;
 
   if (sockets_) {
     // We are already running.
@@ -143,7 +143,7 @@ bool HTTPProxy::Start(EventDispatcher *dispatcher,
 }
 
 void HTTPProxy::Stop() {
-  SLOG(connection_, 3) << "In " << __func__;
+  SLOG(connection_.get(), 3) << "In " << __func__;
 
   if (!sockets_) {
     return;
@@ -166,7 +166,7 @@ void HTTPProxy::Stop() {
 // proxy's socket.  We Accept() the client and start reading a request
 // from it.
 void HTTPProxy::AcceptClient(int fd) {
-  SLOG(connection_, 3) << "In " << __func__;
+  SLOG(connection_.get(), 3) << "In " << __func__;
 
   int client_fd = sockets_->Accept(fd, nullptr, nullptr);
   if (client_fd < 0) {
@@ -243,7 +243,7 @@ void HTTPProxy::OnReadError(const string &error_msg) {
 // we should connect to and either start a DNS request or connect to a
 // numeric address.
 bool HTTPProxy::ParseClientRequest() {
-  SLOG(connection_, 3) << "In " << __func__;
+  SLOG(connection_.get(), 3) << "In " << __func__;
 
   string host;
   bool found_via = false;
@@ -316,7 +316,7 @@ bool HTTPProxy::ParseClientRequest() {
       return false;
     }
   } else {
-    SLOG(connection_, 3) << "Looking up host: " << server_hostname_;
+    SLOG(connection_.get(), 3) << "Looking up host: " << server_hostname_;
     Error error;
     if (!dns_client_->Start(server_hostname_, &error)) {
       SendClientError(502, "Could not resolve hostname: " + error.message());
@@ -469,7 +469,7 @@ bool HTTPProxy::ReadClientHTTPVersion(string *header) {
 // IOInputHandler callback that fires when data is read from the client.
 // This could be header data, or perhaps POST data that follows the headers.
 void HTTPProxy::ReadFromClient(InputData *data) {
-  SLOG(connection_, 3) << "In " << __func__ << " length " << data->len;
+  SLOG(connection_.get(), 3) << "In " << __func__ << " length " << data->len;
 
   if (data->len == 0) {
     // EOF from client.
@@ -502,7 +502,7 @@ void HTTPProxy::ReadFromClient(InputData *data) {
 // IOInputHandler callback which fires when data has been read from the
 // server.
 void HTTPProxy::ReadFromServer(InputData *data) {
-  SLOG(connection_, 3) << "In " << __func__ << " length " << data->len;
+  SLOG(connection_.get(), 3) << "In " << __func__ << " length " << data->len;
   if (data->len == 0) {
     // Server closed connection.
     if (server_data_.IsEmpty()) {
@@ -521,7 +521,7 @@ void HTTPProxy::ReadFromServer(InputData *data) {
 
 // Return an HTTP error message back to the client.
 void HTTPProxy::SendClientError(int code, const string &error) {
-  SLOG(connection_, 3) << "In " << __func__;
+  SLOG(connection_.get(), 3) << "In " << __func__;
   LOG(ERROR) << "Sending error " << error;
   SetClientResponse(code, "ERROR", "text/plain", error);
   state_ = kStateFlushResponse;
@@ -628,7 +628,7 @@ void HTTPProxy::StartTransmit() {
 // which alerts us to new clients connecting.  This function is called
 // during various error conditions and is a callback for all timeouts.
 void HTTPProxy::StopClient() {
-  SLOG(connection_, 3) << "In " << __func__;
+  SLOG(connection_.get(), 3) << "In " << __func__;
 
   if (is_route_requested_) {
     connection_->ReleaseRouting();
@@ -667,8 +667,8 @@ void HTTPProxy::WriteToClient(int fd) {
   CHECK_EQ(client_socket_, fd);
   int ret = sockets_->Send(fd, server_data_.GetConstData(),
                            server_data_.GetLength(), 0);
-  SLOG(connection_, 3) << "In " << __func__ << " wrote " << ret << " of "
-                       << server_data_.GetLength();
+  SLOG(connection_.get(), 3) << "In " << __func__ << " wrote " << ret << " of "
+                             << server_data_.GetLength();
   if (ret < 0) {
     LOG(ERROR) << "Server write failed";
     StopClient();
@@ -691,8 +691,8 @@ void HTTPProxy::WriteToServer(int fd) {
   CHECK_EQ(server_socket_, fd);
   int ret = sockets_->Send(fd, client_data_.GetConstData(),
                            client_data_.GetLength(), 0);
-  SLOG(connection_, 3) << "In " << __func__ << " wrote " << ret << " of "
-                       << client_data_.GetLength();
+  SLOG(connection_.get(), 3) << "In " << __func__ << " wrote " << ret << " of "
+                             << client_data_.GetLength();
 
   if (ret < 0) {
     LOG(ERROR) << "Client write failed";

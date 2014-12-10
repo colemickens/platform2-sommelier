@@ -191,8 +191,7 @@ void ExternalBacklightController::UpdateDisplays(
       if (!delegate->Init(info.i2c_path))
         continue;
       updated_displays[info.drm_path] = linked_ptr<system::ExternalDisplay>(
-          new system::ExternalDisplay(
-              delegate.PassAs<system::ExternalDisplay::Delegate>()));
+          new system::ExternalDisplay(delegate.Pass()));
     }
   }
   external_displays_.swap(updated_displays);

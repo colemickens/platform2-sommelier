@@ -58,7 +58,7 @@ class ActivePassiveOutOfCreditsDetectorTest : public testing::Test {
         out_of_credits_detector_(
             new ActivePassiveOutOfCreditsDetector(
                 modem_info_.dispatcher(), modem_info_.manager(),
-                modem_info_.metrics(), service_)) {}
+                modem_info_.metrics(), service_.get())) {}
 
   virtual void SetUp() {
     service_->connection_ = connection_;
@@ -307,7 +307,7 @@ TEST_F(ActivePassiveOutOfCreditsDetectorTest,
   out_of_credits_detector_->OnConnectionHealthCheckerResult(
       ConnectionHealthChecker::kResultConnectionFailure);
   EXPECT_FALSE(out_of_credits_detector_->out_of_credits());
-  Mock::VerifyAndClearExpectations(service_);
+  Mock::VerifyAndClearExpectations(service_.get());
 
   EXPECT_CALL(*service_, Disconnect(_,
       ::testing::StrEq("out-of-credits"))).

@@ -74,7 +74,7 @@ class AvahiServicePublisherTest : public ::testing::Test {
     group_proxy_ = new dbus::MockObjectProxy(
         mock_bus_.get(), kServiceName, ObjectPath(kGroupPath));
     publisher_.reset(new AvahiServicePublisher(
-          kHost, "uuid", mock_bus_, avahi_proxy_,
+          kHost, "uuid", mock_bus_, avahi_proxy_.get(),
           base::Bind(&AvahiServicePublisherTest::OnGroupFailure,
                      base::Unretained(this))));
     // Ignore threading concerns.

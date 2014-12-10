@@ -105,8 +105,7 @@ class InputWatcherTest : public testing::Test {
     input_watcher_->set_dev_input_path_for_testing(dev_input_path_);
     input_watcher_->set_sys_class_input_path_for_testing(sys_class_input_path_);
     ASSERT_TRUE(input_watcher_->Init(
-        scoped_device_factory_.PassAs<EventDeviceFactoryInterface>(),
-        &prefs_, &udev_));
+        scoped_device_factory_.Pass(), &prefs_, &udev_));
 
     observer_.reset(new TestObserver(input_watcher_.get()));
   }

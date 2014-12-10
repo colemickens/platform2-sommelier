@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/compiler_specific.h>
 #include <base/macros.h>
 #include <chromeos/chromeos_export.h>
 #include <chromeos/data_encoding.h>

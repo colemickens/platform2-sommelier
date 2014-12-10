@@ -155,8 +155,8 @@ int ProcessWithOutput::DoRunProcess(const std::string& command,
     if (process->Start()) {
       int stdin_fd = process->GetPipe(STDIN_FILENO);
       // Kill the process if writing to or closing the pipe fails.
-      if (base::WriteFileDescriptor(stdin_fd, stdin->c_str(),
-                                    stdin->length()) < 0 ||
+      if (!base::WriteFileDescriptor(stdin_fd, stdin->c_str(),
+                                     stdin->length()) ||
           IGNORE_EINTR(close(stdin_fd)) < 0) {
         process->Kill(SIGKILL, 0);
         SetError(kInputErrorString, error);

@@ -82,7 +82,7 @@ HTTPRequest::Result HTTPRequest::Start(
     const HTTPURL &url,
     const Callback<void(const ByteString &)> &read_event_callback,
     const Callback<void(Result, const ByteString &)> &result_callback) {
-  SLOG(connection_, 3) << "In " << __func__;
+  SLOG(connection_.get(), 3) << "In " << __func__;
 
   DCHECK(!is_running_);
 
@@ -107,7 +107,7 @@ HTTPRequest::Result HTTPRequest::Start(
       return kResultConnectionFailure;
     }
   } else {
-    SLOG(connection_, 3) << "Looking up host: " << server_hostname_;
+    SLOG(connection_.get(), 3) << "Looking up host: " << server_hostname_;
     Error error;
     if (!dns_client_->Start(server_hostname_, &error)) {
       LOG(ERROR) << "Failed to start DNS client: " << error.message();
@@ -124,7 +124,8 @@ HTTPRequest::Result HTTPRequest::Start(
 }
 
 void HTTPRequest::Stop() {
-  SLOG(connection_, 3) << "In " << __func__ << "; running is " << is_running_;
+  SLOG(connection_.get(), 3) << "In " << __func__ << "; running is "
+                             << is_running_;
 
   if (!is_running_) {
     return;
@@ -154,7 +155,7 @@ void HTTPRequest::Stop() {
 }
 
 bool HTTPRequest::ConnectServer(const IPAddress &address, int port) {
-  SLOG(connection_, 3) << "In " << __func__;
+  SLOG(connection_.get(), 3) << "In " << __func__;
   if (!server_async_connection_->Start(address, port)) {
     LOG(ERROR) << "Could not create socket to connect to server at "
                << address.ToString();
@@ -170,7 +171,7 @@ bool HTTPRequest::ConnectServer(const IPAddress &address, int port) {
 
 // DNSClient callback that fires when the DNS request completes.
 void HTTPRequest::GetDNSResult(const Error &error, const IPAddress &address) {
-  SLOG(connection_, 3) << "In " << __func__;
+  SLOG(connection_.get(), 3) << "In " << __func__;
   if (!error.IsSuccess()) {
     LOG(ERROR) << "Could not resolve hostname "
                << server_hostname_
@@ -189,7 +190,7 @@ void HTTPRequest::GetDNSResult(const Error &error, const IPAddress &address) {
 // AsyncConnection callback routine which fires when the asynchronous Connect()
 // to the remote server completes (or fails).
 void HTTPRequest::OnConnectCompletion(bool success, int fd) {
-  SLOG(connection_, 3) << "In " << __func__;
+  SLOG(connection_.get(), 3) << "In " << __func__;
   if (!success) {
     LOG(ERROR) << "Socket connection delayed failure to "
                << server_hostname_
@@ -214,7 +215,7 @@ void HTTPRequest::OnServerReadError(const string &/*error_msg*/) {
 // IOInputHandler callback which fires when data has been read from the
 // server.
 void HTTPRequest::ReadFromServer(InputData *data) {
-  SLOG(connection_, 3) << "In " << __func__ << " length " << data->len;
+  SLOG(connection_.get(), 3) << "In " << __func__ << " length " << data->len;
   if (data->len == 0) {
     SendStatus(kResultSuccess);
     return;
@@ -264,8 +265,8 @@ void HTTPRequest::WriteToServer(int fd) {
                            request_data_.GetLength(), 0);
   CHECK(ret < 0 || static_cast<size_t>(ret) <= request_data_.GetLength());
 
-  SLOG(connection_, 3) << "In " << __func__ << " wrote " << ret << " of "
-                       << request_data_.GetLength();
+  SLOG(connection_.get(), 3) << "In " << __func__ << " wrote " << ret << " of "
+                             << request_data_.GetLength();
 
   if (ret < 0) {
     LOG(ERROR) << "Client write failed to "

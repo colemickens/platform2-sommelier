@@ -50,14 +50,14 @@ ConnectionTester::~ConnectionTester() {
 }
 
 void ConnectionTester::Start() {
-  SLOG(connection_, 3) << "In " << __func__;
+  SLOG(connection_.get(), 3) << "In " << __func__;
   if (!connectivity_trial_->Start(ConnectivityTrial::kDefaultURL, 0))
     LOG(ERROR) << StringPrintf("ConnectivityTrial failed to parse default "
                                "URL %s", ConnectivityTrial::kDefaultURL);
 }
 
 void ConnectionTester::Stop() {
-  SLOG(connection_, 3) << "In " << __func__;
+  SLOG(connection_.get(), 3) << "In " << __func__;
   connectivity_trial_->Stop();
 }
 

@@ -61,7 +61,7 @@ void Manager::CreateService(
   scoped_ptr<Service> service(new Service(this, service_identifier_++));
 
   service->RegisterAsync(
-      dbus_object_->GetObjectManager().get(), bus_, sequencer);
+      dbus_object_->GetObjectManager().get(), bus_, sequencer.get());
   sequencer->OnAllTasksCompletedCall({
       base::Bind(&Manager::OnServiceRegistered,
                  base::Unretained(this),
@@ -112,7 +112,7 @@ void Manager::RegisterDevice(scoped_refptr<Device> device) {
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   device->RegisterAsync(dbus_object_->GetObjectManager().get(),
                         bus_,
-                        sequencer,
+                        sequencer.get(),
                         device_identifier_++);
   sequencer->OnAllTasksCompletedCall({
     base::Bind(&Manager::OnDeviceRegistered,

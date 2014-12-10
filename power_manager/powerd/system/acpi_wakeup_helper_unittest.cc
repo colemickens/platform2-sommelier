@@ -90,7 +90,7 @@ class AcpiWakeupHelperTest : public ::testing::Test {
   virtual void SetUp() {
     scoped_ptr<FakeAcpiWakeupFile> file(new FakeAcpiWakeupFile());
     file_ = file.get();
-    helper_.set_file_for_testing(file.PassAs<AcpiWakeupFileInterface>());
+    helper_.set_file_for_testing(file.Pass());
   }
 
   AcpiWakeupHelper helper_;

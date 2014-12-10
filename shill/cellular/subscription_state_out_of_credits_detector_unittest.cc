@@ -48,7 +48,7 @@ class SubscriptionStateOutOfCreditsDetectorTest : public testing::Test {
         out_of_credits_detector_(
             new SubscriptionStateOutOfCreditsDetector(
                 modem_info_.dispatcher(), modem_info_.manager(),
-                modem_info_.metrics(), service_)) {}
+                modem_info_.metrics(), service_.get())) {}
 
   virtual void SetUp() {
     service_->connection_ = connection_;

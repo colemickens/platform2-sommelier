@@ -82,7 +82,7 @@ TEST_F(EthernetEapProviderTest, CredentialChangeCallback) {
       base::Bind(&EthernetEapProviderTest::Callback0,
                  base::Unretained(this));
 
-  provider_.SetCredentialChangeCallback(device0, callback0);
+  provider_.SetCredentialChangeCallback(device0.get(), callback0);
   EXPECT_CALL(*this, Callback0());
   EXPECT_CALL(*this, Callback1()).Times(0);
   provider_.OnCredentialsChanged();
@@ -98,22 +98,22 @@ TEST_F(EthernetEapProviderTest, CredentialChangeCallback) {
       base::Bind(&EthernetEapProviderTest::Callback1,
                  base::Unretained(this));
 
-  provider_.SetCredentialChangeCallback(device1, callback1);
+  provider_.SetCredentialChangeCallback(device1.get(), callback1);
   EXPECT_CALL(*this, Callback0());
   EXPECT_CALL(*this, Callback1());
   provider_.OnCredentialsChanged();
 
-  provider_.SetCredentialChangeCallback(device1, callback0);
+  provider_.SetCredentialChangeCallback(device1.get(), callback0);
   EXPECT_CALL(*this, Callback0()).Times(2);
   EXPECT_CALL(*this, Callback1()).Times(0);
   provider_.OnCredentialsChanged();
 
-  provider_.ClearCredentialChangeCallback(device0);
+  provider_.ClearCredentialChangeCallback(device0.get());
   EXPECT_CALL(*this, Callback0());
   EXPECT_CALL(*this, Callback1()).Times(0);
   provider_.OnCredentialsChanged();
 
-  provider_.ClearCredentialChangeCallback(device1);
+  provider_.ClearCredentialChangeCallback(device1.get());
   EXPECT_CALL(*this, Callback0()).Times(0);
   EXPECT_CALL(*this, Callback1()).Times(0);
   provider_.OnCredentialsChanged();

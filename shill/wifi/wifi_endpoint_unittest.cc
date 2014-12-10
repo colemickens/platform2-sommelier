@@ -691,52 +691,52 @@ TEST_F(WiFiEndpointTest, PropertiesChangedSecurityMode) {
   // Upgrade to WEP if privacy flag is added.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
   endpoint->PropertiesChanged(make_privacy_args(true));
-  Mock::VerifyAndClearExpectations(wifi());
+  Mock::VerifyAndClearExpectations(wifi().get());
   EXPECT_EQ(kSecurityWep, endpoint->security_mode());
 
   // Make sure we don't downgrade if no interesting arguments arrive.
   map<string, ::DBus::Variant> no_changed_properties;
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(0);
   endpoint->PropertiesChanged(no_changed_properties);
-  Mock::VerifyAndClearExpectations(wifi());
+  Mock::VerifyAndClearExpectations(wifi().get());
   EXPECT_EQ(kSecurityWep, endpoint->security_mode());
 
   // Another upgrade to 802.1x.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
   endpoint->PropertiesChanged(make_security_args("RSN", "something-eap"));
-  Mock::VerifyAndClearExpectations(wifi());
+  Mock::VerifyAndClearExpectations(wifi().get());
   EXPECT_EQ(kSecurity8021x, endpoint->security_mode());
 
   // Add WPA-PSK, however this is trumped by RSN 802.1x above, so we don't
   // change our security nor do we notify anyone.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(0);
   endpoint->PropertiesChanged(make_security_args("WPA", "something-psk"));
-  Mock::VerifyAndClearExpectations(wifi());
+  Mock::VerifyAndClearExpectations(wifi().get());
   EXPECT_EQ(kSecurity8021x, endpoint->security_mode());
 
   // If nothing changes, we should stay the same.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(0);
   endpoint->PropertiesChanged(no_changed_properties);
-  Mock::VerifyAndClearExpectations(wifi());
+  Mock::VerifyAndClearExpectations(wifi().get());
   EXPECT_EQ(kSecurity8021x, endpoint->security_mode());
 
   // However, if the BSS updates to no longer support 802.1x, we degrade
   // to WPA.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
   endpoint->PropertiesChanged(make_security_args("RSN", ""));
-  Mock::VerifyAndClearExpectations(wifi());
+  Mock::VerifyAndClearExpectations(wifi().get());
   EXPECT_EQ(kSecurityWpa, endpoint->security_mode());
 
   // Losing WPA brings us back to WEP (since the privacy flag hasn't changed).
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
   endpoint->PropertiesChanged(make_security_args("WPA", ""));
-  Mock::VerifyAndClearExpectations(wifi());
+  Mock::VerifyAndClearExpectations(wifi().get());
   EXPECT_EQ(kSecurityWep, endpoint->security_mode());
 
   // From WEP to open security.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
   endpoint->PropertiesChanged(make_privacy_args(false));
-  Mock::VerifyAndClearExpectations(wifi());
+  Mock::VerifyAndClearExpectations(wifi().get());
   EXPECT_EQ(kSecurityNone, endpoint->security_mode());
 }
 

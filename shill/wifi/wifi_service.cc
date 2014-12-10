@@ -683,13 +683,13 @@ void WiFiService::UpdateFromEndpoints() {
   const WiFiEndpoint *representative_endpoint = nullptr;
 
   if (current_endpoint_) {
-    representative_endpoint = current_endpoint_;
+    representative_endpoint = current_endpoint_.get();
   } else {
     int16_t best_signal = std::numeric_limits<int16_t>::min();
     for (const auto &endpoint : endpoints_) {
       if (endpoint->signal_strength() >= best_signal) {
         best_signal = endpoint->signal_strength();
-        representative_endpoint = endpoint;
+        representative_endpoint = endpoint.get();
       }
     }
   }

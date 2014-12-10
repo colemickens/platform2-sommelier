@@ -263,7 +263,7 @@ TEST_F(EthernetTest, LinkEvent) {
   EXPECT_TRUE(GetLinkUp());
   EXPECT_FALSE(GetIsEapDetected());
   Mock::VerifyAndClearExpectations(&manager_);
-  Mock::VerifyAndClearExpectations(mock_service_);
+  Mock::VerifyAndClearExpectations(mock_service_.get());
 
   // Link-up event while already up.
   EXPECT_CALL(manager_, UpdateService(_)).Times(0);
@@ -273,7 +273,7 @@ TEST_F(EthernetTest, LinkEvent) {
   EXPECT_TRUE(GetLinkUp());
   EXPECT_FALSE(GetIsEapDetected());
   Mock::VerifyAndClearExpectations(&manager_);
-  Mock::VerifyAndClearExpectations(mock_service_);
+  Mock::VerifyAndClearExpectations(mock_service_.get());
 
   // Link-down event while up.
   SetIsEapDetected(true);
@@ -303,7 +303,7 @@ TEST_F(EthernetTest, ConnectToLinkDown) {
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(0);
   EXPECT_CALL(dispatcher_, PostTask(_)).Times(0);
   EXPECT_CALL(*mock_service_, SetState(_)).Times(0);
-  ethernet_->ConnectTo(mock_service_);
+  ethernet_->ConnectTo(mock_service_.get());
   EXPECT_EQ(nullptr, GetSelectedService().get());
 }
 
@@ -317,7 +317,7 @@ TEST_F(EthernetTest, ConnectToFailure) {
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).WillOnce(Return(false));
   EXPECT_CALL(dispatcher_, PostTask(_));  // Posts ConfigureStaticIPTask.
   EXPECT_CALL(*mock_service_, SetState(Service::kStateFailure));
-  ethernet_->ConnectTo(mock_service_);
+  ethernet_->ConnectTo(mock_service_.get());
   EXPECT_EQ(mock_service_, GetSelectedService().get());
 }
 
@@ -333,10 +333,10 @@ TEST_F(EthernetTest, ConnectToSuccess) {
   EXPECT_CALL(*mock_service_, SetState(Service::kStateConfiguring));
   ethernet_->ConnectTo(mock_service_.get());
   EXPECT_EQ(GetService().get(), GetSelectedService().get());
-  Mock::VerifyAndClearExpectations(mock_service_);
+  Mock::VerifyAndClearExpectations(mock_service_.get());
 
   EXPECT_CALL(*mock_service_, SetState(Service::kStateIdle));
-  ethernet_->DisconnectFrom(mock_service_);
+  ethernet_->DisconnectFrom(mock_service_.get());
   EXPECT_EQ(nullptr, GetSelectedService().get());
 }
 
@@ -455,8 +455,8 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   EXPECT_CALL(*interface_proxy, SelectNetwork(_)).Times(0);
   EXPECT_CALL(*interface_proxy, EAPLogon()).Times(0);
   EXPECT_FALSE(InvokeStartEapAuthentication());
-  Mock::VerifyAndClearExpectations(mock_service_);
-  Mock::VerifyAndClearExpectations(mock_eap_service_);
+  Mock::VerifyAndClearExpectations(mock_service_.get());
+  Mock::VerifyAndClearExpectations(mock_eap_service_.get());
   Mock::VerifyAndClearExpectations(interface_proxy);
   EXPECT_EQ("", GetSupplicantNetworkPath());
 
@@ -471,8 +471,8 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   EXPECT_CALL(*interface_proxy, SelectNetwork(StrEq(kFirstNetworkPath)));
   EXPECT_CALL(*interface_proxy, EAPLogon());
   EXPECT_TRUE(InvokeStartEapAuthentication());
-  Mock::VerifyAndClearExpectations(mock_service_);
-  Mock::VerifyAndClearExpectations(mock_eap_service_);
+  Mock::VerifyAndClearExpectations(mock_service_.get());
+  Mock::VerifyAndClearExpectations(mock_eap_service_.get());
   Mock::VerifyAndClearExpectations(&mock_eap_credentials);
   Mock::VerifyAndClearExpectations(interface_proxy);
   EXPECT_EQ(kFirstNetworkPath, GetSupplicantNetworkPath());

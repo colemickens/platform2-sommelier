@@ -316,8 +316,8 @@ void Ethernet::SetIsEapAuthenticated(bool is_eap_authenticated) {
 
   // If our EAP authentication state changes, we have now joined a different
   // network.  Restart the DHCP process and any other connection state.
-  DisconnectFrom(service_);
-  ConnectTo(service_);
+  DisconnectFrom(service_.get());
+  ConnectTo(service_.get());
   is_eap_authenticated_ = is_eap_authenticated;
   adaptor()->EmitBoolChanged(kEapAuthenticationCompletedProperty,
                              is_eap_authenticated_);

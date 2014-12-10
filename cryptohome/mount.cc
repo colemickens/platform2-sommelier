@@ -934,7 +934,7 @@ bool Mount::SetupGroupAccess(const FilePath& home_dir) const {
   };
 
   mode_t mode = S_IXGRP;
-  for (size_t i = 0; i < ARRAYSIZE_UNSAFE(kGroupAccessiblePaths); ++i) {
+  for (size_t i = 0; i < arraysize(kGroupAccessiblePaths); ++i) {
     if (!platform_->FileExists(kGroupAccessiblePaths[i].path.value()) &&
         kGroupAccessiblePaths[i].optional)
       continue;

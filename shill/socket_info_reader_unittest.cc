@@ -79,8 +79,7 @@ class SocketInfoReaderTest : public testing::Test {
     for (size_t i = 0; i < num_lines; ++i) {
       string line = lines[i];
       line += '\n';
-      ASSERT_EQ(line.size(),
-                base::AppendToFile(*file_path, line.data(), line.size()));
+      ASSERT_TRUE(base::AppendToFile(*file_path, line.data(), line.size()));
     }
   }
 

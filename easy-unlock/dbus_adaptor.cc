@@ -160,8 +160,7 @@ scoped_ptr<dbus::Response> DBusAdaptor::Introspect(dbus::MethodCall* call) {
   if (!base::ReadFileToString(base::FilePath(kBindingsPath), &output)) {
     PLOG(ERROR) << "Cannot read XML bindings from disk";
     return dbus::ErrorResponse::FromMethodCall(
-        call, "Cannot read XML bindings fomr disk.", "")
-        .PassAs<dbus::Response>();
+        call, "Cannot read XML bindings from disk.", "").Pass();
   }
 
   scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call));

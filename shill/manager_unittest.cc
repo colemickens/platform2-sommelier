@@ -1038,7 +1038,7 @@ TEST_F(ManagerTest, PushPopProfile) {
   EXPECT_CALL(*service, ClearExplicitlyDisconnected()).Times(2);
   EXPECT_EQ(Error::kSuccess, TestPopAnyProfile(&manager));
   EXPECT_EQ(Error::kSuccess, TestPopAnyProfile(&manager));
-  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(service.get());
 
   // Next pop should fail with "stack is empty".
   EXPECT_EQ(Error::kNotFound, TestPopAnyProfile(&manager));
@@ -1177,8 +1177,8 @@ TEST_F(ManagerTest, RemoveService) {
   EXPECT_CALL(*profile, ConfigureService(service)).Times(0);
   EXPECT_CALL(*mock_service, Unload()).WillOnce(Return(false));
   manager()->RemoveService(service);
-  Mock::VerifyAndClearExpectations(mock_service);
-  Mock::VerifyAndClearExpectations(profile);
+  Mock::VerifyAndClearExpectations(mock_service.get());
+  Mock::VerifyAndClearExpectations(profile.get());
   EXPECT_EQ(GetEphemeralProfile(manager()), service->profile().get());
   EXPECT_TRUE(manager()->HasService(service));  // Since Unload() was false.
 
@@ -1191,8 +1191,8 @@ TEST_F(ManagerTest, RemoveService) {
   EXPECT_CALL(*profile, ConfigureService(service)).WillOnce(Return(true));
   EXPECT_CALL(*mock_service, Unload()).Times(0);
   manager()->RemoveService(service);
-  Mock::VerifyAndClearExpectations(mock_service);
-  Mock::VerifyAndClearExpectations(profile);
+  Mock::VerifyAndClearExpectations(mock_service.get());
+  Mock::VerifyAndClearExpectations(profile.get());
   EXPECT_TRUE(manager()->HasService(service));
   EXPECT_EQ(profile.get(), service->profile().get());
 
@@ -1588,8 +1588,8 @@ TEST_F(ManagerTest, RequestScan) {
     manager()->RequestScan(Device::kFullScan, kTypeWifi, &error);
     manager()->DeregisterDevice(mock_devices_[0].get());
     manager()->DeregisterDevice(mock_devices_[1].get());
-    Mock::VerifyAndClearExpectations(mock_devices_[0]);
-    Mock::VerifyAndClearExpectations(mock_devices_[1]);
+    Mock::VerifyAndClearExpectations(mock_devices_[0].get());
+    Mock::VerifyAndClearExpectations(mock_devices_[1].get());
 
     manager()->RegisterDevice(mock_devices_[0].get());
     EXPECT_CALL(*mock_devices_[0], technology())
@@ -1599,7 +1599,7 @@ TEST_F(ManagerTest, RequestScan) {
     EXPECT_CALL(*mock_devices_[0], Scan(Device::kFullScan, _, _));
     manager()->RequestScan(Device::kFullScan, kTypeWifi, &error);
     manager()->DeregisterDevice(mock_devices_[0].get());
-    Mock::VerifyAndClearExpectations(mock_devices_[0]);
+    Mock::VerifyAndClearExpectations(mock_devices_[0].get());
 
     manager()->RegisterDevice(mock_devices_[0].get());
     EXPECT_CALL(*mock_devices_[0], technology())
@@ -1609,7 +1609,7 @@ TEST_F(ManagerTest, RequestScan) {
     EXPECT_CALL(*mock_devices_[0], Scan(_, _, _)).Times(0);
     manager()->RequestScan(Device::kFullScan, kTypeWifi, &error);
     manager()->DeregisterDevice(mock_devices_[0].get());
-    Mock::VerifyAndClearExpectations(mock_devices_[0]);
+    Mock::VerifyAndClearExpectations(mock_devices_[0].get());
   }
 
   {
@@ -2998,13 +2998,13 @@ TEST_F(ManagerTest, Suspend) {
   OnSuspendImminent();
   EXPECT_CALL(*service, AutoConnect()).Times(0);
   dispatcher()->DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(mock_devices_[0]);
+  Mock::VerifyAndClearExpectations(mock_devices_[0].get());
 
   EXPECT_CALL(*mock_devices_[0], OnAfterResume());
   OnSuspendDone();
   EXPECT_CALL(*service, AutoConnect());
   dispatcher()->DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(mock_devices_[0]);
+  Mock::VerifyAndClearExpectations(mock_devices_[0].get());
 }
 
 TEST_F(ManagerTest, AddTerminationAction) {
@@ -4398,7 +4398,7 @@ TEST_F(ManagerTest, GeoLocation) {
       .WillRepeatedly(Return(Technology::kEthernet));
   EXPECT_CALL(*device, GetGeolocationObjects()).Times(0);
   manager()->OnDeviceGeolocationInfoUpdated(device);
-  Mock::VerifyAndClearExpectations(device);
+  Mock::VerifyAndClearExpectations(device.get());
   EXPECT_TRUE(manager()->GetNetworksForGeolocation().empty());
 
   // Manager should add WiFi geolocation info.
@@ -4408,7 +4408,7 @@ TEST_F(ManagerTest, GeoLocation) {
   EXPECT_CALL(*device, GetGeolocationObjects())
       .WillOnce(Return(vector<GeolocationInfo>()));
   manager()->OnDeviceGeolocationInfoUpdated(device);
-  Mock::VerifyAndClearExpectations(device);
+  Mock::VerifyAndClearExpectations(device.get());
   auto location_infos = manager()->GetNetworksForGeolocation();
   EXPECT_EQ(1, location_infos.size());
   EXPECT_TRUE(ContainsKey(location_infos, kGeoWifiAccessPointsProperty));
@@ -4462,7 +4462,7 @@ TEST_F(ManagerTest, IsWifiIdle) {
   EXPECT_TRUE(manager()->IsWifiIdle());
 
   // Attempt wifi connection.
-  Mock::VerifyAndClearExpectations(wifi_service);
+  Mock::VerifyAndClearExpectations(wifi_service.get());
   EXPECT_CALL(*wifi_service.get(), technology())
       .WillRepeatedly(Return(Technology::kWifi));
   EXPECT_CALL(*wifi_service.get(), IsConnecting())
@@ -4473,7 +4473,7 @@ TEST_F(ManagerTest, IsWifiIdle) {
   EXPECT_FALSE(manager()->IsWifiIdle());
 
   // wifi connected.
-  Mock::VerifyAndClearExpectations(wifi_service);
+  Mock::VerifyAndClearExpectations(wifi_service.get());
   EXPECT_CALL(*wifi_service.get(), technology())
       .WillRepeatedly(Return(Technology::kWifi));
   EXPECT_CALL(*wifi_service.get(), IsConnecting())
@@ -4565,9 +4565,9 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   EXPECT_TRUE(manager()->IsTechnologyProhibited(Technology::kVPN));
   EXPECT_TRUE(manager()->IsTechnologyProhibited(Technology::kWiMax));
   EXPECT_FALSE(manager()->IsTechnologyProhibited(Technology::kWifi));
-  Mock::VerifyAndClearExpectations(mock_devices_[0]);
-  Mock::VerifyAndClearExpectations(mock_devices_[1]);
-  Mock::VerifyAndClearExpectations(mock_devices_[2]);
+  Mock::VerifyAndClearExpectations(mock_devices_[0].get());
+  Mock::VerifyAndClearExpectations(mock_devices_[1].get());
+  Mock::VerifyAndClearExpectations(mock_devices_[2].get());
 
   // Newly registered devices should be disabled.
   mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
@@ -4598,9 +4598,9 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   manager()->RegisterDevice(mock_devices_[3]);
   manager()->RegisterDevice(mock_devices_[4]);
   manager()->RegisterDevice(mock_devices_[5]);
-  Mock::VerifyAndClearExpectations(mock_devices_[3]);
-  Mock::VerifyAndClearExpectations(mock_devices_[4]);
-  Mock::VerifyAndClearExpectations(mock_devices_[5]);
+  Mock::VerifyAndClearExpectations(mock_devices_[3].get());
+  Mock::VerifyAndClearExpectations(mock_devices_[4].get());
+  Mock::VerifyAndClearExpectations(mock_devices_[5].get());
 
   // Calls to enable a non-prohibited technology should succeed.
   Error enable_error(Error::kOperationInitiated);
