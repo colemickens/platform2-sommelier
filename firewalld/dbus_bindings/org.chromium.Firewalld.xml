@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <node name="/org/chromium/Firewalld">
   <interface name="org.chromium.Firewalld">
-    <method name="PunchHole">
+    <method name="PunchTcpHole">
       <arg type="q" name="port" direction="in" />
       <arg type="b" name="success" direction="out" />
     </method>
-    <method name="PlugHole">
+    <method name="PunchUdpHole">
+      <arg type="q" name="port" direction="in" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="PlugTcpHole">
+      <arg type="q" name="port" direction="in" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="PlugUdpHole">
       <arg type="q" name="port" direction="in" />
       <arg type="b" name="success" direction="out" />
     </method>

@@ -24,42 +24,79 @@ class IpTablesTest : public testing::Test {
 
 TEST_F(IpTablesTest, Port0Fails) {
   bool success = false;
-  // Try to punch hole for port 0.
-  ASSERT_TRUE(iptables_succeeds.PunchHole(nullptr, 0, &success));
+  // Try to punch hole for TCP port 0.
+  ASSERT_TRUE(iptables_succeeds.PunchTcpHole(nullptr, 0, &success));
+  // Port 0 is not a valid port.
+  ASSERT_FALSE(success);
+  // Try to punch hole for UDP port 0.
+  ASSERT_TRUE(iptables_succeeds.PunchUdpHole(nullptr, 0, &success));
   // Port 0 is not a valid port.
   ASSERT_FALSE(success);
 }
 
-TEST_F(IpTablesTest, PunchHoleSucceeds) {
+TEST_F(IpTablesTest, PunchTcpHoleSucceeds) {
   bool success = false;
-  // Punch hole for port 80, should succeed.
-  ASSERT_TRUE(iptables_succeeds.PunchHole(nullptr, 80, &success));
+  // Punch hole for TCP port 80, should succeed.
+  ASSERT_TRUE(iptables_succeeds.PunchTcpHole(nullptr, 80, &success));
   ASSERT_TRUE(success);
   // Punch again, should still succeed.
-  ASSERT_TRUE(iptables_succeeds.PunchHole(nullptr, 80, &success));
+  ASSERT_TRUE(iptables_succeeds.PunchTcpHole(nullptr, 80, &success));
   ASSERT_TRUE(success);
   // Plug the hole, should succeed.
-  ASSERT_TRUE(iptables_succeeds.PlugHole(nullptr, 80, &success));
+  ASSERT_TRUE(iptables_succeeds.PlugTcpHole(nullptr, 80, &success));
   ASSERT_TRUE(success);
 }
 
-TEST_F(IpTablesTest, PlugHoleSucceeds) {
+TEST_F(IpTablesTest, PlugTcpHoleSucceeds) {
   bool success = false;
-  // Punch hole for port 80, should succeed.
-  ASSERT_TRUE(iptables_succeeds.PunchHole(nullptr, 80, &success));
+  // Punch hole for TCP port 80, should succeed.
+  ASSERT_TRUE(iptables_succeeds.PunchTcpHole(nullptr, 80, &success));
   ASSERT_TRUE(success);
   // Plug the hole, should succeed.
-  ASSERT_TRUE(iptables_succeeds.PlugHole(nullptr, 80, &success));
+  ASSERT_TRUE(iptables_succeeds.PlugTcpHole(nullptr, 80, &success));
   ASSERT_TRUE(success);
   // Plug again, should fail.
-  ASSERT_TRUE(iptables_succeeds.PlugHole(nullptr, 80, &success));
+  ASSERT_TRUE(iptables_succeeds.PlugTcpHole(nullptr, 80, &success));
   ASSERT_FALSE(success);
 }
 
-TEST_F(IpTablesTest, PunchHoleFails) {
+TEST_F(IpTablesTest, PunchUdpHoleSucceeds) {
   bool success = false;
-  // Punch hole for port 80, should fail.
-  ASSERT_TRUE(iptables_fails.PunchHole(nullptr, 80, &success));
+  // Punch hole for UDP port 53, should succeed.
+  ASSERT_TRUE(iptables_succeeds.PunchUdpHole(nullptr, 53, &success));
+  ASSERT_TRUE(success);
+  // Punch again, should still succeed.
+  ASSERT_TRUE(iptables_succeeds.PunchUdpHole(nullptr, 53, &success));
+  ASSERT_TRUE(success);
+  // Plug the hole, should succeed.
+  ASSERT_TRUE(iptables_succeeds.PlugUdpHole(nullptr, 53, &success));
+  ASSERT_TRUE(success);
+}
+
+TEST_F(IpTablesTest, PlugUdpHoleSucceeds) {
+  bool success = false;
+  // Punch hole for UDP port 53, should succeed.
+  ASSERT_TRUE(iptables_succeeds.PunchUdpHole(nullptr, 53, &success));
+  ASSERT_TRUE(success);
+  // Plug the hole, should succeed.
+  ASSERT_TRUE(iptables_succeeds.PlugUdpHole(nullptr, 53, &success));
+  ASSERT_TRUE(success);
+  // Plug again, should fail.
+  ASSERT_TRUE(iptables_succeeds.PlugUdpHole(nullptr, 53, &success));
+  ASSERT_FALSE(success);
+}
+
+TEST_F(IpTablesTest, PunchTcpHoleFails) {
+  bool success = false;
+  // Punch hole for TCP port 80, should fail.
+  ASSERT_TRUE(iptables_fails.PunchTcpHole(nullptr, 80, &success));
+  ASSERT_FALSE(success);
+}
+
+TEST_F(IpTablesTest, PunchUdpHoleFails) {
+  bool success = false;
+  // Punch hole for UDP port 53, should fail.
+  ASSERT_TRUE(iptables_fails.PunchUdpHole(nullptr, 53, &success));
   ASSERT_FALSE(success);
 }
 

@@ -21,81 +21,101 @@ IpTables::IpTables() : IpTables{kIptablesPath} {}
 
 IpTables::IpTables(const std::string& path) : executable_path_{path} {}
 
-bool IpTables::PunchHole(chromeos::ErrorPtr* error,
-                                uint16_t in_port,
-                                bool* out_success) {
-  *out_success = false;
-
-  if (in_port == 0) {
-    // Port 0 is not a valid TCP/UDP port.
-    *out_success = false;
-    return true;
-  }
-
-  if (tcp_holes_.find(in_port) != tcp_holes_.end()) {
-    // We have already punched a hole for |in_port|.
-    // Be idempotent: do nothing and succeed.
-    *out_success = true;
-    return true;
-  }
-
-  LOG(INFO) << "Punching hole for port " << in_port;
-  if (!IpTables::AddAllowRule(executable_path_, in_port)) {
-    // If the 'iptables' command fails, this method fails.
-    LOG(ERROR) << "Calling 'iptables' failed";
-    *out_success = false;
-    return true;
-  }
-
-  // Track the hole we just punched.
-  tcp_holes_.insert(in_port);
-
-  *out_success = true;
+bool IpTables::PunchTcpHole(chromeos::ErrorPtr* error,
+                            uint16_t in_port,
+                            bool* out_success) {
+  *out_success = PunchHole(in_port, &tcp_holes_, kProtocolTcp);
   return true;
 }
 
-bool IpTables::PlugHole(chromeos::ErrorPtr* error,
-                               uint16_t in_port,
-                               bool* out_success) {
-  *out_success = false;
+bool IpTables::PunchUdpHole(chromeos::ErrorPtr* error,
+                            uint16_t in_port,
+                            bool* out_success) {
+  *out_success = PunchHole(in_port, &udp_holes_, kProtocolUdp);
+  return true;
+}
 
-  if (in_port == 0) {
+bool IpTables::PlugTcpHole(chromeos::ErrorPtr* error,
+                           uint16_t in_port,
+                           bool* out_success) {
+  *out_success = PlugHole(in_port, &tcp_holes_, kProtocolTcp);
+  return true;
+}
+
+bool IpTables::PlugUdpHole(chromeos::ErrorPtr* error,
+                           uint16_t in_port,
+                           bool* out_success) {
+  *out_success = PlugHole(in_port, &udp_holes_, kProtocolUdp);
+  return true;
+}
+
+bool IpTables::PunchHole(uint16_t port,
+                         std::unordered_set<uint16_t>* holes,
+                         enum ProtocolEnum protocol) {
+  if (port == 0) {
     // Port 0 is not a valid TCP/UDP port.
-    *out_success = false;
+    return false;
+  }
+
+  if (holes->find(port) != holes->end()) {
+    // We have already punched a hole for |port|.
+    // Be idempotent: do nothing and succeed.
     return true;
   }
 
-  if (tcp_holes_.find(in_port) == tcp_holes_.end()) {
-    // There is no firewall hole for |in_port|.
-    // Even though this makes |PlugHole| not idempotent,
-    // and Punch/Plug not entirely symmetrical, fail. It might help catch bugs.
-    *out_success = false;
-    return true;
-  }
-
-  LOG(INFO) << "Plugging hole for port " << in_port;
-  if (!IpTables::DeleteAllowRule(executable_path_, in_port)) {
+  std::string sprotocol = protocol == kProtocolTcp ? "TCP" : "UDP";
+  LOG(INFO) << "Punching hole for " << sprotocol << " port " << port;
+  if (!IpTables::AddAllowRule(executable_path_, protocol, port)) {
     // If the 'iptables' command fails, this method fails.
     LOG(ERROR) << "Calling 'iptables' failed";
-    *out_success = false;
-    return true;
+    return false;
+  }
+
+  // Track the hole we just punched.
+  holes->insert(port);
+
+  return true;
+}
+
+bool IpTables::PlugHole(uint16_t port,
+                        std::unordered_set<uint16_t>* holes,
+                        enum ProtocolEnum protocol) {
+  if (port == 0) {
+    // Port 0 is not a valid TCP/UDP port.
+    return false;
+  }
+
+  if (holes->find(port) == holes->end()) {
+    // There is no firewall hole for |port|.
+    // Even though this makes |PlugHole| not idempotent,
+    // and Punch/Plug not entirely symmetrical, fail. It might help catch bugs.
+    return false;
+  }
+
+  std::string sprotocol = protocol == kProtocolTcp ? "TCP" : "UDP";
+  LOG(INFO) << "Plugging hole for " << sprotocol << " port " << port;
+  if (!IpTables::DeleteAllowRule(executable_path_, protocol, port)) {
+    // If the 'iptables' command fails, this method fails.
+    LOG(ERROR) << "Calling 'iptables' failed";
+    return false;
   }
 
   // Stop tracking the hole we just plugged.
-  tcp_holes_.erase(in_port);
+  holes->erase(port);
 
-  *out_success = true;
   return true;
 }
 
 // static
-bool IpTables::AddAllowRule(const std::string& path, uint16_t port) {
+bool IpTables::AddAllowRule(const std::string& path,
+                            enum ProtocolEnum protocol,
+                            uint16_t port) {
   chromeos::ProcessImpl iptables;
   iptables.AddArg(path);
   iptables.AddArg("-A");  // append
   iptables.AddArg("INPUT");
   iptables.AddArg("-p");  // protocol
-  iptables.AddArg("tcp");
+  iptables.AddArg(protocol == kProtocolTcp ? "tcp" : "udp");
   iptables.AddArg("--dport");  // destination port
   std::string port_number = base::StringPrintf("%d", port);
   iptables.AddArg(port_number.c_str());
@@ -106,13 +126,15 @@ bool IpTables::AddAllowRule(const std::string& path, uint16_t port) {
 }
 
 // static
-bool IpTables::DeleteAllowRule(const std::string& path, uint16_t port) {
+bool IpTables::DeleteAllowRule(const std::string& path,
+                               enum ProtocolEnum protocol,
+                               uint16_t port) {
   chromeos::ProcessImpl iptables;
   iptables.AddArg(path);
   iptables.AddArg("-D");  // delete
   iptables.AddArg("INPUT");
   iptables.AddArg("-p");  // protocol
-  iptables.AddArg("tcp");
+  iptables.AddArg(protocol == kProtocolTcp ? "tcp" : "udp");
   iptables.AddArg("--dport");  // destination port
   std::string port_number = base::StringPrintf("%d", port);
   iptables.AddArg(port_number.c_str());

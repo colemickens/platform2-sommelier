@@ -17,21 +17,33 @@
 
 namespace firewalld {
 
+enum ProtocolEnum { kProtocolTcp, kProtocolUdp };
+
 class IpTables : public org::chromium::FirewalldInterface {
  public:
   IpTables();
 
   // D-Bus methods.
-  bool PunchHole(chromeos::ErrorPtr* error,
-                 uint16_t in_port,
-                 bool* out_success);
-  bool PlugHole(chromeos::ErrorPtr* error,
-                uint16_t in_port,
-                bool* out_success);
+  bool PunchTcpHole(chromeos::ErrorPtr* error,
+                    uint16_t in_port,
+                    bool* out_success);
+  bool PunchUdpHole(chromeos::ErrorPtr* error,
+                    uint16_t in_port,
+                    bool* out_success);
+  bool PlugTcpHole(chromeos::ErrorPtr* error,
+                   uint16_t in_port,
+                   bool* out_success);
+  bool PlugUdpHole(chromeos::ErrorPtr* error,
+                   uint16_t in_port,
+                   bool* out_success);
 
  protected:
-  static bool AddAllowRule(const std::string& path, uint16_t port);
-  static bool DeleteAllowRule(const std::string& path, uint16_t port);
+  static bool AddAllowRule(const std::string& path,
+                           enum ProtocolEnum protocol,
+                           uint16_t port);
+  static bool DeleteAllowRule(const std::string& path,
+                              enum ProtocolEnum protocol,
+                              uint16_t port);
 
   // Test-only.
   explicit IpTables(const std::string& path);
@@ -39,11 +51,18 @@ class IpTables : public org::chromium::FirewalldInterface {
  private:
   friend class IpTablesTest;
 
+  bool PunchHole(uint16_t port,
+                 std::unordered_set<uint16_t>* holes,
+                 enum ProtocolEnum protocol);
+  bool PlugHole(uint16_t port,
+                std::unordered_set<uint16_t>* holes,
+                enum ProtocolEnum protocol);
+
   std::string executable_path_;
 
   // Keep track of firewall holes to avoid adding redundant firewall rules.
-  std::unordered_set<int> tcp_holes_;
-  std::unordered_set<int> udp_holes_;
+  std::unordered_set<uint16_t> tcp_holes_;
+  std::unordered_set<uint16_t> udp_holes_;
 
   DISALLOW_COPY_AND_ASSIGN(IpTables);
 };
