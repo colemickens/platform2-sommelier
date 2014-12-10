@@ -162,7 +162,11 @@ class PerfParser : public PerfReader {
 
   // Sort |parsed_events_| by time, storing the results in
   // |parsed_events_sorted_by_time_|.
-  void SortParsedEvents();
+  // Events can not be sorted by time if PERF_SAMPLE_TIME is not set in
+  // attr.sample_type (PerfReader.sample_type_). In that case,
+  // |parsed_events_sorted_by_time_| is not actually sorted, but has the same
+  // order as |parsed_events_|.
+  void MaybeSortParsedEvents();
 
   // Used for processing events.  e.g. remapping with synthetic addresses.
   bool ProcessEvents();
@@ -186,6 +190,8 @@ class PerfParser : public PerfReader {
   bool MapSampleEvent(ParsedEvent* parsed_event);
 
   std::vector<ParsedEvent> parsed_events_;
+  // See MaybeSortParsedEvents to see why this might not actually be sorted
+  // by time:
   std::vector<ParsedEvent*> parsed_events_sorted_by_time_;
 
   Options options_;   // Store all option flags as one struct.

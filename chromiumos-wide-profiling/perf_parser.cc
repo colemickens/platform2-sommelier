@@ -27,7 +27,8 @@ struct EventAndTime {
 // Returns true if |e1| has an earlier timestamp than |e2|.  The args are const
 // pointers instead of references because of the way this function is used when
 // calling std::stable_sort.
-bool CompareParsedEventTimes(const EventAndTime* e1, const EventAndTime* e2) {
+bool CompareParsedEventTimes(const std::unique_ptr<EventAndTime>& e1,
+                             const std::unique_ptr<EventAndTime>& e2) {
   return (e1->time < e2->time);
 }
 
@@ -60,7 +61,7 @@ bool PerfParser::ParseRawEvents() {
     ParsedEvent& parsed_event = parsed_events_[i];
     parsed_event.raw_event = events_[i].get();
   }
-  SortParsedEvents();
+  MaybeSortParsedEvents();
   ProcessEvents();
 
   if (!options_.discard_unused_events)
@@ -87,16 +88,23 @@ bool PerfParser::ParseRawEvents() {
 
   // Now regenerate the sorted event list again.  These are pointers to events
   // so they must be regenerated after a resize() of the ParsedEvent vector.
-  SortParsedEvents();
+  MaybeSortParsedEvents();
 
   return true;
 }
 
-void PerfParser::SortParsedEvents() {
-  std::vector<EventAndTime*> events_and_times;
+void PerfParser::MaybeSortParsedEvents() {
+  if (!(sample_type_ & PERF_SAMPLE_TIME)) {
+    parsed_events_sorted_by_time_.resize(parsed_events_.size());
+    for (size_t i = 0; i < parsed_events_.size(); ++i) {
+      parsed_events_sorted_by_time_[i] = &parsed_events_[i];
+    }
+    return;
+  }
+  std::vector<std::unique_ptr<EventAndTime>> events_and_times;
   events_and_times.resize(parsed_events_.size());
   for (size_t i = 0; i < parsed_events_.size(); ++i) {
-    EventAndTime* event_and_time = new EventAndTime;
+    std::unique_ptr<EventAndTime> event_and_time(new EventAndTime);
 
     // Store the timestamp and event pointer in an array.
     event_and_time->event = &parsed_events_[i];
@@ -105,7 +113,7 @@ void PerfParser::SortParsedEvents() {
     CHECK(ReadPerfSampleInfo(*parsed_events_[i].raw_event, &sample_info));
     event_and_time->time = sample_info.time;
 
-    events_and_times[i] = event_and_time;
+    events_and_times[i] = std::move(event_and_time);
   }
   // Sort the events based on timestamp, and then populate the sorted event
   // vector in sorted order.
@@ -115,7 +123,6 @@ void PerfParser::SortParsedEvents() {
   parsed_events_sorted_by_time_.resize(events_and_times.size());
   for (unsigned int i = 0; i < events_and_times.size(); ++i) {
     parsed_events_sorted_by_time_[i] = events_and_times[i]->event;
-    delete events_and_times[i];
   }
 }
 
@@ -132,6 +139,7 @@ bool PerfParser::ProcessEvents() {
   pidtid_to_comm_map_[std::make_pair(kSwapperPid, kSwapperPid)] =
       &(*commands_.find(kSwapperCommandName));
 
+  // NB: Not necessarily actually sorted by time.
   for (unsigned int i = 0; i < parsed_events_sorted_by_time_.size(); ++i) {
     ParsedEvent& parsed_event = *parsed_events_sorted_by_time_[i];
     event_t& event = *parsed_event.raw_event;

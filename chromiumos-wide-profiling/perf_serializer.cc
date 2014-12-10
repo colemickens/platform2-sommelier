@@ -42,7 +42,7 @@ bool PerfSerializer::Serialize(PerfDataProto* perf_data_proto) {
     return false;
   }
 
-  // Serialize events in either chronological or raw data order.
+  // Serialize events in either chronological (if possible) or raw data order.
   if (!serialize_sorted_events_ &&
       !SerializeEvents(parsed_events_, perf_data_proto->mutable_events())) {
     return false;
@@ -115,7 +115,7 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
     return false;
   }
 
-  SortParsedEvents();
+  MaybeSortParsedEvents();
   if (!ProcessEvents())
     return false;
 
