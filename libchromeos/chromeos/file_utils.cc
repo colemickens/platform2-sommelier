@@ -5,7 +5,6 @@
 #include "libchromeos/chromeos/file_utils.h"
 
 #include <fcntl.h>
-#include <sys/fsuid.h>
 #include <unistd.h>
 
 #include <base/files/file_path.h>
@@ -161,7 +160,7 @@ bool TouchFile(const base::FilePath& path,
 bool TouchFile(const base::FilePath& path) {
   // Use TouchFile() instead of TouchFileInternal() to explicitly set
   // permissions to 600 in case umask is set strangely.
-  return TouchFile(path, kPermissions600, setfsuid(-1), setfsgid(-1));
+  return TouchFile(path, kPermissions600, geteuid(), getegid());
 }
 
 }  // namespace chromeos

@@ -25,7 +25,7 @@ CHROMEOS_EXPORT bool TouchFile(const base::FilePath& path,
                                gid_t gid);
 
 // Convenience version of TouchFile() defaulting to 600 permissions and the
-// current fsuid/fsgid.
+// current euid/egid.
 // Should be safe to use in all directories, including tmpdirs with the sticky
 // bit set.
 CHROMEOS_EXPORT bool TouchFile(const base::FilePath& path);
