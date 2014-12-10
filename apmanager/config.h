@@ -25,10 +25,19 @@ class Config
   Config(Manager* manager, const std::string& service_path);
   virtual ~Config();
 
-  // Implementation of ConfigInterface.
-  // Handles calls to org.chromium.apmanager.Config.SsidSet().
-  virtual bool SsidSet(chromeos::ErrorPtr* error,
-                       const std::string& ssid);
+  // Override ConfigAdaptor Validate functions.
+  bool ValidateSsid(chromeos::ErrorPtr* error,
+                    const std::string& value) override;
+  bool ValidateSecurityMode(chromeos::ErrorPtr* error,
+                            const std::string& value) override;
+  bool ValidatePassphrase(chromeos::ErrorPtr* error,
+                          const std::string& value) override;
+  bool ValidateHwMode(chromeos::ErrorPtr* error,
+                      const std::string& value) override;
+  bool ValidateOperationMode(chromeos::ErrorPtr* error,
+                             const std::string& value) override;
+  bool ValidateChannel(chromeos::ErrorPtr* error,
+                       const uint16_t& value) override;
 
   // Calculate the frequency based on the given |channel|. Return true and set
   // the output |frequency| if is valid channel, false otherwise.
@@ -106,6 +115,11 @@ class Config
   static const uint16_t kBand5GHzChannelLow;
   static const uint16_t kBand5GHzChannelHigh;
   static const uint16_t kBand5GHzBaseFrequency;
+
+  static const int kSsidMinLength;
+  static const int kSsidMaxLength;
+  static const int kPassphraseMinLength;
+  static const int kPassphraseMaxLength;
 
   // Append default hostapd configurations to the config file.
   bool AppendHostapdDefaults(chromeos::ErrorPtr* error,

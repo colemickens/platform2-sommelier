@@ -26,6 +26,7 @@ namespace {
 const char kServicePath[] = "/manager/services/0";
 const char kSsid[] = "TestSsid";
 const char kInterface[] = "uap0";
+const char kBridgeInterface[] = "br0";
 const char kPassphrase[] = "Passphrase";
 const char k24GHzHTCapab[] = "[LDPC SMPS-STATIC GF SHORT-GI-20]";
 const char k5GHzHTCapab[] =
@@ -41,6 +42,15 @@ const char kExpected80211gConfigContent[] = "ssid=TestSsid\n"
                                             "driver=nl80211\n"
                                             "fragm_threshold=2346\n"
                                             "rts_threshold=2347\n";
+
+const char kExpected80211gBridgeConfigContent[] = "ssid=TestSsid\n"
+                                                  "bridge=br0\n"
+                                                  "channel=6\n"
+                                                  "interface=uap0\n"
+                                                  "hw_mode=g\n"
+                                                  "driver=nl80211\n"
+                                                  "fragm_threshold=2346\n"
+                                                  "rts_threshold=2347\n";
 
 const char kExpected80211n5GHzConfigContent[] =
     "ssid=TestSsid\n"
@@ -126,6 +136,60 @@ TEST_F(ConfigTest, GetFrequencyFromChannel) {
   EXPECT_EQ(kChannel165Frequency, frequency);
 }
 
+TEST_F(ConfigTest, ValidateSsid) {
+  chromeos::ErrorPtr error;
+  // SSID must contain between 1 and 32 characters.
+  EXPECT_TRUE(config_.ValidateSsid(&error, "s"));
+  EXPECT_TRUE(config_.ValidateSsid(&error, std::string(32, 'c')));
+  EXPECT_FALSE(config_.ValidateSsid(&error, ""));
+  EXPECT_FALSE(config_.ValidateSsid(&error, std::string(33, 'c')));
+}
+
+TEST_F(ConfigTest, ValidateSecurityMode) {
+  chromeos::ErrorPtr error;
+  EXPECT_TRUE(config_.ValidateSecurityMode(&error, kSecurityModeNone));
+  EXPECT_TRUE(config_.ValidateSecurityMode(&error, kSecurityModeRSN));
+  EXPECT_FALSE(config_.ValidateSecurityMode(&error, "InvalidSecurityMode"));
+}
+
+TEST_F(ConfigTest, ValidatePassphrase) {
+  chromeos::ErrorPtr error;
+  // Passpharse must contain between 8 and 63 characters.
+  EXPECT_TRUE(config_.ValidatePassphrase(&error, std::string(8, 'c')));
+  EXPECT_TRUE(config_.ValidatePassphrase(&error, std::string(63, 'c')));
+  EXPECT_FALSE(config_.ValidatePassphrase(&error, std::string(7, 'c')));
+  EXPECT_FALSE(config_.ValidatePassphrase(&error, std::string(64, 'c')));
+}
+
+TEST_F(ConfigTest, ValidateHwMode) {
+  chromeos::ErrorPtr error;
+  EXPECT_TRUE(config_.ValidateHwMode(&error, kHwMode80211a));
+  EXPECT_TRUE(config_.ValidateHwMode(&error, kHwMode80211b));
+  EXPECT_TRUE(config_.ValidateHwMode(&error, kHwMode80211g));
+  EXPECT_TRUE(config_.ValidateHwMode(&error, kHwMode80211n));
+  EXPECT_TRUE(config_.ValidateHwMode(&error, kHwMode80211ac));
+  EXPECT_FALSE(config_.ValidateSecurityMode(&error, "InvalidHwMode"));
+}
+
+TEST_F(ConfigTest, ValidateOperationMode) {
+  chromeos::ErrorPtr error;
+  EXPECT_TRUE(config_.ValidateOperationMode(&error, kOperationModeServer));
+  EXPECT_TRUE(config_.ValidateOperationMode(&error, kOperationModeBridge));
+  EXPECT_FALSE(config_.ValidateOperationMode(&error, "InvalidMode"));
+}
+
+TEST_F(ConfigTest, ValidateChannel) {
+  chromeos::ErrorPtr error;
+  EXPECT_TRUE(config_.ValidateChannel(&error, 1));
+  EXPECT_TRUE(config_.ValidateChannel(&error, 13));
+  EXPECT_TRUE(config_.ValidateChannel(&error, 34));
+  EXPECT_TRUE(config_.ValidateChannel(&error, 165));
+  EXPECT_FALSE(config_.ValidateChannel(&error, 0));
+  EXPECT_FALSE(config_.ValidateChannel(&error, 14));
+  EXPECT_FALSE(config_.ValidateChannel(&error, 33));
+  EXPECT_FALSE(config_.ValidateChannel(&error, 166));
+}
+
 TEST_F(ConfigTest, NoSsid) {
   config_.SetChannel(k24GHzChannel);
   config_.SetHwMode(kHwMode80211g);
@@ -164,6 +228,54 @@ TEST_F(ConfigTest, NoInterface) {
       << config_content;
   EXPECT_EQ(nullptr, error1.get());
   Mock::VerifyAndClearExpectations(&manager_);
+}
+
+TEST_F(ConfigTest, InvalidInterface) {
+  // Basic 80211.g configuration.
+  config_.SetSsid(kSsid);
+  config_.SetChannel(k24GHzChannel);
+  config_.SetHwMode(kHwMode80211g);
+  config_.SetInterfaceName(kInterface);
+
+  // No device available, fail to generate config file.
+  chromeos::ErrorPtr error;
+  std::string config_content;
+  EXPECT_CALL(manager_, GetDeviceFromInterfaceName(kInterface))
+      .WillOnce(Return(nullptr));
+  EXPECT_FALSE(config_.GenerateConfigFile(&error, &config_content));
+  EXPECT_THAT(error,
+              IsConfigErrorStartingWith(
+                  "Unable to find device for the specified interface"));
+  Mock::VerifyAndClearExpectations(&manager_);
+}
+
+TEST_F(ConfigTest, BridgeMode) {
+  config_.SetSsid(kSsid);
+  config_.SetChannel(k24GHzChannel);
+  config_.SetHwMode(kHwMode80211g);
+  config_.SetInterfaceName(kInterface);
+  config_.SetOperationMode(kOperationModeBridge);
+
+  // Bridge interface required for bridge mode.
+  chromeos::ErrorPtr error;
+  std::string config_content;
+  EXPECT_FALSE(config_.GenerateConfigFile(&error, &config_content));
+  EXPECT_THAT(error,
+              IsConfigErrorStartingWith("Bridge interface not specified"));
+
+  // Set bridge interface, config file should be generated without error.
+  config_.SetBridgeInterface(kBridgeInterface);
+  // Setup mock device.
+  SetupDevice(kInterface);
+  chromeos::ErrorPtr error1;
+  std::string config_content1;
+  EXPECT_TRUE(config_.GenerateConfigFile(&error1, &config_content1));
+  EXPECT_NE(std::string::npos, config_content1.find(
+                                   kExpected80211gBridgeConfigContent))
+      << "Expected to find the following config...\n"
+      << kExpected80211gBridgeConfigContent << "..within content...\n"
+      << config_content1;
+  EXPECT_EQ(nullptr, error1.get());
 }
 
 TEST_F(ConfigTest, 80211gConfig) {

@@ -65,6 +65,12 @@ const uint16_t Config::kBand5GHzChannelLow = 34;
 const uint16_t Config::kBand5GHzChannelHigh = 165;
 const uint16_t Config::kBand5GHzBaseFrequency = 5170;
 
+// static
+const int Config::kSsidMinLength = 1;
+const int Config::kSsidMaxLength = 32;
+const int Config::kPassphraseMinLength = 8;
+const int Config::kPassphraseMaxLength = 63;
+
 Config::Config(Manager* manager, const string& service_path)
     : org::chromium::apmanager::ConfigAdaptor(this),
       manager_(manager),
@@ -95,10 +101,70 @@ bool Config::GetFrequencyFromChannel(uint16_t channel, uint32_t* freq) {
   return ret_value;
 }
 
-bool Config::SsidSet(ErrorPtr* error, const string& ssid) {
-  // TODO(zqiu): validate ssid string.
-  SetSsid(ssid);
+bool Config::ValidateSsid(ErrorPtr* error, const string& value) {
+  if (value.length() < kSsidMinLength || value.length() > kSsidMaxLength) {
+    chromeos::Error::AddToPrintf(
+        error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+        "SSID must contain between %d and %d characters",
+        kSsidMinLength, kSsidMaxLength);
+    return false;
+  }
   return true;
+}
+
+bool Config::ValidateSecurityMode(ErrorPtr* error, const string& value) {
+  if (value != kSecurityModeNone && value != kSecurityModeRSN) {
+    chromeos::Error::AddToPrintf(
+        error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+        "Invalid/unsupported security mode [%s]", value.c_str());
+    return false;
+  }
+  return true;
+}
+
+bool Config::ValidatePassphrase(ErrorPtr* error, const string& value) {
+  if (value.length() < kPassphraseMinLength ||
+      value.length() > kPassphraseMaxLength) {
+    chromeos::Error::AddToPrintf(
+        error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+        "Passphrase must contain between %d and %d characters",
+        kPassphraseMinLength, kPassphraseMaxLength);
+    return false;
+  }
+  return true;
+}
+
+bool Config::ValidateHwMode(ErrorPtr* error, const string& value) {
+  if (value != kHwMode80211a && value != kHwMode80211b &&
+      value != kHwMode80211g && value != kHwMode80211n &&
+      value != kHwMode80211ac) {
+    chromeos::Error::AddToPrintf(
+        error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+        "Invalid HW mode [%s]", value.c_str());
+    return false;
+  }
+  return true;
+}
+
+bool Config::ValidateOperationMode(ErrorPtr* error, const string& value) {
+  if (value != kOperationModeServer && value != kOperationModeBridge) {
+    chromeos::Error::AddToPrintf(
+        error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+        "Invalid operation mode [%s]", value.c_str());
+    return false;
+  }
+  return true;
+}
+
+bool Config::ValidateChannel(ErrorPtr* error, const uint16_t& value) {
+  if ((value >= kBand24GHzChannelLow && value <= kBand24GHzChannelHigh) ||
+      (value >= kBand5GHzChannelLow && value <= kBand5GHzChannelHigh)) {
+    return true;
+  }
+  chromeos::Error::AddToPrintf(
+      error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+      "Invalid channel [%d]", value);
+  return false;
 }
 
 void Config::RegisterAsync(ExportedObjectManager* object_manager,
@@ -126,6 +192,20 @@ bool Config::GenerateConfigFile(ErrorPtr* error, string* config_str) {
   }
   base::StringAppendF(
       config_str, "%s=%s\n", kHostapdConfigKeySsid, ssid.c_str());
+
+  // Bridge interface is required for bridge mode operation.
+  if (GetOperationMode() == kOperationModeBridge) {
+    if (GetBridgeInterface().empty()) {
+      chromeos::Error::AddTo(
+          error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+          "Bridge interface not specified, required for bridge mode");
+      return false;
+    }
+    base::StringAppendF(config_str,
+                        "%s=%s\n",
+                        kHostapdConfigKeyBridgeInterface,
+                        GetBridgeInterface().c_str());
+  }
 
   // Channel.
   base::StringAppendF(
@@ -256,6 +336,13 @@ bool Config::AppendInterface(ErrorPtr* error,
     }
   } else {
     device_ = manager_->GetDeviceFromInterfaceName(interface);
+    if (!device_) {
+      chromeos::Error::AddToPrintf(
+          error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
+          "Unable to find device for the specified interface [%s]",
+          interface.c_str());
+      return false;
+    }
     if (device_->GetInUsed()) {
       chromeos::Error::AddToPrintf(
           error, FROM_HERE, chromeos::errors::dbus::kDomain, kConfigError,
