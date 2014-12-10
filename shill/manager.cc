@@ -266,6 +266,10 @@ void Manager::Stop() {
     service->Disconnect(&e, __func__);
   }
 
+  for (const auto &device : devices_) {
+    device->SetEnabled(false);
+  }
+
   adaptor_->UpdateRunning();
   for (const auto &provider_mapping : providers_) {
     provider_mapping.second->Stop();

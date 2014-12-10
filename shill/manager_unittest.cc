@@ -2802,6 +2802,7 @@ TEST_F(ManagerTest, Stop) {
   EXPECT_CALL(*profile.get(),
               UpdateDevice(DeviceRefPtr(mock_devices_[0].get())))
       .WillOnce(Return(true));
+  EXPECT_CALL(*mock_devices_[0].get(), SetEnabled(false));
   EXPECT_CALL(*profile.get(), UpdateWiFiProvider(_)).WillOnce(Return(true));
   EXPECT_CALL(*profile.get(), Save()).WillOnce(Return(true));
   EXPECT_CALL(*service.get(), Disconnect(_, StrEq("Stop"))).Times(1);

@@ -86,7 +86,6 @@ Ethernet::Ethernet(ControlInterface *control_interface,
 }
 
 Ethernet::~Ethernet() {
-  Stop(nullptr, EnabledStateChangedCallback());
 }
 
 void Ethernet::Start(Error *error,
