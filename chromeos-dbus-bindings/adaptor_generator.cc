@@ -196,6 +196,32 @@ void AdaptorGenerator::RegisterInterface(const string& itf_name,
     text->AddBlankLine();
   for (const auto& property : interface.properties) {
     string variable_name = NameParser{property.name}.MakeVariableName();
+    string write_access;
+    if (property.access == "write") {
+      write_access = "kWriteOnly";
+    } else if (property.access == "readwrite") {
+      write_access = "kReadWrite";
+    }
+    if (!write_access.empty()) {
+      text->AddLine(StringPrintf("%s_.SetAccessMode(", variable_name.c_str()));
+      text->PushOffset(kLineContinuationOffset);
+      text->AddLine(
+          StringPrintf(
+              "chromeos::dbus_utils::ExportedPropertyBase::Access::%s);",
+              write_access.c_str()));
+      text->PopOffset();
+      text->AddLine(StringPrintf("%s_.SetValidator(", variable_name.c_str()));
+      text->PushOffset(kLineContinuationOffset);
+      text->AddLineAndPushOffsetTo(
+          StringPrintf(
+              "base::Bind(&%s::Validate%s,",
+              NameParser{interface.name}.MakeAdaptorName(false).c_str(),
+              property.name.c_str()),
+          1, '(');
+      text->AddLine("base::Unretained(this)));");
+      text->PopOffset();
+      text->PopOffset();
+    }
     text->AddLine(StringPrintf("itf->AddProperty(\"%s\", &%s_);",
                                property.name.c_str(), variable_name.c_str()));
   }
@@ -412,6 +438,25 @@ void AdaptorGenerator::AddPropertyMethodImplementation(
                                variable_name.c_str()));
     block.PopOffset();
     block.AddLine("}");
+
+    // Validation method for property with write access.
+    if (property.access != "read") {
+      CHECK(signature.Parse(property.type, &type));
+      block.AddLine(StringPrintf("virtual bool Validate%s(",
+                                 property.name.c_str()));
+      block.PushOffset(kLineContinuationOffset);
+      // Explicitly specify the "value" parameter as const & to match the
+      // validator callback function signature.
+      block.AddLine(
+          StringPrintf(
+              "chromeos::ErrorPtr* /*error*/, const %s& /*value*/) {",
+              type.c_str()));
+      block.PopOffset();
+      block.PushOffset(kBlockOffset);
+      block.AddLine("return true;");
+      block.PopOffset();
+      block.AddLine("}");
+    }
   }
   text->AddBlock(block);
 }

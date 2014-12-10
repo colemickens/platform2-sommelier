@@ -44,6 +44,9 @@ const char kSignal1Argument1[] = "ao";
 const char kProperty0Name[] = "CharacterName";
 const char kProperty0Type[] = "s";
 const char kProperty0Access[] = "read";
+const char kProperty1Name[] = "WriteProperty";
+const char kProperty1Type[] = "s";
+const char kProperty1Access[] = "readwrite";
 
 const char kInterfaceName[] = "org.chromium.Test";
 const char kInterfaceName2[] = "org.chromium.Test2";
@@ -117,6 +120,12 @@ class TestAdaptor {
     signal_Mapping_ = itf->RegisterSignalOfType<SignalMappingType>("Mapping");
 
     itf->AddProperty("CharacterName", &character_name_);
+    write_property_.SetAccessMode(
+        chromeos::dbus_utils::ExportedPropertyBase::Access::kReadWrite);
+    write_property_.SetValidator(
+        base::Bind(&TestAdaptor::ValidateWriteProperty,
+                   base::Unretained(this)));
+    itf->AddProperty("WriteProperty", &write_property_);
   }
 
   void SendUpdateSignal() {
@@ -139,6 +148,17 @@ class TestAdaptor {
     character_name_.SetValue(character_name);
   }
 
+  std::string GetWriteProperty() const {
+    return write_property_.GetValue().Get<std::string>();
+  }
+  void SetWriteProperty(const std::string& write_property) {
+    write_property_.SetValue(write_property);
+  }
+  virtual bool ValidateWriteProperty(
+      chromeos::ErrorPtr* /*error*/, const std::string& /*value*/) {
+    return true;
+  }
+
   static dbus::ObjectPath GetObjectPath() {
     return dbus::ObjectPath{"/org/chromium/Test"};
   }
@@ -153,6 +173,7 @@ class TestAdaptor {
   std::weak_ptr<SignalMappingType> signal_Mapping_;
 
   chromeos::dbus_utils::ExportedProperty<std::string> character_name_;
+  chromeos::dbus_utils::ExportedProperty<std::string> write_property_;
 
   TestInterface* interface_;  // Owned by container of this adapter.
 
@@ -260,6 +281,10 @@ TEST_F(AdaptorGeneratorTest, GenerateAdaptors) {
       kProperty0Name,
       kProperty0Type,
       kProperty0Access);
+  interface.properties.emplace_back(
+      kProperty1Name,
+      kProperty1Type,
+      kProperty1Access);
 
   Interface interface2;
   interface2.name = kInterfaceName2;
