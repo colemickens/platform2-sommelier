@@ -235,6 +235,7 @@ TEST_F(PowerSupplyTest, NoBattery) {
   EXPECT_FALSE(power_status.battery_is_present);
   EXPECT_EQ(PowerSupplyProperties_BatteryState_NOT_PRESENT,
             power_status.battery_state);
+  EXPECT_FALSE(power_status.supports_dual_role_devices);
 }
 
 // Test battery charging and discharging status.
@@ -256,6 +257,7 @@ TEST_F(PowerSupplyTest, ChargingAndDischarging) {
   EXPECT_DOUBLE_EQ(kCharge * kVoltage, power_status.battery_energy);
   EXPECT_DOUBLE_EQ(kCurrent * kVoltage, power_status.battery_energy_rate);
   EXPECT_DOUBLE_EQ(50.0, power_status.battery_percentage);
+  EXPECT_FALSE(power_status.supports_dual_role_devices);
 
   // Switch to battery.
   UpdatePowerSourceAndBatteryStatus(POWER_BATTERY, kAcType, kDischarging);
@@ -292,6 +294,7 @@ TEST_F(PowerSupplyTest, NonMainsLinePower) {
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC,
             power_status.external_power);
   EXPECT_TRUE(power_status.battery_is_present);
+  EXPECT_FALSE(power_status.supports_dual_role_devices);
 }
 
 TEST_F(PowerSupplyTest, DualRolePowerSources) {
@@ -324,6 +327,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
             status.battery_state);
   EXPECT_EQ(0u, status.available_external_power_sources.size());
   EXPECT_EQ("", status.external_power_source_id);
+  EXPECT_TRUE(status.supports_dual_role_devices);
 
   // Start charging from the first power source.
   WriteValue(line1_dir, "type", kUsbType);
@@ -339,6 +343,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   EXPECT_EQ(kLine1Id, status.available_external_power_sources[0].name);
   EXPECT_FALSE(status.available_external_power_sources[0].active_by_default);
   EXPECT_EQ(kLine1Id, status.external_power_source_id);
+  EXPECT_TRUE(status.supports_dual_role_devices);
 
   // Disconnect the first power source and start charging from the second one.
   WriteValue(line1_dir, "type", kUnknownType);
@@ -1130,6 +1135,7 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   status.battery_is_present = true;
   status.external_power = PowerSupplyProperties_ExternalPower_AC;
   status.battery_state = PowerSupplyProperties_BatteryState_CHARGING;
+  status.supports_dual_role_devices = false;
 
   PowerSupplyProperties proto;
   CopyPowerStatusToProtocolBuffer(status, &proto);
@@ -1141,6 +1147,7 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
             proto.battery_time_to_full_sec());
   EXPECT_FALSE(proto.is_calculating_battery_time());
   EXPECT_DOUBLE_EQ(-status.battery_energy_rate, proto.battery_discharge_rate());
+  EXPECT_FALSE(proto.supports_dual_role_devices());
 
   // Check that power source details are copied.
   const char kChargerId[] = "PORT1";
@@ -1152,6 +1159,7 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
       PowerStatus::Source(kChargerId, kChargerName, true));
   status.available_external_power_sources.push_back(
       PowerStatus::Source(kPhoneId, kPhoneName, false));
+  status.supports_dual_role_devices = true;
 
   proto.Clear();
   CopyPowerStatusToProtocolBuffer(status, &proto);
@@ -1163,6 +1171,7 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   EXPECT_EQ(kPhoneId, proto.available_external_power_source(1).id());
   EXPECT_EQ(kPhoneName, proto.available_external_power_source(1).name());
   EXPECT_FALSE(proto.available_external_power_source(1).active_by_default());
+  EXPECT_TRUE(proto.supports_dual_role_devices());
 
   // Now disconnect everything and start discharging.
   status.external_power_source_id.clear();

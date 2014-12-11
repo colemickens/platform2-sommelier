@@ -141,6 +141,9 @@ int main(int argc, char** argv) {
     sources.push_back(source.id + (source.active_by_default ? "*" : ""));
   display.PrintStringValue("available sources", JoinString(sources, ", "));
 
+  display.PrintStringValue("supports dual-role",
+                           BoolToString(status.supports_dual_role_devices));
+
   if (status.battery_is_present) {
     display.SetIndent(0, 0);
     display.PrintString("Device: Battery");

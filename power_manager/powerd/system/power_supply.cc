@@ -140,6 +140,7 @@ void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
   proto->set_external_power(status.external_power);
   proto->set_battery_state(status.battery_state);
   proto->set_battery_percent(status.display_battery_percentage);
+  proto->set_supports_dual_role_devices(status.supports_dual_role_devices);
 
   // Show the user the time until powerd will shut down the system automatically
   // rather than the time until the battery is completely empty.
@@ -259,7 +260,8 @@ PowerStatus::PowerStatus()
       battery_is_present(false),
       battery_below_shutdown_threshold(false),
       external_power(PowerSupplyProperties_ExternalPower_DISCONNECTED),
-      battery_state(PowerSupplyProperties_BatteryState_NOT_PRESENT) {}
+      battery_state(PowerSupplyProperties_BatteryState_NOT_PRESENT),
+      supports_dual_role_devices(false) {}
 
 PowerStatus::~PowerStatus() {}
 
@@ -574,6 +576,12 @@ bool PowerSupply::UpdatePowerStatus() {
 
 void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
                                          PowerStatus* status) {
+  // Bidirectional ports export a "status" field.
+  std::string line_status;
+  ReadAndTrimString(path, "status", &line_status);
+  if (!line_status.empty())
+    status->supports_dual_role_devices = true;
+
   // If "online" is false, nothing is connected.
   int64_t online_value = 0;
   if (!ReadInt64(path, "online", &online_value) || !online_value)
@@ -584,10 +592,6 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   ReadAndTrimString(path, "type", &type);
   if (type == kUnknownType)
     return;
-
-  // Bidirectional ports export an additional "status" field.
-  std::string line_status;
-  ReadAndTrimString(path, "status", &line_status);
 
   // Okay, this is a potential power source. Add it to the list.
   const std::string id = GetIdForPath(path);

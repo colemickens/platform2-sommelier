@@ -145,6 +145,10 @@ struct PowerStatus {
   // Connected external power sources.
   std::vector<Source> available_external_power_sources;
 
+  // True if it is possible for some connected devices to function as either
+  // sources or sinks (i.e. to either deliver or receive charge).
+  bool supports_dual_role_devices;
+
   // /sys paths from which the line power and battery information was read.
   std::string line_power_path;
   std::string battery_path;
