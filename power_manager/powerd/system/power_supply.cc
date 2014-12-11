@@ -116,8 +116,6 @@ const char* ExternalPowerToString(PowerSupplyProperties_ExternalPower type) {
       return "AC";
     case PowerSupplyProperties_ExternalPower_USB:
       return "USB";
-    case PowerSupplyProperties_ExternalPower_ORIGINAL_SPRING_CHARGER:
-      return "AC-orig-spring";
     case PowerSupplyProperties_ExternalPower_DISCONNECTED:
       return "none";
   }
@@ -176,7 +174,6 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
   switch (status.external_power) {
     case PowerSupplyProperties_ExternalPower_AC:
     case PowerSupplyProperties_ExternalPower_USB:
-    case PowerSupplyProperties_ExternalPower_ORIGINAL_SPRING_CHARGER:
       output = base::StringPrintf("On %s (%s",
           ExternalPowerToString(status.external_power),
           status.line_power_type.c_str());
