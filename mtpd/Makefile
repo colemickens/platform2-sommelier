@@ -15,13 +15,14 @@ GEN_DBUSXX(%):
 		$(DBUSXX_XML2CPP) $< --adaptor=$(TARGET_OR_MEMBER))
 
 PROTOC ?= protoc
-BASE_VER ?= 271506
+BASE_VER ?= 307740
 PC_DEPS = dbus-c++-1 glib-2.0 gthread-2.0 gobject-2.0 libmtp \
 	libchrome-$(BASE_VER) libchromeos-$(BASE_VER) protobuf
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 CPPFLAGS += -I$(SRC)/include -I$(SRC) -I$(OUT) -I$(OUT)mtpd_server $(PC_CFLAGS)
+CPPFLAGS += -std=gnu++11
 LDLIBS += -ludev $(PC_LIBS)
 
 ## protobuffer targets

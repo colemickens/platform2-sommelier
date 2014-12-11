@@ -29,32 +29,31 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
   virtual ~MtpdServer();
 
   // org::chromium::Mtpd_adaptor implementation.
-  virtual std::vector<std::string> EnumerateStorages(
-      DBus::Error& error) OVERRIDE;
-  virtual std::vector<uint8_t> GetStorageInfo(const std::string& storageName,
-                                              DBus::Error& error) OVERRIDE;
-  virtual std::string OpenStorage(const std::string& storageName,
-                                  const std::string& mode,
-                                  DBus::Error& error) OVERRIDE;
-  virtual void CloseStorage(const std::string& handle,
-                            DBus::Error& error) OVERRIDE;
-  virtual std::vector<uint32_t> ReadDirectoryEntryIds(
+  std::vector<std::string> EnumerateStorages(DBus::Error& error) override;
+  std::vector<uint8_t> GetStorageInfo(const std::string& storageName,
+                                      DBus::Error& error) override;
+  std::string OpenStorage(const std::string& storageName,
+                          const std::string& mode,
+                          DBus::Error& error) override;
+  void CloseStorage(const std::string& handle,
+                    DBus::Error& error) override;
+  std::vector<uint32_t> ReadDirectoryEntryIds(
       const std::string& handle,
       const uint32_t& fileId,
-      DBus::Error& error) OVERRIDE;
-  virtual std::vector<uint8_t> GetFileInfo(const std::string& handle,
-                                           const std::vector<uint32_t>& fileIds,
-                                           DBus::Error& error) OVERRIDE;
-  virtual std::vector<uint8_t> ReadFileChunk(const std::string& handle,
-                                             const uint32_t& fileId,
-                                             const uint32_t& offset,
-                                             const uint32_t& count,
-                                             DBus::Error& error) OVERRIDE;
-  virtual bool IsAlive(DBus::Error& error) OVERRIDE;
+      DBus::Error& error) override;
+  std::vector<uint8_t> GetFileInfo(const std::string& handle,
+                                   const std::vector<uint32_t>& fileIds,
+                                   DBus::Error& error) override;
+  std::vector<uint8_t> ReadFileChunk(const std::string& handle,
+                                     const uint32_t& fileId,
+                                     const uint32_t& offset,
+                                     const uint32_t& count,
+                                     DBus::Error& error) override;
+  bool IsAlive(DBus::Error& error) override;
 
   // DeviceEventDelegate implementation.
-  virtual void StorageAttached(const std::string& storage_name) OVERRIDE;
-  virtual void StorageDetached(const std::string& storage_name) OVERRIDE;
+  void StorageAttached(const std::string& storage_name) override;
+  void StorageDetached(const std::string& storage_name) override;
 
   // Returns a file descriptor for monitoring device events.
   int GetDeviceEventDescriptor() const;

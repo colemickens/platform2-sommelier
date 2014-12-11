@@ -429,7 +429,7 @@ class MtpPollThread : public base::SimpleThread {
   MtpPollThread(const base::Closure& cb)
     : SimpleThread("MTP polling"), callback_(cb) {}
 
-  void Run() OVERRIDE {
+  void Run() override {
     callback_.Run();
   }
 

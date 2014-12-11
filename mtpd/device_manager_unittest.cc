@@ -30,7 +30,7 @@ TEST(DeviceManagerTest, ParseStorageName) {
     { "usb:123:not_number", false, "", 0 },
   };
 
-  for (size_t i = 0; i < ARRAYSIZE_UNSAFE(test_cases); ++i) {
+  for (size_t i = 0; i < arraysize(test_cases); ++i) {
     std::string bus;
     uint32_t storage_id = static_cast<uint32_t>(-1);
     bool result =
@@ -49,8 +49,8 @@ class TestDeviceEventDelegate : public DeviceEventDelegate {
   ~TestDeviceEventDelegate() {}
 
   // DeviceEventDelegate implementation.
-  virtual void StorageAttached(const std::string& storage_name) OVERRIDE {}
-  virtual void StorageDetached(const std::string& storage_name) OVERRIDE {}
+  void StorageAttached(const std::string& storage_name) override {}
+  void StorageDetached(const std::string& storage_name) override {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TestDeviceEventDelegate);
