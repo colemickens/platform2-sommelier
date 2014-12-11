@@ -72,6 +72,21 @@
           ],
           'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },
+        {
+          # Import D-Bus bindings from apmanager.
+          'action_name': 'generate-apmanager-proxies',
+          'variables': {
+            'dbus_service_config': '../apmanager/dbus_bindings/dbus-service-config.json',
+            'proxy_output_file': 'include/apmanager/dbus-proxies.h'
+          },
+          'sources': [
+            '../apmanager/dbus_bindings/org.chromium.apmanager.Config.xml',
+            '../apmanager/dbus_bindings/org.chromium.apmanager.Device.xml',
+            '../apmanager/dbus_bindings/org.chromium.apmanager.Manager.xml',
+            '../apmanager/dbus_bindings/org.chromium.apmanager.Service.xml',
+          ],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
       ],
       'includes': ['../common-mk/deps.gypi'],
     },
