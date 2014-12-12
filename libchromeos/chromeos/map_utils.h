@@ -53,6 +53,19 @@ inline std::vector<std::pair<typename T::key_type, typename T::mapped_type>>
   return vector;
 }
 
+// Given an STL map, returns the value associated with a given key or a default
+// value if the key is not present in the map.
+template<typename T>
+inline typename T::mapped_type
+    GetOrDefault(const T& map,
+                 typename T::key_type key,
+                 const typename T::mapped_type& def) {
+  typename T::const_iterator it = map.find(key);
+  if (it == map.end())
+    return def;
+  return it->second;
+}
+
 }  // namespace chromeos
 
 #endif  // LIBCHROMEOS_CHROMEOS_MAP_UTILS_H_
