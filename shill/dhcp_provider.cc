@@ -11,7 +11,7 @@
 #include "shill/dhcp_config.h"
 #include "shill/dhcpcd_proxy.h"
 #include "shill/logging.h"
-#include "shill/proxy_factory.h"
+#include "shill/shared_dbus_connection.h"
 
 using base::FilePath;
 using std::string;
@@ -30,7 +30,7 @@ base::LazyInstance<DHCPProvider> g_dhcp_provider = LAZY_INSTANCE_INITIALIZER;
 constexpr char DHCPProvider::kDHCPCDPathFormatLease[];
 
 DHCPProvider::DHCPProvider()
-    : proxy_factory_(ProxyFactory::GetInstance()),
+    : shared_dbus_connection_(SharedDBusConnection::GetInstance()),
       root_("/"),
       control_interface_(nullptr),
       dispatcher_(nullptr),
@@ -52,11 +52,16 @@ void DHCPProvider::Init(ControlInterface *control_interface,
                         GLib *glib,
                         Metrics *metrics) {
   SLOG(this, 2) << __func__;
-  listener_.reset(new DHCPCDListener(proxy_factory_->connection(), this));
+  DBus::Connection *connection = shared_dbus_connection_->GetConnection();
+  listener_.reset(new DHCPCDListener(connection, this));
   glib_ = glib;
   control_interface_ = control_interface;
   dispatcher_ = dispatcher;
   metrics_ = metrics;
+}
+
+void DHCPProvider::Stop() {
+  listener_.reset();
 }
 
 DHCPConfigRefPtr DHCPProvider::CreateConfig(const string &device_name,

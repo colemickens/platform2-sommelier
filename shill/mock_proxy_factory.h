@@ -18,8 +18,6 @@ class MockProxyFactory : public ProxyFactory {
   MockProxyFactory();
   ~MockProxyFactory() override;
 
-  MOCK_METHOD0(Init, void());
-
   MOCK_METHOD2(CreateDBusPropertiesProxy,
                DBusPropertiesProxyInterface *(const std::string &path,
                                               const std::string &service));

@@ -7,10 +7,11 @@
 
 #include <memory>
 
-#include <dbus-c++/glib-integration.h>
-#include <dbus-c++/util.h>
-
 #include "shill/control_interface.h"
+
+namespace DBus {
+class Connection;
+}
 
 namespace shill {
 // This is the Interface for the control channel for Shill.
@@ -31,14 +32,11 @@ class DBusControl : public ControlInterface {
 #endif
 
   void Init();
-  DBus::Connection *connection() { return connection_.get(); }
 
  private:
   template <typename Object, typename AdaptorInterface, typename Adaptor>
   AdaptorInterface *CreateAdaptor(Object *object);
-
-  std::unique_ptr<DBus::Glib::BusDispatcher> dispatcher_;
-  std::unique_ptr<DBus::Connection> connection_;
+  DBus::Connection *GetConnection() const;
 };
 
 }  // namespace shill

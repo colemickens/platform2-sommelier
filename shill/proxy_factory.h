@@ -60,10 +60,6 @@ class ProxyFactory {
   // Since this is a singleton, use ProxyFactory::GetInstance()->Foo().
   static ProxyFactory *GetInstance();
 
-  virtual void Init();
-
-  DBus::Connection *connection() const { return connection_.get(); }
-
   virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
       const std::string &path,
       const std::string &service);
@@ -181,7 +177,7 @@ class ProxyFactory {
  private:
   friend struct base::DefaultLazyInstanceTraits<ProxyFactory>;
 
-  std::unique_ptr<DBus::Connection> connection_;
+  DBus::Connection *GetConnection() const;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyFactory);
 };

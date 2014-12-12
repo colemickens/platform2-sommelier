@@ -22,6 +22,7 @@
 #include "shill/glib_io_handler_factory.h"
 #include "shill/logging.h"
 #include "shill/net/io_handler_factory_container.h"
+#include "shill/shared_dbus_connection.h"
 #include "shill/shill_config.h"
 #include "shill/shill_daemon.h"
 
@@ -63,10 +64,6 @@ const char *kLoggerCommand = "/usr/bin/logger";
 const char *kLoggerUser = "syslog";
 
 }  // namespace
-
-namespace Logging {
-static string ObjectID(shill::Daemon *d) { return "(shill_main_daemon)"; }
-}
 
 // Always logs to the syslog and logs to stderr if
 // we are running in the foreground.
@@ -110,15 +107,9 @@ void SetupLogging(bool foreground, char *daemon_name) {
   }
 }
 
-void DeleteDBusControl(void* param) {
-  SLOG(DBus, nullptr, 2) << __func__;
-  shill::DBusControl* dbus_control =
-      reinterpret_cast<shill::DBusControl*>(param);
-  delete dbus_control;
-}
-
 gboolean ExitSigHandler(gpointer data) {
   LOG(INFO) << "Shutting down due to received signal.";
+
   shill::Daemon* daemon = reinterpret_cast<shill::Daemon*>(data);
   daemon->Quit();
   return TRUE;
@@ -148,10 +139,8 @@ int main(int argc, char** argv) {
         new shill::GlibIOHandlerFactory());
 
   // TODO(pstew): This should be chosen based on config
-  // Make sure we delete the DBusControl object AFTER the LazyInstances
-  // since some LazyInstances destructors rely on D-Bus being around.
+  shill::SharedDBusConnection::GetInstance()->Init();
   shill::DBusControl* dbus_control = new shill::DBusControl();
-  exit_manager.RegisterCallback(DeleteDBusControl, dbus_control);
   dbus_control->Init();
 
   shill::Config config;
@@ -176,7 +165,14 @@ int main(int argc, char** argv) {
   g_unix_signal_add(SIGINT, ExitSigHandler, &daemon);
   g_unix_signal_add(SIGTERM, ExitSigHandler, &daemon);
 
+  // Catch but ignore SIGPIPE signals we receive if we write to the logger
+  // process after it exits.  GLib cannot handle this signal number, so use
+  // signal() directly.
+  signal(SIGPIPE, SIG_IGN);
+
   daemon.Run();
+
+  LOG(INFO) << "Process exiting.";
 
   return 0;
 }

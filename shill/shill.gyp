@@ -377,6 +377,7 @@
         'service.cc',
         'service_dbus_adaptor.cc',
         'service_property_change_notifier.cc',
+        'shared_dbus_connection.cc',
         'shill_ares.cc',
         'shill_config.cc',
         'shill_daemon.cc',

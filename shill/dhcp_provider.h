@@ -22,7 +22,7 @@ class DHCPCDListener;
 class EventDispatcher;
 class GLib;
 class Metrics;
-class ProxyFactory;
+class SharedDBusConnection;
 
 // DHCPProvider is a singleton providing the main DHCP configuration
 // entrypoint. Once the provider is initialized through its Init method, DHCP
@@ -50,6 +50,9 @@ class DHCPProvider {
                     EventDispatcher *dispatcher,
                     GLib *glib,
                     Metrics *metrics);
+
+  // Called on shutdown to release |listener_|.
+  void Stop();
 
   // Creates a new DHCPConfig for |device_name|. The DHCP configuration for the
   // device can then be initiated through DHCPConfig::Request and
@@ -96,7 +99,7 @@ class DHCPProvider {
   typedef std::map<int, DHCPConfigRefPtr> PIDConfigMap;
 
   // Store cached copies of singletons for speed/ease of testing.
-  ProxyFactory *proxy_factory_;
+  SharedDBusConnection *shared_dbus_connection_;
 
   // A single listener is used to catch signals from all DHCP clients and
   // dispatch them to the appropriate DHCP configuration instance.

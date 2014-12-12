@@ -9,6 +9,7 @@
 #include "shill/dhcpcd_proxy.h"
 #include "shill/logging.h"
 #include "shill/power_manager_proxy.h"
+#include "shill/shared_dbus_connection.h"
 #include "shill/supplicant/supplicant_bss_proxy.h"
 #include "shill/supplicant/supplicant_interface_proxy.h"
 #include "shill/supplicant/supplicant_network_proxy.h"
@@ -55,31 +56,29 @@ ProxyFactory *ProxyFactory::GetInstance() {
   return g_proxy_factory.Pointer();
 }
 
-void ProxyFactory::Init() {
-  CHECK(DBus::default_dispatcher);  // Initialized in DBusControl::Init.
-  CHECK(!connection_.get());
-  connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
+DBus::Connection *ProxyFactory::GetConnection() const {
+  return SharedDBusConnection::GetInstance()->GetConnection();
 }
 
 DBusPropertiesProxyInterface *ProxyFactory::CreateDBusPropertiesProxy(
     const string &path,
     const string &service) {
-  return new DBusPropertiesProxy(connection(), path, service);
+  return new DBusPropertiesProxy(GetConnection(), path, service);
 }
 
 DBusServiceProxyInterface *ProxyFactory::CreateDBusServiceProxy() {
-  return new DBusServiceProxy(connection());
+  return new DBusServiceProxy(GetConnection());
 }
 
 PowerManagerProxyInterface *ProxyFactory::CreatePowerManagerProxy(
     PowerManagerProxyDelegate *delegate) {
-  return new PowerManagerProxy(delegate, connection());
+  return new PowerManagerProxy(delegate, GetConnection());
 }
 
 SupplicantProcessProxyInterface *ProxyFactory::CreateSupplicantProcessProxy(
     const char *dbus_path,
     const char *dbus_addr) {
-  return new SupplicantProcessProxy(connection(), dbus_path, dbus_addr);
+  return new SupplicantProcessProxy(GetConnection(), dbus_path, dbus_addr);
 }
 
 SupplicantInterfaceProxyInterface *ProxyFactory::CreateSupplicantInterfaceProxy(
@@ -87,7 +86,7 @@ SupplicantInterfaceProxyInterface *ProxyFactory::CreateSupplicantInterfaceProxy(
     const DBus::Path &object_path,
     const char *dbus_addr) {
   return new SupplicantInterfaceProxy(delegate,
-                                      connection(),
+                                      GetConnection(),
                                       object_path,
                                       dbus_addr);
 }
@@ -95,7 +94,7 @@ SupplicantInterfaceProxyInterface *ProxyFactory::CreateSupplicantInterfaceProxy(
 SupplicantNetworkProxyInterface *ProxyFactory::CreateSupplicantNetworkProxy(
     const DBus::Path &object_path,
     const char *dbus_addr) {
-  return new SupplicantNetworkProxy(connection(),
+  return new SupplicantNetworkProxy(GetConnection(),
                                     object_path,
                                     dbus_addr);
 }
@@ -105,11 +104,11 @@ SupplicantBSSProxyInterface *ProxyFactory::CreateSupplicantBSSProxy(
     const DBus::Path &object_path,
     const char *dbus_addr) {
   return new SupplicantBSSProxy(
-      wifi_endpoint, connection(), object_path, dbus_addr);
+      wifi_endpoint, GetConnection(), object_path, dbus_addr);
 }
 
 DHCPProxyInterface *ProxyFactory::CreateDHCPProxy(const string &service) {
-  return new DHCPCDProxy(connection(), service);
+  return new DHCPCDProxy(GetConnection(), service);
 }
 
 #if !defined(DISABLE_CELLULAR)
@@ -117,99 +116,99 @@ DHCPProxyInterface *ProxyFactory::CreateDHCPProxy(const string &service) {
 DBusObjectManagerProxyInterface *ProxyFactory::CreateDBusObjectManagerProxy(
     const string &path,
     const string &service) {
-  return new DBusObjectManagerProxy(connection(), path, service);
+  return new DBusObjectManagerProxy(GetConnection(), path, service);
 }
 
 ModemManagerProxyInterface *ProxyFactory::CreateModemManagerProxy(
     ModemManagerClassic *manager,
     const string &path,
     const string &service) {
-  return new ModemManagerProxy(connection(), manager, path, service);
+  return new ModemManagerProxy(GetConnection(), manager, path, service);
 }
 
 ModemProxyInterface *ProxyFactory::CreateModemProxy(
     const string &path,
     const string &service) {
-  return new ModemProxy(connection(), path, service);
+  return new ModemProxy(GetConnection(), path, service);
 }
 
 ModemSimpleProxyInterface *ProxyFactory::CreateModemSimpleProxy(
     const string &path,
     const string &service) {
-  return new ModemSimpleProxy(connection(), path, service);
+  return new ModemSimpleProxy(GetConnection(), path, service);
 }
 
 ModemCDMAProxyInterface *ProxyFactory::CreateModemCDMAProxy(
     const string &path,
     const string &service) {
-  return new ModemCDMAProxy(connection(), path, service);
+  return new ModemCDMAProxy(GetConnection(), path, service);
 }
 
 ModemGSMCardProxyInterface *ProxyFactory::CreateModemGSMCardProxy(
     const string &path,
     const string &service) {
-  return new ModemGSMCardProxy(connection(), path, service);
+  return new ModemGSMCardProxy(GetConnection(), path, service);
 }
 
 ModemGSMNetworkProxyInterface *ProxyFactory::CreateModemGSMNetworkProxy(
     const string &path,
     const string &service) {
-  return new ModemGSMNetworkProxy(connection(), path, service);
+  return new ModemGSMNetworkProxy(GetConnection(), path, service);
 }
 
 ModemGobiProxyInterface *ProxyFactory::CreateModemGobiProxy(
     const string &path,
     const string &service) {
-  return new ModemGobiProxy(connection(), path, service);
+  return new ModemGobiProxy(GetConnection(), path, service);
 }
 
 // Proxies for ModemManager1 interfaces
 mm1::ModemModem3gppProxyInterface *ProxyFactory::CreateMM1ModemModem3gppProxy(
       const string &path,
       const string &service) {
-  return new mm1::ModemModem3gppProxy(connection(), path, service);
+  return new mm1::ModemModem3gppProxy(GetConnection(), path, service);
 }
 
 mm1::ModemModemCdmaProxyInterface *ProxyFactory::CreateMM1ModemModemCdmaProxy(
       const string &path,
       const string &service) {
-  return new mm1::ModemModemCdmaProxy(connection(), path, service);
+  return new mm1::ModemModemCdmaProxy(GetConnection(), path, service);
 }
 
 mm1::ModemProxyInterface *ProxyFactory::CreateMM1ModemProxy(
       const string &path,
       const string &service) {
-  return new mm1::ModemProxy(connection(), path, service);
+  return new mm1::ModemProxy(GetConnection(), path, service);
 }
 
 mm1::ModemSimpleProxyInterface *ProxyFactory::CreateMM1ModemSimpleProxy(
       const string &path,
       const string &service) {
-  return new mm1::ModemSimpleProxy(connection(), path, service);
+  return new mm1::ModemSimpleProxy(GetConnection(), path, service);
 }
 
 mm1::ModemTimeProxyInterface *ProxyFactory::CreateMM1ModemTimeProxy(
       const string &path,
       const string &service) {
-  return new mm1::ModemTimeProxy(connection(), path, service);
+  return new mm1::ModemTimeProxy(GetConnection(), path, service);
 }
 
 mm1::ModemLocationProxyInterface *ProxyFactory::CreateMM1ModemLocationProxy(
       const string &path,
       const string &service) {
-  return new mm1::ModemLocationProxy(connection(), path, service);
+  return new mm1::ModemLocationProxy(GetConnection(), path, service);
 }
 
 mm1::SimProxyInterface *ProxyFactory::CreateSimProxy(
       const string &path,
       const string &service) {
-  return new mm1::SimProxy(connection(), path, service);
+  return new mm1::SimProxy(GetConnection(), path, service);
 }
 
 mm1::BearerProxyInterface *ProxyFactory::CreateBearerProxy(
       const string &path,
       const string &service) {
-  return new mm1::BearerProxy(connection(), path, service);
+  return new mm1::BearerProxy(GetConnection(), path, service);
 }
 
 #endif  // DISABLE_CELLULAR
@@ -218,16 +217,16 @@ mm1::BearerProxyInterface *ProxyFactory::CreateBearerProxy(
 
 WiMaxDeviceProxyInterface *ProxyFactory::CreateWiMaxDeviceProxy(
     const string &path) {
-  return new WiMaxDeviceProxy(connection(), path);
+  return new WiMaxDeviceProxy(GetConnection(), path);
 }
 
 WiMaxManagerProxyInterface *ProxyFactory::CreateWiMaxManagerProxy() {
-  return new WiMaxManagerProxy(connection());
+  return new WiMaxManagerProxy(GetConnection());
 }
 
 WiMaxNetworkProxyInterface *ProxyFactory::CreateWiMaxNetworkProxy(
     const string &path) {
-  return new WiMaxNetworkProxy(connection(), path);
+  return new WiMaxNetworkProxy(GetConnection(), path);
 }
 
 #endif  // DISABLE_WIMAX

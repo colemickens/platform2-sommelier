@@ -112,7 +112,6 @@ void Daemon::StopAndReturnToMain() {
 
 void Daemon::Start() {
   glib_.TypeInit();
-  proxy_factory_->Init();
   metrics_->Start();
   rtnl_handler_->Start(&sockets_);
   routing_table_->Start();
@@ -141,7 +140,9 @@ void Daemon::Start() {
 
 void Daemon::Stop() {
   manager_->Stop();
+  manager_ = nullptr;  // Release manager resources, including DBus adaptor.
   metrics_->Stop();
+  dhcp_provider_->Stop();
 }
 
 }  // namespace shill

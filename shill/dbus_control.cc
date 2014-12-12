@@ -6,8 +6,7 @@
 
 #include <string>
 
-#include <dbus-c++/glib-integration.h>
-#include <dbus-c++/util.h>
+#include <dbus-c++/dbus.h>
 
 #include "shill/device_dbus_adaptor.h"
 #include "shill/ipconfig_dbus_adaptor.h"
@@ -16,6 +15,7 @@
 #include "shill/profile_dbus_adaptor.h"
 #include "shill/rpc_task_dbus_adaptor.h"
 #include "shill/service_dbus_adaptor.h"
+#include "shill/shared_dbus_connection.h"
 #include "shill/vpn/third_party_vpn_dbus_adaptor.h"
 
 namespace shill {
@@ -28,7 +28,7 @@ template <typename Object, typename AdaptorInterface, typename Adaptor>
 AdaptorInterface *DBusControl::CreateAdaptor(Object *object) {
   AdaptorInterface *adaptor = nullptr;
   try {
-    adaptor = new Adaptor(connection_.get(), object);
+    adaptor = new Adaptor(GetConnection(), object);
   } catch(const DBus::ErrorObjectPathInUse &error) {
     LOG(FATAL) << error.message() << " (object path in use)";
   } catch(const DBus::ErrorNoMemory &error) {
@@ -78,16 +78,14 @@ ThirdPartyVpnAdaptorInterface *DBusControl::CreateThirdPartyVpnAdaptor(
 #endif
 
 void DBusControl::Init() {
-  CHECK(!connection_.get());
-  dispatcher_.reset(new(std::nothrow) DBus::Glib::BusDispatcher());
-  CHECK(dispatcher_.get()) << "Failed to create a dbus-dispatcher";
-  DBus::default_dispatcher = dispatcher_.get();
-  dispatcher_->attach(nullptr);
-  connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
-  if (!connection_->acquire_name(SHILL_INTERFACE)) {
+  if (!GetConnection()->acquire_name(SHILL_INTERFACE)) {
     LOG(FATAL) << "Failed to acquire D-Bus name " << SHILL_INTERFACE << ". "
                << "Is another shill running?";
   }
+}
+
+DBus::Connection *DBusControl::GetConnection() const {
+  return SharedDBusConnection::GetInstance()->GetConnection();
 }
 
 }  // namespace shill
