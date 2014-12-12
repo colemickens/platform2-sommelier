@@ -6,10 +6,15 @@
 #define PERMISSION_BROKER_PERMISSION_BROKER_H_
 
 #include <dbus/dbus.h>
+
 #include <string>
+#include <unordered_map>
 
 #include <base/macros.h>
+#include <base/message_loop/message_loop.h>
+#include <base/sequenced_task_runner.h>
 
+#include "firewalld/dbus-proxies.h"
 #include "permission_broker/dbus_adaptors/org.chromium.PermissionBroker.h"
 #include "permission_broker/rule_engine.h"
 
@@ -17,7 +22,7 @@ namespace permission_broker {
 
 // The PermissionBroker encapsulates the execution of a chain of Rules which
 // decide whether or not to grant access to a given path. The PermissionBroker
-// is also responsible for providing a DBus interface to clients.
+// is also responsible for providing a D-Bus interface to clients.
 class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
                          public org::chromium::PermissionBrokerInterface {
  public:
@@ -27,17 +32,40 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
                    int poll_interval_msecs);
   ~PermissionBroker();
 
-  // Register the DBus object and interfaces.
+  // Register the D-Bus object and interfaces.
   void RegisterAsync(
-        const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+      const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
  private:
-  // The method exposed on DBus.
+  // D-Bus methods.
   bool RequestPathAccess(const std::string& in_path,
                          int32_t in_interface_id) override;
+  bool RequestTcpPortAccess(uint16_t in_port,
+                            const dbus::FileDescriptor& dbus_fd) override;
+  bool RequestUdpPortAccess(uint16_t in_port,
+                            const dbus::FileDescriptor& dbus_fd) override;
+
+  // Helper functions for process lifetime tracking.
+  int AddLifelineFd(const dbus::FileDescriptor& dbus_fd);
+  bool DeleteLifelineFd(int fd);
+  void CheckLifelineFds();
+  void ScheduleLifelineCheck();
+
+  void PlugFirewallHole(int fd);
+
+  // epoll(7) helper functions.
+  bool InitializeEpollOnce();
+
+  scoped_refptr<base::SequencedTaskRunner> task_runner_;
+  int epfd_;
 
   RuleEngine rule_engine_;
   chromeos::dbus_utils::DBusObject dbus_object_;
+
+  // For each fd (process), keep track of which port they requested.
+  std::unordered_map<int, uint16_t> tcp_ports_;
+  std::unordered_map<int, uint16_t> udp_ports_;
+  org::chromium::FirewalldProxy firewalld_;
 
   DISALLOW_COPY_AND_ASSIGN(PermissionBroker);
 };

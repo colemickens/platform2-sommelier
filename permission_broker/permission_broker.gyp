@@ -46,6 +46,18 @@
         'udev_scopers.cc',
         'usb_subsystem_udev_rule.cc',
       ],
+      'actions': [
+        {
+          'action_name': 'generate-firewalld-proxies',
+          'variables': {
+            'proxy_output_file': 'include/firewalld/dbus-proxies.h'
+          },
+          'sources': [
+            '../firewalld/dbus_bindings/org.chromium.Firewalld.xml',
+          ],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
+      ],
     },
     {
       'target_name': 'permission_broker',
