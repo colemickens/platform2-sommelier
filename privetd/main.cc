@@ -15,6 +15,7 @@
 #include <chromeos/flag_helper.h>
 #include <chromeos/http/http_request.h>
 #include <chromeos/mime_utils.h>
+#include <chromeos/strings/string_utils.h>
 #include <chromeos/syslog_logging.h>
 #include <libwebserv/request.h>
 #include <libwebserv/response.h>
@@ -32,6 +33,7 @@
 
 namespace {
 
+using chromeos::string_utils::Split;
 using libwebserv::Request;
 using libwebserv::Response;
 
@@ -46,11 +48,13 @@ class Daemon : public chromeos::DBusDaemon {
          uint16_t https_port_number,
          bool disable_security,
          bool enable_ping,
+         const std::vector<std::string>& device_whitelist,
          const base::FilePath& state_path)
       : http_port_number_(http_port_number),
         https_port_number_(https_port_number),
         disable_security_(disable_security),
         enable_ping_(enable_ping),
+        device_whitelist_(device_whitelist),
         state_store_(new privetd::DaemonState(state_path)) {}
 
   int OnInit() override {
@@ -67,7 +71,7 @@ class Daemon : public chromeos::DBusDaemon {
         base::Bind(&Daemon::OnChanged, base::Unretained(this)));
     // TODO(vitalybuka): Provide real embeded password.
     security_.reset(new privetd::SecurityManager("1234", disable_security_));
-    shill_client_.reset(new privetd::ShillClient(bus_));
+    shill_client_.reset(new privetd::ShillClient(bus_, device_whitelist_));
     wifi_bootstrap_manager_.reset(new privetd::WifiBootstrapManager(
         state_store_.get(), shill_client_.get()));
     wifi_bootstrap_manager_->Init();
@@ -177,6 +181,7 @@ class Daemon : public chromeos::DBusDaemon {
   uint16_t https_port_number_;
   bool disable_security_;
   bool enable_ping_;
+  std::vector<std::string> device_whitelist_;
   std::unique_ptr<privetd::DaemonState> state_store_;
   std::unique_ptr<privetd::CloudDelegate> cloud_;
   std::unique_ptr<privetd::DeviceDelegate> device_;
@@ -202,6 +207,9 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(log_to_stderr, false, "log trace messages to stderr as well");
   DEFINE_string(state_path, privetd::kDefaultStateFilePath,
                 "Path to file containing state information.");
+  DEFINE_string(device_whitelist, "",
+                "Comma separated list of network interfaces to monitor for "
+                "connectivity (an empty list enables all interfaces).");
 
   chromeos::FlagHelper::Init(argc, argv, "Privet protocol handler daemon");
 
@@ -223,7 +231,10 @@ int main(int argc, char* argv[]) {
     return EX_USAGE;
   }
 
+  auto device_whitelist = Split(FLAGS_device_whitelist, ',', true, true);
+
   Daemon daemon(FLAGS_http_port, FLAGS_https_port, FLAGS_disable_security,
-                FLAGS_enable_ping, base::FilePath(FLAGS_state_path));
+                FLAGS_enable_ping, device_whitelist,
+                base::FilePath(FLAGS_state_path));
   return daemon.Run();
 }

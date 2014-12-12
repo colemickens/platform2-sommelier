@@ -24,9 +24,6 @@ WifiBootstrapManager::WifiBootstrapManager(DaemonState* state_store,
     : state_store_(state_store), shill_client_(shill_client) {
 }
 
-void WifiBootstrapManager::AddStateChangeListener(const StateListener& cb) {
-}
-
 void WifiBootstrapManager::Init() {
   chromeos::KeyValueStore state_store;
   if (!state_store_->GetBoolean(state_key::kWifiHasBeenBootstrapped,
@@ -35,6 +32,9 @@ void WifiBootstrapManager::Init() {
                                &last_configured_ssid_)) {
     have_ever_been_bootstrapped_ = false;
   }
+  shill_client_->RegisterConnectivityListener(
+      base::Bind(&WifiBootstrapManager::OnConnectivityChange,
+                 lifetime_weak_factory_.GetWeakPtr()));
   if (!have_ever_been_bootstrapped_) {
     StartBootstrapping();
   } else {
@@ -100,16 +100,26 @@ bool WifiBootstrapManager::IsRequired() const {
 }
 
 ConnectionState WifiBootstrapManager::GetConnectionState() const {
-  // TODO(wiley) This should really be some state that we read from shill.
-  if (currently_online_) {
-    return ConnectionState{ConnectionState::kOnline};
-  }
   if (!have_ever_been_bootstrapped_) {
     return ConnectionState{ConnectionState::kUnconfigured};
   }
-  // TODO(wiley) When we read state from shill, return some intermediate states
-  //             of WiFi networks (like connecting).
-  return ConnectionState{ConnectionState::kOffline};
+  ShillClient::ServiceState service_state{shill_client_->GetConnectionState()};
+  switch (service_state) {
+    case ShillClient::kOffline:
+      return ConnectionState{ConnectionState::kOffline};
+    case ShillClient::kFailure:
+      // TODO(wiley) Pull error information from somewhere.
+      return ConnectionState{ConnectionState::kError};
+    case ShillClient::kConnecting:
+      return ConnectionState{ConnectionState::kConnecting};
+    case ShillClient::kConnected:
+      return ConnectionState{ConnectionState::kOnline};
+    default:
+      LOG(WARNING) << "Unknown state returned from ShillClient: "
+                   << service_state;
+      break;
+  }
+  return ConnectionState{Error::kDeviceConfigError};
 }
 
 SetupState WifiBootstrapManager::GetSetupState() const {

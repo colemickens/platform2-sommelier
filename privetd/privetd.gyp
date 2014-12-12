@@ -67,6 +67,7 @@
             'proxy_output_file': 'include/shill/dbus-proxies.h'
           },
           'sources': [
+            '../shill/dbus_bindings/org.chromium.flimflam.Device.xml',
             '../shill/dbus_bindings/org.chromium.flimflam.Manager.xml',
             '../shill/dbus_bindings/org.chromium.flimflam.Service.xml',
           ],

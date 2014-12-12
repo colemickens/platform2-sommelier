@@ -35,9 +35,6 @@ class WifiBootstrapManager : public WifiDelegate {
   explicit WifiBootstrapManager(DaemonState* state_store,
                                 ShillClient* shill_client);
   ~WifiBootstrapManager() override = default;
-
-  virtual void AddStateChangeListener(const StateListener& cb);
-
   virtual void Init();
 
   // Overrides from WifiDelegate.
@@ -91,6 +88,7 @@ class WifiBootstrapManager : public WifiDelegate {
   base::CancelableClosure on_bootstrap_timeout_task_;
   base::CancelableClosure on_monitoring_timeout_task_;
   base::WeakPtrFactory<WifiBootstrapManager> tasks_weak_factory_{this};
+  base::WeakPtrFactory<WifiBootstrapManager> lifetime_weak_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(WifiBootstrapManager);
 };
