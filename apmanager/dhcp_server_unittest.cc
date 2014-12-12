@@ -10,7 +10,6 @@
 
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/dbus/service_constants.h>
 #include <chromeos/process_mock.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

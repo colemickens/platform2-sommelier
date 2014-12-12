@@ -10,17 +10,22 @@
 #include <base/logging.h>
 #include <base/message_loop/message_loop_proxy.h>
 #include <base/run_loop.h>
-#include <chromeos/dbus/service_constants.h>
 
 namespace apmanager {
+
+namespace {
+const char kAPManagerServiceName[] = "org.chromium.apmanager";
+const char kAPMRootServicePath[] = "/org/chromium/apmanager";
+}  // namespace
 
 // static
 const char Daemon::kAPManagerGroupName[] = "apmanager";
 const char Daemon::kAPManagerUserName[] = "apmanager";
 
 Daemon::Daemon(const base::Closure& startup_callback)
-    : DBusServiceDaemon(kServiceName, "/"),
-      startup_callback_(startup_callback) {}
+    : DBusServiceDaemon(kAPManagerServiceName, kAPMRootServicePath),
+      startup_callback_(startup_callback) {
+}
 
 int Daemon::OnInit() {
   int return_code = chromeos::DBusServiceDaemon::OnInit();

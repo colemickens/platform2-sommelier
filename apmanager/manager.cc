@@ -36,7 +36,7 @@ void Manager::RegisterAsync(ExportedObjectManager* object_manager,
       new chromeos::dbus_utils::DBusObject(
           object_manager,
           bus,
-          dbus::ObjectPath(kManagerPath)));
+          org::chromium::apmanager::ManagerAdaptor::GetObjectPath()));
   RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Manager.RegisterAsync() failed.", true));

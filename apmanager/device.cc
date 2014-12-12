@@ -5,7 +5,6 @@
 #include "apmanager/device.h"
 
 #include <base/strings/stringprintf.h>
-#include <chromeos/dbus/service_constants.h>
 #include <chromeos/strings/string_utils.h>
 #include <shill/net/attribute_list.h>
 #include <shill/net/ieee80211.h>
@@ -15,6 +14,7 @@
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
+using org::chromium::apmanager::ManagerAdaptor;
 using shill::ByteString;
 using std::string;
 
@@ -37,7 +37,7 @@ void Device::RegisterAsync(ExportedObjectManager* object_manager,
   CHECK(!dbus_object_) << "Already registered";
   dbus_path_ = dbus::ObjectPath(
       base::StringPrintf("%s/devices/%d",
-                         kManagerPath,
+                         ManagerAdaptor::GetObjectPath().value().c_str(),
                          device_identifier));
   dbus_object_.reset(
       new chromeos::dbus_utils::DBusObject(

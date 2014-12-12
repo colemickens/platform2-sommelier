@@ -15,6 +15,7 @@
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
+using org::chromium::apmanager::ManagerAdaptor;
 using std::string;
 
 namespace apmanager {
@@ -28,9 +29,10 @@ Service::Service(Manager* manager, int service_identifier)
     : org::chromium::apmanager::ServiceAdaptor(this),
       manager_(manager),
       service_identifier_(service_identifier),
-      service_path_(base::StringPrintf("%s/services/%d",
-                                       kManagerPath,
-                                       service_identifier)),
+      service_path_(
+          base::StringPrintf("%s/services/%d",
+                             ManagerAdaptor::GetObjectPath().value().c_str(),
+                             service_identifier)),
       dbus_path_(dbus::ObjectPath(service_path_)),
       config_(new Config(manager, service_path_)),
       dhcp_server_factory_(DHCPServerFactory::GetInstance()) {
