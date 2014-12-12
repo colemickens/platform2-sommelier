@@ -93,11 +93,6 @@
           'target_name': 'apmanager_testrunner',
           'type': 'executable',
           'dependencies': ['libapmanager'],
-          'variables': {
-            'deps': [
-              'libshill-net-test-<(libbase_ver)',
-            ],
-          },
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'config_unittest.cc',

@@ -13,8 +13,8 @@ namespace shill {
 
 class MockIOHandlerFactory : public IOHandlerFactory {
  public:
-  MockIOHandlerFactory();
-  ~MockIOHandlerFactory() override;
+  MockIOHandlerFactory() {}
+  ~MockIOHandlerFactory() override {}
 
   MOCK_METHOD3(CreateIOInputHandler,
                IOHandler* (

@@ -1,7 +1,0 @@
-bslot=@BSLOT@
-
-Name: libshill-net-test
-Description: Shill networking test library
-Version: ${bslot}
-Requires.private: @PRIVATE_PC@
-Libs: -lshill-net-test-${bslot}

@@ -167,22 +167,6 @@
       'includes': ['../common-mk/deps.gypi'],
     },
     {
-      'target_name': 'libshill-net-test-<(libbase_ver)',
-      'type': 'static_library',
-      'standalone_static_library': 1,
-      'dependencies': [
-        'libshill-net-<(libbase_ver)',
-      ],
-      'sources': [
-        'net/mock_io_handler_factory.cc',
-        'net/mock_netlink_manager.cc',
-        'net/mock_rtnl_handler.cc',
-        'net/mock_sockets.cc',
-        'net/mock_time.cc',
-      ],
-      'includes': ['../common-mk/deps.gypi'],
-    },
-    {
       'target_name': 'libshill',
       'type': 'static_library',
       'dependencies': [
@@ -527,7 +511,6 @@
           'type': 'executable',
           'dependencies': [
             'libshill',
-            'libshill-net-test-<(libbase_ver)',
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'variables': {
