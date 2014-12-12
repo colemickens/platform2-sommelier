@@ -50,10 +50,10 @@ const char kUploadFilePrefix[] = "upload_file_";
 const char kLsbVersionKey[] = "CHROMEOS_RELEASE_VERSION";
 
 // Directory mode of the user crash spool directory.
-const mode_t kUserCrashPathMode = 0755;
+const mode_t kUserCrashPathMode = 0700;
 
 // Directory mode of the system crash spool directory.
-const mode_t kSystemCrashDirectoryMode = 01755;
+const mode_t kSystemCrashDirectoryMode = 0700;
 
 // Directory mode of the run time state directory.
 // Since we place flag files in here for checking by tests, we make it readable.

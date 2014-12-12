@@ -217,8 +217,8 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfo) {
   const int kNtpUid = 5;
   const int kChronosUid = 1000;
   const int kChronosGid = 1001;
-  const mode_t kExpectedSystemMode = 01755;
-  const mode_t kExpectedUserMode = 0755;
+  const mode_t kExpectedSystemMode = 0700;
+  const mode_t kExpectedUserMode = 0700;
 
   mode_t directory_mode;
   uid_t directory_owner;
