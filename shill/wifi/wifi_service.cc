@@ -150,6 +150,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   IgnoreParameterForConfigure(kModeProperty);
   IgnoreParameterForConfigure(kSSIDProperty);
   IgnoreParameterForConfigure(kSecurityProperty);
+  IgnoreParameterForConfigure(kSecurityClassProperty);
   IgnoreParameterForConfigure(kWifiHexSsid);
 
   InitializeCustomMetrics();
@@ -243,7 +244,7 @@ bool WiFiService::SetPassphrase(const string &passphrase, Error *error) {
   }
 
   if (!error->IsSuccess()) {
-    LOG(ERROR) << "Passphrase could not be set: " << error;
+    LOG(ERROR) << "Passphrase could not be set: " << error->message();
     return false;
   }
 
@@ -1044,6 +1045,12 @@ bool WiFiService::IsValidSecurityMethod(const string &method) {
       method == kSecurityWpa ||
       method == kSecurityRsn ||
       method == kSecurity8021x;
+}
+
+// static
+bool WiFiService::IsValidSecurityClass(const string &security_class) {
+  return IsValidSecurityMethod(security_class) &&
+      ComputeSecurityClass(security_class) == security_class;
 }
 
 // static

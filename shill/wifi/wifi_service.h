@@ -84,6 +84,10 @@ class WiFiService : public Service {
   // Validate |method| against all valid and supported security methods.
   static bool IsValidSecurityMethod(const std::string &method);
 
+  // Validate |security_class| against all valid and supported
+  // security classes.
+  static bool IsValidSecurityClass(const std::string &security_class);
+
   const std::string &mode() const { return mode_; }
   const std::string &key_management() const { return GetEAPKeyManagement(); }
   const std::vector<uint8_t> &ssid() const { return ssid_; }

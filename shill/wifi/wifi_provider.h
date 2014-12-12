@@ -137,8 +137,10 @@ class WiFiProvider : public ProviderInterface {
   static const char kManagerErrorSSIDTooLong[];
   static const char kManagerErrorSSIDTooShort[];
   static const char kManagerErrorSSIDRequired[];
+  static const char kManagerErrorUnsupportedSecurityClass[];
   static const char kManagerErrorUnsupportedSecurityMode[];
   static const char kManagerErrorUnsupportedServiceMode[];
+  static const char kManagerErrorArgumentConflict[];
   static const char kFrequencyDelimiter;
   static const char kStartWeekHeader[];
   static const time_t kIllegalStartWeek;

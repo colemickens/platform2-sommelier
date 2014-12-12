@@ -53,10 +53,14 @@ static string ObjectID(WiFiProvider *w) { return "(wifi_provider)"; }
 const char WiFiProvider::kManagerErrorSSIDRequired[] = "must specify SSID";
 const char WiFiProvider::kManagerErrorSSIDTooLong[]  = "SSID is too long";
 const char WiFiProvider::kManagerErrorSSIDTooShort[] = "SSID is too short";
+const char WiFiProvider::kManagerErrorUnsupportedSecurityClass[] =
+    "security class is unsupported";
 const char WiFiProvider::kManagerErrorUnsupportedSecurityMode[] =
     "security mode is unsupported";
 const char WiFiProvider::kManagerErrorUnsupportedServiceMode[] =
     "service mode is unsupported";
+const char WiFiProvider::kManagerErrorArgumentConflict[] =
+    "provided arguments are inconsistent";
 const char WiFiProvider::kFrequencyDelimiter = ':';
 const char WiFiProvider::kStartWeekHeader[] = "@";
 const time_t WiFiProvider::kIllegalStartWeek =
@@ -566,18 +570,39 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
     return false;
   }
 
-  string security_method_test = args.LookupString(kSecurityProperty,
-                                                  kSecurityNone);
-
-  if (!WiFiService::IsValidSecurityMethod(security_method_test)) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
-                          kManagerErrorUnsupportedSecurityMode);
+  const string kDefaultSecurity = kSecurityNone;
+  if (args.ContainsString(kSecurityProperty) &&
+      args.ContainsString(kSecurityClassProperty) &&
+      args.LookupString(kSecurityClassProperty, kDefaultSecurity) !=
+      args.LookupString(kSecurityProperty, kDefaultSecurity)) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          kManagerErrorArgumentConflict);
     return false;
+  }
+  if (args.ContainsString(kSecurityClassProperty)) {
+    string security_class_test =
+        args.LookupString(kSecurityClassProperty, kDefaultSecurity);
+    if (!WiFiService::IsValidSecurityClass(security_class_test)) {
+      Error::PopulateAndLog(error, Error::kNotSupported,
+                            kManagerErrorUnsupportedSecurityClass);
+      return false;
+    }
+    *security_method = security_class_test;
+  } else if (args.ContainsString(kSecurityProperty)) {
+    string security_method_test =
+        args.LookupString(kSecurityProperty, kDefaultSecurity);
+    if (!WiFiService::IsValidSecurityMethod(security_method_test)) {
+      Error::PopulateAndLog(error, Error::kNotSupported,
+                            kManagerErrorUnsupportedSecurityMode);
+      return false;
+    }
+    *security_method = security_method_test;
+  } else {
+    *security_method = kDefaultSecurity;
   }
 
   *ssid_bytes = ssid;
   *mode = mode_test;
-  *security_method = security_method_test;
 
   // If the caller hasn't specified otherwise, we assume it is a hidden service.
   *hidden_ssid = args.LookupBool(kWifiHiddenSsid, true);
