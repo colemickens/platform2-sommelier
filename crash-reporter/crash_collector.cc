@@ -97,10 +97,12 @@ namespace {
 // is actually a directory with the specified permissions.
 bool CreateDirectoryWithSettings(const FilePath& dir, mode_t mode, uid_t owner,
                                  gid_t group) {
+  const char *dir_c_str = dir.value().c_str();
+
   // If it's not a directory, nuke it.
   if (!base::DirectoryExists(dir)) {
     if (!base::DeleteFile(dir, false)) {
-      PLOG(ERROR) << "Unable to cleanup crash directory: " << dir.value();
+      PLOG(ERROR) << "Unable to cleanup crash directory: " << dir_c_str;
       return false;
     }
   }
@@ -108,16 +110,32 @@ bool CreateDirectoryWithSettings(const FilePath& dir, mode_t mode, uid_t owner,
   // Create the directory.  This will use a default mode of 0700 and current
   // user/group for ownership (which we'll adjust below).
   if (!base::CreateDirectory(dir)) {
-    PLOG(ERROR) << "Unable to create crash directory: " << dir.value();
+    PLOG(ERROR) << "Unable to create crash directory: " << dir_c_str;
     return false;
   }
 
-  // Make sure the permissions are sane in case they got reset somewhere.
-  if (chown(dir.value().c_str(), owner, group) < 0 ||
-      chmod(dir.value().c_str(), mode) < 0) {
-    PLOG(ERROR) << "Unable to set ownership/mode on crash directory: "
-                << dir.value();
+  // Make sure the ownership/permissions are correct in case they got reset.
+  // We stat it to avoid pointless metadata updates in the common case.
+  struct stat st;
+  if (stat(dir_c_str, &st)) {
+    PLOG(ERROR) << "Unable to stat crash directory: " << dir_c_str;
     return false;
+  }
+
+  // Change the ownership before we change the mode.
+  if (st.st_uid != owner || st.st_gid != group) {
+    if (chown(dir_c_str, owner, group)) {
+      PLOG(ERROR) << "Unable to chown crash directory: " << dir_c_str;
+      return false;
+    }
+  }
+
+  // Update the mode bits.
+  if ((st.st_mode & 07777) != mode) {
+    if (chmod(dir_c_str, mode)) {
+      PLOG(ERROR) << "Unable to chmod crash directory: " << dir_c_str;
+      return false;
+    }
   }
 
   return true;
