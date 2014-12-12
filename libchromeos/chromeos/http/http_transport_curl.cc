@@ -14,6 +14,12 @@ namespace curl {
 
 Transport::Transport() {
   VLOG(1) << "curl::Transport created";
+  proxy_ = "";
+}
+
+Transport::Transport(const std::string& proxy) {
+  VLOG(1) << "curl::Transport created with proxy " << proxy;
+  proxy_ = proxy;
 }
 
 Transport::~Transport() {
@@ -47,6 +53,10 @@ std::unique_ptr<http::Connection> Transport::CreateConnection(
   if (!referer.empty()) {
     curl_easy_setopt(curl_handle,
                      CURLOPT_REFERER, referer.c_str());
+  }
+  if (!proxy_.empty()) {
+    curl_easy_setopt(curl_handle,
+                     CURLOPT_PROXY, proxy_.c_str());
   }
 
   // Setup HTTP request method and optional request body.

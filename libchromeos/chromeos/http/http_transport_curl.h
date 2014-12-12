@@ -24,6 +24,11 @@ namespace curl {
 class CHROMEOS_EXPORT Transport : public http::Transport {
  public:
   Transport();
+
+  // Creates a transport object using a proxy.
+  // |proxy| is of the form [protocol://][user:password@]host[:port].
+  // If not defined, protocol is assumed to be http://.
+  explicit Transport(const std::string& proxy);
   virtual ~Transport();
 
   std::unique_ptr<http::Connection> CreateConnection(
@@ -36,6 +41,7 @@ class CHROMEOS_EXPORT Transport : public http::Transport {
       chromeos::ErrorPtr* error) override;
 
  private:
+  std::string proxy_;
   DISALLOW_COPY_AND_ASSIGN(Transport);
 };
 
