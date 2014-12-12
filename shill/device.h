@@ -550,6 +550,10 @@ class Device : public base::RefCounted<Device> {
       const std::string &name,
       std::string(Device::*get)(Error *));
 
+  void HelpRegisterConstDerivedRpcIdentifier(
+      const std::string &name,
+      RpcIdentifier(Device::*get)(Error *));
+
   void HelpRegisterConstDerivedRpcIdentifiers(
       const std::string &name,
       RpcIdentifiers(Device::*get)(Error *));
@@ -649,6 +653,7 @@ class Device : public base::RefCounted<Device> {
   // will contain the best local address for the target.
   void EnableArpFiltering();
 
+  std::string GetSelectedServiceRpcIdentifier(Error *error);
   std::vector<std::string> AvailableIPConfigs(Error *error);
   std::string GetRpcConnectionIdentifier();
 

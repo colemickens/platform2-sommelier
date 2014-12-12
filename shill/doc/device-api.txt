@@ -496,6 +496,22 @@ Properties	string Address [readonly]
 			This value is for pure informational purposes. It
 			is not guaranteed that it is always present.
 
+		object SelectedService [readonly]
+
+			Object path of the currently selected service path.
+			The selected service of a device is the service for
+			which it is currently receiving link events.  WiFi
+			is slightly different in that it sets the link event
+			immediately after requesting a connection so that
+			failures to connect are correctly attributed.
+
+			The device guarantees that if it is connected, the
+			connected service will appear in SelectedService.
+			However, SelectedService could be just "/", indicating
+			no selected service.  The SelectedService is also
+			not guaranteed to be online (e.g. it could be in the
+			process of being connected, or an error state).
+
 		array{object} IPConfigs [readonly]
 
 			List of IPConfig objects paths. Every object path

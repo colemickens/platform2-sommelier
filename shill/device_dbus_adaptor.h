@@ -49,6 +49,8 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
                                   const Strings &value);
   virtual void EmitKeyValueStoreChanged(const std::string &name,
                                         const KeyValueStore &value);
+  virtual void EmitRpcIdentifierChanged(const std::string &name,
+                                        const std::string &value);
   virtual void EmitRpcIdentifierArrayChanged(
       const std::string &name, const std::vector<std::string> &value);
 

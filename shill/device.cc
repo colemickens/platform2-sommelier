@@ -172,6 +172,8 @@ Device::Device(ControlInterface *control_interface,
   // kDBusObjectProperty: Register in Cellular
 
   store_.RegisterConstString(kInterfaceProperty, &link_name_);
+  HelpRegisterConstDerivedRpcIdentifier(
+      kSelectedServiceProperty, &Device::GetSelectedServiceRpcIdentifier);
   HelpRegisterConstDerivedRpcIdentifiers(kIPConfigsProperty,
                                          &Device::AvailableIPConfigs);
   store_.RegisterConstString(kNameProperty, &link_name_);
@@ -699,6 +701,15 @@ void Device::HelpRegisterConstDerivedString(
       StringAccessor(new CustomAccessor<Device, string>(this, get, nullptr)));
 }
 
+void Device::HelpRegisterConstDerivedRpcIdentifier(
+    const string &name,
+    RpcIdentifier(Device::*get)(Error *error)) {
+  store_.RegisterDerivedRpcIdentifier(
+      name,
+      RpcIdentifierAccessor(
+          new CustomAccessor<Device, RpcIdentifier>(this, get, nullptr)));
+}
+
 void Device::HelpRegisterConstDerivedRpcIdentifiers(
     const string &name,
     RpcIdentifiers(Device::*get)(Error *)) {
@@ -948,6 +959,8 @@ void Device::SelectService(const ServiceRefPtr &service) {
   last_link_monitor_failed_time_ = 0;
 
   selected_service_ = service;
+  adaptor_->EmitRpcIdentifierChanged(
+      kSelectedServiceProperty, GetSelectedServiceRpcIdentifier(nullptr));
 }
 
 void Device::SetServiceState(Service::ConnectState state) {
@@ -1441,6 +1454,13 @@ void Device::PortalDetectorCallback(const PortalDetector::Result &result) {
                         weak_ptr_factory_.GetWeakPtr()));
     }
   }
+}
+
+string Device::GetSelectedServiceRpcIdentifier(Error */*error*/) {
+  if (!selected_service_) {
+    return "/";
+  }
+  return selected_service_->GetRpcIdentifier();
 }
 
 vector<string> Device::AvailableIPConfigs(Error */*error*/) {

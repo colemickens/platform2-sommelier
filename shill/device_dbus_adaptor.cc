@@ -103,6 +103,12 @@ void DeviceDBusAdaptor::EmitKeyValueStoreChanged(const string &name,
   PropertyChanged(name, DBusAdaptor::KeyValueStoreToVariant(value));
 }
 
+void DeviceDBusAdaptor::EmitRpcIdentifierChanged(const std::string &name,
+                                                 const std::string &value) {
+  SLOG(this, 2) << __func__ << ": " << name;
+  PropertyChanged(name, DBusAdaptor::PathToVariant(value));
+}
+
 void DeviceDBusAdaptor::EmitRpcIdentifierArrayChanged(
     const string &name,
     const vector<string> &value) {

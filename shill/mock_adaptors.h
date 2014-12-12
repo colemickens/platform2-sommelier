@@ -41,6 +41,9 @@ class DeviceMockAdaptor : public DeviceAdaptorInterface {
                                         const Strings &value));
   MOCK_METHOD2(EmitKeyValueStoreChanged, void(const std::string &name,
                                               const KeyValueStore &value));
+  MOCK_METHOD2(EmitRpcIdentifierChanged,
+               void(const std::string &name,
+                    const std::string &value));
   MOCK_METHOD2(EmitRpcIdentifierArrayChanged,
                void(const std::string &name,
                     const std::vector<std::string> &value));
