@@ -86,11 +86,23 @@ cmd_packet_capture() (
 )
 
 cmd_shell() (
- local shell="/bin/sh"
- if [ -x /bin/bash ]; then
-   shell="/bin/bash"
- fi
- SHELL=${shell} ${shell} -l
+  # Verify we have sanity with the dev mode password db.
+  local passwd="/mnt/stateful_partition/etc/devmode.passwd"
+  if [ -e "${passwd}" ]; then
+    local perms="$(stat -c %a "${passwd}")"
+    if [ "${perms}" != "600" ]; then
+      echo "WARNING: Permission on ${passwd} is not 0600."
+      echo "WARNING: Please fix by running: sudo chmod 600 ${passwd}"
+      echo "WARNING: You might also consider changing your password."
+      sleep 3
+    fi
+  fi
+
+  local shell="/bin/sh"
+  if [ -x /bin/bash ]; then
+    shell="/bin/bash"
+  fi
+  SHELL=${shell} ${shell} -l
 )
 
 cmd_systrace() (
