@@ -23,7 +23,7 @@ from chromite.lib.cros_build_lib import ShellUnquote
 class Platform2(object):
   """Main builder logic for platform2"""
 
-  def __init__(self, use_flags, board=None, host=False, libdir=None,
+  def __init__(self, use_flags=None, board=None, host=False, libdir=None,
                incremental=True, verbose=False, enable_tests=False,
                cache_dir=None, jobs=None):
     self.board = board
@@ -32,7 +32,7 @@ class Platform2(object):
     self.jobs = jobs
     self.verbose = verbose
 
-    if use_flags:
+    if use_flags is not None:
       self.use_flags = use_flags
     else:
       self.use_flags = self.get_platform2_use_flags()
