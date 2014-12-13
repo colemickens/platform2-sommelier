@@ -43,12 +43,17 @@ const int kAcceptableSync2SyncError = 250;  // uS
 // system calls between the values there is substantial variance in the
 // delta. Problems the this check catch are normally order of magnitude
 // differences.
-const int kAcceptableClockError = 25000;  // uS
+const khronos_uint64_t kAcceptableClockError = 25000;  // uS
 const float kFillValueRed = 1.0;
 const float kFillValueGreen = 0.0;
 const float kFillValueBlue = 0.0;
 const khronos_uint64_t kMicroSecondsPerSecond = 1000000;
 const khronos_uint64_t kMicroSecondsPerMilliSecond = 1000;
+
+khronos_uint64_t GetAbsTimeDelta(khronos_uint64_t t1, khronos_uint64_t t2) {
+  return (t1 > t2) ? (t1 - t2) : (t2 - t1);
+}
+
 }  // namespace
 
 class EGLSyncControlTest : public SyncControlTest {
@@ -200,11 +205,11 @@ bool EGLSyncControlTest::TestAgainstSystem(khronos_uint64_t ust) {
       sec * kMicroSecondsPerSecond +
       nsec / kMicroSecondsPerMilliSecond;
 
-  if (llabs(ust - real_time_us) < kAcceptableClockError) {
+  if (GetAbsTimeDelta(ust, real_time_us) < kAcceptableClockError) {
     return true;
   }
 
-  if (llabs(ust - monotonic_time_us) < kAcceptableClockError) {
+  if (GetAbsTimeDelta(ust, monotonic_time_us) < kAcceptableClockError) {
     return true;
   }
 

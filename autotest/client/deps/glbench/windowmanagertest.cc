@@ -157,10 +157,10 @@ int main(int argc, char* argv[]) {
     // State change. Perform action.
     switch(state) {
       case kStateScreenShot1:
-        system(FLAGS_screenshot1_cmd.c_str());
+        ignore_result(system(FLAGS_screenshot1_cmd.c_str()));
         break;
       case kStateScreenShot2:
-        system(FLAGS_screenshot2_cmd.c_str());
+        ignore_result(system(FLAGS_screenshot2_cmd.c_str()));
         break;
       default:
         break;

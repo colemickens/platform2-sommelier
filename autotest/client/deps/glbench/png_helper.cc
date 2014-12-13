@@ -87,5 +87,5 @@ void write_png_file(const char* file_name, char* pixels, int width, int height)
   fclose(fp);
 
   // Try to flush saved image to disk such that more data survives a hard crash.
-  system("/bin/sync");
+  ignore_result(system("/bin/sync"));
 }
