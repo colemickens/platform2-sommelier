@@ -281,6 +281,7 @@ class Platform2Test(object):
       os.environ['TERM'] = 'ansi'
       # Some progs want this like bash else they get super confused.
       os.environ['PWD'] = cwd
+      os.environ['GTEST_COLOR'] = 'yes'
       if not self.run_as_root:
         user, uid, gid, home = self.GetNonRootAccount()
         os.setgid(gid)
