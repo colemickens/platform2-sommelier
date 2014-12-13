@@ -19,8 +19,7 @@ import os
 import sys
 import tempfile
 
-from platform2 import Platform2
-
+from chromite.lib import cros_build_lib
 from chromite.lib import namespaces
 from chromite.lib import osutils
 from chromite.lib import retry_util
@@ -332,8 +331,8 @@ class Platform2Test(object):
 
   _BIND_MOUNT_PATHS = ('dev', 'dev/pts', 'proc', 'mnt/host/source', 'sys')
 
-  def __init__(self, test_bin, board, host, use_flags, framework,
-               run_as_root, gtest_filter, user_gtest_filter, cache_dir,
+  def __init__(self, test_bin, board, host, framework,
+               run_as_root, gtest_filter, user_gtest_filter,
                sysroot, test_bin_args):
     if not test_bin_args:
       test_bin_args = [test_bin]
@@ -343,17 +342,14 @@ class Platform2Test(object):
     self.args = test_bin_args
     self.board = board
     self.host = host
-    self.use_flags = use_flags
     self.run_as_root = run_as_root
     (self.gtest_filter, self.user_gtest_filter) = \
         self.generateGtestFilter(gtest_filter, user_gtest_filter)
 
-    p2 = Platform2(self.use_flags, self.board, self.host, cache_dir=cache_dir)
     if sysroot:
       self.sysroot = sysroot
     else:
-      self.sysroot = p2.sysroot
-    self.lib_dir = os.path.join(p2.get_products_path(), 'lib')
+      self.sysroot = cros_build_lib.GetSysroot(self.board)
 
     self.framework = framework
     if self.framework == 'auto':
@@ -517,9 +513,6 @@ class Platform2Test(object):
   def post_test(self):
     """Runs post-test teardown, removes mounts/files copied during pre-test."""
 
-  def use(self, use_flag):
-    return use_flag in self.use_flags
-
   def run(self):
     """Runs the test in a proper environment (e.g. qemu)."""
 
@@ -527,11 +520,10 @@ class Platform2Test(object):
     # once), so run them automatically for the user if they test by hand.
     self.pre_test()
 
-    if not self.use('cros_host'):
-      for mount in self._BIND_MOUNT_PATHS:
-        path = os.path.join(self.sysroot, mount)
-        osutils.SafeMakedirs(path)
-        osutils.Mount('/' + mount, path, 'none', osutils.MS_BIND)
+    for mount in self._BIND_MOUNT_PATHS:
+      path = os.path.join(self.sysroot, mount)
+      osutils.SafeMakedirs(path)
+      osutils.Mount('/' + mount, path, 'none', osutils.MS_BIND)
 
     positive_filters = self.gtest_filter[0]
     negative_filters = self.gtest_filter[1]
@@ -646,9 +638,6 @@ def main(argv):
                       help='board to build for')
   parser.add_argument('--sysroot', default=None,
                       help='sysroot to run tests inside')
-  parser.add_argument('--cache_dir',
-                      default='var/cache/portage/chromeos-base/platform2',
-                      help='directory to use as cache for incremental build')
   parser.add_argument('--framework', default='auto',
                       choices=('auto', 'ldso', 'qemu'),
                       help='framework to be used to run tests')
@@ -658,9 +647,6 @@ def main(argv):
                       help='specify that we\'re testing for the host')
   parser.add_argument('--run_as_root', action='store_true',
                       help='should the test be run as root')
-  parser.add_argument('--use_flags', default=set(),
-                      action=_ParseStringSetAction,
-                      help='USE flags to enable')
   parser.add_argument('--user_gtest_filter', default='',
                       help=argparse.SUPPRESS)
   parser.add_argument('cmdline', nargs='*')
@@ -687,9 +673,9 @@ def main(argv):
                      ns_pid=options.ns_pid)
 
   p2test = Platform2Test(options.bin, options.board, options.host,
-                         options.use_flags, options.framework,
+                         options.framework,
                          options.run_as_root, options.gtest_filter,
-                         options.user_gtest_filter, options.cache_dir,
+                         options.user_gtest_filter,
                          options.sysroot, options.cmdline)
   getattr(p2test, options.action)()
 
