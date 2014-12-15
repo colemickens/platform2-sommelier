@@ -207,6 +207,7 @@ TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
     return result;
   }
   session_->SetEntityAuthorizationValue(kWellKnownPassword);
+  session_->SetFutureAuthorizationValue(owner_password);
   result = SetHierarchyAuthorization(TPM_RH_OWNER,
                                      owner_password,
                                      session_->GetDelegate());
@@ -222,6 +223,7 @@ TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
     return result;
   }
   session_->SetEntityAuthorizationValue("");
+  session_->SetFutureAuthorizationValue(endorsement_password);
   if (!tpm_state->IsEndorsementPasswordSet()) {
     result = SetHierarchyAuthorization(TPM_RH_ENDORSEMENT,
                                        endorsement_password,
@@ -231,6 +233,7 @@ TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
       return result;
     }
   }
+  session_->SetFutureAuthorizationValue(lockout_password);
   if (!tpm_state->IsLockoutPasswordSet()) {
     result = SetHierarchyAuthorization(TPM_RH_LOCKOUT,
                                        lockout_password,

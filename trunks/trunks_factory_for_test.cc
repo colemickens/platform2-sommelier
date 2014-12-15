@@ -225,6 +225,10 @@ class AuthorizationSessionForwarder : public AuthorizationSession {
     return target_->SetEntityAuthorizationValue(value);
   }
 
+  void SetFutureAuthorizationValue(const std::string& value) override {
+    return target_->SetFutureAuthorizationValue(value);
+  }
+
  private:
   AuthorizationSession* target_;
 };

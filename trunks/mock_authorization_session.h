@@ -25,6 +25,7 @@ class MockAuthorizationSession : public AuthorizationSession {
       bool enable_encryption));
   MOCK_METHOD1(StartUnboundSession, TPM_RC(bool enable_encryption));
   MOCK_METHOD1(SetEntityAuthorizationValue, void(const std::string& value));
+  MOCK_METHOD1(SetFutureAuthorizationValue, void(const std::string& value));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockAuthorizationSession);

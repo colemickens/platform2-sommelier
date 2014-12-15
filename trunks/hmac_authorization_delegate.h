@@ -76,6 +76,10 @@ class CHROMEOS_EXPORT HmacAuthorizationDelegate: public AuthorizationDelegate {
                    const std::string& bind_auth_value,
                    bool enable_parameter_encryption);
 
+  // This method sets the FutureAuthorizationValue. This value is used in
+  // computing the HMAC response of TPM2_HierarchyChangeAuth.
+  void set_future_authorization_value(const std::string& auth_value);
+
   // This method is used to inject an auth_value associated with an entity.
   // This auth_value is then used when generating HMACs and encryption keys.
   // Note: This value will be used for all commands until explicitly reset.
@@ -83,11 +87,11 @@ class CHROMEOS_EXPORT HmacAuthorizationDelegate: public AuthorizationDelegate {
     entity_auth_value_ = auth_value;
   }
 
-  std::string entity_auth_value() {
+  std::string entity_auth_value() const {
     return entity_auth_value_;
   }
 
-  TPM_HANDLE session_handle() {
+  TPM_HANDLE session_handle() const {
     return session_handle_;
   }
 
@@ -123,9 +127,11 @@ class CHROMEOS_EXPORT HmacAuthorizationDelegate: public AuthorizationDelegate {
   TPM2B_NONCE caller_nonce_;
   TPM2B_NONCE tpm_nonce_;
   bool is_parameter_encryption_enabled_;
+  bool nonce_generated_;
   std::string session_key_;
   std::string entity_auth_value_;
-  bool nonce_generated_;
+  bool future_authorization_value_set_;
+  std::string future_authorization_value_;
 
   DISALLOW_COPY_AND_ASSIGN(HmacAuthorizationDelegate);
 };

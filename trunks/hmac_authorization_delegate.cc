@@ -30,7 +30,8 @@ const uint32_t kTpmBufferSize = 4096;
 HmacAuthorizationDelegate::HmacAuthorizationDelegate()
     : session_handle_(0),
       is_parameter_encryption_enabled_(false),
-      nonce_generated_(false) {
+      nonce_generated_(false),
+      future_authorization_value_set_(false) {
   tpm_nonce_.size = 0;
   caller_nonce_.size = 0;
 }
@@ -120,6 +121,12 @@ bool HmacAuthorizationDelegate::CheckResponseAuthorization(
 
   std::string hmac_key = session_key_ + entity_auth_value_;
   std::string hmac_data;
+  // In a special case with TPM2_HierarchyChangeAuth, we need to use the
+  // auth_value that was set.
+  if (future_authorization_value_set_) {
+    hmac_key = session_key_ + future_authorization_value_;
+    future_authorization_value_set_ = false;
+  }
   hmac_data.append(response_hash);
   hmac_data.append(reinterpret_cast<const char*>(tpm_nonce_.buffer),
                    tpm_nonce_.size);
@@ -204,6 +211,12 @@ bool HmacAuthorizationDelegate::InitSession(
                              caller_nonce_);
   }
   return true;
+}
+
+void HmacAuthorizationDelegate::set_future_authorization_value(
+    const std::string& auth_value) {
+  future_authorization_value_ = auth_value;
+  future_authorization_value_set_ = true;
 }
 
 std::string HmacAuthorizationDelegate::CreateKey(

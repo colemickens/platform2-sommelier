@@ -44,6 +44,12 @@ class AuthorizationSession {
   // while the session is active and subsequent commands will use the value.
   virtual void SetEntityAuthorizationValue(const std::string& value) = 0;
 
+  // Sets the future_authorization_value field in the HmacDelegate. This
+  // is used in response validation for the TPM2_HierarchyChangeAuth command.
+  // We need to perform this because the HMAC value returned from
+  // HierarchyChangeAuth uses the new auth_value.
+  virtual void SetFutureAuthorizationValue(const std::string& value) = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(AuthorizationSession);
 };
