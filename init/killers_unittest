@@ -17,14 +17,12 @@ pollForPid() {
   done
 }
 
-setUp() {
-  sleep 10000000 &
-  SLEEP_PID=$!
-  pollForPid "${SLEEP_PID}"
-}
-
 tearDown() {
-  kill -TERM "${SLEEP_PID}" 2> /dev/null
+  # TODO(cmasone): Remove ps when http://crbug.com/442027 is sorted.
+  ps -f --forest -u cmasone
+  pkill -KILL -e -P $$
+  echo "------------------------------ Test complete."
+  echo
 }
 
 # Asserts that the given PID is alive.
@@ -35,7 +33,7 @@ assertPid() {
   assertEquals "${pid} should not have been killed." 0 $?
 }
 
-readonly ASSERT_NO_PID_TIMEOUT=2000  # Timeout in msec. Chosen arbitrarily.
+readonly ASSERT_NO_PID_TIMEOUT=20000  # Timeout in msec. Chosen arbitrarily.
 # Asserts that the given PID is not alive.
 assertNoPid() {
   [[ $# -eq 1 ]] || fail "assertPid requires 1 arg, you passed $@"
@@ -47,6 +45,7 @@ assertNoPid() {
     fi
     sleep .1
     : $(( i += 100 ))
+    echo "Waited ${i} msec for ${pid} to die."
   done
   fail "${pid} should not be alive."
 }
@@ -63,26 +62,6 @@ runBackgroundProcess() {
   touch "${tmpfile}" || fail "Could not create ${tmpfile}"
   bash -c "exec 3<'${tmpfile}'; ${untermable} kill -STOP \$\$" &
   pollForPid $!
-}
-
-testTermExistingProcess() {
-  term_process "^sleep$"
-  assertNoPid "${SLEEP_PID}"
-}
-
-testTermNonExistentProcess() {
-  term_process "^foo$"
-  assertPid "${SLEEP_PID}"
-}
-
-testTermProcess_NonTermable() {
-  local non_termable_pid
-  runBackgroundProcess untermable
-  non_termable_pid=$!
-  pollForPid "${non_termable_pid}"
-
-  term_process "^bash$" 2> /dev/null
-  assertNoPid "${non_termable_pid}"
 }
 
 # Run a test of kill_with_open_files_on. Pass "untermable" as the sole
@@ -145,7 +124,6 @@ main() {
   # Default to the temp dir ($T) that portage has set up for us.
   # This is needed when doing out of tree builds.
   TMPDIR="${T:-.}"
-  export SLEEP_PID=
 
   . ./killers
   . /usr/bin/shunit2
