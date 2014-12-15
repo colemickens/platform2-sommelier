@@ -38,19 +38,6 @@ CHROMEOS_EXPORT void AddDBusError(chromeos::ErrorPtr* error,
                                   const std::string& dbus_error_name,
                                   const std::string& dbus_error_message);
 
-// TODO(avakulenko): Until dbus::ScopedDBusError has inline dbus-1 function
-// calls removed from its header file, we need to create a wrapper around it.
-// This way we can hide calls to low-level dbus API calls from the call sites.
-// See http://crbug.com/416628
-class CHROMEOS_EXPORT ScopedDBusErrorWrapper : public dbus::ScopedDBusError {
- public:
-  // Do not inline constructor/destructor.
-  ScopedDBusErrorWrapper();
-  ~ScopedDBusErrorWrapper();
-  // Hide the function of ScopedDBusError and provide our own...
-  bool is_set() const;
-};
-
 }  // namespace dbus_utils
 }  // namespace chromeos
 

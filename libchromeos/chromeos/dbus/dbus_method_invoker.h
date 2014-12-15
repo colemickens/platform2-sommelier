@@ -101,10 +101,7 @@ inline std::unique_ptr<dbus::Response> CallMethodAndBlockWithTimeout(
   // Add method arguments to the message buffer.
   dbus::MessageWriter writer(&method_call);
   DBusParamWriter::Append(&writer, args...);
-  // TODO(avakulenko): Replace ScopedDBusErrorWrapper with dbus::ScopedDBusError
-  // when its methods that call dbus-1 APIs are not inlined.
-  // See http://crbug.com/416628
-  ScopedDBusErrorWrapper dbus_error;
+  dbus::ScopedDBusError dbus_error;
   auto response = object->CallMethodAndBlockWithErrorDetails(
       &method_call, timeout_ms, &dbus_error);
   if (!response) {
