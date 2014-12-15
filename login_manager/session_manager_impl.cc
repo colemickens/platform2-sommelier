@@ -7,6 +7,8 @@
 #include <glib.h>
 #include <stdint.h>
 
+#include <algorithm>
+#include <locale>
 #include <string>
 
 #include <base/bind.h>
@@ -526,7 +528,8 @@ bool SessionManagerImpl::RestartJob(pid_t pid,
   return true;
 }
 
-void SessionManagerImpl::StartDeviceWipe(Error* error) {
+void SessionManagerImpl::StartDeviceWipe(const std::string& reason,
+                                         Error* error) {
   const base::FilePath session_path(kLoggedInFlag);
   if (system_->Exists(session_path)) {
     const char msg[] = "A user has already logged in this boot.";
@@ -534,7 +537,7 @@ void SessionManagerImpl::StartDeviceWipe(Error* error) {
     error->Set(dbus_error::kSessionExists, msg);
     return;
   }
-  InitiateDeviceWipe();
+  InitiateDeviceWipe(reason);
 }
 
 void SessionManagerImpl::SetFlagsForUser(
@@ -587,9 +590,20 @@ void SessionManagerImpl::ImportValidateAndStoreGeneratedKey(
       username, key, user_sessions_[username]->slot.get());
 }
 
-void SessionManagerImpl::InitiateDeviceWipe() {
+void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {
+  // The log string must not be confused with other clobbers-state parameters.
+  // Sanitize by replacing all non-alphanumeric characters with underscores and
+  // clamping size to 50 characters.
+  std::string sanitized_reason(reason.substr(0, 50));
+  std::locale locale("C");
+  std::replace_if(sanitized_reason.begin(), sanitized_reason.end(),
+                  [&locale](const std::string::value_type character) {
+                    return !std::isalnum(character, locale);
+                  },
+                  '_');
   const base::FilePath reset_path(kResetFile);
-  system_->AtomicFileWrite(reset_path, "fast safe keepimg");
+  system_->AtomicFileWrite(reset_path,
+                           "fast safe keepimg reason=" + sanitized_reason);
   restart_device_closure_.Run();
 }
 

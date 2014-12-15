@@ -109,7 +109,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   // rebooting to allow early-boot code to wipe parts of stateful we
   // need wiped. Have a look at /src/platform/init/chromeos_startup
   // for the gory details.
-  void InitiateDeviceWipe() override;
+  void InitiateDeviceWipe(const std::string& reason) override;
 
   //////////////////////////////////////////////////////////////////////////////
   // Methods exposed via RPC are defined below.
@@ -155,7 +155,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   void HandleLockScreenDismissed();
 
   bool RestartJob(pid_t pid, const std::string& arguments, Error* error);
-  void StartDeviceWipe(Error* error);
+  void StartDeviceWipe(const std::string& reason, Error* error);
   void SetFlagsForUser(const std::string& user_email,
                        const std::vector<std::string>& session_user_flags);
 

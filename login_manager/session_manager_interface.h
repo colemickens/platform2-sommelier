@@ -30,8 +30,10 @@ class SessionManagerInterface {
   // the user's session should end instead (e.g. screen is currently locked).
   virtual bool ShouldEndSession() = 0;
 
-    // Starts a 'Powerwash' of the device.
-  virtual void InitiateDeviceWipe() = 0;
+  // Starts a 'Powerwash' of the device.  |reason| is persisted to clobber.log
+  // to annotate the cause of the powerwash.  |reason| must not exceed 50 bytes
+  // in length and may only contain alphanumeric characters and underscores.
+  virtual void InitiateDeviceWipe(const std::string& reason) = 0;
 };
 
 }  // namespace login_manager

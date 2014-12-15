@@ -379,7 +379,7 @@ base::TimeDelta SessionManagerService::GetKillTimeout() {
 bool SessionManagerService::InitializeImpl() {
   if (!impl_->Initialize()) {
     LOG(ERROR) << "Policy key is likely corrupt. Initiating device wipe.";
-    impl_->InitiateDeviceWipe();
+    impl_->InitiateDeviceWipe("bad_policy_key");
     impl_->Finalize();
     exit_code_ = MUST_WIPE_DEVICE;
     return false;

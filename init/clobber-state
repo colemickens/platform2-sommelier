@@ -25,10 +25,10 @@ if [ $(id -u) -ne 0 ]; then
 fi
 
 # Run "clobber-state fast" to clobber the state quickly but unsecurely.
-FACTORY_WIPE=$(echo "$@" | grep -sq factory && echo "factory")
-FAST_WIPE=$(echo "$@" | grep -sq fast && echo "fast")
-KEEPIMG=$(echo "$@" | grep -sq keepimg && echo "keepimg")
-SAFE_WIPE=$(echo "$@" | grep -sq safe && echo "safe")
+FACTORY_WIPE=$(echo "$@" | grep -sqw factory && echo "factory")
+FAST_WIPE=$(echo "$@" | grep -sqw fast && echo "fast")
+KEEPIMG=$(echo "$@" | grep -sqw keepimg && echo "keepimg")
+SAFE_WIPE=$(echo "$@" | grep -sqw safe && echo "safe")
 FACTORY_WIPE_FIRMWARE_PID=""
 
 PRESERVED_TAR="/tmp/preserve.tar"

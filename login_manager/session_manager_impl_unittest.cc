@@ -697,7 +697,7 @@ TEST_F(SessionManagerImplTest, StartDeviceWipe_AlreadyLoggedIn) {
   base::FilePath logged_in_path(SessionManagerImpl::kLoggedInFlag);
   ASSERT_FALSE(utils_.Exists(logged_in_path));
   ASSERT_TRUE(utils_.AtomicFileWrite(logged_in_path, "1"));
-  impl_.StartDeviceWipe(&error_);
+  impl_.StartDeviceWipe("test", &error_);
   EXPECT_EQ(error_.name(), dbus_error::kSessionExists);
 }
 
@@ -706,7 +706,15 @@ TEST_F(SessionManagerImplTest, StartDeviceWipe) {
   base::FilePath reset_path(SessionManagerImpl::kResetFile);
   ASSERT_TRUE(utils_.RemoveFile(logged_in_path));
   ExpectDeviceRestart();
-  impl_.StartDeviceWipe(NULL);
+  impl_.StartDeviceWipe(
+      "overly long test message with\nspecial/chars$\t\xa4\xd6 1234567890",
+      NULL);
+  std::string contents;
+  ASSERT_TRUE(utils_.ReadFileToString(reset_path, &contents));
+  ASSERT_EQ(
+      "fast safe keepimg reason="
+      "overly_long_test_message_with_special_chars_____12",
+      contents);
 }
 
 TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {

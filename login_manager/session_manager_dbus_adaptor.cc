@@ -492,7 +492,7 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RestartJob(
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartDeviceWipe(
     dbus::MethodCall* call) {
   SessionManagerImpl::Error error;
-  impl_->StartDeviceWipe(&error);
+  impl_->StartDeviceWipe("session_manager_dbus_request", &error);
   return CraftAppropriateResponseWithBool(call, error, true);
 }
 
