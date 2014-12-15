@@ -77,9 +77,8 @@ void Daemon::OnBuffetCommand(org::chromium::Buffet::CommandProxy* command) {
   printf("              ID: %s\n", command->id().c_str());
   printf("          status: %s\n", command->status().c_str());
   printf(" # of parameters: %" PRIuS "\n", command->parameters().size());
-  auto set = chromeos::GetMapKeys(command->parameters());
-  std::string param_names = chromeos::string_utils::Join(
-      ", ", std::vector<std::string>(set.begin(), set.end()));
+  auto keys = chromeos::GetMapKeysAsVector(command->parameters());
+  std::string param_names = chromeos::string_utils::Join(", ", keys);
   printf(" parameter names: %s\n", param_names.c_str());
   OnCommandProgress(command, 0);
 }

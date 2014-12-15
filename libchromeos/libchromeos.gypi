@@ -268,6 +268,7 @@
             'chromeos/glib/object_unittest.cc',
             'chromeos/http/http_utils_unittest.cc',
             'chromeos/key_value_store_unittest.cc',
+            'chromeos/map_utils_unittest.cc',
             'chromeos/mime_utils_unittest.cc',
             'chromeos/osrelease_reader_unittest.cc',
             'chromeos/process_test.cc',

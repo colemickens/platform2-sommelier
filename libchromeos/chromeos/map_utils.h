@@ -21,6 +21,17 @@ inline std::set<typename T::key_type> GetMapKeys(const T& map) {
   return keys;
 }
 
+// Given an STL map, returns a vector containing all keys from the map.
+// The keys in the vector are sorted.
+template<typename T>
+inline std::vector<typename T::key_type> GetMapKeysAsVector(const T& map) {
+  std::vector<typename T::key_type> keys;
+  keys.reserve(map.size());
+  for (const auto& pair : map)
+    keys.push_back(pair.first);
+  return keys;
+}
+
 // Given an STL map, returns a vector containing all values from the map.
 template<typename T>
 inline std::vector<typename T::mapped_type> GetMapValues(const T& map) {
