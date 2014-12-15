@@ -740,11 +740,21 @@ void WiFiProvider::ReportAutoConnectableServices() {
       num_services++;
     }
   }
-
   // Only report stats when there are wifi services available.
   if (num_services) {
     metrics_->NotifyWifiAutoConnectableServices(num_services);
   }
+}
+
+bool WiFiProvider::HasServiceConfiguredForAutoConnect() {
+  int num_services = 0;
+  for (const auto &service : services_) {
+    if (service->auto_connect()) {
+      // Service configured for auto-connect.
+      num_services++;
+    }
+  }
+  return (num_services > 0);
 }
 
 }  // namespace shill

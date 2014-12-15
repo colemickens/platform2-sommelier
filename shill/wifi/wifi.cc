@@ -1762,6 +1762,7 @@ void WiFi::OnBeforeSuspend(const ResultCallback &callback) {
       TimeToNextDHCPLeaseRenewal(&time_to_next_lease_renewal);
   wake_on_wifi_->OnBeforeSuspend(
       IsConnectedToCurrentService(),
+      provider_->HasServiceConfiguredForAutoConnect(),
       callback,
       Bind(&Device::RenewDHCPLease, weak_ptr_factory_.GetWeakPtr()),
       Bind(&WiFi::RemoveSupplicantNetworks, weak_ptr_factory_.GetWeakPtr()),
@@ -1774,6 +1775,7 @@ void WiFi::OnDarkResume(const ResultCallback &callback) {
   StopScanTimer();
   wake_on_wifi_->OnDarkResume(
       IsConnectedToCurrentService(),
+      provider_->HasServiceConfiguredForAutoConnect(),
       callback,
       Bind(&Device::RenewDHCPLease, weak_ptr_factory_.GetWeakPtr()),
       Bind(&WiFi::InitiateScan, weak_ptr_factory_.GetWeakPtr(), kFullScan,

@@ -115,6 +115,9 @@ class WiFiProvider : public ProviderInterface {
   // metrics.
   void ReportAutoConnectableServices();
 
+  // Returns true iff there is at least one service configured for auto-connect.
+  bool HasServiceConfiguredForAutoConnect();
+
   bool disable_vht() { return disable_vht_; }
   void set_disable_vht(bool disable_vht) { disable_vht_ = disable_vht; }
 

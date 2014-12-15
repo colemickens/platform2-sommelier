@@ -947,6 +947,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->ReportConnectedToServiceAfterWake();
   }
 
+  bool HasServiceConfiguredForAutoConnect() {
+    return wifi_provider_.HasServiceConfiguredForAutoConnect();
+  }
+
   MOCK_METHOD1(SuspendCallback, void(const Error &error));
 
   EventDispatcher *event_dispatcher_;
@@ -4024,8 +4028,10 @@ TEST_F(WiFiMainTest, OnIPConfigUpdated_InvokeOnDHCPLeaseObtained) {
 
 TEST_F(WiFiMainTest, OnBeforeSuspend_CallsWakeOnWiFi) {
   FireScanTimer();
-  EXPECT_CALL(*wake_on_wifi_,
-              OnBeforeSuspend(IsConnectedToCurrentService(), _, _, _, _, _));
+  EXPECT_CALL(
+      *wake_on_wifi_,
+      OnBeforeSuspend(IsConnectedToCurrentService(),
+                      HasServiceConfiguredForAutoConnect(), _, _, _, _, _));
   OnBeforeSuspend();
   EXPECT_TRUE(GetScanTimer().IsCancelled());
 }
@@ -4033,7 +4039,8 @@ TEST_F(WiFiMainTest, OnBeforeSuspend_CallsWakeOnWiFi) {
 TEST_F(WiFiMainTest, OnDarkResume_CallsWakeOnWiFi) {
   FireScanTimer();
   EXPECT_CALL(*wake_on_wifi_,
-              OnDarkResume(IsConnectedToCurrentService(), _, _, _, _));
+              OnDarkResume(IsConnectedToCurrentService(),
+                           HasServiceConfiguredForAutoConnect(), _, _, _, _));
   OnDarkResume();
   EXPECT_TRUE(GetScanTimer().IsCancelled());
 }
