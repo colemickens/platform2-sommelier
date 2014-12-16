@@ -34,6 +34,7 @@
         '-lchrome_crypto',
       ],
       'sources': [
+        'authorization_session_impl.cc',
         'error_codes.cc',
         'hmac_authorization_delegate.cc',
         'password_authorization_delegate.cc',
@@ -85,6 +86,7 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
+            'authorization_session_test.cc',
             'hmac_authorization_delegate_unittest.cc',
             'mock_authorization_delegate.cc',
             'mock_authorization_session.cc',
