@@ -1400,12 +1400,12 @@ bool Attestation::VerifyQuoteSignature(const SecureBlob& aik_public_key,
 
   if (quote.has_pcr_source_hint()) {
     // Check if the PCR value matches the hint.
-    SecureBlob hint_digest = CryptoLib::Sha1(
+    SecureBlob hint_digest = CryptoLib::Sha256(
         SecureBlob(quote.pcr_source_hint()));
     chromeos::Blob extend_pcr_value(kDigestSize, 0);
     extend_pcr_value.insert(extend_pcr_value.end(),
                             hint_digest.begin(),
-                            hint_digest.end());
+                            hint_digest.begin() + 20);
     SecureBlob final_pcr_value = CryptoLib::Sha1(extend_pcr_value);
     if (quote.quoted_pcr_value().size() != final_pcr_value.size() ||
         0 != memcmp(quote.quoted_pcr_value().data(), final_pcr_value.data(),
