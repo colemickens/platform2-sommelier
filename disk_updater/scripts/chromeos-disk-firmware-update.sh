@@ -15,6 +15,7 @@
 DEFINE_string 'tmp_dir' '' "Use existing temporary directory."
 DEFINE_string 'fw_package_dir' '' "Location of the firmware package."
 DEFINE_string 'hdparm' '/sbin/hdparm' "hdparm binary to use."
+DEFINE_string 'mmc' '/usr/bin/mmc' "mmc binary to use."
 DEFINE_string 'status' '' "Status file to write to."
 DEFINE_boolean 'test' ${FLAGS_FALSE} "For unit testing."
 
@@ -120,24 +121,44 @@ disk_hdparm_info() {
   "${FLAGS_hdparm}" -I "/dev/${device}"
 }
 
-# disk_info - Retrieve information from hdparm
+#disk_mmc_info - Retrieve disk information for MMC device
 #
 # inputs:
-#     device            -- the device name [sda,...]
+#     device            -- the device name [mmcblk0]
 #
 # outputs:
-#     disk_model        -- name of the DISK firmware image file for this machine
-#     disk_fw_rev       -- the revision code of the firmware
+#     disk_model        -- model of the device
+#     disk_fw_rev       -- actual firmware revision on the device
 #
 # returns non 0 on error
 #
-disk_info() {
+disk_mmc_info() {
+  disk_model=$(cat "/sys/block/$1/device/name")
+  disk_fw_rev=$(cat "/sys/block/$1/device/fwrev")
+  if [ -z "${disk_model}" -o -z "${disk_fw_rev}" ]; then
+    return 1
+  fi
+  return 0
+}
+
+# disk_ata_info - Retrieve disk information for ata device
+#
+# inputs:
+#     device            -- the device name [sda]
+#
+# outputs:
+#     disk_model        -- model of the device
+#     disk_fw_rev       -- actual firmware revision on the device
+#
+# returns non 0 on error
+#
+disk_ata_info() {
   local device="$1"
   local rc=0
   local hdparm_out="${FLAGS_tmp_dir}/${device}"
 
   disk_model=""
-  disk_model=""
+  disk_fw_rev=""
   disk_hdparm_info "${device}" > "${hdparm_out}"
   rc=$?
   if [ ${rc} -ne 0 ]; then
@@ -157,6 +178,36 @@ disk_info() {
     return 1
   fi
   return 0
+}
+
+# disk_info - Retrieve model and firmware version from disk
+#
+# Call the appropriate function for the device type.
+#
+# inputs:
+#     device            -- the device name
+#
+# outputs:
+#     disk_model        -- model of the device
+#     disk_fw_rev       -- actual firmware revision on the device
+#
+# returns non 0 on error
+#
+disk_info() {
+  local device="$1"
+  local device_type
+  device_type=$(get_device_type "/dev/${device}")
+  case ${device_type} in
+    "ATA")
+      disk_ata_info "$@"
+      ;;
+    "MMC")
+      disk_mmc_info "$@"
+      ;;
+    *)
+      log_msg "Unknown device(${device}) type: ${device_type}"
+      return 1
+  esac
 }
 
 # disk_hdparm_upgrade - Upgrade the firmware on the dsik
@@ -181,6 +232,54 @@ disk_hdparm_upgrade() {
   "${FLAGS_hdparm}" --fwdownload-mode7 "${fw_file}" \
     --yes-i-know-what-i-am-doing --please-destroy-my-drive \
     "/dev/${device}"
+}
+
+# disk_mmc_upgrade - Upgrade the firmware on the eMMC storage
+#
+# Update the firmware on the disk.
+#
+# inputs:
+#     device            -- the device name [sda,...]
+#     fw_file           -- the firmware image
+#     fw_options        -- the options from the rule file. (unused)
+#
+# returns non 0 on error
+#
+disk_mmc_upgrade() {
+  local device="$1"
+  local fw_file="$2"
+  local fw_options="$3"
+
+  "${FLAGS_mmc}" ffu "${fw_file##*/}" "/dev/${device}"
+}
+
+# disk_upgrade - Upgrade the firmware on the disk
+#
+# Update the firmware on the disk by calling the function appropriate for
+# the transport.
+#
+# inputs:
+#     device            -- the device name [sda,...]
+#     fw_file           -- the firmware image
+#     fw_options        -- the options from the rule file.
+#
+# returns non 0 on error
+#
+disk_upgrade() {
+  local device="$1"
+  local device_type
+  device_type=$(get_device_type "/dev/${device}")
+  case ${device_type} in
+    "ATA")
+      disk_hdparm_upgrade "$@"
+      ;;
+    "MMC")
+      disk_mmc_upgrade "$@"
+      ;;
+    *)
+      log_msg "Unknown device(${device}) type: ${device_type}"
+      return 1
+  esac
 }
 
 # disk_upgrade_devices - Look for firmware upgrades
@@ -224,15 +323,18 @@ disk_upgrade_devices() {
         rc=0
         break
       fi
-      fw_file="${FLAGS_tmp_dir}/${disk_fw_file}"
-      bzcat "${FLAGS_fw_package_dir}/${disk_fw_file}.bz2" > "${fw_file}" 2> /dev/null
-      rc=$?
-      if [ ${rc} -ne 0 ]; then
-        log_msg "${disk_fw_file} in ${FLAGS_fw_package_dir} could not be extracted: ${rc}"
-        break
+      fw_file="${FLAGS_fw_package_dir}/${disk_fw_file}"
+      if [ ! -f "${fw_file}" ]; then
+        fw_file="${FLAGS_tmp_dir}/${disk_fw_file}"
+        bzcat "${FLAGS_fw_package_dir}/${disk_fw_file}.bz2" > "${fw_file}" 2> /dev/null
+        rc=$?
+        if [ ${rc} -ne 0 ]; then
+          log_msg "${disk_fw_file} in ${FLAGS_fw_package_dir} could not be extracted: ${rc}"
+          break
+        fi
       fi
       disk_old_fw_rev="${disk_fw_rev}"
-      disk_hdparm_upgrade "${device}" "${fw_file}" "${disk_fw_opt}"
+      disk_upgrade "${device}" "${fw_file}" "${disk_fw_opt}"
       rc=$?
       if [ ${rc} -ne 0 ]; then
         # Will change in the future if we need to power cycle, reboot...
@@ -301,7 +403,8 @@ main() {
   # remove unnecessary lines
   sed '/^#/d;/^[[:space:]]*$/d' "${disk_rules_raw}" > "${disk_rules}"
 
-  disk_upgrade_devices "${disk_rules}" $(list_fixed_ata_disks)
+  disk_upgrade_devices "${disk_rules}" \
+    $(list_fixed_ata_disks) $(list_fixed_mmc_disks)
   rc=$?
 
   if [ ${erase_tmp_dir} -eq ${FLAGS_TRUE} ]; then

@@ -1,6 +1,5 @@
 #!/bin/bash
-
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -30,12 +29,6 @@ declare -a hdparm_rc
 declare -i id_idx
 declare -i hdparm_fw_rc=0
 
-unset list_fixed_ata_disks
-list_fixed_ata_disks() {
-  echo "sda"
-}
-
-unset disk_hdparm_info
 disk_hdparm_info() {
   local rc=${hdparm_rc[${id_idx}]}
   if [ ${rc} -eq 0 ]; then
@@ -70,6 +63,19 @@ check_test() {
   fi
 }
 
+# ATA tests:
+get_device_type() {
+  echo "ATA"
+}
+
+list_fixed_ata_disks() {
+  echo "sda"
+}
+
+list_fixed_mmc_disks() {
+  echo
+}
+
 # Test 1: Good update
 # A disk that matches the upgrade file
 prepare_test
@@ -84,7 +90,7 @@ hdparm_rc=(0 10 10 0 0)
 
 run_test
 check_test 1 disk_upgraded 0 $?
-echo PASS 1
+echo ATA PASS 1
 
 # Test 2: Disk is not part of the upgrade
 prepare_test
@@ -93,7 +99,7 @@ hdparm_rc=(0)
 
 run_test
 check_test 2 disk_good 0 $?
-echo PASS 2
+echo ATA PASS 2
 
 # Test 3: Disk is not part of the upgrade
 prepare_test
@@ -102,7 +108,7 @@ hdparm_rc=(0)
 
 run_test
 check_test 3 disk_good 0 $?
-echo PASS 3
+echo ATA PASS 3
 
 # Test 4: Disk not supported by hdparm
 prepare_test
@@ -111,7 +117,7 @@ hdparm_rc=(10)
 
 run_test
 check_test 4 disk_absent 10 $?
-echo PASS 4
+echo ATA PASS 4
 
 # Test 5: Invalid package, a file missing
 prepare_test
@@ -120,7 +126,6 @@ hdparm_rc=(0)
 
 run_test
 check_test 5 file_missing 1 $?
-echo PASS 5
-
+echo ATA PASS 5
 
 rm -rf "${DISK_TEMP}"
