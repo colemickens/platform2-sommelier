@@ -125,8 +125,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   virtual void UpdateWiFiProvider();
 
-  void FilterByTechnology(Technology::Identifier tech,
-                          std::vector<DeviceRefPtr> *found) const;
+  std::vector<DeviceRefPtr>
+      FilterByTechnology(Technology::Identifier tech) const;
 
   ServiceRefPtr FindService(const std::string& name);
   RpcIdentifiers EnumerateAvailableServices(Error *error);

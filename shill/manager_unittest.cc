@@ -162,8 +162,7 @@ class ManagerTest : public PropertyStoreTest {
 
   bool IsDeviceRegistered(const DeviceRefPtr &device,
                           Technology::Identifier tech) {
-    vector<DeviceRefPtr> devices;
-    manager()->FilterByTechnology(tech, &devices);
+    auto devices = manager()->FilterByTechnology(tech);
     return (devices.size() == 1 && devices[0].get() == device.get());
   }
   bool ServiceOrderIs(ServiceRefPtr svc1, ServiceRefPtr svc2);
@@ -4872,6 +4871,32 @@ TEST_F(ManagerTest, OnDeviceClaimerAppeared) {
   Mock::VerifyAndClearExpectations(device_claimer1);
   Mock::VerifyAndClearExpectations(&observer1);
   EXPECT_EQ(nullptr, manager()->device_claimer_.get());
+}
+
+TEST_F(ManagerTest, GetEnabledDeviceWithTechnology) {
+  auto ethernet_device = mock_devices_[0];
+  auto wifi_device = mock_devices_[1];
+  auto cellular_device = mock_devices_[2];
+  ON_CALL(*ethernet_device.get(), technology())
+      .WillByDefault(Return(Technology::kEthernet));
+  ON_CALL(*wifi_device.get(), technology())
+      .WillByDefault(Return(Technology::kWifi));
+  ON_CALL(*cellular_device.get(), technology())
+      .WillByDefault(Return(Technology::kCellular));
+  ethernet_device->enabled_ = true;
+  wifi_device->enabled_ = true;
+  cellular_device->enabled_ = true;
+
+  manager()->RegisterDevice(ethernet_device);
+  manager()->RegisterDevice(wifi_device);
+  manager()->RegisterDevice(cellular_device);
+
+  EXPECT_EQ(ethernet_device,
+            manager()->GetEnabledDeviceWithTechnology(Technology::kEthernet));
+  EXPECT_EQ(wifi_device,
+            manager()->GetEnabledDeviceWithTechnology(Technology::kWifi));
+  EXPECT_EQ(cellular_device,
+            manager()->GetEnabledDeviceWithTechnology(Technology::kCellular));
 }
 
 }  // namespace shill

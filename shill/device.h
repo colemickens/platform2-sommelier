@@ -349,9 +349,10 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, StartTrafficMonitor);
   FRIEND_TEST(DeviceTest, Stop);
   FRIEND_TEST(DeviceTest, StopTrafficMonitor);
-  FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
+  FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
+  FRIEND_TEST(ManagerTest, GetEnabledDeviceWithTechnology);
   FRIEND_TEST(ManagerTest, SetEnabledStateForTechnology);
   FRIEND_TEST(PPPDeviceTest, UpdateIPConfigFromPPP);
   FRIEND_TEST(WiFiMainTest, Connect);

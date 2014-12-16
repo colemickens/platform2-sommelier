@@ -928,9 +928,7 @@ void Manager::OnProfileStorageInitialized(Profile *profile) {
 
 DeviceRefPtr Manager::GetEnabledDeviceWithTechnology(
     Technology::Identifier technology) const {
-  vector<DeviceRefPtr> devices;
-  FilterByTechnology(technology, &devices);
-  for (const auto &device : devices_) {
+  for (const auto &device : FilterByTechnology(technology)) {
     if (device->enabled()) {
       return device;
     }
@@ -1514,13 +1512,14 @@ void Manager::OnDarkResumeActionsComplete(const Error &error) {
 }
 
 
-void Manager::FilterByTechnology(Technology::Identifier tech,
-                                 vector<DeviceRefPtr> *found) const {
-  CHECK(found);
+vector<DeviceRefPtr>
+Manager::FilterByTechnology(Technology::Identifier tech) const {
+  vector<DeviceRefPtr> found;
   for (const auto &device : devices_) {
     if (device->technology() == tech)
-      found->push_back(device);
+      found.push_back(device);
   }
+  return found;
 }
 
 ServiceRefPtr Manager::FindService(const string &name) {
@@ -2297,9 +2296,7 @@ void Manager::RecheckPortalOnService(const ServiceRefPtr &service) {
 void Manager::RequestScan(Device::ScanType scan_type,
                           const string &technology, Error *error) {
   if (technology == kTypeWifi || technology == "") {
-    vector<DeviceRefPtr> wifi_devices;
-    FilterByTechnology(Technology::kWifi, &wifi_devices);
-    for (const auto &wifi_device : wifi_devices) {
+    for (const auto &wifi_device : FilterByTechnology(Technology::kWifi)) {
       metrics_->NotifyUserInitiatedEvent(Metrics::kUserInitiatedEventWifiScan);
       wifi_device->Scan(scan_type, error, __func__);
     }
