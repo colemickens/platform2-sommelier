@@ -519,6 +519,11 @@ class WakeOnWiFiTest : public ::testing::Test {
         kWakeOnWiFiFeaturesEnabledPacketSSID;
   }
 
+  void SetWakeOnWiFiFeaturesNotSupported() {
+    wake_on_wifi_->wake_on_wifi_features_enabled_ =
+        kWakeOnWiFiFeaturesEnabledNotSupported;
+  }
+
   void DisableWakeOnWiFiFeatures() {
     wake_on_wifi_->wake_on_wifi_features_enabled_ =
         kWakeOnWiFiFeaturesEnabledNone;
@@ -2059,18 +2064,20 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
        WakeOnWiFiDisabled_SetWakeOnWiFiFeaturesEnabled) {
   Error e;
-  DisableWakeOnWiFiFeatures();
+  SetWakeOnWiFiFeaturesNotSupported();
   EXPECT_STREQ(GetWakeOnWiFiFeaturesEnabled().c_str(),
-               kWakeOnWiFiFeaturesEnabledNone);
+               kWakeOnWiFiFeaturesEnabledNotSupported);
   EXPECT_FALSE(
-      SetWakeOnWiFiFeaturesEnabled(kWakeOnWiFiFeaturesEnabledNone, &e));
+      SetWakeOnWiFiFeaturesEnabled(kWakeOnWiFiFeaturesEnabledNotSupported, &e));
   EXPECT_STREQ(GetWakeOnWiFiFeaturesEnabled().c_str(),
-               kWakeOnWiFiFeaturesEnabledNone);
+               kWakeOnWiFiFeaturesEnabledNotSupported);
+  EXPECT_EQ(e.type(), Error::kNotSupported);
+  EXPECT_STREQ(e.message().c_str(), "Wake on WiFi is not supported");
 
   EXPECT_FALSE(
       SetWakeOnWiFiFeaturesEnabled(kWakeOnWiFiFeaturesEnabledPacket, &e));
   EXPECT_STREQ(GetWakeOnWiFiFeaturesEnabled().c_str(),
-               kWakeOnWiFiFeaturesEnabledNone);
+               kWakeOnWiFiFeaturesEnabledNotSupported);
   EXPECT_EQ(e.type(), Error::kNotSupported);
   EXPECT_STREQ(e.message().c_str(), "Wake on WiFi is not supported");
 }

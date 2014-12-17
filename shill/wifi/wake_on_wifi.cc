@@ -73,7 +73,7 @@ WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
       wiphy_index_(kDefaultWiphyIndex),
       wiphy_index_received_(false),
 #if defined(DISABLE_WAKE_ON_WIFI)
-      wake_on_wifi_features_enabled_(kWakeOnWiFiFeaturesEnabledNone),
+      wake_on_wifi_features_enabled_(kWakeOnWiFiFeaturesEnabledNotSupported),
 #else
       // Wake on WiFi features temporarily disabled at run-time for boards that
       // support wake on WiFi.
@@ -111,16 +111,14 @@ string WakeOnWiFi::GetWakeOnWiFiFeaturesEnabled(Error *error) {
 
 bool WakeOnWiFi::SetWakeOnWiFiFeaturesEnabled(const std::string &enabled,
                                               Error *error) {
+#if defined(DISABLE_WAKE_ON_WIFI)
+  Error::PopulateAndLog(error, Error::kNotSupported,
+                        "Wake on WiFi is not supported");
+  return false;
+#else
   if (wake_on_wifi_features_enabled_ == enabled) {
     return false;
   }
-#if defined(DISABLE_WAKE_ON_WIFI)
-  if (enabled != kWakeOnWiFiFeaturesEnabledNone) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
-                          "Wake on WiFi is not supported");
-    return false;
-  }
-#else
   if (enabled != kWakeOnWiFiFeaturesEnabledPacket &&
       enabled != kWakeOnWiFiFeaturesEnabledSSID &&
       enabled != kWakeOnWiFiFeaturesEnabledPacketSSID &&
@@ -129,9 +127,9 @@ bool WakeOnWiFi::SetWakeOnWiFiFeaturesEnabled(const std::string &enabled,
                           "Invalid Wake on WiFi feature");
     return false;
   }
-#endif  // DISABLE_WAKE_ON_WIFI
   wake_on_wifi_features_enabled_ = enabled;
   return true;
+#endif  // DISABLE_WAKE_ON_WIFI
 }
 
 void WakeOnWiFi::RunAndResetSuspendActionsDoneCallback(const Error &error) {
@@ -782,6 +780,8 @@ void WakeOnWiFi::RetrySetWakeOnPacketConnections() {
 
 bool WakeOnWiFi::WakeOnPacketEnabledAndSupported() {
   if (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledNone ||
+      wake_on_wifi_features_enabled_ ==
+          kWakeOnWiFiFeaturesEnabledNotSupported ||
       wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledSSID) {
     return false;
   }
@@ -794,6 +794,8 @@ bool WakeOnWiFi::WakeOnPacketEnabledAndSupported() {
 
 bool WakeOnWiFi::WakeOnSSIDEnabledAndSupported() {
   if (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledNone ||
+      wake_on_wifi_features_enabled_ ==
+          kWakeOnWiFiFeaturesEnabledNotSupported ||
       wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledPacket) {
     return false;
   }
