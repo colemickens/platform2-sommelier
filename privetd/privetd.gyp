@@ -30,6 +30,7 @@
         'security_manager.cc',
         'shill_client.cc',
         'wifi_bootstrap_manager.cc',
+        'wifi_ssid_generator.cc',
       ],
       'actions': [
         {
@@ -127,6 +128,7 @@
             'privetd_testrunner.cc',
             'privet_handler_unittest.cc',
             'security_manager_unittest.cc',
+            'wifi_ssid_generator_unittest.cc',
           ],
         },
       ],

@@ -1,0 +1,73 @@
+// Copyright 2014 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "privetd/wifi_ssid_generator.h"
+
+#include <base/strings/utf_string_conversions.h>
+#include <gtest/gtest.h>
+
+#include "privetd/mock_delegates.h"
+#include "privetd/openssl_utils.h"
+
+namespace privetd {
+
+class WifiSsidGeneratorTest : public testing::Test {
+ protected:
+  void SetRandomForTests(int n) { ssid_generator_.SetRandomForTests(n); }
+
+  testing::StrictMock<MockCloudDelegate> gcd_;
+  testing::StrictMock<MockDeviceDelegate> device_;
+  testing::StrictMock<MockWifiDelegate> wifi_;
+
+  WifiSsidGenerator ssid_generator_{&device_, &gcd_, &wifi_};
+};
+
+TEST_F(WifiSsidGeneratorTest, GenerateFlags) {
+  EXPECT_EQ(ssid_generator_.GenerateFlags().size(), 2);
+
+  EXPECT_CALL(wifi_, GetConnectionState())
+      .WillRepeatedly(Return(ConnectionState{ConnectionState::kUnconfigured}));
+  EXPECT_CALL(gcd_, GetConnectionState())
+      .WillRepeatedly(Return(ConnectionState{ConnectionState::kUnconfigured}));
+  EXPECT_EQ("DB", ssid_generator_.GenerateFlags());
+
+  EXPECT_CALL(wifi_, GetConnectionState())
+      .WillRepeatedly(Return(ConnectionState{ConnectionState::kOnline}));
+  EXPECT_EQ("CB", ssid_generator_.GenerateFlags());
+
+  EXPECT_CALL(gcd_, GetConnectionState())
+      .WillRepeatedly(Return(ConnectionState{ConnectionState::kOffline}));
+  EXPECT_EQ("AB", ssid_generator_.GenerateFlags());
+
+  EXPECT_CALL(wifi_, GetConnectionState())
+      .WillRepeatedly(Return(ConnectionState{ConnectionState::kUnconfigured}));
+  EXPECT_EQ("BB", ssid_generator_.GenerateFlags());
+}
+
+TEST_F(WifiSsidGeneratorTest, GenerateSsid31orLess) {
+  EXPECT_LE(ssid_generator_.GenerateSsid().size(), 31);
+}
+
+TEST_F(WifiSsidGeneratorTest, GenerateSsidValue) {
+  SetRandomForTests(47);
+  EXPECT_EQ("TestDevice 47.ABMIDABprv", ssid_generator_.GenerateSsid());
+
+  SetRandomForTests(9);
+  EXPECT_EQ("TestDevice 9.ABMIDABprv", ssid_generator_.GenerateSsid());
+}
+
+TEST_F(WifiSsidGeneratorTest, GenerateSsidLongName) {
+  SetRandomForTests(99);
+  EXPECT_CALL(device_, GetName())
+      .WillRepeatedly(Return("Very Long Device Name"));
+  EXPECT_EQ("Very Long Device  99.ABMIDABprv", ssid_generator_.GenerateSsid());
+}
+
+TEST_F(WifiSsidGeneratorTest, GenerateSsidNoName) {
+  SetRandomForTests(99);
+  EXPECT_CALL(device_, GetName()).WillRepeatedly(Return(""));
+  EXPECT_EQ(" 99.ABMIDABprv", ssid_generator_.GenerateSsid());
+}
+
+}  // namespace privetd

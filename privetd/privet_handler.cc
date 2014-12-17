@@ -342,16 +342,20 @@ void PrivetHandler::HandleInfo(const base::DictionaryValue&,
   output.SetString(kInfoIdKey, device_->GetId());
   output.SetString(kNameKey, device_->GetName());
 
-  std::string description = device_->GetDescription();
+  std::string description{device_->GetDescription()};
   if (!description.empty())
     output.SetString(kDescrptionKey, description);
 
-  std::string location = device_->GetLocation();
+  std::string location{device_->GetLocation()};
   if (!location.empty())
     output.SetString(kLocationKey, location);
 
-  output.SetString(kInfoClassKey, device_->GetClass());
-  output.SetString(kInfoModelIdKey, device_->GetModelId());
+  std::string dev_class{device_->GetClass()};
+  CHECK_EQ(2u, dev_class.size());
+  output.SetString(kInfoClassKey, dev_class);
+  std::string model_id{device_->GetModelId()};
+  CHECK_EQ(3u, model_id.size());
+  output.SetString(kInfoModelIdKey, model_id);
   output.Set(kInfoServicesKey, ToValue(device_->GetServices()).release());
 
   output.Set(kInfoAuthenticationKey, CreateInfoAuthSection().release());
