@@ -9,9 +9,9 @@
 #include <vector>
 
 #include <base/callback.h>
-#include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 
 #include "privetd/daemon_state.h"
 #include "privetd/privet_types.h"
@@ -83,11 +83,10 @@ class WifiBootstrapManager : public WifiDelegate {
   bool have_ever_been_bootstrapped_{false};
   bool currently_online_{false};
   std::string last_configured_ssid_;
-  base::CancelableClosure on_connect_success_task_;
-  base::CancelableClosure on_connect_timeout_task_;
-  base::CancelableClosure on_bootstrap_timeout_task_;
-  base::CancelableClosure on_monitoring_timeout_task_;
+
+  // Helps to reset irrelevant tasks switching state.
   base::WeakPtrFactory<WifiBootstrapManager> tasks_weak_factory_{this};
+
   base::WeakPtrFactory<WifiBootstrapManager> lifetime_weak_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(WifiBootstrapManager);
