@@ -56,18 +56,14 @@ class ShillClient {
 
  private:
   struct DeviceState {
-    std::unique_ptr<org::chromium::flimflam::DeviceProxy> device_;
+    std::unique_ptr<org::chromium::flimflam::DeviceProxy> device;
     // ServiceProxy objects are shared because the connecting service will
     // also be the selected service for a device, but is not always the selected
     // service (for instance, in the period between configuring a WiFi service
     // with credentials, and when Connect() is called.)
-    std::shared_ptr<org::chromium::flimflam::ServiceProxy> selected_service_;
-    ServiceState service_state_{kOffline};
+    std::shared_ptr<org::chromium::flimflam::ServiceProxy> selected_service;
+    ServiceState service_state{kOffline};
   };
-
-  static bool GetStateForService(org::chromium::flimflam::ServiceProxy* service,
-                                 std::string* state);
-  static ServiceState ShillServiceStateToServiceState(const std::string& state);
 
   bool IsMonitoredDevice(org::chromium::flimflam::DeviceProxy* device);
   void OnShillServiceOwnerChange(const std::string& old_owner,
