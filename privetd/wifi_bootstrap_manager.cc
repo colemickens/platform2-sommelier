@@ -11,6 +11,7 @@
 #include <chromeos/bind_lambda.h>
 #include <chromeos/key_value_store.h>
 
+#include "privetd/ap_manager_client.h"
 #include "privetd/shill_client.h"
 
 namespace privetd {
@@ -20,8 +21,14 @@ namespace {
 }  // namespace
 
 WifiBootstrapManager::WifiBootstrapManager(DaemonState* state_store,
-                                           ShillClient* shill_client)
-    : state_store_(state_store), shill_client_(shill_client) {
+                                           ShillClient* shill_client,
+                                           ApManagerClient* ap_manager_client,
+                                           const DeviceDelegate* device,
+                                           const CloudDelegate* gcd)
+    : state_store_(state_store),
+      shill_client_(shill_client),
+      ap_manager_client_(ap_manager_client),
+      ssid_generator_(device, gcd, this) {
 }
 
 void WifiBootstrapManager::Init() {
@@ -43,7 +50,6 @@ void WifiBootstrapManager::Init() {
 }
 
 void WifiBootstrapManager::StartBootstrapping() {
-  // TODO(wiley) Start up an AP with an SSID calculated from device info.
   UpdateState(kBootstrapping);
   if (have_ever_been_bootstrapped_) {
     base::MessageLoop::current()->PostDelayedTask(
@@ -51,6 +57,12 @@ void WifiBootstrapManager::StartBootstrapping() {
                               tasks_weak_factory_.GetWeakPtr()),
         base::TimeDelta::FromSeconds(bootstrap_timeout_seconds_));
   }
+  // TODO(vitalybuka): Add SSID probing.
+  ap_manager_client_->Start(ssid_generator_.GenerateSsid());
+}
+
+void WifiBootstrapManager::EndBootstrapping() {
+  ap_manager_client_->Stop();
 }
 
 void WifiBootstrapManager::StartConnecting(const std::string& ssid,
@@ -69,15 +81,35 @@ void WifiBootstrapManager::StartConnecting(const std::string& ssid,
       nullptr);
 }
 
+void WifiBootstrapManager::EndConnecting() {
+}
+
 void WifiBootstrapManager::StartMonitoring() {
   VLOG(1) << "Monitoring connectivity.";
   UpdateState(kMonitoring);
   // TODO(wiley) Set up callbacks so that we get told when we go offline
 }
 
+void WifiBootstrapManager::EndMonitoring() {
+}
+
 void WifiBootstrapManager::UpdateState(State new_state) {
   // Abort irrelevant tasks.
   tasks_weak_factory_.InvalidateWeakPtrs();
+
+  switch (state_) {
+    case kDisabled:
+      break;
+    case kBootstrapping:
+      EndBootstrapping();
+      break;
+    case kMonitoring:
+      EndMonitoring();
+      break;
+    case kConnecting:
+      EndConnecting();
+      break;
+  }
 
   state_ = new_state;
 
@@ -134,6 +166,7 @@ bool WifiBootstrapManager::ConfigureCredentials(const std::string& ssid,
 }
 
 std::string WifiBootstrapManager::GetCurrentlyConnectedSsid() const {
+  // TODO(vitalybuka): Get from shill, if possible.
   return last_configured_ssid_;
 }
 

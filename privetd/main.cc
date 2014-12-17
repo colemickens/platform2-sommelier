@@ -21,6 +21,7 @@
 #include <libwebserv/response.h>
 #include <libwebserv/server.h>
 
+#include "privetd/ap_manager_client.h"
 #include "privetd/cloud_delegate.h"
 #include "privetd/constants.h"
 #include "privetd/daemon_state.h"
@@ -73,8 +74,10 @@ class Daemon : public chromeos::DBusDaemon {
     // TODO(vitalybuka): Provide real embeded password.
     security_.reset(new SecurityManager("1234", disable_security_));
     shill_client_.reset(new ShillClient(bus_, device_whitelist_));
-    wifi_bootstrap_manager_.reset(
-        new WifiBootstrapManager(state_store_.get(), shill_client_.get()));
+    ap_manager_client_.reset(new ApManagerClient(bus_));
+    wifi_bootstrap_manager_.reset(new WifiBootstrapManager(
+        state_store_.get(), shill_client_.get(), ap_manager_client_.get(),
+        device_.get(), cloud_.get()));
     wifi_bootstrap_manager_->Init();
 
     privet_handler_.reset(new PrivetHandler(cloud_.get(), device_.get(),
@@ -110,8 +113,8 @@ class Daemon : public chromeos::DBusDaemon {
           base::Bind(&Daemon::HelloWorldHandler, base::Unretained(this)));
     }
 
-    peerd_.reset(new PeerdClient(bus_, *device_, cloud_.get()));
-    peerd_->Start();
+    peerd_client_.reset(new PeerdClient(bus_, *device_, cloud_.get()));
+    peerd_client_->Start();
 
     return EX_OK;
   }
@@ -172,9 +175,9 @@ class Daemon : public chromeos::DBusDaemon {
   }
 
   void OnChanged() {
-    if (peerd_) {
-      peerd_->Stop();
-      peerd_->Start();
+    if (peerd_client_) {
+      peerd_client_->Stop();
+      peerd_client_->Start();
     }
   }
 
@@ -188,12 +191,12 @@ class Daemon : public chromeos::DBusDaemon {
   std::unique_ptr<DeviceDelegate> device_;
   std::unique_ptr<SecurityManager> security_;
   std::unique_ptr<ShillClient> shill_client_;
+  std::unique_ptr<ApManagerClient> ap_manager_client_;
   std::unique_ptr<WifiBootstrapManager> wifi_bootstrap_manager_;
   std::unique_ptr<PrivetHandler> privet_handler_;
+  std::unique_ptr<PeerdClient> peerd_client_;
   libwebserv::Server http_server_;
   libwebserv::Server https_server_;
-
-  std::unique_ptr<PeerdClient> peerd_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };

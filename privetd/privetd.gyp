@@ -20,6 +20,7 @@
       'target_name': 'privetd_common',
       'type': 'static_library',
       'sources': [
+        'ap_manager_client.cc',
         'cloud_delegate.cc',
         'constants.cc',
         'daemon_state.cc',

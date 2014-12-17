@@ -16,9 +16,13 @@
 #include "privetd/daemon_state.h"
 #include "privetd/privet_types.h"
 #include "privetd/wifi_delegate.h"
+#include "privetd/wifi_ssid_generator.h"
 
 namespace privetd {
 
+class ApManagerClient;
+class CloudDelegate;
+class DeviceDelegate;
 class ShillClient;
 
 class WifiBootstrapManager : public WifiDelegate {
@@ -32,8 +36,11 @@ class WifiBootstrapManager : public WifiDelegate {
 
   using StateListener = base::Callback<void(State)>;
 
-  explicit WifiBootstrapManager(DaemonState* state_store,
-                                ShillClient* shill_client);
+  WifiBootstrapManager(DaemonState* state_store,
+                       ShillClient* shill_client,
+                       ApManagerClient* ap_manager_client,
+                       const DeviceDelegate* device,
+                       const CloudDelegate* gcd);
   ~WifiBootstrapManager() override = default;
   virtual void Init();
 
@@ -52,9 +59,15 @@ class WifiBootstrapManager : public WifiDelegate {
   //   1) Do state appropriate work for entering the indicated state.
   //   2) Update the state variable to reflect that we're in a new state
   //   3) Call StateListeners to notify that we've transitioned.
+  // These End* tasks perform cleanup on leaving indicated state.
   void StartBootstrapping();
+  void EndBootstrapping();
+
   void StartConnecting(const std::string& ssid, const std::string& passphrase);
+  void EndConnecting();
+
   void StartMonitoring();
+  void EndMonitoring();
 
   // Update the current state, post tasks to notify listeners accordingly to
   // the MessageLoop.
@@ -77,6 +90,9 @@ class WifiBootstrapManager : public WifiDelegate {
   SetupState setup_state_{SetupState::kNone};
   DaemonState* state_store_;
   ShillClient* shill_client_;
+  ApManagerClient* ap_manager_client_;
+  WifiSsidGenerator ssid_generator_;
+
   const uint32_t connect_timeout_seconds_{60};
   const uint32_t bootstrap_timeout_seconds_{300};
   const uint32_t monitor_timeout_seconds_{120};
