@@ -45,13 +45,10 @@ void WifiBootstrapManager::Init() {
 void WifiBootstrapManager::StartBootstrapping() {
   // TODO(wiley) Start up an AP with an SSID calculated from device info.
   UpdateState(kBootstrapping);
-  tasks_weak_factory_.InvalidateWeakPtrs();
   if (have_ever_been_bootstrapped_) {
-    on_bootstrap_timeout_task_.Reset(
-        base::Bind(&WifiBootstrapManager::OnBootstrapTimeout,
-                   tasks_weak_factory_.GetWeakPtr()));
     base::MessageLoop::current()->PostDelayedTask(
-        FROM_HERE, on_bootstrap_timeout_task_.callback(),
+        FROM_HERE, base::Bind(&WifiBootstrapManager::OnBootstrapTimeout,
+                              tasks_weak_factory_.GetWeakPtr()),
         base::TimeDelta::FromSeconds(bootstrap_timeout_seconds_));
   }
 }
@@ -62,37 +59,37 @@ void WifiBootstrapManager::StartConnecting(const std::string& ssid,
           << ", pass=" << passphrase << ").";
   // TODO(wiley) Shut down the ap we've started via apmanager
   UpdateState(kConnecting);
-  tasks_weak_factory_.InvalidateWeakPtrs();
-  on_connect_success_task_.Reset(
-      base::Bind(&WifiBootstrapManager::OnConnectSuccess,
-                 tasks_weak_factory_.GetWeakPtr(), ssid));
-  on_connect_timeout_task_.Reset(
-      base::Bind(&WifiBootstrapManager::OnConnectTimeout,
-                 tasks_weak_factory_.GetWeakPtr()));
   base::MessageLoop::current()->PostDelayedTask(
-      FROM_HERE, on_connect_timeout_task_.callback(),
+      FROM_HERE, base::Bind(&WifiBootstrapManager::OnConnectTimeout,
+                            tasks_weak_factory_.GetWeakPtr()),
       base::TimeDelta::FromSeconds(connect_timeout_seconds_));
   shill_client_->ConnectToService(
-      ssid, passphrase, on_connect_success_task_.callback(), nullptr);
+      ssid, passphrase, base::Bind(&WifiBootstrapManager::OnConnectSuccess,
+                                   tasks_weak_factory_.GetWeakPtr(), ssid),
+      nullptr);
 }
 
 void WifiBootstrapManager::StartMonitoring() {
   VLOG(1) << "Monitoring connectivity.";
   UpdateState(kMonitoring);
-  tasks_weak_factory_.InvalidateWeakPtrs();
   // TODO(wiley) Set up callbacks so that we get told when we go offline
 }
 
 void WifiBootstrapManager::UpdateState(State new_state) {
+  // Abort irrelevant tasks.
+  tasks_weak_factory_.InvalidateWeakPtrs();
+
   state_ = new_state;
-  auto callback = [] (const StateListener& listener, State state) {
-    listener.Run(state);
-  };
-  for (const StateListener& listener : state_listeners_) {
-    base::MessageLoop::current()->PostTask(
-        FROM_HERE,
-        base::Bind(callback, listener, new_state));
-  }
+
+  // Post with weak ptr to avoid notification after this object destroyed.
+  base::MessageLoop::current()->PostTask(
+      FROM_HERE, base::Bind(&WifiBootstrapManager::NotifyStateListeners,
+                            lifetime_weak_factory_.GetWeakPtr(), new_state));
+}
+
+void WifiBootstrapManager::NotifyStateListeners(State new_state) const {
+  for (const StateListener& listener : state_listeners_)
+    listener.Run(new_state);
 }
 
 bool WifiBootstrapManager::IsRequired() const {
@@ -179,13 +176,13 @@ void WifiBootstrapManager::OnConnectivityChange(bool is_connected) {
     return;
   }
   if (is_connected) {
-    on_monitoring_timeout_task_.Cancel();
-  } else if (on_monitoring_timeout_task_.IsCancelled()) {
-    on_monitoring_timeout_task_.Reset(
-        base::Bind(&WifiBootstrapManager::OnMonitorTimeout,
-                   tasks_weak_factory_.GetWeakPtr()));
+    tasks_weak_factory_.InvalidateWeakPtrs();
+  } else {
+    // Tasks queue may have more than one OnMonitorTimeout enqueued. The first
+    // one could be executed as it would change the state and abort the rest.
     base::MessageLoop::current()->PostDelayedTask(
-        FROM_HERE, on_monitoring_timeout_task_.callback(),
+        FROM_HERE, base::Bind(&WifiBootstrapManager::OnMonitorTimeout,
+                              tasks_weak_factory_.GetWeakPtr()),
         base::TimeDelta::FromSeconds(monitor_timeout_seconds_));
   }
 }
