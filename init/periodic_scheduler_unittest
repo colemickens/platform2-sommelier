@@ -26,12 +26,19 @@ test_init() {
   trap -- EXIT INT
 }
 
+# This kills the `sleep` the periodic_scheduler uses to wait.
+# Kill it manually so that we can wake it up.
 wake_sched_up() {
-  local pid=$1 sleep_pid
+  local pid=$1 pstree sleep_pid
 
-  sleep_pid=$(LC_ALL=C pstree -p $$ |
+  pstree=$(TERM=linux LC_ALL=C pstree -p -A $$)
+  sleep_pid=$(echo "${pstree}" |
               sed -n -r '/sleep\(/s:.*\(([0-9]*)\).*:\1:p')
-  kill ${sleep_pid}
+  if [[ -z ${sleep_pid} ]]; then
+    fail "could not locate sleep in process tree:" $'\n' "${pstree}"
+  else
+    kill ${sleep_pid}
+  fi
 }
 
 # Basic test to make sure things work.
