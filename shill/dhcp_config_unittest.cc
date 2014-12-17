@@ -396,7 +396,8 @@ class DHCPConfigCallbackTest : public DHCPConfigTest {
     ip_config_ = config_;
   }
 
-  MOCK_METHOD1(SuccessCallback, void(const IPConfigRefPtr &ipconfig));
+  MOCK_METHOD2(SuccessCallback,
+               void(const IPConfigRefPtr &ipconfig, bool new_lease_acquired));
   MOCK_METHOD1(FailureCallback, void(const IPConfigRefPtr &ipconfig));
 
   // The mock methods above take IPConfigRefPtr because this is the type
@@ -416,7 +417,7 @@ TEST_F(DHCPConfigCallbackTest, ProcessEventSignalFail) {
   DHCPConfig::Configuration conf;
   conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(
       0x01020304);
-  EXPECT_CALL(*this, SuccessCallback(_)).Times(0);
+  EXPECT_CALL(*this, SuccessCallback(_, _)).Times(0);
   EXPECT_CALL(*this, FailureCallback(ConfigRef()));
   config_->lease_acquisition_timeout_callback_.Reset(base::Bind(&DoNothing));
   config_->lease_expiration_callback_.Reset(base::Bind(&DoNothing));
@@ -447,7 +448,7 @@ TEST_F(DHCPConfigCallbackTest, ProcessEventSignalSuccess) {
       }
       config_->lease_acquisition_timeout_callback_.Reset(
           base::Bind(&DoNothing));
-      EXPECT_CALL(*this, SuccessCallback(ConfigRef()));
+      EXPECT_CALL(*this, SuccessCallback(ConfigRef(), true));
       EXPECT_CALL(*this, FailureCallback(_)).Times(0);
       config_->ProcessEventSignal(reason, conf);
       string failure_message = string(reason) + " failed with lease time " +
@@ -493,7 +494,7 @@ TEST_F(DHCPConfigCallbackTest, StoppedDuringSuccessCallback) {
   // the lease after accepting other network parameters from the DHCP
   // IPConfig properties.  We need to ensure that no callbacks are left
   // running inadvertently as a result.
-  EXPECT_CALL(*this, SuccessCallback(ConfigRef()))
+  EXPECT_CALL(*this, SuccessCallback(ConfigRef(), true))
       .WillOnce(InvokeWithoutArgs(this, &DHCPConfigTest::StopInstance));
   config_->ProcessEventSignal(DHCPConfig::kReasonBound, conf);
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(this));
@@ -506,7 +507,7 @@ TEST_F(DHCPConfigCallbackTest, ProcessEventSignalUnknown) {
   conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(
       0x01020304);
   static const char kReasonUnknown[] = "UNKNOWN_REASON";
-  EXPECT_CALL(*this, SuccessCallback(_)).Times(0);
+  EXPECT_CALL(*this, SuccessCallback(_, _)).Times(0);
   EXPECT_CALL(*this, FailureCallback(_)).Times(0);
   config_->lease_acquisition_timeout_callback_.Reset(base::Bind(&DoNothing));
   config_->ProcessEventSignal(kReasonUnknown, conf);
@@ -519,7 +520,7 @@ TEST_F(DHCPConfigCallbackTest, ProcessEventSignalGatewayArp) {
   DHCPConfig::Configuration conf;
   conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(
       0x01020304);
-  EXPECT_CALL(*this, SuccessCallback(ConfigRef()));
+  EXPECT_CALL(*this, SuccessCallback(ConfigRef(), false));
   EXPECT_CALL(*this, FailureCallback(_)).Times(0);
   EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(Return(true));
   config_->Start();
@@ -535,14 +536,14 @@ TEST_F(DHCPConfigCallbackTest, ProcessEventSignalGatewayArp) {
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, ::testing::EndsWith(
       "Continuing to use our previous lease, due to gateway-ARP.")));
-  EXPECT_CALL(*this, SuccessCallback(_)).Times(0);
+  EXPECT_CALL(*this, SuccessCallback(_, _)).Times(0);
   EXPECT_CALL(*this, FailureCallback(_)).Times(0);
   config_->lease_acquisition_timeout_callback_.callback().Run();
   Mock::VerifyAndClearExpectations(this);
   EXPECT_TRUE(config_->is_gateway_arp_active_);
 
   // An official reply from a DHCP server should reset our GatewayArp state.
-  EXPECT_CALL(*this, SuccessCallback(ConfigRef()));
+  EXPECT_CALL(*this, SuccessCallback(ConfigRef(), true));
   EXPECT_CALL(*this, FailureCallback(_)).Times(0);
   config_->ProcessEventSignal(DHCPConfig::kReasonRenew, conf);
   Mock::VerifyAndClearExpectations(this);
@@ -565,7 +566,7 @@ TEST_F(DHCPConfigCallbackTest, ProcessEventSignalGatewayArpNak) {
 
   // If the timeout gets called, we should lose the lease since GatewayArp
   // is not active any more.
-  EXPECT_CALL(*this, SuccessCallback(_)).Times(0);
+  EXPECT_CALL(*this, SuccessCallback(_, _)).Times(0);
   EXPECT_CALL(*this, FailureCallback(ConfigRef()));
   config_->lease_acquisition_timeout_callback_.callback().Run();
   Mock::VerifyAndClearExpectations(this);
@@ -642,7 +643,7 @@ TEST_F(DHCPConfigTest, RequestIP) {
 }
 
 TEST_F(DHCPConfigCallbackTest, RequestIPTimeout) {
-  EXPECT_CALL(*this, SuccessCallback(_)).Times(0);
+  EXPECT_CALL(*this, SuccessCallback(_, _)).Times(0);
   EXPECT_CALL(*this, FailureCallback(ConfigRef()));
   config_->lease_acquisition_timeout_seconds_ = 0;
   config_->pid_ = 567;
@@ -704,7 +705,7 @@ TEST_F(DHCPConfigTest, StartSuccessPersistent) {
 }
 
 TEST_F(DHCPConfigCallbackTest, StartTimeout) {
-  EXPECT_CALL(*this, SuccessCallback(_)).Times(0);
+  EXPECT_CALL(*this, SuccessCallback(_, _)).Times(0);
   EXPECT_CALL(*this, FailureCallback(ConfigRef()));
   config_->lease_acquisition_timeout_seconds_ = 0;
   config_->proxy_.reset(proxy_.release());

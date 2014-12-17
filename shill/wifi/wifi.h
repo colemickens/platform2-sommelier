@@ -531,7 +531,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // In addition to calling the implementations of these functions in Device,
   // calls WakeOnWiFi::PrepareForWakeOnWiFiBeforeSuspend.
-  void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig) override;
+  void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig,
+                         bool new_lease_acquired) override;
   void OnIPv6ConfigUpdated() override;
 
   // Returns true iff the WiFi device is connected to the current service.

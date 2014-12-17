@@ -427,7 +427,8 @@ class Device : public base::RefCounted<Device> {
   void AssignIPConfig(const IPConfig::Properties &properties);
 
   // Callback invoked on successful IP configuration updates.
-  virtual void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig);
+  virtual void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig,
+                                 bool new_lease_acquired);
 
   // Called when IPv6 configuration changes.
   virtual void OnIPv6ConfigUpdated();

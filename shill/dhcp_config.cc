@@ -223,10 +223,10 @@ void DHCPConfig::ProcessEventSignal(const string &reason,
     // client is still running, so we should not cancel the timeout
     // until that completes.  In the meantime, however, we can tentatively
     // configure our network in anticipation of successful completion.
-    IPConfig::UpdateProperties(properties);
+    IPConfig::UpdateProperties(properties, false);
     is_gateway_arp_active_ = true;
   } else {
-    UpdateProperties(properties);
+    UpdateProperties(properties, true);
     is_gateway_arp_active_ = false;
   }
 }
@@ -274,7 +274,8 @@ void DHCPConfig::ProcessStatusChangeSignal(const string &status) {
   }
 }
 
-void DHCPConfig::UpdateProperties(const Properties &properties) {
+void DHCPConfig::UpdateProperties(const Properties &properties,
+                                  bool new_lease_acquired) {
   StopAcquisitionTimeout();
   if (properties.lease_duration_seconds) {
     UpdateLeaseExpirationTime(properties.lease_duration_seconds);
@@ -284,7 +285,7 @@ void DHCPConfig::UpdateProperties(const Properties &properties) {
     ResetLeaseExpirationTime();
     StopExpirationTimeout();
   }
-  IPConfig::UpdateProperties(properties);
+  IPConfig::UpdateProperties(properties, new_lease_acquired);
 }
 
 void DHCPConfig::NotifyFailure() {

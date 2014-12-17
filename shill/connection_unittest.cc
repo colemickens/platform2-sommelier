@@ -112,11 +112,11 @@ class ConnectionTest : public Test {
   }
 
   void UpdateProperties() {
-    ipconfig_->UpdateProperties(properties_);
+    ipconfig_->UpdateProperties(properties_, true);
   }
 
   void UpdateIPv6Properties() {
-    ip6config_->UpdateProperties(ipv6_properties_);
+    ip6config_->UpdateProperties(ipv6_properties_, true);
   }
 
   bool PinHostRoute(ConnectionRefPtr connection,

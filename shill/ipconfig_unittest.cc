@@ -45,11 +45,13 @@ class IPConfigTest : public Test {
   IPConfigTest() : ipconfig_(new IPConfig(&control_, kDeviceName)) {
     ipconfig_->time_ = &time_;
   }
-  void DropRef(const IPConfigRefPtr &/*ipconfig*/) {
+  void DropRef(const IPConfigRefPtr & /*ipconfig*/,
+               bool /*new_lease_acquired*/) {
     ipconfig_ = nullptr;
   }
 
-  MOCK_METHOD1(OnIPConfigUpdated, void(const IPConfigRefPtr &ipconfig));
+  MOCK_METHOD2(OnIPConfigUpdated,
+               void(const IPConfigRefPtr &ipconfig, bool new_lease_acquired));
   MOCK_METHOD1(OnIPConfigFailed, void(const IPConfigRefPtr &ipconfig));
   MOCK_METHOD1(OnIPConfigRefreshed, void(const IPConfigRefPtr &ipconfig));
   MOCK_METHOD1(OnIPConfigExpired, void(const IPConfigRefPtr &ipconfig));
@@ -60,7 +62,7 @@ class IPConfigTest : public Test {
   }
 
   void UpdateProperties(const IPConfig::Properties &properties) {
-    ipconfig_->UpdateProperties(properties);
+    ipconfig_->UpdateProperties(properties, true);
   }
 
   void NotifyFailure() {
@@ -160,28 +162,28 @@ TEST_F(IPConfigTest, Callbacks) {
   ipconfig_->RegisterExpireCallback(
       Bind(&IPConfigTest::OnIPConfigExpired, Unretained(this)));
 
-  EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_));
+  EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_, true));
   EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_)).Times(0);
   EXPECT_CALL(*this, OnIPConfigRefreshed(ipconfig_)).Times(0);
   EXPECT_CALL(*this, OnIPConfigExpired(ipconfig_)).Times(0);
   UpdateProperties(IPConfig::Properties());
   Mock::VerifyAndClearExpectations(this);
 
-  EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_)).Times(0);
+  EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_, true)).Times(0);
   EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_));
   EXPECT_CALL(*this, OnIPConfigRefreshed(ipconfig_)).Times(0);
   EXPECT_CALL(*this, OnIPConfigExpired(ipconfig_)).Times(0);
   NotifyFailure();
   Mock::VerifyAndClearExpectations(this);
 
-  EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_)).Times(0);
+  EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_, true)).Times(0);
   EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_)).Times(0);
   EXPECT_CALL(*this, OnIPConfigRefreshed(ipconfig_));
   EXPECT_CALL(*this, OnIPConfigExpired(ipconfig_)).Times(0);
   ipconfig_->Refresh(nullptr);
   Mock::VerifyAndClearExpectations(this);
 
-  EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_)).Times(0);
+  EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_, true)).Times(0);
   EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_)).Times(0);
   EXPECT_CALL(*this, OnIPConfigRefreshed(ipconfig_)).Times(0);
   EXPECT_CALL(*this, OnIPConfigExpired(ipconfig_));

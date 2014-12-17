@@ -80,6 +80,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
     kReleaseReasonStaticIP
   };
 
+  typedef base::Callback<void(const IPConfigRefPtr&, bool)> UpdateCallback;
   typedef base::Callback<void(const IPConfigRefPtr&)> Callback;
 
   IPConfig(ControlInterface *control_interface, const std::string &device_name);
@@ -96,10 +97,11 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   // Registers a callback that's executed every time the configuration
   // properties are acquired. Takes ownership of |callback|.  Pass NULL
-  // to remove a callback. The callback's argument is a pointer to this IP
+  // to remove a callback. The callback's first argument is a pointer to this IP
   // configuration instance allowing clients to more easily manage multiple IP
-  // configurations.
-  void RegisterUpdateCallback(const Callback &callback);
+  // configurations. The callback's second argument is a boolean indicating
+  // whether or not a DHCP lease was acquired from the server.
+  void RegisterUpdateCallback(const UpdateCallback &callback);
 
   // Registers a callback that's executed every time the configuration
   // properties fail to be acquired. Takes ownership of |callback|.  Pass NULL
@@ -173,7 +175,8 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   // Updates the IP configuration properties and notifies registered listeners
   // about the event.
-  virtual void UpdateProperties(const Properties &properties);
+  virtual void UpdateProperties(const Properties &properties,
+                                bool new_lease_acquired);
 
   // Notifies registered listeners that the configuration process has failed.
   virtual void NotifyFailure();
@@ -213,7 +216,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   const uint serial_;
   std::unique_ptr<IPConfigAdaptorInterface> adaptor_;
   Properties properties_;
-  Callback update_callback_;
+  UpdateCallback update_callback_;
   Callback failure_callback_;
   Callback refresh_callback_;
   Callback expire_callback_;

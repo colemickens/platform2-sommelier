@@ -182,7 +182,7 @@ class DeviceTest : public PropertyStoreTest {
   static const int kDeviceInterfaceIndex;
 
   void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig) {
-    device_->OnIPConfigUpdated(ipconfig);
+    device_->OnIPConfigUpdated(ipconfig, true);
   }
 
   void OnIPConfigFailed(const IPConfigRefPtr &ipconfig) {
@@ -988,11 +988,11 @@ TEST_F(DeviceTest, IsConnectedViaTether) {
   IPConfig::Properties properties;
   properties.vendor_encapsulated_options =
       Tethering::kAndroidVendorEncapsulatedOptions;
-  device_->ipconfig_->UpdateProperties(properties);
+  device_->ipconfig_->UpdateProperties(properties, true);
   EXPECT_TRUE(device_->IsConnectedViaTether());
 
   properties.vendor_encapsulated_options = "Some other non-empty value";
-  device_->ipconfig_->UpdateProperties(properties);
+  device_->ipconfig_->UpdateProperties(properties, true);
   EXPECT_FALSE(device_->IsConnectedViaTether());
 }
 

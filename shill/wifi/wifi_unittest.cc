@@ -683,7 +683,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
                  uint16_t frequency,
                  const char *mode);
   void ReportIPConfigComplete() {
-    wifi_->OnIPConfigUpdated(dhcp_config_);
+    wifi_->OnIPConfigUpdated(dhcp_config_, true);
+  }
+  void ReportIPConfigCompleteGatewayArpReceived() {
+    wifi_->OnIPConfigUpdated(dhcp_config_, false);
   }
   void ReportIPv6ConfigComplete() {
     wifi_->OnIPv6ConfigUpdated();
@@ -4008,7 +4011,7 @@ TEST_F(WiFiMainTest, StateChangedUpdatesMac80211Monitor) {
   ReportStateChanged(WPASupplicant::kInterfaceStateAssociating);
 }
 
-TEST_F(WiFiMainTest, OnIPConfigUpdated_InvokeOnDHCPLeaseObtained) {
+TEST_F(WiFiMainTest, OnIPConfigUpdated_InvokesOnDHCPLeaseObtained) {
   ScopedMockLog log;
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
@@ -4021,6 +4024,12 @@ TEST_F(WiFiMainTest, OnIPConfigUpdated_InvokeOnDHCPLeaseObtained) {
   EXPECT_CALL(log, Log(_, _, HasSubstr("IPv6 configuration obtained")));
   EXPECT_CALL(*wake_on_wifi_, OnDHCPLeaseObtained(_, _));
   ReportIPv6ConfigComplete();
+
+  // Do not call WakeOnWiFi::OnDHCPLeaseObtained if the IP config update was
+  // triggered by a gateway ARP.
+  EXPECT_CALL(log, Log(_, _, HasSubstr("Gateway ARP received")));
+  EXPECT_CALL(*wake_on_wifi_, OnDHCPLeaseObtained(_, _)).Times(0);
+  ReportIPConfigCompleteGatewayArpReceived();
 
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
   ScopeLogger::GetInstance()->set_verbose_level(0);

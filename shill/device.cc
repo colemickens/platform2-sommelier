@@ -686,7 +686,7 @@ void Device::AssignIPConfig(const IPConfig::Properties &properties) {
   ipconfig_ = new IPConfig(control_interface_, link_name_);
   ipconfig_->set_properties(properties);
   dispatcher_->PostTask(Bind(&Device::OnIPConfigUpdated,
-                             weak_ptr_factory_.GetWeakPtr(), ipconfig_));
+                             weak_ptr_factory_.GetWeakPtr(), ipconfig_, true));
 }
 
 void Device::DestroyIPConfigLease(const string &name) {
@@ -746,7 +746,7 @@ void Device::ConfigureStaticIPTask() {
     // If the parameters contain an IP address, apply them now and bring
     // the interface up.  When DHCP information arrives, it will supplement
     // the static information.
-    OnIPConfigUpdated(ipconfig_);
+    OnIPConfigUpdated(ipconfig_, true);
   } else {
     // Either |ipconfig_| has just been created in AcquireIPConfig() or
     // we're being called by OnIPConfigRefreshed().  In either case a
@@ -808,7 +808,8 @@ void Device::SetupConnection(const IPConfigRefPtr &ipconfig) {
   StartTrafficMonitor();
 }
 
-void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig) {
+void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig,
+                               bool /*new_lease_acquired*/) {
   SLOG(this, 2) << __func__;
   if (selected_service_) {
     ipconfig->ApplyStaticIPParameters(

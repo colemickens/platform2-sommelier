@@ -145,7 +145,8 @@ bool IPConfig::TimeToLeaseExpiry(uint32_t *time_left) {
   return true;
 }
 
-void IPConfig::UpdateProperties(const Properties &properties) {
+void IPConfig::UpdateProperties(const Properties &properties,
+                                bool new_lease_acquired) {
   // Take a reference of this instance to make sure we don't get destroyed in
   // the middle of this call. (The |update_callback_| may cause a reference
   // to be dropped. See, e.g., EthernetService::Disconnect and
@@ -155,7 +156,7 @@ void IPConfig::UpdateProperties(const Properties &properties) {
   properties_ = properties;
 
   if (!update_callback_.is_null()) {
-    update_callback_.Run(this);
+    update_callback_.Run(this, new_lease_acquired);
   }
   EmitChanges();
 }
@@ -183,7 +184,7 @@ void IPConfig::NotifyExpiry() {
   }
 }
 
-void IPConfig::RegisterUpdateCallback(const Callback &callback) {
+void IPConfig::RegisterUpdateCallback(const UpdateCallback &callback) {
   update_callback_ = callback;
 }
 

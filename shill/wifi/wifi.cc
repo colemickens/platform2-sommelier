@@ -2877,14 +2877,24 @@ bool WiFi::ResolvePeerMacAddress(const string &input, string *output,
   return false;
 }
 
-void WiFi::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig) {
-  Device::OnIPConfigUpdated(ipconfig);
-  SLOG(this, 2) << __func__ << ": " << "IPv4 DHCP lease obtained";
-  uint32_t time_to_next_lease_renewal;
-  bool have_dhcp_lease =
-      TimeToNextDHCPLeaseRenewal(&time_to_next_lease_renewal);
-  wake_on_wifi_->OnDHCPLeaseObtained(have_dhcp_lease,
-                                     time_to_next_lease_renewal);
+void WiFi::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig,
+                             bool new_lease_acquired) {
+  Device::OnIPConfigUpdated(ipconfig, new_lease_acquired);
+  if (new_lease_acquired) {
+    SLOG(this, 2) << __func__ << ": "
+                  << "IPv4 DHCP lease obtained";
+    uint32_t time_to_next_lease_renewal;
+    bool have_dhcp_lease =
+        TimeToNextDHCPLeaseRenewal(&time_to_next_lease_renewal);
+    wake_on_wifi_->OnDHCPLeaseObtained(have_dhcp_lease,
+                                       time_to_next_lease_renewal);
+  } else {
+    SLOG(this, 2) << __func__ << ": "
+                  << "Gateway ARP received";
+    // Do nothing since we are waiting until the DHCP lease is actually
+    // obtained.
+    return;
+  }
 }
 
 void WiFi::OnIPv6ConfigUpdated() {

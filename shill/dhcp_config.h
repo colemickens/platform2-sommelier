@@ -74,7 +74,8 @@ class DHCPConfig : public IPConfig {
 
  protected:
   // Overrides base clase implementation.
-  virtual void UpdateProperties(const Properties &properties);
+  virtual void UpdateProperties(const Properties &properties,
+                                bool new_lease_acquired);
   virtual void NotifyFailure();
 
  private:
