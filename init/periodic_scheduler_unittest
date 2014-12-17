@@ -80,7 +80,7 @@ main() {
 
   # Try to use dash if it's available as that's what we'll be using
   # on the actual device at runtime.
-  export SCHED_SHELL=$(which dash 2>/dev/null || /bin/sh)
+  export SCHED_SHELL=$(which dash 2>/dev/null || echo /bin/sh)
 
   local ret pids=()
   test1 &
