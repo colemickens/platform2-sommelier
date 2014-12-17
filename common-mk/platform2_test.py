@@ -565,6 +565,9 @@ class Platform2Test(object):
       print('cmd: {%s} %s' % (cmd, ' '.join(map(repr, argv))))
       os.chroot(self.sysroot)
       os.chdir(cwd)
+      # The TERM the user is leveraging might not exist in the sysroot.
+      # Force a sane default that supports standard color sequences.
+      os.environ['TERM'] = 'ansi'
       # Some progs want this like bash else they get super confused.
       os.environ['PWD'] = cwd
       if not self.run_as_root:
