@@ -59,6 +59,7 @@ class WifiBootstrapManager : public WifiDelegate {
   // Update the current state, post tasks to notify listeners accordingly to
   // the MessageLoop.
   void UpdateState(State new_state);
+  void NotifyStateListeners(State new_state) const;
 
   // If we've been bootstrapped successfully before, and we're bootstrapping
   // again because we slipped offline for a sufficiently longtime, we want

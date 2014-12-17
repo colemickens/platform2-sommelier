@@ -80,14 +80,16 @@ void WifiBootstrapManager::UpdateState(State new_state) {
   tasks_weak_factory_.InvalidateWeakPtrs();
 
   state_ = new_state;
-  auto callback = [] (const StateListener& listener, State state) {
-    listener.Run(state);
-  };
-  for (const StateListener& listener : state_listeners_) {
-    base::MessageLoop::current()->PostTask(
-        FROM_HERE,
-        base::Bind(callback, listener, new_state));
-  }
+
+  // Post with weak ptr to avoid notification after this object destroyed.
+  base::MessageLoop::current()->PostTask(
+      FROM_HERE, base::Bind(&WifiBootstrapManager::NotifyStateListeners,
+                            lifetime_weak_factory_.GetWeakPtr(), new_state));
+}
+
+void WifiBootstrapManager::NotifyStateListeners(State new_state) const {
+  for (const StateListener& listener : state_listeners_)
+    listener.Run(new_state);
 }
 
 bool WifiBootstrapManager::IsRequired() const {
