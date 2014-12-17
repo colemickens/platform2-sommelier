@@ -30,7 +30,7 @@ namespace {
       "bind-interfaces\n"
       "log-dhcp\n"
       "keep-in-foreground\n"
-      "user=root\n"
+      "user=apmanager\n"
       "dhcp-range=192.168.1.1,192.168.1.128\n"
       "interface=test_interface\n"
       "dhcp-leasefile=/tmp/dhcpd-1.leases\n";

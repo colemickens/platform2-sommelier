@@ -36,6 +36,7 @@ namespace {
 
 const char kLoggerCommand[] = "/usr/bin/logger";
 const char kLoggerUser[] = "syslog";
+const char kSeccompFilePath[] = "/usr/share/policy/apmanager-seccomp.policy";
 
 }  // namespace
 
@@ -83,11 +84,15 @@ void SetupLogging(chromeos::Minijail* minijail,
 }
 
 void DropPrivileges(chromeos::Minijail* minijail) {
-  // TODO(zqiu): Need to figure out the right set of privileges to allow
-  // hostapd to configure interfaces.
   struct minijail* jail = minijail->New();
   minijail->DropRoot(jail, apmanager::Daemon::kAPManagerUserName,
                      apmanager::Daemon::kAPManagerGroupName);
+  // Permissions needed for the daemon and its child processes for managing
+  // network interfaces and binding to network sockets.
+  minijail->UseCapabilities(jail, CAP_TO_MASK(CAP_NET_ADMIN) |
+                                  CAP_TO_MASK(CAP_NET_RAW) |
+                                  CAP_TO_MASK(CAP_NET_BIND_SERVICE));
+  minijail->UseSeccompFilter(jail, kSeccompFilePath);
   minijail_enter(jail);
   minijail->Destroy(jail);
 }
@@ -98,11 +103,9 @@ void OnStartup(const char* daemon_name, CommandLine* cl) {
 
   LOG(INFO) << __func__ << ": Dropping privileges";
 
-  // TODO(zqiu): temporary, until we figure out the exact privileges required
-  // to start required daemons (hostapd and dnsmasq).
   // Now that the daemon has all the resources it needs to run, we can drop
   // privileges further.
-  // DropPrivileges(minijail);
+  DropPrivileges(minijail);
 }
 
 int main(int argc, char* argv[]) {

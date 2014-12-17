@@ -10,6 +10,8 @@
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
 
+#include "apmanager/daemon.h"
+
 using std::string;
 
 namespace apmanager {
@@ -105,11 +107,9 @@ string DHCPServer::GenerateConfigFile() {
   // terminated. Configure dnsmasq to run in "foreground" so no extra process
   // will be spawned.
   config += "keep-in-foreground\n";
-  // TODO(zqiu): by default, dnsmasq process will be started under "nobody".
-  // Set the user to "root" for now, since both the daemon and hostapd are
-  // running under "root". Update the user once we switch the daemon and
-  // hostapd over to "apmanager" user.
-  config += "user=root\n";
+  // Explicitly set the user to apmanager. If not set, dnsmasq will default to
+  // run as "nobody".
+  base::StringAppendF(&config, "user=%s\n", Daemon::kAPManagerUserName);
   base::StringAppendF(
       &config, "dhcp-range=%s,%s\n", address_low.c_str(), address_high.c_str());
   base::StringAppendF(&config, "interface=%s\n", interface_name_.c_str());
