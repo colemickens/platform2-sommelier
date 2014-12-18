@@ -31,9 +31,10 @@
 #include "privetd/shill_client.h"
 #include "privetd/wifi_bootstrap_manager.h"
 
+namespace privetd {
+
 namespace {
 
-using chromeos::string_utils::Split;
 using libwebserv::Request;
 using libwebserv::Response;
 
@@ -55,7 +56,7 @@ class Daemon : public chromeos::DBusDaemon {
         disable_security_(disable_security),
         enable_ping_(enable_ping),
         device_whitelist_(device_whitelist),
-        state_store_(new privetd::DaemonState(state_path)) {}
+        state_store_(new DaemonState(state_path)) {}
 
   int OnInit() override {
     int ret = DBusDaemon::OnInit();
@@ -63,22 +64,22 @@ class Daemon : public chromeos::DBusDaemon {
       return EX_OK;
 
     state_store_->Init();
-    device_ = privetd::DeviceDelegate::CreateDefault(
+    device_ = DeviceDelegate::CreateDefault(
         http_port_number_, https_port_number_, state_store_.get(),
         base::Bind(&Daemon::OnChanged, base::Unretained(this)));
-    cloud_ = privetd::CloudDelegate::CreateDefault(
+    cloud_ = CloudDelegate::CreateDefault(
         bus_, device_.get(),
         base::Bind(&Daemon::OnChanged, base::Unretained(this)));
     // TODO(vitalybuka): Provide real embeded password.
-    security_.reset(new privetd::SecurityManager("1234", disable_security_));
-    shill_client_.reset(new privetd::ShillClient(bus_, device_whitelist_));
-    wifi_bootstrap_manager_.reset(new privetd::WifiBootstrapManager(
-        state_store_.get(), shill_client_.get()));
+    security_.reset(new SecurityManager("1234", disable_security_));
+    shill_client_.reset(new ShillClient(bus_, device_whitelist_));
+    wifi_bootstrap_manager_.reset(
+        new WifiBootstrapManager(state_store_.get(), shill_client_.get()));
     wifi_bootstrap_manager_->Init();
 
-    privet_handler_.reset(new privetd::PrivetHandler(
-        cloud_.get(), device_.get(), security_.get(),
-        wifi_bootstrap_manager_.get()));
+    privet_handler_.reset(new PrivetHandler(cloud_.get(), device_.get(),
+                                            security_.get(),
+                                            wifi_bootstrap_manager_.get()));
 
     if (!http_server_.Start(http_port_number_))
       return EX_UNAVAILABLE;
@@ -109,7 +110,7 @@ class Daemon : public chromeos::DBusDaemon {
           base::Bind(&Daemon::HelloWorldHandler, base::Unretained(this)));
     }
 
-    peerd_.reset(new privetd::PeerdClient(bus_, *device_, cloud_.get()));
+    peerd_.reset(new PeerdClient(bus_, *device_, cloud_.get()));
     peerd_->Start();
 
     return EX_OK;
@@ -182,22 +183,24 @@ class Daemon : public chromeos::DBusDaemon {
   bool disable_security_;
   bool enable_ping_;
   std::vector<std::string> device_whitelist_;
-  std::unique_ptr<privetd::DaemonState> state_store_;
-  std::unique_ptr<privetd::CloudDelegate> cloud_;
-  std::unique_ptr<privetd::DeviceDelegate> device_;
-  std::unique_ptr<privetd::SecurityManager> security_;
-  std::unique_ptr<privetd::ShillClient> shill_client_;
-  std::unique_ptr<privetd::WifiBootstrapManager> wifi_bootstrap_manager_;
-  std::unique_ptr<privetd::PrivetHandler> privet_handler_;
+  std::unique_ptr<DaemonState> state_store_;
+  std::unique_ptr<CloudDelegate> cloud_;
+  std::unique_ptr<DeviceDelegate> device_;
+  std::unique_ptr<SecurityManager> security_;
+  std::unique_ptr<ShillClient> shill_client_;
+  std::unique_ptr<WifiBootstrapManager> wifi_bootstrap_manager_;
+  std::unique_ptr<PrivetHandler> privet_handler_;
   libwebserv::Server http_server_;
   libwebserv::Server https_server_;
 
-  std::unique_ptr<privetd::PeerdClient> peerd_;
+  std::unique_ptr<PeerdClient> peerd_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
 
 }  // anonymous namespace
+
+}  // namespace privetd
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(disable_security, false, "disable Privet security for tests");
@@ -231,10 +234,11 @@ int main(int argc, char* argv[]) {
     return EX_USAGE;
   }
 
-  auto device_whitelist = Split(FLAGS_device_whitelist, ',', true, true);
+  auto device_whitelist =
+      chromeos::string_utils::Split(FLAGS_device_whitelist, ',', true, true);
 
-  Daemon daemon(FLAGS_http_port, FLAGS_https_port, FLAGS_disable_security,
-                FLAGS_enable_ping, device_whitelist,
-                base::FilePath(FLAGS_state_path));
+  privetd::Daemon daemon(FLAGS_http_port, FLAGS_https_port,
+                         FLAGS_disable_security, FLAGS_enable_ping,
+                         device_whitelist, base::FilePath(FLAGS_state_path));
   return daemon.Run();
 }
