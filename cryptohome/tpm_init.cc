@@ -162,7 +162,7 @@ void TpmInit::ClearStoredTpmPassword() {
   TpmStatus tpm_status;
   if (LoadTpmStatus(&tpm_status)) {
     int32_t dependency_flags = TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
-                             TpmStatus::ATTESTATION_NEEDS_OWNER;
+                               TpmStatus::ATTESTATION_NEEDS_OWNER;
     if (tpm_status.flags() & dependency_flags) {
       // The password is still needed, do not clear.
       return;

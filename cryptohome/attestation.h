@@ -322,6 +322,11 @@ class Attestation : public base::PlatformThread::Delegate,
   // value shows a verified boot measurement.
   virtual bool IsPCR0VerifiedMode();
 
+  // Ensures all endorsement data which uniquely identifies the device no longer
+  // exists in the attestation database unencrypted.  Encrypted endorsement data
+  // cannot be decrypted locally.
+  virtual void FinalizeEndorsementData();
+
   // Sets an alternative attestation database location. Useful in testing.
   virtual void set_database_path(const char* path) {
     database_path_ = base::FilePath(path);
@@ -572,11 +577,6 @@ class Attestation : public base::PlatformThread::Delegate,
   // the |origin| of the certificate request.  The strategy is to find an index
   // which has not already been used by another user for the same origin.
   int ChooseTemporalIndex(const std::string& user, const std::string& origin);
-
-  // Ensures all endorsement data which uniquely identifies the device no longer
-  // exists in the attestation database unencrypted.  Encrypted endorsement data
-  // cannot be decrypted locally.
-  void FinalizeEndorsementData();
 
   // Returns true if the TPM is ready.
   bool IsTPMReady();

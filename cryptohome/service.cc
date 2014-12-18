@@ -2836,8 +2836,11 @@ void Service::DoGetTpmStatus(const chromeos::SecureBlob& request,
     extension->set_dictionary_attack_lockout_seconds_remaining(
         seconds_remaining);
   }
-  extension->set_install_lockbox_finalized(extension->owned() &&
-                                           !install_attrs_->is_first_install());
+  extension->set_install_lockbox_finalized(
+      extension->owned() &&
+      !install_attrs_->is_first_install() &&
+      !install_attrs_->is_invalid() &&
+      install_attrs_->is_initialized());
   extension->set_boot_lockbox_finalized(boot_lockbox_->IsFinalized());
   extension->set_verified_boot_measured(attestation_->IsPCR0VerifiedMode());
   SendReply(context, reply);

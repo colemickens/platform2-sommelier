@@ -95,24 +95,24 @@
 
     # Common objects.
     {
-      'target_name': 'libcryptohome-metrics',
-      'type': 'static_library',
-      'dependencies': [
-      ],
-      'sources': [
-        'cryptohome_metrics.cc',
-      ],
-    },
-    {
       'target_name': 'libcrostpm',
       'type': 'static_library',
       'dependencies': [
         'cryptohome-proto',
-        'libcryptohome-metrics',
       ],
       'sources': [
-        'tpm.cc',
+        'attestation.cc',
+        'boot_lockbox.cc',
+        'crypto.cc',
+        'cryptohome_metrics.cc',
         'cryptolib.cc',
+        'install_attributes.cc',
+        'lockbox.cc',
+        'pkcs11_init.cc',
+        'pkcs11_keystore.cc',
+        'platform.cc',
+        'tpm.cc',
+        'tpm_init.cc',
       ],
     },
     {
@@ -121,37 +121,28 @@
       'dependencies': [
         'cryptohome-dbus-server',
         'cryptohome-proto',
-        'libcryptohome-metrics',
       ],
       'cflags': [
         # The generated dbus headers use "register".
         '-Wno-deprecated-register',
       ],
       'sources': [
-        'attestation.cc',
         'attestation_task.cc',
         'boot_attributes.cc',
-        'boot_lockbox.cc',
         'chaps_client_factory.cc',
         'crypto.cc',
         'cryptohome_event_source.cc',
         'dbus_transition.cc',
         'homedirs.cc',
-        'install_attributes.cc',
         'interface.cc',
         'lockbox-cache.cc',
         'lockbox-cache-tpm.cc',
-        'lockbox.cc',
         'mount.cc',
         'mount_factory.cc',
         'mount_stack.cc',
         'mount_task.cc',
-        'pkcs11_init.cc',
-        'pkcs11_keystore.cc',
-        'platform.cc',
         'service.cc',
         'stateful_recovery.cc',
-        'tpm_init.cc',
         'username_passkey.cc',
         'user_oldest_activity_timestamp_cache.cc',
         'user_session.cc',
@@ -282,6 +273,32 @@
       'sources': [
         'mount-encrypted.c',
         'mount-helpers.c',
+      ],
+    },
+    {
+      'target_name': 'tpm-manager',
+      'type': 'executable',
+      'dependencies': [
+        'libcrostpm',
+      ],
+      'link_settings': {
+        'libraries': [
+          '-lchaps',
+          '-lscrypt',
+          '-ltspi',
+          '-lvboot_host',
+        ],
+      },
+      'variables': {
+        'deps': [
+          'glib-2.0',
+          'libecryptfs',
+          'openssl',
+          'protobuf',
+        ],
+      },
+      'sources': [
+        'tpm_manager.cc',
       ],
     },
   ],

@@ -62,6 +62,13 @@ void ReportTimerStart(TimerType timer_type);
 // "Cryptohome.TimeTo*" histograms.
 void ReportTimerStop(TimerType timer_type);
 
+// Initialization helper.
+class ScopedMetricsInitializer {
+ public:
+  ScopedMetricsInitializer() { InitializeMetrics(); }
+  ~ScopedMetricsInitializer() { TearDownMetrics(); }
+};
+
 }  // namespace cryptohome
 
 #endif  // CRYPTOHOME_CRYPTOHOME_METRICS_H_
