@@ -19,7 +19,8 @@ DBusDaemon::DBusDaemon() {
 }
 
 DBusDaemon::~DBusDaemon() {
-  bus_->ShutdownAndBlock();
+  if (bus_)
+    bus_->ShutdownAndBlock();
 }
 
 int DBusDaemon::OnInit() {
