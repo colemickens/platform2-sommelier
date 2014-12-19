@@ -101,6 +101,11 @@ class ProxyGenerator : public HeaderGenerator {
                                const std::vector<Interface>& interfaces,
                                IndentedText* text);
 
+    // Generates Object Manager destructor.
+    static void AddDestructor(const std::string& class_name,
+                              const std::vector<Interface>& interfaces,
+                              IndentedText* text);
+
     // Generates GetObjectManagerProxy() method.
     static void AddGetObjectManagerProxy(IndentedText* text);
 

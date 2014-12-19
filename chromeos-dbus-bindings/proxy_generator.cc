@@ -553,6 +553,7 @@ void ProxyGenerator::ObjectManager::GenerateProxy(
   text->PushOffset(kBlockOffset);
 
   AddConstructor(config, class_name, interfaces, text);
+  AddDestructor(class_name, interfaces, text);
   AddGetObjectManagerProxy(text);
   for (const auto& itf : interfaces) {
     AddInterfaceAccessors(itf, text);
@@ -611,6 +612,22 @@ void ProxyGenerator::ObjectManager::AddConstructor(
   for (const auto& itf : interfaces) {
     text->AddLine(
         StringPrintf("dbus_object_manager_->RegisterInterface(\"%s\", this);",
+                     itf.name.c_str()));
+  }
+  text->PopOffset();
+  text->AddLine("}");
+  text->AddBlankLine();
+}
+
+void ProxyGenerator::ObjectManager::AddDestructor(
+    const std::string& class_name,
+    const std::vector<Interface>& interfaces,
+    IndentedText* text) {
+  text->AddLine(StringPrintf("~%s() override {", class_name.c_str()));
+  text->PushOffset(kBlockOffset);
+  for (const auto& itf : interfaces) {
+    text->AddLine(
+        StringPrintf("dbus_object_manager_->UnregisterInterface(\"%s\");",
                      itf.name.c_str()));
   }
   text->PopOffset();

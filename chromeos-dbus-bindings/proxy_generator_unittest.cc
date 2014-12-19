@@ -621,6 +621,11 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
     dbus_object_manager_->RegisterInterface("org.chromium.Itf2", this);
   }
 
+  ~ObjectManagerProxy() override {
+    dbus_object_manager_->UnregisterInterface("org.chromium.Itf1");
+    dbus_object_manager_->UnregisterInterface("org.chromium.Itf2");
+  }
+
   dbus::ObjectManager* GetObjectManagerProxy() const {
     return dbus_object_manager_;
   }
@@ -935,6 +940,11 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
             dbus::ObjectPath{"/org/chromium/Test"})} {
     dbus_object_manager_->RegisterInterface("org.chromium.Itf1", this);
     dbus_object_manager_->RegisterInterface("org.chromium.Itf2", this);
+  }
+
+  ~ObjectManagerProxy() override {
+    dbus_object_manager_->UnregisterInterface("org.chromium.Itf1");
+    dbus_object_manager_->UnregisterInterface("org.chromium.Itf2");
   }
 
   dbus::ObjectManager* GetObjectManagerProxy() const {
