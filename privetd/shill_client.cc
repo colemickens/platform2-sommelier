@@ -151,7 +151,6 @@ ShillClient::ServiceState ShillClient::GetConnectionState() const {
 
 void ShillClient::RegisterConnectivityListener(
     const ConnectivityListener& listener) {
-  // TODO(wiley) Actually call these guys back at some point.
   connectivity_listeners_.push_back(listener);
 }
 
@@ -467,7 +466,7 @@ void ShillClient::UpdateConnectivityState() {
   if (new_connectivity_state != connectivity_state_) {
     connectivity_state_ = new_connectivity_state;
     const bool am_online = new_connectivity_state == kConnected;
-    // We may call UpdateConnectivityState whenever we mutate a datastructure
+    // We may call UpdateConnectivityState whenever we mutate a data structure
     // such that our connectivity status could change.  However, we don't want
     // to allow people to call into ShillClient while some other operation is
     // underway.  Therefore, call our callbacks later, when we're in a good

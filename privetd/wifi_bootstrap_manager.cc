@@ -18,6 +18,10 @@ namespace privetd {
 
 namespace {
 
+const int kConnectTimeoutSeconds = 60;
+const int kBootstrapTimeoutSeconds = 300;
+const int kMonitorTimeoutSeconds = 120;
+
 }  // namespace
 
 WifiBootstrapManager::WifiBootstrapManager(DaemonState* state_store,
@@ -55,7 +59,7 @@ void WifiBootstrapManager::StartBootstrapping() {
     base::MessageLoop::current()->PostDelayedTask(
         FROM_HERE, base::Bind(&WifiBootstrapManager::OnBootstrapTimeout,
                               tasks_weak_factory_.GetWeakPtr()),
-        base::TimeDelta::FromSeconds(bootstrap_timeout_seconds_));
+        base::TimeDelta::FromSeconds(kBootstrapTimeoutSeconds));
   }
   // TODO(vitalybuka): Add SSID probing.
   ap_manager_client_->Start(ssid_generator_.GenerateSsid());
@@ -74,7 +78,7 @@ void WifiBootstrapManager::StartConnecting(const std::string& ssid,
   base::MessageLoop::current()->PostDelayedTask(
       FROM_HERE, base::Bind(&WifiBootstrapManager::OnConnectTimeout,
                             tasks_weak_factory_.GetWeakPtr()),
-      base::TimeDelta::FromSeconds(connect_timeout_seconds_));
+      base::TimeDelta::FromSeconds(kConnectTimeoutSeconds));
   shill_client_->ConnectToService(
       ssid, passphrase, base::Bind(&WifiBootstrapManager::OnConnectSuccess,
                                    tasks_weak_factory_.GetWeakPtr(), ssid),
@@ -94,6 +98,7 @@ void WifiBootstrapManager::EndMonitoring() {
 }
 
 void WifiBootstrapManager::UpdateState(State new_state) {
+  VLOG(3) << "Switching state from " << state_ << " to " << new_state;
   // Abort irrelevant tasks.
   tasks_weak_factory_.InvalidateWeakPtrs();
 
@@ -205,6 +210,7 @@ void WifiBootstrapManager::OnConnectTimeout() {
 }
 
 void WifiBootstrapManager::OnConnectivityChange(bool is_connected) {
+  VLOG(3) << "ConnectivityChanged: " << is_connected;
   if (state_ != kMonitoring) {
     return;
   }
@@ -216,7 +222,7 @@ void WifiBootstrapManager::OnConnectivityChange(bool is_connected) {
     base::MessageLoop::current()->PostDelayedTask(
         FROM_HERE, base::Bind(&WifiBootstrapManager::OnMonitorTimeout,
                               tasks_weak_factory_.GetWeakPtr()),
-        base::TimeDelta::FromSeconds(monitor_timeout_seconds_));
+        base::TimeDelta::FromSeconds(kMonitorTimeoutSeconds));
   }
 }
 

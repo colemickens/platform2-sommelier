@@ -93,9 +93,6 @@ class WifiBootstrapManager : public WifiDelegate {
   ApManagerClient* ap_manager_client_;
   WifiSsidGenerator ssid_generator_;
 
-  const uint32_t connect_timeout_seconds_{60};
-  const uint32_t bootstrap_timeout_seconds_{300};
-  const uint32_t monitor_timeout_seconds_{120};
   std::vector<StateListener> state_listeners_;
   bool have_ever_been_bootstrapped_{false};
   bool currently_online_{false};
