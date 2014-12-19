@@ -102,7 +102,7 @@ int main(int argc, char** argv) {
   power_manager::system::UdevStub udev;
   base::FilePath path(kPowerStatusPath);
   power_manager::system::PowerSupply power_supply;
-  power_supply.Init(path, &prefs, &udev);
+  power_supply.Init(path, &prefs, &udev, false /* log_shutdown_thresholds */);
 
   CHECK(power_supply.RefreshImmediately());
   const power_manager::system::PowerStatus status =

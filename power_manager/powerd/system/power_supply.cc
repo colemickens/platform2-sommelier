@@ -308,7 +308,8 @@ PowerSupply::~PowerSupply() {
 
 void PowerSupply::Init(const base::FilePath& power_supply_path,
                        PrefsInterface* prefs,
-                       UdevInterface* udev) {
+                       UdevInterface* udev,
+                       bool log_shutdown_thresholds) {
   udev_ = udev;
   udev_->AddSubsystemObserver(kUdevSubsystem, this);
 
@@ -353,11 +354,14 @@ void PowerSupply::Init(const base::FilePath& power_supply_path,
   CHECK(prefs_->GetInt64(kMaxChargeSamplesPref, &samples));
   charge_samples_.reset(new RollingAverage(samples));
 
-  // This log message is needed by the power_LoadTest autotest.
-  LOG(INFO) << "Using low battery time threshold of "
-            << low_battery_shutdown_time_.InSeconds()
-            << " secs and using low battery percent threshold of "
-            << low_battery_shutdown_percent_;
+  // This log message is needed by the power_LoadTest autotest, but we don't
+  // want to spam the logs when this method is called by power_supply_info.
+  if (log_shutdown_thresholds) {
+    LOG(INFO) << "Using low battery time threshold of "
+              << low_battery_shutdown_time_.InSeconds()
+              << " secs and using low battery percent threshold of "
+              << low_battery_shutdown_percent_;
+  }
 
   DeferBatterySampling(battery_stabilized_after_startup_delay_);
   SchedulePoll();

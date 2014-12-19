@@ -94,7 +94,8 @@ class PowerSupplyTest : public ::testing::Test {
  protected:
   // Initializes |power_supply_|.
   void Init() {
-    power_supply_->Init(temp_dir_.path(), &prefs_, &udev_);
+    power_supply_->Init(temp_dir_.path(), &prefs_, &udev_,
+                        false /* log_shutdown_thresholds */);
   }
 
   // Sets the time so that |power_supply_| will believe that the current

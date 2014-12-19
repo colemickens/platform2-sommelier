@@ -249,10 +249,12 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   }
 
   // Initializes the object and begins polling. Ownership of |prefs| remains
-  // with the caller.
+  // with the caller. If |log_shutdown_thresholds| is true, logs details about
+  // shutdown thresholds that are needed by power_LoadTest.
   void Init(const base::FilePath& power_supply_path,
             PrefsInterface *prefs,
-            UdevInterface* udev);
+            UdevInterface* udev,
+            bool log_shutdown_thresholds);
 
   // PowerSupplyInterface implementation:
   void AddObserver(PowerSupplyObserver* observer) override;
