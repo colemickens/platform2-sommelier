@@ -11,6 +11,9 @@
       # Chaps uses try/catch to interact with dbus-c++.
       'enable_exceptions': 1,
     },
+    'defines': [
+      'USE_TPM2=<(USE_tpm2)',
+    ],
   },
   'targets': [
     {
@@ -103,7 +106,6 @@
         '-ldl',
         '-lleveldb',
         '-lmemenv',
-        '-ltspi',
       ],
       'sources': [
         'chaps_adaptor.cc',
@@ -125,7 +127,24 @@
         'platform_globals_chromeos.cc',
         'session_impl.cc',
         'slot_manager_impl.cc',
-        'tpm_utility_impl.cc',
+      ],
+      'conditions': [
+        ['USE_tpm2 == 1', {
+          'libraries': [
+            '-ltrunks',
+          ],
+          'sources': [
+            'tpm2_utility_impl.cc',
+          ],
+        }],
+        ['USE_tpm2 == 0', {
+          'libraries': [
+            '-ltspi',
+          ],
+          'sources': [
+            'tpm_utility_impl.cc',
+          ],
+        }],
       ],
     },
     {
@@ -359,15 +378,59 @@
             'libchaps_static',
             'libchaps_test',
           ],
-          'libraries': [
-            '-ltspi',
+          'includes' : ['../common-mk/common_test.gypi'],
+          'sources': ['tpm_utility_test.cc',],
+          'conditions': [
+            ['USE_tpm2 == 1', {
+              'libraries': [
+                '-ltrunks',
+              ],
+              'sources': [
+                'tpm2_utility_impl.cc',
+              ],
+            }],
+            ['USE_tpm2 == 0', {
+              'libraries': [
+                '-ltspi',
+              ],
+              'sources': [
+                'tpm_utility_impl.cc',
+              ],
+            }],
           ],
-          'includes': ['../common-mk/common_test.gypi'],
-          'sources': [
-            'tpm_utility_impl.cc',
-            'tpm_utility_test.cc',
-          ]
         },
+      ],
+      # Conditional Unit Tests
+      # Unit tests here are gated by conditionals. Since we cannot add
+      # conditionals in the middle of a target list, we added it at the end.
+      'conditions': [
+        ['USE_tpm2 == 1', {
+          'targets': [
+            {
+              'target_name': 'tpm2_utility_test',
+              'type': 'executable',
+              'dependencies': [
+                'libchaps_static',
+                'libchaps_test',
+              ],
+              'libraries': [
+                '-ltrunks',
+              ],
+              'includes': ['../common-mk/common_test.gypi'],
+              'sources': [
+                '../trunks/mock_hmac_session.cc',
+                '../trunks/mock_policy_session.cc',
+                '../trunks/mock_session_manager.cc',
+                '../trunks/mock_tpm.cc',
+                '../trunks/mock_tpm_state.cc',
+                '../trunks/mock_tpm_utility.cc',
+                '../trunks/trunks_factory_for_test.cc',
+                'tpm2_utility_impl.cc',
+                'tpm2_utility_test.cc',
+              ]
+            },
+          ],
+        }],
       ],
     }],
   ],

@@ -26,7 +26,12 @@
 #include "chaps/chaps_utility.h"
 #include "chaps/platform_globals.h"
 #include "chaps/slot_manager_impl.h"
+
+#if USE_TPM2
+#include "chaps/tpm2_utility_impl.h"
+#else
 #include "chaps/tpm_utility_impl.h"
+#endif
 
 using base::AutoLock;
 using base::Lock;
@@ -40,7 +45,7 @@ namespace chaps {
 class AsyncInitThread : public PlatformThread::Delegate {
  public:
   AsyncInitThread(Lock* lock,
-                  TPMUtilityImpl* tpm,
+                  TPMUtility* tpm,
                   SlotManagerImpl* slot_manager,
                   ChapsServiceImpl* service)
       : started_event_(true, false),
@@ -74,7 +79,7 @@ class AsyncInitThread : public PlatformThread::Delegate {
  private:
   WaitableEvent started_event_;
   Lock* lock_;
-  TPMUtilityImpl* tpm_;
+  TPMUtility* tpm_;
   SlotManagerImpl* slot_manager_;
   ChapsServiceImpl* service_;
 };
@@ -124,7 +129,13 @@ int main(int argc, char** argv) {
         LOG(WARNING) << "Invalid value for srk_zeros: using empty string.";
       }
     }
+#if USE_TPM2
+    // Instantiate a TPM2 Utility.
+    chaps::TPM2UtilityImpl tpm;
+#else
+    // Instantiate a TPM1.2 Utility.
     chaps::TPMUtilityImpl tpm(srk_auth_data);
+#endif
     chaps::ChapsFactoryImpl factory;
     chaps::SlotManagerImpl slot_manager(
         &factory, &tpm, cl->HasSwitch("auto_load_system_token"));
