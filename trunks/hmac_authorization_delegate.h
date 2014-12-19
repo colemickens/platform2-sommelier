@@ -80,6 +80,10 @@ class CHROMEOS_EXPORT HmacAuthorizationDelegate: public AuthorizationDelegate {
   // computing the HMAC response of TPM2_HierarchyChangeAuth.
   void set_future_authorization_value(const std::string& auth_value);
 
+  std::string future_authorization_value() {
+    return future_authorization_value_;
+  }
+
   // This method is used to inject an auth_value associated with an entity.
   // This auth_value is then used when generating HMACs and encryption keys.
   // Note: This value will be used for all commands until explicitly reset.
