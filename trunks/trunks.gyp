@@ -64,6 +64,7 @@
       'type': 'static_library',
       'sources': [
         'background_command_transceiver.cc',
+        'resource_manager.cc',
         'tpm_handle.cc',
         'trunks_service.cc',
       ],
@@ -108,8 +109,9 @@
             'mock_tpm_utility.cc',
             'password_authorization_delegate_unittest.cc',
             'policy_session_test.cc',
-            'session_manager_test.cc',
+            'resource_manager_test.cc',
             'scoped_key_handle_test.cc',
+            'session_manager_test.cc',
             'tpm_generated_test.cc',
             'tpm_state_test.cc',
             'tpm_utility_test.cc',

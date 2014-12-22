@@ -134,7 +134,7 @@ size_t GetNumberOfRequestHandles(TPM_CC command_code) {
     case TPM_CC_NV_ReadLock: return 2;
     case TPM_CC_NV_ChangeAuth: return 1;
     case TPM_CC_NV_Certify: return 3;
-    default: NOTREACHED();
+    default: LOG(WARNING) << "Unknown command code: " << command_code;
   }
   return 0;
 }
@@ -249,13 +249,13 @@ size_t GetNumberOfResponseHandles(TPM_CC command_code) {
     case TPM_CC_NV_ReadLock: return 0;
     case TPM_CC_NV_ChangeAuth: return 0;
     case TPM_CC_NV_Certify: return 0;
-    default: NOTREACHED();
+    default: LOG(WARNING) << "Unknown command code: " << command_code;
   }
   return 0;
 }
 
 TPM_RC Serialize_uint8_t(const uint8_t& value, std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   uint8_t value_net = value;
   switch (sizeof(uint8_t)) {
     case 2:
@@ -279,7 +279,7 @@ TPM_RC Parse_uint8_t(
     std::string* buffer,
     uint8_t* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   if (buffer->size() < sizeof(uint8_t))
     return TPM_RC_INSUFFICIENT;
   uint8_t value_net = 0;
@@ -305,7 +305,7 @@ TPM_RC Parse_uint8_t(
 }
 
 TPM_RC Serialize_int8_t(const int8_t& value, std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   int8_t value_net = value;
   switch (sizeof(int8_t)) {
     case 2:
@@ -329,7 +329,7 @@ TPM_RC Parse_int8_t(
     std::string* buffer,
     int8_t* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   if (buffer->size() < sizeof(int8_t))
     return TPM_RC_INSUFFICIENT;
   int8_t value_net = 0;
@@ -355,7 +355,7 @@ TPM_RC Parse_int8_t(
 }
 
 TPM_RC Serialize_int(const int& value, std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   int value_net = value;
   switch (sizeof(int)) {
     case 2:
@@ -379,7 +379,7 @@ TPM_RC Parse_int(
     std::string* buffer,
     int* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   if (buffer->size() < sizeof(int))
     return TPM_RC_INSUFFICIENT;
   int value_net = 0;
@@ -405,7 +405,7 @@ TPM_RC Parse_int(
 }
 
 TPM_RC Serialize_uint16_t(const uint16_t& value, std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   uint16_t value_net = value;
   switch (sizeof(uint16_t)) {
     case 2:
@@ -429,7 +429,7 @@ TPM_RC Parse_uint16_t(
     std::string* buffer,
     uint16_t* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   if (buffer->size() < sizeof(uint16_t))
     return TPM_RC_INSUFFICIENT;
   uint16_t value_net = 0;
@@ -455,7 +455,7 @@ TPM_RC Parse_uint16_t(
 }
 
 TPM_RC Serialize_int16_t(const int16_t& value, std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   int16_t value_net = value;
   switch (sizeof(int16_t)) {
     case 2:
@@ -479,7 +479,7 @@ TPM_RC Parse_int16_t(
     std::string* buffer,
     int16_t* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   if (buffer->size() < sizeof(int16_t))
     return TPM_RC_INSUFFICIENT;
   int16_t value_net = 0;
@@ -505,7 +505,7 @@ TPM_RC Parse_int16_t(
 }
 
 TPM_RC Serialize_uint32_t(const uint32_t& value, std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   uint32_t value_net = value;
   switch (sizeof(uint32_t)) {
     case 2:
@@ -529,7 +529,7 @@ TPM_RC Parse_uint32_t(
     std::string* buffer,
     uint32_t* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   if (buffer->size() < sizeof(uint32_t))
     return TPM_RC_INSUFFICIENT;
   uint32_t value_net = 0;
@@ -555,7 +555,7 @@ TPM_RC Parse_uint32_t(
 }
 
 TPM_RC Serialize_int32_t(const int32_t& value, std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   int32_t value_net = value;
   switch (sizeof(int32_t)) {
     case 2:
@@ -579,7 +579,7 @@ TPM_RC Parse_int32_t(
     std::string* buffer,
     int32_t* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   if (buffer->size() < sizeof(int32_t))
     return TPM_RC_INSUFFICIENT;
   int32_t value_net = 0;
@@ -605,7 +605,7 @@ TPM_RC Parse_int32_t(
 }
 
 TPM_RC Serialize_uint64_t(const uint64_t& value, std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   uint64_t value_net = value;
   switch (sizeof(uint64_t)) {
     case 2:
@@ -629,7 +629,7 @@ TPM_RC Parse_uint64_t(
     std::string* buffer,
     uint64_t* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   if (buffer->size() < sizeof(uint64_t))
     return TPM_RC_INSUFFICIENT;
   uint64_t value_net = 0;
@@ -655,7 +655,7 @@ TPM_RC Parse_uint64_t(
 }
 
 TPM_RC Serialize_int64_t(const int64_t& value, std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   int64_t value_net = value;
   switch (sizeof(int64_t)) {
     case 2:
@@ -679,7 +679,7 @@ TPM_RC Parse_int64_t(
     std::string* buffer,
     int64_t* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   if (buffer->size() < sizeof(int64_t))
     return TPM_RC_INSUFFICIENT;
   int64_t value_net = 0;
@@ -707,7 +707,7 @@ TPM_RC Parse_int64_t(
 TPM_RC Serialize_UINT8(
     const UINT8& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_uint8_t(value, buffer);
 }
 
@@ -715,14 +715,14 @@ TPM_RC Parse_UINT8(
     std::string* buffer,
     UINT8* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_uint8_t(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_BYTE(
     const BYTE& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_uint8_t(value, buffer);
 }
 
@@ -730,14 +730,14 @@ TPM_RC Parse_BYTE(
     std::string* buffer,
     BYTE* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_uint8_t(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_INT8(
     const INT8& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_int8_t(value, buffer);
 }
 
@@ -745,14 +745,14 @@ TPM_RC Parse_INT8(
     std::string* buffer,
     INT8* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_int8_t(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_BOOL(
     const BOOL& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_int(value, buffer);
 }
 
@@ -760,14 +760,14 @@ TPM_RC Parse_BOOL(
     std::string* buffer,
     BOOL* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_int(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_UINT16(
     const UINT16& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_uint16_t(value, buffer);
 }
 
@@ -775,14 +775,14 @@ TPM_RC Parse_UINT16(
     std::string* buffer,
     UINT16* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_uint16_t(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_INT16(
     const INT16& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_int16_t(value, buffer);
 }
 
@@ -790,14 +790,14 @@ TPM_RC Parse_INT16(
     std::string* buffer,
     INT16* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_int16_t(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_UINT32(
     const UINT32& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_uint32_t(value, buffer);
 }
 
@@ -805,14 +805,14 @@ TPM_RC Parse_UINT32(
     std::string* buffer,
     UINT32* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_uint32_t(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_INT32(
     const INT32& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_int32_t(value, buffer);
 }
 
@@ -820,14 +820,14 @@ TPM_RC Parse_INT32(
     std::string* buffer,
     INT32* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_int32_t(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_UINT64(
     const UINT64& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_uint64_t(value, buffer);
 }
 
@@ -835,14 +835,14 @@ TPM_RC Parse_UINT64(
     std::string* buffer,
     UINT64* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_uint64_t(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_INT64(
     const INT64& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_int64_t(value, buffer);
 }
 
@@ -850,14 +850,14 @@ TPM_RC Parse_INT64(
     std::string* buffer,
     INT64* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_int64_t(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_ALGORITHM_ID(
     const TPM_ALGORITHM_ID& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -865,14 +865,14 @@ TPM_RC Parse_TPM_ALGORITHM_ID(
     std::string* buffer,
     TPM_ALGORITHM_ID* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_MODIFIER_INDICATOR(
     const TPM_MODIFIER_INDICATOR& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -880,14 +880,14 @@ TPM_RC Parse_TPM_MODIFIER_INDICATOR(
     std::string* buffer,
     TPM_MODIFIER_INDICATOR* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_AUTHORIZATION_SIZE(
     const TPM_AUTHORIZATION_SIZE& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -895,14 +895,14 @@ TPM_RC Parse_TPM_AUTHORIZATION_SIZE(
     std::string* buffer,
     TPM_AUTHORIZATION_SIZE* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_PARAMETER_SIZE(
     const TPM_PARAMETER_SIZE& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -910,14 +910,14 @@ TPM_RC Parse_TPM_PARAMETER_SIZE(
     std::string* buffer,
     TPM_PARAMETER_SIZE* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_KEY_SIZE(
     const TPM_KEY_SIZE& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT16(value, buffer);
 }
 
@@ -925,14 +925,14 @@ TPM_RC Parse_TPM_KEY_SIZE(
     std::string* buffer,
     TPM_KEY_SIZE* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT16(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_KEY_BITS(
     const TPM_KEY_BITS& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT16(value, buffer);
 }
 
@@ -940,14 +940,14 @@ TPM_RC Parse_TPM_KEY_BITS(
     std::string* buffer,
     TPM_KEY_BITS* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT16(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_HANDLE(
     const TPM_HANDLE& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -955,7 +955,7 @@ TPM_RC Parse_TPM_HANDLE(
     std::string* buffer,
     TPM_HANDLE* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
@@ -963,7 +963,7 @@ TPM_RC Serialize_TPM2B_DIGEST(
     const TPM2B_DIGEST& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -987,7 +987,7 @@ TPM_RC Parse_TPM2B_DIGEST(
     TPM2B_DIGEST* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -1032,7 +1032,7 @@ std::string StringFrom_TPM2B_DIGEST(
 TPM_RC Serialize_TPM2B_NONCE(
     const TPM2B_NONCE& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM2B_DIGEST(value, buffer);
 }
 
@@ -1040,14 +1040,14 @@ TPM_RC Parse_TPM2B_NONCE(
     std::string* buffer,
     TPM2B_NONCE* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM2B_DIGEST(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM2B_AUTH(
     const TPM2B_AUTH& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM2B_DIGEST(value, buffer);
 }
 
@@ -1055,14 +1055,14 @@ TPM_RC Parse_TPM2B_AUTH(
     std::string* buffer,
     TPM2B_AUTH* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM2B_DIGEST(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM2B_OPERAND(
     const TPM2B_OPERAND& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM2B_DIGEST(value, buffer);
 }
 
@@ -1070,14 +1070,14 @@ TPM_RC Parse_TPM2B_OPERAND(
     std::string* buffer,
     TPM2B_OPERAND* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM2B_DIGEST(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_ALG_ID(
     const TPM_ALG_ID& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT16(value, buffer);
 }
 
@@ -1085,14 +1085,14 @@ TPM_RC Parse_TPM_ALG_ID(
     std::string* buffer,
     TPM_ALG_ID* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT16(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_ALG_HASH(
     const TPMI_ALG_HASH& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_ALG_ID(value, buffer);
 }
 
@@ -1100,7 +1100,7 @@ TPM_RC Parse_TPMI_ALG_HASH(
     std::string* buffer,
     TPMI_ALG_HASH* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_ALG_ID(buffer, value, value_bytes);
 }
 
@@ -1108,7 +1108,7 @@ TPM_RC Serialize_TPMS_SCHEME_SIGHASH(
     const TPMS_SCHEME_SIGHASH& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_HASH(value.hash_alg, buffer);
   if (result) {
@@ -1122,7 +1122,7 @@ TPM_RC Parse_TPMS_SCHEME_SIGHASH(
     TPMS_SCHEME_SIGHASH* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_HASH(
       buffer,
@@ -1137,7 +1137,7 @@ TPM_RC Parse_TPMS_SCHEME_SIGHASH(
 TPM_RC Serialize_TPMS_SCHEME_HMAC(
     const TPMS_SCHEME_HMAC& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPMS_SCHEME_SIGHASH(value, buffer);
 }
 
@@ -1145,14 +1145,14 @@ TPM_RC Parse_TPMS_SCHEME_HMAC(
     std::string* buffer,
     TPMS_SCHEME_HMAC* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPMS_SCHEME_SIGHASH(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMS_SCHEME_RSASSA(
     const TPMS_SCHEME_RSASSA& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPMS_SCHEME_SIGHASH(value, buffer);
 }
 
@@ -1160,14 +1160,14 @@ TPM_RC Parse_TPMS_SCHEME_RSASSA(
     std::string* buffer,
     TPMS_SCHEME_RSASSA* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPMS_SCHEME_SIGHASH(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMS_SCHEME_RSAPSS(
     const TPMS_SCHEME_RSAPSS& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPMS_SCHEME_SIGHASH(value, buffer);
 }
 
@@ -1175,14 +1175,14 @@ TPM_RC Parse_TPMS_SCHEME_RSAPSS(
     std::string* buffer,
     TPMS_SCHEME_RSAPSS* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPMS_SCHEME_SIGHASH(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMS_SCHEME_ECDSA(
     const TPMS_SCHEME_ECDSA& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPMS_SCHEME_SIGHASH(value, buffer);
 }
 
@@ -1190,14 +1190,14 @@ TPM_RC Parse_TPMS_SCHEME_ECDSA(
     std::string* buffer,
     TPMS_SCHEME_ECDSA* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPMS_SCHEME_SIGHASH(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMS_SCHEME_SM2(
     const TPMS_SCHEME_SM2& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPMS_SCHEME_SIGHASH(value, buffer);
 }
 
@@ -1205,14 +1205,14 @@ TPM_RC Parse_TPMS_SCHEME_SM2(
     std::string* buffer,
     TPMS_SCHEME_SM2* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPMS_SCHEME_SIGHASH(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMS_SCHEME_ECSCHNORR(
     const TPMS_SCHEME_ECSCHNORR& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPMS_SCHEME_SIGHASH(value, buffer);
 }
 
@@ -1220,14 +1220,14 @@ TPM_RC Parse_TPMS_SCHEME_ECSCHNORR(
     std::string* buffer,
     TPMS_SCHEME_ECSCHNORR* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPMS_SCHEME_SIGHASH(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_YES_NO(
     const TPMI_YES_NO& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_BYTE(value, buffer);
 }
 
@@ -1235,14 +1235,14 @@ TPM_RC Parse_TPMI_YES_NO(
     std::string* buffer,
     TPMI_YES_NO* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_BYTE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_DH_OBJECT(
     const TPMI_DH_OBJECT& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -1250,14 +1250,14 @@ TPM_RC Parse_TPMI_DH_OBJECT(
     std::string* buffer,
     TPMI_DH_OBJECT* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_DH_PERSISTENT(
     const TPMI_DH_PERSISTENT& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -1265,14 +1265,14 @@ TPM_RC Parse_TPMI_DH_PERSISTENT(
     std::string* buffer,
     TPMI_DH_PERSISTENT* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_DH_ENTITY(
     const TPMI_DH_ENTITY& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -1280,14 +1280,14 @@ TPM_RC Parse_TPMI_DH_ENTITY(
     std::string* buffer,
     TPMI_DH_ENTITY* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_DH_PCR(
     const TPMI_DH_PCR& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -1295,14 +1295,14 @@ TPM_RC Parse_TPMI_DH_PCR(
     std::string* buffer,
     TPMI_DH_PCR* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_SH_AUTH_SESSION(
     const TPMI_SH_AUTH_SESSION& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -1310,14 +1310,14 @@ TPM_RC Parse_TPMI_SH_AUTH_SESSION(
     std::string* buffer,
     TPMI_SH_AUTH_SESSION* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_SH_HMAC(
     const TPMI_SH_HMAC& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -1325,14 +1325,14 @@ TPM_RC Parse_TPMI_SH_HMAC(
     std::string* buffer,
     TPMI_SH_HMAC* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_SH_POLICY(
     const TPMI_SH_POLICY& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -1340,14 +1340,14 @@ TPM_RC Parse_TPMI_SH_POLICY(
     std::string* buffer,
     TPMI_SH_POLICY* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_DH_CONTEXT(
     const TPMI_DH_CONTEXT& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -1355,14 +1355,14 @@ TPM_RC Parse_TPMI_DH_CONTEXT(
     std::string* buffer,
     TPMI_DH_CONTEXT* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_RH_HIERARCHY(
     const TPMI_RH_HIERARCHY& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -1370,14 +1370,14 @@ TPM_RC Parse_TPMI_RH_HIERARCHY(
     std::string* buffer,
     TPMI_RH_HIERARCHY* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_RH_ENABLES(
     const TPMI_RH_ENABLES& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -1385,14 +1385,14 @@ TPM_RC Parse_TPMI_RH_ENABLES(
     std::string* buffer,
     TPMI_RH_ENABLES* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_RH_HIERARCHY_AUTH(
     const TPMI_RH_HIERARCHY_AUTH& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -1400,14 +1400,14 @@ TPM_RC Parse_TPMI_RH_HIERARCHY_AUTH(
     std::string* buffer,
     TPMI_RH_HIERARCHY_AUTH* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_RH_PLATFORM(
     const TPMI_RH_PLATFORM& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -1415,14 +1415,14 @@ TPM_RC Parse_TPMI_RH_PLATFORM(
     std::string* buffer,
     TPMI_RH_PLATFORM* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_RH_OWNER(
     const TPMI_RH_OWNER& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -1430,14 +1430,14 @@ TPM_RC Parse_TPMI_RH_OWNER(
     std::string* buffer,
     TPMI_RH_OWNER* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_RH_ENDORSEMENT(
     const TPMI_RH_ENDORSEMENT& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -1445,14 +1445,14 @@ TPM_RC Parse_TPMI_RH_ENDORSEMENT(
     std::string* buffer,
     TPMI_RH_ENDORSEMENT* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_RH_PROVISION(
     const TPMI_RH_PROVISION& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -1460,14 +1460,14 @@ TPM_RC Parse_TPMI_RH_PROVISION(
     std::string* buffer,
     TPMI_RH_PROVISION* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_RH_CLEAR(
     const TPMI_RH_CLEAR& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -1475,14 +1475,14 @@ TPM_RC Parse_TPMI_RH_CLEAR(
     std::string* buffer,
     TPMI_RH_CLEAR* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_RH_NV_AUTH(
     const TPMI_RH_NV_AUTH& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -1490,14 +1490,14 @@ TPM_RC Parse_TPMI_RH_NV_AUTH(
     std::string* buffer,
     TPMI_RH_NV_AUTH* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_RH_LOCKOUT(
     const TPMI_RH_LOCKOUT& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -1505,14 +1505,14 @@ TPM_RC Parse_TPMI_RH_LOCKOUT(
     std::string* buffer,
     TPMI_RH_LOCKOUT* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_RH_NV_INDEX(
     const TPMI_RH_NV_INDEX& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -1520,14 +1520,14 @@ TPM_RC Parse_TPMI_RH_NV_INDEX(
     std::string* buffer,
     TPMI_RH_NV_INDEX* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_ALG_ASYM(
     const TPMI_ALG_ASYM& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_ALG_ID(value, buffer);
 }
 
@@ -1535,14 +1535,14 @@ TPM_RC Parse_TPMI_ALG_ASYM(
     std::string* buffer,
     TPMI_ALG_ASYM* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_ALG_ID(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_ALG_SYM(
     const TPMI_ALG_SYM& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_ALG_ID(value, buffer);
 }
 
@@ -1550,14 +1550,14 @@ TPM_RC Parse_TPMI_ALG_SYM(
     std::string* buffer,
     TPMI_ALG_SYM* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_ALG_ID(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_ALG_SYM_OBJECT(
     const TPMI_ALG_SYM_OBJECT& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_ALG_ID(value, buffer);
 }
 
@@ -1565,14 +1565,14 @@ TPM_RC Parse_TPMI_ALG_SYM_OBJECT(
     std::string* buffer,
     TPMI_ALG_SYM_OBJECT* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_ALG_ID(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_ALG_SYM_MODE(
     const TPMI_ALG_SYM_MODE& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_ALG_ID(value, buffer);
 }
 
@@ -1580,14 +1580,14 @@ TPM_RC Parse_TPMI_ALG_SYM_MODE(
     std::string* buffer,
     TPMI_ALG_SYM_MODE* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_ALG_ID(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_ALG_KDF(
     const TPMI_ALG_KDF& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_ALG_ID(value, buffer);
 }
 
@@ -1595,14 +1595,14 @@ TPM_RC Parse_TPMI_ALG_KDF(
     std::string* buffer,
     TPMI_ALG_KDF* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_ALG_ID(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_ALG_SIG_SCHEME(
     const TPMI_ALG_SIG_SCHEME& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_ALG_ID(value, buffer);
 }
 
@@ -1610,14 +1610,14 @@ TPM_RC Parse_TPMI_ALG_SIG_SCHEME(
     std::string* buffer,
     TPMI_ALG_SIG_SCHEME* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_ALG_ID(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_ECC_KEY_EXCHANGE(
     const TPMI_ECC_KEY_EXCHANGE& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_ALG_ID(value, buffer);
 }
 
@@ -1625,14 +1625,14 @@ TPM_RC Parse_TPMI_ECC_KEY_EXCHANGE(
     std::string* buffer,
     TPMI_ECC_KEY_EXCHANGE* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_ALG_ID(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_ST(
     const TPM_ST& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT16(value, buffer);
 }
 
@@ -1640,14 +1640,14 @@ TPM_RC Parse_TPM_ST(
     std::string* buffer,
     TPM_ST* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT16(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_ST_COMMAND_TAG(
     const TPMI_ST_COMMAND_TAG& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_ST(value, buffer);
 }
 
@@ -1655,14 +1655,14 @@ TPM_RC Parse_TPMI_ST_COMMAND_TAG(
     std::string* buffer,
     TPMI_ST_COMMAND_TAG* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_ST(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_ST_ATTEST(
     const TPMI_ST_ATTEST& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_ST(value, buffer);
 }
 
@@ -1670,14 +1670,14 @@ TPM_RC Parse_TPMI_ST_ATTEST(
     std::string* buffer,
     TPMI_ST_ATTEST* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_ST(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_AES_KEY_BITS(
     const TPMI_AES_KEY_BITS& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_KEY_BITS(value, buffer);
 }
 
@@ -1685,14 +1685,14 @@ TPM_RC Parse_TPMI_AES_KEY_BITS(
     std::string* buffer,
     TPMI_AES_KEY_BITS* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_KEY_BITS(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_SM4_KEY_BITS(
     const TPMI_SM4_KEY_BITS& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_KEY_BITS(value, buffer);
 }
 
@@ -1700,14 +1700,14 @@ TPM_RC Parse_TPMI_SM4_KEY_BITS(
     std::string* buffer,
     TPMI_SM4_KEY_BITS* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_KEY_BITS(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_ALG_KEYEDHASH_SCHEME(
     const TPMI_ALG_KEYEDHASH_SCHEME& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_ALG_ID(value, buffer);
 }
 
@@ -1715,14 +1715,14 @@ TPM_RC Parse_TPMI_ALG_KEYEDHASH_SCHEME(
     std::string* buffer,
     TPMI_ALG_KEYEDHASH_SCHEME* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_ALG_ID(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_ALG_ASYM_SCHEME(
     const TPMI_ALG_ASYM_SCHEME& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_ALG_ID(value, buffer);
 }
 
@@ -1730,14 +1730,14 @@ TPM_RC Parse_TPMI_ALG_ASYM_SCHEME(
     std::string* buffer,
     TPMI_ALG_ASYM_SCHEME* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_ALG_ID(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_ALG_RSA_SCHEME(
     const TPMI_ALG_RSA_SCHEME& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_ALG_ID(value, buffer);
 }
 
@@ -1745,14 +1745,14 @@ TPM_RC Parse_TPMI_ALG_RSA_SCHEME(
     std::string* buffer,
     TPMI_ALG_RSA_SCHEME* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_ALG_ID(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_ALG_RSA_DECRYPT(
     const TPMI_ALG_RSA_DECRYPT& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_ALG_ID(value, buffer);
 }
 
@@ -1760,14 +1760,14 @@ TPM_RC Parse_TPMI_ALG_RSA_DECRYPT(
     std::string* buffer,
     TPMI_ALG_RSA_DECRYPT* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_ALG_ID(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_RSA_KEY_BITS(
     const TPMI_RSA_KEY_BITS& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_KEY_BITS(value, buffer);
 }
 
@@ -1775,14 +1775,14 @@ TPM_RC Parse_TPMI_RSA_KEY_BITS(
     std::string* buffer,
     TPMI_RSA_KEY_BITS* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_KEY_BITS(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_ALG_ECC_SCHEME(
     const TPMI_ALG_ECC_SCHEME& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_ALG_ID(value, buffer);
 }
 
@@ -1790,14 +1790,14 @@ TPM_RC Parse_TPMI_ALG_ECC_SCHEME(
     std::string* buffer,
     TPMI_ALG_ECC_SCHEME* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_ALG_ID(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_ECC_CURVE(
     const TPM_ECC_CURVE& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT16(value, buffer);
 }
 
@@ -1805,14 +1805,14 @@ TPM_RC Parse_TPM_ECC_CURVE(
     std::string* buffer,
     TPM_ECC_CURVE* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT16(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_ECC_CURVE(
     const TPMI_ECC_CURVE& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_ECC_CURVE(value, buffer);
 }
 
@@ -1820,14 +1820,14 @@ TPM_RC Parse_TPMI_ECC_CURVE(
     std::string* buffer,
     TPMI_ECC_CURVE* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_ECC_CURVE(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMI_ALG_PUBLIC(
     const TPMI_ALG_PUBLIC& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_ALG_ID(value, buffer);
 }
 
@@ -1835,14 +1835,14 @@ TPM_RC Parse_TPMI_ALG_PUBLIC(
     std::string* buffer,
     TPMI_ALG_PUBLIC* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_ALG_ID(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMA_ALGORITHM(
     const TPMA_ALGORITHM& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -1850,14 +1850,14 @@ TPM_RC Parse_TPMA_ALGORITHM(
     std::string* buffer,
     TPMA_ALGORITHM* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMA_OBJECT(
     const TPMA_OBJECT& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -1865,14 +1865,14 @@ TPM_RC Parse_TPMA_OBJECT(
     std::string* buffer,
     TPMA_OBJECT* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMA_SESSION(
     const TPMA_SESSION& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT8(value, buffer);
 }
 
@@ -1880,14 +1880,14 @@ TPM_RC Parse_TPMA_SESSION(
     std::string* buffer,
     TPMA_SESSION* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT8(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMA_LOCALITY(
     const TPMA_LOCALITY& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT8(value, buffer);
 }
 
@@ -1895,14 +1895,14 @@ TPM_RC Parse_TPMA_LOCALITY(
     std::string* buffer,
     TPMA_LOCALITY* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT8(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMA_PERMANENT(
     const TPMA_PERMANENT& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -1910,14 +1910,14 @@ TPM_RC Parse_TPMA_PERMANENT(
     std::string* buffer,
     TPMA_PERMANENT* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMA_STARTUP_CLEAR(
     const TPMA_STARTUP_CLEAR& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -1925,14 +1925,14 @@ TPM_RC Parse_TPMA_STARTUP_CLEAR(
     std::string* buffer,
     TPMA_STARTUP_CLEAR* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMA_MEMORY(
     const TPMA_MEMORY& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -1940,14 +1940,14 @@ TPM_RC Parse_TPMA_MEMORY(
     std::string* buffer,
     TPMA_MEMORY* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_CC(
     const TPM_CC& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -1955,14 +1955,14 @@ TPM_RC Parse_TPM_CC(
     std::string* buffer,
     TPM_CC* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMA_CC(
     const TPMA_CC& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_CC(value, buffer);
 }
 
@@ -1970,14 +1970,14 @@ TPM_RC Parse_TPMA_CC(
     std::string* buffer,
     TPMA_CC* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_CC(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_NV_INDEX(
     const TPM_NV_INDEX& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -1985,14 +1985,14 @@ TPM_RC Parse_TPM_NV_INDEX(
     std::string* buffer,
     TPM_NV_INDEX* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPMA_NV(
     const TPMA_NV& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -2000,14 +2000,14 @@ TPM_RC Parse_TPMA_NV(
     std::string* buffer,
     TPMA_NV* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_SPEC(
     const TPM_SPEC& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -2015,14 +2015,14 @@ TPM_RC Parse_TPM_SPEC(
     std::string* buffer,
     TPM_SPEC* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_GENERATED(
     const TPM_GENERATED& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -2030,14 +2030,14 @@ TPM_RC Parse_TPM_GENERATED(
     std::string* buffer,
     TPM_GENERATED* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_RC(
     const TPM_RC& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -2045,14 +2045,14 @@ TPM_RC Parse_TPM_RC(
     std::string* buffer,
     TPM_RC* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_CLOCK_ADJUST(
     const TPM_CLOCK_ADJUST& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_INT8(value, buffer);
 }
 
@@ -2060,14 +2060,14 @@ TPM_RC Parse_TPM_CLOCK_ADJUST(
     std::string* buffer,
     TPM_CLOCK_ADJUST* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_INT8(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_EO(
     const TPM_EO& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT16(value, buffer);
 }
 
@@ -2075,14 +2075,14 @@ TPM_RC Parse_TPM_EO(
     std::string* buffer,
     TPM_EO* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT16(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_SU(
     const TPM_SU& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT16(value, buffer);
 }
 
@@ -2090,14 +2090,14 @@ TPM_RC Parse_TPM_SU(
     std::string* buffer,
     TPM_SU* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT16(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_SE(
     const TPM_SE& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT8(value, buffer);
 }
 
@@ -2105,14 +2105,14 @@ TPM_RC Parse_TPM_SE(
     std::string* buffer,
     TPM_SE* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT8(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_CAP(
     const TPM_CAP& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -2120,14 +2120,14 @@ TPM_RC Parse_TPM_CAP(
     std::string* buffer,
     TPM_CAP* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_PT(
     const TPM_PT& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -2135,14 +2135,14 @@ TPM_RC Parse_TPM_PT(
     std::string* buffer,
     TPM_PT* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_PT_PCR(
     const TPM_PT_PCR& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -2150,14 +2150,14 @@ TPM_RC Parse_TPM_PT_PCR(
     std::string* buffer,
     TPM_PT_PCR* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_PS(
     const TPM_PS& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -2165,14 +2165,14 @@ TPM_RC Parse_TPM_PS(
     std::string* buffer,
     TPM_PS* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_HT(
     const TPM_HT& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT8(value, buffer);
 }
 
@@ -2180,14 +2180,14 @@ TPM_RC Parse_TPM_HT(
     std::string* buffer,
     TPM_HT* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT8(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_RH(
     const TPM_RH& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_UINT32(value, buffer);
 }
 
@@ -2195,14 +2195,14 @@ TPM_RC Parse_TPM_RH(
     std::string* buffer,
     TPM_RH* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_UINT32(buffer, value, value_bytes);
 }
 
 TPM_RC Serialize_TPM_HC(
     const TPM_HC& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_TPM_HANDLE(value, buffer);
 }
 
@@ -2210,7 +2210,7 @@ TPM_RC Parse_TPM_HC(
     std::string* buffer,
     TPM_HC* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_TPM_HANDLE(buffer, value, value_bytes);
 }
 
@@ -2218,7 +2218,7 @@ TPM_RC Serialize_TPMS_ALGORITHM_DESCRIPTION(
     const TPMS_ALGORITHM_DESCRIPTION& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPM_ALG_ID(value.alg, buffer);
   if (result) {
@@ -2237,7 +2237,7 @@ TPM_RC Parse_TPMS_ALGORITHM_DESCRIPTION(
     TPMS_ALGORITHM_DESCRIPTION* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPM_ALG_ID(
       buffer,
@@ -2262,7 +2262,7 @@ TPM_RC Serialize_TPMU_HA(
     TPMI_ALG_HASH selector,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_SHA384) {
     if (arraysize(value.sha384) < SHA384_DIGEST_SIZE) {
@@ -2336,7 +2336,7 @@ TPM_RC Parse_TPMU_HA(
     TPMU_HA* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_SHA384) {
     if (arraysize(value->sha384) < SHA384_DIGEST_SIZE) {
@@ -2423,7 +2423,7 @@ TPM_RC Serialize_TPMT_HA(
     const TPMT_HA& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_HASH(value.hash_alg, buffer);
   if (result) {
@@ -2445,7 +2445,7 @@ TPM_RC Parse_TPMT_HA(
     TPMT_HA* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_HASH(
       buffer,
@@ -2470,7 +2470,7 @@ TPM_RC Serialize_TPM2B_DATA(
     const TPM2B_DATA& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -2494,7 +2494,7 @@ TPM_RC Parse_TPM2B_DATA(
     TPM2B_DATA* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -2540,7 +2540,7 @@ TPM_RC Serialize_TPM2B_EVENT(
     const TPM2B_EVENT& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -2564,7 +2564,7 @@ TPM_RC Parse_TPM2B_EVENT(
     TPM2B_EVENT* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -2610,7 +2610,7 @@ TPM_RC Serialize_TPM2B_MAX_BUFFER(
     const TPM2B_MAX_BUFFER& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -2634,7 +2634,7 @@ TPM_RC Parse_TPM2B_MAX_BUFFER(
     TPM2B_MAX_BUFFER* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -2680,7 +2680,7 @@ TPM_RC Serialize_TPM2B_MAX_NV_BUFFER(
     const TPM2B_MAX_NV_BUFFER& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -2704,7 +2704,7 @@ TPM_RC Parse_TPM2B_MAX_NV_BUFFER(
     TPM2B_MAX_NV_BUFFER* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -2750,7 +2750,7 @@ TPM_RC Serialize_TPM2B_TIMEOUT(
     const TPM2B_TIMEOUT& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -2774,7 +2774,7 @@ TPM_RC Parse_TPM2B_TIMEOUT(
     TPM2B_TIMEOUT* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -2820,7 +2820,7 @@ TPM_RC Serialize_TPM2B_IV(
     const TPM2B_IV& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -2844,7 +2844,7 @@ TPM_RC Parse_TPM2B_IV(
     TPM2B_IV* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -2890,7 +2890,7 @@ TPM_RC Serialize_TPM2B_NAME(
     const TPM2B_NAME& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -2914,7 +2914,7 @@ TPM_RC Parse_TPM2B_NAME(
     TPM2B_NAME* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -2960,7 +2960,7 @@ TPM_RC Serialize_TPMS_PCR_SELECT(
     const TPMS_PCR_SELECT& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT8(value.sizeof_select, buffer);
   if (result) {
@@ -2984,7 +2984,7 @@ TPM_RC Parse_TPMS_PCR_SELECT(
     TPMS_PCR_SELECT* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT8(
       buffer,
@@ -3013,7 +3013,7 @@ TPM_RC Serialize_TPMS_PCR_SELECTION(
     const TPMS_PCR_SELECTION& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_HASH(value.hash, buffer);
   if (result) {
@@ -3042,7 +3042,7 @@ TPM_RC Parse_TPMS_PCR_SELECTION(
     TPMS_PCR_SELECTION* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_HASH(
       buffer,
@@ -3079,7 +3079,7 @@ TPM_RC Serialize_TPMT_TK_CREATION(
     const TPMT_TK_CREATION& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPM_ST(value.tag, buffer);
   if (result) {
@@ -3103,7 +3103,7 @@ TPM_RC Parse_TPMT_TK_CREATION(
     TPMT_TK_CREATION* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPM_ST(
       buffer,
@@ -3135,7 +3135,7 @@ TPM_RC Serialize_TPMT_TK_VERIFIED(
     const TPMT_TK_VERIFIED& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPM_ST(value.tag, buffer);
   if (result) {
@@ -3159,7 +3159,7 @@ TPM_RC Parse_TPMT_TK_VERIFIED(
     TPMT_TK_VERIFIED* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPM_ST(
       buffer,
@@ -3191,7 +3191,7 @@ TPM_RC Serialize_TPMT_TK_AUTH(
     const TPMT_TK_AUTH& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_RH_HIERARCHY(value.hierarchy, buffer);
   if (result) {
@@ -3210,7 +3210,7 @@ TPM_RC Parse_TPMT_TK_AUTH(
     TPMT_TK_AUTH* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_RH_HIERARCHY(
       buffer,
@@ -3234,7 +3234,7 @@ TPM_RC Serialize_TPMT_TK_HASHCHECK(
     const TPMT_TK_HASHCHECK& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPM_ST(value.tag, buffer);
   if (result) {
@@ -3258,7 +3258,7 @@ TPM_RC Parse_TPMT_TK_HASHCHECK(
     TPMT_TK_HASHCHECK* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPM_ST(
       buffer,
@@ -3290,7 +3290,7 @@ TPM_RC Serialize_TPMS_ALG_PROPERTY(
     const TPMS_ALG_PROPERTY& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPM_ALG_ID(value.alg, buffer);
   if (result) {
@@ -3309,7 +3309,7 @@ TPM_RC Parse_TPMS_ALG_PROPERTY(
     TPMS_ALG_PROPERTY* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPM_ALG_ID(
       buffer,
@@ -3333,7 +3333,7 @@ TPM_RC Serialize_TPMS_TAGGED_PROPERTY(
     const TPMS_TAGGED_PROPERTY& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPM_PT(value.property, buffer);
   if (result) {
@@ -3352,7 +3352,7 @@ TPM_RC Parse_TPMS_TAGGED_PROPERTY(
     TPMS_TAGGED_PROPERTY* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPM_PT(
       buffer,
@@ -3376,7 +3376,7 @@ TPM_RC Serialize_TPMS_TAGGED_PCR_SELECT(
     const TPMS_TAGGED_PCR_SELECT& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPM_PT(value.tag, buffer);
   if (result) {
@@ -3405,7 +3405,7 @@ TPM_RC Parse_TPMS_TAGGED_PCR_SELECT(
     TPMS_TAGGED_PCR_SELECT* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPM_PT(
       buffer,
@@ -3442,7 +3442,7 @@ TPM_RC Serialize_TPML_CC(
     const TPML_CC& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT32(value.count, buffer);
   if (result) {
@@ -3466,7 +3466,7 @@ TPM_RC Parse_TPML_CC(
     TPML_CC* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT32(
       buffer,
@@ -3495,7 +3495,7 @@ TPM_RC Serialize_TPML_CCA(
     const TPML_CCA& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT32(value.count, buffer);
   if (result) {
@@ -3519,7 +3519,7 @@ TPM_RC Parse_TPML_CCA(
     TPML_CCA* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT32(
       buffer,
@@ -3548,7 +3548,7 @@ TPM_RC Serialize_TPML_ALG(
     const TPML_ALG& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT32(value.count, buffer);
   if (result) {
@@ -3572,7 +3572,7 @@ TPM_RC Parse_TPML_ALG(
     TPML_ALG* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT32(
       buffer,
@@ -3601,7 +3601,7 @@ TPM_RC Serialize_TPML_HANDLE(
     const TPML_HANDLE& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT32(value.count, buffer);
   if (result) {
@@ -3625,7 +3625,7 @@ TPM_RC Parse_TPML_HANDLE(
     TPML_HANDLE* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT32(
       buffer,
@@ -3654,7 +3654,7 @@ TPM_RC Serialize_TPML_DIGEST(
     const TPML_DIGEST& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT32(value.count, buffer);
   if (result) {
@@ -3678,7 +3678,7 @@ TPM_RC Parse_TPML_DIGEST(
     TPML_DIGEST* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT32(
       buffer,
@@ -3707,7 +3707,7 @@ TPM_RC Serialize_TPML_DIGEST_VALUES(
     const TPML_DIGEST_VALUES& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT32(value.count, buffer);
   if (result) {
@@ -3731,7 +3731,7 @@ TPM_RC Parse_TPML_DIGEST_VALUES(
     TPML_DIGEST_VALUES* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT32(
       buffer,
@@ -3760,7 +3760,7 @@ TPM_RC Serialize_TPM2B_DIGEST_VALUES(
     const TPM2B_DIGEST_VALUES& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -3784,7 +3784,7 @@ TPM_RC Parse_TPM2B_DIGEST_VALUES(
     TPM2B_DIGEST_VALUES* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -3830,7 +3830,7 @@ TPM_RC Serialize_TPML_PCR_SELECTION(
     const TPML_PCR_SELECTION& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT32(value.count, buffer);
   if (result) {
@@ -3854,7 +3854,7 @@ TPM_RC Parse_TPML_PCR_SELECTION(
     TPML_PCR_SELECTION* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT32(
       buffer,
@@ -3883,7 +3883,7 @@ TPM_RC Serialize_TPML_ALG_PROPERTY(
     const TPML_ALG_PROPERTY& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT32(value.count, buffer);
   if (result) {
@@ -3907,7 +3907,7 @@ TPM_RC Parse_TPML_ALG_PROPERTY(
     TPML_ALG_PROPERTY* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT32(
       buffer,
@@ -3936,7 +3936,7 @@ TPM_RC Serialize_TPML_TAGGED_TPM_PROPERTY(
     const TPML_TAGGED_TPM_PROPERTY& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT32(value.count, buffer);
   if (result) {
@@ -3960,7 +3960,7 @@ TPM_RC Parse_TPML_TAGGED_TPM_PROPERTY(
     TPML_TAGGED_TPM_PROPERTY* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT32(
       buffer,
@@ -3989,7 +3989,7 @@ TPM_RC Serialize_TPML_TAGGED_PCR_PROPERTY(
     const TPML_TAGGED_PCR_PROPERTY& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT32(value.count, buffer);
   if (result) {
@@ -4013,7 +4013,7 @@ TPM_RC Parse_TPML_TAGGED_PCR_PROPERTY(
     TPML_TAGGED_PCR_PROPERTY* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT32(
       buffer,
@@ -4042,7 +4042,7 @@ TPM_RC Serialize_TPML_ECC_CURVE(
     const TPML_ECC_CURVE& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT32(value.count, buffer);
   if (result) {
@@ -4066,7 +4066,7 @@ TPM_RC Parse_TPML_ECC_CURVE(
     TPML_ECC_CURVE* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT32(
       buffer,
@@ -4096,7 +4096,7 @@ TPM_RC Serialize_TPMU_CAPABILITIES(
     TPM_CAP selector,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_CAP_PCRS) {
     result = Serialize_TPML_PCR_SELECTION(value.assigned_pcr, buffer);
@@ -4169,7 +4169,7 @@ TPM_RC Parse_TPMU_CAPABILITIES(
     TPMU_CAPABILITIES* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_CAP_PCRS) {
     result = Parse_TPML_PCR_SELECTION(
@@ -4267,7 +4267,7 @@ TPM_RC Serialize_TPMS_CAPABILITY_DATA(
     const TPMS_CAPABILITY_DATA& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPM_CAP(value.capability, buffer);
   if (result) {
@@ -4289,7 +4289,7 @@ TPM_RC Parse_TPMS_CAPABILITY_DATA(
     TPMS_CAPABILITY_DATA* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPM_CAP(
       buffer,
@@ -4314,7 +4314,7 @@ TPM_RC Serialize_TPMS_CLOCK_INFO(
     const TPMS_CLOCK_INFO& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT64(value.clock, buffer);
   if (result) {
@@ -4343,7 +4343,7 @@ TPM_RC Parse_TPMS_CLOCK_INFO(
     TPMS_CLOCK_INFO* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT64(
       buffer,
@@ -4383,7 +4383,7 @@ TPM_RC Serialize_TPMS_TIME_INFO(
     const TPMS_TIME_INFO& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT64(value.time, buffer);
   if (result) {
@@ -4402,7 +4402,7 @@ TPM_RC Parse_TPMS_TIME_INFO(
     TPMS_TIME_INFO* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT64(
       buffer,
@@ -4426,7 +4426,7 @@ TPM_RC Serialize_TPMS_TIME_ATTEST_INFO(
     const TPMS_TIME_ATTEST_INFO& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMS_TIME_INFO(value.time, buffer);
   if (result) {
@@ -4445,7 +4445,7 @@ TPM_RC Parse_TPMS_TIME_ATTEST_INFO(
     TPMS_TIME_ATTEST_INFO* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMS_TIME_INFO(
       buffer,
@@ -4469,7 +4469,7 @@ TPM_RC Serialize_TPMS_CERTIFY_INFO(
     const TPMS_CERTIFY_INFO& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPM2B_NAME(value.name, buffer);
   if (result) {
@@ -4488,7 +4488,7 @@ TPM_RC Parse_TPMS_CERTIFY_INFO(
     TPMS_CERTIFY_INFO* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPM2B_NAME(
       buffer,
@@ -4512,7 +4512,7 @@ TPM_RC Serialize_TPMS_QUOTE_INFO(
     const TPMS_QUOTE_INFO& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPML_PCR_SELECTION(value.pcr_select, buffer);
   if (result) {
@@ -4531,7 +4531,7 @@ TPM_RC Parse_TPMS_QUOTE_INFO(
     TPMS_QUOTE_INFO* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPML_PCR_SELECTION(
       buffer,
@@ -4555,7 +4555,7 @@ TPM_RC Serialize_TPMS_COMMAND_AUDIT_INFO(
     const TPMS_COMMAND_AUDIT_INFO& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT64(value.audit_counter, buffer);
   if (result) {
@@ -4584,7 +4584,7 @@ TPM_RC Parse_TPMS_COMMAND_AUDIT_INFO(
     TPMS_COMMAND_AUDIT_INFO* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT64(
       buffer,
@@ -4624,7 +4624,7 @@ TPM_RC Serialize_TPMS_SESSION_AUDIT_INFO(
     const TPMS_SESSION_AUDIT_INFO& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_YES_NO(value.exclusive_session, buffer);
   if (result) {
@@ -4643,7 +4643,7 @@ TPM_RC Parse_TPMS_SESSION_AUDIT_INFO(
     TPMS_SESSION_AUDIT_INFO* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_YES_NO(
       buffer,
@@ -4667,7 +4667,7 @@ TPM_RC Serialize_TPMS_CREATION_INFO(
     const TPMS_CREATION_INFO& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPM2B_NAME(value.object_name, buffer);
   if (result) {
@@ -4686,7 +4686,7 @@ TPM_RC Parse_TPMS_CREATION_INFO(
     TPMS_CREATION_INFO* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPM2B_NAME(
       buffer,
@@ -4710,7 +4710,7 @@ TPM_RC Serialize_TPMS_NV_CERTIFY_INFO(
     const TPMS_NV_CERTIFY_INFO& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPM2B_NAME(value.index_name, buffer);
   if (result) {
@@ -4734,7 +4734,7 @@ TPM_RC Parse_TPMS_NV_CERTIFY_INFO(
     TPMS_NV_CERTIFY_INFO* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPM2B_NAME(
       buffer,
@@ -4767,7 +4767,7 @@ TPM_RC Serialize_TPMU_ATTEST(
     TPMI_ST_ATTEST selector,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ST_ATTEST_SESSION_AUDIT) {
     result = Serialize_TPMS_SESSION_AUDIT_INFO(value.session_audit, buffer);
@@ -4826,7 +4826,7 @@ TPM_RC Parse_TPMU_ATTEST(
     TPMU_ATTEST* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ST_ATTEST_SESSION_AUDIT) {
     result = Parse_TPMS_SESSION_AUDIT_INFO(
@@ -4904,7 +4904,7 @@ TPM_RC Serialize_TPMS_ATTEST(
     const TPMS_ATTEST& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPM_GENERATED(value.magic, buffer);
   if (result) {
@@ -4951,7 +4951,7 @@ TPM_RC Parse_TPMS_ATTEST(
     TPMS_ATTEST* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPM_GENERATED(
       buffer,
@@ -5016,7 +5016,7 @@ TPM_RC Serialize_TPM2B_ATTEST(
     const TPM2B_ATTEST& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -5040,7 +5040,7 @@ TPM_RC Parse_TPM2B_ATTEST(
     TPM2B_ATTEST* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -5086,7 +5086,7 @@ TPM_RC Serialize_TPMS_AUTH_COMMAND(
     const TPMS_AUTH_COMMAND& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_SH_AUTH_SESSION(value.session_handle, buffer);
   if (result) {
@@ -5115,7 +5115,7 @@ TPM_RC Parse_TPMS_AUTH_COMMAND(
     TPMS_AUTH_COMMAND* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_SH_AUTH_SESSION(
       buffer,
@@ -5155,7 +5155,7 @@ TPM_RC Serialize_TPMS_AUTH_RESPONSE(
     const TPMS_AUTH_RESPONSE& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPM2B_NONCE(value.nonce, buffer);
   if (result) {
@@ -5179,7 +5179,7 @@ TPM_RC Parse_TPMS_AUTH_RESPONSE(
     TPMS_AUTH_RESPONSE* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPM2B_NONCE(
       buffer,
@@ -5212,7 +5212,7 @@ TPM_RC Serialize_TPMU_SYM_KEY_BITS(
     TPMI_ALG_SYM selector,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_NULL) {
     // Do nothing.
@@ -5247,7 +5247,7 @@ TPM_RC Parse_TPMU_SYM_KEY_BITS(
     TPMU_SYM_KEY_BITS* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_NULL) {
     // Do nothing.
@@ -5290,7 +5290,7 @@ TPM_RC Serialize_TPMU_SYM_MODE(
     TPMI_ALG_SYM selector,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_NULL) {
     // Do nothing.
@@ -5322,7 +5322,7 @@ TPM_RC Parse_TPMU_SYM_MODE(
     TPMU_SYM_MODE* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_NULL) {
     // Do nothing.
@@ -5359,7 +5359,7 @@ TPM_RC Serialize_TPMU_SYM_DETAILS(
     TPMI_ALG_SYM selector,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return result;
 }
 
@@ -5369,7 +5369,7 @@ TPM_RC Parse_TPMU_SYM_DETAILS(
     TPMU_SYM_DETAILS* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return result;
 }
 
@@ -5377,7 +5377,7 @@ TPM_RC Serialize_TPMT_SYM_DEF(
     const TPMT_SYM_DEF& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_SYM(value.algorithm, buffer);
   if (result) {
@@ -5415,7 +5415,7 @@ TPM_RC Parse_TPMT_SYM_DEF(
     TPMT_SYM_DEF* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_SYM(
       buffer,
@@ -5458,7 +5458,7 @@ TPM_RC Serialize_TPMT_SYM_DEF_OBJECT(
     const TPMT_SYM_DEF_OBJECT& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_SYM_OBJECT(value.algorithm, buffer);
   if (result) {
@@ -5496,7 +5496,7 @@ TPM_RC Parse_TPMT_SYM_DEF_OBJECT(
     TPMT_SYM_DEF_OBJECT* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_SYM_OBJECT(
       buffer,
@@ -5539,7 +5539,7 @@ TPM_RC Serialize_TPM2B_SYM_KEY(
     const TPM2B_SYM_KEY& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -5563,7 +5563,7 @@ TPM_RC Parse_TPM2B_SYM_KEY(
     TPM2B_SYM_KEY* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -5609,7 +5609,7 @@ TPM_RC Serialize_TPMS_SYMCIPHER_PARMS(
     const TPMS_SYMCIPHER_PARMS& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMT_SYM_DEF_OBJECT(value.sym, buffer);
   if (result) {
@@ -5623,7 +5623,7 @@ TPM_RC Parse_TPMS_SYMCIPHER_PARMS(
     TPMS_SYMCIPHER_PARMS* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMT_SYM_DEF_OBJECT(
       buffer,
@@ -5639,7 +5639,7 @@ TPM_RC Serialize_TPM2B_SENSITIVE_DATA(
     const TPM2B_SENSITIVE_DATA& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -5663,7 +5663,7 @@ TPM_RC Parse_TPM2B_SENSITIVE_DATA(
     TPM2B_SENSITIVE_DATA* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -5709,7 +5709,7 @@ TPM_RC Serialize_TPMS_SENSITIVE_CREATE(
     const TPMS_SENSITIVE_CREATE& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPM2B_AUTH(value.user_auth, buffer);
   if (result) {
@@ -5728,7 +5728,7 @@ TPM_RC Parse_TPMS_SENSITIVE_CREATE(
     TPMS_SENSITIVE_CREATE* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPM2B_AUTH(
       buffer,
@@ -5752,7 +5752,7 @@ TPM_RC Serialize_TPM2B_SENSITIVE_CREATE(
     const TPM2B_SENSITIVE_CREATE& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   std::string field_bytes;
   result = Serialize_TPMS_SENSITIVE_CREATE(value.sensitive, &field_bytes);
@@ -5773,7 +5773,7 @@ TPM_RC Parse_TPM2B_SENSITIVE_CREATE(
     TPM2B_SENSITIVE_CREATE* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -5805,7 +5805,7 @@ TPM_RC Serialize_TPMS_SCHEME_XOR(
     const TPMS_SCHEME_XOR& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_HASH(value.hash_alg, buffer);
   if (result) {
@@ -5824,7 +5824,7 @@ TPM_RC Parse_TPMS_SCHEME_XOR(
     TPMS_SCHEME_XOR* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_HASH(
       buffer,
@@ -5849,7 +5849,7 @@ TPM_RC Serialize_TPMU_SCHEME_KEYEDHASH(
     TPMI_ALG_KEYEDHASH_SCHEME selector,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_NULL) {
     // Do nothing.
@@ -5877,7 +5877,7 @@ TPM_RC Parse_TPMU_SCHEME_KEYEDHASH(
     TPMU_SCHEME_KEYEDHASH* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_NULL) {
     // Do nothing.
@@ -5909,7 +5909,7 @@ TPM_RC Serialize_TPMT_KEYEDHASH_SCHEME(
     const TPMT_KEYEDHASH_SCHEME& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_KEYEDHASH_SCHEME(value.scheme, buffer);
   if (result) {
@@ -5931,7 +5931,7 @@ TPM_RC Parse_TPMT_KEYEDHASH_SCHEME(
     TPMT_KEYEDHASH_SCHEME* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_KEYEDHASH_SCHEME(
       buffer,
@@ -5956,7 +5956,7 @@ TPM_RC Serialize_TPMS_SCHEME_ECDAA(
     const TPMS_SCHEME_ECDAA& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_HASH(value.hash_alg, buffer);
   if (result) {
@@ -5975,7 +5975,7 @@ TPM_RC Parse_TPMS_SCHEME_ECDAA(
     TPMS_SCHEME_ECDAA* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_HASH(
       buffer,
@@ -6000,7 +6000,7 @@ TPM_RC Serialize_TPMU_SIG_SCHEME(
     TPMI_ALG_SIG_SCHEME selector,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_HMAC) {
     result = Serialize_TPMS_SCHEME_HMAC(value.hmac, buffer);
@@ -6063,7 +6063,7 @@ TPM_RC Parse_TPMU_SIG_SCHEME(
     TPMU_SIG_SCHEME* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_HMAC) {
     result = Parse_TPMS_SCHEME_HMAC(
@@ -6145,7 +6145,7 @@ TPM_RC Serialize_TPMT_SIG_SCHEME(
     const TPMT_SIG_SCHEME& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_SIG_SCHEME(value.scheme, buffer);
   if (result) {
@@ -6167,7 +6167,7 @@ TPM_RC Parse_TPMT_SIG_SCHEME(
     TPMT_SIG_SCHEME* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_SIG_SCHEME(
       buffer,
@@ -6192,7 +6192,7 @@ TPM_RC Serialize_TPMS_SCHEME_OAEP(
     const TPMS_SCHEME_OAEP& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_HASH(value.hash_alg, buffer);
   if (result) {
@@ -6206,7 +6206,7 @@ TPM_RC Parse_TPMS_SCHEME_OAEP(
     TPMS_SCHEME_OAEP* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_HASH(
       buffer,
@@ -6222,7 +6222,7 @@ TPM_RC Serialize_TPMS_SCHEME_ECDH(
     const TPMS_SCHEME_ECDH& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_HASH(value.hash_alg, buffer);
   if (result) {
@@ -6236,7 +6236,7 @@ TPM_RC Parse_TPMS_SCHEME_ECDH(
     TPMS_SCHEME_ECDH* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_HASH(
       buffer,
@@ -6252,7 +6252,7 @@ TPM_RC Serialize_TPMS_SCHEME_MGF1(
     const TPMS_SCHEME_MGF1& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_HASH(value.hash_alg, buffer);
   if (result) {
@@ -6266,7 +6266,7 @@ TPM_RC Parse_TPMS_SCHEME_MGF1(
     TPMS_SCHEME_MGF1* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_HASH(
       buffer,
@@ -6282,7 +6282,7 @@ TPM_RC Serialize_TPMS_SCHEME_KDF1_SP800_56a(
     const TPMS_SCHEME_KDF1_SP800_56a& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_HASH(value.hash_alg, buffer);
   if (result) {
@@ -6296,7 +6296,7 @@ TPM_RC Parse_TPMS_SCHEME_KDF1_SP800_56a(
     TPMS_SCHEME_KDF1_SP800_56a* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_HASH(
       buffer,
@@ -6312,7 +6312,7 @@ TPM_RC Serialize_TPMS_SCHEME_KDF2(
     const TPMS_SCHEME_KDF2& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_HASH(value.hash_alg, buffer);
   if (result) {
@@ -6326,7 +6326,7 @@ TPM_RC Parse_TPMS_SCHEME_KDF2(
     TPMS_SCHEME_KDF2* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_HASH(
       buffer,
@@ -6342,7 +6342,7 @@ TPM_RC Serialize_TPMS_SCHEME_KDF1_SP800_108(
     const TPMS_SCHEME_KDF1_SP800_108& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_HASH(value.hash_alg, buffer);
   if (result) {
@@ -6356,7 +6356,7 @@ TPM_RC Parse_TPMS_SCHEME_KDF1_SP800_108(
     TPMS_SCHEME_KDF1_SP800_108* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_HASH(
       buffer,
@@ -6373,7 +6373,7 @@ TPM_RC Serialize_TPMU_KDF_SCHEME(
     TPMI_ALG_KDF selector,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_KDF1_SP800_56a) {
     result = Serialize_TPMS_SCHEME_KDF1_SP800_56a(value.kdf1_sp800_56a, buffer);
@@ -6415,7 +6415,7 @@ TPM_RC Parse_TPMU_KDF_SCHEME(
     TPMU_KDF_SCHEME* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_KDF1_SP800_56a) {
     result = Parse_TPMS_SCHEME_KDF1_SP800_56a(
@@ -6467,7 +6467,7 @@ TPM_RC Serialize_TPMT_KDF_SCHEME(
     const TPMT_KDF_SCHEME& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_KDF(value.scheme, buffer);
   if (result) {
@@ -6489,7 +6489,7 @@ TPM_RC Parse_TPMT_KDF_SCHEME(
     TPMT_KDF_SCHEME* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_KDF(
       buffer,
@@ -6515,7 +6515,7 @@ TPM_RC Serialize_TPMU_ASYM_SCHEME(
     TPMI_ALG_ASYM_SCHEME selector,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_RSAES) {
     // Do nothing.
@@ -6589,7 +6589,7 @@ TPM_RC Parse_TPMU_ASYM_SCHEME(
     TPMU_ASYM_SCHEME* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_RSAES) {
     // Do nothing.
@@ -6685,7 +6685,7 @@ TPM_RC Serialize_TPMT_ASYM_SCHEME(
     const TPMT_ASYM_SCHEME& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_ASYM_SCHEME(value.scheme, buffer);
   if (result) {
@@ -6707,7 +6707,7 @@ TPM_RC Parse_TPMT_ASYM_SCHEME(
     TPMT_ASYM_SCHEME* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_ASYM_SCHEME(
       buffer,
@@ -6732,7 +6732,7 @@ TPM_RC Serialize_TPMT_RSA_SCHEME(
     const TPMT_RSA_SCHEME& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_RSA_SCHEME(value.scheme, buffer);
   if (result) {
@@ -6754,7 +6754,7 @@ TPM_RC Parse_TPMT_RSA_SCHEME(
     TPMT_RSA_SCHEME* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_RSA_SCHEME(
       buffer,
@@ -6779,7 +6779,7 @@ TPM_RC Serialize_TPMT_RSA_DECRYPT(
     const TPMT_RSA_DECRYPT& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_RSA_DECRYPT(value.scheme, buffer);
   if (result) {
@@ -6801,7 +6801,7 @@ TPM_RC Parse_TPMT_RSA_DECRYPT(
     TPMT_RSA_DECRYPT* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_RSA_DECRYPT(
       buffer,
@@ -6826,7 +6826,7 @@ TPM_RC Serialize_TPM2B_PUBLIC_KEY_RSA(
     const TPM2B_PUBLIC_KEY_RSA& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -6850,7 +6850,7 @@ TPM_RC Parse_TPM2B_PUBLIC_KEY_RSA(
     TPM2B_PUBLIC_KEY_RSA* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -6896,7 +6896,7 @@ TPM_RC Serialize_TPM2B_PRIVATE_KEY_RSA(
     const TPM2B_PRIVATE_KEY_RSA& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -6920,7 +6920,7 @@ TPM_RC Parse_TPM2B_PRIVATE_KEY_RSA(
     TPM2B_PRIVATE_KEY_RSA* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -6966,7 +6966,7 @@ TPM_RC Serialize_TPM2B_ECC_PARAMETER(
     const TPM2B_ECC_PARAMETER& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -6990,7 +6990,7 @@ TPM_RC Parse_TPM2B_ECC_PARAMETER(
     TPM2B_ECC_PARAMETER* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -7036,7 +7036,7 @@ TPM_RC Serialize_TPMS_ECC_POINT(
     const TPMS_ECC_POINT& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPM2B_ECC_PARAMETER(value.x, buffer);
   if (result) {
@@ -7055,7 +7055,7 @@ TPM_RC Parse_TPMS_ECC_POINT(
     TPMS_ECC_POINT* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPM2B_ECC_PARAMETER(
       buffer,
@@ -7079,7 +7079,7 @@ TPM_RC Serialize_TPM2B_ECC_POINT(
     const TPM2B_ECC_POINT& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   std::string field_bytes;
   result = Serialize_TPMS_ECC_POINT(value.point, &field_bytes);
@@ -7100,7 +7100,7 @@ TPM_RC Parse_TPM2B_ECC_POINT(
     TPM2B_ECC_POINT* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -7132,7 +7132,7 @@ TPM_RC Serialize_TPMT_ECC_SCHEME(
     const TPMT_ECC_SCHEME& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_ECC_SCHEME(value.scheme, buffer);
   if (result) {
@@ -7154,7 +7154,7 @@ TPM_RC Parse_TPMT_ECC_SCHEME(
     TPMT_ECC_SCHEME* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_ECC_SCHEME(
       buffer,
@@ -7179,7 +7179,7 @@ TPM_RC Serialize_TPMS_ALGORITHM_DETAIL_ECC(
     const TPMS_ALGORITHM_DETAIL_ECC& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPM_ECC_CURVE(value.curve_id, buffer);
   if (result) {
@@ -7243,7 +7243,7 @@ TPM_RC Parse_TPMS_ALGORITHM_DETAIL_ECC(
     TPMS_ALGORITHM_DETAIL_ECC* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPM_ECC_CURVE(
       buffer,
@@ -7339,7 +7339,7 @@ TPM_RC Serialize_TPMS_SIGNATURE_RSASSA(
     const TPMS_SIGNATURE_RSASSA& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_HASH(value.hash, buffer);
   if (result) {
@@ -7358,7 +7358,7 @@ TPM_RC Parse_TPMS_SIGNATURE_RSASSA(
     TPMS_SIGNATURE_RSASSA* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_HASH(
       buffer,
@@ -7382,7 +7382,7 @@ TPM_RC Serialize_TPMS_SIGNATURE_RSAPSS(
     const TPMS_SIGNATURE_RSAPSS& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_HASH(value.hash, buffer);
   if (result) {
@@ -7401,7 +7401,7 @@ TPM_RC Parse_TPMS_SIGNATURE_RSAPSS(
     TPMS_SIGNATURE_RSAPSS* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_HASH(
       buffer,
@@ -7425,7 +7425,7 @@ TPM_RC Serialize_TPMS_SIGNATURE_ECDSA(
     const TPMS_SIGNATURE_ECDSA& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_HASH(value.hash, buffer);
   if (result) {
@@ -7449,7 +7449,7 @@ TPM_RC Parse_TPMS_SIGNATURE_ECDSA(
     TPMS_SIGNATURE_ECDSA* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_HASH(
       buffer,
@@ -7482,7 +7482,7 @@ TPM_RC Serialize_TPMU_SIGNATURE(
     TPMI_ALG_SIG_SCHEME selector,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_HMAC) {
     result = Serialize_TPMT_HA(value.hmac, buffer);
@@ -7545,7 +7545,7 @@ TPM_RC Parse_TPMU_SIGNATURE(
     TPMU_SIGNATURE* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_HMAC) {
     result = Parse_TPMT_HA(
@@ -7627,7 +7627,7 @@ TPM_RC Serialize_TPMT_SIGNATURE(
     const TPMT_SIGNATURE& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_SIG_SCHEME(value.sig_alg, buffer);
   if (result) {
@@ -7649,7 +7649,7 @@ TPM_RC Parse_TPMT_SIGNATURE(
     TPMT_SIGNATURE* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_SIG_SCHEME(
       buffer,
@@ -7674,7 +7674,7 @@ TPM_RC Serialize_TPM2B_ENCRYPTED_SECRET(
     const TPM2B_ENCRYPTED_SECRET& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -7698,7 +7698,7 @@ TPM_RC Parse_TPM2B_ENCRYPTED_SECRET(
     TPM2B_ENCRYPTED_SECRET* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -7744,7 +7744,7 @@ TPM_RC Serialize_TPMS_KEYEDHASH_PARMS(
     const TPMS_KEYEDHASH_PARMS& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMT_KEYEDHASH_SCHEME(value.scheme, buffer);
   if (result) {
@@ -7758,7 +7758,7 @@ TPM_RC Parse_TPMS_KEYEDHASH_PARMS(
     TPMS_KEYEDHASH_PARMS* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMT_KEYEDHASH_SCHEME(
       buffer,
@@ -7774,7 +7774,7 @@ TPM_RC Serialize_TPMS_ASYM_PARMS(
     const TPMS_ASYM_PARMS& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMT_SYM_DEF_OBJECT(value.symmetric, buffer);
   if (result) {
@@ -7793,7 +7793,7 @@ TPM_RC Parse_TPMS_ASYM_PARMS(
     TPMS_ASYM_PARMS* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMT_SYM_DEF_OBJECT(
       buffer,
@@ -7817,7 +7817,7 @@ TPM_RC Serialize_TPMS_RSA_PARMS(
     const TPMS_RSA_PARMS& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMT_SYM_DEF_OBJECT(value.symmetric, buffer);
   if (result) {
@@ -7846,7 +7846,7 @@ TPM_RC Parse_TPMS_RSA_PARMS(
     TPMS_RSA_PARMS* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMT_SYM_DEF_OBJECT(
       buffer,
@@ -7886,7 +7886,7 @@ TPM_RC Serialize_TPMS_ECC_PARMS(
     const TPMS_ECC_PARMS& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMT_SYM_DEF_OBJECT(value.symmetric, buffer);
   if (result) {
@@ -7915,7 +7915,7 @@ TPM_RC Parse_TPMS_ECC_PARMS(
     TPMS_ECC_PARMS* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMT_SYM_DEF_OBJECT(
       buffer,
@@ -7956,7 +7956,7 @@ TPM_RC Serialize_TPMU_PUBLIC_PARMS(
     TPMI_ALG_PUBLIC selector,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_KEYEDHASH) {
     result = Serialize_TPMS_KEYEDHASH_PARMS(value.keyed_hash_detail, buffer);
@@ -7994,7 +7994,7 @@ TPM_RC Parse_TPMU_PUBLIC_PARMS(
     TPMU_PUBLIC_PARMS* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_KEYEDHASH) {
     result = Parse_TPMS_KEYEDHASH_PARMS(
@@ -8042,7 +8042,7 @@ TPM_RC Serialize_TPMT_PUBLIC_PARMS(
     const TPMT_PUBLIC_PARMS& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_PUBLIC(value.type, buffer);
   if (result) {
@@ -8064,7 +8064,7 @@ TPM_RC Parse_TPMT_PUBLIC_PARMS(
     TPMT_PUBLIC_PARMS* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_PUBLIC(
       buffer,
@@ -8090,7 +8090,7 @@ TPM_RC Serialize_TPMU_PUBLIC_ID(
     TPMI_ALG_PUBLIC selector,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_KEYEDHASH) {
     result = Serialize_TPM2B_DIGEST(value.keyed_hash, buffer);
@@ -8128,7 +8128,7 @@ TPM_RC Parse_TPMU_PUBLIC_ID(
     TPMU_PUBLIC_ID* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_KEYEDHASH) {
     result = Parse_TPM2B_DIGEST(
@@ -8176,7 +8176,7 @@ TPM_RC Serialize_TPMT_PUBLIC(
     const TPMT_PUBLIC& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_PUBLIC(value.type, buffer);
   if (result) {
@@ -8221,7 +8221,7 @@ TPM_RC Parse_TPMT_PUBLIC(
     TPMT_PUBLIC* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_PUBLIC(
       buffer,
@@ -8279,7 +8279,7 @@ TPM_RC Serialize_TPM2B_PUBLIC(
     const TPM2B_PUBLIC& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   std::string field_bytes;
   result = Serialize_TPMT_PUBLIC(value.public_area, &field_bytes);
@@ -8300,7 +8300,7 @@ TPM_RC Parse_TPM2B_PUBLIC(
     TPM2B_PUBLIC* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -8332,7 +8332,7 @@ TPM_RC Serialize_TPM2B_PRIVATE_VENDOR_SPECIFIC(
     const TPM2B_PRIVATE_VENDOR_SPECIFIC& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -8356,7 +8356,7 @@ TPM_RC Parse_TPM2B_PRIVATE_VENDOR_SPECIFIC(
     TPM2B_PRIVATE_VENDOR_SPECIFIC* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -8403,7 +8403,7 @@ TPM_RC Serialize_TPMU_SENSITIVE_COMPOSITE(
     TPMI_ALG_PUBLIC selector,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_KEYEDHASH) {
     result = Serialize_TPM2B_SENSITIVE_DATA(value.bits, buffer);
@@ -8441,7 +8441,7 @@ TPM_RC Parse_TPMU_SENSITIVE_COMPOSITE(
     TPMU_SENSITIVE_COMPOSITE* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   if (selector == TPM_ALG_KEYEDHASH) {
     result = Parse_TPM2B_SENSITIVE_DATA(
@@ -8489,7 +8489,7 @@ TPM_RC Serialize_TPMT_SENSITIVE(
     const TPMT_SENSITIVE& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_ALG_PUBLIC(value.sensitive_type, buffer);
   if (result) {
@@ -8521,7 +8521,7 @@ TPM_RC Parse_TPMT_SENSITIVE(
     TPMT_SENSITIVE* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_ALG_PUBLIC(
       buffer,
@@ -8562,7 +8562,7 @@ TPM_RC Serialize_TPM2B_SENSITIVE(
     const TPM2B_SENSITIVE& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   std::string field_bytes;
   result = Serialize_TPMT_SENSITIVE(value.sensitive_area, &field_bytes);
@@ -8583,7 +8583,7 @@ TPM_RC Parse_TPM2B_SENSITIVE(
     TPM2B_SENSITIVE* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -8615,7 +8615,7 @@ TPM_RC Serialize__PRIVATE(
     const _PRIVATE& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPM2B_DIGEST(value.integrity_outer, buffer);
   if (result) {
@@ -8639,7 +8639,7 @@ TPM_RC Parse__PRIVATE(
     _PRIVATE* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPM2B_DIGEST(
       buffer,
@@ -8671,7 +8671,7 @@ TPM_RC Serialize_TPM2B_PRIVATE(
     const TPM2B_PRIVATE& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -8695,7 +8695,7 @@ TPM_RC Parse_TPM2B_PRIVATE(
     TPM2B_PRIVATE* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -8741,7 +8741,7 @@ TPM_RC Serialize__ID_OBJECT(
     const _ID_OBJECT& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPM2B_DIGEST(value.integrity_hmac, buffer);
   if (result) {
@@ -8760,7 +8760,7 @@ TPM_RC Parse__ID_OBJECT(
     _ID_OBJECT* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPM2B_DIGEST(
       buffer,
@@ -8784,7 +8784,7 @@ TPM_RC Serialize_TPM2B_ID_OBJECT(
     const TPM2B_ID_OBJECT& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -8808,7 +8808,7 @@ TPM_RC Parse_TPM2B_ID_OBJECT(
     TPM2B_ID_OBJECT* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -8854,7 +8854,7 @@ TPM_RC Serialize_TPMS_NV_PUBLIC(
     const TPMS_NV_PUBLIC& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPMI_RH_NV_INDEX(value.nv_index, buffer);
   if (result) {
@@ -8888,7 +8888,7 @@ TPM_RC Parse_TPMS_NV_PUBLIC(
     TPMS_NV_PUBLIC* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPMI_RH_NV_INDEX(
       buffer,
@@ -8936,7 +8936,7 @@ TPM_RC Serialize_TPM2B_NV_PUBLIC(
     const TPM2B_NV_PUBLIC& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   std::string field_bytes;
   result = Serialize_TPMS_NV_PUBLIC(value.nv_public, &field_bytes);
@@ -8957,7 +8957,7 @@ TPM_RC Parse_TPM2B_NV_PUBLIC(
     TPM2B_NV_PUBLIC* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -8989,7 +8989,7 @@ TPM_RC Serialize_TPM2B_CONTEXT_SENSITIVE(
     const TPM2B_CONTEXT_SENSITIVE& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -9013,7 +9013,7 @@ TPM_RC Parse_TPM2B_CONTEXT_SENSITIVE(
     TPM2B_CONTEXT_SENSITIVE* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -9059,7 +9059,7 @@ TPM_RC Serialize_TPMS_CONTEXT_DATA(
     const TPMS_CONTEXT_DATA& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPM2B_DIGEST(value.integrity, buffer);
   if (result) {
@@ -9078,7 +9078,7 @@ TPM_RC Parse_TPMS_CONTEXT_DATA(
     TPMS_CONTEXT_DATA* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPM2B_DIGEST(
       buffer,
@@ -9102,7 +9102,7 @@ TPM_RC Serialize_TPM2B_CONTEXT_DATA(
     const TPM2B_CONTEXT_DATA& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT16(value.size, buffer);
   if (result) {
@@ -9126,7 +9126,7 @@ TPM_RC Parse_TPM2B_CONTEXT_DATA(
     TPM2B_CONTEXT_DATA* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -9172,7 +9172,7 @@ TPM_RC Serialize_TPMS_CONTEXT(
     const TPMS_CONTEXT& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_UINT64(value.sequence, buffer);
   if (result) {
@@ -9201,7 +9201,7 @@ TPM_RC Parse_TPMS_CONTEXT(
     TPMS_CONTEXT* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT64(
       buffer,
@@ -9241,7 +9241,7 @@ TPM_RC Serialize_TPMS_CREATION_DATA(
     const TPMS_CREATION_DATA& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Serialize_TPML_PCR_SELECTION(value.pcr_select, buffer);
   if (result) {
@@ -9285,7 +9285,7 @@ TPM_RC Parse_TPMS_CREATION_DATA(
     TPMS_CREATION_DATA* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_TPML_PCR_SELECTION(
       buffer,
@@ -9349,7 +9349,7 @@ TPM_RC Serialize_TPM2B_CREATION_DATA(
     const TPM2B_CREATION_DATA& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   std::string field_bytes;
   result = Serialize_TPMS_CREATION_DATA(value.creation_data, &field_bytes);
@@ -9370,7 +9370,7 @@ TPM_RC Parse_TPM2B_CREATION_DATA(
     TPM2B_CREATION_DATA* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 
   result = Parse_UINT16(
       buffer,
@@ -9402,7 +9402,7 @@ TPM_RC Tpm::SerializeCommand_Startup(
       const TPM_SU& startup_type,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -9479,7 +9479,7 @@ TPM_RC Tpm::SerializeCommand_Startup(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -9487,8 +9487,8 @@ TPM_RC Tpm::SerializeCommand_Startup(
 TPM_RC Tpm::ParseResponse_Startup(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -9570,7 +9570,7 @@ TPM_RC Tpm::ParseResponse_Startup(
 void StartupErrorCallback(
     const Tpm::StartupResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -9638,7 +9638,7 @@ TPM_RC Tpm::SerializeCommand_Shutdown(
       const TPM_SU& shutdown_type,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -9715,7 +9715,7 @@ TPM_RC Tpm::SerializeCommand_Shutdown(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -9723,8 +9723,8 @@ TPM_RC Tpm::SerializeCommand_Shutdown(
 TPM_RC Tpm::ParseResponse_Shutdown(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -9806,7 +9806,7 @@ TPM_RC Tpm::ParseResponse_Shutdown(
 void ShutdownErrorCallback(
     const Tpm::ShutdownResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -9874,7 +9874,7 @@ TPM_RC Tpm::SerializeCommand_SelfTest(
       const TPMI_YES_NO& full_test,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -9951,7 +9951,7 @@ TPM_RC Tpm::SerializeCommand_SelfTest(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -9959,8 +9959,8 @@ TPM_RC Tpm::SerializeCommand_SelfTest(
 TPM_RC Tpm::ParseResponse_SelfTest(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -10042,7 +10042,7 @@ TPM_RC Tpm::ParseResponse_SelfTest(
 void SelfTestErrorCallback(
     const Tpm::SelfTestResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -10110,7 +10110,7 @@ TPM_RC Tpm::SerializeCommand_IncrementalSelfTest(
       const TPML_ALG& to_test,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -10187,7 +10187,7 @@ TPM_RC Tpm::SerializeCommand_IncrementalSelfTest(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -10196,8 +10196,8 @@ TPM_RC Tpm::ParseResponse_IncrementalSelfTest(
       const std::string& response,
       TPML_ALG* to_do_list,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -10287,7 +10287,7 @@ TPM_RC Tpm::ParseResponse_IncrementalSelfTest(
 void IncrementalSelfTestErrorCallback(
     const Tpm::IncrementalSelfTestResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPML_ALG());
 }
@@ -10360,7 +10360,7 @@ TPM_RC Tpm::IncrementalSelfTestSync(
 TPM_RC Tpm::SerializeCommand_GetTestResult(
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -10426,7 +10426,7 @@ TPM_RC Tpm::SerializeCommand_GetTestResult(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -10436,8 +10436,8 @@ TPM_RC Tpm::ParseResponse_GetTestResult(
       TPM2B_MAX_BUFFER* out_data,
       TPM_RC* test_result,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -10551,7 +10551,7 @@ TPM_RC Tpm::ParseResponse_GetTestResult(
 void GetTestResultErrorCallback(
     const Tpm::GetTestResultResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_MAX_BUFFER(),
                TPM_RC());
@@ -10635,7 +10635,7 @@ TPM_RC Tpm::SerializeCommand_StartAuthSession(
       const TPMI_ALG_HASH& auth_hash,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -10786,7 +10786,7 @@ TPM_RC Tpm::SerializeCommand_StartAuthSession(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -10796,8 +10796,8 @@ TPM_RC Tpm::ParseResponse_StartAuthSession(
       TPMI_SH_AUTH_SESSION* session_handle,
       TPM2B_NONCE* nonce_tpm,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -10911,7 +10911,7 @@ TPM_RC Tpm::ParseResponse_StartAuthSession(
 void StartAuthSessionErrorCallback(
     const Tpm::StartAuthSessionResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPMI_SH_AUTH_SESSION(),
                TPM2B_NONCE());
@@ -11024,7 +11024,7 @@ TPM_RC Tpm::SerializeCommand_PolicyRestart(
       const std::string& session_handle_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -11101,7 +11101,7 @@ TPM_RC Tpm::SerializeCommand_PolicyRestart(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -11109,8 +11109,8 @@ TPM_RC Tpm::SerializeCommand_PolicyRestart(
 TPM_RC Tpm::ParseResponse_PolicyRestart(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -11192,7 +11192,7 @@ TPM_RC Tpm::ParseResponse_PolicyRestart(
 void PolicyRestartErrorCallback(
     const Tpm::PolicyRestartResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -11269,7 +11269,7 @@ TPM_RC Tpm::SerializeCommand_Create(
       const TPML_PCR_SELECTION& creation_pcr,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -11398,7 +11398,7 @@ TPM_RC Tpm::SerializeCommand_Create(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -11411,8 +11411,8 @@ TPM_RC Tpm::ParseResponse_Create(
       TPM2B_DIGEST* creation_hash,
       TPMT_TK_CREATION* creation_ticket,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -11550,7 +11550,7 @@ TPM_RC Tpm::ParseResponse_Create(
 void CreateErrorCallback(
     const Tpm::CreateResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_PRIVATE(),
                TPM2B_PUBLIC(),
@@ -11671,7 +11671,7 @@ TPM_RC Tpm::SerializeCommand_Load(
       const TPM2B_PUBLIC& in_public,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -11778,7 +11778,7 @@ TPM_RC Tpm::SerializeCommand_Load(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -11788,8 +11788,8 @@ TPM_RC Tpm::ParseResponse_Load(
       TPM_HANDLE* object_handle,
       TPM2B_NAME* name,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -11903,7 +11903,7 @@ TPM_RC Tpm::ParseResponse_Load(
 void LoadErrorCallback(
     const Tpm::LoadResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM_HANDLE(),
                TPM2B_NAME());
@@ -11998,7 +11998,7 @@ TPM_RC Tpm::SerializeCommand_LoadExternal(
       const TPM2B_PUBLIC& in_public,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -12105,7 +12105,7 @@ TPM_RC Tpm::SerializeCommand_LoadExternal(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -12115,8 +12115,8 @@ TPM_RC Tpm::ParseResponse_LoadExternal(
       TPM_HANDLE* object_handle,
       TPM2B_NAME* name,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -12230,7 +12230,7 @@ TPM_RC Tpm::ParseResponse_LoadExternal(
 void LoadExternalErrorCallback(
     const Tpm::LoadExternalResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM_HANDLE(),
                TPM2B_NAME());
@@ -12323,7 +12323,7 @@ TPM_RC Tpm::SerializeCommand_ReadPublic(
       const std::string& object_handle_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -12400,7 +12400,7 @@ TPM_RC Tpm::SerializeCommand_ReadPublic(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -12411,8 +12411,8 @@ TPM_RC Tpm::ParseResponse_ReadPublic(
       TPM2B_NAME* name,
       TPM2B_NAME* qualified_name,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -12534,7 +12534,7 @@ TPM_RC Tpm::ParseResponse_ReadPublic(
 void ReadPublicErrorCallback(
     const Tpm::ReadPublicResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_PUBLIC(),
                TPM2B_NAME(),
@@ -12629,7 +12629,7 @@ TPM_RC Tpm::SerializeCommand_ActivateCredential(
       const TPM2B_ENCRYPTED_SECRET& secret,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -12747,7 +12747,7 @@ TPM_RC Tpm::SerializeCommand_ActivateCredential(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -12756,8 +12756,8 @@ TPM_RC Tpm::ParseResponse_ActivateCredential(
       const std::string& response,
       TPM2B_DIGEST* cert_info,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -12863,7 +12863,7 @@ TPM_RC Tpm::ParseResponse_ActivateCredential(
 void ActivateCredentialErrorCallback(
     const Tpm::ActivateCredentialResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_DIGEST());
 }
@@ -12960,7 +12960,7 @@ TPM_RC Tpm::SerializeCommand_MakeCredential(
       const TPM2B_NAME& object_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -13067,7 +13067,7 @@ TPM_RC Tpm::SerializeCommand_MakeCredential(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -13076,8 +13076,8 @@ TPM_RC Tpm::ParseResponse_MakeCredential(
       const std::string& response,
       TPM2B_ID_OBJECT* credential_blob,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -13183,7 +13183,7 @@ TPM_RC Tpm::ParseResponse_MakeCredential(
 void MakeCredentialErrorCallback(
     const Tpm::MakeCredentialResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_ID_OBJECT());
 }
@@ -13270,7 +13270,7 @@ TPM_RC Tpm::SerializeCommand_Unseal(
       const std::string& item_handle_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -13347,7 +13347,7 @@ TPM_RC Tpm::SerializeCommand_Unseal(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -13356,8 +13356,8 @@ TPM_RC Tpm::ParseResponse_Unseal(
       const std::string& response,
       TPM2B_SENSITIVE_DATA* out_data,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -13463,7 +13463,7 @@ TPM_RC Tpm::ParseResponse_Unseal(
 void UnsealErrorCallback(
     const Tpm::UnsealResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_SENSITIVE_DATA());
 }
@@ -13545,7 +13545,7 @@ TPM_RC Tpm::SerializeCommand_ObjectChangeAuth(
       const TPM2B_AUTH& new_auth,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -13652,7 +13652,7 @@ TPM_RC Tpm::SerializeCommand_ObjectChangeAuth(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -13661,8 +13661,8 @@ TPM_RC Tpm::ParseResponse_ObjectChangeAuth(
       const std::string& response,
       TPM2B_PRIVATE* out_private,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -13768,7 +13768,7 @@ TPM_RC Tpm::ParseResponse_ObjectChangeAuth(
 void ObjectChangeAuthErrorCallback(
     const Tpm::ObjectChangeAuthResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_PRIVATE());
 }
@@ -13863,7 +13863,7 @@ TPM_RC Tpm::SerializeCommand_Duplicate(
       const TPMT_SYM_DEF_OBJECT& symmetric_alg,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -13981,7 +13981,7 @@ TPM_RC Tpm::SerializeCommand_Duplicate(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -13991,8 +13991,8 @@ TPM_RC Tpm::ParseResponse_Duplicate(
       TPM2B_DATA* encryption_key_out,
       TPM2B_PRIVATE* duplicate,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -14106,7 +14106,7 @@ TPM_RC Tpm::ParseResponse_Duplicate(
 void DuplicateErrorCallback(
     const Tpm::DuplicateResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_DATA(),
                TPM2B_PRIVATE());
@@ -14211,7 +14211,7 @@ TPM_RC Tpm::SerializeCommand_Rewrap(
       const TPM2B_NAME& name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -14329,7 +14329,7 @@ TPM_RC Tpm::SerializeCommand_Rewrap(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -14338,8 +14338,8 @@ TPM_RC Tpm::ParseResponse_Rewrap(
       const std::string& response,
       TPM2B_PRIVATE* out_duplicate,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -14445,7 +14445,7 @@ TPM_RC Tpm::ParseResponse_Rewrap(
 void RewrapErrorCallback(
     const Tpm::RewrapResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_PRIVATE());
 }
@@ -14545,7 +14545,7 @@ TPM_RC Tpm::SerializeCommand_Import(
       const TPMT_SYM_DEF_OBJECT& symmetric_alg,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -14685,7 +14685,7 @@ TPM_RC Tpm::SerializeCommand_Import(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -14694,8 +14694,8 @@ TPM_RC Tpm::ParseResponse_Import(
       const std::string& response,
       TPM2B_PRIVATE* out_private,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -14801,7 +14801,7 @@ TPM_RC Tpm::ParseResponse_Import(
 void ImportErrorCallback(
     const Tpm::ImportResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_PRIVATE());
 }
@@ -14903,7 +14903,7 @@ TPM_RC Tpm::SerializeCommand_RSA_Encrypt(
       const TPM2B_DATA& label,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -15021,7 +15021,7 @@ TPM_RC Tpm::SerializeCommand_RSA_Encrypt(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -15030,8 +15030,8 @@ TPM_RC Tpm::ParseResponse_RSA_Encrypt(
       const std::string& response,
       TPM2B_PUBLIC_KEY_RSA* out_data,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -15137,7 +15137,7 @@ TPM_RC Tpm::ParseResponse_RSA_Encrypt(
 void RSA_EncryptErrorCallback(
     const Tpm::RSA_EncryptResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_PUBLIC_KEY_RSA());
 }
@@ -15231,7 +15231,7 @@ TPM_RC Tpm::SerializeCommand_RSA_Decrypt(
       const TPM2B_DATA& label,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -15349,7 +15349,7 @@ TPM_RC Tpm::SerializeCommand_RSA_Decrypt(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -15358,8 +15358,8 @@ TPM_RC Tpm::ParseResponse_RSA_Decrypt(
       const std::string& response,
       TPM2B_PUBLIC_KEY_RSA* message,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -15465,7 +15465,7 @@ TPM_RC Tpm::ParseResponse_RSA_Decrypt(
 void RSA_DecryptErrorCallback(
     const Tpm::RSA_DecryptResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_PUBLIC_KEY_RSA());
 }
@@ -15556,7 +15556,7 @@ TPM_RC Tpm::SerializeCommand_ECDH_KeyGen(
       const std::string& key_handle_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -15633,7 +15633,7 @@ TPM_RC Tpm::SerializeCommand_ECDH_KeyGen(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -15643,8 +15643,8 @@ TPM_RC Tpm::ParseResponse_ECDH_KeyGen(
       TPM2B_ECC_POINT* z_point,
       TPM2B_ECC_POINT* pub_point,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -15758,7 +15758,7 @@ TPM_RC Tpm::ParseResponse_ECDH_KeyGen(
 void ECDH_KeyGenErrorCallback(
     const Tpm::ECDH_KeyGenResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_ECC_POINT(),
                TPM2B_ECC_POINT());
@@ -15844,7 +15844,7 @@ TPM_RC Tpm::SerializeCommand_ECDH_ZGen(
       const TPM2B_ECC_POINT& in_point,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -15940,7 +15940,7 @@ TPM_RC Tpm::SerializeCommand_ECDH_ZGen(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -15949,8 +15949,8 @@ TPM_RC Tpm::ParseResponse_ECDH_ZGen(
       const std::string& response,
       TPM2B_ECC_POINT* out_point,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -16056,7 +16056,7 @@ TPM_RC Tpm::ParseResponse_ECDH_ZGen(
 void ECDH_ZGenErrorCallback(
     const Tpm::ECDH_ZGenResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_ECC_POINT());
 }
@@ -16138,7 +16138,7 @@ TPM_RC Tpm::SerializeCommand_ECC_Parameters(
       const TPMI_ECC_CURVE& curve_id,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -16215,7 +16215,7 @@ TPM_RC Tpm::SerializeCommand_ECC_Parameters(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -16224,8 +16224,8 @@ TPM_RC Tpm::ParseResponse_ECC_Parameters(
       const std::string& response,
       TPMS_ALGORITHM_DETAIL_ECC* parameters,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -16315,7 +16315,7 @@ TPM_RC Tpm::ParseResponse_ECC_Parameters(
 void ECC_ParametersErrorCallback(
     const Tpm::ECC_ParametersResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPMS_ALGORITHM_DETAIL_ECC());
 }
@@ -16394,7 +16394,7 @@ TPM_RC Tpm::SerializeCommand_ZGen_2Phase(
       const UINT16& counter,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -16523,7 +16523,7 @@ TPM_RC Tpm::SerializeCommand_ZGen_2Phase(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -16533,8 +16533,8 @@ TPM_RC Tpm::ParseResponse_ZGen_2Phase(
       TPM2B_ECC_POINT* out_z1,
       TPM2B_ECC_POINT* out_z2,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -16648,7 +16648,7 @@ TPM_RC Tpm::ParseResponse_ZGen_2Phase(
 void ZGen_2PhaseErrorCallback(
     const Tpm::ZGen_2PhaseResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_ECC_POINT(),
                TPM2B_ECC_POINT());
@@ -16753,7 +16753,7 @@ TPM_RC Tpm::SerializeCommand_EncryptDecrypt(
       const TPM2B_MAX_BUFFER& in_data,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -16874,7 +16874,7 @@ TPM_RC Tpm::SerializeCommand_EncryptDecrypt(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -16884,8 +16884,8 @@ TPM_RC Tpm::ParseResponse_EncryptDecrypt(
       TPM2B_MAX_BUFFER* out_data,
       TPM2B_IV* iv_out,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -16999,7 +16999,7 @@ TPM_RC Tpm::ParseResponse_EncryptDecrypt(
 void EncryptDecryptErrorCallback(
     const Tpm::EncryptDecryptResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_MAX_BUFFER(),
                TPM2B_IV());
@@ -17102,7 +17102,7 @@ TPM_RC Tpm::SerializeCommand_Hash(
       const TPMI_ALG_HASH& hash_alg,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -17209,7 +17209,7 @@ TPM_RC Tpm::SerializeCommand_Hash(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -17219,8 +17219,8 @@ TPM_RC Tpm::ParseResponse_Hash(
       TPM2B_DIGEST* out_hash,
       TPMT_TK_HASHCHECK* validation,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -17334,7 +17334,7 @@ TPM_RC Tpm::ParseResponse_Hash(
 void HashErrorCallback(
     const Tpm::HashResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_DIGEST(),
                TPMT_TK_HASHCHECK());
@@ -17429,7 +17429,7 @@ TPM_RC Tpm::SerializeCommand_HMAC(
       const TPMI_ALG_HASH& hash_alg,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -17536,7 +17536,7 @@ TPM_RC Tpm::SerializeCommand_HMAC(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -17545,8 +17545,8 @@ TPM_RC Tpm::ParseResponse_HMAC(
       const std::string& response,
       TPM2B_DIGEST* out_hmac,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -17652,7 +17652,7 @@ TPM_RC Tpm::ParseResponse_HMAC(
 void HMACErrorCallback(
     const Tpm::HMACResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_DIGEST());
 }
@@ -17738,7 +17738,7 @@ TPM_RC Tpm::SerializeCommand_GetRandom(
       const UINT16& bytes_requested,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -17815,7 +17815,7 @@ TPM_RC Tpm::SerializeCommand_GetRandom(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -17824,8 +17824,8 @@ TPM_RC Tpm::ParseResponse_GetRandom(
       const std::string& response,
       TPM2B_DIGEST* random_bytes,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -17931,7 +17931,7 @@ TPM_RC Tpm::ParseResponse_GetRandom(
 void GetRandomErrorCallback(
     const Tpm::GetRandomResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_DIGEST());
 }
@@ -18005,7 +18005,7 @@ TPM_RC Tpm::SerializeCommand_StirRandom(
       const TPM2B_SENSITIVE_DATA& in_data,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -18090,7 +18090,7 @@ TPM_RC Tpm::SerializeCommand_StirRandom(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -18098,8 +18098,8 @@ TPM_RC Tpm::SerializeCommand_StirRandom(
 TPM_RC Tpm::ParseResponse_StirRandom(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -18181,7 +18181,7 @@ TPM_RC Tpm::ParseResponse_StirRandom(
 void StirRandomErrorCallback(
     const Tpm::StirRandomResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -18252,7 +18252,7 @@ TPM_RC Tpm::SerializeCommand_HMAC_Start(
       const TPMI_ALG_HASH& hash_alg,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -18359,7 +18359,7 @@ TPM_RC Tpm::SerializeCommand_HMAC_Start(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -18368,8 +18368,8 @@ TPM_RC Tpm::ParseResponse_HMAC_Start(
       const std::string& response,
       TPMI_DH_OBJECT* sequence_handle,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -18459,7 +18459,7 @@ TPM_RC Tpm::ParseResponse_HMAC_Start(
 void HMAC_StartErrorCallback(
     const Tpm::HMAC_StartResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPMI_DH_OBJECT());
 }
@@ -18546,7 +18546,7 @@ TPM_RC Tpm::SerializeCommand_HashSequenceStart(
       const TPMI_ALG_HASH& hash_alg,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -18642,7 +18642,7 @@ TPM_RC Tpm::SerializeCommand_HashSequenceStart(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -18651,8 +18651,8 @@ TPM_RC Tpm::ParseResponse_HashSequenceStart(
       const std::string& response,
       TPMI_DH_OBJECT* sequence_handle,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -18742,7 +18742,7 @@ TPM_RC Tpm::ParseResponse_HashSequenceStart(
 void HashSequenceStartErrorCallback(
     const Tpm::HashSequenceStartResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPMI_DH_OBJECT());
 }
@@ -18822,7 +18822,7 @@ TPM_RC Tpm::SerializeCommand_SequenceUpdate(
       const TPM2B_MAX_BUFFER& buffer,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -18918,7 +18918,7 @@ TPM_RC Tpm::SerializeCommand_SequenceUpdate(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -18926,8 +18926,8 @@ TPM_RC Tpm::SerializeCommand_SequenceUpdate(
 TPM_RC Tpm::ParseResponse_SequenceUpdate(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -19009,7 +19009,7 @@ TPM_RC Tpm::ParseResponse_SequenceUpdate(
 void SequenceUpdateErrorCallback(
     const Tpm::SequenceUpdateResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -19089,7 +19089,7 @@ TPM_RC Tpm::SerializeCommand_SequenceComplete(
       const TPM2B_MAX_BUFFER& buffer,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -19196,7 +19196,7 @@ TPM_RC Tpm::SerializeCommand_SequenceComplete(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -19206,8 +19206,8 @@ TPM_RC Tpm::ParseResponse_SequenceComplete(
       TPM2B_DIGEST* result,
       TPMT_TK_HASHCHECK* validation,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -19321,7 +19321,7 @@ TPM_RC Tpm::ParseResponse_SequenceComplete(
 void SequenceCompleteErrorCallback(
     const Tpm::SequenceCompleteResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_DIGEST(),
                TPMT_TK_HASHCHECK());
@@ -19421,7 +19421,7 @@ TPM_RC Tpm::SerializeCommand_EventSequenceComplete(
       const TPM2B_MAX_BUFFER& buffer,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -19528,7 +19528,7 @@ TPM_RC Tpm::SerializeCommand_EventSequenceComplete(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -19537,8 +19537,8 @@ TPM_RC Tpm::ParseResponse_EventSequenceComplete(
       const std::string& response,
       TPML_DIGEST_VALUES* results,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -19628,7 +19628,7 @@ TPM_RC Tpm::ParseResponse_EventSequenceComplete(
 void EventSequenceCompleteErrorCallback(
     const Tpm::EventSequenceCompleteResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPML_DIGEST_VALUES());
 }
@@ -19723,7 +19723,7 @@ TPM_RC Tpm::SerializeCommand_Certify(
       const TPMT_SIG_SCHEME& in_scheme,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -19841,7 +19841,7 @@ TPM_RC Tpm::SerializeCommand_Certify(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -19851,8 +19851,8 @@ TPM_RC Tpm::ParseResponse_Certify(
       TPM2B_ATTEST* certify_info,
       TPMT_SIGNATURE* signature,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -19966,7 +19966,7 @@ TPM_RC Tpm::ParseResponse_Certify(
 void CertifyErrorCallback(
     const Tpm::CertifyResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_ATTEST(),
                TPMT_SIGNATURE());
@@ -20073,7 +20073,7 @@ TPM_RC Tpm::SerializeCommand_CertifyCreation(
       const TPMT_TK_CREATION& creation_ticket,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -20213,7 +20213,7 @@ TPM_RC Tpm::SerializeCommand_CertifyCreation(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -20223,8 +20223,8 @@ TPM_RC Tpm::ParseResponse_CertifyCreation(
       TPM2B_ATTEST* certify_info,
       TPMT_SIGNATURE* signature,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -20338,7 +20338,7 @@ TPM_RC Tpm::ParseResponse_CertifyCreation(
 void CertifyCreationErrorCallback(
     const Tpm::CertifyCreationResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_ATTEST(),
                TPMT_SIGNATURE());
@@ -20450,7 +20450,7 @@ TPM_RC Tpm::SerializeCommand_Quote(
       const TPML_PCR_SELECTION& pcrselect,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -20568,7 +20568,7 @@ TPM_RC Tpm::SerializeCommand_Quote(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -20578,8 +20578,8 @@ TPM_RC Tpm::ParseResponse_Quote(
       TPM2B_ATTEST* quoted,
       TPMT_SIGNATURE* signature,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -20693,7 +20693,7 @@ TPM_RC Tpm::ParseResponse_Quote(
 void QuoteErrorCallback(
     const Tpm::QuoteResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_ATTEST(),
                TPMT_SIGNATURE());
@@ -20796,7 +20796,7 @@ TPM_RC Tpm::SerializeCommand_GetSessionAuditDigest(
       const TPMT_SIG_SCHEME& in_scheme,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -20925,7 +20925,7 @@ TPM_RC Tpm::SerializeCommand_GetSessionAuditDigest(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -20935,8 +20935,8 @@ TPM_RC Tpm::ParseResponse_GetSessionAuditDigest(
       TPM2B_ATTEST* audit_info,
       TPMT_SIGNATURE* signature,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -21050,7 +21050,7 @@ TPM_RC Tpm::ParseResponse_GetSessionAuditDigest(
 void GetSessionAuditDigestErrorCallback(
     const Tpm::GetSessionAuditDigestResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_ATTEST(),
                TPMT_SIGNATURE());
@@ -21163,7 +21163,7 @@ TPM_RC Tpm::SerializeCommand_GetCommandAuditDigest(
       const TPMT_SIG_SCHEME& in_scheme,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -21281,7 +21281,7 @@ TPM_RC Tpm::SerializeCommand_GetCommandAuditDigest(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -21291,8 +21291,8 @@ TPM_RC Tpm::ParseResponse_GetCommandAuditDigest(
       TPM2B_ATTEST* audit_info,
       TPMT_SIGNATURE* signature,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -21406,7 +21406,7 @@ TPM_RC Tpm::ParseResponse_GetCommandAuditDigest(
 void GetCommandAuditDigestErrorCallback(
     const Tpm::GetCommandAuditDigestResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_ATTEST(),
                TPMT_SIGNATURE());
@@ -21511,7 +21511,7 @@ TPM_RC Tpm::SerializeCommand_GetTime(
       const TPMT_SIG_SCHEME& in_scheme,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -21629,7 +21629,7 @@ TPM_RC Tpm::SerializeCommand_GetTime(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -21639,8 +21639,8 @@ TPM_RC Tpm::ParseResponse_GetTime(
       TPM2B_ATTEST* time_info,
       TPMT_SIGNATURE* signature,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -21754,7 +21754,7 @@ TPM_RC Tpm::ParseResponse_GetTime(
 void GetTimeErrorCallback(
     const Tpm::GetTimeResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_ATTEST(),
                TPMT_SIGNATURE());
@@ -21859,7 +21859,7 @@ TPM_RC Tpm::SerializeCommand_Commit(
       const TPM2B_ECC_PARAMETER& y2,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -21980,7 +21980,7 @@ TPM_RC Tpm::SerializeCommand_Commit(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -21993,8 +21993,8 @@ TPM_RC Tpm::ParseResponse_Commit(
       TPM2B_ECC_POINT* e,
       UINT16* counter,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -22116,7 +22116,7 @@ TPM_RC Tpm::ParseResponse_Commit(
 void CommitErrorCallback(
     const Tpm::CommitResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                UINT32(),
                TPM2B_ECC_POINT(),
@@ -22235,7 +22235,7 @@ TPM_RC Tpm::SerializeCommand_EC_Ephemeral(
       const TPMI_ECC_CURVE& curve_id,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -22323,7 +22323,7 @@ TPM_RC Tpm::SerializeCommand_EC_Ephemeral(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -22334,8 +22334,8 @@ TPM_RC Tpm::ParseResponse_EC_Ephemeral(
       TPM2B_ECC_POINT* q,
       UINT16* counter,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -22441,7 +22441,7 @@ TPM_RC Tpm::ParseResponse_EC_Ephemeral(
 void EC_EphemeralErrorCallback(
     const Tpm::EC_EphemeralResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                UINT32(),
                TPM2B_ECC_POINT(),
@@ -22534,7 +22534,7 @@ TPM_RC Tpm::SerializeCommand_VerifySignature(
       const TPMT_SIGNATURE& signature,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -22641,7 +22641,7 @@ TPM_RC Tpm::SerializeCommand_VerifySignature(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -22650,8 +22650,8 @@ TPM_RC Tpm::ParseResponse_VerifySignature(
       const std::string& response,
       TPMT_TK_VERIFIED* validation,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -22741,7 +22741,7 @@ TPM_RC Tpm::ParseResponse_VerifySignature(
 void VerifySignatureErrorCallback(
     const Tpm::VerifySignatureResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPMT_TK_VERIFIED());
 }
@@ -22831,7 +22831,7 @@ TPM_RC Tpm::SerializeCommand_Sign(
       const TPMT_TK_HASHCHECK& validation,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -22949,7 +22949,7 @@ TPM_RC Tpm::SerializeCommand_Sign(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -22958,8 +22958,8 @@ TPM_RC Tpm::ParseResponse_Sign(
       const std::string& response,
       TPMT_SIGNATURE* signature,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -23049,7 +23049,7 @@ TPM_RC Tpm::ParseResponse_Sign(
 void SignErrorCallback(
     const Tpm::SignResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPMT_SIGNATURE());
 }
@@ -23143,7 +23143,7 @@ TPM_RC Tpm::SerializeCommand_SetCommandCodeAuditStatus(
       const TPML_CC& clear_list,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -23253,7 +23253,7 @@ TPM_RC Tpm::SerializeCommand_SetCommandCodeAuditStatus(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -23261,8 +23261,8 @@ TPM_RC Tpm::SerializeCommand_SetCommandCodeAuditStatus(
 TPM_RC Tpm::ParseResponse_SetCommandCodeAuditStatus(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -23344,7 +23344,7 @@ TPM_RC Tpm::ParseResponse_SetCommandCodeAuditStatus(
 void SetCommandCodeAuditStatusErrorCallback(
     const Tpm::SetCommandCodeAuditStatusResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -23430,7 +23430,7 @@ TPM_RC Tpm::SerializeCommand_PCR_Extend(
       const TPML_DIGEST_VALUES& digests,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -23518,7 +23518,7 @@ TPM_RC Tpm::SerializeCommand_PCR_Extend(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -23526,8 +23526,8 @@ TPM_RC Tpm::SerializeCommand_PCR_Extend(
 TPM_RC Tpm::ParseResponse_PCR_Extend(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -23609,7 +23609,7 @@ TPM_RC Tpm::ParseResponse_PCR_Extend(
 void PCR_ExtendErrorCallback(
     const Tpm::PCR_ExtendResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -23687,7 +23687,7 @@ TPM_RC Tpm::SerializeCommand_PCR_Event(
       const TPM2B_EVENT& event_data,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -23783,7 +23783,7 @@ TPM_RC Tpm::SerializeCommand_PCR_Event(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -23792,8 +23792,8 @@ TPM_RC Tpm::ParseResponse_PCR_Event(
       const std::string& response,
       TPML_DIGEST_VALUES* digests,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -23883,7 +23883,7 @@ TPM_RC Tpm::ParseResponse_PCR_Event(
 void PCR_EventErrorCallback(
     const Tpm::PCR_EventResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPML_DIGEST_VALUES());
 }
@@ -23965,7 +23965,7 @@ TPM_RC Tpm::SerializeCommand_PCR_Read(
       const TPML_PCR_SELECTION& pcr_selection_in,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -24042,7 +24042,7 @@ TPM_RC Tpm::SerializeCommand_PCR_Read(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -24053,8 +24053,8 @@ TPM_RC Tpm::ParseResponse_PCR_Read(
       TPML_PCR_SELECTION* pcr_selection_out,
       TPML_DIGEST* pcr_values,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -24160,7 +24160,7 @@ TPM_RC Tpm::ParseResponse_PCR_Read(
 void PCR_ReadErrorCallback(
     const Tpm::PCR_ReadResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                UINT32(),
                TPML_PCR_SELECTION(),
@@ -24248,7 +24248,7 @@ TPM_RC Tpm::SerializeCommand_PCR_Allocate(
       const TPML_PCR_SELECTION& pcr_allocation,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -24336,7 +24336,7 @@ TPM_RC Tpm::SerializeCommand_PCR_Allocate(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -24348,8 +24348,8 @@ TPM_RC Tpm::ParseResponse_PCR_Allocate(
       UINT32* size_needed,
       UINT32* size_available,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -24463,7 +24463,7 @@ TPM_RC Tpm::ParseResponse_PCR_Allocate(
 void PCR_AllocateErrorCallback(
     const Tpm::PCR_AllocateResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPMI_YES_NO(),
                UINT32(),
@@ -24568,7 +24568,7 @@ TPM_RC Tpm::SerializeCommand_PCR_SetAuthPolicy(
       const TPMI_ALG_HASH& policy_digest,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -24686,7 +24686,7 @@ TPM_RC Tpm::SerializeCommand_PCR_SetAuthPolicy(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -24694,8 +24694,8 @@ TPM_RC Tpm::SerializeCommand_PCR_SetAuthPolicy(
 TPM_RC Tpm::ParseResponse_PCR_SetAuthPolicy(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -24777,7 +24777,7 @@ TPM_RC Tpm::ParseResponse_PCR_SetAuthPolicy(
 void PCR_SetAuthPolicyErrorCallback(
     const Tpm::PCR_SetAuthPolicyResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -24867,7 +24867,7 @@ TPM_RC Tpm::SerializeCommand_PCR_SetAuthValue(
       const TPM2B_DIGEST& auth,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -24963,7 +24963,7 @@ TPM_RC Tpm::SerializeCommand_PCR_SetAuthValue(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -24971,8 +24971,8 @@ TPM_RC Tpm::SerializeCommand_PCR_SetAuthValue(
 TPM_RC Tpm::ParseResponse_PCR_SetAuthValue(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -25054,7 +25054,7 @@ TPM_RC Tpm::ParseResponse_PCR_SetAuthValue(
 void PCR_SetAuthValueErrorCallback(
     const Tpm::PCR_SetAuthValueResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -25131,7 +25131,7 @@ TPM_RC Tpm::SerializeCommand_PCR_Reset(
       const std::string& pcr_handle_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -25208,7 +25208,7 @@ TPM_RC Tpm::SerializeCommand_PCR_Reset(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -25216,8 +25216,8 @@ TPM_RC Tpm::SerializeCommand_PCR_Reset(
 TPM_RC Tpm::ParseResponse_PCR_Reset(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -25299,7 +25299,7 @@ TPM_RC Tpm::ParseResponse_PCR_Reset(
 void PCR_ResetErrorCallback(
     const Tpm::PCR_ResetResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -25378,7 +25378,7 @@ TPM_RC Tpm::SerializeCommand_PolicySigned(
       const TPMT_SIGNATURE& auth,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -25518,7 +25518,7 @@ TPM_RC Tpm::SerializeCommand_PolicySigned(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -25528,8 +25528,8 @@ TPM_RC Tpm::ParseResponse_PolicySigned(
       TPM2B_TIMEOUT* timeout,
       TPMT_TK_AUTH* policy_ticket,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -25643,7 +25643,7 @@ TPM_RC Tpm::ParseResponse_PolicySigned(
 void PolicySignedErrorCallback(
     const Tpm::PolicySignedResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_TIMEOUT(),
                TPMT_TK_AUTH());
@@ -25757,7 +25757,7 @@ TPM_RC Tpm::SerializeCommand_PolicySecret(
       const TPM2B_NONCE& policy_ref,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -25886,7 +25886,7 @@ TPM_RC Tpm::SerializeCommand_PolicySecret(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -25896,8 +25896,8 @@ TPM_RC Tpm::ParseResponse_PolicySecret(
       TPM2B_TIMEOUT* timeout,
       TPMT_TK_AUTH* policy_ticket,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -26011,7 +26011,7 @@ TPM_RC Tpm::ParseResponse_PolicySecret(
 void PolicySecretErrorCallback(
     const Tpm::PolicySecretResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_TIMEOUT(),
                TPMT_TK_AUTH());
@@ -26121,7 +26121,7 @@ TPM_RC Tpm::SerializeCommand_PolicyTicket(
       const TPMT_TK_AUTH& ticket,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -26261,7 +26261,7 @@ TPM_RC Tpm::SerializeCommand_PolicyTicket(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -26269,8 +26269,8 @@ TPM_RC Tpm::SerializeCommand_PolicyTicket(
 TPM_RC Tpm::ParseResponse_PolicyTicket(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -26352,7 +26352,7 @@ TPM_RC Tpm::ParseResponse_PolicyTicket(
 void PolicyTicketErrorCallback(
     const Tpm::PolicyTicketResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -26446,7 +26446,7 @@ TPM_RC Tpm::SerializeCommand_PolicyOR(
       const TPML_DIGEST& p_hash_list,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -26534,7 +26534,7 @@ TPM_RC Tpm::SerializeCommand_PolicyOR(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -26542,8 +26542,8 @@ TPM_RC Tpm::SerializeCommand_PolicyOR(
 TPM_RC Tpm::ParseResponse_PolicyOR(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -26625,7 +26625,7 @@ TPM_RC Tpm::ParseResponse_PolicyOR(
 void PolicyORErrorCallback(
     const Tpm::PolicyORResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -26704,7 +26704,7 @@ TPM_RC Tpm::SerializeCommand_PolicyPCR(
       const TPML_PCR_SELECTION& pcrs,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -26811,7 +26811,7 @@ TPM_RC Tpm::SerializeCommand_PolicyPCR(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -26819,8 +26819,8 @@ TPM_RC Tpm::SerializeCommand_PolicyPCR(
 TPM_RC Tpm::ParseResponse_PolicyPCR(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -26902,7 +26902,7 @@ TPM_RC Tpm::ParseResponse_PolicyPCR(
 void PolicyPCRErrorCallback(
     const Tpm::PolicyPCRResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -26984,7 +26984,7 @@ TPM_RC Tpm::SerializeCommand_PolicyLocality(
       const TPMA_LOCALITY& locality,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -27072,7 +27072,7 @@ TPM_RC Tpm::SerializeCommand_PolicyLocality(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -27080,8 +27080,8 @@ TPM_RC Tpm::SerializeCommand_PolicyLocality(
 TPM_RC Tpm::ParseResponse_PolicyLocality(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -27163,7 +27163,7 @@ TPM_RC Tpm::ParseResponse_PolicyLocality(
 void PolicyLocalityErrorCallback(
     const Tpm::PolicyLocalityResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -27247,7 +27247,7 @@ TPM_RC Tpm::SerializeCommand_PolicyNV(
       const TPM_EO& operation,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -27387,7 +27387,7 @@ TPM_RC Tpm::SerializeCommand_PolicyNV(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -27395,8 +27395,8 @@ TPM_RC Tpm::SerializeCommand_PolicyNV(
 TPM_RC Tpm::ParseResponse_PolicyNV(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -27478,7 +27478,7 @@ TPM_RC Tpm::ParseResponse_PolicyNV(
 void PolicyNVErrorCallback(
     const Tpm::PolicyNVResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -27582,7 +27582,7 @@ TPM_RC Tpm::SerializeCommand_PolicyCounterTimer(
       const TPM_EO& operation,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -27700,7 +27700,7 @@ TPM_RC Tpm::SerializeCommand_PolicyCounterTimer(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -27708,8 +27708,8 @@ TPM_RC Tpm::SerializeCommand_PolicyCounterTimer(
 TPM_RC Tpm::ParseResponse_PolicyCounterTimer(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -27791,7 +27791,7 @@ TPM_RC Tpm::ParseResponse_PolicyCounterTimer(
 void PolicyCounterTimerErrorCallback(
     const Tpm::PolicyCounterTimerResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -27877,7 +27877,7 @@ TPM_RC Tpm::SerializeCommand_PolicyCommandCode(
       const TPM_CC& code,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -27965,7 +27965,7 @@ TPM_RC Tpm::SerializeCommand_PolicyCommandCode(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -27973,8 +27973,8 @@ TPM_RC Tpm::SerializeCommand_PolicyCommandCode(
 TPM_RC Tpm::ParseResponse_PolicyCommandCode(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -28056,7 +28056,7 @@ TPM_RC Tpm::ParseResponse_PolicyCommandCode(
 void PolicyCommandCodeErrorCallback(
     const Tpm::PolicyCommandCodeResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -28133,7 +28133,7 @@ TPM_RC Tpm::SerializeCommand_PolicyPhysicalPresence(
       const std::string& policy_session_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -28210,7 +28210,7 @@ TPM_RC Tpm::SerializeCommand_PolicyPhysicalPresence(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -28218,8 +28218,8 @@ TPM_RC Tpm::SerializeCommand_PolicyPhysicalPresence(
 TPM_RC Tpm::ParseResponse_PolicyPhysicalPresence(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -28301,7 +28301,7 @@ TPM_RC Tpm::ParseResponse_PolicyPhysicalPresence(
 void PolicyPhysicalPresenceErrorCallback(
     const Tpm::PolicyPhysicalPresenceResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -28375,7 +28375,7 @@ TPM_RC Tpm::SerializeCommand_PolicyCpHash(
       const TPM2B_DIGEST& cp_hash_a,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -28471,7 +28471,7 @@ TPM_RC Tpm::SerializeCommand_PolicyCpHash(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -28479,8 +28479,8 @@ TPM_RC Tpm::SerializeCommand_PolicyCpHash(
 TPM_RC Tpm::ParseResponse_PolicyCpHash(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -28562,7 +28562,7 @@ TPM_RC Tpm::ParseResponse_PolicyCpHash(
 void PolicyCpHashErrorCallback(
     const Tpm::PolicyCpHashResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -28640,7 +28640,7 @@ TPM_RC Tpm::SerializeCommand_PolicyNameHash(
       const TPM2B_DIGEST& name_hash,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -28736,7 +28736,7 @@ TPM_RC Tpm::SerializeCommand_PolicyNameHash(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -28744,8 +28744,8 @@ TPM_RC Tpm::SerializeCommand_PolicyNameHash(
 TPM_RC Tpm::ParseResponse_PolicyNameHash(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -28827,7 +28827,7 @@ TPM_RC Tpm::ParseResponse_PolicyNameHash(
 void PolicyNameHashErrorCallback(
     const Tpm::PolicyNameHashResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -28907,7 +28907,7 @@ TPM_RC Tpm::SerializeCommand_PolicyDuplicationSelect(
       const TPMI_YES_NO& include_object,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -29025,7 +29025,7 @@ TPM_RC Tpm::SerializeCommand_PolicyDuplicationSelect(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -29033,8 +29033,8 @@ TPM_RC Tpm::SerializeCommand_PolicyDuplicationSelect(
 TPM_RC Tpm::ParseResponse_PolicyDuplicationSelect(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -29116,7 +29116,7 @@ TPM_RC Tpm::ParseResponse_PolicyDuplicationSelect(
 void PolicyDuplicationSelectErrorCallback(
     const Tpm::PolicyDuplicationSelectResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -29205,7 +29205,7 @@ TPM_RC Tpm::SerializeCommand_PolicyAuthorize(
       const TPMT_TK_VERIFIED& check_ticket,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -29334,7 +29334,7 @@ TPM_RC Tpm::SerializeCommand_PolicyAuthorize(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -29342,8 +29342,8 @@ TPM_RC Tpm::SerializeCommand_PolicyAuthorize(
 TPM_RC Tpm::ParseResponse_PolicyAuthorize(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -29425,7 +29425,7 @@ TPM_RC Tpm::ParseResponse_PolicyAuthorize(
 void PolicyAuthorizeErrorCallback(
     const Tpm::PolicyAuthorizeResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -29514,7 +29514,7 @@ TPM_RC Tpm::SerializeCommand_PolicyAuthValue(
       const std::string& policy_session_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -29591,7 +29591,7 @@ TPM_RC Tpm::SerializeCommand_PolicyAuthValue(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -29599,8 +29599,8 @@ TPM_RC Tpm::SerializeCommand_PolicyAuthValue(
 TPM_RC Tpm::ParseResponse_PolicyAuthValue(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -29682,7 +29682,7 @@ TPM_RC Tpm::ParseResponse_PolicyAuthValue(
 void PolicyAuthValueErrorCallback(
     const Tpm::PolicyAuthValueResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -29755,7 +29755,7 @@ TPM_RC Tpm::SerializeCommand_PolicyPassword(
       const std::string& policy_session_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -29832,7 +29832,7 @@ TPM_RC Tpm::SerializeCommand_PolicyPassword(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -29840,8 +29840,8 @@ TPM_RC Tpm::SerializeCommand_PolicyPassword(
 TPM_RC Tpm::ParseResponse_PolicyPassword(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -29923,7 +29923,7 @@ TPM_RC Tpm::ParseResponse_PolicyPassword(
 void PolicyPasswordErrorCallback(
     const Tpm::PolicyPasswordResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -29996,7 +29996,7 @@ TPM_RC Tpm::SerializeCommand_PolicyGetDigest(
       const std::string& policy_session_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -30073,7 +30073,7 @@ TPM_RC Tpm::SerializeCommand_PolicyGetDigest(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -30082,8 +30082,8 @@ TPM_RC Tpm::ParseResponse_PolicyGetDigest(
       const std::string& response,
       TPM2B_DIGEST* policy_digest,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -30189,7 +30189,7 @@ TPM_RC Tpm::ParseResponse_PolicyGetDigest(
 void PolicyGetDigestErrorCallback(
     const Tpm::PolicyGetDigestResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_DIGEST());
 }
@@ -30269,7 +30269,7 @@ TPM_RC Tpm::SerializeCommand_PolicyNvWritten(
       const TPMI_YES_NO& written_set,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -30357,7 +30357,7 @@ TPM_RC Tpm::SerializeCommand_PolicyNvWritten(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -30365,8 +30365,8 @@ TPM_RC Tpm::SerializeCommand_PolicyNvWritten(
 TPM_RC Tpm::ParseResponse_PolicyNvWritten(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -30448,7 +30448,7 @@ TPM_RC Tpm::ParseResponse_PolicyNvWritten(
 void PolicyNvWrittenErrorCallback(
     const Tpm::PolicyNvWrittenResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -30529,7 +30529,7 @@ TPM_RC Tpm::SerializeCommand_CreatePrimary(
       const TPML_PCR_SELECTION& creation_pcr,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -30658,7 +30658,7 @@ TPM_RC Tpm::SerializeCommand_CreatePrimary(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -30672,8 +30672,8 @@ TPM_RC Tpm::ParseResponse_CreatePrimary(
       TPMT_TK_CREATION* creation_ticket,
       TPM2B_NAME* name,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -30819,7 +30819,7 @@ TPM_RC Tpm::ParseResponse_CreatePrimary(
 void CreatePrimaryErrorCallback(
     const Tpm::CreatePrimaryResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM_HANDLE(),
                TPM2B_PUBLIC(),
@@ -30946,7 +30946,7 @@ TPM_RC Tpm::SerializeCommand_HierarchyControl(
       const TPMI_YES_NO& state,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -31045,7 +31045,7 @@ TPM_RC Tpm::SerializeCommand_HierarchyControl(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -31053,8 +31053,8 @@ TPM_RC Tpm::SerializeCommand_HierarchyControl(
 TPM_RC Tpm::ParseResponse_HierarchyControl(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -31136,7 +31136,7 @@ TPM_RC Tpm::ParseResponse_HierarchyControl(
 void HierarchyControlErrorCallback(
     const Tpm::HierarchyControlResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -31219,7 +31219,7 @@ TPM_RC Tpm::SerializeCommand_SetPrimaryPolicy(
       const TPMI_ALG_HASH& hash_alg,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -31326,7 +31326,7 @@ TPM_RC Tpm::SerializeCommand_SetPrimaryPolicy(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -31334,8 +31334,8 @@ TPM_RC Tpm::SerializeCommand_SetPrimaryPolicy(
 TPM_RC Tpm::ParseResponse_SetPrimaryPolicy(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -31417,7 +31417,7 @@ TPM_RC Tpm::ParseResponse_SetPrimaryPolicy(
 void SetPrimaryPolicyErrorCallback(
     const Tpm::SetPrimaryPolicyResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -31498,7 +31498,7 @@ TPM_RC Tpm::SerializeCommand_ChangePPS(
       const std::string& auth_handle_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -31575,7 +31575,7 @@ TPM_RC Tpm::SerializeCommand_ChangePPS(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -31583,8 +31583,8 @@ TPM_RC Tpm::SerializeCommand_ChangePPS(
 TPM_RC Tpm::ParseResponse_ChangePPS(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -31666,7 +31666,7 @@ TPM_RC Tpm::ParseResponse_ChangePPS(
 void ChangePPSErrorCallback(
     const Tpm::ChangePPSResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -31739,7 +31739,7 @@ TPM_RC Tpm::SerializeCommand_ChangeEPS(
       const std::string& auth_handle_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -31816,7 +31816,7 @@ TPM_RC Tpm::SerializeCommand_ChangeEPS(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -31824,8 +31824,8 @@ TPM_RC Tpm::SerializeCommand_ChangeEPS(
 TPM_RC Tpm::ParseResponse_ChangeEPS(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -31907,7 +31907,7 @@ TPM_RC Tpm::ParseResponse_ChangeEPS(
 void ChangeEPSErrorCallback(
     const Tpm::ChangeEPSResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -31980,7 +31980,7 @@ TPM_RC Tpm::SerializeCommand_Clear(
       const std::string& auth_handle_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -32057,7 +32057,7 @@ TPM_RC Tpm::SerializeCommand_Clear(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -32065,8 +32065,8 @@ TPM_RC Tpm::SerializeCommand_Clear(
 TPM_RC Tpm::ParseResponse_Clear(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -32148,7 +32148,7 @@ TPM_RC Tpm::ParseResponse_Clear(
 void ClearErrorCallback(
     const Tpm::ClearResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -32222,7 +32222,7 @@ TPM_RC Tpm::SerializeCommand_ClearControl(
       const TPMI_YES_NO& disable,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -32310,7 +32310,7 @@ TPM_RC Tpm::SerializeCommand_ClearControl(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -32318,8 +32318,8 @@ TPM_RC Tpm::SerializeCommand_ClearControl(
 TPM_RC Tpm::ParseResponse_ClearControl(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -32401,7 +32401,7 @@ TPM_RC Tpm::ParseResponse_ClearControl(
 void ClearControlErrorCallback(
     const Tpm::ClearControlResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -32479,7 +32479,7 @@ TPM_RC Tpm::SerializeCommand_HierarchyChangeAuth(
       const TPM2B_AUTH& new_auth,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -32575,7 +32575,7 @@ TPM_RC Tpm::SerializeCommand_HierarchyChangeAuth(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -32583,8 +32583,8 @@ TPM_RC Tpm::SerializeCommand_HierarchyChangeAuth(
 TPM_RC Tpm::ParseResponse_HierarchyChangeAuth(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -32666,7 +32666,7 @@ TPM_RC Tpm::ParseResponse_HierarchyChangeAuth(
 void HierarchyChangeAuthErrorCallback(
     const Tpm::HierarchyChangeAuthResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -32743,7 +32743,7 @@ TPM_RC Tpm::SerializeCommand_DictionaryAttackLockReset(
       const std::string& lock_handle_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -32820,7 +32820,7 @@ TPM_RC Tpm::SerializeCommand_DictionaryAttackLockReset(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -32828,8 +32828,8 @@ TPM_RC Tpm::SerializeCommand_DictionaryAttackLockReset(
 TPM_RC Tpm::ParseResponse_DictionaryAttackLockReset(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -32911,7 +32911,7 @@ TPM_RC Tpm::ParseResponse_DictionaryAttackLockReset(
 void DictionaryAttackLockResetErrorCallback(
     const Tpm::DictionaryAttackLockResetResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -32987,7 +32987,7 @@ TPM_RC Tpm::SerializeCommand_DictionaryAttackParameters(
       const UINT32& lockout_recovery,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -33097,7 +33097,7 @@ TPM_RC Tpm::SerializeCommand_DictionaryAttackParameters(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -33105,8 +33105,8 @@ TPM_RC Tpm::SerializeCommand_DictionaryAttackParameters(
 TPM_RC Tpm::ParseResponse_DictionaryAttackParameters(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -33188,7 +33188,7 @@ TPM_RC Tpm::ParseResponse_DictionaryAttackParameters(
 void DictionaryAttackParametersErrorCallback(
     const Tpm::DictionaryAttackParametersResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -33275,7 +33275,7 @@ TPM_RC Tpm::SerializeCommand_PP_Commands(
       const TPML_CC& clear_list,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -33374,7 +33374,7 @@ TPM_RC Tpm::SerializeCommand_PP_Commands(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -33382,8 +33382,8 @@ TPM_RC Tpm::SerializeCommand_PP_Commands(
 TPM_RC Tpm::ParseResponse_PP_Commands(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -33465,7 +33465,7 @@ TPM_RC Tpm::ParseResponse_PP_Commands(
 void PP_CommandsErrorCallback(
     const Tpm::PP_CommandsResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -33547,7 +33547,7 @@ TPM_RC Tpm::SerializeCommand_SetAlgorithmSet(
       const UINT32& algorithm_set,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -33635,7 +33635,7 @@ TPM_RC Tpm::SerializeCommand_SetAlgorithmSet(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -33643,8 +33643,8 @@ TPM_RC Tpm::SerializeCommand_SetAlgorithmSet(
 TPM_RC Tpm::ParseResponse_SetAlgorithmSet(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -33726,7 +33726,7 @@ TPM_RC Tpm::ParseResponse_SetAlgorithmSet(
 void SetAlgorithmSetErrorCallback(
     const Tpm::SetAlgorithmSetResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -33807,7 +33807,7 @@ TPM_RC Tpm::SerializeCommand_FieldUpgradeStart(
       const TPMT_SIGNATURE& manifest_signature,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -33925,7 +33925,7 @@ TPM_RC Tpm::SerializeCommand_FieldUpgradeStart(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -33933,8 +33933,8 @@ TPM_RC Tpm::SerializeCommand_FieldUpgradeStart(
 TPM_RC Tpm::ParseResponse_FieldUpgradeStart(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -34016,7 +34016,7 @@ TPM_RC Tpm::ParseResponse_FieldUpgradeStart(
 void FieldUpgradeStartErrorCallback(
     const Tpm::FieldUpgradeStartResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -34104,7 +34104,7 @@ TPM_RC Tpm::SerializeCommand_FieldUpgradeData(
       const TPM2B_MAX_BUFFER& fu_data,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -34189,7 +34189,7 @@ TPM_RC Tpm::SerializeCommand_FieldUpgradeData(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -34199,8 +34199,8 @@ TPM_RC Tpm::ParseResponse_FieldUpgradeData(
       TPMT_HA* next_digest,
       TPMT_HA* first_digest,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -34298,7 +34298,7 @@ TPM_RC Tpm::ParseResponse_FieldUpgradeData(
 void FieldUpgradeDataErrorCallback(
     const Tpm::FieldUpgradeDataResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPMT_HA(),
                TPMT_HA());
@@ -34378,7 +34378,7 @@ TPM_RC Tpm::SerializeCommand_FirmwareRead(
       const UINT32& sequence_number,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -34455,7 +34455,7 @@ TPM_RC Tpm::SerializeCommand_FirmwareRead(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -34464,8 +34464,8 @@ TPM_RC Tpm::ParseResponse_FirmwareRead(
       const std::string& response,
       TPM2B_MAX_BUFFER* fu_data,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -34571,7 +34571,7 @@ TPM_RC Tpm::ParseResponse_FirmwareRead(
 void FirmwareReadErrorCallback(
     const Tpm::FirmwareReadResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_MAX_BUFFER());
 }
@@ -34646,7 +34646,7 @@ TPM_RC Tpm::SerializeCommand_ContextSave(
       const std::string& save_handle_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -34723,7 +34723,7 @@ TPM_RC Tpm::SerializeCommand_ContextSave(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -34732,8 +34732,8 @@ TPM_RC Tpm::ParseResponse_ContextSave(
       const std::string& response,
       TPMS_CONTEXT* context,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -34823,7 +34823,7 @@ TPM_RC Tpm::ParseResponse_ContextSave(
 void ContextSaveErrorCallback(
     const Tpm::ContextSaveResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPMS_CONTEXT());
 }
@@ -34901,7 +34901,7 @@ TPM_RC Tpm::SerializeCommand_ContextLoad(
       const TPMS_CONTEXT& context,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -34978,7 +34978,7 @@ TPM_RC Tpm::SerializeCommand_ContextLoad(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -34987,8 +34987,8 @@ TPM_RC Tpm::ParseResponse_ContextLoad(
       const std::string& response,
       TPMI_DH_CONTEXT* loaded_handle,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -35078,7 +35078,7 @@ TPM_RC Tpm::ParseResponse_ContextLoad(
 void ContextLoadErrorCallback(
     const Tpm::ContextLoadResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPMI_DH_CONTEXT());
 }
@@ -35152,7 +35152,7 @@ TPM_RC Tpm::SerializeCommand_FlushContext(
       const TPMI_DH_CONTEXT& flush_handle,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -35229,7 +35229,7 @@ TPM_RC Tpm::SerializeCommand_FlushContext(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -35237,8 +35237,8 @@ TPM_RC Tpm::SerializeCommand_FlushContext(
 TPM_RC Tpm::ParseResponse_FlushContext(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -35320,7 +35320,7 @@ TPM_RC Tpm::ParseResponse_FlushContext(
 void FlushContextErrorCallback(
     const Tpm::FlushContextResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -35392,7 +35392,7 @@ TPM_RC Tpm::SerializeCommand_EvictControl(
       const TPMI_DH_PERSISTENT& persistent_handle,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -35491,7 +35491,7 @@ TPM_RC Tpm::SerializeCommand_EvictControl(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -35499,8 +35499,8 @@ TPM_RC Tpm::SerializeCommand_EvictControl(
 TPM_RC Tpm::ParseResponse_EvictControl(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -35582,7 +35582,7 @@ TPM_RC Tpm::ParseResponse_EvictControl(
 void EvictControlErrorCallback(
     const Tpm::EvictControlResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -35665,7 +35665,7 @@ TPM_RC Tpm::EvictControlSync(
 TPM_RC Tpm::SerializeCommand_ReadClock(
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -35731,7 +35731,7 @@ TPM_RC Tpm::SerializeCommand_ReadClock(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -35741,8 +35741,8 @@ TPM_RC Tpm::ParseResponse_ReadClock(
       TPM_RC* return_code,
       TPMS_TIME_INFO* current_time,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -35840,7 +35840,7 @@ TPM_RC Tpm::ParseResponse_ReadClock(
 void ReadClockErrorCallback(
     const Tpm::ReadClockResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM_RC(),
                TPMS_TIME_INFO());
@@ -35918,7 +35918,7 @@ TPM_RC Tpm::SerializeCommand_ClockSet(
       const UINT64& new_time,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -36006,7 +36006,7 @@ TPM_RC Tpm::SerializeCommand_ClockSet(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -36015,8 +36015,8 @@ TPM_RC Tpm::ParseResponse_ClockSet(
       const std::string& response,
       TPM_RC* return_code,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -36106,7 +36106,7 @@ TPM_RC Tpm::ParseResponse_ClockSet(
 void ClockSetErrorCallback(
     const Tpm::ClockSetResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM_RC());
 }
@@ -36190,7 +36190,7 @@ TPM_RC Tpm::SerializeCommand_ClockRateAdjust(
       const TPM_CLOCK_ADJUST& rate_adjust,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -36278,7 +36278,7 @@ TPM_RC Tpm::SerializeCommand_ClockRateAdjust(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -36287,8 +36287,8 @@ TPM_RC Tpm::ParseResponse_ClockRateAdjust(
       const std::string& response,
       TPM_RC* return_code,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -36378,7 +36378,7 @@ TPM_RC Tpm::ParseResponse_ClockRateAdjust(
 void ClockRateAdjustErrorCallback(
     const Tpm::ClockRateAdjustResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM_RC());
 }
@@ -36462,7 +36462,7 @@ TPM_RC Tpm::SerializeCommand_GetCapability(
       const UINT32& property_count,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -36561,7 +36561,7 @@ TPM_RC Tpm::SerializeCommand_GetCapability(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -36571,8 +36571,8 @@ TPM_RC Tpm::ParseResponse_GetCapability(
       TPMI_YES_NO* more_data,
       TPMS_CAPABILITY_DATA* capability_data,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -36670,7 +36670,7 @@ TPM_RC Tpm::ParseResponse_GetCapability(
 void GetCapabilityErrorCallback(
     const Tpm::GetCapabilityResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPMI_YES_NO(),
                TPMS_CAPABILITY_DATA());
@@ -36758,7 +36758,7 @@ TPM_RC Tpm::SerializeCommand_TestParms(
       const TPMT_PUBLIC_PARMS& parameters,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -36835,7 +36835,7 @@ TPM_RC Tpm::SerializeCommand_TestParms(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -36843,8 +36843,8 @@ TPM_RC Tpm::SerializeCommand_TestParms(
 TPM_RC Tpm::ParseResponse_TestParms(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -36926,7 +36926,7 @@ TPM_RC Tpm::ParseResponse_TestParms(
 void TestParmsErrorCallback(
     const Tpm::TestParmsResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -36997,7 +36997,7 @@ TPM_RC Tpm::SerializeCommand_NV_DefineSpace(
       const TPM2B_NV_PUBLIC& public_info,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -37104,7 +37104,7 @@ TPM_RC Tpm::SerializeCommand_NV_DefineSpace(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -37112,8 +37112,8 @@ TPM_RC Tpm::SerializeCommand_NV_DefineSpace(
 TPM_RC Tpm::ParseResponse_NV_DefineSpace(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -37195,7 +37195,7 @@ TPM_RC Tpm::ParseResponse_NV_DefineSpace(
 void NV_DefineSpaceErrorCallback(
     const Tpm::NV_DefineSpaceResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -37278,7 +37278,7 @@ TPM_RC Tpm::SerializeCommand_NV_UndefineSpace(
       const std::string& nv_index_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -37366,7 +37366,7 @@ TPM_RC Tpm::SerializeCommand_NV_UndefineSpace(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -37374,8 +37374,8 @@ TPM_RC Tpm::SerializeCommand_NV_UndefineSpace(
 TPM_RC Tpm::ParseResponse_NV_UndefineSpace(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -37457,7 +37457,7 @@ TPM_RC Tpm::ParseResponse_NV_UndefineSpace(
 void NV_UndefineSpaceErrorCallback(
     const Tpm::NV_UndefineSpaceResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -37540,7 +37540,7 @@ TPM_RC Tpm::SerializeCommand_NV_UndefineSpaceSpecial(
       const std::string& platform_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -37628,7 +37628,7 @@ TPM_RC Tpm::SerializeCommand_NV_UndefineSpaceSpecial(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -37636,8 +37636,8 @@ TPM_RC Tpm::SerializeCommand_NV_UndefineSpaceSpecial(
 TPM_RC Tpm::ParseResponse_NV_UndefineSpaceSpecial(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -37719,7 +37719,7 @@ TPM_RC Tpm::ParseResponse_NV_UndefineSpaceSpecial(
 void NV_UndefineSpaceSpecialErrorCallback(
     const Tpm::NV_UndefineSpaceSpecialResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -37800,7 +37800,7 @@ TPM_RC Tpm::SerializeCommand_NV_ReadPublic(
       const std::string& nv_index_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -37877,7 +37877,7 @@ TPM_RC Tpm::SerializeCommand_NV_ReadPublic(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -37887,8 +37887,8 @@ TPM_RC Tpm::ParseResponse_NV_ReadPublic(
       TPM2B_NV_PUBLIC* nv_public,
       TPM2B_NAME* nv_name,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -38002,7 +38002,7 @@ TPM_RC Tpm::ParseResponse_NV_ReadPublic(
 void NV_ReadPublicErrorCallback(
     const Tpm::NV_ReadPublicResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_NV_PUBLIC(),
                TPM2B_NAME());
@@ -38091,7 +38091,7 @@ TPM_RC Tpm::SerializeCommand_NV_Write(
       const UINT16& offset,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -38209,7 +38209,7 @@ TPM_RC Tpm::SerializeCommand_NV_Write(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -38217,8 +38217,8 @@ TPM_RC Tpm::SerializeCommand_NV_Write(
 TPM_RC Tpm::ParseResponse_NV_Write(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -38300,7 +38300,7 @@ TPM_RC Tpm::ParseResponse_NV_Write(
 void NV_WriteErrorCallback(
     const Tpm::NV_WriteResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -38391,7 +38391,7 @@ TPM_RC Tpm::SerializeCommand_NV_Increment(
       const std::string& nv_index_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -38479,7 +38479,7 @@ TPM_RC Tpm::SerializeCommand_NV_Increment(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -38487,8 +38487,8 @@ TPM_RC Tpm::SerializeCommand_NV_Increment(
 TPM_RC Tpm::ParseResponse_NV_Increment(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -38570,7 +38570,7 @@ TPM_RC Tpm::ParseResponse_NV_Increment(
 void NV_IncrementErrorCallback(
     const Tpm::NV_IncrementResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -38654,7 +38654,7 @@ TPM_RC Tpm::SerializeCommand_NV_Extend(
       const TPM2B_MAX_NV_BUFFER& data,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -38761,7 +38761,7 @@ TPM_RC Tpm::SerializeCommand_NV_Extend(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -38769,8 +38769,8 @@ TPM_RC Tpm::SerializeCommand_NV_Extend(
 TPM_RC Tpm::ParseResponse_NV_Extend(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -38852,7 +38852,7 @@ TPM_RC Tpm::ParseResponse_NV_Extend(
 void NV_ExtendErrorCallback(
     const Tpm::NV_ExtendResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -38940,7 +38940,7 @@ TPM_RC Tpm::SerializeCommand_NV_SetBits(
       const UINT64& bits,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -39039,7 +39039,7 @@ TPM_RC Tpm::SerializeCommand_NV_SetBits(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -39047,8 +39047,8 @@ TPM_RC Tpm::SerializeCommand_NV_SetBits(
 TPM_RC Tpm::ParseResponse_NV_SetBits(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -39130,7 +39130,7 @@ TPM_RC Tpm::ParseResponse_NV_SetBits(
 void NV_SetBitsErrorCallback(
     const Tpm::NV_SetBitsResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -39217,7 +39217,7 @@ TPM_RC Tpm::SerializeCommand_NV_WriteLock(
       const std::string& nv_index_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -39305,7 +39305,7 @@ TPM_RC Tpm::SerializeCommand_NV_WriteLock(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -39313,8 +39313,8 @@ TPM_RC Tpm::SerializeCommand_NV_WriteLock(
 TPM_RC Tpm::ParseResponse_NV_WriteLock(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -39396,7 +39396,7 @@ TPM_RC Tpm::ParseResponse_NV_WriteLock(
 void NV_WriteLockErrorCallback(
     const Tpm::NV_WriteLockResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -39477,7 +39477,7 @@ TPM_RC Tpm::SerializeCommand_NV_GlobalWriteLock(
       const std::string& auth_handle_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -39554,7 +39554,7 @@ TPM_RC Tpm::SerializeCommand_NV_GlobalWriteLock(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -39562,8 +39562,8 @@ TPM_RC Tpm::SerializeCommand_NV_GlobalWriteLock(
 TPM_RC Tpm::ParseResponse_NV_GlobalWriteLock(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -39645,7 +39645,7 @@ TPM_RC Tpm::ParseResponse_NV_GlobalWriteLock(
 void NV_GlobalWriteLockErrorCallback(
     const Tpm::NV_GlobalWriteLockResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -39722,7 +39722,7 @@ TPM_RC Tpm::SerializeCommand_NV_Read(
       const UINT16& offset,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -39832,7 +39832,7 @@ TPM_RC Tpm::SerializeCommand_NV_Read(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -39841,8 +39841,8 @@ TPM_RC Tpm::ParseResponse_NV_Read(
       const std::string& response,
       TPM2B_MAX_NV_BUFFER* data,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -39948,7 +39948,7 @@ TPM_RC Tpm::ParseResponse_NV_Read(
 void NV_ReadErrorCallback(
     const Tpm::NV_ReadResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_MAX_NV_BUFFER());
 }
@@ -40045,7 +40045,7 @@ TPM_RC Tpm::SerializeCommand_NV_ReadLock(
       const std::string& nv_index_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -40133,7 +40133,7 @@ TPM_RC Tpm::SerializeCommand_NV_ReadLock(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -40141,8 +40141,8 @@ TPM_RC Tpm::SerializeCommand_NV_ReadLock(
 TPM_RC Tpm::ParseResponse_NV_ReadLock(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -40224,7 +40224,7 @@ TPM_RC Tpm::ParseResponse_NV_ReadLock(
 void NV_ReadLockErrorCallback(
     const Tpm::NV_ReadLockResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -40306,7 +40306,7 @@ TPM_RC Tpm::SerializeCommand_NV_ChangeAuth(
       const TPM2B_AUTH& new_auth,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -40402,7 +40402,7 @@ TPM_RC Tpm::SerializeCommand_NV_ChangeAuth(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -40410,8 +40410,8 @@ TPM_RC Tpm::SerializeCommand_NV_ChangeAuth(
 TPM_RC Tpm::ParseResponse_NV_ChangeAuth(
       const std::string& response,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -40493,7 +40493,7 @@ TPM_RC Tpm::ParseResponse_NV_ChangeAuth(
 void NV_ChangeAuthErrorCallback(
     const Tpm::NV_ChangeAuthResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code);
 }
 
@@ -40578,7 +40578,7 @@ TPM_RC Tpm::SerializeCommand_NV_Certify(
       const UINT16& offset,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -40729,7 +40729,7 @@ TPM_RC Tpm::SerializeCommand_NV_Certify(
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
@@ -40739,8 +40739,8 @@ TPM_RC Tpm::ParseResponse_NV_Certify(
       TPM2B_ATTEST* certify_info,
       TPMT_SIGNATURE* signature,
       AuthorizationDelegate* authorization_delegate) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);
   TPM_ST tag;
@@ -40854,7 +40854,7 @@ TPM_RC Tpm::ParseResponse_NV_Certify(
 void NV_CertifyErrorCallback(
     const Tpm::NV_CertifyResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_ATTEST(),
                TPMT_SIGNATURE());

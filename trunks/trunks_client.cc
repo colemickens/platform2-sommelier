@@ -37,6 +37,7 @@ void PrintUsage() {
   puts("                      owner_password is supplied, it runs tests that");
   puts("                      need owner permissions.");
   puts("  --owner_password - used to provide an owner password");
+  puts("  --stress_test - Runs some basic stress tests.");
 }
 
 int Startup() {
@@ -140,25 +141,67 @@ int main(int argc, char **argv) {
   if (cl->HasSwitch("regression_test")) {
     trunks::TrunksClientTest test;
     LOG(INFO) << "Running RNG test.";
-    CHECK(test.RNGTest()) << "Error running RNGtest.";
+    if (!test.RNGTest()) {
+      LOG(ERROR) << "Error running RNGtest.";
+      return -1;
+    }
     LOG(INFO) << "Running RSA key tests.";
-    CHECK(test.SignTest()) << "Error running SignTest.";
-    CHECK(test.DecryptTest()) << "Error running DecryptTest.";
-    CHECK(test.ImportTest()) << "Error running ImportTest.";
-    CHECK(test.AuthChangeTest()) << "Error running AuthChangeTest.";
-    LOG(INFO) << "Running PCR tests.";
-    CHECK(test.PCRTest()) << "Error running PCRTest.";
-    LOG(INFO) << "Running Policy tests.";
-    CHECK(test.PolicyAuthValueTest()) << "Error running PolicyAuthValueTest.";
-    CHECK(test.PolicyAndTest()) << "Error running PolicyAndTest.";
-    CHECK(test.PolicyOrTest()) << "Error running PolicyOrTest.";
-
+    if (!test.SignTest()) {
+      LOG(ERROR) << "Error running SignTest.";
+      return -1;
+    }
+    if (!test.DecryptTest()) {
+      LOG(ERROR) << "Error running DecryptTest.";
+      return -1;
+    }
+    if (!test.ImportTest()) {
+      LOG(ERROR) << "Error running ImportTest.";
+      return -1;
+    }
+    if (!test.AuthChangeTest()) {
+      LOG(ERROR) << "Error running AuthChangeTest.";
+      return -1;
+    }
+    LOG(INFO) << "Running PCR test.";
+    if (!test.PCRTest()) {
+      LOG(ERROR) << "Error running PCRTest.";
+      return -1;
+    }
+    LOG(INFO) << "Running policy tests.";
+    if (!test.PolicyAuthValueTest()) {
+      LOG(ERROR) << "Error running PolicyAuthValueTest.";
+      return -1;
+    }
+    if (!test.PolicyAndTest()) {
+      LOG(ERROR) << "Error running PolicyAndTest.";
+      return -1;
+    }
+    if (!test.PolicyOrTest()) {
+      LOG(ERROR) << "Error running PolicyOrTest.";
+      return -1;
+    }
     if (cl->HasSwitch("owner_password")) {
       std::string owner_password = cl->GetSwitchValueASCII("owner_password");
-      LOG(INFO) << "Running NvramTest.";
-      CHECK(test.NvramTest(owner_password)) << "Error running NvramTest.";
+      LOG(INFO) << "Running NVRAM test.";
+      if (!test.NvramTest(owner_password)) {
+        LOG(ERROR) << "Error running NvramTest.";
+        return -1;
+      }
     }
     LOG(INFO) << "All tests were run successfully.";
+    return 0;
+  }
+  if (cl->HasSwitch("stress_test")) {
+    LOG(INFO) << "Running stress tests.";
+    trunks::TrunksClientTest test;
+    if (!test.ManyKeysTest()) {
+      LOG(ERROR) << "Error running ManyKeysTest.";
+      return -1;
+    }
+    if (!test.ManySessionsTest()) {
+      LOG(ERROR) << "Error running ManySessionsTest.";
+      return -1;
+    }
     return 0;
   }
   puts("Invalid options!");

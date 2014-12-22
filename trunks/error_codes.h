@@ -20,6 +20,8 @@ namespace trunks {
 const TPM_RC kTrunksErrorBase = (7 << 12);
 const TPM_RC kTctiErrorBase = (8 << 12);
 const TPM_RC kSapiErrorBase = (9 << 12);
+const TPM_RC kResourceManagerTpmErrorBase = (11 << 12);
+const TPM_RC kResourceManagerErrorBase = (12 << 12);
 
 const TPM_RC TRUNKS_RC_AUTHORIZATION_FAILED = kTrunksErrorBase + 1;
 const TPM_RC TRUNKS_RC_ENCRYPTION_FAILED = kTrunksErrorBase + 2;

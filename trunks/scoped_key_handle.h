@@ -40,7 +40,7 @@ class TRUNKS_EXPORT ScopedKeyHandle {
   // This method returns the handle currectly associated with the class.
   // This method does not transfew ownership, therefore the handle returned
   // might be stale.
-  virtual TPM_HANDLE get();
+  virtual TPM_HANDLE get() const;
 
  private:
   const TrunksFactory& factory_;

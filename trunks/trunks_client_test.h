@@ -9,6 +9,7 @@
 
 #include <base/memory/scoped_ptr.h>
 
+#include "trunks/scoped_key_handle.h"
 #include "trunks/tpm_generated.h"
 #include "trunks/trunks_factory.h"
 
@@ -75,6 +76,12 @@ class TrunksClientTest {
   // NOTE: This test needs the |owner_password| to work.
   bool NvramTest(const std::string& owner_password);
 
+  // This test uses many key handles simultaneously.
+  bool ManyKeysTest();
+
+  // This test uses many sessions simultaneously.
+  bool ManySessionsTest();
+
  private:
   // This method verifies that plaintext == decrypt(encrypt(plaintext)) using
   // a given key.
@@ -84,12 +91,30 @@ class TrunksClientTest {
                                    const std::string& key_authorization,
                                    HmacSession* session);
 
-  // This method performs verify(sign(data)) using a given key.
-  // TODO(usanghi): Remove |session| argument once we can support multiple
-  // sessions.
-  bool PerformRSASignAndVerify(TPM_HANDLE key_handle,
-                               const std::string& key_authorization,
-                               HmacSession* session);
+  // Generates an RSA key pair in software. The |modulus| and |prime_factor|
+  // must not be NULL and will be populated with values that can be imported
+  // into the TPM. The |public_key| may be NULL, but if it is not, will be
+  // populated with a value that can be used with VerifyRSASignature.
+  void GenerateRSAKeyPair(std::string* modulus,
+                          std::string* prime_factor,
+                          std::string* public_key);
+
+  // Verifies an RSA-SSA-SHA256 |signature| over the given |data|. The
+  // |public_key| is as produced by GenerateRSAKeyPair(). Returns true on
+  // success.
+  bool VerifyRSASignature(const std::string& public_key,
+                          const std::string& data,
+                          const std::string& signature);
+
+  // Loads an arbitrary RSA signing key and provides the |key_handle| and the
+  // |public_key|. Returns true on success.
+  bool LoadSigningKey(ScopedKeyHandle* key_handle, std::string* public_key);
+
+  // Signs arbitrary data with |key_handle| authorized by |delegate| and
+  // verifies the signature with |public_key|. Returns true on success.
+  bool SignAndVerify(const ScopedKeyHandle& key_handle,
+                     const std::string& public_key,
+                     AuthorizationDelegate* delegate);
 
   // Factory for instantiation of Tpm classes
   scoped_ptr<TrunksFactory> factory_;

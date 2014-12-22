@@ -50,3 +50,10 @@ rt_sigreturn: 1
 brk: 1
 mmap: 1
 munmap: 1
+
+# Allow thread creation.
+mprotect: 1
+clone: 1
+set_robust_list: 1
+# This is attempted but apparently not necessary; return EPERM.
+prctl: return 1

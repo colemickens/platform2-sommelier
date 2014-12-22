@@ -179,6 +179,11 @@ std::string GetErrorString(TPM_RC error) {
     return error_string;
   }
   std::stringstream ss;
+  if ((error & kLayerMask) == kResourceManagerTpmErrorBase) {
+    error &= ~kLayerMask;
+    error_string = GetErrorStringInternal(error);
+    ss << "Resource Manager: ";
+  }
   // Check if we have a TPM 'Format-One' response code.
   if (IsFormatOne(error)) {
     if (error & TPM_RC_P) {

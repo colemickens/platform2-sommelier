@@ -4,6 +4,12 @@
 
 #include "trunks/trunks_client_test.h"
 
+#include <algorithm>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <crypto/scoped_openssl_types.h>
@@ -12,6 +18,7 @@
 #include <openssl/err.h>
 #include <openssl/rsa.h>
 
+#include "trunks/authorization_delegate.h"
 #include "trunks/error_codes.h"
 #include "trunks/hmac_session.h"
 #include "trunks/policy_session.h"
@@ -20,8 +27,6 @@
 #include "trunks/tpm_state.h"
 #include "trunks/tpm_utility.h"
 #include "trunks/trunks_factory_impl.h"
-
-#include "trunks/authorization_delegate.h"
 
 namespace trunks {
 
@@ -89,9 +94,22 @@ bool TrunksClientTest::SignTest() {
     LOG(ERROR) << "Error loading signing key: " << GetErrorString(result);
   }
   ScopedKeyHandle scoped_key(*factory_.get(), signing_key);
-  return PerformRSASignAndVerify(scoped_key.get(),
-                                 key_authorization,
-                                 session.get());
+  session->SetEntityAuthorizationValue(key_authorization);
+  std::string signature;
+  result = utility->Sign(signing_key, TPM_ALG_NULL, TPM_ALG_NULL,
+                         std::string(32, 'a'), session->GetDelegate(),
+                         &signature);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error using key to sign: " << GetErrorString(result);
+    return false;
+  }
+  result = utility->Verify(signing_key, TPM_ALG_NULL, TPM_ALG_NULL,
+                           std::string(32, 'a'), signature, nullptr);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error using key to verify: " << GetErrorString(result);
+    return false;
+  }
+  return true;
 }
 
 bool TrunksClientTest::DecryptTest() {
@@ -132,15 +150,9 @@ bool TrunksClientTest::ImportTest() {
     LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
     return false;
   }
-  crypto::ScopedRSA rsa(RSA_generate_key(2048, 0x10001, nullptr, nullptr));
-  CHECK(rsa.get());
-  std::string modulus(BN_num_bytes(rsa.get()->n), 0);
-  BN_bn2bin(rsa.get()->n,
-            reinterpret_cast<unsigned char*>(string_as_array(&modulus)));
-  std::string prime_factor(BN_num_bytes(rsa.get()->p), 0);
-  BN_bn2bin(rsa.get()->p,
-            reinterpret_cast<unsigned char*>(string_as_array(&prime_factor)));
-
+  std::string modulus;
+  std::string prime_factor;
+  GenerateRSAKeyPair(&modulus, &prime_factor, nullptr);
   std::string key_blob;
   std::string key_authorization("import");
   session->SetEntityAuthorizationValue("");
@@ -731,6 +743,75 @@ bool TrunksClientTest::NvramTest(const std::string& owner_password) {
   return true;
 }
 
+bool TrunksClientTest::ManyKeysTest() {
+  const size_t kNumKeys = 20;
+  std::vector<std::unique_ptr<ScopedKeyHandle>> key_handles;
+  std::map<TPM_HANDLE, std::string> public_key_map;
+  for (size_t i = 0; i < kNumKeys; ++i) {
+    std::unique_ptr<ScopedKeyHandle> key_handle(new ScopedKeyHandle(*factory_));
+    std::string public_key;
+    if (!LoadSigningKey(key_handle.get(), &public_key)) {
+      LOG(ERROR) << "Error loading key " << i << " into TPM.";
+    }
+    public_key_map[key_handle->get()] = public_key;
+    key_handles.push_back(std::move(key_handle));
+  }
+  CHECK_EQ(key_handles.size(), kNumKeys);
+  CHECK_EQ(public_key_map.size(), kNumKeys);
+  scoped_ptr<AuthorizationDelegate> delegate =
+      factory_->GetPasswordAuthorization("");
+  for (size_t i = 0; i < kNumKeys; ++i) {
+    const ScopedKeyHandle& key_handle = *key_handles[i];
+    const std::string& public_key = public_key_map[key_handle.get()];
+    if (!SignAndVerify(key_handle, public_key, delegate.get())) {
+      LOG(ERROR) << "Error signing with key " << i;
+    }
+  }
+  std::random_shuffle(key_handles.begin(), key_handles.end());
+  for (size_t i = 0; i < kNumKeys; ++i) {
+    const ScopedKeyHandle& key_handle = *key_handles[i];
+    const std::string& public_key = public_key_map[key_handle.get()];
+    if (!SignAndVerify(key_handle, public_key, delegate.get())) {
+      LOG(ERROR) << "Error signing with shuffled key " << i;
+    }
+  }
+  return true;
+}
+
+bool TrunksClientTest::ManySessionsTest() {
+  const size_t kNumSessions = 20;
+  scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
+  std::vector<std::unique_ptr<HmacSession>> sessions;
+  for (size_t i = 0; i < kNumSessions; ++i) {
+    std::unique_ptr<HmacSession> session(factory_->GetHmacSession().release());
+    TPM_RC result = session->StartUnboundSession(true /* enable encryption */);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(ERROR) << "Error starting hmac session " << i << ": "
+                 << GetErrorString(result);
+      return false;
+    }
+    sessions.push_back(std::move(session));
+  }
+  CHECK_EQ(sessions.size(), kNumSessions);
+  ScopedKeyHandle key_handle(*factory_);
+  std::string public_key;
+  if (!LoadSigningKey(&key_handle, &public_key)) {
+    return false;
+  }
+  for (size_t i = 0; i < kNumSessions; ++i) {
+    if (!SignAndVerify(key_handle, public_key, sessions[i]->GetDelegate())) {
+      LOG(ERROR) << "Error signing with hmac session " << i;
+    }
+  }
+  std::random_shuffle(sessions.begin(), sessions.end());
+  for (size_t i = 0; i < kNumSessions; ++i) {
+    if (!SignAndVerify(key_handle, public_key, sessions[i]->GetDelegate())) {
+      LOG(ERROR) << "Error signing with shuffled hmac session " << i;
+    }
+  }
+  return true;
+}
+
 bool TrunksClientTest::PerformRSAEncrpytAndDecrpyt(
     TPM_HANDLE key_handle,
     const std::string& key_authorization,
@@ -762,24 +843,89 @@ bool TrunksClientTest::PerformRSAEncrpytAndDecrpyt(
   return true;
 }
 
-bool TrunksClientTest::PerformRSASignAndVerify(
-    TPM_HANDLE key_handle,
-    const std::string& key_authorization,
-    HmacSession* session) {
+void TrunksClientTest::GenerateRSAKeyPair(std::string* modulus,
+                                          std::string* prime_factor,
+                                          std::string* public_key) {
+  crypto::ScopedRSA rsa(RSA_generate_key(2048, 0x10001, nullptr, nullptr));
+  CHECK(rsa.get());
+  modulus->resize(BN_num_bytes(rsa.get()->n), 0);
+  BN_bn2bin(rsa.get()->n,
+            reinterpret_cast<unsigned char*>(string_as_array(modulus)));
+  prime_factor->resize(BN_num_bytes(rsa.get()->p), 0);
+  BN_bn2bin(rsa.get()->p,
+            reinterpret_cast<unsigned char*>(string_as_array(prime_factor)));
+  if (public_key) {
+    unsigned char* buffer = NULL;
+    int length = i2d_RSAPublicKey(rsa.get(), &buffer);
+    CHECK_GT(length, 0);
+    crypto::ScopedOpenSSLBytes scoped_buffer(buffer);
+    public_key->assign(reinterpret_cast<char*>(buffer), length);
+  }
+}
+
+bool TrunksClientTest::VerifyRSASignature(const std::string& public_key,
+                                          const std::string& data,
+                                          const std::string& signature) {
+  auto asn1_ptr = reinterpret_cast<const unsigned char*>(public_key.data());
+  crypto::ScopedRSA rsa(d2i_RSAPublicKey(nullptr, &asn1_ptr,
+                                         public_key.size()));
+  CHECK(rsa.get());
+  std::string digest = crypto::SHA256HashString(data);
+  auto digest_buffer = reinterpret_cast<const unsigned char*>(digest.data());
+  std::string mutable_signature(signature);
+  unsigned char* signature_buffer =
+      reinterpret_cast<unsigned char*>(string_as_array(&mutable_signature));
+  return (RSA_verify(NID_sha256, digest_buffer, digest.size(),
+                     signature_buffer, signature.size(), rsa.get()) == 1);
+}
+
+bool TrunksClientTest::LoadSigningKey(ScopedKeyHandle* key_handle,
+                                      std::string* public_key) {
+  std::string modulus;
+  std::string prime_factor;
+  GenerateRSAKeyPair(&modulus, &prime_factor, public_key);
+  std::string key_blob;
   scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
-  std::string signature;
-  session->SetEntityAuthorizationValue(key_authorization);
-  TPM_RC result = utility->Sign(key_handle, TPM_ALG_NULL, TPM_ALG_NULL,
-                                std::string(32, 'a'), session->GetDelegate(),
-                                &signature);
+  TPM_RC result = utility->ImportRSAKey(
+      TpmUtility::AsymmetricKeyUsage::kSignKey,
+      modulus, 0x10001, prime_factor,
+      "",  // password
+      factory_->GetPasswordAuthorization("").get(),
+      &key_blob);
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error using key to sign: " << GetErrorString(result);
+    LOG(ERROR) << "ImportRSAKey: " << GetErrorString(result);
     return false;
   }
-  result = utility->Verify(key_handle, TPM_ALG_NULL, TPM_ALG_NULL,
-                           std::string(32, 'a'), signature, nullptr);
+  TPM_HANDLE raw_key_handle;
+  result = utility->LoadKey(key_blob,
+                            factory_->GetPasswordAuthorization("").get(),
+                            &raw_key_handle);
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error using key to verify: " << GetErrorString(result);
+    LOG(ERROR) << "LoadKey: " << GetErrorString(result);
+    return false;
+  }
+  key_handle->reset(raw_key_handle);
+  return true;
+}
+
+bool TrunksClientTest::SignAndVerify(const ScopedKeyHandle& key_handle,
+                                     const std::string& public_key,
+                                     AuthorizationDelegate* delegate) {
+  std::string signature;
+  std::string data_to_sign("sign_this");
+  scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
+  TPM_RC result = utility->Sign(key_handle.get(),
+                                TPM_ALG_RSASSA,
+                                TPM_ALG_SHA256,
+                                data_to_sign,
+                                delegate,
+                                &signature);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Sign: " << GetErrorString(result);
+    return false;
+  }
+  if (!VerifyRSASignature(public_key, data_to_sign, signature)) {
+    LOG(ERROR) << "Signature verification failed.";
     return false;
   }
   return true;

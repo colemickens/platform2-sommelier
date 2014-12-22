@@ -141,7 +141,7 @@ _CLASS_END = """
 """
 _SERIALIZE_BASIC_TYPE = """
 TPM_RC Serialize_%(type)s(const %(type)s& value, std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   %(type)s value_net = value;
   switch (sizeof(%(type)s)) {
     case 2:
@@ -165,7 +165,7 @@ TPM_RC Parse_%(type)s(
     std::string* buffer,
     %(type)s* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   if (buffer->size() < sizeof(%(type)s))
     return TPM_RC_INSUFFICIENT;
   %(type)s value_net = 0;
@@ -218,7 +218,7 @@ size_t GetNumberOf%(handle_type)sHandles(TPM_CC command_code) {
 _HANDLE_COUNT_FUNCTION_CASE = """
     case %(command_code)s: return %(handle_count)s;"""
 _HANDLE_COUNT_FUNCTION_END = """
-    default: NOTREACHED();
+    default: LOG(WARNING) << "Unknown command code: " << command_code;
   }
   return 0;
 }
@@ -258,7 +258,7 @@ class Typedef(object):
 TPM_RC Serialize_%(new)s(
     const %(new)s& value,
     std::string* buffer) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Serialize_%(old)s(value, buffer);
 }
 """
@@ -267,7 +267,7 @@ TPM_RC Parse_%(new)s(
     std::string* buffer,
     %(new)s* value,
     std::string* value_bytes) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   return Parse_%(old)s(buffer, value, value_bytes);
 }
 """
@@ -401,7 +401,7 @@ TPM_RC Serialize_%(type)s(
     const %(type)s& value,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 """
   _SERIALIZE_FIELD = """
   result = Serialize_%(type)s(value.%(name)s, buffer);
@@ -448,7 +448,7 @@ TPM_RC Parse_%(type)s(
     %(type)s* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 """
   _PARSE_FIELD = """
   result = Parse_%(type)s(
@@ -493,7 +493,7 @@ TPM_RC Serialize_%(union_type)s(
     %(selector_type)s selector,
     std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 """
   _SERIALIZE_UNION_FIELD = """
   if (selector == %(selector_value)s) {
@@ -523,7 +523,7 @@ TPM_RC Parse_%(union_type)s(
     %(union_type)s* value,
     std::string* value_bytes) {
   TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
 """
   _PARSE_UNION_FIELD = """
   if (selector == %(selector_value)s) {
@@ -1200,7 +1200,7 @@ class Command(object):
       const std::string& response"""
   _SERIALIZE_FUNCTION_START = """
 TPM_RC Tpm::SerializeCommand_%(method_name)s(%(method_args)s) {
-  VLOG(2) << __func__;
+  VLOG(3) << __func__;
   TPM_RC rc = TPM_RC_SUCCESS;
   TPMI_ST_COMMAND_TAG tag = TPM_ST_NO_SESSIONS;
   UINT32 command_size = 10;  // Header size.
@@ -1273,15 +1273,15 @@ TPM_RC Tpm::SerializeCommand_%(method_name)s(%(method_args)s) {
                         authorization_section_bytes +
                         parameter_section_bytes;
   CHECK(serialized_command->size() == command_size) << "Command size mismatch!";
-  VLOG(1) << "Command: " << base::HexEncode(serialized_command->data(),
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
                                             serialized_command->size());
   return TPM_RC_SUCCESS;
 }
 """
   _RESPONSE_PARSER_START = """
 TPM_RC Tpm::ParseResponse_%(method_name)s(%(method_args)s) {
-  VLOG(2) << __func__;
-  VLOG(1) << "Response: " << base::HexEncode(response.data(), response.size());
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   TPM_RC rc = TPM_RC_SUCCESS;
   std::string buffer(response);"""
   _PARSE_LOCAL_VAR = """
@@ -1361,7 +1361,7 @@ TPM_RC Tpm::ParseResponse_%(method_name)s(%(method_args)s) {
 void %(method_name)sErrorCallback(
     const Tpm::%(method_name)sResponse& callback,
     TPM_RC response_code) {
-  VLOG(2) << __func__;
+  VLOG(1) << __func__;
   callback.Run(response_code"""
   _ERROR_CALLBACK_ARG = """,
                %(arg_type)s()"""

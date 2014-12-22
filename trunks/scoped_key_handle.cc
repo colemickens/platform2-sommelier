@@ -49,7 +49,7 @@ void ScopedKeyHandle::reset() {
   reset(kInvalidHandle);
 }
 
-TPM_HANDLE ScopedKeyHandle::get() {
+TPM_HANDLE ScopedKeyHandle::get() const {
   return handle_;
 }
 
