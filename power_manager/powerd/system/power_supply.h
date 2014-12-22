@@ -46,15 +46,17 @@ struct PowerStatus {
   // Details about a power source.
   struct Source {
     Source(const std::string& id,
-           const std::string& name,
+           const std::string& manufacturer_id,
+           const std::string& model_id,
            bool active_by_default);
     ~Source();
 
     // Opaque ID corresponding to the power source.
     std::string id;
 
-    // User-friendly name describing the power source.
-    std::string name;
+    // Values read from |manufacturer| and |model_name|.
+    std::string manufacturer_id;
+    std::string model_id;
 
     // True if the power source automatically provides charge when connected
     // (e.g. a dedicated charger).
@@ -69,9 +71,6 @@ struct PowerStatus {
 
   // String read from sysfs describing the non-battery power source.
   std::string line_power_type;
-
-  // The charger's model name, if applicable and available.
-  std::string line_power_model_name;
 
   // Line power statistics. These may be unset even if line power is connected.
   double line_power_voltage;  // In volts.

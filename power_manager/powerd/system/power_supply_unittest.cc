@@ -305,18 +305,26 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   base::DeleteFile(ac_dir_, true);
 
   const char kLine1Id[] = "line1";
+  const char kLine1Manufacturer[] = "04fe";
+  const char kLine1ModelName[] = "0256";
   const base::FilePath line1_dir = temp_dir_.path().Append(kLine1Id);
   ASSERT_TRUE(base::CreateDirectory(line1_dir));
   WriteValue(line1_dir, "type", kUnknownType);
   WriteValue(line1_dir, "online", "0");
   WriteValue(line1_dir, "status", kNotCharging);
+  WriteValue(line1_dir, "manufacturer", kLine1Manufacturer);
+  WriteValue(line1_dir, "model_name", kLine1ModelName);
 
   const char kLine2Id[] = "line2";
+  const char kLine2Manufacturer[] = "587b";
+  const char kLine2ModelName[] = "3402";
   const base::FilePath line2_dir = temp_dir_.path().Append(kLine2Id);
   ASSERT_TRUE(base::CreateDirectory(line2_dir));
   WriteValue(line2_dir, "type", kUnknownType);
   WriteValue(line2_dir, "online", "0");
   WriteValue(line2_dir, "status", kNotCharging);
+  WriteValue(line2_dir, "manufacturer", kLine2Manufacturer);
+  WriteValue(line2_dir, "model_name", kLine2ModelName);
 
   Init();
   PowerStatus status;
@@ -341,7 +349,10 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL, status.battery_state);
   ASSERT_EQ(1u, status.available_external_power_sources.size());
   EXPECT_EQ(kLine1Id, status.available_external_power_sources[0].id);
-  EXPECT_EQ(kLine1Id, status.available_external_power_sources[0].name);
+  EXPECT_EQ(kLine1Manufacturer,
+            status.available_external_power_sources[0].manufacturer_id);
+  EXPECT_EQ(kLine1ModelName,
+            status.available_external_power_sources[0].model_id);
   EXPECT_FALSE(status.available_external_power_sources[0].active_by_default);
   EXPECT_EQ(kLine1Id, status.external_power_source_id);
   EXPECT_TRUE(status.supports_dual_role_devices);
@@ -359,7 +370,10 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL, status.battery_state);
   ASSERT_EQ(1u, status.available_external_power_sources.size());
   EXPECT_EQ(kLine2Id, status.available_external_power_sources[0].id);
-  EXPECT_EQ(kLine2Id, status.available_external_power_sources[0].name);
+  EXPECT_EQ(kLine2Manufacturer,
+            status.available_external_power_sources[0].manufacturer_id);
+  EXPECT_EQ(kLine2ModelName,
+            status.available_external_power_sources[0].model_id);
   EXPECT_TRUE(status.available_external_power_sources[0].active_by_default);
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
 
@@ -374,10 +388,16 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL, status.battery_state);
   ASSERT_EQ(2u, status.available_external_power_sources.size());
   EXPECT_EQ(kLine1Id, status.available_external_power_sources[0].id);
-  EXPECT_EQ(kLine1Id, status.available_external_power_sources[0].name);
+  EXPECT_EQ(kLine1Manufacturer,
+            status.available_external_power_sources[0].manufacturer_id);
+  EXPECT_EQ(kLine1ModelName,
+            status.available_external_power_sources[0].model_id);
   EXPECT_FALSE(status.available_external_power_sources[0].active_by_default);
   EXPECT_EQ(kLine2Id, status.available_external_power_sources[1].id);
-  EXPECT_EQ(kLine2Id, status.available_external_power_sources[1].name);
+  EXPECT_EQ(kLine2Manufacturer,
+            status.available_external_power_sources[1].manufacturer_id);
+  EXPECT_EQ(kLine2ModelName,
+            status.available_external_power_sources[1].model_id);
   EXPECT_TRUE(status.available_external_power_sources[1].active_by_default);
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
 
@@ -1152,14 +1172,16 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
 
   // Check that power source details are copied.
   const char kChargerId[] = "PORT1";
-  const char kChargerName[] = "AC Adapter";
+  const char kChargerManufacturerId[] = "ab4e";
+  const char kChargerModelId[] = "0f31";
   const char kPhoneId[] = "PORT2";
-  const char kPhoneName[] = "Phone";
+  const char kPhoneManufacturerId[] = "468b";
+  const char kPhoneModelId[] = "0429";
   status.external_power_source_id = kChargerId;
-  status.available_external_power_sources.push_back(
-      PowerStatus::Source(kChargerId, kChargerName, true));
-  status.available_external_power_sources.push_back(
-      PowerStatus::Source(kPhoneId, kPhoneName, false));
+  status.available_external_power_sources.push_back(PowerStatus::Source(
+      kChargerId, kChargerManufacturerId, kChargerModelId, true));
+  status.available_external_power_sources.push_back(PowerStatus::Source(
+      kPhoneId, kPhoneManufacturerId, kPhoneModelId, false));
   status.supports_dual_role_devices = true;
 
   proto.Clear();
@@ -1167,10 +1189,16 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   EXPECT_EQ(kChargerId, proto.external_power_source_id());
   ASSERT_EQ(2u, proto.available_external_power_source_size());
   EXPECT_EQ(kChargerId, proto.available_external_power_source(0).id());
-  EXPECT_EQ(kChargerName, proto.available_external_power_source(0).name());
+  EXPECT_EQ(kChargerManufacturerId,
+            proto.available_external_power_source(0).manufacturer_id());
+  EXPECT_EQ(kChargerModelId,
+            proto.available_external_power_source(0).model_id());
   EXPECT_TRUE(proto.available_external_power_source(0).active_by_default());
   EXPECT_EQ(kPhoneId, proto.available_external_power_source(1).id());
-  EXPECT_EQ(kPhoneName, proto.available_external_power_source(1).name());
+  EXPECT_EQ(kPhoneManufacturerId,
+            proto.available_external_power_source(1).manufacturer_id());
+  EXPECT_EQ(kPhoneModelId,
+            proto.available_external_power_source(1).model_id());
   EXPECT_FALSE(proto.available_external_power_source(1).active_by_default());
   EXPECT_TRUE(proto.supports_dual_role_devices());
 

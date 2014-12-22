@@ -159,7 +159,8 @@ void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
     PowerSupplyProperties_PowerSource* proto_source =
         proto->add_available_external_power_source();
     proto_source->set_id(source.id);
-    proto_source->set_name(source.name);
+    proto_source->set_manufacturer_id(source.manufacturer_id);
+    proto_source->set_model_id(source.model_id);
     proto_source->set_active_by_default(source.active_by_default);
   }
   if (!status.external_power_source_id.empty())
@@ -228,12 +229,13 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
   return output;
 }
 
-PowerStatus::Source::Source(
-    const std::string& id,
-    const std::string& name,
-    bool active_by_default)
+PowerStatus::Source::Source(const std::string& id,
+                            const std::string& manufacturer_id,
+                            const std::string& model_id,
+                            bool active_by_default)
     : id(id),
-      name(name),
+      manufacturer_id(manufacturer_id),
+      model_id(model_id),
       active_by_default(active_by_default) {}
 
 PowerStatus::Source::~Source() {}
@@ -596,16 +598,19 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
 
   // Okay, this is a potential power source. Add it to the list.
   const std::string id = GetIdForPath(path);
-  // TODO(derat): Try to determine this by reading the manufacturer and/or
-  // model_name fields.
-  const std::string name = id;
+
   // Most dedicated chargers will be reported as "Mains". On spring, low-power
   // USB chargers instead have a "USB"-prefixed type, but they _don't_ have a
   // "status" file (which _is_ present for dual-role USB PD devices).
   const bool active_by_default =
       type == kMainsType || (IsUsbChargerType(type) && line_status.empty());
+
+  std::string manufacturer_id, model_id;
+  ReadAndTrimString(path, "manufacturer", &manufacturer_id);
+  ReadAndTrimString(path, "model_name", &model_id);
+
   status->available_external_power_sources.push_back(
-      PowerStatus::Source(id, name, active_by_default));
+      PowerStatus::Source(id, manufacturer_id, model_id, active_by_default));
 
   // If this is a dual-role device, make sure that we're actually getting
   // charged by it.
@@ -621,7 +626,6 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   status->line_power_on = true;
   status->line_power_path = path.value();
   status->line_power_type = type;
-  ReadAndTrimString(path, "model_name", &status->line_power_model_name);
   if (IsUsbChargerType(status->line_power_type)) {
     status->external_power = line_status.empty() ?
         PowerSupplyProperties_ExternalPower_USB :
