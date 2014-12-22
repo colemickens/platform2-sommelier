@@ -16,7 +16,8 @@
     'enable_exceptions%': 0,
 
     # DON'T EDIT BELOW THIS LINE.
-    # These arguments shouldn't be changed here.
+    # You can declare new variables, but you shouldn't be changing their
+    # default settings.  The platform python build helpers set them up.
     'USE_attestation%': 0,
     'USE_cellular%': 0,
     'USE_cros_host%': 0,
