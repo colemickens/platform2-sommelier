@@ -15,6 +15,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <base/values.h>
+#include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1623,36 +1624,35 @@ bool Tpm::ConvertPublicKeyToDER(const SecureBlob& public_key,
   ScopedByteArray scoped_parms(parsed.algorithmParms.parms);
   TPM_RSA_KEY_PARMS* parms =
       reinterpret_cast<TPM_RSA_KEY_PARMS*>(parsed.algorithmParms.parms);
-  RSA* rsa = RSA_new();
-  CHECK(rsa);
+  crypto::ScopedRSA rsa(RSA_new());
+  CHECK(rsa.get());
   // Get the public exponent.
   if (parms->exponentSize == 0) {
-    rsa->e = BN_new();
-    CHECK(rsa->e);
-    BN_set_word(rsa->e, kWellKnownExponent);
+    rsa.get()->e = BN_new();
+    CHECK(rsa.get()->e);
+    BN_set_word(rsa.get()->e, kWellKnownExponent);
   } else {
-    rsa->e = BN_bin2bn(parms->exponent, parms->exponentSize, NULL);
-    CHECK(rsa->e);
+    rsa.get()->e = BN_bin2bn(parms->exponent, parms->exponentSize, NULL);
+    CHECK(rsa.get()->e);
   }
   // Get the modulus.
-  rsa->n = BN_bin2bn(parsed.pubKey.key, parsed.pubKey.keyLength, NULL);
-  CHECK(rsa->n);
+  rsa.get()->n = BN_bin2bn(parsed.pubKey.key, parsed.pubKey.keyLength, NULL);
+  CHECK(rsa.get()->n);
 
   // DER encode.
-  int der_length = i2d_RSAPublicKey(rsa, NULL);
+  int der_length = i2d_RSAPublicKey(rsa.get(), NULL);
   if (der_length < 0) {
     LOG(ERROR) << "Failed to DER-encode public key.";
     return false;
   }
   public_key_der->resize(der_length);
   unsigned char* der_buffer = &public_key_der->front();
-  der_length = i2d_RSAPublicKey(rsa, &der_buffer);
+  der_length = i2d_RSAPublicKey(rsa.get(), &der_buffer);
   if (der_length < 0) {
     LOG(ERROR) << "Failed to DER-encode public key.";
     return false;
   }
   public_key_der->resize(der_length);
-  RSA_free(rsa);
   return true;
 }
 
@@ -1685,18 +1685,10 @@ bool Tpm::MakeIdentity(SecureBlob* identity_public_key_der,
     return false;
   }
 
-  // The easiest way to create an AIK and get all the information we need out of
-  // the TPM is to call Tspi_TPM_CollateIdentityRequest and disassemble the
-  // request. For that we need to spoof a Privacy CA (PCA).
-  class ScopedRSAKey {
-   public:
-    explicit ScopedRSAKey(RSA* rsa) : rsa_(rsa) {}
-    ~ScopedRSAKey() { if (rsa_) RSA_free(rsa_); }
-    RSA* get() { return rsa_; }
-   private:
-    RSA* rsa_;
-  } fake_pca_key(RSA_generate_key(kDefaultTpmRsaKeyBits, kWellKnownExponent,
-                                  NULL, NULL));
+  crypto::ScopedRSA fake_pca_key(RSA_generate_key(kDefaultTpmRsaKeyBits,
+                                                  kWellKnownExponent,
+                                                  NULL,
+                                                  NULL));
   if (!fake_pca_key.get()) {
     LOG(ERROR) << "MakeIdentity: Failed to generate local key pair.";
     return false;

@@ -14,6 +14,7 @@
 #include <chaps/pkcs11/cryptoki.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
 
 #include "cryptohome/cryptolib.h"
@@ -206,20 +207,20 @@ bool Pkcs11KeyStore::Register(const string& username,
 
   // Extract the modulus from the public key.
   const unsigned char* asn1_ptr = &public_key_der.front();
-  RSA* public_key = d2i_RSAPublicKey(NULL, &asn1_ptr, public_key_der.size());
-  if (!public_key) {
+  crypto::ScopedRSA public_key(d2i_RSAPublicKey(NULL,
+                                                &asn1_ptr,
+                                                public_key_der.size()));
+  if (!public_key.get()) {
     LOG(ERROR) << "Pkcs11KeyStore: Failed to decode public key.";
     return false;
   }
-  SecureBlob modulus(BN_num_bytes(public_key->n));
-  int length = BN_bn2bin(public_key->n, &modulus.front());
+  SecureBlob modulus(BN_num_bytes(public_key.get()->n));
+  int length = BN_bn2bin(public_key.get()->n, &modulus.front());
   if (length <= 0) {
     LOG(ERROR) << "Pkcs11KeyStore: Failed to extract public key modulus.";
-    RSA_free(public_key);
     return false;
   }
   modulus.resize(length);
-  RSA_free(public_key);
 
   // Construct a PKCS #11 template for the public key object.
   CK_BBOOL true_value = CK_TRUE;

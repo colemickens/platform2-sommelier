@@ -19,6 +19,7 @@
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <chromeos/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
 extern "C" {
 #include <scrypt/crypto_scrypt.h>
 #include <scrypt/scryptenc.h>
@@ -59,28 +60,29 @@ void CryptoLib::GetSecureRandom(unsigned char* buf, size_t length) {
 bool CryptoLib::CreateRsaKey(size_t key_bits,
                              SecureBlob* n,
                           SecureBlob* p) {
-  RSA* rsa = RSA_generate_key(key_bits, kWellKnownExponent, NULL, NULL);
-
-  if (rsa == NULL) {
+  crypto::ScopedRSA rsa(RSA_generate_key(key_bits,
+                                         kWellKnownExponent,
+                                         NULL,
+                                         NULL));
+  if (rsa.get() == NULL) {
     LOG(ERROR) << "RSA key generation failed.";
     return false;
   }
 
-  SecureBlob local_n(BN_num_bytes(rsa->n));
-  if (BN_bn2bin(rsa->n, static_cast<unsigned char*>(local_n.data())) <= 0) {
+  SecureBlob local_n(BN_num_bytes(rsa.get()->n));
+  if (BN_bn2bin(rsa.get()->n, static_cast<unsigned char*>(local_n.data()))
+      <= 0) {
     LOG(ERROR) << "Unable to get modulus from RSA key.";
-    RSA_free(rsa);
     return false;
   }
 
-  SecureBlob local_p(BN_num_bytes(rsa->p));
-  if (BN_bn2bin(rsa->p, static_cast<unsigned char*>(local_p.data())) <= 0) {
+  SecureBlob local_p(BN_num_bytes(rsa.get()->p));
+  if (BN_bn2bin(rsa.get()->p, static_cast<unsigned char*>(local_p.data()))
+      <= 0) {
     LOG(ERROR) << "Unable to get private key from RSA key.";
-    RSA_free(rsa);
     return false;
   }
 
-  RSA_free(rsa);
   n->swap(local_n);
   p->swap(local_p);
   return true;
