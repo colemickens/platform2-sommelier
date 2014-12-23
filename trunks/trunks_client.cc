@@ -15,6 +15,7 @@
 #include "trunks/error_codes.h"
 #include "trunks/password_authorization_delegate.h"
 #include "trunks/scoped_key_handle.h"
+#include "trunks/tpm_state.h"
 #include "trunks/tpm_utility.h"
 #include "trunks/trunks_factory_impl.h"
 
@@ -23,11 +24,12 @@ namespace {
 void PrintUsage() {
   puts("Options:");
   puts("  --help - Prints this message.");
+  puts("  --status - Prints TPM status information.");
   puts("  --startup - Performs startup and self-tests.");
   puts("  --clear - Clears the TPM. Use before initializing the TPM.");
   puts("  --init_tpm - Initializes a TPM as CrOS firmware does.");
   puts("  --own=<owner_password> - Takes ownership of the TPM with the "
-       "given password");
+       "given password.");
 }
 
 int Startup() {
@@ -137,6 +139,30 @@ int DecryptTest() {
   return 0;
 }
 
+int DumpStatus() {
+  trunks::TrunksFactoryImpl factory;
+  scoped_ptr<trunks::TpmState> state = factory.GetTpmState();
+  trunks::TPM_RC result = state->Initialize();
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Failed to read TPM state: "
+               << trunks::GetErrorString(result);
+    return result;
+  }
+  printf("Owner password set: %s\n",
+         state->IsOwnerPasswordSet() ? "true" : "false");
+  printf("Endorsement password set: %s\n",
+         state->IsEndorsementPasswordSet() ? "true" : "false");
+  printf("Lockout password set: %s\n",
+         state->IsLockoutPasswordSet() ? "true" : "false");
+  printf("In lockout: %s\n",
+         state->IsInLockout() ? "true" : "false");
+  printf("Platform hierarchy enabled: %s\n",
+         state->IsOwnerPasswordSet() ? "true" : "false");
+  printf("Was shutdown orderly: %s\n",
+         state->IsOwnerPasswordSet() ? "true" : "false");
+  return 0;
+}
+
 }  // namespace
 
 
@@ -144,6 +170,9 @@ int main(int argc, char **argv) {
   CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
   CommandLine *cl = CommandLine::ForCurrentProcess();
+  if (cl->HasSwitch("status")) {
+    return DumpStatus();
+  }
   if (cl->HasSwitch("startup")) {
     return Startup();
   }

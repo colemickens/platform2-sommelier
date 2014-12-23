@@ -8,18 +8,23 @@
 #include <base/stl_util.h>
 
 #include "trunks/dbus_interface.h"
+#include "trunks/dbus_interface.pb.h"
 #include "trunks/error_codes.h"
-#include "trunks/tpm_communication.pb.h"
-
-namespace trunks {
+#include "trunks/tpm_utility_impl.h"
 
 namespace {
 
-const int kDbusMaxTimeout = 5 * 60 * 1000;  // 5 minutes.
+// Use a five minute timeout because some commands on some TPM hardware can take
+// a very long time. If a few lengthy operations are already in the queue, a
+// subsequent command needs to wait for all of them. Timeouts are always
+// possible but under normal conditions 5 minutes seems to be plenty.
+const int kDbusMaxTimeout = 5 * 60 * 1000;
 
 }  // namespace
 
-TrunksProxy::TrunksProxy() {}
+namespace trunks {
+
+TrunksProxy::TrunksProxy() : weak_factory_(this) {}
 
 TrunksProxy::~TrunksProxy() {}
 
@@ -38,66 +43,55 @@ bool TrunksProxy::Init() {
 }
 
 void TrunksProxy::SendCommand(const std::string& command,
-                              const SendCommandCallback& callback) {
-  dbus::MethodCall method_call(trunks::kTrunksInterface, trunks::kSendCommand);
-  dbus::MessageWriter writer(&method_call);
-  CHECK(!command.empty());
-  TpmCommand tpm_command_proto;
-  tpm_command_proto.set_command(command);
-  writer.AppendProtoAsArrayOfBytes(tpm_command_proto);
-  object_->CallMethod(&method_call, kDbusMaxTimeout,
-                      base::Bind(&trunks::TrunksProxy::OnResponse, callback));
+                              const ResponseCallback& callback) {
+  scoped_ptr<dbus::MethodCall> method_call =
+      CreateSendCommandMethodCall(command);
+  object_->CallMethod(method_call.get(), kDbusMaxTimeout,
+                      base::Bind(&trunks::TrunksProxy::OnResponse,
+                                 GetWeakPtr(),
+                                 callback));
 }
 
-uint32_t TrunksProxy::SendCommandAndWait(const std::string& command,
-                                         std::string* response) {
-  dbus::MethodCall method_call(trunks::kTrunksInterface, trunks::kSendCommand);
-  dbus::MessageWriter writer(&method_call);
-  CHECK(!command.empty());
-  TpmCommand tpm_command_proto;
-  tpm_command_proto.set_command(command);
-  writer.AppendProtoAsArrayOfBytes(tpm_command_proto);
+std::string TrunksProxy::SendCommandAndWait(const std::string& command) {
+  scoped_ptr<dbus::MethodCall> method_call =
+      CreateSendCommandMethodCall(command);
   scoped_ptr<dbus::Response> dbus_response =
-      object_->CallMethodAndBlock(&method_call, kDbusMaxTimeout);
-  dbus::MessageReader reader(dbus_response.get());
-  TpmResponse tpm_response_proto;
-  if (!reader.PopArrayOfBytesAsProto(&tpm_response_proto)) {
-    LOG(ERROR) << "TrunksProxy was not able to parse the response.";
-    response->resize(0);
-    return SAPI_RC_MALFORMED_RESPONSE;
-  }
-  TPM_RC response_rc = TPM_RC_SUCCESS;
-  if (tpm_response_proto.has_result_code()) {
-    response_rc = tpm_response_proto.result_code();
-    if (response_rc != TPM_RC_SUCCESS) {
-      LOG(ERROR) << "Trunks Daemon returned an error code: " << response_rc;
-    }
-  }
-  *response = tpm_response_proto.response();
-  return response_rc;
+      object_->CallMethodAndBlock(method_call.get(), kDbusMaxTimeout);
+  return GetResponseData(dbus_response.get());
 }
 
-void TrunksProxy::OnResponse(const SendCommandCallback& callback,
+void TrunksProxy::OnResponse(const ResponseCallback& callback,
                              dbus::Response* response) {
   if (!response) {
-    LOG(INFO) << "No response seen.";
-    callback.Run("");
+    LOG(ERROR) << "TrunksProxy: No response!";
+    callback.Run(TpmUtilityImpl::CreateErrorResponse(
+        SAPI_RC_NO_RESPONSE_RECEIVED));
     return;
   }
+  callback.Run(GetResponseData(response));
+}
+
+std::string TrunksProxy::GetResponseData(dbus::Response* response) {
   dbus::MessageReader reader(response);
-  TpmResponse tpm_response_proto;
+  SendCommandResponse tpm_response_proto;
   if (!reader.PopArrayOfBytesAsProto(&tpm_response_proto)) {
     LOG(ERROR) << "TrunksProxy was not able to parse the response.";
-    callback.Run(std::string());
-    return;
+    return TpmUtilityImpl::CreateErrorResponse(SAPI_RC_MALFORMED_RESPONSE);
   }
-  if (tpm_response_proto.has_result_code()) {
-    TPM_RC rc = tpm_response_proto.result_code();
-    if (rc != TPM_RC_SUCCESS) {
-      LOG(ERROR) << "Trunks Daemon returned an error code: " << rc;
-    }
-  }
-  callback.Run(tpm_response_proto.response());
+  return tpm_response_proto.response();
+}
+
+scoped_ptr<dbus::MethodCall> TrunksProxy::CreateSendCommandMethodCall(
+    const std::string& command) {
+  CHECK(!command.empty());
+  scoped_ptr<dbus::MethodCall> method_call(new dbus::MethodCall(
+      trunks::kTrunksInterface,
+      trunks::kSendCommand));
+  dbus::MessageWriter writer(method_call.get());
+  SendCommandRequest tpm_command_proto;
+  tpm_command_proto.set_command(command);
+  writer.AppendProtoAsArrayOfBytes(tpm_command_proto);
+  return method_call.Pass();
 }
 
 }  // namespace trunks

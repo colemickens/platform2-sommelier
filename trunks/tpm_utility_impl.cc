@@ -1070,4 +1070,45 @@ TPM_RC TpmUtilityImpl::KeyDataToString(const TPM2B_PUBLIC& public_info,
   return TPM_RC_SUCCESS;
 }
 
+std::string TpmUtilityImpl::CreateErrorResponse(TPM_RC error_code) {
+  const uint32_t kErrorResponseSize = 10;
+  std::string response;
+  CHECK_EQ(Serialize_TPM_ST(TPM_ST_NO_SESSIONS, &response), TPM_RC_SUCCESS);
+  CHECK_EQ(Serialize_UINT32(kErrorResponseSize, &response), TPM_RC_SUCCESS);
+  CHECK_EQ(Serialize_TPM_RC(error_code, &response), TPM_RC_SUCCESS);
+  return response;
+}
+
+bool TpmUtilityImpl::ParseHeader(const std::string& message,
+                                 bool* has_sessions,
+                                 uint32_t* size,
+                                 uint32_t* code) {
+  std::string buffer = message;
+  TPM_ST tag;
+  if (Parse_TPM_ST(&buffer, &tag, NULL) != TPM_RC_SUCCESS) {
+    return false;
+  }
+  uint32_t tmp_size;
+  if (Parse_UINT32(&buffer, &tmp_size, NULL) != TPM_RC_SUCCESS) {
+    return false;
+  }
+  if (tmp_size != message.size()) {
+    return false;
+  }
+  TPM_RC tmp_code;
+  if (Parse_TPM_RC(&buffer, &tmp_code, NULL) != TPM_RC_SUCCESS) {
+    return false;
+  }
+  if (has_sessions) {
+    *has_sessions = (tag == TPM_ST_SESSIONS);
+  }
+  if (size) {
+    *size = tmp_size;
+  }
+  if (code) {
+    *code = tmp_code;
+  }
+  return true;
+}
+
 }  // namespace trunks

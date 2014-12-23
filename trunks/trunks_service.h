@@ -6,6 +6,7 @@
 #define TRUNKS_TRUNKS_SERVICE_H_
 
 #include <base/memory/scoped_ptr.h>
+#include <base/memory/weak_ptr.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
@@ -16,34 +17,42 @@
 
 namespace trunks {
 
-// TrunksService is the implementation of the trunks Dbus Daemon, Trunksd
-// Trunksd posesses the sole handle to "/dev/tpm0" and uses it to send
-// commands and receive replies from the TPM.
+// TrunksService registers for and handles all incoming D-Bus messages for the
+// trunksd system daemon.
 class TrunksService {
  public:
-  TrunksService();
+  // The |transceiver| will be the target of all incoming TPM commands.
+  explicit TrunksService(CommandTransceiver* transceiver);
   virtual ~TrunksService();
-  // Initializes trunks daemon, sets up its dbus interface,
-  // and exports methods.
-  virtual void Init(TpmHandle* tpm);
+
+  // Registers for all trunksd D-Bus messages.
+  void Init();
 
  private:
-  // This method handles calls to the Dbus exported method |SendCommand|
-  // It is the sole means of communication with the TPM in trunks.
-  virtual void HandleSendCommand(
+  // Handles calls to the 'SendCommand' method.
+  void HandleSendCommand(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
-  // This method sets up the minijail sandbox. It sets up the seccomp
-  // filters and drops the Trunks Daemon user down from |root| into
-  // |trunks|.
-  virtual void InitMinijailSandbox();
+
+  // A response callback for 'SendCommand'.
+  void OnResponse(dbus::ExportedObject::ResponseSender response_sender,
+                  scoped_ptr<dbus::Response> dbus_response,
+                  const std::string& response_from_tpm);
+
   // This method sets up trunksd as a dbus service, and exports the
   // |HandleSendCommand| method via dbus.
-  virtual void InitDbusService();
+  void InitDBusService();
+
+  base::WeakPtr<TrunksService> GetWeakPtr() {
+    return weak_factory_.GetWeakPtr();
+  }
 
   scoped_refptr<dbus::Bus> bus_;
   dbus::ExportedObject* trunks_dbus_object_;
-  trunks::TpmHandle* tpm_;
+  CommandTransceiver* transceiver_;
+
+  // Declared last so weak pointers are invalidated first on destruction.
+  base::WeakPtrFactory<TrunksService> weak_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(TrunksService);
 };

@@ -1404,11 +1404,7 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_%(method_name)s(
       response,%(method_arg_names_out)s
       authorization_delegate);

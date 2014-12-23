@@ -90,9 +90,8 @@ TEST(GeneratorTest, SynchronousCommand) {
                                "\x00\x00\x00\x00",  // code=TPM_RC_SUCCESS
                                10);
   StrictMock<MockCommandTransceiver> transceiver;
-  EXPECT_CALL(transceiver, SendCommandAndWait(expected_command, _))
-      .WillOnce(DoAll(SetArgPointee<1>(command_response),
-                      Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(transceiver, SendCommandAndWait(expected_command))
+      .WillOnce(Return(command_response));
   StrictMock<MockAuthorizationDelegate> authorization;
   EXPECT_CALL(authorization, GetCommandAuthorization(_, _, _, _))
       .WillOnce(Return(true));
@@ -112,31 +111,8 @@ TEST(GeneratorTest, SynchronousCommandWithError) {
                                "\x00\x00\x01\x01",  // code=TPM_RC_FAILURE
                                10);
   StrictMock<MockCommandTransceiver> transceiver;
-  EXPECT_CALL(transceiver, SendCommandAndWait(expected_command, _))
-      .WillOnce(DoAll(SetArgPointee<1>(command_response),
-                      Return(TPM_RC_SUCCESS)));
-  StrictMock<MockAuthorizationDelegate> authorization;
-  EXPECT_CALL(authorization, GetCommandAuthorization(_, _, _, _))
-      .WillOnce(Return(true));
-  Tpm tpm(&transceiver);
-  EXPECT_EQ(TPM_RC_FAILURE, tpm.StartupSync(TPM_SU_CLEAR, &authorization));
-}
-
-TEST(GeneratorTest, SynchronousCommandWithTransceiverError) {
-  // A hand-rolled TPM2_Startup command.
-  std::string expected_command("\x80\x01"          // tag=TPM_ST_NO_SESSIONS
-                               "\x00\x00\x00\x0C"  // size=12
-                               "\x00\x00\x01\x44"  // code=TPM_CC_Startup
-                               "\x00\x00",         // param=TPM_SU_CLEAR
-                               12);
-  std::string command_response("\x80\x01"           // tag=TPM_ST_NO_SESSIONS
-                               "\x00\x00\x00\x0A"   // size=10
-                               "\x00\x00\x00\x00",  // code=TPM_RC_SUCCESS
-                               10);
-  StrictMock<MockCommandTransceiver> transceiver;
-  EXPECT_CALL(transceiver, SendCommandAndWait(expected_command, _))
-      .WillOnce(DoAll(SetArgPointee<1>(command_response),
-                      Return(TPM_RC_FAILURE)));
+  EXPECT_CALL(transceiver, SendCommandAndWait(expected_command))
+      .WillOnce(Return(command_response));
   StrictMock<MockAuthorizationDelegate> authorization;
   EXPECT_CALL(authorization, GetCommandAuthorization(_, _, _, _))
       .WillOnce(Return(true));
@@ -201,9 +177,8 @@ TEST(GeneratorTest, SynchronousCommandResponseTest) {
                                  auth_out;
 
   StrictMock<MockCommandTransceiver> transceiver;
-  EXPECT_CALL(transceiver, SendCommandAndWait(expected_command, _))
-      .WillOnce(DoAll(SetArgPointee<1>(command_response),
-                      Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(transceiver, SendCommandAndWait(expected_command))
+      .WillOnce(Return(command_response));
   StrictMock<MockAuthorizationDelegate> authorization;
   EXPECT_CALL(authorization, GetCommandAuthorization(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(auth_in), Return(true)));

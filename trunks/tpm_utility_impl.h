@@ -76,6 +76,18 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC GetKeyPublicArea(TPM_HANDLE handle,
                           TPM2B_PUBLIC* public_data) override;
 
+  // Creates a well-formed response with the given |error_code|.
+  static std::string CreateErrorResponse(TPM_RC error_code);
+
+  // Parses a |message| which may be a command or a response and provides
+  // whether the message |has_sessions|, the message |size|, and the command or
+  // response |code| for the message. Returns false if the message is not
+  // well-formed.
+  static bool ParseHeader(const std::string& message,
+                          bool* has_sessions,
+                          uint32_t* size,
+                          uint32_t* code);
+
  protected:
   FRIEND_TEST(TpmUtilityTest, RootKeysSuccess);
   FRIEND_TEST(TpmUtilityTest, RootKeysHandleConsistency);

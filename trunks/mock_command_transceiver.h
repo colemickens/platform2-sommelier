@@ -20,11 +20,8 @@ class MockCommandTransceiver : public CommandTransceiver {
   MockCommandTransceiver();
   virtual ~MockCommandTransceiver();
 
-  MOCK_METHOD2(SendCommand, void(
-      const std::string&,
-      const base::Callback<void(const std::string& response)>&));
-  MOCK_METHOD2(SendCommandAndWait, uint32_t(const std::string&,
-                                            std::string*));
+  MOCK_METHOD2(SendCommand, void(const std::string&, const ResponseCallback&));
+  MOCK_METHOD1(SendCommandAndWait, std::string(const std::string&));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockCommandTransceiver);

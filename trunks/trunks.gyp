@@ -16,14 +16,14 @@
   },
   'targets': [
     {
-      'target_name': 'tpm_communication_proto',
+      'target_name': 'dbus_interface_proto',
       'type': 'static_library',
       'variables': {
         'proto_in_dir': '.',
         'proto_out_dir': 'include/trunks',
       },
       'sources': [
-        '<(proto_in_dir)/tpm_communication.proto',
+        '<(proto_in_dir)/dbus_interface.proto',
       ],
       'includes': ['../common-mk/protoc.gypi'],
     },
@@ -46,7 +46,7 @@
         'trunks_proxy.cc',
       ],
       'dependencies': [
-        'tpm_communication_proto',
+        'dbus_interface_proto',
       ],
     },
     {
@@ -60,18 +60,30 @@
       ],
     },
     {
+      'target_name': 'trunksd_lib',
+      'type': 'static_library',
+      'sources': [
+        'background_command_transceiver.cc',
+        'tpm_handle.cc',
+        'trunks_service.cc',
+      ],
+      'dependencies': [
+        'dbus_interface_proto',
+      ],
+    },
+    {
       'target_name': 'trunksd',
       'type': 'executable',
       'libraries': [
         '-lminijail',
       ],
       'sources': [
-        'tpm_handle_impl.cc',
-        'trunks_service.cc',
         'trunksd.cc',
       ],
       'dependencies': [
-        'tpm_communication_proto',
+        'dbus_interface_proto',
+        'trunks',
+        'trunksd_lib',
       ],
     },
   ],
@@ -87,6 +99,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'authorization_session_test.cc',
+            'background_command_transceiver_test.cc',
             'hmac_authorization_delegate_unittest.cc',
             'mock_authorization_delegate.cc',
             'mock_authorization_session.cc',
@@ -104,6 +117,7 @@
           ],
           'dependencies': [
             'trunks',
+            'trunksd_lib',
           ],
         },
       ],

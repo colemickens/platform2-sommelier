@@ -9397,11 +9397,7 @@ TPM_RC Tpm::StartupSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_Startup(
       response,
       authorization_delegate);
@@ -9637,11 +9633,7 @@ TPM_RC Tpm::ShutdownSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_Shutdown(
       response,
       authorization_delegate);
@@ -9877,11 +9869,7 @@ TPM_RC Tpm::SelfTestSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_SelfTest(
       response,
       authorization_delegate);
@@ -10131,11 +10119,7 @@ TPM_RC Tpm::IncrementalSelfTestSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_IncrementalSelfTest(
       response,
       to_do_list,
@@ -10400,11 +10384,7 @@ TPM_RC Tpm::GetTestResultSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_GetTestResult(
       response,
       out_data,
@@ -10800,11 +10780,7 @@ TPM_RC Tpm::StartAuthSessionSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_StartAuthSession(
       response,
       session_handle,
@@ -11047,11 +11023,7 @@ TPM_RC Tpm::PolicyRestartSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PolicyRestart(
       response,
       authorization_delegate);
@@ -11450,11 +11422,7 @@ TPM_RC Tpm::CreateSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_Create(
       response,
       out_private,
@@ -11784,11 +11752,7 @@ TPM_RC Tpm::LoadSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_Load(
       response,
       object_handle,
@@ -12115,11 +12079,7 @@ TPM_RC Tpm::LoadExternalSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_LoadExternal(
       response,
       object_handle,
@@ -12420,11 +12380,7 @@ TPM_RC Tpm::ReadPublicSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_ReadPublic(
       response,
       out_public,
@@ -12759,11 +12715,7 @@ TPM_RC Tpm::ActivateCredentialSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_ActivateCredential(
       response,
       cert_info,
@@ -13075,11 +13027,7 @@ TPM_RC Tpm::MakeCredentialSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_MakeCredential(
       response,
       credential_blob,
@@ -13351,11 +13299,7 @@ TPM_RC Tpm::UnsealSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_Unseal(
       response,
       out_data,
@@ -13672,11 +13616,7 @@ TPM_RC Tpm::ObjectChangeAuthSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_ObjectChangeAuth(
       response,
       out_private,
@@ -14023,11 +13963,7 @@ TPM_RC Tpm::DuplicateSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_Duplicate(
       response,
       encryption_key_out,
@@ -14361,11 +14297,7 @@ TPM_RC Tpm::RewrapSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_Rewrap(
       response,
       out_duplicate,
@@ -14725,11 +14657,7 @@ TPM_RC Tpm::ImportSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_Import(
       response,
       out_private,
@@ -15057,11 +14985,7 @@ TPM_RC Tpm::RSA_EncryptSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_RSA_Encrypt(
       response,
       out_data,
@@ -15389,11 +15313,7 @@ TPM_RC Tpm::RSA_DecryptSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_RSA_Decrypt(
       response,
       message,
@@ -15679,11 +15599,7 @@ TPM_RC Tpm::ECDH_KeyGenSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_ECDH_KeyGen(
       response,
       z_point,
@@ -15980,11 +15896,7 @@ TPM_RC Tpm::ECDH_ZGenSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_ECDH_ZGen(
       response,
       out_point,
@@ -16235,11 +16147,7 @@ TPM_RC Tpm::ECC_ParametersSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_ECC_Parameters(
       response,
       parameters,
@@ -16597,11 +16505,7 @@ TPM_RC Tpm::ZGen_2PhaseSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_ZGen_2Phase(
       response,
       out_z1,
@@ -16952,11 +16856,7 @@ TPM_RC Tpm::EncryptDecryptSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_EncryptDecrypt(
       response,
       out_data,
@@ -17283,11 +17183,7 @@ TPM_RC Tpm::HashSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_Hash(
       response,
       out_hash,
@@ -17600,11 +17496,7 @@ TPM_RC Tpm::HMACSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_HMAC(
       response,
       out_hmac,
@@ -17871,11 +17763,7 @@ TPM_RC Tpm::GetRandomSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_GetRandom(
       response,
       random_bytes,
@@ -18120,11 +18008,7 @@ TPM_RC Tpm::StirRandomSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_StirRandom(
       response,
       authorization_delegate);
@@ -18419,11 +18303,7 @@ TPM_RC Tpm::HMAC_StartSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_HMAC_Start(
       response,
       sequence_handle,
@@ -18698,11 +18578,7 @@ TPM_RC Tpm::HashSequenceStartSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_HashSequenceStart(
       response,
       sequence_handle,
@@ -18968,11 +18844,7 @@ TPM_RC Tpm::SequenceUpdateSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_SequenceUpdate(
       response,
       authorization_delegate);
@@ -19302,11 +19174,7 @@ TPM_RC Tpm::SequenceCompleteSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_SequenceComplete(
       response,
       result,
@@ -19608,11 +19476,7 @@ TPM_RC Tpm::EventSequenceCompleteSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_EventSequenceComplete(
       response,
       results,
@@ -19959,11 +19823,7 @@ TPM_RC Tpm::CertifySync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_Certify(
       response,
       certify_info,
@@ -20343,11 +20203,7 @@ TPM_RC Tpm::CertifyCreationSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_CertifyCreation(
       response,
       certify_info,
@@ -20690,11 +20546,7 @@ TPM_RC Tpm::QuoteSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_Quote(
       response,
       quoted,
@@ -21063,11 +20915,7 @@ TPM_RC Tpm::GetSessionAuditDigestSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_GetSessionAuditDigest(
       response,
       audit_info,
@@ -21415,11 +21263,7 @@ TPM_RC Tpm::GetCommandAuditDigestSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_GetCommandAuditDigest(
       response,
       audit_info,
@@ -21767,11 +21611,7 @@ TPM_RC Tpm::GetTimeSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_GetTime(
       response,
       time_info,
@@ -22148,11 +21988,7 @@ TPM_RC Tpm::CommitSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_Commit(
       response,
       param_size_out,
@@ -22451,11 +22287,7 @@ TPM_RC Tpm::EC_EphemeralSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_EC_Ephemeral(
       response,
       param_size_out,
@@ -22753,11 +22585,7 @@ TPM_RC Tpm::VerifySignatureSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_VerifySignature(
       response,
       validation,
@@ -23069,11 +22897,7 @@ TPM_RC Tpm::SignSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_Sign(
       response,
       signature,
@@ -23363,11 +23187,7 @@ TPM_RC Tpm::SetCommandCodeAuditStatusSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_SetCommandCodeAuditStatus(
       response,
       authorization_delegate);
@@ -23624,11 +23444,7 @@ TPM_RC Tpm::PCR_ExtendSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PCR_Extend(
       response,
       authorization_delegate);
@@ -23907,11 +23723,7 @@ TPM_RC Tpm::PCR_EventSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PCR_Event(
       response,
       digests,
@@ -24190,11 +24002,7 @@ TPM_RC Tpm::PCR_ReadSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PCR_Read(
       response,
       pcr_update_counter,
@@ -24510,11 +24318,7 @@ TPM_RC Tpm::PCR_AllocateSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PCR_Allocate(
       response,
       allocation_success,
@@ -24820,11 +24624,7 @@ TPM_RC Tpm::PCR_SetAuthPolicySync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PCR_SetAuthPolicy(
       response,
       authorization_delegate);
@@ -25089,11 +24889,7 @@ TPM_RC Tpm::PCR_SetAuthValueSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PCR_SetAuthValue(
       response,
       authorization_delegate);
@@ -25334,11 +25130,7 @@ TPM_RC Tpm::PCR_ResetSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PCR_Reset(
       response,
       authorization_delegate);
@@ -25716,11 +25508,7 @@ TPM_RC Tpm::PolicySignedSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PolicySigned(
       response,
       timeout,
@@ -26084,11 +25872,7 @@ TPM_RC Tpm::PolicySecretSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PolicySecret(
       response,
       timeout,
@@ -26419,11 +26203,7 @@ TPM_RC Tpm::PolicyTicketSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PolicyTicket(
       response,
       authorization_delegate);
@@ -26680,11 +26460,7 @@ TPM_RC Tpm::PolicyORSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PolicyOR(
       response,
       authorization_delegate);
@@ -26965,11 +26741,7 @@ TPM_RC Tpm::PolicyPCRSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PolicyPCR(
       response,
       authorization_delegate);
@@ -27226,11 +26998,7 @@ TPM_RC Tpm::PolicyLocalitySync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PolicyLocality(
       response,
       authorization_delegate);
@@ -27569,11 +27337,7 @@ TPM_RC Tpm::PolicyNVSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PolicyNV(
       response,
       authorization_delegate);
@@ -27870,11 +27634,7 @@ TPM_RC Tpm::PolicyCounterTimerSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PolicyCounterTimer(
       response,
       authorization_delegate);
@@ -28131,11 +27891,7 @@ TPM_RC Tpm::PolicyCommandCodeSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PolicyCommandCode(
       response,
       authorization_delegate);
@@ -28376,11 +28132,7 @@ TPM_RC Tpm::PolicyPhysicalPresenceSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PolicyPhysicalPresence(
       response,
       authorization_delegate);
@@ -28645,11 +28397,7 @@ TPM_RC Tpm::PolicyCpHashSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PolicyCpHash(
       response,
       authorization_delegate);
@@ -28914,11 +28662,7 @@ TPM_RC Tpm::PolicyNameHashSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PolicyNameHash(
       response,
       authorization_delegate);
@@ -29215,11 +28959,7 @@ TPM_RC Tpm::PolicyDuplicationSelectSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PolicyDuplicationSelect(
       response,
       authorization_delegate);
@@ -29532,11 +29272,7 @@ TPM_RC Tpm::PolicyAuthorizeSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PolicyAuthorize(
       response,
       authorization_delegate);
@@ -29777,11 +29513,7 @@ TPM_RC Tpm::PolicyAuthValueSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PolicyAuthValue(
       response,
       authorization_delegate);
@@ -30022,11 +29754,7 @@ TPM_RC Tpm::PolicyPasswordSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PolicyPassword(
       response,
       authorization_delegate);
@@ -30297,11 +30025,7 @@ TPM_RC Tpm::PolicyGetDigestSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PolicyGetDigest(
       response,
       policy_digest,
@@ -30559,11 +30283,7 @@ TPM_RC Tpm::PolicyNvWrittenSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PolicyNvWritten(
       response,
       authorization_delegate);
@@ -30976,11 +30696,7 @@ TPM_RC Tpm::CreatePrimarySync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_CreatePrimary(
       response,
       object_handle,
@@ -31259,11 +30975,7 @@ TPM_RC Tpm::HierarchyControlSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_HierarchyControl(
       response,
       authorization_delegate);
@@ -31544,11 +31256,7 @@ TPM_RC Tpm::SetPrimaryPolicySync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_SetPrimaryPolicy(
       response,
       authorization_delegate);
@@ -31789,11 +31497,7 @@ TPM_RC Tpm::ChangePPSSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_ChangePPS(
       response,
       authorization_delegate);
@@ -32034,11 +31738,7 @@ TPM_RC Tpm::ChangeEPSSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_ChangeEPS(
       response,
       authorization_delegate);
@@ -32279,11 +31979,7 @@ TPM_RC Tpm::ClearSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_Clear(
       response,
       authorization_delegate);
@@ -32540,11 +32236,7 @@ TPM_RC Tpm::ClearControlSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_ClearControl(
       response,
       authorization_delegate);
@@ -32809,11 +32501,7 @@ TPM_RC Tpm::HierarchyChangeAuthSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_HierarchyChangeAuth(
       response,
       authorization_delegate);
@@ -33054,11 +32742,7 @@ TPM_RC Tpm::DictionaryAttackLockResetSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_DictionaryAttackLockReset(
       response,
       authorization_delegate);
@@ -33347,11 +33031,7 @@ TPM_RC Tpm::DictionaryAttackParametersSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_DictionaryAttackParameters(
       response,
       authorization_delegate);
@@ -33624,11 +33304,7 @@ TPM_RC Tpm::PP_CommandsSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_PP_Commands(
       response,
       authorization_delegate);
@@ -33885,11 +33561,7 @@ TPM_RC Tpm::SetAlgorithmSetSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_SetAlgorithmSet(
       response,
       authorization_delegate);
@@ -34191,11 +33863,7 @@ TPM_RC Tpm::FieldUpgradeStartSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_FieldUpgradeStart(
       response,
       authorization_delegate);
@@ -34467,11 +34135,7 @@ TPM_RC Tpm::FieldUpgradeDataSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_FieldUpgradeData(
       response,
       next_digest,
@@ -34739,11 +34403,7 @@ TPM_RC Tpm::FirmwareReadSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_FirmwareRead(
       response,
       fu_data,
@@ -34999,11 +34659,7 @@ TPM_RC Tpm::ContextSaveSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_ContextSave(
       response,
       context,
@@ -35254,11 +34910,7 @@ TPM_RC Tpm::ContextLoadSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_ContextLoad(
       response,
       loaded_handle,
@@ -35500,11 +35152,7 @@ TPM_RC Tpm::FlushContextSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_FlushContext(
       response,
       authorization_delegate);
@@ -35782,11 +35430,7 @@ TPM_RC Tpm::EvictControlSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_EvictControl(
       response,
       authorization_delegate);
@@ -36034,11 +35678,7 @@ TPM_RC Tpm::ReadClockSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_ReadClock(
       response,
       return_code,
@@ -36311,11 +35951,7 @@ TPM_RC Tpm::ClockSetSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_ClockSet(
       response,
       return_code,
@@ -36587,11 +36223,7 @@ TPM_RC Tpm::ClockRateAdjustSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_ClockRateAdjust(
       response,
       return_code,
@@ -36888,11 +36520,7 @@ TPM_RC Tpm::GetCapabilitySync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_GetCapability(
       response,
       more_data,
@@ -37130,11 +36758,7 @@ TPM_RC Tpm::TestParmsSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_TestParms(
       response,
       authorization_delegate);
@@ -37415,11 +37039,7 @@ TPM_RC Tpm::NV_DefineSpaceSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_NV_DefineSpace(
       response,
       authorization_delegate);
@@ -37681,11 +37301,7 @@ TPM_RC Tpm::NV_UndefineSpaceSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_NV_UndefineSpace(
       response,
       authorization_delegate);
@@ -37947,11 +37563,7 @@ TPM_RC Tpm::NV_UndefineSpaceSpecialSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_NV_UndefineSpaceSpecial(
       response,
       authorization_delegate);
@@ -38236,11 +37848,7 @@ TPM_RC Tpm::NV_ReadPublicSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_NV_ReadPublic(
       response,
       nv_public,
@@ -38544,11 +38152,7 @@ TPM_RC Tpm::NV_WriteSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_NV_Write(
       response,
       authorization_delegate);
@@ -38810,11 +38414,7 @@ TPM_RC Tpm::NV_IncrementSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_NV_Increment(
       response,
       authorization_delegate);
@@ -39100,11 +38700,7 @@ TPM_RC Tpm::NV_ExtendSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_NV_Extend(
       response,
       authorization_delegate);
@@ -39382,11 +38978,7 @@ TPM_RC Tpm::NV_SetBitsSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_NV_SetBits(
       response,
       authorization_delegate);
@@ -39648,11 +39240,7 @@ TPM_RC Tpm::NV_WriteLockSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_NV_WriteLock(
       response,
       authorization_delegate);
@@ -39893,11 +39481,7 @@ TPM_RC Tpm::NV_GlobalWriteLockSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_NV_GlobalWriteLock(
       response,
       authorization_delegate);
@@ -40221,11 +39805,7 @@ TPM_RC Tpm::NV_ReadSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_NV_Read(
       response,
       data,
@@ -40488,11 +40068,7 @@ TPM_RC Tpm::NV_ReadLockSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_NV_ReadLock(
       response,
       authorization_delegate);
@@ -40757,11 +40333,7 @@ TPM_RC Tpm::NV_ChangeAuthSync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_NV_ChangeAuth(
       response,
       authorization_delegate);
@@ -41160,11 +40732,7 @@ TPM_RC Tpm::NV_CertifySync(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
-  std::string response;
-  rc = transceiver_->SendCommandAndWait(command, &response);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
+  std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_NV_Certify(
       response,
       certify_info,

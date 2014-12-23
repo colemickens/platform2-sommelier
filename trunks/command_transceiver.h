@@ -12,22 +12,23 @@
 namespace trunks {
 
 // CommandTransceiver is an interface that sends commands to a TPM device and
-// receives responses asynchronously.
+// receives responses. It can operate synchronously or asynchronously.
 class CommandTransceiver {
  public:
-  // Sends |command| unmodified to a TPM device.  When a response is received
-  // |callback| will be called with the unmodified |response| from the device.
-  // If a transmission error occurs a response message is created and sent to
-  // the callback using an error code defined by the TCG for the TCTI layer.
+  typedef base::Callback<void(const std::string& response)> ResponseCallback;
+
+  // Sends a TPM |command| asynchronously. When a |response| is received,
+  // |callback| will be called with the |response| data from the TPM. If a
+  // transmission error occurs |callback| will be called with a well-formed
+  // error |response|.
   virtual void SendCommand(
       const std::string& command,
-      const base::Callback<void(const std::string& response)>& callback) = 0;
+      const ResponseCallback& callback) = 0;
 
-  // Sends |command| unmodified to a TPM device and waits for the |response|. If
-  // a transmission error occurs a TCTI layer error code is returned. On success
-  // returns TPM_RC_SUCCESS.
-  virtual uint32_t SendCommandAndWait(const std::string& command,
-                                      std::string* response) = 0;
+  // Sends a TPM |command| synchronously (i.e. waits for a response) and returns
+  // the response. If a transmission error occurs the response will be populated
+  // with a well-formed error response.
+  virtual std::string SendCommandAndWait(const std::string& command) = 0;
 };
 
 }  // namespace trunks

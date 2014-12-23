@@ -5,44 +5,56 @@
 #ifndef TRUNKS_TRUNKS_PROXY_H_
 #define TRUNKS_TRUNKS_PROXY_H_
 
+#include "trunks/command_transceiver.h"
+
 #include <string>
 
 #include <base/callback.h>
+#include <base/memory/weak_ptr.h>
 #include <chromeos/chromeos_export.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
-#include "trunks/command_transceiver.h"
-
 namespace trunks {
 
-typedef base::Callback<void(const std::string& response)> SendCommandCallback;
-
-// TrunksProxy is a fully async implementation of the CommandTransceiver
-// interface. Services that want to talk to the TPM through trunksd can
-// get an instance of this singleton proxy. Then they can use the SendCommand
-// method to send TPM commands to trunksd to forward to the TPM handle.
+// TrunksProxy is a CommandTransceiver implementation that forwards all commands
+// to the trunksd D-Bus daemon. See TrunksService for details on how the
+// commands are handled once they reach trunksd.
 class CHROMEOS_EXPORT TrunksProxy: public CommandTransceiver {
  public:
   TrunksProxy();
   virtual ~TrunksProxy();
-  // This method Initializes the dbus client in TrunksProxy. Returns true on
-  // success and false on failure.
-  virtual bool Init();
-  // This method forwards |command| to trunksd via dbus, and calls |callback|
-  // when the TPM is done processing |command|.
-  virtual void SendCommand(const std::string& command,
-                           const SendCommandCallback& callback);
-  virtual uint32_t SendCommandAndWait(const std::string& command,
-                                      std::string* response);
+
+  // Initializes the D-Bus client. Returns true on success.
+  bool Init();
+
+  // CommandTransceiver methods.
+  void SendCommand(const std::string& command,
+                   const ResponseCallback& callback) override;
+  std::string SendCommandAndWait(const std::string& command) override;
 
  private:
-  static void OnResponse(const SendCommandCallback& callback,
-                         dbus::Response* response);
+  // A callback for asynchronous D-Bus calls.
+  void OnResponse(const ResponseCallback& callback,
+                  dbus::Response* response);
+
+  // Extracts and returns response data from a D-Bus response. If an error
+  // occurs a well-formed error response will be returned.
+  std::string GetResponseData(dbus::Response* response);
+
+  scoped_ptr<dbus::MethodCall> CreateSendCommandMethodCall(
+      const std::string& command);
+
+  base::WeakPtr<TrunksProxy> GetWeakPtr() {
+    return weak_factory_.GetWeakPtr();
+  }
 
   scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* object_;
+
+  // Declared last so weak pointers are invalidated first on destruction.
+  base::WeakPtrFactory<TrunksProxy> weak_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(TrunksProxy);
 };
