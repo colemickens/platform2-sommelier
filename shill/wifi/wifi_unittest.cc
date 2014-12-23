@@ -2650,6 +2650,38 @@ TEST_F(WiFiMainTest, FlushBSSOnResume) {
   ReportScanDone();
 }
 
+TEST_F(WiFiMainTest, CallWakeOnWiFi_OnScanDone) {
+  StartWiFi();
+
+  // Call WakeOnWiFi::OnNoAutoConnetableServicesAfterScan if we 0
+  // auto-connectable services.
+  EXPECT_CALL(*wifi_provider(), NumAutoConnectableServices())
+      .WillOnce(Return(0));
+  EXPECT_TRUE(wifi()->IsIdle());
+  EXPECT_CALL(*wake_on_wifi_, OnNoAutoConnectableServicesAfterScan(
+                                  HasServiceConfiguredForAutoConnect(), _));
+  ReportScanDone();
+
+  // If we have 1 or more auto-connectable services, do not call
+  // WakeOnWiFi::OnNoAutoConnetableServicesAfterScan.
+  EXPECT_CALL(*wifi_provider(), NumAutoConnectableServices())
+      .WillOnce(Return(1));
+  EXPECT_TRUE(wifi()->IsIdle());
+  EXPECT_CALL(*wake_on_wifi_, OnNoAutoConnectableServicesAfterScan(_, _))
+      .Times(0);
+  ReportScanDone();
+
+  // If the WiFi device is not Idle, do not call
+  // WakeOnWiFi::OnNoAutoConnetableServicesAfterScan.
+  SetCurrentService(MakeMockService(kSecurityWep));
+  EXPECT_FALSE(wifi()->IsIdle());
+  EXPECT_CALL(*wifi_provider(), NumAutoConnectableServices())
+      .WillOnce(Return(0));
+  EXPECT_CALL(*wake_on_wifi_, OnNoAutoConnectableServicesAfterScan(_, _))
+      .Times(0);
+  ReportScanDone();
+}
+
 TEST_F(WiFiMainTest, ScanTimerIdle_FullScan) {
   EnableFullScan();
   StartWiFi();

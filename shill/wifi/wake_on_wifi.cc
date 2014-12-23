@@ -901,7 +901,7 @@ void WakeOnWiFi::ParseWiphyIndex(const Nl80211Message &nl80211_message) {
 
 void WakeOnWiFi::OnBeforeSuspend(
     bool is_connected,
-    bool have_service_configured_for_autoconnect,
+    bool has_service_configured_for_autoconnect,
     const ResultCallback &done_callback,
     const Closure &renew_dhcp_lease_callback,
     const Closure &remove_supplicant_networks_callback,
@@ -920,12 +920,12 @@ void WakeOnWiFi::OnBeforeSuspend(
     renew_dhcp_lease_callback.Run();
     dispatcher_->PostTask(
         Bind(&WakeOnWiFi::BeforeSuspendActions, weak_ptr_factory_.GetWeakPtr(),
-             is_connected, have_service_configured_for_autoconnect, false,
+             is_connected, has_service_configured_for_autoconnect, false,
              time_to_next_lease_renewal, remove_supplicant_networks_callback));
   } else {
     dispatcher_->PostTask(Bind(
         &WakeOnWiFi::BeforeSuspendActions, weak_ptr_factory_.GetWeakPtr(),
-        is_connected, have_service_configured_for_autoconnect, have_dhcp_lease,
+        is_connected, has_service_configured_for_autoconnect, have_dhcp_lease,
         time_to_next_lease_renewal, remove_supplicant_networks_callback));
   }
 #endif  // DISABLE_WAKE_ON_WIFI
@@ -946,7 +946,7 @@ void WakeOnWiFi::OnAfterResume() {
 
 void WakeOnWiFi::OnDarkResume(
     bool is_connected,
-    bool have_service_configured_for_autoconnect,
+    bool has_service_configured_for_autoconnect,
     const ResultCallback &done_callback,
     const Closure &renew_dhcp_lease_callback,
     const Closure &initiate_scan_callback,
@@ -962,7 +962,7 @@ void WakeOnWiFi::OnDarkResume(
   // need to start a DHCP lease renewal timer.
   dark_resume_actions_timeout_callback_.Reset(
       Bind(&WakeOnWiFi::BeforeSuspendActions, weak_ptr_factory_.GetWeakPtr(),
-           false, have_service_configured_for_autoconnect, false, 0,
+           false, has_service_configured_for_autoconnect, false, 0,
            remove_supplicant_networks_callback));
   dispatcher_->PostDelayedTask(dark_resume_actions_timeout_callback_.callback(),
                                DarkResumeActionsTimeoutMilliseconds);
@@ -979,7 +979,7 @@ void WakeOnWiFi::OnDarkResume(
 
 void WakeOnWiFi::BeforeSuspendActions(
     bool is_connected,
-    bool have_service_configured_for_autoconnect,
+    bool has_service_configured_for_autoconnect,
     bool start_lease_renewal_timer,
     uint32_t time_to_next_lease_renewal,
     const Closure &remove_supplicant_networks_callback) {
@@ -1021,7 +1021,7 @@ void WakeOnWiFi::BeforeSuspendActions(
       wake_on_wifi_triggers_.erase(kDisconnect);
       wake_on_wifi_triggers_.insert(kSSID);
       dhcp_lease_renewal_timer_.Stop();
-      if (have_service_configured_for_autoconnect) {
+      if (has_service_configured_for_autoconnect) {
         // Only makes sense to wake to scan in dark resume if there is at least
         // one WiFi service that we can auto-connect to after the scan.
         // Timer callback is NO-OP since dark resume logic will initiate scan.
@@ -1055,7 +1055,7 @@ void WakeOnWiFi::OnDHCPLeaseObtained(bool start_lease_renewal_timer,
     // If we obtain a DHCP lease, we are connected, so the callback to have
     // supplicant remove networks will not be invoked in
     // WakeOnWiFi::BeforeSuspendActions. Likewise, we will not use the value of
-    // |have_service_configured_for_autoconnect| argument, so pass an arbitrary
+    // |has_service_configured_for_autoconnect| argument, so pass an arbitrary
     // value.
     BeforeSuspendActions(true, true, start_lease_renewal_timer,
                          time_to_next_lease_renewal, base::Closure());
@@ -1087,6 +1087,21 @@ void WakeOnWiFi::ReportConnectedToServiceAfterWake(bool is_connected) {
             ? Metrics::kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeConnected
             : Metrics::
                   kWiFiConnetionStatusAfterWakeOnWiFiDisabledWakeNotConnected);
+  }
+#endif  // DISABLE_WAKE_ON_WIFI
+}
+
+void WakeOnWiFi::OnNoAutoConnectableServicesAfterScan(
+    bool has_service_configured_for_autoconnect,
+    const Closure &remove_supplicant_networks_callback) {
+#if !defined(DISABLE_WAKE_ON_WIFI)
+  SLOG(this, 3) << __func__ << ": "
+                << (in_dark_resume_ ? "In dark resume" : "Not in dark resume");
+  if (in_dark_resume_) {
+    // Assume that if there are no services available for auto-connect, then we
+    // cannot be connected. Therefore, no need for lease renewal parameters.
+    BeforeSuspendActions(false, has_service_configured_for_autoconnect, false,
+                         0, remove_supplicant_networks_callback);
   }
 #endif  // DISABLE_WAKE_ON_WIFI
 }

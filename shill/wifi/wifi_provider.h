@@ -115,6 +115,9 @@ class WiFiProvider : public ProviderInterface {
   // metrics.
   void ReportAutoConnectableServices();
 
+  // Returns number of services available for auto-connect.
+  virtual int NumAutoConnectableServices();
+
   // Returns true iff there is at least one service configured for auto-connect.
   bool HasServiceConfiguredForAutoConnect();
 

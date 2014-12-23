@@ -39,6 +39,7 @@ class MockWiFiProvider : public WiFiProvider {
   MOCK_METHOD1(LoadAndFixupServiceEntries, void(Profile *storage));
   MOCK_CONST_METHOD1(Save, bool(StoreInterface *storage));
   MOCK_METHOD1(IncrementConnectCount, void(uint16_t frequency));
+  MOCK_METHOD0(NumAutoConnectableServices, int());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiFiProvider);

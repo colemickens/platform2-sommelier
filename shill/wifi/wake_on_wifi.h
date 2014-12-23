@@ -80,7 +80,7 @@ class WakeOnWiFi {
   //
   // Arguments:
   //  - |is_connected|: whether the WiFi device is connected.
-  //  - |have_service_configured_for_autoconnect|: whether there exists at
+  //  - |has_service_configured_for_autoconnect|: whether there exists at
   //    least one service (hidden or not) that is configured for auto-connect.
   //  - |done_callback|: callback to invoke when suspend  actions have
   //    completed.
@@ -93,7 +93,7 @@ class WakeOnWiFi {
   //    renewal is due.
   virtual void OnBeforeSuspend(
       bool is_connected,
-      bool have_service_configured_for_autoconnect,
+      bool has_service_configured_for_autoconnect,
       const ResultCallback &done_callback,
       const base::Closure &renew_dhcp_lease_callback,
       const base::Closure &remove_supplicant_networks_callback,
@@ -123,7 +123,7 @@ class WakeOnWiFi {
   //
   // Arguments:
   //  - |is_connected|: whether the WiFi device is connected.
-  //  - |have_service_configured_for_autoconnect|: whether there exists at
+  //  - |has_service_configured_for_autoconnect|: whether there exists at
   //    least one service (hidden or not) that is configured for auto-connect.
   //  - |done_callback|: callback to invoke when dark resume actions have
   //    completed.
@@ -134,7 +134,7 @@ class WakeOnWiFi {
   //    to remove all networks from WPA supplicant.
   virtual void OnDarkResume(
       bool is_connected,
-      bool have_service_configured_for_autoconnect,
+      bool has_service_configured_for_autoconnect,
       const ResultCallback &done_callback,
       const base::Closure &renew_dhcp_lease_callback,
       const base::Closure &initiate_scan_callback,
@@ -146,6 +146,11 @@ class WakeOnWiFi {
   // Callback invoked to report whether this WiFi device is connected to
   // a service after waking from suspend.
   virtual void ReportConnectedToServiceAfterWake(bool is_connected);
+  // Called in WiFi::ScanDoneTask when there are no WiFi services available
+  // for auto-connect after a scan.
+  virtual void OnNoAutoConnectableServicesAfterScan(
+      bool has_service_configured_for_autoconnect,
+      const base::Closure &remove_supplicant_networks_callback);
 
   bool in_dark_resume() { return in_dark_resume_; }
 
@@ -290,7 +295,7 @@ class WakeOnWiFi {
   //
   // Arguments:
   //  - |is_connected|: whether the WiFi device is connected.
-  //  - |have_service_configured_for_autoconnect|: whether there exists at
+  //  - |has_service_configured_for_autoconnect|: whether there exists at
   //    least one service (hidden or not) that is configured for auto-connect.
   //  - |start_lease_renewal_timer|: whether or not to start the DHCP lease
   //    renewal timer.
@@ -300,7 +305,7 @@ class WakeOnWiFi {
   //    to remove all networks from WPA supplicant.
   void BeforeSuspendActions(
       bool is_connected,
-      bool have_service_configured_for_autoconnect,
+      bool has_service_configured_for_autoconnect,
       bool start_lease_renewal_timer,
       uint32_t time_to_next_lease_renewal,
       const base::Closure &remove_supplicant_networks_callback);

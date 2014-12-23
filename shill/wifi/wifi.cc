@@ -1356,6 +1356,16 @@ void WiFi::ScanDoneTask() {
     // started before we decide whether the scan was fruitful.
     dispatcher()->PostTask(Bind(&WiFi::UpdateScanStateAfterScanDone,
                                 weak_ptr_factory_.GetWeakPtr()));
+    if ((provider_->NumAutoConnectableServices() < 1) && IsIdle()) {
+      // Ensure we are also idle in case we are in the midst of connecting to
+      // the only service that was available for auto-connect on the previous
+      // scan (which will cause it to show up as unavailable for auto-connect
+      // when we query the WiFiProvider this time).
+      wake_on_wifi_->OnNoAutoConnectableServicesAfterScan(
+          provider_->HasServiceConfiguredForAutoConnect(),
+          Bind(&WiFi::RemoveSupplicantNetworks,
+               weak_ptr_factory_.GetWeakPtr()));
+    }
   }
   if (need_bss_flush_) {
     CHECK(supplicant_interface_proxy_);
