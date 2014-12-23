@@ -225,11 +225,13 @@ class Daemon::StateControllerDelegate
   }
 
   bool IsHdmiAudioActive() override {
-    return daemon_->audio_client_->hdmi_active();
+    return daemon_->audio_client_ ?
+        daemon_->audio_client_->hdmi_active() : false;
   }
 
   bool IsHeadphoneJackPlugged() override {
-    return daemon_->audio_client_->headphone_jack_plugged();
+    return daemon_->audio_client_ ?
+        daemon_->audio_client_->headphone_jack_plugged() : false;
   }
 
   LidState QueryLidState() override {
@@ -328,7 +330,6 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       input_controller_(new policy::InputController),
       acpi_wakeup_helper_(new system::AcpiWakeupHelper),
       wakeup_controller_(new policy::WakeupController),
-      audio_client_(new system::AudioClient),
       peripheral_battery_watcher_(new system::PeripheralBatteryWatcher),
       power_supply_(new system::PowerSupply),
       dark_resume_(new system::DarkResume),
@@ -352,11 +353,15 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       base::FilePath(read_write_prefs_dir),
       base::FilePath(read_only_prefs_dir))));
   power_supply_->AddObserver(this);
-  audio_client_->AddObserver(this);
+  if (BoolPrefIsTrue(kUseCrasPref)) {
+    audio_client_.reset(new system::AudioClient);
+    audio_client_->AddObserver(this);
+  }
 }
 
 Daemon::~Daemon() {
-  audio_client_->RemoveObserver(this);
+  if (audio_client_)
+    audio_client_->RemoveObserver(this);
   if (display_backlight_controller_)
     display_backlight_controller_->RemoveObserver(this);
   power_supply_->RemoveObserver(this);
@@ -448,7 +453,11 @@ void Daemon::Init() {
   state_controller_->Init(state_controller_delegate_.get(), prefs_.get(),
                           power_source, lid_state);
 
-  audio_client_->Init(cras_dbus_proxy_);
+  if (audio_client_) {
+    DCHECK(cras_dbus_proxy_);
+    audio_client_->Init(cras_dbus_proxy_);
+  }
+
   peripheral_battery_watcher_->Init(dbus_sender_.get());
 
   // Call this last to ensure that all of our members are already initialized.
@@ -618,7 +627,8 @@ void Daemon::PrepareToSuspend() {
     RunSetuidHelper("lock_vt", "", true);
 
   power_supply_->SetSuspended(true);
-  audio_client_->MuteSystem();
+  if (audio_client_)
+    audio_client_->MuteSystem();
   metrics_collector_->PrepareForSuspend();
 }
 
@@ -698,7 +708,8 @@ void Daemon::UndoPrepareToSuspend(bool success,
   if (canceled_while_in_dark_resume && !ExitDarkResume())
     ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_EXIT_DARK_RESUME_FAILED);
 
-  audio_client_->RestoreMutedState();
+  if (audio_client_)
+    audio_client_->RestoreMutedState();
   power_supply_->SetSuspended(false);
 
   // Allow virtual terminal switching again.
@@ -795,29 +806,32 @@ void Daemon::InitDBus() {
                  base::Unretained(this)),
       base::Bind(&Daemon::HandleDBusSignalConnected, base::Unretained(this)));
 
-  cras_dbus_proxy_ = bus_->GetObjectProxy(
-      cras::kCrasServiceName,
-      dbus::ObjectPath(cras::kCrasServicePath));
-  cras_dbus_proxy_->WaitForServiceToBeAvailable(
-      base::Bind(&Daemon::HandleCrasAvailableOrRestarted,
-                 base::Unretained(this)));
-  cras_dbus_proxy_->ConnectToSignal(
-      cras::kCrasControlInterface,
-      cras::kNodesChanged,
-      base::Bind(&Daemon::HandleCrasNodesChangedSignal, base::Unretained(this)),
-      base::Bind(&Daemon::HandleDBusSignalConnected, base::Unretained(this)));
-  cras_dbus_proxy_->ConnectToSignal(
-      cras::kCrasControlInterface,
-      cras::kActiveOutputNodeChanged,
-      base::Bind(&Daemon::HandleCrasActiveOutputNodeChangedSignal,
-                 base::Unretained(this)),
-      base::Bind(&Daemon::HandleDBusSignalConnected, base::Unretained(this)));
-  cras_dbus_proxy_->ConnectToSignal(
-      cras::kCrasControlInterface,
-      cras::kNumberOfActiveStreamsChanged,
-      base::Bind(&Daemon::HandleCrasNumberOfActiveStreamsChanged,
-                 base::Unretained(this)),
-      base::Bind(&Daemon::HandleDBusSignalConnected, base::Unretained(this)));
+  if (audio_client_) {
+    cras_dbus_proxy_ = bus_->GetObjectProxy(
+        cras::kCrasServiceName,
+        dbus::ObjectPath(cras::kCrasServicePath));
+    cras_dbus_proxy_->WaitForServiceToBeAvailable(
+        base::Bind(&Daemon::HandleCrasAvailableOrRestarted,
+                   base::Unretained(this)));
+    cras_dbus_proxy_->ConnectToSignal(
+        cras::kCrasControlInterface,
+        cras::kNodesChanged,
+        base::Bind(&Daemon::HandleCrasNodesChangedSignal,
+                   base::Unretained(this)),
+        base::Bind(&Daemon::HandleDBusSignalConnected, base::Unretained(this)));
+    cras_dbus_proxy_->ConnectToSignal(
+        cras::kCrasControlInterface,
+        cras::kActiveOutputNodeChanged,
+        base::Bind(&Daemon::HandleCrasActiveOutputNodeChangedSignal,
+                   base::Unretained(this)),
+        base::Bind(&Daemon::HandleDBusSignalConnected, base::Unretained(this)));
+    cras_dbus_proxy_->ConnectToSignal(
+        cras::kCrasControlInterface,
+        cras::kNumberOfActiveStreamsChanged,
+        base::Bind(&Daemon::HandleCrasNumberOfActiveStreamsChanged,
+                   base::Unretained(this)),
+        base::Bind(&Daemon::HandleDBusSignalConnected, base::Unretained(this)));
+  }
 
   update_engine_dbus_proxy_ = bus_->GetObjectProxy(
       update_engine::kUpdateEngineServiceName,
@@ -954,6 +968,7 @@ void Daemon::HandleCrasAvailableOrRestarted(bool available) {
     LOG(ERROR) << "Failed waiting for CRAS to become available";
     return;
   }
+  DCHECK(audio_client_);
   audio_client_->LoadInitialState();
 }
 
@@ -1049,14 +1064,17 @@ void Daemon::HandleUpdateEngineStatusUpdateSignal(dbus::Signal* signal) {
 }
 
 void Daemon::HandleCrasNodesChangedSignal(dbus::Signal* signal) {
+  DCHECK(audio_client_);
   audio_client_->UpdateDevices();
 }
 
 void Daemon::HandleCrasActiveOutputNodeChangedSignal(dbus::Signal* signal) {
+  DCHECK(audio_client_);
   audio_client_->UpdateDevices();
 }
 
 void Daemon::HandleCrasNumberOfActiveStreamsChanged(dbus::Signal* signal) {
+  DCHECK(audio_client_);
   audio_client_->UpdateNumActiveStreams();
 }
 

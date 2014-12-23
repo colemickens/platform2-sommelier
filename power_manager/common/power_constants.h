@@ -156,6 +156,10 @@ extern const char kMosysEventlogPref[];
 // the user as idle while VT2 is active.
 extern const char kCheckActiveVTPref[];
 
+// If true, use CRAS, the Chrome OS audio server, to monitor audio activity and
+// to mute audio when suspending.
+extern const char kUseCrasPref[];
+
 // Miscellaneous constants.
 
 // Default directories where read/write and read-only powerd preference files

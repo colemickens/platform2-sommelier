@@ -237,7 +237,7 @@ class Daemon : public policy::BacklightControllerObserver,
   dbus::ExportedObject* powerd_dbus_object_;  // weak; owned by |bus_|
   dbus::ObjectProxy* chrome_dbus_proxy_;  // weak; owned by |bus_|
   dbus::ObjectProxy* session_manager_dbus_proxy_;  // weak; owned by |bus_|
-  dbus::ObjectProxy* cras_dbus_proxy_;  // weak; owned by |bus_|
+  dbus::ObjectProxy* cras_dbus_proxy_;  // weak; owned by |bus_| and may be NULL
   dbus::ObjectProxy* update_engine_dbus_proxy_;  // weak; owned by |bus_|
 
   scoped_ptr<StateControllerDelegate> state_controller_delegate_;
@@ -259,7 +259,7 @@ class Daemon : public policy::BacklightControllerObserver,
   scoped_ptr<policy::InputController> input_controller_;
   scoped_ptr<system::AcpiWakeupHelper> acpi_wakeup_helper_;
   scoped_ptr<policy::WakeupController> wakeup_controller_;
-  scoped_ptr<system::AudioClient> audio_client_;
+  scoped_ptr<system::AudioClient> audio_client_;  // May be NULL.
   scoped_ptr<system::PeripheralBatteryWatcher> peripheral_battery_watcher_;
   scoped_ptr<system::PowerSupply> power_supply_;
   scoped_ptr<system::DarkResume> dark_resume_;
