@@ -74,6 +74,8 @@ class Daemon : public chromeos::DBusDaemon {
     // TODO(vitalybuka): Provide real embeded password.
     security_.reset(new SecurityManager("1234", disable_security_));
     shill_client_.reset(new ShillClient(bus_, device_whitelist_));
+    shill_client_->RegisterConnectivityListener(
+        base::Bind(&Daemon::OnConnectivityChanged, base::Unretained(this)));
     ap_manager_client_.reset(new ApManagerClient(bus_));
     wifi_bootstrap_manager_.reset(new WifiBootstrapManager(
         state_store_.get(), shill_client_.get(), ap_manager_client_.get(),
@@ -113,7 +115,8 @@ class Daemon : public chromeos::DBusDaemon {
           base::Bind(&Daemon::HelloWorldHandler, base::Unretained(this)));
     }
 
-    peerd_client_.reset(new PeerdClient(bus_, *device_, cloud_.get()));
+    peerd_client_.reset(new PeerdClient(bus_, device_.get(), cloud_.get(),
+                                        wifi_bootstrap_manager_.get()));
     peerd_client_->Start();
 
     return EX_OK;
@@ -179,6 +182,10 @@ class Daemon : public chromeos::DBusDaemon {
       peerd_client_->Stop();
       peerd_client_->Start();
     }
+  }
+
+  void OnConnectivityChanged(bool online) {
+    OnChanged();
   }
 
   uint16_t http_port_number_;

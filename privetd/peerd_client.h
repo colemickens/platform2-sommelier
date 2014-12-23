@@ -21,13 +21,15 @@ namespace privetd {
 
 class CloudDelegate;
 class DeviceDelegate;
+class WifiDelegate;
 
 // Publishes prived service on mDns using peerd.
 class PeerdClient {
  public:
   PeerdClient(const scoped_refptr<dbus::Bus>& bus,
-              const DeviceDelegate& device,
-              const CloudDelegate* cloud);
+              const DeviceDelegate* device,
+              const CloudDelegate* cloud,
+              const WifiDelegate* wifi);
   ~PeerdClient();
 
   // Starts publishing.
@@ -46,8 +48,9 @@ class PeerdClient {
 
   std::string service_token_;
 
-  const DeviceDelegate& device_;
+  const DeviceDelegate* device_{nullptr};  // Can't be nullptr.
   const CloudDelegate* cloud_{nullptr};  // Can be nullptr.
+  const WifiDelegate* wifi_{nullptr};      // Can be nullptr.
 
   base::WeakPtrFactory<PeerdClient> weak_ptr_factory_{this};
 };

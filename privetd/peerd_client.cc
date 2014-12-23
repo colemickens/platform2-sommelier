@@ -10,13 +10,20 @@
 
 #include "privetd/cloud_delegate.h"
 #include "privetd/device_delegate.h"
+#include "privetd/wifi_bootstrap_manager.h"
+#include "privetd/wifi_ssid_generator.h"
 
 namespace privetd {
 
 PeerdClient::PeerdClient(const scoped_refptr<dbus::Bus>& bus,
-                         const DeviceDelegate& device,
-                         const CloudDelegate* cloud)
-    : peerd_object_manager_proxy_{bus}, device_{device}, cloud_{cloud} {
+                         const DeviceDelegate* device,
+                         const CloudDelegate* cloud,
+                         const WifiDelegate* wifi)
+    : peerd_object_manager_proxy_{bus},
+      device_{device},
+      cloud_{cloud},
+      wifi_{wifi} {
+  CHECK(device_);
   peerd_object_manager_proxy_.SetManagerAddedCallback(
       base::Bind(&PeerdClient::OnPeerdOnline, weak_ptr_factory_.GetWeakPtr()));
   peerd_object_manager_proxy_.SetManagerRemovedCallback(
@@ -49,37 +56,37 @@ void PeerdClient::Start() {
     return;
 
   VLOG(1) << "Starting peerd advertising.";
-  const uint16_t port = device_.GetHttpEnpoint().first;
+  const uint16_t port = device_->GetHttpEnpoint().first;
   std::map<std::string, chromeos::Any> mdns_options{
       {"port", chromeos::Any{port}},
   };
 
   DCHECK_NE(port, 0);
-  DCHECK(!device_.GetName().empty());
-  DCHECK(!device_.GetId().empty());
-  DCHECK_EQ(device_.GetClass().size(), 2U);
-  DCHECK_EQ(device_.GetModelId().size(), 3U);
+  DCHECK(!device_->GetName().empty());
+  DCHECK(!device_->GetId().empty());
+  DCHECK_EQ(device_->GetClass().size(), 2U);
+  DCHECK_EQ(device_->GetModelId().size(), 3U);
 
   std::string services;
-  if (!device_.GetServices().empty())
+  if (!device_->GetServices().empty())
     services += "_";
-  services += JoinString(device_.GetServices(), ",_");
+  services += JoinString(device_->GetServices(), ",_");
 
   std::map<std::string, std::string> txt_record{
       {"txtver", "3"},
-      {"ty", device_.GetName()},
+      {"ty", device_->GetName()},
       {"services", services},
-      {"id", device_.GetId()},
-      {"class", device_.GetClass()},
-      {"model_id", device_.GetModelId()},
-      {"flags", "DA"},  // TODO(vitalybuka): find owner for flags.
+      {"id", device_->GetId()},
+      {"class", device_->GetClass()},
+      {"model_id", device_->GetModelId()},
+      {"flags", WifiSsidGenerator{device_, cloud_, wifi_}.GenerateFlags()},
   };
 
   if (cloud_ && !cloud_->GetCloudId().empty())
     txt_record.emplace("gcd_id", cloud_->GetCloudId());
 
-  if (!device_.GetDescription().empty())
-    txt_record.emplace("description", device_.GetDescription());
+  if (!device_->GetDescription().empty())
+    txt_record.emplace("description", device_->GetDescription());
 
   chromeos::ErrorPtr error;
   if (!peerd_manager_proxy_->ExposeService("privet", txt_record,
