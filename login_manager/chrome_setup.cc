@@ -58,9 +58,9 @@ bool AddWallpaperFlags(ChromiumCommandBuilder* builder,
   if (!base::PathExists(large_path) || !base::PathExists(small_path))
     return false;
 
-  builder->AddArg(base::StringPrintf("--ash-%s-wallpaper-large=%s",
+  builder->AddArg(base::StringPrintf("--%s-wallpaper-large=%s",
       flag_type.c_str(), large_path.value().c_str()));
-  builder->AddArg(base::StringPrintf("--ash-%s-wallpaper-small=%s",
+  builder->AddArg(base::StringPrintf("--%s-wallpaper-small=%s",
       flag_type.c_str(), small_path.value().c_str()));
   return true;
 }
@@ -223,7 +223,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
   }
 
   if (AddWallpaperFlags(builder, "default", "oem"))
-    builder->AddArg("--ash-default-wallpaper-is-oem");
+    builder->AddArg("--default-wallpaper-is-oem");
   else
     AddWallpaperFlags(builder, "default", "default");
   AddWallpaperFlags(builder, "guest", "guest");
