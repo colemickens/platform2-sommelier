@@ -968,8 +968,8 @@ void Daemon::HandleCrasAvailableOrRestarted(bool available) {
     LOG(ERROR) << "Failed waiting for CRAS to become available";
     return;
   }
-  DCHECK(audio_client_);
-  audio_client_->LoadInitialState();
+  if (audio_client_)
+    audio_client_->LoadInitialState();
 }
 
 void Daemon::HandleUpdateEngineAvailableOrRestarted(bool available) {
