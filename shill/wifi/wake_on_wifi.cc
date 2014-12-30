@@ -77,6 +77,7 @@ WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
           Bind(&WakeOnWiFi::ReportMetrics, base::Unretained(this))),
       num_set_wake_on_packet_retries_(0),
       wake_on_wifi_max_patterns_(0),
+      wake_on_wifi_max_ssids_(0),
       wiphy_index_(kDefaultWiphyIndex),
       wiphy_index_received_(false),
 #if defined(DISABLE_WAKE_ON_WIFI)
@@ -869,11 +870,12 @@ void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
         SLOG(this, 7) << "Waking on disconnect supported by this WiFi device";
       }
     }
-    ByteString data;
+    ByteString pattern_data;
     if (triggers_supported->GetRawAttributeValue(
-            NL80211_WOWLAN_TRIG_PKT_PATTERN, &data)) {
+            NL80211_WOWLAN_TRIG_PKT_PATTERN, &pattern_data)) {
       struct nl80211_pattern_support *patt_support =
-          reinterpret_cast<struct nl80211_pattern_support *>(data.GetData());
+          reinterpret_cast<struct nl80211_pattern_support *>(
+              pattern_data.GetData());
       // Determine the IPV4 and IPV6 pattern lengths we will use by
       // constructing dummy patterns and getting their lengths.
       ByteString dummy_pattern;
@@ -900,9 +902,12 @@ void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
                       << " bytes supported by this WiFi device";
       }
     }
-    // TODO(samueltan): remove this placeholder when wake on SSID capability
-    // can be parsed from NL80211 message.
-    wake_on_wifi_triggers_supported_.insert(WakeOnWiFi::kSSID);
+    if (triggers_supported->GetU32AttributeValue(NL80211_WOWLAN_TRIG_NET_DETECT,
+                                                 &wake_on_wifi_max_ssids_)) {
+      wake_on_wifi_triggers_supported_.insert(WakeOnWiFi::kSSID);
+      SLOG(this, 7) << "Waking on up to " << wake_on_wifi_max_ssids_
+                    << " whitelisted SSIDs supported by this WiFi device";
+    }
   }
 }
 

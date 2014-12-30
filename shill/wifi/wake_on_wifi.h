@@ -342,9 +342,12 @@ class WakeOnWiFi {
   std::set<WakeOnWiFi::WakeOnWiFiTrigger> wake_on_wifi_triggers_;
   // Keeps track of what wake on wifi triggers this WiFi device supports.
   std::set<WakeOnWiFi::WakeOnWiFiTrigger> wake_on_wifi_triggers_supported_;
-  // Max number of patterns this WiFi device can be programmed to wake on
-  // at one time.
+  // Max number of patterns this WiFi device can be programmed to wake on at one
+  // time.
   size_t wake_on_wifi_max_patterns_;
+  // Max number of SSIDs this WiFi device can be programmed to wake on at one
+  // time.
+  uint32_t wake_on_wifi_max_ssids_;
   // Keeps track of IP addresses whose packets this device will wake upon
   // receiving while the device is suspended.
   IPAddressStore wake_on_packet_connections_;

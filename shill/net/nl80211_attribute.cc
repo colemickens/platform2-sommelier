@@ -262,6 +262,9 @@ const char Nl80211AttributeWowlanTriggersSupported::kNameString[] =
 Nl80211AttributeWowlanTriggersSupported::
     Nl80211AttributeWowlanTriggersSupported()
     : NetlinkNestedAttribute(kName, kNameString) {
+  // Not all of these triggers (defined in the enum nl80211_wowlan_triggers) are
+  // used, but they are pushed in the order they are defined in the enum so
+  // that the attributes in this array can be indexed by their enum value.
   nested_template_.push_back(
       NestedData(NLA_U32, "__NL80211_WOWLAN_TRIG_INVALID", false));
   nested_template_.push_back(
@@ -272,6 +275,34 @@ Nl80211AttributeWowlanTriggersSupported::
       NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_MAGIC_PKT", false));
   nested_template_.push_back(
       NestedData(NLA_UNSPEC, "NL80211_WOWLAN_TRIG_PKT_PATTERN", false));
+  nested_template_.push_back(
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_GTK_REKEY_SUPPORTED", false));
+  nested_template_.push_back(
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_GTK_REKEY_FAILURE", false));
+  nested_template_.push_back(
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_EAP_IDENT_REQUEST", false));
+  nested_template_.push_back(
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_4WAY_HANDSHAKE", false));
+  nested_template_.push_back(
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_RFKILL_RELEASE", false));
+  nested_template_.push_back(
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_WAKEUP_PKT_80211", false));
+  nested_template_.push_back(
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_WAKEUP_PKT_80211_LEN", false));
+  nested_template_.push_back(
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_WAKEUP_PKT_8023", false));
+  nested_template_.push_back(
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_WAKEUP_PKT_8023_LEN", false));
+  nested_template_.push_back(
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_TCP_CONNECTION", false));
+  nested_template_.push_back(
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_WAKEUP_TCP_MATCH", false));
+  nested_template_.push_back(
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_WAKEUP_TCP_CONNLOST", false));
+  nested_template_.push_back(NestedData(
+      NLA_FLAG, "NL80211_WOWLAN_TRIG_WAKEUP_TCP_NOMORETOKENS", false));
+  nested_template_.push_back(
+      NestedData(NLA_U32, "NL80211_WOWLAN_TRIG_NET_DETECT", false));
 }
 
 const int Nl80211AttributeCipherSuites::kName = NL80211_ATTR_CIPHER_SUITES;

@@ -915,6 +915,8 @@ bool NetlinkNestedAttribute::ParseNestedStructure(
   // |nla_parse_nested| requires an array of |nla_policy|. While an attribute id
   // of zero is illegal, we still need to fill that spot in the policy
   // array so the loop will start at zero.
+  // Note: we expect the index of each attribute in |templates| to match the
+  // value of the corresponding enum member defined in nl80211.h.
   unique_ptr<nla_policy[]> policy(new nla_policy[templates.size()]);
   for (size_t id = 0; id < templates.size(); ++id) {
     memset(&policy[id], 0, sizeof(nla_policy));
