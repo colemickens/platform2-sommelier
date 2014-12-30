@@ -214,6 +214,12 @@ class Metrics {
     kDarkResumeActionResultMax
   };
 
+  enum DarkResumeUnmatchedScanResultReceived {
+    kDarkResumeUnmatchedScanResultsReceivedFalse = 0,
+    kDarkResumeUnmatchedScanResultsReceivedTrue = 1,
+    kDarkResumeUnmatchedScanResultsReceivedMax
+  };
+
   enum VerifyWakeOnWiFiSettingsResult {
     kVerifyWakeOnWiFiSettingsResultSuccess,
     kVerifyWakeOnWiFiSettingsResultFailure,
@@ -565,6 +571,7 @@ class Metrics {
   static const char kMetricDarkResumeActionResult[];
   static const int kMetricDarkResumeActionTimeMillisecondsMax;
   static const int kMetricDarkResumeActionTimeMillisecondsMin;
+  static const char kMetricDarkResumeUnmatchedScanResultReceived[];
 
   // Shill wake on WiFi feature state statistics.
   static const char kMetricWakeOnWiFiFeaturesEnabledState[];
@@ -786,6 +793,12 @@ class Metrics {
   // Notifies this object that dark resume actions have been completed.
   // |success| is true, if the dark resume actions completed successfully.
   void NotifyDarkResumeActionsCompleted(bool success);
+
+  // Notifies this object that a scan has been initiated while in dark resume.
+  void NotifyDarkResumeInitiateScan();
+
+  // Notifies this object that a scan results have been received in dark resume.
+  void NotifyDarkResumeScanResultsReceived();
 
   // Notifies this object of a failure in LinkMonitor.
   void NotifyLinkMonitorFailure(
@@ -1063,6 +1076,7 @@ class Metrics {
   std::unique_ptr<chromeos_metrics::Timer> time_dark_resume_actions_timer;
   bool collect_bootstats_;
   DeviceMetricsLookupMap devices_metrics_;
+  int num_scan_results_expected_in_dark_resume_;
 
   DISALLOW_COPY_AND_ASSIGN(Metrics);
 };

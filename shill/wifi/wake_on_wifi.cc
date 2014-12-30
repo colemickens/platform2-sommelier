@@ -970,6 +970,7 @@ void WakeOnWiFi::OnDarkResume(
     renew_dhcp_lease_callback.Run();
   } else {
     remove_supplicant_networks_callback.Run();
+    metrics_->NotifyDarkResumeInitiateScan();
     initiate_scan_callback.Run();
   }
 #endif  // DISABLE_WAKE_ON_WIFI

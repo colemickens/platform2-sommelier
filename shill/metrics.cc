@@ -175,6 +175,8 @@ const char Metrics::kMetricDarkResumeActionResult[] =
     "Network.Shill.DarkResumeActionResult";
 const int Metrics::kMetricDarkResumeActionTimeMillisecondsMax = 10000;
 const int Metrics::kMetricDarkResumeActionTimeMillisecondsMin = 1;
+const char Metrics::kMetricDarkResumeUnmatchedScanResultReceived[] =
+    "Network.Shill.WiFi.DarkResumeUnmatchedScanResultsReceived";
 
 const char Metrics::kMetricWakeOnWiFiFeaturesEnabledState[] =
     "Network.Shill.WiFi.WakeOnWiFiFeaturesEnabledState";
@@ -398,7 +400,8 @@ Metrics::Metrics(EventDispatcher *dispatcher)
       time_termination_actions_timer(new chromeos_metrics::Timer),
       time_suspend_actions_timer(new chromeos_metrics::Timer),
       time_dark_resume_actions_timer(new chromeos_metrics::Timer),
-      collect_bootstats_(true) {
+      collect_bootstats_(true),
+      num_scan_results_expected_in_dark_resume_(0) {
   metrics_library_.Init();
   chromeos_metrics::TimerReporter::set_metrics_lib(library_);
 }
@@ -774,8 +777,8 @@ void Metrics::NotifyTerminationActionsCompleted(bool success) {
   if (!time_termination_actions_timer->HasStarted())
     return;
 
-  int result = success ? kTerminationActionResultSuccess :
-                         kTerminationActionResultFailure;
+  TerminationActionResult result = success ? kTerminationActionResultSuccess
+                                           : kTerminationActionResultFailure;
 
   base::TimeDelta elapsed_time;
   time_termination_actions_timer->GetElapsedTime(&elapsed_time);
@@ -805,8 +808,8 @@ void Metrics::NotifySuspendActionsCompleted(bool success) {
   if (!time_suspend_actions_timer->HasStarted())
     return;
 
-  int result = success ? kSuspendActionResultSuccess :
-                         kSuspendActionResultFailure;
+  SuspendActionResult result =
+      success ? kSuspendActionResultSuccess : kSuspendActionResultFailure;
 
   base::TimeDelta elapsed_time;
   time_suspend_actions_timer->GetElapsedTime(&elapsed_time);
@@ -830,14 +833,15 @@ void Metrics::NotifyDarkResumeActionsStarted() {
   if (time_dark_resume_actions_timer->HasStarted())
     return;
   time_dark_resume_actions_timer->Start();
+  num_scan_results_expected_in_dark_resume_ = 0;
 }
 
 void Metrics::NotifyDarkResumeActionsCompleted(bool success) {
   if (!time_dark_resume_actions_timer->HasStarted())
     return;
 
-  int result = success ? kDarkResumeActionResultSuccess :
-                         kDarkResumeActionResultFailure;
+  DarkResumeActionResult result =
+      success ? kDarkResumeActionResultSuccess : kDarkResumeActionResultFailure;
 
   base::TimeDelta elapsed_time;
   time_dark_resume_actions_timer->GetElapsedTime(&elapsed_time);
@@ -855,6 +859,22 @@ void Metrics::NotifyDarkResumeActionsCompleted(bool success) {
   SendEnumToUMA(result_metric,
                 result,
                 kDarkResumeActionResultMax);
+
+  DarkResumeUnmatchedScanResultReceived unmatched_scan_results_received =
+      (num_scan_results_expected_in_dark_resume_ < 0)
+          ? kDarkResumeUnmatchedScanResultsReceivedTrue
+          : kDarkResumeUnmatchedScanResultsReceivedFalse;
+  SendEnumToUMA(kMetricDarkResumeUnmatchedScanResultReceived,
+                unmatched_scan_results_received,
+                kDarkResumeUnmatchedScanResultsReceivedMax);
+}
+
+void Metrics::NotifyDarkResumeInitiateScan() {
+  ++num_scan_results_expected_in_dark_resume_;
+}
+
+void Metrics::NotifyDarkResumeScanResultsReceived() {
+  --num_scan_results_expected_in_dark_resume_;
 }
 
 void Metrics::NotifyLinkMonitorFailure(

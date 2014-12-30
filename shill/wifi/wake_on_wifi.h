@@ -147,6 +147,8 @@ class WakeOnWiFi {
   // a service after waking from suspend.
   virtual void ReportConnectedToServiceAfterWake(bool is_connected);
 
+  bool in_dark_resume() { return in_dark_resume_; }
+
  private:
   friend class WakeOnWiFiTest;  // access to several members for tests
   friend class WiFiObjectTest;  // netlink_manager_

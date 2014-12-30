@@ -1341,6 +1341,9 @@ void WiFi::PropertiesChangedTask(
 
 void WiFi::ScanDoneTask() {
   SLOG(this, 2) << __func__ << " need_bss_flush_ " << need_bss_flush_;
+  if (wake_on_wifi_->in_dark_resume()) {
+    metrics()->NotifyDarkResumeScanResultsReceived();
+  }
   if (scan_session_) {
     // Post |ProgressiveScanTask| so it runs after any |BSSAddedTask|s that have
     // been posted.  This allows connections on new BSSes to be started before
