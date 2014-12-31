@@ -46,8 +46,6 @@ static std::string ObjectID(WakeOnWiFi *w) { return "(wake_on_wifi)"; }
 
 const char WakeOnWiFi::kWakeOnIPAddressPatternsNotSupported[] =
     "Wake on IP address patterns not supported by this WiFi device";
-const char WakeOnWiFi::kWakeOnPacketDisabled[] =
-    "Wake on Packet feature disabled, so do nothing";
 const char WakeOnWiFi::kWakeOnWiFiDisabled[] = "Wake on WiFi is disabled";
 const uint32_t WakeOnWiFi::kDefaultWiphyIndex = 999;
 const int WakeOnWiFi::kVerifyWakeOnWiFiSettingsDelayMilliseconds = 300;
@@ -95,6 +93,8 @@ WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
       net_detect_scan_period_seconds_(kDefaultNetDetectScanPeriodSeconds),
       dark_resumes_since_last_suspend_(kMaxDarkResumesPerPeriod),
       weak_ptr_factory_(this) {
+  netlink_manager_->AddBroadcastHandler(Bind(
+      &WakeOnWiFi::OnWakeupReasonReceived, weak_ptr_factory_.GetWeakPtr()));
 }
 
 WakeOnWiFi::~WakeOnWiFi() {}
@@ -1126,6 +1126,87 @@ void WakeOnWiFi::ParseWiphyIndex(const Nl80211Message &nl80211_message) {
   wiphy_index_received_ = true;
 }
 
+void WakeOnWiFi::OnWakeupReasonReceived(const NetlinkMessage &netlink_message) {
+#if defined(DISABLE_WAKE_ON_WIFI)
+  SLOG(this, 7) << __func__ << ": "
+                << "Wake on WiFi not supported, so do nothing";
+#else
+  // We only handle wakeup reason messages in this handler, which is are
+  // nl80211 messages with the NL80211_CMD_SET_WOWLAN command.
+  if (netlink_message.message_type() != Nl80211Message::GetMessageType()) {
+    SLOG(this, 7) << __func__ << ": "
+                  << "Not a NL80211 Message";
+    return;
+  }
+  const Nl80211Message &wakeup_reason_msg =
+      *reinterpret_cast<const Nl80211Message *>(&netlink_message);
+  if (wakeup_reason_msg.command() != SetWakeOnPacketConnMessage::kCommand) {
+    SLOG(this, 7) << __func__ << ": "
+                  << "Not a NL80211_CMD_SET_WOWLAN message";
+    return;
+  }
+  uint32_t wiphy_index;
+  if (!wakeup_reason_msg.const_attributes()->GetU32AttributeValue(
+          NL80211_ATTR_WIPHY, &wiphy_index)) {
+    LOG(ERROR) << "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_WIPHY";
+    return;
+  }
+  if (wiphy_index != wiphy_index_) {
+    SLOG(this, 7) << __func__ << ": "
+                  << "Wakeup reason not meant for this interface";
+    return;
+  }
+  SLOG(this, 3) << __func__ << ": "
+                << "Parsing wakeup reason";
+  AttributeListConstRefPtr triggers;
+  if (!wakeup_reason_msg.const_attributes()->ConstGetNestedAttributeList(
+          NL80211_ATTR_WOWLAN_TRIGGERS, &triggers)) {
+    SLOG(this, 3) << __func__ << ": "
+                  << "Wakeup reason: Not wake on WiFi related";
+    return;
+  }
+  bool wake_flag;
+  if (triggers->GetFlagAttributeValue(NL80211_WOWLAN_TRIG_DISCONNECT,
+                                      &wake_flag)) {
+    SLOG(this, 3) << __func__ << ": "
+                  << "Wakeup reason: Disconnect";
+    return;
+  }
+  uint32_t wake_pattern_index;
+  if (triggers->GetU32AttributeValue(NL80211_WOWLAN_TRIG_PKT_PATTERN,
+                                     &wake_pattern_index)) {
+    SLOG(this, 3) << __func__ << ": "
+                  << "Wakeup reason: Pattern " << wake_pattern_index;
+    return;
+  }
+  AttributeListConstRefPtr results_list;
+  if (triggers->ConstGetNestedAttributeList(
+          NL80211_WOWLAN_TRIG_NET_DETECT_RESULTS, &results_list)) {
+    // It is possible that NL80211_WOWLAN_TRIG_NET_DETECT_RESULTS is present
+    // along with another wake trigger attribute. What this means is that the
+    // firmware has detected a network, but the platform did not actually wake
+    // on the detection of that network. In these cases, we will not parse the
+    // net detect results; we return after parsing and reporting the actual
+    // wakeup reason above.
+    SLOG(this, 3) << __func__ << ": "
+                  << "Wakeup reason: SSID";
+    WakeOnSSIDResults results = ParseWakeOnWakeOnSSIDResults(results_list);
+    int ssid_num = 0;
+    for (const auto &result : results) {
+      SLOG(this, 3) << "SSID " << ssid_num << ": "
+                    << std::string(result.first.begin(), result.first.end());
+      for (uint32_t freq : result.second) {
+        SLOG(this, 7) << "Frequency: " << freq;
+      }
+      ++ssid_num;
+    }
+    return;
+  }
+  SLOG(this, 3) << __func__ << ": "
+                << "Wakeup reason: Not supported";
+#endif  // DISABLE_WAKE_ON_WIFI
+}
+
 void WakeOnWiFi::OnBeforeSuspend(
     bool is_connected,
     const vector<ByteString> &ssid_whitelist,
@@ -1309,6 +1390,56 @@ void WakeOnWiFi::BeforeSuspendActions(
 
   in_dark_resume_ = false;
   ApplyWakeOnWiFiSettings();
+}
+
+// static
+WakeOnWiFi::WakeOnSSIDResults WakeOnWiFi::ParseWakeOnWakeOnSSIDResults(
+    AttributeListConstRefPtr results_list) {
+  WakeOnSSIDResults results;
+  AttributeIdIterator results_iter(*results_list);
+  if (results_iter.AtEnd()) {
+    SLOG(WiFi, nullptr, 3) << __func__ << ": "
+                           << "Wake on SSID results not available";
+    return results;
+  }
+  AttributeListConstRefPtr result;
+  for (; !results_iter.AtEnd(); results_iter.Advance()) {
+    if (!results_list->ConstGetNestedAttributeList(results_iter.GetId(),
+                                                   &result)) {
+      LOG(ERROR) << __func__ << ": "
+                 << "Could not get result #" << results_iter.GetId()
+                 << " in ssid_results";
+      return results;
+    }
+    ByteString ssid_bytestring;
+    if (!result->GetRawAttributeValue(NL80211_ATTR_SSID, &ssid_bytestring)) {
+      // We assume that the SSID attribute must be present in each result.
+      LOG(ERROR) << __func__ << ": "
+                 << "No SSID available for result #" << results_iter.GetId();
+      continue;
+    }
+    vector<uint8_t> ssid(
+        ssid_bytestring.GetConstData(),
+        ssid_bytestring.GetConstData() + ssid_bytestring.GetLength());
+    vector<uint32_t> freq_list;
+    AttributeListConstRefPtr frequencies;
+    uint32_t freq_value;
+    if (result->ConstGetNestedAttributeList(NL80211_ATTR_SCAN_FREQUENCIES,
+                                            &frequencies)) {
+      AttributeIdIterator freq_iter(*frequencies);
+      for (; !freq_iter.AtEnd(); freq_iter.Advance()) {
+        if (frequencies->GetU32AttributeValue(freq_iter.GetId(), &freq_value)) {
+          freq_list.push_back(freq_value);
+        }
+      }
+    } else {
+      SLOG(WiFi, nullptr, 3) << __func__ << ": "
+                             << "No frequencies available for result #"
+                             << results_iter.GetId();
+    }
+    results.push_back(SSIDFreqListPair(ssid, freq_list));
+  }
+  return results;
 }
 
 void WakeOnWiFi::OnDHCPLeaseObtained(bool start_lease_renewal_timer,

@@ -4063,20 +4063,16 @@ TEST_F(WiFiMainTest, OnIPConfigUpdated_InvokesOnDHCPLeaseObtained) {
 }
 
 TEST_F(WiFiMainTest, OnBeforeSuspend_CallsWakeOnWiFi) {
-  FireScanTimer();
   EXPECT_CALL(
       *wake_on_wifi_,
       OnBeforeSuspend(IsConnectedToCurrentService(), _, _, _, _, _, _));
   OnBeforeSuspend();
-  EXPECT_TRUE(GetScanTimer().IsCancelled());
 }
 
 TEST_F(WiFiMainTest, OnDarkResume_CallsWakeOnWiFi) {
-  FireScanTimer();
   EXPECT_CALL(*wake_on_wifi_,
               OnDarkResume(IsConnectedToCurrentService(), _, _, _, _, _));
   OnDarkResume();
-  EXPECT_TRUE(GetScanTimer().IsCancelled());
 }
 
 TEST_F(WiFiMainTest, RemoveSupplicantNetworks) {

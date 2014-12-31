@@ -313,7 +313,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static const int32_t kDefaultBgscanSignalThresholdDbm;
   static const uint16_t kDefaultRoamThresholdDb;
   static const uint16_t kDefaultScanIntervalSeconds;
-  static const uint32_t kDefaultWiphyIndex;
   static const time_t kMaxBSSResumeAgeSeconds;
   static const char kInterfaceStateUnknown[];
   // Delay between scans when supplicant finds "No suitable network".

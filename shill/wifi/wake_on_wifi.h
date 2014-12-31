@@ -41,6 +41,11 @@ class WiFi;
 
 class WakeOnWiFi {
  public:
+  typedef std::pair<std::vector<uint8_t>, std::vector<uint32_t>>
+      SSIDFreqListPair;
+  typedef std::vector<std::pair<std::vector<uint8_t>, std::vector<uint32_t>>>
+      WakeOnSSIDResults;
+
   WakeOnWiFi(NetlinkManager *netlink_manager, EventDispatcher *dispatcher,
              Metrics *metrics);
   virtual ~WakeOnWiFi();
@@ -75,6 +80,15 @@ class WakeOnWiFi {
   // Given a NL80211_CMD_NEW_WIPHY message |nl80211_message|, parses the
   // wiphy index of the NIC and sets |wiphy_index_| with the parsed index.
   void ParseWiphyIndex(const Nl80211Message &nl80211_message);
+  // Callback invoked when the system reports its wakeup reason.
+  //
+  // Arguments:
+  //  - |netlink_message|: wakeup report message (note: must manually check
+  //    this message to make sure it is a wakeup report message).
+  //
+  // Note: Assumes only one wakeup reason is received. If more than one is
+  // received, the only first one parsed will be handled.
+  virtual void OnWakeupReasonReceived(const NetlinkMessage &netlink_message);
   // Performs pre-suspend actions relevant to wake on wireless functionality.
   // Initiates DHCP lease renewal if there is a lease due to renewal soon,
   // then calls WakeOnWiFi::BeforeSuspendActions.
@@ -182,7 +196,6 @@ class WakeOnWiFi {
   FRIEND_TEST(WakeOnWiFiTestWithDispatcher, OnDarkResume_NotConnected_Throttle);
 
   static const char kWakeOnIPAddressPatternsNotSupported[];
-  static const char kWakeOnPacketDisabled[];
   static const char kWakeOnWiFiDisabled[];
   static const uint32_t kDefaultWiphyIndex;
   static const int kVerifyWakeOnWiFiSettingsDelayMilliseconds;
@@ -332,6 +345,20 @@ class WakeOnWiFi {
   // passing a empty base::Closure() causes a run-time DCHECK error when
   // AlarmTimer::Start or AlarmTimer::Reset are called.
   void OnTimerWakeDoNothing() {}
+
+  // Parses an attribute list containing the SSID matches that caused the
+  // system wake, along with the corresponding channels that these SSIDs were
+  // detected in. Returns a list on wake on SSID results (SSID-frequency list
+  // pairs) representing the reported SSID matches.
+  //
+  // Arguments:
+  //  - |results_list|: Nested attribute list containing an array of nested
+  //    attributes which contain the NL80211_ATTR_SSID or
+  //    NL80211_ATTR_SCAN_FREQUENCIES attributes. This attribute list is assumed
+  //    to have been extracted from a NL80211_CMD_SET_WOWLAN response message
+  //    using the NL80211_WOWLAN_TRIG_NET_DETECT_RESULTS id.
+  static WakeOnSSIDResults ParseWakeOnWakeOnSSIDResults(
+      AttributeListConstRefPtr results_list);
 
   // Pointers to objects owned by the WiFi object that created this object.
   EventDispatcher *dispatcher_;

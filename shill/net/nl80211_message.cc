@@ -650,6 +650,8 @@ NetlinkMessage *Nl80211Message::CreateMessage(const nlmsghdr *const_msg) {
       return new RemainOnChannelMessage();
     case RoamMessage::kCommand:
       return new RoamMessage();
+    case SetWakeOnPacketConnMessage::kCommand:
+      return new SetWakeOnPacketConnMessage();
     case ScanAbortedMessage::kCommand:
       return new ScanAbortedMessage();
     case TriggerScanMessage::kCommand:
