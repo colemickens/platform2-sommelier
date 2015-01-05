@@ -51,10 +51,9 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(external_power, 2, "ExternalPower enum value");
   DEFINE_string(power_source_id, "", "ID of the active power source");
   DEFINE_string(power_sources, "",
-                "Comma-separated list of "
-                "id:manufacturer:model:active_by_default values describing "
-                "available external power sources; active_by_default is 1 if "
-                "true");
+                "Comma-separated list of id:name:active_by_default values "
+                "describing available external power sources; "
+                "active_by_default is 1 if true");
 
   chromeos::FlagHelper::Init(argc, argv,
       "Emits a fake D-Bus signal describing the current power supply status.\n"
@@ -80,15 +79,13 @@ int main(int argc, char* argv[]) {
   for (auto source : sources) {
     std::vector<std::string> parts;
     base::SplitString(source, ':', &parts);
-    CHECK_EQ(parts.size(), 4u) << "Expected "
-                               << "id:manufacturer:model:active_by_default but "
+    CHECK_EQ(parts.size(), 3u) << "Expected id:name:active_by_default but "
                                << "got \"" << source << "\"";
     power_manager::PowerSupplyProperties_PowerSource* proto_source =
         proto.add_available_external_power_source();
     proto_source->set_id(parts[0]);
-    proto_source->set_manufacturer_id(parts[1]);
-    proto_source->set_model_id(parts[2]);
-    proto_source->set_active_by_default(parts[3] == "1");
+    proto_source->set_name(parts[1]);
+    proto_source->set_active_by_default(parts[2] == "1");
   }
 
   EmitSignal(proto);

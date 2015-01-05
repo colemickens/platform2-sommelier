@@ -14,7 +14,6 @@
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_util.h>
-#include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/flag_helper.h>
 
@@ -132,16 +131,14 @@ int main(int argc, char** argv) {
     default:
       display.PrintStringValue("enum type", "Unknown");
   }
+  display.PrintStringValue("model name", status.line_power_model_name);
   display.PrintValue("voltage (V)", status.line_power_voltage);
   display.PrintValue("current (A)", status.line_power_current);
 
   display.PrintStringValue("active source", status.external_power_source_id);
   std::vector<std::string> sources;
-  for (const auto& source : status.available_external_power_sources) {
-    sources.push_back(base::StringPrintf("%s%s [%s/%s]", source.id.c_str(),
-        source.active_by_default ? "*" : "", source.manufacturer_id.c_str(),
-        source.model_id.c_str()));
-  }
+  for (const auto& source : status.available_external_power_sources)
+    sources.push_back(source.id + (source.active_by_default ? "*" : ""));
   display.PrintStringValue("available sources", JoinString(sources, ", "));
 
   display.PrintStringValue("supports dual-role",
