@@ -59,7 +59,7 @@ const uint32_t WakeOnWiFi::kImmediateDHCPLeaseRenewalThresholdSeconds = 60;
 // TODO(samueltan): link this to
 // Manager::kTerminationActionsTimeoutMilliseconds rather than hard-coding
 // this value.
-int64_t WakeOnWiFi::DarkResumeActionsTimeoutMilliseconds = 8500;
+int64_t WakeOnWiFi::DarkResumeActionsTimeoutMilliseconds = 18500;
 
 WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
                        EventDispatcher *dispatcher, Metrics *metrics)

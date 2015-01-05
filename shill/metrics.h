@@ -555,22 +555,22 @@ class Metrics {
   static const char kMetricLinkApDisconnectType[];
 
   // Shill termination action statistics.
-  static const char kMetricTerminationActionTime[];
+  static const char kMetricTerminationActionTimeTaken[];
   static const char kMetricTerminationActionResult[];
-  static const int kMetricTerminationActionTimeMillisecondsMax;
-  static const int kMetricTerminationActionTimeMillisecondsMin;
+  static const int kMetricTerminationActionTimeTakenMillisecondsMax;
+  static const int kMetricTerminationActionTimeTakenMillisecondsMin;
 
   // Shill suspend action statistics.
-  static const char kMetricSuspendActionTime[];
+  static const char kMetricSuspendActionTimeTaken[];
   static const char kMetricSuspendActionResult[];
-  static const int kMetricSuspendActionTimeMillisecondsMax;
-  static const int kMetricSuspendActionTimeMillisecondsMin;
+  static const int kMetricSuspendActionTimeTakenMillisecondsMax;
+  static const int kMetricSuspendActionTimeTakenMillisecondsMin;
 
   // Shill dark resume action statistics.
-  static const char kMetricDarkResumeActionTime[];
+  static const char kMetricDarkResumeActionTimeTaken[];
   static const char kMetricDarkResumeActionResult[];
-  static const int kMetricDarkResumeActionTimeMillisecondsMax;
-  static const int kMetricDarkResumeActionTimeMillisecondsMin;
+  static const int kMetricDarkResumeActionTimeTakenMillisecondsMax;
+  static const int kMetricDarkResumeActionTimeTakenMillisecondsMin;
   static const char kMetricDarkResumeUnmatchedScanResultReceived[];
 
   // Shill wake on WiFi feature state statistics.

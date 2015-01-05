@@ -24,7 +24,7 @@ namespace {
 
 // Maximum time that the controller will wait for a suspend delay to become
 // ready, in milliseconds.
-const int kMaxDelayTimeoutMs = 10000;
+const int kMaxDelayTimeoutMs = 20000;
 
 }  // namespace
 

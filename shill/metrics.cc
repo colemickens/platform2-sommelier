@@ -155,26 +155,26 @@ const char Metrics::kMetricScanResult[] =
 const char Metrics::kMetricWiFiScanTimeInEbusyMilliseconds[] =
     "Network.Shill.WiFi.ScanTimeInEbusy";
 
-const char Metrics::kMetricTerminationActionTime[] =
-    "Network.Shill.TerminationActionTime";
+const char Metrics::kMetricTerminationActionTimeTaken[] =
+    "Network.Shill.TerminationActionTimeTaken";
 const char Metrics::kMetricTerminationActionResult[] =
     "Network.Shill.TerminationActionResult";
-const int Metrics::kMetricTerminationActionTimeMillisecondsMax = 10000;
-const int Metrics::kMetricTerminationActionTimeMillisecondsMin = 1;
+const int Metrics::kMetricTerminationActionTimeTakenMillisecondsMax = 20000;
+const int Metrics::kMetricTerminationActionTimeTakenMillisecondsMin = 1;
 
-const char Metrics::kMetricSuspendActionTime[] =
-    "Network.Shill.SuspendActionTime";
+const char Metrics::kMetricSuspendActionTimeTaken[] =
+    "Network.Shill.SuspendActionTimeTaken";
 const char Metrics::kMetricSuspendActionResult[] =
     "Network.Shill.SuspendActionResult";
-const int Metrics::kMetricSuspendActionTimeMillisecondsMax = 10000;
-const int Metrics::kMetricSuspendActionTimeMillisecondsMin = 1;
+const int Metrics::kMetricSuspendActionTimeTakenMillisecondsMax = 20000;
+const int Metrics::kMetricSuspendActionTimeTakenMillisecondsMin = 1;
 
-const char Metrics::kMetricDarkResumeActionTime[] =
-    "Network.Shill.DarkResumeActionTime";
+const char Metrics::kMetricDarkResumeActionTimeTaken[] =
+    "Network.Shill.DarkResumeActionTimeTaken";
 const char Metrics::kMetricDarkResumeActionResult[] =
     "Network.Shill.DarkResumeActionResult";
-const int Metrics::kMetricDarkResumeActionTimeMillisecondsMax = 10000;
-const int Metrics::kMetricDarkResumeActionTimeMillisecondsMin = 1;
+const int Metrics::kMetricDarkResumeActionTimeTakenMillisecondsMax = 20000;
+const int Metrics::kMetricDarkResumeActionTimeTakenMillisecondsMin = 1;
 const char Metrics::kMetricDarkResumeUnmatchedScanResultReceived[] =
     "Network.Shill.WiFi.DarkResumeUnmatchedScanResultsReceived";
 
@@ -784,13 +784,13 @@ void Metrics::NotifyTerminationActionsCompleted(bool success) {
   time_termination_actions_timer->GetElapsedTime(&elapsed_time);
   time_termination_actions_timer->Reset();
   string time_metric, result_metric;
-  time_metric = kMetricTerminationActionTime;
+  time_metric = kMetricTerminationActionTimeTaken;
   result_metric = kMetricTerminationActionResult;
 
   SendToUMA(time_metric,
             elapsed_time.InMilliseconds(),
-            kMetricTerminationActionTimeMillisecondsMin,
-            kMetricTerminationActionTimeMillisecondsMax,
+            kMetricTerminationActionTimeTakenMillisecondsMin,
+            kMetricTerminationActionTimeTakenMillisecondsMax,
             kTimerHistogramNumBuckets);
 
   SendEnumToUMA(result_metric,
@@ -815,13 +815,13 @@ void Metrics::NotifySuspendActionsCompleted(bool success) {
   time_suspend_actions_timer->GetElapsedTime(&elapsed_time);
   time_suspend_actions_timer->Reset();
   string time_metric, result_metric;
-  time_metric = kMetricSuspendActionTime;
+  time_metric = kMetricSuspendActionTimeTaken;
   result_metric = kMetricSuspendActionResult;
 
   SendToUMA(time_metric,
             elapsed_time.InMilliseconds(),
-            kMetricSuspendActionTimeMillisecondsMin,
-            kMetricSuspendActionTimeMillisecondsMax,
+            kMetricSuspendActionTimeTakenMillisecondsMin,
+            kMetricSuspendActionTimeTakenMillisecondsMax,
             kTimerHistogramNumBuckets);
 
   SendEnumToUMA(result_metric,
@@ -847,13 +847,13 @@ void Metrics::NotifyDarkResumeActionsCompleted(bool success) {
   time_dark_resume_actions_timer->GetElapsedTime(&elapsed_time);
   time_dark_resume_actions_timer->Reset();
   string time_metric, result_metric;
-  time_metric = kMetricDarkResumeActionTime;
+  time_metric = kMetricDarkResumeActionTimeTaken;
   result_metric = kMetricDarkResumeActionResult;
 
   SendToUMA(time_metric,
             elapsed_time.InMilliseconds(),
-            kMetricDarkResumeActionTimeMillisecondsMin,
-            kMetricDarkResumeActionTimeMillisecondsMax,
+            kMetricDarkResumeActionTimeTakenMillisecondsMin,
+            kMetricDarkResumeActionTimeTakenMillisecondsMax,
             kTimerHistogramNumBuckets);
 
   SendEnumToUMA(result_metric,

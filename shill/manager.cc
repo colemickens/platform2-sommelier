@@ -78,7 +78,7 @@ const char Manager::kErrorUnsupportedServiceType[] =
     "service type is unsupported";
 // This timeout should be less than the upstart job timeout, otherwise
 // stats for termination actions might be lost.
-const int Manager::kTerminationActionsTimeoutMilliseconds = 9500;
+const int Manager::kTerminationActionsTimeoutMilliseconds = 19500;
 
 // Device status check interval (every 3 minutes).
 const int Manager::kDeviceStatusCheckIntervalMilliseconds = 180000;
