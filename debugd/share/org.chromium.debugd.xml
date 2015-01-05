@@ -123,8 +123,8 @@
       <arg name="options" type="a{sv}" direction="in">
         <tp:docstring>
           Options:
-            numeric (bool): Use numeric remote hosts.
-            v6 (bool): Use ipv6.
+            numeric (bool): Deprecated, numeric hosts are always given.
+            v6 (bool): True for ipv6.
         </tp:docstring>
       </arg>
       <arg name="result" type="as" direction="out">
