@@ -14,7 +14,7 @@ $PrivDropToGroup syslog
 $SystemLogUsePIDFromSystem on
 
 # Don't include hostname in log messages.
-$template LogWithoutHostname,"%TIMESTAMP:::date-rfc3339% %syslogtag%%msg:::sp-if-no-1st-sp%%msg::drop-last-lf%\n"
+$template LogWithoutHostname,"%TIMESTAMP:::date-rfc3339% %syslogseverity-text:::uppercase% %syslogtag%%msg:::sp-if-no-1st-sp%%msg::drop-last-lf%\n"
 $ActionFileDefaultTemplate LogWithoutHostname
 
 $SystemLogRateLimitInterval 0
