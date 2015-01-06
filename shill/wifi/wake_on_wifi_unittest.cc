@@ -588,6 +588,8 @@ class WakeOnWiFiTest : public ::testing::Test {
 
   void ApplyWakeOnWiFiSettings() { wake_on_wifi_->ApplyWakeOnWiFiSettings(); }
 
+  void DisableWakeOnWiFi() { wake_on_wifi_->DisableWakeOnWiFi(); }
+
   set<WakeOnWiFi::WakeOnWiFiTrigger> *GetWakeOnWiFiTriggers() {
     return &wake_on_wifi_->wake_on_wifi_triggers_;
   }
@@ -1591,6 +1593,13 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   BeforeSuspendActions(is_connected, have_service_configured_for_autoconnect,
                        start_lease_renewal_timer, kTimeToNextLeaseRenewalLong);
   EXPECT_FALSE(WakeToScanTimerIsRunning());
+}
+
+TEST_F(WakeOnWiFiTestWithMockDispatcher, DisableWakeOnWiFi_ClearsTriggers) {
+  GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kPattern);
+  EXPECT_FALSE(GetWakeOnWiFiTriggers()->empty());
+  DisableWakeOnWiFi();
+  EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
 }
 
 #if !defined(DISABLE_WAKE_ON_WIFI)

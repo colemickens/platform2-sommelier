@@ -748,6 +748,7 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
     LOG(ERROR) << error.message();
     return;
   }
+  wake_on_wifi_triggers_.clear();
   if (!netlink_manager_->SendNl80211Message(
           &disable_wowlan_msg,
           Bind(&WakeOnWiFi::OnSetWakeOnPacketConnectionResponse),
