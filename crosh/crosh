@@ -1169,25 +1169,19 @@ cmd_battery_test() (
     return 1
   fi
 
-  ac="$(ls /sys/class/power_supply/*/online)"
-  ac="$(dirname ${ac})"
-
-  bat="/sys/class/power_supply/*/technology"
+  ac="/sys/class/power_supply/AC"
+  bat="/sys/class/power_supply/BAT0"
 
   # Checking if battery is present in the system.
-  if ! ls ${bat} >/dev/null 2>&1; then
+  if [ ! -e "${bat}/technology" ]; then
     echo "No battery found. Insert the battery and reboot the device."
     return 1
-  else
-    # Battery exists. Getting its path.
-    bat="$(ls ${bat})"
-    bat="$(dirname ${bat})"
   fi
 
   # Figuring out if battery gauge measures energy left or charge.
-  if ls ${bat}/energy* >/dev/null 2>&1; then
+  if [ -e "${bat}/energy_now" ]; then
     meter="energy"
-  elif ls ${bat}/charge* >/dev/null 2>&1; then
+  elif [ -e "${bat}/charge_now" ]; then
     meter="charge"
   else
     echo "Could not figure out the way to get battery status"
