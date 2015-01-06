@@ -758,6 +758,7 @@ static int setup_encrypted(int mode)
 	struct statvfs stateful_statbuf;
 	uint64_t blocks_min, blocks_max;
 	int valid_keyfile = 0;
+	int rc = 0;
 
 	/* Use the "system key" to decrypt the "encryption key" stored in
 	 * the stateful partition.
@@ -786,7 +787,7 @@ static int setup_encrypted(int mode)
 			INFO("Generating new encryption key.");
 			encryption_key = choose_encryption_key();
 			if (!encryption_key)
-				return 0;
+				goto finished;
 			rebuild = 1;
 		} else {
 			ERROR("Finalization unfinished! " \
@@ -804,7 +805,7 @@ static int setup_encrypted(int mode)
 		/* Calculate the desired size of the new partition. */
 		if (statvfs(stateful_mount, &stateful_statbuf)) {
 			PERROR("%s", stateful_mount);
-			return 0;
+			goto finished;
 		}
 		fs_bytes_max = stateful_statbuf.f_blocks;
 		fs_bytes_max *= kSizePercent;
@@ -817,13 +818,13 @@ static int setup_encrypted(int mode)
 		sparsefd = sparse_create(block_path, fs_bytes_max);
 		if (sparsefd < 0) {
 			PERROR("%s", block_path);
-			return 0;
+			goto finished;
 		}
 	} else {
 		sparsefd = open(block_path, O_RDWR | O_NOFOLLOW);
 		if (sparsefd < 0) {
 			PERROR("%s", block_path);
-			return 0;
+			goto finished;
 		}
 	}
 
@@ -832,7 +833,7 @@ static int setup_encrypted(int mode)
 	lodev = loop_attach(sparsefd, dmcrypt_name);
 	if (!lodev || strlen(lodev) == 0) {
 		ERROR("loop_attach failed");
-		goto failed;
+		goto finished;
 	}
 
 	/* Get size as seen by block device. */
@@ -998,8 +999,9 @@ static int setup_encrypted(int mode)
 		}
 	}
 
-	free(lodev);
-	return 1;
+	/* Everything completed without error.*/
+	rc = 1;
+	goto finished;
 
 unbind:
 	for (bind = bind_mounts; bind->src; ++ bind) {
@@ -1024,10 +1026,11 @@ lo_cleanup:
 	INFO("Unlooping %s.", lodev);
 	loop_detach(lodev);
 
-failed:
+finished:
+	free(encryption_key);
 	free(lodev);
 
-	return 0;
+	return rc;
 }
 
 /* Clean up all bind mounts, mounts, attaches, etc. Only the final
