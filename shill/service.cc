@@ -76,6 +76,8 @@ const char Service::kServiceSortIsConnecting[] = "IsConnecting";
 const char Service::kServiceSortIsFailed[] = "IsFailed";
 const char Service::kServiceSortIsPortalled[] = "IsPortal";
 const char Service::kServiceSortPriority[] = "Priority";
+const char Service::kServiceSortPriorityWithinTechnology[] =
+    "PriorityWithinTechnology";
 const char Service::kServiceSortSecurity[] = "Security";
 const char Service::kServiceSortProfileOrder[] = "ProfileOrder";
 const char Service::kServiceSortEtc[] = "Etc";
@@ -91,6 +93,8 @@ const char Service::kStorageGUID[] = "GUID";
 const char Service::kStorageHasEverConnected[] = "HasEverConnected";
 const char Service::kStorageName[] = "Name";
 const char Service::kStoragePriority[] = "Priority";
+const char Service::kStoragePriorityWithinTechnology[]
+    = "PriorityWithinTechnology";
 const char Service::kStorageProxyConfig[] = "ProxyConfig";
 const char Service::kStorageSaveCredentials[] = "SaveCredentials";
 const char Service::kStorageType[] = "Type";
@@ -135,6 +139,7 @@ Service::Service(ControlInterface *control_interface,
       explicitly_disconnected_(false),
       is_in_user_connect_(false),
       priority_(kPriorityNone),
+      priority_within_technology_(kPriorityNone),
       crypto_algorithm_(kCryptoNone),
       key_rotation_(false),
       endpoint_auth_(false),
@@ -220,6 +225,9 @@ Service::Service(ControlInterface *control_interface,
   HelpRegisterDerivedInt32(kPriorityProperty,
                            &Service::GetPriority,
                            &Service::SetPriority);
+  HelpRegisterDerivedInt32(kPriorityWithinTechnologyProperty,
+                           &Service::GetPriorityWithinTechnology,
+                           &Service::SetPriorityWithinTechnology);
   HelpRegisterDerivedString(kProfileProperty,
                             &Service::GetProfileRpcId,
                             &Service::SetProfileRpcId);
@@ -491,6 +499,10 @@ bool Service::Load(StoreInterface *storage) {
   if (!storage->GetInt(id, kStoragePriority, &priority_)) {
     priority_ = kPriorityNone;
   }
+  if (!storage->GetInt(id, kStoragePriorityWithinTechnology,
+                       &priority_within_technology_)) {
+    priority_within_technology_ = kPriorityNone;
+  }
   LoadString(storage, id, kStorageProxyConfig, "", &proxy_config_);
   storage->GetBool(id, kStorageSaveCredentials, &save_credentials_);
   LoadString(storage, id, kStorageUIData, "", &ui_data_);
@@ -529,6 +541,7 @@ bool Service::Unload() {
   guid_ = "";
   has_ever_connected_ = false;
   priority_ = kPriorityNone;
+  priority_within_technology_ = kPriorityNone;
   proxy_config_ = "";
   save_credentials_ = true;
   ui_data_ = "";
@@ -578,6 +591,12 @@ bool Service::Save(StoreInterface *storage) {
     storage->SetInt(id, kStoragePriority, priority_);
   } else {
     storage->DeleteKey(id, kStoragePriority);
+  }
+  if (priority_within_technology_ != kPriorityNone) {
+    storage->SetInt(id, kStoragePriorityWithinTechnology,
+                    priority_within_technology_);
+  } else {
+    storage->DeleteKey(id, kStoragePriorityWithinTechnology);
   }
   SaveString(storage, id, kStorageProxyConfig, proxy_config_, false, true);
   storage->SetBool(id, kStorageSaveCredentials, save_credentials_);
@@ -1078,6 +1097,12 @@ bool Service::Compare(Manager *manager,
     }
   }
 
+  if (DecideBetween(a->priority_within_technology(),
+                    b->priority_within_technology(), &ret)) {
+    *reason = kServiceSortPriorityWithinTechnology;
+    return ret;
+  }
+
   if (DecideBetween(a->SecurityLevel(), b->SecurityLevel(), &ret)) {
     *reason = kServiceSortSecurity;
     return ret;
@@ -1494,6 +1519,21 @@ bool Service::SetPriority(const int32_t &priority, Error *error) {
   }
   priority_ = priority;
   adaptor_->EmitIntChanged(kPriorityProperty, priority_);
+  return true;
+}
+
+int32_t Service::GetPriorityWithinTechnology(Error *error) {
+  return priority_within_technology_;
+}
+
+bool Service::SetPriorityWithinTechnology(const int32_t &priority,
+                                          Error *error) {
+  if (priority_within_technology_ == priority) {
+    return false;
+  }
+  priority_within_technology_ = priority;
+  adaptor_->EmitIntChanged(kPriorityWithinTechnologyProperty,
+                           priority_within_technology_);
   return true;
 }
 

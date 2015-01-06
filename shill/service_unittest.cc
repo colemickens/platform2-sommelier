@@ -2126,11 +2126,17 @@ TEST_F(ServiceTest, Compare) {
       .WillRepeatedly(Return(false));
   EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
 
-  // Security
+  // Security.
   service2->SetSecurity(Service::kCryptoAes, true, true);
   EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
 
-  // Technology
+  // PriorityWithinTechnology.
+  service10->SetPriorityWithinTechnology(1, nullptr);
+  EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
+  service2->SetPriorityWithinTechnology(2, nullptr);
+  EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
+
+  // Technology.
   EXPECT_CALL(*service2.get(), technology())
       .WillRepeatedly(Return((Technology::kWifi)));
   EXPECT_CALL(*service10.get(), technology())
