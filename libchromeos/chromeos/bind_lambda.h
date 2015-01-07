@@ -31,7 +31,7 @@ class LambdaAdapter<Lambda, R(Lambda::*)(Args... args)> {
  public:
   typedef R(RunType)(Args...);
   LambdaAdapter(Lambda lambda) : lambda_(lambda) {}
-  R Run(Args... args) { return lambda_(args...); }
+  R Run(Args... args) { return lambda_(CallbackForward(args)...); }
 
  private:
   Lambda lambda_;
@@ -43,7 +43,7 @@ class LambdaAdapter<Lambda, R(Lambda::*)(Args... args) const> {
  public:
   typedef R(RunType)(Args...);
   LambdaAdapter(Lambda lambda) : lambda_(lambda) {}
-  R Run(Args... args) { return lambda_(args...); }
+  R Run(Args... args) { return lambda_(CallbackForward(args)...); }
 
  private:
   Lambda lambda_;
