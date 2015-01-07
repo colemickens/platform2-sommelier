@@ -58,6 +58,10 @@ class CHROMEOS_EXPORT AuthorizationSessionImpl: public AuthorizationSession {
   // The encrypted salt is stored in the out parameter |encrypted_salt|.
   TPM_RC EncryptSalt(const std::string& salt, std::string* encrypted_salt);
 
+  // This method tries to flush all TPM context associated with the current
+  // AuthorizationSession.
+  void CloseSession();
+
   // This factory is only set in the constructor and is used to instantiate
   // The TPM class to forward commands to the TPM chip.
   const TrunksFactory& factory_;

@@ -21,30 +21,23 @@
 namespace {
 
 const size_t kWellKnownExponent = 0x10001;
+const trunks::TPM_HANDLE kUninitializedHandle = 0;
 
 }  // namespace
 
 namespace trunks {
 
 AuthorizationSessionImpl::AuthorizationSessionImpl(
-    const TrunksFactory& factory) : factory_(factory) {}
+    const TrunksFactory& factory)
+    : factory_(factory),
+      hmac_handle_(kUninitializedHandle) {}
 
 AuthorizationSessionImpl::~AuthorizationSessionImpl() {
-  if (!hmac_handle_) {
-    return;
-  }
-  Tpm* tpm = factory_.GetTpm();
-  TPM_RC result = tpm->FlushContextSync(hmac_handle_,
-                                        "",
-                                        NULL);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(WARNING) << "Error closing authorization session: "
-                 << GetErrorString(result);
-  }
+  CloseSession();
 }
 
 AuthorizationDelegate* AuthorizationSessionImpl::GetDelegate() {
-  if (!hmac_handle_) {
+  if (hmac_handle_ == kUninitializedHandle) {
     return NULL;
   }
   return &hmac_delegate_;
@@ -54,6 +47,8 @@ TPM_RC AuthorizationSessionImpl::StartBoundSession(
     TPMI_DH_ENTITY bind_entity,
     const std::string& bind_authorization_value,
     bool enable_encryption) {
+  // If we already have an active session, close it.
+  CloseSession();
   // First we generate a cryptographically secure salt and encrypt it using
   // PKCS1_OAEP padded RSA public key encryption. This is specified in TPM2.0
   // Part1 Architecture, Appendix B.10.2.
@@ -215,6 +210,21 @@ TPM_RC AuthorizationSessionImpl::EncryptSalt(const std::string& salt,
     return TPM_RC_FAILURE;
   }
   return TPM_RC_SUCCESS;
+}
+
+void AuthorizationSessionImpl::CloseSession() {
+  if (hmac_handle_ == kUninitializedHandle) {
+    return;
+  }
+  Tpm* tpm = factory_.GetTpm();
+  TPM_RC result = tpm->FlushContextSync(hmac_handle_,
+                                        "",
+                                        NULL);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(WARNING) << "Error closing authorization session: "
+                 << GetErrorString(result);
+  }
+  hmac_handle_ = kUninitializedHandle;
 }
 
 }  // namespace trunks
