@@ -26,6 +26,24 @@ using FormFieldList = std::vector<std::pair<std::string, std::string>>;
 ////////////////////////////////////////////////////////////////////////////////
 // The following are simple utility helper functions for common HTTP operations
 // that use http::Request object behind the scenes and set it up accordingly.
+// The values for request method, data MIME type, request header names should
+// not be directly encoded in most cases, but use predefined constants from
+// http_request.h.
+// So, instead of calling:
+//    SendRequestAndBlock("POST",
+//                        "http://url",
+//                        "data", 4,
+//                        "text/plain",
+//                        {{"Authorization", "Bearer TOKEN"}},
+//                        transport, error);
+// You should do use this instead:
+//    SendRequestAndBlock(chromeos::http::request_type::kPost,
+//                        "http://url",
+//                        "data", 4,
+//                        chromeos::mime::text::kPlain,
+//                        {{chromeos::http::request_header::kAuthorization,
+//                          "Bearer TOKEN"}},
+//                        transport, error);
 //
 // For more advanced functionality you need to use Request/Response objects
 // directly.
@@ -34,42 +52,45 @@ using FormFieldList = std::vector<std::pair<std::string, std::string>>;
 // Performs a generic HTTP request with binary data. Success status,
 // returned data and additional information (such as returned HTTP headers)
 // can be obtained from the returned Response object.
-// If data MIME type is not specified, "application/octet-stream" is assumed.
-CHROMEOS_EXPORT std::unique_ptr<Response> SendRequest(
-    const char* method, const std::string& url,
-    const void* data, size_t data_size, const char* mime_type,
-    const HeaderList& headers, std::shared_ptr<Transport> transport,
-    chromeos::ErrorPtr* error);
-
-// Performs a simple GET request and returns the data as a string.
-CHROMEOS_EXPORT std::string GetAsString(
-    const std::string& url, const HeaderList& headers,
+CHROMEOS_EXPORT std::unique_ptr<Response> SendRequestAndBlock(
+    const std::string& method,
+    const std::string& url,
+    const void* data,
+    size_t data_size,
+    const std::string& mime_type,
+    const HeaderList& headers,
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error);
-inline std::string GetAsString(const std::string& url,
-                               std::shared_ptr<Transport> transport,
-                               chromeos::ErrorPtr* error) {
-  return GetAsString(url, HeaderList(), transport, error);
-}
 
-// Performs a GET request. Success status, returned data and additional
-// information (such as returned HTTP headers) can be obtained from
-// the returned Response object.
-CHROMEOS_EXPORT std::unique_ptr<Response> Get(
+// Same as above, but without sending the request body.
+// This is especially useful for requests like "GET" and "HEAD".
+CHROMEOS_EXPORT std::unique_ptr<Response> SendRequestWithNoDataAndBlock(
+    const std::string& method,
     const std::string& url,
     const HeaderList& headers,
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error);
-inline std::unique_ptr<Response> Get(
-    const std::string& url, std::shared_ptr<Transport> transport,
-    chromeos::ErrorPtr* error) {
-  return Get(url, HeaderList(), transport, error);
-}
+
+// Performs a simple GET request and returns the data as a string.
+CHROMEOS_EXPORT std::string GetAsStringAndBlock(
+    const std::string& url,
+    const HeaderList& headers,
+    std::shared_ptr<Transport> transport,
+    chromeos::ErrorPtr* error);
+
+// Performs a GET request. Success status, returned data and additional
+// information (such as returned HTTP headers) can be obtained from
+// the returned Response object.
+CHROMEOS_EXPORT std::unique_ptr<Response> GetAndBlock(
+    const std::string& url,
+    const HeaderList& headers,
+    std::shared_ptr<Transport> transport,
+    chromeos::ErrorPtr* error);
 
 // Performs a HEAD request. Success status and additional
 // information (such as returned HTTP headers) can be obtained from
 // the returned Response object.
-CHROMEOS_EXPORT std::unique_ptr<Response> Head(
+CHROMEOS_EXPORT std::unique_ptr<Response> HeadAndBlock(
     const std::string& url,
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error);
@@ -77,103 +98,59 @@ CHROMEOS_EXPORT std::unique_ptr<Response> Head(
 // Performs a POST request with binary data. Success status, returned data
 // and additional information (such as returned HTTP headers) can be obtained
 // from the returned Response object.
-// If data MIME type is not specified, "application/octet-stream" is assumed
-CHROMEOS_EXPORT  std::unique_ptr<Response> PostBinary(
+CHROMEOS_EXPORT std::unique_ptr<Response> PostBinaryAndBlock(
     const std::string& url,
     const void* data,
     size_t data_size,
-    const char* mime_type,
+    const std::string& mime_type,
     const HeaderList& headers,
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error);
-
-inline std::unique_ptr<Response> PostBinary(
-    const std::string& url, const void* data, size_t data_size,
-    const char* mime_type, std::shared_ptr<Transport> transport,
-    chromeos::ErrorPtr* error) {
-  return PostBinary(url, data, data_size, mime_type, HeaderList(), transport,
-                    error);
-}
-
-inline std::unique_ptr<Response> PostBinary(
-    const std::string& url, const void* data, size_t data_size,
-    std::shared_ptr<Transport> transport, chromeos::ErrorPtr* error) {
-  return PostBinary(url, data, data_size, nullptr, transport, error);
-}
 
 // Performs a POST request with text data. Success status, returned data
 // and additional information (such as returned HTTP headers) can be obtained
 // from the returned Response object.
-// If data MIME type is not specified, "application/x-www-form-urlencoded"
-// is assumed.
-CHROMEOS_EXPORT std::unique_ptr<Response> PostText(
+CHROMEOS_EXPORT std::unique_ptr<Response> PostTextAndBlock(
     const std::string& url,
-    const char* data,
-    const char* mime_type,
+    const std::string& data,
+    const std::string& mime_type,
     const HeaderList& headers,
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error);
-
-inline std::unique_ptr<Response> PostText(
-    const std::string& url, const char* data, const char* mime_type,
-    std::shared_ptr<Transport> transport, chromeos::ErrorPtr* error) {
-  return PostText(url, data, mime_type, HeaderList(), transport, error);
-}
-
-inline std::unique_ptr<Response> PostText(
-    const std::string& url, const char* data,
-    std::shared_ptr<Transport> transport, chromeos::ErrorPtr* error) {
-  return PostText(url, data, nullptr, transport, error);
-}
 
 // Performs a POST request with form data. Success status, returned data
 // and additional information (such as returned HTTP headers) can be obtained
 // from the returned Response object. The form data is a list of key/value
 // pairs. The data is posed as "application/x-www-form-urlencoded".
-CHROMEOS_EXPORT std::unique_ptr<Response> PostFormData(
-    const std::string& url, const FormFieldList& data,
-    const HeaderList& headers, std::shared_ptr<Transport> transport,
+CHROMEOS_EXPORT std::unique_ptr<Response> PostFormDataAndBlock(
+    const std::string& url,
+    const FormFieldList& data,
+    const HeaderList& headers,
+    std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error);
 
-inline std::unique_ptr<Response> PostFormData(
-    const std::string& url, const FormFieldList& data,
-    std::shared_ptr<Transport> transport, chromeos::ErrorPtr* error) {
-  return PostFormData(url, data, HeaderList(), transport, error);
-}
 
 // Performs a POST request with JSON data. Success status, returned data
 // and additional information (such as returned HTTP headers) can be obtained
 // from the returned Response object. If a JSON response is expected,
 // use ParseJsonResponse() method on the returned Response object.
-CHROMEOS_EXPORT std::unique_ptr<Response> PostJson(
+CHROMEOS_EXPORT std::unique_ptr<Response> PostJsonAndBlock(
     const std::string& url,
     const base::Value* json,
     const HeaderList& headers,
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error);
-
-inline std::unique_ptr<Response> PostJson(
-    const std::string& url, const base::Value* json,
-    std::shared_ptr<Transport> transport, chromeos::ErrorPtr* error) {
-  return PostJson(url, json, HeaderList(), transport, error);
-}
 
 // Performs a PATCH request with JSON data. Success status, returned data
 // and additional information (such as returned HTTP headers) can be obtained
 // from the returned Response object. If a JSON response is expected,
 // use ParseJsonResponse() method on the returned Response object.
-CHROMEOS_EXPORT std::unique_ptr<Response> PatchJson(
+CHROMEOS_EXPORT std::unique_ptr<Response> PatchJsonAndBlock(
     const std::string& url,
     const base::Value* json,
     const HeaderList& headers,
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error);
-
-inline std::unique_ptr<Response> PatchJson(
-    const std::string& url, const base::Value* json,
-    std::shared_ptr<Transport> transport, chromeos::ErrorPtr* error) {
-  return PatchJson(url, json, HeaderList(), transport, error);
-}
 
 // Given an http::Response object, parse the body data into Json object.
 // Returns null if failed. Optional |error| can be passed in to

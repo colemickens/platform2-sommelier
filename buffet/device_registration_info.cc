@@ -282,12 +282,12 @@ bool DeviceRegistrationInfo::ValidateAndRefreshAccessToken(
     return true;
   }
 
-  auto response = chromeos::http::PostFormData(GetOAuthURL("token"), {
+  auto response = chromeos::http::PostFormDataAndBlock(GetOAuthURL("token"), {
     {"refresh_token", refresh_token_},
     {"client_id", client_id_},
     {"client_secret", client_secret_},
     {"grant_type", "refresh_token"},
-  }, transport_, error);
+  }, {}, transport_, error);
   if (!response)
     return false;
 
@@ -351,7 +351,7 @@ std::unique_ptr<base::Value> DeviceRegistrationInfo::GetDeviceInfo(
     return std::unique_ptr<base::Value>();
 
   // TODO(antonm): Switch to DoCloudRequest later.
-  auto response = chromeos::http::Get(
+  auto response = chromeos::http::GetAndBlock(
       GetDeviceURL(), {GetAuthorizationHeader()}, transport_, error);
   int status_code = 0;
   std::unique_ptr<base::DictionaryValue> json =
@@ -408,7 +408,7 @@ std::string DeviceRegistrationInfo::RegisterDevice(
   auto url = GetServiceURL("registrationTickets/" + ticket_id_,
                            {{"key", api_key_}});
   std::unique_ptr<chromeos::http::Response> response =
-      chromeos::http::PatchJson(url, &req_json, transport_, error);
+      chromeos::http::PatchJsonAndBlock(url, &req_json, {}, transport_, error);
   auto json_resp = chromeos::http::ParseJsonResponse(response.get(), nullptr,
                                                      error);
   if (!json_resp)
@@ -425,7 +425,8 @@ std::string DeviceRegistrationInfo::RegisterDevice(
 
   url = GetServiceURL("registrationTickets/" + ticket_id_ +
                       "/finalize?key=" + api_key_);
-  response = chromeos::http::PostBinary(url, nullptr, 0, transport_, error);
+  response = chromeos::http::SendRequestWithNoDataAndBlock(
+      chromeos::http::request_type::kPost, url, {}, transport_, error);
   if (!response)
     return std::string();
   json_resp = chromeos::http::ParseJsonResponse(response.get(), nullptr, error);
@@ -447,14 +448,14 @@ std::string DeviceRegistrationInfo::RegisterDevice(
   }
 
   // Now get access_token and refresh_token
-  response = chromeos::http::PostFormData(GetOAuthURL("token"), {
+  response = chromeos::http::PostFormDataAndBlock(GetOAuthURL("token"), {
     {"code", auth_code},
     {"client_id", client_id_},
     {"client_secret", client_secret_},
     {"redirect_uri", "oob"},
     {"scope", "https://www.googleapis.com/auth/clouddevices"},
     {"grant_type", "authorization_code"}
-  }, transport_, error);
+  }, {}, transport_, error);
   if (!response)
     return std::string();
 
@@ -532,10 +533,10 @@ void SendRequestAsync(
     }
   };
 
-  chromeos::http::Request request(url, method.c_str(), transport);
+  chromeos::http::Request request(url, method, transport);
   request.AddHeaders(headers);
   if (!data.empty()) {
-    request.SetContentType(mime_type.c_str());
+    request.SetContentType(mime_type);
     if (!request.AddRequestBody(data.c_str(), data.size(), &error)) {
       on_retriable_failure();
       return;
@@ -543,7 +544,7 @@ void SendRequestAsync(
   }
 
   std::unique_ptr<chromeos::http::Response> response{
-    request.GetResponse(&error)};
+    request.GetResponseAndBlock(&error)};
   if (!response) {
     on_retriable_failure();
     return;

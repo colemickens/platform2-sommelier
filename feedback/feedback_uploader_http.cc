@@ -16,9 +16,9 @@ FeedbackUploaderHttp::FeedbackUploaderHttp(
 
 void FeedbackUploaderHttp::DispatchReport(const std::string& data) {
   chromeos::ErrorPtr error;
-  auto response = chromeos::http::PostBinary(
+  auto response = chromeos::http::PostBinaryAndBlock(
       url_, data.data(), data.size(), chromeos::mime::application::kProtobuf,
-      chromeos::http::Transport::CreateDefault(), &error);
+      {}, chromeos::http::Transport::CreateDefault(), &error);
   if (response) {
     LOG(INFO) << "Sending feedback: successful";
     UpdateUploadTimer();

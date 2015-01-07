@@ -215,24 +215,25 @@ class CHROMEOS_EXPORT Request {
   // The main constructor. |url| specifies the remote host address/path
   // to send the request to. |method| is the HTTP request verb and
   // |transport| is the HTTP transport implementation for server communications.
-  Request(const std::string& url, const char* method,
+  Request(const std::string& url,
+          const std::string& method,
           std::shared_ptr<Transport> transport);
   ~Request();
 
   // Gets/Sets "Accept:" header value. The default value is "*/*" if not set.
-  void SetAccept(const char* accept_mime_types);
+  void SetAccept(const std::string& accept_mime_types);
   std::string GetAccept() const;
 
   // Gets/Sets "Content-Type:" header value
-  void SetContentType(const char* content_type);
+  void SetContentType(const std::string& content_type);
   std::string GetContentType() const;
 
   // Adds additional HTTP request header
-  void AddHeader(const char* header, const char* value);
+  void AddHeader(const std::string& header, const std::string& value);
   void AddHeaders(const HeaderList& headers);
 
   // Removes HTTP request header
-  void RemoveHeader(const char* header);
+  void RemoveHeader(const std::string& header);
 
   // Adds a request body. This is not to be used with GET method
   bool AddRequestBody(const void* data, size_t size, chromeos::ErrorPtr* error);
@@ -253,18 +254,18 @@ class CHROMEOS_EXPORT Request {
   std::string GetRequestURL() const;
 
   // Gets/Sets a request referer URL (sent as "Referer:" request header).
-  void SetReferer(const char* referer);
+  void SetReferer(const std::string& referer);
   std::string GetReferer() const;
 
   // Gets/Sets a user agent string (sent as "User-Agent:" request header).
-  void SetUserAgent(const char* user_agent);
+  void SetUserAgent(const std::string& user_agent);
   std::string GetUserAgent() const;
 
   // Sends the request to the server and returns the response object.
   // In case the server couldn't be reached for whatever reason, returns
   // empty unique_ptr (null). In such a case, the additional error information
   // can be returned through the optional supplied |error| parameter.
-  std::unique_ptr<Response> GetResponse(chromeos::ErrorPtr* error);
+  std::unique_ptr<Response> GetResponseAndBlock(chromeos::ErrorPtr* error);
 
  private:
   // Helper function to create an http::Connection and send off request headers.
@@ -338,11 +339,12 @@ class CHROMEOS_EXPORT Response {
   std::string GetDataAsString() const;
 
   // Returns a value of a given response HTTP header.
-  std::string GetHeader(const char* header_name) const;
+  std::string GetHeader(const std::string& header_name) const;
 
  private:
   std::unique_ptr<Connection> connection_;
   std::vector<unsigned char> response_data_;
+
   DISALLOW_COPY_AND_ASSIGN(Response);
 };
 

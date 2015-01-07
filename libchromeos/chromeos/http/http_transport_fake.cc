@@ -74,7 +74,7 @@ void Transport::AddSimpleReplyHandler(const std::string& url,
                                       const std::string& mime_type) {
   auto handler = [status_code, reply_text, mime_type](
       const ServerRequest& request, ServerResponse* response) {
-    response->ReplyText(status_code, reply_text, mime_type.c_str());
+    response->ReplyText(status_code, reply_text, mime_type);
   };
   AddHandler(url, method, base::Bind(handler));
 }
@@ -165,8 +165,10 @@ std::string ServerRequest::GetFormField(const std::string& field_name) const {
   return p != form_fields_.end() ? p->second : std::string();
 }
 
-void ServerResponse::Reply(int status_code, const void* data, size_t data_size,
-                           const char* mime_type) {
+void ServerResponse::Reply(int status_code,
+                           const void* data,
+                           size_t data_size,
+                           const std::string& mime_type) {
   data_.clear();
   status_code_ = status_code;
   AddData(data, data_size);
@@ -177,8 +179,9 @@ void ServerResponse::Reply(int status_code, const void* data, size_t data_size,
   });
 }
 
-void ServerResponse::ReplyText(int status_code, const std::string& text,
-                               const char* mime_type) {
+void ServerResponse::ReplyText(int status_code,
+                               const std::string& text,
+                               const std::string& mime_type) {
   Reply(status_code, text.data(), text.size(), mime_type);
 }
 
@@ -191,7 +194,7 @@ void ServerResponse::ReplyJson(int status_code, const base::Value* json) {
       chromeos::mime::application::kJson,
       chromeos::mime::parameters::kCharset,
       "utf-8");
-  ReplyText(status_code, text, mime_type.c_str());
+  ReplyText(status_code, text, mime_type);
 }
 
 void ServerResponse::ReplyJson(int status_code,

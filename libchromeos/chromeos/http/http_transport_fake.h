@@ -92,7 +92,7 @@ class ServerRequestResponseBase {
 
   // Add/retrieve request/response body data.
   void AddData(const void* data, size_t data_size);
-  const std::vector<unsigned char>& GetData() const { return data_; }
+  const std::vector<uint8_t>& GetData() const { return data_; }
   std::string GetDataAsString() const;
   std::unique_ptr<base::DictionaryValue> GetDataAsJson() const;
 
@@ -105,7 +105,7 @@ class ServerRequestResponseBase {
 
  protected:
   // Data buffer.
-  std::vector<unsigned char> data_;
+  std::vector<uint8_t> data_;
   // Header map.
   std::map<std::string, std::string> headers_;
 
@@ -160,10 +160,10 @@ class ServerResponse : public ServerRequestResponseBase {
 
   // Generic reply method.
   void Reply(int status_code, const void* data, size_t data_size,
-             const char* mime_type);
+             const std::string& mime_type);
   // Reply with text body.
   void ReplyText(int status_code, const std::string& text,
-                 const char* mime_type);
+                 const std::string& mime_type);
   // Reply with JSON object. The content type will be "application/json".
   void ReplyJson(int status_code, const base::Value* json);
   // Special form for JSON response for simple objects that have a flat
@@ -175,7 +175,7 @@ class ServerResponse : public ServerRequestResponseBase {
   // can be used.
   template<typename T>
   void Reply(int status_code, const std::vector<T>& data,
-             const char* mime_type) {
+             const std::string& mime_type) {
     // Make sure T doesn't have virtual functions, custom constructors, etc.
     static_assert(std::is_trivial<T>::value, "Only simple data is supported");
     Reply(status_code, data.data(), data.size() * sizeof(T), mime_type);
@@ -184,7 +184,7 @@ class ServerResponse : public ServerRequestResponseBase {
   // Specialized overload to send the binary data.
   // Only trivial data types (scalars, POD structures, etc) can be used.
   template<typename T>
-  void Reply(int status_code, const T& data, const char* mime_type) {
+  void Reply(int status_code, const T& data, const std::string& mime_type) {
     // Make sure T doesn't have virtual functions, custom constructors, etc.
     static_assert(std::is_trivial<T>::value, "Only simple data is supported");
     Reply(status_code, &data, sizeof(T), mime_type);

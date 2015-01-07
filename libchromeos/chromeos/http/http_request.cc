@@ -100,7 +100,7 @@ const char response_header::kWwwAuthenticate[]    = "WWW-Authenticate";
 // ***********************************************************
 // ********************** Request Class **********************
 // ***********************************************************
-Request::Request(const std::string& url, const char* method,
+Request::Request(const std::string& url, const std::string& method,
                  std::shared_ptr<Transport> transport) :
     transport_(transport), request_url_(url), method_(method) {
   VLOG(1) << "http::Request created";
@@ -124,7 +124,8 @@ void Request::AddRange(uint64_t from_byte, uint64_t to_byte) {
   ranges_.emplace_back(from_byte, to_byte);
 }
 
-std::unique_ptr<Response> Request::GetResponse(chromeos::ErrorPtr* error) {
+std::unique_ptr<Response> Request::GetResponseAndBlock(
+    chromeos::ErrorPtr* error) {
   if (!SendRequestIfNeeded(error) || !connection_->FinishRequest(error))
     return std::unique_ptr<Response>();
   std::unique_ptr<Response> response(new Response(std::move(connection_)));
@@ -132,7 +133,7 @@ std::unique_ptr<Response> Request::GetResponse(chromeos::ErrorPtr* error) {
   return response;
 }
 
-void Request::SetAccept(const char* accept_mime_types) {
+void Request::SetAccept(const std::string& accept_mime_types) {
   accept_ = accept_mime_types;
 }
 
@@ -140,7 +141,7 @@ std::string Request::GetAccept() const {
   return accept_;
 }
 
-void Request::SetContentType(const char* contentType) {
+void Request::SetContentType(const std::string& contentType) {
   content_type_ = contentType;
 }
 
@@ -148,7 +149,7 @@ std::string Request::GetContentType() const {
   return content_type_;
 }
 
-void Request::AddHeader(const char* header, const char* value) {
+void Request::AddHeader(const std::string& header, const std::string& value) {
   headers_[header] = value;
 }
 
@@ -164,7 +165,7 @@ bool Request::AddRequestBody(const void* data,
   return connection_->WriteRequestData(data, size, error);
 }
 
-void Request::SetReferer(const char* referer) {
+void Request::SetReferer(const std::string& referer) {
   referer_ = referer;
 }
 
@@ -172,7 +173,7 @@ std::string Request::GetReferer() const {
   return referer_;
 }
 
-void Request::SetUserAgent(const char* user_agent) {
+void Request::SetUserAgent(const std::string& user_agent) {
   user_agent_ = user_agent;
 }
 
@@ -222,7 +223,7 @@ bool Request::SendRequestIfNeeded(chromeos::ErrorPtr* error) {
       return true;
   } else {
     chromeos::Error::AddTo(error, FROM_HERE, http::kErrorDomain,
-                           "request_already_received",
+                           "response_already_received",
                            "HTTP response already received");
   }
   return false;
@@ -287,7 +288,7 @@ std::string Response::GetDataAsString() const {
   return std::string(data_buf, data_buf + response_data_.size());
 }
 
-std::string Response::GetHeader(const char* header_name) const {
+std::string Response::GetHeader(const std::string& header_name) const {
   if (connection_)
     return connection_->GetResponseHeader(header_name);
 

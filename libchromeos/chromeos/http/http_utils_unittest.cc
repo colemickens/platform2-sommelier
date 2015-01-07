@@ -26,7 +26,7 @@ static const char kMethodEchoUrl[] = "http://localhost/echo/method";
 static void EchoDataHandler(const fake::ServerRequest& request,
                             fake::ServerResponse* response) {
   response->Reply(status_code::Ok, request.GetData(),
-                  request.GetHeader(request_header::kContentType).c_str());
+                  request.GetHeader(request_header::kContentType));
 }
 
 // Returns the request method as a plain text response.
@@ -44,10 +44,9 @@ TEST(HttpUtils, SendRequest_BinaryData) {
 
   // Test binary data round-tripping.
   std::vector<unsigned char> custom_data{0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F};
-  auto response = http::SendRequest(request_type::kPost, kEchoUrl,
-                                    custom_data.data(), custom_data.size(),
-                                    chromeos::mime::application::kOctet_stream,
-                                    HeaderList(), transport, nullptr);
+  auto response = http::SendRequestAndBlock(
+      request_type::kPost, kEchoUrl, custom_data.data(), custom_data.size(),
+      chromeos::mime::application::kOctet_stream, {}, transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(chromeos::mime::application::kOctet_stream,
             response->GetContentType());
@@ -63,10 +62,10 @@ TEST(HttpUtils, SendRequest_Post) {
   std::vector<unsigned char> custom_data{0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F};
 
   // Check the correct HTTP method used.
-  auto response = http::SendRequest(request_type::kPost, kMethodEchoUrl,
-                                    custom_data.data(), custom_data.size(),
-                                    chromeos::mime::application::kOctet_stream,
-                                    HeaderList(), transport, nullptr);
+  auto response = http::SendRequestAndBlock(
+      request_type::kPost, kMethodEchoUrl, custom_data.data(),
+      custom_data.size(), chromeos::mime::application::kOctet_stream, {},
+      transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(chromeos::mime::text::kPlain, response->GetContentType());
   EXPECT_EQ(request_type::kPost, response->GetDataAsString());
@@ -76,9 +75,9 @@ TEST(HttpUtils, SendRequest_Get) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
   transport->AddHandler(kMethodEchoUrl, "*", base::Bind(EchoMethodHandler));
 
-  auto response = http::SendRequest(request_type::kGet, kMethodEchoUrl,
-                                    nullptr, 0, nullptr,
-                                    HeaderList(), transport, nullptr);
+  auto response = http::SendRequestAndBlock(
+      request_type::kGet, kMethodEchoUrl, nullptr, 0, std::string{}, {},
+      transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(chromeos::mime::text::kPlain, response->GetContentType());
   EXPECT_EQ(request_type::kGet, response->GetDataAsString());
@@ -88,9 +87,9 @@ TEST(HttpUtils, SendRequest_Put) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
   transport->AddHandler(kMethodEchoUrl, "*", base::Bind(EchoMethodHandler));
 
-  auto response = http::SendRequest(request_type::kPut, kMethodEchoUrl,
-                                    nullptr, 0, nullptr,
-                                    HeaderList(), transport, nullptr);
+  auto response = http::SendRequestAndBlock(
+      request_type::kPut, kMethodEchoUrl, nullptr, 0, std::string{}, {},
+      transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(chromeos::mime::text::kPlain, response->GetContentType());
   EXPECT_EQ(request_type::kPut, response->GetDataAsString());
@@ -99,9 +98,9 @@ TEST(HttpUtils, SendRequest_Put) {
 TEST(HttpUtils, SendRequest_NotFound) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
   // Test failed response (URL not found).
-  auto response = http::SendRequest(request_type::kGet, "http://blah.com",
-                                    nullptr, 0, nullptr,
-                                    HeaderList(), transport, nullptr);
+  auto response = http::SendRequestAndBlock(
+      request_type::kGet, "http://blah.com", nullptr, 0, std::string{}, {},
+      transport, nullptr);
   EXPECT_FALSE(response->IsSuccessful());
   EXPECT_EQ(status_code::NotFound, response->GetStatusCode());
 }
@@ -122,7 +121,7 @@ TEST(HttpUtils, SendRequest_Headers) {
   };
   transport->AddHandler(json_echo_url, "*",
                         base::Bind(JsonEchoHandler));
-  auto response = http::SendRequest(
+  auto response = http::SendRequestAndBlock(
       request_type::kPost, json_echo_url, "abcd", 4,
       chromeos::mime::application::kOctet_stream, {
         {request_header::kCookie, "flavor=vanilla"},
@@ -165,16 +164,16 @@ TEST(HttpUtils, Get) {
   transport->AddHandler(kMethodEchoUrl, "*", base::Bind(EchoMethodHandler));
 
   // Make sure Get/GetAsString actually do the GET request
-  auto response = http::Get(kMethodEchoUrl, transport, nullptr);
+  auto response = http::GetAndBlock(kMethodEchoUrl, {}, transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(chromeos::mime::text::kPlain, response->GetContentType());
   EXPECT_EQ(request_type::kGet, response->GetDataAsString());
   EXPECT_EQ(request_type::kGet,
-            http::GetAsString(kMethodEchoUrl, transport, nullptr));
+            http::GetAsStringAndBlock(kMethodEchoUrl, {}, transport, nullptr));
 
   for (std::string data : {"blah", "some data", ""}) {
     std::string url = chromeos::url::AppendQueryParam(kFakeUrl, "test", data);
-    EXPECT_EQ(data, http::GetAsString(url, transport, nullptr));
+    EXPECT_EQ(data, http::GetAsStringAndBlock(url, {}, transport, nullptr));
   }
 }
 
@@ -191,7 +190,7 @@ TEST(HttpUtils, Head) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
   transport->AddHandler(kFakeUrl, request_type::kHead, base::Bind(HeadHandler));
 
-  auto response = http::Head(kFakeUrl, transport, nullptr);
+  auto response = http::HeadAndBlock(kFakeUrl, transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(chromeos::mime::text::kPlain, response->GetContentType());
   EXPECT_EQ("", response->GetDataAsString());  // Must not have actual body.
@@ -221,8 +220,9 @@ TEST(HttpUtils, PostBinary) {
   std::vector<unsigned char> data(256);
   std::iota(data.begin(), data.end(), 0);
 
-  auto response = http::PostBinary(kFakeUrl, data.data(), data.size(),
-                                   transport, nullptr);
+  auto response = http::PostBinaryAndBlock(
+      kFakeUrl, data.data(), data.size(), mime::application::kOctet_stream, {},
+      transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
 }
 
@@ -242,9 +242,9 @@ TEST(HttpUtils, PostText) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
   transport->AddHandler(kFakeUrl, request_type::kPost, base::Bind(PostHandler));
 
-  auto response = http::PostText(kFakeUrl, fake_data.c_str(),
-                                 chromeos::mime::text::kPlain,
-                                 transport, nullptr);
+  auto response = http::PostTextAndBlock(
+      kFakeUrl, fake_data, chromeos::mime::text::kPlain, {}, transport,
+      nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(chromeos::mime::text::kPlain, response->GetContentType());
   EXPECT_EQ(fake_data, response->GetDataAsString());
@@ -255,10 +255,11 @@ TEST(HttpUtils, PostFormData) {
   transport->AddHandler(kFakeUrl, request_type::kPost,
                         base::Bind(EchoDataHandler));
 
-  auto response = http::PostFormData(kFakeUrl, {
-                      {"key", "value"},
-                      {"field", "field value"},
-                  }, transport, nullptr);
+  auto response = http::PostFormDataAndBlock(
+      kFakeUrl, {
+          {"key", "value"},
+          {"field", "field value"},
+      }, {}, transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(chromeos::mime::application::kWwwFormUrlEncoded,
             response->GetContentType());
@@ -285,7 +286,8 @@ TEST(HttpUtils, PostPatchJson) {
   std::string value;
 
   // Test POST
-  auto response = http::PostJson(kFakeUrl, &json, transport, nullptr);
+  auto response =
+      http::PostJsonAndBlock(kFakeUrl, &json, {}, transport, nullptr);
   auto resp_json = http::ParseJsonResponse(response.get(), nullptr, nullptr);
   EXPECT_NE(nullptr, resp_json.get());
   EXPECT_TRUE(resp_json->GetString("method", &value));
@@ -294,7 +296,7 @@ TEST(HttpUtils, PostPatchJson) {
   EXPECT_EQ("{\"key1\":\"val1\",\"key2\":\"val2\"}", value);
 
   // Test PATCH
-  response = http::PatchJson(kFakeUrl, &json, transport, nullptr);
+  response = http::PatchJsonAndBlock(kFakeUrl, &json, {}, transport, nullptr);
   resp_json = http::ParseJsonResponse(response.get(), nullptr, nullptr);
   EXPECT_NE(nullptr, resp_json.get());
   EXPECT_TRUE(resp_json->GetString("method", &value));
@@ -315,10 +317,11 @@ TEST(HttpUtils, ParseJsonResponse) {
   // Test valid JSON responses (with success or error codes).
   for (auto item : {"200;data", "400;wrong", "500;Internal Server error"}) {
     auto pair = chromeos::string_utils::SplitAtFirst(item, ';');
-    auto response = http::PostFormData(kFakeUrl, {
-                      {"code", pair.first},
-                      {"value", pair.second},
-                    }, transport, nullptr);
+    auto response = http::PostFormDataAndBlock(
+        kFakeUrl, {
+          {"code", pair.first},
+          {"value", pair.second},
+        }, {}, transport, nullptr);
     int code = 0;
     auto json = http::ParseJsonResponse(response.get(), &code, nullptr);
     EXPECT_NE(nullptr, json.get());
@@ -329,7 +332,7 @@ TEST(HttpUtils, ParseJsonResponse) {
   }
 
   // Test invalid (non-JSON) response.
-  auto response = http::Get("http://bad.url", transport, nullptr);
+  auto response = http::GetAndBlock("http://bad.url", {}, transport, nullptr);
   EXPECT_EQ(status_code::NotFound, response->GetStatusCode());
   EXPECT_EQ(chromeos::mime::text::kHtml, response->GetContentType());
   int code = 0;

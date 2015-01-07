@@ -70,7 +70,7 @@ void Response::ReplyWithJson(int status_code, const base::Value* json) {
       chromeos::mime::application::kJson,
       chromeos::mime::parameters::kCharset,
       "utf-8");
-  ReplyWithText(status_code, text, mime_type.c_str());
+  ReplyWithText(status_code, text, mime_type);
 }
 
 void Response::ReplyWithJson(int status_code,
