@@ -39,7 +39,7 @@ void usage() {
   - GetDeviceInfo
   - RegisterDevice param1=val1&param2=val2...
   - AddCommand '{"name":"command_name","parameters":{}}'
-  - UpdateStateMethod prop_name prop_value
+  - UpdateState prop_name prop_value
   - PendingCommands
 )");
 }
