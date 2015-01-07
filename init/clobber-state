@@ -148,7 +148,7 @@ factory_wipe_firmware() {
 # bit set to 1 (only tries).
 ensure_bootable_kernel() {
   local kernel_num="$1"
-  local dst="$(rootdev -d)"
+  local dst="$(rootdev -d -s)"
   local active_flag="$(cgpt show -S -i "${kernel_num}" "${dst}")"
   local priority="$(cgpt show -P -i "${kernel_num}" "${dst}")"
 
