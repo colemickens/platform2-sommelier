@@ -160,10 +160,6 @@ class PerfReader {
     return events_;
   }
 
-  const std::vector<perf_trace_event_type>& event_types() const {
-    return event_types_;
-  }
-
   const std::vector<build_id_event*>& build_id_events() const {
     return build_id_events_;
   }
