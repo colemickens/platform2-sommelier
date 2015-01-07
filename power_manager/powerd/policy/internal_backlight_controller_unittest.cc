@@ -646,6 +646,19 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOn) {
   // The backlight should be turned on after exiting presentation mode.
   controller_->HandleDisplayModeChange(DISPLAY_NORMAL);
   EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
+
+  // Send a policy disabling the forcing behavior and check that the brightness
+  // remains at 0 after explicitly setting it to 0.
+  PowerManagementPolicy policy;
+  policy.set_force_nonzero_brightness_for_user_activity(false);
+  controller_->HandlePolicyChange(policy);
+  ASSERT_TRUE(controller_->SetUserBrightnessPercent(
+      0.0, BacklightController::TRANSITION_INSTANT));
+  ASSERT_EQ(0, backlight_.current_level());
+  controller_->HandleSessionStateChange(SESSION_STARTED);
+  controller_->HandlePowerButtonPress();
+  controller_->HandleUserActivity(USER_ACTIVITY_OTHER);
+  EXPECT_EQ(0, backlight_.current_level());
 }
 
 TEST_F(InternalBacklightControllerTest, DockedMode) {

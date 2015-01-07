@@ -160,6 +160,7 @@ InternalBacklightController::InternalBacklightController()
       plugged_explicit_brightness_percent_(kMaxPercent),
       unplugged_explicit_brightness_percent_(kMaxPercent),
       using_policy_brightness_(false),
+      force_nonzero_brightness_for_user_activity_(true),
       max_level_(0),
       min_visible_level_(0),
       instant_transitions_below_min_level_(false),
@@ -378,6 +379,10 @@ void InternalBacklightController::HandlePolicyChange(
 
   using_policy_brightness_ = policy.has_ac_brightness_percent() ||
       policy.has_battery_brightness_percent();
+
+  force_nonzero_brightness_for_user_activity_ =
+      policy.has_force_nonzero_brightness_for_user_activity() ?
+      policy.force_nonzero_brightness_for_user_activity() : true;
 }
 
 void InternalBacklightController::HandleChromeStart() {
@@ -537,7 +542,8 @@ void InternalBacklightController::EnsureUserBrightnessIsNonzero() {
   // Avoid turning the backlight back on if an external display is
   // connected since doing so may result in the desktop being resized. Also
   // don't turn it on if a policy has forced the brightness to zero.
-  if (display_mode_ == DISPLAY_NORMAL &&
+  if (force_nonzero_brightness_for_user_activity_ &&
+      display_mode_ == DISPLAY_NORMAL &&
       GetExplicitBrightnessPercent() < kMinVisiblePercent &&
       !using_policy_brightness_) {
     SetExplicitBrightnessPercent(kMinVisiblePercent, TRANSITION_FAST,

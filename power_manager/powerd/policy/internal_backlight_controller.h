@@ -203,6 +203,10 @@ class InternalBacklightController : public BacklightController,
   // brightness and no user adjustments have been made since then.
   bool using_policy_brightness_;
 
+  // True if the brightness should be forced to be nonzero in response to user
+  // activity.
+  bool force_nonzero_brightness_for_user_activity_;
+
   // Maximum raw brightness level for |backlight_| (0 is assumed to be the
   // minimum, with the backlight turned off).
   int64_t max_level_;
