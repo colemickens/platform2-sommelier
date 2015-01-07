@@ -270,11 +270,17 @@ class CHROMEOS_EXPORT Request {
   void SetUserAgent(const std::string& user_agent);
   std::string GetUserAgent() const;
 
-  // Sends the request to the server and returns the response object.
+  // Sends the request to the server and blocks until the response is received,
+  // which is returned as the response object.
   // In case the server couldn't be reached for whatever reason, returns
   // empty unique_ptr (null). In such a case, the additional error information
   // can be returned through the optional supplied |error| parameter.
   std::unique_ptr<Response> GetResponseAndBlock(chromeos::ErrorPtr* error);
+
+  // Sends out the request and invokes the |success_callback| when the response
+  // is received. In case of an error, the |error_callback| is invoked.
+  void GetResponse(const SuccessCallback& success_callback,
+                   const ErrorCallback& error_callback);
 
  private:
   // Helper function to create an http::Connection and send off request headers.
@@ -286,7 +292,7 @@ class CHROMEOS_EXPORT Request {
   // An established connection for adding request body. This connection
   // is maintained by the request object after the headers have been
   // sent and before the response is requested.
-  std::unique_ptr<Connection> connection_;
+  std::shared_ptr<Connection> connection_;
 
   // Full request URL, such as "http://www.host.com/path/to/object"
   std::string request_url_;
@@ -326,7 +332,7 @@ class CHROMEOS_EXPORT Request {
 ///////////////////////////////////////////////////////////////////////////////
 class CHROMEOS_EXPORT Response {
  public:
-  explicit Response(std::unique_ptr<Connection> connection);
+  explicit Response(const std::shared_ptr<Connection>& connection);
   ~Response();
 
   // Returns true if server returned a success code (status code below 400).
@@ -351,7 +357,7 @@ class CHROMEOS_EXPORT Response {
   std::string GetHeader(const std::string& header_name) const;
 
  private:
-  std::unique_ptr<Connection> connection_;
+  std::shared_ptr<Connection> connection_;
   std::vector<unsigned char> response_data_;
 
   DISALLOW_COPY_AND_ASSIGN(Response);

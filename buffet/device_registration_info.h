@@ -135,8 +135,8 @@ class DeviceRegistrationInfo {
 
   using CloudRequestCallback =
       base::Callback<void(const base::DictionaryValue&)>;
-  using CloudRequestErroback =
-      base::Callback<void(const chromeos::Error& error)>;
+  using CloudRequestErrorCallback =
+      base::Callback<void(const chromeos::Error* error)>;
 
   // Do a HTTPS request to cloud services.
   // Handles many cases like reauthorization, 5xx HTTP response codes
@@ -147,8 +147,8 @@ class DeviceRegistrationInfo {
       const std::string& method,
       const std::string& url,
       const base::DictionaryValue* body,
-      CloudRequestCallback callback,
-      CloudRequestErroback errorback);
+      const CloudRequestCallback& success_callback,
+      const CloudRequestErrorCallback& error_callback);
 
   void UpdateDeviceResource(base::Closure callback);
 

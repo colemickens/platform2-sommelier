@@ -4,6 +4,8 @@
 
 #include <chromeos/http/http_request.h>
 
+#include <base/bind.h>
+#include <base/callback.h>
 #include <base/logging.h>
 #include <chromeos/http/http_form_data.h>
 #include <chromeos/map_utils.h>
@@ -129,9 +131,23 @@ std::unique_ptr<Response> Request::GetResponseAndBlock(
     chromeos::ErrorPtr* error) {
   if (!SendRequestIfNeeded(error) || !connection_->FinishRequest(error))
     return std::unique_ptr<Response>();
-  std::unique_ptr<Response> response(new Response(std::move(connection_)));
+  std::unique_ptr<Response> response(new Response(connection_));
+  connection_.reset();
   transport_.reset();  // Indicate that the response has been received
   return response;
+}
+
+void Request::GetResponse(const SuccessCallback& success_callback,
+                          const ErrorCallback& error_callback) {
+  ErrorPtr error;
+  if (!SendRequestIfNeeded(&error)) {
+    transport_->RunCallbackAsync(
+        FROM_HERE, base::Bind(error_callback, base::Owned(error.release())));
+    return;
+  }
+  connection_->FinishRequestAsync(success_callback, error_callback);
+  connection_.reset();
+  transport_.reset();  // Indicate that the request has been dispatched.
 }
 
 void Request::SetAccept(const std::string& accept_mime_types) {
@@ -250,8 +266,8 @@ bool Request::SendRequestIfNeeded(chromeos::ErrorPtr* error) {
 // ************************************************************
 // ********************** Response Class **********************
 // ************************************************************
-Response::Response(std::unique_ptr<Connection> connection)
-    : connection_(std::move(connection)) {
+Response::Response(const std::shared_ptr<Connection>& connection)
+    : connection_{connection} {
   VLOG(1) << "http::Response created";
   // Response object doesn't have streaming interface for response data (yet),
   // so read the data into a buffer and cache it.

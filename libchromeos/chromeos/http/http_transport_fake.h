@@ -63,8 +63,8 @@ class Transport : public http::Transport {
   int GetRequestCount() const { return request_count_; }
   void ResetRequestCount() { request_count_ = 0; }
 
-  // Overload from http::Transport
-  std::unique_ptr<http::Connection> CreateConnection(
+  // Overrides from http::Transport.
+  std::shared_ptr<http::Connection> CreateConnection(
       std::shared_ptr<http::Transport> transport,
       const std::string& url,
       const std::string& method,
@@ -72,6 +72,13 @@ class Transport : public http::Transport {
       const std::string& user_agent,
       const std::string& referer,
       chromeos::ErrorPtr* error) override;
+
+  void RunCallbackAsync(const tracked_objects::Location& from_here,
+                        const base::Closure& callback) override;
+
+  void StartAsyncTransfer(http::Connection* connection,
+                          const SuccessCallback& success_callback,
+                          const ErrorCallback& error_callback) override;
 
  private:
   // A list of user-supplied request handlers.

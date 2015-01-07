@@ -4,6 +4,7 @@
 
 #include <chromeos/http/http_connection_fake.h>
 
+#include <base/bind.h>
 #include <base/logging.h>
 #include <chromeos/http/http_request.h>
 #include <chromeos/mime_utils.h>
@@ -53,6 +54,28 @@ bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
     handler.Run(request_, &response_);
   }
   return true;
+}
+
+void Connection::FinishRequestAsync(
+    const SuccessCallback& success_callback,
+    const ErrorCallback& error_callback) {
+  transport_->RunCallbackAsync(
+      FROM_HERE, base::Bind(&Connection::FinishRequestAsyncHelper,
+                            base::Unretained(this),
+                            success_callback,
+                            error_callback));
+}
+
+void Connection::FinishRequestAsyncHelper(
+    const SuccessCallback& success_callback,
+    const ErrorCallback& error_callback) {
+  chromeos::ErrorPtr error;
+  if (!FinishRequest(&error)) {
+    error_callback.Run(error.get());
+  } else {
+    scoped_ptr<Response> response{new Response{shared_from_this()}};
+    success_callback.Run(response.Pass());
+  }
 }
 
 int Connection::GetResponseStatusCode() const {

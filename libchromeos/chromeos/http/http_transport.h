@@ -10,19 +10,28 @@
 #include <utility>
 #include <vector>
 
+#include <base/callback_forward.h>
 #include <base/macros.h>
+#include <base/memory/scoped_ptr.h>
 #include <chromeos/chromeos_export.h>
 #include <chromeos/errors/error.h>
+
+namespace tracked_objects {
+class Location;
+}  // namespace tracked_objects
 
 namespace chromeos {
 namespace http {
 
-using HeaderList = std::vector<std::pair<std::string, std::string>>;
-
 CHROMEOS_EXPORT extern const char kErrorDomain[];
 
 class Request;
+class Response;
 class Connection;
+
+using HeaderList = std::vector<std::pair<std::string, std::string>>;
+using SuccessCallback = base::Callback<void(scoped_ptr<Response>)>;
+using ErrorCallback = base::Callback<void(const chromeos::Error*)>;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Transport is a base class for specific implementation of HTTP communication.
@@ -37,7 +46,7 @@ class CHROMEOS_EXPORT Transport {
   // Creates a connection object and initializes it with the specified data.
   // |transport| is a shared pointer to this transport object instance,
   // used to maintain the object alive as long as the connection exists.
-  virtual std::unique_ptr<Connection> CreateConnection(
+  virtual std::shared_ptr<Connection> CreateConnection(
       std::shared_ptr<Transport> transport,
       const std::string& url,
       const std::string& method,
@@ -45,6 +54,19 @@ class CHROMEOS_EXPORT Transport {
       const std::string& user_agent,
       const std::string& referer,
       chromeos::ErrorPtr* error) = 0;
+
+  // Runs |callback| on the task runner (message loop) associated with the
+  // transport. For transports that do not contain references to real message
+  // loops (e.g. a fake transport), calls the callback immediately.
+  virtual void RunCallbackAsync(const tracked_objects::Location& from_here,
+                                const base::Closure& callback) = 0;
+
+  // Initiates an asynchronous transfer on the given |connection|.
+  // The actual implementation of an async I/O is transport-specific.
+  virtual void StartAsyncTransfer(
+      Connection* connection,
+      const SuccessCallback& success_callback,
+      const ErrorCallback& error_callback) = 0;
 
   // Creates a default http::Transport (currently, using http::curl::Transport).
   static std::shared_ptr<Transport> CreateDefault();

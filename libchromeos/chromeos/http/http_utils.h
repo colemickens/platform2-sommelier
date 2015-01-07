@@ -72,12 +72,56 @@ CHROMEOS_EXPORT std::unique_ptr<Response> SendRequestWithNoDataAndBlock(
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error);
 
+// Same as above but asynchronous. On success, |success_callback| is called
+// with the response object. On failure, |error_callback| is called with the
+// error details.
+CHROMEOS_EXPORT void SendRequest(
+    const std::string& method,
+    const std::string& url,
+    std::unique_ptr<DataReaderInterface> data_reader,
+    const std::string& mime_type,
+    const HeaderList& headers,
+    std::shared_ptr<Transport> transport,
+    const SuccessCallback& success_callback,
+    const ErrorCallback& error_callback);
+
+// Same as above, but takes a memory buffer. The pointer should be valid only
+// until the function returns. The data is copied into an internal buffer to be
+// available for the duration of the asynchronous operation.
+CHROMEOS_EXPORT void SendRequest(
+    const std::string& method,
+    const std::string& url,
+    const void* data,
+    size_t data_size,
+    const std::string& mime_type,
+    const HeaderList& headers,
+    std::shared_ptr<Transport> transport,
+    const SuccessCallback& success_callback,
+    const ErrorCallback& error_callback);
+
+// Asynchronous version of SendRequestNoData().
+CHROMEOS_EXPORT void SendRequestWithNoData(
+    const std::string& method,
+    const std::string& url,
+    const HeaderList& headers,
+    std::shared_ptr<Transport> transport,
+    const SuccessCallback& success_callback,
+    const ErrorCallback& error_callback);
+
 // Performs a simple GET request and returns the data as a string.
 CHROMEOS_EXPORT std::string GetAsStringAndBlock(
     const std::string& url,
     const HeaderList& headers,
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error);
+
+// Performs a simple asynchronous GET request.
+CHROMEOS_EXPORT void GetAsString(
+    const std::string& url,
+    const HeaderList& headers,
+    std::shared_ptr<Transport> transport,
+    const base::Callback<void(const std::string&)>& success_callback,
+    const ErrorCallback& error_callback);
 
 // Performs a GET request. Success status, returned data and additional
 // information (such as returned HTTP headers) can be obtained from
@@ -88,6 +132,14 @@ CHROMEOS_EXPORT std::unique_ptr<Response> GetAndBlock(
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error);
 
+// Asynchronous version of http::Get().
+CHROMEOS_EXPORT void Get(
+    const std::string& url,
+    const HeaderList& headers,
+    std::shared_ptr<Transport> transport,
+    const SuccessCallback& success_callback,
+    const ErrorCallback& error_callback);
+
 // Performs a HEAD request. Success status and additional
 // information (such as returned HTTP headers) can be obtained from
 // the returned Response object.
@@ -95,6 +147,13 @@ CHROMEOS_EXPORT std::unique_ptr<Response> HeadAndBlock(
     const std::string& url,
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error);
+
+// Performs an asynchronous HEAD request.
+CHROMEOS_EXPORT void Head(
+    const std::string& url,
+    std::shared_ptr<Transport> transport,
+    const SuccessCallback& success_callback,
+    const ErrorCallback& error_callback);
 
 // Performs a POST request with binary data. Success status, returned data
 // and additional information (such as returned HTTP headers) can be obtained
@@ -108,6 +167,29 @@ CHROMEOS_EXPORT std::unique_ptr<Response> PostBinaryAndBlock(
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error);
 
+// Async version of PostBinary().
+CHROMEOS_EXPORT void PostBinary(
+    const std::string& url,
+    std::unique_ptr<DataReaderInterface> data_reader,
+    const std::string& mime_type,
+    const HeaderList& headers,
+    std::shared_ptr<Transport> transport,
+    const SuccessCallback& success_callback,
+    const ErrorCallback& error_callback);
+
+// Same as above, but takes a memory buffer. The pointer should be valid only
+// until the function returns. The data is copied into an internal buffer
+// to be available for the duration of the asynchronous operation.
+CHROMEOS_EXPORT void PostBinary(
+    const std::string& url,
+    const void* data,
+    size_t data_size,
+    const std::string& mime_type,
+    const HeaderList& headers,
+    std::shared_ptr<Transport> transport,
+    const SuccessCallback& success_callback,
+    const ErrorCallback& error_callback);
+
 // Performs a POST request with text data. Success status, returned data
 // and additional information (such as returned HTTP headers) can be obtained
 // from the returned Response object.
@@ -118,6 +200,16 @@ CHROMEOS_EXPORT std::unique_ptr<Response> PostTextAndBlock(
     const HeaderList& headers,
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error);
+
+// Async version of PostText().
+CHROMEOS_EXPORT void PostText(
+    const std::string& url,
+    const std::string& data,
+    const std::string& mime_type,
+    const HeaderList& headers,
+    std::shared_ptr<Transport> transport,
+    const SuccessCallback& success_callback,
+    const ErrorCallback& error_callback);
 
 // Performs a POST request with form data. Success status, returned data
 // and additional information (such as returned HTTP headers) can be obtained
@@ -130,6 +222,15 @@ CHROMEOS_EXPORT std::unique_ptr<Response> PostFormDataAndBlock(
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error);
 
+// Async version of PostFormData() above.
+CHROMEOS_EXPORT void PostFormData(
+    const std::string& url,
+    const FormFieldList& data,
+    const HeaderList& headers,
+    std::shared_ptr<Transport> transport,
+    const SuccessCallback& success_callback,
+    const ErrorCallback& error_callback);
+
 // Performs a POST request with form data, including binary file uploads.
 // Success status, returned data and additional information (such as returned
 // HTTP headers) can be obtained from the returned Response object.
@@ -140,6 +241,15 @@ CHROMEOS_EXPORT std::unique_ptr<Response> PostFormDataAndBlock(
     const HeaderList& headers,
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error);
+
+// Async version of PostFormData() above.
+CHROMEOS_EXPORT void PostFormData(
+    const std::string& url,
+    std::unique_ptr<FormData> form_data,
+    const HeaderList& headers,
+    std::shared_ptr<Transport> transport,
+    const SuccessCallback& success_callback,
+    const ErrorCallback& error_callback);
 
 // Performs a POST request with JSON data. Success status, returned data
 // and additional information (such as returned HTTP headers) can be obtained
@@ -152,6 +262,15 @@ CHROMEOS_EXPORT std::unique_ptr<Response> PostJsonAndBlock(
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error);
 
+// Async version of PostJson().
+CHROMEOS_EXPORT void PostJson(
+    const std::string& url,
+    std::unique_ptr<base::Value> json,
+    const HeaderList& headers,
+    std::shared_ptr<Transport> transport,
+    const SuccessCallback& success_callback,
+    const ErrorCallback& error_callback);
+
 // Performs a PATCH request with JSON data. Success status, returned data
 // and additional information (such as returned HTTP headers) can be obtained
 // from the returned Response object. If a JSON response is expected,
@@ -162,6 +281,15 @@ CHROMEOS_EXPORT std::unique_ptr<Response> PatchJsonAndBlock(
     const HeaderList& headers,
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error);
+
+// Async version of PatchJson().
+CHROMEOS_EXPORT void PatchJson(
+    const std::string& url,
+    std::unique_ptr<base::Value> json,
+    const HeaderList& headers,
+    std::shared_ptr<Transport> transport,
+    const SuccessCallback& success_callback,
+    const ErrorCallback& error_callback);
 
 // Given an http::Response object, parse the body data into Json object.
 // Returns null if failed. Optional |error| can be passed in to

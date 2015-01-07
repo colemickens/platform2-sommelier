@@ -12,6 +12,7 @@
 #include <base/macros.h>
 #include <chromeos/chromeos_export.h>
 #include <chromeos/http/http_connection.h>
+#include <chromeos/http/http_transport_curl.h>
 #include <curl/curl.h>
 
 namespace chromeos {
@@ -23,7 +24,7 @@ class CHROMEOS_EXPORT Connection : public http::Connection {
  public:
   Connection(CURL* curl_handle, const std::string& method,
              std::shared_ptr<http::Transport> transport);
-  virtual ~Connection();
+  ~Connection() override;
 
   // Overrides from http::Connection.
   // See http_connection.h for description of these methods.
@@ -32,6 +33,8 @@ class CHROMEOS_EXPORT Connection : public http::Connection {
   bool SetRequestData(std::unique_ptr<DataReaderInterface> data_reader,
                       chromeos::ErrorPtr* error) override;
   bool FinishRequest(chromeos::ErrorPtr* error) override;
+  void FinishRequestAsync(const SuccessCallback& success_callback,
+                          const ErrorCallback& error_callback) override;
 
   int GetResponseStatusCode() const override;
   std::string GetResponseStatusText() const override;
@@ -52,6 +55,10 @@ class CHROMEOS_EXPORT Connection : public http::Connection {
   CHROMEOS_PRIVATE static size_t header_callback(char* ptr, size_t size,
                                                  size_t num, void* data);
 
+  // Helper method to set up the |curl_handle_| with all the parameters
+  // pertaining to the current connection.
+  CHROMEOS_PRIVATE void PrepareRequest();
+
   // HTTP request verb, such as "GET", "POST", "PUT", ...
   std::string method_;
 
@@ -60,7 +67,7 @@ class CHROMEOS_EXPORT Connection : public http::Connection {
 
   // Received response data.
   std::vector<unsigned char> response_data_;
-  size_t response_data_ptr_ = 0;
+  size_t response_data_ptr_{0};
 
   // List of optional request headers provided by the caller.
   // After request has been sent, contains the received response headers.
@@ -72,11 +79,13 @@ class CHROMEOS_EXPORT Connection : public http::Connection {
   std::string status_text_;
   // Flag used when parsing response headers to separate the response status
   // from the rest of response headers.
-  bool status_text_set_ = false;
+  bool status_text_set_{false};
 
-  CURL* curl_handle_ = nullptr;
+  CURL* curl_handle_{nullptr};
+  curl_slist* header_list_{nullptr};
 
  private:
+  friend class http::curl::Transport;
   DISALLOW_COPY_AND_ASSIGN(Connection);
 };
 

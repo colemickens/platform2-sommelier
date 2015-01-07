@@ -31,7 +31,7 @@ Transport::~Transport() {
   VLOG(1) << "fake::Transport destroyed";
 }
 
-std::unique_ptr<http::Connection> Transport::CreateConnection(
+std::shared_ptr<http::Connection> Transport::CreateConnection(
     std::shared_ptr<http::Transport> transport,
     const std::string& url,
     const std::string& method,
@@ -48,13 +48,25 @@ std::unique_ptr<http::Connection> Transport::CreateConnection(
     headers_copy.push_back(std::make_pair(http::request_header::kReferer,
                                           referer));
   }
-  std::unique_ptr<http::Connection> connection(
-      new http::fake::Connection(url, method, transport));
+  std::shared_ptr<http::Connection> connection =
+      std::make_shared<http::fake::Connection>(url, method, transport);
   CHECK(connection) << "Unable to create Connection object";
   if (!connection->SendHeaders(headers_copy, error))
     connection.reset();
   request_count_++;
   return connection;
+}
+
+void Transport::RunCallbackAsync(const tracked_objects::Location& from_here,
+                                 const base::Closure& callback) {
+  callback.Run();
+}
+
+void Transport::StartAsyncTransfer(http::Connection* connection,
+                                   const SuccessCallback& success_callback,
+                                   const ErrorCallback& error_callback) {
+  // Fake transport doesn't use this method.
+  LOG(FATAL) << "This method should not be called on fake transport";
 }
 
 static inline std::string GetHandlerMapKey(const std::string& url,

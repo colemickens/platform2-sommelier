@@ -52,6 +52,8 @@ Connection::Connection(CURL* curl_handle, const std::string& method,
 }
 
 Connection::~Connection() {
+  if (header_list_)
+    curl_slist_free_all(header_list_);
   VLOG(1) << "curl::Connection destroyed";
 }
 
@@ -68,7 +70,7 @@ bool Connection::SetRequestData(
   return true;
 }
 
-bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
+void Connection::PrepareRequest() {
   if (VLOG_IS_ON(3)) {
     curl_easy_setopt(curl_handle_, CURLOPT_DEBUGFUNCTION, curl_trace);
     curl_easy_setopt(curl_handle_, CURLOPT_VERBOSE, 1L);
@@ -90,16 +92,16 @@ bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
     curl_easy_setopt(curl_handle_, CURLOPT_READDATA, this);
   }
 
-  curl_slist* header_list = nullptr;
   if (!headers_.empty()) {
+    CHECK(header_list_ == nullptr);
     for (auto pair : headers_) {
       std::string header = chromeos::string_utils::Join(": ",
                                                         pair.first,
                                                         pair.second);
       VLOG(2) << "Request header: " << header;
-      header_list = curl_slist_append(header_list, header.c_str());
+      header_list_ = curl_slist_append(header_list_, header.c_str());
     }
-    curl_easy_setopt(curl_handle_, CURLOPT_HTTPHEADER, header_list);
+    curl_easy_setopt(curl_handle_, CURLOPT_HTTPHEADER, header_list_);
   }
 
   headers_.clear();
@@ -115,10 +117,11 @@ bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
   curl_easy_setopt(curl_handle_,
                    CURLOPT_HEADERFUNCTION, &Connection::header_callback);
   curl_easy_setopt(curl_handle_, CURLOPT_HEADERDATA, this);
+}
 
+bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
+  PrepareRequest();
   CURLcode ret = curl_easy_perform(curl_handle_);
-  if (header_list)
-    curl_slist_free_all(header_list);
   if (ret != CURLE_OK) {
     chromeos::Error::AddTo(error, FROM_HERE, "curl_error",
                            chromeos::string_utils::ToString(ret),
@@ -131,6 +134,13 @@ bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
                        response_data_.size());
   }
   return (ret == CURLE_OK);
+}
+
+void Connection::FinishRequestAsync(
+    const SuccessCallback& success_callback,
+    const ErrorCallback& error_callback) {
+  PrepareRequest();
+  transport_->StartAsyncTransfer(this, success_callback, error_callback);
 }
 
 int Connection::GetResponseStatusCode() const {

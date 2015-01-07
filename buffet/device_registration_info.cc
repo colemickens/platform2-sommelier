@@ -132,7 +132,7 @@ std::string BuildURL(const std::string& url,
   return chromeos::url::AppendQueryParams(result, params);
 }
 
-void IgnoreCloudError(const chromeos::Error&) {
+void IgnoreCloudError(const chromeos::Error*) {
 }
 
 void IgnoreCloudResult(const base::DictionaryValue&) {
@@ -501,9 +501,9 @@ void PostRepeatingTask(const tracked_objects::Location& from_here,
       from_here, base::Bind(&PostRepeatingTask, from_here, task, delay), delay);
 }
 
-// TODO(antonm): May belong to chromeos/http.
+using ResponsePtr = scoped_ptr<chromeos::http::Response>;
 
-void SendRequestAsync(
+void SendRequestWithRetries(
     const std::string& method,
     const std::string& url,
     const std::string& data,
@@ -511,68 +511,53 @@ void SendRequestAsync(
     const chromeos::http::HeaderList& headers,
     std::shared_ptr<chromeos::http::Transport> transport,
     int num_retries,
-    base::Callback<void(const chromeos::http::Response&)> callback,
-    base::Callback<void(const chromeos::Error&)> errorback) {
-  chromeos::ErrorPtr error;
-
-  auto on_retriable_failure = [&error, method, url, data, mime_type,
-       headers, transport, num_retries, callback, errorback] () {
+    const chromeos::http::SuccessCallback& success_callback,
+    const chromeos::http::ErrorCallback& error_callback) {
+  auto on_failure =
+      [method, url, data, mime_type, headers, transport, num_retries,
+      success_callback, error_callback](const chromeos::Error* error) {
     if (num_retries > 0) {
-      auto c = [method, url, data, mime_type, headers, transport,
-            num_retries, callback, errorback] () {
-        SendRequestAsync(method, url,
-                         data, mime_type,
-                         headers,
-                         transport,
-                         num_retries - 1,
-                         callback, errorback);
-      };
-      base::MessageLoop::current()->PostTask(FROM_HERE, base::Bind(c));
+      SendRequestWithRetries(method, url, data, mime_type,
+                             headers, transport, num_retries - 1,
+                             success_callback, error_callback);
     } else {
-      PostToCallback(errorback, std::move(error));
+      error_callback.Run(error);
     }
   };
 
-  chromeos::http::Request request(url, method, transport);
-  request.AddHeaders(headers);
-  if (!data.empty()) {
-    request.SetContentType(mime_type);
-    if (!request.AddRequestBody(data.c_str(), data.size(), &error)) {
-      on_retriable_failure();
+  auto on_success =
+      [on_failure, success_callback, error_callback](ResponsePtr response) {
+    int status_code = response->GetStatusCode();
+    if (status_code >= chromeos::http::status_code::Continue &&
+        status_code < chromeos::http::status_code::BadRequest) {
+      success_callback.Run(response.Pass());
       return;
     }
-  }
 
-  std::unique_ptr<chromeos::http::Response> response{
-    request.GetResponseAndBlock(&error)};
-  if (!response) {
-    on_retriable_failure();
-    return;
-  }
+    // TODO(antonm): Should add some useful information to error.
+    LOG(WARNING) << "Request failed. Response code = " << status_code;
 
-  int status_code{response->GetStatusCode()};
-  if (status_code >= chromeos::http::status_code::Continue &&
-      status_code < chromeos::http::status_code::BadRequest) {
-    PostToCallback(callback, std::move(response));
-    return;
-  }
-
-  // TODO(antonm): Should add some useful information to error.
-  LOG(WARNING) << "Request failed. Response code = " << status_code;
-
-  if (status_code >= 500 && status_code < 600) {
-    // Request was valid, but server failed, retry.
-    // TODO(antonm): Implement exponential backoff.
-    // TODO(antonm): Reconsider status codes, maybe only some require
-    // retry.
-    // TODO(antonm): Support Retry-After header.
-    on_retriable_failure();
-  } else {
+    chromeos::ErrorPtr error;
     chromeos::Error::AddTo(&error, FROM_HERE, chromeos::errors::http::kDomain,
                            std::to_string(status_code),
                            response->GetStatusText());
-    PostToCallback(errorback, std::move(error));
-  }
+    if (status_code >= chromeos::http::status_code::InternalServerError &&
+        status_code < 600) {
+      // Request was valid, but server failed, retry.
+      // TODO(antonm): Implement exponential backoff.
+      // TODO(antonm): Reconsider status codes, maybe only some require
+      // retry.
+      // TODO(antonm): Support Retry-After header.
+      on_failure(error.get());
+    } else {
+      error_callback.Run(error.get());
+    }
+  };
+
+  chromeos::http::SendRequest(method, url, data.c_str(), data.size(),
+                              mime_type, headers, transport,
+                              base::Bind(on_success),
+                              base::Bind(on_failure));
 }
 
 }  // namespace
@@ -581,9 +566,9 @@ void DeviceRegistrationInfo::DoCloudRequest(
     const std::string& method,
     const std::string& url,
     const base::DictionaryValue* body,
-    CloudRequestCallback callback,
-    CloudRequestErroback errorback) {
-  // TODO(antonm): Add reauthorisation on access token expiration (do not
+    const CloudRequestCallback& success_callback,
+    const CloudRequestErrorCallback& error_callback) {
+  // TODO(antonm): Add reauthorization on access token expiration (do not
   // forget about 5xx when fetching new access token).
   // TODO(antonm): Add support for device removal.
 
@@ -596,49 +581,49 @@ void DeviceRegistrationInfo::DoCloudRequest(
       chromeos::mime::parameters::kCharset,
       "utf-8")};
 
-  auto request_cb = [callback, errorback] (
-      const chromeos::http::Response& response) {
+  auto request_cb = [success_callback, error_callback](ResponsePtr response) {
     chromeos::ErrorPtr error;
 
     std::unique_ptr<base::DictionaryValue> json_resp{
-        chromeos::http::ParseJsonResponse(&response, nullptr, &error)};
+        chromeos::http::ParseJsonResponse(response.get(), nullptr, &error)};
     if (!json_resp) {
-      PostToCallback(errorback, std::move(error));
+      error_callback.Run(error.get());
       return;
     }
 
-    PostToCallback(callback, std::move(json_resp));
+    success_callback.Run(*json_resp);
   };
 
   auto transport = transport_;
-  auto errorback_with_reauthorization = base::Bind(
-      [method, url, data, mime_type, transport, request_cb, errorback]
-      (DeviceRegistrationInfo* self, const chromeos::Error& error) {
-    if (error.HasError(chromeos::errors::http::kDomain,
-                       std::to_string(chromeos::http::status_code::Denied))) {
+  auto error_callackback_with_reauthorization = base::Bind(
+      [method, url, data, mime_type, transport, request_cb, error_callback]
+      (DeviceRegistrationInfo* self, const chromeos::Error* error) {
+    if (error->HasError(chromeos::errors::http::kDomain,
+                        std::to_string(chromeos::http::status_code::Denied))) {
       chromeos::ErrorPtr reauthorization_error;
       if (!self->ValidateAndRefreshAccessToken(&reauthorization_error)) {
         // TODO(antonm): Check if the device has been actually removed.
-        errorback.Run(*reauthorization_error.get());
+        error_callback.Run(reauthorization_error.get());
         return;
       }
-      SendRequestAsync(method, url,
-                       data, mime_type,
-                       {self->GetAuthorizationHeader()},
-                       transport,
-                       7,
-                       base::Bind(request_cb), errorback);
+      SendRequestWithRetries(method, url,
+                             data, mime_type,
+                             {self->GetAuthorizationHeader()},
+                             transport,
+                             7,
+                             base::Bind(request_cb), error_callback);
     } else {
-      errorback.Run(error);
+      error_callback.Run(error);
     }
   }, base::Unretained(this));
 
-  SendRequestAsync(method, url,
-                   data, mime_type,
-                   {GetAuthorizationHeader()},
-                   transport,
-                   7,
-                   base::Bind(request_cb), errorback_with_reauthorization);
+  SendRequestWithRetries(method, url,
+                         data, mime_type,
+                         {GetAuthorizationHeader()},
+                         transport,
+                         7,
+                         base::Bind(request_cb),
+                         error_callackback_with_reauthorization);
 }
 
 void DeviceRegistrationInfo::StartDevice(chromeos::ErrorPtr* error) {
@@ -753,8 +738,8 @@ void DeviceRegistrationInfo::PeriodicallyPollCommands() {
                      base::Unretained(this))),
       base::TimeDelta::FromSeconds(7));
   // TODO(antonm): Use better trigger: when StateManager registers new updates,
-  // it should call closure which will post a task, probabluy with some
-  // throtlling, to publish state updates.
+  // it should call closure which will post a task, probably with some
+  // throttling, to publish state updates.
   PostRepeatingTask(
       FROM_HERE,
       base::Bind(&DeviceRegistrationInfo::PublishStateUpdates,

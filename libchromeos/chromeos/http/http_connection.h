@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/callback_forward.h>
 #include <base/macros.h>
 #include <chromeos/chromeos_export.h>
 #include <chromeos/errors/error.h>
@@ -17,6 +18,8 @@
 
 namespace chromeos {
 namespace http {
+
+class Response;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Connection class is the base class for HTTP communication session.
@@ -30,7 +33,8 @@ namespace http {
 // You normally shouldn't worry about using this class directly.
 // http::Request and http::Response classes use it for communication.
 ///////////////////////////////////////////////////////////////////////////////
-class CHROMEOS_EXPORT Connection {
+class CHROMEOS_EXPORT Connection
+    : public std::enable_shared_from_this<Connection> {
  public:
   explicit Connection(std::shared_ptr<Transport> transport)
       : transport_(transport) {}
@@ -46,6 +50,11 @@ class CHROMEOS_EXPORT Connection {
   // This function is called when all the data is sent off and it's time
   // to receive the response data.
   virtual bool FinishRequest(chromeos::ErrorPtr* error) = 0;
+  // Send the request asynchronously and invoke the callback with the response
+  // received.
+  virtual void FinishRequestAsync(
+      const SuccessCallback& success_callback,
+      const ErrorCallback& error_callback) = 0;
 
   // Returns the HTTP status code (e.g. 200 for success).
   virtual int GetResponseStatusCode() const = 0;

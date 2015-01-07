@@ -31,6 +31,8 @@ class Connection : public http::Connection {
   bool SetRequestData(std::unique_ptr<DataReaderInterface> data_reader,
                       chromeos::ErrorPtr* error) override;
   bool FinishRequest(chromeos::ErrorPtr* error) override;
+  void FinishRequestAsync(const SuccessCallback& success_callback,
+                          const ErrorCallback& error_callback) override;
 
   int GetResponseStatusCode() const override;
   std::string GetResponseStatusText() const override;
@@ -41,6 +43,10 @@ class Connection : public http::Connection {
                         size_t* size_read, chromeos::ErrorPtr* error) override;
 
  private:
+  // A helper method for FinishRequestAsync() implementation.
+  void FinishRequestAsyncHelper(const SuccessCallback& success_callback,
+                                const ErrorCallback& error_callback);
+
   // Request and response objects passed to the user-provided request handler
   // callback. The request object contains all the request information.
   // The response object is the server response that is created by
