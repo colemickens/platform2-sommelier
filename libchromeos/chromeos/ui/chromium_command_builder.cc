@@ -481,11 +481,6 @@ void ChromiumCommandBuilder::AddUiFlags() {
       IsBoard("nyan_blaze"))
     AddArg("--ignore-resolution-limits-for-accelerated-video-decode");
 
-  if (IsBoard("rush_ryu")) {
-    // Workaround for wrong bounds from touchscreen firmware.
-    AddArg("--touch-calibration=0,-1511,0,-1069");
-  }
-
   // Ozone platform configuration.
   if (UseFlagIsSet("ozone_platform_gbm")) {
     // TODO(spang): Use freon/chromeos platform, not GBM example platform.
