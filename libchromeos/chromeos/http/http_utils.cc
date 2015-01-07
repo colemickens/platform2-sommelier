@@ -107,6 +107,19 @@ std::unique_ptr<Response> PostFormDataAndBlock(
                             headers, transport, error);
 }
 
+std::unique_ptr<Response> PostFormDataAndBlock(
+    const std::string& url,
+    std::unique_ptr<FormData> form_data,
+    const HeaderList& headers,
+    std::shared_ptr<Transport> transport,
+    chromeos::ErrorPtr* error) {
+  Request request(url, request_type::kPost, transport);
+  request.AddHeaders(headers);
+  if (!request.AddRequestBodyAsFormData(std::move(form_data), error))
+    return std::unique_ptr<Response>();
+  return request.GetResponseAndBlock(error);
+}
+
 std::unique_ptr<Response> PostJsonAndBlock(
     const std::string& url,
     const base::Value* json,

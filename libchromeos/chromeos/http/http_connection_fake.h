@@ -28,8 +28,8 @@ class Connection : public http::Connection {
   // See http_connection.h for description of these methods.
   bool SendHeaders(const HeaderList& headers,
                    chromeos::ErrorPtr* error) override;
-  bool WriteRequestData(const void* data, size_t size,
-                        chromeos::ErrorPtr* error) override;
+  bool SetRequestData(std::unique_ptr<DataReaderInterface> data_reader,
+                      chromeos::ErrorPtr* error) override;
   bool FinishRequest(chromeos::ErrorPtr* error) override;
 
   int GetResponseStatusCode() const override;

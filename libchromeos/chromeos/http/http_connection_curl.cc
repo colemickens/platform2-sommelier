@@ -61,12 +61,10 @@ bool Connection::SendHeaders(const HeaderList& headers,
   return true;
 }
 
-bool Connection::WriteRequestData(const void* data, size_t size,
-                                  chromeos::ErrorPtr* error) {
-  if (size > 0) {
-    auto data_ptr = reinterpret_cast<const unsigned char*>(data);
-    request_data_.insert(request_data_.end(), data_ptr, data_ptr + size);
-  }
+bool Connection::SetRequestData(
+    std::unique_ptr<DataReaderInterface> data_reader,
+    chromeos::ErrorPtr* error) {
+  request_data_reader_ = std::move(data_reader);
   return true;
 }
 
@@ -77,20 +75,19 @@ bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
   }
 
   // Set up HTTP request data.
+  uint64_t data_size =
+      request_data_reader_ ? request_data_reader_->GetDataSize() : 0;
   if (method_ == request_type::kPut) {
     curl_easy_setopt(curl_handle_, CURLOPT_INFILESIZE_LARGE,
-                      curl_off_t(request_data_.size()));
+                     curl_off_t(data_size));
   } else {
     curl_easy_setopt(curl_handle_, CURLOPT_POSTFIELDSIZE_LARGE,
-                      curl_off_t(request_data_.size()));
+                      curl_off_t(data_size));
   }
-  if (!request_data_.empty()) {
+  if (request_data_reader_) {
     curl_easy_setopt(curl_handle_,
                      CURLOPT_READFUNCTION, &Connection::read_callback);
     curl_easy_setopt(curl_handle_, CURLOPT_READDATA, this);
-    VLOG(2) << "Raw request data: "
-        << std::string(reinterpret_cast<const char*>(request_data_.data()),
-                       request_data_.size());
   }
 
   curl_slist* header_list = nullptr;
@@ -187,16 +184,11 @@ size_t Connection::read_callback(char* ptr, size_t size,
   Connection* me = reinterpret_cast<Connection*>(data);
   size_t data_len = size * num;
 
-  if (me->request_data_ptr_ >= me->request_data_.size())
-    return 0;
-
-  if (me->request_data_ptr_ + data_len > me->request_data_.size())
-    data_len = me->request_data_.size() - me->request_data_ptr_;
-
-  memcpy(ptr, me->request_data_.data() + me->request_data_ptr_, data_len);
-  me->request_data_ptr_ += data_len;
-
-  return data_len;
+  size_t read_size = 0;
+  bool success =
+      me->request_data_reader_->ReadData(ptr, data_len, &read_size, nullptr);
+  VLOG_IF(3, success) << "Sending data: " << std::string{ptr, read_size};
+  return success ? read_size : CURL_READFUNC_ABORT;
 }
 
 size_t Connection::header_callback(char* ptr, size_t size,

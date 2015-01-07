@@ -5,6 +5,7 @@
 #include <chromeos/http/http_request.h>
 
 #include <base/logging.h>
+#include <chromeos/http/http_form_data.h>
 #include <chromeos/map_utils.h>
 #include <chromeos/mime_utils.h>
 #include <chromeos/strings/string_utils.h>
@@ -162,7 +163,24 @@ bool Request::AddRequestBody(const void* data,
                              chromeos::ErrorPtr* error) {
   if (!SendRequestIfNeeded(error))
     return false;
-  return connection_->WriteRequestData(data, size, error);
+  std::unique_ptr<DataReaderInterface> data_reader{
+    new MemoryDataReader{data, size}
+  };
+  return connection_->SetRequestData(std::move(data_reader), error);
+}
+
+bool Request::AddRequestBody(std::unique_ptr<DataReaderInterface> data_reader,
+                             chromeos::ErrorPtr* error) {
+  return SendRequestIfNeeded(error) &&
+         connection_->SetRequestData(std::move(data_reader), error);
+}
+
+bool Request::AddRequestBodyAsFormData(std::unique_ptr<FormData> form_data,
+                                       chromeos::ErrorPtr* error) {
+  AddHeader(request_header::kContentType, form_data->GetContentType());
+  if (!SendRequestIfNeeded(error))
+    return false;
+  return connection_->SetRequestData(std::move(form_data), error);
 }
 
 void Request::SetReferer(const std::string& referer) {

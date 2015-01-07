@@ -102,7 +102,9 @@
         },
       },
       'sources': [
+        'chromeos/http/data_reader.cc',
         'chromeos/http/http_connection_curl.cc',
+        'chromeos/http/http_form_data.cc',
         'chromeos/http/http_request.cc',
         'chromeos/http/http_transport.cc',
         'chromeos/http/http_transport_curl.cc',
@@ -266,6 +268,8 @@
             'chromeos/file_utils_unittest.cc',
             'chromeos/flag_helper_unittest.cc',
             'chromeos/glib/object_unittest.cc',
+            'chromeos/http/data_reader_unittest.cc',
+            'chromeos/http/http_form_data_unittest.cc',
             'chromeos/http/http_utils_unittest.cc',
             'chromeos/key_value_store_unittest.cc',
             'chromeos/map_utils_unittest.cc',

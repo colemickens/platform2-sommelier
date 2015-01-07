@@ -60,6 +60,14 @@ CHROMEOS_EXPORT extern const char kWwwFormUrlEncoded[];
 CHROMEOS_EXPORT extern const char kProtobuf[];
 }  // namespace application
 
+namespace multipart {
+// Common multipart MIME types
+// multipart/form-data
+CHROMEOS_EXPORT extern const char kFormData[];
+// multipart/mixed
+CHROMEOS_EXPORT extern const char kMixed[];
+}  // namespace multipart
+
 using Parameters = std::vector<std::pair<std::string, std::string>>;
 
 // Combine a MIME type, subtype and parameters into a MIME string.

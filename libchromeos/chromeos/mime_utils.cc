@@ -39,6 +39,9 @@ const char mime::application::kWwwFormUrlEncoded[] =
     "application/x-www-form-urlencoded";
 const char mime::application::kProtobuf[]          = "application/x-protobuf";
 
+const char mime::multipart::kFormData[]            = "multipart/form-data";
+const char mime::multipart::kMixed[]               = "multipart/mixed";
+
 // ***************************************************************************
 // **************************** Utility Functions ****************************
 // ***************************************************************************

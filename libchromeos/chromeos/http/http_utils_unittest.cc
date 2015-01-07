@@ -266,6 +266,32 @@ TEST(HttpUtils, PostFormData) {
   EXPECT_EQ("key=value&field=field+value", response->GetDataAsString());
 }
 
+TEST(HttpUtils, PostMultipartFormData) {
+  std::shared_ptr<fake::Transport> transport(new fake::Transport);
+  transport->AddHandler(kFakeUrl, request_type::kPost,
+                        base::Bind(EchoDataHandler));
+
+  std::unique_ptr<FormData> form_data{new FormData{"boundary123"}};
+  form_data->AddTextField("key1", "value1");
+  form_data->AddTextField("key2", "value2");
+  std::string expected_content_type = form_data->GetContentType();
+  auto response = http::PostFormDataAndBlock(kFakeUrl, std::move(form_data), {},
+                                             transport, nullptr);
+  EXPECT_TRUE(response->IsSuccessful());
+  EXPECT_EQ(expected_content_type, response->GetContentType());
+  const char expected_value[] =
+      "--boundary123\r\n"
+      "Content-Disposition: form-data; name=\"key1\"\r\n"
+      "\r\n"
+      "value1\r\n"
+      "--boundary123\r\n"
+      "Content-Disposition: form-data; name=\"key2\"\r\n"
+      "\r\n"
+      "value2\r\n"
+      "--boundary123--";
+  EXPECT_EQ(expected_value, response->GetDataAsString());
+}
+
 TEST(HttpUtils, PostPatchJson) {
   auto JsonHandler = [](const fake::ServerRequest& request,
                         fake::ServerResponse* response) {

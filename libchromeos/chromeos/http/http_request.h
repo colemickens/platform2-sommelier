@@ -199,6 +199,7 @@ static const int VersionNotSupported = 505;
 }  // namespace status_code
 
 class Response;  // Just a forward declaration.
+class FormData;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Request class is the main object used to set up and initiate an HTTP
@@ -237,6 +238,14 @@ class CHROMEOS_EXPORT Request {
 
   // Adds a request body. This is not to be used with GET method
   bool AddRequestBody(const void* data, size_t size, chromeos::ErrorPtr* error);
+  bool AddRequestBody(std::unique_ptr<DataReaderInterface> data_reader,
+                      chromeos::ErrorPtr* error);
+
+  // Adds a request body. This is not to be used with GET method.
+  // This method also sets the correct content-type of the request, including
+  // the multipart data boundary.
+  bool AddRequestBodyAsFormData(std::unique_ptr<FormData> form_data,
+                                chromeos::ErrorPtr* error);
 
   // Makes a request for a subrange of data. Specifies a partial range with
   // either from beginning of the data to the specified offset (if |bytes| is

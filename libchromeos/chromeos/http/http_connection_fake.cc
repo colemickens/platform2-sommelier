@@ -29,9 +29,10 @@ bool Connection::SendHeaders(const HeaderList& headers,
   return true;
 }
 
-bool Connection::WriteRequestData(const void* data, size_t size,
-                                  chromeos::ErrorPtr* error) {
-  request_.AddData(data, size);
+bool Connection::SetRequestData(
+    std::unique_ptr<DataReaderInterface> data_reader,
+    chromeos::ErrorPtr* error) {
+  request_.SetData(std::move(data_reader));
   return true;
 }
 

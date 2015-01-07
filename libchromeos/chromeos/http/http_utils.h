@@ -11,6 +11,7 @@
 
 #include <chromeos/chromeos_export.h>
 #include <chromeos/errors/error.h>
+#include <chromeos/http/http_form_data.h>
 #include <chromeos/http/http_request.h>
 
 namespace base {
@@ -129,6 +130,16 @@ CHROMEOS_EXPORT std::unique_ptr<Response> PostFormDataAndBlock(
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error);
 
+// Performs a POST request with form data, including binary file uploads.
+// Success status, returned data and additional information (such as returned
+// HTTP headers) can be obtained from the returned Response object.
+// The data is posed as "multipart/form-data".
+CHROMEOS_EXPORT std::unique_ptr<Response> PostFormDataAndBlock(
+    const std::string& url,
+    std::unique_ptr<FormData> form_data,
+    const HeaderList& headers,
+    std::shared_ptr<Transport> transport,
+    chromeos::ErrorPtr* error);
 
 // Performs a POST request with JSON data. Success status, returned data
 // and additional information (such as returned HTTP headers) can be obtained

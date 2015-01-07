@@ -98,9 +98,18 @@ Transport::HandlerCallback Transport::GetHandler(
   return (p != handlers_.end()) ? p->second : HandlerCallback();
 }
 
-void ServerRequestResponseBase::AddData(const void* data, size_t data_size) {
-  auto bytes = reinterpret_cast<const unsigned char*>(data);
-  data_.insert(data_.end(), bytes, bytes + data_size);
+void ServerRequestResponseBase::SetData(
+    std::unique_ptr<DataReaderInterface> data_reader) {
+  data_.clear();
+  if (data_reader) {
+    uint8_t buffer[1024];
+    size_t size = 0;
+    data_.reserve(data_reader->GetDataSize());
+    do {
+      CHECK(data_reader->ReadData(buffer, sizeof(buffer), &size, nullptr));
+      data_.insert(data_.end(), buffer, buffer + size);
+    } while (size > 0);
+  }
 }
 
 std::string ServerRequestResponseBase::GetDataAsString() const {
@@ -171,7 +180,8 @@ void ServerResponse::Reply(int status_code,
                            const std::string& mime_type) {
   data_.clear();
   status_code_ = status_code;
-  AddData(data, data_size);
+  SetData(std::unique_ptr<DataReaderInterface>{
+      new MemoryDataReader{data, data_size}});
   AddHeaders({
     {response_header::kContentLength,
         chromeos::string_utils::ToString(data_size)},
