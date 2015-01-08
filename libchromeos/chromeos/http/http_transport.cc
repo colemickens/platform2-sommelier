@@ -12,7 +12,7 @@ namespace http {
 const char kErrorDomain[] = "http_transport";
 
 std::shared_ptr<Transport> Transport::CreateDefault() {
-  return std::make_shared<http::curl::Transport>();
+  return std::make_shared<http::curl::Transport>(std::make_shared<CurlApi>());
 }
 
 }  // namespace http

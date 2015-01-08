@@ -45,15 +45,21 @@ static int curl_trace(CURL *handle, curl_infotype type,
   return 0;
 }
 
-Connection::Connection(CURL* curl_handle, const std::string& method,
-                       std::shared_ptr<http::Transport> transport) :
-    http::Connection(transport), method_(method), curl_handle_(curl_handle) {
+Connection::Connection(CURL* curl_handle,
+                       const std::string& method,
+                       const std::shared_ptr<CurlInterface>& curl_interface,
+                       const std::shared_ptr<http::Transport>& transport)
+    : http::Connection(transport),
+      method_(method),
+      curl_handle_(curl_handle),
+      curl_interface_(curl_interface) {
   VLOG(1) << "curl::Connection created: " << method_;
 }
 
 Connection::~Connection() {
   if (header_list_)
     curl_slist_free_all(header_list_);
+  curl_interface_->EasyCleanup(curl_handle_);
   VLOG(1) << "curl::Connection destroyed";
 }
 
@@ -72,60 +78,59 @@ bool Connection::SetRequestData(
 
 void Connection::PrepareRequest() {
   if (VLOG_IS_ON(3)) {
-    curl_easy_setopt(curl_handle_, CURLOPT_DEBUGFUNCTION, curl_trace);
-    curl_easy_setopt(curl_handle_, CURLOPT_VERBOSE, 1L);
+    curl_interface_->EasySetOptCallback(curl_handle_, CURLOPT_DEBUGFUNCTION,
+                                        &curl_trace);
+    curl_interface_->EasySetOptInt(curl_handle_, CURLOPT_VERBOSE, 1);
   }
 
   // Set up HTTP request data.
   uint64_t data_size =
       request_data_reader_ ? request_data_reader_->GetDataSize() : 0;
   if (method_ == request_type::kPut) {
-    curl_easy_setopt(curl_handle_, CURLOPT_INFILESIZE_LARGE,
-                     curl_off_t(data_size));
+    curl_interface_->EasySetOptOffT(curl_handle_, CURLOPT_INFILESIZE_LARGE,
+                                    data_size);
   } else {
-    curl_easy_setopt(curl_handle_, CURLOPT_POSTFIELDSIZE_LARGE,
-                      curl_off_t(data_size));
+    curl_interface_->EasySetOptOffT(curl_handle_, CURLOPT_POSTFIELDSIZE_LARGE,
+                                    data_size);
   }
   if (request_data_reader_) {
-    curl_easy_setopt(curl_handle_,
-                     CURLOPT_READFUNCTION, &Connection::read_callback);
-    curl_easy_setopt(curl_handle_, CURLOPT_READDATA, this);
+    curl_interface_->EasySetOptCallback(curl_handle_, CURLOPT_READFUNCTION,
+                                        &Connection::read_callback);
+    curl_interface_->EasySetOptPtr(curl_handle_, CURLOPT_READDATA, this);
   }
 
   if (!headers_.empty()) {
     CHECK(header_list_ == nullptr);
     for (auto pair : headers_) {
-      std::string header = chromeos::string_utils::Join(": ",
-                                                        pair.first,
-                                                        pair.second);
+      std::string header =
+          chromeos::string_utils::Join(": ", pair.first, pair.second);
       VLOG(2) << "Request header: " << header;
       header_list_ = curl_slist_append(header_list_, header.c_str());
     }
-    curl_easy_setopt(curl_handle_, CURLOPT_HTTPHEADER, header_list_);
+    curl_interface_->EasySetOptPtr(curl_handle_, CURLOPT_HTTPHEADER,
+                                   header_list_);
   }
 
   headers_.clear();
 
   // Set up HTTP response data.
   if (method_ != request_type::kHead) {
-    curl_easy_setopt(curl_handle_,
-                     CURLOPT_WRITEFUNCTION, &Connection::write_callback);
-    curl_easy_setopt(curl_handle_, CURLOPT_WRITEDATA, this);
+    curl_interface_->EasySetOptCallback(curl_handle_, CURLOPT_WRITEFUNCTION,
+                                        &Connection::write_callback);
+    curl_interface_->EasySetOptPtr(curl_handle_, CURLOPT_WRITEDATA, this);
   }
 
   // HTTP response headers
-  curl_easy_setopt(curl_handle_,
-                   CURLOPT_HEADERFUNCTION, &Connection::header_callback);
-  curl_easy_setopt(curl_handle_, CURLOPT_HEADERDATA, this);
+  curl_interface_->EasySetOptCallback(curl_handle_, CURLOPT_HEADERFUNCTION,
+                                      &Connection::header_callback);
+  curl_interface_->EasySetOptPtr(curl_handle_, CURLOPT_HEADERDATA, this);
 }
 
 bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
   PrepareRequest();
-  CURLcode ret = curl_easy_perform(curl_handle_);
+  CURLcode ret = curl_interface_->EasyPerform(curl_handle_);
   if (ret != CURLE_OK) {
-    chromeos::Error::AddTo(error, FROM_HERE, "curl_error",
-                           chromeos::string_utils::ToString(ret),
-                           curl_easy_strerror(ret));
+    Transport::AddCurlError(error, FROM_HERE, ret, curl_interface_.get());
   } else {
     LOG(INFO) << "Response: " << GetResponseStatusCode() << " ("
       << GetResponseStatusText() << ")";
@@ -144,8 +149,9 @@ void Connection::FinishRequestAsync(
 }
 
 int Connection::GetResponseStatusCode() const {
-  long status_code = 0;  // NOLINT(runtime/int) - curl expects a long here.
-  curl_easy_getinfo(curl_handle_, CURLINFO_RESPONSE_CODE, &status_code);
+  int status_code = 0;
+  curl_interface_->EasyGetInfoInt(curl_handle_, CURLINFO_RESPONSE_CODE,
+                                  &status_code);
   return status_code;
 }
 

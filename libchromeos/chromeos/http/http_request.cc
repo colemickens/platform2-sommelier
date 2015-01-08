@@ -154,7 +154,7 @@ void Request::SetAccept(const std::string& accept_mime_types) {
   accept_ = accept_mime_types;
 }
 
-std::string Request::GetAccept() const {
+const std::string& Request::GetAccept() const {
   return accept_;
 }
 
@@ -162,12 +162,12 @@ void Request::SetContentType(const std::string& contentType) {
   content_type_ = contentType;
 }
 
-std::string Request::GetContentType() const {
+const std::string& Request::GetContentType() const {
   return content_type_;
 }
 
 void Request::AddHeader(const std::string& header, const std::string& value) {
-  headers_[header] = value;
+  headers_.emplace(header, value);
 }
 
 void Request::AddHeaders(const HeaderList& headers) {
@@ -199,11 +199,19 @@ bool Request::AddRequestBodyAsFormData(std::unique_ptr<FormData> form_data,
   return connection_->SetRequestData(std::move(form_data), error);
 }
 
+const std::string& Request::GetRequestURL() const {
+  return request_url_;
+}
+
+const std::string& Request::GetRequestMethod() const {
+  return method_;
+}
+
 void Request::SetReferer(const std::string& referer) {
   referer_ = referer;
 }
 
-std::string Request::GetReferer() const {
+const std::string& Request::GetReferer() const {
   return referer_;
 }
 
@@ -211,7 +219,7 @@ void Request::SetUserAgent(const std::string& user_agent) {
   user_agent_ = user_agent;
 }
 
-std::string Request::GetUserAgent() const {
+const std::string& Request::GetUserAgent() const {
   return user_agent_;
 }
 
@@ -247,10 +255,8 @@ bool Request::SendRequestIfNeeded(chromeos::ErrorPtr* error) {
         if (!content_type_.empty())
           headers.emplace_back(request_header::kContentType, content_type_);
       }
-      connection_ = transport_->CreateConnection(transport_, request_url_,
-                                                 method_, headers,
-                                                 user_agent_, referer_,
-                                                 error);
+      connection_ = transport_->CreateConnection(request_url_, method_, headers,
+                                                 user_agent_, referer_, error);
     }
 
     if (connection_)
@@ -274,7 +280,7 @@ Response::Response(const std::shared_ptr<Connection>& connection)
   if (connection_) {
     size_t size = static_cast<size_t>(connection_->GetResponseDataSize());
     response_data_.reserve(size);
-    unsigned char buffer[1024];
+    uint8_t buffer[1024];
     size_t read = 0;
     while (connection_->ReadResponseData(buffer, sizeof(buffer),
                                          &read, nullptr) && read > 0) {
@@ -310,7 +316,7 @@ std::string Response::GetContentType() const {
   return GetHeader(response_header::kContentType);
 }
 
-const std::vector<unsigned char>& Response::GetData() const {
+const std::vector<uint8_t>& Response::GetData() const {
   return response_data_;
 }
 

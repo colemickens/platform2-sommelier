@@ -38,7 +38,8 @@ using ErrorCallback = base::Callback<void(const chromeos::Error*)>;
 // This class (and its underlying implementation) is used by http::Request and
 // http::Response classes to provide HTTP functionality to the clients.
 ///////////////////////////////////////////////////////////////////////////////
-class CHROMEOS_EXPORT Transport {
+class CHROMEOS_EXPORT Transport
+    : public std::enable_shared_from_this<Transport> {
  public:
   Transport() = default;
   virtual ~Transport() = default;
@@ -47,7 +48,6 @@ class CHROMEOS_EXPORT Transport {
   // |transport| is a shared pointer to this transport object instance,
   // used to maintain the object alive as long as the connection exists.
   virtual std::shared_ptr<Connection> CreateConnection(
-      std::shared_ptr<Transport> transport,
       const std::string& url,
       const std::string& method,
       const HeaderList& headers,

@@ -43,7 +43,7 @@ TEST(HttpUtils, SendRequest_BinaryData) {
                         base::Bind(EchoDataHandler));
 
   // Test binary data round-tripping.
-  std::vector<unsigned char> custom_data{0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F};
+  std::vector<uint8_t> custom_data{0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F};
   auto response = http::SendRequestAndBlock(
       request_type::kPost, kEchoUrl, custom_data.data(), custom_data.size(),
       chromeos::mime::application::kOctet_stream, {}, transport, nullptr);
@@ -54,12 +54,35 @@ TEST(HttpUtils, SendRequest_BinaryData) {
   EXPECT_EQ(custom_data, response->GetData());
 }
 
+TEST(HttpUtils, SendRequestAsync_BinaryData) {
+  std::shared_ptr<fake::Transport> transport(new fake::Transport);
+  transport->AddHandler(kEchoUrl, request_type::kPost,
+                        base::Bind(EchoDataHandler));
+
+  // Test binary data round-tripping.
+  std::vector<uint8_t> custom_data{0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F};
+  auto success_callback = [&custom_data](scoped_ptr<http::Response> response) {
+    EXPECT_TRUE(response->IsSuccessful());
+    EXPECT_EQ(chromeos::mime::application::kOctet_stream,
+              response->GetContentType());
+    EXPECT_EQ(custom_data.size(), response->GetData().size());
+    EXPECT_EQ(custom_data, response->GetData());
+  };
+  auto error_callback = [](const Error* error) {
+    FAIL() << "This callback shouldn't have been called";
+  };
+  http::SendRequest(
+      request_type::kPost, kEchoUrl, custom_data.data(), custom_data.size(),
+      chromeos::mime::application::kOctet_stream, {}, transport,
+      base::Bind(success_callback), base::Bind(error_callback));
+}
+
 TEST(HttpUtils, SendRequest_Post) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
   transport->AddHandler(kMethodEchoUrl, "*", base::Bind(EchoMethodHandler));
 
   // Test binary data round-tripping.
-  std::vector<unsigned char> custom_data{0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F};
+  std::vector<uint8_t> custom_data{0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F};
 
   // Check the correct HTTP method used.
   auto response = http::SendRequestAndBlock(
@@ -98,11 +121,25 @@ TEST(HttpUtils, SendRequest_Put) {
 TEST(HttpUtils, SendRequest_NotFound) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
   // Test failed response (URL not found).
-  auto response = http::SendRequestAndBlock(
-      request_type::kGet, "http://blah.com", nullptr, 0, std::string{}, {},
-      transport, nullptr);
+  auto response = http::SendRequestWithNoDataAndBlock(
+      request_type::kGet, "http://blah.com", {}, transport, nullptr);
   EXPECT_FALSE(response->IsSuccessful());
   EXPECT_EQ(status_code::NotFound, response->GetStatusCode());
+}
+
+TEST(HttpUtils, SendRequestAsync_NotFound) {
+  std::shared_ptr<fake::Transport> transport(new fake::Transport);
+  // Test failed response (URL not found).
+  auto success_callback = [](scoped_ptr<http::Response> response) {
+    EXPECT_FALSE(response->IsSuccessful());
+    EXPECT_EQ(status_code::NotFound, response->GetStatusCode());
+  };
+  auto error_callback = [](const Error* error) {
+    FAIL() << "This callback shouldn't have been called";
+  };
+  http::SendRequestWithNoData(
+      request_type::kGet, "http://blah.com", {}, transport,
+      base::Bind(success_callback), base::Bind(error_callback));
 }
 
 TEST(HttpUtils, SendRequest_Headers) {
@@ -217,7 +254,7 @@ TEST(HttpUtils, PostBinary) {
   transport->AddHandler(kFakeUrl, request_type::kPost, base::Bind(Handler));
 
   /// Fill the data buffer with bytes from 0x00 to 0xFF.
-  std::vector<unsigned char> data(256);
+  std::vector<uint8_t> data(256);
   std::iota(data.begin(), data.end(), 0);
 
   auto response = http::PostBinaryAndBlock(
@@ -365,6 +402,40 @@ TEST(HttpUtils, ParseJsonResponse) {
   auto json = http::ParseJsonResponse(response.get(), &code, nullptr);
   EXPECT_EQ(nullptr, json.get());
   EXPECT_EQ(status_code::NotFound, code);
+}
+
+TEST(HttpUtils, SendRequest_Failure) {
+  std::shared_ptr<fake::Transport> transport(new fake::Transport);
+  transport->AddHandler(kMethodEchoUrl, "*", base::Bind(EchoMethodHandler));
+  ErrorPtr error;
+  Error::AddTo(&error, FROM_HERE, "test_domain", "test_code", "Test message");
+  transport->SetCreateConnectionError(std::move(error));
+  error.reset();  // Just to make sure it is empty...
+  auto response = http::SendRequestWithNoDataAndBlock(
+      request_type::kGet, "http://blah.com", {}, transport, &error);
+  EXPECT_EQ(nullptr, response.get());
+  EXPECT_EQ("test_domain", error->GetDomain());
+  EXPECT_EQ("test_code", error->GetCode());
+  EXPECT_EQ("Test message", error->GetMessage());
+}
+
+TEST(HttpUtils, SendRequestAsync_Failure) {
+  std::shared_ptr<fake::Transport> transport(new fake::Transport);
+  transport->AddHandler(kMethodEchoUrl, "*", base::Bind(EchoMethodHandler));
+  ErrorPtr error;
+  Error::AddTo(&error, FROM_HERE, "test_domain", "test_code", "Test message");
+  transport->SetCreateConnectionError(std::move(error));
+  auto success_callback = [](scoped_ptr<http::Response> response) {
+    FAIL() << "This callback shouldn't have been called";
+  };
+  auto error_callback = [](const Error* error) {
+    EXPECT_EQ("test_domain", error->GetDomain());
+    EXPECT_EQ("test_code", error->GetCode());
+    EXPECT_EQ("Test message", error->GetMessage());
+  };
+  http::SendRequestWithNoData(
+      request_type::kGet, "http://blah.com", {}, transport,
+      base::Bind(success_callback), base::Bind(error_callback));
 }
 
 }  // namespace http

@@ -36,7 +36,7 @@ class Response;
 class CHROMEOS_EXPORT Connection
     : public std::enable_shared_from_this<Connection> {
  public:
-  explicit Connection(std::shared_ptr<Transport> transport)
+  explicit Connection(const std::shared_ptr<Transport>& transport)
       : transport_(transport) {}
   virtual ~Connection() = default;
 

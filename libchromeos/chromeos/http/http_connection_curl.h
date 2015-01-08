@@ -22,8 +22,10 @@ namespace curl {
 // This is a libcurl-based implementation of http::Connection.
 class CHROMEOS_EXPORT Connection : public http::Connection {
  public:
-  Connection(CURL* curl_handle, const std::string& method,
-             std::shared_ptr<http::Transport> transport);
+  Connection(CURL* curl_handle,
+             const std::string& method,
+             const std::shared_ptr<CurlInterface>& curl_interface,
+             const std::shared_ptr<http::Transport>& transport);
   ~Connection() override;
 
   // Overrides from http::Connection.
@@ -71,7 +73,7 @@ class CHROMEOS_EXPORT Connection : public http::Connection {
 
   // List of optional request headers provided by the caller.
   // After request has been sent, contains the received response headers.
-  std::map<std::string, std::string> headers_;
+  std::multimap<std::string, std::string> headers_;
 
   // HTTP protocol version, such as HTTP/1.1
   std::string protocol_version_;
@@ -83,6 +85,8 @@ class CHROMEOS_EXPORT Connection : public http::Connection {
 
   CURL* curl_handle_{nullptr};
   curl_slist* header_list_{nullptr};
+
+  std::shared_ptr<CurlInterface> curl_interface_;
 
  private:
   friend class http::curl::Transport;

@@ -45,7 +45,8 @@ class Transport : public http::Transport {
   // any requests. So, ("http://localhost","*") will handle any request type
   // on that URL and ("*","GET") will handle any GET requests.
   // The lookup starts with the most specific data pair to the catch-all (*,*).
-  void AddHandler(const std::string& url, const std::string& method,
+  void AddHandler(const std::string& url,
+                  const std::string& method,
                   const HandlerCallback& handler);
   // Simple version of AddHandler. AddSimpleReplyHandler just returns the
   // specified text response of given MIME type.
@@ -63,9 +64,14 @@ class Transport : public http::Transport {
   int GetRequestCount() const { return request_count_; }
   void ResetRequestCount() { request_count_ = 0; }
 
+  // For tests that wish to simulate critical transport errors, this method
+  // can be used to specify the error to be returned when creating a connection.
+  void SetCreateConnectionError(chromeos::ErrorPtr create_connection_error) {
+    create_connection_error_ = std::move(create_connection_error);
+  }
+
   // Overrides from http::Transport.
   std::shared_ptr<http::Connection> CreateConnection(
-      std::shared_ptr<http::Transport> transport,
       const std::string& url,
       const std::string& method,
       const HeaderList& headers,
@@ -82,9 +88,12 @@ class Transport : public http::Transport {
 
  private:
   // A list of user-supplied request handlers.
-  std::map<std::string, HandlerCallback> handlers_;
+  std::multimap<std::string, HandlerCallback> handlers_;
   // Counter incremented each time a request is made.
   int request_count_ = 0;
+
+  // Fake error to be returned from CreateConnection method.
+  chromeos::ErrorPtr create_connection_error_;
 
   DISALLOW_COPY_AND_ASSIGN(Transport);
 };
@@ -106,7 +115,7 @@ class ServerRequestResponseBase {
   // Add/retrieve request/response HTTP headers.
   void AddHeaders(const HeaderList& headers);
   std::string GetHeader(const std::string& header_name) const;
-  const std::map<std::string, std::string>& GetHeaders() const {
+  const std::multimap<std::string, std::string>& GetHeaders() const {
     return headers_;
   }
 
@@ -114,7 +123,7 @@ class ServerRequestResponseBase {
   // Data buffer.
   std::vector<uint8_t> data_;
   // Header map.
-  std::map<std::string, std::string> headers_;
+  std::multimap<std::string, std::string> headers_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ServerRequestResponseBase);

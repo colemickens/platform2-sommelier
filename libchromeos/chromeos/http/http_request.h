@@ -223,11 +223,11 @@ class CHROMEOS_EXPORT Request {
 
   // Gets/Sets "Accept:" header value. The default value is "*/*" if not set.
   void SetAccept(const std::string& accept_mime_types);
-  std::string GetAccept() const;
+  const std::string& GetAccept() const;
 
   // Gets/Sets "Content-Type:" header value
   void SetContentType(const std::string& content_type);
-  std::string GetContentType() const;
+  const std::string& GetContentType() const;
 
   // Adds additional HTTP request header
   void AddHeader(const std::string& header, const std::string& value);
@@ -260,15 +260,18 @@ class CHROMEOS_EXPORT Request {
   void AddRange(uint64_t from_byte, uint64_t to_byte);
 
   // Returns the request URL
-  std::string GetRequestURL() const;
+  const std::string& GetRequestURL() const;
+
+  // Returns the request verb.
+  const std::string& GetRequestMethod() const;
 
   // Gets/Sets a request referer URL (sent as "Referer:" request header).
   void SetReferer(const std::string& referer);
-  std::string GetReferer() const;
+  const std::string& GetReferer() const;
 
   // Gets/Sets a user agent string (sent as "User-Agent:" request header).
   void SetUserAgent(const std::string& user_agent);
-  std::string GetUserAgent() const;
+  const std::string& GetUserAgent() const;
 
   // Sends the request to the server and blocks until the response is received,
   // which is returned as the response object.
@@ -283,6 +286,8 @@ class CHROMEOS_EXPORT Request {
                    const ErrorCallback& error_callback);
 
  private:
+  friend class HttpRequestTest;
+
   // Helper function to create an http::Connection and send off request headers.
   CHROMEOS_PRIVATE bool SendRequestIfNeeded(chromeos::ErrorPtr* error);
 
@@ -312,7 +317,7 @@ class CHROMEOS_EXPORT Request {
 
   // List of optional request headers provided by the caller.
   // After request has been sent, contains the received response headers.
-  std::map<std::string, std::string> headers_;
+  std::multimap<std::string, std::string> headers_;
   // List of optional data ranges to request partial content from the server.
   // Sent to the server as "Range: " header.
   std::vector<std::pair<uint64_t, uint64_t>> ranges_;
@@ -348,7 +353,7 @@ class CHROMEOS_EXPORT Response {
   std::string GetContentType() const;
 
   // Returns response data as a byte array
-  const std::vector<unsigned char>& GetData() const;
+  const std::vector<uint8_t>& GetData() const;
 
   // Returns response data as a string
   std::string GetDataAsString() const;
@@ -357,8 +362,10 @@ class CHROMEOS_EXPORT Response {
   std::string GetHeader(const std::string& header_name) const;
 
  private:
+  friend class HttpRequestTest;
+
   std::shared_ptr<Connection> connection_;
-  std::vector<unsigned char> response_data_;
+  std::vector<uint8_t> response_data_;
 
   DISALLOW_COPY_AND_ASSIGN(Response);
 };

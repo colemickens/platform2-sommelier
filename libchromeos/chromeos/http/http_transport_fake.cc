@@ -32,13 +32,18 @@ Transport::~Transport() {
 }
 
 std::shared_ptr<http::Connection> Transport::CreateConnection(
-    std::shared_ptr<http::Transport> transport,
     const std::string& url,
     const std::string& method,
     const HeaderList& headers,
     const std::string& user_agent,
     const std::string& referer,
     chromeos::ErrorPtr* error) {
+  std::shared_ptr<http::Connection> connection;
+  if (create_connection_error_) {
+    if (error)
+      *error = std::move(create_connection_error_);
+    return connection;
+  }
   HeaderList headers_copy = headers;
   if (!user_agent.empty()) {
     headers_copy.push_back(std::make_pair(http::request_header::kUserAgent,
@@ -48,8 +53,8 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
     headers_copy.push_back(std::make_pair(http::request_header::kReferer,
                                           referer));
   }
-  std::shared_ptr<http::Connection> connection =
-      std::make_shared<http::fake::Connection>(url, method, transport);
+  connection =
+      std::make_shared<http::fake::Connection>(url, method, shared_from_this());
   CHECK(connection) << "Unable to create Connection object";
   if (!connection->SendHeaders(headers_copy, error))
     connection.reset();

@@ -541,6 +541,7 @@ TEST_F(ExportedPropertySetTest, SetWorksWithSameValue) {
   p_->string_prop_.SetAccessMode(ExportedPropertyBase::Access::kReadWrite);
   p_->string_prop_.SetValidator(
       property_validator.validate_property_callback());
+  EXPECT_CALL(*mock_exported_object_, SendSignal(_)).Times(1);
   p_->string_prop_.SetValue(kTestString);
 
   // No need to validate the value if it is the same as the current one.

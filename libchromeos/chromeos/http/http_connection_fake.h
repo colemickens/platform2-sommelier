@@ -21,7 +21,7 @@ namespace fake {
 class Connection : public http::Connection {
  public:
   Connection(const std::string& url, const std::string& method,
-             std::shared_ptr<http::Transport> transport);
+             const std::shared_ptr<http::Transport>& transport);
   virtual ~Connection();
 
   // Overrides from http::Connection.
