@@ -828,7 +828,7 @@ cmd_chaps_debug() (
   if [ "$1" = "start" ]; then
     level=-2
   fi
-  rm -f /home/chronos/.chaps_debug*
+  rm -f /home/chronos/.chaps_debug_1 /home/chronos/.chaps_debug_2
   if [ "${level}" = "-1" ]; then
     touch /home/chronos/.chaps_debug_1
   elif [ "${level}" = "-2" ]; then
