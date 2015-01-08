@@ -28,7 +28,14 @@ class SharedDBusConnection {
 
   void Init();
 
-  DBus::Connection *GetConnection();
+  // Returns a DBus connection that may be attached to a name instance.
+  // This is useful for adaptor instances which handle incoming method calls.
+  DBus::Connection *GetAdaptorConnection();
+
+  // Returns a DBus connection that is not associated with an acquired name.
+  // This is useful for proxy instances which handle incoming signals and
+  // outgoing method calls.
+  DBus::Connection *GetProxyConnection();
 
  protected:
   SharedDBusConnection() = default;
@@ -37,7 +44,8 @@ class SharedDBusConnection {
   friend struct base::DefaultLazyInstanceTraits<SharedDBusConnection>;
 
   std::unique_ptr<DBus::Glib::BusDispatcher> dispatcher_;
-  std::unique_ptr<DBus::Connection> connection_;
+  std::unique_ptr<DBus::Connection> adaptor_connection_;
+  std::unique_ptr<DBus::Connection> proxy_connection_;
 
   DISALLOW_COPY_AND_ASSIGN(SharedDBusConnection);
 };

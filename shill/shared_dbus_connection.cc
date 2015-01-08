@@ -23,12 +23,19 @@ void SharedDBusConnection::Init() {
   CHECK(dispatcher_.get()) << "Failed to create a dbus-dispatcher";
   DBus::default_dispatcher = dispatcher_.get();
   dispatcher_->attach(nullptr);
-  connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
+  adaptor_connection_.reset(new DBus::Connection(
+      DBus::Connection::SystemBus()));
+  proxy_connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
 }
 
-DBus::Connection *SharedDBusConnection::GetConnection() {
-  CHECK(connection_.get());
-  return connection_.get();
+DBus::Connection *SharedDBusConnection::GetAdaptorConnection() {
+  CHECK(adaptor_connection_.get());
+  return adaptor_connection_.get();
+}
+
+DBus::Connection *SharedDBusConnection::GetProxyConnection() {
+  CHECK(proxy_connection_.get());
+  return proxy_connection_.get();
 }
 
 }  // namespace shill

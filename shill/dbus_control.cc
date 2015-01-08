@@ -85,7 +85,7 @@ void DBusControl::Init() {
 }
 
 DBus::Connection *DBusControl::GetConnection() const {
-  return SharedDBusConnection::GetInstance()->GetConnection();
+  return SharedDBusConnection::GetInstance()->GetAdaptorConnection();
 }
 
 }  // namespace shill

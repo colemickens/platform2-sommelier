@@ -52,7 +52,7 @@ void DHCPProvider::Init(ControlInterface *control_interface,
                         GLib *glib,
                         Metrics *metrics) {
   SLOG(this, 2) << __func__;
-  DBus::Connection *connection = shared_dbus_connection_->GetConnection();
+  DBus::Connection *connection = shared_dbus_connection_->GetProxyConnection();
   listener_.reset(new DHCPCDListener(connection, this));
   glib_ = glib;
   control_interface_ = control_interface;

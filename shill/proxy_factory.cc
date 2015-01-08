@@ -57,7 +57,7 @@ ProxyFactory *ProxyFactory::GetInstance() {
 }
 
 DBus::Connection *ProxyFactory::GetConnection() const {
-  return SharedDBusConnection::GetInstance()->GetConnection();
+  return SharedDBusConnection::GetInstance()->GetProxyConnection();
 }
 
 DBusPropertiesProxyInterface *ProxyFactory::CreateDBusPropertiesProxy(
