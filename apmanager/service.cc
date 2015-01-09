@@ -6,7 +6,6 @@
 
 #include <signal.h>
 
-#include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/errors/error.h>
@@ -22,7 +21,8 @@ namespace apmanager {
 
 // static.
 const char Service::kHostapdPath[] = "/usr/sbin/hostapd";
-const char Service::kHostapdConfigPathFormat[] = "/tmp/hostapd-%d";
+const char Service::kHostapdConfigPathFormat[] =
+    "/var/run/apmanager/hostapd/hostapd-%d.conf";
 const int Service::kTerminationTimeoutSeconds = 2;
 
 Service::Service(Manager* manager, int service_identifier)
@@ -35,7 +35,8 @@ Service::Service(Manager* manager, int service_identifier)
                              service_identifier)),
       dbus_path_(dbus::ObjectPath(service_path_)),
       config_(new Config(manager, service_path_)),
-      dhcp_server_factory_(DHCPServerFactory::GetInstance()) {
+      dhcp_server_factory_(DHCPServerFactory::GetInstance()),
+      file_writer_(FileWriter::GetInstance()) {
   SetConfig(config_->dbus_path());
   // TODO(zqiu): come up with better server address management. This is good
   // enough for now.
@@ -84,9 +85,9 @@ bool Service::Start(chromeos::ErrorPtr* error) {
   }
 
   // Write configuration to a file.
-  base::FilePath file_path(base::StringPrintf(kHostapdConfigPathFormat,
-                                              service_identifier_));
-  if (base::WriteFile(file_path, config_str.c_str(), config_str.size()) == -1) {
+  string config_file_name = base::StringPrintf(kHostapdConfigPathFormat,
+                                               service_identifier_);
+  if (!file_writer_->Write(config_file_name, config_str)) {
     chromeos::Error::AddTo(
         error, FROM_HERE, chromeos::errors::dbus::kDomain, kServiceError,
         "Failed to write configuration to a file");
@@ -102,7 +103,7 @@ bool Service::Start(chromeos::ErrorPtr* error) {
   }
 
   // Start hostapd process.
-  if (!StartHostapdProcess(file_path.value())) {
+  if (!StartHostapdProcess(config_file_name)) {
     chromeos::Error::AddTo(
         error, FROM_HERE, chromeos::errors::dbus::kDomain, kServiceError,
         "Failed to start hostapd");

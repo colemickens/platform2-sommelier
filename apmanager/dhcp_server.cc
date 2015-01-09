@@ -7,7 +7,6 @@
 #include <net/if.h>
 #include <signal.h>
 
-#include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "apmanager/daemon.h"
@@ -18,8 +17,10 @@ namespace apmanager {
 
 // static.
 const char DHCPServer::kDnsmasqPath[] = "/usr/sbin/dnsmasq";
-const char DHCPServer::kDnsmasqConfigFilePathFormat[] = "/tmp/dhcpd-%d.conf";
-const char DHCPServer::kDHCPLeasesFilePathFormat[] = "/tmp/dhcpd-%d.leases";
+const char DHCPServer::kDnsmasqConfigFilePathFormat[] =
+    "/var/run/apmanager/dnsmasq/dhcpd-%d.conf";
+const char DHCPServer::kDHCPLeasesFilePathFormat[] =
+    "/var/run/apmanager/dnsmasq/dhcpd-%d.leases";
 const char DHCPServer::kServerAddressFormat[] = "192.168.%d.254";
 const char DHCPServer::kAddressRangeLowFormat[] = "192.168.%d.1";
 const char DHCPServer::kAddressRangeHighFormat[] = "192.168.%d.128";
@@ -31,7 +32,8 @@ DHCPServer::DHCPServer(uint16_t server_address_index,
     : server_address_index_(server_address_index),
       interface_name_(interface_name),
       server_address_(shill::IPAddress::kFamilyIPv4),
-      rtnl_handler_(shill::RTNLHandler::GetInstance()) {}
+      rtnl_handler_(shill::RTNLHandler::GetInstance()),
+      file_writer_(FileWriter::GetInstance()) {}
 
 DHCPServer::~DHCPServer() {
   if (dnsmasq_process_) {
@@ -52,9 +54,9 @@ bool DHCPServer::Start() {
 
   // Generate dnsmasq config file.
   string config_str = GenerateConfigFile();
-  base::FilePath file_path(base::StringPrintf(kDnsmasqConfigFilePathFormat,
-                                              server_address_index_));
-  if (base::WriteFile(file_path, config_str.c_str(), config_str.size()) == -1) {
+  string file_name = base::StringPrintf(kDnsmasqConfigFilePathFormat,
+                                        server_address_index_);
+  if (!file_writer_->Write(file_name, config_str)) {
     LOG(ERROR) << "Failed to write configuration to a file";
     return false;
   }
@@ -76,7 +78,7 @@ bool DHCPServer::Start() {
   dnsmasq_process_.reset(new chromeos::ProcessImpl());
   dnsmasq_process_->AddArg(kDnsmasqPath);
   dnsmasq_process_->AddArg(base::StringPrintf("--conf-file=%s",
-                                              file_path.value().c_str()));
+                                              file_name.c_str()));
   if (!dnsmasq_process_->Start()) {
     rtnl_handler_->RemoveInterfaceAddress(interface_index, server_address_);
     dnsmasq_process_.reset();

@@ -15,6 +15,8 @@
 #include <gtest/gtest.h>
 #include <shill/net/mock_rtnl_handler.h>
 
+#include "apmanager/mock_file_writer.h"
+
 using chromeos::ProcessMock;
 using ::testing::_;
 using ::testing::Mock;
@@ -33,7 +35,9 @@ namespace {
       "user=apmanager\n"
       "dhcp-range=192.168.1.1,192.168.1.128\n"
       "interface=test_interface\n"
-      "dhcp-leasefile=/tmp/dhcpd-1.leases\n";
+      "dhcp-leasefile=/var/run/apmanager/dnsmasq/dhcpd-1.leases\n";
+  const char kDnsmasqConfigFilePath[] =
+      "/var/run/apmanager/dnsmasq/dhcpd-1.conf";
 }  // namespace
 
 namespace apmanager {
@@ -65,6 +69,10 @@ class DHCPServerTest : public testing::Test {
     return dhcp_server_->GenerateConfigFile();
   }
 
+  void SetFileWriter(FileWriter* file_writer) {
+    dhcp_server_->file_writer_ = file_writer;
+  }
+
  protected:
   std::unique_ptr<DHCPServer> dhcp_server_;
   std::unique_ptr<shill::MockRTNLHandler> rtnl_handler_;
@@ -86,7 +94,14 @@ TEST_F(DHCPServerTest, StartWhenServerAlreadyStarted) {
 }
 
 TEST_F(DHCPServerTest, StartSuccess) {
+  // Setup mock file writer.
+  MockFileWriter* file_writer = MockFileWriter::GetInstance();
+  SetFileWriter(file_writer);
+
   const int kInterfaceIndex = 1;
+  EXPECT_CALL(*file_writer,
+              Write(kDnsmasqConfigFilePath, kExpectedDnsmasqConfigFile))
+      .WillOnce(Return(true));
   EXPECT_CALL(*rtnl_handler_.get(), GetInterfaceIndex(kTestInterfaceName))
       .WillOnce(Return(kInterfaceIndex));
   EXPECT_CALL(*rtnl_handler_.get(),

@@ -13,6 +13,7 @@
 #include "apmanager/config.h"
 #include "apmanager/dbus_adaptors/org.chromium.apmanager.Service.h"
 #include "apmanager/dhcp_server_factory.h"
+#include "apmanager/file_writer.h"
 
 namespace apmanager {
 
@@ -67,6 +68,7 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
   std::unique_ptr<chromeos::Process> hostapd_process_;
   std::unique_ptr<DHCPServer> dhcp_server_;
   DHCPServerFactory* dhcp_server_factory_;
+  FileWriter* file_writer_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

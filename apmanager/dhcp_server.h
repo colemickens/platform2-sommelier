@@ -12,6 +12,8 @@
 #include <shill/net/ip_address.h>
 #include <shill/net/rtnl_handler.h>
 
+#include "apmanager/file_writer.h"
+
 namespace apmanager {
 
 class DHCPServer {
@@ -42,6 +44,7 @@ class DHCPServer {
   shill::IPAddress server_address_;
   std::unique_ptr<chromeos::Process> dnsmasq_process_;
   shill::RTNLHandler* rtnl_handler_;
+  FileWriter* file_writer_;
 
   DISALLOW_COPY_AND_ASSIGN(DHCPServer);
 };
