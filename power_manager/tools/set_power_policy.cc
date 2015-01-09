@@ -89,6 +89,9 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(wait_for_initial_user_activity, -1,
                "Wait for initial user activity before enforcing delays "
                "(1 is true, 0 is false, -1 is unset");
+  DEFINE_int32(force_nonzero_brightness_for_user_activity, -1,
+               "Force panel backlight to non-zero brightness for user activity "
+               "(1 is true, 0 is false, -1 is unset");
   DEFINE_double(ac_brightness_percent, -1.0,
                 "Brightness percent to use while on AC power (less than 0.0 "
                 "means unset)");
@@ -152,6 +155,10 @@ int main(int argc, char* argv[]) {
   if (FLAGS_wait_for_initial_user_activity >= 0) {
     policy.set_wait_for_initial_user_activity(
         FLAGS_wait_for_initial_user_activity != 0);
+  }
+  if (FLAGS_force_nonzero_brightness_for_user_activity >= 0) {
+    policy.set_force_nonzero_brightness_for_user_activity(
+        FLAGS_force_nonzero_brightness_for_user_activity != 0);
   }
 
   dbus::Bus::Options options;

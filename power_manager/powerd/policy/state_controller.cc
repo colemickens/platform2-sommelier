@@ -197,6 +197,11 @@ std::string StateController::GetPolicyDebugString(
     str += "wait_for_initial_user_activity=" +
         base::IntToString(policy.wait_for_initial_user_activity()) + " ";
   }
+  if (policy.has_force_nonzero_brightness_for_user_activity()) {
+    str += "force_nonzero_brightness_for_user_activity=" +
+        base::IntToString(policy.force_nonzero_brightness_for_user_activity()) +
+        " ";
+  }
 
   if (policy.has_reason())
     str += "(" + policy.reason() + ")";
