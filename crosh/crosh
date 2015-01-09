@@ -82,8 +82,8 @@ HELP='
 
 HELP_ADVANCED='
  battery_test [<test length>]
-  Tests battery discharge rate for given number of seconds. No argument will
-  default to 300s test.
+  Tests battery discharge rate for given number of seconds. Without an argument,
+  defaults to 300 seconds.
 
  bt_console [<agent capability>]
   Enters a Bluetooth debugging console. Optional argument specifies the
@@ -206,6 +206,30 @@ Type 'help' for a list of commands.
 
 CHROMEOS_INSTALL=/usr/sbin/chromeos-install
 
+# Checks that a given string looks like a hostname or IPv4 address (starts
+# with an alphanumeric and contains only alphanumeric, '.', or '-'
+# characters).
+check_hostname() {
+  expr "$1" : '^[[:alnum:]][-[:alnum:].]*$' > /dev/null
+}
+
+# Checks that a given string could plausibly be an IPv6 address
+# (hexadecimal, ':', and '.' characters only, followed by an optional zone
+# index consisting of a '%' and a device name).
+check_ipv6() {
+  echo "$1" | grep -E -q '^[0-9a-fA-F:.]+(%[a-z0-9]+)?$'
+}
+
+# Checks that a given string starts with an alphanumeric, and contains only
+# alphanumeric and zero or more of "_:.~%$^\-".
+check_username() {
+  expr "$1" : '^[[:alnum:]][[:alnum:]_:.~%$^\-]*$' > /dev/null
+}
+
+check_digits() {
+  expr "$1" : '^[[:digit:]]*$' > /dev/null
+}
+
 load_extra_crosh() {
   # Keep `local` decl split from assignment so return code is checked.
   local crosh_dir devmode removable src
@@ -261,6 +285,13 @@ shell_history() {
     # In bash, the history builtin can be used to manage readline history
     history $@
   fi
+}
+
+# Prints the value corresponding to the passed-in field in the output from
+# dump_power_status.
+get_power_status_field() {
+  local field="$1"
+  dump_power_status | awk -v field="${field}" '$1 == field { print $2 }'
 }
 
 cmd_help() (
@@ -1156,66 +1187,51 @@ cmd_memory_test() (
 )
 
 cmd_battery_test() (
-  test_length="$1"
-
+  local test_length="$1"
   if [ -z "$test_length" ]; then
-    echo "No test length specified. Defaulting to 300s"
+    echo "No test length specified. Defaulting to 300 seconds."
     test_length=300
   fi
 
-  # Ensuring that the parameter is an int.
-  if ! echo "${test_length}" | egrep -q '^[0-9]+$'; then
-    echo "You provided invalid test length. Exiting..."
+  if ! check_digits "${test_length}"; then
+    echo "Invalid test length."
     return 1
   fi
 
-  ac="/sys/class/power_supply/AC"
-  bat="/sys/class/power_supply/BAT0"
-
-  # Checking if battery is present in the system.
-  if [ ! -e "${bat}/technology" ]; then
-    echo "No battery found. Insert the battery and reboot the device."
+  if [ "$(get_power_status_field 'battery_present')" != '1' ]; then
+    echo "No battery found."
     return 1
   fi
 
-  # Figuring out if battery gauge measures energy left or charge.
-  if [ -e "${bat}/energy_now" ]; then
-    meter="energy"
-  elif [ -e "${bat}/charge_now" ]; then
-    meter="charge"
+  if [ "$(get_power_status_field 'battery_discharging')" = '1' ]; then
+    local bat_status='discharging'
+    local bat_discharging=1
   else
-    echo "Could not figure out the way to get battery status"
+    local bat_status='charging or full'
+    local bat_discharging=0
+  fi
+
+  local bat_pct="$(get_power_status_field 'battery_percent')"
+  local bat_full="$(get_power_status_field 'battery_charge_full')"
+  local bat_full_design="$(get_power_status_field 'battery_charge_full_design')"
+  local bat_health="$(echo "${bat_full}" "${bat_full_design}" | \
+      awk '{ printf "%.2f", 100.0 * $1 / $2 }')"
+
+  echo "Battery is ${bat_status} (${bat_pct}% left)"
+  echo "Battery health: ${bat_health}%"
+
+  if [ "${bat_discharging}" != '1' ]; then
+    echo "Please make sure the power supply is unplugged and retry the test."
     return 1
   fi
 
-  ac_online="$(cat ${ac}/online)"
-  bat_status="$(cat ${bat}/status)"
-  bat_now="$(cat ${bat}/${meter}_now)"
-  bat_full="$(cat ${bat}/${meter}_full)"
-  bat_full_design="$(cat ${bat}/${meter}_full_design)"
+  echo "Please wait..."
+  sleep "${test_length}"
 
-  echo "Battery is $bat_status ($((${bat_now}*100/${bat_full}))% left)"
-  echo "Battery health: $((${bat_full}*100/${bat_full_design}))%"
-
-  if [ "$bat_status" != "Discharging" ]; then
-    echo "Please make sure the power supply is unplugged and retry the test"
-    return 1
-  fi
-
-  echo "Please wait.."
-
-  sleep "$test_length"
-
-  bat_after="$(cat ${bat}/${meter}_now)"
-  bat_diff="$((${bat_now}-${bat_after}))"
-  bat_diff="$((${bat_diff}*100))" #this allows to have only 2 decimal digits
-
-  bat_perc="$((${bat_diff}*100/${bat_full}))"
-
-  bat_perc_int="$((${bat_perc}/100))"
-  bat_perc_dec="$((${bat_perc}%100))"
-
-  echo "Battery discharged ${bat_perc_int}.${bat_perc_dec}% in ${test_length}s"
+  local bat_after="$(get_power_status_field 'battery_percent')"
+  local bat_diff="$(echo "${bat_pct}" "${bat_after}" | \
+      awk '{ printf "%.2f", $1 - $2 }')"
+  echo "Battery discharged ${bat_diff}% in ${test_length} second(s)."
 )
 
 cmd_dump_emk() (
@@ -1272,30 +1288,6 @@ dispatch() {
     command="cmd_$command"
     $command $params
   fi
-}
-
-# Checks that a given string looks like a hostname or IPv4 address (starts
-# with an alphanumeric and contains only alphanumeric, '.', or '-'
-# characters).
-check_hostname() {
-  expr "$1" : '^[[:alnum:]][-[:alnum:].]*$' > /dev/null
-}
-
-# Checks that a given string could plausibly be an IPv6 address
-# (hexadecimal, ':', and '.' characters only, followed by an optional zone
-# index consisting of a '%' and a device name).
-check_ipv6() {
-  echo "$1" | /bin/grep -E -q '^[0-9a-fA-F:.]+(%[a-z0-9]+)?$'
-}
-
-# Checks that a given string starts with an alphanumeric, and contains only
-# alphanumeric and zero or more of "_:.~%$^\-"
-check_username() {
-  expr "$1" : '^[[:alnum:]][[:alnum:]_:.~%$^\-]*$' > /dev/null
-}
-
-check_digits() {
-  expr "$1" : '^[[:digit:]]*$' > /dev/null
 }
 
 repl() {
