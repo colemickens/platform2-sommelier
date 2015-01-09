@@ -23,6 +23,8 @@ namespace apmanager {
 const char Service::kHostapdPath[] = "/usr/sbin/hostapd";
 const char Service::kHostapdConfigPathFormat[] =
     "/var/run/apmanager/hostapd/hostapd-%d.conf";
+const char Service::kHostapdControlInterfacePath[] =
+    "/var/run/apmanager/hostapd/ctrl_iface";
 const int Service::kTerminationTimeoutSeconds = 2;
 
 Service::Service(Manager* manager, int service_identifier)
@@ -36,7 +38,8 @@ Service::Service(Manager* manager, int service_identifier)
       dbus_path_(dbus::ObjectPath(service_path_)),
       config_(new Config(manager, service_path_)),
       dhcp_server_factory_(DHCPServerFactory::GetInstance()),
-      file_writer_(FileWriter::GetInstance()) {
+      file_writer_(FileWriter::GetInstance()),
+      process_factory_(ProcessFactory::GetInstance()) {
   SetConfig(config_->dbus_path());
   // TODO(zqiu): come up with better server address management. This is good
   // enough for now.
@@ -147,7 +150,7 @@ bool Service::IsHostapdRunning() {
 }
 
 bool Service::StartHostapdProcess(const string& config_file_path) {
-  hostapd_process_.reset(new chromeos::ProcessImpl());
+  hostapd_process_.reset(process_factory_->CreateProcess());
   hostapd_process_->AddArg(kHostapdPath);
   hostapd_process_->AddArg(config_file_path);
   if (!hostapd_process_->Start()) {

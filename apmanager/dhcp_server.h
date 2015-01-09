@@ -8,11 +8,11 @@
 #include <string>
 
 #include <base/macros.h>
-#include <chromeos/process.h>
 #include <shill/net/ip_address.h>
 #include <shill/net/rtnl_handler.h>
 
 #include "apmanager/file_writer.h"
+#include "apmanager/process_factory.h"
 
 namespace apmanager {
 
@@ -45,6 +45,7 @@ class DHCPServer {
   std::unique_ptr<chromeos::Process> dnsmasq_process_;
   shill::RTNLHandler* rtnl_handler_;
   FileWriter* file_writer_;
+  ProcessFactory* process_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(DHCPServer);
 };

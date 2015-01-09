@@ -18,6 +18,7 @@
 #include "apmanager/mock_dhcp_server_factory.h"
 #include "apmanager/mock_file_writer.h"
 #include "apmanager/mock_manager.h"
+#include "apmanager/mock_process_factory.h"
 
 using chromeos::ProcessMock;
 using ::testing::_;
@@ -37,7 +38,17 @@ namespace apmanager {
 
 class ServiceTest : public testing::Test {
  public:
-  ServiceTest() : service_(&manager_, kServiceIdentifier) {}
+  ServiceTest()
+      : service_(&manager_, kServiceIdentifier),
+        dhcp_server_factory_(MockDHCPServerFactory::GetInstance()),
+        file_writer_(MockFileWriter::GetInstance()),
+        process_factory_(MockProcessFactory::GetInstance()) {}
+
+  virtual void SetUp() {
+    service_.dhcp_server_factory_ = dhcp_server_factory_;
+    service_.file_writer_ = file_writer_;
+    service_.process_factory_ = process_factory_;
+  }
 
   void StartDummyProcess() {
     service_.hostapd_process_.reset(new chromeos::ProcessImpl);
@@ -51,17 +62,12 @@ class ServiceTest : public testing::Test {
     service_.config_.reset(config);
   }
 
-  void SetDHCPServerFactory(DHCPServerFactory* factory) {
-    service_.dhcp_server_factory_ = factory;
-  }
-
-  void SetFileWriter(FileWriter* file_writer) {
-    service_.file_writer_ = file_writer;
-  }
-
  protected:
   Service service_;
   MockManager manager_;
+  MockDHCPServerFactory* dhcp_server_factory_;
+  MockFileWriter* file_writer_;
+  MockProcessFactory* process_factory_;
 };
 
 MATCHER_P(IsServiceErrorStartingWith, message, "") {
@@ -95,23 +101,20 @@ TEST_F(ServiceTest, StartSuccess) {
   SetConfig(config);
 
   // Setup mock DHCP server.
-  MockDHCPServerFactory* dhcp_server_factory =
-      MockDHCPServerFactory::GetInstance();
   MockDHCPServer* dhcp_server = new MockDHCPServer();
-  SetDHCPServerFactory(dhcp_server_factory);
-
-  // Setup mock file writer.
-  MockFileWriter* file_writer = MockFileWriter::GetInstance();
-  SetFileWriter(file_writer);
+  // Setup mock process.
+  ProcessMock* process = new ProcessMock();
 
   std::string config_str(kHostapdConfig);
   chromeos::ErrorPtr error;
   EXPECT_CALL(*config, GenerateConfigFile(_, _)).WillOnce(
       DoAll(SetArgPointee<1>(config_str), Return(true)));
-  EXPECT_CALL(*file_writer, Write(kHostapdConfigFilePath, kHostapdConfig))
+  EXPECT_CALL(*file_writer_, Write(kHostapdConfigFilePath, kHostapdConfig))
       .WillOnce(Return(true));
   EXPECT_CALL(*config, ClaimDevice()).WillOnce(Return(true));
-  EXPECT_CALL(*dhcp_server_factory, CreateDHCPServer(_, _))
+  EXPECT_CALL(*process_factory_, CreateProcess()).WillOnce(Return(process));
+  EXPECT_CALL(*process, Start()).WillOnce(Return(true));
+  EXPECT_CALL(*dhcp_server_factory_, CreateDHCPServer(_, _))
       .WillOnce(Return(dhcp_server));
   EXPECT_CALL(*dhcp_server, Start()).WillOnce(Return(true));
   EXPECT_TRUE(service_.Start(&error));

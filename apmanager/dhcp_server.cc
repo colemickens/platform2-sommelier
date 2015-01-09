@@ -33,7 +33,8 @@ DHCPServer::DHCPServer(uint16_t server_address_index,
       interface_name_(interface_name),
       server_address_(shill::IPAddress::kFamilyIPv4),
       rtnl_handler_(shill::RTNLHandler::GetInstance()),
-      file_writer_(FileWriter::GetInstance()) {}
+      file_writer_(FileWriter::GetInstance()),
+      process_factory_(ProcessFactory::GetInstance()) {}
 
 DHCPServer::~DHCPServer() {
   if (dnsmasq_process_) {
@@ -73,9 +74,8 @@ bool DHCPServer::Start() {
       shill::IPAddress(shill::IPAddress::kFamilyIPv4));
   rtnl_handler_->SetInterfaceFlags(interface_index, IFF_UP, IFF_UP);
 
-  // TODO(zqiu): use ProcessFactory for better unit testing.
   // Start a dnsmasq process.
-  dnsmasq_process_.reset(new chromeos::ProcessImpl());
+  dnsmasq_process_.reset(process_factory_->CreateProcess());
   dnsmasq_process_->AddArg(kDnsmasqPath);
   dnsmasq_process_->AddArg(base::StringPrintf("--conf-file=%s",
                                               file_name.c_str()));

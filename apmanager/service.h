@@ -14,6 +14,7 @@
 #include "apmanager/dbus_adaptors/org.chromium.apmanager.Service.h"
 #include "apmanager/dhcp_server_factory.h"
 #include "apmanager/file_writer.h"
+#include "apmanager/process_factory.h"
 
 namespace apmanager {
 
@@ -42,7 +43,7 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
 
   static const char kHostapdPath[];
   static const char kHostapdConfigPathFormat[];
-  static const char kHostapdControlInterfacePathFormat[];
+  static const char kHostapdControlInterfacePath[];
   static const int kTerminationTimeoutSeconds;
 
   // Return true if hostapd process is currently running.
@@ -69,6 +70,7 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
   std::unique_ptr<DHCPServer> dhcp_server_;
   DHCPServerFactory* dhcp_server_factory_;
   FileWriter* file_writer_;
+  ProcessFactory* process_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

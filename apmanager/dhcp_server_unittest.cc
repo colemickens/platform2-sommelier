@@ -16,6 +16,7 @@
 #include <shill/net/mock_rtnl_handler.h>
 
 #include "apmanager/mock_file_writer.h"
+#include "apmanager/mock_process_factory.h"
 
 using chromeos::ProcessMock;
 using ::testing::_;
@@ -46,11 +47,15 @@ class DHCPServerTest : public testing::Test {
  public:
   DHCPServerTest()
       : dhcp_server_(new DHCPServer(kServerAddressIndex, kTestInterfaceName)),
-        rtnl_handler_(new shill::MockRTNLHandler()) {}
+        rtnl_handler_(new shill::MockRTNLHandler()),
+        file_writer_(MockFileWriter::GetInstance()),
+        process_factory_(MockProcessFactory::GetInstance()) {}
   virtual ~DHCPServerTest() {}
 
   virtual void SetUp() {
     dhcp_server_->rtnl_handler_ = rtnl_handler_.get();
+    dhcp_server_->file_writer_ = file_writer_;
+    dhcp_server_->process_factory_ = process_factory_;
   }
 
   virtual void TearDown() {
@@ -69,13 +74,11 @@ class DHCPServerTest : public testing::Test {
     return dhcp_server_->GenerateConfigFile();
   }
 
-  void SetFileWriter(FileWriter* file_writer) {
-    dhcp_server_->file_writer_ = file_writer;
-  }
-
  protected:
   std::unique_ptr<DHCPServer> dhcp_server_;
   std::unique_ptr<shill::MockRTNLHandler> rtnl_handler_;
+  MockFileWriter* file_writer_;
+  MockProcessFactory* process_factory_;
 };
 
 
@@ -94,12 +97,10 @@ TEST_F(DHCPServerTest, StartWhenServerAlreadyStarted) {
 }
 
 TEST_F(DHCPServerTest, StartSuccess) {
-  // Setup mock file writer.
-  MockFileWriter* file_writer = MockFileWriter::GetInstance();
-  SetFileWriter(file_writer);
+  ProcessMock* process = new ProcessMock();
 
   const int kInterfaceIndex = 1;
-  EXPECT_CALL(*file_writer,
+  EXPECT_CALL(*file_writer_,
               Write(kDnsmasqConfigFilePath, kExpectedDnsmasqConfigFile))
       .WillOnce(Return(true));
   EXPECT_CALL(*rtnl_handler_.get(), GetInterfaceIndex(kTestInterfaceName))
@@ -108,10 +109,8 @@ TEST_F(DHCPServerTest, StartSuccess) {
       AddInterfaceAddress(kInterfaceIndex, _, _, _)).Times(1);
   EXPECT_CALL(*rtnl_handler_.get(),
       SetInterfaceFlags(kInterfaceIndex, IFF_UP, IFF_UP)).Times(1);
-  // This will attempt to start a real dnsmasq process, and won't cause any
-  // trouble since the interface name specified is invalid. This can be avoid
-  // once we move to use ProcessFactory for process creation, which allows us
-  // to use the MockProcess instead of the real Process.
+  EXPECT_CALL(*process_factory_, CreateProcess()).WillOnce(Return(process));
+  EXPECT_CALL(*process, Start()).WillOnce(Return(true));
   EXPECT_TRUE(dhcp_server_->Start());
   Mock::VerifyAndClearExpectations(rtnl_handler_.get());
 }
