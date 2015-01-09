@@ -13,6 +13,7 @@
 
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/common/util.h"
 #include "power_manager/powerd/system/power_supply_stub.h"
 
 namespace power_manager {
@@ -43,26 +44,20 @@ class SystemAbstraction {
                        DarkResumeInterface::Action* action,
                        base::TimeDelta* suspend_duration,
                        bool woken_by_timer) = 0;
-
-  virtual void SetStatePath(DarkResume* dark_resume,
-                            const base::FilePath& path) = 0;
-  virtual void WriteDarkResumeState(const base::FilePath& path,
-                                    bool in_dark_resume) = 0;
-
-  static const char kStatePath[];
-  static const char kSourceFile[];
-  static const char kEnabled[];
-  static const char kDisabled[];
 };
-
-const char SystemAbstraction::kStatePath[] = "dark_resume_state";
-const char SystemAbstraction::kSourceFile[] = "dark_resume_source";
-const char SystemAbstraction::kEnabled[] = "enabled";
-const char SystemAbstraction::kDisabled[] = "disabled";
 
 // Test fixture helper for pre-3.11 kernel functionality.
 class LegacySystem : public SystemAbstraction {
  public:
+  static const char kStateFile[];
+  static const char kSourceFile[];
+  // Values for kStateFile.
+  static const char kInDarkResume[];
+  static const char kNotInDarkResume[];
+  // Values for kSourceFile.
+  static const char kEnabled[];
+  static const char kDisabled[];
+
   scoped_ptr<base::Timer> CreateTimer() override {
     return scoped_ptr<base::Timer>();
   }
@@ -75,22 +70,28 @@ class LegacySystem : public SystemAbstraction {
                bool woken_by_timer) override {
     dark_resume->GetActionForSuspendAttempt(action, suspend_duration);
   }
-
-  void SetStatePath(DarkResume* dark_resume,
-                    const base::FilePath& path) override {
-    dark_resume->set_legacy_state_path_for_testing(path);
-  }
-
-  void WriteDarkResumeState(const base::FilePath& path,
-                            bool in_dark_resume) override {
-    ASSERT_EQ(1, base::WriteFile(path, in_dark_resume ? "1" : "0", 1));
-  }
 };
+
+const char LegacySystem::kStateFile[] = "dark_resume_state";
+const char LegacySystem::kSourceFile[] = "dark_resume_source";
+const char LegacySystem::kInDarkResume[] = "1";
+const char LegacySystem::kNotInDarkResume[] = "0";
+const char LegacySystem::kEnabled[] = "enabled";
+const char LegacySystem::kDisabled[] = "disabled";
 
 // Test fixture helper for functionality from 3.11 kernel onwards.
 class WakeupTypeSystem : public SystemAbstraction {
  public:
   WakeupTypeSystem() : timer_(NULL) {}
+
+  static const char kStateFile[];
+  static const char kSourceFile[];
+  // Values for kStateFile.
+  static const char kInDarkResume[];
+  static const char kNotInDarkResume[];
+  // Values for kSourceFile.
+  static const char kEnabled[];
+  static const char kDisabled[];
 
   scoped_ptr<base::Timer> CreateTimer() override {
     timer_ = new base::MockTimer(true /* retain_user_task */,
@@ -126,23 +127,6 @@ class WakeupTypeSystem : public SystemAbstraction {
     *action = dark_resume->next_action_for_testing();
   }
 
-  void SetStatePath(DarkResume* dark_resume,
-                    const base::FilePath& path) override {
-    dark_resume->set_wakeup_state_path_for_testing(path);
-  }
-
-  void WriteDarkResumeState(const base::FilePath& path,
-                            bool in_dark_resume) override {
-    std::string state = in_dark_resume ? "automatic" : "user";
-    ASSERT_EQ(state.length(),
-              base::WriteFile(path, state.c_str(), state.length()));
-  }
-
-  static const char kStatePath[];
-  static const char kSourceFile[];
-  static const char kEnabled[];
-  static const char kDisabled[];
-
  private:
   // THIS IS A WEAK POINTER.
   // The timer will be owned by the DarkResume class.
@@ -151,8 +135,10 @@ class WakeupTypeSystem : public SystemAbstraction {
   DISALLOW_COPY_AND_ASSIGN(WakeupTypeSystem);
 };
 
-const char WakeupTypeSystem::kStatePath[] = "wakeup_type";
+const char WakeupTypeSystem::kStateFile[] = "wakeup_type";
 const char WakeupTypeSystem::kSourceFile[] = "wakeup_type";
+const char WakeupTypeSystem::kInDarkResume[] = "automatic";
+const char WakeupTypeSystem::kNotInDarkResume[] = "user";
 const char WakeupTypeSystem::kEnabled[] = "automatic";
 const char WakeupTypeSystem::kDisabled[] = "unknown";
 
@@ -164,7 +150,6 @@ class DarkResumeTest : public ::testing::Test {
   DarkResumeTest() : dark_resume_(new DarkResume) {
     CHECK(temp_dir_.CreateUniqueTempDir());
     CHECK(temp_dir_.IsValid());
-    state_path_ = temp_dir_.path().Append(SystemType::kStatePath);
   }
 
  protected:
@@ -172,14 +157,25 @@ class DarkResumeTest : public ::testing::Test {
   void Init() {
     WriteDarkResumeState(false);
     SetBattery(100.0, false);
-    system_.SetStatePath(dark_resume_.get(), state_path_);
+
+    // Override both the legacy and wakeup-type paths to ensure that DarkResume
+    // doesn't actually read from sysfs.
+    dark_resume_->set_legacy_state_path_for_testing(
+        temp_dir_.path().Append(LegacySystem::kStateFile));
+    dark_resume_->set_wakeup_state_path_for_testing(
+        temp_dir_.path().Append(WakeupTypeSystem::kStateFile));
+
     dark_resume_->Init(&power_supply_, &prefs_);
     dark_resume_->set_timer_for_testing(system_.CreateTimer());
   }
 
-  // Writes the passed-in dark resume state to |state_path_|.
+  // Writes the passed-in dark resume state to the in-use state file.
   void WriteDarkResumeState(bool in_dark_resume) {
-    system_.WriteDarkResumeState(state_path_, in_dark_resume);
+    const char* state = in_dark_resume ? SystemType::kInDarkResume :
+        SystemType::kNotInDarkResume;
+    ASSERT_TRUE(util::WriteFileFully(
+        temp_dir_.path().Append(SystemType::kStateFile),
+        state, strlen(state)));
   }
 
   // Updates the status returned by |power_supply_|.
@@ -206,7 +202,6 @@ class DarkResumeTest : public ::testing::Test {
   }
 
   base::ScopedTempDir temp_dir_;
-  base::FilePath state_path_;
   FakePrefs prefs_;
   PowerSupplyStub power_supply_;
   scoped_ptr<DarkResume> dark_resume_;
