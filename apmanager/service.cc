@@ -78,6 +78,9 @@ bool Service::Start(chromeos::ErrorPtr* error) {
     return false;
   }
 
+  // Setup hostapd control interface path.
+  config_->set_control_interface(kHostapdControlInterfacePath);
+
   // Generate hostapd configuration content.
   string config_str;
   if (!config_->GenerateConfigFile(error, &config_str)) {
@@ -129,6 +132,7 @@ bool Service::Start(chromeos::ErrorPtr* error) {
     }
   }
 
+  // TODO(zqiu): Start monitoring hostapd.
   return true;
 }
 

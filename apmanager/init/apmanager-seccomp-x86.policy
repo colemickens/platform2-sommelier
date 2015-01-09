@@ -63,3 +63,8 @@ tgkill: 1
 time: 1
 epoll_create: 1
 socketcall: 1
+mkdir: 1
+rmdir: 1
+chown32: 1
+chmod: 1
+unlink: 1

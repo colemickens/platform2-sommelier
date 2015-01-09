@@ -7,6 +7,7 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "apmanager/daemon.h"
 #include "apmanager/device.h"
 #include "apmanager/manager.h"
 
@@ -21,6 +22,8 @@ namespace apmanager {
 const char Config::kHostapdConfigKeyBridgeInterface[] = "bridge";
 const char Config::kHostapdConfigKeyChannel[] = "channel";
 const char Config::kHostapdConfigKeyControlInterface[] = "ctrl_interface";
+const char Config::kHostapdConfigKeyControlInterfaceGroup[] =
+    "ctrl_interface_group";
 const char Config::kHostapdConfigKeyDriver[] = "driver";
 const char Config::kHostapdConfigKeyFragmThreshold[] = "fragm_threshold";
 const char Config::kHostapdConfigKeyHTCapability[] = "ht_capab";
@@ -224,6 +227,18 @@ bool Config::GenerateConfigFile(ErrorPtr* error, string* config_str) {
   // Security mode configurations.
   if (!AppendSecurityMode(error, config_str)) {
     return false;
+  }
+
+  // Control interface.
+  if (!control_interface_.empty()) {
+    base::StringAppendF(config_str,
+                        "%s=%s\n",
+                        kHostapdConfigKeyControlInterface,
+                        control_interface_.c_str());
+    base::StringAppendF(config_str,
+                        "%s=%s\n",
+                        kHostapdConfigKeyControlInterfaceGroup,
+                        Daemon::kAPManagerGroupName);
   }
 
   // Hostapd default configurations.

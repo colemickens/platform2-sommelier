@@ -73,6 +73,7 @@ class Config
   static const char kHostapdConfigKeyBridgeInterface[];
   static const char kHostapdConfigKeyChannel[];
   static const char kHostapdConfigKeyControlInterface[];
+  static const char kHostapdConfigKeyControlInterfaceGroup[];
   static const char kHostapdConfigKeyDriver[];
   static const char kHostapdConfigKeyFragmThreshold[];
   static const char kHostapdConfigKeyHTCapability[];

@@ -27,6 +27,7 @@ const char kServicePath[] = "/manager/services/0";
 const char kSsid[] = "TestSsid";
 const char kInterface[] = "uap0";
 const char kBridgeInterface[] = "br0";
+const char kControlInterfacePath[] = "/var/run/apmanager/hostapd/ctrl_iface";
 const char kPassphrase[] = "Passphrase";
 const char k24GHzHTCapab[] = "[LDPC SMPS-STATIC GF SHORT-GI-20]";
 const char k5GHzHTCapab[] =
@@ -51,6 +52,17 @@ const char kExpected80211gBridgeConfigContent[] = "ssid=TestSsid\n"
                                                   "driver=nl80211\n"
                                                   "fragm_threshold=2346\n"
                                                   "rts_threshold=2347\n";
+
+const char kExpected80211gCtrlIfaceConfigContent[] =
+    "ssid=TestSsid\n"
+    "channel=6\n"
+    "interface=uap0\n"
+    "hw_mode=g\n"
+    "ctrl_interface=/var/run/apmanager/hostapd/ctrl_iface\n"
+    "ctrl_interface_group=apmanager\n"
+    "driver=nl80211\n"
+    "fragm_threshold=2346\n"
+    "rts_threshold=2347\n";
 
 const char kExpected80211n5GHzConfigContent[] =
     "ssid=TestSsid\n"
@@ -294,6 +306,27 @@ TEST_F(ConfigTest, 80211gConfig) {
                                    kExpected80211gConfigContent))
       << "Expected to find the following config...\n"
       << kExpected80211gConfigContent << "..within content...\n"
+      << config_content;
+  EXPECT_EQ(nullptr, error.get());
+}
+
+TEST_F(ConfigTest, 80211gConfigWithControlInterface) {
+  config_.SetSsid(kSsid);
+  config_.SetChannel(k24GHzChannel);
+  config_.SetHwMode(kHwMode80211g);
+  config_.SetInterfaceName(kInterface);
+  config_.set_control_interface(kControlInterfacePath);
+
+  // Setup mock device.
+  SetupDevice(kInterface);
+
+  std::string config_content;
+  chromeos::ErrorPtr error;
+  EXPECT_TRUE(config_.GenerateConfigFile(&error, &config_content));
+  EXPECT_NE(std::string::npos, config_content.find(
+                                   kExpected80211gCtrlIfaceConfigContent))
+      << "Expected to find the following config...\n"
+      << kExpected80211gCtrlIfaceConfigContent << "..within content...\n"
       << config_content;
   EXPECT_EQ(nullptr, error.get());
 }

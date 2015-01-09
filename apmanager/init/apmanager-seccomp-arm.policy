@@ -76,3 +76,8 @@ chdir: 1
 ftruncate64: 1
 fsync: 1
 unlink: 1
+mkdir: 1
+rmdir: 1
+chmod: 1
+chown32: 1
+dup: 1
