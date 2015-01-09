@@ -35,6 +35,7 @@ class SupplicantEventDelegateInterface;
 class SupplicantInterfaceProxyInterface;
 class SupplicantNetworkProxyInterface;
 class SupplicantProcessProxyInterface;
+class UpstartProxyInterface;
 class WiMaxDeviceProxyInterface;
 class WiMaxManagerProxyInterface;
 class WiMaxNetworkProxyInterface;
@@ -89,6 +90,8 @@ class ProxyFactory {
       WiFiEndpoint *wifi_endpoint,
       const DBus::Path &object_path,
       const char *dbus_addr);
+
+  virtual UpstartProxyInterface *CreateUpstartProxy();
 
   virtual DHCPProxyInterface *CreateDHCPProxy(const std::string &service);
 

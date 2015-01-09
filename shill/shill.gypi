@@ -17,6 +17,7 @@
         '<(xml2cpp_in_dir)/supplicant-interface.xml',
         '<(xml2cpp_in_dir)/supplicant-network.xml',
         '<(xml2cpp_in_dir)/supplicant-process.xml',
+        '<(xml2cpp_in_dir)/upstart.xml',
         '<(xml2cpp_in_dir)/org.chromium.flimflam.Device.xml',
         '<(xml2cpp_in_dir)/org.chromium.flimflam.IPConfig.xml',
         '<(xml2cpp_in_dir)/org.chromium.flimflam.Manager.xml',

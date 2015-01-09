@@ -30,6 +30,7 @@
 #include "shill/profile.h"
 #include "shill/property_store.h"
 #include "shill/service.h"
+#include "shill/upstart/upstart.h"
 #include "shill/wifi/wifi.h"
 #include "shill/wimax/wimax_provider.h"
 
@@ -677,6 +678,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   Metrics *metrics_;
   GLib *glib_;
   std::unique_ptr<PowerManager> power_manager_;
+  std::unique_ptr<Upstart> upstart_;
 
   // The priority order of technologies
   std::vector<Technology::Identifier> technology_order_;

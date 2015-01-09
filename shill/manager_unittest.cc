@@ -50,6 +50,7 @@
 #include "shill/resolver.h"
 #include "shill/service_under_test.h"
 #include "shill/testing.h"
+#include "shill/upstart/mock_upstart.h"
 #include "shill/wifi/mock_wifi_provider.h"
 #include "shill/wifi/mock_wifi_service.h"
 #include "shill/wifi/wifi_service.h"
@@ -100,7 +101,8 @@ class ManagerTest : public PropertyStoreTest {
         ethernet_eap_provider_(new NiceMock<MockEthernetEapProvider>()),
         wifi_provider_(new NiceMock<MockWiFiProvider>()),
         crypto_util_proxy_(
-            new NiceMock<MockCryptoUtilProxy>(dispatcher(), glib())) {
+            new NiceMock<MockCryptoUtilProxy>(dispatcher(), glib())),
+        upstart_(new NiceMock<MockUpstart>(&proxy_factory_)) {
     ON_CALL(proxy_factory_, CreatePowerManagerProxy(_))
         .WillByDefault(ReturnNull());
 
@@ -153,6 +155,10 @@ class ManagerTest : public PropertyStoreTest {
     // Replace the manager's crypto util proxy with our mock.  Passes
     // ownership.
     manager()->crypto_util_proxy_.reset(crypto_util_proxy_);
+
+    // Replace the manager's upstart instance with our mock.  Passes
+    // ownership.
+    manager()->upstart_.reset(upstart_);
   }
   virtual ~ManagerTest() {}
 
@@ -469,6 +475,7 @@ class ManagerTest : public PropertyStoreTest {
   MockEthernetEapProvider *ethernet_eap_provider_;
   MockWiFiProvider *wifi_provider_;
   MockCryptoUtilProxy *crypto_util_proxy_;
+  MockUpstart *upstart_;
 };
 
 const char ManagerTest::TerminationActionTest::kActionName[] = "action";
@@ -3295,8 +3302,10 @@ TEST_F(ManagerTest, CalculateStateOnline) {
 TEST_F(ManagerTest, RefreshConnectionState) {
   EXPECT_CALL(*manager_adaptor_,
               EmitStringChanged(kConnectionStateProperty, kStateIdle));
+  EXPECT_CALL(*upstart_, NotifyDisconnected());
   RefreshConnectionState();
   Mock::VerifyAndClearExpectations(manager_adaptor_);
+  Mock::VerifyAndClearExpectations(upstart_);
 
   scoped_refptr<MockService> mock_service(
       new NiceMock<MockService>(control_interface(),
@@ -3305,6 +3314,7 @@ TEST_F(ManagerTest, RefreshConnectionState) {
                                 manager()));
   EXPECT_CALL(*manager_adaptor_,
               EmitStringChanged(kConnectionStateProperty, _)).Times(0);
+  EXPECT_CALL(*upstart_, NotifyDisconnected()).Times(0);
   manager()->RegisterService(mock_service);
   RefreshConnectionState();
 
@@ -3322,9 +3332,15 @@ TEST_F(ManagerTest, RefreshConnectionState) {
               EmitStringChanged(kConnectionStateProperty, kStatePortal));
   RefreshConnectionState();
   Mock::VerifyAndClearExpectations(manager_adaptor_);
+  Mock::VerifyAndClearExpectations(upstart_);
 
   mock_service->set_mock_connection(nullptr);
   manager()->DeregisterService(mock_service);
+
+  EXPECT_CALL(*manager_adaptor_,
+              EmitStringChanged(kConnectionStateProperty, kStateIdle));
+  EXPECT_CALL(*upstart_, NotifyDisconnected());
+  RefreshConnectionState();
 }
 
 TEST_F(ManagerTest, StartupPortalList) {

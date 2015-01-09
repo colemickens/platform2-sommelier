@@ -43,6 +43,8 @@ class MockProxyFactory : public ProxyFactory {
   MOCK_METHOD1(CreateDHCPProxy,
                DHCPProxyInterface *(const std::string &service));
 
+  MOCK_METHOD0(CreateUpstartProxy, UpstartProxyInterface *());
+
 #if !defined(DISABLE_CELLULAR)
 
   MOCK_METHOD2(CreateDBusObjectManagerProxy,

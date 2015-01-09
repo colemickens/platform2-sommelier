@@ -224,6 +224,7 @@ void Manager::Start() {
                         Bind(&Manager::OnSuspendImminent, AsWeakPtr()),
                         Bind(&Manager::OnSuspendDone, AsWeakPtr()),
                         Bind(&Manager::OnDarkSuspendImminent, AsWeakPtr()));
+  upstart_.reset(new Upstart(ProxyFactory::GetInstance()));
 
   CHECK(base::CreateDirectory(run_path_)) << run_path_.value();
   resolver_->set_path(run_path_.Append("resolv.conf"));
@@ -1883,6 +1884,9 @@ void Manager::RefreshConnectionState() {
   }
   connection_state_ = connection_state;
   adaptor_->EmitStringChanged(kConnectionStateProperty, connection_state_);
+  if (connection_state_ == kStateIdle) {
+      upstart_->NotifyDisconnected();
+  }
 }
 
 vector<string> Manager::AvailableTechnologies(Error */*error*/) {

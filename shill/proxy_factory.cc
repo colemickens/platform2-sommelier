@@ -14,6 +14,7 @@
 #include "shill/supplicant/supplicant_interface_proxy.h"
 #include "shill/supplicant/supplicant_network_proxy.h"
 #include "shill/supplicant/supplicant_process_proxy.h"
+#include "shill/upstart/upstart_proxy.h"
 
 #if !defined(DISABLE_CELLULAR)
 #include "shill/cellular/dbus_objectmanager_proxy.h"
@@ -109,6 +110,10 @@ SupplicantBSSProxyInterface *ProxyFactory::CreateSupplicantBSSProxy(
 
 DHCPProxyInterface *ProxyFactory::CreateDHCPProxy(const string &service) {
   return new DHCPCDProxy(GetConnection(), service);
+}
+
+UpstartProxyInterface *ProxyFactory::CreateUpstartProxy() {
+  return new UpstartProxy(GetConnection());
 }
 
 #if !defined(DISABLE_CELLULAR)
