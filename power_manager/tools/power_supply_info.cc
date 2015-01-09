@@ -30,9 +30,6 @@ using base::TimeDelta;
 
 namespace {
 
-// Path to power supply info.
-const char kPowerStatusPath[] = "/sys/class/power_supply";
-
 // Number of columns that should be used to display field names.
 const int kFieldNameColumns = 27;
 
@@ -101,7 +98,7 @@ int main(int argc, char** argv) {
       base::FilePath(power_manager::kReadOnlyPrefsDir))));
 
   power_manager::system::UdevStub udev;
-  base::FilePath path(kPowerStatusPath);
+  base::FilePath path(power_manager::kPowerStatusPath);
   power_manager::system::PowerSupply power_supply;
   power_supply.Init(path, &prefs, &udev, false /* log_shutdown_thresholds */);
 
