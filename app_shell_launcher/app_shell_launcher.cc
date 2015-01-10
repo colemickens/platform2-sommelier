@@ -51,6 +51,10 @@ const char kAppsSubdir[] = "apps";
 // instead of kAppShellPath.
 const char kExecutableSymlink[] = "executable";
 
+// Optional file declaring developer modifications to the app_shell's command
+// line. See ChromiumCommandBuilder::ApplyUserConfig().
+const char kDevConfigPath[] = "/etc/app_shell_dev.conf";
+
 // Returns the first of the following paths that exists:
 // - a file named |filename| within |stateful_dir|
 // - a file named |filename| within |readonly_dir|
@@ -204,6 +208,10 @@ int main(int argc, char** argv) {
   builder.SetUpChromium(using_x11 ? xauth_path : base::FilePath());
   builder.EnableCoreDumps();
   AddAppShellFlags(&builder);
+
+  const base::FilePath config_path(kDevConfigPath);
+  if (builder.is_developer_end_user() && base::PathExists(config_path))
+    builder.ApplyUserConfig(config_path);
 
   if (using_x11)
     CHECK(x_runner->WaitForServer());
