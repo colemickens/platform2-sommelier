@@ -680,6 +680,72 @@ TPM_RC TpmUtilityImpl::CreateRSAKey(AsymmetricKeyUsage key_type,
   return TPM_RC_SUCCESS;
 }
 
+TPMT_PUBLIC TpmUtilityImpl::CreateDefaultPublicArea(TPM_ALG_ID key_alg) {
+  TPMT_PUBLIC public_area;
+  public_area.name_alg = TPM_ALG_SHA256;
+  public_area.auth_policy = Make_TPM2B_DIGEST("");
+  public_area.object_attributes = kFixedTPM | kFixedParent;
+  if (key_alg == TPM_ALG_RSA) {
+    public_area.type = TPM_ALG_RSA;
+    public_area.parameters.rsa_detail.scheme.scheme = TPM_ALG_NULL;
+    public_area.parameters.rsa_detail.symmetric.algorithm = TPM_ALG_NULL;
+    public_area.parameters.rsa_detail.key_bits = 2048;
+    public_area.parameters.rsa_detail.exponent = 0;
+    public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA("");
+  } else if (key_alg == TPM_ALG_ECC) {
+    public_area.type = TPM_ALG_ECC;
+    public_area.parameters.ecc_detail.curve_id = TPM_ECC_NIST_P256;
+    public_area.parameters.ecc_detail.kdf.scheme = TPM_ALG_MGF1;
+    public_area.parameters.ecc_detail.kdf.details.mgf1.hash_alg =
+        TPM_ALG_SHA256;
+    public_area.unique.ecc.x = Make_TPM2B_ECC_PARAMETER("");
+    public_area.unique.ecc.y = Make_TPM2B_ECC_PARAMETER("");
+  } else {
+    LOG(WARNING) << "Unrecognized key_type. Not filling parameters.";
+  }
+  return public_area;
+}
+
+TPM_RC TpmUtilityImpl::GetKeyName(TPM_HANDLE handle, std::string* name) {
+  TPM2B_PUBLIC public_data;
+  TPM2B_NAME out_name;
+  out_name.size = 0;
+  TPM2B_NAME qualified_name;
+  std::string handle_name;  // Unused
+  TPM_RC return_code = factory_.GetTpm()->ReadPublicSync(handle,
+                                                         handle_name,
+                                                         &public_data,
+                                                         &out_name,
+                                                         &qualified_name,
+                                                         NULL);
+  if (return_code) {
+    LOG(ERROR) << "Error generating name for object: " << handle;
+    return return_code;
+  }
+  name->resize(out_name.size);
+  name->assign(StringFrom_TPM2B_NAME(out_name));
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::GetKeyPublicArea(TPM_HANDLE handle,
+                                        TPM2B_PUBLIC* public_data) {
+  CHECK(public_data);
+  TPM2B_NAME out_name;
+  TPM2B_NAME qualified_name;
+  std::string handle_name;  // Unused
+  TPM_RC return_code = factory_.GetTpm()->ReadPublicSync(handle,
+                                                         handle_name,
+                                                         public_data,
+                                                         &out_name,
+                                                         &qualified_name,
+                                                         NULL);
+  if (return_code) {
+    LOG(ERROR) << "Error generating name for object: " << handle;
+    return return_code;
+  }
+  return TPM_RC_SUCCESS;
+}
+
 TPM_RC TpmUtilityImpl::CreateStorageRootKeys(
     const std::string& owner_password) {
   TPM_RC result = TPM_RC_SUCCESS;
@@ -856,32 +922,6 @@ TPM_RC TpmUtilityImpl::CreateSaltingKey(const std::string& owner_password) {
   return TPM_RC_SUCCESS;
 }
 
-TPMT_PUBLIC TpmUtilityImpl::CreateDefaultPublicArea(TPM_ALG_ID key_alg) {
-  TPMT_PUBLIC public_area;
-  public_area.name_alg = TPM_ALG_SHA256;
-  public_area.auth_policy = Make_TPM2B_DIGEST("");
-  public_area.object_attributes = kFixedTPM | kFixedParent;
-  if (key_alg == TPM_ALG_RSA) {
-    public_area.type = TPM_ALG_RSA;
-    public_area.parameters.rsa_detail.scheme.scheme = TPM_ALG_NULL;
-    public_area.parameters.rsa_detail.symmetric.algorithm = TPM_ALG_NULL;
-    public_area.parameters.rsa_detail.key_bits = 2048;
-    public_area.parameters.rsa_detail.exponent = 0;
-    public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA("");
-  } else if (key_alg == TPM_ALG_ECC) {
-    public_area.type = TPM_ALG_ECC;
-    public_area.parameters.ecc_detail.curve_id = TPM_ECC_NIST_P256;
-    public_area.parameters.ecc_detail.kdf.scheme = TPM_ALG_MGF1;
-    public_area.parameters.ecc_detail.kdf.details.mgf1.hash_alg =
-        TPM_ALG_SHA256;
-    public_area.unique.ecc.x = Make_TPM2B_ECC_PARAMETER("");
-    public_area.unique.ecc.y = Make_TPM2B_ECC_PARAMETER("");
-  } else {
-    LOG(WARNING) << "Unrecognized key_type. Not filling parameters.";
-  }
-  return public_area;
-}
-
 TPM_RC TpmUtilityImpl::InitializeSession() {
   TPM_RC result = TPM_RC_SUCCESS;
   if (session_.get()) {
@@ -922,46 +962,6 @@ TPM_RC TpmUtilityImpl::DisablePlatformHierarchy(
       TPM_RH_PLATFORM,  // The target hierarchy.
       0,  // Disable.
       authorization);
-}
-
-TPM_RC TpmUtilityImpl::GetKeyName(TPM_HANDLE handle, std::string* name) {
-  TPM2B_PUBLIC public_data;
-  TPM2B_NAME out_name;
-  out_name.size = 0;
-  TPM2B_NAME qualified_name;
-  std::string handle_name;  // Unused
-  TPM_RC return_code = factory_.GetTpm()->ReadPublicSync(handle,
-                                                         handle_name,
-                                                         &public_data,
-                                                         &out_name,
-                                                         &qualified_name,
-                                                         NULL);
-  if (return_code) {
-    LOG(ERROR) << "Error generating name for object: " << handle;
-    return return_code;
-  }
-  name->resize(out_name.size);
-  name->assign(StringFrom_TPM2B_NAME(out_name));
-  return TPM_RC_SUCCESS;
-}
-
-TPM_RC TpmUtilityImpl::GetKeyPublicArea(TPM_HANDLE handle,
-                                        TPM2B_PUBLIC* public_data) {
-  CHECK(public_data);
-  TPM2B_NAME out_name;
-  TPM2B_NAME qualified_name;
-  std::string handle_name;  // Unused
-  TPM_RC return_code = factory_.GetTpm()->ReadPublicSync(handle,
-                                                         handle_name,
-                                                         public_data,
-                                                         &out_name,
-                                                         &qualified_name,
-                                                         NULL);
-  if (return_code) {
-    LOG(ERROR) << "Error generating name for object: " << handle;
-    return return_code;
-  }
-  return TPM_RC_SUCCESS;
 }
 
 }  // namespace trunks

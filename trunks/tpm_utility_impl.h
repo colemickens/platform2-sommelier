@@ -65,6 +65,19 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
                       const std::string& password,
                       TPM_HANDLE* key_handle) override;
 
+  // This method returns a partially filled TPMT_PUBLIC strucutre,
+  // which can then be modified by other methods to create the public
+  // template for a key. It takes a valid |key_type| tp construct the
+  // parameters.
+  TPMT_PUBLIC CreateDefaultPublicArea(TPM_ALG_ID key_alg);
+
+  // This function sets |name| to the name of the object referenced by
+  // |handle|. This function only works on Transient and Permanent objects.
+  TPM_RC GetKeyName(TPM_HANDLE handle, std::string* name);
+
+  // This function returns the public area of a handle in the tpm.
+  TPM_RC GetKeyPublicArea(TPM_HANDLE handle, TPM2B_PUBLIC* public_data);
+
  protected:
   FRIEND_TEST(TpmUtilityTest, RootKeysSuccess);
   FRIEND_TEST(TpmUtilityTest, RootKeysHandleConsistency);
@@ -92,12 +105,6 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
   // hierarchy.
   TPM_RC CreateSaltingKey(const std::string& owner_password);
 
-  // This method returns a partially filled TPMT_PUBLIC strucutre,
-  // which can then be modified by other methods to create the public
-  // template for a key. It takes a valid |key_type| tp construct the
-  // parameters.
-  TPMT_PUBLIC CreateDefaultPublicArea(TPM_ALG_ID key_alg);
-
   // If session_ has not been initialized, creates an unbound and salted
   // authorization session with encryption enabled and assigns it to session_.
   // If session_ has already been initialized, this method has no effect. Call
@@ -112,13 +119,6 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
   // Disables the TPM platform hierarchy until the next startup. This requires
   // platform |authorization|.
   TPM_RC DisablePlatformHierarchy(AuthorizationDelegate* authorization);
-
-  // This function sets |name| to the name of the object referenced by
-  // |handle|. This function only works on Transient and Permanent objects.
-  TPM_RC GetKeyName(TPM_HANDLE handle, std::string* name);
-
-  // This function returns the public area of a handle in the tpm.
-  TPM_RC GetKeyPublicArea(TPM_HANDLE handle, TPM2B_PUBLIC* public_data);
 
   DISALLOW_COPY_AND_ASSIGN(TpmUtilityImpl);
 };
