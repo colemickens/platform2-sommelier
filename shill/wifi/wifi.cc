@@ -1364,7 +1364,7 @@ void WiFi::ScanDoneTask() {
       // scan (which will cause it to show up as unavailable for auto-connect
       // when we query the WiFiProvider this time).
       wake_on_wifi_->OnNoAutoConnectableServicesAfterScan(
-          provider_->HasServiceConfiguredForAutoConnect(),
+          provider_->GetSsidsConfiguredForAutoConnect(),
           Bind(&WiFi::RemoveSupplicantNetworks,
                weak_ptr_factory_.GetWeakPtr()));
     }
@@ -1777,7 +1777,7 @@ void WiFi::OnBeforeSuspend(const ResultCallback &callback) {
       TimeToNextDHCPLeaseRenewal(&time_to_next_lease_renewal);
   wake_on_wifi_->OnBeforeSuspend(
       IsConnectedToCurrentService(),
-      provider_->HasServiceConfiguredForAutoConnect(),
+      provider_->GetSsidsConfiguredForAutoConnect(),
       callback,
       Bind(&Device::RenewDHCPLease, weak_ptr_factory_.GetWeakPtr()),
       Bind(&WiFi::RemoveSupplicantNetworks, weak_ptr_factory_.GetWeakPtr()),
@@ -1790,7 +1790,7 @@ void WiFi::OnDarkResume(const ResultCallback &callback) {
   StopScanTimer();
   wake_on_wifi_->OnDarkResume(
       IsConnectedToCurrentService(),
-      provider_->HasServiceConfiguredForAutoConnect(),
+      provider_->GetSsidsConfiguredForAutoConnect(),
       callback,
       Bind(&Device::RenewDHCPLease, weak_ptr_factory_.GetWeakPtr()),
       Bind(&WiFi::InitiateScan, weak_ptr_factory_.GetWeakPtr(), kFullScan,

@@ -6,6 +6,7 @@
 #define SHILL_WIFI_MOCK_WAKE_ON_WIFI_H_
 
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 
@@ -20,26 +21,29 @@ class MockWakeOnWiFi : public WakeOnWiFi {
   ~MockWakeOnWiFi() override;
 
   MOCK_METHOD0(OnAfterResume, void());
-  MOCK_METHOD7(OnBeforeSuspend,
-               void(bool is_connected,
-                    bool has_service_configured_for_autoconnect,
-                    const ResultCallback &done_callback,
-                    const base::Closure &renew_dhcp_lease_callback,
-                    const base::Closure &remove_supplicant_networks_callback,
-                    bool have_dhcp_lease, uint32_t time_to_next_lease_renewal));
-  MOCK_METHOD6(OnDarkResume,
-               void(bool is_connected,
-                    bool has_service_configured_for_autoconnect,
-                    const ResultCallback &done_callback,
-                    const base::Closure &renew_dhcp_lease_callback,
-                    const base::Closure &initiate_scan_callback,
-                    const base::Closure &remove_supplicant_networks_callback));
+  MOCK_METHOD7(
+      OnBeforeSuspend,
+      void(bool is_connected,
+           const std::vector<ByteString> &ssid_whitelist,
+           const ResultCallback &done_callback,
+           const base::Closure &renew_dhcp_lease_callback,
+           const base::Closure &remove_supplicant_networks_callback,
+           bool have_dhcp_lease, uint32_t time_to_next_lease_renewal));
+  MOCK_METHOD6(
+      OnDarkResume,
+      void(bool is_connected,
+           const std::vector<ByteString> &ssid_whitelist,
+           const ResultCallback &done_callback,
+           const base::Closure &renew_dhcp_lease_callback,
+           const base::Closure &initiate_scan_callback,
+           const base::Closure &remove_supplicant_networks_callback));
   MOCK_METHOD2(OnDHCPLeaseObtained, void(bool start_lease_renewal_timer,
                                          uint32_t time_to_next_lease_renewal));
   MOCK_METHOD1(ReportConnectedToServiceAfterWake, void(bool is_connected));
-  MOCK_METHOD2(OnNoAutoConnectableServicesAfterScan,
-               void(bool has_service_configured_for_autoconnect,
-                    const base::Closure &remove_supplicant_networks_callback));
+  MOCK_METHOD2(
+      OnNoAutoConnectableServicesAfterScan,
+      void(const std::vector<ByteString> &ssid_whitelist,
+           const base::Closure &remove_supplicant_networks_callback));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWakeOnWiFi);

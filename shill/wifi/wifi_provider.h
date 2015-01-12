@@ -20,6 +20,7 @@
 
 namespace shill {
 
+class ByteString;
 class ControlInterface;
 class Error;
 class EventDispatcher;
@@ -118,8 +119,9 @@ class WiFiProvider : public ProviderInterface {
   // Returns number of services available for auto-connect.
   virtual int NumAutoConnectableServices();
 
-  // Returns true iff there is at least one service configured for auto-connect.
-  bool HasServiceConfiguredForAutoConnect();
+  // Returns a list of ByteStrings representing the SSIDs of WiFi services
+  // configured for auto-connect.
+  std::vector<ByteString> GetSsidsConfiguredForAutoConnect();
 
   bool disable_vht() { return disable_vht_; }
   void set_disable_vht(bool disable_vht) { disable_vht_ = disable_vht; }

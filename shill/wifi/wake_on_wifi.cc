@@ -152,6 +152,7 @@ void WakeOnWiFi::RunAndResetSuspendActionsDoneCallback(const Error &error) {
   }
 }
 
+// static
 bool WakeOnWiFi::ByteStringPairIsLessThan(
     const std::pair<ByteString, ByteString> &lhs,
     const std::pair<ByteString, ByteString> &rhs) {
@@ -262,7 +263,10 @@ bool WakeOnWiFi::ConfigureDisableWakeOnWiFiMessage(
 // static
 bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
     SetWakeOnPacketConnMessage *msg, const set<WakeOnWiFiTrigger> &trigs,
-    const IPAddressStore &addrs, uint32_t wiphy_index, Error *error) {
+    const IPAddressStore &addrs, uint32_t wiphy_index,
+    uint32_t net_detect_scan_period_seconds,
+    const vector<ByteString> &ssid_whitelist,
+    Error *error) {
   if (trigs.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "No triggers to configure.");
@@ -282,16 +286,14 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
                                                 "WoWLAN Triggers")) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not create nested attribute "
-                          "NL80211_ATTR_WOWLAN_TRIGGERS for "
-                          "SetWakeOnPacketConnMessage.");
+                          "NL80211_ATTR_WOWLAN_TRIGGERS");
     return false;
   }
   if (!msg->attributes()->SetNestedAttributeHasAValue(
           NL80211_ATTR_WOWLAN_TRIGGERS)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not set nested attribute "
-                          "NL80211_ATTR_WOWLAN_TRIGGERS for "
-                          "SetWakeOnPacketConnMessage.");
+                          "NL80211_ATTR_WOWLAN_TRIGGERS");
     return false;
   }
 
@@ -300,8 +302,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
                                                  &triggers)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not get nested attribute list "
-                          "NL80211_ATTR_WOWLAN_TRIGGERS for "
-                          "SetWakeOnPacketConnMessage.");
+                          "NL80211_ATTR_WOWLAN_TRIGGERS");
     return false;
   }
   // Add triggers.
@@ -327,16 +328,14 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
                                              "Pattern trigger")) {
           Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                                 "Could not create nested attribute "
-                                "NL80211_WOWLAN_TRIG_PKT_PATTERN for "
-                                "SetWakeOnPacketConnMessage.");
+                                "NL80211_WOWLAN_TRIG_PKT_PATTERN");
           return false;
         }
         if (!triggers->SetNestedAttributeHasAValue(
                 NL80211_WOWLAN_TRIG_PKT_PATTERN)) {
           Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                                 "Could not set nested attribute "
-                                "NL80211_WOWLAN_TRIG_PKT_PATTERN for "
-                                "SetWakeOnPacketConnMessage.");
+                                "NL80211_WOWLAN_TRIG_PKT_PATTERN");
           return false;
         }
         AttributeListRefPtr patterns;
@@ -344,8 +343,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
                                               &patterns)) {
           Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                                 "Could not get nested attribute list "
-                                "NL80211_WOWLAN_TRIG_PKT_PATTERN for "
-                                "SetWakeOnPacketConnMessage.");
+                                "NL80211_WOWLAN_TRIG_PKT_PATTERN");
           return false;
         }
         uint8_t patnum = 1;
@@ -357,7 +355,108 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
         break;
       }
       case kSSID: {
-        // TODO(samueltan): construct wake on SSID trigger when available.
+        if (!triggers->CreateNestedAttribute(NL80211_WOWLAN_TRIG_NET_DETECT,
+                                             "Wake on SSID trigger")) {
+          Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                                "Could not create nested attribute "
+                                "NL80211_WOWLAN_TRIG_NET_DETECT");
+          return false;
+        }
+        if (!triggers->SetNestedAttributeHasAValue(
+                NL80211_WOWLAN_TRIG_NET_DETECT)) {
+          Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                                "Could not set nested attribute "
+                                "NL80211_WOWLAN_TRIG_NET_DETECT");
+          return false;
+        }
+        AttributeListRefPtr scan_attributes;
+        if (!triggers->GetNestedAttributeList(NL80211_WOWLAN_TRIG_NET_DETECT,
+                                              &scan_attributes)) {
+          Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                                "Could not get nested attribute list "
+                                "NL80211_WOWLAN_TRIG_NET_DETECT");
+          return false;
+        }
+        if (!scan_attributes->CreateU32Attribute(
+                NL80211_ATTR_SCHED_SCAN_INTERVAL,
+                "NL80211_ATTR_SCHED_SCAN_INTERVAL")) {
+          Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                                "Could not get create U32 attribute "
+                                "NL80211_ATTR_SCHED_SCAN_INTERVAL");
+          return false;
+        }
+        if (!scan_attributes->SetU32AttributeValue(
+                NL80211_ATTR_SCHED_SCAN_INTERVAL,
+                net_detect_scan_period_seconds * 1000)) {
+          Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                                "Could not get set U32 attribute "
+                                "NL80211_ATTR_SCHED_SCAN_INTERVAL");
+          return false;
+        }
+        if (!scan_attributes->CreateNestedAttribute(
+                NL80211_ATTR_SCHED_SCAN_MATCH,
+                "NL80211_ATTR_SCHED_SCAN_MATCH")) {
+          Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                                "Could not create nested attribute list "
+                                "NL80211_ATTR_SCHED_SCAN_MATCH");
+          return false;
+        }
+        if (!scan_attributes->SetNestedAttributeHasAValue(
+                NL80211_ATTR_SCHED_SCAN_MATCH)) {
+          Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                                "Could not set nested attribute "
+                                "NL80211_ATTR_SCAN_SSIDS");
+          return false;
+        }
+        AttributeListRefPtr ssids;
+        if (!scan_attributes->GetNestedAttributeList(
+                NL80211_ATTR_SCHED_SCAN_MATCH, &ssids)) {
+          Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                                "Could not get nested attribute list "
+                                "NL80211_ATTR_SCHED_SCAN_MATCH");
+          return false;
+        }
+        int ssid_num = 0;
+        for (const ByteString &ssid_bytes :
+             ssid_whitelist) {
+          if (!ssids->CreateNestedAttribute(
+                  ssid_num, "NL80211_ATTR_SCHED_SCAN_MATCH_SINGLE")) {
+            Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                                  "Could not create nested attribute list "
+                                  "NL80211_ATTR_SCHED_SCAN_MATCH_SINGLE");
+            return false;
+          }
+          if (!ssids->SetNestedAttributeHasAValue(ssid_num)) {
+            Error::PopulateAndLog(
+                FROM_HERE, error, Error::kOperationFailed,
+                "Could not set value for nested attribute list "
+                "NL80211_ATTR_SCHED_SCAN_MATCH_SINGLE");
+            return false;
+          }
+          AttributeListRefPtr single_ssid;
+          if (!ssids->GetNestedAttributeList(ssid_num, &single_ssid)) {
+            Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                                  "Could not get nested attribute list "
+                                  "NL80211_ATTR_SCHED_SCAN_MATCH_SINGLE");
+            return false;
+          }
+          if (!single_ssid->CreateRawAttribute(
+                  NL80211_SCHED_SCAN_MATCH_ATTR_SSID,
+                  "NL80211_SCHED_SCAN_MATCH_ATTR_SSID")) {
+            Error::PopulateAndLog(
+                FROM_HERE, error, Error::kOperationFailed,
+                "Could not create NL80211_SCHED_SCAN_MATCH_ATTR_SSID");
+            return false;
+          }
+          if (!single_ssid->SetRawAttributeValue(
+                  NL80211_SCHED_SCAN_MATCH_ATTR_SSID, ssid_bytes)) {
+            Error::PopulateAndLog(
+                FROM_HERE, error, Error::kOperationFailed,
+                "Could not set NL80211_SCHED_SCAN_MATCH_ATTR_SSID");
+            return false;
+          }
+          ++ssid_num;
+        }
         break;
       }
       default: {
@@ -452,12 +551,14 @@ bool WakeOnWiFi::ConfigureGetWakeOnWiFiSettingsMessage(
 }
 
 // static
-bool WakeOnWiFi::WakeOnWiFiSettingsMatch(const Nl80211Message &msg,
-                                         const set<WakeOnWiFiTrigger> &trigs,
-                                         const IPAddressStore &addrs) {
+bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
+    const Nl80211Message &msg, const set<WakeOnWiFiTrigger> &trigs,
+    const IPAddressStore &addrs, uint32_t net_detect_scan_period_seconds,
+    const vector<ByteString> &ssid_whitelist) {
   if (msg.command() != NL80211_CMD_GET_WOWLAN &&
       msg.command() != NL80211_CMD_SET_WOWLAN) {
-    LOG(ERROR) << "Invalid message command";
+    LOG(ERROR) << __func__ << ": "
+               << "Invalid message command";
     return false;
   }
   AttributeListConstRefPtr triggers;
@@ -467,19 +568,46 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(const Nl80211Message &msg,
     // to be no triggers programmed into the NIC.
     return trigs.empty();
   }
-  // If the disconnect trigger is found and set, but we did not expect this
-  // trigger, we have a mismatch.
-  bool wake_on_disconnect = false;
-  triggers->GetFlagAttributeValue(NL80211_WOWLAN_TRIG_DISCONNECT,
-                                  &wake_on_disconnect);
-  if (trigs.find(kDisconnect) == trigs.end() && wake_on_disconnect) {
+  // If we find a trigger in |msg| that we do not have a corresponding flag
+  // for in |trigs|, we have a mismatch.
+  bool unused_flag;
+  AttributeListConstRefPtr unused_list;
+  if (triggers->GetFlagAttributeValue(NL80211_WOWLAN_TRIG_DISCONNECT,
+                                      &unused_flag) &&
+      trigs.find(kDisconnect) == trigs.end()) {
+    SLOG(WiFi, nullptr, 3)
+        << __func__ << "Wake on disconnect trigger not expected but found";
     return false;
   }
-  // Check each trigger.
+  if (triggers->ConstGetNestedAttributeList(NL80211_WOWLAN_TRIG_PKT_PATTERN,
+                                            &unused_list) &&
+      trigs.find(kPattern) == trigs.end()) {
+    SLOG(WiFi, nullptr, 3) << __func__
+                           << "Wake on pattern trigger not expected but found";
+    return false;
+  }
+  if (triggers->ConstGetNestedAttributeList(NL80211_WOWLAN_TRIG_NET_DETECT,
+                                            &unused_list) &&
+      trigs.find(kSSID) == trigs.end()) {
+    SLOG(WiFi, nullptr, 3) << __func__
+                           << "Wake on SSID trigger not expected but found";
+    return false;
+  }
+  // Check that each expected trigger is present in |msg| with matching
+  // setting values.
   for (WakeOnWiFiTrigger t : trigs) {
     switch (t) {
       case kDisconnect: {
+        bool wake_on_disconnect;
+        if (!triggers->GetFlagAttributeValue(NL80211_WOWLAN_TRIG_DISCONNECT,
+                                             &wake_on_disconnect)) {
+          LOG(ERROR) << __func__ << ": "
+                     << "Could not get the flag NL80211_WOWLAN_TRIG_DISCONNECT";
+          return false;
+        }
         if (!wake_on_disconnect) {
+          SLOG(WiFi, nullptr, 3) << __func__
+                                 << "Wake on disconnect flag not set.";
           return false;
         }
         break;
@@ -503,12 +631,13 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(const Nl80211Message &msg,
         AttributeListConstRefPtr patterns;
         if (!triggers->ConstGetNestedAttributeList(
                 NL80211_WOWLAN_TRIG_PKT_PATTERN, &patterns)) {
-          LOG(ERROR) << "Could not get nested attribute list "
-                        "NL80211_WOWLAN_TRIG_PKT_PATTERN.";
+          LOG(ERROR) << __func__ << ": "
+                     << "Could not get nested attribute list "
+                        "NL80211_WOWLAN_TRIG_PKT_PATTERN";
           return false;
         }
-        bool mismatch_found = false;
-        size_t num_mismatch = expected_patt_mask_pairs.size();
+        bool pattern_mismatch_found = false;
+        size_t pattern_num_mismatch = expected_patt_mask_pairs.size();
         int pattern_index;
         AttributeIdIterator pattern_iter(*patterns);
         AttributeListConstRefPtr pattern_info;
@@ -520,39 +649,107 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(const Nl80211Message &msg,
           pattern_index = pattern_iter.GetId();
           if (!patterns->ConstGetNestedAttributeList(pattern_index,
                                                      &pattern_info)) {
-            LOG(ERROR) << "Could not get nested attribute list index "
-                       << pattern_index << " in patterns.";
+            LOG(ERROR) << __func__ << ": "
+                       << "Could not get nested pattern attribute list #"
+                       << pattern_index;
             return false;
           }
           if (!pattern_info->GetRawAttributeValue(NL80211_PKTPAT_MASK,
                                                   &returned_mask)) {
-            LOG(ERROR) << "Could not get attribute NL80211_PKTPAT_MASK in "
-                          "pattern_info.";
+            LOG(ERROR) << __func__ << ": "
+                       << "Could not get attribute NL80211_PKTPAT_MASK";
             return false;
           }
           if (!pattern_info->GetRawAttributeValue(NL80211_PKTPAT_PATTERN,
                                                   &returned_pattern)) {
-            LOG(ERROR) << "Could not get attribute NL80211_PKTPAT_PATTERN in "
-                          "pattern_info.";
+            LOG(ERROR) << __func__ << ": "
+                       << "Could not get attribute NL80211_PKTPAT_PATTERN";
             return false;
           }
           if (expected_patt_mask_pairs.find(pair<ByteString, ByteString>(
                   returned_pattern, returned_mask)) ==
               expected_patt_mask_pairs.end()) {
-            mismatch_found = true;
+            pattern_mismatch_found = true;
             break;
           } else {
-            --num_mismatch;
+            --pattern_num_mismatch;
           }
           pattern_iter.Advance();
         }
-        if (mismatch_found || num_mismatch) {
+        if (pattern_mismatch_found || pattern_num_mismatch) {
+          SLOG(WiFi, nullptr, 3) << __func__
+                                 << "Wake on pattern pattern/mask mismatch";
           return false;
         }
         break;
       }
       case kSSID: {
-        // TODO(samueltan): parse wake on SSID trigger when available.
+        set<ByteString, bool (*)(const ByteString &, const ByteString &)>
+            expected_ssids(ssid_whitelist.begin(), ssid_whitelist.end(),
+                           ByteString::IsLessThan);
+        AttributeListConstRefPtr scan_attributes;
+        if (!triggers->ConstGetNestedAttributeList(
+                NL80211_WOWLAN_TRIG_NET_DETECT, &scan_attributes)) {
+          LOG(ERROR) << __func__ << ": "
+                     << "Could not get nested attribute list "
+                        "NL80211_WOWLAN_TRIG_NET_DETECT";
+          return false;
+        }
+        uint32_t interval;
+        if (!scan_attributes->GetU32AttributeValue(
+                NL80211_ATTR_SCHED_SCAN_INTERVAL, &interval)) {
+          LOG(ERROR) << __func__ << ": "
+                     << "Could not get set U32 attribute "
+                        "NL80211_ATTR_SCHED_SCAN_INTERVAL";
+          return false;
+        }
+        if (interval != net_detect_scan_period_seconds * 1000) {
+          SLOG(WiFi, nullptr, 3) << __func__
+                                 << "Net Detect scan period mismatch";
+          return false;
+        }
+        AttributeListConstRefPtr ssids;
+        if (!scan_attributes->ConstGetNestedAttributeList(
+                NL80211_ATTR_SCHED_SCAN_MATCH, &ssids)) {
+          LOG(ERROR) << __func__ << ": "
+                     << "Could not get nested attribute list "
+                        "NL80211_ATTR_SCHED_SCAN_MATCH";
+          return false;
+        }
+        bool ssid_mismatch_found = false;
+        size_t ssid_num_mismatch = expected_ssids.size();
+        AttributeIdIterator ssid_iter(*ssids);
+        AttributeListConstRefPtr single_ssid;
+        ByteString ssid;
+        int ssid_index;
+        while (!ssid_iter.AtEnd()) {
+          ssid.Clear();
+          ssid_index = ssid_iter.GetId();
+          if (!ssids->ConstGetNestedAttributeList(ssid_index, &single_ssid)) {
+            LOG(ERROR) << __func__ << ": "
+                       << "Could not get nested ssid attribute list #"
+                       << ssid_index;
+            return false;
+          }
+          if (!single_ssid->GetRawAttributeValue(
+                  NL80211_SCHED_SCAN_MATCH_ATTR_SSID, &ssid)) {
+            LOG(ERROR) << __func__ << ": "
+                       << "Could not get attribute "
+                          "NL80211_SCHED_SCAN_MATCH_ATTR_SSID";
+            return false;
+          }
+          if (expected_ssids.find(ssid) == expected_ssids.end()) {
+            ssid_mismatch_found = true;
+            break;
+          } else {
+            --ssid_num_mismatch;
+          }
+          ssid_iter.Advance();
+        }
+        if (ssid_mismatch_found || ssid_num_mismatch) {
+          SLOG(WiFi, nullptr, 3) << __func__ << "Net Detect SSID mismatch";
+          return false;
+        }
         break;
       }
       default: {
@@ -702,9 +899,11 @@ void WakeOnWiFi::VerifyWakeOnWiFiSettings(
     const Nl80211Message &nl80211_message) {
   SLOG(this, 3) << __func__;
   if (WakeOnWiFiSettingsMatch(nl80211_message, wake_on_wifi_triggers_,
-                              wake_on_packet_connections_)) {
+                              wake_on_packet_connections_,
+                              net_detect_scan_period_seconds_,
+                              wake_on_ssid_whitelist_)) {
     SLOG(this, 2) << __func__ << ": "
-                  << "Wake-on-packet settings successfully verified";
+                  << "Wake on WiFi settings successfully verified";
     metrics_->NotifyVerifyWakeOnWiFiSettingsResult(
         Metrics::kVerifyWakeOnWiFiSettingsResultSuccess);
     RunAndResetSuspendActionsDoneCallback(Error(Error::kSuccess));
@@ -729,11 +928,13 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
     DisableWakeOnWiFi();
     return;
   }
+
   Error error;
   SetWakeOnPacketConnMessage set_wowlan_msg;
   if (!ConfigureSetWakeOnWiFiSettingsMessage(
           &set_wowlan_msg, wake_on_wifi_triggers_, wake_on_packet_connections_,
-          wiphy_index_, &error)) {
+          wiphy_index_, net_detect_scan_period_seconds_,
+          wake_on_ssid_whitelist_, &error)) {
     LOG(ERROR) << error.message();
     RunAndResetSuspendActionsDoneCallback(
         Error(Error::kOperationFailed, error.message()));
@@ -927,11 +1128,10 @@ void WakeOnWiFi::ParseWiphyIndex(const Nl80211Message &nl80211_message) {
 
 void WakeOnWiFi::OnBeforeSuspend(
     bool is_connected,
-    bool has_service_configured_for_autoconnect,
+    const vector<ByteString> &ssid_whitelist,
     const ResultCallback &done_callback,
     const Closure &renew_dhcp_lease_callback,
-    const Closure &remove_supplicant_networks_callback,
-    bool have_dhcp_lease,
+    const Closure &remove_supplicant_networks_callback, bool have_dhcp_lease,
     uint32_t time_to_next_lease_renewal) {
   LOG(INFO) << __func__ << ": "
             << (is_connected ? "connected" : "not connected");
@@ -940,20 +1140,21 @@ void WakeOnWiFi::OnBeforeSuspend(
   done_callback.Run(Error(Error::kSuccess));
 #else
   suspend_actions_done_callback_ = done_callback;
+  wake_on_ssid_whitelist_ = ssid_whitelist;
   dark_resumes_since_last_suspend_.Clear();
   if (have_dhcp_lease && is_connected &&
       time_to_next_lease_renewal < kImmediateDHCPLeaseRenewalThresholdSeconds) {
     // Renew DHCP lease immediately if we have one that is expiring soon.
     renew_dhcp_lease_callback.Run();
-    dispatcher_->PostTask(
-        Bind(&WakeOnWiFi::BeforeSuspendActions, weak_ptr_factory_.GetWeakPtr(),
-             is_connected, has_service_configured_for_autoconnect, false,
-             time_to_next_lease_renewal, remove_supplicant_networks_callback));
+    dispatcher_->PostTask(Bind(&WakeOnWiFi::BeforeSuspendActions,
+                               weak_ptr_factory_.GetWeakPtr(), is_connected,
+                               false, time_to_next_lease_renewal,
+                               remove_supplicant_networks_callback));
   } else {
-    dispatcher_->PostTask(Bind(
-        &WakeOnWiFi::BeforeSuspendActions, weak_ptr_factory_.GetWeakPtr(),
-        is_connected, has_service_configured_for_autoconnect, have_dhcp_lease,
-        time_to_next_lease_renewal, remove_supplicant_networks_callback));
+    dispatcher_->PostTask(Bind(&WakeOnWiFi::BeforeSuspendActions,
+                               weak_ptr_factory_.GetWeakPtr(), is_connected,
+                               have_dhcp_lease, time_to_next_lease_renewal,
+                               remove_supplicant_networks_callback));
   }
 #endif  // DISABLE_WAKE_ON_WIFI
 }
@@ -974,7 +1175,7 @@ void WakeOnWiFi::OnAfterResume() {
 
 void WakeOnWiFi::OnDarkResume(
     bool is_connected,
-    bool has_service_configured_for_autoconnect,
+    const vector<ByteString> &ssid_whitelist,
     const ResultCallback &done_callback,
     const Closure &renew_dhcp_lease_callback,
     const Closure &initiate_scan_callback,
@@ -985,6 +1186,7 @@ void WakeOnWiFi::OnDarkResume(
   done_callback.Run(Error(Error::kSuccess));
 #else
   suspend_actions_done_callback_ = done_callback;
+  wake_on_ssid_whitelist_ = ssid_whitelist;
   if (!is_connected) {
     // Only record dark resume events where we wake up disconnected, since there
     // are valid scenarios where we would dark resume frequently in a connected
@@ -1015,8 +1217,7 @@ void WakeOnWiFi::OnDarkResume(
   // need to start a DHCP lease renewal timer.
   dark_resume_actions_timeout_callback_.Reset(
       Bind(&WakeOnWiFi::BeforeSuspendActions, weak_ptr_factory_.GetWeakPtr(),
-           false, has_service_configured_for_autoconnect, false, 0,
-           remove_supplicant_networks_callback));
+           false, false, 0, remove_supplicant_networks_callback));
   dispatcher_->PostDelayedTask(dark_resume_actions_timeout_callback_.callback(),
                                DarkResumeActionsTimeoutMilliseconds);
 
@@ -1032,7 +1233,6 @@ void WakeOnWiFi::OnDarkResume(
 
 void WakeOnWiFi::BeforeSuspendActions(
     bool is_connected,
-    bool has_service_configured_for_autoconnect,
     bool start_lease_renewal_timer,
     uint32_t time_to_next_lease_renewal,
     const Closure &remove_supplicant_networks_callback) {
@@ -1041,20 +1241,18 @@ void WakeOnWiFi::BeforeSuspendActions(
   // Note: No conditional compilation because all entry points to this functions
   // are already conditionally compiled based on DISABLE_WAKE_ON_WIFI.
 
-  // Create copy so callback can be run despite calling Cancel().
-  Closure supplicant_callback_copy(remove_supplicant_networks_callback);
-  dark_resume_actions_timeout_callback_.Cancel();
-
   // Add relevant triggers to be programmed into the NIC.
   wake_on_wifi_triggers_.clear();
   if (!wake_on_packet_connections_.Empty() &&
       WakeOnPacketEnabledAndSupported() && is_connected) {
-    SLOG(this, 3) << "Enabling wake on pattern";
+    SLOG(this, 3) << __func__ << ": "
+                  << "Enabling wake on pattern";
     wake_on_wifi_triggers_.insert(kPattern);
   }
   if (WakeOnSSIDEnabledAndSupported()) {
     if (is_connected) {
-      SLOG(this, 3) << "Enabling wake on disconnect";
+      SLOG(this, 3) << __func__ << ": "
+                    << "Enabling wake on disconnect";
       wake_on_wifi_triggers_.insert(kDisconnect);
       wake_on_wifi_triggers_.erase(kSSID);
       wake_to_scan_timer_.Stop();
@@ -1066,25 +1264,39 @@ void WakeOnWiFi::BeforeSuspendActions(
             Bind(&WakeOnWiFi::OnTimerWakeDoNothing, base::Unretained(this)));
       }
     } else {
-      SLOG(this, 3) << "Enabling wake on SSID";
       // Force a disconnect in case supplicant is currently in the process of
       // connecting, and remove all networks so scans triggered in dark resume
       // are passive.
-      supplicant_callback_copy.Run();
-      wake_on_wifi_triggers_.erase(kDisconnect);
-      wake_on_wifi_triggers_.insert(kSSID);
+      remove_supplicant_networks_callback.Run();
       dhcp_lease_renewal_timer_.Stop();
-      if (has_service_configured_for_autoconnect) {
-        // Only makes sense to wake to scan in dark resume if there is at least
-        // one WiFi service that we can auto-connect to after the scan.
-        // Timer callback is NO-OP since dark resume logic will initiate scan.
+      wake_on_wifi_triggers_.erase(kDisconnect);
+      if (!wake_on_ssid_whitelist_.empty()) {
+        SLOG(this, 3) << __func__ << ": "
+                      << "Enabling wake on SSID";
+        wake_on_wifi_triggers_.insert(kSSID);
+      }
+      int num_extra_ssids =
+          wake_on_ssid_whitelist_.size() - wake_on_wifi_max_ssids_;
+      if (num_extra_ssids > 0) {
+        SLOG(this, 3) << __func__ << ": "
+                      << "Starting wake to scan timer and removing last "
+                      << num_extra_ssids << " SSIDs from whitelist";
+        // Start wake to scan timer in case the only SSIDs available for
+        // auto-connect during suspend are the ones that we do not program our
+        // NIC to wake on.
         wake_to_scan_timer_.Start(
             FROM_HERE,
             base::TimeDelta::FromSeconds(wake_to_scan_period_seconds_),
             Bind(&WakeOnWiFi::OnTimerWakeDoNothing, base::Unretained(this)));
+        // Trim SSID list to the max size that the NIC supports.
+        wake_on_ssid_whitelist_.resize(wake_on_wifi_max_ssids_);
       }
     }
   }
+
+  // Only call Cancel() here since it deallocates the underlying callback that
+  // |remove_supplicant_networks_callback| references, which is invoked above.
+  dark_resume_actions_timeout_callback_.Cancel();
 
   if (!in_dark_resume_ && wake_on_wifi_triggers_.empty()) {
     // No need program NIC on normal resume in this case since wake on WiFi
@@ -1108,10 +1320,8 @@ void WakeOnWiFi::OnDHCPLeaseObtained(bool start_lease_renewal_timer,
 #else
     // If we obtain a DHCP lease, we are connected, so the callback to have
     // supplicant remove networks will not be invoked in
-    // WakeOnWiFi::BeforeSuspendActions. Likewise, we will not use the value of
-    // |has_service_configured_for_autoconnect| argument, so pass an arbitrary
-    // value.
-    BeforeSuspendActions(true, true, start_lease_renewal_timer,
+    // WakeOnWiFi::BeforeSuspendActions.
+    BeforeSuspendActions(true, start_lease_renewal_timer,
                          time_to_next_lease_renewal, base::Closure());
 #endif  // DISABLE_WAKE_ON_WIFI
   } else {
@@ -1146,16 +1356,16 @@ void WakeOnWiFi::ReportConnectedToServiceAfterWake(bool is_connected) {
 }
 
 void WakeOnWiFi::OnNoAutoConnectableServicesAfterScan(
-    bool has_service_configured_for_autoconnect,
+    const vector<ByteString> &ssid_whitelist,
     const Closure &remove_supplicant_networks_callback) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
   SLOG(this, 3) << __func__ << ": "
                 << (in_dark_resume_ ? "In dark resume" : "Not in dark resume");
   if (in_dark_resume_) {
+    wake_on_ssid_whitelist_ = ssid_whitelist;
     // Assume that if there are no services available for auto-connect, then we
     // cannot be connected. Therefore, no need for lease renewal parameters.
-    BeforeSuspendActions(false, has_service_configured_for_autoconnect, false,
-                         0, remove_supplicant_networks_callback);
+    BeforeSuspendActions(false, false, 0, remove_supplicant_networks_callback);
   }
 #endif  // DISABLE_WAKE_ON_WIFI
 }

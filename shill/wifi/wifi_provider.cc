@@ -24,6 +24,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
+#include "shill/net/byte_string.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/shill_time.h"
 #include "shill/profile.h"
@@ -750,15 +751,16 @@ int WiFiProvider::NumAutoConnectableServices() {
   return num_services;
 }
 
-bool WiFiProvider::HasServiceConfiguredForAutoConnect() {
-  int num_services = 0;
+vector<ByteString> WiFiProvider::GetSsidsConfiguredForAutoConnect() {
+  vector<ByteString> results;
   for (const auto &service : services_) {
     if (service->auto_connect()) {
       // Service configured for auto-connect.
-      num_services++;
+      ByteString ssid_bytes(service->ssid());
+      results.push_back(ssid_bytes);
     }
   }
-  return (num_services > 0);
+  return results;
 }
 
 }  // namespace shill

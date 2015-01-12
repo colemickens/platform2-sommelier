@@ -257,6 +257,7 @@ const char Nl80211AttributeWowlanTriggers::kNameString[] =
 
 Nl80211AttributeWowlanTriggers::Nl80211AttributeWowlanTriggers()
     : NetlinkNestedAttribute(kName, kNameString) {
+  // Pattern matching trigger attribute.
   NestedData patterns(NLA_NESTED, "NL80211_WOWLAN_TRIG_PKT_PATTERN", false);
   NestedData individual_pattern(NLA_NESTED, "NL80211_PACKET_PATTERN_ATTR",
                                 true);
@@ -269,14 +270,39 @@ Nl80211AttributeWowlanTriggers::Nl80211AttributeWowlanTriggers()
   individual_pattern.deeper_nesting.insert(
       AttrDataPair(NL80211_PKTPAT_OFFSET,
                    NestedData(NLA_U32, "NL80211_PKTPAT_OFFSET", false)));
-
   patterns.deeper_nesting.insert(
       AttrDataPair(kArrayAttrEnumVal, individual_pattern));
+
+  // Net detect SSID matching trigger attribute.
+  NestedData net_detect(NLA_NESTED, "NL80211_WOWLAN_TRIG_NET_DETECT", false);
+  NestedData scan_freqs(NLA_NESTED, "NL80211_ATTR_SCAN_FREQUENCIES", true);
+  scan_freqs.deeper_nesting.insert(
+      AttrDataPair(kArrayAttrEnumVal,
+                   NestedData(NLA_U32, "NL80211_ATTR_SCAN_FREQUENCY", false)));
+  net_detect.deeper_nesting.insert(
+      AttrDataPair(NL80211_ATTR_SCAN_FREQUENCIES, scan_freqs));
+  net_detect.deeper_nesting.insert(AttrDataPair(
+      NL80211_ATTR_SCHED_SCAN_INTERVAL,
+      NestedData(NLA_U32, "NL80211_ATTR_SCHED_SCAN_INTERVAL", false)));
+  NestedData scan_matches(NLA_NESTED, "NL80211_ATTR_SCHED_SCAN_MATCH", false);
+  NestedData individual_scan_match(
+      NLA_NESTED, "NL80211_ATTR_SCHED_SCAN_MATCH_SINGLE", true);
+  individual_scan_match.deeper_nesting.insert(AttrDataPair(
+      NL80211_SCHED_SCAN_MATCH_ATTR_SSID,
+      NestedData(NLA_UNSPEC, "NL80211_SCHED_SCAN_MATCH_ATTR_SSID", false)));
+  scan_matches.deeper_nesting.insert(
+      AttrDataPair(kArrayAttrEnumVal, individual_scan_match));
+  net_detect.deeper_nesting.insert(
+      AttrDataPair(NL80211_ATTR_SCHED_SCAN_MATCH, scan_matches));
+
+  // Main body of the triggers attribute.
   nested_template_.insert(AttrDataPair(
       NL80211_WOWLAN_TRIG_DISCONNECT,
       NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_DISCONNECT", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_WOWLAN_TRIG_PKT_PATTERN, patterns));
+  nested_template_.insert(
+      AttrDataPair(NL80211_WOWLAN_TRIG_NET_DETECT, net_detect));
 }
 
 const int Nl80211AttributeWowlanTriggersSupported::kName =

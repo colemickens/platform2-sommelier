@@ -1864,11 +1864,43 @@ TEST_F(WiFiProviderTest, NumAutoConnectableServices) {
   EXPECT_CALL(*service1, IsAutoConnectable(_))
       .WillRepeatedly(Return(true));
 
-  // 2 auto connectable service.
-  EXPECT_EQ(provider_.NumAutoConnectableServices(), 2);
+  // 2 auto-connectable services.
+  EXPECT_EQ(2, provider_.NumAutoConnectableServices());
 
-  // 1 auto connectable service.
-  EXPECT_EQ(provider_.NumAutoConnectableServices(), 1);
+  // 1 auto-connectable service.
+  EXPECT_EQ(1, provider_.NumAutoConnectableServices());
 }
+
+TEST_F(WiFiProviderTest, GetSsidsConfiguredForAutoConnect) {
+  vector<uint8_t> ssid0(3, '0');
+  vector<uint8_t> ssid1(5, '1');
+  ByteString ssid0_bytes(ssid0);
+  ByteString ssid1_bytes(ssid1);
+  MockWiFiServiceRefPtr service0 = AddMockService(ssid0,
+                                                  kModeManaged,
+                                                  kSecurityNone,
+                                                  false);
+  MockWiFiServiceRefPtr service1 = AddMockService(ssid1,
+                                                  kModeManaged,
+                                                  kSecurityNone,
+                                                  false);
+  // 2 services configured for auto-connect.
+  service0->SetAutoConnect(true);
+  service1->SetAutoConnect(true);
+  vector<ByteString> service_list_0 =
+      provider_.GetSsidsConfiguredForAutoConnect();
+  EXPECT_EQ(2, service_list_0.size());
+  EXPECT_TRUE(ssid0_bytes.Equals(service_list_0[0]));
+  EXPECT_TRUE(ssid1_bytes.Equals(service_list_0[1]));
+
+  // 1 service configured for auto-connect.
+  service0->SetAutoConnect(false);
+  service1->SetAutoConnect(true);
+  vector<ByteString> service_list_1 =
+      provider_.GetSsidsConfiguredForAutoConnect();
+  EXPECT_EQ(1, service_list_1.size());
+  EXPECT_TRUE(ssid1_bytes.Equals(service_list_1[0]));
+}
+
 
 }  // namespace shill

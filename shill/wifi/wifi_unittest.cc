@@ -950,10 +950,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->ReportConnectedToServiceAfterWake();
   }
 
-  bool HasServiceConfiguredForAutoConnect() {
-    return wifi_provider_.HasServiceConfiguredForAutoConnect();
-  }
-
   MOCK_METHOD1(SuspendCallback, void(const Error &error));
 
   EventDispatcher *event_dispatcher_;
@@ -2658,8 +2654,7 @@ TEST_F(WiFiMainTest, CallWakeOnWiFi_OnScanDone) {
   EXPECT_CALL(*wifi_provider(), NumAutoConnectableServices())
       .WillOnce(Return(0));
   EXPECT_TRUE(wifi()->IsIdle());
-  EXPECT_CALL(*wake_on_wifi_, OnNoAutoConnectableServicesAfterScan(
-                                  HasServiceConfiguredForAutoConnect(), _));
+  EXPECT_CALL(*wake_on_wifi_, OnNoAutoConnectableServicesAfterScan(_, _));
   ReportScanDone();
 
   // If we have 1 or more auto-connectable services, do not call
@@ -4071,8 +4066,7 @@ TEST_F(WiFiMainTest, OnBeforeSuspend_CallsWakeOnWiFi) {
   FireScanTimer();
   EXPECT_CALL(
       *wake_on_wifi_,
-      OnBeforeSuspend(IsConnectedToCurrentService(),
-                      HasServiceConfiguredForAutoConnect(), _, _, _, _, _));
+      OnBeforeSuspend(IsConnectedToCurrentService(), _, _, _, _, _, _));
   OnBeforeSuspend();
   EXPECT_TRUE(GetScanTimer().IsCancelled());
 }
@@ -4080,8 +4074,7 @@ TEST_F(WiFiMainTest, OnBeforeSuspend_CallsWakeOnWiFi) {
 TEST_F(WiFiMainTest, OnDarkResume_CallsWakeOnWiFi) {
   FireScanTimer();
   EXPECT_CALL(*wake_on_wifi_,
-              OnDarkResume(IsConnectedToCurrentService(),
-                           HasServiceConfiguredForAutoConnect(), _, _, _, _));
+              OnDarkResume(IsConnectedToCurrentService(), _, _, _, _, _));
   OnDarkResume();
   EXPECT_TRUE(GetScanTimer().IsCancelled());
 }
