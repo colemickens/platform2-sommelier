@@ -671,13 +671,13 @@ Properties	string Address [readonly]
 			Possible errors: [service].Error.NotSupported (wake on WiFi not supported)
 					 [service].Error.InvalidArguments (invalid wake on WiFi feature)
 
-		uint32 WakeToScanFrequency [readwrite]
+		uint32 WakeToScanPeriodSeconds [readwrite]
 
 			(Defined in WiFi)
 
-			The frequency (in seconds) that the system is woken from suspend to scan
-			for networks in dark resume. Changes to this property will take effect
-			at the next system suspend.
+			The length of time (in seconds) between each instance where the system
+			is woken from suspend to scan for networks in dark resume. Changes to this
+			property will take effect at the next system suspend.
 
 		void AddWakeOnPacketConnection(string endpoint)
 

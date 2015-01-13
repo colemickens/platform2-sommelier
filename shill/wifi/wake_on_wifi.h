@@ -184,7 +184,7 @@ class WakeOnWiFi {
   static const int kVerifyWakeOnWiFiSettingsDelayMilliseconds;
   static const int kMaxSetWakeOnPacketRetries;
   static const int kMetricsReportingFrequencySeconds;
-  static const uint32_t kDefaultWakeToScanFrequencySeconds;
+  static const uint32_t kDefaultWakeToScanPeriodSeconds;
   static const uint32_t kImmediateDHCPLeaseRenewalThresholdSeconds;
   static int64_t DarkResumeActionsTimeoutMilliseconds;  // non-const for testing
 
@@ -354,9 +354,9 @@ class WakeOnWiFi {
   base::CancelableClosure dark_resume_actions_timeout_callback_;
   // Whether shill is currently in dark resume.
   bool in_dark_resume_;
-  // Frequency (in seconds) that the system is woken during suspend to perform
-  // scans.
-  uint32_t wake_to_scan_frequency_;
+  // Period (in seconds) between instances where the system wakes from suspend
+  // to scan for networks in dark resume.
+  uint32_t wake_to_scan_period_seconds_;
 
   base::WeakPtrFactory<WakeOnWiFi> weak_ptr_factory_;
 

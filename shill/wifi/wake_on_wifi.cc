@@ -52,7 +52,7 @@ const uint32_t WakeOnWiFi::kDefaultWiphyIndex = 999;
 const int WakeOnWiFi::kVerifyWakeOnWiFiSettingsDelayMilliseconds = 300;
 const int WakeOnWiFi::kMaxSetWakeOnPacketRetries = 2;
 const int WakeOnWiFi::kMetricsReportingFrequencySeconds = 600;
-const uint32_t WakeOnWiFi::kDefaultWakeToScanFrequencySeconds = 900;
+const uint32_t WakeOnWiFi::kDefaultWakeToScanPeriodSeconds = 900;
 const uint32_t WakeOnWiFi::kImmediateDHCPLeaseRenewalThresholdSeconds = 60;
 // If a connection is not established during dark resume, give up and prepare
 // the system to wake on SSID 1 second before suspending again.
@@ -83,7 +83,7 @@ WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
       dhcp_lease_renewal_timer_(true, false),
       wake_to_scan_timer_(true, false),
       in_dark_resume_(false),
-      wake_to_scan_frequency_(kDefaultWakeToScanFrequencySeconds),
+      wake_to_scan_period_seconds_(kDefaultWakeToScanPeriodSeconds),
       weak_ptr_factory_(this) {
 }
 
@@ -95,7 +95,8 @@ void WakeOnWiFi::InitPropertyStore(PropertyStore *store) {
       StringAccessor(new CustomAccessor<WakeOnWiFi, string>(
           this, &WakeOnWiFi::GetWakeOnWiFiFeaturesEnabled,
           &WakeOnWiFi::SetWakeOnWiFiFeaturesEnabled)));
-  store->RegisterUint32(kWakeToScanFrequencyProperty, &wake_to_scan_frequency_);
+  store->RegisterUint32(kWakeToScanPeriodSecondsProperty,
+                        &wake_to_scan_period_seconds_);
 }
 
 void WakeOnWiFi::StartMetricsTimer() {
@@ -1026,7 +1027,8 @@ void WakeOnWiFi::BeforeSuspendActions(
         // one WiFi service that we can auto-connect to after the scan.
         // Timer callback is NO-OP since dark resume logic will initiate scan.
         wake_to_scan_timer_.Start(
-            FROM_HERE, base::TimeDelta::FromSeconds(wake_to_scan_frequency_),
+            FROM_HERE,
+            base::TimeDelta::FromSeconds(wake_to_scan_period_seconds_),
             Bind(&WakeOnWiFi::OnTimerWakeDoNothing, base::Unretained(this)));
       }
     }
