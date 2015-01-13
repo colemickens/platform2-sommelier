@@ -185,6 +185,7 @@ class WakeOnWiFi {
   static const int kMaxSetWakeOnPacketRetries;
   static const int kMetricsReportingFrequencySeconds;
   static const uint32_t kDefaultWakeToScanPeriodSeconds;
+  static const uint32_t kDefaultNetDetectScanPeriodSeconds;
   static const uint32_t kImmediateDHCPLeaseRenewalThresholdSeconds;
   static int64_t DarkResumeActionsTimeoutMilliseconds;  // non-const for testing
 
@@ -357,6 +358,9 @@ class WakeOnWiFi {
   // Period (in seconds) between instances where the system wakes from suspend
   // to scan for networks in dark resume.
   uint32_t wake_to_scan_period_seconds_;
+  // Period (in seconds) between instances where the NIC performs Net Detect
+  // scans while the system is suspended.
+  uint32_t net_detect_scan_period_seconds_;
 
   base::WeakPtrFactory<WakeOnWiFi> weak_ptr_factory_;
 

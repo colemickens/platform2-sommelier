@@ -53,6 +53,7 @@ const int WakeOnWiFi::kVerifyWakeOnWiFiSettingsDelayMilliseconds = 300;
 const int WakeOnWiFi::kMaxSetWakeOnPacketRetries = 2;
 const int WakeOnWiFi::kMetricsReportingFrequencySeconds = 600;
 const uint32_t WakeOnWiFi::kDefaultWakeToScanPeriodSeconds = 900;
+const uint32_t WakeOnWiFi::kDefaultNetDetectScanPeriodSeconds = 120;
 const uint32_t WakeOnWiFi::kImmediateDHCPLeaseRenewalThresholdSeconds = 60;
 // If a connection is not established during dark resume, give up and prepare
 // the system to wake on SSID 1 second before suspending again.
@@ -84,6 +85,7 @@ WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
       wake_to_scan_timer_(true, false),
       in_dark_resume_(false),
       wake_to_scan_period_seconds_(kDefaultWakeToScanPeriodSeconds),
+      net_detect_scan_period_seconds_(kDefaultNetDetectScanPeriodSeconds),
       weak_ptr_factory_(this) {
 }
 
@@ -97,6 +99,8 @@ void WakeOnWiFi::InitPropertyStore(PropertyStore *store) {
           &WakeOnWiFi::SetWakeOnWiFiFeaturesEnabled)));
   store->RegisterUint32(kWakeToScanPeriodSecondsProperty,
                         &wake_to_scan_period_seconds_);
+  store->RegisterUint32(kNetDetectScanPeriodSecondsProperty,
+                        &net_detect_scan_period_seconds_);
 }
 
 void WakeOnWiFi::StartMetricsTimer() {

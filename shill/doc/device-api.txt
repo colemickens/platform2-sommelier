@@ -679,6 +679,14 @@ Properties	string Address [readonly]
 			is woken from suspend to scan for networks in dark resume. Changes to this
 			property will take effect at the next system suspend.
 
+		uint32 NetDetectScanPeriodSeconds [readwrite]
+
+			(Defined in WiFi)
+
+			The length of time (in seconds) between each instance where the wireless
+			NIC performs Net Detect scans while the system is suspended. Changes to
+			this property will take effect at the next system suspend.
+
 		void AddWakeOnPacketConnection(string endpoint)
 
 			(WiFi only) Program a wake-on-packet rule into the NIC to wake
