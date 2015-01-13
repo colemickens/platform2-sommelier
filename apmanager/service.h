@@ -14,6 +14,7 @@
 #include "apmanager/dbus_adaptors/org.chromium.apmanager.Service.h"
 #include "apmanager/dhcp_server_factory.h"
 #include "apmanager/file_writer.h"
+#include "apmanager/hostapd_monitor.h"
 #include "apmanager/process_factory.h"
 
 namespace apmanager {
@@ -60,6 +61,9 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
   // Release resources allocated to this service.
   void ReleaseResources();
 
+  void HostapdEventCallback(HostapdMonitor::Event event,
+                            const std::string& data);
+
   Manager* manager_;
   int service_identifier_;
   std::string service_path_;
@@ -71,6 +75,7 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
   DHCPServerFactory* dhcp_server_factory_;
   FileWriter* file_writer_;
   ProcessFactory* process_factory_;
+  std::unique_ptr<HostapdMonitor> hostapd_monitor_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

@@ -17,6 +17,7 @@
 #include "apmanager/mock_dhcp_server.h"
 #include "apmanager/mock_dhcp_server_factory.h"
 #include "apmanager/mock_file_writer.h"
+#include "apmanager/mock_hostapd_monitor.h"
 #include "apmanager/mock_manager.h"
 #include "apmanager/mock_process_factory.h"
 
@@ -42,12 +43,14 @@ class ServiceTest : public testing::Test {
       : service_(&manager_, kServiceIdentifier),
         dhcp_server_factory_(MockDHCPServerFactory::GetInstance()),
         file_writer_(MockFileWriter::GetInstance()),
-        process_factory_(MockProcessFactory::GetInstance()) {}
+        process_factory_(MockProcessFactory::GetInstance()),
+        hostapd_monitor_(new MockHostapdMonitor()) {}
 
   virtual void SetUp() {
     service_.dhcp_server_factory_ = dhcp_server_factory_;
     service_.file_writer_ = file_writer_;
     service_.process_factory_ = process_factory_;
+    service_.hostapd_monitor_.reset(hostapd_monitor_);
   }
 
   void StartDummyProcess() {
@@ -68,6 +71,7 @@ class ServiceTest : public testing::Test {
   MockDHCPServerFactory* dhcp_server_factory_;
   MockFileWriter* file_writer_;
   MockProcessFactory* process_factory_;
+  MockHostapdMonitor* hostapd_monitor_;
 };
 
 MATCHER_P(IsServiceErrorStartingWith, message, "") {
@@ -117,6 +121,7 @@ TEST_F(ServiceTest, StartSuccess) {
   EXPECT_CALL(*dhcp_server_factory_, CreateDHCPServer(_, _))
       .WillOnce(Return(dhcp_server));
   EXPECT_CALL(*dhcp_server, Start()).WillOnce(Return(true));
+  EXPECT_CALL(*hostapd_monitor_, Start());
   EXPECT_TRUE(service_.Start(&error));
   EXPECT_EQ(nullptr, error);
 }

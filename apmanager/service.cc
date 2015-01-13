@@ -132,7 +132,16 @@ bool Service::Start(chromeos::ErrorPtr* error) {
     }
   }
 
-  // TODO(zqiu): Start monitoring hostapd.
+  // Start monitoring hostapd.
+  if (!hostapd_monitor_) {
+    hostapd_monitor_.reset(
+        new HostapdMonitor(base::Bind(&Service::HostapdEventCallback,
+                                      base::Unretained(this)),
+                           config_->control_interface(),
+                           config_->selected_interface()));
+  }
+  hostapd_monitor_->Start();
+
   return true;
 }
 
@@ -175,6 +184,21 @@ void Service::ReleaseResources() {
   StopHostapdProcess();
   dhcp_server_.reset();
   config_->ReleaseDevice();
+}
+
+void Service::HostapdEventCallback(HostapdMonitor::Event event,
+                                   const std::string& data) {
+  switch (event) {
+    case HostapdMonitor::kStationConnected:
+      LOG(INFO) << "Station connected: " << data;
+      break;
+    case HostapdMonitor::kStationDisconnected:
+      LOG(INFO) << "Station disconnected: " << data;
+      break;
+    default:
+      LOG(ERROR) << "Unknown event: " << event;
+      break;
+  }
 }
 
 }  // namespace apmanager
