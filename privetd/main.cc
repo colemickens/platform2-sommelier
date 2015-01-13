@@ -14,6 +14,7 @@
 #include <chromeos/daemons/dbus_daemon.h>
 #include <chromeos/flag_helper.h>
 #include <chromeos/http/http_request.h>
+#include <chromeos/key_value_store.h>
 #include <chromeos/mime_utils.h>
 #include <chromeos/strings/string_utils.h>
 #include <chromeos/syslog_logging.h>
@@ -28,6 +29,7 @@
 #include "privetd/device_delegate.h"
 #include "privetd/peerd_client.h"
 #include "privetd/privet_handler.h"
+#include "privetd/privetd_conf_parser.h"
 #include "privetd/security_manager.h"
 #include "privetd/shill_client.h"
 #include "privetd/wifi_bootstrap_manager.h"
@@ -38,6 +40,12 @@ namespace {
 
 using libwebserv::Request;
 using libwebserv::Response;
+
+const uint32_t kDefaultMonitorTimeoutSeconds = 120u;
+const uint32_t kDefaultConnectTimeoutSeconds = 60u;
+const uint32_t kDefaultBootstrapTimeoutSeconds = 600u;
+
+const char kDefaultConfigFilePath[] = "/etc/privetd/config";
 
 std::string GetFirstHeader(const Request& request, const std::string& name) {
   std::vector<std::string> headers = request.GetHeader(name);
@@ -51,12 +59,14 @@ class Daemon : public chromeos::DBusDaemon {
          bool disable_security,
          bool enable_ping,
          const std::vector<std::string>& device_whitelist,
+         const base::FilePath& config_path,
          const base::FilePath& state_path)
       : http_port_number_(http_port_number),
         https_port_number_(https_port_number),
         disable_security_(disable_security),
         enable_ping_(enable_ping),
         device_whitelist_(device_whitelist),
+        config_path_(config_path),
         state_store_(new DaemonState(state_path)) {}
 
   int OnInit() override {
@@ -64,23 +74,55 @@ class Daemon : public chromeos::DBusDaemon {
     if (ret != EX_OK)
       return EX_OK;
 
+    uint32_t connect_timeout_seconds{kDefaultConnectTimeoutSeconds};
+    uint32_t bootstrap_timeout_seconds{kDefaultBootstrapTimeoutSeconds};
+    uint32_t monitor_timeout_seconds{kDefaultMonitorTimeoutSeconds};
+    WiFiBootstrapMode wifi_bootstrap_mode{WiFiBootstrapMode::kDisabled};
+    GcdBootstrapMode gcd_bootstrap_mode{GcdBootstrapMode::kDisabled};
+    std::vector<std::string> automatic_wifi_interfaces;
+    chromeos::KeyValueStore config_store;
+    if (!config_store.Load(config_path_)) {
+      LOG(ERROR) << "Failed to read privetd config file from "
+                 << config_path_.value();
+    } else {
+      CHECK(ParseConfigFile(config_store,
+                            &wifi_bootstrap_mode,
+                            &gcd_bootstrap_mode,
+                            &automatic_wifi_interfaces,
+                            &connect_timeout_seconds,
+                            &bootstrap_timeout_seconds,
+                            &monitor_timeout_seconds))
+          << "Failed to read configuration file.";
+    }
     state_store_->Init();
     device_ = DeviceDelegate::CreateDefault(
         http_port_number_, https_port_number_, state_store_.get(),
         base::Bind(&Daemon::OnChanged, base::Unretained(this)));
-    cloud_ = CloudDelegate::CreateDefault(
-        bus_, device_.get(),
-        base::Bind(&Daemon::OnChanged, base::Unretained(this)));
-    // TODO(vitalybuka): Provide real embeded password.
+    if (gcd_bootstrap_mode != GcdBootstrapMode::kDisabled) {
+      cloud_ = CloudDelegate::CreateDefault(
+          bus_, device_.get(),
+          base::Bind(&Daemon::OnChanged, base::Unretained(this)));
+    }
+    // TODO(vitalybuka): Provide real embedded password.
     security_.reset(new SecurityManager("1234", disable_security_));
     shill_client_.reset(new ShillClient(bus_, device_whitelist_));
     shill_client_->RegisterConnectivityListener(
         base::Bind(&Daemon::OnConnectivityChanged, base::Unretained(this)));
     ap_manager_client_.reset(new ApManagerClient(bus_));
-    wifi_bootstrap_manager_.reset(new WifiBootstrapManager(
-        state_store_.get(), shill_client_.get(), ap_manager_client_.get(),
-        device_.get(), cloud_.get()));
-    wifi_bootstrap_manager_->Init();
+
+    if (wifi_bootstrap_mode != WiFiBootstrapMode::kDisabled) {
+      VLOG(1) << "Enabling WiFi bootstrapping.";
+      wifi_bootstrap_manager_.reset(
+          new WifiBootstrapManager(state_store_.get(),
+                                   shill_client_.get(),
+                                   ap_manager_client_.get(),
+                                   device_.get(),
+                                   cloud_.get(),
+                                   connect_timeout_seconds,
+                                   bootstrap_timeout_seconds,
+                                   monitor_timeout_seconds));
+      wifi_bootstrap_manager_->Init();
+    }
 
     privet_handler_.reset(new PrivetHandler(cloud_.get(), device_.get(),
                                             security_.get(),
@@ -193,6 +235,7 @@ class Daemon : public chromeos::DBusDaemon {
   bool disable_security_;
   bool enable_ping_;
   std::vector<std::string> device_whitelist_;
+  base::FilePath config_path_;
   std::unique_ptr<DaemonState> state_store_;
   std::unique_ptr<CloudDelegate> cloud_;
   std::unique_ptr<DeviceDelegate> device_;
@@ -219,6 +262,8 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(https_port, 8081, "HTTPS port to listen for requests on");
   DEFINE_bool(log_to_stderr, false, "log trace messages to stderr as well");
   DEFINE_string(state_path, privetd::kDefaultStateFilePath,
+                "Path to file containing state information.");
+  DEFINE_string(config_path, privetd::kDefaultConfigFilePath,
                 "Path to file containing state information.");
   DEFINE_string(device_whitelist, "",
                 "Comma separated list of network interfaces to monitor for "
@@ -249,6 +294,7 @@ int main(int argc, char* argv[]) {
 
   privetd::Daemon daemon(FLAGS_http_port, FLAGS_https_port,
                          FLAGS_disable_security, FLAGS_enable_ping,
-                         device_whitelist, base::FilePath(FLAGS_state_path));
+                         device_whitelist, base::FilePath(FLAGS_config_path),
+                         base::FilePath(FLAGS_state_path));
   return daemon.Run();
 }

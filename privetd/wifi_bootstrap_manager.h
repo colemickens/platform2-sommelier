@@ -40,7 +40,10 @@ class WifiBootstrapManager : public WifiDelegate {
                        ShillClient* shill_client,
                        ApManagerClient* ap_manager_client,
                        const DeviceDelegate* device,
-                       const CloudDelegate* gcd);
+                       const CloudDelegate* gcd,
+                       uint32_t connect_timeout_seconds,
+                       uint32_t bootstrap_timeout_seconds,
+                       uint32_t monitor_timeout_seconds);
   ~WifiBootstrapManager() override = default;
   virtual void Init();
 
@@ -93,6 +96,9 @@ class WifiBootstrapManager : public WifiDelegate {
   ApManagerClient* ap_manager_client_;
   WifiSsidGenerator ssid_generator_;
 
+  uint32_t connect_timeout_seconds_;
+  uint32_t bootstrap_timeout_seconds_;
+  uint32_t monitor_timeout_seconds_;
   std::vector<StateListener> state_listeners_;
   bool have_ever_been_bootstrapped_{false};
   bool currently_online_{false};

@@ -28,6 +28,7 @@
         'openssl_utils.cc',
         'peerd_client.cc',
         'privet_handler.cc',
+        'privetd_conf_parser.cc',
         'security_manager.cc',
         'shill_client.cc',
         'wifi_bootstrap_manager.cc',
@@ -127,6 +128,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'privetd_testrunner.cc',
+            'privetd_conf_parser_unittest.cc',
             'privet_handler_unittest.cc',
             'security_manager_unittest.cc',
             'wifi_ssid_generator_unittest.cc',
