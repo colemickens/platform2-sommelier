@@ -30,6 +30,7 @@ using std::map;
 using std::string;
 using std::vector;
 using ::testing::_;
+using ::testing::Return;
 using ::testing::Values;
 
 namespace shill {
@@ -287,16 +288,34 @@ TEST_F(PropertyStoreTest, SetStringmapsProperty) {
   EXPECT_EQ(internal_error(), error.name());
 }
 
-// Separate from SetPropertyNonexistent, because
-// DBusAdaptor::SetProperty doesn't support KeyValueStore.
-TEST_F(PropertyStoreTest, SetKeyValueStoreProperty) {
+// KeyValueStoreProperty is only defined for derived types so handle
+// this case manually here.
+TEST_F(PropertyStoreTest, KeyValueStorePropertyNonExistent) {
   PropertyStore store(Bind(&PropertyStoreTest::TestCallback,
                            Unretained(this)));
   ::DBus::Error error;
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
   EXPECT_FALSE(DBusAdaptor::SetProperty(
       &store, "", PropertyStoreTest::kKeyValueStoreV, &error));
-  EXPECT_EQ(internal_error(), error.name());
+  EXPECT_EQ(invalid_prop(), error.name());
+}
+
+TEST_F(PropertyStoreTest, KeyValueStoreProperty) {
+  PropertyStore store(Bind(&PropertyStoreTest::TestCallback,
+                           Unretained(this)));
+  const char kKey[] = "key";
+  EXPECT_CALL(*this, GetKeyValueStoreCallback(_))
+      .WillOnce(Return(KeyValueStore()));
+  store.RegisterDerivedKeyValueStore(
+      kKey,
+      KeyValueStoreAccessor(
+          new CustomAccessor<PropertyStoreTest, KeyValueStore>(
+              this, &PropertyStoreTest::GetKeyValueStoreCallback,
+              &PropertyStoreTest::SetKeyValueStoreCallback)));
+  EXPECT_CALL(*this, TestCallback(_));
+  EXPECT_CALL(*this, SetKeyValueStoreCallback(_, _)).WillOnce(Return(true));
+  ::DBus::Error error;
+  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, kKey, kKeyValueStoreV, &error));
 }
 
 TEST_F(PropertyStoreTest, WriteOnlyProperties) {

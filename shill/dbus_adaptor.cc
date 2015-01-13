@@ -85,9 +85,14 @@ bool DBusAdaptor::SetProperty(PropertyStore *store,
   } else if (DBusAdaptor::IsUint64(value.signature())) {
     ret = store->SetUint64Property(name, value.reader().get_uint64(), &e);
   } else if (DBusAdaptor::IsKeyValueStore(value.signature())) {
-    SLOG(nullptr, 1) << " can't yet handle setting type " << value.signature();
-    ret = false;
-    e.Populate(Error::kInternalError);
+    KeyValueStore key_value_store;
+    auto dict = value.operator map<string, DBus::Variant>();
+    DBusAdaptor::ArgsToKeyValueStore(dict, &key_value_store, &e);
+    if (e.IsSuccess()) {
+      ret = store->SetKeyValueStoreProperty(name, key_value_store, &e);
+    } else {
+      ret = false;
+    }
   } else {
     NOTREACHED() << " unknown type: " << value.signature();
     ret = false;

@@ -18,6 +18,7 @@
 #include "shill/dbus_adaptor.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/key_value_store.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_glib.h"
@@ -56,6 +57,9 @@ class PropertyStoreTest : public testing::TestWithParam<::DBus::Variant> {
 
   virtual void SetUp();
   MOCK_METHOD1(TestCallback, void(const std::string &property_name));
+  MOCK_METHOD1(GetKeyValueStoreCallback, KeyValueStore(Error *error));
+  MOCK_METHOD2(SetKeyValueStoreCallback, bool(const KeyValueStore &value,
+                                              Error *error));
 
   // Convenience overloads for GetProperty. Normally, we don't overload
   // functions. But this is extremely useful for type-parameterized tests.
