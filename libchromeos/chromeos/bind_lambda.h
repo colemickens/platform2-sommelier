@@ -50,12 +50,11 @@ class LambdaAdapter<Lambda, R(Lambda::*)(Args... args) const> {
 };
 
 template <typename Lambda>
-class RunnableAdapter : public LambdaAdapter<Lambda,
-                                             decltype(&Lambda::operator())> {
+class RunnableAdapter
+    : public LambdaAdapter<Lambda, decltype(&Lambda::operator())> {
  public:
-  explicit RunnableAdapter(Lambda lambda) :
-      LambdaAdapter<Lambda, decltype(&Lambda::operator())>(lambda) {
-  }
+  explicit RunnableAdapter(Lambda lambda)
+      : LambdaAdapter<Lambda, decltype(&Lambda::operator())>(lambda) {}
 };
 
 }  // namespace internal

@@ -46,12 +46,12 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
   }
   HeaderList headers_copy = headers;
   if (!user_agent.empty()) {
-    headers_copy.push_back(std::make_pair(http::request_header::kUserAgent,
-                                          user_agent));
+    headers_copy.push_back(
+        std::make_pair(http::request_header::kUserAgent, user_agent));
   }
   if (!referer.empty()) {
-    headers_copy.push_back(std::make_pair(http::request_header::kReferer,
-                                          referer));
+    headers_copy.push_back(
+        std::make_pair(http::request_header::kReferer, referer));
   }
   connection =
       std::make_shared<http::fake::Connection>(url, method, shared_from_this());
@@ -79,7 +79,8 @@ static inline std::string GetHandlerMapKey(const std::string& url,
   return method + ":" + url;
 }
 
-void Transport::AddHandler(const std::string& url, const std::string& method,
+void Transport::AddHandler(const std::string& url,
+                           const std::string& method,
                            const HandlerCallback& handler) {
   handlers_.insert(std::make_pair(GetHandlerMapKey(url, method), handler));
 }
@@ -97,7 +98,8 @@ void Transport::AddSimpleReplyHandler(const std::string& url,
 }
 
 Transport::HandlerCallback Transport::GetHandler(
-    const std::string& url, const std::string& method) const {
+    const std::string& url,
+    const std::string& method) const {
   // First try the exact combination of URL/Method
   auto p = handlers_.find(GetHandlerMapKey(url, method));
   if (p != handlers_.end())
@@ -137,7 +139,7 @@ std::string ServerRequestResponseBase::GetDataAsString() const {
 }
 
 std::unique_ptr<base::DictionaryValue>
-    ServerRequestResponseBase::GetDataAsJson() const {
+ServerRequestResponseBase::GetDataAsJson() const {
   if (chromeos::mime::RemoveParameters(
           GetHeader(request_header::kContentType)) ==
       chromeos::mime::application::kJson) {
@@ -169,8 +171,8 @@ std::string ServerRequestResponseBase::GetHeader(
   return p != headers_.end() ? p->second : std::string();
 }
 
-ServerRequest::ServerRequest(const std::string& url,
-                             const std::string& method) : method_(method) {
+ServerRequest::ServerRequest(const std::string& url, const std::string& method)
+    : method_(method) {
   auto params = chromeos::url::GetQueryStringParameters(url);
   url_ = chromeos::url::RemoveQueryString(url, true);
   form_fields_.insert(params.begin(), params.end());
@@ -199,11 +201,9 @@ void ServerResponse::Reply(int status_code,
   status_code_ = status_code;
   SetData(std::unique_ptr<DataReaderInterface>{
       new MemoryDataReader{data, data_size}});
-  AddHeaders({
-    {response_header::kContentLength,
-        chromeos::string_utils::ToString(data_size)},
-    {response_header::kContentType, mime_type}
-  });
+  AddHeaders({{response_header::kContentLength,
+               chromeos::string_utils::ToString(data_size)},
+              {response_header::kContentType, mime_type}});
 }
 
 void ServerResponse::ReplyText(int status_code,
@@ -214,13 +214,12 @@ void ServerResponse::ReplyText(int status_code,
 
 void ServerResponse::ReplyJson(int status_code, const base::Value* json) {
   std::string text;
-  base::JSONWriter::WriteWithOptions(json,
-                                     base::JSONWriter::OPTIONS_PRETTY_PRINT,
-                                     &text);
-  std::string mime_type = chromeos::mime::AppendParameter(
-      chromeos::mime::application::kJson,
-      chromeos::mime::parameters::kCharset,
-      "utf-8");
+  base::JSONWriter::WriteWithOptions(
+      json, base::JSONWriter::OPTIONS_PRETTY_PRINT, &text);
+  std::string mime_type =
+      chromeos::mime::AppendParameter(chromeos::mime::application::kJson,
+                                      chromeos::mime::parameters::kCharset,
+                                      "utf-8");
   ReplyText(status_code, text, mime_type);
 }
 
@@ -235,52 +234,52 @@ void ServerResponse::ReplyJson(int status_code,
 
 std::string ServerResponse::GetStatusText() const {
   static std::vector<std::pair<int, const char*>> status_text_map = {
-    {100, "Continue"},
-    {101, "Switching Protocols"},
-    {102, "Processing"},
-    {200, "OK"},
-    {201, "Created"},
-    {202, "Accepted"},
-    {203, "Non-Authoritative Information"},
-    {204, "No Content"},
-    {205, "Reset Content"},
-    {206, "Partial Content"},
-    {207, "Multi-Status"},
-    {208, "Already Reported"},
-    {226, "IM Used"},
-    {300, "Multiple Choices"},
-    {301, "Moved Permanently"},
-    {302, "Found"},
-    {303, "See Other"},
-    {304, "Not Modified"},
-    {305, "Use Proxy"},
-    {306, "Switch Proxy"},
-    {307, "Temporary Redirect"},
-    {308, "Permanent Redirect"},
-    {400, "Bad Request"},
-    {401, "Unauthorized"},
-    {402, "Payment Required"},
-    {403, "Forbidden"},
-    {404, "Not Found"},
-    {405, "Method Not Allowed"},
-    {406, "Not Acceptable"},
-    {407, "Proxy Authentication Required"},
-    {408, "Request Timeout"},
-    {409, "Conflict"},
-    {410, "Gone"},
-    {411, "Length Required"},
-    {412, "Precondition Failed"},
-    {413, "Request Entity Too Large"},
-    {414, "Request - URI Too Long"},
-    {415, "Unsupported Media Type"},
-    {429, "Too Many Requests"},
-    {431, "Request Header Fields Too Large"},
-    {500, "Internal Server Error"},
-    {501, "Not Implemented"},
-    {502, "Bad Gateway"},
-    {503, "Service Unavailable"},
-    {504, "Gateway Timeout"},
-    {505, "HTTP Version Not Supported"},
+      {100, "Continue"},
+      {101, "Switching Protocols"},
+      {102, "Processing"},
+      {200, "OK"},
+      {201, "Created"},
+      {202, "Accepted"},
+      {203, "Non-Authoritative Information"},
+      {204, "No Content"},
+      {205, "Reset Content"},
+      {206, "Partial Content"},
+      {207, "Multi-Status"},
+      {208, "Already Reported"},
+      {226, "IM Used"},
+      {300, "Multiple Choices"},
+      {301, "Moved Permanently"},
+      {302, "Found"},
+      {303, "See Other"},
+      {304, "Not Modified"},
+      {305, "Use Proxy"},
+      {306, "Switch Proxy"},
+      {307, "Temporary Redirect"},
+      {308, "Permanent Redirect"},
+      {400, "Bad Request"},
+      {401, "Unauthorized"},
+      {402, "Payment Required"},
+      {403, "Forbidden"},
+      {404, "Not Found"},
+      {405, "Method Not Allowed"},
+      {406, "Not Acceptable"},
+      {407, "Proxy Authentication Required"},
+      {408, "Request Timeout"},
+      {409, "Conflict"},
+      {410, "Gone"},
+      {411, "Length Required"},
+      {412, "Precondition Failed"},
+      {413, "Request Entity Too Large"},
+      {414, "Request - URI Too Long"},
+      {415, "Unsupported Media Type"},
+      {429, "Too Many Requests"},
+      {431, "Request Header Fields Too Large"},
+      {500, "Internal Server Error"},
+      {501, "Not Implemented"},
+      {502, "Bad Gateway"},
+      {503, "Service Unavailable"},
+      {504, "Gateway Timeout"},
+      {505, "HTTP Version Not Supported"},
   };
 
   for (const auto& pair : status_text_map) {

@@ -10,16 +10,14 @@
 
 namespace chromeos {
 
-SecureBlob::SecureBlob()
-    : chromeos::Blob() {
+SecureBlob::SecureBlob() : chromeos::Blob() {
 }
 
 SecureBlob::SecureBlob(const_iterator begin, const_iterator end)
     : chromeos::Blob(begin, end) {
 }
 
-SecureBlob::SecureBlob(size_t size)
-    : chromeos::Blob(size) {
+SecureBlob::SecureBlob(size_t size) : chromeos::Blob(size) {
 }
 
 SecureBlob::SecureBlob(const std::string& from)

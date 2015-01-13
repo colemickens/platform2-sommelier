@@ -113,20 +113,18 @@ class CHROMEOS_EXPORT ExportedPropertySet {
 
   // D-Bus methods for org.freedesktop.DBus.Properties interface.
   VariantDictionary HandleGetAll(const std::string& interface_name);
-  bool HandleGet(
-      chromeos::ErrorPtr* error,
-      const std::string& interface_name,
-      const std::string& property_name,
-      chromeos::Any* result);
+  bool HandleGet(chromeos::ErrorPtr* error,
+                 const std::string& interface_name,
+                 const std::string& property_name,
+                 chromeos::Any* result);
   // While Properties.Set has a handler to complete the interface,  we don't
   // support writable properties.  This is almost a feature, since bindings for
   // many languages don't support errors coming back from invalid writes.
   // Instead, use setters in exposed interfaces.
-  bool HandleSet(
-      chromeos::ErrorPtr* error,
-      const std::string& interface_name,
-      const std::string& property_name,
-      const chromeos::Any& value);
+  bool HandleSet(chromeos::ErrorPtr* error,
+                 const std::string& interface_name,
+                 const std::string& property_name,
+                 const chromeos::Any& value);
   // Returns a string-to-variant map of all the properties for the given
   // interface and their values.
   VariantDictionary GetInterfaceProperties(
@@ -136,9 +134,8 @@ class CHROMEOS_EXPORT ExportedPropertySet {
   // Used to write the dictionary of string->variant to a message.
   // This dictionary represents the property name/value pairs for the
   // given interface.
-  CHROMEOS_PRIVATE void WritePropertiesToDict(
-      const std::string& interface_name,
-      VariantDictionary* dict);
+  CHROMEOS_PRIVATE void WritePropertiesToDict(const std::string& interface_name,
+                                              VariantDictionary* dict);
   CHROMEOS_PRIVATE void HandlePropertyUpdated(
       const std::string& interface_name,
       const std::string& property_name,
@@ -146,8 +143,8 @@ class CHROMEOS_EXPORT ExportedPropertySet {
 
   dbus::Bus* bus_;  // weak; owned by outer DBusObject containing this object.
   // This is a map from interface name -> property name -> pointer to property.
-  std::map<std::string,
-           std::map<std::string, ExportedPropertyBase*>> properties_;
+  std::map<std::string, std::map<std::string, ExportedPropertyBase*>>
+      properties_;
 
   // D-Bus callbacks may last longer the property set exporting those methods.
   base::WeakPtrFactory<ExportedPropertySet> weak_ptr_factory_;
@@ -162,7 +159,7 @@ class CHROMEOS_EXPORT ExportedPropertySet {
   DISALLOW_COPY_AND_ASSIGN(ExportedPropertySet);
 };
 
-template <typename T>
+template<typename T>
 class ExportedProperty : public ExportedPropertyBase {
  public:
   ExportedProperty() = default;
@@ -173,7 +170,7 @@ class ExportedProperty : public ExportedPropertyBase {
 
   // Set the value exposed to remote applications.  This triggers notifications
   // of changes over the Properties interface.
-  void SetValue(const T& new_value)  {
+  void SetValue(const T& new_value) {
     if (value_ != new_value) {
       value_ = new_value;
       this->NotifyPropertyChanged();

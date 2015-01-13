@@ -32,7 +32,7 @@ const char kTestInterface[] = "org.test.Object.TestInterface";
 const char kTestMethod1[] = "TestMethod1";
 const char kTestMethod2[] = "TestMethod2";
 
-class DBusMethodInvokerTest: public testing::Test {
+class DBusMethodInvokerTest : public testing::Test {
  public:
   void SetUp() override {
     dbus::Bus::Options options;
@@ -44,8 +44,8 @@ class DBusMethodInvokerTest: public testing::Test {
     // Use a mock exported object.
     mock_object_proxy_ = new dbus::MockObjectProxy(
         bus_.get(), kTestServiceName, dbus::ObjectPath(kTestPath));
-    EXPECT_CALL(*bus_, GetObjectProxy(kTestServiceName,
-                                      dbus::ObjectPath(kTestPath)))
+    EXPECT_CALL(*bus_,
+                GetObjectProxy(kTestServiceName, dbus::ObjectPath(kTestPath)))
         .WillRepeatedly(Return(mock_object_proxy_.get()));
     int def_timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
     EXPECT_CALL(*mock_object_proxy_,
@@ -53,9 +53,7 @@ class DBusMethodInvokerTest: public testing::Test {
         .WillRepeatedly(Invoke(this, &DBusMethodInvokerTest::CreateResponse));
   }
 
-  void TearDown() override {
-    bus_ = nullptr;
-  }
+  void TearDown() override { bus_ = nullptr; }
 
   Response* CreateResponse(dbus::MethodCall* method_call,
                            int timeout_ms,
@@ -110,10 +108,8 @@ TEST_F(DBusMethodInvokerTest, TestSuccess) {
 TEST_F(DBusMethodInvokerTest, TestFailure) {
   chromeos::ErrorPtr error;
   std::unique_ptr<dbus::Response> response =
-      chromeos::dbus_utils::CallMethodAndBlock(mock_object_proxy_.get(),
-                                               kTestInterface,
-                                               kTestMethod2,
-                                               &error);
+      chromeos::dbus_utils::CallMethodAndBlock(
+          mock_object_proxy_.get(), kTestInterface, kTestMethod2, &error);
   EXPECT_EQ(nullptr, response.get());
   EXPECT_EQ(chromeos::errors::dbus::kDomain, error->GetDomain());
   EXPECT_EQ("org.MyError", error->GetCode());
@@ -123,7 +119,7 @@ TEST_F(DBusMethodInvokerTest, TestFailure) {
 //////////////////////////////////////////////////////////////////////////////
 // Asynchronous method invocation support
 
-class AsyncDBusMethodInvokerTest: public testing::Test {
+class AsyncDBusMethodInvokerTest : public testing::Test {
  public:
   void SetUp() override {
     dbus::Bus::Options options;
@@ -135,19 +131,16 @@ class AsyncDBusMethodInvokerTest: public testing::Test {
     // Use a mock exported object.
     mock_object_proxy_ = new dbus::MockObjectProxy(
         bus_.get(), kTestServiceName, dbus::ObjectPath(kTestPath));
-    EXPECT_CALL(*bus_, GetObjectProxy(kTestServiceName,
-                                      dbus::ObjectPath(kTestPath)))
+    EXPECT_CALL(*bus_,
+                GetObjectProxy(kTestServiceName, dbus::ObjectPath(kTestPath)))
         .WillRepeatedly(Return(mock_object_proxy_.get()));
     int def_timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
     EXPECT_CALL(*mock_object_proxy_,
                 CallMethodWithErrorCallback(_, def_timeout_ms, _, _))
-        .WillRepeatedly(Invoke(this,
-                               &AsyncDBusMethodInvokerTest::HandleCall));
+        .WillRepeatedly(Invoke(this, &AsyncDBusMethodInvokerTest::HandleCall));
   }
 
-  void TearDown() override {
-    bus_ = nullptr;
-  }
+  void TearDown() override { bus_ = nullptr; }
 
   void HandleCall(dbus::MethodCall* method_call,
                   int timeout_ms,
@@ -179,8 +172,8 @@ class AsyncDBusMethodInvokerTest: public testing::Test {
   }
 
   struct SuccessCallback {
-    SuccessCallback(const std::string& in_result,
-                    int* in_counter) : result(in_result), counter(in_counter) {}
+    SuccessCallback(const std::string& in_result, int* in_counter)
+        : result(in_result), counter(in_counter) {}
 
     explicit SuccessCallback(int* in_counter) : counter(in_counter) {}
 

@@ -86,9 +86,8 @@ class SimpleDBusInterfaceMethodHandler
     ErrorPtr param_reader_error;
     dbus::MessageReader reader(method_call);
     // The handler is expected a return value, don't allow output parameters.
-    if (!DBusParamReader<false, Args...>::Invoke(invoke_callback,
-                                                 &reader,
-                                                 &param_reader_error)) {
+    if (!DBusParamReader<false, Args...>::Invoke(
+            invoke_callback, &reader, &param_reader_error)) {
       // Error parsing method arguments.
       method_response.ReplyWithError(param_reader_error.get());
     }
@@ -124,9 +123,8 @@ class SimpleDBusInterfaceMethodHandler<void, Args...>
 
     ErrorPtr param_reader_error;
     dbus::MessageReader reader(method_call);
-    if (!DBusParamReader<true, Args...>::Invoke(invoke_callback,
-                                                &reader,
-                                                &param_reader_error)) {
+    if (!DBusParamReader<true, Args...>::Invoke(
+            invoke_callback, &reader, &param_reader_error)) {
       // Error parsing method arguments.
       method_response.ReplyWithError(param_reader_error.get());
     }
@@ -156,7 +154,7 @@ class SimpleDBusInterfaceMethodHandlerWithError
   // virtual function is invoked.
   explicit SimpleDBusInterfaceMethodHandlerWithError(
       const base::Callback<bool(ErrorPtr*, Args...)>& handler)
-          : handler_(handler) {}
+      : handler_(handler) {}
 
   void HandleMethod(dbus::MethodCall* method_call,
                     ResponseSender sender) override {
@@ -175,9 +173,8 @@ class SimpleDBusInterfaceMethodHandlerWithError
 
     ErrorPtr param_reader_error;
     dbus::MessageReader reader(method_call);
-    if (!DBusParamReader<true, Args...>::Invoke(invoke_callback,
-                                                &reader,
-                                                &param_reader_error)) {
+    if (!DBusParamReader<true, Args...>::Invoke(
+            invoke_callback, &reader, &param_reader_error)) {
       // Error parsing method arguments.
       method_response.ReplyWithError(param_reader_error.get());
     }
@@ -203,7 +200,7 @@ class DBusInterfaceMethodHandler : public DBusInterfaceMethodHandlerInterface {
   // virtual function is invoked.
   explicit DBusInterfaceMethodHandler(
       const base::Callback<void(scoped_ptr<Response>, Args...)>& handler)
-          : handler_(handler) {}
+      : handler_(handler) {}
 
   // This method forwards the call to |handler_| after extracting the required
   // arguments from the DBus message buffer specified in |method_call|.
@@ -217,9 +214,8 @@ class DBusInterfaceMethodHandler : public DBusInterfaceMethodHandlerInterface {
 
     ErrorPtr param_reader_error;
     dbus::MessageReader reader(method_call);
-    if (!DBusParamReader<false, Args...>::Invoke(invoke_callback,
-                                                 &reader,
-                                                 &param_reader_error)) {
+    if (!DBusParamReader<false, Args...>::Invoke(
+            invoke_callback, &reader, &param_reader_error)) {
       // Error parsing method arguments.
       DBusMethodResponseBase method_response(method_call, sender);
       method_response.ReplyWithError(param_reader_error.get());
@@ -247,8 +243,7 @@ class RawDBusInterfaceMethodHandler
   // virtual function is invoked.
   RawDBusInterfaceMethodHandler(
       const base::Callback<void(dbus::MethodCall*, ResponseSender)>& handler)
-      : handler_(handler) {
-  }
+      : handler_(handler) {}
 
   void HandleMethod(dbus::MethodCall* method_call,
                     ResponseSender sender) override {

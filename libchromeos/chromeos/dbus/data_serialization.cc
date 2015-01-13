@@ -172,8 +172,7 @@ bool PopTypedArrayFromReader(dbus::MessageReader* reader,
 
 // std::map<KEY, VALUE> overload.
 template<typename KEY, typename VALUE>
-bool PopTypedMapFromReader(dbus::MessageReader* reader,
-                           chromeos::Any* value) {
+bool PopTypedMapFromReader(dbus::MessageReader* reader, chromeos::Any* value) {
   return PopTypedValueFromReader<std::map<KEY, VALUE>>(reader, value);
 }
 
@@ -221,7 +220,7 @@ bool PopArrayValueFromReader(dbus::MessageReader* reader,
   // When a use case for particular array signature is found, feel free
   // to add handing for it here.
   LOG(ERROR) << "Variant de-serialization of array containing data of "
-              << "type '" << signature << "' is not yet supported";
+             << "type '" << signature << "' is not yet supported";
   return false;
 }
 
@@ -239,8 +238,8 @@ bool PopStructValueFromReader(dbus::MessageReader* reader,
 
   // When a use case for particular struct signature is found, feel free
   // to add handing for it here.
-  LOG(ERROR) << "Variant de-serialization of structs of type '"
-              << signature << "' is not yet supported";
+  LOG(ERROR) << "Variant de-serialization of structs of type '" << signature
+             << "' is not yet supported";
   return false;
 }
 

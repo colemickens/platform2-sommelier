@@ -123,9 +123,8 @@ class CHROMEOS_EXPORT DBusInterface final {
   // Register sync D-Bus method handler for |method_name| as a static
   // function.
   template<typename R, typename... Args>
-  inline void AddSimpleMethodHandler(
-      const std::string& method_name,
-      R(*handler)(Args...)) {
+  inline void AddSimpleMethodHandler(const std::string& method_name,
+                                     R(*handler)(Args...)) {
     Handler<SimpleDBusInterfaceMethodHandler<R, Args...>>::Add(
         this, method_name, base::Bind(handler));
   }
@@ -133,20 +132,18 @@ class CHROMEOS_EXPORT DBusInterface final {
   // Register sync D-Bus method handler for |method_name| as a class member
   // function.
   template<typename Instance, typename Class, typename R, typename... Args>
-  inline void AddSimpleMethodHandler(
-      const std::string& method_name,
-      Instance instance,
-      R(Class::*handler)(Args...)) {
+  inline void AddSimpleMethodHandler(const std::string& method_name,
+                                     Instance instance,
+                                     R(Class::*handler)(Args...)) {
     Handler<SimpleDBusInterfaceMethodHandler<R, Args...>>::Add(
         this, method_name, base::Bind(handler, instance));
   }
 
   // Same as above but for const-method of a class.
   template<typename Instance, typename Class, typename R, typename... Args>
-  inline void AddSimpleMethodHandler(
-      const std::string& method_name,
-      Instance instance,
-      R(Class::*handler)(Args...) const) {
+  inline void AddSimpleMethodHandler(const std::string& method_name,
+                                     Instance instance,
+                                     R(Class::*handler)(Args...) const) {
     Handler<SimpleDBusInterfaceMethodHandler<R, Args...>>::Add(
         this, method_name, base::Bind(handler, instance));
   }
@@ -205,9 +202,8 @@ class CHROMEOS_EXPORT DBusInterface final {
   // Register an async D-Bus method handler for |method_name| as a static
   // function.
   template<typename Response, typename... Args>
-  inline void AddMethodHandler(
-      const std::string& method_name,
-      void(*handler)(scoped_ptr<Response>, Args...)) {
+  inline void AddMethodHandler(const std::string& method_name,
+                               void (*handler)(scoped_ptr<Response>, Args...)) {
     static_assert(std::is_base_of<DBusMethodResponseBase, Response>::value,
                   "Response must be DBusMethodResponse<T...>");
     Handler<DBusInterfaceMethodHandler<Response, Args...>>::Add(
@@ -216,7 +212,9 @@ class CHROMEOS_EXPORT DBusInterface final {
 
   // Register an async D-Bus method handler for |method_name| as a class member
   // function.
-  template<typename Response, typename Instance, typename Class,
+  template<typename Response,
+           typename Instance,
+           typename Class,
            typename... Args>
   inline void AddMethodHandler(
       const std::string& method_name,
@@ -229,7 +227,9 @@ class CHROMEOS_EXPORT DBusInterface final {
   }
 
   // Same as above but for const-method of a class.
-  template<typename Response, typename Instance, typename Class,
+  template<typename Response,
+           typename Instance,
+           typename Class,
            typename... Args>
   inline void AddMethodHandler(
       const std::string& method_name,
@@ -283,9 +283,8 @@ class CHROMEOS_EXPORT DBusInterface final {
   template<typename DBusSignalType>
   inline std::weak_ptr<DBusSignalType> RegisterSignalOfType(
       const std::string& signal_name) {
-    auto signal = std::make_shared<DBusSignalType>(dbus_object_,
-                                                   interface_name_,
-                                                   signal_name);
+    auto signal = std::make_shared<DBusSignalType>(
+        dbus_object_, interface_name_, signal_name);
     AddSignalImpl(signal_name, signal);
     return signal;
   }
@@ -351,8 +350,8 @@ class CHROMEOS_EXPORT DBusInterface final {
       const AsyncEventSequencer::CompletionAction& completion_callback);
 
   // Method registration map.
-  std::map<std::string,
-           std::unique_ptr<DBusInterfaceMethodHandlerInterface>> handlers_;
+  std::map<std::string, std::unique_ptr<DBusInterfaceMethodHandlerInterface>>
+      handlers_;
   // Signal registration map.
   std::map<std::string, std::shared_ptr<DBusSignalBase>> signals_;
 

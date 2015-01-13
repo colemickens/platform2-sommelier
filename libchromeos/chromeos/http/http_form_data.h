@@ -179,8 +179,7 @@ class CHROMEOS_EXPORT MultiPartFormField : public FormField {
   void AddCustomField(std::unique_ptr<FormField> field);
 
   // Adds a simple text form field.
-  void AddTextField(const std::string& name,
-                    const std::string& data);
+  void AddTextField(const std::string& name, const std::string& data);
 
   // Adds a file upload form field using a file path.
   bool AddFileField(const std::string& name,
@@ -232,8 +231,7 @@ class CHROMEOS_EXPORT FormData final : public DataReaderInterface {
   void AddCustomField(std::unique_ptr<FormField> field);
 
   // Adds a simple text form field.
-  void AddTextField(const std::string& name,
-                    const std::string& data);
+  void AddTextField(const std::string& name, const std::string& data);
 
   // Adds a file upload form field using a file path.
   bool AddFileField(const std::string& name,

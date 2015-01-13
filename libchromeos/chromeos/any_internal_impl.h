@@ -22,10 +22,12 @@ namespace internal_details {
 // An extension to std::is_convertible to allow conversion from an enum to
 // an integral type which std::is_convertible does not indicate as supported.
 template <typename From, typename To>
-struct IsConvertible : public std::integral_constant<bool,
-    std::is_convertible<From, To>::value ||
-    (std::is_enum<From>::value && std::is_integral<To>::value)> {
-};
+struct IsConvertible
+    : public std::integral_constant<
+          bool,
+          std::is_convertible<From, To>::value ||
+              (std::is_enum<From>::value && std::is_integral<To>::value)> {};
+
 // TryConvert is a helper function that does a safe compile-time conditional
 // type cast between data types that may not be always convertible.
 // From and To are the source and destination types.
@@ -101,7 +103,7 @@ struct IsEqualityComparableHelper {
   // lvalue references to type U which is not necessarily default-constructible.
   template<typename U>
   static decltype((std::declval<U&>() == std::declval<U&>()), std::true_type())
-      TriggerFunction(int dummy);
+  TriggerFunction(int dummy);
 
   // Finally, use the return type of the overload of TriggerFunction that
   // matches the argument (int) to be aliased to type |type|. If T is
@@ -117,18 +119,21 @@ struct IsEqualityComparableHelper {
 // type is non-comparable. We just use |type| alias from
 // IsEqualityComparableHelper<T> as the base class.
 template<typename T>
-struct IsEqualityComparable : IsEqualityComparableHelper<T>::type {
-};
+struct IsEqualityComparable : IsEqualityComparableHelper<T>::type {};
 
 // EqCompare() overload for non-comparable types. Always returns false.
 template<typename T>
 inline typename std::enable_if<!IsEqualityComparable<T>::value, bool>::type
-    EqCompare(const T& v1, const T& v2) { return false; }
+EqCompare(const T& v1, const T& v2) {
+  return false;
+}
 
 // EqCompare overload for comparable types. Calls operator==(v1, v2) to compare.
 template<typename T>
 inline typename std::enable_if<IsEqualityComparable<T>::value, bool>::type
-    EqCompare(const T& v1, const T& v2) { return (v1 == v2); }
+EqCompare(const T& v1, const T& v2) {
+  return (v1 == v2);
+}
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -170,8 +175,7 @@ struct TypedData : public Data {
     intmax_t int_val = 0;
     bool converted = TryConvert(value_, &int_val);
     CHECK(converted) << "Unable to convert value of type '"
-                     << GetUndecoratedTypeName<T>()
-                     << "' to integer";
+                     << GetUndecoratedTypeName<T>() << "' to integer";
     return int_val;
   }
 
@@ -216,17 +220,11 @@ class Buffer {
  public:
   enum StorageType { kExternal, kContained };
   Buffer() : external_ptr_(nullptr), storage_(kExternal) {}
-  ~Buffer() {
-    Clear();
-  }
+  ~Buffer() { Clear(); }
 
-  Buffer(const Buffer& rhs) : Buffer() {
-    rhs.CopyTo(this);
-  }
+  Buffer(const Buffer& rhs) : Buffer() { rhs.CopyTo(this); }
   // NOLINTNEXTLINE(build/c++11)
-  Buffer(Buffer&& rhs) : Buffer() {
-    rhs.MoveTo(this);
-  }
+  Buffer(Buffer&& rhs) : Buffer() { rhs.MoveTo(this); }
   Buffer& operator=(const Buffer& rhs) {
     rhs.CopyTo(this);
     return *this;
@@ -240,12 +238,13 @@ class Buffer {
   // Returns the underlying pointer to contained data. Uses either the pointer
   // or the raw data depending on |storage_| type.
   inline Data* GetDataPtr() {
-    return (storage_ == kExternal) ?
-        external_ptr_ : reinterpret_cast<Data*>(contained_buffer_);
+    return (storage_ == kExternal) ? external_ptr_
+                                   : reinterpret_cast<Data*>(contained_buffer_);
   }
   inline const Data* GetDataPtr() const {
-    return (storage_ == kExternal) ?
-        external_ptr_ : reinterpret_cast<const Data*>(contained_buffer_);
+    return (storage_ == kExternal)
+               ? external_ptr_
+               : reinterpret_cast<const Data*>(contained_buffer_);
   }
 
   // Destroys the contained object (and frees memory if needed).
@@ -358,14 +357,17 @@ class Buffer {
   StorageType storage_;  // Declare after the union to eliminate member padding.
 };
 
-template<typename T>
-void TypedData<T>::CopyTo(Buffer* buffer) const { buffer->Assign(value_); }
-template<typename T>
-void TypedData<T>::MoveTo(Buffer* buffer) { buffer->Assign(std::move(value_)); }
+template <typename T>
+void TypedData<T>::CopyTo(Buffer* buffer) const {
+  buffer->Assign(value_);
+}
+template <typename T>
+void TypedData<T>::MoveTo(Buffer* buffer) {
+  buffer->Assign(std::move(value_));
+}
 
 }  // namespace internal_details
 
 }  // namespace chromeos
 
 #endif  // LIBCHROMEOS_CHROMEOS_ANY_INTERNAL_IMPL_H_
-

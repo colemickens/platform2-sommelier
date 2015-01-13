@@ -10,8 +10,8 @@ namespace chromeos {
 
 class SyslogLoggingDeathTest : public ::testing::Test {
  public:
-  SyslogLoggingDeathTest() { }
-  virtual ~SyslogLoggingDeathTest() { }
+  SyslogLoggingDeathTest() {}
+  virtual ~SyslogLoggingDeathTest() {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SyslogLoggingDeathTest);
@@ -20,13 +20,11 @@ class SyslogLoggingDeathTest : public ::testing::Test {
 TEST_F(SyslogLoggingDeathTest, FatalLoggingIsFatal) {
   int old_flags = GetLogFlags();
   SetLogFlags(kLogToStderr);
-  EXPECT_DEATH({ LOG(FATAL) << "First Fatality!"; },
-               "First Fatality!");
+  EXPECT_DEATH({ LOG(FATAL) << "First Fatality!"; }, "First Fatality!");
   // No flags == don't log to syslog, stderr, or accumulated string.
   SetLogFlags(0);
   // Still a fatal log message
-  EXPECT_DEATH({ LOG(FATAL) << "Second Fatality!"; },
-               "Second Fatality!");
+  EXPECT_DEATH({ LOG(FATAL) << "Second Fatality!"; }, "Second Fatality!");
   SetLogFlags(old_flags);
 }
 

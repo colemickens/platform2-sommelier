@@ -47,8 +47,8 @@ class CurlInterface {
   inline CURLcode EasySetOptCallback(CURL* curl,
                                      CURLoption option,
                                      R(*callback)(Args...)) {
-    return EasySetOptCallback(curl, option,
-                              reinterpret_cast<intptr_t>(callback));
+    return EasySetOptCallback(
+        curl, option, reinterpret_cast<intptr_t>(callback));
   }
 
   // Wrapper around curl_easy_perform().
@@ -100,9 +100,7 @@ class CHROMEOS_EXPORT CurlApi : public CurlInterface {
   CURLcode EasyPerform(CURL* curl) override;
 
   // Wrappers around curl_easy_getinfo().
-  CURLcode EasyGetInfoInt(CURL* curl,
-                          CURLINFO info,
-                          int* value) const override;
+  CURLcode EasyGetInfoInt(CURL* curl, CURLINFO info, int* value) const override;
   CURLcode EasyGetInfoDbl(CURL* curl,
                           CURLINFO info,
                           double* value) const override;

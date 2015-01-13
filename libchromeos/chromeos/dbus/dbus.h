@@ -37,8 +37,7 @@ class CHROMEOS_EXPORT BusConnection {
  public:
   typedef ::DBusGConnection* value_type;
 
-  BusConnection(const BusConnection& x)
-      : object_(x.object_) {
+  BusConnection(const BusConnection& x) : object_(x.object_) {
     if (object_)
       ::dbus_g_connection_ref(object_);
   }
@@ -58,13 +57,9 @@ class CHROMEOS_EXPORT BusConnection {
     return object_;
   }
 
-  operator bool() const {
-    return object_;
-  }
+  operator bool() const { return object_; }
 
-  bool HasConnection() const {
-    return object_;
-  }
+  bool HasConnection() const { return object_; }
 
  private:
   friend void swap(BusConnection& x, BusConnection& y);
@@ -74,9 +69,7 @@ class CHROMEOS_EXPORT BusConnection {
   friend BusConnection GetPrivateBusConnection(const char* address);
 
   // Constructor takes ownership
-  CHROMEOS_PRIVATE explicit BusConnection(::DBusGConnection* x)
-      : object_(x) {
-  }
+  CHROMEOS_PRIVATE explicit BusConnection(::DBusGConnection* x) : object_(x) {}
 
   value_type object_;
 };
@@ -139,17 +132,14 @@ class CHROMEOS_EXPORT Proxy {
     return object_;
   }
 
-  operator bool() const {
-    return object_;
-  }
+  operator bool() const { return object_; }
 
  private:
-  CHROMEOS_PRIVATE static value_type GetGProxy(
-    const BusConnection& connection,
-    const char* name,
-    const char* path,
-    const char* interface,
-    bool connect_to_name_owner);
+  CHROMEOS_PRIVATE static value_type GetGProxy(const BusConnection& connection,
+                                               const char* name,
+                                               const char* path,
+                                               const char* interface,
+                                               bool connect_to_name_owner);
 
   CHROMEOS_PRIVATE static value_type GetGPeerProxy(
       const BusConnection& connection,
@@ -183,26 +173,23 @@ CHROMEOS_EXPORT bool RegisterExclusiveService(const BusConnection& connection,
                                               const char* service_path,
                                               GObject* object);
 
-template <typename F>  // F is a function signature
+template<typename F>  // F is a function signature
 class MonitorConnection;
 
-template <typename A1>
+template<typename A1>
 class MonitorConnection<void(A1)> {
  public:
-  MonitorConnection(const Proxy& proxy, const char* name,
-                    void (*monitor)(void*, A1), void* object)
-      : proxy_(proxy), name_(name), monitor_(monitor), object_(object) {
-  }
+  MonitorConnection(const Proxy& proxy,
+                    const char* name,
+                    void (*monitor)(void*, A1),
+                    void* object)
+      : proxy_(proxy), name_(name), monitor_(monitor), object_(object) {}
 
   static void Run(::DBusGProxy*, A1 x, MonitorConnection* self) {
     self->monitor_(self->object_, x);
   }
-  const Proxy& proxy() const {
-    return proxy_;
-  }
-  const std::string& name() const {
-    return name_;
-  }
+  const Proxy& proxy() const { return proxy_; }
+  const std::string& name() const { return name_; }
 
  private:
   Proxy proxy_;
@@ -211,23 +198,20 @@ class MonitorConnection<void(A1)> {
   void* object_;
 };
 
-template <typename A1, typename A2>
+template<typename A1, typename A2>
 class MonitorConnection<void(A1, A2)> {
  public:
-  MonitorConnection(const Proxy& proxy, const char* name,
-                    void (*monitor)(void*, A1, A2), void* object)
-      : proxy_(proxy), name_(name), monitor_(monitor), object_(object) {
-  }
+  MonitorConnection(const Proxy& proxy,
+                    const char* name,
+                    void (*monitor)(void*, A1, A2),
+                    void* object)
+      : proxy_(proxy), name_(name), monitor_(monitor), object_(object) {}
 
   static void Run(::DBusGProxy*, A1 x, A2 y, MonitorConnection* self) {
     self->monitor_(self->object_, x, y);
   }
-  const Proxy& proxy() const {
-    return proxy_;
-  }
-  const std::string& name() const {
-    return name_;
-  }
+  const Proxy& proxy() const { return proxy_; }
+  const std::string& name() const { return name_; }
 
  private:
   Proxy proxy_;
@@ -236,23 +220,20 @@ class MonitorConnection<void(A1, A2)> {
   void* object_;
 };
 
-template <typename A1, typename A2, typename A3>
+template<typename A1, typename A2, typename A3>
 class MonitorConnection<void(A1, A2, A3)> {
  public:
-  MonitorConnection(const Proxy& proxy, const char* name,
-                    void (*monitor)(void*, A1, A2, A3), void* object)
-      : proxy_(proxy), name_(name), monitor_(monitor), object_(object) {
-  }
+  MonitorConnection(const Proxy& proxy,
+                    const char* name,
+                    void (*monitor)(void*, A1, A2, A3),
+                    void* object)
+      : proxy_(proxy), name_(name), monitor_(monitor), object_(object) {}
 
   static void Run(::DBusGProxy*, A1 x, A2 y, A3 z, MonitorConnection* self) {
     self->monitor_(self->object_, x, y, z);
   }
-  const Proxy& proxy() const {
-    return proxy_;
-  }
-  const std::string& name() const {
-    return name_;
-  }
+  const Proxy& proxy() const { return proxy_; }
+  const std::string& name() const { return name_; }
 
  private:
   Proxy proxy_;
@@ -261,24 +242,25 @@ class MonitorConnection<void(A1, A2, A3)> {
   void* object_;
 };
 
-template <typename A1, typename A2, typename A3, typename A4>
+template<typename A1, typename A2, typename A3, typename A4>
 class MonitorConnection<void(A1, A2, A3, A4)> {
  public:
-  MonitorConnection(const Proxy& proxy, const char* name,
-                    void (*monitor)(void*, A1, A2, A3, A4), void* object)
-      : proxy_(proxy), name_(name), monitor_(monitor), object_(object) {
-  }
+  MonitorConnection(const Proxy& proxy,
+                    const char* name,
+                    void (*monitor)(void*, A1, A2, A3, A4),
+                    void* object)
+      : proxy_(proxy), name_(name), monitor_(monitor), object_(object) {}
 
-  static void Run(::DBusGProxy*, A1 x, A2 y, A3 z, A4 w,
+  static void Run(::DBusGProxy*,
+                  A1 x,
+                  A2 y,
+                  A3 z,
+                  A4 w,
                   MonitorConnection* self) {
     self->monitor_(self->object_, x, y, z, w);
   }
-  const Proxy& proxy() const {
-    return proxy_;
-  }
-  const std::string& name() const {
-    return name_;
-  }
+  const Proxy& proxy() const { return proxy_; }
+  const std::string& name() const { return name_; }
 
  private:
   Proxy proxy_;
@@ -287,82 +269,84 @@ class MonitorConnection<void(A1, A2, A3, A4)> {
   void* object_;
 };
 
-template <typename A1>
-MonitorConnection<void(A1)>* Monitor(const Proxy& proxy, const char* name,
+template<typename A1>
+MonitorConnection<void(A1)>* Monitor(const Proxy& proxy,
+                                     const char* name,
                                      void (*monitor)(void*, A1),
                                      void* object) {
-  typedef MonitorConnection<void (A1)> ConnectionType;
+  typedef MonitorConnection<void(A1)> ConnectionType;
 
   ConnectionType* result = new ConnectionType(proxy, name, monitor, object);
 
-  ::dbus_g_proxy_add_signal(proxy.gproxy(), name,
-                            glib::type_to_gtypeid<A1>(), G_TYPE_INVALID);
-  ::dbus_g_proxy_connect_signal(proxy.gproxy(), name,
-                                G_CALLBACK(&ConnectionType::Run),
-                                result, nullptr);
+  ::dbus_g_proxy_add_signal(
+      proxy.gproxy(), name, glib::type_to_gtypeid<A1>(), G_TYPE_INVALID);
+  ::dbus_g_proxy_connect_signal(
+      proxy.gproxy(), name, G_CALLBACK(&ConnectionType::Run), result, nullptr);
   return result;
 }
 
-template <typename A1, typename A2>
-MonitorConnection<void(A1, A2)>* Monitor(const Proxy& proxy, const char* name,
+template<typename A1, typename A2>
+MonitorConnection<void(A1, A2)>* Monitor(const Proxy& proxy,
+                                         const char* name,
                                          void (*monitor)(void*, A1, A2),
                                          void* object) {
-  typedef MonitorConnection<void (A1, A2)> ConnectionType;
+  typedef MonitorConnection<void(A1, A2)> ConnectionType;
 
   ConnectionType* result = new ConnectionType(proxy, name, monitor, object);
 
-  ::dbus_g_proxy_add_signal(proxy.gproxy(), name,
+  ::dbus_g_proxy_add_signal(proxy.gproxy(),
+                            name,
                             glib::type_to_gtypeid<A1>(),
                             glib::type_to_gtypeid<A2>(),
                             G_TYPE_INVALID);
-  ::dbus_g_proxy_connect_signal(proxy.gproxy(), name,
-                                G_CALLBACK(&ConnectionType::Run),
-                                result, nullptr);
+  ::dbus_g_proxy_connect_signal(
+      proxy.gproxy(), name, G_CALLBACK(&ConnectionType::Run), result, nullptr);
   return result;
 }
 
-template <typename A1, typename A2, typename A3>
+template<typename A1, typename A2, typename A3>
 MonitorConnection<void(A1, A2, A3)>* Monitor(const Proxy& proxy,
-                                          const char* name,
-                                          void (*monitor)(void*, A1, A2, A3),
-                                          void* object) {
-  typedef MonitorConnection<void (A1, A2, A3)> ConnectionType;
+                                             const char* name,
+                                             void (*monitor)(void*, A1, A2, A3),
+                                             void* object) {
+  typedef MonitorConnection<void(A1, A2, A3)> ConnectionType;
 
   ConnectionType* result = new ConnectionType(proxy, name, monitor, object);
 
-  ::dbus_g_proxy_add_signal(proxy.gproxy(), name,
+  ::dbus_g_proxy_add_signal(proxy.gproxy(),
+                            name,
                             glib::type_to_gtypeid<A1>(),
                             glib::type_to_gtypeid<A2>(),
                             glib::type_to_gtypeid<A3>(),
                             G_TYPE_INVALID);
-  ::dbus_g_proxy_connect_signal(proxy.gproxy(), name,
-                                G_CALLBACK(&ConnectionType::Run),
-                                result, nullptr);
+  ::dbus_g_proxy_connect_signal(
+      proxy.gproxy(), name, G_CALLBACK(&ConnectionType::Run), result, nullptr);
   return result;
 }
 
-template <typename A1, typename A2, typename A3, typename A4>
-MonitorConnection<void(A1, A2, A3, A4)>* Monitor(const Proxy& proxy,
+template<typename A1, typename A2, typename A3, typename A4>
+MonitorConnection<void(A1, A2, A3, A4)>* Monitor(
+    const Proxy& proxy,
     const char* name,
     void (*monitor)(void*, A1, A2, A3, A4),
     void* object) {
-  typedef MonitorConnection<void (A1, A2, A3, A4)> ConnectionType;
+  typedef MonitorConnection<void(A1, A2, A3, A4)> ConnectionType;
 
   ConnectionType* result = new ConnectionType(proxy, name, monitor, object);
 
-  ::dbus_g_proxy_add_signal(proxy.gproxy(), name,
+  ::dbus_g_proxy_add_signal(proxy.gproxy(),
+                            name,
                             glib::type_to_gtypeid<A1>(),
                             glib::type_to_gtypeid<A2>(),
                             glib::type_to_gtypeid<A3>(),
                             glib::type_to_gtypeid<A4>(),
                             G_TYPE_INVALID);
-  ::dbus_g_proxy_connect_signal(proxy.gproxy(), name,
-                                G_CALLBACK(&ConnectionType::Run),
-                                result, nullptr);
+  ::dbus_g_proxy_connect_signal(
+      proxy.gproxy(), name, G_CALLBACK(&ConnectionType::Run), result, nullptr);
   return result;
 }
 
-template <typename F>
+template<typename F>
 void Disconnect(MonitorConnection<F>* connection) {
   typedef MonitorConnection<F> ConnectionType;
 
@@ -407,7 +391,7 @@ CHROMEOS_EXPORT bool CallPtrArray(const Proxy& proxy,
 //   std::cout << "Battery charge is " << x << "% of capacity.";
 // \end_example
 
-template <typename T>
+template<typename T>
 inline bool RetrieveProperty(const Proxy& proxy,
                              const char* interface,
                              const char* property,

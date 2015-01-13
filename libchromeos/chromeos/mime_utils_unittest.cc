@@ -11,9 +11,9 @@ namespace chromeos {
 TEST(MimeUtils, Combine) {
   std::string mime_string = mime::Combine(mime::types::kText, "xml");
   EXPECT_EQ(mime::text::kXml, mime_string);
-  EXPECT_EQ("application/json; charset=utf-8",
-            mime::Combine(mime::types::kApplication, "json",
-                          {{"charset", "utf-8"}}));
+  EXPECT_EQ(
+      "application/json; charset=utf-8",
+      mime::Combine(mime::types::kApplication, "json", {{"charset", "utf-8"}}));
 }
 
 TEST(MimeUtils, Split) {
@@ -23,8 +23,8 @@ TEST(MimeUtils, Split) {
   EXPECT_EQ("jpeg", s2);
 
   mime::Parameters parameters;
-  EXPECT_TRUE(mime::Split("application/json;charset=utf-8",
-    &s1, &s2, &parameters));
+  EXPECT_TRUE(
+      mime::Split("application/json;charset=utf-8", &s1, &s2, &parameters));
   EXPECT_EQ(mime::types::kApplication, s1);
   EXPECT_EQ("json", s2);
   EXPECT_EQ(mime::application::kJson, mime::Combine(s1, s2));
@@ -50,14 +50,13 @@ TEST(MimeUtils, ExtractParts) {
 }
 
 TEST(MimeUtils, AppendRemoveParams) {
-  std::string mime_string = mime::AppendParameter(mime::text::kXml,
-                                                  mime::parameters::kCharset,
-                                                  "utf-8");
+  std::string mime_string = mime::AppendParameter(
+      mime::text::kXml, mime::parameters::kCharset, "utf-8");
   EXPECT_EQ("text/xml; charset=utf-8", mime_string);
   mime_string = mime::AppendParameter(mime_string, "foo", "bar");
   EXPECT_EQ("text/xml; charset=utf-8; foo=bar", mime_string);
-  EXPECT_EQ("utf-8", mime::GetParameterValue(mime_string,
-                                             mime::parameters::kCharset));
+  EXPECT_EQ("utf-8",
+            mime::GetParameterValue(mime_string, mime::parameters::kCharset));
   EXPECT_EQ("bar", mime::GetParameterValue(mime_string, "foo"));
   EXPECT_EQ("", mime::GetParameterValue(mime_string, "baz"));
   mime_string = mime::RemoveParameters(mime_string);

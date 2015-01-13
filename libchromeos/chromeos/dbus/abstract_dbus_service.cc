@@ -9,7 +9,7 @@
 namespace chromeos {
 namespace dbus {
 
-bool AbstractDbusService::Register(const chromeos::dbus::BusConnection &conn) {
+bool AbstractDbusService::Register(const chromeos::dbus::BusConnection& conn) {
   return RegisterExclusiveService(conn,
                                   service_interface(),
                                   service_name(),

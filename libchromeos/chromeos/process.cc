@@ -23,7 +23,9 @@
 
 namespace chromeos {
 
-bool ReturnTrue() { return true; }
+bool ReturnTrue() {
+  return true;
+}
 
 Process::Process() {
 }
@@ -36,10 +38,13 @@ bool Process::ProcessExists(pid_t pid) {
       base::FilePath(base::StringPrintf("/proc/%d", pid)));
 }
 
-ProcessImpl::ProcessImpl() : pid_(0), uid_(-1), gid_(-1),
-                             pre_exec_(base::Bind(&ReturnTrue)),
-                             search_path_(false),
-                             inherit_parent_signal_mask_(false) {
+ProcessImpl::ProcessImpl()
+    : pid_(0),
+      uid_(-1),
+      gid_(-1),
+      pre_exec_(base::Bind(&ReturnTrue)),
+      search_path_(false),
+      inherit_parent_signal_mask_(false) {
 }
 
 ProcessImpl::~ProcessImpl() {
@@ -175,13 +180,12 @@ bool ProcessImpl::Start() {
       IGNORE_EINTR(close(i->second.child_fd_));
     }
     if (!output_file_.empty()) {
-      int output_handle = HANDLE_EINTR(
-          open(output_file_.c_str(),
-               O_CREAT | O_WRONLY | O_TRUNC | O_EXCL, 0666));
+      int output_handle = HANDLE_EINTR(open(
+          output_file_.c_str(), O_CREAT | O_WRONLY | O_TRUNC | O_EXCL, 0666));
       int saved_errno = errno;
       if (output_handle < 0) {
-        LOG(ERROR) << "Could not create " << output_file_
-                   << ": " << saved_errno;
+        LOG(ERROR) << "Could not create " << output_file_ << ": "
+                   << saved_errno;
         // Avoid exit() to avoid atexit handlers from parent.
         _exit(kErrorExitStatus);
       }
@@ -252,8 +256,8 @@ int ProcessImpl::Wait() {
   if (!WIFEXITED(status)) {
     DCHECK(WIFSIGNALED(status)) << old_pid
                                 << " neither exited, nor died on a signal?";
-    LOG(ERROR) << "Process " << old_pid << " did not exit normally: "
-               << WTERMSIG(status);
+    LOG(ERROR) << "Process " << old_pid
+               << " did not exit normally: " << WTERMSIG(status);
     return -1;
   }
   return WEXITSTATUS(status);

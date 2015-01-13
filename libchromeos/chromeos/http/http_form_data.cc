@@ -33,7 +33,8 @@ FormField::FormField(const std::string& name,
     : name_{name},
       content_disposition_{content_disposition},
       content_type_{content_type},
-      transfer_encoding_{transfer_encoding} {}
+      transfer_encoding_{transfer_encoding} {
+}
 
 std::string FormField::GetContentDisposition() const {
   std::string disposition = content_disposition_;
@@ -48,7 +49,7 @@ std::string FormField::GetContentType() const {
 
 std::string FormField::GetContentHeader() const {
   HeaderList headers{
-    {form_header::kContentDisposition, GetContentDisposition()}
+      {form_header::kContentDisposition, GetContentDisposition()}
   };
 
   if (!content_type_.empty())
@@ -61,8 +62,8 @@ std::string FormField::GetContentHeader() const {
 
   std::string result;
   for (const auto& pair : headers) {
-    base::StringAppendF(&result, "%s: %s\r\n",
-                        pair.first.c_str(), pair.second.c_str());
+    base::StringAppendF(
+        &result, "%s: %s\r\n", pair.first.c_str(), pair.second.c_str());
   }
   result += "\r\n";
   return result;
@@ -72,9 +73,12 @@ TextFormField::TextFormField(const std::string& name,
                              const std::string& data,
                              const std::string& content_type,
                              const std::string& transfer_encoding)
-    : FormField{name, content_disposition::kFormData, content_type,
+    : FormField{name,
+                content_disposition::kFormData,
+                content_type,
                 transfer_encoding},
-      data_{data} {}
+      data_{data} {
+}
 
 uint64_t TextFormField::GetDataSize() const {
   return data_.GetDataSize();
@@ -93,10 +97,10 @@ FileFormField::FileFormField(const std::string& name,
                              const std::string& content_disposition,
                              const std::string& content_type,
                              const std::string& transfer_encoding)
-      : FormField{name, content_disposition, content_type, transfer_encoding},
-        file_{file.Pass()},
-        file_name_{file_name} {}
-
+    : FormField{name, content_disposition, content_type, transfer_encoding},
+      file_{file.Pass()},
+      file_name_{file_name} {
+}
 
 uint64_t FileFormField::GetDataSize() const {
   // Unfortunately base::File::GetLength() is not a const method of the class,
@@ -139,7 +143,8 @@ bool FileFormField::ReadData(void* buffer,
 MultiPartFormField::MultiPartFormField(const std::string& name,
                                        const std::string& content_type,
                                        const std::string& boundary)
-    : FormField{name, content_disposition::kFormData,
+    : FormField{name,
+                content_disposition::kFormData,
                 content_type.empty() ? mime::multipart::kMixed : content_type,
                 {}},
       boundary_{boundary} {
@@ -162,8 +167,8 @@ uint64_t MultiPartFormField::GetDataSize() const {
 }
 
 std::string MultiPartFormField::GetContentType() const {
-  return base::StringPrintf("%s; boundary=\"%s\"",
-                            content_type_.c_str(), boundary_.c_str());
+  return base::StringPrintf(
+      "%s; boundary=\"%s\"", content_type_.c_str(), boundary_.c_str());
 }
 
 bool MultiPartFormField::ReadData(void* buffer,
@@ -187,8 +192,8 @@ bool MultiPartFormField::ReadData(void* buffer,
       std::string boundary;
       if (read_part_index_ > 0)
         boundary = "\r\n";
-      boundary += GetBoundaryStart() +
-        parts_[read_part_index_]->GetContentHeader();
+      boundary +=
+          GetBoundaryStart() + parts_[read_part_index_]->GetContentHeader();
       boundary_reader_.SetData(boundary);
     } else if (read_stage_ == ReadStage::kBoundarySetup &&
                read_part_index_ >= parts_.size()) {
@@ -207,8 +212,8 @@ bool MultiPartFormField::ReadData(void* buffer,
       read_stage_ = ReadStage::kPart;
     } else if (read_stage_ == ReadStage::kPart) {
       // Reading the actual part data.
-      if (!parts_[read_part_index_]->ReadData(buffer, size_to_read,
-                                              size_read, error)) {
+      if (!parts_[read_part_index_]->ReadData(
+              buffer, size_to_read, size_read, error)) {
         return false;
       }
       if (*size_read > 0)
@@ -240,10 +245,12 @@ bool MultiPartFormField::AddFileField(const std::string& name,
     return false;
   }
   std::string file_name = file_path.BaseName().value();
-  std::unique_ptr<FormField> file_field{
-      new FileFormField{name, file.Pass(), file_name, content_disposition,
-                        content_type, "binary" }
-  };
+  std::unique_ptr<FormField> file_field{new FileFormField{name,
+                                                          file.Pass(),
+                                                          file_name,
+                                                          content_disposition,
+                                                          content_type,
+                                                          "binary"}};
   AddCustomField(std::move(file_field));
   return true;
 }
@@ -256,17 +263,18 @@ std::string MultiPartFormField::GetBoundaryEnd() const {
   return base::StringPrintf("--%s--", boundary_.c_str());
 }
 
-FormData::FormData() : FormData{std::string{}} {}
+FormData::FormData() : FormData{std::string{}} {
+}
 
 FormData::FormData(const std::string& boundary)
-    : form_data_{"", mime::multipart::kFormData, boundary} {}
+    : form_data_{"", mime::multipart::kFormData, boundary} {
+}
 
 void FormData::AddCustomField(std::unique_ptr<FormField> field) {
   form_data_.AddCustomField(std::move(field));
 }
 
-void FormData::AddTextField(const std::string& name,
-                            const std::string& data) {
+void FormData::AddTextField(const std::string& name, const std::string& data) {
   form_data_.AddTextField(name, data);
 }
 
@@ -274,9 +282,8 @@ bool FormData::AddFileField(const std::string& name,
                             const base::FilePath& file_path,
                             const std::string& content_type,
                             chromeos::ErrorPtr* error) {
-  return form_data_.AddFileField(name, file_path,
-                                 content_disposition::kFormData,
-                                 content_type, error);
+  return form_data_.AddFileField(
+      name, file_path, content_disposition::kFormData, content_type, error);
 }
 
 std::string FormData::GetContentType() const {

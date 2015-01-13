@@ -49,9 +49,12 @@ TEST_F(HttpCurlTransportTest, RequestGet) {
       .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_HTTPGET, 1))
       .WillOnce(Return(CURLE_OK));
-  auto connection = transport_->CreateConnection(
-      "http://foo.bar/get", request_type::kGet, {}, "User Agent",
-      "http://foo.bar/baz", nullptr);
+  auto connection = transport_->CreateConnection("http://foo.bar/get",
+                                                 request_type::kGet,
+                                                 {},
+                                                 "User Agent",
+                                                 "http://foo.bar/baz",
+                                                 nullptr);
   EXPECT_NE(nullptr, connection.get());
 
   EXPECT_CALL(*curl_api_, EasyCleanup(handle_)).Times(1);
@@ -118,8 +121,9 @@ TEST_F(HttpCurlTransportTest, RequestPatch) {
       .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_POSTFIELDS, nullptr))
       .WillOnce(Return(CURLE_OK));
-  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CUSTOMREQUEST,
-                                        request_type::kPatch))
+  EXPECT_CALL(
+      *curl_api_,
+      EasySetOptStr(handle_, CURLOPT_CUSTOMREQUEST, request_type::kPatch))
       .WillOnce(Return(CURLE_OK));
   auto connection = transport_->CreateConnection(
       "http://www.foo.bar/patch", request_type::kPatch, {}, "", "", nullptr);

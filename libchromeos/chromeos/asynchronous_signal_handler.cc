@@ -45,7 +45,10 @@ void AsynchronousSignalHandler::Init() {
       signalfd(descriptor_, &signal_mask_, SFD_CLOEXEC | SFD_NONBLOCK);
   CHECK_NE(kInvalidDescriptor, descriptor_);
   CHECK(base::MessageLoopForIO::current()->WatchFileDescriptor(
-      descriptor_, true, base::MessageLoopForIO::WATCH_READ, fd_watcher_.get(),
+      descriptor_,
+      true,
+      base::MessageLoopForIO::WATCH_READ,
+      fd_watcher_.get(),
       this))
       << "Watching shutdown pipe failed.";
 }

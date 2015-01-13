@@ -6,9 +6,10 @@
 
 namespace chromeos {
 
-ProcessInformation::ProcessInformation()
-    : cmd_line_(), process_id_(-1) { }
-ProcessInformation::~ProcessInformation() { }
+ProcessInformation::ProcessInformation() : cmd_line_(), process_id_(-1) {
+}
+ProcessInformation::~ProcessInformation() {
+}
 
 std::string ProcessInformation::GetCommandLine() {
   std::string result;

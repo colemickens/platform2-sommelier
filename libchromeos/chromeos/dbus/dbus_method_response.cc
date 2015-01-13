@@ -11,8 +11,7 @@ namespace dbus_utils {
 
 DBusMethodResponseBase::DBusMethodResponseBase(dbus::MethodCall* method_call,
                                                ResponseSender sender)
-    : sender_(sender),
-      method_call_(method_call) {
+    : sender_(sender), method_call_(method_call) {
 }
 
 DBusMethodResponseBase::~DBusMethodResponseBase() {

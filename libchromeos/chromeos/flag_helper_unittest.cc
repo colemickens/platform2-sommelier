@@ -16,10 +16,8 @@ namespace chromeos {
 
 class FlagHelperTest : public ::testing::Test {
  public:
-  FlagHelperTest() { }
-  ~FlagHelperTest() override {
-    chromeos::FlagHelper::ResetForTesting();
-  }
+  FlagHelperTest() {}
+  ~FlagHelperTest() override { chromeos::FlagHelper::ResetForTesting(); }
 };
 
 // Test that the DEFINE_xxxx macros can create the respective variables
@@ -86,12 +84,24 @@ TEST_F(FlagHelperTest, SetValueDoubleDash) {
   DEFINE_string(string_1, "default", "Test string flag");
   DEFINE_string(string_2, "default", "Test string flag");
 
-  const char* argv[] = {"test_program", "--bool1", "--nobool2", "--bool3=true",
-      "--bool4=false", "--int32_1=-2147483648", "--int32_2=0",
-      "--int32_3=2147483647", "--int64_1=-9223372036854775808", "--int64_2=0",
-      "--int64_3=9223372036854775807", "--uint64_1=0",
-      "--uint64_2=18446744073709551615", "--double_1=-100.5",
-      "--double_2=0", "--double_3=100.5", "--string_1=", "--string_2=value"};
+  const char* argv[] = {"test_program",
+                        "--bool1",
+                        "--nobool2",
+                        "--bool3=true",
+                        "--bool4=false",
+                        "--int32_1=-2147483648",
+                        "--int32_2=0",
+                        "--int32_3=2147483647",
+                        "--int64_1=-9223372036854775808",
+                        "--int64_2=0",
+                        "--int64_3=9223372036854775807",
+                        "--uint64_1=0",
+                        "--uint64_2=18446744073709551615",
+                        "--double_1=-100.5",
+                        "--double_2=0",
+                        "--double_3=100.5",
+                        "--string_1=",
+                        "--string_2=value"};
   CommandLine command_line(arraysize(argv), argv);
 
   chromeos::FlagHelper::GetInstance()->set_command_line_for_testing(
@@ -136,12 +146,22 @@ TEST_F(FlagHelperTest, SetValueSingleDash) {
   DEFINE_string(string_1, "default", "Test string flag");
   DEFINE_string(string_2, "default", "Test string flag");
 
-  const char* argv[] = {"test_program", "-bool1", "-nobool2",
-      "-int32_1=-2147483648", "-int32_2=0", "-int32_3=2147483647",
-      "-int64_1=-9223372036854775808", "-int64_2=0",
-      "-int64_3=9223372036854775807", "-uint64_1=0",
-      "-uint64_2=18446744073709551615", "-double_1=-100.5",
-      "-double_2=0", "-double_3=100.5", "-string_1=", "-string_2=value"};
+  const char* argv[] = {"test_program",
+                        "-bool1",
+                        "-nobool2",
+                        "-int32_1=-2147483648",
+                        "-int32_2=0",
+                        "-int32_3=2147483647",
+                        "-int64_1=-9223372036854775808",
+                        "-int64_2=0",
+                        "-int64_3=9223372036854775807",
+                        "-uint64_1=0",
+                        "-uint64_2=18446744073709551615",
+                        "-double_1=-100.5",
+                        "-double_2=0",
+                        "-double_3=100.5",
+                        "-string_1=",
+                        "-string_2=value"};
   CommandLine command_line(arraysize(argv), argv);
 
   chromeos::FlagHelper::GetInstance()->set_command_line_for_testing(
@@ -213,24 +233,17 @@ TEST_F(FlagHelperTest, HelpMessage) {
   FILE* orig = stdout;
   stdout = stderr;
 
-  ASSERT_EXIT(chromeos::FlagHelper::Init(arraysize(argv),
-                                         argv,
-                                         "TestHelpMessage"),
-              ::testing::ExitedWithCode(EX_OK),
-              "TestHelpMessage\n\n"
-              "  --bool_1  \\(Test bool flag\\)  type: bool  default: true\n"
-              "  --double_1  \\(Test double flag\\)  type: double  "
-                  "default: 0\n"
-              "  --help  \\(Show this help message\\)  type: bool  "
-                  "default: false\n"
-              "  --int64_1  \\(Test int64 flag\\)  type: int64  "
-                  "default: 0\n"
-              "  --int_1  \\(Test int flag\\)  type: int  default: 0\n"
-              "  --string_1  \\(Test string flag\\)  type: string  "
-                  "default: \"\"\n"
-              "  --uint64_1  \\(Test uint64 flag\\)  type: uint64  "
-                  "default: 0\n"
-);
+  ASSERT_EXIT(
+      chromeos::FlagHelper::Init(arraysize(argv), argv, "TestHelpMessage"),
+      ::testing::ExitedWithCode(EX_OK),
+      "TestHelpMessage\n\n"
+      "  --bool_1  \\(Test bool flag\\)  type: bool  default: true\n"
+      "  --double_1  \\(Test double flag\\)  type: double  default: 0\n"
+      "  --help  \\(Show this help message\\)  type: bool  default: false\n"
+      "  --int64_1  \\(Test int64 flag\\)  type: int64  default: 0\n"
+      "  --int_1  \\(Test int flag\\)  type: int  default: 0\n"
+      "  --string_1  \\(Test string flag\\)  type: string  default: \"\"\n"
+      "  --uint64_1  \\(Test uint64 flag\\)  type: uint64  default: 0\n");
 
   stdout = orig;
 }
@@ -238,7 +251,7 @@ TEST_F(FlagHelperTest, HelpMessage) {
 // Test that passing in unknown command line flags causes the program
 // to exit with EX_USAGE error code and corresponding error message.
 TEST_F(FlagHelperTest, UnknownFlag) {
-  const char* argv[] = {"test_program", "--flag=value" };
+  const char* argv[] = {"test_program", "--flag=value"};
   CommandLine command_line(arraysize(argv), argv);
 
   chromeos::FlagHelper::GetInstance()->set_command_line_for_testing(
@@ -259,7 +272,7 @@ TEST_F(FlagHelperTest, UnknownFlag) {
 TEST_F(FlagHelperTest, BoolParseError) {
   DEFINE_bool(bool_1, 0, "Test bool flag");
 
-  const char* argv[] = {"test_program", "--bool_1=value" };
+  const char* argv[] = {"test_program", "--bool_1=value"};
   CommandLine command_line(arraysize(argv), argv);
 
   chromeos::FlagHelper::GetInstance()->set_command_line_for_testing(
@@ -268,11 +281,10 @@ TEST_F(FlagHelperTest, BoolParseError) {
   FILE* orig = stdout;
   stdout = stderr;
 
-  ASSERT_EXIT(chromeos::FlagHelper::Init(arraysize(argv),
-                                         argv,
-                                         "TestBoolParseError"),
-              ::testing::ExitedWithCode(EX_DATAERR),
-              "ERROR: illegal value 'value' specified for bool flag 'bool_1'");
+  ASSERT_EXIT(
+      chromeos::FlagHelper::Init(arraysize(argv), argv, "TestBoolParseError"),
+      ::testing::ExitedWithCode(EX_DATAERR),
+      "ERROR: illegal value 'value' specified for bool flag 'bool_1'");
 
   stdout = orig;
 }
@@ -282,7 +294,7 @@ TEST_F(FlagHelperTest, BoolParseError) {
 TEST_F(FlagHelperTest, Int32ParseError) {
   DEFINE_int32(int_1, 0, "Test int flag");
 
-  const char* argv[] = {"test_program", "--int_1=value" };
+  const char* argv[] = {"test_program", "--int_1=value"};
   CommandLine command_line(arraysize(argv), argv);
 
   chromeos::FlagHelper::GetInstance()->set_command_line_for_testing(
@@ -314,12 +326,11 @@ TEST_F(FlagHelperTest, Int64ParseError) {
   FILE* orig = stdout;
   stdout = stderr;
 
-  ASSERT_EXIT(chromeos::FlagHelper::Init(arraysize(argv),
-                                         argv,
-                                         "TestInt64ParseError"),
-              ::testing::ExitedWithCode(EX_DATAERR),
-              "ERROR: illegal value 'value' specified for int64 flag "
-              "'int64_1'");
+  ASSERT_EXIT(
+      chromeos::FlagHelper::Init(arraysize(argv), argv, "TestInt64ParseError"),
+      ::testing::ExitedWithCode(EX_DATAERR),
+      "ERROR: illegal value 'value' specified for int64 flag "
+      "'int64_1'");
 
   stdout = orig;
 }
@@ -329,7 +340,7 @@ TEST_F(FlagHelperTest, Int64ParseError) {
 TEST_F(FlagHelperTest, UInt64ParseError) {
   DEFINE_uint64(uint64_1, 0, "Test uint64 flag");
 
-  const char* argv[] = {"test_program", "--uint64_1=value" };
+  const char* argv[] = {"test_program", "--uint64_1=value"};
   CommandLine command_line(arraysize(argv), argv);
 
   chromeos::FlagHelper::GetInstance()->set_command_line_for_testing(
@@ -338,12 +349,11 @@ TEST_F(FlagHelperTest, UInt64ParseError) {
   FILE* orig = stdout;
   stdout = stderr;
 
-  ASSERT_EXIT(chromeos::FlagHelper::Init(arraysize(argv),
-                                         argv,
-                                         "TestUInt64ParseError"),
-              ::testing::ExitedWithCode(EX_DATAERR),
-              "ERROR: illegal value 'value' specified for uint64 flag "
-              "'uint64_1'");
+  ASSERT_EXIT(
+      chromeos::FlagHelper::Init(arraysize(argv), argv, "TestUInt64ParseError"),
+      ::testing::ExitedWithCode(EX_DATAERR),
+      "ERROR: illegal value 'value' specified for uint64 flag "
+      "'uint64_1'");
 
   stdout = orig;
 }

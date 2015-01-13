@@ -304,4 +304,3 @@ TEST(Any, Compare_NonComparable) {
   EXPECT_NE(person1, person3);
   EXPECT_NE(person2, person3);
 }
-

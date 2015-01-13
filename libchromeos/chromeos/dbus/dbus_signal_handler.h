@@ -51,8 +51,8 @@ void ConnectToSignal(
   // |signal_callback|.
   auto dbus_signal_callback = [signal_callback_wrapper](dbus::Signal* signal) {
     dbus::MessageReader reader(signal);
-    DBusParamReader<false, Args...>::Invoke(signal_callback_wrapper, &reader,
-                                            nullptr);
+    DBusParamReader<false, Args...>::Invoke(
+        signal_callback_wrapper, &reader, nullptr);
   };
 
   // Register our stub handler with D-Bus ObjectProxy.

@@ -29,9 +29,7 @@ class CHROMEOS_EXPORT ProcessInformation {
     cmd_line_.swap(*value);
   }
 
-  const std::vector<std::string>& get_cmd_line() {
-    return cmd_line_;
-  }
+  const std::vector<std::string>& get_cmd_line() { return cmd_line_; }
 
   // Set the command line array.  This method DOES swap out the contents of
   // |value|.  The caller should expect an empty set on return.
@@ -40,9 +38,7 @@ class CHROMEOS_EXPORT ProcessInformation {
     open_files_.swap(*value);
   }
 
-  const std::set<std::string>& get_open_files() {
-    return open_files_;
-  }
+  const std::set<std::string>& get_open_files() { return open_files_; }
 
   // Set the command line array.  This method DOES swap out the contents of
   // |value|.  The caller should expect an empty string on return.
@@ -51,17 +47,11 @@ class CHROMEOS_EXPORT ProcessInformation {
     cwd_.swap(*value);
   }
 
-  const std::string& get_cwd() {
-    return cwd_;
-  }
+  const std::string& get_cwd() { return cwd_; }
 
-  void set_process_id(int value) {
-    process_id_ = value;
-  }
+  void set_process_id(int value) { process_id_ = value; }
 
-  int get_process_id() {
-    return process_id_;
-  }
+  int get_process_id() { return process_id_; }
 
  private:
   std::vector<std::string> cmd_line_;

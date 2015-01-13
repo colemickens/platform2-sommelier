@@ -15,14 +15,12 @@ TEST(UrlUtils, Combine) {
             url::Combine("http://sample.org/", "path"));
   EXPECT_EQ("path1/path2", url::Combine("", "path1/path2"));
   EXPECT_EQ("path1/path2", url::Combine("path1", "path2"));
-  EXPECT_EQ("http://sample.org",
-            url::Combine("http://sample.org", ""));
+  EXPECT_EQ("http://sample.org", url::Combine("http://sample.org", ""));
   EXPECT_EQ("http://sample.org/path",
             url::Combine("http://sample.org/", "/path"));
   EXPECT_EQ("http://sample.org/path",
             url::Combine("http://sample.org", "//////path"));
-  EXPECT_EQ("http://sample.org/",
-            url::Combine("http://sample.org", "///"));
+  EXPECT_EQ("http://sample.org/", url::Combine("http://sample.org", "///"));
   EXPECT_EQ("http://sample.org/obj/path1/path2",
             url::Combine("http://sample.org/obj", "path1/path2"));
   EXPECT_EQ("http://sample.org/obj/path1/path2#tag",
@@ -50,25 +48,19 @@ TEST(UrlUtils, GetQueryString) {
   EXPECT_EQ("?q=v&b=2",
             url::GetQueryString("http://s.com/?q=v&b=2#tag?2", true));
 
-  EXPECT_EQ("#tag?a=2",
-            url::GetQueryString("http://s.com/#tag?a=2", false));
-  EXPECT_EQ("",
-            url::GetQueryString("http://s.com/#tag?a=2", true));
+  EXPECT_EQ("#tag?a=2", url::GetQueryString("http://s.com/#tag?a=2", false));
+  EXPECT_EQ("", url::GetQueryString("http://s.com/#tag?a=2", true));
 
-  EXPECT_EQ("?a=2&b=2",
-            url::GetQueryString("?a=2&b=2", false));
-  EXPECT_EQ("?a=2&b=2",
-            url::GetQueryString("?a=2&b=2", true));
+  EXPECT_EQ("?a=2&b=2", url::GetQueryString("?a=2&b=2", false));
+  EXPECT_EQ("?a=2&b=2", url::GetQueryString("?a=2&b=2", true));
 
-  EXPECT_EQ("#s#?d#?f?#s?#d",
-            url::GetQueryString("#s#?d#?f?#s?#d", false));
-  EXPECT_EQ("",
-            url::GetQueryString("#s#?d#?f?#s?#d", true));
+  EXPECT_EQ("#s#?d#?f?#s?#d", url::GetQueryString("#s#?d#?f?#s?#d", false));
+  EXPECT_EQ("", url::GetQueryString("#s#?d#?f?#s?#d", true));
 }
 
 TEST(UrlUtils, GetQueryStringParameters) {
   auto params = url::GetQueryStringParameters(
-    "http://sample.org/path?k=v&&%3Dkey%3D=val%26&r#blah");
+      "http://sample.org/path?k=v&&%3Dkey%3D=val%26&r#blah");
 
   EXPECT_EQ(3, params.size());
   EXPECT_EQ("k", params[0].first);

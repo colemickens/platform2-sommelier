@@ -175,10 +175,13 @@ class ServerResponse : public ServerRequestResponseBase {
   ServerResponse() = default;
 
   // Generic reply method.
-  void Reply(int status_code, const void* data, size_t data_size,
+  void Reply(int status_code,
+             const void* data,
+             size_t data_size,
              const std::string& mime_type);
   // Reply with text body.
-  void ReplyText(int status_code, const std::string& text,
+  void ReplyText(int status_code,
+                 const std::string& text,
                  const std::string& mime_type);
   // Reply with JSON object. The content type will be "application/json".
   void ReplyJson(int status_code, const base::Value* json);
@@ -190,7 +193,8 @@ class ServerResponse : public ServerRequestResponseBase {
   // data elements. Only trivial data types (scalars, POD structures, etc)
   // can be used.
   template<typename T>
-  void Reply(int status_code, const std::vector<T>& data,
+  void Reply(int status_code,
+             const std::vector<T>& data,
              const std::string& mime_type) {
     // Make sure T doesn't have virtual functions, custom constructors, etc.
     static_assert(std::is_trivial<T>::value, "Only simple data is supported");

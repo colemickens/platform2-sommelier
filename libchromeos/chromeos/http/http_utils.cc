@@ -32,8 +32,8 @@ std::unique_ptr<Response> GetAndBlock(const std::string& url,
                                       const HeaderList& headers,
                                       std::shared_ptr<Transport> transport,
                                       chromeos::ErrorPtr* error) {
-  return SendRequestWithNoDataAndBlock(request_type::kGet, url, headers,
-                                       transport, error);
+  return SendRequestWithNoDataAndBlock(
+      request_type::kGet, url, headers, transport, error);
 }
 
 void Get(const std::string& url,
@@ -41,8 +41,12 @@ void Get(const std::string& url,
          std::shared_ptr<Transport> transport,
          const SuccessCallback& success_callback,
          const ErrorCallback& error_callback) {
-  SendRequestWithNoData(request_type::kGet, url, headers, transport,
-                        success_callback, error_callback);
+  SendRequestWithNoData(request_type::kGet,
+                        url,
+                        headers,
+                        transport,
+                        success_callback,
+                        error_callback);
 }
 
 std::string GetAsStringAndBlock(const std::string& url,
@@ -59,7 +63,9 @@ void GetAsString(
     std::shared_ptr<Transport> transport,
     const base::Callback<void(const std::string&)>& success_callback,
     const ErrorCallback& error_callback) {
-  Get(url, headers, transport,
+  Get(url,
+      headers,
+      transport,
       base::Bind(SuccessCallbackStringWrapper, success_callback),
       error_callback);
 }
@@ -67,16 +73,20 @@ void GetAsString(
 std::unique_ptr<Response> HeadAndBlock(const std::string& url,
                                        std::shared_ptr<Transport> transport,
                                        chromeos::ErrorPtr* error) {
-  return SendRequestWithNoDataAndBlock(request_type::kHead, url, {}, transport,
-                                       error);
+  return SendRequestWithNoDataAndBlock(
+      request_type::kHead, url, {}, transport, error);
 }
 
 void Head(const std::string& url,
           std::shared_ptr<Transport> transport,
           const SuccessCallback& success_callback,
           const ErrorCallback& error_callback) {
-  SendRequestWithNoData(request_type::kHead, url, {}, transport,
-                        success_callback, error_callback);
+  SendRequestWithNoData(request_type::kHead,
+                        url,
+                        {},
+                        transport,
+                        success_callback,
+                        error_callback);
 }
 
 std::unique_ptr<Response> PostTextAndBlock(const std::string& url,
@@ -85,8 +95,8 @@ std::unique_ptr<Response> PostTextAndBlock(const std::string& url,
                                            const HeaderList& headers,
                                            std::shared_ptr<Transport> transport,
                                            chromeos::ErrorPtr* error) {
-  return PostBinaryAndBlock(url, data.data(), data.size(), mime_type, headers,
-                            transport, error);
+  return PostBinaryAndBlock(
+      url, data.data(), data.size(), mime_type, headers, transport, error);
 }
 
 void PostText(const std::string& url,
@@ -96,8 +106,14 @@ void PostText(const std::string& url,
               std::shared_ptr<Transport> transport,
               const SuccessCallback& success_callback,
               const ErrorCallback& error_callback) {
-  PostBinary(url, data.data(), data.size(), mime_type, headers, transport,
-             success_callback, error_callback);
+  PostBinary(url,
+             data.data(),
+             data.size(),
+             mime_type,
+             headers,
+             transport,
+             success_callback,
+             error_callback);
 }
 
 std::unique_ptr<Response> SendRequestAndBlock(
@@ -127,19 +143,18 @@ std::unique_ptr<Response> SendRequestWithNoDataAndBlock(
     const HeaderList& headers,
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error) {
-  return SendRequestAndBlock(method, url, nullptr, 0, {}, headers, transport,
-                             error);
+  return SendRequestAndBlock(
+      method, url, nullptr, 0, {}, headers, transport, error);
 }
 
-void SendRequest(
-    const std::string& method,
-    const std::string& url,
-    std::unique_ptr<DataReaderInterface> data_reader,
-    const std::string& mime_type,
-    const HeaderList& headers,
-    std::shared_ptr<Transport> transport,
-    const SuccessCallback& success_callback,
-    const ErrorCallback& error_callback) {
+void SendRequest(const std::string& method,
+                 const std::string& url,
+                 std::unique_ptr<DataReaderInterface> data_reader,
+                 const std::string& mime_type,
+                 const HeaderList& headers,
+                 std::shared_ptr<Transport> transport,
+                 const SuccessCallback& success_callback,
+                 const ErrorCallback& error_callback) {
   Request request(url, method, transport);
   request.AddHeaders(headers);
   if (data_reader && data_reader->GetDataSize() > 0) {
@@ -148,40 +163,48 @@ void SendRequest(
     request.SetContentType(mime_type);
     chromeos::ErrorPtr error;
     if (!request.AddRequestBody(std::move(data_reader), &error)) {
-      transport->RunCallbackAsync(FROM_HERE,
-                                  base::Bind(error_callback,
-                                             base::Owned(error.release())));
+      transport->RunCallbackAsync(
+          FROM_HERE, base::Bind(error_callback, base::Owned(error.release())));
       return;
     }
   }
   request.GetResponse(success_callback, error_callback);
 }
 
-void SendRequest(
-    const std::string& method,
-    const std::string& url,
-    const void* data,
-    size_t data_size,
-    const std::string& mime_type,
-    const HeaderList& headers,
-    std::shared_ptr<Transport> transport,
-    const SuccessCallback& success_callback,
-    const ErrorCallback& error_callback) {
+void SendRequest(const std::string& method,
+                 const std::string& url,
+                 const void* data,
+                 size_t data_size,
+                 const std::string& mime_type,
+                 const HeaderList& headers,
+                 std::shared_ptr<Transport> transport,
+                 const SuccessCallback& success_callback,
+                 const ErrorCallback& error_callback) {
   std::unique_ptr<DataReaderInterface> data_reader{
-    new MemoryDataReader(data, data_size)
-  };
-  SendRequest(method, url, std::move(data_reader), mime_type, headers,
-              transport, success_callback, error_callback);
+      new MemoryDataReader(data, data_size)};
+  SendRequest(method,
+              url,
+              std::move(data_reader),
+              mime_type,
+              headers,
+              transport,
+              success_callback,
+              error_callback);
 }
 
-void SendRequestWithNoData(
-    const std::string& method,
-    const std::string& url,
-    const HeaderList& headers,
-    std::shared_ptr<Transport> transport,
-    const SuccessCallback& success_callback,
-    const ErrorCallback& error_callback) {
-  SendRequest(method, url, {}, {}, headers, transport, success_callback,
+void SendRequestWithNoData(const std::string& method,
+                           const std::string& url,
+                           const HeaderList& headers,
+                           std::shared_ptr<Transport> transport,
+                           const SuccessCallback& success_callback,
+                           const ErrorCallback& error_callback) {
+  SendRequest(method,
+              url,
+              {},
+              {},
+              headers,
+              transport,
+              success_callback,
               error_callback);
 }
 
@@ -193,33 +216,50 @@ std::unique_ptr<Response> PostBinaryAndBlock(
     const HeaderList& headers,
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error) {
-  return SendRequestAndBlock(request_type::kPost, url, data, data_size,
-                             mime_type, headers, transport, error);
+  return SendRequestAndBlock(request_type::kPost,
+                             url,
+                             data,
+                             data_size,
+                             mime_type,
+                             headers,
+                             transport,
+                             error);
 }
 
-void PostBinary(
-    const std::string& url,
-    std::unique_ptr<DataReaderInterface> data_reader,
-    const std::string& mime_type,
-    const HeaderList& headers,
-    std::shared_ptr<Transport> transport,
-    const SuccessCallback& success_callback,
-    const ErrorCallback& error_callback) {
-  SendRequest(request_type::kPost, url, std::move(data_reader), mime_type,
-              headers, transport, success_callback, error_callback);
+void PostBinary(const std::string& url,
+                std::unique_ptr<DataReaderInterface> data_reader,
+                const std::string& mime_type,
+                const HeaderList& headers,
+                std::shared_ptr<Transport> transport,
+                const SuccessCallback& success_callback,
+                const ErrorCallback& error_callback) {
+  SendRequest(request_type::kPost,
+              url,
+              std::move(data_reader),
+              mime_type,
+              headers,
+              transport,
+              success_callback,
+              error_callback);
 }
 
-void PostBinary(
-    const std::string& url,
-    const void* data,
-    size_t data_size,
-    const std::string& mime_type,
-    const HeaderList& headers,
-    std::shared_ptr<Transport> transport,
-    const SuccessCallback& success_callback,
-    const ErrorCallback& error_callback) {
-  SendRequest(request_type::kPost, url, data, data_size, mime_type,
-              headers, transport, success_callback, error_callback);
+void PostBinary(const std::string& url,
+                const void* data,
+                size_t data_size,
+                const std::string& mime_type,
+                const HeaderList& headers,
+                std::shared_ptr<Transport> transport,
+                const SuccessCallback& success_callback,
+                const ErrorCallback& error_callback) {
+  SendRequest(request_type::kPost,
+              url,
+              data,
+              data_size,
+              mime_type,
+              headers,
+              transport,
+              success_callback,
+              error_callback);
 }
 
 std::unique_ptr<Response> PostFormDataAndBlock(
@@ -229,9 +269,13 @@ std::unique_ptr<Response> PostFormDataAndBlock(
     std::shared_ptr<Transport> transport,
     chromeos::ErrorPtr* error) {
   std::string encoded_data = chromeos::data_encoding::WebParamsEncode(data);
-  return PostBinaryAndBlock(url, encoded_data.c_str(), encoded_data.size(),
+  return PostBinaryAndBlock(url,
+                            encoded_data.c_str(),
+                            encoded_data.size(),
                             chromeos::mime::application::kWwwFormUrlEncoded,
-                            headers, transport, error);
+                            headers,
+                            transport,
+                            error);
 }
 
 std::unique_ptr<Response> PostFormDataAndBlock(
@@ -247,69 +291,75 @@ std::unique_ptr<Response> PostFormDataAndBlock(
   return request.GetResponseAndBlock(error);
 }
 
-void PostFormData(
-    const std::string& url,
-    const FormFieldList& data,
-    const HeaderList& headers,
-    std::shared_ptr<Transport> transport,
-    const SuccessCallback& success_callback,
-    const ErrorCallback& error_callback) {
+void PostFormData(const std::string& url,
+                  const FormFieldList& data,
+                  const HeaderList& headers,
+                  std::shared_ptr<Transport> transport,
+                  const SuccessCallback& success_callback,
+                  const ErrorCallback& error_callback) {
   std::string encoded_data = chromeos::data_encoding::WebParamsEncode(data);
-  return PostBinary(url, encoded_data.c_str(), encoded_data.size(),
+  return PostBinary(url,
+                    encoded_data.c_str(),
+                    encoded_data.size(),
                     chromeos::mime::application::kWwwFormUrlEncoded,
-                    headers, transport, success_callback, error_callback);
+                    headers,
+                    transport,
+                    success_callback,
+                    error_callback);
 }
 
-void PostFormData(
-    const std::string& url,
-    std::unique_ptr<FormData> form_data,
-    const HeaderList& headers,
-    std::shared_ptr<Transport> transport,
-    const SuccessCallback& success_callback,
-    const ErrorCallback& error_callback) {
+void PostFormData(const std::string& url,
+                  std::unique_ptr<FormData> form_data,
+                  const HeaderList& headers,
+                  std::shared_ptr<Transport> transport,
+                  const SuccessCallback& success_callback,
+                  const ErrorCallback& error_callback) {
   Request request(url, request_type::kPost, transport);
   request.AddHeaders(headers);
   chromeos::ErrorPtr error;
   if (!request.AddRequestBodyAsFormData(std::move(form_data), &error)) {
-    transport->RunCallbackAsync(FROM_HERE,
-                                base::Bind(error_callback,
-                                            base::Owned(error.release())));
+    transport->RunCallbackAsync(
+        FROM_HERE, base::Bind(error_callback, base::Owned(error.release())));
     return;
   }
   request.GetResponse(success_callback, error_callback);
 }
 
-std::unique_ptr<Response> PostJsonAndBlock(
-    const std::string& url,
-    const base::Value* json,
-    const HeaderList& headers,
-    std::shared_ptr<Transport> transport,
-    chromeos::ErrorPtr* error) {
+std::unique_ptr<Response> PostJsonAndBlock(const std::string& url,
+                                           const base::Value* json,
+                                           const HeaderList& headers,
+                                           std::shared_ptr<Transport> transport,
+                                           chromeos::ErrorPtr* error) {
   std::string data;
   if (json)
     base::JSONWriter::Write(json, &data);
   std::string mime_type = AppendParameter(chromeos::mime::application::kJson,
                                           chromeos::mime::parameters::kCharset,
                                           "utf-8");
-  return PostBinaryAndBlock(url, data.c_str(), data.size(),
-                            mime_type, headers, transport, error);
+  return PostBinaryAndBlock(
+      url, data.c_str(), data.size(), mime_type, headers, transport, error);
 }
 
-void PostJson(
-    const std::string& url,
-    std::unique_ptr<base::Value> json,
-    const HeaderList& headers,
-    std::shared_ptr<Transport> transport,
-    const SuccessCallback& success_callback,
-    const ErrorCallback& error_callback) {
+void PostJson(const std::string& url,
+              std::unique_ptr<base::Value> json,
+              const HeaderList& headers,
+              std::shared_ptr<Transport> transport,
+              const SuccessCallback& success_callback,
+              const ErrorCallback& error_callback) {
   std::string data;
   if (json)
     base::JSONWriter::Write(json.get(), &data);
   std::string mime_type = AppendParameter(chromeos::mime::application::kJson,
                                           chromeos::mime::parameters::kCharset,
                                           "utf-8");
-  PostBinary(url, data.c_str(), data.size(), mime_type, headers, transport,
-             success_callback, error_callback);
+  PostBinary(url,
+             data.c_str(),
+             data.size(),
+             mime_type,
+             headers,
+             transport,
+             success_callback,
+             error_callback);
 }
 
 std::unique_ptr<Response> PatchJsonAndBlock(
@@ -324,30 +374,43 @@ std::unique_ptr<Response> PatchJsonAndBlock(
   std::string mime_type = AppendParameter(chromeos::mime::application::kJson,
                                           chromeos::mime::parameters::kCharset,
                                           "utf-8");
-  return SendRequestAndBlock(request_type::kPatch, url, data.c_str(),
-                             data.size(), mime_type, headers, transport, error);
+  return SendRequestAndBlock(request_type::kPatch,
+                             url,
+                             data.c_str(),
+                             data.size(),
+                             mime_type,
+                             headers,
+                             transport,
+                             error);
 }
 
-void PatchJson(
-    const std::string& url,
-    std::unique_ptr<base::Value> json,
-    const HeaderList& headers,
-    std::shared_ptr<Transport> transport,
-    const SuccessCallback& success_callback,
-    const ErrorCallback& error_callback) {
+void PatchJson(const std::string& url,
+               std::unique_ptr<base::Value> json,
+               const HeaderList& headers,
+               std::shared_ptr<Transport> transport,
+               const SuccessCallback& success_callback,
+               const ErrorCallback& error_callback) {
   std::string data;
   if (json)
     base::JSONWriter::Write(json.get(), &data);
   std::string mime_type = AppendParameter(chromeos::mime::application::kJson,
                                           chromeos::mime::parameters::kCharset,
                                           "utf-8");
-  SendRequest(request_type::kPatch, url, data.c_str(), data.size(),
-              mime_type, headers, transport,
-              success_callback, error_callback);
+  SendRequest(request_type::kPatch,
+              url,
+              data.c_str(),
+              data.size(),
+              mime_type,
+              headers,
+              transport,
+              success_callback,
+              error_callback);
 }
 
 std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
-    const Response* response, int* status_code, chromeos::ErrorPtr* error) {
+    const Response* response,
+    int* status_code,
+    chromeos::ErrorPtr* error) {
   if (!response)
     return std::unique_ptr<base::DictionaryValue>();
 
@@ -359,7 +422,9 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
   auto content_type = RemoveParameters(response->GetContentType());
   if (content_type != chromeos::mime::application::kJson &&
       content_type != chromeos::mime::text::kPlain) {
-    chromeos::Error::AddTo(error, FROM_HERE, chromeos::errors::json::kDomain,
+    chromeos::Error::AddTo(error,
+                           FROM_HERE,
+                           chromeos::errors::json::kDomain,
                            "non_json_content_type",
                            "Unexpected response content type: " + content_type);
     return std::unique_ptr<base::DictionaryValue>();
@@ -370,14 +435,19 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
   base::Value* value = base::JSONReader::ReadAndReturnError(
       json, base::JSON_PARSE_RFC, nullptr, &error_message);
   if (!value) {
-    chromeos::Error::AddTo(error, FROM_HERE, chromeos::errors::json::kDomain,
-                           chromeos::errors::json::kParseError, error_message);
+    chromeos::Error::AddTo(error,
+                           FROM_HERE,
+                           chromeos::errors::json::kDomain,
+                           chromeos::errors::json::kParseError,
+                           error_message);
     return std::unique_ptr<base::DictionaryValue>();
   }
   base::DictionaryValue* dict_value = nullptr;
   if (!value->GetAsDictionary(&dict_value)) {
     delete value;
-    chromeos::Error::AddTo(error, FROM_HERE, chromeos::errors::json::kDomain,
+    chromeos::Error::AddTo(error,
+                           FROM_HERE,
+                           chromeos::errors::json::kDomain,
                            chromeos::errors::json::kObjectExpected,
                            "Response is not a valid JSON object");
     return std::unique_ptr<base::DictionaryValue>();

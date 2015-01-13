@@ -44,8 +44,8 @@ TEST(DBusUtils, Supported_ComplexTypes) {
   EXPECT_TRUE(IsTypeSupported<std::vector<bool>>::value);
   EXPECT_TRUE(IsTypeSupported<std::vector<uint8_t>>::value);
   EXPECT_TRUE((IsTypeSupported<std::pair<int16_t, double>>::value));
-  EXPECT_TRUE((IsTypeSupported<std::map<uint16_t,
-                                        std::vector<int64_t>>>::value));
+  EXPECT_TRUE(
+      (IsTypeSupported<std::map<uint16_t, std::vector<int64_t>>>::value));
   EXPECT_TRUE((IsTypeSupported<std::tuple<bool, double, int32_t>>::value));
 }
 
@@ -111,7 +111,8 @@ TEST(DBusUtils, Signatures_Maps) {
   EXPECT_EQ("a{ss}", (GetDBusSignature<std::map<std::string, std::string>>()));
   EXPECT_EQ("a{sv}", (GetDBusSignature<std::map<std::string, Any>>()));
   EXPECT_EQ("a{id}", (GetDBusSignature<std::map<int, double>>()));
-  EXPECT_EQ("a{ia{ss}}",
+  EXPECT_EQ(
+      "a{ia{ss}}",
       (GetDBusSignature<std::map<int, std::map<std::string, std::string>>>()));
 }
 
@@ -125,8 +126,8 @@ TEST(DBusUtils, Signatures_Tuples) {
   EXPECT_EQ("(i)", (GetDBusSignature<std::tuple<int>>()));
   EXPECT_EQ("(sv)", (GetDBusSignature<std::tuple<std::string, Any>>()));
   EXPECT_EQ("(id(si))",
-            (GetDBusSignature<std::tuple<int, double,
-                                         std::tuple<std::string, int>>>()));
+            (GetDBusSignature<
+                std::tuple<int, double, std::tuple<std::string, int>>>()));
 }
 
 // Test that a byte can be properly written and read. We only have this
@@ -147,7 +148,7 @@ TEST(DBusUtils, AppendAndPopByte) {
 
   uint8_t byte_value = 0;
   EXPECT_TRUE(PopValueFromReader(&reader, &byte_value));
-  EXPECT_EQ(123, byte_value);  // Should match with the input.
+  EXPECT_EQ(123, byte_value);          // Should match with the input.
   EXPECT_FALSE(reader.HasMoreData());  // Should not have more data to read.
 
   // Try to get another byte. Should fail.
@@ -437,9 +438,9 @@ TEST(DBusUtils, ArrayOfObjectPaths) {
   std::unique_ptr<Response> message(Response::CreateEmpty().release());
   MessageWriter writer(message.get());
   std::vector<ObjectPath> object_paths{
-    ObjectPath("/object/path/1"),
-    ObjectPath("/object/path/2"),
-    ObjectPath("/object/path/3"),
+      ObjectPath("/object/path/1"),
+      ObjectPath("/object/path/2"),
+      ObjectPath("/object/path/3"),
   };
   AppendValueToWriter(&writer, object_paths);
 
@@ -517,24 +518,15 @@ TEST(DBusUtils, VariantDictionary) {
   EXPECT_TRUE(PopValueFromReader(&reader, &values_out));
   EXPECT_FALSE(reader.HasMoreData());
   EXPECT_EQ(values.size(), values_out.size());
-  EXPECT_EQ(values["key1"].Get<uint8_t>(),
-            values_out["key1"].Get<uint8_t>());
-  EXPECT_EQ(values["key2"].Get<bool>(),
-            values_out["key2"].Get<bool>());
-  EXPECT_EQ(values["key3"].Get<int16_t>(),
-            values_out["key3"].Get<int16_t>());
-  EXPECT_EQ(values["key4"].Get<uint16_t>(),
-            values_out["key4"].Get<uint16_t>());
-  EXPECT_EQ(values["key5"].Get<int32_t>(),
-            values_out["key5"].Get<int32_t>());
-  EXPECT_EQ(values["key6"].Get<uint32_t>(),
-            values_out["key6"].Get<uint32_t>());
-  EXPECT_EQ(values["key7"].Get<int64_t>(),
-            values_out["key7"].Get<int64_t>());
-  EXPECT_EQ(values["key8"].Get<uint64_t>(),
-            values_out["key8"].Get<uint64_t>());
-  EXPECT_EQ(values["key9"].Get<double>(),
-            values_out["key9"].Get<double>());
+  EXPECT_EQ(values["key1"].Get<uint8_t>(), values_out["key1"].Get<uint8_t>());
+  EXPECT_EQ(values["key2"].Get<bool>(), values_out["key2"].Get<bool>());
+  EXPECT_EQ(values["key3"].Get<int16_t>(), values_out["key3"].Get<int16_t>());
+  EXPECT_EQ(values["key4"].Get<uint16_t>(), values_out["key4"].Get<uint16_t>());
+  EXPECT_EQ(values["key5"].Get<int32_t>(), values_out["key5"].Get<int32_t>());
+  EXPECT_EQ(values["key6"].Get<uint32_t>(), values_out["key6"].Get<uint32_t>());
+  EXPECT_EQ(values["key7"].Get<int64_t>(), values_out["key7"].Get<int64_t>());
+  EXPECT_EQ(values["key8"].Get<uint64_t>(), values_out["key8"].Get<uint64_t>());
+  EXPECT_EQ(values["key9"].Get<double>(), values_out["key9"].Get<double>());
   EXPECT_EQ(values["keyA"].Get<std::string>(),
             values_out["keyA"].Get<std::string>());
   EXPECT_EQ(values["keyB"].Get<ObjectPath>(),
@@ -649,8 +641,7 @@ struct Person {
   int age;
   // Provide == operator so we can easily compare arrays of Person.
   bool operator==(const Person& rhs) const {
-    return first_name == rhs.first_name &&
-           last_name == rhs.last_name &&
+    return first_name == rhs.first_name && last_name == rhs.last_name &&
            age == rhs.age;
   }
 };
@@ -730,7 +721,7 @@ TEST(DBusUtils, CustomStructInComplexTypes) {
 
   EXPECT_EQ("aa{i(ssi)}", message->GetSignature());
 
-  std::vector<std::map<int, Person>> data_out;;
+  std::vector<std::map<int, Person>> data_out;
 
   MessageReader reader(message.get());
   EXPECT_TRUE(PopValueFromReader(&reader, &data_out));

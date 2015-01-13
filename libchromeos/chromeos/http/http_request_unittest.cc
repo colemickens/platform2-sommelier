@@ -109,8 +109,8 @@ TEST_F(HttpRequestTest, GetResponseAndBlock) {
   request.SetAccept("text/*, text/html, text/html;level=1, */*");
   request.AddHeader(request_header::kAcceptEncoding, "compress, gzip");
   request.AddHeaders({
-    {request_header::kAcceptLanguage, "da, en-gb;q=0.8, en;q=0.7"},
-    {request_header::kConnection, "close"},
+      {request_header::kAcceptLanguage, "da, en-gb;q=0.8, en;q=0.7"},
+      {request_header::kConnection, "close"},
   });
   request.AddRange(-10);
   request.AddRange(100, 200);
@@ -136,13 +136,11 @@ TEST_F(HttpRequestTest, GetResponseAndBlock) {
   EXPECT_CALL(*connection_, MockSetRequestData(ContainsStringData(req_body), _))
       .WillOnce(Return(true));
 
-  EXPECT_TRUE(request.AddRequestBody(req_body.data(), req_body.size(),
-                                     nullptr));
+  EXPECT_TRUE(
+      request.AddRequestBody(req_body.data(), req_body.size(), nullptr));
 
-  EXPECT_CALL(*connection_, FinishRequest(_))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*connection_, GetResponseDataSize())
-      .WillOnce(Return(0));
+  EXPECT_CALL(*connection_, FinishRequest(_)).WillOnce(Return(true));
+  EXPECT_CALL(*connection_, GetResponseDataSize()).WillOnce(Return(0));
   EXPECT_CALL(*connection_, ReadResponseData(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(0), Return(true)));
   auto resp = request.GetResponseAndBlock(nullptr);
@@ -187,8 +185,9 @@ TEST_F(HttpRequestTest, GetResponse) {
     success_callback.Run(resp.Pass());
   };
 
-  EXPECT_CALL(*transport_, CreateConnection("http://foo.bar",
-                                            request_type::kGet, _, "", "", _))
+  EXPECT_CALL(
+      *transport_,
+      CreateConnection("http://foo.bar", request_type::kGet, _, "", "", _))
       .WillOnce(Return(connection_));
 
   EXPECT_CALL(*connection_, FinishRequestAsync(_, _))

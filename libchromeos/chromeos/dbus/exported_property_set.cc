@@ -19,8 +19,8 @@ namespace chromeos {
 namespace dbus_utils {
 
 ExportedPropertySet::ExportedPropertySet(dbus::Bus* bus)
-    : bus_(bus),
-      weak_ptr_factory_(this) { }
+    : bus_(bus), weak_ptr_factory_(this) {
+}
 
 void ExportedPropertySet::OnPropertiesInterfaceExported(
     DBusInterface* prop_interface) {
@@ -46,10 +46,11 @@ void ExportedPropertySet::RegisterProperty(
   CHECK(res.second) << "Property '" << property_name << "' already exists";
   // Technically, the property set exists longer than the properties themselves,
   // so we could use Unretained here rather than a weak pointer.
-  ExportedPropertyBase::OnUpdateCallback cb = base::Bind(
-      &ExportedPropertySet::HandlePropertyUpdated,
-      weak_ptr_factory_.GetWeakPtr(),
-      interface_name, property_name);
+  ExportedPropertyBase::OnUpdateCallback cb =
+      base::Bind(&ExportedPropertySet::HandlePropertyUpdated,
+                 weak_ptr_factory_.GetWeakPtr(),
+                 interface_name,
+                 property_name);
   exported_property->SetUpdateCallback(cb);
 }
 
@@ -60,7 +61,7 @@ VariantDictionary ExportedPropertySet::HandleGetAll(
 }
 
 VariantDictionary ExportedPropertySet::GetInterfaceProperties(
-     const std::string& interface_name) const {
+    const std::string& interface_name) const {
   VariantDictionary properties;
   auto property_map_itr = properties_.find(interface_name);
   if (property_map_itr != properties_.end()) {
@@ -76,11 +77,10 @@ void ExportedPropertySet::WritePropertiesToDict(
   *dict = GetInterfaceProperties(interface_name);
 }
 
-bool ExportedPropertySet::HandleGet(
-    chromeos::ErrorPtr* error,
-    const std::string& interface_name,
-    const std::string& property_name,
-    chromeos::Any* result) {
+bool ExportedPropertySet::HandleGet(chromeos::ErrorPtr* error,
+                                    const std::string& interface_name,
+                                    const std::string& property_name,
+                                    chromeos::Any* result) {
   bus_->AssertOnOriginThread();
   auto property_map_itr = properties_.find(interface_name);
   if (property_map_itr == properties_.end()) {
@@ -105,11 +105,10 @@ bool ExportedPropertySet::HandleGet(
   return true;
 }
 
-bool ExportedPropertySet::HandleSet(
-    chromeos::ErrorPtr* error,
-    const std::string& interface_name,
-    const std::string& property_name,
-    const chromeos::Any& value) {
+bool ExportedPropertySet::HandleSet(chromeos::ErrorPtr* error,
+                                    const std::string& interface_name,
+                                    const std::string& property_name,
+                                    const chromeos::Any& value) {
   bus_->AssertOnOriginThread();
   auto property_map_itr = properties_.find(interface_name);
   if (property_map_itr == properties_.end()) {

@@ -12,21 +12,18 @@ namespace data_encoding {
 TEST(data_encoding, UrlEncoding) {
   std::string test = "\"http://sample/path/0014.html \"";
   std::string encoded = UrlEncode(test.c_str());
-  EXPECT_EQ("%22http%3A%2F%2Fsample%2Fpath%2F0014.html+%22",
-            encoded);
+  EXPECT_EQ("%22http%3A%2F%2Fsample%2Fpath%2F0014.html+%22", encoded);
   EXPECT_EQ(test, UrlDecode(encoded.c_str()));
 
   test = "\"http://sample/path/0014.html \"";
   encoded = UrlEncode(test.c_str(), false);
-  EXPECT_EQ("%22http%3A%2F%2Fsample%2Fpath%2F0014.html%20%22",
-            encoded);
+  EXPECT_EQ("%22http%3A%2F%2Fsample%2Fpath%2F0014.html%20%22", encoded);
   EXPECT_EQ(test, UrlDecode(encoded.c_str()));
 }
 
 TEST(data_encoding, WebParamsEncoding) {
-  std::string encoded = WebParamsEncode({{"q", "test"},
-                                         {"path", "/usr/bin"},
-                                         {"#", "%"}});
+  std::string encoded =
+      WebParamsEncode({{"q", "test"}, {"path", "/usr/bin"}, {"#", "%"}});
   EXPECT_EQ("q=test&path=%2Fusr%2Fbin&%23=%25", encoded);
 
   auto params = WebParamsDecode(encoded);

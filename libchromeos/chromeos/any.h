@@ -112,11 +112,10 @@ class CHROMEOS_EXPORT Any final {
   // convertible to/compatible with it.
   template<typename T>
   const T& Get() const {
-    CHECK(IsTypeCompatible<T>()) << "Requesting value of type '"
-                                 << GetUndecoratedTypeName<T>()
-                                 << "' from variant containing '"
-                                 << UndecorateTypeName(GetType().name())
-                                 << "'";
+    CHECK(IsTypeCompatible<T>())
+        << "Requesting value of type '" << GetUndecoratedTypeName<T>()
+        << "' from variant containing '" << UndecorateTypeName(GetType().name())
+        << "'";
     return data_buffer_.GetData<T>();
   }
 
@@ -193,4 +192,3 @@ inline void swap(chromeos::Any& lhs, chromeos::Any& rhs) {
 }  // namespace std
 
 #endif  // LIBCHROMEOS_CHROMEOS_ANY_H_
-

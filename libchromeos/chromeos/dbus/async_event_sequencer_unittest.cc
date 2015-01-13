@@ -25,9 +25,9 @@ class AsyncEventSequencerTest : public ::testing::Test {
   MOCK_METHOD1(HandleCompletion, void(bool all_succeeded));
 
   void SetUp() {
-      aec_ = new AsyncEventSequencer();
-      cb_ = base::Bind(&AsyncEventSequencerTest::HandleCompletion,
-                       base::Unretained(this));
+    aec_ = new AsyncEventSequencer();
+    cb_ = base::Bind(&AsyncEventSequencerTest::HandleCompletion,
+                     base::Unretained(this));
   }
 
   scoped_refptr<AsyncEventSequencer> aec_;
@@ -60,9 +60,9 @@ TEST_F(AsyncEventSequencerTest, SomeInitActionsFail) {
 }
 
 TEST_F(AsyncEventSequencerTest, MultiDBusActionsSucceed) {
-  auto handler1 =  aec_->GetExportHandler(
+  auto handler1 = aec_->GetExportHandler(
       kTestInterface, kTestMethod1, "method export failed", false);
-  auto handler2 =  aec_->GetExportHandler(
+  auto handler2 = aec_->GetExportHandler(
       kTestInterface, kTestMethod2, "method export failed", false);
   aec_->OnAllTasksCompletedCall({cb_});
   handler1.Run(kTestInterface, kTestMethod1, true);
@@ -71,9 +71,9 @@ TEST_F(AsyncEventSequencerTest, MultiDBusActionsSucceed) {
 }
 
 TEST_F(AsyncEventSequencerTest, SomeDBusActionsFail) {
-  auto handler1 =  aec_->GetExportHandler(
+  auto handler1 = aec_->GetExportHandler(
       kTestInterface, kTestMethod1, "method export failed", false);
-  auto handler2 =  aec_->GetExportHandler(
+  auto handler2 = aec_->GetExportHandler(
       kTestInterface, kTestMethod2, "method export failed", false);
   aec_->OnAllTasksCompletedCall({cb_});
   handler1.Run(kTestInterface, kTestMethod1, true);
@@ -82,7 +82,7 @@ TEST_F(AsyncEventSequencerTest, SomeDBusActionsFail) {
 }
 
 TEST_F(AsyncEventSequencerTest, MixedActions) {
-  auto handler1 =  aec_->GetExportHandler(
+  auto handler1 = aec_->GetExportHandler(
       kTestInterface, kTestMethod1, "method export failed", false);
   auto handler2 = aec_->GetHandler("handler failed", false);
   aec_->OnAllTasksCompletedCall({cb_});

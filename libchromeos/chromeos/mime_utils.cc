@@ -66,10 +66,11 @@ static std::string DecodeParam(const std::string& param) {
 // ***************************************************************************
 
 bool mime::Split(const std::string& mime_string,
-                 std::string* type, std::string* subtype,
+                 std::string* type,
+                 std::string* subtype,
                  mime::Parameters* parameters) {
-  std::vector<std::string> parts = chromeos::string_utils::Split(mime_string,
-                                                                 ';');
+  std::vector<std::string> parts =
+      chromeos::string_utils::Split(mime_string, ';');
   if (parts.empty())
     return false;
 
@@ -89,7 +90,8 @@ bool mime::Split(const std::string& mime_string,
 }
 
 bool mime::Split(const std::string& mime_string,
-                 std::string* type, std::string* subtype) {
+                 std::string* type,
+                 std::string* subtype) {
   std::string mime = mime::RemoveParameters(mime_string);
   auto types = chromeos::string_utils::SplitAtFirst(mime, '/');
 
@@ -102,14 +104,14 @@ bool mime::Split(const std::string& mime_string,
   return !types.first.empty() && !types.second.empty();
 }
 
-std::string mime::Combine(const std::string& type, const std::string& subtype,
+std::string mime::Combine(const std::string& type,
+                          const std::string& subtype,
                           const mime::Parameters& parameters) {
   std::vector<std::string> parts;
   parts.push_back(chromeos::string_utils::Join('/', type, subtype));
   for (const auto& pair : parameters) {
-    parts.push_back(chromeos::string_utils::Join('=',
-                                                 pair.first,
-                                                 EncodeParam(pair.second)));
+    parts.push_back(chromeos::string_utils::Join(
+        '=', pair.first, EncodeParam(pair.second)));
   }
   return chromeos::string_utils::Join("; ", parts);
 }

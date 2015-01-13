@@ -19,11 +19,10 @@ namespace string_utils {
 // |trim_whitespaces| causes each element to have all whitespaces trimmed off.
 // |purge_empty_strings| specifies whether empty elements from the original
 // string should be omitted.
-CHROMEOS_EXPORT std::vector<std::string> Split(
-    const std::string& str,
-    char delimiter,
-    bool trim_whitespaces,
-    bool purge_empty_strings);
+CHROMEOS_EXPORT std::vector<std::string> Split(const std::string& str,
+                                               char delimiter,
+                                               bool trim_whitespaces,
+                                               bool purge_empty_strings);
 // Splits the string, trims all whitespaces, omits empty string parts.
 inline std::vector<std::string> Split(const std::string& str, char delimiter) {
   return Split(str, delimiter, true, true);
@@ -37,15 +36,12 @@ inline std::vector<std::string> Split(const std::string& str,
 
 // Splits the string into two pieces at the first position of the specified
 // delimiter.
-CHROMEOS_EXPORT std::pair<std::string, std::string> SplitAtFirst(
-    const std::string& str,
-    char delimiter,
-    bool trim_whitespaces);
+CHROMEOS_EXPORT std::pair<std::string, std::string>
+SplitAtFirst(const std::string& str, char delimiter, bool trim_whitespaces);
 // Splits the string into two pieces at the first position of the specified
 // delimiter. Both parts have all whitespaces trimmed off.
-inline std::pair<std::string, std::string> SplitAtFirst(
-    const std::string& str,
-    char delimiter) {
+inline std::pair<std::string, std::string> SplitAtFirst(const std::string& str,
+                                                        char delimiter) {
   return SplitAtFirst(str, delimiter, true);
 }
 
@@ -81,10 +77,14 @@ CHROMEOS_EXPORT std::string Join(const std::string& delimiter,
 // to a string. In most cases, it redirects the call to std::to_string with
 // two exceptions: for std::string itself and for double and bool.
 template<typename T>
-inline std::string ToString(T value) { return std::to_string(value); }
+inline std::string ToString(T value) {
+  return std::to_string(value);
+}
 // Having the following overload is handy for templates where the type
 // of template parameter isn't known and could be a string itself.
-inline std::string ToString(std::string value) { return value; }
+inline std::string ToString(std::string value) {
+  return value;
+}
 // We overload this for double because std::to_string(double) uses %f to
 // format the value and I would like to use a shorter %g format instead.
 CHROMEOS_EXPORT std::string ToString(double value);

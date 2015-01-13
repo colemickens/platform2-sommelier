@@ -58,9 +58,12 @@ TEST_F(KeyValueStoreTest, LoadAndReloadTest) {
   ASSERT_EQ(blob.size(), base::WriteFile(temp_file_, blob.data(), blob.size()));
   EXPECT_TRUE(store_.Load(temp_file_));
 
-  map<string, string> expected = {
-      {"A", "B"}, {"C", ""}, {"", ""}, {"FOO", "BAR=BAZ"}, {"BAR", "BAX"},
-      {"MISSING", "NEWLINE"}};
+  map<string, string> expected = {{"A", "B"},
+                                  {"C", ""},
+                                  {"", ""},
+                                  {"FOO", "BAR=BAZ"},
+                                  {"BAR", "BAX"},
+                                  {"MISSING", "NEWLINE"}};
 
   // Test expected values
   string value;

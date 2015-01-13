@@ -23,8 +23,7 @@ Transport::Transport(const std::shared_ptr<CurlInterface>& curl_interface)
 
 Transport::Transport(const std::shared_ptr<CurlInterface>& curl_interface,
                      scoped_refptr<base::TaskRunner> task_runner)
-    : curl_interface_{curl_interface},
-      task_runner_{task_runner} {
+    : curl_interface_{curl_interface}, task_runner_{task_runner} {
   VLOG(1) << "curl::Transport created";
 }
 
@@ -51,8 +50,11 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
   CURL* curl_handle = curl_interface_->EasyInit();
   if (!curl_handle) {
     LOG(ERROR) << "Failed to initialize CURL";
-    chromeos::Error::AddTo(error, FROM_HERE, http::kErrorDomain,
-                           "curl_init_failed", "Failed to initialize CURL");
+    chromeos::Error::AddTo(error,
+                           FROM_HERE,
+                           http::kErrorDomain,
+                           "curl_init_failed",
+                           "Failed to initialize CURL");
     return connection;
   }
 
@@ -60,12 +62,12 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
   CURLcode code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_URL, url);
 
   if (code == CURLE_OK && !user_agent.empty()) {
-    code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_USERAGENT,
-                                          user_agent);
+    code = curl_interface_->EasySetOptStr(
+        curl_handle, CURLOPT_USERAGENT, user_agent);
   }
   if (code == CURLE_OK && !referer.empty()) {
-    code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_REFERER,
-                                          referer);
+    code =
+        curl_interface_->EasySetOptStr(curl_handle, CURLOPT_REFERER, referer);
   }
   if (code == CURLE_OK && !proxy_.empty()) {
     code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_PROXY, proxy_);
@@ -73,7 +75,7 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
 
   // Setup HTTP request method and optional request body.
   if (code == CURLE_OK) {
-    if (method ==  request_type::kGet) {
+    if (method == request_type::kGet) {
       code = curl_interface_->EasySetOptInt(curl_handle, CURLOPT_HTTPGET, 1);
     } else if (method == request_type::kHead) {
       code = curl_interface_->EasySetOptInt(curl_handle, CURLOPT_NOBODY, 1);
@@ -83,11 +85,11 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
       // POST and custom request methods
       code = curl_interface_->EasySetOptInt(curl_handle, CURLOPT_POST, 1);
       if (code == CURLE_OK)
-        code = curl_interface_->EasySetOptPtr(curl_handle, CURLOPT_POSTFIELDS,
-                                              nullptr);
+        code = curl_interface_->EasySetOptPtr(
+            curl_handle, CURLOPT_POSTFIELDS, nullptr);
       if (code == CURLE_OK && method != request_type::kPost)
-        code = curl_interface_->EasySetOptStr(curl_handle,
-                                              CURLOPT_CUSTOMREQUEST, method);
+        code = curl_interface_->EasySetOptStr(
+            curl_handle, CURLOPT_CUSTOMREQUEST, method);
     }
   }
 
@@ -134,7 +136,9 @@ void Transport::AddCurlError(chromeos::ErrorPtr* error,
                              const tracked_objects::Location& location,
                              CURLcode code,
                              CurlInterface* curl_interface) {
-  chromeos::Error::AddTo(error, location, "curl_error",
+  chromeos::Error::AddTo(error,
+                         location,
+                         "curl_error",
                          chromeos::string_utils::ToString(code),
                          curl_interface->EasyStrError(code));
 }

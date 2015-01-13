@@ -13,34 +13,37 @@ namespace chromeos {
 namespace http {
 namespace curl {
 
-static int curl_trace(CURL *handle, curl_infotype type,
-                      char *data, size_t size, void *userp) {
+static int curl_trace(CURL* handle,
+                      curl_infotype type,
+                      char* data,
+                      size_t size,
+                      void* userp) {
   std::string msg(data, size);
 
   switch (type) {
-  case CURLINFO_TEXT:
-    VLOG(3) << "== Info: " << msg;
-    break;
-  case CURLINFO_HEADER_OUT:
-    VLOG(3) << "=> Send headers:\n" << msg;
-    break;
-  case CURLINFO_DATA_OUT:
-    VLOG(3) << "=> Send data:\n" << msg;
-    break;
-  case CURLINFO_SSL_DATA_OUT:
-    VLOG(3) << "=> Send SSL data" << msg;
-    break;
-  case CURLINFO_HEADER_IN:
-    VLOG(3) << "<= Recv header: " << msg;
-    break;
-  case CURLINFO_DATA_IN:
-    VLOG(3) << "<= Recv data:\n" << msg;
-    break;
-  case CURLINFO_SSL_DATA_IN:
-    VLOG(3) << "<= Recv SSL data" << msg;
-    break;
-  default:
-    break;
+    case CURLINFO_TEXT:
+      VLOG(3) << "== Info: " << msg;
+      break;
+    case CURLINFO_HEADER_OUT:
+      VLOG(3) << "=> Send headers:\n" << msg;
+      break;
+    case CURLINFO_DATA_OUT:
+      VLOG(3) << "=> Send data:\n" << msg;
+      break;
+    case CURLINFO_SSL_DATA_OUT:
+      VLOG(3) << "=> Send SSL data" << msg;
+      break;
+    case CURLINFO_HEADER_IN:
+      VLOG(3) << "<= Recv header: " << msg;
+      break;
+    case CURLINFO_DATA_IN:
+      VLOG(3) << "<= Recv data:\n" << msg;
+      break;
+    case CURLINFO_SSL_DATA_IN:
+      VLOG(3) << "<= Recv SSL data" << msg;
+      break;
+    default:
+      break;
   }
   return 0;
 }
@@ -78,8 +81,8 @@ bool Connection::SetRequestData(
 
 void Connection::PrepareRequest() {
   if (VLOG_IS_ON(3)) {
-    curl_interface_->EasySetOptCallback(curl_handle_, CURLOPT_DEBUGFUNCTION,
-                                        &curl_trace);
+    curl_interface_->EasySetOptCallback(
+        curl_handle_, CURLOPT_DEBUGFUNCTION, &curl_trace);
     curl_interface_->EasySetOptInt(curl_handle_, CURLOPT_VERBOSE, 1);
   }
 
@@ -87,15 +90,15 @@ void Connection::PrepareRequest() {
   uint64_t data_size =
       request_data_reader_ ? request_data_reader_->GetDataSize() : 0;
   if (method_ == request_type::kPut) {
-    curl_interface_->EasySetOptOffT(curl_handle_, CURLOPT_INFILESIZE_LARGE,
-                                    data_size);
+    curl_interface_->EasySetOptOffT(
+        curl_handle_, CURLOPT_INFILESIZE_LARGE, data_size);
   } else {
-    curl_interface_->EasySetOptOffT(curl_handle_, CURLOPT_POSTFIELDSIZE_LARGE,
-                                    data_size);
+    curl_interface_->EasySetOptOffT(
+        curl_handle_, CURLOPT_POSTFIELDSIZE_LARGE, data_size);
   }
   if (request_data_reader_) {
-    curl_interface_->EasySetOptCallback(curl_handle_, CURLOPT_READFUNCTION,
-                                        &Connection::read_callback);
+    curl_interface_->EasySetOptCallback(
+        curl_handle_, CURLOPT_READFUNCTION, &Connection::read_callback);
     curl_interface_->EasySetOptPtr(curl_handle_, CURLOPT_READDATA, this);
   }
 
@@ -107,22 +110,22 @@ void Connection::PrepareRequest() {
       VLOG(2) << "Request header: " << header;
       header_list_ = curl_slist_append(header_list_, header.c_str());
     }
-    curl_interface_->EasySetOptPtr(curl_handle_, CURLOPT_HTTPHEADER,
-                                   header_list_);
+    curl_interface_->EasySetOptPtr(
+        curl_handle_, CURLOPT_HTTPHEADER, header_list_);
   }
 
   headers_.clear();
 
   // Set up HTTP response data.
   if (method_ != request_type::kHead) {
-    curl_interface_->EasySetOptCallback(curl_handle_, CURLOPT_WRITEFUNCTION,
-                                        &Connection::write_callback);
+    curl_interface_->EasySetOptCallback(
+        curl_handle_, CURLOPT_WRITEFUNCTION, &Connection::write_callback);
     curl_interface_->EasySetOptPtr(curl_handle_, CURLOPT_WRITEDATA, this);
   }
 
   // HTTP response headers
-  curl_interface_->EasySetOptCallback(curl_handle_, CURLOPT_HEADERFUNCTION,
-                                      &Connection::header_callback);
+  curl_interface_->EasySetOptCallback(
+      curl_handle_, CURLOPT_HEADERFUNCTION, &Connection::header_callback);
   curl_interface_->EasySetOptPtr(curl_handle_, CURLOPT_HEADERDATA, this);
 }
 
@@ -133,25 +136,24 @@ bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
     Transport::AddCurlError(error, FROM_HERE, ret, curl_interface_.get());
   } else {
     LOG(INFO) << "Response: " << GetResponseStatusCode() << " ("
-      << GetResponseStatusText() << ")";
+              << GetResponseStatusText() << ")";
     VLOG(2) << "Response data (" << response_data_.size() << "): "
-        << std::string(reinterpret_cast<const char*>(response_data_.data()),
-                       response_data_.size());
+            << std::string(reinterpret_cast<const char*>(response_data_.data()),
+                           response_data_.size());
   }
   return (ret == CURLE_OK);
 }
 
-void Connection::FinishRequestAsync(
-    const SuccessCallback& success_callback,
-    const ErrorCallback& error_callback) {
+void Connection::FinishRequestAsync(const SuccessCallback& success_callback,
+                                    const ErrorCallback& error_callback) {
   PrepareRequest();
   transport_->StartAsyncTransfer(this, success_callback, error_callback);
 }
 
 int Connection::GetResponseStatusCode() const {
   int status_code = 0;
-  curl_interface_->EasyGetInfoInt(curl_handle_, CURLINFO_RESPONSE_CODE,
-                                  &status_code);
+  curl_interface_->EasyGetInfoInt(
+      curl_handle_, CURLINFO_RESPONSE_CODE, &status_code);
   return status_code;
 }
 
@@ -187,16 +189,20 @@ bool Connection::ReadResponseData(void* data,
   return true;
 }
 
-size_t Connection::write_callback(char* ptr, size_t size,
-                                  size_t num, void* data) {
+size_t Connection::write_callback(char* ptr,
+                                  size_t size,
+                                  size_t num,
+                                  void* data) {
   Connection* me = reinterpret_cast<Connection*>(data);
   size_t data_len = size * num;
   me->response_data_.insert(me->response_data_.end(), ptr, ptr + data_len);
   return data_len;
 }
 
-size_t Connection::read_callback(char* ptr, size_t size,
-                                 size_t num, void* data) {
+size_t Connection::read_callback(char* ptr,
+                                 size_t size,
+                                 size_t num,
+                                 void* data) {
   Connection* me = reinterpret_cast<Connection*>(data);
   size_t data_len = size * num;
 
@@ -207,8 +213,10 @@ size_t Connection::read_callback(char* ptr, size_t size,
   return success ? read_size : CURL_READFUNC_ABORT;
 }
 
-size_t Connection::header_callback(char* ptr, size_t size,
-                                   size_t num, void* data) {
+size_t Connection::header_callback(char* ptr,
+                                   size_t size,
+                                   size_t num,
+                                   void* data) {
   using chromeos::string_utils::SplitAtFirst;
   Connection* me = reinterpret_cast<Connection*>(data);
   size_t hdr_len = size * num;

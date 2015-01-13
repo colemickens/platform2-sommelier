@@ -36,7 +36,7 @@ static bool EnsureSystemSaltIsLoaded() {
   FilePath salt_path(g_system_salt_path);
   int64_t file_size;
   if (!base::GetFileSize(salt_path, &file_size)) {
-    PLOG(ERROR) << "Could not get size of system salt: " <<  g_system_salt_path;
+    PLOG(ERROR) << "Could not get size of system salt: " << g_system_salt_path;
     return false;
   }
   if (file_size > static_cast<int64_t>(std::numeric_limits<int>::max())) {
@@ -47,8 +47,8 @@ static bool EnsureSystemSaltIsLoaded() {
   buf.resize(file_size);
   unsigned int data_read = base::ReadFile(salt_path, &buf.front(), file_size);
   if (data_read != file_size) {
-    PLOG(ERROR) << "Could not read entire file: " << data_read << " != "
-                << file_size;
+    PLOG(ERROR) << "Could not read entire file: " << data_read
+                << " != " << file_size;
     return false;
   }
 
@@ -64,8 +64,8 @@ std::string SanitizeUserName(const std::string& username) {
 
   unsigned char binmd[SHA_DIGEST_LENGTH];
   std::string lowercase(username);
-  std::transform(lowercase.begin(), lowercase.end(),
-                 lowercase.begin(), ::tolower);
+  std::transform(
+      lowercase.begin(), lowercase.end(), lowercase.begin(), ::tolower);
   SHA_CTX ctx;
   SHA1_Init(&ctx);
   SHA1_Update(&ctx, salt->data(), salt->size());
@@ -86,8 +86,8 @@ FilePath GetRootPathPrefix() {
 }
 
 FilePath GetHashedUserPath(const std::string& hashed_username) {
-  return FilePath(base::StringPrintf("%s%s", g_user_home_prefix,
-                                     hashed_username.c_str()));
+  return FilePath(
+      base::StringPrintf("%s%s", g_user_home_prefix, hashed_username.c_str()));
 }
 
 FilePath GetUserPath(const std::string& username) {
@@ -99,8 +99,8 @@ FilePath GetUserPath(const std::string& username) {
 FilePath GetRootPath(const std::string& username) {
   if (!EnsureSystemSaltIsLoaded())
     return FilePath("");
-  return FilePath(base::StringPrintf("%s%s", g_root_home_prefix,
-                                     SanitizeUserName(username).c_str()));
+  return FilePath(base::StringPrintf(
+      "%s%s", g_root_home_prefix, SanitizeUserName(username).c_str()));
 }
 
 FilePath GetDaemonPath(const std::string& username, const std::string& daemon) {
@@ -112,24 +112,20 @@ FilePath GetDaemonPath(const std::string& username, const std::string& daemon) {
 bool IsSanitizedUserName(const std::string& sanitized) {
   std::vector<uint8_t> bytes;
   return (sanitized.length() == 2 * SHA_DIGEST_LENGTH) &&
-      base::HexStringToBytes(sanitized, &bytes);
+         base::HexStringToBytes(sanitized, &bytes);
 }
 
 void SetUserHomePrefix(const std::string& prefix) {
   if (prefix.length() < sizeof(g_user_home_prefix)) {
-    snprintf(g_user_home_prefix,
-             sizeof(g_user_home_prefix),
-             "%s",
-             prefix.c_str());
+    snprintf(
+        g_user_home_prefix, sizeof(g_user_home_prefix), "%s", prefix.c_str());
   }
 }
 
 void SetRootHomePrefix(const std::string& prefix) {
   if (prefix.length() < sizeof(g_root_home_prefix)) {
-    snprintf(g_root_home_prefix,
-             sizeof(g_root_home_prefix),
-             "%s",
-             prefix.c_str());
+    snprintf(
+        g_root_home_prefix, sizeof(g_root_home_prefix), "%s", prefix.c_str());
   }
 }
 

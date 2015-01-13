@@ -14,17 +14,11 @@ class MapUtilsTest : public ::testing::Test {
  public:
   void SetUp() override {
     map_ = {
-      {"key1", 1},
-      {"key2", 2},
-      {"key3", 3},
-      {"key4", 4},
-      {"key5", 5},
+        {"key1", 1}, {"key2", 2}, {"key3", 3}, {"key4", 4}, {"key5", 5},
     };
   }
 
-  void TearDown() override {
-    map_.clear();
-  }
+  void TearDown() override { map_.clear(); }
 
   std::map<std::string, int> map_;
 };
@@ -49,11 +43,7 @@ TEST_F(MapUtilsTest, GetMapValues) {
 TEST_F(MapUtilsTest, MapToVector) {
   std::vector<std::pair<std::string, int>> elements = MapToVector(map_);
   std::vector<std::pair<std::string, int>> expected{
-    {"key1", 1},
-    {"key2", 2},
-    {"key3", 3},
-    {"key4", 4},
-    {"key5", 5},
+      {"key1", 1}, {"key2", 2}, {"key3", 3}, {"key4", 4}, {"key5", 5},
   };
   EXPECT_EQ(expected, elements);
 }

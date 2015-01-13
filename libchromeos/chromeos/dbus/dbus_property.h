@@ -16,7 +16,7 @@ namespace dbus_utils {
 // This class is pretty much a copy of dbus::Property<T> from dbus/property.h
 // except that it provides the implementations for PopValueFromReader and
 // AppendSetValueToWriter.
-template <class T>
+template<class T>
 class Property : public dbus::PropertyBase {
  public:
   Property() = default;

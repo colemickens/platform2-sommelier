@@ -63,10 +63,9 @@ class CHROMEOS_EXPORT Transport
 
   // Initiates an asynchronous transfer on the given |connection|.
   // The actual implementation of an async I/O is transport-specific.
-  virtual void StartAsyncTransfer(
-      Connection* connection,
-      const SuccessCallback& success_callback,
-      const ErrorCallback& error_callback) = 0;
+  virtual void StartAsyncTransfer(Connection* connection,
+                                  const SuccessCallback& success_callback,
+                                  const ErrorCallback& error_callback) = 0;
 
   // Creates a default http::Transport (currently, using http::curl::Transport).
   static std::shared_ptr<Transport> CreateDefault();

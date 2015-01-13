@@ -39,9 +39,9 @@ class CHROMEOS_EXPORT AsyncEventSequencer
     : public base::RefCounted<AsyncEventSequencer> {
  public:
   using Handler = base::Callback<void(bool success)>;
-  using ExportHandler = base::Callback<void (const std::string& interface_name,
-                                             const std::string& method_name,
-                                             bool success)>;
+  using ExportHandler = base::Callback<void(const std::string& interface_name,
+                                            const std::string& method_name,
+                                            bool success)>;
   using CompletionAction = base::Callback<void(bool all_succeeded)>;
   using CompletionTask = base::Callback<void(void)>;
 
@@ -56,9 +56,10 @@ class CHROMEOS_EXPORT AsyncEventSequencer
   // Like GetHandler except with a signature tailored to
   // ExportedObject's ExportMethod callback requirements.  Will also assert
   // that the passed interface/method names from ExportedObject are correct.
-  ExportHandler GetExportHandler(
-      const std::string& interface_name, const std::string& method_name,
-      const std::string& descriptive_message, bool failure_is_fatal);
+  ExportHandler GetExportHandler(const std::string& interface_name,
+                                 const std::string& method_name,
+                                 const std::string& descriptive_message,
+                                 bool failure_is_fatal);
 
   // Once all handlers obtained via GetHandler have run,
   // we'll run each CompletionAction, then discard our references.
@@ -78,7 +79,8 @@ class CHROMEOS_EXPORT AsyncEventSequencer
   // destroy *this only when all our callbacks have been destroyed.
   CHROMEOS_PRIVATE void HandleFinish(int registration_number,
                                      const std::string& error_message,
-                                     bool failure_is_fatal, bool success);
+                                     bool failure_is_fatal,
+                                     bool success);
   // Similar to HandleFinish.
   CHROMEOS_PRIVATE void HandleDBusMethodExported(
       const Handler& finish_handler,

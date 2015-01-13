@@ -43,19 +43,27 @@ class CHROMEOS_EXPORT Connection : public http::Connection {
   std::string GetProtocolVersion() const override;
   std::string GetResponseHeader(const std::string& header_name) const override;
   uint64_t GetResponseDataSize() const override;
-  bool ReadResponseData(void* data, size_t buffer_size,
-                        size_t* size_read, chromeos::ErrorPtr* error) override;
+  bool ReadResponseData(void* data,
+                        size_t buffer_size,
+                        size_t* size_read,
+                        chromeos::ErrorPtr* error) override;
 
  protected:
   // Write data callback. Used by CURL when receiving response data.
-  CHROMEOS_PRIVATE static size_t write_callback(char* ptr, size_t size,
-                                                size_t num, void* data);
+  CHROMEOS_PRIVATE static size_t write_callback(char* ptr,
+                                                size_t size,
+                                                size_t num,
+                                                void* data);
   // Read data callback. Used by CURL when sending request body data.
-  CHROMEOS_PRIVATE static size_t read_callback(char* ptr, size_t size,
-                                               size_t num, void* data);
+  CHROMEOS_PRIVATE static size_t read_callback(char* ptr,
+                                               size_t size,
+                                               size_t num,
+                                               void* data);
   // Write header data callback. Used by CURL when receiving response headers.
-  CHROMEOS_PRIVATE static size_t header_callback(char* ptr, size_t size,
-                                                 size_t num, void* data);
+  CHROMEOS_PRIVATE static size_t header_callback(char* ptr,
+                                                 size_t size,
+                                                 size_t num,
+                                                 void* data);
 
   // Helper method to set up the |curl_handle_| with all the parameters
   // pertaining to the current connection.

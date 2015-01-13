@@ -19,7 +19,7 @@ class MockDBusObject : public DBusObject {
   MockDBusObject(ExportedObjectManager* object_manager,
                  const scoped_refptr<dbus::Bus>& bus,
                  const dbus::ObjectPath& object_path)
-    : DBusObject(object_manager, bus, object_path) {}
+      : DBusObject(object_manager, bus, object_path) {}
   virtual ~MockDBusObject() = default;
 
   MOCK_METHOD1(RegisterAsync,

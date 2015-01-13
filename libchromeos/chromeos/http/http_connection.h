@@ -52,9 +52,8 @@ class CHROMEOS_EXPORT Connection
   virtual bool FinishRequest(chromeos::ErrorPtr* error) = 0;
   // Send the request asynchronously and invoke the callback with the response
   // received.
-  virtual void FinishRequestAsync(
-      const SuccessCallback& success_callback,
-      const ErrorCallback& error_callback) = 0;
+  virtual void FinishRequestAsync(const SuccessCallback& success_callback,
+                                  const ErrorCallback& error_callback) = 0;
 
   // Returns the HTTP status code (e.g. 200 for success).
   virtual int GetResponseStatusCode() const = 0;

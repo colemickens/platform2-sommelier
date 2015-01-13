@@ -38,21 +38,19 @@ int DBusDaemon::OnInit() {
 }
 
 DBusServiceDaemon::DBusServiceDaemon(const std::string& service_name)
-        : service_name_(service_name) {
+    : service_name_(service_name) {
 }
 
 DBusServiceDaemon::DBusServiceDaemon(
     const std::string& service_name,
     const dbus::ObjectPath& object_manager_path)
-        : service_name_(service_name),
-          object_manager_path_(object_manager_path) {
+    : service_name_(service_name), object_manager_path_(object_manager_path) {
 }
 
-DBusServiceDaemon::DBusServiceDaemon(
-    const std::string& service_name,
-    base::StringPiece object_manager_path)
-        : DBusServiceDaemon(service_name,
-                            dbus::ObjectPath(object_manager_path.as_string())) {
+DBusServiceDaemon::DBusServiceDaemon(const std::string& service_name,
+                                     base::StringPiece object_manager_path)
+    : DBusServiceDaemon(service_name,
+                        dbus::ObjectPath(object_manager_path.as_string())) {
 }
 
 int DBusServiceDaemon::OnInit() {
@@ -62,8 +60,8 @@ int DBusServiceDaemon::OnInit() {
 
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   if (object_manager_path_.IsValid()) {
-    object_manager_.reset(new ExportedObjectManager(bus_,
-                                                    object_manager_path_));
+    object_manager_.reset(
+        new ExportedObjectManager(bus_, object_manager_path_));
     object_manager_->RegisterAsync(
         sequencer->GetHandler("ObjectManager.RegisterAsync() failed.", true));
   }

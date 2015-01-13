@@ -35,10 +35,9 @@ std::string UrlEncode(const char* data, bool encodeSpaceAsPlus) {
     char c = *data++;
     // According to RFC3986 (http://www.faqs.org/rfcs/rfc3986.html),
     // section 2.3. - Unreserved Characters
-    if ((c >= '0' && c <= '9') ||
-        (c >= 'A' && c <= 'Z') ||
-        (c >= 'a' && c <= 'z') ||
-        c == '-' || c == '.' || c == '_' || c == '~') {
+    if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') ||
+        (c >= 'a' && c <= 'z') || c == '-' || c == '.' || c == '_' ||
+        c == '~') {
       result += c;
     } else if (c == ' ' && encodeSpaceAsPlus) {
       // For historical reasons, some URLs have spaces encoded as '+',
@@ -46,7 +45,8 @@ std::string UrlEncode(const char* data, bool encodeSpaceAsPlus) {
       // 'application/x-www-form-urlencoded'
       result += '+';
     } else {
-      base::StringAppendF(&result, "%%%02X",
+      base::StringAppendF(&result,
+                          "%%%02X",
                           static_cast<unsigned char>(c));  // Encode as %NN
     }
   }
@@ -60,8 +60,8 @@ std::string UrlDecode(const char* data) {
     int part1 = 0, part2 = 0;
     // HexToDec would return -1 even for character 0 (end of string),
     // so it is safe to access data[0] and data[1] without overrunning the buf.
-    if (c == '%' &&
-        (part1 = HexToDec(data[0])) >= 0 && (part2 = HexToDec(data[1])) >= 0) {
+    if (c == '%' && (part1 = HexToDec(data[0])) >= 0 &&
+        (part2 = HexToDec(data[1])) >= 0) {
       c = static_cast<char>((part1 << 4) | part2);
       data += 2;
     } else if (c == '+') {

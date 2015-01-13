@@ -72,10 +72,10 @@ struct DBusParamReader<allow_out_params, CurrentParam, RestOfParams...> {
   // Overload 1: ParamType is not a pointer.
   template<typename ParamType, typename CallbackType, typename... Args>
   static typename std::enable_if<!std::is_pointer<ParamType>::value, bool>::type
-      InvokeHelper(const CallbackType& handler,
-                   dbus::MessageReader* reader,
-                   ErrorPtr* error,
-                   const Args&... args) {
+  InvokeHelper(const CallbackType& handler,
+               dbus::MessageReader* reader,
+               ErrorPtr* error,
+               const Args&... args) {
     if (!reader->HasMoreData()) {
       Error::AddTo(error, FROM_HERE, errors::dbus::kDomain,
                    DBUS_ERROR_INVALID_ARGS,

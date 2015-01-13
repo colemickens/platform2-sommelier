@@ -27,7 +27,7 @@ const char kTestServiceName[] = "org.test.Object";
 const char kInterface[] = "org.test.Object.TestInterface";
 const char kSignal[] = "TestSignal";
 
-class DBusSignalHandlerTest: public testing::Test {
+class DBusSignalHandlerTest : public testing::Test {
  public:
   void SetUp() override {
     dbus::Bus::Options options;
@@ -39,14 +39,12 @@ class DBusSignalHandlerTest: public testing::Test {
     // Use a mock object proxy.
     mock_object_proxy_ = new dbus::MockObjectProxy(
         bus_.get(), kTestServiceName, dbus::ObjectPath(kTestPath));
-    EXPECT_CALL(*bus_, GetObjectProxy(kTestServiceName,
-                                      dbus::ObjectPath(kTestPath)))
+    EXPECT_CALL(*bus_,
+                GetObjectProxy(kTestServiceName, dbus::ObjectPath(kTestPath)))
         .WillRepeatedly(Return(mock_object_proxy_.get()));
   }
 
-  void TearDown() override {
-    bus_ = nullptr;
-  }
+  void TearDown() override { bus_ = nullptr; }
 
  protected:
   template<typename SignalHandlerSink, typename... Args>
@@ -56,8 +54,11 @@ class DBusSignalHandlerTest: public testing::Test {
         .WillOnce(SaveArg<2>(&signal_callback));
 
     chromeos::dbus_utils::ConnectToSignal(
-        mock_object_proxy_.get(), kInterface, kSignal,
-        base::Bind(&SignalHandlerSink::Handler, base::Unretained(sink)), {});
+        mock_object_proxy_.get(),
+        kInterface,
+        kSignal,
+        base::Bind(&SignalHandlerSink::Handler, base::Unretained(sink)),
+        {});
 
     dbus::Signal signal(kInterface, kSignal);
     dbus::MessageWriter writer(&signal);
@@ -70,12 +71,11 @@ class DBusSignalHandlerTest: public testing::Test {
 };
 
 TEST_F(DBusSignalHandlerTest, ConnectToSignal) {
-  EXPECT_CALL(*mock_object_proxy_,
-              ConnectToSignal(kInterface, kSignal, _, _)).Times(1);
+  EXPECT_CALL(*mock_object_proxy_, ConnectToSignal(kInterface, kSignal, _, _))
+      .Times(1);
 
-  chromeos::dbus_utils::ConnectToSignal(mock_object_proxy_.get(),
-                                        kInterface, kSignal,
-                                        base::Closure{}, {});
+  chromeos::dbus_utils::ConnectToSignal(
+      mock_object_proxy_.get(), kInterface, kSignal, base::Closure{}, {});
 }
 
 TEST_F(DBusSignalHandlerTest, CallSignal_3Args) {

@@ -45,7 +45,7 @@ inline std::vector<typename T::mapped_type> GetMapValues(const T& map) {
 // Given an STL map, returns a vector of key-value pairs from the map.
 template<typename T>
 inline std::vector<std::pair<typename T::key_type, typename T::mapped_type>>
-    MapToVector(const T& map) {
+MapToVector(const T& map) {
   std::vector<std::pair<typename T::key_type, typename T::mapped_type>> vector;
   vector.reserve(map.size());
   for (const auto& pair : map)
@@ -56,10 +56,10 @@ inline std::vector<std::pair<typename T::key_type, typename T::mapped_type>>
 // Given an STL map, returns the value associated with a given key or a default
 // value if the key is not present in the map.
 template<typename T>
-inline typename T::mapped_type
-    GetOrDefault(const T& map,
-                 typename T::key_type key,
-                 const typename T::mapped_type& def) {
+inline typename T::mapped_type GetOrDefault(
+    const T& map,
+    typename T::key_type key,
+    const typename T::mapped_type& def) {
   typename T::const_iterator it = map.find(key);
   if (it == map.end())
     return def;

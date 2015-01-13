@@ -81,7 +81,8 @@ CHROMEOS_EXPORT std::string Combine(
 // Splits a MIME string into type and subtype.
 // "text/plain;charset=utf-8" => ("text", "plain")
 CHROMEOS_EXPORT bool Split(const std::string& mime_string,
-                           std::string* type, std::string* subtype);
+                           std::string* type,
+                           std::string* subtype);
 
 // Splits a MIME string into type, subtype, and parameters.
 // "text/plain;charset=utf-8" => ("text", "plain", {{"charset","utf-8"}})

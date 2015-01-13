@@ -37,7 +37,7 @@ static bool HandleMessage(int severity,
                           const char* file,
                           int line,
                           size_t message_start,
-                          const std::string &message) {
+                          const std::string& message) {
   switch (severity) {
     case logging::LOG_INFO:
       severity = kSyslogInfo;
@@ -60,7 +60,7 @@ static bool HandleMessage(int severity,
       break;
   }
 
-  const char *str;
+  const char* str;
   if (s_log_header) {
     str = message.c_str();
   } else {
@@ -82,9 +82,9 @@ void SetLogFlags(int log_flags) {
 }
 int GetLogFlags() {
   int flags = 0;
-  flags |= (s_log_to_syslog) ?kLogToSyslog :0;
-  flags |= (s_log_to_stderr) ?kLogToStderr :0;
-  flags |= (s_log_header) ?kLogHeader :0;
+  flags |= (s_log_to_syslog) ? kLogToSyslog : 0;
+  flags |= (s_log_to_stderr) ? kLogToStderr : 0;
+  flags |= (s_log_header) ? kLogHeader : 0;
   return flags;
 }
 void InitLog(int init_flags) {
@@ -96,8 +96,8 @@ void InitLog(int init_flags) {
   const bool kOptionTID = false;
   const bool kOptionTimestamp = false;
   const bool kOptionTickcount = false;
-  logging::SetLogItems(kOptionPID, kOptionTID, kOptionTimestamp,
-                       kOptionTickcount);
+  logging::SetLogItems(
+      kOptionPID, kOptionTID, kOptionTimestamp, kOptionTickcount);
   logging::SetLogMessageHandler(HandleMessage);
   SetLogFlags(init_flags);
 }

@@ -67,8 +67,7 @@ RegularFileOrDeleteResult RegularFileOrDelete(const base::FilePath& path,
   if (scoped_fd != -1) {
     struct stat file_stat;
     if (fstat(scoped_fd.get(), &file_stat) != -1 &&
-        S_ISREG(file_stat.st_mode) &&
-        file_stat.st_uid == uid &&
+        S_ISREG(file_stat.st_mode) && file_stat.st_uid == uid &&
         file_stat.st_gid == gid) {
       return kRegularFile;
     }

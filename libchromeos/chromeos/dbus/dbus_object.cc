@@ -20,14 +20,13 @@ namespace dbus_utils {
 
 DBusInterface::DBusInterface(DBusObject* dbus_object,
                              const std::string& interface_name)
-    : dbus_object_(dbus_object),
-      interface_name_(interface_name) {}
+    : dbus_object_(dbus_object), interface_name_(interface_name) {
+}
 
 void DBusInterface::AddProperty(const std::string& property_name,
                                 ExportedPropertyBase* prop_base) {
-  dbus_object_->property_set_.RegisterProperty(interface_name_,
-                                               property_name,
-                                               prop_base);
+  dbus_object_->property_set_.RegisterProperty(
+      interface_name_, property_name, prop_base);
 }
 
 void DBusInterface::ExportAsync(
@@ -45,8 +44,8 @@ void DBusInterface::ExportAsync(
     std::string export_error = "Failed exporting " + method_name + " method";
     auto export_handler = sequencer->GetExportHandler(
         interface_name_, method_name, export_error, true);
-    auto method_handler = base::Bind(&DBusInterface::HandleMethodCall,
-                                     base::Unretained(this));
+    auto method_handler =
+        base::Bind(&DBusInterface::HandleMethodCall, base::Unretained(this));
     exported_object->ExportMethod(
         interface_name_, method_name, method_handler, export_handler);
   }
@@ -66,22 +65,20 @@ void DBusInterface::ExportAsync(
   sequencer->OnAllTasksCompletedCall(actions);
 }
 
-void DBusInterface::HandleMethodCall(
-    dbus::MethodCall* method_call,
-    ResponseSender sender) {
+void DBusInterface::HandleMethodCall(dbus::MethodCall* method_call,
+                                     ResponseSender sender) {
   std::string method_name = method_call->GetMember();
   // Make a local copy of |interface_name_| because calling HandleMethod()
   // can potentially kill this interface object...
   std::string interface_name = interface_name_;
-  VLOG(1) << "Received method call request: "
-          << interface_name << "." << method_name
-          << "(" << method_call->GetSignature() << ")";
+  VLOG(1) << "Received method call request: " << interface_name << "."
+          << method_name << "(" << method_call->GetSignature() << ")";
   auto pair = handlers_.find(method_name);
   if (pair == handlers_.end()) {
-    auto response = dbus::ErrorResponse::FromMethodCall(
-        method_call,
-        DBUS_ERROR_UNKNOWN_METHOD,
-        "Unknown method: " + method_name);
+    auto response =
+        dbus::ErrorResponse::FromMethodCall(method_call,
+                                            DBUS_ERROR_UNKNOWN_METHOD,
+                                            "Unknown method: " + method_name);
     sender.Run(response.Pass());
     return;
   }
@@ -92,8 +89,8 @@ void DBusInterface::HandleMethodCall(
 void DBusInterface::AddHandlerImpl(
     const std::string& method_name,
     std::unique_ptr<DBusInterfaceMethodHandlerInterface> handler) {
-  VLOG(1) << "Declaring method handler: "
-          << interface_name_ << "." << method_name;
+  VLOG(1) << "Declaring method handler: " << interface_name_ << "."
+          << method_name;
   auto res = handlers_.insert(std::make_pair(method_name, std::move(handler)));
   CHECK(res.second) << "Method '" << method_name << "' already exists";
 }
@@ -101,21 +98,18 @@ void DBusInterface::AddHandlerImpl(
 void DBusInterface::AddSignalImpl(
     const std::string& signal_name,
     const std::shared_ptr<DBusSignalBase>& signal) {
-  VLOG(1) << "Declaring a signal sink: "
-          << interface_name_ << "." << signal_name;
+  VLOG(1) << "Declaring a signal sink: " << interface_name_ << "."
+          << signal_name;
   CHECK(signals_.insert(std::make_pair(signal_name, signal)).second)
       << "The signal '" << signal_name << "' is already registered";
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////
 
 DBusObject::DBusObject(ExportedObjectManager* object_manager,
                        const scoped_refptr<dbus::Bus>& bus,
                        const dbus::ObjectPath& object_path)
-    : property_set_(bus.get()),
-      bus_(bus),
-      object_path_(object_path) {
+    : property_set_(bus.get()), bus_(bus), object_path_(object_path) {
   if (object_manager)
     object_manager_ = object_manager->AsWeakPtr();
 }
@@ -139,21 +133,21 @@ DBusInterface* DBusObject::AddOrGetInterface(
     // Interface doesn't exist yet. Create one...
     std::unique_ptr<DBusInterface> new_itf(
         new DBusInterface(this, interface_name));
-    iter = interfaces_.insert(
-        std::make_pair(interface_name, std::move(new_itf))).first;
+    iter = interfaces_.insert(std::make_pair(interface_name,
+                                             std::move(new_itf))).first;
   }
   return iter->second.get();
 }
 
 DBusInterface* DBusObject::FindInterface(
-      const std::string& interface_name) const {
+    const std::string& interface_name) const {
   auto itf_iter = interfaces_.find(interface_name);
   return (itf_iter == interfaces_.end()) ? nullptr : itf_iter->second.get();
 }
 
 void DBusObject::RegisterAsync(
     const AsyncEventSequencer::CompletionAction& completion_callback) {
-  VLOG(1) << "Registering D-Bus object '"<< object_path_.value() << "'.";
+  VLOG(1) << "Registering D-Bus object '" << object_path_.value() << "'.";
   CHECK(exported_object_ == nullptr) << "Object already registered.";
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   exported_object_ = bus_->GetExportedObject(object_path_);

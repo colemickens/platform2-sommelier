@@ -12,9 +12,9 @@ namespace dbus_utils {
 DBusSignalBase::DBusSignalBase(DBusObject* dbus_object,
                                const std::string& interface_name,
                                const std::string& signal_name)
-  : interface_name_(interface_name),
-    signal_name_(signal_name),
-    dbus_object_(dbus_object) {
+    : interface_name_(interface_name),
+      signal_name_(signal_name),
+      dbus_object_(dbus_object) {
 }
 
 bool DBusSignalBase::SendSignal(dbus::Signal* signal) const {

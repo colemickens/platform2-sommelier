@@ -24,7 +24,7 @@ extern "C" {
 // bootstat_log.c regarding implementation assumptions for this
 // value.
 //
-#define BOOTSTAT_MAX_EVENT_LEN  64
+#define BOOTSTAT_MAX_EVENT_LEN 64
 
 // Log an event.  Event names should be composed of characters drawn
 // from this subset of 7-bit ASCII:  Letters (upper- or lower-case),

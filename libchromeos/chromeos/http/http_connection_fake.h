@@ -20,7 +20,8 @@ namespace fake {
 // This is a fake implementation of http::Connection for unit testing.
 class Connection : public http::Connection {
  public:
-  Connection(const std::string& url, const std::string& method,
+  Connection(const std::string& url,
+             const std::string& method,
              const std::shared_ptr<http::Transport>& transport);
   virtual ~Connection();
 
@@ -39,8 +40,10 @@ class Connection : public http::Connection {
   std::string GetProtocolVersion() const override;
   std::string GetResponseHeader(const std::string& header_name) const override;
   uint64_t GetResponseDataSize() const override;
-  bool ReadResponseData(void* data, size_t buffer_size,
-                        size_t* size_read, chromeos::ErrorPtr* error) override;
+  bool ReadResponseData(void* data,
+                        size_t buffer_size,
+                        size_t* size_read,
+                        chromeos::ErrorPtr* error) override;
 
  private:
   // A helper method for FinishRequestAsync() implementation.

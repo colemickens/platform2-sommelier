@@ -36,9 +36,9 @@ std::vector<std::string> Split(const std::string& str,
   }
 
   if (trim_whitespaces) {
-    std::for_each(tokens.begin(), tokens.end(),
-                  [](std::string& str) {
-      base::TrimWhitespaceASCII(str, base::TRIM_ALL, &str); });
+    std::for_each(tokens.begin(), tokens.end(), [](std::string& str) {
+      base::TrimWhitespaceASCII(str, base::TRIM_ALL, &str);
+    });
     if (purge_empty_strings) {
       // We might have removed all the characters from a string if they were
       // all whitespaces. If we don't want empty strings, make sure we remove
@@ -99,12 +99,14 @@ std::string Join(const std::string& delimiter,
 }
 
 std::string Join(char delimiter,
-                 const std::string& str1, const std::string& str2) {
+                 const std::string& str1,
+                 const std::string& str2) {
   return str1 + delimiter + str2;
 }
 
 std::string Join(const std::string& delimiter,
-                 const std::string& str1, const std::string& str2) {
+                 const std::string& str1,
+                 const std::string& str2) {
   return str1 + delimiter + str2;
 }
 

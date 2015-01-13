@@ -25,7 +25,7 @@ class CHROMEOS_EXPORT AbstractDbusService {
   // Registers the GObject as a service with the system DBus
   // TODO(wad) make this testable by making BusConn and Proxy
   //           subclassing friendly.
-  virtual bool Register(const chromeos::dbus::BusConnection &conn);
+  virtual bool Register(const chromeos::dbus::BusConnection& conn);
 
   // Starts the run loop
   virtual bool Run();
@@ -35,13 +35,13 @@ class CHROMEOS_EXPORT AbstractDbusService {
 
   // Used internally during registration to set the
   // proper service information.
-  virtual const char *service_name() const = 0;
-  virtual const char *service_path() const = 0;
-  virtual const char *service_interface() const = 0;
-  virtual GObject *service_object() const = 0;
+  virtual const char* service_name() const = 0;
+  virtual const char* service_path() const = 0;
+  virtual const char* service_interface() const = 0;
+  virtual GObject* service_object() const = 0;
 
  protected:
-  virtual GMainLoop *main_loop() = 0;
+  virtual GMainLoop* main_loop() = 0;
 };
 
 }  // namespace dbus

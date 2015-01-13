@@ -106,10 +106,15 @@ inline std::unique_ptr<dbus::Response> CallMethodAndBlockWithTimeout(
       &method_call, timeout_ms, &dbus_error);
   if (!response) {
     if (dbus_error.is_set()) {
-      Error::AddTo(error, FROM_HERE, errors::dbus::kDomain,
-                   dbus_error.name(), dbus_error.message());
+      Error::AddTo(error,
+                   FROM_HERE,
+                   errors::dbus::kDomain,
+                   dbus_error.name(),
+                   dbus_error.message());
     } else {
-      Error::AddToPrintf(error, FROM_HERE, errors::dbus::kDomain,
+      Error::AddToPrintf(error,
+                         FROM_HERE,
+                         errors::dbus::kDomain,
                          DBUS_ERROR_FAILED,
                          "Failed to call D-Bus method: %s.%s",
                          interface_name.c_str(),
@@ -146,8 +151,8 @@ inline bool ExtractMessageParametersAsTuple(
   auto callback = [val_tuple](const ResultTypes&... params) {
     *val_tuple = std::tie(params...);
   };
-  return DBusParamReader<false, ResultTypes...>::Invoke(callback, reader,
-                                                        error);
+  return DBusParamReader<false, ResultTypes...>::Invoke(
+      callback, reader, error);
 }
 // Overload of ExtractMessageParametersAsTuple to handle reference types in
 // tuples created with std::tie().
@@ -159,8 +164,8 @@ inline bool ExtractMessageParametersAsTuple(
   auto callback = [ref_tuple](const ResultTypes&... params) {
     *ref_tuple = std::tie(params...);
   };
-  return DBusParamReader<false, ResultTypes...>::Invoke(callback, reader,
-                                                        error);
+  return DBusParamReader<false, ResultTypes...>::Invoke(
+      callback, reader, error);
 }
 
 // A helper method to extract a list of values from a message buffer.
@@ -181,8 +186,8 @@ inline bool ExtractMessageParameters(dbus::MessageReader* reader,
                                      ErrorPtr* error,
                                      ResultTypes*... results) {
   auto ref_tuple = std::tie(*results...);
-  return ExtractMessageParametersAsTuple<ResultTypes...>(reader, error,
-                                                         &ref_tuple);
+  return ExtractMessageParametersAsTuple<ResultTypes...>(
+      reader, error, &ref_tuple);
 }
 
 // Convenient helper method to extract return value(s) of a D-Bus method call.
@@ -267,9 +272,8 @@ inline void CallMethodWithTimeout(
 
   dbus::ObjectProxy::ErrorCallback dbus_error_callback =
       base::Bind(&TranslateErrorResponse, error_callback);
-  dbus::ObjectProxy::ResponseCallback dbus_success_callback =
-      base::Bind(&TranslateSuccessResponse<OutArgs...>,
-                 success_callback, error_callback);
+  dbus::ObjectProxy::ResponseCallback dbus_success_callback = base::Bind(
+      &TranslateSuccessResponse<OutArgs...>, success_callback, error_callback);
 
   object->CallMethodWithErrorCallback(
       &method_call, timeout_ms, dbus_success_callback, dbus_error_callback);
@@ -277,13 +281,12 @@ inline void CallMethodWithTimeout(
 
 // Same as CallMethodWithTimeout() but uses a default timeout value.
 template<typename... InArgs, typename... OutArgs>
-inline void CallMethod(
-    dbus::ObjectProxy* object,
-    const std::string& interface_name,
-    const std::string& method_name,
-    const base::Callback<void(OutArgs...)>& success_callback,
-    const AsyncErrorCallback& error_callback,
-    const InArgs&... params) {
+inline void CallMethod(dbus::ObjectProxy* object,
+                       const std::string& interface_name,
+                       const std::string& method_name,
+                       const base::Callback<void(OutArgs...)>& success_callback,
+                       const AsyncErrorCallback& error_callback,
+                       const InArgs&... params) {
   return CallMethodWithTimeout(dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
                                object,
                                interface_name,

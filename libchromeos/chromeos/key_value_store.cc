@@ -65,7 +65,7 @@ bool KeyValueStore::GetBoolean(const string& key, bool* value) const {
   if (key_value->second == "true") {
     *value = true;
     return true;
-  } else if (key_value-> second == "false") {
+  } else if (key_value->second == "false") {
     *value = false;
     return true;
   }

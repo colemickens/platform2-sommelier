@@ -21,8 +21,10 @@ namespace {
 // If |exclude_fragment| is true, the function returns the start character and
 // the length of the query string alone. If it is false, the query string length
 // will include both the query string and the fragment.
-bool GetQueryStringPos(const std::string& url, bool exclude_fragment,
-                       size_t* query_pos, size_t* query_len) {
+bool GetQueryStringPos(const std::string& url,
+                       bool exclude_fragment,
+                       size_t* query_pos,
+                       size_t* query_len) {
   size_t query_start = url.find_first_of("?#");
   if (query_start == std::string::npos) {
     *query_pos = url.size();
@@ -61,13 +63,12 @@ std::string url::TrimOffQueryString(std::string* url) {
   return query_string;
 }
 
-std::string url::Combine(
-    const std::string& url, const std::string& subpath) {
+std::string url::Combine(const std::string& url, const std::string& subpath) {
   return CombineMultiple(url, {subpath});
 }
 
-std::string url::CombineMultiple(
-    const std::string& url, const std::vector<std::string>& parts) {
+std::string url::CombineMultiple(const std::string& url,
+                                 const std::vector<std::string>& parts) {
   std::string result = url;
   if (!parts.empty()) {
     std::string query_string = TrimOffQueryString(&result);
@@ -85,8 +86,7 @@ std::string url::CombineMultiple(
   return result;
 }
 
-std::string url::GetQueryString(
-    const std::string& url, bool remove_fragment) {
+std::string url::GetQueryString(const std::string& url, bool remove_fragment) {
   std::string query_string;
   size_t query_pos, query_len;
   if (GetQueryStringPos(url, remove_fragment, &query_pos, &query_len)) {
@@ -104,8 +104,8 @@ data_encoding::WebParamList url::GetQueryStringParameters(
   return data_encoding::WebParamsDecode(query_string);
 }
 
-std::string url::GetQueryStringValue(
-    const std::string& url, const std::string& name) {
+std::string url::GetQueryStringValue(const std::string& url,
+                                     const std::string& name) {
   return GetQueryStringValue(GetQueryStringParameters(url), name);
 }
 
@@ -118,8 +118,8 @@ std::string url::GetQueryStringValue(const data_encoding::WebParamList& params,
   return std::string();
 }
 
-std::string url::RemoveQueryString(
-    const std::string& url, bool remove_fragment_too) {
+std::string url::RemoveQueryString(const std::string& url,
+                                   bool remove_fragment_too) {
   size_t query_pos, query_len;
   if (!GetQueryStringPos(url, !remove_fragment_too, &query_pos, &query_len))
     return url;
@@ -131,8 +131,9 @@ std::string url::RemoveQueryString(
   return result;
 }
 
-std::string url::AppendQueryParam(
-    const std::string& url, const std::string& name, const std::string& value) {
+std::string url::AppendQueryParam(const std::string& url,
+                                  const std::string& name,
+                                  const std::string& value) {
   return AppendQueryParams(url, {{name, value}});
 }
 

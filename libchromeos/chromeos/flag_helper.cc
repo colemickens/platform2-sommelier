@@ -30,7 +30,7 @@ Flag::Flag(const char* name,
 
 class HelpFlag : public chromeos::Flag {
  public:
-  HelpFlag() : Flag("help", "false", "Show this help message", true) { }
+  HelpFlag() : Flag("help", "false", "Show this help message", true) {}
 
   bool SetValue(const std::string& value) override { return true; };
   const char* GetType() const override { return "bool"; }
@@ -227,9 +227,8 @@ void FlagHelper::UpdateFlagValues() {
         error_code = EX_DATAERR;
       }
     } else {
-      base::StringAppendF(&error_msg,
-                          "ERROR: unknown command line flag '%s'\n",
-                          key.c_str());
+      base::StringAppendF(
+          &error_msg, "ERROR: unknown command line flag '%s'\n", key.c_str());
       error_code = EX_USAGE;
     }
   }

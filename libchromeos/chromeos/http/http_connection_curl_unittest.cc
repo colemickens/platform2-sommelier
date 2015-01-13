@@ -83,8 +83,8 @@ class CurlPerformer {
     std::vector<std::string> header_lines;
     header_lines.push_back(status_line + "\r\n");
     for (const auto& pair : response_headers) {
-      header_lines.push_back(
-          string_utils::Join(": ", pair.first, pair.second) + "\r\n");
+      header_lines.push_back(string_utils::Join(": ", pair.first, pair.second) +
+                             "\r\n");
     }
 
     for (const std::string& line : header_lines) {
@@ -103,8 +103,8 @@ class CurlPerformer {
     size_t pos = 0;
     size_t size_remaining = str.size();
     while (size_remaining) {
-      size_t size_written = callback(const_cast<char*>(str.data() + pos),
-                                     size_remaining, 1, connection);
+      size_t size_written = callback(
+          const_cast<char*>(str.data() + pos), size_remaining, 1, connection);
       if (size_written == CURL_WRITEFUNC_PAUSE)
         return CURLE_WRITE_ERROR;  // Shouldn't happen.
       CHECK(size_written <= size_remaining) << "Unexpected size returned";
@@ -150,8 +150,8 @@ class HttpCurlConnectionTest : public testing::Test {
   void SetUp() override {
     curl_api_ = std::make_shared<MockCurlInterface>();
     transport_ = std::make_shared<MockTransport>();
-    connection_ = std::make_shared<Connection>(handle_, request_type::kPost,
-                                               curl_api_, transport_);
+    connection_ = std::make_shared<Connection>(
+        handle_, request_type::kPost, curl_api_, transport_);
     performer_.connection = connection_.get();
   }
 
@@ -184,8 +184,9 @@ TEST_F(HttpCurlConnectionTest, FinishRequestAsync) {
         .WillOnce(Return(CURLE_OK));
   }
 
-  EXPECT_CALL(*curl_api_, EasySetOptOffT(handle_, CURLOPT_POSTFIELDSIZE_LARGE,
-                                         request_data.size()))
+  EXPECT_CALL(
+      *curl_api_,
+      EasySetOptOffT(handle_, CURLOPT_POSTFIELDSIZE_LARGE, request_data.size()))
       .WillOnce(Return(CURLE_OK));
 
   EXPECT_CALL(*curl_api_, EasySetOptCallback(handle_, CURLOPT_READFUNCTION, _))
@@ -218,10 +219,10 @@ TEST_F(HttpCurlConnectionTest, FinishRequest) {
   std::string request_data{"Foo Bar Baz"};
   std::unique_ptr<MemoryDataReader> reader{new MemoryDataReader{request_data}};
   HeaderList headers{
-    {request_header::kAccept, "*/*"},
-    {request_header::kContentType, mime::text::kPlain},
-    {request_header::kContentLength, std::to_string(request_data.size())},
-    {"X-Foo", "bar"},
+      {request_header::kAccept, "*/*"},
+      {request_header::kContentType, mime::text::kPlain},
+      {request_header::kContentLength, std::to_string(request_data.size())},
+      {"X-Foo", "bar"},
   };
   EXPECT_TRUE(connection_->SetRequestData(std::move(reader), nullptr));
   EXPECT_TRUE(connection_->SendHeaders(headers, nullptr));
@@ -235,14 +236,15 @@ TEST_F(HttpCurlConnectionTest, FinishRequest) {
         .WillOnce(Return(CURLE_OK));
   }
 
-  EXPECT_CALL(*curl_api_, EasySetOptOffT(handle_, CURLOPT_POSTFIELDSIZE_LARGE,
-                                         request_data.size()))
+  EXPECT_CALL(
+      *curl_api_,
+      EasySetOptOffT(handle_, CURLOPT_POSTFIELDSIZE_LARGE, request_data.size()))
       .WillOnce(Return(CURLE_OK));
 
   EXPECT_CALL(*curl_api_, EasySetOptCallback(handle_, CURLOPT_READFUNCTION, _))
-      .WillOnce(DoAll(
-          SaveCallback<2>(&performer_, &CurlPerformer::read_callback),
-          Return(CURLE_OK)));
+      .WillOnce(
+          DoAll(SaveCallback<2>(&performer_, &CurlPerformer::read_callback),
+                Return(CURLE_OK)));
   EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_READDATA, _))
       .WillOnce(Return(CURLE_OK));
 
@@ -251,17 +253,17 @@ TEST_F(HttpCurlConnectionTest, FinishRequest) {
       .WillOnce(Return(CURLE_OK));
 
   EXPECT_CALL(*curl_api_, EasySetOptCallback(handle_, CURLOPT_WRITEFUNCTION, _))
-      .WillOnce(DoAll(
-          SaveCallback<2>(&performer_, &CurlPerformer::write_callback),
-          Return(CURLE_OK)));
+      .WillOnce(
+          DoAll(SaveCallback<2>(&performer_, &CurlPerformer::write_callback),
+                Return(CURLE_OK)));
   EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_WRITEDATA, _))
       .WillOnce(Return(CURLE_OK));
 
   EXPECT_CALL(*curl_api_,
               EasySetOptCallback(handle_, CURLOPT_HEADERFUNCTION, _))
-      .WillOnce(DoAll(
-          SaveCallback<2>(&performer_, &CurlPerformer::header_callback),
-          Return(CURLE_OK)));
+      .WillOnce(
+          DoAll(SaveCallback<2>(&performer_, &CurlPerformer::header_callback),
+                Return(CURLE_OK)));
   EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_HEADERDATA, _))
       .WillOnce(Return(CURLE_OK));
 
@@ -274,9 +276,9 @@ TEST_F(HttpCurlConnectionTest, FinishRequest) {
   // Set up the CurlPerformer with the response data expected to be received.
   std::string response_data{"<html><body>OK</body></html>"};
   HeaderList response_headers{
-    {response_header::kContentLength, std::to_string(response_data.size())},
-    {response_header::kContentType, mime::text::kHtml},
-    {"X-Foo", "baz"},
+      {response_header::kContentLength, std::to_string(response_data.size())},
+      {response_header::kContentType, mime::text::kHtml},
+      {"X-Foo", "baz"},
   };
   performer_.status_line = "HTTP/1.1 200 OK";
   performer_.response_body = response_data;
@@ -302,8 +304,8 @@ TEST_F(HttpCurlConnectionTest, FinishRequest) {
   EXPECT_EQ(response_data.size(), connection_->GetResponseDataSize());
   char buffer[100];
   size_t size_read = 0;
-  EXPECT_TRUE(connection_->ReadResponseData(buffer, sizeof(buffer), &size_read,
-                                            nullptr));
+  EXPECT_TRUE(connection_->ReadResponseData(
+      buffer, sizeof(buffer), &size_read, nullptr));
   EXPECT_EQ(response_data, (std::string{buffer, size_read}));
 }
 

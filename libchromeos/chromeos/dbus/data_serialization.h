@@ -95,14 +95,17 @@ struct IsTypeSupported;
 // supported.
 template<typename T, typename... Types>
 struct IsTypeSupported<T, Types...>
-    : public std::integral_constant<bool, IsTypeSupported<T>::value &&
-                                          IsTypeSupported<Types...>::value> {};
+    : public std::integral_constant<
+          bool,
+          IsTypeSupported<T>::value && IsTypeSupported<Types...>::value> {};
 
 // For a single type T, check if DBusType<T> derives from Unsupported.
 // If it does, then the type is not supported by the D-Bus.
 template<typename T>
-struct IsTypeSupported<T> : public std::integral_constant<
-    bool, !std::is_base_of<Unsupported, DBusType<T>>::value> {};
+struct IsTypeSupported<T>
+    : public std::integral_constant<
+          bool,
+          !std::is_base_of<Unsupported, DBusType<T>>::value> {};
 
 // Empty set is not supported.
 template<>
@@ -154,9 +157,8 @@ namespace details {
 // into the Variant and updates the |*reader_ref| with the transient
 // |variant_reader| MessageReader instance passed in.
 // Returns false if it fails to descend into the Variant.
-inline bool DescendIntoVariantIfPresent(
-    dbus::MessageReader** reader_ref,
-    dbus::MessageReader* variant_reader) {
+inline bool DescendIntoVariantIfPresent(dbus::MessageReader** reader_ref,
+                                        dbus::MessageReader* variant_reader) {
   if ((*reader_ref)->GetDataType() != dbus::Message::VARIANT)
     return true;
   if (!(*reader_ref)->PopVariant(variant_reader))
@@ -189,10 +191,10 @@ inline std::string GetDBusDictEntryType() {
 // DBusType<T> for various C++ types that can be serialized over D-Bus.
 
 // bool -----------------------------------------------------------------------
-CHROMEOS_EXPORT void AppendValueToWriter(
-    dbus::MessageWriter* writer, bool value);
-CHROMEOS_EXPORT bool PopValueFromReader(
-    dbus::MessageReader* reader, bool* value);
+CHROMEOS_EXPORT void AppendValueToWriter(dbus::MessageWriter* writer,
+                                         bool value);
+CHROMEOS_EXPORT bool PopValueFromReader(dbus::MessageReader* reader,
+                                        bool* value);
 
 template<>
 struct DBusType<bool> {
@@ -208,16 +210,14 @@ struct DBusType<bool> {
 };
 
 // uint8_t --------------------------------------------------------------------
-CHROMEOS_EXPORT void AppendValueToWriter(
-    dbus::MessageWriter* writer, uint8_t value);
-CHROMEOS_EXPORT bool PopValueFromReader(
-    dbus::MessageReader* reader, uint8_t* value);
+CHROMEOS_EXPORT void AppendValueToWriter(dbus::MessageWriter* writer,
+                                         uint8_t value);
+CHROMEOS_EXPORT bool PopValueFromReader(dbus::MessageReader* reader,
+                                        uint8_t* value);
 
 template<>
 struct DBusType<uint8_t> {
-  inline static std::string GetSignature() {
-    return DBUS_TYPE_BYTE_AS_STRING;
-  }
+  inline static std::string GetSignature() { return DBUS_TYPE_BYTE_AS_STRING; }
   inline static void Write(dbus::MessageWriter* writer, uint8_t value) {
     AppendValueToWriter(writer, value);
   }
@@ -227,16 +227,14 @@ struct DBusType<uint8_t> {
 };
 
 // int16_t --------------------------------------------------------------------
-CHROMEOS_EXPORT void AppendValueToWriter(
-    dbus::MessageWriter* writer, int16_t value);
-CHROMEOS_EXPORT bool PopValueFromReader(
-    dbus::MessageReader* reader, int16_t* value);
+CHROMEOS_EXPORT void AppendValueToWriter(dbus::MessageWriter* writer,
+                                         int16_t value);
+CHROMEOS_EXPORT bool PopValueFromReader(dbus::MessageReader* reader,
+                                        int16_t* value);
 
 template<>
 struct DBusType<int16_t> {
-  inline static std::string GetSignature() {
-    return DBUS_TYPE_INT16_AS_STRING;
-  }
+  inline static std::string GetSignature() { return DBUS_TYPE_INT16_AS_STRING; }
   inline static void Write(dbus::MessageWriter* writer, int16_t value) {
     AppendValueToWriter(writer, value);
   }
@@ -246,10 +244,10 @@ struct DBusType<int16_t> {
 };
 
 // uint16_t -------------------------------------------------------------------
-CHROMEOS_EXPORT void AppendValueToWriter(
-    dbus::MessageWriter* writer, uint16_t value);
-CHROMEOS_EXPORT bool PopValueFromReader(
-    dbus::MessageReader* reader, uint16_t* value);
+CHROMEOS_EXPORT void AppendValueToWriter(dbus::MessageWriter* writer,
+                                         uint16_t value);
+CHROMEOS_EXPORT bool PopValueFromReader(dbus::MessageReader* reader,
+                                        uint16_t* value);
 
 template<>
 struct DBusType<uint16_t> {
@@ -265,16 +263,14 @@ struct DBusType<uint16_t> {
 };
 
 // int32_t --------------------------------------------------------------------
-CHROMEOS_EXPORT void AppendValueToWriter(
-    dbus::MessageWriter* writer, int32_t value);
-CHROMEOS_EXPORT bool PopValueFromReader(
-    dbus::MessageReader* reader, int32_t* value);
+CHROMEOS_EXPORT void AppendValueToWriter(dbus::MessageWriter* writer,
+                                         int32_t value);
+CHROMEOS_EXPORT bool PopValueFromReader(dbus::MessageReader* reader,
+                                        int32_t* value);
 
 template<>
 struct DBusType<int32_t> {
-  inline static std::string GetSignature() {
-    return DBUS_TYPE_INT32_AS_STRING;
-  }
+  inline static std::string GetSignature() { return DBUS_TYPE_INT32_AS_STRING; }
   inline static void Write(dbus::MessageWriter* writer, int32_t value) {
     AppendValueToWriter(writer, value);
   }
@@ -284,10 +280,10 @@ struct DBusType<int32_t> {
 };
 
 // uint32_t -------------------------------------------------------------------
-CHROMEOS_EXPORT void AppendValueToWriter(
-    dbus::MessageWriter* writer, uint32_t value);
-CHROMEOS_EXPORT bool PopValueFromReader(
-    dbus::MessageReader* reader, uint32_t* value);
+CHROMEOS_EXPORT void AppendValueToWriter(dbus::MessageWriter* writer,
+                                         uint32_t value);
+CHROMEOS_EXPORT bool PopValueFromReader(dbus::MessageReader* reader,
+                                        uint32_t* value);
 
 template<>
 struct DBusType<uint32_t> {
@@ -303,16 +299,14 @@ struct DBusType<uint32_t> {
 };
 
 // int64_t --------------------------------------------------------------------
-CHROMEOS_EXPORT void AppendValueToWriter(
-    dbus::MessageWriter* writer, int64_t value);
-CHROMEOS_EXPORT bool PopValueFromReader(
-    dbus::MessageReader* reader, int64_t* value);
+CHROMEOS_EXPORT void AppendValueToWriter(dbus::MessageWriter* writer,
+                                         int64_t value);
+CHROMEOS_EXPORT bool PopValueFromReader(dbus::MessageReader* reader,
+                                        int64_t* value);
 
 template<>
 struct DBusType<int64_t> {
-  inline static std::string GetSignature() {
-    return DBUS_TYPE_INT64_AS_STRING;
-  }
+  inline static std::string GetSignature() { return DBUS_TYPE_INT64_AS_STRING; }
   inline static void Write(dbus::MessageWriter* writer, int64_t value) {
     AppendValueToWriter(writer, value);
   }
@@ -322,10 +316,10 @@ struct DBusType<int64_t> {
 };
 
 // uint64_t -------------------------------------------------------------------
-CHROMEOS_EXPORT void AppendValueToWriter(
-    dbus::MessageWriter* writer, uint64_t value);
-CHROMEOS_EXPORT bool PopValueFromReader(
-    dbus::MessageReader* reader, uint64_t* value);
+CHROMEOS_EXPORT void AppendValueToWriter(dbus::MessageWriter* writer,
+                                         uint64_t value);
+CHROMEOS_EXPORT bool PopValueFromReader(dbus::MessageReader* reader,
+                                        uint64_t* value);
 
 template<>
 struct DBusType<uint64_t> {
@@ -341,10 +335,10 @@ struct DBusType<uint64_t> {
 };
 
 // double ---------------------------------------------------------------------
-CHROMEOS_EXPORT void AppendValueToWriter(
-    dbus::MessageWriter* writer, double value);
-CHROMEOS_EXPORT bool PopValueFromReader(
-    dbus::MessageReader* reader, double* value);
+CHROMEOS_EXPORT void AppendValueToWriter(dbus::MessageWriter* writer,
+                                         double value);
+CHROMEOS_EXPORT bool PopValueFromReader(dbus::MessageReader* reader,
+                                        double* value);
 
 template<>
 struct DBusType<double> {
@@ -360,10 +354,10 @@ struct DBusType<double> {
 };
 
 // std::string ----------------------------------------------------------------
-CHROMEOS_EXPORT void AppendValueToWriter(
-    dbus::MessageWriter* writer, const std::string& value);
-CHROMEOS_EXPORT bool PopValueFromReader(
-    dbus::MessageReader* reader, std::string* value);
+CHROMEOS_EXPORT void AppendValueToWriter(dbus::MessageWriter* writer,
+                                         const std::string& value);
+CHROMEOS_EXPORT bool PopValueFromReader(dbus::MessageReader* reader,
+                                        std::string* value);
 
 template<>
 struct DBusType<std::string> {
@@ -380,8 +374,8 @@ struct DBusType<std::string> {
 };
 
 // const char*
-CHROMEOS_EXPORT void AppendValueToWriter(
-    dbus::MessageWriter* writer, const char* value);
+CHROMEOS_EXPORT void AppendValueToWriter(dbus::MessageWriter* writer,
+                                         const char* value);
 
 template<>
 struct DBusType<const char*> {
@@ -405,10 +399,10 @@ struct DBusType<const char[]> {
 };
 
 // dbus::ObjectPath -----------------------------------------------------------
-CHROMEOS_EXPORT void AppendValueToWriter(
-    dbus::MessageWriter* writer, const dbus::ObjectPath& value);
-CHROMEOS_EXPORT bool PopValueFromReader(
-    dbus::MessageReader* reader, dbus::ObjectPath* value);
+CHROMEOS_EXPORT void AppendValueToWriter(dbus::MessageWriter* writer,
+                                         const dbus::ObjectPath& value);
+CHROMEOS_EXPORT bool PopValueFromReader(dbus::MessageReader* reader,
+                                        dbus::ObjectPath* value);
 
 template<>
 struct DBusType<dbus::ObjectPath> {
@@ -426,10 +420,10 @@ struct DBusType<dbus::ObjectPath> {
 };
 
 // dbus::FileDescriptor -------------------------------------------------------
-CHROMEOS_EXPORT void AppendValueToWriter(
-    dbus::MessageWriter* writer, const dbus::FileDescriptor& value);
-CHROMEOS_EXPORT bool PopValueFromReader(
-    dbus::MessageReader* reader, dbus::FileDescriptor* value);
+CHROMEOS_EXPORT void AppendValueToWriter(dbus::MessageWriter* writer,
+                                         const dbus::FileDescriptor& value);
+CHROMEOS_EXPORT bool PopValueFromReader(dbus::MessageReader* reader,
+                                        dbus::FileDescriptor* value);
 
 template<>
 struct DBusType<dbus::FileDescriptor> {
@@ -449,8 +443,8 @@ struct DBusType<dbus::FileDescriptor> {
 // chromeos::Any --------------------------------------------------------------
 CHROMEOS_EXPORT void AppendValueToWriter(dbus::MessageWriter* writer,
                                          const chromeos::Any& value);
-CHROMEOS_EXPORT bool PopValueFromReader(
-    dbus::MessageReader* reader, chromeos::Any* value);
+CHROMEOS_EXPORT bool PopValueFromReader(dbus::MessageReader* reader,
+                                        chromeos::Any* value);
 
 template<>
 struct DBusType<chromeos::Any> {
@@ -468,9 +462,9 @@ struct DBusType<chromeos::Any> {
 
 // std::vector = D-Bus ARRAY. -------------------------------------------------
 template<typename T, typename ALLOC>
-typename std::enable_if<IsTypeSupported<T>::value>::type
-AppendValueToWriter(dbus::MessageWriter* writer,
-                    const std::vector<T, ALLOC>& value) {
+typename std::enable_if<IsTypeSupported<T>::value>::type AppendValueToWriter(
+    dbus::MessageWriter* writer,
+    const std::vector<T, ALLOC>& value) {
   dbus::MessageWriter array_writer(nullptr);
   writer->OpenArray(GetDBusSignature<T>(), &array_writer);
   for (const auto& element : value) {
@@ -552,9 +546,7 @@ struct TupleTraits<FirstType, RestOfTypes...> {
 
 template<>
 struct TupleTraits<> {
-  static std::string GetSignature() {
-    return std::string{};
-  }
+  static std::string GetSignature() { return std::string{}; }
 };
 
 }  // namespace details
@@ -562,14 +554,15 @@ struct TupleTraits<> {
 template<typename... Types>
 inline std::string GetStructDBusSignature() {
   // Returns "(T...)", where "T..." is the signature strings for types T...
-    return DBUS_STRUCT_BEGIN_CHAR_AS_STRING +
-           details::TupleTraits<Types...>::GetSignature() +
-           DBUS_STRUCT_END_CHAR_AS_STRING;
+  return DBUS_STRUCT_BEGIN_CHAR_AS_STRING +
+         details::TupleTraits<Types...>::GetSignature() +
+         DBUS_STRUCT_END_CHAR_AS_STRING;
 }
 
 template<typename U, typename V>
-typename std::enable_if<IsTypeSupported<U, V>::value>::type
-AppendValueToWriter(dbus::MessageWriter* writer, const std::pair<U, V>& value) {
+typename std::enable_if<IsTypeSupported<U, V>::value>::type AppendValueToWriter(
+    dbus::MessageWriter* writer,
+    const std::pair<U, V>& value) {
   dbus::MessageWriter struct_writer(nullptr);
   writer->OpenStruct(&struct_writer);
   // Use DBusType<T>::Write() instead of AppendValueToWriter() to delay
@@ -623,8 +616,7 @@ struct DBusPairType<false, U, V> : public Unsupported {};
 
 template<typename U, typename V>
 struct DBusType<std::pair<U, V>>
-    : public details::DBusPairType<IsTypeSupported<U, V>::value, U, V> {
-};
+    : public details::DBusPairType<IsTypeSupported<U, V>::value, U, V> {};
 
 // std::tuple = D-Bus STRUCT with arbitrary number of members. ----------------
 namespace details {
@@ -664,17 +656,15 @@ template<size_t N, typename... T>
 struct TupleIterator<N, N, T...> {
   using Tuple = std::tuple<T...>;
   static void Write(dbus::MessageWriter* writer, const Tuple& value) {}
-  static bool Read(dbus::MessageReader* reader, Tuple* value) {
-    return true;
-  }
+  static bool Read(dbus::MessageReader* reader, Tuple* value) { return true; }
 };
 
 }  // namespace details
 
 template<typename... T>
-typename std::enable_if<IsTypeSupported<T...>::value>::type
-AppendValueToWriter(dbus::MessageWriter* writer,
-                    const std::tuple<T...>& value) {
+typename std::enable_if<IsTypeSupported<T...>::value>::type AppendValueToWriter(
+    dbus::MessageWriter* writer,
+    const std::tuple<T...>& value) {
   dbus::MessageWriter struct_writer(nullptr);
   writer->OpenStruct(&struct_writer);
   details::TupleIterator<0, sizeof...(T), T...>::Write(&struct_writer, value);
@@ -727,9 +717,8 @@ struct DBusType<std::tuple<T...>>
 // std::map = D-Bus ARRAY of DICT_ENTRY. --------------------------------------
 template<typename KEY, typename VALUE, typename PRED, typename ALLOC>
 typename std::enable_if<IsTypeSupported<KEY, VALUE>::value>::type
-AppendValueToWriter(
-    dbus::MessageWriter* writer,
-    const std::map<KEY, VALUE, PRED, ALLOC>& value) {
+AppendValueToWriter(dbus::MessageWriter* writer,
+                    const std::map<KEY, VALUE, PRED, ALLOC>& value) {
   dbus::MessageWriter dict_writer(nullptr);
   writer->OpenArray(details::GetDBusDictEntryType<KEY, VALUE>(), &dict_writer);
   for (const auto& pair : value) {
@@ -778,7 +767,10 @@ namespace details {
 // GetSignature/Write/Read methods for T types that are supported by D-Bus
 // and not having those methods for types that are not supported by D-Bus.
 template<bool inner_types_supported,
-         typename KEY, typename VALUE, typename PRED, typename ALLOC>
+         typename KEY,
+         typename VALUE,
+         typename PRED,
+         typename ALLOC>
 struct DBusMapType {
   // Returns "a{KV}", where "K" and "V" are the signature strings for types
   // KEY/VALUE.
@@ -804,7 +796,10 @@ struct DBusMapType<false, KEY, VALUE, PRED, ALLOC> : public Unsupported {};
 template<typename KEY, typename VALUE, typename PRED, typename ALLOC>
 struct DBusType<std::map<KEY, VALUE, PRED, ALLOC>>
     : public details::DBusMapType<IsTypeSupported<KEY, VALUE>::value,
-                                  KEY, VALUE, PRED, ALLOC> {};
+                                  KEY,
+                                  VALUE,
+                                  PRED,
+                                  ALLOC> {};
 
 // google::protobuf::MessageLite = D-Bus ARRAY of BYTE ------------------------
 inline void AppendValueToWriter(dbus::MessageWriter* writer,

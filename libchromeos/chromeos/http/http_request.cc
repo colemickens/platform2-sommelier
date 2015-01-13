@@ -103,9 +103,10 @@ const char response_header::kWwwAuthenticate[]    = "WWW-Authenticate";
 // ***********************************************************
 // ********************** Request Class **********************
 // ***********************************************************
-Request::Request(const std::string& url, const std::string& method,
-                 std::shared_ptr<Transport> transport) :
-    transport_(transport), request_url_(url), method_(method) {
+Request::Request(const std::string& url,
+                 const std::string& method,
+                 std::shared_ptr<Transport> transport)
+    : transport_(transport), request_url_(url), method_(method) {
   VLOG(1) << "http::Request created";
   if (!transport_)
     transport_ = http::Transport::CreateDefault();
@@ -180,7 +181,7 @@ bool Request::AddRequestBody(const void* data,
   if (!SendRequestIfNeeded(error))
     return false;
   std::unique_ptr<DataReaderInterface> data_reader{
-    new MemoryDataReader{data, size}
+      new MemoryDataReader{data, size}
   };
   return connection_->SetRequestData(std::move(data_reader), error);
 }
@@ -246,23 +247,25 @@ bool Request::SendRequestIfNeeded(chromeos::ErrorPtr* error) {
         }
       }
       if (!ranges.empty())
-        headers.emplace_back(request_header::kRange,
-                             "bytes=" +
-                                 chromeos::string_utils::Join(',', ranges));
+        headers.emplace_back(
+            request_header::kRange,
+            "bytes=" + chromeos::string_utils::Join(',', ranges));
 
       headers.emplace_back(request_header::kAccept, GetAccept());
       if (method_ != request_type::kGet && method_ != request_type::kHead) {
         if (!content_type_.empty())
           headers.emplace_back(request_header::kContentType, content_type_);
       }
-      connection_ = transport_->CreateConnection(request_url_, method_, headers,
-                                                 user_agent_, referer_, error);
+      connection_ = transport_->CreateConnection(
+          request_url_, method_, headers, user_agent_, referer_, error);
     }
 
     if (connection_)
       return true;
   } else {
-    chromeos::Error::AddTo(error, FROM_HERE, http::kErrorDomain,
+    chromeos::Error::AddTo(error,
+                           FROM_HERE,
+                           http::kErrorDomain,
                            "response_already_received",
                            "HTTP response already received");
   }
@@ -282,8 +285,9 @@ Response::Response(const std::shared_ptr<Connection>& connection)
     response_data_.reserve(size);
     uint8_t buffer[1024];
     size_t read = 0;
-    while (connection_->ReadResponseData(buffer, sizeof(buffer),
-                                         &read, nullptr) && read > 0) {
+    while (
+        connection_->ReadResponseData(buffer, sizeof(buffer), &read, nullptr) &&
+        read > 0) {
       response_data_.insert(response_data_.end(), buffer, buffer + read);
     }
   }

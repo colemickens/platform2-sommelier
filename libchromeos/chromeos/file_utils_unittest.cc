@@ -52,8 +52,8 @@ class FileUtilsTest : public testing::Test {
 namespace {
 
 enum {
-  kPermissions600 = base::FILE_PERMISSION_READ_BY_USER |
-                    base::FILE_PERMISSION_WRITE_BY_USER,
+  kPermissions600 =
+      base::FILE_PERMISSION_READ_BY_USER | base::FILE_PERMISSION_WRITE_BY_USER,
   kPermissions700 = base::FILE_PERMISSION_USER_MASK,
   kPermissions777 = base::FILE_PERMISSION_MASK
 };

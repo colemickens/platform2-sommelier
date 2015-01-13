@@ -57,7 +57,7 @@ TEST(SimpleProcess, SearchPath) {
 TEST(SimpleProcess, BindFd) {
   int fds[2];
   char buf[16];
-  static const char *kMsg = "hello, world!";
+  static const char* kMsg = "hello, world!";
   ProcessImpl process;
   EXPECT_EQ(0, pipe(fds));
   process.AddArg(kBinEcho);
@@ -80,9 +80,7 @@ class ProcessTest : public ::testing::Test {
     ClearLog();
   }
 
-  void TearDown() {
-    base::DeleteFile(test_path_, true);
-  }
+  void TearDown() { base::DeleteFile(test_path_, true); }
 
  protected:
   void CheckStderrCaptured();
@@ -247,8 +245,7 @@ TEST_F(ProcessTest, WithIllegalUid) {
   EXPECT_EQ(static_cast<pid_t>(Process::kErrorExitStatus), process_.Run());
   std::string contents;
   EXPECT_TRUE(base::ReadFileToString(FilePath(output_file_), &contents));
-  EXPECT_NE(std::string::npos,
-            contents.find("Unable to set UID to 0: 1\n"));
+  EXPECT_NE(std::string::npos, contents.find("Unable to set UID to 0: 1\n"));
 }
 
 TEST_F(ProcessTest, WithIllegalGid) {
@@ -258,8 +255,7 @@ TEST_F(ProcessTest, WithIllegalGid) {
   EXPECT_EQ(static_cast<pid_t>(Process::kErrorExitStatus), process_.Run());
   std::string contents;
   EXPECT_TRUE(base::ReadFileToString(FilePath(output_file_), &contents));
-  EXPECT_NE(std::string::npos,
-            contents.find("Unable to set GID to 0: 1\n"));
+  EXPECT_NE(std::string::npos, contents.find("Unable to set GID to 0: 1\n"));
 }
 
 TEST_F(ProcessTest, NoParams) {

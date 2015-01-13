@@ -82,26 +82,27 @@ class DBusObjectTest : public ::testing::Test {
     EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());
     // Use a mock exported object.
     const dbus::ObjectPath kMethodsExportedOnPath(std::string("/export"));
-    mock_exported_object_ = new dbus::MockExportedObject(
-        bus_.get(), kMethodsExportedOnPath);
+    mock_exported_object_ =
+        new dbus::MockExportedObject(bus_.get(), kMethodsExportedOnPath);
     EXPECT_CALL(*bus_, GetExportedObject(kMethodsExportedOnPath))
-        .Times(AnyNumber()).WillRepeatedly(Return(mock_exported_object_.get()));
-    EXPECT_CALL(*mock_exported_object_,
-                ExportMethod(_, _, _, _)).Times(AnyNumber());
+        .Times(AnyNumber())
+        .WillRepeatedly(Return(mock_exported_object_.get()));
+    EXPECT_CALL(*mock_exported_object_, ExportMethod(_, _, _, _))
+        .Times(AnyNumber());
     EXPECT_CALL(*mock_exported_object_, Unregister()).Times(1);
 
     dbus_object_ = std::unique_ptr<DBusObject>(
         new DBusObject(nullptr, bus_, kMethodsExportedOnPath));
 
     DBusInterface* itf1 = dbus_object_->AddOrGetInterface(kTestInterface1);
-    itf1->AddSimpleMethodHandler(kTestMethod_Add,
-                                 base::Unretained(&calc_), &Calc::Add);
-    itf1->AddSimpleMethodHandler(kTestMethod_Negate,
-                                 base::Unretained(&calc_), &Calc::Negate);
-    itf1->AddMethodHandler(kTestMethod_Positive,
-                           base::Unretained(&calc_), &Calc::Positive);
-    itf1->AddSimpleMethodHandler(kTestMethod_AddSubtract,
-                                 base::Unretained(&calc_), &Calc::AddSubtract);
+    itf1->AddSimpleMethodHandler(
+        kTestMethod_Add, base::Unretained(&calc_), &Calc::Add);
+    itf1->AddSimpleMethodHandler(
+        kTestMethod_Negate, base::Unretained(&calc_), &Calc::Negate);
+    itf1->AddMethodHandler(
+        kTestMethod_Positive, base::Unretained(&calc_), &Calc::Positive);
+    itf1->AddSimpleMethodHandler(
+        kTestMethod_AddSubtract, base::Unretained(&calc_), &Calc::AddSubtract);
     DBusInterface* itf2 = dbus_object_->AddOrGetInterface(kTestInterface2);
     itf2->AddSimpleMethodHandler(kTestMethod_StrLen, StrLen);
     itf2->AddSimpleMethodHandlerWithError(kTestMethod_CheckNonEmpty,

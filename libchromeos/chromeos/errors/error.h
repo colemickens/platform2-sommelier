@@ -46,7 +46,8 @@ class CHROMEOS_EXPORT Error {
                           const tracked_objects::Location& location,
                           const std::string& domain,
                           const std::string& code,
-                          const char* format, ...) PRINTF_FORMAT(5, 6);
+                          const char* format,
+                          ...) PRINTF_FORMAT(5, 6);
 
   // Returns the error domain, code and message
   const std::string& GetDomain() const { return domain_; }

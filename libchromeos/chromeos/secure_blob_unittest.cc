@@ -18,20 +18,20 @@ using std::string;
 
 class SecureBlobTest : public ::testing::Test {
  public:
-  SecureBlobTest() { }
-  virtual ~SecureBlobTest() { }
+  SecureBlobTest() {}
+  virtual ~SecureBlobTest() {}
 
   static bool FindBlobInBlob(const chromeos::Blob& haystack,
                              const chromeos::Blob& needle) {
-    auto pos = std::search(haystack.begin(), haystack.end(), needle.begin(),
-                           needle.end());
+    auto pos = std::search(
+        haystack.begin(), haystack.end(), needle.begin(), needle.end());
     return (pos != haystack.end());
   }
 
   static int FindBlobIndexInBlob(const chromeos::Blob& haystack,
                                  const chromeos::Blob& needle) {
-    auto pos = std::search(haystack.begin(), haystack.end(), needle.begin(),
-                           needle.end());
+    auto pos = std::search(
+        haystack.begin(), haystack.end(), needle.begin(), needle.end());
     if (pos == haystack.end()) {
       return -1;
     }

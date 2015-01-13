@@ -51,8 +51,7 @@ void ReadTestPropertyDict(dbus::MessageReader* reader) {
 }
 
 void VerifyInterfaceClaimSignal(dbus::Signal* signal) {
-  EXPECT_EQ(signal->GetInterface(),
-            std::string(dbus::kObjectManagerInterface));
+  EXPECT_EQ(signal->GetInterface(), std::string(dbus::kObjectManagerInterface));
   EXPECT_EQ(signal->GetMember(),
             std::string(dbus::kObjectManagerInterfacesAdded));
   //   org.freedesktop.DBus.ObjectManager.InterfacesAdded (
@@ -76,8 +75,7 @@ void VerifyInterfaceClaimSignal(dbus::Signal* signal) {
 }
 
 void VerifyInterfaceDropSignal(dbus::Signal* signal) {
-  EXPECT_EQ(signal->GetInterface(),
-            std::string(dbus::kObjectManagerInterface));
+  EXPECT_EQ(signal->GetInterface(), std::string(dbus::kObjectManagerInterface));
   EXPECT_EQ(signal->GetMember(),
             std::string(dbus::kObjectManagerInterfacesRemoved));
   //   org.freedesktop.DBus.ObjectManager.InterfacesRemoved (
@@ -97,7 +95,7 @@ void VerifyInterfaceDropSignal(dbus::Signal* signal) {
 
 }  // namespace
 
-class ExportedObjectManagerTest: public ::testing::Test {
+class ExportedObjectManagerTest : public ::testing::Test {
  public:
   void SetUp() override {
     dbus::Bus::Options options;
@@ -107,12 +105,11 @@ class ExportedObjectManagerTest: public ::testing::Test {
     EXPECT_CALL(*bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());
     // Use a mock exported object.
-    mock_exported_object_ = new dbus::MockExportedObject(
-        bus_.get(), kTestPath);
-    EXPECT_CALL(*bus_, GetExportedObject(kTestPath))
-        .Times(1).WillOnce(Return(mock_exported_object_.get()));
-    EXPECT_CALL(*mock_exported_object_,
-                ExportMethod(_, _, _, _)).Times(AnyNumber());
+    mock_exported_object_ = new dbus::MockExportedObject(bus_.get(), kTestPath);
+    EXPECT_CALL(*bus_, GetExportedObject(kTestPath)).Times(1).WillOnce(
+        Return(mock_exported_object_.get()));
+    EXPECT_CALL(*mock_exported_object_, ExportMethod(_, _, _, _))
+        .Times(AnyNumber());
     om_.reset(new ExportedObjectManager(bus_.get(), kTestPath));
     property_writer_ = base::Bind(&WriteTestPropertyDict);
     om_->RegisterAsync(AsyncEventSequencer::GetDefaultCompletionAction());

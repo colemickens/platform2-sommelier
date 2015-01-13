@@ -19,13 +19,10 @@ inline void LogError(const tracked_objects::Location& location,
   // the current error location with the location passed in to the Error object.
   // This way the log will contain the actual location of the error, and not
   // as if it always comes from chromeos/errors/error.cc(22).
-  logging::LogMessage(location.file_name(),
-                      location.line_number(),
-                      logging::LOG_ERROR).stream()
+  logging::LogMessage(
+      location.file_name(), location.line_number(), logging::LOG_ERROR).stream()
       << location.function_name() << "(...): "
-      << "Domain=" << domain
-      << ", Code=" << code
-      << ", Message=" << message;
+      << "Domain=" << domain << ", Code=" << code << ", Message=" << message;
 }
 }  // anonymous namespace
 
@@ -42,8 +39,8 @@ ErrorPtr Error::Create(const tracked_objects::Location& location,
                        const std::string& message,
                        ErrorPtr inner_error) {
   LogError(location, domain, code, message);
-  return ErrorPtr(new Error(location, domain, code, message,
-                            std::move(inner_error)));
+  return ErrorPtr(
+      new Error(location, domain, code, message, std::move(inner_error)));
 }
 
 void Error::AddTo(ErrorPtr* error,
@@ -64,7 +61,8 @@ void Error::AddToPrintf(ErrorPtr* error,
                         const tracked_objects::Location& location,
                         const std::string& domain,
                         const std::string& code,
-                        const char* format, ...) {
+                        const char* format,
+                        ...) {
   va_list ap;
   va_start(ap, format);
   std::string message = base::StringPrintV(format, ap);
@@ -91,9 +89,12 @@ Error::Error(const tracked_objects::Location& location,
              const std::string& domain,
              const std::string& code,
              const std::string& message,
-             ErrorPtr inner_error) :
-    domain_(domain), code_(code), message_(message), location_(location),
-    inner_error_(std::move(inner_error)) {
+             ErrorPtr inner_error)
+    : domain_(domain),
+      code_(code),
+      message_(message),
+      location_(location),
+      inner_error_(std::move(inner_error)) {
 }
 
 const Error* Error::FindErrorOfDomain(const Error* error_chain_start,

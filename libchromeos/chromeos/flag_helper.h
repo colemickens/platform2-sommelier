@@ -183,44 +183,34 @@ class CHROMEOS_EXPORT StringFlag : public Flag {
 // set bool flags to false.  Creating the FLAGS_noxxxx variables here
 // will also ensure a compiler error will be thrown if another flag
 // is created with a conflicting name.
-#define DEFINE_type(type, classtype, name, value, help)                        \
-  type FLAGS_##name = value;                                                   \
-  chromeos::FlagHelper::GetInstance()->AddFlag(                                \
-      std::unique_ptr<chromeos::Flag>(                                         \
+#define DEFINE_type(type, classtype, name, value, help) \
+  type FLAGS_##name = value;                            \
+  chromeos::FlagHelper::GetInstance()->AddFlag(         \
+      std::unique_ptr<chromeos::Flag>(                  \
           new chromeos::classtype(#name, &FLAGS_##name, #value, help, true)));
 
 #define DEFINE_int32(name, value, help) \
-    DEFINE_type(int, Int32Flag, name, value, help)
+  DEFINE_type(int, Int32Flag, name, value, help)
 #define DEFINE_int64(name, value, help) \
-    DEFINE_type(int64_t, Int64Flag, name, value, help)
+  DEFINE_type(int64_t, Int64Flag, name, value, help)
 #define DEFINE_uint64(name, value, help) \
-    DEFINE_type(uint64_t, UInt64Flag, name, value, help)
+  DEFINE_type(uint64_t, UInt64Flag, name, value, help)
 #define DEFINE_double(name, value, help) \
-    DEFINE_type(double, DoubleFlag, name, value, help)
+  DEFINE_type(double, DoubleFlag, name, value, help)
 #define DEFINE_string(name, value, help) \
-    DEFINE_type(std::string, StringFlag, name, value, help)
+  DEFINE_type(std::string, StringFlag, name, value, help)
 
 // Due to the FLAGS_no##name variables, can't re-use the same DEFINE_type macro
 // for defining bool flags
-#define DEFINE_bool(name, value, help)                                         \
-  bool FLAGS_##name = value;                                                   \
-  bool FLAGS_no##name = !value;                                                \
-  chromeos::FlagHelper::GetInstance()->AddFlag(                                \
-      std::unique_ptr<chromeos::Flag>(                                         \
-          new chromeos::BoolFlag(#name,                                        \
-                                 &FLAGS_##name,                                \
-                                 &FLAGS_no##name,                              \
-                                 #value,                                       \
-                                 help,                                         \
-                                 true)));                                      \
-  chromeos::FlagHelper::GetInstance()->AddFlag(                                \
-      std::unique_ptr<chromeos::Flag>(                                         \
-          new chromeos::BoolFlag("no" #name,                                   \
-                                 &FLAGS_no##name,                              \
-                                 &FLAGS_##name,                                \
-                                 #value,                                       \
-                                 help,                                         \
-                                 false)));
+#define DEFINE_bool(name, value, help)                                  \
+  bool FLAGS_##name = value;                                            \
+  bool FLAGS_no##name = !value;                                         \
+  chromeos::FlagHelper::GetInstance()->AddFlag(                         \
+      std::unique_ptr<chromeos::Flag>(new chromeos::BoolFlag(           \
+          #name, &FLAGS_##name, &FLAGS_no##name, #value, help, true))); \
+  chromeos::FlagHelper::GetInstance()->AddFlag(                         \
+      std::unique_ptr<chromeos::Flag>(new chromeos::BoolFlag(           \
+          "no" #name, &FLAGS_no##name, &FLAGS_##name, #value, help, false)));
 
 // The FlagHelper class is a singleton class used for registering command
 // line flags and pointers to their associated scoped variables, so that

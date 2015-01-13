@@ -14,9 +14,10 @@ namespace chromeos {
 namespace http {
 namespace fake {
 
-Connection::Connection(const std::string& url, const std::string& method,
-                       const std::shared_ptr<http::Transport>& transport) :
-    http::Connection(transport), request_(url, method) {
+Connection::Connection(const std::string& url,
+                       const std::string& method,
+                       const std::shared_ptr<http::Transport>& transport)
+    : http::Connection(transport), request_(url, method) {
   VLOG(1) << "fake::Connection created: " << method;
 }
 
@@ -39,8 +40,8 @@ bool Connection::SetRequestData(
 
 bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
   using chromeos::string_utils::ToString;
-  request_.AddHeaders({{request_header::kContentLength,
-                      ToString(request_.GetData().size())}});
+  request_.AddHeaders(
+      {{request_header::kContentLength, ToString(request_.GetData().size())}});
   fake::Transport* transport = static_cast<fake::Transport*>(transport_.get());
   CHECK(transport) << "Expecting a fake transport";
   auto handler = transport->GetHandler(request_.GetURL(), request_.GetMethod());
@@ -56,14 +57,13 @@ bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
   return true;
 }
 
-void Connection::FinishRequestAsync(
-    const SuccessCallback& success_callback,
-    const ErrorCallback& error_callback) {
-  transport_->RunCallbackAsync(
-      FROM_HERE, base::Bind(&Connection::FinishRequestAsyncHelper,
-                            base::Unretained(this),
-                            success_callback,
-                            error_callback));
+void Connection::FinishRequestAsync(const SuccessCallback& success_callback,
+                                    const ErrorCallback& error_callback) {
+  transport_->RunCallbackAsync(FROM_HERE,
+                               base::Bind(&Connection::FinishRequestAsyncHelper,
+                                          base::Unretained(this),
+                                          success_callback,
+                                          error_callback));
 }
 
 void Connection::FinishRequestAsyncHelper(
@@ -97,8 +97,9 @@ std::string Connection::GetResponseHeader(
 
 uint64_t Connection::GetResponseDataSize() const {
   // HEAD requests must not return body.
-  return (request_.GetMethod() != request_type::kHead) ?
-      response_.GetData().size() : 0;
+  return (request_.GetMethod() != request_type::kHead)
+             ? response_.GetData().size()
+             : 0;
 }
 
 bool Connection::ReadResponseData(void* data,
