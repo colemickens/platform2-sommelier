@@ -113,7 +113,7 @@ void Daemon::StopAndReturnToMain() {
 void Daemon::Start() {
   glib_.TypeInit();
   metrics_->Start();
-  rtnl_handler_->Start(&sockets_);
+  rtnl_handler_->Start();
   routing_table_->Start();
   dhcp_provider_->Init(control_.get(), &dispatcher_, &glib_, metrics_.get());
 

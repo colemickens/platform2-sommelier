@@ -17,7 +17,6 @@
 #include <shill/net/rtnl_handler.h>
 #include <shill/net/rtnl_listener.h>
 #include <shill/net/rtnl_message.h>
-#include <shill/net/sockets.h>
 
 #include "apmanager/manager.h"
 
@@ -43,8 +42,7 @@ DeviceInfo::DeviceInfo(Manager* manager)
       device_info_root_(kDeviceInfoRoot),
       manager_(manager),
       netlink_manager_(NetlinkManager::GetInstance()),
-      rtnl_handler_(RTNLHandler::GetInstance()),
-      sockets_(new shill::Sockets()) {
+      rtnl_handler_(RTNLHandler::GetInstance()) {
 }
 
 DeviceInfo::~DeviceInfo() {}
@@ -65,7 +63,7 @@ void DeviceInfo::Start() {
   EnumerateDevices();
 
   // Start RTNL for monitoring network interfaces.
-  rtnl_handler_->Start(sockets_.get());
+  rtnl_handler_->Start();
   link_listener_.reset(
       new RTNLListener(RTNLHandler::kRequestLink, link_callback_));
   // Request link infos.

@@ -36,15 +36,16 @@ namespace shill {
 
 // Keep this large enough to avoid overflows on IPv6 SNM routing update spikes
 const int RTNLHandler::kReceiveBufferSize = 512 * 1024;
+const int RTNLHandler::kInvalidSocket = -1;
 
 namespace {
 base::LazyInstance<RTNLHandler> g_rtnl_handler = LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
 RTNLHandler::RTNLHandler()
-    : sockets_(nullptr),
+    : sockets_(new Sockets()),
       in_request_(false),
-      rtnl_socket_(-1),
+      rtnl_socket_(kInvalidSocket),
       request_flags_(0),
       request_sequence_(0),
       last_dump_sequence_(0),
@@ -63,20 +64,20 @@ RTNLHandler* RTNLHandler::GetInstance() {
   return g_rtnl_handler.Pointer();
 }
 
-void RTNLHandler::Start(Sockets *sockets) {
+void RTNLHandler::Start() {
   struct sockaddr_nl addr;
 
-  if (sockets_) {
+  if (rtnl_socket_ != kInvalidSocket) {
     return;
   }
 
-  rtnl_socket_ = sockets->Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
+  rtnl_socket_ = sockets_->Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
   if (rtnl_socket_ < 0) {
     LOG(ERROR) << "Failed to open rtnl socket";
     return;
   }
 
-  if (sockets->SetReceiveBuffer(rtnl_socket_, kReceiveBufferSize)) {
+  if (sockets_->SetReceiveBuffer(rtnl_socket_, kReceiveBufferSize)) {
     LOG(ERROR) << "Failed to increase receive buffer size";
   }
 
@@ -85,11 +86,11 @@ void RTNLHandler::Start(Sockets *sockets) {
   addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
       RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE | RTMGRP_ND_USEROPT;
 
-  if (sockets->Bind(rtnl_socket_,
+  if (sockets_->Bind(rtnl_socket_,
                     reinterpret_cast<struct sockaddr *>(&addr),
                     sizeof(addr)) < 0) {
-    sockets->Close(rtnl_socket_);
-    rtnl_socket_ = -1;
+    sockets_->Close(rtnl_socket_);
+    rtnl_socket_ = kInvalidSocket;
     LOG(ERROR) << "RTNL socket bind failed";
     return;
   }
@@ -98,24 +99,19 @@ void RTNLHandler::Start(Sockets *sockets) {
       rtnl_socket_,
       rtnl_callback_,
       Bind(&RTNLHandler::OnReadError, Unretained(this))));
-  sockets_ = sockets;
 
   NextRequest(last_dump_sequence_);
   VLOG(2) << "RTNLHandler started";
 }
 
 void RTNLHandler::Stop() {
-  if (!sockets_)
-    return;
-
   rtnl_handler_.reset();
   // Close the socket if it is currently open.
-  if (rtnl_socket_ != -1) {
+  if (rtnl_socket_ != kInvalidSocket) {
     sockets_->Close(rtnl_socket_);
-    rtnl_socket_ = -1;
+    rtnl_socket_ = kInvalidSocket;
   }
   in_request_ = false;
-  sockets_ = nullptr;
   request_flags_ = 0;
   VLOG(2) << "RTNLHandler stopped";
 }
@@ -141,7 +137,7 @@ void RTNLHandler::RemoveListener(RTNLListener *to_remove) {
 
 void RTNLHandler::SetInterfaceFlags(int interface_index, unsigned int flags,
                                     unsigned int change) {
-  if (!sockets_) {
+  if (rtnl_socket_ == kInvalidSocket) {
     LOG(ERROR) << __func__ << " called while not started.  "
         "Assuming we are in unit tests.";
     return;
@@ -170,7 +166,7 @@ void RTNLHandler::SetInterfaceFlags(int interface_index, unsigned int flags,
 }
 
 void RTNLHandler::RequestDump(int request_flags) {
-  if (!sockets_) {
+  if (rtnl_socket_ == kInvalidSocket) {
     LOG(ERROR) << __func__ << " called while not started.  "
         "Assuming we are in unit tests.";
     return;
@@ -385,7 +381,7 @@ int RTNLHandler::GetInterfaceIndex(const string &interface_name) {
     PLOG(ERROR) << "Unable to open INET socket";
     return -1;
   }
-  ScopedSocketCloser socket_closer(sockets_, socket);
+  ScopedSocketCloser socket_closer(sockets_.get(), socket);
   memset(&ifr, 0, sizeof(ifr));
   strncpy(ifr.ifr_name, interface_name.c_str(), sizeof(ifr.ifr_name));
   if (sockets_->Ioctl(socket, SIOCGIFINDEX, &ifr) < 0) {

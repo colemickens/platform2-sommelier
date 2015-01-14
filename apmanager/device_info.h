@@ -23,7 +23,6 @@ class Nl80211Message;
 class RTNLHandler;
 class RTNLMessage;
 class RTNLListener;
-class Sockets;
 
 }  // namespace shill
 
@@ -98,8 +97,6 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // Cache copy of singleton pointers.
   shill::NetlinkManager* netlink_manager_;
   shill::RTNLHandler* rtnl_handler_;
-
-  std::unique_ptr<shill::Sockets> sockets_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceInfo);
 };

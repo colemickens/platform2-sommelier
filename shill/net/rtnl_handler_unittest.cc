@@ -47,11 +47,13 @@ ACTION(SetInterfaceIndex) {
 class RTNLHandlerTest : public Test {
  public:
   RTNLHandlerTest()
-      : callback_(Bind(&RTNLHandlerTest::HandlerCallback, Unretained(this))) {
+      : sockets_(new StrictMock<MockSockets>()),
+        callback_(Bind(&RTNLHandlerTest::HandlerCallback, Unretained(this))) {
   }
 
   virtual void SetUp() {
     RTNLHandler::GetInstance()->io_handler_factory_ = &io_handler_factory_;
+    RTNLHandler::GetInstance()->sockets_.reset(sockets_);
   }
 
   virtual void TearDown() {
@@ -69,11 +71,7 @@ class RTNLHandlerTest : public Test {
   void StartRTNLHandler();
   void StopRTNLHandler();
 
-  void SetSockets(Sockets *sockets) {
-    RTNLHandler::GetInstance()->sockets_ = sockets;
-  }
-
-  StrictMock<MockSockets> sockets_;
+  MockSockets *sockets_;
   StrictMock<MockIOHandlerFactory> io_handler_factory_;
   Callback<void(const RTNLMessage &)> callback_;
 };
@@ -83,17 +81,17 @@ const int RTNLHandlerTest::kTestDeviceIndex = 123456;
 const char RTNLHandlerTest::kTestDeviceName[] = "test-device";
 
 void RTNLHandlerTest::StartRTNLHandler() {
-  EXPECT_CALL(sockets_, Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE))
+  EXPECT_CALL(*sockets_, Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE))
       .WillOnce(Return(kTestSocket));
-  EXPECT_CALL(sockets_, Bind(kTestSocket, _, sizeof(sockaddr_nl)))
+  EXPECT_CALL(*sockets_, Bind(kTestSocket, _, sizeof(sockaddr_nl)))
       .WillOnce(Return(0));
-  EXPECT_CALL(sockets_, SetReceiveBuffer(kTestSocket, _)).WillOnce(Return(0));
+  EXPECT_CALL(*sockets_, SetReceiveBuffer(kTestSocket, _)).WillOnce(Return(0));
   EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(kTestSocket, _, _));
-  RTNLHandler::GetInstance()->Start(&sockets_);
+  RTNLHandler::GetInstance()->Start();
 }
 
 void RTNLHandlerTest::StopRTNLHandler() {
-  EXPECT_CALL(sockets_, Close(kTestSocket)).WillOnce(Return(0));
+  EXPECT_CALL(*sockets_, Close(kTestSocket)).WillOnce(Return(0));
   RTNLHandler::GetInstance()->Stop();
 }
 
@@ -126,7 +124,6 @@ TEST_F(RTNLHandlerTest, AddLinkTest) {
 
 
 TEST_F(RTNLHandlerTest, GetInterfaceName) {
-  SetSockets(&sockets_);
   EXPECT_EQ(-1, RTNLHandler::GetInstance()->GetInterfaceIndex(""));
   {
     struct ifreq ifr;
@@ -135,14 +132,14 @@ TEST_F(RTNLHandlerTest, GetInterfaceName) {
   }
 
   const int kTestSocket = 123;
-  EXPECT_CALL(sockets_, Socket(PF_INET, SOCK_DGRAM, 0))
+  EXPECT_CALL(*sockets_, Socket(PF_INET, SOCK_DGRAM, 0))
       .Times(3)
       .WillOnce(Return(-1))
       .WillRepeatedly(Return(kTestSocket));
-  EXPECT_CALL(sockets_, Ioctl(kTestSocket, SIOCGIFINDEX, _))
+  EXPECT_CALL(*sockets_, Ioctl(kTestSocket, SIOCGIFINDEX, _))
       .WillOnce(Return(-1))
       .WillOnce(DoAll(SetInterfaceIndex(), Return(0)));
-  EXPECT_CALL(sockets_, Close(kTestSocket))
+  EXPECT_CALL(*sockets_, Close(kTestSocket))
       .Times(2)
       .WillRepeatedly(Return(0));
   EXPECT_EQ(-1, RTNLHandler::GetInstance()->GetInterfaceIndex("eth0"));

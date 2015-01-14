@@ -50,7 +50,7 @@ class SHILL_EXPORT RTNLHandler {
   // This starts the event-monitoring function of the RTNL handler. This
   // function will create an IOHandler and add it to the current message
   // loop.
-  virtual void Start(Sockets *sockets);
+  virtual void Start();
 
   // Add an RTNL event listener to the list of entities that will
   // be notified of RTNL events.
@@ -111,6 +111,7 @@ class SHILL_EXPORT RTNLHandler {
   FRIEND_TEST(RoutingTableTest, RouteDeleteForeign);
 
   static const int kReceiveBufferSize;
+  static const int kInvalidSocket;
 
   // This stops the event-monitoring function of the RTNL handler -- it is
   // private since it will never happen in normal running, but is useful for
@@ -134,7 +135,7 @@ class SHILL_EXPORT RTNLHandler {
   // Called by the RTNL read handler on exceptional events.
   void OnReadError(const std::string &error_msg);
 
-  Sockets *sockets_;
+  std::unique_ptr<Sockets> sockets_;
   bool in_request_;
 
   int rtnl_socket_;

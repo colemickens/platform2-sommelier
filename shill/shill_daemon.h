@@ -12,7 +12,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/manager.h"
-#include "shill/net/sockets.h"
 #include "shill/wifi/callback80211_metrics.h"
 
 namespace shill {
@@ -57,7 +56,6 @@ class Daemon {
   std::unique_ptr<ControlInterface> control_;
   EventDispatcher dispatcher_;
   GLib glib_;
-  Sockets sockets_;
   std::unique_ptr<Metrics> metrics_;
   ProxyFactory *proxy_factory_;
   RTNLHandler *rtnl_handler_;
