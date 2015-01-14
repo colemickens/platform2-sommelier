@@ -30,9 +30,6 @@ static const char kPPPReasonDisconnect[] = "disconnect";
 
 class PPPDevice : public VirtualDevice {
  public:
-  static const char kDaemonPath[];
-  static const char kPluginPath[];
-
   PPPDevice(ControlInterface *control,
             EventDispatcher *dispatcher,
             Metrics *metrics,

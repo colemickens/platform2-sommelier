@@ -35,6 +35,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/net/rtnl_handler.h"
+#include "shill/ppp_daemon.h"
 #include "shill/ppp_device.h"
 #include "shill/ppp_device_factory.h"
 #include "shill/profile.h"
@@ -1016,28 +1017,26 @@ void Cellular::StartPPP(const string &serial_device) {
     CHECK(!ipconfig());  // Shouldn't have ipconfig without selected_service().
   }
 
-  base::Callback<void(pid_t, int)> death_callback(
-      Bind(&Cellular::OnPPPDied, weak_ptr_factory_.GetWeakPtr()));
-  vector<string> args;
-  map<string, string> environment;
-  Error error;
-  if (SLOG_IS_ON(PPP, 5)) {
-    args.push_back("debug");
-  }
-  args.push_back("nodetach");
-  args.push_back("nodefaultroute");  // Don't let pppd muck with routing table.
-  args.push_back("usepeerdns");  // Request DNS servers.
-  args.push_back("plugin");  // Goes with next arg.
-  args.push_back(PPPDevice::kPluginPath);
-  args.push_back(serial_device);
+  PPPDaemon::DeathCallback death_callback(Bind(&Cellular::OnPPPDied,
+                                               weak_ptr_factory_.GetWeakPtr()));
+
+  PPPDaemon::Options options;
+  options.no_detach = true;
+  options.no_default_route = true;
+  options.use_peer_dns = true;
+
   is_ppp_authenticating_ = false;
+
+  Error error;
   std::unique_ptr<ExternalTask> new_ppp_task(
-      new ExternalTask(modem_info_->control_interface(),
+      PPPDaemon::Start(modem_info_->control_interface(),
                        modem_info_->glib(),
                        weak_ptr_factory_.GetWeakPtr(),
-                       death_callback));
-  if (new_ppp_task->Start(
-          FilePath(PPPDevice::kDaemonPath), args, environment, true, &error)) {
+                       options,
+                       serial_device,
+                       death_callback,
+                       &error));
+  if (new_ppp_task) {
     LOG(INFO) << "Forked pppd process.";
     ppp_task_ = std::move(new_ppp_task);
   }

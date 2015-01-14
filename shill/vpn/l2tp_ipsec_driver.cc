@@ -36,6 +36,7 @@
 #include "shill/external_task.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
+#include "shill/ppp_daemon.h"
 #include "shill/ppp_device.h"
 #include "shill/ppp_device_factory.h"
 #include "shill/vpn/vpn_service.h"
@@ -243,7 +244,7 @@ bool L2TPIPSecDriver::InitOptions(vector<string> *options, Error *error) {
 
   options->push_back(base::StringPrintf("--remote_host=%s", vpnhost.c_str()));
   options->push_back(base::StringPrintf("--pppd_plugin=%s",
-                                        PPPDevice::kPluginPath));
+                                        PPPDaemon::kPluginPath));
   // Disable pppd from configuring IP addresses, routes, DNS.
   options->push_back("--nosystemconfig");
 

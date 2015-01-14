@@ -19,10 +19,6 @@ static auto kModuleLogScope = ScopeLogger::kPPP;
 static string ObjectID(PPPDevice *p) { return p->link_name(); }
 }
 
-// statics
-const char PPPDevice::kDaemonPath[] = "/usr/sbin/pppd";
-const char PPPDevice::kPluginPath[] = SHIMDIR "/shill-pppd-plugin.so";
-
 PPPDevice::PPPDevice(ControlInterface *control,
                      EventDispatcher *dispatcher,
                      Metrics *metrics,
