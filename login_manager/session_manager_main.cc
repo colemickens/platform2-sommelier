@@ -27,6 +27,8 @@
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <chromeos/syslog_logging.h>
+#include <linux/limits.h>
+#include <rootdev/rootdev.h>
 
 #include "login_manager/browser_job.h"
 #include "login_manager/chrome_setup.h"
@@ -39,7 +41,6 @@
 using std::map;
 using std::string;
 using std::vector;
-using std::wstring;
 
 // Watches a Chrome binary and restarts it when it crashes. Also watches
 // window manager binary as well. Actually supports watching several
@@ -59,16 +60,6 @@ static const char kDisableChromeRestartFile[] = "disable-chrome-restart-file";
 static const char kDisableChromeRestartFileDefault[] =
     "/var/run/disable_chrome_restart";
 
-// Name of flag specifying the time (in s) to wait for children to exit
-// gracefully before killing them with a SIGABRT.
-static const char kKillTimeout[] = "kill-timeout";
-static const int kKillTimeoutDefault = 3;
-
-// Name of the flag specifying whether we should kill and restart chrome
-// if we detect that it has hung.
-static const char kEnableHangDetection[] = "enable-hang-detection";
-static const uint32_t kHangDetectionIntervalDefaultSeconds = 60;
-
 // Flag that causes session manager to show the help message and exit.
 static const char kHelp[] = "help";
 // The help message shown if help flag is passed to the program.
@@ -82,17 +73,7 @@ static const char kHelpMessage[] =
     "    another program. (default: /opt/google/chrome/chrome)\n"
     "  --disable-chrome-restart-file=</path/to/file>\n"
     "    Magic file that causes this program to stop restarting the\n"
-    "    chrome binary and exit. (default: /var/run/disable_chrome_restart)\n"
-    "  --kill-timeout=[number in seconds]\n"
-    "    Number of seconds to wait for children to exit gracefully before\n"
-    "    killing them with a SIGABRT.\n"
-    "  --enable-hang-detection[=number in seconds]\n"
-    "    Ping the browser over DBus periodically to determine if it's alive.\n"
-    "    Optionally accepts a period value in seconds.  Default is 60.\n"
-    "    If it fails to respond, SIGABRT and restart it."
-    "  -- /path/to/program [arg1 [arg2 [ . . . ] ] ]\n"
-    "    Supplies the required program to execute and its arguments.\n";
-
+    "    chrome binary and exit. (default: /var/run/disable_chrome_restart)\n";
 }  // namespace switches
 
 using login_manager::BrowserJob;
@@ -104,12 +85,41 @@ using login_manager::SessionManagerService;
 using login_manager::SystemUtilsImpl;
 
 // Directory in which per-boot metrics flag files will be stored.
-const char kFlagFileDir[] = "/var/run/session_manager";
+static const char kFlagFileDir[] = "/var/run/session_manager";
+
+// Hang-detection magic file and constants.
+static const char kHangDetectionFlagFile[] = "enable_hang_detection";
+static const uint32_t kHangDetectionIntervalDefaultSeconds = 60;
+static const uint32_t kHangDetectionIntervalShortSeconds = 5;
+
+// Time to wait for children to exit gracefully before killing them
+// with a SIGABRT.
+static const int kKillTimeoutDefaultSeconds = 3;
+static const int kKillTimeoutLongSeconds = 12;
+
+namespace {
+bool BootDeviceIsRotationalDisk() {
+  char full_rootdev_path[PATH_MAX];
+  if (rootdev(full_rootdev_path, PATH_MAX - 1, true, true) != 0) {
+    PLOG(WARNING) << "Couldn't find root device. Guessing it's not rotational.";
+    return false;
+  }
+  CHECK(StartsWithASCII(full_rootdev_path, "/dev/", true));
+  string device_only(full_rootdev_path + 5, PATH_MAX - 5);
+  base::FilePath sysfs_path(
+      base::StringPrintf("/sys/block/%s/queue/rotational",
+                         device_only.c_str()));
+  string rotational_contents;
+  if (!base::ReadFileToString(sysfs_path, &rotational_contents))
+    PLOG(WARNING) << "Couldn't read from " << sysfs_path.value();
+  return rotational_contents == "1";
+}
+}  // namespace
 
 int main(int argc, char* argv[]) {
   base::AtExitManager exit_manager;
-  CommandLine::Init(argc, argv);
-  CommandLine* cl = CommandLine::ForCurrentProcess();
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogHeader);
 
   if (cl->HasSwitch(switches::kHelp)) {
@@ -124,38 +134,12 @@ int main(int argc, char* argv[]) {
   vector<string> command;
   base::SplitStringAlongWhitespace(command_flag, &command);
 
-  // Parse kill timeout if it's present.
-  int kill_timeout = switches::kKillTimeoutDefault;
-  if (cl->HasSwitch(switches::kKillTimeout)) {
-    string timeout_flag = cl->GetSwitchValueASCII(switches::kKillTimeout);
-    int from_flag = 0;
-    if (base::StringToInt(timeout_flag, &from_flag)) {
-      kill_timeout = from_flag;
-    } else {
-      DLOG(WARNING) << "Failed to parse kill timeout, defaulting to "
-                    << kill_timeout;
-    }
-  }
-
-  // Parse hang detection interval if it's present.
-  uint32_t hang_detection_interval =
-      switches::kHangDetectionIntervalDefaultSeconds;
-  if (cl->HasSwitch(switches::kEnableHangDetection)) {
-    string flag = cl->GetSwitchValueASCII(switches::kEnableHangDetection);
-    uint32_t from_flag = 0;
-    if (base::StringToUint(flag, &from_flag)) {
-      hang_detection_interval = from_flag;
-    } else {
-      DLOG(WARNING) << "Failed to parse hang detection interval, defaulting to "
-                    << hang_detection_interval;
-    }
-  }
-
   // Start the X server and set things up for running Chrome.
+  bool is_developer_end_user = false;
   map<string, string> env_vars;
   vector<string> args;
   uid_t uid = 0;
-  PerformChromeSetup(&env_vars, &args, &uid);
+  PerformChromeSetup(&is_developer_end_user, &env_vars, &args, &uid);
   command.insert(command.end(), args.begin(), args.end());
 
   // Shim that wraps system calls, file system ops, etc.
@@ -177,6 +161,24 @@ int main(int argc, char* argv[]) {
     PLOG(FATAL) << "Cannot create flag file directory at " << kFlagFileDir;
   LoginMetrics metrics(flag_file_dir);
 
+  // The session_manager supports pinging the browser periodically to check that
+  // it is still alive.  On developer systems, this would be a problem, as
+  // debugging the browser would cause it to be aborted. Override via a
+  // flag-file is allowed to enable integration testing.
+  bool enable_hang_detection = !is_developer_end_user;
+  uint32_t hang_detection_interval = kHangDetectionIntervalDefaultSeconds;
+  if (base::PathExists(flag_file_dir.Append(kHangDetectionFlagFile)))
+    hang_detection_interval = kHangDetectionIntervalShortSeconds;
+
+  // On platforms with rotational disks, Chrome takes longer to shut down. As
+  // such, we need to change our baseline assumption about what "taking too long
+  // to shutdown" means and wait for longer before killing Chrome and triggering
+  // a report.
+  int kill_timeout = kKillTimeoutDefaultSeconds;
+  if (BootDeviceIsRotationalDisk())
+    kill_timeout = kKillTimeoutLongSeconds;
+  LOG(INFO) << "Will wait " << kill_timeout << "s for graceful browser exit.";
+
   // This job encapsulates the command specified on the command line, and the
   // UID that the caller would like to run it as.
   scoped_ptr<BrowserJobInterface> browser_job(
@@ -191,7 +193,7 @@ int main(int argc, char* argv[]) {
       run_loop.QuitClosure(),
       uid,
       kill_timeout,
-      cl->HasSwitch(switches::kEnableHangDetection),
+      enable_hang_detection,
       base::TimeDelta::FromSeconds(hang_detection_interval),
       &metrics,
       &system);

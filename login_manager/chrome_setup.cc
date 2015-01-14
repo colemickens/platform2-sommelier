@@ -269,7 +269,8 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
 
 }  // namespace
 
-void PerformChromeSetup(std::map<std::string, std::string>* env_vars_out,
+void PerformChromeSetup(bool* is_developer_end_user_out,
+                        std::map<std::string, std::string>* env_vars_out,
                         std::vector<std::string>* args_out,
                         uid_t* uid_out) {
   DCHECK(env_vars_out);
@@ -307,6 +308,7 @@ void PerformChromeSetup(std::map<std::string, std::string>* env_vars_out,
   if (builder.is_developer_end_user())
     builder.ApplyUserConfig(base::FilePath(kChromeDevConfigPath));
 
+  *is_developer_end_user_out = builder.is_developer_end_user();
   *env_vars_out = builder.environment_variables();
   *args_out = builder.arguments();
   *uid_out = builder.uid();

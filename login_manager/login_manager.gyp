@@ -77,6 +77,7 @@
     {
       'target_name': 'session_manager',
       'type': 'executable',
+      'libraries': ['-lrootdev'],
       'dependencies': ['libsession_manager'],
       'sources': ['session_manager_main.cc'],
     },

@@ -30,7 +30,8 @@ namespace login_manager {
 // content_shell, app_shell, etc.) rather than just applying to the Chrome
 // browser should be added to libchromeos's ChromiumCommandBuilder class
 // instead.
-void PerformChromeSetup(std::map<std::string, std::string>* env_vars_out,
+void PerformChromeSetup(bool* is_developer_end_user_out,
+                        std::map<std::string, std::string>* env_vars_out,
                         std::vector<std::string>* args_out,
                         uid_t* uid_out);
 
