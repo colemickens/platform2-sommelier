@@ -2,14 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "permission_broker/permission_broker.h"
+#include "permission_broker/rule_engine.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <string>
 
-#include "base/memory/scoped_ptr.h"
 #include "permission_broker/rule.h"
 
 using std::string;
@@ -29,10 +28,10 @@ class MockRule : public Rule {
   DISALLOW_COPY_AND_ASSIGN(MockRule);
 };
 
-class MockPermissionBroker : public PermissionBroker {
+class MockRuleEngine : public RuleEngine {
  public:
-  MockPermissionBroker() : PermissionBroker(0) {}
-  ~MockPermissionBroker() override = default;
+  MockRuleEngine() : RuleEngine(0) {}
+  ~MockRuleEngine() override = default;
 
   MOCK_METHOD1(MockGrantAccess, bool(const string &path));
   MOCK_METHOD0(WaitForEmptyUdevQueue, void(void));
@@ -42,16 +41,16 @@ class MockPermissionBroker : public PermissionBroker {
     return MockGrantAccess(path);
   }
 
-  DISALLOW_COPY_AND_ASSIGN(MockPermissionBroker);
+  DISALLOW_COPY_AND_ASSIGN(MockRuleEngine);
 };
 
-class PermissionBrokerTest : public testing::Test {
+class RuleEngineTest : public testing::Test {
  public:
-  PermissionBrokerTest() = default;
-  ~PermissionBrokerTest() override = default;
+  RuleEngineTest() = default;
+  ~RuleEngineTest() override = default;
 
   bool ProcessPath(const string &path, int interface_id) {
-    return broker_.ProcessPath(path, interface_id);
+    return engine_.ProcessPath(path, interface_id);
   }
 
  protected:
@@ -62,47 +61,47 @@ class PermissionBrokerTest : public testing::Test {
     return rule;
   }
 
-  MockPermissionBroker broker_;
+  MockRuleEngine engine_;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(PermissionBrokerTest);
+  DISALLOW_COPY_AND_ASSIGN(RuleEngineTest);
 };
 
-TEST_F(PermissionBrokerTest, EmptyRuleChain) {
-  EXPECT_CALL(broker_, MockGrantAccess(_))
+TEST_F(RuleEngineTest, EmptyRuleChain) {
+  EXPECT_CALL(engine_, MockGrantAccess(_))
       .Times(0);
   ASSERT_FALSE(ProcessPath("/dev/foo", Rule::ANY_INTERFACE));
 }
 
-TEST_F(PermissionBrokerTest, AllowAccess) {
-  EXPECT_CALL(broker_, MockGrantAccess("/dev/foo"))
+TEST_F(RuleEngineTest, AllowAccess) {
+  EXPECT_CALL(engine_, MockGrantAccess("/dev/foo"))
       .WillOnce(Return(true));
-  broker_.AddRule(CreateMockRule(Rule::ALLOW));
+  engine_.AddRule(CreateMockRule(Rule::ALLOW));
   ASSERT_TRUE(ProcessPath("/dev/foo", Rule::ANY_INTERFACE));
 }
 
-TEST_F(PermissionBrokerTest, DenyAccess) {
-  EXPECT_CALL(broker_, MockGrantAccess(_))
+TEST_F(RuleEngineTest, DenyAccess) {
+  EXPECT_CALL(engine_, MockGrantAccess(_))
       .Times(0);
-  broker_.AddRule(CreateMockRule(Rule::DENY));
+  engine_.AddRule(CreateMockRule(Rule::DENY));
   ASSERT_FALSE(ProcessPath("/dev/foo", Rule::ANY_INTERFACE));
 }
 
-TEST_F(PermissionBrokerTest, DenyPrecedence) {
-  EXPECT_CALL(broker_, MockGrantAccess(_))
+TEST_F(RuleEngineTest, DenyPrecedence) {
+  EXPECT_CALL(engine_, MockGrantAccess(_))
       .Times(0);
-  broker_.AddRule(CreateMockRule(Rule::ALLOW));
-  broker_.AddRule(CreateMockRule(Rule::IGNORE));
-  broker_.AddRule(CreateMockRule(Rule::DENY));
+  engine_.AddRule(CreateMockRule(Rule::ALLOW));
+  engine_.AddRule(CreateMockRule(Rule::IGNORE));
+  engine_.AddRule(CreateMockRule(Rule::DENY));
   ASSERT_FALSE(ProcessPath("/dev/foo", Rule::ANY_INTERFACE));
 }
 
-TEST_F(PermissionBrokerTest, AllowPrecedence) {
-  EXPECT_CALL(broker_, MockGrantAccess(_))
+TEST_F(RuleEngineTest, AllowPrecedence) {
+  EXPECT_CALL(engine_, MockGrantAccess(_))
       .WillOnce(Return(true));
-  broker_.AddRule(CreateMockRule(Rule::IGNORE));
-  broker_.AddRule(CreateMockRule(Rule::ALLOW));
-  broker_.AddRule(CreateMockRule(Rule::IGNORE));
+  engine_.AddRule(CreateMockRule(Rule::IGNORE));
+  engine_.AddRule(CreateMockRule(Rule::ALLOW));
+  engine_.AddRule(CreateMockRule(Rule::IGNORE));
   ASSERT_TRUE(ProcessPath("/dev/foo", Rule::ANY_INTERFACE));
 }
 

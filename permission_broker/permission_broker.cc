@@ -4,214 +4,78 @@
 
 #include "permission_broker/permission_broker.h"
 
-#include <dbus/dbus-glib.h>
-#include <dbus/dbus-glib-lowlevel.h>
-#include <glib.h>
-#include <grp.h>
-#include <libudev.h>
-#include <poll.h>
-#include <stdint.h>
-#include <sys/inotify.h>
-#include <sys/types.h>
-#include <unistd.h>
-
+#include <linux/usb/ch9.h>
 #include <string>
-#include <vector>
 
-#include "base/logging.h"
-#include "base/stl_util.h"
-#include "base/strings/stringprintf.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
-#include "chromeos/flag_helper.h"
+#include "permission_broker/allow_group_tty_device_rule.h"
+#include "permission_broker/allow_hidraw_device_rule.h"
+#include "permission_broker/allow_tty_device_rule.h"
+#include "permission_broker/allow_usb_device_rule.h"
+#include "permission_broker/deny_claimed_hidraw_device_rule.h"
+#include "permission_broker/deny_claimed_usb_device_rule.h"
+#include "permission_broker/deny_group_tty_device_rule.h"
+#include "permission_broker/deny_uninitialized_device_rule.h"
+#include "permission_broker/deny_unsafe_hidraw_device_rule.h"
+#include "permission_broker/deny_usb_device_class_rule.h"
+#include "permission_broker/deny_usb_vendor_id_rule.h"
 #include "permission_broker/rule.h"
 
-using std::string;
-using std::vector;
+using permission_broker::AllowGroupTtyDeviceRule;
+using permission_broker::AllowHidrawDeviceRule;
+using permission_broker::AllowTtyDeviceRule;
+using permission_broker::AllowUsbDeviceRule;
+using permission_broker::DenyClaimedHidrawDeviceRule;
+using permission_broker::DenyClaimedUsbDeviceRule;
+using permission_broker::DenyGroupTtyDeviceRule;
+using permission_broker::DenyUninitializedDeviceRule;
+using permission_broker::DenyUnsafeHidrawDeviceRule;
+using permission_broker::DenyUsbDeviceClassRule;
+using permission_broker::DenyUsbVendorIdRule;
+using permission_broker::PermissionBroker;
+
+static const uint16_t kLinuxFoundationUsbVendorId = 0x1d6b;
 
 namespace permission_broker {
 
-PermissionBroker::PermissionBroker(const gid_t access_group)
-    : udev_(udev_new()), access_group_(access_group) {}
-
-PermissionBroker::PermissionBroker(const std::string& access_group_name,
-                                   const std::string& udev_run_path,
-                                   int poll_interval_msecs)
-    : udev_(udev_new()) {
-  CHECK(udev_) << "Could not create udev context, is sysfs mounted?";
-  CHECK(!access_group_name.empty()) << "You must specify a group name via the "
-                                    << "--access_group flag.";
-
-  poll_interval_msecs_ = poll_interval_msecs;
-  udev_run_path_ = udev_run_path;
-
-  struct group group_buffer;
-  struct group* access_group = NULL;
-  char buffer[256];
-  getgrnam_r(access_group_name.c_str(), &group_buffer, buffer, sizeof(buffer),
-             &access_group);
-  CHECK(access_group) << "Could not resolve \"" << access_group_name << "\" "
-                      << "to a named group.";
-  access_group_ = access_group->gr_gid;
+PermissionBroker::PermissionBroker(
+    const scoped_refptr<dbus::Bus>& bus,
+    const std::string& access_group_name,
+    const std::string& udev_run_path,
+    int poll_interval_msecs)
+    : org::chromium::PermissionBrokerAdaptor(this),
+      rule_engine_(access_group_name, udev_run_path, poll_interval_msecs),
+      dbus_object_(nullptr,
+                   bus,
+                   dbus::ObjectPath(kPermissionBrokerServicePath)) {
+  rule_engine_.AddRule(new AllowUsbDeviceRule());
+  rule_engine_.AddRule(new AllowTtyDeviceRule());
+  rule_engine_.AddRule(new DenyClaimedUsbDeviceRule());
+  rule_engine_.AddRule(new DenyUninitializedDeviceRule());
+  rule_engine_.AddRule(new DenyUsbDeviceClassRule(USB_CLASS_HUB));
+  rule_engine_.AddRule(new DenyUsbDeviceClassRule(USB_CLASS_MASS_STORAGE));
+  rule_engine_.AddRule(new DenyUsbVendorIdRule(kLinuxFoundationUsbVendorId));
+  rule_engine_.AddRule(new AllowHidrawDeviceRule());
+  rule_engine_.AddRule(new AllowGroupTtyDeviceRule("serial"));
+  rule_engine_.AddRule(new DenyGroupTtyDeviceRule("modem"));
+  rule_engine_.AddRule(new DenyGroupTtyDeviceRule("tty"));
+  rule_engine_.AddRule(new DenyGroupTtyDeviceRule("uucp"));
+  rule_engine_.AddRule(new DenyClaimedHidrawDeviceRule());
+  rule_engine_.AddRule(new DenyUnsafeHidrawDeviceRule());
 }
 
-PermissionBroker::~PermissionBroker() {
-  STLDeleteContainerPointers(rules_.begin(), rules_.end());
-  udev_unref(udev_);
+PermissionBroker::~PermissionBroker() {}
+
+void PermissionBroker::RegisterAsync(
+    const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+  RegisterWithDBusObject(&dbus_object_);
+  dbus_object_.RegisterAsync(cb);
 }
 
-void PermissionBroker::Run() {
-  DBusConnection* const connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(connection) << "Cannot connect to system bus.";
-
-  DBusError error;
-  dbus_error_init(&error);
-  dbus_bus_request_name(
-      connection, permission_broker::kPermissionBrokerServiceName, 0, &error);
-  if (dbus_error_is_set(&error)) {
-    LOG(FATAL) << "Failed to register "
-               << permission_broker::kPermissionBrokerServiceName << ": "
-               << error.message;
-    dbus_error_free(&error);
-    return;
-  }
-
-  DBusObjectPathVTable vtable;
-  memset(&vtable, 0, sizeof(vtable));
-  vtable.message_function = &MainDBusMethodHandler;
-
-  const dbus_bool_t registration_result = dbus_connection_register_object_path(
-      connection, kPermissionBrokerServicePath, &vtable, this);
-  CHECK(registration_result) << "Could not register object path.";
-
-  GMainLoop* const loop = g_main_loop_new(NULL, false);
-  g_main_loop_run(loop);
-}
-
-void PermissionBroker::AddRule(Rule* rule) {
-  CHECK(rule) << "Cannot add NULL as a rule.";
-  rules_.push_back(rule);
-}
-
-bool PermissionBroker::ProcessPath(const string& path, int interface_id) {
-  WaitForEmptyUdevQueue();
-
-  LOG(INFO) << "ProcessPath(" << path << ")";
-  Rule::Result result = Rule::IGNORE;
-  for (unsigned int i = 0; i < rules_.size(); ++i) {
-    const Rule::Result rule_result = rules_[i]->Process(path, interface_id);
-    LOG(INFO) << "  " << rules_[i]->name() << ": "
-              << Rule::ResultToString(rule_result);
-    if (rule_result == Rule::DENY) {
-      result = Rule::DENY;
-      break;
-    } else if (rule_result == Rule::ALLOW) {
-      result = Rule::ALLOW;
-    }
-  }
-  LOG(INFO) << "Verdict for " << path << ": " << Rule::ResultToString(result);
-
-  if (result == Rule::ALLOW)
-    return GrantAccess(path);
-  return false;
-}
-
-bool PermissionBroker::GrantAccess(const std::string& path) {
-  if (chown(path.c_str(), -1, access_group_)) {
-    LOG(INFO) << "Could not grant access to " << path;
-    return false;
-  }
-  return true;
-}
-
-void PermissionBroker::WaitForEmptyUdevQueue() {
-  struct udev_queue* queue = udev_queue_new(udev_);
-  if (udev_queue_get_queue_is_empty(queue)) {
-    udev_queue_unref(queue);
-    return;
-  }
-
-  struct pollfd udev_poll;
-  memset(&udev_poll, 0, sizeof(udev_poll));
-  udev_poll.fd = inotify_init();
-  udev_poll.events = POLLIN;
-
-  int watch =
-      inotify_add_watch(udev_poll.fd, udev_run_path_.c_str(), IN_MOVED_TO);
-  CHECK_NE(watch, -1) << "Could not add watch for udev run directory.";
-
-  while (!udev_queue_get_queue_is_empty(queue)) {
-    if (poll(&udev_poll, 1, poll_interval_msecs_) > 0) {
-      char buffer[sizeof(struct inotify_event)];
-      const ssize_t result = read(udev_poll.fd, buffer, sizeof(buffer));
-      if (result < 0)
-        LOG(WARNING) << "Did not read complete udev event.";
-    }
-  }
-  udev_queue_unref(queue);
-  close(udev_poll.fd);
-}
-
-DBusHandlerResult PermissionBroker::MainDBusMethodHandler(
-    DBusConnection* connection,
-    DBusMessage* message,
-    void* data) {
-  CHECK(connection) << "Missing connection.";
-  CHECK(message) << "Missing method.";
-  CHECK(data) << "Missing pointer to broker.";
-
-  if (dbus_message_get_type(message) != DBUS_MESSAGE_TYPE_METHOD_CALL)
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-  string interface(dbus_message_get_interface(message));
-  if (interface != kPermissionBrokerInterface)
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-  DBusMessage* reply = NULL;
-  string member(dbus_message_get_member(message));
-  PermissionBroker* const broker = static_cast<PermissionBroker*>(data);
-  if (member == kRequestPathAccess)
-    reply = broker->HandleRequestPathAccessMethod(message);
-  else
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-  CHECK(dbus_connection_send(connection, reply, NULL));
-  dbus_message_unref(reply);
-
-  return DBUS_HANDLER_RESULT_HANDLED;
-}
-
-DBusMessage* PermissionBroker::HandleRequestPathAccessMethod(
-    DBusMessage* message) {
-  DBusMessage* reply = dbus_message_new_method_return(message);
-  CHECK(reply) << "Could not allocate reply message for method call.";
-
-  dbus_bool_t success = false;
-  char* path = NULL;
-  int interface_id = Rule::ANY_INTERFACE;
-
-  DBusError error;
-  dbus_error_init(&error);
-  if (!dbus_message_get_args(message, &error, DBUS_TYPE_STRING, &path,
-                             DBUS_TYPE_INT32, &interface_id,
-                             DBUS_TYPE_INVALID)) {
-    interface_id = Rule::ANY_INTERFACE;
-    if (!dbus_message_get_args(message, &error, DBUS_TYPE_STRING, &path,
-                               DBUS_TYPE_INVALID)) {
-      LOG(WARNING) << "Error parsing arguments: " << error.message;
-      dbus_error_free(&error);
-
-      dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &success,
-                               DBUS_TYPE_INVALID);
-      return reply;
-    }
-  }
-
-  success = ProcessPath(path, interface_id);
-  dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &success,
-                           DBUS_TYPE_INVALID);
-  return reply;
+bool PermissionBroker::RequestPathAccess(const std::string& in_path,
+                                         int32_t in_interface_id) {
+  return rule_engine_.ProcessPath(in_path, in_interface_id);
 }
 
 }  // namespace permission_broker

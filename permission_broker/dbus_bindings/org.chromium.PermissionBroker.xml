@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<node name="/org/chromium/PermissionBroker"
+      xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.PermissionBroker">
+    <method name="RequestPathAccess">
+      <arg name="path" type="s" direction="in"/>
+      <arg name="interface_id" type="i" direction="in"/>
+      <arg name="allowed" type="b" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+  </interface>
+</node>
