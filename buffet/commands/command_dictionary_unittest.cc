@@ -107,18 +107,16 @@ TEST(CommandDictionary, LoadCommands_Failures) {
   error.reset();
 }
 
-TEST(CommandDictionary, LoadCommands_RedefineInDifferentCategory) {
+TEST(CommandDictionaryDeathTest, LoadCommands_RedefineInDifferentCategory) {
   // Redefine commands in different category.
   buffet::CommandDictionary dict;
   chromeos::ErrorPtr error;
   auto json = CreateDictionaryValue(
       "{'robot':{'jump':{'parameters':{},'results':{}}}}");
   dict.LoadCommands(*json, "category1", nullptr, &error);
-  EXPECT_FALSE(dict.LoadCommands(*json, "category2", nullptr, &error));
-  EXPECT_EQ("duplicate_command_definition", error->GetCode());
-  EXPECT_EQ("Definition for command 'robot.jump' overrides an earlier "
-            "definition in category 'category1'", error->GetMessage());
-  error.reset();
+  ASSERT_DEATH(dict.LoadCommands(*json, "category2", nullptr, &error),
+               ".*Definition for command 'robot.jump' overrides an "
+               "earlier definition in category 'category1'");
 }
 
 TEST(CommandDictionary, LoadCommands_CustomCommandNaming) {

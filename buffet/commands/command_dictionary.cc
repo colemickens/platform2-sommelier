@@ -127,15 +127,10 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
   // daemon on the same device.
   for (const auto& pair : new_defs) {
     auto iter = definitions_.find(pair.first);
-    if (iter != definitions_.end()) {
-        chromeos::Error::AddToPrintf(
-            error, FROM_HERE, errors::commands::kDomain,
-            errors::commands::kDuplicateCommandDef,
-            "Definition for command '%s' overrides an earlier "
-            "definition in category '%s'",
-            pair.first.c_str(), iter->second->GetCategory().c_str());
-        return false;
-    }
+    CHECK(iter == definitions_.end())
+        << "Definition for command '" << pair.first
+        << "' overrides an earlier definition in category '"
+        << iter->second->GetCategory().c_str() << "'";
   }
 
   // Now that we successfully loaded all the command definitions,
