@@ -618,11 +618,14 @@ TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
 
   // Build a Done message with the sent-message sequence number.
   DoneMessage done_message;
+  done_message.AddFlag(NLM_F_MULTI);
   ByteString done_message_bytes(
       done_message.Encode(netlink_socket_->GetLastSequenceNumber()));
 
-  // Verify that the message-specific handler is called for the done message.
-  EXPECT_CALL(auxilliary_handler, OnErrorHandler(_, _));
+  // Verify that the message-specific auxilliary handler is called for the done
+  // message, with the correct message type.
+  EXPECT_CALL(auxilliary_handler, OnErrorHandler(NetlinkManager::kDone, _));
+
   netlink_manager_->OnNlMessageReceived(
       reinterpret_cast<nlmsghdr *>(done_message_bytes.GetData()));
 

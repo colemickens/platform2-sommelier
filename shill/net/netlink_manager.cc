@@ -611,7 +611,10 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
 
   if (ContainsKey(message_handlers_, sequence_number)) {
     VLOG(6) << "Found message-specific handler";
-    if (!message_handlers_[sequence_number]->HandleMessage(*message)) {
+    if ((message->flags() & NLM_F_MULTI) &&
+        (message->message_type() == NLMSG_DONE)) {
+      message_handlers_[sequence_number]->HandleError(kDone, message.get());
+    } else if (!message_handlers_[sequence_number]->HandleMessage(*message)) {
       LOG(ERROR) << "Couldn't call message handler for " << sequence_number;
       // Call the error handler but, since we don't have an |ErrorAckMessage|,
       // we'll have to pass a nullptr.

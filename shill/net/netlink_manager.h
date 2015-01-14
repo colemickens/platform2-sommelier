@@ -95,9 +95,10 @@ class Nl80211Message;
 class SHILL_EXPORT NetlinkManager {
  public:
   enum AuxilliaryMessageType {
+    kDone,
     kErrorFromKernel,
-    kUnexpectedResponseType,
-    kTimeoutWaitingForResponse
+    kTimeoutWaitingForResponse,
+    kUnexpectedResponseType
   };
   typedef base::Callback<void(const NetlinkMessage &)> NetlinkMessageHandler;
   typedef base::Callback<void(const ControlNetlinkMessage &)>
