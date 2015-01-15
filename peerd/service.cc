@@ -4,6 +4,8 @@
 
 #include "peerd/service.h"
 
+#include <limits>
+
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/exported_object_manager.h>
 
@@ -198,8 +200,10 @@ bool Service::ExtractMDnsOptions(chromeos::ErrorPtr* error,
   }
   auto port_it = mdns_options->find(kMDNSPort);
   if (port_it != mdns_options->end()) {
-    uint16_t* port_value = port_it->second.GetPtr<uint16_t>();
-    if (port_value == nullptr) {
+    intmax_t port;
+    if (!port_it->second.IsConvertibleToInteger() ||
+        (port = port_it->second.GetAsInteger()) < 0 ||
+        port > std::numeric_limits<uint16_t>::max()) {
       Error::AddTo(error,
                    FROM_HERE,
                    kPeerdErrorDomain,
@@ -207,7 +211,7 @@ bool Service::ExtractMDnsOptions(chromeos::ErrorPtr* error,
                    "Invalid entry for mDNS port.");
       return false;
     }
-    parsed_mdns_options_.port = *port_value;
+    parsed_mdns_options_.port = static_cast<uint16_t>(port);
     mdns_options->erase(port_it);
   }
   if (!mdns_options->empty()) {
