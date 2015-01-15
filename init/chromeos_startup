@@ -13,7 +13,7 @@ cleanup_mounts()
   done
   # Leave /mnt/stateful_partition mounted for clobber-state to handle.
   chromeos-boot-alert self_repair /dev/tty1
-  clobber-log --repair "$STATE_DEV" \
+  clobber-log -- \
     "Self-repair incoherent stateful partition: $*. History: ${UNDO_MOUNTS}"
   exec clobber-state "fast keepimg"
 }
@@ -99,7 +99,7 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
   # Mount stateful partition from STATE_DEV.
   if ! mount -n -t ${FS_FORMAT_STATE} -o ${STATE_FLAGS} \
          "$STATE_DEV" /mnt/stateful_partition; then
-    # Try to rebuild the stateful partition by  clobber-state
+    # Try to rebuild the stateful partition by clobber-state
     # (for security concern, we don't use fast mode)
     chromeos-boot-alert self_repair /dev/tty1
     clobber-log --repair "$STATE_DEV" "Self-repair corrupted stateful partition"
