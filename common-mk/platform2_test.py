@@ -595,7 +595,7 @@ def _SudoCommand():
   return cmd
 
 
-def _ReExecuteIfNeeded(argv):
+def _ReExecuteIfNeeded(argv, ns_net=True, ns_pid=True):
   """Re-execute tests as root.
 
   We often need to do things as root, so make sure we're that.  Like chroot
@@ -616,7 +616,7 @@ def _ReExecuteIfNeeded(argv):
     cmd = _SudoCommand() + ['--'] + argv
     os.execvp(cmd[0], cmd)
   else:
-    namespaces.SimpleUnshare(net=True, pid=True)
+    namespaces.SimpleUnshare(net=ns_net, pid=ns_pid)
 
 
 class _ParseStringSetAction(argparse.Action):
@@ -630,6 +630,14 @@ def main(argv):
   actions = ['pre_test', 'post_test', 'run']
 
   parser = argparse.ArgumentParser()
+  group = parser.add_argument_group('Namespaces')
+  group.add_argument('--no-ns-net', dest='ns_net',
+                     default=True, action='store_false',
+                     help='Do not create a new network namespace')
+  group.add_argument('--no-ns-pid', dest='ns_pid',
+                     default=True, action='store_false',
+                     help='Do not create a new PID namespace')
+
   parser.add_argument('--action', default='run',
                       choices=actions, help='action to perform')
   parser.add_argument('--bin',
@@ -675,7 +683,8 @@ def main(argv):
       raise AssertionError('Sysroot does not exist: %s' % options.sysroot)
 
   # Once we've finished sanity checking args, make sure we're root.
-  _ReExecuteIfNeeded([sys.argv[0]] + argv)
+  _ReExecuteIfNeeded([sys.argv[0]] + argv, ns_net=options.ns_net,
+                     ns_pid=options.ns_pid)
 
   p2test = Platform2Test(options.bin, options.board, options.host,
                          options.use_flags, options.framework,
