@@ -226,7 +226,7 @@ bool CheckPerfDataAgainstBaseline(const string& filename) {
   bool matches_baseline = (baseline == protobuf_text);
   if (kWriteNewGoldenFiles) {
     string existing_input_pb_text =
-        existing_input_file + kProtobufTextExtension;
+        existing_input_file + kProtobufTextExtension + ".new";
     if (matches_baseline) {
       LOG(INFO) << "NOT writing identical golden file! "
                 << existing_input_pb_text;
