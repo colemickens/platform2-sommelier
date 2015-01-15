@@ -87,7 +87,6 @@ fi
 if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
   # Find our stateful partition. It's always partition 1.
   # Unless we're on UBI, when it's ubi1_0.
-
   STATE_FLAGS="nodev,noexec,nosuid"
   if [ "${FORMAT_STATE}" = "ubi" ]; then
     STATE_DEV="/dev/ubi1_0"
@@ -109,13 +108,11 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
   # Mount the OEM partition.
   # mount_or_fail isn't used since this partition only has a filesystem
   # on some boards.
-
   OEM_FLAGS="ro,nodev,noexec,nosuid"
   if [ "${FORMAT_OEM}" = "ubi" ]; then
     OEM_DEV="/dev/ubi8_0"
   else
     OEM_DEV=${ROOTDEV_TYPE}8
-    OEM_FLAGS="${OEM_FLAGS},commit=600"
   fi
   mount -n -t ${FS_FORMAT_OEM} -o ${OEM_FLAGS} ${OEM_DEV} /usr/share/oem
 fi
