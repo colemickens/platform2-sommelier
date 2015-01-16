@@ -570,7 +570,7 @@ class Platform2Test(object):
         os.setgid(gid)
         os.setuid(uid)
         os.environ['HOME'] = home
-      sys.exit(os.execv(cmd, argv))
+      sys.exit(os.execvp(cmd, argv))
 
     proctitle.settitle('sysroot watcher', cmd)
 
