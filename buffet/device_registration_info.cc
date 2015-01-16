@@ -515,22 +515,24 @@ void SendRequestWithRetries(
     const chromeos::http::ErrorCallback& error_callback) {
   auto on_failure =
       [method, url, data, mime_type, headers, transport, num_retries,
-      success_callback, error_callback](const chromeos::Error* error) {
+      success_callback, error_callback](int request_id,
+                                        const chromeos::Error* error) {
     if (num_retries > 0) {
       SendRequestWithRetries(method, url, data, mime_type,
                              headers, transport, num_retries - 1,
                              success_callback, error_callback);
     } else {
-      error_callback.Run(error);
+      error_callback.Run(request_id, error);
     }
   };
 
   auto on_success =
-      [on_failure, success_callback, error_callback](ResponsePtr response) {
+      [on_failure, success_callback, error_callback](int request_id,
+                                                     ResponsePtr response) {
     int status_code = response->GetStatusCode();
     if (status_code >= chromeos::http::status_code::Continue &&
         status_code < chromeos::http::status_code::BadRequest) {
-      success_callback.Run(response.Pass());
+      success_callback.Run(request_id, response.Pass());
       return;
     }
 
@@ -548,9 +550,9 @@ void SendRequestWithRetries(
       // TODO(antonm): Reconsider status codes, maybe only some require
       // retry.
       // TODO(antonm): Support Retry-After header.
-      on_failure(error.get());
+      on_failure(request_id, error.get());
     } else {
-      error_callback.Run(error.get());
+      error_callback.Run(request_id, error.get());
     }
   };
 
@@ -581,7 +583,8 @@ void DeviceRegistrationInfo::DoCloudRequest(
       chromeos::mime::parameters::kCharset,
       "utf-8")};
 
-  auto request_cb = [success_callback, error_callback](ResponsePtr response) {
+  auto request_cb =
+      [success_callback, error_callback](int request_id, ResponsePtr response) {
     chromeos::ErrorPtr error;
 
     std::unique_ptr<base::DictionaryValue> json_resp{
@@ -594,16 +597,23 @@ void DeviceRegistrationInfo::DoCloudRequest(
     success_callback.Run(*json_resp);
   };
 
+  auto error_cb =
+      [error_callback](int request_id, const chromeos::Error* error) {
+    error_callback.Run(error);
+  };
+
   auto transport = transport_;
-  auto error_callackback_with_reauthorization = base::Bind(
-      [method, url, data, mime_type, transport, request_cb, error_callback]
-      (DeviceRegistrationInfo* self, const chromeos::Error* error) {
+  auto error_callackback_with_reauthorization =
+      base::Bind([method, url, data, mime_type, transport, request_cb, error_cb]
+          (DeviceRegistrationInfo* self,
+          int request_id,
+          const chromeos::Error* error) {
     if (error->HasError(chromeos::errors::http::kDomain,
                         std::to_string(chromeos::http::status_code::Denied))) {
       chromeos::ErrorPtr reauthorization_error;
       if (!self->ValidateAndRefreshAccessToken(&reauthorization_error)) {
         // TODO(antonm): Check if the device has been actually removed.
-        error_callback.Run(reauthorization_error.get());
+        error_cb(request_id, reauthorization_error.get());
         return;
       }
       SendRequestWithRetries(method, url,
@@ -611,9 +621,9 @@ void DeviceRegistrationInfo::DoCloudRequest(
                              {self->GetAuthorizationHeader()},
                              transport,
                              7,
-                             base::Bind(request_cb), error_callback);
+                             base::Bind(request_cb), base::Bind(error_cb));
     } else {
-      error_callback.Run(error);
+      error_cb(request_id, error);
     }
   }, base::Unretained(this));
 

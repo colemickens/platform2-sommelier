@@ -29,7 +29,8 @@ class MockTransport : public Transport {
   MOCK_METHOD2(RunCallbackAsync,
                void(const tracked_objects::Location&, const base::Closure&));
   MOCK_METHOD3(StartAsyncTransfer,
-               void(Connection*, const SuccessCallback&, const ErrorCallback&));
+               int(Connection*, const SuccessCallback&, const ErrorCallback&));
+  MOCK_METHOD1(CancelRequest, bool(int));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockTransport);

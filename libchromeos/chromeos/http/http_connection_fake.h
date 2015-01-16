@@ -32,8 +32,8 @@ class Connection : public http::Connection {
   bool SetRequestData(std::unique_ptr<DataReaderInterface> data_reader,
                       chromeos::ErrorPtr* error) override;
   bool FinishRequest(chromeos::ErrorPtr* error) override;
-  void FinishRequestAsync(const SuccessCallback& success_callback,
-                          const ErrorCallback& error_callback) override;
+  int FinishRequestAsync(const SuccessCallback& success_callback,
+                         const ErrorCallback& error_callback) override;
 
   int GetResponseStatusCode() const override;
   std::string GetResponseStatusText() const override;

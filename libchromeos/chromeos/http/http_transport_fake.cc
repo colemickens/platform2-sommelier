@@ -67,11 +67,16 @@ void Transport::RunCallbackAsync(const tracked_objects::Location& from_here,
   callback.Run();
 }
 
-void Transport::StartAsyncTransfer(http::Connection* connection,
-                                   const SuccessCallback& success_callback,
-                                   const ErrorCallback& error_callback) {
+int Transport::StartAsyncTransfer(http::Connection* connection,
+                                  const SuccessCallback& success_callback,
+                                  const ErrorCallback& error_callback) {
   // Fake transport doesn't use this method.
   LOG(FATAL) << "This method should not be called on fake transport";
+  return 0;
+}
+
+bool Transport::CancelRequest(int request_id) {
+  return false;
 }
 
 static inline std::string GetHandlerMapKey(const std::string& url,

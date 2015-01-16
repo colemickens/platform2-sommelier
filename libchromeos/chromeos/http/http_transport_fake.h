@@ -82,9 +82,11 @@ class Transport : public http::Transport {
   void RunCallbackAsync(const tracked_objects::Location& from_here,
                         const base::Closure& callback) override;
 
-  void StartAsyncTransfer(http::Connection* connection,
-                          const SuccessCallback& success_callback,
-                          const ErrorCallback& error_callback) override;
+  int StartAsyncTransfer(http::Connection* connection,
+                         const SuccessCallback& success_callback,
+                         const ErrorCallback& error_callback) override;
+
+  bool CancelRequest(int request_id) override;
 
  private:
   // A list of user-supplied request handlers.

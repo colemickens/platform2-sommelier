@@ -282,8 +282,9 @@ class CHROMEOS_EXPORT Request {
 
   // Sends out the request and invokes the |success_callback| when the response
   // is received. In case of an error, the |error_callback| is invoked.
-  void GetResponse(const SuccessCallback& success_callback,
-                   const ErrorCallback& error_callback);
+  // Returns the ID of the asynchronous request created.
+  int GetResponse(const SuccessCallback& success_callback,
+                  const ErrorCallback& error_callback);
 
  private:
   friend class HttpRequestTest;

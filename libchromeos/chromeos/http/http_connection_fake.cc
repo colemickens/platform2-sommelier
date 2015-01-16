@@ -57,13 +57,14 @@ bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
   return true;
 }
 
-void Connection::FinishRequestAsync(const SuccessCallback& success_callback,
-                                    const ErrorCallback& error_callback) {
+int Connection::FinishRequestAsync(const SuccessCallback& success_callback,
+                                   const ErrorCallback& error_callback) {
   transport_->RunCallbackAsync(FROM_HERE,
                                base::Bind(&Connection::FinishRequestAsyncHelper,
                                           base::Unretained(this),
                                           success_callback,
                                           error_callback));
+  return 1;
 }
 
 void Connection::FinishRequestAsyncHelper(
@@ -71,10 +72,10 @@ void Connection::FinishRequestAsyncHelper(
     const ErrorCallback& error_callback) {
   chromeos::ErrorPtr error;
   if (!FinishRequest(&error)) {
-    error_callback.Run(error.get());
+    error_callback.Run(1, error.get());
   } else {
     scoped_ptr<Response> response{new Response{shared_from_this()}};
-    success_callback.Run(response.Pass());
+    success_callback.Run(1, response.Pass());
   }
 }
 

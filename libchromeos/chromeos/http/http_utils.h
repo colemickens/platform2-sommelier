@@ -75,7 +75,9 @@ CHROMEOS_EXPORT std::unique_ptr<Response> SendRequestWithNoDataAndBlock(
 // Same as above but asynchronous. On success, |success_callback| is called
 // with the response object. On failure, |error_callback| is called with the
 // error details.
-CHROMEOS_EXPORT void SendRequest(
+// Returns the ID of the request which can be used to cancel the pending
+// request using Transport::CancelRequest().
+CHROMEOS_EXPORT int SendRequest(
     const std::string& method,
     const std::string& url,
     std::unique_ptr<DataReaderInterface> data_reader,
@@ -88,7 +90,9 @@ CHROMEOS_EXPORT void SendRequest(
 // Same as above, but takes a memory buffer. The pointer should be valid only
 // until the function returns. The data is copied into an internal buffer to be
 // available for the duration of the asynchronous operation.
-CHROMEOS_EXPORT void SendRequest(
+// Returns the ID of the request which can be used to cancel the pending
+// request using Transport::CancelRequest().
+CHROMEOS_EXPORT int SendRequest(
     const std::string& method,
     const std::string& url,
     const void* data,
@@ -100,7 +104,9 @@ CHROMEOS_EXPORT void SendRequest(
     const ErrorCallback& error_callback);
 
 // Asynchronous version of SendRequestNoData().
-CHROMEOS_EXPORT void SendRequestWithNoData(
+// Returns the ID of the request which can be used to cancel the pending
+// request using Transport::CancelRequest().
+CHROMEOS_EXPORT int SendRequestWithNoData(
     const std::string& method,
     const std::string& url,
     const HeaderList& headers,
@@ -116,7 +122,9 @@ CHROMEOS_EXPORT std::string GetAsStringAndBlock(
     chromeos::ErrorPtr* error);
 
 // Performs a simple asynchronous GET request.
-CHROMEOS_EXPORT void GetAsString(
+// Returns the ID of the request which can be used to cancel the pending
+// request using Transport::CancelRequest().
+CHROMEOS_EXPORT int GetAsString(
     const std::string& url,
     const HeaderList& headers,
     std::shared_ptr<Transport> transport,
@@ -133,7 +141,9 @@ CHROMEOS_EXPORT std::unique_ptr<Response> GetAndBlock(
     chromeos::ErrorPtr* error);
 
 // Asynchronous version of http::Get().
-CHROMEOS_EXPORT void Get(
+// Returns the ID of the request which can be used to cancel the pending
+// request using Transport::CancelRequest().
+CHROMEOS_EXPORT int Get(
     const std::string& url,
     const HeaderList& headers,
     std::shared_ptr<Transport> transport,
@@ -149,7 +159,9 @@ CHROMEOS_EXPORT std::unique_ptr<Response> HeadAndBlock(
     chromeos::ErrorPtr* error);
 
 // Performs an asynchronous HEAD request.
-CHROMEOS_EXPORT void Head(
+// Returns the ID of the request which can be used to cancel the pending
+// request using Transport::CancelRequest().
+CHROMEOS_EXPORT int Head(
     const std::string& url,
     std::shared_ptr<Transport> transport,
     const SuccessCallback& success_callback,
@@ -168,7 +180,9 @@ CHROMEOS_EXPORT std::unique_ptr<Response> PostBinaryAndBlock(
     chromeos::ErrorPtr* error);
 
 // Async version of PostBinary().
-CHROMEOS_EXPORT void PostBinary(
+// Returns the ID of the request which can be used to cancel the pending
+// request using Transport::CancelRequest().
+CHROMEOS_EXPORT int PostBinary(
     const std::string& url,
     std::unique_ptr<DataReaderInterface> data_reader,
     const std::string& mime_type,
@@ -180,7 +194,9 @@ CHROMEOS_EXPORT void PostBinary(
 // Same as above, but takes a memory buffer. The pointer should be valid only
 // until the function returns. The data is copied into an internal buffer
 // to be available for the duration of the asynchronous operation.
-CHROMEOS_EXPORT void PostBinary(
+// Returns the ID of the request which can be used to cancel the pending
+// request using Transport::CancelRequest().
+CHROMEOS_EXPORT int PostBinary(
     const std::string& url,
     const void* data,
     size_t data_size,
@@ -202,7 +218,9 @@ CHROMEOS_EXPORT std::unique_ptr<Response> PostTextAndBlock(
     chromeos::ErrorPtr* error);
 
 // Async version of PostText().
-CHROMEOS_EXPORT void PostText(
+// Returns the ID of the request which can be used to cancel the pending
+// request using Transport::CancelRequest().
+CHROMEOS_EXPORT int PostText(
     const std::string& url,
     const std::string& data,
     const std::string& mime_type,
@@ -223,7 +241,9 @@ CHROMEOS_EXPORT std::unique_ptr<Response> PostFormDataAndBlock(
     chromeos::ErrorPtr* error);
 
 // Async version of PostFormData() above.
-CHROMEOS_EXPORT void PostFormData(
+// Returns the ID of the request which can be used to cancel the pending
+// request using Transport::CancelRequest().
+CHROMEOS_EXPORT int PostFormData(
     const std::string& url,
     const FormFieldList& data,
     const HeaderList& headers,
@@ -243,7 +263,9 @@ CHROMEOS_EXPORT std::unique_ptr<Response> PostFormDataAndBlock(
     chromeos::ErrorPtr* error);
 
 // Async version of PostFormData() above.
-CHROMEOS_EXPORT void PostFormData(
+// Returns the ID of the request which can be used to cancel the pending
+// request using Transport::CancelRequest().
+CHROMEOS_EXPORT int PostFormData(
     const std::string& url,
     std::unique_ptr<FormData> form_data,
     const HeaderList& headers,
@@ -263,7 +285,9 @@ CHROMEOS_EXPORT std::unique_ptr<Response> PostJsonAndBlock(
     chromeos::ErrorPtr* error);
 
 // Async version of PostJson().
-CHROMEOS_EXPORT void PostJson(
+// Returns the ID of the request which can be used to cancel the pending
+// request using Transport::CancelRequest().
+CHROMEOS_EXPORT int PostJson(
     const std::string& url,
     std::unique_ptr<base::Value> json,
     const HeaderList& headers,
@@ -283,7 +307,9 @@ CHROMEOS_EXPORT std::unique_ptr<Response> PatchJsonAndBlock(
     chromeos::ErrorPtr* error);
 
 // Async version of PatchJson().
-CHROMEOS_EXPORT void PatchJson(
+// Returns the ID of the request which can be used to cancel the pending
+// request using Transport::CancelRequest().
+CHROMEOS_EXPORT int PatchJson(
     const std::string& url,
     std::unique_ptr<base::Value> json,
     const HeaderList& headers,

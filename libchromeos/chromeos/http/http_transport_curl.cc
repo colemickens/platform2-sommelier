@@ -84,12 +84,14 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
     } else {
       // POST and custom request methods
       code = curl_interface_->EasySetOptInt(curl_handle, CURLOPT_POST, 1);
-      if (code == CURLE_OK)
+      if (code == CURLE_OK) {
         code = curl_interface_->EasySetOptPtr(
             curl_handle, CURLOPT_POSTFIELDS, nullptr);
-      if (code == CURLE_OK && method != request_type::kPost)
+      }
+      if (code == CURLE_OK && method != request_type::kPost) {
         code = curl_interface_->EasySetOptStr(
             curl_handle, CURLOPT_CUSTOMREQUEST, method);
+      }
     }
   }
 
@@ -112,9 +114,9 @@ void Transport::RunCallbackAsync(const tracked_objects::Location& from_here,
   task_runner_->PostTask(from_here, callback);
 }
 
-void Transport::StartAsyncTransfer(http::Connection* connection,
-                                   const SuccessCallback& success_callback,
-                                   const ErrorCallback& error_callback) {
+int Transport::StartAsyncTransfer(http::Connection* connection,
+                                  const SuccessCallback& success_callback,
+                                  const ErrorCallback& error_callback) {
   // TODO(avakulenko): For now using synchronous operation behind the scenes,
   // but this is to change in the follow-up CLs.
   http::curl::Connection* curl_connection =
@@ -123,13 +125,19 @@ void Transport::StartAsyncTransfer(http::Connection* connection,
   if (ret != CURLE_OK) {
     chromeos::ErrorPtr error;
     AddCurlError(&error, FROM_HERE, ret, curl_interface_.get());
-    RunCallbackAsync(FROM_HERE,
-                     base::Bind(error_callback, base::Owned(error.release())));
+    RunCallbackAsync(FROM_HERE, base::Bind(error_callback,
+                                           0, base::Owned(error.release())));
   } else {
     scoped_ptr<Response> response{new Response{connection->shared_from_this()}};
     RunCallbackAsync(FROM_HERE,
-                     base::Bind(success_callback, base::Passed(&response)));
+                     base::Bind(success_callback, 1, base::Passed(&response)));
   }
+  return 1;
+}
+
+bool Transport::CancelRequest(int request_id) {
+  // TODO(avakulenko): Implementation of this will come later.
+  return false;
 }
 
 void Transport::AddCurlError(chromeos::ErrorPtr* error,

@@ -30,8 +30,10 @@ class Response;
 class Connection;
 
 using HeaderList = std::vector<std::pair<std::string, std::string>>;
-using SuccessCallback = base::Callback<void(scoped_ptr<Response>)>;
-using ErrorCallback = base::Callback<void(const chromeos::Error*)>;
+using SuccessCallback = base::Callback<void(int /*request_id*/,
+                                            scoped_ptr<Response>)>;
+using ErrorCallback = base::Callback<void(int /*request_id*/,
+                                          const chromeos::Error*)>;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Transport is a base class for specific implementation of HTTP communication.
@@ -63,9 +65,13 @@ class CHROMEOS_EXPORT Transport
 
   // Initiates an asynchronous transfer on the given |connection|.
   // The actual implementation of an async I/O is transport-specific.
-  virtual void StartAsyncTransfer(Connection* connection,
-                                  const SuccessCallback& success_callback,
-                                  const ErrorCallback& error_callback) = 0;
+  // Returns a request ID which can be used to cancel the request.
+  virtual int StartAsyncTransfer(Connection* connection,
+                                 const SuccessCallback& success_callback,
+                                 const ErrorCallback& error_callback) = 0;
+
+  // Cancels a pending asynchronous request. Returns true on success.
+  virtual bool CancelRequest(int request_id) = 0;
 
   // Creates a default http::Transport (currently, using http::curl::Transport).
   static std::shared_ptr<Transport> CreateDefault();

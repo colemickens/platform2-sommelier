@@ -158,7 +158,9 @@ TEST_F(HttpRequestTest, GetResponse) {
     return true;
   };
 
-  auto success_callback = [this, &resp_data](scoped_ptr<Response> resp) {
+  auto success_callback =
+      [this, &resp_data](int request_id, scoped_ptr<Response> resp) {
+    EXPECT_EQ(23, request_id);
     EXPECT_CALL(*connection_, GetResponseStatusCode())
         .WillOnce(Return(status_code::Partial));
     EXPECT_EQ(status_code::Partial, resp->GetStatusCode());
@@ -182,7 +184,7 @@ TEST_F(HttpRequestTest, GetResponse) {
         .WillOnce(Invoke(read_data))
         .WillOnce(DoAll(SetArgPointee<2>(0), Return(true)));
     scoped_ptr<Response> resp{new Response{connection_}};
-    success_callback.Run(resp.Pass());
+    success_callback.Run(23, resp.Pass());
   };
 
   EXPECT_CALL(
@@ -191,9 +193,9 @@ TEST_F(HttpRequestTest, GetResponse) {
       .WillOnce(Return(connection_));
 
   EXPECT_CALL(*connection_, FinishRequestAsync(_, _))
-      .WillOnce(WithArg<0>(Invoke(finish_request_async)));
+      .WillOnce(DoAll(WithArg<0>(Invoke(finish_request_async)), Return(23)));
 
-  request.GetResponse(base::Bind(success_callback), {});
+  EXPECT_EQ(23, request.GetResponse(base::Bind(success_callback), {}));
 }
 
 }  // namespace http

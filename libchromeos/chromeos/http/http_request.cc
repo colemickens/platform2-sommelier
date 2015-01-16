@@ -138,17 +138,18 @@ std::unique_ptr<Response> Request::GetResponseAndBlock(
   return response;
 }
 
-void Request::GetResponse(const SuccessCallback& success_callback,
-                          const ErrorCallback& error_callback) {
+int Request::GetResponse(const SuccessCallback& success_callback,
+                         const ErrorCallback& error_callback) {
   ErrorPtr error;
   if (!SendRequestIfNeeded(&error)) {
     transport_->RunCallbackAsync(
-        FROM_HERE, base::Bind(error_callback, base::Owned(error.release())));
-    return;
+        FROM_HERE, base::Bind(error_callback, 0, base::Owned(error.release())));
+    return 0;
   }
-  connection_->FinishRequestAsync(success_callback, error_callback);
+  int id = connection_->FinishRequestAsync(success_callback, error_callback);
   connection_.reset();
   transport_.reset();  // Indicate that the request has been dispatched.
+  return id;
 }
 
 void Request::SetAccept(const std::string& accept_mime_types) {
