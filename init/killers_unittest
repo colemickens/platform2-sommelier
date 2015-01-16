@@ -19,7 +19,7 @@ pollForPid() {
 
 tearDown() {
   # TODO(cmasone): Remove ps when http://crbug.com/442027 is sorted.
-  ps -f --forest -u cmasone
+  ps -f --forest -u $(id -u)
   pkill -KILL -e -P $$
   echo "------------------------------ Test complete."
   echo
@@ -117,7 +117,8 @@ main() {
   # Detect whether we're being run inside a pid namespace where we are init.
   # If not, start such a pid namespace. This is to ensure we don't kill real
   # processes on the system during tests.
-  if ! grep -qs "$0" /proc/1/cmdline ]] && [[ -z ${UNSHARE} ]]; then
+  if ! grep -Eqs "$0|pid ns: init" /proc/1/cmdline ]] && \
+     [[ -z ${UNSHARE} ]]; then
     exec sudo UNSHARE=true unshare -f -p --mount-proc "$0" "$@"
   fi
 
