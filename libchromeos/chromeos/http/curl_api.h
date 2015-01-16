@@ -64,9 +64,54 @@ class CurlInterface {
   virtual CURLcode EasyGetInfoStr(CURL* curl,
                                   CURLINFO info,
                                   std::string* value) const = 0;
+  virtual CURLcode EasyGetInfoPtr(CURL* curl,
+                                  CURLINFO info,
+                                  void** value) const = 0;
 
   // Wrapper around curl_easy_strerror().
   virtual std::string EasyStrError(CURLcode code) const = 0;
+
+  // Wrapper around curl_multi_init().
+  virtual CURLM* MultiInit() = 0;
+
+  // Wrapper around curl_multi_cleanup().
+  virtual CURLMcode MultiCleanup(CURLM* multi_handle) = 0;
+
+  // Wrapper around curl_multi_info_read().
+  virtual CURLMsg* MultiInfoRead(CURLM* multi_handle, int* msgs_in_queue) = 0;
+
+  // Wrapper around curl_multi_add_handle().
+  virtual CURLMcode MultiAddHandle(CURLM* multi_handle, CURL* curl_handle) = 0;
+
+  // Wrapper around curl_multi_remove_handle().
+  virtual CURLMcode MultiRemoveHandle(CURLM* multi_handle,
+                                      CURL* curl_handle) = 0;
+
+  // Wrapper around curl_multi_setopt(CURLMOPT_SOCKETFUNCTION/SOCKETDATA).
+  virtual CURLMcode MultiSetSocketCallback(
+      CURLM* multi_handle,
+      curl_socket_callback socket_callback,
+      void* userp) = 0;
+
+  // Wrapper around curl_multi_setopt(CURLMOPT_TIMERFUNCTION/TIMERDATA).
+  virtual CURLMcode MultiSetTimerCallback(
+      CURLM* multi_handle,
+      curl_multi_timer_callback timer_callback,
+      void* userp) = 0;
+
+  // Wrapper around curl_multi_assign().
+  virtual CURLMcode MultiAssign(CURLM* multi_handle,
+                                curl_socket_t sockfd,
+                                void* sockp) = 0;
+
+  // Wrapper around curl_multi_socket_action().
+  virtual CURLMcode MultiSocketAction(CURLM* multi_handle,
+                                      curl_socket_t s,
+                                      int ev_bitmask,
+                                      int* running_handles) = 0;
+
+  // Wrapper around curl_multi_strerror().
+  virtual std::string MultiStrError(CURLMcode code) const = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CurlInterface);
@@ -107,9 +152,53 @@ class CHROMEOS_EXPORT CurlApi : public CurlInterface {
   CURLcode EasyGetInfoStr(CURL* curl,
                           CURLINFO info,
                           std::string* value) const override;
+  CURLcode EasyGetInfoPtr(CURL* curl,
+                          CURLINFO info,
+                          void** value) const override;
 
   // Wrapper around curl_easy_strerror().
   std::string EasyStrError(CURLcode code) const override;
+
+  // Wrapper around curl_multi_init().
+  CURLM* MultiInit() override;
+
+  // Wrapper around curl_multi_cleanup().
+  CURLMcode MultiCleanup(CURLM* multi_handle) override;
+
+  // Wrapper around curl_multi_info_read().
+  CURLMsg* MultiInfoRead(CURLM* multi_handle, int* msgs_in_queue) override;
+
+  // Wrapper around curl_multi_add_handle().
+  CURLMcode MultiAddHandle(CURLM* multi_handle, CURL* curl_handle) override;
+
+  // Wrapper around curl_multi_remove_handle().
+  CURLMcode MultiRemoveHandle(CURLM* multi_handle, CURL* curl_handle) override;
+
+  // Wrapper around curl_multi_setopt(CURLMOPT_SOCKETFUNCTION/SOCKETDATA).
+  CURLMcode MultiSetSocketCallback(
+      CURLM* multi_handle,
+      curl_socket_callback socket_callback,
+      void* userp) override;
+
+  // Wrapper around curl_multi_setopt(CURLMOPT_TIMERFUNCTION/TIMERDATA).
+  CURLMcode MultiSetTimerCallback(
+      CURLM* multi_handle,
+      curl_multi_timer_callback timer_callback,
+      void* userp) override;
+
+  // Wrapper around curl_multi_assign().
+  CURLMcode MultiAssign(CURLM* multi_handle,
+                        curl_socket_t sockfd,
+                        void* sockp) override;
+
+  // Wrapper around curl_multi_socket_action().
+  CURLMcode MultiSocketAction(CURLM* multi_handle,
+                              curl_socket_t s,
+                              int ev_bitmask,
+                              int* running_handles) override;
+
+  // Wrapper around curl_multi_strerror().
+  std::string MultiStrError(CURLMcode code) const override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CurlApi);

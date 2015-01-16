@@ -150,6 +150,8 @@ class HttpCurlConnectionTest : public testing::Test {
   void SetUp() override {
     curl_api_ = std::make_shared<MockCurlInterface>();
     transport_ = std::make_shared<MockTransport>();
+    EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_PRIVATE, _))
+        .WillOnce(Return(CURLE_OK));
     connection_ = std::make_shared<Connection>(
         handle_, request_type::kPost, curl_api_, transport_);
     performer_.connection = connection_.get();

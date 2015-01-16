@@ -13,6 +13,9 @@
 namespace chromeos {
 namespace http {
 
+// This is a mock for CURL interfaces which allows to mock out the CURL's
+// low-level C APIs in tests by intercepting the virtual function calls on
+// the abstract CurlInterface.
 class MockCurlInterface : public CurlInterface {
  public:
   MockCurlInterface() = default;
@@ -28,7 +31,20 @@ class MockCurlInterface : public CurlInterface {
   MOCK_CONST_METHOD3(EasyGetInfoInt, CURLcode(CURL*, CURLINFO, int*));
   MOCK_CONST_METHOD3(EasyGetInfoDbl, CURLcode(CURL*, CURLINFO, double*));
   MOCK_CONST_METHOD3(EasyGetInfoStr, CURLcode(CURL*, CURLINFO, std::string*));
+  MOCK_CONST_METHOD3(EasyGetInfoPtr, CURLcode(CURL*, CURLINFO, void**));
   MOCK_CONST_METHOD1(EasyStrError, std::string(CURLcode));
+  MOCK_METHOD0(MultiInit, CURLM*());
+  MOCK_METHOD1(MultiCleanup, CURLMcode(CURLM*));
+  MOCK_METHOD2(MultiInfoRead, CURLMsg*(CURLM*, int*));
+  MOCK_METHOD2(MultiAddHandle, CURLMcode(CURLM*, CURL*));
+  MOCK_METHOD2(MultiRemoveHandle, CURLMcode(CURLM*, CURL*));
+  MOCK_METHOD3(MultiSetSocketCallback,
+               CURLMcode(CURLM*, curl_socket_callback, void*));
+  MOCK_METHOD3(MultiSetTimerCallback,
+               CURLMcode(CURLM*, curl_multi_timer_callback, void*));
+  MOCK_METHOD3(MultiAssign, CURLMcode(CURLM*, curl_socket_t, void*));
+  MOCK_METHOD4(MultiSocketAction, CURLMcode(CURLM*, curl_socket_t, int, int*));
+  MOCK_CONST_METHOD1(MultiStrError, std::string(CURLMcode));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockCurlInterface);

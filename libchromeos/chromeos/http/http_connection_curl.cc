@@ -56,6 +56,9 @@ Connection::Connection(CURL* curl_handle,
       method_(method),
       curl_handle_(curl_handle),
       curl_interface_(curl_interface) {
+  // Store the connection pointer inside the CURL handle so we can easily
+  // retrieve it when doing asynchronous I/O.
+  curl_interface_->EasySetOptPtr(curl_handle_, CURLOPT_PRIVATE, this);
   VLOG(1) << "curl::Connection created: " << method_;
 }
 
@@ -133,7 +136,7 @@ bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
   PrepareRequest();
   CURLcode ret = curl_interface_->EasyPerform(curl_handle_);
   if (ret != CURLE_OK) {
-    Transport::AddCurlError(error, FROM_HERE, ret, curl_interface_.get());
+    Transport::AddEasyCurlError(error, FROM_HERE, ret, curl_interface_.get());
   } else {
     LOG(INFO) << "Response: " << GetResponseStatusCode() << " ("
               << GetResponseStatusText() << ")";

@@ -6,7 +6,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
-#include <base/message_loop/message_loop_proxy.h>
+#include <base/message_loop/message_loop.h>
 #include <chromeos/http/http_connection_curl.h>
 #include <chromeos/http/http_request.h>
 #include <chromeos/strings/string_utils.h>
@@ -15,27 +15,92 @@ namespace chromeos {
 namespace http {
 namespace curl {
 
-Transport::Transport(const std::shared_ptr<CurlInterface>& curl_interface)
-    : curl_interface_{curl_interface},
-      task_runner_{base::MessageLoopProxy::current()} {
-  VLOG(1) << "curl::Transport created";
-}
+// This is a class that stores connection data on particular CURL socket
+// and provides file descriptor watcher to monitor read and/or write operations
+// on the socket's file descriptor.
+class Transport::SocketPollData : public base::MessageLoopForIO::Watcher {
+ public:
+  SocketPollData(const std::shared_ptr<CurlInterface>& curl_interface,
+                 CURLM* curl_multi_handle,
+                 Transport* transport,
+                 curl_socket_t socket_fd)
+      : curl_interface_(curl_interface),
+        curl_multi_handle_(curl_multi_handle),
+        transport_(transport),
+        socket_fd_(socket_fd) {}
 
-Transport::Transport(const std::shared_ptr<CurlInterface>& curl_interface,
-                     scoped_refptr<base::TaskRunner> task_runner)
-    : curl_interface_{curl_interface}, task_runner_{task_runner} {
+  // Returns the pointer for the socket-specific file descriptor watcher.
+  base::MessageLoopForIO::FileDescriptorWatcher* GetWatcher() {
+    return &file_descriptor_watcher_;
+  }
+
+ private:
+  // Overrides from base::MessageLoopForIO::Watcher.
+  void OnFileCanReadWithoutBlocking(int fd) override {
+    OnSocketReady(fd, CURL_CSELECT_IN);
+  }
+  void OnFileCanWriteWithoutBlocking(int fd) override {
+    OnSocketReady(fd, CURL_CSELECT_OUT);
+  }
+
+  // Data on the socket is available to be read to or written from.
+  // Notify CURL of the action it needs to take on the socket file descriptor.
+  void OnSocketReady(int fd, int action) {
+    CHECK_EQ(socket_fd_, fd) << "Unexpected socket file descriptor";
+    CURLMcode code = CURLM_OK;
+    do {
+      int still_running_count = 0;
+      // CURL might return CURLM_CALL_MULTI_PERFORM "error" code to indicate
+      // that more data is available and can be processed immediately.
+      // In this case, just call curl_multi_socket_action() again.
+      code = curl_interface_->MultiSocketAction(
+          curl_multi_handle_, socket_fd_, action, &still_running_count);
+    } while (code == CURLM_CALL_MULTI_PERFORM);
+
+    if (code == CURLM_OK)
+      transport_->ProcessAsyncCurlMessages();
+  }
+
+  // The CURL interface to use.
+  std::shared_ptr<CurlInterface> curl_interface_;
+  // CURL multi-handle associated with the transport.
+  CURLM* curl_multi_handle_;
+  // Transport object itself.
+  Transport* transport_;
+  // The socket file descriptor for the connection.
+  curl_socket_t socket_fd_;
+  // File descriptor watcher to notify us of asynchronous I/O on the FD.
+  base::MessageLoopForIO::FileDescriptorWatcher file_descriptor_watcher_;
+
+  DISALLOW_COPY_AND_ASSIGN(SocketPollData);
+};
+
+// The request data associated with an asynchronous operation on a particular
+// connection.
+struct Transport::AsyncRequestData {
+  // Success/error callbacks to be invoked at the end of the request.
+  SuccessCallback success_callback;
+  ErrorCallback error_callback;
+  // We store a connection here to make sure the object is alive for
+  // as long as asynchronous operation is running.
+  std::shared_ptr<Connection> connection;
+  // The ID of this request.
+  int request_id;
+};
+
+Transport::Transport(const std::shared_ptr<CurlInterface>& curl_interface)
+    : curl_interface_{curl_interface} {
   VLOG(1) << "curl::Transport created";
 }
 
 Transport::Transport(const std::shared_ptr<CurlInterface>& curl_interface,
                      const std::string& proxy)
-    : curl_interface_{curl_interface},
-      proxy_{proxy},
-      task_runner_{base::MessageLoopProxy::current()} {
+    : curl_interface_{curl_interface}, proxy_{proxy} {
   VLOG(1) << "curl::Transport created with proxy " << proxy;
 }
 
 Transport::~Transport() {
+  ShutDownAsyncCurl();
   VLOG(1) << "curl::Transport destroyed";
 }
 
@@ -96,7 +161,7 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
   }
 
   if (code != CURLE_OK) {
-    AddCurlError(error, FROM_HERE, code, curl_interface_.get());
+    AddEasyCurlError(error, FROM_HERE, code, curl_interface_.get());
     curl_interface_->EasyCleanup(curl_handle);
     return connection;
   }
@@ -111,44 +176,291 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
 
 void Transport::RunCallbackAsync(const tracked_objects::Location& from_here,
                                  const base::Closure& callback) {
-  task_runner_->PostTask(from_here, callback);
+  base::MessageLoopForIO::current()->PostTask(from_here, callback);
 }
 
 int Transport::StartAsyncTransfer(http::Connection* connection,
                                   const SuccessCallback& success_callback,
                                   const ErrorCallback& error_callback) {
-  // TODO(avakulenko): For now using synchronous operation behind the scenes,
-  // but this is to change in the follow-up CLs.
-  http::curl::Connection* curl_connection =
-      static_cast<http::curl::Connection*>(connection);
-  CURLcode ret = curl_interface_->EasyPerform(curl_connection->curl_handle_);
-  if (ret != CURLE_OK) {
-    chromeos::ErrorPtr error;
-    AddCurlError(&error, FROM_HERE, ret, curl_interface_.get());
-    RunCallbackAsync(FROM_HERE, base::Bind(error_callback,
-                                           0, base::Owned(error.release())));
-  } else {
-    scoped_ptr<Response> response{new Response{connection->shared_from_this()}};
-    RunCallbackAsync(FROM_HERE,
-                     base::Bind(success_callback, 1, base::Passed(&response)));
+  chromeos::ErrorPtr error;
+  if (!SetupAsyncCurl(&error)) {
+    RunCallbackAsync(
+        FROM_HERE, base::Bind(error_callback, 0, base::Owned(error.release())));
+    return 0;
   }
-  return 1;
+
+  int request_id = ++last_request_id_;
+
+  auto curl_connection = static_cast<http::curl::Connection*>(connection);
+  std::unique_ptr<AsyncRequestData> request_data{new AsyncRequestData};
+  // Add the request data to |async_requests_| before adding the CURL handle
+  // in case CURL feels like calling the socket callback synchronously which
+  // will need the data to be in |async_requests_| map already.
+  request_data->success_callback = success_callback;
+  request_data->error_callback = error_callback;
+  request_data->connection =
+      std::static_pointer_cast<Connection>(curl_connection->shared_from_this());
+  request_data->request_id = request_id;
+  async_requests_.emplace(curl_connection, std::move(request_data));
+  request_id_map_.emplace(request_id, curl_connection);
+
+  // Add the connection's CURL handle to the multi-handle.
+  CURLMcode code = curl_interface_->MultiAddHandle(
+      curl_multi_handle_, curl_connection->curl_handle_);
+  if (code != CURLM_OK) {
+    chromeos::ErrorPtr error;
+    AddMultiCurlError(&error, FROM_HERE, code, curl_interface_.get());
+    RunCallbackAsync(
+        FROM_HERE, base::Bind(error_callback, 0, base::Owned(error.release())));
+    async_requests_.erase(curl_connection);
+    request_id_map_.erase(request_id);
+    return 0;
+  }
+  return request_id;
 }
 
 bool Transport::CancelRequest(int request_id) {
-  // TODO(avakulenko): Implementation of this will come later.
-  return false;
+  auto p = request_id_map_.find(request_id);
+  if (p == request_id_map_.end()) {
+    // The request must have been completed already...
+    // This is not necessarily an error condition, so fail gracefully.
+    LOG(WARNING) << "HTTP request #" << request_id << " not found";
+    return false;
+  }
+  VLOG(1) << "Canceling HTTP request #" << request_id;
+  CleanAsyncConnection(p->second);
+  return true;
 }
 
-void Transport::AddCurlError(chromeos::ErrorPtr* error,
-                             const tracked_objects::Location& location,
-                             CURLcode code,
-                             CurlInterface* curl_interface) {
+void Transport::AddEasyCurlError(chromeos::ErrorPtr* error,
+                                 const tracked_objects::Location& location,
+                                 CURLcode code,
+                                 CurlInterface* curl_interface) {
   chromeos::Error::AddTo(error,
                          location,
-                         "curl_error",
+                         "curl_easy_error",
                          chromeos::string_utils::ToString(code),
                          curl_interface->EasyStrError(code));
+}
+
+void Transport::AddMultiCurlError(chromeos::ErrorPtr* error,
+                                  const tracked_objects::Location& location,
+                                  CURLMcode code,
+                                  CurlInterface* curl_interface) {
+  chromeos::Error::AddTo(error,
+                         location,
+                         "curl_multi_error",
+                         chromeos::string_utils::ToString(code),
+                         curl_interface->MultiStrError(code));
+}
+
+bool Transport::SetupAsyncCurl(chromeos::ErrorPtr* error) {
+  if (curl_multi_handle_)
+    return true;
+
+  curl_multi_handle_ = curl_interface_->MultiInit();
+  if (!curl_multi_handle_) {
+    LOG(ERROR) << "Failed to initialize CURL";
+    chromeos::Error::AddTo(error,
+                           FROM_HERE,
+                           http::kErrorDomain,
+                           "curl_init_failed",
+                           "Failed to initialize CURL");
+    return false;
+  }
+
+  CURLMcode code = curl_interface_->MultiSetSocketCallback(
+      curl_multi_handle_, &Transport::MultiSocketCallback, this);
+  if (code == CURLM_OK) {
+    code = curl_interface_->MultiSetTimerCallback(
+        curl_multi_handle_, &Transport::MultiTimerCallback, this);
+  }
+  if (code != CURLM_OK) {
+    AddMultiCurlError(error, FROM_HERE, code, curl_interface_.get());
+    return false;
+  }
+  return true;
+}
+
+void Transport::ShutDownAsyncCurl() {
+  if (!curl_multi_handle_)
+    return;
+  LOG_IF(WARNING, !poll_data_map_.empty())
+      << "There are pending requests at the time of transport's shutdown";
+  // Make sure we are not leaking any memory here.
+  for (const auto& pair : poll_data_map_)
+    delete pair.second;
+  poll_data_map_.clear();
+  curl_interface_->MultiCleanup(curl_multi_handle_);
+  curl_multi_handle_ = nullptr;
+}
+
+int Transport::MultiSocketCallback(CURL* easy,
+                                   curl_socket_t s,
+                                   int what,
+                                   void* userp,
+                                   void* socketp) {
+  auto transport = static_cast<Transport*>(userp);
+  CHECK(transport) << "Transport must be set for this callback";
+  auto poll_data = static_cast<SocketPollData*>(socketp);
+  if (!poll_data) {
+    // We haven't attached polling data to this socket yet. Let's do this now.
+    poll_data = new SocketPollData{transport->curl_interface_,
+                                   transport->curl_multi_handle_,
+                                   transport,
+                                   s};
+    transport->poll_data_map_.emplace(std::make_pair(easy, s), poll_data);
+    transport->curl_interface_->MultiAssign(
+        transport->curl_multi_handle_, s, poll_data);
+  }
+
+  if (what == CURL_POLL_NONE) {
+    return 0;
+  } else if (what == CURL_POLL_REMOVE) {
+    // Remove the attached data from the socket.
+    transport->curl_interface_->MultiAssign(
+        transport->curl_multi_handle_, s, nullptr);
+    transport->poll_data_map_.erase(std::make_pair(easy, s));
+    delete poll_data;
+    return 0;
+  }
+
+  base::MessageLoopForIO::Mode watch_mode = base::MessageLoopForIO::WATCH_READ;
+  switch (what) {
+    case CURL_POLL_IN:
+      watch_mode = base::MessageLoopForIO::WATCH_READ;
+      break;
+    case CURL_POLL_OUT:
+      watch_mode = base::MessageLoopForIO::WATCH_WRITE;
+      break;
+    case CURL_POLL_INOUT:
+      watch_mode = base::MessageLoopForIO::WATCH_READ_WRITE;
+      break;
+    default:
+      LOG(FATAL) << "Unknown CURL socket action: " << what;
+      break;
+  }
+  CHECK(base::MessageLoopForIO::current()->WatchFileDescriptor(
+      s, true, watch_mode, poll_data->GetWatcher(), poll_data))
+      << "Failed to watch the CURL socket.";
+  return 0;
+}
+
+// CURL actually uses "long" types in callback signatures, so we must comply.
+int Transport::MultiTimerCallback(CURLM* multi,
+                                  long timeout_ms,  // NOLINT(runtime/int)
+                                  void* userp) {
+  auto transport = static_cast<Transport*>(userp);
+  if (timeout_ms > 0) {
+    transport->timer_delay_ = base::TimeDelta::FromMilliseconds(timeout_ms);
+    transport->ScheduleTimer(++transport->current_timer_id_);
+  } else {
+    // This will effectively cancel the next invocation of the timer.
+    ++transport->current_timer_id_;
+  }
+  return 0;
+}
+
+void Transport::OnTimer(int timer_id) {
+  if (curl_multi_handle_) {
+    int still_running_count = 0;
+    curl_interface_->MultiSocketAction(
+        curl_multi_handle_, CURL_SOCKET_TIMEOUT, 0, &still_running_count);
+    ProcessAsyncCurlMessages();
+  }
+
+  if (timer_id == current_timer_id_) {
+    // Reschedule a periodic check only if this is the latest timer event.
+    // If not, a newer event has already been scheduled, so there is nothing
+    // else to do here.
+    ScheduleTimer(timer_id);
+  }
+}
+
+void Transport::ScheduleTimer(int timer_id) {
+  base::MessageLoopForIO::current()->PostDelayedTask(
+      FROM_HERE,
+      base::Bind(&Transport::OnTimer, weak_ptr_factory_.GetWeakPtr(), timer_id),
+      timer_delay_);
+}
+
+void Transport::ProcessAsyncCurlMessages() {
+  CURLMsg* msg = nullptr;
+  int msgs_left = 0;
+  while ((msg = curl_interface_->MultiInfoRead(curl_multi_handle_,
+                                               &msgs_left))) {
+    if (msg->msg == CURLMSG_DONE) {
+      // Async I/O complete for a connection. Invoke the user callbacks.
+      Connection* connection = nullptr;
+      CHECK_EQ(CURLE_OK,
+               curl_interface_->EasyGetInfoPtr(
+                   msg->easy_handle,
+                   CURLINFO_PRIVATE,
+                   reinterpret_cast<void**>(&connection)));
+      CHECK(connection != nullptr);
+      OnTransferComplete(connection, msg->data.result);
+    }
+  }
+}
+
+void Transport::OnTransferComplete(Connection* connection, CURLcode code) {
+  auto p = async_requests_.find(connection);
+  CHECK(p != async_requests_.end()) << "Unknown connection";
+  AsyncRequestData* request_data = p->second.get();
+  if (code != CURLE_OK) {
+    chromeos::ErrorPtr error;
+    AddEasyCurlError(&error, FROM_HERE, code, curl_interface_.get());
+    RunCallbackAsync(FROM_HERE,
+                     base::Bind(request_data->error_callback,
+                                p->second->request_id,
+                                base::Owned(error.release())));
+  } else {
+    scoped_ptr<Response> response{new Response{request_data->connection}};
+    RunCallbackAsync(FROM_HERE,
+                     base::Bind(request_data->success_callback,
+                                p->second->request_id,
+                                base::Passed(&response)));
+  }
+  // In case of an error on CURL side, we would have dispatched the error
+  // callback and we need to clean up the current connection, however the
+  // error callback has no reference to the connection itself and
+  // |async_requests_| is the only reference to the shared pointer that
+  // maintains the lifetime of |connection| and possibly even this Transport
+  // object instance. As a result, if we call CleanAsyncConnection() directly,
+  // there is a chance that this object might be deleted.
+  // Instead, schedule an asynchronous task to clean up the connection.
+  RunCallbackAsync(FROM_HERE,
+                   base::Bind(&Transport::CleanAsyncConnection,
+                              weak_ptr_factory_.GetWeakPtr(),
+                              connection));
+}
+
+void Transport::CleanAsyncConnection(Connection* connection) {
+  auto p = async_requests_.find(connection);
+  CHECK(p != async_requests_.end()) << "Unknown connection";
+  // Remove the request data from the map first, since this might be the only
+  // reference to the Connection class and even possibly to this Transport.
+  auto request_data = std::move(p->second);
+
+  // Remove associated request ID.
+  request_id_map_.erase(request_data->request_id);
+
+  // Remove the connection's CURL handle from multi-handle.
+  curl_interface_->MultiRemoveHandle(curl_multi_handle_,
+                                     connection->curl_handle_);
+
+  // Remove all the socket data associated with this connection.
+  auto iter = poll_data_map_.begin();
+  while (iter != poll_data_map_.end()) {
+    if (iter->first.first == connection->curl_handle_)
+      iter = poll_data_map_.erase(iter);
+    else
+      ++iter;
+  }
+  // Remove pending asynchronous request data.
+  // This must be last since there is a chance of this object being
+  // destroyed as the result. See the comment in Transport::OnTransferComplete.
+  async_requests_.erase(p);
 }
 
 }  // namespace curl

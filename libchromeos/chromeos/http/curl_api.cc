@@ -110,8 +110,74 @@ CURLcode CurlApi::EasyGetInfoStr(CURL* curl,
   return code;
 }
 
+CURLcode CurlApi::EasyGetInfoPtr(CURL* curl,
+                                 CURLINFO info,
+                                 void** value) const {
+  // CURL uses "string" type for generic pointer info. Go figure.
+  CHECK_EQ(CURLINFO_STRING, info & CURLINFO_TYPEMASK) << "Wrong option type";
+  return curl_easy_getinfo(curl, info, value);
+}
+
 std::string CurlApi::EasyStrError(CURLcode code) const {
   return curl_easy_strerror(code);
+}
+
+CURLM* CurlApi::MultiInit() {
+  return curl_multi_init();
+}
+
+CURLMcode CurlApi::MultiCleanup(CURLM* multi_handle) {
+  return curl_multi_cleanup(multi_handle);
+}
+
+CURLMsg* CurlApi::MultiInfoRead(CURLM* multi_handle, int* msgs_in_queue) {
+  return curl_multi_info_read(multi_handle, msgs_in_queue);
+}
+
+CURLMcode CurlApi::MultiAddHandle(CURLM* multi_handle, CURL* curl_handle) {
+  return curl_multi_add_handle(multi_handle, curl_handle);
+}
+
+CURLMcode CurlApi::MultiRemoveHandle(CURLM* multi_handle, CURL* curl_handle) {
+  return curl_multi_remove_handle(multi_handle, curl_handle);
+}
+
+CURLMcode CurlApi::MultiSetSocketCallback(CURLM* multi_handle,
+                                          curl_socket_callback socket_callback,
+                                          void* userp) {
+  CURLMcode code =
+      curl_multi_setopt(multi_handle, CURLMOPT_SOCKETFUNCTION, socket_callback);
+  if (code != CURLM_OK)
+    return code;
+  return curl_multi_setopt(multi_handle, CURLMOPT_SOCKETDATA, userp);
+}
+
+CURLMcode CurlApi::MultiSetTimerCallback(
+    CURLM* multi_handle,
+    curl_multi_timer_callback timer_callback,
+    void* userp) {
+  CURLMcode code =
+      curl_multi_setopt(multi_handle, CURLMOPT_TIMERFUNCTION, timer_callback);
+  if (code != CURLM_OK)
+    return code;
+  return curl_multi_setopt(multi_handle, CURLMOPT_TIMERDATA, userp);
+}
+
+CURLMcode CurlApi::MultiAssign(CURLM* multi_handle,
+                               curl_socket_t sockfd,
+                               void* sockp) {
+  return curl_multi_assign(multi_handle, sockfd, sockp);
+}
+
+CURLMcode CurlApi::MultiSocketAction(CURLM* multi_handle,
+                                     curl_socket_t s,
+                                     int ev_bitmask,
+                                     int* running_handles) {
+  return curl_multi_socket_action(multi_handle, s, ev_bitmask, running_handles);
+}
+
+std::string CurlApi::MultiStrError(CURLMcode code) const {
+  return curl_multi_strerror(code);
 }
 
 }  // namespace http
