@@ -2261,7 +2261,7 @@ size_t PerfReader::GetEventDescMetadataSize() const {
     for (size_t i = 0; i < attrs_.size(); ++i) {
       size += sizeof(perf_event_attr) + sizeof(dummy.len);
       size += sizeof(event_desc_num_unique_ids);
-      size += GetUint64AlignedStringLength(attrs_[i].name) * sizeof(char);
+      size += GetUint64AlignedStringLength(attrs_[i].name);
       size += attrs_[i].ids.size() * sizeof(attrs_[i].ids[0]);
     }
   }
@@ -2284,7 +2284,7 @@ size_t PerfReader::GetStringMetadataSize() const {
 
     for (size_t j = 0; j < metadata.data.size(); ++j) {
       const CStringWithLength& str = metadata.data[j];
-      size += sizeof(str.len) + (str.len * sizeof(char));
+      size += sizeof(str.len) + str.len;
     }
   }
   return size;
@@ -2313,14 +2313,14 @@ size_t PerfReader::GetCPUTopologyMetadataSize() const {
   size_t size = sizeof(num_siblings_type);
   for (size_t i = 0; i < cpu_topology_.core_siblings.size(); ++i) {
     const CStringWithLength& str = cpu_topology_.core_siblings[i];
-    size += sizeof(str.len) + (str.len * sizeof(char));
+    size += sizeof(str.len) + str.len;
   }
 
   // Thread siblings.
   size += sizeof(num_siblings_type);
   for (size_t i = 0; i < cpu_topology_.thread_siblings.size(); ++i) {
     const CStringWithLength& str = cpu_topology_.thread_siblings[i];
-    size += sizeof(str.len) + (str.len * sizeof(char));
+    size += sizeof(str.len) + str.len;
   }
 
   return size;
@@ -2332,7 +2332,7 @@ size_t PerfReader::GetNUMATopologyMetadataSize() const {
     const PerfNodeTopologyMetadata& node = numa_topology_[i];
     size += sizeof(node.id);
     size += sizeof(node.total_memory) + sizeof(node.free_memory);
-    size += sizeof(node.cpu_list.len) + node.cpu_list.len * sizeof(char);
+    size += sizeof(node.cpu_list.len) + node.cpu_list.len;
   }
   return size;
 }
