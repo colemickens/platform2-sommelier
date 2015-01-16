@@ -370,4 +370,9 @@ TEST_F(DBusAdaptorTest, KeyValueStoreToVariant) {
   EXPECT_EQ(kBoolValue, bool_value);
 }
 
+TEST_F(DBusAdaptorTest, SanitizePathElement) {
+  EXPECT_EQ("0Ab_y_Z_9_", DBusAdaptor::SanitizePathElement("0Ab/y:Z`9{"));
+  EXPECT_EQ("aB_f_0_Y_z", DBusAdaptor::SanitizePathElement("aB-f/0@Y[z"));
+}
+
 }  // namespace shill

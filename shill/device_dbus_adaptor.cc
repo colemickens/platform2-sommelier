@@ -26,7 +26,7 @@ static string ObjectID(DeviceDBusAdaptor *d) { return d->GetRpcIdentifier(); }
 const char DeviceDBusAdaptor::kPath[] = "/device/";
 
 DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection *conn, Device *device)
-    : DBusAdaptor(conn, kPath + device->UniqueName()),
+    : DBusAdaptor(conn, kPath + SanitizePathElement(device->UniqueName())),
       device_(device),
       connection_name_(conn->unique_name()) {
 }

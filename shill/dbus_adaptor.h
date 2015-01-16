@@ -13,6 +13,7 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <dbus-c++/dbus.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/accessor_interface.h"
 #include "shill/adaptor_interfaces.h"
@@ -98,6 +99,8 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static bool IsKeyValueStore(::DBus::Signature signature);
 
  protected:
+  FRIEND_TEST(DBusAdaptorTest, SanitizePathElement);
+
   ResultCallback GetMethodReplyCallback(const DBus::Tag *tag);
   // It would be nice if these two methods could be templated.  Unfortunately,
   // attempts to do so will trigger some fairly esoteric warnings from the
@@ -133,6 +136,9 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   void ReturnResultOrDefer(const DBus::Tag *tag,
                            const Error &error,
                            DBus::Error *dberror);
+
+  // Returns an object path fragment that conforms to D-Bus specifications.
+  static std::string SanitizePathElement(const std::string &object_path);
 
  private:
   void MethodReplyCallback(const DBus::Tag *tag, const Error &error);

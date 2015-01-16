@@ -34,7 +34,8 @@ IPConfigDBusAdaptor::IPConfigDBusAdaptor(DBus::Connection *conn,
                                          IPConfig *config)
     : DBusAdaptor(conn, StringPrintf("%s%s_%u_%s",
                                      kPath,
-                                     config->device_name().c_str(),
+                                     SanitizePathElement(
+                                         config->device_name()).c_str(),
                                      config->serial(),
                                      config->type().c_str())),
       ipconfig_(config) {

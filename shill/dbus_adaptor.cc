@@ -267,6 +267,27 @@ void DBusAdaptor::ArgsToKeyValueStore(
 }
 
 // static
+string DBusAdaptor::SanitizePathElement(const string &object_path) {
+  string sanitized_path(object_path);
+  size_t length = sanitized_path.length();
+
+  for (size_t i = 0; i < length; ++i) {
+    char c = sanitized_path[i];
+    // The D-Bus specification
+    // (http://dbus.freedesktop.org/doc/dbus-specification.html) states:
+    // Each element must only contain the ASCII characters "[A-Z][a-z][0-9]_"
+    if (!(c >= 'A' && c <= 'Z') &&
+        !(c >= 'a' && c <= 'z') &&
+        !(c >= '0' && c <= '9') &&
+        c != '_') {
+      sanitized_path[i] = '_';
+    }
+  }
+
+  return sanitized_path;
+}
+
+// static
 ::DBus::Variant DBusAdaptor::BoolToVariant(bool value) {
   ::DBus::Variant v;
   v.writer().append_bool(value);
