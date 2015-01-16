@@ -282,10 +282,11 @@ class Platform2Test(object):
       # Some progs want this like bash else they get super confused.
       os.environ['PWD'] = cwd
       if not self.run_as_root:
-        _, uid, gid, home = self.GetNonRootAccount()
+        user, uid, gid, home = self.GetNonRootAccount()
         os.setgid(gid)
         os.setuid(uid)
         os.environ['HOME'] = home
+        os.environ['USER'] = user
       sys.exit(os.execvp(cmd, argv))
 
     proctitle.settitle('sysroot watcher', cmd)
