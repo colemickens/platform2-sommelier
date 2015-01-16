@@ -7,6 +7,7 @@
 #include <byteswap.h>
 #include <limits.h>
 
+#include <algorithm>
 #include <bitset>
 #include <cstdio>
 #include <cstdlib>
@@ -713,8 +714,21 @@ bool PerfReader::ReadFromPointer(const char* perf_data, size_t size) {
   if (header_.size == sizeof(header_)) {
     DLOG(INFO) << "Perf data is in normal format.";
     metadata_mask_ = header_.adds_features[0];
-    return (ReadAttrs(data) && ReadEventTypes(data) && ReadData(data)
-            && ReadMetadata(data));
+    if (!(metadata_mask_ & (1 << HEADER_EVENT_DESC))) {
+      // Prefer to read attrs and event names from HEADER_EVENT_DESC metadata if
+      // available. event_types section of perf.data is obsolete, but use it as
+      // a fallback:
+      if (!(ReadAttrs(data) && ReadEventTypes(data)))
+        return false;
+    }
+
+    if (!(ReadData(data) && ReadMetadata(data)))
+      return false;
+
+    // We can construct HEADER_EVENT_DESC from attrs and event types.
+    // NB: Can't set this before ReadMetadata(), or it may misread the metadata.
+    metadata_mask_ |= (1 << HEADER_EVENT_DESC);
+    return true;
   }
 
   // Otherwise it is piped data.
@@ -813,7 +827,8 @@ bool PerfReader::RegenerateHeader() {
   out_header_.attrs.size = out_header_.attr_size * attrs_.size();
   for (size_t i = 0; i < events_.size(); i++)
     out_header_.data.size += events_[i]->header.size;
-  out_header_.event_types.size = event_types_.size() * sizeof(event_types_[0]);
+  out_header_.event_types.size = HaveEventNames() ?
+      (attrs_.size() * sizeof(perf_trace_event_type)) : 0;
 
   u64 current_offset = 0;
   current_offset += out_header_.size;
@@ -1088,9 +1103,6 @@ bool PerfReader::ReadHeader(const ConstBufferWithSize& data) {
   if (is_cross_endian_)
     ByteSwap(&header_.size);
 
-  DLOG(INFO) << "event_types.size: " << header_.event_types.size;
-  DLOG(INFO) << "event_types.offset: " << header_.event_types.offset;
-
   return true;
 }
 
@@ -1227,29 +1239,53 @@ bool PerfReader::ReadUniqueIDs(const ConstBufferWithSize& data, size_t num_ids,
 bool PerfReader::ReadEventTypes(const ConstBufferWithSize& data) {
   size_t num_event_types = header_.event_types.size /
       sizeof(struct perf_trace_event_type);
+  if (num_event_types == 0) {
+    // Not available.
+    return true;
+  }
+  CHECK_EQ(attrs_.size(), num_event_types);
   CHECK_EQ(sizeof(perf_trace_event_type) * num_event_types,
            header_.event_types.size);
   size_t offset = header_.event_types.offset;
   for (size_t i = 0; i < num_event_types; ++i) {
-    if (!ReadEventType(data, &offset))
+    if (!ReadEventType(data, i, 0, &offset))
       return false;
   }
   return true;
 }
 
 bool PerfReader::ReadEventType(const ConstBufferWithSize& data,
+                               size_t attr_idx, size_t event_size,
                                size_t* offset) {
   CheckNoEventTypePadding();
-  perf_trace_event_type type;
-  memset(&type, 0, sizeof(type));
-  if (!ReadDataFromBuffer(data, sizeof(type.event_id), "event id",
-                          offset, &type.event_id)) {
+  decltype(perf_trace_event_type::event_id) event_id;
+
+  if (!ReadDataFromBuffer(data, sizeof(event_id), "event id",
+                          offset, &event_id)) {
     return false;
   }
   const char* event_name = reinterpret_cast<const char*>(data.ptr + *offset);
-  CHECK_GT(snprintf(type.name, sizeof(type.name), "%s", event_name), 0);
-  *offset += sizeof(type.name);
-  event_types_.push_back(type);
+  size_t event_name_len;
+  if (event_size == 0) {  // Not in an event.
+    event_name_len = sizeof(perf_trace_event_type::name);
+  } else {
+    event_name_len =
+        event_size - sizeof(perf_event_header) - sizeof(event_id);
+  }
+  *offset += event_name_len;
+  event_name_len = strnlen(event_name, event_name_len);
+
+  if (attr_idx >= attrs_.size()) {
+    LOG(ERROR) << "Too many event types, or attrs not read yet!";
+    return false;
+  }
+  if (event_id != attrs_[attr_idx].attr.config) {
+    LOG(ERROR) << "event_id for perf_trace_event_type does not match "
+                  "attr.config";
+    return false;
+  }
+  attrs_[attr_idx].name = string(event_name, event_name_len);
+
   return true;
 }
 
@@ -1327,6 +1363,8 @@ bool PerfReader::ReadMetadata(const ConstBufferWithSize& data) {
         return false;
       break;
     case HEADER_EVENT_DESC:
+      if (!ReadEventDescMetadata(data, type, metadata_offset, metadata_size))
+        return false;
       break;
     case HEADER_CPU_TOPOLOGY:
       if (!ReadCPUTopologyMetadata(data, type, metadata_offset, metadata_size))
@@ -1343,19 +1381,6 @@ bool PerfReader::ReadMetadata(const ConstBufferWithSize& data) {
     }
   }
 
-  // Event type events are optional in some newer versions of perf. They
-  // contain the same information that is already in |attrs_|. Make sure the
-  // number of event types matches the number of attrs, but only if there are
-  // event type events present.
-  if (event_types_.size() > 0) {
-    if (event_types_.size() != attrs_.size()) {
-      LOG(ERROR) << "Mismatch between number of event type events and attr "
-                 << "events: " << event_types_.size() << " vs "
-                 << attrs_.size();
-      return false;
-    }
-    metadata_mask_ |= (1 << HEADER_EVENT_DESC);
-  }
   return true;
 }
 
@@ -1469,6 +1494,67 @@ bool PerfReader::ReadUint64Metadata(const ConstBufferWithSize& data, u32 type,
   return true;
 }
 
+bool PerfReader::ReadEventDescMetadata(
+    const ConstBufferWithSize& data, u32 type, size_t offset, size_t size) {
+  // Structure:
+  // u32 nr_events
+  // u32 sizeof(perf_event_attr)
+  // foreach event (nr_events):
+  //   struct perf_event_attr
+  //   u32 nr_ids
+  //   event name (len & string, 64-bit padded)
+  //   u64 ids[nr_ids]
+
+  u32 nr_events;
+  if (!ReadDataFromBuffer(data, sizeof(nr_events), "event_desc nr_events",
+                          &offset, &nr_events)) {
+    return false;
+  }
+
+  u32 attr_size;
+  if (!ReadDataFromBuffer(data, sizeof(attr_size), "event_desc attr_size",
+                          &offset, &attr_size)) {
+    return false;
+  }
+
+  CHECK_LE(attr_size, sizeof(perf_event_attr));
+
+  attrs_.clear();
+  attrs_.resize(nr_events);
+
+  for (u32 i = 0; i < nr_events; i++) {
+    if (!ReadEventAttr(data, &offset, &attrs_[i].attr)) {
+      return false;
+    }
+
+    u32 nr_ids;
+    if (!ReadDataFromBuffer(data, sizeof(nr_ids), "event_desc nr_ids",
+                            &offset, &nr_ids)) {
+      return false;
+    }
+
+    CStringWithLength event_name;
+    if (!ReadStringFromBuffer(data, is_cross_endian_, &offset, &event_name)) {
+      return false;
+    }
+    attrs_[i].name = event_name.str;
+
+    std::vector<u64> &ids = attrs_[i].ids;
+    ids.resize(nr_ids);
+    size_t sizeof_ids = sizeof(ids[0]) * ids.size();
+    if (!ReadDataFromBuffer(data, sizeof_ids, "event_desc ids",
+                            &offset, ids.data())) {
+      return false;
+    }
+    if (is_cross_endian_) {
+      for (auto &id : attrs_[i].ids) {
+        ByteSwap(&id);
+      }
+    }
+  }
+  return true;
+}
+
 bool PerfReader::ReadCPUTopologyMetadata(
     const ConstBufferWithSize& data, u32 type, size_t offset, size_t size) {
   num_siblings_type num_core_siblings;
@@ -1571,6 +1657,8 @@ bool PerfReader::ReadTracingMetadataEvent(
 bool PerfReader::ReadPipedData(const ConstBufferWithSize& data) {
   size_t offset = piped_header_.size;
   bool result = true;
+  size_t event_type_count = 0;
+
   metadata_mask_ = 0;
   CheckNoEventHeaderPadding();
 
@@ -1621,9 +1709,13 @@ bool PerfReader::ReadPipedData(const ConstBufferWithSize& data) {
       result = ReadAttrEventBlock(data, new_offset, size_without_header);
       break;
     case PERF_RECORD_HEADER_EVENT_TYPE:
-      result = ReadEventType(data, &new_offset);
+      result = ReadEventType(data, event_type_count++, header.size,
+                             &new_offset);
       break;
     case PERF_RECORD_HEADER_EVENT_DESC:
+      metadata_mask_ |= (1 << HEADER_EVENT_DESC);
+      result = ReadEventDescMetadata(data, HEADER_EVENT_DESC, new_offset,
+                                     size_without_header);
       break;
     case PERF_RECORD_HEADER_TRACING_DATA:
       metadata_mask_ |= (1 << HEADER_TRACING_DATA);
@@ -1700,17 +1792,13 @@ bool PerfReader::ReadPipedData(const ConstBufferWithSize& data) {
   if (!result) {
     return false;
   }
-  // Event type events are optional in some newer versions of perf. They
-  // contain the same information that is already in |attrs_|. Make sure the
-  // number of event types matches the number of attrs, but only if there are
-  // event type events present.
-  if (event_types_.size() > 0) {
-    if (event_types_.size() != attrs_.size()) {
-      LOG(ERROR) << "Mismatch between number of event type events and attr "
-                 << "events: " << event_types_.size() << " vs "
-                 << attrs_.size();
-      return false;
-    }
+
+  // The PERF_RECORD_HEADER_EVENT_TYPE events are obsolete, but if present
+  // and PERF_RECORD_HEADER_EVENT_DESC metadata events are not, we should use
+  // them. Otherwise, we should use prefer the _EVENT_DESC data.
+  if (!(metadata_mask_ & (1 << HEADER_EVENT_DESC)) &&
+      event_type_count == attrs_.size()) {
+    // We can construct HEADER_EVENT_DESC:
     metadata_mask_ |= (1 << HEADER_EVENT_DESC);
   }
   return result;
@@ -1927,21 +2015,9 @@ bool PerfReader::WriteUint64Metadata(u32 type, size_t* offset,
 
 bool PerfReader::WriteEventDescMetadata(u32 type, size_t* offset,
                                         const BufferWithSize& data) const {
-  if (event_types_.empty()) {
-    return true;
-  }
-
   CheckNoPerfEventAttrPadding();
 
-  // There should be an attribute for each event type.
-  if (event_types_.size() != attrs_.size()) {
-    LOG(ERROR) << "Mismatch between number of event type events and attr "
-               << "events: " << event_types_.size() << " vs "
-               << attrs_.size();
-    return false;
-  }
-
-  event_desc_num_events num_events = event_types_.size();
+  event_desc_num_events num_events = attrs_.size();
   if (!WriteDataToBuffer(&num_events, sizeof(num_events),
                          "event_desc num_events", offset, data)) {
     return false;
@@ -1953,7 +2029,6 @@ bool PerfReader::WriteEventDescMetadata(u32 type, size_t* offset,
   }
 
   for (size_t i = 0; i < num_events; ++i) {
-    const perf_trace_event_type event_type = event_types_[i];
     const PerfFileAttr& attr = attrs_[i];
     if (!WriteDataToBuffer(&attr.attr, sizeof(attr.attr),
                            "event_desc attribute", offset, data)) {
@@ -1967,8 +2042,8 @@ bool PerfReader::WriteEventDescMetadata(u32 type, size_t* offset,
     }
 
     CStringWithLength container;
-    container.len = GetUint64AlignedStringLength(event_type.name);
-    container.str = string(event_type.name);
+    container.len = GetUint64AlignedStringLength(attr.name);
+    container.str = attr.name;
     if (!WriteStringToBuffer(container, data, offset))
       return false;
 
@@ -2033,13 +2108,22 @@ bool PerfReader::WriteNUMATopologyMetadata(u32 type, size_t* offset,
 bool PerfReader::WriteEventTypes(const BufferWithSize& data) const {
   CheckNoEventTypePadding();
   size_t offset = out_header_.event_types.offset;
-  for (size_t i = 0; i < event_types_.size(); ++i) {
-    const struct perf_trace_event_type& event_type = event_types_[i];
+  const size_t size = out_header_.event_types.size;
+  if (size == 0) {
+    return true;
+  }
+  for (size_t i = 0; i < attrs_.size(); ++i) {
+    struct perf_trace_event_type event_type = {0};
+    event_type.event_id = attrs_[i].attr.config;
+    const string& name = attrs_[i].name;
+    memcpy(&event_type.name, name.data(),
+           std::min(name.size(), sizeof(event_type.name)));
     if (!WriteDataToBuffer(&event_type, sizeof(event_type), "event type info",
                            &offset, data)) {
       return false;
     }
   }
+  CHECK_EQ(size, offset - out_header_.event_types.offset);
   return true;
 }
 
@@ -2171,22 +2255,13 @@ size_t PerfReader::GetNumMetadata() const {
 
 size_t PerfReader::GetEventDescMetadataSize() const {
   size_t size = 0;
-  if (event_types_.empty()) {
-    return size;
-  }
   if (metadata_mask_ & (1 << HEADER_EVENT_DESC)) {
-    if (event_types_.size() > 0 && event_types_.size() != attrs_.size()) {
-      LOG(ERROR) << "Mismatch between number of event type events and attr "
-                 << "events: " << event_types_.size() << " vs "
-                 << attrs_.size();
-      return size;
-    }
     size += sizeof(event_desc_num_events) + sizeof(event_desc_attr_size);
     CStringWithLength dummy;
     for (size_t i = 0; i < attrs_.size(); ++i) {
       size += sizeof(perf_event_attr) + sizeof(dummy.len);
       size += sizeof(event_desc_num_unique_ids);
-      size += GetUint64AlignedStringLength(event_types_[i].name) * sizeof(char);
+      size += GetUint64AlignedStringLength(attrs_[i].name) * sizeof(char);
       size += attrs_[i].ids.size() * sizeof(attrs_[i].ids[0]);
     }
   }

@@ -32,9 +32,13 @@ bool PerfSerializer::SerializeFromFile(const string& filename,
 }
 
 bool PerfSerializer::Serialize(PerfDataProto* perf_data_proto) {
-  if (!SerializePerfFileAttrs(attrs_, perf_data_proto->mutable_file_attrs()) ||
-      !SerializePerfEventTypes(event_types_,
-                               perf_data_proto->mutable_event_types())) {
+  if (!SerializePerfFileAttrs(attrs_, perf_data_proto->mutable_file_attrs())) {
+    return false;
+  }
+
+  if (HaveEventNames() &&
+      !SerializePerfEventTypes(
+          attrs_, perf_data_proto->mutable_event_types())) {
     return false;
   }
 
@@ -79,9 +83,11 @@ bool PerfSerializer::DeserializeToFile(const PerfDataProto& perf_data_proto,
 }
 
 bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
-  if (!DeserializePerfFileAttrs(perf_data_proto.file_attrs(), &attrs_) ||
-      !DeserializePerfEventTypes(perf_data_proto.event_types(),
-                                 &event_types_)) {
+  if (!DeserializePerfFileAttrs(perf_data_proto.file_attrs(), &attrs_))
+    return false;
+  if (static_cast<size_t>(perf_data_proto.event_types().size()) ==
+      attrs_.size() &&
+      !DeserializePerfEventTypes(perf_data_proto.event_types(), &attrs_)) {
     return false;
   }
 
@@ -261,20 +267,24 @@ bool PerfSerializer::DeserializePerfEventAttr(
 }
 
 bool PerfSerializer::SerializePerfEventType(
-    const perf_trace_event_type& event_type,
+    const PerfFileAttr& event_attr,
     quipper::PerfDataProto_PerfEventType* event_type_proto) const {
-  event_type_proto->set_id(event_type.event_id);
-  event_type_proto->set_name(event_type.name);
-  event_type_proto->set_name_md5_prefix(Md5Prefix(event_type.name));
+  event_type_proto->set_id(event_attr.attr.config);
+  event_type_proto->set_name(event_attr.name);
+  event_type_proto->set_name_md5_prefix(Md5Prefix(event_attr.name));
   return true;
 }
 
 bool PerfSerializer::DeserializePerfEventType(
     const quipper::PerfDataProto_PerfEventType& event_type_proto,
-    perf_trace_event_type* event_type) const {
-  event_type->event_id = event_type_proto.id();
-  snprintf(event_type->name, arraysize(event_type->name), "%s",
-           event_type_proto.name().c_str());
+    PerfFileAttr* event_attr) const {
+  // Attr should have already been deserialized.
+  if (event_attr->attr.config != event_type_proto.id()) {
+    LOG(ERROR) << "Deserializing event types, id did not match attr.config. "
+                  "Not deserializing the event name!";
+    return false;
+  }
+  event_attr->name = event_type_proto.name();
   return true;
 }
 

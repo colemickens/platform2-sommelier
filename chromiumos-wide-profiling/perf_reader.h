@@ -20,8 +20,10 @@
 
 namespace quipper {
 
+// This is becoming more like a partial struct perf_evsel
 struct PerfFileAttr {
   struct perf_event_attr attr;
+  string name;
   std::vector<u64> ids;
 };
 
@@ -156,6 +158,15 @@ class PerfReader {
     return attrs_;
   }
 
+  bool HaveEventNames() const {
+    for (const auto& attr : attrs_) {
+      if (attr.name.empty()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   const std::vector<malloced_unique_ptr<event_t>>& events() const {
     return events_;
   }
@@ -179,7 +190,9 @@ class PerfReader {
                      size_t* offset, std::vector<u64>* ids);
 
   bool ReadEventTypes(const ConstBufferWithSize& data);
-  bool ReadEventType(const ConstBufferWithSize& data, size_t* offset);
+  // if event_size == 0, then not in an event.
+  bool ReadEventType(const ConstBufferWithSize& data, size_t attr_idx,
+                     size_t event_size, size_t* offset);
 
   bool ReadData(const ConstBufferWithSize& data);
 
@@ -199,6 +212,8 @@ class PerfReader {
                                size_t offset, size_t size);
   bool ReadNUMATopologyMetadata(const ConstBufferWithSize& data, u32 type,
                                 size_t offset, size_t size);
+  bool ReadEventDescMetadata(const ConstBufferWithSize& data, u32 type,
+                             size_t offset, size_t size);
 
   // Read perf data from piped perf output data.
   bool ReadPipedData(const ConstBufferWithSize& data);
@@ -255,7 +270,6 @@ class PerfReader {
   bool LocalizeMMapFilenames(const std::map<string, string>& filename_map);
 
   std::vector<PerfFileAttr> attrs_;
-  std::vector<perf_trace_event_type> event_types_;
   std::vector<malloced_unique_ptr<event_t>> events_;
   std::vector<build_id_event*> build_id_events_;
   std::vector<PerfStringMetadata> string_metadata_;

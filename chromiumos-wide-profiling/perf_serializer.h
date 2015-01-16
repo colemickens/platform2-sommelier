@@ -99,11 +99,11 @@ class PerfSerializer : public PerfParser {
       perf_event_attr* perf_event_attr) const;
 
   bool SerializePerfEventType(
-      const perf_trace_event_type& event_type,
+      const PerfFileAttr& event_attr,
       quipper::PerfDataProto_PerfEventType* event_type_proto) const;
   bool DeserializePerfEventType(
       const quipper::PerfDataProto_PerfEventType& event_type_proto,
-      perf_trace_event_type* event_type) const;
+      PerfFileAttr* event_attr) const;
 
   bool SerializeEvent(const ParsedEvent& event,
                       quipper::PerfDataProto_PerfEvent* event_proto) const;
@@ -233,9 +233,9 @@ class PerfSerializer : public PerfParser {
       DeserializePerfFileAttrs = {
         this, &PerfSerializer::DeserializePerfFileAttr};
 
-  const VectorSerializer<PerfDataProto_PerfEventType, perf_trace_event_type>
+  const VectorSerializer<PerfDataProto_PerfEventType, PerfFileAttr>
       SerializePerfEventTypes = {this, &PerfSerializer::SerializePerfEventType};
-  const VectorDeserializer<PerfDataProto_PerfEventType, perf_trace_event_type>
+  const VectorDeserializer<PerfDataProto_PerfEventType, PerfFileAttr>
       DeserializePerfEventTypes = {
         this, &PerfSerializer::DeserializePerfEventType};
 
