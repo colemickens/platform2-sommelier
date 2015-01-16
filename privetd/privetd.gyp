@@ -19,12 +19,18 @@
     {
       'target_name': 'privetd_common',
       'type': 'static_library',
+      'variables': {
+        'dbus_adaptors_out_dir': 'include/privetd',
+        'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
+      },
       'sources': [
         'ap_manager_client.cc',
         'cloud_delegate.cc',
         'constants.cc',
         'daemon_state.cc',
+        'dbus_bindings/org.chromium.privetd.Manager.xml',
         'device_delegate.cc',
+        'dbus_manager.cc',
         'openssl_utils.cc',
         'peerd_client.cc',
         'privet_handler.cc',
@@ -92,7 +98,10 @@
           'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },
       ],
-      'includes': ['../common-mk/deps.gypi'],
+      'includes': [
+        '../common-mk/generate-dbus-adaptors.gypi',
+        '../common-mk/deps.gypi',
+      ],
     },
     {
       'target_name': 'privetd',

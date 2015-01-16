@@ -26,6 +26,7 @@
 #include "privetd/cloud_delegate.h"
 #include "privetd/constants.h"
 #include "privetd/daemon_state.h"
+#include "privetd/dbus_manager.h"
 #include "privetd/device_delegate.h"
 #include "privetd/peerd_client.h"
 #include "privetd/privet_handler.h"
@@ -38,6 +39,7 @@ namespace privetd {
 
 namespace {
 
+using chromeos::dbus_utils::AsyncEventSequencer;
 using libwebserv::Request;
 using libwebserv::Response;
 
@@ -52,7 +54,10 @@ std::string GetFirstHeader(const Request& request, const std::string& name) {
   return headers.empty() ? std::string() : headers.front();
 }
 
-class Daemon : public chromeos::DBusDaemon {
+const char kServiceName[] = "org.chromium.privetd";
+const char kRootPath[] = "/org/chromium/privetd";
+
+class Daemon : public chromeos::DBusServiceDaemon {
  public:
   Daemon(uint16_t http_port_number,
          uint16_t https_port_number,
@@ -61,7 +66,8 @@ class Daemon : public chromeos::DBusDaemon {
          const std::vector<std::string>& device_whitelist,
          const base::FilePath& config_path,
          const base::FilePath& state_path)
-      : http_port_number_(http_port_number),
+      : DBusServiceDaemon(kServiceName, kRootPath),
+        http_port_number_(http_port_number),
         https_port_number_(https_port_number),
         disable_security_(disable_security),
         enable_ping_(enable_ping),
@@ -69,11 +75,7 @@ class Daemon : public chromeos::DBusDaemon {
         config_path_(config_path),
         state_store_(new DaemonState(state_path)) {}
 
-  int OnInit() override {
-    int ret = DBusDaemon::OnInit();
-    if (ret != EX_OK)
-      return EX_OK;
-
+  void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
     uint32_t connect_timeout_seconds{kDefaultConnectTimeoutSeconds};
     uint32_t bootstrap_timeout_seconds{kDefaultBootstrapTimeoutSeconds};
     uint32_t monitor_timeout_seconds{kDefaultMonitorTimeoutSeconds};
@@ -128,15 +130,11 @@ class Daemon : public chromeos::DBusDaemon {
                                             security_.get(),
                                             wifi_bootstrap_manager_.get()));
 
-    if (!http_server_.Start(http_port_number_))
-      return EX_UNAVAILABLE;
-
+    CHECK(http_server_.Start(http_port_number_));
     security_->InitTlsData();
-    if (!https_server_.StartWithTLS(https_port_number_,
-                                    security_->GetTlsPrivateKey(),
-                                    security_->GetTlsCertificate())) {
-      return EX_UNAVAILABLE;
-    }
+    CHECK(https_server_.StartWithTLS(https_port_number_,
+                                     security_->GetTlsPrivateKey(),
+                                     security_->GetTlsCertificate()));
 
     // TODO(vitalybuka): Device daemons should populate supported types on boot.
     device_->AddType("camera");
@@ -160,8 +158,9 @@ class Daemon : public chromeos::DBusDaemon {
     peerd_client_.reset(new PeerdClient(bus_, device_.get(), cloud_.get(),
                                         wifi_bootstrap_manager_.get()));
     peerd_client_->Start();
-
-    return EX_OK;
+    dbus_manager_.reset(new DBusManager{object_manager_.get()});
+    dbus_manager_->RegisterAsync(
+        sequencer->GetHandler("DBusManager.RegisterAsync() failed.", true));
   }
 
   void OnShutdown(int* return_code) override {
@@ -245,6 +244,7 @@ class Daemon : public chromeos::DBusDaemon {
   std::unique_ptr<WifiBootstrapManager> wifi_bootstrap_manager_;
   std::unique_ptr<PrivetHandler> privet_handler_;
   std::unique_ptr<PeerdClient> peerd_client_;
+  std::unique_ptr<DBusManager> dbus_manager_;
   libwebserv::Server http_server_;
   libwebserv::Server https_server_;
 
