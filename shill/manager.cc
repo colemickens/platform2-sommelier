@@ -527,7 +527,7 @@ void Manager::PopProfileInternal() {
 
     if (!UnloadService(&it)) {
       LOG(INFO) << "Service " << (*it)->unique_name()
-                << "not completely unloaded.";
+                << " not completely unloaded.";
       ++it;
       continue;
     }
