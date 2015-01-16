@@ -225,13 +225,13 @@ void Device::LinkEvent(unsigned flags, unsigned change) {
 void Device::Scan(ScanType scan_type, Error *error, const string &reason) {
   SLOG(this, 2) << __func__ << " [Device] on " << link_name() << " from "
                 << reason;
-  Error::PopulateAndLog(error, Error::kNotSupported,
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Device doesn't support scan.");
 }
 
 void Device::RegisterOnNetwork(const std::string &/*network_id*/, Error *error,
                                  const ResultCallback &/*callback*/) {
-  Error::PopulateAndLog(error, Error::kNotSupported,
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Device doesn't support network registration.");
 }
 
@@ -239,14 +239,14 @@ void Device::RequirePIN(
     const string &/*pin*/, bool /*require*/,
     Error *error, const ResultCallback &/*callback*/) {
   SLOG(this, 2) << __func__;
-  Error::PopulateAndLog(error, Error::kNotSupported,
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Device doesn't support RequirePIN.");
 }
 
 void Device::EnterPIN(const string &/*pin*/,
                       Error *error, const ResultCallback &/*callback*/) {
   SLOG(this, 2) << __func__;
-  Error::PopulateAndLog(error, Error::kNotSupported,
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Device doesn't support EnterPIN.");
 }
 
@@ -254,7 +254,7 @@ void Device::UnblockPIN(const string &/*unblock_code*/,
                         const string &/*pin*/,
                         Error *error, const ResultCallback &/*callback*/) {
   SLOG(this, 2) << __func__;
-  Error::PopulateAndLog(error, Error::kNotSupported,
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Device doesn't support UnblockPIN.");
 }
 
@@ -262,20 +262,20 @@ void Device::ChangePIN(const string &/*old_pin*/,
                        const string &/*new_pin*/,
                        Error *error, const ResultCallback &/*callback*/) {
   SLOG(this, 2) << __func__;
-  Error::PopulateAndLog(error, Error::kNotSupported,
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Device doesn't support ChangePIN.");
 }
 
 void Device::Reset(Error *error, const ResultCallback &/*callback*/) {
   SLOG(this, 2) << __func__;
-  Error::PopulateAndLog(error, Error::kNotSupported,
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Device doesn't support Reset.");
 }
 
 void Device::SetCarrier(const string &/*carrier*/,
                         Error *error, const ResultCallback &/*callback*/) {
   SLOG(this, 2) << __func__;
-  Error::PopulateAndLog(error, Error::kNotSupported,
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Device doesn't support SetCarrier.");
 }
 
@@ -606,7 +606,7 @@ void Device::StopAllActivities() {
 void Device::AddWakeOnPacketConnection(const string &ip_endpoint,
                                        Error *error) {
   Error::PopulateAndLog(
-      error, Error::kNotSupported,
+      FROM_HERE, error, Error::kNotSupported,
       "AddWakeOnPacketConnection not implemented for " + link_name_ + ".");
   return;
 }
@@ -614,14 +614,14 @@ void Device::AddWakeOnPacketConnection(const string &ip_endpoint,
 void Device::RemoveWakeOnPacketConnection(const string &ip_endpoint,
                                           Error *error) {
   Error::PopulateAndLog(
-      error, Error::kNotSupported,
+      FROM_HERE, error, Error::kNotSupported,
       "RemoveWakeOnPacketConnection not implemented for " + link_name_ + ".");
   return;
 }
 
 void Device::RemoveAllWakeOnPacketConnections(Error *error) {
   Error::PopulateAndLog(
-      error, Error::kNotSupported,
+      FROM_HERE, error, Error::kNotSupported,
       "RemoveAllWakeOnPacketConnections not implemented for " + link_name_ +
           ".");
   return;
@@ -1581,7 +1581,7 @@ void Device::SetEnabledChecked(bool enable,
       // Return an error, as there is an ongoing operation to achieve the
       // opposite.
       Error::PopulateAndLog(
-          error, Error::kOperationFailed,
+          FROM_HERE, error, Error::kOperationFailed,
           enable ? "Cannot enable while the device is disabling." :
                    "Cannot disable while the device is enabling.");
       return;
@@ -1592,7 +1592,7 @@ void Device::SetEnabledChecked(bool enable,
   }
 
   if (enabled_pending_ == enable) {
-    Error::PopulateAndLog(error, Error::kInProgress,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInProgress,
                           "Enable operation already in progress");
     return;
   }

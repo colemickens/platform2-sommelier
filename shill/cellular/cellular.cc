@@ -524,7 +524,8 @@ void Cellular::Scan(ScanType /*scan_type*/, Error *error,
   SLOG(this, 2) << __func__;
   CHECK(error);
   if (proposed_scan_in_progress_) {
-    Error::PopulateAndLog(error, Error::kInProgress, "Already scanning");
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInProgress,
+                          "Already scanning");
     return;
   }
 
@@ -668,18 +669,18 @@ void Cellular::DestroyService() {
 void Cellular::Connect(Error *error) {
   SLOG(this, 2) << __func__;
   if (state_ == kStateConnected || state_ == kStateLinked) {
-    Error::PopulateAndLog(error, Error::kAlreadyConnected,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kAlreadyConnected,
                           "Already connected; connection request ignored.");
     return;
   } else if (state_ != kStateRegistered) {
-    Error::PopulateAndLog(error, Error::kNotRegistered,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotRegistered,
                           "Modem not registered; connection request ignored.");
     return;
   }
 
   if (!capability_->AllowRoaming() &&
       service_->roaming_state() == kRoamingStateRoaming) {
-    Error::PopulateAndLog(error, Error::kNotOnHomeNetwork,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotOnHomeNetwork,
                           "Roaming disallowed; connection request ignored.");
     return;
   }
@@ -754,7 +755,8 @@ void Cellular::Disconnect(Error *error, const char *reason) {
   SLOG(this, 2) << __func__ << ": " << reason;
   if (state_ != kStateConnected && state_ != kStateLinked) {
     Error::PopulateAndLog(
-        error, Error::kNotConnected, "Not connected; request ignored.");
+        FROM_HERE, error, Error::kNotConnected,
+        "Not connected; request ignored.");
     return;
   }
   StopPPP();

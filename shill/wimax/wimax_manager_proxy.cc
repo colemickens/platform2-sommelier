@@ -38,7 +38,7 @@ RpcIdentifiers WiMaxManagerProxy::Devices(Error *error) {
   try {
     dbus_devices = proxy_.Devices();
   } catch (const DBus::Error &e) {
-    Error::PopulateAndLog(error, Error::kOperationFailed, e.what());
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed, e.what());
   }
   RpcIdentifiers devices;
   DBusProperties::ConvertPathsToRpcIdentifiers(dbus_devices, &devices);

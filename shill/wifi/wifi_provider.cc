@@ -536,7 +536,7 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
   string mode_test =
       args.LookupString(kModeProperty, kModeManaged);
   if (!WiFiService::IsValidMode(mode_test)) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           kManagerErrorUnsupportedServiceMode);
     return false;
   }
@@ -545,7 +545,7 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
   if (args.ContainsString(kWifiHexSsid)) {
     string ssid_hex_string = args.GetString(kWifiHexSsid);
     if (!base::HexStringToBytes(ssid_hex_string, &ssid)) {
-      Error::PopulateAndLog(error, Error::kInvalidArguments,
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                             "Hex SSID parameter is not valid");
       return false;
     }
@@ -553,19 +553,19 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
     string ssid_string = args.GetString(kSSIDProperty);
     ssid = vector<uint8_t>(ssid_string.begin(), ssid_string.end());
   } else {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           kManagerErrorSSIDRequired);
     return false;
   }
 
   if (ssid.size() < 1) {
-    Error::PopulateAndLog(error, Error::kInvalidNetworkName,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidNetworkName,
                           kManagerErrorSSIDTooShort);
     return false;
   }
 
   if (ssid.size() > IEEE_80211::kMaxSSIDLen) {
-    Error::PopulateAndLog(error, Error::kInvalidNetworkName,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidNetworkName,
                           kManagerErrorSSIDTooLong);
     return false;
   }
@@ -575,7 +575,7 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
       args.ContainsString(kSecurityClassProperty) &&
       args.LookupString(kSecurityClassProperty, kDefaultSecurity) !=
       args.LookupString(kSecurityProperty, kDefaultSecurity)) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           kManagerErrorArgumentConflict);
     return false;
   }
@@ -583,7 +583,7 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
     string security_class_test =
         args.LookupString(kSecurityClassProperty, kDefaultSecurity);
     if (!WiFiService::IsValidSecurityClass(security_class_test)) {
-      Error::PopulateAndLog(error, Error::kNotSupported,
+      Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                             kManagerErrorUnsupportedSecurityClass);
       return false;
     }
@@ -592,7 +592,7 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
     string security_method_test =
         args.LookupString(kSecurityProperty, kDefaultSecurity);
     if (!WiFiService::IsValidSecurityMethod(security_method_test)) {
-      Error::PopulateAndLog(error, Error::kNotSupported,
+      Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                             kManagerErrorUnsupportedSecurityMode);
       return false;
     }

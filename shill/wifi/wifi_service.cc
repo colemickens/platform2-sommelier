@@ -514,7 +514,8 @@ void WiFiService::Connect(Error *error, const char *reason) {
   if (!connectable()) {
     LOG(ERROR) << "Can't connect. Service " << unique_name()
                << " is not connectable.";
-    Error::PopulateAndLog(error,
+    Error::PopulateAndLog(FROM_HERE,
+                          error,
                           Error::kOperationFailed,
                           Error::GetDefaultMessage(Error::kOperationFailed));
     return;
@@ -522,7 +523,8 @@ void WiFiService::Connect(Error *error, const char *reason) {
   if (IsConnecting() || IsConnected()) {
     LOG(WARNING) << "Can't connect.  Service " << unique_name()
                  << " is already connecting or connected.";
-    Error::PopulateAndLog(error,
+    Error::PopulateAndLog(FROM_HERE,
+                          error,
                           Error::kAlreadyConnected,
                           Error::GetDefaultMessage(Error::kAlreadyConnected));
     return;
@@ -539,7 +541,8 @@ void WiFiService::Connect(Error *error, const char *reason) {
     if (!wifi) {
       LOG(ERROR) << "Can't connect. Service " << unique_name()
                  << " cannot find a WiFi device.";
-      Error::PopulateAndLog(error,
+      Error::PopulateAndLog(FROM_HERE,
+                            error,
                             Error::kOperationFailed,
                             Error::GetDefaultMessage(Error::kOperationFailed));
       return;
@@ -550,7 +553,8 @@ void WiFiService::Connect(Error *error, const char *reason) {
     LOG(WARNING) << "Can't connect.  Service " << unique_name()
                  << " is the current service (but, in " << GetStateString()
                  << " state, not connected).";
-    Error::PopulateAndLog(error,
+    Error::PopulateAndLog(FROM_HERE,
+                          error,
                           Error::kInProgress,
                           Error::GetDefaultMessage(Error::kInProgress));
     return;

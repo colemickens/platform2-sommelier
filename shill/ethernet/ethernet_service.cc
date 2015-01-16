@@ -84,7 +84,7 @@ bool EthernetService::SetAutoConnectFull(const bool &connect,
                                          Error *error) {
   if (!connect) {
     Error::PopulateAndLog(
-        error, Error::kInvalidArguments,
+        FROM_HERE, error, Error::kInvalidArguments,
         "Auto-connect on Ethernet services must not be disabled.");
     return false;
   }

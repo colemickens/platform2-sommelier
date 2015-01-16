@@ -332,13 +332,13 @@ void Service::UserInitiatedConnect(Error *error) {
 void Service::ActivateCellularModem(const string &/*carrier*/,
                                     Error *error,
                                     const ResultCallback &/*callback*/) {
-  Error::PopulateAndLog(error, Error::kNotSupported,
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Service doesn't support cellular modem activation.");
 }
 
 void Service::CompleteCellularActivation(Error *error) {
   Error::PopulateAndLog(
-      error, Error::kNotSupported,
+      FROM_HERE, error, Error::kNotSupported,
       "Service doesn't support cellular activation completion.");
 }
 
@@ -1451,7 +1451,7 @@ bool Service::SetCheckPortal(const string &check_portal, Error *error) {
   if (check_portal != kCheckPortalFalse &&
       check_portal != kCheckPortalTrue &&
       check_portal != kCheckPortalAuto) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           base::StringPrintf(
                               "Invalid Service CheckPortal property value: %s",
                               check_portal.c_str()));
@@ -1494,7 +1494,7 @@ string Service::GetNameProperty(Error */*error*/) {
 
 bool Service::SetNameProperty(const string &name, Error *error) {
   if (name != friendly_name_) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           base::StringPrintf(
                               "Service %s Name property cannot be modified.",
                               unique_name_.c_str()));

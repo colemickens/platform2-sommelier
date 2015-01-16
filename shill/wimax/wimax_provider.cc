@@ -156,13 +156,15 @@ bool WiMaxProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
   WiMaxNetworkId id = args.LookupString(WiMaxService::kNetworkIdProperty, "");
   if (id.empty()) {
     Error::PopulateAndLog(
-        error, Error::kInvalidArguments, "Missing WiMAX network id.");
+        FROM_HERE, error, Error::kInvalidArguments,
+        "Missing WiMAX network id.");
     return false;
   }
   string name = args.LookupString(kNameProperty, "");
   if (name.empty()) {
     Error::PopulateAndLog(
-        error, Error::kInvalidArguments, "Missing WiMAX service name.");
+        FROM_HERE, error, Error::kInvalidArguments,
+        "Missing WiMAX service name.");
     return false;
   }
 

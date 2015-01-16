@@ -52,13 +52,13 @@ VPNService::~VPNService() {}
 
 void VPNService::Connect(Error *error, const char *reason) {
   if (IsConnected()) {
-    Error::PopulateAndLog(error, Error::kAlreadyConnected,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kAlreadyConnected,
                           StringPrintf("VPN service %s already connected.",
                                        unique_name().c_str()));
     return;
   }
   if (IsConnecting()) {
-    Error::PopulateAndLog(error, Error::kInProgress,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInProgress,
                           StringPrintf("VPN service %s already connecting.",
                                        unique_name().c_str()));
     return;
@@ -83,12 +83,13 @@ string VPNService::CreateStorageIdentifier(const KeyValueStore &args,
   string host = args.LookupString(kProviderHostProperty, "");
   if (host.empty()) {
     Error::PopulateAndLog(
-        error, Error::kInvalidProperty, "Missing VPN host.");
+        FROM_HERE, error, Error::kInvalidProperty, "Missing VPN host.");
     return "";
   }
   string name = args.LookupString(kNameProperty, "");
   if (name.empty()) {
-    Error::PopulateAndLog(error, Error::kNotSupported, "Missing VPN name.");
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kNotSupported, "Missing VPN name.");
     return "";
   }
   string id = StringPrintf("vpn_%s_%s", host.c_str(), name.c_str());
@@ -191,7 +192,8 @@ string VPNService::GetTethering(Error *error) const {
     // GetProperties().
     error->Populate(Error::kNotSupported);
   } else {
-    Error::PopulateAndLog(error,
+    Error::PopulateAndLog(FROM_HERE,
+                          error,
                           Error::kOperationFailed,
                           Error::GetDefaultMessage(Error::kOperationFailed));
   }
@@ -230,7 +232,8 @@ string VPNService::GetPhysicalTechologyProperty(Error *error) {
     conn = conn->GetCarrierConnection();
 
   if (!conn) {
-    Error::PopulateAndLog(error,
+    Error::PopulateAndLog(FROM_HERE,
+                          error,
                           Error::kOperationFailed,
                           Error::GetDefaultMessage(Error::kOperationFailed));
     return "";

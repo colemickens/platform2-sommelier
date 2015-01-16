@@ -117,7 +117,7 @@ string WakeOnWiFi::GetWakeOnWiFiFeaturesEnabled(Error *error) {
 bool WakeOnWiFi::SetWakeOnWiFiFeaturesEnabled(const std::string &enabled,
                                               Error *error) {
 #if defined(DISABLE_WAKE_ON_WIFI)
-  Error::PopulateAndLog(error, Error::kNotSupported,
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Wake on WiFi is not supported");
   return false;
 #else
@@ -128,7 +128,7 @@ bool WakeOnWiFi::SetWakeOnWiFiFeaturesEnabled(const std::string &enabled,
       enabled != kWakeOnWiFiFeaturesEnabledSSID &&
       enabled != kWakeOnWiFiFeaturesEnabledPacketSSID &&
       enabled != kWakeOnWiFiFeaturesEnabledNone) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Invalid Wake on WiFi feature");
     return false;
   }
@@ -244,7 +244,7 @@ bool WakeOnWiFi::ConfigureWiphyIndex(Nl80211Message *msg, int32_t index) {
 bool WakeOnWiFi::ConfigureDisableWakeOnWiFiMessage(
     SetWakeOnPacketConnMessage *msg, uint32_t wiphy_index, Error *error) {
   if (!ConfigureWiphyIndex(msg, wiphy_index)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to configure Wiphy index.");
     return false;
   }
@@ -256,23 +256,23 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
     SetWakeOnPacketConnMessage *msg, const set<WakeOnWiFiTrigger> &trigs,
     const IPAddressStore &addrs, uint32_t wiphy_index, Error *error) {
   if (trigs.empty()) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "No triggers to configure.");
     return false;
   }
   if (trigs.find(kPattern) != trigs.end() && addrs.Empty()) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "No IP addresses to configure.");
     return false;
   }
   if (!ConfigureWiphyIndex(msg, wiphy_index)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to configure Wiphy index.");
     return false;
   }
   if (!msg->attributes()->CreateNestedAttribute(NL80211_ATTR_WOWLAN_TRIGGERS,
                                                 "WoWLAN Triggers")) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not create nested attribute "
                           "NL80211_ATTR_WOWLAN_TRIGGERS for "
                           "SetWakeOnPacketConnMessage.");
@@ -280,7 +280,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
   }
   if (!msg->attributes()->SetNestedAttributeHasAValue(
           NL80211_ATTR_WOWLAN_TRIGGERS)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not set nested attribute "
                           "NL80211_ATTR_WOWLAN_TRIGGERS for "
                           "SetWakeOnPacketConnMessage.");
@@ -290,7 +290,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
   AttributeListRefPtr triggers;
   if (!msg->attributes()->GetNestedAttributeList(NL80211_ATTR_WOWLAN_TRIGGERS,
                                                  &triggers)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not get nested attribute list "
                           "NL80211_ATTR_WOWLAN_TRIGGERS for "
                           "SetWakeOnPacketConnMessage.");
@@ -317,7 +317,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
       case kPattern: {
         if (!triggers->CreateNestedAttribute(NL80211_WOWLAN_TRIG_PKT_PATTERN,
                                              "Pattern trigger")) {
-          Error::PopulateAndLog(error, Error::kOperationFailed,
+          Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                                 "Could not create nested attribute "
                                 "NL80211_WOWLAN_TRIG_PKT_PATTERN for "
                                 "SetWakeOnPacketConnMessage.");
@@ -325,7 +325,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
         }
         if (!triggers->SetNestedAttributeHasAValue(
                 NL80211_WOWLAN_TRIG_PKT_PATTERN)) {
-          Error::PopulateAndLog(error, Error::kOperationFailed,
+          Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                                 "Could not set nested attribute "
                                 "NL80211_WOWLAN_TRIG_PKT_PATTERN for "
                                 "SetWakeOnPacketConnMessage.");
@@ -334,7 +334,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
         AttributeListRefPtr patterns;
         if (!triggers->GetNestedAttributeList(NL80211_WOWLAN_TRIG_PKT_PATTERN,
                                               &patterns)) {
-          Error::PopulateAndLog(error, Error::kOperationFailed,
+          Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                                 "Could not get nested attribute list "
                                 "NL80211_WOWLAN_TRIG_PKT_PATTERN for "
                                 "SetWakeOnPacketConnMessage.");
@@ -369,13 +369,13 @@ bool WakeOnWiFi::CreateSinglePattern(const IPAddress &ip_addr,
   ByteString mask;
   WakeOnWiFi::CreateIPAddressPatternAndMask(ip_addr, &pattern, &mask);
   if (!patterns->CreateNestedAttribute(patnum, "Pattern info")) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not create nested attribute "
                           "patnum for SetWakeOnPacketConnMessage.");
     return false;
   }
   if (!patterns->SetNestedAttributeHasAValue(patnum)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not set nested attribute "
                           "patnum for SetWakeOnPacketConnMessage.");
     return false;
@@ -383,20 +383,20 @@ bool WakeOnWiFi::CreateSinglePattern(const IPAddress &ip_addr,
 
   AttributeListRefPtr pattern_info;
   if (!patterns->GetNestedAttributeList(patnum, &pattern_info)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not get nested attribute list "
                           "patnum for SetWakeOnPacketConnMessage.");
     return false;
   }
   // Add mask.
   if (!pattern_info->CreateRawAttribute(NL80211_PKTPAT_MASK, "Mask")) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not add attribute NL80211_PKTPAT_MASK to "
                           "pattern_info.");
     return false;
   }
   if (!pattern_info->SetRawAttributeValue(NL80211_PKTPAT_MASK, mask)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not set attribute NL80211_PKTPAT_MASK in "
                           "pattern_info.");
     return false;
@@ -404,13 +404,13 @@ bool WakeOnWiFi::CreateSinglePattern(const IPAddress &ip_addr,
 
   // Add pattern.
   if (!pattern_info->CreateRawAttribute(NL80211_PKTPAT_PATTERN, "Pattern")) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not add attribute NL80211_PKTPAT_PATTERN to "
                           "pattern_info.");
     return false;
   }
   if (!pattern_info->SetRawAttributeValue(NL80211_PKTPAT_PATTERN, pattern)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not set attribute NL80211_PKTPAT_PATTERN in "
                           "pattern_info.");
     return false;
@@ -418,13 +418,13 @@ bool WakeOnWiFi::CreateSinglePattern(const IPAddress &ip_addr,
 
   // Add offset.
   if (!pattern_info->CreateU32Attribute(NL80211_PKTPAT_OFFSET, "Offset")) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not add attribute NL80211_PKTPAT_OFFSET to "
                           "pattern_info.");
     return false;
   }
   if (!pattern_info->SetU32AttributeValue(NL80211_PKTPAT_OFFSET, 0)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not set attribute NL80211_PKTPAT_OFFSET in "
                           "pattern_info.");
     return false;
@@ -436,7 +436,7 @@ bool WakeOnWiFi::CreateSinglePattern(const IPAddress &ip_addr,
 bool WakeOnWiFi::ConfigureGetWakeOnWiFiSettingsMessage(
     GetWakeOnPacketConnMessage *msg, uint32_t wiphy_index, Error *error) {
   if (!ConfigureWiphyIndex(msg, wiphy_index)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to configure Wiphy index.");
     return false;
   }
@@ -561,25 +561,26 @@ void WakeOnWiFi::AddWakeOnPacketConnection(const string &ip_endpoint,
 #if !defined(DISABLE_WAKE_ON_WIFI)
   if (wake_on_wifi_triggers_supported_.find(kPattern) ==
       wake_on_wifi_triggers_supported_.end()) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           kWakeOnIPAddressPatternsNotSupported);
     return;
   }
   IPAddress ip_addr(ip_endpoint);
   if (!ip_addr.IsValid()) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Invalid ip_address " + ip_endpoint);
     return;
   }
   if (wake_on_wifi_triggers_.size() >= wake_on_wifi_max_patterns_) {
     Error::PopulateAndLog(
-        error, Error::kOperationFailed,
+        FROM_HERE, error, Error::kOperationFailed,
         "Max number of IP address patterns already registered");
     return;
   }
   wake_on_packet_connections_.AddUnique(ip_addr);
 #else
-  Error::PopulateAndLog(error, Error::kNotSupported, kWakeOnWiFiDisabled);
+  Error::PopulateAndLog(
+      FROM_HERE, error, Error::kNotSupported, kWakeOnWiFiDisabled);
 #endif  // DISABLE_WAKE_ON_WIFI
 }
 
@@ -588,24 +589,25 @@ void WakeOnWiFi::RemoveWakeOnPacketConnection(const string &ip_endpoint,
 #if !defined(DISABLE_WAKE_ON_WIFI)
   if (wake_on_wifi_triggers_supported_.find(kPattern) ==
       wake_on_wifi_triggers_supported_.end()) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           kWakeOnIPAddressPatternsNotSupported);
     return;
   }
   IPAddress ip_addr(ip_endpoint);
   if (!ip_addr.IsValid()) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Invalid ip_address " + ip_endpoint);
     return;
   }
   if (!wake_on_packet_connections_.Contains(ip_addr)) {
-    Error::PopulateAndLog(error, Error::kNotFound,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound,
                           "No such IP address match registered to wake device");
     return;
   }
   wake_on_packet_connections_.Remove(ip_addr);
 #else
-  Error::PopulateAndLog(error, Error::kNotSupported, kWakeOnWiFiDisabled);
+  Error::PopulateAndLog(
+      FROM_HERE, error, Error::kNotSupported, kWakeOnWiFiDisabled);
 #endif  // DISABLE_WAKE_ON_WIFI
 }
 
@@ -613,13 +615,14 @@ void WakeOnWiFi::RemoveAllWakeOnPacketConnections(Error *error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
   if (wake_on_wifi_triggers_supported_.find(kPattern) ==
       wake_on_wifi_triggers_supported_.end()) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           kWakeOnIPAddressPatternsNotSupported);
     return;
   }
   wake_on_packet_connections_.Clear();
 #else
-  Error::PopulateAndLog(error, Error::kNotSupported, kWakeOnWiFiDisabled);
+  Error::PopulateAndLog(
+      FROM_HERE, error, Error::kNotSupported, kWakeOnWiFiDisabled);
 #endif  // DISABLE_WAKE_ON_WIFI
 }
 

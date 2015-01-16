@@ -90,7 +90,7 @@ void CellularCapabilityUniversalCDMA::Activate(const string &carrier,
 void CellularCapabilityUniversalCDMA::CompleteActivation(Error *error) {
   SLOG(this, 2) << __func__;
   if (cellular()->state() < Cellular::kStateEnabled) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Unable to activate in state " +
                           Cellular::GetStateString(cellular()->state()));
     return;

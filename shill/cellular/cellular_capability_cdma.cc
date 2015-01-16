@@ -171,7 +171,7 @@ void CellularCapabilityCDMA::Activate(const string &carrier,
     pending_activation_carrier_ = carrier;
     cellular()->Disconnect(error, __func__);
   } else {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Unable to activate in " +
                           Cellular::GetStateString(cellular()->state()));
     activation_starting_ = false;
@@ -203,6 +203,7 @@ void CellularCapabilityCDMA::DisconnectCleanup() {
   } else {
     Error error;
     Error::PopulateAndLog(
+        FROM_HERE,
         &error,
         Error::kOperationFailed,
         "Tried to disconnect before activating cellular service and failed");

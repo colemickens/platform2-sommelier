@@ -56,14 +56,14 @@ bool VPNProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
   string type = args.LookupString(kProviderTypeProperty, "");
   if (type.empty()) {
     Error::PopulateAndLog(
-        error, Error::kNotSupported, "Missing VPN type property.");
+        FROM_HERE, error, Error::kNotSupported, "Missing VPN type property.");
     return false;
   }
 
   string host = args.LookupString(kProviderHostProperty, "");
   if (host.empty()) {
     Error::PopulateAndLog(
-        error, Error::kNotSupported, "Missing VPN host property.");
+        FROM_HERE, error, Error::kNotSupported, "Missing VPN host property.");
     return false;
   }
 
@@ -196,7 +196,8 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const string &type,
                 << " storage id " << storage_id;
 #if defined(DISABLE_VPN)
 
-  Error::PopulateAndLog(error, Error::kNotSupported, "VPN is not supported.");
+  Error::PopulateAndLog(
+      FROM_HERE, error, Error::kNotSupported, "VPN is not supported.");
   return nullptr;
 
 #else
@@ -217,7 +218,8 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const string &type,
         manager_->device_info()));
   } else {
     Error::PopulateAndLog(
-        error, Error::kNotSupported, "Unsupported VPN type: " + type);
+        FROM_HERE, error, Error::kNotSupported,
+        "Unsupported VPN type: " + type);
     return nullptr;
   }
 

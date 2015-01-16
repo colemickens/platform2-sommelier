@@ -945,7 +945,8 @@ void CellularCapabilityUniversal::Reset(Error *error,
   SLOG(this, 3) << __func__;
   CHECK(error);
   if (resetting_) {
-    Error::PopulateAndLog(error, Error::kInProgress, "Already resetting");
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInProgress,
+                          "Already resetting");
     return;
   }
   ResultCallback cb = Bind(&CellularCapabilityUniversal::OnResetReply,

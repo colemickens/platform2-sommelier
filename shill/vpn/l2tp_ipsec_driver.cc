@@ -229,7 +229,7 @@ bool L2TPIPSecDriver::InitOptions(vector<string> *options, Error *error) {
   string vpnhost = args()->LookupString(kProviderHostProperty, "");
   if (vpnhost.empty()) {
     Error::PopulateAndLog(
-        error, Error::kInvalidArguments, "VPN host not specified.");
+        FROM_HERE, error, Error::kInvalidArguments, "VPN host not specified.");
     return false;
   }
 
@@ -286,7 +286,7 @@ bool L2TPIPSecDriver::InitPSKOptions(vector<string> *options, Error *error) {
         base::WriteFile(psk_file_, psk.data(), psk.size()) !=
             static_cast<int>(psk.size())) {
       Error::PopulateAndLog(
-          error, Error::kInternalError, "Unable to setup psk file.");
+          FROM_HERE, error, Error::kInternalError, "Unable to setup psk file.");
       return false;
     }
     options->push_back(base::StringPrintf("--psk_file=%s",
@@ -322,7 +322,7 @@ bool L2TPIPSecDriver::InitXauthOptions(vector<string> *options, Error *error) {
   }
   if (user.empty() || password.empty()) {
       Error::PopulateAndLog(
-          error, Error::kInvalidArguments,
+          FROM_HERE, error, Error::kInvalidArguments,
           "XAUTH credentials are partially configured.");
     return false;
   }
@@ -334,7 +334,7 @@ bool L2TPIPSecDriver::InitXauthOptions(vector<string> *options, Error *error) {
                       xauth_credentials.size()) !=
           static_cast<int>(xauth_credentials.size())) {
     Error::PopulateAndLog(
-        error, Error::kInternalError,
+        FROM_HERE, error, Error::kInternalError,
         "Unable to setup XAUTH credentials file.");
     return false;
   }

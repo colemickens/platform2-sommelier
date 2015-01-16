@@ -89,7 +89,7 @@ bool ExternalTask::Start(const FilePath &program,
                          nullptr,
                          &pid_,
                          nullptr)) {
-    Error::PopulateAndLog(error, Error::kInternalError,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                           string("Unable to spawn: ") + process_args[0]);
     return false;
   }

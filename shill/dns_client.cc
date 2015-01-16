@@ -84,7 +84,7 @@ DNSClient::~DNSClient() {
 
 bool DNSClient::Start(const string &hostname, Error *error) {
   if (running_) {
-    Error::PopulateAndLog(error, Error::kInProgress,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInProgress,
                           "Only one DNS request is allowed at a time");
     return false;
   }
@@ -95,7 +95,7 @@ bool DNSClient::Start(const string &hostname, Error *error) {
     options.timeout = timeout_ms_;
 
     if (dns_servers_.empty()) {
-      Error::PopulateAndLog(error, Error::kInvalidArguments,
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                             "No valid DNS server addresses");
       return false;
     }
@@ -105,7 +105,7 @@ bool DNSClient::Start(const string &hostname, Error *error) {
                                    &options,
                                    ARES_OPT_TIMEOUTMS);
     if (status != ARES_SUCCESS) {
-      Error::PopulateAndLog(error, Error::kOperationFailed,
+      Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                             "ARES initialization returns error code: " +
                             base::IntToString(status));
       resolver_state_.reset();
@@ -135,7 +135,7 @@ bool DNSClient::Start(const string &hostname, Error *error) {
     status = ares_->SetServersCsv(resolver_state_->channel,
                                   server_addresses.c_str());
     if (status != ARES_SUCCESS) {
-      Error::PopulateAndLog(error, Error::kOperationFailed,
+      Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                             "ARES set DNS servers error code: " +
                             base::IntToString(status));
       resolver_state_.reset();

@@ -109,13 +109,13 @@ bool Technology::GetTechnologyVectorFromString(
     Technology::Identifier identifier = Technology::IdentifierFromName(name);
 
     if (identifier == Technology::kUnknown) {
-      Error::PopulateAndLog(error, Error::kInvalidArguments,
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                             name + " is an unknown technology name");
       return false;
     }
 
     if (ContainsKey(seen, identifier)) {
-      Error::PopulateAndLog(error, Error::kInvalidArguments,
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                             name + " is duplicated in the list");
       return false;
     }

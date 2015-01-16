@@ -31,7 +31,7 @@ bool ProfileDBusPropertyExporter::LoadServiceProperties(
     PropertyList *properties, Error *error) {
   if (!storage_->ContainsGroup(entry_name_)) {
     Error::PopulateAndLog(
-        error, Error::kNotFound,
+        FROM_HERE, error, Error::kNotFound,
         "Could not find profile entry: " + entry_name_);
     return false;
   }
@@ -41,7 +41,7 @@ bool ProfileDBusPropertyExporter::LoadServiceProperties(
 
   if (technology == Technology::kUnknown) {
     Error::PopulateAndLog(
-        error, Error::kInternalError,
+        FROM_HERE, error, Error::kInternalError,
         "Could not determine technology for entry: " + entry_name_);
     return false;
   }

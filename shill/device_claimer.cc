@@ -47,7 +47,7 @@ bool DeviceClaimer::StartDBusNameWatcher(
 bool DeviceClaimer::Claim(const string &device_name, Error *error) {
   // Check if device is claimed already.
   if (claimed_device_names_.find(device_name) != claimed_device_names_.end()) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Device " + device_name +
                           " had already been claimed");
     return false;
@@ -64,7 +64,7 @@ bool DeviceClaimer::Release(const std::string &device_name,
                             Error *error) {
   // Make sure this is a device that have been claimed.
   if (claimed_device_names_.find(device_name) == claimed_device_names_.end()) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Device " + device_name +
                           " have not been claimed");
     return false;

@@ -120,7 +120,7 @@ void WiMax::Scan(ScanType /*scan_type*/, Error *error,
   SLOG(this, 2) << __func__;
   if (scanning_) {
     Error::PopulateAndLog(
-        error, Error::kInProgress, "Scan already in progress.");
+        FROM_HERE, error, Error::kInProgress, "Scan already in progress.");
     return;
   }
   scanning_ = true;
@@ -136,7 +136,7 @@ void WiMax::ConnectTo(const WiMaxServiceRefPtr &service, Error *error) {
   SLOG(this, 2) << __func__ << "(" << service->GetStorageIdentifier() << ")";
   if (pending_service_) {
     Error::PopulateAndLog(
-        error, Error::kInProgress,
+        FROM_HERE, error, Error::kInProgress,
         base::StringPrintf(
             "Pending connect to service %s, ignoring connect request to %s.",
             pending_service_->unique_name().c_str(),
@@ -170,7 +170,7 @@ void WiMax::DisconnectFrom(const ServiceRefPtr &service, Error *error) {
   SLOG(this, 2) << __func__;
   if (pending_service_) {
     Error::PopulateAndLog(
-        error, Error::kInProgress,
+        FROM_HERE, error, Error::kInProgress,
         base::StringPrintf(
             "Pending connect to service %s, "
             "ignoring disconnect request from %s.",
@@ -180,7 +180,7 @@ void WiMax::DisconnectFrom(const ServiceRefPtr &service, Error *error) {
   }
   if (selected_service() && service != selected_service()) {
     Error::PopulateAndLog(
-        error, Error::kNotConnected,
+        FROM_HERE, error, Error::kNotConnected,
         base::StringPrintf(
             "Current service is %s, ignoring disconnect request from %s.",
             selected_service()->unique_name().c_str(),

@@ -122,7 +122,8 @@ void WiMaxDeviceProxy::FromDBusError(const DBus::Error &dbus_error,
     error->Reset();
     return;
   }
-  Error::PopulateAndLog(error, Error::kOperationFailed, dbus_error.what());
+  Error::PopulateAndLog(
+      FROM_HERE, error, Error::kOperationFailed, dbus_error.what());
 }
 
 WiMaxDeviceProxy::Proxy::Proxy(DBus::Connection *connection,

@@ -259,7 +259,7 @@ void DBusAdaptor::ArgsToKeyValueStore(
       out->SetStringmap(
           key, key_value_pair.second.operator map<string, string>());
     } else {
-      Error::PopulateAndLog(error, Error::kInternalError,
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                             "unsupported type for property " + key);
       return;  // Skip remaining args after error.
     }

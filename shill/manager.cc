@@ -337,13 +337,13 @@ void Manager::CreateProfile(const string &name, string *path, Error *error) {
   SLOG(this, 2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Invalid profile name " + name);
     return;
   }
 
   if (HasProfile(ident)) {
-    Error::PopulateAndLog(error, Error::kAlreadyExists,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kAlreadyExists,
                           "Profile name " + name + " is already on stack");
     return;
   }
@@ -372,7 +372,7 @@ void Manager::CreateProfile(const string &name, string *path, Error *error) {
 
   // Save profile data out, and then let the scoped pointer fall out of scope.
   if (!profile->Save()) {
-    Error::PopulateAndLog(error, Error::kInternalError,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                           "Profile name " + name + " could not be saved");
     return;
   }
@@ -392,7 +392,7 @@ bool Manager::HasProfile(const Profile::Identifier &ident) {
 void Manager::PushProfileInternal(
     const Profile::Identifier &ident, string *path, Error *error) {
   if (HasProfile(ident)) {
-    Error::PopulateAndLog(error, Error::kAlreadyExists,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kAlreadyExists,
                           "Profile name " + Profile::IdentifierToString(ident) +
                           " is already on stack");
     return;
@@ -404,7 +404,7 @@ void Manager::PushProfileInternal(
     // profile stack is empty, or if the topmost profile on the stack is
     // also a machine-wide (non-user) profile.
     if (!profiles_.empty() && !profiles_.back()->GetUser().empty()) {
-      Error::PopulateAndLog(error, Error::kInvalidArguments,
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                             "Cannot load non-default global profile " +
                             Profile::IdentifierToString(ident) +
                             " on top of a user profile");
@@ -475,7 +475,7 @@ void Manager::PushProfile(const string &name, string *path, Error *error) {
   SLOG(this, 2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Invalid profile name " + name);
     return;
   }
@@ -490,7 +490,7 @@ void Manager::InsertUserProfile(const string &name,
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident) ||
       ident.user.empty()) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Invalid user profile name " + name);
     return;
   }
@@ -553,17 +553,18 @@ void Manager::PopProfile(const string &name, Error *error) {
   SLOG(this, 2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (profiles_.empty()) {
-    Error::PopulateAndLog(error, Error::kNotFound, "Profile stack is empty");
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kNotFound, "Profile stack is empty");
     return;
   }
   ProfileRefPtr active_profile = profiles_.back();
   if (!Profile::ParseIdentifier(name, &ident)) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Invalid profile name " + name);
     return;
   }
   if (!active_profile->MatchesIdentifier(ident)) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           name + " is not the active profile");
     return;
   }
@@ -574,7 +575,8 @@ void Manager::PopAnyProfile(Error *error) {
   SLOG(this, 2) << __func__;
   Profile::Identifier ident;
   if (profiles_.empty()) {
-    Error::PopulateAndLog(error, Error::kNotFound, "Profile stack is empty");
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kNotFound, "Profile stack is empty");
     return;
   }
   PopProfileInternal();
@@ -590,13 +592,13 @@ void Manager::PopAllUserProfiles(Error */*error*/) {
 void Manager::RemoveProfile(const string &name, Error *error) {
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Invalid profile name " + name);
     return;
   }
 
   if (HasProfile(ident)) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Cannot remove profile name " + name +
                           " since it is on stack");
     return;
@@ -634,7 +636,7 @@ void Manager::ClaimDevice(const string &claimer_name,
 
   // Basic check for device name.
   if (device_name.empty()) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Empty device name");
     return;
   }
@@ -658,7 +660,7 @@ void Manager::ClaimDevice(const string &claimer_name,
 
   // Verify claimer's name, since we only allow one claimer to exist at a time.
   if (device_claimer_->name() != claimer_name) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Invalid claimer name " + claimer_name +
                           ". Claimer " + device_claimer_->name() +
                           " already exist");
@@ -687,7 +689,7 @@ void Manager::ClaimDevice(const string &claimer_name,
 void Manager::ReleaseDevice(const string &device_name, Error *error) {
   SLOG(this, 2) << __func__;
   if (!device_claimer_) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Device claimer doesn't exist");
     return;
   }
@@ -750,7 +752,8 @@ void Manager::DeviceClaimerVanishedTask() {
   // Invoke all pending callbacks.
   if (!pending_device_claims_.empty()) {
     Error error;
-    Error::PopulateAndLog(&error,
+    Error::PopulateAndLog(FROM_HERE,
+                          &error,
                           Error::kInvalidArguments,
                           "Invalid DBus service name");
     for (const auto &device_claim : pending_device_claims_) {
@@ -974,7 +977,7 @@ void Manager::SetProfileForService(const ServiceRefPtr &to_set,
                                    Error *error) {
   ProfileRefPtr profile = LookupProfileByRpcIdentifier(profile_rpcid);
   if (!profile) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           StringPrintf("Unknown Profile %s requested for "
                                        "Service", profile_rpcid.c_str()));
     return;
@@ -987,10 +990,10 @@ void Manager::SetProfileForService(const ServiceRefPtr &to_set,
   }
 
   if (to_set->profile().get() == profile.get()) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Service is already connected to this profile");
   } else if (!MoveServiceToProfile(to_set, profile)) {
-    Error::PopulateAndLog(error, Error::kInternalError,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                           "Unable to move service to profile");
   }
 }
@@ -2046,14 +2049,15 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore &args,
   }
 
   if (!args.ContainsString(kTypeProperty)) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments, kErrorTypeRequired);
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kInvalidArguments, kErrorTypeRequired);
     return nullptr;
   }
 
   string type = args.GetString(kTypeProperty);
   Technology::Identifier technology = Technology::IdentifierFromName(type);
   if (!ContainsKey(providers_, technology)) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           kErrorUnsupportedServiceType);
     return nullptr;
   }
@@ -2071,7 +2075,7 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore &args,
     string profile_rpcid = args.GetString(kProfileProperty);
     profile = LookupProfileByRpcIdentifier(profile_rpcid);
     if (!profile) {
-      Error::PopulateAndLog(error, Error::kInvalidArguments,
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                             "Invalid profile name " + profile_rpcid);
       return nullptr;
     }
@@ -2106,7 +2110,7 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore &args,
 
   // Overwrite the profile data with the resulting configured service.
   if (!profile->UpdateService(service)) {
-    Error::PopulateAndLog(error, Error::kInternalError,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                           "Unable to save service to profile");
     return nullptr;
   }
@@ -2120,7 +2124,7 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore &args,
       SLOG(this, 2) << "Moving service to profile "
                     << profile->GetFriendlyName();
       if (!MoveServiceToProfile(service, profile)) {
-        Error::PopulateAndLog(error, Error::kInternalError,
+        Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                               "Unable to move service to profile");
       }
     }
@@ -2136,7 +2140,8 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore &args,
 ServiceRefPtr Manager::ConfigureServiceForProfile(
     const string &profile_rpcid, const KeyValueStore &args, Error *error) {
   if (!args.ContainsString(kTypeProperty)) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments, kErrorTypeRequired);
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kInvalidArguments, kErrorTypeRequired);
     return nullptr;
   }
 
@@ -2144,7 +2149,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
   Technology::Identifier technology = Technology::IdentifierFromName(type);
 
   if (!ContainsKey(providers_, technology)) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           kErrorUnsupportedServiceType);
     return nullptr;
   }
@@ -2153,12 +2158,12 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
 
   ProfileRefPtr profile = LookupProfileByRpcIdentifier(profile_rpcid);
   if (!profile) {
-    Error::PopulateAndLog(error, Error::kNotFound,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound,
                           "Profile specified was not found");
     return nullptr;
   }
   if (args.LookupString(kProfileProperty, profile_rpcid) != profile_rpcid) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Profile argument does not match that in "
                           "the configuration arguments");
     return nullptr;
@@ -2169,7 +2174,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
     SLOG(this, 2) << __func__ << ": searching by GUID";
     service = GetServiceWithGUID(args.GetString(kGuidProperty), nullptr);
     if (service && service->technology() != technology) {
-      Error::PopulateAndLog(error, Error::kNotSupported,
+      Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                             StringPrintf("This GUID matches a non-%s service",
                                          type.c_str()));
       return nullptr;
@@ -2306,7 +2311,7 @@ void Manager::RequestScan(Device::ScanType scan_type,
     }
   } else {
     // TODO(quiche): support scanning for other technologies?
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Unrecognized technology " + technology);
   }
 }

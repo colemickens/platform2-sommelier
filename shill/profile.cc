@@ -68,7 +68,8 @@ bool Profile::InitStorage(GLib *glib, InitStorageOption storage_option,
                           Error *error) {
   FilePath final_path;
   if (!GetStoragePath(&final_path)) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kInvalidArguments,
         base::StringPrintf("Could not set up profile storage for %s:%s",
                            name_.user.c_str(), name_.identifier.c_str()));
     return false;
@@ -78,19 +79,22 @@ bool Profile::InitStorage(GLib *glib, InitStorageOption storage_option,
   bool already_exists = storage->IsNonEmpty();
   if (!already_exists && storage_option != kCreateNew &&
       storage_option != kCreateOrOpenExisting) {
-    Error::PopulateAndLog(error, Error::kNotFound,
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kNotFound,
         base::StringPrintf("Profile storage for %s:%s does not already exist",
                            name_.user.c_str(), name_.identifier.c_str()));
     return false;
   } else if (already_exists && storage_option != kOpenExisting &&
              storage_option != kCreateOrOpenExisting) {
-    Error::PopulateAndLog(error, Error::kAlreadyExists,
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kAlreadyExists,
         base::StringPrintf("Profile storage for %s:%s already exists",
                            name_.user.c_str(), name_.identifier.c_str()));
     return false;
   }
   if (!storage->Open()) {
-    Error::PopulateAndLog(error, Error::kInternalError,
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kInternalError,
         base::StringPrintf("Could not open profile storage for %s:%s",
                            name_.user.c_str(), name_.identifier.c_str()));
     if (already_exists) {
@@ -126,7 +130,7 @@ bool Profile::RemoveStorage(GLib *glib, Error *error) {
 
   if (!GetStoragePath(&path)) {
     Error::PopulateAndLog(
-        error, Error::kInvalidArguments,
+        FROM_HERE, error, Error::kInvalidArguments,
         base::StringPrintf("Could get the storage path for %s:%s",
                            name_.user.c_str(), name_.identifier.c_str()));
     return false;
@@ -134,7 +138,7 @@ bool Profile::RemoveStorage(GLib *glib, Error *error) {
 
   if (!base::DeleteFile(path, false)) {
     Error::PopulateAndLog(
-        error, Error::kOperationFailed,
+        FROM_HERE, error, Error::kOperationFailed,
         base::StringPrintf("Could not remove path %s", path.value().c_str()));
     return false;
   }
@@ -200,7 +204,8 @@ bool Profile::ContainsService(const ServiceConstRefPtr &service) {
 
 void Profile::DeleteEntry(const std::string &entry_name, Error *error) {
   if (!storage_->ContainsGroup(entry_name)) {
-    Error::PopulateAndLog(error, Error::kNotFound,
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kNotFound,
         base::StringPrintf("Entry %s does not exist in profile",
                            entry_name.c_str()));
     return;

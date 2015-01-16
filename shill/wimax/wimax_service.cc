@@ -144,14 +144,15 @@ void WiMaxService::Connect(Error *error, const char *reason) {
   if (!connectable()) {
     LOG(ERROR) << "Can't connect. Service " << GetStorageIdentifier()
                << " is not connectable.";
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           Error::GetDefaultMessage(Error::kOperationFailed));
     return;
   }
   WiMaxRefPtr carrier = manager()->wimax_provider()->SelectCarrier(this);
   if (!carrier) {
     Error::PopulateAndLog(
-        error, Error::kNoCarrier, "No suitable WiMAX device available.");
+        FROM_HERE, error, Error::kNoCarrier,
+        "No suitable WiMAX device available.");
     return;
   }
   Service::Connect(error, reason);
@@ -167,7 +168,7 @@ void WiMaxService::Disconnect(Error *error, const char *reason) {
   SLOG(this, 2) << __func__;
   if (!device_) {
     Error::PopulateAndLog(
-        error, Error::kNotConnected, "Not connected.");
+        FROM_HERE, error, Error::kNotConnected, "Not connected.");
     return;
   }
   Service::Disconnect(error, reason);

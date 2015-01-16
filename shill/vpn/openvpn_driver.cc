@@ -594,7 +594,8 @@ void OpenVPNDriver::Connect(const VPNServiceRefPtr &service, Error *error) {
   service_->SetState(Service::kStateConfiguring);
   if (!device_info_->CreateTunnelInterface(&tunnel_interface_)) {
     Error::PopulateAndLog(
-        error, Error::kInternalError, "Could not create tunnel interface.");
+        FROM_HERE, error, Error::kInternalError,
+        "Could not create tunnel interface.");
     FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
   }
   // Wait for the ClaimInterface callback to continue the connection process.
@@ -604,7 +605,7 @@ void OpenVPNDriver::InitOptions(vector<vector<string>> *options, Error *error) {
   string vpnhost = args()->LookupString(kProviderHostProperty, "");
   if (vpnhost.empty()) {
     Error::PopulateAndLog(
-        error, Error::kInvalidArguments, "VPN host not specified.");
+        FROM_HERE, error, Error::kInvalidArguments, "VPN host not specified.");
     return;
   }
   AppendOption("client", options);
@@ -641,7 +642,8 @@ void OpenVPNDriver::InitOptions(vector<vector<string>> *options, Error *error) {
           base::WriteFile(tls_auth_file_, contents.data(), contents.size()) !=
               static_cast<int>(contents.size())) {
         Error::PopulateAndLog(
-            error, Error::kInternalError, "Unable to setup tls-auth file.");
+            FROM_HERE, error, Error::kInternalError,
+            "Unable to setup tls-auth file.");
         return;
       }
       AppendOption("tls-auth", tls_auth_file_.value(), options);
@@ -743,7 +745,7 @@ bool OpenVPNDriver::InitCAOptions(
     return true;
   } else if (num_ca_cert_types > 1) {
     Error::PopulateAndLog(
-        error, Error::kInvalidArguments,
+        FROM_HERE, error, Error::kInvalidArguments,
         "Can't specify more than one of CACert and CACertPEM.");
     return false;
   }
@@ -753,6 +755,7 @@ bool OpenVPNDriver::InitCAOptions(
     FilePath certfile = certificate_file_->CreatePEMFromStrings(ca_cert_pem);
     if (certfile.empty()) {
       Error::PopulateAndLog(
+          FROM_HERE,
           error,
           Error::kInvalidArguments,
           "Unable to extract PEM CA certificates.");
@@ -797,6 +800,7 @@ bool OpenVPNDriver::InitExtraCertOptions(
       extra_certificates_file_->CreatePEMFromStrings(extra_certs);
   if (certfile.empty()) {
     Error::PopulateAndLog(
+        FROM_HERE,
         error,
         Error::kInvalidArguments,
         "Unable to extract extra PEM CA certificates.");
@@ -838,7 +842,8 @@ bool OpenVPNDriver::InitManagementChannelOptions(
     vector<vector<string>> *options, Error *error) {
   if (!management_server_->Start(dispatcher(), &sockets_, options)) {
     Error::PopulateAndLog(
-        error, Error::kInternalError, "Unable to setup management channel.");
+        FROM_HERE, error, Error::kInternalError,
+        "Unable to setup management channel.");
     return false;
   }
   // If there's a connected default service already, allow the openvpn client to

@@ -76,7 +76,7 @@ bool CryptoUtilProxy::VerifyDestination(
                                     nonce.c_str()));
   string decoded_signed_data;
   if (!glib_->B64Decode(signed_data, &decoded_signed_data)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to decode signed data.");
     return false;
   }
@@ -89,7 +89,7 @@ bool CryptoUtilProxy::VerifyDestination(
 
   string raw_bytes;
   if (!message.SerializeToString(&raw_bytes)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to send arguments to shim.");
     return false;
   }
@@ -98,7 +98,7 @@ bool CryptoUtilProxy::VerifyDestination(
       AsWeakPtr(), result_callback);
   if (!StartShimForCommand(kCommandVerify, raw_bytes,
                            wrapped_result_handler)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to start shim to verify credentials.");
     return false;
   }
@@ -113,7 +113,7 @@ bool CryptoUtilProxy::EncryptData(
     Error *error) {
   string decoded_public_key;
   if (!glib_->B64Decode(public_key, &decoded_public_key)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Unable to decode public key.");
     return false;
   }
@@ -123,7 +123,7 @@ bool CryptoUtilProxy::EncryptData(
   message.set_data(data);
   string raw_bytes;
   if (!message.SerializeToString(&raw_bytes)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to send arguments to shim.");
     return false;
   }
@@ -132,7 +132,7 @@ bool CryptoUtilProxy::EncryptData(
       AsWeakPtr(), result_callback);
   if (!StartShimForCommand(kCommandEncrypt, raw_bytes,
                            wrapped_result_handler)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to start shim to verify credentials.");
     return false;
   }

@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <base/location.h>
 #include <base/macros.h>
 
 namespace DBus {
@@ -74,8 +75,10 @@ class Error {
   static std::string GetDBusResult(Type type);
   static std::string GetDefaultMessage(Type type);
 
-  // Log an error message.  If |error| is non-NULL, also populate it.
-  static void PopulateAndLog(Error *error, Type type,
+  // Log an error message from |from_here|.  If |error| is non-NULL, also
+  // populate it.
+  static void PopulateAndLog(const tracked_objects::Location &from_here,
+                             Error *error, Type type,
                              const std::string &message);
 
  private:

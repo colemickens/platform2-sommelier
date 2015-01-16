@@ -334,7 +334,7 @@ void ThirdPartyVpnDriver::Connect(const VPNServiceRefPtr &service,
   service_ = service;
   service_->SetState(Service::kStateConfiguring);
   if (!device_info_->CreateTunnelInterface(&tunnel_interface_)) {
-    Error::PopulateAndLog(error, Error::kInternalError,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                           "Could not create tunnel interface.");
     Cleanup(Service::kStateFailure, Service::kFailureInternal,
             "Unable to create tun interface");

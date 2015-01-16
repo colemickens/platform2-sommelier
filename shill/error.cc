@@ -4,6 +4,7 @@
 
 #include "shill/error.h"
 
+#include <base/files/file_path.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus-c++/error.h>
 
@@ -99,8 +100,11 @@ string Error::GetDefaultMessage(Type type) {
 }
 
 // static
-void Error::PopulateAndLog(Error *error, Type type, const string &message) {
-  LOG(ERROR) << message;
+void Error::PopulateAndLog(const tracked_objects::Location &from_here,
+                           Error *error, Type type, const string &message) {
+  string file_name = base::FilePath(from_here.file_name()).BaseName().value();
+  LOG(ERROR) << "[" << file_name << "("
+             << from_here.line_number() << ")]: "<< message;
   if (error) {
     error->Populate(type, message);
   }

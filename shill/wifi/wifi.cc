@@ -1163,7 +1163,8 @@ bool WiFi::DisableNetworkForService(const WiFiService *service, Error *error) {
                      "DBus operation failed for rpcid %s.",
                      link_name().c_str(), service->unique_name().c_str(),
                      rpcid.c_str());
-    Error::PopulateAndLog(error, Error::kOperationFailed, error_message);
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kOperationFailed, error_message);
 
     // Make sure that such errored networks are removed, so problems do not
     // propagate to future connection attempts.
@@ -1195,7 +1196,8 @@ bool WiFi::RemoveNetworkForService(const WiFiService *service, Error *error) {
                      "DBus operation failed for rpcid %s.",
                      link_name().c_str(), service->unique_name().c_str(),
                      rpcid.c_str());
-    Error::PopulateAndLog(error, Error::kOperationFailed, error_message);
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kOperationFailed, error_message);
     return false;
   }
 
@@ -2823,7 +2825,7 @@ string WiFi::PerformTDLSOperation(const string &operation,
   }
 
   if (!success) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "TDLS operation failed");
   }
 
@@ -2852,7 +2854,7 @@ bool WiFi::ResolvePeerMacAddress(const string &input, string *output,
 
   IPAddress ip_address(IPAddress::kFamilyIPv4);
   if (!ip_address.SetAddressFromString(input)) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Peer is neither an IP Address nor a MAC address");
     return false;
   }
@@ -2860,7 +2862,7 @@ bool WiFi::ResolvePeerMacAddress(const string &input, string *output,
   // Peer address was specified as an IP address which we need to resolve.
   const DeviceInfo *device_info = manager()->device_info();
   if (!device_info->HasDirectConnectivityTo(interface_index(), ip_address)) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "IP address is not local to this interface");
     return false;
   }
@@ -2877,7 +2879,7 @@ bool WiFi::ResolvePeerMacAddress(const string &input, string *output,
   }
 
   if (!Icmp().TransmitEchoRequest(ip_address)) {
-    Error::PopulateAndLog(error, Error::kOperationFailed,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to send ICMP reqeust to peer to setup ARP");
   } else {
     // ARP request was transmitted successfully, but overall the attempt

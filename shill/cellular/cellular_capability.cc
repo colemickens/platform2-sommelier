@@ -49,7 +49,7 @@ void CellularCapability::OnUnsupportedOperation(const char *operation,
                                                 Error *error) {
   string message("The ");
   message.append(operation).append(" operation is not supported.");
-  Error::PopulateAndLog(error, Error::kNotSupported, message);
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported, message);
 }
 
 void CellularCapability::DisconnectCleanup() {}
