@@ -16,12 +16,15 @@ import array
 import contextlib
 import errno
 import os
+import signal
 import sys
 import tempfile
 
 from chromite.lib import cros_build_lib
 from chromite.lib import namespaces
 from chromite.lib import osutils
+from chromite.lib import process_util
+from chromite.lib import proctitle
 from chromite.lib import retry_util
 from chromite.lib import signals
 
@@ -569,12 +572,25 @@ class Platform2Test(object):
         os.environ['HOME'] = home
       sys.exit(os.execv(cmd, argv))
 
+    proctitle.settitle('sysroot watcher', cmd)
+
+    # Mask SIGINT with the assumption that the child will catch & process it.
+    # We'll pass that back up below.
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
     _, status = os.waitpid(child, 0)
-    if status:
-      exit_status, sig = status >> 8, status & 0xff
-      raise AssertionError('Error running test binary %s: exit:%i signal:%s(%i)'
-                           % (cmd, exit_status,
-                              signals.StrSignal(sig & 0x7f), sig))
+
+    failmsg = None
+    if os.WIFSIGNALED(status):
+      sig = os.WTERMSIG(status)
+      failmsg = 'signal %s(%i)' % (signals.StrSignal(sig), sig)
+    else:
+      exit_status = os.WEXITSTATUS(status)
+      if exit_status:
+        failmsg = 'exit code %i' % exit_status
+    if failmsg:
+      print('Error: %s: failed with %s' % (cmd, failmsg), file=sys.stderr)
+
+    process_util.ExitAsStatus(status)
 
 
 def _SudoCommand():
