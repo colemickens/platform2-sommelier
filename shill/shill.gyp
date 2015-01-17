@@ -788,6 +788,27 @@
             }],
           ],
         },
+        {
+          'target_name': 'shill_setup_wifi',
+          'type': 'executable',
+          'sources': [
+            'setup_wifi/main.cc'
+          ],
+          'actions': [
+            {
+              'action_name': 'generate-shill-proxies',
+              'variables': {
+                'proxy_output_file':
+                    'include/shill/dbus_proxies/shill_proxies.h',
+              },
+              'sources': [
+                'dbus_bindings/org.chromium.flimflam.Manager.xml',
+                'dbus_bindings/org.chromium.flimflam.Service.xml',
+              ],
+              'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+            },
+          ],
+        },
       ],
     }],
   ],
