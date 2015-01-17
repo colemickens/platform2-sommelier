@@ -21,6 +21,11 @@ IpTables::IpTables() : IpTables{kIptablesPath} {}
 
 IpTables::IpTables(const std::string& path) : executable_path_{path} {}
 
+IpTables::~IpTables() {
+  // Plug all holes when destructed.
+  PlugAllHoles();
+}
+
 bool IpTables::PunchTcpHole(chromeos::ErrorPtr* error,
                             uint16_t in_port,
                             bool* out_success) {
@@ -65,7 +70,7 @@ bool IpTables::PunchHole(uint16_t port,
 
   std::string sprotocol = protocol == kProtocolTcp ? "TCP" : "UDP";
   LOG(INFO) << "Punching hole for " << sprotocol << " port " << port;
-  if (!IpTables::AddAllowRule(executable_path_, protocol, port)) {
+  if (!IpTables::AddAllowRule(protocol, port)) {
     // If the 'iptables' command fails, this method fails.
     LOG(ERROR) << "Calling 'iptables' failed";
     return false;
@@ -94,7 +99,7 @@ bool IpTables::PlugHole(uint16_t port,
 
   std::string sprotocol = protocol == kProtocolTcp ? "TCP" : "UDP";
   LOG(INFO) << "Plugging hole for " << sprotocol << " port " << port;
-  if (!IpTables::DeleteAllowRule(executable_path_, protocol, port)) {
+  if (!IpTables::DeleteAllowRule(protocol, port)) {
     // If the 'iptables' command fails, this method fails.
     LOG(ERROR) << "Calling 'iptables' failed";
     return false;
@@ -106,12 +111,28 @@ bool IpTables::PlugHole(uint16_t port,
   return true;
 }
 
-// static
-bool IpTables::AddAllowRule(const std::string& path,
-                            enum ProtocolEnum protocol,
+void IpTables::PlugAllHoles() {
+  // Copy the container so that we can remove elements from the original.
+  // TCP
+  std::unordered_set<uint16_t> holes = tcp_holes_;
+  for (auto port : holes) {
+    PlugHole(port, &tcp_holes_, kProtocolTcp);
+  }
+
+  // UDP
+  holes = udp_holes_;
+  for (auto port : holes) {
+    PlugHole(port, &udp_holes_, kProtocolUdp);
+  }
+
+  CHECK(tcp_holes_.size() == 0) << "Failed to plug all TCP holes.";
+  CHECK(udp_holes_.size() == 0) << "Failed to plug all UDP holes.";
+}
+
+bool IpTables::AddAllowRule(enum ProtocolEnum protocol,
                             uint16_t port) {
   chromeos::ProcessImpl iptables;
-  iptables.AddArg(path);
+  iptables.AddArg(executable_path_);
   iptables.AddArg("-A");  // append
   iptables.AddArg("INPUT");
   iptables.AddArg("-p");  // protocol
@@ -125,12 +146,10 @@ bool IpTables::AddAllowRule(const std::string& path,
   return iptables.Run() == 0;
 }
 
-// static
-bool IpTables::DeleteAllowRule(const std::string& path,
-                               enum ProtocolEnum protocol,
+bool IpTables::DeleteAllowRule(enum ProtocolEnum protocol,
                                uint16_t port) {
   chromeos::ProcessImpl iptables;
-  iptables.AddArg(path);
+  iptables.AddArg(executable_path_);
   iptables.AddArg("-D");  // delete
   iptables.AddArg("INPUT");
   iptables.AddArg("-p");  // protocol

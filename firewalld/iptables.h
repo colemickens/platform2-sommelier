@@ -22,6 +22,7 @@ enum ProtocolEnum { kProtocolTcp, kProtocolUdp };
 class IpTables : public org::chromium::FirewalldInterface {
  public:
   IpTables();
+  ~IpTables();
 
   // D-Bus methods.
   bool PunchTcpHole(chromeos::ErrorPtr* error,
@@ -38,13 +39,6 @@ class IpTables : public org::chromium::FirewalldInterface {
                    bool* out_success);
 
  protected:
-  static bool AddAllowRule(const std::string& path,
-                           enum ProtocolEnum protocol,
-                           uint16_t port);
-  static bool DeleteAllowRule(const std::string& path,
-                              enum ProtocolEnum protocol,
-                              uint16_t port);
-
   // Test-only.
   explicit IpTables(const std::string& path);
 
@@ -57,6 +51,13 @@ class IpTables : public org::chromium::FirewalldInterface {
   bool PlugHole(uint16_t port,
                 std::unordered_set<uint16_t>* holes,
                 enum ProtocolEnum protocol);
+
+  void PlugAllHoles();
+
+  bool AddAllowRule(enum ProtocolEnum protocol,
+                    uint16_t port);
+  bool DeleteAllowRule(enum ProtocolEnum protocol,
+                       uint16_t port);
 
   std::string executable_path_;
 
