@@ -35,9 +35,13 @@ class LIBWEBSERV_EXPORT Server final {
   ~Server();
 
   // Starts the server and makes it listen to HTTP requests on the given port.
+  //
+  // Note that a valid message loop must exist before calling Start.
   bool Start(uint16_t port);
 
   // Starts the server and makes it listen to HTTPS requests on the given port.
+  //
+  // Note that a valid message loop must exist before calling StartWithTLS.
   bool StartWithTLS(uint16_t port,
                     const chromeos::SecureBlob& private_key,
                     const chromeos::Blob& certificate);
