@@ -18,12 +18,12 @@ static const char* kDRMDevicePattern = "/dev/dri/card*";
  * A V4L2 device supports H.264 decoding, if it's
  * a mem-to-mem V4L2 device, i.e. it provides V4L2_CAP_VIDEO_CAPTURE_*,
  * V4L2_CAP_VIDEO_OUTPUT_* and V4L2_CAP_STREAMING capabilities and it supports
- * V4L2_PIX_FMT_H264 as it's input, i.e. for its V4L2_BUF_TYPE_VIDEO_OUTPUT
- * queue.
+ * V4L2_PIX_FMT_H264 as it's input, i.e. for its
+ * V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE queue.
 */
 static bool is_v4l2_dec_h264_device(int fd) {
   return is_hw_video_acc_device(fd) &&
-    is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT,
+    is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
         V4L2_PIX_FMT_H264);
 }
 
@@ -62,11 +62,11 @@ bool detect_video_acc_h264(void) {
  * A V4L2 device supports VP8 decoding, if it's a mem-to-mem V4L2 device,
  * i.e. it provides V4L2_CAP_VIDEO_CAPTURE_*, V4L2_CAP_VIDEO_OUTPUT_* and
  * V4L2_CAP_STREAMING capabilities and it supports V4L2_PIX_FMT_VP8 as it's
- * input, i.e. for its V4L2_BUF_TYPE_VIDEO_OUTPUT queue.
+ * input, i.e. for its V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE queue.
 */
 static bool is_v4l2_dec_vp8_device(int fd) {
   return is_hw_video_acc_device(fd) &&
-    is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT,
+    is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
         V4L2_PIX_FMT_VP8);
 }
 
@@ -107,11 +107,11 @@ bool detect_video_acc_vp8(void) {
  * A V4L2 device supports H.264 encoding, if it's a mem-to-mem V4L2 device,
  * i.e. it provides V4L2_CAP_VIDEO_CAPTURE_*, V4L2_CAP_VIDEO_OUTPUT_* and
  * V4L2_CAP_STREAMING capabilities and it supports V4L2_PIX_FMT_H264 as it's
- * output, i.e. for its V4L2_BUF_TYPE_VIDEO_CAPTURE queue.
+ * output, i.e. for its V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE queue.
 */
 static bool is_v4l2_enc_h264_device(int fd) {
   return is_hw_video_acc_device(fd) &&
-    is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE,
+    is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
         V4L2_PIX_FMT_H264);
 }
 
@@ -154,11 +154,11 @@ bool detect_video_acc_enc_h264(void) {
  * A V4L2 device supports VP8 encoding, if it's a mem-to-mem V4L2 device,
  * i.e. it provides V4L2_CAP_VIDEO_CAPTURE_*, V4L2_CAP_VIDEO_OUTPUT_* and
  * V4L2_CAP_STREAMING capabilities and it supports V4L2_PIX_FMT_VP8 as it's
- * output, i.e. for its V4L2_BUF_TYPE_VIDEO_CAPTURE queue.
+ * output, i.e. for its V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE queue.
 */
 static bool is_v4l2_enc_vp8_device(int fd) {
   return is_hw_video_acc_device(fd) &&
-    is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE,
+    is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
         V4L2_PIX_FMT_VP8);
 }
 
