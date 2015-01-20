@@ -117,6 +117,7 @@ Request::~Request() {
 }
 
 void Request::AddRange(int64_t bytes) {
+  DCHECK(transport_) << "Request already sent";
   if (bytes < 0) {
     ranges_.emplace_back(Request::range_value_omitted, -bytes);
   } else {
@@ -125,6 +126,7 @@ void Request::AddRange(int64_t bytes) {
 }
 
 void Request::AddRange(uint64_t from_byte, uint64_t to_byte) {
+  DCHECK(transport_) << "Request already sent";
   ranges_.emplace_back(from_byte, to_byte);
 }
 
@@ -138,21 +140,23 @@ std::unique_ptr<Response> Request::GetResponseAndBlock(
   return response;
 }
 
-int Request::GetResponse(const SuccessCallback& success_callback,
-                         const ErrorCallback& error_callback) {
+RequestID Request::GetResponse(const SuccessCallback& success_callback,
+                               const ErrorCallback& error_callback) {
   ErrorPtr error;
   if (!SendRequestIfNeeded(&error)) {
     transport_->RunCallbackAsync(
         FROM_HERE, base::Bind(error_callback, 0, base::Owned(error.release())));
     return 0;
   }
-  int id = connection_->FinishRequestAsync(success_callback, error_callback);
+  RequestID id =
+      connection_->FinishRequestAsync(success_callback, error_callback);
   connection_.reset();
   transport_.reset();  // Indicate that the request has been dispatched.
   return id;
 }
 
 void Request::SetAccept(const std::string& accept_mime_types) {
+  DCHECK(transport_) << "Request already sent";
   accept_ = accept_mime_types;
 }
 
@@ -161,6 +165,7 @@ const std::string& Request::GetAccept() const {
 }
 
 void Request::SetContentType(const std::string& contentType) {
+  DCHECK(transport_) << "Request already sent";
   content_type_ = contentType;
 }
 
@@ -169,10 +174,12 @@ const std::string& Request::GetContentType() const {
 }
 
 void Request::AddHeader(const std::string& header, const std::string& value) {
+  DCHECK(transport_) << "Request already sent";
   headers_.emplace(header, value);
 }
 
 void Request::AddHeaders(const HeaderList& headers) {
+  DCHECK(transport_) << "Request already sent";
   headers_.insert(headers.begin(), headers.end());
 }
 
@@ -210,6 +217,7 @@ const std::string& Request::GetRequestMethod() const {
 }
 
 void Request::SetReferer(const std::string& referer) {
+  DCHECK(transport_) << "Request already sent";
   referer_ = referer;
 }
 
@@ -218,6 +226,7 @@ const std::string& Request::GetReferer() const {
 }
 
 void Request::SetUserAgent(const std::string& user_agent) {
+  DCHECK(transport_) << "Request already sent";
   user_agent_ = user_agent;
 }
 

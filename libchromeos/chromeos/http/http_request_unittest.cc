@@ -159,7 +159,7 @@ TEST_F(HttpRequestTest, GetResponse) {
   };
 
   auto success_callback =
-      [this, &resp_data](int request_id, scoped_ptr<Response> resp) {
+      [this, &resp_data](RequestID request_id, scoped_ptr<Response> resp) {
     EXPECT_EQ(23, request_id);
     EXPECT_CALL(*connection_, GetResponseStatusCode())
         .WillOnce(Return(status_code::Partial));

@@ -30,7 +30,7 @@ class Connection;
 class Transport : public http::Transport {
  public:
   Transport();
-  virtual ~Transport();
+  ~Transport() override;
 
   // Server handler callback signature.
   using HandlerCallback =
@@ -82,11 +82,11 @@ class Transport : public http::Transport {
   void RunCallbackAsync(const tracked_objects::Location& from_here,
                         const base::Closure& callback) override;
 
-  int StartAsyncTransfer(http::Connection* connection,
-                         const SuccessCallback& success_callback,
-                         const ErrorCallback& error_callback) override;
+  RequestID StartAsyncTransfer(http::Connection* connection,
+                               const SuccessCallback& success_callback,
+                               const ErrorCallback& error_callback) override;
 
-  bool CancelRequest(int request_id) override;
+  bool CancelRequest(RequestID request_id) override;
 
   void SetDefaultTimeout(base::TimeDelta timeout) override;
 

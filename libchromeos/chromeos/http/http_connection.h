@@ -32,6 +32,13 @@ class Response;
 // is called.
 // You normally shouldn't worry about using this class directly.
 // http::Request and http::Response classes use it for communication.
+// Effectively this class is the interface for the request/response objects to
+// the transport-specific instance of the communication channel with the
+// destination server. It is created by Transport as part of initiating
+// the connection to the destination URI and is shared between the request and
+// response object until all the data is sent to the server and the response
+// is received. The class does NOT represent a persistent TCP connection though
+// (e.g. in keep-alive scenarios).
 ///////////////////////////////////////////////////////////////////////////////
 class CHROMEOS_EXPORT Connection
     : public std::enable_shared_from_this<Connection> {
@@ -39,6 +46,10 @@ class CHROMEOS_EXPORT Connection
   explicit Connection(const std::shared_ptr<Transport>& transport)
       : transport_(transport) {}
   virtual ~Connection() = default;
+
+  // The following methods are used by http::Request object to initiate the
+  // communication with the server, send the request data and receive the
+  // response.
 
   // Called by http::Request to initiate the connection with the server.
   // This normally opens the socket and sends the request headers.
@@ -48,12 +59,19 @@ class CHROMEOS_EXPORT Connection
   virtual bool SetRequestData(std::unique_ptr<DataReaderInterface> data_reader,
                               chromeos::ErrorPtr* error) = 0;
   // This function is called when all the data is sent off and it's time
-  // to receive the response data.
+  // to receive the response data. The method will block until the whole
+  // response message is received, or if an error occur in which case the
+  // function will return false and fill the error details in |error| object.
   virtual bool FinishRequest(chromeos::ErrorPtr* error) = 0;
   // Send the request asynchronously and invoke the callback with the response
   // received. Returns the ID of the pending async request.
-  virtual int FinishRequestAsync(const SuccessCallback& success_callback,
-                                 const ErrorCallback& error_callback) = 0;
+  virtual RequestID FinishRequestAsync(const SuccessCallback& success_callback,
+                                       const ErrorCallback& error_callback) = 0;
+
+  // The following methods are used by http::Response object to obtain the
+  // response data. They are used only after the response data has been received
+  // since the http::Response object is not constructed until
+  // Request::GetResponse()/Request::GetResponseAndBlock() methods are called.
 
   // Returns the HTTP status code (e.g. 200 for success).
   virtual int GetResponseStatusCode() const = 0;

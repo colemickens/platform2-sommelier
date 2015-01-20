@@ -23,7 +23,7 @@ class Connection : public http::Connection {
   Connection(const std::string& url,
              const std::string& method,
              const std::shared_ptr<http::Transport>& transport);
-  virtual ~Connection();
+  ~Connection() override;
 
   // Overrides from http::Connection.
   // See http_connection.h for description of these methods.
@@ -32,8 +32,8 @@ class Connection : public http::Connection {
   bool SetRequestData(std::unique_ptr<DataReaderInterface> data_reader,
                       chromeos::ErrorPtr* error) override;
   bool FinishRequest(chromeos::ErrorPtr* error) override;
-  int FinishRequestAsync(const SuccessCallback& success_callback,
-                         const ErrorCallback& error_callback) override;
+  RequestID FinishRequestAsync(const SuccessCallback& success_callback,
+                               const ErrorCallback& error_callback) override;
 
   int GetResponseStatusCode() const override;
   std::string GetResponseStatusText() const override;

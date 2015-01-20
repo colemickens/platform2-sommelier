@@ -147,8 +147,9 @@ bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
   return (ret == CURLE_OK);
 }
 
-int Connection::FinishRequestAsync(const SuccessCallback& success_callback,
-                                   const ErrorCallback& error_callback) {
+RequestID Connection::FinishRequestAsync(
+    const SuccessCallback& success_callback,
+    const ErrorCallback& error_callback) {
   PrepareRequest();
   return transport_->StartAsyncTransfer(this, success_callback, error_callback);
 }

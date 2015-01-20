@@ -28,11 +28,11 @@ std::unique_ptr<Response> GetAndBlock(const std::string& url,
       request_type::kGet, url, headers, transport, error);
 }
 
-int Get(const std::string& url,
-        const HeaderList& headers,
-        std::shared_ptr<Transport> transport,
-        const SuccessCallback& success_callback,
-        const ErrorCallback& error_callback) {
+RequestID Get(const std::string& url,
+              const HeaderList& headers,
+              std::shared_ptr<Transport> transport,
+              const SuccessCallback& success_callback,
+              const ErrorCallback& error_callback) {
   return SendRequestWithNoData(request_type::kGet,
                                url,
                                headers,
@@ -48,10 +48,10 @@ std::unique_ptr<Response> HeadAndBlock(const std::string& url,
       request_type::kHead, url, {}, transport, error);
 }
 
-int Head(const std::string& url,
-         std::shared_ptr<Transport> transport,
-         const SuccessCallback& success_callback,
-         const ErrorCallback& error_callback) {
+RequestID Head(const std::string& url,
+               std::shared_ptr<Transport> transport,
+               const SuccessCallback& success_callback,
+               const ErrorCallback& error_callback) {
   return SendRequestWithNoData(request_type::kHead,
                                url,
                                {},
@@ -70,13 +70,13 @@ std::unique_ptr<Response> PostTextAndBlock(const std::string& url,
       url, data.data(), data.size(), mime_type, headers, transport, error);
 }
 
-int PostText(const std::string& url,
-             const std::string& data,
-             const std::string& mime_type,
-             const HeaderList& headers,
-             std::shared_ptr<Transport> transport,
-             const SuccessCallback& success_callback,
-             const ErrorCallback& error_callback) {
+RequestID PostText(const std::string& url,
+                   const std::string& data,
+                   const std::string& mime_type,
+                   const HeaderList& headers,
+                   std::shared_ptr<Transport> transport,
+                   const SuccessCallback& success_callback,
+                   const ErrorCallback& error_callback) {
   return PostBinary(url,
                     data.data(),
                     data.size(),
@@ -118,14 +118,14 @@ std::unique_ptr<Response> SendRequestWithNoDataAndBlock(
       method, url, nullptr, 0, {}, headers, transport, error);
 }
 
-int SendRequest(const std::string& method,
-                const std::string& url,
-                std::unique_ptr<DataReaderInterface> data_reader,
-                const std::string& mime_type,
-                const HeaderList& headers,
-                std::shared_ptr<Transport> transport,
-                const SuccessCallback& success_callback,
-                const ErrorCallback& error_callback) {
+RequestID SendRequest(const std::string& method,
+                      const std::string& url,
+                      std::unique_ptr<DataReaderInterface> data_reader,
+                      const std::string& mime_type,
+                      const HeaderList& headers,
+                      std::shared_ptr<Transport> transport,
+                      const SuccessCallback& success_callback,
+                      const ErrorCallback& error_callback) {
   Request request(url, method, transport);
   request.AddHeaders(headers);
   if (data_reader && data_reader->GetDataSize() > 0) {
@@ -143,15 +143,15 @@ int SendRequest(const std::string& method,
   return request.GetResponse(success_callback, error_callback);
 }
 
-int SendRequest(const std::string& method,
-                const std::string& url,
-                const void* data,
-                size_t data_size,
-                const std::string& mime_type,
-                const HeaderList& headers,
-                std::shared_ptr<Transport> transport,
-                const SuccessCallback& success_callback,
-                const ErrorCallback& error_callback) {
+RequestID SendRequest(const std::string& method,
+                      const std::string& url,
+                      const void* data,
+                      size_t data_size,
+                      const std::string& mime_type,
+                      const HeaderList& headers,
+                      std::shared_ptr<Transport> transport,
+                      const SuccessCallback& success_callback,
+                      const ErrorCallback& error_callback) {
   std::unique_ptr<DataReaderInterface> data_reader{
       new MemoryDataReader(data, data_size)};
   return SendRequest(method,
@@ -164,12 +164,12 @@ int SendRequest(const std::string& method,
                      error_callback);
 }
 
-int SendRequestWithNoData(const std::string& method,
-                          const std::string& url,
-                          const HeaderList& headers,
-                          std::shared_ptr<Transport> transport,
-                          const SuccessCallback& success_callback,
-                          const ErrorCallback& error_callback) {
+RequestID SendRequestWithNoData(const std::string& method,
+                                const std::string& url,
+                                const HeaderList& headers,
+                                std::shared_ptr<Transport> transport,
+                                const SuccessCallback& success_callback,
+                                const ErrorCallback& error_callback) {
   return SendRequest(method,
                      url,
                      {},
@@ -198,13 +198,13 @@ std::unique_ptr<Response> PostBinaryAndBlock(
                              error);
 }
 
-int PostBinary(const std::string& url,
-               std::unique_ptr<DataReaderInterface> data_reader,
-               const std::string& mime_type,
-               const HeaderList& headers,
-               std::shared_ptr<Transport> transport,
-               const SuccessCallback& success_callback,
-               const ErrorCallback& error_callback) {
+RequestID PostBinary(const std::string& url,
+                     std::unique_ptr<DataReaderInterface> data_reader,
+                     const std::string& mime_type,
+                     const HeaderList& headers,
+                     std::shared_ptr<Transport> transport,
+                     const SuccessCallback& success_callback,
+                     const ErrorCallback& error_callback) {
   return SendRequest(request_type::kPost,
                      url,
                      std::move(data_reader),
@@ -215,14 +215,14 @@ int PostBinary(const std::string& url,
                      error_callback);
 }
 
-int PostBinary(const std::string& url,
-               const void* data,
-               size_t data_size,
-               const std::string& mime_type,
-               const HeaderList& headers,
-               std::shared_ptr<Transport> transport,
-               const SuccessCallback& success_callback,
-               const ErrorCallback& error_callback) {
+RequestID PostBinary(const std::string& url,
+                     const void* data,
+                     size_t data_size,
+                     const std::string& mime_type,
+                     const HeaderList& headers,
+                     std::shared_ptr<Transport> transport,
+                     const SuccessCallback& success_callback,
+                     const ErrorCallback& error_callback) {
   return SendRequest(request_type::kPost,
                      url,
                      data,
@@ -263,12 +263,12 @@ std::unique_ptr<Response> PostFormDataAndBlock(
   return request.GetResponseAndBlock(error);
 }
 
-int PostFormData(const std::string& url,
-                 const FormFieldList& data,
-                 const HeaderList& headers,
-                 std::shared_ptr<Transport> transport,
-                 const SuccessCallback& success_callback,
-                 const ErrorCallback& error_callback) {
+RequestID PostFormData(const std::string& url,
+                       const FormFieldList& data,
+                       const HeaderList& headers,
+                       std::shared_ptr<Transport> transport,
+                       const SuccessCallback& success_callback,
+                       const ErrorCallback& error_callback) {
   std::string encoded_data = chromeos::data_encoding::WebParamsEncode(data);
   return PostBinary(url,
                     encoded_data.c_str(),
@@ -280,12 +280,12 @@ int PostFormData(const std::string& url,
                     error_callback);
 }
 
-int PostFormData(const std::string& url,
-                 std::unique_ptr<FormData> form_data,
-                 const HeaderList& headers,
-                 std::shared_ptr<Transport> transport,
-                 const SuccessCallback& success_callback,
-                 const ErrorCallback& error_callback) {
+RequestID PostFormData(const std::string& url,
+                       std::unique_ptr<FormData> form_data,
+                       const HeaderList& headers,
+                       std::shared_ptr<Transport> transport,
+                       const SuccessCallback& success_callback,
+                       const ErrorCallback& error_callback) {
   Request request(url, request_type::kPost, transport);
   request.AddHeaders(headers);
   chromeos::ErrorPtr error;
@@ -312,12 +312,12 @@ std::unique_ptr<Response> PostJsonAndBlock(const std::string& url,
       url, data.c_str(), data.size(), mime_type, headers, transport, error);
 }
 
-int PostJson(const std::string& url,
-             std::unique_ptr<base::Value> json,
-             const HeaderList& headers,
-             std::shared_ptr<Transport> transport,
-             const SuccessCallback& success_callback,
-             const ErrorCallback& error_callback) {
+RequestID PostJson(const std::string& url,
+                   std::unique_ptr<base::Value> json,
+                   const HeaderList& headers,
+                   std::shared_ptr<Transport> transport,
+                   const SuccessCallback& success_callback,
+                   const ErrorCallback& error_callback) {
   std::string data;
   if (json)
     base::JSONWriter::Write(json.get(), &data);
@@ -356,12 +356,12 @@ std::unique_ptr<Response> PatchJsonAndBlock(
                              error);
 }
 
-int PatchJson(const std::string& url,
-              std::unique_ptr<base::Value> json,
-              const HeaderList& headers,
-              std::shared_ptr<Transport> transport,
-              const SuccessCallback& success_callback,
-              const ErrorCallback& error_callback) {
+RequestID PatchJson(const std::string& url,
+                    std::unique_ptr<base::Value> json,
+                    const HeaderList& headers,
+                    std::shared_ptr<Transport> transport,
+                    const SuccessCallback& success_callback,
+                    const ErrorCallback& error_callback) {
   std::string data;
   if (json)
     base::JSONWriter::Write(json.get(), &data);

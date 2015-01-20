@@ -93,7 +93,7 @@ struct Transport::AsyncRequestData {
   // as long as asynchronous operation is running.
   std::shared_ptr<Connection> connection;
   // The ID of this request.
-  int request_id;
+  RequestID request_id;
 };
 
 Transport::Transport(const std::shared_ptr<CurlInterface>& curl_interface)
@@ -200,9 +200,9 @@ void Transport::RunCallbackAsync(const tracked_objects::Location& from_here,
   base::MessageLoopForIO::current()->PostTask(from_here, callback);
 }
 
-int Transport::StartAsyncTransfer(http::Connection* connection,
-                                  const SuccessCallback& success_callback,
-                                  const ErrorCallback& error_callback) {
+RequestID Transport::StartAsyncTransfer(http::Connection* connection,
+                                        const SuccessCallback& success_callback,
+                                        const ErrorCallback& error_callback) {
   chromeos::ErrorPtr error;
   if (!SetupAsyncCurl(&error)) {
     RunCallbackAsync(
@@ -210,7 +210,7 @@ int Transport::StartAsyncTransfer(http::Connection* connection,
     return 0;
   }
 
-  int request_id = ++last_request_id_;
+  RequestID request_id = ++last_request_id_;
 
   auto curl_connection = static_cast<http::curl::Connection*>(connection);
   std::unique_ptr<AsyncRequestData> request_data{new AsyncRequestData};
@@ -240,7 +240,7 @@ int Transport::StartAsyncTransfer(http::Connection* connection,
   return request_id;
 }
 
-bool Transport::CancelRequest(int request_id) {
+bool Transport::CancelRequest(RequestID request_id) {
   auto p = request_id_map_.find(request_id);
   if (p == request_id_map_.end()) {
     // The request must have been completed already...

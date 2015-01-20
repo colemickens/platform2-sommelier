@@ -11,15 +11,12 @@
 #include <vector>
 
 #include <base/callback_forward.h>
+#include <base/location.h>
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <chromeos/chromeos_export.h>
 #include <chromeos/errors/error.h>
-
-namespace tracked_objects {
-class Location;
-}  // namespace tracked_objects
 
 namespace chromeos {
 namespace http {
@@ -30,11 +27,11 @@ class Request;
 class Response;
 class Connection;
 
+using RequestID = int;
+
 using HeaderList = std::vector<std::pair<std::string, std::string>>;
-using SuccessCallback = base::Callback<void(int /*request_id*/,
-                                            scoped_ptr<Response>)>;
-using ErrorCallback = base::Callback<void(int /*request_id*/,
-                                          const chromeos::Error*)>;
+using SuccessCallback = base::Callback<void(RequestID, scoped_ptr<Response>)>;
+using ErrorCallback = base::Callback<void(RequestID, const chromeos::Error*)>;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Transport is a base class for specific implementation of HTTP communication.
@@ -50,6 +47,8 @@ class CHROMEOS_EXPORT Transport
   // Creates a connection object and initializes it with the specified data.
   // |transport| is a shared pointer to this transport object instance,
   // used to maintain the object alive as long as the connection exists.
+  // The |url| here is the full URL specified in the request. It is passed
+  // to the underlying transport (e.g. CURL) to establish the connection.
   virtual std::shared_ptr<Connection> CreateConnection(
       const std::string& url,
       const std::string& method,
@@ -67,12 +66,19 @@ class CHROMEOS_EXPORT Transport
   // Initiates an asynchronous transfer on the given |connection|.
   // The actual implementation of an async I/O is transport-specific.
   // Returns a request ID which can be used to cancel the request.
-  virtual int StartAsyncTransfer(Connection* connection,
-                                 const SuccessCallback& success_callback,
-                                 const ErrorCallback& error_callback) = 0;
+  virtual RequestID StartAsyncTransfer(
+      Connection* connection,
+      const SuccessCallback& success_callback,
+      const ErrorCallback& error_callback) = 0;
 
-  // Cancels a pending asynchronous request. Returns true on success.
-  virtual bool CancelRequest(int request_id) = 0;
+  // Cancels a pending asynchronous request. This will cancel a pending request
+  // scheduled by the transport while the I/O operations are still in progress.
+  // As soon as all I/O completes for the request/response, or when an error
+  // occurs, the success/error callbacks are invoked and the request is
+  // considered complete and can no longer be canceled.
+  // Returns false if pending request with |request_id| is not found (e.g. it
+  // has already completed/its callbacks are dispatched).
+  virtual bool CancelRequest(RequestID request_id) = 0;
 
   // Set the default timeout of requests made.
   virtual void SetDefaultTimeout(base::TimeDelta timeout) = 0;

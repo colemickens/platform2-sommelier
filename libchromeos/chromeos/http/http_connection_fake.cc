@@ -57,8 +57,9 @@ bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
   return true;
 }
 
-int Connection::FinishRequestAsync(const SuccessCallback& success_callback,
-                                   const ErrorCallback& error_callback) {
+RequestID Connection::FinishRequestAsync(
+    const SuccessCallback& success_callback,
+    const ErrorCallback& error_callback) {
   transport_->RunCallbackAsync(FROM_HERE,
                                base::Bind(&Connection::FinishRequestAsyncHelper,
                                           base::Unretained(this),

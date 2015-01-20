@@ -28,9 +28,10 @@ class MockTransport : public Transport {
                                            chromeos::ErrorPtr*));
   MOCK_METHOD2(RunCallbackAsync,
                void(const tracked_objects::Location&, const base::Closure&));
-  MOCK_METHOD3(StartAsyncTransfer,
-               int(Connection*, const SuccessCallback&, const ErrorCallback&));
-  MOCK_METHOD1(CancelRequest, bool(int));
+  MOCK_METHOD3(StartAsyncTransfer, RequestID(Connection*,
+                                             const SuccessCallback&,
+                                             const ErrorCallback&));
+  MOCK_METHOD1(CancelRequest, bool(RequestID));
   MOCK_METHOD1(SetDefaultTimeout, void(base::TimeDelta));
 
  private:

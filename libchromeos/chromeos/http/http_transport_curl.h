@@ -37,7 +37,7 @@ class CHROMEOS_EXPORT Transport : public http::Transport {
   // If not defined, protocol is assumed to be http://.
   Transport(const std::shared_ptr<CurlInterface>& curl_interface,
             const std::string& proxy);
-  virtual ~Transport();
+  ~Transport() override;
 
   // Overrides from http::Transport.
   std::shared_ptr<http::Connection> CreateConnection(
@@ -51,11 +51,11 @@ class CHROMEOS_EXPORT Transport : public http::Transport {
   void RunCallbackAsync(const tracked_objects::Location& from_here,
                         const base::Closure& callback) override;
 
-  int StartAsyncTransfer(http::Connection* connection,
-                         const SuccessCallback& success_callback,
-                         const ErrorCallback& error_callback) override;
+  RequestID StartAsyncTransfer(http::Connection* connection,
+                               const SuccessCallback& success_callback,
+                               const ErrorCallback& error_callback) override;
 
-  bool CancelRequest(int request_id) override;
+  bool CancelRequest(RequestID request_id) override;
 
   void SetDefaultTimeout(base::TimeDelta timeout) override;
 
@@ -127,7 +127,7 @@ class CHROMEOS_EXPORT Transport : public http::Transport {
   // CURL "multi"-handle for processing requests on multiple connections.
   CURLM* curl_multi_handle_{nullptr};
   // A map to find a corresponding Connection* using a request ID.
-  std::map<int, Connection*> request_id_map_;
+  std::map<RequestID, Connection*> request_id_map_;
   // Stores the connection-specific asynchronous data (such as the success
   // and error callbacks that need to be called at the end of the async
   // operation).
@@ -143,7 +143,7 @@ class CHROMEOS_EXPORT Transport : public http::Transport {
   // progress on asynchronous operations.
   base::TimeDelta timer_delay_;
   // The last request ID used for asynchronous operations.
-  int last_request_id_{0};
+  RequestID last_request_id_{0};
   // The connection timeout for the requests made.
   base::TimeDelta connection_timeout_;
 

@@ -283,8 +283,8 @@ class CHROMEOS_EXPORT Request {
   // Sends out the request and invokes the |success_callback| when the response
   // is received. In case of an error, the |error_callback| is invoked.
   // Returns the ID of the asynchronous request created.
-  int GetResponse(const SuccessCallback& success_callback,
-                  const ErrorCallback& error_callback);
+  RequestID GetResponse(const SuccessCallback& success_callback,
+                        const ErrorCallback& error_callback);
 
  private:
   friend class HttpRequestTest;
@@ -301,9 +301,9 @@ class CHROMEOS_EXPORT Request {
   std::shared_ptr<Connection> connection_;
 
   // Full request URL, such as "http://www.host.com/path/to/object"
-  std::string request_url_;
+  const std::string request_url_;
   // HTTP request verb, such as "GET", "POST", "PUT", ...
-  std::string method_;
+  const std::string method_;
 
   // Referrer URL, if any. Sent to the server via "Referer: " header.
   std::string referer_;
@@ -317,7 +317,6 @@ class CHROMEOS_EXPORT Request {
   std::string accept_ = "*/*";
 
   // List of optional request headers provided by the caller.
-  // After request has been sent, contains the received response headers.
   std::multimap<std::string, std::string> headers_;
   // List of optional data ranges to request partial content from the server.
   // Sent to the server as "Range: " header.

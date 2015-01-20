@@ -23,7 +23,7 @@ class MockConnection : public Connection {
   MOCK_METHOD2(MockSetRequestData, bool(DataReaderInterface*, ErrorPtr*));
   MOCK_METHOD1(FinishRequest, bool(ErrorPtr*));
   MOCK_METHOD2(FinishRequestAsync,
-               int(const SuccessCallback&, const ErrorCallback&));
+               RequestID(const SuccessCallback&, const ErrorCallback&));
   MOCK_CONST_METHOD0(GetResponseStatusCode, int());
   MOCK_CONST_METHOD0(GetResponseStatusText, std::string());
   MOCK_CONST_METHOD0(GetProtocolVersion, std::string());
