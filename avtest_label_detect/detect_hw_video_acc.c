@@ -23,8 +23,10 @@ static const char* kDRMDevicePattern = "/dev/dri/card*";
 */
 static bool is_v4l2_dec_h264_device(int fd) {
   return is_hw_video_acc_device(fd) &&
-    is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-        V4L2_PIX_FMT_H264);
+    (is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+         V4L2_PIX_FMT_H264) ||
+     is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+         V4L2_PIX_FMT_H264_SLICE));
 }
 
 /* Helper function for detect_video_acc_h264.
@@ -66,8 +68,10 @@ bool detect_video_acc_h264(void) {
 */
 static bool is_v4l2_dec_vp8_device(int fd) {
   return is_hw_video_acc_device(fd) &&
-    is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-        V4L2_PIX_FMT_VP8);
+    (is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+         V4L2_PIX_FMT_VP8) ||
+     is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+         V4L2_PIX_FMT_VP8_FRAME));
 }
 
 /* Helper function for detect_video_acc_vp8.
