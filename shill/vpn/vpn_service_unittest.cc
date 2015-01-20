@@ -348,7 +348,7 @@ TEST_F(VPNServiceTest, CustomSetterNoopChange) {
   TestCustomSetterNoopChange(service_, &manager_);
 }
 
-TEST_F(VPNServiceTest, GetPhysicalTechologyPropertyFailsIfNoCarrier) {
+TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyFailsIfNoCarrier) {
   scoped_refptr<Connection> null_connection;
 
   EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(-1));
@@ -360,11 +360,11 @@ TEST_F(VPNServiceTest, GetPhysicalTechologyPropertyFailsIfNoCarrier) {
       .WillOnce(Return(null_connection));
 
   Error error;
-  EXPECT_EQ("", service_->GetPhysicalTechologyProperty(&error));
+  EXPECT_EQ("", service_->GetPhysicalTechnologyProperty(&error));
   EXPECT_EQ(Error::kOperationFailed, error.type());
 }
 
-TEST_F(VPNServiceTest, GetPhysicalTechologyPropertyOverWifi) {
+TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi) {
   scoped_refptr<NiceMock<MockConnection>> lower_connection_ =
       new NiceMock<MockConnection>(&device_info_);
 
@@ -378,12 +378,12 @@ TEST_F(VPNServiceTest, GetPhysicalTechologyPropertyOverWifi) {
   EXPECT_EQ(connection_.get(), service_->connection().get());
 
   // Set the type of the lower connection to "wifi" and expect that type to be
-  // returned by GetPhysical TechnologyProperty().
+  // returned by GetPhysicalTechnologyProperty().
   EXPECT_CALL(*lower_connection_, technology())
       .WillOnce(Return(Technology::kWifi));
 
   Error error;
-  EXPECT_EQ(kTypeWifi, service_->GetPhysicalTechologyProperty(&error));
+  EXPECT_EQ(kTypeWifi, service_->GetPhysicalTechnologyProperty(&error));
   EXPECT_TRUE(error.IsSuccess());
 
   // Clear expectations now, so the Return(lower_connection_) action releases

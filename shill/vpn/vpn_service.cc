@@ -44,7 +44,7 @@ VPNService::VPNService(ControlInterface *control,
           StringAccessor(
               new CustomAccessor<VPNService, string>(
                   this,
-                  &VPNService::GetPhysicalTechologyProperty,
+                  &VPNService::GetPhysicalTechnologyProperty,
                   nullptr)));
 }
 
@@ -226,7 +226,7 @@ bool VPNService::SetNameProperty(const string &name, Error *error) {
   return true;
 }
 
-string VPNService::GetPhysicalTechologyProperty(Error *error) {
+string VPNService::GetPhysicalTechnologyProperty(Error *error) {
   ConnectionRefPtr conn = connection();
   if (conn)
     conn = conn->GetCarrierConnection();

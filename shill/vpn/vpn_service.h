@@ -55,8 +55,8 @@ class VPNService : public Service {
   friend class VPNServiceTest;
   FRIEND_TEST(VPNServiceTest, GetDeviceRpcId);
   FRIEND_TEST(VPNServiceTest, SetConnection);
-  FRIEND_TEST(VPNServiceTest, GetPhysicalTechologyPropertyFailsIfNoCarrier);
-  FRIEND_TEST(VPNServiceTest, GetPhysicalTechologyPropertyOverWifi);
+  FRIEND_TEST(VPNServiceTest, GetPhysicalTechnologyPropertyFailsIfNoCarrier);
+  FRIEND_TEST(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi);
   FRIEND_TEST(VPNServiceTest, GetTethering);
 
   static const char kAutoConnNeverConnected[];
@@ -66,7 +66,7 @@ class VPNService : public Service {
 
   // Returns the Type name of the lowest connection (presumably the "physical"
   // connection) that this service depends on.
-  std::string GetPhysicalTechologyProperty(Error *error);
+  std::string GetPhysicalTechnologyProperty(Error *error);
 
   std::string storage_id_;
   std::unique_ptr<VPNDriver> driver_;
