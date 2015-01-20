@@ -144,7 +144,11 @@ template < > struct promotes_from<std::string> {
 
 template <typename T>
 inline T RawCast(const ::GValue& x) {
-  typedef typename T::function_not_defined type;
+  // Use static_assert() to issue a meaningful compile-time error.
+  // To prevent this from happening for all references to RawCast, use sizeof(T)
+  // to make static_assert depend on type T and therefore prevent binding it
+  // unconditionally until the actual RawCast<T> instantiation happens.
+  static_assert(sizeof(T) == 0, "Using RawCast on unsupported type");
   return T();
 }
 
