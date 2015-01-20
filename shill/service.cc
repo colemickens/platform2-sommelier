@@ -26,6 +26,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
+#include "shill/net/event_history.h"
 #include "shill/net/sockets.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
@@ -35,7 +36,6 @@
 #include "shill/store_interface.h"
 
 using base::Bind;
-using std::deque;
 using std::map;
 using std::string;
 using std::vector;
@@ -116,6 +116,7 @@ const int Service::kMisconnectsMonitorSeconds = 5 * 60;
 const int Service::kReportDisconnectsThreshold = 2;
 const int Service::kReportMisconnectsThreshold = 3;
 const int Service::kMaxDisconnectEventHistory = 20;
+const int Service::kMaxMisconnectEventHistory = 20;
 
 // static
 unsigned int Service::next_serial_number_ = 0;
@@ -148,6 +149,8 @@ Service::Service(ControlInterface *control_interface,
       technology_(technology),
       failed_time_(0),
       has_ever_connected_(false),
+      disconnects_(kMaxDisconnectEventHistory),
+      misconnects_(kMaxMisconnectEventHistory),
       auto_connect_cooldown_milliseconds_(0),
       store_(PropertyStore::PropertyChangeCallback(
           base::Bind(&Service::OnPropertyChanged,
@@ -908,22 +911,6 @@ string Service::CalculateTechnology(Error */*error*/) {
   return GetTechnologyString();
 }
 
-// static
-void Service::ExpireEventsBefore(
-  int seconds_ago, const Timestamp &now, std::deque<Timestamp> *events) {
-  struct timeval period = (const struct timeval){ seconds_ago };
-  while (!events->empty()) {
-    if (events->size() < static_cast<size_t>(kMaxDisconnectEventHistory)) {
-      struct timeval elapsed = {0, 0};
-      timersub(&now.monotonic, &events->front().monotonic, &elapsed);
-      if (timercmp(&elapsed, &period, <)) {
-        break;
-      }
-    }
-    events->pop_front();
-  }
-}
-
 void Service::NoteDisconnectEvent() {
   SLOG(this, 2) << __func__;
   // Ignore the event if it's user-initiated explicit disconnect.
@@ -945,7 +932,7 @@ void Service::NoteDisconnectEvent() {
   }
   int period = 0;
   size_t threshold = 0;
-  deque<Timestamp> *events = nullptr;
+  EventHistory *events = nullptr;
   // Sometimes services transition to Idle before going into a failed state so
   // take into account the last non-idle state.
   ConnectState state = state_ == kStateIdle ? previous_state_ : state_;
@@ -964,11 +951,8 @@ void Service::NoteDisconnectEvent() {
         << "Not connected or connecting, state transition ignored.";
     return;
   }
-  Timestamp now = time_->GetNow();
-  // Discard old events first.
-  ExpireEventsBefore(period, now, events);
-  events->push_back(now);
-  if (events->size() >= threshold) {
+  events->RecordEventAndExpireEventsBefore(period, false);
+  if (events->Size() >= threshold) {
     diagnostics_reporter_->OnConnectivityEvent();
   }
 }
@@ -1003,10 +987,9 @@ void Service::ReportUserInitiatedConnectionResult(ConnectState state) {
 }
 
 bool Service::HasRecentConnectionIssues() {
-  Timestamp now = time_->GetNow();
-  ExpireEventsBefore(kDisconnectsMonitorSeconds, now, &disconnects_);
-  ExpireEventsBefore(kMisconnectsMonitorSeconds, now, &misconnects_);
-  return !disconnects_.empty() || !misconnects_.empty();
+  disconnects_.ExpireEventsBefore(kDisconnectsMonitorSeconds, false);
+  misconnects_.ExpireEventsBefore(kMisconnectsMonitorSeconds, false);
+  return !disconnects_.Empty() || !misconnects_.Empty();
 }
 
 // static
@@ -1591,23 +1574,12 @@ void Service::NotifyPropertyChanges() {
   property_change_notifier_->UpdatePropertyObservers();
 }
 
-// static
-Strings Service::ExtractWallClockToStrings(
-    const deque<Timestamp> &timestamps) {
-  Strings strings;
-  for (deque<Timestamp>::const_iterator it = timestamps.begin();
-       it != timestamps.end(); ++it) {
-    strings.push_back(it->wall_clock);
-  }
-  return strings;
-}
-
 Strings Service::GetDisconnectsProperty(Error */*error*/) const {
-  return ExtractWallClockToStrings(disconnects_);
+  return disconnects_.ExtractWallClockToStrings();
 }
 
 Strings Service::GetMisconnectsProperty(Error */*error*/) const {
-  return ExtractWallClockToStrings(misconnects_);
+  return misconnects_.ExtractWallClockToStrings();
 }
 
 bool Service::GetVisibleProperty(Error */*error*/) {

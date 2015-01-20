@@ -7,7 +7,6 @@
 
 #include <time.h>
 
-#include <deque>
 #include <map>
 #include <memory>
 #include <set>
@@ -22,6 +21,7 @@
 #include "shill/accessor_interface.h"
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
+#include "shill/net/event_history.h"
 #include "shill/net/shill_time.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
@@ -712,6 +712,7 @@ class Service : public base::RefCounted<Service> {
   static const int kReportDisconnectsThreshold;
   static const int kReportMisconnectsThreshold;
   static const int kMaxDisconnectEventHistory;
+  static const int kMaxMisconnectEventHistory;
 
   bool GetAutoConnect(Error *error);
 
@@ -741,8 +742,6 @@ class Service : public base::RefCounted<Service> {
   std::string GetProxyConfig(Error *error);
   bool SetProxyConfig(const std::string &proxy_config, Error *error);
 
-  static Strings ExtractWallClockToStrings(
-      const std::deque<Timestamp> &timestamps);
   Strings GetDisconnectsProperty(Error *error) const;
   Strings GetMisconnectsProperty(Error *error) const;
 
@@ -755,12 +754,6 @@ class Service : public base::RefCounted<Service> {
   // SaveServiceToProfile, SaveToProfile never assigns this service
   // into a profile.
   void SaveToProfile();
-
-  // Start at the head of |events| and remove all entries that occurred
-  // more than |seconds_ago| prior to |now|.  Also, the size of |events|
-  // is unconditionally trimmed below kMaxDisconnectEventHistory.
-  static void ExpireEventsBefore(
-      int seconds_ago, const Timestamp &now, std::deque<Timestamp> *events);
 
   // Qualify the conditions under which the most recent disconnect occurred.
   // Make note ot the fact that there was a problem connecting / staying
@@ -822,8 +815,8 @@ class Service : public base::RefCounted<Service> {
   // Whether or not this service has ever reached kStateConnected.
   bool has_ever_connected_;
 
-  std::deque<Timestamp> disconnects_;  // Connection drops.
-  std::deque<Timestamp> misconnects_;  // Failures to connect.
+  EventHistory disconnects_;  // Connection drops.
+  EventHistory misconnects_;  // Failures to connect.
 
   base::CancelableClosure reenable_auto_connect_task_;
   uint64_t auto_connect_cooldown_milliseconds_;
