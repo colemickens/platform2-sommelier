@@ -528,6 +528,7 @@
             'SYSROOT="<(sysroot)"',
           ],
           'sources': [
+            'arp_client_test_helper.cc',
             'arp_client_unittest.cc',
             'arp_packet_unittest.cc',
             'async_connection_unittest.cc',

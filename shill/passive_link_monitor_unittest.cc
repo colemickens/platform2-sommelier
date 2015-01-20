@@ -10,6 +10,7 @@
 
 #include <gtest/gtest.h>
 
+#include "shill/arp_client_test_helper.h"
 #include "shill/arp_packet.h"
 #include "shill/logging.h"
 #include "shill/mock_arp_client.h"
@@ -70,6 +71,7 @@ class PassiveLinkMonitorTest : public Test {
       : device_info_(&control_, nullptr, nullptr, nullptr),
         connection_(new StrictMock<MockConnection>(&device_info_)),
         client_(new MockArpClient()),
+        client_test_helper_(client_),
         link_monitor_(connection_, &dispatcher_, observer_.result_callback()),
         interface_name_(kInterfaceName) {}
   virtual ~PassiveLinkMonitorTest() {}
@@ -88,33 +90,13 @@ class PassiveLinkMonitorTest : public Test {
     ScopeLogger::GetInstance()->set_verbose_level(0);
   }
 
-  bool SimulateReceivePacket(ArpPacket *packet, ByteString *sender) {
-    packet->set_operation(rx_packet_.operation());
-    packet->set_local_ip_address(rx_packet_.local_ip_address());
-    packet->set_remote_ip_address(rx_packet_.remote_ip_address());
-    packet->set_local_mac_address(rx_packet_.local_mac_address());
-    packet->set_remote_mac_address(rx_packet_.remote_mac_address());
-    return true;
-  }
-
   void ReceiveArpPacket(uint16_t operation) {
-    // Setup packet.
-    rx_packet_.set_operation(operation);
-    rx_packet_.set_local_ip_address(IPAddress(kLocalIPAddress));
-    rx_packet_.set_local_mac_address(
-        ByteString(kLocalMACAddress, arraysize(kLocalMACAddress)));
-    rx_packet_.set_remote_ip_address(IPAddress(kRemoteIPAddress));
-    if (operation == ARPOP_REPLY) {
-      rx_packet_.set_remote_mac_address(
-          ByteString(kRemoteMACAddress, arraysize(kRemoteMACAddress)));
-    } else {
-      // Set zero mac.
-      rx_packet_.set_remote_mac_address(
-          ByteString(arraysize(kRemoteMACAddress)));
-    }
-
-    EXPECT_CALL(*client_, ReceivePacket(_, _))
-        .WillOnce(Invoke(this, &PassiveLinkMonitorTest::SimulateReceivePacket));
+    client_test_helper_.GeneratePacket(
+        operation,
+        IPAddress(kLocalIPAddress),
+        ByteString(kLocalMACAddress, arraysize(kLocalMACAddress)),
+        IPAddress(kRemoteIPAddress),
+        ByteString(kRemoteMACAddress, arraysize(kRemoteMACAddress)));
     link_monitor_.ReceiveRequest(0);
   }
 
@@ -144,8 +126,8 @@ class PassiveLinkMonitorTest : public Test {
   ResultCallbackObserver observer_;
   scoped_refptr<MockConnection> connection_;
   MockArpClient *client_;
+  ArpClientTestHelper client_test_helper_;
   PassiveLinkMonitor link_monitor_;
-  ArpPacket rx_packet_;
   const string interface_name_;
 };
 
