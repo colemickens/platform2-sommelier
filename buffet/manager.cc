@@ -155,6 +155,14 @@ void Manager::UpdateState(DBusMethodResponse<> response,
     response->Return();
 }
 
+bool Manager::GetState(chromeos::ErrorPtr* error, std::string* state) {
+  auto json = state_manager_->GetStateValuesAsJson(error);
+  if (!json)
+    return false;
+  base::JSONWriter::Write(json.get(), state);
+  return true;
+}
+
 void Manager::AddCommand(DBusMethodResponse<> response,
                          const std::string& json_command) {
   static int next_id = 0;

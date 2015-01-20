@@ -28,6 +28,10 @@
       <arg name="property_set" type="a{sv}" direction="in"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
+    <method name="GetState">
+      <arg name="device_info" type="s" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
     <method name="AddCommand">
       <arg name="json_command" type="s" direction="in"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>

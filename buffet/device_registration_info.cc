@@ -805,7 +805,11 @@ void DeviceRegistrationInfo::PublishStateUpdates() {
       if (!value) {
         return;
       }
-      changes->SetWithoutPathExpansion(pair.first, value.release());
+      // The key in |pair.first| is the full property name in format
+      // "package.property_name", so must use DictionaryValue::Set() instead of
+      // DictionaryValue::SetWithoutPathExpansion to recreate the JSON
+      // property tree properly.
+      changes->Set(pair.first, value.release());
     }
     patch->Set("patch", changes.release());
 

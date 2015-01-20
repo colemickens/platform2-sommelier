@@ -7,6 +7,7 @@
 #include <sysexits.h>
 
 #include <base/command_line.h>
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/strings/stringprintf.h>
@@ -40,8 +41,98 @@ void usage() {
   - RegisterDevice param1=val1&param2=val2...
   - AddCommand '{"name":"command_name","parameters":{}}'
   - UpdateState prop_name prop_value
+  - GetState
   - PendingCommands
 )");
+}
+
+// Helpers for JsonToAny().
+template<typename T>
+chromeos::Any GetJsonValue(const base::Value& json,
+                           bool(base::Value::*fnc)(T*) const) {
+  T val;
+  CHECK((json.*fnc)(&val));
+  return val;
+}
+
+template<typename T>
+chromeos::Any GetJsonList(const base::ListValue& list);  // Prototype.
+
+// Converts a JSON value into an Any so it can be sent over D-Bus using
+// UpdateState D-Bus method from Buffet.
+chromeos::Any JsonToAny(const base::Value& json) {
+  chromeos::Any prop_value;
+  switch (json.GetType()) {
+    case base::Value::TYPE_NULL:
+      prop_value = nullptr;
+      break;
+    case base::Value::TYPE_BOOLEAN:
+      prop_value = GetJsonValue<bool>(json, &base::Value::GetAsBoolean);
+      break;
+    case base::Value::TYPE_INTEGER:
+      prop_value = GetJsonValue<int>(json, &base::Value::GetAsInteger);
+      break;
+    case base::Value::TYPE_DOUBLE:
+      prop_value = GetJsonValue<double>(json, &base::Value::GetAsDouble);
+      break;
+    case base::Value::TYPE_STRING:
+      prop_value = GetJsonValue<std::string>(json, &base::Value::GetAsString);
+      break;
+    case base::Value::TYPE_BINARY:
+      LOG(FATAL) << "Binary values should not happen";
+      break;
+    case base::Value::TYPE_DICTIONARY: {
+      const base::DictionaryValue* dict = nullptr;  // Still owned by |json|.
+      CHECK(json.GetAsDictionary(&dict));
+      chromeos::VariantDictionary var_dict;
+      base::DictionaryValue::Iterator it(*dict);
+      while (!it.IsAtEnd()) {
+        var_dict.emplace(it.key(), JsonToAny(it.value()));
+        it.Advance();
+      }
+      prop_value = var_dict;
+      break;
+    }
+    case base::Value::TYPE_LIST: {
+      const base::ListValue* list = nullptr;  // Still owned by |json|.
+      CHECK(json.GetAsList(&list));
+      CHECK(!list->empty()) << "Unable to deduce the type of list elements.";
+      switch ((*list->begin())->GetType()) {
+        case base::Value::TYPE_BOOLEAN:
+          prop_value = GetJsonList<bool>(*list);
+          break;
+        case base::Value::TYPE_INTEGER:
+          prop_value = GetJsonList<int>(*list);
+          break;
+        case base::Value::TYPE_DOUBLE:
+          prop_value = GetJsonList<double>(*list);
+          break;
+        case base::Value::TYPE_STRING:
+          prop_value = GetJsonList<std::string>(*list);
+          break;
+        case base::Value::TYPE_DICTIONARY:
+          prop_value = GetJsonList<chromeos::VariantDictionary>(*list);
+          break;
+        default:
+          LOG(FATAL) << "Unsupported JSON value type for list element: "
+                     << (*list->begin())->GetType();
+      }
+      break;
+    }
+    default:
+      LOG(FATAL) << "Unexpected JSON value type: " << json.GetType();
+      break;
+  }
+  return prop_value;
+}
+
+template<typename T>
+chromeos::Any GetJsonList(const base::ListValue& list) {
+  std::vector<T> val;
+  val.reserve(list.GetSize());
+  for (const base::Value* v : list)
+    val.push_back(JsonToAny(*v).Get<T>());
+  return val;
 }
 
 class Daemon : public chromeos::DBusDaemon {
@@ -94,6 +185,10 @@ class Daemon : public chromeos::DBusDaemon {
                command.compare("us") == 0) {
       if (CheckArgs(command, args, 2))
         PostTask(&Daemon::CallUpdateState, args.front(), args.back());
+    } else if (command.compare("GetState") == 0 ||
+               command.compare("gs") == 0) {
+      if (CheckArgs(command, args, 0))
+        PostTask(&Daemon::CallGetState);
     } else if (command.compare("AddCommand") == 0 ||
                command.compare("ac") == 0) {
       if (CheckArgs(command, args, 1))
@@ -219,10 +314,29 @@ class Daemon : public chromeos::DBusDaemon {
 
   void CallUpdateState(const std::string& prop, const std::string& value) {
     ErrorPtr error;
-    chromeos::VariantDictionary property_set{{prop, value}};
+    std::string error_message;
+    std::unique_ptr<base::Value> json(base::JSONReader::ReadAndReturnError(
+        value, base::JSON_PARSE_RFC, nullptr, &error_message));
+    if (!json) {
+      Error::AddTo(&error, FROM_HERE, chromeos::errors::json::kDomain,
+                   chromeos::errors::json::kParseError, error_message);
+      return ReportError(error.get());
+    }
+
+    chromeos::VariantDictionary property_set{{prop, JsonToAny(*json)}};
     if (!manager_proxy_->UpdateState(property_set, &error)) {
       return ReportError(error.get());
     }
+    Quit();
+  }
+
+  void CallGetState() {
+    std::string json;
+    ErrorPtr error;
+    if (!manager_proxy_->GetState(&json, &error)) {
+      return ReportError(error.get());
+    }
+    printf("Device State: %s\n", json.c_str());
     Quit();
   }
 
