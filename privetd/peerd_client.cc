@@ -73,7 +73,7 @@ void PeerdClient::Start() {
   services += JoinString(device_->GetServices(), ",_");
 
   std::map<std::string, std::string> txt_record{
-      {"txtver", "3"},
+      {"txtvers", "3"},
       {"ty", device_->GetName()},
       {"services", services},
       {"id", device_->GetId()},
@@ -86,7 +86,7 @@ void PeerdClient::Start() {
     txt_record.emplace("gcd_id", cloud_->GetCloudId());
 
   if (!device_->GetDescription().empty())
-    txt_record.emplace("description", device_->GetDescription());
+    txt_record.emplace("note", device_->GetDescription());
 
   chromeos::ErrorPtr error;
   if (!peerd_manager_proxy_->ExposeService("privet", txt_record,
