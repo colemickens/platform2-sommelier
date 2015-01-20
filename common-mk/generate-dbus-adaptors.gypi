@@ -2,6 +2,7 @@
   'variables': {
     'h_dir': '<(SHARED_INTERMEDIATE_DIR)/<(dbus_adaptors_out_dir)',
     'dbus_service_config%': '',
+    'generator': '<!(which generate-chromeos-dbus-bindings)',
   },
   'rules': [
     {
@@ -9,13 +10,14 @@
       'extension': 'xml',
       'inputs': [
         '<(dbus_service_config)',
+        '<(generator)',
         '<(RULE_INPUT_PATH)',
       ],
       'outputs': [
         '<(h_dir)/<(RULE_INPUT_ROOT).h',
       ],
       'action': [
-        '<!(which generate-chromeos-dbus-bindings)',
+        '<(generator)',
         '<(RULE_INPUT_PATH)',
         '--service-config=<(dbus_service_config)',
         '--adaptor=<(h_dir)/<(RULE_INPUT_ROOT).h',

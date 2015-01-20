@@ -1,16 +1,18 @@
 {
   'variables': {
     'dbus_service_config%': '',
+    'generator': '<!(which generate-chromeos-dbus-bindings)',
   },
   'inputs': [
     '<(dbus_service_config)',
+    '<(generator)',
     '>@(_sources)',
   ],
   'outputs': [
     '<(SHARED_INTERMEDIATE_DIR)/<(proxy_output_file)',
   ],
   'action': [
-    '<!(which generate-chromeos-dbus-bindings)',
+    '<(generator)',
     '>@(_sources)',
     '--service-config=<(dbus_service_config)',
     '--proxy=>(_outputs)'
