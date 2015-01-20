@@ -248,11 +248,6 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   builder->AddVmodulePattern("screen_locker=1");
   builder->AddVmodulePattern("webui_screen_locker=1");
 
-  // TODO(nkostylev): Remove this one once Rollback UI on login screen
-  // is launched. http://crbug.com/382459
-  builder->AddVmodulePattern("reset_screen_handler=1");
-  builder->AddVmodulePattern("update_engine_client=1");
-
   // Turn on logging about external displays being connected and disconnected.
   // Different behavior is seen from different displays and these messages are
   // used to determine what happened within feedback reports.
