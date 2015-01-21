@@ -24,13 +24,19 @@ const int kSuspendTimeoutMs = 5000;
 
 class TestObserver : public SuspendDelayObserver {
  public:
-  TestObserver() {}
+  TestObserver()
+      : timeout_(base::TimeDelta::FromMilliseconds(kSuspendTimeoutMs)) {
+  }
   virtual ~TestObserver() {}
+
+  // Must be called before RunUntilReadyForSuspend().
+  void set_timeout(base::TimeDelta timeout) {
+    timeout_ = timeout;
+  }
 
   // Runs |loop_| until OnReadyForSuspend() is called.
   bool RunUntilReadyForSuspend() {
-    return loop_runner_.StartLoop(
-        base::TimeDelta::FromMilliseconds(kSuspendTimeoutMs));
+    return loop_runner_.StartLoop(timeout_);
   }
 
   // SuspendDelayObserver implementation:
@@ -40,6 +46,9 @@ class TestObserver : public SuspendDelayObserver {
   }
 
  private:
+  // Maximum time to wait for readiness.
+  base::TimeDelta timeout_;
+
   TestMainLoopRunner loop_runner_;
 
   DISALLOW_COPY_AND_ASSIGN(TestObserver);
@@ -199,6 +208,30 @@ TEST_F(SuspendDelayControllerTest, Timeout) {
   controller_.PrepareForSuspend(kSuspendId);
   EXPECT_FALSE(controller_.ready_for_suspend());
   EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
+  EXPECT_TRUE(controller_.ready_for_suspend());
+}
+
+TEST_F(SuspendDelayControllerTest, FinishRequest) {
+  const std::string kClient = "client";
+  RegisterSuspendDelay(base::TimeDelta::FromMilliseconds(1), kClient);
+  EXPECT_TRUE(controller_.ready_for_suspend());
+  const int kSuspendId = 5;
+  controller_.PrepareForSuspend(kSuspendId);
+  EXPECT_FALSE(controller_.ready_for_suspend());
+
+  // FinishSuspend() calls with bogus IDs should be ignored.
+  controller_.FinishSuspend(kSuspendId - 1);
+  controller_.FinishSuspend(kSuspendId + 1);
+  EXPECT_FALSE(controller_.ready_for_suspend());
+
+  // The controller should report that the system is ready to suspend as soon as
+  // the suspend request is cancelled.
+  controller_.FinishSuspend(kSuspendId);
+  EXPECT_TRUE(controller_.ready_for_suspend());
+
+  // The timer should also be stopped.
+  observer_.set_timeout(base::TimeDelta::FromMilliseconds(2));
+  EXPECT_FALSE(observer_.RunUntilReadyForSuspend());
   EXPECT_TRUE(controller_.ready_for_suspend());
 }
 

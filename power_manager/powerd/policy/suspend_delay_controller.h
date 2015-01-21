@@ -62,6 +62,12 @@ class SuspendDelayController {
   // |delays_being_waited_on_| and notifies clients that suspend is imminent.
   void PrepareForSuspend(int suspend_id);
 
+  // Stops |suspend_id| if it is in-progress, i.e. it matches
+  // |current_suspend_id_|. This really just entails stopping
+  // |delay_expiration_timer_| to avoid spamming the logs after a suspend
+  // request is aborted.
+  void FinishSuspend(int suspend_id);
+
  private:
   // Information about a registered delay.
   struct DelayInfo {

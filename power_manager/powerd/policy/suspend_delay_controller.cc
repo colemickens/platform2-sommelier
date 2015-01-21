@@ -87,9 +87,12 @@ void SuspendDelayController::HandleSuspendReadiness(
             << "suspend request " << suspend_id << " from " << dbus_client;
 
   if (suspend_id != current_suspend_id_) {
-    LOG(WARNING) << "Ignoring readiness notification for wrong suspend request "
-                 << "(got " << suspend_id << ", currently on "
-                 << current_suspend_id_ << ")";
+    // This can legitimately happen if we cancel a suspend request, quickly
+    // start a new request, and then receive a notification about the previous
+    // request from a client.
+    VLOG(1) << "Ignoring readiness notification for wrong suspend request "
+            << "(got " << suspend_id << ", currently on " << current_suspend_id_
+            << ")";
     return;
   }
 
@@ -147,6 +150,14 @@ void SuspendDelayController::PrepareForSuspend(int suspend_id) {
   }
 }
 
+void SuspendDelayController::FinishSuspend(int suspend_id) {
+  if (suspend_id != current_suspend_id_)
+    return;
+
+  delay_expiration_timer_.Stop();
+  delay_ids_being_waited_on_.clear();
+}
+
 std::string SuspendDelayController::GetDelayDescription(int delay_id) const {
   DelayInfoMap::const_iterator it = registered_delays_.find(delay_id);
   return it != registered_delays_.end() ? it->second.description : "unknown";
@@ -183,9 +194,10 @@ void SuspendDelayController::OnDelayExpiration() {
     tardy_delays += base::IntToString(*it) + " (" + delay.dbus_client + ": " +
         delay.description + ")";
   }
-  LOG(WARNING) << "Timed out while waiting for suspend readiness "
-               << "confirmation(s) for " << delay_ids_being_waited_on_.size()
-               << " delay(s): " << tardy_delays;
+  LOG(WARNING) << "Timed out while waiting for suspend request "
+               << current_suspend_id_ << " readiness confirmation for "
+               << delay_ids_being_waited_on_.size() << " delay(s): "
+               << tardy_delays;
 
   delay_ids_being_waited_on_.clear();
   PostNotifyObserversTask(current_suspend_id_);

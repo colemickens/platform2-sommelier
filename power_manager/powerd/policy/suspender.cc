@@ -369,6 +369,8 @@ void Suspender::FinishRequest(bool success) {
   LOG(INFO) << "Finishing request " << suspend_request_id_ << " "
             << (success ? "" : "un") << "successfully";
   resuspend_timer_.Stop();
+  suspend_delay_controller_->FinishSuspend(suspend_request_id_);
+  dark_suspend_delay_controller_->FinishSuspend(dark_suspend_id_);
   base::TimeDelta suspend_duration = std::max(base::TimeDelta(),
       clock_->GetCurrentWallTime() - suspend_request_start_time_);
   EmitSuspendDoneSignal(suspend_request_id_, suspend_duration);
@@ -495,7 +497,8 @@ Suspender::State Suspender::Suspend() {
     // because they probably don't have the hardware support to do any useful
     // work in dark resume anyway.
     if (delegate_->CanSafelyExitDarkResume()) {
-      LOG(INFO) << "Running registered dark suspend delays";
+      LOG(INFO) << "Notifying registered dark suspend delays about "
+                << dark_suspend_id_;
       dark_suspend_delay_controller_->PrepareForSuspend(dark_suspend_id_);
       EmitDarkSuspendImminentSignal(dark_suspend_id_);
     } else {
