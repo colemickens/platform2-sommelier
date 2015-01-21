@@ -145,6 +145,7 @@ class KeyboardBacklightController
   // Controller responsible for the display's brightness. Weak pointer.
   BacklightController* display_backlight_controller_;
 
+  // May be NULL if no ambient light sensor is present.
   scoped_ptr<AmbientLightHandler> ambient_light_handler_;
 
   // Observers to notify about changes.
@@ -170,7 +171,7 @@ class KeyboardBacklightController
   int64_t current_level_;
 
   // Current brightness step within |user_steps_| set by user, or -1 if
-  // |percent_for_ambient_light_| should be used.
+  // |automated_percent_| should be used.
   ssize_t user_step_index_;
 
   // Set of percentages that the user can select from for setting the
@@ -178,9 +179,10 @@ class KeyboardBacklightController
   std::vector<double> user_steps_;
 
   // Backlight brightness in the range [0.0, 100.0] to use when the ambient
-  // light sensor is controlling the brightness.  This is set by
-  // |ambient_light_handler_|.
-  double percent_for_ambient_light_;
+  // light sensor is controlling the brightness. This is set by
+  // |ambient_light_handler_|. If no ambient light sensor is present, it is
+  // initialized from kKeyboardBacklightNoAlsBrightnessPref.
+  double automated_percent_;
 
   // Runs HandleVideoTimeout().
   base::OneShotTimer<KeyboardBacklightController> video_timer_;

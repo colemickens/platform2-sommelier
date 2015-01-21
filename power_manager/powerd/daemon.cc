@@ -403,21 +403,17 @@ void Daemon::Init() {
     display_backlight_controller_->AddObserver(this);
 
   if (BoolPrefIsTrue(kHasKeyboardBacklightPref)) {
-    if (!light_sensor_.get()) {
-      LOG(ERROR) << "Keyboard backlight requires ambient light sensor";
+    keyboard_backlight_.reset(new system::InternalBacklight);
+    if (!keyboard_backlight_->Init(base::FilePath(kKeyboardBacklightPath),
+                                   kKeyboardBacklightPattern)) {
+      LOG(ERROR) << "Cannot initialize keyboard backlight";
+      keyboard_backlight_.reset();
     } else {
-      keyboard_backlight_.reset(new system::InternalBacklight);
-      if (!keyboard_backlight_->Init(base::FilePath(kKeyboardBacklightPath),
-                                     kKeyboardBacklightPattern)) {
-        LOG(ERROR) << "Cannot initialize keyboard backlight";
-        keyboard_backlight_.reset();
-      } else {
-        keyboard_backlight_controller_.reset(
-            new policy::KeyboardBacklightController);
-        keyboard_backlight_controller_->Init(
-            keyboard_backlight_.get(), prefs_.get(), light_sensor_.get(),
-            display_backlight_controller_.get());
-      }
+      keyboard_backlight_controller_.reset(
+          new policy::KeyboardBacklightController);
+      keyboard_backlight_controller_->Init(
+          keyboard_backlight_.get(), prefs_.get(), light_sensor_.get(),
+          display_backlight_controller_.get());
     }
   }
 

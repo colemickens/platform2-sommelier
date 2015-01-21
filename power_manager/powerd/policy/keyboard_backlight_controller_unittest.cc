@@ -27,9 +27,11 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
   KeyboardBacklightControllerTest()
       : max_backlight_level_(100),
         initial_backlight_level_(50),
+        pass_light_sensor_(true),
         initial_als_lux_(0),
         als_steps_pref_("20.0 -1 50\n50.0 35 75\n75.0 60 -1"),
         user_steps_pref_("0.0\n10.0\n40.0\n60.0\n100.0"),
+        no_als_brightness_pref_(40.0),
         backlight_(max_backlight_level_, initial_backlight_level_),
         light_sensor_(initial_als_lux_),
         test_api_(&controller_) {
@@ -48,8 +50,11 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
 
     prefs_.SetString(kKeyboardBacklightAlsStepsPref, als_steps_pref_);
     prefs_.SetString(kKeyboardBacklightUserStepsPref, user_steps_pref_);
+    prefs_.SetDouble(kKeyboardBacklightNoAlsBrightnessPref,
+                     no_als_brightness_pref_);
 
-    controller_.Init(&backlight_, &prefs_, &light_sensor_,
+    controller_.Init(&backlight_, &prefs_,
+                     pass_light_sensor_? &light_sensor_ : NULL,
                      &display_backlight_controller_);
   }
 
@@ -67,6 +72,9 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
   int64_t max_backlight_level_;
   int64_t initial_backlight_level_;
 
+  // Should |light_sensor_| be passed to |controller_|?
+  bool pass_light_sensor_;
+
   // Initial lux level reported by |light_sensor_|.
   int initial_als_lux_;
 
@@ -74,6 +82,7 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
   // Init() is called.
   std::string als_steps_pref_;
   std::string user_steps_pref_;
+  double no_als_brightness_pref_;
 
   FakePrefs prefs_;
   system::BacklightStub backlight_;
@@ -503,6 +512,25 @@ TEST_F(KeyboardBacklightControllerTest, Hover) {
   // A notification that the system is shutting down should take precedence.
   controller_.SetShuttingDown(true);
   EXPECT_EQ(0, backlight_.current_level());
+}
+
+TEST_F(KeyboardBacklightControllerTest, NoAmbientLightSensor) {
+  initial_backlight_level_ = 0;
+  no_als_brightness_pref_ = 40.0;
+  user_steps_pref_ = "0.0\n50.0\n100.0";
+  pass_light_sensor_ = false;
+  Init();
+
+  // The brightness should immediately transition to the level from the pref.
+  EXPECT_EQ(40, backlight_.current_level());
+  EXPECT_EQ(kSlowBacklightTransitionMs,
+            backlight_.current_interval().InMilliseconds());
+
+  // Subsequent adjustments should move between the user steps.
+  EXPECT_TRUE(controller_.IncreaseUserBrightness());
+  EXPECT_EQ(100, backlight_.current_level());
+  EXPECT_TRUE(controller_.DecreaseUserBrightness(true /* allow_off */));
+  EXPECT_EQ(50, backlight_.current_level());
 }
 
 }  // namespace policy

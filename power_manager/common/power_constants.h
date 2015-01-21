@@ -86,6 +86,10 @@ extern const char kKeyboardBacklightAlsStepsPref[];
 // newline-separated percentages in the range [0.0, 100.0].
 extern const char kKeyboardBacklightUserStepsPref[];
 
+// Initial brightness for the keyboard backlight for systems that lack ambient
+// light sensors, in the range [0.0, 100.0].
+extern const char kKeyboardBacklightNoAlsBrightnessPref[];
+
 // If true, the system won't be suspended due to user inactivity unless a USB
 // input device is connected.
 extern const char kRequireUsbInputDeviceToSuspendPref[];

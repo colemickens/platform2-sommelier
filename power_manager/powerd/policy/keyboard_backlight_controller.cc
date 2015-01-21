@@ -78,7 +78,7 @@ KeyboardBacklightController::KeyboardBacklightController()
       max_level_(0),
       current_level_(0),
       user_step_index_(-1),
-      percent_for_ambient_light_(100.0),
+      automated_percent_(100.0),
       num_als_adjustments_(0),
       num_user_adjustments_(0),
       display_brightness_is_zero_(false) {
@@ -108,6 +108,8 @@ void KeyboardBacklightController::Init(
 
   max_level_ = backlight_->GetMaxBrightnessLevel();
   current_level_ = backlight_->GetCurrentBrightnessLevel();
+  LOG(INFO) << "Backlight has range [0, " << max_level_ << "] with initial "
+            << "level " << current_level_;
 
   // Read the user-settable brightness steps (one per line).
   std::string input_str;
@@ -132,10 +134,12 @@ void KeyboardBacklightController::Init(
     CHECK(prefs_->GetString(kKeyboardBacklightAlsStepsPref, &pref_value))
         << "Unable to read pref " << kKeyboardBacklightAlsStepsPref;
     ambient_light_handler_->Init(pref_value, LevelToPercent(current_level_));
+  } else {
+    automated_percent_ = user_steps_.back();
+    prefs_->GetDouble(kKeyboardBacklightNoAlsBrightnessPref,
+                      &automated_percent_);
+    UpdateState();
   }
-
-  LOG(INFO) << "Backlight has range [0, " << max_level_ << "] with initial "
-            << "level " << current_level_;
 }
 
 void KeyboardBacklightController::AddObserver(
@@ -277,7 +281,7 @@ int KeyboardBacklightController::GetNumUserAdjustments() const {
 void KeyboardBacklightController::SetBrightnessPercentForAmbientLight(
     double brightness_percent,
     AmbientLightHandler::BrightnessChangeCause cause) {
-  percent_for_ambient_light_ = brightness_percent;
+  automated_percent_ = brightness_percent;
   TransitionStyle transition =
       cause == AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT ?
       TRANSITION_SLOW : TRANSITION_FAST;
@@ -340,7 +344,7 @@ void KeyboardBacklightController::InitUserStepIndex() {
 
 double KeyboardBacklightController::GetUndimmedPercent() const {
   return user_step_index_ != -1 ? user_steps_[user_step_index_] :
-      percent_for_ambient_light_;
+      automated_percent_;
 }
 
 bool KeyboardBacklightController::UpdateUndimmedBrightness(
