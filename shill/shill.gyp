@@ -289,6 +289,7 @@
         }],
       ],
       'sources': [
+        'active_link_monitor.cc',
         'arp_client.cc',
         'arp_packet.cc',
         'async_connection.cc',
@@ -529,6 +530,7 @@
             'SYSROOT="<(sysroot)"',
           ],
           'sources': [
+            'active_link_monitor_unittest.cc',
             'arp_client_test_helper.cc',
             'arp_client_unittest.cc',
             'arp_packet_unittest.cc',
@@ -582,6 +584,7 @@
             'link_monitor_unittest.cc',
             'manager_unittest.cc',
             'metrics_unittest.cc',
+            'mock_active_link_monitor.cc',
             'mock_adaptors.cc',
             'mock_ares.cc',
             'mock_arp_client.cc',
