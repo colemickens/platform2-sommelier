@@ -2047,7 +2047,7 @@ bool PerfReader::WriteEventDescMetadata(u32 type, size_t* offset,
     if (!WriteStringToBuffer(container, data, offset))
       return false;
 
-    if (!WriteDataToBuffer(&attr.ids[0], num_ids * sizeof(attr.ids[0]),
+    if (!WriteDataToBuffer(attr.ids.data(), num_ids * sizeof(attr.ids[0]),
                            "event_desc unique_ids", offset, data)) {
       return false;
     }
