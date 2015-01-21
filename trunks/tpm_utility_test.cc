@@ -970,7 +970,7 @@ TEST_F(TpmUtilityTest, VerifySchemeForward) {
   EXPECT_EQ(signature_in.signature.rsassa.hash, TPM_ALG_SHA512);
 }
 
-TEST_F(TpmUtilityTest, CreateRSAKeyDecryptSuccess) {
+TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyDecryptSuccess) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
   TPM2B_PUBLIC public_area;
@@ -979,17 +979,18 @@ TEST_F(TpmUtilityTest, CreateRSAKeyDecryptSuccess) {
                       Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_EQ(TPM_RC_SUCCESS, utility.CreateRSAKey(
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.CreateAndLoadRSAKey(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey,
       "password",
-      &key_handle));
+      &key_handle,
+      NULL));
   EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, kDecrypt);
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, 0);
   EXPECT_EQ(public_area.public_area.parameters.rsa_detail.scheme.scheme,
             TPM_ALG_NULL);
 }
 
-TEST_F(TpmUtilityTest, CreateRSAKeySignSuccess) {
+TEST_F(TpmUtilityTest, CreateAndLoadRSAKeySignSuccess) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
   TPM2B_PUBLIC public_area;
@@ -998,17 +999,18 @@ TEST_F(TpmUtilityTest, CreateRSAKeySignSuccess) {
                       Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_EQ(TPM_RC_SUCCESS, utility.CreateRSAKey(
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.CreateAndLoadRSAKey(
       TpmUtility::AsymmetricKeyUsage::kSignKey,
       "password",
-      &key_handle));
+      &key_handle,
+      NULL));
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
   EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, 0);
   EXPECT_EQ(public_area.public_area.parameters.rsa_detail.scheme.scheme,
             TPM_ALG_NULL);
 }
 
-TEST_F(TpmUtilityTest, CreateRSAKeyLegacySuccess) {
+TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyLegacySuccess) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
   TPM2B_PUBLIC public_area;
@@ -1017,38 +1019,41 @@ TEST_F(TpmUtilityTest, CreateRSAKeyLegacySuccess) {
                       Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_EQ(TPM_RC_SUCCESS, utility.CreateRSAKey(
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.CreateAndLoadRSAKey(
       TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
       "password",
-      &key_handle));
+      &key_handle,
+      NULL));
   EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, kDecrypt);
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
   EXPECT_EQ(public_area.public_area.parameters.rsa_detail.scheme.scheme,
             TPM_ALG_NULL);
 }
 
-TEST_F(TpmUtilityTest, CreateRSAKeyFail1) {
+TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyFail1) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
   EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility.CreateRSAKey(
+  EXPECT_EQ(TPM_RC_FAILURE, utility.CreateAndLoadRSAKey(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey,
       "password",
-      &key_handle));
+      &key_handle,
+      NULL));
 }
 
-TEST_F(TpmUtilityTest, CreateRSAKeyFail2) {
+TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyFail2) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle;
   EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility.CreateRSAKey(
+  EXPECT_EQ(TPM_RC_FAILURE, utility.CreateAndLoadRSAKey(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey,
       "password",
-      &key_handle));
+      &key_handle,
+      NULL));
 }
 
 TEST_F(TpmUtilityTest, RootKeysSuccess) {

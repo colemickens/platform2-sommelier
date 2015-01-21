@@ -64,10 +64,11 @@ int SignTest() {
   trunks::TPM_HANDLE signing_key;
   trunks::TPM_RC rc;
   scoped_ptr<trunks::TpmUtility> utility = factory.GetTpmUtility();
-  rc = utility->CreateRSAKey(
+  rc = utility->CreateAndLoadRSAKey(
       trunks::TpmUtility::AsymmetricKeyUsage::kSignKey,
       "sign",
-      &signing_key);
+      &signing_key,
+      NULL);
   if (rc) {
     LOG(ERROR) << "Error creating key: " << trunks::GetErrorString(rc);
     return rc;
@@ -101,10 +102,11 @@ int DecryptTest() {
   trunks::TPM_HANDLE decrypt_key;
   trunks::TPM_RC rc;
   scoped_ptr<trunks::TpmUtility> utility = factory.GetTpmUtility();
-  rc = utility->CreateRSAKey(
+  rc = utility->CreateAndLoadRSAKey(
       trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey,
       "decrypt",
-      &decrypt_key);
+      &decrypt_key,
+      NULL);
   if (rc) {
     LOG(ERROR) << "Error creating key: " << trunks::GetErrorString(rc);
     return rc;

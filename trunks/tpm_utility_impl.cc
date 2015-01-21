@@ -603,23 +603,43 @@ TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC TpmUtilityImpl::CreateRSAKey(AsymmetricKeyUsage key_type,
-                                    const std::string& password,
-                                    TPM_HANDLE* key_handle) {
+TPM_RC TpmUtilityImpl::CreateAndLoadRSAKey(AsymmetricKeyUsage key_type,
+                                           const std::string& password,
+                                           TPM_HANDLE* key_handle,
+                                           std::string* key_blob) {
+  std::string tmp_key_blob;
+  TPM_RC result = CreateRSAKeyPair(key_type, 2048, 0x10001,
+                                   password, &tmp_key_blob);
+  if (result != TPM_RC_SUCCESS) {
+    return result;
+  }
+  result = LoadKey(tmp_key_blob, key_handle);
+  if (result != TPM_RC_SUCCESS) {
+    return result;
+  }
+  if (key_blob) {
+    key_blob->assign(tmp_key_blob);
+  }
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
+                                        int modulus_bits,
+                                        uint32_t public_exponent,
+                                        const std::string& password,
+                                        std::string* key_blob) {
   TPM_RC result = InitializeSession();
   if (result) {
     return result;
   }
-
-  CHECK(key_handle);
+  CHECK(key_blob);
   std::string parent_name;
-  TPM_RC return_code = GetKeyName(kRSAStorageRootKey, &parent_name);
-  if (return_code != TPM_RC_SUCCESS) {
+  result = GetKeyName(kRSAStorageRootKey, &parent_name);
+  if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting Key name for RSA-SRK: "
-               << GetErrorString(return_code);
-    return return_code;
+               << GetErrorString(result);
+    return result;
   }
-
   TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_RSA);
   public_area.object_attributes |=
       (kSensitiveDataOrigin | kUserWithAuth | kNoDA);
@@ -634,6 +654,8 @@ TPM_RC TpmUtilityImpl::CreateRSAKey(AsymmetricKeyUsage key_type,
       public_area.object_attributes |= (kSign | kDecrypt);
       break;
   }
+  public_area.parameters.rsa_detail.key_bits = modulus_bits;
+  public_area.parameters.rsa_detail.exponent = public_exponent;
   TPML_PCR_SELECTION creation_pcrs;
   creation_pcrs.count = 0;
   TPMS_SENSITIVE_CREATE sensitive;
@@ -642,68 +664,73 @@ TPM_RC TpmUtilityImpl::CreateRSAKey(AsymmetricKeyUsage key_type,
   TPM2B_SENSITIVE_CREATE sensitive_create = Make_TPM2B_SENSITIVE_CREATE(
       sensitive);
   TPM2B_DATA outside_info = Make_TPM2B_DATA("");
-
-  TPM2B_PRIVATE out_private;
   TPM2B_PUBLIC out_public;
+  out_public.size = 0;
+  TPM2B_PRIVATE out_private;
+  out_private.size = 0;
   TPM2B_CREATION_DATA creation_data;
   TPM2B_DIGEST creation_hash;
   TPMT_TK_CREATION creation_ticket;
   session_->SetEntityAuthorizationValue("");
-  return_code = factory_.GetTpm()->CreateSync(kRSAStorageRootKey,
-                                              parent_name,
-                                              sensitive_create,
-                                              Make_TPM2B_PUBLIC(public_area),
-                                              outside_info,
-                                              creation_pcrs,
-                                              &out_private,
-                                              &out_public,
-                                              &creation_data,
-                                              &creation_hash,
-                                              &creation_ticket,
-                                              session_->GetDelegate());
-  if (return_code != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error creating RSA key: " << GetErrorString(return_code);
-    return return_code;
+  result = factory_.GetTpm()->CreateSync(kRSAStorageRootKey,
+                                         parent_name,
+                                         sensitive_create,
+                                         Make_TPM2B_PUBLIC(public_area),
+                                         outside_info,
+                                         creation_pcrs,
+                                         &out_private,
+                                         &out_public,
+                                         &creation_data,
+                                         &creation_hash,
+                                         &creation_ticket,
+                                         session_->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error creating RSA key: " << GetErrorString(result);
+    return result;
   }
-  TPM2B_NAME key_name;
-  return_code = factory_.GetTpm()->LoadSync(kRSAStorageRootKey,
-                                            parent_name,
-                                            out_private,
-                                            out_public,
-                                            key_handle,
-                                            &key_name,
-                                            session_->GetDelegate());
-  if (return_code != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error loading RSA key: " << GetErrorString(return_code);
-    return return_code;
+  result = KeyDataToString(out_public, out_private, key_blob);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error serializing key_blob: " << GetErrorString(result);
+    return result;
   }
   return TPM_RC_SUCCESS;
 }
 
-TPMT_PUBLIC TpmUtilityImpl::CreateDefaultPublicArea(TPM_ALG_ID key_alg) {
-  TPMT_PUBLIC public_area;
-  public_area.name_alg = TPM_ALG_SHA256;
-  public_area.auth_policy = Make_TPM2B_DIGEST("");
-  public_area.object_attributes = kFixedTPM | kFixedParent;
-  if (key_alg == TPM_ALG_RSA) {
-    public_area.type = TPM_ALG_RSA;
-    public_area.parameters.rsa_detail.scheme.scheme = TPM_ALG_NULL;
-    public_area.parameters.rsa_detail.symmetric.algorithm = TPM_ALG_NULL;
-    public_area.parameters.rsa_detail.key_bits = 2048;
-    public_area.parameters.rsa_detail.exponent = 0;
-    public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA("");
-  } else if (key_alg == TPM_ALG_ECC) {
-    public_area.type = TPM_ALG_ECC;
-    public_area.parameters.ecc_detail.curve_id = TPM_ECC_NIST_P256;
-    public_area.parameters.ecc_detail.kdf.scheme = TPM_ALG_MGF1;
-    public_area.parameters.ecc_detail.kdf.details.mgf1.hash_alg =
-        TPM_ALG_SHA256;
-    public_area.unique.ecc.x = Make_TPM2B_ECC_PARAMETER("");
-    public_area.unique.ecc.y = Make_TPM2B_ECC_PARAMETER("");
-  } else {
-    LOG(WARNING) << "Unrecognized key_type. Not filling parameters.";
+TPM_RC TpmUtilityImpl::LoadKey(const std::string& key_blob,
+                               TPM_HANDLE* key_handle) {
+  TPM_RC result = InitializeSession();
+  if (result) {
+    return result;
   }
-  return public_area;
+  std::string parent_name;
+  result = GetKeyName(kRSAStorageRootKey, &parent_name);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting parent key name: " << GetErrorString(result);
+    return result;
+  }
+  TPM2B_PUBLIC in_public;
+  TPM2B_PRIVATE in_private;
+  result = StringToKeyData(key_blob, &in_public, &in_private);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error parsing key_blob: " << GetErrorString(result);
+    return result;
+  }
+  CHECK(key_handle);
+  TPM2B_NAME key_name;
+  key_name.size = 0;
+  session_->SetEntityAuthorizationValue("");
+  result = factory_.GetTpm()->LoadSync(kRSAStorageRootKey,
+                                       parent_name,
+                                       in_private,
+                                       in_public,
+                                       key_handle,
+                                       &key_name,
+                                       session_->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error loading key: " << GetErrorString(result);
+    return result;
+  }
+  return TPM_RC_SUCCESS;
 }
 
 TPM_RC TpmUtilityImpl::GetKeyName(TPM_HANDLE handle, std::string* name) {
@@ -867,7 +894,9 @@ TPM_RC TpmUtilityImpl::CreateSaltingKey(const std::string& owner_password) {
   TPM2B_DATA outside_info = Make_TPM2B_DATA("");
 
   TPM2B_PRIVATE out_private;
+  out_private.size = 0;
   TPM2B_PUBLIC out_public;
+  out_public.size = 0;
   TPM2B_CREATION_DATA creation_data;
   TPM2B_DIGEST creation_hash;
   TPMT_TK_CREATION creation_ticket;
@@ -922,6 +951,32 @@ TPM_RC TpmUtilityImpl::CreateSaltingKey(const std::string& owner_password) {
   return TPM_RC_SUCCESS;
 }
 
+TPMT_PUBLIC TpmUtilityImpl::CreateDefaultPublicArea(TPM_ALG_ID key_alg) {
+  TPMT_PUBLIC public_area;
+  public_area.name_alg = TPM_ALG_SHA256;
+  public_area.auth_policy = Make_TPM2B_DIGEST("");
+  public_area.object_attributes = kFixedTPM | kFixedParent;
+  if (key_alg == TPM_ALG_RSA) {
+    public_area.type = TPM_ALG_RSA;
+    public_area.parameters.rsa_detail.scheme.scheme = TPM_ALG_NULL;
+    public_area.parameters.rsa_detail.symmetric.algorithm = TPM_ALG_NULL;
+    public_area.parameters.rsa_detail.key_bits = 2048;
+    public_area.parameters.rsa_detail.exponent = 0;
+    public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA("");
+  } else if (key_alg == TPM_ALG_ECC) {
+    public_area.type = TPM_ALG_ECC;
+    public_area.parameters.ecc_detail.curve_id = TPM_ECC_NIST_P256;
+    public_area.parameters.ecc_detail.kdf.scheme = TPM_ALG_MGF1;
+    public_area.parameters.ecc_detail.kdf.details.mgf1.hash_alg =
+        TPM_ALG_SHA256;
+    public_area.unique.ecc.x = Make_TPM2B_ECC_PARAMETER("");
+    public_area.unique.ecc.y = Make_TPM2B_ECC_PARAMETER("");
+  } else {
+    LOG(WARNING) << "Unrecognized key_type. Not filling parameters.";
+  }
+  return public_area;
+}
+
 TPM_RC TpmUtilityImpl::InitializeSession() {
   TPM_RC result = TPM_RC_SUCCESS;
   if (session_.get()) {
@@ -962,6 +1017,57 @@ TPM_RC TpmUtilityImpl::DisablePlatformHierarchy(
       TPM_RH_PLATFORM,  // The target hierarchy.
       0,  // Disable.
       authorization);
+}
+
+TPM_RC TpmUtilityImpl::StringToKeyData(const std::string& key_blob,
+                                       TPM2B_PUBLIC* public_info,
+                                       TPM2B_PRIVATE* private_info) {
+  if (!public_info || !private_info) {
+    LOG(WARNING) << "Output arguments not defined.";
+    return TPM_RC_SUCCESS;
+  }
+  if (key_blob.size() == 0) {
+    public_info->size = 0;
+    private_info->size = 0;
+    return TPM_RC_SUCCESS;
+  }
+  std::string mutable_key_blob = key_blob;
+  TPM_RC result = Parse_TPM2B_PUBLIC(&mutable_key_blob, public_info, NULL);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error parsing TPM2B_Public: " << GetErrorString(result);
+    return result;
+  }
+  result = Parse_TPM2B_PRIVATE(&mutable_key_blob, private_info, NULL);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error parsing TPM2B_Private: " << GetErrorString(result);
+    return result;
+  }
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::KeyDataToString(const TPM2B_PUBLIC& public_info,
+                                       const TPM2B_PRIVATE& private_info,
+                                       std::string* key_blob) {
+  if (!key_blob) {
+    LOG(WARNING) << "Output arguments not defined.";
+    return TPM_RC_SUCCESS;
+  }
+  if ((public_info.size == 0) && (private_info.size == 0)) {
+    key_blob->clear();
+    return TPM_RC_SUCCESS;
+  }
+  TPM_RC result = Serialize_TPM2B_PUBLIC(public_info, key_blob);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error serializing TPM2B_Public: " << GetErrorString(result);
+    return result;
+  }
+  result = Serialize_TPM2B_PRIVATE(private_info, key_blob);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error serializing TPM2B_Private: "
+               << GetErrorString(result);
+    return result;
+  }
+  return TPM_RC_SUCCESS;
 }
 
 }  // namespace trunks

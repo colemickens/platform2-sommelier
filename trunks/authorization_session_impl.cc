@@ -52,7 +52,7 @@ TPM_RC AuthorizationSessionImpl::StartBoundSession(
   // First we generate a cryptographically secure salt and encrypt it using
   // PKCS1_OAEP padded RSA public key encryption. This is specified in TPM2.0
   // Part1 Architecture, Appendix B.10.2.
-  std::string salt(SHA256_DIGEST_SIZE, 0);
+  std::string salt(SHA1_DIGEST_SIZE, 0);
   unsigned char* salt_buffer =
       reinterpret_cast<unsigned char*>(string_as_array(&salt));
   CHECK_EQ(RAND_bytes(salt_buffer, salt.size()), 1)
@@ -61,9 +61,8 @@ TPM_RC AuthorizationSessionImpl::StartBoundSession(
   TPM_RC salt_result = EncryptSalt(salt, &encrypted_salt);
   if (salt_result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error encrypting salt.";
-    return TPM_RC_FAILURE;
+    return salt_result;
   }
-  TPM_HANDLE salt_handle = kSaltingKey;
   TPM2B_ENCRYPTED_SECRET encrypted_secret =
       Make_TPM2B_ENCRYPTED_SECRET(encrypted_salt);
   // Then we use TPM2_StartAuthSession to start a HMAC session with the TPM.
@@ -87,7 +86,7 @@ TPM_RC AuthorizationSessionImpl::StartBoundSession(
   // The TPM2 command below needs no authorization. This is why we can use
   // the empty string "", when referring to the handle names for the salting
   // key and the bind entity.
-  TPM_RC tpm_result = tpm->StartAuthSessionSync(salt_handle,
+  TPM_RC tpm_result = tpm->StartAuthSessionSync(kSaltingKey,
                                                 "",  // salt_handle_name.
                                                 bind_entity,
                                                 "",  // bind_entity_name.

@@ -51,9 +51,19 @@ class MockTpmUtility : public TpmUtility {
                               TPM_ALG_ID,
                               const std::string&,
                               const std::string&));
-  MOCK_METHOD3(CreateRSAKey, TPM_RC(AsymmetricKeyUsage,
-                                    const std::string&,
-                                    TPM_HANDLE*));
+  MOCK_METHOD4(CreateAndLoadRSAKey, TPM_RC(AsymmetricKeyUsage,
+                                           const std::string&,
+                                           TPM_HANDLE*,
+                                           std::string*));
+  MOCK_METHOD5(CreateRSAKeyPair, TPM_RC(AsymmetricKeyUsage,
+                                        int,
+                                        uint32_t,
+                                        const std::string&,
+                                        std::string*));
+  MOCK_METHOD2(LoadKey, TPM_RC(const std::string&,
+                               TPM_HANDLE*));
+  MOCK_METHOD2(GetKeyName, TPM_RC(TPM_HANDLE, std::string*));
+  MOCK_METHOD2(GetKeyPublicArea, TPM_RC(TPM_HANDLE, TPM2B_PUBLIC*));
 };
 
 }  // namespace trunks

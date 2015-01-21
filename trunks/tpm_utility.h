@@ -123,10 +123,36 @@ class CHROMEOS_EXPORT TpmUtility {
   // public exponent of 0x10001. |key_type| determines whether the key is
   // a signing key, a decryption key, or both. The |password| parameter
   // is used as the authorization for the created key. The created key
-  // is then loaded and its handle is returned as |key_handle|.
-  virtual TPM_RC CreateRSAKey(AsymmetricKeyUsage key_type,
-                              const std::string& password,
-                              TPM_HANDLE* key_handle) = 0;
+  // is then loaded and its handle is returned as |key_handle|. The out
+  // argument |key_blob| can be used to load the key in the future.
+  virtual TPM_RC CreateAndLoadRSAKey(AsymmetricKeyUsage key_type,
+                                     const std::string& password,
+                                     TPM_HANDLE* key_handle,
+                                     std::string* key_blob) = 0;
+
+  // This method uses the TPM to generates an RSA key of type |key_type|.
+  // |modulus_bits| is used to specify the size of the modulus, and
+  // |public_exponent| specifies the exponent of the key. After this function
+  // terminates, |key_blob| contains a key blob that can be loaded into the TPM.
+  virtual TPM_RC CreateRSAKeyPair(AsymmetricKeyUsage key_type,
+                                  int modulus_bits,
+                                  uint32_t public_exponent,
+                                  const std::string& password,
+                                  std::string* key_blob) = 0;
+
+  // This method loads a pregenerated TPM key into the TPM. |key_blob| contains
+  // the blob returned by a key creation function. The loaded key's handle is
+  // returned using |key_handle|.
+  virtual TPM_RC LoadKey(const std::string& key_blob,
+                         TPM_HANDLE* key_handle) = 0;
+
+  // This function sets |name| to the name of the object referenced by
+  // |handle|. This function only works on Transient and Permanent objects.
+  virtual TPM_RC GetKeyName(TPM_HANDLE handle, std::string* name) = 0;
+
+  // This function returns the public area of a handle in the tpm.
+  virtual TPM_RC GetKeyPublicArea(TPM_HANDLE handle,
+                                  TPM2B_PUBLIC* public_data) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TpmUtility);

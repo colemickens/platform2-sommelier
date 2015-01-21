@@ -152,10 +152,35 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->Verify(key_handle, scheme, hash_alg, digest, signature);
   }
 
-  TPM_RC CreateRSAKey(AsymmetricKeyUsage key_type,
-                      const std::string& password,
-                      TPM_HANDLE* key_handle) override {
-    return target_->CreateRSAKey(key_type, password, key_handle);
+  TPM_RC CreateAndLoadRSAKey(AsymmetricKeyUsage key_type,
+                             const std::string& password,
+                             TPM_HANDLE* key_handle,
+                             std::string* key_blob) override {
+    return target_->CreateAndLoadRSAKey(key_type, password,
+                                        key_handle, key_blob);
+  }
+
+  TPM_RC CreateRSAKeyPair(AsymmetricKeyUsage key_type,
+                          int modulus_bits,
+                          uint32_t public_exponent,
+                          const std::string& password,
+                          std::string* key_blob) override {
+    return target_->CreateRSAKeyPair(key_type, modulus_bits, public_exponent,
+                                     password, key_blob);
+  }
+
+  TPM_RC LoadKey(const std::string& key_blob,
+                 TPM_HANDLE* key_handle) override {
+    return target_->LoadKey(key_blob, key_handle);
+  }
+
+  TPM_RC GetKeyName(TPM_HANDLE handle, std::string* name) override {
+    return target_->GetKeyName(handle, name);
+  }
+
+  TPM_RC GetKeyPublicArea(TPM_HANDLE handle,
+                          TPM2B_PUBLIC* public_data) override {
+    return target_->GetKeyPublicArea(handle, public_data);
   }
 
  private:
