@@ -123,9 +123,9 @@ void InputController::OnPowerButtonEvent(ButtonState state) {
     return;
   }
 
-  const base::TimeTicks now = clock_->GetCurrentTime();
-
   if (state != BUTTON_REPEAT) {
+    const base::TimeTicks now = clock_->GetCurrentTime();
+
     InputEvent proto;
     proto.set_type(state == BUTTON_DOWN ?
                    InputEvent_Type_POWER_BUTTON_DOWN :

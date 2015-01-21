@@ -274,27 +274,35 @@ void MetricsCollector::GenerateBacklightLevelMetrics() {
 }
 
 void MetricsCollector::HandlePowerButtonEvent(ButtonState state) {
-  // Just keep track of the time when the button was pressed.
-  if (state == BUTTON_DOWN) {
-    if (!last_power_button_down_timestamp_.is_null())
-      LOG(ERROR) << "Got power-button-down event while button was already down";
-    last_power_button_down_timestamp_ = clock_.GetCurrentTime();
-    return;
+  switch (state) {
+    case BUTTON_DOWN:
+      // Just keep track of the time when the button was pressed.
+      if (!last_power_button_down_timestamp_.is_null()) {
+        LOG(ERROR) << "Got power-button-down event while button was already "
+                   << "down";
+      }
+      last_power_button_down_timestamp_ = clock_.GetCurrentTime();
+      break;
+    case BUTTON_UP: {
+      // Metrics are sent after the button is released.
+      if (last_power_button_down_timestamp_.is_null()) {
+        LOG(ERROR) << "Got power-button-up event while button was already up";
+      } else {
+        base::TimeDelta delta =
+            clock_.GetCurrentTime() - last_power_button_down_timestamp_;
+        last_power_button_down_timestamp_ = base::TimeTicks();
+        SendMetric(kMetricPowerButtonDownTimeName,
+                   delta.InMilliseconds(),
+                   kMetricPowerButtonDownTimeMin,
+                   kMetricPowerButtonDownTimeMax,
+                   kMetricDefaultBuckets);
+      }
+      break;
+    }
+    case BUTTON_REPEAT:
+      // Ignore repeat events if we get them.
+      break;
   }
-
-  // Metrics are sent after the button is released.
-  if (last_power_button_down_timestamp_.is_null()) {
-    LOG(ERROR) << "Got power-button-up event while button was already up";
-    return;
-  }
-  base::TimeDelta delta =
-      clock_.GetCurrentTime() - last_power_button_down_timestamp_;
-  last_power_button_down_timestamp_ = base::TimeTicks();
-  SendMetric(kMetricPowerButtonDownTimeName,
-             delta.InMilliseconds(),
-             kMetricPowerButtonDownTimeMin,
-             kMetricPowerButtonDownTimeMax,
-             kMetricDefaultBuckets);
 }
 
 void MetricsCollector::SendPowerButtonAcknowledgmentDelayMetric(

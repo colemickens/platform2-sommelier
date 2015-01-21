@@ -523,7 +523,9 @@ void Daemon::HandleLidOpened() {
 }
 
 void Daemon::HandlePowerButtonEvent(ButtonState state) {
-  LOG(INFO) << "Power button " << ButtonStateToString(state);
+  // Don't log spammy repeat events if we see them.
+  if (state != BUTTON_REPEAT)
+    LOG(INFO) << "Power button " << ButtonStateToString(state);
   metrics_collector_->HandlePowerButtonEvent(state);
   if (state == BUTTON_DOWN && display_backlight_controller_)
     display_backlight_controller_->HandlePowerButtonPress();
