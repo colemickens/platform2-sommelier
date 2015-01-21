@@ -31,13 +31,28 @@ class ProxyGenerator : public HeaderGenerator {
                               const std::vector<Interface>& interfaces,
                               const base::FilePath& output_file);
 
+  static bool GenerateMocks(const ServiceConfig& config,
+                            const std::vector<Interface>& interfaces,
+                            const base::FilePath& mock_file,
+                            const base::FilePath& proxy_file);
+
  private:
   friend class ProxyGeneratorTest;
+
+  // Generates an abstract interface for one D-Bus interface proxy.
+  static void GenerateInterfaceProxyInterface(const ServiceConfig& config,
+                                              const Interface& interface,
+                                              IndentedText* text);
 
   // Generates one interface proxy.
   static void GenerateInterfaceProxy(const ServiceConfig& config,
                                      const Interface& interface,
                                      IndentedText* text);
+
+  // Generates one interface mock object.
+  static void GenerateInterfaceMock(const ServiceConfig& config,
+                                    const Interface& interface,
+                                    IndentedText* text);
 
   // Generates the constructor and destructor for the proxy.
   static void AddConstructor(const ServiceConfig& config,
@@ -76,17 +91,30 @@ class ProxyGenerator : public HeaderGenerator {
   // Generates the property accessors.
   static void AddProperties(const ServiceConfig& config,
                             const Interface& interface,
+                            bool declaration_only,
                             IndentedText* text);
 
   // Generates a native C++ method which calls a D-Bus method on the proxy.
   static void AddMethodProxy(const Interface::Method& interface,
                              const std::string& interface_name,
+                             bool declaration_only,
                              IndentedText* text);
 
   // Generates a native C++ method which calls a D-Bus method asynchronously.
   static void AddAsyncMethodProxy(const Interface::Method& interface,
                                   const std::string& interface_name,
+                                  bool declaration_only,
                                   IndentedText* text);
+
+  // Generates a mock for blocking D-Bus method.
+  static void AddMethodMock(const Interface::Method& interface,
+                            const std::string& interface_name,
+                            IndentedText* text);
+
+  // Generates a mock for asynchronous D-Bus method.
+  static void AddAsyncMethodMock(const Interface::Method& interface,
+                                 const std::string& interface_name,
+                                 IndentedText* text);
 
   // Generates the Object Manager proxy class.
   struct ObjectManager {

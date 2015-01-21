@@ -30,6 +30,7 @@ static const char kHelp[] = "help";
 static const char kMethodNames[] = "method-names";
 static const char kAdaptor[] = "adaptor";
 static const char kProxy[] = "proxy";
+static const char kMock[] = "mock";
 static const char kServiceConfig[] = "service-config";
 static const char kHelpMessage[] = "\n"
     "generate-chromeos-dbus-bindings itf1.xml [itf2.xml...] [switches]\n"
@@ -41,6 +42,8 @@ static const char kHelpMessage[] = "\n"
     "    The output header file name containing the DBus adaptor class.\n"
     "  --proxy=<proxy header filename>\n"
     "    The output header file name containing the DBus proxy class.\n"
+    "  --mock=<mock header filename>\n"
+    "    The output header file name containing the DBus proxy mock class.\n"
     "  --service-config=<config.json>\n"
     "    The DBus service configuration file for the generator.\n";
 
@@ -183,12 +186,27 @@ int main(int argc, char** argv) {
      }
   }
 
+  base::FilePath proxy_path;  // Used by both Proxy and Mock generation.
   if (cl->HasSwitch(switches::kProxy)) {
     std::string proxy_file = cl->GetSwitchValueASCII(switches::kProxy);
-    VLOG(1) << "Outputting proxy to " << proxy_file;
+    proxy_path = RemoveQuotes(proxy_file);
+    base::NormalizeFilePath(proxy_path, &proxy_path);
+    VLOG(1) << "Outputting proxy to " << proxy_path.value();
     if (!ProxyGenerator::GenerateProxies(config, parser.interfaces(),
-                                         RemoveQuotes(proxy_file))) {
+                                         proxy_path)) {
       LOG(ERROR) << "Failed to output proxy.";
+      return 1;
+     }
+  }
+
+  if (cl->HasSwitch(switches::kMock)) {
+    std::string mock_file = cl->GetSwitchValueASCII(switches::kMock);
+    base::FilePath mock_path = RemoveQuotes(mock_file);
+    base::NormalizeFilePath(mock_path, &mock_path);
+    VLOG(1) << "Outputting mock to " << mock_path.value();
+    if (!ProxyGenerator::GenerateMocks(config, parser.interfaces(), mock_path,
+                                       proxy_path)) {
+      LOG(ERROR) << "Failed to output mock.";
       return 1;
      }
   }

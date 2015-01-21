@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/strings/string_utils.h>
@@ -86,6 +87,7 @@ bool ProxyGenerator::GenerateProxies(
   }
 
   for (const auto& interface : interfaces) {
+    GenerateInterfaceProxyInterface(config, interface, &text);
     GenerateInterfaceProxy(config, interface, &text);
   }
 
@@ -96,11 +98,125 @@ bool ProxyGenerator::GenerateProxies(
 }
 
 // static
+bool ProxyGenerator::GenerateMocks(const ServiceConfig& config,
+                                   const std::vector<Interface>& interfaces,
+                                   const base::FilePath& mock_file,
+                                   const base::FilePath& proxy_file) {
+  IndentedText text;
+
+  text.AddLine("// Automatic generation of D-Bus interface mock proxies for:");
+  for (const auto& interface : interfaces) {
+    text.AddLine(StringPrintf("//  - %s", interface.name.c_str()));
+  }
+  string header_guard = GenerateHeaderGuard(mock_file);
+  text.AddLine(StringPrintf("#ifndef %s", header_guard.c_str()));
+  text.AddLine(StringPrintf("#define %s", header_guard.c_str()));
+  text.AddLine("#include <string>");
+  text.AddLine("#include <vector>");
+  text.AddBlankLine();
+  text.AddLine("#include <base/callback_forward.h>");
+  text.AddLine("#include <base/macros.h>");
+  text.AddLine("#include <chromeos/any.h>");
+  text.AddLine("#include <chromeos/errors/error.h>");
+  text.AddLine("#include <chromeos/variant_dictionary.h>");
+  text.AddLine("#include <gmock/gmock.h>");
+  text.AddBlankLine();
+
+  if (!proxy_file.empty()) {
+    // If we have a proxy header file, it would have the proxy interfaces we
+    // need to base our mocks on, so we need to include that header file.
+    // Generate a relative path from |mock_file| to |proxy_file|.
+
+    // First, get the path components for both source and destination paths.
+    std::vector<base::FilePath::StringType> src_components;
+    mock_file.DirName().GetComponents(&src_components);
+    std::vector<base::FilePath::StringType> dest_components;
+    proxy_file.DirName().GetComponents(&dest_components);
+
+    // Find the common root.
+
+    // I wish we had C++14 and its 4-parameter version of std::mismatch()...
+    auto src_end = src_components.end();
+    if (src_components.size() > dest_components.size())
+      src_end = src_components.begin() + dest_components.size();
+
+    auto mismatch_pair =
+        std::mismatch(src_components.begin(), src_end, dest_components.begin());
+
+    // For each remaining components in the |src_components|, generate the
+    // parent directory references ("..").
+    size_t src_count = std::distance(mismatch_pair.first, src_components.end());
+    std::vector<base::FilePath::StringType> components{
+        src_count, base::FilePath::kParentDirectory};
+    // Append the remaining components from |dest_components|.
+    components.insert(components.end(),
+                      mismatch_pair.second, dest_components.end());
+    // Finally, add the base name of the target file name.
+    components.push_back(proxy_file.BaseName().value());
+    // Now reconstruct the relative path.
+    base::FilePath relative_path{base::FilePath::kCurrentDirectory};
+    for (const auto& component : components)
+      relative_path = relative_path.Append(component);
+    text.AddLine(StringPrintf("#include \"%s\"",
+                              relative_path.value().c_str()));
+    text.AddBlankLine();
+  }
+
+  for (const auto& interface : interfaces) {
+    // If we have no proxy file, we need the abstract interfaces generated here.
+    if (proxy_file.empty())
+      GenerateInterfaceProxyInterface(config, interface, &text);
+    GenerateInterfaceMock(config, interface, &text);
+  }
+
+  text.AddLine(StringPrintf("#endif  // %s", header_guard.c_str()));
+  return WriteTextToFile(mock_file, text);
+}
+
+// static
+void ProxyGenerator::GenerateInterfaceProxyInterface(
+    const ServiceConfig& config,
+    const Interface& interface,
+    IndentedText* text) {
+  NameParser parser{interface.name};
+  string proxy_name = parser.MakeProxyName(false);
+  string base_interface_name = proxy_name + "Interface";
+
+  parser.AddOpenNamespaces(text, false);
+  text->AddBlankLine();
+
+  text->AddLine(StringPrintf("// Abstract interface proxy for %s.",
+                             parser.MakeFullCppName().c_str()));
+  text->AddComments(interface.doc_string);
+  text->AddLine(StringPrintf("class %s {", base_interface_name.c_str()));
+  text->AddLineWithOffset("public:", kScopeOffset);
+  text->PushOffset(kBlockOffset);
+
+  for (const auto& method : interface.methods) {
+    AddMethodProxy(method, interface.name, true, text);
+    AddAsyncMethodProxy(method, interface.name, true, text);
+  }
+  AddProperties(config, interface, true, text);
+
+  text->PopOffset();
+  text->AddLineWithOffset("protected:", kScopeOffset);
+  text->AddLineWithOffset(
+      StringPrintf("~%s() = default;", base_interface_name.c_str()),
+      kBlockOffset);
+  text->AddLine("};");
+  text->AddBlankLine();
+
+  parser.AddCloseNamespaces(text, false);
+  text->AddBlankLine();
+}
+
+// static
 void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
                                             const Interface& interface,
                                             IndentedText* text) {
   NameParser parser{interface.name};
   string proxy_name = parser.MakeProxyName(false);
+  string base_interface_name = proxy_name + "Interface";
 
   parser.AddOpenNamespaces(text, false);
   text->AddBlankLine();
@@ -108,7 +224,8 @@ void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
   text->AddLine(StringPrintf("// Interface proxy for %s.",
                              parser.MakeFullCppName().c_str()));
   text->AddComments(interface.doc_string);
-  text->AddLine(StringPrintf("class %s final {", proxy_name.c_str()));
+  text->AddLine(StringPrintf("class %s final : public %s {",
+                             proxy_name.c_str(), base_interface_name.c_str()));
   text->AddLineWithOffset("public:", kScopeOffset);
   text->PushOffset(kBlockOffset);
   AddPropertySet(config, interface, text);
@@ -121,10 +238,10 @@ void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
   if (!config.object_manager.name.empty() && !interface.properties.empty())
     AddPropertyPublicMethods(proxy_name, text);
   for (const auto& method : interface.methods) {
-    AddMethodProxy(method, interface.name, text);
-    AddAsyncMethodProxy(method, interface.name, text);
+    AddMethodProxy(method, interface.name, false, text);
+    AddAsyncMethodProxy(method, interface.name, false, text);
   }
-  AddProperties(config, interface, text);
+  AddProperties(config, interface, false, text);
 
   text->PopOffset();
   text->AddLineWithOffset("private:", kScopeOffset);
@@ -168,6 +285,54 @@ void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
 
   parser.AddCloseNamespaces(text, false);
 
+  text->AddBlankLine();
+}
+
+// static
+void ProxyGenerator::GenerateInterfaceMock(const ServiceConfig& config,
+                                           const Interface& interface,
+                                           IndentedText* text) {
+  NameParser parser{interface.name};
+  string proxy_name = parser.MakeProxyName(false);
+  string base_interface_name = proxy_name + "Interface";
+  string mock_name = proxy_name + "Mock";
+
+  parser.AddOpenNamespaces(text, false);
+  text->AddBlankLine();
+
+  text->AddLine(StringPrintf("// Mock object for %s.",
+                             base_interface_name.c_str()));
+  text->AddLine(StringPrintf("class %s final : public %s {",
+                             mock_name.c_str(), base_interface_name.c_str()));
+  text->AddLineWithOffset("public:", kScopeOffset);
+  text->PushOffset(kBlockOffset);
+  text->AddLine(StringPrintf("%s() = default;", mock_name.c_str()));
+  text->AddBlankLine();
+
+  for (const auto& method : interface.methods) {
+    AddMethodMock(method, interface.name, text);
+    AddAsyncMethodMock(method, interface.name, text);
+  }
+
+  DbusSignature signature;
+  for (const auto& prop : interface.properties) {
+    string type;
+    CHECK(signature.Parse(prop.type, &type));
+    MakeConstReferenceIfNeeded(&type);
+    string name = NameParser{prop.name}.MakeVariableName();
+    text->AddLine(StringPrintf("MOCK_CONST_METHOD0(%s, %s());",
+                               name.c_str(), type.c_str()));
+  }
+
+  text->PopOffset();
+  text->AddBlankLine();
+  text->AddLineWithOffset("private:", kScopeOffset);
+  text->AddLineWithOffset(StringPrintf("DISALLOW_COPY_AND_ASSIGN(%s);",
+                                       mock_name.c_str()),
+                          kBlockOffset);
+  text->AddLine("};");
+
+  parser.AddCloseNamespaces(text, false);
   text->AddBlankLine();
 }
 
@@ -389,6 +554,7 @@ void ProxyGenerator::AddPropertySet(const ServiceConfig& config,
 // static
 void ProxyGenerator::AddProperties(const ServiceConfig& config,
                                    const Interface& interface,
+                                   bool declaration_only,
                                    IndentedText* text) {
   // Must have ObjectManager in order for property system to work correctly.
   if (config.object_manager.name.empty())
@@ -401,25 +567,35 @@ void ProxyGenerator::AddProperties(const ServiceConfig& config,
     MakeConstReferenceIfNeeded(&type);
     string name = NameParser{prop.name}.MakeVariableName();
     text->AddLine(
-        StringPrintf("%s %s() const {",
+        StringPrintf("%s%s %s() const%s",
+                     declaration_only ? "virtual " : "",
                      type.c_str(),
-                     name.c_str()));
-    text->AddLineWithOffset(
-        StringPrintf("return property_set_->%s.value();", name.c_str()),
-        kBlockOffset);
-    text->AddLine("}");
-    text->AddBlankLine();
+                     name.c_str(),
+                     declaration_only ? " = 0;" : " override {"));
+    if (!declaration_only) {
+      text->AddLineWithOffset(
+          StringPrintf("return property_set_->%s.value();", name.c_str()),
+          kBlockOffset);
+      text->AddLine("}");
+      text->AddBlankLine();
+    }
   }
+
+  if (declaration_only && !interface.properties.empty())
+    text->AddBlankLine();
 }
 
 // static
 void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
                                     const string& interface_name,
+                                    bool declaration_only,
                                     IndentedText* text) {
   IndentedText block;
   DbusSignature signature;
   block.AddComments(method.doc_string);
-  block.AddLine(StringPrintf("bool %s(", method.name.c_str()));
+  block.AddLine(StringPrintf("%sbool %s(",
+                             declaration_only ? "virtual " : "",
+                             method.name.c_str()));
   block.PushOffset(kLineContinuationOffset);
   vector<string> argument_names;
   int argument_number = 0;
@@ -442,45 +618,51 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
         "%s* %s,", argument_type.c_str(), argument_name.c_str()));
   }
   block.AddLine("chromeos::ErrorPtr* error,");
-  block.AddLine("int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {");
-  block.PopOffset();
-  block.PushOffset(kBlockOffset);
-
   block.AddLine(
-      "auto response = chromeos::dbus_utils::CallMethodAndBlockWithTimeout(");
-  block.PushOffset(kLineContinuationOffset);
-  block.AddLine("timeout_ms,");
-  block.AddLine("dbus_object_proxy_,");
-  block.AddLine(StringPrintf("\"%s\",", interface_name.c_str()));
-  block.AddLine(StringPrintf("\"%s\",", method.name.c_str()));
-  string last_argument = "error";
-  for (const auto& argument_name : argument_names) {
-    block.AddLine(StringPrintf("%s,", last_argument.c_str()));
-    last_argument = argument_name;
+      StringPrintf("int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)%s",
+                   declaration_only ? " = 0;" : " override {"));
+  block.PopOffset();
+  if (!declaration_only) {
+    block.PushOffset(kBlockOffset);
+
+    block.AddLine(
+        "auto response = chromeos::dbus_utils::CallMethodAndBlockWithTimeout(");
+    block.PushOffset(kLineContinuationOffset);
+    block.AddLine("timeout_ms,");
+    block.AddLine("dbus_object_proxy_,");
+    block.AddLine(StringPrintf("\"%s\",", interface_name.c_str()));
+    block.AddLine(StringPrintf("\"%s\",", method.name.c_str()));
+    string last_argument = "error";
+    for (const auto& argument_name : argument_names) {
+      block.AddLine(StringPrintf("%s,", last_argument.c_str()));
+      last_argument = argument_name;
+    }
+    block.AddLine(StringPrintf("%s);", last_argument.c_str()));
+    block.PopOffset();
+
+    block.AddLine("return response && "
+                  "chromeos::dbus_utils::ExtractMethodCallResults(");
+    block.PushOffset(kLineContinuationOffset);
+    block.AddLine(chromeos::string_utils::Join(", ", out_param_names) + ");");
+    block.PopOffset();
+    block.PopOffset();
+    block.AddLine("}");
   }
-  block.AddLine(StringPrintf("%s);", last_argument.c_str()));
-  block.PopOffset();
-
-  block.AddLine("return response && "
-                "chromeos::dbus_utils::ExtractMethodCallResults(");
-  block.PushOffset(kLineContinuationOffset);
-  block.AddLine(chromeos::string_utils::Join(", ", out_param_names) + ");");
-  block.PopOffset();
-  block.PopOffset();
-  block.AddLine("}");
   block.AddBlankLine();
-
   text->AddBlock(block);
 }
 
 // static
 void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
                                          const string& interface_name,
+                                         bool declaration_only,
                                          IndentedText* text) {
   IndentedText block;
   DbusSignature signature;
   block.AddComments(method.doc_string);
-  block.AddLine(StringPrintf("void %sAsync(", method.name.c_str()));
+  block.AddLine(StringPrintf("%svoid %sAsync(",
+                             declaration_only ? "virtual " : "",
+                             method.name.c_str()));
   block.PushOffset(kLineContinuationOffset);
   vector<string> argument_names;
   int argument_number = 0;
@@ -507,29 +689,115 @@ void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
       chromeos::string_utils::Join(", ", out_params).c_str()));
   block.AddLine(
       "const base::Callback<void(chromeos::Error*)>& error_callback,");
-  block.AddLine("int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {");
+  block.AddLine(
+      StringPrintf("int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)%s",
+                   declaration_only ? " = 0;" : " override {"));
   block.PopOffset();
-  block.PushOffset(kBlockOffset);
+  if (!declaration_only) {
+    block.PushOffset(kBlockOffset);
 
-  block.AddLine("chromeos::dbus_utils::CallMethodWithTimeout(");
-  block.PushOffset(kLineContinuationOffset);
-  block.AddLine("timeout_ms,");
-  block.AddLine("dbus_object_proxy_,");
-  block.AddLine(StringPrintf("\"%s\",", interface_name.c_str()));
-  block.AddLine(StringPrintf("\"%s\",", method.name.c_str()));
-  block.AddLine("success_callback,");
-  string last_argument = "error_callback";
-  for (const auto& argument_name : argument_names) {
-    block.AddLine(StringPrintf("%s,", last_argument.c_str()));
-    last_argument = argument_name;
+    block.AddLine("chromeos::dbus_utils::CallMethodWithTimeout(");
+    block.PushOffset(kLineContinuationOffset);
+    block.AddLine("timeout_ms,");
+    block.AddLine("dbus_object_proxy_,");
+    block.AddLine(StringPrintf("\"%s\",", interface_name.c_str()));
+    block.AddLine(StringPrintf("\"%s\",", method.name.c_str()));
+    block.AddLine("success_callback,");
+    string last_argument = "error_callback";
+    for (const auto& argument_name : argument_names) {
+      block.AddLine(StringPrintf("%s,", last_argument.c_str()));
+      last_argument = argument_name;
+    }
+    block.AddLine(StringPrintf("%s);", last_argument.c_str()));
+    block.PopOffset();
+
+    block.PopOffset();
+    block.AddLine("}");
   }
-  block.AddLine(StringPrintf("%s);", last_argument.c_str()));
-  block.PopOffset();
-
-  block.PopOffset();
-  block.AddLine("}");
   block.AddBlankLine();
+  text->AddBlock(block);
+}
 
+// static
+void ProxyGenerator::AddMethodMock(const Interface::Method& method,
+                                   const string& interface_name,
+                                   IndentedText* text) {
+  IndentedText block;
+  DbusSignature signature;
+  vector<string> arguments;
+  for (const auto& argument : method.input_arguments) {
+    string argument_type;
+    CHECK(signature.Parse(argument.type, &argument_type));
+    MakeConstReferenceIfNeeded(&argument_type);
+    if (!argument.name.empty())
+      base::StringAppendF(&argument_type, " /*in_%s*/", argument.name.c_str());
+    arguments.push_back(argument_type);
+  }
+  for (const auto& argument : method.output_arguments) {
+    string argument_type;
+    CHECK(signature.Parse(argument.type, &argument_type));
+    argument_type += '*';
+    if (!argument.name.empty())
+      base::StringAppendF(&argument_type, " /*out_%s*/", argument.name.c_str());
+    arguments.push_back(argument_type);
+  }
+  arguments.push_back("chromeos::ErrorPtr* /*error*/");
+  arguments.push_back("int /*timeout_ms*/");
+
+  block.AddLineAndPushOffsetTo(
+      StringPrintf("MOCK_METHOD%ju(%s,", arguments.size(), method.name.c_str()),
+      1, '(');
+  block.AddLineAndPushOffsetTo(
+      StringPrintf("bool(%s,", arguments.front().c_str()), 1, '(');
+  for (size_t i = 1; i < arguments.size() - 1; i++)
+    block.AddLine(StringPrintf("%s,", arguments[i].c_str()));
+  block.AddLine(StringPrintf("%s));", arguments.back().c_str()));
+  block.PopOffset();
+  block.PopOffset();
+  text->AddBlock(block);
+}
+
+// static
+void ProxyGenerator::AddAsyncMethodMock(const Interface::Method& method,
+                                        const string& interface_name,
+                                        IndentedText* text) {
+  IndentedText block;
+  DbusSignature signature;
+  vector<string> arguments;
+  for (const auto& argument : method.input_arguments) {
+    string argument_type;
+    CHECK(signature.Parse(argument.type, &argument_type));
+    MakeConstReferenceIfNeeded(&argument_type);
+    if (!argument.name.empty())
+      base::StringAppendF(&argument_type, " /*in_%s*/", argument.name.c_str());
+    arguments.push_back(argument_type);
+  }
+  vector<string> out_params;
+  for (const auto& argument : method.output_arguments) {
+    string argument_type;
+    CHECK(signature.Parse(argument.type, &argument_type));
+    MakeConstReferenceIfNeeded(&argument_type);
+    if (!argument.name.empty())
+      base::StringAppendF(&argument_type, " /*%s*/", argument.name.c_str());
+    out_params.push_back(argument_type);
+  }
+  arguments.push_back(StringPrintf(
+      "const base::Callback<void(%s)>& /*success_callback*/",
+      chromeos::string_utils::Join(", ", out_params).c_str()));
+  arguments.push_back(
+      "const base::Callback<void(chromeos::Error*)>& /*error_callback*/");
+  arguments.push_back("int /*timeout_ms*/");
+
+  block.AddLineAndPushOffsetTo(
+      StringPrintf("MOCK_METHOD%ju(%sAsync,", arguments.size(),
+                   method.name.c_str()), 1, '(');
+  block.AddLineAndPushOffsetTo(
+      StringPrintf("void(%s,", arguments.front().c_str()), 1, '(');
+  for (size_t i = 1; i < arguments.size() - 1; i++)
+    block.AddLine(StringPrintf("%s,", arguments[i].c_str()));
+  block.AddLine(StringPrintf("%s));", arguments.back().c_str()));
+  block.PopOffset();
+  block.PopOffset();
   text->AddBlock(block);
 }
 

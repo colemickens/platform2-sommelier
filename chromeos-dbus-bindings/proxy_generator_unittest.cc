@@ -69,8 +69,69 @@ const char kExpectedContent[] = R"literal_string(
 namespace org {
 namespace chromium {
 
+// Abstract interface proxy for org::chromium::TestInterface.
+class TestInterfaceProxyInterface {
+ public:
+  virtual bool Elements(
+      const std::string& in_space_walk,
+      const std::vector<dbus::ObjectPath>& in_ramblin_man,
+      std::string* out_3,
+      chromeos::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual void ElementsAsync(
+      const std::string& in_space_walk,
+      const std::vector<dbus::ObjectPath>& in_ramblin_man,
+      const base::Callback<void(const std::string&)>& success_callback,
+      const base::Callback<void(chromeos::Error*)>& error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual bool ReturnToPatagonia(
+      int64_t* out_1,
+      chromeos::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual void ReturnToPatagoniaAsync(
+      const base::Callback<void(int64_t)>& success_callback,
+      const base::Callback<void(chromeos::Error*)>& error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual bool NiceWeatherForDucks(
+      bool in_1,
+      chromeos::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual void NiceWeatherForDucksAsync(
+      bool in_1,
+      const base::Callback<void()>& success_callback,
+      const base::Callback<void(chromeos::Error*)>& error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  // Comment line1
+  // line2
+  virtual bool ExperimentNumberSix(
+      chromeos::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  // Comment line1
+  // line2
+  virtual void ExperimentNumberSixAsync(
+      const base::Callback<void()>& success_callback,
+      const base::Callback<void(chromeos::Error*)>& error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+ protected:
+  ~TestInterfaceProxyInterface() = default;
+};
+
+}  // namespace chromium
+}  // namespace org
+
+namespace org {
+namespace chromium {
+
 // Interface proxy for org::chromium::TestInterface.
-class TestInterfaceProxy final {
+class TestInterfaceProxy final : public TestInterfaceProxyInterface {
  public:
   TestInterfaceProxy(
       const scoped_refptr<dbus::Bus>& bus,
@@ -122,7 +183,7 @@ class TestInterfaceProxy final {
       const std::vector<dbus::ObjectPath>& in_ramblin_man,
       std::string* out_3,
       chromeos::ErrorPtr* error,
-      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
     auto response = chromeos::dbus_utils::CallMethodAndBlockWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
@@ -140,7 +201,7 @@ class TestInterfaceProxy final {
       const std::vector<dbus::ObjectPath>& in_ramblin_man,
       const base::Callback<void(const std::string&)>& success_callback,
       const base::Callback<void(chromeos::Error*)>& error_callback,
-      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
     chromeos::dbus_utils::CallMethodWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
@@ -155,7 +216,7 @@ class TestInterfaceProxy final {
   bool ReturnToPatagonia(
       int64_t* out_1,
       chromeos::ErrorPtr* error,
-      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
     auto response = chromeos::dbus_utils::CallMethodAndBlockWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
@@ -169,7 +230,7 @@ class TestInterfaceProxy final {
   void ReturnToPatagoniaAsync(
       const base::Callback<void(int64_t)>& success_callback,
       const base::Callback<void(chromeos::Error*)>& error_callback,
-      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
     chromeos::dbus_utils::CallMethodWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
@@ -182,7 +243,7 @@ class TestInterfaceProxy final {
   bool NiceWeatherForDucks(
       bool in_1,
       chromeos::ErrorPtr* error,
-      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
     auto response = chromeos::dbus_utils::CallMethodAndBlockWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
@@ -198,7 +259,7 @@ class TestInterfaceProxy final {
       bool in_1,
       const base::Callback<void()>& success_callback,
       const base::Callback<void(chromeos::Error*)>& error_callback,
-      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
     chromeos::dbus_utils::CallMethodWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
@@ -213,7 +274,7 @@ class TestInterfaceProxy final {
   // line2
   bool ExperimentNumberSix(
       chromeos::ErrorPtr* error,
-      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
     auto response = chromeos::dbus_utils::CallMethodAndBlockWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
@@ -229,7 +290,7 @@ class TestInterfaceProxy final {
   void ExperimentNumberSixAsync(
       const base::Callback<void()>& success_callback,
       const base::Callback<void(chromeos::Error*)>& error_callback,
-      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
     chromeos::dbus_utils::CallMethodWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
@@ -254,8 +315,32 @@ class TestInterfaceProxy final {
 namespace org {
 namespace chromium {
 
+// Abstract interface proxy for org::chromium::TestInterface2.
+class TestInterface2ProxyInterface {
+ public:
+  virtual bool GetPersonInfo(
+      std::string* out_name,
+      int32_t* out_age,
+      chromeos::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual void GetPersonInfoAsync(
+      const base::Callback<void(const std::string& /*name*/, int32_t /*age*/)>& success_callback,
+      const base::Callback<void(chromeos::Error*)>& error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+ protected:
+  ~TestInterface2ProxyInterface() = default;
+};
+
+}  // namespace chromium
+}  // namespace org
+
+namespace org {
+namespace chromium {
+
 // Interface proxy for org::chromium::TestInterface2.
-class TestInterface2Proxy final {
+class TestInterface2Proxy final : public TestInterface2ProxyInterface {
  public:
   TestInterface2Proxy(
       const scoped_refptr<dbus::Bus>& bus,
@@ -285,7 +370,7 @@ class TestInterface2Proxy final {
       std::string* out_name,
       int32_t* out_age,
       chromeos::ErrorPtr* error,
-      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
     auto response = chromeos::dbus_utils::CallMethodAndBlockWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
@@ -299,7 +384,7 @@ class TestInterface2Proxy final {
   void GetPersonInfoAsync(
       const base::Callback<void(const std::string& /*name*/, int32_t /*age*/)>& success_callback,
       const base::Callback<void(chromeos::Error*)>& error_callback,
-      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) {
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
     chromeos::dbus_utils::CallMethodWithTimeout(
         timeout_ms,
         dbus_object_proxy_,
@@ -347,8 +432,21 @@ const char kExpectedContentWithService[] = R"literal_string(
 namespace org {
 namespace chromium {
 
+// Abstract interface proxy for org::chromium::TestInterface.
+class TestInterfaceProxyInterface {
+ public:
+ protected:
+  ~TestInterfaceProxyInterface() = default;
+};
+
+}  // namespace chromium
+}  // namespace org
+
+namespace org {
+namespace chromium {
+
 // Interface proxy for org::chromium::TestInterface.
-class TestInterfaceProxy final {
+class TestInterfaceProxy final : public TestInterfaceProxyInterface {
  public:
   TestInterfaceProxy(const scoped_refptr<dbus::Bus>& bus) :
       bus_{bus},
@@ -395,8 +493,21 @@ class TestInterfaceProxy final {
 namespace org {
 namespace chromium {
 
+// Abstract interface proxy for org::chromium::TestInterface2.
+class TestInterface2ProxyInterface {
+ public:
+ protected:
+  ~TestInterface2ProxyInterface() = default;
+};
+
+}  // namespace chromium
+}  // namespace org
+
+namespace org {
+namespace chromium {
+
 // Interface proxy for org::chromium::TestInterface2.
-class TestInterface2Proxy final {
+class TestInterface2Proxy final : public TestInterface2ProxyInterface {
  public:
   TestInterface2Proxy(
       const scoped_refptr<dbus::Bus>& bus,
@@ -464,8 +575,23 @@ class ObjectManagerProxy;
 namespace org {
 namespace chromium {
 
+// Abstract interface proxy for org::chromium::Itf1.
+class Itf1ProxyInterface {
+ public:
+  virtual const std::string& data() const = 0;
+
+ protected:
+  ~Itf1ProxyInterface() = default;
+};
+
+}  // namespace chromium
+}  // namespace org
+
+namespace org {
+namespace chromium {
+
 // Interface proxy for org::chromium::Itf1.
-class Itf1Proxy final {
+class Itf1Proxy final : public Itf1ProxyInterface {
  public:
   class PropertySet : public dbus::PropertySet {
    public:
@@ -526,7 +652,7 @@ class Itf1Proxy final {
   const PropertySet* GetProperties() const { return property_set_; }
   PropertySet* GetProperties() { return property_set_; }
 
-  const std::string& data() const {
+  const std::string& data() const override {
     return property_set_->data.value();
   }
 
@@ -553,8 +679,21 @@ class Itf1Proxy final {
 namespace org {
 namespace chromium {
 
+// Abstract interface proxy for org::chromium::Itf2.
+class Itf2ProxyInterface {
+ public:
+ protected:
+  ~Itf2ProxyInterface() = default;
+};
+
+}  // namespace chromium
+}  // namespace org
+
+namespace org {
+namespace chromium {
+
 // Interface proxy for org::chromium::Itf2.
-class Itf2Proxy final {
+class Itf2Proxy final : public Itf2ProxyInterface {
  public:
   class PropertySet : public dbus::PropertySet {
    public:
@@ -815,8 +954,21 @@ class ObjectManagerProxy;
 namespace org {
 namespace chromium {
 
+// Abstract interface proxy for org::chromium::Itf1.
+class Itf1ProxyInterface {
+ public:
+ protected:
+  ~Itf1ProxyInterface() = default;
+};
+
+}  // namespace chromium
+}  // namespace org
+
+namespace org {
+namespace chromium {
+
 // Interface proxy for org::chromium::Itf1.
-class Itf1Proxy final {
+class Itf1Proxy final : public Itf1ProxyInterface {
  public:
   class PropertySet : public dbus::PropertySet {
    public:
@@ -877,8 +1029,21 @@ class Itf1Proxy final {
 namespace org {
 namespace chromium {
 
+// Abstract interface proxy for org::chromium::Itf2.
+class Itf2ProxyInterface {
+ public:
+ protected:
+  ~Itf2ProxyInterface() = default;
+};
+
+}  // namespace chromium
+}  // namespace org
+
+namespace org {
+namespace chromium {
+
 // Interface proxy for org::chromium::Itf2.
-class Itf2Proxy final {
+class Itf2Proxy final : public Itf2ProxyInterface {
  public:
   class PropertySet : public dbus::PropertySet {
    public:

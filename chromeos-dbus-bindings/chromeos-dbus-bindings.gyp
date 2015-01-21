@@ -81,6 +81,7 @@
             'indented_text_unittest.cc',
             'method_name_generator_unittest.cc',
             'name_parser_unittest.cc',
+            'proxy_generator_mock_unittest.cc',
             'proxy_generator_unittest.cc',
             'xml_interface_parser_unittest.cc',
           ],
