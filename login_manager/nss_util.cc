@@ -5,6 +5,7 @@
 #include "login_manager/nss_util.h"
 
 #include <stdint.h>
+#include <stdlib.h>
 
 #include <string>
 #include <utility>
@@ -113,6 +114,8 @@ const uint16_t NssUtilImpl::kKeySizeInBits = 2048;
 const char NssUtilImpl::kNssdbSubpath[] = ".pki/nssdb";
 
 NssUtilImpl::NssUtilImpl() {
+  if (setenv("NSS_SDB_USE_CACHE", "no", 1) == -1)
+    PLOG(WARNING) << "Can't set NSS_SDB_USE_CACHE=no in the environment!";
   crypto::EnsureNSSInit();
 }
 
