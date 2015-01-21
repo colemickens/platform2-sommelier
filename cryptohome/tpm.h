@@ -543,11 +543,8 @@ class Tpm {
                                bool* lockout,
                                int* seconds_remaining);
 
-  // Requires owner permissions so a |delegate_blob| and |delegate_secret| for
-  // an owner delegate must be provided.
-  bool ResetDictionaryAttackMitigation(
-      const chromeos::SecureBlob& delegate_blob,
-      const chromeos::SecureBlob& delegate_secret);
+  // Requires owner permissions.
+  bool ResetDictionaryAttackMitigation();
 
  protected:
   // Default constructor
