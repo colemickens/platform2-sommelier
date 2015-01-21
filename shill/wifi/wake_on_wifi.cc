@@ -23,6 +23,7 @@
 #include "shill/ip_address_store.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
+#include "shill/net/event_history.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/property_accessor.h"
@@ -55,6 +56,11 @@ const int WakeOnWiFi::kMetricsReportingFrequencySeconds = 600;
 const uint32_t WakeOnWiFi::kDefaultWakeToScanPeriodSeconds = 900;
 const uint32_t WakeOnWiFi::kDefaultNetDetectScanPeriodSeconds = 120;
 const uint32_t WakeOnWiFi::kImmediateDHCPLeaseRenewalThresholdSeconds = 60;
+// We tolerate no more than 5 dark resumes where we wake up disconnected per
+// minute before throttling the feature (i.e. disabling wake on WiFi on the
+// NIC).
+const int WakeOnWiFi::kDarkResumeFrequencySamplingPeriodMinutes = 1;
+const int WakeOnWiFi::kMaxDarkResumesPerPeriod = 5;
 // If a connection is not established during dark resume, give up and prepare
 // the system to wake on SSID 1 second before suspending again.
 // TODO(samueltan): link this to
@@ -86,6 +92,7 @@ WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
       in_dark_resume_(false),
       wake_to_scan_period_seconds_(kDefaultWakeToScanPeriodSeconds),
       net_detect_scan_period_seconds_(kDefaultNetDetectScanPeriodSeconds),
+      dark_resumes_since_last_suspend_(kMaxDarkResumesPerPeriod),
       weak_ptr_factory_(this) {
 }
 
@@ -727,6 +734,8 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
           &set_wowlan_msg, wake_on_wifi_triggers_, wake_on_packet_connections_,
           wiphy_index_, &error)) {
     LOG(ERROR) << error.message();
+    RunAndResetSuspendActionsDoneCallback(
+        Error(Error::kOperationFailed, error.message()));
     return;
   }
   if (!netlink_manager_->SendNl80211Message(
@@ -735,7 +744,8 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
           Bind(&NetlinkManager::OnAckDoNothing),
           Bind(&WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse,
                weak_ptr_factory_.GetWeakPtr()))) {
-    RunAndResetSuspendActionsDoneCallback(Error(Error::kOperationFailed));
+    RunAndResetSuspendActionsDoneCallback(
+        Error(Error::kOperationFailed, "SendNl80211Message failed"));
     return;
   }
 
@@ -754,6 +764,8 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
   if (!ConfigureDisableWakeOnWiFiMessage(&disable_wowlan_msg, wiphy_index_,
                                          &error)) {
     LOG(ERROR) << error.message();
+    RunAndResetSuspendActionsDoneCallback(
+        Error(Error::kOperationFailed, error.message()));
     return;
   }
   wake_on_wifi_triggers_.clear();
@@ -763,7 +775,8 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
           Bind(&NetlinkManager::OnAckDoNothing),
           Bind(&WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse,
                weak_ptr_factory_.GetWeakPtr()))) {
-    RunAndResetSuspendActionsDoneCallback(Error(Error::kOperationFailed));
+    RunAndResetSuspendActionsDoneCallback(
+        Error(Error::kOperationFailed, "SendNl80211Message failed"));
     return;
   }
 
@@ -922,6 +935,7 @@ void WakeOnWiFi::OnBeforeSuspend(
   done_callback.Run(Error(Error::kSuccess));
 #else
   suspend_actions_done_callback_ = done_callback;
+  dark_resumes_since_last_suspend_.Clear();
   if (have_dhcp_lease && is_connected &&
       time_to_next_lease_renewal < kImmediateDHCPLeaseRenewalThresholdSeconds) {
     // Renew DHCP lease immediately if we have one that is expiring soon.
@@ -964,8 +978,32 @@ void WakeOnWiFi::OnDarkResume(
 #if defined(DISABLE_WAKE_ON_WIFI)
   done_callback.Run(Error(Error::kSuccess));
 #else
-  in_dark_resume_ = true;
   suspend_actions_done_callback_ = done_callback;
+  if (!is_connected) {
+    // Only record dark resume events where we wake up disconnected, since there
+    // are valid scenarios where we would dark resume frequently in a connected
+    // state (e.g. when wake on packet is enabled when there is a brief spike in
+    // incoming network traffic).
+    dark_resumes_since_last_suspend_.RecordEventAndExpireEventsBefore(
+        kDarkResumeFrequencySamplingPeriodMinutes * 60, true);
+  }
+  if (dark_resumes_since_last_suspend_.Size() >=
+      static_cast<size_t>(kMaxDarkResumesPerPeriod)) {
+    LOG(ERROR) << __func__ << ": "
+               << "Too many dark resumes; disabling wake on WiFi";
+    // If too many dark resumes have triggered recently, we are probably
+    // thrashing. Stop this by disabling wake on WiFi on the NIC and
+    // stopping all RTC timers that might trigger another dark resume.
+    dhcp_lease_renewal_timer_.Stop();
+    wake_to_scan_timer_.Stop();
+    DisableWakeOnWiFi();
+    dark_resumes_since_last_suspend_.Clear();
+    return;
+  }
+  // Only set dark resume to true after checking if we need to disable wake on
+  // WiFi since calling WakeOnWiFi::DisableWakeOnWiFi directly bypasses
+  // WakeOnWiFi::BeforeSuspendActions where |in_dark_resume_| is set to false.
+  in_dark_resume_ = true;
   // Assume that we are disconnected if we time out. Consequently, we do not
   // need to start a DHCP lease renewal timer.
   dark_resume_actions_timeout_callback_.Reset(

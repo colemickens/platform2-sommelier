@@ -615,6 +615,10 @@ class WakeOnWiFiTest : public ::testing::Test {
         Bind(&WakeOnWiFiTest::DoneCallback, Unretained(this));
   }
 
+  void ResetSuspendActionsDoneCallback() {
+    wake_on_wifi_->suspend_actions_done_callback_.Reset();
+  }
+
   bool SuspendActionsCallbackIsNull() {
     return wake_on_wifi_->suspend_actions_done_callback_.is_null();
   }
@@ -811,6 +815,10 @@ class WakeOnWiFiTest : public ::testing::Test {
     wake_on_wifi_->OnNoAutoConnectableServicesAfterScan(
         has_service_configured_for_autoconnect,
         remove_supplicant_networks_callback);
+  }
+
+  EventHistory *GetDarkResumesSinceLastSuspend() {
+    return &wake_on_wifi_->dark_resumes_since_last_suspend_;
   }
 
   MOCK_METHOD1(DoneCallback, void(const Error &error));
@@ -1733,6 +1741,16 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, AddRemoveWakeOnPacketConnection) {
   EXPECT_FALSE(GetWakeOnPacketConnections()->Contains(ip_addr3));
 }
 
+TEST_F(WakeOnWiFiTestWithDispatcher, OnBeforeSuspend_ClearsEventHistory) {
+  const int kNumEvents = WakeOnWiFi::kMaxDarkResumesPerPeriod - 1;
+  for (int i = 0; i < kNumEvents; ++i) {
+    GetDarkResumesSinceLastSuspend()->RecordEvent();
+  }
+  EXPECT_EQ(kNumEvents, GetDarkResumesSinceLastSuspend()->Size());
+  OnBeforeSuspend(true, true, true, 0);
+  EXPECT_TRUE(GetDarkResumesSinceLastSuspend()->Empty());
+}
+
 TEST_F(WakeOnWiFiTestWithMockDispatcher, OnBeforeSuspend_DHCPLeaseRenewal) {
   bool is_connected;
   bool have_dhcp_lease;
@@ -1819,6 +1837,14 @@ TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_Connected_LeaseObtained) {
   VerifyStateConnectedBeforeSuspend();
 }
 
+TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_Connected_DoNotRecordEvent) {
+  const bool is_connected = true;
+  const bool has_service_configured_for_autoconnect = true;
+  EXPECT_TRUE(GetDarkResumesSinceLastSuspend()->Empty());
+  OnDarkResume(is_connected, has_service_configured_for_autoconnect);
+  EXPECT_TRUE(GetDarkResumesSinceLastSuspend()->Empty());
+}
+
 TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_NotConnected_Timeout) {
   // Test that correct actions are taken if we enter OnDarkResume while
   // not connected in dark resume.
@@ -1865,6 +1891,42 @@ TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_NotConnected_LeaseObtained) {
   EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
   EXPECT_FALSE(WakeToScanTimerIsRunning());
   VerifyStateConnectedBeforeSuspend();
+}
+
+TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_NotConnected_RecordEvent) {
+  const bool is_connected = false;
+  const bool has_service_configured_for_autoconnect = true;
+  EXPECT_TRUE(GetDarkResumesSinceLastSuspend()->Empty());
+  OnDarkResume(is_connected, has_service_configured_for_autoconnect);
+  EXPECT_EQ(1, GetDarkResumesSinceLastSuspend()->Size());
+}
+
+TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_NotConnected_Throttle) {
+  const bool is_connected = false;
+  bool has_service_configured_for_autoconnect = true;
+  EXPECT_TRUE(GetDarkResumesSinceLastSuspend()->Empty());
+  for (int i = 0; i < WakeOnWiFi::kMaxDarkResumesPerPeriod - 1; ++i) {
+    OnDarkResume(is_connected, has_service_configured_for_autoconnect);
+  }
+  EXPECT_EQ(WakeOnWiFi::kMaxDarkResumesPerPeriod - 1,
+            GetDarkResumesSinceLastSuspend()->Size());
+
+  // Max dark resumes per period reached, so disable wake on WiFi and stop all
+  // RTC timers.
+  SetInDarkResume(false);
+  ResetSuspendActionsDoneCallback();
+  StartDHCPLeaseRenewalTimer();
+  StartWakeToScanTimer();
+  EXPECT_TRUE(SuspendActionsCallbackIsNull());
+  EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
+  EXPECT_TRUE(WakeToScanTimerIsRunning());
+  EXPECT_FALSE(GetDarkResumesSinceLastSuspend()->Empty());
+  OnDarkResume(is_connected, has_service_configured_for_autoconnect);
+  EXPECT_FALSE(SuspendActionsCallbackIsNull());
+  EXPECT_FALSE(DHCPLeaseRenewalTimerIsRunning());
+  EXPECT_FALSE(WakeToScanTimerIsRunning());
+  EXPECT_TRUE(GetDarkResumesSinceLastSuspend()->Empty());
+  EXPECT_FALSE(GetInDarkResume());
 }
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher, OnDHCPLeaseObtained) {

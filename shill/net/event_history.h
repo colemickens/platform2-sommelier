@@ -54,6 +54,7 @@ class SHILL_EXPORT EventHistory {
   size_t Size() const { return events_.size(); }
   bool Empty() { return events_.empty(); }
   Timestamp Front() { return events_.front(); }
+  void Clear() { events_.clear(); }
 
  private:
   friend class EventHistoryTest;

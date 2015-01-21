@@ -22,6 +22,7 @@
 
 #include "shill/callbacks.h"
 #include "shill/ip_address_store.h"
+#include "shill/net/event_history.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/refptr_types.h"
@@ -176,6 +177,9 @@ class WakeOnWiFi {
   // Tests that need WakeOnWiFi::kDarkResumeActionsTimeoutMilliseconds
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
               OnBeforeSuspend_DHCPLeaseRenewal);
+  // Tests that need WakeOnWiFi::kMaxDarkResumesPerPeriod
+  FRIEND_TEST(WakeOnWiFiTestWithDispatcher, OnBeforeSuspend_ClearsEventHistory);
+  FRIEND_TEST(WakeOnWiFiTestWithDispatcher, OnDarkResume_NotConnected_Throttle);
 
   static const char kWakeOnIPAddressPatternsNotSupported[];
   static const char kWakeOnPacketDisabled[];
@@ -187,6 +191,8 @@ class WakeOnWiFi {
   static const uint32_t kDefaultWakeToScanPeriodSeconds;
   static const uint32_t kDefaultNetDetectScanPeriodSeconds;
   static const uint32_t kImmediateDHCPLeaseRenewalThresholdSeconds;
+  static const int kDarkResumeFrequencySamplingPeriodMinutes;
+  static const int kMaxDarkResumesPerPeriod;
   static int64_t DarkResumeActionsTimeoutMilliseconds;  // non-const for testing
 
   std::string GetWakeOnWiFiFeaturesEnabled(Error *error);
@@ -361,6 +367,8 @@ class WakeOnWiFi {
   // Period (in seconds) between instances where the NIC performs Net Detect
   // scans while the system is suspended.
   uint32_t net_detect_scan_period_seconds_;
+  // Timestamps of dark resume wakes since the last suspend.
+  EventHistory dark_resumes_since_last_suspend_;
 
   base::WeakPtrFactory<WakeOnWiFi> weak_ptr_factory_;
 
