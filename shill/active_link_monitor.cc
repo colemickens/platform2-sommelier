@@ -50,7 +50,10 @@ ActiveLinkMonitor::ActiveLinkMonitor(const ConnectionRefPtr &connection,
       device_info_(device_info),
       failure_callback_(failure_callback),
       success_callback_(success_callback),
-      arp_client_(new ArpClient(connection->interface_index())),
+      // Connection is not provided when this is used as a mock for testing
+      // purpose.
+      arp_client_(
+          new ArpClient(connection ? connection->interface_index() : 0)),
       test_period_milliseconds_(kDefaultTestPeriodMilliseconds),
       broadcast_failure_count_(0),
       unicast_failure_count_(0),
@@ -68,6 +71,7 @@ ActiveLinkMonitor::~ActiveLinkMonitor() {
 }
 
 bool ActiveLinkMonitor::Start(int test_period) {
+  SLOG(connection_.get(), 2) << "In " << __func__ << ".";
   StopMonitorCycle();
   return StartInternal(test_period);
 }
@@ -309,7 +313,7 @@ void ActiveLinkMonitor::SendRequest() {
   } else if (is_unicast_) {
     destination_mac_address = gateway_mac_address_;
   }
-  LOG(INFO) << "IsGatway " << IsGatewayFound() << " unicast: " << is_unicast_;
+
   ArpPacket request(connection_->local(), connection_->gateway(),
                     local_mac_address_, destination_mac_address);
   if (!arp_client_->TransmitRequest(request)) {

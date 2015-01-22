@@ -36,13 +36,14 @@ PassiveLinkMonitor::PassiveLinkMonitor(const ConnectionRefPtr &connection,
                                        const ResultCallback &result_callback)
     : connection_(connection),
       dispatcher_(dispatcher),
-      arp_client_(new ArpClient(connection->interface_index())),
+      // Connection is not provided when this is used as a mock for testing
+      // purpose.
+      arp_client_(
+          new ArpClient(connection ? connection->interface_index() : 0)),
       result_callback_(result_callback),
       num_cycles_to_monitor_(kDefaultMonitorCycles),
       num_requests_received_(0),
-      num_cycles_passed_(0),
-      monitor_cycle_timeout_callback_(
-          Bind(&PassiveLinkMonitor::CycleTimeoutHandler, Unretained(this))) {
+      num_cycles_passed_(0) {
 }
 
 PassiveLinkMonitor::~PassiveLinkMonitor() {
@@ -50,12 +51,15 @@ PassiveLinkMonitor::~PassiveLinkMonitor() {
 }
 
 bool PassiveLinkMonitor::Start(int num_cycles) {
+  SLOG(connection_.get(), 2) << "In " << __func__ << ".";
   Stop();
 
   if (!StartArpClient()) {
     return false;
   }
   // Start the monitor cycle.
+  monitor_cycle_timeout_callback_.Reset(
+      Bind(&PassiveLinkMonitor::CycleTimeoutHandler, Unretained(this)));
   dispatcher_->PostDelayedTask(monitor_cycle_timeout_callback_.callback(),
                                kCyclePeriodMilliseconds);
   num_cycles_to_monitor_ = num_cycles;

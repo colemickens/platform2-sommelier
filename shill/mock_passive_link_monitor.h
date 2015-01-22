@@ -12,6 +12,8 @@
 
 namespace shill {
 
+class Connection;
+
 class MockPassiveLinkMonitor : public PassiveLinkMonitor {
  public:
   MockPassiveLinkMonitor();

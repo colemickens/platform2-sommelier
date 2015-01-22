@@ -80,8 +80,19 @@ class ActiveLinkMonitor {
   // gateway via broadcast ARP.
   bool IsGatewayFound() const;
 
-  const ByteString &gateway_mac_address() const {
+  virtual const ByteString &gateway_mac_address() const {
     return gateway_mac_address_;
+  }
+  virtual void set_gateway_mac_address(const ByteString &gateway_mac_address) {
+    gateway_mac_address_ = gateway_mac_address;
+  }
+
+  virtual bool gateway_supports_unicast_arp() const {
+    return gateway_supports_unicast_arp_;
+  }
+  virtual void set_gateway_supports_unicast_arp(
+      bool gateway_supports_unicast_arp) {
+    gateway_supports_unicast_arp_ = gateway_supports_unicast_arp;
   }
 
  private:
