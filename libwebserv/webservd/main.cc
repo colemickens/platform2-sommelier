@@ -10,6 +10,8 @@
 #include <chromeos/daemons/dbus_daemon.h>
 #include <chromeos/syslog_logging.h>
 
+#include "libwebserv/webservd/manager.h"
+
 using chromeos::dbus_utils::AsyncEventSequencer;
 
 namespace {
@@ -23,10 +25,15 @@ class Daemon : public chromeos::DBusServiceDaemon {
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
-    // TODO(avakulenko)
+    manager_.reset(new webservd::Manager{object_manager_.get()});
+    manager_->RegisterAsync(
+        sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
+    LOG(INFO) << "webservd starting...";
   }
 
  private:
+  std::unique_ptr<webservd::Manager> manager_;
+
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
 

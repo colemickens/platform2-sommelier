@@ -3,5 +3,9 @@
 <node name="/org/chromium/WebServer/Manager"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.WebServer.Manager">
+    <method name="Ping">
+      <arg name="message" type="s" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>

@@ -59,6 +59,7 @@
         'webservd/dbus_bindings/org.chromium.WebServer.Manager.xml',
         'webservd/dbus_bindings/org.chromium.WebServer.Server.xml',
         'webservd/main.cc',
+        'webservd/manager.cc',
       ],
       'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     },
