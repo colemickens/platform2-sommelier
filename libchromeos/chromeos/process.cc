@@ -181,11 +181,10 @@ bool ProcessImpl::Start() {
     }
     if (!output_file_.empty()) {
       int output_handle = HANDLE_EINTR(open(
-          output_file_.c_str(), O_CREAT | O_WRONLY | O_TRUNC | O_EXCL, 0666));
-      int saved_errno = errno;
+          output_file_.c_str(), O_CREAT | O_WRONLY | O_TRUNC | O_NOFOLLOW,
+          0666));
       if (output_handle < 0) {
-        LOG(ERROR) << "Could not create " << output_file_ << ": "
-                   << saved_errno;
+        PLOG(ERROR) << "Could not create " << output_file_;
         // Avoid exit() to avoid atexit handlers from parent.
         _exit(kErrorExitStatus);
       }
