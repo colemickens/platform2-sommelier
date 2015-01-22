@@ -649,6 +649,19 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
       error->CopyFrom(set_error);
     }
   }
+  SLOG(this, 5) << "Configuring key value store properties:";
+  for (const auto &key_value_it : args.key_value_store_properties()) {
+    if (ContainsKey(parameters_ignored_for_configure_, key_value_it.first)) {
+      continue;
+    }
+    SLOG(this, 5) << "   " << key_value_it.first;
+    Error set_error;
+    store_.SetKeyValueStoreProperty(key_value_it.first,
+                                    key_value_it.second, &set_error);
+    if (error->IsSuccess() && set_error.IsFailure()) {
+      error->CopyFrom(set_error);
+    }
+  }
   SLOG(this, 5) << "Configuring string properties:";
   for (const auto &string_it : args.string_properties()) {
     if (ContainsKey(parameters_ignored_for_configure_, string_it.first)) {
@@ -726,6 +739,17 @@ bool Service::DoPropertiesMatch(const KeyValueStore &args) const {
     vector<string> value;
     if (!store_.GetStringsProperty(strings_it.first, &value, &get_error) ||
         value != strings_it.second) {
+      return false;
+    }
+  }
+  SLOG(this, 5) << "Checking key value store properties:";
+  for (const auto &key_value_it : args.key_value_store_properties()) {
+    SLOG(this, 5) << "   " << key_value_it.first;
+    Error get_error;
+    KeyValueStore value;
+    if (!store_.GetKeyValueStoreProperty(
+            key_value_it.first, &value, &get_error) ||
+        !value.Equals(key_value_it.second)) {
       return false;
     }
   }

@@ -251,6 +251,22 @@ void DBusAdaptor::ArgsToKeyValueStore(
     } else if (key_value_pair.second.signature() == string_type.sig()) {
       SLOG(nullptr, 5) << "Got string property " << key;
       out->SetString(key, key_value_pair.second.reader().get_string());
+    } else if (DBusAdaptor::IsKeyValueStore(
+                   key_value_pair.second.signature())) {
+      // Unwrap a recursive KeyValueStore object.
+      KeyValueStore store;
+      Error convert_error;
+      DBusAdaptor::ArgsToKeyValueStore(
+          key_value_pair.second.operator map<string, ::DBus::Variant>(),
+          &store,
+          &convert_error);
+      if (convert_error.IsSuccess()) {
+          out->SetKeyValueStore(key, store);
+      } else {
+          Error::PopulateAndLog(FROM_HERE, error, convert_error.type(),
+                                convert_error.message() + " in sub-key " + key);
+          return;  // Skip remaining args after error.
+      }
     } else if (DBusAdaptor::IsStrings(key_value_pair.second.signature())) {
       SLOG(nullptr, 5) << "Got strings property " << key;
       out->SetStrings(key, key_value_pair.second.operator vector<string>());

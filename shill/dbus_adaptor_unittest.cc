@@ -327,6 +327,12 @@ TEST_F(DBusAdaptorTest, ArgsToKeyValueStore) {
   const char kStringsKey[] = "strings_key";
   writer = args[kStringsKey].writer();
   writer << kStrings;
+  map<string, ::DBus::Variant> variant_map;
+  const char kVariantMapSubKey[] = "map_sub_key";
+  variant_map[kVariantMapSubKey] = DBusAdaptor::BoolToVariant(true);
+  const char kVariantMapKey[] = "map_key";
+  writer = args[kVariantMapKey].writer();
+  writer << variant_map;
   DBusAdaptor::ArgsToKeyValueStore(args, &args_kv, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kBool, args_kv.GetBool(kBoolKey));
@@ -334,6 +340,9 @@ TEST_F(DBusAdaptorTest, ArgsToKeyValueStore) {
   EXPECT_EQ(kString, args_kv.GetString(kStringKey));
   EXPECT_EQ(kStringmap, args_kv.GetStringmap(kStringmapKey));
   EXPECT_EQ(kStrings, args_kv.GetStrings(kStringsKey));
+  KeyValueStore property_map;
+  property_map.SetBool(kVariantMapSubKey, true);
+  EXPECT_TRUE(property_map.Equals(args_kv.GetKeyValueStore(kVariantMapKey)));
 }
 
 TEST_F(DBusAdaptorTest, KeyValueStoreToVariant) {

@@ -35,6 +35,7 @@ class KeyValueStore {
 
   bool ContainsBool(const std::string &name) const;
   bool ContainsInt(const std::string &name) const;
+  bool ContainsKeyValueStore(const std::string &name) const;
   bool ContainsString(const std::string &name) const;
   bool ContainsStringmap(const std::string &name) const;
   bool ContainsStrings(const std::string &name) const;
@@ -42,6 +43,7 @@ class KeyValueStore {
 
   bool GetBool(const std::string &name) const;
   int32_t GetInt(const std::string &name) const;
+  const KeyValueStore &GetKeyValueStore(const std::string &name) const;
   const std::string &GetString(const std::string &name) const;
   const std::map<std::string, std::string> &GetStringmap(
       const std::string &name) const;
@@ -50,6 +52,7 @@ class KeyValueStore {
 
   void SetBool(const std::string &name, bool value);
   void SetInt(const std::string &name, int32_t value);
+  void SetKeyValueStore(const std::string &name, const KeyValueStore &value);
   void SetString(const std::string &name, const std::string &value);
   void SetStringmap(const std::string &name,
                     const std::map<std::string, std::string> &value);
@@ -61,6 +64,7 @@ class KeyValueStore {
   void RemoveStringmap(const std::string &name);
   void RemoveStrings(const std::string &name);
   void RemoveInt(const std::string &name);
+  void RemoveKeyValueStore(const std::string &name);
 
   // If |name| is in this store returns its value, otherwise returns
   // |default_value|.
@@ -74,6 +78,10 @@ class KeyValueStore {
   }
   const std::map<std::string, int32_t> &int_properties() const {
     return int_properties_;
+  }
+  const std::map<std::string, KeyValueStore>
+      &key_value_store_properties() const {
+    return key_value_store_properties_;
   }
   const std::map<std::string, std::string> &string_properties() const {
     return string_properties_;
@@ -92,8 +100,12 @@ class KeyValueStore {
   }
 
  private:
+  // Recursively compare KeyValueStore properties with |other|.
+  bool KeyValueStorePropertiesAreEqual(const KeyValueStore &other) const;
+
   std::map<std::string, bool> bool_properties_;
   std::map<std::string, int32_t> int_properties_;
+  std::map<std::string, KeyValueStore> key_value_store_properties_;
   std::map<std::string, std::string> string_properties_;
   std::map<std::string,
            std::map<std::string, std::string>> stringmap_properties_;

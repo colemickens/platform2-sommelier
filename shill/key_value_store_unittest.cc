@@ -52,6 +52,20 @@ TEST_F(KeyValueStoreTest, Int) {
   EXPECT_FALSE(store_.ContainsInt(kKey));
 }
 
+TEST_F(KeyValueStoreTest, KeyValueStore) {
+  const string kSubKey("foo");
+  const map<string, string> kSubValue{ { "bar0", "baz0" }, { "bar1", "baz1" } };
+  KeyValueStore value;
+  value.SetStringmap(kSubKey, kSubValue);
+  const string kKey("foo");
+  EXPECT_FALSE(store_.ContainsKeyValueStore(kKey));
+  store_.SetKeyValueStore(kKey, value);
+  EXPECT_TRUE(store_.ContainsKeyValueStore(kKey));
+  EXPECT_TRUE(value.Equals(store_.GetKeyValueStore(kKey)));
+  store_.RemoveKeyValueStore(kKey);
+  EXPECT_FALSE(store_.ContainsKeyValueStore(kKey));
+}
+
 TEST_F(KeyValueStoreTest, String) {
   const string kKey("foo");
   const string kDefaultValue("bar");
@@ -116,6 +130,9 @@ TEST_F(KeyValueStoreTest, Clear) {
   const string kIntKey("bar");
   const int kIntValue = 123;
   store_.SetInt(kIntKey, kIntValue);
+  const string kKeyValueStoreKey("bear");
+  const KeyValueStore kKeyValueStoreValue;
+  store_.SetKeyValueStore(kKeyValueStoreKey, kKeyValueStoreValue);
   const string kStringKey("baz");
   const string kStringValue("string");
   store_.SetString(kStringKey, kStringValue);
@@ -131,6 +148,7 @@ TEST_F(KeyValueStoreTest, Clear) {
 
   EXPECT_TRUE(store_.ContainsBool(kBoolKey));
   EXPECT_TRUE(store_.ContainsInt(kIntKey));
+  EXPECT_TRUE(store_.ContainsKeyValueStore(kKeyValueStoreKey));
   EXPECT_TRUE(store_.ContainsString(kStringKey));
   EXPECT_TRUE(store_.ContainsStringmap(kStringmapKey));
   EXPECT_TRUE(store_.ContainsStrings(kStringsKey));
@@ -140,6 +158,7 @@ TEST_F(KeyValueStoreTest, Clear) {
   EXPECT_TRUE(store_.IsEmpty());
   EXPECT_FALSE(store_.ContainsBool(kBoolKey));
   EXPECT_FALSE(store_.ContainsInt(kIntKey));
+  EXPECT_FALSE(store_.ContainsInt(kKeyValueStoreKey));
   EXPECT_FALSE(store_.ContainsString(kStringKey));
   EXPECT_FALSE(store_.ContainsStringmap(kStringmapKey));
   EXPECT_FALSE(store_.ContainsStrings(kStringsKey));
@@ -179,6 +198,23 @@ TEST_F(KeyValueStoreTest, Equals) {
   second.Clear();
   first.SetInt("intKey", 123);
   second.SetInt("intKey", 456);
+  EXPECT_FALSE(first.Equals(second));
+
+  KeyValueStore key_value0;
+  key_value0.SetInt("intKey", 123);
+  KeyValueStore key_value1;
+  key_value1.SetInt("intOtherKey", 123);
+
+  first.Clear();
+  second.Clear();
+  first.SetKeyValueStore("keyValueKey", key_value0);
+  second.SetKeyValueStore("keyValueKey", key_value1);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetKeyValueStore("keyValueKey", key_value0);
+  second.SetKeyValueStore("keyValueOtherKey", key_value0);
   EXPECT_FALSE(first.Equals(second));
 
   first.Clear();
@@ -267,6 +303,10 @@ TEST_F(KeyValueStoreTest, CopyFrom) {
   const string kIntKey("bar");
   const int kIntValue = 123;
   donor.SetInt(kIntKey, kIntValue);
+  const string kKeyValueStoreKey("bear");
+  KeyValueStore keyValueStoreValue;
+  keyValueStoreValue.SetInt(kIntKey, kIntValue);
+  donor.SetKeyValueStore(kKeyValueStoreKey, keyValueStoreValue);
   const string kStringKey("baz");
   const string kStringValue("string");
   donor.SetString(kStringKey, kStringValue);

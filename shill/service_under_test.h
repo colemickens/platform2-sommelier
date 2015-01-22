@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "shill/key_value_store.h"
 #include "shill/service.h"
 
 namespace shill {
@@ -21,6 +22,7 @@ class Metrics;
 // This is a simple Service subclass with all the pure-virtual methods stubbed.
 class ServiceUnderTest : public Service {
  public:
+  static const char kKeyValueStoreProperty[];
   static const char kRpcId[];
   static const char kStringsProperty[];
   static const char kStorageId[];
@@ -41,10 +43,15 @@ class ServiceUnderTest : public Service {
   }
   const std::vector<std::string> &strings() const { return strings_; }
 
+  // Getter and setter for a KeyValueStore property for use in testing.
+  bool SetKeyValueStore(const KeyValueStore &value, Error *error);
+  KeyValueStore GetKeyValueStore(Error *error);
+
  private:
-  // The Service superclass has no string array properties but we need one
-  // in order to test Service::Configure.
+  // The Service superclass has no string array or KeyValueStore properties
+  // but we need them in order to test Service::Configure.
   std::vector<std::string> strings_;
+  KeyValueStore key_value_store_;
 
   DISALLOW_COPY_AND_ASSIGN(ServiceUnderTest);
 };

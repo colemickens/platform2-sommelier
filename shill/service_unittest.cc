@@ -1210,6 +1210,22 @@ TEST_F(ServiceTest, ConfigureProfileProperty) {
   EXPECT_TRUE(error.IsSuccess());
 }
 
+TEST_F(ServiceTest, ConfigureKeyValueStoreProperty) {
+  KeyValueStore key_value_store0;
+  key_value_store0.SetBool("key0", true);
+  KeyValueStore key_value_store1;
+  key_value_store1.SetInt("key1", 1);
+  service_->SetKeyValueStore(key_value_store0, NULL);
+  ASSERT_TRUE(key_value_store0.Equals(service_->GetKeyValueStore(NULL)));
+  KeyValueStore args;
+  args.SetKeyValueStore(
+      ServiceUnderTest::kKeyValueStoreProperty, key_value_store1);
+  Error error;
+  service_->Configure(args, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(key_value_store1.Equals(service_->GetKeyValueStore(NULL)));
+}
+
 TEST_F(ServiceTest, DoPropertiesMatch) {
   service_->SetAutoConnect(false);
   const string kGUID0 = "guid_zero";
@@ -1221,6 +1237,11 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
   const vector<string> kStrings0{ "string0", "string1" };
   const vector<string> kStrings1{ "string2", "string3" };
   service_->set_strings(kStrings0);
+  KeyValueStore key_value_store0;
+  key_value_store0.SetBool("key0", true);
+  KeyValueStore key_value_store1;
+  key_value_store1.SetInt("key1", 1);
+  service_->SetKeyValueStore(key_value_store0, NULL);
 
   {
     KeyValueStore args;
@@ -1228,6 +1249,8 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
     args.SetBool(kAutoConnectProperty, false);
     args.SetInt(kPriorityProperty, kPriority0);
     args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings0);
+    args.SetKeyValueStore(ServiceUnderTest::kKeyValueStoreProperty,
+                          key_value_store0);
     EXPECT_TRUE(service_->DoPropertiesMatch(args));
   }
   {
@@ -1236,6 +1259,8 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
     args.SetBool(kAutoConnectProperty, false);
     args.SetInt(kPriorityProperty, kPriority0);
     args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings0);
+    args.SetKeyValueStore(ServiceUnderTest::kKeyValueStoreProperty,
+                          key_value_store0);
     EXPECT_FALSE(service_->DoPropertiesMatch(args));
   }
   {
@@ -1244,6 +1269,8 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
     args.SetBool(kAutoConnectProperty, true);
     args.SetInt(kPriorityProperty, kPriority0);
     args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings0);
+    args.SetKeyValueStore(ServiceUnderTest::kKeyValueStoreProperty,
+                          key_value_store0);
     EXPECT_FALSE(service_->DoPropertiesMatch(args));
   }
   {
@@ -1252,6 +1279,8 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
     args.SetBool(kAutoConnectProperty, false);
     args.SetInt(kPriorityProperty, kPriority1);
     args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings0);
+    args.SetKeyValueStore(ServiceUnderTest::kKeyValueStoreProperty,
+                          key_value_store0);
     EXPECT_FALSE(service_->DoPropertiesMatch(args));
   }
   {
@@ -1260,6 +1289,18 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
     args.SetBool(kAutoConnectProperty, false);
     args.SetInt(kPriorityProperty, kPriority0);
     args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings1);
+    args.SetKeyValueStore(ServiceUnderTest::kKeyValueStoreProperty,
+                          key_value_store0);
+    EXPECT_FALSE(service_->DoPropertiesMatch(args));
+  }
+  {
+    KeyValueStore args;
+    args.SetString(kGuidProperty, kGUID0);
+    args.SetBool(kAutoConnectProperty, false);
+    args.SetInt(kPriorityProperty, kPriority0);
+    args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings0);
+    args.SetKeyValueStore(ServiceUnderTest::kKeyValueStoreProperty,
+                          key_value_store1);
     EXPECT_FALSE(service_->DoPropertiesMatch(args));
   }
 }
