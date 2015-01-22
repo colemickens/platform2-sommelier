@@ -35,6 +35,7 @@ namespace peer {
 const char kInvalidUUID[] = "peer.uuid";
 const char kInvalidTime[] = "peer.time";
 const char kUnknownService[] = "peer.unknown_service";
+const char kDuplicateServiceID[] = "peer.duplicate_service_id";
 
 }  // namespace peer
 }  // namespace errors
@@ -113,6 +114,15 @@ bool Peer::AddService(chromeos::ErrorPtr* error,
                       const Service::IpAddresses& addresses,
                       const map<string, string>& service_info,
                       const map<string, Any>& options) {
+  if (services_.find(service_id) != services_.end()) {
+    Error::AddToPrintf(error,
+                       FROM_HERE,
+                       kPeerdErrorDomain,
+                       errors::peer::kDuplicateServiceID,
+                       "Cannot add service with duplicate service ID %s.",
+                       service_id.c_str());
+    return false;
+  }
   ObjectPath service_path(service_path_prefix_.value() +
                           std::to_string(++services_added_));
   // TODO(wiley): There is a potential race here.  If we remove the service

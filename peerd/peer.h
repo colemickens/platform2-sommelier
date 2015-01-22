@@ -30,6 +30,7 @@ namespace peer {
 extern const char kInvalidUUID[];
 extern const char kInvalidTime[];
 extern const char kUnknownService[];
+extern const char kDuplicateServiceID[];
 
 }  // namespace peer
 }  // namespace errors
@@ -87,6 +88,7 @@ class Peer : public org::chromium::peerd::PeerInterface {
 
   friend class PeerTest;
   friend class MockPeer;
+  FRIEND_TEST(PeerTest, ShouldRejectDuplicateServiceID);
   DISALLOW_COPY_AND_ASSIGN(Peer);
 };
 

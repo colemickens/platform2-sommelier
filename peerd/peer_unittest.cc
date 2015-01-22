@@ -25,6 +25,7 @@ using dbus::MockBus;
 using dbus::MockExportedObject;
 using dbus::ObjectPath;
 using peerd::Peer;
+using peerd::errors::peer::kDuplicateServiceID;
 using peerd::errors::peer::kInvalidTime;
 using peerd::errors::peer::kInvalidUUID;
 using peerd::test_util::MakeMockCompletionAction;
@@ -141,6 +142,15 @@ TEST_F(PeerTest, ShouldRejectStaleUpdate) {
   EXPECT_FALSE(peer->SetLastSeen(&error, base::Time::UnixEpoch()));
   ASSERT_NE(nullptr, error.get());
   EXPECT_TRUE(error->HasError(kPeerdErrorDomain, kInvalidTime));
+}
+
+TEST_F(PeerTest, ShouldRejectDuplicateServiceID) {
+  auto peer = MakePeer();
+  chromeos::ErrorPtr error;
+  const string service_id{"a-service"};
+  EXPECT_TRUE(peer->AddService(&error, service_id, {}, {}, {}));
+  EXPECT_FALSE(peer->AddService(&error, service_id, {}, {}, {}));
+  EXPECT_TRUE(error->HasError(kPeerdErrorDomain, kDuplicateServiceID));
 }
 
 }  // namespace peerd
