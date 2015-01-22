@@ -50,3 +50,6 @@ tags_sorted_by_file
 *.patch
 *.orig
 *.rej
+
+# Nested git repos.
+/glbench/images/
