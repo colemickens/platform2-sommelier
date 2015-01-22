@@ -16,6 +16,7 @@
         'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
       },
       'sources': [
+        'dbus_bindings/org.chromium.leaderd.Manager.xml',
         'manager.cc',
       ],
       'includes': ['../common-mk/generate-dbus-adaptors.gypi'],

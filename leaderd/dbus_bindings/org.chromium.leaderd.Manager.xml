@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<node name="/org/chromium/leaderd/Manager"
+      xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.leaderd.Manager">
+    <tp:docstring>
+      The Manager is responsible for global state of leaderd.  It exposes
+      functionality affecting the entire daemon, such as joining groups.
+    </tp:docstring>
+    <method name="Ping">
+      <arg name="message" type="s" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+  </interface>
+</node>
