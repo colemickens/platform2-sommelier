@@ -43,7 +43,10 @@ int main(int argc, char** argv) {
   printf("battery_charge_full %0.2f\n", status.battery_charge_full);
   printf("battery_charge_full_design %0.2f\n",
          status.battery_charge_full_design);
+  printf("battery_current %0.2f\n", status.battery_current);
+  printf("battery_energy %0.2f\n", status.battery_energy);
   printf("battery_energy_rate %0.2f\n", status.battery_energy_rate);
+  printf("battery_voltage %0.2f\n", status.battery_voltage);
   printf("battery_discharging %d\n",
          status.battery_state ==
          power_manager::PowerSupplyProperties_BatteryState_DISCHARGING);
