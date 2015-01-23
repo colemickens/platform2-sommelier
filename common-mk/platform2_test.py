@@ -16,6 +16,7 @@ import array
 import contextlib
 import errno
 import os
+import re
 import signal
 import sys
 import tempfile
@@ -29,12 +30,17 @@ from chromite.lib import retry_util
 from chromite.lib import signals
 
 
-# Env vars to let through to the test env when we do sudo.
-ENV_PASSTHRU = (
+# Compiled regular expressions for determining what environment variables to
+# let through to the test env when we do sudo. If any character at the
+# beginning of an environment variable matches one of the regular expression
+# patterns (i.e. matching via re.match), the environment variable is let
+# through.
+ENV_PASSTHRU_REGEX_LIST = [re.compile(x) for x in (
     # Used by various sanitizers.
-    'ASAN_OPTIONS',
-    'LSAN_OPTIONS',
-)
+    '[AL]SAN_OPTIONS$',
+    # Used by QEMU.
+    'QEMU_',
+)]
 
 
 class Qemu(object):
@@ -596,10 +602,12 @@ class Platform2Test(object):
 def _SudoCommand():
   """Get the 'sudo' command, along with all needed environment variables."""
   cmd = ['sudo']
-  for key in ENV_PASSTHRU:
-    value = os.environ.get(key)
-    if value is not None:
-      cmd += ['%s=%s' % (key, value)]
+  for key, value in os.environ.iteritems():
+    for pattern in ENV_PASSTHRU_REGEX_LIST:
+      if pattern.match(key):
+        cmd += ['%s=%s' % (key, value)]
+        break
+
   return cmd
 
 
