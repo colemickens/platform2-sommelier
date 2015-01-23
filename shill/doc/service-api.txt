@@ -1072,15 +1072,29 @@ Properties	boolean AutoConnect [readwrite]
 			Type property of the underliying physical service used.
 			Otherwise the property is not present.
 
-		boolean PortalDetectionFailedPhase [readonly]
+		string PortalDetectionFailedPhase [readonly]
 
 			Indicates the phase that portal detection was in
 			when it last failed.
 
-		boolean PortalDetectionFailedStatus [readonly]
+			Possible values:
+
+				DNS - During DNS lookup
+				Connection - during the TCP connection setup
+				HTTP - during the HTTP connection setup
+				Content - The content of the HTTP response
+				Unknown - Failure in an unknown step
+
+		string PortalDetectionFailedStatus [readonly]
 
 			Indicates the portal detection failure reason when
 			it last failed.
+
+			Possible values:
+
+				Failure - The attempt failed at this phase
+				Success - The attempt succeeded at this phase
+				Timeout - The attempt timed out at this phase
 
 		string PreviousError [readonly]
 
