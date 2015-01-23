@@ -66,6 +66,10 @@ class SHILL_EXPORT RTNLHandler {
                                  unsigned int flags,
                                  unsigned int change);
 
+  // Set the maximum transmission unit (MTU) for the network interface that
+  // has a kernel index of |interface_index|.
+  virtual void SetInterfaceMTU(int interface_index, unsigned int mtu);
+
   // Set address of a network interface that has a kernel index of
   // 'interface_index'.
   virtual bool AddInterfaceAddress(int interface_index,

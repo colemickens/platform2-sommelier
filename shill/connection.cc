@@ -189,6 +189,8 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
   // Install any explicitly configured routes at the default metric.
   routing_table_->ConfigureRoutes(interface_index_, config, kDefaultMetric);
 
+  SetMTU(properties.mtu);
+
   if (properties.blackhole_ipv6) {
     routing_table_->CreateBlackholeRoute(interface_index_,
                                          IPAddress::kFamilyIPv6,
@@ -455,6 +457,23 @@ bool Connection::PinHostRoute(const IPAddress &trusted_ip,
   }
 
   return RequestHostRoute(trusted_ip);
+}
+
+void Connection::SetMTU(int32_t mtu) {
+  SLOG(this, 2) << __func__ << " " << mtu;
+  // Make sure the MTU value is valid.
+  if (mtu == IPConfig::kUndefinedMTU) {
+    mtu = IPConfig::kDefaultMTU;
+  } else {
+    int min_mtu = IsIPv6() ? IPConfig::kMinIPv6MTU : IPConfig::kMinIPv4MTU;
+    if (mtu < min_mtu) {
+      SLOG(this, 2) << __func__ << " MTU " << mtu
+                    << " is too small; adjusting up to " << min_mtu;
+      mtu = min_mtu;
+    }
+  }
+
+  rtnl_handler_->SetInterfaceMTU(interface_index_, mtu);
 }
 
 void Connection::OnRouteQueryResponse(int interface_index,

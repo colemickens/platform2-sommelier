@@ -32,6 +32,10 @@ const time_t kDefaultLeaseExpirationTime = LONG_MAX;
 }  // namespace
 
 // static
+const int IPConfig::kDefaultMTU = 1500;
+const int IPConfig::kMinIPv4MTU = 576;
+const int IPConfig::kMinIPv6MTU = 1280;
+const int IPConfig::kUndefinedMTU = 0;
 const char IPConfig::kType[] = "ip";
 
 // static

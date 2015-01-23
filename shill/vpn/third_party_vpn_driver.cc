@@ -15,9 +15,9 @@
 #include "shill/connection.h"
 #include "shill/control_interface.h"
 #include "shill/device_info.h"
-#include "shill/dhcp_config.h"
 #include "shill/error.h"
 #include "shill/file_io.h"
+#include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/property_accessor.h"
@@ -246,7 +246,7 @@ void ThirdPartyVpnDriver::SetParameters(
 
   ProcessInt32(parameters, "subnet_prefix", &ip_properties_.subnet_prefix, 0,
                31, true, error_message);
-  ProcessInt32(parameters, "mtu", &ip_properties_.mtu, DHCPConfig::kMinMTU,
+  ProcessInt32(parameters, "mtu", &ip_properties_.mtu, IPConfig::kMinIPv4MTU,
                kConstantMaxMtu, false, error_message);
 
   ProcessSearchDomainArray(parameters, "domain_search", kNonIPDelimiter,

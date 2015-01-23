@@ -15,8 +15,8 @@
 #include "shill/certificate_file.h"
 #include "shill/connection.h"
 #include "shill/device_info.h"
-#include "shill/dhcp_config.h"
 #include "shill/error.h"
+#include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/net/sockets.h"
@@ -450,7 +450,7 @@ void OpenVPNDriver::ParseIPConfiguration(
       properties->trusted_ip = value;
     } else if (LowerCaseEqualsASCII(key, kOpenVPNTunMTU)) {
       int mtu = 0;
-      if (base::StringToInt(value, &mtu) && mtu >= DHCPConfig::kMinMTU) {
+      if (base::StringToInt(value, &mtu) && mtu >= IPConfig::kMinIPv4MTU) {
         properties->mtu = mtu;
       } else {
         LOG(ERROR) << "MTU " << value << " ignored.";

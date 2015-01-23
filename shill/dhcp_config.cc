@@ -63,7 +63,6 @@ const char DHCPConfig::kDHCPCDPath[] = "/sbin/dhcpcd";
 const char DHCPConfig::kDHCPCDPathFormatPID[] =
     "var/run/dhcpcd/dhcpcd-%s.pid";
 const char DHCPConfig::kDHCPCDUser[] = "dhcp";
-const int DHCPConfig::kMinMTU = 576;
 const char DHCPConfig::kReasonBound[] = "BOUND";
 const char DHCPConfig::kReasonFail[] = "FAIL";
 const char DHCPConfig::kReasonGatewayArp[] = "GATEWAY-ARP";
@@ -514,7 +513,7 @@ bool DHCPConfig::ParseConfiguration(const Configuration &configuration,
       properties->domain_search = value.operator vector<string>();
     } else if (key == kConfigurationKeyMTU) {
       int mtu = value.reader().get_uint16();
-      if (mtu >= kMinMTU) {
+      if (mtu >= kMinIPv4MTU) {
         properties->mtu = mtu;
       }
     } else if (key == kConfigurationKeyClasslessStaticRoutes) {

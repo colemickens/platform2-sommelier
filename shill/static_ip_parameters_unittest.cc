@@ -44,7 +44,7 @@ class StaticIpParametersTest : public Test {
   void ExpectEmptyIPConfig() {
     EXPECT_TRUE(ipconfig_props_.address.empty());
     EXPECT_TRUE(ipconfig_props_.gateway.empty());
-    EXPECT_FALSE(ipconfig_props_.mtu);
+    EXPECT_EQ(IPConfig::kUndefinedMTU, ipconfig_props_.mtu);
     EXPECT_TRUE(ipconfig_props_.dns_servers.empty());
     EXPECT_TRUE(ipconfig_props_.peer_address.empty());
     EXPECT_FALSE(ipconfig_props_.subnet_prefix);

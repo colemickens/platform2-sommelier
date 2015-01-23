@@ -130,13 +130,14 @@ class Connection : public base::RefCounted<Connection> {
   FRIEND_TEST(ConnectionTest, AddConfig);
   FRIEND_TEST(ConnectionTest, Binder);
   FRIEND_TEST(ConnectionTest, Binders);
+  FRIEND_TEST(ConnectionTest, BlackholeIPv6);
   FRIEND_TEST(ConnectionTest, Destructor);
   FRIEND_TEST(ConnectionTest, FixGatewayReachability);
   FRIEND_TEST(ConnectionTest, GetCarrierConnection);
   FRIEND_TEST(ConnectionTest, InitState);
   FRIEND_TEST(ConnectionTest, OnRouteQueryResponse);
   FRIEND_TEST(ConnectionTest, RequestHostRoute);
-  FRIEND_TEST(ConnectionTest, BlackholeIPv6);
+  FRIEND_TEST(ConnectionTest, SetMTU);
   FRIEND_TEST(ConnectionTest, UpdateDNSServers);
   FRIEND_TEST(VPNServiceTest, OnConnectionDisconnected);
 
@@ -151,6 +152,7 @@ class Connection : public base::RefCounted<Connection> {
                                      const IPAddress &trusted_ip);
   uint32_t GetMetric(bool is_default);
   bool PinHostRoute(const IPAddress &trusted_ip, const IPAddress &gateway);
+  void SetMTU(int32_t mtu);
 
   void OnRouteQueryResponse(int interface_index,
                             const RoutingTableEntry &entry);

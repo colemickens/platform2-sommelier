@@ -40,7 +40,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
     Properties() : address_family(IPAddress::kFamilyUnknown),
                    subnet_prefix(0),
                    blackhole_ipv6(false),
-                   mtu(0),
+                   mtu(kUndefinedMTU),
                    lease_duration_seconds(0) {}
 
     IPAddress::Family address_family;
@@ -82,6 +82,12 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   typedef base::Callback<void(const IPConfigRefPtr&, bool)> UpdateCallback;
   typedef base::Callback<void(const IPConfigRefPtr&)> Callback;
+
+  // Define a default and a minimum viable MTU value.
+  static const int kDefaultMTU;
+  static const int kMinIPv4MTU;
+  static const int kMinIPv6MTU;
+  static const int kUndefinedMTU;
 
   IPConfig(ControlInterface *control_interface, const std::string &device_name);
   IPConfig(ControlInterface *control_interface,

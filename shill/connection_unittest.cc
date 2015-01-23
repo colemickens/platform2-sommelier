@@ -243,6 +243,8 @@ TEST_F(ConnectionTest, AddConfig) {
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ipconfig_,
                               GetDefaultMetric()));
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(kTestDeviceInterfaceIndex0,
+                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipconfig_);
   IPAddress test_local_address(local_address_);
   test_local_address.set_prefix(kPrefix0);
@@ -310,6 +312,8 @@ TEST_F(ConnectionTest, AddConfigIPv6) {
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ip6config_,
                               GetDefaultMetric()));
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(kTestDeviceInterfaceIndex0,
+                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ip6config_);
   IPAddress test_local_address(local_ipv6_address_);
   EXPECT_TRUE(test_local_address.Equals(GetLocalAddress(connection_)));
@@ -337,6 +341,8 @@ TEST_F(ConnectionTest, AddConfigWithPeer) {
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ipconfig_,
                               GetDefaultMetric()));
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(kTestDeviceInterfaceIndex0,
+                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipconfig_);
   EXPECT_FALSE(GetHasBroadcastDomain(connection_));
 }
@@ -366,6 +372,8 @@ TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ipconfig_,
                               GetDefaultMetric()));
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(kTestDeviceInterfaceIndex0,
+                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipconfig_);
 
   // Assign a gateway address that violates the minimum plausible prefix
@@ -391,6 +399,8 @@ TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
               SetDefaultRoute(kTestDeviceInterfaceIndex0, _, _));
   EXPECT_CALL(routing_table_,
               ConfigureRoutes(kTestDeviceInterfaceIndex0, _, _));
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(kTestDeviceInterfaceIndex0,
+                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipconfig_);
 }
 
@@ -435,7 +445,8 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   EXPECT_CALL(resolver_,
               SetDNSFromLists(ipconfig_->properties().dns_servers,
                               ipconfig_->properties().domain_search));
-
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(kTestDeviceInterfaceIndex0,
+                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipconfig_);
 }
 
@@ -449,6 +460,7 @@ TEST_F(ConnectionTest, AddConfigWithDNSDomain) {
   EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _, _));
   EXPECT_CALL(routing_table_, SetDefaultRoute(_, _, _));
   EXPECT_CALL(routing_table_, ConfigureRoutes(_, _, _));
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(_, _));
   connection_->UpdateFromIPConfig(ipconfig_);
 
   EXPECT_CALL(routing_table_, SetDefaultMetric(_, _));
@@ -482,6 +494,8 @@ TEST_F(ConnectionTest, HasOtherAddress) {
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ipconfig_,
                               GetDefaultMetric()));
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(kTestDeviceInterfaceIndex0,
+                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipconfig_);
 }
 
@@ -574,6 +588,8 @@ TEST_F(ConnectionTest, BlackholeIPv6) {
                                    IPAddress::kFamilyIPv6,
                                    Connection::kDefaultMetric))
       .WillOnce(Return(true));
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(kTestDeviceInterfaceIndex0,
+                                             IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipconfig_);
 }
 
@@ -979,6 +995,53 @@ TEST_F(ConnectionTest, GetSubnetName) {
   local.set_prefix(24);
   SetLocal(local);
   EXPECT_EQ("1.2.3.0/24", connection_->GetSubnetName());
+}
+
+TEST_F(ConnectionTest, SetMTU) {
+  testing::InSequence seq;
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(
+      kTestDeviceInterfaceIndex0, IPConfig::kDefaultMTU));
+  connection_->SetMTU(0);
+
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(
+      kTestDeviceInterfaceIndex0, IPConfig::kDefaultMTU));
+  connection_->SetMTU(IPConfig::kUndefinedMTU);
+
+  // Test IPv4 minimum MTU.
+  SetLocal(local_address_);
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(
+      kTestDeviceInterfaceIndex0, IPConfig::kMinIPv4MTU));
+  connection_->SetMTU(1);
+
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(
+      kTestDeviceInterfaceIndex0, IPConfig::kMinIPv4MTU));
+  connection_->SetMTU(IPConfig::kMinIPv4MTU - 1);
+
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(
+      kTestDeviceInterfaceIndex0, IPConfig::kMinIPv4MTU));
+  connection_->SetMTU(IPConfig::kMinIPv4MTU);
+
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(
+      kTestDeviceInterfaceIndex0, IPConfig::kMinIPv4MTU + 1));
+  connection_->SetMTU(IPConfig::kMinIPv4MTU + 1);
+
+  // Test IPv6 minimum MTU.
+  SetLocal(local_ipv6_address_);
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(
+      kTestDeviceInterfaceIndex0, IPConfig::kMinIPv6MTU));
+  connection_->SetMTU(1);
+
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(
+      kTestDeviceInterfaceIndex0, IPConfig::kMinIPv6MTU));
+  connection_->SetMTU(IPConfig::kMinIPv6MTU - 1);
+
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(
+      kTestDeviceInterfaceIndex0, IPConfig::kMinIPv6MTU));
+  connection_->SetMTU(IPConfig::kMinIPv6MTU);
+
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(
+      kTestDeviceInterfaceIndex0, IPConfig::kMinIPv6MTU + 1));
+  connection_->SetMTU(IPConfig::kMinIPv6MTU + 1);
 }
 
 }  // namespace shill
