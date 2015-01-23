@@ -70,8 +70,8 @@
         Contains one of the following values describing the state of WiFi
         bootstrapping:
           “disabled” - Bootstrapping has been disabled in the config file.
-          “configuring” - privetd is waiting to receive WiFi credentials from
-                          a paired peer.
+          “waiting” - privetd is waiting to receive WiFi credentials from
+                      a paired peer.
           “connecting” - privetd has received WiFi credentials, and is now
                          attempting to connect to a WiFi network.
           “monitoring” - privetd is monitoring our connectivity and will
@@ -87,6 +87,8 @@
         bootstrapping:
           “disabled” - GCD registration has been disabled in the config file.
           “offline” - GCD registration is unknown because the device is offline.
+          “connecting” - GCD registration is unknown because the device is still
+                         connecting to the cloud.
           “waiting” - Waiting to be configured with GCD credentials.
           “registering” - Registering the device with the GCD servers.
           “online” - Device is online and registered with GCD servers.

@@ -159,7 +159,10 @@ class Daemon : public chromeos::DBusServiceDaemon {
     peerd_client_.reset(new PeerdClient(bus_, device_.get(), cloud_.get(),
                                         wifi_bootstrap_manager_.get()));
     peerd_client_->Start();
-    dbus_manager_.reset(new DBusManager{object_manager_.get()});
+    dbus_manager_.reset(new DBusManager{object_manager_.get(),
+                                        wifi_bootstrap_manager_.get(),
+                                        cloud_.get(),
+                                        security_.get()});
     dbus_manager_->RegisterAsync(
         sequencer->GetHandler("DBusManager.RegisterAsync() failed.", true));
   }

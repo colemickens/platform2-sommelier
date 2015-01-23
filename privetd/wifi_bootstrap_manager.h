@@ -46,6 +46,7 @@ class WifiBootstrapManager : public WifiDelegate {
                        uint32_t monitor_timeout_seconds);
   ~WifiBootstrapManager() override = default;
   virtual void Init();
+  void RegisterStateListener(const StateListener& listener);
 
   // Overrides from WifiDelegate.
   bool IsRequired() const override;

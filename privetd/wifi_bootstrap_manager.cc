@@ -51,6 +51,11 @@ void WifiBootstrapManager::Init() {
   }
 }
 
+void WifiBootstrapManager::RegisterStateListener(
+    const StateListener& listener) {
+  state_listeners_.push_back(listener);
+}
+
 void WifiBootstrapManager::StartBootstrapping() {
   UpdateState(kBootstrapping);
   if (have_ever_been_bootstrapped_) {

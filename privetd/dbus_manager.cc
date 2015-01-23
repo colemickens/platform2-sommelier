@@ -6,7 +6,6 @@
 
 #include <base/memory/ref_counted.h>
 
-using chromeos::Error;
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::DBusObject;
 using chromeos::dbus_utils::ExportedObjectManager;
@@ -29,10 +28,22 @@ const char kPingResponse[] = "Hello world!";
 
 }  // namespace
 
-DBusManager::DBusManager(ExportedObjectManager* object_manager)
+DBusManager::DBusManager(ExportedObjectManager* object_manager,
+                         WifiBootstrapManager* wifi_bootstrap_manager,
+                         CloudDelegate* cloud_delegate,
+                         SecurityManager* security_manager)
   : dbus_object_{new DBusObject{object_manager,
                                 object_manager->GetBus(),
                                 ManagerAdaptor::GetObjectPath()}} {
+  if (wifi_bootstrap_manager) {
+    wifi_bootstrap_manager->RegisterStateListener(
+        base::Bind(&DBusManager::UpdateWiFiBootstrapState,
+                   weak_ptr_factory_.GetWeakPtr()));
+  } else {
+    UpdateWiFiBootstrapState(WifiBootstrapManager::kDisabled);
+  }
+  // TODO(wiley) Watch for appropriate state variables from |cloud_delegate|.
+  // TODO(wiley) Watch for new pairing attempts from |security_manager|.
 }
 
 void DBusManager::RegisterAsync(const CompletionAction& on_done) {
@@ -47,20 +58,20 @@ bool DBusManager::EnableWiFiBootstrapping(
     chromeos::ErrorPtr* error,
     const dbus::ObjectPath& in_listener_path,
     const chromeos::VariantDictionary& in_options) {
-  Error::AddTo(error,
-               FROM_HERE,
-               errors::kDomain,
-               errors::manager::kNotImplemented,
-               "Manual WiFi bootstrapping is not implemented.");
+  chromeos::Error::AddTo(error,
+                         FROM_HERE,
+                         errors::kDomain,
+                         errors::manager::kNotImplemented,
+                         "Manual WiFi bootstrapping is not implemented.");
   return false;
 }
 
 bool DBusManager::DisableWiFiBootstrapping(chromeos::ErrorPtr* error) {
-  Error::AddTo(error,
-               FROM_HERE,
-               errors::kDomain,
-               errors::manager::kNotImplemented,
-               "Manual WiFi bootstrapping is not implemented.");
+  chromeos::Error::AddTo(error,
+                         FROM_HERE,
+                         errors::kDomain,
+                         errors::manager::kNotImplemented,
+                         "Manual WiFi bootstrapping is not implemented.");
   return false;
 }
 
@@ -68,20 +79,20 @@ bool DBusManager::EnableGCDBootstrapping(
     chromeos::ErrorPtr* error,
     const dbus::ObjectPath& in_listener_path,
     const chromeos::VariantDictionary& in_options) {
-  Error::AddTo(error,
-               FROM_HERE,
-               errors::kDomain,
-               errors::manager::kNotImplemented,
-               "Manual GCD bootstrapping is not implemented.");
+  chromeos::Error::AddTo(error,
+                         FROM_HERE,
+                         errors::kDomain,
+                         errors::manager::kNotImplemented,
+                         "Manual GCD bootstrapping is not implemented.");
   return false;
 }
 
 bool DBusManager::DisableGCDBootstrapping(chromeos::ErrorPtr* error) {
-  Error::AddTo(error,
-               FROM_HERE,
-               errors::kDomain,
-               errors::manager::kNotImplemented,
-               "Manual GCD bootstrapping is not implemented.");
+  chromeos::Error::AddTo(error,
+                         FROM_HERE,
+                         errors::kDomain,
+                         errors::manager::kNotImplemented,
+                         "Manual GCD bootstrapping is not implemented.");
   return false;
 }
 
@@ -97,5 +108,21 @@ std::string DBusManager::Ping() {
   return kPingResponse;
 }
 
+void DBusManager::UpdateWiFiBootstrapState(WifiBootstrapManager::State state) {
+  switch (state) {
+    case WifiBootstrapManager::kDisabled:
+      dbus_adaptor_.SetWiFiBootstrapState("disabled");
+      break;
+    case WifiBootstrapManager::kBootstrapping:
+      dbus_adaptor_.SetWiFiBootstrapState("waiting");
+      break;
+    case WifiBootstrapManager::kMonitoring:
+      dbus_adaptor_.SetWiFiBootstrapState("monitoring");
+      break;
+    case WifiBootstrapManager::kConnecting:
+      dbus_adaptor_.SetWiFiBootstrapState("connecting");
+      break;
+  }
+}
 
 }  // namespace privetd

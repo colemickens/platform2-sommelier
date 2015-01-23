@@ -16,6 +16,7 @@
 #include <dbus/object_path.h>
 
 #include "privetd/org.chromium.privetd.Manager.h"
+#include "privetd/wifi_bootstrap_manager.h"
 
 namespace chromeos {
 namespace dbus_utils {
@@ -25,14 +26,19 @@ class ExportedObjectManager;
 
 namespace privetd {
 
+class CloudDelegate;
+class SecurityManager;
+
 // Exposes most of the privetd DBus interface.
 class DBusManager : public org::chromium::privetd::ManagerInterface {
  public:
   using CompletionAction =
       chromeos::dbus_utils::AsyncEventSequencer::CompletionAction;
 
-  explicit DBusManager(
-      chromeos::dbus_utils::ExportedObjectManager* object_manager);
+  DBusManager(chromeos::dbus_utils::ExportedObjectManager* object_manager,
+              WifiBootstrapManager* wifi_bootstrap_manager,
+              CloudDelegate* cloud_delegate,
+              SecurityManager* security_manager);
   ~DBusManager() override = default;
   void RegisterAsync(const CompletionAction& on_done);
 
@@ -52,8 +58,11 @@ class DBusManager : public org::chromium::privetd::ManagerInterface {
   std::string Ping() override;
 
  private:
+  void UpdateWiFiBootstrapState(WifiBootstrapManager::State state);
+
   org::chromium::privetd::ManagerAdaptor dbus_adaptor_{this};
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  base::WeakPtrFactory<DBusManager> weak_ptr_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(DBusManager);
 };
