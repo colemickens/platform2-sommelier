@@ -128,6 +128,29 @@ class CHROMEOS_EXPORT TpmUtility {
                         const std::string& digest,
                         const std::string& signature) = 0;
 
+  // This method is used to change the authorization value associated with a
+  // |key_handle|, from |old_password| to |new_password|.
+  // When |key_blob| is not null, it is populated with the new encrypted key
+  // blob. Note: the key must be unloaded and reloaded to use the
+  // new authorization value.
+  virtual TPM_RC ChangeKeyAuthorizationData(TPM_HANDLE key_handle,
+                                            const std::string& old_password,
+                                            const std::string& new_password,
+                                            AuthorizationSession* session,
+                                            std::string* key_blob) = 0;
+
+  // This method imports an external RSA key of |key_type| into the TPM.
+  // |modulus| and |prime_factor| are interpreted as raw bytes in big-endian
+  // order. If the out argument |key_blob| is not null, it is populated with
+  // the imported key, which can then be loaded into the TPM.
+  virtual TPM_RC ImportRSAKey(AsymmetricKeyUsage key_type,
+                              const std::string& modulus,
+                              uint32_t public_exponent,
+                              const std::string& prime_factor,
+                              const std::string& password,
+                              AuthorizationSession* session,
+                              std::string* key_blob) = 0;
+
   // This method creates an RSA key. It creates a 2048 bit RSA key with
   // public exponent of 0x10001. |key_type| determines whether the key is
   // a signing key, a decryption key, or both. The |password| parameter

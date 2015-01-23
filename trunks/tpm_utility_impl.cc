@@ -9,10 +9,13 @@
 #include <base/stl_util.h>
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
+#include <openssl/aes.h>
+#include <openssl/rand.h>
 
 #include "trunks/authorization_delegate.h"
 #include "trunks/authorization_session.h"
 #include "trunks/error_codes.h"
+#include "trunks/hmac_authorization_delegate.h"
 #include "trunks/scoped_key_handle.h"
 #include "trunks/tpm_state.h"
 #include "trunks/trunks_factory.h"
@@ -618,6 +621,157 @@ TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
   return TPM_RC_SUCCESS;
 }
 
+TPM_RC TpmUtilityImpl::ChangeKeyAuthorizationData(
+    TPM_HANDLE key_handle,
+    const std::string& old_password,
+    const std::string& new_password,
+    AuthorizationSession* session,
+    std::string* key_blob) {
+  std::string key_name;
+  std::string parent_name;
+  TPM_RC result = GetKeyName(key_handle, &key_name);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting Key name for key_handle: "
+               << GetErrorString(result);
+    return result;
+  }
+  result = GetKeyName(kRSAStorageRootKey, &parent_name);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting Key name for RSA-SRK: "
+               << GetErrorString(result);
+    return result;
+  }
+  TPM2B_AUTH new_auth = Make_TPM2B_DIGEST(new_password);
+  TPM2B_PRIVATE new_private_data;
+  new_private_data.size = 0;
+  scoped_ptr<AuthorizationSession> local_session;
+  if (session == NULL) {
+    local_session  = factory_.GetAuthorizationSession();
+    result = local_session->StartUnboundSession(true);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(ERROR) << "Error initializing Authorization Session: "
+                 << GetErrorString(result);
+      return result;
+    }
+    session = local_session.get();
+  }
+  session->SetEntityAuthorizationValue(old_password);
+  result = factory_.GetTpm()->ObjectChangeAuthSync(key_handle,
+                                                   key_name,
+                                                   kRSAStorageRootKey,
+                                                   parent_name,
+                                                   new_auth,
+                                                   &new_private_data,
+                                                   session->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error changing object authorization data: "
+               << GetErrorString(result);
+    return result;
+  }
+  if (key_blob) {
+    TPM2B_PUBLIC public_data;
+    public_data.size = 0;
+    result = GetKeyPublicArea(key_handle, &public_data);
+    if (result != TPM_RC_SUCCESS) {
+      return result;
+    }
+    result = KeyDataToString(public_data, new_private_data, key_blob);
+    if (result != TPM_RC_SUCCESS) {
+      return result;
+    }
+  }
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::ImportRSAKey(AsymmetricKeyUsage key_type,
+                                    const std::string& modulus,
+                                    uint32_t public_exponent,
+                                    const std::string& prime_factor,
+                                    const std::string& password,
+                                    AuthorizationSession* session,
+                                    std::string* key_blob) {
+  std::string parent_name;
+  TPM_RC result = GetKeyName(kRSAStorageRootKey, &parent_name);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting Key name for RSA-SRK: "
+               << GetErrorString(result);
+    return result;
+  }
+  TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_RSA);
+  public_area.object_attributes = kUserWithAuth | kNoDA;
+  switch (key_type) {
+    case AsymmetricKeyUsage::kDecryptKey:
+      public_area.object_attributes |= kDecrypt;
+      break;
+    case AsymmetricKeyUsage::kSignKey:
+      public_area.object_attributes |= kSign;
+      break;
+    case AsymmetricKeyUsage::kDecryptAndSignKey:
+      public_area.object_attributes |= (kSign | kDecrypt);
+      break;
+  }
+  public_area.parameters.rsa_detail.key_bits = modulus.size() * 8;
+  public_area.parameters.rsa_detail.exponent = public_exponent;
+  public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA(modulus);
+  TPM2B_DATA encryption_key;
+  encryption_key.size = kAesKeySize;
+  CHECK_EQ(RAND_bytes(encryption_key.buffer, encryption_key.size), 1) <<
+      "Error generating a cryptographically random Aes Key.";
+  TPM2B_PUBLIC public_data = Make_TPM2B_PUBLIC(public_area);
+  TPM2B_ENCRYPTED_SECRET in_sym_seed = Make_TPM2B_ENCRYPTED_SECRET("");
+  TPMT_SYM_DEF_OBJECT symmetric_alg;
+  symmetric_alg.algorithm = TPM_ALG_AES;
+  symmetric_alg.key_bits.aes = kAesKeySize * 8;
+  symmetric_alg.mode.aes = TPM_ALG_CFB;
+  TPMT_SENSITIVE in_sensitive;
+  in_sensitive.sensitive_type = TPM_ALG_RSA;
+  in_sensitive.auth_value = Make_TPM2B_DIGEST(password);
+  in_sensitive.seed_value = Make_TPM2B_DIGEST("");
+  in_sensitive.sensitive.rsa = Make_TPM2B_PRIVATE_KEY_RSA(prime_factor);
+  TPM2B_PRIVATE private_data;
+  result = EncryptPrivateData(in_sensitive, public_area,
+                              &private_data, &encryption_key);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error creating encrypted private struct: "
+               << GetErrorString(result);
+    return result;
+  }
+  TPM2B_PRIVATE tpm_private_data;
+  tpm_private_data.size = 0;
+  scoped_ptr<AuthorizationSession> local_session;
+  if (session == NULL) {
+    local_session  = factory_.GetAuthorizationSession();
+    result = local_session->StartUnboundSession(true);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(ERROR) << "Error initializing Authorization Session: "
+                 << GetErrorString(result);
+      return result;
+    }
+    session = local_session.get();
+  }
+  session->SetEntityAuthorizationValue("");
+  result = factory_.GetTpm()->ImportSync(kRSAStorageRootKey,
+                                         parent_name,
+                                         encryption_key,
+                                         public_data,
+                                         private_data,
+                                         in_sym_seed,
+                                         symmetric_alg,
+                                         &tpm_private_data,
+                                         session->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error importing key: " << GetErrorString(result);
+    return result;
+  }
+  if (key_blob) {
+    result = KeyDataToString(public_data, tpm_private_data, key_blob);
+    if (result != TPM_RC_SUCCESS) {
+      return result;
+    }
+  }
+  return TPM_RC_SUCCESS;
+}
+
 TPM_RC TpmUtilityImpl::CreateAndLoadRSAKey(AsymmetricKeyUsage key_type,
                                            const std::string& password,
                                            AuthorizationSession* session,
@@ -803,6 +957,47 @@ TPM_RC TpmUtilityImpl::GetKeyPublicArea(TPM_HANDLE handle,
     return return_code;
   }
   return TPM_RC_SUCCESS;
+}
+
+bool TpmUtilityImpl::ParseHeader(const std::string& message,
+                                 bool* has_sessions,
+                                 uint32_t* size,
+                                 uint32_t* code) {
+  std::string buffer = message;
+  TPM_ST tag;
+  if (Parse_TPM_ST(&buffer, &tag, NULL) != TPM_RC_SUCCESS) {
+    return false;
+  }
+  uint32_t tmp_size;
+  if (Parse_UINT32(&buffer, &tmp_size, NULL) != TPM_RC_SUCCESS) {
+    return false;
+  }
+  if (tmp_size != message.size()) {
+    return false;
+  }
+  TPM_RC tmp_code;
+  if (Parse_TPM_RC(&buffer, &tmp_code, NULL) != TPM_RC_SUCCESS) {
+    return false;
+  }
+  if (has_sessions) {
+    *has_sessions = (tag == TPM_ST_SESSIONS);
+  }
+  if (size) {
+    *size = tmp_size;
+  }
+  if (code) {
+    *code = tmp_code;
+  }
+  return true;
+}
+
+std::string TpmUtilityImpl::CreateErrorResponse(TPM_RC error_code) {
+  const uint32_t kErrorResponseSize = 10;
+  std::string response;
+  CHECK_EQ(Serialize_TPM_ST(TPM_ST_NO_SESSIONS, &response), TPM_RC_SUCCESS);
+  CHECK_EQ(Serialize_UINT32(kErrorResponseSize, &response), TPM_RC_SUCCESS);
+  CHECK_EQ(Serialize_TPM_RC(error_code, &response), TPM_RC_SUCCESS);
+  return response;
 }
 
 TPM_RC TpmUtilityImpl::CreateStorageRootKeys(
@@ -1086,45 +1281,71 @@ TPM_RC TpmUtilityImpl::KeyDataToString(const TPM2B_PUBLIC& public_info,
   return TPM_RC_SUCCESS;
 }
 
-std::string TpmUtilityImpl::CreateErrorResponse(TPM_RC error_code) {
-  const uint32_t kErrorResponseSize = 10;
-  std::string response;
-  CHECK_EQ(Serialize_TPM_ST(TPM_ST_NO_SESSIONS, &response), TPM_RC_SUCCESS);
-  CHECK_EQ(Serialize_UINT32(kErrorResponseSize, &response), TPM_RC_SUCCESS);
-  CHECK_EQ(Serialize_TPM_RC(error_code, &response), TPM_RC_SUCCESS);
-  return response;
+TPM_RC TpmUtilityImpl::ComputeKeyName(const TPMT_PUBLIC& public_area,
+                                      std::string* object_name) {
+  std::string serialized_public_area;
+  TPM_RC result = Serialize_TPMT_PUBLIC(public_area, &serialized_public_area);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error serializing public area: " << GetErrorString(result);
+    return result;
+  }
+  std::string serialized_name_alg;
+  result = Serialize_TPM_ALG_ID(TPM_ALG_SHA256, &serialized_name_alg);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error serializing public area: " << GetErrorString(result);
+    return result;
+  }
+  object_name->assign(serialized_name_alg +
+                      crypto::SHA256HashString(serialized_public_area));
+  return TPM_RC_SUCCESS;
 }
 
-bool TpmUtilityImpl::ParseHeader(const std::string& message,
-                                 bool* has_sessions,
-                                 uint32_t* size,
-                                 uint32_t* code) {
-  std::string buffer = message;
-  TPM_ST tag;
-  if (Parse_TPM_ST(&buffer, &tag, NULL) != TPM_RC_SUCCESS) {
-    return false;
+TPM_RC TpmUtilityImpl::EncryptPrivateData(const TPMT_SENSITIVE& sensitive_area,
+                                          const TPMT_PUBLIC& public_area,
+                                          TPM2B_PRIVATE* encrypted_private_data,
+                                          TPM2B_DATA* encryption_key) {
+  TPM2B_SENSITIVE sensitive_data = Make_TPM2B_SENSITIVE(sensitive_area);
+  std::string serialized_sensitive_data;
+  TPM_RC result = Serialize_TPM2B_SENSITIVE(sensitive_data,
+                                            &serialized_sensitive_data);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error serializing sensitive data: "
+               << GetErrorString(result);
+    return result;
   }
-  uint32_t tmp_size;
-  if (Parse_UINT32(&buffer, &tmp_size, NULL) != TPM_RC_SUCCESS) {
-    return false;
+  std::string object_name;
+  result = ComputeKeyName(public_area, &object_name);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error computing object name: " << GetErrorString(result);
+    return result;
   }
-  if (tmp_size != message.size()) {
-    return false;
+  TPM2B_DIGEST inner_integrity = Make_TPM2B_DIGEST(crypto::SHA256HashString(
+      serialized_sensitive_data + object_name));
+  std::string serialized_inner_integrity;
+  result = Serialize_TPM2B_DIGEST(inner_integrity, &serialized_inner_integrity);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error serializing inner integrity: "
+               << GetErrorString(result);
+    return result;
   }
-  TPM_RC tmp_code;
-  if (Parse_TPM_RC(&buffer, &tmp_code, NULL) != TPM_RC_SUCCESS) {
-    return false;
+  std::string unencrypted_private_data = serialized_inner_integrity +
+                                         serialized_sensitive_data;
+  AES_KEY key;
+  AES_set_encrypt_key(encryption_key->buffer, kAesKeySize * 8, &key);
+  std::string private_data_string(unencrypted_private_data.size(), 0);
+  int iv_in = 0;
+  unsigned char iv[MAX_AES_BLOCK_SIZE_BYTES] = {0};
+  AES_cfb128_encrypt(
+    reinterpret_cast<const unsigned char*>(unencrypted_private_data.data()),
+    reinterpret_cast<unsigned char*>(string_as_array(&private_data_string)),
+    unencrypted_private_data.size(), &key, iv, &iv_in, AES_ENCRYPT);
+  *encrypted_private_data = Make_TPM2B_PRIVATE(private_data_string);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error making private area: "
+               << GetErrorString(result);
+    return result;
   }
-  if (has_sessions) {
-    *has_sessions = (tag == TPM_ST_SESSIONS);
-  }
-  if (size) {
-    *size = tmp_size;
-  }
-  if (code) {
-    *code = tmp_code;
-  }
-  return true;
+  return TPM_RC_SUCCESS;
 }
 
 }  // namespace trunks

@@ -156,6 +156,26 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->Verify(key_handle, scheme, hash_alg, digest, signature);
   }
 
+  TPM_RC ChangeKeyAuthorizationData(TPM_HANDLE key_handle,
+                                    const std::string& old_password,
+                                    const std::string& new_password,
+                                    AuthorizationSession* session,
+                                    std::string* key_blob) override {
+    return target_->ChangeKeyAuthorizationData(key_handle, old_password,
+                                               new_password, session, key_blob);
+  }
+
+  TPM_RC ImportRSAKey(AsymmetricKeyUsage key_type,
+                      const std::string& modulus,
+                      uint32_t public_exponent,
+                      const std::string& prime_factor,
+                      const std::string& password,
+                      AuthorizationSession* session,
+                      std::string* key_blob) override {
+    return target_->ImportRSAKey(key_type, modulus, public_exponent,
+                                 prime_factor, password, session, key_blob);
+  }
+
   TPM_RC CreateAndLoadRSAKey(AsymmetricKeyUsage key_type,
                              const std::string& password,
                              AuthorizationSession* session,

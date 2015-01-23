@@ -63,6 +63,18 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
                 TPM_ALG_ID hash_alg,
                 const std::string& digest,
                 const std::string& signature) override;
+  TPM_RC ChangeKeyAuthorizationData(TPM_HANDLE key_handle,
+                                    const std::string& old_password,
+                                    const std::string& new_password,
+                                    AuthorizationSession* session,
+                                    std::string* key_blob) override;
+  TPM_RC ImportRSAKey(AsymmetricKeyUsage key_type,
+                      const std::string& modulus,
+                      uint32_t public_exponent,
+                      const std::string& prime_factor,
+                      const std::string& password,
+                      AuthorizationSession* session,
+                      std::string* key_blob) override;
   TPM_RC CreateAndLoadRSAKey(AsymmetricKeyUsage key_type,
                              const std::string& password,
                              AuthorizationSession* session,
@@ -94,6 +106,7 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
                           uint32_t* code);
 
  protected:
+  FRIEND_TEST(TpmUtilityTest, ImportRSAKeySuccess);
   FRIEND_TEST(TpmUtilityTest, RootKeysSuccess);
   FRIEND_TEST(TpmUtilityTest, RootKeysHandleConsistency);
   FRIEND_TEST(TpmUtilityTest, RootKeysCreateFailure);
@@ -103,7 +116,6 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
   FRIEND_TEST(TpmUtilityTest, SaltingKeyCreateFailure);
   FRIEND_TEST(TpmUtilityTest, SaltingKeyLoadFailure);
   FRIEND_TEST(TpmUtilityTest, SaltingKeyPersistFailure);
-  FRIEND_TEST(TpmUtilityTest, RootKeysSuccess);
 
  private:
   const TrunksFactory& factory_;
@@ -141,6 +153,19 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC KeyDataToString(const TPM2B_PUBLIC& public_info,
                          const TPM2B_PRIVATE& private_info,
                          std::string* key_blob);
+
+  // Given a public area, this method computes the object name. Following
+  // TPM2.0 Specification Part 1 section 16,
+  // object_name = HashAlg || Hash(public_area);
+  TPM_RC ComputeKeyName(const TPMT_PUBLIC& public_area,
+                        std::string* object_name);
+
+  // This encrypts the |sensitive_data| struct according to the specification
+  // defined in TPM2.0 spec Part 1: Figure 19.
+  TPM_RC EncryptPrivateData(const TPMT_SENSITIVE& sensitive_area,
+                            const TPMT_PUBLIC& public_area,
+                            TPM2B_PRIVATE* encrypted_private_data,
+                            TPM2B_DATA* encryption_key);
 
   DISALLOW_COPY_AND_ASSIGN(TpmUtilityImpl);
 };

@@ -10,7 +10,11 @@
 
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/stl_util.h>
 #include <chromeos/syslog_logging.h>
+#include <crypto/scoped_openssl_types.h>
+#include <openssl/bn.h>
+#include <openssl/rsa.h>
 
 #include "trunks/error_codes.h"
 #include "trunks/password_authorization_delegate.h"
@@ -106,6 +110,7 @@ int SignTest() {
     LOG(ERROR) << "Error verifying: " << trunks::GetErrorString(rc);
     return rc;
   }
+  LOG(INFO) << "Test completed successfully.";
   return 0;
 }
 
@@ -148,6 +153,148 @@ int DecryptTest() {
     return rc;
   }
   CHECK_EQ(plaintext.compare("plaintext"), 0);
+  LOG(INFO) << "Test completed successfully.";
+  return 0;
+}
+
+int ImportTest() {
+  trunks::TrunksFactoryImpl factory;
+  scoped_ptr<trunks::TpmUtility> utility = factory.GetTpmUtility();
+  trunks::TPM_RC rc;
+  std::string key_blob;
+  scoped_ptr<trunks::AuthorizationSession> session(
+      factory.GetAuthorizationSession());
+  rc = session->StartUnboundSession(true);
+  if (rc) {
+    LOG(ERROR) << "Error starting authorization session: "
+               << trunks::GetErrorString(rc);
+    return rc;
+  }
+  crypto::ScopedRSA rsa(RSA_generate_key(2048, 0x10001, NULL, NULL));
+  CHECK(rsa.get());
+  std::string modulus(BN_num_bytes(rsa.get()->n), 0);
+  BN_bn2bin(rsa.get()->n,
+            reinterpret_cast<unsigned char*>(string_as_array(&modulus)));
+  std::string prime_factor(BN_num_bytes(rsa.get()->p), 0);
+  BN_bn2bin(rsa.get()->p,
+            reinterpret_cast<unsigned char*>(string_as_array(&prime_factor)));
+  rc = utility->ImportRSAKey(
+      trunks::TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
+      modulus,
+      0x10001,
+      prime_factor,
+      "import",
+      session.get(),
+      &key_blob);
+  if (rc) {
+    LOG(ERROR) << "Error importings: " << trunks::GetErrorString(rc);
+    return rc;
+  }
+  trunks::TPM_HANDLE key_handle;
+  rc = utility->LoadKey(key_blob, session.get(), &key_handle);
+  if (rc) {
+    LOG(ERROR) << "Error loading: " << trunks::GetErrorString(rc);
+    return rc;
+  }
+  trunks::ScopedKeyHandle scoped_key(factory, key_handle);
+  std::string ciphertext;
+  rc = utility->AsymmetricEncrypt(scoped_key.get(),
+                                  trunks::TPM_ALG_NULL,
+                                  trunks::TPM_ALG_NULL,
+                                  "plaintext",
+                                  &ciphertext);
+  if (rc) {
+    LOG(ERROR) << "Error encrypting: " << trunks::GetErrorString(rc);
+    return rc;
+  }
+  std::string plaintext;
+  rc = utility->AsymmetricDecrypt(scoped_key.get(),
+                                  trunks::TPM_ALG_NULL,
+                                  trunks::TPM_ALG_NULL,
+                                  "import",
+                                  ciphertext,
+                                  session.get(),
+                                  &plaintext);
+  if (rc) {
+    LOG(ERROR) << "Error decrypting: " << trunks::GetErrorString(rc);
+    return rc;
+  }
+  CHECK_EQ(plaintext.compare("plaintext"), 0);
+  LOG(INFO) << "Test completed successfully.";
+  return 0;
+}
+
+int AuthChangeTest() {
+  trunks::TrunksFactoryImpl factory;
+  scoped_ptr<trunks::TpmUtility> utility = factory.GetTpmUtility();
+  trunks::TPM_RC rc;
+  scoped_ptr<trunks::AuthorizationSession> session(
+      factory.GetAuthorizationSession());
+  rc = session->StartUnboundSession(true);
+  if (rc) {
+    LOG(ERROR) << "Error starting authorization session: "
+               << trunks::GetErrorString(rc);
+    return rc;
+  }
+  trunks::TPM_HANDLE key_handle;
+  rc = utility->CreateAndLoadRSAKey(
+      trunks::TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
+      "old_pass",
+      session.get(),
+      &key_handle,
+      NULL);
+  if (rc) {
+    LOG(ERROR) << "Error creating and loading key: "
+               << trunks::GetErrorString(rc);
+    return rc;
+  }
+  std::string key_blob;
+  rc = utility->ChangeKeyAuthorizationData(key_handle,
+                                           "old_pass",
+                                           "new_pass",
+                                           session.get(),
+                                           &key_blob);
+  if (rc) {
+    LOG(ERROR) << "Error changing auth data: "
+               << trunks::GetErrorString(rc);
+    return rc;
+  }
+  rc = factory.GetTpm()->FlushContextSync(key_handle, "", NULL);
+  if (rc) {
+    LOG(ERROR) << "Error flushing key: " << trunks::GetErrorString(rc);
+    return rc;
+  }
+  rc = utility->LoadKey(key_blob, session.get(), &key_handle);
+  if (rc) {
+    LOG(ERROR) << "Error reloading key: " << trunks::GetErrorString(rc);
+    return rc;
+  }
+
+  trunks::ScopedKeyHandle scoped_key(factory, key_handle);
+  std::string ciphertext;
+  rc = utility->AsymmetricEncrypt(scoped_key.get(),
+                                  trunks::TPM_ALG_NULL,
+                                  trunks::TPM_ALG_NULL,
+                                  "plaintext",
+                                  &ciphertext);
+  if (rc) {
+    LOG(ERROR) << "Error encrypting: " << trunks::GetErrorString(rc);
+    return rc;
+  }
+  std::string plaintext;
+  rc = utility->AsymmetricDecrypt(scoped_key.get(),
+                                  trunks::TPM_ALG_NULL,
+                                  trunks::TPM_ALG_NULL,
+                                  "new_pass",
+                                  ciphertext,
+                                  session.get(),
+                                  &plaintext);
+  if (rc) {
+    LOG(ERROR) << "Error decrypting: " << trunks::GetErrorString(rc);
+    return rc;
+  }
+  CHECK_EQ(plaintext.compare("plaintext"), 0);
+  LOG(INFO) << "Test completed successfully.";
   return 0;
 }
 
@@ -207,6 +354,12 @@ int main(int argc, char **argv) {
   }
   if (cl->HasSwitch("decrypt_test")) {
     return DecryptTest();
+  }
+  if (cl->HasSwitch("import_test")) {
+    return ImportTest();
+  }
+  if (cl->HasSwitch("auth_change_test")) {
+    return AuthChangeTest();
   }
   puts("Invalid options!");
   PrintUsage();

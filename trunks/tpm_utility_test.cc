@@ -2,10 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/stl_util.h>
+#include <crypto/sha2.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <openssl/aes.h>
 
 #include "trunks/error_codes.h"
+#include "trunks/hmac_authorization_delegate.h"
 #include "trunks/mock_authorization_delegate.h"
 #include "trunks/mock_authorization_session.h"
 #include "trunks/mock_tpm.h"
@@ -1035,6 +1039,158 @@ TEST_F(TpmUtilityTest, VerifySchemeForward) {
                                            signature));
   EXPECT_EQ(signature_in.sig_alg, TPM_ALG_RSAPSS);
   EXPECT_EQ(signature_in.signature.rsassa.hash, TPM_ALG_SHA512);
+}
+
+TEST_F(TpmUtilityTest, ChangeAuthDataSuccess) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle = 1;
+  std::string old_password;
+  std::string new_password;
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.ChangeKeyAuthorizationData(key_handle,
+                                                               old_password,
+                                                               new_password,
+                                                               NULL,
+                                                               NULL));
+}
+
+TEST_F(TpmUtilityTest, ChangeAuthDataKeyNameFail) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle = 1;
+  std::string old_password;
+  std::string new_password;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.ChangeKeyAuthorizationData(key_handle,
+                                                               old_password,
+                                                               new_password,
+                                                               NULL,
+                                                               NULL));
+}
+
+TEST_F(TpmUtilityTest, ChangeAuthDataFailure) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle = 1;
+  std::string old_password;
+  std::string new_password;
+  EXPECT_CALL(mock_tpm_, ObjectChangeAuthSync(key_handle, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.ChangeKeyAuthorizationData(key_handle,
+                                                               old_password,
+                                                               new_password,
+                                                               NULL,
+                                                               NULL));
+}
+
+TEST_F(TpmUtilityTest, ChangeAuthDataWithReturnSuccess) {
+  TpmUtilityImpl utility(factory_);
+  TPM_HANDLE key_handle = 1;
+  std::string old_password;
+  std::string new_password;
+  std::string key_blob;
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.ChangeKeyAuthorizationData(key_handle,
+                                                               old_password,
+                                                               new_password,
+                                                               NULL,
+                                                               &key_blob));
+}
+
+TEST_F(TpmUtilityTest, ImportRSAKeySuccess) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t public_exponent = 0x10001;
+  std::string modulus(256, 'a');
+  std::string prime_factor(128, 'b');
+  std::string password("password");
+  std::string key_blob;
+  TPM2B_DATA encryption_key;
+  TPM2B_PUBLIC public_data;
+  TPM2B_PRIVATE private_data;
+  EXPECT_CALL(mock_tpm_, ImportSync(_, _, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<2>(&encryption_key),
+                      SaveArg<3>(&public_data),
+                      SaveArg<4>(&private_data),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.ImportRSAKey(
+      TpmUtility::AsymmetricKeyUsage::kDecryptKey,
+      modulus, public_exponent, prime_factor, password, NULL, &key_blob));
+  // Validate that the public area was properly constructed.
+  EXPECT_EQ(public_data.public_area.parameters.rsa_detail.key_bits,
+            modulus.size() * 8);
+  EXPECT_EQ(public_data.public_area.parameters.rsa_detail.exponent,
+            public_exponent);
+  EXPECT_EQ(public_data.public_area.unique.rsa.size, modulus.size());
+  EXPECT_EQ(0, memcmp(public_data.public_area.unique.rsa.buffer,
+                      modulus.data(), modulus.size()));
+  // Validate the private struct construction.
+  EXPECT_EQ(kAesKeySize, encryption_key.size);
+  AES_KEY key;
+  AES_set_encrypt_key(encryption_key.buffer, kAesKeySize * 8, &key);
+  unsigned char iv[MAX_AES_BLOCK_SIZE_BYTES] = {0};
+  int iv_in = 0;
+  std::string unencrypted_private(private_data.size, 0);
+  AES_cfb128_encrypt(
+    reinterpret_cast<const unsigned char*>(private_data.buffer),
+    reinterpret_cast<unsigned char*>(string_as_array(&unencrypted_private)),
+    private_data.size, &key, iv, &iv_in, AES_DECRYPT);
+  TPM2B_DIGEST inner_integrity;
+  EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPM2B_DIGEST(&unencrypted_private,
+                                               &inner_integrity, NULL));
+  std::string object_name;
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.ComputeKeyName(public_data.public_area,
+                                                   &object_name));
+  std::string integrity_value = crypto::SHA256HashString(unencrypted_private +
+                                                         object_name);
+  EXPECT_EQ(integrity_value.size(), inner_integrity.size);
+  EXPECT_EQ(0, memcmp(inner_integrity.buffer,
+                      integrity_value.data(),
+                      inner_integrity.size));
+  TPM2B_SENSITIVE sensitive_data;
+  EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPM2B_SENSITIVE(&unencrypted_private,
+                                                  &sensitive_data, NULL));
+  EXPECT_EQ(sensitive_data.sensitive_area.auth_value.size, password.size());
+  EXPECT_EQ(0, memcmp(sensitive_data.sensitive_area.auth_value.buffer,
+                      password.data(), password.size()));
+  EXPECT_EQ(sensitive_data.sensitive_area.sensitive.rsa.size,
+            prime_factor.size());
+  EXPECT_EQ(0, memcmp(sensitive_data.sensitive_area.sensitive.rsa.buffer,
+                      prime_factor.data(), prime_factor.size()));
+}
+
+TEST_F(TpmUtilityTest, ImportRSAKeySuccessWithNoBlob) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t public_exponent = 0x10001;
+  std::string modulus(256, 'a');
+  std::string prime_factor(128, 'b');
+  std::string password;
+  EXPECT_CALL(mock_tpm_, ImportSync(_, _, _, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.ImportRSAKey(
+      TpmUtility::AsymmetricKeyUsage::kDecryptKey,
+      modulus, public_exponent, prime_factor, password, NULL, NULL));
+}
+
+TEST_F(TpmUtilityTest, ImportRSAKeyParentNameFail) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t public_exponent = 0x10001;
+  std::string modulus(256, 'a');
+  std::string prime_factor(128, 'b');
+  std::string password;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.ImportRSAKey(
+      TpmUtility::AsymmetricKeyUsage::kDecryptKey,
+      modulus, public_exponent, prime_factor, password, NULL, NULL));
+}
+
+TEST_F(TpmUtilityTest, ImportRSAKeyFail) {
+    TpmUtilityImpl utility(factory_);
+  std::string modulus;
+  std::string prime_factor;
+  std::string password;
+  EXPECT_CALL(mock_tpm_, ImportSync(_, _, _, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.ImportRSAKey(
+      TpmUtility::AsymmetricKeyUsage::kDecryptKey,
+      modulus, 0x10001, prime_factor, password, NULL, NULL));
 }
 
 TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyDecryptSuccess) {
