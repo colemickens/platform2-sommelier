@@ -11,7 +11,6 @@
 #include <locale>
 #include <string>
 
-#include <base/bind.h>
 #include <base/callback.h>
 #include <base/command_line.h>
 #include <base/files/file_util.h>
@@ -363,7 +362,7 @@ bool SessionManagerImpl::StopSession() {
 
 void SessionManagerImpl::StorePolicy(const uint8_t* policy_blob,
                                      size_t policy_blob_len,
-                                     PolicyService::Completion* completion) {
+                                     PolicyService::Completion completion) {
   int flags = PolicyService::KEY_ROTATE;
   if (!session_started_)
     flags |= PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_CLOBBER;
@@ -384,14 +383,14 @@ void SessionManagerImpl::StorePolicyForUser(
     const std::string& user_email,
     const uint8_t* policy_blob,
     size_t policy_blob_len,
-    PolicyService::Completion* completion) {
+    PolicyService::Completion completion) {
   PolicyService* policy_service = GetPolicyService(user_email);
   if (!policy_service) {
     PolicyService::Error error(
         dbus_error::kSessionDoesNotExist,
         "Cannot store user policy before session is started.");
     LOG(ERROR) << error.message();
-    completion->ReportFailure(error);
+    completion.Run(error);
     return;
   }
 
@@ -424,7 +423,7 @@ void SessionManagerImpl::StoreDeviceLocalAccountPolicy(
     const std::string& account_id,
     const uint8_t* policy_blob,
     size_t policy_blob_len,
-    PolicyService::Completion* completion) {
+    PolicyService::Completion completion) {
   device_local_account_policy_->Store(
       account_id, policy_blob, policy_blob_len, completion);
 }

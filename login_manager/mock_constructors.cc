@@ -67,9 +67,6 @@ MockPolicyService::MockPolicyService()
     : PolicyService(scoped_ptr<PolicyStore>(), NULL, NULL) {}
 MockPolicyService::~MockPolicyService() {}
 
-MockPolicyServiceCompletion::MockPolicyServiceCompletion() {}
-MockPolicyServiceCompletion::~MockPolicyServiceCompletion() {}
-
 MockPolicyServiceDelegate::MockPolicyServiceDelegate() {}
 MockPolicyServiceDelegate::~MockPolicyServiceDelegate() {}
 

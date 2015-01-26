@@ -19,6 +19,7 @@
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 
+#include "login_manager/dbus_error_types.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/session_manager_impl.h"
 
@@ -126,23 +127,33 @@ void HandleGetServerBackedStateKeysCompletion(
 
 }  // namespace
 
-// PolicyService::Completion implementation that forwards the result to a DBus
-// invocation context.
-class DBusMethodCompletion : public PolicyService::Completion {
+// Callback that forwards a result to a DBus invocation context.
+class DBusMethodCompletion {
  public:
-  DBusMethodCompletion(dbus::MethodCall* call,
-                       const dbus::ExportedObject::ResponseSender& sender);
+  static PolicyService::Completion CreateCallback(
+      dbus::MethodCall* call,
+      const dbus::ExportedObject::ResponseSender& sender);
   virtual ~DBusMethodCompletion();
 
-  virtual void ReportSuccess();
-  virtual void ReportFailure(const PolicyService::Error& error);
-
  private:
-  dbus::MethodCall* call_;
+  DBusMethodCompletion() : call_(nullptr) {}
+  DBusMethodCompletion(dbus::MethodCall* call,
+                       const dbus::ExportedObject::ResponseSender& sender);
+  void HandleResult(const PolicyService::Error& error);
+
+  dbus::MethodCall* call_ = nullptr;
   dbus::ExportedObject::ResponseSender sender_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusMethodCompletion);
 };
+
+// static
+PolicyService::Completion DBusMethodCompletion::CreateCallback(
+      dbus::MethodCall* call,
+      const dbus::ExportedObject::ResponseSender& sender) {
+  return base::Bind(&DBusMethodCompletion::HandleResult,
+                    base::Owned(new DBusMethodCompletion(call, sender)));
+}
 
 // Apparently, call is owned by sender, so it's safe to hang on to it.
 DBusMethodCompletion::DBusMethodCompletion(
@@ -158,21 +169,20 @@ DBusMethodCompletion::~DBusMethodCompletion() {
   }
 }
 
-void DBusMethodCompletion::ReportSuccess() {
-  scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call_));
-  dbus::MessageWriter writer(response.get());
-  writer.AppendBool(true);
-  sender_.Run(response.Pass());
-  call_ = NULL;
-  delete this;
-}
-
-void DBusMethodCompletion::ReportFailure(const PolicyService::Error& error) {
-  sender_.Run(
-      dbus::ErrorResponse::FromMethodCall(call_, error.code(), error.message())
-          .Pass());
-  call_ = NULL;
-  delete this;
+void DBusMethodCompletion::HandleResult(const PolicyService::Error& error) {
+  if (error.code() == dbus_error::kNone) {
+    scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call_));
+    dbus::MessageWriter writer(response.get());
+    writer.AppendBool(true);
+    sender_.Run(response.Pass());
+    call_ = nullptr;
+  } else {
+    sender_.Run(
+        dbus::ErrorResponse::FromMethodCall(call_,
+                                            error.code(), error.message())
+        .Pass());
+    call_ = nullptr;
+  }
 }
 
 SessionManagerDBusAdaptor::SessionManagerDBusAdaptor(SessionManagerImpl* impl)
@@ -326,8 +336,8 @@ void SessionManagerDBusAdaptor::StorePolicy(
   if (!reader.PopArrayOfBytes(&policy_blob, &policy_blob_len)) {
     sender.Run(CreateInvalidArgsError(call, call->GetSignature()).Pass());
   } else {
-    impl_->StorePolicy(
-        policy_blob, policy_blob_len, new DBusMethodCompletion(call, sender));
+    impl_->StorePolicy(policy_blob, policy_blob_len,
+                       DBusMethodCompletion::CreateCallback(call, sender));
     // Response will be sent asynchronously.
   }
 }
@@ -355,7 +365,8 @@ void SessionManagerDBusAdaptor::StorePolicyForUser(
     impl_->StorePolicyForUser(user_email,
                               policy_blob,
                               policy_blob_len,
-                              new DBusMethodCompletion(call, sender));
+                              DBusMethodCompletion::CreateCallback(call,
+                                                                   sender));
     // Response will normally be sent asynchronously.
   }
 }
@@ -390,7 +401,7 @@ void SessionManagerDBusAdaptor::StoreDeviceLocalAccountPolicy(
         account_id,
         policy_blob,
         policy_blob_len,
-        new DBusMethodCompletion(call, sender));
+        DBusMethodCompletion::CreateCallback(call, sender));
     // Response will be sent asynchronously.
   }
 }

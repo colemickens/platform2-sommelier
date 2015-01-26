@@ -45,7 +45,8 @@ class PolicyServiceTest : public testing::Test {
       : fake_data_("fake_data"),
         fake_sig_("fake_signature"),
         fake_key_("fake_key"),
-        fake_key_sig_("fake_key_signature") {}
+        fake_key_sig_("fake_key_signature") {
+  }
 
   virtual void SetUp() {
     store_ = new StrictMock<MockPolicyStore>;
@@ -95,8 +96,8 @@ class PolicyServiceTest : public testing::Test {
   void ExpectPersistPolicy(Sequence* sequence) {
     EXPECT_CALL(*store_, Persist()).InSequence(*sequence).WillOnce(
         Return(true));
-    EXPECT_CALL(completion_, ReportSuccess()).Times(1);
     EXPECT_CALL(delegate_, OnPolicyPersisted(true));
+    completion_ = MockPolicyService::CreateExpectSuccessCallback();
   }
 
   void ExpectKeyEqualsFalse(Sequence* sequence) {
@@ -113,11 +114,11 @@ class PolicyServiceTest : public testing::Test {
     EXPECT_CALL(key_, Persist()).Times(0);
     EXPECT_CALL(*store_, Set(_)).Times(0);
     EXPECT_CALL(*store_, Persist()).Times(0);
-    EXPECT_CALL(completion_, ReportSuccess()).Times(0);
-    EXPECT_CALL(completion_, ReportFailure(_)).Times(1);
 
     EXPECT_FALSE(
-        service_->Store(policy_data_, policy_len_, &completion_, flags));
+        service_->Store(policy_data_, policy_len_,
+                        MockPolicyService::CreateExpectFailureCallback(),
+                        flags));
     base::RunLoop().RunUntilIdle();
   }
 
@@ -146,7 +147,7 @@ class PolicyServiceTest : public testing::Test {
   StrictMock<MockPolicyKey> key_;
   StrictMock<MockPolicyStore>* store_;
   MockPolicyServiceDelegate delegate_;
-  MockPolicyServiceCompletion completion_;
+  PolicyService::Completion completion_;
 
   scoped_ptr<PolicyService> service_;
 };
@@ -172,14 +173,11 @@ TEST_F(PolicyServiceTest, Store) {
       .WillRepeatedly(Return(true));
   ExpectKeyPopulated(&s1, true);
   ExpectVerifyAndSetPolicy(&s2);
+  ExpectPersistPolicy(&s2);
 
   EXPECT_TRUE(
-      service_->Store(policy_data_, policy_len_, &completion_, kAllKeyFlags));
+      service_->Store(policy_data_, policy_len_, completion_, kAllKeyFlags));
 
-  Mock::VerifyAndClearExpectations(&key_);
-  Mock::VerifyAndClearExpectations(store_);
-
-  ExpectPersistPolicy(&s2);
   base::RunLoop().RunUntilIdle();
 }
 
@@ -240,15 +238,12 @@ TEST_F(PolicyServiceTest, StoreNewKey) {
       .WillOnce(Return(true));
   ExpectKeyPopulated(&s1, true);
   ExpectVerifyAndSetPolicy(&s2);
-
-  EXPECT_TRUE(
-      service_->Store(policy_data_, policy_len_, &completion_, kAllKeyFlags));
-
-  Mock::VerifyAndClearExpectations(&key_);
-  Mock::VerifyAndClearExpectations(store_);
-
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
+
+  EXPECT_TRUE(
+      service_->Store(policy_data_, policy_len_, completion_, kAllKeyFlags));
+
   base::RunLoop().RunUntilIdle();
 }
 
@@ -263,15 +258,12 @@ TEST_F(PolicyServiceTest, StoreNewKeyClobber) {
       .WillOnce(Return(true));
   ExpectKeyPopulated(&s1, true);
   ExpectVerifyAndSetPolicy(&s2);
-
-  EXPECT_TRUE(service_->Store(
-      policy_data_, policy_len_, &completion_, PolicyService::KEY_CLOBBER));
-
-  Mock::VerifyAndClearExpectations(&key_);
-  Mock::VerifyAndClearExpectations(store_);
-
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
+
+  EXPECT_TRUE(service_->Store(
+      policy_data_, policy_len_, completion_, PolicyService::KEY_CLOBBER));
+
   base::RunLoop().RunUntilIdle();
 }
 
@@ -283,14 +275,11 @@ TEST_F(PolicyServiceTest, StoreNewKeySame) {
       Return(true));
   ExpectKeyPopulated(&s2, true);
   ExpectVerifyAndSetPolicy(&s3);
+  ExpectPersistPolicy(&s2);
 
   EXPECT_TRUE(
-      service_->Store(policy_data_, policy_len_, &completion_, kAllKeyFlags));
+      service_->Store(policy_data_, policy_len_, completion_, kAllKeyFlags));
 
-  Mock::VerifyAndClearExpectations(&key_);
-  Mock::VerifyAndClearExpectations(store_);
-
-  ExpectPersistPolicy(&s2);
   base::RunLoop().RunUntilIdle();
 }
 
@@ -315,15 +304,12 @@ TEST_F(PolicyServiceTest, StoreRotation) {
       .WillOnce(Return(true));
   ExpectKeyPopulated(&s1, true);
   ExpectVerifyAndSetPolicy(&s2);
-
-  EXPECT_TRUE(
-      service_->Store(policy_data_, policy_len_, &completion_, kAllKeyFlags));
-
-  Mock::VerifyAndClearExpectations(&key_);
-  Mock::VerifyAndClearExpectations(store_);
-
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
+
+  EXPECT_TRUE(
+      service_->Store(policy_data_, policy_len_, completion_, kAllKeyFlags));
+
   base::RunLoop().RunUntilIdle();
 }
 
@@ -338,15 +324,12 @@ TEST_F(PolicyServiceTest, StoreRotationClobber) {
       .WillOnce(Return(true));
   ExpectKeyPopulated(&s1, true);
   ExpectVerifyAndSetPolicy(&s2);
-
-  EXPECT_TRUE(service_->Store(
-      policy_data_, policy_len_, &completion_, PolicyService::KEY_CLOBBER));
-
-  Mock::VerifyAndClearExpectations(&key_);
-  Mock::VerifyAndClearExpectations(store_);
-
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
+
+  EXPECT_TRUE(service_->Store(
+      policy_data_, policy_len_, completion_, PolicyService::KEY_CLOBBER));
+
   base::RunLoop().RunUntilIdle();
 }
 

@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -47,11 +48,9 @@ using testing::WithArg;
 using testing::_;
 
 namespace {
-
 ACTION_P(AssignVector, str) {
   arg0->assign(str.begin(), str.end());
 }
-
 }  // namespace
 
 namespace login_manager {
@@ -65,6 +64,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
         new_fake_sig_("new_fake_signature"),
         store_(NULL) {
     fake_key_vector_.assign(fake_key_.begin(), fake_key_.end());
+    completion_ = MockPolicyService::CreateDoNothing();
   }
 
   virtual void SetUp() {
@@ -312,7 +312,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   StrictMock<MockPolicyStore>* store_;
   scoped_ptr<MockMetrics> metrics_;
   scoped_ptr<StrictMock<MockMitigator>> mitigator_;
-  MockPolicyServiceCompletion completion_;
+  PolicyService::Completion completion_;
 
   scoped_ptr<DevicePolicyService> service_;
 };
@@ -873,8 +873,6 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
   EXPECT_CALL(key_, Verify(_, _, _, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
   EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
-  EXPECT_CALL(completion_, ReportSuccess()).Times(AnyNumber());
-  EXPECT_CALL(completion_, ReportFailure(_)).Times(AnyNumber());
 
   // Installing a policy blob that doesn't have a request token (indicates local
   // owner) should not create the file.
@@ -882,7 +880,7 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
   EXPECT_TRUE(
       service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
                       policy_str_.size(),
-                      &completion_,
+                      completion_,
                       PolicyService::KEY_CLOBBER));
   EXPECT_FALSE(base::PathExists(serial_recovery_flag_file_));
 
@@ -892,13 +890,13 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
   EXPECT_TRUE(
       service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
                       policy_str_.size(),
-                      &completion_,
+                      completion_,
                       PolicyService::KEY_CLOBBER));
   EXPECT_TRUE(base::PathExists(serial_recovery_flag_file_));
 
   // Storing bad policy shouldn't remove the file.
   EXPECT_FALSE(
-      service_->Store(NULL, 0, &completion_, PolicyService::KEY_CLOBBER));
+      service_->Store(NULL, 0, completion_, PolicyService::KEY_CLOBBER));
   EXPECT_TRUE(base::PathExists(serial_recovery_flag_file_));
 
   // Clearing the flag should remove the file.
@@ -906,7 +904,7 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
   EXPECT_TRUE(
       service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
                       policy_str_.size(),
-                      &completion_,
+                      completion_,
                       PolicyService::KEY_CLOBBER));
   EXPECT_FALSE(base::PathExists(serial_recovery_flag_file_));
 
@@ -927,7 +925,7 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
   EXPECT_TRUE(
       service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
                       policy_str_.size(),
-                      &completion_,
+                      completion_,
                       PolicyService::KEY_CLOBBER));
   EXPECT_FALSE(base::PathExists(serial_recovery_flag_file_));
 
@@ -936,7 +934,7 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
   EXPECT_TRUE(
       service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
                       policy_str_.size(),
-                      &completion_,
+                      completion_,
                       PolicyService::KEY_CLOBBER));
   EXPECT_TRUE(base::PathExists(serial_recovery_flag_file_));
 }
@@ -959,12 +957,10 @@ TEST_F(DevicePolicyServiceTest, GetSettings) {
   EXPECT_CALL(*store_, Persist()).WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
   EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
-  EXPECT_CALL(completion_, ReportSuccess()).Times(AnyNumber());
-  EXPECT_CALL(completion_, ReportFailure(_)).Times(AnyNumber());
   EXPECT_TRUE(
       service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
                       policy_str_.size(),
-                      &completion_,
+                      completion_,
                       PolicyService::KEY_CLOBBER));
   base::RunLoop().RunUntilIdle();
   EXPECT_EQ(service_->GetSettings().SerializeAsString(),
@@ -990,12 +986,10 @@ TEST_F(DevicePolicyServiceTest, StartUpFlagsSanitizer) {
   EXPECT_CALL(*store_, Persist()).WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
   EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
-  EXPECT_CALL(completion_, ReportSuccess()).Times(AnyNumber());
-  EXPECT_CALL(completion_, ReportFailure(_)).Times(AnyNumber());
   EXPECT_TRUE(
       service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
                       policy_str_.size(),
-                      &completion_,
+                      completion_,
                       PolicyService::KEY_CLOBBER));
   base::RunLoop().RunUntilIdle();
 

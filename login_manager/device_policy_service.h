@@ -94,7 +94,7 @@ class DevicePolicyService : public PolicyService {
   // PolicyService:
   bool Store(const uint8_t* policy_blob,
              uint32_t len,
-             Completion* completion,
+             Completion completion,
              int flags) override;
 
   static const char kPolicyPath[];

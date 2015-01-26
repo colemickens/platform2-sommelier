@@ -28,7 +28,7 @@ namespace em = enterprise_management;
 
 namespace login_manager {
 
-PolicyService::Error::Error() : code_(dbus_error::kSigDecodeFail) {
+PolicyService::Error::Error() : code_(dbus_error::kNone) {
 }
 
 PolicyService::Error::Error(const std::string& code, const std::string& message)
@@ -39,9 +39,6 @@ void PolicyService::Error::Set(const std::string& code,
                                const std::string& message) {
   code_ = code;
   message_ = message;
-}
-
-PolicyService::Completion::~Completion() {
 }
 
 PolicyService::Delegate::~Delegate() {
@@ -64,7 +61,7 @@ PolicyService::~PolicyService() {
 
 bool PolicyService::Store(const uint8_t* policy_blob,
                           uint32_t len,
-                          Completion* completion,
+                          Completion completion,
                           int flags) {
   em::PolicyFetchResponse policy;
   if (!policy.ParseFromArray(policy_blob, len) || !policy.has_policy_data() ||
@@ -72,7 +69,7 @@ bool PolicyService::Store(const uint8_t* policy_blob,
     const char msg[] = "Unable to parse policy protobuf.";
     LOG(ERROR) << msg;
     Error error(dbus_error::kSigDecodeFail, msg);
-    completion->ReportFailure(error);
+    completion.Run(error);
     return false;
   }
 
@@ -90,7 +87,7 @@ bool PolicyService::Retrieve(std::vector<uint8_t>* policy_blob) {
 
 bool PolicyService::PersistPolicySync() {
   bool status = store()->Persist();
-  OnPolicyPersisted(NULL, status);
+  OnPolicyPersisted(Completion(), status);
   return status;
 }
 
@@ -104,10 +101,10 @@ void PolicyService::PersistPolicy() {
   main_loop_->PostTask(FROM_HERE,
                        base::Bind(&PolicyService::PersistPolicyOnLoop,
                                   weak_ptr_factory_.GetWeakPtr(),
-                                  static_cast<Completion*>(NULL)));
+                                  Completion()));
 }
 
-void PolicyService::PersistPolicyWithCompletion(Completion* completion) {
+void PolicyService::PersistPolicyWithCompletion(Completion completion) {
   main_loop_->PostTask(FROM_HERE,
                        base::Bind(&PolicyService::PersistPolicyOnLoop,
                                   weak_ptr_factory_.GetWeakPtr(),
@@ -115,7 +112,7 @@ void PolicyService::PersistPolicyWithCompletion(Completion* completion) {
 }
 
 bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
-                                Completion* completion,
+                                Completion completion,
                                 int flags) {
   // Determine if the policy has pushed a new owner key and, if so, set it.
   if (policy.has_new_public_key() && !key()->Equals(policy.new_public_key())) {
@@ -145,7 +142,7 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
       const char msg[] = "Failed to install policy key!";
       LOG(ERROR) << msg;
       Error error(dbus_error::kPubkeySetIllegal, msg);
-      completion->ReportFailure(error);
+      completion.Run(error);
       return false;
     }
 
@@ -163,7 +160,7 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
     const char msg[] = "Signature could not be verified.";
     LOG(ERROR) << msg;
     Error error(dbus_error::kVerifyFail, msg);
-    completion->ReportFailure(error);
+    completion.Run(error);
     return false;
   }
 
@@ -186,22 +183,23 @@ void PolicyService::PersistKeyOnLoop() {
   OnKeyPersisted(key()->Persist());
 }
 
-void PolicyService::PersistPolicyOnLoop(Completion* completion) {
+void PolicyService::PersistPolicyOnLoop(Completion completion) {
   DCHECK(main_loop_->BelongsToCurrentThread());
   OnPolicyPersisted(completion, store()->Persist());
 }
 
-void PolicyService::OnPolicyPersisted(Completion* completion, bool status) {
+void PolicyService::OnPolicyPersisted(Completion completion,
+                                      bool status) {
   if (status) {
     LOG(INFO) << "Persisted policy to disk.";
-    if (completion)
-      completion->ReportSuccess();
+    if (!completion.is_null())
+      completion.Run(Error());
   } else {
     std::string msg = "Failed to persist policy to disk.";
     LOG(ERROR) << msg;
-    if (completion) {
+    if (!completion.is_null()) {
       Error error(dbus_error::kSigEncodeFail, msg);
-      completion->ReportFailure(error);
+      completion.Run(error);
     }
   }
 

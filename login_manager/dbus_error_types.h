@@ -9,6 +9,7 @@ namespace login_manager {
 namespace dbus_error {
 #define INTERFACE "org.chromium.SessionManagerInterface"
 
+static const char kNone[] = INTERFACE ".None";
 static const char kEmitFailed[] = INTERFACE ".EmitFailed";
 static const char kInitMachineInfoFail[] = INTERFACE ".InitMachineInfoFail";
 static const char kInvalidAccount[] = INTERFACE ".InvalidAccount";

@@ -414,7 +414,8 @@ TEST_F(SessionManagerImplTest, StorePolicy_NoSession) {
                     fake_policy,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW |
                         PolicyService::KEY_CLOBBER);
-  impl_.StorePolicy(policy_blob.data(), policy_blob.size(), NULL);
+  impl_.StorePolicy(policy_blob.data(), policy_blob.size(),
+                    MockPolicyService::CreateDoNothing());
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_SessionStarted) {
@@ -423,7 +424,8 @@ TEST_F(SessionManagerImplTest, StorePolicy_SessionStarted) {
   const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
   ExpectStorePolicy(
       device_policy_service_, fake_policy, PolicyService::KEY_ROTATE);
-  impl_.StorePolicy(policy_blob.data(), policy_blob.size(), NULL);
+  impl_.StorePolicy(policy_blob.data(), policy_blob.size(),
+                    MockPolicyService::CreateDoNothing());
 }
 
 TEST_F(SessionManagerImplTest, RetrievePolicy) {
@@ -439,15 +441,22 @@ TEST_F(SessionManagerImplTest, RetrievePolicy) {
       std::equal(fake_policy.begin(), fake_policy.end(), out_blob.begin()));
 }
 
+namespace {
+void CaptureErrorCode(std::string* storage,
+                      const PolicyService::Error& to_capture) {
+  DCHECK(storage);
+  *storage = to_capture.code();
+}
+}  // namespace
+
 TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSession) {
   const string fake_policy("fake policy");
   const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
-  MockPolicyServiceCompletion completion;
-  EXPECT_CALL(completion,
-              ReportFailure(PolicyErrorEq(dbus_error::kSessionDoesNotExist)))
-      .Times(1);
+  string error_code;
   impl_.StorePolicyForUser(
-      kSaneEmail, policy_blob.data(), policy_blob.size(), &completion);
+      kSaneEmail, policy_blob.data(), policy_blob.size(),
+      base::Bind(&CaptureErrorCode, &error_code));
+  EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_code);
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_SessionStarted) {
@@ -460,8 +469,8 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SessionStarted) {
                     _,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW))
       .WillOnce(Return(true));
-  impl_.StorePolicyForUser(
-      kSaneEmail, policy_blob.data(), policy_blob.size(), NULL);
+  impl_.StorePolicyForUser(kSaneEmail, policy_blob.data(), policy_blob.size(),
+                           MockPolicyService::CreateDoNothing());
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
@@ -477,18 +486,17 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
                     _,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW))
       .WillOnce(Return(true));
-  impl_.StorePolicyForUser(
-      kSaneEmail, policy_blob.data(), policy_blob.size(), NULL);
+  impl_.StorePolicyForUser(kSaneEmail, policy_blob.data(), policy_blob.size(),
+                           MockPolicyService::CreateDoNothing());
   Mock::VerifyAndClearExpectations(user_policy_services_[kSaneEmail]);
 
   // Storing policy for another username fails before his session starts.
   const char user2[] = "user2@somewhere.com";
-  MockPolicyServiceCompletion completion;
-  EXPECT_CALL(completion,
-              ReportFailure(PolicyErrorEq(dbus_error::kSessionDoesNotExist)))
-      .Times(1);
+  string error_code;
   impl_.StorePolicyForUser(
-      user2, policy_blob.data(), policy_blob.size(), &completion);
+      user2, policy_blob.data(), policy_blob.size(),
+      base::Bind(&CaptureErrorCode, &error_code));
+  EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_code);
 
   // Now start another session for the 2nd user.
   ExpectAndRunStartSession(user2);
@@ -501,7 +509,8 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
                     _,
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW))
       .WillOnce(Return(true));
-  impl_.StorePolicyForUser(user2, policy_blob.data(), policy_blob.size(), NULL);
+  impl_.StorePolicyForUser(user2, policy_blob.data(), policy_blob.size(),
+                           MockPolicyService::CreateDoNothing());
   Mock::VerifyAndClearExpectations(user_policy_services_[user2]);
 }
 

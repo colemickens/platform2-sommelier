@@ -38,7 +38,7 @@ class UserPolicyService : public PolicyService {
   // we also clear the signing key.
   virtual bool Store(const uint8_t* policy_blob,
                      uint32_t len,
-                     Completion* completion,
+                     Completion completion,
                      int flags);
 
   // Invoked after a new key has been persisted. This creates a copy of the key

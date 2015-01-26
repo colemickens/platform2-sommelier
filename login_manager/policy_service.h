@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
@@ -61,13 +62,8 @@ class PolicyService {
     DISALLOW_COPY_AND_ASSIGN(Error);
   };
 
-  // Callback interface for asynchronous completion of a Store operation.
-  class Completion {
-   public:
-    virtual ~Completion();
-    virtual void ReportSuccess() = 0;
-    virtual void ReportFailure(const Error& error) = 0;
-  };
+  // Callback for asynchronous completion of a Store operation.
+  using Completion = base::Callback<void(const PolicyService::Error&)>;
 
   // Delegate for notifications about key and policy getting persisted.
   class Delegate {
@@ -91,7 +87,7 @@ class PolicyService {
   // status of the operation through |completion|.
   virtual bool Store(const uint8_t* policy_blob,
                      uint32_t len,
-                     Completion* completion,
+                     Completion completion,
                      int flags);
 
   // Retrieves the current policy blob. Returns true if successful, false
@@ -124,13 +120,13 @@ class PolicyService {
 
   // Triggers persisting the policy to disk and reports the result to the given
   // completion context.
-  void PersistPolicyWithCompletion(Completion* completion);
+  void PersistPolicyWithCompletion(Completion completion);
 
   // Store a policy blob. This does the heavy lifting for Store(), making the
   // signature checks, taking care of key changes and persisting policy and key
   // data to disk.
   bool StorePolicy(const enterprise_management::PolicyFetchResponse& policy,
-                   Completion* completion,
+                   Completion completion,
                    int flags);
 
   // Completes a key storage operation on the UI thread, reporting the result to
@@ -143,11 +139,11 @@ class PolicyService {
 
   // Persists policy to disk on the main thread. If |completion| is non-NULL
   // it will be signaled when done.
-  void PersistPolicyOnLoop(Completion* completion);
+  void PersistPolicyOnLoop(Completion completion);
 
   // Finishes persisting policy with |status|, notifying the delegate and
   // reporting the status through |completion|.
-  void OnPolicyPersisted(Completion* completion, bool status);
+  void OnPolicyPersisted(Completion completion, bool status);
 
  private:
   scoped_ptr<PolicyStore> policy_store_;

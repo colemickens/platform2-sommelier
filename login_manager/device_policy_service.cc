@@ -202,7 +202,7 @@ bool DevicePolicyService::Initialize() {
 
 bool DevicePolicyService::Store(const uint8_t* policy_blob,
                                 uint32_t len,
-                                Completion* completion,
+                                Completion completion,
                                 int flags) {
   bool result = PolicyService::Store(policy_blob, len, completion, flags);
 

@@ -125,13 +125,13 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   void StorePolicy(const uint8_t* policy_blob,
                    size_t policy_blob_len,
-                   PolicyService::Completion* completion);
+                   PolicyService::Completion completion);
   void RetrievePolicy(std::vector<uint8_t>* policy_data, Error* error);
 
   void StorePolicyForUser(const std::string& user_email,
                           const uint8_t* policy_blob,
                           size_t policy_blob_len,
-                          PolicyService::Completion* completion);
+                          PolicyService::Completion completion);
   void RetrievePolicyForUser(const std::string& user_email,
                              std::vector<uint8_t>* policy_data,
                              Error* error);
@@ -139,7 +139,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   void StoreDeviceLocalAccountPolicy(const std::string& account_id,
                                      const uint8_t* policy_blob,
                                      size_t policy_blob_len,
-                                     PolicyService::Completion* completion);
+                                     PolicyService::Completion completion);
   void RetrieveDeviceLocalAccountPolicy(const std::string& account_id,
                                         std::vector<uint8_t>* policy_data,
                                         Error* error);

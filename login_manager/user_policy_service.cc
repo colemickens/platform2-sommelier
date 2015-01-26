@@ -62,7 +62,7 @@ void UserPolicyService::PersistKeyCopy() {
 
 bool UserPolicyService::Store(const uint8_t* policy_blob,
                               uint32_t len,
-                              Completion* completion,
+                              Completion completion,
                               int flags) {
   em::PolicyFetchResponse policy;
   em::PolicyData policy_data;
@@ -71,7 +71,7 @@ bool UserPolicyService::Store(const uint8_t* policy_blob,
     const char msg[] = "Unable to parse policy protobuf.";
     LOG(ERROR) << msg;
     Error error(dbus_error::kSigDecodeFail, msg);
-    completion->ReportFailure(error);
+    completion.Run(error);
     return false;
   }
 
