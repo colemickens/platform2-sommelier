@@ -10,6 +10,7 @@
 #include <base/macros.h>
 #include <chromeos/chromeos_export.h>
 
+#include "trunks/authorization_session.h"
 #include "trunks/tpm_generated.h"
 
 namespace trunks {
@@ -85,12 +86,16 @@ class CHROMEOS_EXPORT TpmUtility {
   // referenced by its handle |key_handle|. The |ciphertext| is then decrypted
   // to give us the |plaintext|. We need |password| to authorize use of the
   // key. |scheme| refers to the decryption scheme used. By default it is
-  // OAEP, but TPM_ALG_RSAES can be specified.
+  // OAEP, but TPM_ALG_RSAES can be specified. |session| is an optional
+  // argument pointing to the Authorization session to be used with this
+  // command. If it is not specified, we request and initialize a new
+  // session.
   virtual TPM_RC AsymmetricDecrypt(TPM_HANDLE key_handle,
                                    TPM_ALG_ID scheme,
                                    TPM_ALG_ID hash_alg,
                                    const std::string& password,
                                    const std::string& ciphertext,
+                                   AuthorizationSession* session,
                                    std::string* plaintext) = 0;
 
   // This method takes an unrestricted signing key referenced by |key_handle|
@@ -99,12 +104,16 @@ class CHROMEOS_EXPORT TpmUtility {
   // to authorize use of the key. |scheme| is used to specify the signature
   // scheme used. By default it is TPM_ALG_RSASSA, but TPM_ALG_RSAPPS can
   // be specified. hash_alg is the algorithm used in the signing operation.
-  // It is by default TPM_ALG_SHA256.
+  // It is by default TPM_ALG_SHA256. |session| is an optional
+  // argument pointing to the Authorization session to be used with this
+  // command. If it is not specified, we request and initialize a new
+  // session.
   virtual TPM_RC Sign(TPM_HANDLE key_handle,
                       TPM_ALG_ID scheme,
                       TPM_ALG_ID hash_alg,
                       const std::string& password,
                       const std::string& digest,
+                      AuthorizationSession* session,
                       std::string* signature) = 0;
 
   // This method verifies that the signature produced on the digest was
@@ -125,8 +134,12 @@ class CHROMEOS_EXPORT TpmUtility {
   // is used as the authorization for the created key. The created key
   // is then loaded and its handle is returned as |key_handle|. The out
   // argument |key_blob| can be used to load the key in the future.
+  // |session| is an optional argument pointing to the Authorization session
+  // to be used with this command. If it is not specified, we request and
+  // initialize a new session.
   virtual TPM_RC CreateAndLoadRSAKey(AsymmetricKeyUsage key_type,
                                      const std::string& password,
+                                     AuthorizationSession* session,
                                      TPM_HANDLE* key_handle,
                                      std::string* key_blob) = 0;
 
@@ -134,16 +147,24 @@ class CHROMEOS_EXPORT TpmUtility {
   // |modulus_bits| is used to specify the size of the modulus, and
   // |public_exponent| specifies the exponent of the key. After this function
   // terminates, |key_blob| contains a key blob that can be loaded into the TPM.
+  // |session| is an optional argument pointing to the Authorization session
+  // to be used with this command. If it is not specified, we request and
+  // initialize a new session.
   virtual TPM_RC CreateRSAKeyPair(AsymmetricKeyUsage key_type,
                                   int modulus_bits,
                                   uint32_t public_exponent,
                                   const std::string& password,
+                                  AuthorizationSession* session,
                                   std::string* key_blob) = 0;
 
   // This method loads a pregenerated TPM key into the TPM. |key_blob| contains
   // the blob returned by a key creation function. The loaded key's handle is
   // returned using |key_handle|.
+  // |session| is an optional argument pointing to the Authorization session
+  // to be used with this command. If it is not specified, we request and
+  // initialize a new session.
   virtual TPM_RC LoadKey(const std::string& key_blob,
+                         AuthorizationSession* session,
                          TPM_HANDLE* key_handle) = 0;
 
   // This function sets |name| to the name of the object referenced by

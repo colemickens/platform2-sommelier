@@ -34,33 +34,38 @@ class MockTpmUtility : public TpmUtility {
                                          TPM_ALG_ID,
                                          const std::string&,
                                          std::string*));
-  MOCK_METHOD6(AsymmetricDecrypt, TPM_RC(TPM_HANDLE,
+  MOCK_METHOD7(AsymmetricDecrypt, TPM_RC(TPM_HANDLE,
                                          TPM_ALG_ID,
                                          TPM_ALG_ID,
                                          const std::string&,
                                          const std::string&,
+                                         AuthorizationSession*,
                                          std::string*));
-  MOCK_METHOD6(Sign, TPM_RC(TPM_HANDLE,
+  MOCK_METHOD7(Sign, TPM_RC(TPM_HANDLE,
                             TPM_ALG_ID,
                             TPM_ALG_ID,
                             const std::string&,
                             const std::string&,
+                            AuthorizationSession*,
                             std::string*));
   MOCK_METHOD5(Verify, TPM_RC(TPM_HANDLE,
                               TPM_ALG_ID,
                               TPM_ALG_ID,
                               const std::string&,
                               const std::string&));
-  MOCK_METHOD4(CreateAndLoadRSAKey, TPM_RC(AsymmetricKeyUsage,
+  MOCK_METHOD5(CreateAndLoadRSAKey, TPM_RC(AsymmetricKeyUsage,
                                            const std::string&,
+                                           AuthorizationSession*,
                                            TPM_HANDLE*,
                                            std::string*));
-  MOCK_METHOD5(CreateRSAKeyPair, TPM_RC(AsymmetricKeyUsage,
+  MOCK_METHOD6(CreateRSAKeyPair, TPM_RC(AsymmetricKeyUsage,
                                         int,
                                         uint32_t,
                                         const std::string&,
+                                        AuthorizationSession*,
                                         std::string*));
-  MOCK_METHOD2(LoadKey, TPM_RC(const std::string&,
+  MOCK_METHOD3(LoadKey, TPM_RC(const std::string&,
+                               AuthorizationSession*,
                                TPM_HANDLE*));
   MOCK_METHOD2(GetKeyName, TPM_RC(TPM_HANDLE, std::string*));
   MOCK_METHOD2(GetKeyPublicArea, TPM_RC(TPM_HANDLE, TPM2B_PUBLIC*));

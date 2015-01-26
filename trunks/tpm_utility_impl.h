@@ -49,12 +49,14 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
                            TPM_ALG_ID hash_alg,
                            const std::string& password,
                            const std::string& ciphertext,
+                           AuthorizationSession* session,
                            std::string* plaintext) override;
   TPM_RC Sign(TPM_HANDLE key_handle,
               TPM_ALG_ID scheme,
               TPM_ALG_ID hash_alg,
               const std::string& password,
               const std::string& digest,
+              AuthorizationSession* session,
               std::string* signature) override;
   TPM_RC Verify(TPM_HANDLE key_handle,
                 TPM_ALG_ID scheme,
@@ -63,14 +65,17 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
                 const std::string& signature) override;
   TPM_RC CreateAndLoadRSAKey(AsymmetricKeyUsage key_type,
                              const std::string& password,
+                             AuthorizationSession* session,
                              TPM_HANDLE* key_handle,
                              std::string* key_blob) override;
   TPM_RC CreateRSAKeyPair(AsymmetricKeyUsage key_type,
                           int modulus_bits,
                           uint32_t public_exponent,
                           const std::string& password,
+                          AuthorizationSession* session,
                           std::string* key_blob) override;
   TPM_RC LoadKey(const std::string& key_blob,
+                 AuthorizationSession* session,
                  TPM_HANDLE* key_handle) override;
   TPM_RC GetKeyName(TPM_HANDLE handle, std::string* name) override;
   TPM_RC GetKeyPublicArea(TPM_HANDLE handle,
@@ -102,7 +107,6 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
 
  private:
   const TrunksFactory& factory_;
-  scoped_ptr<AuthorizationSession> session_;
 
   // Synchronously derives storage root keys for RSA and ECC and persists the
   // keys in the TPM. This operation must be authorized by the |owner_password|
@@ -120,12 +124,6 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
   // template for a key. It takes a valid |key_type| tp construct the
   // parameters.
   TPMT_PUBLIC CreateDefaultPublicArea(TPM_ALG_ID key_alg);
-
-  // If session_ has not been initialized, creates an unbound and salted
-  // authorization session with encryption enabled and assigns it to session_.
-  // If session_ has already been initialized, this method has no effect. Call
-  // this method successfully before accessing session_.
-  TPM_RC InitializeSession();
 
   // Sets TPM |hierarchy| authorization to |password| using |authorization|.
   TPM_RC SetHierarchyAuthorization(TPMI_RH_HIERARCHY_AUTH hierarchy,

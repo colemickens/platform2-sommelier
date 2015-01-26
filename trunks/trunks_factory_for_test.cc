@@ -121,12 +121,14 @@ class TpmUtilityForwarder : public TpmUtility {
                            TPM_ALG_ID hash_alg,
                            const std::string& password,
                            const std::string& ciphertext,
+                           AuthorizationSession* session,
                            std::string* plaintext) override {
     return target_->AsymmetricDecrypt(key_handle,
                                       scheme,
                                       hash_alg,
                                       password,
                                       ciphertext,
+                                      session,
                                       plaintext);
   }
 
@@ -135,12 +137,14 @@ class TpmUtilityForwarder : public TpmUtility {
               TPM_ALG_ID hash_alg,
               const std::string& password,
               const std::string& digest,
+              AuthorizationSession* session,
               std::string* signature) override {
     return target_->Sign(key_handle,
                          scheme,
                          hash_alg,
                          password,
                          digest,
+                         session,
                          signature);
   }
 
@@ -154,9 +158,10 @@ class TpmUtilityForwarder : public TpmUtility {
 
   TPM_RC CreateAndLoadRSAKey(AsymmetricKeyUsage key_type,
                              const std::string& password,
+                             AuthorizationSession* session,
                              TPM_HANDLE* key_handle,
                              std::string* key_blob) override {
-    return target_->CreateAndLoadRSAKey(key_type, password,
+    return target_->CreateAndLoadRSAKey(key_type, password, session,
                                         key_handle, key_blob);
   }
 
@@ -164,14 +169,16 @@ class TpmUtilityForwarder : public TpmUtility {
                           int modulus_bits,
                           uint32_t public_exponent,
                           const std::string& password,
+                          AuthorizationSession* session,
                           std::string* key_blob) override {
     return target_->CreateRSAKeyPair(key_type, modulus_bits, public_exponent,
-                                     password, key_blob);
+                                     password, session, key_blob);
   }
 
   TPM_RC LoadKey(const std::string& key_blob,
+                 AuthorizationSession* session,
                  TPM_HANDLE* key_handle) override {
-    return target_->LoadKey(key_blob, key_handle);
+    return target_->LoadKey(key_blob, session, key_handle);
   }
 
   TPM_RC GetKeyName(TPM_HANDLE handle, std::string* name) override {

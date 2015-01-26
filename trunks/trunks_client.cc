@@ -66,9 +66,18 @@ int SignTest() {
   trunks::TPM_HANDLE signing_key;
   trunks::TPM_RC rc;
   scoped_ptr<trunks::TpmUtility> utility = factory.GetTpmUtility();
+  scoped_ptr<trunks::AuthorizationSession> session(
+      factory.GetAuthorizationSession());
+  rc = session->StartUnboundSession(true);
+  if (rc) {
+    LOG(ERROR) << "Error starting authorization session: "
+               << trunks::GetErrorString(rc);
+    return rc;
+  }
   rc = utility->CreateAndLoadRSAKey(
       trunks::TpmUtility::AsymmetricKeyUsage::kSignKey,
       "sign",
+      session.get(),
       &signing_key,
       NULL);
   if (rc) {
@@ -82,6 +91,7 @@ int SignTest() {
                      trunks::TPM_ALG_NULL,
                      "sign",
                      std::string(32, 'a'),
+                     session.get(),
                      &signature);
   if (rc) {
     LOG(ERROR) << "Error signing: " << trunks::GetErrorString(rc);
@@ -107,6 +117,7 @@ int DecryptTest() {
   rc = utility->CreateAndLoadRSAKey(
       trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey,
       "decrypt",
+      NULL,
       &decrypt_key,
       NULL);
   if (rc) {
@@ -130,6 +141,7 @@ int DecryptTest() {
                                   trunks::TPM_ALG_NULL,
                                   "decrypt",
                                   ciphertext,
+                                  NULL,
                                   &plaintext);
   if (rc) {
     LOG(ERROR) << "Error decrypting: " << trunks::GetErrorString(rc);
