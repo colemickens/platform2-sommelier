@@ -41,6 +41,7 @@ gfx_events="
     i915:i915_flip_request
     i915:i915_flip_complete
     i915:i915_gem_object_pwrite
+    i915:intel_gpu_freq_change
     exynos:exynos_flip_request
     exynos:exynos_flip_complete
     exynos:exynos_page_flip_state
