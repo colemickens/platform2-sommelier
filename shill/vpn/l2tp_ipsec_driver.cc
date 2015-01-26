@@ -34,6 +34,7 @@
 #include "shill/device_info.h"
 #include "shill/error.h"
 #include "shill/external_task.h"
+#include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/ppp_daemon.h"
@@ -458,7 +459,15 @@ void L2TPIPSecDriver::Notify(
   }
   device_->SetEnabled(true);
   device_->SelectService(service_);
-  device_->UpdateIPConfigFromPPP(dict, blackhole_ipv6);
+
+  // Reduce MTU to the minimum viable for IPv6, since the IPSec layer consumes
+  // some variable portion of the payload.  Although this system does not yet
+  // support IPv6, it is a reasonable value to start with, since the minimum
+  // IPv6 packet size will plausibly be a size any gateway would support, and
+  // is also larger than the IPv4 minimum size.
+  device_->UpdateIPConfigFromPPPWithMTU(
+      dict, blackhole_ipv6, IPConfig::kMinIPv6MTU);
+
   ReportConnectionMetrics();
   StopConnectTimeout();
 }

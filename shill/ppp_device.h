@@ -44,6 +44,13 @@ class PPPDevice : public VirtualDevice {
       const std::map<std::string, std::string> &configuration,
       bool blackhole_ipv6);
 
+  // Same as UpdateIPConfigFromPPP except overriding the default MTU
+  // in the IPConfig.
+  virtual void UpdateIPConfigFromPPPWithMTU(
+      const std::map<std::string, std::string> &configuration,
+      bool blackhole_ipv6,
+      int32_t mtu);
+
   // Get the network device name (e.g. "ppp0") from the dictionary of
   // configuration strings received from our PPP plugin.
   static std::string GetInterfaceName(

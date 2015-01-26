@@ -39,6 +39,18 @@ void PPPDevice::UpdateIPConfigFromPPP(const map<string, string> &configuration,
   UpdateIPConfig(properties);
 }
 
+void PPPDevice::UpdateIPConfigFromPPPWithMTU(
+    const map<string, string> &configuration,
+    bool blackhole_ipv6,
+    int32_t mtu) {
+  SLOG(this, 2) << __func__ << " on " << link_name();
+  IPConfig::Properties properties =
+      ParseIPConfiguration(link_name(), configuration);
+  properties.blackhole_ipv6 = blackhole_ipv6;
+  properties.mtu = mtu;
+  UpdateIPConfig(properties);
+}
+
 // static
 string PPPDevice::GetInterfaceName(const map<string, string> &configuration) {
   if (ContainsKey(configuration, kPPPInterfaceName)) {

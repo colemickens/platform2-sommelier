@@ -13,6 +13,7 @@
 #include <vpn-manager/service_error.h>
 
 #include "shill/event_dispatcher.h"
+#include "shill/ipconfig.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_certificate_file.h"
 #include "shill/mock_device_info.h"
@@ -151,7 +152,8 @@ class L2TPIPSecDriverTest : public testing::Test,
   void ExpectDeviceConnected(const map<string, string> &ppp_config) {
     EXPECT_CALL(*device_, SetEnabled(true));
     EXPECT_CALL(*device_, SelectService(static_cast<ServiceRefPtr>(service_)));
-    EXPECT_CALL(*device_, UpdateIPConfigFromPPP(ppp_config, _));
+    EXPECT_CALL(*device_, UpdateIPConfigFromPPPWithMTU(
+                    ppp_config, _, IPConfig::kMinIPv6MTU));
   }
 
   void ExpectMetricsReported() {
