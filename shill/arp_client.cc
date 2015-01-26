@@ -63,7 +63,7 @@ bool ArpClient::CreateSocket(uint16_t arp_opcode) {
   socket_closer_.reset(new ScopedSocketCloser(sockets_.get(), socket_));
 
   // Create a packet filter incoming ARP packets.
-  static const sock_filter arp_reply_filter[] = {
+  const sock_filter arp_filter[] = {
     // If a packet contains the ARP opcode we are looking for...
     BPF_STMT(BPF_LD | BPF_H | BPF_ABS, kArpOpOffset),
     BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, arp_opcode, 0, 1),
@@ -74,8 +74,8 @@ bool ArpClient::CreateSocket(uint16_t arp_opcode) {
   };
 
   sock_fprog pf;
-  pf.filter = const_cast<sock_filter *>(arp_reply_filter);
-  pf.len = arraysize(arp_reply_filter);
+  pf.filter = const_cast<sock_filter *>(arp_filter);
+  pf.len = arraysize(arp_filter);
   if (sockets_->AttachFilter(socket_, &pf) != 0) {
     PLOG(ERROR) << "Could not attach packet filter";
     return false;
