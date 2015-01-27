@@ -48,6 +48,7 @@ const uint32_t kDefaultConnectTimeoutSeconds = 60u;
 const uint32_t kDefaultBootstrapTimeoutSeconds = 600u;
 
 const char kDefaultConfigFilePath[] = "/etc/privetd/config";
+const char kDefaultStateFilePath[] = "/var/lib/privetd/privetd.state";
 
 std::string GetFirstHeader(const Request& request, const std::string& name) {
   std::vector<std::string> headers = request.GetHeader(name);
@@ -261,9 +262,9 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(http_port, 8080, "HTTP port to listen for requests on");
   DEFINE_int32(https_port, 8081, "HTTPS port to listen for requests on");
   DEFINE_bool(log_to_stderr, false, "log trace messages to stderr as well");
-  DEFINE_string(state_path, privetd::kDefaultStateFilePath,
-                "Path to file containing state information.");
   DEFINE_string(config_path, privetd::kDefaultConfigFilePath,
+                "Path to file containing config information.");
+  DEFINE_string(state_path, privetd::kDefaultStateFilePath,
                 "Path to file containing state information.");
   DEFINE_string(device_whitelist, "",
                 "Comma separated list of network interfaces to monitor for "
@@ -275,6 +276,9 @@ int main(int argc, char* argv[]) {
   if (FLAGS_log_to_stderr)
     flags |= chromeos::kLogToStderr;
   chromeos::InitLog(flags | chromeos::kLogHeader);
+
+  if (FLAGS_config_path.empty())
+    FLAGS_config_path = privetd::kDefaultConfigFilePath;
 
   if (FLAGS_state_path.empty())
     FLAGS_state_path = privetd::kDefaultStateFilePath;

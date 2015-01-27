@@ -6,8 +6,6 @@
 
 namespace privetd {
 
-const char kDefaultStateFilePath[] = "/var/lib/privetd/privetd.state";
-
 namespace errors {
 
 const char kPrivetdErrorDomain[] = "privetd";

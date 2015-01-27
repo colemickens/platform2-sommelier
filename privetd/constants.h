@@ -7,8 +7,6 @@
 
 namespace privetd {
 
-extern const char kDefaultStateFilePath[];
-
 namespace errors {
 
 extern const char kPrivetdErrorDomain[];
