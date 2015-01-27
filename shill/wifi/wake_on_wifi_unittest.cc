@@ -1921,6 +1921,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_NotConnected_Throttle) {
   EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
   EXPECT_TRUE(WakeToScanTimerIsRunning());
   EXPECT_FALSE(GetDarkResumesSinceLastSuspend()->Empty());
+  EXPECT_CALL(metrics_, NotifyWakeOnWiFiThrottled());
   OnDarkResume(is_connected, has_service_configured_for_autoconnect);
   EXPECT_FALSE(SuspendActionsCallbackIsNull());
   EXPECT_FALSE(DHCPLeaseRenewalTimerIsRunning());
@@ -1954,12 +1955,14 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiDisabledAfterResume) {
   GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kPattern);
   EXPECT_CALL(netlink_manager_,
               SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(1);
+  EXPECT_CALL(metrics_, NotifySuspendWithWakeOnWiFiEnabledDone()).Times(1);
   OnAfterResume();
 
   // No wake no WiFi triggers supported, so do nothing.
   ClearWakeOnWiFiTriggersSupported();
   EXPECT_CALL(netlink_manager_,
               SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(0);
+  EXPECT_CALL(metrics_, NotifySuspendWithWakeOnWiFiEnabledDone()).Times(0);
   OnAfterResume();
 
   // Wake on WiFi features disabled, so do nothing.
@@ -1967,6 +1970,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiDisabledAfterResume) {
   DisableWakeOnWiFiFeatures();
   EXPECT_CALL(netlink_manager_,
               SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(0);
+  EXPECT_CALL(metrics_, NotifySuspendWithWakeOnWiFiEnabledDone()).Times(0);
   OnAfterResume();
 
   // Both WakeOnWiFi triggers are empty and Wake on WiFi features are disabled,
@@ -1975,6 +1979,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiDisabledAfterResume) {
   DisableWakeOnWiFiFeatures();
   EXPECT_CALL(netlink_manager_,
               SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(0);
+  EXPECT_CALL(metrics_, NotifySuspendWithWakeOnWiFiEnabledDone()).Times(0);
   OnAfterResume();
 }
 
@@ -2168,6 +2173,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
        WakeOnWiFiDisabled_OnAfterResume_DoesNothing) {
   DisableWakeOnWiFiFeatures();
   EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _, _)).Times(0);
+  EXPECT_CALL(metrics_, NotifySuspendWithWakeOnWiFiEnabledDone()).Times(0);
   OnAfterResume();
 }
 

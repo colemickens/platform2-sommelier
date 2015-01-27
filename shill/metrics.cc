@@ -383,6 +383,10 @@ const char Metrics::kMetricWiFiConnectionStatusAfterWake[] =
     "Network.Shill.WiFi.WiFiConnectionStatusAfterWake";
 
 // static
+const char Metrics::kMetricWakeOnWiFiThrottled[] =
+    "Network.Shill.WiFi.WakeOnWiFiThrottled";
+
+// static
 const char Metrics::kMetricUnreliableLinkSignalStrengthSuffix[] =
     "UnreliableLinkSignalStrength";
 const int Metrics::kMetricSerivceSignalStrengthMin = 0;
@@ -401,7 +405,8 @@ Metrics::Metrics(EventDispatcher *dispatcher)
       time_suspend_actions_timer(new chromeos_metrics::Timer),
       time_dark_resume_actions_timer(new chromeos_metrics::Timer),
       collect_bootstats_(true),
-      num_scan_results_expected_in_dark_resume_(0) {
+      num_scan_results_expected_in_dark_resume_(0),
+      wake_on_wifi_throttled_(false) {
   metrics_library_.Init();
   chromeos_metrics::TimerReporter::set_metrics_lib(library_);
 }
@@ -802,6 +807,7 @@ void Metrics::NotifySuspendActionsStarted() {
   if (time_suspend_actions_timer->HasStarted())
     return;
   time_suspend_actions_timer->Start();
+  wake_on_wifi_throttled_ = false;
 }
 
 void Metrics::NotifySuspendActionsCompleted(bool success) {
@@ -1419,6 +1425,18 @@ bool Metrics::SendToUMA(const string &name, int sample, int min, int max,
   SLOG(this, 5)
       << "Sending metric " << name << " with value " << sample << ".";
   return library_->SendToUMA(name, sample, min, max, num_buckets);
+}
+
+void Metrics::NotifyWakeOnWiFiThrottled() {
+    wake_on_wifi_throttled_ = true;
+}
+
+void Metrics::NotifySuspendWithWakeOnWiFiEnabledDone() {
+  WakeOnWiFiThrottled throttled_result = wake_on_wifi_throttled_
+                                             ? kWakeOnWiFiThrottledTrue
+                                             : kWakeOnWiFiThrottledFalse;
+  SendEnumToUMA(kMetricWakeOnWiFiThrottled, throttled_result,
+                kWakeOnWiFiThrottledMax);
 }
 
 void Metrics::InitializeCommonServiceMetrics(const Service &service) {

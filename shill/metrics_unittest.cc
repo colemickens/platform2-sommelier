@@ -832,6 +832,30 @@ TEST_F(MetricsTest, NotifyConnectedToServiceAfterWake) {
   metrics_.NotifyConnectedToServiceAfterWake(status);
 }
 
+TEST_F(MetricsTest, NotifyWakeOnWiFiThrottled) {
+  EXPECT_FALSE(metrics_.wake_on_wifi_throttled_);
+  metrics_.NotifyWakeOnWiFiThrottled();
+  EXPECT_TRUE(metrics_.wake_on_wifi_throttled_);
+}
+
+TEST_F(MetricsTest, NotifySuspendWithWakeOnWiFiEnabledDone) {
+  const Metrics::WakeOnWiFiThrottled result_true =
+      Metrics::kWakeOnWiFiThrottledTrue;
+  metrics_.wake_on_wifi_throttled_ = true;
+  EXPECT_CALL(library_,
+              SendEnumToUMA("Network.Shill.WiFi.WakeOnWiFiThrottled",
+                            result_true, Metrics::kWakeOnWiFiThrottledMax));
+  metrics_.NotifySuspendWithWakeOnWiFiEnabledDone();
+
+  const Metrics::WakeOnWiFiThrottled result_false =
+      Metrics::kWakeOnWiFiThrottledFalse;
+  metrics_.wake_on_wifi_throttled_ = false;
+  EXPECT_CALL(library_,
+              SendEnumToUMA("Network.Shill.WiFi.WakeOnWiFiThrottled",
+                            result_false, Metrics::kWakeOnWiFiThrottledMax));
+  metrics_.NotifySuspendWithWakeOnWiFiEnabledDone();
+}
+
 #ifndef NDEBUG
 
 typedef MetricsTest MetricsDeathTest;

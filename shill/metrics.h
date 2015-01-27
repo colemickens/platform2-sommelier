@@ -422,6 +422,12 @@ class Metrics {
     kWakeOnWiFiFeaturesEnabledStateMax
   };
 
+  enum WakeOnWiFiThrottled {
+    kWakeOnWiFiThrottledFalse = 0,
+    kWakeOnWiFiThrottledTrue = 1,
+    kWakeOnWiFiThrottledMax
+  };
+
   static const char kMetricDisconnectSuffix[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -692,6 +698,9 @@ class Metrics {
   // WiFi device connection status after waking from suspend.
   static const char kMetricWiFiConnectionStatusAfterWake[];
 
+  // Whether or not wake on WiFi was throttled during the last suspend.
+  static const char kMetricWakeOnWiFiThrottled[];
+
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
 
@@ -952,6 +961,14 @@ class Metrics {
   virtual bool SendToUMA(const std::string &name, int sample, int min,
                          int max, int num_buckets);
 
+  // Notifies this object that wake on WiFi has been disabled because of
+  // excessive dark resume wakes.
+  virtual void NotifyWakeOnWiFiThrottled();
+
+  // Notifies this object that shill has resumed from a period of suspension
+  // where wake on WiFi functionality was enabled on the NIC.
+  virtual void NotifySuspendWithWakeOnWiFiEnabledDone();
+
  private:
   friend class MetricsTest;
   FRIEND_TEST(MetricsTest, CellularDropsPerHour);
@@ -965,6 +982,8 @@ class Metrics {
   FRIEND_TEST(MetricsTest, TimeToScanIgnore);
   FRIEND_TEST(MetricsTest, WiFiServiceChannel);
   FRIEND_TEST(MetricsTest, WiFiServicePostReady);
+  FRIEND_TEST(MetricsTest, NotifySuspendWithWakeOnWiFiEnabledDone);
+  FRIEND_TEST(MetricsTest, NotifyWakeOnWiFiThrottled);
   FRIEND_TEST(WiFiMainTest, GetGeolocationObjects);
 
   typedef ScopedVector<chromeos_metrics::TimerReporter> TimerReporters;
@@ -1077,6 +1096,7 @@ class Metrics {
   bool collect_bootstats_;
   DeviceMetricsLookupMap devices_metrics_;
   int num_scan_results_expected_in_dark_resume_;
+  bool wake_on_wifi_throttled_;
 
   DISALLOW_COPY_AND_ASSIGN(Metrics);
 };

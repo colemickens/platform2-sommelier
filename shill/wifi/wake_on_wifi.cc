@@ -962,6 +962,7 @@ void WakeOnWiFi::OnAfterResume() {
     // Unconditionally disable wake on WiFi on resume if these features
     // were enabled before the last suspend.
     DisableWakeOnWiFi();
+    metrics_->NotifySuspendWithWakeOnWiFiEnabledDone();
   }
 #endif  // DISABLE_WAKE_ON_WIFI
 }
@@ -998,6 +999,7 @@ void WakeOnWiFi::OnDarkResume(
     wake_to_scan_timer_.Stop();
     DisableWakeOnWiFi();
     dark_resumes_since_last_suspend_.Clear();
+    metrics_->NotifyWakeOnWiFiThrottled();
     return;
   }
   // Only set dark resume to true after checking if we need to disable wake on
