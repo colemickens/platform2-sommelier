@@ -7,6 +7,7 @@
 #include <netlink/attr.h>
 
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/format_macros.h>
@@ -64,31 +65,41 @@ static const char kSsidString[] = "SSID";
 static const char kRatesString[] = "Rates";
 
 Nl80211AttributeBss::Nl80211AttributeBss()
-      : NetlinkNestedAttribute(kName, kNameString) {
-  nested_template_.push_back(NestedData(NLA_U32, "__NL80211_BSS_INVALID",
-                                        false));
-  nested_template_.push_back(NestedData(NLA_UNSPEC, "NL80211_BSS_BSSID",
-                                        false));
-  nested_template_.push_back(NestedData(NLA_U32, "NL80211_BSS_FREQUENCY",
-                                        false));
-  nested_template_.push_back(NestedData(NLA_U64, "NL80211_BSS_TSF", false));
-  nested_template_.push_back(NestedData(NLA_U16, "NL80211_BSS_BEACON_INTERVAL",
-                                        false));
-  nested_template_.push_back(NestedData(NLA_U16, "NL80211_BSS_CAPABILITY",
-                                        false));
-  nested_template_.push_back(NestedData(
-      NLA_UNSPEC, "NL80211_BSS_INFORMATION_ELEMENTS", false,
-      Bind(&Nl80211AttributeBss::ParseInformationElements)));
-  nested_template_.push_back(NestedData(NLA_U32, "NL80211_BSS_SIGNAL_MBM",
-                                        false));
-  nested_template_.push_back(NestedData(NLA_U8, "NL80211_BSS_SIGNAL_UNSPEC",
-                                        false));
-  nested_template_.push_back(NestedData(NLA_U32, "NL80211_BSS_STATUS",
-                                        false));
-  nested_template_.push_back(NestedData(NLA_U32, "NL80211_BSS_SEEN_MS_AGO",
-                                        false));
-  nested_template_.push_back(NestedData(NLA_UNSPEC, "NL80211_BSS_BEACON_IES",
-                                        false));
+    : NetlinkNestedAttribute(kName, kNameString) {
+  nested_template_.insert(
+      AttrDataPair(__NL80211_BSS_INVALID,
+                   NestedData(NLA_U32, "__NL80211_BSS_INVALID", false)));
+  nested_template_.insert(AttrDataPair(
+      NL80211_BSS_BSSID, NestedData(NLA_UNSPEC, "NL80211_BSS_BSSID", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_BSS_FREQUENCY,
+                   NestedData(NLA_U32, "NL80211_BSS_FREQUENCY", false)));
+  nested_template_.insert(AttrDataPair(
+      NL80211_BSS_TSF, NestedData(NLA_U64, "NL80211_BSS_TSF", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_BSS_BEACON_INTERVAL,
+                   NestedData(NLA_U16, "NL80211_BSS_BEACON_INTERVAL", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_BSS_CAPABILITY,
+                   NestedData(NLA_U16, "NL80211_BSS_CAPABILITY", false)));
+  nested_template_.insert(AttrDataPair(
+      NL80211_BSS_INFORMATION_ELEMENTS,
+      NestedData(NLA_UNSPEC, "NL80211_BSS_INFORMATION_ELEMENTS", false,
+                 Bind(&Nl80211AttributeBss::ParseInformationElements))));
+  nested_template_.insert(
+      AttrDataPair(NL80211_BSS_SIGNAL_MBM,
+                   NestedData(NLA_U32, "NL80211_BSS_SIGNAL_MBM", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_BSS_SIGNAL_UNSPEC,
+                   NestedData(NLA_U8, "NL80211_BSS_SIGNAL_UNSPEC", false)));
+  nested_template_.insert(AttrDataPair(
+      NL80211_BSS_STATUS, NestedData(NLA_U32, "NL80211_BSS_STATUS", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_BSS_SEEN_MS_AGO,
+                   NestedData(NLA_U32, "NL80211_BSS_SEEN_MS_AGO", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_BSS_BEACON_IES,
+                   NestedData(NLA_UNSPEC, "NL80211_BSS_BEACON_IES", false)));
 }
 
 bool Nl80211AttributeBss::ParseInformationElements(
@@ -122,8 +133,9 @@ bool Nl80211AttributeBss::ParseInformationElements(
         if (payload_bytes == 0) {
           ie_attribute->SetStringAttributeValue(type, "");
         } else {
-          ie_attribute->SetStringAttributeValue(type, string(
-              reinterpret_cast<const char *>(payload), payload_bytes));
+          ie_attribute->SetStringAttributeValue(
+              type,
+              string(reinterpret_cast<const char *>(payload), payload_bytes));
         }
         break;
       }
@@ -170,58 +182,73 @@ bool Nl80211AttributeBss::ParseInformationElements(
 
 const int Nl80211AttributeWiphyBands::kName = NL80211_ATTR_WIPHY_BANDS;
 const char Nl80211AttributeWiphyBands::kNameString[] =
-  "NL80211_ATTR_WIPHY_BANDS";
+    "NL80211_ATTR_WIPHY_BANDS";
 
 Nl80211AttributeWiphyBands::Nl80211AttributeWiphyBands()
-      : NetlinkNestedAttribute(kName, kNameString) {
+    : NetlinkNestedAttribute(kName, kNameString) {
   // Frequencies
   NestedData freq(NLA_NESTED, "NL80211_BAND_ATTR_FREQ", true);
-  freq.deeper_nesting.push_back(
-      NestedData(NLA_U32, "__NL80211_FREQUENCY_ATTR_INVALID", false));
-  freq.deeper_nesting.push_back(
-      NestedData(NLA_U32, "NL80211_FREQUENCY_ATTR_FREQ", false));
-  freq.deeper_nesting.push_back(
-      NestedData(NLA_FLAG, "NL80211_FREQUENCY_ATTR_DISABLED", false));
-  freq.deeper_nesting.push_back(
-      NestedData(NLA_FLAG, "NL80211_FREQUENCY_ATTR_PASSIVE_SCAN", false));
-  freq.deeper_nesting.push_back(
-      NestedData(NLA_FLAG, "NL80211_FREQUENCY_ATTR_NO_IBSS", false));
-  freq.deeper_nesting.push_back(
-      NestedData(NLA_FLAG, "NL80211_FREQUENCY_ATTR_RADAR", false));
-  freq.deeper_nesting.push_back(
-      NestedData(NLA_U32, "NL80211_FREQUENCY_ATTR_MAX_TX_POWER", false));
+  freq.deeper_nesting.insert(AttrDataPair(
+      __NL80211_FREQUENCY_ATTR_INVALID,
+      NestedData(NLA_U32, "__NL80211_FREQUENCY_ATTR_INVALID", false)));
+  freq.deeper_nesting.insert(
+      AttrDataPair(NL80211_FREQUENCY_ATTR_FREQ,
+                   NestedData(NLA_U32, "NL80211_FREQUENCY_ATTR_FREQ", false)));
+  freq.deeper_nesting.insert(AttrDataPair(
+      NL80211_FREQUENCY_ATTR_DISABLED,
+      NestedData(NLA_FLAG, "NL80211_FREQUENCY_ATTR_DISABLED", false)));
+  freq.deeper_nesting.insert(AttrDataPair(
+      NL80211_FREQUENCY_ATTR_PASSIVE_SCAN,
+      NestedData(NLA_FLAG, "NL80211_FREQUENCY_ATTR_PASSIVE_SCAN", false)));
+  freq.deeper_nesting.insert(AttrDataPair(
+      NL80211_FREQUENCY_ATTR_NO_IBSS,
+      NestedData(NLA_FLAG, "NL80211_FREQUENCY_ATTR_NO_IBSS", false)));
+  freq.deeper_nesting.insert(AttrDataPair(
+      NL80211_FREQUENCY_ATTR_RADAR,
+      NestedData(NLA_FLAG, "NL80211_FREQUENCY_ATTR_RADAR", false)));
+  freq.deeper_nesting.insert(AttrDataPair(
+      NL80211_FREQUENCY_ATTR_MAX_TX_POWER,
+      NestedData(NLA_U32, "NL80211_FREQUENCY_ATTR_MAX_TX_POWER", false)));
 
   NestedData freqs(NLA_NESTED, "NL80211_BAND_ATTR_FREQS", false);
-  freqs.deeper_nesting.push_back(freq);
+  freqs.deeper_nesting.insert(AttrDataPair(kArrayAttrEnumVal, freq));
 
   // Rates
   NestedData rate(NLA_NESTED, "NL80211_BAND_ATTR_RATE", true);
-  rate.deeper_nesting.push_back(
-      NestedData(NLA_U32, "__NL80211_BITRATE_ATTR_INVALID", false));
-  rate.deeper_nesting.push_back(
-      NestedData(NLA_U32, "NL80211_BITRATE_ATTR_RATE", false));
-  rate.deeper_nesting.push_back(
-      NestedData(NLA_FLAG, "NL80211_BITRATE_ATTR_2GHZ_SHORTPREAMBLE", false));
+  rate.deeper_nesting.insert(AttrDataPair(
+      __NL80211_BITRATE_ATTR_INVALID,
+      NestedData(NLA_U32, "__NL80211_BITRATE_ATTR_INVALID", false)));
+  rate.deeper_nesting.insert(
+      AttrDataPair(NL80211_BITRATE_ATTR_RATE,
+                   NestedData(NLA_U32, "NL80211_BITRATE_ATTR_RATE", false)));
+  rate.deeper_nesting.insert(AttrDataPair(
+      NL80211_BITRATE_ATTR_2GHZ_SHORTPREAMBLE,
+      NestedData(NLA_FLAG, "NL80211_BITRATE_ATTR_2GHZ_SHORTPREAMBLE", false)));
 
   NestedData rates(NLA_NESTED, "NL80211_BAND_ATTR_RATES", true);
-  rates.deeper_nesting.push_back(rate);
+  rates.deeper_nesting.insert(AttrDataPair(kArrayAttrEnumVal, rate));
 
   // Main body of attribute
   NestedData bands(NLA_NESTED, "NL80211_ATTR_BANDS", true);
-  bands.deeper_nesting.push_back(
-      NestedData(NLA_U32, "__NL80211_BAND_ATTR_INVALID,", false));
-  bands.deeper_nesting.push_back(freqs);
-  bands.deeper_nesting.push_back(rates);
-  bands.deeper_nesting.push_back(
-      NestedData(NLA_UNSPEC, "NL80211_BAND_ATTR_HT_MCS_SET", false));
-  bands.deeper_nesting.push_back(
-      NestedData(NLA_U16, "NL80211_BAND_ATTR_HT_CAPA", false));
-  bands.deeper_nesting.push_back(
-      NestedData(NLA_U8, "NL80211_BAND_ATTR_HT_AMPDU_FACTOR", false));
-  bands.deeper_nesting.push_back(
-      NestedData(NLA_U8, "NL80211_BAND_ATTR_HT_AMPDU_DENSITY", false));
+  bands.deeper_nesting.insert(
+      AttrDataPair(__NL80211_BAND_ATTR_INVALID,
+                   NestedData(NLA_U32, "__NL80211_BAND_ATTR_INVALID,", false)));
+  bands.deeper_nesting.insert(AttrDataPair(NL80211_BAND_ATTR_FREQS, freqs));
+  bands.deeper_nesting.insert(AttrDataPair(NL80211_BAND_ATTR_RATES, rates));
+  bands.deeper_nesting.insert(AttrDataPair(
+      NL80211_BAND_ATTR_HT_MCS_SET,
+      NestedData(NLA_UNSPEC, "NL80211_BAND_ATTR_HT_MCS_SET", false)));
+  bands.deeper_nesting.insert(
+      AttrDataPair(NL80211_BAND_ATTR_HT_CAPA,
+                   NestedData(NLA_U16, "NL80211_BAND_ATTR_HT_CAPA", false)));
+  bands.deeper_nesting.insert(AttrDataPair(
+      NL80211_BAND_ATTR_HT_AMPDU_FACTOR,
+      NestedData(NLA_U8, "NL80211_BAND_ATTR_HT_AMPDU_FACTOR", false)));
+  bands.deeper_nesting.insert(AttrDataPair(
+      NL80211_BAND_ATTR_HT_AMPDU_DENSITY,
+      NestedData(NLA_U8, "NL80211_BAND_ATTR_HT_AMPDU_DENSITY", false)));
 
-  nested_template_.push_back(bands);
+  nested_template_.insert(AttrDataPair(kArrayAttrEnumVal, bands));
 }
 
 const int Nl80211AttributeWowlanTriggers::kName = NL80211_ATTR_WOWLAN_TRIGGERS;
@@ -231,27 +258,25 @@ const char Nl80211AttributeWowlanTriggers::kNameString[] =
 Nl80211AttributeWowlanTriggers::Nl80211AttributeWowlanTriggers()
     : NetlinkNestedAttribute(kName, kNameString) {
   NestedData patterns(NLA_NESTED, "NL80211_WOWLAN_TRIG_PKT_PATTERN", false);
-  NestedData individual_pattern(NLA_NESTED,
-                                "NL80211_PACKET_PATTERN_ATTR", true);
-  individual_pattern.deeper_nesting.push_back(
-      NestedData(NLA_U32, "__NL80211_PKTPAT_INVALID", false));
-  individual_pattern.deeper_nesting.push_back(
-      NestedData(NLA_UNSPEC, "NL80211_PKTPAT_MASK", false));
-  individual_pattern.deeper_nesting.push_back(
-      NestedData(NLA_UNSPEC, "NL80211_PKTPAT_PATTERN", false));
-  individual_pattern.deeper_nesting.push_back(
-      NestedData(NLA_U32, "NL80211_PKTPAT_OFFSET", false));
+  NestedData individual_pattern(NLA_NESTED, "NL80211_PACKET_PATTERN_ATTR",
+                                true);
+  individual_pattern.deeper_nesting.insert(
+      AttrDataPair(NL80211_PKTPAT_MASK,
+                   NestedData(NLA_UNSPEC, "NL80211_PKTPAT_MASK", false)));
+  individual_pattern.deeper_nesting.insert(
+      AttrDataPair(NL80211_PKTPAT_PATTERN,
+                   NestedData(NLA_UNSPEC, "NL80211_PKTPAT_PATTERN", false)));
+  individual_pattern.deeper_nesting.insert(
+      AttrDataPair(NL80211_PKTPAT_OFFSET,
+                   NestedData(NLA_U32, "NL80211_PKTPAT_OFFSET", false)));
 
-  patterns.deeper_nesting.push_back(individual_pattern);
-  nested_template_.push_back(
-      NestedData(NLA_U32, "__NL80211_WOWLAN_TRIG_INVALID", false));
-  nested_template_.push_back(
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_ANY", false));
-  nested_template_.push_back(
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_DISCONNECT", false));
-  nested_template_.push_back(
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_MAGIC_PKT", false));
-  nested_template_.push_back(patterns);
+  patterns.deeper_nesting.insert(
+      AttrDataPair(kArrayAttrEnumVal, individual_pattern));
+  nested_template_.insert(AttrDataPair(
+      NL80211_WOWLAN_TRIG_DISCONNECT,
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_DISCONNECT", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_WOWLAN_TRIG_PKT_PATTERN, patterns));
 }
 
 const int Nl80211AttributeWowlanTriggersSupported::kName =
@@ -262,47 +287,15 @@ const char Nl80211AttributeWowlanTriggersSupported::kNameString[] =
 Nl80211AttributeWowlanTriggersSupported::
     Nl80211AttributeWowlanTriggersSupported()
     : NetlinkNestedAttribute(kName, kNameString) {
-  // Not all of these triggers (defined in the enum nl80211_wowlan_triggers) are
-  // used, but they are pushed in the order they are defined in the enum so
-  // that the attributes in this array can be indexed by their enum value.
-  nested_template_.push_back(
-      NestedData(NLA_U32, "__NL80211_WOWLAN_TRIG_INVALID", false));
-  nested_template_.push_back(
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_ANY", false));
-  nested_template_.push_back(
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_DISCONNECT", false));
-  nested_template_.push_back(
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_MAGIC_PKT", false));
-  nested_template_.push_back(
-      NestedData(NLA_UNSPEC, "NL80211_WOWLAN_TRIG_PKT_PATTERN", false));
-  nested_template_.push_back(
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_GTK_REKEY_SUPPORTED", false));
-  nested_template_.push_back(
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_GTK_REKEY_FAILURE", false));
-  nested_template_.push_back(
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_EAP_IDENT_REQUEST", false));
-  nested_template_.push_back(
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_4WAY_HANDSHAKE", false));
-  nested_template_.push_back(
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_RFKILL_RELEASE", false));
-  nested_template_.push_back(
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_WAKEUP_PKT_80211", false));
-  nested_template_.push_back(
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_WAKEUP_PKT_80211_LEN", false));
-  nested_template_.push_back(
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_WAKEUP_PKT_8023", false));
-  nested_template_.push_back(
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_WAKEUP_PKT_8023_LEN", false));
-  nested_template_.push_back(
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_TCP_CONNECTION", false));
-  nested_template_.push_back(
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_WAKEUP_TCP_MATCH", false));
-  nested_template_.push_back(
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_WAKEUP_TCP_CONNLOST", false));
-  nested_template_.push_back(NestedData(
-      NLA_FLAG, "NL80211_WOWLAN_TRIG_WAKEUP_TCP_NOMORETOKENS", false));
-  nested_template_.push_back(
-      NestedData(NLA_U32, "NL80211_WOWLAN_TRIG_NET_DETECT", false));
+  nested_template_.insert(AttrDataPair(
+      NL80211_WOWLAN_TRIG_DISCONNECT,
+      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_DISCONNECT", false)));
+  nested_template_.insert(AttrDataPair(
+      NL80211_WOWLAN_TRIG_PKT_PATTERN,
+      NestedData(NLA_UNSPEC, "NL80211_WOWLAN_TRIG_PKT_PATTERN", false)));
+  nested_template_.insert(AttrDataPair(
+      NL80211_WOWLAN_TRIG_NET_DETECT,
+      NestedData(NLA_U32, "NL80211_WOWLAN_TRIG_NET_DETECT", false)));
 }
 
 const int Nl80211AttributeCipherSuites::kName = NL80211_ATTR_CIPHER_SUITES;
@@ -318,17 +311,22 @@ const int Nl80211AttributeCqm::kName = NL80211_ATTR_CQM;
 const char Nl80211AttributeCqm::kNameString[] = "NL80211_ATTR_CQM";
 
 Nl80211AttributeCqm::Nl80211AttributeCqm()
-      : NetlinkNestedAttribute(kName, kNameString) {
-  nested_template_.push_back(
-      NestedData(NLA_U32, "__NL80211_ATTR_CQM_INVALID", false));
-  nested_template_.push_back(
-      NestedData(NLA_U32, "NL80211_ATTR_CQM_RSSI_THOLD", false));
-  nested_template_.push_back(
-      NestedData(NLA_U32, "NL80211_ATTR_CQM_RSSI_HYST", false));
-  nested_template_.push_back(
-      NestedData(NLA_U32, "NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT", false));
-  nested_template_.push_back(
-      NestedData(NLA_U32, "NL80211_ATTR_CQM_PKT_LOSS_EVENT", false));
+    : NetlinkNestedAttribute(kName, kNameString) {
+  nested_template_.insert(
+      AttrDataPair(__NL80211_ATTR_CQM_INVALID,
+                   NestedData(NLA_U32, "__NL80211_ATTR_CQM_INVALID", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_ATTR_CQM_RSSI_THOLD,
+                   NestedData(NLA_U32, "NL80211_ATTR_CQM_RSSI_THOLD", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_ATTR_CQM_RSSI_HYST,
+                   NestedData(NLA_U32, "NL80211_ATTR_CQM_RSSI_HYST", false)));
+  nested_template_.insert(AttrDataPair(
+      NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT,
+      NestedData(NLA_U32, "NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT", false)));
+  nested_template_.insert(AttrDataPair(
+      NL80211_ATTR_CQM_PKT_LOSS_EVENT,
+      NestedData(NLA_U32, "NL80211_ATTR_CQM_PKT_LOSS_EVENT", false)));
 }
 
 const int Nl80211AttributeDeviceApSme::kName = NL80211_ATTR_DEVICE_AP_SME;
@@ -395,8 +393,8 @@ string Nl80211AttributeMac::StringFromMacAddress(const uint8_t *arg) {
     output = kBogusMacAddress;
     LOG(ERROR) << "|arg| parameter is NULL.";
   } else {
-    output = StringPrintf("%02x:%02x:%02x:%02x:%02x:%02x",
-                          arg[0], arg[1], arg[2], arg[3], arg[4], arg[5]);
+    output = StringPrintf("%02x:%02x:%02x:%02x:%02x:%02x", arg[0], arg[1],
+                          arg[2], arg[3], arg[4], arg[5]);
   }
   return output;
 }
@@ -442,16 +440,14 @@ const int Nl80211AttributeProbeRespOffload::kName =
 const char Nl80211AttributeProbeRespOffload::kNameString[] =
     "NL80211_ATTR_PROBE_RESP_OFFLOAD";
 
-const int Nl80211AttributeReasonCode::kName =
-    NL80211_ATTR_REASON_CODE;
+const int Nl80211AttributeReasonCode::kName = NL80211_ATTR_REASON_CODE;
 const char Nl80211AttributeReasonCode::kNameString[] =
     "NL80211_ATTR_REASON_CODE";
 
 const int Nl80211AttributeRegAlpha2::kName = NL80211_ATTR_REG_ALPHA2;
 const char Nl80211AttributeRegAlpha2::kNameString[] = "NL80211_ATTR_REG_ALPHA2";
 
-const int Nl80211AttributeRegInitiator::kName =
-    NL80211_ATTR_REG_INITIATOR;
+const int Nl80211AttributeRegInitiator::kName = NL80211_ATTR_REG_INITIATOR;
 const char Nl80211AttributeRegInitiator::kNameString[] =
     "NL80211_ATTR_REG_INITIATOR";
 
@@ -471,103 +467,134 @@ const char Nl80211AttributeScanFrequencies::kNameString[] =
     "NL80211_ATTR_SCAN_FREQUENCIES";
 
 Nl80211AttributeScanFrequencies::Nl80211AttributeScanFrequencies()
-      : NetlinkNestedAttribute(kName, kNameString) {
-  nested_template_.push_back(
-      NestedData(NLA_U32, "NL80211_SCAN_FREQ", true));
+    : NetlinkNestedAttribute(kName, kNameString) {
+  nested_template_.insert(AttrDataPair(
+      kArrayAttrEnumVal, NestedData(NLA_U32, "NL80211_SCAN_FREQ", true)));
 }
 
 const int Nl80211AttributeScanSsids::kName = NL80211_ATTR_SCAN_SSIDS;
 const char Nl80211AttributeScanSsids::kNameString[] = "NL80211_ATTR_SCAN_SSIDS";
 
 Nl80211AttributeScanSsids::Nl80211AttributeScanSsids()
-      : NetlinkNestedAttribute(kName, kNameString) {
-  nested_template_.push_back(
-      NestedData(NLA_STRING, "NL80211_SCAN_SSID", true));
+    : NetlinkNestedAttribute(kName, kNameString) {
+  nested_template_.insert(AttrDataPair(
+      kArrayAttrEnumVal, NestedData(NLA_STRING, "NL80211_SCAN_SSID", true)));
 }
 
 const int Nl80211AttributeStaInfo::kName = NL80211_ATTR_STA_INFO;
 const char Nl80211AttributeStaInfo::kNameString[] = "NL80211_ATTR_STA_INFO";
 
 Nl80211AttributeStaInfo::Nl80211AttributeStaInfo()
-      : NetlinkNestedAttribute(kName, kNameString) {
+    : NetlinkNestedAttribute(kName, kNameString) {
   NestedData tx_rates(NLA_NESTED, "NL80211_STA_INFO_TX_BITRATE", false);
-  tx_rates.deeper_nesting.push_back(
-      NestedData(NLA_U32, "__NL80211_RATE_INFO_INVALID", false));
-  tx_rates.deeper_nesting.push_back(
-      NestedData(NLA_U16, "NL80211_RATE_INFO_BITRATE", false));
-  tx_rates.deeper_nesting.push_back(
-      NestedData(NLA_U8, "NL80211_RATE_INFO_MCS", false));
-  tx_rates.deeper_nesting.push_back(
-      NestedData(NLA_FLAG, "NL80211_RATE_INFO_40_MHZ_WIDTH", false));
-  tx_rates.deeper_nesting.push_back(
-      NestedData(NLA_FLAG, "NL80211_RATE_INFO_SHORT_GI", false));
-  tx_rates.deeper_nesting.push_back(
-      NestedData(NLA_U32, "NL80211_RATE_INFO_BITRATE32", false));
-  tx_rates.deeper_nesting.push_back(
-      NestedData(NLA_U8, "NL80211_RATE_INFO_VHT_MCS", false));
-  tx_rates.deeper_nesting.push_back(
-      NestedData(NLA_U8, "NL80211_RATE_INFO_VHT_NSS", false));
-  tx_rates.deeper_nesting.push_back(
-      NestedData(NLA_FLAG, "NL80211_RATE_INFO_80_MHZ_WIDTH", false));
-  tx_rates.deeper_nesting.push_back(
-      NestedData(NLA_FLAG, "NL80211_RATE_INFO_80P80_MHZ_WIDTH", false));
-  tx_rates.deeper_nesting.push_back(
-      NestedData(NLA_FLAG, "NL80211_RATE_INFO_160_MHZ_WIDTH", false));
+  tx_rates.deeper_nesting.insert(
+      AttrDataPair(__NL80211_RATE_INFO_INVALID,
+                   NestedData(NLA_U32, "__NL80211_RATE_INFO_INVALID", false)));
+  tx_rates.deeper_nesting.insert(
+      AttrDataPair(NL80211_RATE_INFO_BITRATE,
+                   NestedData(NLA_U16, "NL80211_RATE_INFO_BITRATE", false)));
+  tx_rates.deeper_nesting.insert(
+      AttrDataPair(NL80211_RATE_INFO_MCS,
+                   NestedData(NLA_U8, "NL80211_RATE_INFO_MCS", false)));
+  tx_rates.deeper_nesting.insert(AttrDataPair(
+      NL80211_RATE_INFO_40_MHZ_WIDTH,
+      NestedData(NLA_FLAG, "NL80211_RATE_INFO_40_MHZ_WIDTH", false)));
+  tx_rates.deeper_nesting.insert(
+      AttrDataPair(NL80211_RATE_INFO_SHORT_GI,
+                   NestedData(NLA_FLAG, "NL80211_RATE_INFO_SHORT_GI", false)));
+  tx_rates.deeper_nesting.insert(
+      AttrDataPair(NL80211_RATE_INFO_BITRATE32,
+                   NestedData(NLA_U32, "NL80211_RATE_INFO_BITRATE32", false)));
+  tx_rates.deeper_nesting.insert(
+      AttrDataPair(NL80211_RATE_INFO_VHT_MCS,
+                   NestedData(NLA_U8, "NL80211_RATE_INFO_VHT_MCS", false)));
+  tx_rates.deeper_nesting.insert(
+      AttrDataPair(NL80211_RATE_INFO_VHT_NSS,
+                   NestedData(NLA_U8, "NL80211_RATE_INFO_VHT_NSS", false)));
+  tx_rates.deeper_nesting.insert(AttrDataPair(
+      NL80211_RATE_INFO_80_MHZ_WIDTH,
+      NestedData(NLA_FLAG, "NL80211_RATE_INFO_80_MHZ_WIDTH", false)));
+  tx_rates.deeper_nesting.insert(AttrDataPair(
+      NL80211_RATE_INFO_80P80_MHZ_WIDTH,
+      NestedData(NLA_FLAG, "NL80211_RATE_INFO_80P80_MHZ_WIDTH", false)));
+  tx_rates.deeper_nesting.insert(AttrDataPair(
+      NL80211_RATE_INFO_160_MHZ_WIDTH,
+      NestedData(NLA_FLAG, "NL80211_RATE_INFO_160_MHZ_WIDTH", false)));
 
   NestedData rx_rates(NLA_NESTED, "NL80211_STA_INFO_RX_BITRATE", false);
   rx_rates.deeper_nesting = tx_rates.deeper_nesting;
 
   NestedData bss(NLA_NESTED, "NL80211_STA_INFO_BSS_PARAM", false);
-  bss.deeper_nesting.push_back(
-      NestedData(NLA_U32, "__NL80211_STA_BSS_PARAM_INVALID", false));
-  bss.deeper_nesting.push_back(
-      NestedData(NLA_FLAG, "NL80211_STA_BSS_PARAM_CTS_PROT", false));
-  bss.deeper_nesting.push_back(
-      NestedData(NLA_FLAG, "NL80211_STA_BSS_PARAM_SHORT_PREAMBLE",
-                           false));
-  bss.deeper_nesting.push_back(
-      NestedData(NLA_FLAG, "NL80211_STA_BSS_PARAM_SHORT_SLOT_TIME",
-                           false));
-  bss.deeper_nesting.push_back(
-      NestedData(NLA_U8, "NL80211_STA_BSS_PARAM_DTIM_PERIOD", false));
-  bss.deeper_nesting.push_back(
-      NestedData(NLA_U16, "NL80211_STA_BSS_PARAM_BEACON_INTERVAL", false));
+  bss.deeper_nesting.insert(AttrDataPair(
+      __NL80211_STA_BSS_PARAM_INVALID,
+      NestedData(NLA_U32, "__NL80211_STA_BSS_PARAM_INVALID", false)));
+  bss.deeper_nesting.insert(AttrDataPair(
+      NL80211_STA_BSS_PARAM_CTS_PROT,
+      NestedData(NLA_FLAG, "NL80211_STA_BSS_PARAM_CTS_PROT", false)));
+  bss.deeper_nesting.insert(AttrDataPair(
+      NL80211_STA_BSS_PARAM_SHORT_PREAMBLE,
+      NestedData(NLA_FLAG, "NL80211_STA_BSS_PARAM_SHORT_PREAMBLE", false)));
+  bss.deeper_nesting.insert(AttrDataPair(
+      NL80211_STA_BSS_PARAM_SHORT_SLOT_TIME,
+      NestedData(NLA_FLAG, "NL80211_STA_BSS_PARAM_SHORT_SLOT_TIME", false)));
+  bss.deeper_nesting.insert(AttrDataPair(
+      NL80211_STA_BSS_PARAM_DTIM_PERIOD,
+      NestedData(NLA_U8, "NL80211_STA_BSS_PARAM_DTIM_PERIOD", false)));
+  bss.deeper_nesting.insert(AttrDataPair(
+      NL80211_STA_BSS_PARAM_BEACON_INTERVAL,
+      NestedData(NLA_U16, "NL80211_STA_BSS_PARAM_BEACON_INTERVAL", false)));
 
-  nested_template_.push_back(
-      NestedData(NLA_U32, "__NL80211_STA_INFO_INVALID", false));
-  nested_template_.push_back(
-      NestedData(NLA_U32, "NL80211_STA_INFO_INACTIVE_TIME", false));
-  nested_template_.push_back(
-      NestedData(NLA_U32, "NL80211_STA_INFO_RX_BYTES", false));
-  nested_template_.push_back(
-      NestedData(NLA_U32, "NL80211_STA_INFO_TX_BYTES", false));
-  nested_template_.push_back(
-      NestedData(NLA_U16, "NL80211_STA_INFO_LLID", false));
-  nested_template_.push_back(
-      NestedData(NLA_U16, "NL80211_STA_INFO_PLID", false));
-  nested_template_.push_back(
-      NestedData(NLA_U8, "NL80211_STA_INFO_PLINK_STATE", false));
-  nested_template_.push_back(
-      NestedData(NLA_U8, "NL80211_STA_INFO_SIGNAL", false));
-  nested_template_.push_back(tx_rates);
-  nested_template_.push_back(
-      NestedData(NLA_U32, "NL80211_STA_INFO_RX_PACKETS", false));
-  nested_template_.push_back(
-      NestedData(NLA_U32, "NL80211_STA_INFO_TX_PACKETS", false));
-  nested_template_.push_back(
-      NestedData(NLA_U32, "NL80211_STA_INFO_TX_RETRIES", false));
-  nested_template_.push_back(
-      NestedData(NLA_U32, "NL80211_STA_INFO_TX_FAILED", false));
-  nested_template_.push_back(
-      NestedData(NLA_U8, "NL80211_STA_INFO_SIGNAL_AVG", false));
-  nested_template_.push_back(rx_rates);
-  nested_template_.push_back(bss);
-  nested_template_.push_back(
-      NestedData(NLA_U32, "NL80211_STA_INFO_CONNECTED_TIME", false));
-  nested_template_.push_back(
-      NestedData(NLA_U64, "NL80211_STA_INFO_STA_FLAGS", false));
-  nested_template_.push_back(
-      NestedData(NLA_U32, "NL80211_STA_INFO_BEACON_LOSS", false));
+  nested_template_.insert(
+      AttrDataPair(__NL80211_STA_INFO_INVALID,
+                   NestedData(NLA_U32, "__NL80211_STA_INFO_INVALID", false)));
+  nested_template_.insert(AttrDataPair(
+      NL80211_STA_INFO_INACTIVE_TIME,
+      NestedData(NLA_U32, "NL80211_STA_INFO_INACTIVE_TIME", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_STA_INFO_RX_BYTES,
+                   NestedData(NLA_U32, "NL80211_STA_INFO_RX_BYTES", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_STA_INFO_TX_BYTES,
+                   NestedData(NLA_U32, "NL80211_STA_INFO_TX_BYTES", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_STA_INFO_LLID,
+                   NestedData(NLA_U16, "NL80211_STA_INFO_LLID", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_STA_INFO_PLID,
+                   NestedData(NLA_U16, "NL80211_STA_INFO_PLID", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_STA_INFO_PLINK_STATE,
+                   NestedData(NLA_U8, "NL80211_STA_INFO_PLINK_STATE", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_STA_INFO_SIGNAL,
+                   NestedData(NLA_U8, "NL80211_STA_INFO_SIGNAL", false)));
+  nested_template_.insert(AttrDataPair(NL80211_STA_INFO_TX_BITRATE, tx_rates));
+  nested_template_.insert(
+      AttrDataPair(NL80211_STA_INFO_RX_PACKETS,
+                   NestedData(NLA_U32, "NL80211_STA_INFO_RX_PACKETS", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_STA_INFO_TX_PACKETS,
+                   NestedData(NLA_U32, "NL80211_STA_INFO_TX_PACKETS", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_STA_INFO_TX_RETRIES,
+                   NestedData(NLA_U32, "NL80211_STA_INFO_TX_RETRIES", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_STA_INFO_TX_FAILED,
+                   NestedData(NLA_U32, "NL80211_STA_INFO_TX_FAILED", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_STA_INFO_SIGNAL_AVG,
+                   NestedData(NLA_U8, "NL80211_STA_INFO_SIGNAL_AVG", false)));
+  nested_template_.insert(AttrDataPair(NL80211_STA_INFO_RX_BITRATE, rx_rates));
+  nested_template_.insert(AttrDataPair(NL80211_STA_INFO_BSS_PARAM, bss));
+  nested_template_.insert(AttrDataPair(
+      NL80211_STA_INFO_CONNECTED_TIME,
+      NestedData(NLA_U32, "NL80211_STA_INFO_CONNECTED_TIME", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_STA_INFO_STA_FLAGS,
+                   NestedData(NLA_U64, "NL80211_STA_INFO_STA_FLAGS", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_STA_INFO_BEACON_LOSS,
+                   NestedData(NLA_U32, "NL80211_STA_INFO_BEACON_LOSS", false)));
 }
 
 const int Nl80211AttributeSupportedIftypes::kName =
@@ -575,13 +602,13 @@ const int Nl80211AttributeSupportedIftypes::kName =
 const char Nl80211AttributeSupportedIftypes::kNameString[] =
     "NL80211_ATTR_SUPPORTED_IFTYPES";
 Nl80211AttributeSupportedIftypes::Nl80211AttributeSupportedIftypes()
-      : NetlinkNestedAttribute(kName, kNameString) {
-  nested_template_.push_back(
-      NestedData(NLA_FLAG, "NL80211_SUPPORTED_IFTYPES_IFTYPE", true));
+    : NetlinkNestedAttribute(kName, kNameString) {
+  nested_template_.insert(AttrDataPair(
+      kArrayAttrEnumVal,
+      NestedData(NLA_FLAG, "NL80211_SUPPORTED_IFTYPES_IFTYPE", true)));
 }
 
-const int Nl80211AttributeStatusCode::kName =
-    NL80211_ATTR_STATUS_CODE;
+const int Nl80211AttributeStatusCode::kName = NL80211_ATTR_STATUS_CODE;
 const char Nl80211AttributeStatusCode::kNameString[] =
     "NL80211_ATTR_STATUS_CODE";
 

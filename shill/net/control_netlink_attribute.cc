@@ -6,6 +6,8 @@
 
 #include <netlink/attr.h>
 
+#include <utility>
+
 #include <base/logging.h>
 
 namespace shill {
@@ -29,16 +31,16 @@ const int ControlAttributeAttrOps::kName = CTRL_ATTR_OPS;
 const char ControlAttributeAttrOps::kNameString[] = "CTRL_ATTR_OPS";
 
 ControlAttributeAttrOps::ControlAttributeAttrOps()
-      : NetlinkNestedAttribute(kName, kNameString) {
+    : NetlinkNestedAttribute(kName, kNameString) {
   NestedData array(NLA_NESTED, "FIRST", true);
-  array.deeper_nesting.push_back(
-      NestedData(NLA_U32, "CTRL_ATTR_OP_UNSPEC", false));
-  array.deeper_nesting.push_back(
-      NestedData(NLA_U32, "CTRL_ATTR_OP_ID", false));
-  array.deeper_nesting.push_back(
-      NestedData(NLA_U32, "CTRL_ATTR_OP_FLAGS", false));
+  array.deeper_nesting.insert(AttrDataPair(
+      CTRL_ATTR_OP_UNSPEC, NestedData(NLA_U32, "CTRL_ATTR_OP_UNSPEC", false)));
+  array.deeper_nesting.insert(AttrDataPair(
+      CTRL_ATTR_OP_ID, NestedData(NLA_U32, "CTRL_ATTR_OP_ID", false)));
+  array.deeper_nesting.insert(AttrDataPair(
+      CTRL_ATTR_OP_UNSPEC, NestedData(NLA_U32, "CTRL_ATTR_OP_UNSPEC", false)));
 
-  nested_template_.push_back(array);
+  nested_template_.insert(AttrDataPair(kArrayAttrEnumVal, array));
 }
 
 const int ControlAttributeMcastGroups::kName = CTRL_ATTR_MCAST_GROUPS;
@@ -46,16 +48,19 @@ const char ControlAttributeMcastGroups::kNameString[] =
     "CTRL_ATTR_MCAST_GROUPS";
 
 ControlAttributeMcastGroups::ControlAttributeMcastGroups()
-      : NetlinkNestedAttribute(kName, kNameString) {
+    : NetlinkNestedAttribute(kName, kNameString) {
   NestedData array(NLA_NESTED, "FIRST", true);
-  array.deeper_nesting.push_back(
-      NestedData(NLA_U32, "CTRL_ATTR_MCAST_GRP_UNSPEC", false));
-  array.deeper_nesting.push_back(
-      NestedData(NLA_STRING, "CTRL_ATTR_MCAST_GRP_NAME", false));
-  array.deeper_nesting.push_back(
-      NestedData(NLA_U32, "CTRL_ATTR_MCAST_GRP_ID", false));
+  array.deeper_nesting.insert(
+      AttrDataPair(CTRL_ATTR_MCAST_GRP_UNSPEC,
+                   NestedData(NLA_U32, "CTRL_ATTR_MCAST_GRP_UNSPEC", false)));
+  array.deeper_nesting.insert(
+      AttrDataPair(CTRL_ATTR_MCAST_GRP_NAME,
+                   NestedData(NLA_STRING, "CTRL_ATTR_MCAST_GRP_NAME", false)));
+  array.deeper_nesting.insert(
+      AttrDataPair(CTRL_ATTR_MCAST_GRP_ID,
+                   NestedData(NLA_U32, "CTRL_ATTR_MCAST_GRP_ID", false)));
 
-  nested_template_.push_back(array);
+  nested_template_.insert(AttrDataPair(kArrayAttrEnumVal, array));
 }
 
 }  // namespace shill

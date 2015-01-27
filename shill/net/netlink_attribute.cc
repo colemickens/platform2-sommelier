@@ -759,6 +759,7 @@ bool NetlinkSsidAttribute::ToString(string *output) const {
 const char NetlinkNestedAttribute::kMyTypeString[] = "nested";
 const NetlinkAttribute::Type NetlinkNestedAttribute::kType =
     NetlinkAttribute::kTypeNested;
+const size_t NetlinkNestedAttribute::kArrayAttrEnumVal = 0;
 
 NetlinkNestedAttribute::NetlinkNestedAttribute(int id,
                                                const char *id_string) :
@@ -849,10 +850,10 @@ bool NetlinkNestedAttribute::SetNestedHasAValue() {
 
 bool NetlinkNestedAttribute::InitNestedFromNlAttr(
     AttributeList *list,
-    const NetlinkNestedAttribute::NestedData::NestedDataVector &templates,
+    const NetlinkNestedAttribute::NestedData::NestedDataMap &templates,
     const nlattr *const_data) {
-  if (templates.size() == 1 && templates[0].is_array) {
-    return ParseNestedArray(list, templates[0], const_data);
+  if (templates.size() == 1 && templates.cbegin()->second.is_array) {
+    return ParseNestedArray(list, templates.cbegin()->second, const_data);
   } else {
     return ParseNestedStructure(list, templates, const_data);
   }
@@ -894,7 +895,7 @@ bool NetlinkNestedAttribute::ParseNestedArray(AttributeList *list,
 // static
 bool NetlinkNestedAttribute::ParseNestedStructure(
     AttributeList *list,
-    const NetlinkNestedAttribute::NestedData::NestedDataVector &templates,
+    const NetlinkNestedAttribute::NestedData::NestedDataMap &templates,
     const nlattr *const_data) {
   if (!list) {
     LOG(ERROR) << "NULL |list| parameter";
@@ -915,30 +916,28 @@ bool NetlinkNestedAttribute::ParseNestedStructure(
   // |nla_parse_nested| requires an array of |nla_policy|. While an attribute id
   // of zero is illegal, we still need to fill that spot in the policy
   // array so the loop will start at zero.
-  // Note: we expect the index of each attribute in |templates| to match the
-  // value of the corresponding enum member defined in nl80211.h.
-  unique_ptr<nla_policy[]> policy(new nla_policy[templates.size()]);
-  for (size_t id = 0; id < templates.size(); ++id) {
-    memset(&policy[id], 0, sizeof(nla_policy));
-    policy[id].type = templates[id].type;
+  size_t largest_attribute = templates.crbegin()->first;
+  unique_ptr<nla_policy[]> policy(new nla_policy[largest_attribute + 1]);
+  memset(&policy[0], 0, sizeof(nla_policy) * (largest_attribute + 1));
+  for (const auto &temp : templates) {
+    const size_t &id = temp.first;
+    policy[id].type = temp.second.type;
   }
 
   // |nla_parse_nested| builds an array of |nlattr| from the input message.
-  unique_ptr<nlattr *[]>attr(new nlattr *[templates.size()]);
-  if (nla_parse_nested(attr.get(), templates.size() - 1, attr_data,
+  unique_ptr<nlattr *[]> attr(new nlattr *[largest_attribute + 1]);
+  if (nla_parse_nested(attr.get(), largest_attribute, attr_data,
                        policy.get())) {
     LOG(ERROR) << "nla_parse_nested failed";
     return false;
   }
 
   // Note that the attribute id of zero is illegal so we'll start with id=1.
-  for (size_t id = 1; id < templates.size(); ++id) {
-    // Add |attr[id]| if it exists, otherwise, it's a legally omitted optional
-    // attribute.
+  for (const auto &temp : templates) {
+    const size_t &id = temp.first;
     if (attr[id]) {
       AddAttributeToNested(list, policy[id].type, id,
-                           templates[id].attribute_name, *attr[id],
-                           templates[id]);
+                           temp.second.attribute_name, *attr[id], temp.second);
     }
   }
   return true;

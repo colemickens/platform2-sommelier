@@ -7,7 +7,9 @@
 
 #include <netlink/attr.h>
 
+#include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/macros.h>
@@ -295,7 +297,7 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
     typedef base::Callback<bool (AttributeList *list, size_t id,
                                  const std::string &attribute_name,
                                  ByteString data)> AttributeParser;
-    typedef std::vector<NestedData> NestedDataVector;
+    typedef std::map<size_t, NestedData> NestedDataMap;
 
     NestedData();
     NestedData(uint16_t type, std::string attribute_name, bool is_array);
@@ -303,7 +305,7 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
                const AttributeParser &parse_attribute);
     uint16_t type;
     std::string attribute_name;
-    NestedDataVector deeper_nesting;
+    NestedDataMap deeper_nesting;
     bool is_array;
     // Closure that overrides the usual parsing of this attribute.  A non-NULL
     // value for |parse_attribute| will cause the software to ignore the other
@@ -311,7 +313,15 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
     AttributeParser parse_attribute;
   };
 
-  NestedData::NestedDataVector nested_template_;
+  typedef std::pair<size_t, NestedData> AttrDataPair;
+
+  // Some Nl80211 nested attributes are containers that do not have an actual
+  // attribute id, but are nested in another attribute as array elements.
+  // In the underlying netlink message, these attributes exist in their own
+  // nested layer, and take on attribute ids equal to their index in the array.
+  // For purposes of parsing these attributes, assign them an arbitrary
+  // attribute id.
+  static const size_t kArrayAttrEnumVal;
 
   // Builds an AttributeList (|list|) that contains all of the attriubtes in
   // |const_data|.  |const_data| should point to the enclosing nested attribute
@@ -328,7 +338,7 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
   // If the code expects an array, it will pass a single template element and
   // mark that as an array.
   static bool InitNestedFromNlAttr(
-      AttributeList *list, const NestedData::NestedDataVector &templates,
+      AttributeList *list, const NestedData::NestedDataMap &templates,
       const nlattr *const_data);
 
   static bool ParseNestedArray(
@@ -336,7 +346,7 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
       const nlattr *const_data);
 
   static bool ParseNestedStructure(
-      AttributeList *list, const NestedData::NestedDataVector &templates,
+      AttributeList *list, const NestedData::NestedDataMap &templates,
       const nlattr *const_data);
 
   // Helper function used by InitNestedFromNlAttr to add a single child
@@ -346,6 +356,7 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
                                    const nlattr &attr,
                                    const NestedData &nested_data);
   AttributeListRefPtr value_;
+  NestedData::NestedDataMap nested_template_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NetlinkNestedAttribute);
