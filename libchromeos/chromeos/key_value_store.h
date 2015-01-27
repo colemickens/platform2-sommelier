@@ -22,15 +22,18 @@ class CHROMEOS_EXPORT KeyValueStore {
   // Creates an empty KeyValueStore.
   KeyValueStore() = default;
 
-  // Loads the key=value pairs from the given |path|. Lines starting with
-  // '#' and empty lines are ignored. Adds all the readed key=values to the
-  // store, overriding those already defined but persisting the ones that
-  // aren't present on the passed file.
-  // Returns whether reading the file succeeded.
+  // Loads the key=value pairs from the given |path|. Lines starting with '#'
+  // and empty lines are ignored, and whitespace around keys is trimmed.
+  // Trailing backslashes may be used to extend values across multiple lines.
+  // Adds all the read key=values to the store, overriding those already defined
+  // but persisting the ones that aren't present on the passed file. Returns
+  // whether reading the file succeeded.
   bool Load(const base::FilePath& path);
 
-  // Saves the current store to the given |path| file. Returns whether the
-  // file creation succeeded.
+  // Saves the current store to the given |path| file. Returns whether the file
+  // creation succeeded. Calling Load() and then Save() may result in different
+  // data being written if the original file contained backslash-terminated
+  // lines (i.e. these values will be rewritten on single lines).
   bool Save(const base::FilePath& path) const;
 
   // Getter for the given key. Returns whether the key was found on the store.
