@@ -38,13 +38,13 @@ class ImageBurnService : public chromeos::dbus::AbstractDbusService,
   virtual ~ImageBurnService();
 
   // chromeos::dbus::AbstractDbusService implementation.
-  virtual const char *service_name() const;
-  virtual const char *service_path() const;
-  virtual const char *service_interface() const;
-  virtual GObject *service_object() const;
-  virtual bool Initialize();
-  virtual bool Reset();
-  virtual bool Shutdown();
+  const char *service_name() const override;
+  const char *service_path() const override;
+  const char *service_interface() const override;
+  GObject *service_object() const override;
+  bool Initialize() override;
+  bool Reset() override;
+  bool Shutdown() override;
 
   // SignalSender interface.
   void SendFinishedSignal(const char* target_path, bool success,
@@ -56,7 +56,7 @@ class ImageBurnService : public chromeos::dbus::AbstractDbusService,
       DBusGMethodInvocation* context);
 
  protected:
-  virtual GMainLoop *main_loop() {
+  GMainLoop *main_loop() override {
     return main_loop_;
   }
 
