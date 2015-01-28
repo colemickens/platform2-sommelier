@@ -130,7 +130,7 @@ class ConstraintMin : public ConstraintMinMaxBase<T> {
       : ConstraintMinMaxBase<T>(limit) {}
 
   // Implementation of Constraint::GetType().
-  ConstraintType GetType() const { return ConstraintType::Min; }
+  ConstraintType GetType() const override { return ConstraintType::Min; }
 
   // Implementation of Constraint::Validate().
   bool Validate(const PropValue& value,
@@ -167,7 +167,7 @@ class ConstraintMax : public ConstraintMinMaxBase<T> {
       : ConstraintMinMaxBase<T>(limit) {}
 
   // Implementation of Constraint::GetType().
-  ConstraintType GetType() const { return ConstraintType::Max; }
+  ConstraintType GetType() const override { return ConstraintType::Max; }
 
   // Implementation of Constraint::Validate().
   bool Validate(const PropValue& value,
