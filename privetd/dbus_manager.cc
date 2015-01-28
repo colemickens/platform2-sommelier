@@ -5,7 +5,12 @@
 #include "privetd/dbus_manager.h"
 
 #include <base/memory/ref_counted.h>
+#include <chromeos/any.h>
 
+#include "privetd/security_delegate.h"
+#include "privetd/security_manager.h"
+
+using chromeos::Any;
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::DBusObject;
 using chromeos::dbus_utils::ExportedObjectManager;
@@ -25,6 +30,9 @@ const char kDomain[] = "privetd";
 }  // namespace errors
 
 const char kPingResponse[] = "Hello world!";
+const char kPairingSessionIdKey[] = "sessionId";
+const char kPairingModeKey[] = "mode";
+const char kPairingCodeKey[] = "code";
 
 }  // namespace
 
@@ -42,8 +50,12 @@ DBusManager::DBusManager(ExportedObjectManager* object_manager,
   } else {
     UpdateWiFiBootstrapState(WifiBootstrapManager::kDisabled);
   }
+  security_manager->RegisterPairingListeners(
+      base::Bind(&DBusManager::OnPairingStart,
+                 weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&DBusManager::OnPairingEnd,
+                 weak_ptr_factory_.GetWeakPtr()));
   // TODO(wiley) Watch for appropriate state variables from |cloud_delegate|.
-  // TODO(wiley) Watch for new pairing attempts from |security_manager|.
 }
 
 void DBusManager::RegisterAsync(const CompletionAction& on_done) {
@@ -122,6 +134,45 @@ void DBusManager::UpdateWiFiBootstrapState(WifiBootstrapManager::State state) {
     case WifiBootstrapManager::kConnecting:
       dbus_adaptor_.SetWiFiBootstrapState("connecting");
       break;
+  }
+}
+
+void DBusManager::OnPairingStart(const std::string& session_id,
+                                 PairingType pairing_type,
+                                 const std::string& code) {
+  // For now, just overwrite the exposed PairInfo with
+  // the most recent pairing attempt.
+  std::string pairing_type_str;
+  switch (pairing_type) {
+    case PairingType::kPinCode:
+      pairing_type_str = "pinCode";
+      break;
+    case PairingType::kEmbeddedCode:
+      pairing_type_str = "embeddedCode";
+      break;
+    case PairingType::kUltrasoundDsssBroadcaster:
+      pairing_type_str = "ultrasound32";
+      break;
+    case PairingType::kAudibleDtmfBroadcaster:
+      pairing_type_str = "audible32";
+      break;
+  }
+  dbus_adaptor_.SetPairingInfo(chromeos::VariantDictionary{
+      {kPairingSessionIdKey, session_id},
+      {kPairingModeKey, pairing_type_str},
+      {kPairingCodeKey, code},
+  });
+}
+
+void DBusManager::OnPairingEnd(const std::string& session_id) {
+  auto exposed_pairing_attempt = dbus_adaptor_.GetPairingInfo();
+  auto it = exposed_pairing_attempt.find(kPairingSessionIdKey);
+  if (it == exposed_pairing_attempt.end()) {
+    return;
+  }
+  std::string exposed_session{it->second.TryGet<std::string>()};
+  if (exposed_session == session_id) {
+    dbus_adaptor_.SetPairingInfo(chromeos::VariantDictionary{});
   }
 }
 

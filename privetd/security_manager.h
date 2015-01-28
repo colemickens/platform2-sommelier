@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/secure_blob.h>
@@ -24,6 +25,13 @@ namespace privetd {
 
 class SecurityManager : public SecurityDelegate {
  public:
+  using PairingStartListener =
+      base::Callback<void(const std::string& session_id,
+                          PairingType pairing_type,
+                          const std::string& code)>;
+  using PairingEndListener =
+      base::Callback<void(const std::string& session_id)>;
+
   class KeyExchanger {
    public:
     virtual ~KeyExchanger() = default;
@@ -36,7 +44,7 @@ class SecurityManager : public SecurityDelegate {
 
   explicit SecurityManager(const std::string& embedded_password,
                            bool disable_security = false);
-  ~SecurityManager() override = default;
+  ~SecurityManager() override;
 
   // SecurityDelegate methods
   std::string CreateAccessToken(AuthScope scope,
@@ -51,26 +59,32 @@ class SecurityManager : public SecurityDelegate {
                      std::string* session_id,
                      std::string* device_commitment) override;
 
-  Error ConfirmPairing(const std::string& sessionId,
+  Error ConfirmPairing(const std::string& session_id,
                        const std::string& client_commitment,
                        std::string* fingerprint,
                        std::string* signature) override;
+  void RegisterPairingListeners(const PairingStartListener& on_start,
+                                const PairingEndListener& on_end);
 
   void InitTlsData();
   const chromeos::SecureBlob& GetTlsPrivateKey() const;
   const chromeos::Blob& GetTlsCertificate() const;
 
  private:
-  void CloseSession(const std::string& session_id);
+  void ClosePendingSession(const std::string& session_id);
+  void CloseConfirmedSession(const std::string& session_id);
 
   // If true allows unencrypted pairing and accepts any access code.
   bool is_security_disabled_{false};
   std::string embedded_password_;
-  std::map<std::string, std::unique_ptr<KeyExchanger> > sessions_;
+  std::map<std::string, std::unique_ptr<KeyExchanger>> pending_sessions_;
+  std::map<std::string, std::unique_ptr<KeyExchanger>> confirmed_sessions_;
   chromeos::SecureBlob secret_;
   chromeos::Blob TLS_certificate_;
   chromeos::Blob TLS_certificate_fingerprint_;
   chromeos::SecureBlob TLS_private_key_;
+  PairingStartListener on_start_;
+  PairingEndListener on_end_;
 
   base::WeakPtrFactory<SecurityManager> weak_ptr_factory_{this};
 

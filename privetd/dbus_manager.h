@@ -28,6 +28,7 @@ namespace privetd {
 
 class CloudDelegate;
 class SecurityManager;
+enum class PairingType;
 
 // Exposes most of the privetd DBus interface.
 class DBusManager : public org::chromium::privetd::ManagerInterface {
@@ -59,6 +60,10 @@ class DBusManager : public org::chromium::privetd::ManagerInterface {
 
  private:
   void UpdateWiFiBootstrapState(WifiBootstrapManager::State state);
+  void OnPairingStart(const std::string& session_id,
+                      PairingType pairing_type,
+                      const std::string& code);
+  void OnPairingEnd(const std::string& session_id);
 
   org::chromium::privetd::ManagerAdaptor dbus_adaptor_{this};
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;

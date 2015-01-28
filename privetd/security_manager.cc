@@ -34,6 +34,7 @@ namespace {
 
 const char kTokenDelimeter = ':';
 const int kSessionExpirationTimeMinutes = 5;
+const int kPairingExpirationTimeMinutes = 5;
 
 // Returns "scope:time".
 std::string CreateTokenData(AuthScope scope, const base::Time& time) {
@@ -202,6 +203,11 @@ SecurityManager::SecurityManager(const std::string& embedded_password,
   base::RandBytes(secret_.data(), kSha256OutputSize);
 }
 
+SecurityManager::~SecurityManager() {
+  while (!pending_sessions_.empty())
+    ClosePendingSession(pending_sessions_.begin()->first);
+}
+
 // Returns "base64([hmac]scope:time)".
 std::string SecurityManager::CreateAccessToken(AuthScope scope,
                                                const base::Time& time) const {
@@ -239,7 +245,7 @@ bool SecurityManager::IsValidPairingCode(const std::string& auth_code) const {
   if (is_security_disabled_)
     return true;
   chromeos::Blob auth_decoded = Base64Decode(auth_code);
-  for (const auto& session : sessions_) {
+  for (const auto& session : confirmed_sessions_) {
     if (auth_decoded ==
         HmacSha256(chromeos::SecureBlob{session.second->GetKey()},
                    chromeos::SecureBlob{session.first})) {
@@ -256,6 +262,8 @@ Error SecurityManager::StartPairing(PairingType mode,
   if (mode != PairingType::kEmbeddedCode)
     return Error::kInvalidParams;
 
+  // TODO(vitalybuka) Implement throttling of StartPairing to avoid
+  //                  brute force attacks.
   std::unique_ptr<KeyExchanger> spake;
   switch (crypto) {
     case CryptoType::kNone:
@@ -270,29 +278,37 @@ Error SecurityManager::StartPairing(PairingType mode,
       return Error::kInvalidParams;
   }
 
-  std::string session = base::GenerateGUID();
+  // Allow only a single session at a time for now.
+  while (!pending_sessions_.empty())
+    ClosePendingSession(pending_sessions_.begin()->first);
+
+  std::string session;
+  do {
+    session = base::GenerateGUID();
+  } while (confirmed_sessions_.find(session) != confirmed_sessions_.end() ||
+           pending_sessions_.find(session) != pending_sessions_.end());
   std::string commitment = spake->GetMessage();
-  if (!sessions_.emplace(session, std::move(spake)).second)
-    return StartPairing(mode, crypto, session_id, device_commitment);
+  pending_sessions_.emplace(session, std::move(spake));
 
   base::MessageLoop::current()->PostDelayedTask(
-      FROM_HERE, base::Bind(&SecurityManager::CloseSession,
+      FROM_HERE, base::Bind(&SecurityManager::ClosePendingSession,
                             weak_ptr_factory_.GetWeakPtr(), session),
-      base::TimeDelta::FromMinutes(kSessionExpirationTimeMinutes));
+      base::TimeDelta::FromMinutes(kPairingExpirationTimeMinutes));
 
   *session_id = session;
   *device_commitment = Base64Encode(chromeos::SecureBlob(commitment));
-  // TODO(vitalybuka): Handle case when device can't start multiple pairing
-  // simultaneously and implement throttling to avoid brute force attack.
+  if (!on_start_.is_null())
+    on_start_.Run(session, mode, embedded_password_);
+
   return Error::kNone;
 }
 
-Error SecurityManager::ConfirmPairing(const std::string& sessionId,
+Error SecurityManager::ConfirmPairing(const std::string& session_id,
                                       const std::string& client_commitment,
                                       std::string* fingerprint,
                                       std::string* signature) {
-  auto session = sessions_.find(sessionId);
-  if (session == sessions_.end())
+  auto session = pending_sessions_.find(session_id);
+  if (session == pending_sessions_.end())
     return Error::kUnknownSession;
   CHECK(!TLS_certificate_fingerprint_.empty());
 
@@ -301,7 +317,7 @@ Error SecurityManager::ConfirmPairing(const std::string& sessionId,
   if (!session->second->ProcessMessage(
           std::string(commitment.begin(), commitment.end()), &error)) {
     LOG(ERROR) << "Confirmation failed: " << error->GetMessage();
-    CloseSession(sessionId);
+    ClosePendingSession(session_id);
     return Error::kCommitmentMismatch;
   }
 
@@ -313,6 +329,12 @@ Error SecurityManager::ConfirmPairing(const std::string& sessionId,
       HmacSha256(chromeos::SecureBlob(session->second->GetKey()),
                  TLS_certificate_fingerprint_);
   *signature = Base64Encode(cert_hmac);
+  confirmed_sessions_.emplace(session->first, std::move(session->second));
+  base::MessageLoop::current()->PostDelayedTask(
+      FROM_HERE, base::Bind(&SecurityManager::CloseConfirmedSession,
+                            weak_ptr_factory_.GetWeakPtr(), session_id),
+      base::TimeDelta::FromMinutes(kSessionExpirationTimeMinutes));
+  ClosePendingSession(session_id);
   return Error::kNone;
 }
 
@@ -364,8 +386,22 @@ const chromeos::Blob& SecurityManager::GetTlsCertificate() const {
   return TLS_certificate_;
 }
 
-void SecurityManager::CloseSession(const std::string& session_id) {
-  sessions_.erase(session_id);
+void SecurityManager::RegisterPairingListeners(
+    const PairingStartListener& on_start,
+    const PairingEndListener& on_end) {
+  CHECK(on_start_.is_null() && on_end_.is_null());
+  on_start_ = on_start;
+  on_end_  = on_end;
+}
+
+void SecurityManager::ClosePendingSession(const std::string& session_id) {
+  const size_t num_erased = pending_sessions_.erase(session_id);
+  if (num_erased > 0 && !on_end_.is_null())
+    on_end_.Run(session_id);
+}
+
+void SecurityManager::CloseConfirmedSession(const std::string& session_id) {
+  confirmed_sessions_.erase(session_id);
 }
 
 }  // namespace privetd

@@ -8,16 +8,23 @@
 #include <cctype>
 #include <functional>
 #include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
+#include <base/bind.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <crypto/p224_spake.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "privetd/openssl_utils.h"
+
+using testing::Eq;
+using testing::_;
 
 namespace privetd {
 
@@ -32,6 +39,14 @@ bool IsBase64(const std::string& text) {
          !std::any_of(text.begin(), text.end(),
                       std::not1(std::ref(IsBase64Char)));
 }
+
+class MockPairingCallbacks {
+ public:
+  MOCK_METHOD3(OnPairingStart, void(const std::string& session_id,
+                                    PairingType pairing_type,
+                                    const std::string& code));
+  MOCK_METHOD1(OnPairingEnd, void(const std::string& session_id));
+};
 
 }  // namespace
 
@@ -133,6 +148,43 @@ TEST_F(SecurityManagerTest, Pairing) {
 
   // Signed with different secret.
   EXPECT_NE(fingerprints.front().second, fingerprints.back().second);
+}
+
+TEST_F(SecurityManagerTest, NotifiesListenersOfSessionStartAndEnd) {
+  testing::StrictMock<MockPairingCallbacks> callbacks;
+  security_.RegisterPairingListeners(
+      base::Bind(&MockPairingCallbacks::OnPairingStart,
+                 base::Unretained(&callbacks)),
+      base::Bind(&MockPairingCallbacks::OnPairingEnd,
+                 base::Unretained(&callbacks)));
+  security_.InitTlsData();
+  for (auto commitment_suffix :
+       std::vector<std::string>{"", "invalid_commitment"}) {
+    // StartPairing should notify us that a new session has begun.
+    std::string session_id;
+    std::string device_commitment;
+    EXPECT_CALL(callbacks, OnPairingStart(_, PairingType::kEmbeddedCode, _));
+    EXPECT_EQ(Error::kNone,
+              security_.StartPairing(PairingType::kEmbeddedCode,
+                                     CryptoType::kSpake_p224, &session_id,
+                                     &device_commitment));
+    EXPECT_FALSE(session_id.empty());
+    EXPECT_FALSE(device_commitment.empty());
+    testing::Mock::VerifyAndClearExpectations(&callbacks);
+
+    // ConfirmPairing should notify us that the session has ended.
+    EXPECT_CALL(callbacks, OnPairingEnd(Eq(session_id)));
+    crypto::P224EncryptedKeyExchange spake{
+        crypto::P224EncryptedKeyExchange::kPeerTypeServer, "1234"};
+    std::string client_commitment =
+        Base64Encode(chromeos::SecureBlob(spake.GetMessage()));
+    std::string fingerprint, signature;
+    // Regardless of whether the commitment is valid or not, we should get a
+    // callback indicating that the pairing session is gone.
+    security_.ConfirmPairing(session_id, client_commitment + commitment_suffix,
+                             &fingerprint, &signature);
+    testing::Mock::VerifyAndClearExpectations(&callbacks);
+  }
 }
 
 }  // namespace privetd
