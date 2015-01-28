@@ -114,10 +114,6 @@ TEST_F(BrowserJobTest, WaitAndAbort) {
 
   ASSERT_TRUE(job_->RunInBackground());
   job_->WaitAndAbort(base::TimeDelta::FromSeconds(3));
-
-  // Check for termination message.
-  base::FilePath term_file(utils_.GetUniqueFilename());
-  ASSERT_FALSE(term_file.empty());
 }
 
 TEST_F(BrowserJobTest, WaitAndAbort_AlreadyGone) {
@@ -131,11 +127,6 @@ TEST_F(BrowserJobTest, WaitAndAbort_AlreadyGone) {
 
   ASSERT_TRUE(job_->RunInBackground());
   job_->WaitAndAbort(base::TimeDelta::FromSeconds(3));
-
-  // Check for no termination message.
-  std::string sent_message;
-  base::FilePath term_file(utils_.GetUniqueFilename());
-  ASSERT_FALSE(utils_.ReadFileToString(term_file, &sent_message));
 }
 
 TEST_F(BrowserJobTest, ShouldStopTest) {
@@ -208,13 +199,6 @@ TEST_F(BrowserJobTest, RunBrowserTermMessage) {
   std::string term_message("killdya");
   ASSERT_TRUE(job_->RunInBackground());
   job_->Kill(signal, term_message);
-
-  // Check for termination message.
-  std::string sent_message;
-  base::FilePath term_file(utils_.GetUniqueFilename());
-  ASSERT_FALSE(term_file.empty());
-  ASSERT_TRUE(utils_.ReadFileToString(term_file, &sent_message));
-  EXPECT_EQ(term_message, sent_message);
 }
 
 TEST_F(BrowserJobTest, StartStopSessionTest) {

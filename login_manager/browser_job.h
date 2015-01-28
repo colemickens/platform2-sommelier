@@ -155,10 +155,6 @@ class BrowserJob : public BrowserJobInterface {
   // The subprocess tracked by this job.
   ChildJobInterface::Subprocess subprocess_;
 
-  // Path to a magic file that the browser will read for a termination message
-  // when it crashes.
-  base::FilePath term_file_;
-
   FRIEND_TEST(BrowserJobTest, InitializationTest);
   FRIEND_TEST(BrowserJobTest, ShouldStopTest);
   FRIEND_TEST(BrowserJobTest, ShouldNotStopTest);

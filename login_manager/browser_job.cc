@@ -93,14 +93,6 @@ bool BrowserJob::RunInBackground() {
   login_metrics_->RecordStats("chrome-exec");
 
   extra_one_time_arguments_.clear();
-
-  system_->RemoveFile(term_file_);
-  if (system_->CreateReadOnlyFileInTempDir(&term_file_)) {
-    extra_one_time_arguments_.push_back(
-        base::StringPrintf("--%s=%s",
-                           chromeos::switches::kTerminationMessageFile,
-                           term_file_.value().c_str()));
-  }
   if (first_boot)
     extra_one_time_arguments_.push_back(kFirstExecAfterBootFlag);
 
@@ -113,8 +105,7 @@ void BrowserJob::KillEverything(int signal, const std::string& message) {
   if (subprocess_.pid() < 0)
     return;
 
-  LOG(INFO) << "Sending termination message: " << message;
-  system_->AtomicFileWrite(term_file_, message);
+  LOG(INFO) << "Terminating process: " << message;
   subprocess_.KillEverything(signal);
 }
 
@@ -122,8 +113,7 @@ void BrowserJob::Kill(int signal, const std::string& message) {
   if (subprocess_.pid() < 0)
     return;
 
-  LOG(INFO) << "Sending termination message: " << message;
-  system_->AtomicFileWrite(term_file_, message);
+  LOG(INFO) << "Terminating process group: " << message;
   subprocess_.Kill(signal);
 }
 
