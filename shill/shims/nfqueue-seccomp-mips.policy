@@ -39,3 +39,4 @@ set_tid_address: 1
 restart_syscall: 1
 set_thread_area: 1
 set_robust_list: 1
+sendmsg: 1
