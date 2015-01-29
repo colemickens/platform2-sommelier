@@ -26,32 +26,20 @@ IpTables::~IpTables() {
   PlugAllHoles();
 }
 
-bool IpTables::PunchTcpHole(chromeos::ErrorPtr* error,
-                            uint16_t in_port,
-                            bool* out_success) {
-  *out_success = PunchHole(in_port, &tcp_holes_, kProtocolTcp);
-  return true;
+bool IpTables::PunchTcpHole(uint16_t in_port) {
+  return PunchHole(in_port, &tcp_holes_, kProtocolTcp);
 }
 
-bool IpTables::PunchUdpHole(chromeos::ErrorPtr* error,
-                            uint16_t in_port,
-                            bool* out_success) {
-  *out_success = PunchHole(in_port, &udp_holes_, kProtocolUdp);
-  return true;
+bool IpTables::PunchUdpHole(uint16_t in_port) {
+  return PunchHole(in_port, &udp_holes_, kProtocolUdp);
 }
 
-bool IpTables::PlugTcpHole(chromeos::ErrorPtr* error,
-                           uint16_t in_port,
-                           bool* out_success) {
-  *out_success = PlugHole(in_port, &tcp_holes_, kProtocolTcp);
-  return true;
+bool IpTables::PlugTcpHole(uint16_t in_port) {
+  return PlugHole(in_port, &tcp_holes_, kProtocolTcp);
 }
 
-bool IpTables::PlugUdpHole(chromeos::ErrorPtr* error,
-                           uint16_t in_port,
-                           bool* out_success) {
-  *out_success = PlugHole(in_port, &udp_holes_, kProtocolUdp);
-  return true;
+bool IpTables::PlugUdpHole(uint16_t in_port) {
+  return PlugHole(in_port, &udp_holes_, kProtocolUdp);
 }
 
 bool IpTables::PunchHole(uint16_t port,

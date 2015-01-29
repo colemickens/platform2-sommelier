@@ -25,18 +25,10 @@ class IpTables : public org::chromium::FirewalldInterface {
   ~IpTables();
 
   // D-Bus methods.
-  bool PunchTcpHole(chromeos::ErrorPtr* error,
-                    uint16_t in_port,
-                    bool* out_success);
-  bool PunchUdpHole(chromeos::ErrorPtr* error,
-                    uint16_t in_port,
-                    bool* out_success);
-  bool PlugTcpHole(chromeos::ErrorPtr* error,
-                   uint16_t in_port,
-                   bool* out_success);
-  bool PlugUdpHole(chromeos::ErrorPtr* error,
-                   uint16_t in_port,
-                   bool* out_success);
+  bool PunchTcpHole(uint16_t in_port) override;
+  bool PunchUdpHole(uint16_t in_port) override;
+  bool PlugTcpHole(uint16_t in_port) override;
+  bool PlugUdpHole(uint16_t in_port) override;
 
  protected:
   // Test-only.
