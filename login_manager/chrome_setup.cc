@@ -45,9 +45,9 @@ base::FilePath GetUserDir(ChromiumCommandBuilder* builder) {
 }
 
 // Called by AddUiFlags() to take a wallpaper flag type ("default" or "guest"
-// and file type (e.g. "default", "oem", "guest") and add the corresponding
-// flags to |builder| if the files exist. Returns false if the files don't
-// exist.
+// or "child") and file type (e.g. "child", "default", "oem", "guest") and
+// add the corresponding flags to |builder| if the files exist. Returns false
+// if the files don't exist.
 bool AddWallpaperFlags(ChromiumCommandBuilder* builder,
                        const std::string& flag_type,
                        const std::string& file_type) {
@@ -222,10 +222,12 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
     builder->AddArg("--ash-animate-from-boot-splash-screen");
   }
 
-  if (AddWallpaperFlags(builder, "default", "oem"))
+  if (AddWallpaperFlags(builder, "default", "oem")) {
     builder->AddArg("--default-wallpaper-is-oem");
-  else
+  } else {
     AddWallpaperFlags(builder, "default", "default");
+    AddWallpaperFlags(builder, "child", "child");
+  }
   AddWallpaperFlags(builder, "guest", "guest");
 
   // TODO(yongjaek): Remove the following flag when the kiosk mode app is ready
