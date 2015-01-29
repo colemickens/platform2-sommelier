@@ -111,7 +111,7 @@ bool Server::StartWithTLS(uint16_t port,
 
   std::vector<MHD_OptionItem> options{
     {MHD_OPTION_CONNECTION_LIMIT, 10, nullptr},
-    {MHD_OPTION_CONNECTION_TIMEOUT, 10, nullptr},
+    {MHD_OPTION_CONNECTION_TIMEOUT, 60, nullptr},
     {MHD_OPTION_NOTIFY_COMPLETED, callback_addr, nullptr},
   };
 
