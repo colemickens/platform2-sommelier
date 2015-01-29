@@ -21,6 +21,7 @@
 #include <base/rand_util.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/strings/string_utils.h>
 #include <crypto/p224_spake.h>
@@ -195,10 +196,10 @@ class UnsecureKeyExchanger : public SecurityManager::KeyExchanger {
 
 }  // namespace
 
-SecurityManager::SecurityManager(const std::string& embedded_password,
+SecurityManager::SecurityManager(const std::string& embedded_code,
                                  bool disable_security)
     : is_security_disabled_(disable_security),
-      embedded_password_(embedded_password),
+      embedded_code_(embedded_code),
       secret_(kSha256OutputSize) {
   base::RandBytes(secret_.data(), kSha256OutputSize);
 }
@@ -231,7 +232,8 @@ AuthScope SecurityManager::ParseAccessToken(const std::string& token,
 }
 
 std::vector<PairingType> SecurityManager::GetPairingTypes() const {
-  return {PairingType::kEmbeddedCode};
+  return {embedded_code_.empty() ? PairingType::kPinCode
+                                 : PairingType::kEmbeddedCode};
 }
 
 std::vector<CryptoType> SecurityManager::GetCryptoTypes() const {
@@ -259,8 +261,17 @@ Error SecurityManager::StartPairing(PairingType mode,
                                     CryptoType crypto,
                                     std::string* session_id,
                                     std::string* device_commitment) {
-  if (mode != PairingType::kEmbeddedCode)
-    return Error::kInvalidParams;
+  std::string code;
+  switch (mode) {
+    case PairingType::kEmbeddedCode:
+      code = embedded_code_;
+      break;
+    case PairingType::kPinCode:
+      code = base::StringPrintf("%04i", base::RandInt(0, 9999));
+      break;
+    default:
+      return Error::kInvalidParams;
+  }
 
   // TODO(vitalybuka) Implement throttling of StartPairing to avoid
   //                  brute force attacks.
@@ -269,10 +280,10 @@ Error SecurityManager::StartPairing(PairingType mode,
     case CryptoType::kNone:
       if (!is_security_disabled_)
         return Error::kInvalidParams;
-      spake.reset(new UnsecureKeyExchanger(embedded_password_));
+      spake.reset(new UnsecureKeyExchanger(code));
       break;
     case CryptoType::kSpake_p224:
-      spake.reset(new Spakep224Exchanger(embedded_password_));
+      spake.reset(new Spakep224Exchanger(code));
       break;
     default:
       return Error::kInvalidParams;
@@ -297,8 +308,11 @@ Error SecurityManager::StartPairing(PairingType mode,
 
   *session_id = session;
   *device_commitment = Base64Encode(chromeos::SecureBlob(commitment));
+  VLOG(3) << "Pairing code for session " << *session_id << " is " << code;
+  // TODO(vitalybuka): Handle case when device can't start multiple pairing
+  // simultaneously and implement throttling to avoid brute force attack.
   if (!on_start_.is_null())
-    on_start_.Run(session, mode, embedded_password_);
+    on_start_.Run(session, mode, code);
 
   return Error::kNone;
 }

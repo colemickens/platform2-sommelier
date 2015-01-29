@@ -29,6 +29,14 @@ const char kWiFiBootstrapInterfaces[] = "automatic_mode_interfaces";
 const char kConnectTimeout[] = "connect_timeout_seconds";
 const char kBootstrapTimeout[] = "bootstrap_timeout_seconds";
 const char kMonitorTimeout[] = "monitor_timeout_seconds";
+const char kDeviceServices[] = "device_services";
+const char kDeviceClass[] = "device_class";
+const char kDeviceMake[] = "device_make";
+const char kDeviceModel[] = "device_model";
+const char kDeviceModelId[] = "device_model_id";
+const char kDeviceName[] = "device_name";
+const char kDeviceDescription[] = "device_description";
+const char kEmbeddedCode[] = "embedded_code";
 
 }  // namespace
 
@@ -87,18 +95,56 @@ TEST_F(PrivetdConfParserTest, ShouldRejectInvalidGcdBootstrapModes) {
   AssertInvalidConf({{kGcdBootstrapMode, "30"}});
 }
 
+TEST_F(PrivetdConfParserTest, ShouldRejectInvalidServices) {
+  AssertInvalidConf({{kDeviceServices, "abc"}});
+  AssertInvalidConf({{kDeviceServices, "_a,b"}});
+}
+
+TEST_F(PrivetdConfParserTest, ShouldRejectInvalidDeviceClass) {
+  AssertInvalidConf({{kDeviceClass, ""}});
+  AssertInvalidConf({{kDeviceClass, "a"}});
+  AssertInvalidConf({{kDeviceClass, "aaaa"}});
+}
+
+TEST_F(PrivetdConfParserTest, ShouldRejectInvalidModelId) {
+  AssertInvalidConf({{kDeviceModelId, ""}});
+  AssertInvalidConf({{kDeviceModelId, "a"}});
+  AssertInvalidConf({{kDeviceModelId, "bb"}});
+  AssertInvalidConf({{kDeviceModelId, "cccc"}});
+}
+
+TEST_F(PrivetdConfParserTest, ShouldRejectInvalidName) {
+  AssertInvalidConf({{kDeviceName, ""}});
+}
+
 TEST_F(PrivetdConfParserTest, ShouldParseSettings) {
   const std::vector<std::string> kExpectedWiFiInterfaces{"eth1", "clown shoes"};
   const uint32_t kExpectedConnectTimeout{1};
   const uint32_t kExpectedBootstrapTimeout{2};
   const uint32_t kExpectedMonitorTimeout{3};
+  const std::vector<std::string> kExpectedDeviceServices{"_a", "_b", "_c"};
+  static const char kExpectedDeviceClass[]{"BB"};
+  static const char kExpectedDeviceMake[]{"testMade"};
+  static const char kExpectedDeviceModel[]{"testModel"};
+  static const char kExpectedDeviceModelId[]{"BBB"};
+  static const char kExpectedDeviceName[]{"testDevice"};
+  static const char kExpectedDeviceDescription[]{"testDescription"};
+  static const char kExpectedEmbeddedCode[]{"123ABC"};
   const ConfDict conf_dict{
-    {kWiFiBootstrapMode, "automatic"},
-    {kGcdBootstrapMode, "automatic"},
-    {kWiFiBootstrapInterfaces, Join(',', kExpectedWiFiInterfaces)},
-    {kConnectTimeout, std::to_string(kExpectedConnectTimeout)},
-    {kBootstrapTimeout, std::to_string(kExpectedBootstrapTimeout)},
-    {kMonitorTimeout, std::to_string(kExpectedMonitorTimeout)},
+      {kWiFiBootstrapMode, "automatic"},
+      {kGcdBootstrapMode, "automatic"},
+      {kWiFiBootstrapInterfaces, Join(',', kExpectedWiFiInterfaces)},
+      {kConnectTimeout, std::to_string(kExpectedConnectTimeout)},
+      {kBootstrapTimeout, std::to_string(kExpectedBootstrapTimeout)},
+      {kMonitorTimeout, std::to_string(kExpectedMonitorTimeout)},
+      {kDeviceServices, Join(',', kExpectedDeviceServices)},
+      {kDeviceClass, kExpectedDeviceClass},
+      {kDeviceMake, kExpectedDeviceMake},
+      {kDeviceModel, kExpectedDeviceModel},
+      {kDeviceModelId, kExpectedDeviceModelId},
+      {kDeviceName, kExpectedDeviceName},
+      {kDeviceDescription, kExpectedDeviceDescription},
+      {kEmbeddedCode, kExpectedEmbeddedCode},
   };
   KeyValueStore store;
   FillKeyValueStore(conf_dict, &store);
@@ -110,6 +156,29 @@ TEST_F(PrivetdConfParserTest, ShouldParseSettings) {
   EXPECT_EQ(kExpectedConnectTimeout, parser.connect_timeout_seconds());
   EXPECT_EQ(kExpectedBootstrapTimeout, parser.bootstrap_timeout_seconds());
   EXPECT_EQ(kExpectedMonitorTimeout, parser.monitor_timeout_seconds());
+  EXPECT_EQ(kExpectedDeviceServices, parser.device_services());
+  EXPECT_EQ(kExpectedDeviceClass, parser.device_class());
+  EXPECT_EQ(kExpectedDeviceMake, parser.device_make());
+  EXPECT_EQ(kExpectedDeviceModel, parser.device_model());
+  EXPECT_EQ(kExpectedDeviceModelId, parser.device_model_id());
+  EXPECT_EQ(kExpectedDeviceName, parser.device_name());
+  EXPECT_EQ(kExpectedDeviceDescription, parser.device_description());
+  EXPECT_EQ(kExpectedEmbeddedCode, parser.embedded_code());
+}
+
+TEST_F(PrivetdConfParserTest, CriticalDefaults) {
+  PrivetdConfigParser parser;
+  EXPECT_EQ(WiFiBootstrapMode::kDisabled, parser.wifi_bootstrap_mode());
+  EXPECT_EQ(GcdBootstrapMode::kDisabled, parser.gcd_bootstrap_mode());
+  EXPECT_GT(parser.connect_timeout_seconds(), 0);
+  EXPECT_GT(parser.bootstrap_timeout_seconds(), 0);
+  EXPECT_GT(parser.monitor_timeout_seconds(), 0);
+  EXPECT_EQ(2, parser.device_class().size());
+  EXPECT_FALSE(parser.device_make().empty());
+  EXPECT_FALSE(parser.device_model().empty());
+  EXPECT_EQ(3, parser.device_model_id().size());
+  EXPECT_FALSE(parser.device_name().empty());
+  EXPECT_TRUE(parser.embedded_code().empty());
 }
 
 }  // namespace privetd

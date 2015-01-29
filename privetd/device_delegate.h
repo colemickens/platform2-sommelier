@@ -17,6 +17,7 @@ namespace privetd {
 
 class DaemonState;
 class PeerdClient;
+class PrivetdConfigParser;
 
 // Interface to provide access to general information about device.
 class DeviceDelegate {
@@ -67,16 +68,11 @@ class DeviceDelegate {
   // Sets the location of the the device.
   virtual void SetLocation(const std::string& location) = 0;
 
-  // Adds supported device type.
-  virtual void AddType(const std::string& type) = 0;
-
-  // Removes supported device type.
-  virtual void RemoveType(const std::string& type) = 0;
-
   // Create default instance.
   static std::unique_ptr<DeviceDelegate> CreateDefault(
       uint16_t http_port,
       uint16_t https_port,
+      PrivetdConfigParser* config,
       DaemonState* state_store,
       // Allows owner to know that state of the object was changed. Used to
       // notify PeerdClient.

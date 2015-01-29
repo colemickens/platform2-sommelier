@@ -42,7 +42,7 @@ class SecurityManager : public SecurityDelegate {
     virtual const std::string& GetKey() const = 0;
   };
 
-  explicit SecurityManager(const std::string& embedded_password,
+  explicit SecurityManager(const std::string& embedded_code,
                            bool disable_security = false);
   ~SecurityManager() override;
 
@@ -76,7 +76,7 @@ class SecurityManager : public SecurityDelegate {
 
   // If true allows unencrypted pairing and accepts any access code.
   bool is_security_disabled_{false};
-  std::string embedded_password_;
+  const std::string embedded_code_;
   std::map<std::string, std::unique_ptr<KeyExchanger>> pending_sessions_;
   std::map<std::string, std::unique_ptr<KeyExchanger>> confirmed_sessions_;
   chromeos::SecureBlob secret_;

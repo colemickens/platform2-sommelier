@@ -74,36 +74,36 @@ class Daemon : public chromeos::DBusServiceDaemon {
 
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
     chromeos::KeyValueStore config_store;
-    PrivetdConfigParser parser;
     if (!config_store.Load(config_path_)) {
       LOG(ERROR) << "Failed to read privetd config file from "
                  << config_path_.value();
     } else {
-      CHECK(parser.Parse(config_store)) << "Failed to read configuration file.";
+      CHECK(parser_.Parse(config_store))
+          << "Failed to read configuration file.";
     }
     state_store_->Init();
     device_ = DeviceDelegate::CreateDefault(
-        http_port_number_, https_port_number_, state_store_.get(),
+        http_port_number_, https_port_number_, &parser_, state_store_.get(),
         base::Bind(&Daemon::OnChanged, base::Unretained(this)));
-    if (parser.gcd_bootstrap_mode() != GcdBootstrapMode::kDisabled) {
+    if (parser_.gcd_bootstrap_mode() != GcdBootstrapMode::kDisabled) {
       cloud_ = CloudDelegate::CreateDefault(
           bus_, device_.get(),
           base::Bind(&Daemon::OnChanged, base::Unretained(this)));
     }
-    // TODO(vitalybuka): Provide real embedded password.
-    security_.reset(new SecurityManager("1234", disable_security_));
+    security_.reset(
+        new SecurityManager(parser_.embedded_code(), disable_security_));
     shill_client_.reset(new ShillClient(bus_, device_whitelist_));
     shill_client_->RegisterConnectivityListener(
         base::Bind(&Daemon::OnConnectivityChanged, base::Unretained(this)));
     ap_manager_client_.reset(new ApManagerClient(bus_));
 
-    if (parser.wifi_bootstrap_mode() != WiFiBootstrapMode::kDisabled) {
+    if (parser_.wifi_bootstrap_mode() != WiFiBootstrapMode::kDisabled) {
       VLOG(1) << "Enabling WiFi bootstrapping.";
       wifi_bootstrap_manager_.reset(new WifiBootstrapManager(
           state_store_.get(), shill_client_.get(), ap_manager_client_.get(),
-          device_.get(), cloud_.get(), parser.connect_timeout_seconds(),
-          parser.bootstrap_timeout_seconds(),
-          parser.monitor_timeout_seconds()));
+          device_.get(), cloud_.get(), parser_.connect_timeout_seconds(),
+          parser_.bootstrap_timeout_seconds(),
+          parser_.monitor_timeout_seconds()));
       wifi_bootstrap_manager_->Init();
     }
 
@@ -116,9 +116,6 @@ class Daemon : public chromeos::DBusServiceDaemon {
     CHECK(https_server_.StartWithTLS(https_port_number_,
                                      security_->GetTlsPrivateKey(),
                                      security_->GetTlsCertificate()));
-
-    // TODO(vitalybuka): Device daemons should populate supported types on boot.
-    device_->AddType("camera");
 
     http_server_.AddHandlerCallback(
         "/privet/", "",
@@ -217,6 +214,7 @@ class Daemon : public chromeos::DBusServiceDaemon {
   uint16_t https_port_number_;
   bool disable_security_;
   bool enable_ping_;
+  PrivetdConfigParser parser_;
   std::vector<std::string> device_whitelist_;
   base::FilePath config_path_;
   std::unique_ptr<DaemonState> state_store_;

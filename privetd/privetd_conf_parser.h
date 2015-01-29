@@ -24,19 +24,10 @@ enum class GcdBootstrapMode {
   kAutomatic,
 };
 
-namespace config_key {
-
-extern const char kWiFiBootstrapMode[];
-extern const char kGcdBootstrapMode[];
-extern const char kWiFiBootstrapInterfaces[];
-extern const char kConnectTimeout[];
-extern const char kBootstrapTimeout[];
-extern const char kMonitorTimeout[];
-
-}  // namespace config_key
-
 class PrivetdConfigParser {
  public:
+  PrivetdConfigParser();
+
   bool Parse(const chromeos::KeyValueStore& config_store);
 
   WiFiBootstrapMode wifi_bootstrap_mode() const { return wifi_bootstrap_mode_; }
@@ -49,14 +40,32 @@ class PrivetdConfigParser {
     return bootstrap_timeout_seconds_;
   }
   uint32_t monitor_timeout_seconds() const { return monitor_timeout_seconds_; }
+  const std::vector<std::string>& device_services() const {
+    return device_services_;
+  }
+  const std::string& device_class() const { return device_class_; }
+  const std::string& device_make() const { return device_make_; }
+  const std::string& device_model() const { return device_model_; }
+  const std::string& device_model_id() const { return device_model_id_; }
+  const std::string& device_name() const { return device_name_; }
+  const std::string& device_description() const { return device_description_; }
+  const std::string& embedded_code() const { return embedded_code_; }
 
  private:
-  WiFiBootstrapMode wifi_bootstrap_mode_{WiFiBootstrapMode::kDisabled};
-  GcdBootstrapMode gcd_bootstrap_mode_{GcdBootstrapMode::kDisabled};
+  WiFiBootstrapMode wifi_bootstrap_mode_;
+  GcdBootstrapMode gcd_bootstrap_mode_;
   std::vector<std::string> automatic_wifi_interfaces_;
-  uint32_t connect_timeout_seconds_{60u};
-  uint32_t bootstrap_timeout_seconds_{600u};
-  uint32_t monitor_timeout_seconds_{120u};
+  uint32_t connect_timeout_seconds_;
+  uint32_t bootstrap_timeout_seconds_;
+  uint32_t monitor_timeout_seconds_;
+  std::vector<std::string> device_services_;
+  std::string device_class_;
+  std::string device_make_;
+  std::string device_model_;
+  std::string device_model_id_;
+  std::string device_name_;
+  std::string device_description_;
+  std::string embedded_code_;
 };
 
 }  // namespace privetd
