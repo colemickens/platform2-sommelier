@@ -43,10 +43,6 @@ using chromeos::dbus_utils::AsyncEventSequencer;
 using libwebserv::Request;
 using libwebserv::Response;
 
-const uint32_t kDefaultMonitorTimeoutSeconds = 120u;
-const uint32_t kDefaultConnectTimeoutSeconds = 60u;
-const uint32_t kDefaultBootstrapTimeoutSeconds = 600u;
-
 const char kDefaultConfigFilePath[] = "/etc/privetd/config";
 const char kDefaultStateFilePath[] = "/var/lib/privetd/privetd.state";
 
@@ -77,31 +73,19 @@ class Daemon : public chromeos::DBusServiceDaemon {
         state_store_(new DaemonState(state_path)) {}
 
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
-    uint32_t connect_timeout_seconds{kDefaultConnectTimeoutSeconds};
-    uint32_t bootstrap_timeout_seconds{kDefaultBootstrapTimeoutSeconds};
-    uint32_t monitor_timeout_seconds{kDefaultMonitorTimeoutSeconds};
-    WiFiBootstrapMode wifi_bootstrap_mode{WiFiBootstrapMode::kDisabled};
-    GcdBootstrapMode gcd_bootstrap_mode{GcdBootstrapMode::kDisabled};
-    std::vector<std::string> automatic_wifi_interfaces;
     chromeos::KeyValueStore config_store;
+    PrivetdConfigParser parser;
     if (!config_store.Load(config_path_)) {
       LOG(ERROR) << "Failed to read privetd config file from "
                  << config_path_.value();
     } else {
-      CHECK(ParseConfigFile(config_store,
-                            &wifi_bootstrap_mode,
-                            &gcd_bootstrap_mode,
-                            &automatic_wifi_interfaces,
-                            &connect_timeout_seconds,
-                            &bootstrap_timeout_seconds,
-                            &monitor_timeout_seconds))
-          << "Failed to read configuration file.";
+      CHECK(parser.Parse(config_store)) << "Failed to read configuration file.";
     }
     state_store_->Init();
     device_ = DeviceDelegate::CreateDefault(
         http_port_number_, https_port_number_, state_store_.get(),
         base::Bind(&Daemon::OnChanged, base::Unretained(this)));
-    if (gcd_bootstrap_mode != GcdBootstrapMode::kDisabled) {
+    if (parser.gcd_bootstrap_mode() != GcdBootstrapMode::kDisabled) {
       cloud_ = CloudDelegate::CreateDefault(
           bus_, device_.get(),
           base::Bind(&Daemon::OnChanged, base::Unretained(this)));
@@ -113,17 +97,13 @@ class Daemon : public chromeos::DBusServiceDaemon {
         base::Bind(&Daemon::OnConnectivityChanged, base::Unretained(this)));
     ap_manager_client_.reset(new ApManagerClient(bus_));
 
-    if (wifi_bootstrap_mode != WiFiBootstrapMode::kDisabled) {
+    if (parser.wifi_bootstrap_mode() != WiFiBootstrapMode::kDisabled) {
       VLOG(1) << "Enabling WiFi bootstrapping.";
-      wifi_bootstrap_manager_.reset(
-          new WifiBootstrapManager(state_store_.get(),
-                                   shill_client_.get(),
-                                   ap_manager_client_.get(),
-                                   device_.get(),
-                                   cloud_.get(),
-                                   connect_timeout_seconds,
-                                   bootstrap_timeout_seconds,
-                                   monitor_timeout_seconds));
+      wifi_bootstrap_manager_.reset(new WifiBootstrapManager(
+          state_store_.get(), shill_client_.get(), ap_manager_client_.get(),
+          device_.get(), cloud_.get(), parser.connect_timeout_seconds(),
+          parser.bootstrap_timeout_seconds(),
+          parser.monitor_timeout_seconds()));
       wifi_bootstrap_manager_->Init();
     }
 

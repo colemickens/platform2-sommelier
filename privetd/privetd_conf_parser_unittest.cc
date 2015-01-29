@@ -42,21 +42,10 @@ class PrivetdConfParserTest : public testing::Test {
   }
 
   void AssertInvalidConf(const ConfDict& conf_dict) {
-    WiFiBootstrapMode wifi_bootstrap_mode;
-    GcdBootstrapMode gcd_bootstrap_mode;
-    std::vector<std::string> automatic_wifi_interfaces;
-    uint32_t connect_timeout_seconds;
-    uint32_t bootstrap_timeout_seconds;
-    uint32_t monitor_timeout_seconds;
     KeyValueStore store;
     FillKeyValueStore(conf_dict, &store);
-    EXPECT_FALSE(ParseConfigFile(store,
-                                 &wifi_bootstrap_mode,
-                                 &gcd_bootstrap_mode,
-                                 &automatic_wifi_interfaces,
-                                 &connect_timeout_seconds,
-                                 &bootstrap_timeout_seconds,
-                                 &monitor_timeout_seconds));
+    PrivetdConfigParser config;
+    EXPECT_FALSE(config.Parse(store));
   }
 
   void FillKeyValueStore(const ConfDict& conf_dict, KeyValueStore* store) {
@@ -99,13 +88,6 @@ TEST_F(PrivetdConfParserTest, ShouldRejectInvalidGcdBootstrapModes) {
 }
 
 TEST_F(PrivetdConfParserTest, ShouldParseSettings) {
-  WiFiBootstrapMode wifi_bootstrap_mode{WiFiBootstrapMode::kDisabled};
-  GcdBootstrapMode gcd_bootstrap_mode{GcdBootstrapMode::kDisabled};
-  std::vector<std::string> automatic_wifi_interfaces;
-  uint32_t connect_timeout_seconds{0};
-  uint32_t bootstrap_timeout_seconds{0};
-  uint32_t monitor_timeout_seconds{0};
-
   const std::vector<std::string> kExpectedWiFiInterfaces{"eth1", "clown shoes"};
   const uint32_t kExpectedConnectTimeout{1};
   const uint32_t kExpectedBootstrapTimeout{2};
@@ -120,19 +102,14 @@ TEST_F(PrivetdConfParserTest, ShouldParseSettings) {
   };
   KeyValueStore store;
   FillKeyValueStore(conf_dict, &store);
-  EXPECT_TRUE(ParseConfigFile(store,
-                              &wifi_bootstrap_mode,
-                              &gcd_bootstrap_mode,
-                              &automatic_wifi_interfaces,
-                              &connect_timeout_seconds,
-                              &bootstrap_timeout_seconds,
-                              &monitor_timeout_seconds));
-  EXPECT_EQ(WiFiBootstrapMode::kAutomatic, wifi_bootstrap_mode);
-  EXPECT_EQ(GcdBootstrapMode::kAutomatic, gcd_bootstrap_mode);
-  EXPECT_EQ(kExpectedWiFiInterfaces, automatic_wifi_interfaces);
-  EXPECT_EQ(kExpectedConnectTimeout, connect_timeout_seconds);
-  EXPECT_EQ(kExpectedBootstrapTimeout, bootstrap_timeout_seconds);
-  EXPECT_EQ(kExpectedMonitorTimeout, monitor_timeout_seconds);
+  PrivetdConfigParser parser;
+  EXPECT_TRUE(parser.Parse(store));
+  EXPECT_EQ(WiFiBootstrapMode::kAutomatic, parser.wifi_bootstrap_mode());
+  EXPECT_EQ(GcdBootstrapMode::kAutomatic, parser.gcd_bootstrap_mode());
+  EXPECT_EQ(kExpectedWiFiInterfaces, parser.automatic_wifi_interfaces());
+  EXPECT_EQ(kExpectedConnectTimeout, parser.connect_timeout_seconds());
+  EXPECT_EQ(kExpectedBootstrapTimeout, parser.bootstrap_timeout_seconds());
+  EXPECT_EQ(kExpectedMonitorTimeout, parser.monitor_timeout_seconds());
 }
 
 }  // namespace privetd

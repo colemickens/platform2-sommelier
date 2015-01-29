@@ -35,13 +35,29 @@ extern const char kMonitorTimeout[];
 
 }  // namespace config_key
 
-bool ParseConfigFile(const chromeos::KeyValueStore& config_store,
-                     WiFiBootstrapMode* wifi_bootstrap_mode,
-                     GcdBootstrapMode* gcd_bootstrap_mode,
-                     std::vector<std::string>* automatic_wifi_interfaces,
-                     uint32_t* connect_timeout_seconds,
-                     uint32_t* bootstrap_timeout_seconds,
-                     uint32_t* monitor_timeout_seconds);
+class PrivetdConfigParser {
+ public:
+  bool Parse(const chromeos::KeyValueStore& config_store);
+
+  WiFiBootstrapMode wifi_bootstrap_mode() const { return wifi_bootstrap_mode_; }
+  GcdBootstrapMode gcd_bootstrap_mode() const { return gcd_bootstrap_mode_; }
+  const std::vector<std::string>& automatic_wifi_interfaces() const {
+    return automatic_wifi_interfaces_;
+  }
+  uint32_t connect_timeout_seconds() const { return connect_timeout_seconds_; }
+  uint32_t bootstrap_timeout_seconds() const {
+    return bootstrap_timeout_seconds_;
+  }
+  uint32_t monitor_timeout_seconds() const { return monitor_timeout_seconds_; }
+
+ private:
+  WiFiBootstrapMode wifi_bootstrap_mode_{WiFiBootstrapMode::kDisabled};
+  GcdBootstrapMode gcd_bootstrap_mode_{GcdBootstrapMode::kDisabled};
+  std::vector<std::string> automatic_wifi_interfaces_;
+  uint32_t connect_timeout_seconds_{60u};
+  uint32_t bootstrap_timeout_seconds_{600u};
+  uint32_t monitor_timeout_seconds_{120u};
+};
 
 }  // namespace privetd
 

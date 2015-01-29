@@ -25,19 +25,13 @@ const char kBootstrapModeManual[] = "manual";
 
 }  // namespace
 
-bool ParseConfigFile(const chromeos::KeyValueStore& config_store,
-                     WiFiBootstrapMode* wifi_bootstrap_mode,
-                     GcdBootstrapMode* gcd_bootstrap_mode,
-                     std::vector<std::string>* automatic_wifi_interfaces,
-                     uint32_t* connect_timeout_seconds,
-                     uint32_t* bootstrap_timeout_seconds,
-                     uint32_t* monitor_timeout_seconds) {
+bool PrivetdConfigParser::Parse(const chromeos::KeyValueStore& config_store) {
   std::string wifi_bootstrap_mode_str;
   if (config_store.GetString(kWiFiBootstrapMode, &wifi_bootstrap_mode_str)) {
     if (wifi_bootstrap_mode_str.compare(kBootstrapModeOff) == 0) {
-      *wifi_bootstrap_mode = WiFiBootstrapMode::kDisabled;
+      wifi_bootstrap_mode_ = WiFiBootstrapMode::kDisabled;
     } else if (wifi_bootstrap_mode_str.compare(kBootstrapModeAutomatic) == 0) {
-      *wifi_bootstrap_mode = WiFiBootstrapMode::kAutomatic;
+      wifi_bootstrap_mode_ = WiFiBootstrapMode::kAutomatic;
     } else if (wifi_bootstrap_mode_str.compare(kBootstrapModeManual) == 0) {
       LOG(ERROR) << "Manual WiFi bootstrapping mode is unsupported.";
       return false;
@@ -51,9 +45,9 @@ bool ParseConfigFile(const chromeos::KeyValueStore& config_store,
   std::string gcd_bootstrap_mode_str;
   if (config_store.GetString(kGcdBootstrapMode, &gcd_bootstrap_mode_str)) {
     if (gcd_bootstrap_mode_str.compare(kBootstrapModeOff) == 0) {
-      *gcd_bootstrap_mode = GcdBootstrapMode::kDisabled;
+      gcd_bootstrap_mode_ = GcdBootstrapMode::kDisabled;
     } else if (gcd_bootstrap_mode_str.compare(kBootstrapModeAutomatic) == 0) {
-      *gcd_bootstrap_mode = GcdBootstrapMode::kAutomatic;
+      gcd_bootstrap_mode_ = GcdBootstrapMode::kAutomatic;
     } else if (gcd_bootstrap_mode_str.compare(kBootstrapModeManual) == 0) {
       LOG(ERROR) << "Manual GCD bootstrapping mode is unsupported.";
       return false;
@@ -67,7 +61,7 @@ bool ParseConfigFile(const chromeos::KeyValueStore& config_store,
   std::string wifi_interface_list_str;
   if (config_store.GetString(kWiFiBootstrapInterfaces,
                              &wifi_interface_list_str)) {
-    *automatic_wifi_interfaces =
+    automatic_wifi_interfaces_ =
         chromeos::string_utils::Split(wifi_interface_list_str, ',', true, true);
   }
 
@@ -83,7 +77,7 @@ bool ParseConfigFile(const chromeos::KeyValueStore& config_store,
 
   std::string connect_timeout_seconds_str;
   if (config_store.GetString(kConnectTimeout, &connect_timeout_seconds_str) &&
-      !parse_timeout(connect_timeout_seconds_str, connect_timeout_seconds)) {
+      !parse_timeout(connect_timeout_seconds_str, &connect_timeout_seconds_)) {
     LOG(ERROR) << "Invalid string given for connect timeout: "
                << connect_timeout_seconds_str;
     return false;
@@ -93,7 +87,7 @@ bool ParseConfigFile(const chromeos::KeyValueStore& config_store,
   if (config_store.GetString(kBootstrapTimeout,
                              &bootstrap_timeout_seconds_str) &&
       !parse_timeout(bootstrap_timeout_seconds_str,
-                        bootstrap_timeout_seconds)) {
+                     &bootstrap_timeout_seconds_)) {
     LOG(ERROR) << "Invalid string given for bootstrap timeout: "
                << bootstrap_timeout_seconds_str;
     return false;
@@ -101,7 +95,7 @@ bool ParseConfigFile(const chromeos::KeyValueStore& config_store,
 
   std::string monitor_timeout_seconds_str;
   if (config_store.GetString(kMonitorTimeout, &monitor_timeout_seconds_str) &&
-      !parse_timeout(monitor_timeout_seconds_str, monitor_timeout_seconds)) {
+      !parse_timeout(monitor_timeout_seconds_str, &monitor_timeout_seconds_)) {
     LOG(ERROR) << "Invalid string given for monitor timeout: "
                << monitor_timeout_seconds_str;
     return false;
