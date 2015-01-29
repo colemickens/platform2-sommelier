@@ -74,7 +74,7 @@ class DiskManager : public MountManager,
   // Implements the DeviceEventSourceInterface interface to read the changes
   // from udev and converts the changes into device events. Returns false on
   // error or if not device event is available. Must be called to clear the fd.
-  bool GetDeviceEvents(DeviceEventList* events);
+  bool GetDeviceEvents(DeviceEventList* events) override;
 
   // Gets a Disk object that corresponds to a given device file.
   bool GetDiskByDevicePath(const std::string& device_path, Disk *disk) const;
