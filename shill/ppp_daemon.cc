@@ -20,7 +20,8 @@
 namespace shill {
 
 const char PPPDaemon::kDaemonPath[] = "/usr/sbin/pppd";
-const char PPPDaemon::kPluginPath[] = SHIMDIR "/shill-pppd-plugin.so";
+const char PPPDaemon::kShimPluginPath[] = SHIMDIR "/shill-pppd-plugin.so";
+const char PPPDaemon::kPPPoEPluginPath[] = "rp-pppoe.so";
 
 std::unique_ptr<ExternalTask> PPPDaemon::Start(
     ControlInterface *control_interface,
@@ -31,6 +32,9 @@ std::unique_ptr<ExternalTask> PPPDaemon::Start(
     const PPPDaemon::DeathCallback &death_callback,
     Error *error) {
   std::vector<std::string> arguments;
+  if (options.debug) {
+    arguments.push_back("debug");
+  }
   if (options.no_detach) {
     arguments.push_back("nodetach");
   }
@@ -40,8 +44,15 @@ std::unique_ptr<ExternalTask> PPPDaemon::Start(
   if (options.use_peer_dns) {
     arguments.push_back("usepeerdns");
   }
-  arguments.push_back("plugin");
-  arguments.push_back(kPluginPath);
+  if (options.use_shim_plugin) {
+    arguments.push_back("plugin");
+    arguments.push_back(kShimPluginPath);
+  }
+  if (options.use_pppoe_plugin) {
+    arguments.push_back("plugin");
+    arguments.push_back(kPPPoEPluginPath);
+  }
+
   arguments.push_back(device);
 
   std::unique_ptr<ExternalTask> task(new ExternalTask(

@@ -77,7 +77,7 @@ TEST_F(PPPDaemonTest, PluginUsed) {
 
   for (size_t i = 0; i < argv_.size(); ++i) {
     if (argv_[i] == "plugin") {
-      EXPECT_EQ(argv_[i + 1], PPPDaemon::kPluginPath);
+      EXPECT_EQ(argv_[i + 1], PPPDaemon::kShimPluginPath);
     }
   }
 }

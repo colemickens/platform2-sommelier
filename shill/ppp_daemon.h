@@ -34,15 +34,38 @@ class PPPDaemon {
   // more details about the meaning of each.
   struct Options {
     Options()
-        : no_detach(false), no_default_route(false), use_peer_dns(false) {}
+        : debug(false),
+          no_detach(false),
+          no_default_route(false),
+          use_peer_dns(false),
+          use_shim_plugin(true),
+          use_pppoe_plugin(false) {}
 
+    // Causes pppd to emit log messages useful for debugging connectivity.
+    bool debug;
+
+    // Causes pppd to not fork and daemonize, remaining attached to the
+    // controlling terminal that spawned it.
     bool no_detach;
-    bool no_default_route;  // Don't let pppd muck with routing table.
-    bool use_peer_dns;      // Request DNS servers.
+
+    // Stops pppd from modifying the routing table.
+    bool no_default_route;
+
+    // Instructs pppd to request DNS servers from the remote server.
+    bool use_peer_dns;
+
+    // If set, will cause the shill pppd plugin to be used at the creation of
+    // the pppd instace.  This will result in connectivity events being plumbed
+    // over D-Bus to the RPCTaskDelegate provided during PPPDaemon::Start.
+    bool use_shim_plugin;
+
+    // If set, enables the rp-pppoe plugin which allows pppd to be used over
+    // ethernet devices.
+    bool use_pppoe_plugin;
   };
 
   // The path to the pppd plugin provided by shill.
-  static const char kPluginPath[];
+  static const char kShimPluginPath[];
 
   // Starts a pppd instance.  |options| provides the configuration for the
   // instance to be started, |device| specifies which device the PPP connection
@@ -62,6 +85,7 @@ class PPPDaemon {
   FRIEND_TEST(PPPDaemonTest, PluginUsed);
 
   static const char kDaemonPath[];
+  static const char kPPPoEPluginPath[];
 
   PPPDaemon();
   ~PPPDaemon();

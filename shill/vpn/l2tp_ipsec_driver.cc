@@ -245,7 +245,7 @@ bool L2TPIPSecDriver::InitOptions(vector<string> *options, Error *error) {
 
   options->push_back(base::StringPrintf("--remote_host=%s", vpnhost.c_str()));
   options->push_back(base::StringPrintf("--pppd_plugin=%s",
-                                        PPPDaemon::kPluginPath));
+                                        PPPDaemon::kShimPluginPath));
   // Disable pppd from configuring IP addresses, routes, DNS.
   options->push_back("--nosystemconfig");
 
