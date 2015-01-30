@@ -30,6 +30,7 @@ class Technology {
     kCDCEthernet,  // Only for internal use in DeviceInfo.
     kVirtioEthernet,  // Only for internal use in DeviceInfo.
     kPPP,
+    kPPPoE,
     kUnknown,
   };
 
@@ -66,6 +67,7 @@ class Technology {
   static const char kLoopbackName[];
   static const char kTunnelName[];
   static const char kPPPName[];
+  static const char kPPPoEName[];
   static const char kUnknownName[];
 };
 

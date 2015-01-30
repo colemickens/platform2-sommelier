@@ -45,6 +45,7 @@ class ScopeLogger {
     kPortal,
     kPower,
     kPPP,
+    kPPPoE,
     kProfile,
     kProperty,
     kResolver,

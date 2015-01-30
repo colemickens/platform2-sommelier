@@ -40,6 +40,7 @@ const char *const kScopeNames[] = {
   "portal",
   "power",
   "ppp",
+  "pppoe",
   "profile",
   "property",
   "resolver",

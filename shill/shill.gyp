@@ -365,6 +365,7 @@
         'ppp_daemon.cc',
         'ppp_device.cc',
         'ppp_device_factory.cc',
+        'pppoe/pppoe_service.cc',
         'process_killer.cc',
         'profile.cc',
         'profile_dbus_adaptor.cc',
@@ -490,7 +491,7 @@
         },
       ],
     }],
-    ['USE_cellular == 1 or USE_vpn == 1', {
+    ['USE_cellular == 1 or USE_vpn == 1 or USE_pppoe == 1', {
       'targets': [
         {
           'target_name': 'shill-pppd-plugin',
@@ -655,8 +656,9 @@
             'pending_activation_store_unittest.cc',
             'portal_detector_unittest.cc',
             'power_manager_unittest.cc',
-            'ppp_device_unittest.cc',
             'ppp_daemon_unittest.cc',
+            'ppp_device_unittest.cc',
+            'pppoe/pppoe_service_unittest.cc',
             'process_killer_unittest.cc',
             'profile_dbus_property_exporter_unittest.cc',
             'profile_unittest.cc',

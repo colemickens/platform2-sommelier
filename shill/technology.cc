@@ -40,6 +40,8 @@ Technology::Identifier Technology::IdentifierFromName(const string &name) {
     return kCellular;
   } else if (name == kTypeVPN) {
     return kVPN;
+  } else if (name == kTypePPPoE) {
+    return kPPPoE;
   } else if (name == kLoopbackName) {
     return kLoopback;
   } else if (name == kTunnelName) {
@@ -71,6 +73,8 @@ string Technology::NameFromIdentifier(Technology::Identifier id) {
     return kTunnelName;
   } else if (id == kPPP) {
     return kPPPName;
+  } else if (id == kPPPoE) {
+    return kTypePPPoE;
   } else {
     return kUnknownName;
   }

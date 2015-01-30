@@ -45,6 +45,7 @@ TEST_F(TechnologyTest, NameFromIdentifier) {
   EXPECT_EQ("loopback", Technology::NameFromIdentifier(Technology::kLoopback));
   EXPECT_EQ("vpn", Technology::NameFromIdentifier(Technology::kVPN));
   EXPECT_EQ("ppp", Technology::NameFromIdentifier(Technology::kPPP));
+  EXPECT_EQ("pppoe", Technology::NameFromIdentifier(Technology::kPPPoE));
   EXPECT_EQ("unknown", Technology::NameFromIdentifier(Technology::kUnknown));
 }
 

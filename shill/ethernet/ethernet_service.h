@@ -49,6 +49,19 @@ class EthernetService : public Service {
   virtual void OnVisibilityChanged();
 
  protected:
+  // This constructor performs none of the initialization that the normal
+  // constructor does and sets the reported technology to |technology|.  It is
+  // intended for use by subclasses which want to override specific aspects of
+  // EthernetService behavior, while still retaining their own technology
+  // identifier.
+  EthernetService(ControlInterface *control_interface,
+                  EventDispatcher *dispatcher,
+                  Metrics *metrics,
+                  Manager *manager,
+                  Technology::Identifier technology,
+                  base::WeakPtr<Ethernet> ethernet);
+
+  Ethernet *ethernet() const { return ethernet_.get(); }
   std::string GetTethering(Error *error) const override;
 
  private:

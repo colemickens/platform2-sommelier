@@ -74,6 +74,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
  private:
   friend class EthernetTest;
   friend class EthernetServiceTest;  // For weak_ptr_factory_.
+  friend class PPPoEServiceTest;     // For weak_ptr_factory_.
 
   // Return a pointer to the EAP provider for Ethernet devices.
   EthernetEapProvider *GetEapProvider();

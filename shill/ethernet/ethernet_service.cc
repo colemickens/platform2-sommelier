@@ -36,9 +36,8 @@ EthernetService::EthernetService(ControlInterface *control_interface,
                                  Metrics *metrics,
                                  Manager *manager,
                                  base::WeakPtr<Ethernet> ethernet)
-    : Service(control_interface, dispatcher, metrics, manager,
-              Technology::kEthernet),
-      ethernet_(ethernet) {
+    : EthernetService(control_interface, dispatcher, metrics, manager,
+                      Technology::kEthernet, ethernet) {
   SetConnectable(true);
   SetAutoConnect(true);
   set_friendly_name("Ethernet");
@@ -50,6 +49,15 @@ EthernetService::EthernetService(ControlInterface *control_interface,
   // class.)
   NotifyPropertyChanges();
 }
+
+EthernetService::EthernetService(ControlInterface *control_interface,
+                                 EventDispatcher *dispatcher,
+                                 Metrics *metrics,
+                                 Manager *manager,
+                                 Technology::Identifier technology,
+                                 base::WeakPtr<Ethernet> ethernet)
+  : Service(control_interface, dispatcher, metrics, manager, technology),
+    ethernet_(ethernet) {}
 
 EthernetService::~EthernetService() { }
 
@@ -72,8 +80,9 @@ std::string EthernetService::GetDeviceRpcId(Error */*error*/) const {
 
 string EthernetService::GetStorageIdentifier() const {
   CHECK(ethernet_);
-  return base::StringPrintf("%s_%s",
-                            kServiceType, ethernet_->address().c_str());
+  return base::StringPrintf(
+      "%s_%s", Technology::NameFromIdentifier(technology()).c_str(),
+      ethernet_->address().c_str());
 }
 
 bool EthernetService::IsAutoConnectByDefault() const {
