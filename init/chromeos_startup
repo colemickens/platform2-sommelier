@@ -354,6 +354,12 @@ mount -n -t tmpfs -o nodev,noexec,nosuid media /media
 
 # Mount stateful partition for dev packages.
 if [ ${CROS_DEBUG} -eq 1 ]; then
+  # Set up the logging dir that ASAN compiled programs will write to.  We want
+  # any privileged account to be able to write here so unittests need not worry
+  # about settings things up ahead of time.  See crbug.com/453579 for details.
+  mkdir -p /var/log/asan
+  chmod 1777 /var/log/asan
+
   # Capture a snapshot of "normal" mount state here, for auditability,
   # before we start applying devmode-specific changes.
   cat /proc/mounts > /var/log/mount_options.log
