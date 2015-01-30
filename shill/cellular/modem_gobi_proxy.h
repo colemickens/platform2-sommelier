@@ -25,9 +25,9 @@ class ModemGobiProxy : public ModemGobiProxyInterface {
   ~ModemGobiProxy() override;
 
   // Inherited from ModemGobiProxyInterface.
-  virtual void SetCarrier(const std::string &carrier,
-                          Error *error, const ResultCallback &callback,
-                          int timeout);
+  void SetCarrier(const std::string &carrier,
+                  Error *error, const ResultCallback &callback,
+                  int timeout) override;
 
  private:
   class Proxy
@@ -44,7 +44,7 @@ class ModemGobiProxy : public ModemGobiProxyInterface {
     // [None]
 
     // Method callbacks inherited from ModemManager::Modem::Gobi_proxy.
-    virtual void SetCarrierCallback(const DBus::Error &dberror, void *data);
+    void SetCarrierCallback(const DBus::Error &dberror, void *data) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

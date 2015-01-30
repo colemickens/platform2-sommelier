@@ -41,18 +41,18 @@ class DefaultProfile : public Profile {
 
   // Override the Profile superclass implementation to accept all Ethernet
   // services, since these should have an affinity for the default profile.
-  virtual bool ConfigureService(const ServiceRefPtr &service);
+  bool ConfigureService(const ServiceRefPtr &service) override;
 
   // Persists profile information, as well as that of discovered devices
   // and bound services, to disk.
   // Returns true on success, false on failure.
-  virtual bool Save();
+  bool Save() override;
 
   // Inherited from Profile.
-  virtual bool UpdateDevice(const DeviceRefPtr &device);
+  bool UpdateDevice(const DeviceRefPtr &device) override;
 
   // Inherited from Profile.
-  virtual bool UpdateWiFiProvider(const WiFiProvider &wifi_provider);
+  bool UpdateWiFiProvider(const WiFiProvider &wifi_provider) override;
 
   bool IsDefault() const override { return true; }
 
@@ -62,7 +62,7 @@ class DefaultProfile : public Profile {
   // appropriate file location.
   //
   // In this implementation, |name_| is ignored.
-  virtual bool GetStoragePath(base::FilePath *path);
+  bool GetStoragePath(base::FilePath *path) override;
 
  private:
   friend class DefaultProfileTest;

@@ -21,9 +21,9 @@ class WiMaxManagerProxy : public WiMaxManagerProxyInterface {
   ~WiMaxManagerProxy() override;
 
   // Inherited from WiMaxManagerProxyInterface.
-  virtual void set_devices_changed_callback(
-      const DevicesChangedCallback &callback);
-  virtual RpcIdentifiers Devices(Error *error);
+  void set_devices_changed_callback(
+      const DevicesChangedCallback &callback) override;
+  RpcIdentifiers Devices(Error *error) override;
 
  private:
   class Proxy : public org::chromium::WiMaxManager_proxy,
@@ -36,7 +36,7 @@ class WiMaxManagerProxy : public WiMaxManagerProxyInterface {
 
    private:
     // Signal callbacks inherited from WiMaxManager_proxy.
-    virtual void DevicesChanged(const std::vector<DBus::Path> &devices);
+    void DevicesChanged(const std::vector<DBus::Path> &devices) override;
 
     // Method callbacks inherited from WiMaxManager_proxy.
     // [None]

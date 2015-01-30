@@ -93,7 +93,7 @@ class CellularCapabilityClassic : public CellularCapability {
   void FinishEnable(const ResultCallback &callback);
   void FinishDisable(const ResultCallback &callback);
   virtual void InitProxies();
-  virtual void ReleaseProxies();
+  void ReleaseProxies() override;
 
   // Default implementation is no-op.
   virtual void UpdateStatus(const DBusPropertiesMap &properties);

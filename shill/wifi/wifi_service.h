@@ -50,9 +50,9 @@ class WiFiService : public Service {
   ~WiFiService();
 
   // Inherited from Service.
-  virtual void Connect(Error *error, const char *reason);
-  virtual void Disconnect(Error *error, const char *reason);
-  virtual bool Is8021x() const;
+  void Connect(Error *error, const char *reason) override;
+  void Disconnect(Error *error, const char *reason) override;
+  bool Is8021x() const override;
 
   virtual void AddEndpoint(const WiFiEndpointConstRefPtr &endpoint);
   virtual void RemoveEndpoint(const WiFiEndpointConstRefPtr &endpoint);
@@ -67,7 +67,7 @@ class WiFiService : public Service {
   virtual void NotifyEndpointUpdated(const WiFiEndpointConstRefPtr &endpoint);
 
   // wifi_<MAC>_<BSSID>_<mode_string>_<security_string>
-  std::string GetStorageIdentifier() const;
+  std::string GetStorageIdentifier() const override;
   static bool ParseStorageIdentifier(const std::string &storage_name,
                                      std::string *address,
                                      std::string *mode,
@@ -101,9 +101,9 @@ class WiFiService : public Service {
   // WiFi services can load from profile entries other than their current
   // storage identifier.  Override the methods from the parent Service
   // class which pertain to whether this service may be loaded from |storage|.
-  virtual std::string GetLoadableStorageIdentifier(
-      const StoreInterface &storage) const;
-  virtual bool IsLoadableFrom(const StoreInterface &storage) const;
+  std::string GetLoadableStorageIdentifier(
+      const StoreInterface &storage) const override;
+  bool IsLoadableFrom(const StoreInterface &storage) const override;
 
   // Override Load and Save from parent Service class.  We will call
   // the parent method.
@@ -133,8 +133,8 @@ class WiFiService : public Service {
   bool ieee80211w_required() const { return ieee80211w_required_; }
 
   void InitializeCustomMetrics() const;
-  virtual void SendPostReadyStateMetrics(
-      int64_t time_resume_to_ready_milliseconds) const;
+  void SendPostReadyStateMetrics(
+      int64_t time_resume_to_ready_milliseconds) const override;
 
   // Clear any cached credentials stored in wpa_supplicant related to |this|.
   // This will disconnect this service if it is currently connected.
@@ -142,7 +142,8 @@ class WiFiService : public Service {
 
   // Override from parent Service class to correctly update connectability
   // when the EAP credentials change for 802.1x networks.
-  void OnEapCredentialsChanged(Service::UpdateCredentialsReason reason);
+  void OnEapCredentialsChanged(
+      Service::UpdateCredentialsReason reason) override;
 
   // Called by WiFiService to reset state associated with prior success
   // of a connection with particular EAP credentials or a passphrase.
@@ -150,7 +151,7 @@ class WiFiService : public Service {
 
   // Override from parent Service class to register hidden services once they
   // have been configured.
-  virtual void OnProfileConfigured();
+  void OnProfileConfigured() override;
 
   // Called by WiFiProvider to reset the WiFi device reference on shutdown.
   virtual void ResetWiFi();
@@ -162,7 +163,7 @@ class WiFiService : public Service {
   // This function maps them all into "psk".
   static std::string ComputeSecurityClass(const std::string &security);
 
-  virtual bool IsAutoConnectable(const char **reason) const;
+  bool IsAutoConnectable(const char **reason) const override;
 
   // Signal level in dBm.  If no current endpoint, returns
   // std::numeric_limits<int>::min().
@@ -226,7 +227,7 @@ class WiFiService : public Service {
       void(WiFiService::*clear)(Error *error),
       const std::string *default_value);
 
-  std::string GetDeviceRpcId(Error *error) const;
+  std::string GetDeviceRpcId(Error *error) const override;
 
   void ClearPassphrase(Error *error);
   void UpdateConnectable();

@@ -25,13 +25,13 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
   ~ModemSimpleProxy() override;
 
   // Inherited from ModemSimpleProxyInterface.
-  virtual void GetModemStatus(Error *error,
-                              const DBusPropertyMapCallback &callback,
-                              int timeout);
-  virtual void Connect(const DBusPropertiesMap &properties,
-                       Error *error,
-                       const ResultCallback &callback,
-                       int timeout);
+  void GetModemStatus(Error *error,
+                      const DBusPropertyMapCallback &callback,
+                      int timeout) override;
+  void Connect(const DBusPropertiesMap &properties,
+               Error *error,
+               const ResultCallback &callback,
+               int timeout) override;
 
  private:
   class Proxy : public org::freedesktop::ModemManager::Modem::Simple_proxy,
@@ -47,9 +47,9 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
     // [None]
 
     // Method callbacks inherited from ModemManager::Modem::Simple_proxy.
-    virtual void GetStatusCallback(const DBusPropertiesMap &props,
-                                   const DBus::Error &dberror, void *data);
-    virtual void ConnectCallback(const DBus::Error &dberror, void *data);
+    void GetStatusCallback(const DBusPropertiesMap &props,
+                           const DBus::Error &dberror, void *data) override;
+    void ConnectCallback(const DBus::Error &dberror, void *data) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

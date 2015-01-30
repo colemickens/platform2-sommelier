@@ -25,13 +25,13 @@ class ModemModem3gppProxy : public ModemModem3gppProxyInterface {
                       const std::string &service);
   ~ModemModem3gppProxy() override;
   // Inherited methods from ModemModem3gppProxyInterface.
-  virtual void Register(const std::string &operator_id,
-                        Error *error,
-                        const ResultCallback &callback,
-                        int timeout);
-  virtual void Scan(Error *error,
-                    const DBusPropertyMapsCallback &callback,
-                    int timeout);
+  void Register(const std::string &operator_id,
+                Error *error,
+                const ResultCallback &callback,
+                int timeout) override;
+  void Scan(Error *error,
+            const DBusPropertyMapsCallback &callback,
+            int timeout) override;
 
  private:
   class Proxy : public org::freedesktop::ModemManager1::Modem::Modem3gpp_proxy,
@@ -45,10 +45,10 @@ class ModemModem3gppProxy : public ModemModem3gppProxyInterface {
    private:
     // Method callbacks inherited from
     // org::freedesktop::ModemManager1::Modem::Modem3gppProxy
-    virtual void RegisterCallback(const ::DBus::Error& dberror, void *data);
-    virtual void ScanCallback(
+    void RegisterCallback(const ::DBus::Error& dberror, void *data) override;
+    void ScanCallback(
         const std::vector<DBusPropertiesMap> &results,
-        const ::DBus::Error& dberror, void *data);
+        const ::DBus::Error& dberror, void *data) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

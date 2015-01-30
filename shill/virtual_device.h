@@ -45,11 +45,11 @@ class VirtualDevice : public Device {
 
   // Expose protected device methods to manager of this device.
   // (E.g. Cellular, L2TPIPSecDriver, OpenVPNDriver.)
-  virtual void DropConnection();
+  void DropConnection() override;
   virtual void SelectService(const ServiceRefPtr &service);
-  virtual void SetServiceState(Service::ConnectState state);
-  virtual void SetServiceFailure(Service::ConnectFailure failure_state);
-  virtual void SetServiceFailureSilent(Service::ConnectFailure failure_state);
+  void SetServiceState(Service::ConnectState state) override;
+  void SetServiceFailure(Service::ConnectFailure failure_state) override;
+  void SetServiceFailureSilent(Service::ConnectFailure failure_state) override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(VirtualDevice);

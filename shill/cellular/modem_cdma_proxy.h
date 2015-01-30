@@ -24,22 +24,22 @@ class ModemCDMAProxy : public ModemCDMAProxyInterface {
   ~ModemCDMAProxy() override;
 
   // Inherited from ModemCDMAProxyInterface.
-  virtual void Activate(const std::string &carrier, Error *error,
-                        const ActivationResultCallback &callback, int timeout);
-  virtual void GetRegistrationState(Error *error,
-                                    const RegistrationStateCallback &callback,
-                                    int timeout);
-  virtual void GetSignalQuality(Error *error,
-                                const SignalQualityCallback &callback,
-                                int timeout);
-  virtual const std::string MEID();
+  void Activate(const std::string &carrier, Error *error,
+                const ActivationResultCallback &callback, int timeout) override;
+  void GetRegistrationState(Error *error,
+                            const RegistrationStateCallback &callback,
+                            int timeout) override;
+  void GetSignalQuality(Error *error,
+                        const SignalQualityCallback &callback,
+                        int timeout) override;
+  const std::string MEID() override;
 
-  virtual void set_activation_state_callback(
-      const ActivationStateSignalCallback &callback);
-  virtual void set_signal_quality_callback(
-      const SignalQualitySignalCallback &callback);
-  virtual void set_registration_state_callback(
-      const RegistrationStateSignalCallback &callback);
+  void set_activation_state_callback(
+      const ActivationStateSignalCallback &callback) override;
+  void set_signal_quality_callback(
+      const SignalQualitySignalCallback &callback) override;
+  void set_registration_state_callback(
+      const RegistrationStateSignalCallback &callback) override;
 
  public:
   class Proxy
@@ -60,24 +60,24 @@ class ModemCDMAProxy : public ModemCDMAProxyInterface {
 
    private:
     // Signal callbacks inherited from ModemManager::Modem::Cdma_proxy.
-    virtual void ActivationStateChanged(
+    void ActivationStateChanged(
         const uint32_t &activation_state,
         const uint32_t &activation_error,
-        const DBusPropertiesMap &status_changes);
-    virtual void SignalQuality(const uint32_t &quality);
-    virtual void RegistrationStateChanged(const uint32_t &cdma_1x_state,
-                                          const uint32_t &evdo_state);
+        const DBusPropertiesMap &status_changes) override;
+    void SignalQuality(const uint32_t &quality) override;
+    void RegistrationStateChanged(const uint32_t &cdma_1x_state,
+                                  const uint32_t &evdo_state) override;
 
     // Method callbacks inherited from ModemManager::Modem::Cdma_proxy.
-    virtual void ActivateCallback(const uint32_t &status,
-                                  const DBus::Error &dberror, void *data);
-    virtual void GetRegistrationStateCallback(const uint32_t &state_1x,
-                                              const uint32_t &state_evdo,
-                                              const DBus::Error &error,
-                                              void *data);
-    virtual void GetSignalQualityCallback(const uint32_t &quality,
-                                          const DBus::Error &dberror,
-                                          void *data);
+    void ActivateCallback(const uint32_t &status,
+                          const DBus::Error &dberror, void *data) override;
+    void GetRegistrationStateCallback(const uint32_t &state_1x,
+                                      const uint32_t &state_evdo,
+                                      const DBus::Error &error,
+                                      void *data) override;
+    void GetSignalQualityCallback(const uint32_t &quality,
+                                  const DBus::Error &dberror,
+                                  void *data) override;
 
     ActivationStateSignalCallback activation_state_callback_;
     SignalQualitySignalCallback signal_quality_callback_;

@@ -25,28 +25,28 @@ class ModemGSMCardProxy : public ModemGSMCardProxyInterface {
   ~ModemGSMCardProxy() override;
 
   // Inherited from ModemGSMCardProxyInterface.
-  virtual void GetIMEI(Error *error, const GSMIdentifierCallback &callback,
-                       int timeout);
-  virtual void GetIMSI(Error *error, const GSMIdentifierCallback &callback,
-                       int timeout);
-  virtual void GetSPN(Error *error, const GSMIdentifierCallback &callback,
-                      int timeout);
-  virtual void GetMSISDN(Error *error, const GSMIdentifierCallback &callback,
-                         int timeout);
-  virtual void EnablePIN(const std::string &pin, bool enabled,
-                         Error *error, const ResultCallback &callback,
-                         int timeout);
-  virtual void SendPIN(const std::string &pin,
-                       Error *error, const ResultCallback &callback,
-                       int timeout);
-  virtual void SendPUK(const std::string &puk, const std::string &pin,
-                       Error *error, const ResultCallback &callback,
-                       int timeout);
-  virtual void ChangePIN(const std::string &old_pin,
-                         const std::string &new_pin,
-                         Error *error, const ResultCallback &callback,
-                         int timeout);
-  virtual uint32_t EnabledFacilityLocks();
+  void GetIMEI(Error *error, const GSMIdentifierCallback &callback,
+               int timeout) override;
+  void GetIMSI(Error *error, const GSMIdentifierCallback &callback,
+               int timeout) override;
+  void GetSPN(Error *error, const GSMIdentifierCallback &callback,
+              int timeout) override;
+  void GetMSISDN(Error *error, const GSMIdentifierCallback &callback,
+                 int timeout) override;
+  void EnablePIN(const std::string &pin, bool enabled,
+                 Error *error, const ResultCallback &callback,
+                 int timeout) override;
+  void SendPIN(const std::string &pin,
+               Error *error, const ResultCallback &callback,
+               int timeout) override;
+  void SendPUK(const std::string &puk, const std::string &pin,
+               Error *error, const ResultCallback &callback,
+               int timeout) override;
+  void ChangePIN(const std::string &old_pin,
+                 const std::string &new_pin,
+                 Error *error, const ResultCallback &callback,
+                 int timeout) override;
+  uint32_t EnabledFacilityLocks() override;
 
  private:
   class Proxy
@@ -63,18 +63,18 @@ class ModemGSMCardProxy : public ModemGSMCardProxyInterface {
     // [None]
 
     // Method callbacks inherited from ModemManager::Modem::Gsm::Card_proxy.
-    virtual void GetImeiCallback(const std::string &imei,
-                                 const DBus::Error &dberror, void *data);
-    virtual void GetImsiCallback(const std::string &imsi,
-                                 const DBus::Error &dberror, void *data);
-    virtual void GetSpnCallback(const std::string &spn,
-                                 const DBus::Error &dberror, void *data);
-    virtual void GetMsIsdnCallback(const std::string &msisdn,
-                                 const DBus::Error &dberror, void *data);
-    virtual void EnablePinCallback(const DBus::Error &dberror, void *data);
-    virtual void SendPinCallback(const DBus::Error &dberror, void *data);
-    virtual void SendPukCallback(const DBus::Error &dberror, void *data);
-    virtual void ChangePinCallback(const DBus::Error &dberror, void *data);
+    void GetImeiCallback(const std::string &imei,
+                         const DBus::Error &dberror, void *data) override;
+    void GetImsiCallback(const std::string &imsi,
+                         const DBus::Error &dberror, void *data) override;
+    void GetSpnCallback(const std::string &spn,
+                         const DBus::Error &dberror, void *data) override;
+    void GetMsIsdnCallback(const std::string &msisdn,
+                           const DBus::Error &dberror, void *data) override;
+    void EnablePinCallback(const DBus::Error &dberror, void *data) override;
+    void SendPinCallback(const DBus::Error &dberror, void *data) override;
+    void SendPukCallback(const DBus::Error &dberror, void *data) override;
+    void ChangePinCallback(const DBus::Error &dberror, void *data) override;
 
     virtual void GetIdCallback(const std::string &id,
                                const DBus::Error &dberror, void *data);

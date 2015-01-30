@@ -23,8 +23,8 @@ class IOReadyHandler : public IOHandler,
                  const ReadyCallback& ready_callback);
   ~IOReadyHandler();
 
-  virtual void Start();
-  virtual void Stop();
+  void Start() override;
+  void Stop() override;
 
  private:
   // base::MessageLoopForIO::Watcher methods.

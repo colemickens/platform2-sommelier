@@ -55,7 +55,7 @@ class PropertyStoreTest : public testing::TestWithParam<::DBus::Variant> {
   PropertyStoreTest();
   ~PropertyStoreTest() override;
 
-  virtual void SetUp();
+  void SetUp() override;
   MOCK_METHOD1(TestCallback, void(const std::string &property_name));
   MOCK_METHOD1(GetKeyValueStoreCallback, KeyValueStore(Error *error));
   MOCK_METHOD2(SetKeyValueStoreCallback, bool(const KeyValueStore &value,

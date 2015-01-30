@@ -24,14 +24,14 @@ class DBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
   ~DBusObjectManagerProxy() override;
 
   // Inherited methods from DBusObjectManagerProxyInterface.
-  virtual void GetManagedObjects(Error *error,
-                                 const ManagedObjectsCallback &callback,
-                                 int timeout);
+  void GetManagedObjects(Error *error,
+                         const ManagedObjectsCallback &callback,
+                         int timeout) override;
 
-  virtual void set_interfaces_added_callback(
-      const InterfacesAddedSignalCallback &callback);
-  virtual void set_interfaces_removed_callback(
-      const InterfacesRemovedSignalCallback &callback);
+  void set_interfaces_added_callback(
+      const InterfacesAddedSignalCallback &callback) override;
+  void set_interfaces_removed_callback(
+      const InterfacesRemovedSignalCallback &callback) override;
 
  private:
   class Proxy : public org::freedesktop::DBus::ObjectManager_proxy,
@@ -49,17 +49,17 @@ class DBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
 
    private:
     // Signal callbacks
-    virtual void InterfacesAdded(
+    void InterfacesAdded(
         const ::DBus::Path &object_path,
-        const DBusInterfaceToProperties &interfaces_and_properties);
-    virtual void InterfacesRemoved(const ::DBus::Path &object_path,
-                                   const std::vector<std::string> &interfaces);
+        const DBusInterfaceToProperties &interfaces_and_properties) override;
+    void InterfacesRemoved(const ::DBus::Path &object_path,
+                           const std::vector<std::string> &interfaces) override;
 
     // Method callbacks
-    virtual void GetManagedObjectsCallback(
+    void GetManagedObjectsCallback(
         const DBusObjectsWithProperties &objects_with_properties,
         const DBus::Error &error,
-        void *call_handler);
+        void *call_handler) override;
 
     InterfacesAddedSignalCallback interfaces_added_callback_;
     InterfacesRemovedSignalCallback interfaces_removed_callback_;

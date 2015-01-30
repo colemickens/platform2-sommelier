@@ -26,49 +26,49 @@ class ModemProxy : public ModemProxyInterface {
   ~ModemProxy() override;
 
   // Inherited methods from ModemProxyInterface.
-  virtual void Enable(bool enable,
-                      Error *error,
-                      const ResultCallback &callback,
-                      int timeout);
-  virtual void CreateBearer(const DBusPropertiesMap &properties,
-                            Error *error,
-                            const DBusPathCallback &callback,
-                            int timeout);
-  virtual void DeleteBearer(const ::DBus::Path &bearer,
-                            Error *error,
-                            const ResultCallback &callback,
-                            int timeout);
-  virtual void Reset(Error *error,
-                     const ResultCallback &callback,
-                     int timeout);
-  virtual void FactoryReset(const std::string &code,
-                            Error *error,
-                            const ResultCallback &callback,
-                            int timeout);
-  virtual void SetCurrentCapabilities(const uint32_t &capabilities,
-                                      Error *error,
-                                      const ResultCallback &callback,
-                                      int timeout);
-  virtual void SetCurrentModes(const ::DBus::Struct<uint32_t, uint32_t> &modes,
-                               Error *error,
-                               const ResultCallback &callback,
-                               int timeout);
-  virtual void SetCurrentBands(const std::vector<uint32_t> &bands,
-                               Error *error,
-                               const ResultCallback &callback,
-                               int timeout);
-  virtual void Command(const std::string &cmd,
-                       const uint32_t &user_timeout,
+  void Enable(bool enable,
+              Error *error,
+              const ResultCallback &callback,
+              int timeout) override;
+  void CreateBearer(const DBusPropertiesMap &properties,
+                    Error *error,
+                    const DBusPathCallback &callback,
+                    int timeout) override;
+  void DeleteBearer(const ::DBus::Path &bearer,
+                    Error *error,
+                    const ResultCallback &callback,
+                    int timeout) override;
+  void Reset(Error *error,
+             const ResultCallback &callback,
+             int timeout) override;
+  void FactoryReset(const std::string &code,
+                    Error *error,
+                    const ResultCallback &callback,
+                    int timeout) override;
+  void SetCurrentCapabilities(const uint32_t &capabilities,
+                              Error *error,
+                              const ResultCallback &callback,
+                              int timeout) override;
+  void SetCurrentModes(const ::DBus::Struct<uint32_t, uint32_t> &modes,
                        Error *error,
-                       const StringCallback &callback,
-                       int timeout);
-  virtual void SetPowerState(const uint32_t &power_state,
-                             Error *error,
-                             const ResultCallback &callback,
-                             int timeout);
+                       const ResultCallback &callback,
+                       int timeout) override;
+  void SetCurrentBands(const std::vector<uint32_t> &bands,
+                       Error *error,
+                       const ResultCallback &callback,
+                       int timeout) override;
+  void Command(const std::string &cmd,
+               const uint32_t &user_timeout,
+               Error *error,
+               const StringCallback &callback,
+               int timeout) override;
+  void SetPowerState(const uint32_t &power_state,
+                     Error *error,
+                     const ResultCallback &callback,
+                     int timeout) override;
 
-  virtual void set_state_changed_callback(
-      const ModemStateChangedSignalCallback &callback);
+  void set_state_changed_callback(
+      const ModemStateChangedSignalCallback &callback) override;
 
  private:
   class Proxy : public org::freedesktop::ModemManager1::Modem_proxy,
@@ -87,27 +87,29 @@ class ModemProxy : public ModemProxyInterface {
     // handle signals
     void StateChanged(const int32_t &old,
                       const int32_t &_new,
-                      const uint32_t &reason);
+                      const uint32_t &reason) override;
 
     // Method callbacks inherited from
     // org::freedesktop::ModemManager1::ModemProxy
-    virtual void EnableCallback(const ::DBus::Error &dberror, void *data);
-    virtual void CreateBearerCallback(const ::DBus::Path &bearer,
-                                      const ::DBus::Error &dberror, void *data);
-    virtual void DeleteBearerCallback(const ::DBus::Error &dberror, void *data);
-    virtual void ResetCallback(const ::DBus::Error &dberror, void *data);
-    virtual void FactoryResetCallback(const ::DBus::Error &dberror, void *data);
+    void EnableCallback(const ::DBus::Error &dberror, void *data) override;
+    void CreateBearerCallback(const ::DBus::Path &bearer,
+        const ::DBus::Error &dberror, void *data) override;
+    void DeleteBearerCallback(
+        const ::DBus::Error &dberror, void *data) override;
+    void ResetCallback(const ::DBus::Error &dberror, void *data) override;
+    void FactoryResetCallback(
+        const ::DBus::Error &dberror, void *data) override;
     virtual void SetCurrentCapabilitesCallback(const ::DBus::Error &dberror,
                                                void *data);
-    virtual void SetCurrentModesCallback(const ::DBus::Error &dberror,
-                                         void *data);
-    virtual void SetCurrentBandsCallback(const ::DBus::Error &dberror,
-                                         void *data);
-    virtual void CommandCallback(const std::string &response,
-                                 const ::DBus::Error &dberror,
-                                 void *data);
-    virtual void SetPowerStateCallback(const ::DBus::Error &dberror,
-                                       void *data);
+    void SetCurrentModesCallback(const ::DBus::Error &dberror,
+                                 void *data) override;
+    void SetCurrentBandsCallback(const ::DBus::Error &dberror,
+                                 void *data) override;
+    void CommandCallback(const std::string &response,
+                         const ::DBus::Error &dberror,
+                         void *data) override;
+    void SetPowerStateCallback(const ::DBus::Error &dberror,
+                               void *data) override;
 
     ModemStateChangedSignalCallback state_changed_callback_;
 

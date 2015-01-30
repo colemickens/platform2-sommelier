@@ -20,15 +20,15 @@ class DBusControl : public ControlInterface {
   DBusControl();
   ~DBusControl() override;
 
-  virtual DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device);
-  virtual IPConfigAdaptorInterface *CreateIPConfigAdaptor(IPConfig *ipconfig);
-  virtual ManagerAdaptorInterface *CreateManagerAdaptor(Manager *manager);
-  virtual ProfileAdaptorInterface *CreateProfileAdaptor(Profile *profile);
-  virtual RPCTaskAdaptorInterface *CreateRPCTaskAdaptor(RPCTask *task);
-  virtual ServiceAdaptorInterface *CreateServiceAdaptor(Service *service);
+  DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device) override;
+  IPConfigAdaptorInterface *CreateIPConfigAdaptor(IPConfig *ipconfig) override;
+  ManagerAdaptorInterface *CreateManagerAdaptor(Manager *manager) override;
+  ProfileAdaptorInterface *CreateProfileAdaptor(Profile *profile) override;
+  RPCTaskAdaptorInterface *CreateRPCTaskAdaptor(RPCTask *task) override;
+  ServiceAdaptorInterface *CreateServiceAdaptor(Service *service) override;
 #ifndef DISABLE_VPN
-  virtual ThirdPartyVpnAdaptorInterface *CreateThirdPartyVpnAdaptor(
-      ThirdPartyVpnDriver *driver);
+  ThirdPartyVpnAdaptorInterface *CreateThirdPartyVpnAdaptor(
+      ThirdPartyVpnDriver *driver) override;
 #endif
 
   void Init();

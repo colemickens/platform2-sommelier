@@ -22,12 +22,12 @@ class SupplicantProcessProxy : public SupplicantProcessProxyInterface {
                          const char *dbus_addr);
   ~SupplicantProcessProxy() override;
 
-  virtual ::DBus::Path CreateInterface(
-      const std::map<std::string, ::DBus::Variant> &args);
-  virtual void RemoveInterface(const ::DBus::Path &path);
-  virtual ::DBus::Path GetInterface(const std::string &ifname);
-  virtual void SetDebugLevel(const std::string &level);
-  virtual std::string GetDebugLevel();
+  ::DBus::Path CreateInterface(
+      const std::map<std::string, ::DBus::Variant> &args) override;
+  void RemoveInterface(const ::DBus::Path &path) override;
+  ::DBus::Path GetInterface(const std::string &ifname) override;
+  void SetDebugLevel(const std::string &level) override;
+  std::string GetDebugLevel() override;
 
  private:
   class Proxy : public fi::w1::wpa_supplicant1_proxy,
@@ -39,12 +39,12 @@ class SupplicantProcessProxy : public SupplicantProcessProxyInterface {
    private:
     // signal handlers called by dbus-c++, via
     // wpa_supplicant1_proxy interface.
-    virtual void InterfaceAdded(
+    void InterfaceAdded(
         const ::DBus::Path &path,
-        const std::map<std::string, ::DBus::Variant> &properties);
-    virtual void InterfaceRemoved(const ::DBus::Path &path);
-    virtual void PropertiesChanged(
-        const std::map<std::string, ::DBus::Variant> &properties);
+        const std::map<std::string, ::DBus::Variant> &properties) override;
+    void InterfaceRemoved(const ::DBus::Path &path) override;
+    void PropertiesChanged(
+        const std::map<std::string, ::DBus::Variant> &properties) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

@@ -39,8 +39,8 @@ class SupplicantBSSProxy : public SupplicantBSSProxyInterface {
    private:
     // signal handlers called by dbus-c++, via
     // wpa_supplicant1_proxy interface.
-    virtual void PropertiesChanged(
-        const std::map<std::string, ::DBus::Variant> &properties);
+    void PropertiesChanged(
+        const std::map<std::string, ::DBus::Variant> &properties) override;
 
     // We use a bare pointer, because each SupplicantBSSProxy is owned
     // (using a unique_ptr) by a WiFiEndpoint. This means that if

@@ -26,12 +26,12 @@ class BearerProxy : public BearerProxyInterface {
   ~BearerProxy() override;
 
   // Inherited methods from BearerProxyInterface
-  virtual void Connect(Error *error,
-                       const ResultCallback &callback,
-                       int timeout);
-  virtual void Disconnect(Error *error,
-                          const ResultCallback &callback,
-                          int timeout);
+  void Connect(Error *error,
+               const ResultCallback &callback,
+               int timeout) override;
+  void Disconnect(Error *error,
+                  const ResultCallback &callback,
+                  int timeout) override;
 
  private:
   class Proxy : public org::freedesktop::ModemManager1::Bearer_proxy,
@@ -45,10 +45,10 @@ class BearerProxy : public BearerProxyInterface {
    private:
     // Method callbacks inherited from
     // org::freedesktop::ModemManager1::BearerProxy
-    virtual void ConnectCallback(const ::DBus::Error &dberror,
-                                 void *data);
-    virtual void DisconnectCallback(const ::DBus::Error &dberror,
-                                    void *data);
+    void ConnectCallback(const ::DBus::Error &dberror,
+                         void *data) override;
+    void DisconnectCallback(const ::DBus::Error &dberror,
+                            void *data) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

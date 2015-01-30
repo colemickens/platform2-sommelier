@@ -26,15 +26,15 @@ class ModemLocationProxy : public ModemLocationProxyInterface {
   ~ModemLocationProxy() override;
 
   // Inherited methods from ModemLocationProxyInterface.
-  virtual void Setup(uint32_t sources,
-                     bool signal_location,
-                     Error *error,
-                     const ResultCallback &callback,
-                     int timeout);
+  void Setup(uint32_t sources,
+             bool signal_location,
+             Error *error,
+             const ResultCallback &callback,
+             int timeout) override;
 
-  virtual void GetLocation(Error *error,
-                           const DBusEnumValueMapCallback &callback,
-                           int timeout);
+  void GetLocation(Error *error,
+                   const DBusEnumValueMapCallback &callback,
+                   int timeout) override;
 
  private:
   class Proxy : public org::freedesktop::ModemManager1::Modem::Location_proxy,
@@ -48,12 +48,12 @@ class ModemLocationProxy : public ModemLocationProxyInterface {
    private:
     // Method callbacks inherited from
     // org::freedesktop::ModemManager1::Modem:Location_proxy
-    virtual void SetupCallback(const ::DBus::Error &dberror,
-                               void *data);
+    void SetupCallback(const ::DBus::Error &dberror,
+                       void *data) override;
 
-    virtual void GetLocationCallback(const DBusEnumValueMap &location,
-                                     const ::DBus::Error &dberror,
-                                     void *data);
+    void GetLocationCallback(const DBusEnumValueMap &location,
+                             const ::DBus::Error &dberror,
+                             void *data) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

@@ -23,14 +23,14 @@ class DBusPropertiesProxy : public DBusPropertiesProxyInterface {
   ~DBusPropertiesProxy() override;
 
   // Inherited from DBusPropertiesProxyInterface.
-  virtual DBusPropertiesMap GetAll(const std::string &interface_name);
-  virtual DBus::Variant Get(const std::string &interface_name,
-                            const std::string &property);
+  DBusPropertiesMap GetAll(const std::string &interface_name) override;
+  DBus::Variant Get(const std::string &interface_name,
+                    const std::string &property) override;
 
-  virtual void set_properties_changed_callback(
-      const PropertiesChangedCallback &callback);
-  virtual void set_modem_manager_properties_changed_callback(
-      const ModemManagerPropertiesChangedCallback &callback);
+  void set_properties_changed_callback(
+      const PropertiesChangedCallback &callback) override;
+  void set_modem_manager_properties_changed_callback(
+      const ModemManagerPropertiesChangedCallback &callback) override;
 
  private:
   class Proxy : public org::freedesktop::DBus::Properties_proxy,
@@ -48,13 +48,13 @@ class DBusPropertiesProxy : public DBusPropertiesProxyInterface {
 
    private:
     // Signal callbacks inherited from DBusProperties_proxy.
-    virtual void MmPropertiesChanged(const std::string &interface,
-                                     const DBusPropertiesMap &properties);
+    void MmPropertiesChanged(const std::string &interface,
+                             const DBusPropertiesMap &properties) override;
 
-    virtual void PropertiesChanged(
+    void PropertiesChanged(
         const std::string &interface,
         const DBusPropertiesMap &changed_properties,
-        const std::vector<std::string> &invalidated_properties);
+        const std::vector<std::string> &invalidated_properties) override;
 
     PropertiesChangedCallback properties_changed_callback_;
     ModemManagerPropertiesChangedCallback mm_properties_changed_callback_;

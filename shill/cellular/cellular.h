@@ -94,10 +94,10 @@ class Cellular : public Device, public RPCTaskDelegate {
   ~Cellular() override;
 
   // Load configuration for the device from |storage|.
-  virtual bool Load(StoreInterface *storage);
+  bool Load(StoreInterface *storage) override;
 
   // Save configuration for the device to |storage|.
-  virtual bool Save(StoreInterface *storage);
+  bool Save(StoreInterface *storage) override;
 
   // Asynchronously connects the modem to the network. Populates |error| on
   // failure, leaves it unchanged otherwise.
@@ -147,7 +147,7 @@ class Cellular : public Device, public RPCTaskDelegate {
 
   void set_modem_state(ModemState state) { modem_state_ = state; }
   ModemState modem_state() const { return modem_state_; }
-  bool IsUnderlyingDeviceEnabled() const;
+  bool IsUnderlyingDeviceEnabled() const override;
   bool IsModemRegistered() const;
   static bool IsEnabledModemState(ModemState state);
 
@@ -200,7 +200,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   void OnDisabled();
   void OnEnabled();
   void OnConnecting();
-  void OnConnected();
+  void OnConnected() override;
   void OnConnectFailed(const Error &error);
   void OnDisconnected();
   void OnDisconnectFailed();

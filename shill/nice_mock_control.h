@@ -19,15 +19,15 @@ class NiceMockControl : public ControlInterface {
 
   // Each of these can be called once.  Ownership of the appropriate
   // interface pointer is given up upon call.
-  virtual DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device);
-  virtual IPConfigAdaptorInterface *CreateIPConfigAdaptor(IPConfig *config);
-  virtual ManagerAdaptorInterface *CreateManagerAdaptor(Manager *manager);
-  virtual ProfileAdaptorInterface *CreateProfileAdaptor(Profile *profile);
-  virtual RPCTaskAdaptorInterface *CreateRPCTaskAdaptor(RPCTask *task);
-  virtual ServiceAdaptorInterface *CreateServiceAdaptor(Service *service);
+  DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device) override;
+  IPConfigAdaptorInterface *CreateIPConfigAdaptor(IPConfig *config) override;
+  ManagerAdaptorInterface *CreateManagerAdaptor(Manager *manager) override;
+  ProfileAdaptorInterface *CreateProfileAdaptor(Profile *profile) override;
+  RPCTaskAdaptorInterface *CreateRPCTaskAdaptor(RPCTask *task) override;
+  ServiceAdaptorInterface *CreateServiceAdaptor(Service *service) override;
 #ifndef DISABLE_VPN
-  virtual ThirdPartyVpnAdaptorInterface *CreateThirdPartyVpnAdaptor(
-      ThirdPartyVpnDriver *driver);
+  ThirdPartyVpnAdaptorInterface *CreateThirdPartyVpnAdaptor(
+      ThirdPartyVpnDriver *driver) override;
 #endif
 
  private:

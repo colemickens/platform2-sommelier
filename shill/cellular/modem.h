@@ -145,9 +145,9 @@ class ModemClassic : public Modem {
   void CreateDeviceClassic(const DBusPropertiesMap &modem_properties);
 
  protected:
-  virtual bool GetLinkName(const DBusPropertiesMap &modem_properties,
-                           std::string *name) const;
-  virtual std::string GetModemInterface(void) const;
+  bool GetLinkName(const DBusPropertiesMap &modem_properties,
+                   std::string *name) const override;
+  std::string GetModemInterface(void) const override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ModemClassic);
@@ -165,9 +165,9 @@ class Modem1 : public Modem {
   void CreateDeviceMM1(const DBusInterfaceToProperties &properties);
 
  protected:
-  virtual bool GetLinkName(const DBusPropertiesMap &modem_properties,
-                           std::string *name) const;
-  virtual std::string GetModemInterface(void) const;
+  bool GetLinkName(const DBusPropertiesMap &modem_properties,
+                   std::string *name) const override;
+  std::string GetModemInterface(void) const override;
 
  private:
   friend class Modem1Test;

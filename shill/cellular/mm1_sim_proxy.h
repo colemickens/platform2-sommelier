@@ -25,25 +25,25 @@ class SimProxy : public SimProxyInterface {
   ~SimProxy() override;
 
   // Inherited methods from SimProxyInterface.
-  virtual void SendPin(const std::string &pin,
-                       Error *error,
-                       const ResultCallback &callback,
-                       int timeout);
-  virtual void SendPuk(const std::string &puk,
-                       const std::string &pin,
-                       Error *error,
-                       const ResultCallback &callback,
-                       int timeout);
-  virtual void EnablePin(const std::string &pin,
-                         const bool enabled,
-                         Error *error,
-                         const ResultCallback &callback,
-                         int timeout);
-  virtual void ChangePin(const std::string &old_pin,
-                         const std::string &new_pin,
-                         Error *error,
-                         const ResultCallback &callback,
-                         int timeout);
+  void SendPin(const std::string &pin,
+               Error *error,
+               const ResultCallback &callback,
+               int timeout) override;
+  void SendPuk(const std::string &puk,
+               const std::string &pin,
+               Error *error,
+               const ResultCallback &callback,
+               int timeout) override;
+  void EnablePin(const std::string &pin,
+                 const bool enabled,
+                 Error *error,
+                 const ResultCallback &callback,
+                 int timeout) override;
+  void ChangePin(const std::string &old_pin,
+                 const std::string &new_pin,
+                 Error *error,
+                 const ResultCallback &callback,
+                 int timeout) override;
 
  private:
   class Proxy : public org::freedesktop::ModemManager1::Sim_proxy,
@@ -57,14 +57,14 @@ class SimProxy : public SimProxyInterface {
    private:
     // Method callbacks inherited from
     // org::freedesktop::ModemManager1::SimProxy
-    virtual void SendPinCallback(const ::DBus::Error &dberror,
-                                 void *data);
-    virtual void SendPukCallback(const ::DBus::Error &dberror,
-                                 void *data);
-    virtual void EnablePinCallback(const ::DBus::Error &dberror,
-                                   void *data);
-    virtual void ChangePinCallback(const ::DBus::Error &dberror,
-                                   void *data);
+    void SendPinCallback(const ::DBus::Error &dberror,
+                         void *data) override;
+    void SendPukCallback(const ::DBus::Error &dberror,
+                         void *data) override;
+    void EnablePinCallback(const ::DBus::Error &dberror,
+                           void *data) override;
+    void ChangePinCallback(const ::DBus::Error &dberror,
+                           void *data) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

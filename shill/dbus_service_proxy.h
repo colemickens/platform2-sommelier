@@ -18,12 +18,12 @@ class DBusServiceProxy : public DBusServiceProxyInterface {
   ~DBusServiceProxy() override;
 
   // Inherited from DBusServiceProxyInterface.
-  virtual void GetNameOwner(const std::string &name,
-                            Error *error,
-                            const StringCallback &callback,
-                            int timeout);
-  virtual void set_name_owner_changed_callback(
-      const NameOwnerChangedCallback &callback);
+  void GetNameOwner(const std::string &name,
+                    Error *error,
+                    const StringCallback &callback,
+                    int timeout) override;
+  void set_name_owner_changed_callback(
+      const NameOwnerChangedCallback &callback) override;
 
  private:
   class Proxy : public org::freedesktop::DBus_proxy,
@@ -37,13 +37,13 @@ class DBusServiceProxy : public DBusServiceProxyInterface {
 
    private:
     // Signal callbacks inherited from DBus_proxy.
-    virtual void NameOwnerChanged(const std::string &name,
-                                  const std::string &old_owner,
-                                  const std::string &new_owner);
+    void NameOwnerChanged(const std::string &name,
+                          const std::string &old_owner,
+                          const std::string &new_owner) override;
 
     // Method callbacks inherited from Device_proxy.
-    virtual void GetNameOwnerCallback(const std::string &unique_name,
-                                      const DBus::Error &error, void *data);
+    void GetNameOwnerCallback(const std::string &unique_name,
+                              const DBus::Error &error, void *data) override;
 
     NameOwnerChangedCallback name_owner_changed_callback_;
 

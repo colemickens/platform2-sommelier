@@ -112,13 +112,13 @@ class OpenVPNDriver : public VPNDriver,
   // process by setting up and spawning an external 'openvpn' process. IP
   // configuration settings are passed back from the external process through
   // the |Notify| RPC service method.
-  virtual void Connect(const VPNServiceRefPtr &service, Error *error);
-  virtual bool ClaimInterface(const std::string &link_name,
-                              int interface_index);
-  virtual void Disconnect();
-  virtual std::string GetProviderType() const;
-  virtual void OnConnectionDisconnected();
-  virtual void OnConnectTimeout();
+  void Connect(const VPNServiceRefPtr &service, Error *error) override;
+  bool ClaimInterface(const std::string &link_name,
+                      int interface_index) override;
+  void Disconnect() override;
+  std::string GetProviderType() const override;
+  void OnConnectionDisconnected() override;
+  void OnConnectTimeout() override;
 
  private:
   friend class OpenVPNDriverTest;
@@ -244,12 +244,12 @@ class OpenVPNDriver : public VPNDriver,
                               int interface_index);
 
   // Inherit from VPNDriver to add custom properties.
-  virtual KeyValueStore GetProvider(Error *error);
+  KeyValueStore GetProvider(Error *error) override;
 
   // Implements RPCTaskDelegate.
-  virtual void GetLogin(std::string *user, std::string *password);
-  virtual void Notify(const std::string &reason,
-                      const std::map<std::string, std::string> &dict);
+  void GetLogin(std::string *user, std::string *password) override;
+  void Notify(const std::string &reason,
+              const std::map<std::string, std::string> &dict) override;
 
   void OnDefaultServiceChanged(const ServiceRefPtr &service);
 

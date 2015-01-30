@@ -32,16 +32,17 @@ class RPCTaskDBusAdaptor : public org::chromium::flimflam::Task_adaptor,
   ~RPCTaskDBusAdaptor() override;
 
   // Implementation of RPCTaskAdaptorInterface.
-  virtual const std::string &GetRpcIdentifier();
-  virtual const std::string &GetRpcInterfaceIdentifier();
-  virtual const std::string &GetRpcConnectionIdentifier();
+  const std::string &GetRpcIdentifier() override;
+  const std::string &GetRpcInterfaceIdentifier() override;
+  const std::string &GetRpcConnectionIdentifier() override;
 
   // Implementation of Task_adaptor
-  virtual void getsec(
-      std::string &user, std::string &password, DBus::Error &error);  // NOLINT
-  virtual void notify(const std::string &reason,
-                      const std::map<std::string, std::string> &dict,
-                      DBus::Error &error);  // NOLINT
+  void getsec(std::string &user,
+              std::string &password,
+              DBus::Error &error) override;  // NOLINT
+  void notify(const std::string &reason,
+              const std::map<std::string, std::string> &dict,
+              DBus::Error &error) override;  // NOLINT
 
  private:
   RPCTask *task_;

@@ -22,7 +22,8 @@ class VirtioEthernet : public Ethernet {
                  int interface_index);
   ~VirtioEthernet() override;
 
-  virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
+  void Start(Error *error,
+             const EnabledStateChangedCallback &callback) override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(VirtioEthernet);

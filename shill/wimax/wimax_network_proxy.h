@@ -22,15 +22,15 @@ class WiMaxNetworkProxy : public WiMaxNetworkProxyInterface {
   ~WiMaxNetworkProxy() override;
 
   // Inherited from WiMaxNetwokProxyInterface.
-  virtual RpcIdentifier path() const;
-  virtual void set_signal_strength_changed_callback(
-      const SignalStrengthChangedCallback &callback);
-  virtual uint32_t Identifier(Error *error);
-  virtual std::string Name(Error *error);
-  virtual int Type(Error *error);
-  virtual int CINR(Error *error);
-  virtual int RSSI(Error *error);
-  virtual int SignalStrength(Error *error);
+  RpcIdentifier path() const override;
+  void set_signal_strength_changed_callback(
+      const SignalStrengthChangedCallback &callback) override;
+  uint32_t Identifier(Error *error) override;
+  std::string Name(Error *error) override;
+  int Type(Error *error) override;
+  int CINR(Error *error) override;
+  int RSSI(Error *error) override;
+  int SignalStrength(Error *error) override;
 
  private:
   class Proxy : public org::chromium::WiMaxManager::Network_proxy,
@@ -44,7 +44,7 @@ class WiMaxNetworkProxy : public WiMaxNetworkProxyInterface {
 
    private:
     // Signal callbacks inherited from WiMaxManager::Network_proxy.
-    virtual void SignalStrengthChanged(const int32_t &signal_strength);
+    void SignalStrengthChanged(const int32_t &signal_strength) override;
 
     // Method callbacks inherited from WiMaxManager::Network_proxy.
     // [None]

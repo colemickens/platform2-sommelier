@@ -25,18 +25,18 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
   ~ModemSimpleProxy() override;
 
   // Inherited methods from SimpleProxyInterface.
-  virtual void Connect(
+  void Connect(
       const DBusPropertiesMap &properties,
       Error *error,
       const DBusPathCallback &callback,
-      int timeout);
-  virtual void Disconnect(const ::DBus::Path &bearer,
-                          Error *error,
-                          const ResultCallback &callback,
-                          int timeout);
-  virtual void GetStatus(Error *error,
-                         const DBusPropertyMapCallback &callback,
-                         int timeout);
+      int timeout) override;
+  void Disconnect(const ::DBus::Path &bearer,
+                  Error *error,
+                  const ResultCallback &callback,
+                  int timeout) override;
+  void GetStatus(Error *error,
+                 const DBusPropertyMapCallback &callback,
+                 int timeout) override;
 
  private:
   class Proxy : public org::freedesktop::ModemManager1::Modem::Simple_proxy,
@@ -50,14 +50,14 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
    private:
     // Method callbacks inherited from
     // org::freedesktop::ModemManager1::Modem::SimpleProxy
-    virtual void ConnectCallback(const ::DBus::Path &bearer,
-                                 const ::DBus::Error &dberror,
-                                 void *data);
-    virtual void DisconnectCallback(const ::DBus::Error &dberror, void *data);
-    virtual void GetStatusCallback(
+    void ConnectCallback(const ::DBus::Path &bearer,
+                         const ::DBus::Error &dberror,
+                         void *data) override;
+    void DisconnectCallback(const ::DBus::Error &dberror, void *data) override;
+    void GetStatusCallback(
         const DBusPropertiesMap &bearer,
         const ::DBus::Error &dberror,
-        void *data);
+        void *data) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

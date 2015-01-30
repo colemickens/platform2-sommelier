@@ -23,25 +23,25 @@ class ModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
   ~ModemGSMNetworkProxy() override;
 
   // Inherited from ModemGSMNetworkProxyInterface.
-  virtual void GetRegistrationInfo(Error *error,
-                                   const RegistrationInfoCallback &callback,
-                                   int timeout);
-  virtual void GetSignalQuality(Error *error,
-                                const SignalQualityCallback &callback,
-                                int timeout);
-  virtual void Register(const std::string &network_id,
-                        Error *error, const ResultCallback &callback,
-                        int timeout);
-  virtual void Scan(Error *error, const ScanResultsCallback &callback,
-                    int timeout);
-  virtual uint32_t AccessTechnology();
+  void GetRegistrationInfo(Error *error,
+                           const RegistrationInfoCallback &callback,
+                           int timeout) override;
+  void GetSignalQuality(Error *error,
+                        const SignalQualityCallback &callback,
+                        int timeout) override;
+  void Register(const std::string &network_id,
+                Error *error, const ResultCallback &callback,
+                int timeout) override;
+  void Scan(Error *error, const ScanResultsCallback &callback,
+            int timeout) override;
+  uint32_t AccessTechnology() override;
 
-  virtual void set_signal_quality_callback(
-      const SignalQualitySignalCallback &callback);
-  virtual void set_network_mode_callback(
-      const NetworkModeSignalCallback &callback);
-  virtual void set_registration_info_callback(
-      const RegistrationInfoSignalCallback &callback);
+  void set_signal_quality_callback(
+      const SignalQualitySignalCallback &callback) override;
+  void set_network_mode_callback(
+      const NetworkModeSignalCallback &callback) override;
+  void set_registration_info_callback(
+      const RegistrationInfoSignalCallback &callback) override;
 
  private:
   class Proxy
@@ -62,22 +62,22 @@ class ModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
 
    private:
     // Signal callbacks inherited from ModemManager::Modem::Gsm::Network_proxy.
-    virtual void SignalQuality(const uint32_t &quality);
-    virtual void RegistrationInfo(const uint32_t &status,
-                                  const std::string &operator_code,
-                                  const std::string &operator_name);
-    virtual void NetworkMode(const uint32_t &mode);
+    void SignalQuality(const uint32_t &quality) override;
+    void RegistrationInfo(const uint32_t &status,
+                          const std::string &operator_code,
+                          const std::string &operator_name) override;
+    void NetworkMode(const uint32_t &mode) override;
 
     // Method callbacks inherited from ModemManager::Modem::Gsm::Network_proxy.
-    virtual void RegisterCallback(const DBus::Error &dberror, void *data);
-    virtual void GetRegistrationInfoCallback(const GSMRegistrationInfo &info,
-                                             const DBus::Error &dberror,
-                                             void *data);
-    virtual void GetSignalQualityCallback(const uint32_t &quality,
-                                          const DBus::Error &dberror,
-                                          void *data);
-    virtual void ScanCallback(const GSMScanResults &results,
-                              const DBus::Error &dberror, void *data);
+    void RegisterCallback(const DBus::Error &dberror, void *data) override;
+    void GetRegistrationInfoCallback(const GSMRegistrationInfo &info,
+                                     const DBus::Error &dberror,
+                                     void *data) override;
+    void GetSignalQualityCallback(const uint32_t &quality,
+                                  const DBus::Error &dberror,
+                                  void *data) override;
+    void ScanCallback(const GSMScanResults &results,
+                      const DBus::Error &dberror, void *data) override;
 
     SignalQualitySignalCallback signal_quality_callback_;
     RegistrationInfoSignalCallback registration_info_callback_;

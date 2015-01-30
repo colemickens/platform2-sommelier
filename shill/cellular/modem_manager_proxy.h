@@ -28,7 +28,7 @@ class ModemManagerProxy : public ModemManagerProxyInterface {
   ~ModemManagerProxy() override;
 
   // Inherited from ModemManagerProxyInterface.
-  virtual std::vector<DBus::Path> EnumerateDevices();
+  std::vector<DBus::Path> EnumerateDevices() override;
 
  private:
   class Proxy : public org::freedesktop::ModemManager_proxy,
@@ -42,8 +42,8 @@ class ModemManagerProxy : public ModemManagerProxyInterface {
 
    private:
     // Signal callbacks inherited from ModemManager_proxy.
-    virtual void DeviceAdded(const DBus::Path &device);
-    virtual void DeviceRemoved(const DBus::Path &device);
+    void DeviceAdded(const DBus::Path &device) override;
+    void DeviceRemoved(const DBus::Path &device) override;
 
     // Method callbacks inherited from ModemManager_proxy.
     // [None]

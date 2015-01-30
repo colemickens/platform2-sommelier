@@ -81,9 +81,9 @@ class PowerManager : public PowerManagerProxyDelegate {
   virtual bool ReportDarkSuspendReadiness();
 
   // Methods inherited from PowerManagerProxyDelegate.
-  virtual void OnSuspendImminent(int suspend_id);
-  virtual void OnSuspendDone(int suspend_id);
-  virtual void OnDarkSuspendImminent(int suspend_id);
+  void OnSuspendImminent(int suspend_id) override;
+  void OnSuspendDone(int suspend_id) override;
+  void OnDarkSuspendImminent(int suspend_id) override;
 
  private:
   friend class ManagerTest;

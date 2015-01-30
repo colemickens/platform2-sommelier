@@ -18,8 +18,8 @@ class TestConfig : public Config {
   TestConfig();
   ~TestConfig() override;
 
-  virtual std::string GetRunDirectory();
-  virtual std::string GetStorageDirectory();
+  std::string GetRunDirectory() override;
+  std::string GetStorageDirectory() override;
 
  private:
   base::ScopedTempDir dir_;

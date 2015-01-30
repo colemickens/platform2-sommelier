@@ -64,22 +64,22 @@ class SHILL_EXPORT GenericNetlinkMessage : public NetlinkMessage {
         command_string_(command_string) {}
   ~GenericNetlinkMessage() override {}
 
-  virtual ByteString Encode(uint32_t sequence_number);
+  ByteString Encode(uint32_t sequence_number) override;
 
   uint8_t command() const { return command_; }
   const char *command_string() const { return command_string_; }
   AttributeListConstRefPtr const_attributes() const { return attributes_; }
   AttributeListRefPtr attributes() { return attributes_; }
 
-  virtual void Print(int header_log_level, int detail_log_level) const;
+  void Print(int header_log_level, int detail_log_level) const override;
 
  protected:
   // Returns a string of bytes representing _both_ an |nlmsghdr| and a
   // |genlmsghdr|, filled-in, and its padding.
-  virtual ByteString EncodeHeader(uint32_t sequence_number);
+  ByteString EncodeHeader(uint32_t sequence_number) override;
   // Reads the |nlmsghdr| and |genlmsghdr| headers and removes them from
   // |input|.
-  virtual bool InitAndStripHeader(ByteString *input);
+  bool InitAndStripHeader(ByteString *input) override;
 
   AttributeListRefPtr attributes_;
   const uint8_t command_;
@@ -99,7 +99,7 @@ class SHILL_EXPORT ControlNetlinkMessage : public GenericNetlinkMessage {
 
   static uint16_t GetMessageType() { return kMessageType; }
 
-  virtual bool InitFromNlmsg(const nlmsghdr *msg);
+  bool InitFromNlmsg(const nlmsghdr *msg) override;
 
   // Message factory for all types of Control netlink message.
   static NetlinkMessage *CreateMessage(const nlmsghdr *const_msg);

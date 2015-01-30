@@ -34,41 +34,42 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
   ~ServiceDBusAdaptor() override;
 
   // Implementation of ServiceAdaptorInterface.
-  virtual const std::string &GetRpcIdentifier() { return path(); }
-  virtual void UpdateConnected();
-  virtual void EmitBoolChanged(const std::string &name, bool value);
-  virtual void EmitUint8Changed(const std::string &name, uint8_t value);
-  virtual void EmitUint16Changed(const std::string &name, uint16_t value);
-  virtual void EmitUint16sChanged(const std::string &name,
-                                  const Uint16s &value);
-  virtual void EmitUintChanged(const std::string &name, uint32_t value);
-  virtual void EmitIntChanged(const std::string &name, int value);
-  virtual void EmitRpcIdentifierChanged(
-      const std::string &name, const std::string &value);
-  virtual void EmitStringChanged(
-      const std::string &name, const std::string &value);
-  virtual void EmitStringmapChanged(const std::string &name,
-                                    const Stringmap &value);
+  const std::string &GetRpcIdentifier() override { return path(); }
+  void UpdateConnected() override;
+  void EmitBoolChanged(const std::string &name, bool value) override;
+  void EmitUint8Changed(const std::string &name, uint8_t value) override;
+  void EmitUint16Changed(const std::string &name, uint16_t value) override;
+  void EmitUint16sChanged(const std::string &name,
+                          const Uint16s &value) override;
+  void EmitUintChanged(const std::string &name, uint32_t value) override;
+  void EmitIntChanged(const std::string &name, int value) override;
+  void EmitRpcIdentifierChanged(
+      const std::string &name, const std::string &value) override;
+  void EmitStringChanged(
+      const std::string &name, const std::string &value) override;
+  void EmitStringmapChanged(const std::string &name,
+                            const Stringmap &value) override;
 
   // Implementation of Service_adaptor
   std::map<std::string, DBus::Variant> GetProperties(
-      DBus::Error &error);  // NOLINT
+      DBus::Error &error) override;  // NOLINT
   void SetProperty(const std::string &name,
                    const DBus::Variant &value,
-                   DBus::Error &error);  // NOLINT
+                   DBus::Error &error) override;  // NOLINT
   void SetProperties(const std::map<std::string, DBus::Variant> &args,
-                     DBus::Error &error);  // NOLINT
-  void ClearProperty(const std::string &name, DBus::Error &error);  // NOLINT
+                     DBus::Error &error) override;  // NOLINT
+  void ClearProperty(const std::string &name,
+                     DBus::Error &error) override;  // NOLINT
   std::vector<bool> ClearProperties(const std::vector<std::string> &names,
-                                    DBus::Error &error);  // NOLINT
-  void Connect(DBus::Error &error);  // NOLINT
-  void Disconnect(DBus::Error &error);  // NOLINT
-  void Remove(DBus::Error &error);  // NOLINT
+                                    DBus::Error &error) override;  // NOLINT
+  void Connect(DBus::Error &error) override;  // NOLINT
+  void Disconnect(DBus::Error &error) override;  // NOLINT
+  void Remove(DBus::Error &error) override;  // NOLINT
   void ActivateCellularModem(const std::string &carrier,
-                             DBus::Error &error);  // NOLINT
-  void CompleteCellularActivation(DBus::Error &error);  // NOLINT
+                             DBus::Error &error) override;  // NOLINT
+  void CompleteCellularActivation(DBus::Error &error) override;  // NOLINT
   std::map<DBus::Path, std::string> GetLoadableProfileEntries(
-      DBus::Error &error);  // NOLINT
+      DBus::Error &error) override;  // NOLINT
 
  private:
   Service *service_;

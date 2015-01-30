@@ -26,7 +26,7 @@ class SupplicantNetworkProxy
                          const char *dbus_addr);
   ~SupplicantNetworkProxy() override;
 
-  virtual void SetEnabled(bool enabled);
+  void SetEnabled(bool enabled) override;
 
  private:
   class Proxy : public fi::w1::wpa_supplicant1::Network_proxy,
@@ -40,8 +40,8 @@ class SupplicantNetworkProxy
    private:
     // signal handlers called by dbus-c++, via
     // fi::w1::wpa_supplicant1::Network_proxy interface
-    virtual void PropertiesChanged(const std::map<std::string, ::DBus::Variant>
-                                   &properties);
+    void PropertiesChanged(const std::map<std::string, ::DBus::Variant>
+                           &properties) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

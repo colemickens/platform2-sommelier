@@ -55,10 +55,10 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
 
    private:
     // Signal callbacks inherited from org::chromium::PowerManager_proxy.
-    virtual void SuspendImminent(const std::vector<uint8_t> &serialized_proto);
-    virtual void SuspendDone(const std::vector<uint8_t> &serialized_proto);
-    virtual void DarkSuspendImminent(
-        const std::vector<uint8_t> &serialized_proto);
+    void SuspendImminent(const std::vector<uint8_t> &serialized_proto) override;
+    void SuspendDone(const std::vector<uint8_t> &serialized_proto) override;
+    void DarkSuspendImminent(
+        const std::vector<uint8_t> &serialized_proto) override;
 
     PowerManagerProxyDelegate *const delegate_;
 

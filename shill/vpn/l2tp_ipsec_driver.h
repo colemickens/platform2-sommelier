@@ -46,13 +46,13 @@ class L2TPIPSecDriver : public VPNDriver,
 
  protected:
   // Inherited from VPNDriver.
-  virtual bool ClaimInterface(const std::string &link_name,
-                              int interface_index);
-  virtual void Connect(const VPNServiceRefPtr &service, Error *error);
-  virtual void Disconnect();
-  virtual std::string GetProviderType() const;
-  virtual void OnConnectionDisconnected();
-  virtual void OnConnectTimeout();
+  bool ClaimInterface(const std::string &link_name,
+                      int interface_index) override;
+  void Connect(const VPNServiceRefPtr &service, Error *error) override;
+  void Disconnect() override;
+  std::string GetProviderType() const override;
+  void OnConnectionDisconnected() override;
+  void OnConnectTimeout() override;
 
  private:
   friend class L2TPIPSecDriverTest;
@@ -124,12 +124,12 @@ class L2TPIPSecDriver : public VPNDriver,
   bool IsPskRequired() const;
 
   // Inherit from VPNDriver to add custom properties.
-  virtual KeyValueStore GetProvider(Error *error);
+  KeyValueStore GetProvider(Error *error) override;
 
   // Implements RPCTaskDelegate.
-  virtual void GetLogin(std::string *user, std::string *password);
-  virtual void Notify(const std::string &reason,
-                      const std::map<std::string, std::string> &dict);
+  void GetLogin(std::string *user, std::string *password) override;
+  void Notify(const std::string &reason,
+              const std::map<std::string, std::string> &dict) override;
   // Called when the l2tpipsec_vpn process exits.
   void OnL2TPIPSecVPNDied(pid_t pid, int status);
 

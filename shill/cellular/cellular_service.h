@@ -41,16 +41,16 @@ class CellularService : public Service {
   ~CellularService() override;
 
   // Inherited from Service.
-  virtual void AutoConnect();
-  virtual void Connect(Error *error, const char *reason);
-  virtual void Disconnect(Error *error, const char *reason);
-  virtual void ActivateCellularModem(const std::string &carrier,
-                                     Error *error,
-                                     const ResultCallback &callback);
-  virtual void CompleteCellularActivation(Error *error);
-  virtual void SetState(ConnectState new_state);
+  void AutoConnect() override;
+  void Connect(Error *error, const char *reason) override;
+  void Disconnect(Error *error, const char *reason) override;
+  void ActivateCellularModem(const std::string &carrier,
+                             Error *error,
+                             const ResultCallback &callback) override;
+  void CompleteCellularActivation(Error *error) override;
+  void SetState(ConnectState new_state) override;
 
-  virtual std::string GetStorageIdentifier() const;
+  std::string GetStorageIdentifier() const override;
   void SetStorageIdentifier(const std::string &identifier);
 
   const CellularRefPtr &cellular() const { return cellular_; }
@@ -100,22 +100,22 @@ class CellularService : public Service {
 
   // Overrides Load and Save from parent Service class.  We will call
   // the parent method.
-  virtual bool Load(StoreInterface *storage);
-  virtual bool Save(StoreInterface *storage);
+  bool Load(StoreInterface *storage) override;
+  bool Save(StoreInterface *storage) override;
 
   Stringmap *GetUserSpecifiedApn();
   Stringmap *GetLastGoodApn();
   virtual void SetLastGoodApn(const Stringmap &apn_info);
   virtual void ClearLastGoodApn();
 
-  virtual void OnAfterResume();
+  void OnAfterResume() override;
 
   // Initialize out-of-credits detection.
   void InitOutOfCreditsDetection(OutOfCreditsDetector::OOCType ooc_type);
 
  protected:
   // Overrides IsAutoConnectable from parent Service class.
-  virtual bool IsAutoConnectable(const char **reason) const;
+  bool IsAutoConnectable(const char **reason) const override;
 
  private:
   friend class CellularCapabilityUniversalTest;
@@ -167,7 +167,7 @@ class CellularService : public Service {
       bool(CellularService::*get)(Error *error),
       bool(CellularService::*set)(const bool&, Error *));
 
-  virtual std::string GetDeviceRpcId(Error *error) const;
+  std::string GetDeviceRpcId(Error *error) const override;
 
   std::string CalculateActivationType(Error *error);
 

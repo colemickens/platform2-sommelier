@@ -69,15 +69,16 @@ class WiMaxService : public Service {
   virtual void ClearPassphrase();
 
   // Inherited from Service.
-  virtual void Connect(Error *error, const char *reason);
-  virtual void Disconnect(Error *error, const char *reason);
-  virtual std::string GetStorageIdentifier() const;
-  virtual bool Is8021x() const;
-  virtual bool IsVisible() const;
-  virtual void OnEapCredentialsChanged(Service::UpdateCredentialsReason reason);
-  virtual bool Save(StoreInterface *storage);
-  virtual bool Unload();
-  virtual void SetState(ConnectState state);
+  void Connect(Error *error, const char *reason) override;
+  void Disconnect(Error *error, const char *reason) override;
+  std::string GetStorageIdentifier() const override;
+  bool Is8021x() const override;
+  bool IsVisible() const override;
+  void OnEapCredentialsChanged(
+      Service::UpdateCredentialsReason reason) override;
+  bool Save(StoreInterface *storage) override;
+  bool Unload() override;
+  void SetState(ConnectState state) override;
 
  private:
   friend class WiMaxServiceTest;
@@ -90,8 +91,8 @@ class WiMaxService : public Service {
   FRIEND_TEST(WiMaxServiceTest, StartStop);
 
   // Inherited from Service.
-  virtual std::string GetDeviceRpcId(Error *error) const;
-  virtual bool IsAutoConnectable(const char **reason) const;
+  std::string GetDeviceRpcId(Error *error) const override;
+  bool IsAutoConnectable(const char **reason) const override;
 
   void OnSignalStrengthChanged(int strength);
 

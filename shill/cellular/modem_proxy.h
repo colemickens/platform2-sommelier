@@ -25,15 +25,15 @@ class ModemProxy : public ModemProxyInterface {
   ~ModemProxy() override;
 
   // Inherited from ModemProxyInterface.
-  virtual void Enable(bool enable, Error *error,
-                      const ResultCallback &callback, int timeout);
-  virtual void Disconnect(Error *error, const ResultCallback &callback,
-                          int timeout);
-  virtual void GetModemInfo(Error *error, const ModemInfoCallback &callback,
-                            int timeout);
+  void Enable(bool enable, Error *error,
+              const ResultCallback &callback, int timeout) override;
+  void Disconnect(Error *error, const ResultCallback &callback,
+                  int timeout) override;
+  void GetModemInfo(Error *error, const ModemInfoCallback &callback,
+                    int timeout) override;
 
-  virtual void set_state_changed_callback(
-      const ModemStateChangedSignalCallback &callback);
+  void set_state_changed_callback(
+      const ModemStateChangedSignalCallback &callback) override;
 
  private:
   class Proxy : public org::freedesktop::ModemManager::Modem_proxy,
@@ -49,14 +49,15 @@ class ModemProxy : public ModemProxyInterface {
 
    private:
     // Signal callbacks inherited from ModemManager::Modem_proxy.
-    virtual void StateChanged(
-        const uint32_t &old, const uint32_t &_new, const uint32_t &reason);
+    void StateChanged(const uint32_t &old,
+                      const uint32_t &_new,
+                      const uint32_t &reason) override;
 
     // Method callbacks inherited from ModemManager::Modem_proxy.
-    virtual void EnableCallback(const DBus::Error &dberror, void *data);
-    virtual void GetInfoCallback(const ModemHardwareInfo &info,
-                                 const DBus::Error &dberror, void *data);
-    virtual void DisconnectCallback(const DBus::Error &dberror, void *data);
+    void EnableCallback(const DBus::Error &dberror, void *data) override;
+    void GetInfoCallback(const ModemHardwareInfo &info,
+                         const DBus::Error &dberror, void *data) override;
+    void DisconnectCallback(const DBus::Error &dberror, void *data) override;
 
     ModemStateChangedSignalCallback state_changed_callback_;
 

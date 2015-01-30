@@ -25,12 +25,13 @@ class EthernetEapService : public Service {
   ~EthernetEapService() override;
 
   // Inherited from Service.
-  virtual std::string GetDeviceRpcId(Error *error) const;
-  virtual std::string GetStorageIdentifier() const;
-  virtual bool Is8021x() const { return true; }
-  virtual bool IsVisible() const { return false; }
-  virtual void OnEapCredentialsChanged(Service::UpdateCredentialsReason reason);
-  virtual bool Unload();
+  std::string GetDeviceRpcId(Error *error) const override;
+  std::string GetStorageIdentifier() const override;
+  bool Is8021x() const override { return true; }
+  bool IsVisible() const override { return false; }
+  void OnEapCredentialsChanged(
+      Service::UpdateCredentialsReason reason) override;
+  bool Unload() override;
 };
 
 }  // namespace shill

@@ -36,77 +36,83 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
   ~ManagerDBusAdaptor() override;
 
   // Implementation of ManagerAdaptorInterface.
-  virtual const std::string &GetRpcIdentifier() { return path(); }
-  void UpdateRunning();
-  void EmitBoolChanged(const std::string &name, bool value);
-  void EmitUintChanged(const std::string &name, uint32_t value);
-  void EmitIntChanged(const std::string &name, int value);
-  void EmitStringChanged(const std::string &name, const std::string &value);
+  const std::string &GetRpcIdentifier() override { return path(); }
+  void UpdateRunning() override;
+  void EmitBoolChanged(const std::string &name, bool value) override;
+  void EmitUintChanged(const std::string &name, uint32_t value) override;
+  void EmitIntChanged(const std::string &name, int value) override;
+  void EmitStringChanged(const std::string &name,
+                         const std::string &value) override;
   void EmitStringsChanged(const std::string &name,
-                          const std::vector<std::string> &value);
+                          const std::vector<std::string> &value) override;
   void EmitRpcIdentifierChanged(
-      const std::string &name, const std::string &value);
+      const std::string &name, const std::string &value) override;
   void EmitRpcIdentifierArrayChanged(
-      const std::string &name, const std::vector<std::string> &value);
-  void EmitStateChanged(const std::string &new_state);
+      const std::string &name, const std::vector<std::string> &value) override;
+  void EmitStateChanged(const std::string &new_state) override;
 
   // Implementation of Manager_adaptor
   std::map<std::string, DBus::Variant> GetProperties(
-      DBus::Error &error);  // NOLINT
+      DBus::Error &error) override;  // NOLINT
   void SetProperty(const std::string &name,
                    const DBus::Variant &value,
-                   DBus::Error &error);  // NOLINT
-  std::string GetState(DBus::Error &error);  // NOLINT
+                   DBus::Error &error) override;  // NOLINT
+  std::string GetState(DBus::Error &error) override;  // NOLINT
   DBus::Path CreateProfile(const std::string &name,
-                           DBus::Error &error);  // NOLINT
-  void RemoveProfile(const std::string &name, DBus::Error &error);  // NOLINT
+                           DBus::Error &error) override;  // NOLINT
+  void RemoveProfile(const std::string &name,
+                     DBus::Error &error) override;  // NOLINT
   DBus::Path PushProfile(const std::string &name,
-                         DBus::Error &error);  // NOLINT
+                         DBus::Error &error) override;  // NOLINT
   DBus::Path InsertUserProfile(const std::string &name,
                                const std::string &user_hash,
-                               DBus::Error &error);  // NOLINT
-  void PopProfile(const std::string &name, DBus::Error &error);  // NOLINT
-  void PopAnyProfile(DBus::Error &error);  // NOLINT
-  void PopAllUserProfiles(DBus::Error &error);  // NOLINT
-  void RecheckPortal(DBus::Error &error);  // NOLINT
+                               DBus::Error &error) override;  // NOLINT
+  void PopProfile(const std::string &name,
+                  DBus::Error &error) override;  // NOLINT
+  void PopAnyProfile(DBus::Error &error) override;  // NOLINT
+  void PopAllUserProfiles(DBus::Error &error) override;  // NOLINT
+  void RecheckPortal(DBus::Error &error) override;  // NOLINT
   void RequestScan(const std::string &technology,
-                   DBus::Error &error);  // NOLINT
+                   DBus::Error &error) override;  // NOLINT
 
   void EnableTechnology(const std::string &technology_name,
-                        DBus::Error &error);  // NOLINT
+                        DBus::Error &error) override;  // NOLINT
   void DisableTechnology(const std::string &technology_name,
-                         DBus::Error &error);  // NOLINT
+                         DBus::Error &error) override;  // NOLINT
 
   DBus::Path GetService(const std::map<std::string, DBus::Variant> &args,
-                        DBus::Error &error);  // NOLINT
+                        DBus::Error &error) override;  // NOLINT
   DBus::Path GetVPNService(const std::map<std::string, DBus::Variant> &args,
-                           DBus::Error &error);  // NOLINT
+                           DBus::Error &error) override;  // NOLINT
   DBus::Path GetWifiService(
       const std::map<std::string, DBus::Variant> &args,
-      DBus::Error &error);  // NOLINT
+      DBus::Error &error) override;  // NOLINT
   DBus::Path ConfigureService(
       const std::map<std::string, DBus::Variant> &args,
-      DBus::Error &error);  // NOLINT
+      DBus::Error &error) override;  // NOLINT
   DBus::Path ConfigureServiceForProfile(
       const DBus::Path &profile_rpcid,
       const std::map<std::string, DBus::Variant> &args,
-      DBus::Error &error);  // NOLINT
+      DBus::Error &error) override;  // NOLINT
   DBus::Path FindMatchingService(
       const std::map<std::string, DBus::Variant> &args,
-      DBus::Error &error);  // NOLINT
+      DBus::Error &error) override;  // NOLINT
 
-  int32_t GetDebugLevel(DBus::Error &error);  // NOLINT
-  void SetDebugLevel(const int32_t &level, DBus::Error &error);  // NOLINT
+  int32_t GetDebugLevel(DBus::Error &error) override;  // NOLINT
+  void SetDebugLevel(const int32_t &level,
+                     DBus::Error &error) override;  // NOLINT
 
-  std::string GetServiceOrder(DBus::Error &error);  // NOLINT
-  void SetServiceOrder(const std::string &order, DBus::Error &error);  // NOLINT
+  std::string GetServiceOrder(DBus::Error &error) override;  // NOLINT
+  void SetServiceOrder(const std::string &order,
+                       DBus::Error &error) override;  // NOLINT
 
-  std::string GetDebugTags(DBus::Error &error);  // NOLINT
-  void SetDebugTags(const std::string &tags, DBus::Error &error);  // NOLINT
-  std::string ListDebugTags(DBus::Error &error);  // NOLINT
+  std::string GetDebugTags(DBus::Error &error) override;  // NOLINT
+  void SetDebugTags(const std::string &tags,
+                    DBus::Error &error) override;  // NOLINT
+  std::string ListDebugTags(DBus::Error &error) override;  // NOLINT
 
   std::map<std::string, DBus::Variant> GetNetworksForGeolocation(
-      DBus::Error &error);  // NOLINT
+      DBus::Error &error) override;  // NOLINT
 
   bool VerifyDestination(const std::string &certificate,
                          const std::string &public_key,
@@ -115,17 +121,18 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
                          const std::string &destination_udn,
                          const std::string &hotspot_ssid,
                          const std::string &hotspot_bssid,
-                         DBus::Error &error);  // NOLINT
+                         DBus::Error &error) override;  // NOLINT
 
-  std::string VerifyAndEncryptCredentials(const std::string &certificate,
-                                          const std::string &public_key,
-                                          const std::string &nonce,
-                                          const std::string &signed_data,
-                                          const std::string &destination_udn,
-                                          const std::string &hotspot_ssid,
-                                          const std::string &hotspot_bssid,
-                                          const DBus::Path &path,
-                                          DBus::Error &error);  // NOLINT
+  std::string VerifyAndEncryptCredentials(
+      const std::string &certificate,
+      const std::string &public_key,
+      const std::string &nonce,
+      const std::string &signed_data,
+      const std::string &destination_udn,
+      const std::string &hotspot_ssid,
+      const std::string &hotspot_bssid,
+      const DBus::Path &path,
+      DBus::Error &error) override;  // NOLINT
 
   std::string VerifyAndEncryptData(const std::string &certificate,
                                    const std::string &public_key,
@@ -135,17 +142,17 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
                                    const std::string &hotspot_ssid,
                                    const std::string &hotspot_bssid,
                                    const std::string &data,
-                                   DBus::Error &error);  // NOLINT
+                                   DBus::Error &error) override;  // NOLINT
 
-  void ConnectToBestServices(DBus::Error &error);  // NOLINT
+  void ConnectToBestServices(DBus::Error &error) override;  // NOLINT
 
-  void CreateConnectivityReport(DBus::Error &error);  // NOLINT
+  void CreateConnectivityReport(DBus::Error &error) override;  // NOLINT
 
   void ClaimInterface(const std::string &service_name,
                       const std::string &interface_name,
-                      DBus::Error &error);  // NOLINT
+                      DBus::Error &error) override;  // NOLINT
   void ReleaseInterface(const std::string &interface_name,
-                        DBus::Error &error);  // NOLINT
+                        DBus::Error &error) override;  // NOLINT
 
  private:
   Manager *manager_;

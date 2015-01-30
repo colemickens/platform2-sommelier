@@ -129,20 +129,21 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
        int interface_index);
   ~WiFi() override;
 
-  virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
-  virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
-  virtual void Scan(ScanType scan_type, Error *error,
-                    const std::string &reason);
+  void Start(Error *error,
+             const EnabledStateChangedCallback &callback) override;
+  void Stop(Error *error, const EnabledStateChangedCallback &callback) override;
+  void Scan(ScanType scan_type, Error *error,
+            const std::string &reason) override;
   // Callback for system suspend.
-  virtual void OnBeforeSuspend(const ResultCallback &callback);
+  void OnBeforeSuspend(const ResultCallback &callback) override;
   // Callback for dark resume.
-  virtual void OnDarkResume(const ResultCallback &callback);
+  void OnDarkResume(const ResultCallback &callback) override;
   // Callback for system resume. If this WiFi device is idle, a scan
   // is initiated. Additionally, the base class implementation is
   // invoked unconditionally.
-  virtual void OnAfterResume();
+  void OnAfterResume() override;
   // Callback for when a service is configured with an IP.
-  virtual void OnConnected();
+  void OnConnected() override;
   // Callback for when a service fails to configure with an IP.
   void OnIPConfigFailure() override;
 
@@ -157,17 +158,17 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
-  virtual void BSSAdded(
+  void BSSAdded(
       const ::DBus::Path &BSS,
-      const std::map<std::string, ::DBus::Variant> &properties);
-  virtual void BSSRemoved(const ::DBus::Path &BSS);
-  virtual void Certification(
-      const std::map<std::string, ::DBus::Variant> &properties);
-  virtual void EAPEvent(
-      const std::string &status, const std::string &parameter);
-  virtual void PropertiesChanged(
-      const std::map<std::string, ::DBus::Variant> &properties);
-  virtual void ScanDone();
+      const std::map<std::string, ::DBus::Variant> &properties) override;
+  void BSSRemoved(const ::DBus::Path &BSS) override;
+  void Certification(
+      const std::map<std::string, ::DBus::Variant> &properties) override;
+  void EAPEvent(
+      const std::string &status, const std::string &parameter) override;
+  void PropertiesChanged(
+      const std::map<std::string, ::DBus::Variant> &properties) override;
+  void ScanDone() override;
 
   // Called by WiFiService.
   virtual void ConnectTo(WiFiService *service);
@@ -198,21 +199,21 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static std::string LogSSID(const std::string &ssid);
 
   // Called by Linkmonitor (overridden from Device superclass).
-  virtual void OnLinkMonitorFailure();
+  void OnLinkMonitorFailure() override;
 
   // Called by Device when link becomes unreliable (overriden from Device
   // superclass).
-  virtual void OnUnreliableLink();
+  void OnUnreliableLink() override;
 
   bool IsCurrentService(const WiFiServiceRefPtr service) {
     return service.get() == current_service_.get();
   }
 
   // Overridden from Device superclass
-  virtual std::vector<GeolocationInfo> GetGeolocationObjects() const;
+  std::vector<GeolocationInfo> GetGeolocationObjects() const override;
 
   // Overridden from Device superclass
-  virtual bool ShouldUseArpGateway() const;
+  bool ShouldUseArpGateway() const override;
 
   // Called by a WiFiService when it disassociates itself from this Device.
   virtual void DisassociateFromService(const WiFiServiceRefPtr &service);

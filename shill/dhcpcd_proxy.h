@@ -69,11 +69,11 @@ class DHCPCDProxy : public DHCPProxyInterface {
     // Signal callbacks inherited from dhcpcd_proxy. Note that these callbacks
     // are unused because signals are dispatched directly to the DHCP
     // configuration instance by the signal listener.
-    virtual void Event(
+    void Event(
         const uint32_t &pid,
         const std::string &reason,
-        const DHCPConfig::Configuration &configuration);
-    virtual void StatusChanged(const uint32_t &pid, const std::string &status);
+        const DHCPConfig::Configuration &configuration) override;
+    void StatusChanged(const uint32_t &pid, const std::string &status) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

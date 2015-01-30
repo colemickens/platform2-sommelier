@@ -36,28 +36,28 @@ class ProfileDBusAdaptor : public org::chromium::flimflam::Profile_adaptor,
   ~ProfileDBusAdaptor() override;
 
   // Implementation of ProfileAdaptorInterface.
-  virtual const std::string &GetRpcIdentifier() { return path(); }
-  virtual void EmitBoolChanged(const std::string &name, bool value);
-  virtual void EmitUintChanged(const std::string &name, uint32_t value);
-  virtual void EmitIntChanged(const std::string &name, int value);
-  virtual void EmitStringChanged(const std::string &name,
-                                 const std::string &value);
+  const std::string &GetRpcIdentifier() override { return path(); }
+  void EmitBoolChanged(const std::string &name, bool value) override;
+  void EmitUintChanged(const std::string &name, uint32_t value) override;
+  void EmitIntChanged(const std::string &name, int value) override;
+  void EmitStringChanged(const std::string &name,
+                         const std::string &value) override;
 
   // Implementation of Profile_adaptor
-  virtual std::map<std::string, DBus::Variant> GetProperties(
-      DBus::Error &error);  // NOLINT
-  virtual void SetProperty(const std::string &name,
-                           const DBus::Variant &value,
-                           DBus::Error &error);  // NOLINT
+  std::map<std::string, DBus::Variant> GetProperties(
+      DBus::Error &error) override;  // NOLINT
+  void SetProperty(const std::string &name,
+                   const DBus::Variant &value,
+                   DBus::Error &error) override;  // NOLINT
 
   // Gets an "Entry", which is apparently a different set of properties than
   // those returned by GetProperties.
-  virtual std::map<std::string, DBus::Variant> GetEntry(
+  std::map<std::string, DBus::Variant> GetEntry(
       const std::string &,
-      DBus::Error &error);  // NOLINT
+      DBus::Error &error) override;  // NOLINT
 
   // Deletes an Entry.
-  virtual void DeleteEntry(const std::string& , DBus::Error &error);  // NOLINT
+  void DeleteEntry(const std::string& , DBus::Error &error) override;  // NOLINT
 
  private:
   Profile *profile_;

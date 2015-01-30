@@ -28,15 +28,15 @@ class VPNService : public Service {
   ~VPNService() override;
 
   // Inherited from Service.
-  virtual void Connect(Error *error, const char *reason);
-  virtual void Disconnect(Error *error, const char *reason);
-  virtual std::string GetStorageIdentifier() const;
-  virtual bool Load(StoreInterface *storage);
-  virtual bool Save(StoreInterface *storage);
-  virtual bool Unload();
-  virtual void EnableAndRetainAutoConnect();
-  virtual void SetConnection(const ConnectionRefPtr &connection);
-  virtual bool SetNameProperty(const std::string &name, Error *error);
+  void Connect(Error *error, const char *reason) override;
+  void Disconnect(Error *error, const char *reason) override;
+  std::string GetStorageIdentifier() const override;
+  bool Load(StoreInterface *storage) override;
+  bool Save(StoreInterface *storage) override;
+  bool Unload() override;
+  void EnableAndRetainAutoConnect() override;
+  void SetConnection(const ConnectionRefPtr &connection) override;
+  bool SetNameProperty(const std::string &name, Error *error) override;
 
   virtual void InitDriverPropertyStore();
 
@@ -62,7 +62,7 @@ class VPNService : public Service {
   static const char kAutoConnNeverConnected[];
   static const char kAutoConnVPNAlreadyActive[];
 
-  virtual std::string GetDeviceRpcId(Error *error) const;
+  std::string GetDeviceRpcId(Error *error) const override;
 
   // Returns the Type name of the lowest connection (presumably the "physical"
   // connection) that this service depends on.

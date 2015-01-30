@@ -51,9 +51,9 @@ class PropertyAccessor : public AccessorInterface<T> {
   }
   ~PropertyAccessor() override {}
 
-  void Clear(Error *error) { Set(default_value_, error); }
-  T Get(Error */*error*/) { return *property_; }
-  bool Set(const T &value, Error */*error*/) {
+  void Clear(Error *error) override { Set(default_value_, error); }
+  T Get(Error */*error*/) override { return *property_; }
+  bool Set(const T &value, Error */*error*/) override {
     if (*property_ == value) {
       return false;
     }
@@ -75,13 +75,13 @@ class ConstPropertyAccessor : public AccessorInterface<T> {
   }
   ~ConstPropertyAccessor() override {}
 
-  void Clear(Error *error) {
+  void Clear(Error *error) override {
     // TODO(quiche): check if this is the right error.
     // (maybe Error::kInvalidProperty instead?)
     error->Populate(Error::kInvalidArguments, "Property is read-only");
   }
-  T Get(Error */*error*/) { return *property_; }
-  bool Set(const T &/*value*/, Error *error) {
+  T Get(Error */*error*/) override { return *property_; }
+  bool Set(const T &/*value*/, Error *error) override {
     // TODO(quiche): check if this is the right error.
     // (maybe Error::kPermissionDenied instead?)
     error->Populate(Error::kInvalidArguments, "Property is read-only");
@@ -102,12 +102,12 @@ class WriteOnlyPropertyAccessor : public AccessorInterface<T> {
   }
   ~WriteOnlyPropertyAccessor() override {}
 
-  void Clear(Error *error) { Set(default_value_, error); }
-  T Get(Error *error) {
+  void Clear(Error *error) override { Set(default_value_, error); }
+  T Get(Error *error) override {
     error->Populate(Error::kPermissionDenied, "Property is write-only");
     return T();
   }
-  bool Set(const T &value, Error */*error*/) {
+  bool Set(const T &value, Error */*error*/) override {
     if (*property_ == value) {
       return false;
     }
@@ -163,17 +163,17 @@ class CustomAccessor : public AccessorInterface<T> {
       : CustomAccessor(target, getter, setter, nullptr) {}
   ~CustomAccessor() override {}
 
-  void Clear(Error *error) {
+  void Clear(Error *error) override {
     if (clearer_) {
       (target_->*clearer_)(error);
     } else {
       Set(default_value_, error);
     }
   }
-  T Get(Error *error) {
+  T Get(Error *error) override {
     return (target_->*getter_)(error);
   }
-  bool Set(const T &value, Error *error) {
+  bool Set(const T &value, Error *error) override {
     if (setter_) {
       return (target_->*setter_)(value, error);
     } else {
@@ -224,18 +224,18 @@ class CustomWriteOnlyAccessor : public AccessorInterface<T> {
   }
   ~CustomWriteOnlyAccessor() override {}
 
-  void Clear(Error *error) {
+  void Clear(Error *error) override {
     if (clearer_) {
       (target_->*clearer_)(error);
     } else {
       Set(default_value_, error);
     }
   }
-  T Get(Error *error) {
+  T Get(Error *error) override {
     error->Populate(Error::kPermissionDenied, "Property is write-only");
     return T();
   }
-  bool Set(const T &value, Error *error) {
+  bool Set(const T &value, Error *error) override {
     return (target_->*setter_)(value, error);
   }
 
@@ -264,13 +264,13 @@ class CustomReadOnlyAccessor : public AccessorInterface<T> {
   }
   ~CustomReadOnlyAccessor() override {}
 
-  void Clear(Error *error) {
+  void Clear(Error *error) override {
     error->Populate(Error::kInvalidArguments, "Property is read-only");
   }
-  T Get(Error *error) {
+  T Get(Error *error) override {
     return (target_->*getter_)(error);
   }
-  bool Set(const T &value, Error *error) {
+  bool Set(const T &value, Error *error) override {
     error->Populate(Error::kInvalidArguments, "Property is read-only");
     return false;
   }
@@ -311,13 +311,13 @@ class CustomMappedAccessor : public AccessorInterface<T> {
   }
   ~CustomMappedAccessor() override {}
 
-  void Clear(Error *error) {
+  void Clear(Error *error) override {
     (target_->*clearer_)(argument_, error);
   }
-  T Get(Error *error) {
+  T Get(Error *error) override {
     return (target_->*getter_)(argument_, error);
   }
-  bool Set(const T &value, Error *error) {
+  bool Set(const T &value, Error *error) override {
     if (setter_) {
       return (target_->*setter_)(argument_, value, error);
     } else {

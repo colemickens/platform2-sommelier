@@ -117,8 +117,8 @@ class ModemManagerClassic : public ModemManager {
   void OnDeviceRemoved(const std::string &path);
 
  protected:
-  virtual void Connect(const std::string &owner);
-  virtual void Disconnect();
+  void Connect(const std::string &owner) override;
+  void Disconnect() override;
 
   virtual void AddModemClassic(const std::string &path);
   virtual void InitModemClassic(std::shared_ptr<ModemClassic> modem);
@@ -147,8 +147,8 @@ class ModemManager1 : public ModemManager {
                           const DBusInterfaceToProperties &properties);
 
   // ModemManager methods
-  virtual void Connect(const std::string &owner);
-  virtual void Disconnect();
+  void Connect(const std::string &owner) override;
+  void Disconnect() override;
 
   // DBusObjectManagerProxyDelegate signal methods
   virtual void OnInterfacesAddedSignal(

@@ -25,12 +25,12 @@ class ModemTimeProxy : public ModemTimeProxyInterface {
   ~ModemTimeProxy() override;
 
   // Inherited methods from ModemTimeProxyInterface.
-  virtual void GetNetworkTime(Error *error,
-                              const StringCallback &callback,
-                              int timeout);
+  void GetNetworkTime(Error *error,
+                      const StringCallback &callback,
+                      int timeout) override;
 
-  virtual void set_network_time_changed_callback(
-      const NetworkTimeChangedSignalCallback &callback);
+  void set_network_time_changed_callback(
+      const NetworkTimeChangedSignalCallback &callback) override;
 
  private:
   class Proxy : public org::freedesktop::ModemManager1::Modem::Time_proxy,
@@ -47,13 +47,13 @@ class ModemTimeProxy : public ModemTimeProxyInterface {
    private:
     // Signal callbacks inherited from Proxy
     // handle signals.
-    void NetworkTimeChanged(const std::string &time);
+    void NetworkTimeChanged(const std::string &time) override;
 
     // Method callbacks inherited from
     // org::freedesktop::ModemManager1::Modem::Time_proxy.
-    virtual void GetNetworkTimeCallback(const std::string &time,
-                                        const ::DBus::Error &dberror,
-                                        void *data);
+    void GetNetworkTimeCallback(const std::string &time,
+                                const ::DBus::Error &dberror,
+                                void *data) override;
 
     NetworkTimeChangedSignalCallback network_time_changed_callback_;
 

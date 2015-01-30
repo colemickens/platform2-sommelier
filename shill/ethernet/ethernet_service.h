@@ -38,7 +38,7 @@ class EthernetService : public Service {
   // ethernet_<MAC>
   std::string GetStorageIdentifier() const override;
   bool IsAutoConnectByDefault() const override;
-  bool SetAutoConnectFull(const bool &connect, Error *error);
+  bool SetAutoConnectFull(const bool &connect, Error *error) override;
 
   void Remove(Error *error) override;
   bool IsVisible() const override;
@@ -57,7 +57,7 @@ class EthernetService : public Service {
   static const char kAutoConnNoCarrier[];
   static const char kServiceType[];
 
-  std::string GetDeviceRpcId(Error *error) const;
+  std::string GetDeviceRpcId(Error *error) const override;
 
   base::WeakPtr<Ethernet> ethernet_;
   DISALLOW_COPY_AND_ASSIGN(EthernetService);

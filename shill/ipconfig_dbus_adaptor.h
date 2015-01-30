@@ -36,25 +36,25 @@ class IPConfigDBusAdaptor : public org::chromium::flimflam::IPConfig_adaptor,
   ~IPConfigDBusAdaptor() override;
 
   // Implementation of IPConfigAdaptorInterface.
-  virtual const std::string &GetRpcIdentifier() { return path(); }
-  virtual void EmitBoolChanged(const std::string &name, bool value);
-  virtual void EmitUintChanged(const std::string &name, uint32_t value);
-  virtual void EmitIntChanged(const std::string &name, int value);
-  virtual void EmitStringChanged(const std::string &name,
-                                 const std::string &value);
-  virtual void EmitStringsChanged(const std::string &name,
-                                  const std::vector<std::string> &value);
+  const std::string &GetRpcIdentifier() override { return path(); }
+  void EmitBoolChanged(const std::string &name, bool value) override;
+  void EmitUintChanged(const std::string &name, uint32_t value) override;
+  void EmitIntChanged(const std::string &name, int value) override;
+  void EmitStringChanged(const std::string &name,
+                         const std::string &value) override;
+  void EmitStringsChanged(const std::string &name,
+                          const std::vector<std::string> &value) override;
 
   // Implementation of IPConfig_adaptor
-  virtual std::map<std::string, DBus::Variant> GetProperties(
-      DBus::Error &error);  // NOLINT
-  virtual void SetProperty(const std::string &name,
-                           const DBus::Variant &value,
-                           DBus::Error &error);  // NOLINT
-  virtual void ClearProperty(const std::string &name,
-                             DBus::Error &error);  // NOLINT
-  virtual void Remove(DBus::Error &error);  // NOLINT
-  virtual void Refresh(DBus::Error &error);  // NOLINT
+  std::map<std::string, DBus::Variant> GetProperties(
+      DBus::Error &error) override;  // NOLINT
+  void SetProperty(const std::string &name,
+                   const DBus::Variant &value,
+                   DBus::Error &error) override;  // NOLINT
+  void ClearProperty(const std::string &name,
+                     DBus::Error &error) override;  // NOLINT
+  void Remove(DBus::Error &error) override;  // NOLINT
+  void Refresh(DBus::Error &error) override;  // NOLINT
 
  private:
   IPConfig *ipconfig_;

@@ -32,32 +32,32 @@ class SupplicantInterfaceProxy
                            const char *dbus_addr);
   ~SupplicantInterfaceProxy() override;
 
-  virtual ::DBus::Path AddNetwork(
-      const std::map<std::string, ::DBus::Variant> &args);
-  virtual void EnableHighBitrates();
-  virtual void EAPLogon();
-  virtual void EAPLogoff();
-  virtual void Disconnect();
-  virtual void FlushBSS(const uint32_t &age);
-  virtual void NetworkReply(const ::DBus::Path &network,
-                            const std::string &field,
-                            const std::string &value);
-  virtual void Reassociate();
-  virtual void Reattach();
-  virtual void RemoveAllNetworks();
-  virtual void RemoveNetwork(const ::DBus::Path &network);
-  virtual void Scan(
-      const std::map<std::string, ::DBus::Variant> &args);
-  virtual void SelectNetwork(const ::DBus::Path &network);
-  virtual void SetFastReauth(bool enabled);
-  virtual void SetRoamThreshold(uint16_t threshold);
-  virtual void SetScanInterval(int seconds);
-  virtual void SetDisableHighBitrates(bool disable_high_bitrates);
-  virtual void TDLSDiscover(const std::string &peer);
-  virtual void TDLSSetup(const std::string &peer);
-  virtual std::string TDLSStatus(const std::string &peer);
-  virtual void TDLSTeardown(const std::string &peer);
-  virtual void SetHT40Enable(const ::DBus::Path &network, bool enable);
+  ::DBus::Path AddNetwork(
+      const std::map<std::string, ::DBus::Variant> &args) override;
+  void EnableHighBitrates() override;
+  void EAPLogon() override;
+  void EAPLogoff() override;
+  void Disconnect() override;
+  void FlushBSS(const uint32_t &age) override;
+  void NetworkReply(const ::DBus::Path &network,
+                    const std::string &field,
+                    const std::string &value) override;
+  void Reassociate() override;
+  void Reattach() override;
+  void RemoveAllNetworks() override;
+  void RemoveNetwork(const ::DBus::Path &network) override;
+  void Scan(
+      const std::map<std::string, ::DBus::Variant> &args) override;
+  void SelectNetwork(const ::DBus::Path &network) override;
+  void SetFastReauth(bool enabled) override;
+  void SetRoamThreshold(uint16_t threshold) override;
+  void SetScanInterval(int seconds) override;
+  void SetDisableHighBitrates(bool disable_high_bitrates) override;
+  void TDLSDiscover(const std::string &peer) override;
+  void TDLSSetup(const std::string &peer) override;
+  std::string TDLSStatus(const std::string &peer) override;
+  void TDLSTeardown(const std::string &peer) override;
+  void SetHT40Enable(const ::DBus::Path &network, bool enable) override;
 
  private:
   class Proxy : public fi::w1::wpa_supplicant1::Interface_proxy,
@@ -72,23 +72,23 @@ class SupplicantInterfaceProxy
    private:
     // signal handlers called by dbus-c++, via
     // fi::w1::wpa_supplicant1::Interface_proxy interface
-    virtual void BlobAdded(const std::string &blobname);
-    virtual void BlobRemoved(const std::string &blobname);
-    virtual void BSSAdded(const ::DBus::Path &BSS,
-                          const std::map<std::string, ::DBus::Variant>
-                          &properties);
-    virtual void BSSRemoved(const ::DBus::Path &BSS);
-    virtual void Certification(const std::map<std::string, ::DBus::Variant>
-                               &properties);
-    virtual void EAP(const std::string &status, const std::string &parameter);
-    virtual void NetworkAdded(const ::DBus::Path &network,
-                              const std::map<std::string, ::DBus::Variant>
-                              &properties);
-    virtual void NetworkRemoved(const ::DBus::Path &network);
-    virtual void NetworkSelected(const ::DBus::Path &network);
-    virtual void PropertiesChanged(const std::map<std::string, ::DBus::Variant>
-                                   &properties);
-    virtual void ScanDone(const bool &success);
+    void BlobAdded(const std::string &blobname) override;
+    void BlobRemoved(const std::string &blobname) override;
+    void BSSAdded(const ::DBus::Path &BSS,
+                  const std::map<std::string, ::DBus::Variant>
+                  &properties) override;
+    void BSSRemoved(const ::DBus::Path &BSS) override;
+    void Certification(const std::map<std::string, ::DBus::Variant>
+                       &properties) override;
+    void EAP(const std::string &status, const std::string &parameter) override;
+    void NetworkAdded(
+        const ::DBus::Path &network,
+        const std::map<std::string, ::DBus::Variant> &properties) override;
+    void NetworkRemoved(const ::DBus::Path &network) override;
+    void NetworkSelected(const ::DBus::Path &network) override;
+    void PropertiesChanged(const std::map<std::string, ::DBus::Variant>
+                           &properties) override;
+    void ScanDone(const bool &success) override;
 
     // This pointer is owned by the object that created |this|.  That object
     // MUST destroy |this| before destroying itself.

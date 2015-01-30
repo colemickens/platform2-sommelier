@@ -20,8 +20,8 @@ class IOInputHandler : public IOHandler,
                  const ErrorCallback& error_callback);
   ~IOInputHandler();
 
-  virtual void Start();
-  virtual void Stop();
+  void Start() override;
+  void Stop() override;
 
  private:
   // base::MessageLoopForIO::Watcher methods.

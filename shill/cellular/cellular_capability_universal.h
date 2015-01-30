@@ -112,7 +112,7 @@ class CellularCapabilityUniversal : public CellularCapability {
 
  protected:
   virtual void InitProxies();
-  virtual void ReleaseProxies();
+  void ReleaseProxies() override;
 
   // Updates the |sim_path_| variable and creates a new proxy to the
   // DBUS ModemManager1.Sim interface.

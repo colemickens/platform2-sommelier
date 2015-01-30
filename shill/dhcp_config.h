@@ -55,9 +55,9 @@ class DHCPConfig : public IPConfig {
   ~DHCPConfig() override;
 
   // Inherited from IPConfig.
-  virtual bool RequestIP();
-  virtual bool RenewIP();
-  virtual bool ReleaseIP(ReleaseReason reason);
+  bool RequestIP() override;
+  bool RenewIP() override;
+  bool ReleaseIP(ReleaseReason reason) override;
 
   // If |proxy_| is not initialized already, sets it to a new D-Bus proxy to
   // |service|.
@@ -72,9 +72,9 @@ class DHCPConfig : public IPConfig {
 
  protected:
   // Overrides base clase implementation.
-  virtual void UpdateProperties(const Properties &properties,
-                                bool new_lease_acquired);
-  virtual void NotifyFailure();
+  void UpdateProperties(const Properties &properties,
+                        bool new_lease_acquired) override;
+  void NotifyFailure() override;
 
  private:
   friend class DHCPConfigTest;
