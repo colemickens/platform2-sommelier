@@ -153,8 +153,9 @@ write_partition() {
   case ${format} in
   nand)
     flash_erase "/dev/mtd${user_part}" 0 0
-    fast_dd 512 "${user_count}" "0" "${user_skip}" \
-      if="${src}" of="/dev/mtdblock${user_part} " conv=notrunc
+    nandwrite --input-skip $((user_skip * 512)) \
+      --input-size $((user_count * 512)) \
+      "/dev/mtd${user_part}" "${src}"
     ;;
 
   ubi)
@@ -665,8 +666,10 @@ if [ -z "${DST}" ]; then
   exit 1
 fi
 
-if [ "${DST}" = "/dev/ubi" ]; then
+if [ "${DST}" = "/dev/mtd0" ]; then
   FLAGS_mtd_layout=${FLAGS_TRUE}
+  # TODO(namnguyen): postinst does not work with MTD device at the moment.
+  FLAGS_skip_postinstall=${FLAGS_TRUE}
 fi
 
 # Check out the dst device.
@@ -701,7 +704,8 @@ fi
 if [ -n "${FLAGS_pmbr_code}" ]; then
   PMBRCODE="${FLAGS_pmbr_code}"
 elif [ ${FLAGS_mtd_layout} -eq ${FLAGS_TRUE} ]; then
-  : nop it
+  # We don't use PMBR if this is on MTD.
+  dd bs=512 count=1 if=/dev/zero of="${PMBRCODE}"
 elif [ "$ARCH" = "ARM" ]; then
   # Store the existing PMBR from the destination in the temp pmbr file so we can
   # restore it when we're installing the GPT. This ensures that we preserve
@@ -713,13 +717,14 @@ else
   dd bs=512 count=1 if=$SRC of=$PMBRCODE
 fi
 
-# Write the GPT using the board specific script.
+# Write the GPT using the board specific script. The parameters are ignored
+# on MTD devices.
+write_base_table "${DST}" "${PMBRCODE}"
+legacy_offset_size_export "${DST}"
 if [ ${FLAGS_mtd_layout} -eq ${FLAGS_FALSE} ]; then
-  write_base_table ${DST} ${PMBRCODE}
+  # Reload the partition table on block devices only.
+  # On MTD, the ChromeOS kernel loads the partition table at boot time.
   /sbin/blockdev --rereadpt ${DST}
-  legacy_offset_size_export "${DST}"
-else
-  legacy_offset_size_export "${SRC}"
 fi
 
 if [ ${FLAGS_skip_rootfs} -eq ${FLAGS_TRUE} ]; then
