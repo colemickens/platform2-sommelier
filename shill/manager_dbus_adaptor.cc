@@ -462,24 +462,25 @@ void ManagerDBusAdaptor::CreateConnectivityReport(DBus::Error &error) {  // NOLI
   e.ToDBusError(&error);
 }
 
-void ManagerDBusAdaptor::ClaimInterface(const string &dbus_service_name,
+void ManagerDBusAdaptor::ClaimInterface(const string &claimer_name,
                                         const string &interface_name,
                                         DBus::Error &error) {  // NOLINT
   SLOG(this, 2) << __func__;
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
-  manager_->ClaimDevice(dbus_service_name,
+  manager_->ClaimDevice(claimer_name,
                         interface_name,
                         &e,
                         GetMethodReplyCallback(tag));
   ReturnResultOrDefer(tag, e, &error);
 }
 
-void ManagerDBusAdaptor::ReleaseInterface(const string &interface_name,
+void ManagerDBusAdaptor::ReleaseInterface(const string &claimer_name,
+                                          const string &interface_name,
                                           DBus::Error &error) {  // NOLINT
   SLOG(this, 2) << __func__;
   Error e;
-  manager_->ReleaseDevice(interface_name, &e);
+  manager_->ReleaseDevice(claimer_name, interface_name, &e);
   e.ToDBusError(&error);
 }
 

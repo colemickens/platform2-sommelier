@@ -194,15 +194,17 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void PopAllUserProfiles(Error *error);
   // Remove the underlying persistent storage for a profile.
   void RemoveProfile(const std::string &name, Error *error);
-  // Give the ownership of the device with name |device_name| to the DBus
-  // service with name |service_name|, shill will stop managing this device.
-  void ClaimDevice(const std::string &service_name,
+  // Give the ownership of the device with name |device_name| to claimer with
+  // name |claimer_name|. This will cause shill to stop managing this device.
+  void ClaimDevice(const std::string &claimer_name,
                    const std::string &interface_name,
                    Error *error,
                    const ResultCallback &callback);
-  // Caller release the ownership of the device with |interface_name| back to
-  // shill.
-  void ReleaseDevice(const std::string &interface_name, Error *error);
+  // Claimer |claimer_name| release the ownership of the device with
+  // |interface_name| back to shill.
+  void ReleaseDevice(const std::string &claimer_name,
+                     const std::string &interface_name,
+                     Error *error);
   // Called by a service to remove its associated configuration.  If |service|
   // is associated with a non-ephemeral profile, this configuration entry
   // will be removed and the manager will search for another matching profile.
@@ -420,6 +422,12 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // |connection_id|.
   void ReportServicesOnSameNetwork(int connection_id);
 
+  // Running in passive mode, manager will not manage any devices (all devices
+  // are blacklisted) by default. Remote application can specify devices for
+  // shill to manage through ReleaseInterface/ClaimInterface DBus API using
+  // default claimer (with "" as claimer_name).
+  void SetPassiveMode();
+
  private:
   friend class CellularTest;
   friend class DeviceInfoTest;
@@ -489,6 +497,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Technologies to probe for.
   static const char *kProbeTechnologies[];
+
+  // Name of the default claimer.
+  static const char kDefaultClaimerName[];
 
   // Timeout interval for probing various device status, and report them to
   // UMA stats.
@@ -732,8 +743,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Stores the state of the highest ranked connected service.
   std::string connection_state_;
 
-  // Device claimer is a remote DBus service that claim/release devices from/to
-  // shill. To reduce complexity, only allow one device claimer at a time.
+  // Device claimer is a remote application/service that claim/release devices
+  // from/to shill. To reduce complexity, only allow one device claimer at a
+  // time.
   std::unique_ptr<DeviceClaimer> device_claimer_;
   std::vector<DeviceClaim> pending_device_claims_;
 

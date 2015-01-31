@@ -136,10 +136,11 @@
 		<method name="ConnectToBestServices"/>
 		<method name="CreateConnectivityReport"/>
 		<method name="ClaimInterface">
-			<arg name="service_name" type="s" direction="in"/>
+			<arg name="claimer_name" type="s" direction="in"/>
 			<arg name="interface_name" type="s" direction="in"/>
 		</method>
 		<method name="ReleaseInterface">
+			<arg name="claimer_name" type="s" direction="in"/>
 			<arg name="interface_name" type="s" direction="in"/>
 		</method>
 	</interface>

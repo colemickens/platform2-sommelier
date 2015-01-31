@@ -61,6 +61,10 @@ void Daemon::SetStartupPortalList(const string &portal_list) {
   manager_->SetStartupPortalList(portal_list);
 }
 
+void Daemon::SetPassiveMode() {
+  manager_->SetPassiveMode();
+}
+
 void Daemon::Run() {
   Start();
   SLOG(this, 1) << "Running main loop.";

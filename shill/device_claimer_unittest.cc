@@ -27,7 +27,7 @@ class DeviceClaimerTest : public testing::Test {
  public:
   DeviceClaimerTest()
      : device_info_(nullptr, nullptr, nullptr, nullptr),
-       device_claimer_(kDBusServiceName, &device_info_) {}
+       device_claimer_(kDBusServiceName, &device_info_, false) {}
 
  protected:
   MockDeviceInfo device_info_;

@@ -7,7 +7,7 @@
 namespace shill {
 
 MockDeviceClaimer::MockDeviceClaimer(const std::string &dbus_service_name)
-    : DeviceClaimer(dbus_service_name, nullptr) {}
+    : DeviceClaimer(dbus_service_name, nullptr, false) {}
 
 MockDeviceClaimer::~MockDeviceClaimer() {}
 

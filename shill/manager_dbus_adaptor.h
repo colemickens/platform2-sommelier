@@ -148,10 +148,11 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
 
   void CreateConnectivityReport(DBus::Error &error) override;  // NOLINT
 
-  void ClaimInterface(const std::string &service_name,
+  void ClaimInterface(const std::string &claimer_name,
                       const std::string &interface_name,
                       DBus::Error &error) override;  // NOLINT
-  void ReleaseInterface(const std::string &interface_name,
+  void ReleaseInterface(const std::string &claimer_name,
+                        const std::string &interface_name,
                         DBus::Error &error) override;  // NOLINT
 
  private:

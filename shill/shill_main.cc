@@ -38,6 +38,10 @@ static const char kForeground[] = "foreground";
 static const char kDeviceBlackList[] = "device-black-list";
 // Technologies to enable for portal check at startup.
 static const char kPortalList[] = "portal-list";
+// When in passive mode, Shill will not manage any devices by default.
+// Remote service can instruct Shill to manage/unmanage devices through
+// org.chromium.flimflam.Manager's ClaimInterface/ReleaseInterface APIs.
+static const char kPassiveMode[] = "passive-mode";
 // Flag that causes shill to show the help message and exit.
 static const char kHelp[] = "help";
 
@@ -55,7 +59,9 @@ static const char kHelpMessage[] = "\n"
     "  --log-scopes=\"*scope1+scope2\".\n"
     "    Scopes to enable for SLOG()-based logging.\n"
     "  --portal-list=technology1,technology2\n"
-    "    Specify technologies to perform portal detection on at startup.\n";
+    "    Specify technologies to perform portal detection on at startup.\n"
+    "  --passive-mode\n"
+    "    Do not manage any devices by default\n";
 }  // namespace switches
 
 namespace {
@@ -160,6 +166,10 @@ int main(int argc, char** argv) {
 
   if (cl->HasSwitch(switches::kPortalList)) {
     daemon.SetStartupPortalList(cl->GetSwitchValueASCII(switches::kPortalList));
+  }
+
+  if (cl->HasSwitch(switches::kPassiveMode)) {
+    daemon.SetPassiveMode();
   }
 
   g_unix_signal_add(SIGINT, ExitSigHandler, &daemon);

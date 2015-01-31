@@ -56,7 +56,7 @@ void ShillProxy::ClaimInterface(const string& interface_name) {
 void ShillProxy::ReleaseInterface(const string& interface_name) {
   CHECK(manager_proxy_) << "Proxy not initialize yet";
   chromeos::ErrorPtr error;
-  if (!manager_proxy_->ReleaseInterface(interface_name, &error)) {
+  if (!manager_proxy_->ReleaseInterface(kServiceName, interface_name, &error)) {
     // Ignore unknown object error (when shill is not running). Only report
     // internal error from shill.
     if (error->GetCode() != DBUS_ERROR_UNKNOWN_OBJECT) {

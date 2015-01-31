@@ -12,9 +12,11 @@ namespace shill {
 
 DeviceClaimer::DeviceClaimer(
     const std::string &dbus_service_name,
-    DeviceInfo *device_info)
+    DeviceInfo *device_info,
+    bool default_claimer)
     : dbus_service_name_(dbus_service_name),
-      device_info_(device_info) {}
+      device_info_(device_info),
+      default_claimer_(default_claimer) {}
 
 DeviceClaimer::~DeviceClaimer() {
   // Release claimed devices if there is any.
@@ -57,6 +59,7 @@ bool DeviceClaimer::Claim(const string &device_name, Error *error) {
   device_info_->AddDeviceToBlackList(device_name);
 
   claimed_device_names_.insert(device_name);
+  released_device_names_.erase(device_name);
   return true;
 }
 
@@ -73,13 +76,18 @@ bool DeviceClaimer::Release(const std::string &device_name,
   // Remove the device from the black list.
   device_info_->RemoveDeviceFromBlackList(device_name);
 
-  // Remove device from the claimed list.
   claimed_device_names_.erase(device_name);
+  released_device_names_.insert(device_name);
   return true;
 }
 
 bool DeviceClaimer::DevicesClaimed() {
   return !claimed_device_names_.empty();
+}
+
+bool DeviceClaimer::IsDeviceReleased(const string &device_name) {
+  return released_device_names_.find(device_name) !=
+      released_device_names_.end();
 }
 
 }  // namespace shill

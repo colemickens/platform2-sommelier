@@ -91,6 +91,9 @@ const char *Manager::kProbeTechnologies[] = {
     kTypeCellular
 };
 
+// static
+const char Manager::kDefaultClaimerName[] = "";
+
 Manager::Manager(ControlInterface *control_interface,
                  EventDispatcher *dispatcher,
                  Metrics *metrics,
@@ -644,7 +647,8 @@ void Manager::ClaimDevice(const string &claimer_name,
   // Create a new device claimer if one doesn't exist yet.
   if (!device_claimer_) {
     // Start a device claimer.
-    device_claimer_.reset(new DeviceClaimer(claimer_name, &device_info_));
+    device_claimer_.reset(
+        new DeviceClaimer(claimer_name, &device_info_, false));
     device_claimer_->StartDBusNameWatcher(
         dbus_manager_.get(),
         Bind(&Manager::OnDeviceClaimerAppeared, Unretained(this)),
@@ -686,19 +690,33 @@ void Manager::ClaimDevice(const string &claimer_name,
   error->Populate(Error::kSuccess);
 }
 
-void Manager::ReleaseDevice(const string &device_name, Error *error) {
+void Manager::ReleaseDevice(const string &claimer_name,
+                            const string &device_name,
+                            Error *error) {
   SLOG(this, 2) << __func__;
   if (!device_claimer_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Device claimer doesn't exist");
     return;
   }
+
+  // Verify claimer's name, since we only allow one claimer to exist at a time.
+  if (device_claimer_->name() != claimer_name) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Invalid claimer name " + claimer_name +
+                          ". Claimer " + device_claimer_->name() +
+                          " already exist");
+    return;
+  }
+
   // Release the device from the claimer. Error should be populated by the
   // claimer if it failed to release the given device.
   device_claimer_->Release(device_name, error);
 
-  // Reset claimer if no more devices are claimed by this claimer.
-  if (!device_claimer_->DevicesClaimed()) {
+  // Reset claimer if this is not the default claimer and no more devices are
+  // claimed by this claimer.
+  if (!device_claimer_->default_claimer() &&
+      !device_claimer_->DevicesClaimed()) {
     device_claimer_.reset();
   }
 }
@@ -1055,8 +1073,29 @@ void Manager::UpdateUninitializedTechnologies() {
                                UninitializedTechnologies(&error));
 }
 
+void Manager::SetPassiveMode() {
+  CHECK(!device_claimer_);
+  // Create a default device claimer to claim devices from  shill as they're
+  // detected.  Devices will be managed by remote application, which will use
+  // the default claimer to specify the devices for shill to manage.
+  device_claimer_.reset(
+      new DeviceClaimer(kDefaultClaimerName, &device_info_, true));
+}
+
 void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
   LOG(INFO) << "Device " << to_manage->FriendlyName() << " registered.";
+  // Manager is running in passive mode when default claimer is created, which
+  // means devices are being managed by remote application. Only manage the
+  // device if it was explicitly released by remote application through
+  // default claimer.
+  if (device_claimer_ && device_claimer_->default_claimer()) {
+    if (!device_claimer_->IsDeviceReleased(to_manage->link_name())) {
+      Error error;
+      device_claimer_->Claim(to_manage->link_name(), &error);
+      return;
+    }
+  }
+
   for (const auto &device : devices_) {
     if (to_manage == device)
       return;
