@@ -15,7 +15,9 @@
 
 extern double g_initial_temperature;
 
-void SetBasePathFromArgv0(const char* argv0, const char* relative);
+// Sets the base path for MmapFile to `dirname(readlink($exe))`/$relative.
+void SetBasePathFromSelfExe(const char* relative);
+
 void *MmapFile(const char *name, size_t *length);
 const base::FilePath& GetBasePath();
 

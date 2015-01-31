@@ -9,6 +9,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <algorithm>
+
+#include "base/files/file_util.h"
 #include "base/logging.h"
 
 #include "glinterface.h"
@@ -25,13 +28,14 @@ const char* kGlesHeader =
 FilePath *g_base_path = new FilePath();
 double g_initial_temperature = -1000.0;
 
-// Sets the base path for MmapFile to `dirname($argv0)`/$relative.
-void SetBasePathFromArgv0(const char* argv0, const char* relative) {
+void SetBasePathFromSelfExe(const char* relative) {
   if (g_base_path) {
     delete g_base_path;
   }
-  FilePath argv0_path = FilePath(argv0).DirName();
-  FilePath base_path = relative ? argv0_path.Append(relative) : argv0_path;
+  FilePath exe_path;
+  base::ReadSymbolicLink(FilePath("/self/proc/exe"), &exe_path);
+  exe_path = exe_path.DirName();
+  FilePath base_path = relative ? exe_path.Append(relative) : exe_path;
   g_base_path = new FilePath(base_path);
 }
 

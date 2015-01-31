@@ -15,6 +15,7 @@
 #define YUV2RGB_FRAGMENT_3 "yuv2rgb_3.glslf"
 #define YUV2RGB_FRAGMENT_4 "yuv2rgb_4.glslf"
 
+// Path relative to the ${prefix}/share/glbench directory.
 #define YUV2RGB_NAME "image.yuv"
 #define YUV2RGB_WIDTH 720
 // YUV2RGB_HEIGHT is total height, which is 3/2 of height of Y plane.

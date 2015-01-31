@@ -102,7 +102,7 @@ bool PassesSanityCheck(void) {
 }
 
 int main(int argc, char *argv[]) {
-  SetBasePathFromArgv0(argv[0], "src");
+  SetBasePathFromSelfExe("../share/glbench");
   google::ParseCommandLineFlags(&argc, &argv, false);
 
   g_main_gl_interface.reset(GLInterface::Create());
