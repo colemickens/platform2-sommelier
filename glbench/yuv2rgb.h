@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BENCH_GL_YUV2RGB_H_
-#define BENCH_GL_YUV2RGB_H_
+#ifndef GLBENCH_YUV2RGB_H_
+#define GLBENCH_YUV2RGB_H_
 
 #define YUV2RGB_VERTEX_1 "yuv2rgb_1.glslv"
 #define YUV2RGB_FRAGMENT_1 "yuv2rgb_1.glslf"
@@ -23,4 +23,4 @@
 #define YUV2RGB_PIXEL_HEIGHT (YUV2RGB_HEIGHT * 2 / 3)
 #define YUV2RGB_SIZE (YUV2RGB_WIDTH * YUV2RGB_HEIGHT)
 
-#endif
+#endif  // GLBENCH_YUV2RGB_H_

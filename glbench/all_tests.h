@@ -1,5 +1,5 @@
-#ifndef BENCH_GL_ALL_TESTS_H_
-#define BENCH_GL_ALL_TESTS_H_
+#ifndef GLBENCH_ALL_TESTS_H_
+#define GLBENCH_ALL_TESTS_H_
 
 namespace glbench {
 
@@ -22,4 +22,4 @@ TestBase* GetYuvToRgbTest();
 
 } // namespace glbench
 
-#endif // BENCH_GL_ALL_TESTS_H_
+#endif  // GLBENCH_ALL_TESTS_H_

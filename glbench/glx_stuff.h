@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BENCH_GL_GLX_STUFF_H_
-#define BENCH_GL_GLX_STUFF_H_
+#ifndef GLBENCH_GLX_STUFF_H_
+#define GLBENCH_GLX_STUFF_H_
 
 #include <GL/glx.h>
 
@@ -40,4 +40,4 @@ class GLXInterface : public GLInterface {
   GLXFBConfig fb_config_;
 };
 
-#endif // BENCH_GL_GLX_STUFF_H_
+#endif  // GLBENCH_GLX_STUFF_H_

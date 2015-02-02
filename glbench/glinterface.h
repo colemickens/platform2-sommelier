@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BENCH_GL_GLINTERFACE_H_
-#define BENCH_GL_GLINTERFACE_H_
+#ifndef GLBENCH_GLINTERFACE_H_
+#define GLBENCH_GLINTERFACE_H_
 
 #include <X11/Xutil.h>
 
@@ -45,4 +45,4 @@ class GLInterface {
 
 extern scoped_ptr<GLInterface> g_main_gl_interface;
 
-#endif  // BENCH_GL_GLINTERFACE_H_
+#endif  // GLBENCH_GLINTERFACE_H_

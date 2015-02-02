@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BENCH_GL_MAIN_H_
-#define BENCH_GL_MAIN_H_
+#ifndef GLBENCH_MAIN_H_
+#define GLBENCH_MAIN_H_
 
 #include <gflags/gflags.h>
 #include <sys/time.h>
@@ -119,4 +119,4 @@ DECLARE_bool(override_redirect);
 #define WINDOW_WIDTH 512
 #define WINDOW_HEIGHT 512
 
-#endif  // BENCH_GL_MAIN_H_
+#endif  // GLBENCH_MAIN_H_

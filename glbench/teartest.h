@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BENCH_GL_TEARTEST_H_
-#define BENCH_GL_TEARTEST_H_
+#ifndef GLBENCH_TEARTEST_H_
+#define GLBENCH_TEARTEST_H_
 
 #include <X11/Xlib.h>
 
@@ -31,4 +31,4 @@ Test* GetPixmapToTextureTest();
 #endif
 
 
-#endif // BENCH_GL_TEARTEST_H_
+#endif  // GLBENCH_TEARTEST_H_

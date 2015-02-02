@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BENCH_GL_TESTBASE_H_
-#define BENCH_GL_TESTBASE_H_
+#ifndef GLBENCH_TESTBASE_H_
+#define GLBENCH_TESTBASE_H_
 
 #include "base/basictypes.h"
 
@@ -94,4 +94,4 @@ class DrawElementsTestFunc : public TestBase {
 
 } // namespace glbench
 
-#endif // BENCH_GL_TESTBASE_H_
+#endif  // GLBENCH_TESTBASE_H_

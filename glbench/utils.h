@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BENCH_GL_UTILS_H_
-#define BENCH_GL_UTILS_H_
+#ifndef GLBENCH_UTILS_H_
+#define GLBENCH_UTILS_H_
 
 #if defined(USE_OPENGLES)
 #include "GLES2/gl2.h"
@@ -51,4 +51,4 @@ void ClearBuffers();
 
 } // namespace glbench
 
-#endif // BENCH_GL_UTILS_H_
+#endif  // GLBENCH_UTILS_H_

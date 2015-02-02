@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BENCH_GL_EGL_STUFF_H_
-#define BENCH_GL_EGL_STUFF_H_
+#ifndef GLBENCH_EGL_STUFF_H_
+#define GLBENCH_EGL_STUFF_H_
 
 #include "base/logging.h"
 #include "glinterface.h"
@@ -51,4 +51,4 @@ class EGLInterface : public GLInterface {
   EGLContext context_;
 };
 
-#endif  // BENCH_GL_EGL_STUFF_H_
+#endif  // GLBENCH_EGL_STUFF_H_

@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifndef GLBENCH_GLINTERFACETEST_H_
+#define GLBENCH_GLINTERFACETEST_H_
+
 #include "base/callback.h"
 
 #include "testbase.h"
@@ -44,3 +47,5 @@ class GLInterfaceTest : public TestBase {
 };
 
 } // namespace glbench
+
+#endif  // GLBENCH_GLINTERFACETEST_H_

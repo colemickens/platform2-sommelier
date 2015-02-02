@@ -2,8 +2,8 @@
 // Author: liuli@google.com (Liu Li)
 // copied from chromium/src/breakpad/src/common/md5.h
 
-#ifndef COMMON_MD5_H__
-#define COMMON_MD5_H__
+#ifndef GLBENCH_MD5_H_
+#define GLBENCH_MD5_H_
 
 #include <stdint.h>
 
@@ -30,4 +30,4 @@ void MD5Final(unsigned char digest[16], struct MD5Context *ctx);
 }
 #endif
 
-#endif  // COMMON_MD5_H__
+#endif  // GLBENCH_MD5_H_

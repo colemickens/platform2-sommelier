@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BENCH_GL_PNG_HELPER_H
-#define BENCH_GL_PNG_HELPER_H
+#ifndef GLBENCH_PNG_HELPER_H_
+#define GLBENCH_PNG_HELPER_H_
 
 void write_png_file(const char* file_name, char* pixels, int width, int height);
 
-#endif
+#endif  // GLBENCH_PNG_HELPER_H_

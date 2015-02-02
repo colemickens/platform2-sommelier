@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BENCH_GL_TEXTURETEST_H_
-#define BENCH_GL_TEXTURETEST_H_
+#ifndef GLBENCH_TEXTURETEST_H_
+#define GLBENCH_TEXTURETEST_H_
 
 #include "base/memory/scoped_ptr.h"
 
@@ -46,4 +46,4 @@ class TextureTest : public TestBase {
 
 } // namespace glbench
 
-#endif  // BENCH_GL_TEXTURETEST_H_
+#endif  // GLBENCH_TEXTURETEST_H_

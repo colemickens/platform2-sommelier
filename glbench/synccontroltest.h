@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BENCH_GL_SYNCCONTROLTEST_H_
-#define BENCH_GL_SYNCCONTROLTEST_H_
+#ifndef GLBENCH_SYNCCONTROLTEST_H_
+#define GLBENCH_SYNCCONTROLTEST_H_
 
 class SyncControlTest {
  public:
@@ -14,4 +14,4 @@ class SyncControlTest {
   virtual bool Loop(int interval) = 0;
 };
 
-#endif  //  BENCH_GL_SYNCCONTROLTEST_H_
+#endif  // GLBENCH_SYNCCONTROLTEST_H_
