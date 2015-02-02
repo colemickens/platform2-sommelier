@@ -37,7 +37,7 @@ class MockRuleEngine : public RuleEngine {
   MOCK_METHOD0(WaitForEmptyUdevQueue, void(void));
 
  private:
-  virtual bool GrantAccess(const string &path) {
+  bool GrantAccess(const string &path) override {
     return MockGrantAccess(path);
   }
 
