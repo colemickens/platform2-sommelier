@@ -10,8 +10,8 @@
 #include <unistd.h>
 #include <X11/Xutil.h>
 
-#include "egl_stuff.h"
-#include "synccontroltest.h"
+#include "glbench/egl_stuff.h"
+#include "glbench/synccontroltest.h"
 
 #if !defined(KHRONOS_SUPPORT_INT64)
 #error int64 not defined by Khronos :-(

@@ -7,8 +7,8 @@
 
 #include "base/logging.h"
 
-#include "texturetest.h"
-#include "main.h"
+#include "glbench/texturetest.h"
+#include "glbench/main.h"
 
 namespace glbench {
 

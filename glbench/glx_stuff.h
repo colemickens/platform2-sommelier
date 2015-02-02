@@ -7,7 +7,7 @@
 
 #include <GL/glx.h>
 
-#include "glinterface.h"
+#include "glbench/glinterface.h"
 
 class GLXInterface : public GLInterface {
  public:

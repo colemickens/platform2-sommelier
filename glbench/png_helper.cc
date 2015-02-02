@@ -12,7 +12,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <gflags/gflags.h>
 
-#include "png_helper.h"
+#include "glbench/png_helper.h"
 
 void abort_(const char * s, ...) {
   va_list args;

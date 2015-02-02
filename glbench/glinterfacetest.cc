@@ -4,7 +4,7 @@
 
 #include "base/bind.h"
 
-#include "glinterfacetest.h"
+#include "glbench/glinterfacetest.h"
 
 namespace glbench {
 

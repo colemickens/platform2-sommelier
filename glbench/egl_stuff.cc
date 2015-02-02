@@ -1,9 +1,9 @@
 // Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#include "egl_stuff.h"
-#include "main.h"
-#include "xlib_window.h"
+#include "glbench/egl_stuff.h"
+#include "glbench/main.h"
+#include "glbench/xlib_window.h"
 
 scoped_ptr<GLInterface> g_main_gl_interface;
 

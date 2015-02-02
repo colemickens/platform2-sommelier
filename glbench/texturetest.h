@@ -7,8 +7,8 @@
 
 #include "base/memory/scoped_ptr.h"
 
-#include "testbase.h"
-#include "utils.h"
+#include "glbench/testbase.h"
+#include "glbench/utils.h"
 
 namespace glbench {
 

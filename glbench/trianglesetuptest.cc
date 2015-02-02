@@ -4,9 +4,9 @@
 
 #include <stdlib.h>
 
-#include "main.h"
-#include "testbase.h"
-#include "utils.h"
+#include "glbench/main.h"
+#include "glbench/testbase.h"
+#include "glbench/utils.h"
 
 
 namespace glbench {

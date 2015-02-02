@@ -7,7 +7,7 @@
 
 #include "base/basictypes.h"
 
-#include "main.h"
+#include "glbench/main.h"
 
 #define DISABLE_SOME_TESTS_FOR_INTEL_DRIVER 1
 

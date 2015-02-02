@@ -6,7 +6,7 @@
 #define GLBENCH_EGL_STUFF_H_
 
 #include "base/logging.h"
-#include "glinterface.h"
+#include "glbench/glinterface.h"
 #include <EGL/egl.h>
 
 class EGLInterface : public GLInterface {

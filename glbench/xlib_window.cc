@@ -7,9 +7,9 @@
 
 #include "base/logging.h"
 
-#include "glinterface.h"
-#include "main.h"
-#include "xlib_window.h"
+#include "glbench/glinterface.h"
+#include "glbench/main.h"
+#include "glbench/xlib_window.h"
 
 
 Display *g_xlib_display = NULL;

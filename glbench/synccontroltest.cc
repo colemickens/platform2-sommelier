@@ -5,10 +5,10 @@
 #include <gflags/gflags.h>
 #include <iostream>
 
-#include "glinterface.h"
-#include "xlib_window.h"
+#include "glbench/glinterface.h"
+#include "glbench/xlib_window.h"
 
-#include "synccontroltest.h"
+#include "glbench/synccontroltest.h"
 
 namespace {
 

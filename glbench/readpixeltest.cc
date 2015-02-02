@@ -5,8 +5,8 @@
 #include "base/logging.h"
 #include "base/memory/scoped_ptr.h"
 
-#include "main.h"
-#include "testbase.h"
+#include "glbench/main.h"
+#include "glbench/testbase.h"
 
 
 namespace glbench {

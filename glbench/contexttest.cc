@@ -5,9 +5,9 @@
 #include "base/bind.h"
 #include "base/callback.h"
 
-#include "glinterface.h"
-#include "glinterfacetest.h"
-#include "main.h"
+#include "glbench/glinterface.h"
+#include "glbench/glinterfacetest.h"
+#include "glbench/main.h"
 
 namespace glbench {
 

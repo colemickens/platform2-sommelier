@@ -3,9 +3,9 @@
 // found in the LICENSE file.
 
 #include "base/logging.h"
-#include "main.h"
-#include "testbase.h"
-#include "utils.h"
+#include "glbench/main.h"
+#include "glbench/testbase.h"
+#include "glbench/utils.h"
 
 #include <algorithm>
 

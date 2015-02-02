@@ -15,7 +15,7 @@
 
 #include <string.h>
 
-#include "md5.h"
+#include "glbench/md5.h"
 
 #ifndef WORDS_BIGENDIAN
 #define byteReverse(buf, len)   /* Nothing */

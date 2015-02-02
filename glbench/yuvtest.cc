@@ -8,10 +8,10 @@
 #include "base/logging.h"
 #include "base/memory/scoped_ptr.h"
 
-#include "main.h"
-#include "testbase.h"
-#include "utils.h"
-#include "yuv2rgb.h"
+#include "glbench/main.h"
+#include "glbench/testbase.h"
+#include "glbench/utils.h"
+#include "glbench/yuv2rgb.h"
 
 namespace glbench {
 

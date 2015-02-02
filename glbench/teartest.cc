@@ -13,12 +13,12 @@
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 
-#include "glinterface.h"
-#include "main.h"
-#include "utils.h"
-#include "xlib_window.h"
+#include "glbench/glinterface.h"
+#include "glbench/main.h"
+#include "glbench/utils.h"
+#include "glbench/xlib_window.h"
 
-#include "teartest.h"
+#include "glbench/teartest.h"
 
 typedef std::map<std::string, Test*> TestMap;
 

@@ -9,8 +9,8 @@
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 
-#include "egl_stuff.h"
-#include "teartest.h"
+#include "glbench/egl_stuff.h"
+#include "glbench/teartest.h"
 
 
 class PixmapToTextureTestEGL : public Test {

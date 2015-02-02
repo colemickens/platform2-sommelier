@@ -14,9 +14,9 @@
 #include "base/files/file_util.h"
 #include "base/logging.h"
 
-#include "glinterface.h"
-#include "main.h"
-#include "utils.h"
+#include "glbench/glinterface.h"
+#include "glbench/main.h"
+#include "glbench/utils.h"
 
 using base::FilePath;
 

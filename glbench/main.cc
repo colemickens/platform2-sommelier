@@ -12,12 +12,12 @@
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 
-#include "glinterface.h"
-#include "main.h"
-#include "utils.h"
+#include "glbench/glinterface.h"
+#include "glbench/main.h"
+#include "glbench/utils.h"
 
-#include "all_tests.h"
-#include "testbase.h"
+#include "glbench/all_tests.h"
+#include "glbench/testbase.h"
 
 using std::string;
 using std::vector;

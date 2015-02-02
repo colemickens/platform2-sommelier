@@ -7,8 +7,8 @@
 
 #include "base/callback.h"
 
-#include "testbase.h"
-#include "utils.h"
+#include "glbench/testbase.h"
+#include "glbench/utils.h"
 
 namespace glbench {
 

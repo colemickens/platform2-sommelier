@@ -13,9 +13,9 @@
 
 #include <cmath>
 
-#include "glinterface.h"
-#include "main.h"
-#include "utils.h"
+#include "glbench/glinterface.h"
+#include "glbench/main.h"
+#include "glbench/utils.h"
 
 
 GLuint GenerateAndBindTexture() {

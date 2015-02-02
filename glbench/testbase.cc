@@ -10,11 +10,11 @@
 #include <base/files/file_util.h>
 #include <base/memory/scoped_ptr.h>
 
-#include "glinterface.h"
-#include "md5.h"
-#include "png_helper.h"
-#include "testbase.h"
-#include "utils.h"
+#include "glbench/glinterface.h"
+#include "glbench/md5.h"
+#include "glbench/png_helper.h"
+#include "glbench/testbase.h"
+#include "glbench/utils.h"
 
 extern bool g_hasty;
 extern bool g_notemp;
