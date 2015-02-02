@@ -187,7 +187,8 @@ class ExportedProperty : public ExportedPropertyBase {
   // Implementation provided by specialization.
   chromeos::Any GetValue() const override { return value_; }
 
-  bool SetValue(chromeos::ErrorPtr* error, const chromeos::Any& value) {
+  bool SetValue(chromeos::ErrorPtr* error,
+                const chromeos::Any& value) override {
     if (GetAccessMode() == ExportedPropertyBase::Access::kReadOnly) {
       chromeos::Error::AddTo(error,
                              FROM_HERE,
