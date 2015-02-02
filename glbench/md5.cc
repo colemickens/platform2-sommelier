@@ -13,9 +13,9 @@
  * will fill a supplied 16-byte array with the digest.
  */
 
-#include <string.h>
-
 #include "glbench/md5.h"
+
+#include <string.h>
 
 #ifndef WORDS_BIGENDIAN
 #define byteReverse(buf, len)   /* Nothing */

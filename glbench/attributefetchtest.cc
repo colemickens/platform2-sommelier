@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 #include "glbench/main.h"
-#include "glbench/utils.h"
 #include "glbench/testbase.h"
+#include "glbench/utils.h"
 
 
 namespace glbench {

@@ -5,14 +5,14 @@
 // Function write_png_file taken slightly modified from
 // http://zarb.org/~gc/html/libpng.html
 
+#include "glbench/png_helper.h"
+
 #include <png.h>
 #include <stdio.h>
 
 #include <base/files/file_util.h>
 #include <base/memory/scoped_ptr.h>
 #include <gflags/gflags.h>
-
-#include "glbench/png_helper.h"
 
 void abort_(const char * s, ...) {
   va_list args;

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "glbench/xlib_window.h"
+
 #include <gflags/gflags.h>
 #include <stdio.h>
 
@@ -9,7 +11,6 @@
 
 #include "glbench/glinterface.h"
 #include "glbench/main.h"
-#include "glbench/xlib_window.h"
 
 
 Display *g_xlib_display = NULL;

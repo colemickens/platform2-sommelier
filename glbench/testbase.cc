@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "glbench/testbase.h"
+
 #include <gflags/gflags.h>
 #include <png.h>
 #include <stdio.h>
@@ -13,7 +15,6 @@
 #include "glbench/glinterface.h"
 #include "glbench/md5.h"
 #include "glbench/png_helper.h"
-#include "glbench/testbase.h"
 #include "glbench/utils.h"
 
 extern bool g_hasty;

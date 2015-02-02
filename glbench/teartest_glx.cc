@@ -6,10 +6,10 @@
 
 #include "base/logging.h"
 
-#include "glbench/main.h"
-#include "glbench/xlib_window.h"
 #include "glbench/glx_stuff.h"
+#include "glbench/main.h"
 #include "glbench/teartest.h"
+#include "glbench/xlib_window.h"
 
 
 class PixmapToTextureTest : public Test {

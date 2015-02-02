@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "glbench/teartest.h"
+
 #include <gflags/gflags.h>
 #include <map>
 #include <stdio.h>
@@ -17,8 +19,6 @@
 #include "glbench/main.h"
 #include "glbench/utils.h"
 #include "glbench/xlib_window.h"
-
-#include "glbench/teartest.h"
 
 typedef std::map<std::string, Test*> TestMap;
 

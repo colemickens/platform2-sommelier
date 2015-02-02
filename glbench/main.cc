@@ -2,10 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "glbench/main.h"
+
 #include <gflags/gflags.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include <ctime>
 
 #include "base/logging.h"
@@ -13,7 +16,6 @@
 #include "base/strings/string_util.h"
 
 #include "glbench/glinterface.h"
-#include "glbench/main.h"
 #include "glbench/utils.h"
 
 #include "glbench/all_tests.h"

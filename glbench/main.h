@@ -9,8 +9,8 @@
 #include <sys/time.h>
 
 #if defined(USE_OPENGLES)
-#include <GLES2/gl2.h>
 #include <EGL/egl.h>
+#include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #elif defined(USE_OPENGL)
 #include <GL/gl.h>
