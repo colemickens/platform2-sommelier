@@ -22,16 +22,15 @@ class Rule {
   enum Result { ALLOW, DENY, IGNORE };
   enum SpecialInterfaces { ANY_INTERFACE = -1 };
 
-  static const char *ResultToString(const Result &result);
+  static const char* ResultToString(const Result& result);
 
   virtual ~Rule() = default;
-  const std::string &name() const;
+  const std::string& name() const;
 
-  virtual Result Process(const std::string &path,
-                         const int interface_id) = 0;
+  virtual Result Process(const std::string& path, const int interface_id) = 0;
 
  protected:
-  explicit Rule(const std::string &name);
+  explicit Rule(const std::string& name);
 
  private:
   const std::string name_;

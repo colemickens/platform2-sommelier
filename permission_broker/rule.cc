@@ -6,7 +6,7 @@
 
 namespace permission_broker {
 
-const char *Rule::ResultToString(const Result &result) {
+const char* Rule::ResultToString(const Result& result) {
   switch (result) {
     case ALLOW:
       return "ALLOW";
@@ -19,9 +19,9 @@ const char *Rule::ResultToString(const Result &result) {
   }
 }
 
-Rule::Rule(const std::string &name) : name_(name) {}
+Rule::Rule(const std::string& name) : name_(name) {}
 
-const std::string &Rule::name() const {
+const std::string& Rule::name() const {
   return name_;
 }
 

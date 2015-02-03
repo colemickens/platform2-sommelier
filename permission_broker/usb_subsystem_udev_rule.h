@@ -16,15 +16,15 @@ namespace permission_broker {
 // ignored by this rule.
 class UsbSubsystemUdevRule : public UdevRule {
  public:
-  explicit UsbSubsystemUdevRule(const std::string &name);
+  explicit UsbSubsystemUdevRule(const std::string& name);
   ~UsbSubsystemUdevRule() override = default;
 
   // Called with every device belonging to the USB subsystem. The return value
   // from ProcessUsbDevice is returned directly as the result of processing this
   // rule.
-  virtual Result ProcessUsbDevice(struct udev_device *device) = 0;
+  virtual Result ProcessUsbDevice(struct udev_device* device) = 0;
 
-  Result ProcessDevice(struct udev_device *device) override;
+  Result ProcessDevice(struct udev_device* device) override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UsbSubsystemUdevRule);
