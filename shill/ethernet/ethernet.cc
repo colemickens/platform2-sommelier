@@ -31,8 +31,12 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/net/rtnl_handler.h"
+#include "shill/pppoe/pppoe_service.h"
 #include "shill/profile.h"
+#include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
+#include "shill/refptr_types.h"
+#include "shill/store_interface.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
@@ -63,6 +67,7 @@ Ethernet::Ethernet(ControlInterface *control_interface,
              address,
              interface_index,
              Technology::kEthernet),
+      control_interface_(control_interface),
       link_up_(false),
       is_eap_authenticated_(false),
       is_eap_detected_(false),
@@ -75,13 +80,15 @@ Ethernet::Ethernet(ControlInterface *control_interface,
                            &is_eap_authenticated_);
   store->RegisterConstBool(kEapAuthenticatorDetectedProperty,
                            &is_eap_detected_);
+  store->RegisterDerivedBool(kPPPoEProperty, BoolAccessor(
+      new CustomAccessor<Ethernet, bool>(this,
+                                         &Ethernet::GetPPPoEMode,
+                                         &Ethernet::ConfigurePPPoEMode,
+                                         &Ethernet::ClearPPPoEMode)));
+
   eap_listener_->set_request_received_callback(
       base::Bind(&Ethernet::OnEapDetected, weak_ptr_factory_.GetWeakPtr()));
-  service_ = new EthernetService(control_interface,
-                                 dispatcher,
-                                 metrics,
-                                 manager,
-                                 weak_ptr_factory_.GetWeakPtr());
+  service_ = CreateEthernetService();
   SLOG(this, 2) << "Ethernet device " << link_name << " initialized.";
 }
 
@@ -93,7 +100,9 @@ void Ethernet::Start(Error *error,
   rtnl_handler()->SetInterfaceFlags(interface_index(), IFF_UP, IFF_UP);
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   LOG(INFO) << "Registering " << link_name() << " with manager.";
-  manager()->RegisterService(service_);
+  if (!manager()->HasService(service_)) {
+    manager()->RegisterService(service_);
+  }
   if (error)
     error->Reset();       // indicate immediate completion
 }
@@ -132,9 +141,35 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
   }
 }
 
+bool Ethernet::Load(StoreInterface *storage) {
+  const string id = GetStorageIdentifier();
+  if (!storage->ContainsGroup(id)) {
+    LOG(WARNING) << "Device is not available in the persistent store: " << id;
+    return false;
+  }
+
+  bool pppoe = false;
+  storage->GetBool(id, kPPPoEProperty, &pppoe);
+
+  Error error;
+  ConfigurePPPoEMode(pppoe, &error);
+  if (!error.IsSuccess()) {
+    LOG(WARNING) << "Error configuring PPPoE mode.  Ignoring!";
+  }
+
+  return Device::Load(storage);
+}
+
+bool Ethernet::Save(StoreInterface *storage) {
+  const string id = GetStorageIdentifier();
+  storage->SetBool(id, kPPPoEProperty, GetPPPoEMode(nullptr));
+  return true;
+}
+
 void Ethernet::ConnectTo(EthernetService *service) {
   CHECK(service == service_.get()) << "Ethernet was asked to connect the "
                                    << "wrong service?";
+  CHECK(!GetPPPoEMode(nullptr)) << "We should never connect in PPPoE mode!";
   if (!link_up_) {
     return;
   }
@@ -407,6 +442,61 @@ void Ethernet::SetupWakeOnLan() {
                  << sockets_->ErrorString() << ".";
     return;
   }
+}
+
+bool Ethernet::ConfigurePPPoEMode(const bool &enable, Error *error) {
+#if defined(DISABLE_PPPOE)
+  LOG(WARNING) << "PPPoE support is not implemented.  Ignoring attempt "
+               << "to configure " << link_name();
+  error->Populate(Error::kNotSupported);
+  return false;
+#else
+  CHECK(service_);
+
+  EthernetServiceRefPtr service = nullptr;
+  if (enable && service_->technology() != Technology::kPPPoE) {
+    service = CreatePPPoEService();
+  } else if (!enable && service_->technology() == Technology::kPPPoE) {
+    service = CreateEthernetService();
+  } else {
+    return false;
+  }
+
+  CHECK(service);
+  service_->Disconnect(error, nullptr);
+  manager()->DeregisterService(service_);
+  service_ = service;
+  manager()->RegisterService(service_);
+
+  return true;
+#endif  // DISABLE_PPPOE
+}
+
+bool Ethernet::GetPPPoEMode(Error *error) {
+  if (service_ == nullptr) {
+    return false;
+  }
+  return service_->technology() == Technology::kPPPoE;
+}
+
+void Ethernet::ClearPPPoEMode(Error *error) {
+  ConfigurePPPoEMode(false, error);
+}
+
+EthernetServiceRefPtr Ethernet::CreateEthernetService() {
+  return new EthernetService(control_interface_,
+                             dispatcher(),
+                             metrics(),
+                             manager(),
+                             weak_ptr_factory_.GetWeakPtr());
+}
+
+EthernetServiceRefPtr Ethernet::CreatePPPoEService() {
+  return new PPPoEService(control_interface_,
+                          dispatcher(),
+                          metrics(),
+                          manager(),
+                          weak_ptr_factory_.GetWeakPtr());
 }
 
 }  // namespace shill

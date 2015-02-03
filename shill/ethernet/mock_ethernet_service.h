@@ -23,6 +23,7 @@ class MockEthernetService : public EthernetService {
                                          size_t depth));
   MOCK_METHOD0(ClearEAPCertification, void());
   MOCK_METHOD2(Configure, void(const KeyValueStore &args, Error *error));
+  MOCK_METHOD2(Disconnect, void(Error *error, const char *reason));
   MOCK_METHOD3(DisconnectWithFailure,
                void(ConnectFailure failure, Error *error, const char *reason));
   MOCK_CONST_METHOD1(GetDeviceRpcId, std::string(Error *error));
@@ -35,6 +36,7 @@ class MockEthernetService : public EthernetService {
   MOCK_METHOD1(SetFailureSilent, void(ConnectFailure failure));
   MOCK_METHOD1(SetState, void(ConnectState state));
   MOCK_METHOD0(OnVisibilityChanged, void());
+  MOCK_CONST_METHOD0(technology, Technology::Identifier());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockEthernetService);

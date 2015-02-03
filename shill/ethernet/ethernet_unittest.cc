@@ -9,6 +9,8 @@
 #include <linux/sockios.h>
 
 #include <memory>
+#include <utility>
+#include <vector>
 
 #include <base/memory/ref_counted.h>
 
@@ -34,11 +36,14 @@
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/testing.h"
 
+using std::pair;
 using std::string;
+using std::vector;
 using testing::_;
 using testing::AnyNumber;
 using testing::EndsWith;
 using testing::Eq;
+using testing::InSequence;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
@@ -90,6 +95,9 @@ class EthernetTest : public testing::Test {
     EXPECT_CALL(manager_, ethernet_eap_provider())
         .WillRepeatedly(Return(&ethernet_eap_provider_));
     ethernet_eap_provider_.set_service(mock_eap_service_);
+
+    ON_CALL(*mock_service_, technology())
+        .WillByDefault(Return(Technology::kEthernet));
   }
 
   void TearDown() override {
@@ -517,5 +525,48 @@ TEST_F(EthernetTest, Certification) {
   SetService(mock_service_);
   TriggerCertification(kSubjectName, kDepth);
 }
+
+#if !defined(DISABLE_PPPOE)
+
+MATCHER_P(TechnologyEq, technology, "") {
+  return arg->technology() == technology;
+}
+
+TEST_F(EthernetTest, TogglePPPoE) {
+  SetService(mock_service_);
+
+  EXPECT_CALL(*mock_service_, technology())
+      .WillRepeatedly(Return(Technology::kEthernet));
+  EXPECT_CALL(*mock_service_, Disconnect(_, _));
+
+  InSequence sequence;
+  EXPECT_CALL(manager_, DeregisterService(Eq(mock_service_)));
+  EXPECT_CALL(manager_, RegisterService(TechnologyEq(Technology::kPPPoE)));
+  EXPECT_CALL(manager_, DeregisterService(TechnologyEq(Technology::kPPPoE)));
+  EXPECT_CALL(manager_, RegisterService(_));
+
+  const vector<pair<bool, Technology::Identifier>> transitions = {
+    {false, Technology::kEthernet},
+    {true,  Technology::kPPPoE},
+    {false, Technology::kEthernet},
+  };
+  for (const auto transition : transitions) {
+    Error error;
+    ethernet_->mutable_store()->SetBoolProperty(
+        kPPPoEProperty, transition.first, &error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ(GetService()->technology(), transition.second);
+  }
+}
+
+#else
+
+TEST_F(EthernetTest, PPPoEDisabled) {
+  Error error;
+  ethernet_->mutable_store()->SetBoolProperty(kPPPoEProperty, true, &error);
+  EXPECT_FALSE(error.IsSuccess());
+}
+
+#endif  // DISABLE_PPPOE
 
 }  // namespace shill

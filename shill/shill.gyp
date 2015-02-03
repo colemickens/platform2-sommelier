@@ -30,6 +30,11 @@
           'DISABLE_CELLULAR',
         ],
       }],
+      ['USE_pppoe == 0', {
+        'defines': [
+          'DISABLE_PPPOE',
+        ],
+      }],
       ['USE_vpn == 0', {
         'defines': [
           'DISABLE_VPN',

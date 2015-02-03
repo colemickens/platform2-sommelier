@@ -26,6 +26,7 @@ class EapListener;
 class EthernetEapProvider;
 class ProxyFactory;
 class Sockets;
+class StoreInterface;
 class SupplicantEAPStateHandler;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
@@ -45,6 +46,8 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
              const EnabledStateChangedCallback &callback) override;
   void Stop(Error *error, const EnabledStateChangedCallback &callback) override;
   void LinkEvent(unsigned int flags, unsigned int change) override;
+  bool Load(StoreInterface *storage) override;
+  bool Save(StoreInterface *storage) override;
 
   virtual void ConnectTo(EthernetService *service);
   virtual void DisconnectFrom(EthernetService *service);
@@ -104,7 +107,18 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   // Callback task run as a result of TryEapAuthentication().
   void TryEapAuthenticationTask();
 
+  // Accessors for the PPoE property.
+  bool GetPPPoEMode(Error *error);
+  bool ConfigurePPPoEMode(const bool &mode, Error *error);
+  void ClearPPPoEMode(Error *error);
+
+  // Helpers for creating services with |this| as their device.
+  EthernetServiceRefPtr CreateEthernetService();
+  EthernetServiceRefPtr CreatePPPoEService();
+
   void SetupWakeOnLan();
+
+  ControlInterface *control_interface_;
 
   EthernetServiceRefPtr service_;
   bool link_up_;
