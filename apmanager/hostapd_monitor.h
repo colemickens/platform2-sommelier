@@ -9,6 +9,7 @@
 
 #include <base/cancelable_callback.h>
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 
 #include "apmanager/event_dispatcher.h"
 
@@ -27,6 +28,8 @@ namespace apmanager {
 class HostapdMonitor {
  public:
   enum Event {
+    kHostapdFailed,
+    kHostapdStarted,
     kStationConnected,
     kStationDisconnected,
   };
@@ -80,6 +83,7 @@ class HostapdMonitor {
   std::unique_ptr<shill::IOHandler> hostapd_input_handler_;
   shill::IOHandlerFactory *io_handler_factory_;
   EventDispatcher* event_dispatcher_;
+  base::WeakPtrFactory<HostapdMonitor> weak_ptr_factory_;
 
   int hostapd_ctrl_iface_check_count_;
   base::CancelableClosure attach_timeout_callback_;

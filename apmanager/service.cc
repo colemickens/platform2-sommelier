@@ -27,6 +27,12 @@ const char Service::kHostapdControlInterfacePath[] =
     "/var/run/apmanager/hostapd/ctrl_iface";
 const int Service::kTerminationTimeoutSeconds = 2;
 
+// static. Service state definitions.
+const char Service::kStateIdle[] = "Idle";
+const char Service::kStateStarting[] = "Starting";
+const char Service::kStateStarted[] = "Started";
+const char Service::kStateFailed[] = "Failed";
+
 Service::Service(Manager* manager, int service_identifier)
     : org::chromium::apmanager::ServiceAdaptor(this),
       manager_(manager),
@@ -41,6 +47,7 @@ Service::Service(Manager* manager, int service_identifier)
       file_writer_(FileWriter::GetInstance()),
       process_factory_(ProcessFactory::GetInstance()) {
   SetConfig(config_->dbus_path());
+  SetState(kStateIdle);
   // TODO(zqiu): come up with better server address management. This is good
   // enough for now.
   config_->SetServerAddressIndex(service_identifier_ & 0xFF);
@@ -142,6 +149,9 @@ bool Service::Start(chromeos::ErrorPtr* error) {
   }
   hostapd_monitor_->Start();
 
+  // Update service state.
+  SetState(kStateStarting);
+
   return true;
 }
 
@@ -154,6 +164,7 @@ bool Service::Stop(chromeos::ErrorPtr* error) {
   }
 
   ReleaseResources();
+  SetState(kStateIdle);
   return true;
 }
 
@@ -181,6 +192,7 @@ void Service::StopHostapdProcess() {
 }
 
 void Service::ReleaseResources() {
+  hostapd_monitor_.reset();
   StopHostapdProcess();
   dhcp_server_.reset();
   config_->ReleaseDevice();
@@ -189,6 +201,12 @@ void Service::ReleaseResources() {
 void Service::HostapdEventCallback(HostapdMonitor::Event event,
                                    const std::string& data) {
   switch (event) {
+    case HostapdMonitor::kHostapdFailed:
+      SetState(kStateFailed);
+      break;
+    case HostapdMonitor::kHostapdStarted:
+      SetState(kStateStarted);
+      break;
     case HostapdMonitor::kStationConnected:
       LOG(INFO) << "Station connected: " << data;
       break;

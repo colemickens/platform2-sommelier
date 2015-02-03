@@ -48,6 +48,7 @@ HostapdMonitor::HostapdMonitor(const EventCallback& callback,
       io_handler_factory_(
           IOHandlerFactoryContainer::GetInstance()->GetIOHandlerFactory()),
       event_dispatcher_(EventDispatcher::GetInstance()),
+      weak_ptr_factory_(this),
       started_(false) {}
 
 HostapdMonitor::~HostapdMonitor() {
@@ -66,7 +67,8 @@ void HostapdMonitor::Start() {
   hostapd_ctrl_iface_check_count_ = 0;
   // Start off by checking the control interface file for the hostapd process.
   event_dispatcher_->PostTask(
-      Bind(&HostapdMonitor::HostapdCtrlIfaceCheckTask, Unretained(this)));
+      Bind(&HostapdMonitor::HostapdCtrlIfaceCheckTask,
+           weak_ptr_factory_.GetWeakPtr()));
   started_ = true;
 }
 
@@ -74,18 +76,22 @@ void HostapdMonitor::HostapdCtrlIfaceCheckTask() {
   struct stat buf;
   if (stat(dest_path_.c_str(), &buf) != 0) {
     if (hostapd_ctrl_iface_check_count_ >= kHostapdCtrlIfaceCheckMaxAttempts) {
-      // TODO(zqiu): this indicates the hostapd failed to start. Invoke
-      // callback indicating hostapd start failure.
+      // This indicates the hostapd failed to start. Invoke callback indicating
+      // hostapd start failed.
       LOG(ERROR) << "Timeout waiting for hostapd control interface";
+      event_callback_.Run(kHostapdFailed, "");
     } else {
       hostapd_ctrl_iface_check_count_++;
       event_dispatcher_->PostDelayedTask(
           base::Bind(&HostapdMonitor::HostapdCtrlIfaceCheckTask,
-                     base::Unretained(this)),
+                     weak_ptr_factory_.GetWeakPtr()),
           kHostapdCtrlIfaceCheckIntervalMs);
     }
     return;
   }
+
+  // Control interface is up, meaning hostapd started successfully.
+  event_callback_.Run(kHostapdStarted, "");
 
   // Attach to the control interface to receive unsolicited event notifications.
   AttachToHostapd();
@@ -137,7 +143,8 @@ void HostapdMonitor::AttachToHostapd() {
 
   // Start a timer for ATTACH response.
   attach_timeout_callback_.Reset(
-      Bind(&HostapdMonitor::AttachTimeoutHandler, Unretained(this)));
+      Bind(&HostapdMonitor::AttachTimeoutHandler,
+           weak_ptr_factory_.GetWeakPtr()));
   event_dispatcher_->PostDelayedTask(attach_timeout_callback_.callback(),
                                      kHostapdAttachTimeoutMs);
   return;

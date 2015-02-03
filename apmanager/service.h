@@ -46,6 +46,10 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
   static const char kHostapdConfigPathFormat[];
   static const char kHostapdControlInterfacePath[];
   static const int kTerminationTimeoutSeconds;
+  static const char kStateIdle[];
+  static const char kStateStarting[];
+  static const char kStateStarted[];
+  static const char kStateFailed[];
 
   // Return true if hostapd process is currently running.
   bool IsHostapdRunning();
