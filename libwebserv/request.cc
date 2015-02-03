@@ -111,11 +111,15 @@ std::vector<std::pair<std::string, const FileInfo*>> Request::GetFiles() const {
 std::vector<std::string> Request::GetFormField(const std::string& name) const {
   std::vector<std::string> data;
   auto pair = get_data_.equal_range(name);
-  while (pair.first != pair.second)
+  while (pair.first != pair.second) {
     data.push_back(pair.first->second);
+    ++pair.first;
+  }
   pair = post_data_.equal_range(name);
-  while (pair.first != pair.second)
+  while (pair.first != pair.second) {
     data.push_back(pair.first->second);
+    ++pair.first;
+  }
   return data;
 }
 
@@ -123,8 +127,10 @@ std::vector<std::string> Request::GetFormFieldPost(
     const std::string& name) const {
   std::vector<std::string> data;
   auto pair = post_data_.equal_range(name);
-  while (pair.first != pair.second)
+  while (pair.first != pair.second) {
     data.push_back(pair.first->second);
+    ++pair.first;
+  }
   return data;
 }
 
@@ -132,8 +138,10 @@ std::vector<std::string> Request::GetFormFieldGet(
     const std::string& name) const {
   std::vector<std::string> data;
   auto pair = get_data_.equal_range(name);
-  while (pair.first != pair.second)
+  while (pair.first != pair.second) {
     data.push_back(pair.first->second);
+    ++pair.first;
+  }
   return data;
 }
 
@@ -141,8 +149,10 @@ std::vector<const FileInfo*> Request::GetFileInfo(
     const std::string& name) const {
   std::vector<const FileInfo*> data;
   auto pair = file_info_.equal_range(name);
-  while (pair.first != pair.second)
+  while (pair.first != pair.second) {
     data.push_back(pair.first->second.get());
+    ++pair.first;
+  }
   return data;
 }
 
