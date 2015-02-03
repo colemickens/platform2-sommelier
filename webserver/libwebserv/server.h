@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBWEBSERV_SERVER_H_
-#define LIBWEBSERV_SERVER_H_
+#ifndef WEBSERVER_LIBWEBSERV_SERVER_H_
+#define WEBSERVER_LIBWEBSERV_SERVER_H_
 
 #include <map>
 #include <memory>
@@ -14,9 +14,8 @@
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_piece.h>
 #include <chromeos/secure_blob.h>
-
-#include "libwebserv/export.h"
-#include "libwebserv/request_handler_interface.h"
+#include <libwebserv/export.h>
+#include <libwebserv/request_handler_interface.h>
 
 struct MHD_Daemon;
 
@@ -119,4 +118,4 @@ class LIBWEBSERV_EXPORT Server final {
 
 }  // namespace libwebserv
 
-#endif  // LIBWEBSERV_SERVER_H_
+#endif  // WEBSERVER_LIBWEBSERV_SERVER_H_

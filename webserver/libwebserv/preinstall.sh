@@ -12,4 +12,4 @@ deps=$(<"${OUT}"/gen/libwebserv-${v}-deps.txt)
 sed \
   -e "s/@BSLOT@/${v}/g" \
   -e "s/@PRIVATE_PC@/${deps}/g" \
-  "libwebserv.pc.in" > "${OUT}/lib/libwebserv-${v}.pc"
+  "libwebserv/libwebserv.pc.in" > "${OUT}/lib/libwebserv-${v}.pc"

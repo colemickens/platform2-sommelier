@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libwebserv/connection.h"
+#include <libwebserv/connection.h>
 
 #include <algorithm>
 #include <vector>
@@ -12,12 +12,11 @@
 #include <base/logging.h>
 #include <base/task_runner.h>
 #include <chromeos/http/http_request.h>
+#include <libwebserv/request.h>
+#include <libwebserv/request_handler_interface.h>
+#include <libwebserv/response.h>
+#include <libwebserv/server.h>
 #include <microhttpd.h>
-
-#include "libwebserv/request.h"
-#include "libwebserv/request_handler_interface.h"
-#include "libwebserv/response.h"
-#include "libwebserv/server.h"
 
 namespace libwebserv {
 

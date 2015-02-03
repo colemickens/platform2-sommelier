@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBWEBSERV_REQUEST_H_
-#define LIBWEBSERV_REQUEST_H_
+#ifndef WEBSERVER_LIBWEBSERV_REQUEST_H_
+#define WEBSERVER_LIBWEBSERV_REQUEST_H_
 
 #include <map>
 #include <memory>
@@ -14,8 +14,7 @@
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-
-#include "libwebserv/export.h"
+#include <libwebserv/export.h>
 
 struct MHD_Connection;
 
@@ -144,4 +143,4 @@ class LIBWEBSERV_EXPORT Request final {
 
 }  // namespace libwebserv
 
-#endif  // LIBWEBSERV_REQUEST_H_
+#endif  // WEBSERVER_LIBWEBSERV_REQUEST_H_

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libwebserv/response.h"
+#include <libwebserv/response.h>
 
 #include <algorithm>
 
@@ -12,9 +12,8 @@
 #include <chromeos/http/http_request.h>
 #include <chromeos/mime_utils.h>
 #include <chromeos/strings/string_utils.h>
+#include <libwebserv/connection.h>
 #include <microhttpd.h>
-
-#include "libwebserv/connection.h"
 
 namespace libwebserv {
 

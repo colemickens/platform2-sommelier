@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBWEBSERV_RESPONSE_H_
-#define LIBWEBSERV_RESPONSE_H_
+#ifndef WEBSERVER_LIBWEBSERV_RESPONSE_H_
+#define WEBSERVER_LIBWEBSERV_RESPONSE_H_
 
 #include <map>
 #include <memory>
@@ -14,8 +14,7 @@
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-
-#include "libwebserv/export.h"
+#include <libwebserv/export.h>
 
 namespace base {
 class Value;
@@ -95,4 +94,4 @@ class LIBWEBSERV_EXPORT Response
 
 }  // namespace libwebserv
 
-#endif  // LIBWEBSERV_RESPONSE_H_
+#endif  // WEBSERVER_LIBWEBSERV_RESPONSE_H_

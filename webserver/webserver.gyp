@@ -22,11 +22,11 @@
       },
       'includes': ['../common-mk/deps.gypi'],
       'sources': [
-        'connection.cc',
-        'response.cc',
-        'request.cc',
-        'request_handler_callback.cc',
-        'server.cc',
+        'libwebserv/connection.cc',
+        'libwebserv/response.cc',
+        'libwebserv/request.cc',
+        'libwebserv/request_handler_callback.cc',
+        'libwebserv/server.cc',
       ],
       'actions': [
         {
@@ -75,7 +75,7 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'libwebserv_testrunner.cc',
+            'libwebserv/libwebserv_testrunner.cc',
           ],
         },
       ],

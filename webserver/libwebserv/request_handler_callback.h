@@ -2,14 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBWEBSERV_REQUEST_HANDLER_CALLBACK_H_
-#define LIBWEBSERV_REQUEST_HANDLER_CALLBACK_H_
+#ifndef WEBSERVER_LIBWEBSERV_REQUEST_HANDLER_CALLBACK_H_
+#define WEBSERVER_LIBWEBSERV_REQUEST_HANDLER_CALLBACK_H_
 
 #include <base/callback.h>
 #include <base/macros.h>
-
-#include "libwebserv/export.h"
-#include "libwebserv/request_handler_interface.h"
+#include <libwebserv/export.h>
+#include <libwebserv/request_handler_interface.h>
 
 namespace libwebserv {
 
@@ -32,4 +31,4 @@ class LIBWEBSERV_EXPORT RequestHandlerCallback
 
 }  // namespace libwebserv
 
-#endif  // LIBWEBSERV_REQUEST_HANDLER_CALLBACK_H_
+#endif  // WEBSERVER_LIBWEBSERV_REQUEST_HANDLER_CALLBACK_H_

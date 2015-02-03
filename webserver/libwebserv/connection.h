@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBWEBSERV_CONNECTION_H_
-#define LIBWEBSERV_CONNECTION_H_
+#ifndef WEBSERVER_LIBWEBSERV_CONNECTION_H_
+#define WEBSERVER_LIBWEBSERV_CONNECTION_H_
 
 #include <map>
 #include <string>
@@ -13,8 +13,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/errors/error.h>
-
-#include "libwebserv/export.h"
+#include <libwebserv/export.h>
 
 struct MHD_Connection;
 struct MHD_PostProcessor;
@@ -87,4 +86,4 @@ class LIBWEBSERV_EXPORT Connection final : public base::RefCounted<Connection> {
 
 }  // namespace libwebserv
 
-#endif  // LIBWEBSERV_CONNECTION_H_
+#endif  // WEBSERVER_LIBWEBSERV_CONNECTION_H_

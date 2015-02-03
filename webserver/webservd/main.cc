@@ -10,7 +10,7 @@
 #include <chromeos/daemons/dbus_daemon.h>
 #include <chromeos/syslog_logging.h>
 
-#include "libwebserv/webservd/manager.h"
+#include "webserver/webservd/manager.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 

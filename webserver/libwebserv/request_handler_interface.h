@@ -2,13 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBWEBSERV_REQUEST_HANDLER_INTERFACE_H_
-#define LIBWEBSERV_REQUEST_HANDLER_INTERFACE_H_
+#ifndef WEBSERVER_LIBWEBSERV_REQUEST_HANDLER_INTERFACE_H_
+#define WEBSERVER_LIBWEBSERV_REQUEST_HANDLER_INTERFACE_H_
 
 #include <base/memory/scoped_ptr.h>
-
-#include "libwebserv/request.h"
-#include "libwebserv/response.h"
+#include <libwebserv/request.h>
+#include <libwebserv/response.h>
 
 namespace libwebserv {
 
@@ -26,4 +25,4 @@ class RequestHandlerInterface {
 
 }  // namespace libwebserv
 
-#endif  // LIBWEBSERV_REQUEST_HANDLER_INTERFACE_H_
+#endif  // WEBSERVER_LIBWEBSERV_REQUEST_HANDLER_INTERFACE_H_
