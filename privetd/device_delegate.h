@@ -65,13 +65,17 @@ class DeviceDelegate {
   // Sets the name for the device.
   virtual void SetDescription(const std::string& description) = 0;
 
-  // Sets the location of the the device.
+  // Sets the location of the device.
   virtual void SetLocation(const std::string& location) = 0;
+
+  // Updates the HTTP port value.
+  virtual void SetHttpPort(uint16_t port) = 0;
+
+  // Updates the HTTPS port value.
+  virtual void SetHttpsPort(uint16_t port) = 0;
 
   // Create default instance.
   static std::unique_ptr<DeviceDelegate> CreateDefault(
-      uint16_t http_port,
-      uint16_t https_port,
       PrivetdConfigParser* config,
       DaemonState* state_store,
       // Allows owner to know that state of the object was changed. Used to

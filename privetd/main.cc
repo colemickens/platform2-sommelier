@@ -9,6 +9,7 @@
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/json/json_reader.h>
+#include <base/memory/weak_ptr.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 #include <chromeos/daemons/dbus_daemon.h>
@@ -18,6 +19,7 @@
 #include <chromeos/mime_utils.h>
 #include <chromeos/strings/string_utils.h>
 #include <chromeos/syslog_logging.h>
+#include <libwebserv/protocol_handler.h>
 #include <libwebserv/request.h>
 #include <libwebserv/response.h>
 #include <libwebserv/server.h>
@@ -40,6 +42,7 @@ namespace privetd {
 namespace {
 
 using chromeos::dbus_utils::AsyncEventSequencer;
+using libwebserv::ProtocolHandler;
 using libwebserv::Request;
 using libwebserv::Response;
 
@@ -56,16 +59,12 @@ const char kRootPath[] = "/org/chromium/privetd";
 
 class Daemon : public chromeos::DBusServiceDaemon {
  public:
-  Daemon(uint16_t http_port_number,
-         uint16_t https_port_number,
-         bool disable_security,
+  Daemon(bool disable_security,
          bool enable_ping,
          const std::vector<std::string>& device_whitelist,
          const base::FilePath& config_path,
          const base::FilePath& state_path)
       : DBusServiceDaemon(kServiceName, kRootPath),
-        http_port_number_(http_port_number),
-        https_port_number_(https_port_number),
         disable_security_(disable_security),
         enable_ping_(enable_ping),
         device_whitelist_(device_whitelist),
@@ -83,7 +82,7 @@ class Daemon : public chromeos::DBusServiceDaemon {
     }
     state_store_->Init();
     device_ = DeviceDelegate::CreateDefault(
-        http_port_number_, https_port_number_, &parser_, state_store_.get(),
+        &parser_, state_store_.get(),
         base::Bind(&Daemon::OnChanged, base::Unretained(this)));
     if (parser_.gcd_bootstrap_mode() != GcdBootstrapMode::kDisabled) {
       cloud_ = CloudDelegate::CreateDefault(
@@ -111,31 +110,38 @@ class Daemon : public chromeos::DBusServiceDaemon {
                                             security_.get(),
                                             wifi_bootstrap_manager_.get()));
 
-    CHECK(http_server_.Start(http_port_number_));
-    security_->InitTlsData();
-    CHECK(https_server_.StartWithTLS(https_port_number_,
-                                     security_->GetTlsPrivateKey(),
-                                     security_->GetTlsCertificate()));
+    peerd_client_.reset(new PeerdClient(bus_, device_.get(), cloud_.get(),
+                                        wifi_bootstrap_manager_.get()));
 
-    http_server_.AddHandlerCallback(
+    web_server_.OnProtocolHandlerConnected(
+        base::Bind(&Daemon::OnProtocolHandlerConnected,
+                   weak_ptr_factory_.GetWeakPtr()));
+    web_server_.OnProtocolHandlerDisconnected(
+        base::Bind(&Daemon::OnProtocolHandlerDisconnected,
+                   weak_ptr_factory_.GetWeakPtr()));
+
+    web_server_.Connect(
+        bus_,
+        kServiceName,
+        sequencer->GetHandler("Server::Connect failed.", true),
+        base::Bind(&base::DoNothing),
+        base::Bind(&base::DoNothing));
+
+    web_server_.GetDefaultHttpHandler()->AddHandlerCallback(
         "/privet/", "",
         base::Bind(&Daemon::PrivetRequestHandler, base::Unretained(this)));
-    https_server_.AddHandlerCallback(
+    web_server_.GetDefaultHttpsHandler()->AddHandlerCallback(
         "/privet/", "",
         base::Bind(&Daemon::PrivetRequestHandler, base::Unretained(this)));
-
     if (enable_ping_) {
-      http_server_.AddHandlerCallback(
+      web_server_.GetDefaultHttpHandler()->AddHandlerCallback(
           "/privet/ping", chromeos::http::request_type::kGet,
           base::Bind(&Daemon::HelloWorldHandler, base::Unretained(this)));
-      https_server_.AddHandlerCallback(
+      web_server_.GetDefaultHttpsHandler()->AddHandlerCallback(
           "/privet/ping", chromeos::http::request_type::kGet,
           base::Bind(&Daemon::HelloWorldHandler, base::Unretained(this)));
     }
 
-    peerd_client_.reset(new PeerdClient(bus_, device_.get(), cloud_.get(),
-                                        wifi_bootstrap_manager_.get()));
-    peerd_client_->Start();
     dbus_manager_.reset(new DBusManager{object_manager_.get(),
                                         wifi_bootstrap_manager_.get(),
                                         cloud_.get(),
@@ -145,8 +151,7 @@ class Daemon : public chromeos::DBusServiceDaemon {
   }
 
   void OnShutdown(int* return_code) override {
-    http_server_.Stop();
-    https_server_.Stop();
+    web_server_.Disconnect();
     DBusDaemon::OnShutdown(return_code);
   }
 
@@ -200,7 +205,7 @@ class Daemon : public chromeos::DBusServiceDaemon {
   }
 
   void OnChanged() {
-    if (peerd_client_) {
+    if (peerd_client_ && web_server_.GetDefaultHttpHandler()->IsConnected()) {
       peerd_client_->Stop();
       peerd_client_->Start();
     }
@@ -210,8 +215,29 @@ class Daemon : public chromeos::DBusServiceDaemon {
     OnChanged();
   }
 
-  uint16_t http_port_number_;
-  uint16_t https_port_number_;
+  void OnProtocolHandlerConnected(ProtocolHandler* protocol_handler) {
+    if (protocol_handler->GetID() == ProtocolHandler::kHttp) {
+      device_->SetHttpPort(protocol_handler->GetPort());
+      if (peerd_client_)
+        peerd_client_->Start();
+    } else if (protocol_handler->GetID() == ProtocolHandler::kHttps) {
+      device_->SetHttpsPort(protocol_handler->GetPort());
+      security_->SetCertificateFingerprint(
+          protocol_handler->GetCertificateFingerprint());
+    }
+  }
+
+  void OnProtocolHandlerDisconnected(ProtocolHandler* protocol_handler) {
+    if (protocol_handler->GetID() == ProtocolHandler::kHttp) {
+      if (peerd_client_)
+        peerd_client_->Stop();
+      device_->SetHttpPort(0);
+    } else if (protocol_handler->GetID() == ProtocolHandler::kHttps) {
+      device_->SetHttpsPort(0);
+      security_->SetCertificateFingerprint({});
+    }
+  }
+
   bool disable_security_;
   bool enable_ping_;
   PrivetdConfigParser parser_;
@@ -227,9 +253,9 @@ class Daemon : public chromeos::DBusServiceDaemon {
   std::unique_ptr<PrivetHandler> privet_handler_;
   std::unique_ptr<PeerdClient> peerd_client_;
   std::unique_ptr<DBusManager> dbus_manager_;
-  libwebserv::Server http_server_;
-  libwebserv::Server https_server_;
+  libwebserv::Server web_server_;
 
+  base::WeakPtrFactory<Daemon> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
 
@@ -240,8 +266,6 @@ class Daemon : public chromeos::DBusServiceDaemon {
 int main(int argc, char* argv[]) {
   DEFINE_bool(disable_security, false, "disable Privet security for tests");
   DEFINE_bool(enable_ping, false, "enable test HTTP handler at /privet/ping");
-  DEFINE_int32(http_port, 8080, "HTTP port to listen for requests on");
-  DEFINE_int32(https_port, 8081, "HTTPS port to listen for requests on");
   DEFINE_bool(log_to_stderr, false, "log trace messages to stderr as well");
   DEFINE_string(config_path, privetd::kDefaultConfigFilePath,
                 "Path to file containing config information.");
@@ -264,21 +288,10 @@ int main(int argc, char* argv[]) {
   if (FLAGS_state_path.empty())
     FLAGS_state_path = privetd::kDefaultStateFilePath;
 
-  if (FLAGS_http_port < 1 || FLAGS_http_port > 0xFFFF) {
-    LOG(ERROR) << "Invalid HTTP port specified: '" << FLAGS_http_port << "'.";
-    return EX_USAGE;
-  }
-
-  if (FLAGS_https_port < 1 || FLAGS_https_port > 0xFFFF) {
-    LOG(ERROR) << "Invalid HTTPS port specified: '" << FLAGS_https_port << "'.";
-    return EX_USAGE;
-  }
-
   auto device_whitelist =
       chromeos::string_utils::Split(FLAGS_device_whitelist, ',', true, true);
 
-  privetd::Daemon daemon(FLAGS_http_port, FLAGS_https_port,
-                         FLAGS_disable_security, FLAGS_enable_ping,
+  privetd::Daemon daemon(FLAGS_disable_security, FLAGS_enable_ping,
                          device_whitelist, base::FilePath(FLAGS_config_path),
                          base::FilePath(FLAGS_state_path));
   return daemon.Run();

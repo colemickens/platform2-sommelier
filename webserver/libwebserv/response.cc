@@ -12,13 +12,12 @@
 #include <chromeos/http/http_request.h>
 #include <chromeos/mime_utils.h>
 #include <chromeos/strings/string_utils.h>
-#include <libwebserv/connection.h>
-#include <microhttpd.h>
+#include <libwebserv/protocol_handler.h>
 
 namespace libwebserv {
 
-Response::Response(const scoped_refptr<Connection>& connection)
-    : connection_(connection) {
+Response::Response(ProtocolHandler* handler, const std::string& request_id)
+    : handler_{handler}, request_id_{request_id} {
 }
 
 Response::~Response() {
@@ -26,11 +25,6 @@ Response::~Response() {
     ReplyWithError(chromeos::http::status_code::InternalServerError,
                    "Internal server error");
   }
-}
-
-scoped_ptr<Response> Response::Create(
-    const scoped_refptr<Connection>& connection) {
-  return scoped_ptr<Response>(new Response(connection));
 }
 
 void Response::AddHeader(const std::string& header_name,
@@ -99,12 +93,7 @@ void Response::ReplyWithErrorNotFound() {
 void Response::SendResponse() {
   CHECK(!reply_sent_) << "Response already sent";
   reply_sent_ = true;
-  CHECK(connection_->state_ == Connection::State::kRequestSent)
-      << "Unexpected connection state";
-  connection_->response_status_code_ = status_code_;
-  connection_->response_data_ = std::move(data_);
-  connection_->response_headers_ = std::move(headers_);
-  connection_->state_ = Connection::State::kResponseReceived;
+  handler_->CompleteRequest(request_id_, status_code_, headers_, data_);
 }
 
 }  // namespace libwebserv

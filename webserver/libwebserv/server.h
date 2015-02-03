@@ -9,110 +9,135 @@
 #include <memory>
 #include <string>
 
-#include <base/callback_forward.h>
 #include <base/macros.h>
-#include <base/memory/ref_counted.h>
-#include <base/strings/string_piece.h>
-#include <chromeos/secure_blob.h>
+#include <dbus/bus.h>
+#include <chromeos/dbus/async_event_sequencer.h>
+#include <chromeos/dbus/dbus_object.h>
 #include <libwebserv/export.h>
 #include <libwebserv/request_handler_interface.h>
 
-struct MHD_Daemon;
+namespace org {
+namespace chromium {
+namespace WebServer {
 
-namespace base {
-class TaskRunner;
-}  // namespace base
+class ObjectManagerProxy;
+class ProtocolHandlerProxy;
+class RequestHandlerAdaptor;
+class ServerProxy;
+
+}  // namespace WebServer
+}  // namespace chromium
+}  // namespace org
 
 namespace libwebserv {
 
 // Top-level wrapper class around HTTP server and provides an interface to
-// the web server. It allows the users to start the server and
-// register request handlers.
+// the web server.
 class LIBWEBSERV_EXPORT Server final {
  public:
   Server();
   ~Server();
 
-  // Starts the server and makes it listen to HTTP requests on the given port.
-  //
-  // Note that a valid message loop must exist before calling Start.
-  bool Start(uint16_t port);
+  // Establish a connection to the system webserver.
+  // |service_name| is the well known D-Bus name of the client's process, used
+  // to expose a callback D-Bus object the web server calls back with incoming
+  // requests.
+  // |on_server_online| and |on_server_offline| will notify the caller when the
+  // server comes up and down.
+  // Note that we can Connect() even before the webserver attaches to D-Bus,
+  // and appropriate state will be built up when the webserver appears on D-Bus.
+  void Connect(
+      const scoped_refptr<dbus::Bus>& bus,
+      const std::string& service_name,
+      const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb,
+      const base::Closure& on_server_online,
+      const base::Closure& on_server_offline);
 
-  // Starts the server and makes it listen to HTTPS requests on the given port.
-  //
-  // Note that a valid message loop must exist before calling StartWithTLS.
-  bool StartWithTLS(uint16_t port,
-                    const chromeos::SecureBlob& private_key,
-                    const chromeos::Blob& certificate);
+  // Disconnects from the web server and removes the library interface from
+  // D-Bus.
+  void Disconnect();
 
-  // Stops the server.
-  bool Stop();
+  // A helper method that returns the default handler for "http".
+  ProtocolHandler* GetDefaultHttpHandler() const;
 
-  // Adds a request handler for given |url|. If the |url| ends with a '/', this
-  // makes the handler respond to any URL beneath this path.
-  // Note that it is not possible to add a specific handler just for the root
-  // path "/". Doing so means "respond to any URL".
-  // |method| is optional request method verb, such as "GET" or "POST".
-  // If |method| is empty, the handler responds to any request verb.
-  // If there are more than one handler for a given request, the most specific
-  // match is chosen. For example, if there are the following handlers provided:
-  //    - A["/foo/",  ""]
-  //    - B["/foo/bar", "GET"]
-  //    - C["/foo/bar", ""]
-  // Here is what handlers are called when making certain requests:
-  //    - GET("/foo/bar")   => B[]
-  //    - POST("/foo/bar")  => C[]
-  //    - PUT("/foo/bar")   => C[]
-  //    - GET("/foo/baz")   => A[]
-  //    - GET("/foo")       => 404 Not Found
-  // This functions returns a handler ID which can be used later to remove
-  // the handler.
-  int AddHandler(const base::StringPiece& url,
-                 const base::StringPiece& method,
-                 std::unique_ptr<RequestHandlerInterface> handler);
+  // A helper method that returns the default handler for "https".
+  ProtocolHandler* GetDefaultHttpsHandler() const;
 
-  // Similar to AddHandler() above but the handler is just a callback function.
-  int AddHandlerCallback(
-      const base::StringPiece& url,
-      const base::StringPiece& method,
-      const base::Callback<RequestHandlerInterface::HandlerSignature>&
-          handler_callback);
+  // Returns true if the web server daemon is connected to DBus and our
+  // connection to it has been established.
+  bool IsConnected() const { return proxy_ != nullptr; }
 
-  // Removes the handler with the specified |handler_id|.
-  // Returns false if the handler with the given ID is not found.
-  bool RemoveHandler(int handler_id);
+  // Set a user-callback to be invoked when a protocol handler is connect to the
+  // server daemon.  Multiple calls to this method will overwrite previously set
+  // callbacks.
+  void OnProtocolHandlerConnected(
+      const base::Callback<void(ProtocolHandler*)>& callback);
 
-  // Finds the handler ID given the exact match criteria. Note that using
-  // this function could cause unexpected side effects if there are more than
-  // one handler registered for given URL/Method parameters.
-  // It is better to remember the handler ID from AddHandler() method and use
-  // that ID to remove the handler, instead of looking the handler up using
-  // URL/Method.
-  int GetHandlerId(const base::StringPiece& url,
-                   const base::StringPiece& method) const;
-
-  // Finds a handler for given URL/Method. This method does the criteria
-  // matching and not exact match performed by GetHandlerId. This is the method
-  // used to look up the handler for incoming HTTP requests.
-  RequestHandlerInterface* FindHandler(
-      const base::StringPiece& url,
-      const base::StringPiece& method) const;
+  // Set a user-callback to be invoked when a protocol handler is disconnected
+  // from the server daemon (e.g. on shutdown).  Multiple calls to this method
+  // will overwrite previously set callbacks.
+  void OnProtocolHandlerDisconnected(
+      const base::Callback<void(ProtocolHandler*)>& callback);
 
  private:
-  MHD_Daemon* server_ = nullptr;
-  scoped_refptr<base::TaskRunner> task_runner_;
+  friend class ProtocolHandler;
+  class RequestHandler;
 
-  struct LIBWEBSERV_PRIVATE HandlerMapEntry {
-    std::string url;
-    std::string method;
-    std::unique_ptr<RequestHandlerInterface> handler;
-  };
+  // Returns an existing protocol handler by ID.  See documentation in
+  // ProtocolHandler about IDs and how they work with webservd.
+  LIBWEBSERV_PRIVATE ProtocolHandler* GetProtocolHandler(
+      const std::string& id) const;
 
-  std::map<int, HandlerMapEntry> request_handlers_;
-  int last_handler_id_{0};
+  // Handler invoked when a connection is established to web server daemon.
+  LIBWEBSERV_PRIVATE void Online(org::chromium::WebServer::ServerProxy* server);
 
-  friend class ServerHelper;
-  friend class Connection;
+  // Handler invoked when the web server daemon connection is dropped.
+  LIBWEBSERV_PRIVATE void Offline(const dbus::ObjectPath& object_path);
+
+  // Handler invoked when a new protocol handler D-Bus proxy object becomes
+  // available.
+  LIBWEBSERV_PRIVATE void ProtocolHandlerAdded(
+      org::chromium::WebServer::ProtocolHandlerProxy* handler);
+
+  // Handler invoked when a protocol handler D-Bus proxy object disappears.
+  LIBWEBSERV_PRIVATE void ProtocolHandlerRemoved(
+      const dbus::ObjectPath& object_path);
+
+  LIBWEBSERV_PRIVATE void AddProtocolHandler(
+      std::unique_ptr<ProtocolHandler> handler);
+
+  // Private implementation of D-Bus RequestHandlerInterface called by the web
+  // server daemon whenever a new request is available to be processed.
+  std::unique_ptr<RequestHandler> request_handler_;
+  // D-Bus object adaptor for RequestHandlerInterface.
+  std::unique_ptr<org::chromium::WebServer::RequestHandlerAdaptor>
+      dbus_adaptor_;
+  // D-Bus object to handler registration of RequestHandlerInterface.
+  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+
+  // A mapping of protocol handler IDs to the associated object.
+  // Handler IDs are either GUIDs or the two well-known handler IDs.
+  std::map<std::string, std::unique_ptr<ProtocolHandler>> protocol_handlers_;
+  // A map between D-Bus object path of protocol handler and remote protocol
+  // handler ID.
+  std::map<dbus::ObjectPath, std::string> protocol_handler_id_map_;
+
+  // User-specified callbacks for server and protocol handler life-time events.
+  base::Closure on_server_online_;
+  base::Closure on_server_offline_;
+  base::Callback<void(ProtocolHandler*)> on_protocol_handler_connected_;
+  base::Callback<void(ProtocolHandler*)> on_protocol_handler_disconnected_;
+
+  // D-Bus object manager proxy that receives notification of web server
+  // daemon's D-Bus object creation and destruction.
+  std::unique_ptr<org::chromium::WebServer::ObjectManagerProxy> object_manager_;
+
+  // D-Bus proxy for the web server main object.
+  org::chromium::WebServer::ServerProxy* proxy_{nullptr};
+
+  // D-Bus service name used by the daemon hosting this object.
+  std::string service_name_;
+
   DISALLOW_COPY_AND_ASSIGN(Server);
 };
 

@@ -4,230 +4,201 @@
 
 #include <libwebserv/server.h>
 
-#include <limits>
+#include <tuple>
 #include <vector>
 
-#include <base/logging.h>
-#include <base/message_loop/message_loop_proxy.h>
-#include <libwebserv/connection.h>
+#include <libwebserv/protocol_handler.h>
 #include <libwebserv/request.h>
-#include <libwebserv/request_handler_callback.h>
-#include <libwebserv/request_handler_interface.h>
-#include <libwebserv/response.h>
-#include <microhttpd.h>
+
+#include "libwebserv/org.chromium.WebServer.RequestHandler.h"
+#include "webservd/dbus-proxies.h"
 
 namespace libwebserv {
 
-namespace {
-// Simple static request handler that just returns "404 Not Found" error.
-class PageNotFoundHandler : public RequestHandlerInterface {
+class Server::RequestHandler final
+    : public org::chromium::WebServer::RequestHandlerInterface {
  public:
-  void HandleRequest(scoped_ptr<Request> request,
-                     scoped_ptr<Response> response) override {
-    response->ReplyWithErrorNotFound();
-  }
+  explicit RequestHandler(Server* server) : server_{server} {}
+  bool ProcessRequest(
+      chromeos::ErrorPtr* error,
+      const std::tuple<std::string, std::string, std::string, std::string,
+                       std::string>& in_request_info,
+      const std::vector<std::tuple<std::string, std::string>>& in_headers,
+      const std::vector<std::tuple<bool, std::string, std::string>>& in_params,
+      const std::vector<std::tuple<int32_t, std::string, std::string,
+                                   std::string, std::string>>& in_files,
+      const std::vector<uint8_t>& in_body) override;
+
+ private:
+  Server* server_{nullptr};
+  DISALLOW_COPY_AND_ASSIGN(RequestHandler);
 };
 
-}  // anonymous namespace
-
-// Helper class to provide static callback methods to microhttpd library,
-// with the ability to access private methods of Server class.
-class ServerHelper {
- public:
-  static int ConnectionHandler(void *cls,
-                               MHD_Connection* connection,
-                               const char* url,
-                               const char* method,
-                               const char* version,
-                               const char* upload_data,
-                               size_t* upload_data_size,
-                               void** con_cls) {
-    Server* server = reinterpret_cast<Server*>(cls);
-    if (nullptr == *con_cls) {
-      RequestHandlerInterface* handler = server->FindHandler(url, method);
-      if (!handler)
-        return MHD_NO;
-
-      auto server_connection =
-          Connection::Create(server, url, method, connection, handler);
-      if (!server_connection || !server_connection->BeginRequestData())
-        return MHD_NO;
-
-      *con_cls = server_connection.get();
-      server_connection->AddRef();
-    } else {
-      Connection* connection = reinterpret_cast<Connection*>(*con_cls);
-      if (*upload_data_size) {
-        if (!connection->AddRequestData(upload_data, *upload_data_size))
-          return MHD_NO;
-        *upload_data_size = 0;
-      } else {
-        connection->EndRequestData();
-      }
-    }
-    return MHD_YES;
+bool Server::RequestHandler::ProcessRequest(
+    chromeos::ErrorPtr* error,
+    const std::tuple<std::string, std::string, std::string, std::string,
+                     std::string>& in_request_info,
+    const std::vector<std::tuple<std::string, std::string>>& in_headers,
+    const std::vector<std::tuple<bool, std::string, std::string>>& in_params,
+    const std::vector<std::tuple<int32_t, std::string, std::string,
+                                 std::string, std::string>>& in_files,
+    const std::vector<uint8_t>& in_body) {
+  std::string protocol_handler_id = std::get<0>(in_request_info);
+  std::string request_handler_id = std::get<1>(in_request_info);
+  std::string request_id = std::get<2>(in_request_info);
+  std::string url = std::get<3>(in_request_info);
+  std::string method = std::get<4>(in_request_info);
+  ProtocolHandler* protocol_handler =
+      server_->GetProtocolHandler(protocol_handler_id);
+  if (!protocol_handler) {
+    chromeos::Error::AddToPrintf(error, FROM_HERE,
+                                 chromeos::errors::dbus::kDomain,
+                                 DBUS_ERROR_FAILED,
+                                 "Unknown protocol handler '%s'",
+                                 protocol_handler_id.c_str());
+    return false;
+  }
+  std::unique_ptr<Request> request{new Request{protocol_handler, url, method}};
+  // Convert request data into format required by the Request object.
+  for (const auto& tuple : in_params) {
+    if (std::get<0>(tuple))
+      request->post_data_.emplace(std::get<1>(tuple), std::get<2>(tuple));
+    else
+      request->get_data_.emplace(std::get<1>(tuple), std::get<2>(tuple));
   }
 
-  static void RequestCompleted(void* cls,
-                               MHD_Connection* connection,
-                               void** con_cls,
-                               MHD_RequestTerminationCode toe) {
-    reinterpret_cast<Connection*>(*con_cls)->Release();
-    *con_cls = nullptr;
-  }
-};
+  for (const auto& tuple : in_headers)
+    request->headers_.emplace(std::get<0>(tuple), std::get<1>(tuple));
 
-Server::Server() {}
+  for (const auto& tuple : in_files) {
+    request->file_info_.emplace(
+        std::get<1>(tuple),  // field_name
+        std::unique_ptr<FileInfo>{new FileInfo{
+            protocol_handler,
+            std::get<0>(tuple),     // file_id
+            request_id,
+            std::get<2>(tuple),     // file_name
+            std::get<3>(tuple),     // content_type
+            std::get<4>(tuple)}});  // transfer_encoding
+  }
+
+  request->raw_data_ = in_body;
+
+  return protocol_handler->ProcessRequest(request_handler_id,
+                                          request_id,
+                                          std::move(request),
+                                          error);
+}
+
+Server::Server()
+    : request_handler_{new RequestHandler{this}},
+      dbus_adaptor_{new org::chromium::WebServer::RequestHandlerAdaptor{
+          request_handler_.get()}} {}
 
 Server::~Server() {
-  Stop();
 }
 
-bool Server::Start(uint16_t port) {
-  return StartWithTLS(port, chromeos::SecureBlob{}, chromeos::Blob{});
+void Server::Connect(
+    const scoped_refptr<dbus::Bus>& bus,
+    const std::string& service_name,
+    const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb,
+    const base::Closure& on_server_online,
+    const base::Closure& on_server_offline) {
+  service_name_ = service_name;
+  dbus_object_.reset(new chromeos::dbus_utils::DBusObject{
+      nullptr, bus, dbus_adaptor_->GetObjectPath()});
+  dbus_adaptor_->RegisterWithDBusObject(dbus_object_.get());
+  dbus_object_->RegisterAsync(cb);
+  on_server_online_ = on_server_online;
+  on_server_offline_ = on_server_offline;
+  AddProtocolHandler(std::unique_ptr<ProtocolHandler>{
+      new ProtocolHandler{ProtocolHandler::kHttp, this}});
+  AddProtocolHandler(std::unique_ptr<ProtocolHandler>{
+    new ProtocolHandler{ProtocolHandler::kHttps, this}});
+  object_manager_.reset(new org::chromium::WebServer::ObjectManagerProxy{bus});
+  object_manager_->SetServerAddedCallback(
+      base::Bind(&Server::Online, base::Unretained(this)));
+  object_manager_->SetServerRemovedCallback(
+      base::Bind(&Server::Offline, base::Unretained(this)));
+  object_manager_->SetProtocolHandlerAddedCallback(
+      base::Bind(&Server::ProtocolHandlerAdded, base::Unretained(this)));
+  object_manager_->SetProtocolHandlerRemovedCallback(
+      base::Bind(&Server::ProtocolHandlerRemoved, base::Unretained(this)));
 }
 
-bool Server::StartWithTLS(uint16_t port,
-                          const chromeos::SecureBlob& private_key,
-                          const chromeos::Blob& certificate) {
-  if (server_) {
-    LOG(ERROR) << "Web server is already running.";
-    return false;
+void Server::Disconnect() {
+  object_manager_.reset();
+  on_server_offline_.Reset();
+  on_server_online_.Reset();
+  dbus_object_.reset();
+  protocol_handlers_.clear();
+}
+
+void Server::Online(org::chromium::WebServer::ServerProxy* server) {
+  proxy_ = server;
+  if (!on_server_online_.is_null())
+    on_server_online_.Run();
+}
+
+void Server::Offline(const dbus::ObjectPath& object_path) {
+  if (!on_server_offline_.is_null())
+    on_server_offline_.Run();
+  proxy_ = nullptr;
+}
+
+void Server::ProtocolHandlerAdded(
+    org::chromium::WebServer::ProtocolHandlerProxy* handler) {
+  protocol_handler_id_map_.emplace(handler->GetObjectPath(), handler->id());
+  ProtocolHandler* registered_handler = GetProtocolHandler(handler->id());
+  if (registered_handler) {
+    registered_handler->Connect(handler);
+    if (!on_protocol_handler_connected_.is_null())
+      on_protocol_handler_connected_.Run(registered_handler);
+  }
+}
+
+void Server::ProtocolHandlerRemoved(const dbus::ObjectPath& object_path) {
+  auto p = protocol_handler_id_map_.find(object_path);
+  if (p == protocol_handler_id_map_.end())
+    return;
+
+  ProtocolHandler* registered_handler = GetProtocolHandler(p->second);
+  if (registered_handler) {
+    if (!on_protocol_handler_disconnected_.is_null())
+      on_protocol_handler_disconnected_.Run(registered_handler);
+    registered_handler->Disconnect();
   }
 
-  // Either both keys and certificate must be specified or both muse be omitted.
-  CHECK_EQ(private_key.empty(), certificate.empty());
-
-  const bool use_tls = !private_key.empty();
-
-  task_runner_ = base::MessageLoopProxy::current();
-
-  LOG(INFO) << "Starting " << (use_tls ? "HTTPS" : "HTTP")
-            << " Server on port: " << port;
-  auto callback_addr =
-      reinterpret_cast<intptr_t>(&ServerHelper::RequestCompleted);
-  uint32_t flags = MHD_USE_THREAD_PER_CONNECTION | MHD_USE_DEBUG;
-
-  std::vector<MHD_OptionItem> options{
-    {MHD_OPTION_CONNECTION_LIMIT, 10, nullptr},
-    {MHD_OPTION_CONNECTION_TIMEOUT, 60, nullptr},
-    {MHD_OPTION_NOTIFY_COMPLETED, callback_addr, nullptr},
-  };
-
-  // libmicrohttpd expects both the key and certificate to be a zero-terminated
-  // strings. Make sure they are terminated properly.
-  chromeos::SecureBlob private_key_copy = private_key;
-  chromeos::Blob certificate_copy = certificate;
-  if (use_tls) {
-    flags |= MHD_USE_SSL;
-    private_key_copy.push_back(0);
-    certificate_copy.push_back(0);
-    options.push_back(
-        MHD_OptionItem{MHD_OPTION_HTTPS_MEM_KEY, 0, private_key_copy.data()});
-    options.push_back(
-        MHD_OptionItem{MHD_OPTION_HTTPS_MEM_CERT, 0, certificate_copy.data()});
-  }
-
-  options.push_back(MHD_OptionItem{MHD_OPTION_END, 0, nullptr});
-
-  server_ = MHD_start_daemon(flags, port, nullptr, nullptr,
-                             &ServerHelper::ConnectionHandler, this,
-                             MHD_OPTION_ARRAY, options.data(), MHD_OPTION_END);
-  if (!server_) {
-    LOG(ERROR) << "Failed to start the web server on port " << port;
-    return false;
-  }
-  LOG(INFO) << "Server started";
-  return true;
+  protocol_handler_id_map_.erase(p);
 }
 
-bool Server::Stop() {
-  if (server_) {
-    LOG(INFO) << "Shutting down the web server...";
-    MHD_stop_daemon(server_);
-    server_ = nullptr;
-    LOG(INFO) << "Server shutdown complete";
-  }
-  return true;
+ProtocolHandler* Server::GetProtocolHandler(const std::string& id) const {
+  auto p = protocol_handlers_.find(id);
+  return (p != protocol_handlers_.end()) ? p->second.get() : nullptr;
 }
 
-int Server::AddHandler(const base::StringPiece& url,
-                       const base::StringPiece& method,
-                       std::unique_ptr<RequestHandlerInterface> handler) {
-  request_handlers_.emplace(++last_handler_id_,
-                            HandlerMapEntry{url.as_string(),
-                                            method.as_string(),
-                                            std::move(handler)});
-  return last_handler_id_;
+ProtocolHandler* Server::GetDefaultHttpHandler() const {
+  return GetProtocolHandler(ProtocolHandler::kHttp);
 }
 
-int Server::AddHandlerCallback(
-    const base::StringPiece& url,
-    const base::StringPiece& method,
-    const base::Callback<RequestHandlerInterface::HandlerSignature>&
-        handler_callback) {
-  std::unique_ptr<RequestHandlerInterface> handler{
-      new RequestHandlerCallback{handler_callback}};
-  return AddHandler(url, method, std::move(handler));
+ProtocolHandler* Server::GetDefaultHttpsHandler() const {
+  return GetProtocolHandler(ProtocolHandler::kHttps);
 }
 
-bool Server::RemoveHandler(int handler_id) {
-  return (request_handlers_.erase(handler_id) > 0);
+void Server::OnProtocolHandlerConnected(
+    const base::Callback<void(ProtocolHandler*)>& callback) {
+  on_protocol_handler_connected_ = callback;
 }
 
-int Server::GetHandlerId(const base::StringPiece& url,
-                         const base::StringPiece& method) const {
-  for (const auto& pair : request_handlers_) {
-    if (pair.second.url == url && pair.second.method == method)
-      return pair.first;
-  }
-  return 0;
+void Server::OnProtocolHandlerDisconnected(
+    const base::Callback<void(ProtocolHandler*)>& callback) {
+  on_protocol_handler_disconnected_ = callback;
 }
 
-RequestHandlerInterface* Server::FindHandler(
-    const base::StringPiece& url,
-    const base::StringPiece& method) const {
-  static PageNotFoundHandler page_not_found_handler;
-
-  size_t score = std::numeric_limits<size_t>::max();
-  RequestHandlerInterface* handler = nullptr;
-  for (const auto& pair : request_handlers_) {
-    std::string handler_url = pair.second.url;
-    bool url_match = (handler_url == url);
-    bool method_match = (pair.second.method == method);
-
-    // Try exact match first. If everything matches, we have our handler.
-    if (url_match && method_match)
-      return pair.second.handler.get();
-
-    // Calculate the current handler's similarity score. The lower the score
-    // the better the match is...
-    size_t current_score = 0;
-    if (!url_match && !handler_url.empty() && handler_url.back() == '/') {
-      if (url.starts_with(handler_url)) {
-        url_match = true;
-        // Use the difference in URL length as URL match quality proxy.
-        // The longer URL, the more specific (better) match is.
-        // Multiply by 2 to allow for extra score point for matching the method.
-        current_score = (url.size() - handler_url.size()) * 2;
-      }
-    }
-
-    if (!method_match && pair.second.method.empty()) {
-      // If the handler didn't specify the method it handles, this means
-      // it doesn't care. However this isn't the exact match, so bump
-      // the score up one point.
-      method_match = true;
-      ++current_score;
-    }
-
-    if (url_match && method_match && current_score < score) {
-      score = current_score;
-      handler = pair.second.handler.get();
-    }
-  }
-
-  return handler ? handler : &page_not_found_handler;
+void Server::AddProtocolHandler(std::unique_ptr<ProtocolHandler> handler) {
+  // Make sure a handler with this ID isn't already registered.
+  CHECK(protocol_handlers_.find(handler->GetID()) == protocol_handlers_.end());
+  protocol_handlers_.emplace(handler->GetID(), std::move(handler));
 }
 
 }  // namespace libwebserv

@@ -39,7 +39,9 @@ void PeerdClient::OnPeerdOnline(
   peerd_manager_proxy_ = manager_proxy;
   VLOG(1) << "Peerd manager is online at '"
           << manager_proxy->GetObjectPath().value() << "'.";
-  Start();
+  const uint16_t port = device_->GetHttpEnpoint().first;
+  if (port != 0)
+    Start();
 }
 
 void PeerdClient::OnPeerdOffline(const dbus::ObjectPath& object_path) {

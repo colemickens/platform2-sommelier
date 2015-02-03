@@ -4,84 +4,47 @@
 
 #include <libwebserv/request.h>
 
-#include <libwebserv/connection.h>
+#include <base/callback.h>
+#include <chromeos/http/http_utils.h>
+
+#include <libwebserv/protocol_handler.h>
 
 namespace libwebserv {
 
-FileInfo::FileInfo(const std::string& file_name,
+FileInfo::FileInfo(ProtocolHandler* handler,
+                   int file_id,
+                   const std::string& request_id,
+                   const std::string& file_name,
                    const std::string& content_type,
                    const std::string& transfer_encoding)
-    : file_name_(file_name),
+    : handler_{handler},
+      file_id_{file_id},
+      request_id_{request_id},
+      file_name_(file_name),
       content_type_(content_type),
       transfer_encoding_(transfer_encoding) {
 }
 
-const std::vector<uint8_t>& FileInfo::GetData() const {
-  return data_;
+void FileInfo::GetData(
+    const base::Callback<void(const std::vector<uint8_t>&)>& success_callback,
+    const base::Callback<void(chromeos::Error*)>& error_callback) {
+  handler_->GetFileData(request_id_,
+                        file_id_,
+                        success_callback,
+                        error_callback);
 }
 
-Request::Request(const std::string& url, const std::string& method)
-    : url_{url}, method_{method} {
+Request::Request(ProtocolHandler* handler,
+                 const std::string& url,
+                 const std::string& method)
+    : handler_{handler}, url_{url}, method_{method} {
 }
 
 Request::~Request() {
 }
 
-scoped_ptr<Request> Request::Create(const std::string& url,
-                                    const std::string& method) {
-  // Can't use make_shared here since Request::Request is private.
-  return scoped_ptr<Request>(new Request(url, method));
-}
-
 const std::vector<uint8_t>& Request::GetData() const {
   return raw_data_;
-}
-
-bool Request::AddRawRequestData(const void* data, size_t size) {
-  const uint8_t* byte_data_ = static_cast<const uint8_t*>(data);
-  raw_data_.insert(raw_data_.end(), byte_data_, byte_data_ + size);
-  return true;
-}
-
-bool Request::AddPostFieldData(const char* key,
-                               const char* filename,
-                               const char* content_type,
-                               const char* transfer_encoding,
-                               const char* data,
-                               size_t size) {
-  if (filename) {
-    std::unique_ptr<FileInfo> file_info{
-        new FileInfo{filename, content_type ? content_type : "",
-                     transfer_encoding ? transfer_encoding : ""}};
-    file_info->data_.assign(data, data + size);
-    file_info_.emplace(key, std::move(file_info));
-    last_posted_data_was_file_ = true;
-    return true;
-  }
-  std::string value{data, size};
-  post_data_.emplace(key, value);
-  last_posted_data_was_file_ = false;
-  return true;
-}
-
-bool Request::AppendPostFieldData(const char* key,
-                                  const char* data,
-                                  size_t size) {
-  if (last_posted_data_was_file_) {
-    auto file_pair = file_info_.equal_range(key);
-    if (file_pair.first == file_info_.end())
-      return false;
-    FileInfo* file_info = file_pair.second->second.get();
-    file_info->data_.insert(file_info->data_.end(), data, data + size);
-    return true;
-  }
-
-  auto pair = post_data_.equal_range(key);
-  if (pair.first == post_data_.end())
-    return false;
-  --pair.second;  // Get the last form field with this name/key.
-  pair.second->second.append(data, size);
-  return true;
 }
 
 std::vector<PairOfStrings> Request::GetFormData() const {
@@ -162,30 +125,19 @@ std::vector<PairOfStrings> Request::GetHeaders() const {
 
 std::vector<std::string> Request::GetHeader(const std::string& name) const {
   std::vector<std::string> data;
-  auto pair = headers_.equal_range(GetCanonicalHeaderName(name));
-  while (pair.first != pair.second) {
-    data.push_back(pair.first->second);
-    ++pair.first;
+  auto range =
+      headers_.equal_range(chromeos::http::GetCanonicalHeaderName(name));
+  while (range.first != range.second) {
+    data.push_back(range.first->second);
+    ++range.first;
   }
   return data;
 }
 
-std::string Request::GetCanonicalHeaderName(const std::string& name) {
-  std::string canonical_name = name;
-  bool word_begin = true;
-  for (char& c : canonical_name) {
-    if (c == '-') {
-      word_begin = true;
-    } else {
-      if (word_begin) {
-        c = toupper(c);
-      } else {
-        c = tolower(c);
-      }
-      word_begin = false;
-    }
-  }
-  return canonical_name;
+std::string Request::GetFirstHeader(const std::string& name) const {
+  auto p = headers_.find(chromeos::http::GetCanonicalHeaderName(name));
+  return (p != headers_.end()) ? p->second : std::string{};
 }
+
 
 }  // namespace libwebserv

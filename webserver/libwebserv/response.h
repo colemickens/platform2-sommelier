@@ -12,30 +12,21 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <libwebserv/export.h>
 
 namespace base {
 class Value;
 }  // namespace base
 
-struct MHD_Connection;
-
 namespace libwebserv {
 
-class Connection;
+class ProtocolHandler;
 
 // Response class is a proxy for HTTP response used by the request handler
 // to provide response HTTP headers and data.
-class LIBWEBSERV_EXPORT Response
-    : public std::enable_shared_from_this<Response> {
+class LIBWEBSERV_EXPORT Response final {
  public:
   ~Response();
-
-  // Factory constructor method.
-  static scoped_ptr<Response> Create(
-      const scoped_refptr<Connection>& connection);
 
   // Adds a single HTTP response header to the response.
   void AddHeader(const std::string& header_name, const std::string& value);
@@ -76,19 +67,20 @@ class LIBWEBSERV_EXPORT Response
   void ReplyWithErrorNotFound();
 
  private:
-  LIBWEBSERV_PRIVATE explicit Response(
-      const scoped_refptr<Connection>& connection);
+  friend class ProtocolHandler;
+
+  LIBWEBSERV_PRIVATE Response(ProtocolHandler* handler,
+                              const std::string& request_id);
 
   LIBWEBSERV_PRIVATE void SendResponse();
 
-  scoped_refptr<Connection> connection_;
+  ProtocolHandler* handler_{nullptr};
+  std::string request_id_;
   int status_code_{0};
   std::vector<uint8_t> data_;
   std::multimap<std::string, std::string> headers_;
   bool reply_sent_{false};
 
-  friend class Connection;
-  friend class ResponseHelper;
   DISALLOW_COPY_AND_ASSIGN(Response);
 };
 

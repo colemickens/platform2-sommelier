@@ -11,36 +11,50 @@
 #include <utility>
 #include <vector>
 
+#include <base/callback_forward.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
+#include <chromeos/errors/error.h>
 #include <libwebserv/export.h>
 
 struct MHD_Connection;
 
 namespace libwebserv {
 
-class Connection;
+class ProtocolHandler;
+
 using PairOfStrings = std::pair<std::string, std::string>;
 
+// This class represents the file information about a file uploaded via
+// POST request using multipart/form-data request.
 class LIBWEBSERV_EXPORT FileInfo final {
  public:
-  FileInfo(const std::string& file_name,
-           const std::string& content_type,
-           const std::string& transfer_encoding);
-
-  const std::vector<uint8_t>& GetData() const;
   const std::string& GetFileName() const { return file_name_; }
   const std::string& GetContentType() const { return content_type_; }
   const std::string& GetTransferEncoding() const { return transfer_encoding_; }
+  void GetData(
+      const base::Callback<void(const std::vector<uint8_t>&)>& success_callback,
+      const base::Callback<void(chromeos::Error*)>& error_callback);
 
  private:
+  friend class Server;
+
+  LIBWEBSERV_PRIVATE FileInfo(ProtocolHandler* handler,
+                              int file_id,
+                              const std::string& request_id,
+                              const std::string& file_name,
+                              const std::string& content_type,
+                              const std::string& transfer_encoding);
+
+  ProtocolHandler* handler_{nullptr};
+  int file_id_{0};
+  std::string request_id_;
   std::string file_name_;
   std::string content_type_;
   std::string transfer_encoding_;
   std::vector<uint8_t> data_;
 
-  friend class Request;
   DISALLOW_COPY_AND_ASSIGN(FileInfo);
 };
 
@@ -48,10 +62,6 @@ class LIBWEBSERV_EXPORT FileInfo final {
 class LIBWEBSERV_EXPORT Request final {
  public:
   ~Request();
-
-  // Factory constructor method.
-  static scoped_ptr<Request> Create(const std::string& url,
-                                    const std::string& method);
 
   // Gets the request body data stream. Note that the stream is available
   // only for requests that provided data and if this data is not already
@@ -100,32 +110,22 @@ class LIBWEBSERV_EXPORT Request final {
   // Returns a list of key-value pairs for all the request headers.
   std::vector<PairOfStrings> GetHeaders() const;
 
-  // Returns the value(s) of a request head of given |name|.
+  // Returns the value(s) of a request header of given |name|.
   std::vector<std::string> GetHeader(const std::string& name) const;
 
+  // Returns the value of a request header of given |name|. If there are more
+  // than one header with this name, the value of the first header is returned.
+  // An empty string is returned if the header does not exist in the request.
+  std::string GetFirstHeader(const std::string& name) const;
+
  private:
-  LIBWEBSERV_PRIVATE Request(const std::string& url, const std::string& method);
+  friend class Server;
 
-  // Helper methods for processing request data coming from the raw HTTP
-  // connection.
-  // These methods parse the request headers and data so they can be accessed
-  // by request handlers later.
-  LIBWEBSERV_PRIVATE bool AddRawRequestData(const void* data, size_t size);
-  LIBWEBSERV_PRIVATE bool AddPostFieldData(const char* key,
-                                           const char* filename,
-                                           const char* content_type,
-                                           const char* transfer_encoding,
-                                           const char* data,
-                                           size_t size);
-  LIBWEBSERV_PRIVATE bool AppendPostFieldData(const char* key,
-                                              const char* data,
-                                              size_t size);
-  // Converts a request header name to canonical form (lowercase with uppercase
-  // first letter and each letter after a hyphen ('-')).
-  // "content-TYPE" will be converted to "Content-Type".
-  LIBWEBSERV_PRIVATE static std::string GetCanonicalHeaderName(
-      const std::string& name);
+  LIBWEBSERV_PRIVATE Request(ProtocolHandler* handler,
+                             const std::string& url,
+                             const std::string& method);
 
+  ProtocolHandler* handler_{nullptr};
   std::string url_;
   std::string method_;
   std::vector<uint8_t> raw_data_;
@@ -136,8 +136,6 @@ class LIBWEBSERV_EXPORT Request final {
   std::multimap<std::string, std::unique_ptr<FileInfo>> file_info_;
   std::multimap<std::string, std::string> headers_;
 
-  friend class Connection;
-  friend class RequestHelper;
   DISALLOW_COPY_AND_ASSIGN(Request);
 };
 

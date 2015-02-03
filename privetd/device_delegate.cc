@@ -17,14 +17,10 @@ namespace {
 
 class DeviceDelegateImpl : public DeviceDelegate {
  public:
-  DeviceDelegateImpl(uint16_t http_port,
-                     uint16_t https_port,
-                     const PrivetdConfigParser* config,
+  DeviceDelegateImpl(const PrivetdConfigParser* config,
                      DaemonState* state_store,
                      const base::Closure& on_changed)
-      : http_port_(http_port),
-        https_port_(https_port),
-        config_(config),
+      : config_(config),
         state_store_(state_store),
         on_changed_(on_changed) {
     if (GetId().empty()) {
@@ -87,9 +83,17 @@ class DeviceDelegateImpl : public DeviceDelegate {
     on_changed_.Run();
   }
 
+  void SetHttpPort(uint16_t port) override {
+    http_port_ = port;
+  }
+
+  void SetHttpsPort(uint16_t port) override {
+    https_port_ = port;
+  }
+
  private:
-  const uint16_t http_port_;
-  const uint16_t https_port_;
+  uint16_t http_port_{0};
+  uint16_t https_port_{0};
   const PrivetdConfigParser* config_{nullptr};
   DaemonState* state_store_{nullptr};
   base::Closure on_changed_;
@@ -106,13 +110,11 @@ DeviceDelegate::~DeviceDelegate() {
 
 // static
 std::unique_ptr<DeviceDelegate> DeviceDelegate::CreateDefault(
-    uint16_t http_port,
-    uint16_t https_port,
     PrivetdConfigParser* config,
     DaemonState* state_store,
     const base::Closure& on_changed) {
-  return std::unique_ptr<DeviceDelegate>(new DeviceDelegateImpl(
-      http_port, https_port, config, state_store, on_changed));
+  return std::unique_ptr<DeviceDelegate>(
+      new DeviceDelegateImpl(config, state_store, on_changed));
 }
 
 }  // namespace privetd
