@@ -30,7 +30,7 @@ class ReadPixelTest : public TestBase {
 
 bool ReadPixelTest::TestFunc(uint64_t iterations) {
   glReadPixels(0, 0, g_width, g_height, GL_RGBA, GL_UNSIGNED_BYTE, pixels_);
-  CHECK_EQ(glGetError(), GL_NO_ERROR);
+  CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
   for (uint64_t i = 0; i < iterations - 1; i++)
     glReadPixels(0, 0, g_width, g_height, GL_RGBA, GL_UNSIGNED_BYTE, pixels_);
   return true;
