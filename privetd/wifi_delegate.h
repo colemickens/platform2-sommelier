@@ -24,9 +24,6 @@ class WifiDelegate {
   WifiDelegate() = default;
   virtual ~WifiDelegate() = default;
 
-  // Returns true if WiFi setup is required.
-  virtual bool IsRequired() const = 0;
-
   // Returns status of the WiFi connection.
   virtual ConnectionState GetConnectionState() const = 0;
 

@@ -27,9 +27,6 @@ class CloudDelegate {
   CloudDelegate();
   virtual ~CloudDelegate();
 
-  // Returns true if GCD registration is required.
-  virtual bool IsRequired() const = 0;
-
   // Returns status of the GCD connection.
   virtual ConnectionState GetConnectionState() const = 0;
 

@@ -247,7 +247,6 @@ TEST_F(PrivetHandlerTest, Info) {
       ]
     },
     'wifi': {
-      'required': false,
       'capabilities': [
         '2.4GHz'
       ],
@@ -256,7 +255,6 @@ TEST_F(PrivetHandlerTest, Info) {
       'status': 'offline'
     },
     'gcd': {
-      'required': true,
       'id': 'TestCloudId',
       'status': 'online'
     },

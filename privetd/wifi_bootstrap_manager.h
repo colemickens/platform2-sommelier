@@ -49,7 +49,6 @@ class WifiBootstrapManager : public WifiDelegate {
   void RegisterStateListener(const StateListener& listener);
 
   // Overrides from WifiDelegate.
-  bool IsRequired() const override;
   ConnectionState GetConnectionState() const override;
   SetupState GetSetupState() const override;
   bool ConfigureCredentials(const std::string& ssid,

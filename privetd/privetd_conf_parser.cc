@@ -38,17 +38,17 @@ const char kDefaultDeviceModelId[] = "AAA";  // Model is not registered.
 
 }  // namespace
 
-PrivetdConfigParser::PrivetdConfigParser() :
-  wifi_bootstrap_mode_{WiFiBootstrapMode::kDisabled},
-  gcd_bootstrap_mode_{GcdBootstrapMode::kDisabled},
-  connect_timeout_seconds_{60u},
-  bootstrap_timeout_seconds_{600u},
-  monitor_timeout_seconds_{120u},
-  device_class_{kDefaultDeviceClass},
-  device_make_{kDefaultDeviceMake},
-  device_model_{kDefaultDeviceModel},
-  device_model_id_{kDefaultDeviceModelId},
-  device_name_{device_make_ + " " + device_model_} {
+PrivetdConfigParser::PrivetdConfigParser()
+    : wifi_bootstrap_mode_{WiFiBootstrapMode::kDisabled},
+      gcd_bootstrap_mode_{GcdBootstrapMode::kDisabled},
+      connect_timeout_seconds_{60u},
+      bootstrap_timeout_seconds_{600u},
+      monitor_timeout_seconds_{120u},
+      device_class_{kDefaultDeviceClass},
+      device_make_{kDefaultDeviceMake},
+      device_model_{kDefaultDeviceModel},
+      device_model_id_{kDefaultDeviceModelId},
+      device_name_{device_make_ + " " + device_model_} {
 }
 
 bool PrivetdConfigParser::Parse(const chromeos::KeyValueStore& config_store) {

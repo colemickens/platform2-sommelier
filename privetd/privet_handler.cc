@@ -39,7 +39,6 @@ const char kLocationKey[] = "location";
 
 const char kGcdKey[] = "gcd";
 const char kWifiKey[] = "wifi";
-const char kRequiredKey[] = "required";
 const char kStatusKey[] = "status";
 const char kErrorKey[] = "error";
 const char kCryptoKey[] = "crypto";
@@ -589,8 +588,6 @@ std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateWifiSection()
     const {
   std::unique_ptr<base::DictionaryValue> wifi(new base::DictionaryValue());
 
-  wifi->SetBoolean(kRequiredKey, wifi_->IsRequired());
-
   std::unique_ptr<base::ListValue> capabilities(new base::ListValue());
   for (WifiType type : wifi_->GetTypes())
     capabilities->AppendString(EnumToString(type));
@@ -611,7 +608,6 @@ std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateWifiSection()
 
 std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateGcdSection() const {
   std::unique_ptr<base::DictionaryValue> gcd(new base::DictionaryValue());
-  gcd->SetBoolean(kRequiredKey, cloud_->IsRequired());
   gcd->SetString(kInfoIdKey, cloud_->GetCloudId());
   SetState(cloud_->GetConnectionState(), gcd.get());
   return std::move(gcd);

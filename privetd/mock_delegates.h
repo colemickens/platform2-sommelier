@@ -113,7 +113,6 @@ class MockSecurityDelegate : public SecurityDelegate {
 
 class MockWifiDelegate : public WifiDelegate {
  public:
-  MOCK_CONST_METHOD0(IsRequired, bool());
   MOCK_CONST_METHOD0(GetConnectionState, ConnectionState());
   MOCK_CONST_METHOD0(GetSetupState, SetupState());
   MOCK_METHOD2(ConfigureCredentials,
@@ -123,7 +122,6 @@ class MockWifiDelegate : public WifiDelegate {
   MOCK_CONST_METHOD0(GetTypes, std::vector<WifiType>());
 
   MockWifiDelegate() {
-    EXPECT_CALL(*this, IsRequired()).WillRepeatedly(Return(false));
     EXPECT_CALL(*this, GetConnectionState())
         .WillRepeatedly(Return(ConnectionState(ConnectionState::kOffline)));
     EXPECT_CALL(*this, GetSetupState())
@@ -139,14 +137,12 @@ class MockWifiDelegate : public WifiDelegate {
 
 class MockCloudDelegate : public CloudDelegate {
  public:
-  MOCK_CONST_METHOD0(IsRequired, bool());
   MOCK_CONST_METHOD0(GetConnectionState, ConnectionState());
   MOCK_CONST_METHOD0(GetSetupState, SetupState());
   MOCK_METHOD2(Setup, bool(const std::string&, const std::string&));
   MOCK_CONST_METHOD0(GetCloudId, std::string());
 
   MockCloudDelegate() {
-    EXPECT_CALL(*this, IsRequired()).WillRepeatedly(Return(true));
     EXPECT_CALL(*this, GetConnectionState())
         .WillRepeatedly(Return(ConnectionState(ConnectionState::kOnline)));
     EXPECT_CALL(*this, GetSetupState())

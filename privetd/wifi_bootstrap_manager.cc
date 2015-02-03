@@ -132,10 +132,6 @@ void WifiBootstrapManager::NotifyStateListeners(State new_state) const {
     listener.Run(new_state);
 }
 
-bool WifiBootstrapManager::IsRequired() const {
-  return !have_ever_been_bootstrapped_;
-}
-
 ConnectionState WifiBootstrapManager::GetConnectionState() const {
   if (!have_ever_been_bootstrapped_) {
     return ConnectionState{ConnectionState::kUnconfigured};
