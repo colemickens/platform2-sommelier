@@ -400,6 +400,9 @@ class CHROMEOS_EXPORT DBusObject {
   // Sends a signal from the exported D-Bus object.
   bool SendSignal(dbus::Signal* signal);
 
+  // Returns the reference to dbus::Bus this object is associated with.
+  scoped_refptr<dbus::Bus> GetBus() { return bus_; }
+
  private:
   // A map of all the interfaces added to this object.
   std::map<std::string, std::unique_ptr<DBusInterface>> interfaces_;
