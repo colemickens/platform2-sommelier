@@ -73,7 +73,8 @@ bool TriangleSetupTest::Run() {
                             index_buffer_size, indices);
     RunTest(this, "triangle_setup", count_ / 3, g_width, g_height, true);
     glEnable(GL_CULL_FACE);
-    RunTest(this, "triangle_setup_all_culled", count_ / 3, g_width, g_height, true);
+    RunTest(this, "triangle_setup_all_culled", count_ / 3, g_width, g_height,
+            true);
     glDisable(GL_CULL_FACE);
 
     glDeleteBuffers(1, &index_buffer);
@@ -90,7 +91,8 @@ bool TriangleSetupTest::Run() {
     index_buffer = SetupVBO(GL_ELEMENT_ARRAY_BUFFER,
                             index_buffer_size, indices);
     glEnable(GL_CULL_FACE);
-    RunTest(this, "triangle_setup_half_culled", count_ / 3, g_width, g_height, true);
+    RunTest(this, "triangle_setup_half_culled", count_ / 3, g_width, g_height,
+            true);
 
     glDeleteBuffers(1, &index_buffer);
     delete[] indices;
@@ -108,4 +110,4 @@ TestBase* GetTriangleSetupTest() {
 }
 
 
-} // namespace glbench
+}  // namespace glbench

@@ -5,11 +5,14 @@
 #include "glbench/teartest.h"
 
 #include <gflags/gflags.h>
-#include <map>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
+#include <map>
+#include <string>
+#include <vector>
 
 #include "base/logging.h"
 #include "base/strings/string_split.h"
@@ -94,7 +97,8 @@ void CopyPixmapToTexture(Pixmap pixmap) {
                           AllPlanes, ZPixmap);
   CHECK(xim != NULL);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, g_height, g_width, 0,
-               GL_RGBA, GL_UNSIGNED_BYTE, (void*)(&xim->data[0]));
+               GL_RGBA, GL_UNSIGNED_BYTE,
+               reinterpret_cast<void*>(&xim->data[0]));
   XDestroyImage(xim);
 }
 
@@ -148,7 +152,8 @@ class TexImage2DTest : public Test {
 
   virtual bool Loop(int shift) {
     UpdatePixmap(pixmap_, shift);
-    // TODO: it's probably much cheaper to not use Pixmap and XImage.
+    // TODO(amarinichev): it's probably much cheaper to not use Pixmap and
+    // XImage.
     CopyPixmapToTexture(pixmap_);
     return true;
   }
@@ -218,11 +223,8 @@ int main(int argc, char* argv[]) {
   base::SplitString(FLAGS_tests, ',', &tests);
 
   int return_code = 0;
-  for (std::vector<std::string>::iterator it = tests.begin();
-       it != tests.end();
-       it++)
-  {
-    Test* t = test_map[*it];
+  for (const std::string& test : tests) {
+    Test* t = test_map[test];
     if (!t || !t->Start()) {
       return_code = 1;
       continue;
@@ -232,8 +234,7 @@ int main(int argc, char* argv[]) {
     uint64_t wait_until = GetUTime() + 1000000ULL * FLAGS_seconds_to_run;
     for (int x = 0;
          !got_event && GetUTime() < wait_until;
-         x = (x + 4) % (2 * g_width))
-    {
+         x = (x + 4) % (2 * g_width)) {
       const int shift = x < g_width ? x : 2 * g_width - x;
 
       t->Loop(shift);
@@ -254,7 +255,7 @@ int main(int argc, char* argv[]) {
     t->Stop();
   }
 
-  // TODO: cleaner teardown.
+  // TODO(amarinichev): cleaner teardown.
 
   glDeleteTextures(1, &texture);
   g_main_gl_interface->Cleanup();

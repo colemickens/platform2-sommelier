@@ -147,4 +147,4 @@ TestBase* GetAttributeFetchShaderTest() {
   return new AttributeFetchShaderTest();
 }
 
-} // namespace glbench
+}  // namespace glbench

@@ -68,7 +68,7 @@ class EGLSyncControlTest : public SyncControlTest {
   EGLInterface* interface_;
   PFNEGLGETSYNCVALUESCHROMIUMPROC egl_get_sync_values_;
 
-  EGLBoolean GetSyncValues(struct SyncValues &sync_values);
+  EGLBoolean GetSyncValues(struct SyncValues* sync_values);
   bool TestAgainstSystem(khronos_uint64_t ust);
 };
 
@@ -107,7 +107,7 @@ bool EGLSyncControlTest::Loop(int interval) {
   glClearColor(kFillValueRed, kFillValueGreen, kFillValueBlue, 0.0);
   glClear(GL_COLOR_BUFFER_BIT);
 
-  ret = GetSyncValues(first_call);
+  ret = GetSyncValues(&first_call);
 
   if (!ret) {
     LOG(ERROR) << "Failure: First eglGetSyncValuesCHROMIUM returned false.\n";
@@ -120,7 +120,7 @@ bool EGLSyncControlTest::Loop(int interval) {
 
   interface_->SwapBuffers();
   usleep(interval);
-  ret = GetSyncValues(second_call);
+  ret = GetSyncValues(&second_call);
 
   if (!ret) {
     LOG(ERROR) << "Failure: Second eglGetSyncValuesCHROMIUM returned false.\n";
@@ -175,13 +175,13 @@ bool EGLSyncControlTest::Loop(int interval) {
   return test_val;
 }
 
-EGLBoolean EGLSyncControlTest::GetSyncValues(struct SyncValues &sync_values) {
+EGLBoolean EGLSyncControlTest::GetSyncValues(struct SyncValues *sync_values) {
   EGLBoolean ret;
   ret = egl_get_sync_values_(interface_->display(),
                              interface_->surface(),
-                             &sync_values.ust,
-                             &sync_values.msc,
-                             &sync_values.sbc);
+                             &sync_values->ust,
+                             &sync_values->msc,
+                             &sync_values->sbc);
   interface_->CheckError();
   return ret;
 }

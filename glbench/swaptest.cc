@@ -35,4 +35,4 @@ TestBase* GetSwapTest() {
   return new SwapTest;
 }
 
-} // namespace glbench
+}  // namespace glbench

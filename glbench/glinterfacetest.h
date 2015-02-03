@@ -46,6 +46,6 @@ class GLInterfaceTest : public TestBase {
   DISALLOW_COPY_AND_ASSIGN(GLInterfaceTest);
 };
 
-} // namespace glbench
+}  // namespace glbench
 
 #endif  // GLBENCH_GLINTERFACETEST_H_

@@ -43,8 +43,9 @@ bool XlibInit() {
   g_height = g_height == -1 ? attributes.height : g_height;
   XVisualInfo* xlib_visinfo = g_main_gl_interface->GetXVisual();
 
-  unsigned long mask = CWBackPixel | CWBorderPixel | CWColormap | CWEventMask |
-    CWOverrideRedirect;
+  unsigned long mask =  // NOLINT(runtime/int)
+      CWBackPixel | CWBorderPixel | CWColormap | CWEventMask |
+      CWOverrideRedirect;
   XSetWindowAttributes attr;
   attr.background_pixel = 0;
   attr.border_pixel = 0;

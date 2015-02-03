@@ -225,4 +225,4 @@ TestBase* GetVaryingsAndDdxyShaderTest() {
 }
 
 
-} // namespace glbench
+}  // namespace glbench

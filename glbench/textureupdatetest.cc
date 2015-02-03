@@ -48,4 +48,4 @@ TestBase* GetTextureUpdateTest() {
   return new TextureUpdateTest;
 }
 
-} // namespace glbench
+}  // namespace glbench

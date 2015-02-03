@@ -92,6 +92,6 @@ class DrawElementsTestFunc : public TestBase {
   GLsizei count_;
 };
 
-} // namespace glbench
+}  // namespace glbench
 
 #endif  // GLBENCH_TESTBASE_H_

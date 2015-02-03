@@ -187,7 +187,7 @@ bool FboFillRateTest::Run() {
   // Start with 32x32 textures and go up from there.
   int size_log2 = 5;
   for (int size = 1 << size_log2; size <= max_size; size *= 2) {
-    sprintf(name, "fbofill_tex_bilinear_%d", size);
+    snprintf(name, sizeof(name), "fbofill_tex_bilinear_%d", size);
 
     // Setup texture for FBO.
     GLuint destination_texture = 0;
@@ -249,4 +249,4 @@ TestBase* GetFboFillRateTest() {
   return new FboFillRateTest;
 }
 
-} // namespace glbench
+}  // namespace glbench

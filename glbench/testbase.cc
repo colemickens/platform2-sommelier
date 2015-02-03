@@ -59,7 +59,8 @@ double Bench(TestBase* test) {
   // numbers right, so we don't wait at all.
   if (!::g_notemp) {
     wait = WaitForCoolMachine(initial_temperature + 5.0, 30.0, &temperature);
-    printf("Bench: Cooled down to %.1f'C (initial=%.1f'C) after waiting %.1fs.\n",
+    printf("Bench: Cooled down to %.1f'C (initial=%.1f'C) after waiting "
+           "%.1fs.\n",
            temperature, initial_temperature, wait);
     if (temperature > initial_temperature + 10.0)
       printf("Warning: Machine did not cool down enough for next test!");
@@ -144,8 +145,8 @@ void RunTest(TestBase* test, const char* testname, const double coefficient,
         // translate to hexadecimal ASCII of MD5
         sprintf(pixmd5,
           "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-          d[ 0],d[ 1],d[ 2],d[ 3],d[ 4],d[ 5],d[ 6],d[ 7],
-          d[ 8],d[ 9],d[10],d[11],d[12],d[13],d[14],d[15]);
+          d[ 0], d[ 1], d[ 2], d[ 3], d[ 4], d[ 5], d[ 6], d[ 7],
+          d[ 8], d[ 9], d[10], d[11], d[12], d[13], d[14], d[15]);
         sprintf(name_png, "%s.pixmd5-%s.png", testname, pixmd5);
 
         if (FLAGS_save)
@@ -182,19 +183,18 @@ void DrawArraysTestFunc::FillRateTestNormal(const char* name) {
 
 void DrawArraysTestFunc::FillRateTestNormalSubWindow(const char* name,
                                                      const int width,
-                                                     const int height)
-{
+                                                     const int height) {
   RunTest(this, name, width * height, width, height, true);
 }
 
 
 void DrawArraysTestFunc::FillRateTestBlendDepth(const char *name) {
-  const int buffer_len = 64;
-  char buffer[buffer_len];
+  const int kBufferLen = 64;
+  char buffer[kBufferLen];
 
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glEnable(GL_BLEND);
-  snprintf(buffer, buffer_len, "%s_blended", name);
+  snprintf(buffer, kBufferLen, "%s_blended", name);
   RunTest(this, buffer, g_width * g_height, g_width, g_height, true);
   glDisable(GL_BLEND);
 
@@ -202,14 +202,14 @@ void DrawArraysTestFunc::FillRateTestBlendDepth(const char *name) {
   // Fragments should have depth 0.
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_NOTEQUAL);
-  snprintf(buffer, buffer_len, "%s_depth_neq", name);
+  snprintf(buffer, kBufferLen, "%s_depth_neq", name);
   RunTest(this, buffer, g_width * g_height, g_width, g_height, true);
 
   // The DrawArrays call invoked by this test shouldn't render anything
   // because every fragment will fail the depth test.  Therefore we
   // should see the clear color.
   glDepthFunc(GL_NEVER);
-  snprintf(buffer, buffer_len, "%s_depth_never", name);
+  snprintf(buffer, kBufferLen, "%s_depth_never", name);
   RunTest(this, buffer, g_width * g_height, g_width, g_height, true);
   glDisable(GL_DEPTH_TEST);
 }
@@ -226,4 +226,4 @@ bool DrawElementsTestFunc::TestFunc(uint64_t iterations) {
   return true;
 }
 
-} // namespace glbench
+}  // namespace glbench

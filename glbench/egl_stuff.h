@@ -11,7 +11,6 @@
 
 class EGLInterface : public GLInterface {
  public:
-
   EGLInterface() : display_(EGL_NO_DISPLAY),
                    config_(NULL),
                    surface_(NULL),

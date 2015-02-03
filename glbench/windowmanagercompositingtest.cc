@@ -16,7 +16,7 @@ const float kScreenScaleFactor = 1e6f * (WINDOW_WIDTH * WINDOW_HEIGHT) /
 
 class WindowManagerCompositingTest : public TestBase {
  public:
-  WindowManagerCompositingTest(bool scissor)
+  explicit WindowManagerCompositingTest(bool scissor)
       : scissor_(scissor),
       compositing_background_program_(0),
       compositing_foreground_program_(0) {}
@@ -55,7 +55,8 @@ bool WindowManagerCompositingTest::Run() {
     testname = "compositing_no_fill";
   }
   InitializeCompositing();
-  RunTest(this, testname, kScreenScaleFactor, WINDOW_WIDTH, WINDOW_HEIGHT, true);
+  RunTest(this, testname, kScreenScaleFactor, WINDOW_WIDTH, WINDOW_HEIGHT,
+          true);
   TeardownCompositing();
   return true;
 }
@@ -379,4 +380,4 @@ void WindowManagerCompositingTest::LoadTexture() {
                GL_RGBA, GL_UNSIGNED_BYTE, texture_update_);
 }
 
-} // namespace glbench
+}  // namespace glbench

@@ -49,6 +49,6 @@ GLuint InitShaderProgramWithHeaders(const char** headers,
                                     const char* fragment_src);
 void ClearBuffers();
 
-} // namespace glbench
+}  // namespace glbench
 
 #endif  // GLBENCH_UTILS_H_

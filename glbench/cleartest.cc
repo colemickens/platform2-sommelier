@@ -62,4 +62,4 @@ TestBase* GetClearTest() {
   return new ClearTest;
 }
 
-} // namespace glbench
+}  // namespace glbench

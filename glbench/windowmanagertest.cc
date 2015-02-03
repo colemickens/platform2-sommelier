@@ -155,7 +155,7 @@ int main(int argc, char* argv[]) {
       continue;
 
     // State change. Perform action.
-    switch(state) {
+    switch (state) {
       case kStateScreenShot1:
         ignore_result(system(FLAGS_screenshot1_cmd.c_str()));
         break;
@@ -169,7 +169,6 @@ int main(int argc, char* argv[]) {
     // Advance to next state
     last_event_time = GetUTime();
     state = static_cast<State>(state + 1);
-
   } while (state != kStateExit);
 
   glDeleteTextures(1, &texture);

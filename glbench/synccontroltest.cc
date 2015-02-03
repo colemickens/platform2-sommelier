@@ -92,4 +92,4 @@ int main(int argc, char* argv[]) {
   g_main_gl_interface->Cleanup();
 
   return ret_val ? 0 : 1;
-};
+}

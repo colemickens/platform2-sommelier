@@ -260,4 +260,4 @@ TestBase* GetYuvToRgbTest() {
   return new YuvToRgbTest();
 }
 
-} // namespace glbench
+}  // namespace glbench

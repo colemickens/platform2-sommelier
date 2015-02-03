@@ -51,7 +51,7 @@ void *MmapFile(const char* name, size_t* length) {
     return NULL;
 
   struct stat sb;
-  CHECK(fstat(fd, &sb) != -1);
+  CHECK_NE(fstat(fd, &sb), -1);
 
   char *mmap_ptr = static_cast<char *>(
     mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0));
@@ -73,7 +73,7 @@ bool read_int_from_file(FilePath filename, int *value) {
   if (count != 1) {
     printf("Error: could not read integer from file. (%s)\n",
            filename.value().c_str());
-    if(count != 1)
+    if (count != 1)
       return false;
   }
   fclose(fd);
@@ -225,8 +225,7 @@ GLuint SetupVBO(GLenum target, GLsizeiptr size, const GLvoid *data) {
 
 // Generates a lattice symmetric around the origin (all quadrants).
 void CreateLattice(GLfloat **vertices, GLsizeiptr *size,
-                   GLfloat size_x, GLfloat size_y, int width, int height)
-{
+                   GLfloat size_x, GLfloat size_y, int width, int height) {
   GLfloat *vptr = *vertices = new GLfloat[2 * (width + 1) * (height + 1)];
   GLfloat shift_x = size_x * width;
   GLfloat shift_y = size_y * height;
@@ -244,10 +243,10 @@ void CreateLattice(GLfloat **vertices, GLsizeiptr *size,
 // vertices in the mesh.
 int CreateMesh(GLushort **indices, GLsizeiptr *size,
                int width, int height, int culled_ratio) {
-  srand(0);
+  unsigned int seed = 0;
 
   // We use 16 bit indices for compatibility with GL ES
-  CHECK(height * width + width + height <= 65535);
+  CHECK_LE(height * width + width + height, 65535);
 
   GLushort *iptr = *indices = new GLushort[2 * 3 * (width * height)];
   const int swath_height = 4;
@@ -262,7 +261,7 @@ int CreateMesh(GLushort **indices, GLsizeiptr *size,
         GLushort third = first + (width + 1);
         GLushort fourth = third + 1;
 
-        bool flag = rand() < culled_ratio;
+        bool flag = rand_r(&seed) < culled_ratio;
         *iptr++ = first;
         *iptr++ = flag ? second : third;
         *iptr++ = flag ? third : second;
@@ -278,8 +277,7 @@ int CreateMesh(GLushort **indices, GLsizeiptr *size,
   return iptr - *indices;
 }
 
-static void print_info_log(int obj, bool shader)
-{
+static void print_info_log(int obj, bool shader) {
   char info_log[4096];
   int length;
 
@@ -300,13 +298,11 @@ static void print_info_log(int obj, bool shader)
   }
 }
 
-static void print_shader_log(int shader)
-{
+static void print_shader_log(int shader) {
   print_info_log(shader, true);
 }
 
-static void print_program_log(int program)
-{
+static void print_program_log(int program) {
   print_info_log(program, false);
 }
 
@@ -368,4 +364,4 @@ void ClearBuffers() {
   glClearColor(0, 0, 0.f, 0.f);
 }
 
-} // namespace glbench
+}  // namespace glbench

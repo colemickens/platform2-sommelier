@@ -4,6 +4,8 @@
 
 #include "glbench/texturetest.h"
 
+#include <string>
+
 #include "base/logging.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
@@ -68,10 +70,10 @@ bool TextureTest::Run() {
   // Textures formats
   // TODO(djkurtz): Other formats such as GL_BGRA, GL_RGB, GL_BGR, ... ?
   const GLenum kTexelFormats[] =
-     { GL_LUMINANCE, GL_RGBA }; // , GL_BGRA, GL_RGB, GL_BGR };
-  const unsigned int kTexelFormatSizes[] = { 1, 4 }; // , 4, 3, 3 };
+     { GL_LUMINANCE, GL_RGBA };  // , GL_BGRA, GL_RGB, GL_BGR };
+  const unsigned int kTexelFormatSizes[] = { 1, 4 };  // , 4, 3, 3 };
   const std::string kTexelFormatNames[] =
-      { "luminance", "rgba" }; // , "bgra", "rgb", "bgr" };
+      { "luminance", "rgba" };  // , "bgra", "rgb", "bgr" };
 
   // Texture upload commands
   UpdateFlavor kFlavors[] = { TEX_IMAGE, TEX_SUBIMAGE };
@@ -114,7 +116,8 @@ bool TextureTest::Run() {
         RunTest(this, name.c_str(), buffer_size, g_width, g_height, true);
         GLenum error = glGetError();
         if (error != GL_NO_ERROR) {
-          printf("# GL error code %d after RunTest() with %dx%d %d-byte texture.\n",
+          printf("# GL error code %d after RunTest() with %dx%d %d-byte "
+                 "texture.\n",
                  error, width_, height_, texel_size);
        }
       }
@@ -128,4 +131,4 @@ bool TextureTest::Run() {
   return true;
 }
 
-} // namespace glbench
+}  // namespace glbench

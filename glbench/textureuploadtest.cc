@@ -46,4 +46,4 @@ TestBase* GetTextureUploadTest() {
   return new TextureUploadTest;
 }
 
-} // namespace glbench
+}  // namespace glbench

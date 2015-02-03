@@ -60,4 +60,4 @@ TestBase* GetTextureReuseTest() {
   return new TextureReuseTest;
 }
 
-} // namespace glbench
+}  // namespace glbench

@@ -17,9 +17,7 @@ SyncControlTest* SyncControlTest::Create() {
   return new GLXSyncControlTest();
 }
 
-GLXSyncControlTest::GLXSyncControlTest() {
-
-}
+GLXSyncControlTest::GLXSyncControlTest() { }
 
 void GLXSyncControlTest::Init() { }
 

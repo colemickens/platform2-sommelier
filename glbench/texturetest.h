@@ -41,9 +41,11 @@ class TextureTest : public TestBase {
   GLuint textures_[kNumberOfTextures];
   UpdateFlavor flavor_;
   GLenum texel_gl_format_;
+
+ private:
   DISALLOW_COPY_AND_ASSIGN(TextureTest);
 };
 
-} // namespace glbench
+}  // namespace glbench
 
 #endif  // GLBENCH_TEXTURETEST_H_

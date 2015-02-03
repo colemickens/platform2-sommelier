@@ -69,9 +69,9 @@ XVisualInfo* EGLInterface::GetXVisual() {
     CheckError();
   }
 
-  // TODO: for some reason on some systems EGL_NATIVE_VISUAL_ID returns an ID
-  // that XVisualIDFromVisual cannot find.  Use default visual until this is
-  // resolved.
+  // TODO(amarinichev): for some reason on some systems EGL_NATIVE_VISUAL_ID
+  // returns an ID that XVisualIDFromVisual cannot find.  Use default visual
+  // until this is resolved.
 #if 0
   EGLint visual_id;
   eglGetConfigAttrib(display_, config_, EGL_NATIVE_VISUAL_ID, &visual_id);
@@ -87,7 +87,7 @@ XVisualInfo* EGLInterface::GetXVisual() {
   int nitems = 0;
   XVisualInfo* ret = XGetVisualInfo(g_xlib_display, VisualIDMask,
                                     &vinfo_template, &nitems);
-  CHECK(nitems == 1);
+  CHECK_EQ(nitems, 1);
   return ret;
 }
 

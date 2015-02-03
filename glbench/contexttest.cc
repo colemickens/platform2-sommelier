@@ -58,4 +58,4 @@ TestBase* GetContextTest() {
   return new ContextTest;
 }
 
-} // namespace glbench
+}  // namespace glbench

@@ -80,7 +80,7 @@ XVisualInfo* GLXInterface::GetXVisual() {
     int nelements;
     GLXFBConfig *fb_configs = glXChooseFBConfig(g_xlib_display, screen,
                                                 attrib, &nelements);
-    CHECK(nelements >= 1);
+    CHECK_GE(nelements, 1);
     fb_config_ = fb_configs[0];
     XFree(fb_configs);
   }
@@ -119,4 +119,4 @@ bool GLXInterface::SwapInterval(int interval) {
 
 void GLXInterface::CheckError() {
   CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
-};
+}

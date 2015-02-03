@@ -10,6 +10,8 @@
 #include <string.h>
 
 #include <ctime>
+#include <string>
+#include <vector>
 
 #include "base/logging.h"
 #include "base/strings/string_split.h"
@@ -25,13 +27,15 @@ using std::string;
 using std::vector;
 
 DEFINE_int32(duration, 0,
-             "Run all tests again and again in a loop for at least this many seconds.");
+             "Run all tests again and again in a loop for at least this many "
+             "seconds.");
 DEFINE_string(tests, "",
               "Colon-separated list of tests to run; all tests if omitted.");
 DEFINE_string(blacklist, "", "colon-separated list of tests to disable");
 DEFINE_bool(hasty, false,
             "Run a smaller set of tests with less accurate results. "
-            "Useful for running in BVT or debugging a failure.  Implies notemp");
+            "Useful for running in BVT or debugging a failure.  Implies "
+            "notemp");
 DEFINE_bool(list, false, "List available tests");
 DEFINE_bool(notemp, false, "Skip temperature checking");
 
@@ -45,11 +49,10 @@ bool test_is_enabled(glbench::TestBase* test,
     return true;
 
   const char* test_name = test->Name();
-  for (vector<string>::const_iterator i = enabled_tests.begin();
-       i != enabled_tests.end(); ++i) {
+  for (const std::string& test : enabled_tests) {
     // This is not very precise, but will do until there's a need for something
     // more flexible.
-    if (strstr(test_name, i->c_str()))
+    if (strstr(test_name, test.c_str()))
       return true;
   }
 
@@ -74,11 +77,11 @@ bool test_is_disabled(glbench::TestBase* test,
 }
 
 void printDateTime(void) {
-  struct tm *ttime;
+  struct tm ttime;
   time_t tm = time(0);
   char time_string[64];
-  ttime = localtime(&tm);
-  strftime(time_string, 63, "%c",ttime);
+  localtime_r(&tm, &ttime);
+  strftime(time_string, 63, "%c", &ttime);
   printf("# DateTime: %s\n", time_string);
 }
 
@@ -120,7 +123,8 @@ int main(int argc, char *argv[]) {
   g_main_gl_interface->Cleanup();
 
   if (argc == 1) {
-    printf("# Usage: %s [-save [-outdir=<directory>]] to save images\n", argv[0]);
+    printf("# Usage: %s [-save [-outdir=<directory>]] to save images\n",
+           argv[0]);
   } else {
     printf("# Running: ");
     for (int i = 0; i < argc; i++) printf("%s ", argv[i]);
