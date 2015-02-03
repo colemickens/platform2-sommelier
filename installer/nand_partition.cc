@@ -1,0 +1,118 @@
+// Copyright 2015 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "installer/nand_partition.h"
+
+#include <base/logging.h>
+#include <fcntl.h>
+#include <linux/blkpg.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+using std::string;
+
+namespace {
+
+// A class to automatically close a pure file descriptor. A ScopedFileDescriptor
+// object can be treated as any regular file descriptor. You can call read(),
+// write(), etc. on these objects.
+// This is NOT the same as update_engine::ScopedFileDescriptorCloser because
+// that other class wraps an update_engine::FileDescriptor.
+class ScopedFileDescriptor {
+ public:
+  explicit ScopedFileDescriptor(int fd) : fd_(fd) {}
+  virtual ~ScopedFileDescriptor() {
+    if (fd_ >= 0) {
+      if (close(fd_)) {
+        PLOG(ERROR) << "Cannot close file descriptor";
+      }
+    }
+  }
+  operator int() { return fd_; }
+
+ private:
+  int fd_;
+
+  DISALLOW_COPY_AND_ASSIGN(ScopedFileDescriptor);
+};
+
+}  // namespace
+
+namespace chromeos {
+
+namespace installer {
+
+bool RemoveNandPartition(const string& dev, int partno) {
+  // We use /dev/mtd0 as the "master" device.
+  if (partno <= 0) {
+    LOG(INFO) << "Partition number " << partno << " is not greater than 0";
+    return false;
+  }
+
+  ScopedFileDescriptor fd(open(dev.c_str(), O_RDWR | O_CLOEXEC));
+  if (fd < 0) {
+    PLOG(ERROR) << "Cannot open " << dev;
+    return false;
+  }
+
+  blkpg_partition part;
+  memset(&part, 0, sizeof(part));
+  part.pno = partno;
+
+  blkpg_ioctl_arg arg;
+  memset(&arg, 0, sizeof(arg));
+  arg.op = BLKPG_DEL_PARTITION;
+  arg.datalen = sizeof(part);
+  arg.data = &part;
+
+  int r = ioctl(fd, BLKPG, &arg);
+  if (r) {
+    PLOG(ERROR) << "Cannot remove partition " << partno << " from " << dev;
+  }
+  return r == 0;
+}
+
+bool AddNandPartition(const std::string& dev,
+                      int partno,
+                      uint64_t offset,
+                      uint64_t length) {
+  // We use /dev/mtd0 as the "master" device.
+  if (partno <= 0) {
+    LOG(INFO) << "Partition number " << partno << " is not greater than 0";
+    return false;
+  }
+
+  ScopedFileDescriptor fd(open(dev.c_str(), O_RDWR | O_CLOEXEC));
+  if (fd < 0) {
+    PLOG(ERROR) << "Cannot open " << dev;
+    return false;
+  }
+
+  blkpg_partition part;
+  memset(&part, 0, sizeof(part));
+  part.pno = partno;
+  part.start = offset;
+  part.length = length;
+  snprintf(part.devname, sizeof(part.devname), "mtd%d", partno);
+
+  blkpg_ioctl_arg arg;
+  memset(&arg, 0, sizeof(arg));
+  arg.op = BLKPG_ADD_PARTITION;
+  arg.datalen = sizeof(part);
+  arg.data = &part;
+
+  int r = ioctl(fd, BLKPG, &arg);
+  if (r) {
+    PLOG(ERROR) << "Cannot add another partition to " << dev;
+  }
+  return r == 0;
+}
+
+}  // namespace installer
+
+}  // namespace chromeos

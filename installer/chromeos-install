@@ -622,6 +622,34 @@ copy_partition() {
   esac
 }
 
+# Remove partitions 1 to 12 from MTD device. Recreate partitions 1 to 12 with
+# information from the current GPT table.
+# $1 is the device node, such as "/dev/mtd0"
+recreate_nand_partitions() {
+  local dst=$1
+  local part_no
+  for part_no in $(ls /dev | grep 'mtd[0-9]*$' | grep -v mtd0 | cut -c 4-); do
+    # Ignore any error in case no UBI volume is attached.
+    ubidetach -m "${part_no}" 2>&1 > /dev/null || true
+    nand_partition del "${dst}" "${part_no}"
+  done
+
+  local gpt_file mtd_size mtd_gpt_file part_size part_offset
+  gpt_file=$(mktemp)
+  flashrom -r "-iRW_GPT:${gpt_file}"
+  mtd_size=$(cat "/sys/class/mtd/$(basename "${dst}")/size")
+  mtd_gpt_file="-D ${mtd_size} ${gpt_file}"
+  for part_no in $(seq 12); do
+    part_size=$(partsize "${mtd_gpt_file}" "${part_no}")
+    : $(( part_size *= 512 ))
+    part_offset=$(partoffset "${mtd_gpt_file}" "${part_no}")
+    : $(( part_offset *= 512 ))
+    nand_partition add "${dst}" "${part_no}" \
+      "${part_offset}" "${part_size}"
+  done
+  rm -f "${gpt_file}"
+}
+
 ##############################################################################
 
 # Start main logic. As little code as possible should go in here. Please make
@@ -721,10 +749,14 @@ fi
 # on MTD devices.
 write_base_table "${DST}" "${PMBRCODE}"
 legacy_offset_size_export "${DST}"
+
 if [ ${FLAGS_mtd_layout} -eq ${FLAGS_FALSE} ]; then
   # Reload the partition table on block devices only.
   # On MTD, the ChromeOS kernel loads the partition table at boot time.
   /sbin/blockdev --rereadpt ${DST}
+else
+  # On NAND, we need to recreate the partition table.
+  recreate_nand_partitions "${DST}"
 fi
 
 if [ ${FLAGS_skip_rootfs} -eq ${FLAGS_TRUE} ]; then
