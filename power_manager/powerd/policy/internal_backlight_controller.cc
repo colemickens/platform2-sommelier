@@ -38,15 +38,6 @@ const double kMaxPercent = 100.0;
 // kDefaultLevelToPercentExponent is modified.
 const double kDimmedBrightnessFraction = 0.1;
 
-// Minimum brightness, as a fraction of the maximum level in the range [0.0,
-// 1.0], that we'll remain at before turning the backlight off entirely.  This
-// is arbitrarily chosen but seems to be a reasonable marginally-visible
-// brightness for a darkened room on current devices: http://crosbug.com/24569.
-// A higher level can be set via the kMinVisibleBacklightLevelPref setting.
-// This is a fraction rather than a percent so it won't change if
-// kDefaultLevelToPercentExponent is modified.
-const double kDefaultMinVisibleBrightnessFraction = 0.0065;
-
 // Value for |level_to_percent_exponent_|, assuming that at least
 // |kMinLevelsForNonLinearScale| brightness levels are available -- if not, we
 // just use 1.0 to give us a linear scale.
@@ -137,6 +128,8 @@ double GetInitialBrightnessPercent(PrefsInterface* prefs,
 const int64_t InternalBacklightController::kMaxBrightnessSteps = 16;
 const double InternalBacklightController::kMinVisiblePercent =
     kMaxPercent / kMaxBrightnessSteps;
+const double InternalBacklightController::kDefaultMinVisibleBrightnessFraction =
+    0.0065;
 const int InternalBacklightController::kAmbientLightSensorTimeoutSec = 10;
 
 InternalBacklightController::InternalBacklightController()
@@ -186,14 +179,12 @@ void InternalBacklightController::Init(
   max_level_ = backlight_->GetMaxBrightnessLevel();
   current_level_ = backlight_->GetCurrentBrightnessLevel();
 
-  if (!prefs_->GetInt64(kMinVisibleBacklightLevelPref, &min_visible_level_))
-    min_visible_level_ = 1;
-  min_visible_level_ = std::max(
-      static_cast<int64_t>(
-          lround(kDefaultMinVisibleBrightnessFraction * max_level_)),
-      min_visible_level_);
-  CHECK_GT(min_visible_level_, 0);
-  min_visible_level_ = std::min(min_visible_level_, max_level_);
+  if (!prefs_->GetInt64(kMinVisibleBacklightLevelPref, &min_visible_level_)) {
+    min_visible_level_ = static_cast<int64_t>(
+        lround(kDefaultMinVisibleBrightnessFraction * max_level_));
+  }
+  min_visible_level_ = std::min(
+      std::max(min_visible_level_, static_cast<int64_t>(1)), max_level_);
 
   const double initial_percent = LevelToPercent(current_level_);
   ambient_light_brightness_percent_ = initial_percent;

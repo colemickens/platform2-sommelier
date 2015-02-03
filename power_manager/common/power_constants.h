@@ -46,7 +46,8 @@ extern const char kRetrySuspendMsPref[];
 extern const char kRetrySuspendAttemptsPref[];
 
 // Minimum brightness level (in hardware-specific units) that the backlight
-// should be remain at before it's turned off entirely.
+// should be remain at before it's turned off entirely. If unset, a default
+// based on the maximum brightness level is used.
 extern const char kMinVisibleBacklightLevelPref[];
 
 // If true, powerd will jump directly from the min-visible-level to 0 rather

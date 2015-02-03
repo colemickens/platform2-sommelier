@@ -46,6 +46,16 @@ class InternalBacklightController : public BacklightController,
   // lowest brightness step before the screen is turned off.
   static const double kMinVisiblePercent;
 
+  // Minimum brightness, as a fraction of the maximum level in the range [0.0,
+  // 1.0], that is used as the bottom step before turning the backlight off
+  // entirely.  This is arbitrarily chosen but seems to be a reasonable
+  // marginally-visible brightness for a darkened room on current devices:
+  // http://crosbug.com/24569. A custom level can be set via the
+  // kMinVisibleBacklightLevelPref setting. This is a fraction of the
+  // driver-supplied maximum level rather than a percent so it won't change if
+  // kDefaultLevelToPercentExponent is modified.
+  static const double kDefaultMinVisibleBrightnessFraction;
+
   // If an ambient light reading hasn't been seen after this many seconds,
   // give up on waiting for the sensor to be initialized and just set
   // |use_ambient_light_| to false.

@@ -40,7 +40,7 @@ class InternalBacklightControllerTest : public ::testing::Test {
         initial_als_lux_(0),
         report_initial_als_reading_(true),
         report_initial_power_source_(true),
-        default_min_visible_level_(1),
+        default_min_visible_level_(-1),
         default_als_steps_("50.0 -1 400\n90.0 100 -1"),
         default_no_als_ac_brightness_("80.0"),
         default_no_als_battery_brightness_("60.0"),
@@ -52,7 +52,10 @@ class InternalBacklightControllerTest : public ::testing::Test {
   // event such that it should make its first adjustment to the backlight
   // brightness.
   virtual void Init(PowerSource power_source) {
-    prefs_.SetInt64(kMinVisibleBacklightLevelPref, default_min_visible_level_);
+    if (default_min_visible_level_ > 0) {
+      prefs_.SetInt64(kMinVisibleBacklightLevelPref,
+                      default_min_visible_level_);
+    }
     prefs_.SetString(kInternalBacklightAlsStepsPref, default_als_steps_);
     prefs_.SetString(kInternalBacklightNoAlsAcBrightnessPref,
                      default_no_als_ac_brightness_);
@@ -101,8 +104,8 @@ class InternalBacklightControllerTest : public ::testing::Test {
   bool report_initial_als_reading_;
   bool report_initial_power_source_;
 
-  // Default values for prefs.  Applied when Init() is called.
-  int64_t default_min_visible_level_;
+  // Default values for prefs. Applied when Init() is called.
+  int64_t default_min_visible_level_;  // Unset if non-positive.
   std::string default_als_steps_;
   std::string default_no_als_ac_brightness_;
   std::string default_no_als_battery_brightness_;
@@ -118,7 +121,7 @@ TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
   default_min_visible_level_ = 100;
   default_als_steps_ = "50.0 -1 -1";
   Init(POWER_BATTERY);
-  EXPECT_EQ(default_min_visible_level_,
+  ASSERT_EQ(default_min_visible_level_,
             PercentToLevel(InternalBacklightController::kMinVisiblePercent));
   const int64_t kAlsLevel = PercentToLevel(50.0);
   EXPECT_EQ(kAlsLevel, backlight_.current_level());
@@ -864,6 +867,24 @@ TEST_F(InternalBacklightControllerTest, SetDisplayPowerOnChromeStart) {
   EXPECT_EQ(1, display_power_setter_.num_power_calls());
   EXPECT_EQ(chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
             display_power_setter_.state());
+}
+
+TEST_F(InternalBacklightControllerTest, MinVisibleLevelPrefUndercutsDefault) {
+  // Set the min-visible-level pref below the computed default.
+  int64_t computed_min = static_cast<int64_t>(
+      lround(InternalBacklightController::kDefaultMinVisibleBrightnessFraction *
+             max_backlight_level_));
+  default_min_visible_level_ = static_cast<int64_t>(computed_min * 0.5);
+  ASSERT_GT(default_min_visible_level_, 0);
+  ASSERT_LT(default_min_visible_level_, computed_min);
+
+  // Set the brightness to 0%, increase it one step, and confirm that the level
+  // configured by the pref is used instead of the higher computed default.
+  Init(POWER_AC);
+  controller_->SetUserBrightnessPercent(
+      0.0, BacklightController::TRANSITION_INSTANT);
+  controller_->IncreaseUserBrightness();
+  EXPECT_EQ(default_min_visible_level_, backlight_.current_level());
 }
 
 }  // namespace policy
