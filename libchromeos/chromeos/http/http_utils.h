@@ -323,6 +323,11 @@ CHROMEOS_EXPORT int PatchJson(
 CHROMEOS_EXPORT std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
     const Response* response, int* status_code, chromeos::ErrorPtr* error);
 
+// Converts a request header name to canonical form (lowercase with uppercase
+// first letter and each letter after a hyphen ('-')).
+// "content-TYPE" will be converted to "Content-Type".
+CHROMEOS_EXPORT std::string GetCanonicalHeaderName(const std::string& name);
+
 }  // namespace http
 }  // namespace chromeos
 

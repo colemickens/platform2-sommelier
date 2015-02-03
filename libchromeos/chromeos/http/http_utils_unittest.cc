@@ -482,5 +482,18 @@ TEST(HttpUtils, SendRequestAsync_Failure) {
                               base::Bind(error_callback));
 }
 
+TEST(HttpUtils, GetCanonicalHeaderName) {
+  EXPECT_EQ("Foo", GetCanonicalHeaderName("foo"));
+  EXPECT_EQ("Bar", GetCanonicalHeaderName("BaR"));
+  EXPECT_EQ("Baz", GetCanonicalHeaderName("BAZ"));
+  EXPECT_EQ("Foo-Bar", GetCanonicalHeaderName("foo-bar"));
+  EXPECT_EQ("Foo-Bar-Baz", GetCanonicalHeaderName("foo-Bar-BAZ"));
+  EXPECT_EQ("Foo-Bar-Baz", GetCanonicalHeaderName("FOO-BAR-BAZ"));
+  EXPECT_EQ("Foo-Bar-", GetCanonicalHeaderName("fOO-bAR-"));
+  EXPECT_EQ("-Bar", GetCanonicalHeaderName("-bAR"));
+  EXPECT_EQ("", GetCanonicalHeaderName(""));
+  EXPECT_EQ("A-B-C", GetCanonicalHeaderName("a-B-c"));
+}
+
 }  // namespace http
 }  // namespace chromeos

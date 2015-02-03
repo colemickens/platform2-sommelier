@@ -457,5 +457,23 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
   return std::unique_ptr<base::DictionaryValue>(dict_value);
 }
 
+std::string GetCanonicalHeaderName(const std::string& name) {
+  std::string canonical_name = name;
+  bool word_begin = true;
+  for (char& c : canonical_name) {
+    if (c == '-') {
+      word_begin = true;
+    } else {
+      if (word_begin) {
+        c = toupper(c);
+      } else {
+        c = tolower(c);
+      }
+      word_begin = false;
+    }
+  }
+  return canonical_name;
+}
+
 }  // namespace http
 }  // namespace chromeos
