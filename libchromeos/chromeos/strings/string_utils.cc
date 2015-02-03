@@ -118,5 +118,15 @@ std::string ToString(bool value) {
   return value ? "true" : "false";
 }
 
+std::string GetBytesAsString(const std::vector<uint8_t>& buffer) {
+  auto ptr = reinterpret_cast<const char*>(buffer.data());
+  return std::string{ptr, ptr + buffer.size()};
+}
+
+std::vector<uint8_t> GetStringAsBytes(const std::string& str) {
+  auto ptr = reinterpret_cast<const uint8_t*>(str.data());
+  return std::vector<uint8_t>{ptr, ptr + str.size()};
+}
+
 }  // namespace string_utils
 }  // namespace chromeos

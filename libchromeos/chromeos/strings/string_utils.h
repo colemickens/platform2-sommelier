@@ -91,6 +91,14 @@ CHROMEOS_EXPORT std::string ToString(double value);
 // And the bool to be converted as true/false instead of 1/0.
 CHROMEOS_EXPORT std::string ToString(bool value);
 
+// Converts a byte-array into a string. This method doesn't perform any
+// data re-encoding. It just takes every byte from the buffer and appends it
+// to the string as a character.
+CHROMEOS_EXPORT std::string GetBytesAsString(const std::vector<uint8_t>& buf);
+
+// Converts a string into a byte-array. Opposite of GetBytesAsString().
+CHROMEOS_EXPORT std::vector<uint8_t> GetStringAsBytes(const std::string& str);
+
 }  // namespace string_utils
 }  // namespace chromeos
 

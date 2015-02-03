@@ -110,4 +110,28 @@ TEST(StringUtils, Join_Pair) {
   EXPECT_EQ("key = value", string_utils::Join(" = ", "key", "value"));
 }
 
+TEST(StringUtils, GetBytesAsString) {
+  EXPECT_EQ("abc", string_utils::GetBytesAsString({'a', 'b', 'c'}));
+  EXPECT_TRUE(string_utils::GetBytesAsString({}).empty());
+  auto str = string_utils::GetBytesAsString({0xFF, 0x00, 0x01, 0x7F, 0x80});
+  ASSERT_EQ(5, str.size());
+  EXPECT_EQ('\xFF', str[0]);
+  EXPECT_EQ('\x00', str[1]);
+  EXPECT_EQ('\x01', str[2]);
+  EXPECT_EQ('\x7F', str[3]);
+  EXPECT_EQ('\x80', str[4]);
+}
+
+TEST(StringUtils, GetStringAsBytes) {
+  EXPECT_EQ((std::vector<uint8_t>{'a', 'b', 'c'}),
+            string_utils::GetStringAsBytes("abc"));
+  EXPECT_TRUE(string_utils::GetStringAsBytes("").empty());
+  auto buf = string_utils::GetStringAsBytes(std::string{"\x80\0\1\xFF", 4});
+  ASSERT_EQ(4, buf.size());
+  EXPECT_EQ(128, buf[0]);
+  EXPECT_EQ(0, buf[1]);
+  EXPECT_EQ(1, buf[2]);
+  EXPECT_EQ(255, buf[3]);
+}
+
 }  // namespace chromeos
