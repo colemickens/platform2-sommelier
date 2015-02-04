@@ -51,6 +51,7 @@
         {
           'action_name': 'generate-firewalld-proxies',
           'variables': {
+            'mock_output_file': 'include/firewalld/dbus-mocks.h',
             'proxy_output_file': 'include/firewalld/dbus-proxies.h',
           },
           'sources': [
@@ -71,7 +72,7 @@
     ['USE_test == 1', {
       'targets': [
         {
-          'target_name': 'rule_engine_unittest',
+          'target_name': 'permission_broker_unittest',
           'type': 'executable',
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': ['libpermission_broker'],
@@ -84,6 +85,7 @@
             'deny_usb_device_class_rule_unittest.cc',
             'deny_usb_vendor_id_rule_unittest.cc',
             'group_tty_device_rule_unittest.cc',
+            'port_tracker_unittest.cc',
             'rule_engine_unittest.cc',
             'run_all_tests.cc',
           ],

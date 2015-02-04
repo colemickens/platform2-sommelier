@@ -24,6 +24,11 @@ PortTracker::PortTracker(org::chromium::FirewalldProxyInterface* firewalld)
       epfd_{-1},
       firewalld_{firewalld} {}
 
+// Test-only.
+PortTracker::PortTracker(scoped_refptr<base::SequencedTaskRunner> task_runner,
+                         org::chromium::FirewalldProxyInterface* firewalld)
+    : task_runner_{task_runner}, epfd_{-1}, firewalld_{firewalld} {}
+
 PortTracker::~PortTracker() {
   if (epfd_ >= 0) {
     close(epfd_);

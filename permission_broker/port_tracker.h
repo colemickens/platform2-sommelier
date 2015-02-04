@@ -24,6 +24,10 @@ class PortTracker {
   bool ProcessTcpPort(uint16_t port, int dbus_fd);
   bool ProcessUdpPort(uint16_t port, int dbus_fd);
 
+ protected:
+  PortTracker(scoped_refptr<base::SequencedTaskRunner> task_runner,
+              org::chromium::FirewalldProxyInterface* firewalld);
+
  private:
   // Helper functions for process lifetime tracking.
   virtual int AddLifelineFd(int dbus_fd);
