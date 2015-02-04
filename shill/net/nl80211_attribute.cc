@@ -15,6 +15,7 @@
 #include <base/strings/stringprintf.h>
 
 #include "shill/net/ieee80211.h"
+#include "shill/net/netlink_message.h"
 
 using base::Bind;
 using base::StringAppendF;
@@ -255,7 +256,8 @@ const int Nl80211AttributeWowlanTriggers::kName = NL80211_ATTR_WOWLAN_TRIGGERS;
 const char Nl80211AttributeWowlanTriggers::kNameString[] =
     "NL80211_ATTR_WOWLAN_TRIGGERS";
 
-Nl80211AttributeWowlanTriggers::Nl80211AttributeWowlanTriggers()
+Nl80211AttributeWowlanTriggers::Nl80211AttributeWowlanTriggers(
+    NetlinkMessage::MessageContext context)
     : NetlinkNestedAttribute(kName, kNameString) {
   // Pattern matching trigger attribute.
   NestedData patterns(NLA_NESTED, "NL80211_WOWLAN_TRIG_PKT_PATTERN", false);

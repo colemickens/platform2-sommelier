@@ -4,6 +4,7 @@
 
 #include "shill/net/netlink_manager.h"
 
+#include <netlink/msg.h>
 #include <netlink/netlink.h>
 #include <sys/select.h>
 #include <sys/time.h>
@@ -513,6 +514,24 @@ bool NetlinkManager::SendMessageInternal(
   return true;
 }
 
+NetlinkMessage::MessageContext NetlinkManager::InferMessageContext(
+    const nlmsghdr *msg) {
+  NetlinkMessage::MessageContext context;
+
+  const uint32_t sequence_number = msg->nlmsg_seq;
+  if (!ContainsKey(message_handlers_, sequence_number) &&
+      msg->nlmsg_type != ErrorAckMessage::kMessageType) {
+    context.is_broadcast = true;
+  }
+
+  if (msg->nlmsg_type == Nl80211Message::GetMessageType()) {
+    genlmsghdr *gnlh = reinterpret_cast<genlmsghdr *>(nlmsg_data(msg));
+    context.nl80211_cmd = gnlh->cmd;
+  }
+
+  return context;
+}
+
 bool NetlinkManager::RemoveMessageHandler(const NetlinkMessage &message) {
   if (!ContainsKey(message_handlers_, message.sequence_number())) {
     return false;
@@ -572,7 +591,8 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
   }
   const uint32_t sequence_number = msg->nlmsg_seq;
 
-  std::unique_ptr<NetlinkMessage> message(message_factory_.CreateMessage(msg));
+  std::unique_ptr<NetlinkMessage> message(
+      message_factory_.CreateMessage(msg, InferMessageContext(msg)));
   if (message == nullptr) {
     VLOG(3) << "NL Message " << sequence_number << " <===";
     VLOG(3) << __func__ << "(msg:NULL)";

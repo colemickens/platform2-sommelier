@@ -35,7 +35,7 @@ class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
   // Sets the family_id / message_type for all Nl80211 messages.
   static void SetMessageType(uint16_t message_type);
 
-  bool InitFromNlmsg(const nlmsghdr *msg) override;
+  bool InitFromNlmsg(const nlmsghdr *msg, MessageContext context) override;
 
   uint8_t command() const { return command_; }
   const char *command_string() const { return command_string_; }

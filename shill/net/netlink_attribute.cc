@@ -17,6 +17,7 @@
 
 #include "shill/net/attribute_list.h"
 #include "shill/net/control_netlink_attribute.h"
+#include "shill/net/netlink_message.h"
 #include "shill/net/nl80211_attribute.h"
 
 using std::map;
@@ -43,7 +44,8 @@ NetlinkAttribute::NetlinkAttribute(int id,
       datatype_string_(datatype_string) {}
 
 // static
-NetlinkAttribute *NetlinkAttribute::NewNl80211AttributeFromId(int id) {
+NetlinkAttribute *NetlinkAttribute::NewNl80211AttributeFromId(
+    NetlinkMessage::MessageContext context, int id) {
   unique_ptr<NetlinkAttribute> attr;
   switch (id) {
     case NL80211_ATTR_BSS:
@@ -218,7 +220,7 @@ NetlinkAttribute *NetlinkAttribute::NewNl80211AttributeFromId(int id) {
       attr.reset(new Nl80211AttributeWiphyRtsThreshold());
       break;
     case NL80211_ATTR_WOWLAN_TRIGGERS:
-      attr.reset(new Nl80211AttributeWowlanTriggers());
+      attr.reset(new Nl80211AttributeWowlanTriggers(context));
       break;
     case NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED:
       attr.reset(new Nl80211AttributeWowlanTriggersSupported());

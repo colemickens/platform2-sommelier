@@ -78,7 +78,8 @@ void Nl80211Message::SetMessageType(uint16_t message_type) {
   nl80211_message_type_ = message_type;
 }
 
-bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg) {
+bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg,
+                                   NetlinkMessage::MessageContext context) {
   if (!const_msg) {
     LOG(ERROR) << "Null |msg| parameter";
     return false;
@@ -100,7 +101,8 @@ bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg) {
   for (int i = 0; i < NL80211_ATTR_MAX + 1; ++i) {
     if (tb[i]) {
       attributes_->CreateAndInitAttribute(
-          i, tb[i], Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
+          i, tb[i],
+          Bind(&NetlinkAttribute::NewNl80211AttributeFromId, context));
     }
   }
 
@@ -480,9 +482,11 @@ const char GetStationMessage::kCommandString[] = "NL80211_CMD_GET_STATION";
 GetStationMessage::GetStationMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
+      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                                 NetlinkMessage::MessageContext()));
   attributes()->CreateAttribute(
-      NL80211_ATTR_MAC, Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
+      NL80211_ATTR_MAC, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                             NetlinkMessage::MessageContext()));
 }
 
 const uint8_t SetWakeOnPacketConnMessage::kCommand = NL80211_CMD_SET_WOWLAN;
@@ -498,7 +502,8 @@ const char GetWiphyMessage::kCommandString[] = "NL80211_CMD_GET_WIPHY";
 
 GetWiphyMessage::GetWiphyMessage() : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
+      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                                 NetlinkMessage::MessageContext()));
 }
 
 const uint8_t JoinIbssMessage::kCommand = NL80211_CMD_JOIN_IBSS;
@@ -552,7 +557,8 @@ const char TriggerScanMessage::kCommandString[] = "NL80211_CMD_TRIGGER_SCAN";
 TriggerScanMessage::TriggerScanMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
+      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                                 NetlinkMessage::MessageContext()));
 }
 
 const uint8_t UnprotDeauthenticateMessage::kCommand =
@@ -568,7 +574,8 @@ const char UnprotDisassociateMessage::kCommandString[] =
 GetInterfaceMessage::GetInterfaceMessage()
     : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
-      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
+      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                                 NetlinkMessage::MessageContext()));
 }
 
 const uint8_t GetInterfaceMessage::kCommand = NL80211_CMD_GET_INTERFACE;

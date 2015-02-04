@@ -18,6 +18,7 @@
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/net/netlink_manager.h"
+#include "shill/net/netlink_message.h"
 #include "shill/net/nl80211_attribute.h"
 #include "shill/net/nl80211_message.h"
 
@@ -152,8 +153,9 @@ void ScanSession::DoScan(const vector<uint16_t> &scan_frequencies) {
   }
   TriggerScanMessage trigger_scan;
   trigger_scan.attributes()->CreateNl80211Attribute(
-      NL80211_ATTR_SCAN_FREQUENCIES);
-  trigger_scan.attributes()->CreateNl80211Attribute(NL80211_ATTR_SCAN_SSIDS);
+      NL80211_ATTR_SCAN_FREQUENCIES, NetlinkMessage::MessageContext());
+  trigger_scan.attributes()->CreateNl80211Attribute(
+      NL80211_ATTR_SCAN_SSIDS, NetlinkMessage::MessageContext());
   trigger_scan.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
                                                   wifi_interface_index_);
   AttributeListRefPtr frequency_list;

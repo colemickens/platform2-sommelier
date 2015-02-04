@@ -80,7 +80,8 @@ bool NetlinkMessage::InitAndStripHeader(ByteString *input) {
   return true;
 }
 
-bool NetlinkMessage::InitFromNlmsg(const nlmsghdr *const_msg) {
+bool NetlinkMessage::InitFromNlmsg(const nlmsghdr *const_msg,
+                                   NetlinkMessage::MessageContext context) {
   if (!const_msg) {
     LOG(ERROR) << "Null |const_msg| parameter";
     return false;
@@ -146,7 +147,8 @@ void NetlinkMessage::PrintBytes(int log_level, const unsigned char *buf,
 
 const uint16_t ErrorAckMessage::kMessageType = NLMSG_ERROR;
 
-bool ErrorAckMessage::InitFromNlmsg(const nlmsghdr *const_msg) {
+bool ErrorAckMessage::InitFromNlmsg(const nlmsghdr *const_msg,
+                                    NetlinkMessage::MessageContext context) {
   if (!const_msg) {
     LOG(ERROR) << "Null |const_msg| parameter";
     return false;
@@ -260,7 +262,7 @@ bool NetlinkMessageFactory::AddFactoryMethod(uint16_t message_type,
 }
 
 NetlinkMessage *NetlinkMessageFactory::CreateMessage(
-    const nlmsghdr *const_msg) const {
+    const nlmsghdr *const_msg, NetlinkMessage::MessageContext context) const {
   if (!const_msg) {
     LOG(ERROR) << "NULL |const_msg| parameter";
     return nullptr;
@@ -294,7 +296,7 @@ NetlinkMessage *NetlinkMessageFactory::CreateMessage(
     message.reset(new UnknownMessage(msg->nlmsg_type, payload));
   }
 
-  if (!message->InitFromNlmsg(const_msg)) {
+  if (!message->InitFromNlmsg(const_msg, context)) {
     LOG(ERROR) << "Message did not initialize properly";
     return nullptr;
   }

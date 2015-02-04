@@ -18,6 +18,7 @@
 #include <base/strings/stringprintf.h>
 
 #include "shill/net/netlink_attribute.h"
+#include "shill/net/netlink_message.h"
 
 using base::StringAppendF;
 using base::WeakPtr;
@@ -41,9 +42,10 @@ bool AttributeList::CreateControlAttribute(int id) {
       id, base::Bind(&NetlinkAttribute::NewControlAttributeFromId));
 }
 
-bool AttributeList::CreateNl80211Attribute(int id) {
+bool AttributeList::CreateNl80211Attribute(
+    int id, NetlinkMessage::MessageContext context) {
   return CreateAttribute(
-      id, base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
+      id, base::Bind(&NetlinkAttribute::NewNl80211AttributeFromId, context));
 }
 
 bool AttributeList::CreateAndInitAttribute(

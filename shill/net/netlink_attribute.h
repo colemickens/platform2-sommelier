@@ -16,6 +16,7 @@
 
 #include "shill/net/attribute_list.h"
 #include "shill/net/byte_string.h"
+#include "shill/net/netlink_message.h"
 
 struct nlattr;
 
@@ -51,7 +52,8 @@ class NetlinkAttribute {
   // Static factories generate the appropriate attribute object from the
   // raw nlattr data.
   static NetlinkAttribute *NewControlAttributeFromId(int id);
-  static NetlinkAttribute *NewNl80211AttributeFromId(int id);
+  static NetlinkAttribute *NewNl80211AttributeFromId(
+      NetlinkMessage::MessageContext context, int id);
 
   virtual bool InitFromNlAttr(const nlattr *data);
 

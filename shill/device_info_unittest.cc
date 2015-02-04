@@ -1601,7 +1601,7 @@ TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
   Mock::VerifyAndClearExpectations(&log);
 
   message.attributes()->CreateNl80211Attribute(
-      NL80211_ATTR_IFINDEX);
+      NL80211_ATTR_IFINDEX, NetlinkMessage::MessageContext());
   message.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
                                              kTestDeviceIndex);
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
@@ -1610,7 +1610,7 @@ TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
   Mock::VerifyAndClearExpectations(&log);
 
   message.attributes()->CreateNl80211Attribute(
-      NL80211_ATTR_IFTYPE);
+      NL80211_ATTR_IFTYPE, NetlinkMessage::MessageContext());
   message.attributes()->SetU32AttributeValue(NL80211_ATTR_IFTYPE,
                                              NL80211_IFTYPE_AP);
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _,

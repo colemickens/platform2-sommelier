@@ -143,18 +143,20 @@ class Callback80211MetricsTest : public Test {
 
 // Make sure that notifications happen for correctly formed messages.
 TEST_F(Callback80211MetricsTest, DisconnectMessage) {
-  unique_ptr<NetlinkMessage> netlink_message(
-      message_factory_.CreateMessage(const_cast<nlmsghdr *>(
-          reinterpret_cast<const nlmsghdr *>(kDisconnectMessage))));
+  unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
+      const_cast<nlmsghdr *>(
+          reinterpret_cast<const nlmsghdr *>(kDisconnectMessage)),
+      NetlinkMessage::MessageContext()));
   EXPECT_CALL(metrics_, Notify80211Disconnect(Metrics::kDisconnectedByAp,
                                               kExpectedDisconnectReason));
   callback_.CollectDisconnectStatistics(*netlink_message);
 }
 
 TEST_F(Callback80211MetricsTest, DeauthMessage) {
-  unique_ptr<NetlinkMessage> netlink_message(
-      message_factory_.CreateMessage(const_cast<nlmsghdr *>(
-          reinterpret_cast<const nlmsghdr *>(kDeauthenticateMessage))));
+  unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
+      const_cast<nlmsghdr *>(
+          reinterpret_cast<const nlmsghdr *>(kDeauthenticateMessage)),
+      NetlinkMessage::MessageContext()));
   EXPECT_CALL(metrics_, Notify80211Disconnect(Metrics::kDisconnectedNotByAp,
                                               kExpectedDisconnectReason));
   callback_.CollectDisconnectStatistics(*netlink_message);
@@ -162,38 +164,38 @@ TEST_F(Callback80211MetricsTest, DeauthMessage) {
 
 // Make sure there's no notification if there's no reason code in the message.
 TEST_F(Callback80211MetricsTest, EmptyDisconnectMessage) {
-  unique_ptr<NetlinkMessage> netlink_message(
-      message_factory_.CreateMessage(const_cast<nlmsghdr *>(
-          reinterpret_cast<const nlmsghdr *>(
-              kEmptyDisconnectMessage))));
+  unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
+      const_cast<nlmsghdr *>(
+          reinterpret_cast<const nlmsghdr *>(kEmptyDisconnectMessage)),
+      NetlinkMessage::MessageContext()));
   EXPECT_CALL(metrics_, Notify80211Disconnect(_, _)).Times(0);
   callback_.CollectDisconnectStatistics(*netlink_message);
 }
 
 TEST_F(Callback80211MetricsTest, EmptyDeauthMessage) {
-  unique_ptr<NetlinkMessage> netlink_message(
-      message_factory_.CreateMessage(const_cast<nlmsghdr *>(
-          reinterpret_cast<const nlmsghdr *>(
-              kEmptyDeauthenticateMessage))));
+  unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
+      const_cast<nlmsghdr *>(
+          reinterpret_cast<const nlmsghdr *>(kEmptyDeauthenticateMessage)),
+      NetlinkMessage::MessageContext()));
   EXPECT_CALL(metrics_, Notify80211Disconnect(_, _)).Times(0);
   callback_.CollectDisconnectStatistics(*netlink_message);
 }
 
 // Make sure the callback doesn't notify anyone for message of the wrong type.
 TEST_F(Callback80211MetricsTest, Nl80211NotDisconnectDeauthMessage) {
-  unique_ptr<NetlinkMessage> netlink_message(
-      message_factory_.CreateMessage(const_cast<nlmsghdr *>(
-          reinterpret_cast<const nlmsghdr *>(
-              kNewStationMessage))));
+  unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
+      const_cast<nlmsghdr *>(
+          reinterpret_cast<const nlmsghdr *>(kNewStationMessage)),
+      NetlinkMessage::MessageContext()));
   EXPECT_CALL(metrics_, Notify80211Disconnect(_, _)).Times(0);
   callback_.CollectDisconnectStatistics(*netlink_message);
 }
 
 TEST_F(Callback80211MetricsTest, NotNl80211Message) {
-  unique_ptr<NetlinkMessage> netlink_message(
-      message_factory_.CreateMessage(const_cast<nlmsghdr *>(
-          reinterpret_cast<const nlmsghdr *>(
-              kGetFamilyMessage))));
+  unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
+      const_cast<nlmsghdr *>(
+          reinterpret_cast<const nlmsghdr *>(kGetFamilyMessage)),
+      NetlinkMessage::MessageContext()));
   EXPECT_CALL(metrics_, Notify80211Disconnect(_, _)).Times(0);
   callback_.CollectDisconnectStatistics(*netlink_message);
 }

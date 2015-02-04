@@ -14,6 +14,7 @@
 
 #include <base/bind.h>
 
+#include "shill/net/netlink_message.h"
 #include "shill/shill_export.h"
 
 struct nlattr;
@@ -42,7 +43,7 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
   bool CreateControlAttribute(int id);
 
   // Helper function for creating nl80211 attribute.
-  bool CreateNl80211Attribute(int id);
+  bool CreateNl80211Attribute(int id, NetlinkMessage::MessageContext context);
 
   // Instantiates an NetlinkAttribute of the appropriate type from |id|,
   // initializes it from |data|, and adds it to |attributes_|.

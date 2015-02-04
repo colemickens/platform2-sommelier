@@ -174,7 +174,8 @@ TEST_F(DeviceInfoTest, EnumerateDevices) {
   OnWiFiPhyInfoReceived(message);
 
   // Device name in the message, device should be created/register to manager.
-  message.attributes()->CreateNl80211Attribute(NL80211_ATTR_WIPHY_NAME);
+  message.attributes()->CreateNl80211Attribute(
+      NL80211_ATTR_WIPHY_NAME, shill::NetlinkMessage::MessageContext());
   message.attributes()->SetStringAttributeValue(NL80211_ATTR_WIPHY_NAME,
                                                 kTestDeviceName);
   EXPECT_CALL(manager_, RegisterDevice(IsDevice(kTestDeviceName))).Times(1);
@@ -280,7 +281,8 @@ TEST_F(DeviceInfoTest, ParseWifiInterfaceInfo) {
   VerifyInterfaceList(interface_list);
 
   // Message contain no interface type, no change to the interface info.
-  message.attributes()->CreateNl80211Attribute(NL80211_ATTR_IFINDEX);
+  message.attributes()->CreateNl80211Attribute(
+      NL80211_ATTR_IFINDEX, shill::NetlinkMessage::MessageContext());
   message.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
                                              kTestInterface0Index);
   OnWiFiInterfaceInfoReceived(message);
@@ -291,7 +293,8 @@ TEST_F(DeviceInfoTest, ParseWifiInterfaceInfo) {
   EXPECT_CALL(netlink_manager_, SendNl80211Message(
       IsGetInfoMessage(NL80211_CMD_GET_WIPHY, kTestInterface0Index),
       _, _, _)).Times(1);
-  message.attributes()->CreateNl80211Attribute(NL80211_ATTR_IFTYPE);
+  message.attributes()->CreateNl80211Attribute(
+      NL80211_ATTR_IFTYPE, shill::NetlinkMessage::MessageContext());
   message.attributes()->SetU32AttributeValue(NL80211_ATTR_IFTYPE,
                                              NL80211_IFTYPE_AP);
   OnWiFiInterfaceInfoReceived(message);
@@ -308,7 +311,8 @@ TEST_F(DeviceInfoTest, ParsePhyInfoForWifiInterface) {
 
   // PHY info message.
   shill::NewWiphyMessage message;
-  message.attributes()->CreateNl80211Attribute(NL80211_ATTR_WIPHY_NAME);
+  message.attributes()->CreateNl80211Attribute(
+      NL80211_ATTR_WIPHY_NAME, shill::NetlinkMessage::MessageContext());
   message.attributes()->SetStringAttributeValue(NL80211_ATTR_WIPHY_NAME,
                                                 kTestDeviceName);
 
@@ -341,7 +345,8 @@ TEST_F(DeviceInfoTest, ReceivePhyInfoBeforePhyIsEnumerated) {
   // Received PHY info for the interface when the corresponding PHY is not
   // enumerated yet, new device should be created and register to manager.
   shill::NewWiphyMessage message;
-  message.attributes()->CreateNl80211Attribute(NL80211_ATTR_WIPHY_NAME);
+  message.attributes()->CreateNl80211Attribute(
+      NL80211_ATTR_WIPHY_NAME, shill::NetlinkMessage::MessageContext());
   message.attributes()->SetStringAttributeValue(NL80211_ATTR_WIPHY_NAME,
                                                 kTestDeviceName);
   EXPECT_CALL(manager_, RegisterDevice(IsDevice(kTestDeviceName))).Times(1);

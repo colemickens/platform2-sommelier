@@ -326,6 +326,11 @@ class SHILL_EXPORT NetlinkManager {
       NetlinkMessage *message,
       NetlinkResponseHandler *message_wrapper);  // Passes ownership.
 
+  // Given a netlink message |msg|, infers the context of this netlink message
+  // (for message parsing purposes) and returns a MessageContext describing this
+  // context.
+  NetlinkMessage::MessageContext InferMessageContext(const nlmsghdr *msg);
+
   // NetlinkManager Handlers, OnRawNlMessageReceived invokes each of these
   // User-supplied callback object when _it_ gets called to read libnl data.
   std::list<NetlinkMessageHandler> broadcast_handlers_;

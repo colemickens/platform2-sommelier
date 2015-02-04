@@ -99,7 +99,7 @@ class SHILL_EXPORT ControlNetlinkMessage : public GenericNetlinkMessage {
 
   static uint16_t GetMessageType() { return kMessageType; }
 
-  bool InitFromNlmsg(const nlmsghdr *msg) override;
+  bool InitFromNlmsg(const nlmsghdr *msg, MessageContext context);
 
   // Message factory for all types of Control netlink message.
   static NetlinkMessage *CreateMessage(const nlmsghdr *const_msg);

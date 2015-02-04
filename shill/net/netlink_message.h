@@ -66,6 +66,14 @@ namespace shill {
 
 class SHILL_EXPORT NetlinkMessage {
  public:
+  // Describes the context of the netlink message for parsing purposes.
+  struct MessageContext {
+    MessageContext() : nl80211_cmd(0), is_broadcast(false) {}
+
+    size_t nl80211_cmd;
+    bool is_broadcast;
+  };
+
   static const uint32_t kBroadcastSequenceNumber;
   static const uint16_t kIllegalMessageType;
 
@@ -81,7 +89,7 @@ class SHILL_EXPORT NetlinkMessage {
 
   // Initializes the |NetlinkMessage| from a complete and legal message
   // (potentially received from the kernel via a netlink socket).
-  virtual bool InitFromNlmsg(const nlmsghdr *msg);
+  virtual bool InitFromNlmsg(const nlmsghdr *msg, MessageContext context);
 
   uint16_t message_type() const { return message_type_; }
   void AddFlag(uint16_t new_flag) { flags_ |= new_flag; }
@@ -130,7 +138,7 @@ class SHILL_EXPORT ErrorAckMessage : public NetlinkMessage {
   explicit ErrorAckMessage(uint32_t err)
       : NetlinkMessage(kMessageType), error_(err) {}
   static uint16_t GetMessageType() { return kMessageType; }
-  virtual bool InitFromNlmsg(const nlmsghdr *const_msg);
+  virtual bool InitFromNlmsg(const nlmsghdr *const_msg, MessageContext context);
   virtual ByteString Encode(uint32_t sequence_number);
   virtual void Print(int header_log_level, int detail_log_level) const;
   std::string ToString() const;
@@ -218,7 +226,8 @@ class SHILL_EXPORT NetlinkMessageFactory {
 
   // Ownership of the message is passed to the caller and, as such, he should
   // delete it.
-  NetlinkMessage *CreateMessage(const nlmsghdr *msg) const;
+  NetlinkMessage *CreateMessage(const nlmsghdr *msg,
+                                NetlinkMessage::MessageContext context) const;
 
  private:
   std::map<uint16_t, FactoryMethod> factories_;

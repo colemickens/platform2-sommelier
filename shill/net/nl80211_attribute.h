@@ -12,6 +12,7 @@
 #include <base/macros.h>
 
 #include "shill/net/netlink_attribute.h"
+#include "shill/net/netlink_message.h"
 
 struct nlattr;
 
@@ -584,7 +585,8 @@ class Nl80211AttributeWowlanTriggers : public NetlinkNestedAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeWowlanTriggers();
+  explicit Nl80211AttributeWowlanTriggers(
+      NetlinkMessage::MessageContext context);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWowlanTriggers);

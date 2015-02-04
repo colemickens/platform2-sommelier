@@ -95,7 +95,8 @@ void GenericNetlinkMessage::Print(int header_log_level,
 
 const uint16_t ControlNetlinkMessage::kMessageType = GENL_ID_CTRL;
 
-bool ControlNetlinkMessage::InitFromNlmsg(const nlmsghdr *const_msg) {
+bool ControlNetlinkMessage::InitFromNlmsg(
+    const nlmsghdr *const_msg, NetlinkMessage::MessageContext context) {
   if (!const_msg) {
     LOG(ERROR) << "Null |msg| parameter";
     return false;
