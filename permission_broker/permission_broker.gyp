@@ -39,6 +39,7 @@
         'deny_usb_vendor_id_rule.cc',
         'hidraw_subsystem_udev_rule.cc',
         'permission_broker.cc',
+        'port_tracker.cc',
         'rule.cc',
         'rule_engine.cc',
         'tty_subsystem_udev_rule.cc',
@@ -50,7 +51,7 @@
         {
           'action_name': 'generate-firewalld-proxies',
           'variables': {
-            'proxy_output_file': 'include/firewalld/dbus-proxies.h'
+            'proxy_output_file': 'include/firewalld/dbus-proxies.h',
           },
           'sources': [
             '../firewalld/dbus_bindings/org.chromium.Firewalld.xml',
