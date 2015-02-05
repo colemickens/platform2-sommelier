@@ -18,6 +18,7 @@
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <chromeos/strings/string_utils.h>
 #include <crypto/p224_spake.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -61,6 +62,42 @@ class SecurityManagerTest : public testing::Test {
   }
 
  protected:
+  void PairAndAuthenticate(std::string* fingerprint, std::string* signature) {
+    std::string session_id;
+    std::string device_commitment_base64;
+
+    EXPECT_EQ(Error::kNone,
+              security_.StartPairing(PairingType::kEmbeddedCode,
+                                     CryptoType::kSpake_p224, &session_id,
+                                     &device_commitment_base64));
+    EXPECT_FALSE(session_id.empty());
+    EXPECT_FALSE(device_commitment_base64.empty());
+
+    crypto::P224EncryptedKeyExchange spake{
+        crypto::P224EncryptedKeyExchange::kPeerTypeClient, "1234"};
+
+    std::string client_commitment_base64{
+        Base64Encode(chromeos::SecureBlob{spake.GetMessage()})};
+
+    EXPECT_EQ(Error::kNone,
+              security_.ConfirmPairing(session_id, client_commitment_base64,
+                                       fingerprint, signature));
+    EXPECT_TRUE(IsBase64(*fingerprint));
+    EXPECT_TRUE(IsBase64(*signature));
+
+    chromeos::Blob device_commitment{Base64Decode(device_commitment_base64)};
+    spake.ProcessMessage(
+        chromeos::string_utils::GetBytesAsString(device_commitment));
+
+    chromeos::Blob auth_code{
+        HmacSha256(chromeos::SecureBlob{spake.GetUnverifiedKey()},
+                   chromeos::SecureBlob{session_id})};
+
+    std::string auth_code_base64{Base64Encode(auth_code)};
+
+    EXPECT_TRUE(security_.IsValidPairingCode(auth_code_base64));
+  }
+
   const base::Time time_ = base::Time::FromTimeT(1410000000);
   base::MessageLoop message_loop_;
   SecurityManager security_{"1234"};
@@ -112,8 +149,8 @@ TEST_F(SecurityManagerTest, TlsData) {
       StartsWithASCII(key_str, "-----BEGIN RSA PRIVATE KEY-----", false));
   EXPECT_TRUE(EndsWith(key_str, "-----END RSA PRIVATE KEY-----\n", false));
 
-  const chromeos::Blob& cert = security_.GetTlsCertificate();
-  std::string cert_str(cert.begin(), cert.end());
+  std::string cert_str{
+      chromeos::string_utils::GetBytesAsString(security_.GetTlsCertificate())};
   EXPECT_TRUE(StartsWithASCII(cert_str, "-----BEGIN CERTIFICATE-----", false));
   EXPECT_TRUE(EndsWith(cert_str, "-----END CERTIFICATE-----\n", false));
 }
@@ -128,28 +165,8 @@ TEST_F(SecurityManagerTest, PairingNoSession) {
 
 TEST_F(SecurityManagerTest, Pairing) {
   std::vector<std::pair<std::string, std::string> > fingerprints(2);
-  for (auto& fingerprint : fingerprints) {
-    std::string session_id;
-    std::string device_commitment;
-    EXPECT_EQ(Error::kNone,
-              security_.StartPairing(PairingType::kEmbeddedCode,
-                                     CryptoType::kSpake_p224, &session_id,
-                                     &device_commitment));
-    EXPECT_FALSE(session_id.empty());
-    EXPECT_FALSE(device_commitment.empty());
-
-    crypto::P224EncryptedKeyExchange spake{
-        crypto::P224EncryptedKeyExchange::kPeerTypeServer, "1234"};
-
-    std::string client_commitment =
-        Base64Encode(chromeos::SecureBlob(spake.GetMessage()));
-    EXPECT_EQ(Error::kNone, security_.ConfirmPairing(
-                                session_id, client_commitment,
-                                &fingerprint.first, &fingerprint.second));
-    spake.ProcessMessage(device_commitment);
-
-    EXPECT_TRUE(IsBase64(fingerprint.first));
-    EXPECT_TRUE(IsBase64(fingerprint.second));
+  for (auto& it : fingerprints) {
+    PairAndAuthenticate(&it.first, &it.second);
   }
 
   // Same certificate.
@@ -211,6 +228,61 @@ TEST_F(SecurityManagerTest, CancelPairing) {
                                    &device_commitment));
   EXPECT_CALL(callbacks, OnPairingEnd(Eq(session_id)));
   EXPECT_EQ(Error::kNone, security_.CancelPairing(session_id));
+}
+
+TEST_F(SecurityManagerTest, ThrottlePairing) {
+  auto pair = [this]() {
+    std::string session_id;
+    std::string device_commitment;
+    Error error = security_.StartPairing(PairingType::kEmbeddedCode,
+                                         CryptoType::kSpake_p224, &session_id,
+                                         &device_commitment);
+    EXPECT_TRUE(error == Error::kDeviceBusy || error == Error::kNone);
+    return error == Error::kNone;
+  };
+
+  EXPECT_TRUE(pair());
+  EXPECT_TRUE(pair());
+  EXPECT_TRUE(pair());
+  EXPECT_FALSE(pair());
+  EXPECT_GT(security_.block_pairing_until_, base::Time::Now());
+  EXPECT_LE(security_.block_pairing_until_,
+            base::Time::Now() + base::TimeDelta::FromMinutes(15));
+
+  // Wait timeout.
+  security_.block_pairing_until_ =
+      base::Time::Now() - base::TimeDelta::FromMinutes(1);
+
+  // Allow exactly one attempt.
+  EXPECT_TRUE(pair());
+  EXPECT_FALSE(pair());
+
+  // Wait timeout.
+  security_.block_pairing_until_ =
+      base::Time::Now() - base::TimeDelta::FromMinutes(1);
+
+  // Completely unblock by successfully pairing.
+  std::string fingerprint;
+  std::string signature;
+  PairAndAuthenticate(&fingerprint, &signature);
+
+  // Now we have 3 attempts again.
+  EXPECT_TRUE(pair());
+  EXPECT_TRUE(pair());
+  EXPECT_TRUE(pair());
+  EXPECT_FALSE(pair());
+}
+
+TEST_F(SecurityManagerTest, DontBlockForCanceledSessions) {
+  for (int i = 0; i < 20; ++i) {
+    std::string session_id;
+    std::string device_commitment;
+    EXPECT_EQ(Error::kNone,
+              security_.StartPairing(PairingType::kEmbeddedCode,
+                                     CryptoType::kSpake_p224, &session_id,
+                                     &device_commitment));
+    EXPECT_EQ(Error::kNone, security_.CancelPairing(session_id));
+  }
 }
 
 }  // namespace privetd

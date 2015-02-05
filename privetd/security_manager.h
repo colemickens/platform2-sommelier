@@ -74,6 +74,9 @@ class SecurityManager : public SecurityDelegate {
   }
 
  private:
+  FRIEND_TEST_ALL_PREFIXES(SecurityManagerTest, ThrottlePairing);
+  // Allows limited number of new sessions without successful authorization.
+  bool CheckIfPairingAllowed();
   bool ClosePendingSession(const std::string& session_id);
   bool CloseConfirmedSession(const std::string& session_id);
 
@@ -82,6 +85,8 @@ class SecurityManager : public SecurityDelegate {
   const std::string embedded_code_;
   std::map<std::string, std::unique_ptr<KeyExchanger>> pending_sessions_;
   std::map<std::string, std::unique_ptr<KeyExchanger>> confirmed_sessions_;
+  mutable int pairing_attemts_{0};
+  mutable base::Time block_pairing_until_;
   chromeos::SecureBlob secret_;
   chromeos::Blob certificate_fingerprint_;
   PairingStartListener on_start_;

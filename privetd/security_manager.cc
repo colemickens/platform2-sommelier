@@ -31,6 +31,8 @@ namespace {
 const char kTokenDelimeter = ':';
 const int kSessionExpirationTimeMinutes = 5;
 const int kPairingExpirationTimeMinutes = 5;
+const int kMaxAllowedPairingAttemts = 3;
+const int kPairingBlockingTimeMinutes = 1;
 
 // Returns "scope:time".
 std::string CreateTokenData(AuthScope scope, const base::Time& time) {
@@ -170,9 +172,12 @@ bool SecurityManager::IsValidPairingCode(const std::string& auth_code) const {
     if (auth_decoded ==
         HmacSha256(chromeos::SecureBlob{session.second->GetKey()},
                    chromeos::SecureBlob{session.first})) {
+      pairing_attemts_ = 0;
+      block_pairing_until_ = base::Time{};
       return true;
     }
   }
+  LOG(ERROR) << "Attempt to authenticate with invalide code.";
   return false;
 }
 
@@ -180,6 +185,9 @@ Error SecurityManager::StartPairing(PairingType mode,
                                     CryptoType crypto,
                                     std::string* session_id,
                                     std::string* device_commitment) {
+  if (!CheckIfPairingAllowed())
+    return Error::kDeviceBusy;
+
   std::string code;
   switch (mode) {
     case PairingType::kEmbeddedCode:
@@ -192,8 +200,6 @@ Error SecurityManager::StartPairing(PairingType mode,
       return Error::kInvalidParams;
   }
 
-  // TODO(vitalybuka) Implement throttling of StartPairing to avoid
-  //                  brute force attacks.
   std::unique_ptr<KeyExchanger> spake;
   switch (crypto) {
     case CryptoType::kNone:
@@ -276,6 +282,10 @@ Error SecurityManager::ConfirmPairing(const std::string& session_id,
 Error SecurityManager::CancelPairing(const std::string& session_id) {
   bool confirmed = CloseConfirmedSession(session_id);
   bool pending = ClosePendingSession(session_id);
+  if (pending) {
+    CHECK_GE(pairing_attemts_, 1);
+    --pairing_attemts_;
+  }
   CHECK(!confirmed || !pending);
   return (confirmed || pending) ? Error::kNone : Error::kUnknownSession;
 }
@@ -286,6 +296,26 @@ void SecurityManager::RegisterPairingListeners(
   CHECK(on_start_.is_null() && on_end_.is_null());
   on_start_ = on_start;
   on_end_  = on_end;
+}
+
+bool SecurityManager::CheckIfPairingAllowed() {
+  if (is_security_disabled_)
+    return true;
+
+  if (block_pairing_until_ > base::Time::Now()) {
+    LOG(ERROR) << "Pairing is blocked.";
+    return false;
+  }
+
+  if (++pairing_attemts_ >= kMaxAllowedPairingAttemts) {
+    LOG(INFO) << "Pairing blocked for" << kPairingBlockingTimeMinutes
+              << "minutes.";
+    block_pairing_until_ = base::Time::Now();
+    block_pairing_until_ +=
+        base::TimeDelta::FromMinutes(kPairingBlockingTimeMinutes);
+  }
+
+  return true;
 }
 
 bool SecurityManager::ClosePendingSession(const std::string& session_id) {
