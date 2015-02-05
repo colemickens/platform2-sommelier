@@ -121,7 +121,7 @@ bool IpTables::AddAllowRule(enum ProtocolEnum protocol,
                             uint16_t port) {
   chromeos::ProcessImpl iptables;
   iptables.AddArg(executable_path_);
-  iptables.AddArg("-A");  // append
+  iptables.AddArg("-I");  // insert
   iptables.AddArg("INPUT");
   iptables.AddArg("-p");  // protocol
   iptables.AddArg(protocol == kProtocolTcp ? "tcp" : "udp");
