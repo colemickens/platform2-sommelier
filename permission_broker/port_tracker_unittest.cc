@@ -11,6 +11,7 @@
 
 using ::testing::_;
 using ::testing::Return;
+using ::testing::SetArgumentPointee;
 
 namespace permission_broker {
 
@@ -43,53 +44,56 @@ class PortTrackerTest : public testing::Test {
   uint16_t tcp_port = 8080;
   uint16_t udp_port = 5353;
 
+  int dbus_fd = 3;  // First fd not std{in|out|err}. Doesn't get used at all.
+
  private:
   DISALLOW_COPY_AND_ASSIGN(PortTrackerTest);
 };
 
 TEST_F(PortTrackerTest, ProcessTcpPortSuccess) {
+  EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd)).WillOnce(Return(0));
   EXPECT_CALL(firewalld, PunchTcpHole(tcp_port, _, _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(port_tracker, AddLifelineFd(_)).WillOnce(Return(true));
-  ASSERT_TRUE(port_tracker.ProcessTcpPort(tcp_port, -1 /* dbus_fd */));
+      .WillOnce(DoAll(SetArgumentPointee<1>(true), Return(true)));
+  ASSERT_TRUE(port_tracker.ProcessTcpPort(tcp_port, dbus_fd));
 }
 
 TEST_F(PortTrackerTest, ProcessUdpPortSuccess) {
+  EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd)).WillOnce(Return(0));
   EXPECT_CALL(firewalld, PunchUdpHole(udp_port, _, _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(port_tracker, AddLifelineFd(_)).WillOnce(Return(true));
-  ASSERT_TRUE(port_tracker.ProcessUdpPort(udp_port, -1 /* dbus_fd */));
+      .WillOnce(DoAll(SetArgumentPointee<1>(true), Return(true)));
+  ASSERT_TRUE(port_tracker.ProcessUdpPort(udp_port, dbus_fd));
 }
 
 TEST_F(PortTrackerTest, ProcessTcpPortDBusFailure) {
+  EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd)).WillOnce(Return(0));
   // Make D-Bus fail.
   EXPECT_CALL(firewalld, PunchTcpHole(tcp_port, _, _, _))
-      .WillOnce(Return(false));
-  EXPECT_CALL(port_tracker, AddLifelineFd(_)).WillOnce(Return(true));
-  ASSERT_FALSE(port_tracker.ProcessTcpPort(tcp_port, -1 /* dbus_fd */));
+      .WillOnce(DoAll(SetArgumentPointee<1>(false), Return(false)));
+  ASSERT_FALSE(port_tracker.ProcessTcpPort(tcp_port, dbus_fd));
 }
 
 TEST_F(PortTrackerTest, ProcessUdpPortDBusFailure) {
+  EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd)).WillOnce(Return(0));
   // Make D-Bus fail.
   EXPECT_CALL(firewalld, PunchUdpHole(udp_port, _, _, _))
-      .WillOnce(Return(false));
-  EXPECT_CALL(port_tracker, AddLifelineFd(_)).WillOnce(Return(true));
-  ASSERT_FALSE(port_tracker.ProcessUdpPort(udp_port, -1 /* dbus_fd */));
+      .WillOnce(DoAll(SetArgumentPointee<1>(false), Return(false)));
+  ASSERT_FALSE(port_tracker.ProcessUdpPort(udp_port, dbus_fd));
 }
+
 TEST_F(PortTrackerTest, ProcessTcpPortEpollFailure) {
-  EXPECT_CALL(firewalld, PunchTcpHole(tcp_port, _, _, _))
-      .WillOnce(Return(true));
   // Make epoll(7) fail.
-  EXPECT_CALL(port_tracker, AddLifelineFd(_)).WillOnce(Return(false));
-  ASSERT_FALSE(port_tracker.ProcessTcpPort(tcp_port, -1 /* dbus_fd */));
+  EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd)).WillOnce(Return(-1));
+  ON_CALL(firewalld, PunchTcpHole(tcp_port, _, _, _))
+      .WillByDefault(DoAll(SetArgumentPointee<1>(true), Return(true)));
+  ASSERT_FALSE(port_tracker.ProcessTcpPort(tcp_port, dbus_fd));
 }
 
 TEST_F(PortTrackerTest, ProcessUdpPortEpollFailure) {
-  EXPECT_CALL(firewalld, PunchUdpHole(udp_port, _, _, _))
-      .WillOnce(Return(true));
   // Make epoll(7) fail.
-  EXPECT_CALL(port_tracker, AddLifelineFd(_)).WillOnce(Return(false));
-  ASSERT_FALSE(port_tracker.ProcessUdpPort(udp_port, -1 /* dbus_fd */));
+  EXPECT_CALL(port_tracker, AddLifelineFd(dbus_fd)).WillOnce(Return(-1));
+  ON_CALL(firewalld, PunchUdpHole(udp_port, _, _, _))
+      .WillByDefault(DoAll(SetArgumentPointee<1>(true), Return(true)));
+  ASSERT_FALSE(port_tracker.ProcessUdpPort(udp_port, dbus_fd));
 }
 
 }  // namespace permission_broker
