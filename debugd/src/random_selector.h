@@ -11,7 +11,7 @@
 namespace debugd {
 
 // Returns the sum of the values of map |to_sum|.
-float GetSumOfMapValues(const std::map<std::string, float> to_sum);
+double GetSumOfMapValues(const std::map<std::string, double> to_sum);
 
 // RandomSelector is a class that can be used to pick strings according to
 // certain probabilities. The probabilities are set using SetOdds(). A randomly
@@ -20,7 +20,7 @@ float GetSumOfMapValues(const std::map<std::string, float> to_sum);
 // Sample usage:
 //
 // RandomSelector random_selector;
-// std::map<std::string, float> odds;
+// std::map<std::string, double> odds;
 // odds["a"] = 50;
 // odds["b"] = 40;
 // odds["c"] = 10;
@@ -38,7 +38,7 @@ class RandomSelector {
   void SetOddsFromFile(const std::string& filename);
 
   // Set the probabilities for various strings.
-  void SetOdds(const std::map<std::string, float>& odds);
+  void SetOdds(const std::map<std::string, double>& odds);
 
   // Get the next randomly picked string in |next|.
   void GetNext(std::string* next);
@@ -50,14 +50,14 @@ class RandomSelector {
 
  private:
   // Get a floating point number between |min| and |max|.
-  virtual float GetFloatBetween(float min, float max);
+  virtual double GetFloatBetween(double min, double max);
 
-  // Get a string corresponding to a random float |value| that is in our odds
+  // Get a string corresponding to a random double |value| that is in our odds
   // dictionary. Stores the result in |key|.
-  void GetKeyOf(float value, std::string* key);
+  void GetKeyOf(double value, std::string* key);
 
   // A dictionary representing the strings to choose from and associated odds.
-  std::map<std::string, float> odds_;
+  std::map<std::string, double> odds_;
 };
 
 }  // namespace debugd

@@ -25,9 +25,9 @@ const char kWhitespace = ' ';
 
 namespace debugd {
 
-float GetSumOfMapValues(const std::map<std::string, float> map_to_sum) {
-  float sum = 0.0f;
-  std::map<std::string, float>::const_iterator it;
+double GetSumOfMapValues(const std::map<std::string, double> map_to_sum) {
+  double sum = 0.0;
+  std::map<std::string, double>::const_iterator it;
   for (it = map_to_sum.begin(); it != map_to_sum.end(); ++it)
     sum += it->second;
   return sum;
@@ -50,33 +50,33 @@ void RandomSelector::SetOddsFromFile(const std::string& filename) {
     CHECK(base::StringToDouble(tokens[0], &odd));
     tokens.erase(tokens.begin(), tokens.begin() + 1);
     std::string value = JoinString(tokens, kWhitespace);
-    odds_[value] = static_cast<float>(odd);
+    odds_[value] = odd;
   }
 }
 
-void RandomSelector::SetOdds(const std::map<std::string, float>& odds) {
+void RandomSelector::SetOdds(const std::map<std::string, double>& odds) {
   odds_.clear();
   odds_.insert(odds.begin(), odds.end());
 }
 
 void RandomSelector::GetNext(std::string* next) {
   // Sum up all the odds.
-  float sum = GetSumOfMapValues(odds_);
-  // Get a random float between 0 and the sum.
-  float random = GetFloatBetween(0.0f, sum);
+  double sum = GetSumOfMapValues(odds_);
+  // Get a random double between 0 and the sum.
+  double random = GetFloatBetween(0.0, sum);
   // Figure out what it belongs to.
   GetKeyOf(random, next);
 }
 
-float RandomSelector::GetFloatBetween(float min, float max) {
+double RandomSelector::GetFloatBetween(double min, double max) {
   CHECK_GT(max, min);
-  float random = static_cast<float>(base::RandDouble());
+  double random = base::RandDouble();
   return random * (max - min) + min;
 }
 
-void RandomSelector::GetKeyOf(float value, std::string* key) {
-  float current = 0.0f;
-  std::map<std::string, float>::const_iterator it;
+void RandomSelector::GetKeyOf(double value, std::string* key) {
+  double current = 0.0;
+  std::map<std::string, double>::const_iterator it;
   for (it = odds_.begin(); it != odds_.end(); ++it) {
     current += it->second;
     if (value <= current) {
