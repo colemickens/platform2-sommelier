@@ -192,10 +192,7 @@ string VPNService::GetTethering(Error *error) const {
     // GetProperties().
     error->Populate(Error::kNotSupported);
   } else {
-    Error::PopulateAndLog(FROM_HERE,
-                          error,
-                          Error::kOperationFailed,
-                          Error::GetDefaultMessage(Error::kOperationFailed));
+    error->Populate(Error::kOperationFailed);
   }
   return "";
 }
@@ -232,10 +229,7 @@ string VPNService::GetPhysicalTechnologyProperty(Error *error) {
     conn = conn->GetCarrierConnection();
 
   if (!conn) {
-    Error::PopulateAndLog(FROM_HERE,
-                          error,
-                          Error::kOperationFailed,
-                          Error::GetDefaultMessage(Error::kOperationFailed));
+    error->Populate(Error::kOperationFailed);
     return "";
   }
 
