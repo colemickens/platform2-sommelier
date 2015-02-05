@@ -9,6 +9,7 @@
 # repository.
 
 GLBENCH_ROOT=$(dirname "$(readlink -f "$0")")
+export LC_COLLATE=C
 
 main() {
   local result=0
