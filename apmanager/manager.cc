@@ -18,8 +18,7 @@ Manager::Manager()
     : org::chromium::apmanager::ManagerAdaptor(this),
       service_identifier_(0),
       device_identifier_(0),
-      device_info_(this),
-      shill_proxy_(new ShillProxy()) {}
+      device_info_(this) {}
 
 Manager::~Manager() {
   // Terminate all services before cleanup other resources.
@@ -43,7 +42,10 @@ void Manager::RegisterAsync(ExportedObjectManager* object_manager,
   bus_ = bus;
 
   // Initialize shill proxy.
-  shill_proxy_->Init(bus);
+  shill_proxy_.Init(bus);
+
+  // Start firewall manager.
+  firewall_manager_.Start(bus);
 }
 
 void Manager::Start() {
@@ -122,11 +124,11 @@ void Manager::RegisterDevice(scoped_refptr<Device> device) {
 }
 
 void Manager::ClaimInterface(const string& interface_name) {
-  shill_proxy_->ClaimInterface(interface_name);
+  shill_proxy_.ClaimInterface(interface_name);
 }
 
 void Manager::ReleaseInterface(const string& interface_name) {
-  shill_proxy_->ReleaseInterface(interface_name);
+  shill_proxy_.ReleaseInterface(interface_name);
 }
 
 void Manager::OnServiceRegistered(

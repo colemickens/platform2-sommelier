@@ -35,8 +35,6 @@ class ShillProxy {
 
   static const char kManagerPath[];
 
-  // Bus object for system bus.
-  scoped_refptr<dbus::Bus> bus_;
   // DBus proxy for shill manager.
   std::unique_ptr<org::chromium::flimflam::ManagerProxy> manager_proxy_;
   // List of interfaces apmanager have claimed.

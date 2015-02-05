@@ -14,6 +14,7 @@
 #include "apmanager/dbus_adaptors/org.chromium.apmanager.Manager.h"
 
 #include "apmanager/device_info.h"
+#include "apmanager/firewall_manager.h"
 #include "apmanager/service.h"
 #include "apmanager/shill_proxy.h"
 
@@ -84,7 +85,9 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
   DeviceInfo device_info_;
 
   // Proxy to shill DBus services.
-  std::unique_ptr<ShillProxy> shill_proxy_;
+  ShillProxy shill_proxy_;
+  // Proxy to DBus service for managing firewall rules.
+  FirewallManager firewall_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };

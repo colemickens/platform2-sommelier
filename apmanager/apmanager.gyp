@@ -57,6 +57,7 @@
         'dhcp_server_factory.cc',
         'event_dispatcher.cc',
         'file_writer.cc',
+        'firewall_manager.cc',
         'hostapd_monitor.cc',
         'manager.cc',
         'process_factory.cc',
@@ -71,6 +72,16 @@
           },
           'sources': [
             '../shill/dbus_bindings/org.chromium.flimflam.Manager.xml',
+          ],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
+        {
+          'action_name': 'generate-permission_broker-proxies',
+          'variables': {
+            'proxy_output_file': 'include/permission_broker/dbus-proxies.h'
+          },
+          'sources': [
+            '../permission_broker/dbus_bindings/org.chromium.PermissionBroker.xml',
           ],
           'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },
