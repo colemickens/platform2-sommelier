@@ -64,6 +64,8 @@ class SecurityManager : public SecurityDelegate {
                        const std::string& client_commitment,
                        std::string* fingerprint,
                        std::string* signature) override;
+  Error CancelPairing(const std::string& session_id) override;
+
   void RegisterPairingListeners(const PairingStartListener& on_start,
                                 const PairingEndListener& on_end);
 
@@ -72,8 +74,8 @@ class SecurityManager : public SecurityDelegate {
   }
 
  private:
-  void ClosePendingSession(const std::string& session_id);
-  void CloseConfirmedSession(const std::string& session_id);
+  bool ClosePendingSession(const std::string& session_id);
+  bool CloseConfirmedSession(const std::string& session_id);
 
   // If true allows unencrypted pairing and accepts any access code.
   bool is_security_disabled_{false};

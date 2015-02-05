@@ -191,6 +191,7 @@ TEST_F(PrivetHandlerTest, InfoMinimal) {
     'api': [
       '/privet/info',
       '/privet/v3/auth',
+      '/privet/v3/pairing/cancel',
       '/privet/v3/pairing/confirm',
       '/privet/v3/pairing/start',
       '/privet/v3/setup/start',
@@ -262,6 +263,7 @@ TEST_F(PrivetHandlerTest, Info) {
     'api': [
       '/privet/info',
       '/privet/v3/auth',
+      '/privet/v3/pairing/cancel',
       '/privet/v3/pairing/confirm',
       '/privet/v3/pairing/start',
       '/privet/v3/setup/start',
@@ -296,6 +298,12 @@ TEST_F(PrivetHandlerTest, PairingConfirm) {
       HandleRequest(
           "/privet/v3/pairing/confirm",
           "{'sessionId':'testSession','clientCommitment':'testCommitment'}"));
+}
+
+TEST_F(PrivetHandlerTest, PairingCancel) {
+  EXPECT_PRED2(IsEqualJson, "{}",
+               HandleRequest("/privet/v3/pairing/cancel",
+                             "{'sessionId': 'testSession'}"));
 }
 
 TEST_F(PrivetHandlerTest, AuthErrorNoType) {

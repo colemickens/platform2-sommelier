@@ -221,8 +221,9 @@ Error SecurityManager::StartPairing(PairingType mode,
   pending_sessions_.emplace(session, std::move(spake));
 
   base::MessageLoop::current()->PostDelayedTask(
-      FROM_HERE, base::Bind(&SecurityManager::ClosePendingSession,
-                            weak_ptr_factory_.GetWeakPtr(), session),
+      FROM_HERE,
+      base::Bind(base::IgnoreResult(&SecurityManager::ClosePendingSession),
+                 weak_ptr_factory_.GetWeakPtr(), session),
       base::TimeDelta::FromMinutes(kPairingExpirationTimeMinutes));
 
   *session_id = session;
@@ -264,11 +265,19 @@ Error SecurityManager::ConfirmPairing(const std::string& session_id,
   *signature = Base64Encode(cert_hmac);
   confirmed_sessions_.emplace(session->first, std::move(session->second));
   base::MessageLoop::current()->PostDelayedTask(
-      FROM_HERE, base::Bind(&SecurityManager::CloseConfirmedSession,
-                            weak_ptr_factory_.GetWeakPtr(), session_id),
+      FROM_HERE,
+      base::Bind(base::IgnoreResult(&SecurityManager::CloseConfirmedSession),
+                 weak_ptr_factory_.GetWeakPtr(), session_id),
       base::TimeDelta::FromMinutes(kSessionExpirationTimeMinutes));
   ClosePendingSession(session_id);
   return Error::kNone;
+}
+
+Error SecurityManager::CancelPairing(const std::string& session_id) {
+  bool confirmed = CloseConfirmedSession(session_id);
+  bool pending = ClosePendingSession(session_id);
+  CHECK(!confirmed || !pending);
+  return (confirmed || pending) ? Error::kNone : Error::kUnknownSession;
 }
 
 void SecurityManager::RegisterPairingListeners(
@@ -279,14 +288,15 @@ void SecurityManager::RegisterPairingListeners(
   on_end_  = on_end;
 }
 
-void SecurityManager::ClosePendingSession(const std::string& session_id) {
+bool SecurityManager::ClosePendingSession(const std::string& session_id) {
   const size_t num_erased = pending_sessions_.erase(session_id);
   if (num_erased > 0 && !on_end_.is_null())
     on_end_.Run(session_id);
+  return num_erased != 0;
 }
 
-void SecurityManager::CloseConfirmedSession(const std::string& session_id) {
-  confirmed_sessions_.erase(session_id);
+bool SecurityManager::CloseConfirmedSession(const std::string& session_id) {
+  return confirmed_sessions_.erase(session_id) != 0;
 }
 
 }  // namespace privetd

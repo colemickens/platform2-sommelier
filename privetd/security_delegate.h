@@ -70,6 +70,8 @@ class SecurityDelegate {
                                const std::string& client_commitment,
                                std::string* fingerprint,
                                std::string* signature) = 0;
+
+  virtual Error CancelPairing(const std::string& sessionId) = 0;
 };
 
 }  // namespace privetd

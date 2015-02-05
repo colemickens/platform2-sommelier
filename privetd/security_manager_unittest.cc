@@ -195,4 +195,22 @@ TEST_F(SecurityManagerTest, NotifiesListenersOfSessionStartAndEnd) {
   }
 }
 
+TEST_F(SecurityManagerTest, CancelPairing) {
+  testing::StrictMock<MockPairingCallbacks> callbacks;
+  security_.RegisterPairingListeners(
+      base::Bind(&MockPairingCallbacks::OnPairingStart,
+                 base::Unretained(&callbacks)),
+      base::Bind(&MockPairingCallbacks::OnPairingEnd,
+                 base::Unretained(&callbacks)));
+  std::string session_id;
+  std::string device_commitment;
+  EXPECT_CALL(callbacks, OnPairingStart(_, PairingType::kEmbeddedCode, _));
+  EXPECT_EQ(Error::kNone,
+            security_.StartPairing(PairingType::kEmbeddedCode,
+                                   CryptoType::kSpake_p224, &session_id,
+                                   &device_commitment));
+  EXPECT_CALL(callbacks, OnPairingEnd(Eq(session_id)));
+  EXPECT_EQ(Error::kNone, security_.CancelPairing(session_id));
+}
+
 }  // namespace privetd

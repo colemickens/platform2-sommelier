@@ -26,6 +26,7 @@ namespace {
 const char kInfoApiPath[] = "/privet/info";
 const char kPairingStartApiPath[] = "/privet/v3/pairing/start";
 const char kPairingConfirmApiPath[] = "/privet/v3/pairing/confirm";
+const char kPairingCancelApiPath[] = "/privet/v3/pairing/cancel";
 const char kAuthApiPath[] = "/privet/v3/auth";
 const char kSetupStartApiPath[] = "/privet/v3/setup/start";
 const char kSetupStatusApiPath[] = "/privet/v3/setup/status";
@@ -287,6 +288,9 @@ PrivetHandler::PrivetHandler(CloudDelegate* cloud,
   handlers_[kPairingConfirmApiPath] = std::make_pair(
       AuthScope::kGuest,
       base::Bind(&PrivetHandler::HandlePairingConfirm, base::Unretained(this)));
+  handlers_[kPairingCancelApiPath] = std::make_pair(
+      AuthScope::kGuest,
+      base::Bind(&PrivetHandler::HandlePairingCancel, base::Unretained(this)));
   handlers_[kAuthApiPath] = std::make_pair(
       AuthScope::kGuest,
       base::Bind(&PrivetHandler::HandleAuth, base::Unretained(this)));
@@ -429,6 +433,19 @@ void PrivetHandler::HandlePairingConfirm(const base::DictionaryValue& input,
   base::DictionaryValue output;
   output.SetString(kPairingFingerprintKey, fingerprint);
   output.SetString(kPairingSignatureKey, signature);
+  callback.Run(chromeos::http::status_code::Ok, output);
+}
+
+void PrivetHandler::HandlePairingCancel(const base::DictionaryValue& input,
+                                        const RequestCallback& callback) {
+  std::string id;
+  input.GetString(kPairingSessionIdKey, &id);
+
+  Error error = security_->CancelPairing(id);
+  if (error != Error::kNone)
+    return ReturnError(error, callback);
+
+  base::DictionaryValue output;
   callback.Run(chromeos::http::status_code::Ok, output);
 }
 
