@@ -8,12 +8,23 @@
 namespace shill {
 
 namespace IEEE_80211 {
-const uint8_t kElemIdCountry = 7;
-const uint8_t kElemIdErp = 42;
-const uint8_t kElemIdHTCap = 45;
-const uint8_t kElemIdHTInfo = 61;
-const uint8_t kElemIdRSN = 48;
-const uint8_t kElemIdVendor = 221;
+// Information Element Ids from IEEE 802.11-2012 Section 8.4.2
+const uint8_t kElemIdChannels = 0x24;
+const uint8_t kElemIdChallengeText = 0x10;
+const uint8_t kElemIdCountry = 0x07;
+const uint8_t kElemIdDSParameterSet = 0x03;
+const uint8_t kElemIdErp = 0x2a;
+const uint8_t kElemIdExtendedRates = 0x32;
+const uint8_t kElemIdHTCap = 0x2d;
+const uint8_t kElemIdHTInfo = 0x3d;
+const uint8_t kElemIdPowerCapability = 0x21;
+const uint8_t kElemIdPowerConstraint = 0x20;
+const uint8_t kElemIdRequest = 0x0a;
+const uint8_t kElemIdRSN = 0x30;
+const uint8_t kElemIdSsid = 0x00;
+const uint8_t kElemIdSupportedRates = 0x01;
+const uint8_t kElemIdTcpReport = 0x23;
+const uint8_t kElemIdVendor = 0xdd;
 
 const unsigned int kMaxSSIDLen = 32;
 

@@ -13,6 +13,8 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
+#include "shill/net/ieee80211.h"
+
 using base::Bind;
 using base::StringAppendF;
 using base::StringPrintf;
@@ -25,22 +27,38 @@ const char Nl80211AttributeCookie::kNameString[] = "NL80211_ATTR_COOKIE";
 
 const int Nl80211AttributeBss::kName = NL80211_ATTR_BSS;
 const char Nl80211AttributeBss::kNameString[] = "NL80211_ATTR_BSS";
-const int Nl80211AttributeBss::kChannelsAttributeId = 0x24;
-const int Nl80211AttributeBss::kChallengeTextAttributeId = 0x10;
-const int Nl80211AttributeBss::kCountryInfoAttributeId = 0x07;
-const int Nl80211AttributeBss::kDSParameterSetAttributeId = 0x03;
-const int Nl80211AttributeBss::kErpAttributeId = 0x2a;
-const int Nl80211AttributeBss::kExtendedRatesAttributeId = 0x32;
-const int Nl80211AttributeBss::kHtCapAttributeId = 0x2d;
-const int Nl80211AttributeBss::kHtInfoAttributeId = 0x3d;
-const int Nl80211AttributeBss::kPowerCapabilityAttributeId = 0x21;
-const int Nl80211AttributeBss::kPowerConstraintAttributeId = 0x20;
-const int Nl80211AttributeBss::kRequestAttributeId = 0x0a;
-const int Nl80211AttributeBss::kRsnAttributeId = 0x30;
-const int Nl80211AttributeBss::kSsidAttributeId = 0x00;
-const int Nl80211AttributeBss::kSupportedRatesAttributeId = 0x01;
-const int Nl80211AttributeBss::kTcpReportAttributeId = 0x23;
-const int Nl80211AttributeBss::kVendorSpecificAttributeId = 0xdd;
+const int Nl80211AttributeBss::kChannelsAttributeId =
+    IEEE_80211::kElemIdChannels;
+const int Nl80211AttributeBss::kChallengeTextAttributeId =
+    IEEE_80211::kElemIdChallengeText;
+const int Nl80211AttributeBss::kCountryInfoAttributeId =
+    IEEE_80211::kElemIdCountry;
+const int Nl80211AttributeBss::kDSParameterSetAttributeId =
+    IEEE_80211::kElemIdDSParameterSet;
+const int Nl80211AttributeBss::kErpAttributeId =
+    IEEE_80211::kElemIdErp;
+const int Nl80211AttributeBss::kExtendedRatesAttributeId =
+    IEEE_80211::kElemIdExtendedRates;
+const int Nl80211AttributeBss::kHtCapAttributeId =
+    IEEE_80211::kElemIdHTCap;
+const int Nl80211AttributeBss::kHtInfoAttributeId =
+    IEEE_80211::kElemIdHTInfo;
+const int Nl80211AttributeBss::kPowerCapabilityAttributeId =
+    IEEE_80211::kElemIdPowerCapability;
+const int Nl80211AttributeBss::kPowerConstraintAttributeId =
+    IEEE_80211::kElemIdPowerConstraint;
+const int Nl80211AttributeBss::kRequestAttributeId =
+    IEEE_80211::kElemIdRequest;
+const int Nl80211AttributeBss::kRsnAttributeId =
+    IEEE_80211::kElemIdRSN;
+const int Nl80211AttributeBss::kSsidAttributeId =
+    IEEE_80211::kElemIdSsid;
+const int Nl80211AttributeBss::kSupportedRatesAttributeId =
+    IEEE_80211::kElemIdSupportedRates;
+const int Nl80211AttributeBss::kTcpReportAttributeId =
+    IEEE_80211::kElemIdTcpReport;
+const int Nl80211AttributeBss::kVendorSpecificAttributeId =
+    IEEE_80211::kElemIdVendor;
 
 static const char kSsidString[] = "SSID";
 static const char kRatesString[] = "Rates";
