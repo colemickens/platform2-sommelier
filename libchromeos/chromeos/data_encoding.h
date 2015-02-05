@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <chromeos/chromeos_export.h>
+#include <chromeos/secure_blob.h>
 
 namespace chromeos {
 namespace data_encoding {
@@ -42,6 +43,40 @@ inline std::string WebParamsEncode(const WebParamList& params) {
 // encoded in a way compatible with 'application/x-www-form-urlencoded'
 // content encoding.
 CHROMEOS_EXPORT WebParamList WebParamsDecode(const std::string& data);
+
+// Encodes binary data using base64-encoding.
+CHROMEOS_EXPORT std::string Base64Encode(const void* data, size_t size);
+
+// Encodes binary data using base64-encoding and wraps lines at 64 character
+// boundary using LF as required by PEM (RFC 1421) specification.
+CHROMEOS_EXPORT std::string Base64EncodeWrapLines(const void* data,
+                                                  size_t size);
+
+// Decodes the input string from Base64.
+CHROMEOS_EXPORT bool Base64Decode(const std::string& input,
+                                  chromeos::Blob* output);
+
+// Helper wrappers to use std::string and chromeos::Blob as binary data
+// containers.
+inline std::string Base64Encode(const chromeos::Blob& input) {
+  return Base64Encode(input.data(), input.size());
+}
+inline std::string Base64EncodeWrapLines(const chromeos::Blob& input) {
+  return Base64EncodeWrapLines(input.data(), input.size());
+}
+inline std::string Base64Encode(const std::string& input) {
+  return Base64Encode(input.data(), input.size());
+}
+inline std::string Base64EncodeWrapLines(const std::string& input) {
+  return Base64EncodeWrapLines(input.data(), input.size());
+}
+inline bool Base64Decode(const std::string& input, std::string* output) {
+  chromeos::Blob blob;
+  if (!Base64Decode(input, &blob))
+    return false;
+  *output = std::string{blob.begin(), blob.end()};
+  return true;
+}
 
 }  // namespace data_encoding
 }  // namespace chromeos

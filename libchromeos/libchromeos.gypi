@@ -42,6 +42,7 @@
           'dbus-c++-1',
           'dbus-glib-1',
           'glib-2.0',
+          'openssl',
         ],
         'deps': ['<@(exported_deps)'],
       },
