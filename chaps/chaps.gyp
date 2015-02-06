@@ -1,7 +1,4 @@
 {
-  'variables': {
-    'build_chaps_live_tests': 0,
-  },
   'target_defaults': {
     'variables': {
       'deps': [
@@ -321,47 +318,43 @@
             'isolate_login_client_test.cc',
           ]
         },
-      ],
-
-      # Live Tests
-      # Note: These tests require a live system with gtest and gmock installed. These
-      # cannot be run without a real TPM and cannot be run with autotest. These tests
-      # do not need to be run regularly but may be useful in the future and so have
-      # been kept around.
-
-      # NOTE: These tests are broken. I've ported them over to GYP, but they're disabled
-      # because currently they don't actually compile.
-
-      'conditions': [
-        ['build_chaps_live_tests == 1', {
-          'targets': [
-            {
-              'target_name': 'chapsd_test',
-              'type': 'executable',
-              'dependencies': [
-                'libchaps_static',
-              ],
-              'includes': ['../common-mk/common_test.gypi'],
-              'sources': [
-                'chapsd_test.cc',
-                'chaps_service_redirect.cc',
-              ]
-            },
-            {
-              'target_name': 'tpm_utility_test',
-              'type': 'executable',
-              'dependencies': [
-                'libchaps_static',
-                'libchaps_test',
-              ],
-              'includes': ['../common-mk/common_test.gypi'],
-              'sources': [
-                'tpm_utility_impl.cc',
-                'tpm_utility_test.cc',
-              ]
-            },
+        # Live Tests
+        # Note: These tests require a live system with gtest and gmock
+        # installed. These cannot be run without a real TPM and cannot be
+        # run with autotest. These tests do not need to be run regularly
+        # but may be useful in the future and so have been kept around.
+        {
+          'target_name': 'chapsd_test',
+          'type': 'executable',
+          'dependencies': [
+            'libchaps_static',
           ],
-        }],
+          'libraries': [
+            '-ldl',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'chapsd_test.cc',
+            'chaps_service_redirect.cc',
+            'platform_globals_chromeos.cc',
+          ]
+        },
+        {
+          'target_name': 'tpm_utility_test',
+          'type': 'executable',
+          'dependencies': [
+            'libchaps_static',
+            'libchaps_test',
+          ],
+          'libraries': [
+            '-ltspi',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'tpm_utility_impl.cc',
+            'tpm_utility_test.cc',
+          ]
+        },
       ],
     }],
   ],

@@ -9,6 +9,7 @@
 //    correctly by Trousers and can crash the current process or tcsd.
 #include "chaps/tpm_utility_impl.h"
 
+#include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <openssl/rand.h>
@@ -47,7 +48,7 @@ class TestTPMUtility: public ::testing::Test {
     e_ = string("\x1\x0\x1", 3);
     unsigned char random[20];
     RAND_bytes(random, 20);
-    auth_ = string(reinterpret_cast<char*>(random), 20);
+    auth_ = chromeos::SecureBlob(reinterpret_cast<char*>(random), 20);
     ASSERT_TRUE(tpm_.Init());
   }
 
@@ -81,7 +82,7 @@ class TestTPMUtility: public ::testing::Test {
   TPMUtilityImpl tpm_;
   int size_;
   string e_;
-  string auth_;
+  chromeos::SecureBlob auth_;
   int key_;
   string blob_;
 };
@@ -93,20 +94,20 @@ TEST_F(TestTPMUtility, Authenticate) {
   string encrypted_master;
   ASSERT_TRUE(tpm_.Bind(key_, master, &encrypted_master));
   // Successful authentication.
-  string master2;
+  chromeos::SecureBlob master2;
   EXPECT_TRUE(tpm_.Authenticate(0, auth_, blob_, encrypted_master, &master2));
-  EXPECT_TRUE(master == master2);
+  EXPECT_TRUE(master == master2.to_string());
   tpm_.UnloadKeysForSlot(0);
   // Change password.
   unsigned char random[20];
   RAND_bytes(random, 20);
-  string auth2(reinterpret_cast<char*>(random), 20);
+  chromeos::SecureBlob auth2(reinterpret_cast<char*>(random), 20);
   string blob2;
   ASSERT_TRUE(tpm_.ChangeAuthData(0, auth_, auth2, blob_, &blob2));
   tpm_.UnloadKeysForSlot(0);
   // Authenticate with new password.
   EXPECT_TRUE(tpm_.Authenticate(0, auth2, blob2, encrypted_master, &master2));
-  EXPECT_TRUE(master == master2);
+  EXPECT_TRUE(master == master2.to_string());
 }
 
 TEST_F(TestTPMUtility, Random) {
@@ -137,8 +138,9 @@ TEST_F(TestTPMUtility, WrappedKey) {
 
 TEST_F(TestTPMUtility, BadAuthSize) {
   ASSERT_TRUE(InjectKey());
-  string bad(19, 0);
-  string master("master"), encrypted, tmp;
+  chromeos::SecureBlob bad(19);
+  chromeos::SecureBlob tmp;
+  string master("master"), encrypted;
   ASSERT_TRUE(tpm_.Bind(key_, master, &encrypted));
   tpm_.UnloadKeysForSlot(0);
   EXPECT_FALSE(tpm_.Authenticate(0, bad, blob_, encrypted, &tmp));
