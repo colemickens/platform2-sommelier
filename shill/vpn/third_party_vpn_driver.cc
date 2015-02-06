@@ -41,6 +41,20 @@ namespace {
 
 const int32_t kConstantMaxMtu = (1 << 16) - 1;
 
+std::string IPAddressFingerprint(const IPAddress &address) {
+  static const std::string hex_to_bin[] = {
+      "0000", "0001", "0010", "0011", "0100", "0101", "0110", "0111",
+      "1000", "1001", "1010", "1011", "1100", "1101", "1110", "1111"};
+  std::string fingerprint;
+  const size_t address_length = address.address().GetLength();
+  const uint8_t *raw_address = address.address().GetConstData();
+  for (size_t i = 0; i < address_length; ++i) {
+    fingerprint += hex_to_bin[raw_address[i] >> 4];
+    fingerprint += hex_to_bin[raw_address[i] & 0xf];
+  }
+  return fingerprint.substr(0, address.prefix());
+}
+
 }  // namespace
 
 const VPNDriver::Property ThirdPartyVpnDriver::kProperties[] = {
@@ -166,7 +180,7 @@ void ThirdPartyVpnDriver::ProcessIp(
 void ThirdPartyVpnDriver::ProcessIPArray(
     const std::map<std::string, std::string> &parameters, const char *key,
     char delimiter, std::vector<std::string> *target, bool mandatory,
-    std::string *error_message) {
+    std::string *error_message, std::string *warning_message) {
   std::vector<std::string> string_array;
   auto it = parameters.find(key);
   if (it != parameters.end()) {
@@ -175,8 +189,47 @@ void ThirdPartyVpnDriver::ProcessIPArray(
     // Eliminate invalid IPs
     for (auto value = string_array.begin(); value != string_array.end();) {
       if (IPAddress(*value).family() != IPAddress::kFamilyIPv4) {
+        warning_message->append(*value + " for " + key + " is invalid;");
         value = string_array.erase(value);
       } else {
+        ++value;
+      }
+    }
+
+    if (!string_array.empty()) {
+      target->swap(string_array);
+    } else {
+      error_message->append(key).append(" has no valid values or is empty;");
+    }
+  } else if (mandatory) {
+    error_message->append(key).append(" is missing;");
+  }
+}
+
+void ThirdPartyVpnDriver::ProcessIPArrayCIDR(
+    const std::map<std::string, std::string> &parameters, const char *key,
+    char delimiter, std::vector<std::string> *target, bool mandatory,
+    std::string *error_message, std::string *warning_message) {
+  std::vector<std::string> string_array;
+  IPAddress address(IPAddress::kFamilyIPv4);
+  auto it = parameters.find(key);
+  if (it != parameters.end()) {
+    base::SplitString(parameters.at(key), delimiter, &string_array);
+
+    // Eliminate invalid IPs
+    for (auto value = string_array.begin(); value != string_array.end();) {
+      if (!address.SetAddressAndPrefixFromString(*value)) {
+        warning_message->append(*value + " for " + key + " is invalid;");
+        value = string_array.erase(value);
+        continue;
+      }
+      const std::string cidr_key = IPAddressFingerprint(address);
+      if (known_cidrs_.find(cidr_key) != known_cidrs_.end()) {
+        warning_message->append("Duplicate entry for " + *value + " in " + key +
+                                " found;");
+        value = string_array.erase(value);
+      } else {
+        known_cidrs_.insert(cidr_key);
         ++value;
       }
     }
@@ -230,13 +283,14 @@ void ThirdPartyVpnDriver::ProcessInt32(
 
 void ThirdPartyVpnDriver::SetParameters(
     const std::map<std::string, std::string> &parameters,
-    std::string *error_message) {
+    std::string *error_message, std::string *warning_message) {
   // TODO(kaliamoorthi): Add IPV6 support.
   if (!parameters_expected_ || active_client_ != this) {
     error_message->append("Unexpected call");
     return;
   }
 
+  ip_properties_ = IPConfig::Properties();
   ip_properties_.address_family = IPAddress::kFamilyIPv4;
 
   ProcessIp(parameters, "address", &ip_properties_.address, true,
@@ -244,27 +298,61 @@ void ThirdPartyVpnDriver::SetParameters(
   ProcessIp(parameters, "broadcast_address", &ip_properties_.broadcast_address,
             false, error_message);
 
+  // TODO(kaliamoorthi): Remove the hack and make gateway mandatory.
+  ip_properties_.gateway = ip_properties_.address;
+  ProcessIp(parameters, "gateway", &ip_properties_.gateway, false,
+            error_message);
+
   ProcessInt32(parameters, "subnet_prefix", &ip_properties_.subnet_prefix, 0,
-               31, true, error_message);
+               32, true, error_message);
   ProcessInt32(parameters, "mtu", &ip_properties_.mtu, IPConfig::kMinIPv4MTU,
                kConstantMaxMtu, false, error_message);
 
   ProcessSearchDomainArray(parameters, "domain_search", kNonIPDelimiter,
                            &ip_properties_.domain_search, false, error_message);
   ProcessIPArray(parameters, "dns_servers", kIPDelimiter,
-                 &ip_properties_.dns_servers, true, error_message);
+                 &ip_properties_.dns_servers, true, error_message,
+                 warning_message);
 
+  known_cidrs_.clear();
+
+  ProcessIPArrayCIDR(parameters, "exclusion_list", kIPDelimiter,
+                     &ip_properties_.exclusion_list, false, error_message,
+                     warning_message);
+
+  // TODO(kaliamoorthi): Remove trusted_ips and make exclusion_list and
+  // inclusion_list mandatory.
   std::vector<std::string> trusted_ips;
-  ProcessIPArray(parameters, "bypass_tunnel_for_ip", kIPDelimiter,
-                 &trusted_ips, true, error_message);
+  ProcessIPArray(parameters, "bypass_tunnel_for_ip", kIPDelimiter, &trusted_ips,
+                 true, error_message, warning_message);
   if (trusted_ips.size()) {
-    ip_properties_.trusted_ip = trusted_ips[0];
+    size_t prefix =
+        IPAddress::GetMaxPrefixLength(ip_properties_.address_family);
+    ip_properties_.exclusion_list.push_back(trusted_ips[0] + "/" +
+                                            base::SizeTToString(prefix));
+  }
+
+  std::vector<std::string> inclusion_list;
+  ProcessIPArrayCIDR(parameters, "inclusion_list", kIPDelimiter,
+                     &inclusion_list, false, error_message, warning_message);
+
+  IPAddress ip_address(ip_properties_.address_family);
+  IPConfig::Route route;
+  route.gateway = ip_properties_.gateway;
+  for (auto value = inclusion_list.begin(); value != inclusion_list.end();
+       ++value) {
+    ip_address.SetAddressAndPrefixFromString(*value);
+    ip_address.IntoString(&route.host);
+    IPAddress::GetAddressMaskFromPrefix(
+        ip_address.family(), ip_address.prefix()).IntoString(&route.netmask);
+    ip_properties_.routes.push_back(route);
   }
 
   if (error_message->empty()) {
-    ip_properties_.gateway = ip_properties_.address;
+    ip_properties_.user_traffic_only = true;
     device_->SelectService(service_);
     device_->UpdateIPConfig(ip_properties_);
+    device_->SetLooseRouting(true);
     StopConnectTimeout();
     parameters_expected_ = false;
   }
@@ -289,7 +377,7 @@ void ThirdPartyVpnDriver::Cleanup(Service::ConnectState state,
                                   Service::ConnectFailure failure,
                                   const std::string &error_details) {
   SLOG(this, 2) << __func__ << "(" << Service::ConnectStateToString(state)
-               << ", " << error_details << ")";
+                << ", " << error_details << ")";
   StopConnectTimeout();
   int interface_index = -1;
   if (device_) {

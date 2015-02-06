@@ -5,6 +5,7 @@
 #include "shill/ppp_device.h"
 
 #include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 
 #include "shill/logging.h"
 #include "shill/technology.h"
@@ -84,7 +85,9 @@ IPConfig::Properties PPPDevice::ParseIPConfiguration(
     } else if (key == kPPPLNSAddress) {
       // This is really a L2TPIPSec property. But it's sent to us by
       // our PPP plugin.
-      properties.trusted_ip = value;
+      size_t prefix = IPAddress::GetMaxPrefixLength(properties.address_family);
+      properties.exclusion_list.push_back(value + "/" +
+                                          base::SizeTToString(prefix));
     } else {
       SLOG(PPP, nullptr, 2) << "Key ignored.";
     }

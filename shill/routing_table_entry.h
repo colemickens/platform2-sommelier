@@ -5,6 +5,8 @@
 #ifndef SHILL_ROUTING_TABLE_ENTRY_H_
 #define SHILL_ROUTING_TABLE_ENTRY_H_
 
+#include <linux/rtnetlink.h>
+
 #include "shill/net/ip_address.h"
 
 namespace shill {
@@ -23,6 +25,7 @@ struct RoutingTableEntry {
         metric(0),
         scope(0),
         from_rtnl(false),
+        table(RT_TABLE_MAIN),
         tag(kDefaultTag) {}
 
   RoutingTableEntry(const IPAddress &dst_in,
@@ -37,6 +40,7 @@ struct RoutingTableEntry {
         metric(metric_in),
         scope(scope_in),
         from_rtnl(from_rtnl_in),
+        table(RT_TABLE_MAIN),
         tag(kDefaultTag) {}
 
   RoutingTableEntry(const IPAddress &dst_in,
@@ -52,6 +56,24 @@ struct RoutingTableEntry {
         metric(metric_in),
         scope(scope_in),
         from_rtnl(from_rtnl_in),
+        table(RT_TABLE_MAIN),
+        tag(tag_in) {}
+
+  RoutingTableEntry(const IPAddress &dst_in,
+                    const IPAddress &src_in,
+                    const IPAddress &gateway_in,
+                    uint32_t metric_in,
+                    unsigned char scope_in,
+                    bool from_rtnl_in,
+                    unsigned char table_in,
+                    int tag_in)
+      : dst(dst_in),
+        src(src_in),
+        gateway(gateway_in),
+        metric(metric_in),
+        scope(scope_in),
+        from_rtnl(from_rtnl_in),
+        table(table_in),
         tag(tag_in) {}
 
   RoutingTableEntry(const RoutingTableEntry &b)
@@ -61,6 +83,7 @@ struct RoutingTableEntry {
         metric(b.metric),
         scope(b.scope),
         from_rtnl(b.from_rtnl),
+        table(b.table),
         tag(b.tag) {}
 
   RoutingTableEntry &operator=(const RoutingTableEntry &b) {
@@ -70,6 +93,7 @@ struct RoutingTableEntry {
     metric = b.metric;
     scope = b.scope;
     from_rtnl = b.from_rtnl;
+    table = b.table;
     tag = b.tag;
 
     return *this;
@@ -84,6 +108,7 @@ struct RoutingTableEntry {
             metric == b.metric &&
             scope == b.scope &&
             from_rtnl == b.from_rtnl &&
+            table == b.table &&
             tag == b.tag);
   }
 
@@ -93,6 +118,7 @@ struct RoutingTableEntry {
   uint32_t metric;
   unsigned char scope;
   bool from_rtnl;
+  unsigned char table;
   int tag;
 };
 

@@ -39,8 +39,9 @@ class ThirdPartyVpnAdaptor
   void EmitPlatformMessage(uint32_t message) override;
 
   // Implementation of org::chromium::flimflam::ThirdPartyVpn_adaptor
-  void SetParameters(const std::map<std::string, std::string> &parameters,
-                     ::DBus::Error &error) override;  // NOLINT
+  std::string SetParameters(
+      const std::map<std::string, std::string> &parameters,
+      ::DBus::Error &error) override;  // NOLINT
   void UpdateConnectionState(const uint32_t &connection_state,
                              ::DBus::Error &error) override;  // NOLINT
   void SendPacket(const std::vector<uint8_t> &ip_packet,

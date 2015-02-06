@@ -103,6 +103,10 @@ class Connection : public base::RefCounted<Connection> {
   // Request a host route through this connection.
   virtual bool RequestHostRoute(const IPAddress &destination);
 
+  // Request a host route through this connection for a list of IPs in CIDR
+  // notation (|excluded_ips_cidr_|).
+  virtual bool PinPendingRoutes(int interface_index, RoutingTableEntry entry);
+
   // Return the subnet name for this connection.
   virtual std::string GetSubnetName() const;
 
@@ -128,6 +132,7 @@ class Connection : public base::RefCounted<Connection> {
  private:
   friend class ConnectionTest;
   FRIEND_TEST(ConnectionTest, AddConfig);
+  FRIEND_TEST(ConnectionTest, AddConfigUserTrafficOnly);
   FRIEND_TEST(ConnectionTest, Binder);
   FRIEND_TEST(ConnectionTest, Binders);
   FRIEND_TEST(ConnectionTest, BlackholeIPv6);
@@ -143,6 +148,8 @@ class Connection : public base::RefCounted<Connection> {
 
   static const uint32_t kDefaultMetric;
   static const uint32_t kNonDefaultMetricBase;
+  static const uint32_t kMarkForUserTraffic;
+  static const uint8_t kSecondaryTableId;
 
   // Work around misconfigured servers which provide a gateway address that
   // is unreachable with the provided netmask.
@@ -176,8 +183,11 @@ class Connection : public base::RefCounted<Connection> {
   Technology::Identifier technology_;
   std::vector<std::string> dns_servers_;
   std::vector<std::string> dns_domain_search_;
+  std::vector<std::string> excluded_ips_cidr_;
   std::string dns_domain_name_;
   std::string ipconfig_rpc_identifier_;
+  bool user_traffic_only_;
+  uint8_t table_id_;
   IPAddress local_;
   IPAddress gateway_;
 

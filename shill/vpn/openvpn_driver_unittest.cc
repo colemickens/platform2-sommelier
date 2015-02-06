@@ -525,7 +525,7 @@ TEST_F(OpenVPNDriverTest, ParseRouteOption) {
 TEST_F(OpenVPNDriverTest, SetRoutes) {
   OpenVPNDriver::RouteOptions routes;
   routes[1].gateway = "1.2.3.4";
-  routes[1].host= "1.2.3.4";
+  routes[1].host = "1.2.3.4";
   routes[2].host = "2.3.4.5";
   routes[2].netmask = "255.0.0.0";
   routes[3].netmask = "255.0.0.0";
@@ -663,7 +663,8 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   EXPECT_EQ(24, props.subnet_prefix);
   EXPECT_EQ("33.44.55.66", props.peer_address);
   EXPECT_EQ("192.168.1.1", props.gateway);
-  EXPECT_EQ("99.88.77.66", props.trusted_ip);
+  EXPECT_EQ("99.88.77.66/32", props.exclusion_list[0]);
+  EXPECT_EQ(1, props.exclusion_list.size());
   EXPECT_EQ(1000, props.mtu);
   ASSERT_EQ(3, props.dns_servers.size());
   EXPECT_EQ("1.1.1.1", props.dns_servers[0]);

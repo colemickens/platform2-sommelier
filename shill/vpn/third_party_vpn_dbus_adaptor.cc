@@ -63,15 +63,18 @@ void ThirdPartyVpnAdaptor::EmitPlatformMessage(uint32_t message) {
   OnPlatformMessage(message);
 }
 
-void ThirdPartyVpnAdaptor::SetParameters(
+std::string ThirdPartyVpnAdaptor::SetParameters(
     const std::map<std::string, std::string> &parameters,
     ::DBus::Error &error) {  // NOLINT
   SLOG(this, 2) << __func__;
   std::string error_message;
-  client_->SetParameters(parameters, &error_message);
+  std::string warning_message;
+  // TODO(kaliamoorthi): Return warning message to the user via DBUS API.
+  client_->SetParameters(parameters, &error_message, &warning_message);
   if (!error_message.empty()) {
     error.set(kErrorResultInvalidArguments, error_message.c_str());
   }
+  return warning_message;
 }
 
 void ThirdPartyVpnAdaptor::UpdateConnectionState(

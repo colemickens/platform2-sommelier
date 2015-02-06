@@ -6,6 +6,7 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <linux/fib_rules.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <netinet/ether.h>
@@ -140,7 +141,8 @@ bool RoutingTable::GetDefaultRouteInternal(int interface_index,
 
 bool RoutingTable::SetDefaultRoute(int interface_index,
                                    const IPAddress &gateway_address,
-                                   uint32_t metric) {
+                                   uint32_t metric,
+                                   uint8_t table_id) {
   SLOG(this, 2) << __func__ << " index " << interface_index
                 << " metric " << metric;
 
@@ -172,12 +174,15 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
                                     gateway_address,
                                     metric,
                                     RT_SCOPE_UNIVERSE,
-                                    false));
+                                    false,
+                                    table_id,
+                                    RoutingTableEntry::kDefaultTag));
 }
 
 bool RoutingTable::ConfigureRoutes(int interface_index,
                                    const IPConfigRefPtr &ipconfig,
-                                   uint32_t metric) {
+                                   uint32_t metric,
+                                   uint8_t table_id) {
   bool ret = true;
 
   IPAddress::Family address_family = ipconfig->properties().address_family;
@@ -211,7 +216,9 @@ bool RoutingTable::ConfigureRoutes(int interface_index,
                                     gateway_address,
                                     metric,
                                     RT_SCOPE_UNIVERSE,
-                                    false))) {
+                                    false,
+                                    table_id,
+                                    RoutingTableEntry::kDefaultTag))) {
       ret = false;
     }
   }
@@ -281,8 +288,7 @@ bool RoutingTable::ParseRoutingTableMessage(const RTNLMessage &message,
 
   const RTNLMessage::RouteStatus &route_status = message.route_status();
 
-  if (route_status.type != RTN_UNICAST ||
-      route_status.table != RT_TABLE_MAIN) {
+  if (route_status.type != RTN_UNICAST) {
     return false;
   }
 
@@ -319,6 +325,7 @@ bool RoutingTable::ParseRoutingTableMessage(const RTNLMessage &message,
   entry->metric = metric;
   entry->scope = route_status.scope;
   entry->from_rtnl = true;
+  entry->table = route_status.table;
 
   return true;
 }
@@ -354,6 +361,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage &message) {
       RoutingTableEntry add_entry(entry);
       add_entry.from_rtnl = false;
       add_entry.tag = query.tag;
+      add_entry.table = query.table_id;
       bool added = true;
       if (add_entry.gateway.IsDefault()) {
         SLOG(this, 2) << __func__ << ": Ignoring route result with no gateway "
@@ -426,7 +434,7 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
   message.set_route_status(RTNLMessage::RouteStatus(
       entry.dst.prefix(),
       entry.src.prefix(),
-      RT_TABLE_MAIN,
+      entry.table,
       RTPROT_BOOT,
       entry.scope,
       RTN_UNICAST,
@@ -486,10 +494,38 @@ bool RoutingTable::FlushCache() {
   return ret;
 }
 
+bool RoutingTable::AddRuleForSecondaryTable(IPAddress::Family family,
+                                            uint8_t table_id, uint32_t mark) {
+  SLOG(this, 2) << base::StringPrintf(
+      "%s: family %d table %d mark %d", __func__, family, table_id, mark);
+
+  RTNLMessage message(RTNLMessage::kTypeRule, RTNLMessage::kModeAdd, 0, 0, 0, 0,
+                      family);
+  message.set_rule_status(RTNLMessage::RuleStatus(table_id));
+  message.SetAttribute(FRA_FWMARK, ByteString::CreateFromCPUUInt32(mark));
+
+  return rtnl_handler_->SendMessage(&message);
+}
+
+bool RoutingTable::DeleteRuleForSecondaryTable(IPAddress::Family family,
+                                               uint8_t table_id,
+                                               uint32_t mark) {
+  SLOG(this, 2) << base::StringPrintf(
+      "%s: family %d table %d mark %d", __func__, family, table_id, mark);
+
+  RTNLMessage message(RTNLMessage::kTypeRule, RTNLMessage::kModeDelete, 0, 0, 0,
+                      0, family);
+  message.set_rule_status(RTNLMessage::RuleStatus(table_id));
+  message.SetAttribute(FRA_FWMARK, ByteString::CreateFromCPUUInt32(mark));
+
+  return rtnl_handler_->SendMessage(&message);
+}
+
 bool RoutingTable::RequestRouteToHost(const IPAddress &address,
                                       int interface_index,
                                       int tag,
-                                      const Query::Callback &callback) {
+                                      const Query::Callback &callback,
+                                      uint8_t table_id) {
   // Make sure we don't get a cached response that is no longer valid.
   FlushCache();
 
@@ -518,14 +554,15 @@ bool RoutingTable::RequestRouteToHost(const IPAddress &address,
 
   // Save the sequence number of the request so we can create a route for
   // this host when we get a reply.
-  route_queries_.push_back(Query(message.seq(), tag, callback));
+  route_queries_.push_back(Query(message.seq(), tag, callback, table_id));
 
   return true;
 }
 
 bool RoutingTable::CreateBlackholeRoute(int interface_index,
                                         IPAddress::Family family,
-                                        uint32_t metric) {
+                                        uint32_t metric,
+                                        uint8_t table_id) {
   SLOG(this, 2) << base::StringPrintf(
       "%s: index %d family %s metric %d",
       __func__, interface_index,
@@ -543,7 +580,7 @@ bool RoutingTable::CreateBlackholeRoute(int interface_index,
   message.set_route_status(RTNLMessage::RouteStatus(
       0,
       0,
-      RT_TABLE_MAIN,
+      table_id,
       RTPROT_BOOT,
       RT_SCOPE_UNIVERSE,
       RTN_BLACKHOLE,
@@ -559,7 +596,8 @@ bool RoutingTable::CreateBlackholeRoute(int interface_index,
 
 bool RoutingTable::CreateLinkRoute(int interface_index,
                                    const IPAddress &local_address,
-                                   const IPAddress &remote_address) {
+                                   const IPAddress &remote_address,
+                                   uint8_t table_id) {
   if (!local_address.CanReachAddress(remote_address)) {
     LOG(ERROR) << __func__ << " failed: "
                << remote_address.ToString() << " is not reachable from "
@@ -581,7 +619,9 @@ bool RoutingTable::CreateLinkRoute(int interface_index,
                                     default_address,
                                     0,
                                     RT_SCOPE_LINK,
-                                    false));
+                                    false,
+                                    table_id,
+                                    RoutingTableEntry::kDefaultTag));
 }
 
 }  // namespace shill

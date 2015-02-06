@@ -74,6 +74,7 @@ bool RTNLMessage::DecodeInternal(const ByteString &msg) {
   case RTM_NEWLINK:
   case RTM_NEWADDR:
   case RTM_NEWROUTE:
+  case RTM_NEWRULE:
   case RTM_NEWNDUSEROPT:
     mode = kModeAdd;
     break;
@@ -81,6 +82,7 @@ bool RTNLMessage::DecodeInternal(const ByteString &msg) {
   case RTM_DELLINK:
   case RTM_DELADDR:
   case RTM_DELROUTE:
+  case RTM_DELRULE:
     mode = kModeDelete;
     break;
 
@@ -107,6 +109,12 @@ bool RTNLMessage::DecodeInternal(const ByteString &msg) {
   case RTM_NEWROUTE:
   case RTM_DELROUTE:
     if (!DecodeRoute(hdr, mode, &attr_data, &attr_length))
+      return false;
+    break;
+
+  case RTM_NEWRULE:
+  case RTM_DELRULE:
+    if (!DecodeRule(hdr, mode, &attr_data, &attr_length))
       return false;
     break;
 
@@ -204,6 +212,23 @@ bool RTNLMessage::DecodeRoute(const RTNLHeader *hdr,
   return true;
 }
 
+bool RTNLMessage::DecodeRule(const RTNLHeader *hdr,
+                             Mode mode,
+                             rtattr **attr_data,
+                             int *attr_length) {
+  if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->rtm))) {
+    return false;
+  }
+  mode_ = mode;
+  *attr_data = RTM_RTA(NLMSG_DATA(&hdr->hdr));
+  *attr_length = RTM_PAYLOAD(&hdr->hdr);
+
+  type_ = kTypeRule;
+  family_ = hdr->rtm.rtm_family;
+  set_rule_status(RuleStatus(hdr->rtm.rtm_table));
+  return true;
+}
+
 bool RTNLMessage::DecodeNdUserOption(const RTNLHeader *hdr,
                                      Mode mode,
                                      rtattr **attr_data,
@@ -283,7 +308,8 @@ bool RTNLMessage::ParseRdnssOption(const uint8_t *data,
 ByteString RTNLMessage::Encode() const {
   if (type_ != kTypeLink &&
       type_ != kTypeAddress &&
-      type_ != kTypeRoute) {
+      type_ != kTypeRoute &&
+      type_ != kTypeRule) {
     return ByteString();
   }
 
@@ -322,6 +348,12 @@ ByteString RTNLMessage::Encode() const {
 
     case kTypeRoute:
       if (!EncodeRoute(&hdr)) {
+        return ByteString();
+      }
+      break;
+
+    case kTypeRule:
+      if (!EncodeRule(&hdr)) {
         return ByteString();
       }
       break;
@@ -433,6 +465,31 @@ bool RTNLMessage::EncodeRoute(RTNLHeader *hdr) const {
   return true;
 }
 
+bool RTNLMessage::EncodeRule(RTNLHeader *hdr) const {
+  switch (mode_) {
+    case kModeAdd:
+      hdr->hdr.nlmsg_type = RTM_NEWRULE;
+      hdr->hdr.nlmsg_flags = NLM_F_REQUEST|NLM_F_CREATE|NLM_F_EXCL;
+      hdr->rtm.rtm_type = RTN_UNICAST;
+      break;
+    case kModeDelete:
+      hdr->hdr.nlmsg_type = RTM_DELRULE;
+      hdr->hdr.nlmsg_flags = NLM_F_REQUEST;
+      hdr->rtm.rtm_type = RTN_UNSPEC;
+      break;
+    default:
+      NOTIMPLEMENTED();
+      return false;
+  }
+  hdr->hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr->rtm));
+  hdr->rtm.rtm_family = family_;
+  hdr->rtm.rtm_table = rule_status_.table;
+  hdr->rtm.rtm_protocol = RTPROT_BOOT;
+  hdr->rtm.rtm_scope = RT_SCOPE_UNIVERSE;
+  hdr->rtm.rtm_flags = 0;
+  return true;
+}
+
 void RTNLMessage::Reset() {
   mode_ = kModeUnknown;
   type_ = kTypeUnknown;
@@ -444,6 +501,7 @@ void RTNLMessage::Reset() {
   link_status_ = LinkStatus();
   address_status_ = AddressStatus();
   route_status_ = RouteStatus();
+  rule_status_ = RuleStatus();
   attributes_.clear();
 }
 

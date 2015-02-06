@@ -5,6 +5,7 @@
 	<interface name="org.chromium.flimflam.ThirdPartyVpn">
 		<method name="SetParameters">
 			<arg type="a{ss}" name="parameters" direction="in"/>
+			<arg type="s" name="warning" direction="out"/>
 		</method>
 		<method name="UpdateConnectionState">
 			<arg type="u" name="connection_state" direction="in"/>

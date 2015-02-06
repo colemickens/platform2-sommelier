@@ -6,6 +6,7 @@
 #define SHILL_VPN_THIRD_PARTY_VPN_DRIVER_H_
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -53,7 +54,7 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // SetParameters is called by the DBus adaptor when "SetParameter" method is
   // called on the DBus interface.
   void SetParameters(const std::map<std::string, std::string> &parameters,
-                     std::string *error_message);
+                     std::string *error_message, std::string *warning_message);
 
   void ClearExtensionId(Error *error);
   bool SetExtensionId(const std::string &value, Error *error);
@@ -110,12 +111,25 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // |delimiter|. Each string value is verified to be a valid IP address,
   // deleting ones that are not. The list of string is set to |target|.
   // The flag |mandatory| when set to true, makes the function treat a missing
-  // key as an error. The function adds to |error_messages|, when there is a
-  // failure.
+  // key as an error. The function adds to |error_message|, when there is a
+  // failure and |warn_message| when there is a warning.
   void ProcessIPArray(
       const std::map<std::string, std::string> &parameters, const char *key,
       char delimiter, std::vector<std::string> *target, bool mandatory,
-      std::string *error_message);
+      std::string *error_message, std::string *warn_message);
+
+  // This function first checks if a value is present for a particular |key| in
+  // the dictionary |parameters|.
+  // If present it treats the value as a list of string separated by
+  // |delimiter|. Each string value is verified to be a valid IP address in
+  // CIDR format, deleting ones that are not. The list of string is set to
+  // |target|. The flag |mandatory| when set to true, makes the function treat a
+  // missing key as an error. The function adds to |error_message|, when there
+  // is a failure and |warn_message| when there is a warning.
+  void ProcessIPArrayCIDR(
+      const std::map<std::string, std::string> &parameters, const char *key,
+      char delimiter, std::vector<std::string> *target, bool mandatory,
+      std::string *error_message, std::string *warn_message);
 
   // This function first checks if a value is present for a particular |key| in
   // the dictionary |parameters|.
@@ -188,6 +202,9 @@ class ThirdPartyVpnDriver : public VPNDriver {
 
   // The object is used to write to tun device.
   FileIO *file_io_;
+
+  // Set used to identify duplicate entries in inclusion and exclusion list.
+  std::set<std::string> known_cidrs_;
 
   // The boolean indicates if parameters are expected from the VPN client.
   bool parameters_expected_;

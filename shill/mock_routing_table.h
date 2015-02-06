@@ -24,27 +24,36 @@ class MockRoutingTable : public RoutingTable {
   MOCK_METHOD3(GetDefaultRoute, bool(int interface_index,
                                      IPAddress::Family family,
                                      RoutingTableEntry *entry));
-  MOCK_METHOD3(SetDefaultRoute, bool(int interface_index,
+  MOCK_METHOD4(SetDefaultRoute, bool(int interface_index,
                                      const IPAddress &gateway_address,
-                                     uint32_t metric));
-  MOCK_METHOD3(ConfigureRoutes, bool(int interface_index,
+                                     uint32_t metric,
+                                     uint8_t table));
+  MOCK_METHOD4(ConfigureRoutes, bool(int interface_index,
                                      const IPConfigRefPtr &ipconfig,
-                                     uint32_t metric));
-  MOCK_METHOD3(CreateBlackholeRoute, bool(int interface_index,
+                                     uint32_t metric,
+                                     uint8_t table));
+  MOCK_METHOD4(CreateBlackholeRoute, bool(int interface_index,
                                           IPAddress::Family family,
-                                          uint32_t metric));
-  MOCK_METHOD3(CreateLinkRoute, bool(int interface_index,
+                                          uint32_t metric,
+                                          uint8_t table));
+  MOCK_METHOD4(CreateLinkRoute, bool(int interface_index,
                                      const IPAddress &local_address,
-                                     const IPAddress &remote_address));
+                                     const IPAddress &remote_address,
+                                     uint8_t table));
   MOCK_METHOD1(FlushRoutes, void(int interface_index));
   MOCK_METHOD1(FlushRoutesWithTag, void(int tag));
   MOCK_METHOD0(FlushCache, bool());
+  MOCK_METHOD3(AddRuleForSecondaryTable,
+               bool(IPAddress::Family family, uint8_t table_id, uint32_t mark));
+  MOCK_METHOD3(DeleteRuleForSecondaryTable,
+               bool(IPAddress::Family family, uint8_t table_id, uint32_t mark));
   MOCK_METHOD1(ResetTable, void(int interface_index));
   MOCK_METHOD2(SetDefaultMetric, void(int interface_index, uint32_t metric));
-  MOCK_METHOD4(RequestRouteToHost, bool(const IPAddress &addresss,
+  MOCK_METHOD5(RequestRouteToHost, bool(const IPAddress &addresss,
                                         int interface_index,
                                         int tag,
-                                        const Query::Callback &callback));
+                                        const Query::Callback &callback,
+                                        uint8_t table));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockRoutingTable);

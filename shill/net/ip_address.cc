@@ -191,8 +191,9 @@ bool IPAddress::SetAddressAndPrefixFromString(const string &address_string) {
     LOG(ERROR) << "Cannot parse address string " << address_parts[0];
     return false;
   }
-  int prefix;
-  if (!base::StringToInt(address_parts[1], &prefix) || prefix < 0) {
+  size_t prefix;
+  if (!base::StringToSizeT(address_parts[1], &prefix) ||
+      prefix > GetMaxPrefixLength(family_)) {
     LOG(ERROR) << "Cannot parse address prefix " << address_parts[1];
     return false;
   }

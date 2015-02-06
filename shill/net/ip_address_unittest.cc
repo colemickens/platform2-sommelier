@@ -135,6 +135,12 @@ TEST_F(IPAddressTest, SetAddressAndPrefixFromString) {
   EXPECT_FALSE(address.SetAddressAndPrefixFromString(kString1 + "/"));
   EXPECT_FALSE(address.SetAddressAndPrefixFromString(kString1 + "/10x"));
   EXPECT_FALSE(address.SetAddressAndPrefixFromString(kString2 + "/10"));
+  EXPECT_TRUE(address.SetAddressAndPrefixFromString(kString1 + "/0"));
+  EXPECT_EQ(0, address.prefix());
+  EXPECT_TRUE(address.SetAddressAndPrefixFromString(kString1 + "/32"));
+  EXPECT_EQ(32, address.prefix());
+  EXPECT_FALSE(address.SetAddressAndPrefixFromString(kString1 + "/33"));
+  EXPECT_FALSE(address.SetAddressAndPrefixFromString(kString1 + "/-1"));
   EXPECT_TRUE(address.SetAddressAndPrefixFromString(kString1 + "/10"));
   EXPECT_EQ(10, address.prefix());
   ByteString kAddress1(kV4Address1, sizeof(kV4Address1));

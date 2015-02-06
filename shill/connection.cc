@@ -38,6 +38,10 @@ static string ObjectID(Connection *c) {
 const uint32_t Connection::kDefaultMetric = 1;
 // static
 const uint32_t Connection::kNonDefaultMetricBase = 10;
+// static
+const uint32_t Connection::kMarkForUserTraffic = 0x1;
+// static
+const uint8_t Connection::kSecondaryTableId = 0x1;
 
 Connection::Binder::Binder(const string &name,
                            const Closure &disconnect_callback)
@@ -84,6 +88,8 @@ Connection::Connection(int interface_index,
       interface_index_(interface_index),
       interface_name_(interface_name),
       technology_(technology),
+      user_traffic_only_(false),
+      table_id_(RT_TABLE_MAIN),
       local_(IPAddress::kFamilyUnknown),
       gateway_(IPAddress::kFamilyUnknown),
       lower_binder_(
@@ -109,12 +115,19 @@ Connection::~Connection() {
   routing_table_->FlushRoutes(interface_index_);
   routing_table_->FlushRoutesWithTag(interface_index_);
   device_info_->FlushAddresses(interface_index_);
+  if (user_traffic_only_) {
+    routing_table_->DeleteRuleForSecondaryTable(local_.family(), table_id_,
+                                                kMarkForUserTraffic);
+  }
 }
 
 void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
   SLOG(this, 2) << __func__ << " " << interface_name_;
 
   const IPConfig::Properties &properties = config->properties();
+  user_traffic_only_ = properties.user_traffic_only;
+  table_id_ = user_traffic_only_ ? kSecondaryTableId : (uint8_t)RT_TABLE_MAIN;
+
   IPAddress gateway(properties.address_family);
   if (!properties.gateway.empty() &&
       !gateway.SetAddressFromString(properties.gateway)) {
@@ -122,15 +135,31 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
     return;
   }
 
+  excluded_ips_cidr_ = properties.exclusion_list;
+
   IPAddress trusted_ip(properties.address_family);
-  if (!properties.trusted_ip.empty()) {
-    if (!trusted_ip.SetAddressFromString(properties.trusted_ip)) {
+  if (!excluded_ips_cidr_.empty()) {
+    const std::string first_excluded_ip = excluded_ips_cidr_[0];
+    excluded_ips_cidr_.erase(excluded_ips_cidr_.begin());
+    // A VPN connection can currently be bound to exactly one lower connection
+    // such as eth0 or wan0. The excluded IPs are pinned to the gateway of
+    // that connection. Setting up the routing table this way ensures that when
+    // the lower connection goes offline, the associated entries in the routing
+    // table are removed. On the flip side, when there are multiple connections
+    // such as eth0 and wan0 and some IPs can be reached quickly over one
+    // connection and the others over a different connection, all routes are
+    // still pinned to a connection.
+    //
+    // The optimal connection to reach the first excluded IP is found below.
+    // When this is found the route for the remaining excluded IPs are pinned in
+    // the method PinPendingRoutes below.
+    if (!trusted_ip.SetAddressAndPrefixFromString(first_excluded_ip)) {
       LOG(ERROR) << "Trusted IP address "
-                 << properties.trusted_ip << " is invalid";
+                 << first_excluded_ip << " is invalid";
       return;
     }
     if (!PinHostRoute(trusted_ip, gateway)) {
-      LOG(ERROR) << "Unable to pin host route to " << properties.trusted_ip;
+      LOG(ERROR) << "Unable to pin host route to " << first_excluded_ip;
       return;
     }
   }
@@ -183,18 +212,26 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
 
   if (gateway.IsValid()) {
     routing_table_->SetDefaultRoute(interface_index_, gateway,
-                                    GetMetric(is_default_));
+                                    GetMetric(is_default_),
+                                    table_id_);
+  }
+
+  if (user_traffic_only_) {
+    routing_table_->AddRuleForSecondaryTable(
+        properties.address_family, table_id_, kMarkForUserTraffic);
   }
 
   // Install any explicitly configured routes at the default metric.
-  routing_table_->ConfigureRoutes(interface_index_, config, kDefaultMetric);
+  routing_table_->ConfigureRoutes(interface_index_, config, kDefaultMetric,
+                                  table_id_);
 
   SetMTU(properties.mtu);
 
   if (properties.blackhole_ipv6) {
     routing_table_->CreateBlackholeRoute(interface_index_,
                                          IPAddress::kFamilyIPv6,
-                                         kDefaultMetric);
+                                         kDefaultMetric,
+                                         table_id_);
   }
 
   // Save a copy of the last non-null DNS config.
@@ -290,23 +327,36 @@ void Connection::ReleaseRouting() {
 }
 
 bool Connection::RequestHostRoute(const IPAddress &address) {
-  // Set the prefix to be the entire address size.
-  IPAddress address_prefix(address);
-  address_prefix.set_prefix(address_prefix.GetLength() * 8);
-
   // Do not set interface_index_ since this may not be the default route through
   // which this destination can be found.  However, we should tag the created
   // route with our interface index so we can clean this route up when this
   // connection closes.  Also, add route query callback to determine the lower
   // connection and bind to it.
   if (!routing_table_->RequestRouteToHost(
-          address_prefix,
+          address,
           -1,
           interface_index_,
           Bind(&Connection::OnRouteQueryResponse,
-               weak_ptr_factory_.GetWeakPtr()))) {
+               weak_ptr_factory_.GetWeakPtr()),
+          table_id_)) {
     LOG(ERROR) << "Could not request route to " << address.ToString();
     return false;
+  }
+
+  return true;
+}
+
+bool Connection::PinPendingRoutes(int interface_index,
+                                  RoutingTableEntry entry) {
+  // The variable entry is locally modified, hence is passed by value in the
+  // second argument above.
+  for (auto excluded_ip = excluded_ips_cidr_.begin();
+       excluded_ip != excluded_ips_cidr_.end(); ++excluded_ip) {
+    if (!entry.dst.SetAddressAndPrefixFromString(*excluded_ip) ||
+        !entry.dst.IsValid() ||
+        !routing_table_->AddRoute(interface_index, entry)) {
+      LOG(ERROR) << "Unable to setup route for " << *excluded_ip << ".";
+    }
   }
 
   return true;
@@ -494,6 +544,7 @@ void Connection::OnRouteQueryResponse(int interface_index,
   lower_binder_.Attach(connection);
   connection->CreateGatewayRoute();
   device->OnConnectionUpdated();
+  PinPendingRoutes(interface_index, entry);
 }
 
 bool Connection::CreateGatewayRoute() {
@@ -513,7 +564,8 @@ bool Connection::CreateGatewayRoute() {
   // If DHCP parameters change later (without the connection having been
   // destroyed and recreated), the binding processes will likely terminate
   // and restart, causing a new link route to be created.
-  return routing_table_->CreateLinkRoute(interface_index_, local_, gateway_);
+  return routing_table_->CreateLinkRoute(interface_index_, local_, gateway_,
+                                         table_id_);
 }
 
 void Connection::OnLowerDisconnect() {

@@ -46,7 +46,8 @@ TEST(PPPDeviceTest, ParseIPConfiguration) {
   ASSERT_EQ(2, props.dns_servers.size());
   EXPECT_EQ("1.1.1.1", props.dns_servers[0]);
   EXPECT_EQ("2.2.2.2", props.dns_servers[1]);
-  EXPECT_EQ("99.88.77.66", props.trusted_ip);
+  EXPECT_EQ("99.88.77.66/32", props.exclusion_list[0]);
+  EXPECT_EQ(1, props.exclusion_list.size());
 
   // No gateway specified.
   config.erase(kPPPGatewayAddress);

@@ -38,17 +38,20 @@ class RoutingTable {
     // Callback::Run(interface_index, entry)
     typedef base::Callback<void(int, const RoutingTableEntry &)> Callback;
 
-    Query() : sequence(0), tag(0) {}
+    Query() : sequence(0), tag(0), table_id(0) {}
     Query(uint32_t sequence_in,
           int tag_in,
-          Callback callback_in)
+          Callback callback_in,
+          uint8_t table_id_in)
         : sequence(sequence_in),
           tag(tag_in),
-          callback(callback_in) {}
+          callback(callback_in),
+          table_id(table_id_in) {}
 
     uint32_t sequence;
     int tag;
     Callback callback;
+    uint8_t table_id;
   };
 
   virtual ~RoutingTable();
@@ -72,26 +75,30 @@ class RoutingTable {
   // |metric|.
   virtual bool SetDefaultRoute(int interface_index,
                                const IPAddress &gateway_address,
-                               uint32_t metric);
+                               uint32_t metric,
+                               uint8_t table_id);
 
   // Configure routing table entries from the "routes" portion of |ipconfig|.
   // Returns true if all routes were installed successfully, false otherwise.
   virtual bool ConfigureRoutes(int interface_index,
                                const IPConfigRefPtr &ipconfig,
-                               uint32_t metric);
+                               uint32_t metric,
+                               uint8_t table_id);
 
   // Create a blackhole route for a given IP family.  Returns true
   // on successfully sending the route request, false otherwise.
   virtual bool CreateBlackholeRoute(int interface_index,
                                     IPAddress::Family family,
-                                    uint32_t metric);
+                                    uint32_t metric,
+                                    uint8_t table_id);
 
   // Create a route to a link-attached remote host.  |remote_address|
   // must be directly reachable from |local_address|.  Returns true
   // on successfully sending the route request, false otherwise.
   virtual bool CreateLinkRoute(int interface_index,
                                const IPAddress &local_address,
-                               const IPAddress &remote_address);
+                               const IPAddress &remote_address,
+                               uint8_t table_id);
 
   // Remove routes associated with interface.
   // Route entries are immediately purged from our copy of the routing table.
@@ -103,6 +110,14 @@ class RoutingTable {
 
   // Flush the routing cache for all interfaces.
   virtual bool FlushCache();
+
+  virtual bool AddRuleForSecondaryTable(IPAddress::Family family,
+                                        uint8_t table_id,
+                                        uint32_t mark);
+
+  virtual bool DeleteRuleForSecondaryTable(IPAddress::Family family,
+                                           uint8_t table_id,
+                                           uint32_t mark);
 
   // Reset local state for this interface.
   virtual void ResetTable(int interface_index);
@@ -120,7 +135,8 @@ class RoutingTable {
   virtual bool RequestRouteToHost(const IPAddress &destination,
                                   int interface_index,
                                   int tag,
-                                  const Query::Callback &callback);
+                                  const Query::Callback &callback,
+                                  uint8_t table_id);
 
  protected:
   RoutingTable();

@@ -39,6 +39,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   struct Properties {
     Properties() : address_family(IPAddress::kFamilyUnknown),
                    subnet_prefix(0),
+                   user_traffic_only(false),
                    blackhole_ipv6(false),
                    mtu(kUndefinedMTU),
                    lease_duration_seconds(0) {}
@@ -53,10 +54,13 @@ class IPConfig : public base::RefCounted<IPConfig> {
     std::string gateway;
     std::string method;
     std::string peer_address;
-    // Used by OpenVPN to signify a destination that should bypass any default
-    // route installed.  This is usually the external IP address of the VPN
-    // server.
-    std::string trusted_ip;
+    // Set the flag when a secondary routing table should be used for less
+    // privileged user traffic which alone would be sent to the VPN client. A
+    // primary routing table will be used for traffic from privileged processes
+    // which will bypass VPN.
+    bool user_traffic_only;
+    // A list of IP blocks in CIDR format that should be excluded from VPN.
+    std::vector<std::string> exclusion_list;
     bool blackhole_ipv6;
     int32_t mtu;
     std::vector<Route> routes;
