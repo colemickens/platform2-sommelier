@@ -49,8 +49,8 @@ class RandomSelector {
   }
 
  private:
-  // Get a floating point number between |min| and |max|.
-  virtual double GetFloatBetween(double min, double max);
+  // Get a floating point number between 0.0 and |max|.
+  virtual double RandDoubleUpTo(double max);
 
   // Get a string corresponding to a random double |value| that is in our odds
   // dictionary. Stores the result in |key|.

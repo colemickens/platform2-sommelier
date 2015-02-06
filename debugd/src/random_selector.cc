@@ -63,15 +63,14 @@ void RandomSelector::GetNext(std::string* next) {
   // Sum up all the odds.
   double sum = GetSumOfMapValues(odds_);
   // Get a random double between 0 and the sum.
-  double random = GetFloatBetween(0.0, sum);
+  double random = RandDoubleUpTo(sum);
   // Figure out what it belongs to.
   GetKeyOf(random, next);
 }
 
-double RandomSelector::GetFloatBetween(double min, double max) {
-  CHECK_GT(max, min);
-  double random = base::RandDouble();
-  return random * (max - min) + min;
+double RandomSelector::RandDoubleUpTo(double max) {
+  CHECK_GT(max, 0.0);
+  return max * base::RandDouble();
 }
 
 void RandomSelector::GetKeyOf(double value, std::string* key) {

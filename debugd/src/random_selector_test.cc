@@ -43,22 +43,22 @@ void CheckResultsAgainstOdds(const std::map<std::string, double> odds,
   }
 }
 
-// A class that overrides GetFloatBetween to not use the rand() function. This
+// A class that overrides RandDoubleUpTo to not use the rand() function. This
 // allows better testing of the RandomSelector class.
 class RandomSelectorWithCustomRNG : public RandomSelector {
  public:
   RandomSelectorWithCustomRNG() : current_index_(0) {}
 
  private:
-  // This function returns floats between |min| and |max| in an increasing
+  // This function returns floats between 0.0 and |max| in an increasing
   // fashion at regular intervals.
-  double GetFloatBetween(double min, double max) override {
+  double RandDoubleUpTo(double max) override {
     current_index_ = (current_index_ + 1) % kLargeNumber;
-    return (max - min) * current_index_ / kLargeNumber + min;
+    return max * current_index_ / kLargeNumber;
   }
 
-  // Stores the current position we are at in the interval between |min| and
-  // |max|. See the function GetFloatBetween for details on how this is used.
+  // Stores the current position we are at in the interval between 0.0 and
+  // |max|. See the function RandDoubleUpTo for details on how this is used.
   int current_index_;
 };
 
