@@ -21,6 +21,9 @@ const int kLargeNumber = 2000;
 // to the odds set.
 const double kEpsilon = 0.01;
 
+// A test file that contains some odds.
+const char kOddsFilename[] = "../src/testdata/simple_odds_file.txt";
+
 // This function tests whether the results are close enough to the odds (within
 // 1%).
 void CheckResultsAgainstOdds(const std::map<std::string, double> odds,
@@ -104,12 +107,8 @@ TEST(RandomSelector, GenerateTest) {
 }
 
 // Ensure RandomSelector is able to read odds from a file.
-#if 0  // Appears to be flaky: http://crbug.com/399579
-// A test file that contains some odds.
-const char kOddsFilename[] = "../src/testdata/simple_odds_file.txt";
-
 TEST(RandomSelector, SetOddsFromFileTest) {
-  RandomSelector random_selector;
+  RandomSelectorWithCustomRNG random_selector(kLargeNumber);
   random_selector.SetOddsFromFile(std::string(kOddsFilename));
   std::map<std::string, double> results;
   std::map<std::string, double> odds;
@@ -119,4 +118,3 @@ TEST(RandomSelector, SetOddsFromFileTest) {
   GenerateResults(kLargeNumber, &random_selector, &results);
   CheckResultsAgainstOdds(odds, results);
 }
-#endif
