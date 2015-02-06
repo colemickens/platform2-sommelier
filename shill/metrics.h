@@ -804,7 +804,7 @@ class Metrics {
   void NotifyDarkResumeActionsCompleted(bool success);
 
   // Notifies this object that a scan has been initiated while in dark resume.
-  void NotifyDarkResumeInitiateScan();
+  virtual void NotifyDarkResumeInitiateScan();
 
   // Notifies this object that a scan results have been received in dark resume.
   void NotifyDarkResumeScanResultsReceived();

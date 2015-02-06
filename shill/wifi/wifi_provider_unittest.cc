@@ -1845,14 +1845,10 @@ TEST_F(WiFiProviderTest, ReportAutoConnectableServices) {
 }
 
 TEST_F(WiFiProviderTest, NumAutoConnectableServices) {
-  MockWiFiServiceRefPtr service0 = AddMockService(vector<uint8_t>(1, '0'),
-                                                  kModeManaged,
-                                                  kSecurityNone,
-                                                  false);
-  MockWiFiServiceRefPtr service1 = AddMockService(vector<uint8_t>(1, '1'),
-                                                  kModeManaged,
-                                                  kSecurityNone,
-                                                  false);
+  MockWiFiServiceRefPtr service0 = AddMockService(
+      vector<uint8_t>(1, '0'), kModeManaged, kSecurityNone, false);
+  MockWiFiServiceRefPtr service1 = AddMockService(
+      vector<uint8_t>(1, '1'), kModeManaged, kSecurityNone, false);
   service0->EnableAndRetainAutoConnect();
   service0->SetConnectable(true);
   service1->EnableAndRetainAutoConnect();
@@ -1861,8 +1857,7 @@ TEST_F(WiFiProviderTest, NumAutoConnectableServices) {
   EXPECT_CALL(*service0, IsAutoConnectable(_))
       .WillOnce(Return(true))
       .WillOnce(Return(false));
-  EXPECT_CALL(*service1, IsAutoConnectable(_))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service1, IsAutoConnectable(_)).WillRepeatedly(Return(true));
 
   // 2 auto-connectable services.
   EXPECT_EQ(2, provider_.NumAutoConnectableServices());
@@ -1876,14 +1871,10 @@ TEST_F(WiFiProviderTest, GetSsidsConfiguredForAutoConnect) {
   vector<uint8_t> ssid1(5, '1');
   ByteString ssid0_bytes(ssid0);
   ByteString ssid1_bytes(ssid1);
-  MockWiFiServiceRefPtr service0 = AddMockService(ssid0,
-                                                  kModeManaged,
-                                                  kSecurityNone,
-                                                  false);
-  MockWiFiServiceRefPtr service1 = AddMockService(ssid1,
-                                                  kModeManaged,
-                                                  kSecurityNone,
-                                                  false);
+  MockWiFiServiceRefPtr service0 =
+      AddMockService(ssid0, kModeManaged, kSecurityNone, false);
+  MockWiFiServiceRefPtr service1 =
+      AddMockService(ssid1, kModeManaged, kSecurityNone, false);
   // 2 services configured for auto-connect.
   service0->SetAutoConnect(true);
   service1->SetAutoConnect(true);
@@ -1901,6 +1892,5 @@ TEST_F(WiFiProviderTest, GetSsidsConfiguredForAutoConnect) {
   EXPECT_EQ(1, service_list_1.size());
   EXPECT_TRUE(ssid1_bytes.Equals(service_list_1[0]));
 }
-
 
 }  // namespace shill

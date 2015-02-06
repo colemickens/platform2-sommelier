@@ -46,6 +46,14 @@ class WakeOnWiFi {
   typedef std::vector<std::pair<std::vector<uint8_t>, std::vector<uint32_t>>>
       WakeOnSSIDResults;
 
+  // Types of triggers that we can program the NIC to wake the WiFi device.
+  enum WakeOnWiFiTrigger {
+    kWakeTriggerUnsupported = 0,  // Used for reporting, not programming NIC.
+    kWakeTriggerPattern = 1,
+    kWakeTriggerDisconnect = 2,
+    kWakeTriggerSSID = 3
+  };
+
   WakeOnWiFi(NetlinkManager *netlink_manager, EventDispatcher *dispatcher,
              Metrics *metrics);
   virtual ~WakeOnWiFi();
@@ -56,9 +64,6 @@ class WakeOnWiFi {
   // Starts |metrics_timer_| so that wake on WiFi related metrics are
   // periodically collected.
   void StartMetricsTimer();
-
-  // Types of triggers that can cause the NIC to wake the WiFi device.
-  enum WakeOnWiFiTrigger { kPattern, kDisconnect, kSSID };
 
   // Enable the NIC to wake on packets received from |ip_endpoint|.
   // Note: The actual programming of the NIC only happens before the system
@@ -247,10 +252,10 @@ class WakeOnWiFi {
   // Creates and sets attributes in a SetWakeOnPacketConnMessage |msg|
   // so that the message will program the NIC with wiphy index |wiphy_index|
   // with wake on wireless triggers in |trigs|. If |trigs| contains the
-  // kPattern trigger, the message is configured to program the NIC to wake on
-  // packets from the IP addresses in |addrs|. If |trigs| contains the kSSID
-  // trigger, the message is configured to program the NIC to wake on the SSIDs
-  // in |ssid_whitelist|.
+  // kWakeTriggerPattern trigger, the message is configured to program the NIC
+  // to wake on packets from the IP addresses in |addrs|. If |trigs| contains
+  // the kSSID trigger, the message is configured to program the NIC to wake on
+  // the SSIDs in |ssid_whitelist|.
   // Returns true iff |msg| is successfully configured.
   // NOTE: Assumes that |msg| has not been altered since construction.
   static bool ConfigureSetWakeOnWiFiSettingsMessage(
@@ -281,7 +286,8 @@ class WakeOnWiFi {
   // Given a NL80211_CMD_GET_WOWLAN response or NL80211_CMD_SET_WOWLAN request
   // |msg|, returns true iff the wake-on-wifi trigger settings in |msg| match
   // those in |trigs|. Performs the following checks for the following triggers:
-  // - kDisconnect: checks that the wake on disconnect flag is present and set.
+  // - kWakeTriggerDisconnect: checks that the wake on disconnect flag is
+  //   present and set.
   // - kIPAddress: checks that source IP addresses in |msg| match those reported
   //   in |addrs|.
   // - kSSID: checks that the SSIDs in |ssid_whitelist| and the scan interval
@@ -415,6 +421,8 @@ class WakeOnWiFi {
   uint32_t net_detect_scan_period_seconds_;
   // Timestamps of dark resume wakes since the last suspend.
   EventHistory dark_resumes_since_last_suspend_;
+  // Last wake reason reported by the kernel.
+  WakeOnWiFiTrigger last_wake_reason_;
 
   base::WeakPtrFactory<WakeOnWiFi> weak_ptr_factory_;
 
