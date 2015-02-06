@@ -43,19 +43,26 @@ void CheckResultsAgainstOdds(const std::map<std::string, double> odds,
   }
 }
 
-// A class that overrides RandDoubleUpTo to not use the rand() function. This
-// allows better testing of the RandomSelector class.
+// A class that overrides RandDoubleUpTo() to not be random. The number
+// generator will emulate a uniform distribution of numbers between 0.0 and
+// |max| when called with the same |max| parameter and a whole multiple of
+// |random_period| times. This allows better testing of the RandomSelector
+// class.
 class RandomSelectorWithCustomRNG : public RandomSelector {
  public:
-  RandomSelectorWithCustomRNG() : current_index_(0) {}
+  explicit RandomSelectorWithCustomRNG(unsigned int random_period)
+      : random_period_(random_period), current_index_(0) {}
 
  private:
   // This function returns floats between 0.0 and |max| in an increasing
   // fashion at regular intervals.
   double RandDoubleUpTo(double max) override {
-    current_index_ = (current_index_ + 1) % kLargeNumber;
-    return max * current_index_ / kLargeNumber;
+    current_index_ = (current_index_ + 1) % random_period_;
+    return max * current_index_ / random_period_;
   }
+
+  // Period (number of calls) over which the fake RNG repeats.
+  const unsigned int random_period_;
 
   // Stores the current position we are at in the interval between 0.0 and
   // |max|. See the function RandDoubleUpTo for details on how this is used.
@@ -63,11 +70,11 @@ class RandomSelectorWithCustomRNG : public RandomSelector {
 };
 
 // Use the random_selector to generate some values. The number of values to
-// generate is |odds_size| * |kLargeNumber|.
-void GenerateResults(size_t odds_size,
+// generate is |iterations|.
+void GenerateResults(size_t iterations,
                      RandomSelector* random_selector,
                      std::map<std::string, double>* results) {
-  for (size_t i = 0; i < kLargeNumber * odds_size; ++i) {
+  for (size_t i = 0; i < iterations; ++i) {
     std::string next_value;
     random_selector->GetNext(&next_value);
     (*results)[next_value]++;
@@ -76,11 +83,11 @@ void GenerateResults(size_t odds_size,
 
 // Test the RandomSelector class given the odds in the |odds| map.
 void TestOdds(const std::map<std::string, double> odds) {
-  RandomSelectorWithCustomRNG random_selector;
+  RandomSelectorWithCustomRNG random_selector(kLargeNumber);
   random_selector.SetOdds(odds);
   // Generate a lot of values.
   std::map<std::string, double> results;
-  GenerateResults(odds.size(), &random_selector, &results);
+  GenerateResults(kLargeNumber, &random_selector, &results);
   // Ensure the values and odds are related.
   CheckResultsAgainstOdds(odds, results);
 }
@@ -109,7 +116,7 @@ TEST(RandomSelector, SetOddsFromFileTest) {
   odds["afile"] = 3;
   odds["bfile"] = 2;
   odds["cfile"] = 1;
-  GenerateResults(odds.size(), &random_selector, &results);
+  GenerateResults(kLargeNumber, &random_selector, &results);
   CheckResultsAgainstOdds(odds, results);
 }
 #endif
