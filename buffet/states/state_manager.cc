@@ -9,6 +9,7 @@
 #include <base/logging.h>
 #include <base/values.h>
 #include <chromeos/errors/error_codes.h>
+#include <chromeos/key_value_store.h>
 #include <chromeos/strings/string_utils.h>
 
 #include "buffet/states/error_codes.h"
@@ -16,6 +17,13 @@
 #include "buffet/utils.h"
 
 namespace buffet {
+
+namespace {
+
+const char kBaseStateFirmwareVersion[] = "base.firmwareVersion";
+
+}  // namespace
+
 
 StateManager::StateManager(StateChangeQueueInterface* state_change_queue)
     : state_change_queue_(state_change_queue) {
@@ -63,6 +71,23 @@ void StateManager::Startup() {
         << "Failed to load the state defaults.";
     json_file_path = enumerator2.Next();
   }
+
+  // Populate state fields that belong to the system.
+  base::FilePath lsb_release_path("/etc/lsb-release");
+  chromeos::KeyValueStore lsb_release_store;
+  std::string firmware_version;
+  if (lsb_release_store.Load(lsb_release_path)) {
+    if (!lsb_release_store.GetString("CHROMEOS_RELEASE_VERSION",
+                                     &firmware_version))
+      LOG(ERROR) << "Missing key for firmware version in version file.";
+
+  } else {
+    LOG(ERROR) << "Failed to read file for firmwareVersion.";
+  }
+  CHECK(SetPropertyValue(kBaseStateFirmwareVersion,
+                         firmware_version,
+                         base::Time::Now(),
+                         nullptr));
 }
 
 std::unique_ptr<base::DictionaryValue> StateManager::GetStateValuesAsJson(
