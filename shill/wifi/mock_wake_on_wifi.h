@@ -43,6 +43,9 @@ class MockWakeOnWiFi : public WakeOnWiFi {
                     const base::Closure &remove_supplicant_networks_callback));
   MOCK_METHOD1(OnWakeupReasonReceived,
                void(const NetlinkMessage &netlink_message));
+  MOCK_METHOD0(NotifyWakeupReasonReceived, void());
+  MOCK_METHOD1(NotifyWakeOnWiFiOnDarkResume,
+               void(WakeOnWiFi::WakeOnWiFiTrigger reason));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWakeOnWiFi);

@@ -2240,6 +2240,8 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
   // Renew DHCP lease if we are connected in dark resume.
   EXPECT_CALL(*this, RenewDHCPLeaseCallback());
+  EXPECT_CALL(metrics_, NotifyWakeOnWiFiOnDarkResume(
+                            WakeOnWiFi::kWakeTriggerUnsupported));
   OnDarkResume(is_connected, whitelist);
   EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
   // Trigger timeout callback.
@@ -2264,6 +2266,8 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
   // Renew DHCP lease if we are connected in dark resume.
   EXPECT_CALL(*this, RenewDHCPLeaseCallback());
+  EXPECT_CALL(metrics_, NotifyWakeOnWiFiOnDarkResume(
+                            WakeOnWiFi::kWakeTriggerUnsupported));
   OnDarkResume(is_connected, whitelist);
   EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
 
@@ -2289,6 +2293,8 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
   // Renew DHCP lease if we are connected in dark resume.
   EXPECT_CALL(*this, RenewDHCPLeaseCallback());
+  EXPECT_CALL(metrics_, NotifyWakeOnWiFiOnDarkResume(
+                            WakeOnWiFi::kWakeTriggerUnsupported));
   OnDarkResume(is_connected, whitelist);
   EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
   // Lease obtained.
@@ -2317,6 +2323,8 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   EXPECT_CALL(*this, RemoveSupplicantNetworksCallback());
   EXPECT_CALL(metrics_, NotifyDarkResumeInitiateScan());
   EXPECT_CALL(*this, InitiateScanCallback());
+  EXPECT_CALL(metrics_, NotifyWakeOnWiFiOnDarkResume(
+                            WakeOnWiFi::kWakeTriggerUnsupported));
   OnDarkResume(is_connected, whitelist);
   EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
   // Trigger timeout callback.
@@ -2344,6 +2352,8 @@ TEST_F(
   EXPECT_CALL(*this, RemoveSupplicantNetworksCallback());
   EXPECT_CALL(metrics_, NotifyDarkResumeInitiateScan());
   EXPECT_CALL(*this, InitiateScanCallback());
+  EXPECT_CALL(metrics_, NotifyWakeOnWiFiOnDarkResume(
+                            WakeOnWiFi::kWakeTriggerUnsupported));
   OnDarkResume(is_connected, whitelist);
   EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
 
@@ -2371,6 +2381,8 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   EXPECT_CALL(*this, RemoveSupplicantNetworksCallback());
   EXPECT_CALL(metrics_, NotifyDarkResumeInitiateScan());
   EXPECT_CALL(*this, InitiateScanCallback());
+  EXPECT_CALL(metrics_, NotifyWakeOnWiFiOnDarkResume(
+                            WakeOnWiFi::kWakeTriggerUnsupported));
   OnDarkResume(is_connected, whitelist);
   EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
   // Lease obtained.
@@ -2395,6 +2407,8 @@ TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_WakeReasonPattern) {
 
   InitStateForDarkResume();
   EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
+  EXPECT_CALL(metrics_,
+              NotifyWakeOnWiFiOnDarkResume(WakeOnWiFi::kWakeTriggerPattern));
   OnDarkResume(is_connected, whitelist);
   EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
 
@@ -2421,6 +2435,8 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   EXPECT_CALL(*this, RemoveSupplicantNetworksCallback());
   EXPECT_CALL(metrics_, NotifyDarkResumeInitiateScan());
   EXPECT_CALL(*this, InitiateScanCallback());
+  EXPECT_CALL(metrics_,
+              NotifyWakeOnWiFiOnDarkResume(WakeOnWiFi::kWakeTriggerDisconnect));
   OnDarkResume(is_connected, whitelist);
   EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
 
@@ -2447,6 +2463,8 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   EXPECT_CALL(*this, RemoveSupplicantNetworksCallback());
   EXPECT_CALL(metrics_, NotifyDarkResumeInitiateScan());
   EXPECT_CALL(*this, InitiateScanCallback());
+  EXPECT_CALL(metrics_,
+              NotifyWakeOnWiFiOnDarkResume(WakeOnWiFi::kWakeTriggerDisconnect));
   OnDarkResume(is_connected, whitelist);
   EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
 
@@ -2475,6 +2493,8 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   EXPECT_CALL(*this, RemoveSupplicantNetworksCallback());
   EXPECT_CALL(metrics_, NotifyDarkResumeInitiateScan());
   EXPECT_CALL(*this, InitiateScanCallback());
+  EXPECT_CALL(metrics_,
+              NotifyWakeOnWiFiOnDarkResume(WakeOnWiFi::kWakeTriggerDisconnect));
   OnDarkResume(is_connected, whitelist);
   EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
 
@@ -2503,6 +2523,8 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   EXPECT_CALL(*this, RemoveSupplicantNetworksCallback());
   EXPECT_CALL(metrics_, NotifyDarkResumeInitiateScan());
   EXPECT_CALL(*this, InitiateScanCallback());
+  EXPECT_CALL(metrics_,
+              NotifyWakeOnWiFiOnDarkResume(WakeOnWiFi::kWakeTriggerSSID));
   OnDarkResume(is_connected, whitelist);
   EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
 
@@ -2528,6 +2550,8 @@ TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_WakeReasonSSID_Timeout) {
   EXPECT_CALL(*this, RemoveSupplicantNetworksCallback());
   EXPECT_CALL(metrics_, NotifyDarkResumeInitiateScan());
   EXPECT_CALL(*this, InitiateScanCallback());
+  EXPECT_CALL(metrics_,
+              NotifyWakeOnWiFiOnDarkResume(WakeOnWiFi::kWakeTriggerSSID));
   OnDarkResume(is_connected, whitelist);
   EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
 
@@ -2556,6 +2580,8 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   EXPECT_CALL(*this, RemoveSupplicantNetworksCallback());
   EXPECT_CALL(metrics_, NotifyDarkResumeInitiateScan());
   EXPECT_CALL(*this, InitiateScanCallback());
+  EXPECT_CALL(metrics_,
+              NotifyWakeOnWiFiOnDarkResume(WakeOnWiFi::kWakeTriggerSSID));
   OnDarkResume(is_connected, whitelist);
   EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
 
@@ -2804,6 +2830,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Unsupported) {
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log,
               Log(_, _, HasSubstr("Wakeup reason: Not wake on WiFi related")));
+  EXPECT_CALL(metrics_, NotifyWakeupReasonReceived());
   OnWakeupReasonReceived(msg);
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerUnsupported, GetLastWakeReason());
 
@@ -2823,6 +2850,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Disconnect) {
       GetWakeupReportMsgContext());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("Wakeup reason: Disconnect")));
+  EXPECT_CALL(metrics_, NotifyWakeupReasonReceived());
   OnWakeupReasonReceived(msg);
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerDisconnect, GetLastWakeReason());
 
@@ -2841,6 +2869,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_SSID) {
                     GetWakeupReportMsgContext());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("Wakeup reason: SSID")));
+  EXPECT_CALL(metrics_, NotifyWakeupReasonReceived());
   OnWakeupReasonReceived(msg);
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerSSID, GetLastWakeReason());
 
@@ -2861,6 +2890,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Pattern) {
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("Wakeup reason: Pattern " +
                                        kWakeReasonPatternNlMsg_PattIndex)));
+  EXPECT_CALL(metrics_, NotifyWakeupReasonReceived());
   OnWakeupReasonReceived(msg);
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerPattern, GetLastWakeReason());
 
@@ -2881,6 +2911,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Error) {
                      GetWakeupReportMsgContext());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("Not a NL80211 Message")));
+  EXPECT_CALL(metrics_, NotifyWakeupReasonReceived());
   OnWakeupReasonReceived(msg0);
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerUnsupported, GetLastWakeReason());
 
@@ -2892,6 +2923,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Error) {
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log,
               Log(_, _, HasSubstr("Not a NL80211_CMD_SET_WOWLAN message")));
+  EXPECT_CALL(metrics_, NotifyWakeupReasonReceived());
   OnWakeupReasonReceived(msg1);
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerUnsupported, GetLastWakeReason());
 
@@ -2904,6 +2936,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Error) {
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(
       log, Log(_, _, HasSubstr("Wakeup reason not meant for this interface")));
+  EXPECT_CALL(metrics_, NotifyWakeupReasonReceived());
   OnWakeupReasonReceived(msg2);
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerUnsupported, GetLastWakeReason());
 
@@ -2964,10 +2997,12 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   AddSSIDToWhitelist(kSSIDBytes1, sizeof(kSSIDBytes1), &whitelist);
   EXPECT_CALL(*this, DoneCallback(ErrorType(Error::kSuccess))).Times(1);
   EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _)).Times(0);
+  EXPECT_CALL(metrics_, NotifyWakeOnWiFiOnDarkResume(_)).Times(0);
   OnDarkResume(is_connected, whitelist);
 
   EXPECT_CALL(*this, DoneCallback(ErrorType(Error::kSuccess))).Times(1);
   EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _)).Times(0);
+  EXPECT_CALL(metrics_, NotifyWakeOnWiFiOnDarkResume(_)).Times(0);
   OnDarkResume(is_connected, whitelist);
 }
 
@@ -3078,6 +3113,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_DoesNothing) {
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(
       log, Log(_, _, HasSubstr("Wake on WiFi not supported, so do nothing")));
+  EXPECT_CALL(metrics_, NotifyWakeupReasonReceived()).Times(0);
   OnWakeupReasonReceived(msg);
 
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");

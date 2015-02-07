@@ -11,6 +11,8 @@
 
 #include <gmock/gmock.h>
 
+#include "shill/wifi/wake_on_wifi.h"
+
 namespace shill {
 
 class MockMetrics : public Metrics {
@@ -77,6 +79,9 @@ class MockMetrics : public Metrics {
   MOCK_METHOD0(NotifyWakeOnWiFiThrottled, void());
   MOCK_METHOD0(NotifySuspendWithWakeOnWiFiEnabledDone, void());
   MOCK_METHOD0(NotifyDarkResumeInitiateScan, void());
+  MOCK_METHOD0(NotifyWakeupReasonReceived, void());
+  MOCK_METHOD1(NotifyWakeOnWiFiOnDarkResume,
+               void(WakeOnWiFi::WakeOnWiFiTrigger reason));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);

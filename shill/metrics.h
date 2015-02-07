@@ -21,6 +21,7 @@
 #include "shill/power_manager.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
+#include "shill/wifi/wake_on_wifi.h"
 
 namespace shill {
 
@@ -428,6 +429,20 @@ class Metrics {
     kWakeOnWiFiThrottledMax
   };
 
+  enum WakeReasonReceivedBeforeOnDarkResume {
+    kWakeReasonReceivedBeforeOnDarkResumeFalse = 0,
+    kWakeReasonReceivedBeforeOnDarkResumeTrue = 1,
+    kWakeReasonReceivedBeforeOnDarkResumeMax
+  };
+
+  enum DarkResumeWakeReason {
+    kDarkResumeWakeReasonUnsupported = 0,
+    kDarkResumeWakeReasonPattern = 1,
+    kDarkResumeWakeReasonDisconnect = 2,
+    kDarkResumeWakeReasonSSID = 3,
+    kDarkResumeWakeReasonMax
+  };
+
   static const char kMetricDisconnectSuffix[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -581,6 +596,15 @@ class Metrics {
 
   // Shill wake on WiFi feature state statistics.
   static const char kMetricWakeOnWiFiFeaturesEnabledState[];
+  // The result of NIC wake on WiFi settings verification.
+  static const char kMetricVerifyWakeOnWiFiSettingsResult[];
+  static const char kMetricWiFiConnectionStatusAfterWake[];
+  // Whether or not wake on WiFi was throttled during the last suspend.
+  static const char kMetricWakeOnWiFiThrottled[];
+  // Whether or not a wakeup reason was received before WakeOnWiFi::OnDarkResume
+  // executes.
+  static const char kMetricWakeReasonReceivedBeforeOnDarkResume[];
+  static const char kMetricDarkResumeWakeReason[];
 
   // WiFiService Entry Fixup.
   static const char kMetricServiceFixupEntriesSuffix[];
@@ -691,15 +715,6 @@ class Metrics {
 
   // Device removal event.
   static const char kMetricDeviceRemovedEvent[];
-
-  // The result of NIC wake on WiFi settings verification.
-  static const char kMetricVerifyWakeOnWiFiSettingsResult[];
-
-  // WiFi device connection status after waking from suspend.
-  static const char kMetricWiFiConnectionStatusAfterWake[];
-
-  // Whether or not wake on WiFi was throttled during the last suspend.
-  static const char kMetricWakeOnWiFiThrottled[];
 
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
@@ -969,6 +984,14 @@ class Metrics {
   // where wake on WiFi functionality was enabled on the NIC.
   virtual void NotifySuspendWithWakeOnWiFiEnabledDone();
 
+  // Notifies this object that a wakeup reason has been received.
+  virtual void NotifyWakeupReasonReceived();
+
+  // Notifies this object that WakeOnWiFi::OnDarkResume has begun executing,
+  // and that the dark resume was caused by |reason|.
+  virtual void NotifyWakeOnWiFiOnDarkResume(
+      WakeOnWiFi::WakeOnWiFiTrigger reason);
+
  private:
   friend class MetricsTest;
   FRIEND_TEST(MetricsTest, CellularDropsPerHour);
@@ -984,6 +1007,14 @@ class Metrics {
   FRIEND_TEST(MetricsTest, WiFiServicePostReady);
   FRIEND_TEST(MetricsTest, NotifySuspendWithWakeOnWiFiEnabledDone);
   FRIEND_TEST(MetricsTest, NotifyWakeOnWiFiThrottled);
+  FRIEND_TEST(MetricsTest, NotifySuspendActionsCompleted_Success);
+  FRIEND_TEST(MetricsTest, NotifySuspendActionsCompleted_Failure);
+  FRIEND_TEST(MetricsTest, NotifyDarkResumeActionsCompleted_Success);
+  FRIEND_TEST(MetricsTest, NotifyDarkResumeActionsCompleted_Failure);
+  FRIEND_TEST(MetricsTest, NotifySuspendActionsStarted);
+  FRIEND_TEST(MetricsTest, NotifyDarkResumeActionsStarted);
+  FRIEND_TEST(MetricsTest, NotifyDarkResumeInitiateScan);
+  FRIEND_TEST(MetricsTest, NotifyDarkResumeScanResultsReceived);
   FRIEND_TEST(WiFiMainTest, GetGeolocationObjects);
 
   typedef ScopedVector<chromeos_metrics::TimerReporter> TimerReporters;
@@ -1062,6 +1093,10 @@ class Metrics {
     chromeos_metrics::Timer *timer) {
     time_suspend_actions_timer.reset(timer);  // Passes ownership
   }
+  void set_time_dark_resume_actions_timer(
+    chromeos_metrics::Timer *timer) {
+    time_dark_resume_actions_timer.reset(timer);  // Passes ownership
+  }
   void set_time_to_scan_timer(int interface_index,
                               chromeos_metrics::TimerReporter *timer) {
     DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
@@ -1097,6 +1132,7 @@ class Metrics {
   DeviceMetricsLookupMap devices_metrics_;
   int num_scan_results_expected_in_dark_resume_;
   bool wake_on_wifi_throttled_;
+  bool wake_reason_received_;
 
   DISALLOW_COPY_AND_ASSIGN(Metrics);
 };

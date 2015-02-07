@@ -180,6 +180,16 @@ const char Metrics::kMetricDarkResumeUnmatchedScanResultReceived[] =
 
 const char Metrics::kMetricWakeOnWiFiFeaturesEnabledState[] =
     "Network.Shill.WiFi.WakeOnWiFiFeaturesEnabledState";
+const char Metrics::kMetricVerifyWakeOnWiFiSettingsResult[] =
+    "Network.Shill.WiFi.VerifyWakeOnWiFiSettingsResult";
+const char Metrics::kMetricWiFiConnectionStatusAfterWake[] =
+    "Network.Shill.WiFi.WiFiConnectionStatusAfterWake";
+const char Metrics::kMetricWakeOnWiFiThrottled[] =
+    "Network.Shill.WiFi.WakeOnWiFiThrottled";
+const char Metrics::kMetricWakeReasonReceivedBeforeOnDarkResume[] =
+    "Network.Shill.WiFi.WakeReasonReceivedBeforeOnDarkResume";
+const char Metrics::kMetricDarkResumeWakeReason[] =
+    "Network.Shill.WiFi.DarkResumeWakeReason";
 
 // static
 const char Metrics::kMetricServiceFixupEntriesSuffix[] = "ServiceFixupEntries";
@@ -374,21 +384,9 @@ const char Metrics::kMetricDevicePresenceStatusSuffix[] =
 const char Metrics::kMetricDeviceRemovedEvent[] =
     "Network.Shill.DeviceRemovedEvent";
 
-// static
-const char Metrics::kMetricVerifyWakeOnWiFiSettingsResult[] =
-    "Network.Shill.WiFi.VerifyWakeOnWiFiSettingsResult";
-
-// static
-const char Metrics::kMetricWiFiConnectionStatusAfterWake[] =
-    "Network.Shill.WiFi.WiFiConnectionStatusAfterWake";
-
-// static
-const char Metrics::kMetricWakeOnWiFiThrottled[] =
-    "Network.Shill.WiFi.WakeOnWiFiThrottled";
-
-// static
-const char Metrics::kMetricUnreliableLinkSignalStrengthSuffix[] =
-    "UnreliableLinkSignalStrength";
+    // static
+    const char Metrics::kMetricUnreliableLinkSignalStrengthSuffix[] =
+        "UnreliableLinkSignalStrength";
 const int Metrics::kMetricSerivceSignalStrengthMin = 0;
 const int Metrics::kMetricServiceSignalStrengthMax = 100;
 const int Metrics::kMetricServiceSignalStrengthNumBuckets = 40;
@@ -406,7 +404,8 @@ Metrics::Metrics(EventDispatcher *dispatcher)
       time_dark_resume_actions_timer(new chromeos_metrics::Timer),
       collect_bootstats_(true),
       num_scan_results_expected_in_dark_resume_(0),
-      wake_on_wifi_throttled_(false) {
+      wake_on_wifi_throttled_(false),
+      wake_reason_received_(false) {
   metrics_library_.Init();
   chromeos_metrics::TimerReporter::set_metrics_lib(library_);
 }
@@ -814,6 +813,9 @@ void Metrics::NotifySuspendActionsCompleted(bool success) {
   if (!time_suspend_actions_timer->HasStarted())
     return;
 
+  // Reset for next dark resume.
+  wake_reason_received_ = false;
+
   SuspendActionResult result =
       success ? kSuspendActionResultSuccess : kSuspendActionResultFailure;
 
@@ -845,6 +847,9 @@ void Metrics::NotifyDarkResumeActionsStarted() {
 void Metrics::NotifyDarkResumeActionsCompleted(bool success) {
   if (!time_dark_resume_actions_timer->HasStarted())
     return;
+
+  // Reset for next dark resume.
+  wake_reason_received_ = false;
 
   DarkResumeActionResult result =
       success ? kDarkResumeActionResultSuccess : kDarkResumeActionResultFailure;
@@ -1437,6 +1442,37 @@ void Metrics::NotifySuspendWithWakeOnWiFiEnabledDone() {
                                              : kWakeOnWiFiThrottledFalse;
   SendEnumToUMA(kMetricWakeOnWiFiThrottled, throttled_result,
                 kWakeOnWiFiThrottledMax);
+}
+
+void Metrics::NotifyWakeupReasonReceived() { wake_reason_received_ = true; }
+
+void Metrics::NotifyWakeOnWiFiOnDarkResume(
+    WakeOnWiFi::WakeOnWiFiTrigger reason) {
+  WakeReasonReceivedBeforeOnDarkResume result =
+      wake_reason_received_ ? kWakeReasonReceivedBeforeOnDarkResumeTrue
+                            : kWakeReasonReceivedBeforeOnDarkResumeFalse;
+
+  SendEnumToUMA(kMetricWakeReasonReceivedBeforeOnDarkResume, result,
+                kWakeReasonReceivedBeforeOnDarkResumeMax);
+
+  DarkResumeWakeReason wake_reason;
+  switch (reason) {
+    case WakeOnWiFi::kWakeTriggerPattern:
+      wake_reason = kDarkResumeWakeReasonPattern;
+      break;
+    case WakeOnWiFi::kWakeTriggerDisconnect:
+      wake_reason = kDarkResumeWakeReasonDisconnect;
+      break;
+    case WakeOnWiFi::kWakeTriggerSSID:
+      wake_reason = kDarkResumeWakeReasonSSID;
+      break;
+    case WakeOnWiFi::kWakeTriggerUnsupported:
+    default:
+      wake_reason = kDarkResumeWakeReasonUnsupported;
+      break;
+  }
+  SendEnumToUMA(kMetricDarkResumeWakeReason, wake_reason,
+                kDarkResumeWakeReasonMax);
 }
 
 void Metrics::InitializeCommonServiceMetrics(const Service &service) {

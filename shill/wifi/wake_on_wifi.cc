@@ -1134,6 +1134,7 @@ void WakeOnWiFi::OnWakeupReasonReceived(const NetlinkMessage &netlink_message) {
   SLOG(this, 7) << __func__ << ": "
                 << "Wake on WiFi not supported, so do nothing";
 #else
+  metrics_->NotifyWakeupReasonReceived();
   // We only handle wakeup reason messages in this handler, which is are
   // nl80211 messages with the NL80211_CMD_SET_WOWLAN command.
   if (netlink_message.message_type() != Nl80211Message::GetMessageType()) {
@@ -1273,6 +1274,7 @@ void WakeOnWiFi::OnDarkResume(
 #if defined(DISABLE_WAKE_ON_WIFI)
   done_callback.Run(Error(Error::kSuccess));
 #else
+  metrics_->NotifyWakeOnWiFiOnDarkResume(last_wake_reason_);
   suspend_actions_done_callback_ = done_callback;
   wake_on_ssid_whitelist_ = ssid_whitelist;
 
