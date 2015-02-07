@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/json/json_writer.h>
 #include <base/message_loop/message_loop.h>
 #include <base/values.h>
@@ -238,6 +239,17 @@ bool DeviceRegistrationInfo::Save() const {
   return storage_->Save(&dict);
 }
 
+void DeviceRegistrationInfo::ScheduleStartDevice(const base::TimeDelta& later) {
+  base::MessageLoop* current = base::MessageLoop::current();
+  if (!current)
+    return;  // Assume we're in unittests
+  current->PostDelayedTask(
+      FROM_HERE,
+      base::Bind(&DeviceRegistrationInfo::StartDevice,
+                 weak_factory_.GetWeakPtr(), nullptr),
+      later);
+}
+
 bool DeviceRegistrationInfo::CheckRegistration(chromeos::ErrorPtr* error) {
   LOG(INFO) << "Checking device registration record.";
   if (refresh_token_.empty() ||
@@ -447,6 +459,10 @@ std::string DeviceRegistrationInfo::RegisterDevice(
                              base::TimeDelta::FromSeconds(expires_in);
 
   Save();
+
+  // We're going to respond with our success immediately and we'll StartDevice
+  // shortly after.
+  ScheduleStartDevice(base::TimeDelta::FromSeconds(0));
   return device_id_;
 }
 

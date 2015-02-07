@@ -12,6 +12,7 @@
 
 #include <base/callback.h>
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <chromeos/data_encoding.h>
 #include <chromeos/errors/error.h>
@@ -88,6 +89,9 @@ class DeviceRegistrationInfo {
 
   // Loads the device registration information from cache.
   bool Load();
+
+  // Cause DeviceRegistrationInfo to attempt to StartDevice on its own later.
+  void ScheduleStartDevice(const base::TimeDelta& later);
 
   // Checks for the valid device registration as well as refreshes
   // the device access token, if available.
@@ -207,6 +211,7 @@ class DeviceRegistrationInfo {
   std::unique_ptr<chromeos::KeyValueStore> config_store_;
 
   friend class TestHelper;
+  base::WeakPtrFactory<DeviceRegistrationInfo> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(DeviceRegistrationInfo);
 };
 

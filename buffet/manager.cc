@@ -11,6 +11,7 @@
 #include <base/bind_helpers.h>
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/exported_object_manager.h>
 #include <chromeos/errors/error.h>
@@ -68,6 +69,13 @@ void Manager::RegisterAsync(
                                  chromeos::http::Transport::CreateDefault(),
                                  std::move(state_store)));
   device_info_->Load();
+  // Wait a significant amount of time for local daemons to publish their
+  // state to Buffet before publishing it to the cloud.
+  // TODO(wiley) We could do a lot of things here to either expose this
+  //             timeout as a configurable knob or allow local
+  //             daemons to signal that their state is up to date so that
+  //             we need not wait for them.
+  device_info_->ScheduleStartDevice(base::TimeDelta::FromSeconds(5));
   dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAsync(cb);
 }
