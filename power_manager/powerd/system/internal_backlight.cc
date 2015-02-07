@@ -188,6 +188,10 @@ bool InternalBacklight::SetResumeBrightnessLevel(int64_t level) {
   return WriteBrightnessLevelToFile(resume_brightness_path_, level);
 }
 
+bool InternalBacklight::TransitionInProgress() const {
+  return transition_timer_.IsRunning();
+}
+
 void InternalBacklight::HandleTransitionTimeout() {
   base::TimeTicks now = clock_->GetCurrentTime();
   int64_t new_level = 0;

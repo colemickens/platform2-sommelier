@@ -389,7 +389,7 @@ bool KeyboardBacklightController::ApplyBrightnessPercent(
     TransitionStyle transition,
     BrightnessChangeCause cause) {
   int64_t level = PercentToLevel(percent);
-  if (level == current_level_)
+  if (level == current_level_ && !backlight_->TransitionInProgress())
     return false;
 
   base::TimeDelta interval = GetTransitionDuration(transition);

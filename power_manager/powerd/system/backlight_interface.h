@@ -35,6 +35,9 @@ class BacklightInterface {
   // Sets the resume backlight to |level|.  Returns false on failure.
   virtual bool SetResumeBrightnessLevel(int64_t level) = 0;
 
+  // Returns true if the brightness is currently being animated.
+  virtual bool TransitionInProgress() const = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(BacklightInterface);
 };

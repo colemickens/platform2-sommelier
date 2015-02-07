@@ -63,6 +63,7 @@ class InternalBacklight : public BacklightInterface {
   int64_t GetCurrentBrightnessLevel() override;
   bool SetBrightnessLevel(int64_t level, base::TimeDelta interval) override;
   bool SetResumeBrightnessLevel(int64_t level) override;
+  bool TransitionInProgress() const override;
 
  private:
   // Sets the brightness level appropriately for the current point in the

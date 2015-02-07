@@ -670,7 +670,7 @@ bool InternalBacklightController::ApplyBrightnessPercent(
     TransitionStyle transition,
     BrightnessChangeCause cause) {
   int64_t level = PercentToLevel(percent);
-  if (level == current_level_)
+  if (level == current_level_ && !backlight_->TransitionInProgress())
     return false;
 
   // Force an instant transition if needed while moving within the

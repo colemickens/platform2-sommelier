@@ -22,6 +22,9 @@ class BacklightStub : public BacklightInterface {
 
   void set_max_level(int64_t level) { max_level_ = level; }
   void set_current_level(int64_t level) { current_level_ = level; }
+  void set_transition_in_progress(bool in_progress) {
+    transition_in_progress_ = in_progress;
+  }
   void set_should_fail(bool should_fail) { should_fail_ = should_fail; }
   void clear_resume_level() { resume_level_ = -1; }
 
@@ -34,6 +37,7 @@ class BacklightStub : public BacklightInterface {
   int64_t GetCurrentBrightnessLevel() override;
   bool SetBrightnessLevel(int64_t level, base::TimeDelta interval) override;
   bool SetResumeBrightnessLevel(int64_t level) override;
+  bool TransitionInProgress() const override;
 
  private:
   // Maximum backlight level.
@@ -47,6 +51,9 @@ class BacklightStub : public BacklightInterface {
 
   // |interval| parameter passed to most recent SetBrightnessLevel() call.
   base::TimeDelta current_interval_;
+
+  // Return value for TransitionInProgress().
+  bool transition_in_progress_;
 
   // Should we report failure in response to future requests?
   bool should_fail_;

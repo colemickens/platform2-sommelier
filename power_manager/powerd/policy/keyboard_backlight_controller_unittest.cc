@@ -533,5 +533,26 @@ TEST_F(KeyboardBacklightControllerTest, NoAmbientLightSensor) {
   EXPECT_EQ(50, backlight_.current_level());
 }
 
+TEST_F(KeyboardBacklightControllerTest, PreemptTransitionForShutdown) {
+  initial_backlight_level_ = 50;
+  Init();
+
+  // Notify the keyboard controller that the display has been turned off (as
+  // happens when shutting down).
+  display_backlight_controller_.NotifyObservers(
+      0.0, BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED);
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(kSlowBacklightTransitionMs,
+            backlight_.current_interval().InMilliseconds());
+
+  // Now notify the keyboard controller that the system is shutting down and
+  // check that the previous transition is preempted in favor of turning off the
+  // keyboard backlight immediately.
+  backlight_.set_transition_in_progress(true);
+  controller_.SetShuttingDown(true);
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
+}
+
 }  // namespace policy
 }  // namespace power_manager

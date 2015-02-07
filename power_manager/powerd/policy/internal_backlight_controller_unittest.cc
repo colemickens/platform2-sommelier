@@ -887,5 +887,22 @@ TEST_F(InternalBacklightControllerTest, MinVisibleLevelPrefUndercutsDefault) {
   EXPECT_EQ(default_min_visible_level_, backlight_.current_level());
 }
 
+TEST_F(InternalBacklightControllerTest, PreemptTransitionForShutdown) {
+  // Start a user-requested transition to 0.
+  Init(POWER_AC);
+  controller_->SetUserBrightnessPercent(
+      0, BacklightController::TRANSITION_FAST);
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(kFastBacklightTransitionMs,
+            backlight_.current_interval().InMilliseconds());
+
+  // Shut the system down and check that the transition is interrupted in favor
+  // of setting the backlight to 0 immediately.
+  backlight_.set_transition_in_progress(true);
+  controller_->SetShuttingDown(true);
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
+}
+
 }  // namespace policy
 }  // namespace power_manager
