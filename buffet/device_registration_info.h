@@ -41,19 +41,13 @@ class DeviceRegistrationInfo {
  public:
   // This is a helper class for unit testing.
   class TestHelper;
-  // This constructor uses CURL HTTP transport.
-  DeviceRegistrationInfo(
-      const std::shared_ptr<CommandManager>& command_manager,
-      const std::shared_ptr<StateManager>& state_manager,
-      std::unique_ptr<chromeos::KeyValueStore> config_store);
-  // This constructor allows to pass in a custom HTTP transport
-  // (mainly for testing).
+
   DeviceRegistrationInfo(
       const std::shared_ptr<CommandManager>& command_manager,
       const std::shared_ptr<StateManager>& state_manager,
       std::unique_ptr<chromeos::KeyValueStore> config_store,
       const std::shared_ptr<chromeos::http::Transport>& transport,
-      const std::shared_ptr<StorageInterface>& storage);
+      const std::shared_ptr<StorageInterface>& state_store);
 
   ~DeviceRegistrationInfo();
 

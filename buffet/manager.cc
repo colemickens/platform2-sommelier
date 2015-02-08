@@ -23,6 +23,7 @@
 #include "buffet/commands/command_manager.h"
 #include "buffet/states/state_change_queue.h"
 #include "buffet/states/state_manager.h"
+#include "buffet/storage_impls.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
@@ -41,7 +42,10 @@ Manager::Manager(const base::WeakPtr<ExportedObjectManager>& object_manager)
 
 Manager::~Manager() {}
 
-void Manager::RegisterAsync(const AsyncEventSequencer::CompletionAction& cb) {
+void Manager::RegisterAsync(
+    const base::FilePath& config_path,
+    const base::FilePath& state_path,
+    const AsyncEventSequencer::CompletionAction& cb) {
   command_manager_ =
       std::make_shared<CommandManager>(dbus_object_.GetObjectManager());
   command_manager_->Startup();
@@ -50,13 +54,17 @@ void Manager::RegisterAsync(const AsyncEventSequencer::CompletionAction& cb) {
   state_manager_ = std::make_shared<StateManager>(state_change_queue_.get());
   state_manager_->Startup();
   std::unique_ptr<chromeos::KeyValueStore> config_store{
-    new chromeos::KeyValueStore};
-  config_store->Load(base::FilePath(
-      FILE_PATH_LITERAL("/etc/buffet/buffet.conf")));
+      new chromeos::KeyValueStore};
+  std::unique_ptr<FileStorage> state_store{new FileStorage{state_path}};
+  config_store->Load(config_path);
+  // TODO(avakulenko): Figure out security implications of storing
+  // device info state data unencrypted.
   device_info_ = std::unique_ptr<DeviceRegistrationInfo>(
       new DeviceRegistrationInfo(command_manager_,
                                  state_manager_,
-                                 std::move(config_store)));
+                                 std::move(config_store),
+                                 chromeos::http::Transport::CreateDefault(),
+                                 std::move(state_store)));
   device_info_->Load();
   dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAsync(cb);

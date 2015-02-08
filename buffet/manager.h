@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/values.h>
@@ -47,6 +48,8 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   ~Manager();
 
   void RegisterAsync(
+      const base::FilePath& config_path,
+      const base::FilePath& state_path,
       const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
  private:

@@ -25,7 +25,6 @@
 #include "buffet/commands/command_manager.h"
 #include "buffet/device_registration_storage_keys.h"
 #include "buffet/states/state_manager.h"
-#include "buffet/storage_impls.h"
 #include "buffet/utils.h"
 
 const char buffet::kErrorDomainOAuth2[] = "oauth2";
@@ -56,9 +55,6 @@ const char kLocation[]      = "location";
 }  // namespace buffet
 
 namespace {
-
-const base::FilePath::CharType kDeviceInfoFilePath[] =
-    FILE_PATH_LITERAL("/var/lib/buffet/device_reg_info");
 
 std::pair<std::string, std::string> BuildAuthHeader(
     const std::string& access_token_type,
@@ -146,25 +142,11 @@ namespace buffet {
 DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<CommandManager>& command_manager,
     const std::shared_ptr<StateManager>& state_manager,
-    std::unique_ptr<chromeos::KeyValueStore> config_store)
-    : DeviceRegistrationInfo(
-        command_manager,
-        state_manager,
-        std::move(config_store),
-        chromeos::http::Transport::CreateDefault(),
-        // TODO(avakulenko): Figure out security implications of storing
-        // this data unencrypted.
-        std::make_shared<FileStorage>(base::FilePath{kDeviceInfoFilePath})) {
-}
-
-DeviceRegistrationInfo::DeviceRegistrationInfo(
-    const std::shared_ptr<CommandManager>& command_manager,
-    const std::shared_ptr<StateManager>& state_manager,
     std::unique_ptr<chromeos::KeyValueStore> config_store,
     const std::shared_ptr<chromeos::http::Transport>& transport,
-    const std::shared_ptr<StorageInterface>& storage)
+    const std::shared_ptr<StorageInterface>& state_store)
     : transport_{transport},
-      storage_{storage},
+      storage_{state_store},
       command_manager_{command_manager},
       state_manager_{state_manager},
       config_store_{std::move(config_store)} {
