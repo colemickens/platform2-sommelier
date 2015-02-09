@@ -417,13 +417,6 @@ std::string DeviceRegistrationInfo::RegisterDevice(
   if (!response->IsSuccessful())
     return std::string();
 
-  std::string auth_url = GetOAuthURL("auth", {
-    {"scope", "https://www.googleapis.com/auth/clouddevices"},
-    {"redirect_uri", "urn:ietf:wg:oauth:2.0:oob"},
-    {"response_type", "code"},
-    {"client_id", client_id_}
-  });
-
   url = GetServiceURL("registrationTickets/" + ticket_id_ +
                       "/finalize?key=" + api_key_);
   response = chromeos::http::SendRequestWithNoDataAndBlock(
